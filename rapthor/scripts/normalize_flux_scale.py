@@ -149,7 +149,7 @@ def main(source_catalog, ra, dec, output_h5parm, radius_cut=3.0, major_axis_cut=
         data = hdul[1].data
 
     # Find the number of frequency channels and the total bandwidth covered
-    n_chan = len([colname for colname in data.columns.names if 'Freq_ch' in colname])
+    n_chan = len([colname for colname in data.columns.names if colname.startswith('Freq_ch')])
     if n_chan == 0:
         raise ValueError('No channel frequency columns were found in the input source catalog. '
                          'Please run PyBDSF with the spectral-index mode activated.')
@@ -166,9 +166,15 @@ def main(source_catalog, ra, dec, output_h5parm, radius_cut=3.0, major_axis_cut=
                                            for source_dec in data['DEC']])*u.degree)
     center_coord = SkyCoord(ra=ra*u.degree, dec=dec*u.degree)
     source_distances = np.array([sep.value for sep in center_coord.separation(source_coords)])
+
+    # To find the distance to the nearest neighbor of each source, cross match
+    # the source catalog with itself and take the second-closest match using
+    # nthneighbor = 2 (the closest match, returned by nthneighbor = 1, will
+    # always be each source matched to itself and hence at a distance of 0)
     _, separation, _ = match_coordinates_sky(source_coords, source_coords, nthneighbor=2)
     neighbor_distances = np.array([sep.value for sep in separation])
 
+    # Apply the cuts
     radius_filter = source_distances < radius_cut
     major_axis_filter = data['DC_Maj'] < major_axis_cut
     neighbor_filter = neighbor_distances > neighbor_cut
