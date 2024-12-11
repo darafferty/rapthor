@@ -55,7 +55,7 @@ def fit_sed(fluxes, errors, frequencies):
 
     else:
         # Fit a powerlaw to the fluxes, weighted by their errors
-        fitter = fitting.LMLSQFitter()
+        fitter = fitting.LinearLSQFitter()
         powerlaw_init = models.Linear1D(slope=-0.8, intercept=np.log10(fluxes[0]))
         weights = [min(1e3, 1/err) if err > 0 else 1e3 for err in errors]
         powerlaw_fit = fitter(powerlaw_init, np.log10(frequencies), np.log10(fluxes), weights=weights)
@@ -106,15 +106,15 @@ def find_normalizations(rapthor_fluxes, rapthor_errors, rapthor_frequencies,
 
     # Derive normalizations per frequency needed to adjust the Rapthor SED to
     # match the survey one
-    normalizations = np.array([survey_fit(freq/1e8) / rapthor_fit(freq/1e8)
-                               if (survey_fit(freq/1e8) > 0 and rapthor_fit(freq/1e8) > 0)
+    normalizations = np.array([survey_fit(freq) / rapthor_fit(freq)
+                               if (survey_fit(freq) > 0 and rapthor_fit(freq) > 0)
                                else np.nan for freq in output_frequencies])
 
     return normalizations
 
 
-def main(source_catalog, ra, dec, output_h5parm, radius_cut=3.0, major_axis_cut=10/3600,
-         neighbor_cut=30/3600, spurious_match_cut=10/3600):
+def main(source_catalog, ra, dec, output_h5parm, radius_cut=3.0, major_axis_cut=30/3600,
+         neighbor_cut=30/3600, spurious_match_cut=30/3600):
     """
     Calculate flux-scale normalization corrections
 
@@ -284,9 +284,11 @@ if __name__ == '__main__':
     parser.add_argument('dec', help='Dec of image center in degrees', type=float)
     parser.add_argument('output_h5parm', help='Filename of output H5parm file with the normalization corrections')
     parser.add_argument('--radius_cut', help='Radius cut in degrees', type=float, default=3.0)
-    parser.add_argument('--major_axis_cut', help='Major-axis size cut in degrees', type=float, default=10/3600)
+    parser.add_argument('--major_axis_cut', help='Major-axis size cut in degrees', type=float, default=30/3600)
     parser.add_argument('--neighbor_cut', help='Nearest-neighbor distance cut in degrees', type=float, default=30/3600)
+    parser.add_argument('--spurious_match_cut', help='Spurious match distance cut in degrees', type=float, default=30/3600)
 
     args = parser.parse_args()
     main(args.source_catalog, args.ra, args.dec, args.output_h5parm, radius_cut=args.radius_cut,
-         major_axis_cut=args.major_axis_cut, neighbor_cut=args.neighbor_cut)
+         major_axis_cut=args.major_axis_cut, neighbor_cut=args.neighbor_cut,
+         spurious_match_cut=args.spurious_match_cut)
