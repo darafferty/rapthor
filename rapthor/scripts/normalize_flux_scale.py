@@ -23,7 +23,8 @@ def fit_sed(fluxes, errors, frequencies):
     errors : numpy array
         Array of 1-sigma errors on the SED flux densities in Jy
     frequencies : numpy array
-        Array of SED frequencies in Hz for each flux density
+        Array of SED frequencies in Hz for each flux density, ordered
+        from low to high
 
     Returns
     -------
@@ -37,34 +38,31 @@ def fit_sed(fluxes, errors, frequencies):
     errors = errors[valid_ind]
     frequencies = frequencies[valid_ind]
 
-    # Fit the Rapthor SED
-    if len(fluxes) == 0:
+    # Fit the SED
+    if len(fluxes) < 2:
         # No fit possible, return 0
-        def sed_fit_0(freq):
+        def sed_fit_lt_2(freq):
             return 0.0
-        sed_fit = sed_fit_0
-
-    elif len(fluxes) == 1:
-        # Adopt a constant SED
-        def sed_fit_1(freq):
-            return fluxes[0]
-        sed_fit = sed_fit_1
+        sed_fit = sed_fit_lt_2
 
     elif len(fluxes) == 2:
-        # Use simple powerlaw fit with spectral index alpha (f1 = f0 * (nu1/nu2)**alpha)
+        # Fit a simple powerlaw fit with spectral index alpha
         alpha = np.log10(fluxes[0] / fluxes[1]) / np.log10(frequencies[0] / frequencies[1])
 
         def sed_fit_2(freq):
-            return fluxes[0] * (frequencies[0] / freq) ** alpha
+            return fluxes[0] * (frequencies[0] / freq) ** -alpha
         sed_fit = sed_fit_2
 
     else:
-        # Fit a powerlaw to the fluxes, weighted by their errors, using
-        # the Levenberg-Marquardt (LM) algorithm
+        # Fit a powerlaw to the fluxes, weighted by their errors
         fitter = fitting.LMLSQFitter()
-        powerlaw_init = models.PowerLaw1D(amplitude=fluxes[0], x_0=frequencies[0], alpha=-1)
+        powerlaw_init = models.Linear1D(slope=-0.8, intercept=np.log10(fluxes[0]))
         weights = [min(1e3, 1/err) if err > 0 else 1e3 for err in errors]
-        sed_fit = fitter(powerlaw_init, frequencies, fluxes, weights=weights)
+        powerlaw_fit = fitter(powerlaw_init, np.log10(frequencies), np.log10(fluxes), weights=weights)
+
+        def sed_fit_gt_2(freq):
+            return 10**(powerlaw_fit(np.log10(freq)))
+        sed_fit = sed_fit_gt_2
 
     return sed_fit
 
@@ -108,7 +106,9 @@ def find_normalizations(rapthor_fluxes, rapthor_errors, rapthor_frequencies,
 
     # Derive normalizations per frequency needed to adjust the Rapthor SED to
     # match the survey one
-    normalizations = np.array([survey_fit(freq) / rapthor_fit(freq) for freq in output_frequencies])
+    normalizations = np.array([survey_fit(freq/1e8) / rapthor_fit(freq/1e8)
+                               if (survey_fit(freq/1e8) > 0 and rapthor_fit(freq/1e8) > 0)
+                               else np.nan for freq in output_frequencies])
 
     return normalizations
 
@@ -180,7 +180,7 @@ def main(source_catalog, ra, dec, output_h5parm, radius_cut=3.0, major_axis_cut=
     # Cross match sources with external catalogs
     survey_catalogs = []
     surveys = ['vlssr', 'wenss']
-    frequencies = [74e6, 327e6]  # Hz
+    frequencies = [74e6, 327e6]  # Hz, ordered from low to high
     do_normalization = True
     for survey, frequency in zip(surveys, frequencies):
         # Download sky model(s), using a 5-deg radius to ensure the field is
@@ -205,21 +205,30 @@ def main(source_catalog, ra, dec, output_h5parm, radius_cut=3.0, major_axis_cut=
                                  dec=np.array([misc.normalize_dec(survey_dec)
                                                for survey_dec in survey_data['DEC']])*u.degree)
 
-        # Cross match with the Rapthor sources, rejecting distant matches that
-        # are likely to be spurious (e.g., due to the true source not being
-        # present in the survey catalog)
+        # Cross match the survey sources with the Rapthor sources
         match_ind, separation, _ = match_coordinates_sky(source_coords, survey_coords)
-        match_distances = np.array([sep.value for sep in separation])
-        spurious_match_filter = match_distances > spurious_match_cut
-        survey_data['I'][match_ind][spurious_match_filter] = 0.0
 
+        # Check each Rapthor source, rejecting distant matches that are likely to be
+        # spurious (e.g., due to the true source not being present in the survey catalog)
+        # and keeping only the closest match
+        survey_fluxes = []
+        for dist, ind in zip(separation,  match_ind):
+            all_matches_ind = np.where(match_ind == ind)[0]
+            if dist.value > np.min(separation.value[all_matches_ind]) or dist.value > spurious_match_cut:
+                # Reject match by setting its survey flux to 0 (which will be ignored
+                # during SED fitting)
+                survey_fluxes.append(0.0)
+            else:
+                survey_fluxes.append(survey_data['I'][ind])
+
+        # Save the catalog details for use in SED fitting
         if survey == 'wenss':
-            flux_correction = 0.9
+            flux_correction = 0.9  # adjust to Scaife and Heald (2012) flux scale
             flux_err = 3.6e-3  # Jy (reported average rms noise level)
         elif survey == 'vlssr':
-            flux_correction = 1
+            flux_correction = 1  # already on Scaife and Heald (2012) flux scale
             flux_err = 0.1  # Jy (reported average rms noise level)
-        survey_catalogs.append({'survey': survey, 'flux': survey_data['I'][match_ind]*flux_correction,
+        survey_catalogs.append({'survey': survey, 'flux': np.array(survey_fluxes)*flux_correction,
                                 'flux_err': flux_err, 'frequency': frequency})
 
     output_frequencies = np.arange(min_frequency, max_frequency+1e5, 1e5)
@@ -249,8 +258,7 @@ def main(source_catalog, ra, dec, output_h5parm, radius_cut=3.0, major_axis_cut=
 
         # For each output frequency, find the average correction over all sources
         # (weighted by source flux density)
-        nonzero_ind = np.where(corrections > 0)
-        avg_corrections = np.mean(corrections[nonzero_ind], axis=0)
+        avg_corrections = np.nanmean(corrections, axis=0)
     else:
         # If normalization cannot be done, just set all corrections to 1
         avg_corrections = np.ones(len(output_frequencies))
