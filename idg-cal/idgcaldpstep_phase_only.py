@@ -238,7 +238,7 @@ class IDGCalDPStepPhaseOnly(IDGCalDPStepBase):
         d = fits.getdata(self.imagename)
         offset = (d.shape[-1] - N0) // 2
         d = d[:, :, offset : offset + N0, offset : offset + N0]
-        assert not np.any(np.isnan(d))
+        d[np.isnan(d)]=0.0
         self.grid[0, (N - N0) // 2 : (N + N0) // 2, (N - N0) // 2 : (N + N0) // 2] = d[
             0, 0, :, :
         ] / np.outer(taper_grid0, taper_grid0)
