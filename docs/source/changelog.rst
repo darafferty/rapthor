@@ -24,7 +24,7 @@ This release provides the following functionality:
     - Parallelization over multiple nodes of compute clusters (using Slurm).
     - Containerization via Docker or Singularity.
 
-Know limitations, to be addressed in future releases, include the following:
+Known limitations, to be addressed in future releases, include the following:
 
     - Automated self calibration of low declination fields does not yet work well.
     - The use of screens should be considered experimental.
