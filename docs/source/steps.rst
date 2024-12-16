@@ -11,5 +11,5 @@ Preparing the data (see :ref:`data_preparation`)
 Making a rapthor parset (see :ref:`rapthor_parset`)
     This step involves making the parset that defines the options of the Rapthor run.
 
-Running rapthor (see :ref:`rapthor`)
+Running rapthor (see :ref:`running`)
     This step involves running Rapthor and checking its progress and output.
