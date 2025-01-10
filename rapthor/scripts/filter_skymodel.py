@@ -128,7 +128,7 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, output_root,
 
     emptysky = False
     if img_true_sky.nisl > 0 and os.path.exists(true_sky_skymodel):
-        maskfile = true_sky_image + '.mask'
+        maskfile = output_root + '.mask.fits'
         img_true_sky.export_image(outfile=maskfile, clobber=True, img_type='island_mask')
         del img_true_sky  # helps reduce memory usage
 
