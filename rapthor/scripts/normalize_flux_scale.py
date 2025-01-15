@@ -7,8 +7,11 @@ from astropy.io import fits
 from astropy.coordinates import SkyCoord, match_coordinates_sky
 from astropy.modeling import models, fitting
 import astropy.units as u
+import casacore.tables as pt
+from losoto.h5parm import h5parm
 import lsmtool
 import numpy as np
+from pathlib import Path
 from rapthor.lib import miscellaneous as misc
 
 
@@ -95,8 +98,8 @@ def find_normalizations(rapthor_fluxes, rapthor_errors, rapthor_frequencies,
     Returns
     -------
     normalizations : numpy array
-        Array of normalizations, one per output frequency, that will result in
-        observed flux density * correction / true flux density = 1
+        Array of normalization corrections, one per output frequency, that will
+        result in (true flux density / observed flux density) * correction = 1
     """
     # Fit the external survey SED
     survey_fit = fit_sed(survey_fluxes, survey_errors, survey_frequencies)
@@ -106,15 +109,72 @@ def find_normalizations(rapthor_fluxes, rapthor_errors, rapthor_frequencies,
 
     # Derive normalizations per frequency needed to adjust the Rapthor SED to
     # match the survey one
-    normalizations = np.array([survey_fit(freq) / rapthor_fit(freq)
+    normalizations = np.array([rapthor_fit(freq) / survey_fit(freq)
                                if (survey_fit(freq) > 0 and rapthor_fit(freq) > 0)
                                else np.nan for freq in output_frequencies])
 
     return normalizations
 
 
-def main(source_catalog, ra, dec, output_h5parm, radius_cut=3.0, major_axis_cut=30/3600,
-         neighbor_cut=30/3600, spurious_match_cut=30/3600, min_sources=5):
+def create_normalization_h5parm(antenna_file, field_file, h5parm_file, frequencies,
+                                normalizations, solset_name='sol000',
+                                soltab_name='amp000'):
+    """
+    Writes normalization corrections to an H5parm file
+
+    The corrections are written as amplitudes such that, when applied by DP3,
+    the corrected data = data / amp^2 (i.e., amp = sqrt(normalizations))
+
+    Parameters
+    ----------
+    antenna_file : str
+        Filename of the antenna table (e.g., from a representative MS file)
+    field_file : str
+        Filename of the field table (e.g., from a representative MS file)
+    h5parm_file : str
+        Filename of the output H5parm file
+    frequencies : array
+        Array of frequencies corresponding to the normalization corrections
+    normalizations : array
+        Array of normalization corrections, one per frequency, that will result
+        in (true flux density / observed flux density) * correction = 1
+    solset_name : str, optional
+        Name of the output solution set
+    soltab_name : str, optional
+        Name of the output solution table
+    """
+    with h5parm(h5parm_file, readonly=False) as ouput_h5parm:
+        # Create the solution set
+        solset = ouput_h5parm.makeSolset(solset_name)
+
+        # Get the station info and make the output antenna table
+        with pt.table(antenna_file, ack=False) as antennaTable:
+            antennaNames = antennaTable.getcol('NAME')
+            antennaPositions = antennaTable.getcol('POSITION')
+        antennaTable = solset.obj._f_get_child('antenna')
+        antennaTable.append(list(zip(*(antennaNames, antennaPositions))))
+
+        # Get the field info and make the output source table
+        with pt.table(field_file, ack=False) as fieldTable:
+            phaseDir = fieldTable.getcol('PHASE_DIR')
+        pointing = phaseDir[0, 0, :]
+        sourceTable = solset.obj._f_get_child('source')
+        sourceTable.append([('pointing', pointing)])
+
+        # Create the output solution table
+        amps = np.sqrt(normalizations)  # so that corrected data = data / normalizations
+        weights = np.ones(normalizations.shape)
+        soltab = solset.makeSoltab('amplitude', soltab_name, axesNames=['freq'],
+                                   axesVals=[frequencies], vals=amps,
+                                   weights=weights)
+
+        # Add a CREATE entry to the solution table history
+        soltab.addHistory('CREATE (by normalize_flux_scale.py)')
+
+
+def main(source_catalog, ra, dec, ms_file, output_h5parm, radius_cut=3.0,
+         major_axis_cut=30/3600, neighbor_cut=30/3600, spurious_match_cut=30/3600,
+         min_sources=5):
     """
     Calculate flux-scale normalization corrections
 
@@ -128,6 +188,8 @@ def main(source_catalog, ra, dec, output_h5parm, radius_cut=3.0, major_axis_cut=
         RA of the image center in degrees
     dec : float
         Dec of the image center in degrees
+    ms_file : str
+        Filename of the MS file used for imaging (needed for antenna and field tables)
     output_h5parm : str
         Filename of the output H5parm
     radius_cut : float, optional
@@ -280,19 +342,27 @@ def main(source_catalog, ra, dec, output_h5parm, radius_cut=3.0, major_axis_cut=
         # Check the number of valid fits first, and if too few, skip the normalization.
         # This check assumes that the corrections from valid fits do not contain any NaNs
         valid_fits = np.all(~np.isnan(corrections), axis=1)
-        if np.where(valid_fits)[0].size < min_sources:
+        n_valid = np.where(valid_fits)[0].size
+        if n_valid < min_sources:
             print('Too few sources with successful SED fits. Flux normalization will be skipped.')
             avg_corrections = np.ones(len(output_frequencies))
         else:
-            avg_corrections = np.nanmean(corrections, axis=0)
+            valid_corrections = corrections[valid_fits]
+            if weight_by_flux:
+                weights = data['Total_flux'][valid_corrections]
+            else:
+                weights = np.ones(n_valid)
+            avg_corrections = np.average(corrections[valid_corrections], axis=0,
+                                         weights=weights)
     else:
         # If normalization cannot be done, just set all corrections to 1
         avg_corrections = np.ones(len(output_frequencies))
 
-    # TODO: [RAP-792] Write corrections to the output H5parm file as amplitude corrections
-    # (corrected data = data / amp^2)
-    with open(output_h5parm, 'w') as f:
-        f.writelines([''])  # placeholder
+    # Write corrections to the output H5parm file as amplitude corrections
+    antenna_file = Path(ms_file).joinpath('ANTENNA')
+    field_file = Path(ms_file).joinpath('FIELD')
+    create_normalization_h5parm(antenna_file, field_file, output_h5parm, frequencies,
+                                avg_corrections)
 
 
 if __name__ == '__main__':
@@ -302,6 +372,7 @@ if __name__ == '__main__':
     parser.add_argument('source_catalog', help='Filename of input FITS source catalog')
     parser.add_argument('ra', help='RA of image center in degrees', type=float)
     parser.add_argument('dec', help='Dec of image center in degrees', type=float)
+    parser.add_argument('ms_file', help='Filename of imaging MS file')
     parser.add_argument('output_h5parm', help='Filename of output H5parm file with the normalization corrections')
     parser.add_argument('--radius_cut', help='Radius cut in degrees', type=float, default=3.0)
     parser.add_argument('--major_axis_cut', help='Major-axis size cut in degrees', type=float, default=30/3600)
@@ -310,6 +381,7 @@ if __name__ == '__main__':
     parser.add_argument('--min_sources', help='Minimum number of souces required for normalization calculation', type=int, default=5)
 
     args = parser.parse_args()
-    main(args.source_catalog, args.ra, args.dec, args.output_h5parm, radius_cut=args.radius_cut,
-         major_axis_cut=args.major_axis_cut, neighbor_cut=args.neighbor_cut,
-         spurious_match_cut=args.spurious_match_cut, min_sources=args.min_sources)
+    main(args.source_catalog, args.ra, args.dec, args.ms_file, args.output_h5parm,
+         radius_cut=args.radius_cut, major_axis_cut=args.major_axis_cut,
+         neighbor_cut=args.neighbor_cut, spurious_match_cut=args.spurious_match_cut,
+         min_sources=args.min_sources)

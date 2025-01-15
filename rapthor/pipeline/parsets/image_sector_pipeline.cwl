@@ -972,6 +972,8 @@ steps:
         source: ra
       - id: dec
         source: dec
+      - id: ms_file
+        source: concat_in_time/msconcat
       - id: normalize_h5parm
         source: normalize_h5parm
     out:
