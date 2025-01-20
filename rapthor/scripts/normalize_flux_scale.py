@@ -174,7 +174,7 @@ def create_normalization_h5parm(antenna_file, field_file, h5parm_file, frequenci
 
 def main(source_catalog, ra, dec, ms_file, output_h5parm, radius_cut=3.0,
          major_axis_cut=30/3600, neighbor_cut=30/3600, spurious_match_cut=30/3600,
-         min_sources=5, weight_by_flux=False):
+         min_sources=5, weight_by_flux_err=False):
     """
     Calculate flux-scale normalization corrections
 
@@ -208,7 +208,7 @@ def main(source_catalog, ra, dec, ms_file, output_h5parm, radius_cut=3.0,
     min_sources : int, optional
         The minimum number of souces required for the normalization correction
         calculation
-    weight_by_flux : bool, optional
+    weight_by_flux_err : bool, optional
         If True, the mean normalization is calculated using a weighted average, where the
         weights are given by the inverse of the errors on the source flux densities.
     """
@@ -350,7 +350,7 @@ def main(source_catalog, ra, dec, ms_file, output_h5parm, radius_cut=3.0,
             print('Too few sources with successful SED fits. Flux normalization will be skipped.')
             avg_corrections = np.ones(len(output_frequencies))
         else:
-            if weight_by_flux:
+            if weight_by_flux_err:
                 weights = [min(1e3, 1/err) if err > 0 else 1e3 for err in data['E_Total_flux'][valid_fits]]
             else:
                 weights = np.ones(n_valid)
@@ -381,9 +381,10 @@ if __name__ == '__main__':
     parser.add_argument('--neighbor_cut', help='Nearest-neighbor distance cut in degrees', type=float, default=30/3600)
     parser.add_argument('--spurious_match_cut', help='Spurious match distance cut in degrees', type=float, default=30/3600)
     parser.add_argument('--min_sources', help='Minimum number of souces required for normalization calculation', type=int, default=5)
+    parser.add_argument('--weight_by_flux_err', help='Weight by error on flux density', action='store_true', default=False)
 
     args = parser.parse_args()
     main(args.source_catalog, args.ra, args.dec, args.ms_file, args.output_h5parm,
          radius_cut=args.radius_cut, major_axis_cut=args.major_axis_cut,
          neighbor_cut=args.neighbor_cut, spurious_match_cut=args.spurious_match_cut,
-         min_sources=args.min_sources)
+         min_sources=args.min_sources, weight_by_flux_err=args.weight_by_flux_err)
