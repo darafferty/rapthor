@@ -50,7 +50,7 @@ WORKDIR /src
 RUN git clone --recurse-submodules https://git.astron.nl/RD/idg.git
 RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
-    -DBUILD_WITH_PYTHON=OFF \
+    -DBUILD_WITH_PYTHON=ON \
     -DBUILD_TESTING=OFF \
     -DPORTABLE=${PORTABLE} \
     -DTARGET_CPU=${TARGET_CPU} \
@@ -65,7 +65,7 @@ RUN ninja -C /src/idg/build install
 RUN git shallow-clone https://git.astron.nl/RD/EveryBeam.git
 RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
-    -DBUILD_WITH_PYTHON=OFF \
+    -DBUILD_WITH_PYTHON=ON \
     -DBUILD_TESTING=OFF \
     -DPORTABLE=${PORTABLE} \
     -DTARGET_CPU=${TARGET_CPU} \
@@ -165,8 +165,10 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get install -y --no-install-recommends \
         ca-certificates \
         casacore-tools \
+        libarmadillo10 \
         libatkmm-1.6-1v5 \
         libblas3 \
+        libboost-date-time1.74.0 \
         libboost-filesystem1.74.0 \
         libboost-program-options1.74.0 \
         libcairomm-1.0-1v5 \
