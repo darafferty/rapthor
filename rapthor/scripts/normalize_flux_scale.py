@@ -174,7 +174,7 @@ def create_normalization_h5parm(antenna_file, field_file, h5parm_file, frequenci
 
 def main(source_catalog, ra, dec, ms_file, output_h5parm, radius_cut=3.0,
          major_axis_cut=30/3600, neighbor_cut=30/3600, spurious_match_cut=30/3600,
-         min_sources=5):
+         min_sources=5, weight_by_flux=False):
     """
     Calculate flux-scale normalization corrections
 
@@ -208,6 +208,9 @@ def main(source_catalog, ra, dec, ms_file, output_h5parm, radius_cut=3.0,
     min_sources : int, optional
         The minimum number of souces required for the normalization correction
         calculation
+    weight_by_flux : bool, optional
+        If True, the mean normalization is calculated using a weighted average, where the
+        weights are given by the inverse of the errors on the source flux densities.
     """
     # Read in the source catalog
     with fits.open(source_catalog) as hdul:
@@ -347,21 +350,20 @@ def main(source_catalog, ra, dec, ms_file, output_h5parm, radius_cut=3.0,
             print('Too few sources with successful SED fits. Flux normalization will be skipped.')
             avg_corrections = np.ones(len(output_frequencies))
         else:
-            valid_corrections = corrections[valid_fits]
             if weight_by_flux:
-                weights = data['Total_flux'][valid_corrections]
+                weights = [min(1e3, 1/err) if err > 0 else 1e3 for err in data['E_Total_flux'][valid_fits]]
             else:
                 weights = np.ones(n_valid)
-            avg_corrections = np.average(corrections[valid_corrections], axis=0,
+            avg_corrections = np.average(corrections[valid_fits], axis=0,
                                          weights=weights)
     else:
         # If normalization cannot be done, just set all corrections to 1
         avg_corrections = np.ones(len(output_frequencies))
 
     # Write corrections to the output H5parm file as amplitude corrections
-    antenna_file = Path(ms_file).joinpath('ANTENNA')
-    field_file = Path(ms_file).joinpath('FIELD')
-    create_normalization_h5parm(antenna_file, field_file, output_h5parm, frequencies,
+    antenna_file = str(Path(ms_file).joinpath('ANTENNA'))
+    field_file = str(Path(ms_file).joinpath('FIELD'))
+    create_normalization_h5parm(antenna_file, field_file, output_h5parm, output_frequencies,
                                 avg_corrections)
 
 
