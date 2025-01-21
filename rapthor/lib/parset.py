@@ -282,8 +282,7 @@ class Parset:
 
         for opt, valid_values in {
             "idg_mode": ("cpu", "gpu", "hybrid"),
-            "dde_method": ("none", "screens", "facets"),
-            "screen_type": ("kl", "tesselated"),
+            "dde_method": ("none", "facets"),
             "pol_combine_method": ("link", "join"),
         }.items():
             if options[opt] not in valid_values:

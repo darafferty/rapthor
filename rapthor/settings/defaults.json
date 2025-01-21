@@ -58,7 +58,7 @@
         "local_rms_strength": 1.0,
         "do_multiscale_clean": true,
         "dde_method": "facets",
-        "screen_type": "kl",
+        "use_screens": false,
         "save_visibilities": false,
         "idg_mode": "cpu",
         "mem_gb": 0,

@@ -138,14 +138,16 @@ taper_arcsec = 0.0
 local_rms_strength = 0.8
 do_multiscale_clean = True
 
-# Method to use to correct for direction-dependent effects during imaging:
-# "none", "facets", or "screens" (default = facets). If "none", the solutions
+# Method to use to correct for direction-dependent effects during self
+# calibration: "none" or "facets" (default = facets). If "none", the solutions
 # closest to the image centers will be used. If "facets", Voronoi faceting is
-# used. If "screens", smooth 2-D screens are used; the type of screen to use can
-# be specified with screen_type: "tessellated" (simple, smoothed tessellated
-# screens) or "kl" (Karhunen-Lo`eve screens) (default = kl)
+# used.
 dde_method = facets
-screen_type = kl
+
+# Use screens instead of facets in the final processing cycle (default =
+# False). If True, IDGCal is used to generate smooth 2-D screens during the
+# final calibration that are subsequently applied in the final imaging
+use_screens = False
 
 # Save visibilities used for imaging (default = False). If True, the imaging MS
 # files will be saved, with the the direction-independent full-Jones solutions,
@@ -155,8 +157,7 @@ screen_type = kl
 save_visibilities = False
 
 # IDG (image domain gridder) mode to use in WSClean (default = cpu). The mode
-# can be "cpu" or "hybrid". Note that IDG is only used when dde_method = "none"
-# or "screens"
+# can be "cpu" or "hybrid". Note that IDG is only used when use_screens = True
 idg_mode = cpu
 
 # Maximum memory in GB (per node) to use for WSClean jobs (default = 0 = 100%)

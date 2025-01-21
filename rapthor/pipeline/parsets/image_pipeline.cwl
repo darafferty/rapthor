@@ -171,16 +171,6 @@ inputs:
     type: int[]
 {% endif %}
 
-{% if use_screens %}
-# start use_screens
-  - id: aterm_image_filenames
-    label: Filenames of a-terms
-    doc: |
-      The filenames of the a-term images (length = 1, with n_aterms subelements).
-    type: File[]
-
-{% else %}
-# start not use_screens
 {% if not apply_none %}
   - id: h5parm
     label: Filename of h5parm
@@ -278,9 +268,6 @@ inputs:
 {% endif %}
 {% endif %}
 # end use_facets / not use_facets
-
-{% endif %}
-# end use_screens / not use_screens
 
   - id: channels_out
     label: Number of channels
@@ -601,12 +588,6 @@ steps:
       - id: mpi_nnodes
         source: mpi_nnodes
 {% endif %}
-{% if use_screens %}
-# start use_screens
-      - id: aterm_image_filenames
-        source: aterm_image_filenames
-{% else %}
-# start not use_screens
 {% if not apply_none %}
       - id: h5parm
         source: h5parm
@@ -643,8 +624,6 @@ steps:
 {% endif %}
 {% endif %}
 # end use_facets / not use_facets
-{% endif %}
-# end use_screens / not use_screens
       - id: channels_out
         source: channels_out
       - id: deconvolution_channels
@@ -709,28 +688,6 @@ steps:
       - id: normalize_h5parm
         source: normalize_h5parm
 {% endif %}
-{% if use_screens %}
-# start use_screens
-    scatter: [obs_filename, prepare_filename, concat_filename, starttime, ntimes,
-              image_freqstep, image_timestep, previous_mask_filename, mask_filename,
-              phasecenter, ra, dec, image_name, cellsize_deg, wsclean_imsize,
-              vertices_file, region_file,
-{% if use_mpi %}
-              mpi_cpus_per_task, mpi_nnodes,
-{% endif %}
-{% if make_image_cube %}
-              image_cube_name,
-{% endif %}
-{% if normalize_flux_scale %}
-              output_source_catalog,
-              normalize_h5parm,
-{% endif %}
-              channels_out, deconvolution_channels, fit_spectral_pol, wsclean_niter,
-              wsclean_nmiter, robust, min_uv_lambda, max_uv_lambda, do_multiscale,
-              taper_arcsec, local_rms_strength, wsclean_mem, auto_mask,
-              idg_mode, threshisl, threshpix, dd_psf_grid]
-{% else %}
-# start not use_screens
     scatter: [obs_filename, prepare_filename, concat_filename, starttime, ntimes,
               image_freqstep, image_timestep, previous_mask_filename, mask_filename,
               phasecenter, ra, dec, image_name, cellsize_deg, wsclean_imsize,
@@ -756,8 +713,6 @@ steps:
               wsclean_nmiter, robust, min_uv_lambda, max_uv_lambda, do_multiscale,
               taper_arcsec, local_rms_strength, wsclean_mem, auto_mask,
               idg_mode, threshisl, threshpix, dd_psf_grid]
-{% endif %}
-# end use_screens / not use_screens
 
     scatterMethod: dotproduct
 

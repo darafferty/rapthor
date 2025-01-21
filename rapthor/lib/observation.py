@@ -398,13 +398,6 @@ class Observation(object):
             else:
                 self.parameters[f'solutions_per_direction_{solve_type}'] = [[1] * len(calibrator_fluxes)] * nchunks
 
-        # Set the number of segments to split the h5parm files into for screen fitting.
-        # Try to split so that each file gets at least two solutions
-        solint_slow_timestep = max(self.parameters['solint_slow_timestep_joint'][0],
-                                   self.parameters['solint_slow_timestep_separate'][0])
-        self.parameters['nsplit_fast'] = [max(1, int(self.numsamples / solint_fast_timestep / 2))]
-        self.parameters['nsplit_slow'] = [max(1, int(self.numsamples / solint_slow_timestep / 2))]
-
         # Set the smoothnessreffrequency for the fast solves, if not set by the user
         fast_smoothnessreffrequency = parset['calibration_specific']['fast_smoothnessreffrequency']
         if fast_smoothnessreffrequency is None:

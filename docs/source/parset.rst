@@ -350,15 +350,15 @@ The available options are described below under their respective sections.
         Use multiscale cleaning (default = ``True``)?
 
     dde_method
-        Method to use to correct for direction-dependent effects during imaging: ``none``,
-        ``facets``, or ``screens`` (default = ``facets``). If ``none``, the solutions
+        Method to use to correct for direction-dependent effects during imaging: ``none``
+        or ``facets`` (default = ``facets``). If ``none``, the solutions
         closest to the image centers will be used. If ``facets``, Voronoi faceting is
-        used. If ``screens``, smooth 2-D screens are used.
+        used.
 
-    screen_type
-        Type of screen to use (default = ``tessellated``), if :term:`dde_method` =
-        ``screens``: ``tessellated`` (simple, smoothed Voronoi tessellated screens) or
-        ``kl`` (Karhunen-Lo`eve screens).
+    use_screens
+        Use screens instead of facets in the final processing cycle (default =
+        ``False``). If ``True``, IDGCal is used to generate smooth 2-D screens during the
+        final calibration that are subsequently applied in the final imaging
 
     save_visibilities
         Save visibilities used for imaging (default = ``False``). If ``True``, the imaging

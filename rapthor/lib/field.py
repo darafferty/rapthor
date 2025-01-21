@@ -70,11 +70,7 @@ class Field(object):
         self.stepsigma = self.parset['calibration_specific']['stepsigma']
         self.tolerance = self.parset['calibration_specific']['tolerance']
         self.dde_method = self.parset['imaging_specific']['dde_method']
-        if self.dde_method == 'screens':
-            self.use_screens = True
-        else:
-            self.use_screens = False
-        self.screen_type = self.parset['imaging_specific']['screen_type']
+        self.use_screens =  self.parset['imaging_specific']['use_screens']
         self.save_visibilities = self.parset['imaging_specific']['save_visibilities']
         self.use_mpi = self.parset['imaging_specific']['use_mpi']
         self.parallelbaselines = self.parset['calibration_specific']['parallelbaselines']

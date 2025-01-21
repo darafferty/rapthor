@@ -22,8 +22,7 @@ import sys
 
 
 if __name__ == '__main__':
-    parser = optparse.OptionParser(usage='%prog <parset>',
-            version='%%prog v%s' % (version))
+    parser = optparse.OptionParser(usage='%prog <parset>', version='%%prog v%s' % (version))
     parser.add_option('-q', help='enable quiet mode', action='store_true', default=False)
     parser.add_option('-v', help='enable verbose mode', action='store_true', default=False)
     parser.add_option('-r', help='reset one or more operations', action='store_true', default=False)

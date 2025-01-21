@@ -241,12 +241,7 @@ class Image(Operation):
             nnodes_per_subpipeline = max(1, int(nnodes / nsubpipes) - 1)
             self.input_parms.update({'mpi_nnodes': [nnodes_per_subpipeline] * nsectors})
             self.input_parms.update({'mpi_cpus_per_task': [self.parset['cluster_specific']['cpus_per_task']] * nsectors})
-        if self.use_screens:
-            # The following parameters were set by the preceding calibrate operation, where
-            # aterm image files were generated. They do not need to be set separately for
-            # each sector
-            self.input_parms.update({'aterm_image_filenames': CWLFile(self.field.aterm_image_filenames).to_json()})
-        elif not self.apply_none:
+        if not self.apply_none:
             self.input_parms.update({'h5parm': CWLFile(self.field.h5parm_filename).to_json()})
             if self.field.fulljones_h5parm_filename is not None:
                 self.input_parms.update({'fulljones_h5parm': CWLFile(self.field.fulljones_h5parm_filename).to_json()})

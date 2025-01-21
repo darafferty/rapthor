@@ -73,7 +73,6 @@ script-files = [
     "rapthor/scripts/combine_h5parms.py",
     "rapthor/scripts/concat_ms.py",
     "rapthor/scripts/filter_skymodel.py",
-    "rapthor/scripts/make_aterm_images.py",
     "rapthor/scripts/make_catalog_from_image_cube.py",
     "rapthor/scripts/make_image_cube.py",
     "rapthor/scripts/make_mosaic.py",
@@ -83,7 +82,6 @@ script-files = [
     "rapthor/scripts/normalize_flux_scale.py",
     "rapthor/scripts/process_gains.py",
     "rapthor/scripts/regrid_image.py",
-    "rapthor/scripts/split_h5parms.py",
     "rapthor/scripts/subtract_sector_models.py",
 ]
 

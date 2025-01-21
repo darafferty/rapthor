@@ -138,17 +138,6 @@ inputs:
     type: int
 {% endif %}
 
-{% if use_screens %}
-# start use_screens
-  - id: aterm_image_filenames
-    label: Filenames of a-terms
-    doc: |
-      The filenames of the a-term images (length = 1, with n_aterms subelements).
-    type: File[]
-
-{% else %}
-# start not use_screens
-
 {% if not apply_none %}
   - id: h5parm
     label: Filename of h5parm
@@ -243,9 +232,6 @@ inputs:
 {% endif %}
 {% endif %}
 # end use_facets / not use_facets
-
-{% endif %}
-# end use_screens / not use_screens
 
   - id: channels_out
     label: Number of channels
@@ -703,10 +689,6 @@ steps:
 {% if use_mpi %}
       - id: nnodes
         source: mpi_nnodes
-{% endif %}
-{% if use_screens %}
-      - id: aterm_images
-        source: aterm_image_filenames
 {% endif %}
 {% if use_facets %}
       - id: h5parm

@@ -179,9 +179,6 @@ class CalibrateDD(Operation):
         self.output_aterms_root = ['diagonal_aterms_{}'.format(i) for i in
                                    range(len(split_outh5parm))]
 
-        # Set the type of screen to make
-        screen_type = self.field.screen_type
-
         # Set the DDECal steps depending on whether baseline-dependent averaging is
         # activated (and supported) or not. If BDA is used, an "null" step is also
         # added to prevent the writing of the BDA data
@@ -263,7 +260,6 @@ class CalibrateDD(Operation):
                             'sector_bounds_mid_deg': sector_bounds_mid_deg,
                             'split_outh5parm': split_outh5parm,
                             'output_aterms_root': self.output_aterms_root,
-                            'screen_type': screen_type,
                             'combined_h5parms': self.combined_h5parms,
                             'fast_antennaconstraint': fast_antennaconstraint,
                             'slow_antennaconstraint': slow_antennaconstraint,
@@ -347,17 +343,6 @@ class CalibrateDD(Operation):
         """
         Finalize this operation
         """
-        # Get the filenames of the aterm images (for use in the image operation). The files
-        # were written by the 'make_aterms' step and the number of them can vary, depending
-        # on the node memory, etc.
-        if self.field.use_screens:
-            self.field.aterm_image_filenames = []
-            for aterms_root in self.output_aterms_root:
-                with open(os.path.join(self.pipeline_working_dir, aterms_root+'.txt'), 'r') as f:
-                    self.field.aterm_image_filenames.extend(f.readlines())
-            self.field.aterm_image_filenames = [os.path.join(self.pipeline_working_dir, af.strip())
-                                                for af in self.field.aterm_image_filenames]
-
         # Copy the solutions (h5parm files) and report the flagged fraction
         dst_dir = os.path.join(self.parset['dir_working'], 'solutions', 'calibrate_{}'.format(self.index))
         misc.create_directory(dst_dir)
