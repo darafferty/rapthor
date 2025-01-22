@@ -28,6 +28,7 @@ class Image(Operation):
         self.apply_amplitudes = None
         self.use_screens = None
         self.apply_fulljones = None
+        self.apply_screens = None
         self.make_image_cube = None
         self.normalize_flux_scale = None
         self.dde_method = None
@@ -50,8 +51,8 @@ class Image(Operation):
             self.apply_none = False
         if self.apply_amplitudes is None:
             self.apply_amplitudes = self.field.apply_amplitudes
-        if self.use_screens is None:
-            self.use_screens = self.field.use_screens
+        if self.apply_screens is None:
+            self.apply_screens = self.field.apply_screens
         if self.apply_fulljones is None:
             self.apply_fulljones = self.field.apply_fulljones
         if self.make_image_cube is None:
@@ -79,7 +80,7 @@ class Image(Operation):
                              'pipeline_working_dir': self.pipeline_working_dir,
                              'apply_none': self.apply_none,
                              'apply_amplitudes': self.apply_amplitudes,
-                             'use_screens': self.use_screens,
+                             'apply_screens': self.apply_screens,
                              'apply_fulljones': self.apply_fulljones,
                              'make_image_cube': self.make_image_cube,
                              'normalize_flux_scale': self.normalize_flux_scale,

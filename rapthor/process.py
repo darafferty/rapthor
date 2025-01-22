@@ -107,6 +107,13 @@ def run(parset_file, logging_level='info'):
             log.info("Using a data fraction of {0:.2f}".format(parset['final_data_fraction']))
         if field.make_quv_images:
             log.info("Stokes I, Q, U, and V images will be made")
+        if field.use_screens:
+            log.info("Screens will be used for calibration and imaging")
+            if final_step['peel_outliers']:
+                # Currently, when screens are used peeling cannot be done
+                log.info("Peeling of outliers is currently not supported when using "
+                         "screens. Peeling will be skipped")
+                final_step['peel_outliers'] = False
 
         # Set the data chunking to match the longest solution interval set in
         # the strategy
@@ -157,6 +164,9 @@ def run_steps(field, steps, final=False):
 
         # Calibrate
         if field.do_calibrate:
+            # Set whether screens should be generated
+            field.generate_screens = True if (field.use_screens and final) else False
+
             if field.peel_non_calibrator_sources:
                 # Predict and subtract non-calibrator sources before calibration
                 op = PredictNC(field, cycle_number)
@@ -182,6 +192,9 @@ def run_steps(field, steps, final=False):
         if field.do_image:
             # Set the Stokes polarizations for imaging
             field.image_pol = 'IQUV' if (field.make_quv_images and final) else 'I'
+
+            # Set whether screens should be applied
+            field.apply_screens = True if (field.use_screens and final) else False
 
             op = Image(field, cycle_number)
             op.run()

@@ -33,7 +33,7 @@ class CalibrateDD(Operation):
             do_joint_solve = True
         else:
             do_joint_solve = False
-        if self.field.dde_method == 'facets':
+        if self.field.dde_method == 'facets' and not self.field.generate_screens:
             use_facets = True
         else:
             use_facets = False
@@ -41,6 +41,7 @@ class CalibrateDD(Operation):
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
                              'use_screens': self.field.use_screens,
                              'use_facets': use_facets,
+                             'generate_screens': self.field.generate_screens,
                              'do_slowgain_solve': self.field.do_slowgain_solve,
                              'do_joint_solve': do_joint_solve,
                              'use_scalarphase': self.field.use_scalarphase,
