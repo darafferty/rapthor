@@ -275,7 +275,7 @@ def main(source_catalog, ms_file, output_h5parm, radius_cut=3.0, major_axis_cut=
             # Download sky model(s), using a 5-deg radius to ensure the field is
             # fully covered
             try:
-                skymodel = lsmtool.load(survey, VOPosition=[ra, dec], VORadius=5.0)
+                skymodel = lsmtool.load(survey, VOPosition=[ra*180/np.pi, dec*180/np.pi], VORadius=5.0)
             except (OSError, ConnectionError) as e:
                 print(f'A problem occurred when downloading the {survey} catalog. '
                       'Error was: {}. Flux normalization will be skipped.'.format(e))
