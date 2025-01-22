@@ -968,10 +968,6 @@ steps:
     in:
       - id: source_catalog
         source: make_catalog_from_image_cube/source_catalog
-      - id: ra
-        source: ra
-      - id: dec
-        source: dec
       - id: ms_file
         source: concat_in_time/msconcat
       - id: normalize_h5parm

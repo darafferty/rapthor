@@ -11,7 +11,6 @@ import casacore.tables as pt
 from losoto.h5parm import h5parm
 import lsmtool
 import numpy as np
-from pathlib import Path
 from rapthor.lib import miscellaneous as misc
 
 
@@ -60,6 +59,7 @@ def fit_sed(fluxes, errors, frequencies):
         # Fit a powerlaw to the fluxes, weighted by their errors
         fitter = fitting.LinearLSQFitter()
         powerlaw_init = models.Linear1D(slope=-0.8, intercept=np.log10(fluxes[0]))
+        # TODO: check that the limit of 1e3 is a good choice (or is needed at all)
         weights = [min(1e3, 1/err) if err > 0 else 1e3 for err in errors]
         powerlaw_fit = fitter(powerlaw_init, np.log10(frequencies), np.log10(fluxes), weights=weights)
 
@@ -105,6 +105,8 @@ def find_normalizations(rapthor_fluxes, rapthor_errors, rapthor_frequencies,
     survey_fit = fit_sed(survey_fluxes, survey_errors, survey_frequencies)
 
     # Fit the Rapthor SED
+    # TODO: check if higher-order fits are needed (to allow systematic non-powerlaw
+    # behavior in the Rapthor SEDs to be corrected)
     rapthor_fit = fit_sed(rapthor_fluxes, rapthor_errors, rapthor_frequencies)
 
     # Derive normalizations per frequency needed to adjust the Rapthor SED to
@@ -139,9 +141,11 @@ def create_normalization_h5parm(antenna_file, field_file, h5parm_file, frequenci
         Array of normalization corrections, one per frequency, that will result
         in (true flux density / observed flux density) * correction = 1
     solset_name : str, optional
-        Name of the output solution set
+        Name of the solution set of the output H5parm file used to store the
+        corrections
     soltab_name : str, optional
-        Name of the output solution table
+        Name of the solution table of the output H5parm file used to store the
+        corrections
     """
     with h5parm(h5parm_file, readonly=False) as ouput_h5parm:
         # Create the solution set
@@ -156,8 +160,10 @@ def create_normalization_h5parm(antenna_file, field_file, h5parm_file, frequenci
 
         # Get the field info and make the output source table
         with pt.table(field_file, ack=False) as fieldTable:
-            phaseDir = fieldTable.getcol('PHASE_DIR')
-        pointing = phaseDir[0, 0, :]
+            # Note: getcol() here returns a nested array, for example:
+            #     array([[[-1.7654,  1.0020]]])
+            # so we use np.squeeze to remove the length-one axes
+            pointing = np.squeeze(fieldTable.getcol('PHASE_DIR'))
         sourceTable = solset.obj._f_get_child('source')
         sourceTable.append([('pointing', pointing)])
 
@@ -172,9 +178,9 @@ def create_normalization_h5parm(antenna_file, field_file, h5parm_file, frequenci
         soltab.addHistory('CREATE (by normalize_flux_scale.py)')
 
 
-def main(source_catalog, ra, dec, ms_file, output_h5parm, radius_cut=3.0,
-         major_axis_cut=30/3600, neighbor_cut=30/3600, spurious_match_cut=30/3600,
-         min_sources=5, weight_by_flux_err=False):
+def main(source_catalog, ms_file, output_h5parm, radius_cut=3.0, major_axis_cut=30/3600,
+         neighbor_cut=30/3600, spurious_match_cut=30/3600, min_sources=5,
+         weight_by_flux_err=False):
     """
     Calculate flux-scale normalization corrections
 
@@ -184,10 +190,6 @@ def main(source_catalog, ra, dec, ms_file, output_h5parm, radius_cut=3.0,
         Filename of the input FITS source catalog. This catalog should have been
         created by PyBDSF from an image cube with the spectral-index mode
         activated
-    ra : float
-        RA of the image center in degrees
-    dec : float
-        Dec of the image center in degrees
     ms_file : str
         Filename of the MS file used for imaging (needed for antenna and field tables)
     output_h5parm : str
@@ -224,6 +226,14 @@ def main(source_catalog, ra, dec, ms_file, output_h5parm, radius_cut=3.0,
     min_frequency = np.nanmin(data['Freq_ch1'])  # Hz
     max_frequency = np.nanmax(data[f'Freq_ch{n_chan}'])  # Hz
 
+    # Get the RA and Dec of the phase center from the MS file's FIELD table
+    field_file = ms_file + '::FIELD'
+    with pt.table(field_file, ack=False) as fieldTable:
+        # Note: getcol() here returns a nested array, for example:
+        #     array([[[-1.7654,  1.0020]]])
+        # so we use np.squeeze to remove the length-one axes
+        ra, dec = np.squeeze(fieldTable.getcol('PHASE_DIR'))  # radians
+
     # Filter the sources to keep only:
     #  - sources within radius_cut degrees of phase center
     #  - sources with major axes less than major_axis_cut degrees
@@ -232,7 +242,7 @@ def main(source_catalog, ra, dec, ms_file, output_h5parm, radius_cut=3.0,
                                           for source_ra in data['RA']])*u.degree,
                              dec=np.array([misc.normalize_dec(source_dec)
                                            for source_dec in data['DEC']])*u.degree)
-    center_coord = SkyCoord(ra=ra*u.degree, dec=dec*u.degree)
+    center_coord = SkyCoord(ra=ra*u.radian, dec=dec*u.radian)
     source_distances = np.array([sep.value for sep in center_coord.separation(source_coords)])
 
     # To find the distance to the nearest neighbor of each source, cross match
@@ -351,6 +361,7 @@ def main(source_catalog, ra, dec, ms_file, output_h5parm, radius_cut=3.0,
             avg_corrections = np.ones(len(output_frequencies))
         else:
             if weight_by_flux_err:
+                # TODO: check that the limit of 1e3 is a good choice (or is needed at all)
                 weights = [min(1e3, 1/err) if err > 0 else 1e3 for err in data['E_Total_flux'][valid_fits]]
             else:
                 weights = np.ones(n_valid)
@@ -361,8 +372,7 @@ def main(source_catalog, ra, dec, ms_file, output_h5parm, radius_cut=3.0,
         avg_corrections = np.ones(len(output_frequencies))
 
     # Write corrections to the output H5parm file as amplitude corrections
-    antenna_file = str(Path(ms_file).joinpath('ANTENNA'))
-    field_file = str(Path(ms_file).joinpath('FIELD'))
+    antenna_file = ms_file + '::ANTENNA'
     create_normalization_h5parm(antenna_file, field_file, output_h5parm, output_frequencies,
                                 avg_corrections)
 
@@ -372,8 +382,6 @@ if __name__ == '__main__':
 
     parser = ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
     parser.add_argument('source_catalog', help='Filename of input FITS source catalog')
-    parser.add_argument('ra', help='RA of image center in degrees', type=float)
-    parser.add_argument('dec', help='Dec of image center in degrees', type=float)
     parser.add_argument('ms_file', help='Filename of imaging MS file')
     parser.add_argument('output_h5parm', help='Filename of output H5parm file with the normalization corrections')
     parser.add_argument('--radius_cut', help='Radius cut in degrees', type=float, default=3.0)
@@ -384,7 +392,7 @@ if __name__ == '__main__':
     parser.add_argument('--weight_by_flux_err', help='Weight by error on flux density', action='store_true', default=False)
 
     args = parser.parse_args()
-    main(args.source_catalog, args.ra, args.dec, args.ms_file, args.output_h5parm,
-         radius_cut=args.radius_cut, major_axis_cut=args.major_axis_cut,
-         neighbor_cut=args.neighbor_cut, spurious_match_cut=args.spurious_match_cut,
-         min_sources=args.min_sources, weight_by_flux_err=args.weight_by_flux_err)
+    main(args.source_catalog, args.ms_file, args.output_h5parm, radius_cut=args.radius_cut,
+         major_axis_cut=args.major_axis_cut, neighbor_cut=args.neighbor_cut,
+         spurious_match_cut=args.spurious_match_cut, min_sources=args.min_sources,
+         weight_by_flux_err=args.weight_by_flux_err)

@@ -17,34 +17,20 @@ inputs:
     type: File
     inputBinding:
       position: 1
-  - id: ra
-    label: RA of center of image
-    doc: |
-      The RA of the center of the image in deg.
-    type: float
-    inputBinding:
-      position: 2
-  - id: dec
-    label: Dec of center of image
-    doc: |
-      The Dec of the center of the image in deg.
-    type: float
-    inputBinding:
-      position: 3
   - id: ms_file
     label: MS file filename
     doc: |
       The filename of the imaging MS file.
     type: File
     inputBinding:
-      position: 4
+      position: 2
   - id: normalize_h5parm
     label: Output H5parm filename
     doc: |
       The filename of the output H5parm.
     type: string
     inputBinding:
-      position: 5
+      position: 3
 
 outputs:
   - id: output_h5parm
