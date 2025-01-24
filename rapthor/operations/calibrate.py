@@ -160,15 +160,6 @@ class CalibrateDD(Operation):
         sector_bounds_deg = '{}'.format(self.field.sector_bounds_deg)
         sector_bounds_mid_deg = '{}'.format(self.field.sector_bounds_mid_deg)
 
-        # Set the number of chunks to split the solution tables into and define
-        # the associated filenames
-        if self.field.do_slowgain_solve:
-            nsplit = sum(self.field.get_obs_parameters('nsplit_slow'))
-        else:
-            nsplit = sum(self.field.get_obs_parameters('nsplit_fast'))
-        split_outh5parm = ['split_solutions_{}.h5'.format(i) for i in
-                           range(nsplit)]
-
         # Set the DDECal steps depending on whether baseline-dependent averaging is
         # activated (and supported) or not. If BDA is used, an "null" step is also
         # added to prevent the writing of the BDA data
@@ -248,7 +239,6 @@ class CalibrateDD(Operation):
                             'slow_datause': slow_datause,
                             'sector_bounds_deg': sector_bounds_deg,
                             'sector_bounds_mid_deg': sector_bounds_mid_deg,
-                            'split_outh5parm': split_outh5parm,
                             'combined_h5parms': self.combined_h5parms,
                             'fast_antennaconstraint': fast_antennaconstraint,
                             'slow_antennaconstraint': slow_antennaconstraint,
