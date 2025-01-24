@@ -139,7 +139,7 @@ class Sector(object):
         self.reweight = imaging_parameters['reweight']
         self.target_fast_timestep = self.field.fast_timestep_sec
         self.target_slow_freqstep = self.field.parset['calibration_specific']['slow_freqstep_hz']
-        self.use_screens = self.field.use_screens
+        self.apply_screens = self.field.apply_screens
 
         # Set image size based on current sector polygon
         if recalculate_imsize or self.imsize is None:
@@ -149,7 +149,7 @@ class Sector(object):
             self.imsize = [int(self.width_ra / self.cellsize_deg),
                            int(self.width_dec / self.cellsize_deg)]
 
-            if self.use_screens:
+            if self.apply_screens:
                 # IDG does not yet support rectangular images, so ensure image
                 # is square
                 self.imsize = [max(self.imsize), max(self.imsize)]
@@ -240,7 +240,7 @@ class Sector(object):
             obs.set_imaging_parameters(self.name, self.cellsize_arcsec, max_peak_smearing,
                                        self.width_ra, self.width_dec,
                                        self.target_fast_timestep, self.target_slow_freqstep,
-                                       self.use_screens)
+                                       self.apply_screens)
 
         # Set BL-dependent averaging parameters
         do_bl_averaging = False  # does not yet work with IDG

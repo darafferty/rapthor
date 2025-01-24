@@ -17,7 +17,8 @@
         "final_data_fraction": 1.0,
         "input_h5parm": null,
         "input_fulljones_h5parm": null,
-        "facet_layout": null
+        "facet_layout": null,
+        "dde_mode": "faceting"
     },
     "calibration": {
         "use_included_skymodels": false,
@@ -57,8 +58,7 @@
         "taper_arcsec": 0.0,
         "local_rms_strength": 1.0,
         "do_multiscale_clean": true,
-        "dde_method": "facets",
-        "use_screens": false,
+        "dde_method": "full",
         "save_visibilities": false,
         "idg_mode": "cpu",
         "mem_gb": 0,

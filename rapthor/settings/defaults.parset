@@ -159,12 +159,12 @@ dde_method = full
 # Save visibilities used for imaging (default = False). If True, the imaging MS
 # files will be saved, with the the direction-independent full-Jones solutions,
 # if available, applied. Note, however, that the direction-dependent solutions
-# will not be applied unless dde_method = "none", in which case the solutions
+# will not be applied unless dde_method = "single", in which case the solutions
 # closest to the image centers are used
 save_visibilities = False
 
 # IDG (image domain gridder) mode to use in WSClean (default = cpu). The mode
-# can be "cpu" or "hybrid". Note that IDG is only used when use_screens = True
+# can be "cpu" or "hybrid". Note that IDG is only used when dde_mode = "hybrid"
 idg_mode = cpu
 
 # Maximum memory in GB (per node) to use for WSClean jobs (default = 0 = 100%)

@@ -107,7 +107,7 @@ def run(parset_file, logging_level='info'):
             log.info("Using a data fraction of {0:.2f}".format(parset['final_data_fraction']))
         if field.make_quv_images:
             log.info("Stokes I, Q, U, and V images will be made")
-        if field.use_screens:
+        if field.dde_mode == 'hybrid':
             log.info("Screens will be used for calibration and imaging")
             if final_step['peel_outliers']:
                 # Currently, when screens are used peeling cannot be done

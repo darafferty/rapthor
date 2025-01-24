@@ -374,7 +374,7 @@ The available options are described below under their respective sections.
         Save visibilities used for imaging (default = ``False``). If ``True``, the imaging
         MS files will be saved, with the the direction-independent full-Jones solutions,
         if available, applied. Note, however, that the direction-dependent solutions will
-        not be applied unless :term:`dde_method` = ``none``, in which case the solutions
+        not be applied unless :term:`dde_method` = ``single``, in which case the solutions
         closest to the image centers are used.
 
     idg_mode

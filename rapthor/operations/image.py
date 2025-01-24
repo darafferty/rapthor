@@ -26,7 +26,6 @@ class Image(Operation):
         # Initialize various parameters
         self.apply_none = None
         self.apply_amplitudes = None
-        self.use_screens = None
         self.apply_fulljones = None
         self.apply_screens = None
         self.make_image_cube = None
@@ -62,7 +61,7 @@ class Image(Operation):
         if self.dde_method is None:
             self.dde_method = self.field.dde_method
         if self.use_facets is None:
-            self.use_facets = True if self.dde_method == 'facets' else False
+            self.use_facets = True if (self.dde_method == 'full' and not self.apply_screens) else False
         if self.image_pol is None:
             self.image_pol = self.field.image_pol
         if self.save_source_list is None:
@@ -247,7 +246,7 @@ class Image(Operation):
             if self.field.fulljones_h5parm_filename is not None:
                 self.input_parms.update({'fulljones_h5parm': CWLFile(self.field.fulljones_h5parm_filename).to_json()})
             if self.field.apply_screens:
-                self.input_parms.update({'fulljones_h5parm': CWLFile(self.field.idgcal_h5parm_filename).to_json()})
+                self.input_parms.update({'idgcal_h5parm': CWLFile(self.field.idgcal_h5parm_filename).to_json()})
             elif self.use_facets:
                 # For faceting, we need inputs for making the ds9 facet region files
                 self.input_parms.update({'skymodel': CWLFile(self.field.calibration_skymodel_file).to_json()})
@@ -357,7 +356,7 @@ class Image(Operation):
                     shutil.copy(src_filename, dst_filename)
 
             # The output ds9 region file, if made
-            if self.field.dde_method == 'facets':
+            if self.use_facets:
                 dst_dir = os.path.join(self.parset['dir_working'], 'regions', 'image_{}'.format(self.index))
                 misc.create_directory(dst_dir)
                 region_filename = '{}_facets_ds9.reg'.format(sector.name)
@@ -419,7 +418,7 @@ class ImageInitial(Image):
         # Set parameters as needed
         self.apply_none = True
         self.apply_amplitudes = False
-        self.use_screens = False
+        self.apply_screens = False
         self.apply_fulljones = False
         self.use_facets = False
         self.save_source_list = True
@@ -526,7 +525,7 @@ class ImageNormalize(Image):
             # No calibration has yet been done, so set various flags as needed
             self.apply_none = True
             self.use_facets = False
-            self.use_screens = False
+            self.apply_screens = False
         super().set_parset_parameters()
 
     def set_input_parameters(self):
