@@ -420,7 +420,7 @@ class Sector(object):
 
         # Save initial polygon, copy of initial polygon (which potentially will be
         # altered later for source avoidance), and buffered version of initial polygon
-        # (which includes the padding done by WSClean, needed for aterm generation)
+        # (which includes the padding done by WSClean)
         self.initial_poly = poly
         self.poly = Polygon(poly)
         padding_pix = dec_width_pix*(self.wsclean_image_padding - 1.0)

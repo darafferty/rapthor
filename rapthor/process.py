@@ -165,7 +165,7 @@ def run_steps(field, steps, final=False):
         # Calibrate
         if field.do_calibrate:
             # Set whether screens should be generated
-            field.generate_screens = True if (field.use_screens and final) else False
+            field.generate_screens = True if (field.dde_mode == 'hybrid' and final) else False
 
             if field.peel_non_calibrator_sources:
                 # Predict and subtract non-calibrator sources before calibration
@@ -184,7 +184,8 @@ def run_steps(field, steps, final=False):
                 op.run()
 
         # Predict and subtract the sector models
-        if field.do_predict:
+        # Note: DD predict is not yet supported when screens are used
+        if field.do_predict and not field.generate_screens:
             op = PredictDD(field, cycle_number)
             op.run()
 
@@ -194,7 +195,7 @@ def run_steps(field, steps, final=False):
             field.image_pol = 'IQUV' if (field.make_quv_images and final) else 'I'
 
             # Set whether screens should be applied
-            field.apply_screens = True if (field.use_screens and final) else False
+            field.apply_screens = True if (field.dde_mode == 'hybrid' and final) else False
 
             op = Image(field, cycle_number)
             op.run()

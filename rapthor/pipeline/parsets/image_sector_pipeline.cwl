@@ -156,6 +156,15 @@ inputs:
     type: File
 {% endif %}
 
+{% if apply_screens %}
+  - id: idgcal_h5parm
+    label: Filename of h5parm
+    doc: |
+      The filename of the h5parm file with the IDGCal screeen solutions
+      (length = 1).
+    type: File
+{% endif %}
+
 {% if use_facets %}
 # start use_facets
   - id: skymodel
@@ -492,8 +501,8 @@ steps:
       This step uses DP3 to prepare the input data for imaging. This involves
       averaging, phase shifting, and optionally the application of the
       calibration solutions.
-{% if use_screens or use_facets %}
-# start use_screens or use_facets
+{% if apply_screens or use_facets %}
+# start apply_screens or use_facets
 {% if apply_fulljones %}
     run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data_fulljones.cwl
 {% else %}
@@ -501,7 +510,7 @@ steps:
 {% endif %}
 
 {% else %}
-# start not use_screens and not use_facets
+# start not apply_screens and not use_facets
 {% if apply_none %}
     run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data_no_dde_no_cal.cwl
 {% else %}
@@ -517,7 +526,7 @@ steps:
 {% endif %}
 
 {% endif %}
-# end use_screens or use_facets / not use_screens and not use_facets
+# end apply_screens or use_facets / not apply_screens and not use_facets
 
 {% if max_cores is not none %}
     hints:
@@ -544,7 +553,7 @@ steps:
         source: phasecenter
       - id: numthreads
         source: max_threads
-{% if use_screens or use_facets %}
+{% if apply_screens or use_facets %}
 {% if apply_fulljones %}
       - id: h5parm
         source: fulljones_h5parm
@@ -637,8 +646,8 @@ steps:
     doc: |
       This step makes an image using WSClean. Direction-dependent effects
       can be corrected for using a-term images or facet-based corrections.
-{% if use_screens %}
-# start use_screens
+{% if apply_screens %}
+# start apply_screens
 
 {% if use_mpi %}
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_mpi_image_screens.cwl
@@ -647,7 +656,7 @@ steps:
 {% endif %}
 
 {% else %}
-# start not use_screens
+# start not apply_screens
 
 {% if use_facets %}
 # start use_facets
@@ -659,7 +668,7 @@ steps:
 {% endif %}
 
 {% else %}
-# start not use_facets and not use_screens (i.e., use no_dde)
+# start not use_facets and not apply_screens (i.e., use no_dde)
 
 {% if use_mpi %}
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_mpi_image_no_dde.cwl
@@ -671,7 +680,7 @@ steps:
 # end use no_dde
 
 {% endif %}
-# end use_screens / not use_screens
+# end apply_screens / not apply_screens
 
 {% if max_cores is not none %}
     hints:
@@ -686,6 +695,10 @@ steps:
         source: image_name
       - id: mask
         source: premask/maskimg
+{% if apply_screens %}
+      - id: h5parm
+        source: idgcal_h5parm
+{% endif %}
 {% if use_mpi %}
       - id: nnodes
         source: mpi_nnodes

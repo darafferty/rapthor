@@ -1054,7 +1054,6 @@ steps:
       - id: outh5parm
         source: combined_h5parms
       - id: mode
-{% if use_facets %}
 {% if apply_diagonal_solutions %}
         valueFrom: 'p1p2a2_diagonal'
 {% else %}
@@ -1062,11 +1061,6 @@ steps:
 {% endif %}
       - id: reweight
         valueFrom: 'False'
-{% else %}
-        valueFrom: 'p1p2a2_diagonal'
-      - id: reweight
-        valueFrom: 'False'
-{% endif %}
       - id: calibrator_names
         source: calibrator_patch_names
       - id: calibrator_fluxes

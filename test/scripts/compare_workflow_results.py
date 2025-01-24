@@ -284,7 +284,7 @@ def compare_results(dcmp, atol, rtol, verbosity):
                     left, right, rtol=rtol, verbosity=verbosity
                 ):
                     agree = False
-            if ("sky" in ext or ext == ".txt") and "diagonal_aterms" not in root:
+            if ("sky" in ext or ext == ".txt"):
                 if not skymodel_files_are_similar(
                     left, right, atol=atol, rtol=rtol, verbosity=verbosity
                 ):

@@ -73,6 +73,16 @@ input_fulljones_h5parm = None
 # between cycles)
 facet_layout = None
 
+# Mode to use to derive and correct for direction-dependent effects: faceting or
+# hybrid (default = faceting). If "faceting", Voronoi faceting is used
+# throughout the processing. If "hybrid", faceting is used only during the self
+# calibration steps; in the final cycle (done after self calibration has been
+# completed successfully), IDGCal is used during calibration to generate smooth 2-D
+# screens that are then applied by WSClean in the final imaging step.
+#
+# Note: the hybrid mode is not yet available; it will be enabled in a future update.
+dde_mode = faceting
+
 
 [calibration]
 # If one of the included sky models (see rapthor/skymodels) is within 2 *
@@ -138,16 +148,13 @@ taper_arcsec = 0.0
 local_rms_strength = 0.8
 do_multiscale_clean = True
 
-# Method to use to correct for direction-dependent effects during self
-# calibration: "none" or "facets" (default = facets). If "none", the solutions
-# closest to the image centers will be used. If "facets", Voronoi faceting is
-# used.
-dde_method = facets
-
-# Use screens instead of facets in the final processing cycle (default =
-# False). If True, IDGCal is used to generate smooth 2-D screens during the
-# final calibration that are subsequently applied in the final imaging
-use_screens = False
+# Method to use to correct for direction-dependent effects during imaging:
+# single or full (default = full). If "single", a single, direction-independent
+# solution (i.e., constant across the image sector) will be applied for each
+# sector. In this case, the solution applied is the one in the direction closest
+# to each sector center. If "full", the full, direction-dependent solutions
+# (either facets or screens) are applied
+dde_method = full
 
 # Save visibilities used for imaging (default = False). If True, the imaging MS
 # files will be saved, with the the direction-independent full-Jones solutions,

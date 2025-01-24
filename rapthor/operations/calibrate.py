@@ -33,14 +33,8 @@ class CalibrateDD(Operation):
             do_joint_solve = True
         else:
             do_joint_solve = False
-        if self.field.dde_method == 'facets' and not self.field.generate_screens:
-            use_facets = True
-        else:
-            use_facets = False
 
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
-                             'use_screens': self.field.use_screens,
-                             'use_facets': use_facets,
                              'generate_screens': self.field.generate_screens,
                              'do_slowgain_solve': self.field.do_slowgain_solve,
                              'do_joint_solve': do_joint_solve,
@@ -175,11 +169,6 @@ class CalibrateDD(Operation):
         split_outh5parm = ['split_solutions_{}.h5'.format(i) for i in
                            range(nsplit)]
 
-        # Set the root filenames for the a-term images. We save it to an attribute
-        # since it is needed in finalize()
-        self.output_aterms_root = ['diagonal_aterms_{}'.format(i) for i in
-                                   range(len(split_outh5parm))]
-
         # Set the DDECal steps depending on whether baseline-dependent averaging is
         # activated (and supported) or not. If BDA is used, an "null" step is also
         # added to prevent the writing of the BDA data
@@ -260,7 +249,6 @@ class CalibrateDD(Operation):
                             'sector_bounds_deg': sector_bounds_deg,
                             'sector_bounds_mid_deg': sector_bounds_mid_deg,
                             'split_outh5parm': split_outh5parm,
-                            'output_aterms_root': self.output_aterms_root,
                             'combined_h5parms': self.combined_h5parms,
                             'fast_antennaconstraint': fast_antennaconstraint,
                             'slow_antennaconstraint': slow_antennaconstraint,

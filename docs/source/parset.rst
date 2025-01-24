@@ -149,6 +149,19 @@ The available options are described below under their respective sections.
             calibration patches, in which case the empty patches are removed and the
             layout of the remaining patches is set using Voronoi tessellation.
 
+    dde_mode
+        Mode to use to derive and correct for direction-dependent effects: ``faceting`` or
+        ``hybrid`` (default = ``faceting``). If ``faceting``, Voronoi faceting is used
+        throughout the processing. If ``hybrid``, faceting is used only during the self
+        calibration steps; in the final cycle (done after self calibration has been
+        completed successfully), IDGCal is used during calibration to generate smooth 2-D
+        screens that are then applied by WSClean in the final imaging step.
+
+        .. note::
+
+            The hybrid mode is not yet available; it will be enabled in a future
+            update.
+
 .. _parset_calibration_options:
 
 ``[calibration]``
@@ -350,15 +363,12 @@ The available options are described below under their respective sections.
         Use multiscale cleaning (default = ``True``)?
 
     dde_method
-        Method to use to correct for direction-dependent effects during imaging: ``none``
-        or ``facets`` (default = ``facets``). If ``none``, the solutions
-        closest to the image centers will be used. If ``facets``, Voronoi faceting is
-        used.
-
-    use_screens
-        Use screens instead of facets in the final processing cycle (default =
-        ``False``). If ``True``, IDGCal is used to generate smooth 2-D screens during the
-        final calibration that are subsequently applied in the final imaging
+        Method to use to correct for direction-dependent effects during imaging:
+        ``single`` or ``full`` (default = ``full``). If ``single``, a single,
+        direction-independent solution (i.e., constant across the image sector) will be
+        applied for each sector. In this case, the solution applied is the one in the
+        direction closest to each sector center. If ``full``, the full,
+        direction-dependent solutions (either facets or screens) are applied.
 
     save_visibilities
         Save visibilities used for imaging (default = ``False``). If ``True``, the imaging

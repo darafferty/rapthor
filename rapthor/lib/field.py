@@ -1073,9 +1073,7 @@ class Field(object):
         # Compute bounding box for all imaging sectors and store as a
         # a semi-colon-separated list of [maxRA; minDec; minRA; maxDec] (we use semi-
         # colons as otherwise the workflow parset parser will split the list). Also
-        # store the midpoint as [midRA; midDec]. These values are needed for the aterm
-        # image generation, so we use the padded polygons to ensure that the final
-        # bounding box encloses all of the images *with* padding included.
+        # store the midpoint as [midRA; midDec].
         # Note: this is just once, rather than each time the sector borders are
         # adjusted, so that the image sizes do not change with iteration (so
         # mask images from previous iterations may be used)
