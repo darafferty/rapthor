@@ -368,7 +368,7 @@ The available options are described below under their respective sections.
         direction-independent solution (i.e., constant across the image sector) will be
         applied for each sector. In this case, the solution applied is the one in the
         direction closest to each sector center. If ``full``, the full,
-        direction-dependent solutions (either facets or screens) are applied.
+        direction-dependent solutions are applied (using either facets or screens).
 
     save_visibilities
         Save visibilities used for imaging (default = ``False``). If ``True``, the imaging

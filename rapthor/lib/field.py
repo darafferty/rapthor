@@ -847,10 +847,10 @@ class Field(object):
                 skymodel_apparent_sky = None
 
             # Concatenate the starting sky model with the new one. This step needs to be
-            # done if combine_current_and_intial is set (so that sources outside of
-            # imaged areas can be subtracted, since we have to go back to the original
-            # input MS files for which no subtraction has been done) or if all sources
-            # (and not only the imaged sources) are to be used in calibration
+            # done if, e.g., this is the final cycle and sources outside of imaged areas
+            # must be subtracted, since we have to go back to the original input MS files
+            # for which no subtraction has been done) or if all sources (and not only the
+            # imaged sources) are to be used in calibration
             if combine_current_and_intial or not self.imaged_sources_only:
                 # Load starting sky model and regroup to one patch per entry to ensure
                 # any existing patches are removed (otherwise they may propagate to
