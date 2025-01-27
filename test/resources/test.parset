@@ -26,7 +26,6 @@ grid_center_dec = +57d24m39.0s
 grid_nsectors_ra = 1
 idg_mode = cpu
 reweight = True
-use_screens = True
 use_mpi = True
 
 [cluster]
