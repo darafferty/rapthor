@@ -351,6 +351,9 @@ The available options are described below under their respective sections.
     max_uv_lambda
         Maximum uv distance in lambda to use in imaging (default = 0).
 
+    mgain
+        Cleaning gain for major iterations, passed to the imager (default = 0.8). This setting does not affect the first 'initial_image' round.
+
     taper_arcsec
         Taper to apply when imaging, in arcsec (default = 0).
 

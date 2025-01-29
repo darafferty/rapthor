@@ -21,8 +21,6 @@ arguments:
     prefix: -temp-dir
   - valueFrom: '2048'
     prefix: -parallel-deconvolution
-  - valueFrom: '0.85'
-    prefix: -mgain
   - valueFrom: '0.8'
     prefix: -multiscale-scale-bias
   - valueFrom: '1.0'
@@ -76,6 +74,10 @@ inputs:
     type: float
     inputBinding:
       prefix: -maxuv-l
+  - id: mgain
+    type: float
+    inputBinding:
+      prefix: -mgain
   - id: multiscale
     type: boolean
     inputBinding:

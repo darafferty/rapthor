@@ -290,6 +290,12 @@ inputs:
       The WSClean maximum uv distance in lambda (length = 1).
     type: float
 
+  - id: mgain
+    label: Cleaning gain
+    doc: |
+      The WSClean cleaning gain for major iterations (length = 1).
+    type: float
+
   - id: do_multiscale
     label: Activate multiscale
     doc: |
@@ -731,6 +737,8 @@ steps:
         source: min_uv_lambda
       - id: max_uv_lambda
         source: max_uv_lambda
+      - id: mgain
+        source: mgain
       - id: multiscale
         source: do_multiscale
       - id: pol

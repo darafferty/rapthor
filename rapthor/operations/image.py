@@ -217,6 +217,7 @@ class Image(Operation):
                             'cellsize_deg': [sector.cellsize_deg for sector in self.imaging_sectors],
                             'min_uv_lambda': [sector.min_uv_lambda for sector in self.imaging_sectors],
                             'max_uv_lambda': [sector.max_uv_lambda for sector in self.imaging_sectors],
+                            'mgain': [sector.mgain for sector in self.imaging_sectors],
                             'taper_arcsec': [sector.taper_arcsec for sector in self.imaging_sectors],
                             'local_rms_strength': [sector.local_rms_strength for sector in self.imaging_sectors],
                             'auto_mask': [sector.auto_mask for sector in self.imaging_sectors],
@@ -442,6 +443,7 @@ class ImageInitial(Image):
         self.imaging_parameters['taper_arcsec'] = 0.0
         self.imaging_parameters['min_uv_lambda'] = 0.0
         self.imaging_parameters['max_uv_lambda'] = 1e6
+        self.imaging_parameters['mgain'] = 0.85
         self.imaging_parameters['reweight'] = False
         self.imaging_parameters['dd_psf_grid'] = [1, 1]
         self.do_predict = False

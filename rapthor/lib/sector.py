@@ -105,6 +105,7 @@ class Sector(object):
                 'local_rms_strength': local RMS strength factor
                 'min_uv_lambda': minimum uv distance cut in lambda
                 'max_uv_lambda': maximum uv distance cut in lambda
+                'mgain': cleaning gain
                 'idg_mode': IDG processing mode
                 'mem_gb': maximum memory in GB
                 'reweight': reweighting flag
@@ -120,6 +121,7 @@ class Sector(object):
         self.local_rms_strength = imaging_parameters['local_rms_strength']
         self.min_uv_lambda = imaging_parameters['min_uv_lambda']
         self.max_uv_lambda = imaging_parameters['max_uv_lambda']
+        self.mgain = imaging_parameters['mgain']
         self.idg_mode = imaging_parameters['idg_mode']
         self.mem_limit_gb = imaging_parameters['mem_gb']
         slurm_limit_gb = self.field.parset['cluster_specific']['mem_per_node_gb']

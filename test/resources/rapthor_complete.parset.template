@@ -60,6 +60,7 @@ dde_method = single
 save_visibilities = True
 idg_mode = gpu
 mem_gb = 128.0
+mgain = 0.85
 apply_diagonal_solutions = False
 dd_psf_grid = [2, 2]
 make_quv_images = True
