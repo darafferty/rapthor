@@ -330,6 +330,12 @@ inputs:
       The WSClean maximum uv distance in lambda (length = n_sectors).
     type: float[]
 
+  - id: mgain
+    label: Cleaning gain
+    doc: |
+      The WSClean cleaning gain for major iterations (length = n_sectors).
+    type: float[]
+
   - id: do_multiscale
     label: Activate multiscale
     doc: |
@@ -661,6 +667,8 @@ steps:
         source: min_uv_lambda
       - id: max_uv_lambda
         source: max_uv_lambda
+      - id: mgain
+        source: mgain
       - id: do_multiscale
         source: do_multiscale
       - id: pol
@@ -726,7 +734,7 @@ steps:
               normalize_h5parm,
 {% endif %}
               channels_out, deconvolution_channels, fit_spectral_pol, wsclean_niter,
-              wsclean_nmiter, robust, min_uv_lambda, max_uv_lambda, do_multiscale,
+              wsclean_nmiter, robust, min_uv_lambda, max_uv_lambda, mgain, do_multiscale,
               taper_arcsec, local_rms_strength, wsclean_mem, auto_mask,
               idg_mode, threshisl, threshpix, dd_psf_grid]
 {% else %}
@@ -753,7 +761,7 @@ steps:
               normalize_h5parm,
 {% endif %}
               channels_out, deconvolution_channels, fit_spectral_pol, wsclean_niter,
-              wsclean_nmiter, robust, min_uv_lambda, max_uv_lambda, do_multiscale,
+              wsclean_nmiter, robust, min_uv_lambda, max_uv_lambda, mgain, do_multiscale,
               taper_arcsec, local_rms_strength, wsclean_mem, auto_mask,
               idg_mode, threshisl, threshpix, dd_psf_grid]
 {% endif %}

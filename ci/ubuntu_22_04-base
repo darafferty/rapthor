@@ -1,10 +1,18 @@
-FROM ubuntu:22.04 as builder
+FROM ubuntu:22.04 AS builder
 
 # This Dockerfile builds a docker image containing all Rapthor's dependencies
 
 # By default, build non-portable code, for the oldest CPU that supports AVX2
 ARG PORTABLE=FALSE
 ARG TARGET_CPU=haswell
+
+ARG IDG_COMMIT=master
+ARG EVERYBEAM_COMMIT=master
+ARG DYSCO_COMMIT=master
+ARG AOFLAGGER_COMMIT=master
+ARG WSCLEAN_COMMIT=master
+ARG SAGECAL_COMMIT=master
+ARG DP3_COMMIT=master
 
 # Install all build-time dependencies
 RUN export DEBIAN_FRONTEND=noninteractive && \
@@ -39,14 +47,11 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         wget
 
 # Prepare the environment for installing the Rapthor source dependencies.
-RUN mkdir /src
-RUN git config --global alias.shallow-clone "!git clone --depth 1 --recurse-submodules --shallow-submodules"
 WORKDIR /src
 
 # Install IDG
-# A shallow clone of IDG breaks its version number. This is an issue for DP3
-# since it has a minimal version requirement.
-RUN git clone --recurse-submodules https://git.astron.nl/RD/idg.git
+RUN git clone --no-checkout https://git.astron.nl/RD/idg.git
+RUN git -C idg checkout ${IDG_COMMIT}
 RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
     -DBUILD_WITH_PYTHON=OFF \
@@ -58,10 +63,10 @@ RUN cmake \
     -G Ninja
 RUN ninja -C /src/idg/build install
 
-# Install EveryBeam
-# Do not compile python bindings, they will interfere with the ones in the
-# binary wheel on PyPI.
-RUN git shallow-clone https://git.astron.nl/RD/EveryBeam.git
+# Install EveryBeam. Do not compile python bindings, they will interfere with
+# the ones in the binary wheel on PyPI.
+RUN git clone --no-checkout https://git.astron.nl/RD/EveryBeam.git
+RUN git -C EveryBeam checkout ${EVERYBEAM_COMMIT}
 RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
     -DBUILD_WITH_PYTHON=OFF \
@@ -74,7 +79,8 @@ RUN cmake \
 RUN ninja -C /src/EveryBeam/build install
 
 # Install Dysco
-RUN git shallow-clone https://github.com/aroffringa/dysco.git
+RUN git clone --no-checkout https://github.com/aroffringa/dysco.git
+RUN git -C dysco checkout ${DYSCO_COMMIT}
 RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
     -DPORTABLE=${PORTABLE} \
@@ -85,7 +91,8 @@ RUN cmake \
 RUN ninja -C /src/dysco/build install
 
 # Install AOFlagger
-RUN git shallow-clone https://gitlab.com/aroffringa/aoflagger.git
+RUN git clone --no-checkout https://gitlab.com/aroffringa/aoflagger.git
+RUN git -C aoflagger checkout ${AOFLAGGER_COMMIT}
 RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
     -DPORTABLE=${PORTABLE} \
@@ -96,7 +103,8 @@ RUN cmake \
 RUN ninja -C /src/aoflagger/build install
 
 # Install WSClean
-RUN git shallow-clone https://gitlab.com/aroffringa/wsclean.git
+RUN git clone --no-checkout https://gitlab.com/aroffringa/wsclean.git
+RUN git -C wsclean checkout ${WSCLEAN_COMMIT}
 RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
     -DBUILD_TESTING=OFF \
@@ -108,7 +116,8 @@ RUN cmake \
 RUN ninja -C /src/wsclean/build install
 
 # Install SAGECal libdirac
-RUN git shallow-clone https://github.com/nlesc-dirac/sagecal.git
+RUN git clone --no-checkout https://github.com/nlesc-dirac/sagecal.git
+RUN git -C sagecal checkout ${SAGECAL_COMMIT}
 RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
     -DLIB_ONLY=1 \
@@ -118,7 +127,8 @@ RUN cmake \
 RUN ninja -C /src/sagecal/build install
 
 # Install DP3
-RUN git shallow-clone https://git.astron.nl/RD/DP3.git
+RUN git clone --no-checkout https://git.astron.nl/RD/DP3.git
+RUN git -C DP3 checkout ${DP3_COMMIT}
 RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
     -DBUILD_TESTING=OFF \
@@ -158,9 +168,27 @@ RUN python3 -m pip install --upgrade ./rapthor && \
 # The image will now be rebuilt without adding the sources, in order to
 # reduce the size of the image.
 #---------------------------------------------------------------------------
-FROM ubuntu:22.04 as runner
+FROM ubuntu:22.04 AS runner
 
 COPY --from=builder /usr/local /usr/local
+
+ARG IDG_COMMIT=master
+ARG EVERYBEAM_COMMIT=master
+ARG DYSCO_COMMIT=master
+ARG AOFLAGGER_COMMIT=master
+ARG WSCLEAN_COMMIT=master
+ARG SAGECAL_COMMIT=master
+ARG DP3_COMMIT=master
+
+# Add version information to the metadata of the image
+LABEL \
+    nl.astron.rapthor.idg.version=${IDG_COMMIT} \
+    nl.astron.rapthor.everybeam.version=${EVERYBEAM_COMMIT} \
+    nl.astron.rapthor.dysco.version=${DYSCO_COMMIT} \
+    nl.astron.rapthor.aoflagger.version=${AOFLAGGER_COMMIT} \
+    nl.astron.rapthor.wsclean.version=${WSCLEAN_COMMIT} \
+    nl.astron.rapthor.sagecal.version=${SAGECAL_COMMIT} \
+    nl.astron.rapthor.dp3.version=${DP3_COMMIT}
 
 # Only install run-time required packages
 RUN export DEBIAN_FRONTEND=noninteractive && \

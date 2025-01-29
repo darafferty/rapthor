@@ -69,6 +69,7 @@
                       'max_peak_smearing': 0.15,
                       'max_uv_lambda': 1000000.0,
                       'mem_gb': 0,
+                      'mgain': 0.8,
                       'min_uv_lambda': 0.0,
                       'reweight': False,
                       'robust': -0.5,

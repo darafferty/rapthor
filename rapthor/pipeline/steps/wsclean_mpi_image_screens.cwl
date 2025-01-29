@@ -37,8 +37,6 @@ arguments:
   - -log-time
   - valueFrom: '$(runtime.tmpdir)'
     prefix: -temp-dir
-  - valueFrom: '0.85'
-    prefix: -mgain
   - valueFrom: '0.8'
     prefix: -multiscale-scale-bias
   - valueFrom: '2048'
@@ -109,6 +107,10 @@ inputs:
     type: float
     inputBinding:
       prefix: -maxuv-l
+  - id: mgain
+    type: float
+    inputBinding:
+      prefix: -mgain
   - id: multiscale
     type: boolean
     inputBinding:
