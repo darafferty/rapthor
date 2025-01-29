@@ -111,8 +111,8 @@ def run(parset_file, logging_level='info'):
             log.info("Screens will be used for calibration and imaging")
             if final_step['peel_outliers']:
                 # Currently, when screens are used peeling cannot be done
-                log.info("Peeling of outliers is currently not supported when using "
-                         "screens. Peeling will be skipped")
+                log.warning("Peeling of outliers is currently not supported when using "
+                            "screens. Peeling will be skipped")
                 final_step['peel_outliers'] = False
 
         # Set the data chunking to match the longest solution interval set in
