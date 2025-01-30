@@ -186,6 +186,7 @@ class Image(Operation):
             else:
                 join_polarizations = True
 
+        # Set the parameters common to all modes
         self.input_parms = {'obs_filename': [CWLDir(name).to_json() for name in obs_filename],
                             'prepare_filename': prepare_filename,
                             'concat_filename': concat_filename,
@@ -230,6 +231,7 @@ class Image(Operation):
                             'max_threads': self.field.parset['cluster_specific']['max_threads'],
                             'deconvolution_threads': self.field.parset['cluster_specific']['deconvolution_threads']}
 
+        # Set parameters specific to the selected mode
         if self.peel_bright_sources:
             self.input_parms.update({'bright_skymodel_pb': CWLFile(self.field.bright_source_skymodel_file).to_json()})
         if self.field.use_mpi:

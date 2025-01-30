@@ -177,6 +177,7 @@ class CalibrateDD(Operation):
         else:
             dp3_steps_slow_separate = '[solve]'
 
+        # Set the parameters common to all modes
         self.input_parms = {'timechunk_filename': CWLDir(timechunk_filename).to_json(),
                             'starttime': starttime,
                             'ntimes': ntimes,
@@ -185,11 +186,12 @@ class CalibrateDD(Operation):
                             'maxiter': maxiter,
                             'max_threads': self.field.parset['cluster_specific']['max_threads']}
 
+        # Set parameters specific to the selected mode
         if self.field.generate_screens:
-            # Set the IDGCal solve parameters
+            # Set the IDGCal mode parameters
             self.input_parms.update({'model_image': CWLFile(self.field.field_model_filename).to_json()})
         else:
-            # Set normal (faceting) solve parameters
+            # Set normal (faceting) mode parameters
             self.input_parms.update({'solint_fast_freqstep': solint_fast_freqstep,
                                      'solutions_per_direction_fast': solutions_per_direction_fast,
                                      'solutions_per_direction_slow_joint': solutions_per_direction_slow_joint,
