@@ -52,6 +52,34 @@ inputs:
       n_obs * n_time_chunks).
     type: int[]
 
+{% if generate_screens %}
+# start generate_screens
+
+  - id: model_image
+    label: Model FITS image
+    doc: |
+      The model image in FITS format (length = 1).
+    type: File
+
+{% if do_slowgain_solve %}
+  - id: solint_slow_timestep
+    label: Slow solution interval in time
+    doc: |
+      The solution interval in number of timeslots for the slow gain solve (length =
+      n_obs * n_time_chunks).
+    type: int[]
+{% endif %}
+
+  - id: combined_h5parms
+    label: Combined output solution table
+    doc: |
+      The filename of the output combined h5parm solution table for the full solve
+      (length = 1).
+    type: string
+
+{% else %}
+# start not generate_screens
+
   - id: solint_fast_freqstep
     label: Fast solution interval in frequency
     doc: |
@@ -524,10 +552,16 @@ inputs:
 {% endif %}
 # end do_slowgain_solve
 
+{% endif %}
+# end generate_screens
+
 
 outputs:
   - id: combined_solutions
     outputSource:
+{% if generate_screens %}
+      - combine_solutions/outh5parm
+{% else %}
       - adjust_h5parm_sources/adjustedh5parm
     type: File
   - id: fast_phase_plots
@@ -544,9 +578,210 @@ outputs:
       - plot_slow_amp_solutions/plots
     type: File[]
 {% endif %}
+{% endif %}
 
 
 steps:
+
+{% if generate_screens %}
+# start generate_screens
+
+{% if not do_slowgain_solve %}
+# start not do_slowgain_solve (i.e., phase-only solve)
+
+  - id: solve_fast_phases_only
+    label: Solve for fast phases
+    doc: |
+      This step uses IDGCal (in DP3) to solve for phase corrections on short
+      timescales (< 1 minute), using the input MS files and model images. These
+      corrections are used to correct primarily for ionospheric effects.
+    run: {{ rapthor_pipeline_dir }}/steps/idgcal_solve_phase.cwl
+{% if max_cores is not none %}
+    hints:
+      ResourceRequirement:
+        coresMin: {{ max_cores }}
+        coresMax: {{ max_cores }}
+{% endif %}
+    in:
+      - id: msin
+        source: timechunk_filename
+      - id: starttime
+        source: starttime
+      - id: ntimes
+        source: ntimes
+      - id: h5parm
+        source: output_fast_h5parm
+      - id: solint
+        source: solint_fast_timestep
+      - id: steps
+        source: dp3_steps_fast
+      - id: timebase
+        source: bda_timebase_fast
+      - id: maxinterval
+        source: bda_maxinterval_fast
+      - id: nchan
+        source: solint_fast_freqstep
+      - id: directions
+        source: calibrator_patch_names
+      - id: solutions_per_direction
+        source: solutions_per_direction_fast
+      - id: sourcedb
+        source: calibration_skymodel_file
+      - id: llssolver
+        source: llssolver
+      - id: maxiter
+        source: maxiter
+      - id: propagatesolutions
+        source: propagatesolutions
+      - id: solveralgorithm
+        source: solveralgorithm
+      - id: solverlbfgs_dof
+        source: solverlbfgs_dof
+      - id: solverlbfgs_iter
+        source: solverlbfgs_iter
+      - id: solverlbfgs_minibatches
+        source: solverlbfgs_minibatches
+      - id: onebeamperpatch
+        source: onebeamperpatch
+      - id: parallelbaselines
+        source: parallelbaselines
+      - id: sagecalpredict
+        source: sagecalpredict
+      - id: datause
+        source: fast_datause
+      - id: stepsize
+        source: stepsize
+      - id: stepsigma
+        source: stepsigma
+      - id: tolerance
+        source: tolerance
+      - id: uvlambdamin
+        source: uvlambdamin
+      - id: smoothnessconstraint
+        source: fast_smoothnessconstraint
+      - id: smoothnessreffrequency
+        source: fast_smoothnessreffrequency
+      - id: smoothnessrefdistance
+        source: fast_smoothnessrefdistance
+      - id: antennaconstraint
+        source: fast_antennaconstraint
+      - id: numthreads
+        source: max_threads
+    scatter: [msin, starttime, ntimes, h5parm, solint, nchan, maxinterval, smoothnessreffrequency, solutions_per_direction]
+    scatterMethod: dotproduct
+    out:
+      - id: idgcal_h5parm
+
+{% else %}
+# start do_slowgain_solve (i.e., full, fast phase and slow gain solve)
+
+  - id: solve_fast_phases_slow_gains
+    label: Solve for fast phases and slow gains
+    doc: |
+      This step uses IDGCal (in DP3) to solve for phase corrections on short
+      timescales (< 1 minute) and diagonal gain corrections on long
+      timescales (> 10 minute), using the input MS files and model images. The phase
+      corrections are used to correct primarily primarily for ionospheric effects
+      and the gain corrections for beam errors.
+    run: {{ rapthor_pipeline_dir }}/steps/idgcal_solve_phase_and_gain.cwl
+{% if max_cores is not none %}
+    hints:
+      ResourceRequirement:
+        coresMin: {{ max_cores }}
+        coresMax: {{ max_cores }}
+{% endif %}
+    in:
+      - id: msin
+        source: freqchunk_filename_separate
+      - id: starttime
+        source: slow_starttime_separate
+      - id: ntimes
+        source: slow_ntimes_separate
+      - id: startchan
+        source: startchan_separate
+      - id: steps
+        source: dp3_steps_slow_separate
+      - id: timebase
+        source: bda_timebase_slow_separate
+      - id: maxinterval
+        source: bda_maxinterval_slow_separate
+      - id: nchan
+        source: nchan_separate
+      - id: h5parm
+        source: output_slow_h5parm_separate
+      - id: solint
+        source: solint_slow_timestep_separate
+      - id: solve_nchan
+        source: solint_slow_freqstep_separate
+      - id: directions
+        source: calibrator_patch_names
+      - id: solutions_per_direction
+        source: solutions_per_direction_slow_separate
+      - id: sourcedb
+        source: calibration_skymodel_file
+      - id: llssolver
+        source: llssolver
+      - id: maxiter
+        source: maxiter
+      - id: propagatesolutions
+        source: propagatesolutions
+      - id: solveralgorithm
+        source: solveralgorithm
+      - id: solverlbfgs_dof
+        source: solverlbfgs_dof
+      - id: solverlbfgs_iter
+        source: solverlbfgs_iter
+      - id: solverlbfgs_minibatches
+        source: solverlbfgs_minibatches
+      - id: onebeamperpatch
+        source: onebeamperpatch
+      - id: parallelbaselines
+        source: parallelbaselines
+      - id: sagecalpredict
+        source: sagecalpredict
+      - id: datause
+        source: slow_datause
+      - id: stepsize
+        source: stepsize
+      - id: stepsigma
+        source: stepsigma
+      - id: tolerance
+        source: tolerance
+      - id: uvlambdamin
+        source: uvlambdamin
+      - id: smoothnessconstraint
+        source: slow_smoothnessconstraint_separate
+      - id: numthreads
+        source: max_threads
+    scatter: [msin, starttime, ntimes, startchan, nchan, maxinterval, h5parm, solint, solve_nchan, solutions_per_direction]
+    scatterMethod: dotproduct
+    out:
+      - id: idgcal_h5parm
+
+{% endif %}
+# end do_slowgain_solve
+
+  - id: combine_solutions
+    label: Combine separate solutions
+    doc: |
+      This step combines all the solutions from the IDGCal step
+      into a single solution table (h5parm file).
+    run: {{ rapthor_pipeline_dir }}/steps/collect_h5parms.cwl
+    in:
+      - id: inh5parms
+{% if not do_slowgain_solve %}
+        source: solve_fast_phases_only/idgcal_h5parm
+{% else %}
+        source: solve_fast_phases_slow_gains/idgcal_h5parm
+{% endif %}
+      - id: outputh5parm
+        source: combined_idgcal_h5parm
+    out:
+      - id: outh5parm
+
+{% else %}
+# start not generate_screens
+
   - id: solve_fast_phases
     label: Solve for fast phases
     doc: |
@@ -1099,3 +1334,6 @@ steps:
 
 {% endif %}
 # end do_slowgain_solve / not do_slowgain_solve
+
+{% endif %}
+# end generate_screens / not generate_screens

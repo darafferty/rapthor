@@ -108,6 +108,10 @@ class Mosaic(Operation):
                 # object for later use
                 self.field.field_image_filename_prev = self.field.field_image_filename
                 self.field.field_image_filename = field_image_filename
+            if image_name == 'I_model_file_true_sky':
+                # Save the Stokes I model image filename as an attribute of the field
+                # object for later use
+                self.field.field_model_filename = field_image_filename
             shutil.copy(os.path.join(self.pipeline_working_dir, self.mosaic_filename[i]),
                         field_image_filename)
 
