@@ -87,6 +87,8 @@ class Field(object):
         self.solverlbfgs_minibatches = self.parset['calibration_specific']['solverlbfgs_minibatches']
         self.cycle_number = 1
         self.apply_amplitudes = False
+        self.generate_screens = False
+        self.apply_screens = False
 
         # Set strategy parameter defaults
         self.fast_timestep_sec = 8.0

@@ -109,6 +109,8 @@ def run(parset_file, logging_level='info'):
             log.info("Stokes I, Q, U, and V images will be made")
         if field.dde_mode == 'hybrid':
             log.info("Screens will be used for calibration and imaging")
+            field.generate_screens = True
+            field.apply_screens = True
             if final_step['peel_outliers']:
                 # Currently, when screens are used peeling cannot be done
                 log.info("Peeling of outliers is currently not supported when using "
