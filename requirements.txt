@@ -1,12 +1,13 @@
 astropy
 bdsf
+importlib-metadata; python_version<'3.8'
+importlib-resources; python_version<'3.9'
 jinja2
-losoto
-lsmtool
+losoto>=2.4.3
+lsmtool>=1.6
 matplotlib
 mocpy
-numpy
-psutil>=5.6.6
+numpy<2
 python-casacore
 python-dateutil
 reproject
@@ -14,4 +15,4 @@ requests
 Rtree
 scipy
 shapely
-toil @ git+https://github.com/DataBiosphere/toil.git#egg=toil[cwl]
+toil[cwl]>=5.10

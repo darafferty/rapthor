@@ -55,10 +55,11 @@ build-docker-base:
         [ "$BUILD_DOCKER_IMAGE" = "1" ] && DOCKER_CACHE="--no-cache" || DOCKER_CACHE=""
         docker build ${DOCKER_CACHE} \
           --build-arg AOFLAGGER_COMMIT \
+          --build-arg CASACORE_COMMIT \
           --build-arg DP3_COMMIT \
-          --build-arg DYSCO_COMMIT \
           --build-arg EVERYBEAM_COMMIT \
           --build-arg IDG_COMMIT \
+          --build-arg PYTHONCASACORE_COMMIT \
           --build-arg SAGECAL_COMMIT \
           --build-arg WSCLEAN_COMMIT \
           --file ci/ubuntu_22_04-base \
