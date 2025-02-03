@@ -1,11 +1,27 @@
-FROM ubuntu:22.04 as builder
+# This Dockerfile builds the base image for the Rapthor pipeline,
+# containing all its dependencies.
 
-# This Dockerfile builds a Docker image for the Rapthor pipeline
-# and all its dependencies.
+FROM ubuntu:22.04 AS builder
 
-# By default, build non-portable code, for the oldest CPU that supports AVX2
+# Set default versions. Can be overridden from the command-line
+ARG AOFLAGGER_COMMIT=master
+ARG CASACORE_COMMIT=master
+ARG DP3_COMMIT=master
+ARG EVERYBEAM_COMMIT=master
+ARG IDG_COMMIT=master
+ARG PYTHONCASACORE_COMMIT=master
+ARG SAGECAL_COMMIT=master
+ARG WSCLEAN_COMMIT=master
+
+# Build binaries targeted at the oldest CPU that supports AVX2
 ARG PORTABLE=FALSE
 ARG TARGET_CPU=haswell
+
+# Suppress warning from pip when installing packages as root
+ENV PIP_ROOT_USER_ACTION=ignore
+
+# Set our working directory
+WORKDIR /src
 
 # Install all build-time dependencies
 RUN export DEBIAN_FRONTEND=noninteractive && \
@@ -13,7 +29,6 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get install -y \
         bison \
         build-essential \
-        casacore-dev \
         cmake \
         flex \
         gfortran \
@@ -39,15 +54,41 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         wcslib-dev \
         wget
 
-# Prepare the environment for installing the Rapthor source dependencies.
-RUN mkdir /src
-RUN git config --global alias.shallow-clone "!git clone --depth 1 --recurse-submodules --shallow-submodules"
-WORKDIR /src
+# Do not use `pip` from the Debian repository, but fetch it from PyPA.
+# This way, we are sure that the latest versions of `pip`, `setuptools`, and
+# `wheel` are installed in /usr/local, the only directory we're going to copy
+# over to the next build stage.
+RUN wget -q https://bootstrap.pypa.io/get-pip.py && \
+    python3 get-pip.py
+
+# Install required python packages
+RUN python3 -m pip install \
+    'numpy<2'
+
+# Install the casacore measures data. We purposely do not install these from
+# the Ubuntu repository, but download the latest version from the ASTRON site.
+# Note: The file on the ftp site is updated daily. When warnings regarding
+# leap seconds appear, ignore them or regenerate the docker image.
+RUN mkdir -p /usr/local/share/casacore/data && \
+    wget -qO - https://www.astron.nl/iers/WSRT_Measures.ztar | \
+        tar -C /usr/local/share/casacore/data -xzf -
+
+# Install Casacore
+RUN git clone --no-checkout https://github.com/casacore/casacore.git
+RUN git -C casacore checkout ${CASACORE_COMMIT}
+RUN cmake \
+    -DCMAKE_BUILD_TYPE:STRING=Release \
+    -DBUILD_TESTING=OFF \
+    -DPORTABLE=${PORTABLE} \
+    -DTARGET_CPU=${TARGET_CPU} \
+    -H/src/casacore \
+    -B/src/casacore/build \
+    -G Ninja
+RUN ninja -C /src/casacore/build install
 
 # Install IDG
-# A shallow clone of IDG breaks its version number. This is an issue for DP3
-# since it has a minimal version requirement.
-RUN git clone --recurse-submodules https://git.astron.nl/RD/idg.git
+RUN git clone --no-checkout https://git.astron.nl/RD/idg.git
+RUN git -C idg checkout ${IDG_COMMIT}
 RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
     -DBUILD_WITH_PYTHON=OFF \
@@ -59,10 +100,10 @@ RUN cmake \
     -G Ninja
 RUN ninja -C /src/idg/build install
 
-# Install EveryBeam
-# Do not compile python bindings, they will interfere with the ones in the
-# binary wheel on PyPI.
-RUN git shallow-clone https://git.astron.nl/RD/EveryBeam.git
+# Install EveryBeam. Do not compile python bindings, they will interfere with
+# the ones in the binary wheel on PyPI.
+RUN git clone --no-checkout https://git.astron.nl/RD/EveryBeam.git
+RUN git -C EveryBeam checkout ${EVERYBEAM_COMMIT}
 RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
     -DBUILD_WITH_PYTHON=OFF \
@@ -74,19 +115,9 @@ RUN cmake \
     -G Ninja
 RUN ninja -C /src/EveryBeam/build install
 
-# Install Dysco
-RUN git shallow-clone https://github.com/aroffringa/dysco.git
-RUN cmake \
-    -DCMAKE_BUILD_TYPE:STRING=Release \
-    -DPORTABLE=${PORTABLE} \
-    -DTARGET_CPU=${TARGET_CPU} \
-    -H/src/dysco \
-    -B/src/dysco/build \
-    -G Ninja
-RUN ninja -C /src/dysco/build install
-
 # Install AOFlagger
-RUN git shallow-clone https://gitlab.com/aroffringa/aoflagger.git
+RUN git clone --no-checkout https://gitlab.com/aroffringa/aoflagger.git
+RUN git -C aoflagger checkout ${AOFLAGGER_COMMIT}
 RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
     -DPORTABLE=${PORTABLE} \
@@ -97,7 +128,8 @@ RUN cmake \
 RUN ninja -C /src/aoflagger/build install
 
 # Install WSClean
-RUN git shallow-clone https://gitlab.com/aroffringa/wsclean.git
+RUN git clone --no-checkout https://gitlab.com/aroffringa/wsclean.git
+RUN git -C wsclean checkout ${WSCLEAN_COMMIT}
 RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
     -DBUILD_TESTING=OFF \
@@ -109,7 +141,8 @@ RUN cmake \
 RUN ninja -C /src/wsclean/build install
 
 # Install SAGECal libdirac
-RUN git shallow-clone https://github.com/nlesc-dirac/sagecal.git
+RUN git clone --no-checkout https://github.com/nlesc-dirac/sagecal.git
+RUN git -C sagecal checkout ${SAGECAL_COMMIT}
 RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
     -DLIB_ONLY=1 \
@@ -119,7 +152,8 @@ RUN cmake \
 RUN ninja -C /src/sagecal/build install
 
 # Install DP3
-RUN git shallow-clone https://git.astron.nl/RD/DP3.git
+RUN git clone --no-checkout https://git.astron.nl/RD/DP3.git
+RUN git -C DP3 checkout ${DP3_COMMIT}
 RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
     -DBUILD_TESTING=OFF \
@@ -131,6 +165,16 @@ RUN cmake \
     -G Ninja
 RUN ninja -C /src/DP3/build install
 
+# Install python-casacore
+RUN git clone --no-checkout https://github.com/casacore/python-casacore.git
+RUN git -C python-casacore checkout ${PYTHONCASACORE_COMMIT}
+RUN CASACORE_DATA=/usr/local/share/casacore/data \
+    pip install -v /src/python-casacore
+
+# We need to `pip install` EveryBeam from source as well, because the C++
+# build does not produce a proper Python package.
+RUN pip install -v /src/EveryBeam
+
 # Generate file with one-liner package version descriptions
 RUN mkdir -p /usr/local/share/rapthor; \
 for p in $(find /src -type d -name .git | sort); \
@@ -140,45 +184,55 @@ do \
 done \
 > /usr/local/share/rapthor/sw-versions.txt
 
-# Do not use `pip` from the Debian repository, but fetch it from PyPA.
-# This way, we are sure that the latest versions of `pip`, `setuptools`, and
-# `wheel` are installed in /usr/local, the only directory we're going to copy
-# over to the next build stage.
-RUN wget https://bootstrap.pypa.io/get-pip.py && \
-    python3 get-pip.py
-
-# Install all Python dependencies for Rapthor
-COPY ./requirements.txt .
-RUN python3 -m pip install -r requirements.txt
+# Install current version of Rapthor from source.
+COPY . rapthor
+RUN pip install ./rapthor
 
 #---------------------------------------------------------------------------
 # The image will now be rebuilt without adding the sources, in order to
 # reduce the size of the image.
 #---------------------------------------------------------------------------
-FROM ubuntu:22.04 as runner
+FROM ubuntu:22.04 AS runner
 
 COPY --from=builder /usr/local /usr/local
+
+# Set default versions. Can be overridden from the command-line
+ARG AOFLAGGER_COMMIT=master
+ARG CASACORE_COMMIT=master
+ARG DP3_COMMIT=master
+ARG EVERYBEAM_COMMIT=master
+ARG IDG_COMMIT=master
+ARG PYTHONCASACORE_COMMIT=master
+ARG SAGECAL_COMMIT=master
+ARG WSCLEAN_COMMIT=master
+
+# Add version information to the metadata of the image
+LABEL \
+    nl.astron.rapthor.aoflagger.version=${AOFLAGGER_COMMIT} \
+    nl.astron.rapthor.casacore.version=${CASACORE_COMMIT} \
+    nl.astron.rapthor.dp3.version=${DP3_COMMIT} \
+    nl.astron.rapthor.everybeam.version=${EVERYBEAM_COMMIT} \
+    nl.astron.rapthor.idg.version=${IDG_COMMIT} \
+    nl.astron.rapthor.python-casacore.version=${PYTHONCASACORE_COMMIT} \
+    nl.astron.rapthor.sagecal.version=${SAGECAL_COMMIT} \
+    nl.astron.rapthor.wsclean.version=${WSCLEAN_COMMIT}
 
 # Only install run-time required packages
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
         ca-certificates \
-        casacore-tools \
+        git \
         libatkmm-1.6-1v5 \
         libblas3 \
         libboost-filesystem1.74.0 \
         libboost-program-options1.74.0 \
+        libboost-python1.74.0 \
         libcairomm-1.0-1v5 \
-        libcasa-casa6 \
-        libcasa-fits6 \
-        libcasa-measures6 \
-        libcasa-ms6 \
-        libcasa-scimath6 \
-        libcasa-tables6 \
         libcfitsio9 \
         libfftw3-double3 \
         libfftw3-single3 \
+        libgfortran5 \
         libglib2.0-0 \
         libglibmm-2.4-1v5 \
         libgomp1 \
@@ -193,36 +247,19 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         libpython3.10 \
         libsigc++-2.0-0v5 \
         libstdc++6 \
+        libwcs7 \
         nodejs \
         python3 \
         python3-distutils \
         wget
-
 RUN rm -rf /var/lib/apt/lists/*
 
-# Install the casacore measures data. We purposely do not install these from
-# the Ubuntu repository, but download the latest version directly from the
-# ASTRON ftp site.
-# Note: The file on the ftp site is updated daily. When warnings regarding
-# leap seconds appear, ignore them or regenerate the docker image.
-RUN mkdir -p /usr/share/casacore/data && \
-    ln -s /usr/share/casacore /var/lib/casacore && \
-    wget -qO - ftp://ftp.astron.nl/outgoing/Measures/WSRT_Measures.ztar | \
-        tar -C /usr/share/casacore/data -xzf -
-
-# Try to run the compiled tools to make sure they run without
-# a problem (e.g. no missing libraries).
+# Basic sanity check: try to run the compiled tools and Rapthor itself, to
+# make sure the software runs without problems (e.g. no missing libraries)
 RUN aoflagger --version && \
     DP3 --version && \
-    wsclean --version
-
-# Install current version of Rapthor.
-# Note: VERSION should be provided as build argument.
-ARG VERSION=0.0.0
-COPY . /tmp/rapthor
-RUN SETUPTOOLS_SCM_PRETEND_VERSION_FOR_RAPTHOR=${VERSION} \
-    python3 -m pip install --upgrade --no-cache-dir /tmp/rapthor
-RUN rm -rf /tmp/*
+    wsclean --version && \
+    rapthor --version
 
 # Set environment variables needed at run-time
 ENV EVERYBEAM_DATADIR=/usr/local/share/everybeam
