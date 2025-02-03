@@ -613,61 +613,15 @@ steps:
         source: output_fast_h5parm
       - id: solint
         source: solint_fast_timestep
-      - id: steps
-        source: dp3_steps_fast
-      - id: timebase
-        source: bda_timebase_fast
-      - id: maxinterval
-        source: bda_maxinterval_fast
-      - id: nchan
-        source: solint_fast_freqstep
-      - id: directions
-        source: calibrator_patch_names
-      - id: solutions_per_direction
-        source: solutions_per_direction_fast
-      - id: sourcedb
-        source: calibration_skymodel_file
-      - id: llssolver
-        source: llssolver
+      - id: model_image
+        source: model_image
       - id: maxiter
         source: maxiter
-      - id: propagatesolutions
-        source: propagatesolutions
-      - id: solveralgorithm
-        source: solveralgorithm
-      - id: solverlbfgs_dof
-        source: solverlbfgs_dof
-      - id: solverlbfgs_iter
-        source: solverlbfgs_iter
-      - id: solverlbfgs_minibatches
-        source: solverlbfgs_minibatches
-      - id: onebeamperpatch
-        source: onebeamperpatch
-      - id: parallelbaselines
-        source: parallelbaselines
-      - id: sagecalpredict
-        source: sagecalpredict
-      - id: datause
-        source: fast_datause
-      - id: stepsize
-        source: stepsize
-      - id: stepsigma
-        source: stepsigma
-      - id: tolerance
-        source: tolerance
-      - id: uvlambdamin
-        source: uvlambdamin
-      - id: smoothnessconstraint
-        source: fast_smoothnessconstraint
-      - id: smoothnessreffrequency
-        source: fast_smoothnessreffrequency
-      - id: smoothnessrefdistance
-        source: fast_smoothnessrefdistance
       - id: antennaconstraint
         source: fast_antennaconstraint
       - id: numthreads
         source: max_threads
-    scatter: [msin, starttime, ntimes, h5parm, solint, nchan, maxinterval, smoothnessreffrequency, solutions_per_direction]
+    scatter: [msin, starttime, ntimes, h5parm, solint]
     scatterMethod: dotproduct
     out:
       - id: idgcal_h5parm
@@ -692,68 +646,26 @@ steps:
 {% endif %}
     in:
       - id: msin
-        source: freqchunk_filename_separate
+        source: timechunk_filename
       - id: starttime
-        source: slow_starttime_separate
+        source: starttime
       - id: ntimes
-        source: slow_ntimes_separate
-      - id: startchan
-        source: startchan_separate
-      - id: steps
-        source: dp3_steps_slow_separate
-      - id: timebase
-        source: bda_timebase_slow_separate
-      - id: maxinterval
-        source: bda_maxinterval_slow_separate
-      - id: nchan
-        source: nchan_separate
+        source: ntimes
       - id: h5parm
-        source: output_slow_h5parm_separate
-      - id: solint
-        source: solint_slow_timestep_separate
-      - id: solve_nchan
-        source: solint_slow_freqstep_separate
-      - id: directions
-        source: calibrator_patch_names
-      - id: solutions_per_direction
-        source: solutions_per_direction_slow_separate
-      - id: sourcedb
-        source: calibration_skymodel_file
-      - id: llssolver
-        source: llssolver
+        source: output_fast_h5parm
+      - id: solint_fast
+        source: solint_fast_timestep
+      - id: solint_slow
+        source: solint_slow_timestep
+      - id: model_image
+        source: model_image
       - id: maxiter
         source: maxiter
-      - id: propagatesolutions
-        source: propagatesolutions
-      - id: solveralgorithm
-        source: solveralgorithm
-      - id: solverlbfgs_dof
-        source: solverlbfgs_dof
-      - id: solverlbfgs_iter
-        source: solverlbfgs_iter
-      - id: solverlbfgs_minibatches
-        source: solverlbfgs_minibatches
-      - id: onebeamperpatch
-        source: onebeamperpatch
-      - id: parallelbaselines
-        source: parallelbaselines
-      - id: sagecalpredict
-        source: sagecalpredict
-      - id: datause
-        source: slow_datause
-      - id: stepsize
-        source: stepsize
-      - id: stepsigma
-        source: stepsigma
-      - id: tolerance
-        source: tolerance
-      - id: uvlambdamin
-        source: uvlambdamin
-      - id: smoothnessconstraint
-        source: slow_smoothnessconstraint_separate
+      - id: antennaconstraint
+        source: fast_antennaconstraint
       - id: numthreads
         source: max_threads
-    scatter: [msin, starttime, ntimes, startchan, nchan, maxinterval, h5parm, solint, solve_nchan, solutions_per_direction]
+    scatter: [msin, starttime, ntimes, h5parm, solint_fast, solint_slow]
     scatterMethod: dotproduct
     out:
       - id: idgcal_h5parm
