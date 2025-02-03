@@ -623,7 +623,7 @@ steps:
       - id: ntimes
         source: ntimes
       - id: h5parm
-        source: output_fast_h5parm
+        source: output_idgcal_h5parm
       - id: solint
         source: solint_fast_timestep
       - id: model_image
@@ -665,7 +665,7 @@ steps:
       - id: ntimes
         source: ntimes
       - id: h5parm
-        source: output_fast_h5parm
+        source: output_idgcal_h5parm
       - id: solint_fast
         source: solint_fast_timestep
       - id: solint_slow
