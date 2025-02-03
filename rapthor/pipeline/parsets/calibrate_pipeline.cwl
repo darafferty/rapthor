@@ -52,6 +52,18 @@ inputs:
       n_obs * n_time_chunks).
     type: int[]
 
+  - id: maxiter
+    label: Maximum iterations
+    doc: |
+      The maximum number of iterations in the solves (length = 1).
+    type: int
+
+  - id: max_threads
+    label: Max number of threads
+    doc: |
+      The maximum number of threads to use for a job (length = 1).
+    type: int
+
 {% if generate_screens %}
 # start generate_screens
 
@@ -61,6 +73,13 @@ inputs:
       The model image in FITS format (length = 1).
     type: File
 
+  - id: output_idgcal_h5parm
+    label: Output solution table
+    doc: |
+      The filename of the output h5parm solution table for the IDGCal solves (length
+      = n_obs * n_time_chunks).
+    type: string[]
+
 {% if do_slowgain_solve %}
   - id: solint_slow_timestep
     label: Slow solution interval in time
@@ -69,6 +88,12 @@ inputs:
       n_obs * n_time_chunks).
     type: int[]
 {% endif %}
+
+  - id: idgcal_antennaconstraint
+    label: Antenna constraint
+    doc: |
+      The antenna constraint for the IDGCal solves (length = 1).
+    type: string
 
   - id: combined_h5parms
     label: Combined output solution table
@@ -176,12 +201,6 @@ inputs:
       done in the fast-phase calibration (length = n_obs * n_time_chunks).
     type: int[]
 
-  - id: maxiter
-    label: Maximum iterations
-    doc: |
-      The maximum number of iterations in the solves (length = 1).
-    type: int
-
   - id: llssolver
     label: Linear least-squares solver
     doc: |
@@ -276,12 +295,6 @@ inputs:
     doc: |
       The mid point of the boundary of all imaging sectors in degrees (length = 1).
     type: string
-
-  - id: max_threads
-    label: Max number of threads
-    doc: |
-      The maximum number of threads to use for a job (length = 1).
-    type: int
 
 {% if do_slowgain_solve %}
 # start do_slowgain_solve
@@ -618,7 +631,7 @@ steps:
       - id: maxiter
         source: maxiter
       - id: antennaconstraint
-        source: fast_antennaconstraint
+        source: idgcal_antennaconstraint
       - id: numthreads
         source: max_threads
     scatter: [msin, starttime, ntimes, h5parm, solint]
@@ -662,7 +675,7 @@ steps:
       - id: maxiter
         source: maxiter
       - id: antennaconstraint
-        source: fast_antennaconstraint
+        source: idgcal_antennaconstraint
       - id: numthreads
         source: max_threads
     scatter: [msin, starttime, ntimes, h5parm, solint_fast, solint_slow]
@@ -687,7 +700,7 @@ steps:
         source: solve_fast_phases_slow_gains/idgcal_h5parm
 {% endif %}
       - id: outputh5parm
-        source: combined_idgcal_h5parm
+        source: combined_h5parms
     out:
       - id: outh5parm
 

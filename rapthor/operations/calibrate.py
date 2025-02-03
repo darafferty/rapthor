@@ -104,6 +104,8 @@ class CalibrateDD(Operation):
         self.combined_h5parms = 'combined_solutions.h5'
         output_slow_h5parm_separate = ['slow_gain_separate_{}.h5parm'.format(i)
                                        for i in range(self.field.nfreqchunks_separate)]
+        output_idgcal_h5parm = ['idgcal_{}.h5parm'.format(i)  # TODO: chunk the solve over frequency as well as time?
+                                for i in range(self.field.ntimechunks)]
         combined_slow_h5parm_joint = 'slow_gains_joint.h5parm'
         combined_slow_h5parm_separate = 'slow_gains_separate.h5parm'
         combined_h5parms_fast_slow_joint = 'combined_solutions_fast_slow_joint.h5'
@@ -135,6 +137,7 @@ class CalibrateDD(Operation):
             # corrections
             fast_antennaconstraint = '[]'
         slow_antennaconstraint = '[[{}]]'.format(','.join(self.field.stations))
+        idgcal_antennaconstraint = '[]'  # TODO: set different constraints for phase and gain solves
         max_normalization_delta = self.field.max_normalization_delta
         scale_normalization_delta = '{}'.format(self.field.scale_normalization_delta)
 
@@ -189,7 +192,9 @@ class CalibrateDD(Operation):
         # Set parameters specific to the selected mode
         if self.field.generate_screens:
             # Set the IDGCal mode parameters
-            self.input_parms.update({'model_image': CWLFile(self.field.field_model_filename).to_json()})
+            self.input_parms.update({'model_image': CWLFile(self.field.field_model_filename).to_json(),
+                                     'idgcal_antennaconstraint': idgcal_antennaconstraint,
+                                     'output_idgcal_h5parm': output_idgcal_h5parm})
         else:
             # Set normal (faceting) mode parameters
             self.input_parms.update({'solint_fast_freqstep': solint_fast_freqstep,
