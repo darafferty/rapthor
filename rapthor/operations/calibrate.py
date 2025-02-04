@@ -344,7 +344,7 @@ class CalibrateDD(Operation):
         self.field.h5parm_filename = os.path.join(dst_dir, 'field-solutions.h5')
         if os.path.exists(self.field.h5parm_filename):
             os.remove(self.field.h5parm_filename)
-        if self.field.do_slowgain_solve:
+        if self.field.do_slowgain_solve or self.field.generate_screens:
             shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_h5parms),
                         os.path.join(dst_dir, self.field.h5parm_filename))
         else:

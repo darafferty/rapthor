@@ -248,8 +248,6 @@ class Image(Operation):
             self.input_parms.update({'h5parm': CWLFile(self.field.h5parm_filename).to_json()})
             if self.field.fulljones_h5parm_filename is not None:
                 self.input_parms.update({'fulljones_h5parm': CWLFile(self.field.fulljones_h5parm_filename).to_json()})
-            if self.field.apply_screens:
-                self.input_parms.update({'idgcal_h5parm': CWLFile(self.field.idgcal_h5parm_filename).to_json()})
             elif self.use_facets:
                 # For faceting, we need inputs for making the ds9 facet region files
                 self.input_parms.update({'skymodel': CWLFile(self.field.calibration_skymodel_file).to_json()})

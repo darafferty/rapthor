@@ -703,7 +703,7 @@ steps:
         source: premask/maskimg
 {% if apply_screens %}
       - id: h5parm
-        source: idgcal_h5parm
+        source: h5parm
 {% endif %}
 {% if use_mpi %}
       - id: nnodes
