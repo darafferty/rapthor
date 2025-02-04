@@ -696,9 +696,9 @@ steps:
     in:
       - id: inh5parms
 {% if not do_slowgain_solve %}
-        source: solve_fast_phases_only/idgcal_h5parm
+        source: solve_fast_phases_only/output_h5parm
 {% else %}
-        source: solve_fast_phases_slow_gains/idgcal_h5parm
+        source: solve_fast_phases_slow_gains/output_h5parm
 {% endif %}
       - id: outputh5parm
         source: combined_h5parms
