@@ -574,6 +574,7 @@ outputs:
     outputSource:
 {% if generate_screens %}
       - combine_solutions/outh5parm
+    type: File
 {% else %}
       - adjust_h5parm_sources/adjustedh5parm
     type: File
