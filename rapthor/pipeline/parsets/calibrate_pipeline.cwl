@@ -638,7 +638,7 @@ steps:
     scatter: [msin, starttime, ntimes, h5parm, solint]
     scatterMethod: dotproduct
     out:
-      - id: idgcal_h5parm
+      - id: output_h5parm
 
 {% else %}
 # start do_slowgain_solve (i.e., full, fast phase and slow gain solve)
@@ -682,7 +682,7 @@ steps:
     scatter: [msin, starttime, ntimes, h5parm, solint_fast, solint_slow]
     scatterMethod: dotproduct
     out:
-      - id: idgcal_h5parm
+      - id: output_h5parm
 
 {% endif %}
 # end do_slowgain_solve
