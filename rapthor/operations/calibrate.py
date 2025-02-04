@@ -195,6 +195,8 @@ class CalibrateDD(Operation):
             self.input_parms.update({'model_image': CWLFile(self.field.field_model_filename).to_json(),
                                      'idgcal_antennaconstraint': idgcal_antennaconstraint,
                                      'output_idgcal_h5parm': output_idgcal_h5parm})
+            if self.field.do_slowgain_solve:
+                self.input_parms.update({'solint_slow_timestep': solint_slow_timestep_separate})
         else:
             # Set normal (faceting) mode parameters
             self.input_parms.update({'solint_fast_freqstep': solint_fast_freqstep,
