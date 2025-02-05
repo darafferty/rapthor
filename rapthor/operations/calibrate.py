@@ -33,14 +33,9 @@ class CalibrateDD(Operation):
             do_joint_solve = True
         else:
             do_joint_solve = False
-        if self.field.dde_method == 'facets':
-            use_facets = True
-        else:
-            use_facets = False
 
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
-                             'use_screens': self.field.use_screens,
-                             'use_facets': use_facets,
+                             'generate_screens': self.field.generate_screens,
                              'do_slowgain_solve': self.field.do_slowgain_solve,
                              'do_joint_solve': do_joint_solve,
                              'use_scalarphase': self.field.use_scalarphase,
@@ -165,23 +160,6 @@ class CalibrateDD(Operation):
         sector_bounds_deg = '{}'.format(self.field.sector_bounds_deg)
         sector_bounds_mid_deg = '{}'.format(self.field.sector_bounds_mid_deg)
 
-        # Set the number of chunks to split the solution tables into and define
-        # the associated filenames
-        if self.field.do_slowgain_solve:
-            nsplit = sum(self.field.get_obs_parameters('nsplit_slow'))
-        else:
-            nsplit = sum(self.field.get_obs_parameters('nsplit_fast'))
-        split_outh5parm = ['split_solutions_{}.h5'.format(i) for i in
-                           range(nsplit)]
-
-        # Set the root filenames for the a-term images. We save it to an attribute
-        # since it is needed in finalize()
-        self.output_aterms_root = ['diagonal_aterms_{}'.format(i) for i in
-                                   range(len(split_outh5parm))]
-
-        # Set the type of screen to make
-        screen_type = self.field.screen_type
-
         # Set the DDECal steps depending on whether baseline-dependent averaging is
         # activated (and supported) or not. If BDA is used, an "null" step is also
         # added to prevent the writing of the BDA data
@@ -261,9 +239,6 @@ class CalibrateDD(Operation):
                             'slow_datause': slow_datause,
                             'sector_bounds_deg': sector_bounds_deg,
                             'sector_bounds_mid_deg': sector_bounds_mid_deg,
-                            'split_outh5parm': split_outh5parm,
-                            'output_aterms_root': self.output_aterms_root,
-                            'screen_type': screen_type,
                             'combined_h5parms': self.combined_h5parms,
                             'fast_antennaconstraint': fast_antennaconstraint,
                             'slow_antennaconstraint': slow_antennaconstraint,
@@ -347,17 +322,6 @@ class CalibrateDD(Operation):
         """
         Finalize this operation
         """
-        # Get the filenames of the aterm images (for use in the image operation). The files
-        # were written by the 'make_aterms' step and the number of them can vary, depending
-        # on the node memory, etc.
-        if self.field.use_screens:
-            self.field.aterm_image_filenames = []
-            for aterms_root in self.output_aterms_root:
-                with open(os.path.join(self.pipeline_working_dir, aterms_root+'.txt'), 'r') as f:
-                    self.field.aterm_image_filenames.extend(f.readlines())
-            self.field.aterm_image_filenames = [os.path.join(self.pipeline_working_dir, af.strip())
-                                                for af in self.field.aterm_image_filenames]
-
         # Copy the solutions (h5parm files) and report the flagged fraction
         dst_dir = os.path.join(self.parset['dir_working'], 'solutions', 'calibrate_{}'.format(self.index))
         misc.create_directory(dst_dir)

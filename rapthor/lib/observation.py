@@ -398,13 +398,6 @@ class Observation(object):
             else:
                 self.parameters[f'solutions_per_direction_{solve_type}'] = [[1] * len(calibrator_fluxes)] * nchunks
 
-        # Set the number of segments to split the h5parm files into for screen fitting.
-        # Try to split so that each file gets at least two solutions
-        solint_slow_timestep = max(self.parameters['solint_slow_timestep_joint'][0],
-                                   self.parameters['solint_slow_timestep_separate'][0])
-        self.parameters['nsplit_fast'] = [max(1, int(self.numsamples / solint_fast_timestep / 2))]
-        self.parameters['nsplit_slow'] = [max(1, int(self.numsamples / solint_slow_timestep / 2))]
-
         # Set the smoothnessreffrequency for the fast solves, if not set by the user
         fast_smoothnessreffrequency = parset['calibration_specific']['fast_smoothnessreffrequency']
         if fast_smoothnessreffrequency is None:
@@ -460,7 +453,7 @@ class Observation(object):
 
     def set_imaging_parameters(self, sector_name, cellsize_arcsec, max_peak_smearing, width_ra,
                                width_dec, solve_fast_timestep, solve_slow_freqstep,
-                               use_screens):
+                               apply_screens):
         """
         Sets the imaging parameters
 
@@ -478,7 +471,7 @@ class Observation(object):
             Solution interval in sec for fast solve
         solve_slow_freqstep : float
             Solution interval in Hz for slow solve
-        use_screens : bool
+        apply_screens : bool
             If True, use setup appropriate for screens
         """
         mean_freq_mhz = self.referencefreq / 1e6
@@ -512,7 +505,7 @@ class Observation(object):
         target_timewidth_sec = min(max_timewidth_sec, self.get_target_timewidth(delta_theta_deg,
                                    resolution_deg, peak_smearing_rapthor))
 
-        if use_screens:
+        if apply_screens:
             # Ensure we don't average more than the solve time step, as we want to
             # preserve the time resolution that matches that of the screens
             target_timewidth_sec = min(target_timewidth_sec, solve_fast_timestep)

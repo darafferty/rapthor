@@ -76,10 +76,11 @@ Creating a dataset for further self calibration
 
         * Set the :term:`save_visibilities` parameter to ``True`` to save the MS files
           used for the imaging. The output MS files will be located in
-          ``dir_working/visibilities``. Furthermore, :term:`dde_method` can be set to
-          "none" to preapply the solutions in the direction closest to the sector center
-          (other values of :term:`dde_method` will not preapply the solutions, since the
-          solutions in those cases are applied by WSClean during imaging).
+          ``dir_working/visibilities``. Furthermore, :term:`dde_method` should be set to
+          "single" to apply the solutions in single direction (the direction closest to
+          the sector center). Other values of :term:`dde_method` will not apply the
+          solutions to the visibilities, since the solutions in those cases are applied by
+          WSClean during imaging.
 
         * Define the imaging sectors to cover the targets of interest. Multiple sectors can
           be used, and a set of calibrated visibilities will be generated for each sector.

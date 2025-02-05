@@ -73,6 +73,16 @@ input_fulljones_h5parm = None
 # between cycles)
 facet_layout = None
 
+# Mode to use to derive and correct for direction-dependent effects: faceting or
+# hybrid (default = faceting). If "faceting", Voronoi faceting is used
+# throughout the processing. If "hybrid", faceting is used only during the self
+# calibration steps; in the final cycle (done after self calibration has been
+# completed successfully), IDGCal is used during calibration to generate smooth 2-D
+# screens that are then applied by WSClean in the final imaging step.
+#
+# Note: the hybrid mode is not yet available; it will be enabled in a future update.
+dde_mode = faceting
+
 
 [calibration]
 # If one of the included sky models (see rapthor/skymodels) is within 2 *
@@ -140,24 +150,22 @@ local_rms_strength = 0.8
 do_multiscale_clean = True
 
 # Method to use to correct for direction-dependent effects during imaging:
-# "none", "facets", or "screens" (default = facets). If "none", the solutions
-# closest to the image centers will be used. If "facets", Voronoi faceting is
-# used. If "screens", smooth 2-D screens are used; the type of screen to use can
-# be specified with screen_type: "tessellated" (simple, smoothed tessellated
-# screens) or "kl" (Karhunen-Lo`eve screens) (default = kl)
-dde_method = facets
-screen_type = kl
+# single or full (default = full). If "single", a single, direction-independent
+# solution (i.e., constant across the image sector) will be applied for each
+# sector. In this case, the solution applied is the one in the direction closest
+# to each sector center. If "full", the full, direction-dependent solutions
+# (either facets or screens) are applied
+dde_method = full
 
 # Save visibilities used for imaging (default = False). If True, the imaging MS
 # files will be saved, with the the direction-independent full-Jones solutions,
 # if available, applied. Note, however, that the direction-dependent solutions
-# will not be applied unless dde_method = "none", in which case the solutions
+# will not be applied unless dde_method = "single", in which case the solutions
 # closest to the image centers are used
 save_visibilities = False
 
 # IDG (image domain gridder) mode to use in WSClean (default = cpu). The mode
-# can be "cpu" or "hybrid". Note that IDG is only used when dde_method = "none"
-# or "screens"
+# can be "cpu" or "hybrid". Note that IDG is only used when dde_mode = "hybrid"
 idg_mode = cpu
 
 # Maximum memory in GB (per node) to use for WSClean jobs (default = 0 = 100%)

@@ -11,7 +11,7 @@ Most of the processing performed by Rapthor is done in "operations," which are s
 Calibrate
 ---------
 
-This operation calibrates the data using the current sky model. The exact steps done during calibration depend on the strategy, but essentially there are two main parts: a phase-only (scalar) solve on short timescales (the "fast-phase" solve, which corrects for ionospheric errors) and a phase and amplitude (diagonal) solve on long time scales (the "slow-gain" solve, which corrects for beam errors). The slow-gain solve is divided into two parts: an optional amplitude-only solve that constrains all stations to have the same solutions and a phase plus amplitude solve (without the station constraint and usually with a longer solution interval). This calibration strategy is based on the LBA strategy of the `LiLF pipeline <https://github.com/revoltek/LiLF>`_, with the idea that the same strategy can be used for both HBA and LBA. This is similar to the way the calibrator pipeline works in `LINC <https://linc.readthedocs.io/>`_, which has been inspired by LiLF. Lastly, processing of the resulting solutions is done, including smoothing, renormalization, and the generation of a-term images (if 2-D screens are used).
+This operation calibrates the data using the current sky model. The exact steps done during calibration depend on the strategy, but essentially there are two main parts: a phase-only (scalar) solve on short timescales (the "fast-phase" solve, which corrects for ionospheric errors) and a phase and amplitude (diagonal) solve on long time scales (the "slow-gain" solve, which corrects for beam errors). The slow-gain solve is divided into two parts: an optional amplitude-only solve that constrains all stations to have the same solutions and a phase plus amplitude solve (without the station constraint and usually with a longer solution interval). This calibration strategy is based on the LBA strategy of the `LiLF pipeline <https://github.com/revoltek/LiLF>`_, with the idea that the same strategy can be used for both HBA and LBA. This is similar to the way the calibrator pipeline works in `LINC <https://linc.readthedocs.io/>`_, which has been inspired by LiLF. Lastly, processing of the resulting solutions is done, including smoothing and renormalization.
 
 For calibration, Rapthor searches for bright, compact sources (or groups of sources) throughout the field to use as calibrator sources. A target (apparent) flux density is used to ensure that the calibrators are sufficiently bright (set by :term:`target_flux` in the processing strategy). Rapthor then tessellates the full sky model, using the calibrators as the facet centers. This method ensures that each calibration patch (or facet) has a bright calibrator source in it. Despite this designation of calibrators for the tesselation, all sources are used in the calibration (not just the bright sources).
 
@@ -133,8 +133,8 @@ Primary products:
     * In ``visibilities/image_X/sector_Y``, where ``X`` is the cycle number and ``Y`` is the image sector number (only if the :term:`save_visibilities` parameter is set to ``True``):
         * ``*.ms`` - measurement sets used as input to WSClean for imaging. Depending on
           the value of :term:`dde_method`, some or all of the calibration solutions may be
-          preapplied: a value of "none" will preapply all solutions, whereas values of
-          "screens" or "facets" will preapply only the full-Jones solutions (if
+          preapplied: a value of "single" will preapply all solutions, whereas a value of
+          "full" will preapply only the full-Jones solutions (if
           available), since the direction-dependent solutions in those cases are applied
           by WSClean itself. These MS files can be useful for further imaging or self
           calibration outside of Rapthor.

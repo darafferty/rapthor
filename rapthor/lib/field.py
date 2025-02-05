@@ -54,6 +54,7 @@ class Field(object):
         self.dd_interval_factor = self.parset['calibration_specific']['dd_interval_factor']
         self.h5parm_filename = self.parset['input_h5parm']
         self.fulljones_h5parm_filename = self.parset['input_fulljones_h5parm']
+        self.dde_mode = self.parset['dde_mode']
         self.fast_smoothnessconstraint = self.parset['calibration_specific']['fast_smoothnessconstraint']
         self.fast_smoothnessreffrequency = self.parset['calibration_specific']['fast_smoothnessreffrequency']
         self.fast_smoothnessrefdistance = self.parset['calibration_specific']['fast_smoothnessrefdistance']
@@ -70,11 +71,6 @@ class Field(object):
         self.stepsigma = self.parset['calibration_specific']['stepsigma']
         self.tolerance = self.parset['calibration_specific']['tolerance']
         self.dde_method = self.parset['imaging_specific']['dde_method']
-        if self.dde_method == 'screens':
-            self.use_screens = True
-        else:
-            self.use_screens = False
-        self.screen_type = self.parset['imaging_specific']['screen_type']
         self.save_visibilities = self.parset['imaging_specific']['save_visibilities']
         self.use_mpi = self.parset['imaging_specific']['use_mpi']
         self.parallelbaselines = self.parset['calibration_specific']['parallelbaselines']
@@ -728,7 +724,7 @@ class Field(object):
         self.target_flux = target_flux
 
     def update_skymodels(self, index, regroup, target_flux=None, target_number=None,
-                         calibrator_max_dist_deg=None, final=False):
+                         calibrator_max_dist_deg=None, combine_current_and_intial=False):
         """
         Updates the source and calibration sky models from the output sector sky model(s)
 
@@ -749,8 +745,9 @@ class Field(object):
             Target number of patches for grouping
         calibrator_max_dist_deg : float, optional
             Maximum distance in degrees from phase center for grouping
-        final : bool, optional
-            If True, process as the final pass (combine initial and new sky models)
+        combine_current_and_intial : bool, optional
+            If True, combine the initial and current sky models (needed for the final
+            calibration in order to include potential outlier sources)
         """
         # Except for the first iteration, use the results of the previous iteration to
         # update the sky models, etc.
@@ -850,11 +847,11 @@ class Field(object):
                 skymodel_apparent_sky = None
 
             # Concatenate the starting sky model with the new one. This step needs to be
-            # done if this iteration is set as a final pass (so that sources outside of
-            # imaged areas can be subtracted, since we have to go back to the original
-            # input MS files for which no subtraction has been done) or if all sources
-            # (and not only the imaged sources) are to be used in calibration
-            if final or not self.imaged_sources_only:
+            # done if, e.g., this is the final cycle and sources outside of imaged areas
+            # must be subtracted, since we have to go back to the original input MS files
+            # for which no subtraction has been done) or if all sources (and not only the
+            # imaged sources) are to be used in calibration
+            if combine_current_and_intial or not self.imaged_sources_only:
                 # Load starting sky model and regroup to one patch per entry to ensure
                 # any existing patches are removed (otherwise they may propagate to
                 # the DDE direction determination, leading to unexpected results)
@@ -892,7 +889,7 @@ class Field(object):
         # Plot an overview of the field for this cycle, showing the calibration facets
         # (patches)
         self.log.info('Plotting field overview with calibration patches...')
-        if index == 1 or final:
+        if index == 1 or combine_current_and_intial:
             # Check the sky model bounds, as they may differ from the sector ones
             check_skymodel_bounds = True
         else:
@@ -1076,9 +1073,7 @@ class Field(object):
         # Compute bounding box for all imaging sectors and store as a
         # a semi-colon-separated list of [maxRA; minDec; minRA; maxDec] (we use semi-
         # colons as otherwise the workflow parset parser will split the list). Also
-        # store the midpoint as [midRA; midDec]. These values are needed for the aterm
-        # image generation, so we use the padded polygons to ensure that the final
-        # bounding box encloses all of the images *with* padding included.
+        # store the midpoint as [midRA; midDec].
         # Note: this is just once, rather than each time the sector borders are
         # adjusted, so that the image sizes do not change with iteration (so
         # mask images from previous iterations may be used)
@@ -1610,7 +1605,7 @@ class Field(object):
         self.update_skymodels(index, step_dict['regroup_model'],
                               target_flux=target_flux, target_number=target_number,
                               calibrator_max_dist_deg=calibrator_max_dist_deg,
-                              final=final)
+                              combine_current_and_intial=final)
         self.remove_skymodels()  # clean up sky models to reduce memory usage
 
         # Always try to peel non-calibrator sources if LBA (we check below whether

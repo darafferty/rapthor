@@ -14,7 +14,7 @@
     "calibration": {
     },
     "imaging": {
-        "dde_method": "facets"
+        "dde_method": "full"
     },
     "cluster": {
       "use_container": "True",

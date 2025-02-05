@@ -12,6 +12,7 @@ from losoto.h5parm import h5parm
 import lsmtool
 import numpy as np
 from rapthor.lib import miscellaneous as misc
+import tempfile
 
 
 def fit_sed(fluxes, errors, frequencies):
@@ -286,9 +287,10 @@ def main(source_catalog, ms_file, output_h5parm, radius_cut=3.0, major_axis_cut=
                 do_normalization = False
             if not do_normalization:
                 continue
-            skymodel.write(f'{survey}.fits', format='fits', clobber=True)
-            with fits.open(f'{survey}.fits') as hdul:
-                survey_data = hdul[1].data
+            with tempfile.NamedTemporaryFile() as fp:
+                skymodel.write(fp.name, format='fits', clobber=True)
+                with fits.open(fp.name) as hdul:
+                    survey_data = hdul[1].data
             survey_coords = SkyCoord(ra=np.array([misc.normalize_ra(survey_ra)
                                                   for survey_ra in survey_data['RA']])*u.degree,
                                      dec=np.array([misc.normalize_dec(survey_dec)

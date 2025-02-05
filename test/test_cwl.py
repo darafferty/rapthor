@@ -15,8 +15,8 @@ def generate_and_validate(tmp_path, operation, parms, templ, sub_templ=None):
     the same way that `rapthor.lib.operation.Operation.setup()` does this.
     Validate the workflow file using `cwltool`.
     """
-    if parms.get("use_facets") and parms.get("use_screens"):
-        pytest.skip("'use_facets' and 'use_screens' cannot be enabled both")
+    if parms.get("use_facets") and parms.get("apply_screens"):
+        pytest.skip("'use_facets' and 'apply_screens' cannot be enabled both")
     pipeline_working_dir = tmp_path / "pipelines" / operation
     pipeline_working_dir.mkdir(parents=True, exist_ok=True)
     parset = pipeline_working_dir / "pipeline_parset.cwl"
@@ -65,7 +65,7 @@ def test_concatenate_workflow(
     generate_and_validate(tmp_path, operation, parms, templ)
 
 
-@pytest.mark.parametrize("use_screens", (False, True))
+@pytest.mark.parametrize("generate_screens", (False, True))
 @pytest.mark.parametrize("use_facets", (False, True))
 @pytest.mark.parametrize("do_slowgain_solve", (False, True))
 @pytest.mark.parametrize("do_joint_solve", (False, True))
@@ -74,7 +74,7 @@ def test_concatenate_workflow(
 @pytest.mark.parametrize("max_cores", (None, 8))
 def test_calibrate_workflow(
     tmp_path,
-    use_screens,
+    generate_screens,
     use_facets,
     do_slowgain_solve,
     do_joint_solve,
@@ -90,7 +90,7 @@ def test_calibrate_workflow(
     operation = "calibrate"
     templ = rapthor.lib.operation.env_parset.get_template("calibrate_pipeline.cwl")
     parms = {
-        "use_screens": use_screens,
+        "generate_screens": generate_screens,
         "use_facets": use_facets,
         "do_slowgain_solve": do_slowgain_solve,
         "do_joint_solve": do_joint_solve,
@@ -176,7 +176,7 @@ def test_predict_nc_workflow(tmp_path, max_cores, apply_solutions, apply_amplitu
 
 
 @pytest.mark.parametrize("apply_amplitudes", (False, True))
-@pytest.mark.parametrize("use_screens", (False, True))
+@pytest.mark.parametrize("apply_screens", (False, True))
 @pytest.mark.parametrize("use_facets", (False, True))
 @pytest.mark.parametrize("peel_bright_sources", (False, True))
 @pytest.mark.parametrize("max_cores", (None, 8))
@@ -186,7 +186,7 @@ def test_predict_nc_workflow(tmp_path, max_cores, apply_solutions, apply_amplitu
 def test_image_workflow(
     tmp_path,
     apply_amplitudes,
-    use_screens,
+    apply_screens,
     use_facets,
     peel_bright_sources,
     max_cores,
@@ -206,7 +206,7 @@ def test_image_workflow(
     )
     parms = {
         "apply_amplitudes": apply_amplitudes,
-        "use_screens": use_screens,
+        "apply_screens": apply_screens,
         "use_facets": use_facets,
         "peel_bright_sources": peel_bright_sources,
         "max_cores": max_cores,

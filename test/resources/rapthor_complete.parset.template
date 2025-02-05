@@ -17,6 +17,7 @@ final_data_fraction = 0.8
 input_h5parm = /my/data/dirdependent.h5
 input_fulljones_h5parm = /my/data/fulljones.h5
 facet_layout = /my/data/facets.reg
+dde_mode = hybrid
 
 [calibration]
 use_included_skymodels = True
@@ -55,8 +56,7 @@ max_uv_lambda = 10000.0
 taper_arcsec = 2.0
 local_rms_strength = 0.5
 do_multiscale_clean = False
-dde_method = screens
-screen_type = kl
+dde_method = single
 save_visibilities = True
 idg_mode = gpu
 mem_gb = 128.0
