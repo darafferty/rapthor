@@ -126,13 +126,18 @@ class Image(Operation):
         for sector in self.imaging_sectors:
             image_root.append(sector.name)
 
-            # Set the imaging parameters for each imaging sector. Note the we do not
-            # let the imsize be recalcuated, as otherwise it may change from the previous
-            # iteration and the mask made in that iteration can not be used in this one.
-            # Generally, this should work fine, since we do not expect large changes in
-            # the size of the sector from iteration to iteration (small changes are OK,
-            # given the padding we use during imaging)
-            sector.set_imaging_parameters(self.do_multiscale_clean, recalculate_imsize=False,
+            # Set the imaging parameters for each imaging sector
+            if self.apply_screens:
+                # Since IDG (used by WSClean to apply the screens) does not yet support
+                # rectangular images, we recalculate the image size to allow the image
+                # to be adjusted if needed (from rectangular to square)
+                recalculate_imsize = True
+            else:
+                # If IDG is not used, keep the image size fixed to make comparisons
+                # between cycles easier
+                recalculate_imsize = False
+            sector.set_imaging_parameters(self.do_multiscale_clean,
+                                          recalculate_imsize=recalculate_imsize,
                                           imaging_parameters=self.imaging_parameters)
 
             # Set input MS filenames
