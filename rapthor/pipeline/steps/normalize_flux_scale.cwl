@@ -4,7 +4,7 @@ baseCommand: [normalize_flux_scale.py]
 label: Calculate normalization corrections
 doc: |
   This tool calculates the corrections needed to normalize the flux
-  scale such that Flux_rapthor / Flux_true = 1
+  scale such that (true flux / observed flux) * correction = 1
 
 requirements:
   - class: InlineJavascriptRequirement
@@ -17,27 +17,20 @@ inputs:
     type: File
     inputBinding:
       position: 1
-  - id: ra
-    label: RA of center of image
+  - id: ms_file
+    label: MS file filename
     doc: |
-      The RA of the center of the image in deg.
-    type: float
+      The filename of the imaging MS file.
+    type: File
     inputBinding:
       position: 2
-  - id: dec
-    label: Dec of center of image
-    doc: |
-      The Dec of the center of the image in deg.
-    type: float
-    inputBinding:
-      position: 3
   - id: normalize_h5parm
     label: Output H5parm filename
     doc: |
       The filename of the output H5parm.
     type: string
     inputBinding:
-      position: 4
+      position: 3
 
 outputs:
   - id: output_h5parm
