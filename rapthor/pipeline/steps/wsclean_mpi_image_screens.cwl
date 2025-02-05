@@ -35,7 +35,8 @@ arguments:
   - -no-update-model-required
   - -local-rms
   - -join-channels
-  - -use-idg
+  - valueFrom: 'idg'
+    prefix: -gridder
   - -log-time
   - valueFrom: '$(runtime.tmpdir)'
     prefix: -temp-dir
