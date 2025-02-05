@@ -26,8 +26,8 @@ class Image(Operation):
         # Initialize various parameters
         self.apply_none = None
         self.apply_amplitudes = None
-        self.use_screens = None
         self.apply_fulljones = None
+        self.apply_screens = None
         self.make_image_cube = None
         self.normalize_flux_scale = None
         self.dde_method = None
@@ -50,8 +50,8 @@ class Image(Operation):
             self.apply_none = False
         if self.apply_amplitudes is None:
             self.apply_amplitudes = self.field.apply_amplitudes
-        if self.use_screens is None:
-            self.use_screens = self.field.use_screens
+        if self.apply_screens is None:
+            self.apply_screens = self.field.apply_screens
         if self.apply_fulljones is None:
             self.apply_fulljones = self.field.apply_fulljones
         if self.make_image_cube is None:
@@ -61,7 +61,7 @@ class Image(Operation):
         if self.dde_method is None:
             self.dde_method = self.field.dde_method
         if self.use_facets is None:
-            self.use_facets = True if self.dde_method == 'facets' else False
+            self.use_facets = True if (self.dde_method == 'full' and not self.apply_screens) else False
         if self.image_pol is None:
             self.image_pol = self.field.image_pol
         if self.save_source_list is None:
@@ -79,7 +79,7 @@ class Image(Operation):
                              'pipeline_working_dir': self.pipeline_working_dir,
                              'apply_none': self.apply_none,
                              'apply_amplitudes': self.apply_amplitudes,
-                             'use_screens': self.use_screens,
+                             'apply_screens': self.apply_screens,
                              'apply_fulljones': self.apply_fulljones,
                              'make_image_cube': self.make_image_cube,
                              'normalize_flux_scale': self.normalize_flux_scale,
@@ -242,16 +242,13 @@ class Image(Operation):
             nnodes_per_subpipeline = max(1, int(nnodes / nsubpipes) - 1)
             self.input_parms.update({'mpi_nnodes': [nnodes_per_subpipeline] * nsectors})
             self.input_parms.update({'mpi_cpus_per_task': [self.parset['cluster_specific']['cpus_per_task']] * nsectors})
-        if self.use_screens:
-            # The following parameters were set by the preceding calibrate operation, where
-            # aterm image files were generated. They do not need to be set separately for
-            # each sector
-            self.input_parms.update({'aterm_image_filenames': CWLFile(self.field.aterm_image_filenames).to_json()})
-        elif not self.apply_none:
+        if not self.apply_none:
             self.input_parms.update({'h5parm': CWLFile(self.field.h5parm_filename).to_json()})
             if self.field.fulljones_h5parm_filename is not None:
                 self.input_parms.update({'fulljones_h5parm': CWLFile(self.field.fulljones_h5parm_filename).to_json()})
-            if self.use_facets:
+            if self.field.apply_screens:
+                self.input_parms.update({'idgcal_h5parm': CWLFile(self.field.idgcal_h5parm_filename).to_json()})
+            elif self.use_facets:
                 # For faceting, we need inputs for making the ds9 facet region files
                 self.input_parms.update({'skymodel': CWLFile(self.field.calibration_skymodel_file).to_json()})
                 ra_mid = []
@@ -360,7 +357,7 @@ class Image(Operation):
                     shutil.copy(src_filename, dst_filename)
 
             # The output ds9 region file, if made
-            if self.field.dde_method == 'facets':
+            if self.use_facets:
                 dst_dir = os.path.join(self.parset['dir_working'], 'regions', 'image_{}'.format(self.index))
                 misc.create_directory(dst_dir)
                 region_filename = '{}_facets_ds9.reg'.format(sector.name)
@@ -422,7 +419,7 @@ class ImageInitial(Image):
         # Set parameters as needed
         self.apply_none = True
         self.apply_amplitudes = False
-        self.use_screens = False
+        self.apply_screens = False
         self.apply_fulljones = False
         self.use_facets = False
         self.save_source_list = True
@@ -530,7 +527,7 @@ class ImageNormalize(Image):
             # No calibration has yet been done, so set various flags as needed
             self.apply_none = True
             self.use_facets = False
-            self.use_screens = False
+            self.apply_screens = False
         super().set_parset_parameters()
 
     def set_input_parameters(self):

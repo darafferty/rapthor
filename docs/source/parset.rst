@@ -149,6 +149,19 @@ The available options are described below under their respective sections.
             calibration patches, in which case the empty patches are removed and the
             layout of the remaining patches is set using Voronoi tessellation.
 
+    dde_mode
+        Mode to use to derive and correct for direction-dependent effects: ``faceting`` or
+        ``hybrid`` (default = ``faceting``). If ``faceting``, Voronoi faceting is used
+        throughout the processing. If ``hybrid``, faceting is used only during the self
+        calibration steps; in the final cycle (done after self calibration has been
+        completed successfully), IDGCal is used during calibration to generate smooth 2-D
+        screens that are then applied by WSClean in the final imaging step.
+
+        .. note::
+
+            The hybrid mode is not yet available; it will be enabled in a future
+            update.
+
 .. _parset_calibration_options:
 
 ``[calibration]``
@@ -353,21 +366,18 @@ The available options are described below under their respective sections.
         Use multiscale cleaning (default = ``True``)?
 
     dde_method
-        Method to use to correct for direction-dependent effects during imaging: ``none``,
-        ``facets``, or ``screens`` (default = ``facets``). If ``none``, the solutions
-        closest to the image centers will be used. If ``facets``, Voronoi faceting is
-        used. If ``screens``, smooth 2-D screens are used.
-
-    screen_type
-        Type of screen to use (default = ``tessellated``), if :term:`dde_method` =
-        ``screens``: ``tessellated`` (simple, smoothed Voronoi tessellated screens) or
-        ``kl`` (Karhunen-Lo`eve screens).
+        Method to use to correct for direction-dependent effects during imaging:
+        ``single`` or ``full`` (default = ``full``). If ``single``, a single,
+        direction-independent solution (i.e., constant across the image sector) will be
+        applied for each sector. In this case, the solution applied is the one in the
+        direction closest to each sector center. If ``full``, the full,
+        direction-dependent solutions are applied (using either facets or screens).
 
     save_visibilities
         Save visibilities used for imaging (default = ``False``). If ``True``, the imaging
         MS files will be saved, with the the direction-independent full-Jones solutions,
         if available, applied. Note, however, that the direction-dependent solutions will
-        not be applied unless :term:`dde_method` = ``none``, in which case the solutions
+        not be applied unless :term:`dde_method` = ``single``, in which case the solutions
         closest to the image centers are used.
 
     idg_mode

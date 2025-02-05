@@ -10,8 +10,7 @@ doc: |
   further unconstrained slow gain calibration to correct for station-to-station
   differences. Steps (2) and (3) are skipped if the calibration is phase-only.
   This calibration scheme works for both HBA and LBA data. The final products of
-  this workflow are solution tables (h5parm files), plots, and a-term screens (FITS
-  files).
+  this workflow are solution tables (h5parm files) and plots.
 
 requirements:
   ScatterFeatureRequirement: {}
@@ -248,24 +247,6 @@ inputs:
     label: Sector boundary
     doc: |
       The mid point of the boundary of all imaging sectors in degrees (length = 1).
-    type: string
-
-  - id: split_outh5parm
-    label: Output split solution tables
-    doc: |
-      The filenames of the output split h5parm solution tables (length = n_obs * n_split).
-    type: string[]
-
-  - id: output_aterms_root
-    label: Output root for a-terms
-    doc: |
-      The root names of the output a-term images (length = n_obs * n_split).
-    type: string[]
-
-  - id: screen_type
-    label: Type of screen for a-terms
-    doc: |
-      The screen type to use to derive the a-term images (length = 1).
     type: string
 
   - id: max_threads
@@ -553,12 +534,6 @@ outputs:
     outputSource:
       - plot_fast_phase_solutions/plots
     type: File[]
-{% if use_screens %}
-  - id: diagonal_aterms
-    outputSource:
-      - merge_aterm_files/output
-    type: File[]
-{% endif %}
 {% if do_slowgain_solve %}
   - id: slow_phase_plots
     outputSource:
@@ -1079,11 +1054,6 @@ steps:
       - id: outh5parm
         source: combined_h5parms
       - id: mode
-{% if use_screens %}
-        valueFrom: 'p1p2a2'
-      - id: reweight
-        valueFrom: 'True'
-{% elif use_facets %}
 {% if apply_diagonal_solutions %}
         valueFrom: 'p1p2a2_diagonal'
 {% else %}
@@ -1091,11 +1061,6 @@ steps:
 {% endif %}
       - id: reweight
         valueFrom: 'False'
-{% else %}
-        valueFrom: 'p1p2a2_diagonal'
-      - id: reweight
-        valueFrom: 'False'
-{% endif %}
       - id: calibrator_names
         source: calibrator_patch_names
       - id: calibrator_fluxes
@@ -1116,55 +1081,6 @@ steps:
     out:
       - id: adjustedh5parm
 
-{% if use_screens %}
-# start use_screens
-
-  - id: split_h5parms
-    label: Split solution table
-    doc: |
-      This step splits the final solution table in time, to enable multi-node
-      parallel processing of the a-term images.
-    run: {{ rapthor_pipeline_dir }}/steps/split_h5parms.cwl
-    in:
-      - id: inh5parm
-        source: adjust_h5parm_sources/adjustedh5parm
-      - id: outh5parms
-        source: split_outh5parm
-      - id: soltabname
-        valueFrom: 'gain000'
-    out:
-      - id: splith5parms
-
-  - id: make_aterms
-    label: Make a-term images
-    doc: |
-      This step makes a-term images from the split final solution tables.
-    run: {{ rapthor_pipeline_dir }}/steps/make_aterm_images.cwl
-    in:
-      - id: h5parm
-        source: split_h5parms/splith5parms
-      - id: soltabname
-        valueFrom: 'gain000'
-      - id: screen_type
-        source: screen_type
-      - id: skymodel
-        source: calibration_skymodel_file
-      - id: outroot
-        source: output_aterms_root
-      - id: sector_bounds_deg
-        source: sector_bounds_deg
-      - id: sector_bounds_mid_deg
-        source: sector_bounds_mid_deg
-      - id: ncpu
-        source: max_threads
-    scatter: [h5parm, outroot]
-    scatterMethod: dotproduct
-    out:
-      - id: output_images
-
-{% endif %}
-# end use_screens
-
 {% else %}
 # start not do_slowgain_solve
 
@@ -1181,68 +1097,5 @@ steps:
     out:
       - id: adjustedh5parm
 
-{% if use_screens %}
-# start use_screens
-
-  - id: split_h5parms
-    label: Split solution table
-    doc: |
-      This step splits the final solution table in time, to enable multi-node
-      parallel processing of the a-term images.
-    run: {{ rapthor_pipeline_dir }}/steps/split_h5parms.cwl
-    in:
-      - id: inh5parm
-        source: adjust_h5parm_sources/adjustedh5parm
-      - id: outh5parms
-        source: split_outh5parm
-      - id: soltabname
-        valueFrom: 'phase000'
-    out:
-      - id: splith5parms
-
-  - id: make_aterms
-    label: Make a-term images
-    doc: |
-      This step makes a-term images from the split final solution tables.
-    run: {{ rapthor_pipeline_dir }}/steps/make_aterm_images.cwl
-    in:
-      - id: h5parm
-        source: split_h5parms/splith5parms
-      - id: soltabname
-        valueFrom: 'phase000'
-      - id: screen_type
-        source: screen_type
-      - id: skymodel
-        source: calibration_skymodel_file
-      - id: outroot
-        source: output_aterms_root
-      - id: sector_bounds_deg
-        source: sector_bounds_deg
-      - id: sector_bounds_mid_deg
-        source: sector_bounds_mid_deg
-      - id: ncpu
-        source: max_threads
-    scatter: [h5parm, outroot]
-    scatterMethod: dotproduct
-    out:
-      - id: output_images
-
-{% endif %}
-# end use_screens
-
 {% endif %}
 # end do_slowgain_solve / not do_slowgain_solve
-
-{% if use_screens %}
-
-  - id: merge_aterm_files
-    in:
-      - id: input
-        source:
-          - make_aterms/output_images
-    out:
-      - id: output
-    run: {{ rapthor_pipeline_dir }}/steps/merge_array_files.cwl
-    label: merge_aterm_files
-
-{% endif %}

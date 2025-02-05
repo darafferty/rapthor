@@ -14,13 +14,15 @@ requirements:
   - class: InitialWorkDirRequirement
     listing:
       - entryname: aterm_plus_beam.cfg
-        # Note: WSClean requires that the aterm image filenames be input as part of an
-        # aterm config file (and not directly on the command line). Therefore, a config
-        # file is made here that contains the filenames defined in the aterm_images
-        # input parameter. Also, the required beam parameters are set here
+        # Note: WSClean requires that the h5parm filename be input as part of an aterm
+        # config file (and not directly on the command line). Therefore, a config file is
+        # made here that contains the filename defined in the h5parm input parameter.
+        # Also, the required beam parameters are set here
         entry: |
-          aterms = [diagonal, beam]
-          diagonal.images = [$(inputs.aterm_images.map( (e,i) => (e.path) ).join(' '))]
+          aterms = [idgcalsolutions, beam]
+          idgcalsolutions.type = h5parm
+          idgcalsolutions.files = [$(inputs.h5parm)]
+          idgcalsolutions.update_interval = 8
           beam.differential = true
           beam.update_interval = 120
           beam.usechannelfreq = true
@@ -73,14 +75,8 @@ inputs:
     type: File
     inputBinding:
       prefix: -fits-mask
-  - id: aterm_images
-    label: Filenames of aterm files
-    doc: |
-      The filenames of the a-term image files. These filenames are not used directly in the
-      WSClean call (they are read by WSClean from the aterm config file, defined in the
-      requirements section above), hence the value is set to "null" (which results in
-      nothing being added to the command for this input).
-    type: File[]
+  - id: h5parm
+    type: File
     inputBinding:
       valueFrom: null
   - id: wsclean_imsize
