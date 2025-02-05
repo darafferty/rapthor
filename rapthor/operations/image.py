@@ -58,6 +58,10 @@ class Image(Operation):
             self.make_image_cube = False
         if self.normalize_flux_scale is None:
             self.normalize_flux_scale = False
+        if not self.normalize_flux_scale and self.normalize_h5parm is not None:
+            self.apply_normalization = True
+        else:
+            self.apply_normalization = False
         if self.dde_method is None:
             self.dde_method = self.field.dde_method
         if self.use_facets is None:
@@ -571,6 +575,13 @@ class ImageNormalize(Image):
                 src_filename = sector.I_freq_cube + suffix
                 dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
                 shutil.copy(src_filename, dst_filename)
+
+            # The output h5parm with the flux-scale corrections
+            sector.normalize_h5parm = f'{image_root}_normalize.h5parm'
+            dst_dir = os.path.join(self.parset['dir_working'], 'solutions', self.name)
+            misc.create_directory(dst_dir)
+            dst_filename = os.path.join(dst_dir, os.path.basename(sector.normalize_h5parm))
+            shutil.copy(sector.normalize_h5parm, dst_filename)
 
         # Finally call finalize() of the Operation class
         super(Image, self).finalize()

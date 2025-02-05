@@ -121,7 +121,7 @@ def set_selfcal_strategy(field):
     for i in range(max_selfcal_loops):
         strategy_steps.append({})
 
-        # strategy_steps[i]['do_normalize'] = True  # TODO: uncomment when functionality is complete
+        strategy_steps[i]['do_normalize'] = True
 
         strategy_steps[i]['do_calibrate'] = True
         if i == 0:

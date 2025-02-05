@@ -154,15 +154,6 @@ def run_steps(field, steps, final=False):
         cycle_number = index + field.cycle_number
         field.update(step, cycle_number, final=final)
 
-        # Normalize the flux scale
-        field.do_normalize = False  # TODO: enable when functionality is complete
-        if field.do_normalize:
-            # Set the Stokes polarization to I
-            field.image_pol = 'I'
-
-            op = ImageNormalize(field, cycle_number)
-            op.run()
-
         # Calibrate
         if field.do_calibrate:
             # Set whether screens should be generated
@@ -192,6 +183,14 @@ def run_steps(field, steps, final=False):
 
         # Image and mosaic the sectors
         if field.do_image:
+            # Normalize the flux scale
+            if field.do_normalize:
+                # Set the Stokes polarization to I
+                field.image_pol = 'I'
+
+                op = ImageNormalize(field, cycle_number)
+                op.run()
+
             # Set the Stokes polarizations for imaging
             field.image_pol = 'IQUV' if (field.make_quv_images and final) else 'I'
 

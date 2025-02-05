@@ -88,6 +88,9 @@ The following processing parameters can be set for each cycle:
 
 .. glossary::
 
+    do_normalize
+    Boolean flag that determines whether the normalization of the flux scale is done. This normalization determines and applies the corrections (as a function of frequency) needed to achieve obs_flux / true_flux = 1. The "true" flux is determined by cross matching with the VLSSr and WENSS catalogs.
+
     do_calibrate
         Boolean flag that determines whether the calibration step should be done for this cycle.
 
