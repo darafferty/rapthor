@@ -189,6 +189,15 @@ inputs:
     type: File
 {% endif %}
 
+{% if apply_screens %}
+  - id: idgcal_h5parm
+    label: Filename of h5parm
+    doc: |
+      The filename of the h5parm file with the IDGCal screeen solutions
+      (length = 1).
+    type: File
+{% endif %}
+
 {% if use_facets %}
 # start use_facets
   - id: skymodel
@@ -601,6 +610,10 @@ steps:
 {% if apply_fulljones %}
       - id: fulljones_h5parm
         source: fulljones_h5parm
+{% endif %}
+{% if apply_screens %}
+      - id: idgcal_h5parm
+        source: idgcal_h5parm
 {% endif %}
 {% if use_facets %}
 # start use_facets
