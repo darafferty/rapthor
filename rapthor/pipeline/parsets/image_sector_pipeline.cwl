@@ -518,7 +518,7 @@ steps:
 {% else %}
 # start not apply_screens and not use_facets
 {% if apply_none %}
-    run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data_no_dde_no_cal.cwl
+    run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data.cwl
 {% else %}
 {% if apply_amplitudes %}
 {% if apply_fulljones %}
