@@ -191,6 +191,22 @@ class Image(Operation):
             else:
                 join_polarizations = True
 
+        # Set the DP3 applycal steps depending on which solutions are pre-applied
+        # before imaging and which are applied during imaging
+        applycal_steps = []
+        if self.apply_screens or self.use_facets:
+            # No solutions should be pre-applied
+            applycal_steps = '[]'
+        else:
+            # Fast phases and slow amplitudes (if generated) should be pre-applied
+            applycal_steps.append('fastphase')
+            if self.apply_amplitudes:
+                applycal_steps.append('slowamp')
+        if self.apply_fulljones:
+            applycal_steps.append('fulljones')
+        if self.apply_normalization:
+            applycal_steps.append('normalization')
+
         # Set the parameters common to all modes
         self.input_parms = {'obs_filename': [CWLDir(name).to_json() for name in obs_filename],
                             'prepare_filename': prepare_filename,
