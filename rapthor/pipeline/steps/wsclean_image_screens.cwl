@@ -17,7 +17,7 @@ requirements:
         entry: |
           aterms = [idgcalsolutions, beam]
           idgcalsolutions.type = h5parm
-          idgcalsolutions.files = [$(inputs.h5parm)]
+          idgcalsolutions.files = [$(inputs.h5parm.path)]
           idgcalsolutions.update_interval = 8
           beam.differential = true
           beam.update_interval = 120
