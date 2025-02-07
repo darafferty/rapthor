@@ -13,4 +13,5 @@ requests
 Rtree
 scipy
 shapely
-toil[cwl]>=5.10
+# We need Toil >= 7.1, but 7.1 has not yet been released.
+toil[cwl] @ git+https://github.com/DataBiosphere/toil.git

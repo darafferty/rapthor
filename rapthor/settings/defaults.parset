@@ -287,7 +287,21 @@ parallel_gridding_threads = 0
 #     used (as each sector will overwrite files from the other sectors)
 #   - when use_mpi = True under the [imaging] section above and dir_local is
 #     not on a shared filesystem
+# This parameter is deprecated. Use local_scratch_dir instead.
 dir_local = None
+
+# Full path to a local disk on the nodes for IO-intensive processing (default =
+# /tmp). When batch_system = slurm, the path must exist on all the compute nodes,
+# but not necessarily on the head node. This parameter is useful if you have a
+# fast local disk (e.g., an SSD).
+local_scratch_dir = None
+
+# Full path to a directory on a shared disk that is readable and writable by all
+# the compute nodes and the head node. This directory will be used to store the
+# intermediate outputs that need to be shared between the different steps in the
+# workflow. If this parameter is not set, Rapthor will create a temporary
+# directory in dir_working.
+global_scratch_dir = None
 
 # Run the workflows inside a container (default = False)? If True, the CWL
 # workflow for each operation (such as calibrate or image) will be run inside a

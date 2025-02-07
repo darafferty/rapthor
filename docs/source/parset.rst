@@ -551,6 +551,26 @@ The available options are described below under their respective sections.
             - when :term:`use_mpi` = ``True`` under the :ref:`parset_imaging_options`
               section and ``dir_local`` is not on a shared filesystem.
 
+        .. attention::
+
+            This parameter is deprecated. Use :term:`local_scratch_dir` instead.
+
+    local_scratch_dir
+        Full path to a local disk on the nodes for IO-intensive processing (default =
+        ``/tmp``). When :term:`batch_system` = ``slurm``, the path must exist on all the
+        compute nodes, but not necessarily on the head node.
+        This parameter is useful if you have a fast local disk (e.g., an SSD)
+        that is not the one used for :term:`dir_working`. If this parameter is not set,
+        IO-intensive processing (e.g., WSClean) will use a default path in
+        :term:`dir_working` instead.
+
+    global_scratch_dir
+        Full path to a directory on a shared disk that is readable and writable by all
+        the compute nodes and the head node. This directory will be used to store the
+        intermediate outputs that need to be shared between the different steps in the
+        workflow. If this parameter is not set, Rapthor will create a temporary
+        directory in :term:`dir_working`.
+
     use_container
         Run the workflows inside a container (default = ``False``)? If ``True``, the CWL
         workflow for each operation (such as calibrate or image) will be run inside a
