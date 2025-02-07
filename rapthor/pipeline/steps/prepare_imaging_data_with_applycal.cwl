@@ -79,7 +79,7 @@ inputs:
     label: Filename of h5parm
     doc: |
       The filename of the h5parm file with the direction-dependent calibration solutions.
-    type: File
+    type: File?
     inputBinding:
       prefix: applycal.parmdb=
       separate: False
@@ -87,7 +87,7 @@ inputs:
     label: Filename of h5parm
     doc: |
       The filename of the h5parm file with the full-Jones calibration solutions.
-    type: File
+    type: File?
     inputBinding:
       prefix: applycal.fulljones.parmdb=
       separate: False
@@ -95,7 +95,7 @@ inputs:
     label: Filename of h5parm
     doc: |
       The filename of the h5parm file with the flux-scale normalization corrections.
-    type: File
+    type: File?
     inputBinding:
       prefix: applycal.normalization.parmdb=
       separate: False
@@ -103,7 +103,7 @@ inputs:
     label: Name of central patch
     doc: |
       The name of the central-most patch of the sector.
-    type: string
+    type: string?
     inputBinding:
       valueFrom: $('['+self+']')
       prefix: applycal.direction=

@@ -24,12 +24,15 @@ class Image(Operation):
         self.subpipeline_parset_template = '{0}_sector_pipeline.cwl'.format(self.rootname)
 
         # Initialize various parameters
-        self.apply_none = None
+        # Note:
+        #   Parameters set to None will be set in the set_parset_parameters() method
+        #       as needed for the given imaging mode
+        #   Paramters set to True or False must be explicitly set by a subclass
         self.apply_amplitudes = None
         self.apply_fulljones = None
+        self.apply_normalizations = None
+        self.preapply_dde_solutions = None
         self.apply_screens = None
-        self.make_image_cube = None
-        self.normalize_flux_scale = None
         self.dde_method = None
         self.use_facets = None
         self.save_source_list = None
@@ -40,32 +43,35 @@ class Image(Operation):
         self.do_predict = None
         self.do_multiscale_clean = None
         self.pol_combine_method = None
+        self.apply_none = False  # no solutions applied before or during imaging (ImageInitial only)
+        self.make_image_cube = False  # make an image cube (for now ImageNormalize only)
+        self.normalize_flux_scale = False  # derive flux scale normalizations (ImageNormalize only)
 
     def set_parset_parameters(self):
         """
         Define parameters needed for the CWL workflow template
         """
         # Set parameters as needed
-        if self.apply_none is None:
-            self.apply_none = False
         if self.apply_amplitudes is None:
             self.apply_amplitudes = self.field.apply_amplitudes
         if self.apply_screens is None:
             self.apply_screens = self.field.apply_screens
         if self.apply_fulljones is None:
             self.apply_fulljones = self.field.apply_fulljones
-        if self.make_image_cube is None:
-            self.make_image_cube = False
-        if self.normalize_flux_scale is None:
-            self.normalize_flux_scale = False
-        if not self.normalize_flux_scale and self.normalize_h5parm is not None:
-            self.apply_normalization = True
-        else:
-            self.apply_normalization = False
+        if self.apply_normalizations is None:
+            if self.normalize_flux_scale:
+                self.apply_normalizations = False
+            else:
+                self.apply_normalizations = self.field.apply_normalizations
         if self.dde_method is None:
             self.dde_method = self.field.dde_method
         if self.use_facets is None:
             self.use_facets = True if (self.dde_method == 'full' and not self.apply_screens) else False
+        if self.preapply_dde_solutions is None:
+            if self.dde_method == 'single' and not self.apply_none:
+                self.preapply_dde_solutions = True
+            else:
+                self.preapply_dde_solutions = False
         if self.image_pol is None:
             self.image_pol = self.field.image_pol
         if self.save_source_list is None:
@@ -85,6 +91,8 @@ class Image(Operation):
                              'apply_amplitudes': self.apply_amplitudes,
                              'apply_screens': self.apply_screens,
                              'apply_fulljones': self.apply_fulljones,
+                             'apply_normalizations': self.apply_normalizations,
+                             'preapply_solutions': self.preapply_solutions,
                              'make_image_cube': self.make_image_cube,
                              'normalize_flux_scale': self.normalize_flux_scale,
                              'use_facets': self.use_facets,
@@ -172,7 +180,7 @@ class Image(Operation):
                 dir_local.append(self.pipeline_working_dir)
             else:
                 dir_local.append(self.scratch_dir)
-            if not self.apply_none:
+            if self.preapply_dde_solutions:
                 central_patch_name.append(sector.central_patch)
             if self.make_image_cube:
                 image_cube_name.append(sector.name + '_freq_cube.fits')
@@ -190,21 +198,27 @@ class Image(Operation):
             else:
                 join_polarizations = True
 
-        # Set the DP3 applycal steps depending on which solutions are pre-applied
-        # before imaging and which are applied during imaging
-        applycal_steps = []
-        if self.apply_screens or self.use_facets:
-            # No solutions should be pre-applied
-            applycal_steps = '[]'
+        # Set the DP3 steps and applycal steps depending on whether solutions
+        # should be preapplied before imaging
+        if self.apply_none or (not self.preapply_dde_solutions and
+                               not self.apply_fulljones and
+                               not self.apply_normalizations):
+            # No solutions should be preapplied
+            prepare_data_steps = ['applybeam', 'shift', 'avg']
+            prepare_data_applycal_steps = []
         else:
-            # Fast phases and slow amplitudes (if generated) should be pre-applied
-            applycal_steps.append('fastphase')
-            if self.apply_amplitudes:
-                applycal_steps.append('slowamp')
-        if self.apply_fulljones:
-            applycal_steps.append('fulljones')
-        if self.apply_normalization:
-            applycal_steps.append('normalization')
+            prepare_data_steps = ['applybeam', 'shift', 'applycal', 'avg']
+            prepare_data_applycal_steps = []
+            if self.preapply_dde_solutions:
+                # Fast phases and slow amplitudes (if generated) should be
+                # preapplied, as they are not applied during imaging
+                prepare_data_applycal_steps.append('fastphase')
+                if self.apply_amplitudes:
+                    prepare_data_applycal_steps.append('slowamp')
+            if self.apply_fulljones:
+                prepare_data_applycal_steps.append('fulljones')
+            if self.apply_normalizations:
+                prepare_data_applycal_steps.append('normalization')
 
         # Set the parameters common to all modes
         self.input_parms = {'obs_filename': [CWLDir(name).to_json() for name in obs_filename],
@@ -224,6 +238,7 @@ class Image(Operation):
                             'link_polarizations': link_polarizations,
                             'join_polarizations': join_polarizations,
                             'apply_amplitudes': [self.apply_amplitudes] * nsectors,
+                            'prepare_data_steps': f"[{','.join(prepare_data_steps)}]",
                             'channels_out': [sector.wsclean_nchannels for sector in self.imaging_sectors],
                             'deconvolution_channels': [sector.wsclean_deconvolution_channels for sector in self.imaging_sectors],
                             'fit_spectral_pol': [sector.wsclean_spectral_poly_order for sector in self.imaging_sectors],
@@ -264,10 +279,13 @@ class Image(Operation):
             self.input_parms.update({'mpi_nnodes': [nnodes_per_subpipeline] * nsectors})
             self.input_parms.update({'mpi_cpus_per_task': [self.parset['cluster_specific']['cpus_per_task']] * nsectors})
         if not self.apply_none:
-            self.input_parms.update({'h5parm': CWLFile(self.field.h5parm_filename).to_json()})
-            if self.field.fulljones_h5parm_filename is not None:
+            self.input_parms.update({'h5parm': CWLFile(self.field.h5parm_filename).to_json(),
+                                     'prepare_data_applycal_steps': f"[{','.join(prepare_data_applycal_steps)}]"})
+            if self.apply_fulljones:
                 self.input_parms.update({'fulljones_h5parm': CWLFile(self.field.fulljones_h5parm_filename).to_json()})
-            if self.field.apply_screens:
+            if self.apply_normalizations:
+                self.input_parms.update({'input_normalize_h5parm': CWLFile(normalize_h5parm).to_json()})
+            if self.apply_screens:
                 self.input_parms.update({'idgcal_h5parm': CWLFile(self.field.idgcal_h5parm_filename).to_json()})
             elif self.use_facets:
                 # For faceting, we need inputs for making the ds9 facet region files
@@ -330,7 +348,7 @@ class Image(Operation):
             self.input_parms.update({'image_cube_name': image_cube_name})
         if self.normalize_flux_scale:
             self.input_parms.update({'output_source_catalog': output_source_catalog})
-            self.input_parms.update({'normalize_h5parm': normalize_h5parm})
+            self.input_parms.update({'output_normalize_h5parm': normalize_h5parm})
 
     def finalize(self):
         """
@@ -599,6 +617,9 @@ class ImageNormalize(Image):
             misc.create_directory(dst_dir)
             dst_filename = os.path.join(dst_dir, os.path.basename(sector.normalize_h5parm))
             shutil.copy(sector.normalize_h5parm, dst_filename)
+
+        # Apply normalizations in subsequent imaging
+        self.field.apply_normalizations = True
 
         # Finally call finalize() of the Operation class
         super(Image, self).finalize()
