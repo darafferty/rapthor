@@ -139,8 +139,10 @@ inputs:
 {% endif %}
 
   - id: prepare_data_steps
-    source: prepare_data_steps
-    type: string
+    label: DP3 steps
+    doc: |
+      The steps to perform in the prepare data DP3 step (length = 1).
+type: string
 
 {% if not apply_none %}
   - id: h5parm
@@ -151,7 +153,10 @@ inputs:
     type: File
 
   - id: prepare_data_applycal_steps
-    source: prepare_data_applycal_steps
+    label: DP3 steps
+    doc: |
+      The steps to perform in the applycal part of the prepare data DP3 step
+      (length = 1).
     type: string
 {% endif %}
 
