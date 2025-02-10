@@ -736,12 +736,12 @@ steps:
 {% if use_facets %}
               ra_mid, dec_mid, width_ra, width_dec, facet_region_file,
 {% else %}
-{% if apply_normalizations %}
-              input_normalize_h5parm,
-{% endif %}
 {% if not apply_none %}
               central_patch_name,
 {% endif %}
+{% endif %}
+{% if apply_normalizations %}
+              input_normalize_h5parm,
 {% endif %}
 {% if make_image_cube %}
               image_cube_name,
