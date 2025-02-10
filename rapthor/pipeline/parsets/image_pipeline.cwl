@@ -172,7 +172,9 @@ inputs:
 {% endif %}
 
   - id: prepare_data_steps
-    source: prepare_data_steps
+    label: DP3 steps
+    doc: |
+      The steps to perform in the prepare data DP3 step (length = 1).
     type: string
 
 {% if not apply_none %}
@@ -184,7 +186,9 @@ inputs:
     type: File
 
   - id: prepare_data_applycal_steps
-    source: prepare_data_applycal_steps
+    label: DP3 steps
+    doc: |
+      The steps to perform in the applycal part of the prepare data DP3 step (length = 1).
     type: string
 {% endif %}
 
@@ -204,15 +208,6 @@ inputs:
       The filename of the input h5parm file with the flux-scale normalizations
       (length = n_sectors).
     type: File[]
-{% endif %}
-
-{% if apply_screens %}
-  - id: idgcal_h5parm
-    label: Filename of h5parm
-    doc: |
-      The filename of the h5parm file with the IDGCal screeen solutions
-      (length = 1).
-    type: File
 {% endif %}
 
 {% if use_facets %}
@@ -637,10 +632,6 @@ steps:
       - id: input_normalize_h5parm
         source: input_normalize_h5parm
 {% endif %}
-{% if apply_screens %}
-      - id: idgcal_h5parm
-        source: idgcal_h5parm
-{% endif %}
 {% if use_facets %}
 # start use_facets
       - id: skymodel
@@ -732,8 +723,8 @@ steps:
 {% if normalize_flux_scale %}
       - id: output_source_catalog
         source: output_source_catalog
-      - id: normalize_h5parm
-        source: normalize_h5parm
+      - id: output_normalize_h5parm
+        source: output_normalize_h5parm
 {% endif %}
     scatter: [obs_filename, prepare_filename, concat_filename, starttime, ntimes,
               image_freqstep, image_timestep, previous_mask_filename, mask_filename,

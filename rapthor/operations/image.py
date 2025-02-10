@@ -53,16 +53,16 @@ class Image(Operation):
         """
         # Set parameters as needed
         if self.apply_amplitudes is None:
-            self.apply_amplitudes = self.field.apply_amplitudes
+            self.apply_amplitudes = self.field.apply_amplitudes  # set by CalibrateDD.finalize()
         if self.apply_screens is None:
-            self.apply_screens = self.field.apply_screens
+            self.apply_screens = self.field.apply_screens  # set by process.run_steps()
         if self.apply_fulljones is None:
-            self.apply_fulljones = self.field.apply_fulljones
+            self.apply_fulljones = self.field.apply_fulljones  # set by CalibrateDI.finalize()
         if self.apply_normalizations is None:
             if self.normalize_flux_scale:
                 self.apply_normalizations = False
             else:
-                self.apply_normalizations = self.field.apply_normalizations
+                self.apply_normalizations = self.field.apply_normalizations  # set by ImageNormalize.finalize()
         if self.dde_method is None:
             self.dde_method = self.field.dde_method
         if self.use_facets is None:
@@ -73,7 +73,7 @@ class Image(Operation):
             else:
                 self.preapply_dde_solutions = False
         if self.image_pol is None:
-            self.image_pol = self.field.image_pol
+            self.image_pol = self.field.image_pol  # set by process.run_steps()
         if self.save_source_list is None:
             self.save_source_list = True if self.image_pol.lower() == 'i' else False
         if self.peel_bright_sources is None:
@@ -92,7 +92,7 @@ class Image(Operation):
                              'apply_screens': self.apply_screens,
                              'apply_fulljones': self.apply_fulljones,
                              'apply_normalizations': self.apply_normalizations,
-                             'preapply_solutions': self.preapply_solutions,
+                             'preapply_dde_solutions': self.preapply_dde_solutions,
                              'make_image_cube': self.make_image_cube,
                              'normalize_flux_scale': self.normalize_flux_scale,
                              'use_facets': self.use_facets,
@@ -186,6 +186,8 @@ class Image(Operation):
                 image_cube_name.append(sector.name + '_freq_cube.fits')
             if self.normalize_flux_scale:
                 output_source_catalog.append(sector.name + '_source_catalog.fits')
+                normalize_h5parm.append(sector.name + '_normalize.h5parm')
+            if self.apply_normalizations:
                 normalize_h5parm.append(sector.name + '_normalize.h5parm')
 
         # Handle the polarization-related options
@@ -619,6 +621,7 @@ class ImageNormalize(Image):
             shutil.copy(sector.normalize_h5parm, dst_filename)
 
         # Apply normalizations in subsequent imaging
+        self.field.normalize_flux_scale = False
         self.field.apply_normalizations = True
 
         # Finally call finalize() of the Operation class

@@ -173,15 +173,6 @@ inputs:
     type: File
 {% endif %}
 
-{% if apply_screens %}
-  - id: idgcal_h5parm
-    label: Filename of h5parm
-    doc: |
-      The filename of the h5parm file with the IDGCal screeen solutions
-      (length = 1).
-    type: File
-{% endif %}
-
 {% if use_facets %}
 # start use_facets
   - id: skymodel
@@ -525,11 +516,7 @@ steps:
       This step uses DP3 to prepare the input data for imaging. This involves
       averaging, phase shifting, and optionally the application of the
       calibration solutions.
-{% if apply_none %}
     run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data.cwl
-{% else %}
-    run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data_with_applycal.cwl
-{% endif %}
 {% if max_cores is not none %}
     hints:
       ResourceRequirement:
@@ -556,8 +543,6 @@ steps:
       - id: numthreads
         source: max_threads
 {% if preapply_dde_solutions %}
-      - id: h5parm
-        source: h5parm
       - id: central_patch_name
         source: central_patch_name
 {% endif %}
@@ -572,6 +557,14 @@ steps:
 {% if apply_normalizations %}
       - id: normalize_h5parm
         source: input_normalize_h5parm
+{% endif %}
+      - id: steps
+        source: prepare_data_steps
+{% if not apply_none %}
+      - id: h5parm
+        ource: h5parm
+      - id: applycal_steps
+        source: prepare_data_applycal_steps
 {% endif %}
     scatter: [msin, msout, starttime, ntimes, freqstep, timestep]
     scatterMethod: dotproduct
@@ -697,7 +690,7 @@ steps:
         source: premask/maskimg
 {% if apply_screens or use_facets %}
       - id: h5parm
-        source: idgcal_h5parm
+        source: h5parm
 {% endif %}
 {% if use_mpi %}
       - id: nnodes

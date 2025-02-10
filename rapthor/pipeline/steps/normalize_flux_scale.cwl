@@ -21,7 +21,7 @@ inputs:
     label: MS file filename
     doc: |
       The filename of the imaging MS file.
-    type: File
+    type: Directory
     inputBinding:
       position: 2
   - id: normalize_h5parm
