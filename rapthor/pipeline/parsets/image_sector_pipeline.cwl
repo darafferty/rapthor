@@ -567,7 +567,7 @@ steps:
         source: prepare_data_steps
 {% if not apply_none %}
       - id: h5parm
-        ource: h5parm
+        source: h5parm
       - id: applycal_steps
         source: prepare_data_applycal_steps
 {% endif %}
