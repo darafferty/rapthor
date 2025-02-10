@@ -142,7 +142,7 @@ inputs:
     label: DP3 steps
     doc: |
       The steps to perform in the prepare data DP3 step (length = 1).
-type: string
+    type: string
 
 {% if not apply_none %}
   - id: h5parm
