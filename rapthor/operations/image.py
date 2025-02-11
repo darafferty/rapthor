@@ -617,7 +617,8 @@ class ImageNormalize(Image):
             src_filename = f'{image_root}_normalize.h5parm'
             dst_dir = os.path.join(self.parset['dir_working'], 'solutions', self.name)
             misc.create_directory(dst_dir)
-            sector.normalize_h5parm = os.path.join(dst_dir, os.path.basename(src_filename))
+            dst_basename = os.path.basename(f'{image_root}_normalize.h5')
+            sector.normalize_h5parm = os.path.join(dst_dir, dst_basename)
             shutil.copy(src_filename, sector.normalize_h5parm)
 
         # Apply normalizations in subsequent imaging

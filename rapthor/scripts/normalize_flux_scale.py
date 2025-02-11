@@ -121,7 +121,7 @@ def find_normalizations(rapthor_fluxes, rapthor_errors, rapthor_frequencies,
 
 def create_normalization_h5parm(antenna_file, field_file, h5parm_file, frequencies,
                                 normalizations, solset_name='sol000',
-                                soltab_name='amp000'):
+                                soltab_name='amplitude000'):
     """
     Writes normalization corrections to an H5parm file
 
@@ -169,7 +169,7 @@ def create_normalization_h5parm(antenna_file, field_file, h5parm_file, frequenci
         sourceTable.append([('pointing', pointing)])
 
         # Create the output solution table
-        amps = np.sqrt(normalizations)  # so that corrected data = data / normalizations
+        amps = np.sqrt(normalizations)  # so that corrected data = data / amp^2 = data / normalizations
         weights = np.ones(normalizations.shape)
         soltab = solset.makeSoltab('amplitude', soltab_name, axesNames=['freq'],
                                    axesVals=[frequencies], vals=amps,
@@ -224,8 +224,11 @@ def main(source_catalog, ms_file, output_h5parm, radius_cut=3.0, major_axis_cut=
     if n_chan == 0:
         raise ValueError('No channel frequency columns were found in the input source catalog. '
                          'Please run PyBDSF with the spectral-index mode activated.')
-    min_frequency = np.nanmin(data['Freq_ch1'])  # Hz
-    max_frequency = np.nanmax(data[f'Freq_ch{n_chan}'])  # Hz
+    spectral_window_file = ms_file + '::SPECTRAL_WINDOW'
+    with pt.table(spectral_window_file, ack=False) as sw:
+        min_frequency = np.min(sw.col('CHAN_FREQ')[0])
+        max_frequency = np.max(sw.col('CHAN_FREQ')[0])
+        channel_width = sw.col('CHAN_WIDTH')[0][0]
 
     # Get the RA and Dec of the phase center from the MS file's FIELD table
     field_file = ms_file + '::FIELD'
@@ -322,12 +325,13 @@ def main(source_catalog, ms_file, output_h5parm, radius_cut=3.0, major_axis_cut=
             survey_catalogs.append({'survey': survey, 'flux': np.array(survey_fluxes)*flux_correction,
                                     'flux_err': flux_err, 'frequency': frequency})
 
-    # Fit the source SEDs to find the corrections in 0.1 MHz channels. We use 0.1 MHz as
-    # it matches the typical channel width of data used with Rapthor
+    # Fit the source SEDs to find the corrections. The frequencies for the
+    # which the corrections are determined are constructed to match the channels
+    # of the input MS file
     #
     # TODO: Test whether a coarser grid would work (it just needs to be fine enough to
     # capture the frequency behavior of the corrections sufficiently well)
-    output_frequencies = np.arange(min_frequency, max_frequency+1e5, 1e5)
+    output_frequencies = np.arange(min_frequency-channel_width, max_frequency+channel_width, channel_width)
     if do_normalization:
         # Make arrays of flux density vs. frequency for each source, for both
         # the observed fluxes and the catalog fluxes, and find the corrections

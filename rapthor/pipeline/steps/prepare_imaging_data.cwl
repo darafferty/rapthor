@@ -82,7 +82,7 @@ inputs:
     inputBinding:
       prefix: applycal.parmdb=
       separate: False
-  - id: h5parm_fulljones
+  - id: fulljones_h5parm
     label: Filename of h5parm
     doc: |
       The filename of the h5parm file with the full-Jones calibration solutions.
@@ -90,7 +90,7 @@ inputs:
     inputBinding:
       prefix: applycal.fulljones.parmdb=
       separate: False
-  - id: h5parm_normalization
+  - id: normalize_h5parm
     label: Filename of h5parm
     doc: |
       The filename of the h5parm file with the flux-scale normalization corrections.
