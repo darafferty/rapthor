@@ -577,7 +577,7 @@ class ImageNormalize(Image):
         """
         # Set the imaging parameters that are optimal for the flux-scale
         # normalization
-        self.imaging_sectors = self.field.imaging_sectors
+        self.imaging_sectors = self.field.imaging_sectors[:]  # work on copies so originals are not altered
         for sector in self.imaging_sectors:
             sector.auto_mask = 5.0
             sector.threshisl = 4.0
