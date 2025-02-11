@@ -188,7 +188,7 @@ class Image(Operation):
                 output_source_catalog.append(sector.name + '_source_catalog.fits')
                 normalize_h5parm.append(sector.name + '_normalize.h5parm')
             if self.apply_normalizations:
-                normalize_h5parm.append(sector.name + '_normalize.h5parm')
+                normalize_h5parm.append(sector.normalize_h5parm)
 
         # Handle the polarization-related options
         link_polarizations = False
@@ -601,24 +601,24 @@ class ImageNormalize(Image):
         for sector in self.imaging_sectors:
             # The output image cube filenames
             image_root = os.path.join(self.pipeline_working_dir, sector.name)
-            sector.I_freq_cube = f'{image_root}_freq_cube.fits'
+            src_filename = f'{image_root}_freq_cube.fits'
             dst_dir = os.path.join(self.parset['dir_working'], 'images', self.name)
             misc.create_directory(dst_dir)
-            dst_filename = os.path.join(dst_dir, os.path.basename(sector.I_freq_cube))
-            shutil.copy(sector.I_freq_cube, dst_filename)
+            sector.I_freq_cube = os.path.join(dst_dir, os.path.basename(src_filename))
+            shutil.copy(src_filename, sector.I_freq_cube)
 
             # The output beams and frequencies files
             for suffix in ['_beams.txt', '_frequencies.txt']:
-                src_filename = sector.I_freq_cube + suffix
+                src_filename = f'{image_root}_freq_cube.fits{suffix}'
                 dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
                 shutil.copy(src_filename, dst_filename)
 
             # The output h5parm with the flux-scale corrections
-            sector.normalize_h5parm = f'{image_root}_normalize.h5parm'
+            src_filename = f'{image_root}_normalize.h5parm'
             dst_dir = os.path.join(self.parset['dir_working'], 'solutions', self.name)
             misc.create_directory(dst_dir)
-            dst_filename = os.path.join(dst_dir, os.path.basename(sector.normalize_h5parm))
-            shutil.copy(sector.normalize_h5parm, dst_filename)
+            sector.normalize_h5parm = os.path.join(dst_dir, os.path.basename(src_filename))
+            shutil.copy(src_filename, sector.normalize_h5parm)
 
         # Apply normalizations in subsequent imaging
         self.field.normalize_flux_scale = False

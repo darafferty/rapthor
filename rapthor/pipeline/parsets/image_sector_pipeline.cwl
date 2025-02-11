@@ -550,10 +550,8 @@ steps:
 {% if preapply_dde_solutions %}
       - id: central_patch_name
         source: central_patch_name
-{% endif %}
-{% if apply_fulljones %}
-      - id: fulljones_h5parm
-        source: fulljones_h5parm
+      - id: h5parm
+        source: h5parm
 {% endif %}
 {% if apply_fulljones %}
       - id: fulljones_h5parm
@@ -566,8 +564,6 @@ steps:
       - id: steps
         source: prepare_data_steps
 {% if not apply_none %}
-      - id: h5parm
-        source: h5parm
       - id: applycal_steps
         source: prepare_data_applycal_steps
 {% endif %}
