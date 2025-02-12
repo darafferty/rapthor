@@ -1584,7 +1584,8 @@ class Field(object):
             # selection by the ratio of (LOFAR / true) fluxes determined in the image
             # operation of the previous selfcal cycle. This adjustment is only done if the
             # fractional change is significant (as measured by the standard deviation in
-            # the ratio)
+            # the ratio) and if flux normalization was not done in the imaging (since, if
+            # normalization was done, no adjustment should be needed)
             target_flux = step_dict['target_flux']
             target_number = step_dict['max_directions']
             calibrator_max_dist_deg = step_dict['max_distance']
@@ -1594,7 +1595,7 @@ class Field(object):
                 fractional_change = 1 / self.lofar_to_true_flux_ratio - 1
             else:
                 fractional_change = self.lofar_to_true_flux_ratio - 1
-            if fractional_change > self.lofar_to_true_flux_std:
+            if fractional_change > self.lofar_to_true_flux_std and not self.apply_normalizations:
                 target_flux *= self.lofar_to_true_flux_ratio
                 self.log.info('Adjusting the target flux for calibrator selection '
                               'from {0:.2f} Jy to {1:.2f} Jy to account for the offset found '
