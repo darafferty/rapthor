@@ -138,13 +138,8 @@ class Image(Operation):
         for sector in self.imaging_sectors:
             image_root.append(sector.name)
 
-            # Set the imaging parameters for each imaging sector. Note the we do not
-            # let the imsize be recalcuated, as otherwise it may change from the previous
-            # iteration and the mask made in that iteration can not be used in this one.
-            # Generally, this should work fine, since we do not expect large changes in
-            # the size of the sector from iteration to iteration (small changes are OK,
-            # given the padding we use during imaging)
-            sector.set_imaging_parameters(self.do_multiscale_clean, recalculate_imsize=False,
+            # Set the imaging parameters for each imaging sector
+            sector.set_imaging_parameters(self.do_multiscale_clean, recalculate_imsize=True,
                                           imaging_parameters=self.imaging_parameters)
 
             # Set input MS filenames
@@ -577,7 +572,7 @@ class ImageNormalize(Image):
         """
         # Set the imaging parameters that are optimal for the flux-scale
         # normalization
-        self.imaging_sectors = self.field.imaging_sectors[:]  # work on copies so originals are not altered
+        self.imaging_sectors = self.field.imaging_sectors
         for sector in self.imaging_sectors:
             sector.auto_mask = 5.0
             sector.threshisl = 4.0
