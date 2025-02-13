@@ -3,10 +3,10 @@ class: CommandLineTool
 baseCommand: [DP3]
 label: Prepares a dataset for imaging
 doc: |
-  This tool prepares the input data for imaging without direction-dependent corrections,
-  including applying the direction-independent full-Jones solutions and all other
-  solutions, applying the beam model, phase shifting, and averaging. See
-  prepare_imaging_data.cwl for a detailed description of the inputs and outputs.
+  This tool prepares the input data for imaging, including applying solutions,
+  applying the beam model, phase shifting, and averaging. See the relevant
+  parameters below for the allowed processing step names and solution types.
+  Output is an MS file containing the imaging visibilities in the DATA column.
 
 requirements:
   InlineJavascriptRequirement: {}
@@ -15,7 +15,6 @@ requirements:
 arguments:
   - msin.datacolumn=DATA
   - msout.overwrite=True
-  - msout.writefullresflag=False
   - shift.type=phaseshifter
   - avg.type=squash
   - applycal.type=applycal
@@ -108,21 +107,31 @@ inputs:
       prefix: applycal.direction=
       separate: False
   - id: numthreads
+    label: Number of threads
+    doc: |
+      The maximum number of threads to use.
     type: int
     inputBinding:
       prefix: numthreads=
       separate: False
   - id: steps
+    label: List of steps
+    doc: |
+      The list of steps to perform. Allowed steps are "applybeam", "shift", "avg", and
+      "applycal".
     type: string
     inputBinding:
       prefix: steps=
       separate: False
   - id: applycal_steps
+    label: List of applycal steps
+    doc: |
+      The list of applycal steps to perform. Allowed steps are "fastphase", "slowamp",
+      "fulljones", and "normalization"
     type: string
     inputBinding:
       prefix: applycal.steps=
       separate: False
-
 
 outputs:
   - id: msimg

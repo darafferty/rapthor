@@ -13,7 +13,6 @@ requirements:
 arguments:
   - msin.datacolumn=DATA
   - msout.overwrite=True
-  - msout.writefullresflag=False
   - steps=[predict]
   - predict.operation=replace
   - predict.usebeammodel=True
