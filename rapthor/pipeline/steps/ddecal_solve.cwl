@@ -117,7 +117,7 @@ inputs:
     label: BDA timebase
     doc: |
       The baseline length (in meters) below which BDA time averaging is done.
-    type: float
+    type: float?
     inputBinding:
       prefix: avg.timebase=
       separate: False
@@ -126,7 +126,7 @@ inputs:
     label: BDA maxinterval
     doc: |
       The maximum interval duration (in time slots) over which BDA time averaging is done.
-    type: int
+    type: int?
     inputBinding:
       prefix: avg.maxinterval=
       separate: False
@@ -135,7 +135,7 @@ inputs:
     label: Direction names
     doc: |
       The names of the directions for the solve.
-    type: string[]
+    type: string[]?
     inputBinding:
       valueFrom: $('['+self+']')
       prefix: solve.directions=
@@ -146,7 +146,7 @@ inputs:
     label: Solutions per directions
     doc: |
       The number of solution intervals (in time) per direction for the solve.
-    type: int[]
+    type: int[]?
     inputBinding:
       valueFrom: $('['+self+']')
       prefix: solve.solutions_per_direction=
@@ -231,7 +231,7 @@ inputs:
     label: One beam per patch
     doc: |
       Flag that sets beam correction per patch or per source.
-    type: boolean
+    type: boolean?
     inputBinding:
       prefix: solve.onebeamperpatch=
       valueFrom: "$(self ? 'True': 'False')"
@@ -241,7 +241,7 @@ inputs:
     label: Parallelize over baselines
     doc: |
       Flag that enables parallel prediction over baselines.
-    type: boolean
+    type: boolean?
     inputBinding:
       prefix: solve.parallelbaselines=
       valueFrom: "$(self ? 'True': 'False')"
@@ -251,7 +251,7 @@ inputs:
     label: predict using SAGECal
     doc: |
       Flag that enables prediction using SAGECal.
-    type: boolean
+    type: boolean?
     inputBinding:
       prefix: solve.sagecalpredict=
       valueFrom: "$(self ? 'True': 'False')"
@@ -262,7 +262,7 @@ inputs:
     doc: |
       The datause parameter that determines how the visibilies are used in
       the solves.
-    type: string
+    type: string?
     inputBinding:
       prefix: solve.datause=
       separate: False
@@ -309,7 +309,7 @@ inputs:
     doc: |
       The smoothness constraint kernel size in Hz, used to enforce a smooth frequency
       dependence of the phase solutions.
-    type: float
+    type: float?
     inputBinding:
       prefix: solve.smoothnessconstraint=
       separate: False
@@ -318,7 +318,7 @@ inputs:
     label: Smoothness constraint reference frequency
     doc: |
       The smoothness constraint reference frequency in Hz.
-    type: float
+    type: float?
     inputBinding:
       prefix: solve.smoothnessreffrequency=
       separate: False
@@ -327,7 +327,7 @@ inputs:
     label: Smoothness constraint reference distance
     doc: |
       The smoothness constraint reference distance in m.
-    type: float
+    type: float?
     inputBinding:
       prefix: solve.smoothnessrefdistance=
       separate: False
@@ -336,7 +336,7 @@ inputs:
     label: Antenna constraint
     doc: |
       A list of antennas that will be constrained to have the same solutions.
-    type: string
+    type: string?
     inputBinding:
       prefix: solve.antennaconstraint=
       separate: False

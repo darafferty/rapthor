@@ -38,7 +38,6 @@ class CalibrateDD(Operation):
                              'generate_screens': self.field.generate_screens,
                              'do_slowgain_solve': self.field.do_slowgain_solve,
                              'do_joint_solve': do_joint_solve,
-                             'use_scalarphase': self.field.use_scalarphase,
                              'apply_diagonal_solutions': self.field.apply_diagonal_solutions,
                              'max_cores': max_cores}
 
@@ -155,6 +154,10 @@ class CalibrateDD(Operation):
         solverlbfgs_minibatches = self.field.solverlbfgs_minibatches
         fast_datause = self.field.fast_datause
         slow_datause = self.field.slow_datause
+        if self.field.use_scalarphase:
+            dp3_solve_mode_fast = 'scalarphase'
+        else:
+            dp3_solve_mode_fast = 'scalar'
 
         # Get the size of the imaging area (for use in making the a-term images)
         sector_bounds_deg = '{}'.format(self.field.sector_bounds_deg)
@@ -178,23 +181,20 @@ class CalibrateDD(Operation):
             dp3_steps_slow_separate = '[solve]'
 
         # Set the DDECal applycal steps depending on what solutions need to be
-        # applied from earlier steps
+        # applied
         if self.apply_normalizations:
             dp3_applycal_steps_fast = '[normalization]'
         else:
             dp3_applycal_steps_fast = '[]'
         if self.do_slowgain_solve:
             if self.do_joint_solve:
-                dp3_applycal_steps_slow_joint = '[fastphase]'
                 dp3_applycal_steps_slow_separate = '[fastphase,slowamp]'
             else:
-                dp3_applycal_steps_slow_joint = '[]'
                 dp3_applycal_steps_slow_separate = '[fastphase]'
         if self.use_scalarphase:
             dp3_solve_mode_fast = 'scalarphase'
         else:
             dp3_solve_mode_fast = 'scalar'
-        dp3_solve_mode_slow = 'diagonal'
 
         self.input_parms = {'timechunk_filename': CWLDir(timechunk_filename).to_json(),
                             'freqchunk_filename_joint': CWLDir(freqchunk_filename_joint).to_json(),
@@ -230,14 +230,13 @@ class CalibrateDD(Operation):
                             'fast_smoothnessrefdistance': fast_smoothnessrefdistance,
                             'slow_smoothnessconstraint_joint': slow_smoothnessconstraint_joint,
                             'slow_smoothnessconstraint_separate': slow_smoothnessconstraint_separate,
+                            'dp3_solve_mode_fast': dp3_solve_mode_fast,
                             'dp3_steps_fast': dp3_steps_fast,
+                            'dp3_applycal_steps_fast': dp3_applycal_steps_fast,
                             'dp3_steps_slow_joint': dp3_steps_slow_joint,
                             'dp3_steps_slow_separate': dp3_steps_slow_separate,
-                            'dp3_applycal_steps_fast': dp3_applycal_steps_fast,
-                            'dp3_applycal_steps_slow_joint': dp3_applycal_steps_slow_joint,
                             'dp3_applycal_steps_slow_separate': dp3_applycal_steps_slow_separate,
                             'dp3_solve_mode_fast': dp3_solve_mode_fast,
-                            'dp3_solve_mode_slow': dp3_solve_mode_slow,
                             'bda_maxinterval_fast': bda_maxinterval_fast,
                             'bda_timebase_fast': bda_timebase_fast,
                             'bda_maxinterval_slow_joint': bda_maxinterval_slow_joint,
@@ -444,11 +443,6 @@ class CalibrateDI(Operation):
         solverlbfgs_iter = self.field.solverlbfgs_iter
         solverlbfgs_minibatches = self.field.solverlbfgs_minibatches
 
-        # Set the DDECal steps
-        dp3_steps = '[solve]'
-        dp3_solve_mode = 'fulljones'
-        dp3_applycal_steps = '[]'
-
         self.input_parms = {'freqchunk_filename_fulljones': CWLDir(freqchunk_filename_fulljones).to_json(),
                             'starttime_fulljones': starttime_fulljones,
                             'ntimes_fulljones': ntimes_fulljones,
@@ -471,9 +465,6 @@ class CalibrateDI(Operation):
                             'solverlbfgs_dof': solverlbfgs_dof,
                             'solverlbfgs_iter': solverlbfgs_iter,
                             'solverlbfgs_minibatches': solverlbfgs_minibatches,
-                            'dp3_steps': dp3_steps,
-                            'dp3_solve_mode': dp3_solve_mode,
-                            'dp3_applycal_steps': dp3_applycal_steps,
                             'max_threads': self.field.parset['cluster_specific']['max_threads']}
 
     def finalize(self):

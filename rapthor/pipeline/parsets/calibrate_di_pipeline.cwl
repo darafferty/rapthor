@@ -211,6 +211,12 @@ steps:
         source: ntimes_fulljones
       - id: startchan
         source: startchan_fulljones
+      - id: mode
+        valueFrom: 'fulljones'
+      - id: steps
+        valueFrom: '[solve]'
+      - id: applycal_steps
+        valueFrom: '[]'
       - id: nchan
         source: nchan_fulljones
       - id: h5parm

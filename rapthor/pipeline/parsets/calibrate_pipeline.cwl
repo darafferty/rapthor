@@ -128,10 +128,22 @@ inputs:
       The antenna constraint for the fast phase solve (length = 1).
     type: string
 
+  - id: dp3_solve_mode_fast
+    label: Solve mode for fast solve
+    doc: |
+      The solve mode to use for the fast-phase calibration (length = 1).
+    type: string
+
   - id: dp3_steps_fast
     label: Steps for fast solve
     doc: |
       The list of DP3 steps to use in the fast-phase calibration (length = 1).
+    type: string
+
+  - id: dp3_applycal_steps_fast
+    label: Applycal steps for fast solve
+    doc: |
+      The list of DP3 applycal steps to use in the fast-phase calibration (length = 1).
     type: string
 
   - id: bda_timebase_fast
@@ -287,6 +299,13 @@ inputs:
     label: Steps for separate solve
     doc: |
       The list of DP3 steps to use in the second (separate) slow-gain calibration
+      (length = 1).
+    type: string
+
+  - id: dp3_applycal_steps_slow_separate
+    label: Applycal steps for slow separate solve
+    doc: |
+      The list of DP3 applycal steps to use in the second (separate) slow-gain calibration
       (length = 1).
     type: string
 
@@ -553,11 +572,7 @@ steps:
       This step uses DDECal (in DP3) to solve for phase corrections on short
       timescales (< 1 minute), using the input MS files and sourcedb. These
       corrections are used to correct primarily for ionospheric effects.
-{% if use_scalarphase %}
-    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_scalarphase.cwl
-{% else %}
-    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_scalar.cwl
-{% endif %}
+    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve.cwl
 {% if max_cores is not none %}
     hints:
       ResourceRequirement:
@@ -575,8 +590,12 @@ steps:
         source: output_fast_h5parm
       - id: solint
         source: solint_fast_timestep
+      - id: mode
+        source: dp3_solve_mode_fast
       - id: steps
         source: dp3_steps_fast
+      - id: applycal_steps
+        source: dp3_applycal_steps_fast
       - id: timebase
         source: bda_timebase_fast
       - id: maxinterval
@@ -677,7 +696,7 @@ steps:
       corrections are used to correct primarily for beam errors. The fast-
       phase solutions are preapplied and all stations are constrained to
       have the same (joint) solutions.
-    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_diagonal_joint.cwl
+    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve.cwl
 {% if max_cores is not none %}
     hints:
       ResourceRequirement:
@@ -695,8 +714,12 @@ steps:
         source: startchan_joint
       - id: nchan
         source: nchan_joint
+      - id: mode
+        valueFrom: 'diagonal'
       - id: steps
         source: dp3_steps_slow_joint
+      - id: applycal_steps
+        valueFrom: '[fastphase]'
       - id: timebase
         source: bda_timebase_slow_joint
       - id: maxinterval
@@ -830,11 +853,7 @@ steps:
       phase solutions and first (joint) slow-gain solutions are preapplied
       and stations are solve for separately (so different stations are free
       to have different solutions).
-{% if do_joint_solve %}
-    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_diagonal_separate.cwl
-{% else %}
-    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_diagonal_separate_no_joint.cwl
-{% endif %}
+    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve.cwl
 {% if max_cores is not none %}
     hints:
       ResourceRequirement:
@@ -850,8 +869,12 @@ steps:
         source: slow_ntimes_separate
       - id: startchan
         source: startchan_separate
+      - id: mode
+        valueFrom: 'diagonal'
       - id: steps
         source: dp3_steps_slow_separate
+      - id: applycal_steps
+        source: dp3_applycal_steps_slow_separate
       - id: timebase
         source: bda_timebase_slow_separate
       - id: maxinterval
