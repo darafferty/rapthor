@@ -177,6 +177,12 @@ inputs:
       The steps to perform in the prepare data DP3 step (length = 1).
     type: string
 
+  - id: prepare_data_applycal_steps
+    label: DP3 steps
+    doc: |
+      The steps to perform in the applycal part of the prepare data DP3 step (length = 1).
+    type: string
+
 {% if not apply_none %}
   - id: h5parm
     label: Filename of h5parm
@@ -184,12 +190,6 @@ inputs:
       The filename of the h5parm file with the calibration solutions (length =
       1).
     type: File
-
-  - id: prepare_data_applycal_steps
-    label: DP3 steps
-    doc: |
-      The steps to perform in the applycal part of the prepare data DP3 step (length = 1).
-    type: string
 {% endif %}
 
 {% if apply_fulljones %}
@@ -618,11 +618,11 @@ steps:
 {% endif %}
       - id: prepare_data_steps
         source: prepare_data_steps
+      - id: prepare_data_applycal_steps
+        source: prepare_data_applycal_steps
 {% if not apply_none %}
       - id: h5parm
         source: h5parm
-      - id: prepare_data_applycal_steps
-        source: prepare_data_applycal_steps
 {% endif %}
 {% if apply_fulljones %}
       - id: fulljones_h5parm

@@ -1,14 +1,15 @@
 """
 Module that holds the Image classes
 """
-import os
+import glob
 import json
 import logging
-import shutil
-import glob
+import numpy as np
+import os
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.operation import Operation
 from rapthor.lib.cwl import CWLFile, CWLDir
+import shutil
 
 log = logging.getLogger('rapthor:image')
 
@@ -236,6 +237,7 @@ class Image(Operation):
                             'join_polarizations': join_polarizations,
                             'apply_amplitudes': [self.apply_amplitudes] * nsectors,
                             'prepare_data_steps': f"[{','.join(prepare_data_steps)}]",
+                            'prepare_data_applycal_steps': f"[{','.join(prepare_data_applycal_steps)}]",
                             'channels_out': [sector.wsclean_nchannels for sector in self.imaging_sectors],
                             'deconvolution_channels': [sector.wsclean_deconvolution_channels for sector in self.imaging_sectors],
                             'fit_spectral_pol': [sector.wsclean_spectral_poly_order for sector in self.imaging_sectors],
@@ -276,8 +278,7 @@ class Image(Operation):
             self.input_parms.update({'mpi_nnodes': [nnodes_per_subpipeline] * nsectors})
             self.input_parms.update({'mpi_cpus_per_task': [self.parset['cluster_specific']['cpus_per_task']] * nsectors})
         if not self.apply_none:
-            self.input_parms.update({'h5parm': CWLFile(self.field.h5parm_filename).to_json(),
-                                     'prepare_data_applycal_steps': f"[{','.join(prepare_data_applycal_steps)}]"})
+            self.input_parms.update({'h5parm': CWLFile(self.field.h5parm_filename).to_json()})
             if self.apply_fulljones:
                 self.input_parms.update({'fulljones_h5parm': CWLFile(self.field.fulljones_h5parm_filename).to_json()})
             if self.apply_normalizations:

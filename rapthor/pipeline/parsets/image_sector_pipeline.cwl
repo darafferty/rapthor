@@ -144,6 +144,13 @@ inputs:
       The steps to perform in the prepare data DP3 step (length = 1).
     type: string
 
+  - id: prepare_data_applycal_steps
+    label: DP3 steps
+    doc: |
+      The steps to perform in the applycal part of the prepare data DP3 step
+      (length = 1).
+    type: string
+
 {% if not apply_none %}
   - id: h5parm
     label: Filename of h5parm
@@ -151,13 +158,6 @@ inputs:
       The filename of the h5parm file with the direction-dependent calibration
       solutions (length = 1).
     type: File
-
-  - id: prepare_data_applycal_steps
-    label: DP3 steps
-    doc: |
-      The steps to perform in the applycal part of the prepare data DP3 step
-      (length = 1).
-    type: string
 {% endif %}
 
 {% if apply_fulljones %}
@@ -563,10 +563,8 @@ steps:
 {% endif %}
       - id: steps
         source: prepare_data_steps
-{% if not apply_none %}
       - id: applycal_steps
         source: prepare_data_applycal_steps
-{% endif %}
     scatter: [msin, msout, starttime, ntimes, freqstep, timestep]
     scatterMethod: dotproduct
     out:
