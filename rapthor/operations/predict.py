@@ -99,6 +99,15 @@ class PredictDD(Operation):
         onebeamperpatch = self.field.onebeamperpatch
         sagecalpredict = self.field.sagecalpredict
 
+        dp3_applycal_steps = ['fastphase']
+        if self.field.apply_amplitudes:
+            dp3_applycal_steps.append('slowamp')
+        if self.field.apply_normalizations:
+            normalize_h5parm = self.field.normalize_h5parm
+            dp3_applycal_steps.append('normalization')
+        else:
+            normalize_h5parm = ''
+
         self.input_parms = {'sector_filename': CWLDir(sector_filename).to_json(),
                             'sector_starttime': sector_starttime,
                             'sector_ntimes': sector_ntimes,
@@ -106,6 +115,8 @@ class PredictDD(Operation):
                             'sector_skymodel': CWLFile(sector_skymodel).to_json(),
                             'sector_patches': sector_patches,
                             'h5parm': CWLFile(self.field.h5parm_filename).to_json(),
+                            'normalize_h5parm': CWLFile(normalize_h5parm).to_json(),
+                            'dp3_applycal_steps': f"[{','.join(dp3_applycal_steps)}]",
                             'obs_solint_sec': obs_solint_sec,
                             'obs_solint_hz': obs_solint_hz,
                             'min_uv_lambda': min_uv_lambda,
@@ -342,6 +353,15 @@ class PredictDI(Operation):
         onebeamperpatch = self.field.onebeamperpatch
         sagecalpredict = self.field.sagecalpredict
 
+        dp3_applycal_steps = ['fastphase']
+        if self.field.apply_amplitudes:
+            dp3_applycal_steps.append('slowamp')
+        if self.field.apply_normalizations:
+            normalize_h5parm = self.field.normalize_h5parm
+            dp3_applycal_steps.append('normalization')
+        else:
+            normalize_h5parm = ''
+
         self.input_parms = {'sector_filename': CWLDir(sector_filename).to_json(),
                             'sector_starttime': sector_starttime,
                             'sector_ntimes': sector_ntimes,
@@ -349,6 +369,8 @@ class PredictDI(Operation):
                             'sector_skymodel': CWLFile(sector_skymodel).to_json(),
                             'sector_patches': sector_patches,
                             'h5parm': CWLFile(self.field.h5parm_filename).to_json(),
+                            'normalize_h5parm': CWLFile(normalize_h5parm).to_json(),
+                            'dp3_applycal_steps': f"[{','.join(dp3_applycal_steps)}]",
                             'onebeamperpatch': onebeamperpatch,
                             'sagecalpredict': sagecalpredict,
                             'obs_filename': CWLDir(obs_filename).to_json(),

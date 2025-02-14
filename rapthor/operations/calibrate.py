@@ -182,19 +182,29 @@ class CalibrateDD(Operation):
 
         # Set the DDECal applycal steps depending on what solutions need to be
         # applied
-        if self.apply_normalizations:
-            dp3_applycal_steps_fast = '[normalization]'
-        else:
-            dp3_applycal_steps_fast = '[]'
-        if self.do_slowgain_solve:
-            if self.do_joint_solve:
-                dp3_applycal_steps_slow_separate = '[fastphase,slowamp]'
-            else:
-                dp3_applycal_steps_slow_separate = '[fastphase]'
         if self.use_scalarphase:
             dp3_solve_mode_fast = 'scalarphase'
         else:
             dp3_solve_mode_fast = 'scalar'
+        if self.field.apply_normalizations:
+            normalize_h5parm = self.field.normalize_h5parm if self.apply_normalizations else ''
+            dp3_applycal_steps_fast = '[normalization]'
+        else:
+            normalize_h5parm = ''
+            dp3_applycal_steps_fast = '[]'
+        if self.do_slowgain_solve:
+            dp3_applycal_steps_slow_joint = ['fastphase']
+            dp3_applycal_steps_slow_separate = ['fastphase']
+            if self.do_joint_solve:
+                dp3_applycal_steps_slow_separate.append('slowamp')
+            if self.apply_normalizations:
+                dp3_applycal_steps_slow_joint.append('normalization')
+                dp3_applycal_steps_slow_separate.append('normalization')
+            dp3_applycal_steps_slow_joint = f"[{','.join(dp3_applycal_steps_slow_joint)}]"
+            dp3_applycal_steps_slow_separate = f"[{','.join(dp3_applycal_steps_slow_separate)}]"
+        else:
+            dp3_applycal_steps_slow_joint = '[]'
+            dp3_applycal_steps_slow_separate = '[]'
 
         self.input_parms = {'timechunk_filename': CWLDir(timechunk_filename).to_json(),
                             'freqchunk_filename_joint': CWLDir(freqchunk_filename_joint).to_json(),
@@ -237,6 +247,7 @@ class CalibrateDD(Operation):
                             'dp3_steps_slow_separate': dp3_steps_slow_separate,
                             'dp3_applycal_steps_slow_separate': dp3_applycal_steps_slow_separate,
                             'dp3_solve_mode_fast': dp3_solve_mode_fast,
+                            'normalize_h5parm': normalize_h5parm,
                             'bda_maxinterval_fast': bda_maxinterval_fast,
                             'bda_timebase_fast': bda_timebase_fast,
                             'bda_maxinterval_slow_joint': bda_maxinterval_slow_joint,
