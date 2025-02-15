@@ -31,25 +31,8 @@ classifiers=[
     "Programming Language :: Python :: 3",
     "Topic :: Scientific/Engineering :: Astronomy",
 ]
-dependencies = [
-    "astropy",
-    "bdsf",
-    "jinja2",
-    "losoto>=2.4.3",
-    "lsmtool>=1.6",
-    "matplotlib",
-    "mocpy",
-    "numpy",
-    "python-casacore",
-    "python-dateutil",
-    "reproject",
-    "requests",
-    "Rtree",
-    "scipy",
-    "shapely",
-    "toil[cwl]>=8.0",
-]
-dynamic = ["version"]
+dynamic = ["dependencies", "version"]
+
 
 [project.optional-dependencies]
 test = ["tox"]
@@ -91,6 +74,11 @@ script-files = [
     "rapthor/scripts/regrid_image.py",
     "rapthor/scripts/subtract_sector_models.py",
 ]
+
+
+[tool.setuptools.dynamic]
+dependencies = {file = "requirements.txt"}
+
 
 [tool.setuptools.package-data]
 rapthor = [
