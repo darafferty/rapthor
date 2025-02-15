@@ -13,4 +13,5 @@ requests
 Rtree
 scipy
 shapely
-toil[cwl]>=8.0
+toil @ git+https://github.com/DataBiosphere/toil.git#egg=toil[cwl]
+streamflow @ git+https://github.com/alpha-unito/streamflow.git
