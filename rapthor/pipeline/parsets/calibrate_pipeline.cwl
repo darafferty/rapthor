@@ -146,6 +146,14 @@ inputs:
       The list of DP3 applycal steps to use in the fast-phase calibration (length = 1).
     type: string
 
+{% if apply_normalizations %}
+  - id: normalize_h5parm
+    label: The filename of normalization h5parm
+    doc: |
+      The filename of the input flux-scale normalization h5parm (length = 1).
+    type: string
+{% endif %}
+
   - id: bda_timebase_fast
     label: BDA timebase for fast solve
     doc: |
@@ -299,6 +307,13 @@ inputs:
     label: Steps for separate solve
     doc: |
       The list of DP3 steps to use in the second (separate) slow-gain calibration
+      (length = 1).
+    type: string
+
+  - id: dp3_applycal_steps_slow_joint
+    label: Applycal steps for slow joint solve
+    doc: |
+      The list of DP3 applycal steps to use in the first (joint) slow-gain calibration
       (length = 1).
     type: string
 
@@ -596,6 +611,10 @@ steps:
         source: dp3_steps_fast
       - id: applycal_steps
         source: dp3_applycal_steps_fast
+{% if apply_normalizations %}
+      - id: normalize_h5parm
+        source: normalize_h5parm
+{% endif %}
       - id: timebase
         source: bda_timebase_fast
       - id: maxinterval
@@ -720,6 +739,10 @@ steps:
         source: dp3_steps_slow_joint
       - id: applycal_steps
         valueFrom: '[fastphase]'
+{% if apply_normalizations %}
+      - id: normalize_h5parm
+        source: normalize_h5parm
+{% endif %}
       - id: timebase
         source: bda_timebase_slow_joint
       - id: maxinterval
@@ -875,6 +898,10 @@ steps:
         source: dp3_steps_slow_separate
       - id: applycal_steps
         source: dp3_applycal_steps_slow_separate
+{% if apply_normalizations %}
+      - id: normalize_h5parm
+        source: normalize_h5parm
+{% endif %}
       - id: timebase
         source: bda_timebase_slow_separate
       - id: maxinterval

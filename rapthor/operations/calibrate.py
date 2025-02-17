@@ -38,6 +38,7 @@ class CalibrateDD(Operation):
                              'generate_screens': self.field.generate_screens,
                              'do_slowgain_solve': self.field.do_slowgain_solve,
                              'do_joint_solve': do_joint_solve,
+                             'apply_normalizations': self.field.apply_normalizations,
                              'apply_diagonal_solutions': self.field.apply_diagonal_solutions,
                              'max_cores': max_cores}
 
@@ -182,10 +183,6 @@ class CalibrateDD(Operation):
 
         # Set the DDECal applycal steps depending on what solutions need to be
         # applied
-        if self.use_scalarphase:
-            dp3_solve_mode_fast = 'scalarphase'
-        else:
-            dp3_solve_mode_fast = 'scalar'
         if self.field.apply_normalizations:
             normalize_h5parm = self.field.normalize_h5parm if self.apply_normalizations else ''
             dp3_applycal_steps_fast = '[normalization]'
@@ -245,6 +242,7 @@ class CalibrateDD(Operation):
                             'dp3_applycal_steps_fast': dp3_applycal_steps_fast,
                             'dp3_steps_slow_joint': dp3_steps_slow_joint,
                             'dp3_steps_slow_separate': dp3_steps_slow_separate,
+                            'dp3_applycal_steps_slow_joint': dp3_applycal_steps_slow_joint,
                             'dp3_applycal_steps_slow_separate': dp3_applycal_steps_slow_separate,
                             'dp3_solve_mode_fast': dp3_solve_mode_fast,
                             'normalize_h5parm': normalize_h5parm,

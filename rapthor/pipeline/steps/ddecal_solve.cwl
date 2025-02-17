@@ -113,6 +113,16 @@ inputs:
       prefix: applycal.steps=
       separate: False
 
+  - id: combined_h5parm
+    label: Solution table
+    doc: |
+      The filename of the input solution table containing the combined fast-phase
+      and slow-gain1 solutions. These solutions are preapplied before the solve is done.
+    type: File?
+    inputBinding:
+      prefix: solve.applycal.parmdb=
+      separate: False
+
   - id: timebase
     label: BDA timebase
     doc: |
