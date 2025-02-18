@@ -670,7 +670,7 @@ steps:
     scatter: [msin, starttime, ntimes, h5parm, solint, nchan, maxinterval, smoothnessreffrequency, solutions_per_direction]
     scatterMethod: dotproduct
     out:
-      - id: fast_phases_h5parm
+      - id: output_h5parm
 
   - id: combine_fast_phases
     label: Combine fast-phase solutions
@@ -682,7 +682,7 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/collect_h5parms.cwl
     in:
       - id: inh5parms
-        source: solve_fast_phases/fast_phases_h5parm
+        source: solve_fast_phases/output_h5parm
       - id: outputh5parm
         source: combined_fast_h5parm
     out:
@@ -800,7 +800,7 @@ steps:
     scatter: [msin, starttime, ntimes, startchan, nchan, maxinterval, h5parm, solint, solve_nchan, solutions_per_direction]
     scatterMethod: dotproduct
     out:
-      - id: slow_gains_h5parm
+      - id: output_h5parm
 
   - id: combine_slow_gains_joint
     label: Combine joint slow-gain solutions
@@ -810,7 +810,7 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/collect_h5parms.cwl
     in:
       - id: inh5parms
-        source: solve_slow_gains_joint/slow_gains_h5parm
+        source: solve_slow_gains_joint/output_h5parm
       - id: outputh5parm
         source: combined_slow_h5parm_joint
     out:
@@ -963,7 +963,7 @@ steps:
     scatter: [msin, starttime, ntimes, startchan, nchan, maxinterval, h5parm, solint, solve_nchan, solutions_per_direction]
     scatterMethod: dotproduct
     out:
-      - id: slow_gains_h5parm
+      - id: output_h5parm
 
   - id: combine_slow_gains_separate
     label: Combine separate slow-gain solutions
@@ -973,7 +973,7 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/collect_h5parms.cwl
     in:
       - id: inh5parms
-        source: solve_slow_gains_separate/slow_gains_h5parm
+        source: solve_slow_gains_separate/output_h5parm
       - id: outputh5parm
         source: combined_slow_h5parm_separate
     out:

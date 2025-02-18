@@ -361,7 +361,7 @@ inputs:
       separate: False
 
 outputs:
-  - id: fast_phases_h5parm
+  - id: output_h5parm
     label: Solution table
     doc: |
       The filename of the output solution table. The value is taken from the input

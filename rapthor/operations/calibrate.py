@@ -30,14 +30,14 @@ class CalibrateDD(Operation):
         else:
             max_cores = self.field.parset['cluster_specific']['max_cores']
         if self.field.slow_timestep_joint_sec > 0:
-            do_joint_solve = True
+            self.do_joint_solve = True
         else:
-            do_joint_solve = False
+            self.do_joint_solve = False
 
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
                              'generate_screens': self.field.generate_screens,
                              'do_slowgain_solve': self.field.do_slowgain_solve,
-                             'do_joint_solve': do_joint_solve,
+                             'do_joint_solve': self.do_joint_solve,
                              'apply_normalizations': self.field.apply_normalizations,
                              'apply_diagonal_solutions': self.field.apply_diagonal_solutions,
                              'max_cores': max_cores}
@@ -184,7 +184,7 @@ class CalibrateDD(Operation):
         # Set the DDECal applycal steps depending on what solutions need to be
         # applied
         if self.field.apply_normalizations:
-            normalize_h5parm = self.field.normalize_h5parm if self.apply_normalizations else ''
+            normalize_h5parm = self.field.normalize_h5parm if self.field.apply_normalizations else ''
             dp3_applycal_steps_fast = '[normalization]'
         else:
             normalize_h5parm = ''
@@ -194,7 +194,7 @@ class CalibrateDD(Operation):
             dp3_applycal_steps_slow_separate = ['fastphase']
             if self.do_joint_solve:
                 dp3_applycal_steps_slow_separate.append('slowamp')
-            if self.apply_normalizations:
+            if self.field.apply_normalizations:
                 dp3_applycal_steps_slow_joint.append('normalization')
                 dp3_applycal_steps_slow_separate.append('normalization')
             dp3_applycal_steps_slow_joint = f"[{','.join(dp3_applycal_steps_slow_joint)}]"
