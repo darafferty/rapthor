@@ -58,6 +58,24 @@ inputs:
       prefix: msin.ntimes=
       separate: False
 
+  - id: startchan
+    label: Start channel
+    doc: |
+      The start index for the frequency chunk to be processed.
+    type: int?
+    inputBinding:
+      prefix: msin.startchan=
+      separate: False
+
+  - id: nchan
+    label: Number of channels
+    doc: |
+      The number of channels for the frequency chunk to be processed.
+    type: int?
+    inputBinding:
+      prefix: msin.nchan=
+      separate: False
+
   - id: h5parm
     label: Solution table
     doc: |
@@ -70,16 +88,16 @@ inputs:
   - id: solint
     label: Solution interval
     doc: |
-      The solution interval in timeslots for the solve.
+      The solution interval in number of time slots for the solve.
     type: int
     inputBinding:
       prefix: solve.solint=
       separate: False
 
-  - id: nchan
+  - id: solve_nchan
     label: Solution interval
     doc: |
-      The solution interval in channels for the solve.
+      The solution interval in number of channels for the solve.
     type: int
     inputBinding:
       prefix: solve.nchan=
@@ -88,7 +106,7 @@ inputs:
   - id: mode
     label: Solver mode
     doc: |
-      The mode to use for the solve.
+      The solver mode to use for the solve.
     type: string
     inputBinding:
       prefix: solve.mode=
@@ -97,7 +115,7 @@ inputs:
   - id: steps
     label: Processing steps
     doc: |
-      The list of processing steps to perform
+      The list of processing steps to perform.
     type: string
     inputBinding:
       prefix: steps=
@@ -196,7 +214,7 @@ inputs:
   - id: llssolver
     label: Linear least-squares solver
     doc: |
-      The linear least-squares solver to use (one of 'qr', 'svd', or 'lsmr')
+      The linear least-squares solver to use (one of 'qr', 'svd', or 'lsmr').
     type: string
     inputBinding:
       prefix: solve.llssolver=
@@ -386,7 +404,7 @@ outputs:
     label: Solution table
     doc: |
       The filename of the output solution table. The value is taken from the input
-      parameter "h5parm"
+      parameter "h5parm".
     type: File
     outputBinding:
       glob: $(inputs.h5parm)

@@ -619,7 +619,7 @@ steps:
         source: bda_timebase_fast
       - id: maxinterval
         source: bda_maxinterval_fast
-      - id: nchan
+      - id: solve_nchan
         source: solint_fast_freqstep
       - id: directions
         source: calibrator_patch_names
@@ -667,7 +667,7 @@ steps:
         source: fast_antennaconstraint
       - id: numthreads
         source: max_threads
-    scatter: [msin, starttime, ntimes, h5parm, solint, nchan, maxinterval, smoothnessreffrequency, solutions_per_direction]
+    scatter: [msin, starttime, ntimes, h5parm, solint, solve_nchan, maxinterval, smoothnessreffrequency, solutions_per_direction]
     scatterMethod: dotproduct
     out:
       - id: output_h5parm
