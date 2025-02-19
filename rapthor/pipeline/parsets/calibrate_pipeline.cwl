@@ -739,16 +739,16 @@ steps:
         source: dp3_steps_slow_joint
       - id: applycal_steps
         valueFrom: '[fastphase]'
-{% if apply_normalizations %}
-      - id: normalize_h5parm
-        source: normalize_h5parm
-{% endif %}
       - id: timebase
         source: bda_timebase_slow_joint
       - id: maxinterval
         source: bda_maxinterval_slow_joint
-      - id: fast_h5parm
+      - id: fastphase_h5parm
         source: combine_fast_phases/outh5parm
+{% if apply_normalizations %}
+      - id: normalize_h5parm
+        source: normalize_h5parm
+{% endif %}
       - id: h5parm
         source: output_slow_h5parm_joint
       - id: solint
@@ -898,21 +898,21 @@ steps:
         source: dp3_steps_slow_separate
       - id: applycal_steps
         source: dp3_applycal_steps_slow_separate
-{% if apply_normalizations %}
-      - id: normalize_h5parm
-        source: normalize_h5parm
-{% endif %}
       - id: timebase
         source: bda_timebase_slow_separate
       - id: maxinterval
         source: bda_maxinterval_slow_separate
       - id: nchan
         source: nchan_separate
-      - id: combined_h5parm
-{% if do_joint_solve %}
-        source: combine_fast_and_joint_slow_h5parms/combinedh5parm
-{% else %}
+      - id: fastphase_h5parm
         source: combine_fast_phases/outh5parm
+{% if do_joint_solve %}
+      - id: slowgain_h5parm
+        source: process_slow_gains_joint/outh5parm
+{% endif %}
+{% if apply_normalizations %}
+      - id: normalize_h5parm
+        source: normalize_h5parm
 {% endif %}
       - id: h5parm
         source: output_slow_h5parm_separate

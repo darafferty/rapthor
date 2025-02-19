@@ -189,11 +189,11 @@ class CalibrateDD(Operation):
         else:
             normalize_h5parm = ''
             dp3_applycal_steps_fast = '[]'
-        if self.do_slowgain_solve:
+        if self.field.do_slowgain_solve:
             dp3_applycal_steps_slow_joint = ['fastphase']
             dp3_applycal_steps_slow_separate = ['fastphase']
             if self.do_joint_solve:
-                dp3_applycal_steps_slow_separate.append('slowamp')
+                dp3_applycal_steps_slow_separate.append('slowgain')
             if self.field.apply_normalizations:
                 dp3_applycal_steps_slow_joint.append('normalization')
                 dp3_applycal_steps_slow_separate.append('normalization')

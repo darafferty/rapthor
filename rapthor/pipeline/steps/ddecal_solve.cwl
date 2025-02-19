@@ -4,7 +4,7 @@ baseCommand: [DP3]
 id: ddecal_solve_scalarphase
 label: Calibrates a dataset using DDECal
 doc: |
-  This tool solves for scalar phases in multiple directions simultaneously for
+  This tool solves for corrections in multiple directions simultaneously for
   the given MS file, using the input sourcedb and (optionally) baseline-
   dependent averaging. See the relevant parameters below for the allowed
   processing step names and solve types. Output is the solution table in
@@ -25,8 +25,8 @@ arguments:
   - solve.beammode=array_factor
   - solve.applycal.fastphase.correction=phase000
   - solve.applycal.fastphase.solset=sol000
-  - solve.applycal.slowamp.correction=amplitude000
-  - solve.applycal.slowamp.solset=sol000
+  - solve.applycal.slowgain.correction=amplitude000
+  - solve.applycal.slowgain.solset=sol000
   - solve.applycal.normalization.correction=amplitude000
   - solve.applycal.normalization.solset=sol000
 
@@ -97,7 +97,7 @@ inputs:
   - id: steps
     label: Processing steps
     doc: |
-      The list of processing steps to preform
+      The list of processing steps to perform
     type: string
     inputBinding:
       prefix: steps=
@@ -107,20 +107,41 @@ inputs:
     label: List of applycal steps
     doc: |
       The list of applycal steps to perform. Allowed steps are "fastphase" and
-      "slowamp".
+      "slowamp" (an empty list is also allowed if no applycal steps are to be
+      done).
     type: string
     inputBinding:
-      prefix: applycal.steps=
+      prefix: solve.applycal.steps=
       separate: False
 
-  - id: combined_h5parm
+  - id: fastphase_h5parm
     label: Solution table
     doc: |
-      The filename of the input solution table containing the combined fast-phase
-      and slow-gain1 solutions. These solutions are preapplied before the solve is done.
+      The filename of the input solution table containing the fast-phase
+      solutions. These solutions are preapplied before the solve is done.
     type: File?
     inputBinding:
-      prefix: solve.applycal.parmdb=
+      prefix: solve.applycal.fastphase.parmdb=
+      separate: False
+
+  - id: slowgain_h5parm
+    label: Solution table
+    doc: |
+      The filename of the input solution table containing the slow-gain solutions.
+      These solutions are preapplied before the solve is done.
+    type: File?
+    inputBinding:
+      prefix: solve.applycal.slowgain.parmdb=
+      separate: False
+
+  - id: normalize_h5parm
+    label: Filename of h5parm
+    doc: |
+      The filename of the h5parm file with the flux-scale normalization corrections.
+      These solutions are preapplied before the solve is done.
+    type: File?
+    inputBinding:
+      prefix: solve.applycal.normalization.parmdb=
       separate: False
 
   - id: timebase
