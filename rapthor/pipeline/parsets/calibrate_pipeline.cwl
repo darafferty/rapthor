@@ -151,7 +151,7 @@ inputs:
     label: The filename of normalization h5parm
     doc: |
       The filename of the input flux-scale normalization h5parm (length = 1).
-    type: string
+    type: File
 {% endif %}
 
   - id: bda_timebase_fast

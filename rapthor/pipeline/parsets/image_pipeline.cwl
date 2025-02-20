@@ -654,7 +654,7 @@ steps:
         source: diagonal_visibilities
 {% else %}
 # start not use_facets
-{% if not apply_none %}
+{% if preapply_dde_solutions %}
       - id: central_patch_name
         source: central_patch_name
 {% endif %}
@@ -736,7 +736,7 @@ steps:
 {% if use_facets %}
               ra_mid, dec_mid, width_ra, width_dec, facet_region_file,
 {% else %}
-{% if not apply_none %}
+{% if preapply_dde_solutions %}
               central_patch_name,
 {% endif %}
 {% endif %}

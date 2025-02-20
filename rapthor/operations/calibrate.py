@@ -184,10 +184,10 @@ class CalibrateDD(Operation):
         # Set the DDECal applycal steps depending on what solutions need to be
         # applied
         if self.field.apply_normalizations:
-            normalize_h5parm = self.field.normalize_h5parm if self.field.apply_normalizations else ''
+            normalize_h5parm = CWLFile(self.field.normalize_h5parm).to_json() if self.field.apply_normalizations else None
             dp3_applycal_steps_fast = '[normalization]'
         else:
-            normalize_h5parm = ''
+            normalize_h5parm = None
             dp3_applycal_steps_fast = '[]'
         if self.field.do_slowgain_solve:
             dp3_applycal_steps_slow_joint = ['fastphase']
