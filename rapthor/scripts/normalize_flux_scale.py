@@ -181,7 +181,7 @@ def create_normalization_h5parm(antenna_file, field_file, h5parm_file, frequenci
 
 def main(source_catalog, ms_file, output_h5parm, radius_cut=3.0, major_axis_cut=30/3600,
          neighbor_cut=30/3600, spurious_match_cut=30/3600, min_sources=5,
-         weight_by_flux_err=False):
+         weight_by_flux_err=False, ignore_frequency_dependence=False):
     """
     Calculate flux-scale normalization corrections
 
@@ -214,6 +214,9 @@ def main(source_catalog, ms_file, output_h5parm, radius_cut=3.0, major_axis_cut=
     weight_by_flux_err : bool, optional
         If True, the mean normalization is calculated using a weighted average, where the
         weights are given by the inverse of the errors on the source flux densities.
+    ignore_frequency_dependence : bool, optional
+        If True, any frequency dependence of the normalization is ignored and the
+        normalization is taken as the mean over all frequencies
     """
     # Read in the source catalog
     with fits.open(source_catalog) as hdul:
@@ -377,6 +380,10 @@ def main(source_catalog, ms_file, output_h5parm, radius_cut=3.0, major_axis_cut=
         # If normalization cannot be done, just set all corrections to 1
         avg_corrections = np.ones(len(output_frequencies))
 
+    if ignore_frequency_dependence:
+        # Use a single correction for all frequencies
+        avg_corrections[:] = np.mean(avg_corrections)
+
     # Write corrections to the output H5parm file as amplitude corrections
     antenna_file = ms_file + '::ANTENNA'
     create_normalization_h5parm(antenna_file, field_file, output_h5parm, output_frequencies,
@@ -396,9 +403,10 @@ if __name__ == '__main__':
     parser.add_argument('--spurious_match_cut', help='Spurious match distance cut in degrees', type=float, default=30/3600)
     parser.add_argument('--min_sources', help='Minimum number of souces required for normalization calculation', type=int, default=5)
     parser.add_argument('--weight_by_flux_err', help='Weight by error on flux density', action='store_true', default=False)
+    parser.add_argument('--ignore_frequency_dependence', help='Ignore frequency dependence of normalizations', action='store_true', default=False)
 
     args = parser.parse_args()
     main(args.source_catalog, args.ms_file, args.output_h5parm, radius_cut=args.radius_cut,
          major_axis_cut=args.major_axis_cut, neighbor_cut=args.neighbor_cut,
          spurious_match_cut=args.spurious_match_cut, min_sources=args.min_sources,
-         weight_by_flux_err=args.weight_by_flux_err)
+         weight_by_flux_err=args.weight_by_flux_err, ignore_frequency_dependence=args.ignore_frequency_dependence)
