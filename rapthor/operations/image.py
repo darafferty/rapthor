@@ -573,12 +573,12 @@ class ImageNormalize(Image):
         """
         # Set the imaging parameters that are optimal for the flux-scale
         # normalization
-        self.imaging_sectors = [self.normalize_sector]
-        self.sector.auto_mask = 5.0
-        self.sector.threshisl = 4.0
-        self.sector.threshpix = 5.0
-        self.sector.max_nmiter = 8
-        self.sector.max_wsclean_nchannels = 8
+        self.field.normalize_sector.auto_mask = 5.0
+        self.field.normalize_sector.threshisl = 4.0
+        self.field.normalize_sector.threshpix = 5.0
+        self.field.normalize_sector.max_nmiter = 8
+        self.field.normalize_sector.max_wsclean_nchannels = 8
+        self.imaging_sectors = [self.field.normalize_sector]
         self.imaging_parameters = self.field.parset['imaging_specific'].copy()
         self.imaging_parameters['cellsize_arcsec'] = 6.0
         self.imaging_parameters['robust'] = -0.5
