@@ -1,6 +1,7 @@
 """
 Definition of the Field class
 """
+import copy
 import os
 import logging
 import numpy as np
@@ -1242,6 +1243,24 @@ class Field(object):
         self.full_field_sector.make_vertices_file()
         self.full_field_sector.make_region_file(os.path.join(self.working_dir, 'regions',
                                                 f'{self.full_field_sector.name}_region_ds9.reg'))
+
+    def define_normalize_sector(self):
+        """
+        Defines the flux-scale normalization imaging sector, used for normalization of
+        the overall flux scale
+        """
+        # Use the imaging sector with the largest area for the analysis
+        if not self.imaging_sectors:
+            self.normalize_sector = None
+        else:
+            sector_sizes = [sector.width_ra*sector.width_dec for sector in self.imaging_sectors]
+            sector = self.imaging_sectors[np.argmax(sector_sizes)]
+            sector.log = None  # deepcopy cannot copy the log object
+            normalize_sector = copy.deepcopy(sector)
+            sector.log = logging.getLogger('rapthor:{}'.format(sector.name))
+            normalize_sector.log = logging.getLogger('rapthor:{}'.format(sector.name))
+
+        self.normalize_sector = normalize_sector
 
     def find_intersecting_sources(self):
         """

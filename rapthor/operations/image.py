@@ -4,7 +4,6 @@ Module that holds the Image classes
 import glob
 import json
 import logging
-import numpy as np
 import os
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.operation import Operation
@@ -560,6 +559,7 @@ class ImageNormalize(Image):
         self.peel_bright_sources = False
         self.make_image_cube = True
         self.normalize_flux_scale = True
+        self.apply_normalizations = False
         if self.field.h5parm_filename is None:
             # No calibration has yet been done, so set various flags as needed
             self.apply_none = True
@@ -573,17 +573,12 @@ class ImageNormalize(Image):
         """
         # Set the imaging parameters that are optimal for the flux-scale
         # normalization
-        #
-        # We use the imaging sector with the largest area for the analysis
-        sector_sizes = [sector.width_ra*sector.width_dec for sector in self.field.imaging_sectors]
-        self.sector = self.field.imaging_sectors[np.argmax(sector_sizes)]
-        self.imaging_sectors = [self.sector]
+        self.imaging_sectors = [self.normalize_sector]
         self.sector.auto_mask = 5.0
         self.sector.threshisl = 4.0
         self.sector.threshpix = 5.0
         self.sector.max_nmiter = 8
         self.sector.max_wsclean_nchannels = 8
-
         self.imaging_parameters = self.field.parset['imaging_specific'].copy()
         self.imaging_parameters['cellsize_arcsec'] = 6.0
         self.imaging_parameters['robust'] = -0.5
@@ -618,7 +613,7 @@ class ImageNormalize(Image):
         self.field.normalize_h5parm = os.path.join(dst_dir, dst_basename)
         shutil.copy(src_filename, self.field.normalize_h5parm)
 
-        # Apply normalizations in subsequent imaging
+        # Set the flags for subsequent processing
         self.field.normalize_flux_scale = False
         self.field.apply_normalizations = True
 

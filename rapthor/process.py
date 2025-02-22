@@ -185,7 +185,8 @@ def run_steps(field, steps, final=False):
         if field.do_image:
             # Normalize the flux scale
             if field.do_normalize:
-                # Set the Stokes polarization to I
+                # Define sector and set the Stokes polarization to I
+                field.define_normalize_sector()
                 field.image_pol = 'I'
 
                 op = ImageNormalize(field, cycle_number)
