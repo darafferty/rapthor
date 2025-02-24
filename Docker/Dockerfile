@@ -222,6 +222,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
         ca-certificates \
+        gdb \
         git \
         libatkmm-1.6-1v5 \
         libblas3 \
