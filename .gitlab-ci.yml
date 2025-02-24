@@ -46,6 +46,7 @@ build-docker-base:
   image: docker:latest
   tags:
     - dind
+    - das6
   before_script:
     - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
   script:
@@ -74,6 +75,7 @@ build-docker-full:
   image: docker:latest
   tags:
     - dind
+    - das6
   before_script:
     - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
   script:
@@ -127,6 +129,7 @@ deploy-docker:
   image: docker:latest
   tags:
     - dind
+    - das6
   before_script:
     - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
     - echo $DH_REGISTRY_PASSWORD | docker login -u $DH_REGISTRY_USER --password-stdin
