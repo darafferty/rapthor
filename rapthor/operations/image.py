@@ -592,12 +592,13 @@ class ImageNormalize(Image):
         Finalize this operation
         """
         # Save the output image cube filenames
-        image_root = os.path.join(self.pipeline_working_dir, self.sector.name)
+        sector = self.field.normalize_sector
+        image_root = os.path.join(self.pipeline_working_dir, sector.name)
         src_filename = f'{image_root}_freq_cube.fits'
         dst_dir = os.path.join(self.parset['dir_working'], 'images', self.name)
         misc.create_directory(dst_dir)
-        self.sector.I_freq_cube = os.path.join(dst_dir, os.path.basename(src_filename))
-        shutil.copy(src_filename, self.sector.I_freq_cube)
+        sector.I_freq_cube = os.path.join(dst_dir, os.path.basename(src_filename))
+        shutil.copy(src_filename, sector.I_freq_cube)
 
         # Save the output beams and frequencies files
         for suffix in ['_beams.txt', '_frequencies.txt']:
