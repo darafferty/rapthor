@@ -101,7 +101,6 @@
         "use_container": false,
         "container_type": "docker",
         "cwl_runner": "toil",
-        "dir_coordination": null,
         "debug_workflow": false
     }
 }

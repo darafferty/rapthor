@@ -99,6 +99,14 @@ class Parset:
         }
         self.required_sections = set(self.required_options)
 
+        # Deprecated options are hard-coded below. Each deprecated option can have
+        # zero or more suggestions for alternative options.
+        self.deprecated_options = {
+            "cluster": {
+                "dir_local": {"local_scratch_dir"}
+            }
+        }
+
         # Sanity check. Ensure that all required sections and options are also allowed.
         assert self.required_sections <= self.allowed_sections, "%s <= %s" % (
             self.required_sections,
@@ -172,6 +180,10 @@ class Parset:
             sect: given_options[sect] - self.allowed_options[sect]
             for sect in self.allowed_sections
         }
+        deprecated_options = {
+            sect: set(self.deprecated_options[sect]) & given_options[sect]
+            for sect in self.deprecated_options
+        }
 
         # Check for missing required options.
         # NOTE: This will raise on the first section with missing required options.
@@ -196,6 +208,17 @@ class Parset:
             for option in invalid_options[section]:
                 self.__parser.remove_option(section, option)
                 log.warning("Option '%s' in section [%s] is invalid", option, section)
+
+        # Check for deprecated options
+        for section in deprecated_options:
+            for option in deprecated_options[section]:
+                alternatives = self.deprecated_options[section][option]
+                message = f"Option '{option}' in section [{section}] is deprecated"
+                if alternatives:
+                    message += "; use %s instead" % (
+                        ", or ".join("'{}'".format(opt) for opt in alternatives)
+                    )
+                log.warning(message)
 
     def __check_and_adjust(self, settings):
         """

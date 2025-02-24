@@ -97,5 +97,4 @@ global_scratch_dir = /shared/scratch
 use_container = True
 container_type = singularity
 cwl_runner = cwltool
-dir_coordination = /scratch
 debug_workflow = True

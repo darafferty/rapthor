@@ -596,18 +596,6 @@ The available options are described below under their respective sections.
         For debugging purposes CWLTool outshines Toil, because its logs are easier to
         understand.
 
-    dir_coordination
-        Set Toil's coordination directory (only used when Toil is the CWL runner; default
-        = selected automatically by Toil). In most cases, it should not be necessary to
-        set this parameter. However, if errors relating to Toil's ``jobStateFile`` are
-        encountered, they may be fixed by setting the coordination directory explicitly.
-
-        .. note::
-
-            This directory must be on a 100% POSIX-compatible file system, because Toil
-            heavily depends on POSIX file locking to work reliably. For many shared file
-            systems, this criterion is not met.
-
     debug_workflow
         Debug workflow related issues. Enabling this will require significantly more disk
         space. The working directory will never be cleaned up, ``stdout`` and ``stderr``

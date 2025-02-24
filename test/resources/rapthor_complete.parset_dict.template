@@ -35,7 +35,6 @@
                       'cwl_runner': 'cwltool',
                       'debug_workflow': True,
                       'deconvolution_threads': 16,
-                      'dir_coordination': '/scratch',
                       'dir_local': '/tmp',
                       'local_scratch_dir': '/local',
                       'global_scratch_dir': '/shared/scratch',

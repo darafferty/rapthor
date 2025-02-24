@@ -120,11 +120,12 @@ class Operation(object):
         # Get the amount of memory in GB per node (SLRUM only).
         self.mem_per_node_gb = self.parset['cluster_specific']['mem_per_node_gb']
 
-        # Set the temp directory local to each node
+        # Set the temp directory local to each node (DEPRECATED)
         self.scratch_dir = self.parset['cluster_specific']['dir_local']
 
-        # Toil's coordination directory
-        self.coordination_dir = self.parset['cluster_specific']['dir_coordination']
+        # Set the local and global scratch directories
+        self.local_scratch_dir = self.parset['cluster_specific']['local_scratch_dir']
+        self.global_scratch_dir = self.parset['cluster_specific']['global_scratch_dir']
 
         # Get the container type
         if self.parset['cluster_specific']['use_container']:

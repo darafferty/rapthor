@@ -35,7 +35,6 @@
                       'cwl_runner': 'toil',
                       'debug_workflow': False,
                       'deconvolution_threads': 3,
-                      'dir_coordination': None,
                       'dir_local': None,
                       'local_scratch_dir': None,
                       'global_scratch_dir': None,

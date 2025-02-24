@@ -313,13 +313,6 @@ container_type = docker
 # CWL runner to use. Currently supported runners are: cwltool and toil (default)
 cwl_runner = toil
 
-# Set Toil's coordination directory (only used when Toil is used as the CWL
-# runner; default = selected automatically by Toil). Note that this directory
-# must be on a 100% POSIX-compatible file system, because Toil heavily depends
-# on POSIX file locking to work reliably. For many shared file systems, this
-# criterion is not met
-dir_coordination = None
-
 # Debug workflow related issues. Enabling this will require significantly more
 # disk space. Additionally, when Toil is the CWL runner, some tasks will run on
 # a single thread to make debugging easier. The working directory will never be
