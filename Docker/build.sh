@@ -37,4 +37,4 @@ docker build \
   --tag "${COMMUNITY}/${REPOSITORY}:${TAG}" \
   "${REPO_ROOT}"
 
-docker push "${COMMUNITY}/${REPOSITORY}:${TAG}"
+#docker push "${COMMUNITY}/${REPOSITORY}:${TAG}"
