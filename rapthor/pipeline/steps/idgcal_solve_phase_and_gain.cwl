@@ -27,6 +27,10 @@ arguments:
   - solve.tolerancepinv=1e-9
   - solve.polynomialdegphase=1
   - solve.polynomialdegamplitude=2
+  - solve.nr_channels_per_block=10
+  - solve.lbfgshistory=10
+  - solve.lbfgsminibatches=3
+  - solve.lbfgsepochs=2
 
 inputs:
   - id: msin
