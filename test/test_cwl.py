@@ -136,7 +136,6 @@ def test_calibrate_di_workflow(
 
 
 @pytest.mark.parametrize("max_cores", (None, 8))
-@pytest.mark.parametrize("apply_amplitudes", (False, True))
 def test_predict_workflow(tmp_path, max_cores, apply_amplitudes):
     """
     Test the Predict workflow, using all possible combinations of parameters that
@@ -153,7 +152,6 @@ def test_predict_workflow(tmp_path, max_cores, apply_amplitudes):
 
 
 @pytest.mark.parametrize("max_cores", (None, 8))
-@pytest.mark.parametrize("apply_amplitudes", (False, True))
 def test_predict_di_workflow(tmp_path, max_cores, apply_amplitudes):
     """
     Test the Predict DI workflow, using all possible combinations of parameters that
@@ -171,7 +169,6 @@ def test_predict_di_workflow(tmp_path, max_cores, apply_amplitudes):
 
 @pytest.mark.parametrize("max_cores", (None, 8))
 @pytest.mark.parametrize("apply_solutions", (False, True))
-@pytest.mark.parametrize("apply_amplitudes", (False, True))
 def test_predict_nc_workflow(tmp_path, max_cores, apply_solutions, apply_amplitudes):
     """
     Test the Predict NC workflow, using all possible combinations of parameters that

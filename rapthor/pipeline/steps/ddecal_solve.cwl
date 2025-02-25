@@ -124,9 +124,9 @@ inputs:
   - id: applycal_steps
     label: List of applycal steps
     doc: |
-      The list of applycal steps to perform. Allowed steps are "fastphase" and
-      "slowamp" (an empty list is also allowed if no applycal steps are to be
-      done).
+      The list of applycal steps to perform. Allowed steps are "fastphase",
+      "slowgain", and "normalization" (an empty list is also allowed if no applycal
+      steps are to be done).
     type: string
     inputBinding:
       prefix: solve.applycal.steps=

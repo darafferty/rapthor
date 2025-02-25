@@ -99,9 +99,11 @@ class PredictDD(Operation):
         onebeamperpatch = self.field.onebeamperpatch
         sagecalpredict = self.field.sagecalpredict
 
+        # Set the DP3 applycal steps depending on what solutions need to be
+        # applied
         dp3_applycal_steps = ['fastphase']
         if self.field.apply_amplitudes:
-            dp3_applycal_steps.append('slowamp')
+            dp3_applycal_steps.append('slowgain')
         if self.field.apply_normalizations:
             normalize_h5parm = self.field.normalize_h5parm
             dp3_applycal_steps.append('normalization')
@@ -202,13 +204,12 @@ class PredictNC(Operation):
         if self.field.h5parm_filename is not None:
             # Apply calibration solutions during predict when available (e.g., from
             # calibration done in the previous cycle)
-            apply_solutions = True
+            self.apply_solutions = True
         else:
-            apply_solutions = False
+            self.apply_solutions = False
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
                              'max_cores': max_cores,
-                             'apply_solutions': apply_solutions,
-                             'apply_amplitudes': self.field.apply_amplitudes}
+                             'apply_solutions': self.apply_solutions}
 
     def set_input_parameters(self):
         """
@@ -241,8 +242,6 @@ class PredictNC(Operation):
         obs_filename = []
         obs_starttime = []
         obs_infix = []
-        obs_solint_sec = []
-        obs_solint_hz = []
         for obs in self.field.observations:
             obs_filename.append(obs.ms_filename)
             obs_starttime.append(misc.convert_mjd2mvt(obs.starttime))
@@ -253,11 +252,30 @@ class PredictNC(Operation):
         onebeamperpatch = self.field.onebeamperpatch
         sagecalpredict = self.field.sagecalpredict
 
+        # Set the DP3 applycal steps depending on what solutions need to be
+        # applied
+        dp3_applycal_steps = []
+        if self.apply_solutions:
+            dp3_applycal_steps.append('fastphase')
+        if self.field.apply_amplitudes:
+            dp3_applycal_steps.append('slowgain')
+        if self.field.apply_normalizations:
+            normalize_h5parm = self.field.normalize_h5parm
+            dp3_applycal_steps.append('normalization')
+        else:
+            normalize_h5parm = ''
+
+        # Set the DP3 applycal steps to an empty list, as no corruptions are applied
+        dp3_applycal_steps = '[]'
+        normalize_h5parm = ''
+
         self.input_parms = {'sector_filename': CWLDir(sector_filename).to_json(),
                             'sector_starttime': sector_starttime,
                             'sector_ntimes': sector_ntimes,
                             'sector_model_filename': sector_model_filename,
                             'sector_skymodel': CWLFile(sector_skymodel).to_json(),
+                            'normalize_h5parm': CWLFile(normalize_h5parm).to_json(),
+                            'dp3_applycal_steps': f"[{','.join(dp3_applycal_steps)}]",
                             'onebeamperpatch': onebeamperpatch,
                             'sagecalpredict': sagecalpredict,
                             'obs_filename': CWLDir(obs_filename).to_json(),
@@ -266,7 +284,7 @@ class PredictNC(Operation):
                             'nr_sectors': nr_sectors,
                             'max_threads': self.field.parset['cluster_specific']['max_threads']}
 
-        if self.field.h5parm_filename is not None:
+        if self.apply_solutions:
             # If calibration solutions are available to use during prediction,
             # set the sector calibration patches and the solutions file
             self.input_parms.update({'sector_patches': sector_patches})
@@ -353,9 +371,11 @@ class PredictDI(Operation):
         onebeamperpatch = self.field.onebeamperpatch
         sagecalpredict = self.field.sagecalpredict
 
+        # Set the DP3 applycal steps depending on what solutions need to be
+        # applied
         dp3_applycal_steps = ['fastphase']
         if self.field.apply_amplitudes:
-            dp3_applycal_steps.append('slowamp')
+            dp3_applycal_steps.append('slowgain')
         if self.field.apply_normalizations:
             normalize_h5parm = self.field.normalize_h5parm
             dp3_applycal_steps.append('normalization')

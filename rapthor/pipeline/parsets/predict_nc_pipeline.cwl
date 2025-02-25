@@ -135,18 +135,7 @@ steps:
       This step uses DP3 to predict uv data (using the input sky model) from the
       input MS files. It also optionaly corrupts the model data with the calibration
       solutions. For each sector, prediction is done for all observations.
-{% if apply_solutions %}
-{% if apply_amplitudes %}
-    # Corrupt with both fast phases and slow gains
     run: {{ rapthor_pipeline_dir }}/steps/predict_model_data.cwl
-{% else %}
-    # Corrupt with fast phases only
-    run: {{ rapthor_pipeline_dir }}/steps/predict_model_data_phase_only.cwl
-{% endif %}
-{% else %}
-    # Don't corrupt
-    run: {{ rapthor_pipeline_dir }}/steps/predict_model_data_no_corruptions.cwl
-{% endif %}
 {% if max_cores is not none %}
     hints:
       ResourceRequirement:
@@ -171,6 +160,10 @@ steps:
         source: h5parm
       - id: directions
         source: sector_patches
+{% endif %}
+{% if apply_normalizations %}
+      - id: normalize_h5parm
+        source: normalize_h5parm
 {% endif %}
       - id: sourcedb
         source: sector_skymodel
