@@ -2,11 +2,13 @@
 Classes that wrap the CWL runners that Rapthor supports.
 """
 from __future__ import annotations
+
 import logging
 import os
 import shutil
 import subprocess
 from typing import TYPE_CHECKING, List, Union
+
 try:
     from importlib.metadata import version
 except ImportError:
@@ -316,8 +318,12 @@ class ToilRunner(CWLRunner):
         if self.operation.batch_system == 'slurm':
             self._add_slurm_options()
         if tmp_outdir_prefix := self._get_tmp_outdir_prefix():
+            # Toil requires that this directory exists
+            os.makedirs(os.path.dirname(tmp_outdir_prefix), exist_ok=True)
             self.args.extend(['--tmp-outdir-prefix', tmp_outdir_prefix])
         if workdir := self._get_workdir():
+            # Toil requires that this directory exists
+            os.makedirs(workdir, exist_ok=True)
             self.args.extend(['--workDir', workdir])
         if self.operation.debug_workflow:
             self._add_debug_options()
