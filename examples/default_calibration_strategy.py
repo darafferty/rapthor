@@ -13,10 +13,6 @@ max_selfcal_loops = 8
 for i in range(max_selfcal_loops):
     strategy_steps.append({})
 
-    # Activate normalization of the flux scale (adjusts the amplitudes to
-    # achieve obs_flux / true_flux = 1)
-    strategy_steps[i]['do_normalize'] = True
-
     # Here we set the calibration strategy. We specify that outliers -- sources
     # that lie outside of imaged regions -- are peeled in the first cycle only
     # and that slow-gain calibration is done in every cycle. The minimum uv
@@ -43,6 +39,10 @@ for i in range(max_selfcal_loops):
     strategy_steps[i]['fast_timestep_sec'] = 8.0
     strategy_steps[i]['slow_timestep_joint_sec'] = 0.0
     strategy_steps[i]['slow_timestep_separate_sec'] = 600.0
+
+    # Here we activate flux-scale normalization (adjusts the amplitudes to
+    # achieve obs_flux / true_flux = 1)
+    strategy_steps[i]['do_normalize'] = True
 
     # Here we set the imaging strategy, lowering the masking thresholds as
     # selfcal proceeds to ensure all emission is properly cleaned and artifacts,
