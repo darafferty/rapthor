@@ -157,6 +157,7 @@ RUN git -C DP3 checkout ${DP3_COMMIT}
 RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
     -DBUILD_TESTING=OFF \
+    -DCMAKE_BUILD_TYPE=Debug \
     -DPORTABLE=${PORTABLE} \
     -DTARGET_CPU=${TARGET_CPU} \
     -DLIBDIRAC_PREFIX=/usr/ \
