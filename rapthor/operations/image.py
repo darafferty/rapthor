@@ -442,7 +442,7 @@ class ImageInitial(Image):
     Operation to image the field to generate an initial sky model
     """
     def __init__(self, field):
-        super().__init__(field, None, name='initial_image')
+        super().__init__(field, index=None, name='initial_image')
 
         # Set the template filenames
         self.pipeline_parset_template = 'image_pipeline.cwl'
@@ -544,7 +544,7 @@ class ImageNormalize(Image):
     Operation to image for flux-scale normalization
     """
     def __init__(self, field, index):
-        super().__init__(field, index, name='normalize')
+        super().__init__(field, index=index, name='normalize')
 
         # Set the template filenames
         self.pipeline_parset_template = 'image_pipeline.cwl'
