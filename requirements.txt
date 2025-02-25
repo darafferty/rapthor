@@ -1,7 +1,5 @@
 astropy
 bdsf
-importlib-metadata; python_version<'3.8'
-importlib-resources; python_version<'3.9'
 jinja2
 losoto>=2.4.3
 lsmtool>=1.6
