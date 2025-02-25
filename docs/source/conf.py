@@ -14,10 +14,7 @@
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
-try:
-    import importlib.metadata as metadata
-except ImportError:  # for python<3.8
-    import importlib_metadata as metadata
+from importlib import metadata
 
 # -- Project information -----------------------------------------------------
 
