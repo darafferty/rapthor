@@ -143,7 +143,7 @@ class Field(object):
         for obs in self.full_observations:
             if self.antenna != obs.antenna:
                 raise ValueError('Antenna type for MS {0} differs from the one for MS '
-                                 '{1}'.format(self.obs.ms_filename, self.obs0.ms_filename))
+                                 '{1}'.format(obs.ms_filename, obs0.ms_filename))
 
         # Check for multiple epochs
         self.epoch_starttimes = set([obs.starttime for obs in self.full_observations])
@@ -175,21 +175,21 @@ class Field(object):
         for obs in self.full_observations:
             if self.ra != obs.ra or self.dec != obs.dec:
                 raise ValueError('Pointing for MS {0} differs from the one for MS '
-                                 '{1}'.format(self.obs.ms_filename, self.obs0.ms_filename))
+                                 '{1}'.format(obs.ms_filename, obs0.ms_filename))
 
         # Check that all observations have the same station diameter
         self.diam = obs0.diam
         for obs in self.full_observations:
             if self.diam != obs.diam:
                 raise ValueError('Station diameter for MS {0} differs from the one for MS '
-                                 '{1}'.format(self.obs.ms_filename, self.obs0.ms_filename))
+                                 '{1}'.format(obs.ms_filename, obs0.ms_filename))
 
         # Check that all observations have the same stations
         self.stations = obs0.stations
         for obs in self.full_observations:
             if self.stations != obs.stations:
                 raise ValueError('Stations in MS {0} differ from those in MS '
-                                 '{1}'.format(self.obs.ms_filename, self.obs0.ms_filename))
+                                 '{1}'.format(obs.ms_filename, obs0.ms_filename))
 
         # Find mean elevation and FOV over all observations
         el_rad_list = []
