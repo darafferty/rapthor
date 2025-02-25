@@ -195,7 +195,7 @@ steps:
       This step uses DDECal (in DP3) to solve for full-Jones, direction-independent gain
       corrections, using the input MS files and sourcedb. These corrections are used to
       correct primarily for polarization errors.
-    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_fulljones.cwl
+    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve.cwl
 {% if max_cores is not none %}
     hints:
       ResourceRequirement:
