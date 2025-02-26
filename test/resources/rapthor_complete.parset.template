@@ -47,12 +47,16 @@ slow_datause = full
 fulljones_timestep_sec = 600.0
 fulljones_freqstep_hz = 1e6
 fulljones_smoothnessconstraint = 0
+solverlbfgs_dof = 100.0
+solverlbfgs_iter = 6
+solverlbfgs_minibatches = 3
 
 [imaging]
 cellsize_arcsec = 2.25
 robust = -0.3
 min_uv_lambda = 80.0
 max_uv_lambda = 10000.0
+mgain = 0.85
 taper_arcsec = 2.0
 local_rms_strength = 0.5
 do_multiscale_clean = False
@@ -60,7 +64,6 @@ dde_method = single
 save_visibilities = True
 idg_mode = gpu
 mem_gb = 128.0
-mgain = 0.85
 apply_diagonal_solutions = False
 dd_psf_grid = [2, 2]
 make_quv_images = True
@@ -77,6 +80,7 @@ sector_center_dec_list = [+35d30m31.52, +37d21m56.86]
 sector_width_ra_deg_list = [0.532, 0.127]
 sector_width_dec_deg_list = [0.532, 0.127]
 max_peak_smearing = 0.25
+skip_corner_sectors = True
 
 [cluster]
 batch_system = slurm
@@ -88,8 +92,9 @@ max_threads = 64
 deconvolution_threads = 16
 parallel_gridding_threads = 16
 dir_local = /tmp
+local_scratch_dir = /local
+global_scratch_dir = /shared/scratch
 use_container = True
 container_type = singularity
 cwl_runner = cwltool
-dir_coordination = /scratch
 debug_workflow = True
