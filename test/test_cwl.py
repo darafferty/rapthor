@@ -136,7 +136,7 @@ def test_calibrate_di_workflow(
 
 
 @pytest.mark.parametrize("max_cores", (None, 8))
-def test_predict_workflow(tmp_path, max_cores, apply_amplitudes):
+def test_predict_workflow(tmp_path, max_cores):
     """
     Test the Predict workflow, using all possible combinations of parameters that
     control the way the CWL workflow is generated from the template. Parameters were
@@ -151,7 +151,7 @@ def test_predict_workflow(tmp_path, max_cores, apply_amplitudes):
 
 
 @pytest.mark.parametrize("max_cores", (None, 8))
-def test_predict_di_workflow(tmp_path, max_cores, apply_amplitudes):
+def test_predict_di_workflow(tmp_path, max_cores):
     """
     Test the Predict DI workflow, using all possible combinations of parameters that
     control the way the CWL workflow is generated from the template. Parameters were
@@ -167,7 +167,7 @@ def test_predict_di_workflow(tmp_path, max_cores, apply_amplitudes):
 
 @pytest.mark.parametrize("max_cores", (None, 8))
 @pytest.mark.parametrize("apply_solutions", (False, True))
-def test_predict_nc_workflow(tmp_path, max_cores, apply_solutions, apply_amplitudes):
+def test_predict_nc_workflow(tmp_path, max_cores, apply_solutions):
     """
     Test the Predict NC workflow, using all possible combinations of parameters that
     control the way the CWL workflow is generated from the template. Parameters were
