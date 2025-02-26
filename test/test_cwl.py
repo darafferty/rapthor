@@ -146,7 +146,6 @@ def test_predict_workflow(tmp_path, max_cores, apply_amplitudes):
     templ = rapthor.lib.operation.env_parset.get_template("predict_pipeline.cwl")
     parms = {
         "max_cores": max_cores,
-        "apply_amplitudes": apply_amplitudes,
     }
     generate_and_validate(tmp_path, operation, parms, templ)
 
@@ -162,7 +161,6 @@ def test_predict_di_workflow(tmp_path, max_cores, apply_amplitudes):
     templ = rapthor.lib.operation.env_parset.get_template("predict_di_pipeline.cwl")
     parms = {
         "max_cores": max_cores,
-        "apply_amplitudes": apply_amplitudes,
     }
     generate_and_validate(tmp_path, operation, parms, templ)
 
@@ -180,7 +178,6 @@ def test_predict_nc_workflow(tmp_path, max_cores, apply_solutions, apply_amplitu
     parms = {
         "max_cores": max_cores,
         "apply_solutions": apply_solutions,
-        "apply_amplitudes": apply_amplitudes,
     }
     generate_and_validate(tmp_path, operation, parms, templ)
 
