@@ -17,17 +17,6 @@ def generate_and_validate(tmp_path, operation, parms, templ, sub_templ=None):
     """
     if parms.get("use_facets") and parms.get("apply_screens"):
         pytest.skip("'use_facets' and 'apply_screens' cannot both be enabled")
-    if parms.get("apply_normalizations") and parms.get("normalize_flux_scale"):
-        pytest.skip("'apply_normalizations' and 'normalize_flux_scale' cannot both be enabled")
-    if parms.get("preapply_dde_solutions") and (parms.get("use_facets") or parms.get("apply_screens")):
-        pytest.skip("'preapply_dde_solutions' cannot be used with facets or screens")
-    if parms.get("apply_none") and (parms.get("use_facets") or
-                                    parms.get("apply_screens") or
-                                    parms.get("preapply_dde_solutions") or
-                                    parms.get("apply_amplitudes") or
-                                    parms.get("apply_normalizations") or
-                                    parms.get("apply_fulljones")):
-        pytest.skip("'apply_none' cannot be used with any other apply flags, facets, or screens")
     if parms.get("normalize_flux_scale") and not parms.get("make_image_cube"):
         pytest.skip("'normalize_flux_scale' must be used with 'make_image_cube'")
     pipeline_working_dir = tmp_path / "pipelines" / operation
