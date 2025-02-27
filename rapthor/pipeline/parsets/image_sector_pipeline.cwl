@@ -236,14 +236,19 @@ inputs:
       The maximum number of threads to use during parallel gridding (length = 1).
     type: int
 
-{% endif %}
-# end use_facets
+{% else %}
+# start not use_facets
 
+{% if preapply_dde_solutions %}
   - id: central_patch_name
     label: Name of central patch
     doc: |
       The name of the central-most patch of the sector (length = 1).
     type: string?
+{% endif %}
+
+{% endif %}
+# end use_facets / not use_facets
 
   - id: channels_out
     label: Number of channels
@@ -537,8 +542,10 @@ steps:
         source: phasecenter
       - id: numthreads
         source: max_threads
+{% if preapply_dde_solutions %}
       - id: central_patch_name
         source: central_patch_name
+{% endif %}
       - id: h5parm
         source: h5parm
       - id: fulljones_h5parm

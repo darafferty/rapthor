@@ -274,11 +274,13 @@ inputs:
 {% else %}
 # start not use_facets
 
+{% if preapply_dde_solutions %}
   - id: central_patch_name
     label: Name of central patch
     doc: |
       The name of the central patch of the sector (length = n_sectors).
     type: string[]?
+{% endif %}
 
 {% endif %}
 # end use_facets / not use_facets
@@ -720,7 +722,9 @@ steps:
 {% if use_facets %}
               ra_mid, dec_mid, width_ra, width_dec, facet_region_file,
 {% else %}
+{% if preapply_dde_solutions %}
               central_patch_name,
+{% endif %}
 {% endif %}
 {% if make_image_cube %}
               image_cube_name,

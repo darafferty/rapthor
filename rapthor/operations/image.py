@@ -64,6 +64,11 @@ class Image(Operation):
             self.save_source_list = True if self.image_pol.lower() == 'i' else False
         if self.peel_bright_sources is None:
             self.peel_bright_sources = self.field.peel_bright_sources
+        if self.preapply_dde_solutions is None:
+            if self.dde_method == 'single' and not self.apply_none:
+                self.preapply_dde_solutions = True
+            else:
+                self.preapply_dde_solutions = False
         if self.batch_system == 'slurm':
             # For some reason, setting coresMax ResourceRequirement hints does
             # not work with SLURM
@@ -79,6 +84,7 @@ class Image(Operation):
                              'use_facets': self.use_facets,
                              'save_source_list': self.save_source_list,
                              'peel_bright_sources': self.peel_bright_sources,
+                             'preapply_dde_solutions': self.preapply_dde_solutions,
                              'max_cores': max_cores,
                              'use_mpi': self.field.use_mpi}
 
@@ -106,11 +112,6 @@ class Image(Operation):
                 self.apply_normalizations = False
             else:
                 self.apply_normalizations = self.field.apply_normalizations  # set by ImageNormalize.finalize()
-        if self.preapply_dde_solutions is None:
-            if self.dde_method == 'single' and not self.apply_none:
-                self.preapply_dde_solutions = True
-            else:
-                self.preapply_dde_solutions = False
 
         nsectors = len(self.imaging_sectors)
         obs_filename = []
@@ -455,6 +456,7 @@ class ImageInitial(Image):
         self.apply_amplitudes = False
         self.apply_fulljones = False
         self.apply_none = True
+        self.apply_normalizations = False
         self.field.full_field_sector.auto_mask = 5.0
         self.field.full_field_sector.threshisl = 4.0
         self.field.full_field_sector.threshpix = 5.0
