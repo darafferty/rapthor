@@ -642,8 +642,10 @@ steps:
         source: diagonal_visibilities
 {% else %}
 # start not use_facets
+{% if preapply_dde_solutions %}
       - id: central_patch_name
         source: central_patch_name
+{% endif %}
 {% endif %}
 # end use_facets / not use_facets
       - id: channels_out
