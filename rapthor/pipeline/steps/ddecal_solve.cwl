@@ -1,7 +1,6 @@
 cwlVersion: v1.2
 class: CommandLineTool
 baseCommand: [DP3]
-id: ddecal_solve_scalarphase
 label: Calibrates a dataset using DDECal
 doc: |
   This tool solves for corrections in multiple directions simultaneously for
@@ -125,9 +124,8 @@ inputs:
     label: List of applycal steps
     doc: |
       The list of applycal steps to perform. Allowed steps are "fastphase",
-      "slowgain", and "normalization" (an empty list is also allowed if no applycal
-      steps are to be done).
-    type: string
+      "slowgain", and "normalization"
+    type: string?
     inputBinding:
       prefix: solve.applycal.steps=
       separate: False
@@ -206,9 +204,18 @@ inputs:
     label: Sky model
     doc: |
       The sourcedb sky model to use for the solve.
-    type: File
+    type: File?
     inputBinding:
       prefix: solve.sourcedb=
+      separate: False
+
+  - id: modeldatacolumn
+    label: Model data column
+    doc: |
+      The name of the model data to use for the solve (used if no sourcedb is given).
+    type: File?
+    inputBinding:
+      prefix: solve.modeldatacolumns=
       separate: False
 
   - id: llssolver

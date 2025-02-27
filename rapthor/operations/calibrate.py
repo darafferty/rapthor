@@ -38,8 +38,6 @@ class CalibrateDD(Operation):
                              'generate_screens': self.field.generate_screens,
                              'do_slowgain_solve': self.field.do_slowgain_solve,
                              'do_joint_solve': self.do_joint_solve,
-                             'apply_normalizations': self.field.apply_normalizations,
-                             'apply_diagonal_solutions': self.field.apply_diagonal_solutions,
                              'max_cores': max_cores}
 
     def set_input_parameters(self):
@@ -108,6 +106,10 @@ class CalibrateDD(Operation):
         combined_slow_h5parm_separate = 'slow_gains_separate.h5parm'
         combined_h5parms_fast_slow_joint = 'combined_solutions_fast_slow_joint.h5'
         combined_h5parms_slow_joint_separate = 'combined_solutions_slow_joint_separate.h5'
+        if self.field.apply_diagonal_solutions:
+            solution_combine_mode = 'p1p2a2_diagonal'
+        else:
+            solution_combine_mode = 'p1p2a2_scalar'
 
         # Define the input sky model
         if self.field.peel_non_calibrator_sources:
@@ -245,7 +247,6 @@ class CalibrateDD(Operation):
                             'dp3_applycal_steps_slow_joint': dp3_applycal_steps_slow_joint,
                             'dp3_applycal_steps_slow_separate': dp3_applycal_steps_slow_separate,
                             'dp3_solve_mode_fast': dp3_solve_mode_fast,
-                            'normalize_h5parm': normalize_h5parm,
                             'bda_maxinterval_fast': bda_maxinterval_fast,
                             'bda_timebase_fast': bda_timebase_fast,
                             'bda_maxinterval_slow_joint': bda_maxinterval_slow_joint,
@@ -278,10 +279,13 @@ class CalibrateDD(Operation):
                             'combined_slow_h5parm_separate': combined_slow_h5parm_separate,
                             'combined_h5parms_fast_slow_joint': combined_h5parms_fast_slow_joint,
                             'combined_h5parms_slow_joint_separate': combined_h5parms_slow_joint_separate,
+                            'solution_combine_mode': solution_combine_mode,
                             'solverlbfgs_dof': solverlbfgs_dof,
                             'solverlbfgs_iter': solverlbfgs_iter,
                             'solverlbfgs_minibatches': solverlbfgs_minibatches,
                             'max_threads': self.field.parset['cluster_specific']['max_threads']}
+        if self.field.apply_normalizations:
+            self.input_parms.update({'normalize_h5parm': normalize_h5parm})
 
     def get_baselines_core(self):
         """
@@ -474,6 +478,7 @@ class CalibrateDI(Operation):
                             'solverlbfgs_dof': solverlbfgs_dof,
                             'solverlbfgs_iter': solverlbfgs_iter,
                             'solverlbfgs_minibatches': solverlbfgs_minibatches,
+                            'modeldatacolumn': '[MODEL_DATA]',
                             'max_threads': self.field.parset['cluster_specific']['max_threads']}
 
     def finalize(self):

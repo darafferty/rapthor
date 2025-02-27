@@ -87,20 +87,14 @@ class Image(Operation):
 
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
                              'pipeline_working_dir': self.pipeline_working_dir,
-                             'apply_none': self.apply_none,
-                             'apply_amplitudes': self.apply_amplitudes,
                              'apply_screens': self.apply_screens,
-                             'apply_fulljones': self.apply_fulljones,
-                             'apply_normalizations': self.apply_normalizations,
-                             'preapply_dde_solutions': self.preapply_dde_solutions,
                              'make_image_cube': self.make_image_cube,
                              'normalize_flux_scale': self.normalize_flux_scale,
                              'use_facets': self.use_facets,
                              'save_source_list': self.save_source_list,
                              'peel_bright_sources': self.peel_bright_sources,
                              'max_cores': max_cores,
-                             'use_mpi': self.field.use_mpi,
-                             'toil_version': self.toil_major_version}
+                             'use_mpi': self.field.use_mpi}
 
     def set_input_parameters(self):
         """
@@ -236,7 +230,6 @@ class Image(Operation):
                             'join_polarizations': join_polarizations,
                             'apply_amplitudes': [self.apply_amplitudes] * nsectors,
                             'prepare_data_steps': f"[{','.join(prepare_data_steps)}]",
-                            'prepare_data_applycal_steps': f"[{','.join(prepare_data_applycal_steps)}]",
                             'channels_out': [sector.wsclean_nchannels for sector in self.imaging_sectors],
                             'deconvolution_channels': [sector.wsclean_deconvolution_channels for sector in self.imaging_sectors],
                             'fit_spectral_pol': [sector.wsclean_spectral_poly_order for sector in self.imaging_sectors],
@@ -264,6 +257,8 @@ class Image(Operation):
                             'max_threads': self.field.parset['cluster_specific']['max_threads'],
                             'deconvolution_threads': self.field.parset['cluster_specific']['deconvolution_threads']}
 
+        if len(prepare_data_applycal_steps):
+            self.input_parms.update({'prepare_data_applycal_steps': f"[{','.join(prepare_data_applycal_steps)}]"})
         if self.peel_bright_sources:
             self.input_parms.update({'bright_skymodel_pb': CWLFile(self.field.bright_source_skymodel_file).to_json()})
         if self.field.use_mpi:

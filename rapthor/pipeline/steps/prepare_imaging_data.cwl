@@ -128,7 +128,7 @@ inputs:
     doc: |
       The list of applycal steps to perform. Allowed steps are "fastphase", "slowamp",
       "fulljones", and "normalization"
-    type: string
+    type: string?
     inputBinding:
       prefix: applycal.steps=
       separate: False

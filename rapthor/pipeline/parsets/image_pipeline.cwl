@@ -181,34 +181,28 @@ inputs:
     label: DP3 steps
     doc: |
       The steps to perform in the applycal part of the prepare data DP3 step (length = 1).
-    type: string
+    type: string?
 
-{% if not apply_none %}
   - id: h5parm
     label: Filename of h5parm
     doc: |
       The filename of the h5parm file with the calibration solutions (length =
       1).
-    type: File
-{% endif %}
+    type: File?
 
-{% if apply_fulljones %}
   - id: fulljones_h5parm
     label: Filename of h5parm
     doc: |
       The filename of the h5parm file with the full-Jones calibration solutions
       (length = 1).
-    type: File
-{% endif %}
+    type: File?
 
-{% if apply_normalizations %}
   - id: input_normalize_h5parm
     label: Filename of normalize h5parm
     doc: |
       The filename of the input h5parm file with the flux-scale normalizations
       (length = n_sectors).
-    type: File[]
-{% endif %}
+    type: File[]?
 
 {% if use_facets %}
 # start use_facets
@@ -280,13 +274,11 @@ inputs:
 {% else %}
 # start not use_facets
 
-{% if preapply_dde_solutions %}
   - id: central_patch_name
     label: Name of central patch
     doc: |
       The name of the central patch of the sector (length = n_sectors).
-    type: string[]
-{% endif %}
+    type: string[]?
 
 {% endif %}
 # end use_facets / not use_facets
@@ -620,18 +612,12 @@ steps:
         source: prepare_data_steps
       - id: prepare_data_applycal_steps
         source: prepare_data_applycal_steps
-{% if not apply_none %}
       - id: h5parm
         source: h5parm
-{% endif %}
-{% if apply_fulljones %}
       - id: fulljones_h5parm
         source: fulljones_h5parm
-{% endif %}
-{% if apply_normalizations %}
       - id: input_normalize_h5parm
         source: input_normalize_h5parm
-{% endif %}
 {% if use_facets %}
 # start use_facets
       - id: skymodel
@@ -654,10 +640,8 @@ steps:
         source: diagonal_visibilities
 {% else %}
 # start not use_facets
-{% if preapply_dde_solutions %}
       - id: central_patch_name
         source: central_patch_name
-{% endif %}
 {% endif %}
 # end use_facets / not use_facets
       - id: channels_out
@@ -729,19 +713,14 @@ steps:
     scatter: [obs_filename, prepare_filename, concat_filename, starttime, ntimes,
               image_freqstep, image_timestep, previous_mask_filename, mask_filename,
               phasecenter, ra, dec, image_name, cellsize_deg, wsclean_imsize,
-              vertices_file, region_file,
+              vertices_file, region_file, input_normalize_h5parm,
 {% if use_mpi %}
               mpi_cpus_per_task, mpi_nnodes,
 {% endif %}
 {% if use_facets %}
               ra_mid, dec_mid, width_ra, width_dec, facet_region_file,
 {% else %}
-{% if preapply_dde_solutions %}
               central_patch_name,
-{% endif %}
-{% endif %}
-{% if apply_normalizations %}
-              input_normalize_h5parm,
 {% endif %}
 {% if make_image_cube %}
               image_cube_name,

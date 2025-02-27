@@ -144,15 +144,13 @@ inputs:
     label: Applycal steps for fast solve
     doc: |
       The list of DP3 applycal steps to use in the fast-phase calibration (length = 1).
-    type: string
+    type: string?
 
-{% if apply_normalizations %}
   - id: normalize_h5parm
     label: The filename of normalization h5parm
     doc: |
       The filename of the input flux-scale normalization h5parm (length = 1).
-    type: File
-{% endif %}
+    type: File?
 
   - id: bda_timebase_fast
     label: BDA timebase for fast solve
@@ -555,6 +553,13 @@ inputs:
       second (separate) slow-gain solves (length = 1).
     type: string
 
+  - id: solution_combine_mode
+    label: Mode for combining solutions
+    doc: |
+      The mode used for combining the fast-phase and joint slow-gain solutions
+      (length = 1).
+    type: string?
+
 {% endif %}
 # end do_slowgain_solve
 
@@ -611,10 +616,8 @@ steps:
         source: dp3_steps_fast
       - id: applycal_steps
         source: dp3_applycal_steps_fast
-{% if apply_normalizations %}
       - id: normalize_h5parm
         source: normalize_h5parm
-{% endif %}
       - id: timebase
         source: bda_timebase_fast
       - id: maxinterval
@@ -738,17 +741,15 @@ steps:
       - id: steps
         source: dp3_steps_slow_joint
       - id: applycal_steps
-        valueFrom: '[fastphase]'
+        valueFrom: dp3_applycal_steps_slow_joint
       - id: timebase
         source: bda_timebase_slow_joint
       - id: maxinterval
         source: bda_maxinterval_slow_joint
       - id: fastphase_h5parm
         source: combine_fast_phases/outh5parm
-{% if apply_normalizations %}
       - id: normalize_h5parm
         source: normalize_h5parm
-{% endif %}
       - id: h5parm
         source: output_slow_h5parm_joint
       - id: solint
@@ -910,10 +911,8 @@ steps:
       - id: slowgain_h5parm
         source: process_slow_gains_joint/outh5parm
 {% endif %}
-{% if apply_normalizations %}
       - id: normalize_h5parm
         source: normalize_h5parm
-{% endif %}
       - id: h5parm
         source: output_slow_h5parm_separate
       - id: solint
@@ -1104,11 +1103,7 @@ steps:
       - id: outh5parm
         source: combined_h5parms
       - id: mode
-{% if apply_diagonal_solutions %}
-        valueFrom: 'p1p2a2_diagonal'
-{% else %}
-        valueFrom: 'p1p2a2_scalar'
-{% endif %}
+        source: solution_combine_mode
       - id: reweight
         valueFrom: 'False'
       - id: calibrator_names

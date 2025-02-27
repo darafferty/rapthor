@@ -79,20 +79,14 @@ def test_concatenate_workflow(
 
 
 @pytest.mark.parametrize("generate_screens", (False, True))
-@pytest.mark.parametrize("use_facets", (False, True))
 @pytest.mark.parametrize("do_slowgain_solve", (False, True))
 @pytest.mark.parametrize("do_joint_solve", (False, True))
-@pytest.mark.parametrize("use_scalarphase", (False, True))
-@pytest.mark.parametrize("apply_diagonal_solutions", (False, True))
 @pytest.mark.parametrize("max_cores", (None, 8))
 def test_calibrate_workflow(
     tmp_path,
     generate_screens,
-    use_facets,
     do_slowgain_solve,
     do_joint_solve,
-    use_scalarphase,
-    apply_diagonal_solutions,
     max_cores,
 ):
     """
@@ -104,21 +98,16 @@ def test_calibrate_workflow(
     templ = rapthor.lib.operation.env_parset.get_template("calibrate_pipeline.cwl")
     parms = {
         "generate_screens": generate_screens,
-        "use_facets": use_facets,
         "do_slowgain_solve": do_slowgain_solve,
         "do_joint_solve": do_joint_solve,
-        "use_scalarphase": use_scalarphase,
-        "apply_diagonal_solutions": apply_diagonal_solutions,
         "max_cores": max_cores,
     }
     generate_and_validate(tmp_path, operation, parms, templ)
 
 
-@pytest.mark.parametrize("do_fulljones_solve", (False, True))
 @pytest.mark.parametrize("max_cores", (None, 8))
 def test_calibrate_di_workflow(
     tmp_path,
-    do_fulljones_solve,
     max_cores,
 ):
     """
@@ -129,7 +118,6 @@ def test_calibrate_di_workflow(
     operation = "calibrate_di"
     templ = rapthor.lib.operation.env_parset.get_template("calibrate_di_pipeline.cwl")
     parms = {
-        "do_fulljones_solve": do_fulljones_solve,
         "max_cores": max_cores,
     }
     generate_and_validate(tmp_path, operation, parms, templ)
@@ -182,12 +170,7 @@ def test_predict_nc_workflow(tmp_path, max_cores, apply_solutions):
     generate_and_validate(tmp_path, operation, parms, templ)
 
 
-@pytest.mark.parametrize("apply_none", (False, True))
-@pytest.mark.parametrize("apply_amplitudes", (False, True))
 @pytest.mark.parametrize("apply_screens", (False, True))
-@pytest.mark.parametrize("apply_normalizations", (False, True))
-@pytest.mark.parametrize("apply_fulljones", (False, True))
-@pytest.mark.parametrize("preapply_dde_solutions", (False, True))
 @pytest.mark.parametrize("use_facets", (False, True))
 @pytest.mark.parametrize("peel_bright_sources", (False, True))
 @pytest.mark.parametrize("max_cores", (None, 8))
@@ -196,12 +179,7 @@ def test_predict_nc_workflow(tmp_path, max_cores, apply_solutions):
 @pytest.mark.parametrize("normalize_flux_scale", (False, True))
 def test_image_workflow(
     tmp_path,
-    apply_none,
-    apply_amplitudes,
     apply_screens,
-    apply_normalizations,
-    apply_fulljones,
-    preapply_dde_solutions,
     use_facets,
     peel_bright_sources,
     max_cores,
@@ -220,12 +198,7 @@ def test_image_workflow(
         "image_sector_pipeline.cwl"
     )
     parms = {
-        "apply_none": apply_none,
-        "apply_amplitudes": apply_amplitudes,
         "apply_screens": apply_screens,
-        "apply_normalizations": apply_normalizations,
-        "apply_fulljones": apply_fulljones,
-        "preapply_dde_solutions": preapply_dde_solutions,
         "use_facets": use_facets,
         "peel_bright_sources": peel_bright_sources,
         "max_cores": max_cores,

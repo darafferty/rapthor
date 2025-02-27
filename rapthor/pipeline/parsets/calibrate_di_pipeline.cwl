@@ -193,7 +193,7 @@ steps:
     label: Solve for full-Jones gains
     doc: |
       This step uses DDECal (in DP3) to solve for full-Jones, direction-independent gain
-      corrections, using the input MS files and sourcedb. These corrections are used to
+      corrections, using the input MS files and model data. These corrections are used to
       correct primarily for polarization errors.
     run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve.cwl
 {% if max_cores is not none %}
@@ -215,8 +215,6 @@ steps:
         valueFrom: 'fulljones'
       - id: steps
         valueFrom: '[solve]'
-      - id: applycal_steps
-        valueFrom: '[]'
       - id: nchan
         source: nchan_fulljones
       - id: h5parm
@@ -254,7 +252,7 @@ steps:
     scatter: [msin, starttime, ntimes, startchan, nchan, h5parm, solint, solve_nchan]
     scatterMethod: dotproduct
     out:
-      - id: fulljonesh5parm
+      - id: output_h5parm
 
   - id: combine_fulljones_gains
     label: Combine full-Jones gain solutions

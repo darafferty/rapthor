@@ -149,34 +149,28 @@ inputs:
     doc: |
       The steps to perform in the applycal part of the prepare data DP3 step
       (length = 1).
-    type: string
+    type: string?
 
-{% if not apply_none %}
   - id: h5parm
     label: Filename of h5parm
     doc: |
       The filename of the h5parm file with the direction-dependent calibration
       solutions (length = 1).
-    type: File
-{% endif %}
+    type: File?
 
-{% if apply_fulljones %}
   - id: fulljones_h5parm
     label: Filename of h5parm
     doc: |
       The filename of the h5parm file with the full-Jones calibration solutions
       (length = 1).
-    type: File
-{% endif %}
+    type: File?
 
-{% if apply_normalizations %}
   - id: input_normalize_h5parm
     label: Filename of normalize h5parm
     doc: |
       The filename of the input h5parm file with the flux-scale normalizations
       (length = 1).
-    type: File
-{% endif %}
+    type: File?
 
 {% if use_facets %}
 # start use_facets
@@ -245,13 +239,12 @@ inputs:
 {% else %}
 # start not use_facets
 
-{% if preapply_dde_solutions %}
   - id: central_patch_name
     label: Name of central patch
     doc: |
       The name of the central-most patch of the sector (length = 1).
-    type: string
-{% endif %}
+    type: string?
+
 {% endif %}
 # end use_facets / not use_facets
 
@@ -547,20 +540,14 @@ steps:
         source: phasecenter
       - id: numthreads
         source: max_threads
-{% if preapply_dde_solutions %}
       - id: central_patch_name
         source: central_patch_name
       - id: h5parm
         source: h5parm
-{% endif %}
-{% if apply_fulljones %}
       - id: fulljones_h5parm
         source: fulljones_h5parm
-{% endif %}
-{% if apply_normalizations %}
       - id: normalize_h5parm
         source: input_normalize_h5parm
-{% endif %}
       - id: steps
         source: prepare_data_steps
       - id: applycal_steps
