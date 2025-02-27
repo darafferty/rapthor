@@ -262,7 +262,7 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/collect_h5parms.cwl
     in:
       - id: inh5parms
-        source: solve_fulljones_gains/fulljonesh5parm
+        source: solve_fulljones_gains/output_h5parm
       - id: outputh5parm
         source: combined_h5parm_fulljones
     out:

@@ -236,17 +236,14 @@ inputs:
       The maximum number of threads to use during parallel gridding (length = 1).
     type: int
 
-{% else %}
-# start not use_facets
+{% endif %}
+# end use_facets
 
   - id: central_patch_name
     label: Name of central patch
     doc: |
       The name of the central-most patch of the sector (length = 1).
     type: string?
-
-{% endif %}
-# end use_facets / not use_facets
 
   - id: channels_out
     label: Number of channels
