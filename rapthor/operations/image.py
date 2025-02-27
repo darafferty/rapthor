@@ -171,8 +171,6 @@ class Image(Operation):
             if self.normalize_flux_scale:
                 output_source_catalog.append(sector.name + '_source_catalog.fits')
                 normalize_h5parm.append(sector.name + '_normalize.h5parm')
-            if self.apply_normalizations:
-                normalize_h5parm.append(self.field.normalize_h5parm)
 
         # Handle the polarization-related options
         link_polarizations = False
@@ -269,7 +267,7 @@ class Image(Operation):
             if self.apply_fulljones:
                 self.input_parms.update({'fulljones_h5parm': CWLFile(self.field.fulljones_h5parm_filename).to_json()})
             if self.apply_normalizations:
-                self.input_parms.update({'input_normalize_h5parm': CWLFile(normalize_h5parm).to_json()})
+                self.input_parms.update({'input_normalize_h5parm': CWLFile(self.field.normalize_h5parm).to_json()})
             if self.apply_screens:
                 self.input_parms.update({'idgcal_h5parm': CWLFile(self.field.idgcal_h5parm_filename).to_json()})
             elif self.use_facets:

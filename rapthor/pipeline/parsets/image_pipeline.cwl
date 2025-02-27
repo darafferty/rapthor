@@ -202,7 +202,7 @@ inputs:
     doc: |
       The filename of the input h5parm file with the flux-scale normalizations
       (length = n_sectors).
-    type: File[]?
+    type: File?
 
 {% if use_facets %}
 # start use_facets
@@ -713,7 +713,7 @@ steps:
     scatter: [obs_filename, prepare_filename, concat_filename, starttime, ntimes,
               image_freqstep, image_timestep, previous_mask_filename, mask_filename,
               phasecenter, ra, dec, image_name, cellsize_deg, wsclean_imsize,
-              vertices_file, region_file, input_normalize_h5parm,
+              vertices_file, region_file,
 {% if use_mpi %}
               mpi_cpus_per_task, mpi_nnodes,
 {% endif %}
