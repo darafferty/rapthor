@@ -241,37 +241,41 @@ def main(source_catalog, ms_file, output_h5parm, radius_cut=3.0, major_axis_cut=
         # so we use np.squeeze to remove the length-one axes
         ra, dec = np.squeeze(fieldTable.getcol('PHASE_DIR'))  # radians
 
-    # Filter the sources to keep only:
-    #  - sources within radius_cut degrees of phase center
-    #  - sources with major axes less than major_axis_cut degrees
-    #  - sources that have no neighbors within neighbor_cut degrees
-    source_coords = SkyCoord(ra=np.array([misc.normalize_ra(source_ra)
-                                          for source_ra in data['RA']])*u.degree,
-                             dec=np.array([misc.normalize_dec(source_dec)
-                                           for source_dec in data['DEC']])*u.degree)
-    center_coord = SkyCoord(ra=ra*u.radian, dec=dec*u.radian)
-    source_distances = np.array([sep.value for sep in center_coord.separation(source_coords)])
-
-    # To find the distance to the nearest neighbor of each source, cross match
-    # the source catalog with itself and take the second-closest match using
-    # nthneighbor = 2 (the closest match, returned by nthneighbor = 1, will
-    # always be each source matched to itself and hence at a distance of 0)
-    _, separation, _ = match_coordinates_sky(source_coords, source_coords, nthneighbor=2)
-    neighbor_distances = np.array([sep.value for sep in separation])
-
-    # Apply the cuts
     do_normalization = True
-    radius_filter = source_distances < radius_cut
-    major_axis_filter = data['DC_Maj'] < major_axis_cut
-    neighbor_filter = neighbor_distances > neighbor_cut
     print(f"Number of sources before applying cuts: {data['RA'].size}")
-    data = data[radius_filter & major_axis_filter & neighbor_filter]
-    source_coords = source_coords[radius_filter & major_axis_filter & neighbor_filter]
-    n_sources = len(source_coords)
-    print(f"Number of sources after applying cuts: {n_sources}")
-    if n_sources < min_sources:
-        print('Too few sources remain after applying cuts. Flux normalization will be skipped.')
+    if data['RA'].size < min_sources:
+        print('Too few sources. Flux normalization will be skipped.')
         do_normalization = False
+    else:
+        # Filter the sources to keep only:
+        #  - sources within radius_cut degrees of phase center
+        #  - sources with major axes less than major_axis_cut degrees
+        #  - sources that have no neighbors within neighbor_cut degrees
+        source_coords = SkyCoord(ra=np.array([misc.normalize_ra(source_ra)
+                                              for source_ra in data['RA']])*u.degree,
+                                 dec=np.array([misc.normalize_dec(source_dec)
+                                               for source_dec in data['DEC']])*u.degree)
+        center_coord = SkyCoord(ra=ra*u.radian, dec=dec*u.radian)
+        source_distances = np.array([sep.value for sep in center_coord.separation(source_coords)])
+
+        # To find the distance to the nearest neighbor of each source, cross match
+        # the source catalog with itself and take the second-closest match using
+        # nthneighbor = 2 (the closest match, returned by nthneighbor = 1, will
+        # always be each source matched to itself and hence at a distance of 0)
+        _, separation, _ = match_coordinates_sky(source_coords, source_coords, nthneighbor=2)
+        neighbor_distances = np.array([sep.value for sep in separation])
+
+        # Apply the cuts
+        radius_filter = source_distances < radius_cut
+        major_axis_filter = data['DC_Maj'] < major_axis_cut
+        neighbor_filter = neighbor_distances > neighbor_cut
+        data = data[radius_filter & major_axis_filter & neighbor_filter]
+        source_coords = source_coords[radius_filter & major_axis_filter & neighbor_filter]
+        n_sources = len(source_coords)
+        print(f"Number of sources after applying cuts: {n_sources}")
+        if n_sources < min_sources:
+            print('Too few sources remain after applying cuts. Flux normalization will be skipped.')
+            do_normalization = False
 
     # Cross match sources with external catalogs
     if do_normalization:
