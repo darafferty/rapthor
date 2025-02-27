@@ -187,10 +187,10 @@ class CalibrateDD(Operation):
         # applied
         if self.field.apply_normalizations:
             normalize_h5parm = CWLFile(self.field.normalize_h5parm).to_json() if self.field.apply_normalizations else None
-            dp3_applycal_steps_fast = '[normalization]'
+            dp3_applycal_steps_fast = ['normalization']
         else:
             normalize_h5parm = None
-            dp3_applycal_steps_fast = '[]'
+            dp3_applycal_steps_fast = []
         if self.field.do_slowgain_solve:
             dp3_applycal_steps_slow_joint = ['fastphase']
             dp3_applycal_steps_slow_separate = ['fastphase']
@@ -199,11 +199,9 @@ class CalibrateDD(Operation):
             if self.field.apply_normalizations:
                 dp3_applycal_steps_slow_joint.append('normalization')
                 dp3_applycal_steps_slow_separate.append('normalization')
-            dp3_applycal_steps_slow_joint = f"[{','.join(dp3_applycal_steps_slow_joint)}]"
-            dp3_applycal_steps_slow_separate = f"[{','.join(dp3_applycal_steps_slow_separate)}]"
         else:
-            dp3_applycal_steps_slow_joint = '[]'
-            dp3_applycal_steps_slow_separate = '[]'
+            dp3_applycal_steps_slow_joint = []
+            dp3_applycal_steps_slow_separate = []
 
         self.input_parms = {'timechunk_filename': CWLDir(timechunk_filename).to_json(),
                             'freqchunk_filename_joint': CWLDir(freqchunk_filename_joint).to_json(),
@@ -241,11 +239,8 @@ class CalibrateDD(Operation):
                             'slow_smoothnessconstraint_separate': slow_smoothnessconstraint_separate,
                             'dp3_solve_mode_fast': dp3_solve_mode_fast,
                             'dp3_steps_fast': dp3_steps_fast,
-                            'dp3_applycal_steps_fast': dp3_applycal_steps_fast,
                             'dp3_steps_slow_joint': dp3_steps_slow_joint,
                             'dp3_steps_slow_separate': dp3_steps_slow_separate,
-                            'dp3_applycal_steps_slow_joint': dp3_applycal_steps_slow_joint,
-                            'dp3_applycal_steps_slow_separate': dp3_applycal_steps_slow_separate,
                             'dp3_solve_mode_fast': dp3_solve_mode_fast,
                             'bda_maxinterval_fast': bda_maxinterval_fast,
                             'bda_timebase_fast': bda_timebase_fast,
@@ -286,6 +281,12 @@ class CalibrateDD(Operation):
                             'max_threads': self.field.parset['cluster_specific']['max_threads']}
         if self.field.apply_normalizations:
             self.input_parms.update({'normalize_h5parm': normalize_h5parm})
+        if dp3_applycal_steps_fast:
+            self.input_parms.update({'dp3_applycal_steps_fast': f"[{','.join(dp3_applycal_steps_fast)}]"})
+        if dp3_applycal_steps_slow_joint:
+            self.input_parms.update({'dp3_applycal_steps_slow_joint': f"[{','.join(dp3_applycal_steps_slow_joint)}]"})
+        if dp3_applycal_steps_slow_separate:
+            self.input_parms.update({'dp3_applycal_steps_slow_separate': f"[{','.join(dp3_applycal_steps_slow_separate)}]"})
 
     def get_baselines_core(self):
         """

@@ -257,7 +257,7 @@ class Image(Operation):
                             'max_threads': self.field.parset['cluster_specific']['max_threads'],
                             'deconvolution_threads': self.field.parset['cluster_specific']['deconvolution_threads']}
 
-        if len(prepare_data_applycal_steps):
+        if prepare_data_applycal_steps:
             self.input_parms.update({'prepare_data_applycal_steps': f"[{','.join(prepare_data_applycal_steps)}]"})
         if self.peel_bright_sources:
             self.input_parms.update({'bright_skymodel_pb': CWLFile(self.field.bright_source_skymodel_file).to_json()})
