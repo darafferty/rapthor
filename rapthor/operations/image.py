@@ -52,26 +52,12 @@ class Image(Operation):
         Define parameters needed for the CWL workflow template
         """
         # Set parameters as needed
-        if self.apply_amplitudes is None:
-            self.apply_amplitudes = self.field.apply_amplitudes  # set by CalibrateDD.finalize()
         if self.apply_screens is None:
             self.apply_screens = self.field.apply_screens  # set by process.run_steps()
-        if self.apply_fulljones is None:
-            self.apply_fulljones = self.field.apply_fulljones  # set by CalibrateDI.finalize()
-        if self.apply_normalizations is None:
-            if self.normalize_flux_scale:
-                self.apply_normalizations = False
-            else:
-                self.apply_normalizations = self.field.apply_normalizations  # set by ImageNormalize.finalize()
         if self.dde_method is None:
             self.dde_method = self.field.dde_method
         if self.use_facets is None:
             self.use_facets = True if (self.dde_method == 'full' and not self.apply_screens) else False
-        if self.preapply_dde_solutions is None:
-            if self.dde_method == 'single' and not self.apply_none:
-                self.preapply_dde_solutions = True
-            else:
-                self.preapply_dde_solutions = False
         if self.image_pol is None:
             self.image_pol = self.field.image_pol  # set by process.run_steps()
         if self.save_source_list is None:
@@ -111,6 +97,20 @@ class Image(Operation):
             self.do_multiscale_clean = self.field.do_multiscale_clean
         if self.pol_combine_method is None:
             self.pol_combine_method = self.field.pol_combine_method
+        if self.apply_amplitudes is None:
+            self.apply_amplitudes = self.field.apply_amplitudes  # set by CalibrateDD.finalize()
+        if self.apply_fulljones is None:
+            self.apply_fulljones = self.field.apply_fulljones  # set by CalibrateDI.finalize()
+        if self.apply_normalizations is None:
+            if self.normalize_flux_scale:
+                self.apply_normalizations = False
+            else:
+                self.apply_normalizations = self.field.apply_normalizations  # set by ImageNormalize.finalize()
+        if self.preapply_dde_solutions is None:
+            if self.dde_method == 'single' and not self.apply_none:
+                self.preapply_dde_solutions = True
+            else:
+                self.preapply_dde_solutions = False
 
         nsectors = len(self.imaging_sectors)
         obs_filename = []
@@ -122,7 +122,6 @@ class Image(Operation):
         ntimes = []
         image_freqstep = []
         image_timestep = []
-        dir_local = []
         phasecenter = []
         image_root = []
         central_patch_name = []
@@ -165,10 +164,6 @@ class Image(Operation):
             starttime.append(sector_starttime)
             ntimes.append(sector_ntimes)
             phasecenter.append("'[{0}deg, {1}deg]'".format(sector.ra, sector.dec))
-            if self.scratch_dir is None:
-                dir_local.append(self.pipeline_working_dir)
-            else:
-                dir_local.append(self.scratch_dir)
             if self.preapply_dde_solutions:
                 central_patch_name.append(sector.central_patch)
             if self.make_image_cube:
@@ -223,12 +218,10 @@ class Image(Operation):
                             'image_timestep': image_timestep,
                             'phasecenter': phasecenter,
                             'image_name': image_root,
-                            'dir_local': dir_local,
                             'pol': self.image_pol,
                             'save_source_list': self.save_source_list,
                             'link_polarizations': link_polarizations,
                             'join_polarizations': join_polarizations,
-                            'apply_amplitudes': [self.apply_amplitudes] * nsectors,
                             'prepare_data_steps': f"[{','.join(prepare_data_steps)}]",
                             'channels_out': [sector.wsclean_nchannels for sector in self.imaging_sectors],
                             'deconvolution_channels': [sector.wsclean_deconvolution_channels for sector in self.imaging_sectors],
@@ -448,10 +441,7 @@ class ImageInitial(Image):
         Define parameters needed for the CWL workflow template
         """
         # Set parameters as needed
-        self.apply_none = True
-        self.apply_amplitudes = False
         self.apply_screens = False
-        self.apply_fulljones = False
         self.use_facets = False
         self.save_source_list = True
         self.peel_bright_sources = False
@@ -464,6 +454,9 @@ class ImageInitial(Image):
         """
         # Set the imaging parameters that are optimal for the initial sky
         # model generation
+        self.apply_amplitudes = False
+        self.apply_fulljones = False
+        self.apply_none = True
         self.field.full_field_sector.auto_mask = 5.0
         self.field.full_field_sector.threshisl = 4.0
         self.field.full_field_sector.threshpix = 5.0
@@ -554,10 +547,8 @@ class ImageNormalize(Image):
         self.peel_bright_sources = False
         self.make_image_cube = True
         self.normalize_flux_scale = True
-        self.apply_normalizations = False
         if self.field.h5parm_filename is None:
             # No calibration has yet been done, so set various flags as needed
-            self.apply_none = True
             self.use_facets = False
             self.apply_screens = False
         super().set_parset_parameters()
@@ -568,6 +559,12 @@ class ImageNormalize(Image):
         """
         # Set the imaging parameters that are optimal for the flux-scale
         # normalization
+        if self.field.h5parm_filename is None:
+            # No calibration has yet been done
+            self.apply_none = True
+        else:
+            self.apply_none = False
+        self.apply_normalizations = False
         self.field.normalize_sector.auto_mask = 5.0
         self.field.normalize_sector.threshisl = 4.0
         self.field.normalize_sector.threshpix = 5.0
