@@ -19,6 +19,8 @@ def generate_and_validate(tmp_path, operation, parms, templ, sub_templ=None):
         pytest.skip("'use_facets' and 'apply_screens' cannot both be enabled")
     if parms.get("normalize_flux_scale") and not parms.get("make_image_cube"):
         pytest.skip("'normalize_flux_scale' must be used with 'make_image_cube'")
+    if (parms.get("use_facets") or parms.get("apply_screens")) and parms.get("preapply_dde_solutions"):
+        pytest.skip("'preapply_dde_solutions' cannot be used with 'use_facets' or 'apply_screens'")
     pipeline_working_dir = tmp_path / "pipelines" / operation
     pipeline_working_dir.mkdir(parents=True, exist_ok=True)
     parset = pipeline_working_dir / "pipeline_parset.cwl"
@@ -166,6 +168,8 @@ def test_predict_nc_workflow(tmp_path, max_cores, apply_solutions):
 @pytest.mark.parametrize("use_mpi", (False, True))
 @pytest.mark.parametrize("make_image_cube", (False, True))
 @pytest.mark.parametrize("normalize_flux_scale", (False, True))
+@pytest.mark.parametrize("preapply_dde_solutions", (False, True))
+@pytest.mark.parametrize("save_source_list", (False, True))
 def test_image_workflow(
     tmp_path,
     apply_screens,
@@ -174,7 +178,9 @@ def test_image_workflow(
     max_cores,
     use_mpi,
     make_image_cube,
-    normalize_flux_scale
+    normalize_flux_scale,
+    preapply_dde_solutions,
+    save_source_list,
 ):
     """
     Test the Image workflow, using all possible combinations of parameters that
@@ -194,6 +200,8 @@ def test_image_workflow(
         "use_mpi": use_mpi,
         "make_image_cube": make_image_cube,
         "normalize_flux_scale": normalize_flux_scale,
+        "preapply_dde_solutions": preapply_dde_solutions,
+        "save_source_list": save_source_list,
     }
     generate_and_validate(tmp_path, operation, parms, templ, sub_templ)
 

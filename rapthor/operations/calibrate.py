@@ -479,7 +479,6 @@ class CalibrateDI(Operation):
                             'solverlbfgs_dof': solverlbfgs_dof,
                             'solverlbfgs_iter': solverlbfgs_iter,
                             'solverlbfgs_minibatches': solverlbfgs_minibatches,
-                            'modeldatacolumn': '[MODEL_DATA]',
                             'max_threads': self.field.parset['cluster_specific']['max_threads']}
 
     def finalize(self):

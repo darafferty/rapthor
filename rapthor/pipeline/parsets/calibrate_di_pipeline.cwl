@@ -223,6 +223,8 @@ steps:
         source: solint_fulljones_timestep
       - id: solve_nchan
         source: solint_fulljones_freqstep
+      - id: modeldatacolumn
+        valueFrom: '[MODEL_DATA]'
       - id: llssolver
         source: llssolver
       - id: maxiter
