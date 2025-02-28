@@ -213,7 +213,7 @@ inputs:
     label: Model data column
     doc: |
       The name of the model data to use for the solve (used if no sourcedb is given).
-    type: File?
+    type: string?
     inputBinding:
       prefix: solve.modeldatacolumns=
       separate: False
