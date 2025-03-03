@@ -185,6 +185,13 @@ inputs:
       for the next solution interval (length = 1).
     type: boolean
 
+  - id: initialsolutions_h5parm
+    label: Input solution table
+    doc: |
+      The filename of the input h5parm solution table to use for the initial solutions (length
+      = 1).
+    type: File?
+
   - id: solveralgorithm
     label: Solver algorithm
     doc: |
@@ -636,6 +643,10 @@ steps:
         source: maxiter
       - id: propagatesolutions
         source: propagatesolutions
+      - id: initialsolutions_h5parm
+        source: initialsolutions_h5parm
+      - id: initialsolutions_soltab
+        valueFrom: '[phase000]'
       - id: solveralgorithm
         source: solveralgorithm
       - id: solverlbfgs_dof
@@ -768,6 +779,10 @@ steps:
         source: maxiter
       - id: propagatesolutions
         source: propagatesolutions
+      - id: initialsolutions_h5parm
+        source: initialsolutions_h5parm
+      - id: initialsolutions_soltab
+        valueFrom: '[phase000,amplitude000]'
       - id: solveralgorithm
         source: solveralgorithm
       - id: solverlbfgs_dof
@@ -931,6 +946,10 @@ steps:
         source: maxiter
       - id: propagatesolutions
         source: propagatesolutions
+      - id: initialsolutions_h5parm
+        source: initialsolutions_h5parm
+      - id: initialsolutions_soltab
+        valueFrom: '[phase000,amplitude000]'
       - id: solveralgorithm
         source: solveralgorithm
       - id: solverlbfgs_dof

@@ -28,6 +28,7 @@ arguments:
   - solve.applycal.slowgain.solset=sol000
   - solve.applycal.normalization.correction=amplitude000
   - solve.applycal.normalization.solset=sol000
+  - solve.initialsolutions.missingantennabehavior=unit
 
 inputs:
   - id: msin
@@ -245,6 +246,24 @@ inputs:
     inputBinding:
       prefix: solve.propagatesolutions=
       valueFrom: "$(self ? 'True': 'False')"
+      separate: False
+
+  - id: initialsolutions_h5parm
+    label: Initial solutions H5parm
+    doc: |
+      The input H5parm file containing initial solutions.
+    type: File?
+    inputBinding:
+      prefix: solve.initialsolutions.h5parm=
+      separate: False
+
+  - id: initialsolutions_soltab
+    label: Initial solutions soltab
+    doc: |
+      The solution table containing initial solutions.
+    type: string?
+    inputBinding:
+      prefix: solve.initialsolutions.soltab=
       separate: False
 
   - id: solveralgorithm

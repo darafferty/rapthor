@@ -287,6 +287,8 @@ class CalibrateDD(Operation):
             self.input_parms.update({'dp3_applycal_steps_slow_joint': f"[{','.join(dp3_applycal_steps_slow_joint)}]"})
         if dp3_applycal_steps_slow_separate:
             self.input_parms.update({'dp3_applycal_steps_slow_separate': f"[{','.join(dp3_applycal_steps_slow_separate)}]"})
+        if self.field.h5parm_filename:
+            self.input_parms.update({'initialsolutions_h5parm': CWLFile(self.field.h5parm_filename).to_json()})
 
     def get_baselines_core(self):
         """
