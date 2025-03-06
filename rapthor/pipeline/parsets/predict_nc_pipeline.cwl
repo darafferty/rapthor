@@ -63,10 +63,11 @@ inputs:
       A list of lists giving the names of the calibration patches for each sector
       (length = n_obs * n_sectors).
     type:
-      type: array?
-      items:
-        type: array
-        items: string
+      - "null"
+      - type: array
+        items:
+          type: array
+          items: string
 
   - id: h5parm
     label: Filename of solution table
