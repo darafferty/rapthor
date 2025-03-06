@@ -266,10 +266,10 @@ class PredictNC(Operation):
             dp3_applycal_steps.append('normalization')
         else:
             normalize_h5parm = None
-            if dp3_applycal_steps:
-                dp3_applycal_steps = f"[{','.join(dp3_applycal_steps)}]"
-            else:
-                dp3_applycal_steps = None
+        if dp3_applycal_steps:
+            dp3_applycal_steps = f"[{','.join(dp3_applycal_steps)}]"
+        else:
+            dp3_applycal_steps = None
 
         self.input_parms = {'sector_filename': CWLDir(sector_filename).to_json(),
                             'sector_starttime': sector_starttime,

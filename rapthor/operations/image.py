@@ -238,7 +238,7 @@ class Image(Operation):
                             'save_source_list': self.save_source_list,
                             'link_polarizations': link_polarizations,
                             'join_polarizations': join_polarizations,
-                            'prepare_data_steps': f"[{','.join(prepare_data_steps)}]",
+                            'prepare_data_steps': prepare_data_steps,
                             'prepare_data_applycal_steps': prepare_data_applycal_steps,
                             'h5parm': h5parm,
                             'fulljones_h5parm': fulljones_h5parm,
