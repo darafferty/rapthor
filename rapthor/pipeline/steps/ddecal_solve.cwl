@@ -106,12 +106,7 @@ inputs:
     label: Solver mode
     doc: |
       The solver mode to use for the solve.
-    type: enum
-    symbols:
-      - scalar
-      - scalarphase
-      - diagonal
-      - fulljones
+    type: string
     inputBinding:
       prefix: solve.mode=
       separate: False
@@ -227,11 +222,7 @@ inputs:
     label: Linear least-squares solver
     doc: |
       The linear least-squares solver to use (one of 'qr', 'svd', or 'lsmr').
-    type: enum
-    symbols:
-      - qr
-      - svd
-      - lsmr
+    type: string
     inputBinding:
       prefix: solve.llssolver=
       separate: False
