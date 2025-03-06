@@ -167,7 +167,7 @@ class CalibrateDD(Operation):
         sector_bounds_mid_deg = '{}'.format(self.field.sector_bounds_mid_deg)
 
         # Set the DDECal steps depending on whether baseline-dependent averaging is
-        # activated (and supported) or not. If BDA is used, an "null" step is also
+        # activated (and supported) or not. If BDA is used, a "null" step is also
         # added to prevent the writing of the BDA data
         all_regular = all([obs.channels_are_regular for obs in self.field.observations])
         if self.field.bda_timebase_fast > 0 and all_regular:

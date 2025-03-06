@@ -204,7 +204,7 @@ class Image(Operation):
                 # preapplied, as they are not applied during imaging
                 prepare_data_applycal_steps.append('fastphase')
                 if self.apply_amplitudes:
-                    prepare_data_applycal_steps.append('slowamp')
+                    prepare_data_applycal_steps.append('slowgain')
             if self.apply_fulljones:
                 prepare_data_applycal_steps.append('fulljones')
                 fulljones_h5parm = CWLFile(self.field.fulljones_h5parm_filename).to_json()

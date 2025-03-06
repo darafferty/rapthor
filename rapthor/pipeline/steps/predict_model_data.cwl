@@ -91,10 +91,10 @@ inputs:
     label: List of applycal steps
     doc: |
       The list of applycal steps to perform. Allowed steps are "fastphase",
-      "slowgain", and "normalization"
+      "slowgain", and "normalization".
     type: string?
     inputBinding:
-      prefix: solve.applycal.steps=
+      prefix: predict.applycal.steps=
       separate: False
 
   - id: h5parm
@@ -112,7 +112,7 @@ inputs:
       The filename of the h5parm file with the flux-scale normalization corrections.
     type: File?
     inputBinding:
-      prefix: solve.applycal.normalization.parmdb=
+      prefix: predict.applycal.normalization.parmdb=
       separate: False
 
   - id: sourcedb
