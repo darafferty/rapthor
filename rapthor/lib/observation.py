@@ -52,10 +52,10 @@ class Observation(object):
         """
         # The logger's stream handlers are not copyable with deepcopy, so copy
         # them by hand:
-        self.log = None
+        self.log, obs_log = None, self.log
         obs_copy = copy.deepcopy(self)
         obs_copy.log = logging.getLogger('rapthor:{}'.format(self.name))
-        self.log = logging.getLogger('rapthor:{}'.format(self.name))
+        self.log = obs_log
 
         return obs_copy
 

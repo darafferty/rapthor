@@ -29,8 +29,7 @@ class PredictDD(Operation):
         else:
             max_cores = self.field.parset['cluster_specific']['max_cores']
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
-                             'max_cores': max_cores,
-                             'apply_amplitudes': self.field.apply_amplitudes}
+                             'max_cores': max_cores}
 
     def set_input_parameters(self):
         """
@@ -105,10 +104,10 @@ class PredictDD(Operation):
         if self.field.apply_amplitudes:
             dp3_applycal_steps.append('slowgain')
         if self.field.apply_normalizations:
-            normalize_h5parm = self.field.normalize_h5parm
+            normalize_h5parm = CWLFile(self.field.normalize_h5parm).to_json()
             dp3_applycal_steps.append('normalization')
         else:
-            normalize_h5parm = ''
+            normalize_h5parm = None
 
         self.input_parms = {'sector_filename': CWLDir(sector_filename).to_json(),
                             'sector_starttime': sector_starttime,
@@ -117,7 +116,7 @@ class PredictDD(Operation):
                             'sector_skymodel': CWLFile(sector_skymodel).to_json(),
                             'sector_patches': sector_patches,
                             'h5parm': CWLFile(self.field.h5parm_filename).to_json(),
-                            'normalize_h5parm': CWLFile(normalize_h5parm).to_json(),
+                            'normalize_h5parm': normalize_h5parm,
                             'dp3_applycal_steps': f"[{','.join(dp3_applycal_steps)}]",
                             'obs_solint_sec': obs_solint_sec,
                             'obs_solint_hz': obs_solint_hz,
@@ -208,8 +207,7 @@ class PredictNC(Operation):
         else:
             self.apply_solutions = False
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
-                             'max_cores': max_cores,
-                             'apply_solutions': self.apply_solutions}
+                             'max_cores': max_cores}
 
     def set_input_parameters(self):
         """
@@ -257,25 +255,31 @@ class PredictNC(Operation):
         dp3_applycal_steps = []
         if self.apply_solutions:
             dp3_applycal_steps.append('fastphase')
+            h5parm = CWLFile(self.field.h5parm_filename).to_json()
+        else:
+            h5parm = None
+            sector_patches = None
         if self.field.apply_amplitudes:
             dp3_applycal_steps.append('slowgain')
         if self.field.apply_normalizations:
-            normalize_h5parm = self.field.normalize_h5parm
+            normalize_h5parm = CWLFile(self.field.normalize_h5parm).to_json()
             dp3_applycal_steps.append('normalization')
         else:
-            normalize_h5parm = ''
-
-        # Set the DP3 applycal steps to an empty list, as no corruptions are applied
-        dp3_applycal_steps = '[]'
-        normalize_h5parm = ''
+            normalize_h5parm = None
+            if dp3_applycal_steps:
+                dp3_applycal_steps = f"[{','.join(dp3_applycal_steps)}]"
+            else:
+                dp3_applycal_steps = None
 
         self.input_parms = {'sector_filename': CWLDir(sector_filename).to_json(),
                             'sector_starttime': sector_starttime,
                             'sector_ntimes': sector_ntimes,
                             'sector_model_filename': sector_model_filename,
                             'sector_skymodel': CWLFile(sector_skymodel).to_json(),
-                            'normalize_h5parm': CWLFile(normalize_h5parm).to_json(),
-                            'dp3_applycal_steps': f"[{','.join(dp3_applycal_steps)}]",
+                            'sector_patches': sector_patches,
+                            'h5parm': h5parm,
+                            'normalize_h5parm': normalize_h5parm,
+                            'dp3_applycal_steps': dp3_applycal_steps,
                             'onebeamperpatch': onebeamperpatch,
                             'sagecalpredict': sagecalpredict,
                             'obs_filename': CWLDir(obs_filename).to_json(),
@@ -283,12 +287,6 @@ class PredictNC(Operation):
                             'obs_infix': obs_infix,
                             'nr_sectors': nr_sectors,
                             'max_threads': self.field.parset['cluster_specific']['max_threads']}
-
-        if self.apply_solutions:
-            # If calibration solutions are available to use during prediction,
-            # set the sector calibration patches and the solutions file
-            self.input_parms.update({'sector_patches': sector_patches})
-            self.input_parms.update({'h5parm': CWLFile(self.field.h5parm_filename).to_json()})
 
     def finalize(self):
         """
@@ -325,8 +323,7 @@ class PredictDI(Operation):
         else:
             max_cores = self.field.parset['cluster_specific']['max_cores']
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
-                             'max_cores': max_cores,
-                             'apply_amplitudes': self.field.apply_amplitudes}
+                             'max_cores': max_cores}
 
     def set_input_parameters(self):
         """
@@ -377,10 +374,10 @@ class PredictDI(Operation):
         if self.field.apply_amplitudes:
             dp3_applycal_steps.append('slowgain')
         if self.field.apply_normalizations:
-            normalize_h5parm = self.field.normalize_h5parm
+            normalize_h5parm = CWLFile(self.field.normalize_h5parm).to_json()
             dp3_applycal_steps.append('normalization')
         else:
-            normalize_h5parm = ''
+            normalize_h5parm = None
 
         self.input_parms = {'sector_filename': CWLDir(sector_filename).to_json(),
                             'sector_starttime': sector_starttime,
@@ -389,7 +386,7 @@ class PredictDI(Operation):
                             'sector_skymodel': CWLFile(sector_skymodel).to_json(),
                             'sector_patches': sector_patches,
                             'h5parm': CWLFile(self.field.h5parm_filename).to_json(),
-                            'normalize_h5parm': CWLFile(normalize_h5parm).to_json(),
+                            'normalize_h5parm': normalize_h5parm,
                             'dp3_applycal_steps': f"[{','.join(dp3_applycal_steps)}]",
                             'onebeamperpatch': onebeamperpatch,
                             'sagecalpredict': sagecalpredict,

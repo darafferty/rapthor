@@ -57,14 +57,13 @@ inputs:
       Flag that enables prediction using SAGECAl.
     type: boolean
 
-{% if apply_solutions %}
   - id: sector_patches
     label: Names of sector calibration patches
     doc: |
       A list of lists giving the names of the calibration patches for each sector
       (length = n_obs * n_sectors).
     type:
-      type: array
+      type: array?
       items:
         type: array
         items: string
@@ -75,8 +74,19 @@ inputs:
       The filename of the h5parm solution table from the calibration workflow
       (length = 1).
     type:
-      - File
-{% endif %}
+      - File?
+
+  - id: dp3_applycal_steps
+    label: Applycal steps for fast solve
+    doc: |
+      The list of DP3 applycal steps to use in the prediction (length = 1).
+    type: string?
+
+  - id: normalize_h5parm
+    label: The filename of normalization h5parm
+    doc: |
+      The filename of the input flux-scale normalization h5parm (length = 1).
+    type: File?
 
   - id: sector_skymodel
     label: Filename of sky model
@@ -155,25 +165,19 @@ steps:
         source: onebeamperpatch
       - id: sagecalpredict
         source: sagecalpredict
-{% if apply_solutions %}
       - id: h5parm
         source: h5parm
       - id: directions
         source: sector_patches
-{% endif %}
-{% if apply_normalizations %}
+      - id: applycal_steps
+        source: dp3_applycal_steps
       - id: normalize_h5parm
         source: normalize_h5parm
-{% endif %}
       - id: sourcedb
         source: sector_skymodel
       - id: numthreads
         source: max_threads
-{% if apply_solutions %}
     scatter: [msin, msout, starttime, ntimes, sourcedb, directions]
-{% else %}
-    scatter: [msin, msout, starttime, ntimes, sourcedb]
-{% endif %}
     scatterMethod: dotproduct
     out:
       - id: msmod

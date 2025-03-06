@@ -1255,9 +1255,9 @@ class Field(object):
         else:
             sector_sizes = [sector.width_ra*sector.width_dec for sector in self.imaging_sectors]
             sector = self.imaging_sectors[np.argmax(sector_sizes)]
-            sector.log = None  # deepcopy cannot copy the log object
+            sector.log, sector_log = None, sector.log  # deepcopy cannot copy the log object
             normalize_sector = copy.deepcopy(sector)
-            sector.log = logging.getLogger('rapthor:{}'.format(sector.name))
+            sector.log = sector_log
             normalize_sector.log = logging.getLogger('rapthor:{}'.format(sector.name))
 
         self.normalize_sector = normalize_sector

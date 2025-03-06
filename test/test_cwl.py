@@ -145,8 +145,7 @@ def test_predict_di_workflow(tmp_path, max_cores):
 
 
 @pytest.mark.parametrize("max_cores", (None, 8))
-@pytest.mark.parametrize("apply_solutions", (False, True))
-def test_predict_nc_workflow(tmp_path, max_cores, apply_solutions):
+def test_predict_nc_workflow(tmp_path, max_cores):
     """
     Test the Predict NC workflow, using all possible combinations of parameters that
     control the way the CWL workflow is generated from the template. Parameters were
@@ -156,7 +155,6 @@ def test_predict_nc_workflow(tmp_path, max_cores, apply_solutions):
     templ = rapthor.lib.operation.env_parset.get_template("predict_nc_pipeline.cwl")
     parms = {
         "max_cores": max_cores,
-        "apply_solutions": apply_solutions,
     }
     generate_and_validate(tmp_path, operation, parms, templ)
 
