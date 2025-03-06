@@ -185,15 +185,18 @@ class Image(Operation):
 
         # Set the DP3 steps and applycal steps depending on whether solutions
         # should be preapplied before imaging
+        fulljones_h5parm = None
+        input_normalize_h5parm = None
+        prepare_data_applycal_steps = None
         if self.apply_none or (not self.preapply_dde_solutions and
                                not self.apply_fulljones and
                                not self.apply_normalizations):
-            # No solutions should be preapplied
-            h5parm = None
+            # No solutions should be preapplied, so define steps
+            # without an applycal step
             prepare_data_steps = '[applybeam,shift,avg]'
-            prepare_data_applycal_steps = None
         else:
-            h5parm = CWLFile(self.field.h5parm_filename).to_json()
+            # Solutions should be applied, so add an applycal step
+            # and set various parameters as needed
             prepare_data_steps = '[applybeam,shift,applycal,avg]'
             prepare_data_applycal_steps = []
             if self.preapply_dde_solutions:
@@ -205,21 +208,19 @@ class Image(Operation):
             if self.apply_fulljones:
                 prepare_data_applycal_steps.append('fulljones')
                 fulljones_h5parm = CWLFile(self.field.fulljones_h5parm_filename).to_json()
-            else:
-                fulljones_h5parm = None
             if self.apply_normalizations:
                 prepare_data_applycal_steps.append('normalization')
                 input_normalize_h5parm = CWLFile(self.field.normalize_h5parm).to_json()
-            else:
-                input_normalize_h5parm = None
             if prepare_data_applycal_steps:
                 prepare_data_applycal_steps = f"[{','.join(prepare_data_applycal_steps)}]"
-            else:
-                prepare_data_applycal_steps = None
-            if self.apply_screens:
-                idgcal_h5parm = CWLFile(self.field.idgcal_h5parm_filename).to_json()
-            else:
-                idgcal_h5parm = None
+
+        # Set the h5parm to use to apply the DDE solutions as needed
+        h5parm = None
+        idgcal_h5parm = None
+        if self.use_facets or self.preapply_dde_solutions:
+            h5parm = CWLFile(self.field.h5parm_filename).to_json()
+        if self.apply_screens:
+            idgcal_h5parm = CWLFile(self.field.idgcal_h5parm_filename).to_json()
 
         # Set the parameters common to all modes
         self.input_parms = {'obs_filename': [CWLDir(name).to_json() for name in obs_filename],
