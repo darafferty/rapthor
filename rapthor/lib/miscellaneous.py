@@ -661,23 +661,6 @@ def approx_equal(x, y, *args, **kwargs):
     return _float_approx_equal(x, y, *args, **kwargs)
 
 
-def create_directory(dirname):
-    """
-    Recursively create a directory, without failing if it already exists
-
-    Parameters
-    ----------
-    dirname : str
-        Path of directory
-    """
-    try:
-        if dirname:
-            os.makedirs(dirname)
-    except OSError as failure:
-        if failure.errno != errno.EEXIST:
-            raise failure
-
-
 def delete_directory(dirname):
     """
     Recursively delete a directory tree, without failing if it does not exist
