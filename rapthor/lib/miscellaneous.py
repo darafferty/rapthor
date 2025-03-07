@@ -661,22 +661,6 @@ def approx_equal(x, y, *args, **kwargs):
     return _float_approx_equal(x, y, *args, **kwargs)
 
 
-def delete_directory(dirname):
-    """
-    Recursively delete a directory tree, without failing if it does not exist
-
-    Parameters
-    ----------
-    dirname : str
-        Path of directory
-    """
-    try:
-        shutil.rmtree(dirname)
-    except OSError as e:
-        if not e.errno == errno.ENOENT:
-            raise e
-
-
 def ra2hhmmss(deg):
     """
     Convert RA coordinate (in degrees) to HH MM SS

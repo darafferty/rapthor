@@ -8,7 +8,7 @@ import logging
 import numpy as np
 import os
 import subprocess
-from rapthor.lib import miscellaneous as misc
+import shutil
 
 
 def get_nchunks(msin, nsectors, fraction=1.0, compressed=False):
@@ -148,7 +148,7 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
     msout = os.path.basename(model_list[0]).removesuffix('_modeldata') + '_di.ms'
     if os.path.exists(msout):
         # File may exist from a previous iteration; delete it if so
-        misc.delete_directory(msout)
+        shutil.rmtree(msout, ignore_errors=True)
     subprocess.check_call(['cp', '-r', '-L', '--no-preserve=mode', ms_template, msout])
     tout = pt.table(msout, readonly=False, ack=False)
     if out_column not in tout.colnames():
