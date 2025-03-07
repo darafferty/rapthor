@@ -3,6 +3,7 @@ Classes that wrap the CWL runners that Rapthor supports.
 """
 from __future__ import annotations
 
+import glob
 import logging
 import os
 import shutil
@@ -321,19 +322,27 @@ class ToilRunner(CWLRunner):
     def teardown(self) -> None:
         """
         Clean up after the runner has run.
-        TODO: Figure out if we really need to do this. And if so, why Toil fails to do this.
+        Toil fails to properly clean up the directories it uses for temporary
+        files, at least when the option `--bypass-file-store` is used. Do the
+        clean up ourselves, unless the user requested a debug run.
         """
         if not self.operation.debug_workflow:
-            # Use the logs to find the temporary directory we ran in.
-            workerlogs = os.popen("grep 'Redirecting logging to' " + os.path.join(self.operation.log_dir, 'pipeline.log') + "  | awk '{print $NF}'").read()
-            leftover_tempdirs = []
-            for f in workerlogs.splitlines():
-                tempdir = '/'.join(f.split('/')[:-2])
-                if tempdir not in leftover_tempdirs:
-                    leftover_tempdirs.append(tempdir)
-            for t in leftover_tempdirs:
-                logger.debug('Cleaning up temporary directory {:s} of {:s}'.format(t, self.operation.name))
-                shutil.rmtree(t, ignore_errors=True)
+            # Remove directories used for storing intermediate job results
+            paths = glob.glob(self._get_tmp_outdir_prefix() + "*")
+            logger.debug(
+                "Removing temporary output directories: %s", ", ".join(paths)
+            )
+            for path in paths:
+                shutil.rmtree(path) #, ignore_errors=True)
+
+            if self.operation.batch_system == "single_machine":
+                # Remove directories used for storing temporary data by single jobs
+                paths = glob.glob(self._get_tmpdir_prefix() + "*")
+                logger.debug(
+                    "Removing temporary directories: %s", ", ".join(paths)
+                )
+                for path in paths:
+                    shutil.rmtree(path) #, ignore_errors=True)
         super().teardown()
 
 
