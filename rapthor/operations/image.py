@@ -350,7 +350,7 @@ class Image(Operation):
                 sector.image_skymodel_file_true_sky = image_root + '.true_sky.txt'
                 sector.image_skymodel_file_apparent_sky = image_root + '.apparent_sky.txt'
                 dst_dir = os.path.join(self.parset['dir_working'], 'skymodels', 'image_{}'.format(self.index))
-                misc.create_directory(dst_dir)
+                os.makedirs(dst_dir, exist_ok=True)
                 for src_filename in [sector.image_skymodel_file_true_sky, sector.image_skymodel_file_apparent_sky]:
                     dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
                     shutil.copy(src_filename, dst_filename)
@@ -358,7 +358,7 @@ class Image(Operation):
             # The output ds9 region file, if made
             if self.use_facets:
                 dst_dir = os.path.join(self.parset['dir_working'], 'regions', 'image_{}'.format(self.index))
-                misc.create_directory(dst_dir)
+                os.makedirs(dst_dir, exist_ok=True)
                 region_filename = '{}_facets_ds9.reg'.format(sector.name)
                 src_filename = os.path.join(self.pipeline_working_dir, region_filename)
                 dst_filename = os.path.join(dst_dir, region_filename)
@@ -368,7 +368,7 @@ class Image(Operation):
             if self.field.save_visibilities:
                 dst_dir = os.path.join(self.parset['dir_working'], 'visibilities',
                                        'image_{}'.format(self.index), sector.name)
-                misc.create_directory(dst_dir)
+                os.makedirs(dst_dir, exist_ok=True)
                 ms_filenames = sector.get_obs_parameters('ms_prep_filename')
                 for ms_filename in ms_filenames:
                     src_filename = os.path.join(self.pipeline_working_dir, ms_filename)
@@ -379,7 +379,7 @@ class Image(Operation):
 
             # The astrometry and photometry plots
             dst_dir = os.path.join(self.parset['dir_working'], 'plots', 'image_{}'.format(self.index))
-            misc.create_directory(dst_dir)
+            os.makedirs(dst_dir, exist_ok=True)
             diagnostic_plots = glob.glob(os.path.join(self.pipeline_working_dir, f'{sector.name}*.pdf'))
             for src_filename in diagnostic_plots:
                 dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
@@ -466,7 +466,7 @@ class ImageInitial(Image):
                        f'{image_root}-MFS-model-pb.fits',
                        f'{image_root}-MFS-residual.fits']
         dst_dir = os.path.join(self.parset['dir_working'], 'images', self.name)
-        misc.create_directory(dst_dir)
+        os.makedirs(dst_dir, exist_ok=True)
         for src_filename in image_names:
             dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
             shutil.copy(src_filename, dst_filename)
@@ -476,14 +476,14 @@ class ImageInitial(Image):
         sector.image_skymodel_file_true_sky = image_root + '.true_sky.txt'
         sector.image_skymodel_file_apparent_sky = image_root + '.apparent_sky.txt'
         dst_dir = os.path.join(self.parset['dir_working'], 'skymodels', self.name)
-        misc.create_directory(dst_dir)
+        os.makedirs(dst_dir, exist_ok=True)
         for src_filename in [sector.image_skymodel_file_true_sky, sector.image_skymodel_file_apparent_sky]:
             dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
             shutil.copy(src_filename, dst_filename)
 
         # The astrometry and photometry plots
         dst_dir = os.path.join(self.parset['dir_working'], 'plots', self.name)
-        misc.create_directory(dst_dir)
+        os.makedirs(dst_dir, exist_ok=True)
         diagnostic_plots = glob.glob(os.path.join(self.pipeline_working_dir, f'{sector.name}*.pdf'))
         for src_filename in diagnostic_plots:
             dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
@@ -561,7 +561,7 @@ class ImageNormalize(Image):
             image_root = os.path.join(self.pipeline_working_dir, sector.name)
             sector.I_freq_cube = f'{image_root}_freq_cube.fits'
             dst_dir = os.path.join(self.parset['dir_working'], 'images', self.name)
-            misc.create_directory(dst_dir)
+            os.makedirs(dst_dir, exist_ok=True)
             dst_filename = os.path.join(dst_dir, os.path.basename(sector.I_freq_cube))
             shutil.copy(sector.I_freq_cube, dst_filename)
 

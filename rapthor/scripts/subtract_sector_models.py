@@ -8,7 +8,7 @@ import logging
 import numpy as np
 import os
 import subprocess
-from rapthor.lib import miscellaneous as misc
+import shutil
 
 
 def get_nchunks(msin, nsectors, fraction=1.0, reweight=False, compressed=False):
@@ -183,7 +183,7 @@ def main(msin, model_list, msin_column='DATA', model_column='DATA',
         # don't trust the CWL runner, we might bail out if `msout` exists.
         if os.path.exists(msout):
             # File may exist from a previous iteration; delete it if so
-            misc.delete_directory(msout)
+            shutil.rmtree(msout, ignore_errors=True)
         subprocess.check_call(['cp', '-r', '-L', '--no-preserve=mode', ms_template, msout])
         tout = pt.table(msout, readonly=False, ack=False)
 
@@ -255,7 +255,7 @@ def main(msin, model_list, msin_column='DATA', model_column='DATA',
         # don't trust the CWL runner, we might bail out if `msout` exists.
         if os.path.exists(msout):
             # File may exist from a previous iteration; delete it if so
-            misc.delete_directory(msout)
+            shutil.rmtree(msout, ignore_errors=True)
         subprocess.check_call(['cp', '-r', '-L', '--no-preserve=mode', ms_template, msout])
         tout = pt.table(msout, readonly=False, ack=False)
 
@@ -320,7 +320,7 @@ def main(msin, model_list, msin_column='DATA', model_column='DATA',
         msout = os.path.splitext(os.path.basename(ms_template))[0] + '.sector_1'
         if os.path.exists(msout):
             # File may exist from a previous iteration; delete it if so
-            misc.delete_directory(msout)
+            shutil.rmtree(msout, ignore_errors=True)
         subprocess.check_call(['cp', '-r', '-L', '--no-preserve=mode', msin, msout])
         return
 
@@ -370,7 +370,7 @@ def main(msin, model_list, msin_column='DATA', model_column='DATA',
         # don't trust the CWL runner, we might bail out if `msout` exists.
         if os.path.exists(msout):
             # File may exist from a previous iteration; delete it if so
-            misc.delete_directory(msout)
+            shutil.rmtree(msout, ignore_errors=True)
         subprocess.check_call(['cp', '-r', '-L', '--no-preserve=mode', ms_template, msout])
         tout_list.append(pt.table(msout, readonly=False, ack=False))
 
