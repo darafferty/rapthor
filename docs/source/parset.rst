@@ -497,6 +497,7 @@ The available options are described below under their respective sections.
         Cluster batch system (only used when Toil is the CWL runner; default =
         ``single_machine``). Use ``single_machine`` when running on a single machine and
         ``slurm`` to use multiple nodes of a Slurm-based cluster.
+
         .. note::
 
             When using the ``slurm`` batch system, additional Slurm arguments can be
