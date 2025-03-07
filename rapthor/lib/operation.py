@@ -6,7 +6,6 @@ import logging
 import json
 from jinja2 import Environment, FileSystemLoader
 from rapthor.lib import miscellaneous as misc
-import toil.version as toil_version
 from rapthor.lib.context import Timer
 from rapthor.lib.cwl import NpEncoder
 from rapthor.lib.cwlrunner import create_cwl_runner
@@ -51,7 +50,6 @@ class Operation(object):
 
         # Extra Toil env variables and Toil version
         self.toil_env_variables = {}
-        self.toil_major_version = int(toil_version.version.split('.')[0])
 
         # Rapthor working directory
         self.rapthor_working_dir = self.parset['dir_working']

@@ -87,8 +87,7 @@ class Image(Operation):
                              'save_source_list': self.save_source_list,
                              'peel_bright_sources': self.peel_bright_sources,
                              'max_cores': max_cores,
-                             'use_mpi': self.field.use_mpi,
-                             'toil_version': self.toil_major_version}
+                             'use_mpi': self.field.use_mpi}
 
     def set_input_parameters(self):
         """
