@@ -9,11 +9,6 @@ import shutil
 import subprocess
 from typing import TYPE_CHECKING, List, Union
 
-try:
-    from importlib.metadata import version
-except ImportError:
-    from importlib_metadata import version
-
 if TYPE_CHECKING:
     from rapthor.lib.operation import Operation
 
@@ -291,13 +286,8 @@ class ToilRunner(CWLRunner):
         Add options specific for logging.
         """
         self.args.extend(['--writeLogs', self.operation.log_dir])
-        if int(version('toil').split('.')[0]) >= 6:
-            # With Toil v6.0.0, the way in which several args are parsed was changed
-            self.args.extend(['--writeLogsFromAllJobs', 'True'])  # also keep logs of successful jobs
-            self.args.extend(['--maxLogFileSize', '1gb'])  # set to large value to prevent truncation
-        else:
-            self.args.extend(['--writeLogsFromAllJobs'])  # also keep logs of successful jobs
-            self.args.extend(['--maxLogFileSize', '0'])  # disable truncation of log files
+        self.args.extend(['--writeLogsFromAllJobs', 'True'])  # also keep logs of successful jobs
+        self.args.extend(['--maxLogFileSize', '1gb'])  # set to large value to prevent truncation
 
     def setup(self) -> None:
         """
