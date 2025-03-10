@@ -69,13 +69,11 @@ def test_concatenate_workflow(
     generate_and_validate(tmp_path, operation, parms, templ)
 
 
-@pytest.mark.parametrize("generate_screens", (False, True))
 @pytest.mark.parametrize("do_slowgain_solve", (False, True))
 @pytest.mark.parametrize("do_joint_solve", (False, True))
 @pytest.mark.parametrize("max_cores", (None, 8))
 def test_calibrate_workflow(
     tmp_path,
-    generate_screens,
     do_slowgain_solve,
     do_joint_solve,
     max_cores,
@@ -88,7 +86,6 @@ def test_calibrate_workflow(
     operation = "calibrate"
     templ = rapthor.lib.operation.env_parset.get_template("calibrate_pipeline.cwl")
     parms = {
-        "generate_screens": generate_screens,
         "do_slowgain_solve": do_slowgain_solve,
         "do_joint_solve": do_joint_solve,
         "max_cores": max_cores,
