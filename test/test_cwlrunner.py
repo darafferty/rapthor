@@ -108,19 +108,19 @@ def batch_system(request):
     return request.param
 
 
-@pytest.fixture(params=(None, "/dir/local"))
-def dir_local(request):
-    return request.param
+@pytest.fixture(params=(None, "dir/local"))
+def dir_local(tmp_path, request):
+    return str(tmp_path / request.param) if request.param else None
 
 
-@pytest.fixture(params=(None, "/global/scratch"))
-def global_scratch_dir(request):
-    return request.param
+@pytest.fixture(params=(None, "global/scratch"))
+def global_scratch_dir(tmp_path, request):
+    return str(tmp_path / request.param) if request.param else None
 
 
-@pytest.fixture(params=(None, "/local/scratch"))
-def local_scratch_dir(request):
-    return request.param
+@pytest.fixture(params=(None, "local/scratch"))
+def local_scratch_dir(tmp_path, request):
+    return str(tmp_path / request.param) if request.param else None
 
 
 @pytest.fixture(params=(False, True))
