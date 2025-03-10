@@ -6,17 +6,11 @@ import configparser
 import glob
 import logging
 import os
-import sys
+from importlib import resources
 
 import astropy.coordinates
 import rapthor.lib.miscellaneous as misc
 from rapthor._logging import set_log_file
-
-if (sys.version_info.major, sys.version_info.minor) < (3, 9):
-    import importlib_resources as resources
-else:
-    import importlib.resources as resources
-
 
 log = logging.getLogger("rapthor:parset")
 

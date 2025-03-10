@@ -100,7 +100,7 @@ class Mosaic(Operation):
             # Copy the image to the images directory
             dst_dir = os.path.join(self.field.parset['dir_working'], 'images',
                                    'image_{}'.format(self.index))
-            misc.create_directory(dst_dir)
+            os.makedirs(dst_dir, exist_ok=True)
             suffix = getattr(self.field.imaging_sectors[0], image_name).split('MFS')[-1]
             field_image_filename = os.path.join(dst_dir, 'field-MFS{}'.format(suffix))
             if image_name == 'I_image_file_true_sky':

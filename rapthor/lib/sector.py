@@ -291,7 +291,7 @@ class Sector(object):
         # First check whether sky model already exists due to a previous run and attempt
         # to load it if so
         dst_dir = os.path.join(self.field.working_dir, 'skymodels', 'predict_{}'.format(index))
-        misc.create_directory(dst_dir)
+        os.makedirs(dst_dir, exist_ok=True)
         self.predict_skymodel_file = os.path.join(dst_dir, '{}_predict_skymodel.txt'.format(self.name))
         if os.path.exists(self.predict_skymodel_file):
             skymodel = lsmtool.load(str(self.predict_skymodel_file))

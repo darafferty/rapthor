@@ -359,7 +359,7 @@ class CalibrateDD(Operation):
         """
         # Copy the solutions (h5parm files) and report the flagged fraction
         dst_dir = os.path.join(self.parset['dir_working'], 'solutions', 'calibrate_{}'.format(self.index))
-        misc.create_directory(dst_dir)
+        os.makedirs(dst_dir, exist_ok=True)
         self.field.h5parm_filename = os.path.join(dst_dir, 'field-solutions.h5')
         if os.path.exists(self.field.h5parm_filename):
             os.remove(self.field.h5parm_filename)
@@ -375,7 +375,7 @@ class CalibrateDD(Operation):
 
         # Copy the plots (PNG files)
         dst_dir = os.path.join(self.parset['dir_working'], 'plots', 'calibrate_{}'.format(self.index))
-        misc.create_directory(dst_dir)
+        os.makedirs(dst_dir, exist_ok=True)
         plot_filenames = glob.glob(os.path.join(self.pipeline_working_dir, '*.png'))
         for plot_filename in plot_filenames:
             dst_filename = os.path.join(dst_dir, os.path.basename(plot_filename))
@@ -485,7 +485,7 @@ class CalibrateDI(Operation):
         """
         # Copy the solutions (h5parm file) and report the flagged fraction
         dst_dir = os.path.join(self.parset['dir_working'], 'solutions', 'calibrate_di_{}'.format(self.index))
-        misc.create_directory(dst_dir)
+        os.makedirs(dst_dir, exist_ok=True)
         self.field.fulljones_h5parm_filename = os.path.join(dst_dir, 'fulljones-solutions.h5')
         if os.path.exists(self.field.fulljones_h5parm_filename):
             os.remove(self.field.fulljones_h5parm_filename)
@@ -497,7 +497,7 @@ class CalibrateDI(Operation):
 
         # Copy the plots (PNG files)
         dst_dir = os.path.join(self.parset['dir_working'], 'plots', 'calibrate_di_{}'.format(self.index))
-        misc.create_directory(dst_dir)
+        os.makedirs(dst_dir, exist_ok=True)
         plot_filenames = glob.glob(os.path.join(self.pipeline_working_dir, '*.png'))
         for plot_filename in plot_filenames:
             dst_filename = os.path.join(dst_dir, os.path.basename(plot_filename))

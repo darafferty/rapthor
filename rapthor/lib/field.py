@@ -414,12 +414,12 @@ class Field(object):
 
         # Make output directories for new sky models and define filenames
         dst_dir = os.path.join(self.working_dir, 'skymodels', 'calibrate_{}'.format(index))
-        misc.create_directory(dst_dir)
+        os.makedirs(dst_dir, exist_ok=True)
         self.calibration_skymodel_file = os.path.join(dst_dir, 'calibration_skymodel.txt')
         self.calibrators_only_skymodel_file = os.path.join(dst_dir, 'calibrators_only_skymodel.txt')
         self.source_skymodel_file = os.path.join(dst_dir, 'source_skymodel.txt')
         dst_dir = os.path.join(self.working_dir, 'skymodels', 'image_{}'.format(index))
-        misc.create_directory(dst_dir)
+        os.makedirs(dst_dir, exist_ok=True)
         self.bright_source_skymodel_file = os.path.join(dst_dir, 'bright_source_skymodel.txt')
 
         # First check whether sky models already exist due to a previous run and attempt
