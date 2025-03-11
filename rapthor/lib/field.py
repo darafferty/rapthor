@@ -416,12 +416,12 @@ class Field(object):
 
         # Make output directories for new sky models and define filenames
         dst_dir = os.path.join(self.working_dir, 'skymodels', 'calibrate_{}'.format(index))
-        misc.create_directory(dst_dir)
+        os.makedirs(dst_dir, exist_ok=True)
         self.calibration_skymodel_file = os.path.join(dst_dir, 'calibration_skymodel.txt')
         self.calibrators_only_skymodel_file = os.path.join(dst_dir, 'calibrators_only_skymodel.txt')
         self.source_skymodel_file = os.path.join(dst_dir, 'source_skymodel.txt')
         dst_dir = os.path.join(self.working_dir, 'skymodels', 'image_{}'.format(index))
-        misc.create_directory(dst_dir)
+        os.makedirs(dst_dir, exist_ok=True)
         self.bright_source_skymodel_file = os.path.join(dst_dir, 'bright_source_skymodel.txt')
 
         # First check whether sky models already exist due to a previous run and attempt
@@ -1257,9 +1257,9 @@ class Field(object):
         else:
             sector_sizes = [sector.width_ra*sector.width_dec for sector in self.imaging_sectors]
             sector = self.imaging_sectors[np.argmax(sector_sizes)]
-            sector.log = None  # deepcopy cannot copy the log object
+            sector.log, sector_log = None, sector.log  # deepcopy cannot copy the log object
             normalize_sector = copy.deepcopy(sector)
-            sector.log = logging.getLogger('rapthor:{}'.format(sector.name))
+            sector.log = sector_log
             normalize_sector.log = logging.getLogger('rapthor:{}'.format(sector.name))
 
         self.normalize_sector = normalize_sector

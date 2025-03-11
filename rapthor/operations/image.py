@@ -185,25 +185,42 @@ class Image(Operation):
 
         # Set the DP3 steps and applycal steps depending on whether solutions
         # should be preapplied before imaging
+        fulljones_h5parm = None
+        input_normalize_h5parm = None
+        prepare_data_applycal_steps = None
         if self.apply_none or (not self.preapply_dde_solutions and
                                not self.apply_fulljones and
                                not self.apply_normalizations):
-            # No solutions should be preapplied
-            prepare_data_steps = ['applybeam', 'shift', 'avg']
-            prepare_data_applycal_steps = []
+            # No solutions should be preapplied, so define steps
+            # without an applycal step
+            prepare_data_steps = '[applybeam,shift,avg]'
         else:
-            prepare_data_steps = ['applybeam', 'shift', 'applycal', 'avg']
+            # Solutions should be applied, so add an applycal step
+            # and set various parameters as needed
+            prepare_data_steps = '[applybeam,shift,applycal,avg]'
             prepare_data_applycal_steps = []
             if self.preapply_dde_solutions:
                 # Fast phases and slow amplitudes (if generated) should be
                 # preapplied, as they are not applied during imaging
                 prepare_data_applycal_steps.append('fastphase')
                 if self.apply_amplitudes:
-                    prepare_data_applycal_steps.append('slowamp')
+                    prepare_data_applycal_steps.append('slowgain')
             if self.apply_fulljones:
                 prepare_data_applycal_steps.append('fulljones')
+                fulljones_h5parm = CWLFile(self.field.fulljones_h5parm_filename).to_json()
             if self.apply_normalizations:
                 prepare_data_applycal_steps.append('normalization')
+                input_normalize_h5parm = CWLFile(self.field.normalize_h5parm).to_json()
+            if prepare_data_applycal_steps:
+                prepare_data_applycal_steps = f"[{','.join(prepare_data_applycal_steps)}]"
+
+        # Set the h5parm to use to apply the DDE solutions as needed
+        h5parm = None
+        idgcal_h5parm = None
+        if self.use_facets or self.preapply_dde_solutions:
+            h5parm = CWLFile(self.field.h5parm_filename).to_json()
+        if self.apply_screens:
+            idgcal_h5parm = CWLFile(self.field.idgcal_h5parm_filename).to_json()
 
         # Set the parameters common to all modes
         self.input_parms = {'obs_filename': [CWLDir(name).to_json() for name in obs_filename],
@@ -221,7 +238,12 @@ class Image(Operation):
                             'save_source_list': self.save_source_list,
                             'link_polarizations': link_polarizations,
                             'join_polarizations': join_polarizations,
-                            'prepare_data_steps': f"[{','.join(prepare_data_steps)}]",
+                            'prepare_data_steps': prepare_data_steps,
+                            'prepare_data_applycal_steps': prepare_data_applycal_steps,
+                            'h5parm': h5parm,
+                            'fulljones_h5parm': fulljones_h5parm,
+                            'idgcal_h5parm': idgcal_h5parm,
+                            'input_normalize_h5parm': input_normalize_h5parm,
                             'channels_out': [sector.wsclean_nchannels for sector in self.imaging_sectors],
                             'deconvolution_channels': [sector.wsclean_deconvolution_channels for sector in self.imaging_sectors],
                             'fit_spectral_pol': [sector.wsclean_spectral_poly_order for sector in self.imaging_sectors],
@@ -249,8 +271,7 @@ class Image(Operation):
                             'max_threads': self.field.parset['cluster_specific']['max_threads'],
                             'deconvolution_threads': self.field.parset['cluster_specific']['deconvolution_threads']}
 
-        if prepare_data_applycal_steps:
-            self.input_parms.update({'prepare_data_applycal_steps': f"[{','.join(prepare_data_applycal_steps)}]"})
+        # Add parameters that depend on the set_parset parameters (set in set_parset_parameters())
         if self.peel_bright_sources:
             self.input_parms.update({'bright_skymodel_pb': CWLFile(self.field.bright_source_skymodel_file).to_json()})
         if self.field.use_mpi:
@@ -263,71 +284,63 @@ class Image(Operation):
             nnodes_per_subpipeline = max(1, int(nnodes / nsubpipes) - 1)
             self.input_parms.update({'mpi_nnodes': [nnodes_per_subpipeline] * nsectors})
             self.input_parms.update({'mpi_cpus_per_task': [self.parset['cluster_specific']['cpus_per_task']] * nsectors})
-        if not self.apply_none:
-            self.input_parms.update({'h5parm': CWLFile(self.field.h5parm_filename).to_json()})
-            if self.apply_fulljones:
-                self.input_parms.update({'fulljones_h5parm': CWLFile(self.field.fulljones_h5parm_filename).to_json()})
-            if self.apply_normalizations:
-                self.input_parms.update({'input_normalize_h5parm': CWLFile(self.field.normalize_h5parm).to_json()})
-            if self.apply_screens:
-                self.input_parms.update({'idgcal_h5parm': CWLFile(self.field.idgcal_h5parm_filename).to_json()})
-            elif self.use_facets:
-                # For faceting, we need inputs for making the ds9 facet region files
-                self.input_parms.update({'skymodel': CWLFile(self.field.calibration_skymodel_file).to_json()})
-                ra_mid = []
-                dec_mid = []
-                width_ra = []
-                width_dec = []
-                facet_region_file = []
-                min_width = 2 * self.field.get_calibration_radius() * 1.2
-                for sector in self.imaging_sectors:
-                    # Note: WSClean requires that all sources in the h5parm must have
-                    # corresponding regions in the facets region file. We ensure this
-                    # requirement is met by extending the regions to cover the larger of
-                    # the calibration region and the sector region, plus a 20% padding
-                    ra_mid.append(self.field.ra)
-                    dec_mid.append(self.field.dec)
-                    width_ra.append(max(min_width, sector.width_ra*1.2))
-                    width_dec.append(max(min_width, sector.width_dec*1.2))
-                    facet_region_file.append('{}_facets_ds9.reg'.format(sector.name))
-                self.input_parms.update({'ra_mid': ra_mid})
-                self.input_parms.update({'dec_mid': dec_mid})
-                self.input_parms.update({'width_ra': width_ra})
-                self.input_parms.update({'width_dec': width_dec})
-                self.input_parms.update({'facet_region_file': facet_region_file})
+        if not self.apply_none and self.use_facets:
+            # For faceting, we need inputs for making the ds9 facet region files
+            self.input_parms.update({'skymodel': CWLFile(self.field.calibration_skymodel_file).to_json()})
+            ra_mid = []
+            dec_mid = []
+            width_ra = []
+            width_dec = []
+            facet_region_file = []
+            min_width = 2 * self.field.get_calibration_radius() * 1.2
+            for sector in self.imaging_sectors:
+                # Note: WSClean requires that all sources in the h5parm must have
+                # corresponding regions in the facets region file. We ensure this
+                # requirement is met by extending the regions to cover the larger of
+                # the calibration region and the sector region, plus a 20% padding
+                ra_mid.append(self.field.ra)
+                dec_mid.append(self.field.dec)
+                width_ra.append(max(min_width, sector.width_ra*1.2))
+                width_dec.append(max(min_width, sector.width_dec*1.2))
+                facet_region_file.append('{}_facets_ds9.reg'.format(sector.name))
+            self.input_parms.update({'ra_mid': ra_mid})
+            self.input_parms.update({'dec_mid': dec_mid})
+            self.input_parms.update({'width_ra': width_ra})
+            self.input_parms.update({'width_dec': width_dec})
+            self.input_parms.update({'facet_region_file': facet_region_file})
+            if self.apply_amplitudes:
+                self.input_parms.update({'soltabs': 'amplitude000,phase000'})
+            else:
+                self.input_parms.update({'soltabs': 'phase000'})
+            self.input_parms.update({'parallel_gridding_threads':
+                                     self.field.parset['cluster_specific']['parallel_gridding_threads']})
+            if self.image_pol.lower() == 'i':
+                # For Stokes-I-only imaging, we can take advantage of the scalar or
+                # diagonal visibilities options in WSClean (saving I/O)
                 if self.apply_amplitudes:
-                    self.input_parms.update({'soltabs': 'amplitude000,phase000'})
-                else:
-                    self.input_parms.update({'soltabs': 'phase000'})
-                self.input_parms.update({'parallel_gridding_threads':
-                                         self.field.parset['cluster_specific']['parallel_gridding_threads']})
-                if self.image_pol.lower() == 'i':
-                    # For Stokes-I-only imaging, we can take advantage of the scalar or
-                    # diagonal visibilities options in WSClean (saving I/O)
-                    if self.apply_amplitudes:
-                        # Diagonal solutions generated during calibration
-                        if self.field.apply_diagonal_solutions:
-                            # Diagonal solutions should be used during imaging
-                            self.input_parms.update({'diagonal_visibilities': True})
-                            self.input_parms.update({'scalar_visibilities': False})
-                        else:
-                            # Diagonal solutions should not be used during imaging (they
-                            # were in fact converted to scalar solutions at the end of
-                            # calibration)
-                            self.input_parms.update({'diagonal_visibilities': False})
-                            self.input_parms.update({'scalar_visibilities': True})
+                    # Diagonal solutions generated during calibration
+                    if self.field.apply_diagonal_solutions:
+                        # Diagonal solutions should be used during imaging
+                        self.input_parms.update({'diagonal_visibilities': True})
+                        self.input_parms.update({'scalar_visibilities': False})
                     else:
-                        # Diagonal solutions not generated; only scalar solutions are
-                        # available
+                        # Diagonal solutions should not be used during imaging (they
+                        # were in fact converted to scalar solutions at the end of
+                        # calibration)
                         self.input_parms.update({'diagonal_visibilities': False})
                         self.input_parms.update({'scalar_visibilities': True})
                 else:
-                    # This case is of full-Stokes (IQUV) imaging, so do not use diagonal
-                    # or scalar visibilities (we need all four)
+                    # Diagonal solutions not generated; only scalar solutions are
+                    # available
                     self.input_parms.update({'diagonal_visibilities': False})
-                    self.input_parms.update({'scalar_visibilities': False})
+                    self.input_parms.update({'scalar_visibilities': True})
             else:
-                self.input_parms.update({'central_patch_name': central_patch_name})
+                # This case is of full-Stokes (IQUV) imaging, so do not use diagonal
+                # or scalar visibilities (we need all four)
+                self.input_parms.update({'diagonal_visibilities': False})
+                self.input_parms.update({'scalar_visibilities': False})
+        elif self.preapply_dde_solutions:
+            self.input_parms.update({'central_patch_name': central_patch_name})
         if self.make_image_cube:
             self.input_parms.update({'image_cube_name': image_cube_name})
         if self.normalize_flux_scale:
@@ -374,7 +387,7 @@ class Image(Operation):
                 sector.image_skymodel_file_true_sky = image_root + '.true_sky.txt'
                 sector.image_skymodel_file_apparent_sky = image_root + '.apparent_sky.txt'
                 dst_dir = os.path.join(self.parset['dir_working'], 'skymodels', 'image_{}'.format(self.index))
-                misc.create_directory(dst_dir)
+                os.makedirs(dst_dir, exist_ok=True)
                 for src_filename in [sector.image_skymodel_file_true_sky, sector.image_skymodel_file_apparent_sky]:
                     dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
                     shutil.copy(src_filename, dst_filename)
@@ -382,7 +395,7 @@ class Image(Operation):
             # The output ds9 region file, if made
             if self.use_facets:
                 dst_dir = os.path.join(self.parset['dir_working'], 'regions', 'image_{}'.format(self.index))
-                misc.create_directory(dst_dir)
+                os.makedirs(dst_dir, exist_ok=True)
                 region_filename = '{}_facets_ds9.reg'.format(sector.name)
                 src_filename = os.path.join(self.pipeline_working_dir, region_filename)
                 dst_filename = os.path.join(dst_dir, region_filename)
@@ -392,7 +405,7 @@ class Image(Operation):
             if self.field.save_visibilities:
                 dst_dir = os.path.join(self.parset['dir_working'], 'visibilities',
                                        'image_{}'.format(self.index), sector.name)
-                misc.create_directory(dst_dir)
+                os.makedirs(dst_dir, exist_ok=True)
                 ms_filenames = sector.get_obs_parameters('ms_prep_filename')
                 for ms_filename in ms_filenames:
                     src_filename = os.path.join(self.pipeline_working_dir, ms_filename)
@@ -403,7 +416,7 @@ class Image(Operation):
 
             # The astrometry and photometry plots
             dst_dir = os.path.join(self.parset['dir_working'], 'plots', 'image_{}'.format(self.index))
-            misc.create_directory(dst_dir)
+            os.makedirs(dst_dir, exist_ok=True)
             diagnostic_plots = glob.glob(os.path.join(self.pipeline_working_dir, f'{sector.name}*.pdf'))
             for src_filename in diagnostic_plots:
                 dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
@@ -491,7 +504,7 @@ class ImageInitial(Image):
                        f'{image_root}-MFS-model-pb.fits',
                        f'{image_root}-MFS-residual.fits']
         dst_dir = os.path.join(self.parset['dir_working'], 'images', self.name)
-        misc.create_directory(dst_dir)
+        os.makedirs(dst_dir, exist_ok=True)
         for src_filename in image_names:
             dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
             shutil.copy(src_filename, dst_filename)
@@ -501,14 +514,14 @@ class ImageInitial(Image):
         sector.image_skymodel_file_true_sky = image_root + '.true_sky.txt'
         sector.image_skymodel_file_apparent_sky = image_root + '.apparent_sky.txt'
         dst_dir = os.path.join(self.parset['dir_working'], 'skymodels', self.name)
-        misc.create_directory(dst_dir)
+        os.makedirs(dst_dir, exist_ok=True)
         for src_filename in [sector.image_skymodel_file_true_sky, sector.image_skymodel_file_apparent_sky]:
             dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
             shutil.copy(src_filename, dst_filename)
 
         # The astrometry and photometry plots
         dst_dir = os.path.join(self.parset['dir_working'], 'plots', self.name)
-        misc.create_directory(dst_dir)
+        os.makedirs(dst_dir, exist_ok=True)
         diagnostic_plots = glob.glob(os.path.join(self.pipeline_working_dir, f'{sector.name}*.pdf'))
         for src_filename in diagnostic_plots:
             dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
@@ -588,7 +601,7 @@ class ImageNormalize(Image):
         image_root = os.path.join(self.pipeline_working_dir, sector.name)
         src_filename = f'{image_root}_freq_cube.fits'
         dst_dir = os.path.join(self.parset['dir_working'], 'images', self.name)
-        misc.create_directory(dst_dir)
+        os.makedirs(dst_dir, exist_ok=True)
         sector.I_freq_cube = os.path.join(dst_dir, os.path.basename(src_filename))
         shutil.copy(src_filename, sector.I_freq_cube)
 

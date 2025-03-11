@@ -767,7 +767,7 @@ steps:
       - id: steps
         source: dp3_steps_slow_joint
       - id: applycal_steps
-        valueFrom: dp3_applycal_steps_slow_joint
+        source: dp3_applycal_steps_slow_joint
       - id: timebase
         source: bda_timebase_slow_joint
       - id: maxinterval

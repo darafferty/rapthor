@@ -80,13 +80,11 @@ inputs:
       The list of DP3 applycal steps to use in the prediction (length = 1).
     type: string
 
-{% if apply_normalizations %}
   - id: normalize_h5parm
     label: The filename of normalization h5parm
     doc: |
       The filename of the input flux-scale normalization h5parm (length = 1).
-    type: File
-{% endif %}
+    type: File?
 
   - id: sector_skymodel
     label: Filename of sky model
@@ -163,10 +161,8 @@ steps:
         source: h5parm
       - id: applycal_steps
         source: dp3_applycal_steps
-{% if apply_normalizations %}
       - id: normalize_h5parm
         source: normalize_h5parm
-{% endif %}
       - id: sourcedb
         source: sector_skymodel
       - id: directions

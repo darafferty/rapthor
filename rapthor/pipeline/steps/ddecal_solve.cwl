@@ -125,7 +125,7 @@ inputs:
     label: List of applycal steps
     doc: |
       The list of applycal steps to perform. Allowed steps are "fastphase",
-      "slowgain", and "normalization"
+      "slowgain", and "normalization".
     type: string?
     inputBinding:
       prefix: solve.applycal.steps=
