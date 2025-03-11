@@ -2,13 +2,14 @@
 """
 Script to subtract sector model data
 """
-from argparse import ArgumentParser, RawTextHelpFormatter
-import casacore.tables as pt
-import logging
-import numpy as np
 import os
-import subprocess
 import shutil
+import subprocess
+from argparse import ArgumentParser, RawTextHelpFormatter
+
+import casacore.tables as pt
+import numpy as np
+from rapthor.lib import miscellaneous as misc
 
 
 def get_nchunks(msin, nsectors, fraction=1.0, reweight=False, compressed=False):
@@ -696,17 +697,13 @@ if __name__ == '__main__':
     parser.add_argument('--infix', help='Infix for output files', type=str, default='')
     args = parser.parse_args()
 
-    try:
-        main(args.msin, misc.string2list(args.msmod), msin_column=args.msin_column,
-             model_column=args.model_column, out_column=args.out_column,
-             nr_outliers=args.nr_outliers, nr_bright=args.nr_bright,
-             use_compression=args.use_compression, peel_outliers=args.peel_outliers,
-             peel_bright=args.peel_bright, reweight=args.reweight,
-             starttime=args.starttime, solint_sec=args.solint_sec,
-             solint_hz=args.solint_hz, weights_colname=args.weights_colname,
-             gainfile=args.gainfile, uvcut_min=args.uvcut_min,
-             uvcut_max=args.uvcut_max, phaseonly=args.phaseonly,
-             dirname=args.dirname, quiet=args.quiet, infix=args.infix)
-    except Exception as e:
-        log = logging.getLogger('rapthor:subtract_sector_models')
-        log.critical(e)
+    main(args.msin, misc.string2list(args.msmod), msin_column=args.msin_column,
+         model_column=args.model_column, out_column=args.out_column,
+         nr_outliers=args.nr_outliers, nr_bright=args.nr_bright,
+         use_compression=args.use_compression, peel_outliers=args.peel_outliers,
+         peel_bright=args.peel_bright, reweight=args.reweight,
+         starttime=args.starttime, solint_sec=args.solint_sec,
+         solint_hz=args.solint_hz, weights_colname=args.weights_colname,
+         gainfile=args.gainfile, uvcut_min=args.uvcut_min,
+         uvcut_max=args.uvcut_max, phaseonly=args.phaseonly,
+         dirname=args.dirname, quiet=args.quiet, infix=args.infix)
