@@ -614,7 +614,7 @@ class ImageNormalize(Image):
         # Save the output h5parm with the flux-scale corrections
         src_filename = f'{image_root}_normalize.h5parm'
         dst_dir = os.path.join(self.parset['dir_working'], 'solutions', self.name)
-        misc.create_directory(dst_dir)
+        os.makedirs(dst_dir, exist_ok=True)
         dst_basename = os.path.basename(f'{image_root}_normalize.h5')
         self.field.normalize_h5parm = os.path.join(dst_dir, dst_basename)
         shutil.copy(src_filename, self.field.normalize_h5parm)
