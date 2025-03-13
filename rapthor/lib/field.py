@@ -755,7 +755,7 @@ class Field(object):
                 )
                 if len(keep_ind) == 0:
                     raise ValueError(
-                        f"No sources left in sky model after applying max source "
+                        f"No sources left in the sky model after applying max source "
                         f"distance of {calibrator_max_dist_deg} degrees. There were "
                         f"{len(all_names)} sources in the model before applying the limit."
                     )
