@@ -150,7 +150,7 @@ class Observation(object):
                 "Antenna type not recognized (only LBA and HBA data "
                 "are supported at this time)"
             )
-         ant.close()
+        ant.close()
 
         # Find mean elevation and time range for periods where the elevation
         # falls below the lowest 20% of all values. We sample every 10000 entries to
