@@ -1,6 +1,7 @@
 """
 Definition of the Field class
 """
+
 import os
 import logging
 import numpy as np
@@ -19,7 +20,8 @@ import astropy.units as u
 from typing import List, Dict
 from collections import namedtuple
 import matplotlib
-matplotlib.use('Agg')
+
+matplotlib.use("Agg")
 from matplotlib.patches import Ellipse
 from matplotlib.pyplot import figure
 from astropy.visualization.wcsaxes import SphericalCircle
@@ -38,53 +40,86 @@ class Field(object):
     minimal : bool
         If True, only initialize the minimal set of required parameters
     """
+
     def __init__(self, parset, minimal=False):
         # Initialize basic attributes. These can be overridden later by the strategy
         # values and/or the operations
-        self.name = 'field'
-        self.log = logging.getLogger('rapthor:{}'.format(self.name))
+        self.name = "field"
+        self.log = logging.getLogger("rapthor:{}".format(self.name))
         self.parset = parset.copy()
-        self.working_dir = self.parset['dir_working']
-        self.ms_filenames = self.parset['mss']
+        self.working_dir = self.parset["dir_working"]
+        self.ms_filenames = self.parset["mss"]
         self.numMS = len(self.ms_filenames)
-        self.data_colname = 'DATA'
-        self.bda_timebase_fast = self.parset['calibration_specific']['fast_bda_timebase']
-        self.bda_timebase_slow_joint = self.parset['calibration_specific']['slow_bda_timebase_joint']
-        self.bda_timebase_slow_separate = self.parset['calibration_specific']['slow_bda_timebase_separate']
-        self.dd_interval_factor = self.parset['calibration_specific']['dd_interval_factor']
-        self.h5parm_filename = self.parset['input_h5parm']
-        self.fulljones_h5parm_filename = self.parset['input_fulljones_h5parm']
-        self.dde_mode = self.parset['dde_mode']
-        self.fast_smoothnessconstraint = self.parset['calibration_specific']['fast_smoothnessconstraint']
-        self.fast_smoothnessreffrequency = self.parset['calibration_specific']['fast_smoothnessreffrequency']
-        self.fast_smoothnessrefdistance = self.parset['calibration_specific']['fast_smoothnessrefdistance']
-        self.slow_smoothnessconstraint_joint = self.parset['calibration_specific']['slow_smoothnessconstraint_joint']
-        self.slow_smoothnessconstraint_separate = self.parset['calibration_specific']['slow_smoothnessconstraint_separate']
-        self.fulljones_timestep_sec = self.parset['calibration_specific']['fulljones_timestep_sec']
-        self.smoothnessconstraint_fulljones = self.parset['calibration_specific']['fulljones_smoothnessconstraint']
-        self.propagatesolutions = self.parset['calibration_specific']['propagatesolutions']
-        self.solveralgorithm = self.parset['calibration_specific']['solveralgorithm']
-        self.onebeamperpatch = self.parset['calibration_specific']['onebeamperpatch']
-        self.llssolver = self.parset['calibration_specific']['llssolver']
-        self.maxiter = self.parset['calibration_specific']['maxiter']
-        self.stepsize = self.parset['calibration_specific']['stepsize']
-        self.stepsigma = self.parset['calibration_specific']['stepsigma']
-        self.tolerance = self.parset['calibration_specific']['tolerance']
-        self.dde_method = self.parset['imaging_specific']['dde_method']
-        self.save_visibilities = self.parset['imaging_specific']['save_visibilities']
-        self.use_mpi = self.parset['imaging_specific']['use_mpi']
-        self.parallelbaselines = self.parset['calibration_specific']['parallelbaselines']
-        self.sagecalpredict = self.parset['calibration_specific']['sagecalpredict']
-        self.fast_datause = self.parset['calibration_specific']['fast_datause']
-        self.slow_datause = self.parset['calibration_specific']['slow_datause']
-        self.reweight = self.parset['imaging_specific']['reweight']
-        self.do_multiscale_clean = self.parset['imaging_specific']['do_multiscale_clean']
-        self.apply_diagonal_solutions = self.parset['imaging_specific']['apply_diagonal_solutions']
-        self.make_quv_images = self.parset['imaging_specific']['make_quv_images']
-        self.pol_combine_method = self.parset['imaging_specific']['pol_combine_method']
-        self.solverlbfgs_dof = self.parset['calibration_specific']['solverlbfgs_dof']
-        self.solverlbfgs_iter = self.parset['calibration_specific']['solverlbfgs_iter']
-        self.solverlbfgs_minibatches = self.parset['calibration_specific']['solverlbfgs_minibatches']
+        self.data_colname = "DATA"
+        self.bda_timebase_fast = self.parset["calibration_specific"][
+            "fast_bda_timebase"
+        ]
+        self.bda_timebase_slow_joint = self.parset["calibration_specific"][
+            "slow_bda_timebase_joint"
+        ]
+        self.bda_timebase_slow_separate = self.parset["calibration_specific"][
+            "slow_bda_timebase_separate"
+        ]
+        self.dd_interval_factor = self.parset["calibration_specific"][
+            "dd_interval_factor"
+        ]
+        self.h5parm_filename = self.parset["input_h5parm"]
+        self.fulljones_h5parm_filename = self.parset["input_fulljones_h5parm"]
+        self.dde_mode = self.parset["dde_mode"]
+        self.fast_smoothnessconstraint = self.parset["calibration_specific"][
+            "fast_smoothnessconstraint"
+        ]
+        self.fast_smoothnessreffrequency = self.parset["calibration_specific"][
+            "fast_smoothnessreffrequency"
+        ]
+        self.fast_smoothnessrefdistance = self.parset["calibration_specific"][
+            "fast_smoothnessrefdistance"
+        ]
+        self.slow_smoothnessconstraint_joint = self.parset["calibration_specific"][
+            "slow_smoothnessconstraint_joint"
+        ]
+        self.slow_smoothnessconstraint_separate = self.parset["calibration_specific"][
+            "slow_smoothnessconstraint_separate"
+        ]
+        self.fulljones_timestep_sec = self.parset["calibration_specific"][
+            "fulljones_timestep_sec"
+        ]
+        self.smoothnessconstraint_fulljones = self.parset["calibration_specific"][
+            "fulljones_smoothnessconstraint"
+        ]
+        self.propagatesolutions = self.parset["calibration_specific"][
+            "propagatesolutions"
+        ]
+        self.solveralgorithm = self.parset["calibration_specific"]["solveralgorithm"]
+        self.onebeamperpatch = self.parset["calibration_specific"]["onebeamperpatch"]
+        self.llssolver = self.parset["calibration_specific"]["llssolver"]
+        self.maxiter = self.parset["calibration_specific"]["maxiter"]
+        self.stepsize = self.parset["calibration_specific"]["stepsize"]
+        self.stepsigma = self.parset["calibration_specific"]["stepsigma"]
+        self.tolerance = self.parset["calibration_specific"]["tolerance"]
+        self.dde_method = self.parset["imaging_specific"]["dde_method"]
+        self.save_visibilities = self.parset["imaging_specific"]["save_visibilities"]
+        self.use_mpi = self.parset["imaging_specific"]["use_mpi"]
+        self.parallelbaselines = self.parset["calibration_specific"][
+            "parallelbaselines"
+        ]
+        self.sagecalpredict = self.parset["calibration_specific"]["sagecalpredict"]
+        self.fast_datause = self.parset["calibration_specific"]["fast_datause"]
+        self.slow_datause = self.parset["calibration_specific"]["slow_datause"]
+        self.reweight = self.parset["imaging_specific"]["reweight"]
+        self.do_multiscale_clean = self.parset["imaging_specific"][
+            "do_multiscale_clean"
+        ]
+        self.apply_diagonal_solutions = self.parset["imaging_specific"][
+            "apply_diagonal_solutions"
+        ]
+        self.make_quv_images = self.parset["imaging_specific"]["make_quv_images"]
+        self.pol_combine_method = self.parset["imaging_specific"]["pol_combine_method"]
+        self.solverlbfgs_dof = self.parset["calibration_specific"]["solverlbfgs_dof"]
+        self.solverlbfgs_iter = self.parset["calibration_specific"]["solverlbfgs_iter"]
+        self.solverlbfgs_minibatches = self.parset["calibration_specific"][
+            "solverlbfgs_minibatches"
+        ]
         self.cycle_number = 1
         self.apply_amplitudes = False
         self.apply_screens = False
@@ -128,12 +163,14 @@ class Field(object):
         """
         Checks input MS files and initializes the associated Observation objects
         """
-        suffix = 's' if len(self.ms_filenames) > 1 else ''
-        self.log.debug('Scanning input MS file{}...'.format(suffix))
+        suffix = "s" if len(self.ms_filenames) > 1 else ""
+        self.log.debug("Scanning input MS file{}...".format(suffix))
         self.full_observations = []
         for ms_filename in self.ms_filenames:
             self.full_observations.append(Observation(ms_filename))
-        self.observations = self.full_observations[:]  # make copy so we don't alter originals
+        self.observations = self.full_observations[
+            :
+        ]  # make copy so we don't alter originals
 
         # Define a reference observation for the comparisons below
         obs0 = self.full_observations[0]
@@ -142,54 +179,80 @@ class Field(object):
         self.antenna = obs0.antenna
         for obs in self.full_observations:
             if self.antenna != obs.antenna:
-                raise ValueError('Antenna type for MS {0} differs from the one for MS '
-                                 '{1}'.format(obs.ms_filename, obs0.ms_filename))
+                raise ValueError(
+                    "Antenna type for MS {0} differs from the one for MS "
+                    "{1}".format(obs.ms_filename, obs0.ms_filename)
+                )
 
         # Check for multiple epochs
         self.epoch_starttimes = set([obs.starttime for obs in self.full_observations])
-        suffix = 's' if len(self.epoch_starttimes) > 1 else ''
-        self.log.debug('Input data comprise {0} epoch{1}'.format(len(self.epoch_starttimes), suffix))
+        suffix = "s" if len(self.epoch_starttimes) > 1 else ""
+        self.log.debug(
+            "Input data comprise {0} epoch{1}".format(
+                len(self.epoch_starttimes), suffix
+            )
+        )
         self.epoch_observations = []
         for i, epoch_starttime in enumerate(self.epoch_starttimes):
-            epoch_observations = [obs for obs in self.full_observations if
-                                  obs.starttime == epoch_starttime]
+            epoch_observations = [
+                obs
+                for obs in self.full_observations
+                if obs.starttime == epoch_starttime
+            ]
             self.epoch_observations.append(epoch_observations)
             if len(epoch_observations) > 1:
                 # Multiple MS files per epoch implies differing frequencies. Check for
                 # overlapping frequency coverage and raise error if found
-                startfreqs = np.array([obs.startfreq-obs.channelwidth/2 for obs in epoch_observations])
-                endfreqs = np.array([obs.endfreq+obs.channelwidth/2 for obs in epoch_observations])
+                startfreqs = np.array(
+                    [obs.startfreq - obs.channelwidth / 2 for obs in epoch_observations]
+                )
+                endfreqs = np.array(
+                    [obs.endfreq + obs.channelwidth / 2 for obs in epoch_observations]
+                )
                 msfiles = np.array([obs.ms_filename for obs in epoch_observations])
                 sort_ind = np.argsort(startfreqs)
-                for j, (startfreq, endfreq) in enumerate(zip(startfreqs[sort_ind][1:],
-                                                             endfreqs[sort_ind][:-1])):
+                for j, (startfreq, endfreq) in enumerate(
+                    zip(startfreqs[sort_ind][1:], endfreqs[sort_ind][:-1])
+                ):
                     if startfreq < endfreq:
-                        ms1 = msfiles[sort_ind][j]  # MS file from which endfreq is taken
-                        ms2 = msfiles[sort_ind][j+1]  # MS file from which startfreq is taken
-                        raise ValueError('Overlapping frequency coverage found for the '
-                                         f'following input MS files: {ms1} and {ms2}')
+                        ms1 = msfiles[sort_ind][
+                            j
+                        ]  # MS file from which endfreq is taken
+                        ms2 = msfiles[sort_ind][
+                            j + 1
+                        ]  # MS file from which startfreq is taken
+                        raise ValueError(
+                            "Overlapping frequency coverage found for the "
+                            f"following input MS files: {ms1} and {ms2}"
+                        )
 
         # Check that all observations have the same pointing
         self.ra = obs0.ra
         self.dec = obs0.dec
         for obs in self.full_observations:
             if self.ra != obs.ra or self.dec != obs.dec:
-                raise ValueError('Pointing for MS {0} differs from the one for MS '
-                                 '{1}'.format(obs.ms_filename, obs0.ms_filename))
+                raise ValueError(
+                    "Pointing for MS {0} differs from the one for MS "
+                    "{1}".format(obs.ms_filename, obs0.ms_filename)
+                )
 
         # Check that all observations have the same station diameter
         self.diam = obs0.diam
         for obs in self.full_observations:
             if self.diam != obs.diam:
-                raise ValueError('Station diameter for MS {0} differs from the one for MS '
-                                 '{1}'.format(obs.ms_filename, obs0.ms_filename))
+                raise ValueError(
+                    "Station diameter for MS {0} differs from the one for MS "
+                    "{1}".format(obs.ms_filename, obs0.ms_filename)
+                )
 
         # Check that all observations have the same stations
         self.stations = obs0.stations
         for obs in self.full_observations:
             if self.stations != obs.stations:
-                raise ValueError('Stations in MS {0} differ from those in MS '
-                                 '{1}'.format(obs.ms_filename, obs0.ms_filename))
+                raise ValueError(
+                    "Stations in MS {0} differ from those in MS "
+                    "{1}".format(obs.ms_filename, obs0.ms_filename)
+                )
 
         # Find mean elevation and FOV over all observations
         el_rad_list = []
@@ -199,26 +262,35 @@ class Field(object):
             ref_freq_list.append(obs.referencefreq)
         sec_el = 1.0 / np.sin(np.mean(el_rad_list))
         self.mean_el_rad = np.mean(el_rad_list)
-        self.fwhm_deg = 1.1 * ((3.0e8 / np.mean(ref_freq_list)) /
-                               self.diam) * 180. / np.pi * sec_el
+        self.fwhm_deg = (
+            1.1
+            * ((3.0e8 / np.mean(ref_freq_list)) / self.diam)
+            * 180.0
+            / np.pi
+            * sec_el
+        )
         self.fwhm_ra_deg = self.fwhm_deg / sec_el
         self.fwhm_dec_deg = self.fwhm_deg
 
         # Warning if parset pointing is different from observation pointing
-        parra = self.parset['imaging_specific']['grid_center_ra']
-        pardec = self.parset['imaging_specific']['grid_center_dec']
-        if (parra is not None and np.abs(parra - self.ra) > self.fwhm_ra_deg / 2.0):
-            self.log.warning('Grid_center_ra requested in parset is different from the value in the observation.')
-        if (pardec is not None and np.abs(pardec - self.dec) > self.fwhm_dec_deg / 2.0):
-            self.log.warning('Grid_center_dec requested in parset is different from the value in the observation.')
+        parra = self.parset["imaging_specific"]["grid_center_ra"]
+        pardec = self.parset["imaging_specific"]["grid_center_dec"]
+        if parra is not None and np.abs(parra - self.ra) > self.fwhm_ra_deg / 2.0:
+            self.log.warning(
+                "Grid_center_ra requested in parset is different from the value in the observation."
+            )
+        if pardec is not None and np.abs(pardec - self.dec) > self.fwhm_dec_deg / 2.0:
+            self.log.warning(
+                "Grid_center_dec requested in parset is different from the value in the observation."
+            )
 
         # Set the MS file to use for beam model in sky model correction.
         # This should be the observation that best matches the weighted average
         # beam, so we use that closest to the mid point
-        times = [(obs.endtime+obs.starttime)/2.0 for obs in self.full_observations]
-        weights = [(obs.endtime-obs.starttime) for obs in self.full_observations]
+        times = [(obs.endtime + obs.starttime) / 2.0 for obs in self.full_observations]
+        weights = [(obs.endtime - obs.starttime) for obs in self.full_observations]
         mid_time = np.average(times, weights=weights)
-        mid_index = np.argmin(np.abs(np.array(times)-mid_time))
+        mid_index = np.argmin(np.abs(np.array(times) - mid_time))
         self.beam_ms_filename = self.full_observations[mid_index].ms_filename
 
     def chunk_observations(self, mintime, prefer_high_el_periods=True):
@@ -250,14 +322,20 @@ class Field(object):
             target_starttime = obs.starttime
             target_endtime = obs.endtime
             data_fraction = obs.data_fraction
-            if prefer_high_el_periods and (mintime < obs.high_el_endtime - obs.high_el_starttime):
+            if prefer_high_el_periods and (
+                mintime < obs.high_el_endtime - obs.high_el_starttime
+            ):
                 # Use high-elevation period for chunking. We increase the data fraction
                 # to account for the decreased total observation time so that the
                 # amount of data used is kept the same
                 target_starttime = obs.high_el_starttime
                 target_endtime = obs.high_el_endtime
-                data_fraction = min(1, data_fraction * (obs.endtime - obs.starttime) /
-                                    (target_endtime - target_starttime))
+                data_fraction = min(
+                    1,
+                    data_fraction
+                    * (obs.endtime - obs.starttime)
+                    / (target_endtime - target_starttime),
+                )
             tottime = target_endtime - target_starttime
 
             nchunks = max(1, int(np.floor(data_fraction / (mintime / tottime))))
@@ -265,30 +343,41 @@ class Field(object):
                 # Center the chunk around the midpoint (which is generally the most
                 # sensitive, near transit)
                 midpoint = target_starttime + tottime / 2
-                chunktime = min(tottime, max(mintime, data_fraction*tottime))
+                chunktime = min(tottime, max(mintime, data_fraction * tottime))
                 if chunktime < tottime:
-                    self.observations.append(Observation(obs.ms_filename,
-                                                         starttime=midpoint-chunktime/2,
-                                                         endtime=midpoint+chunktime/2))
+                    self.observations.append(
+                        Observation(
+                            obs.ms_filename,
+                            starttime=midpoint - chunktime / 2,
+                            endtime=midpoint + chunktime / 2,
+                        )
+                    )
                 else:
                     self.observations.append(obs)
             else:
                 steptime = mintime * (tottime / mintime - nchunks) / nchunks + mintime
                 starttimes = np.arange(target_starttime, target_endtime, steptime)
-                endtimes = np.arange(target_starttime+mintime, target_endtime+mintime, steptime)
+                endtimes = np.arange(
+                    target_starttime + mintime, target_endtime + mintime, steptime
+                )
                 for starttime, endtime in zip(starttimes, endtimes):
                     if endtime > target_endtime:
                         endtime = target_endtime
                         if endtime - starttime < mintime / 2:
                             # Skip this chunk if too short
-                            self.log.warning('Skipping final chunk as being too short. Fraction '
-                                             'of data used will be lower than requested.')
+                            self.log.warning(
+                                "Skipping final chunk as being too short. Fraction "
+                                "of data used will be lower than requested."
+                            )
                             continue
-                    self.observations.append(Observation(obs.ms_filename, starttime=starttime,
-                                                         endtime=endtime))
+                    self.observations.append(
+                        Observation(
+                            obs.ms_filename, starttime=starttime, endtime=endtime
+                        )
+                    )
 
-        minnobs = self.parset['cluster_specific']['max_nodes']
-        if len(self.imaging_sectors)*len(self.observations) < minnobs:
+        minnobs = self.parset["cluster_specific"]["max_nodes"]
+        if len(self.imaging_sectors) * len(self.observations) < minnobs:
             # To ensure all the nodes are used efficiently, try to divide up the observations
             # to reach at least minnobs in total. For simplicity, we try to divide each existing
             # observation into minnobs number of new observations (since there is no
@@ -309,20 +398,27 @@ class Field(object):
                     if numsamples < 2:
                         steptime += mintime
                     starttimes = np.arange(obs.starttime, obs.endtime, steptime)
-                    endtimes = [st+steptime for st in starttimes]
-                    for nc, (starttime, endtime) in enumerate(zip(starttimes, endtimes)):
-                        if nc == len(endtimes)-1:
+                    endtimes = [st + steptime for st in starttimes]
+                    for nc, (starttime, endtime) in enumerate(
+                        zip(starttimes, endtimes)
+                    ):
+                        if nc == len(endtimes) - 1:
                             endtime = obs.endtime
-                        self.observations.append(Observation(obs.ms_filename, starttime=starttime,
-                                                             endtime=endtime))
+                        self.observations.append(
+                            Observation(
+                                obs.ms_filename, starttime=starttime, endtime=endtime
+                            )
+                        )
                 else:
                     self.observations.append(obs)
 
         # Update the copies stored in the imaging sectors (including the full-field
         # sector, used to make the initial sky model). Other (non-imaging) sectors do not
         # need to be updated
-        sectors_to_update = self.imaging_sectors[:]  # don't alter original with append below
-        if hasattr(self, 'full_field_sector'):
+        sectors_to_update = self.imaging_sectors[
+            :
+        ]  # don't alter original with append below
+        if hasattr(self, "full_field_sector"):
             sectors_to_update.append(self.full_field_sector)
         for sector in sectors_to_update:
             sector.observations = []
@@ -339,10 +435,17 @@ class Field(object):
         nfreqchunks_separate = 0
         nfreqchunks_fulljones = 0
         for obs in self.observations:
-            obs.set_calibration_parameters(self.parset, self.num_patches, len(self.observations),
-                                           self.calibrator_fluxes, self.fast_timestep_sec,
-                                           self.slow_timestep_joint_sec, self.slow_timestep_separate_sec,
-                                           self.fulljones_timestep_sec, self.target_flux)
+            obs.set_calibration_parameters(
+                self.parset,
+                self.num_patches,
+                len(self.observations),
+                self.calibrator_fluxes,
+                self.fast_timestep_sec,
+                self.slow_timestep_joint_sec,
+                self.slow_timestep_separate_sec,
+                self.fulljones_timestep_sec,
+                self.target_flux,
+            )
             ntimechunks += obs.ntimechunks
             nfreqchunks_joint += obs.nfreqchunks_joint
             nfreqchunks_separate += obs.nfreqchunks_separate
@@ -368,9 +471,17 @@ class Field(object):
         """
         return sum([obs.parameters[parameter] for obs in self.observations], [])
 
-    def make_skymodels(self, skymodel_true_sky, skymodel_apparent_sky=None, regroup=True,
-                       find_sources=False, target_flux=None, target_number=None,
-                       calibrator_max_dist_deg=None, index=0):
+    def make_skymodels(
+        self,
+        skymodel_true_sky,
+        skymodel_apparent_sky=None,
+        regroup=True,
+        find_sources=False,
+        target_flux=None,
+        target_number=None,
+        calibrator_max_dist_deg=None,
+        index=0,
+    ):
         """
         Groups a sky model into source and calibration patches
 
@@ -403,27 +514,42 @@ class Field(object):
         # Save the filename of the calibrator-only sky model from the previous cycle (needed
         # for some operations), if available
         if index > 1:
-            dst_dir_prev_cycle = os.path.join(self.working_dir, 'skymodels', 'calibrate_{}'.format(index-1))
-            self.calibrators_only_skymodel_file_prev_cycle = os.path.join(dst_dir_prev_cycle,
-                                                                          'calibrators_only_skymodel.txt')
+            dst_dir_prev_cycle = os.path.join(
+                self.working_dir, "skymodels", "calibrate_{}".format(index - 1)
+            )
+            self.calibrators_only_skymodel_file_prev_cycle = os.path.join(
+                dst_dir_prev_cycle, "calibrators_only_skymodel.txt"
+            )
         else:
             self.calibrators_only_skymodel_file_prev_cycle = None
 
         # Make output directories for new sky models and define filenames
-        dst_dir = os.path.join(self.working_dir, 'skymodels', 'calibrate_{}'.format(index))
+        dst_dir = os.path.join(
+            self.working_dir, "skymodels", "calibrate_{}".format(index)
+        )
         os.makedirs(dst_dir, exist_ok=True)
-        self.calibration_skymodel_file = os.path.join(dst_dir, 'calibration_skymodel.txt')
-        self.calibrators_only_skymodel_file = os.path.join(dst_dir, 'calibrators_only_skymodel.txt')
-        self.source_skymodel_file = os.path.join(dst_dir, 'source_skymodel.txt')
-        dst_dir = os.path.join(self.working_dir, 'skymodels', 'image_{}'.format(index))
+        self.calibration_skymodel_file = os.path.join(
+            dst_dir, "calibration_skymodel.txt"
+        )
+        self.calibrators_only_skymodel_file = os.path.join(
+            dst_dir, "calibrators_only_skymodel.txt"
+        )
+        self.source_skymodel_file = os.path.join(dst_dir, "source_skymodel.txt")
+        dst_dir = os.path.join(self.working_dir, "skymodels", "image_{}".format(index))
         os.makedirs(dst_dir, exist_ok=True)
-        self.bright_source_skymodel_file = os.path.join(dst_dir, 'bright_source_skymodel.txt')
+        self.bright_source_skymodel_file = os.path.join(
+            dst_dir, "bright_source_skymodel.txt"
+        )
 
         # First check whether sky models already exist due to a previous run and attempt
         # to load them
         try:
-            self.calibration_skymodel = lsmtool.load(str(self.calibration_skymodel_file))
-            self.calibrators_only_skymodel = lsmtool.load(str(self.calibrators_only_skymodel_file))
+            self.calibration_skymodel = lsmtool.load(
+                str(self.calibration_skymodel_file)
+            )
+            self.calibrators_only_skymodel = lsmtool.load(
+                str(self.calibrators_only_skymodel_file)
+            )
             self.source_skymodel = lsmtool.load(str(self.source_skymodel_file))
 
             if self.peel_bright_sources:
@@ -432,7 +558,9 @@ class Field(object):
                 # is no way to determine which of these two possibilities is the case. So, if
                 # it does not exist, we have to regenerate the sky models
                 if os.path.exists(self.bright_source_skymodel_file):
-                    self.bright_source_skymodel = lsmtool.load(str(self.bright_source_skymodel_file))
+                    self.bright_source_skymodel = lsmtool.load(
+                        str(self.bright_source_skymodel_file)
+                    )
                     all_skymodels_loaded = True
                 else:
                     all_skymodels_loaded = False
@@ -448,22 +576,24 @@ class Field(object):
             return
 
         # If sky models do not already exist, make them
-        self.log.info('Analyzing sky model...')
+        self.log.info("Analyzing sky model...")
         if type(skymodel_true_sky) is not lsmtool.skymodel.SkyModel:
-            skymodel_true_sky = lsmtool.load(str(skymodel_true_sky),
-                                             beamMS=self.beam_ms_filename)
+            skymodel_true_sky = lsmtool.load(
+                str(skymodel_true_sky), beamMS=self.beam_ms_filename
+            )
         if skymodel_apparent_sky is not None:
             if type(skymodel_apparent_sky) is not lsmtool.skymodel.SkyModel:
-                skymodel_apparent_sky = lsmtool.load(str(skymodel_apparent_sky),
-                                                     beamMS=self.beam_ms_filename)
+                skymodel_apparent_sky = lsmtool.load(
+                    str(skymodel_apparent_sky), beamMS=self.beam_ms_filename
+                )
 
         # Check if any sky models included in rapthor are within the region of the
         # input sky model. If so, concatenate them with the input sky model
-        if self.parset['calibration_specific']['use_included_skymodels']:
+        if self.parset["calibration_specific"]["use_included_skymodels"]:
             max_separation_deg = self.fwhm_deg * 2.0
             rapthor_lib_dir = os.path.dirname(os.path.abspath(__file__))
-            skymodel_dir = os.path.join(os.path.split(rapthor_lib_dir)[0], 'skymodels')
-            skymodels = glob.glob(os.path.join(skymodel_dir, '*.skymodel'))
+            skymodel_dir = os.path.join(os.path.split(rapthor_lib_dir)[0], "skymodels")
+            skymodels = glob.glob(os.path.join(skymodel_dir, "*.skymodel"))
             concat_skymodels = []
             for skymodel in skymodels:
                 try:
@@ -475,11 +605,21 @@ class Field(object):
                     pass
             matching_radius_deg = 30.0 / 3600.0  # => 30 arcsec
             for s in concat_skymodels:
-                skymodel_true_sky.concatenate(s, matchBy='position', radius=matching_radius_deg,
-                                              keep='from2', inheritPatches=True)
+                skymodel_true_sky.concatenate(
+                    s,
+                    matchBy="position",
+                    radius=matching_radius_deg,
+                    keep="from2",
+                    inheritPatches=True,
+                )
                 if skymodel_apparent_sky is not None:
-                    skymodel_apparent_sky.concatenate(s, matchBy='position', radius=matching_radius_deg,
-                                                      keep='from2', inheritPatches=True)
+                    skymodel_apparent_sky.concatenate(
+                        s,
+                        matchBy="position",
+                        radius=matching_radius_deg,
+                        keep="from2",
+                        inheritPatches=True,
+                    )
 
         # If an apparent sky model is given, use it for defining the calibration patches.
         # Otherwise, attenuate the true sky model while grouping into patches
@@ -492,18 +632,25 @@ class Field(object):
 
         # Make a source sky model, used for source avoidance
         if find_sources:
-            self.log.info('Identifying sources...')
-            source_skymodel.group('threshold', FWHM='40.0 arcsec', threshold=0.05)
+            self.log.info("Identifying sources...")
+            source_skymodel.group("threshold", FWHM="40.0 arcsec", threshold=0.05)
         source_skymodel.write(self.source_skymodel_file, clobber=True)
-        self.source_skymodel = source_skymodel.copy()  # save and make copy before grouping
+        self.source_skymodel = (
+            source_skymodel.copy()
+        )  # save and make copy before grouping
 
         # Find groups of bright sources to use as basis for calibrator patches
         # and for subtraction if desired. The patch positions are set to the
         # flux-weighted mean position, using the apparent sky model. This position is
         # then propagated and used for the calibrate and predict sky models
-        source_skymodel.group('meanshift', byPatch=True, applyBeam=applyBeam_group,
-                              lookDistance=0.075, groupingDistance=0.01)
-        source_skymodel.setPatchPositions(method='wmean')
+        source_skymodel.group(
+            "meanshift",
+            byPatch=True,
+            applyBeam=applyBeam_group,
+            lookDistance=0.075,
+            groupingDistance=0.01,
+        )
+        source_skymodel.setPatchPositions(method="wmean")
         patch_dict = source_skymodel.getPatchPositions()
 
         # Save the model of the bright sources only, for later subtraction before
@@ -514,12 +661,14 @@ class Field(object):
 
         # Regroup the true-sky model into calibration patches
         if regroup:
-            if self.parset['facet_layout'] is not None:
+            if self.parset["facet_layout"] is not None:
                 # Regroup using the supplied ds9 region file of the facets
-                facets = read_ds9_region_file(self.parset['facet_layout'])
-                suffix = 'es' if len(facets) > 1 else ''
-                self.log.info(f'Read {len(facets)} patch{suffix} from supplied facet '
-                              'layout file')
+                facets = read_ds9_region_file(self.parset["facet_layout"])
+                suffix = "es" if len(facets) > 1 else ""
+                self.log.info(
+                    f"Read {len(facets)} patch{suffix} from supplied facet "
+                    "layout file"
+                )
                 facet_names = []
                 facet_patches_dict = {}
                 for facet in facets:
@@ -527,11 +676,14 @@ class Field(object):
                     facet_patches_dict.update({facet.name: [facet.ra, facet.dec]})
 
                 if len(facet_names) > len(skymodel_true_sky):
-                    raise ValueError('The sky model has {0} sources but the input facet '
-                                     'layout file has {1} facets. There must be at least '
-                                     'as many sources in the sky model as facets in the '
-                                     'facet layout file.'.format(len(skymodel_true_sky),
-                                                                 len(facet_names)))
+                    raise ValueError(
+                        "The sky model has {0} sources but the input facet "
+                        "layout file has {1} facets. There must be at least "
+                        "as many sources in the sky model as facets in the "
+                        "facet layout file.".format(
+                            len(skymodel_true_sky), len(facet_names)
+                        )
+                    )
 
                 # Update the sky models with the new patches and group using the
                 # Voronoi algorithm. We do this by setting the "Patch" column
@@ -540,9 +692,12 @@ class Field(object):
                 # patch name appear at least once) and the patch positions to
                 # those from the facet file. Grouping will then use the new
                 # patches
-                for skymodel in [skymodel_true_sky, bright_source_skymodel_apparent_sky]:
+                for skymodel in [
+                    skymodel_true_sky,
+                    bright_source_skymodel_apparent_sky,
+                ]:
                     patch_names = facet_names * (len(skymodel) // len(facet_names) + 1)
-                    skymodel.setColValues('Patch', patch_names[:len(skymodel)])
+                    skymodel.setColValues("Patch", patch_names[: len(skymodel)])
                     for i in range(2):
                         # Update the patch positions twice (before and after grouping). We
                         # need to do it after as well since group() changes the positions
@@ -551,56 +706,82 @@ class Field(object):
                             pos[1] = Angle(pos[1], unit=u.deg)
                             skymodel.table.meta[patch] = pos
                         if i == 0:
-                            skymodel.group('voronoi', patchNames=facet_names)
+                            skymodel.group("voronoi", patchNames=facet_names)
 
-                n_removed = len(facet_names) - len(skymodel_true_sky.getPatchNames().tolist())
+                n_removed = len(facet_names) - len(
+                    skymodel_true_sky.getPatchNames().tolist()
+                )
                 if n_removed > 0:
                     # One or more empty facets removed during grouping, so
                     # report this to user
-                    suffix = 'es' if n_removed > 1 else ''
-                    self.log.warning(f'Removed {n_removed} empty patch{suffix}. The facet '
-                                     'layout used in this cycle will therefore differ '
-                                     'from that given in the input facet layout file.')
+                    suffix = "es" if n_removed > 1 else ""
+                    self.log.warning(
+                        f"Removed {n_removed} empty patch{suffix}. The facet "
+                        "layout used in this cycle will therefore differ "
+                        "from that given in the input facet layout file."
+                    )
             else:
                 # Regroup by tessellating with the bright sources as the tessellation
                 # centers.
                 # First do some checks:
                 if target_flux is None and target_number is None:
-                    raise ValueError('Either the target flux density or the target number '
-                                     'of directions must be specified when regrouping the '
-                                     'sky model.')
+                    raise ValueError(
+                        "Either the target flux density or the target number "
+                        "of directions must be specified when regrouping the "
+                        "sky model."
+                    )
                 if target_flux is not None and target_flux <= 0.0:
-                    raise ValueError('The target flux density cannot be less than or equal '
-                                     'to 0.')
+                    raise ValueError(
+                        "The target flux density cannot be less than or equal " "to 0."
+                    )
                 if target_number is not None and target_number < 1:
-                    raise ValueError('The target number of directions cannot be less than 1.')
+                    raise ValueError(
+                        "The target number of directions cannot be less than 1."
+                    )
 
                 # Apply the distance filter (if any), keeping only patches inside the
                 # maximum distance
                 if calibrator_max_dist_deg is not None:
-                    names, distances = self.get_source_distances(source_skymodel.getPatchPositions())
+                    names, distances = self.get_source_distances(
+                        source_skymodel.getPatchPositions()
+                    )
                     inside_ind = np.where(distances < calibrator_max_dist_deg)
+                    if len(inside_ind) == 0:
+                        raise ValueError(
+                            f"No sources left in sky model after applying max source "
+                            f"distance of {calibrator_max_dist_deg} degrees. There were "
+                            f"{len(names)} sources in the model before applying the limit."
+                        )
                     calibrator_names = names[inside_ind]
                 else:
                     calibrator_names = source_skymodel.getPatchNames()
                 all_names = source_skymodel.getPatchNames()
-                keep_ind = np.array([i for i, name in enumerate(all_names) if name in calibrator_names])
-                calibrator_names = all_names[keep_ind]  # to ensure order matches that of fluxes
-                all_fluxes = source_skymodel.getColValues('I', aggregate='sum', applyBeam=applyBeam_group)
+                keep_ind = np.array(
+                    [i for i, name in enumerate(all_names) if name in calibrator_names]
+                )
+                calibrator_names = all_names[
+                    keep_ind
+                ]  # to ensure order matches that of fluxes
+                all_fluxes = source_skymodel.getColValues(
+                    "I", aggregate="sum", applyBeam=applyBeam_group
+                )
                 fluxes = all_fluxes[keep_ind]
 
                 # Check if target flux can be met in at least one direction
                 total_flux = np.sum(fluxes)
                 if total_flux < target_flux:
-                    raise RuntimeError('There is insufficient flux density in the model to meet '
-                                       'the target flux density. Please check the sky model '
-                                       '(in dir_working/skymodels/calibrate_{}/) for problems, '
-                                       'or lower the target flux density and/or increase the '
-                                       'maximum calibrator distance.'.format(index))
+                    raise RuntimeError(
+                        "There is insufficient flux density in the model to meet "
+                        "the target flux density. Please check the sky model "
+                        "(in dir_working/skymodels/calibrate_{}/) for problems, "
+                        "or lower the target flux density and/or increase the "
+                        "maximum calibrator distance.".format(index)
+                    )
 
                 # Weight the fluxes by source size (larger sources are down weighted)
-                sizes = source_skymodel.getPatchSizes(units='arcsec', weight=True,
-                                                      applyBeam=applyBeam_group)
+                sizes = source_skymodel.getPatchSizes(
+                    units="arcsec", weight=True, applyBeam=applyBeam_group
+                )
                 sizes = sizes[keep_ind]
                 sizes[sizes < 1.0] = 1.0
                 medianSize = np.median(sizes)
@@ -621,36 +802,55 @@ class Field(object):
 
                     if target_flux is None:
                         target_flux = target_flux_for_number
-                        self.log.info('Using a target flux density of {0:.2f} Jy for grouping '
-                                      'to meet the specified target number of '
-                                      'directions ({1:.2f})'.format(target_flux, target_number))
+                        self.log.info(
+                            "Using a target flux density of {0:.2f} Jy for grouping "
+                            "to meet the specified target number of "
+                            "directions ({1:.2f})".format(target_flux, target_number)
+                        )
                     else:
-                        if target_flux_for_number > target_flux and target_number < len(fluxes):
+                        if (
+                            target_flux_for_number > target_flux
+                            and target_number < len(fluxes)
+                        ):
                             # Only use the new target flux if the old value might result
                             # in more than target_number of calibrators
-                            self.log.info('Using a target flux density of {0:.2f} Jy for '
-                                          'grouping (raised from {1:.2f} Jy to ensure that '
-                                          'the target number of {2} directions is not '
-                                          'exceeded)'.format(target_flux_for_number, target_flux, target_number))
+                            self.log.info(
+                                "Using a target flux density of {0:.2f} Jy for "
+                                "grouping (raised from {1:.2f} Jy to ensure that "
+                                "the target number of {2} directions is not "
+                                "exceeded)".format(
+                                    target_flux_for_number, target_flux, target_number
+                                )
+                            )
                             target_flux = target_flux_for_number
                         else:
-                            self.log.info('Using a target flux density of {0:.2f} Jy for grouping'.format(target_flux))
+                            self.log.info(
+                                "Using a target flux density of {0:.2f} Jy for grouping".format(
+                                    target_flux
+                                )
+                            )
                 else:
-                    self.log.info('Using a target flux density of {0:.2f} Jy for grouping'.format(target_flux))
+                    self.log.info(
+                        "Using a target flux density of {0:.2f} Jy for grouping".format(
+                            target_flux
+                        )
+                    )
 
                 # Check if target flux can be met for at least one source
                 #
                 # Note: the weighted fluxes are used here (with larger sources down-weighted)
                 if np.max(fluxes) < target_flux:
-                    raise RuntimeError('No sources found that meet the target flux density (after '
-                                       'down-weighting larger sources by up to a factor of two). Please '
-                                       'check the sky model (in dir_working/skymodels/calibrate_{}/) '
-                                       'for problems, or lower the target flux density and/or increase '
-                                       'the maximum calibrator distance.'.format(index))
+                    raise RuntimeError(
+                        "No sources found that meet the target flux density (after "
+                        "down-weighting larger sources by up to a factor of two). Please "
+                        "check the sky model (in dir_working/skymodels/calibrate_{}/) "
+                        "for problems, or lower the target flux density and/or increase "
+                        "the maximum calibrator distance.".format(index)
+                    )
 
                 # Tesselate the model
                 calibrator_names = calibrator_names[np.where(fluxes >= target_flux)]
-                source_skymodel.group('voronoi', patchNames=calibrator_names)
+                source_skymodel.group("voronoi", patchNames=calibrator_names)
 
                 # Update the patch positions after the tessellation to ensure they match the
                 # ones from the meanshift grouping
@@ -661,22 +861,32 @@ class Field(object):
                 bright_patch_names = bright_source_skymodel_apparent_sky.getPatchNames()
                 for pn in bright_patch_names:
                     if pn not in source_skymodel.getPatchNames():
-                        bright_source_skymodel_apparent_sky.remove('Patch == {}'.format(pn))
+                        bright_source_skymodel_apparent_sky.remove(
+                            "Patch == {}".format(pn)
+                        )
 
                 # Transfer patches to the true-flux sky model (source names are identical
                 # in both, but the order may be different)
-                misc.transfer_patches(source_skymodel, skymodel_true_sky, patch_dict=patch_dict)
+                misc.transfer_patches(
+                    source_skymodel, skymodel_true_sky, patch_dict=patch_dict
+                )
 
                 # Rename the patches so that the numbering starts at high Dec, high RA
                 # and increases as RA and Dec decrease (i.e., from top-left to bottom-right)
-                for model in [source_skymodel, skymodel_true_sky, bright_source_skymodel_apparent_sky]:
+                for model in [
+                    source_skymodel,
+                    skymodel_true_sky,
+                    bright_source_skymodel_apparent_sky,
+                ]:
                     misc.rename_skymodel_patches(model)
 
         # For the bright-source true-sky model, duplicate any selections made above to the
         # apparent-sky model
         bright_source_skymodel = skymodel_true_sky.copy()
-        source_names = bright_source_skymodel.getColValues('Name').tolist()
-        bright_source_names = bright_source_skymodel_apparent_sky.getColValues('Name').tolist()
+        source_names = bright_source_skymodel.getColValues("Name").tolist()
+        bright_source_names = bright_source_skymodel_apparent_sky.getColValues(
+            "Name"
+        ).tolist()
         matching_ind = []
         for i, sn in enumerate(bright_source_names):
             matching_ind.append(source_names.index(sn))
@@ -687,12 +897,15 @@ class Field(object):
         # later use
         if regroup:
             # Transfer from the apparent-flux sky model (regrouped above)
-            misc.transfer_patches(bright_source_skymodel_apparent_sky, bright_source_skymodel)
+            misc.transfer_patches(
+                bright_source_skymodel_apparent_sky, bright_source_skymodel
+            )
         else:
             # Transfer from the true-flux sky model
             patch_dict = skymodel_true_sky.getPatchPositions()
-            misc.transfer_patches(skymodel_true_sky, bright_source_skymodel,
-                                  patch_dict=patch_dict)
+            misc.transfer_patches(
+                skymodel_true_sky, bright_source_skymodel, patch_dict=patch_dict
+            )
         bright_source_skymodel.write(self.calibrators_only_skymodel_file, clobber=True)
         self.calibrators_only_skymodel = bright_source_skymodel.copy()
 
@@ -724,8 +937,15 @@ class Field(object):
         # Save the final target flux
         self.target_flux = target_flux
 
-    def update_skymodels(self, index, regroup, target_flux=None, target_number=None,
-                         calibrator_max_dist_deg=None, combine_current_and_intial=False):
+    def update_skymodels(
+        self,
+        index,
+        regroup,
+        target_flux=None,
+        target_number=None,
+        calibrator_max_dist_deg=None,
+        combine_current_and_intial=False,
+    ):
         """
         Updates the source and calibration sky models from the output sector sky model(s)
 
@@ -759,91 +979,131 @@ class Field(object):
             # Note: the flags for generating or downloading the sky model are checked
             # and adjusted, if needed, during the reading of the parset
             moc = None  # default to no multi-order coverage map (which is, for now, LoTSS only)
-            if self.parset['generate_initial_skymodel']:
-                self.parset['input_skymodel'] = self.full_field_sector.image_skymodel_file_true_sky
-                self.parset['apparent_skymodel'] = self.full_field_sector.image_skymodel_file_apparent_sky
-            elif self.parset['download_initial_skymodel']:
-                catalog = self.parset['download_initial_skymodel_server'].lower()
-                self.parset['input_skymodel'] = os.path.join(self.working_dir, 'skymodels',
-                                                             f'initial_skymodel_{catalog}.txt')
-                self.parset['apparent_skymodel'] = None
-                misc.download_skymodel(self.ra, self.dec,
-                                       skymodel_path=self.parset['input_skymodel'],
-                                       radius=self.parset['download_initial_skymodel_radius'],
-                                       source=self.parset['download_initial_skymodel_server'],
-                                       overwrite=self.parset['download_overwrite_skymodel'])
-                if catalog == 'lotss':
-                    moc = os.path.join(self.working_dir, 'skymodels', 'dr2-moc.moc')
+            if self.parset["generate_initial_skymodel"]:
+                self.parset["input_skymodel"] = (
+                    self.full_field_sector.image_skymodel_file_true_sky
+                )
+                self.parset["apparent_skymodel"] = (
+                    self.full_field_sector.image_skymodel_file_apparent_sky
+                )
+            elif self.parset["download_initial_skymodel"]:
+                catalog = self.parset["download_initial_skymodel_server"].lower()
+                self.parset["input_skymodel"] = os.path.join(
+                    self.working_dir, "skymodels", f"initial_skymodel_{catalog}.txt"
+                )
+                self.parset["apparent_skymodel"] = None
+                misc.download_skymodel(
+                    self.ra,
+                    self.dec,
+                    skymodel_path=self.parset["input_skymodel"],
+                    radius=self.parset["download_initial_skymodel_radius"],
+                    source=self.parset["download_initial_skymodel_server"],
+                    overwrite=self.parset["download_overwrite_skymodel"],
+                )
+                if catalog == "lotss":
+                    moc = os.path.join(self.working_dir, "skymodels", "dr2-moc.moc")
 
             # Plot the field overview showing the initial sky-model coverage
-            self.log.info('Plotting field overview with initial sky-model coverage...')
-            self.plot_overview('initial_field_overview.png', show_initial_coverage=True,
-                               moc=moc)
+            self.log.info("Plotting field overview with initial sky-model coverage...")
+            self.plot_overview(
+                "initial_field_overview.png", show_initial_coverage=True, moc=moc
+            )
 
-            self.make_skymodels(self.parset['input_skymodel'],
-                                skymodel_apparent_sky=self.parset['apparent_skymodel'],
-                                regroup=self.parset['regroup_input_skymodel'],
-                                target_flux=target_flux, target_number=target_number,
-                                find_sources=True, calibrator_max_dist_deg=calibrator_max_dist_deg,
-                                index=index)
+            self.make_skymodels(
+                self.parset["input_skymodel"],
+                skymodel_apparent_sky=self.parset["apparent_skymodel"],
+                regroup=self.parset["regroup_input_skymodel"],
+                target_flux=target_flux,
+                target_number=target_number,
+                find_sources=True,
+                calibrator_max_dist_deg=calibrator_max_dist_deg,
+                index=index,
+            )
         else:
             # Use the imaging sector sky models from the previous iteration to update
             # the master sky model
-            self.log.info('Updating sky model...')
-            sector_skymodels_apparent_sky = [sector.image_skymodel_file_apparent_sky for
-                                             sector in self.imaging_sectors]
-            sector_skymodels_true_sky = [sector.image_skymodel_file_true_sky for
-                                         sector in self.imaging_sectors]
+            self.log.info("Updating sky model...")
+            sector_skymodels_apparent_sky = [
+                sector.image_skymodel_file_apparent_sky
+                for sector in self.imaging_sectors
+            ]
+            sector_skymodels_true_sky = [
+                sector.image_skymodel_file_true_sky for sector in self.imaging_sectors
+            ]
             sector_names = [sector.name for sector in self.imaging_sectors]
 
             # Concatenate the sky models from all sectors, being careful not to duplicate
             # source and patch names
             for i, (sm, sn) in enumerate(zip(sector_skymodels_true_sky, sector_names)):
                 if i == 0:
-                    skymodel_true_sky = lsmtool.load(str(sm), beamMS=self.beam_ms_filename)
-                    patchNames = skymodel_true_sky.getColValues('Patch')
-                    new_patchNames = np.array(['{0}_{1}'.format(p, sn) for p in patchNames], dtype='U100')
-                    skymodel_true_sky.setColValues('Patch', new_patchNames)
-                    sourceNames = skymodel_true_sky.getColValues('Name')
-                    new_sourceNames = np.array(['{0}_{1}'.format(s, sn) for s in sourceNames], dtype='U100')
-                    skymodel_true_sky.setColValues('Name', new_sourceNames)
+                    skymodel_true_sky = lsmtool.load(
+                        str(sm), beamMS=self.beam_ms_filename
+                    )
+                    patchNames = skymodel_true_sky.getColValues("Patch")
+                    new_patchNames = np.array(
+                        ["{0}_{1}".format(p, sn) for p in patchNames], dtype="U100"
+                    )
+                    skymodel_true_sky.setColValues("Patch", new_patchNames)
+                    sourceNames = skymodel_true_sky.getColValues("Name")
+                    new_sourceNames = np.array(
+                        ["{0}_{1}".format(s, sn) for s in sourceNames], dtype="U100"
+                    )
+                    skymodel_true_sky.setColValues("Name", new_sourceNames)
                 else:
                     skymodel2 = lsmtool.load(str(sm))
-                    patchNames = skymodel2.getColValues('Patch')
-                    new_patchNames = np.array(['{0}_{1}'.format(p, sn) for p in patchNames], dtype='U100')
-                    skymodel2.setColValues('Patch', new_patchNames)
-                    sourceNames = skymodel2.getColValues('Name')
-                    new_sourceNames = np.array(['{0}_{1}'.format(s, sn) for s in sourceNames], dtype='U100')
-                    skymodel2.setColValues('Name', new_sourceNames)
+                    patchNames = skymodel2.getColValues("Patch")
+                    new_patchNames = np.array(
+                        ["{0}_{1}".format(p, sn) for p in patchNames], dtype="U100"
+                    )
+                    skymodel2.setColValues("Patch", new_patchNames)
+                    sourceNames = skymodel2.getColValues("Name")
+                    new_sourceNames = np.array(
+                        ["{0}_{1}".format(s, sn) for s in sourceNames], dtype="U100"
+                    )
+                    skymodel2.setColValues("Name", new_sourceNames)
                     table1 = skymodel_true_sky.table.filled()
                     table2 = skymodel2.table.filled()
-                    skymodel_true_sky.table = vstack([table1, table2], metadata_conflicts='silent')
+                    skymodel_true_sky.table = vstack(
+                        [table1, table2], metadata_conflicts="silent"
+                    )
             skymodel_true_sky._updateGroups()
-            skymodel_true_sky.setPatchPositions(method='wmean')
+            skymodel_true_sky.setPatchPositions(method="wmean")
 
             if sector_skymodels_apparent_sky is not None:
-                for i, (sm, sn) in enumerate(zip(sector_skymodels_apparent_sky, sector_names)):
+                for i, (sm, sn) in enumerate(
+                    zip(sector_skymodels_apparent_sky, sector_names)
+                ):
                     if i == 0:
                         skymodel_apparent_sky = lsmtool.load(str(sm))
-                        patchNames = skymodel_apparent_sky.getColValues('Patch')
-                        new_patchNames = np.array(['{0}_{1}'.format(p, sn) for p in patchNames], dtype='U100')
-                        skymodel_apparent_sky.setColValues('Patch', new_patchNames)
-                        sourceNames = skymodel_apparent_sky.getColValues('Name')
-                        new_sourceNames = np.array(['{0}_{1}'.format(s, sn) for s in sourceNames], dtype='U100')
-                        skymodel_apparent_sky.setColValues('Name', new_sourceNames)
+                        patchNames = skymodel_apparent_sky.getColValues("Patch")
+                        new_patchNames = np.array(
+                            ["{0}_{1}".format(p, sn) for p in patchNames], dtype="U100"
+                        )
+                        skymodel_apparent_sky.setColValues("Patch", new_patchNames)
+                        sourceNames = skymodel_apparent_sky.getColValues("Name")
+                        new_sourceNames = np.array(
+                            ["{0}_{1}".format(s, sn) for s in sourceNames], dtype="U100"
+                        )
+                        skymodel_apparent_sky.setColValues("Name", new_sourceNames)
                     else:
                         skymodel2 = lsmtool.load(str(sm))
-                        patchNames = skymodel2.getColValues('Patch')
-                        new_patchNames = np.array(['{0}_{1}'.format(p, sn) for p in patchNames], dtype='U100')
-                        skymodel2.setColValues('Patch', new_patchNames)
-                        sourceNames = skymodel2.getColValues('Name')
-                        new_sourceNames = np.array(['{0}_{1}'.format(s, sn) for s in sourceNames], dtype='U100')
-                        skymodel2.setColValues('Name', new_sourceNames)
+                        patchNames = skymodel2.getColValues("Patch")
+                        new_patchNames = np.array(
+                            ["{0}_{1}".format(p, sn) for p in patchNames], dtype="U100"
+                        )
+                        skymodel2.setColValues("Patch", new_patchNames)
+                        sourceNames = skymodel2.getColValues("Name")
+                        new_sourceNames = np.array(
+                            ["{0}_{1}".format(s, sn) for s in sourceNames], dtype="U100"
+                        )
+                        skymodel2.setColValues("Name", new_sourceNames)
                         table1 = skymodel_apparent_sky.table.filled()
                         table2 = skymodel2.table.filled()
-                        skymodel_apparent_sky.table = vstack([table1, table2], metadata_conflicts='silent')
+                        skymodel_apparent_sky.table = vstack(
+                            [table1, table2], metadata_conflicts="silent"
+                        )
                 skymodel_apparent_sky._updateGroups()
-                skymodel_apparent_sky.setPatchPositions(method='wmean')
+                skymodel_apparent_sky.setPatchPositions(method="wmean")
             else:
                 skymodel_apparent_sky = None
 
@@ -856,8 +1116,8 @@ class Field(object):
                 # Load starting sky model and regroup to one patch per entry to ensure
                 # any existing patches are removed (otherwise they may propagate to
                 # the DDE direction determination, leading to unexpected results)
-                skymodel_true_sky_start = lsmtool.load(self.parset['input_skymodel'])
-                skymodel_true_sky_start.group('every')
+                skymodel_true_sky_start = lsmtool.load(self.parset["input_skymodel"])
+                skymodel_true_sky_start.group("every")
 
                 # Concatenate by position. Any entries in the initial sky model that match
                 # to one or more entires in the new one will be removed. A fairly large
@@ -866,42 +1126,59 @@ class Field(object):
                 # they are far from any in the new model and thus not likely to be
                 # duplicates)
                 matching_radius_deg = 30.0 / 3600.0  # => 30 arcsec
-                skymodel_true_sky.concatenate(skymodel_true_sky_start, matchBy='position',
-                                              radius=matching_radius_deg, keep='from1')
+                skymodel_true_sky.concatenate(
+                    skymodel_true_sky_start,
+                    matchBy="position",
+                    radius=matching_radius_deg,
+                    keep="from1",
+                )
                 skymodel_true_sky.setPatchPositions()
                 skymodel_apparent_sky = None
 
             # Use concatenated sky models to make new calibration model (we set find_sources
             # to False to preserve the source patches defined in the image operation by PyBDSF)
-            self.make_skymodels(skymodel_true_sky, skymodel_apparent_sky=skymodel_apparent_sky,
-                                regroup=regroup, find_sources=False, target_flux=target_flux,
-                                target_number=target_number, calibrator_max_dist_deg=calibrator_max_dist_deg,
-                                index=index)
+            self.make_skymodels(
+                skymodel_true_sky,
+                skymodel_apparent_sky=skymodel_apparent_sky,
+                regroup=regroup,
+                find_sources=False,
+                target_flux=target_flux,
+                target_number=target_number,
+                calibrator_max_dist_deg=calibrator_max_dist_deg,
+                index=index,
+            )
 
         # Save the number of calibrators and their names, positions, and flux
         # densities (in Jy) for use in the calibration and imaging operations
-        self.calibrator_patch_names = self.calibrators_only_skymodel.getPatchNames().tolist()
-        self.calibrator_fluxes = self.calibrators_only_skymodel.getColValues('I', aggregate='sum').tolist()
+        self.calibrator_patch_names = (
+            self.calibrators_only_skymodel.getPatchNames().tolist()
+        )
+        self.calibrator_fluxes = self.calibrators_only_skymodel.getColValues(
+            "I", aggregate="sum"
+        ).tolist()
         self.calibrator_positions = self.calibrators_only_skymodel.getPatchPositions()
         self.num_patches = len(self.calibrator_patch_names)
-        suffix = 'es' if self.num_patches > 1 else ''
-        self.log.info('Using {0} calibration patch{1}'.format(self.num_patches, suffix))
+        suffix = "es" if self.num_patches > 1 else ""
+        self.log.info("Using {0} calibration patch{1}".format(self.num_patches, suffix))
 
         # Plot an overview of the field for this cycle, showing the calibration facets
         # (patches)
-        self.log.info('Plotting field overview with calibration patches...')
+        self.log.info("Plotting field overview with calibration patches...")
         if index == 1 or combine_current_and_intial:
             # Check the sky model bounds, as they may differ from the sector ones
             check_skymodel_bounds = True
         else:
             # Sky model bounds will always match the sector ones
             check_skymodel_bounds = False
-        self.plot_overview(f'field_overview_{index}.png', show_calibration_patches=True,
-                           check_skymodel_bounds=check_skymodel_bounds)
+        self.plot_overview(
+            f"field_overview_{index}.png",
+            show_calibration_patches=True,
+            check_skymodel_bounds=check_skymodel_bounds,
+        )
 
         # Adjust sector boundaries to avoid known sources and update their sky models.
         self.adjust_sector_boundaries()
-        self.log.info('Making sector sky models (for predicting)...')
+        self.log.info("Making sector sky models (for predicting)...")
         for sector in self.imaging_sectors:
             sector.calibration_skymodel = self.calibration_skymodel.copy()
             sector.make_skymodel(index)
@@ -926,9 +1203,13 @@ class Field(object):
         self.define_non_calibrator_source_sectors(index)
 
         # Finally, make a list containing all sectors
-        self.sectors = (self.imaging_sectors + self.outlier_sectors +
-                        self.bright_source_sectors + self.predict_sectors +
-                        self.non_calibrator_source_sectors)
+        self.sectors = (
+            self.imaging_sectors
+            + self.outlier_sectors
+            + self.bright_source_sectors
+            + self.predict_sectors
+            + self.non_calibrator_source_sectors
+        )
         self.nsectors = len(self.sectors)
 
     def remove_skymodels(self):
@@ -960,7 +1241,7 @@ class Field(object):
         distances : numpy array
             Array of distances from the phase center in degrees
         """
-        phase_center_coord = SkyCoord(ra=self.ra*u.degree, dec=self.dec*u.degree)
+        phase_center_coord = SkyCoord(ra=self.ra * u.degree, dec=self.dec * u.degree)
         names = []
         source_ra = []
         source_dec = []
@@ -987,47 +1268,67 @@ class Field(object):
         self.imaging_sectors = []
 
         # Determine whether we use a user-supplied list of sectors or a grid
-        if len(self.parset['imaging_specific']['sector_center_ra_list']) > 0:
+        if len(self.parset["imaging_specific"]["sector_center_ra_list"]) > 0:
             # Use user-supplied list
-            sector_center_ra_list = self.parset['imaging_specific']['sector_center_ra_list']
-            sector_center_dec_list = self.parset['imaging_specific']['sector_center_dec_list']
-            sector_width_ra_deg_list = self.parset['imaging_specific']['sector_width_ra_deg_list']
-            sector_width_dec_deg_list = self.parset['imaging_specific']['sector_width_dec_deg_list']
+            sector_center_ra_list = self.parset["imaging_specific"][
+                "sector_center_ra_list"
+            ]
+            sector_center_dec_list = self.parset["imaging_specific"][
+                "sector_center_dec_list"
+            ]
+            sector_width_ra_deg_list = self.parset["imaging_specific"][
+                "sector_width_ra_deg_list"
+            ]
+            sector_width_dec_deg_list = self.parset["imaging_specific"][
+                "sector_width_dec_deg_list"
+            ]
             n = 1
-            for ra, dec, width_ra, width_dec in zip(sector_center_ra_list, sector_center_dec_list,
-                                                    sector_width_ra_deg_list, sector_width_dec_deg_list):
-                name = 'sector_{0}'.format(n)
-                self.imaging_sectors.append(Sector(name, ra, dec, width_ra, width_dec, self))
+            for ra, dec, width_ra, width_dec in zip(
+                sector_center_ra_list,
+                sector_center_dec_list,
+                sector_width_ra_deg_list,
+                sector_width_dec_deg_list,
+            ):
+                name = "sector_{0}".format(n)
+                self.imaging_sectors.append(
+                    Sector(name, ra, dec, width_ra, width_dec, self)
+                )
                 n += 1
-            suffix = 's' if len(self.imaging_sectors) > 1 else ''
-            self.log.info('Using {0} user-defined imaging sector{1}'.format(len(self.imaging_sectors), suffix))
+            suffix = "s" if len(self.imaging_sectors) > 1 else ""
+            self.log.info(
+                "Using {0} user-defined imaging sector{1}".format(
+                    len(self.imaging_sectors), suffix
+                )
+            )
             self.uses_sector_grid = False
         else:
             # Make a regular grid of sectors
-            if self.parset['imaging_specific']['grid_center_ra'] is None:
+            if self.parset["imaging_specific"]["grid_center_ra"] is None:
                 image_ra = self.ra
             else:
-                image_ra = self.parset['imaging_specific']['grid_center_ra']
-            if self.parset['imaging_specific']['grid_center_dec'] is None:
+                image_ra = self.parset["imaging_specific"]["grid_center_ra"]
+            if self.parset["imaging_specific"]["grid_center_dec"] is None:
                 image_dec = self.dec
             else:
-                image_dec = self.parset['imaging_specific']['grid_center_dec']
-            if self.parset['imaging_specific']['grid_width_ra_deg'] is None:
+                image_dec = self.parset["imaging_specific"]["grid_center_dec"]
+            if self.parset["imaging_specific"]["grid_width_ra_deg"] is None:
                 image_width_ra = self.fwhm_ra_deg * 1.7
             else:
-                image_width_ra = self.parset['imaging_specific']['grid_width_ra_deg']
-            if self.parset['imaging_specific']['grid_width_dec_deg'] is None:
+                image_width_ra = self.parset["imaging_specific"]["grid_width_ra_deg"]
+            if self.parset["imaging_specific"]["grid_width_dec_deg"] is None:
                 image_width_dec = self.fwhm_dec_deg * 1.7
             else:
-                image_width_dec = self.parset['imaging_specific']['grid_width_dec_deg']
+                image_width_dec = self.parset["imaging_specific"]["grid_width_dec_deg"]
 
-            nsectors_ra = self.parset['imaging_specific']['grid_nsectors_ra']
+            nsectors_ra = self.parset["imaging_specific"]["grid_nsectors_ra"]
             if nsectors_ra == 0:
                 # Force a single sector
                 nsectors_ra = 1
                 nsectors_dec = 1
             else:
-                nsectors_dec = int(np.ceil(image_width_dec / (image_width_ra / nsectors_ra)))
+                nsectors_dec = int(
+                    np.ceil(image_width_dec / (image_width_ra / nsectors_ra))
+                )
 
             if nsectors_ra == 1 and nsectors_dec == 1:
                 # Make a single sector
@@ -1056,19 +1357,28 @@ class Field(object):
             n = 1
             for i in range(nsectors_ra):
                 for j in range(nsectors_dec):
-                    if (self.parset['imaging_specific']['skip_corner_sectors'] and
-                            i in [0, nsectors_ra-1] and j in [0, nsectors_dec-1] and
-                            nsectors_ra > 2 and nsectors_dec > 2):
+                    if (
+                        self.parset["imaging_specific"]["skip_corner_sectors"]
+                        and i in [0, nsectors_ra - 1]
+                        and j in [0, nsectors_dec - 1]
+                        and nsectors_ra > 2
+                        and nsectors_dec > 2
+                    ):
                         continue
-                    name = 'sector_{0}'.format(n)
+                    name = "sector_{0}".format(n)
                     ra, dec = misc.xy2radec(self.wcs, x[j, i], y[j, i])
-                    self.imaging_sectors.append(Sector(name, ra, dec, width_ra, width_dec, self))
+                    self.imaging_sectors.append(
+                        Sector(name, ra, dec, width_ra, width_dec, self)
+                    )
                     n += 1
             if len(self.imaging_sectors) == 1:
-                self.log.info('Using 1 imaging sector')
+                self.log.info("Using 1 imaging sector")
             else:
-                self.log.info('Using {0} imaging sectors ({1} in RA, {2} in Dec)'.format(
-                              len(self.imaging_sectors), nsectors_ra, nsectors_dec))
+                self.log.info(
+                    "Using {0} imaging sectors ({1} in RA, {2} in Dec)".format(
+                        len(self.imaging_sectors), nsectors_ra, nsectors_dec
+                    )
+                )
             self.uses_sector_grid = True
 
         # Compute bounding box for all imaging sectors and store as a
@@ -1078,21 +1388,35 @@ class Field(object):
         # Note: this is just once, rather than each time the sector borders are
         # adjusted, so that the image sizes do not change with iteration (so
         # mask images from previous iterations may be used)
-        all_sectors = MultiPolygon([sector.poly_padded for sector in self.imaging_sectors])
+        all_sectors = MultiPolygon(
+            [sector.poly_padded for sector in self.imaging_sectors]
+        )
         self.sector_bounds_xy = all_sectors.bounds
-        maxRA, minDec = misc.xy2radec(self.wcs, self.sector_bounds_xy[0], self.sector_bounds_xy[1])
-        minRA, maxDec = misc.xy2radec(self.wcs, self.sector_bounds_xy[2], self.sector_bounds_xy[3])
-        midRA, midDec = misc.xy2radec(self.wcs, (self.sector_bounds_xy[0]+self.sector_bounds_xy[2])/2.0,
-                                      (self.sector_bounds_xy[1]+self.sector_bounds_xy[3])/2.0)
-        self.sector_bounds_width_ra = abs((self.sector_bounds_xy[0] - self.sector_bounds_xy[2]) *
-                                          self.wcs.wcs.cdelt[0])
-        self.sector_bounds_width_dec = abs((self.sector_bounds_xy[3] - self.sector_bounds_xy[1]) *
-                                           self.wcs.wcs.cdelt[1])
+        maxRA, minDec = misc.xy2radec(
+            self.wcs, self.sector_bounds_xy[0], self.sector_bounds_xy[1]
+        )
+        minRA, maxDec = misc.xy2radec(
+            self.wcs, self.sector_bounds_xy[2], self.sector_bounds_xy[3]
+        )
+        midRA, midDec = misc.xy2radec(
+            self.wcs,
+            (self.sector_bounds_xy[0] + self.sector_bounds_xy[2]) / 2.0,
+            (self.sector_bounds_xy[1] + self.sector_bounds_xy[3]) / 2.0,
+        )
+        self.sector_bounds_width_ra = abs(
+            (self.sector_bounds_xy[0] - self.sector_bounds_xy[2])
+            * self.wcs.wcs.cdelt[0]
+        )
+        self.sector_bounds_width_dec = abs(
+            (self.sector_bounds_xy[3] - self.sector_bounds_xy[1])
+            * self.wcs.wcs.cdelt[1]
+        )
         self.sector_bounds_mid_ra = midRA
         self.sector_bounds_mid_dec = midDec
-        self.sector_bounds_deg = '[{0:.6f};{1:.6f};{2:.6f};{3:.6f}]'.format(maxRA, minDec,
-                                                                            minRA, maxDec)
-        self.sector_bounds_mid_deg = '[{0:.6f};{1:.6f}]'.format(midRA, midDec)
+        self.sector_bounds_deg = "[{0:.6f};{1:.6f};{2:.6f};{3:.6f}]".format(
+            maxRA, minDec, minRA, maxDec
+        )
+        self.sector_bounds_mid_deg = "[{0:.6f};{1:.6f}]".format(midRA, midDec)
 
     def define_outlier_sectors(self, index):
         """
@@ -1110,17 +1434,23 @@ class Field(object):
             if nsources > 0:
                 # Choose number of sectors to be the no more than ten, but don't allow
                 # fewer than 100 sources per sector if possible
-                nnodes = max(min(10, round(nsources/100)), 1)  # TODO: tune to number of available nodes and/or memory?
+                nnodes = max(
+                    min(10, round(nsources / 100)), 1
+                )  # TODO: tune to number of available nodes and/or memory?
                 for i in range(nnodes):
-                    outlier_sector = Sector('outlier_{0}'.format(i+1), self.ra, self.dec, 1.0, 1.0, self)
+                    outlier_sector = Sector(
+                        "outlier_{0}".format(i + 1), self.ra, self.dec, 1.0, 1.0, self
+                    )
                     outlier_sector.is_outlier = True
                     outlier_sector.predict_skymodel = outlier_skymodel.copy()
-                    startind = i * int(nsources/nnodes)
-                    if i == nnodes-1:
+                    startind = i * int(nsources / nnodes)
+                    if i == nnodes - 1:
                         endind = nsources
                     else:
-                        endind = startind + int(nsources/nnodes)
-                    outlier_sector.predict_skymodel.select(np.array(list(range(startind, endind))))
+                        endind = startind + int(nsources / nnodes)
+                    outlier_sector.predict_skymodel.select(
+                        np.array(list(range(startind, endind)))
+                    )
                     outlier_sector.make_skymodel(index)
                     self.outlier_sectors.append(outlier_sector)
 
@@ -1139,17 +1469,30 @@ class Field(object):
             if nsources > 0:
                 # Choose number of sectors to be the no more than ten, but don't allow
                 # fewer than 100 sources per sector if possible
-                nnodes = max(min(10, round(nsources/100)), 1)  # TODO: tune to number of available nodes and/or memory?
+                nnodes = max(
+                    min(10, round(nsources / 100)), 1
+                )  # TODO: tune to number of available nodes and/or memory?
                 for i in range(nnodes):
-                    bright_source_sector = Sector('bright_source_{0}'.format(i+1), self.ra, self.dec, 1.0, 1.0, self)
+                    bright_source_sector = Sector(
+                        "bright_source_{0}".format(i + 1),
+                        self.ra,
+                        self.dec,
+                        1.0,
+                        1.0,
+                        self,
+                    )
                     bright_source_sector.is_bright_source = True
-                    bright_source_sector.predict_skymodel = self.bright_source_skymodel.copy()
-                    startind = i * int(nsources/nnodes)
-                    if i == nnodes-1:
+                    bright_source_sector.predict_skymodel = (
+                        self.bright_source_skymodel.copy()
+                    )
+                    startind = i * int(nsources / nnodes)
+                    if i == nnodes - 1:
                         endind = nsources
                     else:
-                        endind = startind + int(nsources/nnodes)
-                    bright_source_sector.predict_skymodel.select(np.array(list(range(startind, endind))))
+                        endind = startind + int(nsources / nnodes)
+                    bright_source_sector.predict_skymodel.select(
+                        np.array(list(range(startind, endind)))
+                    )
                     bright_source_sector.make_skymodel(index)
                     self.bright_source_sectors.append(bright_source_sector)
 
@@ -1167,25 +1510,40 @@ class Field(object):
             Iteration index
         """
         self.non_calibrator_source_sectors = []
-        if self.peel_non_calibrator_sources or self.antenna == 'LBA':
+        if self.peel_non_calibrator_sources or self.antenna == "LBA":
             non_calibrator_skymodel = self.make_non_calibrator_skymodel()
             nsources = len(non_calibrator_skymodel)
             if nsources > 0:
                 # Choose number of sectors to be the no more than ten, but don't allow
                 # fewer than 100 sources per sector if possible
-                nnodes = max(min(10, round(nsources/100)), 1)  # TODO: tune to number of available nodes and/or memory?
+                nnodes = max(
+                    min(10, round(nsources / 100)), 1
+                )  # TODO: tune to number of available nodes and/or memory?
                 for i in range(nnodes):
-                    non_calibrator_source_sector = Sector('non_calibrator_source_{0}'.format(i+1), self.ra, self.dec, 1.0, 1.0, self)
+                    non_calibrator_source_sector = Sector(
+                        "non_calibrator_source_{0}".format(i + 1),
+                        self.ra,
+                        self.dec,
+                        1.0,
+                        1.0,
+                        self,
+                    )
                     non_calibrator_source_sector.is_predict = True
-                    non_calibrator_source_sector.predict_skymodel = non_calibrator_skymodel.copy()
-                    startind = i * int(nsources/nnodes)
-                    if i == nnodes-1:
+                    non_calibrator_source_sector.predict_skymodel = (
+                        non_calibrator_skymodel.copy()
+                    )
+                    startind = i * int(nsources / nnodes)
+                    if i == nnodes - 1:
                         endind = nsources
                     else:
-                        endind = startind + int(nsources/nnodes)
-                    non_calibrator_source_sector.predict_skymodel.select(np.array(list(range(startind, endind))))
+                        endind = startind + int(nsources / nnodes)
+                    non_calibrator_source_sector.predict_skymodel.select(
+                        np.array(list(range(startind, endind)))
+                    )
                     non_calibrator_source_sector.make_skymodel(index)
-                    self.non_calibrator_source_sectors.append(non_calibrator_source_sector)
+                    self.non_calibrator_source_sectors.append(
+                        non_calibrator_source_sector
+                    )
 
     def define_predict_sectors(self, index):
         """
@@ -1202,17 +1560,23 @@ class Field(object):
         if nsources > 0:
             # Choose number of sectors to be the no more than ten, but don't allow
             # fewer than 100 sources per sector if possible
-            nnodes = max(min(10, round(nsources/100)), 1)  # TODO: tune to number of available nodes and/or memory?
+            nnodes = max(
+                min(10, round(nsources / 100)), 1
+            )  # TODO: tune to number of available nodes and/or memory?
             for i in range(nnodes):
-                predict_sector = Sector('predict_{0}'.format(i+1), self.ra, self.dec, 1.0, 1.0, self)
+                predict_sector = Sector(
+                    "predict_{0}".format(i + 1), self.ra, self.dec, 1.0, 1.0, self
+                )
                 predict_sector.is_predict = True
                 predict_sector.predict_skymodel = predict_skymodel.copy()
-                startind = i * int(nsources/nnodes)
-                if i == nnodes-1:
+                startind = i * int(nsources / nnodes)
+                if i == nnodes - 1:
                     endind = nsources
                 else:
-                    endind = startind + int(nsources/nnodes)
-                predict_sector.predict_skymodel.select(np.array(list(range(startind, endind))))
+                    endind = startind + int(nsources / nnodes)
+                predict_sector.predict_skymodel.select(
+                    np.array(list(range(startind, endind)))
+                )
                 predict_sector.make_skymodel(index)
                 self.predict_sectors.append(predict_sector)
 
@@ -1233,13 +1597,19 @@ class Field(object):
         else:
             width_ra = radius * 2
             width_dec = radius * 2
-        self.full_field_sector = Sector('full_field', self.ra, self.dec,
-                                        width_ra, width_dec, self)
+        self.full_field_sector = Sector(
+            "full_field", self.ra, self.dec, width_ra, width_dec, self
+        )
 
         # Make sector region and vertices files
         self.full_field_sector.make_vertices_file()
-        self.full_field_sector.make_region_file(os.path.join(self.working_dir, 'regions',
-                                                f'{self.full_field_sector.name}_region_ds9.reg'))
+        self.full_field_sector.make_region_file(
+            os.path.join(
+                self.working_dir,
+                "regions",
+                f"{self.full_field_sector.name}_region_ds9.reg",
+            )
+        )
 
     def find_intersecting_sources(self):
         """
@@ -1254,9 +1624,11 @@ class Field(object):
         skymodel = self.source_skymodel
         RA, Dec = skymodel.getPatchPositions(asArray=True)
         x, y = misc.radec2xy(self.wcs, RA, Dec)
-        sizes = skymodel.getPatchSizes(units='degree')
+        sizes = skymodel.getPatchSizes(units="degree")
         minsize = 1  # minimum allowed source size in pixels
-        sizes = [max(minsize, s/2.0/self.wcs_pixel_scale) for s in sizes]  # radii in pixels
+        sizes = [
+            max(minsize, s / 2.0 / self.wcs_pixel_scale) for s in sizes
+        ]  # radii in pixels
 
         for i, (xs, ys, ss) in enumerate(zip(x, y, sizes)):
             xmin = xs - ss
@@ -1270,13 +1642,13 @@ class Field(object):
         buffer = 2  # how many pixels away from each side to check
         for sector in self.imaging_sectors:
             xmin, ymin, xmax, ymax = sector.initial_poly.bounds
-            side1 = (xmin-buffer, ymin, xmin+buffer, ymax)
+            side1 = (xmin - buffer, ymin, xmin + buffer, ymax)
             intersecting_ind.extend(list(idx.intersection(side1)))
-            side2 = (xmax-buffer, ymin, xmax+buffer, ymax)
+            side2 = (xmax - buffer, ymin, xmax + buffer, ymax)
             intersecting_ind.extend(list(idx.intersection(side2)))
-            side3 = (xmin, ymin-buffer, xmax, ymin+buffer)
+            side3 = (xmin, ymin - buffer, xmax, ymin + buffer)
             intersecting_ind.extend(list(idx.intersection(side3)))
-            side4 = (xmin, ymax-buffer, xmax, ymax+buffer)
+            side4 = (xmin, ymax - buffer, xmax, ymax + buffer)
             intersecting_ind.extend(list(idx.intersection(side4)))
 
         # Make polygons for intersecting sources, with a size = 1.5 * radius of source
@@ -1284,8 +1656,10 @@ class Field(object):
             xfilt = np.array(x)[(np.array(intersecting_ind),)]
             yfilt = np.array(y)[(np.array(intersecting_ind),)]
             sfilt = np.array(sizes)[(np.array(intersecting_ind),)]
-            intersecting_source_polys = [Point(xp, yp).buffer(sp*1.5) for
-                                         xp, yp, sp in zip(xfilt, yfilt, sfilt)]
+            intersecting_source_polys = [
+                Point(xp, yp).buffer(sp * 1.5)
+                for xp, yp, sp in zip(xfilt, yfilt, sfilt)
+            ]
         else:
             intersecting_source_polys = []
         return intersecting_source_polys
@@ -1299,7 +1673,7 @@ class Field(object):
         between two neighboring sectors
         """
         if len(self.imaging_sectors) > 1 and self.uses_sector_grid:
-            self.log.info('Adusting sector boundaries to avoid sources...')
+            self.log.info("Adusting sector boundaries to avoid sources...")
             intersecting_source_polys = self.find_intersecting_sources()
             for sector in self.imaging_sectors:
                 # Make sure all sectors start from their initial polygons
@@ -1322,26 +1696,36 @@ class Field(object):
         # Make sector region and vertices files
         for sector in self.imaging_sectors:
             sector.make_vertices_file()
-            sector.make_region_file(os.path.join(self.working_dir, 'regions',
-                                                 '{}_region_ds9.reg'.format(sector.name)))
+            sector.make_region_file(
+                os.path.join(
+                    self.working_dir, "regions", "{}_region_ds9.reg".format(sector.name)
+                )
+            )
 
     def make_outlier_skymodel(self):
         """
         Make a sky model of any outlier calibration sources, not included in any
         imaging sector
         """
-        all_source_names = self.calibration_skymodel.getColValues('Name').tolist()
+        all_source_names = self.calibration_skymodel.getColValues("Name").tolist()
         sector_source_names = []
         for sector in self.imaging_sectors:
             skymodel = lsmtool.load(str(sector.predict_skymodel_file))
-            sector_source_names.extend(skymodel.getColValues('Name').tolist())
+            sector_source_names.extend(skymodel.getColValues("Name").tolist())
         if self.peel_bright_sources:
             # The bright sources were removed from the sector predict sky models, so
             # add them to the list
-            sector_source_names.extend(self.bright_source_skymodel.getColValues('Name').tolist())
+            sector_source_names.extend(
+                self.bright_source_skymodel.getColValues("Name").tolist()
+            )
 
-        outlier_ind = np.array([all_source_names.index(sn) for sn in all_source_names
-                                if sn not in sector_source_names])
+        outlier_ind = np.array(
+            [
+                all_source_names.index(sn)
+                for sn in all_source_names
+                if sn not in sector_source_names
+            ]
+        )
         outlier_skymodel = self.calibration_skymodel.copy()
         outlier_skymodel.select(outlier_ind, force=True)
         return outlier_skymodel
@@ -1367,19 +1751,27 @@ class Field(object):
         # Transfer the patches from the previous sky model (if any) to the
         # current one
         if self.calibrators_only_skymodel_file_prev_cycle is not None:
-            calibrators_only_skymodel = lsmtool.load(self.calibrators_only_skymodel_file_prev_cycle)
+            calibrators_only_skymodel = lsmtool.load(
+                self.calibrators_only_skymodel_file_prev_cycle
+            )
             calibrator_names = calibrators_only_skymodel.getPatchNames()
             patch_dict = calibrators_only_skymodel.getPatchPositions()
-            non_calibrator_skymodel.transfer(calibrators_only_skymodel,
-                                             matchBy='position', radius='30 arcsec')
+            non_calibrator_skymodel.transfer(
+                calibrators_only_skymodel, matchBy="position", radius="30 arcsec"
+            )
             non_calibrator_skymodel.setPatchPositions(patchDict=patch_dict)
-            non_calibrator_skymodel.group('voronoi', patchNames=calibrator_names)
+            non_calibrator_skymodel.group("voronoi", patchNames=calibrator_names)
 
         # Remove the calibrator (bright) sources
-        remove_source_names = self.bright_source_skymodel.getColValues('Name').tolist()
-        all_source_names = non_calibrator_skymodel.getColValues('Name').tolist()
-        keep_ind = np.array([all_source_names.index(sn) for sn in all_source_names
-                             if sn not in remove_source_names])
+        remove_source_names = self.bright_source_skymodel.getColValues("Name").tolist()
+        all_source_names = non_calibrator_skymodel.getColValues("Name").tolist()
+        keep_ind = np.array(
+            [
+                all_source_names.index(sn)
+                for sn in all_source_names
+                if sn not in remove_source_names
+            ]
+        )
         non_calibrator_skymodel.select(keep_ind, force=True)
         return non_calibrator_skymodel
 
@@ -1399,15 +1791,19 @@ class Field(object):
         """
         if self.h5parm_filename is not None:
             solutions = h5parm(self.h5parm_filename)
-            if 'sol000' not in solutions.getSolsetNames():
-                raise ValueError('The direction-dependent solutions file "{0}" must '
-                                 'have the solutions stored in the sol000 '
-                                 'solset.'.format(self.h5parm_filename))
-            solset = solutions.getSolset('sol000')
-            if 'phase000' not in solset.getSoltabNames():
-                raise ValueError('The direction-dependent solutions file "{0}" must '
-                                 'have a phase000 soltab.'.format(self.h5parm_filename))
-            if 'amplitude000' in solset.getSoltabNames():
+            if "sol000" not in solutions.getSolsetNames():
+                raise ValueError(
+                    'The direction-dependent solutions file "{0}" must '
+                    "have the solutions stored in the sol000 "
+                    "solset.".format(self.h5parm_filename)
+                )
+            solset = solutions.getSolset("sol000")
+            if "phase000" not in solset.getSoltabNames():
+                raise ValueError(
+                    'The direction-dependent solutions file "{0}" must '
+                    "have a phase000 soltab.".format(self.h5parm_filename)
+                )
+            if "amplitude000" in solset.getSoltabNames():
                 self.apply_amplitudes = True
             else:
                 self.apply_amplitudes = False
@@ -1417,16 +1813,22 @@ class Field(object):
         if self.fulljones_h5parm_filename is not None:
             self.apply_fulljones = True
             solutions = h5parm(self.fulljones_h5parm_filename)
-            if 'sol000' not in solutions.getSolsetNames():
-                raise ValueError('The full-Jones solution file "{0}" must have '
-                                 'the solutions stored in the sol000 '
-                                 'solset.'.format(self.fulljones_h5parm_filename))
-            solset = solutions.getSolset('sol000')
-            if ('phase000' not in solset.getSoltabNames() or
-                    'amplitude000' not in solset.getSoltabNames()):
-                raise ValueError('The full-Jones solution file "{0}" must have both '
-                                 'a phase000 soltab and a amplitude000 '
-                                 'soltab.'.format(self.fulljones_h5parm_filename))
+            if "sol000" not in solutions.getSolsetNames():
+                raise ValueError(
+                    'The full-Jones solution file "{0}" must have '
+                    "the solutions stored in the sol000 "
+                    "solset.".format(self.fulljones_h5parm_filename)
+                )
+            solset = solutions.getSolset("sol000")
+            if (
+                "phase000" not in solset.getSoltabNames()
+                or "amplitude000" not in solset.getSoltabNames()
+            ):
+                raise ValueError(
+                    'The full-Jones solution file "{0}" must have both '
+                    "a phase000 soltab and a amplitude000 "
+                    "soltab.".format(self.fulljones_h5parm_filename)
+                )
         else:
             self.apply_fulljones = False
 
@@ -1472,29 +1874,39 @@ class Field(object):
         convergence_ratio = self.convergence_ratio
         divergence_ratio = self.divergence_ratio
         failure_ratio = self.failure_ratio
-        SelfcalState = namedtuple('SelfcalState', ['converged', 'diverged', 'failed'])
+        SelfcalState = namedtuple("SelfcalState", ["converged", "diverged", "failed"])
 
         # Check that convergence and divergence limits are sensible
         if convergence_ratio > 2.0:
-            self.log.warning('The convergence ratio is set to {} but must be <= 2. '
-                             'Using 2.0 instead'.format(convergence_ratio))
+            self.log.warning(
+                "The convergence ratio is set to {} but must be <= 2. "
+                "Using 2.0 instead".format(convergence_ratio)
+            )
             convergence_ratio = 2.0
         if convergence_ratio < 0.5:
-            self.log.warning('The convergence ratio is set to {} but must be >= 0.5. '
-                             'Using 0.5 instead'.format(convergence_ratio))
+            self.log.warning(
+                "The convergence ratio is set to {} but must be >= 0.5. "
+                "Using 0.5 instead".format(convergence_ratio)
+            )
             convergence_ratio = 0.5
         if divergence_ratio < 1.0:
-            self.log.warning('The divergence ratio is set to {} but must be >= 1. '
-                             'Using 1.0 instead'.format(divergence_ratio))
+            self.log.warning(
+                "The divergence ratio is set to {} but must be >= 1. "
+                "Using 1.0 instead".format(divergence_ratio)
+            )
             divergence_ratio = 1.0
         if failure_ratio < 1.0:
-            self.log.warning('The failure ratio is set to {} but must be >= 1. '
-                             'Using 1.0 instead'.format(failure_ratio))
+            self.log.warning(
+                "The failure ratio is set to {} but must be >= 1. "
+                "Using 1.0 instead".format(failure_ratio)
+            )
             failure_ratio = 1.0
 
-        if (not hasattr(self, 'imaging_sectors') or
-                not self.imaging_sectors or
-                len(self.imaging_sectors[0].diagnostics) <= 1):
+        if (
+            not hasattr(self, "imaging_sectors")
+            or not self.imaging_sectors
+            or len(self.imaging_sectors[0].diagnostics) <= 1
+        ):
             # Either no imaging sectors or no previous iteration, so report not yet
             # converged, diverged, or failed
             return SelfcalState(False, False, False)
@@ -1505,24 +1917,38 @@ class Field(object):
         diverged = []
         failed = []
         for sector in self.imaging_sectors:
-            rmspre = sector.diagnostics[-2]['median_rms_flat_noise']
-            rmspost = sector.diagnostics[-1]['median_rms_flat_noise']
-            rmsideal = sector.diagnostics[-1]['theoretical_rms']
-            self.log.info('Ratio of current median image noise (non-PB-corrected) to previous image '
-                          'noise for {0} = {1:.2f}'.format(sector.name, rmspost/rmspre))
-            self.log.info('Ratio of current median image noise (non-PB-corrected) to theorectical '
-                          'minimum image noise for {0} = {1:.2f}'.format(sector.name, rmspost/rmsideal))
-            dynrpre = sector.diagnostics[-2]['dynamic_range_global_flat_noise']
-            dynrpost = sector.diagnostics[-1]['dynamic_range_global_flat_noise']
-            self.log.info('Ratio of current image dynamic range (non-PB-corrected) to previous image '
-                          'dynamic range for {0} = {1:.2f}'.format(sector.name, dynrpost/dynrpre))
-            nsrcpre = sector.diagnostics[-2]['nsources']
-            nsrcpost = sector.diagnostics[-1]['nsources']
-            self.log.info('Ratio of current number of sources to previous number '
-                          'of sources for {0} = {1:.2f}'.format(sector.name, nsrcpost/nsrcpre))
-            if (rmspost / rmspre < convergence_ratio or
-                    dynrpost / dynrpre > 1 / convergence_ratio or
-                    nsrcpost / nsrcpre > 1 / convergence_ratio):
+            rmspre = sector.diagnostics[-2]["median_rms_flat_noise"]
+            rmspost = sector.diagnostics[-1]["median_rms_flat_noise"]
+            rmsideal = sector.diagnostics[-1]["theoretical_rms"]
+            self.log.info(
+                "Ratio of current median image noise (non-PB-corrected) to previous image "
+                "noise for {0} = {1:.2f}".format(sector.name, rmspost / rmspre)
+            )
+            self.log.info(
+                "Ratio of current median image noise (non-PB-corrected) to theorectical "
+                "minimum image noise for {0} = {1:.2f}".format(
+                    sector.name, rmspost / rmsideal
+                )
+            )
+            dynrpre = sector.diagnostics[-2]["dynamic_range_global_flat_noise"]
+            dynrpost = sector.diagnostics[-1]["dynamic_range_global_flat_noise"]
+            self.log.info(
+                "Ratio of current image dynamic range (non-PB-corrected) to previous image "
+                "dynamic range for {0} = {1:.2f}".format(
+                    sector.name, dynrpost / dynrpre
+                )
+            )
+            nsrcpre = sector.diagnostics[-2]["nsources"]
+            nsrcpost = sector.diagnostics[-1]["nsources"]
+            self.log.info(
+                "Ratio of current number of sources to previous number "
+                "of sources for {0} = {1:.2f}".format(sector.name, nsrcpost / nsrcpre)
+            )
+            if (
+                rmspost / rmspre < convergence_ratio
+                or dynrpost / dynrpre > 1 / convergence_ratio
+                or nsrcpost / nsrcpre > 1 / convergence_ratio
+            ):
                 # Report not converged (and not diverged)
                 converged.append(False)
                 diverged.append(False)
@@ -1577,15 +2003,15 @@ class Field(object):
             sector.__dict__.update(step_dict)
 
         # Update the sky models
-        if step_dict['regroup_model']:
+        if step_dict["regroup_model"]:
             # If regrouping is to be done, we adjust the target flux used for calibrator
             # selection by the ratio of (LOFAR / true) fluxes determined in the image
             # operation of the previous selfcal cycle. This adjustment is only done if the
             # fractional change is significant (as measured by the standard deviation in
             # the ratio)
-            target_flux = step_dict['target_flux']
-            target_number = step_dict['max_directions']
-            calibrator_max_dist_deg = step_dict['max_distance']
+            target_flux = step_dict["target_flux"]
+            target_number = step_dict["max_directions"]
+            calibrator_max_dist_deg = step_dict["max_distance"]
             if self.lofar_to_true_flux_ratio <= 0:
                 self.lofar_to_true_flux_ratio = 1.0  # disable adjustment
             if self.lofar_to_true_flux_ratio <= 1:
@@ -1594,24 +2020,31 @@ class Field(object):
                 fractional_change = self.lofar_to_true_flux_ratio - 1
             if fractional_change > self.lofar_to_true_flux_std:
                 target_flux *= self.lofar_to_true_flux_ratio
-                self.log.info('Adjusting the target flux for calibrator selection '
-                              'from {0:.2f} Jy to {1:.2f} Jy to account for the offset found '
-                              'in the global flux scale'.format(step_dict['target_flux'],
-                                                                target_flux))
+                self.log.info(
+                    "Adjusting the target flux for calibrator selection "
+                    "from {0:.2f} Jy to {1:.2f} Jy to account for the offset found "
+                    "in the global flux scale".format(
+                        step_dict["target_flux"], target_flux
+                    )
+                )
         else:
             target_flux = None
             target_number = None
             calibrator_max_dist_deg = None
 
-        self.update_skymodels(index, step_dict['regroup_model'],
-                              target_flux=target_flux, target_number=target_number,
-                              calibrator_max_dist_deg=calibrator_max_dist_deg,
-                              combine_current_and_intial=final)
+        self.update_skymodels(
+            index,
+            step_dict["regroup_model"],
+            target_flux=target_flux,
+            target_number=target_number,
+            calibrator_max_dist_deg=calibrator_max_dist_deg,
+            combine_current_and_intial=final,
+        )
         self.remove_skymodels()  # clean up sky models to reduce memory usage
 
         # Always try to peel non-calibrator sources if LBA (we check below whether
         # or not there are sources that need to be peeled)
-        if self.antenna == 'LBA':
+        if self.antenna == "LBA":
             self.peel_non_calibrator_sources = True
 
         # Check whether any sources need to be peeled
@@ -1637,10 +2070,12 @@ class Field(object):
         # - bright sources will be peeled, set by self.peel_bright_sources
         # - reweighting is to be done (since datasets with all sources subtracted are
         #   needed for this)
-        if (nr_imaging_sectors > 1 or
-                nr_outlier_sectors > 0 or
-                self.peel_bright_sources or
-                self.reweight):
+        if (
+            nr_imaging_sectors > 1
+            or nr_outlier_sectors > 0
+            or self.peel_bright_sources
+            or self.reweight
+        ):
             self.do_predict = True
         else:
             self.do_predict = False
@@ -1666,19 +2101,33 @@ class Field(object):
         else:
             # Take the scale (in degrees/pixel) as the average of those of the
             # two axes
-            wcs_pixel_scale = (wcs.proj_plane_pixel_scales()[0].value +
-                               wcs.proj_plane_pixel_scales()[1].value) / 2
+            wcs_pixel_scale = (
+                wcs.proj_plane_pixel_scales()[0].value
+                + wcs.proj_plane_pixel_scales()[1].value
+            ) / 2
         x, y = misc.radec2xy(wcs, self.ra, self.dec)
-        patch = Ellipse((x, y), width=self.fwhm_ra_deg/wcs_pixel_scale,
-                        height=self.fwhm_dec_deg/wcs_pixel_scale,
-                        edgecolor='k', facecolor='lightgray', linestyle=':',
-                        label='Pointing FWHM', linewidth=2, alpha=0.5)
+        patch = Ellipse(
+            (x, y),
+            width=self.fwhm_ra_deg / wcs_pixel_scale,
+            height=self.fwhm_dec_deg / wcs_pixel_scale,
+            edgecolor="k",
+            facecolor="lightgray",
+            linestyle=":",
+            label="Pointing FWHM",
+            linewidth=2,
+            alpha=0.5,
+        )
 
         return patch
 
-    def plot_overview(self, output_filename, show_initial_coverage=False,
-                      show_calibration_patches=False, moc=None,
-                      check_skymodel_bounds=False):
+    def plot_overview(
+        self,
+        output_filename,
+        show_initial_coverage=False,
+        show_calibration_patches=False,
+        moc=None,
+        check_skymodel_bounds=False,
+    ):
         """
         Plots an overview of the field, with optional intial sky-model coverage
         and calibration facets shown
@@ -1702,11 +2151,13 @@ class Field(object):
         """
         size_ra = self.sector_bounds_width_ra * u.deg
         size_dec = self.sector_bounds_width_dec * u.deg
-        if self.parset['generate_initial_skymodel']:
-            initial_skymodel_radius = max(self.full_field_sector.width_ra,
-                                          self.full_field_sector.width_dec) / 2
-        elif self.parset['download_initial_skymodel']:
-            initial_skymodel_radius = self.parset['download_initial_skymodel_radius']
+        if self.parset["generate_initial_skymodel"]:
+            initial_skymodel_radius = (
+                max(self.full_field_sector.width_ra, self.full_field_sector.width_dec)
+                / 2
+            )
+        elif self.parset["download_initial_skymodel"]:
+            initial_skymodel_radius = self.parset["download_initial_skymodel_radius"]
         else:
             # User-supplied sky model (unknown coverage)
             initial_skymodel_radius = 0
@@ -1724,8 +2175,11 @@ class Field(object):
         fig = figure(figsize=(8, 8), dpi=300)
         if moc is not None:
             pmoc = mocpy.MOC.from_fits(moc)
-            wcs = mocpy.WCS(fig, fov=fake_size*2,
-                            center=SkyCoord(self.ra*u.deg, self.dec*u.deg, frame='fk5')).w
+            wcs = mocpy.WCS(
+                fig,
+                fov=fake_size * 2,
+                center=SkyCoord(self.ra * u.deg, self.dec * u.deg, frame="fk5"),
+            ).w
         else:
             wcs = self.wcs
         ax = fig.add_subplot(111, projection=wcs)
@@ -1733,23 +2187,42 @@ class Field(object):
         # Plot the MOC and initial sky model area
         if show_initial_coverage:
             if moc is not None:
-                pmoc.fill(ax=ax, wcs=wcs, linewidth=2, edgecolor='b', facecolor='lightblue',
-                          label='Skymodel MOC', alpha=0.5)
+                pmoc.fill(
+                    ax=ax,
+                    wcs=wcs,
+                    linewidth=2,
+                    edgecolor="b",
+                    facecolor="lightblue",
+                    label="Skymodel MOC",
+                    alpha=0.5,
+                )
 
             # If sky model was generated or downloaded, indicate the region out
             # to which the initial sky model extends, centered on the field
             if initial_skymodel_radius > 0:
                 # Nonzero radius implies model was either generated or downloaded (see
                 # above)
-                if self.parset['generate_initial_skymodel']:
-                    skymodel_region = self.full_field_sector.get_matplotlib_patch(wcs=wcs)
-                    skymodel_region.set(edgecolor='b', facecolor='lightblue', alpha=0.5,
-                                        label='Initial sky model coverage')
-                elif self.parset['download_initial_skymodel']:
-                    skymodel_region = SphericalCircle((self.ra*u.deg, self.dec*u.deg), size_skymodel,
-                                                      transform=ax.get_transform('fk5'),
-                                                      label='Initial sky model query cone', edgecolor='b',
-                                                      facecolor='lightblue', linewidth=2, alpha=0.5)
+                if self.parset["generate_initial_skymodel"]:
+                    skymodel_region = self.full_field_sector.get_matplotlib_patch(
+                        wcs=wcs
+                    )
+                    skymodel_region.set(
+                        edgecolor="b",
+                        facecolor="lightblue",
+                        alpha=0.5,
+                        label="Initial sky model coverage",
+                    )
+                elif self.parset["download_initial_skymodel"]:
+                    skymodel_region = SphericalCircle(
+                        (self.ra * u.deg, self.dec * u.deg),
+                        size_skymodel,
+                        transform=ax.get_transform("fk5"),
+                        label="Initial sky model query cone",
+                        edgecolor="b",
+                        facecolor="lightblue",
+                        linewidth=2,
+                        alpha=0.5,
+                    )
                 ax.add_patch(skymodel_region)
 
         # Plot the calibration patches (facets)
@@ -1757,12 +2230,16 @@ class Field(object):
             # Find the faceting limits defined from the sky model
             if check_skymodel_bounds:
                 if initial_skymodel_radius > 0:
-                    skymodel_bounds_width_ra = skymodel_bounds_width_dec = initial_skymodel_radius * 2  # deg
+                    skymodel_bounds_width_ra = skymodel_bounds_width_dec = (
+                        initial_skymodel_radius * 2
+                    )  # deg
                 else:
                     # User-supplied sky model: estimate the size from the maximum distance
                     # of any patch from the phase center (plus 20% padding)
                     _, distances = self.get_source_distances(self.calibrator_positions)
-                    skymodel_bounds_width_ra = skymodel_bounds_width_dec = 2 * 1.2 * np.max(distances)  # deg
+                    skymodel_bounds_width_ra = skymodel_bounds_width_dec = (
+                        2 * 1.2 * np.max(distances)
+                    )  # deg
             else:
                 skymodel_bounds_width_ra = skymodel_bounds_width_dec = 0
 
@@ -1773,31 +2250,51 @@ class Field(object):
             # were calculated for the padded polygons
             all_sectors = MultiPolygon([sector.poly for sector in self.imaging_sectors])
             bounds_xy = all_sectors.bounds  # pix
-            sector_bounds_width_ra = abs((bounds_xy[0] - bounds_xy[2]) * wcs.wcs.cdelt[0])  # deg
-            sector_bounds_width_dec = abs((bounds_xy[3] - bounds_xy[1]) * wcs.wcs.cdelt[1])  # deg
+            sector_bounds_width_ra = abs(
+                (bounds_xy[0] - bounds_xy[2]) * wcs.wcs.cdelt[0]
+            )  # deg
+            sector_bounds_width_dec = abs(
+                (bounds_xy[3] - bounds_xy[1]) * wcs.wcs.cdelt[1]
+            )  # deg
 
-            facets = read_skymodel(self.calibration_skymodel_file,
-                                   self.sector_bounds_mid_ra,
-                                   self.sector_bounds_mid_dec,
-                                   max(skymodel_bounds_width_ra, sector_bounds_width_ra),
-                                   max(skymodel_bounds_width_dec, sector_bounds_width_dec))
+            facets = read_skymodel(
+                self.calibration_skymodel_file,
+                self.sector_bounds_mid_ra,
+                self.sector_bounds_mid_dec,
+                max(skymodel_bounds_width_ra, sector_bounds_width_ra),
+                max(skymodel_bounds_width_dec, sector_bounds_width_dec),
+            )
             for i, facet in enumerate(facets):
                 facet_patch = facet.get_matplotlib_patch(wcs=wcs)
-                label = 'Calibration facets' if i == 0 else None  # first only to avoid multiple lines in legend
-                facet_patch.set(edgecolor='b', facecolor='lightblue', alpha=0.5, label=label)
+                label = (
+                    "Calibration facets" if i == 0 else None
+                )  # first only to avoid multiple lines in legend
+                facet_patch.set(
+                    edgecolor="b", facecolor="lightblue", alpha=0.5, label=label
+                )
                 ax.add_patch(facet_patch)
                 x, y = misc.radec2xy(wcs, facet.ra, facet.dec)
-                ax.annotate(facet.name, (x, y), va='center', ha='center', fontsize='small',
-                            color='b')
+                ax.annotate(
+                    facet.name,
+                    (x, y),
+                    va="center",
+                    ha="center",
+                    fontsize="small",
+                    color="b",
+                )
 
         # Plot the imaging sectors
         for i, sector in enumerate(self.imaging_sectors):
             sector_patch = sector.get_matplotlib_patch(wcs=wcs)
-            label = 'Imaging sectors' if i == 0 else None  # first only to avoid multiple lines in legend
+            label = (
+                "Imaging sectors" if i == 0 else None
+            )  # first only to avoid multiple lines in legend
             sector_patch.set(label=label)
             ax.add_patch(sector_patch)
-            x, y = misc.radec2xy(wcs, sector.ra, sector.dec+sector.width_dec/2)  # center-top
-            ax.annotate(sector.name, (x, y), va='bottom', ha='center', fontsize='large')
+            x, y = misc.radec2xy(
+                wcs, sector.ra, sector.dec + sector.width_dec / 2
+            )  # center-top
+            ax.annotate(sector.name, (x, y), va="bottom", ha="center", fontsize="large")
 
         # Plot the observation's FWHM and phase center
         if show_initial_coverage:
@@ -1805,25 +2302,35 @@ class Field(object):
             ax.add_patch(self.get_matplotlib_patch(wcs=wcs))
 
             # Plot the phase center
-            ax.scatter(self.ra*u.deg, self.dec*u.deg, marker='s', color='k',
-                       transform=ax.get_transform('fk5'), label='Phase center')
+            ax.scatter(
+                self.ra * u.deg,
+                self.dec * u.deg,
+                marker="s",
+                color="k",
+                transform=ax.get_transform("fk5"),
+                label="Phase center",
+            )
 
         # Set the minimum plot FoV by adding an invisible point and circle. The
         # final FoV will be set either by this circle or the MOC (if given)
         if show_initial_coverage:
-            ra = self.ra*u.deg
-            dec = self.dec*u.deg
+            ra = self.ra * u.deg
+            dec = self.dec * u.deg
         else:
-            ra = self.sector_bounds_mid_ra*u.deg
-            dec = self.sector_bounds_mid_dec*u.deg
-        ax.scatter(ra, dec, color='none', transform=ax.get_transform('fk5'))
-        fake_FoV_circle = SphericalCircle((ra, dec), fake_size/2,
-                                          transform=ax.get_transform('fk5'),
-                                          edgecolor='none', facecolor='none',
-                                          linewidth=0)
+            ra = self.sector_bounds_mid_ra * u.deg
+            dec = self.sector_bounds_mid_dec * u.deg
+        ax.scatter(ra, dec, color="none", transform=ax.get_transform("fk5"))
+        fake_FoV_circle = SphericalCircle(
+            (ra, dec),
+            fake_size / 2,
+            transform=ax.get_transform("fk5"),
+            edgecolor="none",
+            facecolor="none",
+            linewidth=0,
+        )
         ax.add_patch(fake_FoV_circle)
 
-        ax.set(xlabel='Right Ascension [J2000]', ylabel='Declination [J2000]')
-        ax.legend(loc='upper left')
+        ax.set(xlabel="Right Ascension [J2000]", ylabel="Declination [J2000]")
+        ax.legend(loc="upper left")
         ax.grid()
-        fig.savefig(os.path.join(self.working_dir, 'plots', output_filename))
+        fig.savefig(os.path.join(self.working_dir, "plots", output_filename))
