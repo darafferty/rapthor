@@ -144,7 +144,7 @@ class Observation(object):
         elif 'LBA' in self.stations[0]:
             self.antenna = 'LBA'
         else:
-           # Set antenna to HBA to at least let Rapthor proceed.
+            # Set antenna to HBA to at least let Rapthor proceed.
             self.antenna = "HBA"
             self.log.warning(
                 "Antenna type not recognized (only LBA and HBA data "
