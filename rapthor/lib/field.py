@@ -754,7 +754,7 @@ class Field(object):
                     [i for i, name in enumerate(all_names) if name in calibrator_names]
                 )
                 if len(keep_ind) == 0:
-                    raise ValueError(
+                    raise RuntimeError(
                         f"No sources left in the sky model after applying max source "
                         f"distance of {calibrator_max_dist_deg} degrees. There were "
                         f"{len(all_names)} sources in the model before applying the limit."
