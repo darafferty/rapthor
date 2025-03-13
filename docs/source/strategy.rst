@@ -88,9 +88,6 @@ The following processing parameters can be set for each cycle:
 
 .. glossary::
 
-    do_normalize
-    Boolean flag that determines whether the normalization of the flux scale is done. This normalization determines and applies the corrections (as a function of frequency) needed to achieve obs_flux / true_flux = 1. The "true" flux is determined by cross matching with the VLSSr and WENSS catalogs.
-
     do_calibrate
         Boolean flag that determines whether the calibration step should be done for this cycle.
 
@@ -123,6 +120,9 @@ The following processing parameters can be set for each cycle:
 
     scale_normalization_delta
         Boolean flag that determines whether the maximum allowed fractional normalization delta (set by the ``max_normalization_delta`` parameter) is constrained to vary linearly with distance from the phase center. If True, the maximum delta is zero at the phase center and reaches the value set by ``max_normalization_delta`` for the most distant calibration patch. If False, the maximum delta is the same for all calibration patches.
+
+    do_normalize
+        Boolean flag that determines whether the normalization of the flux scale is done. This normalization determines and applies the corrections (as a function of frequency) needed to achieve obs_flux / true_flux = 1. The "true" flux is determined by cross matching with the VLSSr and WENSS catalogs.
 
     do_image
         Boolean flag that determines whether the imaging step should be done for this cycle.

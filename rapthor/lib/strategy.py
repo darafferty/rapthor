@@ -166,7 +166,10 @@ def set_selfcal_strategy(field):
             strategy_steps[i]['slow_timestep_joint_sec'] = 0.0
             strategy_steps[i]['slow_timestep_separate_sec'] = 600.0
 
-        strategy_steps[i]['do_normalize'] = True
+        if i == 0:
+            strategy_steps[i]['do_normalize'] = True
+        else:
+            strategy_steps[i]['do_normalize'] = False
 
         strategy_steps[i]['do_image'] = True
         if i < 2 and do_phase_only_solves:

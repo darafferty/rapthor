@@ -41,8 +41,12 @@ for i in range(max_selfcal_loops):
     strategy_steps[i]['slow_timestep_separate_sec'] = 600.0
 
     # Here we activate flux-scale normalization (adjusts the amplitudes to
-    # achieve obs_flux / true_flux = 1)
-    strategy_steps[i]['do_normalize'] = True
+    # achieve obs_flux / true_flux = 1) for the first cycle (the adjustments
+    # are propagated automatically to later cycles)
+    if i == 0:
+        strategy_steps[i]['do_normalize'] = True
+    else:
+        strategy_steps[i]['do_normalize'] = False
 
     # Here we set the imaging strategy, lowering the masking thresholds as
     # selfcal proceeds to ensure all emission is properly cleaned and artifacts,
