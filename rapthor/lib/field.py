@@ -746,12 +746,6 @@ class Field(object):
                         source_skymodel.getPatchPositions()
                     )
                     inside_ind = np.where(distances < calibrator_max_dist_deg)
-                    if len(inside_ind) == 0:
-                        raise ValueError(
-                            f"No sources left in sky model after applying max source "
-                            f"distance of {calibrator_max_dist_deg} degrees. There were "
-                            f"{len(names)} sources in the model before applying the limit."
-                        )
                     calibrator_names = names[inside_ind]
                 else:
                     calibrator_names = source_skymodel.getPatchNames()
@@ -759,6 +753,12 @@ class Field(object):
                 keep_ind = np.array(
                     [i for i, name in enumerate(all_names) if name in calibrator_names]
                 )
+                if len(keep_ind) == 0:
+                    raise ValueError(
+                        f"No sources left in sky model after applying max source "
+                        f"distance of {calibrator_max_dist_deg} degrees. There were "
+                        f"{len(all_names)} sources in the model before applying the limit."
+                    )
                 calibrator_names = all_names[
                     keep_ind
                 ]  # to ensure order matches that of fluxes
