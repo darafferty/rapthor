@@ -193,6 +193,7 @@ class TestCWLToolRunner:
         except ValueError:
             pass
         else:
+            print(f"[CWLToolRunner]: path = {path}")
             prefix, postfix = os.path.split(os.path.dirname(path))
             if use_mpi:
                 if global_scratch_dir:
@@ -300,7 +301,6 @@ class TestToilRunner:
         tmp_path,
         batch_system,
         global_scratch_dir,
-        dir_postfix,
         parset,
         runner,
     ):
@@ -313,9 +313,7 @@ class TestToilRunner:
         except ValueError:
             assert batch_system != "slurm"
         else:
-            prefix, postfix = os.path.split(os.path.dirname(workdir))
             if global_scratch_dir:
-                assert prefix == global_scratch_dir
-                assert postfix == dir_postfix
+                assert os.path.dirname(workdir) == global_scratch_dir
             else:
                 assert workdir.startswith(parset["dir_working"])

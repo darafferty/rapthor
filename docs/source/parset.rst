@@ -567,7 +567,7 @@ The available options are described below under their respective sections.
 
         When :term:`cwl_runner` = ``toil`` and :term:`batch_system` = ``single_machine``,
         it is recommended to set this parameter, so that Rapthor can clean up any
-        leftover temporary files and directories that Toil left behind.
+        leftover temporary files and directories that ``toil`` left behind.
 
     global_scratch_dir
         Full path to a directory on a shared disk that is readable and writable by all
@@ -578,7 +578,7 @@ The available options are described below under their respective sections.
 
         When :term:`cwlrunner` = ``toil``, it is recommended to set this parameter, so
         that Rapthor can clean up any leftover temporary files and directories that
-        Toil left behind.
+        ``toil`` left behind.
 
     use_container
         Run the workflows inside a container (default = ``False``)? If ``True``, the CWL
