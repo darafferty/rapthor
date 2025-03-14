@@ -185,6 +185,13 @@ inputs:
       for the next solution interval (length = 1).
     type: boolean
 
+  - id: fast_initialsolutions_h5parm
+    label: Input solution table
+    doc: |
+      The filename of the input h5parm solution table to use for the fast-phase
+      initial solutions (length = 1).
+    type: File?
+
   - id: solveralgorithm
     label: Solver algorithm
     doc: |
@@ -477,6 +484,13 @@ inputs:
       The antenna constraint for the first (joint) slow-gain solve (length = 1).
     type: string
 
+  - id: slow_initialsolutions_h5parm
+    label: Input solution table
+    doc: |
+      The filename of the input h5parm solution table to use for the second
+      (separate) slow-gain initial solutions (length = 1).
+    type: File?
+
   - id: max_normalization_delta
     label: Maximum normalization delta
     doc: |
@@ -565,6 +579,10 @@ inputs:
 
 
 outputs:
+  - id: fast_phase_solutions
+    outputSource:
+      - combine_fast_phases/outh5parm
+    type: File
   - id: combined_solutions
     outputSource:
       - adjust_h5parm_sources/adjustedh5parm
@@ -574,6 +592,10 @@ outputs:
       - plot_fast_phase_solutions/plots
     type: File[]
 {% if do_slowgain_solve %}
+  - id: slow_gain_solutions
+    outputSource:
+      - combine_slow_gains_separate/outh5parm
+    type: File
   - id: slow_phase_plots
     outputSource:
       - plot_slow_phase_solutions/plots
@@ -636,6 +658,10 @@ steps:
         source: maxiter
       - id: propagatesolutions
         source: propagatesolutions
+      - id: initialsolutions_h5parm
+        source: fast_initialsolutions_h5parm
+      - id: initialsolutions_soltab
+        valueFrom: '[phase000]'
       - id: solveralgorithm
         source: solveralgorithm
       - id: solverlbfgs_dof
@@ -931,6 +957,10 @@ steps:
         source: maxiter
       - id: propagatesolutions
         source: propagatesolutions
+      - id: initialsolutions_h5parm
+        source: slow_initialsolutions_h5parm
+      - id: initialsolutions_soltab
+        valueFrom: '[phase000,amplitude000]'
       - id: solveralgorithm
         source: solveralgorithm
       - id: solverlbfgs_dof

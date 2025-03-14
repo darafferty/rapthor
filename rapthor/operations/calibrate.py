@@ -103,7 +103,7 @@ class CalibrateDD(Operation):
         output_slow_h5parm_separate = ['slow_gain_separate_{}.h5parm'.format(i)
                                        for i in range(self.field.nfreqchunks_separate)]
         combined_slow_h5parm_joint = 'slow_gains_joint.h5parm'
-        combined_slow_h5parm_separate = 'slow_gains_separate.h5parm'
+        self.combined_slow_h5parm_separate = 'slow_gains_separate.h5parm'
         combined_h5parms_fast_slow_joint = 'combined_solutions_fast_slow_joint.h5'
         combined_h5parms_slow_joint_separate = 'combined_solutions_slow_joint_separate.h5'
         if self.field.apply_diagonal_solutions:
@@ -183,8 +183,8 @@ class CalibrateDD(Operation):
         else:
             dp3_steps_slow_separate = '[solve]'
 
-        # Set the DDECal applycal steps depending on what solutions need to be
-        # applied
+        # Set the DDECal applycal steps and input H5parm files depending on what
+        # solutions need to be applied
         if self.field.apply_normalizations:
             normalize_h5parm = CWLFile(self.field.normalize_h5parm).to_json()
             dp3_applycal_steps_fast = '[normalization]'
@@ -204,6 +204,12 @@ class CalibrateDD(Operation):
         else:
             dp3_applycal_steps_slow_joint = None
             dp3_applycal_steps_slow_separate = None
+        fast_initialsolutions_h5parm = None
+        slow_initialsolutions_h5parm = None
+        if self.field.fast_phases_h5parm_filename:
+            fast_initialsolutions_h5parm = CWLFile(self.field.fast_phases_h5parm_filename).to_json()
+        if self.field.slow_gains_h5parm_filename:
+            slow_initialsolutions_h5parm = CWLFile(self.field.slow_gains_h5parm_filename).to_json()
 
         self.input_parms = {'timechunk_filename': CWLDir(timechunk_filename).to_json(),
                             'freqchunk_filename_joint': CWLDir(freqchunk_filename_joint).to_json(),
@@ -254,6 +260,8 @@ class CalibrateDD(Operation):
                             'bda_maxinterval_slow_separate': bda_maxinterval_slow_separate,
                             'bda_timebase_slow_separate': bda_timebase_slow_separate,
                             'normalize_h5parm': normalize_h5parm,
+                            'fast_initialsolutions_h5parm': fast_initialsolutions_h5parm,
+                            'slow_initialsolutions_h5parm': slow_initialsolutions_h5parm,
                             'max_normalization_delta': max_normalization_delta,
                             'scale_normalization_delta': scale_normalization_delta,
                             'phase_center_ra': self.field.ra,
@@ -277,7 +285,7 @@ class CalibrateDD(Operation):
                             'fast_antennaconstraint': fast_antennaconstraint,
                             'slow_antennaconstraint': slow_antennaconstraint,
                             'combined_slow_h5parm_joint': combined_slow_h5parm_joint,
-                            'combined_slow_h5parm_separate': combined_slow_h5parm_separate,
+                            'combined_slow_h5parm_separate': self.combined_slow_h5parm_separate,
                             'combined_h5parms_fast_slow_joint': combined_h5parms_fast_slow_joint,
                             'combined_h5parms_slow_joint_separate': combined_h5parms_slow_joint_separate,
                             'solution_combine_mode': solution_combine_mode,
@@ -361,14 +369,24 @@ class CalibrateDD(Operation):
         dst_dir = os.path.join(self.parset['dir_working'], 'solutions', 'calibrate_{}'.format(self.index))
         os.makedirs(dst_dir, exist_ok=True)
         self.field.h5parm_filename = os.path.join(dst_dir, 'field-solutions.h5')
+        self.field.fast_phases_h5parm_filename = os.path.join(dst_dir, 'field-solutions-fast-phase.h5')
+        self.field.slow_gains_h5parm_filename = os.path.join(dst_dir, 'field-solutions-slow-gain.h5')
         if os.path.exists(self.field.h5parm_filename):
             os.remove(self.field.h5parm_filename)
         if self.field.do_slowgain_solve:
             shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_h5parms),
                         os.path.join(dst_dir, self.field.h5parm_filename))
+            shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_slow_h5parm_separate),
+                        os.path.join(dst_dir, self.field.slow_gains_h5parm_filename))
+            shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_fast_h5parm),
+                        os.path.join(dst_dir, self.field.fast_phases_h5parm_filename))
         else:
+            # The h5parm with the full, combined solutions is also the fast-phases
+            # h5parm
             shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_fast_h5parm),
                         os.path.join(dst_dir, self.field.h5parm_filename))
+            shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_fast_h5parm),
+                        os.path.join(dst_dir, self.field.fast_phases_h5parm_filename))
         self.field.scan_h5parms()  # verify h5parm and update flags for predict/image operations
         flagged_frac = misc.get_flagged_solution_fraction(self.field.h5parm_filename)
         self.log.info('Fraction of solutions that are flagged = {0:.2f}'.format(flagged_frac))
