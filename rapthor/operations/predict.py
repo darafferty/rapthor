@@ -29,8 +29,7 @@ class PredictDD(Operation):
         else:
             max_cores = self.field.parset['cluster_specific']['max_cores']
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
-                             'max_cores': max_cores,
-                             'apply_amplitudes': self.field.apply_amplitudes}
+                             'max_cores': max_cores}
 
     def set_input_parameters(self):
         """
@@ -99,6 +98,17 @@ class PredictDD(Operation):
         onebeamperpatch = self.field.onebeamperpatch
         sagecalpredict = self.field.sagecalpredict
 
+        # Set the DP3 applycal steps depending on what solutions need to be
+        # applied
+        dp3_applycal_steps = ['fastphase']
+        if self.field.apply_amplitudes:
+            dp3_applycal_steps.append('slowgain')
+        if self.field.apply_normalizations:
+            normalize_h5parm = CWLFile(self.field.normalize_h5parm).to_json()
+            dp3_applycal_steps.append('normalization')
+        else:
+            normalize_h5parm = None
+
         self.input_parms = {'sector_filename': CWLDir(sector_filename).to_json(),
                             'sector_starttime': sector_starttime,
                             'sector_ntimes': sector_ntimes,
@@ -106,6 +116,8 @@ class PredictDD(Operation):
                             'sector_skymodel': CWLFile(sector_skymodel).to_json(),
                             'sector_patches': sector_patches,
                             'h5parm': CWLFile(self.field.h5parm_filename).to_json(),
+                            'normalize_h5parm': normalize_h5parm,
+                            'dp3_applycal_steps': f"[{','.join(dp3_applycal_steps)}]",
                             'obs_solint_sec': obs_solint_sec,
                             'obs_solint_hz': obs_solint_hz,
                             'min_uv_lambda': min_uv_lambda,
@@ -191,13 +203,11 @@ class PredictNC(Operation):
         if self.field.h5parm_filename is not None:
             # Apply calibration solutions during predict when available (e.g., from
             # calibration done in the previous cycle)
-            apply_solutions = True
+            self.apply_solutions = True
         else:
-            apply_solutions = False
+            self.apply_solutions = False
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
-                             'max_cores': max_cores,
-                             'apply_solutions': apply_solutions,
-                             'apply_amplitudes': self.field.apply_amplitudes}
+                             'max_cores': max_cores}
 
     def set_input_parameters(self):
         """
@@ -230,8 +240,6 @@ class PredictNC(Operation):
         obs_filename = []
         obs_starttime = []
         obs_infix = []
-        obs_solint_sec = []
-        obs_solint_hz = []
         for obs in self.field.observations:
             obs_filename.append(obs.ms_filename)
             obs_starttime.append(misc.convert_mjd2mvt(obs.starttime))
@@ -242,11 +250,36 @@ class PredictNC(Operation):
         onebeamperpatch = self.field.onebeamperpatch
         sagecalpredict = self.field.sagecalpredict
 
+        # Set the DP3 applycal steps depending on what solutions need to be
+        # applied
+        dp3_applycal_steps = []
+        if self.apply_solutions:
+            dp3_applycal_steps.append('fastphase')
+            h5parm = CWLFile(self.field.h5parm_filename).to_json()
+        else:
+            h5parm = None
+            sector_patches = None
+        if self.field.apply_amplitudes:
+            dp3_applycal_steps.append('slowgain')
+        if self.field.apply_normalizations:
+            normalize_h5parm = CWLFile(self.field.normalize_h5parm).to_json()
+            dp3_applycal_steps.append('normalization')
+        else:
+            normalize_h5parm = None
+        if dp3_applycal_steps:
+            dp3_applycal_steps = f"[{','.join(dp3_applycal_steps)}]"
+        else:
+            dp3_applycal_steps = None
+
         self.input_parms = {'sector_filename': CWLDir(sector_filename).to_json(),
                             'sector_starttime': sector_starttime,
                             'sector_ntimes': sector_ntimes,
                             'sector_model_filename': sector_model_filename,
                             'sector_skymodel': CWLFile(sector_skymodel).to_json(),
+                            'sector_patches': sector_patches,
+                            'h5parm': h5parm,
+                            'normalize_h5parm': normalize_h5parm,
+                            'dp3_applycal_steps': dp3_applycal_steps,
                             'onebeamperpatch': onebeamperpatch,
                             'sagecalpredict': sagecalpredict,
                             'obs_filename': CWLDir(obs_filename).to_json(),
@@ -254,12 +287,6 @@ class PredictNC(Operation):
                             'obs_infix': obs_infix,
                             'nr_sectors': nr_sectors,
                             'max_threads': self.field.parset['cluster_specific']['max_threads']}
-
-        if self.field.h5parm_filename is not None:
-            # If calibration solutions are available to use during prediction,
-            # set the sector calibration patches and the solutions file
-            self.input_parms.update({'sector_patches': sector_patches})
-            self.input_parms.update({'h5parm': CWLFile(self.field.h5parm_filename).to_json()})
 
     def finalize(self):
         """
@@ -296,8 +323,7 @@ class PredictDI(Operation):
         else:
             max_cores = self.field.parset['cluster_specific']['max_cores']
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
-                             'max_cores': max_cores,
-                             'apply_amplitudes': self.field.apply_amplitudes}
+                             'max_cores': max_cores}
 
     def set_input_parameters(self):
         """
@@ -342,6 +368,17 @@ class PredictDI(Operation):
         onebeamperpatch = self.field.onebeamperpatch
         sagecalpredict = self.field.sagecalpredict
 
+        # Set the DP3 applycal steps depending on what solutions need to be
+        # applied
+        dp3_applycal_steps = ['fastphase']
+        if self.field.apply_amplitudes:
+            dp3_applycal_steps.append('slowgain')
+        if self.field.apply_normalizations:
+            normalize_h5parm = CWLFile(self.field.normalize_h5parm).to_json()
+            dp3_applycal_steps.append('normalization')
+        else:
+            normalize_h5parm = None
+
         self.input_parms = {'sector_filename': CWLDir(sector_filename).to_json(),
                             'sector_starttime': sector_starttime,
                             'sector_ntimes': sector_ntimes,
@@ -349,6 +386,8 @@ class PredictDI(Operation):
                             'sector_skymodel': CWLFile(sector_skymodel).to_json(),
                             'sector_patches': sector_patches,
                             'h5parm': CWLFile(self.field.h5parm_filename).to_json(),
+                            'normalize_h5parm': normalize_h5parm,
+                            'dp3_applycal_steps': f"[{','.join(dp3_applycal_steps)}]",
                             'onebeamperpatch': onebeamperpatch,
                             'sagecalpredict': sagecalpredict,
                             'obs_filename': CWLDir(obs_filename).to_json(),

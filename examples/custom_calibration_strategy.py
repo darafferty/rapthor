@@ -37,6 +37,7 @@ for i in range(max_selfcal_loops):
     # thresholds for source finding and higher thresholds for calibrator
     # selection. This approach could be useful if higher SNRs are needed during
     # calibrations
+    strategy_steps[i]['do_normalize'] = True
     strategy_steps[i]['do_image'] = True
     strategy_steps[i]['auto_mask'] = 3.0
     strategy_steps[i]['threshisl'] = 4.0

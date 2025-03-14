@@ -138,32 +138,39 @@ inputs:
     type: int
 {% endif %}
 
-{% if not apply_none %}
+  - id: prepare_data_steps
+    label: DP3 steps
+    doc: |
+      The steps to perform in the prepare data DP3 step (length = 1).
+    type: string
+
+  - id: prepare_data_applycal_steps
+    label: DP3 steps
+    doc: |
+      The steps to perform in the applycal part of the prepare data DP3 step
+      (length = 1).
+    type: string?
+
   - id: h5parm
     label: Filename of h5parm
     doc: |
       The filename of the h5parm file with the direction-dependent calibration
       solutions (length = 1).
-    type: File
-{% endif %}
+    type: File?
 
-{% if apply_fulljones %}
   - id: fulljones_h5parm
     label: Filename of h5parm
     doc: |
       The filename of the h5parm file with the full-Jones calibration solutions
       (length = 1).
-    type: File
-{% endif %}
+    type: File?
 
-{% if apply_screens %}
-  - id: idgcal_h5parm
-    label: Filename of h5parm
+  - id: input_normalize_h5parm
+    label: Filename of normalize h5parm
     doc: |
-      The filename of the h5parm file with the IDGCal screeen solutions
+      The filename of the input h5parm file with the flux-scale normalizations
       (length = 1).
-    type: File
-{% endif %}
+    type: File?
 
 {% if use_facets %}
 # start use_facets
@@ -232,13 +239,14 @@ inputs:
 {% else %}
 # start not use_facets
 
-{% if not apply_none %}
+{% if preapply_dde_solutions %}
   - id: central_patch_name
     label: Name of central patch
     doc: |
       The name of the central-most patch of the sector (length = 1).
-    type: string
+    type: string?
 {% endif %}
+
 {% endif %}
 # end use_facets / not use_facets
 
@@ -412,10 +420,11 @@ inputs:
       The filename of the FITS source catalog to use for flux-scale normalizations
       (length = 1).
     type: string
-  - id: normalize_h5parm
+
+  - id: output_normalize_h5parm
     label: Filename of normalize h5parm
     doc: |
-      The filename of the h5parm file with the flux-scale normalizations
+      The filename of the output h5parm file with the flux-scale normalizations
       (length = 1).
     type: string
 {% endif %}
@@ -507,33 +516,7 @@ steps:
       This step uses DP3 to prepare the input data for imaging. This involves
       averaging, phase shifting, and optionally the application of the
       calibration solutions.
-{% if apply_screens or use_facets %}
-# start apply_screens or use_facets
-{% if apply_fulljones %}
-    run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data_fulljones.cwl
-{% else %}
     run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data.cwl
-{% endif %}
-
-{% else %}
-# start not apply_screens and not use_facets
-{% if apply_none %}
-    run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data_no_dde_no_cal.cwl
-{% else %}
-{% if apply_amplitudes %}
-{% if apply_fulljones %}
-    run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data_no_dde_fulljones.cwl
-{% else %}
-    run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data_no_dde.cwl
-{% endif %}
-{% else %}
-    run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data_no_dde_phase_only.cwl
-{% endif %}
-{% endif %}
-
-{% endif %}
-# end apply_screens or use_facets / not apply_screens and not use_facets
-
 {% if max_cores is not none %}
     hints:
       ResourceRequirement:
@@ -559,27 +542,21 @@ steps:
         source: phasecenter
       - id: numthreads
         source: max_threads
-{% if apply_screens or use_facets %}
-{% if apply_fulljones %}
-      - id: h5parm
-        source: fulljones_h5parm
-{% endif %}
-    scatter: [msin, msout, starttime, ntimes, freqstep, timestep]
-{% else %}
-{% if not apply_none %}
-      - id: h5parm
-        source: h5parm
-{% endif %}
-{% if apply_fulljones %}
-      - id: fulljones_h5parm
-        source: fulljones_h5parm
-{% endif %}
-{% if not apply_none %}
+{% if preapply_dde_solutions %}
       - id: central_patch_name
         source: central_patch_name
 {% endif %}
+      - id: h5parm
+        source: h5parm
+      - id: fulljones_h5parm
+        source: fulljones_h5parm
+      - id: normalize_h5parm
+        source: input_normalize_h5parm
+      - id: steps
+        source: prepare_data_steps
+      - id: applycal_steps
+        source: prepare_data_applycal_steps
     scatter: [msin, msout, starttime, ntimes, freqstep, timestep]
-{% endif %}
     scatterMethod: dotproduct
     out:
       - id: msimg
@@ -701,17 +678,15 @@ steps:
         source: image_name
       - id: mask
         source: premask/maskimg
-{% if apply_screens %}
+{% if apply_screens or use_facets %}
       - id: h5parm
-        source: idgcal_h5parm
+        source: h5parm
 {% endif %}
 {% if use_mpi %}
       - id: nnodes
         source: mpi_nnodes
 {% endif %}
 {% if use_facets %}
-      - id: h5parm
-        source: h5parm
       - id: soltabs
         source: soltabs
       - id: region_file
@@ -974,7 +949,7 @@ steps:
       - id: ms_file
         source: concat_in_time/msconcat
       - id: normalize_h5parm
-        source: normalize_h5parm
+        source: output_normalize_h5parm
     out:
       - id: output_h5parm
 

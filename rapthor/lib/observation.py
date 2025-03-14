@@ -52,10 +52,10 @@ class Observation(object):
         """
         # The logger's stream handlers are not copyable with deepcopy, so copy
         # them by hand:
-        self.log = None
+        self.log, obs_log = None, self.log
         obs_copy = copy.deepcopy(self)
         obs_copy.log = logging.getLogger('rapthor:{}'.format(self.name))
-        self.log = logging.getLogger('rapthor:{}'.format(self.name))
+        self.log = obs_log
 
         return obs_copy
 
@@ -131,8 +131,8 @@ class Observation(object):
 
         # Get pointing info
         obs = pt.table(self.ms_filename+'::FIELD', ack=False)
-        self.ra = misc.normalize_ra(np.degrees(float(obs.col('REFERENCE_DIR')[0][0][0])))
-        self.dec = misc.normalize_dec(np.degrees(float(obs.col('REFERENCE_DIR')[0][0][1])))
+        self.ra, self.dec = misc.normalize_ra_dec(np.degrees(float(obs.col('REFERENCE_DIR')[0][0][0])),
+                                                  np.degrees(float(obs.col('REFERENCE_DIR')[0][0][1])))
         obs.close()
 
         # Get station names and diameter
@@ -144,8 +144,12 @@ class Observation(object):
         elif 'LBA' in self.stations[0]:
             self.antenna = 'LBA'
         else:
-            self.log.warning('Antenna type not recognized (only LBA and HBA data '
-                             'are supported at this time)')
+            # Set antenna to HBA to at least let Rapthor proceed.
+            self.antenna = "HBA"
+            self.log.warning(
+                "Antenna type not recognized (only LBA and HBA data "
+                "are supported at this time)"
+            )
         ant.close()
 
         # Find mean elevation and time range for periods where the elevation

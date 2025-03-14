@@ -74,6 +74,18 @@ inputs:
       = 1).
     type: File
 
+  - id: dp3_applycal_steps
+    label: Applycal steps for fast solve
+    doc: |
+      The list of DP3 applycal steps to use in the prediction (length = 1).
+    type: string
+
+  - id: normalize_h5parm
+    label: The filename of normalization h5parm
+    doc: |
+      The filename of the input flux-scale normalization h5parm (length = 1).
+    type: File?
+
   - id: sector_skymodel
     label: Filename of sky model
     doc: |
@@ -125,13 +137,7 @@ steps:
       This step uses DP3 to predict uv data (using the input sky model) from the
       input MS files. It also corrupts the model data with the calibration
       solutions. For each sector, prediction is done for all observations.
-{% if apply_amplitudes %}
-    # Corrupt with both fast phases and slow gains
     run: {{ rapthor_pipeline_dir }}/steps/predict_model_data.cwl
-{% else %}
-    # Corrupt with fast phases only
-    run: {{ rapthor_pipeline_dir }}/steps/predict_model_data_phase_only.cwl
-{% endif %}
 {% if max_cores is not none %}
     hints:
       ResourceRequirement:
@@ -153,6 +159,10 @@ steps:
         source: sagecalpredict
       - id: h5parm
         source: h5parm
+      - id: applycal_steps
+        source: dp3_applycal_steps
+      - id: normalize_h5parm
+        source: normalize_h5parm
       - id: sourcedb
         source: sector_skymodel
       - id: directions
