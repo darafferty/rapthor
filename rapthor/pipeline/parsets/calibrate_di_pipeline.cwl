@@ -193,9 +193,9 @@ steps:
     label: Solve for full-Jones gains
     doc: |
       This step uses DDECal (in DP3) to solve for full-Jones, direction-independent gain
-      corrections, using the input MS files and sourcedb. These corrections are used to
+      corrections, using the input MS files and model data. These corrections are used to
       correct primarily for polarization errors.
-    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_fulljones.cwl
+    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve.cwl
 {% if max_cores is not none %}
     hints:
       ResourceRequirement:
@@ -211,6 +211,10 @@ steps:
         source: ntimes_fulljones
       - id: startchan
         source: startchan_fulljones
+      - id: mode
+        valueFrom: 'fulljones'
+      - id: steps
+        valueFrom: '[solve]'
       - id: nchan
         source: nchan_fulljones
       - id: h5parm
@@ -219,6 +223,8 @@ steps:
         source: solint_fulljones_timestep
       - id: solve_nchan
         source: solint_fulljones_freqstep
+      - id: modeldatacolumn
+        valueFrom: '[MODEL_DATA]'
       - id: llssolver
         source: llssolver
       - id: maxiter
@@ -248,7 +254,7 @@ steps:
     scatter: [msin, starttime, ntimes, startchan, nchan, h5parm, solint, solve_nchan]
     scatterMethod: dotproduct
     out:
-      - id: fulljonesh5parm
+      - id: output_h5parm
 
   - id: combine_fulljones_gains
     label: Combine full-Jones gain solutions
@@ -258,7 +264,7 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/collect_h5parms.cwl
     in:
       - id: inh5parms
-        source: solve_fulljones_gains/fulljonesh5parm
+        source: solve_fulljones_gains/output_h5parm
       - id: outputh5parm
         source: combined_h5parm_fulljones
     out:

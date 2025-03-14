@@ -121,7 +121,7 @@ def find_normalizations(rapthor_fluxes, rapthor_errors, rapthor_frequencies,
 
 def create_normalization_h5parm(antenna_file, field_file, h5parm_file, frequencies,
                                 normalizations, solset_name='sol000',
-                                soltab_name='amp000'):
+                                soltab_name='amplitude000'):
     """
     Writes normalization corrections to an H5parm file
 
@@ -169,7 +169,7 @@ def create_normalization_h5parm(antenna_file, field_file, h5parm_file, frequenci
         sourceTable.append([('pointing', pointing)])
 
         # Create the output solution table
-        amps = np.sqrt(normalizations)  # so that corrected data = data / normalizations
+        amps = np.sqrt(normalizations)  # so that corrected data = data / amp^2 = data / normalizations
         weights = np.ones(normalizations.shape)
         soltab = solset.makeSoltab('amplitude', soltab_name, axesNames=['freq'],
                                    axesVals=[frequencies], vals=amps,
@@ -181,7 +181,7 @@ def create_normalization_h5parm(antenna_file, field_file, h5parm_file, frequenci
 
 def main(source_catalog, ms_file, output_h5parm, radius_cut=3.0, major_axis_cut=30/3600,
          neighbor_cut=30/3600, spurious_match_cut=30/3600, min_sources=5,
-         weight_by_flux_err=False):
+         weight_by_flux_err=False, ignore_frequency_dependence=False):
     """
     Calculate flux-scale normalization corrections
 
@@ -214,6 +214,9 @@ def main(source_catalog, ms_file, output_h5parm, radius_cut=3.0, major_axis_cut=
     weight_by_flux_err : bool, optional
         If True, the mean normalization is calculated using a weighted average, where the
         weights are given by the inverse of the errors on the source flux densities.
+    ignore_frequency_dependence : bool, optional
+        If True, any frequency dependence of the normalization is ignored and the
+        normalization is taken as the mean over all frequencies
     """
     # Read in the source catalog
     with fits.open(source_catalog) as hdul:
@@ -224,8 +227,11 @@ def main(source_catalog, ms_file, output_h5parm, radius_cut=3.0, major_axis_cut=
     if n_chan == 0:
         raise ValueError('No channel frequency columns were found in the input source catalog. '
                          'Please run PyBDSF with the spectral-index mode activated.')
-    min_frequency = np.nanmin(data['Freq_ch1'])  # Hz
-    max_frequency = np.nanmax(data[f'Freq_ch{n_chan}'])  # Hz
+    spectral_window_file = ms_file + '::SPECTRAL_WINDOW'
+    with pt.table(spectral_window_file, ack=False) as sw:
+        min_frequency = np.min(sw.col('CHAN_FREQ')[0])
+        max_frequency = np.max(sw.col('CHAN_FREQ')[0])
+        channel_width = sw.col('CHAN_WIDTH')[0][0]
 
     # Get the RA and Dec of the phase center from the MS file's FIELD table
     field_file = ms_file + '::FIELD'
@@ -235,41 +241,45 @@ def main(source_catalog, ms_file, output_h5parm, radius_cut=3.0, major_axis_cut=
         # so we use np.squeeze to remove the length-one axes
         ra, dec = np.squeeze(fieldTable.getcol('PHASE_DIR'))  # radians
 
-    # Filter the sources to keep only:
-    #  - sources within radius_cut degrees of phase center
-    #  - sources with major axes less than major_axis_cut degrees
-    #  - sources that have no neighbors within neighbor_cut degrees
-    source_ra = []
-    source_dec = []
-    for ra_deg, dec_deg in zip(data['RA'], data['DEC']):
-        ra_norm, dec_norm = misc.normalize_ra_dec(ra_deg, dec_deg)
-        source_ra.append(ra_norm)
-        source_dec.append(dec_norm)
-    source_coords = SkyCoord(ra=np.array(source_ra)*u.degree,
-                             dec=np.array(source_dec)*u.degree)
-    center_coord = SkyCoord(ra=ra*u.radian, dec=dec*u.radian)
-    source_distances = np.array([sep.value for sep in center_coord.separation(source_coords)])
-
-    # To find the distance to the nearest neighbor of each source, cross match
-    # the source catalog with itself and take the second-closest match using
-    # nthneighbor = 2 (the closest match, returned by nthneighbor = 1, will
-    # always be each source matched to itself and hence at a distance of 0)
-    _, separation, _ = match_coordinates_sky(source_coords, source_coords, nthneighbor=2)
-    neighbor_distances = np.array([sep.value for sep in separation])
-
-    # Apply the cuts
     do_normalization = True
-    radius_filter = source_distances < radius_cut
-    major_axis_filter = data['DC_Maj'] < major_axis_cut
-    neighbor_filter = neighbor_distances > neighbor_cut
     print(f"Number of sources before applying cuts: {data['RA'].size}")
-    data = data[radius_filter & major_axis_filter & neighbor_filter]
-    source_coords = source_coords[radius_filter & major_axis_filter & neighbor_filter]
-    n_sources = len(source_coords)
-    print(f"Number of sources after applying cuts: {n_sources}")
-    if n_sources < min_sources:
-        print('Too few sources remain after applying cuts. Flux normalization will be skipped.')
+    if data['RA'].size < min_sources:
+        print('Too few sources. Flux normalization will be skipped.')
         do_normalization = False
+    else:
+        # Filter the sources to keep only:
+        #  - sources within radius_cut degrees of phase center
+        #  - sources with major axes less than major_axis_cut degrees
+        #  - sources that have no neighbors within neighbor_cut degrees
+        source_ra = []
+        source_dec = []
+        for ra_deg, dec_deg in zip(data['RA'], data['DEC']):
+            ra_norm, dec_norm = misc.normalize_ra_dec(ra_deg, dec_deg)
+            source_ra.append(ra_norm)
+            source_dec.append(dec_norm)
+        source_coords = SkyCoord(ra=np.array(source_ra)*u.degree,
+                                 dec=np.array(source_dec)*u.degree)
+        center_coord = SkyCoord(ra=ra*u.radian, dec=dec*u.radian)
+        source_distances = np.array([sep.value for sep in center_coord.separation(source_coords)])
+
+        # To find the distance to the nearest neighbor of each source, cross match
+        # the source catalog with itself and take the second-closest match using
+        # nthneighbor = 2 (the closest match, returned by nthneighbor = 1, will
+        # always be each source matched to itself and hence at a distance of 0)
+        _, separation, _ = match_coordinates_sky(source_coords, source_coords, nthneighbor=2)
+        neighbor_distances = np.array([sep.value for sep in separation])
+
+        # Apply the cuts
+        radius_filter = source_distances < radius_cut
+        major_axis_filter = data['DC_Maj'] < major_axis_cut
+        neighbor_filter = neighbor_distances > neighbor_cut
+        data = data[radius_filter & major_axis_filter & neighbor_filter]
+        source_coords = source_coords[radius_filter & major_axis_filter & neighbor_filter]
+        n_sources = len(source_coords)
+        print(f"Number of sources after applying cuts: {n_sources}")
+        if n_sources < min_sources:
+            print('Too few sources remain after applying cuts. Flux normalization will be skipped.')
+            do_normalization = False
 
     # Cross match sources with external catalogs
     if do_normalization:
@@ -330,12 +340,13 @@ def main(source_catalog, ms_file, output_h5parm, radius_cut=3.0, major_axis_cut=
             survey_catalogs.append({'survey': survey, 'flux': np.array(survey_fluxes)*flux_correction,
                                     'flux_err': flux_err, 'frequency': frequency})
 
-    # Fit the source SEDs to find the corrections in 0.1 MHz channels. We use 0.1 MHz as
-    # it matches the typical channel width of data used with Rapthor
+    # Fit the source SEDs to find the corrections. The frequencies for the
+    # which the corrections are determined are constructed to match the channels
+    # of the input MS file
     #
     # TODO: Test whether a coarser grid would work (it just needs to be fine enough to
     # capture the frequency behavior of the corrections sufficiently well)
-    output_frequencies = np.arange(min_frequency, max_frequency+1e5, 1e5)
+    output_frequencies = np.arange(min_frequency-channel_width, max_frequency+channel_width, channel_width)
     if do_normalization:
         # Make arrays of flux density vs. frequency for each source, for both
         # the observed fluxes and the catalog fluxes, and find the corrections
@@ -381,6 +392,10 @@ def main(source_catalog, ms_file, output_h5parm, radius_cut=3.0, major_axis_cut=
         # If normalization cannot be done, just set all corrections to 1
         avg_corrections = np.ones(len(output_frequencies))
 
+    if ignore_frequency_dependence:
+        # Use a single correction for all frequencies
+        avg_corrections[:] = np.mean(avg_corrections)
+
     # Write corrections to the output H5parm file as amplitude corrections
     antenna_file = ms_file + '::ANTENNA'
     create_normalization_h5parm(antenna_file, field_file, output_h5parm, output_frequencies,
@@ -400,9 +415,10 @@ if __name__ == '__main__':
     parser.add_argument('--spurious_match_cut', help='Spurious match distance cut in degrees', type=float, default=30/3600)
     parser.add_argument('--min_sources', help='Minimum number of souces required for normalization calculation', type=int, default=5)
     parser.add_argument('--weight_by_flux_err', help='Weight by error on flux density', action='store_true', default=False)
+    parser.add_argument('--ignore_frequency_dependence', help='Ignore frequency dependence of normalizations', action='store_true', default=False)
 
     args = parser.parse_args()
     main(args.source_catalog, args.ms_file, args.output_h5parm, radius_cut=args.radius_cut,
          major_axis_cut=args.major_axis_cut, neighbor_cut=args.neighbor_cut,
          spurious_match_cut=args.spurious_match_cut, min_sources=args.min_sources,
-         weight_by_flux_err=args.weight_by_flux_err)
+         weight_by_flux_err=args.weight_by_flux_err, ignore_frequency_dependence=args.ignore_frequency_dependence)

@@ -268,18 +268,10 @@ def check_photometry(obs, input_catalog, freq, min_number, comparison_skymodel=N
                       'the photometry check, as the queries for all other survey catalogs '
                       'were unsuccessful')
 
-        if survey == 'LOTSS':
-            # For LoTSS catalog, use total flux from Gaussian fits as it
-            # matches the method used for the LoTSS catalog (and the resolution
-            # of LoTSS is close to that of our LOFAR image)
-            flux_colname = 'Total_flux'
-        else:
-            # For TGSS, NVSS, and user-supplied catalogs, use total island flux
-            # as it works better for typical, low resolution catalogs than using
-            # the total flux from the Gaussian fits
-            flux_colname = 'Isl_Total_flux'
+        # Convert the output and compare, using the total flux from the Gaussian fits
+        # ('Total_flux') to be consistent with the flux-scale normalization
         s_pybdsf = fits_to_makesourcedb(catalog, freq,
-                                        flux_colname=flux_colname)
+                                        flux_colname='Total_flux')
         s_comp_photometry.group('every')
         result = s_pybdsf.compare(s_comp_photometry, radius='5 arcsec',
                                   excludeMultiple=True, make_plots=True,

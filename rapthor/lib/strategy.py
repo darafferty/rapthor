@@ -49,13 +49,14 @@ def set_strategy(field):
 
     # Check for required parameters. If any are missing, either print a warning if the
     # parameter has a default defined or raise an error if not
-    primary_parameters = ['do_calibrate', 'do_image', 'do_check']  # TODO: add 'do_normalize' when ready
+    primary_parameters = ['do_calibrate', 'do_normalize', 'do_image', 'do_check']
     secondary_parameters = {'do_calibrate': ['do_slowgain_solve', 'do_fulljones_solve',
                                              'target_flux', 'max_directions', 'regroup_model',
                                              'max_normalization_delta', 'solve_min_uv_lambda',
                                              'fast_timestep_sec', 'slow_timestep_joint_sec',
                                              'slow_timestep_separate_sec',
                                              'scale_normalization_delta', 'max_directions'],
+                            'do_normalize': [],
                             'do_image': ['auto_mask', 'threshisl', 'threshpix', 'max_nmiter',
                                          'peel_outliers', 'peel_bright_sources'],
                             'do_check': ['convergence_ratio', 'divergence_ratio',
@@ -121,8 +122,6 @@ def set_selfcal_strategy(field):
     for i in range(max_selfcal_loops):
         strategy_steps.append({})
 
-        # strategy_steps[i]['do_normalize'] = True  # TODO: uncomment when functionality is complete
-
         strategy_steps[i]['do_calibrate'] = True
         if i == 0:
             strategy_steps[i]['do_slowgain_solve'] = not do_phase_only_solves
@@ -166,6 +165,11 @@ def set_selfcal_strategy(field):
             strategy_steps[i]['fast_timestep_sec'] = 8.0
             strategy_steps[i]['slow_timestep_joint_sec'] = 0.0
             strategy_steps[i]['slow_timestep_separate_sec'] = 600.0
+
+        if i == 0:
+            strategy_steps[i]['do_normalize'] = True
+        else:
+            strategy_steps[i]['do_normalize'] = False
 
         strategy_steps[i]['do_image'] = True
         if i < 2 and do_phase_only_solves:

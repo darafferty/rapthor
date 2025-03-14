@@ -128,11 +128,29 @@ inputs:
       The antenna constraint for the fast phase solve (length = 1).
     type: string
 
+  - id: dp3_solve_mode_fast
+    label: Solve mode for fast solve
+    doc: |
+      The solve mode to use for the fast-phase calibration (length = 1).
+    type: string
+
   - id: dp3_steps_fast
     label: Steps for fast solve
     doc: |
       The list of DP3 steps to use in the fast-phase calibration (length = 1).
     type: string
+
+  - id: dp3_applycal_steps_fast
+    label: Applycal steps for fast solve
+    doc: |
+      The list of DP3 applycal steps to use in the fast-phase calibration (length = 1).
+    type: string?
+
+  - id: normalize_h5parm
+    label: The filename of normalization h5parm
+    doc: |
+      The filename of the input flux-scale normalization h5parm (length = 1).
+    type: File?
 
   - id: bda_timebase_fast
     label: BDA timebase for fast solve
@@ -287,6 +305,20 @@ inputs:
     label: Steps for separate solve
     doc: |
       The list of DP3 steps to use in the second (separate) slow-gain calibration
+      (length = 1).
+    type: string
+
+  - id: dp3_applycal_steps_slow_joint
+    label: Applycal steps for slow joint solve
+    doc: |
+      The list of DP3 applycal steps to use in the first (joint) slow-gain calibration
+      (length = 1).
+    type: string
+
+  - id: dp3_applycal_steps_slow_separate
+    label: Applycal steps for slow separate solve
+    doc: |
+      The list of DP3 applycal steps to use in the second (separate) slow-gain calibration
       (length = 1).
     type: string
 
@@ -521,6 +553,13 @@ inputs:
       second (separate) slow-gain solves (length = 1).
     type: string
 
+  - id: solution_combine_mode
+    label: Mode for combining solutions
+    doc: |
+      The mode used for combining the fast-phase and joint slow-gain solutions
+      (length = 1).
+    type: string?
+
 {% endif %}
 # end do_slowgain_solve
 
@@ -553,11 +592,7 @@ steps:
       This step uses DDECal (in DP3) to solve for phase corrections on short
       timescales (< 1 minute), using the input MS files and sourcedb. These
       corrections are used to correct primarily for ionospheric effects.
-{% if use_scalarphase %}
-    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_scalarphase.cwl
-{% else %}
-    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_scalar.cwl
-{% endif %}
+    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve.cwl
 {% if max_cores is not none %}
     hints:
       ResourceRequirement:
@@ -575,13 +610,19 @@ steps:
         source: output_fast_h5parm
       - id: solint
         source: solint_fast_timestep
+      - id: mode
+        source: dp3_solve_mode_fast
       - id: steps
         source: dp3_steps_fast
+      - id: applycal_steps
+        source: dp3_applycal_steps_fast
+      - id: normalize_h5parm
+        source: normalize_h5parm
       - id: timebase
         source: bda_timebase_fast
       - id: maxinterval
         source: bda_maxinterval_fast
-      - id: nchan
+      - id: solve_nchan
         source: solint_fast_freqstep
       - id: directions
         source: calibrator_patch_names
@@ -629,10 +670,10 @@ steps:
         source: fast_antennaconstraint
       - id: numthreads
         source: max_threads
-    scatter: [msin, starttime, ntimes, h5parm, solint, nchan, maxinterval, smoothnessreffrequency, solutions_per_direction]
+    scatter: [msin, starttime, ntimes, h5parm, solint, solve_nchan, maxinterval, smoothnessreffrequency, solutions_per_direction]
     scatterMethod: dotproduct
     out:
-      - id: fast_phases_h5parm
+      - id: output_h5parm
 
   - id: combine_fast_phases
     label: Combine fast-phase solutions
@@ -644,7 +685,7 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/collect_h5parms.cwl
     in:
       - id: inh5parms
-        source: solve_fast_phases/fast_phases_h5parm
+        source: solve_fast_phases/output_h5parm
       - id: outputh5parm
         source: combined_fast_h5parm
     out:
@@ -677,7 +718,7 @@ steps:
       corrections are used to correct primarily for beam errors. The fast-
       phase solutions are preapplied and all stations are constrained to
       have the same (joint) solutions.
-    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_diagonal_joint.cwl
+    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve.cwl
 {% if max_cores is not none %}
     hints:
       ResourceRequirement:
@@ -695,14 +736,20 @@ steps:
         source: startchan_joint
       - id: nchan
         source: nchan_joint
+      - id: mode
+        valueFrom: 'diagonal'
       - id: steps
         source: dp3_steps_slow_joint
+      - id: applycal_steps
+        source: dp3_applycal_steps_slow_joint
       - id: timebase
         source: bda_timebase_slow_joint
       - id: maxinterval
         source: bda_maxinterval_slow_joint
-      - id: fast_h5parm
+      - id: fastphase_h5parm
         source: combine_fast_phases/outh5parm
+      - id: normalize_h5parm
+        source: normalize_h5parm
       - id: h5parm
         source: output_slow_h5parm_joint
       - id: solint
@@ -754,7 +801,7 @@ steps:
     scatter: [msin, starttime, ntimes, startchan, nchan, maxinterval, h5parm, solint, solve_nchan, solutions_per_direction]
     scatterMethod: dotproduct
     out:
-      - id: slow_gains_h5parm
+      - id: output_h5parm
 
   - id: combine_slow_gains_joint
     label: Combine joint slow-gain solutions
@@ -764,7 +811,7 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/collect_h5parms.cwl
     in:
       - id: inh5parms
-        source: solve_slow_gains_joint/slow_gains_h5parm
+        source: solve_slow_gains_joint/output_h5parm
       - id: outputh5parm
         source: combined_slow_h5parm_joint
     out:
@@ -830,11 +877,7 @@ steps:
       phase solutions and first (joint) slow-gain solutions are preapplied
       and stations are solve for separately (so different stations are free
       to have different solutions).
-{% if do_joint_solve %}
-    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_diagonal_separate.cwl
-{% else %}
-    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_diagonal_separate_no_joint.cwl
-{% endif %}
+    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve.cwl
 {% if max_cores is not none %}
     hints:
       ResourceRequirement:
@@ -850,20 +893,26 @@ steps:
         source: slow_ntimes_separate
       - id: startchan
         source: startchan_separate
+      - id: mode
+        valueFrom: 'diagonal'
       - id: steps
         source: dp3_steps_slow_separate
+      - id: applycal_steps
+        source: dp3_applycal_steps_slow_separate
       - id: timebase
         source: bda_timebase_slow_separate
       - id: maxinterval
         source: bda_maxinterval_slow_separate
       - id: nchan
         source: nchan_separate
-      - id: combined_h5parm
-{% if do_joint_solve %}
-        source: combine_fast_and_joint_slow_h5parms/combinedh5parm
-{% else %}
+      - id: fastphase_h5parm
         source: combine_fast_phases/outh5parm
+{% if do_joint_solve %}
+      - id: slowgain_h5parm
+        source: process_slow_gains_joint/outh5parm
 {% endif %}
+      - id: normalize_h5parm
+        source: normalize_h5parm
       - id: h5parm
         source: output_slow_h5parm_separate
       - id: solint
@@ -913,7 +962,7 @@ steps:
     scatter: [msin, starttime, ntimes, startchan, nchan, maxinterval, h5parm, solint, solve_nchan, solutions_per_direction]
     scatterMethod: dotproduct
     out:
-      - id: slow_gains_h5parm
+      - id: output_h5parm
 
   - id: combine_slow_gains_separate
     label: Combine separate slow-gain solutions
@@ -923,7 +972,7 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/collect_h5parms.cwl
     in:
       - id: inh5parms
-        source: solve_slow_gains_separate/slow_gains_h5parm
+        source: solve_slow_gains_separate/output_h5parm
       - id: outputh5parm
         source: combined_slow_h5parm_separate
     out:
@@ -1054,11 +1103,7 @@ steps:
       - id: outh5parm
         source: combined_h5parms
       - id: mode
-{% if apply_diagonal_solutions %}
-        valueFrom: 'p1p2a2_diagonal'
-{% else %}
-        valueFrom: 'p1p2a2_scalar'
-{% endif %}
+        source: solution_combine_mode
       - id: reweight
         valueFrom: 'False'
       - id: calibrator_names

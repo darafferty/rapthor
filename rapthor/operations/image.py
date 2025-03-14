@@ -1,14 +1,14 @@
 """
 Module that holds the Image classes
 """
-import os
+import glob
 import json
 import logging
-import shutil
-import glob
+import os
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.operation import Operation
 from rapthor.lib.cwl import CWLFile, CWLDir
+import shutil
 
 log = logging.getLogger('rapthor:image')
 
@@ -24,12 +24,15 @@ class Image(Operation):
         self.subpipeline_parset_template = '{0}_sector_pipeline.cwl'.format(self.rootname)
 
         # Initialize various parameters
-        self.apply_none = None
+        # Note:
+        #   Parameters set to None will be set in the set_parset_parameters() method
+        #       as needed for the given imaging mode
+        #   Paramters set to True or False must be explicitly set by a subclass
         self.apply_amplitudes = None
         self.apply_fulljones = None
+        self.apply_normalizations = None
+        self.preapply_dde_solutions = None
         self.apply_screens = None
-        self.make_image_cube = None
-        self.normalize_flux_scale = None
         self.dde_method = None
         self.use_facets = None
         self.save_source_list = None
@@ -40,34 +43,32 @@ class Image(Operation):
         self.do_predict = None
         self.do_multiscale_clean = None
         self.pol_combine_method = None
+        self.apply_none = False  # no solutions applied before or during imaging (ImageInitial only)
+        self.make_image_cube = False  # make an image cube (for now ImageNormalize only)
+        self.normalize_flux_scale = False  # derive flux scale normalizations (ImageNormalize only)
 
     def set_parset_parameters(self):
         """
         Define parameters needed for the CWL workflow template
         """
         # Set parameters as needed
-        if self.apply_none is None:
-            self.apply_none = False
-        if self.apply_amplitudes is None:
-            self.apply_amplitudes = self.field.apply_amplitudes
         if self.apply_screens is None:
-            self.apply_screens = self.field.apply_screens
-        if self.apply_fulljones is None:
-            self.apply_fulljones = self.field.apply_fulljones
-        if self.make_image_cube is None:
-            self.make_image_cube = False
-        if self.normalize_flux_scale is None:
-            self.normalize_flux_scale = False
+            self.apply_screens = self.field.apply_screens  # set by process.run_steps()
         if self.dde_method is None:
             self.dde_method = self.field.dde_method
         if self.use_facets is None:
             self.use_facets = True if (self.dde_method == 'full' and not self.apply_screens) else False
         if self.image_pol is None:
-            self.image_pol = self.field.image_pol
+            self.image_pol = self.field.image_pol  # set by process.run_steps()
         if self.save_source_list is None:
             self.save_source_list = True if self.image_pol.lower() == 'i' else False
         if self.peel_bright_sources is None:
             self.peel_bright_sources = self.field.peel_bright_sources
+        if self.preapply_dde_solutions is None:
+            if self.dde_method == 'single' and not self.apply_none:
+                self.preapply_dde_solutions = True
+            else:
+                self.preapply_dde_solutions = False
         if self.batch_system == 'slurm':
             # For some reason, setting coresMax ResourceRequirement hints does
             # not work with SLURM
@@ -77,15 +78,13 @@ class Image(Operation):
 
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
                              'pipeline_working_dir': self.pipeline_working_dir,
-                             'apply_none': self.apply_none,
-                             'apply_amplitudes': self.apply_amplitudes,
                              'apply_screens': self.apply_screens,
-                             'apply_fulljones': self.apply_fulljones,
                              'make_image_cube': self.make_image_cube,
                              'normalize_flux_scale': self.normalize_flux_scale,
                              'use_facets': self.use_facets,
                              'save_source_list': self.save_source_list,
                              'peel_bright_sources': self.peel_bright_sources,
+                             'preapply_dde_solutions': self.preapply_dde_solutions,
                              'max_cores': max_cores,
                              'use_mpi': self.field.use_mpi}
 
@@ -104,6 +103,15 @@ class Image(Operation):
             self.do_multiscale_clean = self.field.do_multiscale_clean
         if self.pol_combine_method is None:
             self.pol_combine_method = self.field.pol_combine_method
+        if self.apply_amplitudes is None:
+            self.apply_amplitudes = self.field.apply_amplitudes  # set by CalibrateDD.finalize()
+        if self.apply_fulljones is None:
+            self.apply_fulljones = self.field.apply_fulljones  # set by CalibrateDI.finalize()
+        if self.apply_normalizations is None:
+            if self.normalize_flux_scale:
+                self.apply_normalizations = False
+            else:
+                self.apply_normalizations = self.field.apply_normalizations  # set by ImageNormalize.finalize()
 
         nsectors = len(self.imaging_sectors)
         obs_filename = []
@@ -115,7 +123,6 @@ class Image(Operation):
         ntimes = []
         image_freqstep = []
         image_timestep = []
-        dir_local = []
         phasecenter = []
         image_root = []
         central_patch_name = []
@@ -125,13 +132,8 @@ class Image(Operation):
         for sector in self.imaging_sectors:
             image_root.append(sector.name)
 
-            # Set the imaging parameters for each imaging sector. Note the we do not
-            # let the imsize be recalcuated, as otherwise it may change from the previous
-            # iteration and the mask made in that iteration can not be used in this one.
-            # Generally, this should work fine, since we do not expect large changes in
-            # the size of the sector from iteration to iteration (small changes are OK,
-            # given the padding we use during imaging)
-            sector.set_imaging_parameters(self.do_multiscale_clean, recalculate_imsize=False,
+            # Set the imaging parameters for each imaging sector
+            sector.set_imaging_parameters(self.do_multiscale_clean, recalculate_imsize=True,
                                           imaging_parameters=self.imaging_parameters)
 
             # Set input MS filenames
@@ -163,11 +165,7 @@ class Image(Operation):
             starttime.append(sector_starttime)
             ntimes.append(sector_ntimes)
             phasecenter.append("'[{0}deg, {1}deg]'".format(sector.ra, sector.dec))
-            if self.scratch_dir is None:
-                dir_local.append(self.pipeline_working_dir)
-            else:
-                dir_local.append(self.scratch_dir)
-            if not self.apply_none:
+            if self.preapply_dde_solutions:
                 central_patch_name.append(sector.central_patch)
             if self.make_image_cube:
                 image_cube_name.append(sector.name + '_freq_cube.fits')
@@ -185,6 +183,46 @@ class Image(Operation):
             else:
                 join_polarizations = True
 
+        # Set the DP3 steps and applycal steps depending on whether solutions
+        # should be preapplied before imaging
+        fulljones_h5parm = None
+        input_normalize_h5parm = None
+        prepare_data_applycal_steps = None
+        if self.apply_none or (not self.preapply_dde_solutions and
+                               not self.apply_fulljones and
+                               not self.apply_normalizations):
+            # No solutions should be preapplied, so define steps
+            # without an applycal step
+            prepare_data_steps = '[applybeam,shift,avg]'
+        else:
+            # Solutions should be applied, so add an applycal step
+            # and set various parameters as needed
+            prepare_data_steps = '[applybeam,shift,applycal,avg]'
+            prepare_data_applycal_steps = []
+            if self.preapply_dde_solutions:
+                # Fast phases and slow amplitudes (if generated) should be
+                # preapplied, as they are not applied during imaging
+                prepare_data_applycal_steps.append('fastphase')
+                if self.apply_amplitudes:
+                    prepare_data_applycal_steps.append('slowgain')
+            if self.apply_fulljones:
+                prepare_data_applycal_steps.append('fulljones')
+                fulljones_h5parm = CWLFile(self.field.fulljones_h5parm_filename).to_json()
+            if self.apply_normalizations:
+                prepare_data_applycal_steps.append('normalization')
+                input_normalize_h5parm = CWLFile(self.field.normalize_h5parm).to_json()
+            if prepare_data_applycal_steps:
+                prepare_data_applycal_steps = f"[{','.join(prepare_data_applycal_steps)}]"
+
+        # Set the h5parm to use to apply the DDE solutions as needed
+        h5parm = None
+        idgcal_h5parm = None
+        if self.use_facets or self.preapply_dde_solutions:
+            h5parm = CWLFile(self.field.h5parm_filename).to_json()
+        if self.apply_screens:
+            idgcal_h5parm = CWLFile(self.field.idgcal_h5parm_filename).to_json()
+
+        # Set the parameters common to all modes
         self.input_parms = {'obs_filename': [CWLDir(name).to_json() for name in obs_filename],
                             'prepare_filename': prepare_filename,
                             'concat_filename': concat_filename,
@@ -196,12 +234,16 @@ class Image(Operation):
                             'image_timestep': image_timestep,
                             'phasecenter': phasecenter,
                             'image_name': image_root,
-                            'dir_local': dir_local,
                             'pol': self.image_pol,
                             'save_source_list': self.save_source_list,
                             'link_polarizations': link_polarizations,
                             'join_polarizations': join_polarizations,
-                            'apply_amplitudes': [self.apply_amplitudes] * nsectors,
+                            'prepare_data_steps': prepare_data_steps,
+                            'prepare_data_applycal_steps': prepare_data_applycal_steps,
+                            'h5parm': h5parm,
+                            'fulljones_h5parm': fulljones_h5parm,
+                            'idgcal_h5parm': idgcal_h5parm,
+                            'input_normalize_h5parm': input_normalize_h5parm,
                             'channels_out': [sector.wsclean_nchannels for sector in self.imaging_sectors],
                             'deconvolution_channels': [sector.wsclean_deconvolution_channels for sector in self.imaging_sectors],
                             'fit_spectral_pol': [sector.wsclean_spectral_poly_order for sector in self.imaging_sectors],
@@ -229,6 +271,7 @@ class Image(Operation):
                             'max_threads': self.field.parset['cluster_specific']['max_threads'],
                             'deconvolution_threads': self.field.parset['cluster_specific']['deconvolution_threads']}
 
+        # Add parameters that depend on the set_parset parameters (set in set_parset_parameters())
         if self.peel_bright_sources:
             self.input_parms.update({'bright_skymodel_pb': CWLFile(self.field.bright_source_skymodel_file).to_json()})
         if self.field.use_mpi:
@@ -241,74 +284,68 @@ class Image(Operation):
             nnodes_per_subpipeline = max(1, int(nnodes / nsubpipes) - 1)
             self.input_parms.update({'mpi_nnodes': [nnodes_per_subpipeline] * nsectors})
             self.input_parms.update({'mpi_cpus_per_task': [self.parset['cluster_specific']['cpus_per_task']] * nsectors})
-        if not self.apply_none:
-            self.input_parms.update({'h5parm': CWLFile(self.field.h5parm_filename).to_json()})
-            if self.field.fulljones_h5parm_filename is not None:
-                self.input_parms.update({'fulljones_h5parm': CWLFile(self.field.fulljones_h5parm_filename).to_json()})
-            if self.field.apply_screens:
-                self.input_parms.update({'idgcal_h5parm': CWLFile(self.field.idgcal_h5parm_filename).to_json()})
-            elif self.use_facets:
-                # For faceting, we need inputs for making the ds9 facet region files
-                self.input_parms.update({'skymodel': CWLFile(self.field.calibration_skymodel_file).to_json()})
-                ra_mid = []
-                dec_mid = []
-                width_ra = []
-                width_dec = []
-                facet_region_file = []
-                min_width = 2 * self.field.get_calibration_radius() * 1.2
-                for sector in self.imaging_sectors:
-                    # Note: WSClean requires that all sources in the h5parm must have
-                    # corresponding regions in the facets region file. We ensure this
-                    # requirement is met by extending the regions to cover the larger of
-                    # the calibration region and the sector region, plus a 20% padding
-                    ra_mid.append(self.field.ra)
-                    dec_mid.append(self.field.dec)
-                    width_ra.append(max(min_width, sector.width_ra*1.2))
-                    width_dec.append(max(min_width, sector.width_dec*1.2))
-                    facet_region_file.append('{}_facets_ds9.reg'.format(sector.name))
-                self.input_parms.update({'ra_mid': ra_mid})
-                self.input_parms.update({'dec_mid': dec_mid})
-                self.input_parms.update({'width_ra': width_ra})
-                self.input_parms.update({'width_dec': width_dec})
-                self.input_parms.update({'facet_region_file': facet_region_file})
+        if not self.apply_none and self.use_facets:
+            # For faceting, we need inputs for making the ds9 facet region files
+            self.input_parms.update({'skymodel': CWLFile(self.field.calibration_skymodel_file).to_json()})
+            ra_mid = []
+            dec_mid = []
+            width_ra = []
+            width_dec = []
+            facet_region_file = []
+            min_width = 2 * self.field.get_calibration_radius() * 1.2
+            for sector in self.imaging_sectors:
+                # Note: WSClean requires that all sources in the h5parm must have
+                # corresponding regions in the facets region file. We ensure this
+                # requirement is met by extending the regions to cover the larger of
+                # the calibration region and the sector region, plus a 20% padding
+                ra_mid.append(self.field.ra)
+                dec_mid.append(self.field.dec)
+                width_ra.append(max(min_width, sector.width_ra*1.2))
+                width_dec.append(max(min_width, sector.width_dec*1.2))
+                facet_region_file.append('{}_facets_ds9.reg'.format(sector.name))
+            self.input_parms.update({'ra_mid': ra_mid})
+            self.input_parms.update({'dec_mid': dec_mid})
+            self.input_parms.update({'width_ra': width_ra})
+            self.input_parms.update({'width_dec': width_dec})
+            self.input_parms.update({'facet_region_file': facet_region_file})
+            if self.apply_amplitudes:
+                self.input_parms.update({'soltabs': 'amplitude000,phase000'})
+            else:
+                self.input_parms.update({'soltabs': 'phase000'})
+            self.input_parms.update({'parallel_gridding_threads':
+                                     self.field.parset['cluster_specific']['parallel_gridding_threads']})
+            if self.image_pol.lower() == 'i':
+                # For Stokes-I-only imaging, we can take advantage of the scalar or
+                # diagonal visibilities options in WSClean (saving I/O)
                 if self.apply_amplitudes:
-                    self.input_parms.update({'soltabs': 'amplitude000,phase000'})
-                else:
-                    self.input_parms.update({'soltabs': 'phase000'})
-                self.input_parms.update({'parallel_gridding_threads':
-                                         self.field.parset['cluster_specific']['parallel_gridding_threads']})
-                if self.image_pol.lower() == 'i':
-                    # For Stokes-I-only imaging, we can take advantage of the scalar or
-                    # diagonal visibilities options in WSClean (saving I/O)
-                    if self.apply_amplitudes:
-                        # Diagonal solutions generated during calibration
-                        if self.field.apply_diagonal_solutions:
-                            # Diagonal solutions should be used during imaging
-                            self.input_parms.update({'diagonal_visibilities': True})
-                            self.input_parms.update({'scalar_visibilities': False})
-                        else:
-                            # Diagonal solutions should not be used during imaging (they
-                            # were in fact converted to scalar solutions at the end of
-                            # calibration)
-                            self.input_parms.update({'diagonal_visibilities': False})
-                            self.input_parms.update({'scalar_visibilities': True})
+                    # Diagonal solutions generated during calibration
+                    if self.field.apply_diagonal_solutions:
+                        # Diagonal solutions should be used during imaging
+                        self.input_parms.update({'diagonal_visibilities': True})
+                        self.input_parms.update({'scalar_visibilities': False})
                     else:
-                        # Diagonal solutions not generated; only scalar solutions are
-                        # available
+                        # Diagonal solutions should not be used during imaging (they
+                        # were in fact converted to scalar solutions at the end of
+                        # calibration)
                         self.input_parms.update({'diagonal_visibilities': False})
                         self.input_parms.update({'scalar_visibilities': True})
                 else:
-                    # This case is of full-Stokes (IQUV) imaging, so do not use diagonal
-                    # or scalar visibilities (we need all four)
+                    # Diagonal solutions not generated; only scalar solutions are
+                    # available
                     self.input_parms.update({'diagonal_visibilities': False})
-                    self.input_parms.update({'scalar_visibilities': False})
+                    self.input_parms.update({'scalar_visibilities': True})
             else:
-                self.input_parms.update({'central_patch_name': central_patch_name})
+                # This case is of full-Stokes (IQUV) imaging, so do not use diagonal
+                # or scalar visibilities (we need all four)
+                self.input_parms.update({'diagonal_visibilities': False})
+                self.input_parms.update({'scalar_visibilities': False})
+        elif self.preapply_dde_solutions:
+            self.input_parms.update({'central_patch_name': central_patch_name})
         if self.make_image_cube:
             self.input_parms.update({'image_cube_name': image_cube_name})
         if self.normalize_flux_scale:
             self.input_parms.update({'output_source_catalog': output_source_catalog})
-            self.input_parms.update({'normalize_h5parm': normalize_h5parm})
+            self.input_parms.update({'output_normalize_h5parm': normalize_h5parm})
 
     def finalize(self):
         """
@@ -405,7 +442,7 @@ class ImageInitial(Image):
     Operation to image the field to generate an initial sky model
     """
     def __init__(self, field):
-        super().__init__(field, None, name='initial_image')
+        super().__init__(field, index=None, name='initial_image')
 
         # Set the template filenames
         self.pipeline_parset_template = 'image_pipeline.cwl'
@@ -416,10 +453,7 @@ class ImageInitial(Image):
         Define parameters needed for the CWL workflow template
         """
         # Set parameters as needed
-        self.apply_none = True
-        self.apply_amplitudes = False
         self.apply_screens = False
-        self.apply_fulljones = False
         self.use_facets = False
         self.save_source_list = True
         self.peel_bright_sources = False
@@ -432,6 +466,10 @@ class ImageInitial(Image):
         """
         # Set the imaging parameters that are optimal for the initial sky
         # model generation
+        self.apply_amplitudes = False
+        self.apply_fulljones = False
+        self.apply_none = True
+        self.apply_normalizations = False
         self.field.full_field_sector.auto_mask = 5.0
         self.field.full_field_sector.threshisl = 4.0
         self.field.full_field_sector.threshpix = 5.0
@@ -507,7 +545,7 @@ class ImageNormalize(Image):
     Operation to image for flux-scale normalization
     """
     def __init__(self, field, index):
-        super().__init__(field, index, name='normalize')
+        super().__init__(field, index=index, name='normalize')
 
         # Set the template filenames
         self.pipeline_parset_template = 'image_pipeline.cwl'
@@ -524,7 +562,6 @@ class ImageNormalize(Image):
         self.normalize_flux_scale = True
         if self.field.h5parm_filename is None:
             # No calibration has yet been done, so set various flags as needed
-            self.apply_none = True
             self.use_facets = False
             self.apply_screens = False
         super().set_parset_parameters()
@@ -535,14 +572,18 @@ class ImageNormalize(Image):
         """
         # Set the imaging parameters that are optimal for the flux-scale
         # normalization
-        self.imaging_sectors = self.field.imaging_sectors
-        for sector in self.imaging_sectors:
-            sector.auto_mask = 5.0
-            sector.threshisl = 4.0
-            sector.threshpix = 5.0
-            sector.max_nmiter = 8
-            sector.max_wsclean_nchannels = 8
-
+        if self.field.h5parm_filename is None:
+            # No calibration has yet been done
+            self.apply_none = True
+        else:
+            self.apply_none = False
+        self.apply_normalizations = False
+        self.field.normalize_sector.auto_mask = 5.0
+        self.field.normalize_sector.threshisl = 4.0
+        self.field.normalize_sector.threshpix = 5.0
+        self.field.normalize_sector.max_nmiter = 8
+        self.field.normalize_sector.max_wsclean_nchannels = 8
+        self.imaging_sectors = [self.field.normalize_sector]
         self.imaging_parameters = self.field.parset['imaging_specific'].copy()
         self.imaging_parameters['cellsize_arcsec'] = 6.0
         self.imaging_parameters['robust'] = -0.5
@@ -555,21 +596,32 @@ class ImageNormalize(Image):
         """
         Finalize this operation
         """
-        # Save the output FITS cubes and h5parms with the flux-scale corrections
-        for sector in self.imaging_sectors:
-            # The output image cube filenames
-            image_root = os.path.join(self.pipeline_working_dir, sector.name)
-            sector.I_freq_cube = f'{image_root}_freq_cube.fits'
-            dst_dir = os.path.join(self.parset['dir_working'], 'images', self.name)
-            os.makedirs(dst_dir, exist_ok=True)
-            dst_filename = os.path.join(dst_dir, os.path.basename(sector.I_freq_cube))
-            shutil.copy(sector.I_freq_cube, dst_filename)
+        # Save the output image cube filenames
+        sector = self.field.normalize_sector
+        image_root = os.path.join(self.pipeline_working_dir, sector.name)
+        src_filename = f'{image_root}_freq_cube.fits'
+        dst_dir = os.path.join(self.parset['dir_working'], 'images', self.name)
+        os.makedirs(dst_dir, exist_ok=True)
+        sector.I_freq_cube = os.path.join(dst_dir, os.path.basename(src_filename))
+        shutil.copy(src_filename, sector.I_freq_cube)
 
-            # The output beams and frequencies files
-            for suffix in ['_beams.txt', '_frequencies.txt']:
-                src_filename = sector.I_freq_cube + suffix
-                dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
-                shutil.copy(src_filename, dst_filename)
+        # Save the output beams and frequencies files
+        for suffix in ['_beams.txt', '_frequencies.txt']:
+            src_filename = f'{image_root}_freq_cube.fits{suffix}'
+            dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
+            shutil.copy(src_filename, dst_filename)
+
+        # Save the output h5parm with the flux-scale corrections
+        src_filename = f'{image_root}_normalize.h5parm'
+        dst_dir = os.path.join(self.parset['dir_working'], 'solutions', self.name)
+        os.makedirs(dst_dir, exist_ok=True)
+        dst_basename = os.path.basename(f'{image_root}_normalize.h5')
+        self.field.normalize_h5parm = os.path.join(dst_dir, dst_basename)
+        shutil.copy(src_filename, self.field.normalize_h5parm)
+
+        # Set the flags for subsequent processing
+        self.field.normalize_flux_scale = False
+        self.field.apply_normalizations = True
 
         # Finally call finalize() of the Operation class
         super(Image, self).finalize()

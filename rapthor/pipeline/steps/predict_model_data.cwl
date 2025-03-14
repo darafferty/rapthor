@@ -15,13 +15,15 @@ requirements:
 arguments:
   - msin.datacolumn=DATA
   - msout.overwrite=True
-  - msout.writefullresflag=False
   - steps=[predict]
   - predict.operation=replace
   - predict.applycal.correction=phase000
-  - predict.applycal.steps=[slowamp,totalphase]
-  - predict.applycal.slowamp.correction=amplitude000
-  - predict.applycal.totalphase.correction=phase000
+  - predict.applycal.fastphase.correction=phase000
+  - predict.applycal.fastphase.solset=sol000
+  - predict.applycal.slowgain.correction=amplitude000
+  - predict.applycal.slowgain.solset=sol000
+  - predict.applycal.normalization.correction=amplitude000
+  - predict.applycal.normalization.solset=sol000
   - predict.usebeammodel=True
   - predict.beam_interval=120
   - predict.beammode=array_factor
@@ -85,13 +87,32 @@ inputs:
       valueFrom: "$(self ? 'sagecalpredict': 'h5parmpredict')"
       separate: False
 
+  - id: applycal_steps
+    label: List of applycal steps
+    doc: |
+      The list of applycal steps to perform. Allowed steps are "fastphase",
+      "slowgain", and "normalization".
+    type: string?
+    inputBinding:
+      prefix: predict.applycal.steps=
+      separate: False
+
   - id: h5parm
     label: Solution table
     doc: |
-      The solution table to use to corrupt the model visibilities.
-    type: File
+      The filename of the h5parm file with the fast-phase and slow-gain corrections.
+    type: File?
     inputBinding:
       prefix: predict.applycal.parmdb=
+      separate: False
+
+  - id: normalize_h5parm
+    label: Filename of h5parm
+    doc: |
+      The filename of the h5parm file with the flux-scale normalization corrections.
+    type: File?
+    inputBinding:
+      prefix: predict.applycal.normalization.parmdb=
       separate: False
 
   - id: sourcedb
@@ -108,7 +129,7 @@ inputs:
     doc: |
       The list of direction names (matching those in the h5parm and sky model)
       used in the calibration.
-    type: string[]
+    type: string[]?
     inputBinding:
       valueFrom: $('['+self+']')
       prefix: predict.directions=

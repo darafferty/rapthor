@@ -98,6 +98,7 @@ class Field:
         self.use_mpi = imaging_parameters["use_mpi"]
         self.do_multiscale_clean = imaging_parameters["do_multiscale_clean"]
         self.pol_combine_method = imaging_parameters["pol_combine_method"]
+        self.apply_normalizations = False
 
     def get_calibration_radius(self):
         return 5.0
