@@ -565,12 +565,20 @@ The available options are described below under their respective sections.
         IO-intensive processing (e.g., WSClean) will use a default path in
         :term:`dir_working` instead.
 
+        When :term:`cwl_runner` = ``toil`` and :term:`batch_system` = ``single_machine``,
+        it is recommended to set this parameter, so that Rapthor can clean up any
+        leftover temporary files and directories that ``toil`` left behind.
+
     global_scratch_dir
         Full path to a directory on a shared disk that is readable and writable by all
         the compute nodes and the head node. This directory will be used to store the
         intermediate outputs that need to be shared between the different steps in the
-        workflow. If this parameter is not set, Rapthor will create a temporary
-        directory in :term:`dir_working`.
+        workflow. If this parameter is not set and :term:`batch_system` = ``slurm``,
+        then Rapthor will create a temporary directory in :term:`dir_working`.
+
+        When :term:`cwlrunner` = ``toil``, it is recommended to set this parameter, so
+        that Rapthor can clean up any leftover temporary files and directories that
+        ``toil`` left behind.
 
     use_container
         Run the workflows inside a container (default = ``False``)? If ``True``, the CWL

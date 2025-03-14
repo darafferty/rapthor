@@ -102,6 +102,9 @@ class Field:
     def get_calibration_radius(self):
         return 5.0
 
+@pytest.fixture
+def dir_postfix():
+    return f"rapthor.{os.getpid()}"
 
 @pytest.fixture(params=("single_machine", "slurm"))
 def batch_system(request):
@@ -175,6 +178,7 @@ class TestCWLToolRunner:
         dir_local,
         global_scratch_dir,
         local_scratch_dir,
+        dir_postfix,
         use_mpi,
         parset,
         runner,
@@ -184,25 +188,31 @@ class TestCWLToolRunner:
         and if the value is correct.
         """
         try:
-            prefix = runner.args[runner.args.index("--tmpdir-prefix") + 1]
+            path = runner.args[runner.args.index("--tmpdir-prefix") + 1]
         except ValueError:
             pass
         else:
+            print(f"[CWLToolRunner]: path = {path}")
+            prefix, postfix = os.path.split(os.path.dirname(path))
             if use_mpi:
                 if global_scratch_dir:
-                    assert os.path.dirname(prefix) == global_scratch_dir
+                    assert prefix == global_scratch_dir
+                    assert postfix == dir_postfix
                 else:
                     assert prefix.startswith(parset["dir_working"])
+                    assert postfix == "tmp"
             else:
                 assert local_scratch_dir or dir_local
                 if local_scratch_dir:
-                    assert os.path.dirname(prefix) == local_scratch_dir
+                    assert prefix == local_scratch_dir
                 elif dir_local:
-                    assert os.path.dirname(prefix) == dir_local
+                    assert prefix == dir_local
+                assert postfix == dir_postfix
 
     def test_tmp_outdir_prefix(
         tmp_path,
         global_scratch_dir,
+        dir_postfix,
         runner,
     ):
         """
@@ -210,12 +220,14 @@ class TestCWLToolRunner:
         and if the value is correct.
         """
         try:
-            prefix = runner.args[runner.args.index("--tmp-outdir-prefix") + 1]
+            path = runner.args[runner.args.index("--tmp-outdir-prefix") + 1]
         except ValueError:
             pass
         else:
+            prefix, postfix = os.path.split(os.path.dirname(path))
+            assert postfix == dir_postfix
             if global_scratch_dir:
-                assert os.path.dirname(prefix) == global_scratch_dir
+                assert prefix == global_scratch_dir
             else:
                 assert prefix is None
 
@@ -227,6 +239,7 @@ class TestToilRunner:
         dir_local,
         global_scratch_dir,
         local_scratch_dir,
+        dir_postfix,
         use_mpi,
         parset,
         runner,
@@ -236,26 +249,31 @@ class TestToilRunner:
         and if the value is correct.
         """
         try:
-            prefix = runner.args[runner.args.index("--tmpdir-prefix") + 1]
+            path = runner.args[runner.args.index("--tmpdir-prefix") + 1]
         except ValueError:
             pass
         else:
+            prefix, postfix = os.path.split(os.path.dirname(path))
             if use_mpi:
                 if global_scratch_dir:
-                    assert os.path.dirname(prefix) == global_scratch_dir
+                    assert prefix == global_scratch_dir
+                    assert postfix == dir_postfix
                 else:
                     assert prefix.startswith(parset["dir_working"])
+                    assert postfix == "tmp"
             else:
                 assert local_scratch_dir or dir_local
                 if local_scratch_dir:
-                    assert os.path.dirname(prefix) == local_scratch_dir
+                    assert prefix == local_scratch_dir
                 elif dir_local:
-                    assert os.path.dirname(prefix) == dir_local
+                    assert prefix == dir_local
+                assert postfix == dir_postfix
 
     def test_tmp_outdir_prefix(
         tmp_path,
         batch_system,
         global_scratch_dir,
+        dir_postfix,
         parset,
         runner,
     ):
@@ -264,14 +282,17 @@ class TestToilRunner:
         and if the value is correct.
         """
         try:
-            prefix = runner.args[runner.args.index("--tmp-outdir-prefix") + 1]
+            path = runner.args[runner.args.index("--tmp-outdir-prefix") + 1]
         except ValueError:
             pass
         else:
+            prefix, postfix = os.path.split(os.path.dirname(path))
             if global_scratch_dir:
-                assert os.path.dirname(prefix) == global_scratch_dir
+                assert prefix == global_scratch_dir
+                assert postfix == dir_postfix
             elif batch_system == "slurm":
                 assert prefix.startswith(parset["dir_working"])
+                assert postfix == "tmp-out"
             else:
                 assert prefix is None
 
