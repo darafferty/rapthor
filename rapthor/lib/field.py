@@ -590,6 +590,12 @@ class Field(object):
                     calibrator_names = source_skymodel.getPatchNames()
                 all_names = source_skymodel.getPatchNames()
                 keep_ind = np.array([i for i, name in enumerate(all_names) if name in calibrator_names])
+                if len(keep_ind) == 0:
+                    raise RuntimeError(
+                        f"No sources left in the sky model after applying max source "
+                        f"distance of {calibrator_max_dist_deg} degrees. There were "
+                        f"{len(all_names)} sources in the model before applying the limit."
+                    )
                 calibrator_names = all_names[keep_ind]  # to ensure order matches that of fluxes
                 all_fluxes = source_skymodel.getColValues('I', aggregate='sum', applyBeam=applyBeam_group)
                 fluxes = all_fluxes[keep_ind]

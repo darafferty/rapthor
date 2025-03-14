@@ -42,8 +42,7 @@ class Facet(object):
             ra = Angle(ra).to('deg').value
         if type(dec) is str:
             dec = Angle(dec).to('deg').value
-        self.ra = misc.normalize_ra(ra)
-        self.dec = misc.normalize_dec(dec)
+        self.ra, self.dec = misc.normalize_ra_dec(ra, dec)
         self.vertices = np.array(vertices)
 
         # Convert input (RA, Dec) vertices to (x, y) polygon
@@ -211,8 +210,7 @@ class SquareFacet(Facet):
             ra = Angle(ra).to('deg').value
         if type(dec) is str:
             dec = Angle(dec).to('deg').value
-        ra = misc.normalize_ra(ra)
-        dec = misc.normalize_dec(dec)
+        ra, dec = misc.normalize_ra_dec(ra, dec)
         wcs = misc.make_wcs(ra, dec)
 
         # Make the vertices
@@ -530,8 +528,7 @@ def read_skymodel(skymodel, ra_mid, dec_mid, width_ra, width_dec):
     for k, v in source_dict.items():
         name_cal.append(k)
         # Make sure RA is between [0, 360) deg and Dec between [-90, 90]
-        ra = misc.normalize_ra(v[0].value)
-        dec = misc.normalize_dec(v[1].value)
+        ra, dec = misc.normalize_ra_dec(v[0].value, v[1].value)
         ra_cal.append(ra)
         dec_cal.append(dec)
     patch_coords = SkyCoord(ra=np.array(ra_cal)*u.degree, dec=np.array(dec_cal)*u.degree)

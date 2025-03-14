@@ -43,8 +43,8 @@ def main(skymodel, h5parm_file, solset_name='sol000'):
                 radecpos = source_dict[source.strip('[]')]  # degrees
             except KeyError:
                 sys.exit('ERROR: A direction is present in the h5parm that is not in the sky model')
-            source_positions.append([misc.normalize_ra(radecpos[0].value),
-                                     misc.normalize_dec(radecpos[1].value)])
+            ra, dec = misc.normalize_ra_dec(radecpos[0].value, radecpos[1].value)
+            source_positions.append([ra, dec])
         source_positions = np.array(source_positions)
         ra_deg = source_positions.T[0]
         dec_deg = source_positions.T[1]
