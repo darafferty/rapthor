@@ -144,8 +144,12 @@ class Observation(object):
         elif 'LBA' in self.stations[0]:
             self.antenna = 'LBA'
         else:
-            self.log.warning('Antenna type not recognized (only LBA and HBA data '
-                             'are supported at this time)')
+            # Set antenna to HBA to at least let Rapthor proceed.
+            self.antenna = "HBA"
+            self.log.warning(
+                "Antenna type not recognized (only LBA and HBA data "
+                "are supported at this time)"
+            )
         ant.close()
 
         # Find mean elevation and time range for periods where the elevation
