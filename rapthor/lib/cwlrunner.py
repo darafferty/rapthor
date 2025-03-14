@@ -3,7 +3,6 @@ Classes that wrap the CWL runners that Rapthor supports.
 """
 from __future__ import annotations
 
-import glob
 import logging
 import os
 import shutil
@@ -30,7 +29,6 @@ class CWLRunner:
         self.args = []
         self.command = None
         self.operation = operation
-        self.pid = os.getpid()
 
     def __enter__(self) -> "CWLRunner":
         """
@@ -94,21 +92,16 @@ class CWLRunner:
         but will be used for backward compatibility if `local_scratch_dir`
         is not set.
 
-        In order to be able to easily distinguish temporary files from
-        multiple pipeline runs, the directory prefix contains an extra
-        subdirectory named `rapthor.<pid>`, where `<pid>` is the process ID
-        of the current process.
-
         If `global_scratch_dir` is not set when using MPI, return a
-        subdirectory `tmp` inside the pipeline's working directory,
-        which is guaranteed to be on a shared disk. Otherwise, if neither
-        `local_scratch_dir` nor `dir_local` are set, return `None`.
+        subdirectory of the pipeline's working directory, which is guaranteed
+        to be on a shared disk. Otherwise, if neither `local_scratch_dir`
+        nor `dir_local` are set, return `None`.
 
         The file-part of the prefix is set to the name of the CWL runner.
         """
         if self.operation.use_mpi:
             prefix = (
-                os.path.join(self.operation.global_scratch_dir, f"rapthor.{self.pid}")
+                self.operation.global_scratch_dir
                 if self.operation.global_scratch_dir
                 else os.path.join(self.operation.pipeline_working_dir, "tmp")
             )
@@ -118,8 +111,6 @@ class CWLRunner:
                 if self.operation.local_scratch_dir
                 else self.operation.scratch_dir
             )
-            if prefix:
-                prefix = os.path.join(prefix, f"rapthor.{self.pid}")
         return os.path.join(prefix, self.command + ".") if prefix else None
 
 
@@ -138,19 +129,10 @@ class CWLRunner:
         `global_scratch_dir` option in the `[cluster]` section of the
         parset. Return `None`, if `global_scratch_dir` is not set.
 
-        In order to be able to easily distinguish temporary files from
-        multiple pipeline runs, the directory prefix contains an extra
-        subdirectory named `rapthor.<pid>`, where `<pid>` is the process ID
-        of the current process.
-
         The file-part of the prefix is set to the name of the CWL runner.
         """
         prefix = self.operation.global_scratch_dir
-        return (
-            os.path.join(prefix, f"rapthor.{self.pid}", self.command + ".")
-            if prefix
-            else None
-        )
+        return os.path.join(prefix, self.command + ".") if prefix else None
 
 
     def setup(self) -> None:

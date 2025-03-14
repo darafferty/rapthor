@@ -47,6 +47,7 @@ class Operation(object):
         self.log = logging.getLogger('rapthor:{0}'.format(self.name))
         self.force_serial_jobs = False  # force jobs to run serially
         self.use_mpi = False
+        self.pid = os.getpid()
 
         # Extra Toil env variables and Toil version
         self.toil_env_variables = {}
@@ -118,12 +119,26 @@ class Operation(object):
         # Get the amount of memory in GB per node (SLRUM only).
         self.mem_per_node_gb = self.parset['cluster_specific']['mem_per_node_gb']
 
-        # Set the temp directory local to each node (DEPRECATED)
+        # Set the local and global scratch directories. In order to be able
+        # to easily distinguish temporary files from multiple pipeline runs,
+        # add an extra subdirectory named `rapthor.<pid>` to each of the scratch
+        # directories, where `<pid>` is the process ID of the current process.
+        # NOTE: `dir_local` is deprecated, but kept for backward compatibility.
         self.scratch_dir = self.parset['cluster_specific']['dir_local']
-
-        # Set the local and global scratch directories
+        if self.scratch_dir:
+            self.scratch_dir = os.path.join(
+                self.scratch_dir, f"rapthor.{self.pid}"
+            )
         self.local_scratch_dir = self.parset['cluster_specific']['local_scratch_dir']
+        if self.local_scratch_dir:
+            self.local_scratch_dir = os.path.join(
+                self.local_scratch_dir, f"rapthor.{self.pid}"
+            )
         self.global_scratch_dir = self.parset['cluster_specific']['global_scratch_dir']
+        if self.global_scratch_dir:
+            self.global_scratch_dir = os.path.join(
+                self.global_scratch_dir, f"rapthor.{self.pid}"
+            )
 
         # Get the container type
         if self.parset['cluster_specific']['use_container']:
