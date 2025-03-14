@@ -1,28 +1,26 @@
 """
 Module that holds miscellaneous functions and classes
 """
-import logging
-import os
-import shutil
-import subprocess
-import errno
-import numpy as np
-import pickle
-import time
-from shapely.geometry import Point, Polygon
-from shapely.prepared import prep
 from astropy.io import fits as pyfits
 from astropy.time import Time
+import astropy.units as u
 from astropy.wcs import WCS
-from PIL import Image, ImageDraw
-import multiprocessing
-from math import modf, floor, ceil
+import logging
 from losoto.h5parm import h5parm
 import lsmtool
-from scipy.interpolate import interp1d
-import astropy.units as u
+from math import modf
 import mocpy
+import multiprocessing
+import numpy as np
+import os
+import pickle
+from PIL import Image, ImageDraw
 import requests
+from scipy.interpolate import interp1d
+from shapely.geometry import Point, Polygon
+from shapely.prepared import prep
+import subprocess
+import time
 
 
 def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, source='TGSS',
@@ -169,65 +167,33 @@ def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, sourc
     skymodel.write(clobber=True)
 
 
-def normalize_ra(num):
+def normalize_ra_dec(ra, dec):
     """
-    Normalize RA to be in the range [0, 360).
-
-    Based on https://github.com/phn/angles/blob/master/angles.py
+    Normalize RA to be in the range [0, 360) and Dec to be in the
+    range [-90, 90].
 
     Parameters
     ----------
-    num : float
+    ra : float
         The RA in degrees to be normalized.
-
-    Returns
-    -------
-    res : float
-        RA in degrees in the range [0, 360).
-    """
-    lower = 0.0
-    upper = 360.0
-    res = num
-    if num > upper or num == lower:
-        num = lower + abs(num + upper) % (abs(lower) + abs(upper))
-    if num < lower or num == upper:
-        num = upper - abs(num - lower) % (abs(lower) + abs(upper))
-    res = lower if num == upper else num
-
-    return res
-
-
-def normalize_dec(num):
-    """
-    Normalize Dec to be in the range [-90, 90].
-
-    Based on https://github.com/phn/angles/blob/master/angles.py
-
-    Parameters
-    ----------
-    num : float
+    dec : float
         The Dec in degrees to be normalized.
 
     Returns
     -------
-    res : float
+    normalized_ra, normalized_dec : float, float
+        The normalized RA in degrees in the range [0, 360) and the
         Dec in degrees in the range [-90, 90].
     """
-    lower = -90.0
-    upper = 90.0
-    res = num
-    total_length = abs(lower) + abs(upper)
-    if num < -total_length:
-        num += ceil(num / (-2 * total_length)) * 2 * total_length
-    if num > total_length:
-        num -= floor(num / (2 * total_length)) * 2 * total_length
-    if num > upper:
-        num = total_length - num
-    if num < lower:
-        num = -total_length - num
-    res = num
+    normalized_dec = (dec + 180) % 360 - 180
+    normalized_ra = ra % 360
+    if abs(normalized_dec) > 90:
+        normalized_dec = 180 - normalized_dec
+        normalized_ra = normalized_ra + 180
+        normalized_dec = (normalized_dec + 180) % 360 - 180
+        normalized_ra = normalized_ra % 360
 
-    return res
+    return normalized_ra, normalized_dec
 
 
 def radec2xy(wcs, ra, dec):

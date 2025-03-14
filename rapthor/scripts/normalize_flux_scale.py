@@ -251,10 +251,14 @@ def main(source_catalog, ms_file, output_h5parm, radius_cut=3.0, major_axis_cut=
         #  - sources within radius_cut degrees of phase center
         #  - sources with major axes less than major_axis_cut degrees
         #  - sources that have no neighbors within neighbor_cut degrees
-        source_coords = SkyCoord(ra=np.array([misc.normalize_ra(source_ra)
-                                              for source_ra in data['RA']])*u.degree,
-                                 dec=np.array([misc.normalize_dec(source_dec)
-                                               for source_dec in data['DEC']])*u.degree)
+        source_ra = []
+        source_dec = []
+        for ra_deg, dec_deg in zip(data['RA'], data['DEC']):
+            ra_norm, dec_norm = misc.normalize_ra_dec(ra_deg, dec_deg)
+            source_ra.append(ra_norm)
+            source_dec.append(dec_norm)
+        source_coords = SkyCoord(ra=np.array(source_ra)*u.degree,
+                                 dec=np.array(source_dec)*u.degree)
         center_coord = SkyCoord(ra=ra*u.radian, dec=dec*u.radian)
         source_distances = np.array([sep.value for sep in center_coord.separation(source_coords)])
 
@@ -301,10 +305,14 @@ def main(source_catalog, ms_file, output_h5parm, radius_cut=3.0, major_axis_cut=
                 skymodel.write(fp.name, format='fits', clobber=True)
                 with fits.open(fp.name) as hdul:
                     survey_data = hdul[1].data
-            survey_coords = SkyCoord(ra=np.array([misc.normalize_ra(survey_ra)
-                                                  for survey_ra in survey_data['RA']])*u.degree,
-                                     dec=np.array([misc.normalize_dec(survey_dec)
-                                                   for survey_dec in survey_data['DEC']])*u.degree)
+            survey_ra = []
+            survey_dec = []
+            for ra_deg, dec_deg in zip(survey_data['RA'], survey_data['DEC']):
+                ra_norm, dec_norm = misc.normalize_ra_dec(ra_deg, dec_deg)
+                survey_ra.append(ra_norm)
+                survey_dec.append(dec_norm)
+            survey_coords = SkyCoord(ra=np.array(survey_ra)*u.degree,
+                                     dec=np.array(survey_dec)*u.degree)
 
             # Cross match the survey sources with the Rapthor sources
             match_ind, separation, _ = match_coordinates_sky(source_coords, survey_coords)

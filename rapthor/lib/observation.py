@@ -131,8 +131,8 @@ class Observation(object):
 
         # Get pointing info
         obs = pt.table(self.ms_filename+'::FIELD', ack=False)
-        self.ra = misc.normalize_ra(np.degrees(float(obs.col('REFERENCE_DIR')[0][0][0])))
-        self.dec = misc.normalize_dec(np.degrees(float(obs.col('REFERENCE_DIR')[0][0][1])))
+        self.ra, self.dec = misc.normalize_ra_dec(np.degrees(float(obs.col('REFERENCE_DIR')[0][0][0])),
+                                                  np.degrees(float(obs.col('REFERENCE_DIR')[0][0][1])))
         obs.close()
 
         # Get station names and diameter
