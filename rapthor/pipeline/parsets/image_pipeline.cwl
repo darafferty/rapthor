@@ -24,6 +24,12 @@ inputs:
       items:
         type: array
         items: Directory
+  
+  - id: data_colname
+    label: Input MS data column
+    doc: |
+      The data column to be read from the MS files for imaging.
+    type: string
 
   - id: prepare_filename
     label: Filename of preparatory MS
@@ -565,6 +571,8 @@ steps:
     in:
       - id: obs_filename
         source: obs_filename
+      - id: data_colname
+        source: data_colname
       - id: prepare_filename
         source: prepare_filename
       - id: concat_filename

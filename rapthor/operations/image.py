@@ -186,6 +186,7 @@ class Image(Operation):
                 join_polarizations = True
 
         self.input_parms = {'obs_filename': [CWLDir(name).to_json() for name in obs_filename],
+                            'data_colname': self.field.data_colname,
                             'prepare_filename': prepare_filename,
                             'concat_filename': concat_filename,
                             'previous_mask_filename': [None if name is None else CWLFile(name).to_json() for name in previous_mask_filename],
