@@ -47,7 +47,7 @@ class Field(object):
         self.working_dir = self.parset['dir_working']
         self.ms_filenames = self.parset['mss']
         self.numMS = len(self.ms_filenames)
-        self.data_colname = 'DATA'
+        self.data_colname = self.parset['data_colname']
         self.bda_timebase_fast = self.parset['calibration_specific']['fast_bda_timebase']
         self.bda_timebase_slow_joint = self.parset['calibration_specific']['slow_bda_timebase_joint']
         self.bda_timebase_slow_separate = self.parset['calibration_specific']['slow_bda_timebase_separate']
