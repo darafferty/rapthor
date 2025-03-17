@@ -12,7 +12,6 @@ requirements:
   InlineJavascriptRequirement: {}
 
 arguments:
-  - msin.datacolumn=DATA
   - msout.overwrite=True
   - msout.writefullresflag=False
   - steps=[predict]
@@ -32,6 +31,11 @@ inputs:
     inputBinding:
       prefix: msin=
       separate: False
+  - id: data_colname
+    type: string
+    inputBinding:
+      prefix: msin.datacolumn=
+      separate: false
   - id: msout
     type: string
     inputBinding:

@@ -24,6 +24,14 @@ inputs:
     inputBinding:
       position: 1
       itemSeparator: ","
+  - id: data_colname
+    label: Input MS data column
+    doc: |
+      The data column in input MS file for which addition will be done.
+    type: string
+    inputBinding:
+      prefix: --msin_column=
+      separate: false
   - id: obs_starttime
     label: Start time
     doc: |

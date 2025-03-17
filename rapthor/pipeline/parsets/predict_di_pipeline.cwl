@@ -87,6 +87,12 @@ inputs:
       The filenames of input MS files for which subtraction will be done (length =
       n_obs).
     type: Directory[]
+  
+  - id: data_colname
+    label: Input MS data column
+    doc: |
+      The data column to be read from the input MS.
+    type: string
 
   - id: obs_starttime
     label: Start time of each chunk
@@ -141,6 +147,8 @@ steps:
     in:
       - id: msin
         source: sector_filename
+      - id: data_colname
+        source: data_colname
       - id: msout
         source: sector_model_filename
       - id: starttime
@@ -178,6 +186,8 @@ steps:
     in:
       - id: msobs
         source: obs_filename
+      - id: data_colname
+        source: data_colname
       - id: msmod
         source: predict_model_data/msmod
       - id: obs_starttime

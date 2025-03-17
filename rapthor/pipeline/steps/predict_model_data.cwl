@@ -13,7 +13,6 @@ requirements:
   InlineJavascriptRequirement: {}
 
 arguments:
-  - msin.datacolumn=DATA
   - msout.overwrite=True
   - msout.writefullresflag=False
   - steps=[predict]
@@ -37,6 +36,15 @@ inputs:
     inputBinding:
       prefix: msin=
       separate: False
+
+  - id: data_colname
+    label: Input MS data column
+    doc: |
+      The MS data column to be read.
+    type: string
+    inputBinding:
+      prefix: msin.datacolumn=
+      separate: false
 
   - id: msout
     label: Output MS filename
