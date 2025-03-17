@@ -143,6 +143,7 @@ def parset(
     """
     parset = Parset().as_parset_dict()
     parset["dir_working"] = str(tmp_path)
+    parset["data_colname"] = 'DATA'
     parset["input_h5parm"] = str(tmp_path / "h5parm.h5")
     parset["cluster_specific"]["batch_system"] = batch_system
     parset["cluster_specific"]["cwl_runner"] = cwl_runner
