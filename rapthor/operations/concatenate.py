@@ -49,7 +49,8 @@ class Concatenate(Operation):
                 self.final_filenames.append(obs_list[0].ms_filename)
 
         self.input_parms = {'input_filenames': input_filenames,
-                            'output_filenames': output_filenames}
+                            'input_filenames': input_filenames,
+                            'data_colname': self.field.data_colname}
 
     def finalize(self):
         """
@@ -58,6 +59,7 @@ class Concatenate(Operation):
         # Update the field object to use the new, concatenated MS file(s)
         self.field.ms_filenames = self.final_filenames
         self.field.scan_observations()
+        self.field.data_colname = 'DATA'
 
         # Finally call finalize() in the parent class
         super().finalize()

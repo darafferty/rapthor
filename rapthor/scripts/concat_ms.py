@@ -13,7 +13,7 @@ import casacore.tables as pt
 import numpy as np
 
 
-def concat_ms(msfiles, output_file, concat_property="frequency", overwrite=False):
+def concat_ms(msfiles, output_file, data_colname='DATA', concat_property="frequency", overwrite=False):
     """
     Concatenate a number of Measurement Set files into one
 
@@ -69,7 +69,7 @@ def concat_ms(msfiles, output_file, concat_property="frequency", overwrite=False
     # later
     if len(msfiles) > 1:
         if concat_property.lower() == "frequency":
-            cmd = concat_freq_command(msfiles, output_file)
+            cmd = concat_freq_command(msfiles, data_colname, output_file)
         elif concat_property.lower() == "time":
             cmd = concat_time_command(msfiles, output_file)
     else:
@@ -91,7 +91,7 @@ def concat_ms(msfiles, output_file, concat_property="frequency", overwrite=False
         return err.returncode
 
 
-def concat_freq_command(msfiles, output_file, make_dummies=True):
+def concat_freq_command(msfiles, data_colname, output_file, make_dummies=True):
     """
     Construct command to concatenate files in frequency using DP3
 
@@ -173,6 +173,7 @@ def concat_freq_command(msfiles, output_file, make_dummies=True):
     cmd = [
         "DP3",
         "msin=[{}]".format(",".join(mslist)),
+        "msin.datacolumn={}".format(data_colname),
         "msout={}".format(output_file),
         "steps=[]",
         "msin.orderms=False",
@@ -225,13 +226,14 @@ def main():
         description=descriptiontext, formatter_class=RawTextHelpFormatter
     )
     parser.add_argument("msin", nargs="+", help="List of input Measurement Sets")
+    parser.add_argument("--data_colname", help="Data column to be concatenated", type=str, default='DATA')
     parser.add_argument("--msout", help="Output Measurement Set", type=str, default='concat.ms')
     parser.add_argument('--concat_property', help='Property over which to concatenate: time or frequency',
                         type=str, default='frequency')
     parser.add_argument('--overwrite', help='Overwrite existing output file', type=bool, default=False)
 
     args = parser.parse_args()
-    return concat_ms(args.msin, args.msout, concat_property=args.concat_property, overwrite=args.overwrite)
+    return concat_ms(args.msin, args.msout, args.data_colname, concat_property=args.concat_property, overwrite=args.overwrite)
 
 
 if __name__ == "__main__":

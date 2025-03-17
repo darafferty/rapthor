@@ -35,6 +35,13 @@ inputs:
     doc: |
       The filenames of the output concatenated MS files (length = n_epochs).
     type: string[]
+  
+  - id: data_colname
+    label: Input MS data column
+    doc: |
+      The data column to be read from the MS files for concatenation.
+    type: string
+
 
 outputs:
   - id: concatenated_filenames
@@ -56,6 +63,8 @@ steps:
       source: output_filenames
     - id: concat_property
       valueFrom: 'frequency'
+    - id: data_colname
+      source: data_colname
     scatter: [mslist, msout]
     scatterMethod: dotproduct
     out:
