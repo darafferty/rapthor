@@ -600,6 +600,8 @@ steps:
     in:
       - id: mslist
         source: prepare_imaging_data/msimg
+      - id: data_colname
+        source: data_colname
       - id: msout
         source: concat_filename
       - id: concat_property
