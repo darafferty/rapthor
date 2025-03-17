@@ -2,12 +2,13 @@
 """
 Script to add sector model data
 """
-from argparse import ArgumentParser, RawTextHelpFormatter
-import casacore.tables as pt
-import logging
-import numpy as np
 import os
+import shutil
 import subprocess
+from argparse import ArgumentParser, RawTextHelpFormatter
+
+import casacore.tables as pt
+import numpy as np
 from rapthor.lib import miscellaneous as misc
 
 
@@ -148,7 +149,7 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
     msout = os.path.basename(model_list[0]).removesuffix('_modeldata') + '_di.ms'
     if os.path.exists(msout):
         # File may exist from a previous iteration; delete it if so
-        misc.delete_directory(msout)
+        shutil.rmtree(msout, ignore_errors=True)
     subprocess.check_call(['cp', '-r', '-L', '--no-preserve=mode', ms_template, msout])
     tout = pt.table(msout, readonly=False, ack=False)
     if out_column not in tout.colnames():
@@ -198,11 +199,7 @@ if __name__ == '__main__':
     parser.add_argument('--infix', help='Infix for output files', type=str, default='')
     args = parser.parse_args()
 
-    try:
-        main(args.msin, args.msmod, msin_column=args.msin_column,
-             model_column=args.model_column, out_column=args.out_column,
-             use_compression=args.use_compression,
-             starttime=args.starttime, quiet=args.quiet, infix=args.infix)
-    except Exception as e:
-        log = logging.getLogger('rapthor:add_sector_models')
-        log.critical(e)
+    main(args.msin, args.msmod, msin_column=args.msin_column,
+         model_column=args.model_column, out_column=args.out_column,
+         use_compression=args.use_compression,
+         starttime=args.starttime, quiet=args.quiet, infix=args.infix)

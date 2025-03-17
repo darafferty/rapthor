@@ -30,7 +30,6 @@ use_mpi = True
 
 [cluster]
 cpus_per_task = 4
-#dir_local = /tmp
 max_nodes = 4
 batch_system = slurm
 max_threads = 40

@@ -30,16 +30,14 @@ class CalibrateDD(Operation):
         else:
             max_cores = self.field.parset['cluster_specific']['max_cores']
         if self.field.slow_timestep_joint_sec > 0:
-            do_joint_solve = True
+            self.do_joint_solve = True
         else:
-            do_joint_solve = False
+            self.do_joint_solve = False
 
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
                              'generate_screens': self.field.generate_screens,
                              'do_slowgain_solve': self.field.do_slowgain_solve,
-                             'do_joint_solve': do_joint_solve,
-                             'use_scalarphase': self.field.use_scalarphase,
-                             'apply_diagonal_solutions': self.field.apply_diagonal_solutions,
+                             'do_joint_solve': self.do_joint_solve,
                              'max_cores': max_cores}
 
     def set_input_parameters(self):
@@ -107,9 +105,13 @@ class CalibrateDD(Operation):
         output_idgcal_h5parm = ['idgcal_{}.h5parm'.format(i)  # TODO: chunk the solve over frequency as well as time?
                                 for i in range(self.field.ntimechunks)]
         combined_slow_h5parm_joint = 'slow_gains_joint.h5parm'
-        combined_slow_h5parm_separate = 'slow_gains_separate.h5parm'
+        self.combined_slow_h5parm_separate = 'slow_gains_separate.h5parm'
         combined_h5parms_fast_slow_joint = 'combined_solutions_fast_slow_joint.h5'
         combined_h5parms_slow_joint_separate = 'combined_solutions_slow_joint_separate.h5'
+        if self.field.apply_diagonal_solutions:
+            solution_combine_mode = 'p1p2a2_diagonal'
+        else:
+            solution_combine_mode = 'p1p2a2_scalar'
 
         # Define the input sky model
         if self.field.peel_non_calibrator_sources:
@@ -158,13 +160,17 @@ class CalibrateDD(Operation):
         solverlbfgs_minibatches = self.field.solverlbfgs_minibatches
         fast_datause = self.field.fast_datause
         slow_datause = self.field.slow_datause
+        if self.field.use_scalarphase:
+            dp3_solve_mode_fast = 'scalarphase'
+        else:
+            dp3_solve_mode_fast = 'scalar'
 
         # Get the size of the imaging area (for use in making the a-term images)
         sector_bounds_deg = '{}'.format(self.field.sector_bounds_deg)
         sector_bounds_mid_deg = '{}'.format(self.field.sector_bounds_mid_deg)
 
         # Set the DDECal steps depending on whether baseline-dependent averaging is
-        # activated (and supported) or not. If BDA is used, an "null" step is also
+        # activated (and supported) or not. If BDA is used, a "null" step is also
         # added to prevent the writing of the BDA data
         all_regular = all([obs.channels_are_regular for obs in self.field.observations])
         if self.field.bda_timebase_fast > 0 and all_regular:
@@ -180,13 +186,105 @@ class CalibrateDD(Operation):
         else:
             dp3_steps_slow_separate = '[solve]'
 
-        # Set the parameters common to all modes
+        # Set the DDECal applycal steps and input H5parm files depending on what
+        # solutions need to be applied
+        if self.field.apply_normalizations:
+            normalize_h5parm = CWLFile(self.field.normalize_h5parm).to_json()
+            dp3_applycal_steps_fast = '[normalization]'
+        else:
+            normalize_h5parm = None
+            dp3_applycal_steps_fast = None
+        if self.field.do_slowgain_solve:
+            dp3_applycal_steps_slow_joint = ['fastphase']
+            dp3_applycal_steps_slow_separate = ['fastphase']
+            if self.do_joint_solve:
+                dp3_applycal_steps_slow_separate.append('slowgain')
+            if self.field.apply_normalizations:
+                dp3_applycal_steps_slow_joint.append('normalization')
+                dp3_applycal_steps_slow_separate.append('normalization')
+            dp3_applycal_steps_slow_joint = f"[{','.join(dp3_applycal_steps_slow_joint)}]"
+            dp3_applycal_steps_slow_separate = f"[{','.join(dp3_applycal_steps_slow_separate)}]"
+        else:
+            dp3_applycal_steps_slow_joint = None
+            dp3_applycal_steps_slow_separate = None
+        fast_initialsolutions_h5parm = None
+        slow_initialsolutions_h5parm = None
+        if self.field.fast_phases_h5parm_filename:
+            fast_initialsolutions_h5parm = CWLFile(self.field.fast_phases_h5parm_filename).to_json()
+        if self.field.slow_gains_h5parm_filename:
+            slow_initialsolutions_h5parm = CWLFile(self.field.slow_gains_h5parm_filename).to_json()
+
         self.input_parms = {'timechunk_filename': CWLDir(timechunk_filename).to_json(),
                             'starttime': starttime,
                             'ntimes': ntimes,
                             'solint_fast_timestep': solint_fast_timestep,
-                            'combined_h5parms': self.combined_h5parms,
+                            'solint_slow_timestep_joint': solint_slow_timestep_joint,
+                            'solint_slow_timestep_separate': solint_slow_timestep_separate,
+                            'solint_fast_freqstep': solint_fast_freqstep,
+                            'solint_slow_freqstep_joint': solint_slow_freqstep_joint,
+                            'solint_slow_freqstep_separate': solint_slow_freqstep_separate,
+                            'solutions_per_direction_fast': solutions_per_direction_fast,
+                            'solutions_per_direction_slow_joint': solutions_per_direction_slow_joint,
+                            'solutions_per_direction_slow_separate': solutions_per_direction_slow_separate,
+                            'calibrator_patch_names': calibrator_patch_names,
+                            'calibrator_fluxes': calibrator_fluxes,
+                            'output_fast_h5parm': output_fast_h5parm,
+                            'combined_fast_h5parm': self.combined_fast_h5parm,
+                            'output_slow_h5parm_joint': output_slow_h5parm_joint,
+                            'output_slow_h5parm_separate': output_slow_h5parm_separate,
+                            'calibration_skymodel_file': CWLFile(calibration_skymodel_file).to_json(),
+                            'fast_smoothnessconstraint': fast_smoothnessconstraint,
+                            'fast_smoothnessreffrequency': fast_smoothnessreffrequency,
+                            'fast_smoothnessrefdistance': fast_smoothnessrefdistance,
+                            'slow_smoothnessconstraint_joint': slow_smoothnessconstraint_joint,
+                            'slow_smoothnessconstraint_separate': slow_smoothnessconstraint_separate,
+                            'dp3_solve_mode_fast': dp3_solve_mode_fast,
+                            'dp3_steps_fast': dp3_steps_fast,
+                            'dp3_applycal_steps_fast': dp3_applycal_steps_fast,
+                            'dp3_steps_slow_joint': dp3_steps_slow_joint,
+                            'dp3_applycal_steps_slow_joint': dp3_applycal_steps_slow_joint,
+                            'dp3_applycal_steps_slow_separate': dp3_applycal_steps_slow_separate,
+                            'dp3_steps_slow_separate': dp3_steps_slow_separate,
+                            'dp3_solve_mode_fast': dp3_solve_mode_fast,
+                            'bda_maxinterval_fast': bda_maxinterval_fast,
+                            'bda_timebase_fast': bda_timebase_fast,
+                            'bda_maxinterval_slow_joint': bda_maxinterval_slow_joint,
+                            'bda_timebase_slow_joint': bda_timebase_slow_joint,
+                            'bda_maxinterval_slow_separate': bda_maxinterval_slow_separate,
+                            'bda_timebase_slow_separate': bda_timebase_slow_separate,
+                            'normalize_h5parm': normalize_h5parm,
+                            'fast_initialsolutions_h5parm': fast_initialsolutions_h5parm,
+                            'slow_initialsolutions_h5parm': slow_initialsolutions_h5parm,
+                            'max_normalization_delta': max_normalization_delta,
+                            'scale_normalization_delta': scale_normalization_delta,
+                            'phase_center_ra': self.field.ra,
+                            'phase_center_dec': self.field.dec,
+                            'llssolver': llssolver,
                             'maxiter': maxiter,
+                            'propagatesolutions': propagatesolutions,
+                            'solveralgorithm': solveralgorithm,
+                            'onebeamperpatch': onebeamperpatch,
+                            'stepsize': stepsize,
+                            'stepsigma': stepsigma,
+                            'tolerance': tolerance,
+                            'uvlambdamin': uvlambdamin,
+                            'parallelbaselines': parallelbaselines,
+                            'sagecalpredict': sagecalpredict,
+                            'fast_datause': fast_datause,
+                            'slow_datause': slow_datause,
+                            'sector_bounds_deg': sector_bounds_deg,
+                            'sector_bounds_mid_deg': sector_bounds_mid_deg,
+                            'combined_h5parms': self.combined_h5parms,
+                            'fast_antennaconstraint': fast_antennaconstraint,
+                            'slow_antennaconstraint': slow_antennaconstraint,
+                            'combined_slow_h5parm_joint': combined_slow_h5parm_joint,
+                            'combined_slow_h5parm_separate': self.combined_slow_h5parm_separate,
+                            'combined_h5parms_fast_slow_joint': combined_h5parms_fast_slow_joint,
+                            'combined_h5parms_slow_joint_separate': combined_h5parms_slow_joint_separate,
+                            'solution_combine_mode': solution_combine_mode,
+                            'solverlbfgs_dof': solverlbfgs_dof,
+                            'solverlbfgs_iter': solverlbfgs_iter,
+                            'solverlbfgs_minibatches': solverlbfgs_minibatches,
                             'max_threads': self.field.parset['cluster_specific']['max_threads']}
 
         # Set parameters specific to the selected mode
@@ -340,23 +438,33 @@ class CalibrateDD(Operation):
         """
         # Copy the solutions (h5parm files) and report the flagged fraction
         dst_dir = os.path.join(self.parset['dir_working'], 'solutions', 'calibrate_{}'.format(self.index))
-        misc.create_directory(dst_dir)
+        os.makedirs(dst_dir, exist_ok=True)
         self.field.h5parm_filename = os.path.join(dst_dir, 'field-solutions.h5')
+        self.field.fast_phases_h5parm_filename = os.path.join(dst_dir, 'field-solutions-fast-phase.h5')
+        self.field.slow_gains_h5parm_filename = os.path.join(dst_dir, 'field-solutions-slow-gain.h5')
         if os.path.exists(self.field.h5parm_filename):
             os.remove(self.field.h5parm_filename)
         if self.field.do_slowgain_solve or self.field.generate_screens:
             shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_h5parms),
                         os.path.join(dst_dir, self.field.h5parm_filename))
+            shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_slow_h5parm_separate),
+                        os.path.join(dst_dir, self.field.slow_gains_h5parm_filename))
+            shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_fast_h5parm),
+                        os.path.join(dst_dir, self.field.fast_phases_h5parm_filename))
         else:
+            # The h5parm with the full, combined solutions is also the fast-phases
+            # h5parm
             shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_fast_h5parm),
                         os.path.join(dst_dir, self.field.h5parm_filename))
+            shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_fast_h5parm),
+                        os.path.join(dst_dir, self.field.fast_phases_h5parm_filename))
         self.field.scan_h5parms()  # verify h5parm and update flags for predict/image operations
         flagged_frac = misc.get_flagged_solution_fraction(self.field.h5parm_filename)
         self.log.info('Fraction of solutions that are flagged = {0:.2f}'.format(flagged_frac))
 
         # Copy the plots (PNG files)
         dst_dir = os.path.join(self.parset['dir_working'], 'plots', 'calibrate_{}'.format(self.index))
-        misc.create_directory(dst_dir)
+        os.makedirs(dst_dir, exist_ok=True)
         plot_filenames = glob.glob(os.path.join(self.pipeline_working_dir, '*.png'))
         for plot_filename in plot_filenames:
             dst_filename = os.path.join(dst_dir, os.path.basename(plot_filename))
@@ -466,7 +574,7 @@ class CalibrateDI(Operation):
         """
         # Copy the solutions (h5parm file) and report the flagged fraction
         dst_dir = os.path.join(self.parset['dir_working'], 'solutions', 'calibrate_di_{}'.format(self.index))
-        misc.create_directory(dst_dir)
+        os.makedirs(dst_dir, exist_ok=True)
         self.field.fulljones_h5parm_filename = os.path.join(dst_dir, 'fulljones-solutions.h5')
         if os.path.exists(self.field.fulljones_h5parm_filename):
             os.remove(self.field.fulljones_h5parm_filename)
@@ -478,7 +586,7 @@ class CalibrateDI(Operation):
 
         # Copy the plots (PNG files)
         dst_dir = os.path.join(self.parset['dir_working'], 'plots', 'calibrate_di_{}'.format(self.index))
-        misc.create_directory(dst_dir)
+        os.makedirs(dst_dir, exist_ok=True)
         plot_filenames = glob.glob(os.path.join(self.pipeline_working_dir, '*.png'))
         for plot_filename in plot_filenames:
             dst_filename = os.path.join(dst_dir, os.path.basename(plot_filename))

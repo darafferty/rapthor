@@ -1,6 +1,7 @@
 """
 Definition of the Field class
 """
+import copy
 import os
 import logging
 import numpy as np
@@ -89,6 +90,10 @@ class Field(object):
         self.apply_amplitudes = False
         self.generate_screens = False
         self.apply_screens = False
+        self.apply_fulljones = False
+        self.apply_normalizations = False
+        self.fast_phases_h5parm_filename = None
+        self.slow_gains_h5parm_filename = None
 
         # Set strategy parameter defaults
         self.fast_timestep_sec = 8.0
@@ -144,7 +149,7 @@ class Field(object):
         for obs in self.full_observations:
             if self.antenna != obs.antenna:
                 raise ValueError('Antenna type for MS {0} differs from the one for MS '
-                                 '{1}'.format(self.obs.ms_filename, self.obs0.ms_filename))
+                                 '{1}'.format(obs.ms_filename, obs0.ms_filename))
 
         # Check for multiple epochs
         self.epoch_starttimes = set([obs.starttime for obs in self.full_observations])
@@ -176,21 +181,21 @@ class Field(object):
         for obs in self.full_observations:
             if self.ra != obs.ra or self.dec != obs.dec:
                 raise ValueError('Pointing for MS {0} differs from the one for MS '
-                                 '{1}'.format(self.obs.ms_filename, self.obs0.ms_filename))
+                                 '{1}'.format(obs.ms_filename, obs0.ms_filename))
 
         # Check that all observations have the same station diameter
         self.diam = obs0.diam
         for obs in self.full_observations:
             if self.diam != obs.diam:
                 raise ValueError('Station diameter for MS {0} differs from the one for MS '
-                                 '{1}'.format(self.obs.ms_filename, self.obs0.ms_filename))
+                                 '{1}'.format(obs.ms_filename, obs0.ms_filename))
 
         # Check that all observations have the same stations
         self.stations = obs0.stations
         for obs in self.full_observations:
             if self.stations != obs.stations:
                 raise ValueError('Stations in MS {0} differ from those in MS '
-                                 '{1}'.format(self.obs.ms_filename, self.obs0.ms_filename))
+                                 '{1}'.format(obs.ms_filename, obs0.ms_filename))
 
         # Find mean elevation and FOV over all observations
         el_rad_list = []
@@ -412,12 +417,12 @@ class Field(object):
 
         # Make output directories for new sky models and define filenames
         dst_dir = os.path.join(self.working_dir, 'skymodels', 'calibrate_{}'.format(index))
-        misc.create_directory(dst_dir)
+        os.makedirs(dst_dir, exist_ok=True)
         self.calibration_skymodel_file = os.path.join(dst_dir, 'calibration_skymodel.txt')
         self.calibrators_only_skymodel_file = os.path.join(dst_dir, 'calibrators_only_skymodel.txt')
         self.source_skymodel_file = os.path.join(dst_dir, 'source_skymodel.txt')
         dst_dir = os.path.join(self.working_dir, 'skymodels', 'image_{}'.format(index))
-        misc.create_directory(dst_dir)
+        os.makedirs(dst_dir, exist_ok=True)
         self.bright_source_skymodel_file = os.path.join(dst_dir, 'bright_source_skymodel.txt')
 
         # First check whether sky models already exist due to a previous run and attempt
@@ -586,6 +591,12 @@ class Field(object):
                     calibrator_names = source_skymodel.getPatchNames()
                 all_names = source_skymodel.getPatchNames()
                 keep_ind = np.array([i for i, name in enumerate(all_names) if name in calibrator_names])
+                if len(keep_ind) == 0:
+                    raise RuntimeError(
+                        f"No sources left in the sky model after applying max source "
+                        f"distance of {calibrator_max_dist_deg} degrees. There were "
+                        f"{len(all_names)} sources in the model before applying the limit."
+                    )
                 calibrator_names = all_names[keep_ind]  # to ensure order matches that of fluxes
                 all_fluxes = source_skymodel.getColValues('I', aggregate='sum', applyBeam=applyBeam_group)
                 fluxes = all_fluxes[keep_ind]
@@ -1242,6 +1253,24 @@ class Field(object):
         self.full_field_sector.make_region_file(os.path.join(self.working_dir, 'regions',
                                                 f'{self.full_field_sector.name}_region_ds9.reg'))
 
+    def define_normalize_sector(self):
+        """
+        Defines the flux-scale normalization imaging sector, used for normalization of
+        the overall flux scale
+        """
+        # Use the imaging sector with the largest area for the analysis
+        if not self.imaging_sectors:
+            self.normalize_sector = None
+        else:
+            sector_sizes = [sector.width_ra*sector.width_dec for sector in self.imaging_sectors]
+            sector = self.imaging_sectors[np.argmax(sector_sizes)]
+            sector.log, sector_log = None, sector.log  # deepcopy cannot copy the log object
+            normalize_sector = copy.deepcopy(sector)
+            sector.log = sector_log
+            normalize_sector.log = logging.getLogger('rapthor:{}'.format(sector.name))
+
+        self.normalize_sector = normalize_sector
+
     def find_intersecting_sources(self):
         """
         Finds sources that intersect with the intial sector boundaries
@@ -1583,7 +1612,8 @@ class Field(object):
             # selection by the ratio of (LOFAR / true) fluxes determined in the image
             # operation of the previous selfcal cycle. This adjustment is only done if the
             # fractional change is significant (as measured by the standard deviation in
-            # the ratio)
+            # the ratio) and if flux normalization was not done in the imaging (since, if
+            # normalization was done, no adjustment should be needed)
             target_flux = step_dict['target_flux']
             target_number = step_dict['max_directions']
             calibrator_max_dist_deg = step_dict['max_distance']
@@ -1593,7 +1623,7 @@ class Field(object):
                 fractional_change = 1 / self.lofar_to_true_flux_ratio - 1
             else:
                 fractional_change = self.lofar_to_true_flux_ratio - 1
-            if fractional_change > self.lofar_to_true_flux_std:
+            if fractional_change > self.lofar_to_true_flux_std and not self.apply_normalizations:
                 target_flux *= self.lofar_to_true_flux_ratio
                 self.log.info('Adjusting the target flux for calibrator selection '
                               'from {0:.2f} Jy to {1:.2f} Jy to account for the offset found '

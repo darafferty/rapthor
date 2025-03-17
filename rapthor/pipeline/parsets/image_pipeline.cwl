@@ -171,23 +171,38 @@ inputs:
     type: int[]
 {% endif %}
 
-{% if not apply_none %}
+  - id: prepare_data_steps
+    label: DP3 steps
+    doc: |
+      The steps to perform in the prepare data DP3 step (length = 1).
+    type: string
+
+  - id: prepare_data_applycal_steps
+    label: DP3 steps
+    doc: |
+      The steps to perform in the applycal part of the prepare data DP3 step (length = 1).
+    type: string?
+
   - id: h5parm
     label: Filename of h5parm
     doc: |
       The filename of the h5parm file with the calibration solutions (length =
       1).
-    type: File
-{% endif %}
+    type: File?
 
-{% if apply_fulljones %}
   - id: fulljones_h5parm
     label: Filename of h5parm
     doc: |
       The filename of the h5parm file with the full-Jones calibration solutions
       (length = 1).
-    type: File
-{% endif %}
+    type: File?
+
+  - id: input_normalize_h5parm
+    label: Filename of normalize h5parm
+    doc: |
+      The filename of the input h5parm file with the flux-scale normalizations
+      (length = n_sectors).
+    type: File?
 
 {% if use_facets %}
 # start use_facets
@@ -259,13 +274,14 @@ inputs:
 {% else %}
 # start not use_facets
 
-{% if not apply_none %}
+{% if preapply_dde_solutions %}
   - id: central_patch_name
     label: Name of central patch
     doc: |
       The name of the central patch of the sector (length = n_sectors).
-    type: string[]
+    type: string[]?
 {% endif %}
+
 {% endif %}
 # end use_facets / not use_facets
 
@@ -443,10 +459,10 @@ inputs:
       The filename of the FITS source catalog to use for flux-scale normalizations
       (length = n_sectors).
     type: string[]
-  - id: normalize_h5parm
+  - id: output_normalize_h5parm
     label: Filename of normalize h5parm
     doc: |
-      The filename of the h5parm file with the flux-scale normalizations
+      The filename of the output h5parm file with the flux-scale normalizations
       (length = n_sectors).
     type: string[]
 {% endif %}
@@ -594,14 +610,16 @@ steps:
       - id: mpi_nnodes
         source: mpi_nnodes
 {% endif %}
-{% if not apply_none %}
+      - id: prepare_data_steps
+        source: prepare_data_steps
+      - id: prepare_data_applycal_steps
+        source: prepare_data_applycal_steps
       - id: h5parm
         source: h5parm
-{% endif %}
-{% if apply_fulljones %}
       - id: fulljones_h5parm
         source: fulljones_h5parm
-{% endif %}
+      - id: input_normalize_h5parm
+        source: input_normalize_h5parm
 {% if use_facets %}
 # start use_facets
       - id: skymodel
@@ -624,7 +642,7 @@ steps:
         source: diagonal_visibilities
 {% else %}
 # start not use_facets
-{% if not apply_none %}
+{% if preapply_dde_solutions %}
       - id: central_patch_name
         source: central_patch_name
 {% endif %}
@@ -693,8 +711,8 @@ steps:
 {% if normalize_flux_scale %}
       - id: output_source_catalog
         source: output_source_catalog
-      - id: normalize_h5parm
-        source: normalize_h5parm
+      - id: output_normalize_h5parm
+        source: output_normalize_h5parm
 {% endif %}
     scatter: [obs_filename, prepare_filename, concat_filename, starttime, ntimes,
               image_freqstep, image_timestep, previous_mask_filename, mask_filename,
@@ -706,7 +724,7 @@ steps:
 {% if use_facets %}
               ra_mid, dec_mid, width_ra, width_dec, facet_region_file,
 {% else %}
-{% if not apply_none %}
+{% if preapply_dde_solutions %}
               central_patch_name,
 {% endif %}
 {% endif %}
@@ -715,7 +733,7 @@ steps:
 {% endif %}
 {% if normalize_flux_scale %}
               output_source_catalog,
-              normalize_h5parm,
+              output_normalize_h5parm,
 {% endif %}
               channels_out, deconvolution_channels, fit_spectral_pol, wsclean_niter,
               wsclean_nmiter, robust, min_uv_lambda, max_uv_lambda, mgain, do_multiscale,

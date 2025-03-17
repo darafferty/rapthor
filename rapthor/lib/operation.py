@@ -6,7 +6,6 @@ import logging
 import json
 from jinja2 import Environment, FileSystemLoader
 from rapthor.lib import miscellaneous as misc
-import toil.version as toil_version
 from rapthor.lib.context import Timer
 from rapthor.lib.cwl import NpEncoder
 from rapthor.lib.cwlrunner import create_cwl_runner
@@ -51,7 +50,6 @@ class Operation(object):
 
         # Extra Toil env variables and Toil version
         self.toil_env_variables = {}
-        self.toil_major_version = int(toil_version.version.split('.')[0])
 
         # Rapthor working directory
         self.rapthor_working_dir = self.parset['dir_working']
@@ -59,7 +57,7 @@ class Operation(object):
         # Workflow working dir
         self.pipeline_working_dir = os.path.join(self.rapthor_working_dir,
                                                  'pipelines', self.name)
-        misc.create_directory(self.pipeline_working_dir)
+        os.makedirs(self.pipeline_working_dir, exist_ok=True)
 
         # CWL runner settings
         self.cwl_runner = self.parset['cluster_specific']['cwl_runner']
@@ -70,7 +68,7 @@ class Operation(object):
 
         # Directory that holds the workflow logs in a convenient place
         self.log_dir = os.path.join(self.rapthor_working_dir, 'logs', self.name)
-        misc.create_directory(self.log_dir)
+        os.makedirs(self.log_dir, exist_ok=True)
 
         # Paths for scripts, etc. in the rapthor install directory
         self.rapthor_root_dir = os.path.split(DIR)[0]
@@ -120,11 +118,12 @@ class Operation(object):
         # Get the amount of memory in GB per node (SLRUM only).
         self.mem_per_node_gb = self.parset['cluster_specific']['mem_per_node_gb']
 
-        # Set the temp directory local to each node
+        # Set the temp directory local to each node (DEPRECATED)
         self.scratch_dir = self.parset['cluster_specific']['dir_local']
 
-        # Toil's coordination directory
-        self.coordination_dir = self.parset['cluster_specific']['dir_coordination']
+        # Set the local and global scratch directories
+        self.local_scratch_dir = self.parset['cluster_specific']['local_scratch_dir']
+        self.global_scratch_dir = self.parset['cluster_specific']['global_scratch_dir']
 
         # Get the container type
         if self.parset['cluster_specific']['use_container']:

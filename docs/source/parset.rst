@@ -497,6 +497,7 @@ The available options are described below under their respective sections.
         Cluster batch system (only used when Toil is the CWL runner; default =
         ``single_machine``). Use ``single_machine`` when running on a single machine and
         ``slurm`` to use multiple nodes of a Slurm-based cluster.
+
         .. note::
 
             When using the ``slurm`` batch system, additional Slurm arguments can be
@@ -551,6 +552,26 @@ The available options are described below under their respective sections.
             - when :term:`use_mpi` = ``True`` under the :ref:`parset_imaging_options`
               section and ``dir_local`` is not on a shared filesystem.
 
+        .. attention::
+
+            This parameter is deprecated. Use :term:`local_scratch_dir` instead.
+
+    local_scratch_dir
+        Full path to a local disk on the nodes for IO-intensive processing (default =
+        ``/tmp``). When :term:`batch_system` = ``slurm``, the path must exist on all the
+        compute nodes, but not necessarily on the head node.
+        This parameter is useful if you have a fast local disk (e.g., an SSD)
+        that is not the one used for :term:`dir_working`. If this parameter is not set,
+        IO-intensive processing (e.g., WSClean) will use a default path in
+        :term:`dir_working` instead.
+
+    global_scratch_dir
+        Full path to a directory on a shared disk that is readable and writable by all
+        the compute nodes and the head node. This directory will be used to store the
+        intermediate outputs that need to be shared between the different steps in the
+        workflow. If this parameter is not set, Rapthor will create a temporary
+        directory in :term:`dir_working`.
+
     use_container
         Run the workflows inside a container (default = ``False``)? If ``True``, the CWL
         workflow for each operation (such as calibrate or image) will be run inside a
@@ -575,18 +596,6 @@ The available options are described below under their respective sections.
         run the risk of overloading your machine when too many jobs are run in parallel.
         For debugging purposes CWLTool outshines Toil, because its logs are easier to
         understand.
-
-    dir_coordination
-        Set Toil's coordination directory (only used when Toil is the CWL runner; default
-        = selected automatically by Toil). In most cases, it should not be necessary to
-        set this parameter. However, if errors relating to Toil's ``jobStateFile`` are
-        encountered, they may be fixed by setting the coordination directory explicitly.
-
-        .. note::
-
-            This directory must be on a 100% POSIX-compatible file system, because Toil
-            heavily depends on POSIX file locking to work reliably. For many shared file
-            systems, this criterion is not met.
 
     debug_workflow
         Debug workflow related issues. Enabling this will require significantly more disk

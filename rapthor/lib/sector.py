@@ -42,8 +42,7 @@ class Sector(object):
             ra = Angle(ra).to('deg').value
         if type(dec) is str:
             dec = Angle(dec).to('deg').value
-        self.ra = misc.normalize_ra(ra)
-        self.dec = misc.normalize_dec(dec)
+        self.ra, self.dec = misc.normalize_ra_dec(ra, dec)
         self.width_ra = width_ra
         self.width_dec = width_dec
         self.field = field
@@ -64,6 +63,7 @@ class Sector(object):
         self.diagnostics = []  # list to hold dicts of image diagnostics
         self.calibration_skymodel = None  # set by Field.update_skymodel()
         self.max_nmiter = None  # set by the strategy
+        self.normalize_h5parm = None  # set by the ImageNormalize operation
 
         # Make copies of the observation objects, as each sector may have its own
         # observation-specific settings
@@ -290,7 +290,7 @@ class Sector(object):
         # First check whether sky model already exists due to a previous run and attempt
         # to load it if so
         dst_dir = os.path.join(self.field.working_dir, 'skymodels', 'predict_{}'.format(index))
-        misc.create_directory(dst_dir)
+        os.makedirs(dst_dir, exist_ok=True)
         self.predict_skymodel_file = os.path.join(dst_dir, '{}_predict_skymodel.txt'.format(self.name))
         if os.path.exists(self.predict_skymodel_file):
             skymodel = lsmtool.load(str(self.predict_skymodel_file))
@@ -535,7 +535,8 @@ class Sector(object):
         Decs = vertices[1]
         distances = []
         for ra, dec in zip(RAs, Decs):
-            coord = SkyCoord(misc.normalize_ra(ra), misc.normalize_dec(dec), unit=(u.degree, u.degree), frame='fk5')
+            ra_norm, dec_norm = misc.normalize_ra_dec(ra, dec)
+            coord = SkyCoord(ra_norm, dec_norm, unit=(u.degree, u.degree), frame='fk5')
             distances.append(obs_coord.separation(coord).value)
 
         # Also calculate the distance to the sector center

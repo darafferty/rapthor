@@ -1,7 +1,5 @@
 astropy
 bdsf
-importlib-metadata; python_version<'3.8'
-importlib-resources; python_version<'3.9'
 jinja2
 losoto>=2.4.3
 lsmtool>=1.6
@@ -15,4 +13,4 @@ requests
 Rtree
 scipy
 shapely
-toil[cwl]>=5.10
+toil[cwl]>=8.0

@@ -90,6 +90,19 @@ class TestParset(unittest.TestCase):
                 ],
             )
 
+    def test_deprecated_option(self):
+        section = "[cluster]"
+        option = "dir_local"
+        with open(self.parset.name, "a") as f:
+            f.write(f"{section}\n")
+            f.write(f"{option} = some value")
+        with self.assertLogs(logger="rapthor:parset", level="WARN") as cm:
+            parset_read(self.parset.name)
+            self.assertIn(
+                f"WARNING:rapthor:parset:Option '{option}' in section {section} is deprecated",
+                cm.output[0],
+            )
+
     def test_fraction_out_of_range(self):
         option = "selfcal_data_fraction"
         value = 1.1
