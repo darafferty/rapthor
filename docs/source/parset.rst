@@ -583,7 +583,7 @@ The available options are described below under their respective sections.
         workflow. If this parameter is not set and :term:`batch_system` = ``slurm``,
         then Rapthor will create a temporary directory in :term:`dir_working`.
 
-        When :term:`cwlrunner` = ``toil``, it is recommended to set this parameter, so
+        When :term:`cwl_runner` = ``toil``, it is recommended to set this parameter, so
         that Rapthor can clean up any leftover temporary files and directories that
         Toil left behind.
 
