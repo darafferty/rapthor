@@ -103,25 +103,28 @@ class Field:
     def get_calibration_radius(self):
         return 5.0
 
+@pytest.fixture
+def dir_postfix():
+    return f"rapthor.{os.getpid()}"
 
 @pytest.fixture(params=("single_machine", "slurm"))
 def batch_system(request):
     return request.param
 
 
-@pytest.fixture(params=(None, "/dir/local"))
-def dir_local(request):
-    return request.param
+@pytest.fixture(params=(None, "dir/local"))
+def dir_local(tmp_path, request):
+    return str(tmp_path / request.param) if request.param else None
 
 
-@pytest.fixture(params=(None, "/global/scratch"))
-def global_scratch_dir(request):
-    return request.param
+@pytest.fixture(params=(None, "global/scratch"))
+def global_scratch_dir(tmp_path, request):
+    return str(tmp_path / request.param) if request.param else None
 
 
-@pytest.fixture(params=(None, "/local/scratch"))
-def local_scratch_dir(request):
-    return request.param
+@pytest.fixture(params=(None, "local/scratch"))
+def local_scratch_dir(tmp_path, request):
+    return str(tmp_path / request.param) if request.param else None
 
 
 @pytest.fixture(params=(False, True))
@@ -140,7 +143,7 @@ def parset(
     use_mpi,
 ):
     """
-    Fixture that generates a default parset, with some settings adjusted
+    Fixture that generates a default parset, with some settings adjusted.
     """
     parset = Parset().as_parset_dict()
     parset["dir_working"] = str(tmp_path)
@@ -207,8 +210,8 @@ class TestCWLToolRunner:
         runner,
     ):
         """
-        Test if command-line option `--tmp-outdir-prefix` is present when expected,
-        and if the value is correct.
+        Test if command-line option `--tmp-outdir-prefix` is present when
+        expected, and if the value is correct.
         """
         try:
             prefix = runner.args[runner.args.index("--tmp-outdir-prefix") + 1]
@@ -225,54 +228,72 @@ class TestCWLToolRunner:
 class TestToilRunner:
     def test_tmpdir_prefix(
         tmp_path,
+        batch_system,
         dir_local,
         global_scratch_dir,
         local_scratch_dir,
+        dir_postfix,
         use_mpi,
         parset,
         runner,
     ):
         """
-        Test if command-line option `--tmpdir-prefix` is present when expected,
-        and if the value is correct.
+        Test if command-line option `--tmpdir-prefix` is present when
+        expected, and if the value is correct. Note that when running on
+        a single machine, an extra sub-directory is created, so we need to
+        check for this in the tests.
         """
         try:
-            prefix = runner.args[runner.args.index("--tmpdir-prefix") + 1]
+            path = runner.args[runner.args.index("--tmpdir-prefix") + 1]
         except ValueError:
             pass
         else:
+            prefix = os.path.dirname(path)
+            # When running on single machine, prefix contains an extra subdirectory
+            if batch_system == "single_machine":
+                prefix, postfix = os.path.split(prefix)
             if use_mpi:
+                # MPI requires temporary files to be globally available
                 if global_scratch_dir:
-                    assert os.path.dirname(prefix) == global_scratch_dir
+                    assert prefix == global_scratch_dir
+                    # Check if subdirectory's name is as expected 
+                    if batch_system == "single_machine":
+                        assert postfix == dir_postfix
                 else:
                     assert prefix.startswith(parset["dir_working"])
             else:
                 assert local_scratch_dir or dir_local
                 if local_scratch_dir:
-                    assert os.path.dirname(prefix) == local_scratch_dir
+                    assert prefix == local_scratch_dir
                 elif dir_local:
-                    assert os.path.dirname(prefix) == dir_local
+                    assert prefix == dir_local
+                if batch_system == "single_machine":
+                    assert postfix == dir_postfix
 
     def test_tmp_outdir_prefix(
         tmp_path,
         batch_system,
         global_scratch_dir,
+        dir_postfix,
         parset,
         runner,
     ):
         """
-        Test if command-line option `--tmp-outdir-prefix` is present when expected,
-        and if the value is correct.
+        Test if command-line option `--tmp-outdir-prefix` is present when
+        expected, and if the value is correct.
         """
         try:
-            prefix = runner.args[runner.args.index("--tmp-outdir-prefix") + 1]
+            path = runner.args[runner.args.index("--tmp-outdir-prefix") + 1]
         except ValueError:
             pass
         else:
+            prefix, postfix = os.path.split(os.path.dirname(path))
             if global_scratch_dir:
-                assert os.path.dirname(prefix) == global_scratch_dir
+                assert prefix == global_scratch_dir
+                assert postfix == dir_postfix
             elif batch_system == "slurm":
                 assert prefix.startswith(parset["dir_working"])
+                assert postfix == "tmp-out"
             else:
                 assert prefix is None
 
@@ -280,6 +301,7 @@ class TestToilRunner:
         tmp_path,
         batch_system,
         global_scratch_dir,
+        dir_postfix,
         parset,
         runner,
     ):
@@ -288,11 +310,14 @@ class TestToilRunner:
         and if the value is correct.
         """
         try:
-            workdir = runner.args[runner.args.index("--workDir") + 1]
+            path = runner.args[runner.args.index("--workDir") + 1]
         except ValueError:
             assert batch_system != "slurm"
         else:
+            prefix, postfix = os.path.split(os.path.dirname(path))
             if global_scratch_dir:
-                assert os.path.dirname(workdir) == global_scratch_dir
+                assert prefix == global_scratch_dir
+                assert postfix == dir_postfix
             else:
-                assert workdir.startswith(parset["dir_working"])
+                assert prefix.startswith(parset["dir_working"])
+                assert postfix == "tmp-out"

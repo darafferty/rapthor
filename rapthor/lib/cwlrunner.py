@@ -215,16 +215,37 @@ class ToilRunner(CWLRunner):
         super().__init__(operation)
         self.command = "toil-cwl-runner"
 
+    def _get_tmpdir_prefix(self) -> Union[str, None]:
+        """
+        Return the prefix to be passed as value to the command-line option
+        `--tmpdir-prefix` to the CWL runner or `None`.  When running on a
+        single machine, add an extra subdirectory `rapthor.<pid>` to the
+        prefix, where `<pid>` is the process ID of the current process. That
+        way we can better determine which files/directories need to be
+        cleaned up in the `teardown()` function.
+        """
+        prefix = super()._get_tmpdir_prefix()
+        if prefix and self.operation.batch_system == "single_machine":
+            dirname, basename = os.path.split(prefix)
+            prefix = os.path.join(dirname, f"rapthor.{os.getpid()}", basename)
+        return prefix
+
     def _get_tmp_outdir_prefix(self) -> Union[str, None]:
         """
         Return the prefix to be passed as value to the command-line option
-        `--tmp-outdir-prefix` to the CWL runner or `None`. When using Slurm,
-        the temporary output directory must be on a shared file system. Ensure
-        this is the case by using a temporary directory inside the pipeline's
-        working directory as fall-back.
+        `--tmp-outdir-prefix` to the CWL runner or `None`. Add an extra
+        subdirectory `rapthor.<pid>` to the prefix, where `<pid>` is the
+        process ID of the current process. That way we can better determine
+        which files/directories need to be cleaned up in the `teardown()`
+        function. When using Slurm, the temporary output directory must be
+        on a shared file system. Ensure this is the case by using a temporary
+        directory inside the pipeline's working directory as fall-back.
         """
         prefix = super()._get_tmp_outdir_prefix()
-        if not prefix and self.operation.batch_system == "slurm":
+        if prefix:
+            dirname, basename = os.path.split(prefix)
+            prefix = os.path.join(dirname, f"rapthor.{os.getpid()}", basename)
+        elif self.operation.batch_system == "slurm":
             prefix = os.path.join(
                 self.operation.pipeline_working_dir, "tmp-out", self.command + "."
             )
@@ -232,21 +253,18 @@ class ToilRunner(CWLRunner):
 
     def _get_workdir(self) -> Union[str, None]:
         """
-        Return the working directory for Toil, if using Slurm, else return
-        `None`.  When using Slurm the working directory needs to be on a
-        shared file system. Use `global_scratch_dir`, if defined in the section
-        `[cluster]` of the parset file, else use a temporary directory inside
-        the pipeline working directory.
+        If using Slurm, return the working directory for Toil, else return
+        `None`.
         """
         if self.operation.batch_system == "slurm":
-            return os.path.join(
-                self.operation.global_scratch_dir
-                if self.operation.global_scratch_dir
-                else os.path.join(self.operation.pipeline_working_dir, "workdir"),
+            prefix = os.path.join(
+                os.path.dirname(self._get_tmp_outdir_prefix()),
                 ""  # adds a trailing directory separator, required by Toil
             )
+            return prefix
         else:
             return None
+
 
     def _add_slurm_options(self) -> None:
         """
@@ -308,11 +326,11 @@ class ToilRunner(CWLRunner):
         if self.operation.batch_system == 'slurm':
             self._add_slurm_options()
         if tmp_outdir_prefix := self._get_tmp_outdir_prefix():
-            # Toil requires that this directory exists
+            # Toil requires that temporary output directory exists
             os.makedirs(os.path.dirname(tmp_outdir_prefix), exist_ok=True)
             self.args.extend(['--tmp-outdir-prefix', tmp_outdir_prefix])
         if workdir := self._get_workdir():
-            # Toil requires that this directory exists
+            # Toil requires that working directory exists
             os.makedirs(workdir, exist_ok=True)
             self.args.extend(['--workDir', workdir])
         if self.operation.debug_workflow:
@@ -320,20 +338,25 @@ class ToilRunner(CWLRunner):
 
     def teardown(self) -> None:
         """
-        Clean up after the runner has run.
-        TODO: Figure out if we really need to do this. And if so, why Toil fails to do this.
+        Toil fails to properly clean up the directories it uses for temporary
+        files, at least when the option `--bypass-file-store` is used. Do the
+        clean up ourselves, unless the user requested a debug run.
         """
         if not self.operation.debug_workflow:
-            # Use the logs to find the temporary directory we ran in.
-            workerlogs = os.popen("grep 'Redirecting logging to' " + os.path.join(self.operation.log_dir, 'pipeline.log') + "  | awk '{print $NF}'").read()
-            leftover_tempdirs = []
-            for f in workerlogs.splitlines():
-                tempdir = '/'.join(f.split('/')[:-2])
-                if tempdir not in leftover_tempdirs:
-                    leftover_tempdirs.append(tempdir)
-            for t in leftover_tempdirs:
-                logger.debug('Cleaning up temporary directory {:s} of {:s}'.format(t, self.operation.name))
-                shutil.rmtree(t, ignore_errors=True)
+            paths = []
+            if prefix := self._get_tmp_outdir_prefix():
+                paths.append(os.path.dirname(prefix))
+            if self.operation.batch_system == "single_machine":
+                if prefix := self._get_tmpdir_prefix():
+                    paths.append(os.path.dirname(prefix))
+            if paths:
+                logger.debug(
+                    "Removing temporary director%s: %s",
+                    "y" if len(paths) == 1 else "ies",
+                    " ".join(paths)
+                )
+                for path in paths:
+                    shutil.rmtree(path, ignore_errors=True)
         super().teardown()
 
 
