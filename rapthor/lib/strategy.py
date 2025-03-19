@@ -39,11 +39,9 @@ def set_strategy(field):
     elif field.parset['strategy'] == 'image':
         # Standard imaging
         strategy_steps = set_image_strategy(field)
-    elif os.path.exists(field.parset['strategy']):
+    else:
         # User-defined
         strategy_steps = set_user_strategy(field)
-    else:
-        raise ValueError('Strategy "{}" not understood.'.format(field.parset['strategy']))
 
     log.info('Using "{}" processing strategy'.format(field.parset['strategy']))
 
