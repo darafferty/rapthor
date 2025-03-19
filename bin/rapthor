@@ -42,6 +42,8 @@ if __name__ == '__main__':
     else:
         logging_level = 'info'
 
+    log = logging.getLogger('rapthor')
+
     if options.r:
         # Run state modification tool
         modifystate.run(parset_file)
@@ -49,7 +51,8 @@ if __name__ == '__main__':
         try:
             # Run the processing
             process.run(parset_file, logging_level=logging_level)
-        except Exception as e:
-            log = logging.getLogger('rapthor')
-            log.exception(e)
+        except RuntimeError as excp:
+            log.critical(excp)
+        except Exception as excp:
+            log.critical(excp)
             raise
