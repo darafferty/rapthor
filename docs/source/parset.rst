@@ -320,6 +320,14 @@ The available options are described below under their respective sections.
             solution intervals are activated and a different solver is specified, the
             solver will be automatically switched to the ``directioniterative`` one.
 
+    dd_smoothness_factor
+        Maximum factor by which the smoothnessconstraint can be increased, so that
+        fainter calibrators get more smoothing (default = 3). The factors are calculated
+        in the same way as the direction-dependent interval factors, set by
+        :term:`dd_interval_factor`. A value of 1 disables the use of direction-dependent
+        smoothness factors; a value greater than 1 enables direction-dependent smoothness
+        factors.
+
     solverlbfgs_dof
         Degrees of freedom for the LBFGS solver (only used when :term:`solveralgorithm` =
         ``lbfgs``; default = 200.0).

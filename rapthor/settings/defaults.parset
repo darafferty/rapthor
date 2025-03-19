@@ -91,9 +91,10 @@ use_included_skymodels = False
 
 # Maximum factor by which the direction-dependent solution intervals can be
 # increased, so that fainter calibrators get longer intervals (in the fast and
-# slow solves only; default = 3). Note: currently, direction-dependent solution
-# intervals cannot be used in conjunction with baseline-dependent averaging
+# slow solves only; default = 3). The maximum factor by which the
+# smoothnessconstraint is increased (default = 3) can be set in a similar way
 dd_interval_factor = 3
+dd_smoothness_factor = 3
 
 # General solver parameters
 llssolver = qr
