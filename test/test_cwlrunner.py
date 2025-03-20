@@ -166,7 +166,8 @@ def runner(parset):
     operation.setup()
     runner = create_cwl_runner(parset["cluster_specific"]["cwl_runner"], operation)
     runner.setup()
-    return runner
+    yield runner
+    runner.teardown()
 
 
 @pytest.mark.parametrize("cwl_runner", ("cwltool",))
