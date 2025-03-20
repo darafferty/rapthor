@@ -308,12 +308,16 @@ class ToilRunner(CWLRunner):
             self.args.extend(['--restart'])
         if self.operation.batch_system == 'slurm':
             self._add_slurm_options()
+        elif self.operation.batch_system == "single_machine":
+            if tmpdir_prefix := self._get_tmpdir_prefix():
+                # Toil requires that temporary directory exists
+                os.makedirs(os.path.dirname(tmpdir_prefix), exist_ok=True)
         if tmp_outdir_prefix := self._get_tmp_outdir_prefix():
-            # Toil requires that this directory exists
+            # Toil requires that temporary output directory exists
             os.makedirs(os.path.dirname(tmp_outdir_prefix), exist_ok=True)
             self.args.extend(['--tmp-outdir-prefix', tmp_outdir_prefix])
         if workdir := self._get_workdir():
-            # Toil requires that this directory exists
+            # Toil requires that working directory exists
             os.makedirs(workdir, exist_ok=True)
             self.args.extend(['--workDir', workdir])
         if self.operation.debug_workflow:
@@ -334,21 +338,23 @@ class ToilRunner(CWLRunner):
         """
         if not self.operation.debug_workflow:
             # Remove directories used for storing intermediate job results
-            paths = glob.glob(self._get_tmp_outdir_prefix() + "*")
-            logger.debug(
-                "Removing temporary output directories: %s", " ".join(paths)
-            )
-            for path in paths:
-                shutil.rmtree(path) #, ignore_errors=True)
-
-            if self.operation.batch_system == "single_machine":
-                # Remove directories used for storing temporary data by single jobs
-                paths = glob.glob(self._get_tmpdir_prefix() + "*")
+            if prefix := self._get_tmp_outdir_prefix():
+                paths = glob.glob(f"{prefix}*")
                 logger.debug(
-                    "Removing temporary directories: %s", " ".join(paths)
+                    "Removing temporary output directories: %s", " ".join(paths)
                 )
                 for path in paths:
                     shutil.rmtree(path) #, ignore_errors=True)
+
+            if self.operation.batch_system == "single_machine":
+                # Remove directories used for storing temporary data by single jobs
+                if prefix := self._get_tmpdir_prefix():
+                    paths = glob.glob(f"{prefix}*")
+                    logger.debug(
+                        "Removing temporary directories: %s", " ".join(paths)
+                    )
+                    for path in paths:
+                        shutil.rmtree(path) #, ignore_errors=True)
         super().teardown()
 
 
