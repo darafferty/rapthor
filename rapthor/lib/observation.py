@@ -409,9 +409,9 @@ class Observation(object):
             smoothness_dd_factors = target_flux / np.array(calibrator_fluxes)
             smoothness_dd_factors /= max(smoothness_dd_factors)
             smoothness_dd_factors[smoothness_dd_factors < 1 / smoothness_max_factor] = 1 / smoothness_max_factor
-            self.parameters[f'smoothness_dd_factors'] = smoothness_dd_factors
+            self.parameters['smoothness_dd_factors'] = [smoothness_dd_factors] * nchunks
         else:
-            self.parameters[f'smoothness_dd_factors'] = [[1] * len(calibrator_fluxes)] * nchunks
+            self.parameters['smoothness_dd_factors'] = [[1] * len(calibrator_fluxes)] * nchunks
 
         # Set the smoothnessreffrequency for the fast solves, if not set by the user
         fast_smoothnessreffrequency = parset['calibration_specific']['fast_smoothnessreffrequency']

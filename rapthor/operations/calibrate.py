@@ -1,13 +1,14 @@
 """
 Module that holds the Calibrate classes
 """
-import os
-import logging
-import shutil
 import glob
+import logging
+import numpy as np
+import os
 from rapthor.lib.operation import Operation
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.cwl import CWLFile, CWLDir
+import shutil
 
 log = logging.getLogger('rapthor:calibrate')
 
@@ -123,7 +124,7 @@ class CalibrateDD(Operation):
 
         # Set the constraints used in the calibrations
         smoothness_dd_factors = self.field.get_obs_parameters('smoothness_dd_factors')
-        smoothness_max_factor = 1 / min(smoothness_dd_factors)
+        smoothness_max_factor = 1 / np.min(smoothness_dd_factors)
         fast_smoothnessconstraint = self.field.fast_smoothnessconstraint * smoothness_max_factor
         fast_smoothnessreffrequency = self.field.get_obs_parameters('fast_smoothnessreffrequency')
         fast_smoothnessrefdistance = self.field.fast_smoothnessrefdistance
