@@ -567,7 +567,7 @@ The available options are described below under their respective sections.
 
         When :term:`cwl_runner` = ``toil`` and :term:`batch_system` = ``single_machine``,
         it is recommended to set this parameter, so that Rapthor can clean up any
-        leftover temporary files and directories that Toil left behind.
+        temporary files and directories that Toil left behind.
 
         .. warning::
 
@@ -584,8 +584,8 @@ The available options are described below under their respective sections.
         then Rapthor will create a temporary directory in :term:`dir_working`.
 
         When :term:`cwl_runner` = ``toil``, it is recommended to set this parameter, so
-        that Rapthor can clean up any leftover temporary files and directories that
-        Toil left behind.
+        that Rapthor can clean up any temporary files and directories that Toil left
+        behind.
 
         .. warning::
 
