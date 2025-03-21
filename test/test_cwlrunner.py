@@ -190,17 +190,20 @@ class TestCWLToolRunner:
         except ValueError:
             pass
         else:
+            scratch_dir = os.path.dirname(prefix)
             if use_mpi:
                 if global_scratch_dir:
-                    assert os.path.dirname(prefix) == global_scratch_dir
+                    assert scratch_dir == global_scratch_dir
                 else:
-                    assert prefix.startswith(parset["dir_working"])
+                    assert scratch_dir.startswith(parset["dir_working"])
             else:
                 assert local_scratch_dir or dir_local
                 if local_scratch_dir:
-                    assert os.path.dirname(prefix) == local_scratch_dir
+                    assert scratch_dir == local_scratch_dir
                 elif dir_local:
-                    assert os.path.dirname(prefix) == dir_local
+                    assert scratch_dir == dir_local
+                else:
+                    assert False
 
     def test_tmp_outdir_prefix(
         tmp_path,
@@ -218,8 +221,6 @@ class TestCWLToolRunner:
         else:
             if global_scratch_dir:
                 assert os.path.dirname(prefix) == global_scratch_dir
-            else:
-                assert prefix is None
 
 
 @pytest.mark.parametrize("cwl_runner", ("toil",))
@@ -227,6 +228,7 @@ class TestToilRunner:
     def test_tmpdir_prefix(
         tmp_path,
         dir_local,
+        batch_system,
         global_scratch_dir,
         local_scratch_dir,
         use_mpi,
@@ -242,17 +244,22 @@ class TestToilRunner:
         except ValueError:
             pass
         else:
+            scratch_dir = os.path.dirname(prefix)
             if use_mpi:
                 if global_scratch_dir:
-                    assert os.path.dirname(prefix) == global_scratch_dir
+                    assert scratch_dir == global_scratch_dir
                 else:
-                    assert prefix.startswith(parset["dir_working"])
+                    assert scratch_dir.startswith(parset["dir_working"])
             else:
                 assert local_scratch_dir or dir_local
                 if local_scratch_dir:
-                    assert os.path.dirname(prefix) == local_scratch_dir
+                    assert scratch_dir == local_scratch_dir
                 elif dir_local:
-                    assert os.path.dirname(prefix) == dir_local
+                    assert scratch_dir == dir_local
+                else:
+                    assert False
+            if batch_system == "single_machine":
+                assert os.path.isdir(scratch_dir)
 
     def test_tmp_outdir_prefix(
         tmp_path,
@@ -270,12 +277,14 @@ class TestToilRunner:
         except ValueError:
             pass
         else:
+            scratch_dir = os.path.dirname(prefix)
             if global_scratch_dir:
-                assert os.path.dirname(prefix) == global_scratch_dir
+                assert scratch_dir == global_scratch_dir
             elif batch_system == "slurm":
-                assert prefix.startswith(parset["dir_working"])
+                assert scratch_dir.startswith(parset["dir_working"])
             else:
-                assert prefix is None
+                assert False
+            assert os.path.isdir(scratch_dir)
 
     def test_workdir(
         tmp_path,
@@ -297,3 +306,4 @@ class TestToilRunner:
                 assert os.path.dirname(workdir) == global_scratch_dir
             else:
                 assert workdir.startswith(parset["dir_working"])
+            assert os.path.isdir(workdir)
