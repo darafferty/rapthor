@@ -222,6 +222,7 @@ class TestCWLToolRunner:
             else:
                 assert False
 
+
 @pytest.mark.parametrize("cwl_runner", ("toil",))
 class TestToilRunner:
     def test_tmpdir_prefix(
