@@ -202,8 +202,6 @@ class TestCWLToolRunner:
                     assert scratch_dir == local_scratch_dir
                 elif dir_local:
                     assert scratch_dir == dir_local
-                else:
-                    assert False
 
     def test_tmp_outdir_prefix(
         tmp_path,
