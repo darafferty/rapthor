@@ -221,7 +221,8 @@ class TestCWLToolRunner:
         else:
             if global_scratch_dir:
                 assert os.path.dirname(prefix) == global_scratch_dir
-
+            else:
+                assert False
 
 @pytest.mark.parametrize("cwl_runner", ("toil",))
 class TestToilRunner:
