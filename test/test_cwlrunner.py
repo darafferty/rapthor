@@ -256,8 +256,6 @@ class TestToilRunner:
                     assert scratch_dir == local_scratch_dir
                 elif dir_local:
                     assert scratch_dir == dir_local
-                else:
-                    assert False
             if batch_system == "single_machine":
                 assert os.path.isdir(scratch_dir)
 
