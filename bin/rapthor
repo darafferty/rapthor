@@ -52,4 +52,4 @@ if __name__ == '__main__':
         except Exception as e:
             log = logging.getLogger('rapthor')
             log.exception(e)
-            raise
+            sys.exit(1)
