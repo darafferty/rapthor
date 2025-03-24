@@ -344,7 +344,7 @@ class ToilRunner(CWLRunner):
                     "Removing temporary output directories: %s", " ".join(paths)
                 )
                 for path in paths:
-                    shutil.rmtree(path) #, ignore_errors=True)
+                    shutil.rmtree(path)
 
             if self.operation.batch_system == "single_machine":
                 # Remove directories used for storing temporary data by single jobs
@@ -354,7 +354,7 @@ class ToilRunner(CWLRunner):
                         "Removing temporary directories: %s", " ".join(paths)
                     )
                     for path in paths:
-                        shutil.rmtree(path) #, ignore_errors=True)
+                        shutil.rmtree(path)
         super().teardown()
 
 
