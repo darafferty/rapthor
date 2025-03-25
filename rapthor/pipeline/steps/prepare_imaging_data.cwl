@@ -17,6 +17,9 @@ arguments:
   - msout.overwrite=True
   - shift.type=phaseshifter
   - avg.type=squash
+  - bdaavg.type=bdaaverager
+  - bdaavg.minchannels=1
+  - bdaavg.frequencybase=0.0
   - applycal.type=applycal
   - applycal.correction=phase000
   - applycal.slowgain.correction=amplitude000
@@ -39,6 +42,7 @@ inputs:
     inputBinding:
       prefix: msin=
       separate: False
+
   - id: msout
     label: Filename of output MS
     doc: |
@@ -47,6 +51,7 @@ inputs:
     inputBinding:
       prefix: msout=
       separate: False
+
   - id: starttime
     label: Start time
     doc: |
@@ -55,6 +60,7 @@ inputs:
     inputBinding:
       prefix: msin.starttime=
       separate: False
+
   - id: ntimes
     label: Number of times
     doc: |
@@ -63,6 +69,7 @@ inputs:
     inputBinding:
       prefix: msin.ntimes=
       separate: False
+
   - id: phasecenter
     label: Phase center
     doc: |
@@ -72,6 +79,7 @@ inputs:
       prefix: shift.phasecenter=
       separate: False
       shellQuote: False
+
   - id: freqstep
     label: Averaging interval in frequency
     doc: |
@@ -80,6 +88,7 @@ inputs:
     inputBinding:
       prefix: avg.freqstep=
       separate: False
+
   - id: timestep
     label: Averaging interval in time
     doc: |
@@ -88,6 +97,25 @@ inputs:
     inputBinding:
       prefix: avg.timestep=
       separate: False
+
+  - id: timebase
+    label: BDA timebase
+    doc: |
+      The baseline length (in meters) below which BDA time averaging is done.
+    type: float?
+    inputBinding:
+      prefix: bdaavg.timebase=
+      separate: False
+
+  - id: maxinterval
+    label: BDA maxinterval
+    doc: |
+      The maximum interval duration (in time slots) over which BDA time averaging is done.
+    type: int?
+    inputBinding:
+      prefix: bdaavg.maxinterval=
+      separate: False
+
   - id: beamdir
     label: Direction in which to apply beam
     doc: |
@@ -97,6 +125,7 @@ inputs:
       prefix: applybeam.direction=
       separate: False
       shellQuote: False
+
   - id: h5parm
     label: Filename of h5parm
     doc: |
@@ -105,6 +134,7 @@ inputs:
     inputBinding:
       prefix: applycal.parmdb=
       separate: False
+
   - id: fulljones_h5parm
     label: Filename of h5parm
     doc: |
@@ -113,6 +143,7 @@ inputs:
     inputBinding:
       prefix: applycal.fulljones.parmdb=
       separate: False
+
   - id: normalize_h5parm
     label: Filename of h5parm
     doc: |
@@ -121,6 +152,7 @@ inputs:
     inputBinding:
       prefix: applycal.normalization.parmdb=
       separate: False
+
   - id: central_patch_name
     label: Name of central patch
     doc: |
@@ -130,6 +162,7 @@ inputs:
       valueFrom: $('['+self+']')
       prefix: applycal.direction=
       separate: False
+
   - id: numthreads
     label: Number of threads
     doc: |
@@ -138,6 +171,7 @@ inputs:
     inputBinding:
       prefix: numthreads=
       separate: False
+
   - id: steps
     label: List of steps
     doc: |
@@ -147,6 +181,7 @@ inputs:
     inputBinding:
       prefix: steps=
       separate: False
+
   - id: applycal_steps
     label: List of applycal steps
     doc: |

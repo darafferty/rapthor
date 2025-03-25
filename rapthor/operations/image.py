@@ -123,6 +123,8 @@ class Image(Operation):
         ntimes = []
         image_freqstep = []
         image_timestep = []
+        image_maxinterval = []
+        image_timebase = []
         phasecenter = []
         image_root = []
         central_patch_name = []
@@ -157,6 +159,8 @@ class Image(Operation):
             mask_filename.append(image_root[-1] + '_mask.fits')
             image_freqstep.append(sector.get_obs_parameters('image_freqstep'))
             image_timestep.append(sector.get_obs_parameters('image_timestep'))
+            image_maxinterval.append(sector.get_obs_parameters('image_maxinterval'))
+            image_timebase.append(sector.get_obs_parameters('image_timebase'))
             sector_starttime = []
             sector_ntimes = []
             for obs in self.field.observations:
@@ -184,7 +188,8 @@ class Image(Operation):
                 join_polarizations = True
 
         # Set the DP3 steps and applycal steps depending on whether solutions
-        # should be preapplied before imaging
+        # should be preapplied before imaging and on whether baseline-dependent
+        # averaging is activated (and supported) or not
         fulljones_h5parm = None
         input_normalize_h5parm = None
         prepare_data_applycal_steps = None
@@ -211,8 +216,11 @@ class Image(Operation):
             if self.apply_normalizations:
                 prepare_data_applycal_steps.append('normalization')
                 input_normalize_h5parm = CWLFile(self.field.normalize_h5parm).to_json()
-            if prepare_data_applycal_steps:
-                prepare_data_applycal_steps = f"[{','.join(prepare_data_applycal_steps)}]"
+        all_regular = all([obs.channels_are_regular for obs in self.field.observations])
+        if all_regular:
+            prepare_data_applycal_steps.append('bdaavg')
+        if prepare_data_applycal_steps:
+            prepare_data_applycal_steps = f"[{','.join(prepare_data_applycal_steps)}]"
 
         # Set the h5parm to use to apply the DDE solutions as needed
         h5parm = None
@@ -232,6 +240,8 @@ class Image(Operation):
                             'ntimes': ntimes,
                             'image_freqstep': image_freqstep,
                             'image_timestep': image_timestep,
+                            'image_maxinterval': image_maxinterval,
+                            'image_timebase': image_timebase,
                             'phasecenter': phasecenter,
                             'image_name': image_root,
                             'pol': self.image_pol,

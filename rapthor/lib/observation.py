@@ -530,6 +530,24 @@ class Observation(object):
                                             self.parameters['image_timestep'],
                                             "s" if self.parameters['image_timestep'] > 1 else ""))
 
+        # Find BDA averaging parameters:
+        #   - maxinterval: max time interval in time slots over which to average (for
+        #     the shortest baselines). We set this to be 16 times the time step
+        #     allowed by the time smearing calculation above, as this value was
+        #     found to work well in practice
+        #   - timebase: max baseline length in m below which to average (where
+        #     avg_factor = timebase / baseline_length). We set this to be 4 times
+        #     less than the baseline that matches the target resolution to ensure
+        #     those baselines that are needed to achieve the target resolution are
+        #     not averaged
+        target_maxinterval = int(round(target_timewidth_sec * 16 / timestep_sec))  # time slots
+        target_timebase = 3e8 / self.referencefreq / (resolution_deg * np.pi / 180) / 4  # m
+        self.parameters['image_maxinterval'] = max(1, target_maxinterval)
+        self.parameters['image_timebase'] = max(1000, target_timebase)
+        self.log.debug('Using BDA averaging with maxinterval = {0} s and timebase = {1} m '
+                       'for imaging'.format(self.parameters['image_maxinterval'] * timestep_sec,
+                                            self.parameters['image_timebase']))
+
     def get_nearest_freqstep(self, freqstep):
         """
         Gets the nearest frequency step to the target one

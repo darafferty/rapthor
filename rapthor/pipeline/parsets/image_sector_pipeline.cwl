@@ -64,6 +64,20 @@ inputs:
       The averaging interval in number of timeslots (length = n_obs).
     type: int[]
 
+  - id: image_timebase
+    label: BDA timebase
+    doc: |
+      The baseline length (in meters) below which BDA time averaging is done
+      (length = n_obs).
+    type: float[]
+
+  - id: image_maxinterval
+    label: BDA maxinterval
+    doc: |
+      The maximum interval duration (in time slots) over which BDA time averaging is
+      done (length = n_obs).
+    type: int[]
+
   - id: previous_mask_filename
     label: Filename of previous mask
     doc: |
@@ -538,6 +552,10 @@ steps:
         source: image_freqstep
       - id: timestep
         source: image_timestep
+      - id: image_maxinterval
+        source: image_maxinterval
+      - id: image_timebase
+        source: image_timebase
       - id: beamdir
         source: phasecenter
       - id: numthreads
@@ -556,7 +574,7 @@ steps:
         source: prepare_data_steps
       - id: applycal_steps
         source: prepare_data_applycal_steps
-    scatter: [msin, msout, starttime, ntimes, freqstep, timestep]
+    scatter: [msin, msout, starttime, ntimes, freqstep, timestep, image_maxinterval, image_timebase]
     scatterMethod: dotproduct
     out:
       - id: msimg
