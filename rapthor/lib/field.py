@@ -174,13 +174,20 @@ class Field(object):
                         raise ValueError('Overlapping frequency coverage found for the '
                                          f'following input MS files: {ms1} and {ms2}')
 
-        # Check that all observations have the same pointing
+        # Check that all observations have the same pointing upto some tolerance level
         self.ra = obs0.ra
         self.dec = obs0.dec
+        # This value was determined based on 4 observations of the same field
+        # found to have with ~0.02 arcsec pointing difference
+        separation_tolerance_arcsec = 0.05
         for obs in self.full_observations:
-            if self.ra != obs.ra or self.dec != obs.dec:
-                raise ValueError('Pointing for MS {0} differs from the one for MS '
-                                 '{1}'.format(obs.ms_filename, obs0.ms_filename))
+            pointing_difference = misc.angular_separation((self.ra, self.dec), (obs.ra, obs.dec))
+            if pointing_difference.arcsecond >= separation_tolerance_arcsec:
+                raise ValueError('Pointing difference of {0} arcsec found between '
+                                 'msfiles {1} and {2} which exceeds the max tolerance '
+                                 'of {3} arcsec'.format(obs0.ms_filename, obs.ms_filename,
+                                                        pointing_difference.arcsecond,
+                                                        separation_tolerance_arcsec))
 
         # Check that all observations have the same station diameter
         self.diam = obs0.diam
