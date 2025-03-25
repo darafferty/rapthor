@@ -66,6 +66,8 @@ class Sector:
             "ms_prep_filename": None,
             "image_freqstep": None,
             "image_timestep": None,
+            "image_maxinterval": None,
+            "image_timebase": None,
         }
         return obs_parameters[parameter]
 
