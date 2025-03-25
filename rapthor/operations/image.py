@@ -198,11 +198,11 @@ class Image(Operation):
                                not self.apply_normalizations):
             # No solutions should be preapplied, so define steps
             # without an applycal step
-            prepare_data_steps = '[applybeam,shift,avg]'
+            prepare_data_steps = ['applybeam', 'shift', 'avg']
         else:
             # Solutions should be applied, so add an applycal step
             # and set various parameters as needed
-            prepare_data_steps = '[applybeam,shift,applycal,avg]'
+            prepare_data_steps = ['applybeam', 'shift', 'applycal', 'avg']
             prepare_data_applycal_steps = []
             if self.preapply_dde_solutions:
                 # Fast phases and slow amplitudes (if generated) should be
@@ -216,11 +216,12 @@ class Image(Operation):
             if self.apply_normalizations:
                 prepare_data_applycal_steps.append('normalization')
                 input_normalize_h5parm = CWLFile(self.field.normalize_h5parm).to_json()
+            if prepare_data_applycal_steps:
+                prepare_data_applycal_steps = f"[{','.join(prepare_data_applycal_steps)}]"
         all_regular = all([obs.channels_are_regular for obs in self.field.observations])
         if all_regular:
-            prepare_data_applycal_steps.append('bdaavg')
-        if prepare_data_applycal_steps:
-            prepare_data_applycal_steps = f"[{','.join(prepare_data_applycal_steps)}]"
+            prepare_data_steps.append('bdaavg')
+        prepare_data_steps = f"[{','.join(prepare_data_steps)}]"
 
         # Set the h5parm to use to apply the DDE solutions as needed
         h5parm = None
