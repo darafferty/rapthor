@@ -178,7 +178,7 @@ class Field(object):
         self.ra = obs0.ra
         self.dec = obs0.dec
         # This value was determined based on 4 observations of the same field
-        # found to have with ~0.02 arcsec pointing difference
+        # found to have ~0.02 arcsec pointing difference
         separation_tolerance_arcsec = 0.05
         for obs in self.full_observations:
             pointing_difference = misc.angular_separation((self.ra, self.dec), (obs.ra, obs.dec))
