@@ -185,8 +185,8 @@ class Field(object):
             if pointing_difference.arcsecond >= separation_tolerance_arcsec:
                 raise ValueError('Pointing difference of {0} arcsec found between '
                                  'msfiles {1} and {2} which exceeds the max tolerance '
-                                 'of {3} arcsec'.format(obs0.ms_filename, obs.ms_filename,
-                                                        pointing_difference.arcsecond,
+                                 'of {3} arcsec'.format(pointing_difference.arcsecond,
+                                                        obs0.ms_filename, obs.ms_filename,
                                                         separation_tolerance_arcsec))
 
         # Check that all observations have the same station diameter
