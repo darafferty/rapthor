@@ -517,8 +517,8 @@ class Observation(object):
         target_bandwidth_mhz = min(2.0, self.get_target_bandwidth(mean_freq_mhz,
                                    delta_theta_deg, resolution_deg, peak_smearing_rapthor))
         target_bandwidth_mhz = min(target_bandwidth_mhz, solve_slow_freqstep/1e6)
-        self.log.debug('Target timewidth for imaging is {} s'.format(target_timewidth_sec))
-        self.log.debug('Target bandwidth for imaging is {} MHz'.format(target_bandwidth_mhz))
+        self.log.debug('Target timewidth for imaging is {0:.1f} s'.format(target_timewidth_sec))
+        self.log.debug('Target bandwidth for imaging is {0:.1f} MHz'.format(target_bandwidth_mhz))
 
         # Find averaging steps for above target values
         image_freqstep = max(1, min(int(round(target_bandwidth_mhz * 1e6 / chan_width_hz)), nchan))
@@ -530,7 +530,7 @@ class Observation(object):
                                             self.parameters['image_timestep'],
                                             "s" if self.parameters['image_timestep'] > 1 else ""))
 
-        # Find BDA averaging parameters:
+        # Find BDA parameters:
         #   - maxinterval: max time interval in time slots over which to average (for
         #     the shortest baselines). We set this to be 16 times the time step
         #     allowed by the time smearing calculation above, as this value was
@@ -544,7 +544,7 @@ class Observation(object):
         target_timebase = 3e8 / self.referencefreq / (resolution_deg * np.pi / 180) / 4  # m
         self.parameters['image_maxinterval'] = max(1, target_maxinterval)
         self.parameters['image_timebase'] = max(1000, target_timebase)
-        self.log.debug('Using BDA averaging with maxinterval = {0} s and timebase = {1} m '
+        self.log.debug('Using BDA with maxinterval = {0:.1f} s and timebase = {1:.1f} m '
                        'for imaging'.format(self.parameters['image_maxinterval'] * timestep_sec,
                                             self.parameters['image_timebase']))
 

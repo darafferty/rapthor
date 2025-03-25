@@ -552,9 +552,9 @@ steps:
         source: image_freqstep
       - id: timestep
         source: image_timestep
-      - id: image_maxinterval
+      - id: maxinterval
         source: image_maxinterval
-      - id: image_timebase
+      - id: timebase
         source: image_timebase
       - id: beamdir
         source: phasecenter
@@ -574,7 +574,7 @@ steps:
         source: prepare_data_steps
       - id: applycal_steps
         source: prepare_data_applycal_steps
-    scatter: [msin, msout, starttime, ntimes, freqstep, timestep, image_maxinterval, image_timebase]
+    scatter: [msin, msout, starttime, ntimes, freqstep, timestep, maxinterval, timebase]
     scatterMethod: dotproduct
     out:
       - id: msimg
