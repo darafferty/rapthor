@@ -623,10 +623,6 @@ inputs:
 
 
 outputs:
-  - id: fast_phase_solutions
-    outputSource:
-      - combine_fast_phases/outh5parm
-    type: File
   - id: combined_solutions
     outputSource:
 {% if generate_screens %}
@@ -634,6 +630,10 @@ outputs:
     type: File
 {% else %}
       - adjust_h5parm_sources/adjustedh5parm
+    type: File
+  - id: fast_phase_solutions
+    outputSource:
+      - combine_fast_phases/outh5parm
     type: File
   - id: fast_phase_plots
     outputSource:

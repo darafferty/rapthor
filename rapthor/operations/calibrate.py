@@ -361,7 +361,7 @@ class CalibrateDD(Operation):
                                          'slow_datause': slow_datause,
                                          'slow_antennaconstraint': slow_antennaconstraint,
                                          'combined_slow_h5parm_joint': combined_slow_h5parm_joint,
-                                         'combined_slow_h5parm_separate': combined_slow_h5parm_separate,
+                                         'combined_slow_h5parm_separate': self.combined_slow_h5parm_separate,
                                          'combined_h5parms_fast_slow_joint': combined_h5parms_fast_slow_joint,
                                          'combined_h5parms_slow_joint_separate': combined_h5parms_slow_joint_separate})
 
