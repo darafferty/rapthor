@@ -13,7 +13,6 @@ requirements:
   ShellCommandRequirement: {}
 
 arguments:
-  - msin.datacolumn=DATA
   - msout.overwrite=True
   - shift.type=phaseshifter
   - avg.type=squash
@@ -39,6 +38,11 @@ inputs:
     inputBinding:
       prefix: msin=
       separate: False
+  - id: data_colname
+    type: string
+    inputBinding:
+      prefix: msin.datacolumn=
+      separate: false
   - id: msout
     label: Filename of output MS
     doc: |
