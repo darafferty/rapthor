@@ -27,6 +27,13 @@ inputs:
       The filenames of input MS files for which the full-Jones gain
       calibration will be done (length = n_obs * n_freq_chunks).
     type: Directory[]
+    
+  - id: data_colname
+    label: Input MS data column
+    doc: |
+      The data column to be read from the MS files (length = 1).
+    type: string
+
 
   - id: starttime_fulljones
     label: Start time of each chunk for full-Jones solve
@@ -56,7 +63,7 @@ inputs:
       gain calibration (length = n_obs * n_freq_chunks).
     type: int[]
 
-  - id: solint_fulljones_timestep
+  - id: solint_fulljones_timestep(length = 1)
     label: Full-Jones solution interval in time
     doc: |
       The solution interval in number of timeslots for the full-jones gain
@@ -205,6 +212,8 @@ steps:
     in:
       - id: msin
         source: freqchunk_filename_fulljones
+      - id: data_colname
+        source: data_colname
       - id: starttime
         source: starttime_fulljones
       - id: ntimes
