@@ -30,6 +30,12 @@ inputs:
       The filenames of input MS files for which calibration will be done (length =
       n_obs * n_time_chunks).
     type: Directory[]
+  
+  - id: data_colname
+    label: Input MS data column
+    doc: |
+      The data column to be read from the MS files (length = 1).
+    type: string
 
   - id: starttime
     label: Start time of each chunk
@@ -624,6 +630,8 @@ steps:
     in:
       - id: msin
         source: timechunk_filename
+      - id: data_colname
+        source: data_colname
       - id: starttime
         source: starttime
       - id: ntimes
@@ -754,6 +762,8 @@ steps:
     in:
       - id: msin
         source: freqchunk_filename_joint
+      - id: data_colname
+        source: data_colname
       - id: starttime
         source: slow_starttime_joint
       - id: ntimes
@@ -913,6 +923,8 @@ steps:
     in:
       - id: msin
         source: freqchunk_filename_separate
+      - id: data_colname
+        source: data_colname
       - id: starttime
         source: slow_starttime_separate
       - id: ntimes

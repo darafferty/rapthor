@@ -110,6 +110,7 @@ class PredictDD(Operation):
             normalize_h5parm = None
 
         self.input_parms = {'sector_filename': CWLDir(sector_filename).to_json(),
+                            'data_colname': self.field.data_colname,
                             'sector_starttime': sector_starttime,
                             'sector_ntimes': sector_ntimes,
                             'sector_model_filename': sector_model_filename,
@@ -138,6 +139,7 @@ class PredictDD(Operation):
         """
         Finalize this operation
         """
+        self.field.data_colname = 'DATA'
         if self.field.peel_outliers:
             # Update the observations to use the new peeled datasets and remove the
             # outlier sectors (since, once peeled, they are no longer needed)
@@ -272,6 +274,7 @@ class PredictNC(Operation):
             dp3_applycal_steps = None
 
         self.input_parms = {'sector_filename': CWLDir(sector_filename).to_json(),
+                            'data_colname': self.field.data_colname,
                             'sector_starttime': sector_starttime,
                             'sector_ntimes': sector_ntimes,
                             'sector_model_filename': sector_model_filename,
@@ -292,6 +295,7 @@ class PredictNC(Operation):
         """
         Finalize this operation
         """
+        self.field.data_colname = 'DATA'
         # Update filenames of datasets used for (calibrator-only) calibration
         for obs in self.field.non_calibrator_source_sectors[0].observations:
             # Transfer the filenames from the first sector to the field. This is required
@@ -380,6 +384,7 @@ class PredictDI(Operation):
             normalize_h5parm = None
 
         self.input_parms = {'sector_filename': CWLDir(sector_filename).to_json(),
+                            'data_colname': self.field.data_colname,
                             'sector_starttime': sector_starttime,
                             'sector_ntimes': sector_ntimes,
                             'sector_model_filename': sector_model_filename,

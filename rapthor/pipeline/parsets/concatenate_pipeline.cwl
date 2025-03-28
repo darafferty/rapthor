@@ -29,6 +29,12 @@ inputs:
       items:
         type: array
         items: Directory
+  
+  - id: data_colname
+    label: Input MS data column
+    doc: |
+      The data column to be read from the MS files for concatenation (length = 1).
+    type: string
 
   - id: output_filenames
     label: Filenames of output files
@@ -52,6 +58,8 @@ steps:
     in:
     - id: mslist
       source: input_filenames
+    - id: data_colname
+      source: data_colname
     - id: msout
       source: output_filenames
     - id: concat_property
