@@ -13,7 +13,6 @@ requirements:
   - class: InlineJavascriptRequirement
 
 arguments:
-  - msin.datacolumn=DATA
   - msout=
   - avg.type=bdaaverager
   - avg.minchannels=1
@@ -39,6 +38,15 @@ inputs:
     inputBinding:
       prefix: msin=
       separate: False
+
+  - id: data_colname
+    label: Input MS data column
+    doc: |
+      The MS data column to be read.
+    type: string
+    inputBinding:
+      prefix: msin.datacolumn=
+      separate: false
 
   - id: starttime
     label: Start time

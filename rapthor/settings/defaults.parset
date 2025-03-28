@@ -8,6 +8,7 @@ dir_working = None
 # Full path to input MS files (required). Wildcards can be used (e.g.,
 # /path/to/data/*.ms) or a list can be given
 input_ms = None
+data_colname = DATA
 
 # Generate an initial target sky model (default = True). This option is ignored
 # if input_skymodel is specified. The radius out to which the sky model will be

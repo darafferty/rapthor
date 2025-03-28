@@ -13,6 +13,7 @@ minimal parset for a basic reduction on a single machine could look like the fol
     [global]
     dir_working = /path/to/rapthor/working/dir
     input_ms = /path/to/input/dir/input.ms
+    data_colname = DATA
 
 
 The available options are described below under their respective sections.
@@ -45,6 +46,9 @@ The available options are described below under their respective sections.
             The MS files output by the `LINC
             <https://linc.readthedocs.io/>`_ pipeline can be directly used with Rapthor.
             See :doc:`preparation` for details.
+
+    data_colname
+        Data column to be read from the input MS files (default = DATA).
 
     generate_initial_skymodel
         Generate an initial target sky model from the input data (default = ``True``).

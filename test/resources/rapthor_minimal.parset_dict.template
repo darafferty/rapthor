@@ -87,6 +87,7 @@
  'input_h5parm': None,
  'input_fulljones_h5parm': None,
  'input_ms': ['${input_ms}'],
+ 'data_colname': 'DATA',
  'input_skymodel': None,
  'mss': ['${input_ms}'],
  'regroup_input_skymodel': True,

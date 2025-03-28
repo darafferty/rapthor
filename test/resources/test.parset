@@ -2,6 +2,7 @@
 strategy = /home/rafferty/full_field_strategy.py
 dir_working = .
 input_ms = resources/test.ms
+data_colname = DATA
 input_skymodel = resources/test_true_sky.txt
 apparent_skymodel = resources/test_apparent_sky.txt
 regroup_input_skymodel = True

@@ -217,6 +217,7 @@ class CalibrateDD(Operation):
         self.input_parms = {'timechunk_filename': CWLDir(timechunk_filename).to_json(),
                             'freqchunk_filename_joint': CWLDir(freqchunk_filename_joint).to_json(),
                             'freqchunk_filename_separate': CWLDir(freqchunk_filename_separate).to_json(),
+                            'data_colname': self.field.data_colname,
                             'starttime': starttime,
                             'ntimes': ntimes,
                             'slow_starttime_joint': slow_starttime_joint,
@@ -478,6 +479,7 @@ class CalibrateDI(Operation):
         solverlbfgs_minibatches = self.field.solverlbfgs_minibatches
 
         self.input_parms = {'freqchunk_filename_fulljones': CWLDir(freqchunk_filename_fulljones).to_json(),
+                            'data_colname': 'DATA',
                             'starttime_fulljones': starttime_fulljones,
                             'ntimes_fulljones': ntimes_fulljones,
                             'startchan_fulljones': startchan_fulljones,
