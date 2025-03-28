@@ -1,4 +1,4 @@
 [global]
 dir_working = ${dir_working}
 input_ms = [${input_ms}]
-data_colname='DATA'
+data_colname = DATA

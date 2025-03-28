@@ -162,10 +162,6 @@ def run_steps(field, steps, final=False):
 
         # Calibrate
         if field.do_calibrate:
-            if index > 0:
-                # Use user-provided data column for the first calibration run and DATA for the rest
-                field.data_colname = 'DATA'
-
             # Set whether screens should be generated
             field.generate_screens = True if (field.dde_mode == 'hybrid' and final) else False
 

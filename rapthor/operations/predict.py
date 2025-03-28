@@ -404,7 +404,6 @@ class PredictDI(Operation):
         """
         Finalize this operation
         """
-        self.field.data_colname = 'DATA'
         # Set the filenames of datasets used for direction-independent calibration
         for obs in self.field.predict_sectors[0].observations:
             # Transfer the filenames from the first sector to the field. This is required

@@ -475,7 +475,7 @@ class CalibrateDI(Operation):
         solverlbfgs_minibatches = self.field.solverlbfgs_minibatches
 
         self.input_parms = {'freqchunk_filename_fulljones': CWLDir(freqchunk_filename_fulljones).to_json(),
-                            'data_colname': self.field.data_colname,
+                            'data_colname': 'DATA',
                             'starttime_fulljones': starttime_fulljones,
                             'ntimes_fulljones': ntimes_fulljones,
                             'startchan_fulljones': startchan_fulljones,
