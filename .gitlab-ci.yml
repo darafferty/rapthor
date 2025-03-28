@@ -1,59 +1,189 @@
 workflow:
   rules:
-    # Don't create a pipeline if it's a commit pipeline on a branch and that branch has open merge requests
+    # Don't create a pipeline if commit is on a branch with open merge requests
     - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
       when: never
     - when: always
 
 variables:
   BUILD_DOCKER_IMAGE: "0"
+  GIT_DEPTH: 0  # do not do shallow clones, needed for `git describe --tags`
+  GIT_STRATEGY: clone  # ensure every job starts with a pristine working copy
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
 
-# This step determines the SHA1 of the Docker file used. It's stored in
-# versions.env artifact. The environment variables are available for all steps
-# depending on this step.
-versioning:
-  stage: .pre
-  image: bitnami/python
+stages:
+  - initialize
+  - versioning
+  - build
+  - install
+  - run_tests
+  - docs
+  - deploy
+  - finalize
+
+.release:
+  before_script:
+    # Make sure release branch is checked out when building a release
+    - export RELEASE=$(echo -n $CI_COMMIT_BRANCH | sed -n 's,^releases/,,p')
+    - |
+      if test -n "$RELEASE"
+      then
+        echo "Checking out branch '$CI_COMMIT_BRANCH'"
+        git checkout $CI_COMMIT_BRANCH
+      fi
+
+.versioning:
+  image: python
+  before_script:
+    - !reference [.release, before_script]
+    - pip install setuptools_scm
   script:
-    # Unshallowing ensures that 'git describe' works
-    - git fetch --unshallow
-    - ./Docker/fetch_commit_hashes.sh | tee commits.txt > versions.env
-    - echo RAPTHOR_VERSION=$(./Docker/get_scm_version.sh) >> versions.env
-    # Use hash of commits and CI/CD build files to determine tag of base image
-    - sha_files=".gitlab-ci.yml ci/ubuntu_22_04-* commits.txt"
-    - BASE_NAME=${CI_REGISTRY_IMAGE}/base >> versions.env
-    - BASE_TAG=$(shasum ${sha_files} | shasum | cut -d" " -f1)
-    - FULL_NAME=${CI_REGISTRY_IMAGE}/full
-    - FULL_TAG=$(git log -n 1 --pretty=format:%H)
-    - echo BASE_NAME=${BASE_NAME} >> versions.env
-    - echo BASE_TAG=${BASE_TAG} >> versions.env
-    - echo BASE_IMAGE=${BASE_NAME}:${BASE_TAG} >> versions.env
-    - echo FULL_NAME=${FULL_NAME} >> versions.env
-    - echo FULL_TAG=${FULL_TAG} >> versions.env
-    - echo FULL_IMAGE=${FULL_NAME}:${FULL_TAG} >> versions.env
-    - cat versions.env
+    # Determine the Rapthor version, and the docker image tag. If RELEASE is
+    # set, check if it adheres to the PEP-440 naming conventions, and if so,
+    # set the Rapthor version string.  If RELEASE is not set, then determine
+    # the Rapthor version string using `setuptools_scm`. For the docker image
+    # tag, replace all the characters in the Rapthor version string that are
+    # not allowed in a tag string with a dash.
+    - |
+      if test -n "$RELEASE"
+      then
+        RAPTHOR_VERSION=$(python -c 'import os; from packaging.version import Version; print(Version(os.getenv("RELEASE")))')
+      else
+        RAPTHOR_VERSION=$(python -m setuptools_scm)
+      fi
+    - RAPTHOR_TAG=${RAPTHOR_VERSION//[^[:alnum:]_.-]/-}
+    - echo "RAPTHOR_VERSION=$RAPTHOR_VERSION" >> versions.env
+    - echo "RAPTHOR_TAG=$RAPTHOR_TAG" >> versions.env
   artifacts:
     reports:
       dotenv: versions.env
 
-# Builds the Docker image containing the dependencies of the Rapthor pipeline.
-# This image is cached, as long as the Dockerfile isn't modified new jobs reuse
-# this image.
-build-docker-base:
+.setup_git:
+  image: bitnami/git
+  before_script:
+    # Use a token that has git push permissions. Token must be created in the
+    # GitLab GUI; a project variable must be created containing the token.
+    # See file `DEVELOPER.md` for details.
+    - !reference [.release, before_script]
+    - git config user.email $GITLAB_USER_EMAIL
+    - git config user.name $GITLAB_USER_NAME
+    - git remote set-url origin https://oauth2:$GIT_PUSH_TOKEN@$CI_SERVER_HOST/$CI_PROJECT_PATH.git
+
+.setup_docker:
   stage: build
-  needs: ["versioning"]
-  image: docker:latest
+  image: docker
   tags:
     - dind
   before_script:
+    - !reference [.release, before_script]
+    - echo "Logging in as $CI_REGISTRY_USER @ $CI_REGISTRY"
     - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
+
+.run_tests:
+  stage: run_tests
+  image: $FULL_IMAGE
+  before_script:
+    - !reference [.release, before_script]
+    - pip install tox
+
+.deploy:
+  stage: deploy
+  extends: .setup_docker
+  tags:
+    - dind
+  before_script:
+    - !reference [.setup_docker, before_script]
+    - echo "Logging in as $DH_REGISTRY_USER @ DockerHub"
+    - echo $DH_REGISTRY_PASSWORD | docker login -u $DH_REGISTRY_USER --password-stdin
+
+.docs:
+  stage: docs
+  image: $FULL_IMAGE
+
+.finalize:
+  stage: finalize
+  extends: .setup_git
+
+
+### Stage: initialize
+
+prepare_release:
+  stage: initialize
+  image: python
+  extends: .setup_git
+  rules:
+    # Run this job when current branch is a release branch
+    - if: '$CI_COMMIT_BRANCH =~ /^releases//'
+      when: always
+  artifacts:
+    # Create a marker file if release tag already exists. The presence of this
+    # file is used in the `rollback_release` job, to decide that the existing
+    # tag should not be removed.
+    paths:
+      - .tag.exists
+    untracked: true
+    when: on_failure
+  before_script:
+    - !reference [.versioning, before_script]
+    # When building a release, bail out if release tag already exists
+    - |
+      if git ls-remote --tags --exit-code origin $RELEASE > /dev/null
+      then
+        echo "*** Release '$RELEASE' already exists. Bailing out! ***"
+        touch .tag.exists
+        exit 1
+      fi
+    - !reference [.setup_git, before_script]
+  script:
+    # Use .versioning:script to get RAPTHOR_TAG
+    - !reference [.versioning, script]
+    - echo "Updating dockerPull URI to use image tag '$RAPTHOR_TAG'"
+    - CWL_FILES=$(git ls-files | grep '\.cwl$')
+    - sed -ri "/dockerPull/s,['\"]?(astronrd/rapthor).*,\1:$RAPTHOR_TAG," $CWL_FILES
+    - git add -u $CWL_FILES
+    # Only commit if there are changes
+    - |
+      if test -n "$(git status -uno --porcelain)"
+      then
+        git commit -m "Tag $RELEASE added to dockerPull URI in CWL steps (by GitLab CI)"
+      fi
+    # Tag current revision
+    - git tag -a $RELEASE -m "Git tag $RELEASE created (by GitLab CI)"
+    # Skip CI on this push
+    - git push --follow-tags -o ci.skip
+
+
+### Stage: versioning
+
+versioning:
+  stage: versioning
+  extends: .versioning
+  script:
+    - !reference [.versioning, script]
+    - ./Docker/fetch_commit_hashes.sh | tee commits.txt >> versions.env
+    # Use hash of commits and CI/CD build files to determine tag of base image
+    - SHA_FILES=".gitlab-ci.yml ci/ubuntu_22_04-* commits.txt"
+    - BASE_NAME=$CI_REGISTRY_IMAGE/base
+    - BASE_TAG=$(shasum ${SHA_FILES} | shasum | cut -d" " -f1)
+    - FULL_NAME=$CI_REGISTRY_IMAGE/full
+    - FULL_TAG=$(git log -n 1 --pretty=format:%H)
+    - echo BASE_IMAGE=${BASE_NAME}:${BASE_TAG} >> versions.env
+    - echo FULL_IMAGE=${FULL_NAME}:${FULL_TAG} >> versions.env
+    - cat versions.env
+
+
+### Stage: build
+
+build_base:
+  stage: build
+  extends: .setup_docker
   script:
     - |
       if ! docker manifest inspect $BASE_IMAGE > /dev/null || [ "$BUILD_DOCKER_IMAGE" = "1" ]
       then
         [ "$BUILD_DOCKER_IMAGE" = "1" ] && DOCKER_CACHE="--no-cache" || DOCKER_CACHE=""
-        docker build ${DOCKER_CACHE} \
+        docker build \
+          $DOCKER_CACHE \
           --build-arg AOFLAGGER_COMMIT \
           --build-arg CASACORE_COMMIT \
           --build-arg DP3_COMMIT \
@@ -68,34 +198,38 @@ build-docker-base:
         docker push $BASE_IMAGE
       fi
 
-build-docker-full:
-  stage: build
-  needs: ["versioning", "build-docker-base"]
-  image: docker:latest
-  tags:
-    - dind
-  before_script:
-    - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
+
+### Stage: install
+
+install_rapthor:
+  stage: install
+  extends: .setup_docker
   script:
-    - docker build
-        --build-arg BASE_NAME=$BASE_NAME
-        --build-arg BASE_TAG=$BASE_TAG
-        --build-arg VERSION=$RAPTHOR_VERSION
-        --file ci/ubuntu_22_04-rapthor
-        --tag $FULL_IMAGE
+    - |
+      docker build \
+        --build-arg BASE_IMAGE \
+        --build-arg RAPTHOR_VERSION \
+        --file ci/ubuntu_22_04-rapthor \
+        --tag $FULL_IMAGE \
         .
     - docker push $FULL_IMAGE
 
-# Builds the documentation
-build-doc:
-  stage: build
-  needs: ["versioning", "build-docker-base"]
-  image: $BASE_IMAGE
+### Stage: run_tests
+
+run_tests:
+  extends: .run_tests
+  script:
+    - tox -e py310
+
+
+### Stage: docs
+
+build_doc:
+  extends: .docs
   before_script:
     - apt-get -y update
     - apt-get -y install make
     - pip install sphinx numpydoc
-    - pip install -e .
   script:
     - cd docs
     - make html
@@ -103,44 +237,84 @@ build-doc:
     paths:
       - docs/build/html
   rules:
-    # Only add job for commits to master or on merge request events
-    - if: '$CI_COMMIT_BRANCH == "master" && $CI_PIPELINE_SOURCE != "schedule"'
+    # Only add job for commits to the default branch or on merge request events
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE != "schedule"'
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - changes:
         - docs/**/*
 
-# Executes the tests of the Rapthor pipeline.
-rapthor-test:
-  stage: test
-  needs: ["versioning", "build-docker-base"]
-  image: $BASE_IMAGE
-  before_script:
-    - pip install --upgrade pip
-    - pip install tox
-  script:
-    - tox -e py310
 
-# Deploy to docker hub
-deploy-docker:
+### Stage: deploy
+
+deploy_docker:
   stage: deploy
-  needs: ["versioning", "build-docker-full", "rapthor-test"]
-  image: docker:latest
-  tags:
-    - dind
-  before_script:
-    - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
-    - echo $DH_REGISTRY_PASSWORD | docker login -u $DH_REGISTRY_USER --password-stdin
+  extends: .deploy
   script:
-    - TAG=${RAPTHOR_VERSION//[^[:alnum:]_.-]/-}
+    - echo "Deploying to DockerHub, using tag '$RAPTHOR_TAG'"
     - docker pull $FULL_IMAGE
-    - docker tag $FULL_IMAGE astronrd/rapthor:$TAG
-    - docker tag $FULL_IMAGE astronrd/rapthor:latest
-    - docker push astronrd/rapthor:$TAG
-    - docker push astronrd/rapthor:latest
+    - docker tag $FULL_IMAGE loose/rapthor:$RAPTHOR_TAG
+    - docker tag $FULL_IMAGE loose/rapthor:latest
+    - docker push loose/rapthor:$RAPTHOR_TAG
+    - docker push loose/rapthor:latest
   rules:
-    # Only run on master
-    - if: '$CI_COMMIT_BRANCH == "master" && $CI_COMMIT_REF_PROTECTED == "true"'
-      when: always
+    # Run on the default branch or on a release branch
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_COMMIT_BRANCH =~ /^releases//'
+      when: on_success
 
-# TODO: stage for deploying a release; this will involve in-place updating
-#       *.cwl files that contain dockerPull. We can "learn" from LINC
+
+### Stage: finalize
+
+rollback_release:
+  stage: finalize
+  extends: .finalize
+  rules:
+    # Run this job if the pipeline fails, to undo changes made in prepare_release.
+    # We only care about removing the tag; other changes can remain.
+    - if: '$CI_COMMIT_BRANCH =~ /^releases//'
+      when: on_failure
+  script:
+    - echo "Rolling back release $RELEASE"
+    - |
+      if test -f .tag.exists
+      then
+        echo "*** Not removing existing tag '$RELEASE'! ***"
+      else
+        git push origin -d $RELEASE
+      fi
+
+finalize_release:
+  stage: finalize
+  extends: .finalize
+  rules:
+    # Run this job if the pipeline succeeds, to create a versioned release.
+    # A versioned release is a release whose branch/tag name matches a string
+    # that looks like "v<major-version>[.<minor_version>][...]".
+    # We want to ensure that the release tag also exists on the default branch,
+    # so that `git describe --tags` yields the desired output. Hence, we must
+    # undo the changes made in the `prepare_release` job, before merging to
+    # the default branch.
+    - if: '$CI_COMMIT_BRANCH =~ /^releases\/v[0-9]+(\.[0-9]+)*/'
+      when: on_success
+  script:
+    - echo "Finalizing release $RELEASE"
+    # Update dockerPull image URI in CWL steps by removing version tag
+    - CWL_FILES=$(git ls-files | grep '\.cwl$')
+    - sed -ri "/dockerPull/s,['\"]?(astronrd/rapthor).*,\1:$RAPTHOR_TAG," $CWL_FILES
+    - git add -u $CWL_FILES
+    # Only commit if there are changes
+    - |
+      if test -n "$(git status -uno --porcelain)"
+      then
+        git commit -m "Tag removed from dockerPull URI in CWL steps (by GitLab CI)"
+      fi
+    # Skip CI on this push
+    - git push -o ci.skip
+    # Next switch to the default branch and make sure it's up to date
+    - git checkout $CI_DEFAULT_BRANCH
+    - git pull
+    - echo "Merging changes from $CI_COMMIT_BRANCH into $CI_DEFAULT_BRANCH"
+    # Merge release branch into the default branch
+    - git merge $CI_COMMIT_BRANCH -m"Merged release branch into default branch (by Gitlab CI)"
+    # Skip CI on this push
+    - git push -o ci.skip
