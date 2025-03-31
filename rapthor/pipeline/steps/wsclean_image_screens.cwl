@@ -292,7 +292,7 @@ outputs:
       workflow.
     type: File[]
     outputBinding:
-      glob: ['$(inputs.name)-MFS-[QUV]-image.fits', '$(inputs.name)-MFS-[QUV]-image-pb.fits', '$(inputs.name)-MFS-*residual.fits', '$(inputs.name)-MFS-*model-pb.fits']
+      glob: ['$(inputs.name)-MFS-[QUV]-image.fits', '$(inputs.name)-MFS-[QUV]-image-pb.fits', '$(inputs.name)-MFS-*residual.fits', '$(inputs.name)-MFS-*model-pb.fits', '$(inputs.name)-MFS-*dirty.fits', '$(inputs.name)_mask.fits']
   - id: skymodel_nonpb
     label: Output non-PB-corrected sky model
     doc: |
