@@ -270,6 +270,12 @@ class Parset:
                     )
                 )
 
+        dd_smoothness_factor = options["dd_smoothness_factor"]
+        if dd_smoothness_factor < 1:
+            raise ValueError(
+                f"The dd_smoothness_factor parameter is {dd_smoothness_factor}; "
+                f"it must be >= 1"
+            )
         dd_interval_factor = options["dd_interval_factor"]
         solveralgorithm = options["solveralgorithm"]
         if dd_interval_factor < 1:

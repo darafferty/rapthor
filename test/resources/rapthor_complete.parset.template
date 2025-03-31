@@ -23,6 +23,7 @@ dde_mode = hybrid
 [calibration]
 use_included_skymodels = True
 dd_interval_factor = 1
+dd_smoothness_factor = 1
 llssolver = qr
 maxiter = 50
 propagatesolutions = False

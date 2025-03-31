@@ -91,10 +91,11 @@ dde_mode = faceting
 use_included_skymodels = False
 
 # Maximum factor by which the direction-dependent solution intervals can be
-# increased, so that fainter calibrators get longer intervals (in the fast and
-# slow solves only; default = 3). Note: currently, direction-dependent solution
-# intervals cannot be used in conjunction with baseline-dependent averaging
+# increased, so that fainter calibrators get longer intervals. The maximum factor
+# by which the smoothnessconstraints are increased, such that fainter calibrators
+# get more smoothing, can be set in a similar way (default = 3)
 dd_interval_factor = 3
+dd_smoothness_factor = 3
 
 # General solver parameters
 llssolver = qr
