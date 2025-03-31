@@ -48,7 +48,7 @@ The available options are described below under their respective sections.
             See :doc:`preparation` for details.
 
     data_colname
-        Data column to be read from the input MS files (default = DATA).
+        Data column to be read from the input MS files (default = ``DATA``).
 
     generate_initial_skymodel
         Generate an initial target sky model from the input data (default = ``True``).
@@ -391,6 +391,9 @@ The available options are described below under their respective sections.
         if available, applied. Note, however, that the direction-dependent solutions will
         not be applied unless :term:`dde_method` = ``single``, in which case the solutions
         closest to the image centers are used.
+
+    save_cleanmasks_and_dirtyimages
+        Save dirty images and the clean masks made during each imaging cycle (default = ``False``).
 
     idg_mode
         IDG (image domain gridder) mode to use in WSClean (default = ``hybrid``). The mode
