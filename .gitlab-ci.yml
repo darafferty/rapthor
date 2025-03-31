@@ -252,10 +252,10 @@ deploy_docker:
   script:
     - echo "Deploying to DockerHub, using tag '$RAPTHOR_TAG'"
     - docker pull $FULL_IMAGE
-    - docker tag $FULL_IMAGE loose/rapthor:$RAPTHOR_TAG
-    - docker tag $FULL_IMAGE loose/rapthor:latest
-    - docker push loose/rapthor:$RAPTHOR_TAG
-    - docker push loose/rapthor:latest
+    - docker tag $FULL_IMAGE astronrd/rapthor:$RAPTHOR_TAG
+    - docker tag $FULL_IMAGE astronrd/rapthor:latest
+    - docker push astronrd/rapthor:$RAPTHOR_TAG
+    - docker push astronrd/rapthor:latest
   rules:
     # Run on the default branch or on a release branch
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
