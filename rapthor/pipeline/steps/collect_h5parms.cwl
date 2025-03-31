@@ -26,6 +26,14 @@ inputs:
     inputBinding:
       prefix: --outh5parm=
       separate: false
+  - id: insolset
+    label: Input solution set
+    doc: |
+      The name of the input solution set.
+    type: string?
+    inputBinding:
+      prefix: --insolset=
+      separate: false
 
 outputs:
   - id: outh5parm

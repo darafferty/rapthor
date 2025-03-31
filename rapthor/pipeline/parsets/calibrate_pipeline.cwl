@@ -763,6 +763,8 @@ steps:
 {% endif %}
       - id: outputh5parm
         source: combined_h5parms
+      - id: insolset
+        valueFrom: 'coefficients000'
     out:
       - id: outh5parm
 
