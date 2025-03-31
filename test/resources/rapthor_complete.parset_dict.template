@@ -76,6 +76,7 @@
                       'reweight': False,
                       'robust': -0.3,
                       'save_visibilities': True,
+                      'save_cleanmasks_and_dirtyimages': True,
                       'sector_center_dec_list': [35.50875555555555,
                                                  37.36579444444445],
                       'sector_center_ra_list': [220.25785, 213.3468083333333],
