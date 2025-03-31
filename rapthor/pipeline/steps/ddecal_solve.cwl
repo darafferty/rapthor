@@ -199,7 +199,7 @@ inputs:
       separate: False
 
   - id: solutions_per_direction
-    label: Solutions per directions
+    label: Solutions per direction
     doc: |
       The number of solution intervals (in time) per direction for the solve.
     type: int[]?
@@ -385,6 +385,17 @@ inputs:
     type: float
     inputBinding:
       prefix: solve.uvlambdamin=
+      separate: False
+
+  - id: smoothness_dd_factors
+    label: Smoothness factors
+    doc: |
+      The factor by which to multiply the smoothnesscontraint, per direction, for the solve.
+    type: float[]?
+    inputBinding:
+      valueFrom: $('['+self+']')
+      prefix: solve.smoothness_dd_factors=
+      itemSeparator: ','
       separate: False
 
   - id: smoothnessconstraint

@@ -109,6 +109,17 @@ inputs:
       The filename of the input sky model text file (length = 1).
     type: File
 
+  - id: smoothness_dd_factors
+    label: Smoothness factors
+    doc: |
+      The factor by which to multiply the smoothnesscontraint, per direction (length =
+      n_obs * n_calibrators * n_time_chunks).
+    type:
+      type: array
+      items:
+        type: array
+        items: float
+
   - id: fast_smoothnessconstraint
     label: Fast smoothnessconstraint
     doc: |
@@ -694,6 +705,8 @@ steps:
         source: tolerance
       - id: uvlambdamin
         source: uvlambdamin
+      - id: smoothness_dd_factors
+        source: smoothness_dd_factors
       - id: smoothnessconstraint
         source: fast_smoothnessconstraint
       - id: smoothnessreffrequency
@@ -704,7 +717,7 @@ steps:
         source: fast_antennaconstraint
       - id: numthreads
         source: max_threads
-    scatter: [msin, starttime, ntimes, h5parm, solint, solve_nchan, maxinterval, smoothnessreffrequency, solutions_per_direction]
+    scatter: [msin, starttime, ntimes, h5parm, solint, solve_nchan, maxinterval, smoothnessreffrequency, solutions_per_direction, smoothness_dd_factors]
     scatterMethod: dotproduct
     out:
       - id: output_h5parm
@@ -828,13 +841,15 @@ steps:
         source: tolerance
       - id: uvlambdamin
         source: uvlambdamin
+      - id: smoothness_dd_factors
+        source: smoothness_dd_factors
       - id: smoothnessconstraint
         source: slow_smoothnessconstraint_joint
       - id: antennaconstraint
         source: slow_antennaconstraint
       - id: numthreads
         source: max_threads
-    scatter: [msin, starttime, ntimes, startchan, nchan, maxinterval, h5parm, solint, solve_nchan, solutions_per_direction]
+    scatter: [msin, starttime, ntimes, startchan, nchan, maxinterval, h5parm, solint, solve_nchan, solutions_per_direction, smoothness_dd_factors]
     scatterMethod: dotproduct
     out:
       - id: output_h5parm
@@ -997,11 +1012,13 @@ steps:
         source: tolerance
       - id: uvlambdamin
         source: uvlambdamin
+      - id: smoothness_dd_factors
+        source: smoothness_dd_factors
       - id: smoothnessconstraint
         source: slow_smoothnessconstraint_separate
       - id: numthreads
         source: max_threads
-    scatter: [msin, starttime, ntimes, startchan, nchan, maxinterval, h5parm, solint, solve_nchan, solutions_per_direction]
+    scatter: [msin, starttime, ntimes, startchan, nchan, maxinterval, h5parm, solint, solve_nchan, solutions_per_direction, smoothness_dd_factors]
     scatterMethod: dotproduct
     out:
       - id: output_h5parm

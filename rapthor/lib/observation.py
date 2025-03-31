@@ -236,6 +236,7 @@ class Observation(object):
         target_slow_freqstep = parset['calibration_specific']['slow_freqstep_hz']
         target_fulljones_freqstep = parset['calibration_specific']['fulljones_freqstep_hz']
         solve_max_factor = parset['calibration_specific']['dd_interval_factor']
+        smoothness_max_factor = parset['calibration_specific']['dd_smoothness_factor']
 
         # Find solution intervals for fast-phase solve. The solve is split into time
         # chunks instead of frequency chunks, since continuous frequency coverage is
@@ -401,6 +402,16 @@ class Observation(object):
 
             else:
                 self.parameters[f'solutions_per_direction_{solve_type}'] = [[1] * len(calibrator_fluxes)] * nchunks
+
+        # Set the smoothness_dd_factors so that brighter sources have smaller
+        # smoothing factors
+        if smoothness_max_factor > 1:
+            smoothness_dd_factors = target_flux / np.array(calibrator_fluxes)
+            smoothness_dd_factors /= max(smoothness_dd_factors)
+            smoothness_dd_factors[smoothness_dd_factors < 1 / smoothness_max_factor] = 1 / smoothness_max_factor
+            self.parameters['smoothness_dd_factors'] = [smoothness_dd_factors] * nchunks
+        else:
+            self.parameters['smoothness_dd_factors'] = [[1] * len(calibrator_fluxes)] * nchunks
 
         # Set the smoothnessreffrequency for the fast solves, if not set by the user
         fast_smoothnessreffrequency = parset['calibration_specific']['fast_smoothnessreffrequency']
