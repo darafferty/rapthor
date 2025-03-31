@@ -300,7 +300,7 @@ finalize_release:
     - echo "Finalizing release $RELEASE"
     # Update dockerPull image URI in CWL steps by removing version tag
     - CWL_FILES=$(git ls-files | grep '\.cwl$')
-    - sed -ri "/dockerPull/s,['\"]?(astronrd/rapthor).*,\1:$RAPTHOR_TAG," $CWL_FILES
+    - sed -ri "/dockerPull/s,(astronrd/rapthor).*,\1," $CWL_FILES
     - git add -u $CWL_FILES
     # Only commit if there are changes
     - |

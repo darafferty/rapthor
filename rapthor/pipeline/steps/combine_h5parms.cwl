@@ -86,4 +86,4 @@ outputs:
       glob: $(inputs.outh5parm)
 hints:
   - class: DockerRequirement
-    dockerPull: astronrd/rapthor:2.0rc1
+    dockerPull: astronrd/rapthor
