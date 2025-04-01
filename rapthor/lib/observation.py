@@ -456,8 +456,8 @@ class Observation(object):
             self.parameters['predict_ntimes'] = self.numsamples
 
     def set_imaging_parameters(self, sector_name, cellsize_arcsec, max_peak_smearing, width_ra,
-                               width_dec, solve_fast_timestep, solve_slow_freqstep,
-                               apply_screens):
+                               width_dec, solve_fast_timestep, solve_slow_timestep,
+                               solve_slow_freqstep, preapply_dde_solutions):
         """
         Sets the imaging parameters
 
@@ -473,10 +473,13 @@ class Observation(object):
             Width in Dec of image in degrees
         solve_fast_timestep : float
             Solution interval in sec for fast solve
+        solve_slow_timestep : float
+            Solution interval in sec for slow solve
         solve_slow_freqstep : float
             Solution interval in Hz for slow solve
-        apply_screens : bool
-            If True, use setup appropriate for screens
+        preapply_dde_solutions : bool
+            If True, use setup appropriate for case in which all DDE
+            solutions are preapplied before imaging is done
         """
         mean_freq_mhz = self.referencefreq / 1e6
         peak_smearing_rapthor = np.sqrt(1.0 - max_peak_smearing)
@@ -494,10 +497,10 @@ class Observation(object):
 
         # Get target time and frequency averaging steps.
         #
-        # Note: We limit the averaging to be not more than 2 MHz and 120 s to
-        # avoid extreme values for very small images. Also, due to a limitation
-        # in Dysco, we make sure to have at least 2 time slots after averaging,
-        # otherwise the output MS cannot be written with compression
+        # Note: We limit the averaging to be not more than 2 MHz and 120 s to avoid
+        # extreme values for very small images (when solutions are preapplied). Also, due
+        # to a limitation in Dysco, we make sure to have at least 2 time slots after
+        # averaging, otherwise the output MS cannot be written with compression
         if self.numsamples == 1:
             raise RuntimeError('Only one time slot is availble for imaging, but at least '
                                'two are required. Please increase the fraction of data '
@@ -509,9 +512,10 @@ class Observation(object):
         target_timewidth_sec = min(max_timewidth_sec, self.get_target_timewidth(delta_theta_deg,
                                    resolution_deg, peak_smearing_rapthor))
 
-        if apply_screens:
+        if not preapply_dde_solutions:
             # Ensure we don't average more than the solve time step, as we want to
-            # preserve the time resolution that matches that of the screens
+            # preserve the time resolution so that the soltuions can be applied
+            # properly during imaging
             target_timewidth_sec = min(target_timewidth_sec, solve_fast_timestep)
 
         target_bandwidth_mhz = min(2.0, self.get_target_bandwidth(mean_freq_mhz,
@@ -532,16 +536,16 @@ class Observation(object):
 
         # Find BDA parameters:
         #   - maxinterval: max time interval in time slots over which to average (for
-        #     the shortest baselines). We set this to be 16 times the time step
-        #     allowed by the time smearing calculation above, as this value was
-        #     found to work well in practice
+        #     the shortest baselines). We set this to be half of the slow solve time
+        #     step to ensure we don't average more than the timescale of the slow
+        #     corrections
         #   - timebase: max baseline length in m below which to average (where
-        #     avg_factor = timebase / baseline_length). We set this to be 4 times
-        #     less than the baseline that matches the target resolution to ensure
-        #     those baselines that are needed to achieve the target resolution are
-        #     not averaged
-        target_maxinterval = int(round(target_timewidth_sec * 16 / timestep_sec))  # time slots
-        target_timebase = 3e8 / self.referencefreq / (resolution_deg * np.pi / 180) / 4  # m
+        #     avg_factor = timebase / baseline_length). We set this to be the approximate
+        #     maximum distance between the core stations (10 km), as these are the
+        #     baselines for which the timescale of the slow corrections should be
+        #     used
+        target_maxinterval = int(round(solve_slow_timestep / timestep_sec / 2))  # time slots
+        target_timebase = 5e3  # m
         self.parameters['image_maxinterval'] = max(1, target_maxinterval)
         self.parameters['image_timebase'] = max(1000, target_timebase)
         self.log.debug('Using BDA with maxinterval = {0:.1f} s and timebase = {1:.1f} m '

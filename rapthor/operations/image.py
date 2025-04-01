@@ -136,7 +136,8 @@ class Image(Operation):
 
             # Set the imaging parameters for each imaging sector
             sector.set_imaging_parameters(self.do_multiscale_clean, recalculate_imsize=True,
-                                          imaging_parameters=self.imaging_parameters)
+                                          imaging_parameters=self.imaging_parameters,
+                                          preapply_dde_solutions=self.preapply_dde_solutions)
 
             # Set input MS filenames
             if self.do_predict:
