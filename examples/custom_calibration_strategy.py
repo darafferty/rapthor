@@ -40,6 +40,7 @@ for i in range(max_selfcal_loops):
     strategy_steps[i]['do_normalize'] = True
     strategy_steps[i]['do_image'] = True
     strategy_steps[i]['auto_mask'] = 3.0
+    strategy_steps[i]['auto_mask_nmiter'] = 1
     strategy_steps[i]['threshisl'] = 4.0
     strategy_steps[i]['threshpix'] = 5.0
     if i < 1:

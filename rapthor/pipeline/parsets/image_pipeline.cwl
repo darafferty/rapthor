@@ -404,8 +404,8 @@ inputs:
   - id: auto_mask_nmiter
     label: Auto mask nmiter value
     doc: |
-      The WSClean auto mask nmiter value (length = 1).
-    type: int
+      The WSClean auto mask nmiter value (length = n_sectors).
+    type: int[]
 
   - id: idg_mode
     label: IDG mode
@@ -753,7 +753,7 @@ steps:
 {% endif %}
               channels_out, deconvolution_channels, fit_spectral_pol, wsclean_niter,
               wsclean_nmiter, robust, min_uv_lambda, max_uv_lambda, mgain, do_multiscale,
-              taper_arcsec, local_rms_strength, wsclean_mem, auto_mask,
+              taper_arcsec, local_rms_strength, wsclean_mem, auto_mask, auto_mask_nmiter,
               idg_mode, threshisl, threshpix, dd_psf_grid]
 
     scatterMethod: dotproduct

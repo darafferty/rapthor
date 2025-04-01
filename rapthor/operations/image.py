@@ -263,7 +263,7 @@ class Image(Operation):
                             'taper_arcsec': [sector.taper_arcsec for sector in self.imaging_sectors],
                             'local_rms_strength': [sector.local_rms_strength for sector in self.imaging_sectors],
                             'auto_mask': [sector.auto_mask for sector in self.imaging_sectors],
-                            'auto_mask_nmiter': self.field.auto_mask_nmiter,
+                            'auto_mask_nmiter': [sector.auto_mask_nmiter for sector in self.imaging_sectors],
                             'idg_mode': [sector.idg_mode for sector in self.imaging_sectors],
                             'wsclean_mem': [sector.mem_limit_gb for sector in self.imaging_sectors],
                             'threshisl': [sector.threshisl for sector in self.imaging_sectors],
@@ -473,6 +473,7 @@ class ImageInitial(Image):
         self.apply_none = True
         self.apply_normalizations = False
         self.field.full_field_sector.auto_mask = 5.0
+        self.field.full_field_sector.auto_mask_nmiter = 1
         self.field.full_field_sector.threshisl = 4.0
         self.field.full_field_sector.threshpix = 5.0
         self.imaging_sectors = [self.field.full_field_sector]
@@ -581,6 +582,7 @@ class ImageNormalize(Image):
             self.apply_none = False
         self.apply_normalizations = False
         self.field.normalize_sector.auto_mask = 5.0
+        self.field.normalize_sector.auto_mask_nmiter = 1
         self.field.normalize_sector.threshisl = 4.0
         self.field.normalize_sector.threshpix = 5.0
         self.field.normalize_sector.max_nmiter = 8
