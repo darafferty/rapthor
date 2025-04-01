@@ -263,6 +263,7 @@ class Image(Operation):
                             'taper_arcsec': [sector.taper_arcsec for sector in self.imaging_sectors],
                             'local_rms_strength': [sector.local_rms_strength for sector in self.imaging_sectors],
                             'auto_mask': [sector.auto_mask for sector in self.imaging_sectors],
+                            'auto_mask_nmiter': self.field.auto_mask_nmiter,
                             'idg_mode': [sector.idg_mode for sector in self.imaging_sectors],
                             'wsclean_mem': [sector.mem_limit_gb for sector in self.imaging_sectors],
                             'threshisl': [sector.threshisl for sector in self.imaging_sectors],

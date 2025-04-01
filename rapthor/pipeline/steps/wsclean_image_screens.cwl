@@ -221,6 +221,13 @@ inputs:
     label: Auto mask value
     doc: |
       The auto mask value.
+  - id: auto_mask_nmiter
+    label: Auto mask nmiter value
+    doc: |
+      The auto mask nmiter value.
+    type: int
+    inputBinding:
+      prefix: -auto-mask-nmiter
     type: float
     inputBinding:
       prefix: -auto-mask

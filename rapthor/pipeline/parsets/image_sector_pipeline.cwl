@@ -366,6 +366,12 @@ inputs:
       The WSClean auto mask value (length = 1).
     type: float
 
+  - id: auto_mask_nmiter
+    label: Auto mask nmiter value
+    doc: |
+      The WSClean auto mask nmiter value (length = 1).
+    type: int
+
   - id: idg_mode
     label: IDG mode
     doc: |
@@ -750,6 +756,8 @@ steps:
         source: wsclean_mem
       - id: auto_mask
         source: auto_mask
+      - id: auto_mask_nmiter
+        source: auto_mask_nmiter
       - id: idg_mode
         source: idg_mode
       - id: num_threads

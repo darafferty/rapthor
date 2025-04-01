@@ -153,6 +153,10 @@ inputs:
     type: float
     inputBinding:
       prefix: -auto-mask
+  - id: auto_mask_nmiter
+    type: int
+    inputBinding:
+      prefix: -auto-mask-nmiter
   - id: idg_mode
     type: string
     inputBinding:

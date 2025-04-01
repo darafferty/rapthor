@@ -204,6 +204,9 @@ def run_steps(field, steps, final=False):
             # Set whether screens should be applied
             field.apply_screens = True if (field.dde_mode == 'hybrid' and final) else False
 
+            # Set the number of major iterations
+            field.auto_mask_nmiter = 2 if final else 1
+
             op = Image(field, cycle_number)
             op.run()
 
