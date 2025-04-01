@@ -56,7 +56,8 @@ class Sector:
         self.dd_psf_grid = imaging_parameters["dd_psf_grid"]
 
     def set_imaging_parameters(
-        self, do_multiscale=False, recalculate_imsize=False, imaging_parameters=None
+        self, do_multiscale=False, recalculate_imsize=False, imaging_parameters=None,
+        preapply_dde_solutions=False
     ):
         pass
 
