@@ -23,7 +23,11 @@ stages:
 
 .release:
   before_script:
-    # Make sure release branch is checked out when building a release
+    # Make sure release branch is checked out when building a release.
+    # We need to do this when creating a release, because the release branch
+    # will be updated in the `prepare_release` job. The CI/CD pipeline always
+    # checks out the commit that triggered it to run, but we need the new
+    # head of the branch.
     - export RELEASE=$(echo -n $CI_COMMIT_BRANCH | sed -n 's,^releases/,,p')
     - |
       if test -n "$RELEASE"
@@ -83,6 +87,8 @@ stages:
   stage: run_tests
   image: $FULL_IMAGE
   before_script:
+    # TODO: We probably don't need to call release.before_script here.
+    # Check if this is indeed the case, later.
     - !reference [.release, before_script]
     - pip install tox
 
