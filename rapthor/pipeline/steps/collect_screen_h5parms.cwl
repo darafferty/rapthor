@@ -1,0 +1,42 @@
+cwlVersion: v1.2
+class: CommandLineTool
+baseCommand: [collect_screen_h5parms.py, -c]
+label: Collects multiple screen h5parms
+doc: |
+  This tool collects the screen solution tables from multiple h5parm files
+  into a single output h5parm.
+
+requirements:
+  InlineJavascriptRequirement: {}
+
+inputs:
+  - id: inh5parms
+    label: Input solution tables
+    doc: |
+      A list of input h5parm files.
+    type: File[]
+    inputBinding:
+      position: 0
+      itemSeparator: ","
+  - id: outputh5parm
+    label: Output solution table
+    doc: |
+      The filename of the output h5parm file.
+    type: string
+    inputBinding:
+      prefix: --outh5parm=
+      separate: false
+
+outputs:
+  - id: outh5parm
+    label: Output solution table
+    doc: |
+      The filename of the output h5parm file. The value is taken from the input
+      parameter "outputh5parm".
+    type: File
+    outputBinding:
+      glob: $(inputs.outputh5parm)
+
+hints:
+  - class: DockerRequirement
+    dockerPull: 'astronrd/rapthor'
