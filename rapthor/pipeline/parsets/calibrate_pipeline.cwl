@@ -30,7 +30,7 @@ inputs:
       The filenames of input MS files for which calibration will be done (length =
       n_obs * n_time_chunks).
     type: Directory[]
-  
+
   - id: data_colname
     label: Input MS data column
     doc: |
@@ -770,7 +770,7 @@ steps:
     doc: |
       This step combines all the solutions from the IDGCal step
       into a single solution table (h5parm file).
-    run: {{ rapthor_pipeline_dir }}/steps/collect_h5parms.cwl
+    run: {{ rapthor_pipeline_dir }}/steps/collect_screen_h5parms.cwl
     in:
       - id: inh5parms
 {% if not do_slowgain_solve %}
@@ -780,8 +780,6 @@ steps:
 {% endif %}
       - id: outputh5parm
         source: combined_h5parms
-      - id: insolset
-        valueFrom: 'coefficients000'
     out:
       - id: outh5parm
 
