@@ -1,13 +1,14 @@
 """
 Module that holds the Calibrate classes
 """
-import os
-import logging
-import shutil
 import glob
+import logging
+import numpy as np
+import os
 from rapthor.lib.operation import Operation
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.cwl import CWLFile, CWLDir
+import shutil
 
 log = logging.getLogger('rapthor:calibrate')
 
@@ -124,11 +125,13 @@ class CalibrateDD(Operation):
         calibrator_fluxes = self.field.calibrator_fluxes
 
         # Set the constraints used in the calibrations
-        fast_smoothnessconstraint = self.field.fast_smoothnessconstraint
+        smoothness_dd_factors = self.field.get_obs_parameters('smoothness_dd_factors')
+        smoothness_max_factor = 1 / np.min(smoothness_dd_factors)
+        fast_smoothnessconstraint = self.field.fast_smoothnessconstraint * smoothness_max_factor
         fast_smoothnessreffrequency = self.field.get_obs_parameters('fast_smoothnessreffrequency')
         fast_smoothnessrefdistance = self.field.fast_smoothnessrefdistance
-        slow_smoothnessconstraint_joint = self.field.slow_smoothnessconstraint_joint
-        slow_smoothnessconstraint_separate = self.field.slow_smoothnessconstraint_separate
+        slow_smoothnessconstraint_joint = self.field.slow_smoothnessconstraint_joint * smoothness_max_factor
+        slow_smoothnessconstraint_separate = self.field.slow_smoothnessconstraint_separate * smoothness_max_factor
         if self.field.do_slowgain_solve or self.field.antenna == 'LBA':
             # Use the core stationconstraint if the slow solves will be done or if
             # we have LBA data (which has lower sensitivity than HBA data)
@@ -215,6 +218,7 @@ class CalibrateDD(Operation):
             slow_initialsolutions_h5parm = CWLFile(self.field.slow_gains_h5parm_filename).to_json()
 
         self.input_parms = {'timechunk_filename': CWLDir(timechunk_filename).to_json(),
+                            'data_colname': self.field.data_colname,
                             'starttime': starttime,
                             'ntimes': ntimes,
                             'solint_fast_timestep': solint_fast_timestep,
@@ -233,6 +237,7 @@ class CalibrateDD(Operation):
                             'output_slow_h5parm_joint': output_slow_h5parm_joint,
                             'output_slow_h5parm_separate': output_slow_h5parm_separate,
                             'calibration_skymodel_file': CWLFile(calibration_skymodel_file).to_json(),
+                            'smoothness_dd_factors': smoothness_dd_factors,
                             'fast_smoothnessconstraint': fast_smoothnessconstraint,
                             'fast_smoothnessreffrequency': fast_smoothnessreffrequency,
                             'fast_smoothnessrefdistance': fast_smoothnessrefdistance,
@@ -285,7 +290,7 @@ class CalibrateDD(Operation):
                             'solverlbfgs_dof': solverlbfgs_dof,
                             'solverlbfgs_iter': solverlbfgs_iter,
                             'solverlbfgs_minibatches': solverlbfgs_minibatches,
-                            'max_threads': self.field.parset['cluster_specific']['max_threads']}
+                            'max_threads': self.parset['cluster_specific']['max_threads']}
 
         # Set parameters specific to the selected mode
         if self.field.generate_screens:
@@ -492,7 +497,7 @@ class CalibrateDI(Operation):
             # not work with SLURM
             max_cores = None
         else:
-            max_cores = self.field.parset['cluster_specific']['max_cores']
+            max_cores = self.parset['cluster_specific']['max_cores']
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
                              'max_cores': max_cores}
 
@@ -545,6 +550,7 @@ class CalibrateDI(Operation):
         solverlbfgs_minibatches = self.field.solverlbfgs_minibatches
 
         self.input_parms = {'freqchunk_filename_fulljones': CWLDir(freqchunk_filename_fulljones).to_json(),
+                            'data_colname': 'DATA',
                             'starttime_fulljones': starttime_fulljones,
                             'ntimes_fulljones': ntimes_fulljones,
                             'startchan_fulljones': startchan_fulljones,
@@ -566,7 +572,7 @@ class CalibrateDI(Operation):
                             'solverlbfgs_dof': solverlbfgs_dof,
                             'solverlbfgs_iter': solverlbfgs_iter,
                             'solverlbfgs_minibatches': solverlbfgs_minibatches,
-                            'max_threads': self.field.parset['cluster_specific']['max_threads']}
+                            'max_threads': self.parset['cluster_specific']['max_threads']}
 
     def finalize(self):
         """

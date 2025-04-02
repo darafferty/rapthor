@@ -38,6 +38,15 @@ inputs:
       position: 3
       prefix: --concat_property=
       separate: false
+  - id: data_colname
+    label: Input MS data column
+    doc: |
+      The data column to be read from the MS files for concatenation.
+    type: string
+    inputBinding:
+      position: 4
+      prefix: --data_colname=
+      separate: false
 
 outputs:
   - id: msconcat

@@ -13,6 +13,7 @@ minimal parset for a basic reduction on a single machine could look like the fol
     [global]
     dir_working = /path/to/rapthor/working/dir
     input_ms = /path/to/input/dir/input.ms
+    data_colname = DATA
 
 
 The available options are described below under their respective sections.
@@ -45,6 +46,9 @@ The available options are described below under their respective sections.
             The MS files output by the `LINC
             <https://linc.readthedocs.io/>`_ pipeline can be directly used with Rapthor.
             See :doc:`preparation` for details.
+
+    data_colname
+        Data column to be read from the input MS files (default = DATA).
 
     generate_initial_skymodel
         Generate an initial target sky model from the input data (default = ``True``).
@@ -320,6 +324,14 @@ The available options are described below under their respective sections.
             solution intervals are activated and a different solver is specified, the
             solver will be automatically switched to the ``directioniterative`` one.
 
+    dd_smoothness_factor
+        Maximum factor by which the smoothnessconstraint can be increased, so that
+        fainter calibrators get more smoothing (default = 3). The factors are calculated
+        in the same way as the direction-dependent interval factors, set by
+        :term:`dd_interval_factor`. A value of 1 disables the use of direction-dependent
+        smoothness factors; a value greater than 1 enables direction-dependent smoothness
+        factors.
+
     solverlbfgs_dof
         Degrees of freedom for the LBFGS solver (only used when :term:`solveralgorithm` =
         ``lbfgs``; default = 200.0).
@@ -565,12 +577,34 @@ The available options are described below under their respective sections.
         IO-intensive processing (e.g., WSClean) will use a default path in
         :term:`dir_working` instead.
 
+        When :term:`cwl_runner` = ``toil`` and :term:`batch_system` = ``single_machine``,
+        it is recommended to set this parameter, so that Rapthor can clean up any
+        temporary files and directories that Toil left behind.
+
+        .. warning::
+
+            If you want to run multiple instances of Rapthor concurrently using Toil,
+            make sure that you specify different directories as
+            :term:`local_scratch_dir`. Otherwise, one Rapthor instance will
+            potentially clobber files/directories created by another instance.
+
     global_scratch_dir
         Full path to a directory on a shared disk that is readable and writable by all
         the compute nodes and the head node. This directory will be used to store the
         intermediate outputs that need to be shared between the different steps in the
-        workflow. If this parameter is not set, Rapthor will create a temporary
-        directory in :term:`dir_working`.
+        workflow. If this parameter is not set and :term:`batch_system` = ``slurm``,
+        then Rapthor will create a temporary directory in :term:`dir_working`.
+
+        When :term:`cwl_runner` = ``toil``, it is recommended to set this parameter, so
+        that Rapthor can clean up any temporary files and directories that Toil left
+        behind.
+
+        .. warning::
+
+            If you want to run multiple instances of Rapthor concurrently using Toil,
+            make sure that you specify different directories as
+            :term:`global_scratch_dir`. Otherwise, one Rapthor instance will
+            potentially clobber files/directories created by another instance.
 
     use_container
         Run the workflows inside a container (default = ``False``)? If ``True``, the CWL
