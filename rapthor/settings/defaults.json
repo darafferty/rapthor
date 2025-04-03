@@ -23,6 +23,7 @@
     "calibration": {
         "use_included_skymodels": false,
         "dd_interval_factor": 3,
+        "dd_smoothness_factor": 3,
         "llssolver": "qr",
         "maxiter": 150,
         "propagatesolutions": true,

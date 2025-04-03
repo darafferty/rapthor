@@ -160,6 +160,7 @@ RUN cmake \
     -DPORTABLE=${PORTABLE} \
     -DTARGET_CPU=${TARGET_CPU} \
     -DLIBDIRAC_PREFIX=/usr/ \
+    -DMETADATA_COMPRESSION_DEFAULT=True \
     -H/src/DP3 \
     -B/src/DP3/build \
     -G Ninja

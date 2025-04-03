@@ -24,6 +24,14 @@ inputs:
     type: Directory
     inputBinding:
       position: 0
+  - id: data_colname
+    label: Input MS data column
+    doc: |
+      The data column to be read from the data MS.
+    type: string
+    inputBinding:
+      prefix: --msin_column=
+      separate: false
   - id: msmod
     label: Filenames of model MS
     doc: |
@@ -132,4 +140,4 @@ outputs:
 
 hints:
   - class: DockerRequirement
-    dockerPull: 'astronrd/rapthor'
+    dockerPull: astronrd/rapthor

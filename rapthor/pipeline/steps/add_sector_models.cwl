@@ -24,6 +24,14 @@ inputs:
     inputBinding:
       position: 1
       itemSeparator: ","
+  - id: data_colname
+    label: Input MS data column
+    doc: |
+      The input MS file data column for which addition will be done.
+    type: string
+    inputBinding:
+      prefix: --msin_column=
+      separate: false
   - id: obs_starttime
     label: Start time
     doc: |
@@ -49,4 +57,4 @@ outputs:
 
 hints:
   - class: DockerRequirement
-    dockerPull: 'astronrd/rapthor'
+    dockerPull: astronrd/rapthor

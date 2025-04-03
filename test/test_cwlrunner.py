@@ -82,6 +82,7 @@ class Field:
     def __init__(self, parset):
         self.parset = parset
 
+        self.data_colname = 'DATA'
         self.apply_amplitudes = False
         self.apply_fulljones = False
         self.apply_screens = False

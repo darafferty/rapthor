@@ -13,7 +13,6 @@ requirements:
   - class: InlineJavascriptRequirement
 
 arguments:
-  - msin.datacolumn=DATA
   - msout=
   - avg.type=bdaaverager
   - avg.minchannels=1
@@ -39,6 +38,15 @@ inputs:
     inputBinding:
       prefix: msin=
       separate: False
+
+  - id: data_colname
+    label: Input MS data column
+    doc: |
+      The MS data column to be read.
+    type: string
+    inputBinding:
+      prefix: msin.datacolumn=
+      separate: false
 
   - id: starttime
     label: Start time
@@ -191,7 +199,7 @@ inputs:
       separate: False
 
   - id: solutions_per_direction
-    label: Solutions per directions
+    label: Solutions per direction
     doc: |
       The number of solution intervals (in time) per direction for the solve.
     type: int[]?
@@ -379,6 +387,17 @@ inputs:
       prefix: solve.uvlambdamin=
       separate: False
 
+  - id: smoothness_dd_factors
+    label: Smoothness factors
+    doc: |
+      The factor by which to multiply the smoothnesscontraint, per direction, for the solve.
+    type: float[]?
+    inputBinding:
+      valueFrom: $('['+self+']')
+      prefix: solve.smoothness_dd_factors=
+      itemSeparator: ','
+      separate: False
+
   - id: smoothnessconstraint
     label: Smoothness constraint kernel size
     doc: |
@@ -437,4 +456,4 @@ outputs:
 
 hints:
   - class: DockerRequirement
-    dockerPull: 'astronrd/rapthor'
+    dockerPull: astronrd/rapthor

@@ -13,6 +13,7 @@ minimal parset for a basic reduction on a single machine could look like the fol
     [global]
     dir_working = /path/to/rapthor/working/dir
     input_ms = /path/to/input/dir/input.ms
+    data_colname = DATA
 
 
 The available options are described below under their respective sections.
@@ -45,6 +46,9 @@ The available options are described below under their respective sections.
             The MS files output by the `LINC
             <https://linc.readthedocs.io/>`_ pipeline can be directly used with Rapthor.
             See :doc:`preparation` for details.
+
+    data_colname
+        Data column to be read from the input MS files (default = DATA).
 
     generate_initial_skymodel
         Generate an initial target sky model from the input data (default = ``True``).
@@ -319,6 +323,14 @@ The available options are described below under their respective sections.
             when using direction-dependent solution intervals. If direction-dependent
             solution intervals are activated and a different solver is specified, the
             solver will be automatically switched to the ``directioniterative`` one.
+
+    dd_smoothness_factor
+        Maximum factor by which the smoothnessconstraint can be increased, so that
+        fainter calibrators get more smoothing (default = 3). The factors are calculated
+        in the same way as the direction-dependent interval factors, set by
+        :term:`dd_interval_factor`. A value of 1 disables the use of direction-dependent
+        smoothness factors; a value greater than 1 enables direction-dependent smoothness
+        factors.
 
     solverlbfgs_dof
         Degrees of freedom for the LBFGS solver (only used when :term:`solveralgorithm` =

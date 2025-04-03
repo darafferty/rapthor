@@ -26,6 +26,12 @@ inputs:
       n_obs).
     type: Directory[]
 
+  - id: data_colname
+    label: Input MS data column
+    doc: |
+      The data column to be read from the MS files for imaging (length=1).
+    type: string
+
   - id: prepare_filename
     label: Filenames of preparatory MSs
     doc: |
@@ -540,6 +546,8 @@ steps:
     in:
       - id: msin
         source: obs_filename
+      - id: data_colname
+        source: data_colname
       - id: msout
         source: prepare_filename
       - id: starttime
@@ -587,6 +595,8 @@ steps:
     in:
       - id: mslist
         source: prepare_imaging_data/msimg
+      - id: data_colname
+        source: data_colname
       - id: msout
         source: concat_filename
       - id: concat_property

@@ -3,6 +3,7 @@ Module that holds miscellaneous functions and classes
 """
 from astropy.io import fits as pyfits
 from astropy.time import Time
+from astropy.coordinates import SkyCoord
 import astropy.units as u
 from astropy.wcs import WCS
 import logging
@@ -21,7 +22,6 @@ from shapely.geometry import Point, Polygon
 from shapely.prepared import prep
 import subprocess
 import time
-
 
 def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, source='TGSS',
                       targetname='Patch'):
@@ -717,6 +717,31 @@ def convert_mvt2mjd(mvt_str):
     mjd = Time.strptime(mvt_str, "%d%b%Y/%H:%M:%S.%f", format="mjd")
 
     return mjd.to_value('mjd') * 3600 * 24
+
+
+def angular_separation(position1, position2):
+    """
+    Compute the angular separation between two RADec coordinates.
+
+    Parameters
+    ----------
+    position1 : tuple of float
+        The first (RA, Dec) coordinates in degrees.
+    position2 : tuple of float
+        The second (RA, Dec) coordinates in degrees.
+
+    Returns
+    -------
+    separation : astropy.units.Quantity
+        The angular separation between the two positions, in degrees by default.
+    """
+    ra1, dec1 = position1
+    ra2, dec2 = position2
+
+    coord1 = SkyCoord(ra=ra1 * u.degree, dec=dec1 * u.degree)
+    coord2 = SkyCoord(ra=ra2 * u.degree, dec=dec2 * u.degree)
+
+    return coord1.separation(coord2)
 
 
 def get_reference_station(soltab, max_ind=None):
