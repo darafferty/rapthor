@@ -55,14 +55,15 @@ def run(parset_file, logging_level='info'):
     # Generate an initial sky model from the input data if needed
     if parset['generate_initial_skymodel']:
         if not any([step['do_calibrate'] for step in strategy_steps]):
-            log.warning("Generation of an initial sky model has been activated "
-                        "but the strategy '{}' does not contain any calibration "
-                        "steps.".format(parset['strategy']))
-        field.define_full_field_sector(radius=parset['generate_initial_skymodel_radius'])
-        log.info("Imaging full field to generate an initial sky model...")
-        chunk_observations(field, [], parset['generate_initial_skymodel_data_fraction'])
-        op = ImageInitial(field)
-        op.run()
+            log.warning("Generation of an initial sky model has been activated but "
+                        "the strategy '{}' does not contain any calibration steps. "
+                        "Skipping the initial skymodel generation...".format(parset['strategy']))
+        else:
+            field.define_full_field_sector(radius=parset['generate_initial_skymodel_radius'])
+            log.info("Imaging full field to generate an initial sky model...")
+            chunk_observations(field, [], parset['generate_initial_skymodel_data_fraction'])
+            op = ImageInitial(field)
+            op.run()
 
     # Run the self calibration
     if selfcal_steps:
