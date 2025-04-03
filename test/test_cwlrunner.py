@@ -28,6 +28,7 @@ class Sector:
         self.field = field
 
         self.auto_mask = None
+        self.auto_mask_nmiter = 1
         self.central_patch = None
         self.I_mask_file = None
         self.imsize = None
