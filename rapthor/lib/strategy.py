@@ -253,6 +253,7 @@ def set_image_strategy(field):
     strategy_steps = [{}]
 
     strategy_steps[0]['do_calibrate'] = False
+    strategy_steps[0]['do_normalize'] = False
     strategy_steps[0]['peel_outliers'] = True
     strategy_steps[0]['peel_bright_sources'] = False
     strategy_steps[0]['do_image'] = True

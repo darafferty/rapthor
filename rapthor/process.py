@@ -316,16 +316,17 @@ def chunk_observations(field, steps, data_fraction):
     """
     # Find the overall minimum duration that can be used and still satisfy the
     # specified solution intervals
+    min_time = 600
     if steps:
-        fast_solint = max([step['fast_timestep_sec'] for step in steps])
-        joint_solint = max([step['slow_timestep_joint_sec'] for step in steps])
-        separate_solint = max([step['slow_timestep_separate_sec'] for step in steps])
+        fast_solint = max([step['fast_timestep_sec'] if 'fast_timestep_sec'
+                           in step else 0 for step in steps])
+        joint_solint = max([step['slow_timestep_joint_sec'] if 'slow_timestep_joint_sec'
+                            in step else 0 for step in steps])
+        separate_solint = max([step['slow_timestep_separate_sec'] if 'slow_timestep_separate_sec'
+                               in step else 0 for step in steps])
         max_dd_timestep = max(fast_solint, joint_solint, separate_solint)
         max_di_timestep = field.fulljones_timestep_sec
-        min_time = max(max_dd_timestep * field.dd_interval_factor, max_di_timestep)
-    else:
-        # If no strategy steps are given, use a standard minimum time
-        min_time = 600
+        min_time = max(min_time, max_dd_timestep * field.dd_interval_factor, max_di_timestep)
 
     for obs in field.full_observations:
         tot_time = obs.endtime - obs.starttime
