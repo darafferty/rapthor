@@ -1633,10 +1633,10 @@ class Field(object):
             # For the intial cycle, set the regrouping flag depending on the inputs
             if (self.parset["input_skymodel"] and self.parset["input_h5parm"]):
                 if self.parset["regroup_input_skymodel"]:
-                    self.log.warning("Regrouping of the input sky model was activated,
+                    self.log.warning("Regrouping of the input sky model was activated, "
                                      "but regrouping is not supported when input solutions "
-                                     "are provided. Deactivating regrouping.")
-                        self.parset["regroup_input_skymodel"] = False
+                                     "are provided. Deactivating regrouping")
+                    self.parset["regroup_input_skymodel"] = False
             step_dict['regroup_model'] = self.parset["regroup_input_skymodel"]
         if step_dict['regroup_model']:
             # If regrouping is to be done, we adjust the target flux used for calibrator
