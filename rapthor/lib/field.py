@@ -73,7 +73,7 @@ class Field(object):
         self.tolerance = self.parset['calibration_specific']['tolerance']
         self.dde_method = self.parset['imaging_specific']['dde_method']
         self.save_visibilities = self.parset['imaging_specific']['save_visibilities']
-        self.save_cleanmasks_and_dirtyimages = self.parset['imaging_specific']['save_supplementary_images']
+        self.save_supplementary_images = self.parset['imaging_specific']['save_supplementary_images']
         self.use_mpi = self.parset['imaging_specific']['use_mpi']
         self.parallelbaselines = self.parset['calibration_specific']['parallelbaselines']
         self.sagecalpredict = self.parset['calibration_specific']['sagecalpredict']
