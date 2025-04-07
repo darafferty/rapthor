@@ -166,9 +166,9 @@ dde_method = full
 # closest to the image centers are used
 save_visibilities = False
 
-# Save dirty images and the clean masks made during each imaging cycle
-# (default = False).
-save_cleanmasks_and_dirtyimages = False
+# Save supplementary images for diagnostics e.g. dirty images and pybdsf masks made 
+# during each imaging cycle (default = False).
+save_supplementary_images = False
 
 # IDG (image domain gridder) mode to use in WSClean (default = cpu). The mode
 # can be "cpu" or "hybrid". Note that IDG is only used when dde_mode = "hybrid"

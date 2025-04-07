@@ -392,7 +392,7 @@ The available options are described below under their respective sections.
         not be applied unless :term:`dde_method` = ``single``, in which case the solutions
         closest to the image centers are used.
 
-    save_cleanmasks_and_dirtyimages
+    save_supplementary_images
         Save dirty images and the clean masks made during each imaging cycle (default = ``False``).
 
     idg_mode
