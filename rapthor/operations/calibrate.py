@@ -449,7 +449,11 @@ class CalibrateDD(Operation):
         self.field.slow_gains_h5parm_filename = os.path.join(dst_dir, 'field-solutions-slow-gain.h5')
         if os.path.exists(self.field.h5parm_filename):
             os.remove(self.field.h5parm_filename)
-        if self.field.do_slowgain_solve or self.field.generate_screens:
+        if self.field.generate_screens:
+            # IDGCal (screens) only gives a combined h5parm, regardless of the type of solve
+            shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_h5parms),
+                        os.path.join(dst_dir, self.field.h5parm_filename))
+        elif self.field.do_slowgain_solve:
             shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_h5parms),
                         os.path.join(dst_dir, self.field.h5parm_filename))
             shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_slow_h5parm_separate),
