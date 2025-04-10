@@ -53,11 +53,24 @@ inputs:
       The flag that sets whether processing is skipped or not (length = 1).
     type: boolean
 
+  - id: compress_images
+    label: Flag to enable compression
+    doc: |
+      The flag that enables/disables compression of output mosaic image (length = 1).
+    type: boolean
+
 outputs:
+{% if compress_images %}
+  - id: mosaic_image
+    outputSource:
+      - compress/compressed_mosaic_image
+    type: File
+{% else %}
   - id: mosaic_image
     outputSource:
       - make_mosaic/mosaic_image
     type: File
+{% endif %}
 
 steps:
   - id: make_mosaic_template
@@ -117,3 +130,19 @@ steps:
         source: skip_processing
     out:
       - id: mosaic_image
+
+{% if compress_images %}
+# start compress_images
+  - id: compress
+    label: Compress mosaic image
+    doc: |
+      This step uses cfitsio fpack to compress the mosaic FITS format image file
+    run: {{ rapthor_pipeline_dir }}/steps/compress_mosaic_image.cwl
+    in:
+      - id: mosaic_image
+        source: make_mosaic/mosaic_image
+    out:
+      - id: compressed_mosaic_image
+
+{% endif %}
+# end compress_images

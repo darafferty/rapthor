@@ -287,7 +287,8 @@ class Image(Operation):
                             'do_multiscale': [sector.multiscale for sector in self.imaging_sectors],
                             'dd_psf_grid': [sector.dd_psf_grid for sector in self.imaging_sectors],
                             'max_threads': self.field.parset['cluster_specific']['max_threads'],
-                            'deconvolution_threads': self.field.parset['cluster_specific']['deconvolution_threads']}
+                            'deconvolution_threads': self.field.parset['cluster_specific']['deconvolution_threads'],
+                            'compress_images': self.field.compress_images}
 
         # Add parameters that depend on the set_parset parameters (set in set_parset_parameters())
         if self.peel_bright_sources:

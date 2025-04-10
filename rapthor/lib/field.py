@@ -75,6 +75,8 @@ class Field(object):
         self.dde_method = self.parset['imaging_specific']['dde_method']
         self.save_visibilities = self.parset['imaging_specific']['save_visibilities']
         self.save_supplementary_images = self.parset['imaging_specific']['save_supplementary_images']
+        self.compress_selfcal_images = self.parset['imaging_specific']['compress_selfcal_images']
+        self.compress_final_images = self.parset['imaging_specific']['compress_final_images']
         self.use_mpi = self.parset['imaging_specific']['use_mpi']
         self.parallelbaselines = self.parset['calibration_specific']['parallelbaselines']
         self.sagecalpredict = self.parset['calibration_specific']['sagecalpredict']
@@ -1725,6 +1727,9 @@ class Field(object):
             self.do_predict = True
         else:
             self.do_predict = False
+
+        # check whether images are to be compressed
+        self.compress_images = self.compress_final_images if final else self.compress_selfcal_images
 
     def get_matplotlib_patch(self, wcs=None):
         """
