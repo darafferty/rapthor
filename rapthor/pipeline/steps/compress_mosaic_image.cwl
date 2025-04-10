@@ -7,11 +7,6 @@ doc: |
 
 requirements:
   - class: InlineJavascriptRequirement
-  - class: InitialWorkDirRequirement
-    listing:
-      - entry: $(inputs.input_image)
-        entryname: $(inputs.input_image.basename)
-        writable: true
 
 inputs:
   - id: input_image
@@ -26,7 +21,7 @@ outputs:
   - id: mosaic_image
     type: File
     outputBinding:
-      glob: $(inputs.input_image.basename)
+      glob: $(inputs.input_image).fz
 
 hints:
   - class: DockerRequirement
