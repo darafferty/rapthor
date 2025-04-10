@@ -472,6 +472,11 @@ inputs:
       (length = n_sectors).
     type: string[]
 {% endif %}
+  - id: compress_images
+    label: Flag to enable compression
+    doc: |
+      The flag that enables/disables compression of output images (length = 1).
+    type: boolean
 
 
 outputs:
@@ -726,6 +731,8 @@ steps:
       - id: output_normalize_h5parm
         source: output_normalize_h5parm
 {% endif %}
+      - id: compress_images
+        source: compress_images
     scatter: [obs_filename, prepare_filename, concat_filename, starttime, ntimes,
               image_freqstep, image_timestep, previous_mask_filename, mask_filename,
               phasecenter, ra, dec, image_name, cellsize_deg, wsclean_imsize,

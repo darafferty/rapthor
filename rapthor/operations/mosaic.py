@@ -92,7 +92,8 @@ class Mosaic(Operation):
                             'sector_vertices_filename': sector_vertices_filename,
                             'template_image_filename': template_image_filename,
                             'regridded_image_filename': regridded_image_filename,
-                            'mosaic_filename': self.mosaic_filename}
+                            'mosaic_filename': self.mosaic_filename,
+                            'compress_images': self.field.compress_images}
 
     def finalize(self):
         """
