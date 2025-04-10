@@ -5,9 +5,9 @@ Specifying this file as the strategy in the Rapthor parset causes Rapthor to
 perform imaging differently from the default behaviour, e.g., it will do peeling
 of outliers before imaging is done.
 """
-# Here we disable calibration, flux-scale normalization, and peeling of
-# bright sources and active peeling of outliers. Note that in this case a sky
-# model must be given as input along with the calibration solutions
+# Here we disable calibration, flux-scale normalization, and peeling of bright
+# sources and activate peeling of outliers. Note that in this case a sky model
+# must be given as input along with the calibration solutions
 strategy_steps = [{}]
 strategy_steps[0]['do_calibrate'] = False
 strategy_steps[0]['do_normalize'] = False

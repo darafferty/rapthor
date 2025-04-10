@@ -58,7 +58,7 @@ def run(parset_file, logging_level='info'):
             log.warning("Generation of an initial sky model has been activated but "
                         "the strategy '{}' does not contain any calibration steps. "
                         "Skipping the initial skymodel generation...".format(parset['strategy']))
-            parset['generate_initial_skymodel'] = False
+            field.parset['generate_initial_skymodel'] = False
         else:
             field.define_full_field_sector(radius=parset['generate_initial_skymodel_radius'])
             log.info("Imaging full field to generate an initial sky model...")
@@ -128,8 +128,8 @@ def run(parset_file, logging_level='info'):
                     return
                 else:
                     # Turn off conflicting flags
-                    parset['generate_initial_skymodel'] = False
-                    parset['download_initial_skymodel'] = False
+                    field.parset['generate_initial_skymodel'] = False
+                    field.parset['download_initial_skymodel'] = False
             log.info("Using a data fraction of {0:.2f}".format(parset['final_data_fraction']))
 
         if field.make_quv_images:

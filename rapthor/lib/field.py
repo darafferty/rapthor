@@ -766,25 +766,6 @@ class Field(object):
             If True, combine the initial and current sky models (needed for the final
             calibration in order to include potential outlier sources)
         """
-        # Check whether sky model processing is needed (no processing is
-        # needed if, e.g., only imaging is to be done)
-        if (
-            not self.parset['input_skymodel'] and
-            not self.parset['generate_initial_skymodel'] and
-            not self.parset['download_initial_skymodel']
-        ):
-            self.calibrator_patch_names = []
-            self.calibrator_fluxes = []
-            self.calibrator_positions = []
-            self.num_patches = 0
-            self.outlier_sectors = []
-            self.bright_source_sectors = []
-            self.predict_sectors = []
-            self.non_calibrator_source_sectors = []
-            self.sectors = self.imaging_sectors
-            self.nsectors = len(self.sectors)
-            return
-
         # Except for the first iteration, use the results of the previous iteration to
         # update the sky models, etc.
         if index == 1:
@@ -809,6 +790,19 @@ class Field(object):
                                        overwrite=self.parset['download_overwrite_skymodel'])
                 if catalog == 'lotss':
                     moc = os.path.join(self.working_dir, 'skymodels', 'dr2-moc.moc')
+            elif not self.parset['input_skymodel']:
+                # No sky model to process, so just use minimal settings and return
+                self.calibrator_patch_names = []
+                self.calibrator_fluxes = []
+                self.calibrator_positions = []
+                self.num_patches = 0
+                self.outlier_sectors = []
+                self.bright_source_sectors = []
+                self.predict_sectors = []
+                self.non_calibrator_source_sectors = []
+                self.sectors = self.imaging_sectors
+                self.nsectors = len(self.sectors)
+                return
 
             # Plot the field overview showing the initial sky-model coverage
             self.log.info('Plotting field overview with initial sky-model coverage...')
@@ -1632,13 +1626,16 @@ class Field(object):
         # Update the sky models
         if index == 1:
             # For the intial cycle, set the regrouping flag depending on the inputs
-            if (self.parset["input_skymodel"] and self.parset["input_h5parm"]):
+            if self.parset["input_skymodel"] and self.parset["input_h5parm"]:
+                # Regrouping is not possible, since the sky model patches must
+                # match the calibration pathces in the h5parm
+                step_dict["regroup_model"] = False
                 if self.parset["regroup_input_skymodel"]:
                     self.log.warning("Regrouping of the input sky model was activated, "
                                      "but regrouping is not supported when input solutions "
                                      "are provided. Deactivating regrouping")
-                    self.parset["regroup_input_skymodel"] = False
-            step_dict['regroup_model'] = self.parset["regroup_input_skymodel"]
+            else:
+                step_dict['regroup_model'] = self.parset["regroup_input_skymodel"]
         if step_dict['regroup_model']:
             # If regrouping is to be done, we adjust the target flux used for calibrator
             # selection by the ratio of (LOFAR / true) fluxes determined in the image
