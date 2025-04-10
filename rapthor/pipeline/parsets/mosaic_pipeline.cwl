@@ -103,7 +103,7 @@ steps:
     - id: skip_processing
       source: skip_processing
     - id: compress_images
-      source:compress_images
+      source: compress_images
     scatter: [sector_image_filename, sector_vertices_filename, template_image_filename,
               regridded_image_filename, mosaic_filename]
     scatterMethod: dotproduct
