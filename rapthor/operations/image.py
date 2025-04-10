@@ -142,7 +142,8 @@ class Image(Operation):
                 # If IDG is not used, keep the image size fixed to make comparisons
                 # between cycles easier
                 recalculate_imsize = False
-            sector.set_imaging_parameters(self.do_multiscale_clean, recalculate_imsize=True,
+            sector.set_imaging_parameters(self.do_multiscale_clean,
+                                          recalculate_imsize=recalculate_imsize,
                                           imaging_parameters=self.imaging_parameters)
 
             # Set input MS filenames
@@ -224,12 +225,7 @@ class Image(Operation):
                 prepare_data_applycal_steps = f"[{','.join(prepare_data_applycal_steps)}]"
 
         # Set the h5parm to use to apply the DDE solutions as needed
-        h5parm = None
-        idgcal_h5parm = None
-        if self.use_facets or self.preapply_dde_solutions:
-            h5parm = CWLFile(self.field.h5parm_filename).to_json()
-        if self.apply_screens:
-            idgcal_h5parm = CWLFile(self.field.idgcal_h5parm_filename).to_json()
+        h5parm = CWLFile(self.field.h5parm_filename).to_json() if not self.apply_none else None
 
         # Set the parameters common to all modes
         self.input_parms = {'obs_filename': [CWLDir(name).to_json() for name in obs_filename],
@@ -252,7 +248,6 @@ class Image(Operation):
                             'prepare_data_applycal_steps': prepare_data_applycal_steps,
                             'h5parm': h5parm,
                             'fulljones_h5parm': fulljones_h5parm,
-                            'idgcal_h5parm': idgcal_h5parm,
                             'input_normalize_h5parm': input_normalize_h5parm,
                             'channels_out': [sector.wsclean_nchannels for sector in self.imaging_sectors],
                             'deconvolution_channels': [sector.wsclean_deconvolution_channels for sector in self.imaging_sectors],

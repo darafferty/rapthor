@@ -468,7 +468,8 @@ class CalibrateDD(Operation):
             shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_fast_h5parm),
                         os.path.join(dst_dir, self.field.fast_phases_h5parm_filename))
         self.field.scan_h5parms()  # verify h5parm and update flags for predict/image operations
-        flagged_frac = misc.get_flagged_solution_fraction(self.field.h5parm_filename)
+        solsetname = 'coefficients000' if self.field.generate_screens else 'sol000'
+        flagged_frac = misc.get_flagged_solution_fraction(self.field.h5parm_filename, solsetname=solsetname)
         self.log.info('Fraction of solutions that are flagged = {0:.2f}'.format(flagged_frac))
 
         # Copy the plots (PNG files)
