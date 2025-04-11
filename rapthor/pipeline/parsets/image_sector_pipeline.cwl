@@ -479,12 +479,6 @@ inputs:
     type: string
 {% endif %}
 
-  - id: compress_images
-    label: Flag to enable compression
-    doc: |
-      The flag that enables/disables compression of output images (length = 1).
-    type: boolean
-
 outputs:
   - id: filtered_skymodel_true_sky
     outputSource:

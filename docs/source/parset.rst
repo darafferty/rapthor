@@ -434,8 +434,8 @@ The available options are described below under their respective sections.
         require decompression to be run first. This can be done with the ``funpack`` tool .
 
     compress_final_images
-        Compress the final images to reduce storage space (default = False).
-        See ``compress_selfcal_images`` option for compression details.
+        Compress the final images to reduce storage space (default = ``False``).
+        See :term:`compress_selfcal_images` option for compression details.
 
     idg_mode
         IDG (image domain gridder) mode to use in WSClean (default = ``cpu``). The mode
