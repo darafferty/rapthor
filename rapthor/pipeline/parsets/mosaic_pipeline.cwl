@@ -70,12 +70,6 @@ inputs:
       The flag that sets whether processing is skipped or not (length = 1).
     type: boolean
 
-  - id: compress_images
-    label: Flag to enable compression
-    doc: |
-      The flag that enables/disables compression of output mosaic image (length = 1).
-    type: boolean
-
 outputs:
   - id: mosaic_image
     outputSource:
@@ -102,8 +96,6 @@ steps:
       source: mosaic_filename
     - id: skip_processing
       source: skip_processing
-    - id: compress_images
-      source: compress_images
     scatter: [sector_image_filename, sector_vertices_filename, template_image_filename,
               regridded_image_filename, mosaic_filename]
     scatterMethod: dotproduct

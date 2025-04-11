@@ -38,7 +38,8 @@ class Mosaic(Operation):
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
                              'pipeline_working_dir': self.pipeline_working_dir,
                              'max_cores': max_cores,
-                             'skip_processing': self.skip_processing}
+                             'skip_processing': self.skip_processing
+                             'compress_images': self.field.compress_images}
 
     def set_input_parameters(self):
         """
@@ -92,8 +93,7 @@ class Mosaic(Operation):
                             'sector_vertices_filename': sector_vertices_filename,
                             'template_image_filename': template_image_filename,
                             'regridded_image_filename': regridded_image_filename,
-                            'mosaic_filename': self.mosaic_filename,
-                            'compress_images': self.field.compress_images}
+                            'mosaic_filename': self.mosaic_filename}
 
     def finalize(self):
         """
