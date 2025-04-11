@@ -13,7 +13,6 @@ minimal parset for a basic reduction on a single machine could look like the fol
     [global]
     dir_working = /path/to/rapthor/working/dir
     input_ms = /path/to/input/dir/input.ms
-    data_colname = DATA
 
 
 The available options are described below under their respective sections.
