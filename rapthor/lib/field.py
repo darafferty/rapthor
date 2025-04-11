@@ -753,10 +753,7 @@ class Field(object):
         index : int
             Iteration index (counts starting from 1)
         regroup : bool
-            Regroup sky model. This parameter is not used for the first cycle, as its
-            value is taken from the parset. For later cycles, it controls whether the
-            sky models that come from imaging are to be regrouped into calibration
-            patches. In almost all cases, regrouping should be done. The exception is
+            Regroup sky model. In almost all cases, regrouping should be done. The exception is
             when using small imaging sectors when the sources in each sector should be
             grouped into a single patch together.
         target_flux : float, optional
@@ -793,6 +790,19 @@ class Field(object):
                                        overwrite=self.parset['download_overwrite_skymodel'])
                 if catalog == 'lotss':
                     moc = os.path.join(self.working_dir, 'skymodels', 'dr2-moc.moc')
+            elif not self.parset['input_skymodel']:
+                # No sky model to process, so just use minimal settings and return
+                self.calibrator_patch_names = []
+                self.calibrator_fluxes = []
+                self.calibrator_positions = []
+                self.num_patches = 0
+                self.outlier_sectors = []
+                self.bright_source_sectors = []
+                self.predict_sectors = []
+                self.non_calibrator_source_sectors = []
+                self.sectors = self.imaging_sectors
+                self.nsectors = len(self.sectors)
+                return
 
             # Plot the field overview showing the initial sky-model coverage
             self.log.info('Plotting field overview with initial sky-model coverage...')
@@ -801,7 +811,7 @@ class Field(object):
 
             self.make_skymodels(self.parset['input_skymodel'],
                                 skymodel_apparent_sky=self.parset['apparent_skymodel'],
-                                regroup=self.parset['regroup_input_skymodel'],
+                                regroup=regroup,
                                 target_flux=target_flux, target_number=target_number,
                                 find_sources=True, calibrator_max_dist_deg=calibrator_max_dist_deg,
                                 index=index)
@@ -1614,6 +1624,18 @@ class Field(object):
             sector.__dict__.update(step_dict)
 
         # Update the sky models
+        if index == 1:
+            # For the intial cycle, set the regrouping flag depending on the inputs
+            if self.parset["input_skymodel"] and self.parset["input_h5parm"]:
+                # Regrouping is not possible, since the sky model patches must
+                # match the calibration pathces in the h5parm
+                step_dict["regroup_model"] = False
+                if self.parset["regroup_input_skymodel"]:
+                    self.log.warning("Regrouping of the input sky model was activated, "
+                                     "but regrouping is not supported when input solutions "
+                                     "are provided. Deactivating regrouping")
+            else:
+                step_dict['regroup_model'] = self.parset["regroup_input_skymodel"]
         if step_dict['regroup_model']:
             # If regrouping is to be done, we adjust the target flux used for calibrator
             # selection by the ratio of (LOFAR / true) fluxes determined in the image

@@ -440,8 +440,7 @@ def parset_read(parset_file, use_log_file=True):
     Raises
     ------
         RuntimeError
-            If the working directory cannot be created; or
-            if no input sky model file is given and download is not requested.
+            If the working directory cannot be created.
         FileNotFoundError
             If no input MS files can be found; or
             if the sky model file cannot be found and download is not requested.
@@ -516,9 +515,10 @@ def parset_read(parset_file, use_log_file=True):
                     "because sky model download has been requested."
                 )
         else:
-            raise RuntimeError(
+            log.warning(
                 "No input sky model file given and neither generation nor download of "
-                "sky model requested."
+                "sky model requested. If no calibration is to be done, this warning can "
+                "be ignored."
             )
     else:
         if not os.path.exists(parset_dict["input_skymodel"]):
