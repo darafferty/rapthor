@@ -74,11 +74,10 @@ def run(parset_file, logging_level='info'):
             # be used to peel non-calibrator sources before the final
             # calibration is done (i.e., they must have the same time coverage).
             # This peeling is done only for LBA data
-            log.error("When processing LBA data, the selfcal_data_fraction (currently "
-                      "set to {0:.2f}) and final_data_fraction (currently set to {1:.2f}) "
-                      "must be identical.".format(parset['selfcal_data_fraction'],
-                                                  parset['final_data_fraction']))
-            return
+            raise ValueError("When processing LBA data, the selfcal_data_fraction (currently "
+                             "set to {0:.2f}) and final_data_fraction (currently set to {1:.2f}) "
+                             "must be identical.".format(parset['selfcal_data_fraction'],
+                                                         parset['final_data_fraction']))
         log.info("Starting self calibration with a data fraction of "
                  "{0:.2f}".format(parset['selfcal_data_fraction']))
 
@@ -114,18 +113,16 @@ def run(parset_file, logging_level='info'):
         else:
             if not final_step['do_calibrate']:
                 if not parset["input_h5parm"]:
-                    log.error("The stratgey indicates that no calibration is to be done "
-                              "but no calibration solutions were provided. Please provide "
-                              "the solutions with the input_h5parm parameter")
-                    return
+                    raise ValueError("The stratgey indicates that no calibration is to be done "
+                                     "but no calibration solutions were provided. Please provide "
+                                     "the solutions with the input_h5parm parameter")
                 elif (
                     (final_step['peel_outliers'] or final_step['peel_bright_sources']) and
                     not parset["input_skymodel"]
                 ):
-                    log.error("Peeling of outliers or bright sources was activated but no "
-                              "sky model was provided. Please provide a sky model with the "
-                              "input_skymodel parameter")
-                    return
+                    raise ValueError("Peeling of outliers or bright sources was activated but no "
+                                     "sky model was provided. Please provide a sky model with the "
+                                     "input_skymodel parameter")
                 else:
                     # Turn off conflicting flags
                     field.parset['generate_initial_skymodel'] = False
