@@ -16,10 +16,10 @@ To install rapthor, follow the instructions below.
 
 Rapthor requires the following packages (beyond those installed automatically with rapthor):
 
-* [DP3](https://git.astron.nl/RD/DP3) (version 6.3 or later; building with [AOFlagger](https://gitlab.com/aroffringa/aoflagger.git), [EveryBeam](https://git.astron.nl/RD/EveryBeam), and [IDG](https://git.astron.nl/RD/idg.git) is required)
+* [DP3](https://git.astron.nl/RD/DP3.git) (version 6.3 or later; building with [AOFlagger](https://gitlab.com/aroffringa/aoflagger), [EveryBeam](https://git.astron.nl/RD/EveryBeam), and [IDG](https://git.astron.nl/RD/idg) is required)
 * [EveryBeam](https://git.astron.nl/RD/EveryBeam.git) (version 0.7.1 or later)
 * [IDG](https://git.astron.nl/RD/idg.git) (version 1.2.0 or later)
-* [WSClean](https://gitlab.com/aroffringa/wsclean) (version 3.4 or later; building with [EveryBeam](https://git.astron.nl/RD/EveryBeam) and [IDG](https://git.astron.nl/RD/idg.git) is required)
+* [WSClean](https://gitlab.com/aroffringa/wsclean.git) (version 3.4 or later; building with [EveryBeam](https://git.astron.nl/RD/EveryBeam) and [IDG](https://git.astron.nl/RD/idg) is required)
 
 It is strongly recommended to also build the following packages from source, because the version that can be installed from the Linux distribution is usually too old:
 
