@@ -202,6 +202,7 @@ def test_image_workflow(
         "normalize_flux_scale": normalize_flux_scale,
         "preapply_dde_solutions": preapply_dde_solutions,
         "save_source_list": save_source_list,
+        "compress_images": compress_images,
     }
     generate_and_validate(tmp_path, operation, parms, templ, sub_templ)
 
@@ -223,5 +224,6 @@ def test_mosaic_workflow(tmp_path, max_cores, skip_processing, compress_images):
     parms = {
         "max_cores": max_cores,
         "skip_processing": skip_processing,
+        "compress_images": compress_images,
     }
     generate_and_validate(tmp_path, operation, parms, templ, sub_templ)
