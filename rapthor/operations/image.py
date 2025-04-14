@@ -255,6 +255,7 @@ class Image(Operation):
                             'region_file': [None if sector.region_file is None else CWLFile(sector.region_file).to_json() for sector in self.imaging_sectors],
                             'wsclean_niter': [sector.wsclean_niter for sector in self.imaging_sectors],
                             'wsclean_nmiter': [sector.wsclean_nmiter for sector in self.imaging_sectors],
+                            'skip_final_iteration': self.field.skip_final_iteration,
                             'robust': [sector.robust for sector in self.imaging_sectors],
                             'cellsize_deg': [sector.cellsize_deg for sector in self.imaging_sectors],
                             'min_uv_lambda': [sector.min_uv_lambda for sector in self.imaging_sectors],

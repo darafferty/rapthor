@@ -66,7 +66,7 @@ for i in range(max_selfcal_loops):
         strategy_steps[i]['threshisl'] = 3.0
         strategy_steps[i]['threshpix'] = 5.0
         strategy_steps[i]['max_nmiter'] = 12
-    strategy_steps[i]['auto_mask_nmiter'] = 1
+    strategy_steps[i]['auto_mask_nmiter'] = 2
 
     # Here we set the calibrator selection strategy, decreasing the target
     # minimum flux density for sources to be used as calibrators as selfcal
@@ -103,5 +103,5 @@ for i in range(max_selfcal_loops):
 # with the exception of auto_mask_nmiter, which is increased from 1 to 2 to
 # ensure full cleaning
 final_step = strategy_steps[-1].copy()
-final_step['auto_mask_nmiter'] = 2
+final_step['auto_mask_nmiter'] = 3
 strategy_steps.append(final_step)

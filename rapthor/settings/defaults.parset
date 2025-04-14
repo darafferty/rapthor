@@ -168,8 +168,8 @@ dde_method = full
 # closest to the image centers are used
 save_visibilities = False
 
-# Save supplementary images for diagnostics e.g. dirty images and pybdsf masks made 
-# during each imaging cycle (default = False).
+# Save supplementary images for diagnostics e.g. dirty images and pybdsf masks
+# made during each imaging cycle (default = False).
 save_supplementary_images = False
 
 # IDG (image domain gridder) mode to use in WSClean (default = cpu). The mode
@@ -247,6 +247,13 @@ sector_width_dec_deg_list = []
 # 15% reduction in peak flux). Higher values can result in shorter run times but
 # more smearing away from the sector centers
 max_peak_smearing = 0.15
+
+# Skip the final major iteration for all but the last cycle (default = True).
+# If True, the final iteration is skipped during imaging, which speeds up
+# imaging but degrades the image slightly: however, the sky model is not
+# affected by this setting. Therefore, it is safe to use this option for self
+# calibration cycles (note: it is never used for the final cycle)
+skip_final_major_iteration = True
 
 # Skip corner sectors defined by the imaging grid? If True and a grid is used
 # (defined by the grid_* parameters above), the four corner sectors are not

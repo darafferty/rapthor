@@ -377,6 +377,12 @@ inputs:
       Join polarizations during clean (length = 1).
     type: boolean
 
+  - id: skip_final_iteration
+    label: Skip final major iteration
+    doc: |
+      Skip the final major iteration at the end of clean (length = 1).
+    type: boolean
+
   - id: taper_arcsec
     label: Taper value
     doc: |
@@ -694,6 +700,8 @@ steps:
         source: link_polarizations
       - id: join_polarizations
         source: join_polarizations
+      - id: skip_final_iteration
+        source: skip_final_iteration
       - id: taper_arcsec
         source: taper_arcsec
       - id: local_rms_strength

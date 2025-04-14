@@ -187,6 +187,14 @@ inputs:
     inputBinding:
       prefix: -join-polarizations
 
+  - id: skip_final_iteration
+    label: Skip final iteration
+    doc: |
+      Skip the final major iteration during clean.
+    type: boolean
+    inputBinding:
+      prefix: -skip-final-iteration
+
   - id: cellsize_deg
     label: Pixel size
     doc: |
