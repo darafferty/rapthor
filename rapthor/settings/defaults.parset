@@ -8,6 +8,8 @@ dir_working = None
 # Full path to input MS files (required). Wildcards can be used (e.g.,
 # /path/to/data/*.ms) or a list can be given
 input_ms = None
+
+# Data column to be read from the input MS files (default = DATA).
 data_colname = DATA
 
 # Generate an initial target sky model (default = True). This option is ignored
@@ -165,6 +167,10 @@ dde_method = full
 # will not be applied unless dde_method = "single", in which case the solutions
 # closest to the image centers are used
 save_visibilities = False
+
+# Save supplementary images for diagnostics e.g. dirty images and pybdsf masks made 
+# during each imaging cycle (default = False).
+save_supplementary_images = False
 
 # IDG (image domain gridder) mode to use in WSClean (default = cpu). The mode
 # can be "cpu" or "hybrid". Note that IDG is only used when dde_mode = "hybrid"

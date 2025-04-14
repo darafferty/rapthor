@@ -247,7 +247,7 @@ def set_image_strategy(field):
     The standard imaging strategy is a single cycle that includes:
         - no selfcal cycles
         - no calibration
-        - peeling of any non-sector sources
+        - no peeling
         - imaging of the sectors
 
     Returns
@@ -259,7 +259,8 @@ def set_image_strategy(field):
     strategy_steps = [{}]
 
     strategy_steps[0]['do_calibrate'] = False
-    strategy_steps[0]['peel_outliers'] = True
+    strategy_steps[0]['do_normalize'] = False
+    strategy_steps[0]['peel_outliers'] = False
     strategy_steps[0]['peel_bright_sources'] = False
     strategy_steps[0]['do_image'] = True
     strategy_steps[0]['auto_mask'] = 3.0

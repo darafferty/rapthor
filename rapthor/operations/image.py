@@ -370,6 +370,10 @@ class Image(Operation):
                 setattr(sector, "I_image_file_apparent_sky", f'{image_root}-MFS-image.fits')
                 setattr(sector, "I_model_file_true_sky", f'{image_root}-MFS-model-pb.fits')
                 setattr(sector, "I_residual_file_apparent_sky", f'{image_root}-MFS-residual.fits')
+
+                if self.field.save_supplementary_images:
+                    setattr(sector, "I_dirty_file_apparent_sky", f'{image_root}-MFS-dirty.fits')
+                    setattr(sector, "mask_filename", f'{image_root}.mask.fits')
             else:
                 # When making all Stokes images, WSClean includes the Stokes parameter
                 # name in the output filenames
@@ -379,6 +383,11 @@ class Image(Operation):
                     setattr(sector, f"{polup}_image_file_apparent_sky", f'{image_root}-MFS-{polup}-image.fits')
                     setattr(sector, f"{polup}_model_file_true_sky", f'{image_root}-MFS-{polup}-model-pb.fits')
                     setattr(sector, f"{polup}_residual_file_apparent_sky", f'{image_root}-MFS-{polup}-residual.fits')
+
+                    if self.field.save_supplementary_images:
+                        setattr(sector, f"{polup}_dirty_file_apparent_sky", f'{image_root}-MFS-{polup}-dirty.fits')
+                        if not hasattr(sector, "mask_filename"):
+                            setattr(sector, "mask_filename", f'{image_root}.mask.fits')
 
             # The output sky models, both true sky and apparent sky (the filenames are
             # defined in the rapthor/scripts/filter_skymodel.py file)

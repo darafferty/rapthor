@@ -1,10 +1,9 @@
 """
 Script that defines a custom user processing strategy.
 
-This script demonstrates a simple alternative calibration strategy. When this
-file is specified as calibration strategy in the parset file, Rapthor will
-perform calibration different to the default approach, e.g. it will perform a
-slowgain solve already in the first iteration.
+This script demonstrates a simple alternative processing strategy. When this
+file is specified as the strategy in the parset file, Rapthor will perform
+self-calibration differently from the default approach (see below for details).
 
 If you need to tweak the default calibration strategy slightly, it might be
 easier to start from `default_calibration_strategy.py`.
