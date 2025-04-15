@@ -858,6 +858,7 @@ steps:
 {% endif %}
           - image/image_I_pb_channels
           - image/images_extra
+        linkMerge: merge_flattened
       - id: name
         source: image_name
     out:
