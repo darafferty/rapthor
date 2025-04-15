@@ -9,7 +9,7 @@ requirements:
   - class: InlineJavascriptRequirement
 
 inputs:
-  - id: input_image
+  - id: mosaic_image
     label: Input image FITS file
     doc: |
       The FITS format filename of the input image.
@@ -18,10 +18,10 @@ inputs:
       position: 1
 
 outputs:
-  - id: mosaic_image
+  - id: compressed_mosaic_image
     type: File
     outputBinding:
-      glob: $(inputs.input_image).fz
+      glob: $(inputs.mosaic_image).fz
 
 hints:
   - class: DockerRequirement
