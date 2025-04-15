@@ -845,7 +845,7 @@ steps:
     label: Compress wsclean FITS images
     doc: |
       This step uses cfitsio fpack to compress all images produced by wsclean
-    run: {{ rapthor_pipeline_dir }}/steps/rapthor/pipeline/steps/compress_sector_images.cwl
+    run: {{ rapthor_pipeline_dir }}/steps/compress_sector_images.cwl
     in:
       - id: images
         source:
