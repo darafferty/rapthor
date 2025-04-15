@@ -500,6 +500,7 @@ class ImageInitial(Image):
         self.do_multiscale_clean = True
         self.field.full_field_sector.max_nmiter = 8
         self.field.full_field_sector.max_wsclean_nchannels = 8
+        self.field.skip_final_iteration = True
         super().set_input_parameters()
 
     def finalize(self):
@@ -604,6 +605,7 @@ class ImageNormalize(Image):
         self.imaging_parameters['taper_arcsec'] = 24.0
         self.do_predict = False
         self.do_multiscale_clean = False
+
         super().set_input_parameters()
 
     def finalize(self):
