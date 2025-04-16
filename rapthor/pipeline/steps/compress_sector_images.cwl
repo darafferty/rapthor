@@ -35,10 +35,6 @@ outputs:
     type: File
     outputBinding:
       glob: [$(inputs.name)-MFS-image-pb.fits.fz, $(inputs.name)-MFS-I-image-pb.fits.fz]
-  - id: image_I_pb_channels
-    type: File[]
-    outputBinding:
-      glob: [$(inputs.name)-0???-image-pb.fits.fz, $(inputs.name)-0???-I-image-pb.fits.fz]
   - id: images_extra
     type: File[]
     outputBinding:
