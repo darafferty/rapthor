@@ -856,7 +856,6 @@ steps:
           - image/image_I_nonpb_name
           - image/image_I_pb_name
 {% endif %}
-          - image/image_I_pb_channels
           - image/images_extra
         linkMerge: merge_flattened
       - id: name
@@ -864,7 +863,6 @@ steps:
     out:
       - id: image_I_nonpb_name
       - id: image_I_pb_name
-      - id: image_I_pb_channels
       - id: images_extra
 
 {% endif %}
