@@ -188,7 +188,7 @@ def set_selfcal_strategy(field):
             strategy_steps[i]['threshisl'] = 3.0
             strategy_steps[i]['threshpix'] = 5.0
             strategy_steps[i]['max_nmiter'] = 12
-        strategy_steps[i]['auto_mask_nmiter'] = 1
+        strategy_steps[i]['auto_mask_nmiter'] = 2
 
         if i == 0:
             if do_phase_only_solves:
@@ -229,13 +229,9 @@ def set_selfcal_strategy(field):
             strategy_steps[i]['divergence_ratio'] = 1.1
             strategy_steps[i]['failure_ratio'] = 10.0
 
-    # Set a final step as a duplicate of the last selfcal one,
-    # with the exception of auto_mask_nmiter, which is increased
-    # to 2
+    # Set a final step as a duplicate of the last selfcal one
     if strategy_steps:
-        final_step = strategy_steps[-1].copy()
-        final_step['auto_mask_nmiter'] = 2
-        strategy_steps.append(final_step)
+        strategy_steps.append(strategy_steps[-1])
 
     return strategy_steps
 

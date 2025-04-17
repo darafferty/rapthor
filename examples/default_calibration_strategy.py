@@ -99,9 +99,5 @@ for i in range(max_selfcal_loops):
         strategy_steps[i]['divergence_ratio'] = 1.1
         strategy_steps[i]['failure_ratio'] = 10.0
 
-# Set the parameters for the final pass as duplicates of the last selfcal step,
-# with the exception of auto_mask_nmiter, which is increased from 1 to 2 to
-# ensure full cleaning
-final_step = strategy_steps[-1].copy()
-final_step['auto_mask_nmiter'] = 3
-strategy_steps.append(final_step)
+# Set the parameters for the final pass as duplicates of the last selfcal step
+strategy_steps.append(strategy_steps[-1])
