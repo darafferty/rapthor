@@ -248,11 +248,12 @@ sector_width_dec_deg_list = []
 # more smearing away from the sector centers
 max_peak_smearing = 0.15
 
-# Skip the final major iteration for all but the last cycle (default = True).
-# If True, the final iteration is skipped during imaging, which speeds up
-# imaging but degrades the image slightly: however, the sky model is not
-# affected by this setting. Therefore, it is safe to use this option for self
-# calibration cycles (note: it is never used for the final cycle)
+# Skip the final WSClean major iteration for all but the last processing cycle
+# (default = True). If True, the final major iteration is skipped during
+# imaging, which speeds up imaging but degrades the image slightly; however, the
+# sky model is not affected by this setting. Therefore, it is safe to use this
+# option for self calibration cycles (note: fhe final WSClean major iteration is
+# never skipped in the final processing cycle regardless of this setting.)
 skip_final_major_iteration = True
 
 # Skip corner sectors defined by the imaging grid? If True and a grid is used

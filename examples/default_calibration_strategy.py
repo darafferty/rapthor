@@ -53,8 +53,9 @@ for i in range(max_selfcal_loops):
     # if any, are excluded from the resulting sky models. Conversely, the
     # maximum number of major iterations allowed during imaging is raised to
     # allow deeper cleaning in the later cycles. Lastly, the maximum number of
-    # major iterations allowed after the automasking threshold is reached is set
-    # to 1 during selfcal and to 2 for the final cycle (see below)
+    # WSClean major iterations allowed after the automasking threshold is reached
+    # is set to 2, which has been found to be a sufficient number of iterations in
+    # most cases
     strategy_steps[i]['do_image'] = True
     if i == 0:
         strategy_steps[i]['auto_mask'] = 4.0

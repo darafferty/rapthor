@@ -222,7 +222,8 @@ def run_steps(field, steps, final=False):
             # Set whether screens should be applied
             field.apply_screens = True if (field.dde_mode == 'hybrid' and final) else False
 
-            # Set whether the final major iteration is skipped
+            # Set whether the final major iteration is skipped (note: it is never skipped
+            # for the final iteration)
             field.skip_final_iteration = False if final else field.skip_final_major_iteration
 
             op = Image(field, cycle_number)

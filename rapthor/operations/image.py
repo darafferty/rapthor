@@ -593,7 +593,7 @@ class ImageNormalize(Image):
             self.apply_none = False
         self.apply_normalizations = False
         self.field.normalize_sector.auto_mask = 5.0
-        self.field.normalize_sector.auto_mask_nmiter = 1
+        self.field.normalize_sector.auto_mask_nmiter = 2
         self.field.normalize_sector.threshisl = 4.0
         self.field.normalize_sector.threshpix = 5.0
         self.field.normalize_sector.max_nmiter = 8

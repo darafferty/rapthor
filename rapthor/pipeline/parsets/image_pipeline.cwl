@@ -380,7 +380,7 @@ inputs:
   - id: skip_final_iteration
     label: Skip final major iteration
     doc: |
-      Skip the final major iteration at the end of clean (length = 1).
+      Skip the final WSClean major iteration at the end of clean (length = 1).
     type: boolean
 
   - id: taper_arcsec
