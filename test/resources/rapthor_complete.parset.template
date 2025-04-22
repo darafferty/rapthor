@@ -64,6 +64,7 @@ local_rms_strength = 0.5
 do_multiscale_clean = False
 dde_method = single
 save_visibilities = True
+save_supplementary_images = True
 idg_mode = gpu
 mem_gb = 128.0
 apply_diagonal_solutions = False

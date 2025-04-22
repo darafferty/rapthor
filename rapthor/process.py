@@ -55,14 +55,16 @@ def run(parset_file, logging_level='info'):
     # Generate an initial sky model from the input data if needed
     if parset['generate_initial_skymodel']:
         if not any([step['do_calibrate'] for step in strategy_steps]):
-            log.warning("Generation of an initial sky model has been activated "
-                        "but the strategy '{}' does not contain any calibration "
-                        "steps.".format(parset['strategy']))
-        field.define_full_field_sector(radius=parset['generate_initial_skymodel_radius'])
-        log.info("Imaging full field to generate an initial sky model...")
-        chunk_observations(field, [], parset['generate_initial_skymodel_data_fraction'])
-        op = ImageInitial(field)
-        op.run()
+            log.warning("Generation of an initial sky model has been activated but "
+                        "the strategy '{}' does not contain any calibration steps. "
+                        "Skipping the initial skymodel generation...".format(parset['strategy']))
+            field.parset['generate_initial_skymodel'] = False
+        else:
+            field.define_full_field_sector(radius=parset['generate_initial_skymodel_radius'])
+            log.info("Imaging full field to generate an initial sky model...")
+            chunk_observations(field, [], parset['generate_initial_skymodel_data_fraction'])
+            op = ImageInitial(field)
+            op.run()
 
     # Run the self calibration
     if selfcal_steps:
@@ -72,11 +74,10 @@ def run(parset_file, logging_level='info'):
             # be used to peel non-calibrator sources before the final
             # calibration is done (i.e., they must have the same time coverage).
             # This peeling is done only for LBA data
-            log.error("When processing LBA data, the selfcal_data_fraction (currently "
-                      "set to {0:.2f}) and final_data_fraction (currently set to {1:.2f}) "
-                      "must be identical.".format(parset['selfcal_data_fraction'],
-                                                  parset['final_data_fraction']))
-            return
+            raise ValueError("When processing LBA data, the selfcal_data_fraction (currently "
+                             "set to {0:.2f}) and final_data_fraction (currently set to {1:.2f}) "
+                             "must be identical.".format(parset['selfcal_data_fraction'],
+                                                         parset['final_data_fraction']))
         log.info("Starting self calibration with a data fraction of "
                  "{0:.2f}".format(parset['selfcal_data_fraction']))
 
@@ -110,7 +111,24 @@ def run(parset_file, logging_level='info'):
                      "{0:.2f}".format(parset['final_data_fraction']))
             field.cycle_number += 1
         else:
+            if not final_step['do_calibrate']:
+                if not parset["input_h5parm"]:
+                    raise ValueError("The stratgey indicates that no calibration is to be done "
+                                     "but no calibration solutions were provided. Please provide "
+                                     "the solutions with the input_h5parm parameter")
+                elif (
+                    (final_step['peel_outliers'] or final_step['peel_bright_sources']) and
+                    not parset["input_skymodel"]
+                ):
+                    raise ValueError("Peeling of outliers or bright sources was activated but no "
+                                     "sky model was provided. Please provide a sky model with the "
+                                     "input_skymodel parameter")
+                else:
+                    # Turn off conflicting flags
+                    field.parset['generate_initial_skymodel'] = False
+                    field.parset['download_initial_skymodel'] = False
             log.info("Using a data fraction of {0:.2f}".format(parset['final_data_fraction']))
+
         if field.make_quv_images:
             log.info("Stokes I, Q, U, and V images will be made")
         if field.dde_mode == 'hybrid':
@@ -315,16 +333,17 @@ def chunk_observations(field, steps, data_fraction):
     """
     # Find the overall minimum duration that can be used and still satisfy the
     # specified solution intervals
+    min_time = 600
     if steps:
-        fast_solint = max([step['fast_timestep_sec'] for step in steps])
-        joint_solint = max([step['slow_timestep_joint_sec'] for step in steps])
-        separate_solint = max([step['slow_timestep_separate_sec'] for step in steps])
+        fast_solint = max([step['fast_timestep_sec'] if 'fast_timestep_sec'
+                           in step else 0 for step in steps])
+        joint_solint = max([step['slow_timestep_joint_sec'] if 'slow_timestep_joint_sec'
+                            in step else 0 for step in steps])
+        separate_solint = max([step['slow_timestep_separate_sec'] if 'slow_timestep_separate_sec'
+                               in step else 0 for step in steps])
         max_dd_timestep = max(fast_solint, joint_solint, separate_solint)
         max_di_timestep = field.fulljones_timestep_sec
-        min_time = max(max_dd_timestep * field.dd_interval_factor, max_di_timestep)
-    else:
-        # If no strategy steps are given, use a standard minimum time
-        min_time = 600
+        min_time = max(min_time, max_dd_timestep * field.dd_interval_factor, max_di_timestep)
 
     for obs in field.full_observations:
         tot_time = obs.endtime - obs.starttime

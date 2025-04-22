@@ -1,8 +1,9 @@
 """
 Script that defines the default user processing strategy for HBA data when the
 initial sky model is generated from the input data. Specifying this file as the
-calibration strategy in the Rapthor parset causes default Rapthor to use the default
-calibration behaviour, which is equal to specifying no specific calibration strategy.
+strategy in the Rapthor parset causes Rapthor to use the default self-
+calibration behaviour, which is equal to specifying no specific calibration
+strategy.
 
 This file is provided to base custom strategies from. See the documentation for
 detailed information on each parameter.
@@ -21,11 +22,10 @@ for i in range(max_selfcal_loops):
     # station) is set to 0.3, to allow for small adjustments to the station
     # calibration (done in LINC).
     strategy_steps[i]['do_calibrate'] = True
+    strategy_steps[i]['do_slowgain_solve'] = True
     if i == 0:
-        strategy_steps[i]['do_slowgain_solve'] = True
         strategy_steps[i]['peel_outliers'] = True
     else:
-        strategy_steps[i]['do_slowgain_solve'] = True
         strategy_steps[i]['peel_outliers'] = False
     strategy_steps[i]['solve_min_uv_lambda'] = 150
     strategy_steps[i]['peel_bright_sources'] = False

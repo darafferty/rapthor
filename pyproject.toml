@@ -39,7 +39,7 @@ dependencies = [
     "lsmtool>=1.6",
     "matplotlib",
     "mocpy",
-    "numpy<2",
+    "numpy",
     "python-casacore",
     "python-dateutil",
     "reproject",

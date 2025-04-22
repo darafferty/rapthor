@@ -475,6 +475,10 @@ outputs:
     outputSource:
       - prepare_imaging_data/msimg
     type: Directory[]
+  - id: source_filtering_mask
+    outputSource:
+      - filter/source_filtering_mask
+    type: File
   - id: sector_I_images
     outputSource:
 {% if peel_bright_sources %}
@@ -904,6 +908,7 @@ steps:
       - id: flat_noise_rms_image
       - id: true_sky_rms_image
       - id: source_catalog
+      - id: source_filtering_mask
 
   - id: find_diagnostics
     label: Find image diagnostics

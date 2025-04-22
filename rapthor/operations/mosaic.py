@@ -56,6 +56,11 @@ class Mosaic(Operation):
                                      f'{polup}_image_file_apparent_sky',
                                      f'{polup}_model_file_true_sky',
                                      f'{polup}_residual_file_apparent_sky'])
+            if self.field.save_supplementary_images:
+                self.image_names.append(f'{polup}_dirty_file_apparent_sky')
+                if 'mask_filename' not in self.image_names:
+                    self.image_names.append('mask_filename')
+
         for image_name in self.image_names:
             image_list = []
             vertices_list = []

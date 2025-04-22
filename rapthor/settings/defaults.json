@@ -2,6 +2,7 @@
     "global": {
         "dir_working": null,
         "input_ms": null,
+        "data_colname": "DATA",
         "generate_initial_skymodel": true,
         "generate_initial_skymodel_radius": null,
         "generate_initial_skymodel_data_fraction": 0.2,
@@ -64,6 +65,7 @@
         "do_multiscale_clean": true,
         "dde_method": "full",
         "save_visibilities": false,
+        "save_supplementary_images": false,
         "idg_mode": "cpu",
         "mem_gb": 0,
         "apply_diagonal_solutions": true,

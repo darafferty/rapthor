@@ -13,7 +13,6 @@ minimal parset for a basic reduction on a single machine could look like the fol
     [global]
     dir_working = /path/to/rapthor/working/dir
     input_ms = /path/to/input/dir/input.ms
-    data_colname = DATA
 
 
 The available options are described below under their respective sections.
@@ -48,7 +47,7 @@ The available options are described below under their respective sections.
             See :doc:`preparation` for details.
 
     data_colname
-        Data column to be read from the input MS files (default = DATA).
+        Data column to be read from the input MS files (default = ``DATA``).
 
     generate_initial_skymodel
         Generate an initial target sky model from the input data (default = ``True``).
@@ -245,7 +244,7 @@ The available options are described below under their respective sections.
         improvement can be gained.
 
     tolerance
-        Tolerance used to check convergence during calibration (default = 1e-3).
+        Tolerance used to check convergence during calibration (default = 5e-3).
 
     fast_freqstep_hz
         Frequency step used during fast phase calibration, in Hz (default = 1e6).
@@ -361,7 +360,7 @@ The available options are described below under their respective sections.
         Minimum uv distance in lambda to use in imaging (default = 0).
 
     max_uv_lambda
-        Maximum uv distance in lambda to use in imaging (default = 0).
+        Maximum uv distance in lambda to use in imaging (default = 1e6).
 
     mgain
         Cleaning gain for major iterations, passed to the imager (default = 0.8). This setting does not affect the first 'initial_image' round.
@@ -370,7 +369,7 @@ The available options are described below under their respective sections.
         Taper to apply when imaging, in arcsec (default = 0).
 
     local_rms_strength
-        Strength to use for the local RMS thresholding (default = 0.7). The
+        Strength to use for the local RMS thresholding (default = 0.8). The
         strength is applied by WSClean to the local RMS map using ``local_rms ^
         strength``.
 
@@ -392,8 +391,11 @@ The available options are described below under their respective sections.
         not be applied unless :term:`dde_method` = ``single``, in which case the solutions
         closest to the image centers are used.
 
+    save_supplementary_images
+        Save dirty images and the clean masks made during each imaging cycle (default = ``False``).
+
     idg_mode
-        IDG (image domain gridder) mode to use in WSClean (default = ``hybrid``). The mode
+        IDG (image domain gridder) mode to use in WSClean (default = ``cpu``). The mode
         can be ``cpu`` or ``hybrid``.
 
     mem_gb
