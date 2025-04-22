@@ -488,8 +488,6 @@ class ImageInitial(Image):
         self.imaging_parameters['cellsize_arcsec'] = 1.5
         self.imaging_parameters['robust'] = -1.5
         self.imaging_parameters['taper_arcsec'] = 0.0
-        self.imaging_parameters['min_uv_lambda'] = 0.0
-        self.imaging_parameters['max_uv_lambda'] = 1e6
         self.imaging_parameters['mgain'] = 0.85
         self.imaging_parameters['reweight'] = False
         self.imaging_parameters['dd_psf_grid'] = [1, 1]
