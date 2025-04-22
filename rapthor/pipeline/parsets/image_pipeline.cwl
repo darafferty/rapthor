@@ -24,7 +24,7 @@ inputs:
       items:
         type: array
         items: Directory
-  
+
   - id: data_colname
     label: Input MS data column
     doc: |
@@ -377,6 +377,12 @@ inputs:
       Join polarizations during clean (length = 1).
     type: boolean
 
+  - id: skip_final_iteration
+    label: Skip final major iteration
+    doc: |
+      Skip the final WSClean major iteration at the end of clean (length = 1).
+    type: boolean
+
   - id: taper_arcsec
     label: Taper value
     doc: |
@@ -400,6 +406,12 @@ inputs:
     doc: |
       The WSClean auto mask value (length = n_sectors).
     type: float[]
+
+  - id: auto_mask_nmiter
+    label: Auto mask nmiter value
+    doc: |
+      The WSClean auto mask nmiter value (length = n_sectors).
+    type: int[]
 
   - id: idg_mode
     label: IDG mode
@@ -688,6 +700,8 @@ steps:
         source: link_polarizations
       - id: join_polarizations
         source: join_polarizations
+      - id: skip_final_iteration
+        source: skip_final_iteration
       - id: taper_arcsec
         source: taper_arcsec
       - id: local_rms_strength
@@ -696,6 +710,8 @@ steps:
         source: wsclean_mem
       - id: auto_mask
         source: auto_mask
+      - id: auto_mask_nmiter
+        source: auto_mask_nmiter
       - id: idg_mode
         source: idg_mode
       - id: threshisl
@@ -749,7 +765,7 @@ steps:
 {% endif %}
               channels_out, deconvolution_channels, fit_spectral_pol, wsclean_niter,
               wsclean_nmiter, robust, min_uv_lambda, max_uv_lambda, mgain, do_multiscale,
-              taper_arcsec, local_rms_strength, wsclean_mem, auto_mask,
+              taper_arcsec, local_rms_strength, wsclean_mem, auto_mask, auto_mask_nmiter,
               idg_mode, threshisl, threshpix, dd_psf_grid]
 
     scatterMethod: dotproduct

@@ -342,6 +342,12 @@ inputs:
       Join polarizations during clean (length = 1).
     type: boolean
 
+  - id: skip_final_iteration
+    label: Skip final major iteration
+    doc: |
+      Skip the final major iteration at the end of clean (length = 1).
+    type: boolean
+
   - id: taper_arcsec
     label: Taper value
     doc: |
@@ -365,6 +371,12 @@ inputs:
     doc: |
       The WSClean auto mask value (length = 1).
     type: float
+
+  - id: auto_mask_nmiter
+    label: Auto mask nmiter value
+    doc: |
+      The WSClean auto mask nmiter value (length = 1).
+    type: int
 
   - id: idg_mode
     label: IDG mode
@@ -738,6 +750,8 @@ steps:
         source: link_polarizations
       - id: join_polarizations
         source: join_polarizations
+      - id: skip_final_iteration
+        source: skip_final_iteration
       - id: cellsize_deg
         source: cellsize_deg
       - id: channels_out
@@ -754,6 +768,8 @@ steps:
         source: wsclean_mem
       - id: auto_mask
         source: auto_mask
+      - id: auto_mask_nmiter
+        source: auto_mask_nmiter
       - id: idg_mode
         source: idg_mode
       - id: num_threads
