@@ -50,9 +50,12 @@ for i in range(max_selfcal_loops):
 
     # Here we set the imaging strategy, lowering the masking thresholds as
     # selfcal proceeds to ensure all emission is properly cleaned and artifacts,
-    # if any, are excluded from the resulting sky models. Conversely, the number
-    # of major iterations allowed during imaging is raised to allow deeper
-    # cleaning in the later cycles
+    # if any, are excluded from the resulting sky models. Conversely, the
+    # maximum number of major iterations allowed during imaging is raised to
+    # allow deeper cleaning in the later cycles. Lastly, the maximum number of
+    # WSClean major iterations allowed after the automasking threshold is reached
+    # is set to 2, which has been found to be a sufficient number of iterations in
+    # most cases
     strategy_steps[i]['do_image'] = True
     if i == 0:
         strategy_steps[i]['auto_mask'] = 4.0
@@ -64,6 +67,7 @@ for i in range(max_selfcal_loops):
         strategy_steps[i]['threshisl'] = 3.0
         strategy_steps[i]['threshpix'] = 5.0
         strategy_steps[i]['max_nmiter'] = 12
+    strategy_steps[i]['auto_mask_nmiter'] = 2
 
     # Here we set the calibrator selection strategy, decreasing the target
     # minimum flux density for sources to be used as calibrators as selfcal

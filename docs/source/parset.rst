@@ -495,6 +495,18 @@ The available options are described below under their respective sections.
         reduction in peak flux). Higher values result in shorter run times but more
         smearing away from the image centers.
 
+    skip_final_major_iteration
+        Skip the final WSClean major iteration for all but the last processing cycle
+        (default = ``True``). If ``True``, the final iteration is skipped during
+        imaging, which speeds up imaging but degrades the image slightly;
+        however, the sky model is not affected by this setting. Therefore, it is
+        safe to use this option for self calibration cycles.
+
+        .. note::
+
+            The final WSClean major iteration is never skipped in the final
+            processing cycle regardless of this setting.
+
     skip_corner_sectors
         Skip corner sectors defined by the imaging grid (default = ``False``)? If ``True``
         and a grid is used (defined by the ``grid_*`` parameters above), the four corner

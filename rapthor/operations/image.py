@@ -255,6 +255,7 @@ class Image(Operation):
                             'region_file': [None if sector.region_file is None else CWLFile(sector.region_file).to_json() for sector in self.imaging_sectors],
                             'wsclean_niter': [sector.wsclean_niter for sector in self.imaging_sectors],
                             'wsclean_nmiter': [sector.wsclean_nmiter for sector in self.imaging_sectors],
+                            'skip_final_iteration': self.field.skip_final_iteration,
                             'robust': [sector.robust for sector in self.imaging_sectors],
                             'cellsize_deg': [sector.cellsize_deg for sector in self.imaging_sectors],
                             'min_uv_lambda': [sector.min_uv_lambda for sector in self.imaging_sectors],
@@ -263,6 +264,7 @@ class Image(Operation):
                             'taper_arcsec': [sector.taper_arcsec for sector in self.imaging_sectors],
                             'local_rms_strength': [sector.local_rms_strength for sector in self.imaging_sectors],
                             'auto_mask': [sector.auto_mask for sector in self.imaging_sectors],
+                            'auto_mask_nmiter': [sector.auto_mask_nmiter for sector in self.imaging_sectors],
                             'idg_mode': [sector.idg_mode for sector in self.imaging_sectors],
                             'wsclean_mem': [sector.mem_limit_gb for sector in self.imaging_sectors],
                             'threshisl': [sector.threshisl for sector in self.imaging_sectors],
@@ -481,6 +483,7 @@ class ImageInitial(Image):
         self.apply_none = True
         self.apply_normalizations = False
         self.field.full_field_sector.auto_mask = 5.0
+        self.field.full_field_sector.auto_mask_nmiter = 1
         self.field.full_field_sector.threshisl = 4.0
         self.field.full_field_sector.threshpix = 5.0
         self.imaging_sectors = [self.field.full_field_sector]
@@ -495,6 +498,7 @@ class ImageInitial(Image):
         self.do_multiscale_clean = True
         self.field.full_field_sector.max_nmiter = 8
         self.field.full_field_sector.max_wsclean_nchannels = 8
+        self.field.skip_final_iteration = True
         super().set_input_parameters()
 
     def finalize(self):
@@ -587,6 +591,7 @@ class ImageNormalize(Image):
             self.apply_none = False
         self.apply_normalizations = False
         self.field.normalize_sector.auto_mask = 5.0
+        self.field.normalize_sector.auto_mask_nmiter = 2
         self.field.normalize_sector.threshisl = 4.0
         self.field.normalize_sector.threshpix = 5.0
         self.field.normalize_sector.max_nmiter = 8
@@ -598,6 +603,7 @@ class ImageNormalize(Image):
         self.imaging_parameters['taper_arcsec'] = 24.0
         self.do_predict = False
         self.do_multiscale_clean = False
+
         super().set_input_parameters()
 
     def finalize(self):

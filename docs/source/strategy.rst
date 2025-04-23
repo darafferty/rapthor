@@ -141,6 +141,9 @@ The following processing parameters can be set for each cycle:
     auto_mask
         Float that sets WSClean's automask value for this cycle.
 
+    auto_mask_nmiter
+        Integer that sets the maximum number of WSClean's major iterations done once the automasking threshold is reached for this cycle.
+
     threshisl
         Float that sets PyBDSF's threshisl value for this cycle.
 
