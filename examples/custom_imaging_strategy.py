@@ -17,6 +17,7 @@ strategy_steps[0]['peel_bright_sources'] = False
 # Here we activate imaging and set the imaging strategy parameters
 strategy_steps[0]['do_image'] = True
 strategy_steps[0]['auto_mask'] = 3.0
+strategy_steps[0]['auto_mask_nmiter'] = 2
 strategy_steps[0]['threshisl'] = 3.0
 strategy_steps[0]['threshpix'] = 5.0
 strategy_steps[0]['max_nmiter'] = 12
