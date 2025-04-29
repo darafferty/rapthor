@@ -105,6 +105,10 @@ inputs:
     type: boolean
     inputBinding:
       prefix: -join-polarizations
+  - id: skip_final_iteration
+    type: boolean
+    inputBinding:
+      prefix: -skip-final-iteration
   - id: cellsize_deg
     type: float
     inputBinding:
@@ -137,6 +141,10 @@ inputs:
     type: float
     inputBinding:
       prefix: -auto-mask
+  - id: auto_mask_nmiter
+    type: int
+    inputBinding:
+      prefix: -auto-mask-nmiter
   - id: idg_mode
     type: string
     inputBinding:

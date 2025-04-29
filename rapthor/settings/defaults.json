@@ -87,6 +87,7 @@
         "sector_width_ra_deg_list": [],
         "sector_width_dec_deg_list": [],
         "max_peak_smearing": 0.15,
+        "skip_final_major_iteration": true,
         "skip_corner_sectors": false
     },
     "cluster": {
