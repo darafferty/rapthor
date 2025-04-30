@@ -186,7 +186,13 @@ def check_photometry(obs, input_catalog, freq, min_number, comparison_skymodel=N
     #     uncertain primary beam corrections)
     #   - have deconvolved major axis < 10 arcsec (to exclude extended sources
     #     that may be poorly modeled)
-    catalog = Table.read(input_catalog, format='fits')
+    try:
+        catalog = Table.read(input_catalog, format='fits')
+    except OSError:
+        # Raised when input_catalog is not a valid FITS file (this is probably due
+        # to no sources being found by PyBDSF)
+        return {}
+
     phase_center = SkyCoord(ra=obs.ra*u.degree, dec=obs.dec*u.degree)
     coords_comp = SkyCoord(ra=catalog['RA'], dec=catalog['DEC'])
     separation = phase_center.separation(coords_comp)
@@ -339,7 +345,13 @@ def check_astrometry(obs, input_catalog, image, facet_region_file, min_number,
     #     that may be poorly modeled)
     #   - have errors on RA and Dec of < 2 arcsec (to exclude sources
     #     with high positional uncertainties)
-    catalog = Table.read(input_catalog, format='fits')
+    try:
+        catalog = Table.read(input_catalog, format='fits')
+    except OSError:
+        # Raised when input_catalog is not a valid FITS file (this is probably due
+        # to no sources being found by PyBDSF)
+        return {}
+
     major_axis = catalog['DC_Maj']  # degrees
     catalog = catalog[major_axis < 10/3600]
     ra_error = catalog['E_RA']  # degrees

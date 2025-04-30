@@ -106,12 +106,17 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, output_root,
                                       rms_box_bright=rmsbox_bright, atrous_do=True,
                                       atrous_jmax=3, rms_map=True, quiet=True,
                                       ncores=ncores, outdir='.')
+    nsources = img_true_sky.nsrc
     catalog_filename = output_root+'.source_catalog.fits'
-    img_true_sky.write_catalog(outfile=catalog_filename, format='fits', catalog_type='srl',
-                               clobber=True)
+    if nsources > 0:
+        img_true_sky.write_catalog(outfile=catalog_filename, format='fits', catalog_type='srl',
+                                   clobber=True)
+    else:
+        with open(catalog_filename, 'w') as f:
+            f.writelines([''])
+
     true_sky_rms_filename = output_root+'.true_sky_rms.fits'
     img_true_sky.export_image(outfile=true_sky_rms_filename, img_type='rms', clobber=True)
-    nsources = img_true_sky.nsrc
     ra, dec = img_true_sky.pix2sky((img_true_sky.shape[-2]/2.0, img_true_sky.shape[-1]/2.0))
 
     # Run PyBDSF again on the flat-noise image and save the RMS map for later
