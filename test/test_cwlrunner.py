@@ -102,7 +102,7 @@ class Field:
         self.pol_combine_method = imaging_parameters["pol_combine_method"]
         self.apply_normalizations = False
         self.auto_mask_nmiter = 1
-        self.skip_final_iteration = True
+        self.skip_final_major_iteration = True
 
     def get_calibration_radius(self):
         return 5.0

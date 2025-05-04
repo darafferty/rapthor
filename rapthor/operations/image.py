@@ -498,7 +498,7 @@ class ImageInitial(Image):
         self.do_multiscale_clean = True
         self.field.full_field_sector.max_nmiter = 8
         self.field.full_field_sector.max_wsclean_nchannels = 8
-        self.field.skip_final_iteration = True
+        self.field.skip_final_major_iteration = True
         super().set_input_parameters()
 
     def finalize(self):
