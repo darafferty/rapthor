@@ -1564,6 +1564,8 @@ class Field(object):
             else:
                 rms_unconverged = True
                 rms_diverged = False
+                self.log.warning('Median image noise found in the previous cycle is 0 '
+                                 'for {0}. Skipping noise convergence check...'.format(sector.name))
             self.log.info('Ratio of current median image noise (non-PB-corrected) to theorectical '
                           'minimum image noise for {0} = {1:.2f}'.format(sector.name, rmspost/rmsideal))
 
@@ -1575,6 +1577,8 @@ class Field(object):
                               'dynamic range for {0} = {1:.2f}'.format(sector.name, dynrpost/dynrpre))
             else:
                 dynr_unconverged = True
+                self.log.warning('Image dynamic range found in the previous cycle is 0 '
+                                 'for {0}. Skipping dynamic range convergence check...'.format(sector.name))
 
             nsrcpre = sector.diagnostics[-2]['nsources']
             nsrcpost = sector.diagnostics[-1]['nsources']
@@ -1584,7 +1588,8 @@ class Field(object):
                               'of sources for {0} = {1:.2f}'.format(sector.name, nsrcpost/nsrcpre))
             else:
                 nsrc_unconverged = True
-
+                self.log.warning('No sources were found in the previous cycle '
+                                 'for {0}. Skipping source number convergence check...'.format(sector.name))
             if rms_unconverged or dynr_unconverged or nsrc_unconverged:
                 # Report not converged (and not diverged)
                 converged.append(False)

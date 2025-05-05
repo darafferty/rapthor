@@ -683,11 +683,17 @@ def report_sector_diagnostics(sector_name, diagnostics_dict, log):
         log.info('    Min RMS noise = {0} (non-PB-corrected), '
                  '{1} (PB-corrected), {2} (theoretical)'.format(min_rms_flat_noise, min_rms_true_sky,
                                                                 theoretical_rms))
+        if min_rms_flat_noise == 0 or min_rms_true_sky == 0:
+            log.warn('The min RMS noise is 0, likely indicating a problem with the processing.')
         log.info('    Median RMS noise = {0} (non-PB-corrected), '
                  '{1} (PB-corrected)'.format(median_rms_flat_noise, median_rms_true_sky))
         log.info('    Dynamic range = {0} (non-PB-corrected), '
                  '{1} (PB-corrected)'.format(dynr_flat_noise, dynr_true_sky))
+        if dynr_flat_noise == 0 or dynr_true_sky == 0:
+            log.warn('The dynamic range is 0, likely indicating a problem with the processing.')
         log.info('    Number of sources found by PyBDSF = {}'.format(nsources))
+        if nsources == 0:
+            log.warn('No sources were found by PyBDSF, possibly indicating a problem with the processing.')
         log.info('    Reference frequency = {}'.format(freq))
         log.info('    Beam = {}'.format(beam))
         log.info('    Fraction of unflagged data = {}'.format(unflagged_data_fraction))
