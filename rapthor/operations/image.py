@@ -255,7 +255,7 @@ class Image(Operation):
                             'region_file': [None if sector.region_file is None else CWLFile(sector.region_file).to_json() for sector in self.imaging_sectors],
                             'wsclean_niter': [sector.wsclean_niter for sector in self.imaging_sectors],
                             'wsclean_nmiter': [sector.wsclean_nmiter for sector in self.imaging_sectors],
-                            'skip_final_iteration': self.field.skip_final_iteration,
+                            'skip_final_iteration': self.field.skip_final_major_iteration,
                             'robust': [sector.robust for sector in self.imaging_sectors],
                             'cellsize_deg': [sector.cellsize_deg for sector in self.imaging_sectors],
                             'min_uv_lambda': [sector.min_uv_lambda for sector in self.imaging_sectors],
@@ -498,7 +498,7 @@ class ImageInitial(Image):
         self.do_multiscale_clean = True
         self.field.full_field_sector.max_nmiter = 8
         self.field.full_field_sector.max_wsclean_nchannels = 8
-        self.field.skip_final_iteration = True
+        self.field.skip_final_major_iteration = True
         super().set_input_parameters()
 
     def finalize(self):
@@ -603,7 +603,7 @@ class ImageNormalize(Image):
         self.imaging_parameters['taper_arcsec'] = 24.0
         self.do_predict = False
         self.do_multiscale_clean = False
-
+        self.field.skip_final_major_iteration = False
         super().set_input_parameters()
 
     def finalize(self):
