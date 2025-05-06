@@ -603,7 +603,7 @@ class ImageNormalize(Image):
         self.imaging_parameters['taper_arcsec'] = 24.0
         self.do_predict = False
         self.do_multiscale_clean = False
-
+        self.field.skip_final_major_iteration = False
         super().set_input_parameters()
 
     def finalize(self):
