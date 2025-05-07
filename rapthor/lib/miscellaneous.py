@@ -1058,11 +1058,11 @@ def get_max_spectral_terms(skymodel_file):
     nterms : int
         Maximum number of spectral terms
     """
-    with skymodel as lsmtool.load(skymodel_file):
-        if 'SpectralIndex' in skymodel.getColValues():
-            return skymodel.getColValues('SpectralIndex').shape[1]
-        else:
-            return 1
+    skymodel = lsmtool.load(skymodel_file)
+    if 'SpectralIndex' in skymodel.getColValues():
+        return skymodel.getColValues('SpectralIndex').shape[1]
+    else:
+        return 1
 
 
 def nproc():
