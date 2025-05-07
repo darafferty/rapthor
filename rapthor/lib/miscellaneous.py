@@ -23,6 +23,7 @@ from shapely.prepared import prep
 import subprocess
 import time
 
+
 def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, source='TGSS',
                       targetname='Patch'):
     """
@@ -62,9 +63,11 @@ def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, sourc
 
     # Empty strings are False. Only attempt directory creation if there is a
     # directory path involved.
-    if (not file_exists
-            and os.path.dirname(skymodel_path)
-            and not os.path.exists(os.path.dirname(skymodel_path))):
+    if (
+        not file_exists and
+        os.path.dirname(skymodel_path) and
+        not os.path.exists(os.path.dirname(skymodel_path))
+    ):
         os.makedirs(os.path.dirname(skymodel_path))
 
     if file_exists and overwrite:
@@ -1039,6 +1042,27 @@ def rename_skymodel_patches(skymodel, order_dec='high_to_low', order_ra='high_to
             patch_index += 1
     skymodel.setColValues('Patch', patch_col)
     skymodel.setPatchPositions(patch_dict)
+
+
+def get_max_spectral_terms(skymodel_file):
+    """
+    Get the maximum number of spectral terms in a sky model
+
+    Parameters
+    ----------
+    skymodel_file : str
+        Input sky model filename
+
+    Returns
+    -------
+    nterms : int
+        Maximum number of spectral terms
+    """
+    with skymodel as lsmtool.load(skymodel_file):
+        if 'SpectralIndex' in skymodel.getColValues():
+            return skymodel.getColValues('SpectralIndex').shape[1]
+        else:
+            return 1
 
 
 def nproc():

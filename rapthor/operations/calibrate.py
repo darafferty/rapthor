@@ -36,6 +36,7 @@ class CalibrateDD(Operation):
             self.do_joint_solve = False
 
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
+                             'use_image_based_predict': False,
                              'generate_screens': self.field.generate_screens,
                              'do_slowgain_solve': self.field.do_slowgain_solve,
                              'do_joint_solve': self.do_joint_solve,
@@ -117,6 +118,10 @@ class CalibrateDD(Operation):
             calibration_skymodel_file = self.field.calibrators_only_skymodel_file
         else:
             calibration_skymodel_file = self.field.calibration_skymodel_file
+        num_spectral_terms = misc.get_max_spectral_terms(calibration_skymodel_file)
+        model_image_root = 'calibration_model'
+        model_image_ra_dec = [self.field.ra, self.field.dec]
+        model_image_frequency_bandwidth = [self.field.observations[0].referencefreq, 1e6]
 
         # Get the calibrator names and fluxes
         calibrator_patch_names = self.field.calibrator_patch_names
@@ -244,6 +249,10 @@ class CalibrateDD(Operation):
                             'output_slow_h5parm_joint': output_slow_h5parm_joint,
                             'output_slow_h5parm_separate': output_slow_h5parm_separate,
                             'calibration_skymodel_file': CWLFile(calibration_skymodel_file).to_json(),
+                            'model_image_root': model_image_root,
+                            'model_image_ra_dec': model_image_ra_dec,
+                            'model_image_frequency_bandwidth': model_image_frequency_bandwidth,
+                            'num_spectral_terms': num_spectral_terms,
                             'smoothness_dd_factors': smoothness_dd_factors,
                             'fast_smoothnessconstraint': fast_smoothnessconstraint,
                             'fast_smoothnessreffrequency': fast_smoothnessreffrequency,
