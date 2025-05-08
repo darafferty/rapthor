@@ -108,13 +108,8 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, output_root,
                                       ncores=ncores, outdir='.')
     nsources = img_true_sky.nsrc
     catalog_filename = output_root+'.source_catalog.fits'
-    if nsources > 0:
-        img_true_sky.write_catalog(outfile=catalog_filename, format='fits', catalog_type='srl',
-                                   clobber=True)
-    else:
-        with open(catalog_filename, 'w') as f:
-            f.writelines([''])
-
+    img_true_sky.write_catalog(outfile=catalog_filename, format='fits', catalog_type='srl',
+                               clobber=True, force_output=True)
     true_sky_rms_filename = output_root+'.true_sky_rms.fits'
     img_true_sky.export_image(outfile=true_sky_rms_filename, img_type='rms', clobber=True)
     ra, dec = img_true_sky.pix2sky((img_true_sky.shape[-2]/2.0, img_true_sky.shape[-1]/2.0))

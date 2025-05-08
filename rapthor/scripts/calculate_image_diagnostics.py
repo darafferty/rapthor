@@ -186,11 +186,9 @@ def check_photometry(obs, input_catalog, freq, min_number, comparison_skymodel=N
     #     uncertain primary beam corrections)
     #   - have deconvolved major axis < 10 arcsec (to exclude extended sources
     #     that may be poorly modeled)
-    try:
-        catalog = Table.read(input_catalog, format='fits')
-    except OSError:
-        # Raised when input_catalog is not a valid FITS file (this is probably due
-        # to no sources being found by PyBDSF)
+    catalog = Table.read(input_catalog, format='fits')
+    if len(catalog) == 0:
+        print('No sources found in the LOFAR image. Skipping photometry check...')
         return {}
 
     phase_center = SkyCoord(ra=obs.ra*u.degree, dec=obs.dec*u.degree)
