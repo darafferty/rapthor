@@ -630,58 +630,62 @@ def approx_equal(x, y, *args, **kwargs):
     return _float_approx_equal(x, y, *args, **kwargs)
 
 
-def ra2hhmmss(deg):
+def ra2hhmmss(deg, as_string=False):
     """
-    Convert RA coordinate (in degrees) to HH MM SS
+    Convert RA coordinate (in degrees) to HH MM SS.S
 
     Parameters
     ----------
     deg : float
         The RA coordinate in degrees
+    as_string : bool
+        If True, return the RA as a string with 'h', 'm', and 's'
+        as the separators. E.g.: '12h23m13.4s' If False, return
+        a tuple of (HH, MM, SS.S)
 
     Returns
     -------
-    hh : int
-        The hour (HH) part
-    mm : int
-        The minute (MM) part
-    ss : float
-        The second (SS) part
+    hhmmss : tuple of (int, int, float) or string
+        A tuple of (HH, MM, SS.S) or a string as 'HHhMMmSS.Ss'
     """
     deg = deg % 360
     x, hh = modf(deg/15)
     x, mm = modf(x*60)
     ss = x*60
 
-    return (int(hh), int(mm), ss)
+    if as_string:
+        return f'{hh}h{mm}m{ss}s'
+    else:
+        return (int(hh), int(mm), ss)
 
 
-def dec2ddmmss(deg):
+def dec2ddmmss(deg, as_string=False):
     """
-    Convert Dec coordinate (in degrees) to DD MM SS
+    Convert Dec coordinate (in degrees) to DD MM SS.S
 
     Parameters
     ----------
     deg : float
         The Dec coordinate in degrees
+    as_string : bool
+        If True, return the Dec as a string with 'd', 'm', and 's'
+        as the separators. E.g.: '12d23m13.4s'. If False, return
+        a tuple of (DD, MM, SS.S, sign)
 
     Returns
     -------
-    dd : int
-        The degree (DD) part
-    mm : int
-        The arcminute (MM) part
-    ss : float
-        The arcsecond (SS) part
-    sign : int
-        The sign (+/-)
+    hhmmss : tuple of (int, int, float, int) or string
+        A tuple of (DD, MM, SS.S, sign) or a string as 'DDdMMmSS.Ss'
     """
-    sign = (-1 if deg < 0 else 1)
+    sign = -1 if deg < 0 else 1
     x, dd = modf(abs(deg))
-    x, ma = modf(x*60)
-    sa = x*60
+    x, mm = modf(x*60)
+    ss = x*60
 
-    return (int(dd), int(ma), sa, sign)
+    if as_string:
+        return f'{sign*dd}d{mm}m{ss}s'
+    else:
+        return (int(dd), int(mm), ss, sign)
 
 
 def convert_mjd2mvt(mjd_sec):

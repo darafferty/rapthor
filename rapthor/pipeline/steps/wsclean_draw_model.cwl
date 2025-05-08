@@ -47,8 +47,8 @@ inputs:
   - id: ra_dec
     label: RA and Dec of center
     doc: |
-      The RA and Dec in degrees of the center of the output images.
-    type: float[]
+      The RA and Dec in hmsdms of the center of the output images.
+    type: string[]
     inputBinding:
       prefix: -draw-centre
 

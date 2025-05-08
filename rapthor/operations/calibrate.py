@@ -120,7 +120,9 @@ class CalibrateDD(Operation):
             calibration_skymodel_file = self.field.calibration_skymodel_file
         num_spectral_terms = misc.get_max_spectral_terms(calibration_skymodel_file)
         model_image_root = 'calibration_model'
-        model_image_ra_dec = [self.field.ra, self.field.dec]
+        ra_hms = misc.ra2hhmmss(self.field.ra, as_string=True)
+        dec_hms = misc.dec2ddmmss(self.field.dec, as_string=True)
+        model_image_ra_dec = [ra_hms, dec_hms]
         model_image_frequency_bandwidth = [self.field.observations[0].referencefreq, 1e6]
 
         # Get the calibrator names and fluxes
