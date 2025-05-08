@@ -6,7 +6,7 @@ import numpy as np
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib import cluster, facet
 import lsmtool
-from astropy.coordinates import Angle,  SkyCoord
+from astropy.coordinates import Angle, SkyCoord
 import astropy.units as u
 from shapely.geometry import Polygon
 from matplotlib import patches

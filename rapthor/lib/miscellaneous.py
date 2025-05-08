@@ -1059,7 +1059,7 @@ def get_max_spectral_terms(skymodel_file):
         Maximum number of spectral terms
     """
     skymodel = lsmtool.load(skymodel_file)
-    if 'SpectralIndex' in skymodel.getColValues():
+    if 'SpectralIndex' in skymodel.getColNames():
         return skymodel.getColValues('SpectralIndex').shape[1]
     else:
         return 1
