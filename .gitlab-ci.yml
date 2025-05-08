@@ -235,7 +235,7 @@ build_doc:
   before_script:
     - apt-get -y update
     - apt-get -y install make
-    - pip install "snowballstemmer<3" sphinx numpydoc
+    - pip install "snowballstemmer!=3.0.0" sphinx numpydoc
   script:
     - cd docs
     - make html
