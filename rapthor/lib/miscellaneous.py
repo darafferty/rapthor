@@ -654,7 +654,7 @@ def ra2hhmmss(deg, as_string=False):
     ss = x*60
 
     if as_string:
-        return f'{hh}h{mm}m{ss}s'
+        return f'{int(hh)}h{int(mm)}m{ss}s'
     else:
         return (int(hh), int(mm), ss)
 
@@ -683,7 +683,7 @@ def dec2ddmmss(deg, as_string=False):
     ss = x*60
 
     if as_string:
-        return f'{sign*dd}d{mm}m{ss}s'
+        return f'{sign*int(dd)}d{int(mm)}m{ss}s'
     else:
         return (int(dd), int(mm), ss, sign)
 
@@ -1050,7 +1050,7 @@ def rename_skymodel_patches(skymodel, order_dec='high_to_low', order_ra='high_to
 
 def get_max_spectral_terms(skymodel_file):
     """
-    Get the maximum number of spectral terms in a sky model
+    Get the maximum number of spectral terms (including the zeroth term) in a sky model
 
     Parameters
     ----------
@@ -1064,9 +1064,9 @@ def get_max_spectral_terms(skymodel_file):
     """
     skymodel = lsmtool.load(skymodel_file)
     if 'SpectralIndex' in skymodel.getColNames():
-        return skymodel.getColValues('SpectralIndex').shape[1]
+        return skymodel.getColValues('SpectralIndex').shape[1] + 1  # add one for the zeroth term
     else:
-        return 1
+        return 1  # the zeroth term is always present
 
 
 def nproc():

@@ -68,7 +68,7 @@ outputs:
       parameter "name".
     type: File
     outputBinding:
-      glob: [$(inputs.name)-term_*.fits]
+      glob: [$(inputs.name)-term-*.fits]
 
 hints:
   - class: DockerRequirement
