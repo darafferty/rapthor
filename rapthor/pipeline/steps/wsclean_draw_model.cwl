@@ -66,7 +66,7 @@ outputs:
     doc: |
       The filenames of the output model images. The value is constructed from the input
       parameter "name".
-    type: File
+    type: File[]
     outputBinding:
       glob: [$(inputs.name)-term-*.fits]
 
