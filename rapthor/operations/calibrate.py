@@ -138,7 +138,7 @@ class CalibrateDD(Operation):
             # SKA continue, we disable the antennaconstraint for now if the list of core
             # stations is empty.
             if core_stations:
-                fast_antennaconstraint = '[[{}]]'.format(','.join(self.get_core_stations()))
+                fast_antennaconstraint = '[[{}]]'.format(','.join(core_stations))
             else:
                 fast_antennaconstraint = '[]'
         else:
