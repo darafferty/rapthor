@@ -411,7 +411,7 @@ class Observation(object):
 
             # Set the smoothness_dd_factors so that brighter sources have smaller
             # smoothing factors
-            self.parameters['smoothness_dd_factors_{solve_type}'] = [smoothness_dd_factors] * nchunks
+            self.parameters[f'smoothness_dd_factors_{solve_type}'] = [smoothness_dd_factors] * nchunks
 
         # Set the smoothnessreffrequency for the fast solves, if not set by the user
         fast_smoothnessreffrequency = parset['calibration_specific']['fast_smoothnessreffrequency']
