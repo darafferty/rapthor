@@ -142,7 +142,8 @@ solverlbfgs_minibatches = 1
 # Imaging parameters: pixel size in arcsec (default = 1.25, suitable for HBA
 # data), Briggs robust parameter (default = -0.5), min and max uv distance in
 # lambda (default = 0, none), cleaning gain (default = 0.8), taper in arcsec
-# (default = none), local rms strength (default = 0.8), and whether multiscale
+# (default = none), local rms parameters (defaults = 0.8, 50, and "rms-with-min"
+# for the strength, window, and method, respectively), and whether multiscale
 # clean should be used (default = True)
 cellsize_arcsec = 1.25
 robust = -0.5
@@ -151,6 +152,8 @@ max_uv_lambda = 1e6
 mgain = 0.8
 taper_arcsec = 0.0
 local_rms_strength = 0.8
+local_rms_window = 50
+local_rms_method = rms-with-min
 do_multiscale_clean = True
 
 # Method to use to correct for direction-dependent effects during imaging:

@@ -133,6 +133,14 @@ inputs:
     type: float
     inputBinding:
       prefix: -local-rms-strength
+  - id: local_rms_window
+    type: float
+    inputBinding:
+      prefix: -local-rms-window
+  - id: local_rms_method
+    type: string
+    inputBinding:
+      prefix: -local-rms-method
   - id: wsclean_mem
     type: float
     inputBinding:

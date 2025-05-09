@@ -243,6 +243,22 @@ inputs:
     inputBinding:
       prefix: -local-rms-strength
 
+  - id: local_rms_window
+    label: Local RMS window size
+    doc: |
+      The local RMS window size.
+    type: float
+    inputBinding:
+      prefix: -local-rms-window
+
+  - id: local_rms_method
+    label: Local RMS method
+    doc: |
+      The local RMS method.
+    type: string
+    inputBinding:
+      prefix: -local-rms-method
+
   - id: wsclean_mem
     label: Memory in GB
     doc: |
