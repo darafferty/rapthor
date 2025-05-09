@@ -674,7 +674,7 @@ def dec2ddmmss(deg, as_string=False):
 
     Returns
     -------
-    hhmmss : tuple of (int, int, float, int) or string
+    ddmmss : tuple of (int, int, float, int) or string
         A tuple of (DD, MM, SS.S, sign) or a string as 'DDdMMmSS.Ss'
     """
     sign = -1 if deg < 0 else 1
