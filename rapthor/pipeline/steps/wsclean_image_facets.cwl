@@ -25,10 +25,6 @@ arguments:
     prefix: -multiscale-scale-bias
   - valueFrom: '1.0'
     prefix: -auto-threshold
-  - valueFrom: '50'
-    prefix: -local-rms-window
-  - valueFrom: 'rms-with-min'
-    prefix: -local-rms-method
   - valueFrom: '120'
     prefix: -facet-beam-update
   - valueFrom: 'briggs'
