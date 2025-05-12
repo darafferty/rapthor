@@ -439,7 +439,7 @@ inputs:
     label: Regions for IDG predict
     doc: |
       A ds9 file that defines the regions to use with IDG predict.
-    type: string?
+    type: File?
     inputBinding:
       prefix: solve.idg.regions=
       separate: False
@@ -448,7 +448,7 @@ inputs:
     label: Smoothness factors
     doc: |
       The model images, one per spectral term, to use with IDG predict.
-    type: string[]?
+    type: File[]?
     inputBinding:
       valueFrom: $('['+self+']')
       prefix: solve.idg.images=
