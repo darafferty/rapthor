@@ -256,6 +256,7 @@ if __name__ == '__main__':
     parser.add_argument('--rmsbox_bright', help='Rms box for bright sources, width and step (e.g., "(60, 20)")',
                         type=str, default='(35, 7)')
     parser.add_argument('--adaptive_thresh', help='Adaptive threshold', type=float, default=75.0)
+    parser.add_argument('--filter_by_mask', help='Filter sources by mask', type=bool, default=True)
     parser.add_argument('--ncores', help='Max number of cores to use', type=int, default=8)
 
     args = parser.parse_args()
@@ -264,4 +265,4 @@ if __name__ == '__main__':
          bright_true_sky_skymodel=args.bright_true_sky_skymodel,
          threshisl=args.threshisl, threshpix=args.threshpix, rmsbox=args.rmsbox,
          rmsbox_bright=args.rmsbox_bright, adaptive_thresh=args.adaptive_thresh,
-         ncores=args.ncores)
+         filter_by_mask=args.filter_by_mask, ncores=args.ncores)

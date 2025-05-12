@@ -126,14 +126,45 @@ inputs:
   - id: model_image_ra_dec
     label: RA and Dec of model center
     doc: |
-      The RA and Dec in hmsdms of the center of the model images.
+      The RA and Dec in hmsdms of the center of the model images (length = 2).
     type: string[]
 
   - id: model_image_frequency_bandwidth
     label: Frequency and bandwidth of image
     doc: |
-      The central frequnecy and bandwidth in Hz of the output images.
+      The central frequnecy and bandwidth in Hz of the output images (length = 2).
     type: float[]
+
+  - id: ra_mid
+    label: RA of the midpoint
+    doc: |
+        The RA in degrees of the middle of the region to be imaged (length = 1).
+    type: float
+
+  - id: dec_mid
+    label: Dec of the midpoint
+    doc: |
+        The Dec in degrees of the middle of the region to be imaged (length = 1).
+    type: float
+
+  - id: width_ra
+    label: Width along RA
+    doc: |
+      The width along RA in degrees (corrected to Dec = 0) of the region to be
+      imaged (length = 1).
+    type: float
+
+  - id: width_dec
+    label:  Width along Dec
+    doc: |
+      The width along Dec in degrees of the region to be imaged (length = 1).
+    type: float
+
+  - id: facet_region_file
+    label: Filename of output region file
+    doc: |
+      The filename of the output ds9 region file (length = 1).
+    type: string
 {% endif %}
 
   - id: smoothness_dd_factors
@@ -678,6 +709,27 @@ steps:
         source: max_threads
     out:
       - id: model_images
+
+  - id: make_region_file
+    label: Make a ds9 region file
+    doc: |
+      This step makes a ds9 region file for image-based predict.
+    run: {{ rapthor_pipeline_dir }}/steps/make_region_file.cwl
+    in:
+      - id: skymodel
+        source: skymodel
+      - id: ra_mid
+        source: ra_mid
+      - id: dec_mid
+        source: dec_mid
+      - id: width_ra
+        source: width_ra
+      - id: width_dec
+        source: width_dec
+      - id: outfile
+        source: facet_region_file
+    out:
+      - id: region_file
 {% endif %}
 
   - id: solve_fast_phases
@@ -770,6 +822,12 @@ steps:
         source: fast_smoothnessrefdistance
       - id: antennaconstraint
         source: fast_antennaconstraint
+{% if use_image_based_predict %}
+      - id: idg_regions
+        source: make_region_file/region_file
+      - id: idg_images
+        source: draw_model/model_images
+{% endif %}
       - id: numthreads
         source: max_threads
     scatter: [msin, starttime, ntimes, h5parm, solint, solve_nchan, maxinterval, smoothnessreffrequency, solutions_per_direction, smoothness_dd_factors]

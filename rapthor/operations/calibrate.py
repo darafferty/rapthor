@@ -36,7 +36,7 @@ class CalibrateDD(Operation):
             self.do_joint_solve = False
 
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
-                             'use_image_based_predict': False,
+                             'use_image_based_predict': self.field.use_image_based_predict,
                              'generate_screens': self.field.generate_screens,
                              'do_slowgain_solve': self.field.do_slowgain_solve,
                              'do_joint_solve': self.do_joint_solve,
@@ -124,6 +124,8 @@ class CalibrateDD(Operation):
         dec_hms = misc.dec2ddmmss(self.field.dec, as_string=True)
         model_image_ra_dec = [ra_hms, dec_hms]
         model_image_frequency_bandwidth = [self.field.observations[0].referencefreq, 1e6]
+        facet_region_width = 2 * self.field.get_calibration_radius() * 1.2
+        facet_region_file = 'field_facets_ds9.reg'
 
         # Get the calibrator names and fluxes
         calibrator_patch_names = self.field.calibrator_patch_names
@@ -262,6 +264,11 @@ class CalibrateDD(Operation):
                             'model_image_ra_dec': model_image_ra_dec,
                             'model_image_frequency_bandwidth': model_image_frequency_bandwidth,
                             'num_spectral_terms': num_spectral_terms,
+                            'ra_mid': self.field.ra,
+                            'dec_mid': self.field.dec,
+                            'width_ra' = facet_region_width,
+                            'width_dec' = facet_region_width,
+                            'facet_region_file' = facet_region_file,
                             'smoothness_dd_factors': smoothness_dd_factors,
                             'fast_smoothnessconstraint': fast_smoothnessconstraint,
                             'fast_smoothnessreffrequency': fast_smoothnessreffrequency,

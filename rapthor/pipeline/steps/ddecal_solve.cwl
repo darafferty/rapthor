@@ -435,6 +435,26 @@ inputs:
       prefix: solve.antennaconstraint=
       separate: False
 
+  - id: idg_regions
+    label: Regions for IDG predict
+    doc: |
+      A ds9 file that defines the regions to use with IDG predict.
+    type: string?
+    inputBinding:
+      prefix: solve.idg.regions=
+      separate: False
+
+  - id: idg_images
+    label: Smoothness factors
+    doc: |
+      The model images, one per spectral term, to use with IDG predict.
+    type: string[]?
+    inputBinding:
+      valueFrom: $('['+self+']')
+      prefix: solve.idg.images=
+      itemSeparator: ','
+      separate: False
+
   - id: numthreads
     label: Number of threads
     doc: |

@@ -22,6 +22,7 @@ dde_mode = hybrid
 
 [calibration]
 use_included_skymodels = True
+use_image_based_predict = True
 dd_interval_factor = 1
 dd_smoothness_factor = 1
 llssolver = qr
@@ -63,6 +64,7 @@ taper_arcsec = 2.0
 local_rms_strength = 0.5
 do_multiscale_clean = False
 dde_method = single
+filter_skymodel = False
 save_visibilities = True
 save_supplementary_images = True
 idg_mode = gpu
