@@ -717,7 +717,7 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/make_region_file.cwl
     in:
       - id: skymodel
-        source: skymodel
+        source: calibration_skymodel_file
       - id: ra_mid
         source: ra_mid
       - id: dec_mid
