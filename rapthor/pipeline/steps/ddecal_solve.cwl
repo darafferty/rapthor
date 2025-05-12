@@ -450,9 +450,8 @@ inputs:
       The model images, one per spectral term, to use with IDG predict.
     type: File[]?
     inputBinding:
-      valueFrom: $('['+self+']')
+      valueFrom: "[$(self.map(function(file){ return file.path; }).join(','))]"
       prefix: solve.idg.images=
-      itemSeparator: ','
       separate: False
 
   - id: numthreads
