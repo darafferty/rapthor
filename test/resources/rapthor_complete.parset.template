@@ -61,9 +61,12 @@ max_uv_lambda = 10000.0
 mgain = 0.85
 taper_arcsec = 2.0
 local_rms_strength = 0.5
+local_rms_window = 10
+local_rms_method = rms
 do_multiscale_clean = False
 dde_method = single
 save_visibilities = True
+save_supplementary_images = True
 idg_mode = gpu
 mem_gb = 128.0
 apply_diagonal_solutions = False
@@ -82,6 +85,7 @@ sector_center_dec_list = [+35d30m31.52, +37d21m56.86]
 sector_width_ra_deg_list = [0.532, 0.127]
 sector_width_dec_deg_list = [0.532, 0.127]
 max_peak_smearing = 0.25
+skip_final_major_iteration = False
 skip_corner_sectors = True
 
 [cluster]

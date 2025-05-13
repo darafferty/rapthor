@@ -39,10 +39,6 @@ arguments:
     prefix: -parallel-deconvolution
   - valueFrom: '1.0'
     prefix: -auto-threshold
-  - valueFrom: '50'
-    prefix: -local-rms-window
-  - valueFrom: 'rms-with-min'
-    prefix: -local-rms-method
   - valueFrom: '32'
     prefix: -aterm-kernel-size
   - valueFrom: 'aterm_plus_beam.cfg'
@@ -64,6 +60,7 @@ inputs:
     type: Directory
     inputBinding:
       position: 3
+
   - id: name
     label: Filename of output image
     doc: |
@@ -71,6 +68,7 @@ inputs:
     type: string
     inputBinding:
       prefix: -name
+
   - id: mask
     label: Filename of mask
     doc: |
@@ -78,6 +76,7 @@ inputs:
     type: File
     inputBinding:
       prefix: -fits-mask
+
   - id: h5parm
     label: h5parm filename
     doc: |
@@ -85,6 +84,7 @@ inputs:
     type: File
     inputBinding:
       valueFrom: null
+
   - id: wsclean_imsize
     label: Image size
     doc: |
@@ -92,6 +92,7 @@ inputs:
     type: int[]
     inputBinding:
       prefix: -size
+
   - id: wsclean_niter
     label: Number of iterations
     doc: |
@@ -99,6 +100,7 @@ inputs:
     type: int
     inputBinding:
       prefix: -niter
+
   - id: wsclean_nmiter
     label: Number of major iterations
     doc: |
@@ -106,6 +108,7 @@ inputs:
     type: int
     inputBinding:
       prefix: -nmiter
+
   - id: robust
     label: Robust weighting
     doc: |
@@ -113,6 +116,7 @@ inputs:
     type: float
     inputBinding:
       position: 2
+
   - id: min_uv_lambda
     label: Minimum uv distance
     doc: |
@@ -120,6 +124,7 @@ inputs:
     type: float
     inputBinding:
       prefix: -minuv-l
+
   - id: max_uv_lambda
     label: Maximum uv distance
     doc: |
@@ -127,6 +132,7 @@ inputs:
     type: float
     inputBinding:
       prefix: -maxuv-l
+
   - id: mgain
     label: Cleaning gain
     doc: |
@@ -134,6 +140,7 @@ inputs:
     type: float
     inputBinding:
       prefix: -mgain
+
   - id: multiscale
     label: Activate multiscale
     doc: |
@@ -141,6 +148,7 @@ inputs:
     type: boolean
     inputBinding:
       prefix: -multiscale
+
   - id: save_source_list
     label: Save source list
     doc: |
@@ -148,6 +156,7 @@ inputs:
     type: boolean
     inputBinding:
       prefix: -save-source-list
+
   - id: pol
     label: Polarizations
     doc: |
@@ -155,6 +164,7 @@ inputs:
     type: string
     inputBinding:
       prefix: -pol
+
   - id: link_polarizations
     label: Link polarizations
     doc: |
@@ -164,6 +174,7 @@ inputs:
       - string?
     inputBinding:
       prefix: -link-polarizations
+
   - id: join_polarizations
     label: Join polarizations
     doc: |
@@ -171,6 +182,15 @@ inputs:
     type: boolean
     inputBinding:
       prefix: -join-polarizations
+
+  - id: skip_final_iteration
+    label: Skip final iteration
+    doc: |
+      Skip the final major iteration during clean.
+    type: boolean
+    inputBinding:
+      prefix: -skip-final-iteration
+
   - id: cellsize_deg
     label: Pixel size
     doc: |
@@ -178,6 +198,7 @@ inputs:
     type: float
     inputBinding:
       prefix: -scale
+
   - id: channels_out
     label: Number of channels
     doc: |
@@ -185,6 +206,7 @@ inputs:
     type: int
     inputBinding:
       prefix: -channels-out
+
   - id: deconvolution_channels
     label: Number of deconvolution channels
     doc: |
@@ -192,10 +214,15 @@ inputs:
     type: int
     inputBinding:
       prefix: -deconvolution-channels
+
   - id: fit_spectral_pol
+    label: Order of spectral poly
+    doc: |
+      The order of the polygon fit to the spectral terms.
     type: int
     inputBinding:
       prefix: -fit-spectral-pol
+
   - id: taper_arcsec
     label: Taper value
     doc: |
@@ -203,6 +230,7 @@ inputs:
     type: float
     inputBinding:
       prefix: -taper-gaussian
+
   - id: local_rms_strength
     label: Local RMS strength value
     doc: |
@@ -210,6 +238,23 @@ inputs:
     type: float
     inputBinding:
       prefix: -local-rms-strength
+
+  - id: local_rms_window
+    label: Local RMS window size
+    doc: |
+      The local RMS window size.
+    type: float
+    inputBinding:
+      prefix: -local-rms-window
+
+  - id: local_rms_method
+    label: Local RMS method
+    doc: |
+      The local RMS method.
+    type: string
+    inputBinding:
+      prefix: -local-rms-method
+
   - id: wsclean_mem
     label: Memory in GB
     doc: |
@@ -217,6 +262,7 @@ inputs:
     type: float
     inputBinding:
       prefix: -abs-mem
+
   - id: auto_mask
     label: Auto mask value
     doc: |
@@ -224,6 +270,15 @@ inputs:
     type: float
     inputBinding:
       prefix: -auto-mask
+
+  - id: auto_mask_nmiter
+    label: Auto mask nmiter value
+    doc: |
+      The auto mask nmiter value.
+    type: int
+    inputBinding:
+      prefix: -auto-mask-nmiter
+
   - id: idg_mode
     label: IDG mode
     doc: |
@@ -231,10 +286,15 @@ inputs:
     type: string
     inputBinding:
       prefix: -idg-mode
+
   - id: num_threads
+    label: Max number of threads
+    doc: |
+      The maximum number of threads to use.
     type: int
     inputBinding:
       prefix: -j
+
   - id: num_deconvolution_threads
     label: Number of threads
     doc: |
@@ -242,6 +302,7 @@ inputs:
     type: int
     inputBinding:
       prefix: -deconvolution-threads
+
   - id: dd_psf_grid
     label: Direction-dependent PSF grid
     doc: |
@@ -262,6 +323,7 @@ outputs:
     type: File
     outputBinding:
       glob: [$(inputs.name)-MFS-image.fits, $(inputs.name)-MFS-I-image.fits]
+
   - id: image_I_pb_name
     label: Output PB-corrected image
     doc: |
@@ -272,6 +334,7 @@ outputs:
     type: File
     outputBinding:
       glob: [$(inputs.name)-MFS-image-pb.fits, $(inputs.name)-MFS-I-image-pb.fits]
+
   - id: image_I_pb_channels
     label: Output PB-corrected channel images
     doc: |
@@ -282,6 +345,7 @@ outputs:
     type: File[]
     outputBinding:
       glob: [$(inputs.name)-0???-image-pb.fits, $(inputs.name)-0???-I-image-pb.fits]
+
   - id: images_extra
     label: Extra output images
     doc: |
@@ -292,7 +356,8 @@ outputs:
       workflow.
     type: File[]
     outputBinding:
-      glob: ['$(inputs.name)-MFS-[QUV]-image.fits', '$(inputs.name)-MFS-[QUV]-image-pb.fits', '$(inputs.name)-MFS-*residual.fits', '$(inputs.name)-MFS-*model-pb.fits']
+      glob: ['$(inputs.name)-MFS-[QUV]-image.fits', '$(inputs.name)-MFS-[QUV]-image-pb.fits', '$(inputs.name)-MFS-*residual.fits', '$(inputs.name)-MFS-*model-pb.fits', '$(inputs.name)-MFS-*dirty.fits']
+
   - id: skymodel_nonpb
     label: Output non-PB-corrected sky model
     doc: |
@@ -302,6 +367,7 @@ outputs:
     type: File?
     outputBinding:
       glob: $(inputs.name)-sources.txt
+
   - id: skymodel_pb
     label: Output PB-corrected image
     doc: |

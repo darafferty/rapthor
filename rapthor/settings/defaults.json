@@ -2,6 +2,7 @@
     "global": {
         "dir_working": null,
         "input_ms": null,
+        "data_colname": "DATA",
         "generate_initial_skymodel": true,
         "generate_initial_skymodel_radius": null,
         "generate_initial_skymodel_data_fraction": 0.2,
@@ -61,9 +62,12 @@
         "mgain": 0.8,
         "taper_arcsec": 0.0,
         "local_rms_strength": 0.8,
+        "local_rms_window": 50,
+        "local_rms_method": "rms-with-min",
         "do_multiscale_clean": true,
         "dde_method": "full",
         "save_visibilities": false,
+        "save_supplementary_images": false,
         "idg_mode": "cpu",
         "mem_gb": 0,
         "apply_diagonal_solutions": true,
@@ -85,6 +89,7 @@
         "sector_width_ra_deg_list": [],
         "sector_width_dec_deg_list": [],
         "max_peak_smearing": 0.15,
+        "skip_final_major_iteration": true,
         "skip_corner_sectors": false
     },
     "cluster": {

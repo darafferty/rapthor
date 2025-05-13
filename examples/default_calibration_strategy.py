@@ -1,8 +1,9 @@
 """
 Script that defines the default user processing strategy for HBA data when the
 initial sky model is generated from the input data. Specifying this file as the
-calibration strategy in the Rapthor parset causes default Rapthor to use the default
-calibration behaviour, which is equal to specifying no specific calibration strategy.
+strategy in the Rapthor parset causes Rapthor to use the default self-
+calibration behaviour, which is equal to specifying no specific calibration
+strategy.
 
 This file is provided to base custom strategies from. See the documentation for
 detailed information on each parameter.
@@ -21,11 +22,10 @@ for i in range(max_selfcal_loops):
     # station) is set to 0.3, to allow for small adjustments to the station
     # calibration (done in LINC).
     strategy_steps[i]['do_calibrate'] = True
+    strategy_steps[i]['do_slowgain_solve'] = True
     if i == 0:
-        strategy_steps[i]['do_slowgain_solve'] = True
         strategy_steps[i]['peel_outliers'] = True
     else:
-        strategy_steps[i]['do_slowgain_solve'] = True
         strategy_steps[i]['peel_outliers'] = False
     strategy_steps[i]['solve_min_uv_lambda'] = 150
     strategy_steps[i]['peel_bright_sources'] = False
@@ -50,9 +50,12 @@ for i in range(max_selfcal_loops):
 
     # Here we set the imaging strategy, lowering the masking thresholds as
     # selfcal proceeds to ensure all emission is properly cleaned and artifacts,
-    # if any, are excluded from the resulting sky models. Conversely, the number
-    # of major iterations allowed during imaging is raised to allow deeper
-    # cleaning in the later cycles
+    # if any, are excluded from the resulting sky models. Conversely, the
+    # maximum number of major iterations allowed during imaging is raised to
+    # allow deeper cleaning in the later cycles. Lastly, the maximum number of
+    # WSClean major iterations allowed after the automasking threshold is reached
+    # is set to 2, which has been found to be a sufficient number of iterations in
+    # most cases
     strategy_steps[i]['do_image'] = True
     if i == 0:
         strategy_steps[i]['auto_mask'] = 4.0
@@ -64,6 +67,7 @@ for i in range(max_selfcal_loops):
         strategy_steps[i]['threshisl'] = 3.0
         strategy_steps[i]['threshpix'] = 5.0
         strategy_steps[i]['max_nmiter'] = 12
+    strategy_steps[i]['auto_mask_nmiter'] = 2
 
     # Here we set the calibrator selection strategy, decreasing the target
     # minimum flux density for sources to be used as calibrators as selfcal

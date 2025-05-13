@@ -259,6 +259,7 @@ class Image(Operation):
                             'region_file': [None if sector.region_file is None else CWLFile(sector.region_file).to_json() for sector in self.imaging_sectors],
                             'wsclean_niter': [sector.wsclean_niter for sector in self.imaging_sectors],
                             'wsclean_nmiter': [sector.wsclean_nmiter for sector in self.imaging_sectors],
+                            'skip_final_iteration': self.field.skip_final_major_iteration,
                             'robust': [sector.robust for sector in self.imaging_sectors],
                             'cellsize_deg': [sector.cellsize_deg for sector in self.imaging_sectors],
                             'min_uv_lambda': [sector.min_uv_lambda for sector in self.imaging_sectors],
@@ -266,7 +267,10 @@ class Image(Operation):
                             'mgain': [sector.mgain for sector in self.imaging_sectors],
                             'taper_arcsec': [sector.taper_arcsec for sector in self.imaging_sectors],
                             'local_rms_strength': [sector.local_rms_strength for sector in self.imaging_sectors],
+                            'local_rms_window': [sector.local_rms_window for sector in self.imaging_sectors],
+                            'local_rms_method': [sector.local_rms_method for sector in self.imaging_sectors],
                             'auto_mask': [sector.auto_mask for sector in self.imaging_sectors],
+                            'auto_mask_nmiter': [sector.auto_mask_nmiter for sector in self.imaging_sectors],
                             'idg_mode': [sector.idg_mode for sector in self.imaging_sectors],
                             'wsclean_mem': [sector.mem_limit_gb for sector in self.imaging_sectors],
                             'threshisl': [sector.threshisl for sector in self.imaging_sectors],
@@ -373,6 +377,10 @@ class Image(Operation):
                 setattr(sector, "I_image_file_apparent_sky", f'{image_root}-MFS-image.fits')
                 setattr(sector, "I_model_file_true_sky", f'{image_root}-MFS-model-pb.fits')
                 setattr(sector, "I_residual_file_apparent_sky", f'{image_root}-MFS-residual.fits')
+
+                if self.field.save_supplementary_images:
+                    setattr(sector, "I_dirty_file_apparent_sky", f'{image_root}-MFS-dirty.fits')
+                    setattr(sector, "mask_filename", f'{image_root}.mask.fits')
             else:
                 # When making all Stokes images, WSClean includes the Stokes parameter
                 # name in the output filenames
@@ -382,6 +390,11 @@ class Image(Operation):
                     setattr(sector, f"{polup}_image_file_apparent_sky", f'{image_root}-MFS-{polup}-image.fits')
                     setattr(sector, f"{polup}_model_file_true_sky", f'{image_root}-MFS-{polup}-model-pb.fits')
                     setattr(sector, f"{polup}_residual_file_apparent_sky", f'{image_root}-MFS-{polup}-residual.fits')
+
+                    if self.field.save_supplementary_images:
+                        setattr(sector, f"{polup}_dirty_file_apparent_sky", f'{image_root}-MFS-{polup}-dirty.fits')
+                        if not hasattr(sector, "mask_filename"):
+                            setattr(sector, "mask_filename", f'{image_root}.mask.fits')
 
             # The output sky models, both true sky and apparent sky (the filenames are
             # defined in the rapthor/scripts/filter_skymodel.py file)
@@ -476,6 +489,7 @@ class ImageInitial(Image):
         self.apply_none = True
         self.apply_normalizations = False
         self.field.full_field_sector.auto_mask = 5.0
+        self.field.full_field_sector.auto_mask_nmiter = 1
         self.field.full_field_sector.threshisl = 4.0
         self.field.full_field_sector.threshpix = 5.0
         self.imaging_sectors = [self.field.full_field_sector]
@@ -483,8 +497,6 @@ class ImageInitial(Image):
         self.imaging_parameters['cellsize_arcsec'] = 1.5
         self.imaging_parameters['robust'] = -1.5
         self.imaging_parameters['taper_arcsec'] = 0.0
-        self.imaging_parameters['min_uv_lambda'] = 0.0
-        self.imaging_parameters['max_uv_lambda'] = 1e6
         self.imaging_parameters['mgain'] = 0.85
         self.imaging_parameters['reweight'] = False
         self.imaging_parameters['dd_psf_grid'] = [1, 1]
@@ -492,6 +504,7 @@ class ImageInitial(Image):
         self.do_multiscale_clean = True
         self.field.full_field_sector.max_nmiter = 8
         self.field.full_field_sector.max_wsclean_nchannels = 8
+        self.field.skip_final_major_iteration = True
         super().set_input_parameters()
 
     def finalize(self):
@@ -584,6 +597,7 @@ class ImageNormalize(Image):
             self.apply_none = False
         self.apply_normalizations = False
         self.field.normalize_sector.auto_mask = 5.0
+        self.field.normalize_sector.auto_mask_nmiter = 2
         self.field.normalize_sector.threshisl = 4.0
         self.field.normalize_sector.threshpix = 5.0
         self.field.normalize_sector.max_nmiter = 8
@@ -595,6 +609,7 @@ class ImageNormalize(Image):
         self.imaging_parameters['taper_arcsec'] = 24.0
         self.do_predict = False
         self.do_multiscale_clean = False
+        self.field.skip_final_major_iteration = False
         super().set_input_parameters()
 
     def finalize(self):
@@ -674,11 +689,23 @@ def report_sector_diagnostics(sector_name, diagnostics_dict, log):
         log.info('    Min RMS noise = {0} (non-PB-corrected), '
                  '{1} (PB-corrected), {2} (theoretical)'.format(min_rms_flat_noise, min_rms_true_sky,
                                                                 theoretical_rms))
+        if (
+            diagnostics_dict['min_rms_flat_noise'] == 0.0 or
+            diagnostics_dict['min_rms_true_sky'] == 0.0
+        ):
+            log.warning('The min RMS noise is 0, likely indicating a problem with the processing.')
         log.info('    Median RMS noise = {0} (non-PB-corrected), '
                  '{1} (PB-corrected)'.format(median_rms_flat_noise, median_rms_true_sky))
         log.info('    Dynamic range = {0} (non-PB-corrected), '
                  '{1} (PB-corrected)'.format(dynr_flat_noise, dynr_true_sky))
+        if (
+            diagnostics_dict['dynamic_range_global_flat_noise'] == 0.0 or
+            diagnostics_dict['dynamic_range_global_true_sky'] == 0.0
+        ):
+            log.warning('The dynamic range is 0, likely indicating a problem with the processing.')
         log.info('    Number of sources found by PyBDSF = {}'.format(nsources))
+        if diagnostics_dict['nsources'] == 0:
+            log.warning('No sources were found by PyBDSF, possibly indicating a problem with the processing.')
         log.info('    Reference frequency = {}'.format(freq))
         log.info('    Beam = {}'.format(beam))
         log.info('    Fraction of unflagged data = {}'.format(unflagged_data_fraction))
@@ -732,8 +759,8 @@ def report_sector_diagnostics(sector_name, diagnostics_dict, log):
         return (lofar_to_true_flux_ratio, lofar_to_true_flux_std)
 
     except KeyError:
-        log.warn('One or more of the expected image diagnostics is unavailable '
-                 'for {}. Logging of diagnostics skipped.'.format(sector_name))
+        log.warning('One or more of the expected image diagnostics is unavailable '
+                    'for {}. Logging of diagnostics skipped.'.format(sector_name))
         req_keys = ['theoretical_rms', 'min_rms_flat_noise', 'median_rms_flat_noise',
                     'dynamic_range_global_flat_noise', 'min_rms_true_sky',
                     'median_rms_true_sky', 'dynamic_range_global_true_sky',

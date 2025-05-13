@@ -342,6 +342,12 @@ inputs:
       Join polarizations during clean (length = 1).
     type: boolean
 
+  - id: skip_final_iteration
+    label: Skip final major iteration
+    doc: |
+      Skip the final major iteration at the end of clean (length = 1).
+    type: boolean
+
   - id: taper_arcsec
     label: Taper value
     doc: |
@@ -354,6 +360,18 @@ inputs:
       The WSClean local RMS strength value (length = 1).
     type: float
 
+  - id: local_rms_window
+    label: RMS window size
+    doc: |
+      The WSClean local RMS window size (length = 1).
+    type: float
+
+  - id: local_rms_method
+    label: RMS method
+    doc: |
+      The WSClean local RMS method (length = 1).
+    type: string
+
   - id: wsclean_mem
     label: Memory in GB
     doc: |
@@ -365,6 +383,12 @@ inputs:
     doc: |
       The WSClean auto mask value (length = 1).
     type: float
+
+  - id: auto_mask_nmiter
+    label: Auto mask nmiter value
+    doc: |
+      The WSClean auto mask nmiter value (length = 1).
+    type: int
 
   - id: idg_mode
     label: IDG mode
@@ -461,6 +485,10 @@ outputs:
     outputSource:
       - prepare_imaging_data/msimg
     type: Directory[]
+  - id: source_filtering_mask
+    outputSource:
+      - filter/source_filtering_mask
+    type: File
   - id: sector_I_images
     outputSource:
 {% if peel_bright_sources %}
@@ -734,6 +762,8 @@ steps:
         source: link_polarizations
       - id: join_polarizations
         source: join_polarizations
+      - id: skip_final_iteration
+        source: skip_final_iteration
       - id: cellsize_deg
         source: cellsize_deg
       - id: channels_out
@@ -746,10 +776,16 @@ steps:
         source: taper_arcsec
       - id: local_rms_strength
         source: local_rms_strength
+      - id: local_rms_window
+        source: local_rms_window
+      - id: local_rms_method
+        source: local_rms_method
       - id: wsclean_mem
         source: wsclean_mem
       - id: auto_mask
         source: auto_mask
+      - id: auto_mask_nmiter
+        source: auto_mask_nmiter
       - id: idg_mode
         source: idg_mode
       - id: num_threads
@@ -886,6 +922,7 @@ steps:
       - id: flat_noise_rms_image
       - id: true_sky_rms_image
       - id: source_catalog
+      - id: source_filtering_mask
 
   - id: find_diagnostics
     label: Find image diagnostics

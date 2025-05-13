@@ -19,7 +19,7 @@ from importlib import metadata
 # -- Project information -----------------------------------------------------
 
 project = 'Rapthor'
-copyright = '2024, Team Rapthor'
+copyright = '2020-%Y, Team Rapthor'
 author = 'Team Rapthor'
 
 # The full version, including alpha/beta/rc tags.
@@ -49,6 +49,10 @@ exclude_patterns = []
 # a list of builtin themes.
 #
 html_theme = 'alabaster'
+
+html_theme_options = {
+	'description': release
+}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,

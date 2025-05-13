@@ -24,7 +24,7 @@ inputs:
       items:
         type: array
         items: Directory
-  
+
   - id: data_colname
     label: Input MS data column
     doc: |
@@ -377,6 +377,12 @@ inputs:
       Join polarizations during clean (length = 1).
     type: boolean
 
+  - id: skip_final_iteration
+    label: Skip final major iteration
+    doc: |
+      Skip the final WSClean major iteration at the end of clean (length = 1).
+    type: boolean
+
   - id: taper_arcsec
     label: Taper value
     doc: |
@@ -389,6 +395,18 @@ inputs:
       The WSClean local RMS strength value (length = n_sectors).
     type: float[]
 
+  - id: local_rms_window
+    label: RMS window size
+    doc: |
+      The WSClean local RMS window size (length = n_sectors).
+    type: float[]
+
+  - id: local_rms_method
+    label: RMS method
+    doc: |
+      The WSClean local RMS method (length = n_sectors).
+    type: string[]
+
   - id: wsclean_mem
     label: Memory in GB
     doc: |
@@ -400,6 +418,12 @@ inputs:
     doc: |
       The WSClean auto mask value (length = n_sectors).
     type: float[]
+
+  - id: auto_mask_nmiter
+    label: Auto mask nmiter value
+    doc: |
+      The WSClean auto mask nmiter value (length = n_sectors).
+    type: int[]
 
   - id: idg_mode
     label: IDG mode
@@ -523,6 +547,10 @@ outputs:
       items:
         type: array
         items: File
+  - id: source_filtering_mask
+    outputSource:
+      - image_sector/source_filtering_mask
+    type: File[]
 {% if save_source_list %}
   - id: sector_skymodels
     outputSource:
@@ -684,14 +712,22 @@ steps:
         source: link_polarizations
       - id: join_polarizations
         source: join_polarizations
+      - id: skip_final_iteration
+        source: skip_final_iteration
       - id: taper_arcsec
         source: taper_arcsec
       - id: local_rms_strength
         source: local_rms_strength
+      - id: local_rms_window
+        source: local_rms_window
+      - id: local_rms_method
+        source: local_rms_method
       - id: wsclean_mem
         source: wsclean_mem
       - id: auto_mask
         source: auto_mask
+      - id: auto_mask_nmiter
+        source: auto_mask_nmiter
       - id: idg_mode
         source: idg_mode
       - id: threshisl
@@ -745,8 +781,9 @@ steps:
 {% endif %}
               channels_out, deconvolution_channels, fit_spectral_pol, wsclean_niter,
               wsclean_nmiter, robust, min_uv_lambda, max_uv_lambda, mgain, do_multiscale,
-              taper_arcsec, local_rms_strength, wsclean_mem, auto_mask,
-              idg_mode, threshisl, threshpix, dd_psf_grid]
+              taper_arcsec, local_rms_strength, local_rms_window, local_rms_method,
+              wsclean_mem, auto_mask, auto_mask_nmiter, idg_mode, threshisl, threshpix,
+              dd_psf_grid]
 
     scatterMethod: dotproduct
 
@@ -756,6 +793,7 @@ steps:
       - id: sector_I_images
       - id: sector_extra_images
       - id: visibilities
+      - id: source_filtering_mask
 {% if save_source_list %}
       - id: sector_skymodels
 {% endif %}

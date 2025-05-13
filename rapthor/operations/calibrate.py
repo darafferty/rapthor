@@ -135,7 +135,14 @@ class CalibrateDD(Operation):
         if self.field.do_slowgain_solve or self.field.antenna == 'LBA':
             # Use the core stationconstraint if the slow solves will be done or if
             # we have LBA data (which has lower sensitivity than HBA data)
-            fast_antennaconstraint = '[[{}]]'.format(','.join(self.get_core_stations()))
+            core_stations = self.get_core_stations()
+            # In the case of SKA sets, we currently have not defined core stations yet. To let
+            # SKA continue, we disable the antennaconstraint for now if the list of core
+            # stations is empty.
+            if core_stations:
+                fast_antennaconstraint = '[[{}]]'.format(','.join(core_stations))
+            else:
+                fast_antennaconstraint = '[]'
         else:
             # For HBA data, if the slow solves will not be done, we remove the
             # stationconstraint to allow each station to get its own fast phase

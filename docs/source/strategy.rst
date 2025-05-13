@@ -28,6 +28,13 @@ Rapthor parset. The options for this parameter are described below:
     used to generate calibrated visibilities for a given source or sources (see
     :term:`save_visibilities`).
 
+    .. note::
+
+        If peeling of outlier or bright sources is desired, an initial sky model
+        with patches that corresponds to the input direction-dependent
+        corrections must also be supplied via the :term:`input_skymodel` option
+        in the parset.
+
 ``strategy = /path/to/custom_strategy.py``
     By giving the path to a strategy file, the user can define a custom processing
     strategy. See below for details of how to make this file.
@@ -66,11 +73,15 @@ cycle.
 
 .. note::
 
-    An example of a custom strategy file is available `here
-    <https://git.astron.nl/RD/rapthor/-/blob/master/examples/custom_calibration_strategy.
-    py>`_. A file that duplicates the default self calibration strategy is available `here
-    <https://git.astron.nl/RD/rapthor/-/blob/master/examples/default_calibration_strategy.
-    py>`__.
+    Examples of custom strategy files are available `here
+    <https://git.astron.nl/RD/rapthor/-/blob/master/examples/custom_calibration_strategy.py>`_
+    (for self calibration) and `here
+    <https://git.astron.nl/RD/rapthor/-/blob/master/examples/custom_imaging_strategy.py>`_
+    (for imaging only). Files that duplicate the default strategies are available `here
+    <https://git.astron.nl/RD/rapthor/-/blob/master/examples/default_calibration_strategy.py>`_
+    (for self calibration) and `here
+    <https://git.astron.nl/RD/rapthor/-/blob/master/examples/default_imaging_strategy.py>`_
+    (for imaging only).
 
 .. note::
 
@@ -129,6 +140,9 @@ The following processing parameters can be set for each cycle:
 
     auto_mask
         Float that sets WSClean's automask value for this cycle.
+
+    auto_mask_nmiter
+        Integer that sets the maximum number of WSClean's major iterations done once the automasking threshold is reached for this cycle.
 
     threshisl
         Float that sets PyBDSF's threshisl value for this cycle.

@@ -46,10 +46,6 @@ arguments:
     prefix: -parallel-deconvolution
   - valueFrom: '1.0'
     prefix: -auto-threshold
-  - valueFrom: '50'
-    prefix: -local-rms-window
-  - valueFrom: 'rms-with-min'
-    prefix: -local-rms-method
   - valueFrom: '32'
     prefix: -aterm-kernel-size
   - valueFrom: 'aterm_plus_beam.cfg'
@@ -130,6 +126,10 @@ inputs:
     type: boolean
     inputBinding:
       prefix: -join-polarizations
+  - id: skip_final_iteration
+    type: boolean
+    inputBinding:
+      prefix: -skip-final-iteration
   - id: cellsize_deg
     type: float
     inputBinding:
@@ -154,6 +154,14 @@ inputs:
     type: float
     inputBinding:
       prefix: -local-rms-strength
+  - id: local_rms_window
+    type: float
+    inputBinding:
+      prefix: -local-rms-window
+  - id: local_rms_method
+    type: string
+    inputBinding:
+      prefix: -local-rms-method
   - id: wsclean_mem
     type: float
     inputBinding:
@@ -162,6 +170,10 @@ inputs:
     type: float
     inputBinding:
       prefix: -auto-mask
+  - id: auto_mask_nmiter
+    type: int
+    inputBinding:
+      prefix: -auto-mask-nmiter
   - id: idg_mode
     type: string
     inputBinding:
@@ -200,7 +212,7 @@ outputs:
   - id: images_extra
     type: File[]
     outputBinding:
-      glob: ['$(inputs.name)-MFS-[QUV]-image.fits', '$(inputs.name)-MFS-[QUV]-image-pb.fits', '$(inputs.name)-MFS-*residual.fits', '$(inputs.name)-MFS-*model-pb.fits']
+      glob: ['$(inputs.name)-MFS-[QUV]-image.fits', '$(inputs.name)-MFS-[QUV]-image-pb.fits', '$(inputs.name)-MFS-*residual.fits', '$(inputs.name)-MFS-*model-pb.fits', '$(inputs.name)-MFS-*dirty.fits']
   - id: skymodel_nonpb
     type: File?
     outputBinding:
