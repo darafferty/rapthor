@@ -49,6 +49,8 @@ class Sector:
         self.robust = imaging_parameters["robust"]
         self.taper_arcsec = imaging_parameters["taper_arcsec"]
         self.local_rms_strength = imaging_parameters["local_rms_strength"]
+        self.local_rms_window = imaging_parameters["local_rms_window"]
+        self.local_rms_method = imaging_parameters["local_rms_method"]
         self.min_uv_lambda = imaging_parameters["min_uv_lambda"]
         self.max_uv_lambda = imaging_parameters["max_uv_lambda"]
         self.mgain = imaging_parameters["mgain"]

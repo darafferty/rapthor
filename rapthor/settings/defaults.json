@@ -62,6 +62,8 @@
         "mgain": 0.8,
         "taper_arcsec": 0.0,
         "local_rms_strength": 0.8,
+        "local_rms_window": 50,
+        "local_rms_method": "rms-with-min",
         "do_multiscale_clean": true,
         "dde_method": "full",
         "save_visibilities": false,
