@@ -395,6 +395,18 @@ inputs:
       The WSClean local RMS strength value (length = n_sectors).
     type: float[]
 
+  - id: local_rms_window
+    label: RMS window size
+    doc: |
+      The WSClean local RMS window size (length = n_sectors).
+    type: float[]
+
+  - id: local_rms_method
+    label: RMS method
+    doc: |
+      The WSClean local RMS method (length = n_sectors).
+    type: string[]
+
   - id: wsclean_mem
     label: Memory in GB
     doc: |
@@ -706,6 +718,10 @@ steps:
         source: taper_arcsec
       - id: local_rms_strength
         source: local_rms_strength
+      - id: local_rms_window
+        source: local_rms_window
+      - id: local_rms_method
+        source: local_rms_method
       - id: wsclean_mem
         source: wsclean_mem
       - id: auto_mask
@@ -765,8 +781,9 @@ steps:
 {% endif %}
               channels_out, deconvolution_channels, fit_spectral_pol, wsclean_niter,
               wsclean_nmiter, robust, min_uv_lambda, max_uv_lambda, mgain, do_multiscale,
-              taper_arcsec, local_rms_strength, wsclean_mem, auto_mask, auto_mask_nmiter,
-              idg_mode, threshisl, threshpix, dd_psf_grid]
+              taper_arcsec, local_rms_strength, local_rms_window, local_rms_method,
+              wsclean_mem, auto_mask, auto_mask_nmiter, idg_mode, threshisl, threshpix,
+              dd_psf_grid]
 
     scatterMethod: dotproduct
 

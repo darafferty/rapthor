@@ -30,10 +30,6 @@ arguments:
     prefix: -multiscale-scale-bias
   - valueFrom: '1.0'
     prefix: -auto-threshold
-  - valueFrom: '50'
-    prefix: -local-rms-window
-  - valueFrom: 'rms-with-min'
-    prefix: -local-rms-method
   - valueFrom: 'briggs'
     # Note: we have to set part of the 'weight' argument here and part below, as it has
     # three parts (e.g., '-weight briggs -0.5'), and WSClean will not parse the value
@@ -133,6 +129,14 @@ inputs:
     type: float
     inputBinding:
       prefix: -local-rms-strength
+  - id: local_rms_window
+    type: float
+    inputBinding:
+      prefix: -local-rms-window
+  - id: local_rms_method
+    type: string
+    inputBinding:
+      prefix: -local-rms-method
   - id: wsclean_mem
     type: float
     inputBinding:

@@ -263,6 +263,8 @@ class Image(Operation):
                             'mgain': [sector.mgain for sector in self.imaging_sectors],
                             'taper_arcsec': [sector.taper_arcsec for sector in self.imaging_sectors],
                             'local_rms_strength': [sector.local_rms_strength for sector in self.imaging_sectors],
+                            'local_rms_window': [sector.local_rms_window for sector in self.imaging_sectors],
+                            'local_rms_method': [sector.local_rms_method for sector in self.imaging_sectors],
                             'auto_mask': [sector.auto_mask for sector in self.imaging_sectors],
                             'auto_mask_nmiter': [sector.auto_mask_nmiter for sector in self.imaging_sectors],
                             'idg_mode': [sector.idg_mode for sector in self.imaging_sectors],
