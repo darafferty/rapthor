@@ -45,10 +45,6 @@ arguments:
     prefix: -parallel-deconvolution
   - valueFrom: '1.0'
     prefix: -auto-threshold
-  - valueFrom: '50'
-    prefix: -local-rms-window
-  - valueFrom: 'rms-with-min'
-    prefix: -local-rms-method
   - valueFrom: '32'
     prefix: -aterm-kernel-size
   - valueFrom: 'aterm_plus_beam.cfg'
@@ -157,6 +153,14 @@ inputs:
     type: float
     inputBinding:
       prefix: -local-rms-strength
+  - id: local_rms_window
+    type: float
+    inputBinding:
+      prefix: -local-rms-window
+  - id: local_rms_method
+    type: string
+    inputBinding:
+      prefix: -local-rms-method
   - id: wsclean_mem
     type: float
     inputBinding:

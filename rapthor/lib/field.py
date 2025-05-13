@@ -1555,25 +1555,45 @@ class Field(object):
             rmspre = sector.diagnostics[-2]['median_rms_flat_noise']
             rmspost = sector.diagnostics[-1]['median_rms_flat_noise']
             rmsideal = sector.diagnostics[-1]['theoretical_rms']
-            self.log.info('Ratio of current median image noise (non-PB-corrected) to previous image '
-                          'noise for {0} = {1:.2f}'.format(sector.name, rmspost/rmspre))
+            if rmspre > 0:
+                rms_unconverged = rmspost / rmspre < convergence_ratio
+                rms_diverged = rmspost / rmspre > divergence_ratio
+                self.log.info('Ratio of current median image noise (non-PB-corrected) to previous image '
+                              'noise for {0} = {1:.2f}'.format(sector.name, rmspost/rmspre))
+            else:
+                rms_unconverged = True
+                rms_diverged = False
+                self.log.warning('Median image noise found in the previous cycle is 0 '
+                                 'for {0}. Skipping noise convergence check...'.format(sector.name))
             self.log.info('Ratio of current median image noise (non-PB-corrected) to theorectical '
                           'minimum image noise for {0} = {1:.2f}'.format(sector.name, rmspost/rmsideal))
+
             dynrpre = sector.diagnostics[-2]['dynamic_range_global_flat_noise']
             dynrpost = sector.diagnostics[-1]['dynamic_range_global_flat_noise']
-            self.log.info('Ratio of current image dynamic range (non-PB-corrected) to previous image '
-                          'dynamic range for {0} = {1:.2f}'.format(sector.name, dynrpost/dynrpre))
+            if dynrpre > 0:
+                dynr_unconverged = dynrpost / dynrpre > 1 / convergence_ratio
+                self.log.info('Ratio of current image dynamic range (non-PB-corrected) to previous image '
+                              'dynamic range for {0} = {1:.2f}'.format(sector.name, dynrpost/dynrpre))
+            else:
+                dynr_unconverged = True
+                self.log.warning('Image dynamic range found in the previous cycle is 0 '
+                                 'for {0}. Skipping dynamic range convergence check...'.format(sector.name))
+
             nsrcpre = sector.diagnostics[-2]['nsources']
             nsrcpost = sector.diagnostics[-1]['nsources']
-            self.log.info('Ratio of current number of sources to previous number '
-                          'of sources for {0} = {1:.2f}'.format(sector.name, nsrcpost/nsrcpre))
-            if (rmspost / rmspre < convergence_ratio or
-                    dynrpost / dynrpre > 1 / convergence_ratio or
-                    nsrcpost / nsrcpre > 1 / convergence_ratio):
+            if nsrcpre > 0:
+                nsrc_unconverged = nsrcpost / nsrcpre > 1 / convergence_ratio
+                self.log.info('Ratio of current number of sources to previous number '
+                              'of sources for {0} = {1:.2f}'.format(sector.name, nsrcpost/nsrcpre))
+            else:
+                nsrc_unconverged = True
+                self.log.warning('No sources were found in the previous cycle '
+                                 'for {0}. Skipping source number convergence check...'.format(sector.name))
+            if rms_unconverged or dynr_unconverged or nsrc_unconverged:
                 # Report not converged (and not diverged)
                 converged.append(False)
                 diverged.append(False)
-            elif rmspost / rmspre > divergence_ratio:
+            elif rms_diverged:
                 # Report diverged (and not converged)
                 converged.append(False)
                 diverged.append(True)
