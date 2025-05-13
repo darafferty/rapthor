@@ -187,6 +187,10 @@ def check_photometry(obs, input_catalog, freq, min_number, comparison_skymodel=N
     #   - have deconvolved major axis < 10 arcsec (to exclude extended sources
     #     that may be poorly modeled)
     catalog = Table.read(input_catalog, format='fits')
+    if len(catalog) == 0:
+        print('No sources found in the LOFAR image. Skipping the photometry check...')
+        return {}
+
     phase_center = SkyCoord(ra=obs.ra*u.degree, dec=obs.dec*u.degree)
     coords_comp = SkyCoord(ra=catalog['RA'], dec=catalog['DEC'])
     separation = phase_center.separation(coords_comp)
@@ -200,7 +204,7 @@ def check_photometry(obs, input_catalog, freq, min_number, comparison_skymodel=N
     if len(catalog) < min_number:
         print(f'Fewer than {min_number} sources found in the LOFAR image that meet '
               'the photometry cuts (major axis < 10" and located inside the FWHM '
-              'of the primary beam"). Skipping photometry check...')
+              'of the primary beam"). Skipping the photometry check...')
         return {}
 
     # Do the photometry check
@@ -340,6 +344,10 @@ def check_astrometry(obs, input_catalog, image, facet_region_file, min_number,
     #   - have errors on RA and Dec of < 2 arcsec (to exclude sources
     #     with high positional uncertainties)
     catalog = Table.read(input_catalog, format='fits')
+    if len(catalog) == 0:
+        print('No sources found in the LOFAR image. Skipping the astrometry check...')
+        return {}
+
     major_axis = catalog['DC_Maj']  # degrees
     catalog = catalog[major_axis < 10/3600]
     ra_error = catalog['E_RA']  # degrees
