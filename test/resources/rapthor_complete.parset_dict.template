@@ -30,7 +30,7 @@
                           'stepsigma': 0.1,
                           'tolerance': 0.01,
                           'use_included_skymodels': True,
-                          'use_image_based_predict' = True},
+                          'use_image_based_predict': True},
  'cluster_specific': {'batch_system': 'slurm',
                       'container_type': 'singularity',
                       'cpus_per_task': 40,

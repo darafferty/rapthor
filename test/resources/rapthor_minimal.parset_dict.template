@@ -30,7 +30,7 @@
                           'stepsigma': 2.0,
                           'tolerance': 0.005,
                           'use_included_skymodels': False,
-                          'use_image_based_predict' = False},
+                          'use_image_based_predict': False},
  'cluster_specific': {'batch_system': 'single_machine',
                       'container_type': 'docker',
                       'cpus_per_task': 8,
