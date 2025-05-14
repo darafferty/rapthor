@@ -49,6 +49,8 @@ class Sector:
         self.robust = imaging_parameters["robust"]
         self.taper_arcsec = imaging_parameters["taper_arcsec"]
         self.local_rms_strength = imaging_parameters["local_rms_strength"]
+        self.local_rms_window = imaging_parameters["local_rms_window"]
+        self.local_rms_method = imaging_parameters["local_rms_method"]
         self.min_uv_lambda = imaging_parameters["min_uv_lambda"]
         self.max_uv_lambda = imaging_parameters["max_uv_lambda"]
         self.mgain = imaging_parameters["mgain"]
@@ -105,7 +107,7 @@ class Field:
         self.pol_combine_method = imaging_parameters["pol_combine_method"]
         self.apply_normalizations = False
         self.auto_mask_nmiter = 1
-        self.skip_final_iteration = True
+        self.skip_final_major_iteration = True
 
     def get_calibration_radius(self):
         return 5.0

@@ -84,6 +84,8 @@
                       'skip_corner_sectors': False,
                       'taper_arcsec': 0.0,
                       'local_rms_strength': 0.8,
+                      'local_rms_window': 50,
+                      'local_rms_method': 'rms-with-min',
                       'skip_final_major_iteration': True,
                       'use_mpi': False},
  'input_h5parm': None,

@@ -374,6 +374,18 @@ inputs:
       The WSClean local RMS strength value (length = 1).
     type: float
 
+  - id: local_rms_window
+    label: RMS window size
+    doc: |
+      The WSClean local RMS window size (length = 1).
+    type: float
+
+  - id: local_rms_method
+    label: RMS method
+    doc: |
+      The WSClean local RMS method (length = 1).
+    type: string
+
   - id: wsclean_mem
     label: Memory in GB
     doc: |
@@ -782,6 +794,10 @@ steps:
         source: taper_arcsec
       - id: local_rms_strength
         source: local_rms_strength
+      - id: local_rms_window
+        source: local_rms_window
+      - id: local_rms_method
+        source: local_rms_method
       - id: wsclean_mem
         source: wsclean_mem
       - id: auto_mask

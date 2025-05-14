@@ -267,7 +267,7 @@ class Image(Operation):
                             'region_file': [None if sector.region_file is None else CWLFile(sector.region_file).to_json() for sector in self.imaging_sectors],
                             'wsclean_niter': [sector.wsclean_niter for sector in self.imaging_sectors],
                             'wsclean_nmiter': [sector.wsclean_nmiter for sector in self.imaging_sectors],
-                            'skip_final_iteration': self.field.skip_final_iteration,
+                            'skip_final_iteration': self.field.skip_final_major_iteration,
                             'robust': [sector.robust for sector in self.imaging_sectors],
                             'cellsize_deg': [sector.cellsize_deg for sector in self.imaging_sectors],
                             'min_uv_lambda': [sector.min_uv_lambda for sector in self.imaging_sectors],
@@ -275,6 +275,8 @@ class Image(Operation):
                             'mgain': [sector.mgain for sector in self.imaging_sectors],
                             'taper_arcsec': [sector.taper_arcsec for sector in self.imaging_sectors],
                             'local_rms_strength': [sector.local_rms_strength for sector in self.imaging_sectors],
+                            'local_rms_window': [sector.local_rms_window for sector in self.imaging_sectors],
+                            'local_rms_method': [sector.local_rms_method for sector in self.imaging_sectors],
                             'auto_mask': [sector.auto_mask for sector in self.imaging_sectors],
                             'auto_mask_nmiter': [sector.auto_mask_nmiter for sector in self.imaging_sectors],
                             'idg_mode': [sector.idg_mode for sector in self.imaging_sectors],
@@ -510,7 +512,7 @@ class ImageInitial(Image):
         self.do_multiscale_clean = True
         self.field.full_field_sector.max_nmiter = 8
         self.field.full_field_sector.max_wsclean_nchannels = 8
-        self.field.skip_final_iteration = True
+        self.field.skip_final_major_iteration = True
         super().set_input_parameters()
 
     def finalize(self):
@@ -615,7 +617,7 @@ class ImageNormalize(Image):
         self.imaging_parameters['taper_arcsec'] = 24.0
         self.do_predict = False
         self.do_multiscale_clean = False
-
+        self.field.skip_final_major_iteration = False
         super().set_input_parameters()
 
     def finalize(self):
@@ -695,11 +697,23 @@ def report_sector_diagnostics(sector_name, diagnostics_dict, log):
         log.info('    Min RMS noise = {0} (non-PB-corrected), '
                  '{1} (PB-corrected), {2} (theoretical)'.format(min_rms_flat_noise, min_rms_true_sky,
                                                                 theoretical_rms))
+        if (
+            diagnostics_dict['min_rms_flat_noise'] == 0.0 or
+            diagnostics_dict['min_rms_true_sky'] == 0.0
+        ):
+            log.warning('The min RMS noise is 0, likely indicating a problem with the processing.')
         log.info('    Median RMS noise = {0} (non-PB-corrected), '
                  '{1} (PB-corrected)'.format(median_rms_flat_noise, median_rms_true_sky))
         log.info('    Dynamic range = {0} (non-PB-corrected), '
                  '{1} (PB-corrected)'.format(dynr_flat_noise, dynr_true_sky))
+        if (
+            diagnostics_dict['dynamic_range_global_flat_noise'] == 0.0 or
+            diagnostics_dict['dynamic_range_global_true_sky'] == 0.0
+        ):
+            log.warning('The dynamic range is 0, likely indicating a problem with the processing.')
         log.info('    Number of sources found by PyBDSF = {}'.format(nsources))
+        if diagnostics_dict['nsources'] == 0:
+            log.warning('No sources were found by PyBDSF, possibly indicating a problem with the processing.')
         log.info('    Reference frequency = {}'.format(freq))
         log.info('    Beam = {}'.format(beam))
         log.info('    Fraction of unflagged data = {}'.format(unflagged_data_fraction))
@@ -753,8 +767,8 @@ def report_sector_diagnostics(sector_name, diagnostics_dict, log):
         return (lofar_to_true_flux_ratio, lofar_to_true_flux_std)
 
     except KeyError:
-        log.warn('One or more of the expected image diagnostics is unavailable '
-                 'for {}. Logging of diagnostics skipped.'.format(sector_name))
+        log.warning('One or more of the expected image diagnostics is unavailable '
+                    'for {}. Logging of diagnostics skipped.'.format(sector_name))
         req_keys = ['theoretical_rms', 'min_rms_flat_noise', 'median_rms_flat_noise',
                     'dynamic_range_global_flat_noise', 'min_rms_true_sky',
                     'median_rms_true_sky', 'dynamic_range_global_true_sky',

@@ -363,7 +363,8 @@ The available options are described below under their respective sections.
         Maximum uv distance in lambda to use in imaging (default = 1e6).
 
     mgain
-        Cleaning gain for major iterations, passed to the imager (default = 0.8). This setting does not affect the first 'initial_image' round.
+        Cleaning gain for major iterations, passed to the imager (default = 0.8). This
+        setting does not affect the first "initial_image" round.
 
     taper_arcsec
         Taper to apply when imaging, in arcsec (default = 0).
@@ -372,6 +373,14 @@ The available options are described below under their respective sections.
         Strength to use for the local RMS thresholding (default = 0.8). The
         strength is applied by WSClean to the local RMS map using ``local_rms ^
         strength``.
+
+    local_rms_window
+        Size of the window (in number of PSFs) to use for the local RMS thresholding
+        (default = 50).
+
+    local_rms_method = rms-with-min
+        Method to use for the local RMS thresholding: ``rms`` or ``rms-with-min``
+        (default = ``rms-with-min``).
 
     do_multiscale_clean
         Use multiscale cleaning (default = ``True``)?
@@ -392,7 +401,8 @@ The available options are described below under their respective sections.
         closest to the image centers are used.
 
     save_supplementary_images
-        Save dirty images and the clean masks made during each imaging cycle (default = ``False``).
+        Save dirty images and the clean masks made during each imaging cycle (default =
+        ``False``).
 
     idg_mode
         IDG (image domain gridder) mode to use in WSClean (default = ``cpu``). The mode
