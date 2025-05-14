@@ -368,6 +368,12 @@ class Observation(object):
                              'fast': 'solint_fast_timestep'}
         if target_flux is None:
             target_flux = min(calibrator_fluxes)
+        if smoothness_max_factor > 1:
+            smoothness_dd_factors = target_flux / np.array(calibrator_fluxes)
+            smoothness_dd_factors /= max(smoothness_dd_factors)
+            smoothness_dd_factors[smoothness_dd_factors < 1 / smoothness_max_factor] = 1 / smoothness_max_factor
+        else:
+            smoothness_dd_factors = [1] * len(calibrator_fluxes)
         for solve_type in ['fast', 'slow_joint', 'slow_separate']:
             solint = self.parameters[input_solint_keys[solve_type]][0]  # number of time slots
             nchunks = len(self.parameters[input_solint_keys[solve_type]])  # number of time or frequency chunks
@@ -403,15 +409,9 @@ class Observation(object):
             else:
                 self.parameters[f'solutions_per_direction_{solve_type}'] = [[1] * len(calibrator_fluxes)] * nchunks
 
-        # Set the smoothness_dd_factors so that brighter sources have smaller
-        # smoothing factors
-        if smoothness_max_factor > 1:
-            smoothness_dd_factors = target_flux / np.array(calibrator_fluxes)
-            smoothness_dd_factors /= max(smoothness_dd_factors)
-            smoothness_dd_factors[smoothness_dd_factors < 1 / smoothness_max_factor] = 1 / smoothness_max_factor
-            self.parameters['smoothness_dd_factors'] = [smoothness_dd_factors] * nchunks
-        else:
-            self.parameters['smoothness_dd_factors'] = [[1] * len(calibrator_fluxes)] * nchunks
+            # Set the smoothness_dd_factors so that brighter sources have smaller
+            # smoothing factors
+            self.parameters[f'smoothness_dd_factors_{solve_type}'] = [smoothness_dd_factors] * nchunks
 
         # Set the smoothnessreffrequency for the fast solves, if not set by the user
         fast_smoothnessreffrequency = parset['calibration_specific']['fast_smoothnessreffrequency']

@@ -162,11 +162,11 @@ inputs:
       The filename of the input sky model text file (length = 1).
     type: File
 
-  - id: smoothness_dd_factors
+  - id: smoothness_dd_factors_fast
     label: Smoothness factors
     doc: |
-      The factor by which to multiply the smoothnesscontraint, per direction (length =
-      n_obs * n_calibrators * n_time_chunks).
+      The factor by which to multiply the smoothnesscontraint for the fast phase
+      solve, per direction (length = n_obs * n_calibrators * n_time_chunks).
     type:
       type: array
       items:
@@ -504,7 +504,7 @@ inputs:
     label: Joint slow number of solutions per direction
     doc: |
       The number of solutions per direction for the first (joint) slow-
-      gain  (length = n_obs * n_directions * n_freq_chunks).
+      gain solve (length = n_obs * n_directions * n_freq_chunks).
     type:
       type: array
       items:
@@ -521,6 +521,28 @@ inputs:
       items:
         type: array
         items: int
+
+  - id: smoothness_dd_factors_slow_joint
+    label: Smoothness factors
+    doc: |
+      The factor by which to multiply the smoothnesscontraint for the first (joint)
+      slow-gain solve, per direction (length = n_obs * n_calibrators * n_freq_chunks).
+    type:
+      type: array
+      items:
+        type: array
+        items: float
+
+  - id: smoothness_dd_factors_slow_separate
+    label: Smoothness factors
+    doc: |
+      The factor by which to multiply the smoothnesscontraint for the second (separate)
+      slow-gain solve, per direction (length = n_obs * n_calibrators * n_freq_chunks).
+    type:
+      type: array
+      items:
+        type: array
+        items: float
 
   - id: slow_smoothnessconstraint_joint
     label: Joint slow smoothnessconstraint
@@ -867,7 +889,7 @@ steps:
       - id: uvlambdamin
         source: uvlambdamin
       - id: smoothness_dd_factors
-        source: smoothness_dd_factors
+        source: smoothness_dd_factors_fast
       - id: smoothnessconstraint
         source: fast_smoothnessconstraint
       - id: smoothnessreffrequency
@@ -1003,7 +1025,7 @@ steps:
       - id: uvlambdamin
         source: uvlambdamin
       - id: smoothness_dd_factors
-        source: smoothness_dd_factors
+        source: smoothness_dd_factors_slow_joint
       - id: smoothnessconstraint
         source: slow_smoothnessconstraint_joint
       - id: antennaconstraint
@@ -1174,7 +1196,7 @@ steps:
       - id: uvlambdamin
         source: uvlambdamin
       - id: smoothness_dd_factors
-        source: smoothness_dd_factors
+        source: smoothness_dd_factors_slow_separate
       - id: smoothnessconstraint
         source: slow_smoothnessconstraint_separate
       - id: numthreads
