@@ -130,13 +130,16 @@ class CalibrateDD(Operation):
         calibrator_fluxes = self.field.calibrator_fluxes
 
         # Set the constraints used in the calibrations
-        smoothness_dd_factors = self.field.get_obs_parameters('smoothness_dd_factors')
-        smoothness_max_factor = 1 / np.min(smoothness_dd_factors)
-        fast_smoothnessconstraint = self.field.fast_smoothnessconstraint * smoothness_max_factor
+        smoothness_dd_factors_fast = self.field.get_obs_parameters('smoothness_dd_factors_fast')
+        smoothness_dd_factors_slow_joint = self.field.get_obs_parameters('smoothness_dd_factors_slow_joint')
+        smoothness_dd_factors_slow_separate = self.field.get_obs_parameters('smoothness_dd_factors_slow_separate')
+        fast_smoothnessconstraint = self.field.fast_smoothnessconstraint / np.min(smoothness_dd_factors_fast)
         fast_smoothnessreffrequency = self.field.get_obs_parameters('fast_smoothnessreffrequency')
         fast_smoothnessrefdistance = self.field.fast_smoothnessrefdistance
-        slow_smoothnessconstraint_joint = self.field.slow_smoothnessconstraint_joint * smoothness_max_factor
-        slow_smoothnessconstraint_separate = self.field.slow_smoothnessconstraint_separate * smoothness_max_factor
+        slow_smoothnessconstraint_joint = (self.field.slow_smoothnessconstraint_joint /
+                                           np.min(smoothness_dd_factors_slow_joint))
+        slow_smoothnessconstraint_separate = (self.field.slow_smoothnessconstraint_separate /
+                                              np.min(smoothness_dd_factors_slow_separate))
         if self.field.do_slowgain_solve or self.field.antenna == 'LBA':
             # Use the core stationconstraint if the slow solves will be done or if
             # we have LBA data (which has lower sensitivity than HBA data)
@@ -262,7 +265,9 @@ class CalibrateDD(Operation):
                             'model_image_ra_dec': model_image_ra_dec,
                             'model_image_frequency_bandwidth': model_image_frequency_bandwidth,
                             'num_spectral_terms': num_spectral_terms,
-                            'smoothness_dd_factors': smoothness_dd_factors,
+                            'smoothness_dd_factors_fast': smoothness_dd_factors_fast,
+                            'smoothness_dd_factors_slow_joint': smoothness_dd_factors_slow_joint,
+                            'smoothness_dd_factors_slow_separate': smoothness_dd_factors_slow_separate,
                             'fast_smoothnessconstraint': fast_smoothnessconstraint,
                             'fast_smoothnessreffrequency': fast_smoothnessreffrequency,
                             'fast_smoothnessrefdistance': fast_smoothnessrefdistance,
