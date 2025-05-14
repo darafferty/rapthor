@@ -150,12 +150,6 @@ cython_debug/
 # Visual Studio settings
 .vscode
 
-# KDevelop settings
-*.kdev4
-.kdev4/
-.*.kate-swp
-.swp.*
-
 # Singularity/Apptainer images
 *.sif
 
