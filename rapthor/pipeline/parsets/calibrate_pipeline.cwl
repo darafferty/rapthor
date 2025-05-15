@@ -126,13 +126,13 @@ inputs:
   - id: model_image_ra_dec
     label: RA and Dec of model center
     doc: |
-      The RA and Dec in hmsdms of the center of the model images.
+      The RA and Dec in hmsdms of the center of the model images (length = 2).
     type: string[]
 
   - id: model_image_frequency_bandwidth
     label: Frequency and bandwidth of image
     doc: |
-      The central frequnecy and bandwidth in Hz of the output images.
+      The central frequnecy and bandwidth in Hz of the output images (length = 2).
     type: float[]
 {% endif %}
 

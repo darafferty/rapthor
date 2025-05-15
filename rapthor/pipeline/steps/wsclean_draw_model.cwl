@@ -38,8 +38,8 @@ inputs:
   - id: name
     label: Root name of output images
     doc: |
-      The root name of the output images. The images will be named "[name]-term_0.fits",
-      "[name]-term_1.fits", etc.
+      The root name of the output images. The images will be named "[name]-term-0.fits",
+      "[name]-term-1.fits", etc.
     type: string
     inputBinding:
       prefix: -name
@@ -55,7 +55,7 @@ inputs:
   - id: frequency_bandwidth
     label: Frequency and bandwidth of image
     doc: |
-      The central frequnecy and bandwidth in Hz of the output images.
+      The central frequency and bandwidth in Hz of the output images.
     type: float[]
     inputBinding:
       prefix: -draw-frequencies
