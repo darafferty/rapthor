@@ -414,7 +414,7 @@ class CalibrateDD(Operation):
             Central frequency and bandwidth  of model image in Hz
         center_coords : [str, str]
             Center of the image as [HHMMSS.S, DDMMSS.S] strings
-        size : [float, float]
+        size : [int, int]
             Size of image in [RA, Dec] in pixels
         cellsize : float
             Size of image cell in degrees/pixel
@@ -447,14 +447,14 @@ class CalibrateDD(Operation):
                                zip(skymodel.getColValues('Name'),
                                    skymodel.getColValues('RA'),
                                    skymodel.getColValues('Dec'))}
-                radius = np.max(self.field.get_source_distances(source_dict)) / cellsize  # pixels
+                radius = int(np.max(self.field.get_source_distances(source_dict)) / cellsize)  # pixels
                 size = [radius * 2, radius * 2]
         else:
             # Sky model generated in previous cycle's imaging step. Use the center and size
             # of the bounding box of all imaging sectors
             cellsize = self.field.imaging_sectors[0].cellsize_deg
             center_coords = [self.field.sector_bounds_mid_ra, self.field.sector_bounds_mid_dec]
-            size = [self.field.sector_bounds_width_ra, self.field.sector_bounds_width_dec]
+            size = [int(self.field.sector_bounds_width_ra / cellsize), int(self.field.sector_bounds_width_dec / cellsize)]
 
         # Convert RA and Dec to strings (required by WSClean)
         ra_hms = misc.ra2hhmmss(center_coords[0], as_string=True)
