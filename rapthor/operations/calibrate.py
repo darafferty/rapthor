@@ -411,8 +411,19 @@ class CalibrateDD(Operation):
         cellsize : float
             Size of image cell in degrees/pixel
         """
+        # Set frequency parameters. For the central frequency, we use the reference
+        # frequency of the sky model (i.e., the frequency to which the fluxes are
+        # referenced). For the bandwidth, we use 1 MHz as the excat value does not matter.
         skymodel = lsmtool.load(self.field.calibration_skymodel_file)
-        frequency_bandwidth = [np.median(skymodel.getColValues('referencefreq')), 1e6]
+        if 'ReferenceFrequency' in skymodel.getColNames():
+            # Each source can have its own reference frequency, so use the median over all
+            # sources
+            ref_freq = np.median(skymodel.getColValues('ReferenceFrequency'))
+        else:
+            ref_freq = skymodel.table.meta['ReferenceFrequency']
+        frequency_bandwidth = [ref_freq, 1e6]
+
+        # Set the image coordinates, size, and cellsize
         if self.index == 1:
             # For initial cycle, assume center is the field center
             center_coords = [self.field.ra, self.field.dec]
@@ -437,7 +448,7 @@ class CalibrateDD(Operation):
             center_coords = [self.field.sector_bounds_mid_ra, self.field.sector_bounds_mid_dec]
             size = [self.field.sector_bounds_width_ra, self.field.sector_bounds_width_dec]
 
-        # Convert RA and Dec to strings
+        # Convert RA and Dec to strings (required by WSClean)
         ra_hms = misc.ra2hhmmss(center_coords[0], as_string=True)
         dec_hms = misc.dec2ddmmss(center_coords[1], as_string=True)
         center_coords = [ra_hms, dec_hms]
