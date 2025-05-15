@@ -427,7 +427,7 @@ class CalibrateDD(Operation):
         if self.index == 1:
             # For initial cycle, assume center is the field center
             center_coords = [self.field.ra, self.field.dec]
-            if has_attr(self.field, 'full_field_sector'):
+            if hasattr(self.field, 'full_field_sector'):
                 # Sky model generated in initial image step
                 cellsize = self.field.full_field_sector.cellsize_deg
                 size = self.field.full_field_sector.imsize
