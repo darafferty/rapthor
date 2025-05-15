@@ -998,6 +998,12 @@ steps:
         source: slow_smoothnessconstraint_joint
       - id: antennaconstraint
         source: slow_antennaconstraint
+{% if use_image_based_predict %}
+      - id: predict_regions
+        source: make_region_file/region_file
+      - id: predict_images
+        source: draw_model/model_images
+{% endif %}
       - id: numthreads
         source: max_threads
     scatter: [msin, starttime, ntimes, startchan, nchan, maxinterval, h5parm, solint, solve_nchan, solutions_per_direction, smoothness_dd_factors]
@@ -1167,6 +1173,12 @@ steps:
         source: smoothness_dd_factors_slow_separate
       - id: smoothnessconstraint
         source: slow_smoothnessconstraint_separate
+{% if use_image_based_predict %}
+      - id: predict_regions
+        source: make_region_file/region_file
+      - id: predict_images
+        source: draw_model/model_images
+{% endif %}
       - id: numthreads
         source: max_threads
     scatter: [msin, starttime, ntimes, startchan, nchan, maxinterval, h5parm, solint, solve_nchan, solutions_per_direction, smoothness_dd_factors]
