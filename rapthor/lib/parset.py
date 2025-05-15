@@ -300,6 +300,18 @@ class Parset:
             )
             options["solveralgorithm"] = "directioniterative"
 
+        if (
+            (options['fast_bda_timebase'] > 0 or options['slow_bda_timebase_joint'] > 0 or options['slow_bda_timebase_separate'] > 0) and
+            options['use_image_based_predict']
+        ):
+            log.warning(
+                "Switching off BDA during solving, since image-based predict is "
+                "activated."
+            )
+            options['fast_bda_timebase'] = 0
+            options['slow_bda_timebase_joint'] = 0
+            options['slow_bda_timebase_separate'] = 0
+
         # Imaging options
         options = settings["imaging"]
 

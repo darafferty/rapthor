@@ -861,9 +861,9 @@ steps:
       - id: antennaconstraint
         source: fast_antennaconstraint
 {% if use_image_based_predict %}
-      - id: idg_regions
+      - id: predict_regions
         source: make_region_file/region_file
-      - id: idg_images
+      - id: predict_images
         source: draw_model/model_images
 {% endif %}
       - id: numthreads

@@ -187,21 +187,29 @@ class CalibrateDD(Operation):
         sector_bounds_mid_deg = '{}'.format(self.field.sector_bounds_mid_deg)
 
         # Set the DDECal steps depending on whether baseline-dependent averaging is
-        # activated (and supported) or not. If BDA is used, a "null" step is also
-        # added to prevent the writing of the BDA data
+        # activated (and supported) or not. If BDA is used, a "null" step is also added to
+        # prevent the writing of the BDA data
+        #
+        # TODO: image-based predict doesn't yet work with BDA; once it does,
+        # the restriction on this mode should be removed
         all_regular = all([obs.channels_are_regular for obs in self.field.observations])
-        if self.field.bda_timebase_fast > 0 and all_regular:
-            dp3_steps_fast = '[avg,solve,null]'
+        if self.field.bda_timebase_fast > 0 and all_regular and not self.field.use_image_based_predict:
+            dp3_steps_fast = ['avg', 'solve', 'null']
         else:
-            dp3_steps_fast = '[solve]'
-        if self.field.bda_timebase_slow_joint > 0 and all_regular:
-            dp3_steps_slow_joint = '[avg,solve,null]'
+            dp3_steps_fast = ['solve']
+        if self.field.bda_timebase_slow_joint > 0 and all_regular and not self.field.use_image_based_predict:
+            dp3_steps_slow_joint = ['avg', 'solve', 'null']
         else:
-            dp3_steps_slow_joint = '[solve]'
-        if self.field.bda_timebase_slow_separate > 0 and all_regular:
-            dp3_steps_slow_separate = '[avg,solve,null]'
+            dp3_steps_slow_joint = ['solve']
+        if self.field.bda_timebase_slow_separate > 0 and all_regular and not self.field.use_image_based_predict:
+            dp3_steps_slow_separate = ['avg', 'solve', 'null']
         else:
-            dp3_steps_slow_separate = '[solve]'
+            dp3_steps_slow_separate = ['solve']
+        if self.field.use_image_based_predict:
+            # Add a predict step to the beginning
+            dp3_steps_fast.insert(0, 'predict')
+            dp3_steps_slow_joint.insert(0, 'predict')
+            dp3_steps_slow_separate.insert(0, 'predict')
 
         # Set the DDECal applycal steps and input H5parm files depending on what
         # solutions need to be applied
@@ -281,12 +289,12 @@ class CalibrateDD(Operation):
                             'slow_smoothnessconstraint_joint': slow_smoothnessconstraint_joint,
                             'slow_smoothnessconstraint_separate': slow_smoothnessconstraint_separate,
                             'dp3_solve_mode_fast': dp3_solve_mode_fast,
-                            'dp3_steps_fast': dp3_steps_fast,
+                            'dp3_steps_fast': f"[{','.join(dp3_steps_fast)}]",
                             'dp3_applycal_steps_fast': dp3_applycal_steps_fast,
-                            'dp3_steps_slow_joint': dp3_steps_slow_joint,
+                            'dp3_steps_slow_joint': f"[{','.join(dp3_steps_slow_joint)}]",
                             'dp3_applycal_steps_slow_joint': dp3_applycal_steps_slow_joint,
+                            'dp3_steps_slow_separate': f"[{','.join(dp3_steps_slow_separate)}]",
                             'dp3_applycal_steps_slow_separate': dp3_applycal_steps_slow_separate,
-                            'dp3_steps_slow_separate': dp3_steps_slow_separate,
                             'dp3_solve_mode_fast': dp3_solve_mode_fast,
                             'bda_maxinterval_fast': bda_maxinterval_fast,
                             'bda_timebase_fast': bda_timebase_fast,

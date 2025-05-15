@@ -17,6 +17,7 @@ arguments:
   - avg.type=bdaaverager
   - avg.minchannels=1
   - avg.frequencybase=0.0
+  - predict.type=wgridderpredict
   - solve.type=ddecal
   - solve.usebeammodel=True
   - solve.beam_interval=120
@@ -435,23 +436,23 @@ inputs:
       prefix: solve.antennaconstraint=
       separate: False
 
-  - id: idg_regions
+  - id: predict_regions
     label: Regions for IDG predict
     doc: |
       A ds9 file that defines the regions to use with IDG predict.
     type: File?
     inputBinding:
-      prefix: solve.idg.regions=
+      prefix: predict.regions=
       separate: False
 
-  - id: idg_images
+  - id: predict_images
     label: Smoothness factors
     doc: |
       The model images, one per spectral term, to use with IDG predict.
     type: File[]?
     inputBinding:
       valueFrom: "[$(self.map(function(file){ return file.path; }).join(','))]"
-      prefix: solve.idg.images=
+      prefix: predict.images=
       separate: False
 
   - id: numthreads
