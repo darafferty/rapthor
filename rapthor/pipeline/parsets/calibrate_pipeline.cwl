@@ -135,6 +135,18 @@ inputs:
       The central frequnecy and bandwidth in Hz of the output images (length = 2).
     type: float[]
 
+  - id: model_imsize
+    label: Image size
+    doc: |
+      The size of the image in pixels (length = 2).
+    type: int[]
+
+  - id: cellsize_deg
+    label: Pixel size
+    doc: |
+      The size of one pixel of the image in deg (length = 1).
+    type: float
+
   - id: ra_mid
     label: RA of the midpoint
     doc: |
@@ -727,6 +739,10 @@ steps:
         source: model_image_ra_dec
       - id: frequency_bandwidth
         source: model_image_frequency_bandwidth
+      - id: cellsize_deg
+        source: cellsize_deg
+      - id: imsize
+        source: model_imsize
       - id: numthreads
         source: max_threads
     out:

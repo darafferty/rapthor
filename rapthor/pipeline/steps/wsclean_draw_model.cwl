@@ -60,6 +60,22 @@ inputs:
     inputBinding:
       prefix: -draw-frequencies
 
+  - id: imsize
+    label: Image size
+    doc: |
+      The size of the image in pixels.
+    type: int[]
+    inputBinding:
+      prefix: -size
+
+  - id: cellsize_deg
+    label: Pixel size
+    doc: |
+      The size of one pixel of the image in deg.
+    type: float
+    inputBinding:
+      prefix: -scale
+
 outputs:
   - id: model_images
     label: Output model images

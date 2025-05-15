@@ -3,6 +3,7 @@ Module that holds the Calibrate classes
 """
 import glob
 import logging
+import lsmtool
 import numpy as np
 import os
 from rapthor.lib.operation import Operation
@@ -120,10 +121,7 @@ class CalibrateDD(Operation):
             calibration_skymodel_file = self.field.calibration_skymodel_file
         num_spectral_terms = misc.get_max_spectral_terms(calibration_skymodel_file)
         model_image_root = 'calibration_model'
-        ra_hms = misc.ra2hhmmss(self.field.ra, as_string=True)
-        dec_hms = misc.dec2ddmmss(self.field.dec, as_string=True)
-        model_image_ra_dec = [ra_hms, dec_hms]
-        model_image_frequency_bandwidth = [self.field.observations[0].referencefreq, 1e6]
+        model_image_frequency_bandwidth, model_image_ra_dec, model_image_imsize, model_image_cellsize = self.get_model_image_parameters()
         facet_region_width = 2 * self.field.get_calibration_radius() * 1.2
         facet_region_file = 'field_facets_ds9.reg'
 
@@ -265,6 +263,8 @@ class CalibrateDD(Operation):
                             'calibration_skymodel_file': CWLFile(calibration_skymodel_file).to_json(),
                             'model_image_root': model_image_root,
                             'model_image_ra_dec': model_image_ra_dec,
+                            'model_image_imsize': model_image_imsize,
+                            'model_image_cellsize': model_image_cellsize,
                             'model_image_frequency_bandwidth': model_image_frequency_bandwidth,
                             'num_spectral_terms': num_spectral_terms,
                             'ra_mid': self.field.ra,
@@ -395,6 +395,54 @@ class CalibrateDD(Operation):
                 all_core.extend(['RS106LBA', 'RS205LBA', 'RS305LBA', 'RS306LBA', 'RS503LBA'])
 
         return [a for a in all_core if a in self.field.stations]
+
+    def get_model_image_parameters(self):
+        """
+        Returns parameters needed for image-based predict
+
+        Returns
+        -------
+        frequency_bandwidth : [float, float]
+            Central frequency and bandwidth  of model image in Hz
+        center_coords : [str, str]
+            Center of the image as [HHMMSS.S, DDMMSS.S] strings
+        size : [float, float]
+            Size of image in [RA, Dec] in pixels
+        cellsize : float
+            Size of image cell in degrees/pixel
+        """
+        skymodel = lsmtool.load(self.field.calibration_skymodel_file)
+        frequency_bandwidth = [np.median(skymodel.getColValues('referencefreq')), 1e6]
+        if self.index == 1:
+            # For initial cycle, assume center is the field center
+            center_coords = [self.field.ra, self.field.dec]
+            if has_attr(self.field, 'full_field_sector'):
+                # Sky model generated in initial image step
+                cellsize = self.field.full_field_sector.cellsize_deg
+                size = self.field.full_field_sector.imsize
+            else:
+                # Sky model generated externally. Use the cellsize defined for imaging and
+                # analyze the sky model to find its extent
+                cellsize = self.field.imaging_sectors[0].cellsize_deg
+                source_dict = {name: [ra, dec] for name, ra, dec in
+                               zip(skymodel.getColValues('Name'),
+                                   skymodel.getColValues('RA'),
+                                   skymodel.getColValues('Dec'))}
+                radius = np.max(self.field.get_source_distances(source_dict)) / cellsize  # pixels
+                size = [radius * 2, radius * 2]
+        else:
+            # Sky model generated in previous cycle's imaging step. Use the center and size
+            # of the bounding box of all imaging sectors
+            cellsize = self.field.imaging_sectors[0].cellsize_deg
+            center_coords = [self.field.sector_bounds_mid_ra, self.field.sector_bounds_mid_dec]
+            size = [self.field.sector_bounds_width_ra, self.field.sector_bounds_width_dec]
+
+        # Convert RA and Dec to strings
+        ra_hms = misc.ra2hhmmss(center_coords[0], as_string=True)
+        dec_hms = misc.dec2ddmmss(center_coords[1], as_string=True)
+        center_coords = [ra_hms, dec_hms]
+
+        return frequency_bandwidth, center_coords, size, cellsize
 
     def finalize(self):
         """
