@@ -80,8 +80,8 @@ outputs:
   - id: model_images
     label: Output model images
     doc: |
-      The filenames of the output model images. The value is constructed from the input
-      parameter "name".
+      The filenames of the output model images (one per spectral term). The value is
+      constructed from the input parameter "name".
     type: File[]
     outputBinding:
       glob: $(inputs.name)-term-*.fits

@@ -411,25 +411,27 @@ class CalibrateDD(Operation):
         Returns
         -------
         frequency_bandwidth : [float, float]
-            Central frequency and bandwidth  of model image in Hz
+            Central frequency and bandwidth as [frequency, bandwidth] of model image in Hz
         center_coords : [str, str]
             Center of the image as [HHMMSS.S, DDMMSS.S] strings
         size : [int, int]
-            Size of image in [RA, Dec] in pixels
+            Size of image as [RA, Dec] in pixels
         cellsize : float
-            Size of image cell in degrees/pixel
+            Size of image cell (pixel) in degrees/pixel
         """
         # Set frequency parameters. For the central frequency, we use the reference
         # frequency of the sky model (i.e., the frequency to which the fluxes are
-        # referenced). For the bandwidth, we use 1 MHz as the excat value does not matter.
+        # referenced). For the bandwidth, we use 1 MHz as it is appropriate for images at
+        # LOFAR frequencies, but the exact value is not important since the bandwidth does
+        # not have any effect on the processing done in Rapthor
         skymodel = lsmtool.load(self.field.calibration_skymodel_file)
         if 'ReferenceFrequency' in skymodel.getColNames():
             # Each source can have its own reference frequency, so use the median over all
             # sources
-            ref_freq = np.median(skymodel.getColValues('ReferenceFrequency'))
+            ref_freq = np.median(skymodel.getColValues('ReferenceFrequency'))  # Hz
         else:
-            ref_freq = skymodel.table.meta['ReferenceFrequency']
-        frequency_bandwidth = [ref_freq, 1e6]
+            ref_freq = skymodel.table.meta['ReferenceFrequency']  # Hz
+        frequency_bandwidth = [ref_freq, 1e6]  # Hz
 
         # Set the image coordinates, size, and cellsize
         if self.index == 1:
@@ -437,25 +439,25 @@ class CalibrateDD(Operation):
             center_coords = [self.field.ra, self.field.dec]
             if hasattr(self.field, 'full_field_sector'):
                 # Sky model generated in initial image step
-                cellsize = self.field.full_field_sector.cellsize_deg
-                size = self.field.full_field_sector.imsize
+                cellsize = self.field.full_field_sector.cellsize_deg  # deg/pixel
+                size = self.field.full_field_sector.imsize  # [xsize, ysize] in pixels
             else:
                 # Sky model generated externally. Use the cellsize defined for imaging and
                 # analyze the sky model to find its extent
-                cellsize = self.parset['imaging_specific']['cellsize_arcsec'] / 3600
+                cellsize = self.parset['imaging_specific']['cellsize_arcsec'] / 3600  # deg/pixel
                 source_dict = {name: [ra, dec] for name, ra, dec in
                                zip(skymodel.getColValues('Name'),
                                    skymodel.getColValues('RA'),
                                    skymodel.getColValues('Dec'))}
-                _, source_distances = self.field.get_source_distances(source_dict)
+                _, source_distances = self.field.get_source_distances(source_dict)  # deg
                 radius = int(np.max(source_distances) / cellsize)  # pixels
-                size = [radius * 2, radius * 2]
+                size = [radius * 2, radius * 2]  # pixels
         else:
             # Sky model generated in previous cycle's imaging step. Use the center and size
             # of the bounding box of all imaging sectors
-            cellsize = self.parset['imaging_specific']['cellsize_arcsec'] / 3600
-            center_coords = [self.field.sector_bounds_mid_ra, self.field.sector_bounds_mid_dec]
-            size = [int(self.field.sector_bounds_width_ra / cellsize), int(self.field.sector_bounds_width_dec / cellsize)]
+            cellsize = self.parset['imaging_specific']['cellsize_arcsec'] / 3600  # deg/pixel
+            center_coords = [self.field.sector_bounds_mid_ra, self.field.sector_bounds_mid_dec]  # deg
+            size = [int(self.field.sector_bounds_width_ra / cellsize), int(self.field.sector_bounds_width_dec / cellsize)]  # pixels
 
         # Convert RA and Dec to strings (required by WSClean)
         ra_hms = misc.ra2hhmmss(center_coords[0], as_string=True)
