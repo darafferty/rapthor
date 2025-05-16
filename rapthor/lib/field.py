@@ -998,7 +998,7 @@ class Field(object):
             names.append(name)
             source_ra.append(coord[0])
             source_dec.append(coord[1])
-        source_coord = SkyCoord(ra=source_ra, dec=source_dec)
+        source_coord = SkyCoord(ra=source_ra*u.degree, dec=source_dec*u.degree)
         separation = phase_center_coord.separation(source_coord)
         distances = [sep.value for sep in separation]
         return np.array(names), np.array(distances)

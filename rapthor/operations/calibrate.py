@@ -447,7 +447,8 @@ class CalibrateDD(Operation):
                                zip(skymodel.getColValues('Name'),
                                    skymodel.getColValues('RA'),
                                    skymodel.getColValues('Dec'))}
-                radius = int(np.max(self.field.get_source_distances(source_dict)) / cellsize)  # pixels
+                _, source_distances = self.field.get_source_distances(source_dict)
+                radius = int(np.max(source_distances) / cellsize)  # pixels
                 size = [radius * 2, radius * 2]
         else:
             # Sky model generated in previous cycle's imaging step. Use the center and size
