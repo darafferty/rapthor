@@ -30,7 +30,7 @@ class CalibrateDD(Operation):
             # not work with SLURM
             max_cores = None
         else:
-            max_cores = self.field.parset['cluster_specific']['max_cores']
+            max_cores = self.parset['cluster_specific']['max_cores']
         if self.field.slow_timestep_joint_sec > 0:
             self.do_joint_solve = True
         else:
@@ -442,7 +442,7 @@ class CalibrateDD(Operation):
             else:
                 # Sky model generated externally. Use the cellsize defined for imaging and
                 # analyze the sky model to find its extent
-                cellsize = self.field.imaging_sectors[0].cellsize_deg
+                cellsize = self.parset['imaging_specific']['cellsize_arcsec'] / 3600
                 source_dict = {name: [ra, dec] for name, ra, dec in
                                zip(skymodel.getColValues('Name'),
                                    skymodel.getColValues('RA'),
@@ -452,7 +452,7 @@ class CalibrateDD(Operation):
         else:
             # Sky model generated in previous cycle's imaging step. Use the center and size
             # of the bounding box of all imaging sectors
-            cellsize = self.field.imaging_sectors[0].cellsize_deg
+            cellsize = self.parset['imaging_specific']['cellsize_arcsec'] / 3600
             center_coords = [self.field.sector_bounds_mid_ra, self.field.sector_bounds_mid_dec]
             size = [int(self.field.sector_bounds_width_ra / cellsize), int(self.field.sector_bounds_width_dec / cellsize)]
 
