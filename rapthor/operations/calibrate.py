@@ -36,6 +36,7 @@ class CalibrateDD(Operation):
             self.do_joint_solve = False
 
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
+                             'use_image_based_predict': False,
                              'generate_screens': self.field.generate_screens,
                              'do_slowgain_solve': self.field.do_slowgain_solve,
                              'do_joint_solve': self.do_joint_solve,
@@ -117,6 +118,12 @@ class CalibrateDD(Operation):
             calibration_skymodel_file = self.field.calibrators_only_skymodel_file
         else:
             calibration_skymodel_file = self.field.calibration_skymodel_file
+        num_spectral_terms = misc.get_max_spectral_terms(calibration_skymodel_file)
+        model_image_root = 'calibration_model'
+        ra_hms = misc.ra2hhmmss(self.field.ra, as_string=True)
+        dec_hms = misc.dec2ddmmss(self.field.dec, as_string=True)
+        model_image_ra_dec = [ra_hms, dec_hms]
+        model_image_frequency_bandwidth = [self.field.observations[0].referencefreq, 1e6]
 
         # Get the calibrator names and fluxes
         calibrator_patch_names = self.field.calibrator_patch_names
@@ -254,6 +261,10 @@ class CalibrateDD(Operation):
                             'output_slow_h5parm_joint': output_slow_h5parm_joint,
                             'output_slow_h5parm_separate': output_slow_h5parm_separate,
                             'calibration_skymodel_file': CWLFile(calibration_skymodel_file).to_json(),
+                            'model_image_root': model_image_root,
+                            'model_image_ra_dec': model_image_ra_dec,
+                            'model_image_frequency_bandwidth': model_image_frequency_bandwidth,
+                            'num_spectral_terms': num_spectral_terms,
                             'smoothness_dd_factors_fast': smoothness_dd_factors_fast,
                             'smoothness_dd_factors_slow_joint': smoothness_dd_factors_slow_joint,
                             'smoothness_dd_factors_slow_separate': smoothness_dd_factors_slow_separate,
