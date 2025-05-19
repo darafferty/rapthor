@@ -232,11 +232,17 @@ class CalibrateDD(Operation):
         else:
             dp3_applycal_steps_slow_joint = None
             dp3_applycal_steps_slow_separate = None
-        if os.path.exists(self.field.fast_phases_h5parm_filename):
+        if (
+            self.field.fast_phases_h5parm_filename is not None and
+            os.path.exists(self.field.fast_phases_h5parm_filename)
+        ):
             fast_initialsolutions_h5parm = CWLFile(self.field.fast_phases_h5parm_filename).to_json()
         else:
             fast_initialsolutions_h5parm = None
-        if os.path.exists(self.field.slow_gains_h5parm_filename):
+        if (
+            self.field.slow_gains_h5parm_filename is not None and
+            os.path.exists(self.field.slow_gains_h5parm_filename)
+        ):
             slow_initialsolutions_h5parm = CWLFile(self.field.slow_gains_h5parm_filename).to_json()
         else:
             slow_initialsolutions_h5parm = None
