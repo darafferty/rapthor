@@ -122,7 +122,7 @@ class CalibrateDD(Operation):
         num_spectral_terms = misc.get_max_spectral_terms(calibration_skymodel_file)
         model_image_root = 'calibration_model'
         model_image_frequency_bandwidth, model_image_ra_dec, model_image_imsize, model_image_cellsize = self.get_model_image_parameters()
-        facet_region_width = 2 * self.field.get_calibration_radius() * 1.2
+        facet_region_width = max(model_image_imsize) / model_image_cellsize * 1.2  # deg
         facet_region_file = 'field_facets_ds9.reg'
 
         # Get the calibrator names and fluxes
@@ -277,8 +277,8 @@ class CalibrateDD(Operation):
                             'num_spectral_terms': num_spectral_terms,
                             'ra_mid': self.field.ra,
                             'dec_mid': self.field.dec,
-                            'width_ra': facet_region_width,
-                            'width_dec': facet_region_width,
+                            'facet_region_width_ra': facet_region_width,
+                            'facet_region_width_dec': facet_region_width,
                             'facet_region_file': facet_region_file,
                             'smoothness_dd_factors_fast': smoothness_dd_factors_fast,
                             'smoothness_dd_factors_slow_joint': smoothness_dd_factors_slow_joint,

@@ -159,23 +159,22 @@ inputs:
         The Dec in degrees of the middle of the region to be imaged (length = 1).
     type: float
 
-  - id: width_ra
+  - id: facet_region_width_ra
     label: Width along RA
     doc: |
-      The width along RA in degrees (corrected to Dec = 0) of the region to be
-      imaged (length = 1).
+      The width along RA in degrees (corrected to Dec = 0) of the facet region (length = 1).
     type: float
 
-  - id: width_dec
+  - id: facet_region_width_dec
     label:  Width along Dec
     doc: |
-      The width along Dec in degrees of the region to be imaged (length = 1).
+      The width along Dec in degrees of the facet region (length = 1).
     type: float
 
   - id: facet_region_file
     label: Filename of output region file
     doc: |
-      The filename of the output ds9 region file (length = 1).
+      The filename of the output ds9 facet region file (length = 1).
     type: string
 {% endif %}
 
@@ -761,9 +760,9 @@ steps:
       - id: dec_mid
         source: dec_mid
       - id: width_ra
-        source: width_ra
+        source: facet_region_width_ra
       - id: width_dec
-        source: width_dec
+        source: facet_region_width_dec
       - id: outfile
         source: facet_region_file
     out:
