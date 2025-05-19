@@ -551,12 +551,12 @@ class Observation(object):
         #     step to ensure we don't average more than the timescale of the slow
         #     corrections
         #   - timebase: max baseline length in m below which to average (where
-        #     avg_factor = timebase / baseline_length). We set this to be the approximate
-        #     maximum distance between the core stations (10 km), as these are the
-        #     baselines for which the timescale of the slow corrections should be
-        #     used
+        #     avg_factor = timebase / baseline_length). We set this to be twice the
+        #     approximate maximum distance between the core stations (20 km), as these
+        #     are the baselines for which the timescale of the slow corrections should
+        #     be used
         target_maxinterval = int(round(solve_slow_timestep / timestep_sec / 2))  # time slots
-        target_timebase = 5e3  # m
+        target_timebase = 20e3  # m
         self.parameters['image_maxinterval'] = max(1, target_maxinterval)
         self.parameters['image_timebase'] = max(1000, target_timebase)
         self.log.debug('Using BDA with maxinterval = {0:.1f} s and timebase = {1:.1f} m '
