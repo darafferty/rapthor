@@ -23,6 +23,7 @@ from shapely.prepared import prep
 import subprocess
 import time
 
+
 def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, source='TGSS',
                       targetname='Patch'):
     """
@@ -62,9 +63,11 @@ def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, sourc
 
     # Empty strings are False. Only attempt directory creation if there is a
     # directory path involved.
-    if (not file_exists
-            and os.path.dirname(skymodel_path)
-            and not os.path.exists(os.path.dirname(skymodel_path))):
+    if (
+        not file_exists and
+        os.path.dirname(skymodel_path) and
+        not os.path.exists(os.path.dirname(skymodel_path))
+    ):
         os.makedirs(os.path.dirname(skymodel_path))
 
     if file_exists and overwrite:
@@ -627,58 +630,62 @@ def approx_equal(x, y, *args, **kwargs):
     return _float_approx_equal(x, y, *args, **kwargs)
 
 
-def ra2hhmmss(deg):
+def ra2hhmmss(deg, as_string=False):
     """
-    Convert RA coordinate (in degrees) to HH MM SS
+    Convert RA coordinate (in degrees) to HH MM SS.S
 
     Parameters
     ----------
     deg : float
         The RA coordinate in degrees
+    as_string : bool
+        If True, return the RA as a string with 'h', 'm', and 's'
+        as the separators. E.g.: '12h23m13.4s' If False, return
+        a tuple of (HH, MM, SS.S)
 
     Returns
     -------
-    hh : int
-        The hour (HH) part
-    mm : int
-        The minute (MM) part
-    ss : float
-        The second (SS) part
+    hhmmss : tuple of (int, int, float) or string
+        A tuple of (HH, MM, SS.S) or a string as 'HHhMMmSS.Ss'
     """
     deg = deg % 360
     x, hh = modf(deg/15)
     x, mm = modf(x*60)
     ss = x*60
 
-    return (int(hh), int(mm), ss)
+    if as_string:
+        return f'{int(hh)}h{int(mm)}m{ss}s'
+    else:
+        return (int(hh), int(mm), ss)
 
 
-def dec2ddmmss(deg):
+def dec2ddmmss(deg, as_string=False):
     """
-    Convert Dec coordinate (in degrees) to DD MM SS
+    Convert Dec coordinate (in degrees) to DD MM SS.S
 
     Parameters
     ----------
     deg : float
         The Dec coordinate in degrees
+    as_string : bool
+        If True, return the Dec as a string with 'd', 'm', and 's'
+        as the separators. E.g.: '12d23m13.4s'. If False, return
+        a tuple of (DD, MM, SS.S, sign)
 
     Returns
     -------
-    dd : int
-        The degree (DD) part
-    mm : int
-        The arcminute (MM) part
-    ss : float
-        The arcsecond (SS) part
-    sign : int
-        The sign (+/-)
+    ddmmss : tuple of (int, int, float, int) or string
+        A tuple of (DD, MM, SS.S, sign) or a string as 'DDdMMmSS.Ss'
     """
-    sign = (-1 if deg < 0 else 1)
+    sign = -1 if deg < 0 else 1
     x, dd = modf(abs(deg))
-    x, ma = modf(x*60)
-    sa = x*60
+    x, mm = modf(x*60)
+    ss = x*60
 
-    return (int(dd), int(ma), sa, sign)
+    if as_string:
+        return f'{sign*int(dd)}d{int(mm)}m{ss}s'
+    else:
+        return (int(dd), int(mm), ss, sign)
 
 
 def convert_mjd2mvt(mjd_sec):
@@ -1039,6 +1046,27 @@ def rename_skymodel_patches(skymodel, order_dec='high_to_low', order_ra='high_to
             patch_index += 1
     skymodel.setColValues('Patch', patch_col)
     skymodel.setPatchPositions(patch_dict)
+
+
+def get_max_spectral_terms(skymodel_file):
+    """
+    Get the maximum number of spectral terms (including the zeroth term) in a sky model
+
+    Parameters
+    ----------
+    skymodel_file : str
+        Input sky model filename
+
+    Returns
+    -------
+    nterms : int
+        Maximum number of spectral terms
+    """
+    skymodel = lsmtool.load(skymodel_file)
+    if 'SpectralIndex' in skymodel.getColNames():
+        return skymodel.getColValues('SpectralIndex').shape[1] + 1  # add one for the zeroth term
+    else:
+        return 1  # the zeroth term is always present
 
 
 def nproc():
