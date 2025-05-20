@@ -548,7 +548,7 @@ class Observation(object):
         # Find BDA maxinterval: the max time interval in time slots over which to average
         # (for the shortest baselines). We set this to be the slow solve time step to ensure
         # we don't average more than the timescale of the slow corrections
-        target_maxinterval = min(self.numsample, int(round(solve_slow_timestep / timestep_sec)))  # time slots
+        target_maxinterval = min(self.numsamples, int(round(solve_slow_timestep / timestep_sec)))  # time slots
         self.parameters['image_bda_maxinterval'] = max(1, target_maxinterval)
         self.log.debug('Using BDA with maxinterval = {0:.1f} s for '
                        'imaging'.format(self.parameters['image_bda_maxinterval'] * timestep_sec))
