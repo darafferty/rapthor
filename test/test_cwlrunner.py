@@ -107,6 +107,7 @@ class Field:
         self.apply_normalizations = False
         self.auto_mask_nmiter = 1
         self.skip_final_major_iteration = True
+        self.image_bda_timebase = 0
 
     def get_calibration_radius(self):
         return 5.0
