@@ -676,12 +676,11 @@ class Field(object):
                 # ones from the meanshift grouping
                 source_skymodel.setPatchPositions(patchDict=patch_dict)
 
-                # Match the bright-source sky model to the tessellated one by removing
-                # patches that are not present in the tessellated model
-                bright_patch_names = bright_source_skymodel_apparent_sky.getPatchNames()
-                for pn in bright_patch_names:
-                    if pn not in source_skymodel.getPatchNames():
-                        bright_source_skymodel_apparent_sky.remove('Patch == {}'.format(pn))
+                # Match the bright-source sky model to the tessellated one by selecting
+                # only the patches that are present in the tessellated model.
+                bright_source_skymodel_apparent_sky.select(
+                    f"Patch == [{','.join(source_skymodel.getPatchNames())}]"
+                )
 
                 # Transfer patches to the true-flux sky model (source names are identical
                 # in both, but the order may be different)
