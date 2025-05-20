@@ -95,12 +95,9 @@ inputs:
     label: BDA timebase
     doc: |
       The baseline length (in meters) below which BDA time averaging is done
-      (length = n_obs * n_sectors).
+      (length = n_sectors).
     type:
-      type: array
-      items:
-        type: array
-        items: float
+      type: float[]
 
   - id: image_maxinterval
     label: BDA maxinterval

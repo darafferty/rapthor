@@ -74,8 +74,8 @@ inputs:
     label: BDA timebase
     doc: |
       The baseline length (in meters) below which BDA time averaging is done
-      (length = n_obs).
-    type: float[]
+      (length = 1).
+    type: float
 
   - id: image_maxinterval
     label: BDA maxinterval
@@ -610,7 +610,7 @@ steps:
         source: prepare_data_steps
       - id: applycal_steps
         source: prepare_data_applycal_steps
-    scatter: [msin, msout, starttime, ntimes, freqstep, timestep, maxinterval, timebase]
+    scatter: [msin, msout, starttime, ntimes, freqstep, timestep, maxinterval]
     scatterMethod: dotproduct
     out:
       - id: msimg
