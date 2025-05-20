@@ -385,6 +385,11 @@ The available options are described below under their respective sections.
     do_multiscale_clean
         Use multiscale cleaning (default = ``True``)?
 
+    bda_timebase
+        Maximum baseline used in baseline-dependent averaging (BDA) during imaging, in m
+        (default = 20000). A value of 0 will disable the averaging. Activating this option
+        may improve the speed of imaging.
+
     dde_method
         Method to use to correct for direction-dependent effects during imaging:
         ``single`` or ``full`` (default = ``full``). If ``single``, a single,

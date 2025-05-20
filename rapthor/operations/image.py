@@ -123,8 +123,8 @@ class Image(Operation):
         ntimes = []
         image_freqstep = []
         image_timestep = []
-        image_maxinterval = []
-        image_timebase = []
+        image_bda_maxinterval = []
+        image_bda_timebase = []
         phasecenter = []
         image_root = []
         central_patch_name = []
@@ -160,8 +160,8 @@ class Image(Operation):
             mask_filename.append(image_root[-1] + '_mask.fits')
             image_freqstep.append(sector.get_obs_parameters('image_freqstep'))
             image_timestep.append(sector.get_obs_parameters('image_timestep'))
-            image_maxinterval.append(sector.get_obs_parameters('image_maxinterval'))
-            image_timebase.append(sector.get_obs_parameters('image_timebase'))
+            image_bda_maxinterval.append(sector.get_obs_parameters('image_bda_maxinterval'))
+            image_bda_timebase.append(self.field.image_bda_timebase)
             sector_starttime = []
             sector_ntimes = []
             for obs in self.field.observations:
@@ -243,8 +243,8 @@ class Image(Operation):
                             'ntimes': ntimes,
                             'image_freqstep': image_freqstep,
                             'image_timestep': image_timestep,
-                            'image_maxinterval': image_maxinterval,
-                            'image_timebase': image_timebase,
+                            'image_maxinterval': image_bda_maxinterval,
+                            'image_timebase': image_bda_timebase,
                             'phasecenter': phasecenter,
                             'image_name': image_root,
                             'pol': self.image_pol,

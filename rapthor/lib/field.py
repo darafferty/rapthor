@@ -80,6 +80,7 @@ class Field(object):
         self.fast_datause = self.parset['calibration_specific']['fast_datause']
         self.slow_datause = self.parset['calibration_specific']['slow_datause']
         self.reweight = self.parset['imaging_specific']['reweight']
+        self.image_bda_timebase = self.parset['imaging_specific']['bda_timebase']
         self.do_multiscale_clean = self.parset['imaging_specific']['do_multiscale_clean']
         self.apply_diagonal_solutions = self.parset['imaging_specific']['apply_diagonal_solutions']
         self.make_quv_images = self.parset['imaging_specific']['make_quv_images']

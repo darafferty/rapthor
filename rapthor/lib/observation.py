@@ -545,23 +545,13 @@ class Observation(object):
                                             self.parameters['image_timestep'],
                                             "s" if self.parameters['image_timestep'] > 1 else ""))
 
-        # Find BDA parameters:
-        #   - maxinterval: max time interval in time slots over which to average (for
-        #     the shortest baselines). We set this to be half of the slow solve time
-        #     step to ensure we don't average more than the timescale of the slow
-        #     corrections
-        #   - timebase: max baseline length in m below which to average (where
-        #     avg_factor = timebase / baseline_length). We set this to be twice the
-        #     approximate maximum distance between the core stations (20 km), as these
-        #     are the baselines for which the timescale of the slow corrections should
-        #     be used
-        target_maxinterval = int(round(solve_slow_timestep / timestep_sec / 2))  # time slots
-        target_timebase = 20e3  # m
-        self.parameters['image_maxinterval'] = max(1, target_maxinterval)
-        self.parameters['image_timebase'] = max(1000, target_timebase)
-        self.log.debug('Using BDA with maxinterval = {0:.1f} s and timebase = {1:.1f} m '
-                       'for imaging'.format(self.parameters['image_maxinterval'] * timestep_sec,
-                                            self.parameters['image_timebase']))
+        # Find BDA maxinterval: the max time interval in time slots over which to average
+        # (for the shortest baselines). We set this to be the slow solve time step to ensure
+        # we don't average more than the timescale of the slow corrections
+        target_maxinterval = min(self.numsample, int(round(solve_slow_timestep / timestep_sec)))  # time slots
+        self.parameters['image_bda_maxinterval'] = max(1, target_maxinterval)
+        self.log.debug('Using BDA with maxinterval = {0:.1f} s for '
+                       'imaging'.format(self.parameters['image_bda_maxinterval'] * timestep_sec))
 
     def get_nearest_freqstep(self, freqstep):
         """
