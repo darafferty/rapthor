@@ -418,6 +418,7 @@ class CalibrateDD(Operation):
         self.field.scan_h5parms()  # verify h5parm and update flags for predict/image operations
         flagged_frac = misc.get_flagged_solution_fraction(self.field.h5parm_filename)
         self.log.info('Fraction of solutions that are flagged = {0:.2f}'.format(flagged_frac))
+        self.field.calibration_diagnostics.append({'solution_flagged_fraction': flagged_frac})
 
         # Copy the plots (PNG files)
         dst_dir = os.path.join(self.parset['dir_working'], 'plots', 'calibrate_{}'.format(self.index))

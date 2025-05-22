@@ -94,6 +94,7 @@ class Field(object):
         self.apply_normalizations = False
         self.fast_phases_h5parm_filename = None
         self.slow_gains_h5parm_filename = None
+        self.calibration_diagnostics = []
 
         # Set strategy parameter defaults
         self.fast_timestep_sec = 8.0

@@ -469,6 +469,8 @@ outputs:
     outputSource:
       - filter/filtered_skymodel_apparent_sky
     type: File
+  - id: pybdsf_catalog
+    source: filter/source_catalog
   - id: sector_diagnostics
     outputSource:
       - find_diagnostics/diagnostics

@@ -152,6 +152,8 @@ def run(parset_file, logging_level='info'):
             chunk_observations(field, [final_step], parset['final_data_fraction'])
         run_steps(field, [final_step], final=True)
 
+    # Make a summary report for the run and finish
+    make_report(field)
     log.info("Rapthor has finished :)")
 
 
@@ -369,3 +371,38 @@ def chunk_observations(field, steps, data_fraction):
         else:
             obs.data_fraction = data_fraction
     field.chunk_observations(min_time)
+
+
+def make_report(field, outfile=None):
+    """
+    Make a summary report for the run
+
+    Parameters
+    ----------
+    field : Field object
+        The Field object for this run
+    outfile : str
+        The filename of the output file
+    """
+    # Report calibration diagnostics: these are stored in field.calibration_diagnostics
+    output_lines = [f'Calibration diagnostics:\n']
+    for index, diagnostics in enumerate(field.calibration_diagnostics):
+        flagged_frac = diagnostics['solution_flagged_fraction']
+        output_lines.append(f'Fraction of solutions flagged (cycle {index+1}): {flagged_frac}\n')
+    output_lines.append('\n')
+
+    # Report imaging diagnostics: these are stored for each sector and cycle in
+    # sector.diagnostics
+    for sector in field.imaging_sectors:
+        output_lines.append(f'Diagnostics for {sector.name}:\n')
+        for index, diagnostics in enumerate(sector.diagnostics):
+            output_lines.append(f'Median image noise (cycle {index+1}): {diagnostics['median_rms_flat_noise']} Jy/beam\n')
+            output_lines.append(f'Image dynamic range (cycle {index+1}): {diagnostics['dynamic_range_global_flat_noise']}\n')
+            output_lines.append(f'Number of sources found by PyBDSF (cycle {index+1}): {diagnostics['nsources']}\n')
+    output_lines.append('\n')
+
+    # Open output file
+    if outfile is None:
+        outfile = os.path.join(field.parset["dir_working"], 'logs', 'diagnostics.txt')
+    with open(outfile, 'w') as f:
+        f.writelines(output_lines))

@@ -507,6 +507,10 @@ outputs:
     outputSource:
       - image_sector/filtered_skymodel_apparent_sky
     type: File[]
+  - id: pybdsf_catalog
+    outputSource:
+      - image_sector/pybdsf_catalog
+    type: File[]
   - id: sector_diagnostics
     outputSource:
       - image_sector/sector_diagnostics

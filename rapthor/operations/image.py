@@ -397,14 +397,19 @@ class Image(Operation):
             #
             # Note: these are not generated when QUV images are made (WSClean does not
             # currently support writing a source list in this mode)
+            dst_dir = os.path.join(self.parset['dir_working'], 'skymodels', 'image_{}'.format(self.index))
+            os.makedirs(dst_dir, exist_ok=True)
             if self.field.image_pol.lower() == 'i':
                 sector.image_skymodel_file_true_sky = image_root + '.true_sky.txt'
                 sector.image_skymodel_file_apparent_sky = image_root + '.apparent_sky.txt'
-                dst_dir = os.path.join(self.parset['dir_working'], 'skymodels', 'image_{}'.format(self.index))
-                os.makedirs(dst_dir, exist_ok=True)
                 for src_filename in [sector.image_skymodel_file_true_sky, sector.image_skymodel_file_apparent_sky]:
                     dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
                     shutil.copy(src_filename, dst_filename)
+
+            # The output PyBDSF source catalog
+            src_filename = image_root + 'source_catalog.fits'
+            dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
+            shutil.copy(src_filename, dst_filename)
 
             # The output ds9 region file, if made
             if self.use_facets:
