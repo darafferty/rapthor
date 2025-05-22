@@ -376,7 +376,7 @@ def chunk_observations(field, steps, data_fraction):
 
 def make_report(field, outfile=None):
     """
-    Make a summary report for the run
+    Make a summary report of QA metrics for the run
 
     Parameters
     ----------
@@ -387,34 +387,43 @@ def make_report(field, outfile=None):
     """
     # Report calibration diagnostics: these are stored in field.calibration_diagnostics
     output_lines = ['Calibration diagnostics:\n']
-    for index, diagnostics in enumerate(field.calibration_diagnostics):
-        flagged_frac = diagnostics['solution_flagged_fraction']
-        output_lines.append(f'  Fraction of solutions flagged (cycle {index+1}): {flagged_frac}\n')
+    if not field.calibration_diagnostics:
+        output_lines.append(f'  No calibration done.\n')
+    else:
+        for index, diagnostics in enumerate(field.calibration_diagnostics):
+            if index == 0:
+                output_lines.append(f'  Fraction of solutions flagged:\n')
+            output_lines.append(f"    cycle {index+1}: "
+                                f"{diagnostics['solution_flagged_fraction']:.1f}\n")
     output_lines.append('\n')
 
     # Report imaging diagnostics: these are stored for each sector and cycle in
     # sector.diagnostics
     for sector in field.imaging_sectors:
         output_lines.append(f'Image diagnostics for {sector.name}:\n')
-        for index, diagnostics in enumerate(sector.diagnostics):
-            if index == 0:
-                min_rms_lines = ["  Minimum image noise (uJy/beam):\n"]
-                median_rms_lines = ["  Median image noise (uJy/beam):\n"]
-                dynamic_range_lines = ["  Image dynamic range:\n"]
-                nsources_lines = ["  Number of sources found by PyBDSF:\n"]
-            min_rms_lines.append(f"    cycle {index+1}): "
-                                 f"{diagnostics['min_rms_flat_noise']*1e6:.1f} (non-PB-corrected), "
-                                 f"{diagnostics['min_rms_true_sky']*1e6:.1f} (PB-corrected), "
-                                 f"{diagnostics['theoretical_rms']*1e6:.1f} (theoretical)\n")
-            median_rms_lines.append(f"    cycle {index+1}: "
-                                    f"{diagnostics['median_rms_flat_noise']*1e6:.1f} (non-PB-corrected), "
-                                    f"{diagnostics['median_rms_true_sky']*1e6:.1f} (PB-corrected)\n")
-            dynamic_range_lines.append(f"    cycle {index+1}: {diagnostics['dynamic_range_global_true_sky']:.1f}\n")
-            nsources_lines.append(f"    cycle {index+1}: {diagnostics['nsources']}\n")
-        output_lines.extend(min_rms_lines)
-        output_lines.extend(median_rms_lines)
-        output_lines.extend(dynamic_range_lines)
-        output_lines.extend(nsources_lines)
+        if not sector.diagnostics:
+            output_lines.append(f'  No imaging done.\n')
+        else:
+            for index, diagnostics in enumerate(sector.diagnostics):
+                if index == 0:
+                    min_rms_lines = ["  Minimum image noise (uJy/beam):\n"]
+                    median_rms_lines = ["  Median image noise (uJy/beam):\n"]
+                    dynamic_range_lines = ["  Image dynamic range:\n"]
+                    nsources_lines = ["  Number of sources found by PyBDSF:\n"]
+                min_rms_lines.append(f"    cycle {index+1}: "
+                                     f"{diagnostics['min_rms_flat_noise']*1e6:.1f} (non-PB-corrected), "
+                                     f"{diagnostics['min_rms_true_sky']*1e6:.1f} (PB-corrected), "
+                                     f"{diagnostics['theoretical_rms']*1e6:.1f} (theoretical)\n")
+                median_rms_lines.append(f"    cycle {index+1}: "
+                                        f"{diagnostics['median_rms_flat_noise']*1e6:.1f} (non-PB-corrected), "
+                                        f"{diagnostics['median_rms_true_sky']*1e6:.1f} (PB-corrected)\n")
+                dynamic_range_lines.append(f"    cycle {index+1}: "
+                                           f"{diagnostics['dynamic_range_global_true_sky']:.1f}\n")
+                nsources_lines.append(f"    cycle {index+1}: {diagnostics['nsources']}\n")
+            output_lines.extend(min_rms_lines)
+            output_lines.extend(median_rms_lines)
+            output_lines.extend(dynamic_range_lines)
+            output_lines.extend(nsources_lines)
         output_lines.append('\n')
 
     # Open output file
