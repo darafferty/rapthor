@@ -385,7 +385,7 @@ def make_report(field, outfile=None):
         The filename of the output file
     """
     # Report calibration diagnostics: these are stored in field.calibration_diagnostics
-    output_lines = [f'Calibration diagnostics:\n']
+    output_lines = ['Calibration diagnostics:\n']
     for index, diagnostics in enumerate(field.calibration_diagnostics):
         flagged_frac = diagnostics['solution_flagged_fraction']
         output_lines.append(f'Fraction of solutions flagged (cycle {index+1}): {flagged_frac}\n')
@@ -396,9 +396,9 @@ def make_report(field, outfile=None):
     for sector in field.imaging_sectors:
         output_lines.append(f'Diagnostics for {sector.name}:\n')
         for index, diagnostics in enumerate(sector.diagnostics):
-            output_lines.append(f'Median image noise (cycle {index+1}): {diagnostics['median_rms_flat_noise']} Jy/beam\n')
-            output_lines.append(f'Image dynamic range (cycle {index+1}): {diagnostics['dynamic_range_global_flat_noise']}\n')
-            output_lines.append(f'Number of sources found by PyBDSF (cycle {index+1}): {diagnostics['nsources']}\n')
+            output_lines.append(f"Median image noise (cycle {index+1}): {diagnostics['median_rms_flat_noise']} Jy/beam\n")
+            output_lines.append(f"Image dynamic range (cycle {index+1}): {diagnostics['dynamic_range_global_flat_noise']}\n")
+            output_lines.append(f"Number of sources found by PyBDSF (cycle {index+1}): {diagnostics['nsources']}\n")
     output_lines.append('\n')
 
     # Open output file
