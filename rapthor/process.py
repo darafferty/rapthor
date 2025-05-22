@@ -405,4 +405,4 @@ def make_report(field, outfile=None):
     if outfile is None:
         outfile = os.path.join(field.parset["dir_working"], 'logs', 'diagnostics.txt')
     with open(outfile, 'w') as f:
-        f.writelines(output_lines))
+        f.writelines(output_lines)
