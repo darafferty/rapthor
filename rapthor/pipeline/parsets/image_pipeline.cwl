@@ -794,6 +794,7 @@ steps:
     out:
       - id: filtered_skymodel_true_sky
       - id: filtered_skymodel_apparent_sky
+      - id: pybdsf_catalog
       - id: sector_I_images
       - id: sector_extra_images
       - id: visibilities
