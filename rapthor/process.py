@@ -396,8 +396,9 @@ def make_report(field, outfile=None):
     # sector.diagnostics
     for sector in field.imaging_sectors:
         output_lines.append(f'Diagnostics for {sector.name}:\n')
-        output_lines.append(f"Theoretical image noise: {diagnostics['theoretical_rms']*1e6:.1f} uJy/beam\n")
         for index, diagnostics in enumerate(sector.diagnostics):
+            if index == 0:
+                output_lines.append(f"Theoretical image noise: {diagnostics['theoretical_rms']*1e6:.1f} uJy/beam\n")
             output_lines.append(f"Median image noise (cycle {index+1}): "
                                 f"{diagnostics['median_rms_flat_noise']*1e6:.1f} uJy/beam (non-PB-corrected), "
                                 f"{diagnostics['median_rms_true_sky']*1e6:.1f} uJy/beam (PB-corrected)\n")
