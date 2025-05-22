@@ -2,6 +2,7 @@
 Module that performs the processing
 """
 import logging
+import os
 from rapthor import _logging
 from rapthor.lib.parset import parset_read
 from rapthor.lib.strategy import set_strategy
@@ -395,9 +396,12 @@ def make_report(field, outfile=None):
     # sector.diagnostics
     for sector in field.imaging_sectors:
         output_lines.append(f'Diagnostics for {sector.name}:\n')
+        output_lines.append(f"Theoretical image noise: {diagnostics['theoretical_rms']*1e6:.1f} uJy/beam\n")
         for index, diagnostics in enumerate(sector.diagnostics):
-            output_lines.append(f"Median image noise (cycle {index+1}): {diagnostics['median_rms_flat_noise']} Jy/beam\n")
-            output_lines.append(f"Image dynamic range (cycle {index+1}): {diagnostics['dynamic_range_global_flat_noise']}\n")
+            output_lines.append(f"Median image noise (cycle {index+1}): "
+                                f"{diagnostics['median_rms_flat_noise']*1e6:.1f} uJy/beam (non-PB-corrected), "
+                                f"{diagnostics['median_rms_true_sky']*1e6:.1f} uJy/beam (PB-corrected)\n")
+            output_lines.append(f"Image dynamic range (cycle {index+1}): {diagnostics['dynamic_range_global_true_sky']}\n")
             output_lines.append(f"Number of sources found by PyBDSF (cycle {index+1}): {diagnostics['nsources']}\n")
     output_lines.append('\n')
 
