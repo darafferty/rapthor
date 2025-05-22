@@ -407,7 +407,7 @@ class Image(Operation):
                     shutil.copy(src_filename, dst_filename)
 
             # The output PyBDSF source catalog
-            src_filename = image_root + 'source_catalog.fits'
+            src_filename = image_root + '.source_catalog.fits'
             dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
             shutil.copy(src_filename, dst_filename)
 
