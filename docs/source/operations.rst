@@ -25,7 +25,7 @@ Primary products:
     * In ``plots/calibrate_X``, where ``X`` is the cycle number:
         * ``*.png`` files - plots of the calibration solutions. Plots are typically made with one file per direction (calibration patch), per solution type (amplitude, phase, or scalar phase). For example, the file ``scalarphase_dir[Patch_127].png`` contains the scalar phase solutions (from the "fast-phase" solve) for patch 127. If the "slow-gain" solve was done, additional files should be present with the names ``phase_dir[Patch_127]_polXX.png`` and ``amplitude_dir[Patch_127]_polXX.png`` (and similarly for the YY polarization). If the optional amplitude-only slow-gain solve was done, the solutions are combined with the phase plus amplitude solve before plotting.
 
-If a full-Jones solve was done for a given iteration, then a number of further products are created:
+If a full-Jones solve was done for a given cycle, then a number of further products are created:
     * In ``solutions/calibrate_di_X``, where ``X`` is the cycle number:
         * ``fulljones-solutions.h5`` - the calibration solution table containing full-Jones gain solutions.
     * In ``plots/calibrate_di_X``, where ``X`` is the cycle number:
@@ -52,7 +52,7 @@ If LBA data are processed, then a predict operation is done before the calibrati
     * In ``pipelines/predict_nc_X``, where ``X`` is the cycle number:
         * Temporary measurement sets used for the calibration.
 
-If a full-Jones solve was done for a given iteration, then a number of further products are created:
+If a full-Jones solve was done for a given cycle, then a number of further products are created:
     * In ``skymodels/predict_X``, where ``X`` is the cycle number:
         * ``predict_*_predict_skymodel.txt`` - sky models used for the prediction needed for the full-Jones solve
     * In ``pipelines/predict_di_X``, where ``X`` is the cycle number:

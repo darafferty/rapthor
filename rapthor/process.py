@@ -105,10 +105,10 @@ def run(parset_file, logging_level='info'):
                 # for the final calibration run
                 field.data_colname = parset['data_colname']
 
-            # If selfcal was done, set peel_outliers to that of the initial iteration, since the
+            # If selfcal was done, set peel_outliers to that of the initial cycle, since the
             # observations will be regenerated and outliers (if any) need to be peeled again
             final_step['peel_outliers'] = selfcal_steps[0]['peel_outliers']
-            log.info("Starting final iteration with a data fraction of "
+            log.info("Starting final cycle with a data fraction of "
                      "{0:.2f}".format(parset['final_data_fraction']))
             field.cycle_number += 1
         else:
@@ -134,7 +134,7 @@ def run(parset_file, logging_level='info'):
             log.info("Stokes I, Q, U, and V images will be made")
         if field.dde_mode == 'hybrid':
             log.info("Screens will be used for calibration and imaging (since dde_mode = "
-                     "'hybrid' and this is the final iteration)")
+                     "'hybrid' and this is the final cycle)")
             if final_step['peel_outliers']:
                 # Currently, when screens are used peeling cannot be done
                 log.warning("Peeling of outliers is currently not supported when using "
@@ -257,7 +257,7 @@ def run_steps(field, steps, final=False):
                 if selfcal_state.failed:
                     log.warning("Selfcal has failed due to high noise (ratio of current image noise "
                                 "to theoretical value is > {})".format(field.failure_ratio))
-                log.info("Stopping selfcal at iteration {0} of {1}".format(index+1, len(steps)))
+                log.info("Stopping selfcal at cycle {0} of {1}".format(cycle_number, len(steps)))
                 break
         else:
             selfcal_state = None
@@ -300,7 +300,7 @@ def do_final_pass(field, selfcal_steps, final_step):
         if field.do_check and (field.selfcal_state.diverged or field.selfcal_state.failed):
             # Selfcal was found to have diverged or failed, so don't do the final pass
             # even if required otherwise
-            log.warning("Selfcal diverged or failed, so skipping final iteration (with a data "
+            log.warning("Selfcal diverged or failed, so skipping final cycle (with a data "
                         "fraction of {0:.2f})".format(field.parset['final_data_fraction']))
             final_pass = False
         elif final_step == selfcal_steps[field.cycle_number-1]:
@@ -385,6 +385,19 @@ def make_report(field, outfile=None):
     outfile : str
         The filename of the output file
     """
+    # Report selfcal convergence
+    output_lines = ['Selfcal diagnostics:\n']
+    if field.selfcal_state:
+        if field.selfcal_state.diverged:
+            output_lines.append([f'  Selfcal diverged in cycle {field.cycle_number}. The final cycle was skipped.\n'])
+        elif field.selfcal_state.failed:
+            output_lines.append([f'  Selfcal failed due to excesively high noise in cycle {field.cycle_number}. The final cycle was skipped.\n'])
+        else:
+            output_lines.append([f'  Selfcal converged in cycle {field.cycle_number}.\n'])
+    else:
+        output_lines.append(['  No selfcal performed.\n'])
+    output_lines.append('\n')
+
     # Report calibration diagnostics: these are stored in field.calibration_diagnostics
     output_lines = ['Calibration diagnostics:\n']
     if not field.calibration_diagnostics:

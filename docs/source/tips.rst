@@ -57,7 +57,7 @@ Creating a dataset for further self calibration
           of the solution tables must be large enough to cover the duration and bandwidth
           of the input dataset. The easiest way to ensure this requirement is met is to
           use the solutions from a solve over the full dataset (i.e., those from the final
-          iteration of a run with :term:`final_data_fraction` = 1.0)
+          cycle of a run with :term:`final_data_fraction` = 1.0)
 
           .. note::
 

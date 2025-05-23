@@ -289,7 +289,7 @@ class Sector(object):
         Parameters
         ----------
         index : int
-            Iteration index
+            Processing cycle index
         """
         # First check whether sky model already exists due to a previous run and attempt
         # to load it if so
