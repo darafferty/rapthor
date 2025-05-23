@@ -399,7 +399,7 @@ def make_report(field, outfile=None):
                 output_lines.append(f'  Selfcal converged in cycle {field.cycle_number - 1} '
                                     'and a further, final cycle was done.\n')
             else:
-                output_lines.append(f'  Selfcal converged in cycle {field.cycle_number - 1}. '
+                output_lines.append(f'  Selfcal converged in cycle {field.cycle_number}. '
                                     'A final cycle was not done as it was not needed.\n')
     else:
         output_lines.append('  No selfcal performed.\n')
