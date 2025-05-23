@@ -399,7 +399,7 @@ def make_report(field, outfile=None):
     output_lines.append('\n')
 
     # Report calibration diagnostics: these are stored in field.calibration_diagnostics
-    output_lines = ['Calibration diagnostics:\n']
+    output_lines.append(['Calibration diagnostics:\n'])
     if not field.calibration_diagnostics:
         output_lines.append(f'  No calibration done.\n')
     else:

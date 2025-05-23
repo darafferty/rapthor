@@ -1446,35 +1446,35 @@ class Field(object):
         amplitude solutions (which may require different processing steps).
         """
         if self.h5parm_filename is not None:
-            solutions = h5parm(self.h5parm_filename)
-            if 'sol000' not in solutions.getSolsetNames():
-                raise ValueError('The direction-dependent solutions file "{0}" must '
-                                 'have the solutions stored in the sol000 '
-                                 'solset.'.format(self.h5parm_filename))
-            solset = solutions.getSolset('sol000')
-            if 'phase000' not in solset.getSoltabNames():
-                raise ValueError('The direction-dependent solutions file "{0}" must '
-                                 'have a phase000 soltab.'.format(self.h5parm_filename))
-            if 'amplitude000' in solset.getSoltabNames():
-                self.apply_amplitudes = True
-            else:
-                self.apply_amplitudes = False
+            with h5parm(self.h5parm_filename) as solutions:
+                if 'sol000' not in solutions.getSolsetNames():
+                    raise ValueError('The direction-dependent solutions file "{0}" must '
+                                     'have the solutions stored in the sol000 '
+                                     'solset.'.format(self.h5parm_filename))
+                solset = solutions.getSolset('sol000')
+                if 'phase000' not in solset.getSoltabNames():
+                    raise ValueError('The direction-dependent solutions file "{0}" must '
+                                     'have a phase000 soltab.'.format(self.h5parm_filename))
+                if 'amplitude000' in solset.getSoltabNames():
+                    self.apply_amplitudes = True
+                else:
+                    self.apply_amplitudes = False
         else:
             self.apply_amplitudes = False
 
         if self.fulljones_h5parm_filename is not None:
             self.apply_fulljones = True
-            solutions = h5parm(self.fulljones_h5parm_filename)
-            if 'sol000' not in solutions.getSolsetNames():
-                raise ValueError('The full-Jones solution file "{0}" must have '
-                                 'the solutions stored in the sol000 '
-                                 'solset.'.format(self.fulljones_h5parm_filename))
-            solset = solutions.getSolset('sol000')
-            if ('phase000' not in solset.getSoltabNames() or
-                    'amplitude000' not in solset.getSoltabNames()):
-                raise ValueError('The full-Jones solution file "{0}" must have both '
-                                 'a phase000 soltab and a amplitude000 '
-                                 'soltab.'.format(self.fulljones_h5parm_filename))
+            with h5parm(self.fulljones_h5parm_filename) as solutions:
+                if 'sol000' not in solutions.getSolsetNames():
+                    raise ValueError('The full-Jones solution file "{0}" must have '
+                                     'the solutions stored in the sol000 '
+                                     'solset.'.format(self.fulljones_h5parm_filename))
+                solset = solutions.getSolset('sol000')
+                if ('phase000' not in solset.getSoltabNames() or
+                        'amplitude000' not in solset.getSoltabNames()):
+                    raise ValueError('The full-Jones solution file "{0}" must have both '
+                                     'a phase000 soltab and a amplitude000 '
+                                     'soltab.'.format(self.fulljones_h5parm_filename))
         else:
             self.apply_fulljones = False
 
