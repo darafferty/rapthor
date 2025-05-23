@@ -97,8 +97,8 @@ def run(parset_file, logging_level='info'):
         run_steps(field, selfcal_steps)
 
     # Run a final pass if needed
-    if do_final_pass(field, selfcal_steps, final_step):
-
+    field.do_final = do_final_pass(field, selfcal_steps, final_step)
+    if field.do_final:
         if selfcal_steps:
             if not any([len(obs) > 1 for obs in field.epoch_observations]):
                 # Use concatenation was not done the user input data column
@@ -389,17 +389,24 @@ def make_report(field, outfile=None):
     output_lines = ['Selfcal diagnostics:\n']
     if field.selfcal_state:
         if field.selfcal_state.diverged:
-            output_lines.append([f'  Selfcal diverged in cycle {field.cycle_number}. The final cycle was skipped.\n'])
+            output_lines.append(f'  Selfcal diverged in cycle {field.cycle_number}. '
+                                'The final cycle was therefore skipped.\n')
         elif field.selfcal_state.failed:
-            output_lines.append([f'  Selfcal failed due to excesively high noise in cycle {field.cycle_number}. The final cycle was skipped.\n'])
+            output_lines.append(f'  Selfcal failed due to excesively high noise in cycle {field.cycle_number}. '
+                                'The final cycle was therefore skipped.\n')
         else:
-            output_lines.append([f'  Selfcal converged in cycle {field.cycle_number}.\n'])
+            if field.do_final:
+                output_lines.append(f'  Selfcal converged in cycle {field.cycle_number - 1} '
+                                    'and a further, final cycle was done.\n')
+            else:
+                output_lines.append(f'  Selfcal converged in cycle {field.cycle_number - 1}. '
+                                    'A final cycle was not done as it was not needed.\n')
     else:
-        output_lines.append(['  No selfcal performed.\n'])
+        output_lines.append('  No selfcal performed.\n')
     output_lines.append('\n')
 
     # Report calibration diagnostics: these are stored in field.calibration_diagnostics
-    output_lines.append(['Calibration diagnostics:\n'])
+    output_lines.append('Calibration diagnostics:\n')
     if not field.calibration_diagnostics:
         output_lines.append(f'  No calibration done.\n')
     else:
