@@ -341,8 +341,7 @@ class CalibrateDD(Operation):
         # Set parameters specific to the selected mode
         if self.field.generate_screens:
             # Set the IDGCal mode parameters
-            self.input_parms.update({'model_image': CWLFile(self.field.field_model_filename).to_json(),
-                                     'idgcal_antennaconstraint': idgcal_antennaconstraint,
+            self.input_parms.update({'idgcal_antennaconstraint': idgcal_antennaconstraint,
                                      'output_idgcal_h5parm': output_idgcal_h5parm})
             if self.field.do_slowgain_solve:
                 self.input_parms.update({'solint_slow_timestep': solint_slow_timestep_separate})
