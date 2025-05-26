@@ -437,18 +437,18 @@ inputs:
       separate: False
 
   - id: predict_regions
-    label: Regions for IDG predict
+    label: Regions for image-based predict
     doc: |
-      A ds9 file that defines the regions to use with IDG predict.
+      A ds9 file that defines the regions to use with image-based predict.
     type: File?
     inputBinding:
       prefix: predict.regions=
       separate: False
 
   - id: predict_images
-    label: Smoothness factors
+    label: Images for image-based predict
     doc: |
-      The model images, one per spectral term, to use with IDG predict.
+      The model images, one per spectral term, to use with image-based predict.
     type: File[]?
     inputBinding:
       valueFrom: "[$(self.map(function(file){ return file.path; }).join(','))]"

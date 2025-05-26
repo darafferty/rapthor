@@ -132,7 +132,7 @@ inputs:
   - id: model_image_frequency_bandwidth
     label: Frequency and bandwidth of image
     doc: |
-      The central frequnecy and bandwidth in Hz of the model image (length = 2).
+      The central frequency and bandwidth in Hz of the model image (length = 2).
     type: float[]
 
   - id: model_image_imsize

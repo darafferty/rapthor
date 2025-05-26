@@ -462,7 +462,9 @@ class CalibrateDD(Operation):
                 size = [radius * 2, radius * 2]  # pixels
         else:
             # Sky model generated in previous cycle's imaging step. Use the center and size
-            # of the bounding box of all imaging sectors
+            # of the bounding box of all imaging sectors (note that this bounding box
+            # includes a 20% padding, so it should include all model components, even
+            # those on the very edge of a sector)
             cellsize = self.parset['imaging_specific']['cellsize_arcsec'] / 3600  # deg/pixel
             center_coords = [self.field.sector_bounds_mid_ra, self.field.sector_bounds_mid_dec]  # deg
             size = [int(self.field.sector_bounds_width_ra / cellsize), int(self.field.sector_bounds_width_dec / cellsize)]  # pixels
