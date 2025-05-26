@@ -497,6 +497,14 @@ class Field(object):
                     skymodel_apparent_sky.concatenate(s, matchBy='position', radius=matching_radius_deg,
                                                       keep='from2', inheritPatches=True)
 
+        # If screens are to be generated, we can skip most of the sky model
+        # manipulation
+        if self.generate_screens:
+            calibration_skymodel = skymodel_true_sky
+            calibration_skymodel.write(self.calibration_skymodel_file, clobber=True)
+            self.calibration_skymodel = calibration_skymodel
+            return
+
         # If an apparent sky model is given, use it for defining the calibration patches.
         # Otherwise, attenuate the true sky model while grouping into patches
         if skymodel_apparent_sky is not None:
