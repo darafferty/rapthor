@@ -17,6 +17,7 @@ arguments:
   - avg.type=bdaaverager
   - avg.minchannels=1
   - avg.frequencybase=0.0
+  - predict.type=wgridderpredict
   - solve.type=ddecal
   - solve.usebeammodel=True
   - solve.beam_interval=120
@@ -433,6 +434,25 @@ inputs:
     type: string?
     inputBinding:
       prefix: solve.antennaconstraint=
+      separate: False
+
+  - id: predict_regions
+    label: Regions for image-based predict
+    doc: |
+      A ds9 file that defines the regions to use with image-based predict.
+    type: File?
+    inputBinding:
+      prefix: predict.regions=
+      separate: False
+
+  - id: predict_images
+    label: Images for image-based predict
+    doc: |
+      The model images, one per spectral term, to use with image-based predict.
+    type: File[]?
+    inputBinding:
+      valueFrom: "[$(self.map(function(file){ return file.path; }).join(','))]"
+      prefix: predict.images=
       separate: False
 
   - id: numthreads

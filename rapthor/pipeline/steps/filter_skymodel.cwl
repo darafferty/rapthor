@@ -83,6 +83,15 @@ inputs:
     inputBinding:
       prefix: --threshpix=
       separate: false
+  - id: filter_by_mask
+    label: Filter by mask
+    doc: |
+      Filter the source sky model by the PyBDSF mask.
+    type: boolean
+    inputBinding:
+      prefix: --filter_by_mask=
+      valueFrom: "$(self ? 'True': 'False')"
+      separate: False
   - id: ncores
     type: int
     inputBinding:

@@ -60,15 +60,31 @@ inputs:
     inputBinding:
       prefix: -draw-frequencies
 
+  - id: imsize
+    label: Image size
+    doc: |
+      The size of the image in pixels.
+    type: int[]
+    inputBinding:
+      prefix: -size
+
+  - id: cellsize_deg
+    label: Pixel size
+    doc: |
+      The size of one pixel of the image in deg.
+    type: float
+    inputBinding:
+      prefix: -scale
+
 outputs:
   - id: model_images
     label: Output model images
     doc: |
-      The filenames of the output model images. The value is constructed from the input
-      parameter "name".
+      The filenames of the output model images (one per spectral term). The value is
+      constructed from the input parameter "name".
     type: File[]
     outputBinding:
-      glob: [$(inputs.name)-term-*.fits]
+      glob: $(inputs.name)-term-*.fits
 
 hints:
   - class: DockerRequirement

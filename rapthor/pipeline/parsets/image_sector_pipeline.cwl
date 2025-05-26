@@ -408,6 +408,12 @@ inputs:
       The PyBDSF pixel threshold (length = 1).
     type: float
 
+  - id: filter_by_mask
+    label: Filter source list by mask
+    doc: |
+      Filter the source list by the PyBDSF mask (length = 1).
+    type: boolean
+
 {% if peel_bright_sources %}
   - id: bright_skymodel_pb
     label: Bright-source sky model
@@ -913,6 +919,8 @@ steps:
         source: threshpix
       - id: beamMS
         source: obs_filename
+      - id: filter_by_mask
+        source: filter_by_mask
       - id: ncores
         source: max_threads
     out:
