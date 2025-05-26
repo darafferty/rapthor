@@ -65,6 +65,7 @@
         "local_rms_window": 50,
         "local_rms_method": "rms-with-min",
         "do_multiscale_clean": true,
+        "bda_timebase": 20000.0,
         "dde_method": "full",
         "save_visibilities": false,
         "save_supplementary_images": false,
