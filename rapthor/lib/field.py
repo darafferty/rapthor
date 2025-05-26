@@ -357,7 +357,8 @@ class Field(object):
             obs.set_calibration_parameters(self.parset, self.num_patches, len(self.observations),
                                            self.calibrator_fluxes, self.fast_timestep_sec,
                                            self.slow_timestep_joint_sec, self.slow_timestep_separate_sec,
-                                           self.fulljones_timestep_sec, self.target_flux)
+                                           self.fulljones_timestep_sec, self.target_flux,
+                                           self.generate_screens)
             ntimechunks += obs.ntimechunks
             nfreqchunks_joint += obs.nfreqchunks_joint
             nfreqchunks_separate += obs.nfreqchunks_separate
