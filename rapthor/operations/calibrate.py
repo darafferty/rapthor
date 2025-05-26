@@ -3,6 +3,7 @@ Module that holds the Calibrate classes
 """
 import glob
 import logging
+import lsmtool
 import numpy as np
 import os
 from rapthor.lib.operation import Operation
@@ -29,14 +30,14 @@ class CalibrateDD(Operation):
             # not work with SLURM
             max_cores = None
         else:
-            max_cores = self.field.parset['cluster_specific']['max_cores']
+            max_cores = self.parset['cluster_specific']['max_cores']
         if self.field.slow_timestep_joint_sec > 0:
             self.do_joint_solve = True
         else:
             self.do_joint_solve = False
 
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
-                             'use_image_based_predict': False,
+                             'use_image_based_predict': self.field.use_image_based_predict,
                              'generate_screens': self.field.generate_screens,
                              'do_slowgain_solve': self.field.do_slowgain_solve,
                              'do_joint_solve': self.do_joint_solve,
@@ -120,10 +121,9 @@ class CalibrateDD(Operation):
             calibration_skymodel_file = self.field.calibration_skymodel_file
         num_spectral_terms = misc.get_max_spectral_terms(calibration_skymodel_file)
         model_image_root = 'calibration_model'
-        ra_hms = misc.ra2hhmmss(self.field.ra, as_string=True)
-        dec_hms = misc.dec2ddmmss(self.field.dec, as_string=True)
-        model_image_ra_dec = [ra_hms, dec_hms]
-        model_image_frequency_bandwidth = [self.field.observations[0].referencefreq, 1e6]
+        model_image_frequency_bandwidth, model_image_ra_dec, model_image_imsize, model_image_cellsize = self.get_model_image_parameters()
+        facet_region_width = max(model_image_imsize) * model_image_cellsize * 1.2  # deg
+        facet_region_file = 'field_facets_ds9.reg'
 
         # Get the calibrator names and fluxes
         calibrator_patch_names = self.field.calibrator_patch_names
@@ -187,21 +187,29 @@ class CalibrateDD(Operation):
         sector_bounds_mid_deg = '{}'.format(self.field.sector_bounds_mid_deg)
 
         # Set the DDECal steps depending on whether baseline-dependent averaging is
-        # activated (and supported) or not. If BDA is used, a "null" step is also
-        # added to prevent the writing of the BDA data
+        # activated (and supported) or not. If BDA is used, a "null" step is also added to
+        # prevent the writing of the BDA data
+        #
+        # TODO: image-based predict doesn't yet work with BDA; once it does,
+        # the restriction on this mode should be removed
         all_regular = all([obs.channels_are_regular for obs in self.field.observations])
-        if self.field.bda_timebase_fast > 0 and all_regular:
-            dp3_steps_fast = '[avg,solve,null]'
+        if self.field.bda_timebase_fast > 0 and all_regular and not self.field.use_image_based_predict:
+            dp3_steps_fast = ['avg', 'solve', 'null']
         else:
-            dp3_steps_fast = '[solve]'
-        if self.field.bda_timebase_slow_joint > 0 and all_regular:
-            dp3_steps_slow_joint = '[avg,solve,null]'
+            dp3_steps_fast = ['solve']
+        if self.field.bda_timebase_slow_joint > 0 and all_regular and not self.field.use_image_based_predict:
+            dp3_steps_slow_joint = ['avg', 'solve', 'null']
         else:
-            dp3_steps_slow_joint = '[solve]'
-        if self.field.bda_timebase_slow_separate > 0 and all_regular:
-            dp3_steps_slow_separate = '[avg,solve,null]'
+            dp3_steps_slow_joint = ['solve']
+        if self.field.bda_timebase_slow_separate > 0 and all_regular and not self.field.use_image_based_predict:
+            dp3_steps_slow_separate = ['avg', 'solve', 'null']
         else:
-            dp3_steps_slow_separate = '[solve]'
+            dp3_steps_slow_separate = ['solve']
+        if self.field.use_image_based_predict:
+            # Add a predict step to the beginning
+            dp3_steps_fast.insert(0, 'predict')
+            dp3_steps_slow_joint.insert(0, 'predict')
+            dp3_steps_slow_separate.insert(0, 'predict')
 
         # Set the DDECal applycal steps and input H5parm files depending on what
         # solutions need to be applied
@@ -224,12 +232,20 @@ class CalibrateDD(Operation):
         else:
             dp3_applycal_steps_slow_joint = None
             dp3_applycal_steps_slow_separate = None
-        fast_initialsolutions_h5parm = None
-        slow_initialsolutions_h5parm = None
-        if self.field.fast_phases_h5parm_filename:
+        if (
+            self.field.fast_phases_h5parm_filename is not None and
+            os.path.exists(self.field.fast_phases_h5parm_filename)
+        ):
             fast_initialsolutions_h5parm = CWLFile(self.field.fast_phases_h5parm_filename).to_json()
-        if self.field.slow_gains_h5parm_filename:
+        else:
+            fast_initialsolutions_h5parm = None
+        if (
+            self.field.slow_gains_h5parm_filename is not None and
+            os.path.exists(self.field.slow_gains_h5parm_filename)
+        ):
             slow_initialsolutions_h5parm = CWLFile(self.field.slow_gains_h5parm_filename).to_json()
+        else:
+            slow_initialsolutions_h5parm = None
 
         self.input_parms = {'timechunk_filename': CWLDir(timechunk_filename).to_json(),
                             'freqchunk_filename_joint': CWLDir(freqchunk_filename_joint).to_json(),
@@ -263,8 +279,15 @@ class CalibrateDD(Operation):
                             'calibration_skymodel_file': CWLFile(calibration_skymodel_file).to_json(),
                             'model_image_root': model_image_root,
                             'model_image_ra_dec': model_image_ra_dec,
+                            'model_image_imsize': model_image_imsize,
+                            'model_image_cellsize': model_image_cellsize,
                             'model_image_frequency_bandwidth': model_image_frequency_bandwidth,
                             'num_spectral_terms': num_spectral_terms,
+                            'ra_mid': self.field.ra,
+                            'dec_mid': self.field.dec,
+                            'facet_region_width_ra': facet_region_width,
+                            'facet_region_width_dec': facet_region_width,
+                            'facet_region_file': facet_region_file,
                             'smoothness_dd_factors_fast': smoothness_dd_factors_fast,
                             'smoothness_dd_factors_slow_joint': smoothness_dd_factors_slow_joint,
                             'smoothness_dd_factors_slow_separate': smoothness_dd_factors_slow_separate,
@@ -274,12 +297,12 @@ class CalibrateDD(Operation):
                             'slow_smoothnessconstraint_joint': slow_smoothnessconstraint_joint,
                             'slow_smoothnessconstraint_separate': slow_smoothnessconstraint_separate,
                             'dp3_solve_mode_fast': dp3_solve_mode_fast,
-                            'dp3_steps_fast': dp3_steps_fast,
+                            'dp3_steps_fast': f"[{','.join(dp3_steps_fast)}]",
                             'dp3_applycal_steps_fast': dp3_applycal_steps_fast,
-                            'dp3_steps_slow_joint': dp3_steps_slow_joint,
+                            'dp3_steps_slow_joint': f"[{','.join(dp3_steps_slow_joint)}]",
                             'dp3_applycal_steps_slow_joint': dp3_applycal_steps_slow_joint,
+                            'dp3_steps_slow_separate': f"[{','.join(dp3_steps_slow_separate)}]",
                             'dp3_applycal_steps_slow_separate': dp3_applycal_steps_slow_separate,
-                            'dp3_steps_slow_separate': dp3_steps_slow_separate,
                             'dp3_solve_mode_fast': dp3_solve_mode_fast,
                             'bda_maxinterval_fast': bda_maxinterval_fast,
                             'bda_timebase_fast': bda_timebase_fast,
@@ -388,6 +411,70 @@ class CalibrateDD(Operation):
                 all_core.extend(['RS106LBA', 'RS205LBA', 'RS305LBA', 'RS306LBA', 'RS503LBA'])
 
         return [a for a in all_core if a in self.field.stations]
+
+    def get_model_image_parameters(self):
+        """
+        Returns parameters needed for image-based predict
+
+        Returns
+        -------
+        frequency_bandwidth : [float, float]
+            Central frequency and bandwidth as [frequency, bandwidth] of model image in Hz
+        center_coords : [str, str]
+            Center of the image as [HHMMSS.S, DDMMSS.S] strings
+        size : [int, int]
+            Size of image as [RA, Dec] in pixels
+        cellsize : float
+            Size of image cell (pixel) in degrees/pixel
+        """
+        # Set frequency parameters. For the central frequency, we use the reference
+        # frequency of the sky model (i.e., the frequency to which the fluxes are
+        # referenced). For the bandwidth, we use 1 MHz as it is appropriate for images at
+        # LOFAR frequencies, but the exact value is not important since the bandwidth does
+        # not have any effect on the processing done in Rapthor
+        skymodel = lsmtool.load(self.field.calibration_skymodel_file)
+        if 'ReferenceFrequency' in skymodel.getColNames():
+            # Each source can have its own reference frequency, so use the median over all
+            # sources
+            ref_freq = np.median(skymodel.getColValues('ReferenceFrequency'))  # Hz
+        else:
+            ref_freq = skymodel.table.meta['ReferenceFrequency']  # Hz
+        frequency_bandwidth = [ref_freq, 1e6]  # Hz
+
+        # Set the image coordinates, size, and cellsize
+        if self.index == 1:
+            # For initial cycle, assume center is the field center
+            center_coords = [self.field.ra, self.field.dec]
+            if hasattr(self.field, 'full_field_sector'):
+                # Sky model generated in initial image step
+                cellsize = self.field.full_field_sector.cellsize_deg  # deg/pixel
+                size = self.field.full_field_sector.imsize  # [xsize, ysize] in pixels
+            else:
+                # Sky model generated externally. Use the cellsize defined for imaging and
+                # analyze the sky model to find its extent
+                cellsize = self.parset['imaging_specific']['cellsize_arcsec'] / 3600  # deg/pixel
+                source_dict = {name: [ra, dec] for name, ra, dec in
+                               zip(skymodel.getColValues('Name'),
+                                   skymodel.getColValues('RA'),
+                                   skymodel.getColValues('Dec'))}
+                _, source_distances = self.field.get_source_distances(source_dict)  # deg
+                radius = int(np.max(source_distances) / cellsize)  # pixels
+                size = [radius * 2, radius * 2]  # pixels
+        else:
+            # Sky model generated in previous cycle's imaging step. Use the center and size
+            # of the bounding box of all imaging sectors (note that this bounding box
+            # includes a 20% padding, so it should include all model components, even
+            # those on the very edge of a sector)
+            cellsize = self.parset['imaging_specific']['cellsize_arcsec'] / 3600  # deg/pixel
+            center_coords = [self.field.sector_bounds_mid_ra, self.field.sector_bounds_mid_dec]  # deg
+            size = [int(self.field.sector_bounds_width_ra / cellsize), int(self.field.sector_bounds_width_dec / cellsize)]  # pixels
+
+        # Convert RA and Dec to strings (required by WSClean)
+        ra_hms = misc.ra2hhmmss(center_coords[0], as_string=True)
+        dec_hms = misc.dec2ddmmss(center_coords[1], as_string=True)
+        center_coords = [ra_hms, dec_hms]
+
+        return frequency_bandwidth, center_coords, size, cellsize
 
     def finalize(self):
         """

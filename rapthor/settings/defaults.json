@@ -23,6 +23,7 @@
     },
     "calibration": {
         "use_included_skymodels": false,
+        "use_image_based_predict": false,
         "dd_interval_factor": 3,
         "dd_smoothness_factor": 3,
         "llssolver": "qr",
@@ -67,6 +68,7 @@
         "do_multiscale_clean": true,
         "bda_timebase": 20000.0,
         "dde_method": "full",
+        "filter_skymodel": true,
         "save_visibilities": false,
         "save_supplementary_images": false,
         "idg_mode": "cpu",
