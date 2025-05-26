@@ -49,6 +49,7 @@ class Field(object):
         self.ms_filenames = self.parset['mss']
         self.numMS = len(self.ms_filenames)
         self.data_colname = self.parset['data_colname']
+        self.use_image_based_predict = self.parset['calibration_specific']['use_image_based_predict']
         self.bda_timebase_fast = self.parset['calibration_specific']['fast_bda_timebase']
         self.bda_timebase_slow_joint = self.parset['calibration_specific']['slow_bda_timebase_joint']
         self.bda_timebase_slow_separate = self.parset['calibration_specific']['slow_bda_timebase_separate']
@@ -676,12 +677,11 @@ class Field(object):
                 # ones from the meanshift grouping
                 source_skymodel.setPatchPositions(patchDict=patch_dict)
 
-                # Match the bright-source sky model to the tessellated one by removing
-                # patches that are not present in the tessellated model
-                bright_patch_names = bright_source_skymodel_apparent_sky.getPatchNames()
-                for pn in bright_patch_names:
-                    if pn not in source_skymodel.getPatchNames():
-                        bright_source_skymodel_apparent_sky.remove('Patch == {}'.format(pn))
+                # Match the bright-source sky model to the tessellated one by selecting
+                # only the patches that are present in the tessellated model.
+                bright_source_skymodel_apparent_sky.select(
+                    f"Patch == [{','.join(source_skymodel.getPatchNames())}]"
+                )
 
                 # Transfer patches to the true-flux sky model (source names are identical
                 # in both, but the order may be different)
@@ -998,7 +998,7 @@ class Field(object):
             names.append(name)
             source_ra.append(coord[0])
             source_dec.append(coord[1])
-        source_coord = SkyCoord(ra=source_ra, dec=source_dec)
+        source_coord = SkyCoord(ra=source_ra*u.degree, dec=source_dec*u.degree)
         separation = phase_center_coord.separation(source_coord)
         distances = [sep.value for sep in separation]
         return np.array(names), np.array(distances)

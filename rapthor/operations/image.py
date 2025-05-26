@@ -275,6 +275,7 @@ class Image(Operation):
                             'wsclean_mem': [sector.mem_limit_gb for sector in self.imaging_sectors],
                             'threshisl': [sector.threshisl for sector in self.imaging_sectors],
                             'threshpix': [sector.threshpix for sector in self.imaging_sectors],
+                            'filter_by_mask': self.imaging_parameters['filter_skymodel'],
                             'do_multiscale': [sector.multiscale for sector in self.imaging_sectors],
                             'dd_psf_grid': [sector.dd_psf_grid for sector in self.imaging_sectors],
                             'max_threads': self.field.parset['cluster_specific']['max_threads'],
