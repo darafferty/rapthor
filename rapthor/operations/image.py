@@ -123,6 +123,8 @@ class Image(Operation):
         ntimes = []
         image_freqstep = []
         image_timestep = []
+        image_bda_maxinterval = []
+        image_bda_timebase = []
         phasecenter = []
         image_root = []
         central_patch_name = []
@@ -134,7 +136,8 @@ class Image(Operation):
 
             # Set the imaging parameters for each imaging sector
             sector.set_imaging_parameters(self.do_multiscale_clean, recalculate_imsize=True,
-                                          imaging_parameters=self.imaging_parameters)
+                                          imaging_parameters=self.imaging_parameters,
+                                          preapply_dde_solutions=self.preapply_dde_solutions)
 
             # Set input MS filenames
             if self.do_predict:
@@ -157,6 +160,8 @@ class Image(Operation):
             mask_filename.append(image_root[-1] + '_mask.fits')
             image_freqstep.append(sector.get_obs_parameters('image_freqstep'))
             image_timestep.append(sector.get_obs_parameters('image_timestep'))
+            image_bda_maxinterval.append(sector.get_obs_parameters('image_bda_maxinterval'))
+            image_bda_timebase.append(self.field.image_bda_timebase)
             sector_starttime = []
             sector_ntimes = []
             for obs in self.field.observations:
@@ -184,7 +189,8 @@ class Image(Operation):
                 join_polarizations = True
 
         # Set the DP3 steps and applycal steps depending on whether solutions
-        # should be preapplied before imaging
+        # should be preapplied before imaging and on whether baseline-dependent
+        # averaging is activated (and supported) or not
         fulljones_h5parm = None
         input_normalize_h5parm = None
         prepare_data_applycal_steps = None
@@ -193,11 +199,11 @@ class Image(Operation):
                                not self.apply_normalizations):
             # No solutions should be preapplied, so define steps
             # without an applycal step
-            prepare_data_steps = '[applybeam,shift,avg]'
+            prepare_data_steps = ['applybeam', 'shift', 'avg']
         else:
             # Solutions should be applied, so add an applycal step
             # and set various parameters as needed
-            prepare_data_steps = '[applybeam,shift,applycal,avg]'
+            prepare_data_steps = ['applybeam', 'shift', 'applycal', 'avg']
             prepare_data_applycal_steps = []
             if self.preapply_dde_solutions:
                 # Fast phases and slow amplitudes (if generated) should be
@@ -213,6 +219,10 @@ class Image(Operation):
                 input_normalize_h5parm = CWLFile(self.field.normalize_h5parm).to_json()
             if prepare_data_applycal_steps:
                 prepare_data_applycal_steps = f"[{','.join(prepare_data_applycal_steps)}]"
+        all_regular = all([obs.channels_are_regular for obs in self.field.observations])
+        if all_regular:
+            prepare_data_steps.append('bdaavg')
+        prepare_data_steps = f"[{','.join(prepare_data_steps)}]"
 
         # Set the h5parm to use to apply the DDE solutions as needed
         h5parm = None
@@ -233,6 +243,8 @@ class Image(Operation):
                             'ntimes': ntimes,
                             'image_freqstep': image_freqstep,
                             'image_timestep': image_timestep,
+                            'image_maxinterval': image_bda_maxinterval,
+                            'image_timebase': image_bda_timebase,
                             'phasecenter': phasecenter,
                             'image_name': image_root,
                             'pol': self.image_pol,

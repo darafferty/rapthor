@@ -59,7 +59,8 @@ class Sector:
         self.dd_psf_grid = imaging_parameters["dd_psf_grid"]
 
     def set_imaging_parameters(
-        self, do_multiscale=False, recalculate_imsize=False, imaging_parameters=None
+        self, do_multiscale=False, recalculate_imsize=False, imaging_parameters=None,
+        preapply_dde_solutions=False
     ):
         pass
 
@@ -69,6 +70,7 @@ class Sector:
             "ms_prep_filename": None,
             "image_freqstep": None,
             "image_timestep": None,
+            "image_bda_maxinterval": None,
         }
         return obs_parameters[parameter]
 
@@ -105,6 +107,7 @@ class Field:
         self.apply_normalizations = False
         self.auto_mask_nmiter = 1
         self.skip_final_major_iteration = True
+        self.image_bda_timebase = 0
 
     def get_calibration_radius(self):
         return 5.0
