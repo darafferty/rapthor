@@ -35,9 +35,14 @@ class CalibrateDD(Operation):
             self.do_joint_solve = True
         else:
             self.do_joint_solve = False
+        if self.field.generate_screens:
+            # IDGCal requires image-based predict
+            self.use_image_based_predict = True
+        else:
+            self.use_image_based_predict = self.field.use_image_based_predict
 
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
-                             'use_image_based_predict': self.field.use_image_based_predict,
+                             'use_image_based_predict': self.use_image_based_predict,
                              'generate_screens': self.field.generate_screens,
                              'do_slowgain_solve': self.field.do_slowgain_solve,
                              'do_joint_solve': self.do_joint_solve,
@@ -196,19 +201,19 @@ class CalibrateDD(Operation):
         # TODO: image-based predict doesn't yet work with BDA; once it does,
         # the restriction on this mode should be removed
         all_regular = all([obs.channels_are_regular for obs in self.field.observations])
-        if self.field.bda_timebase_fast > 0 and all_regular and not self.field.use_image_based_predict:
+        if self.field.bda_timebase_fast > 0 and all_regular and not self.use_image_based_predict:
             dp3_steps_fast = ['avg', 'solve', 'null']
         else:
             dp3_steps_fast = ['solve']
-        if self.field.bda_timebase_slow_joint > 0 and all_regular and not self.field.use_image_based_predict:
+        if self.field.bda_timebase_slow_joint > 0 and all_regular and not self.use_image_based_predict:
             dp3_steps_slow_joint = ['avg', 'solve', 'null']
         else:
             dp3_steps_slow_joint = ['solve']
-        if self.field.bda_timebase_slow_separate > 0 and all_regular and not self.field.use_image_based_predict:
+        if self.field.bda_timebase_slow_separate > 0 and all_regular and not self.use_image_based_predict:
             dp3_steps_slow_separate = ['avg', 'solve', 'null']
         else:
             dp3_steps_slow_separate = ['solve']
-        if self.field.use_image_based_predict:
+        if self.use_image_based_predict:
             # Add a predict step to the beginning
             dp3_steps_fast.insert(0, 'predict')
             dp3_steps_slow_joint.insert(0, 'predict')
