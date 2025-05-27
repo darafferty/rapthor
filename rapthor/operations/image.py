@@ -460,6 +460,7 @@ class Image(Operation):
             diagnostics_file = image_root + '.image_diagnostics.json'
             with open(diagnostics_file, 'r') as f:
                 diagnostics_dict = json.load(f)
+            diagnostics_dict['cycle_number'] = self.index
             sector.diagnostics.append(diagnostics_dict)
             ratio, std = report_sector_diagnostics(sector.name, diagnostics_dict, self.log)
             if self.field.lofar_to_true_flux_std == 0.0 or std < self.field.lofar_to_true_flux_std:

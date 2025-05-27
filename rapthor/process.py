@@ -392,7 +392,7 @@ def make_report(field, outfile=None):
             output_lines.append(f'  Selfcal diverged in cycle {field.cycle_number}. '
                                 'The final cycle was therefore skipped.\n')
         elif field.selfcal_state.failed:
-            output_lines.append(f'  Selfcal failed due to excesively high noise in cycle {field.cycle_number}. '
+            output_lines.append(f'  Selfcal failed due to excessively high noise in cycle {field.cycle_number}. '
                                 'The final cycle was therefore skipped.\n')
         else:
             if field.do_final:
@@ -413,7 +413,7 @@ def make_report(field, outfile=None):
         for index, diagnostics in enumerate(field.calibration_diagnostics):
             if index == 0:
                 output_lines.append(f'  Fraction of solutions flagged:\n')
-            output_lines.append(f"    cycle {index+1}: "
+            output_lines.append(f"    cycle {diagnostics['cycle_number']}: "
                                 f"{diagnostics['solution_flagged_fraction']:.1f}\n")
     output_lines.append('\n')
 
@@ -430,16 +430,16 @@ def make_report(field, outfile=None):
                     median_rms_lines = ["  Median image noise (uJy/beam):\n"]
                     dynamic_range_lines = ["  Image dynamic range:\n"]
                     nsources_lines = ["  Number of sources found by PyBDSF:\n"]
-                min_rms_lines.append(f"    cycle {index+1}: "
+                min_rms_lines.append(f"    cycle {diagnostics['cycle_number']}: "
                                      f"{diagnostics['min_rms_flat_noise']*1e6:.1f} (non-PB-corrected), "
                                      f"{diagnostics['min_rms_true_sky']*1e6:.1f} (PB-corrected), "
                                      f"{diagnostics['theoretical_rms']*1e6:.1f} (theoretical)\n")
-                median_rms_lines.append(f"    cycle {index+1}: "
+                median_rms_lines.append(f"    cycle {diagnostics['cycle_number']}: "
                                         f"{diagnostics['median_rms_flat_noise']*1e6:.1f} (non-PB-corrected), "
                                         f"{diagnostics['median_rms_true_sky']*1e6:.1f} (PB-corrected)\n")
-                dynamic_range_lines.append(f"    cycle {index+1}: "
+                dynamic_range_lines.append(f"    cycle {diagnostics['cycle_number']}: "
                                            f"{diagnostics['dynamic_range_global_true_sky']:.1f}\n")
-                nsources_lines.append(f"    cycle {index+1}: {diagnostics['nsources']}\n")
+                nsources_lines.append(f"    cycle {diagnostics['cycle_number']}: {diagnostics['nsources']}\n")
             output_lines.extend(min_rms_lines)
             output_lines.extend(median_rms_lines)
             output_lines.extend(dynamic_range_lines)
