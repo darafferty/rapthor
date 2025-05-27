@@ -91,6 +91,24 @@ inputs:
         type: array
         items: int
 
+  - id: image_timebase
+    label: BDA timebase
+    doc: |
+      The baseline length (in meters) below which BDA time averaging is done
+      (length = n_sectors).
+    type: float[]
+
+  - id: image_maxinterval
+    label: BDA maxinterval
+    doc: |
+      The maximum interval duration (in time slots) over which BDA time averaging is
+      done (length = n_obs * n_sectors).
+    type:
+      type: array
+      items:
+        type: array
+        items: int
+
   - id: previous_mask_filename
     label: Filename of previous mask
     doc: |
@@ -503,7 +521,6 @@ inputs:
     type: string[]
 {% endif %}
 
-
 outputs:
   - id: filtered_skymodel_true_sky
     outputSource:
@@ -630,6 +647,10 @@ steps:
         source: image_freqstep
       - id: image_timestep
         source: image_timestep
+      - id: image_maxinterval
+        source: image_maxinterval
+      - id: image_timebase
+        source: image_timebase
       - id: previous_mask_filename
         source: previous_mask_filename
       - id: mask_filename
@@ -771,9 +792,9 @@ steps:
         source: output_normalize_h5parm
 {% endif %}
     scatter: [obs_filename, prepare_filename, concat_filename, starttime, ntimes,
-              image_freqstep, image_timestep, previous_mask_filename, mask_filename,
-              phasecenter, ra, dec, image_name, cellsize_deg, wsclean_imsize,
-              vertices_file, region_file,
+              image_freqstep, image_timestep, image_maxinterval, image_timebase,
+              previous_mask_filename, mask_filename, phasecenter, ra, dec,
+              image_name, cellsize_deg, wsclean_imsize, vertices_file, region_file,
 {% if use_mpi %}
               mpi_cpus_per_task, mpi_nnodes,
 {% endif %}

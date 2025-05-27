@@ -75,12 +75,15 @@ class Field(object):
         self.dde_method = self.parset['imaging_specific']['dde_method']
         self.save_visibilities = self.parset['imaging_specific']['save_visibilities']
         self.save_supplementary_images = self.parset['imaging_specific']['save_supplementary_images']
+        self.compress_selfcal_images = self.parset['imaging_specific']['compress_selfcal_images']
+        self.compress_final_images = self.parset['imaging_specific']['compress_final_images']
         self.use_mpi = self.parset['imaging_specific']['use_mpi']
         self.parallelbaselines = self.parset['calibration_specific']['parallelbaselines']
         self.sagecalpredict = self.parset['calibration_specific']['sagecalpredict']
         self.fast_datause = self.parset['calibration_specific']['fast_datause']
         self.slow_datause = self.parset['calibration_specific']['slow_datause']
         self.reweight = self.parset['imaging_specific']['reweight']
+        self.image_bda_timebase = self.parset['imaging_specific']['bda_timebase']
         self.do_multiscale_clean = self.parset['imaging_specific']['do_multiscale_clean']
         self.apply_diagonal_solutions = self.parset['imaging_specific']['apply_diagonal_solutions']
         self.make_quv_images = self.parset['imaging_specific']['make_quv_images']
@@ -121,6 +124,9 @@ class Field(object):
         self.use_scalarphase = True
         self.field_image_filename_prev = None
         self.field_image_filename = None
+
+        # Set whether to compress images
+        self.compress_images = self.compress_final_images
 
         # Scan MS files to get observation info
         self.scan_observations()
@@ -1726,6 +1732,9 @@ class Field(object):
             self.do_predict = True
         else:
             self.do_predict = False
+
+        # check whether images are to be compressed
+        self.compress_images = self.compress_final_images if final else self.compress_selfcal_images
 
     def get_matplotlib_patch(self, wcs=None):
         """

@@ -70,6 +70,20 @@ inputs:
       The averaging interval in number of timeslots (length = n_obs).
     type: int[]
 
+  - id: image_timebase
+    label: BDA timebase
+    doc: |
+      The baseline length (in meters) below which BDA time averaging is done
+      (length = 1).
+    type: float
+
+  - id: image_maxinterval
+    label: BDA maxinterval
+    doc: |
+      The maximum interval duration (in time slots) over which BDA time averaging is
+      done (length = n_obs).
+    type: int[]
+
   - id: previous_mask_filename
     label: Filename of previous mask
     doc: |
@@ -465,7 +479,6 @@ inputs:
     type: string
 {% endif %}
 
-
 outputs:
   - id: filtered_skymodel_true_sky
     outputSource:
@@ -499,6 +512,17 @@ outputs:
     outputSource:
       - filter/source_filtering_mask
     type: File
+{% if compress_images %}
+  - id: sector_I_images
+    outputSource:
+      - compress/image_I_nonpb_name
+      - compress/image_I_pb_name
+    type: File[]
+  - id: sector_extra_images
+    outputSource:
+      - compress/images_extra
+    type: File[]
+{% else %}
   - id: sector_I_images
     outputSource:
 {% if peel_bright_sources %}
@@ -513,6 +537,7 @@ outputs:
     outputSource:
       - image/images_extra
     type: File[]
+{% endif %}
 {% if save_source_list %}
   - id: sector_skymodels
     outputSource:
@@ -584,6 +609,10 @@ steps:
         source: image_freqstep
       - id: timestep
         source: image_timestep
+      - id: maxinterval
+        source: image_maxinterval
+      - id: timebase
+        source: image_timebase
       - id: beamdir
         source: phasecenter
       - id: numthreads
@@ -602,7 +631,7 @@ steps:
         source: prepare_data_steps
       - id: applycal_steps
         source: prepare_data_applycal_steps
-    scatter: [msin, msout, starttime, ntimes, freqstep, timestep]
+    scatter: [msin, msout, starttime, ntimes, freqstep, timestep, maxinterval]
     scatterMethod: dotproduct
     out:
       - id: msimg
@@ -813,6 +842,35 @@ steps:
       - id: skymodel_nonpb
       - id: skymodel_pb
 {% endif %}
+
+{% if compress_images %}
+# start compress_images
+  - id: compress
+    label: Compress wsclean FITS images
+    doc: |
+      This step uses cfitsio fpack to compress all images produced by wsclean
+    run: {{ rapthor_pipeline_dir }}/steps/compress_sector_images.cwl
+    in:
+      - id: images
+        source:
+{% if peel_bright_sources %}
+          - restore_nonpb/restored_image
+          - restore_pb/restored_image
+{% else %}
+          - image/image_I_nonpb_name
+          - image/image_I_pb_name
+{% endif %}
+          - image/images_extra
+        linkMerge: merge_flattened
+      - id: name
+        source: image_name
+    out:
+      - id: image_I_nonpb_name
+      - id: image_I_pb_name
+      - id: images_extra
+
+{% endif %}
+# end compress_images
 
 {% if peel_bright_sources %}
 # start peel_bright_sources
