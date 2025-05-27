@@ -100,6 +100,7 @@ class Field:
         self.ra = 0
 
         imaging_parameters = self.parset["imaging_specific"]
+        self.compress_images = True
         self.dde_method = imaging_parameters["dde_method"]
         self.use_mpi = imaging_parameters["use_mpi"]
         self.do_multiscale_clean = imaging_parameters["do_multiscale_clean"]

@@ -427,6 +427,16 @@ The available options are described below under their respective sections.
         Save dirty images and the clean masks made during each imaging cycle (default =
         ``False``).
 
+    compress_selfcal_images
+        Compress intermediate selfcal images to reduce storage space (default = ``True``). Uses default
+        ``fpack`` compression parameters, see `fpack documentation <https://heasarc.gsfc.nasa.gov/fitsio/fpack/>`_ 
+        for details on precision. Some tools may be unable to read compressed fits files and will
+        require decompression to be run first. This can be done with the ``funpack`` tool .
+
+    compress_final_images
+        Compress the final images to reduce storage space (default = ``False``).
+        See :term:`compress_selfcal_images` option for compression details.
+
     idg_mode
         IDG (image domain gridder) mode to use in WSClean (default = ``cpu``). The mode
         can be ``cpu`` or ``hybrid``.

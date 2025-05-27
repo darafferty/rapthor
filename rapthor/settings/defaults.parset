@@ -189,6 +189,12 @@ save_visibilities = False
 # made during each imaging cycle (default = False).
 save_supplementary_images = False
 
+# Compress intermediate selfcal images to reduce storage space (default = True).
+compress_selfcal_images = True
+
+# Compress the final images to reduce storage space (default = False).
+compress_final_images = False
+
 # IDG (image domain gridder) mode to use in WSClean (default = cpu). The mode
 # can be "cpu" or "hybrid". Note that IDG is only used when dde_mode = "hybrid"
 idg_mode = cpu

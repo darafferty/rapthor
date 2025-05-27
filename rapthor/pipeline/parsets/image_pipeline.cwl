@@ -521,7 +521,6 @@ inputs:
     type: string[]
 {% endif %}
 
-
 outputs:
   - id: filtered_skymodel_true_sky
     outputSource:

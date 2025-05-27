@@ -86,7 +86,8 @@ class Image(Operation):
                              'peel_bright_sources': self.peel_bright_sources,
                              'preapply_dde_solutions': self.preapply_dde_solutions,
                              'max_cores': max_cores,
-                             'use_mpi': self.field.use_mpi}
+                             'use_mpi': self.field.use_mpi,
+                             'compress_images': self.field.compress_images}
 
     def set_input_parameters(self):
         """
@@ -379,29 +380,30 @@ class Image(Operation):
         for sector in self.field.imaging_sectors:
             # The output image filenames
             image_root = os.path.join(self.pipeline_working_dir, sector.name)
+            image_extension = 'fits.fz' if self.field.compress_images else 'fits'
             if self.field.image_pol.lower() == 'i':
                 # When making only Stokes I images, WSClean does not include the
                 # Stokes parameter name in the output filenames
-                setattr(sector, "I_image_file_true_sky", f'{image_root}-MFS-image-pb.fits')
-                setattr(sector, "I_image_file_apparent_sky", f'{image_root}-MFS-image.fits')
-                setattr(sector, "I_model_file_true_sky", f'{image_root}-MFS-model-pb.fits')
-                setattr(sector, "I_residual_file_apparent_sky", f'{image_root}-MFS-residual.fits')
+                setattr(sector, "I_image_file_true_sky", f'{image_root}-MFS-image-pb.{image_extension}')
+                setattr(sector, "I_image_file_apparent_sky", f'{image_root}-MFS-image.{image_extension}')
+                setattr(sector, "I_model_file_true_sky", f'{image_root}-MFS-model-pb.{image_extension}')
+                setattr(sector, "I_residual_file_apparent_sky", f'{image_root}-MFS-residual.{image_extension}')
 
                 if self.field.save_supplementary_images:
-                    setattr(sector, "I_dirty_file_apparent_sky", f'{image_root}-MFS-dirty.fits')
+                    setattr(sector, "I_dirty_file_apparent_sky", f'{image_root}-MFS-dirty.{image_extension}')
                     setattr(sector, "mask_filename", f'{image_root}.mask.fits')
             else:
                 # When making all Stokes images, WSClean includes the Stokes parameter
                 # name in the output filenames
                 for pol in self.field.image_pol:
                     polup = pol.upper()
-                    setattr(sector, f"{polup}_image_file_true_sky", f'{image_root}-MFS-{polup}-image-pb.fits')
-                    setattr(sector, f"{polup}_image_file_apparent_sky", f'{image_root}-MFS-{polup}-image.fits')
-                    setattr(sector, f"{polup}_model_file_true_sky", f'{image_root}-MFS-{polup}-model-pb.fits')
-                    setattr(sector, f"{polup}_residual_file_apparent_sky", f'{image_root}-MFS-{polup}-residual.fits')
+                    setattr(sector, f"{polup}_image_file_true_sky", f'{image_root}-MFS-{polup}-image-pb.{image_extension}')
+                    setattr(sector, f"{polup}_image_file_apparent_sky", f'{image_root}-MFS-{polup}-image.{image_extension}')
+                    setattr(sector, f"{polup}_model_file_true_sky", f'{image_root}-MFS-{polup}-model-pb.{image_extension}')
+                    setattr(sector, f"{polup}_residual_file_apparent_sky", f'{image_root}-MFS-{polup}-residual.{image_extension}')
 
                     if self.field.save_supplementary_images:
-                        setattr(sector, f"{polup}_dirty_file_apparent_sky", f'{image_root}-MFS-{polup}-dirty.fits')
+                        setattr(sector, f"{polup}_dirty_file_apparent_sky", f'{image_root}-MFS-{polup}-dirty.{image_extension}')
                         if not hasattr(sector, "mask_filename"):
                             setattr(sector, "mask_filename", f'{image_root}.mask.fits')
 
@@ -526,10 +528,11 @@ class ImageInitial(Image):
 
         # The output image filenames
         image_root = os.path.join(self.pipeline_working_dir, sector.name)
-        image_names = [f'{image_root}-MFS-image-pb.fits',
-                       f'{image_root}-MFS-image.fits',
-                       f'{image_root}-MFS-model-pb.fits',
-                       f'{image_root}-MFS-residual.fits']
+        image_extension = 'fits.fz' if self.field.compress_images else 'fits'
+        image_names = [f'{image_root}-MFS-image-pb.{image_extension}',
+                       f'{image_root}-MFS-image.{image_extension}',
+                       f'{image_root}-MFS-model-pb.{image_extension}',
+                       f'{image_root}-MFS-residual.{image_extension}']
         dst_dir = os.path.join(self.parset['dir_working'], 'images', self.name)
         os.makedirs(dst_dir, exist_ok=True)
         for src_filename in image_names:
