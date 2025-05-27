@@ -91,9 +91,11 @@ inputs:
     label: Sky model image
     doc: |
       The sky model FITS image(s) (one per spectral term) to use for the solve.
+      Note: currently, IDGCal does not support multiple spectra terms, so we just
+      use the flux image (the first one).
     type: File[]
     inputBinding:
-      valueFrom: "[$(self.map(function(file){ return file.path; }).join(','))]"
+      valueFrom: "$(self[0].path)"
       prefix: solve.modelimage=
       separate: False
 
