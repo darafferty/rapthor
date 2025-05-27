@@ -923,20 +923,21 @@ class Field(object):
         self.calibrator_fluxes = self.calibrators_only_skymodel.getColValues('I', aggregate='sum').tolist()
         self.calibrator_positions = self.calibrators_only_skymodel.getPatchPositions()
         self.num_patches = len(self.calibrator_patch_names)
-        suffix = 'es' if self.num_patches > 1 else ''
-        self.log.info('Using {0} calibration patch{1}'.format(self.num_patches, suffix))
+        if not self.generate_screens:
+            suffix = 'es' if self.num_patches > 1 else ''
+            self.log.info('Using {0} calibration patch{1}'.format(self.num_patches, suffix))
 
-        # Plot an overview of the field for this cycle, showing the calibration facets
-        # (patches)
-        self.log.info('Plotting field overview with calibration patches...')
-        if index == 1 or combine_current_and_intial:
-            # Check the sky model bounds, as they may differ from the sector ones
-            check_skymodel_bounds = True
-        else:
-            # Sky model bounds will always match the sector ones
-            check_skymodel_bounds = False
-        self.plot_overview(f'field_overview_{index}.png', show_calibration_patches=True,
-                           check_skymodel_bounds=check_skymodel_bounds)
+            # Plot an overview of the field for this cycle, showing the calibration facets
+            # (patches)
+            self.log.info('Plotting field overview with calibration patches...')
+            if index == 1 or combine_current_and_intial:
+                # Check the sky model bounds, as they may differ from the sector ones
+                check_skymodel_bounds = True
+            else:
+                # Sky model bounds will always match the sector ones
+                check_skymodel_bounds = False
+            self.plot_overview(f'field_overview_{index}.png', show_calibration_patches=True,
+                            check_skymodel_bounds=check_skymodel_bounds)
 
         # Adjust sector boundaries to avoid known sources and update their sky models.
         self.adjust_sector_boundaries()

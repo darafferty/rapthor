@@ -70,6 +70,12 @@ inputs:
       The maximum number of threads to use for a job (length = 1).
     type: int
 
+  - id: calibration_skymodel_file
+    label: Filename of sky model
+    doc: |
+      The filename of the input sky model text file (length = 1).
+    type: File
+
 {% if use_image_based_predict %}
   - id: num_spectral_terms
     label: Number of spectral terms
@@ -218,12 +224,6 @@ inputs:
       The filename of the output combined h5parm solution table for the fast phase solve
       (length = 1).
     type: string
-
-  - id: calibration_skymodel_file
-    label: Filename of sky model
-    doc: |
-      The filename of the input sky model text file (length = 1).
-    type: File
 
   - id: smoothness_dd_factors_fast
     label: Smoothness factors
