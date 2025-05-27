@@ -80,9 +80,10 @@ inputs:
   - id: model_image
     label: Sky model image
     doc: |
-      The sky model FITS image to use for the solve.
-    type: File
+      The sky model FITS image(s) (one per spectral term) to use for the solve.
+    type: File[]
     inputBinding:
+      valueFrom: "[$(self.map(function(file){ return file.path; }).join(','))]"
       prefix: solve.modelimage=
       separate: False
 
