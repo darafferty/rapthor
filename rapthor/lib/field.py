@@ -937,7 +937,7 @@ class Field(object):
                 # Sky model bounds will always match the sector ones
                 check_skymodel_bounds = False
             self.plot_overview(f'field_overview_{index}.png', show_calibration_patches=True,
-                            check_skymodel_bounds=check_skymodel_bounds)
+                               check_skymodel_bounds=check_skymodel_bounds)
 
         # Adjust sector boundaries to avoid known sources and update their sky models.
         self.adjust_sector_boundaries()

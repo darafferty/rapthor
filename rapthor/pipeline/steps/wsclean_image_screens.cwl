@@ -312,6 +312,14 @@ inputs:
     inputBinding:
       prefix: -dd-psf-grid
 
+  - id: interval
+    label: Data interval
+    doc: |
+      The start and end timeslots of the input data to consider.
+    type: int[]
+    inputBinding:
+      prefix: -interval
+
 outputs:
   - id: image_I_nonpb_name
     label: Output non-PB-corrected image
