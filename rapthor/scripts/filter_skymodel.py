@@ -180,7 +180,7 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, output_root,
                 s_bright = lsmtool.load(bright_true_sky_skymodel)
 
                 # Rename the bright sources, removing the '_sector_*' added previously
-                # (otherwise the '_sector_*' text will be added every iteration,
+                # (otherwise the '_sector_*' text will be added every processing cycle.
                 # eventually making for very long source names)
                 new_names = [name.split('_sector')[0] for name in s_bright.getColValues('Name')]
                 s_bright.setColValues('Name', new_names)

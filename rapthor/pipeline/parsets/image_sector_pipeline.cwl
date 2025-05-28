@@ -488,6 +488,10 @@ outputs:
     outputSource:
       - filter/filtered_skymodel_apparent_sky
     type: File
+  - id: pybdsf_catalog
+    outputSource:
+      - filter/source_catalog
+    type: File
   - id: sector_diagnostics
     outputSource:
       - find_diagnostics/diagnostics

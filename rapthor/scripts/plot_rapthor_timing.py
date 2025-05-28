@@ -192,7 +192,7 @@ class SubLogParser():
 
 
 def make_cycle_pdfs_sublogs() -> None:
-    """ Make summary PDFs of each iteration and as a grand total."""
+    """ Make summary PDFs of each processing cycle and as a grand total."""
     # Every cycle will do calibration, so determine the number of cycles from this.
     Ncycles = len(glob.glob('temp_calibrate_*.pdf'))
     try:

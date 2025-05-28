@@ -2,7 +2,7 @@
 
 """
 Script to compare the results of two workflow runs. The generated skymodels,
-solutions files and images will be compared, for each major iteration.
+solutions files and images will be compared, for each major processing cycle.
 """
 
 import argparse

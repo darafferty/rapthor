@@ -530,6 +530,10 @@ outputs:
     outputSource:
       - image_sector/filtered_skymodel_apparent_sky
     type: File[]
+  - id: pybdsf_catalog
+    outputSource:
+      - image_sector/pybdsf_catalog
+    type: File[]
   - id: sector_diagnostics
     outputSource:
       - image_sector/sector_diagnostics
@@ -819,6 +823,7 @@ steps:
     out:
       - id: filtered_skymodel_true_sky
       - id: filtered_skymodel_apparent_sky
+      - id: pybdsf_catalog
       - id: sector_I_images
       - id: sector_extra_images
       - id: visibilities

@@ -2,6 +2,7 @@
 Module that performs the processing
 """
 import logging
+import os
 from rapthor import _logging
 from rapthor.lib.parset import parset_read
 from rapthor.lib.strategy import set_strategy
@@ -96,18 +97,18 @@ def run(parset_file, logging_level='info'):
         run_steps(field, selfcal_steps)
 
     # Run a final pass if needed
-    if do_final_pass(field, selfcal_steps, final_step):
-
+    field.do_final = do_final_pass(field, selfcal_steps, final_step)
+    if field.do_final:
         if selfcal_steps:
             if not any([len(obs) > 1 for obs in field.epoch_observations]):
                 # Use concatenation was not done the user input data column
                 # for the final calibration run
                 field.data_colname = parset['data_colname']
 
-            # If selfcal was done, set peel_outliers to that of the initial iteration, since the
+            # If selfcal was done, set peel_outliers to that of the initial cycle, since the
             # observations will be regenerated and outliers (if any) need to be peeled again
             final_step['peel_outliers'] = selfcal_steps[0]['peel_outliers']
-            log.info("Starting final iteration with a data fraction of "
+            log.info("Starting final cycle with a data fraction of "
                      "{0:.2f}".format(parset['final_data_fraction']))
             field.cycle_number += 1
         else:
@@ -133,7 +134,7 @@ def run(parset_file, logging_level='info'):
             log.info("Stokes I, Q, U, and V images will be made")
         if field.dde_mode == 'hybrid':
             log.info("Screens will be used for calibration and imaging (since dde_mode = "
-                     "'hybrid' and this is the final iteration)")
+                     "'hybrid' and this is the final cycle)")
             if final_step['peel_outliers']:
                 # Currently, when screens are used peeling cannot be done
                 log.warning("Peeling of outliers is currently not supported when using "
@@ -152,6 +153,8 @@ def run(parset_file, logging_level='info'):
             chunk_observations(field, [final_step], parset['final_data_fraction'])
         run_steps(field, [final_step], final=True)
 
+    # Make a summary report for the run and finish
+    make_report(field)
     log.info("Rapthor has finished :)")
 
 
@@ -254,7 +257,7 @@ def run_steps(field, steps, final=False):
                 if selfcal_state.failed:
                     log.warning("Selfcal has failed due to high noise (ratio of current image noise "
                                 "to theoretical value is > {})".format(field.failure_ratio))
-                log.info("Stopping selfcal at iteration {0} of {1}".format(index+1, len(steps)))
+                log.info("Stopping selfcal at cycle {0} of {1}".format(cycle_number, len(steps)))
                 break
         else:
             selfcal_state = None
@@ -297,7 +300,7 @@ def do_final_pass(field, selfcal_steps, final_step):
         if field.do_check and (field.selfcal_state.diverged or field.selfcal_state.failed):
             # Selfcal was found to have diverged or failed, so don't do the final pass
             # even if required otherwise
-            log.warning("Selfcal diverged or failed, so skipping final iteration (with a data "
+            log.warning("Selfcal diverged or failed, so skipping final cycle (with a data "
                         "fraction of {0:.2f})".format(field.parset['final_data_fraction']))
             final_pass = False
         elif final_step == selfcal_steps[field.cycle_number-1]:
@@ -369,3 +372,82 @@ def chunk_observations(field, steps, data_fraction):
         else:
             obs.data_fraction = data_fraction
     field.chunk_observations(min_time)
+
+
+def make_report(field, outfile=None):
+    """
+    Make a summary report of QA metrics for the run
+
+    Parameters
+    ----------
+    field : Field object
+        The Field object for this run
+    outfile : str
+        The filename of the output file
+    """
+    # Report selfcal convergence
+    output_lines = ['Selfcal diagnostics:\n']
+    if field.selfcal_state:
+        if field.selfcal_state.diverged:
+            output_lines.append(f'  Selfcal diverged in cycle {field.cycle_number}. '
+                                'The final cycle was therefore skipped.\n')
+        elif field.selfcal_state.failed:
+            output_lines.append(f'  Selfcal failed due to excessively high noise in cycle {field.cycle_number}. '
+                                'The final cycle was therefore skipped.\n')
+        else:
+            if field.do_final:
+                output_lines.append(f'  Selfcal converged in cycle {field.cycle_number - 1} '
+                                    'and a further, final cycle was done.\n')
+            else:
+                output_lines.append(f'  Selfcal converged in cycle {field.cycle_number}. '
+                                    'A final cycle was not done as it was not needed.\n')
+    else:
+        output_lines.append('  No selfcal performed.\n')
+    output_lines.append('\n')
+
+    # Report calibration diagnostics: these are stored in field.calibration_diagnostics
+    output_lines.append('Calibration diagnostics:\n')
+    if not field.calibration_diagnostics:
+        output_lines.append(f'  No calibration done.\n')
+    else:
+        for index, diagnostics in enumerate(field.calibration_diagnostics):
+            if index == 0:
+                output_lines.append(f'  Fraction of solutions flagged:\n')
+            output_lines.append(f"    cycle {diagnostics['cycle_number']}: "
+                                f"{diagnostics['solution_flagged_fraction']:.1f}\n")
+    output_lines.append('\n')
+
+    # Report imaging diagnostics: these are stored for each sector and cycle in
+    # sector.diagnostics
+    for sector in field.imaging_sectors:
+        output_lines.append(f'Image diagnostics for {sector.name}:\n')
+        if not sector.diagnostics:
+            output_lines.append(f'  No imaging done.\n')
+        else:
+            for index, diagnostics in enumerate(sector.diagnostics):
+                if index == 0:
+                    min_rms_lines = ["  Minimum image noise (uJy/beam):\n"]
+                    median_rms_lines = ["  Median image noise (uJy/beam):\n"]
+                    dynamic_range_lines = ["  Image dynamic range:\n"]
+                    nsources_lines = ["  Number of sources found by PyBDSF:\n"]
+                min_rms_lines.append(f"    cycle {diagnostics['cycle_number']}: "
+                                     f"{diagnostics['min_rms_flat_noise']*1e6:.1f} (non-PB-corrected), "
+                                     f"{diagnostics['min_rms_true_sky']*1e6:.1f} (PB-corrected), "
+                                     f"{diagnostics['theoretical_rms']*1e6:.1f} (theoretical)\n")
+                median_rms_lines.append(f"    cycle {diagnostics['cycle_number']}: "
+                                        f"{diagnostics['median_rms_flat_noise']*1e6:.1f} (non-PB-corrected), "
+                                        f"{diagnostics['median_rms_true_sky']*1e6:.1f} (PB-corrected)\n")
+                dynamic_range_lines.append(f"    cycle {diagnostics['cycle_number']}: "
+                                           f"{diagnostics['dynamic_range_global_true_sky']:.1f}\n")
+                nsources_lines.append(f"    cycle {diagnostics['cycle_number']}: {diagnostics['nsources']}\n")
+            output_lines.extend(min_rms_lines)
+            output_lines.extend(median_rms_lines)
+            output_lines.extend(dynamic_range_lines)
+            output_lines.extend(nsources_lines)
+        output_lines.append('\n')
+
+    # Open output file
+    if outfile is None:
+        outfile = os.path.join(field.parset["dir_working"], 'logs', 'diagnostics.txt')
+    with open(outfile, 'w') as f:
+        f.writelines(output_lines)
