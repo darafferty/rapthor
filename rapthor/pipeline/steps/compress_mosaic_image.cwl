@@ -21,7 +21,7 @@ outputs:
   - id: compressed_mosaic_image
     type: File
     outputBinding:
-      glob: *.fz
+      glob: '*.fz'
 
 hints:
   - class: DockerRequirement
