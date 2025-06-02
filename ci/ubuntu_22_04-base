@@ -23,6 +23,11 @@ ENV PIP_ROOT_USER_ACTION=ignore
 # Set our working directory
 WORKDIR /src
 
+# It looks like we run into rate limitations when using the default
+# Ubuntu APT server, resulting in HTTP 403 errors.
+# Use "nl.archive.ubuntu.com", instead of "archive.ubuntu.com".
+RUN sed -ri "s/(archive\.ubuntu\.com)/nl.\1/" /etc/apt/sources.list
+
 # Install all build-time dependencies
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get update && \
