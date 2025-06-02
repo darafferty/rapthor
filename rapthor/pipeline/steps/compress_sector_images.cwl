@@ -10,6 +10,7 @@ doc: |
 
 requirements:
   - class: InlineJavascriptRequirement
+  - class: ShellCommandRequirement
 
 inputs:
   - id: images
@@ -19,6 +20,8 @@ inputs:
     type: File[]
     inputBinding:
       position: 1
+      itemSeparator: " "
+      shellQuote: false
 
   - id: name
     label: root name of input image

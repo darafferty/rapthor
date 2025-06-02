@@ -28,7 +28,7 @@ def main(image_filenames, output_directory='.'):
     # Run fpack on each input file. We do each file separately since the output filename
     # argument ("-O") can only be used with a single input file
     for input_image in image_filenames:
-        output_image = os.path.join(output_directory, input_image + ".fz")
+        output_image = os.path.join(output_directory, os.path.basename(input_image) + ".fz")
         cmd = ["fpack", "-O", output_image, input_image]
         try:
             returncode = subprocess.run(cmd, check=True).returncode
