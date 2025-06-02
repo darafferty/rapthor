@@ -1,6 +1,6 @@
 cwlVersion: v1.2
 class: CommandLineTool
-baseCommand: [fpack]
+baseCommand: [compress_images.py]
 label: Compress fits format image (Single Image)
 doc: |
   This tool compresses a single FITS image in the FITS data format.
@@ -21,7 +21,7 @@ outputs:
   - id: compressed_mosaic_image
     type: File
     outputBinding:
-      glob: $(inputs.mosaic_image).fz
+      glob: *.fz
 
 hints:
   - class: DockerRequirement
