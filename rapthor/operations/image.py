@@ -383,7 +383,7 @@ class Image(Operation):
         for sector in self.field.imaging_sectors:
             # The output image filenames
             image_root = os.path.join(self.pipeline_working_dir, sector.name)
-            image_extension = 'fits.fz' if self.field.compress_images else 'fits'
+            image_extension = 'fits.fz' if self.compress_images else 'fits'
             if self.field.image_pol.lower() == 'i':
                 # When making only Stokes I images, WSClean does not include the
                 # Stokes parameter name in the output filenames
@@ -538,7 +538,7 @@ class ImageInitial(Image):
 
         # The output image filenames
         image_root = os.path.join(self.pipeline_working_dir, sector.name)
-        image_extension = 'fits.fz' if self.field.compress_images else 'fits'
+        image_extension = 'fits.fz' if self.compress_images else 'fits'
         image_names = [f'{image_root}-MFS-image-pb.{image_extension}',
                        f'{image_root}-MFS-image.{image_extension}',
                        f'{image_root}-MFS-model-pb.{image_extension}',
