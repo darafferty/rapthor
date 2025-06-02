@@ -496,6 +496,7 @@ class ImageInitial(Image):
         self.save_source_list = True
         self.peel_bright_sources = False
         self.image_pol = 'I'
+        self.compress_images = self.field.compress_selfcal_images
         super().set_parset_parameters()
 
     def set_input_parameters(self):
@@ -508,7 +509,6 @@ class ImageInitial(Image):
         self.apply_fulljones = False
         self.apply_none = True
         self.apply_normalizations = False
-        self.compress_images = self.field.compress_selfcal_images
         self.field.full_field_sector.auto_mask = 5.0
         self.field.full_field_sector.auto_mask_nmiter = 1
         self.field.full_field_sector.threshisl = 4.0
