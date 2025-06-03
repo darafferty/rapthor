@@ -242,8 +242,9 @@ class Observation(object):
         solve_max_factor = parset['calibration_specific']['dd_interval_factor']
         smoothness_max_factor = parset['calibration_specific']['dd_smoothness_factor']
         if generate_screens:
-            # Screens do not support the direction-dependent smoothness contraint, so
-            # disable it
+            # Screens do not support the direction-dependent smoothness contraint or
+            # solve intervals, so disable them
+            solve_max_factor = 1
             smoothness_max_factor = 1
 
         # Find solution intervals for fast-phase solve. The solve is split into time
