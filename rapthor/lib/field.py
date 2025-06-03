@@ -511,6 +511,7 @@ class Field(object):
             calibration_skymodel = skymodel_true_sky
             calibration_skymodel.write(self.calibration_skymodel_file, clobber=True)
             self.calibration_skymodel = calibration_skymodel
+            self.calibrators_only_skymodel = calibration_skymodel
             return
 
         # If an apparent sky model is given, use it for defining the calibration patches.
@@ -947,31 +948,36 @@ class Field(object):
             self.plot_overview(f'field_overview_{index}.png', show_calibration_patches=True,
                                check_skymodel_bounds=check_skymodel_bounds)
 
-        # Adjust sector boundaries to avoid known sources and update their sky models.
-        self.adjust_sector_boundaries()
-        self.log.info('Making sector sky models (for predicting)...')
-        for sector in self.imaging_sectors:
-            sector.calibration_skymodel = self.calibration_skymodel.copy()
-            sector.make_skymodel(index)
+            # Adjust sector boundaries to avoid known sources and update their sky models.
+            self.adjust_sector_boundaries()
+            self.log.info('Making sector sky models (for predicting)...')
+            for sector in self.imaging_sectors:
+                sector.calibration_skymodel = self.calibration_skymodel.copy()
+                sector.make_skymodel(index)
 
-        # Make bright-source sectors containing only the bright sources that may be
-        # subtracted before imaging. These sectors, like the outlier sectors above, are not
-        # imaged
-        self.define_bright_source_sectors(index)
+            # Make bright-source sectors containing only the bright sources that may be
+            # subtracted before imaging. These sectors, like the outlier sectors above, are not
+            # imaged
+            self.define_bright_source_sectors(index)
 
-        # Make outlier sectors containing any remaining calibration sources (not
-        # included in any imaging or bright-source sector sky model). These sectors are
-        # not imaged; they are only used in prediction and subtraction
-        self.define_outlier_sectors(index)
+            # Make outlier sectors containing any remaining calibration sources (not
+            # included in any imaging or bright-source sector sky model). These sectors are
+            # not imaged; they are only used in prediction and subtraction
+            self.define_outlier_sectors(index)
 
-        # Make predict sectors containing all calibration sources. These sectors are
-        # not imaged; they are only used in prediction for direction-independent solves
-        self.define_predict_sectors(index)
+            # Make predict sectors containing all calibration sources. These sectors are
+            # not imaged; they are only used in prediction for direction-independent solves
+            self.define_predict_sectors(index)
 
-        # Make non-calibrator-source sectors containing non-calibrator sources
-        # that may be subtracted before calibration. These sectors are not
-        # imaged
-        self.define_non_calibrator_source_sectors(index)
+            # Make non-calibrator-source sectors containing non-calibrator sources
+            # that may be subtracted before calibration. These sectors are not
+            # imaged
+            self.define_non_calibrator_source_sectors(index)
+        else:
+            self.outlier_sectors = []
+            self.bright_source_sectors = []
+            self.predict_sectors = []
+            self.non_calibrator_source_sectors = []
 
         # Finally, make a list containing all sectors
         self.sectors = (self.imaging_sectors + self.outlier_sectors +
