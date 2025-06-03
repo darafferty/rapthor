@@ -148,7 +148,7 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
     # Open output table and add output column if needed
     msout = os.path.basename(model_list[0]).removesuffix('_modeldata') + '_di.ms'
     if os.path.exists(msout):
-        # File may exist from a previous iteration; delete it if so
+        # File may exist from a previous processing cycle; delete it if so
         shutil.rmtree(msout, ignore_errors=True)
     subprocess.check_call(['cp', '-r', '-L', '--no-preserve=mode', ms_template, msout])
     tout = pt.table(msout, readonly=False, ack=False)

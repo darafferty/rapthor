@@ -168,6 +168,7 @@ def test_predict_nc_workflow(tmp_path, max_cores):
 @pytest.mark.parametrize("normalize_flux_scale", (False, True))
 @pytest.mark.parametrize("preapply_dde_solutions", (False, True))
 @pytest.mark.parametrize("save_source_list", (False, True))
+@pytest.mark.parametrize("compress_images", (False, True))
 def test_image_workflow(
     tmp_path,
     apply_screens,
@@ -179,6 +180,7 @@ def test_image_workflow(
     normalize_flux_scale,
     preapply_dde_solutions,
     save_source_list,
+    compress_images,
 ):
     """
     Test the Image workflow, using all possible combinations of parameters that
@@ -200,13 +202,15 @@ def test_image_workflow(
         "normalize_flux_scale": normalize_flux_scale,
         "preapply_dde_solutions": preapply_dde_solutions,
         "save_source_list": save_source_list,
+        "compress_images": compress_images,
     }
     generate_and_validate(tmp_path, operation, parms, templ, sub_templ)
 
 
 @pytest.mark.parametrize("max_cores", (None, 8))
 @pytest.mark.parametrize("skip_processing", (False, True))
-def test_mosaic_workflow(tmp_path, max_cores, skip_processing):
+@pytest.mark.parametrize("compress_images", (False, True))
+def test_mosaic_workflow(tmp_path, max_cores, skip_processing, compress_images):
     """
     Test the Mosaic workflow, using all possible combinations of parameters that
     control the way the CWL workflow is generated from the template. Parameters were
@@ -220,5 +224,6 @@ def test_mosaic_workflow(tmp_path, max_cores, skip_processing):
     parms = {
         "max_cores": max_cores,
         "skip_processing": skip_processing,
+        "compress_images": compress_images,
     }
     generate_and_validate(tmp_path, operation, parms, templ, sub_templ)

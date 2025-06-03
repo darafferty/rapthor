@@ -86,9 +86,9 @@ cycle.
 .. note::
 
     If the strategy performs self calibration, the last entry in ``strategy_steps`` can be
-    used to specify parameters specific to the final iteration (which is performed after
+    used to specify parameters specific to the final cycle (which is performed after
     self calibration finishes). In the default self calibration strategy, the parameters
-    for the final iteration are set to those of the last cycle of selfcal.
+    for the final cycle are set to those of the last cycle of selfcal.
 
 .. note::
 

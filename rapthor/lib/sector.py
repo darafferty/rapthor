@@ -86,7 +86,7 @@ class Sector(object):
             obs.set_prediction_parameters(self.name, self.patches)
 
     def set_imaging_parameters(self, do_multiscale=False, recalculate_imsize=False,
-                               imaging_parameters=None):
+                               imaging_parameters=None, preapply_dde_solutions=False):
         """
         Sets the parameters needed for the imaging operation
 
@@ -113,6 +113,9 @@ class Sector(object):
                 'reweight': reweighting flag
                 'dd_psf_grid': DD PSF grid
                 'max_peak_smearing': maximum allowed peak smearing
+        preapply_dde_solutions : bool, optional
+            If True, use setup appropriate for case in which all DDE
+            solutions are preapplied before imaging is done
         """
         if imaging_parameters is None:
             imaging_parameters = self.field.parset['imaging_specific']
@@ -144,6 +147,7 @@ class Sector(object):
             self.mem_limit_gb = cluster.get_available_memory()
         self.reweight = imaging_parameters['reweight']
         self.target_fast_timestep = self.field.fast_timestep_sec
+        self.target_slow_timstep = self.field.slow_timestep_separate_sec
         self.target_slow_freqstep = self.field.parset['calibration_specific']['slow_freqstep_hz']
         self.apply_screens = self.field.apply_screens
 
@@ -245,8 +249,8 @@ class Sector(object):
             # Set imaging parameters
             obs.set_imaging_parameters(self.name, self.cellsize_arcsec, max_peak_smearing,
                                        self.width_ra, self.width_dec,
-                                       self.target_fast_timestep, self.target_slow_freqstep,
-                                       self.apply_screens)
+                                       self.target_fast_timestep, self.target_slow_timstep,
+                                       self.target_slow_freqstep, preapply_dde_solutions)
 
         # Set BL-dependent averaging parameters
         do_bl_averaging = False  # does not yet work with IDG
@@ -289,7 +293,7 @@ class Sector(object):
         Parameters
         ----------
         index : int
-            Iteration index
+            Processing cycle index
         """
         # First check whether sky model already exists due to a previous run and attempt
         # to load it if so

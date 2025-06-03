@@ -183,7 +183,7 @@ def main(msin, model_list, msin_column='DATA', model_column='DATA',
         # be created in a different temporary directory by the CWL runner. If we
         # don't trust the CWL runner, we might bail out if `msout` exists.
         if os.path.exists(msout):
-            # File may exist from a previous iteration; delete it if so
+            # File may exist from a previous processing cycle; delete it if so
             shutil.rmtree(msout, ignore_errors=True)
         subprocess.check_call(['cp', '-r', '-L', '--no-preserve=mode', ms_template, msout])
         tout = pt.table(msout, readonly=False, ack=False)
@@ -255,7 +255,7 @@ def main(msin, model_list, msin_column='DATA', model_column='DATA',
         # be created in a different temporary directory by the CWL runner. If we
         # don't trust the CWL runner, we might bail out if `msout` exists.
         if os.path.exists(msout):
-            # File may exist from a previous iteration; delete it if so
+            # File may exist from a previous processing cycle; delete it if so
             shutil.rmtree(msout, ignore_errors=True)
         subprocess.check_call(['cp', '-r', '-L', '--no-preserve=mode', ms_template, msout])
         tout = pt.table(msout, readonly=False, ack=False)
@@ -320,7 +320,7 @@ def main(msin, model_list, msin_column='DATA', model_column='DATA',
         # so use the template MS filename as a basis for the output MS filename
         msout = os.path.splitext(os.path.basename(ms_template))[0] + '.sector_1'
         if os.path.exists(msout):
-            # File may exist from a previous iteration; delete it if so
+            # File may exist from a previous processing cycle; delete it if so
             shutil.rmtree(msout, ignore_errors=True)
         subprocess.check_call(['cp', '-r', '-L', '--no-preserve=mode', msin, msout])
         return
@@ -370,7 +370,7 @@ def main(msin, model_list, msin_column='DATA', model_column='DATA',
         # be created in a different temporary directory by the CWL runner. If we
         # don't trust the CWL runner, we might bail out if `msout` exists.
         if os.path.exists(msout):
-            # File may exist from a previous iteration; delete it if so
+            # File may exist from a previous processing cycle; delete it if so
             shutil.rmtree(msout, ignore_errors=True)
         subprocess.check_call(['cp', '-r', '-L', '--no-preserve=mode', ms_template, msout])
         tout_list.append(pt.table(msout, readonly=False, ack=False))

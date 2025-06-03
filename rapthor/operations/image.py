@@ -87,7 +87,8 @@ class Image(Operation):
                              'peel_bright_sources': self.peel_bright_sources,
                              'preapply_dde_solutions': self.preapply_dde_solutions,
                              'max_cores': max_cores,
-                             'use_mpi': self.field.use_mpi}
+                             'use_mpi': self.field.use_mpi,
+                             'compress_images': self.field.compress_images}
 
     def set_input_parameters(self):
         """
@@ -124,6 +125,8 @@ class Image(Operation):
         ntimes = []
         image_freqstep = []
         image_timestep = []
+        image_bda_maxinterval = []
+        image_bda_timebase = []
         phasecenter = []
         image_root = []
         central_patch_name = []
@@ -145,7 +148,8 @@ class Image(Operation):
                 recalculate_imsize = False
             sector.set_imaging_parameters(self.do_multiscale_clean,
                                           recalculate_imsize=recalculate_imsize,
-                                          imaging_parameters=self.imaging_parameters)
+                                          imaging_parameters=self.imaging_parameters,
+                                          preapply_dde_solutions=self.preapply_dde_solutions)
 
             # Set input MS filenames
             if self.do_predict:
@@ -168,6 +172,8 @@ class Image(Operation):
             mask_filename.append(image_root[-1] + '_mask.fits')
             image_freqstep.append(sector.get_obs_parameters('image_freqstep'))
             image_timestep.append(sector.get_obs_parameters('image_timestep'))
+            image_bda_maxinterval.append(sector.get_obs_parameters('image_bda_maxinterval'))
+            image_bda_timebase.append(self.field.image_bda_timebase)
             sector_starttime = []
             sector_ntimes = []
             for obs in self.field.observations:
@@ -195,7 +201,8 @@ class Image(Operation):
                 join_polarizations = True
 
         # Set the DP3 steps and applycal steps depending on whether solutions
-        # should be preapplied before imaging
+        # should be preapplied before imaging and on whether baseline-dependent
+        # averaging is activated (and supported) or not
         fulljones_h5parm = None
         input_normalize_h5parm = None
         prepare_data_applycal_steps = None
@@ -204,11 +211,11 @@ class Image(Operation):
                                not self.apply_normalizations):
             # No solutions should be preapplied, so define steps
             # without an applycal step
-            prepare_data_steps = '[applybeam,shift,avg]'
+            prepare_data_steps = ['applybeam', 'shift', 'avg']
         else:
             # Solutions should be applied, so add an applycal step
             # and set various parameters as needed
-            prepare_data_steps = '[applybeam,shift,applycal,avg]'
+            prepare_data_steps = ['applybeam', 'shift', 'applycal', 'avg']
             prepare_data_applycal_steps = []
             if self.preapply_dde_solutions:
                 # Fast phases and slow amplitudes (if generated) should be
@@ -224,6 +231,10 @@ class Image(Operation):
                 input_normalize_h5parm = CWLFile(self.field.normalize_h5parm).to_json()
             if prepare_data_applycal_steps:
                 prepare_data_applycal_steps = f"[{','.join(prepare_data_applycal_steps)}]"
+        all_regular = all([obs.channels_are_regular for obs in self.field.observations])
+        if all_regular:
+            prepare_data_steps.append('bdaavg')
+        prepare_data_steps = f"[{','.join(prepare_data_steps)}]"
 
         # Set the h5parm to use to apply the DDE solutions as needed
         h5parm = CWLFile(self.field.h5parm_filename).to_json() if not self.apply_none else None
@@ -250,6 +261,8 @@ class Image(Operation):
                             'ntimes': ntimes,
                             'image_freqstep': image_freqstep,
                             'image_timestep': image_timestep,
+                            'image_maxinterval': image_bda_maxinterval,
+                            'image_timebase': image_bda_timebase,
                             'phasecenter': phasecenter,
                             'image_name': image_root,
                             'pol': self.image_pol,
@@ -384,29 +397,30 @@ class Image(Operation):
         for sector in self.field.imaging_sectors:
             # The output image filenames
             image_root = os.path.join(self.pipeline_working_dir, sector.name)
+            image_extension = 'fits.fz' if self.field.compress_images else 'fits'
             if self.field.image_pol.lower() == 'i':
                 # When making only Stokes I images, WSClean does not include the
                 # Stokes parameter name in the output filenames
-                setattr(sector, "I_image_file_true_sky", f'{image_root}-MFS-image-pb.fits')
-                setattr(sector, "I_image_file_apparent_sky", f'{image_root}-MFS-image.fits')
-                setattr(sector, "I_model_file_true_sky", f'{image_root}-MFS-model-pb.fits')
-                setattr(sector, "I_residual_file_apparent_sky", f'{image_root}-MFS-residual.fits')
+                setattr(sector, "I_image_file_true_sky", f'{image_root}-MFS-image-pb.{image_extension}')
+                setattr(sector, "I_image_file_apparent_sky", f'{image_root}-MFS-image.{image_extension}')
+                setattr(sector, "I_model_file_true_sky", f'{image_root}-MFS-model-pb.{image_extension}')
+                setattr(sector, "I_residual_file_apparent_sky", f'{image_root}-MFS-residual.{image_extension}')
 
                 if self.field.save_supplementary_images:
-                    setattr(sector, "I_dirty_file_apparent_sky", f'{image_root}-MFS-dirty.fits')
+                    setattr(sector, "I_dirty_file_apparent_sky", f'{image_root}-MFS-dirty.{image_extension}')
                     setattr(sector, "mask_filename", f'{image_root}.mask.fits')
             else:
                 # When making all Stokes images, WSClean includes the Stokes parameter
                 # name in the output filenames
                 for pol in self.field.image_pol:
                     polup = pol.upper()
-                    setattr(sector, f"{polup}_image_file_true_sky", f'{image_root}-MFS-{polup}-image-pb.fits')
-                    setattr(sector, f"{polup}_image_file_apparent_sky", f'{image_root}-MFS-{polup}-image.fits')
-                    setattr(sector, f"{polup}_model_file_true_sky", f'{image_root}-MFS-{polup}-model-pb.fits')
-                    setattr(sector, f"{polup}_residual_file_apparent_sky", f'{image_root}-MFS-{polup}-residual.fits')
+                    setattr(sector, f"{polup}_image_file_true_sky", f'{image_root}-MFS-{polup}-image-pb.{image_extension}')
+                    setattr(sector, f"{polup}_image_file_apparent_sky", f'{image_root}-MFS-{polup}-image.{image_extension}')
+                    setattr(sector, f"{polup}_model_file_true_sky", f'{image_root}-MFS-{polup}-model-pb.{image_extension}')
+                    setattr(sector, f"{polup}_residual_file_apparent_sky", f'{image_root}-MFS-{polup}-residual.{image_extension}')
 
                     if self.field.save_supplementary_images:
-                        setattr(sector, f"{polup}_dirty_file_apparent_sky", f'{image_root}-MFS-{polup}-dirty.fits')
+                        setattr(sector, f"{polup}_dirty_file_apparent_sky", f'{image_root}-MFS-{polup}-dirty.{image_extension}')
                         if not hasattr(sector, "mask_filename"):
                             setattr(sector, "mask_filename", f'{image_root}.mask.fits')
 
@@ -415,14 +429,19 @@ class Image(Operation):
             #
             # Note: these are not generated when QUV images are made (WSClean does not
             # currently support writing a source list in this mode)
+            dst_dir = os.path.join(self.parset['dir_working'], 'skymodels', 'image_{}'.format(self.index))
+            os.makedirs(dst_dir, exist_ok=True)
             if self.field.image_pol.lower() == 'i':
                 sector.image_skymodel_file_true_sky = image_root + '.true_sky.txt'
                 sector.image_skymodel_file_apparent_sky = image_root + '.apparent_sky.txt'
-                dst_dir = os.path.join(self.parset['dir_working'], 'skymodels', 'image_{}'.format(self.index))
-                os.makedirs(dst_dir, exist_ok=True)
                 for src_filename in [sector.image_skymodel_file_true_sky, sector.image_skymodel_file_apparent_sky]:
                     dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
                     shutil.copy(src_filename, dst_filename)
+
+            # The output PyBDSF source catalog
+            src_filename = image_root + '.source_catalog.fits'
+            dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
+            shutil.copy(src_filename, dst_filename)
 
             # The output ds9 region file, if made
             if self.use_facets:
@@ -458,6 +477,7 @@ class Image(Operation):
             diagnostics_file = image_root + '.image_diagnostics.json'
             with open(diagnostics_file, 'r') as f:
                 diagnostics_dict = json.load(f)
+            diagnostics_dict['cycle_number'] = self.index
             sector.diagnostics.append(diagnostics_dict)
             ratio, std = report_sector_diagnostics(sector.name, diagnostics_dict, self.log)
             if self.field.lofar_to_true_flux_std == 0.0 or std < self.field.lofar_to_true_flux_std:
@@ -531,10 +551,11 @@ class ImageInitial(Image):
 
         # The output image filenames
         image_root = os.path.join(self.pipeline_working_dir, sector.name)
-        image_names = [f'{image_root}-MFS-image-pb.fits',
-                       f'{image_root}-MFS-image.fits',
-                       f'{image_root}-MFS-model-pb.fits',
-                       f'{image_root}-MFS-residual.fits']
+        image_extension = 'fits.fz' if self.field.compress_images else 'fits'
+        image_names = [f'{image_root}-MFS-image-pb.{image_extension}',
+                       f'{image_root}-MFS-image.{image_extension}',
+                       f'{image_root}-MFS-model-pb.{image_extension}',
+                       f'{image_root}-MFS-residual.{image_extension}']
         dst_dir = os.path.join(self.parset['dir_working'], 'images', self.name)
         os.makedirs(dst_dir, exist_ok=True)
         for src_filename in image_names:
