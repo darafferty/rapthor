@@ -31,9 +31,7 @@ def main(image_filenames, output_directory='.'):
         output_image = os.path.join(output_directory, os.path.basename(input_image) + ".fz")
         cmd = ["fpack", "-O", output_image, input_image]
         try:
-            returncode = subprocess.run(cmd, check=True).returncode
-            if returncode:
-                return returncode
+            subprocess.run(cmd, check=True)
         except subprocess.CalledProcessError as err:
             print(err, file=sys.stderr)
             return err.returncode
