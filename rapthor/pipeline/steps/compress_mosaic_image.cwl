@@ -8,6 +8,8 @@ doc: |
 requirements:
   - class: InlineJavascriptRequirement
   - class: InitialWorkDirRequirement
+    listing:
+      - $(inputs.mosaic_image)
 
 inputs:
   - id: mosaic_image

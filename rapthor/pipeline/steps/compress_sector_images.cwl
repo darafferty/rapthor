@@ -11,7 +11,8 @@ doc: |
 requirements:
   - class: InlineJavascriptRequirement
   - class: InitialWorkDirRequirement
-
+    listing:
+      - $(inputs.images)
 inputs:
   - id: images
     label: Input image FITS files
