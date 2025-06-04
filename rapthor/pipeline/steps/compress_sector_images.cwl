@@ -1,6 +1,6 @@
 cwlVersion: v1.2
 class: CommandLineTool
-baseCommand: [compress_images.py]
+baseCommand: [fpack]
 label: Compress fits format image (Multiple Images)
 doc: |
   This tool compresses multiple FITS images in the FITS data format. 
@@ -10,7 +10,7 @@ doc: |
 
 requirements:
   - class: InlineJavascriptRequirement
-  - class: ShellCommandRequirement
+  - class: InitialWorkDirRequirement
 
 inputs:
   - id: images
@@ -20,8 +20,6 @@ inputs:
     type: File[]
     inputBinding:
       position: 1
-      itemSeparator: " "
-      shellQuote: false
 
   - id: name
     label: root name of input image

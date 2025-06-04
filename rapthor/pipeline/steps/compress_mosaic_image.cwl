@@ -1,12 +1,13 @@
 cwlVersion: v1.2
 class: CommandLineTool
-baseCommand: [compress_images.py]
+baseCommand: [fpack]
 label: Compress fits format image (Single Image)
 doc: |
   This tool compresses a single FITS image in the FITS data format.
 
 requirements:
   - class: InlineJavascriptRequirement
+  - class: InitialWorkDirRequirement
 
 inputs:
   - id: mosaic_image

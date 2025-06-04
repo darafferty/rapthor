@@ -68,7 +68,6 @@ script-files = [
     "rapthor/scripts/blank_image.py",
     "rapthor/scripts/calculate_image_diagnostics.py",
     "rapthor/scripts/combine_h5parms.py",
-    "rapthor/scripts/compress_images.py",
     "rapthor/scripts/concat_ms.py",
     "rapthor/scripts/filter_skymodel.py",
     "rapthor/scripts/make_catalog_from_image_cube.py",
