@@ -7,6 +7,9 @@ doc: |
 
 requirements:
   - class: InlineJavascriptRequirement
+  - class: InitialWorkDirRequirement
+    listing:
+      - $(inputs.mosaic_image)
 
 inputs:
   - id: mosaic_image
@@ -21,7 +24,7 @@ outputs:
   - id: compressed_mosaic_image
     type: File
     outputBinding:
-      glob: $(inputs.mosaic_image).fz
+      glob: '*.fz'
 
 hints:
   - class: DockerRequirement
