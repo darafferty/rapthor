@@ -13,6 +13,7 @@ requirements:
   - class: InitialWorkDirRequirement
     listing:
       - $(inputs.images)
+
 inputs:
   - id: images
     label: Input image FITS files
