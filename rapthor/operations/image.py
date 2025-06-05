@@ -47,6 +47,7 @@ class Image(Operation):
         self.apply_none = False  # no solutions applied before or during imaging (ImageInitial only)
         self.make_image_cube = False  # make an image cube (for now ImageNormalize only)
         self.normalize_flux_scale = False  # derive flux scale normalizations (ImageNormalize only)
+        self.compress_images = None
 
     def set_parset_parameters(self):
         """
@@ -70,6 +71,8 @@ class Image(Operation):
                 self.preapply_dde_solutions = True
             else:
                 self.preapply_dde_solutions = False
+        if self.compress_images is None:
+            self.compress_images = self.field.compress_images
         if self.batch_system == 'slurm':
             # For some reason, setting coresMax ResourceRequirement hints does
             # not work with SLURM
@@ -88,7 +91,7 @@ class Image(Operation):
                              'preapply_dde_solutions': self.preapply_dde_solutions,
                              'max_cores': max_cores,
                              'use_mpi': self.field.use_mpi,
-                             'compress_images': self.field.compress_images}
+                             'compress_images': self.compress_images}
 
     def set_input_parameters(self):
         """
@@ -397,7 +400,7 @@ class Image(Operation):
         for sector in self.field.imaging_sectors:
             # The output image filenames
             image_root = os.path.join(self.pipeline_working_dir, sector.name)
-            image_extension = 'fits.fz' if self.field.compress_images else 'fits'
+            image_extension = 'fits.fz' if self.compress_images else 'fits'
             if self.field.image_pol.lower() == 'i':
                 # When making only Stokes I images, WSClean does not include the
                 # Stokes parameter name in the output filenames
@@ -510,6 +513,7 @@ class ImageInitial(Image):
         self.save_source_list = True
         self.peel_bright_sources = False
         self.image_pol = 'I'
+        self.compress_images = self.field.compress_selfcal_images
         super().set_parset_parameters()
 
     def set_input_parameters(self):
@@ -551,7 +555,7 @@ class ImageInitial(Image):
 
         # The output image filenames
         image_root = os.path.join(self.pipeline_working_dir, sector.name)
-        image_extension = 'fits.fz' if self.field.compress_images else 'fits'
+        image_extension = 'fits.fz' if self.compress_images else 'fits'
         image_names = [f'{image_root}-MFS-image-pb.{image_extension}',
                        f'{image_root}-MFS-image.{image_extension}',
                        f'{image_root}-MFS-model-pb.{image_extension}',
@@ -613,6 +617,7 @@ class ImageNormalize(Image):
         self.peel_bright_sources = False
         self.make_image_cube = True
         self.normalize_flux_scale = True
+        self.compress_images = self.field.compress_selfcal_images
         if self.field.h5parm_filename is None:
             # No calibration has yet been done, so set various flags as needed
             self.use_facets = False

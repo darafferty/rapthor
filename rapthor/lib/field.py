@@ -126,9 +126,6 @@ class Field(object):
         self.field_image_filename_prev = None
         self.field_image_filename = None
 
-        # Set whether to compress images
-        self.compress_images = self.compress_final_images
-
         # Scan MS files to get observation info
         self.scan_observations()
 
