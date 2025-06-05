@@ -11,6 +11,7 @@ import pytest
 from rapthor.lib.parset import Parset
 from rapthor.operations.image import Image
 from rapthor.lib.cwlrunner import create_cwl_runner
+import types
 
 
 class Sector:
@@ -95,7 +96,7 @@ class Field:
         self.h5parm_filename = parset["input_h5parm"]
         self.image_pol = "I"
         self.imaging_sectors = [Sector("sector_1", field=self)]
-        self.observations = []
+        self.observations = [types.SimpleNamespace(numsamples=10, timepersample=8.0)]
         self.peel_bright_sources = False
         self.ra = 0
 
