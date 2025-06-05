@@ -1472,7 +1472,7 @@ class Field(object):
                     solset = solutions.getSolset('coefficients000')
                     if 'phase_coefficients' not in solset.getSoltabNames():
                         raise ValueError('The screen solutions file "{0}" must '
-                                        'have a phase_coefficients soltab.'.format(self.h5parm_filename))
+                                         'have a phase_coefficients soltab.'.format(self.h5parm_filename))
                     if 'amplitude1_coefficients' in solset.getSoltabNames():
                         self.apply_amplitudes = True
                     else:
@@ -1481,15 +1481,15 @@ class Field(object):
                     solset = solutions.getSolset('sol000')
                     if 'phase000' not in solset.getSoltabNames():
                         raise ValueError('The direction-dependent solutions file "{0}" must '
-                                        'have a phase000 soltab.'.format(self.h5parm_filename))
+                                         'have a phase000 soltab.'.format(self.h5parm_filename))
                     if 'amplitude000' in solset.getSoltabNames():
                         self.apply_amplitudes = True
                     else:
                         self.apply_amplitudes = False
                 else:
                     raise ValueError('The direction-dependent solutions file "{0}" must '
-                                    'have the solutions stored in the sol000 or coefficients000'
-                                    'solset.'.format(self.h5parm_filename))
+                                     'have the solutions stored in the sol000 or coefficients000'
+                                     'solset.'.format(self.h5parm_filename))
         else:
             self.apply_amplitudes = False
 

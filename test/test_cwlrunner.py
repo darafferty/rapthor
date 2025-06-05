@@ -100,7 +100,8 @@ class Field:
             types.SimpleNamespace(
                 numsamples=1,
                 timepersample=1,
-                starttime=1
+                starttime=1,
+                channels_are_regular=True
             )
         ]
         self.peel_bright_sources = False
