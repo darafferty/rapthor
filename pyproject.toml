@@ -108,5 +108,12 @@ deps = [
     "pytest-cov",
 ]
 commands = [
-    ["python", "-m", "pytest", "--cov-report", "term", "--cov-report", "xml", "--cov-report", "html", "--cov=rapthor", "test/{posargs}"]
+    [
+        "python", "-m", "pytest", 
+        "--cov-report", "term", 
+        "--cov-report", "xml", 
+        "--cov-report", "html", 
+        "--cov=rapthor", 
+        "tests/{posargs}"
+    ]
 ]
