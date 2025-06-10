@@ -967,17 +967,23 @@ def transfer_patches(from_skymodel, to_skymodel, patch_dict=None):
         ind_ss = np.argsort(names_from)
         ind_ts = np.argsort(names_to)
         to_skymodel.table['Patch'][ind_ts] = from_skymodel.table['Patch'][ind_ss]
-        to_skymodel._updateGroups()
     elif set(names_to).issubset(set(names_from)):
         # The to_skymodel is a subset of from_skymodel, so use slower matching algorithm
         for ind_ts, name in enumerate(names_to):
             ind_ss = names_from.index(name)
+            to_skymodel.table['Patch'][ind_ts] = from_skymodel.table['Patch'][ind_ss]
+    elif set(names_from).issubset(set(names_to)):
+        # The from_skymodel is a subset of to_skymodel, so use slower matching algorithm,
+        # leaving non-matching sources in their initial patches
+        for ind_ss, name in enumerate(names_from):
+            ind_ts = names_to.index(name)
             to_skymodel.table['Patch'][ind_ts] = from_skymodel.table['Patch'][ind_ss]
     else:
         # Skymodels don't match, raise error
         raise ValueError('Cannot transfer patches since from_skymodel does not contain '
                          'all the sources in to_skymodel')
 
+    to_skymodel._updateGroups()
     if patch_dict is not None:
         to_skymodel.setPatchPositions(patchDict=patch_dict)
 

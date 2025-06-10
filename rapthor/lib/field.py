@@ -687,12 +687,10 @@ class Field(object):
                     f"Patch == [{','.join(source_skymodel.getPatchNames())}]"
                 )
 
-                # Tessellate the true-sky model
-                if len(source_skymodel) == len(skymodel_true_sky):
-                    # Transfer patches to the true-flux sky model (source names are identical
-                    # in both, but the order may be different)
-                    misc.transfer_patches(source_skymodel, skymodel_true_sky, patch_dict=patch_dict)
-                else:
+                # Transfer patches to the true-flux sky model
+                misc.transfer_patches(source_skymodel, skymodel_true_sky, patch_dict=patch_dict)
+                if len(source_skymodel) != len(skymodel_true_sky):
+                    # Tessellate the true-sky model using the new patches
                     skymodel_true_sky.group('voronoi', patchNames=calibrator_names)
 
                 # Rename the patches so that the numbering starts at high Dec, high RA
