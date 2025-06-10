@@ -28,8 +28,7 @@ def main(skymodel, h5parm_file, solset_name='sol000'):
     # positions to get the adjusted values
     skymod = lsmtool.load(skymodel)
     source_dict = skymod.getPatchPositions()
-    parms = h5parm(h5parm_file, readonly=False)
-    try:
+    with h5parm(h5parm_file, readonly=False) as parms:
         solset = parms.getSolset(solset_name)
         soltab = solset.getSoltabs()[0]  # take the first soltab (all have the same directions)
         if not len(source_dict) == len(soltab.dir):
@@ -61,9 +60,6 @@ def main(skymodel, h5parm_file, solset_name='sol000'):
         # Add the adjusted values to the new table
         sourceTable = solset.obj._f_get_child('source')
         sourceTable.append(list(zip(*(soltab.dir, vals))))
-    finally:
-        # Close the h5parm file
-        parms.close()
 
 
 if __name__ == '__main__':

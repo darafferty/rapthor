@@ -925,15 +925,14 @@ def get_flagged_solution_fraction(h5file, solsetname='sol000'):
     flagged_fraction : float
         Flagged fraction
     """
-    h5parm_obj = h5parm(h5file)
-    solset = h5parm_obj.getSolset(solsetname)
-    num_flagged = 0
-    num_all = 0
-    for soltab in solset.getSoltabs():
-        num_flagged += np.count_nonzero(np.logical_or(~np.isfinite(soltab.val),
-                                                      soltab.weight == 0.0))
-        num_all += soltab.val.size
-    h5parm_obj.close()
+    with h5parm(h5file) as h5parm_obj:
+        solset = h5parm_obj.getSolset(solsetname)
+        num_flagged = 0
+        num_all = 0
+        for soltab in solset.getSoltabs():
+            num_flagged += np.count_nonzero(np.logical_or(~np.isfinite(soltab.val),
+                                                          soltab.weight == 0.0))
+            num_all += soltab.val.size
     if num_all == 0:
         raise ValueError('Cannot calculate flagged fraction: no solutions found in '
                          'solset {0} of h5parm file {1}'.format(solsetname, h5file))
