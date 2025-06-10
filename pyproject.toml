@@ -51,6 +51,9 @@ dependencies = [
 ]
 dynamic = ["version"]
 
+[project.optional-dependencies]
+test = ["tox"]
+
 [tool.setuptools]
 # package-data is specified below in section [tool.setuptools.package-data]
 include-package-data = false
@@ -90,8 +93,20 @@ rapthor = [
     "skymodels/*"
 ]
 
-# [tool.setuptools.dynamic]
-# version = {attr = "rapthor._version.__version__"}
-
 [tool.setuptools_scm]
 write_to = "rapthor/_version.py"
+
+
+[tool.tox]
+requires = ["tox>4"]
+envlist = ["py3{9,10,11,12,13}"]
+
+[tool.tox.env_run_base]
+deps = [
+    "mock",
+    "pytest",
+    "pytest-cov",
+]
+commands = [
+    ["python", "-m", "pytest", "--cov-report", "term", "--cov-report", "xml", "--cov-report", "html", "--cov=rapthor", "test/{posargs}"]
+]
