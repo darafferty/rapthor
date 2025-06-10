@@ -479,6 +479,8 @@ def main(h5parm1, h5parm2, outh5parm, mode, solset1='sol000', solset2='sol000',
         over XX and YY, then interpolated to time grid of 1 and summed)
         'p1p2a2_diagonal' - phases from 1 and phases and amplitudes from 2, XX and YY for
         both
+        'p1p2a2_scalar' - phases from 1 and phases and amplitudes from 2, scalar for both
+        'separate' - no sum or multiplication; solutions are copied as separate solsets
     solset1 : str, optional
         Name of solset for h5parm1
     solset2 : str, optional
