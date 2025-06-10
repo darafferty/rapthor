@@ -22,8 +22,8 @@ class TestField(unittest.TestCase):
     @classmethod
     def setUpClass(self):
         cwd = os.getcwd()
-        if not cwd.endswith('test'):
-            raise SystemExit('Please run this test from the test directory!')
+        if not cwd.endswith('tests'):
+            raise SystemExit('Please run this test from the tests directory!')
         testmsname = 'resources/test.ms'
         if (not os.path.exists(testmsname)):
             print('downloading ms file')
