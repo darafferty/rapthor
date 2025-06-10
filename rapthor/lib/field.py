@@ -673,7 +673,7 @@ class Field(object):
                                        'for problems, or lower the target flux density and/or increase '
                                        'the maximum calibrator distance.'.format(index))
 
-                # Tesselate the model
+                # Tessellate the model
                 calibrator_names = calibrator_names[np.where(fluxes >= target_flux)]
                 source_skymodel.group('voronoi', patchNames=calibrator_names)
 
@@ -687,9 +687,13 @@ class Field(object):
                     f"Patch == [{','.join(source_skymodel.getPatchNames())}]"
                 )
 
-                # Transfer patches to the true-flux sky model (source names are identical
-                # in both, but the order may be different)
-                misc.transfer_patches(source_skymodel, skymodel_true_sky, patch_dict=patch_dict)
+                # Tessellate the true-sky model
+                if len(source_skymodel) == len(skymodel_true_sky):
+                    # Transfer patches to the true-flux sky model (source names are identical
+                    # in both, but the order may be different)
+                    misc.transfer_patches(source_skymodel, skymodel_true_sky, patch_dict=patch_dict)
+                else:
+                    skymodel_true_sky.group('voronoi', patchNames=calibrator_names)
 
                 # Rename the patches so that the numbering starts at high Dec, high RA
                 # and increases as RA and Dec decrease (i.e., from top-left to bottom-right)

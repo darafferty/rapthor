@@ -35,20 +35,30 @@ inputs:
       - string
     inputBinding:
       position: 3
+  - id: apparent_sky_skymodel
+    label: Non-PB-corrected model
+    doc: |
+      The filename of the input non-primary-beam-corrected sky model.
+    type:
+      - "null"
+      - File
+      - string
+    inputBinding:
+      position: 4
   - id: output_root
     label: Output root name
     doc: |
       The root of the filenames of the output filtered sky models.
     type: string
     inputBinding:
-      position: 4
+      position: 5
   - id: vertices_file
     label: Filename of vertices file
     doc: |
       The filename of the file containing sector vertices.
     type: File
     inputBinding:
-      position: 5
+      position: 6
   - id: beamMS
     label: Filenames of MS files for beam
     doc: |
@@ -56,7 +66,7 @@ inputs:
       should have the original phase center of the observation.
     type: Directory[]
     inputBinding:
-      position: 6
+      position: 7
       itemSeparator: ","
   - id: bright_true_sky_skymodel
     label: Bright-source PB-corrected model
