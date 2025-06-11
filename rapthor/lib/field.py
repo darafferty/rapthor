@@ -690,8 +690,10 @@ class Field(object):
                 # Transfer patches to the true-flux sky model
                 misc.transfer_patches(source_skymodel, skymodel_true_sky, patch_dict=patch_dict)
                 if len(source_skymodel) != len(skymodel_true_sky):
-                    # Tessellate the true-sky model using the new patches
+                    # Tessellate the true-sky model using the new patches and update the
+                    # positions as done for source_skymodel above
                     skymodel_true_sky.group('voronoi', patchNames=calibrator_names)
+                    skymodel_true_sky.setPatchPositions(patchDict=patch_dict)
 
                 # Rename the patches so that the numbering starts at high Dec, high RA
                 # and increases as RA and Dec decrease (i.e., from top-left to bottom-right)
