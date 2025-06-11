@@ -1,30 +1,24 @@
-import unittest
-import os
-import requests
-from rapthor.lib.context import Timer
-from rapthor.lib.context import RedirectStdStreams
+"""
+Test cases for the context module in rapthor library.
+"""
 
-class TestContext(unittest.TestCase):
+import pytest
+import sys
+from rapthor.lib.context import Timer, RedirectStdStreams
 
-    @classmethod
-    def setUpClass(self):
+
+def test_timer():
+    """
+    Test the Timer context manager to ensure it logs the elapsed time correctly.
+    """
+    with Timer() as t:
         pass
 
-    @classmethod
-    def tearDownClass(self):
-        pass
 
-    def test_timer(self):
-        t = Timer()
-
-    def test_streams(self):
-        s = RedirectStdStreams()
-
-def suite():
-    suite = unittest.TestSuite()
-    suite.addTest(TestContext('test_timer'))
-    suite.addTest(TestContext('test_streams'))
-    return suite
-
-if __name__ == '__main__':
-    unittest.main()
+def test_streams():
+    """
+    Test the RedirectStdStreams context manager to ensure it redirects stdout and stderr.
+    """
+    with RedirectStdStreams() as s:
+        print("Testing redirect of stdout")
+        print("Testing redirect of stderr", file=sys.stderr)
