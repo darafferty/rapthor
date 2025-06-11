@@ -8,6 +8,8 @@ import subprocess
 
 import rapthor.lib.operation
 
+pytestmark = pytest.mark.slow
+
 
 def generate_and_validate(tmp_path, operation, parms, templ, sub_templ=None):
     """
