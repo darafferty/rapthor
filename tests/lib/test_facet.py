@@ -1,4 +1,7 @@
-import unittest
+"""
+Test cases for the rapthor.lib.facet module.
+"""
+import pytest
 from rapthor.lib import facet
 import numpy as np
 import os
