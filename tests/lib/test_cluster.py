@@ -1,9 +1,8 @@
 """
-Test cases for the cluster module.
+Test cases for the cluster module in `rapthor/lib`.
 """
 
 import pytest
-
 from rapthor.lib.cluster import get_available_memory, get_chunk_size
 
 

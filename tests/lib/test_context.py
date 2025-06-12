@@ -1,5 +1,5 @@
 """
-Test cases for the context module in rapthor library.
+Test cases for the context module in `rapthor/lib`.
 """
 
 import pytest
