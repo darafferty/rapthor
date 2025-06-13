@@ -1,8 +1,11 @@
 """
 Test cases for the `rapthor.lib.modifystate` module.
 """
+
 from pathlib import Path
+
 from rapthor.modifystate import run
+
 
 def test_run():
     """
