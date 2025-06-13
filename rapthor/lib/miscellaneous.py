@@ -980,8 +980,8 @@ def transfer_patches(from_skymodel, to_skymodel, patch_dict=None):
             to_skymodel.table['Patch'][ind_ts] = from_skymodel.table['Patch'][ind_ss]
     else:
         # Skymodels don't match, raise error
-        raise ValueError('Cannot transfer patches since from_skymodel does not contain '
-                         'all the sources in to_skymodel')
+        raise ValueError('Cannot transfer patches since neither sky model is a '
+                         'subset of the other.')
 
     to_skymodel._updateGroups()
     if patch_dict is not None:
