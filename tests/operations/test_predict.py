@@ -53,20 +53,6 @@ class TestPredictDD:
         pass
 
 
-class TestPredictNC:
-    def test_set_parset_parameters(self, predict_nc):
-        # predict_nc.set_parset_parameters()
-        pass
-
-    def test_set_input_parameters(self, predict_nc):
-        # predict_nc.set_input_parameters()
-        pass
-
-    def test_finalize(self, predict_nc):
-        # predict_nc.finalize()
-        pass
-
-
 class TestPredictDI:
     def test_set_parset_parameters(self, predict_di):
         # predict_di.set_parset_parameters()
@@ -78,4 +64,18 @@ class TestPredictDI:
 
     def test_finalize(self, predict_di):
         # predict_di.finalize()
+        pass
+
+
+class TestPredictNC:
+    def test_set_parset_parameters(self, predict_nc):
+        # predict_nc.set_parset_parameters()
+        pass
+
+    def test_set_input_parameters(self, predict_nc):
+        # predict_nc.set_input_parameters()
+        pass
+
+    def test_finalize(self, predict_nc):
+        # predict_nc.finalize()
         pass
