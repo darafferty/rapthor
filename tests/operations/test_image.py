@@ -3,6 +3,12 @@ Test cases for the `rapthor.operations.image` module.
 """
 
 import pytest
+from rapthor.operations.image import (
+    Image,
+    ImageInitial,
+    ImageNormalize,
+    report_sector_diagnostics,
+)
 
 
 @pytest.fixture
