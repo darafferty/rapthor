@@ -673,7 +673,7 @@ class Field(object):
                                        'for problems, or lower the target flux density and/or increase '
                                        'the maximum calibrator distance.'.format(index))
 
-                # Tesselate the model
+                # Tessellate the model
                 calibrator_names = calibrator_names[np.where(fluxes >= target_flux)]
                 source_skymodel.group('voronoi', patchNames=calibrator_names)
 
@@ -687,9 +687,13 @@ class Field(object):
                     f"Patch == [{','.join(source_skymodel.getPatchNames())}]"
                 )
 
-                # Transfer patches to the true-flux sky model (source names are identical
-                # in both, but the order may be different)
+                # Transfer patches to the true-flux sky model
                 misc.transfer_patches(source_skymodel, skymodel_true_sky, patch_dict=patch_dict)
+                if len(source_skymodel) != len(skymodel_true_sky):
+                    # Tessellate the true-sky model using the new patches and update the
+                    # positions as done for source_skymodel above
+                    skymodel_true_sky.group('voronoi', patchNames=calibrator_names)
+                    skymodel_true_sky.setPatchPositions(patchDict=patch_dict)
 
                 # Rename the patches so that the numbering starts at high Dec, high RA
                 # and increases as RA and Dec decrease (i.e., from top-left to bottom-right)
@@ -835,25 +839,28 @@ class Field(object):
             for i, (sm, sn) in enumerate(zip(sector_skymodels_true_sky, sector_names)):
                 if i == 0:
                     skymodel_true_sky = lsmtool.load(str(sm), beamMS=self.beam_ms_filename)
-                    patchNames = skymodel_true_sky.getColValues('Patch')
-                    new_patchNames = np.array(['{0}_{1}'.format(p, sn) for p in patchNames], dtype='U100')
-                    skymodel_true_sky.setColValues('Patch', new_patchNames)
+                    if skymodel_true_sky.hasPatches:
+                        patchNames = skymodel_true_sky.getColValues('Patch')
+                        new_patchNames = np.array(['{0}_{1}'.format(p, sn) for p in patchNames], dtype='U100')
+                        skymodel_true_sky.setColValues('Patch', new_patchNames)
                     sourceNames = skymodel_true_sky.getColValues('Name')
                     new_sourceNames = np.array(['{0}_{1}'.format(s, sn) for s in sourceNames], dtype='U100')
                     skymodel_true_sky.setColValues('Name', new_sourceNames)
                 else:
                     skymodel2 = lsmtool.load(str(sm))
-                    patchNames = skymodel2.getColValues('Patch')
-                    new_patchNames = np.array(['{0}_{1}'.format(p, sn) for p in patchNames], dtype='U100')
-                    skymodel2.setColValues('Patch', new_patchNames)
+                    if skymodel2.hasPatches:
+                        patchNames = skymodel2.getColValues('Patch')
+                        new_patchNames = np.array(['{0}_{1}'.format(p, sn) for p in patchNames], dtype='U100')
+                        skymodel2.setColValues('Patch', new_patchNames)
                     sourceNames = skymodel2.getColValues('Name')
                     new_sourceNames = np.array(['{0}_{1}'.format(s, sn) for s in sourceNames], dtype='U100')
                     skymodel2.setColValues('Name', new_sourceNames)
                     table1 = skymodel_true_sky.table.filled()
                     table2 = skymodel2.table.filled()
                     skymodel_true_sky.table = vstack([table1, table2], metadata_conflicts='silent')
-            skymodel_true_sky._updateGroups()
-            skymodel_true_sky.setPatchPositions(method='wmean')
+            if skymodel_true_sky.hasPatches:
+                skymodel_true_sky._updateGroups()
+                skymodel_true_sky.setPatchPositions(method='wmean')
 
             if sector_skymodels_apparent_sky is not None:
                 for i, (sm, sn) in enumerate(zip(sector_skymodels_apparent_sky, sector_names)):

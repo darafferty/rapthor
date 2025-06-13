@@ -971,6 +971,12 @@ steps:
 {% else %}
         valueFrom: 'none'
 {% endif %}
+      - id: apparent_sky_skymodel
+{% if save_source_list %}
+        source: image/skymodel_nonpb
+{% else %}
+        valueFrom: 'none'
+{% endif %}
       - id: output_root
         source: image_name
       - id: vertices_file

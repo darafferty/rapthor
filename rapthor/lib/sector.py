@@ -370,7 +370,7 @@ class Sector(object):
                 # determination below
                 source_skymodel = []
             else:
-                in_sector = np.array([all_source_names.index(sn) for sn in source_names])
+                in_sector = np.array([all_source_names.index(sn) for sn in source_names if sn in all_source_names])
                 source_skymodel = self.field.source_skymodel.copy()
                 source_skymodel.select(in_sector)
             if len(source_skymodel) > 0:
