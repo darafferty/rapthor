@@ -23,11 +23,10 @@ import tempfile
 iers.conf.auto_download = False
 
 
-def main(flat_noise_image, true_sky_image, true_sky_skymodel, output_root,
-         vertices_file, beamMS, bright_true_sky_skymodel=None, threshisl=5.0,
-         threshpix=7.5, rmsbox=(150, 50), rmsbox_bright=(35, 7),
-         adaptive_thresh=75.0, filter_by_mask=True, remove_negative=False,
-         ncores=8):
+def main(flat_noise_image, true_sky_image, true_sky_skymodel, apparent_sky_skymodel,
+         output_root, vertices_file, beamMS, bright_true_sky_skymodel=None, threshisl=5.0,
+         threshpix=7.5, rmsbox=(150, 50), rmsbox_bright=(35, 7), adaptive_thresh=75.0,
+         filter_by_mask=True, ncores=8):
     """
     Filter the input sky model
 
@@ -50,6 +49,11 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, output_root,
         Note:
             if this file does not exist, steps related to the input sky model are skipped
             but all other processing is still done
+    apparent_sky_skymodel : str
+        Filename of input makesourcedb sky model, without primary-beam correction.
+        Note:
+            if this file does not exist, it is generated from true_sky_skymodel by
+            applying the beam attenuation
     output_root : str
         Root of filenames of output makesourcedb sky models, images, and image diagnostics
         files. Output filenames will be:
@@ -81,8 +85,6 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, output_root,
     filter_by_mask : bool, optional
         If True, filter the input sky model by the PyBDSF-derived mask,
         removing sources that lie in unmasked regions
-    remove_negative : bool, optional
-        If True, remove negative sky model components
     ncores : int, optional
         Maximum number of cores to use
     """
@@ -194,17 +196,31 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, output_root,
 
         # Do final filtering and write out the sky models
         if not emptysky:
-            if remove_negative:
-                # Keep only those sources with positive flux densities
-                s_in.select('I > 0.0')
-            if s_in and filter_by_mask:
-                # Keep only those sources in PyBDSF masked regions
-                s_in.select('{} == True'.format(maskfile))
-            if s_in:
-                # Write out apparent- and true-sky models
-                s_in.group(maskfile)  # group the sky model by mask islands
+            # Make a filtered version for later calibrator determination
+            s_in_filtered = s_in.copy()
+            s_in_filtered.select('{} == True'.format(maskfile))
+
+            # Write out models
+            if s_in_filtered:
+                # Write out the apparent-sky model after grouping
+                s_in_filtered.group(maskfile)  # group the sky model by mask islands
+                if os.path.exists(apparent_sky_skymodel):
+                    s_in_apparent = lsmtool.load(apparent_sky_skymodel)
+
+                    # Match the filtering and grouping of the filtered model
+                    matches = np.isin(s_in_apparent.getColValues('Name'), s_in_filtered.getColValues('Name'))
+                    s_in_apparent.select(matches)
+                    misc.transfer_patches(s_in_filtered, s_in_apparent, patch_dict=s_in_filtered.getPatchPositions())
+                    s_in_apparent.write(output_root+'.apparent_sky.txt', clobber=True, applyBeam=False)
+                else:
+                    # Apparent-sky model not available, so attenuate the true-sky one by
+                    # applying the beam
+                    s_in_filtered.write(output_root+'.apparent_sky.txt', clobber=True, applyBeam=True)
+
+                # Write out the true-sky model
+                if filter_by_mask:
+                    s_in = s_in_filtered
                 s_in.write(output_root+'.true_sky.txt', clobber=True)
-                s_in.write(output_root+'.apparent_sky.txt', clobber=True, applyBeam=True)
             else:
                 emptysky = True
     else:
@@ -244,6 +260,7 @@ if __name__ == '__main__':
     parser.add_argument('flat_noise_image', help='Filename of input flat-noise (non-primary-beam-corrected) image')
     parser.add_argument('true_sky_image', help='Filename of input true-sky (primary-beam-corrected) image')
     parser.add_argument('true_sky_skymodel', help='Filename of input true-sky sky model')
+    parser.add_argument('apparent_sky_skymodel', help='Filename of input apparent-sky sky model')
     parser.add_argument('output_root', help='Root of output files')
     parser.add_argument('vertices_file', help='Filename of vertices file')
     parser.add_argument('beamMS', help='MS filename(s) to use for beam attenuation')
@@ -260,9 +277,10 @@ if __name__ == '__main__':
     parser.add_argument('--ncores', help='Max number of cores to use', type=int, default=8)
 
     args = parser.parse_args()
-    main(args.flat_noise_image, args.true_sky_image, args.true_sky_skymodel, args.output_root,
-         args.vertices_file, misc.string2list(args.beamMS),
-         bright_true_sky_skymodel=args.bright_true_sky_skymodel,
-         threshisl=args.threshisl, threshpix=args.threshpix, rmsbox=args.rmsbox,
-         rmsbox_bright=args.rmsbox_bright, adaptive_thresh=args.adaptive_thresh,
-         filter_by_mask=args.filter_by_mask, ncores=args.ncores)
+    main(args.flat_noise_image, args.true_sky_image, args.true_sky_skymodel,
+         args.apparent_sky_skymodel, args.output_root, args.vertices_file,
+         misc.string2list(args.beamMS),
+         bright_true_sky_skymodel=args.bright_true_sky_skymodel, threshisl=args.threshisl,
+         threshpix=args.threshpix, rmsbox=args.rmsbox, rmsbox_bright=args.rmsbox_bright,
+         adaptive_thresh=args.adaptive_thresh, filter_by_mask=args.filter_by_mask,
+         ncores=args.ncores)
