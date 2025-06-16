@@ -206,15 +206,10 @@ class CalibrateDD(Operation):
         else:
             dp3_steps_slow_separate = ['solve']
         if self.field.use_image_based_predict:
-            # Add a predict step to the beginning and set the solve step's
-            # sky model to None to prevent prediction during the solve
+            # Add a predict step to the beginning
             dp3_steps_fast.insert(0, 'predict')
             dp3_steps_slow_joint.insert(0, 'predict')
             dp3_steps_slow_separate.insert(0, 'predict')
-            ddecal_solve_step_skymodel_file = None
-        else:
-            # Set the solve step's sky model to the calibration model
-            ddecal_solve_step_skymodel_file = CWLFile(calibration_skymodel_file).to_json()
 
         # Set the DDECal applycal steps and input H5parm files depending on what
         # solutions need to be applied
@@ -282,7 +277,6 @@ class CalibrateDD(Operation):
                             'output_slow_h5parm_joint': output_slow_h5parm_joint,
                             'output_slow_h5parm_separate': output_slow_h5parm_separate,
                             'calibration_skymodel_file': CWLFile(calibration_skymodel_file).to_json(),
-                            'ddecal_solve_step_skymodel_file': ddecal_solve_step_skymodel_file,
                             'model_image_root': model_image_root,
                             'model_image_ra_dec': model_image_ra_dec,
                             'model_image_imsize': model_image_imsize,

@@ -3,10 +3,11 @@
 Script to make a ds9 region file for use with WSClean and faceting
 """
 from argparse import ArgumentParser, RawTextHelpFormatter
+import ast
 from rapthor.lib.facet import make_ds9_region_file, read_skymodel
 
 
-def main(skymodel, ra_mid, dec_mid, width_ra, width_dec, region_file):
+def main(skymodel, ra_mid, dec_mid, width_ra, width_dec, region_file, enclose_names=True):
     """
     Make a ds9 region file
 
@@ -29,7 +30,7 @@ def main(skymodel, ra_mid, dec_mid, width_ra, width_dec, region_file):
     facets = read_skymodel(skymodel, ra_mid, dec_mid, width_ra, width_dec)
 
     # Make the ds9 region file
-    make_ds9_region_file(facets, region_file)
+    make_ds9_region_file(facets, region_file, enclose_names=enclose_names)
 
 
 if __name__ == '__main__':
@@ -42,5 +43,7 @@ if __name__ == '__main__':
     parser.add_argument('width_ra', help='Width in RA in degrees', type=float, default=None)
     parser.add_argument('width_dec', help='Width in Dec in degrees', type=float, default=None)
     parser.add_argument('region_file', help='Filename of output ds9 region file', type=str, default=None)
+    parser.add_argument('--enclose_names', help='Enclose names in curly braces', type=ast.literal_eval, default=True)
     args = parser.parse_args()
-    main(args.skymodel, args.ra_mid, args.dec_mid, args.width_ra, args.width_dec, args.region_file)
+    main(args.skymodel, args.ra_mid, args.dec_mid, args.width_ra, args.width_dec,
+         args.region_file, enclose_names=args.enclose_names)

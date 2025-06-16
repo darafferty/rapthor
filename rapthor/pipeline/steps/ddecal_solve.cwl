@@ -455,6 +455,15 @@ inputs:
       prefix: predict.images=
       separate: False
 
+  - id: reuse_model
+    label: Reuse model list
+    doc: |
+      A list of model data columns that will be reused from the predict step.
+    type: string?
+    inputBinding:
+      prefix: solve.reusemodel=
+      separate: False
+
   - id: numthreads
     label: Number of threads
     doc: |

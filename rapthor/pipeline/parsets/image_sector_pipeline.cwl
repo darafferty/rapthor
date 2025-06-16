@@ -697,6 +697,8 @@ steps:
         source: width_dec
       - id: outfile
         source: facet_region_file
+      - id: enclose_names
+        valueFrom: 'True'
     out:
       - id: region_file
 {% endif %}

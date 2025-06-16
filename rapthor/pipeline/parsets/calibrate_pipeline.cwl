@@ -110,13 +110,6 @@ inputs:
       in DDECal solve steps (length = 1).
     type: File
 
-  - id: ddecal_solve_step_skymodel_file
-    label: Filename of solve sky model
-    doc: |
-      The filename of the input sky model text file used during DDECal solve steps
-      (length = 1).
-    type: File?
-
 {% if use_image_based_predict %}
   - id: num_spectral_terms
     label: Number of spectral terms
@@ -773,6 +766,8 @@ steps:
         source: facet_region_width_dec
       - id: outfile
         source: facet_region_file
+      - id: enclose_names
+        valueFrom: 'False'
     out:
       - id: region_file
 {% endif %}
@@ -821,8 +816,6 @@ steps:
         source: calibrator_patch_names
       - id: solutions_per_direction
         source: solutions_per_direction_fast
-      - id: sourcedb
-        source: ddecal_solve_step_skymodel_file
       - id: llssolver
         source: llssolver
       - id: maxiter
@@ -872,6 +865,11 @@ steps:
         source: make_region_file/region_file
       - id: predict_images
         source: draw_model/model_images
+      - id: reuse_model
+        valueFrom: '[predict.*]'
+{% else %}
+      - id: sourcedb
+        source: calibration_skymodel_file
 {% endif %}
       - id: numthreads
         source: max_threads
@@ -967,8 +965,6 @@ steps:
         source: calibrator_patch_names
       - id: solutions_per_direction
         source: solutions_per_direction_slow_joint
-      - id: sourcedb
-        source: ddecal_solve_step_skymodel_file
       - id: llssolver
         source: llssolver
       - id: maxiter
@@ -1010,6 +1006,11 @@ steps:
         source: make_region_file/region_file
       - id: predict_images
         source: draw_model/model_images
+      - id: reuse_model
+        valueFrom: '[predict.*]'
+{% else %}
+      - id: sourcedb
+        source: calibration_skymodel_file
 {% endif %}
       - id: numthreads
         source: max_threads
@@ -1140,8 +1141,6 @@ steps:
         source: calibrator_patch_names
       - id: solutions_per_direction
         source: solutions_per_direction_slow_separate
-      - id: sourcedb
-        source: ddecal_solve_step_skymodel_file
       - id: llssolver
         source: llssolver
       - id: maxiter
@@ -1185,6 +1184,11 @@ steps:
         source: make_region_file/region_file
       - id: predict_images
         source: draw_model/model_images
+      - id: reuse_model
+        valueFrom: '[predict.*]'
+{% else %}
+      - id: sourcedb
+        source: calibration_skymodel_file
 {% endif %}
       - id: numthreads
         source: max_threads
