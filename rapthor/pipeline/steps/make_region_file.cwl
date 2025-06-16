@@ -56,10 +56,9 @@ inputs:
     label: Enclose name in braces
     doc: |
       Enclose the patch names in curly braces.
-    type: boolean
+    type: string
     inputBinding:
       prefix: --enclose_names=
-      valueFrom: "$(self ? 'True': 'False')"
       separate: False
 
 outputs:
