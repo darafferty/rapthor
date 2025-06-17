@@ -828,6 +828,8 @@ steps:
         source: ddecal_applycal_steps_fast
       - id: normalize_h5parm
         source: normalize_h5parm
+      - id: ddecal_normalize_h5parm
+        source: normalize_h5parm
       - id: timebase
         source: bda_timebase_fast
       - id: maxinterval
@@ -977,7 +979,11 @@ steps:
         source: bda_maxinterval_slow_joint
       - id: fastphase_h5parm
         source: combine_fast_phases/outh5parm
+      - id: ddecal_fastphase_h5parm
+        source: combine_fast_phases/outh5parm
       - id: normalize_h5parm
+        source: normalize_h5parm
+      - id: ddecal_normalize_h5parm
         source: normalize_h5parm
       - id: h5parm
         source: output_slow_h5parm_joint
@@ -1151,11 +1157,17 @@ steps:
         source: nchan_separate
       - id: fastphase_h5parm
         source: combine_fast_phases/outh5parm
+      - id: ddecal_fastphase_h5parm
+        source: combine_fast_phases/outh5parm
 {% if do_joint_solve %}
       - id: slowgain_h5parm
         source: process_slow_gains_joint/outh5parm
+      - id: ddecal_slowgain_h5parm
+        source: process_slow_gains_joint/outh5parm
 {% endif %}
       - id: normalize_h5parm
+        source: normalize_h5parm
+      - id: ddecal_normalize_h5parm
         source: normalize_h5parm
       - id: h5parm
         source: output_slow_h5parm_separate

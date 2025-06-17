@@ -168,6 +168,16 @@ inputs:
       solutions. These solutions are preapplied before the solve is done.
     type: File?
     inputBinding:
+      prefix: applycal.fastphase.parmdb=
+      separate: False
+
+  - id: ddecal_fastphase_h5parm
+    label: Solution table
+    doc: |
+      The filename of the input solution table containing the fast-phase
+      solutions. These solutions are applied during the solve.
+    type: File?
+    inputBinding:
       prefix: solve.applycal.fastphase.parmdb=
       separate: False
 
@@ -178,6 +188,16 @@ inputs:
       These solutions are preapplied before the solve is done.
     type: File?
     inputBinding:
+      prefix: applycal.slowgain.parmdb=
+      separate: False
+
+  - id: ddecal_slowgain_h5parm
+    label: Solution table
+    doc: |
+      The filename of the input solution table containing the slow-gain solutions.
+      These solutions are applied during the solve.
+    type: File?
+    inputBinding:
       prefix: solve.applycal.slowgain.parmdb=
       separate: False
 
@@ -186,6 +206,16 @@ inputs:
     doc: |
       The filename of the h5parm file with the flux-scale normalization corrections.
       These solutions are preapplied before the solve is done.
+    type: File?
+    inputBinding:
+      prefix: applycal.normalization.parmdb=
+      separate: False
+
+  - id: ddecal_normalize_h5parm
+    label: Filename of h5parm
+    doc: |
+      The filename of the h5parm file with the flux-scale normalization corrections.
+      These solutions are applied during the solve.
     type: File?
     inputBinding:
       prefix: solve.applycal.normalization.parmdb=
