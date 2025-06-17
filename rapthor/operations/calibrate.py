@@ -316,7 +316,7 @@ class CalibrateDD(Operation):
                             'applycal_steps_fast': applycal_steps_fast,
                             'dp3_steps_slow_joint': f"[{','.join(dp3_steps_slow_joint)}]",
                             'ddecal_applycal_steps_slow_joint': ddecal_applycal_steps_slow_joint,
-                            'sepatate_applycal_steps_slow_joint': applycal_steps_slow_joint,
+                            'applycal_steps_slow_joint': applycal_steps_slow_joint,
                             'dp3_steps_slow_separate': f"[{','.join(dp3_steps_slow_separate)}]",
                             'ddecal_applycal_steps_slow_separate': ddecal_applycal_steps_slow_separate,
                             'applycal_steps_slow_separate': applycal_steps_slow_separate,
