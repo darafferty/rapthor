@@ -20,11 +20,13 @@ arguments:
   - applycal.type=applycal
   - applycal.fastphase.correction=phase000
   - applycal.fastphase.solset=sol000
+  - applycal.fastphase.usemodeldata=True
   - applycal.slowgain.correction=amplitude000
   - applycal.slowgain.solset=sol000
+  - applycal.slowgain.usemodeldata=True
   - applycal.normalization.correction=amplitude000
   - applycal.normalization.solset=sol000
-  - applycal.usemodeldata=True
+  - applycal.normalization.usemodeldata=True
   - avg.type=bdaaverager
   - avg.minchannels=1
   - avg.frequencybase=0.0
