@@ -227,10 +227,16 @@ inputs:
       The list of DP3 steps to use in the fast-phase calibration (length = 1).
     type: string
 
-  - id: dp3_applycal_steps_fast
+  - id: ddecal_applycal_steps_fast
+    label: DDECal applycal steps for fast solve
+    doc: |
+      The list of DDECal applycal steps to use in the fast-phase calibration (length = 1).
+    type: string?
+
+  - id: applycal_steps_fast
     label: Applycal steps for fast solve
     doc: |
-      The list of DP3 applycal steps to use in the fast-phase calibration (length = 1).
+      The list of stand-alone applycal steps to use in the fast-phase calibration (length = 1).
     type: string?
 
   - id: normalize_h5parm
@@ -402,17 +408,31 @@ inputs:
       (length = 1).
     type: string
 
-  - id: dp3_applycal_steps_slow_joint
-    label: Applycal steps for slow joint solve
+  - id: ddecal_applycal_steps_slow_joint
+    label: DDECal applycal steps for slow joint solve
     doc: |
-      The list of DP3 applycal steps to use in the first (joint) slow-gain calibration
+      The list of DDECal applycal steps to use in the first (joint) slow-gain calibration
       (length = 1).
     type: string
 
-  - id: dp3_applycal_steps_slow_separate
+  - id: applycal_steps_slow_joint
+    label: Applycal steps for slow joint solve
+    doc: |
+      The list of stand-alone applycal steps to use in the first (joint) slow-gain calibration
+      (length = 1).
+    type: string
+
+  - id: ddecal_applycal_steps_slow_separate
+    label: DDECal applycal steps for slow separate solve
+    doc: |
+      The list of DDECal applycal steps to use in the second (separate) slow-gain calibration
+      (length = 1).
+    type: string
+
+  - id: applycal_steps_slow_separate
     label: Applycal steps for slow separate solve
     doc: |
-      The list of DP3 applycal steps to use in the second (separate) slow-gain calibration
+      The list of stand-alon applycal steps to use in the second (separate) slow-gain calibration
       (length = 1).
     type: string
 
@@ -803,7 +823,9 @@ steps:
       - id: steps
         source: dp3_steps_fast
       - id: applycal_steps
-        source: dp3_applycal_steps_fast
+        source: applycal_steps_fast
+      - id: ddecal_applycal_steps
+        source: ddecal_applycal_steps_fast
       - id: normalize_h5parm
         source: normalize_h5parm
       - id: timebase
@@ -946,7 +968,9 @@ steps:
       - id: steps
         source: dp3_steps_slow_joint
       - id: applycal_steps
-        source: dp3_applycal_steps_slow_joint
+        source:  applycal_steps_slow_joint
+      - id: ddecal_applycal_steps
+        source:  ddecal_applycal_steps_slow_joint
       - id: timebase
         source: bda_timebase_slow_joint
       - id: maxinterval
@@ -1116,7 +1140,9 @@ steps:
       - id: steps
         source: dp3_steps_slow_separate
       - id: applycal_steps
-        source: dp3_applycal_steps_slow_separate
+        source:  applycal_steps_slow_separate
+      - id: ddecal_applycal_steps
+        source:  ddecal_applycal_steps_slow_separate
       - id: timebase
         source: bda_timebase_slow_separate
       - id: maxinterval

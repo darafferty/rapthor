@@ -14,6 +14,17 @@ requirements:
 
 arguments:
   - msout=
+  - applybeam.type=applybeam
+  - applybeam.beammode=array_factor
+  - applybeam.usemodeldata=True
+  - applycal.type=applycal
+  - applycal.fastphase.correction=phase000
+  - applycal.fastphase.solset=sol000
+  - applycal.slowgain.correction=amplitude000
+  - applycal.slowgain.solset=sol000
+  - applycal.normalization.correction=amplitude000
+  - applycal.normalization.solset=sol000
+  - applycal.usemodeldata=True
   - avg.type=bdaaverager
   - avg.minchannels=1
   - avg.frequencybase=0.0
@@ -134,6 +145,16 @@ inputs:
     label: List of applycal steps
     doc: |
       The list of applycal steps to perform. Allowed steps are "fastphase",
+      "slowgain", and "normalization".
+    type: string?
+    inputBinding:
+      prefix: applycal.steps=
+      separate: False
+
+  - id: ddecal_applycal_steps
+    label: List of DDECal applycal steps
+    doc: |
+      The list of DDECal applycal steps to perform. Allowed steps are "fastphase",
       "slowgain", and "normalization".
     type: string?
     inputBinding:
