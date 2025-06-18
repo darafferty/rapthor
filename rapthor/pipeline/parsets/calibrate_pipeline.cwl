@@ -792,6 +792,23 @@ steps:
       - id: region_file
 {% endif %}
 
+{% if use_image_based_predict %}
+  - id: adjust_normalize_sources
+    label: Adjust normalize h5parm sources
+    doc: |
+      This step adjusts the source coordinates of the normailzation h5parm
+      to match those in the sky model.
+    run: {{ rapthor_pipeline_dir }}/steps/adjust_h5parm_sources.cwl
+    when: $(inputs.h5parm !== null)
+    in:
+      - id: skymodel
+        source: calibration_skymodel_file
+      - id: h5parm
+        source: normalize_h5parm
+    out:
+      - id: adjustedh5parm
+{% endif %}
+
   - id: solve_fast_phases
     label: Solve for fast phases
     doc: |
@@ -826,8 +843,13 @@ steps:
         source: applycal_steps_fast
       - id: ddecal_applycal_steps
         source: ddecal_applycal_steps_fast
+{% if use_image_based_predict %}
+      - id: normalize_h5parm
+        source: adjust_normalize_sources/adjustedh5parm
+{% else %}
       - id: normalize_h5parm
         source: normalize_h5parm
+{% endif %}
       - id: ddecal_normalize_h5parm
         source: normalize_h5parm
       - id: timebase
