@@ -1003,8 +1003,13 @@ steps:
         source: combine_fast_phases/outh5parm
       - id: ddecal_fastphase_h5parm
         source: combine_fast_phases/outh5parm
+{% if use_image_based_predict %}
+      - id: normalize_h5parm
+        source: adjust_normalize_sources/adjustedh5parm
+{% else %}
       - id: normalize_h5parm
         source: normalize_h5parm
+{% endif %}
       - id: ddecal_normalize_h5parm
         source: normalize_h5parm
       - id: h5parm
@@ -1187,8 +1192,13 @@ steps:
       - id: ddecal_slowgain_h5parm
         source: process_slow_gains_joint/outh5parm
 {% endif %}
+{% if use_image_based_predict %}
+      - id: normalize_h5parm
+        source: adjust_normalize_sources/adjustedh5parm
+{% else %}
       - id: normalize_h5parm
         source: normalize_h5parm
+{% endif %}
       - id: ddecal_normalize_h5parm
         source: normalize_h5parm
       - id: h5parm
