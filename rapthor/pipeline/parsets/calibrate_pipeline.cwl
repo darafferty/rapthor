@@ -15,6 +15,7 @@ doc: |
 requirements:
   ScatterFeatureRequirement: {}
   StepInputExpressionRequirement: {}
+  InlineJavascriptRequirement: {}
 
 {% if max_cores is not none %}
 hints:
