@@ -160,7 +160,7 @@ RUN cmake \
     -DPORTABLE=${PORTABLE} \
     -DTARGET_CPU=${TARGET_CPU} \
     -DLIBDIRAC_PREFIX=/usr/ \
-    -DMETADATA_COMPRESSION_DEFAULT=True \
+    -DMETADATA_COMPRESSION_DEFAULT=ON \
     -H/src/DP3 \
     -B/src/DP3/build \
     -G Ninja
@@ -230,7 +230,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         libboost-program-options1.74.0 \
         libboost-python1.74.0 \
         libcairomm-1.0-1v5 \
-        libcfitsio9 \
+        libcfitsio-bin \
         libfftw3-double3 \
         libfftw3-single3 \
         libgfortran5 \
