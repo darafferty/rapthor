@@ -433,7 +433,7 @@ inputs:
   - id: applycal_steps_slow_separate
     label: Applycal steps for slow separate solve
     doc: |
-      The list of stand-alon applycal steps to use in the second (separate) slow-gain calibration
+      The list of stand-alone applycal steps to use in the second (separate) slow-gain calibration
       (length = 1).
     type: string
 
@@ -797,7 +797,7 @@ steps:
   - id: adjust_normalize_sources
     label: Adjust normalize h5parm sources
     doc: |
-      This step adjusts the source coordinates of the normailzation h5parm
+      This step adjusts the source coordinates of the normalization h5parm
       to match those in the sky model.
     run: {{ rapthor_pipeline_dir }}/steps/adjust_h5parm_sources.cwl
     when: $(inputs.h5parm !== null)

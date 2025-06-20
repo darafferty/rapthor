@@ -207,7 +207,8 @@ class CalibrateDD(Operation):
             dp3_steps_slow_separate = ['solve']
         if self.field.use_image_based_predict:
             # Add a predict, applybeam, and applycal steps to the beginning
-            dp3_steps_fast = ['predict', 'applybeam'] + dp3_steps_fast
+            dp3_steps_fast = (['predict', 'applybeam', 'applycal'] if self.field.apply_normalizations else
+                              ['predict', 'applybeam']) + dp3_steps_fast
             dp3_steps_slow_joint = ['predict', 'applybeam', 'applycal'] + dp3_steps_slow_joint
             dp3_steps_slow_separate = ['predict', 'applybeam', 'applycal'] + dp3_steps_slow_separate
 
@@ -219,7 +220,6 @@ class CalibrateDD(Operation):
         if self.field.apply_normalizations:
             normalize_h5parm = CWLFile(self.field.normalize_h5parm).to_json()
             ddecal_applycal_steps_fast = '[normalization]'
-            dp3_steps_fast.insert(2, 'applycal')
             applycal_steps_fast = '[normalization]'
         else:
             normalize_h5parm = None
