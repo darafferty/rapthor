@@ -219,8 +219,12 @@ class CalibrateDD(Operation):
         # The latter is used when image-based predict is done
         if self.field.apply_normalizations:
             normalize_h5parm = CWLFile(self.field.normalize_h5parm).to_json()
-            ddecal_applycal_steps_fast = '[normalization]'
-            applycal_steps_fast = '[normalization]'
+            ddecal_applycal_steps_fast = ['normalization']
+            applycal_steps_fast =['normalization']
+
+            # Convert the lists to strings, with square brackets as required by DP3
+            ddecal_applycal_steps_fast = f"[{','.join(ddecal_applycal_steps_fast)}]"
+            applycal_steps_fast = f"[{','.join(applycal_steps_fast)}]"
         else:
             normalize_h5parm = None
             ddecal_applycal_steps_fast = None
@@ -238,6 +242,8 @@ class CalibrateDD(Operation):
                 applycal_steps_slow_joint.append('normalization')
                 ddecal_applycal_steps_slow_separate.append('normalization')
                 applycal_steps_slow_separate.append('normalization')
+
+            # Convert the lists to strings, with square brackets as required by DP3
             ddecal_applycal_steps_slow_joint = f"[{','.join(ddecal_applycal_steps_slow_joint)}]"
             applycal_steps_slow_joint = f"[{','.join(applycal_steps_slow_joint)}]"
             ddecal_applycal_steps_slow_separate = f"[{','.join(ddecal_applycal_steps_slow_separate)}]"
