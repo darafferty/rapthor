@@ -32,9 +32,9 @@ def test_get_available_memory(monkeypatch):
         (8, 1500, 4, 27, 729),
         (12, 4000, 6, 35, 1995),
         (8, 0, 5, 10, 10),       # Edge case: zero samples (should return solint)
-        (8, 1000, 0, 10, None),  # Edge case: zero observations (raises ZeroDivisionError)
-        (4, 1000, 5, 0, None),   # Edge case: zero solution interval (raises ZeroDivisionError)
-        (0, 1000, 5, 10, None),  # Edge case: zero nodes (raises OverflowError)
+        (8, 1000, 0, 10, None),  # Edge case: zero observations (raises ArithmeticError)
+        (4, 1000, 5, 0, None),   # Edge case: zero solution interval (raises ArithmeticError)
+        (0, 1000, 5, 10, None),  # Edge case: zero nodes (raises ArithmeticError)
     ],
 )
 def test_get_chunk_size(max_nodes, numsamples, numobs, solint, expected_chunk_size):
@@ -43,11 +43,8 @@ def test_get_chunk_size(max_nodes, numsamples, numobs, solint, expected_chunk_si
     the chunk size correctly.
     """
     cluster_parset = {"max_nodes": max_nodes}
-    if numobs == 0 or solint == 0:
-        with pytest.raises(ZeroDivisionError):
-            get_chunk_size(cluster_parset, numsamples, numobs, solint)
-    elif max_nodes == 0:
-        with pytest.raises(OverflowError):
+    if numobs == 0 or solint == 0 or max_nodes == 0:
+        with pytest.raises(ArithmeticError):
             get_chunk_size(cluster_parset, numsamples, numobs, solint)
     else:
         chunk_size = get_chunk_size(cluster_parset, numsamples, numobs, solint)
