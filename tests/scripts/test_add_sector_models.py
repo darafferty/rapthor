@@ -2,17 +2,12 @@
 Tests for the add_sector_models script.
 """
 
-from pathlib import Path
-
 from rapthor.scripts.add_sector_models import get_nchunks, main
 
-RESOURCE_DIR = Path(__file__).parent / ".." / "resources"
-TEST_MS = (RESOURCE_DIR / "test.ms").as_posix()
 
-
-def test_get_nchunks():
+def test_get_nchunks(test_ms):
     # Test with a dummy MS file and parameters
-    msin = TEST_MS
+    msin = test_ms
     nsectors = 4
     fraction = 1.0
     compressed = False
@@ -38,18 +33,20 @@ def test_get_nchunks():
         assert nchunks == 32, f"Expected 32 chunks, got {nchunks}"
 
 
-def test_main():
+def test_main(test_ms):
     # Test the main function with dummy parameters
-    msin = TEST_MS
-    msmod_list = [TEST_MS, TEST_MS]
+    msin = test_ms
+    msmod_list = [test_ms, test_ms]
     msin_column = "DATA"
-    model_column = "MODEL_DATA"
+    model_column = "DATA"
     out_column = "MODEL_DATA"
     use_compression = False
     starttime = None
     quiet = True
     infix = ""
 
+    # We would normally check the output or state after running main.
+    # Here we just ensure it runs without error.
     main(
         msin,
         msmod_list,
