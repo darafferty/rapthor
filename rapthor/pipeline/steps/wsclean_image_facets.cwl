@@ -25,6 +25,8 @@ arguments:
     prefix: -multiscale-scale-bias
   - valueFrom: '1.0'
     prefix: -auto-threshold
+  - valueFrom: '1.3'
+    prefix: -mgain-boosting
   - valueFrom: '120'
     prefix: -facet-beam-update
   - valueFrom: 'briggs'
