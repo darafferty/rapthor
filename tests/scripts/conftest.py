@@ -16,3 +16,12 @@ def test_ms(tmp_path):
     """
     shutil.copytree(RESOURCE_DIR / "test.ms", tmp_path / "test.ms")
     yield (tmp_path / "test.ms").as_posix()
+
+@pytest.fixture
+def soltab():
+    """
+    Fixture to provide a dummy soltab for testing.
+    This is a placeholder and should be replaced with actual soltab creation logic.
+    """
+    # Create a dummy soltab or return a mock object as needed
+    return "dummy_soltab"  # Replace with actual soltab creation logic if necessary
