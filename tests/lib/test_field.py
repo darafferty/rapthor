@@ -1,9 +1,10 @@
-import unittest
 import os
+import unittest
+
 import requests
+from rapthor.lib import miscellaneous as misc
 from rapthor.lib.field import Field
 from rapthor.lib.parset import parset_read
-from rapthor.lib import miscellaneous as misc
 
 
 class TestField(unittest.TestCase):

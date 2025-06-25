@@ -7,10 +7,11 @@ on the command-line to the different CWL runners.
 """
 
 import os
+
 import pytest
+from rapthor.lib.cwlrunner import create_cwl_runner
 from rapthor.lib.parset import Parset
 from rapthor.operations.image import Image
-from rapthor.lib.cwlrunner import create_cwl_runner
 
 
 class Sector:

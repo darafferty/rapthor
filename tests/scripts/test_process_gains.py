@@ -3,17 +3,11 @@ Tests for the process_gains.py script.
 """
 
 import numpy as np
-from rapthor.scripts.process_gains import (
-    flag_amps,
-    get_angular_distance,
-    get_ant_dist,
-    get_median_amp,
-    get_smooth_box_size,
-    main,
-    normalize_direction,
-    smooth_solutions,
-    transfer_flags,
-)
+from rapthor.scripts.process_gains import (flag_amps, get_angular_distance,
+                                           get_ant_dist, get_median_amp,
+                                           get_smooth_box_size, main,
+                                           normalize_direction,
+                                           smooth_solutions, transfer_flags)
 
 
 def test_get_ant_dist():

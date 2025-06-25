@@ -2,9 +2,10 @@
 Test cases for the context module in `rapthor/lib`.
 """
 
-import pytest
 import sys
-from rapthor.lib.context import Timer, RedirectStdStreams
+
+import pytest
+from rapthor.lib.context import RedirectStdStreams, Timer
 
 
 def test_timer():

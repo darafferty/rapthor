@@ -4,6 +4,7 @@ Test for the make_image_cube script.
 
 from rapthor.scripts.make_image_cube import main
 
+
 def test_main():
     """
     Test the main function of the make_image_cube script.

@@ -2,9 +2,10 @@
 Test cases for the rapthor.lib.facet module.
 """
 
-from rapthor.lib import facet
-import numpy as np
 import os
+
+import numpy as np
+from rapthor.lib import facet
 
 
 def test_make_facet_polygons():

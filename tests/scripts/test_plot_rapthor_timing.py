@@ -5,12 +5,9 @@ Tests for the plot_rapthor_timing script.
 import pytest
 
 try:
-    from rapthor.scripts.plot_rapthor_timing import (
-        MainLogParser,
-        SubLogParser,
-        main,
-        make_cycle_pdfs_sublogs,
-    )
+    from rapthor.scripts.plot_rapthor_timing import (MainLogParser,
+                                                     SubLogParser, main,
+                                                     make_cycle_pdfs_sublogs)
 except ImportError as e:
     pytest.skip(f"Skipping tests due to ImportError: {e}", allow_module_level=True)
 

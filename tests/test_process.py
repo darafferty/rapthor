@@ -2,13 +2,8 @@
 Test cases for the `rapthor.process` module.
 """
 
-from rapthor.process import (
-    chunk_observations,
-    do_final_pass,
-    make_report,
-    run,
-    run_steps,
-)
+from rapthor.process import (chunk_observations, do_final_pass, make_report,
+                             run, run_steps)
 
 
 def test_run(parset_file=None, logging_level="info"):

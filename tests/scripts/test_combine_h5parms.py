@@ -5,17 +5,10 @@ Test cases for the combine_h5parms script in the rapthor package.
 import numpy as np
 import pytest
 from rapthor.scripts.combine_h5parms import (
-    average_polarizations,
-    combine_phase1_amp1_amp2,
-    combine_phase1_amp2,
-    combine_phase1_phase2_amp2,
-    combine_phase1_phase2_amp2_diagonal,
-    combine_phase1_phase2_amp2_scalar,
-    copy_solset,
-    expand_array,
-    interpolate_solutions,
-    main,
-)
+    average_polarizations, combine_phase1_amp1_amp2, combine_phase1_amp2,
+    combine_phase1_phase2_amp2, combine_phase1_phase2_amp2_diagonal,
+    combine_phase1_phase2_amp2_scalar, copy_solset, expand_array,
+    interpolate_solutions, main)
 
 
 def test_expand_array():

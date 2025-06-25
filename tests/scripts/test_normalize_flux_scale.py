@@ -6,12 +6,9 @@ import os
 
 import numpy as np
 import pytest
-from rapthor.scripts.normalize_flux_scale import (
-    create_normalization_h5parm,
-    find_normalizations,
-    fit_sed,
-    main,
-)
+from rapthor.scripts.normalize_flux_scale import (create_normalization_h5parm,
+                                                  find_normalizations, fit_sed,
+                                                  main)
 
 
 def test_fit_sed():

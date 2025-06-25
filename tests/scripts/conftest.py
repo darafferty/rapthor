@@ -2,9 +2,10 @@
 This files contains the configuration for pytest, including fixtures and hooks
 for this directory.
 """
-import pytest
 import shutil
 from pathlib import Path
+
+import pytest
 
 RESOURCE_DIR = Path(__file__).parent / ".." / "resources"
 

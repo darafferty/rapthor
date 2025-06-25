@@ -2,7 +2,10 @@
 Test suite for rapthor.scripts.calculate_image_diagnostics.
 """
 
-from rapthor.scripts.calculate_image_diagnostics import plot_astrometry_offsets,fits_to_makesourcedb,check_photometry,check_astrometry,main
+from rapthor.scripts.calculate_image_diagnostics import (
+    check_astrometry, check_photometry, fits_to_makesourcedb, main,
+    plot_astrometry_offsets)
+
 
 def test_plot_astrometry_offsets():
     """

@@ -1,10 +1,6 @@
 import pytest
-from rapthor.scripts.concat_ms import (
-    concat_freq_command,
-    concat_ms,
-    concat_time_command,
-    main,
-)
+from rapthor.scripts.concat_ms import (concat_freq_command, concat_ms,
+                                       concat_time_command, main)
 
 
 def test_concat_ms():

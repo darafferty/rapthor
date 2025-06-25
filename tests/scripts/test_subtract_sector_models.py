@@ -3,12 +3,8 @@ Tests for the subtract_sector_models script.
 """
 
 import pytest
-from rapthor.scripts.subtract_sector_models import (
-    CovWeights,
-    get_nchunks,
-    main,
-    readGainFile,
-)
+from rapthor.scripts.subtract_sector_models import (CovWeights, get_nchunks,
+                                                    main, readGainFile)
 
 
 def test_get_nchunks(test_ms):

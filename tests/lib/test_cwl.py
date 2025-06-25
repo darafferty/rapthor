@@ -3,9 +3,9 @@ Test module for testing the CWL workflows _generated_ by the pipeline
 """
 
 import os
-import pytest
 import subprocess
 
+import pytest
 import rapthor.lib.operation
 
 pytestmark = pytest.mark.slow

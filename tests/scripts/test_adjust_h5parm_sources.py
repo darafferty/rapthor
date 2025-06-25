@@ -2,13 +2,15 @@
 Tests for the adjust_h5parm_sources script.
 """
 
-import numpy
 import os
 import tempfile
-import pytest
 from pathlib import Path
+
 import losoto.h5parm
+import numpy
+import pytest
 from rapthor.scripts.adjust_h5parm_sources import main
+
 
 def test_main(): #skymodel, h5parm, solset):
     # # We would normally check the output or state after running main.
