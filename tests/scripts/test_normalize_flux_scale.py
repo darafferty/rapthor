@@ -15,16 +15,25 @@ def test_fit_sed():
     """
     Test the fit_sed function.
     """
-    # # Define test parameters
-    # rapthor_fluxes = np.array([1.0, 2.0, 3.0])
-    # rapthor_errors = np.array([0.1, 0.2, 0.3])
-    # rapthor_frequencies = np.array([100e6, 200e6, 300e6])  # Frequencies in Hz
-    # expected_sed = np.array([1.0, 2.0, 3.0])  # Expected SED values for the test
+    # Define test parameters
+    frequencies = np.arange(120e6, 160e6, 5e6)  # Hz
+    ref_flux = 1.0  # Jy
+    ref_frequency = 140e6  # Hz
+    alpha = -0.7
+    fluxes = np.array([ref_flux * (frequency / ref_frequency) ** alpha for frequency in frequencies])
+    errors = np.array([0.05] * len(fluxes))
 
-    # sed = fit_sed(rapthor_fluxes, rapthor_errors, rapthor_frequencies)
+    # Test single-flux case
+    fit_fcn = fit_sed(fluxes[:1], errors[:1], frequencies[:1])
+    assert fit_fcn(1.2e8) == pytest.approx(0.0)
 
-    # assert np.array_equal(sed, expected_sed), f"Expected {expected_sed}, got {sed}"
-    pass
+    # Test two-fluxes case
+    fit_fcn = fit_sed(fluxes[:2], errors[:2], frequencies[:2])
+    assert fit_fcn(1.2e8) == pytest.approx(fluxes[0])
+
+    # Test many-fluxes case
+    fit_fcn = fit_sed(fluxes, errors, frequencies)
+    assert fit_fcn(1.2e8) == pytest.approx(fluxes[0])
 
 
 def test_find_normalizations():
