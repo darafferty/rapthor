@@ -14,6 +14,23 @@ requirements:
 
 arguments:
   - msout=
+  - applybeam.type=applybeam
+  - applybeam.beammode=array_factor
+  - applybeam.usemodeldata=True
+  - applybeam.invert=False
+  - applycal.type=applycal
+  - applycal.fastphase.correction=phase000
+  - applycal.fastphase.solset=sol000
+  - applycal.fastphase.usemodeldata=True
+  - applycal.fastphase.invert=False
+  - applycal.slowgain.correction=amplitude000
+  - applycal.slowgain.solset=sol000
+  - applycal.slowgain.usemodeldata=True
+  - applycal.slowgain.invert=False
+  - applycal.normalization.correction=amplitude000
+  - applycal.normalization.solset=sol000
+  - applycal.normalization.usemodeldata=True
+  - applycal.normalization.invert=False
   - avg.type=bdaaverager
   - avg.minchannels=1
   - avg.frequencybase=0.0
@@ -137,6 +154,16 @@ inputs:
       "slowgain", and "normalization".
     type: string?
     inputBinding:
+      prefix: applycal.steps=
+      separate: False
+
+  - id: ddecal_applycal_steps
+    label: List of DDECal applycal steps
+    doc: |
+      The list of DDECal applycal steps to perform. Allowed steps are "fastphase",
+      "slowgain", and "normalization".
+    type: string?
+    inputBinding:
       prefix: solve.applycal.steps=
       separate: False
 
@@ -145,6 +172,16 @@ inputs:
     doc: |
       The filename of the input solution table containing the fast-phase
       solutions. These solutions are preapplied before the solve is done.
+    type: File?
+    inputBinding:
+      prefix: applycal.fastphase.parmdb=
+      separate: False
+
+  - id: ddecal_fastphase_h5parm
+    label: Solution table
+    doc: |
+      The filename of the input solution table containing the fast-phase
+      solutions. These solutions are applied during the solve.
     type: File?
     inputBinding:
       prefix: solve.applycal.fastphase.parmdb=
@@ -157,6 +194,16 @@ inputs:
       These solutions are preapplied before the solve is done.
     type: File?
     inputBinding:
+      prefix: applycal.slowgain.parmdb=
+      separate: False
+
+  - id: ddecal_slowgain_h5parm
+    label: Solution table
+    doc: |
+      The filename of the input solution table containing the slow-gain solutions.
+      These solutions are applied during the solve.
+    type: File?
+    inputBinding:
       prefix: solve.applycal.slowgain.parmdb=
       separate: False
 
@@ -165,6 +212,16 @@ inputs:
     doc: |
       The filename of the h5parm file with the flux-scale normalization corrections.
       These solutions are preapplied before the solve is done.
+    type: File?
+    inputBinding:
+      prefix: applycal.normalization.parmdb=
+      separate: False
+
+  - id: ddecal_normalize_h5parm
+    label: Filename of h5parm
+    doc: |
+      The filename of the h5parm file with the flux-scale normalization corrections.
+      These solutions are applied during the solve.
     type: File?
     inputBinding:
       prefix: solve.applycal.normalization.parmdb=
@@ -453,6 +510,15 @@ inputs:
     inputBinding:
       valueFrom: "[$(self.map(function(file){ return file.path; }).join(','))]"
       prefix: predict.images=
+      separate: False
+
+  - id: reuse_model
+    label: Reuse model list
+    doc: |
+      A list of model data columns that will be reused from the predict step.
+    type: string?
+    inputBinding:
+      prefix: solve.reusemodel=
       separate: False
 
   - id: numthreads

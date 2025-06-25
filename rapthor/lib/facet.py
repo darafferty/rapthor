@@ -375,7 +375,7 @@ def voronoi(cal_coords, bounding_box):
     return vor
 
 
-def make_ds9_region_file(facets, outfile):
+def make_ds9_region_file(facets, outfile, enclose_names=True):
     """
     Make a ds9 region file for given polygons and centers
 
@@ -385,6 +385,11 @@ def make_ds9_region_file(facets, outfile):
         List of Facet objects to include
     outfile : str
         Name of output region file
+    enclose_names : bool, optional
+        If True, enclose patch names in curly brackets for full
+        compatibility with ds9. Curly brackets may cause issues with
+        other tools that use the region file, such as DP3, in which
+        case they can be excluded by setting this option to False
     """
     lines = []
     lines.append('# Region file format: DS9 version 4.0\nglobal color=green '
@@ -398,7 +403,10 @@ def make_ds9_region_file(facets, outfile):
         for ra, dec in zip(RAs, Decs):
             radec_list.append('{0}, {1}'.format(ra, dec))
         lines.append('polygon({0})\n'.format(', '.join(radec_list)))
-        lines.append('point({0}, {1}) # text={{{2}}}\n'.format(facet.ra, facet.dec, facet.name))
+        if enclose_names:
+            lines.append('point({0}, {1}) # text={{{2}}}\n'.format(facet.ra, facet.dec, facet.name))
+        else:
+            lines.append('point({0}, {1}) # text={2}\n'.format(facet.ra, facet.dec, facet.name))
 
     with open(outfile, 'w') as f:
         f.writelines(lines)

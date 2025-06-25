@@ -206,32 +206,53 @@ class CalibrateDD(Operation):
         else:
             dp3_steps_slow_separate = ['solve']
         if self.field.use_image_based_predict:
-            # Add a predict step to the beginning
-            dp3_steps_fast.insert(0, 'predict')
-            dp3_steps_slow_joint.insert(0, 'predict')
-            dp3_steps_slow_separate.insert(0, 'predict')
+            # Add a predict, applybeam, and applycal steps to the beginning
+            dp3_steps_fast = (['predict', 'applybeam', 'applycal'] if self.field.apply_normalizations else
+                              ['predict', 'applybeam']) + dp3_steps_fast
+            dp3_steps_slow_joint = ['predict', 'applybeam', 'applycal'] + dp3_steps_slow_joint
+            dp3_steps_slow_separate = ['predict', 'applybeam', 'applycal'] + dp3_steps_slow_separate
 
-        # Set the DDECal applycal steps and input H5parm files depending on what
-        # solutions need to be applied
+        # Set the DP3 applycal steps and input H5parm files depending on what
+        # solutions need to be applied. Note: applycal steps are needed for
+        # both the case in which applycal is part of the DDECal solve step and
+        # the case in which it is a separate step that preceeds the DDECal step.
+        # The latter is used when image-based predict is done
         if self.field.apply_normalizations:
             normalize_h5parm = CWLFile(self.field.normalize_h5parm).to_json()
-            dp3_applycal_steps_fast = '[normalization]'
+            ddecal_applycal_steps_fast = ['normalization']
+            applycal_steps_fast =['normalization']
+
+            # Convert the lists to strings, with square brackets as required by DP3
+            ddecal_applycal_steps_fast = f"[{','.join(ddecal_applycal_steps_fast)}]"
+            applycal_steps_fast = f"[{','.join(applycal_steps_fast)}]"
         else:
             normalize_h5parm = None
-            dp3_applycal_steps_fast = None
+            ddecal_applycal_steps_fast = None
+            applycal_steps_fast = None
         if self.field.do_slowgain_solve:
-            dp3_applycal_steps_slow_joint = ['fastphase']
-            dp3_applycal_steps_slow_separate = ['fastphase']
+            ddecal_applycal_steps_slow_joint = ['fastphase']
+            applycal_steps_slow_joint = ['fastphase']
+            ddecal_applycal_steps_slow_separate = ['fastphase']
+            applycal_steps_slow_separate = ['fastphase']
             if self.do_joint_solve:
-                dp3_applycal_steps_slow_separate.append('slowgain')
+                ddecal_applycal_steps_slow_separate.append('slowgain')
+                applycal_steps_slow_separate.append('slowgain')
             if self.field.apply_normalizations:
-                dp3_applycal_steps_slow_joint.append('normalization')
-                dp3_applycal_steps_slow_separate.append('normalization')
-            dp3_applycal_steps_slow_joint = f"[{','.join(dp3_applycal_steps_slow_joint)}]"
-            dp3_applycal_steps_slow_separate = f"[{','.join(dp3_applycal_steps_slow_separate)}]"
+                ddecal_applycal_steps_slow_joint.append('normalization')
+                applycal_steps_slow_joint.append('normalization')
+                ddecal_applycal_steps_slow_separate.append('normalization')
+                applycal_steps_slow_separate.append('normalization')
+
+            # Convert the lists to strings, with square brackets as required by DP3
+            ddecal_applycal_steps_slow_joint = f"[{','.join(ddecal_applycal_steps_slow_joint)}]"
+            applycal_steps_slow_joint = f"[{','.join(applycal_steps_slow_joint)}]"
+            ddecal_applycal_steps_slow_separate = f"[{','.join(ddecal_applycal_steps_slow_separate)}]"
+            applycal_steps_slow_separate = f"[{','.join(applycal_steps_slow_separate)}]"
         else:
-            dp3_applycal_steps_slow_joint = None
-            dp3_applycal_steps_slow_separate = None
+            ddecal_applycal_steps_slow_joint = None
+            applycal_steps_slow_joint = None
+            ddecal_applycal_steps_slow_separate = None
+            applycal_steps_slow_separate = None
         if (
             self.field.fast_phases_h5parm_filename is not None and
             os.path.exists(self.field.fast_phases_h5parm_filename)
@@ -298,11 +319,14 @@ class CalibrateDD(Operation):
                             'slow_smoothnessconstraint_separate': slow_smoothnessconstraint_separate,
                             'dp3_solve_mode_fast': dp3_solve_mode_fast,
                             'dp3_steps_fast': f"[{','.join(dp3_steps_fast)}]",
-                            'dp3_applycal_steps_fast': dp3_applycal_steps_fast,
+                            'ddecal_applycal_steps_fast': ddecal_applycal_steps_fast,
+                            'applycal_steps_fast': applycal_steps_fast,
                             'dp3_steps_slow_joint': f"[{','.join(dp3_steps_slow_joint)}]",
-                            'dp3_applycal_steps_slow_joint': dp3_applycal_steps_slow_joint,
+                            'ddecal_applycal_steps_slow_joint': ddecal_applycal_steps_slow_joint,
+                            'applycal_steps_slow_joint': applycal_steps_slow_joint,
                             'dp3_steps_slow_separate': f"[{','.join(dp3_steps_slow_separate)}]",
-                            'dp3_applycal_steps_slow_separate': dp3_applycal_steps_slow_separate,
+                            'ddecal_applycal_steps_slow_separate': ddecal_applycal_steps_slow_separate,
+                            'applycal_steps_slow_separate': applycal_steps_slow_separate,
                             'dp3_solve_mode_fast': dp3_solve_mode_fast,
                             'bda_maxinterval_fast': bda_maxinterval_fast,
                             'bda_timebase_fast': bda_timebase_fast,

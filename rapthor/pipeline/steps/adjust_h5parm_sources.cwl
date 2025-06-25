@@ -24,7 +24,7 @@ inputs:
     label: Filename of h5parm file
     doc: |
       The filename of the input h5parm file that contains the calibration solutions.
-    type: File
+    type: File?
     inputBinding:
       position: 1
 
