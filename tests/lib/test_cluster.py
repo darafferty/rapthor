@@ -43,11 +43,11 @@ def test_get_chunk_size(max_nodes, numsamples, numobs, solint, expected_chunk_si
     Test the get_chunk_size function with various parameters to ensure it calculates
     the chunk size correctly.
     """
-    numpy.seterr(divide="ignore")  # Suppress division by zero warnings
     cluster_parset = {"max_nodes": max_nodes}
     if numobs == 0 or solint == 0 or max_nodes == 0:
         with pytest.raises(ArithmeticError):
-            get_chunk_size(cluster_parset, numsamples, numobs, solint)
+            with numpy.errstate(divide="ignore"):  # Suppress division by zero warnings
+                get_chunk_size(cluster_parset, numsamples, numobs, solint)
     else:
         chunk_size = get_chunk_size(cluster_parset, numsamples, numobs, solint)
         assert expected_chunk_size == chunk_size, (
