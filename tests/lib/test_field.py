@@ -9,7 +9,7 @@ from rapthor.lib.parset import parset_read
 
 class TestField(unittest.TestCase):
     @classmethod
-    def downloadms(self, filename):
+    def downloadms(cls, filename):
         url = 'https://support.astron.nl/software/ci_data/rapthor/tDDECal.in_MS.tgz'
         r = requests.get(url)
         f = open('downloaded.tgz', 'wb')
@@ -21,28 +21,28 @@ class TestField(unittest.TestCase):
         os.system('mv tDDECal.MS ' + filename)
 
     @classmethod
-    def setUpClass(self):
-        cwd = os.getcwd()
-        if not cwd.endswith('tests'):
-            raise SystemExit('Please run this test from the tests directory!')
+    def setUpClass(cls):
+        # Change directory to the tests directory (one level up from this file),
+        # because that's where these tests need to be run from.
+        os.chdir(os.path.join(os.path.dirname(__file__), ".."))
         testmsname = 'resources/test.ms'
         if (not os.path.exists(testmsname)):
             print('downloading ms file')
-            self.downloadms(testmsname)
+            cls.downloadms(testmsname)
         else:
             print('ms file found')
 
-        self.par = parset_read('resources/test.parset')
-        self.field = Field(self.par)
-        self.field.fast_timestep_sec = 32.0  # needed for test_get_obs_parameters() below
-        self.field.scan_observations()
-        self.field.update_skymodels(1, True, target_flux=0.2)
-        self.field.set_obs_parameters()
-        self.field.define_imaging_sectors()
-        self.field.define_outlier_sectors(1)
+        cls.par = parset_read('resources/test.parset')
+        cls.field = Field(cls.par)
+        cls.field.fast_timestep_sec = 32.0  # needed for test_get_obs_parameters() below
+        cls.field.scan_observations()
+        cls.field.update_skymodels(1, True, target_flux=0.2)
+        cls.field.set_obs_parameters()
+        cls.field.define_imaging_sectors()
+        cls.field.define_outlier_sectors(1)
 
     @classmethod
-    def tearDownClass(self):
+    def tearDownClass(cls):
         os.system('rm -r images/ logs/ pipelines/ regions/ skymodels/ solutions/ plots/')
 
     def test_scan_observations(self):
