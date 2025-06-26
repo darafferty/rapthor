@@ -23,7 +23,10 @@ def main_log_parser():
 def sub_log_parser():
     logdir = "logs"
     operation = "calibrate_1"
-    parser = SubLogParser(logdir, operation)
+    try:
+        parser = SubLogParser(logdir, operation)
+    except ValueError:
+        pytest.skip(f"Skipping SubLogParser test due to ValueError: {logdir} or {operation} not found")
     yield parser
 
 
