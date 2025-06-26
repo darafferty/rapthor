@@ -118,7 +118,7 @@ deps = [
 commands = [
     [
         "python", "-m", "pytest",
-        "-m", "not slow",
+        # "-m", "not slow",
         "--cov-report", "term-missing",
         "--cov-report", "xml",
         "--cov-report", "html",
