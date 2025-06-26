@@ -28,6 +28,10 @@ class TestParset(unittest.TestCase):
         # Create an empty working directory
         cls.dir_working = tempfile.TemporaryDirectory()
 
+        # Change directory to the tests directory (one level up from this file),
+        # because that's where these tests need to be run from.
+        os.chdir(os.path.join(os.path.dirname(__file__), ".."))
+
     @classmethod
     def tearDownClass(cls):
         cls.input_ms.cleanup()
