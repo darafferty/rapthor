@@ -39,5 +39,11 @@ module purge
 module load py-rapthor
 echo "Loaded $(rapthor --version)"
 
+# Ensure bdsf can find libboost_numpy311.so.1.86.0
+module load boost
+module show boost
+export LD_LIBRARY_PATH=$BOOST_ROOT/lib:$LD_LIBRARY_PATH
+echo $LD_LIBRARY_PATH
+
 # Run rapthor on parset
 rapthor $PARSET_PATH
