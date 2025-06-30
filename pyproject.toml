@@ -51,6 +51,16 @@ dependencies = [
 ]
 dynamic = ["version"]
 
+[project.optional-dependencies]
+test = ["tox"]
+
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+]
+
+
 [tool.setuptools]
 # package-data is specified below in section [tool.setuptools.package-data]
 include-package-data = false
@@ -90,8 +100,29 @@ rapthor = [
     "skymodels/*"
 ]
 
-# [tool.setuptools.dynamic]
-# version = {attr = "rapthor._version.__version__"}
 
 [tool.setuptools_scm]
 write_to = "rapthor/_version.py"
+
+
+[tool.tox]
+requires = ["tox>4"]
+envlist = ["py3{9,10,11,12,13}"]
+
+[tool.tox.env_run_base]
+deps = [
+    "mock",
+    "pytest",
+    "pytest-cov",
+]
+commands = [
+    [
+        "python", "-m", "pytest",
+        # "-m", "not slow",
+        "--cov-report", "term-missing",
+        "--cov-report", "xml",
+        "--cov-report", "html",
+        "--cov=rapthor",
+    ]
+]
+changedir = "{toxinidir}/tests"

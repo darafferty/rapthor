@@ -3,10 +3,12 @@ Test module for testing the CWL workflows _generated_ by the pipeline
 """
 
 import os
-import pytest
 import subprocess
 
+import pytest
 import rapthor.lib.operation
+
+pytestmark = pytest.mark.slow
 
 
 def generate_and_validate(tmp_path, operation, parms, templ, sub_templ=None):
