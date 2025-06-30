@@ -907,10 +907,11 @@ class Field(object):
                 # they are far from any in the new model and thus not likely to be
                 # duplicates)
                 matching_radius_deg = 30.0 / 3600.0  # => 30 arcsec
+                if not skymodel_true_sky.hasPatches:
+                    skymodel_true_sky.group('every')
                 skymodel_true_sky.concatenate(skymodel_true_sky_start, matchBy='position',
                                               radius=matching_radius_deg, keep='from1')
                 skymodel_true_sky.setPatchPositions()
-                skymodel_apparent_sky = None
 
             # Use concatenated sky models to make new calibration model (we set find_sources
             # to False to preserve the source patches defined in the image operation by PyBDSF)
