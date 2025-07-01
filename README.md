@@ -71,3 +71,7 @@ a parset that defines the parameters of the run. E.g.:
 
 The parset defines the input and working directories, various options, etc. For details,
 please see the example parset in the examples directory.
+
+
+https://git.astron.nl/RD/rapthor/badges/master/pipeline.svg
+https://git.astron.nl/RD/rapthor/badges/master/coverage.svg
