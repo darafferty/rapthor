@@ -3,12 +3,13 @@ This module contains tests for the module `rapthor.lib.parset`
 """
 
 import ast
-import mock
 import os
 import string
 import tempfile
 import textwrap
 import unittest
+
+import mock
 from rapthor.lib.parset import parset_read
 
 
@@ -26,6 +27,10 @@ class TestParset(unittest.TestCase):
 
         # Create an empty working directory
         cls.dir_working = tempfile.TemporaryDirectory()
+
+        # Change directory to the tests directory (one level up from this file),
+        # because that's where these tests need to be run from.
+        os.chdir(os.path.join(os.path.dirname(__file__), ".."))
 
     @classmethod
     def tearDownClass(cls):

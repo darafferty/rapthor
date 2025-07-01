@@ -7,11 +7,11 @@ on the command-line to the different CWL runners.
 """
 
 import os
+
 import pytest
+from rapthor.lib.cwlrunner import create_cwl_runner
 from rapthor.lib.parset import Parset
 from rapthor.operations.image import Image
-from rapthor.lib.cwlrunner import create_cwl_runner
-import types
 
 
 class Sector:
@@ -96,14 +96,7 @@ class Field:
         self.h5parm_filename = parset["input_h5parm"]
         self.image_pol = "I"
         self.imaging_sectors = [Sector("sector_1", field=self)]
-        self.observations = [
-            types.SimpleNamespace(
-                numsamples=1,
-                timepersample=1,
-                starttime=1,
-                channels_are_regular=True
-            )
-        ]
+        self.observations = []
         self.peel_bright_sources = False
         self.ra = 0
 
@@ -117,8 +110,6 @@ class Field:
         self.auto_mask_nmiter = 1
         self.skip_final_major_iteration = True
         self.image_bda_timebase = 0
-        self.slow_timestep_joint_sec = 0
-        self.slow_timestep_separate_sec = 0
 
     def get_calibration_radius(self):
         return 5.0

@@ -15,6 +15,7 @@ doc: |
 requirements:
   ScatterFeatureRequirement: {}
   StepInputExpressionRequirement: {}
+  InlineJavascriptRequirement: {}
 
 {% if max_cores is not none %}
 hints:
@@ -73,7 +74,8 @@ inputs:
   - id: calibration_skymodel_file
     label: Filename of sky model
     doc: |
-      The filename of the input sky model text file (length = 1).
+      The filename of the input sky model text file used for all processing except
+      in DDECal solve steps (length = 1).
     type: File
 
 {% if use_image_based_predict %}
@@ -273,10 +275,16 @@ inputs:
       The list of DP3 steps to use in the fast-phase calibration (length = 1).
     type: string
 
-  - id: dp3_applycal_steps_fast
+  - id: ddecal_applycal_steps_fast
+    label: DDECal applycal steps for fast solve
+    doc: |
+      The list of DDECal applycal steps to use in the fast-phase calibration (length = 1).
+    type: string?
+
+  - id: applycal_steps_fast
     label: Applycal steps for fast solve
     doc: |
-      The list of DP3 applycal steps to use in the fast-phase calibration (length = 1).
+      The list of stand-alone applycal steps to use in the fast-phase calibration (length = 1).
     type: string?
 
   - id: normalize_h5parm
@@ -436,17 +444,31 @@ inputs:
       (length = 1).
     type: string
 
-  - id: dp3_applycal_steps_slow_joint
-    label: Applycal steps for slow joint solve
+  - id: ddecal_applycal_steps_slow_joint
+    label: DDECal applycal steps for slow joint solve
     doc: |
-      The list of DP3 applycal steps to use in the first (joint) slow-gain calibration
+      The list of DDECal applycal steps to use in the first (joint) slow-gain calibration
       (length = 1).
     type: string
 
-  - id: dp3_applycal_steps_slow_separate
+  - id: applycal_steps_slow_joint
+    label: Applycal steps for slow joint solve
+    doc: |
+      The list of stand-alone applycal steps to use in the first (joint) slow-gain calibration
+      (length = 1).
+    type: string
+
+  - id: ddecal_applycal_steps_slow_separate
+    label: DDECal applycal steps for slow separate solve
+    doc: |
+      The list of DDECal applycal steps to use in the second (separate) slow-gain calibration
+      (length = 1).
+    type: string
+
+  - id: applycal_steps_slow_separate
     label: Applycal steps for slow separate solve
     doc: |
-      The list of DP3 applycal steps to use in the second (separate) slow-gain calibration
+      The list of stand-alone applycal steps to use in the second (separate) slow-gain calibration
       (length = 1).
     type: string
 
@@ -809,6 +831,8 @@ steps:
         source: facet_region_width_dec
       - id: outfile
         source: facet_region_file
+      - id: enclose_names
+        valueFrom: 'False'
     out:
       - id: region_file
 {% endif %}
@@ -925,6 +949,23 @@ steps:
 {% else %}
 # start not generate_screens
 
+{% if use_image_based_predict %}
+  - id: adjust_normalize_sources
+    label: Adjust normalize h5parm sources
+    doc: |
+      This step adjusts the source coordinates of the normalization h5parm
+      to match those in the sky model.
+    run: {{ rapthor_pipeline_dir }}/steps/adjust_h5parm_sources.cwl
+    when: $(inputs.h5parm !== null)
+    in:
+      - id: skymodel
+        source: calibration_skymodel_file
+      - id: h5parm
+        source: normalize_h5parm
+    out:
+      - id: adjustedh5parm
+{% endif %}
+
   - id: solve_fast_phases
     label: Solve for fast phases
     doc: |
@@ -956,8 +997,17 @@ steps:
       - id: steps
         source: dp3_steps_fast
       - id: applycal_steps
-        source: dp3_applycal_steps_fast
+        source: applycal_steps_fast
+      - id: ddecal_applycal_steps
+        source: ddecal_applycal_steps_fast
+{% if use_image_based_predict %}
       - id: normalize_h5parm
+        source: adjust_normalize_sources/adjustedh5parm
+{% else %}
+      - id: normalize_h5parm
+        source: normalize_h5parm
+{% endif %}
+      - id: ddecal_normalize_h5parm
         source: normalize_h5parm
       - id: timebase
         source: bda_timebase_fast
@@ -965,12 +1015,8 @@ steps:
         source: bda_maxinterval_fast
       - id: solve_nchan
         source: solint_fast_freqstep
-      - id: directions
-        source: calibrator_patch_names
       - id: solutions_per_direction
         source: solutions_per_direction_fast
-      - id: sourcedb
-        source: calibration_skymodel_file
       - id: llssolver
         source: llssolver
       - id: maxiter
@@ -1020,6 +1066,13 @@ steps:
         source: make_region_file/region_file
       - id: predict_images
         source: draw_model/model_images
+      - id: reuse_model
+        valueFrom: '[predict.*]'
+{% else %}
+      - id: sourcedb
+        source: calibration_skymodel_file
+      - id: directions
+        source: calibrator_patch_names
 {% endif %}
       - id: numthreads
         source: max_threads
@@ -1096,14 +1149,25 @@ steps:
       - id: steps
         source: dp3_steps_slow_joint
       - id: applycal_steps
-        source: dp3_applycal_steps_slow_joint
+        source:  applycal_steps_slow_joint
+      - id: ddecal_applycal_steps
+        source:  ddecal_applycal_steps_slow_joint
       - id: timebase
         source: bda_timebase_slow_joint
       - id: maxinterval
         source: bda_maxinterval_slow_joint
       - id: fastphase_h5parm
         source: combine_fast_phases/outh5parm
+      - id: ddecal_fastphase_h5parm
+        source: combine_fast_phases/outh5parm
+{% if use_image_based_predict %}
       - id: normalize_h5parm
+        source: adjust_normalize_sources/adjustedh5parm
+{% else %}
+      - id: normalize_h5parm
+        source: normalize_h5parm
+{% endif %}
+      - id: ddecal_normalize_h5parm
         source: normalize_h5parm
       - id: h5parm
         source: output_slow_h5parm_joint
@@ -1111,12 +1175,8 @@ steps:
         source: solint_slow_timestep_joint
       - id: solve_nchan
         source: solint_slow_freqstep_joint
-      - id: directions
-        source: calibrator_patch_names
       - id: solutions_per_direction
         source: solutions_per_direction_slow_joint
-      - id: sourcedb
-        source: calibration_skymodel_file
       - id: llssolver
         source: llssolver
       - id: maxiter
@@ -1158,6 +1218,13 @@ steps:
         source: make_region_file/region_file
       - id: predict_images
         source: draw_model/model_images
+      - id: reuse_model
+        valueFrom: '[predict.*]'
+{% else %}
+      - id: sourcedb
+        source: calibration_skymodel_file
+      - id: directions
+        source: calibrator_patch_names
 {% endif %}
       - id: numthreads
         source: max_threads
@@ -1263,7 +1330,9 @@ steps:
       - id: steps
         source: dp3_steps_slow_separate
       - id: applycal_steps
-        source: dp3_applycal_steps_slow_separate
+        source:  applycal_steps_slow_separate
+      - id: ddecal_applycal_steps
+        source:  ddecal_applycal_steps_slow_separate
       - id: timebase
         source: bda_timebase_slow_separate
       - id: maxinterval
@@ -1272,11 +1341,22 @@ steps:
         source: nchan_separate
       - id: fastphase_h5parm
         source: combine_fast_phases/outh5parm
+      - id: ddecal_fastphase_h5parm
+        source: combine_fast_phases/outh5parm
 {% if do_joint_solve %}
       - id: slowgain_h5parm
         source: process_slow_gains_joint/outh5parm
+      - id: ddecal_slowgain_h5parm
+        source: process_slow_gains_joint/outh5parm
 {% endif %}
+{% if use_image_based_predict %}
       - id: normalize_h5parm
+        source: adjust_normalize_sources/adjustedh5parm
+{% else %}
+      - id: normalize_h5parm
+        source: normalize_h5parm
+{% endif %}
+      - id: ddecal_normalize_h5parm
         source: normalize_h5parm
       - id: h5parm
         source: output_slow_h5parm_separate
@@ -1284,12 +1364,8 @@ steps:
         source: solint_slow_timestep_separate
       - id: solve_nchan
         source: solint_slow_freqstep_separate
-      - id: directions
-        source: calibrator_patch_names
       - id: solutions_per_direction
         source: solutions_per_direction_slow_separate
-      - id: sourcedb
-        source: calibration_skymodel_file
       - id: llssolver
         source: llssolver
       - id: maxiter
@@ -1333,6 +1409,13 @@ steps:
         source: make_region_file/region_file
       - id: predict_images
         source: draw_model/model_images
+      - id: reuse_model
+        valueFrom: '[predict.*]'
+{% else %}
+      - id: sourcedb
+        source: calibration_skymodel_file
+      - id: directions
+        source: calibrator_patch_names
 {% endif %}
       - id: numthreads
         source: max_threads

@@ -52,6 +52,14 @@ inputs:
     type: string
     inputBinding:
       position: 6
+  - id: enclose_names
+    label: Enclose name in braces
+    doc: |
+      Enclose the patch names in curly braces.
+    type: string
+    inputBinding:
+      prefix: --enclose_names=
+      separate: False
 
 outputs:
   - id: region_file
