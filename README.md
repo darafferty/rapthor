@@ -74,4 +74,4 @@ please see the example parset in the examples directory.
 
 
 https://git.astron.nl/RD/rapthor/badges/master/pipeline.svg
-https://git.astron.nl/RD/rapthor/badges/master/coverage.svg
+![coverage](https://git.astron.nl/RD/rapthor/badges/master/coverage.svg?job=coverage)
