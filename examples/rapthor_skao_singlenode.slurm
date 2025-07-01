@@ -3,7 +3,7 @@
 # Adjust requested resources and job variables as necessary.
 #
 # SLURM settings:
-#SBATCH --job-name=rapthor
+#SBATCH --job-name=sn-rapthor
 #SBATCH --partition=c7i-24xl-spt   # Use spot partitions where possible.
 #SBATCH --nodes=1                  # Use a single node by default.
 #SBATCH --ntasks-per-node=1
@@ -13,7 +13,7 @@
 #SBATCH --error=logs/%x-%j-slurm.out
 
 # Specify spack environment version number
-SPACK_TAG=2025.06.4
+SPACK_TAG=2025.07.1
 
 # Specify working directory
 WORK_DIR=/shared/fsx1/user.name

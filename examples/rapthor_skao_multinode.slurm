@@ -13,7 +13,7 @@
 #SBATCH --error=logs/%x-%j-leader-slurm.out
 
 # Specify spack environment version number
-SPACK_TAG=2025.06.4
+SPACK_TAG=2025.07.1
 
 # Specify working directory
 WORK_DIR=/shared/fsx1/user.name
@@ -47,6 +47,7 @@ module load boost
 module show boost
 export LD_LIBRARY_PATH=$BOOST_ROOT/lib:$LD_LIBRARY_PATH
 echo $LD_LIBRARY_PATH
+
 
 # Run rapthor on parset
 rapthor $PARSET_PATH
