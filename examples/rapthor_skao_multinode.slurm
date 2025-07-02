@@ -13,7 +13,7 @@
 #SBATCH --error=logs/%x-%j-leader-slurm.out
 
 # Specify spack environment version number
-SPACK_TAG=2025.06.6
+SPACK_TAG=2025.07.1
 
 # Specify working directory
 WORK_DIR=/shared/fsx1/user.name
