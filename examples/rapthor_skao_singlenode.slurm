@@ -18,6 +18,9 @@ SPACK_TAG=2025.07.3
 # Specify working directory
 WORK_DIR=/shared/fsx1/user.name
 
+# Specify directory for benchmarking monitoring output
+TRACES_DIR=$WORK_DIR/monitor_dir
+
 # Specify path to configuration file, which contains all other required paths
 PARSET_PATH=$WORK_DIR/parset_dir/rapthor.parset
 
@@ -45,5 +48,18 @@ module show boost
 export LD_LIBRARY_PATH=$BOOST_ROOT/lib:$LD_LIBRARY_PATH
 echo $LD_LIBRARY_PATH
 
+# Load benchmarking tools
+module load py-ska-sdp-benchmark-monitor
+
+# Start monitoring
+benchmon_params="--save-dir $TRACES_DIR --system --sys"
+benchmon-start $benchmon_params
+
 # Run rapthor on parset
 rapthor $PARSET_PATH
+
+# Stop monitoring
+benchmon-stop
+ 
+# Visualize monitoring results
+benchmon-visu --cpu --cpu-all --mem --net --disk --fig-fmt png --fig-dpi medium "$TRACES_DIR/benchmon_traces_$(hostname)"
