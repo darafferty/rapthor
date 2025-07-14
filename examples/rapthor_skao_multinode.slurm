@@ -18,12 +18,19 @@ SPACK_TAG=2025.07.1
 # Specify working directory
 WORK_DIR=/shared/fsx1/user.name
 
+# Specify directory for benchmarking monitoring output
+TRACES_DIR="$WORK_DIR/monitor/$SLURM_JOB_NAME_$SLURM_JOB_ID"
+
 # Specify path to configuration file, which contains all other required paths
-PARSET_PATH=$WORK_DIR/gec42/rapthor_multinode.parset
+PARSET_PATH=$WORK_DIR/parset_dir/rapthor_multinode.parset
 
 # Export SLURM options for worker nodes for toil to use
 # --cpus-per-task and --nodes are taken from the parset file
 export TOIL_SLURM_ARGS="--partition=c7i-24xl-spt --exclusive --time 24:00:00" # Use spot partitions where possible
+
+# Export TMPDIR - without this some steps in rapthor use the default which may
+# run out of space - set to same as tmp directories used in parset
+export TMPDIR=/shared/fsx1/user.name/tmp
 
 # -----------------------------------------------------------------------------
 # Anything below should not be edited
@@ -48,6 +55,18 @@ module show boost
 export LD_LIBRARY_PATH=$BOOST_ROOT/lib:$LD_LIBRARY_PATH
 echo $LD_LIBRARY_PATH
 
+# Load benchmarking tools
+module load py-ska-sdp-benchmark-monitor
+
+# Start monitoring
+benchmon_params="--save-dir $TRACES_DIR --system --sys"
+benchmon-multinode-start $benchmon_params
 
 # Run rapthor on parset
 rapthor $PARSET_PATH
+
+# Stop monitoring
+benchmon-multinode-stop
+ 
+# Visualize monitoring results
+benchmon-visu --cpu --cpu-all --mem --net --disk --fig-fmt png --fig-dpi medium "$TRACES_DIR/benchmon_traces_$(hostname)"
