@@ -19,11 +19,14 @@ SPACK_TAG=2025.07.3
 WORK_DIR=/shared/fsx1/user.name
 
 # Specify directory for benchmarking monitoring output
-TRACES_DIR=$WORK_DIR/monitor_dir
+TRACES_DIR="$WORK_DIR/monitor/$SLURM_JOB_NAME_$SLURM_JOB_ID"
 
 # Specify path to configuration file, which contains all other required paths
 PARSET_PATH=$WORK_DIR/parset_dir/rapthor.parset
 
+# Export TMPDIR - without this some steps in rapthor use the default which may
+# run out of space - set to same as tmp directories used in parset
+export TMPDIR=/shared/fsx1/user.name/tmp
 
 # -----------------------------------------------------------------------------
 # Anything below should not be edited
