@@ -23,10 +23,6 @@ arguments:
   - applycal.fastphase.solset=sol000
   - applycal.fastphase.usemodeldata=True
   - applycal.fastphase.invert=False
-  - applycal.slowgain.correction=amplitude000
-  - applycal.slowgain.solset=sol000
-  - applycal.slowgain.usemodeldata=True
-  - applycal.slowgain.invert=False
   - applycal.normalization.correction=amplitude000
   - applycal.normalization.solset=sol000
   - applycal.normalization.usemodeldata=True
@@ -41,8 +37,6 @@ arguments:
   - solve.beammode=array_factor
   - solve.applycal.fastphase.correction=phase000
   - solve.applycal.fastphase.solset=sol000
-  - solve.applycal.slowgain.correction=amplitude000
-  - solve.applycal.slowgain.solset=sol000
   - solve.applycal.normalization.correction=amplitude000
   - solve.applycal.normalization.solset=sol000
   - solve.initialsolutions.missingantennabehavior=unit
@@ -185,26 +179,6 @@ inputs:
     type: File?
     inputBinding:
       prefix: solve.applycal.fastphase.parmdb=
-      separate: False
-
-  - id: slowgain_h5parm
-    label: Solution table
-    doc: |
-      The filename of the input solution table containing the slow-gain solutions.
-      These solutions are preapplied before the solve is done.
-    type: File?
-    inputBinding:
-      prefix: applycal.slowgain.parmdb=
-      separate: False
-
-  - id: ddecal_slowgain_h5parm
-    label: Solution table
-    doc: |
-      The filename of the input solution table containing the slow-gain solutions.
-      These solutions are applied during the solve.
-    type: File?
-    inputBinding:
-      prefix: solve.applycal.slowgain.parmdb=
       separate: False
 
   - id: normalize_h5parm

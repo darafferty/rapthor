@@ -53,8 +53,7 @@ def set_strategy(field):
     secondary_parameters = {'do_calibrate': ['do_slowgain_solve', 'do_fulljones_solve',
                                              'target_flux', 'max_directions', 'regroup_model',
                                              'max_normalization_delta', 'solve_min_uv_lambda',
-                                             'fast_timestep_sec', 'slow_timestep_joint_sec',
-                                             'slow_timestep_separate_sec',
+                                             'fast_timestep_sec', 'slow_timestep_sec',
                                              'scale_normalization_delta', 'max_directions'],
                             'do_normalize': [],
                             'do_image': ['auto_mask', 'auto_mask_nmiter', 'threshisl',
@@ -77,6 +76,19 @@ def set_strategy(field):
                         else:
                             raise ValueError('Required parameter "{0}" not defined in the '
                                              'strategy for cycle {1}.'.format(secondary, i+1))
+
+    # Check for deprecated parameters
+    for i in range(len(strategy_steps)):
+        if 'slow_timestep_joint_sec' in strategy_steps[i]:
+            log.warn('Parameter "slow_timestep_joint_sec" is defined in the strategy for '
+                     f'cycle {i+1} but is no longer used.')
+            strategy_steps[i].pop('slow_timestep_joint_sec')
+        if 'slow_timestep_separate_sec' in strategy_steps[i]:
+            log.warn('Parameter "slow_timestep_separate_sec" is defined in the strategy for '
+                     f'cycle {i+1} but is deprecated. Please use "slow_timestep_sec" instead')
+            if 'slow_timestep_sec' not in strategy_steps[i]:
+                strategy_steps[i]['slow_timestep_sec'] = strategy_steps[i]['slow_timestep_separate_sec']
+            strategy_steps[i].pop('slow_timestep_separate_sec')
 
     return strategy_steps
 
@@ -142,8 +154,7 @@ def set_selfcal_strategy(field):
         strategy_steps[i]['max_normalization_delta'] = 0.3
         strategy_steps[i]['scale_normalization_delta'] = True
         strategy_steps[i]['fast_timestep_sec'] = 8.0
-        strategy_steps[i]['slow_timestep_joint_sec'] = 0.0
-        strategy_steps[i]['slow_timestep_separate_sec'] = 600.0
+        strategy_steps[i]['slow_timestep_sec'] = 600.0
 
         if i == 0:
             strategy_steps[i]['do_normalize'] = True
