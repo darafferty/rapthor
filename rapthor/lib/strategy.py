@@ -141,31 +141,9 @@ def set_selfcal_strategy(field):
         strategy_steps[i]['peel_bright_sources'] = False
         strategy_steps[i]['max_normalization_delta'] = 0.3
         strategy_steps[i]['scale_normalization_delta'] = True
-        if field.antenna == 'LBA':
-            if i == 0:
-                strategy_steps[i]['fast_timestep_sec'] = 64.0
-                strategy_steps[i]['slow_timestep_joint_sec'] = 0.0
-                strategy_steps[i]['slow_timestep_separate_sec'] = 0.0
-            elif i == 1:
-                strategy_steps[i]['fast_timestep_sec'] = 32.0
-                strategy_steps[i]['slow_timestep_joint_sec'] = 0.0
-                strategy_steps[i]['slow_timestep_separate_sec'] = 0.0
-            elif i == 2:
-                strategy_steps[i]['fast_timestep_sec'] = 8.0
-                strategy_steps[i]['slow_timestep_joint_sec'] = 240.0
-                strategy_steps[i]['slow_timestep_separate_sec'] = 960.0
-            elif i == 3:
-                strategy_steps[i]['fast_timestep_sec'] = 8.0
-                strategy_steps[i]['slow_timestep_joint_sec'] = 160.0
-                strategy_steps[i]['slow_timestep_separate_sec'] = 480.0
-            else:
-                strategy_steps[i]['fast_timestep_sec'] = 8.0
-                strategy_steps[i]['slow_timestep_joint_sec'] = 80.0
-                strategy_steps[i]['slow_timestep_separate_sec'] = 480.0
-        elif field.antenna == 'HBA':
-            strategy_steps[i]['fast_timestep_sec'] = 8.0
-            strategy_steps[i]['slow_timestep_joint_sec'] = 0.0
-            strategy_steps[i]['slow_timestep_separate_sec'] = 600.0
+        strategy_steps[i]['fast_timestep_sec'] = 8.0
+        strategy_steps[i]['slow_timestep_joint_sec'] = 0.0
+        strategy_steps[i]['slow_timestep_separate_sec'] = 600.0
 
         if i == 0:
             strategy_steps[i]['do_normalize'] = True
@@ -216,9 +194,6 @@ def set_selfcal_strategy(field):
             strategy_steps[i]['target_flux'] = 0.25
             strategy_steps[i]['max_directions'] = 50
             strategy_steps[i]['max_distance'] = 4.0
-        if field.antenna == 'LBA':
-            strategy_steps[i]['max_directions'] //= 2
-            strategy_steps[i]['max_nmiter'] = int(strategy_steps[i]['max_nmiter'] / 1.5)
         strategy_steps[i]['regroup_model'] = True
 
         if i < min_selfcal_loops - 1:
@@ -263,10 +238,7 @@ def set_image_strategy(field):
     strategy_steps[0]['auto_mask_nmiter'] = 2
     strategy_steps[0]['threshisl'] = 3.0
     strategy_steps[0]['threshpix'] = 5.0
-    if field.antenna == 'LBA':
-        strategy_steps[0]['max_nmiter'] = 8
-    else:
-        strategy_steps[0]['max_nmiter'] = 12
+    strategy_steps[0]['max_nmiter'] = 12
     strategy_steps[0]['do_check'] = False
     strategy_steps[0]['regroup_model'] = False
 

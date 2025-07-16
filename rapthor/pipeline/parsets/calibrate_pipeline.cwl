@@ -9,7 +9,7 @@ doc: |
   constrained to have the same solutions) to correct for beam errors, and (3) a
   further unconstrained slow gain calibration to correct for station-to-station
   differences. Steps (2) and (3) are skipped if the calibration is phase-only.
-  This calibration scheme works for both HBA and LBA data. The final products of
+  This calibration scheme works for HBA only. The final products of
   this workflow are solution tables (h5parm files) and plots.
 
 requirements:
