@@ -58,11 +58,13 @@ class CalibrateDD(Operation):
         slow_ntimes = self.field.get_obs_parameters('slow_ntimes')
 
         # Get the filenames of the input files for each frequency chunk
-        freqchunk_filename_slow = self.field.get_obs_parameters('freqchunk_filename_slow')
+        # (used for the slow solve)
+        freqchunk_filename = self.field.get_obs_parameters('freqchunk_filename_slow')
 
-        # Get the start channel and number of channels for the frequency chunks
-        startchan_slow = self.field.get_obs_parameters('startchan_slow')
-        nchan_slow = self.field.get_obs_parameters('nchan_slow')
+        # Get the start channel and number of channels for the frequency
+        # chunks (used for the slow solve)
+        startchan = self.field.get_obs_parameters('startchan_slow')
+        nchan = self.field.get_obs_parameters('nchan_slow')
 
         # Get the solution intervals for the calibrations
         solint_fast_timestep = self.field.get_obs_parameters('solint_fast_timestep')
@@ -192,7 +194,7 @@ class CalibrateDD(Operation):
         if self.field.apply_normalizations:
             normalize_h5parm = CWLFile(self.field.normalize_h5parm).to_json()
             ddecal_applycal_steps_fast = ['normalization']
-            applycal_steps_fast =['normalization']
+            applycal_steps_fast = ['normalization']
 
             # Convert the lists to strings, with square brackets as required by DP3
             ddecal_applycal_steps_fast = f"[{','.join(ddecal_applycal_steps_fast)}]"
@@ -230,7 +232,7 @@ class CalibrateDD(Operation):
             slow_initialsolutions_h5parm = None
 
         self.input_parms = {'timechunk_filename': CWLDir(timechunk_filename).to_json(),
-                            'freqchunk_filename_slow': CWLDir(freqchunk_filename_slow).to_json(),
+                            'freqchunk_filename': CWLDir(freqchunk_filename).to_json(),
                             'data_colname': self.field.data_colname,
                             'starttime': starttime,
                             'ntimes': ntimes,
