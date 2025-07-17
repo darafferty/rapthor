@@ -91,7 +91,6 @@ class CalibrateDD(Operation):
         output_slow_h5parm = ['slow_gain_{}.h5parm'.format(i)
                               for i in range(self.field.nfreqchunks_slow)]
         self.combined_slow_h5parm = 'slow_gains.h5parm'
-        combined_h5parms_slow = 'combined_solutions_slow.h5'
         if self.field.apply_diagonal_solutions:
             solution_combine_mode = 'p1p2a2_diagonal'
         else:
@@ -306,8 +305,7 @@ class CalibrateDD(Operation):
                             'combined_h5parms': self.combined_h5parms,
                             'fast_antennaconstraint': fast_antennaconstraint,
                             'slow_antennaconstraint': slow_antennaconstraint,
-                            'combined_slow_h5parm': combined_slow_h5parm,
-                            'combined_h5parms_fast_slow': combined_h5parms_fast_slow,
+                            'combined_slow_h5parm': self.combined_slow_h5parm,
                             'solution_combine_mode': solution_combine_mode,
                             'solverlbfgs_dof': solverlbfgs_dof,
                             'solverlbfgs_iter': solverlbfgs_iter,
