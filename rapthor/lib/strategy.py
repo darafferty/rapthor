@@ -47,6 +47,19 @@ def set_strategy(field):
 
     log.info('Using "{}" processing strategy'.format(field.parset['strategy']))
 
+    # Check for deprecated parameters
+    for i in range(len(strategy_steps)):
+        if 'slow_timestep_joint_sec' in strategy_steps[i]:
+            log.warn('Parameter "slow_timestep_joint_sec" is defined in the strategy for '
+                     f'cycle {i+1} but is no longer used.')
+            strategy_steps[i].pop('slow_timestep_joint_sec')
+        if 'slow_timestep_separate_sec' in strategy_steps[i]:
+            log.warn('Parameter "slow_timestep_separate_sec" is defined in the strategy for '
+                     f'cycle {i+1} but is deprecated. Please use "slow_timestep_sec" instead')
+            if 'slow_timestep_sec' not in strategy_steps[i]:
+                strategy_steps[i]['slow_timestep_sec'] = strategy_steps[i]['slow_timestep_separate_sec']
+            strategy_steps[i].pop('slow_timestep_separate_sec')
+
     # Check for required parameters. If any are missing, either print a warning if the
     # parameter has a default defined or raise an error if not
     primary_parameters = ['do_calibrate', 'do_normalize', 'do_image', 'do_check']
@@ -76,19 +89,6 @@ def set_strategy(field):
                         else:
                             raise ValueError('Required parameter "{0}" not defined in the '
                                              'strategy for cycle {1}.'.format(secondary, i+1))
-
-    # Check for deprecated parameters
-    for i in range(len(strategy_steps)):
-        if 'slow_timestep_joint_sec' in strategy_steps[i]:
-            log.warn('Parameter "slow_timestep_joint_sec" is defined in the strategy for '
-                     f'cycle {i+1} but is no longer used.')
-            strategy_steps[i].pop('slow_timestep_joint_sec')
-        if 'slow_timestep_separate_sec' in strategy_steps[i]:
-            log.warn('Parameter "slow_timestep_separate_sec" is defined in the strategy for '
-                     f'cycle {i+1} but is deprecated. Please use "slow_timestep_sec" instead')
-            if 'slow_timestep_sec' not in strategy_steps[i]:
-                strategy_steps[i]['slow_timestep_sec'] = strategy_steps[i]['slow_timestep_separate_sec']
-            strategy_steps[i].pop('slow_timestep_separate_sec')
 
     return strategy_steps
 
