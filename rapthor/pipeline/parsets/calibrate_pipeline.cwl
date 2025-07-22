@@ -245,10 +245,24 @@ inputs:
       calibration (length = 1).
     type: float
 
+  - id: bda_frequencybase
+    label: BDA frequencybase
+    doc: |
+      The baseline length (in meters) below which BDA frequency averaging is done in the
+      calibration (length = 1).
+    type: float
+
   - id: bda_maxinterval
     label: BDA maxinterval
     doc: |
       The maximum interval duration (in time slots) over which BDA time averaging is
+      done in the calibration (length = n_obs * n_time_chunks).
+    type: int[]
+
+  - id: bda_minchannels
+    label: BDA minchannels
+    doc: |
+      The minimum number of channles remaining after BDA frequency averaging is
       done in the calibration (length = n_obs * n_time_chunks).
     type: int[]
 
@@ -611,11 +625,11 @@ steps:
       - id: ntimes
         source: ntimes
       - id: steps
-        source: dp3_steps_fast
+        source: dp3_steps
       - id: applycal_steps
-        source: applycal_steps_fast
+        source: applycal_steps
       - id: ddecal_applycal_steps
-        source: ddecal_applycal_steps_fast
+        source: ddecal_applycal_steps
 {% if use_image_based_predict %}
       - id: normalize_h5parm
         source: adjust_normalize_sources/adjustedh5parm
@@ -745,14 +759,10 @@ steps:
         source: slow_smoothness_dd_factors
       - id: solve2_smoothnessconstraint
         source: slow_smoothnessconstraint
-      - id: solve2_smoothnessreffrequency
-        source: slow_smoothnessreffrequency
-      - id: solve2_smoothnessrefdistance
-        source: slow_smoothnessrefdistance
       - id: solve2_antennaconstraint
         source: slow_antennaconstraint
   {% endif %}
-    scatter: [msin, starttime, ntimes, h5parm, maxinterval, minchannels, solve1_solint, solve1_nchan, solve1_smoothnessreffrequency, solve1_solutions_per_direction, solve1_smoothness_dd_factors, solve2_solint, solve2_nchan, solve2_smoothnessreffrequency, solve2_solutions_per_direction, solve2_smoothness_dd_factors]
+    scatter: [msin, starttime, ntimes, maxinterval, minchannels, solve1_h5parm, solve1_solint, solve1_nchan, solve1_smoothnessreffrequency, solve1_solutions_per_direction, solve1_smoothness_dd_factors, solve2_h5parm, solve2_solint, solve2_nchan, solve2_smoothnessreffrequency, solve2_solutions_per_direction, solve2_smoothness_dd_factors]
     scatterMethod: dotproduct
     out:
       - id: output_h5parm

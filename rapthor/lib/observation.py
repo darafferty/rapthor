@@ -301,7 +301,7 @@ class Observation(object):
         # to ensure that they match the smallest interval used in the solves (since
         # maxinterval cannot exceed solint in DDECal)
         self.parameters['bda_maxinterval'] = [max(1, int(solint_slow_timestep / solve_max_factor))] * self.ntimechunks
-        self.parameters['bda_minchannels'] = [max(1, int(self.numchannels / min(solint_fast_freqstep, solint_slow_freqstep))] * self.ntimechunks
+        self.parameters['bda_minchannels'] = [max(1, int(self.numchannels / min(solint_fast_freqstep, solint_slow_freqstep)))] * self.ntimechunks
 
         # Define the direction-dependent solution interval list for the fast and
         # slow solves (the full-Jones solve is direction-independent so is not included).

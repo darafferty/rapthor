@@ -87,7 +87,7 @@ class CalibrateDD(Operation):
         self.combined_fast_h5parm = 'fast_phases.h5parm'
         self.combined_h5parms = 'combined_solutions.h5'
         output_slow_h5parm = ['slow_gain_{}.h5parm'.format(i)
-                              for i in range(self.field.nfreqchunks_slow)]
+                              for i in range(self.field.ntimechunks)]
         self.combined_slow_h5parm = 'slow_gains.h5parm'
         if self.field.apply_diagonal_solutions:
             solution_combine_mode = 'p1p2a2_diagonal'
@@ -196,8 +196,8 @@ class CalibrateDD(Operation):
             applycal_steps = f"[{','.join(applycal_steps)}]"
         else:
             normalize_h5parm = None
-            ddecal_applycal_steps_fast = None
-            applycal_steps_fast = None
+            ddecal_applycal_steps = None
+            applycal_steps = None
         if (
             self.field.fast_phases_h5parm_filename is not None and
             os.path.exists(self.field.fast_phases_h5parm_filename)
