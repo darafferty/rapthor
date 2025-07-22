@@ -465,7 +465,7 @@ inputs:
       valueFrom: "$(self ? 'True': 'False')"
       separate: False
 
-  - id: solve1_parallelbaselines
+  - id: parallelbaselines
     label: Parallelize over baselines
     doc: |
       Flag that enables parallel prediction over baselines in solve1.
@@ -475,33 +475,13 @@ inputs:
       valueFrom: "$(self ? 'True': 'False')"
       separate: False
 
-  - id: solve2_parallelbaselines
-    label: Parallelize over baselines
-    doc: |
-      Flag that enables parallel prediction over baselines in solve2.
-    type: boolean?
-    inputBinding:
-      prefix: solve2.parallelbaselines=
-      valueFrom: "$(self ? 'True': 'False')"
-      separate: False
-
-  - id: solve1_sagecalpredict
+  - id: sagecalpredict
     label: predict using SAGECal
     doc: |
       Flag that enables prediction using SAGECal in solve1.
     type: boolean?
     inputBinding:
       prefix: solve1.sagecalpredict=
-      valueFrom: "$(self ? 'True': 'False')"
-      separate: False
-
-  - id: solve2_sagecalpredict
-    label: predict using SAGECal
-    doc: |
-      Flag that enables prediction using SAGECal in solve2.
-    type: boolean?
-    inputBinding:
-      prefix: solve2.sagecalpredict=
       valueFrom: "$(self ? 'True': 'False')"
       separate: False
 
