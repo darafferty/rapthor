@@ -296,6 +296,13 @@ class Observation(object):
         self.parameters['solint_fulljones_timestep'] = [solint_fulljones_timestep] * self.ntimechunks
         self.parameters['solint_fulljones_freqstep'] = [solint_fulljones_freqstep] * self.ntimechunks
 
+        # Define the BDA (baseline-dependent averaging) max interval constraints. They
+        # are set to the solution intervals *before* adjusting for the DD intervals
+        # to ensure that they match the smallest interval used in the solves (since
+        # maxinterval cannot exceed solint in DDECal)
+        self.parameters['bda_maxinterval'] = [max(1, int(solint_slow_timestep / solve_max_factor))] * self.ntimechunks
+        self.parameters['bda_minchannels'] = [max(1, int(self.numchannels / min(solint_fast_freqstep, solint_slow_freqstep))] * self.ntimechunks
+
         # Define the direction-dependent solution interval list for the fast and
         # slow solves (the full-Jones solve is direction-independent so is not included).
         # The list values are defined as the number of solutions that will be obtained for
@@ -312,12 +319,6 @@ class Observation(object):
             smoothness_dd_factors = [1] * len(calibrator_fluxes)
         for solve_type in ['fast', 'slow']:
             solint = self.parameters[input_solint_keys[solve_type]][0]  # number of time slots
-
-            # Define the BDA (baseline-dependent averaging) max interval constraints. They
-            # are set to the solution intervals *before* adjusting for the DD intervals
-            # to ensure that they match the smallest interval used in the solves (since
-            # maxinterval cannot exceed solint in DDECal)
-            self.parameters[f'{solve_type}_bda_maxinterval'] = [max(1, int(solint / solve_max_factor))] * self.ntimechunks
 
             if solve_max_factor > 1:
                 # Find the initial estimate for the number of solutions, relative to that

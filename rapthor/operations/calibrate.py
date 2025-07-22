@@ -75,10 +75,10 @@ class CalibrateDD(Operation):
             slow_solutions_per_direction = None
 
         # Get the BDA (baseline-dependent averaging) parameters
-        bda_maxinterval_fast = self.field.get_obs_parameters('bda_maxinterval_fast')
-        bda_maxinterval_slow = self.field.get_obs_parameters('bda_maxinterval_slow')
-        bda_timebase_fast = self.field.bda_timebase_fast
-        bda_timebase_slow = self.field.bda_timebase_slow
+        bda_maxinterval = self.field.get_obs_parameters('bda_maxinterval')
+        bda_minchannels = self.field.get_obs_parameters('bda_minchannels')
+        bda_timebase = self.field.bda_timebase
+        bda_frequencybase = self.field.bda_frequencybase
 
         # Define various output filenames for the solution tables. We save some
         # as attributes since they are needed in finalize()

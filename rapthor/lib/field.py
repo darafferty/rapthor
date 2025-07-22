@@ -50,8 +50,8 @@ class Field(object):
         self.numMS = len(self.ms_filenames)
         self.data_colname = self.parset['data_colname']
         self.use_image_based_predict = self.parset['calibration_specific']['use_image_based_predict']
-        self.bda_timebase_fast = self.parset['calibration_specific']['fast_bda_timebase']
-        self.bda_timebase_slow = self.parset['calibration_specific']['slow_bda_timebase']
+        self.bda_timebase = self.parset['calibration_specific']['bda_timebase']
+        self.bda_frequencybase = self.parset['calibration_specific']['bda_frequencybase']
         self.dd_interval_factor = self.parset['calibration_specific']['dd_interval_factor']
         self.h5parm_filename = self.parset['input_h5parm']
         self.fulljones_h5parm_filename = self.parset['input_fulljones_h5parm']
@@ -351,19 +351,13 @@ class Field(object):
         Sets parameters for all observations from current parset and sky model
         """
         ntimechunks = 0
-        nfreqchunks_slow = 0
-        nfreqchunks_fulljones = 0
         for obs in self.observations:
             obs.set_calibration_parameters(self.parset, self.num_patches, len(self.observations),
                                            self.calibrator_fluxes, self.fast_timestep_sec,
                                            self.slow_timestep_sec, self.fulljones_timestep_sec,
                                            self.target_flux)
             ntimechunks += obs.ntimechunks
-            nfreqchunks_slow += obs.nfreqchunks_slow
-            nfreqchunks_fulljones += obs.nfreqchunks_fulljones
         self.ntimechunks = ntimechunks
-        self.nfreqchunks_slow = nfreqchunks_slow
-        self.nfreqchunks_fulljones = nfreqchunks_fulljones
 
     def get_obs_parameters(self, parameter):
         """
