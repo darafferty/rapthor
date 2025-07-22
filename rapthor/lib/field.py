@@ -92,6 +92,7 @@ class Field(object):
         self.cycle_number = 1
         self.apply_amplitudes = False
         self.apply_screens = False
+        self.generate_screens = False
         self.apply_fulljones = False
         self.apply_normalizations = False
         self.fast_phases_h5parm_filename = None
@@ -1608,7 +1609,7 @@ class Field(object):
                 # Report converged (and not diverged)
                 converged.append(True)
                 diverged.append(False)
-            if rmspost > self.failure_ratio * rmsideal:
+            if rmspost > failure_ratio * rmsideal:
                 failed.append(True)
             else:
                 failed.append(False)
