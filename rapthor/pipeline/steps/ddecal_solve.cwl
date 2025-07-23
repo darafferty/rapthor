@@ -699,10 +699,19 @@ inputs:
     doc: |
       Flag that determines whether model data used in solve1 is kept for
       subsequent steps.
-    type: boolean?
+    type: string?
     inputBinding:
       prefix: solve1.keepmodel=
-      valueFrom: "$(self ? 'True': 'False')"
+      separate: False
+
+  - id: solve2_keepmodel
+    label: Keep model data
+    doc: |
+      Flag that determines whether model data used in solve2 is kept for
+      subsequent steps.
+    type: string?
+    inputBinding:
+      prefix: solve2.keepmodel=
       separate: False
 
   - id: solve1_reusemodel
