@@ -658,7 +658,7 @@ steps:
         source: make_region_file/region_file
       - id: predict_images
         source: draw_model/model_images
-      - id: reuse_model
+      - id: solve1_reusemodel
         valueFrom: '[predict.*]'
 {% else %}
       - id: sourcedb
@@ -717,6 +717,10 @@ steps:
       - id: solve1_antennaconstraint
         source: fast_antennaconstraint
 {% if do_slowgain_solve %}
+      - id: solve1_keepmodel
+        valueFrom: 'True'
+      - id: solve2_reusemodel
+        valueFrom: '[solve1.*]'
       - id: solve2_h5parm
         source: output_slow_h5parm
       - id: solve2_solint
@@ -765,7 +769,8 @@ steps:
     scatter: [msin, starttime, ntimes, maxinterval, minchannels, solve1_h5parm, solve1_solint, solve1_nchan, solve1_smoothnessreffrequency, solve1_solutions_per_direction, solve1_smoothness_dd_factors, solve2_h5parm, solve2_solint, solve2_nchan, solve2_solutions_per_direction, solve2_smoothness_dd_factors]
     scatterMethod: dotproduct
     out:
-      - id: output_h5parm
+      - id: output_h5parm1
+      - id: output_h5parm2
 
   - id: combine_fast_phases
     label: Combine fast-phase solutions

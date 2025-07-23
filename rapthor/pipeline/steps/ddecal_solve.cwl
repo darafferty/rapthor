@@ -694,14 +694,35 @@ inputs:
       prefix: predict.images=
       separate: False
 
-  - id: reuse_model
+  - id: solve1_keepmodel
+    label: Keep model data
+    doc: |
+      Flag that determines whether model data used in solve1 is kept for
+      subsequent steps.
+    type: boolean?
+    inputBinding:
+      prefix: solve1.keepmodel=
+      valueFrom: "$(self ? 'True': 'False')"
+      separate: False
+
+  - id: solve1_reusemodel
     label: Reuse model list
     doc: |
-      A list of model data columns that will be reused from the predict step
-      in solve1.
+      A list of model data columns that will be reused from an earlier
+      step for solve1.
     type: string?
     inputBinding:
       prefix: solve1.reusemodel=
+      separate: False
+
+  - id: solve2_reusemodel
+    label: Reuse model list
+    doc: |
+      A list of model data columns that will be reused from an earlier
+      step for solve2.
+    type: string?
+    inputBinding:
+      prefix: solve2.reusemodel=
       separate: False
 
   - id: numthreads
