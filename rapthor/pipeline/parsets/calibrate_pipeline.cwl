@@ -64,13 +64,13 @@ inputs:
       (length = n_obs * n_time_chunks).
     type: int[]
 
-  - id: solutions_per_direction_fast
+  - id: fast_solutions_per_direction
     label: Fast number of solutions per direction
     doc: |
       The number of solutions per direction for the fast phase solve (length =
       n_obs * n_calibrators * n_time_chunks).
     type:
-      type: array?
+      type: array
       items:
         type: array
         items: int
@@ -401,7 +401,7 @@ inputs:
       slow-gain solve (length = n_obs * n_freq_chunks).
     type: int[]
 
-  - id: solutions_per_direction_slow
+  - id: slow_solutions_per_direction
     label: Slow number of solutions per direction
     doc: |
       The number of solutions per direction for the
@@ -677,7 +677,7 @@ steps:
       - id: solve1_nchan
         source: solint_fast_freqstep
       - id: solve1_solutions_per_direction
-        source: solutions_per_direction_fast
+        source: fast_solutions_per_direction
       - id: solve1_llssolver
         source: llssolver
       - id: solve1_maxiter
@@ -726,7 +726,7 @@ steps:
       - id: solve2_nchan
         source: solint_slow_freqstep
       - id: solve2_solutions_per_direction
-        source: solutions_per_direction_slow
+        source: slow_solutions_per_direction
       - id: solve2_llssolver
         source: llssolver
       - id: solve2_maxiter

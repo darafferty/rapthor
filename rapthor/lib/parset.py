@@ -289,6 +289,15 @@ class Parset:
                 "'directioniterative' solver, since dd_interval_factor > 1."
             )
             options["solveralgorithm"] = "directioniterative"
+        if dd_interval_factor > 1:
+            # TODO: direction-dependent solution intervals cannot yet be used with
+            # multi-calibration; once they can be, the restriction on their use
+            # should be removed
+            log.warning(
+                "Switching off direction-dependent intervals, since they are "
+                "not yet supported."
+            )
+            options["dd_interval_factor"] = 1
         if (
             (options["fast_datause"] != "full" or options["slow_datause"] != "full") and
             options["solveralgorithm"] != "directioniterative"

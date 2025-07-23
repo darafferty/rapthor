@@ -62,17 +62,8 @@ class CalibrateDD(Operation):
         solint_slow_freqstep = self.field.get_obs_parameters('solint_slow_freqstep')
 
         # Get the number of solutions per direction
-        #
-        # TODO: direction-dependent solution intervals cannot yet be used with
-        # multi-calibration; once they can be, the restriction on their use
-        # should be removed
-        use_dd_intervals = False
-        if use_dd_intervals:
-            fast_solutions_per_direction = self.field.get_obs_parameters('fast_solutions_per_direction')
-            slow_solutions_per_direction = self.field.get_obs_parameters('slow_solutions_per_direction')
-        else:
-            fast_solutions_per_direction = None
-            slow_solutions_per_direction = None
+        fast_solutions_per_direction = self.field.get_obs_parameters('fast_solutions_per_direction')
+        slow_solutions_per_direction = self.field.get_obs_parameters('slow_solutions_per_direction')
 
         # Get the BDA (baseline-dependent averaging) parameters
         bda_maxinterval = self.field.get_obs_parameters('bda_maxinterval')
