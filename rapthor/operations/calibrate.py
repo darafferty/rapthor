@@ -123,7 +123,7 @@ class CalibrateDD(Operation):
             # stationconstraint to allow each station to get its own fast phase
             # corrections
             fast_antennaconstraint = '[]'
-        slow_antennaconstraint = '[[{}]]'.format(','.join(self.field.stations))
+        slow_antennaconstraint = '[]'
         max_normalization_delta = self.field.max_normalization_delta
         scale_normalization_delta = '{}'.format(self.field.scale_normalization_delta)
 

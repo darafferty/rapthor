@@ -235,17 +235,12 @@ class Observation(object):
         solve_max_factor = parset['calibration_specific']['dd_interval_factor']
         smoothness_max_factor = parset['calibration_specific']['dd_smoothness_factor']
 
-        # Find solution intervals for fast-phase solve. The solve is split into time
-        # chunks instead of frequency chunks, since continuous frequency coverage is
-        # desirable to recover the expected smooth, TEC-like behavior (phase ~ nu^-1)
-        #
-        # Note: we don't explicitly check that the resulting solution intervals fit
-        # within the observation's size, as this is handled by DP3
-        solint_fast_timestep = max(1, int(round(target_fast_timestep / round(self.timepersample)) * solve_max_factor))
-        solint_fast_freqstep = max(1, self.get_nearest_freqstep(target_fast_freqstep / self.channelwidth))
+        # Find the maximum solution interval in time that can be used in any solve
+        max_timestep = max(target_fast_timestep, target_slow_timestep, target_fulljones_timestep)
+        solint_max_timestep = max(1, int(round(max_timestep / round(self.timepersample)) * solve_max_factor))
 
         # Determine how many calibration chunks to make (to allow parallel jobs)
-        samplesperchunk = get_chunk_size(parset['cluster_specific'], self.numsamples, nobs, solint_fast_timestep)
+        samplesperchunk = get_chunk_size(parset['cluster_specific'], self.numsamples, nobs, solint_max_timestep)
 
         # Calculate start times, etc.
         chunksize = samplesperchunk * self.timepersample
@@ -278,6 +273,15 @@ class Observation(object):
             self.parameters['ntimes'][-1] = 0
         else:
             self.parameters['ntimes'][-1] += int(self.numsamples - (samplesperchunk * self.ntimechunks))
+
+        # Find solution intervals for fast-phase solve. The solve is split into time
+        # chunks instead of frequency chunks, since continuous frequency coverage is
+        # desirable to recover the expected smooth, TEC-like behavior (phase ~ nu^-1)
+        #
+        # Note: we don't explicitly check that the resulting solution intervals fit
+        # within the observation's size, as this is handled by DP3
+        solint_fast_timestep = max(1, int(round(target_fast_timestep / round(self.timepersample)) * solve_max_factor))
+        solint_fast_freqstep = max(1, self.get_nearest_freqstep(target_fast_freqstep / self.channelwidth))
 
         # Set the fast solve solution intervals
         self.parameters['solint_fast_timestep'] = [solint_fast_timestep] * self.ntimechunks
