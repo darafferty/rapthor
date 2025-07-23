@@ -777,7 +777,7 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/collect_h5parms.cwl
     in:
       - id: inh5parms
-        source: solve/output_h5parm
+        source: solve/output_h5parm1
       - id: outputh5parm
         source: combined_fast_h5parm
     out:
@@ -807,7 +807,7 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/collect_h5parms.cwl
     in:
       - id: inh5parms
-        source: solve/output_h5parm
+        source: solve/output_h5parm2
       - id: outputh5parm
         source: combined_slow_h5parm
     out:
