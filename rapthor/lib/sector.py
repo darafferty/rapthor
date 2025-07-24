@@ -381,7 +381,7 @@ class Sector(object):
         # Set the parameters for predict
         self.set_prediction_parameters()
 
-    def filter_skymodel(self, skymodel):
+    def filter_skymodel(self, skymodel, invert=False):
         """
         Filters input skymodel to select only sources that lie inside the sector
 
@@ -389,13 +389,16 @@ class Sector(object):
         ----------
         skymodel : LSMTool skymodel object
             Input sky model
+        invert : bool, optional
+            If True, invert the selection (so select only souces that lie outside
+            the sector)
 
         Returns
         -------
         filtered_skymodel : LSMTool skymodel object
             Filtered sky model
         """
-        return facet.filter_skymodel(self.poly, skymodel, self.field.wcs)
+        return facet.filter_skymodel(self.poly, skymodel, self.field.wcs, invert=invert)
 
     def get_obs_parameters(self, parameter):
         """
