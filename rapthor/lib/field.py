@@ -250,8 +250,8 @@ class Field(object):
 
         Parameters
         ----------
-        mintime : float
-            Minimum time in sec for a chunk
+        mintime : float or None
+            Minimum time in sec for a chunk. If None, chunking is unconstrained by time
         prefer_high_el_periods : bool, optional
             Prefer periods for which the elevation is in the highest 80% of values for a
             given observation. This option is useful for removing periods of lower
@@ -266,7 +266,7 @@ class Field(object):
             target_starttime = obs.starttime
             target_endtime = obs.endtime
             data_fraction = obs.data_fraction
-            if prefer_high_el_periods and (mintime < obs.high_el_endtime - obs.high_el_starttime):
+            if prefer_high_el_periods and (mintime is None or (mintime < obs.high_el_endtime - obs.high_el_starttime)):
                 # Use high-elevation period for chunking. We increase the data fraction
                 # to account for the decreased total observation time so that the
                 # amount of data used is kept the same
@@ -276,12 +276,15 @@ class Field(object):
                                     (target_endtime - target_starttime))
             tottime = target_endtime - target_starttime
 
-            nchunks = max(1, int(np.floor(data_fraction / (mintime / tottime))))
+            nchunks = max(1, int(np.floor(data_fraction / (mintime / tottime)))) if mintime is not None else 1
             if nchunks == 1:
                 # Center the chunk around the midpoint (which is generally the most
                 # sensitive, near transit)
                 midpoint = target_starttime + tottime / 2
-                chunktime = min(tottime, max(mintime, data_fraction*tottime))
+                if mintime is not None:
+                    chunktime = min(tottime, max(mintime, data_fraction * tottime))
+                else:
+                    chunktime = data_fraction * tottime
                 if chunktime < tottime:
                     self.observations.append(Observation(obs.ms_filename,
                                                          starttime=midpoint-chunktime/2,
@@ -317,13 +320,14 @@ class Field(object):
             self.observations = []
             for obs in prev_observations:
                 tottime = obs.endtime - obs.starttime
-                nchunks = min(minnobs, max(1, int(tottime / mintime)))
+                nchunks = min(minnobs, max(1, int(tottime / mintime))) if mintime is not None else minobs
                 if nchunks > 1:
                     steptime = tottime / nchunks
-                    steptime -= steptime % mintime
+                    if mintime is not None:
+                        steptime -= steptime % mintime
                     numsamples = int(np.ceil(steptime / obs.timepersample))
                     if numsamples < 2:
-                        steptime += mintime
+                        steptime *= 2
                     starttimes = np.arange(obs.starttime, obs.endtime, steptime)
                     endtimes = [st+steptime for st in starttimes]
                     for nc, (starttime, endtime) in enumerate(zip(starttimes, endtimes)):
