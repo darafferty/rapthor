@@ -390,7 +390,7 @@ class Sector(object):
         skymodel : LSMTool skymodel object
             Input sky model
         invert : bool, optional
-            If True, invert the selection (so select only souces that lie outside
+            If True, invert the selection (so select only sources that lie outside
             the sector)
 
         Returns

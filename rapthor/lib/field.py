@@ -900,7 +900,7 @@ class Field(object):
                 skymodel_true_sky_start = lsmtool.load(self.parset['input_skymodel'])
                 skymodel_true_sky_start.group('every')
 
-                # Remove sources in the starting sky model that lie regions covered by
+                # Remove sources in the starting sky model that lie in regions covered by
                 # any of the imaging sectors
                 for sector in self.imaging_sectors:
                     skymodel_true_sky_start = sector.filter_skymodel(skymodel_true_sky_start, invert=True)

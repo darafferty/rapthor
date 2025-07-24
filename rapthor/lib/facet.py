@@ -574,7 +574,7 @@ def filter_skymodel(polygon, skymodel, wcs, invert=False):
     wcs : WCS object
         WCS object defining image to sky transformations
     invert : bool, optional
-        If True, invert the selection (so select only souces that lie outside
+        If True, invert the selection (so select only sources that lie outside
         the facet)
 
     Returns
