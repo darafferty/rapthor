@@ -561,7 +561,7 @@ def read_skymodel(skymodel, ra_mid, dec_mid, width_ra, width_dec):
     return facets
 
 
-def filter_skymodel(polygon, skymodel, wcs):
+def filter_skymodel(polygon, skymodel, wcs, invert=False):
     """
     Filters input skymodel to select only sources that lie inside the input facet
 
@@ -573,6 +573,9 @@ def filter_skymodel(polygon, skymodel, wcs):
         Input sky model to be filtered
     wcs : WCS object
         WCS object defining image to sky transformations
+    invert : bool, optional
+        If True, invert the selection (so select only sources that lie outside
+        the facet)
 
     Returns
     -------
@@ -591,7 +594,10 @@ def filter_skymodel(polygon, skymodel, wcs):
     xmin, ymin, xmax, ymax = polygon.bounds
     inside_ind = np.where((x >= xmin) & (x <= xmax) & (y >= ymin) & (y <= ymax))
     inside[inside_ind] = True
-    skymodel.select(inside)
+    if invert:
+        skymodel.remove(inside)
+    else:
+        skymodel.select(inside)
     if len(skymodel) == 0:
         return skymodel
     RA = skymodel.getColValues('Ra')
@@ -635,6 +641,9 @@ def filter_skymodel(polygon, skymodel, wcs):
     i_outside_points = [(i, p) for (i, p) in i_points if not prepared_polygon.contains(p)]
     for idx, _ in i_outside_points:
         inside[idx] = False
-    skymodel.select(inside)
+    if invert:
+        skymodel.remove(inside)
+    else:
+        skymodel.select(inside)
 
     return skymodel
