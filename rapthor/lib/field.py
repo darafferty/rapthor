@@ -914,7 +914,7 @@ class Field(object):
                 if skymodel_true_sky_start:
                     matching_radius_deg = 30.0 / 3600.0  # => 30 arcsec
                     if not skymodel_true_sky.hasPatches:
-                        skymodel_true_sky.group('every')
+                        skymodel_true_sky.group('single')
                     skymodel_true_sky.concatenate(skymodel_true_sky_start, matchBy='position',
                                                   radius=matching_radius_deg, keep='from1')
                     skymodel_true_sky.setPatchPositions()
