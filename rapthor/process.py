@@ -334,8 +334,8 @@ def chunk_observations(field, steps, data_fraction):
                 obs.log.warning('The specified value of data_fraction ({0:0.3f}) results in a '
                                 'total time for this observation that is less than the largest '
                                 'potential calibration timestep ({1} s). The data fraction will be '
-                                'increased to {2:0.3f} to ensure the timestep requirement is '
-                                'met.'.format(data_fraction, min_time, min_fraction))
+                                'increased to {2:0.3f} to atempt to meet the timestep '
+                                'requirement.'.format(data_fraction, min_time, min_fraction))
                 obs.data_fraction = min_fraction
 
     field.chunk_observations(min_time)
