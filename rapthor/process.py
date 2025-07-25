@@ -329,7 +329,7 @@ def chunk_observations(field, steps, data_fraction):
         tot_time = obs.endtime - obs.starttime
         obs.data_fraction = data_fraction
         if min_time:
-            min_fraction = min(1.0, solve_min_time/tot_time)
+            min_fraction = min(1.0, min_time/tot_time)
             if data_fraction < min_fraction:
                 obs.log.warning('The specified value of data_fraction ({0:0.3f}) results in a '
                                 'total time for this observation that is less than the largest '

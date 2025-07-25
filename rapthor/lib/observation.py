@@ -257,7 +257,7 @@ class Observation(object):
             starttimes.pop(-1)
             nchunks -= 1
         self.ntimechunks = nchunks
-        self.log.debug('Using {0} time chunk{1} for fast-phase '
+        self.log.debug('Using {0} time chunk{1} for '
                        'calibration'.format(self.ntimechunks, "s" if self.ntimechunks > 1 else ""))
         if self.antenna == 'LBA':
             # For LBA, use the MS files with non-calibrator sources subtracted

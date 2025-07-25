@@ -720,7 +720,11 @@ steps:
       - id: solve1_keepmodel
         valueFrom: 'True'
       - id: solve2_reusemodel
+{% if use_image_based_predict %}
+        valueFrom: '[predict.*]'
+{% else %}
         valueFrom: '[solve1.*]'
+{% endif %}
       - id: solve2_h5parm
         source: output_slow_h5parm
       - id: solve2_solint
