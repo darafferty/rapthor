@@ -244,7 +244,7 @@ steps:
     scatter: [msin, starttime, ntimes, solve1_h5parm, solve1_solint, solve1_nchan]
     scatterMethod: dotproduct
     out:
-      - id: output_h5parm
+      - id: output_h5parm1
 
   - id: combine_fulljones_gains
     label: Combine full-Jones gain solutions
@@ -254,7 +254,7 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/collect_h5parms.cwl
     in:
       - id: inh5parms
-        source: solve_fulljones_gains/output_h5parm
+        source: solve_fulljones_gains/output_h5parm1
       - id: outputh5parm
         source: combined_h5parm_fulljones
     out:
