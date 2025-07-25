@@ -73,13 +73,11 @@ def test_concatenate_workflow(
 
 @pytest.mark.parametrize("use_image_based_predict", (False, True))
 @pytest.mark.parametrize("do_slowgain_solve", (False, True))
-@pytest.mark.parametrize("do_joint_solve", (False, True))
 @pytest.mark.parametrize("max_cores", (None, 8))
 def test_calibrate_workflow(
     tmp_path,
     use_image_based_predict,
     do_slowgain_solve,
-    do_joint_solve,
     max_cores,
 ):
     """
@@ -92,7 +90,6 @@ def test_calibrate_workflow(
     parms = {
         "use_image_based_predict": use_image_based_predict,
         "do_slowgain_solve": do_slowgain_solve,
-        "do_joint_solve": do_joint_solve,
         "max_cores": max_cores,
     }
     generate_and_validate(tmp_path, operation, parms, templ)
