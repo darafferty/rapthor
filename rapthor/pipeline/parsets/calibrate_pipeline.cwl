@@ -770,7 +770,11 @@ steps:
       - id: solve2_antennaconstraint
         source: slow_antennaconstraint
   {% endif %}
-    scatter: [msin, starttime, ntimes, maxinterval, minchannels, solve1_h5parm, solve1_solint, solve1_nchan, solve1_smoothnessreffrequency, solve1_solutions_per_direction, solve1_smoothness_dd_factors, solve2_h5parm, solve2_solint, solve2_nchan, solve2_solutions_per_direction, solve2_smoothness_dd_factors]
+    scatter: [msin, starttime, ntimes, maxinterval, minchannels,
+{% if do_slowgain_solve %}
+    solve2_h5parm, solve2_solint, solve2_nchan, solve2_solutions_per_direction, solve2_smoothness_dd_factors,
+{% endif %}
+    solve1_h5parm, solve1_solint, solve1_nchan, solve1_smoothnessreffrequency, solve1_solutions_per_direction, solve1_smoothness_dd_factors]
     scatterMethod: dotproduct
     out:
       - id: output_h5parm1
