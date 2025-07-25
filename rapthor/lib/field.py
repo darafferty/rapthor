@@ -895,18 +895,24 @@ class Field(object):
                 skymodel_true_sky_start = lsmtool.load(self.parset['input_skymodel'])
                 skymodel_true_sky_start.group('every')
 
+                # Remove sources in the starting sky model that lie in regions covered by
+                # any of the imaging sectors
+                for sector in self.imaging_sectors:
+                    skymodel_true_sky_start = sector.filter_skymodel(skymodel_true_sky_start, invert=True)
+
                 # Concatenate by position. Any entries in the initial sky model that match
                 # to one or more entires in the new one will be removed. A fairly large
                 # matching radius is used to favor entries in the new model over those in
                 # the initial one (i.e., ones from the initial model are only included if
                 # they are far from any in the new model and thus not likely to be
                 # duplicates)
-                matching_radius_deg = 30.0 / 3600.0  # => 30 arcsec
-                if not skymodel_true_sky.hasPatches:
-                    skymodel_true_sky.group('every')
-                skymodel_true_sky.concatenate(skymodel_true_sky_start, matchBy='position',
-                                              radius=matching_radius_deg, keep='from1')
-                skymodel_true_sky.setPatchPositions()
+                if skymodel_true_sky_start:
+                    matching_radius_deg = 30.0 / 3600.0  # => 30 arcsec
+                    if not skymodel_true_sky.hasPatches:
+                        skymodel_true_sky.group('every')
+                    skymodel_true_sky.concatenate(skymodel_true_sky_start, matchBy='position',
+                                                  radius=matching_radius_deg, keep='from1')
+                    skymodel_true_sky.setPatchPositions()
 
             # Use concatenated sky models to make new calibration model (we set find_sources
             # to False to preserve the source patches defined in the image operation by PyBDSF)
