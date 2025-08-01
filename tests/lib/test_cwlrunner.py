@@ -162,6 +162,7 @@ def parset(
     parset["cluster_specific"]["global_scratch_dir"] = global_scratch_dir
     parset["cluster_specific"]["local_scratch_dir"] = local_scratch_dir
     parset["cluster_specific"]["max_nodes"] = 1
+    parset["cluster_specific"]["cpus_per_task"] = 4
     parset["imaging_specific"]["use_mpi"] = use_mpi
     return parset
 
@@ -245,7 +246,7 @@ class TestCWLToolRunner:
             if batch_system == "slurm":
                 assert "runner: 'mpi_runner.sh'" in content
                 assert "nproc_flag: '-N'" in content
-                assert "extra_flags: ['mpirun', '-pernode', '--bind-to', 'none', '-x', 'OPENBLAS_NUM_THREADS']" in content
+                assert "extra_flags: ['--cpus-per-task=4', 'mpirun', '-pernode', '--bind-to', 'none', '-x', 'OPENBLAS_NUM_THREADS']" in content
             elif batch_system == "single_machine":
                 assert "runner: 'mpirun'" in content
                 assert "nproc_flag: '-np'" in content
@@ -350,7 +351,7 @@ class TestToilRunner:
             if batch_system == "slurm":
                 assert "runner: 'mpi_runner.sh'" in content
                 assert "nproc_flag: '-N'" in content
-                assert "extra_flags: ['mpirun', '-pernode', '--bind-to', 'none', '-x', 'OPENBLAS_NUM_THREADS']" in content
+                assert "extra_flags: ['--cpus-per-task=4', 'mpirun', '-pernode', '--bind-to', 'none', '-x', 'OPENBLAS_NUM_THREADS']" in content
             elif batch_system == "single_machine":
                 assert "runner: 'mpirun'" in content
                 assert "nproc_flag: '-np'" in content
