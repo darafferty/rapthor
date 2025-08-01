@@ -233,6 +233,27 @@ class TestCWLToolRunner:
             else:
                 assert False
 
+    def test_mpi_config_file(tmp_path, batch_system, use_mpi, runner):
+        """
+        Test if the MPI configuration file is present and has the correct content.
+        """
+        if use_mpi:
+            mpi_config_file = runner.args[runner.args.index("--mpi-config-file") + 1]
+            assert os.path.isfile(mpi_config_file)
+            with open(mpi_config_file, "r", encoding="utf-8") as f:
+                content = f.read()
+            if batch_system == "slurm":
+                assert "runner: 'mpi_runner.sh'" in content
+                assert "nproc_flag: '-N'" in content
+                assert "extra_flags: ['mpirun', '-pernode', '--bind-to', 'none', '-x', 'OPENBLAS_NUM_THREADS']" in content
+            elif batch_system == "single_machine":
+                assert "runner: 'mpirun'" in content
+                assert "nproc_flag: '-np'" in content
+                assert "extra_flags: ['-pernode', '--bind-to', 'none', '-x', 'OPENBLAS_NUM_THREADS']" in content
+        else:
+            assert "--mpi-config-file" not in runner.args, "MPI config file should not be present when not using MPI"
+
+
 
 @pytest.mark.parametrize("cwl_runner", ("toil",))
 class TestToilRunner:
@@ -316,3 +337,24 @@ class TestToilRunner:
             else:
                 assert workdir.startswith(parset["dir_working"])
             assert os.path.isdir(workdir)
+
+    def test_mpi_config_file(tmp_path, use_mpi, batch_system, runner):
+        """
+        Test if the MPI configuration file is present and has the correct content.
+        """
+        if use_mpi:
+            mpi_config_file = runner.args[runner.args.index("--mpi-config-file") + 1]
+            assert os.path.isfile(mpi_config_file)
+            with open(mpi_config_file, "r", encoding="utf-8") as f:
+                content = f.read()
+            if batch_system == "slurm":
+                assert "runner: 'mpi_runner.sh'" in content
+                assert "nproc_flag: '-N'" in content
+                assert "extra_flags: ['mpirun', '-pernode', '--bind-to', 'none', '-x', 'OPENBLAS_NUM_THREADS']" in content
+            elif batch_system == "single_machine":
+                assert "runner: 'mpirun'" in content
+                assert "nproc_flag: '-np'" in content
+                assert "extra_flags: ['-pernode', '--bind-to', 'none', '-x', 'OPENBLAS_NUM_THREADS']" in content
+        else:
+            assert "--mpi-config-file" not in runner.args, "MPI config file should not be present when not using MPI"
+
