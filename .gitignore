@@ -155,3 +155,8 @@ cython_debug/
 
 # Flake8 config file
 .flake8
+
+# test data
+tests/resources/test.ms
+tests/test.ms_di.ms
+
