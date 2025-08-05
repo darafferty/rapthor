@@ -53,7 +53,8 @@ class CWLRunner:
             mpi_config_lines = [
                 "runner: 'mpi_runner.sh'",
                 "nproc_flag: '-N'",
-                "extra_flags: ['mpirun', '-pernode', '--bind-to', 'none', '-x', 'OPENBLAS_NUM_THREADS']"
+                f"extra_flags: ['--cpus-per-task={self.operation.cpus_per_task}', "
+                "'mpirun', '-pernode', '--bind-to', 'none', '-x', 'OPENBLAS_NUM_THREADS']"
             ]
         else:
             mpi_config_lines = [
