@@ -1,26 +1,23 @@
 """
 Module that holds miscellaneous functions and classes
 """
-from astropy.io import fits as pyfits
-from astropy.time import Time
-from astropy.coordinates import SkyCoord
-import astropy.units as u
 import logging
-from losoto.h5parm import h5parm
-import lsmtool
-from math import modf
-import mocpy
 import multiprocessing
-import numpy as np
 import os
-import pickle
-from PIL import Image, ImageDraw
-import requests
-from scipy.interpolate import interp1d
-from shapely.geometry import Point, Polygon
-from shapely.prepared import prep
 import subprocess
 import time
+from math import modf
+
+import astropy.units as u
+import lsmtool
+import mocpy
+import numpy as np
+import requests
+from astropy.coordinates import SkyCoord
+from astropy.io import fits as pyfits
+from astropy.time import Time
+from losoto.h5parm import h5parm
+from scipy.interpolate import interp1d
 
 
 # Always use a 0-based origin in wcs_pix2world and wcs_world2pix calls.
@@ -219,13 +216,10 @@ def read_vertices(filename, wcs):
         The converted coordinates.
     """
     # The input file always contains vertices as RA,Dec coordinates.
-    with open(filename, 'rb') as f:
-        vertices_ra, vertices_dec = pickle.load(f)
+    vertices_celestial = lsmtool.io.read_vertices_ra_dec(filename)
 
     # Convert to x, y coordinates.
-    vertices_x, vertices_y = wcs.wcs_world2pix(vertices_ra,
-                                               vertices_dec,
-                                               WCS_ORIGIN)
+    vertices_x, vertices_y = wcs.wcs_world2pix(*vertices_celestial, WCS_ORIGIN)
 
     # Convert to a list of (x, y) tuples.
     return list(zip(vertices_x, vertices_y))
@@ -370,48 +364,6 @@ def make_template_image(image_name, reference_ra_deg, reference_dec_deg,
     hdulist[0].header = header
     hdulist.writeto(image_name, overwrite=True)
     hdulist.close()
-
-
-def rasterize(verts, data, blank_value=0):
-    """
-    Rasterize a polygon into a data array
-
-    Parameters
-    ----------
-    verts : list of (x, y) tuples
-        List of input vertices of polygon to rasterize
-    data : 2-D array
-        Array into which rasterize polygon
-    blank_value : int or float, optional
-        Value to use for blanking regions outside the poly
-
-    Returns
-    -------
-    data : 2-D array
-        Array with rasterized polygon
-    """
-    poly = Polygon(verts)
-    prepared_polygon = prep(poly)
-
-    # Mask everything outside of the polygon plus its border (outline) with zeros
-    # (inside polygon plus border are ones)
-    mask = Image.new('L', (data.shape[1], data.shape[0]), 0)
-    ImageDraw.Draw(mask).polygon(verts, outline=1, fill=1)
-    data *= mask
-
-    # Now check the border precisely
-    mask = Image.new('L', (data.shape[1], data.shape[0]), 0)
-    ImageDraw.Draw(mask).polygon(verts, outline=1, fill=0)
-    masked_ind = np.where(np.array(mask).transpose())
-    points = [Point(xm, ym) for xm, ym in zip(masked_ind[0], masked_ind[1])]
-    outside_points = [v for v in points if prepared_polygon.disjoint(v)]
-    for outside_point in outside_points:
-        data[int(outside_point.y), int(outside_point.x)] = 0
-
-    if blank_value != 0:
-        data[data == 0] = blank_value
-
-    return data
 
 
 def string2bool(invar):
@@ -834,54 +786,6 @@ def get_flagged_solution_fraction(h5file, solsetname='sol000'):
                          'solset {0} of h5parm file {1}'.format(solsetname, h5file))
 
     return num_flagged / num_all
-
-
-def transfer_patches(from_skymodel, to_skymodel, patch_dict=None):
-    """
-    Transfers the patches defined in from_skymodel to to_skymodel
-
-    Parameters
-    ----------
-    from_skymodel : LSMTool skymodel.SkyModel object
-        Sky model from which to transfer patches
-    to_skymodel : LSMTool skymodel.SkyModel object
-        Sky model to which to transfer patches
-    patch_dict : dict, optional
-        Dict of patch positions
-    """
-    if not from_skymodel.hasPatches:
-        raise ValueError('Cannot transfer patches since from_skymodel is not grouped '
-                         'into patches.')
-    names_from = from_skymodel.getColValues('Name').tolist()
-    names_to = to_skymodel.getColValues('Name').tolist()
-
-    if not to_skymodel.hasPatches:
-        to_skymodel.group('single')
-
-    if set(names_from) == set(names_to):
-        # Both sky models have the same sources, so use indexing
-        ind_ss = np.argsort(names_from)
-        ind_ts = np.argsort(names_to)
-        to_skymodel.table['Patch'][ind_ts] = from_skymodel.table['Patch'][ind_ss]
-    elif set(names_to).issubset(set(names_from)):
-        # The to_skymodel is a subset of from_skymodel, so use slower matching algorithm
-        for ind_ts, name in enumerate(names_to):
-            ind_ss = names_from.index(name)
-            to_skymodel.table['Patch'][ind_ts] = from_skymodel.table['Patch'][ind_ss]
-    elif set(names_from).issubset(set(names_to)):
-        # The from_skymodel is a subset of to_skymodel, so use slower matching algorithm,
-        # leaving non-matching sources in their initial patches
-        for ind_ss, name in enumerate(names_from):
-            ind_ts = names_to.index(name)
-            to_skymodel.table['Patch'][ind_ts] = from_skymodel.table['Patch'][ind_ss]
-    else:
-        # Skymodels don't match, raise error
-        raise ValueError('Cannot transfer patches since neither sky model is a '
-                         'subset of the other.')
-
-    to_skymodel._updateGroups()
-    if patch_dict is not None:
-        to_skymodel.setPatchPositions(patchDict=patch_dict)
 
 
 def rename_skymodel_patches(skymodel, order_dec='high_to_low', order_ra='high_to_low',
