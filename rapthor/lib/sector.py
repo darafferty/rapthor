@@ -1,18 +1,20 @@
 """
 Definition of the Sector class that holds parameters for an image or predict sector
 """
-import logging
-import numpy as np
-from rapthor.lib import miscellaneous as misc
-from rapthor.lib import cluster, facet
-import lsmtool
-from astropy.coordinates import Angle, SkyCoord
-import astropy.units as u
-from shapely.geometry import Polygon
-from matplotlib import patches
-import pickle
-import os
 import copy
+import logging
+import os
+import pickle
+
+import astropy.units as u
+import lsmtool
+import numpy as np
+from astropy.coordinates import Angle, SkyCoord
+from matplotlib import patches
+from shapely.geometry import Polygon
+
+from rapthor.lib import cluster, facet
+from rapthor.lib import miscellaneous as misc
 
 
 class Sector(object):
@@ -337,11 +339,7 @@ class Sector(object):
                 # very faint source at center
                 dummylines = ["Format = Name, Type, Patch, Ra, Dec, I, SpectralIndex, LogarithmicSI, "
                               "ReferenceFrequency='100000000.0', MajorAxis, MinorAxis, Orientation\n"]
-                ra = misc.ra2hhmmss(self.ra)
-                sra = str(ra[0]).zfill(2)+':'+str(ra[1]).zfill(2)+':'+str("%.6f" % (ra[2])).zfill(6)
-                dec = misc.dec2ddmmss(self.dec)
-                decsign = ('-' if dec[3] < 0 else '+')
-                sdec = decsign+str(dec[0]).zfill(2)+'.'+str(dec[1]).zfill(2)+'.'+str("%.6f" % (dec[2])).zfill(6)
+                sra, sdec = lsmtool.utils.format_coordinates(self.ra, self.dec, precision=6)
                 patch = self.calibration_skymodel.getPatchNames()[0]
                 dummylines.append(',,{0},{1},{2}\n'.format(patch, sra, sdec))
                 dummylines.append('s0c0,POINT,{0},{1},{2},0.00000001,'

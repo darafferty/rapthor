@@ -2,7 +2,6 @@
 Tests for the `rapthor.lib.miscellaneous` module.
 """
 
-import numpy
 import pytest
 from rapthor.lib.miscellaneous import *
 
@@ -49,12 +48,6 @@ def test_make_wcs(ra, dec, wcs_pixel_scale):
     make_wcs(ra, dec, wcs_pixel_scale)
 
 
-@pytest.mark.parametrize("filename", ("/path/to/vertices.file",))
-def test_read_vertices(filename):
-    with pytest.raises(FileNotFoundError):
-        read_vertices(filename)
-
-
 @pytest.mark.parametrize("image_name", (None,))
 @pytest.mark.parametrize("reference_ra_deg", (None,))
 @pytest.mark.parametrize("reference_dec_deg", (None,))
@@ -92,13 +85,6 @@ def test_make_template_image(
         aterm_type,
         fill_val,
     )
-
-
-@pytest.mark.parametrize("verts", ([(2.7, 3.1), (3.2, 4.5), (5.1, 6.3)],))
-@pytest.mark.parametrize("data", (numpy.zeros((5, 5)),))
-@pytest.mark.parametrize("blank_value", (0,))
-def test_rasterize(verts, data, blank_value):
-    rasterize(verts, data, blank_value)
 
 
 @pytest.mark.parametrize("invar", (None,))
@@ -181,14 +167,6 @@ def test_find_unflagged_fraction(ms_file, start_time, end_time):
 @pytest.mark.parametrize("solsetname", ("sol000",))
 def test_get_flagged_solution_fraction(h5file, solsetname):
     # get_flagged_solution_fraction(h5file, solsetname)
-    pass
-
-
-@pytest.mark.parametrize("from_skymodel", (None,))  # we may want to use a fixture here
-@pytest.mark.parametrize("to_skymodel", (None,))
-@pytest.mark.parametrize("patch_dict", (None,))
-def test_transfer_patches(from_skymodel, to_skymodel, patch_dict):
-    # transfer_patches(from_skymodel, to_skymodel, patch_dict)
     pass
 
 

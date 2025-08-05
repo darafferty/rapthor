@@ -3,12 +3,16 @@
 Script to blank regions (with zeros or NaNs) in a fits image. Can also be used to make
 a clean mask
 """
-from argparse import ArgumentParser, RawTextHelpFormatter
-from rapthor.lib import miscellaneous as misc
 import logging
+from argparse import ArgumentParser, RawTextHelpFormatter
+
 import numpy as np
-from astropy.io import fits as pyfits
 from astropy import wcs
+from astropy.io import fits as pyfits
+from lsmtool.io import read_vertices_ra_dec
+from lsmtool.utils import rasterize
+
+from rapthor.lib import miscellaneous as misc
 
 
 def main(output_image, input_image=None, vertices_file=None, reference_ra_deg=None,
@@ -60,7 +64,7 @@ def main(output_image, input_image=None, vertices_file=None, reference_ra_deg=No
         w = wcs.WCS(header)
         RAind = w.axis_type_names.index('RA')
         Decind = w.axis_type_names.index('DEC')
-        vertices = misc.read_vertices(vertices_file)
+        vertices = read_vertices_ra_dec(vertices_file)
         RAverts = vertices[0]
         Decverts = vertices[1]
         verts = []
@@ -78,7 +82,7 @@ def main(output_image, input_image=None, vertices_file=None, reference_ra_deg=No
 
         # Rasterize the poly
         data_rasertize = data[0, 0, :, :]
-        data_rasertize = misc.rasterize(verts, data_rasertize)
+        data_rasertize = rasterize(verts, data_rasertize)
         data[0, 0, :, :] = data_rasertize
 
         hdu[0].data = data
