@@ -3,34 +3,38 @@
 # Adjust requested resources and job variables as necessary.
 #
 # SLURM settings:
-#SBATCH --job-name=mn-rapthor
-#SBATCH --partition=c7i-24xl-spt   # Use spot partitions where possible.
+#SBATCH --job-name==mn-rapthor
+#SBATCH --partition=c7i-metal-24xl-ond   # Use spot partitions where possible.
 #SBATCH --nodes=1                  # Use a single node by default.
 #SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=4          # For the leader node that starts jobs on other worker nodes
+#SBATCH --cpus-per-task=96          # For the leader node that starts jobs on other worker nodes
 #SBATCH --time 24:00:00            # Set job timeout.
 #SBATCH --output=logs/%x-%j-leader-slurm.out
 #SBATCH --error=logs/%x-%j-leader-slurm.out
 
 # Specify spack environment version number
-SPACK_TAG=2025.07.1
+SPACK_TAG=2025.07.3
 
 # Specify working directory
 WORK_DIR=/shared/fsx1/user.name
 
 # Specify directory for benchmarking monitoring output
-TRACES_DIR="$WORK_DIR/monitor/$SLURM_JOB_NAME_$SLURM_JOB_ID"
+TRACES_DIR="$WORK_DIR/monitor/${SLURM_JOB_NAME}_${SLURM_JOB_ID}_monitor"
 
 # Specify path to configuration file, which contains all other required paths
-PARSET_PATH=$WORK_DIR/parset_dir/rapthor_multinode.parset
+PARSET_PATH=$WORK_DIR/rapthor.parset
 
 # Export SLURM options for worker nodes for toil to use
 # --cpus-per-task and --nodes are taken from the parset file
-export TOIL_SLURM_ARGS="--partition=c7i-24xl-spt --exclusive --time 24:00:00" # Use spot partitions where possible
+export TOIL_SLURM_ARGS="--partition=c7i-metal-24xl-ond --exclusive --time 24:00:00" # Use spot partitions where possible
+
+# Export partition list for SALLOC to use
+export SALLOC_PARTITION=c7i-metal-24xl-ond
 
 # Export TMPDIR - without this some steps in rapthor use the default which may
 # run out of space - set to same as tmp directories used in parset
-export TMPDIR=/shared/fsx1/user.name/tmp
+export TMPDIR=$WORK_DIR/tmp
+
 
 # -----------------------------------------------------------------------------
 # Anything below should not be edited
@@ -67,6 +71,7 @@ rapthor $PARSET_PATH
 
 # Stop monitoring
 benchmon-multinode-stop
- 
+
 # Visualize monitoring results
-benchmon-visu --cpu --cpu-all --mem --net --disk --fig-fmt png --fig-dpi medium "$TRACES_DIR/benchmon_traces_$(hostname)"
+benchmon-visu --recursive --cpu --cpu-all --mem --net --disk --fig-fmt png --fig-dpi medium "$TRACES_DIR/benchmon_traces_$(hostname)"
+
