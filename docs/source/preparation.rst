@@ -3,7 +3,7 @@
 Data preparation
 ================
 
-Rapthor requires that the input data be prepared using initial calibration pipelines (LINC for LOFAR, INST and BPP for SKA-low). These pipelines perform the calibration of the calibrator data, the removal of instrumental effects (e.g., station clock offsets), the setting of the overall amplitude scale, and the direction-independent calibration of the target data. LOFAR pipelines are available at https://git.astron.nl/RD/LINC and must be run before Rapthor can be used.
+Rapthor requires that the input data be prepared using initial calibration pipelines (LINC for LOFAR, INST and BPP for SKA-Low). These pipelines perform the calibration of the calibrator data, the removal of instrumental effects (e.g., station clock offsets), the setting of the overall amplitude scale, and the direction-independent calibration of the target data. LOFAR pipelines are available at https://git.astron.nl/RD/LINC and must be run before Rapthor can be used.
 
 Input measurement sets
 ----------------------
