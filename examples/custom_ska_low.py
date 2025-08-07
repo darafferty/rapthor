@@ -1,6 +1,5 @@
 strategy_steps = []
 
-min_selfcal_loops = 2
 max_selfcal_loops = 4
 
 for i in range(max_selfcal_loops):
