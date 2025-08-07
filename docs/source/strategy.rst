@@ -75,9 +75,11 @@ cycle.
 
     Examples of custom strategy files are available `here
     <https://git.astron.nl/RD/rapthor/-/blob/master/examples/custom_calibration_strategy.py>`_
-    (for self calibration) and `here
+    (for self calibration), `here
     <https://git.astron.nl/RD/rapthor/-/blob/master/examples/custom_imaging_strategy.py>`_
-    (for imaging only). Files that duplicate the default strategies are available `here
+    (for imaging only) and `here
+    <https://git.astron.nl/RD/rapthor/-/blob/master/examples/custom_strategy_ska_low.py>`_
+    (for SKA low). Files that duplicate the default strategies are available `here
     <https://git.astron.nl/RD/rapthor/-/blob/master/examples/default_calibration_strategy.py>`_
     (for self calibration) and `here
     <https://git.astron.nl/RD/rapthor/-/blob/master/examples/default_imaging_strategy.py>`_
