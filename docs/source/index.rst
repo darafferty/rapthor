@@ -35,6 +35,7 @@ Setting Up and Running Rapthor
    parset
    strategy
    running
+   running_skao
    products
    tips
    help
