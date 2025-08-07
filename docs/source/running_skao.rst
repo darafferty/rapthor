@@ -120,3 +120,14 @@ Troubleshooting a run
 ---------------------
 See the :ref:`faq_installation` for tips on troubleshooting Rapthor.
 
+
+.. _contributing:
+
+Developing rapthor on the SKAO AWS cluster
+==========================================
+If you want to test latest changes to the rapthor pipeline or develop on your 
+own branch, clone the repository, start an interactive compute node on AWS 
+then edit and source `this shell script 
+<https://git.astron.nl/RD/rapthor/-/blob/master/examples/setup_skao_aws.sh>`_ 
+to set up a virtual python environment that will have rapthor installed in 
+editable mode (run pytest to ensure your environment is setup correctly).
