@@ -10,6 +10,7 @@ spack package `here
 Loading this module will also load all of rapthor's dependencies, including wsclean and dp3.
 
 .. code-block:: console
+    
     $ module use "/shared/fsx1/spack/modules/2025.07.3/linux-ubuntu22.04-x86_64_v3"
     $ module load py-rapthor 
 
@@ -17,20 +18,21 @@ To ensure that PyBDSF can find the corrct boost libraries you must also load
 the boost module and add to ``LD_LIBRARY_PATH``:
 
 .. code-block:: console
+    
     $ module load boost
     $ export LD_LIBRARY_PATH=$BOOST_ROOT/lib:$LD_LIBRARY_PATH
 
 Rapthor is now ready to run. 
 
 .. note::
-
-We recommend running rapthor as a SLURM job submitted from the headnode. 
-Example SLURM scripts that will set up the required environment variables, 
-run and benchmark rapthor using SKA tools are available for a `single-node run
-<https://git.astron.nl/RD/rapthor/-/blob/master/examples/rapthor_skao_singlenode.slurm>`_ 
-and a `multi-node run 
-<https://git.astron.nl/RD/rapthor/-/blob/master/examples/rapthor_skao_multinode.slurm>`_. 
-See below for details.
+    
+    We recommend running rapthor as a SLURM job submitted from the headnode. 
+    Example SLURM scripts that will set up the required environment variables, 
+    run and benchmark rapthor using SKA tools are available for a `single-node run
+    <https://git.astron.nl/RD/rapthor/-/blob/master/examples/rapthor_skao_singlenode.slurm>`_ 
+    and a `multi-node run 
+    <https://git.astron.nl/RD/rapthor/-/blob/master/examples/rapthor_skao_multinode.slurm>`_. 
+    See below for details.
 
 
 .. _starting_rapthor_skao:
@@ -56,7 +58,7 @@ SKAO cluster is to submit a SLURM job from the headnode. An example SLURM script
 is available `here
 <https://git.astron.nl/RD/rapthor/-/blob/master/examples/rapthor_skao_singlenode.slurm>`_ 
 and a corresponding example parset is available `here
-<https://git.astron.nl/RD/rapthor/-/blob/master/examples/rapthor_skao_singlenode.parset>`_ 
+<https://git.astron.nl/RD/rapthor/-/blob/master/examples/rapthor_skao_singlenode.parset>`_.
 Copy these files and edit as needed (edit the paths to your data set and scratch 
 directories and the cluster configuration - make sure the resources requested in 
 your slurm script match those in the parset) then submit the job using sbatch.
@@ -72,8 +74,9 @@ is available `here
 <https://git.astron.nl/RD/rapthor/-/blob/master/examples/rapthor_skao_multinode.slurm>`_ 
 and a corresponding example parset is available `here
 <https://git.astron.nl/RD/rapthor/-/blob/master/examples/rapthor_skao_multinode.parset>`_ 
+
 Copy these files and edit as needed (edit the paths to your data set and temporary 
-directories and the cluster configuration) then submit the job using sbatch.
+directories and the cluster configuration) then submit the job using sbatch. 
 This will allocate a compute node to act as the "leader" node which Toil will 
 use to orchestrate allocating other nodes for different workflows. Ensure you 
 match the max_cores and max_threads to the nodes on the partition(s) you specify 
@@ -81,16 +84,16 @@ in your SLURM script (if you specify more cores than are available rapthor will
 fail to run).
 
 .. note::
-
-Both single node and multi-node runs will be run with benchmarking activated 
-but this will currently not monitor all nodes on a multinode run.
+    
+    Both single node and multi-node runs will be run with benchmarking activated 
+    but this will currently not monitor all nodes on a multinode run.
 
 .. note::
-
-The "leader" node will be idle for most of the rapthor run when running on 
-multiple nodes when submitting a job using sbatch. A further node will be idle 
-if mpi is enabled since this node is only used to allocate additional nodes for 
-`wsclean-mp`.
+    
+    The "leader" node will be idle for most of the rapthor run when running on 
+    multiple nodes when submitting a job using sbatch. A further node will be idle 
+    if mpi is enabled since this node is only used to allocate additional nodes for 
+    ``wsclean-mp``.
 
 
 Troubleshooting a run
@@ -101,10 +104,10 @@ See the :ref:`faq_installation` for tips on troubleshooting Rapthor.
 .. _contributing_skao:
 
 Developing rapthor on the SKAO AWS cluster
-==========================================
+------------------------------------------
 If you want to test latest changes to the rapthor pipeline or develop on your 
 own branch, clone the repository, start an interactive compute node on AWS 
 then edit and source `this shell script 
 <https://git.astron.nl/RD/rapthor/-/blob/master/examples/setup_skao_aws.sh>`_ 
 to set up a virtual python environment that will have rapthor installed in 
-editable mode (run pytest to ensure your environment is setup correctly).
+editable mode (run ``pytest`` to ensure your environment is setup correctly).
