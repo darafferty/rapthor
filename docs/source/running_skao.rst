@@ -6,7 +6,7 @@ Running Rapthor on the SKAO AWS cluster
 The recommended way to run rapthor on the SKAO AWS development cluster is to 
 use the rapthor spack module that is pre-installed (you can see details of the 
 spack package `here 
-<https://gitlab.com/ska-telescope/sdp/ska-sdp-spack/-/blob/main/packages/py-rapthor/package.py>`_`). 
+<https://gitlab.com/ska-telescope/sdp/ska-sdp-spack/-/blob/main/packages/py-rapthor/package.py>`_). 
 Loading this module will also load all of rapthor's dependencies, including wsclean and dp3.
 
 .. code-block:: console
