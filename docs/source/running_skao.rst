@@ -14,7 +14,7 @@ Loading this module will also load all of rapthor's dependencies, including wscl
     $ module use "/shared/fsx1/spack/modules/2025.07.3/linux-ubuntu22.04-x86_64_v3"
     $ module load py-rapthor 
 
-To ensure that PyBDSF can find the corrct boost libraries you must also load 
+To ensure that PyBDSF can find the correct boost libraries you must also load 
 the boost module and add to ``LD_LIBRARY_PATH``:
 
 .. code-block:: console
@@ -92,7 +92,7 @@ fail to run).
 .. note::
     
     Both single node and multi-node runs will be run with benchmarking activated 
-    but this will currently not monitor all nodes on a multinode run.
+    but this will currently not monitor all nodes on a multi-node run.
 
 .. note::
     
@@ -120,7 +120,7 @@ own branch:
    <https://git.astron.nl/RD/rapthor/-/blob/master/examples/setup_skao_aws.sh>`_. 
    This will set up a virtual python environment that with rapthor installed in 
    editable mode.
-4. Run ``pytest`` to ensure your environment is setup correctly).
+4. Run ``pytest`` to ensure your environment is setup correctly.
 
 .. note::
     
