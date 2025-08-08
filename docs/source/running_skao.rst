@@ -50,10 +50,11 @@ where ``rapthor.parset`` is the parset described in :ref:`rapthor_parset`. A
 number of options are available (see :ref:`running` for details).
 
 
-Running rapthor on a single node (single-machine mode)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Running rapthor on a single node
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-For runs on a single machine, the recommended method of running Rapthor on the 
+For runs on a single node (i.e., when
+:term:`batch_system` = ``single_machine``), the recommended method of running Rapthor on the 
 SKAO cluster is to submit a SLURM job from the headnode. 
 
 An example SLURM script 
@@ -114,9 +115,22 @@ To test latest changes to the rapthor pipeline or develop on your
 own branch:
 
 1. Clone the rapthor repository
-2. Start an interactive compute node on AWS 
+2. Start an interactive compute node on AWS (using ``srun``)
 3. Edit and source `this shell script 
-   <https://git.astron.nl/RD/rapthor/-/blob/master/examples/setup_skao_aws.sh>`_ 
+   <https://git.astron.nl/RD/rapthor/-/blob/master/examples/setup_skao_aws.sh>`_. 
    This will set up a virtual python environment that with rapthor installed in 
    editable mode.
 4. Run ``pytest`` to ensure your environment is setup correctly).
+
+.. note::
+    
+    To avoid unexpected behaviour while testing code changes by running rapthor,
+    always use a fresh output directory and remove all temporary files from 
+    previous runs. If rapthor is run using the same parset as previously it 
+    will try to resume from the previous state (see :ref:`_resuming_rapthor`).
+
+.. note::
+
+    When starting an interactive node for testing, make sure you request 
+    enough resources (e.g. ``cpus-per-task``) to satisfy the cluster parameters 
+    in your parset (e.g. ``max_cores``).
