@@ -1,4 +1,4 @@
-.. _running:
+.. _running_skao:
 
 Running Rapthor on the SKAO AWS cluster
 =======================================
@@ -33,7 +33,7 @@ and a `multi-node run
 See below for details.
 
 
-.. _starting_rapthor:
+.. _starting_rapthor_skao:
 
 Starting a Rapthor run
 ----------------------
@@ -114,14 +114,12 @@ if mpi is enabled since this node is only used to allocate additional nodes for
 `wsclean-mp`.
 
 
-.. _troubleshooting:
-
 Troubleshooting a run
 ---------------------
 See the :ref:`faq_installation` for tips on troubleshooting Rapthor.
 
 
-.. _contributing:
+.. _contributing_skao:
 
 Developing rapthor on the SKAO AWS cluster
 ==========================================
