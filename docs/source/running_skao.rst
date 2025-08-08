@@ -127,7 +127,7 @@ own branch:
     To avoid unexpected behaviour while testing code changes by running rapthor,
     always use a fresh output directory and remove all temporary files from 
     previous runs. If rapthor is run using the same parset as previously it 
-    will try to resume from the previous state (see :ref:`_resuming_rapthor`).
+    will try to resume from the previous state (see :ref:`resuming_rapthor`).
 
 .. note::
 
