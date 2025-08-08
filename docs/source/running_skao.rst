@@ -47,18 +47,21 @@ Rapthor can be run from the command line using:
     $ rapthor rapthor.parset
 
 where ``rapthor.parset`` is the parset described in :ref:`rapthor_parset`. A
-number of options are available (see :ref:`running:_running` for details).
+number of options are available (see :ref:`running` for details).
 
 
 Running rapthor on a single node (single-machine mode)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 For runs on a single machine, the recommended method of running Rapthor on the 
-SKAO cluster is to submit a SLURM job from the headnode. An example SLURM script 
+SKAO cluster is to submit a SLURM job from the headnode. 
+
+An example SLURM script 
 is available `here
 <https://git.astron.nl/RD/rapthor/-/blob/master/examples/rapthor_skao_singlenode.slurm>`_ 
 and a corresponding example parset is available `here
 <https://git.astron.nl/RD/rapthor/-/blob/master/examples/rapthor_skao_singlenode.parset>`_.
+
 Copy these files and edit as needed (edit the paths to your data set and scratch 
 directories and the cluster configuration - make sure the resources requested in 
 your slurm script match those in the parset) then submit the job using sbatch.
@@ -69,7 +72,9 @@ Running rapthor on multiple nodes
 
 For runs that use multiple nodes of a compute cluster (i.e., when
 :term:`batch_system` = ``slurm``), the recommended method of running Rapthor on the 
-SKAO cluster is to submit a SLURM job from the headnode. An example slurm script 
+SKAO cluster is to submit a SLURM job from the headnode. 
+
+An example slurm script 
 is available `here
 <https://git.astron.nl/RD/rapthor/-/blob/master/examples/rapthor_skao_multinode.slurm>`_ 
 and a corresponding example parset is available `here
@@ -90,10 +95,10 @@ fail to run).
 
 .. note::
     
-    The "leader" node will be idle for most of the rapthor run when running on 
-    multiple nodes when submitting a job using sbatch. A further node will be idle 
-    if mpi is enabled since this node is only used to allocate additional nodes for 
-    ``wsclean-mp``.
+    The "leader" node will be idle for most of the rapthor run. Toil uses this 
+    node to orchestrate the allocation of other nodes. A further node will be 
+    idle during imaging steps if mpi is enabled since this node is only used 
+    to allocate additional nodes for ``wsclean-mp``.
 
 
 Troubleshooting a run
@@ -105,9 +110,13 @@ See the :ref:`faq_installation` for tips on troubleshooting Rapthor.
 
 Developing rapthor on the SKAO AWS cluster
 ------------------------------------------
-If you want to test latest changes to the rapthor pipeline or develop on your 
-own branch, clone the repository, start an interactive compute node on AWS 
-then edit and source `this shell script 
-<https://git.astron.nl/RD/rapthor/-/blob/master/examples/setup_skao_aws.sh>`_ 
-to set up a virtual python environment that will have rapthor installed in 
-editable mode (run ``pytest`` to ensure your environment is setup correctly).
+To test latest changes to the rapthor pipeline or develop on your 
+own branch:
+
+1. Clone the rapthor repository
+2. Start an interactive compute node on AWS 
+3. Edit and source `this shell script 
+   <https://git.astron.nl/RD/rapthor/-/blob/master/examples/setup_skao_aws.sh>`_ 
+   This will set up a virtual python environment that with rapthor installed in 
+   editable mode.
+4. Run ``pytest`` to ensure your environment is setup correctly).
