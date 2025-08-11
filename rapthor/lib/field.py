@@ -1109,8 +1109,8 @@ class Field(object):
                             nsectors_ra > 2 and nsectors_dec > 2):
                         continue
                     name = 'sector_{0}'.format(n)
-                    ra, dec = misc.xy2radec(self.wcs, x[j, i], y[j, i])
-                    self.imaging_sectors.append(Sector(name, ra, dec, width_ra, width_dec, self))
+                    ra, dec = misc.xy2radec(self.wcs, [x[j, i]], [y[j, i]])
+                    self.imaging_sectors.append(Sector(name, ra[0], dec[0], width_ra, width_dec, self))
                     n += 1
             if len(self.imaging_sectors) == 1:
                 self.log.info('Using 1 imaging sector')
@@ -1128,19 +1128,20 @@ class Field(object):
         # mask images from previous cycles may be used)
         all_sectors = MultiPolygon([sector.poly_padded for sector in self.imaging_sectors])
         self.sector_bounds_xy = all_sectors.bounds
-        maxRA, minDec = misc.xy2radec(self.wcs, self.sector_bounds_xy[0], self.sector_bounds_xy[1])
-        minRA, maxDec = misc.xy2radec(self.wcs, self.sector_bounds_xy[2], self.sector_bounds_xy[3])
-        midRA, midDec = misc.xy2radec(self.wcs, (self.sector_bounds_xy[0]+self.sector_bounds_xy[2])/2.0,
-                                      (self.sector_bounds_xy[1]+self.sector_bounds_xy[3])/2.0)
+        maxRA, minDec = misc.xy2radec(self.wcs, [self.sector_bounds_xy[0]], [self.sector_bounds_xy[1]])
+        minRA, maxDec = misc.xy2radec(self.wcs, [self.sector_bounds_xy[2]], [self.sector_bounds_xy[3]])
+        midRA, midDec = misc.xy2radec(self.wcs,
+                                      [(self.sector_bounds_xy[0]+self.sector_bounds_xy[2])/2.0],
+                                      [(self.sector_bounds_xy[1]+self.sector_bounds_xy[3])/2.0])
         self.sector_bounds_width_ra = abs((self.sector_bounds_xy[0] - self.sector_bounds_xy[2]) *
                                           self.wcs.wcs.cdelt[0])
         self.sector_bounds_width_dec = abs((self.sector_bounds_xy[3] - self.sector_bounds_xy[1]) *
                                            self.wcs.wcs.cdelt[1])
-        self.sector_bounds_mid_ra = midRA
-        self.sector_bounds_mid_dec = midDec
-        self.sector_bounds_deg = '[{0:.6f};{1:.6f};{2:.6f};{3:.6f}]'.format(maxRA, minDec,
-                                                                            minRA, maxDec)
-        self.sector_bounds_mid_deg = '[{0:.6f};{1:.6f}]'.format(midRA, midDec)
+        self.sector_bounds_mid_ra = midRA[0]
+        self.sector_bounds_mid_dec = midDec[0]
+        self.sector_bounds_deg = '[{0:.6f};{1:.6f};{2:.6f};{3:.6f}]'.format(maxRA[0], minDec[0],
+                                                                            minRA[0], maxDec[0])
+        self.sector_bounds_mid_deg = '[{0:.6f};{1:.6f}]'.format(midRA[0], midDec[0])
 
     def define_outlier_sectors(self, index):
         """
@@ -1770,8 +1771,8 @@ class Field(object):
             # two axes
             wcs_pixel_scale = (wcs.proj_plane_pixel_scales()[0].value +
                                wcs.proj_plane_pixel_scales()[1].value) / 2
-        x, y = misc.radec2xy(wcs, self.ra, self.dec)
-        patch = Ellipse((x, y), width=self.fwhm_ra_deg/wcs_pixel_scale,
+        x, y = misc.radec2xy(wcs, [self.ra], [self.dec])
+        patch = Ellipse((x[0], y[0]), width=self.fwhm_ra_deg/wcs_pixel_scale,
                         height=self.fwhm_dec_deg/wcs_pixel_scale,
                         edgecolor='k', facecolor='lightgray', linestyle=':',
                         label='Pointing FWHM', linewidth=2, alpha=0.5)
@@ -1888,8 +1889,8 @@ class Field(object):
                 label = 'Calibration facets' if i == 0 else None  # first only to avoid multiple lines in legend
                 facet_patch.set(edgecolor='b', facecolor='lightblue', alpha=0.5, label=label)
                 ax.add_patch(facet_patch)
-                x, y = misc.radec2xy(wcs, facet.ra, facet.dec)
-                ax.annotate(facet.name, (x, y), va='center', ha='center', fontsize='small',
+                x, y = misc.radec2xy(wcs, [facet.ra], [facet.dec])
+                ax.annotate(facet.name, (x[0], y[0]), va='center', ha='center', fontsize='small',
                             color='b')
 
         # Plot the imaging sectors
@@ -1898,8 +1899,8 @@ class Field(object):
             label = 'Imaging sectors' if i == 0 else None  # first only to avoid multiple lines in legend
             sector_patch.set(label=label)
             ax.add_patch(sector_patch)
-            x, y = misc.radec2xy(wcs, sector.ra, sector.dec+sector.width_dec/2)  # center-top
-            ax.annotate(sector.name, (x, y), va='bottom', ha='center', fontsize='large')
+            x, y = misc.radec2xy(wcs, [sector.ra], [sector.dec+sector.width_dec/2])  # center-top
+            ax.annotate(sector.name, (x[0], y[0]), va='bottom', ha='center', fontsize='large')
 
         # Plot the observation's FWHM and phase center
         if show_initial_coverage:

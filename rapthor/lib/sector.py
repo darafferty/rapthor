@@ -443,20 +443,18 @@ class Sector(object):
         """
         Return the vertices as RA, Dec for the sector boundary
         """
-        ra, dec = misc.xy2radec(self.field.wcs, self.poly.exterior.coords.xy[0].tolist(),
-                                self.poly.exterior.coords.xy[1].tolist())
-        vertices = [np.array(ra), np.array(dec)]
-
-        return vertices
+        return misc.xy2radec(self.field.wcs,
+                             self.poly.exterior.coords.xy[0].tolist(),
+                             self.poly.exterior.coords.xy[1].tolist())
 
     def make_vertices_file(self):
         """
         Make a vertices file for the sector boundary
         """
-        vertices = self.get_vertices_radec()
+        ra, dec = self.get_vertices_radec()
 
         with open(self.vertices_file, 'wb') as f:
-            pickle.dump(vertices, f)
+            pickle.dump([ra, dec], f)
 
     def make_region_file(self, outputfile, region_format='ds9'):
         """
@@ -469,13 +467,13 @@ class Sector(object):
         region_format : str, optional
             Format of region file: 'ds9' or 'casa'
         """
-        vertices = self.get_vertices_radec()
+        RAs, Decs = self.get_vertices_radec()
 
         if region_format == 'casa':
             lines = ['#CRTFv0\n\n']
             xylist = []
-            RAs = vertices[0][0:-1]  # trim last point, as it is a repeat of the first
-            Decs = vertices[1][0:-1]
+            RAs = RAs[0:-1]  # trim last point, as it is a repeat of the first
+            Decs = Decs[0:-1]
             for x, y in zip(RAs, Decs):
                 xylist.append('[{0}deg, {1}deg]'.format(x, y))
             lines.append('poly[{0}]\n'.format(', '.join(xylist)))
@@ -488,8 +486,6 @@ class Sector(object):
                          'font="helvetica 10 normal" select=1 highlite=1 edit=1 '
                          'move=1 delete=1 include=1 fixed=0 source=1\nfk5\n')
             xylist = []
-            RAs = vertices[0]
-            Decs = vertices[1]
             for x, y in zip(RAs, Decs):
                 xylist.append('{0}, {1}'.format(x, y))
             lines.append('polygon({0})\n'.format(', '.join(xylist)))
@@ -516,11 +512,16 @@ class Sector(object):
         patch : matplotlib patch object
             The patch for the sector polygon
         """
-        vertices = self.get_vertices_radec()
 
-        if wcs is None:
-            wcs = self.field.wcs
-        x, y = misc.radec2xy(wcs, vertices[0], vertices[1])
+        if wcs:
+            RAs, Decs =  misc.xy2radec(self.field.wcs,
+                                       self.poly.exterior.coords.xy[0].tolist(),
+                                       self.poly.exterior.coords.xy[1].tolist())
+            x, y = misc.radec2xy(wcs, RAs, Decs)
+        else: # Use the polygon coordinates directly.
+            x = self.poly.exterior.coords.xy[0].tolist()
+            y = self.poly.exterior.coords.xy[1].tolist()
+
         xy = np.vstack([x, y]).transpose()
         patch = patches.Polygon(xy=xy, label=self.name, edgecolor='k', facecolor='none',
                                 linewidth=2)
@@ -541,9 +542,7 @@ class Sector(object):
                              unit=(u.degree, u.degree), frame='fk5')
 
         # Calculate the distance from each vertex to the observation phase center
-        vertices = self.get_vertices_radec()
-        RAs = vertices[0]
-        Decs = vertices[1]
+        RAs, Decs = self.get_vertices_radec()
         distances = []
         for ra, dec in zip(RAs, Decs):
             ra_norm, dec_norm = misc.normalize_ra_dec(ra, dec)

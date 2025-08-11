@@ -1,4 +1,5 @@
 import os
+import numpy as np
 import unittest
 
 import requests
@@ -58,10 +59,14 @@ class TestField(unittest.TestCase):
         self.assertEqual(self.field.outlier_sectors, [])
 
     def test_radec2xy(self):
-        self.assertEqual(misc.radec2xy(self.field.wcs, 0.0, 0.0), (12187.183569042127, -12477.909993882473))
+        x, y = misc.radec2xy(self.field.wcs, [0.0], [0.0])
+        self.assertEqual(x, np.array([12187.183569042127]))
+        self.assertEqual(y, np.array([-12477.909993882473]))
 
     def test_xy2radec(self):
-        self.assertEqual(misc.xy2radec(self.field.wcs, 12187.183569042127, -12477.909993882473), (1.4210854715202004e-14, 0.0))
+        ra, dec = misc.xy2radec(self.field.wcs, [12187.183569042127], [-12477.909993882473])
+        self.assertEqual(ra, np.array([1.4210854715202004e-14]))
+        self.assertEqual(dec, np.array([0.0]))
 
     def test_chunk_observations(self):
         for obs in self.field.full_observations:
