@@ -4,7 +4,7 @@
 #
 # SLURM settings:
 #SBATCH --job-name==mn-rapthor
-#SBATCH --partition=c7i-metal-24xl-ond   # Use spot partitions where possible.
+#SBATCH --partition=c7i-metal-24xl-spt   # Use spot partitions where possible.
 #SBATCH --nodes=1                  # Use a single node by default.
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=96          # For the leader node that starts jobs on other worker nodes
@@ -13,7 +13,7 @@
 #SBATCH --error=logs/%x-%j-leader-slurm.out
 
 # Specify spack environment version number
-SPACK_TAG=2025.07.3
+SPACK_TAG=2025.08.1
 
 # Specify working directory
 WORK_DIR=/shared/fsx1/user.name
@@ -26,10 +26,10 @@ PARSET_PATH=$WORK_DIR/rapthor.parset
 
 # Export SLURM options for worker nodes for toil to use
 # --cpus-per-task and --nodes are taken from the parset file
-export TOIL_SLURM_ARGS="--partition=c7i-metal-24xl-ond --exclusive --time 24:00:00" # Use spot partitions where possible
+export TOIL_SLURM_ARGS="--partition=c7i-metal-24xl-spt --exclusive --time 24:00:00" # Use spot partitions where possible
 
 # Export partition list for SALLOC to use
-export SALLOC_PARTITION=c7i-metal-24xl-ond
+export SALLOC_PARTITION=c7i-metal-24xl-spt
 
 # Export TMPDIR - without this some steps in rapthor use the default which may
 # run out of space - set to same as tmp directories used in parset
@@ -63,7 +63,7 @@ echo $LD_LIBRARY_PATH
 module load py-ska-sdp-benchmark-monitor
 
 # Start monitoring
-benchmon_params="--save-dir $TRACES_DIR --system --sys"
+benchmon_params="--save-dir $TRACES_DIR --system --sys --call"
 benchmon-multinode-start $benchmon_params
 
 # Run rapthor on parset
