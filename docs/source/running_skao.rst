@@ -49,6 +49,31 @@ Rapthor can be run from the command line using:
 where ``rapthor.parset`` is the parset described in :ref:`rapthor_parset`. A
 number of options are available (see :ref:`running` for details).
 
+.. warning::
+
+    Rapthor attempts to resume from a previous state if output files from a 
+    previous run are left in the working directory (see 
+    :ref:`resuming_rapthor`). This means that changes to your parset may not 
+    be respected unless you remove or rename the previous output folder and 
+    delete the contents of your scratch/temporary directories.
+
+.. warning::
+
+    Due to storage limits on the default ``/tmp`` directory on AWS, it is best 
+    to create a new temporary folder on the shared ``/shared/fsx1`` directory. 
+    You will then need to set ``local_scratch_dir`` and ``global_scratch_dir`` 
+    in the parset, as well ``TMPDIR`` in the slurm script to this path. See also 
+    warning below.
+
+.. warning::
+
+    Since socket file paths have a character limit (107 bytes on unix systems), 
+    long path names cause issues during multiprocessing. Since Toil creates 
+    path names for temporary storage files using random hexadecimal strings, 
+    the base location of the temporary storage paths ``global_scratch_dir`` and 
+    ``local_scratch_dir`` must not be too long (less than 35 characters or so) 
+    to avoid this issue.
+
 
 Running rapthor on a single node
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -59,8 +84,8 @@ SKAO cluster is to submit a SLURM job from the headnode.
 
 An `example SLURM script for a single node run 
 <https://git.astron.nl/RD/rapthor/-/blob/master/examples/rapthor_skao_singlenode.slurm>`_
-is provided in the examples directory, together with a `corresponding example parset
- <https://git.astron.nl/RD/rapthor/-/blob/master/examples/rapthor_skao_singlenode.parset>`_.
+is provided in the examples directory, together with a `corresponding example parset 
+<https://git.astron.nl/RD/rapthor/-/blob/master/examples/rapthor_skao_singlenode.parset>`_.
 
 Copy these files and edit as needed (edit the paths to your data set and scratch 
 directories and the cluster configuration - make sure the resources requested in 
@@ -82,22 +107,27 @@ is provided in the examples directory, together with a `corresponding example pa
 Copy these files and edit as needed (edit the paths to your data set and temporary 
 directories and the cluster configuration) then submit the job using sbatch. 
 This will allocate a compute node to act as the "leader" node which Toil will 
-use to orchestrate allocating other nodes for different workflows. Ensure you 
-match the `max_cores` and `max_threads` to the nodes on the partition(s) you specify 
-in your SLURM script (if you specify more cores than are available rapthor will 
-fail to run).
+use to orchestrate allocating other nodes for different workflows. 
 
-.. note::
-    
-    Both single node and multi-node runs will be run with benchmarking activated 
-    but this will currently not monitor all nodes on a multi-node run.
+.. warning::
 
-.. note::
+    Ensure you match the ``max_cores`` and ``max_threads`` to the nodes on the 
+    partition(s) you specify in your SLURM script -- if you specify more cores 
+    than are available rapthor will fail to run.
+
+
+Known issues
+------------
+
+- Both single node and multi-node runs will be run with benchmarking activated 
+  but this will currently not monitor all nodes on a multi-node run if mpi is 
+  enabled due to the way rapthor uses ``salloc`` to allocate interactive nodes 
+  for ``wsclean-mp``.
     
-    The "leader" node will be idle for most of the rapthor run. Toil uses this 
-    node to orchestrate the allocation of other nodes. A further node will be 
-    idle during imaging steps if mpi is enabled since this node is only used 
-    to allocate additional nodes for ``wsclean-mp``.
+- The "leader" node will be idle for most of the rapthor run. Toil uses this 
+  node to orchestrate the allocation of other nodes. A further node will be 
+  idle during imaging steps if mpi is enabled since this node is only used 
+  to allocate additional nodes for ``wsclean-mp``.
 
 
 Troubleshooting a run
