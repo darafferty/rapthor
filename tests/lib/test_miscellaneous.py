@@ -34,14 +34,6 @@ def test_radec2xy(wcs, ra, dec):
     pass
 
 
-@pytest.mark.parametrize("wcs", (None,))  # maybe use make_wcs to create a WCS object?
-@pytest.mark.parametrize("x", (3.98,))
-@pytest.mark.parametrize("y", (-2.74,))
-def test_xy2radec(wcs, x, y):
-    # xy2radec(wcs, x, y)
-    pass
-
-
 @pytest.mark.parametrize("ra", (None,))
 @pytest.mark.parametrize("dec", (None,))
 @pytest.mark.parametrize("wcs_pixel_scale", (10.0 / 3600.0,))

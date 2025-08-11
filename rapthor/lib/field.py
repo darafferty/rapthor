@@ -1109,8 +1109,8 @@ class Field(object):
                             nsectors_ra > 2 and nsectors_dec > 2):
                         continue
                     name = 'sector_{0}'.format(n)
-                    ra, dec = misc.xy2radec(self.wcs, x[j, i], y[j, i])
-                    self.imaging_sectors.append(Sector(name, ra, dec, width_ra, width_dec, self))
+                    ra, dec = self.wcs.wcs_pix2world(x[j, i], y[j, i], 0)
+                    self.imaging_sectors.append(Sector(name, ra.item(), dec.item(), width_ra, width_dec, self))
                     n += 1
             if len(self.imaging_sectors) == 1:
                 self.log.info('Using 1 imaging sector')
@@ -1128,16 +1128,16 @@ class Field(object):
         # mask images from previous cycles may be used)
         all_sectors = MultiPolygon([sector.poly_padded for sector in self.imaging_sectors])
         self.sector_bounds_xy = all_sectors.bounds
-        maxRA, minDec = misc.xy2radec(self.wcs, self.sector_bounds_xy[0], self.sector_bounds_xy[1])
-        minRA, maxDec = misc.xy2radec(self.wcs, self.sector_bounds_xy[2], self.sector_bounds_xy[3])
-        midRA, midDec = misc.xy2radec(self.wcs, (self.sector_bounds_xy[0]+self.sector_bounds_xy[2])/2.0,
-                                      (self.sector_bounds_xy[1]+self.sector_bounds_xy[3])/2.0)
+        maxRA, minDec = self.wcs.wcs_pix2world(self.sector_bounds_xy[0], self.sector_bounds_xy[1], 0)
+        minRA, maxDec = self.wcs.wcs_pix2world(self.sector_bounds_xy[2], self.sector_bounds_xy[3], 0)
+        midRA, midDec = self.wcs.wcs_pix2world((self.sector_bounds_xy[0]+self.sector_bounds_xy[2])/2.0,
+                                               (self.sector_bounds_xy[1]+self.sector_bounds_xy[3])/2.0, 0)
         self.sector_bounds_width_ra = abs((self.sector_bounds_xy[0] - self.sector_bounds_xy[2]) *
                                           self.wcs.wcs.cdelt[0])
         self.sector_bounds_width_dec = abs((self.sector_bounds_xy[3] - self.sector_bounds_xy[1]) *
                                            self.wcs.wcs.cdelt[1])
-        self.sector_bounds_mid_ra = midRA
-        self.sector_bounds_mid_dec = midDec
+        self.sector_bounds_mid_ra = midRA.item()
+        self.sector_bounds_mid_dec = midDec.item()
         self.sector_bounds_deg = '[{0:.6f};{1:.6f};{2:.6f};{3:.6f}]'.format(maxRA, minDec,
                                                                             minRA, maxDec)
         self.sector_bounds_mid_deg = '[{0:.6f};{1:.6f}]'.format(midRA, midDec)

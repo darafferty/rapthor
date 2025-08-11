@@ -249,56 +249,6 @@ def radec2xy(wcs, ra, dec):
     return x, y
 
 
-def xy2radec(wcs, x, y):
-    """
-    Returns RA, Dec for input x, y
-
-    Parameters
-    ----------
-    wcs : WCS object
-        WCS object defining transformation
-    x : float, list, or numpy array
-        x value(s) in pixels
-    y : float, list, or numpy array
-        y value(s) in pixels
-
-    Returns
-    -------
-    RA, Dec : float, list, or numpy array
-        RA and Dec values corresponding to the input x and y pixel
-        values
-    """
-    if type(x) is list or type(x) is np.ndarray:
-        x_list = x
-    else:
-        x_list = [float(x)]
-    if type(y) is list or type(y) is np.ndarray:
-        y_list = y
-    else:
-        y_list = [float(y)]
-    if len(x_list) != len(y_list):
-        raise ValueError('x and y must be of equal length')
-
-    x_y = np.stack((x_list, y_list), axis=-1)
-    ra_arr, dec_arr = wcs.wcs_pix2world(x_y, 0).transpose()
-
-    # Return the same type as the input
-    if type(x) is list:
-        ra = ra_arr.tolist()
-    elif type(x) is np.ndarray:
-        ra = ra_arr
-    else:
-        ra = ra_arr[0]
-    if type(y) is list:
-        dec = dec_arr.tolist()
-    elif type(y) is np.ndarray:
-        dec = dec_arr
-    else:
-        dec = dec_arr[0]
-
-    return ra, dec
-
-
 def make_wcs(ra, dec, wcs_pixel_scale=10.0/3600.0):
     """
     Makes simple WCS object
