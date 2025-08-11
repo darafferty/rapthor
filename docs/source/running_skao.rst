@@ -57,11 +57,10 @@ For runs on a single node (i.e., when
 :term:`batch_system` = ``single_machine``), the recommended method of running Rapthor on the 
 SKAO cluster is to submit a SLURM job from the headnode. 
 
-An example SLURM script 
-is available `here
-<https://git.astron.nl/RD/rapthor/-/blob/master/examples/rapthor_skao_singlenode.slurm>`_ 
-and a corresponding example parset is available `here
-<https://git.astron.nl/RD/rapthor/-/blob/master/examples/rapthor_skao_singlenode.parset>`_.
+An `example SLURM script for a single node run 
+<https://git.astron.nl/RD/rapthor/-/blob/master/examples/rapthor_skao_singlenode.slurm>`_
+is provided in the examples directory, together with a `corresponding example parset
+ <https://git.astron.nl/RD/rapthor/-/blob/master/examples/rapthor_skao_singlenode.parset>`_.
 
 Copy these files and edit as needed (edit the paths to your data set and scratch 
 directories and the cluster configuration - make sure the resources requested in 
@@ -75,10 +74,9 @@ For runs that use multiple nodes of a compute cluster (i.e., when
 :term:`batch_system` = ``slurm``), the recommended method of running Rapthor on the 
 SKAO cluster is to submit a SLURM job from the headnode. 
 
-An example slurm script 
-is available `here
+An `example SLURM script for a multi-node run 
 <https://git.astron.nl/RD/rapthor/-/blob/master/examples/rapthor_skao_multinode.slurm>`_ 
-and a corresponding example parset is available `here
+is provided in the examples directory, together with a `corresponding example parset 
 <https://git.astron.nl/RD/rapthor/-/blob/master/examples/rapthor_skao_multinode.parset>`_.
 
 Copy these files and edit as needed (edit the paths to your data set and temporary 
