@@ -19,12 +19,12 @@ The available options are described below under their respective sections.
 
 .. note::
 
-    An example parset is available `here
+    An example parset is available in the `settings directory
     <https://git.astron.nl/RD/rapthor/-/blob/master/rapthor/settings/defaults.parset>`_.
-    Examples for running on the SKAO cluster either on a single node or multiple nodes
-    are availble in the `examples directory
+    In addition, example parsets for running on the SKAO cluster using either a single node,
+    or multiple nodes, are availble in the `examples directory
     <https://git.astron.nl/RD/rapthor/-/tree/master/examples>`_ and an example parset 
-    for SKA-low is `here 
+    for SKA-low is available in `the settings directory 
     <https://git.astron.nl/RD/rapthor/-/blob/master/rapthor/settings/defaults_skalow.parset>`_.
 
 .. _parset_global_options:

@@ -79,13 +79,13 @@ An example slurm script
 is available `here
 <https://git.astron.nl/RD/rapthor/-/blob/master/examples/rapthor_skao_multinode.slurm>`_ 
 and a corresponding example parset is available `here
-<https://git.astron.nl/RD/rapthor/-/blob/master/examples/rapthor_skao_multinode.parset>`_ 
+<https://git.astron.nl/RD/rapthor/-/blob/master/examples/rapthor_skao_multinode.parset>`_.
 
 Copy these files and edit as needed (edit the paths to your data set and temporary 
 directories and the cluster configuration) then submit the job using sbatch. 
 This will allocate a compute node to act as the "leader" node which Toil will 
 use to orchestrate allocating other nodes for different workflows. Ensure you 
-match the max_cores and max_threads to the nodes on the partition(s) you specify 
+match the `max_cores` and `max_threads` to the nodes on the partition(s) you specify 
 in your SLURM script (if you specify more cores than are available rapthor will 
 fail to run).
 
