@@ -36,7 +36,7 @@ dependencies = [
     "bdsf",
     "jinja2",
     "losoto>=2.4.3",
-    "lsmtool>=1.6",
+    "lsmtool @ git+https://git.astron.nl/RD/LSMTool.git@master",
     "matplotlib",
     "mocpy",
     "numpy",

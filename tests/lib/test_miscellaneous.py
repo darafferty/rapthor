@@ -5,7 +5,7 @@ Tests for the `rapthor.lib.miscellaneous` module.
 import numpy
 import pytest
 from rapthor.lib.miscellaneous import *
-
+from astropy.wcs import WCS
 
 @pytest.mark.parametrize("ra", (10.75,))
 @pytest.mark.parametrize("dec", (5.34,))
@@ -26,26 +26,10 @@ def test_normalize_ra_dec(ra, dec):
     normalize_ra_dec(ra, dec)
 
 
-@pytest.mark.parametrize("wcs", (None,))  # maybe use make_wcs to create a WCS object?
-@pytest.mark.parametrize("ra", (10.75,))
-@pytest.mark.parametrize("dec", (5.34,))
-def test_radec2xy(wcs, ra, dec):
-    # radec2xy(wcs, ra, dec)
-    pass
-
-
-@pytest.mark.parametrize("ra", (None,))
-@pytest.mark.parametrize("dec", (None,))
-@pytest.mark.parametrize("wcs_pixel_scale", (10.0 / 3600.0,))
-def test_make_wcs(ra, dec, wcs_pixel_scale):
-    make_wcs(ra, dec, wcs_pixel_scale)
-
-
 @pytest.mark.parametrize("filename", ("/path/to/vertices.file",))
 def test_read_vertices(filename):
-    wcs = make_wcs(0, 0)
     with pytest.raises(FileNotFoundError):
-        read_vertices(filename, wcs)
+        read_vertices(filename, WCS())
 
 
 @pytest.mark.parametrize("image_name", (None,))

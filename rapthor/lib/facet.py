@@ -14,6 +14,7 @@ from rapthor.lib import miscellaneous as misc
 from matplotlib import patches
 import lsmtool
 from lsmtool import tableio
+from lsmtool.operations_lib import make_wcs
 import tempfile
 import re
 
@@ -46,7 +47,7 @@ class Facet(object):
         self.vertices = np.array(vertices)
 
         # Convert input (RA, Dec) vertices to (x, y) polygon
-        self.wcs = misc.make_wcs(self.ra, self.dec)
+        self.wcs = make_wcs(self.ra, self.dec, misc.WCS_PIXEL_SCALE)
         self.polygon_ras = [radec[0] for radec in self.vertices]
         self.polygon_decs = [radec[1] for radec in self.vertices]
         x_values, y_values = self.wcs.wcs_world2pix(self.polygon_ras,
@@ -220,7 +221,7 @@ class SquareFacet(Facet):
         if type(dec) is str:
             dec = Angle(dec).to('deg').value
         ra, dec = misc.normalize_ra_dec(ra, dec)
-        wcs = misc.make_wcs(ra, dec)
+        wcs = make_wcs(ra, dec, misc.WCS_PIXEL_SCALE)
 
         # Make the vertices.
         xmin = wcs.wcs.crpix[0] - width / 2 / abs(wcs.wcs.cdelt[0])
@@ -269,7 +270,7 @@ def make_facet_polygons(ra_cal, dec_cal, ra_mid, dec_mid, width_ra, width_dec):
     if width_ra <= 0.0 or width_dec <= 0.0:
         raise ValueError('The RA/Dec width cannot be zero or less')
     wcs_pixel_scale = 20.0 / 3600.0  # 20"/pixel
-    wcs = misc.make_wcs(ra_mid, dec_mid, wcs_pixel_scale)
+    wcs = make_wcs(ra_mid, dec_mid, wcs_pixel_scale)
     x_cal, y_cal = wcs.wcs_world2pix(ra_cal, dec_cal, misc.WCS_ORIGIN)
     x_mid, y_mid = wcs.wcs_world2pix(ra_mid, dec_mid, misc.WCS_ORIGIN)
     width_x = width_ra / wcs_pixel_scale / 2.0
