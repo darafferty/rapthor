@@ -49,7 +49,9 @@ class Facet(object):
         self.wcs = misc.make_wcs(self.ra, self.dec)
         self.polygon_ras = [radec[0] for radec in self.vertices]
         self.polygon_decs = [radec[1] for radec in self.vertices]
-        x_values, y_values = self.wcs.wcs_world2pix(self.polygon_ras, self.polygon_decs, 0)
+        x_values, y_values = self.wcs.wcs_world2pix(self.polygon_ras,
+                                                    self.polygon_decs,
+                                                    misc.WCS_ORIGIN)
         polygon_vertices = [(x, y) for x, y in zip(x_values, y_values)]
         self.polygon = Polygon(polygon_vertices)
 
@@ -184,7 +186,9 @@ class Facet(object):
             The patch for the facet polygon
         """
         if wcs is not None:
-            x, y = wcs.wcs_world2pix(self.polygon_ras, self.polygon_decs, 0)
+            x, y = wcs.wcs_world2pix(self.polygon_ras,
+                                     self.polygon_decs,
+                                     misc.WCS_ORIGIN)
         else:
             x, y = self.polygon.exterior.coords.xy
         xy = np.vstack([x, y]).transpose()
@@ -266,8 +270,8 @@ def make_facet_polygons(ra_cal, dec_cal, ra_mid, dec_mid, width_ra, width_dec):
         raise ValueError('The RA/Dec width cannot be zero or less')
     wcs_pixel_scale = 20.0 / 3600.0  # 20"/pixel
     wcs = misc.make_wcs(ra_mid, dec_mid, wcs_pixel_scale)
-    x_cal, y_cal = wcs.wcs_world2pix(ra_cal, dec_cal, 0)
-    x_mid, y_mid = wcs.wcs_world2pix(ra_mid, dec_mid, 0)
+    x_cal, y_cal = wcs.wcs_world2pix(ra_cal, dec_cal, misc.WCS_ORIGIN)
+    x_mid, y_mid = wcs.wcs_world2pix(ra_mid, dec_mid, misc.WCS_ORIGIN)
     width_x = width_ra / wcs_pixel_scale / 2.0
     width_y = width_dec / wcs_pixel_scale / 2.0
     bounding_box = np.array([x_mid - width_x, x_mid + width_x,
@@ -589,7 +593,7 @@ def filter_skymodel(polygon, skymodel, wcs, invert=False):
     # Make list of sources
     RA = skymodel.getColValues('Ra')
     Dec = skymodel.getColValues('Dec')
-    x, y = wcs.wcs_world2pix(RA, Dec, 0)
+    x, y = wcs.wcs_world2pix(RA, Dec, misc.WCS_ORIGIN)
 
     # Keep only those sources inside the bounding box
     inside = np.zeros(len(skymodel), dtype=bool)
@@ -604,7 +608,7 @@ def filter_skymodel(polygon, skymodel, wcs, invert=False):
         return skymodel
     RA = skymodel.getColValues('Ra')
     Dec = skymodel.getColValues('Dec')
-    x, y = wcs.wcs_world2pix(RA, Dec, 0)
+    x, y = wcs.wcs_world2pix(RA, Dec, misc.WCS_ORIGIN)
 
     # Now check the actual boundary against filtered sky model. We first do a quick (but
     # coarse) check using ImageDraw with a padding of at least a few pixels to ensure the
