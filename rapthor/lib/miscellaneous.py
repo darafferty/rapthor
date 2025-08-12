@@ -203,56 +203,6 @@ def normalize_ra_dec(ra, dec):
     return normalized_ra, normalized_dec
 
 
-def radec2xy(wcs, ra, dec):
-    """
-    Returns x, y for input RA, Dec
-
-    Parameters
-    ----------
-    wcs : WCS object
-        WCS object defining transformation
-    ra : float, list, or numpy array
-        RA value(s) in degrees
-    dec : float, list, or numpy array
-        Dec value(s) in degrees
-
-    Returns
-    -------
-    x, y : float, list, or numpy array
-        x and y pixel values corresponding to the input RA and Dec
-        values
-    """
-    if type(ra) is list or type(ra) is np.ndarray:
-        ra_list = ra
-    else:
-        ra_list = [float(ra)]
-    if type(dec) is list or type(dec) is np.ndarray:
-        dec_list = dec
-    else:
-        dec_list = [float(dec)]
-    if len(ra_list) != len(dec_list):
-        raise ValueError('RA and Dec must be of equal length')
-
-    ra_dec = np.stack((ra_list, dec_list), axis=-1)
-    x_arr, y_arr = wcs.wcs_world2pix(ra_dec, 0).transpose()
-
-    # Return the same type as the input
-    if type(ra) is list:
-        x = x_arr.tolist()
-    elif type(ra) is np.ndarray:
-        x = x_arr
-    else:
-        x = x_arr[0]
-    if type(dec) is list:
-        y = y_arr.tolist()
-    elif type(dec) is np.ndarray:
-        y = y_arr
-    else:
-        y = y_arr[0]
-
-    return x, y
-
-
 def make_wcs(ra, dec, wcs_pixel_scale=10.0/3600.0):
     """
     Makes simple WCS object

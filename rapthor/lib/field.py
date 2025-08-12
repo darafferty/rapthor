@@ -1082,7 +1082,7 @@ class Field(object):
                 nsectors_dec = 1
                 width_ra = image_width_ra
                 width_dec = image_width_dec
-                center_x, center_y = misc.radec2xy(self.wcs, [image_ra], [image_dec])
+                center_x, center_y = self.wcs.wcs_world2pix([image_ra], [image_dec], 0)
                 x = np.array([center_x])
                 y = np.array([center_y])
             else:
@@ -1091,7 +1091,7 @@ class Field(object):
                 width_dec = image_width_dec / nsectors_dec
                 width_x = width_ra / abs(self.wcs.wcs.cdelt[0])
                 width_y = width_dec / abs(self.wcs.wcs.cdelt[1])
-                center_x, center_y = misc.radec2xy(self.wcs, [image_ra], [image_dec])
+                center_x, center_y = self.wcs.wcs_world2pix([image_ra], [image_dec], 0)
                 min_x = center_x - width_x / 2.0 * (nsectors_ra - 1)
                 max_x = center_x + width_x / 2.0 * (nsectors_ra - 1)
                 min_y = center_y - width_y / 2.0 * (nsectors_dec - 1)
@@ -1328,7 +1328,7 @@ class Field(object):
         idx = rtree.index.Index()
         skymodel = self.source_skymodel
         RA, Dec = skymodel.getPatchPositions(asArray=True)
-        x, y = misc.radec2xy(self.wcs, RA, Dec)
+        x, y = self.wcs.wcs_world2pix(RA, Dec, 0)
         sizes = skymodel.getPatchSizes(units='degree')
         minsize = 1  # minimum allowed source size in pixels
         sizes = [max(minsize, s/2.0/self.wcs_pixel_scale) for s in sizes]  # radii in pixels
@@ -1779,7 +1779,7 @@ class Field(object):
             # two axes
             wcs_pixel_scale = (wcs.proj_plane_pixel_scales()[0].value +
                                wcs.proj_plane_pixel_scales()[1].value) / 2
-        x, y = misc.radec2xy(wcs, self.ra, self.dec)
+        x, y = [float(f) for f in wcs.wcs_world2pix(self.ra, self.dec, 0)]
         patch = Ellipse((x, y), width=self.fwhm_ra_deg/wcs_pixel_scale,
                         height=self.fwhm_dec_deg/wcs_pixel_scale,
                         edgecolor='k', facecolor='lightgray', linestyle=':',
@@ -1897,7 +1897,7 @@ class Field(object):
                 label = 'Calibration facets' if i == 0 else None  # first only to avoid multiple lines in legend
                 facet_patch.set(edgecolor='b', facecolor='lightblue', alpha=0.5, label=label)
                 ax.add_patch(facet_patch)
-                x, y = misc.radec2xy(wcs, facet.ra, facet.dec)
+                x, y = [float(f) for f in wcs.wcs_world2pix(facet.ra, facet.dec, 0)]
                 ax.annotate(facet.name, (x, y), va='center', ha='center', fontsize='small',
                             color='b')
 
@@ -1907,7 +1907,7 @@ class Field(object):
             label = 'Imaging sectors' if i == 0 else None  # first only to avoid multiple lines in legend
             sector_patch.set(label=label)
             ax.add_patch(sector_patch)
-            x, y = misc.radec2xy(wcs, sector.ra, sector.dec+sector.width_dec/2)  # center-top
+            x, y = [float(f) for f in wcs.wcs_world2pix(sector.ra, sector.dec+sector.width_dec/2, 0)]  # center-top
             ax.annotate(sector.name, (x, y), va='bottom', ha='center', fontsize='large')
 
         # Plot the observation's FWHM and phase center

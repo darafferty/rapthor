@@ -57,9 +57,6 @@ class TestField(unittest.TestCase):
     def test_outlier_sectors(self):
         self.assertEqual(self.field.outlier_sectors, [])
 
-    def test_radec2xy(self):
-        self.assertEqual(misc.radec2xy(self.field.wcs, 0.0, 0.0), (12187.183569042127, -12477.909993882473))
-
     def test_chunk_observations(self):
         for obs in self.field.full_observations:
             obs.data_fraction = 0.8

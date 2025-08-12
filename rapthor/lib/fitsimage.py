@@ -151,16 +151,10 @@ class FITSImage(object):
         vertices = misc.read_vertices(vertices_file)
 
         w = pywcs(self.header)
-        RAind = w.axis_type_names.index('RA')
-        Decind = w.axis_type_names.index('DEC')
         RAverts = vertices[0]
         Decverts = vertices[1]
-        verts = []
-        for RAvert, Decvert in zip(RAverts, Decverts):
-            ra_dec = np.array([[0.0, 0.0, 0.0, 0.0]])
-            ra_dec[0][RAind] = RAvert
-            ra_dec[0][Decind] = Decvert
-            verts.append((w.wcs_world2pix(ra_dec, 0)[0][RAind], w.wcs_world2pix(ra_dec, 0)[0][Decind]))
+        xverts, yverts = w.wcs_world2pix(RAverts, Decverts, 0)
+        verts = [(x, y) for x, y in zip(xverts, yverts)]
         poly = Polygon(verts)
         poly_padded = poly.buffer(2)
         verts = [(xi, yi) for xi, yi in zip(poly_padded.exterior.coords.xy[0].tolist(),
