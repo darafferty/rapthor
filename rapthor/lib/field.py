@@ -1109,7 +1109,7 @@ class Field(object):
                             nsectors_ra > 2 and nsectors_dec > 2):
                         continue
                     name = 'sector_{0}'.format(n)
-                    ra, dec = self.wcs.wcs_pix2world(x[j, i], y[j, i], 0)
+                    ra, dec = self.wcs.wcs_pix2world(x[j, i], y[j, i], misc.WCS_ORIGIN)
                     self.imaging_sectors.append(Sector(name, ra.item(), dec.item(), width_ra, width_dec, self))
                     n += 1
             if len(self.imaging_sectors) == 1:
@@ -1128,10 +1128,10 @@ class Field(object):
         # mask images from previous cycles may be used)
         all_sectors = MultiPolygon([sector.poly_padded for sector in self.imaging_sectors])
         self.sector_bounds_xy = all_sectors.bounds
-        maxRA, minDec = self.wcs.wcs_pix2world(self.sector_bounds_xy[0], self.sector_bounds_xy[1], 0)
-        minRA, maxDec = self.wcs.wcs_pix2world(self.sector_bounds_xy[2], self.sector_bounds_xy[3], 0)
+        maxRA, minDec = self.wcs.wcs_pix2world(self.sector_bounds_xy[0], self.sector_bounds_xy[1], misc.WCS_ORIGIN)
+        minRA, maxDec = self.wcs.wcs_pix2world(self.sector_bounds_xy[2], self.sector_bounds_xy[3], misc.WCS_ORIGIN)
         midRA, midDec = self.wcs.wcs_pix2world((self.sector_bounds_xy[0]+self.sector_bounds_xy[2])/2.0,
-                                               (self.sector_bounds_xy[1]+self.sector_bounds_xy[3])/2.0, 0)
+                                               (self.sector_bounds_xy[1]+self.sector_bounds_xy[3])/2.0, misc.WCS_ORIGIN)
         self.sector_bounds_width_ra = abs((self.sector_bounds_xy[0] - self.sector_bounds_xy[2]) *
                                           self.wcs.wcs.cdelt[0])
         self.sector_bounds_width_dec = abs((self.sector_bounds_xy[3] - self.sector_bounds_xy[1]) *

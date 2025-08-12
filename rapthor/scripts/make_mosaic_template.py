@@ -59,8 +59,8 @@ def main(input_image_list, vertices_file_list, output_image, skip=False, padding
         axmin, aymin, axmax, aymax = xs.min(), ys.min(), xs.max(), ys.max()
         del xs, ys
         for x, y in ((axmin, aymin), (axmax, aymin), (axmin, aymax), (axmax, aymax)):
-            ra, dec = [float(f) for f in w.wcs_pix2world(x, y, 0)]
-            nx, ny = [float(f) for f in rwcs.wcs_world2pix(ra, dec, 0)]
+            ra, dec = [float(f) for f in w.wcs_pix2world(x, y, misc.WCS_ORIGIN)]
+            nx, ny = [float(f) for f in rwcs.wcs_world2pix(ra, dec, misc.WCS_ORIGIN)]
             xmin, xmax, ymin, ymax = min(nx, xmin), max(nx, xmax), min(ny, ymin), max(ny, ymax)
     xsize = int(xmax - xmin)
     ysize = int(ymax - ymin)

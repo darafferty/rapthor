@@ -444,7 +444,8 @@ class Sector(object):
         Return the vertices as RA, Dec for the sector boundary
         """
         return self.field.wcs.wcs_pix2world(self.poly.exterior.coords.xy[0],
-                                            self.poly.exterior.coords.xy[1], 0)
+                                            self.poly.exterior.coords.xy[1],
+                                            misc.WCS_ORIGIN)
 
     def make_vertices_file(self):
         """
@@ -515,7 +516,8 @@ class Sector(object):
         """
         if wcs is not None:
             vertices = self.field.wcs.wcs_pix2world(self.poly.exterior.coords.xy[0],
-                                                    self.poly.exterior.coords.xy[1], 0)
+                                                    self.poly.exterior.coords.xy[1],
+                                                    misc.WCS_ORIGIN)
             x, y = misc.radec2xy(wcs, vertices[0], vertices[1])
         else:
             x, y = self.poly.exterior.coords.xy

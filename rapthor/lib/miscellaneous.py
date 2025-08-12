@@ -24,6 +24,10 @@ import subprocess
 import time
 
 
+# Always use a 0-based origin in wcs_pix2world and wcs_wordl2pix calls.
+WCS_ORIGIN = 0
+
+
 def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, source='TGSS',
                       targetname='Patch'):
     """
