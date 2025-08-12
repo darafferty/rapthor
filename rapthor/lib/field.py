@@ -1148,9 +1148,8 @@ class Field(object):
                                            self.wcs.wcs.cdelt[1])
         self.sector_bounds_mid_ra = mid_ra.item()
         self.sector_bounds_mid_dec = mid_dec.item()
-        self.sector_bounds_deg = '[{0:.6f};{1:.6f};{2:.6f};{3:.6f}]'.format(max_ra, min_dec,
-                                                                            min_ra, max_dec)
-        self.sector_bounds_mid_deg = '[{0:.6f};{1:.6f}]'.format(mid_ra, mid_dec)
+        self.sector_bounds_deg = f'[{max_ra:.6f};{min_dec:.6f};{min_ra:.6f};{max_dec:.6f}]'
+        self.sector_bounds_mid_deg = f'[{mid_ra:.6f};{mid_dec:.6f}]'
 
     def define_outlier_sectors(self, index):
         """
