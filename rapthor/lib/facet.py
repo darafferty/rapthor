@@ -219,21 +219,17 @@ class SquareFacet(Facet):
         ra, dec = misc.normalize_ra_dec(ra, dec)
         wcs = misc.make_wcs(ra, dec)
 
-        # Make the vertices
+        # Make the vertices.
         xmin = wcs.wcs.crpix[0] - width / 2 / abs(wcs.wcs.cdelt[0])
         xmax = wcs.wcs.crpix[0] + width / 2 / abs(wcs.wcs.cdelt[0])
         ymin = wcs.wcs.crpix[1] - width / 2 / abs(wcs.wcs.cdelt[1])
         ymax = wcs.wcs.crpix[1] + width / 2 / abs(wcs.wcs.cdelt[1])
-        ra_llc, dec_llc = wcs.wcs_pix2world(xmin, ymin, misc.WCS_ORIGIN)  # (RA, Dec) of lower-left corner
-        ra_tlc, dec_tlc = wcs.wcs_pix2world(xmin, ymax, misc.WCS_ORIGIN)  # (RA, Dec) of top-left corner
-        ra_trc, dec_trc = wcs.wcs_pix2world(xmax, ymax, misc.WCS_ORIGIN)  # (RA, Dec) of top-right corner
-        ra_lrc, dec_lrc = wcs.wcs_pix2world(xmax, ymin, misc.WCS_ORIGIN)  # (RA, Dec) of lower-right corner
-        vertices = [
-            (ra_llc.item(), dec_llc.item()),
-            (ra_tlc.item(), dec_tlc.item()),
-            (ra_trc.item(), dec_trc.item()),
-            (ra_lrc.item(), dec_lrc.item()),
-        ]
+        # Corner order: lower-left, top-left, top-right and lower-right.
+        corners_ra, corners_dec = wcs.wcs_pix2world([xmin, xmin, xmax, xmax],
+                                                    [ymin, ymax, ymax, ymin],
+                                                    misc.WCS_ORIGIN)
+
+        vertices = list(zip(corners_ra, corners_dec))
 
         super().__init__(name, ra, dec, vertices)
 
