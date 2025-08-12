@@ -59,15 +59,15 @@ class Facet(object):
                         abs(self.wcs.wcs.cdelt[0]))  # degrees
         self.x_center = xmin + (xmax - xmin)/2
         self.y_center = ymin + (ymax - ymin)/2
-        ra_array, dec_array = self.wcs.wcs_pix2world(self.x_center, self.y_center, 0)
-        self.ra_center = ra_array.item()
-        self.dec_center = dec_array.item()
+        self.ra_center, self.dec_center = [
+            float(f) for f in self.wcs.wcs_pix2world(self.x_center, self.y_center, 0)
+        ]
 
         # Find the centroid of the facet
-        ra_array, dec_array = self.wcs.wcs_pix2world(self.polygon.centroid.x,
+        self.ra_centroid, self.dec_centroid = [
+            float(f) for f in self.wcs.wcs_pix2world(self.polygon.centroid.x,
                                                      self.polygon.centroid.y, 0)
-        self.ra_centroid = ra_array.item()
-        self.dec_centroid = dec_array.item()
+        ]
 
 
     def set_skymodel(self, skymodel):
