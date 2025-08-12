@@ -282,11 +282,9 @@ def make_facet_polygons(ra_cal, dec_cal, ra_mid, dec_mid, width_ra, width_dec):
         ra, dec = wcs.wcs_pix2world(vertices[:, 0], vertices[:, 1], misc.WCS_ORIGIN)
         vertices = np.stack((ra, dec)).T
         facet_polys.append(vertices)
-    facet_points = []
-    for point in vor.filtered_points:
-        ra, dec = wcs.wcs_pix2world(point[0], point[1], misc.WCS_ORIGIN)
-        facet_points.append((ra.item(), dec.item()))
-
+    facet_points = list(map(
+        tuple, wcs.wcs_pix2world(vor.filtered_points, misc.WCS_ORIGIN)
+    ))
     return facet_points, facet_polys
 
 
