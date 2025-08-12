@@ -249,9 +249,7 @@ def read_vertices(filename, wcs):
         vertices_ra, vertices_dec = pickle.load(f)
 
     # Convert to x, y coordinates.
-    vertices_x, vertices_y = wcs.wcs_world2pix(vertices_ra,
-                                               vertices_dec,
-                                               WCS_ORIGIN)
+    vertices_x, vertices_y = wcs.wcs_world2pix(vertices_ra, vertices_dec, 0)
 
     # Convert to a list of (x, y) tuples.
     return list(zip(vertices_x, vertices_y))
