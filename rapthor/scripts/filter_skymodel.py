@@ -136,19 +136,14 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, apparent_sky_skymo
 
         # Construct polygon needed to trim the mask to the sector
         header = pyfits.getheader(maskfile, 0)
-        w = wcs.WCS(header)
-        vertices = misc.read_vertices(vertices_file)
-        RAverts = vertices[0]
-        Decverts = vertices[1]
-        xverts, yverts = w.wcs_world2pix(RAverts, Decverts, 0)
-        verts = [(x, y) for x, y in zip(xverts, yverts)]
+        vertices = misc.read_vertices(vertices_file, wcs.WCS(header))
 
         hdu = pyfits.open(maskfile, memmap=False)
         data = hdu[0].data
 
         # Rasterize the poly
         data_rasertize = data[0, 0, :, :]
-        data_rasertize = misc.rasterize(verts, data_rasertize)
+        data_rasertize = misc.rasterize(vertices, data_rasertize)
         data[0, 0, :, :] = data_rasertize
 
         hdu[0].data = data

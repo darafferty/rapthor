@@ -148,20 +148,14 @@ class FITSImage(object):
         # Construct polygon
         if vertices_file is None:
             vertices_file = self.vertices_file
-        vertices = misc.read_vertices(vertices_file)
-
-        w = pywcs(self.header)
-        RAverts = vertices[0]
-        Decverts = vertices[1]
-        xverts, yverts = w.wcs_world2pix(RAverts, Decverts, 0)
-        verts = [(x, y) for x, y in zip(xverts, yverts)]
-        poly = Polygon(verts)
+        vertices = misc.read_vertices(vertices_file, pywcs(self.header))
+        poly = Polygon(vertices)
         poly_padded = poly.buffer(2)
-        verts = [(xi, yi) for xi, yi in zip(poly_padded.exterior.coords.xy[0].tolist(),
-                                            poly_padded.exterior.coords.xy[1].tolist())]
+        vertices = list(zip(poly_padded.exterior.coords.xy[0].tolist(),
+                            poly_padded.exterior.coords.xy[1].tolist()))
 
         # Blank pixels (= NaN) outside of the polygon
-        self.img_data = misc.rasterize(verts, self.img_data, blank_value=np.nan)
+        self.img_data = misc.rasterize(vertices, self.img_data, blank_value=np.nan)
 
     def calc_noise(self, niter=1000, eps=None, sampling=4):
         """

@@ -230,13 +230,29 @@ def make_wcs(ra, dec, wcs_pixel_scale=10.0/3600.0):
     return w
 
 
-def read_vertices(filename):
+def read_vertices(filename, wcs):
     """
-    Returns facet vertices stored in input file
+    Read facet vertices from a file and convert them to pixel coordinates.
+
+    Parameters
+    ----------
+    wcs : astropy.wcs.WCS object
+        WCS object for converting the vertices to pixel coordinates.
+
+    Returns
+    -------
+    vertices: list of (x, y) tuples of float
+        The converted coordinates.
     """
+    # The input file always contains vertices as RA,Dec coordinates.
     with open(filename, 'rb') as f:
-        vertices = pickle.load(f)
-    return vertices
+        vertices_ra, vertices_dec = pickle.load(f)
+
+    # Convert to x, y coordinates.
+    vertices_x, vertices_y = wcs.wcs_world2pix(vertices_ra, vertices_dec, 0)
+
+    # Convert to a list of (x, y) tuples.
+    return list(zip(vertices_x, vertices_y))
 
 
 def make_template_image(image_name, reference_ra_deg, reference_dec_deg,
