@@ -1331,8 +1331,8 @@ class Field(object):
         """
         idx = rtree.index.Index()
         skymodel = self.source_skymodel
-        RA, Dec = skymodel.getPatchPositions(asArray=True)
-        x, y = self.wcs.wcs_world2pix(RA, Dec, misc.WCS_ORIGIN)
+        ra, dec = skymodel.getPatchPositions(asArray=True)
+        x, y = self.wcs.wcs_world2pix(ra, dec, misc.WCS_ORIGIN)
         sizes = skymodel.getPatchSizes(units='degree')
         minsize = 1  # minimum allowed source size in pixels
         sizes = [max(minsize, s/2.0/self.wcs_pixel_scale) for s in sizes]  # radii in pixels
