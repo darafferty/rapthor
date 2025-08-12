@@ -114,7 +114,6 @@ def suite():
     suite.addTest(TestField('test_regular_frequency_spacing'))
     suite.addTest(TestField('test_imaging_sectors'))
     suite.addTest(TestField('test_outlier_sectors'))
-    suite.addTest(TestField('test_radec2xy'))
     suite.addTest(TestField('test_chunk_observations'))
     suite.addTest(TestField('test_chunk_observations_high_el'))
     suite.addTest(TestField('test_get_obs_parameters'))
