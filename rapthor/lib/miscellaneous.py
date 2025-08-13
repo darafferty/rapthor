@@ -5,7 +5,6 @@ from astropy.io import fits as pyfits
 from astropy.time import Time
 from astropy.coordinates import SkyCoord
 import astropy.units as u
-from astropy.wcs import WCS
 import logging
 from losoto.h5parm import h5parm
 import lsmtool
