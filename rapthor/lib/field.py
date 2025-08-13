@@ -1109,8 +1109,8 @@ class Field(object):
                             nsectors_ra > 2 and nsectors_dec > 2):
                         continue
                     name = 'sector_{0}'.format(n)
-                    ra, dec = misc.xy2radec(self.wcs, x[j, i], y[j, i])
-                    self.imaging_sectors.append(Sector(name, ra, dec, width_ra, width_dec, self))
+                    ra, dec = self.wcs.wcs_pix2world(x[j, i], y[j, i], misc.WCS_ORIGIN)
+                    self.imaging_sectors.append(Sector(name, ra.item(), dec.item(), width_ra, width_dec, self))
                     n += 1
             if len(self.imaging_sectors) == 1:
                 self.log.info('Using 1 imaging sector')
@@ -1119,28 +1119,37 @@ class Field(object):
                               len(self.imaging_sectors), nsectors_ra, nsectors_dec))
             self.uses_sector_grid = True
 
-        # Compute bounding box for all imaging sectors and store as a
-        # a semi-colon-separated list of [maxRA; minDec; minRA; maxDec] (we use semi-
-        # colons as otherwise the workflow parset parser will split the list). Also
-        # store the midpoint as [midRA; midDec].
-        # Note: this is just once, rather than each time the sector borders are
-        # adjusted, so that the image sizes do not change with cycle (so
-        # mask images from previous cycles may be used)
+        self.define_sector_bounds()
+
+    def define_sector_bounds(self):
+        """
+        Compute bounding box for all imaging sectors and store as a
+        a semi-colon-separated list of [maxRA; minDec; minRA; maxDec] (we use semi-
+        colons as otherwise the workflow parset parser will split the list). Also
+        store the midpoint as [midRA; midDec].
+        Note: this is just once, rather than each time the sector borders are
+        adjusted, so that the image sizes do not change with cycle (so
+        mask images from previous cycles may be used)
+        """
         all_sectors = MultiPolygon([sector.poly_padded for sector in self.imaging_sectors])
         self.sector_bounds_xy = all_sectors.bounds
-        maxRA, minDec = misc.xy2radec(self.wcs, self.sector_bounds_xy[0], self.sector_bounds_xy[1])
-        minRA, maxDec = misc.xy2radec(self.wcs, self.sector_bounds_xy[2], self.sector_bounds_xy[3])
-        midRA, midDec = misc.xy2radec(self.wcs, (self.sector_bounds_xy[0]+self.sector_bounds_xy[2])/2.0,
-                                      (self.sector_bounds_xy[1]+self.sector_bounds_xy[3])/2.0)
+        max_ra, min_dec = self.wcs.wcs_pix2world(self.sector_bounds_xy[0],
+                                                 self.sector_bounds_xy[1],
+                                                 misc.WCS_ORIGIN)
+        min_ra, max_dec = self.wcs.wcs_pix2world(self.sector_bounds_xy[2],
+                                                 self.sector_bounds_xy[3],
+                                                 misc.WCS_ORIGIN)
+        mid_ra, mid_dec = self.wcs.wcs_pix2world((self.sector_bounds_xy[0]+self.sector_bounds_xy[2])/2.0,
+                                                 (self.sector_bounds_xy[1]+self.sector_bounds_xy[3])/2.0,
+                                                 misc.WCS_ORIGIN)
         self.sector_bounds_width_ra = abs((self.sector_bounds_xy[0] - self.sector_bounds_xy[2]) *
                                           self.wcs.wcs.cdelt[0])
         self.sector_bounds_width_dec = abs((self.sector_bounds_xy[3] - self.sector_bounds_xy[1]) *
                                            self.wcs.wcs.cdelt[1])
-        self.sector_bounds_mid_ra = midRA
-        self.sector_bounds_mid_dec = midDec
-        self.sector_bounds_deg = '[{0:.6f};{1:.6f};{2:.6f};{3:.6f}]'.format(maxRA, minDec,
-                                                                            minRA, maxDec)
-        self.sector_bounds_mid_deg = '[{0:.6f};{1:.6f}]'.format(midRA, midDec)
+        self.sector_bounds_mid_ra = mid_ra.item()
+        self.sector_bounds_mid_dec = mid_dec.item()
+        self.sector_bounds_deg = f'[{max_ra:.6f};{min_dec:.6f};{min_ra:.6f};{max_dec:.6f}]'
+        self.sector_bounds_mid_deg = f'[{mid_ra:.6f};{mid_dec:.6f}]'
 
     def define_outlier_sectors(self, index):
         """

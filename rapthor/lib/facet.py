@@ -59,11 +59,17 @@ class Facet(object):
                         abs(self.wcs.wcs.cdelt[0]))  # degrees
         self.x_center = xmin + (xmax - xmin)/2
         self.y_center = ymin + (ymax - ymin)/2
-        self.ra_center, self.dec_center = misc.xy2radec(self.wcs, self.x_center, self.y_center)
+        self.ra_center, self.dec_center = map(
+            float, self.wcs.wcs_pix2world(self.x_center, self.y_center, misc.WCS_ORIGIN)
+        )
 
         # Find the centroid of the facet
-        self.ra_centroid, self.dec_centroid = misc.xy2radec(self.wcs, self.polygon.centroid.x,
-                                                            self.polygon.centroid.y)
+        self.ra_centroid, self.dec_centroid = map(
+            float, self.wcs.wcs_pix2world(self.polygon.centroid.x,
+                                          self.polygon.centroid.y,
+                                          misc.WCS_ORIGIN)
+        )
+
 
     def set_skymodel(self, skymodel):
         """
@@ -213,16 +219,17 @@ class SquareFacet(Facet):
         ra, dec = misc.normalize_ra_dec(ra, dec)
         wcs = misc.make_wcs(ra, dec)
 
-        # Make the vertices
+        # Make the vertices.
         xmin = wcs.wcs.crpix[0] - width / 2 / abs(wcs.wcs.cdelt[0])
         xmax = wcs.wcs.crpix[0] + width / 2 / abs(wcs.wcs.cdelt[0])
         ymin = wcs.wcs.crpix[1] - width / 2 / abs(wcs.wcs.cdelt[1])
         ymax = wcs.wcs.crpix[1] + width / 2 / abs(wcs.wcs.cdelt[1])
-        ra_llc, dec_llc = misc.xy2radec(wcs, xmin, ymin)  # (RA, Dec) of lower-left corner
-        ra_tlc, dec_tlc = misc.xy2radec(wcs, xmin, ymax)  # (RA, Dec) of top-left corner
-        ra_trc, dec_trc = misc.xy2radec(wcs, xmax, ymax)  # (RA, Dec) of top-right corner
-        ra_lrc, dec_lrc = misc.xy2radec(wcs, xmax, ymin)  # (RA, Dec) of lower-right corner
-        vertices = [(ra_llc, dec_llc), (ra_tlc, dec_tlc), (ra_trc, dec_trc), (ra_lrc, dec_lrc)]
+        # Corner order: lower-left, top-left, top-right and lower-right.
+        corners_ra, corners_dec = wcs.wcs_pix2world([xmin, xmin, xmax, xmax],
+                                                    [ymin, ymax, ymax, ymin],
+                                                    misc.WCS_ORIGIN)
+
+        vertices = list(zip(corners_ra, corners_dec))
 
         super().__init__(name, ra, dec, vertices)
 
@@ -272,14 +279,12 @@ def make_facet_polygons(ra_cal, dec_cal, ra_mid, dec_mid, width_ra, width_dec):
     facet_polys = []
     for region in vor.filtered_regions:
         vertices = vor.vertices[region + [region[0]], :]
-        ra, dec = misc.xy2radec(wcs, vertices[:, 0], vertices[:, 1])
+        ra, dec = wcs.wcs_pix2world(vertices[:, 0], vertices[:, 1], misc.WCS_ORIGIN)
         vertices = np.stack((ra, dec)).T
         facet_polys.append(vertices)
-    facet_points = []
-    for point in vor.filtered_points:
-        ra, dec = misc.xy2radec(wcs, point[0], point[1])
-        facet_points.append((ra, dec))
-
+    facet_points = list(map(
+        tuple, wcs.wcs_pix2world(vor.filtered_points, misc.WCS_ORIGIN)
+    ))
     return facet_points, facet_polys
 
 

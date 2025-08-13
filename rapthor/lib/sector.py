@@ -443,11 +443,9 @@ class Sector(object):
         """
         Return the vertices as RA, Dec for the sector boundary
         """
-        ra, dec = misc.xy2radec(self.field.wcs, self.poly.exterior.coords.xy[0].tolist(),
-                                self.poly.exterior.coords.xy[1].tolist())
-        vertices = [np.array(ra), np.array(dec)]
-
-        return vertices
+        return self.field.wcs.wcs_pix2world(self.poly.exterior.coords.xy[0],
+                                            self.poly.exterior.coords.xy[1],
+                                            misc.WCS_ORIGIN)
 
     def make_vertices_file(self):
         """
@@ -516,11 +514,14 @@ class Sector(object):
         patch : matplotlib patch object
             The patch for the sector polygon
         """
-        vertices = self.get_vertices_radec()
+        if wcs is not None:
+            vertices = self.field.wcs.wcs_pix2world(self.poly.exterior.coords.xy[0],
+                                                    self.poly.exterior.coords.xy[1],
+                                                    misc.WCS_ORIGIN)
+            x, y = misc.radec2xy(wcs, vertices[0], vertices[1])
+        else:
+            x, y = self.poly.exterior.coords.xy
 
-        if wcs is None:
-            wcs = self.field.wcs
-        x, y = misc.radec2xy(wcs, vertices[0], vertices[1])
         xy = np.vstack([x, y]).transpose()
         patch = patches.Polygon(xy=xy, label=self.name, edgecolor='k', facecolor='none',
                                 linewidth=2)

@@ -60,9 +60,6 @@ class TestField(unittest.TestCase):
     def test_radec2xy(self):
         self.assertEqual(misc.radec2xy(self.field.wcs, 0.0, 0.0), (12187.183569042127, -12477.909993882473))
 
-    def test_xy2radec(self):
-        self.assertEqual(misc.xy2radec(self.field.wcs, 12187.183569042127, -12477.909993882473), (1.4210854715202004e-14, 0.0))
-
     def test_chunk_observations(self):
         for obs in self.field.full_observations:
             obs.data_fraction = 0.8
@@ -121,7 +118,6 @@ def suite():
     suite.addTest(TestField('test_imaging_sectors'))
     suite.addTest(TestField('test_outlier_sectors'))
     suite.addTest(TestField('test_radec2xy'))
-    suite.addTest(TestField('test_xy2radec'))
     suite.addTest(TestField('test_chunk_observations'))
     suite.addTest(TestField('test_chunk_observations_high_el'))
     suite.addTest(TestField('test_get_obs_parameters'))
