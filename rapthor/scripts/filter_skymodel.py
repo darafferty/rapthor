@@ -2,12 +2,10 @@
 """
 Script to filter and group a sky model with an image
 """
-# std
 import ast
 import json
 from argparse import ArgumentParser, RawTextHelpFormatter
 
-# third-party
 from astropy.utils import iers
 from rapthor.lib import miscellaneous as misc
 from lsmtool.filter_skymodel import filter_skymodel
