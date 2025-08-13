@@ -421,11 +421,13 @@ class Sector(object):
         Determines the vertices of the sector polygon
         """
         # Define initial polygon as a rectangle
-        sx, sy = misc.radec2xy(self.field.wcs, [self.ra], [self.dec])
+        x_sector_pixels, y_sector_pixels = self.field.wcs.wcs_world2pix(
+            self.ra, self.dec, misc.WCS_ORIGIN
+        )
         ra_width_pix = self.width_ra / abs(self.field.wcs.wcs.cdelt[0])
         dec_width_pix = self.width_dec / abs(self.field.wcs.wcs.cdelt[1])
-        x0 = sx[0] - ra_width_pix / 2.0
-        y0 = sy[0] - dec_width_pix / 2.0
+        x0 = x_sector_pixels - ra_width_pix / 2.0
+        y0 = y_sector_pixels - dec_width_pix / 2.0
         poly_verts = [(x0, y0), (x0, y0+dec_width_pix),
                       (x0+ra_width_pix, y0+dec_width_pix),
                       (x0+ra_width_pix, y0), (x0, y0)]
@@ -518,7 +520,7 @@ class Sector(object):
             vertices = self.field.wcs.wcs_pix2world(self.poly.exterior.coords.xy[0],
                                                     self.poly.exterior.coords.xy[1],
                                                     misc.WCS_ORIGIN)
-            x, y = misc.radec2xy(wcs, vertices[0], vertices[1])
+            x, y = wcs.wcs_world2pix(vertices[0], vertices[1], misc.WCS_ORIGIN)
         else:
             x, y = self.poly.exterior.coords.xy
 

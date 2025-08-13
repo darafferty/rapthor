@@ -57,18 +57,7 @@ def main(output_image, input_image=None, vertices_file=None, reference_ra_deg=No
             header = pyfits.getheader(output_image, 0)
         else:
             header = pyfits.getheader(input_image, 0)
-        w = wcs.WCS(header)
-        RAind = w.axis_type_names.index('RA')
-        Decind = w.axis_type_names.index('DEC')
-        vertices = misc.read_vertices(vertices_file)
-        RAverts = vertices[0]
-        Decverts = vertices[1]
-        verts = []
-        for RAvert, Decvert in zip(RAverts, Decverts):
-            ra_dec = np.array([[0.0, 0.0, 0.0, 0.0]])
-            ra_dec[0][RAind] = RAvert
-            ra_dec[0][Decind] = Decvert
-            verts.append((w.wcs_world2pix(ra_dec, 0)[0][RAind], w.wcs_world2pix(ra_dec, 0)[0][Decind]))
+        vertices = misc.read_vertices(vertices_file, wcs.WCS(header))
 
         if make_blank_image:
             hdu = pyfits.open(output_image, memmap=False)
@@ -78,7 +67,7 @@ def main(output_image, input_image=None, vertices_file=None, reference_ra_deg=No
 
         # Rasterize the poly
         data_rasertize = data[0, 0, :, :]
-        data_rasertize = misc.rasterize(verts, data_rasertize)
+        data_rasertize = misc.rasterize(vertices, data_rasertize)
         data[0, 0, :, :] = data_rasertize
 
         hdu[0].data = data

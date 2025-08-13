@@ -43,8 +43,9 @@ def test_make_wcs(ra, dec, wcs_pixel_scale):
 
 @pytest.mark.parametrize("filename", ("/path/to/vertices.file",))
 def test_read_vertices(filename):
+    wcs = make_wcs(0, 0)
     with pytest.raises(FileNotFoundError):
-        read_vertices(filename)
+        read_vertices(filename, wcs)
 
 
 @pytest.mark.parametrize("image_name", (None,))
