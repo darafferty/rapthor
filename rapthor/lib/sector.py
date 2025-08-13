@@ -339,11 +339,11 @@ class Sector(object):
                 # very faint source at center
                 dummylines = ["Format = Name, Type, Patch, Ra, Dec, I, SpectralIndex, LogarithmicSI, "
                               "ReferenceFrequency='100000000.0', MajorAxis, MinorAxis, Orientation\n"]
-                sra, sdec = lsmtool.utils.format_coordinates(self.ra, self.dec, precision=6)
+                coord_strings = lsmtool.utils.format_coordinates(self.ra, self.dec, precision=6)
                 patch = self.calibration_skymodel.getPatchNames()[0]
-                dummylines.append(',,{0},{1},{2}\n'.format(patch, sra, sdec))
+                dummylines.append(',,{0},{1},{2}\n'.format(patch, *coord_strings))
                 dummylines.append('s0c0,POINT,{0},{1},{2},0.00000001,'
-                                  '[0.0,0.0],false,100000000.0,,,\n'.format(patch, sra, sdec))
+                                  '[0.0,0.0],false,100000000.0,,,\n'.format(patch, *coord_strings))
                 with open(self.predict_skymodel_file, 'w') as f:
                     f.writelines(dummylines)
                 skymodel = lsmtool.load(str(self.predict_skymodel_file))
