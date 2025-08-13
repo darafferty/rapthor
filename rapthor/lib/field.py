@@ -1783,13 +1783,12 @@ class Field(object):
             # two axes
             wcs_pixel_scale = (wcs.proj_plane_pixel_scales()[0].value +
                                wcs.proj_plane_pixel_scales()[1].value) / 2
-        x, y = map(float, wcs.wcs_world2pix(self.ra, self.dec, misc.WCS_ORIGIN))
-        patch = Ellipse((x, y), width=self.fwhm_ra_deg/wcs_pixel_scale,
-                        height=self.fwhm_dec_deg/wcs_pixel_scale,
-                        edgecolor='k', facecolor='lightgray', linestyle=':',
-                        label='Pointing FWHM', linewidth=2, alpha=0.5)
-
-        return patch
+        xy_pixel = wcs.wcs_world2pix(self.ra, self.dec, misc.WCS_ORIGIN)
+        return Ellipse(xy_pixel,
+                       width=self.fwhm_ra_deg/wcs_pixel_scale,
+                       height=self.fwhm_dec_deg/wcs_pixel_scale,
+                       edgecolor='k', facecolor='lightgray', linestyle=':',
+                       label='Pointing FWHM', linewidth=2, alpha=0.5)
 
     def plot_overview(self, output_filename, show_initial_coverage=False,
                       show_calibration_patches=False, moc=None,
@@ -1901,8 +1900,8 @@ class Field(object):
                 label = 'Calibration facets' if i == 0 else None  # first only to avoid multiple lines in legend
                 facet_patch.set(edgecolor='b', facecolor='lightblue', alpha=0.5, label=label)
                 ax.add_patch(facet_patch)
-                x, y = map(float, wcs.wcs_world2pix(facet.ra, facet.dec, misc.WCS_ORIGIN))
-                ax.annotate(facet.name, (x, y), va='center', ha='center', fontsize='small',
+                xy_sector = wcs.wcs_world2pix(facet.ra, facet.dec, misc.WCS_ORIGIN)
+                ax.annotate(facet.name, xy_sector, va='center', ha='center', fontsize='small',
                             color='b')
 
         # Plot the imaging sectors
@@ -1911,8 +1910,8 @@ class Field(object):
             label = 'Imaging sectors' if i == 0 else None  # first only to avoid multiple lines in legend
             sector_patch.set(label=label)
             ax.add_patch(sector_patch)
-            x, y = map(float, wcs.wcs_world2pix(sector.ra, sector.dec+sector.width_dec/2, misc.WCS_ORIGIN))  # center-top
-            ax.annotate(sector.name, (x, y), va='bottom', ha='center', fontsize='large')
+            xy_sector = wcs.wcs_world2pix(sector.ra, sector.dec+sector.width_dec/2, misc.WCS_ORIGIN)  # center-top
+            ax.annotate(sector.name, xy_sector, va='bottom', ha='center', fontsize='large')
 
         # Plot the observation's FWHM and phase center
         if show_initial_coverage:
