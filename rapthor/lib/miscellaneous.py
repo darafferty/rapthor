@@ -24,7 +24,7 @@ import subprocess
 import time
 
 
-# Always use a 0-based origin in wcs_pix2world and wcs_wordl2pix calls.
+# Always use a 0-based origin in wcs_pix2world and wcs_world2pix calls.
 WCS_ORIGIN = 0
 
 
