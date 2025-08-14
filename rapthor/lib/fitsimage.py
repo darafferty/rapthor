@@ -2,7 +2,7 @@
 Definition of classes for handling of FITS images
 """
 from rapthor.lib import miscellaneous as misc
-from astropy.wcs import WCS as pywcs
+from astropy.wcs import WCS
 from astropy.io import fits as pyfits
 from shapely.geometry import Polygon
 import numpy as np
@@ -79,8 +79,8 @@ class FITSImage(object):
             self.img_hdr = f[0].header
             self.img_data = f[0].data
         else:
-            w = pywcs(f[0].header)
-            wn = pywcs(naxis=2)
+            w = WCS(f[0].header)
+            wn = WCS(naxis=2)
             wn.wcs.crpix[0] = w.wcs.crpix[0]
             wn.wcs.crpix[1] = w.wcs.crpix[1]
             wn.wcs.cdelt = w.wcs.cdelt[0:2]
@@ -139,7 +139,7 @@ class FITSImage(object):
         """
         Return the WCS object for the image
         """
-        return pywcs(self.img_hdr)
+        return WCS(self.img_hdr)
 
     def blank(self, vertices_file=None):
         """
@@ -148,7 +148,7 @@ class FITSImage(object):
         # Construct polygon
         if vertices_file is None:
             vertices_file = self.vertices_file
-        vertices = misc.read_vertices(vertices_file, pywcs(self.header))
+        vertices = misc.read_vertices(vertices_file, WCS(self.header))
         poly = Polygon(vertices)
         poly_padded = poly.buffer(2)
         vertices = list(zip(poly_padded.exterior.coords.xy[0].tolist(),

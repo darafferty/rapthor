@@ -5,7 +5,6 @@ from astropy.io import fits as pyfits
 from astropy.time import Time
 from astropy.coordinates import SkyCoord
 import astropy.units as u
-from astropy.wcs import WCS
 import logging
 from losoto.h5parm import h5parm
 import lsmtool
@@ -26,6 +25,8 @@ import time
 
 # Always use a 0-based origin in wcs_pix2world and wcs_world2pix calls.
 WCS_ORIGIN = 0
+# Default WCS pixel scale within Rapthor, which differs from LSMTool (20"/pixel).
+WCS_PIXEL_SCALE = 10.0 / 3600.0 # degrees/pixel (= 10"/pixel)
 
 
 def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, source='TGSS',
@@ -201,33 +202,6 @@ def normalize_ra_dec(ra, dec):
         normalized_ra = normalized_ra % 360
 
     return normalized_ra, normalized_dec
-
-
-def make_wcs(ra, dec, wcs_pixel_scale=10.0/3600.0):
-    """
-    Makes simple WCS object
-
-    Parameters
-    ----------
-    ra : float
-        Reference RA in degrees
-    dec : float
-        Reference Dec in degrees
-    wcs_pixel_scale : float, optional
-        Pixel scale in degrees/pixel (default = 10"/pixel)
-
-    Returns
-    -------
-    w : astropy.wcs.WCS object
-        A simple TAN-projection WCS object for specified reference position
-    """
-    w = WCS(naxis=2)
-    w.wcs.crpix = [1000, 1000]
-    w.wcs.cdelt = np.array([-wcs_pixel_scale, wcs_pixel_scale])
-    w.wcs.crval = [ra, dec]
-    w.wcs.ctype = ["RA---TAN", "DEC--TAN"]
-
-    return w
 
 
 def read_vertices(filename, wcs):

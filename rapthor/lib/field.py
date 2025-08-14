@@ -7,6 +7,7 @@ import logging
 import numpy as np
 import lsmtool
 import lsmtool.skymodel
+from lsmtool.operations_lib import make_wcs
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.observation import Observation
 from rapthor.lib.sector import Sector
@@ -1466,8 +1467,8 @@ class Field(object):
         """
         Makes simple WCS object
         """
-        self.wcs_pixel_scale = 10.0 / 3600.0  # degrees/pixel (= 10"/pixel)
-        self.wcs = misc.make_wcs(self.ra, self.dec, self.wcs_pixel_scale)
+        self.wcs_pixel_scale = misc.WCS_PIXEL_SCALE
+        self.wcs = make_wcs(self.ra, self.dec, self.wcs_pixel_scale)
 
     def scan_h5parms(self):
         """
