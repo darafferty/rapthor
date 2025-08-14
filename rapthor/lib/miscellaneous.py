@@ -218,11 +218,11 @@ def read_vertices(filename, wcs):
     # The input file always contains vertices as RA,Dec coordinates.
     vertices_celestial = lsmtool.io.read_vertices_ra_dec(filename)
 
-    # Convert to x, y coordinates.
-    vertices_x, vertices_y = wcs.wcs_world2pix(*vertices_celestial, WCS_ORIGIN)
+    # Convert to image pixel coordinates (x, y).
+    vertices_image = wcs.wcs_world2pix(*vertices_celestial, WCS_ORIGIN)
 
     # Convert to a list of (x, y) tuples.
-    return list(zip(vertices_x, vertices_y))
+    return list(zip(*vertices_image))
 
 
 def make_template_image(image_name, reference_ra_deg, reference_dec_deg,
