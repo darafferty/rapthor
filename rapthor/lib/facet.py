@@ -14,7 +14,7 @@ from rapthor.lib import miscellaneous as misc
 from matplotlib import patches
 import lsmtool
 from lsmtool import tableio
-from lsmtool.operations_lib import make_wcs
+from lsmtool.operations_lib import make_wcs, tessellate
 import tempfile
 import re
 
@@ -236,60 +236,6 @@ class SquareFacet(Facet):
         vertices = list(zip(corners_ra, corners_dec))
 
         super().__init__(name, ra, dec, vertices)
-
-
-def make_facet_polygons(ra_cal, dec_cal, ra_mid, dec_mid, width_ra, width_dec):
-    """
-    Makes a Voronoi tessellation and returns the resulting facet centers
-    and polygons
-
-    Parameters
-    ----------
-    ra_cal : array
-        RA values in degrees of calibration directions
-    dec_cal : array
-        Dec values in degrees of calibration directions
-    ra_mid : float
-        RA in degrees of bounding box center
-    dec_mid : float
-        Dec in degrees of bounding box center
-    width_ra : float
-        Width of bounding box in RA in degrees, corrected to Dec = 0
-    width_dec : float
-        Width of bounding box in Dec in degrees
-
-    Returns
-    -------
-    facet_points, facet_polys : list of tuples, list of arrays
-        List of facet points (centers) as (RA, Dec) tuples in degrees and
-        list of facet polygons (vertices) as [RA, Dec] arrays in degrees
-        (each of shape N x 2, where N is the number of vertices in a given
-        facet)
-    """
-    # Build the bounding box corner coordinates
-    if width_ra <= 0.0 or width_dec <= 0.0:
-        raise ValueError('The RA/Dec width cannot be zero or less')
-    wcs_pixel_scale = 20.0 / 3600.0  # 20"/pixel
-    wcs = make_wcs(ra_mid, dec_mid, wcs_pixel_scale)
-    x_cal, y_cal = wcs.wcs_world2pix(ra_cal, dec_cal, misc.WCS_ORIGIN)
-    x_mid, y_mid = wcs.wcs_world2pix(ra_mid, dec_mid, misc.WCS_ORIGIN)
-    width_x = width_ra / wcs_pixel_scale / 2.0
-    width_y = width_dec / wcs_pixel_scale / 2.0
-    bounding_box = np.array([x_mid - width_x, x_mid + width_x,
-                             y_mid - width_y, y_mid + width_y])
-
-    # Tessellate and convert resulting facet polygons from (x, y) to (RA, Dec)
-    vor = voronoi(np.stack((x_cal, y_cal)).T, bounding_box)
-    facet_polys = []
-    for region in vor.filtered_regions:
-        vertices = vor.vertices[region + [region[0]], :]
-        ra, dec = wcs.wcs_pix2world(vertices[:, 0], vertices[:, 1], misc.WCS_ORIGIN)
-        vertices = np.stack((ra, dec)).T
-        facet_polys.append(vertices)
-    facet_points = list(map(
-        tuple, wcs.wcs_pix2world(vor.filtered_points, misc.WCS_ORIGIN)
-    ))
-    return facet_points, facet_polys
 
 
 def in_box(cal_coords, bounding_box):
@@ -551,7 +497,7 @@ def read_skymodel(skymodel, ra_mid, dec_mid, width_ra, width_dec):
     patch_coords = SkyCoord(ra=np.array(ra_cal)*u.degree, dec=np.array(dec_cal)*u.degree)
 
     # Do the tessellation
-    facet_points, facet_polys = make_facet_polygons(ra_cal, dec_cal, ra_mid, dec_mid, width_ra, width_dec)
+    facet_points, facet_polys = tessellate(ra_cal, dec_cal, ra_mid, dec_mid, width_ra, width_dec)
     facet_names = []
     for facet_point in facet_points:
         # For each facet, match the correct patch name (i.e., the name of the
