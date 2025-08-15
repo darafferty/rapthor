@@ -2,12 +2,11 @@
 Test module for testing the CWL workflows _generated_ by the pipeline
 """
 
-import os
 import subprocess
 
 import pytest
 import rapthor.lib.operation
-
+from pathlib import Path
 pytestmark = pytest.mark.slow
 
 
@@ -27,26 +26,22 @@ def generate_and_validate(tmp_path, operation, parms, templ, sub_templ=None):
     pipeline_working_dir.mkdir(parents=True, exist_ok=True)
     parset = pipeline_working_dir / "pipeline_parset.cwl"
     sub_parset = pipeline_working_dir / "subpipeline_parset.cwl"
-    rapthor_pipeline_dir = os.path.abspath(
-        os.path.join(rapthor.lib.operation.DIR, "..", "pipeline")
+    rapthor_pipeline_dir = (Path(rapthor.lib.operation.DIR) / "../pipeline").resolve()
+    parset.write_text(
+        templ.render(
+            parms,
+            pipeline_working_dir=pipeline_working_dir,
+            rapthor_pipeline_dir=rapthor_pipeline_dir,
+        )
     )
-    with open(parset, "w") as f:
-        f.write(
-            templ.render(
+    if sub_templ:
+        sub_parset.write_text(
+            sub_templ.render(
                 parms,
                 pipeline_working_dir=pipeline_working_dir,
                 rapthor_pipeline_dir=rapthor_pipeline_dir,
             )
         )
-    if sub_templ:
-        with open(sub_parset, "w") as f:
-            f.write(
-                sub_templ.render(
-                    parms,
-                    pipeline_working_dir=pipeline_working_dir,
-                    rapthor_pipeline_dir=rapthor_pipeline_dir,
-                )
-            )
     try:
         subprocess.run(["cwltool", "--validate", "--enable-ext", parset], check=True)
     except subprocess.CalledProcessError as err:
