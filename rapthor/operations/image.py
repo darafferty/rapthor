@@ -288,6 +288,7 @@ class Image(Operation):
                             'threshisl': [sector.threshisl for sector in self.imaging_sectors],
                             'threshpix': [sector.threshpix for sector in self.imaging_sectors],
                             'filter_by_mask': self.imaging_parameters['filter_skymodel'],
+                            'source_finder': self.imaging_parameters['source_finder'],
                             'do_multiscale': [sector.multiscale for sector in self.imaging_sectors],
                             'dd_psf_grid': [sector.dd_psf_grid for sector in self.imaging_sectors],
                             'max_threads': self.field.parset['cluster_specific']['max_threads'],

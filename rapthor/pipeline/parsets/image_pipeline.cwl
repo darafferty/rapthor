@@ -5,7 +5,7 @@ doc: |
   This workflow performs imaging with direction-dependent corrections. The
   imaging data are generated (and averaged if possible) and WSClean is
   used to perform the imaging. Masking and sky model filtering is then done
-  using PyBDSF.
+  using either PyBDSF or SoFiA-2 as source finder.
 
 requirements:
   MultipleInputFeatureRequirement: {}
@@ -467,6 +467,12 @@ inputs:
       Filter the source list by the PyBDSF mask (length = 1).
     type: boolean
 
+  - id: source_finder
+    label: Source finder
+    doc: |
+      Name of the source finder to use.
+    type: string
+
 {% if peel_bright_sources %}
   - id: bright_skymodel_pb
     label: Bright-source sky model
@@ -767,6 +773,8 @@ steps:
         source: threshpix
       - id: filter_by_mask
         source: filter_by_mask
+      - id: source_finder
+        source: source_finder
       - id: max_threads
         source: max_threads
       - id: deconvolution_threads

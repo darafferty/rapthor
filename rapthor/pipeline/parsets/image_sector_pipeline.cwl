@@ -428,6 +428,12 @@ inputs:
       Filter the source list by the PyBDSF mask (length = 1).
     type: boolean
 
+  - id: source_finder
+    label: Source finder
+    doc: |
+      Name of the source finder to use.
+    type: string
+
 {% if peel_bright_sources %}
   - id: bright_skymodel_pb
     label: Bright-source sky model
@@ -991,6 +997,8 @@ steps:
         source: obs_filename
       - id: filter_by_mask
         source: filter_by_mask
+      - id: source_finder
+        source: source_finder
       - id: ncores
         source: max_threads
     out:
