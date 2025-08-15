@@ -8,8 +8,6 @@ from pathlib import Path
 import pytest
 from rapthor.lib.operation import DIR, env_parset
 
-pytestmark = pytest.mark.slow
-
 
 def generate_and_validate(tmp_path, operation, parms, templ, sub_templ=None):
     """
@@ -154,6 +152,7 @@ def test_predict_nc_workflow(tmp_path, max_cores):
     generate_and_validate(tmp_path, operation, parms, templ)
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("apply_screens", (False, True))
 @pytest.mark.parametrize("use_facets", (False, True))
 @pytest.mark.parametrize("peel_bright_sources", (False, True))
