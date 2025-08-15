@@ -45,7 +45,7 @@ def generate_and_validate(tmp_path, operation, parms, templ, sub_templ=None):
     try:
         subprocess.run(["cwltool", "--validate", "--enable-ext", parset], check=True)
     except subprocess.CalledProcessError as err:
-        raise Exception(f"FAILED with parameters: {parms}")
+        raise AssertionError(f"FAILED with parameters: {parms}") from err
 
 
 @pytest.mark.parametrize("max_cores", (None, 8))
