@@ -1,14 +1,16 @@
 """
 Definition of classes for handling of FITS images
 """
-from rapthor.lib import miscellaneous as misc
-from astropy.wcs import WCS
-from astropy.io import fits as pyfits
-from shapely.geometry import Polygon
-import numpy as np
 import logging
 import re
 from pathlib import Path
+
+import numpy as np
+from astropy.io import fits as pyfits
+from astropy.wcs import WCS as pywcs
+from lsmtool.io import read_vertices_ra_dec
+from lsmtool.utils import rasterize
+from shapely.geometry import Polygon
 
 
 class FITSImage(object):
@@ -155,7 +157,7 @@ class FITSImage(object):
                             poly_padded.exterior.coords.xy[1].tolist()))
 
         # Blank pixels (= NaN) outside of the polygon
-        self.img_data = misc.rasterize(vertices, self.img_data, blank_value=np.nan)
+        self.img_data = rasterize(verts, self.img_data, blank_value=np.nan)
 
     def calc_noise(self, niter=1000, eps=None, sampling=4):
         """

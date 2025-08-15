@@ -2,31 +2,35 @@
 Definition of the Field class
 """
 import copy
-import os
+import glob
 import logging
-import numpy as np
+import os
+from collections import namedtuple
+from typing import Dict, List
+
+import astropy.units as u
 import lsmtool
 import lsmtool.skymodel
 from lsmtool.operations_lib import make_wcs
+
+import matplotlib
+import numpy as np
+import rtree.index
+from astropy.coordinates import Angle, SkyCoord
+from astropy.table import vstack
+from shapely.geometry import MultiPolygon, Point, Polygon
+
 from rapthor.lib import miscellaneous as misc
+from rapthor.lib.facet import read_ds9_region_file, read_skymodel
 from rapthor.lib.observation import Observation
 from rapthor.lib.sector import Sector
-from rapthor.lib.facet import read_ds9_region_file, read_skymodel
-from shapely.geometry import Point, Polygon, MultiPolygon
-from astropy.table import vstack
-import rtree.index
-import glob
-from astropy.coordinates import SkyCoord, Angle
-import astropy.units as u
-from typing import List, Dict
-from collections import namedtuple
-import matplotlib
+
 matplotlib.use('Agg')
+import mocpy
+from astropy.visualization.wcsaxes import SphericalCircle
+from losoto.h5parm import h5parm
 from matplotlib.patches import Ellipse
 from matplotlib.pyplot import figure
-from astropy.visualization.wcsaxes import SphericalCircle
-import mocpy
-from losoto.h5parm import h5parm
 
 
 class Field(object):
@@ -689,7 +693,7 @@ class Field(object):
                 )
 
                 # Transfer patches to the true-flux sky model
-                misc.transfer_patches(source_skymodel, skymodel_true_sky, patch_dict=patch_dict)
+                lsmtool.utils.transfer_patches(source_skymodel, skymodel_true_sky, patch_dict=patch_dict)
                 if len(source_skymodel) != len(skymodel_true_sky):
                     # Tessellate the true-sky model using the new patches and update the
                     # positions as done for source_skymodel above
@@ -716,11 +720,11 @@ class Field(object):
         # later use
         if regroup:
             # Transfer from the apparent-flux sky model (regrouped above)
-            misc.transfer_patches(bright_source_skymodel_apparent_sky, bright_source_skymodel)
+            lsmtool.utils.transfer_patches(bright_source_skymodel_apparent_sky, bright_source_skymodel)
         else:
             # Transfer from the true-flux sky model
             patch_dict = skymodel_true_sky.getPatchPositions()
-            misc.transfer_patches(skymodel_true_sky, bright_source_skymodel,
+            lsmtool.utils.transfer_patches(skymodel_true_sky, bright_source_skymodel,
                                   patch_dict=patch_dict)
         bright_source_skymodel.write(self.calibrators_only_skymodel_file, clobber=True)
         self.calibrators_only_skymodel = bright_source_skymodel.copy()
