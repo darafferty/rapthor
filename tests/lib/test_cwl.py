@@ -3,10 +3,11 @@ Test module for testing the CWL workflows _generated_ by the pipeline
 """
 
 import subprocess
+from pathlib import Path
 
 import pytest
-import rapthor.lib.operation
-from pathlib import Path
+from rapthor.lib.operation import DIR, env_parset
+
 pytestmark = pytest.mark.slow
 
 
@@ -26,7 +27,7 @@ def generate_and_validate(tmp_path, operation, parms, templ, sub_templ=None):
     pipeline_working_dir.mkdir(parents=True, exist_ok=True)
     parset = pipeline_working_dir / "pipeline_parset.cwl"
     sub_parset = pipeline_working_dir / "subpipeline_parset.cwl"
-    rapthor_pipeline_dir = (Path(rapthor.lib.operation.DIR) / "../pipeline").resolve()
+    rapthor_pipeline_dir = (Path(DIR) / "../pipeline").resolve()
     parset.write_text(
         templ.render(
             parms,
@@ -59,7 +60,7 @@ def test_concatenate_workflow(
     taken from `Concatenate.set_parset_parameters()`.
     """
     operation = "concatenate"
-    templ = rapthor.lib.operation.env_parset.get_template("concatenate_pipeline.cwl")
+    templ = env_parset.get_template("concatenate_pipeline.cwl")
     parms = {
         "max_cores": max_cores,
     }
@@ -81,7 +82,7 @@ def test_calibrate_workflow(
     taken from `CalibrateDD.set_parset_parameters()`.
     """
     operation = "calibrate"
-    templ = rapthor.lib.operation.env_parset.get_template("calibrate_pipeline.cwl")
+    templ = env_parset.get_template("calibrate_pipeline.cwl")
     parms = {
         "use_image_based_predict": use_image_based_predict,
         "do_slowgain_solve": do_slowgain_solve,
@@ -101,7 +102,7 @@ def test_calibrate_di_workflow(
     were taken from `CalibrateDI.set_parset_parameters()`.
     """
     operation = "calibrate_di"
-    templ = rapthor.lib.operation.env_parset.get_template("calibrate_di_pipeline.cwl")
+    templ = env_parset.get_template("calibrate_di_pipeline.cwl")
     parms = {
         "max_cores": max_cores,
     }
@@ -116,7 +117,7 @@ def test_predict_workflow(tmp_path, max_cores):
     taken from `PredictDD.set_parset_parameters()`.
     """
     operation = "predict"
-    templ = rapthor.lib.operation.env_parset.get_template("predict_pipeline.cwl")
+    templ = env_parset.get_template("predict_pipeline.cwl")
     parms = {
         "max_cores": max_cores,
     }
@@ -131,7 +132,7 @@ def test_predict_di_workflow(tmp_path, max_cores):
     taken from `PredictDI.set_parset_parameters()`.
     """
     operation = "predict_di"
-    templ = rapthor.lib.operation.env_parset.get_template("predict_di_pipeline.cwl")
+    templ = env_parset.get_template("predict_di_pipeline.cwl")
     parms = {
         "max_cores": max_cores,
     }
@@ -146,7 +147,7 @@ def test_predict_nc_workflow(tmp_path, max_cores):
     taken from `PredictNC.set_parset_parameters()`.
     """
     operation = "predict_nc"
-    templ = rapthor.lib.operation.env_parset.get_template("predict_nc_pipeline.cwl")
+    templ = env_parset.get_template("predict_nc_pipeline.cwl")
     parms = {
         "max_cores": max_cores,
     }
@@ -186,10 +187,8 @@ def test_image_workflow(
     taken from `Image.set_parset_parameters()`.
     """
     operation = "image"
-    templ = rapthor.lib.operation.env_parset.get_template("image_pipeline.cwl")
-    sub_templ = rapthor.lib.operation.env_parset.get_template(
-        "image_sector_pipeline.cwl"
-    )
+    templ = env_parset.get_template("image_pipeline.cwl")
+    sub_templ = env_parset.get_template("image_sector_pipeline.cwl")
     parms = {
         "apply_screens": apply_screens,
         "use_facets": use_facets,
@@ -217,10 +216,8 @@ def test_mosaic_workflow(tmp_path, max_cores, skip_processing, compress_images):
     taken from `Mosaic.set_parset_parameters()`.
     """
     operation = "mosaic"
-    templ = rapthor.lib.operation.env_parset.get_template("mosaic_pipeline.cwl")
-    sub_templ = rapthor.lib.operation.env_parset.get_template(
-        "mosaic_type_pipeline.cwl"
-    )
+    templ = env_parset.get_template("mosaic_pipeline.cwl")
+    sub_templ = env_parset.get_template("mosaic_type_pipeline.cwl")
     parms = {
         "max_cores": max_cores,
         "skip_processing": skip_processing,
