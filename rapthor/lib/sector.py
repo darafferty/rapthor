@@ -1,18 +1,20 @@
 """
 Definition of the Sector class that holds parameters for an image or predict sector
 """
-import logging
-import numpy as np
-from rapthor.lib import miscellaneous as misc
-from rapthor.lib import cluster, facet
-import lsmtool
-from astropy.coordinates import Angle, SkyCoord
-import astropy.units as u
-from shapely.geometry import Polygon
-from matplotlib import patches
-import pickle
-import os
 import copy
+import logging
+import os
+import pickle
+
+import astropy.units as u
+import lsmtool
+import numpy as np
+from astropy.coordinates import Angle, SkyCoord
+from matplotlib import patches
+from shapely.geometry import Polygon
+
+from rapthor.lib import cluster, facet
+from rapthor.lib import miscellaneous as misc
 
 
 class Sector(object):
@@ -337,15 +339,11 @@ class Sector(object):
                 # very faint source at center
                 dummylines = ["Format = Name, Type, Patch, Ra, Dec, I, SpectralIndex, LogarithmicSI, "
                               "ReferenceFrequency='100000000.0', MajorAxis, MinorAxis, Orientation\n"]
-                ra = misc.ra2hhmmss(self.ra)
-                sra = str(ra[0]).zfill(2)+':'+str(ra[1]).zfill(2)+':'+str("%.6f" % (ra[2])).zfill(6)
-                dec = misc.dec2ddmmss(self.dec)
-                decsign = ('-' if dec[3] < 0 else '+')
-                sdec = decsign+str(dec[0]).zfill(2)+'.'+str(dec[1]).zfill(2)+'.'+str("%.6f" % (dec[2])).zfill(6)
+                coord_strings = lsmtool.utils.format_coordinates(self.ra, self.dec, precision=6)
                 patch = self.calibration_skymodel.getPatchNames()[0]
-                dummylines.append(',,{0},{1},{2}\n'.format(patch, sra, sdec))
+                dummylines.append(',,{0},{1},{2}\n'.format(patch, *coord_strings))
                 dummylines.append('s0c0,POINT,{0},{1},{2},0.00000001,'
-                                  '[0.0,0.0],false,100000000.0,,,\n'.format(patch, sra, sdec))
+                                  '[0.0,0.0],false,100000000.0,,,\n'.format(patch, *coord_strings))
                 with open(self.predict_skymodel_file, 'w') as f:
                     f.writelines(dummylines)
                 skymodel = lsmtool.load(str(self.predict_skymodel_file))
@@ -421,11 +419,13 @@ class Sector(object):
         Determines the vertices of the sector polygon
         """
         # Define initial polygon as a rectangle
-        sx, sy = misc.radec2xy(self.field.wcs, [self.ra], [self.dec])
+        x_sector_pixels, y_sector_pixels = self.field.wcs.wcs_world2pix(
+            self.ra, self.dec, misc.WCS_ORIGIN
+        )
         ra_width_pix = self.width_ra / abs(self.field.wcs.wcs.cdelt[0])
         dec_width_pix = self.width_dec / abs(self.field.wcs.wcs.cdelt[1])
-        x0 = sx[0] - ra_width_pix / 2.0
-        y0 = sy[0] - dec_width_pix / 2.0
+        x0 = x_sector_pixels - ra_width_pix / 2.0
+        y0 = y_sector_pixels - dec_width_pix / 2.0
         poly_verts = [(x0, y0), (x0, y0+dec_width_pix),
                       (x0+ra_width_pix, y0+dec_width_pix),
                       (x0+ra_width_pix, y0), (x0, y0)]
@@ -443,11 +443,9 @@ class Sector(object):
         """
         Return the vertices as RA, Dec for the sector boundary
         """
-        ra, dec = misc.xy2radec(self.field.wcs, self.poly.exterior.coords.xy[0].tolist(),
-                                self.poly.exterior.coords.xy[1].tolist())
-        vertices = [np.array(ra), np.array(dec)]
-
-        return vertices
+        return self.field.wcs.wcs_pix2world(self.poly.exterior.coords.xy[0],
+                                            self.poly.exterior.coords.xy[1],
+                                            misc.WCS_ORIGIN)
 
     def make_vertices_file(self):
         """
@@ -516,11 +514,14 @@ class Sector(object):
         patch : matplotlib patch object
             The patch for the sector polygon
         """
-        vertices = self.get_vertices_radec()
+        if wcs is not None:
+            vertices = self.field.wcs.wcs_pix2world(self.poly.exterior.coords.xy[0],
+                                                    self.poly.exterior.coords.xy[1],
+                                                    misc.WCS_ORIGIN)
+            x, y = wcs.wcs_world2pix(vertices[0], vertices[1], misc.WCS_ORIGIN)
+        else:
+            x, y = self.poly.exterior.coords.xy
 
-        if wcs is None:
-            wcs = self.field.wcs
-        x, y = misc.radec2xy(wcs, vertices[0], vertices[1])
         xy = np.vstack([x, y]).transpose()
         patch = patches.Polygon(xy=xy, label=self.name, edgecolor='k', facecolor='none',
                                 linewidth=2)

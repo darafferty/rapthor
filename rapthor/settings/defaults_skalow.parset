@@ -1,0 +1,300 @@
+### This file contains the default SKA-LOW AA2 settings for the Rapthor pipeline ###
+[global]
+# Full path to working dir where rapthor will run (required). All output will be
+# placed in this directory
+dir_working = None
+
+# Full path to input MS files (required). Wildcards can be used (e.g.,
+# /path/to/data/*.ms) or a list can be given
+input_ms = None
+
+# Data column to be read from the input MS files (default = DATA).
+data_colname = DATA
+
+# Generate an initial target sky model (default = False). This option is ignored
+# if input_skymodel is specified. The radius out to which the sky model will be
+# generated (default results in coverage of 2 * FWHM of the primary beam) and the
+# fraction of data to use for this step can also be specified
+generate_initial_skymodel = False
+generate_initial_skymodel_radius = None
+generate_initial_skymodel_data_fraction = 0.2
+
+# Automatically download a target sky model (default = True). This option will
+# have no effect if input_skymodel is specified or if generate_initial_skymodel
+# is activated. The radius out to which a sky model should be downloaded
+# (default is 5 degrees) and the service from which a sky model should be
+# downloaded (default is TGSS) can be specified, as can the option to overwrite
+# an existing sky model with the downloaded one
+download_initial_skymodel = True
+download_initial_skymodel_radius = 5.0
+download_initial_skymodel_server = TGSS
+download_overwrite_skymodel = False
+
+# Full path to the input sky model file, with true-sky fluxes (required when not
+# automatically generating or downloading). If you also have a sky model with
+# apparent flux densities, specify it with the apparent_skymodel option (note
+# that the source names must be identical in both sky models)
+input_skymodel = None
+apparent_skymodel = None
+
+# Regroup the input or downloaded sky model as needed to meet target flux
+# (default = True). If False, the existing patches are used for the calibration
+regroup_input_skymodel = True
+
+# Processing strategy to use (default = selfcal):
+# - selfcal: standard self calibration tailored to LOFAR Dutch array
+# - image: image using the input solutions and sky model (no calibration
+#   is done)
+# - user-supplied file: full path to Python file defining custom strategy
+strategy = custom_ska_low.py
+
+# Fraction of data to process (default = 0.2 for self calibration and 1.0 for
+# the final pass). If less than one, the input data are divided by time into
+# chunks (of no less than slow_timestep_separate_sec below) that sum to the
+# requested fraction, spaced out evenly over the full time range. A final
+# fraction can also be specified (default = selfcal_data_fraction) such that a
+# final processing pass (i.e., after selfcal finishes) is done with a different
+# fraction
+selfcal_data_fraction = 1.0
+final_data_fraction = 1.0
+
+# Full path to an H5parm file with direction-dependent solutions (default =
+# None). This file is required if no calibration is to be done. Full-Jones
+# solutions can also be supplied. Note: the directions in the H5parm file must
+# match the patches in the input sky model, and the time and frequency coverage
+# of the solutions must be sufficient to cover the duration and bandwidth of
+# the input dataset
+input_h5parm = None
+input_fulljones_h5parm = None
+
+# Full path to a text file (in ds9 format) that defines the facet layout
+# (default = None). If a facet file is supplied, calibration patches and imaging
+# facets will be set to those specified in the file, if possible, and the calibrator
+# selection parameters specified in the strategy (e.g., target_flux) will be
+# ignored (and therefore the patch and facet layout will be held constant
+# between cycles)
+facet_layout = None
+
+# Mode to use to derive and correct for direction-dependent effects: faceting or
+# hybrid (default = faceting). If "faceting", Voronoi faceting is used
+# throughout the processing. If "hybrid", faceting is used only during the self
+# calibration steps; in the final cycle (done after self calibration has been
+# completed successfully), IDGCal is used during calibration to generate smooth 2-D
+# screens that are then applied by WSClean in the final imaging step.
+#
+# Note: the hybrid mode is not yet available; it will be enabled in a future update.
+dde_mode = faceting
+  
+[imaging]
+# Imaging parameters: pixel size in arcsec (default = 2, suitable for SKA-LOW AA2
+# data), Briggs robust parameter (default = -1), min and max uv distance in
+# lambda (default = 0, 1e6), cleaning gain (default = 0.8), taper in arcsec
+# (default = none), local rms parameters (defaults = 0.8, 50, and "rms-with-min"
+# for the strength, window, and method, respectively), whether multiscale
+# clean should be used (default = True), and the baseline-dependent averaging
+# (BDA) timebase value in m (default = 20000)
+cellsize_arcsec = 2
+robust = -1
+min_uv_lambda = 0.0
+max_uv_lambda = 1000000.0
+mgain = 0.8
+taper_arcsec = 0.0
+local_rms_strength = 0.8
+local_rms_window = 50
+local_rms_method = rms-with-min
+do_multiscale_clean = True
+bda_timebase = 20000.0
+
+# Method to use to correct for direction-dependent effects during imaging:
+# single or full (default = full). If "single", a single, direction-independent
+# solution (i.e., constant across the image sector) will be applied for each
+# sector. In this case, the solution applied is the one in the direction closest
+# to each sector center. If "full", the full, direction-dependent solutions
+# (either facets or screens) are applied
+dde_method = full
+
+# Filter out sky model components that lie outside of islands detected by PyBDSF (default
+# = True). If True, only clean components from WSClean whose centers lie inside of
+# detected islands are kept in the sky model used for calibration in the next cycle. If
+# False, all clean components generated by WSClean are kept in the sky model
+filter_skymodel = True
+
+# Save visibilities used for imaging (default = False). If True, the imaging MS
+# files will be saved, with the the direction-independent full-Jones solutions,
+# if available, applied. Note, however, that the direction-dependent solutions
+# will not be applied unless dde_method = "single", in which case the solutions
+# closest to the image centers are used
+save_visibilities = False
+
+# Save supplementary images for diagnostics e.g. dirty images and pybdsf masks
+# made during each imaging cycle (default = False).
+save_supplementary_images = False
+
+# Compress intermediate selfcal images to reduce storage space (default = True).
+compress_selfcal_images = True
+
+# Compress the final images to reduce storage space (default = True).
+compress_final_images = True
+
+# IDG (image domain gridder) mode to use in WSClean (default = cpu). The mode
+# can be "cpu" or "hybrid". Note that IDG is only used when dde_mode = "hybrid"
+idg_mode = cpu
+
+# Maximum memory in GB (per node) to use for WSClean jobs (default = 0 = 100%)
+mem_gb = 0
+
+# Apply separate XX and YY corrections during facet-based imaging (default =
+# True). If False, scalar solutions (the average of the XX and YY solutions)
+# are applied instead. (Separate XX and YY corrections are always applied when
+# using non-facet-based imaging methods.)
+apply_diagonal_solutions = True
+
+# The number of direction-dependent PSFs which should be fit horizontally and
+# vertically in the image (default = [8, 8] = scale with the image size, with
+# approximately 1 PSF per square deg of imaged area)
+dd_psf_grid = [8, 8]
+
+# Make Stokes QUV images in addition to the Stokes I image (default = False).
+# If True, QUV images are made during the final imaging step, once self
+# calibration has been completed. The method used to combine the polarizations
+# during deconvolution can also be specified. This method can be "link" to use
+# linked polarization cleaning or "join" to use joined polarization cleaning
+# (default = link)
+make_quv_images = False
+pol_combine_method = link
+
+# Use MPI to distribute WSClean jobs over multiple nodes (default = False)? If
+# True and more than one node can be allocated to each WSClean job (i.e.,
+# max_nodes / num_images >= 2), then distributed imaging will be used (only
+# available if batch_system = slurm). Note that if MPI is activated, dir_local
+# (under the [cluster] section below) must not be set unless it is on a shared
+# filesystem
+use_mpi = False
+
+# Reweight the visibility data before imaging (default = False)
+reweight = False
+
+# Size of area to image when using a grid (default = 1.7 * mean FWHM of the
+# primary beam). Number of sectors along RA to use in imaging grid (default =
+# 0). The number of sectors in Dec will be determined automatically to ensure
+# the whole area specified with grid_center_ra, grid_center_dec,
+# grid_width_ra_deg, and grid_width_dec_deg is imaged. Set grid_nsectors_ra = 0
+# to force a single sector for the full area. A grid of sectors can be useful
+# for computers with limited memory but generally will give inferior results
+# compared to an equivalent single sector. Examples:
+# grid_width_ra_deg = 5.0
+# grid_width_dec_deg = 7.0
+# grid_center_ra = 14h41m01.884
+# grid_center_dec = +35d30m31.52
+# grid_nsectors_ra = 3
+grid_width_ra_deg = 8.88888888888889
+grid_width_dec_deg = 8.88888888888889
+grid_center_ra = None
+grid_center_dec = None
+grid_nsectors_ra = 0
+
+# Instead of a grid, imaging sectors can be defined individually by specifying
+# their centers and widths. If sectors are specified in this way, they will be
+# used instead of the sector grid. Note that the sectors should not overlap.
+# Examples:
+# sector_center_ra_list = [14h41m01.884, 14h13m23.234]
+# sector_center_dec_list = [+35d30m31.52, +37d21m56.86]
+# sector_width_ra_deg_list = [0.532, 0.127]
+# sector_width_dec_deg_list = [0.532, 0.127]
+sector_center_ra_list = []
+sector_center_dec_list = []
+sector_width_ra_deg_list = []
+sector_width_dec_deg_list = []
+
+# Max desired peak flux density reduction at center of the image edges due to
+# bandwidth smearing (at the mean frequency) and time smearing (default = 0.15 =
+# 15% reduction in peak flux). Higher values can result in shorter run times but
+# more smearing away from the sector centers
+max_peak_smearing = 0.15
+
+# Skip the final WSClean major iteration for all but the last processing cycle
+# (default = True). If True, the final major iteration is skipped during
+# imaging, which speeds up imaging but degrades the image slightly; however, the
+# sky model is not affected by this setting. Therefore, it is safe to use this
+# option for self calibration cycles (note: fhe final WSClean major iteration is
+# never skipped in the final processing cycle regardless of this setting.)
+skip_final_major_iteration = True
+
+# Skip corner sectors defined by the imaging grid? If True and a grid is used
+# (defined by the grid_* parameters above), the four corner sectors are not
+# processed (if possible for the given grid)
+skip_corner_sectors = False
+  
+[cluster]
+# Cluster batch system (default = single_machine). Use batch_system = slurm to
+# use a Slurm-based cluster
+batch_system = single_machine
+
+# For batch_system = slurm, the maximum number of nodes of the cluster to use at
+# once can be specified with the max_nodes option (default = 12), the number of
+# processors and amount of memory per node to request from SLURM can be
+# specified with the cpus_per_task (default = 0 = all) and mem_per_node_gb
+# options (default = 0 = all). By setting the cpus_per_task value to the number
+# of processors per node, one can ensure that each task gets the entire node to
+# itself, which is the recommended way of running Rapthor
+max_nodes = 0
+cpus_per_task = 0
+mem_per_node_gb = 0
+
+# Maximum number of cores and threads per task to use on each node (default = 0
+# = all)
+max_cores = 0
+max_threads = 0
+
+# Number of threads to use by WSClean during deconvolution (default = 0 = 2/5
+# of max_threads, but not more than 14). Higher values will speed up imaging at
+# the expense of higher memory usage
+deconvolution_threads = 0
+
+# Number of threads to use by WSClean for parallel gridding (default = 0 = 2/5
+# of max_threads, but not more than 6)
+parallel_gridding_threads = 0
+
+# Full path to a local disk on the nodes for IO-intensive processing (default =
+# not used). The path must exist on all nodes (but does not have to be on a
+# shared filesystem). This parameter is useful if you have a fast local disk
+# (e.g., an SSD) that is not the one used for dir_working. If this parameter is
+# not set, IO-intensive processing (e.g., WSClean) will use a default path in
+# dir_working instead. This parameter should not be set in the following
+# situations:
+#   - when batch_system = single_machine and multiple imaging sectors are
+#     used (as each sector will overwrite files from the other sectors)
+#   - when use_mpi = True under the [imaging] section above and dir_local is
+#     not on a shared filesystem
+# This parameter is deprecated. Use local_scratch_dir instead.
+dir_local = None
+
+# Full path to a local disk on the nodes for IO-intensive processing (default =
+# /tmp). When batch_system = slurm, the path must exist on all the compute nodes,
+# but not necessarily on the head node. This parameter is useful if you have a
+# fast local disk (e.g., an SSD).
+local_scratch_dir = /path/to/tmp/
+
+# Full path to a directory on a shared disk that is readable and writable by all
+# the compute nodes and the head node. This directory will be used to store the
+# intermediate outputs that need to be shared between the different steps in the
+# workflow. If this parameter is not set, Rapthor will create a temporary
+# directory in dir_working.
+global_scratch_dir = /path/to/tmp/
+
+# Run the workflows inside a container (default = False)? If True, the CWL
+# workflow for each operation (such as calibrate or image) will be run inside a
+# container. The type of container can also be specified (one of docker,
+# udocker, or singularity; default = docker)
+use_container = False
+container_type = docker
+
+# CWL runner to use. Currently supported runners are: cwltool and toil (default)
+cwl_runner = toil
+
+# Debug workflow related issues. Enabling this will require significantly more
+# disk space. Additionally, when Toil is the CWL runner, some tasks will run on
+# a single thread to make debugging easier. The working directory will never be
+# cleaned up, stdout and stderr will not be redirectied, and log level of the
+# CWL runner will be set to DEBUG.
+debug_workflow = False

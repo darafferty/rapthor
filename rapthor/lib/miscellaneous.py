@@ -1,27 +1,29 @@
 """
 Module that holds miscellaneous functions and classes
 """
-from astropy.io import fits as pyfits
-from astropy.time import Time
-from astropy.coordinates import SkyCoord
-import astropy.units as u
-from astropy.wcs import WCS
 import logging
-from losoto.h5parm import h5parm
-import lsmtool
-from math import modf
-import mocpy
 import multiprocessing
-import numpy as np
 import os
-import pickle
-from PIL import Image, ImageDraw
-import requests
-from scipy.interpolate import interp1d
-from shapely.geometry import Point, Polygon
-from shapely.prepared import prep
 import subprocess
 import time
+from math import modf
+
+import astropy.units as u
+import lsmtool
+import mocpy
+import numpy as np
+import requests
+from astropy.coordinates import SkyCoord
+from astropy.io import fits as pyfits
+from astropy.time import Time
+from losoto.h5parm import h5parm
+from scipy.interpolate import interp1d
+
+
+# Always use a 0-based origin in wcs_pix2world and wcs_world2pix calls.
+WCS_ORIGIN = 0
+# Default WCS pixel scale within Rapthor, which differs from LSMTool (20"/pixel).
+WCS_PIXEL_SCALE = 10.0 / 3600.0 # degrees/pixel (= 10"/pixel)
 
 
 def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, source='TGSS',
@@ -199,140 +201,28 @@ def normalize_ra_dec(ra, dec):
     return normalized_ra, normalized_dec
 
 
-def radec2xy(wcs, ra, dec):
+def read_vertices(filename, wcs):
     """
-    Returns x, y for input RA, Dec
+    Read facet vertices from a file and convert them to pixel coordinates.
 
     Parameters
     ----------
-    wcs : WCS object
-        WCS object defining transformation
-    ra : float, list, or numpy array
-        RA value(s) in degrees
-    dec : float, list, or numpy array
-        Dec value(s) in degrees
+    wcs : astropy.wcs.WCS object
+        WCS object for converting the vertices to pixel coordinates.
 
     Returns
     -------
-    x, y : float, list, or numpy array
-        x and y pixel values corresponding to the input RA and Dec
-        values
+    vertices: list of (x, y) tuples of float
+        The converted coordinates.
     """
-    if type(ra) is list or type(ra) is np.ndarray:
-        ra_list = ra
-    else:
-        ra_list = [float(ra)]
-    if type(dec) is list or type(dec) is np.ndarray:
-        dec_list = dec
-    else:
-        dec_list = [float(dec)]
-    if len(ra_list) != len(dec_list):
-        raise ValueError('RA and Dec must be of equal length')
+    # The input file always contains vertices as RA,Dec coordinates.
+    vertices_celestial = lsmtool.io.read_vertices_ra_dec(filename)
 
-    ra_dec = np.stack((ra_list, dec_list), axis=-1)
-    x_arr, y_arr = wcs.wcs_world2pix(ra_dec, 0).transpose()
+    # Convert to image pixel coordinates (x, y).
+    vertices_image = wcs.wcs_world2pix(*vertices_celestial, WCS_ORIGIN)
 
-    # Return the same type as the input
-    if type(ra) is list:
-        x = x_arr.tolist()
-    elif type(ra) is np.ndarray:
-        x = x_arr
-    else:
-        x = x_arr[0]
-    if type(dec) is list:
-        y = y_arr.tolist()
-    elif type(dec) is np.ndarray:
-        y = y_arr
-    else:
-        y = y_arr[0]
-
-    return x, y
-
-
-def xy2radec(wcs, x, y):
-    """
-    Returns RA, Dec for input x, y
-
-    Parameters
-    ----------
-    wcs : WCS object
-        WCS object defining transformation
-    x : float, list, or numpy array
-        x value(s) in pixels
-    y : float, list, or numpy array
-        y value(s) in pixels
-
-    Returns
-    -------
-    RA, Dec : float, list, or numpy array
-        RA and Dec values corresponding to the input x and y pixel
-        values
-    """
-    if type(x) is list or type(x) is np.ndarray:
-        x_list = x
-    else:
-        x_list = [float(x)]
-    if type(y) is list or type(y) is np.ndarray:
-        y_list = y
-    else:
-        y_list = [float(y)]
-    if len(x_list) != len(y_list):
-        raise ValueError('x and y must be of equal length')
-
-    x_y = np.stack((x_list, y_list), axis=-1)
-    ra_arr, dec_arr = wcs.wcs_pix2world(x_y, 0).transpose()
-
-    # Return the same type as the input
-    if type(x) is list:
-        ra = ra_arr.tolist()
-    elif type(x) is np.ndarray:
-        ra = ra_arr
-    else:
-        ra = ra_arr[0]
-    if type(y) is list:
-        dec = dec_arr.tolist()
-    elif type(y) is np.ndarray:
-        dec = dec_arr
-    else:
-        dec = dec_arr[0]
-
-    return ra, dec
-
-
-def make_wcs(ra, dec, wcs_pixel_scale=10.0/3600.0):
-    """
-    Makes simple WCS object
-
-    Parameters
-    ----------
-    ra : float
-        Reference RA in degrees
-    dec : float
-        Reference Dec in degrees
-    wcs_pixel_scale : float, optional
-        Pixel scale in degrees/pixel (default = 10"/pixel)
-
-    Returns
-    -------
-    w : astropy.wcs.WCS object
-        A simple TAN-projection WCS object for specified reference position
-    """
-    w = WCS(naxis=2)
-    w.wcs.crpix = [1000, 1000]
-    w.wcs.cdelt = np.array([-wcs_pixel_scale, wcs_pixel_scale])
-    w.wcs.crval = [ra, dec]
-    w.wcs.ctype = ["RA---TAN", "DEC--TAN"]
-
-    return w
-
-
-def read_vertices(filename):
-    """
-    Returns facet vertices stored in input file
-    """
-    with open(filename, 'rb') as f:
-        vertices = pickle.load(f)
-    return vertices
+    # Convert to a list of (x, y) tuples.
+    return list(zip(*vertices_image))
 
 
 def make_template_image(image_name, reference_ra_deg, reference_dec_deg,
@@ -474,48 +364,6 @@ def make_template_image(image_name, reference_ra_deg, reference_dec_deg,
     hdulist[0].header = header
     hdulist.writeto(image_name, overwrite=True)
     hdulist.close()
-
-
-def rasterize(verts, data, blank_value=0):
-    """
-    Rasterize a polygon into a data array
-
-    Parameters
-    ----------
-    verts : list of (x, y) tuples
-        List of input vertices of polygon to rasterize
-    data : 2-D array
-        Array into which rasterize polygon
-    blank_value : int or float, optional
-        Value to use for blanking regions outside the poly
-
-    Returns
-    -------
-    data : 2-D array
-        Array with rasterized polygon
-    """
-    poly = Polygon(verts)
-    prepared_polygon = prep(poly)
-
-    # Mask everything outside of the polygon plus its border (outline) with zeros
-    # (inside polygon plus border are ones)
-    mask = Image.new('L', (data.shape[1], data.shape[0]), 0)
-    ImageDraw.Draw(mask).polygon(verts, outline=1, fill=1)
-    data *= mask
-
-    # Now check the border precisely
-    mask = Image.new('L', (data.shape[1], data.shape[0]), 0)
-    ImageDraw.Draw(mask).polygon(verts, outline=1, fill=0)
-    masked_ind = np.where(np.array(mask).transpose())
-    points = [Point(xm, ym) for xm, ym in zip(masked_ind[0], masked_ind[1])]
-    outside_points = [v for v in points if prepared_polygon.disjoint(v)]
-    for outside_point in outside_points:
-        data[int(outside_point.y), int(outside_point.x)] = 0
-
-    if blank_value != 0:
-        data[data == 0] = blank_value
-
-    return data
 
 
 def string2bool(invar):
@@ -938,54 +786,6 @@ def get_flagged_solution_fraction(h5file, solsetname='sol000'):
                          'solset {0} of h5parm file {1}'.format(solsetname, h5file))
 
     return num_flagged / num_all
-
-
-def transfer_patches(from_skymodel, to_skymodel, patch_dict=None):
-    """
-    Transfers the patches defined in from_skymodel to to_skymodel
-
-    Parameters
-    ----------
-    from_skymodel : LSMTool skymodel.SkyModel object
-        Sky model from which to transfer patches
-    to_skymodel : LSMTool skymodel.SkyModel object
-        Sky model to which to transfer patches
-    patch_dict : dict, optional
-        Dict of patch positions
-    """
-    if not from_skymodel.hasPatches:
-        raise ValueError('Cannot transfer patches since from_skymodel is not grouped '
-                         'into patches.')
-    names_from = from_skymodel.getColValues('Name').tolist()
-    names_to = to_skymodel.getColValues('Name').tolist()
-
-    if not to_skymodel.hasPatches:
-        to_skymodel.group('single')
-
-    if set(names_from) == set(names_to):
-        # Both sky models have the same sources, so use indexing
-        ind_ss = np.argsort(names_from)
-        ind_ts = np.argsort(names_to)
-        to_skymodel.table['Patch'][ind_ts] = from_skymodel.table['Patch'][ind_ss]
-    elif set(names_to).issubset(set(names_from)):
-        # The to_skymodel is a subset of from_skymodel, so use slower matching algorithm
-        for ind_ts, name in enumerate(names_to):
-            ind_ss = names_from.index(name)
-            to_skymodel.table['Patch'][ind_ts] = from_skymodel.table['Patch'][ind_ss]
-    elif set(names_from).issubset(set(names_to)):
-        # The from_skymodel is a subset of to_skymodel, so use slower matching algorithm,
-        # leaving non-matching sources in their initial patches
-        for ind_ss, name in enumerate(names_from):
-            ind_ts = names_to.index(name)
-            to_skymodel.table['Patch'][ind_ts] = from_skymodel.table['Patch'][ind_ss]
-    else:
-        # Skymodels don't match, raise error
-        raise ValueError('Cannot transfer patches since neither sky model is a '
-                         'subset of the other.')
-
-    to_skymodel._updateGroups()
-    if patch_dict is not None:
-        to_skymodel.setPatchPositions(patchDict=patch_dict)
 
 
 def rename_skymodel_patches(skymodel, order_dec='high_to_low', order_ra='high_to_low',
