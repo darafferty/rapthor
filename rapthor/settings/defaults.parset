@@ -51,10 +51,11 @@ strategy = selfcal
 
 # Fraction of data to process (default = 0.2 for self calibration and 1.0 for
 # the final pass). If less than one, the input data are divided by time into
-# chunks (of no less than than the solution interval required by the solve) that sum to
-# the requested fraction, spaced out evenly over the full time range. A final fraction can
-# also be specified (default = selfcal_data_fraction) such that a final processing pass
-# (i.e., after selfcal finishes) is done with a different fraction
+# chunks (of no less than than the solution interval required by the solve)
+# that sum to the requested fraction, spaced out evenly over the full time
+# range. A final fraction can also be specified (default =
+# selfcal_data_fraction) such that a final processing pass (i.e., after selfcal
+# finishes) is done with a different fraction
 selfcal_data_fraction = 0.2
 final_data_fraction = 1.0
 
