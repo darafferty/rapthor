@@ -1,5 +1,4 @@
-### This file contains the default settings for the Rapthor pipeline ###
-
+### This file contains the default SKA-LOW AA2 settings for the Rapthor pipeline ###
 [global]
 # Full path to working dir where rapthor will run (required). All output will be
 # placed in this directory
@@ -12,21 +11,21 @@ input_ms = None
 # Data column to be read from the input MS files (default = DATA).
 data_colname = DATA
 
-# Generate an initial target sky model (default = True). This option is ignored
+# Generate an initial target sky model (default = False). This option is ignored
 # if input_skymodel is specified. The radius out to which the sky model will be
 # generated (default results in coverage of 2 * FWHM of the primary beam) and the
 # fraction of data to use for this step can also be specified
-generate_initial_skymodel = True
+generate_initial_skymodel = False
 generate_initial_skymodel_radius = None
 generate_initial_skymodel_data_fraction = 0.2
 
-# Automatically download a target sky model (default = False). This option will
+# Automatically download a target sky model (default = True). This option will
 # have no effect if input_skymodel is specified or if generate_initial_skymodel
 # is activated. The radius out to which a sky model should be downloaded
 # (default is 5 degrees) and the service from which a sky model should be
 # downloaded (default is TGSS) can be specified, as can the option to overwrite
 # an existing sky model with the downloaded one
-download_initial_skymodel = False
+download_initial_skymodel = True
 download_initial_skymodel_radius = 5.0
 download_initial_skymodel_server = TGSS
 download_overwrite_skymodel = False
@@ -43,20 +42,20 @@ apparent_skymodel = None
 regroup_input_skymodel = True
 
 # Processing strategy to use (default = selfcal):
-# - selfcal: standard self calibration
+# - selfcal: standard self calibration tailored to LOFAR Dutch array
 # - image: image using the input solutions and sky model (no calibration
 #   is done)
 # - user-supplied file: full path to Python file defining custom strategy
-strategy = selfcal
+strategy = custom_ska_low.py
 
 # Fraction of data to process (default = 0.2 for self calibration and 1.0 for
 # the final pass). If less than one, the input data are divided by time into
-# chunks (of no less than than the solution interval required by the solve)
-# that sum to the requested fraction, spaced out evenly over the full time
-# range. A final fraction can also be specified (default =
-# selfcal_data_fraction) such that a final processing pass (i.e., after selfcal
-# finishes) is done with a different fraction
-selfcal_data_fraction = 0.2
+# chunks (of no less than slow_timestep_separate_sec below) that sum to the
+# requested fraction, spaced out evenly over the full time range. A final
+# fraction can also be specified (default = selfcal_data_fraction) such that a
+# final processing pass (i.e., after selfcal finishes) is done with a different
+# fraction
+selfcal_data_fraction = 1.0
 final_data_fraction = 1.0
 
 # Full path to an H5parm file with direction-dependent solutions (default =
@@ -85,77 +84,19 @@ facet_layout = None
 #
 # Note: the hybrid mode is not yet available; it will be enabled in a future update.
 dde_mode = faceting
-
-
-[calibration]
-# If one of the included sky models (see rapthor/skymodels) is within 2 *
-# PB_FWHM of the field center, include it in the calibration (default = False)
-use_included_skymodels = False
-
-# Use image-based prediction. Image-based prediction can be faster than the normal
-# prediction, especially for large sky models, and may improve the quality of the sky
-# model (since filtering of model components, needed to limit the size of the model, is
-# not used)
-use_image_based_predict = False
-
-# Maximum factor by which the direction-dependent solution intervals can be
-# increased, so that fainter calibrators get longer intervals. The maximum factor
-# by which the smoothnessconstraints are increased, such that fainter calibrators
-# get more smoothing, can be set in a similar way (default = 3)
-dd_interval_factor = 3
-dd_smoothness_factor = 3
-
-# General solver parameters
-llssolver = qr
-maxiter = 150
-propagatesolutions = True
-solveralgorithm = directioniterative
-onebeamperpatch = False
-stepsize = 0.02
-stepsigma = 2.0
-tolerance = 5e-3
-parallelbaselines = False
-sagecalpredict = False
-
-# Fast solve parameters. Note that the solution intervals are set in the strategy
-fast_freqstep_hz = 1e6
-fast_smoothnessconstraint = 3e6
-fast_smoothnessreffrequency = None
-fast_smoothnessrefdistance = 0.0
-fast_datause = single
-
-# Slow solve parameters. Note that the solution intervals are set in the strategy
-slow_freqstep_hz = 1e6
-slow_smoothnessconstraint = 3e6
-slow_datause = dual
-
-# Full-Jones solve parameters
-fulljones_timestep_sec = 600.0
-fulljones_freqstep_hz = 1e6
-fulljones_smoothnessconstraint = 0
-
-# Parameters for the LBFGS solver
-solverlbfgs_dof = 200.0
-solverlbfgs_iter = 4
-solverlbfgs_minibatches = 1
-
-# Baseline-dependent averaging (BDA) baseline limits (default = 20000 m)
-bda_timebase = 20000.0
-bda_frequencybase = 20000.0
-
-
+  
 [imaging]
-# Imaging parameters: pixel size in arcsec (default = 1.25, suitable for HBA
-# data), Briggs robust parameter (default = -0.5), min and max uv distance in
-# lambda (default = 0, none), cleaning gain (default = 0.8), taper in arcsec
+# Imaging parameters: pixel size in arcsec (default = 2, suitable for SKA-LOW AA2
+# data), Briggs robust parameter (default = -1), min and max uv distance in
+# lambda (default = 0, 1e6), cleaning gain (default = 0.8), taper in arcsec
 # (default = none), local rms parameters (defaults = 0.8, 50, and "rms-with-min"
 # for the strength, window, and method, respectively), whether multiscale
 # clean should be used (default = True), and the baseline-dependent averaging
 # (BDA) timebase value in m (default = 20000)
-cellsize_arcsec = 1.25
-robust = -0.5
+cellsize_arcsec = 2
+robust = -1
 min_uv_lambda = 0.0
-max_uv_lambda = 1e6
+max_uv_lambda = 1000000.0
 mgain = 0.8
 taper_arcsec = 0.0
 local_rms_strength = 0.8
@@ -192,8 +133,8 @@ save_supplementary_images = False
 # Compress intermediate selfcal images to reduce storage space (default = True).
 compress_selfcal_images = True
 
-# Compress the final images to reduce storage space (default = False).
-compress_final_images = False
+# Compress the final images to reduce storage space (default = True).
+compress_final_images = True
 
 # IDG (image domain gridder) mode to use in WSClean (default = cpu). The mode
 # can be "cpu" or "hybrid". Note that IDG is only used when dde_mode = "hybrid"
@@ -209,9 +150,9 @@ mem_gb = 0
 apply_diagonal_solutions = True
 
 # The number of direction-dependent PSFs which should be fit horizontally and
-# vertically in the image (default = [0, 0] = scale with the image size, with
+# vertically in the image (default = [8, 8] = scale with the image size, with
 # approximately 1 PSF per square deg of imaged area)
-dd_psf_grid = [0, 0]
+dd_psf_grid = [8, 8]
 
 # Make Stokes QUV images in addition to the Stokes I image (default = False).
 # If True, QUV images are made during the final imaging step, once self
@@ -246,8 +187,8 @@ reweight = False
 # grid_center_ra = 14h41m01.884
 # grid_center_dec = +35d30m31.52
 # grid_nsectors_ra = 3
-grid_width_ra_deg = None
-grid_width_dec_deg = None
+grid_width_ra_deg = 8.88888888888889
+grid_width_dec_deg = 8.88888888888889
 grid_center_ra = None
 grid_center_dec = None
 grid_nsectors_ra = 0
@@ -283,8 +224,7 @@ skip_final_major_iteration = True
 # (defined by the grid_* parameters above), the four corner sectors are not
 # processed (if possible for the given grid)
 skip_corner_sectors = False
-
-
+  
 [cluster]
 # Cluster batch system (default = single_machine). Use batch_system = slurm to
 # use a Slurm-based cluster
@@ -333,14 +273,14 @@ dir_local = None
 # /tmp). When batch_system = slurm, the path must exist on all the compute nodes,
 # but not necessarily on the head node. This parameter is useful if you have a
 # fast local disk (e.g., an SSD).
-local_scratch_dir = None
+local_scratch_dir = /path/to/tmp/
 
 # Full path to a directory on a shared disk that is readable and writable by all
 # the compute nodes and the head node. This directory will be used to store the
 # intermediate outputs that need to be shared between the different steps in the
 # workflow. If this parameter is not set, Rapthor will create a temporary
 # directory in dir_working.
-global_scratch_dir = None
+global_scratch_dir = /path/to/tmp/
 
 # Run the workflows inside a container (default = False)? If True, the CWL
 # workflow for each operation (such as calibrate or image) will be run inside a

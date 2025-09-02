@@ -2,30 +2,35 @@
 Definition of the Field class
 """
 import copy
-import os
+import glob
 import logging
-import numpy as np
+import os
+from collections import namedtuple
+from typing import Dict, List
+
+import astropy.units as u
 import lsmtool
 import lsmtool.skymodel
+from lsmtool.operations_lib import make_wcs
+
+import matplotlib
+import numpy as np
+import rtree.index
+from astropy.coordinates import Angle, SkyCoord
+from astropy.table import vstack
+from shapely.geometry import MultiPolygon, Point, Polygon
+
 from rapthor.lib import miscellaneous as misc
+from rapthor.lib.facet import read_ds9_region_file, read_skymodel
 from rapthor.lib.observation import Observation
 from rapthor.lib.sector import Sector
-from rapthor.lib.facet import read_ds9_region_file, read_skymodel
-from shapely.geometry import Point, Polygon, MultiPolygon
-from astropy.table import vstack
-import rtree.index
-import glob
-from astropy.coordinates import SkyCoord, Angle
-import astropy.units as u
-from typing import List, Dict
-from collections import namedtuple
-import matplotlib
+
 matplotlib.use('Agg')
+import mocpy
+from astropy.visualization.wcsaxes import SphericalCircle
+from losoto.h5parm import h5parm
 from matplotlib.patches import Ellipse
 from matplotlib.pyplot import figure
-from astropy.visualization.wcsaxes import SphericalCircle
-import mocpy
-from losoto.h5parm import h5parm
 
 
 class Field(object):
@@ -680,7 +685,7 @@ class Field(object):
                 )
 
                 # Transfer patches to the true-flux sky model
-                misc.transfer_patches(source_skymodel, skymodel_true_sky, patch_dict=patch_dict)
+                lsmtool.utils.transfer_patches(source_skymodel, skymodel_true_sky, patch_dict=patch_dict)
                 if len(source_skymodel) != len(skymodel_true_sky):
                     # Tessellate the true-sky model using the new patches and update the
                     # positions as done for source_skymodel above
@@ -707,11 +712,11 @@ class Field(object):
         # later use
         if regroup:
             # Transfer from the apparent-flux sky model (regrouped above)
-            misc.transfer_patches(bright_source_skymodel_apparent_sky, bright_source_skymodel)
+            lsmtool.utils.transfer_patches(bright_source_skymodel_apparent_sky, bright_source_skymodel)
         else:
             # Transfer from the true-flux sky model
             patch_dict = skymodel_true_sky.getPatchPositions()
-            misc.transfer_patches(skymodel_true_sky, bright_source_skymodel,
+            lsmtool.utils.transfer_patches(skymodel_true_sky, bright_source_skymodel,
                                   patch_dict=patch_dict)
         bright_source_skymodel.write(self.calibrators_only_skymodel_file, clobber=True)
         self.calibrators_only_skymodel = bright_source_skymodel.copy()
@@ -906,7 +911,7 @@ class Field(object):
                 if skymodel_true_sky_start:
                     matching_radius_deg = 30.0 / 3600.0  # => 30 arcsec
                     if not skymodel_true_sky.hasPatches:
-                        skymodel_true_sky.group('every')
+                        skymodel_true_sky.group('single')
                     skymodel_true_sky.concatenate(skymodel_true_sky_start, matchBy='position',
                                                   radius=matching_radius_deg, keep='from1')
                     skymodel_true_sky.setPatchPositions()
@@ -1074,7 +1079,9 @@ class Field(object):
                 nsectors_dec = 1
                 width_ra = image_width_ra
                 width_dec = image_width_dec
-                center_x, center_y = misc.radec2xy(self.wcs, [image_ra], [image_dec])
+                center_x, center_y = self.wcs.wcs_world2pix([image_ra],
+                                                            [image_dec],
+                                                            misc.WCS_ORIGIN)
                 x = np.array([center_x])
                 y = np.array([center_y])
             else:
@@ -1083,7 +1090,9 @@ class Field(object):
                 width_dec = image_width_dec / nsectors_dec
                 width_x = width_ra / abs(self.wcs.wcs.cdelt[0])
                 width_y = width_dec / abs(self.wcs.wcs.cdelt[1])
-                center_x, center_y = misc.radec2xy(self.wcs, [image_ra], [image_dec])
+                center_x, center_y = self.wcs.wcs_world2pix([image_ra],
+                                                            [image_dec],
+                                                            misc.WCS_ORIGIN)
                 min_x = center_x - width_x / 2.0 * (nsectors_ra - 1)
                 max_x = center_x + width_x / 2.0 * (nsectors_ra - 1)
                 min_y = center_y - width_y / 2.0 * (nsectors_dec - 1)
@@ -1101,8 +1110,8 @@ class Field(object):
                             nsectors_ra > 2 and nsectors_dec > 2):
                         continue
                     name = 'sector_{0}'.format(n)
-                    ra, dec = misc.xy2radec(self.wcs, x[j, i], y[j, i])
-                    self.imaging_sectors.append(Sector(name, ra, dec, width_ra, width_dec, self))
+                    ra, dec = self.wcs.wcs_pix2world(x[j, i], y[j, i], misc.WCS_ORIGIN)
+                    self.imaging_sectors.append(Sector(name, ra.item(), dec.item(), width_ra, width_dec, self))
                     n += 1
             if len(self.imaging_sectors) == 1:
                 self.log.info('Using 1 imaging sector')
@@ -1111,28 +1120,37 @@ class Field(object):
                               len(self.imaging_sectors), nsectors_ra, nsectors_dec))
             self.uses_sector_grid = True
 
-        # Compute bounding box for all imaging sectors and store as a
-        # a semi-colon-separated list of [maxRA; minDec; minRA; maxDec] (we use semi-
-        # colons as otherwise the workflow parset parser will split the list). Also
-        # store the midpoint as [midRA; midDec].
-        # Note: this is just once, rather than each time the sector borders are
-        # adjusted, so that the image sizes do not change with cycle (so
-        # mask images from previous cycles may be used)
+        self.define_sector_bounds()
+
+    def define_sector_bounds(self):
+        """
+        Compute bounding box for all imaging sectors and store as a
+        a semi-colon-separated list of [maxRA; minDec; minRA; maxDec] (we use semi-
+        colons as otherwise the workflow parset parser will split the list). Also
+        store the midpoint as [midRA; midDec].
+        Note: this is just once, rather than each time the sector borders are
+        adjusted, so that the image sizes do not change with cycle (so
+        mask images from previous cycles may be used)
+        """
         all_sectors = MultiPolygon([sector.poly_padded for sector in self.imaging_sectors])
         self.sector_bounds_xy = all_sectors.bounds
-        maxRA, minDec = misc.xy2radec(self.wcs, self.sector_bounds_xy[0], self.sector_bounds_xy[1])
-        minRA, maxDec = misc.xy2radec(self.wcs, self.sector_bounds_xy[2], self.sector_bounds_xy[3])
-        midRA, midDec = misc.xy2radec(self.wcs, (self.sector_bounds_xy[0]+self.sector_bounds_xy[2])/2.0,
-                                      (self.sector_bounds_xy[1]+self.sector_bounds_xy[3])/2.0)
+        max_ra, min_dec = self.wcs.wcs_pix2world(self.sector_bounds_xy[0],
+                                                 self.sector_bounds_xy[1],
+                                                 misc.WCS_ORIGIN)
+        min_ra, max_dec = self.wcs.wcs_pix2world(self.sector_bounds_xy[2],
+                                                 self.sector_bounds_xy[3],
+                                                 misc.WCS_ORIGIN)
+        mid_ra, mid_dec = self.wcs.wcs_pix2world((self.sector_bounds_xy[0]+self.sector_bounds_xy[2])/2.0,
+                                                 (self.sector_bounds_xy[1]+self.sector_bounds_xy[3])/2.0,
+                                                 misc.WCS_ORIGIN)
         self.sector_bounds_width_ra = abs((self.sector_bounds_xy[0] - self.sector_bounds_xy[2]) *
                                           self.wcs.wcs.cdelt[0])
         self.sector_bounds_width_dec = abs((self.sector_bounds_xy[3] - self.sector_bounds_xy[1]) *
                                            self.wcs.wcs.cdelt[1])
-        self.sector_bounds_mid_ra = midRA
-        self.sector_bounds_mid_dec = midDec
-        self.sector_bounds_deg = '[{0:.6f};{1:.6f};{2:.6f};{3:.6f}]'.format(maxRA, minDec,
-                                                                            minRA, maxDec)
-        self.sector_bounds_mid_deg = '[{0:.6f};{1:.6f}]'.format(midRA, midDec)
+        self.sector_bounds_mid_ra = mid_ra.item()
+        self.sector_bounds_mid_dec = mid_dec.item()
+        self.sector_bounds_deg = f'[{max_ra:.6f};{min_dec:.6f};{min_ra:.6f};{max_dec:.6f}]'
+        self.sector_bounds_mid_deg = f'[{mid_ra:.6f};{mid_dec:.6f}]'
 
     def define_outlier_sectors(self, index):
         """
@@ -1310,8 +1328,8 @@ class Field(object):
         """
         idx = rtree.index.Index()
         skymodel = self.source_skymodel
-        RA, Dec = skymodel.getPatchPositions(asArray=True)
-        x, y = misc.radec2xy(self.wcs, RA, Dec)
+        ra, dec = skymodel.getPatchPositions(asArray=True)
+        x, y = self.wcs.wcs_world2pix(ra, dec, misc.WCS_ORIGIN)
         sizes = skymodel.getPatchSizes(units='degree')
         minsize = 1  # minimum allowed source size in pixels
         sizes = [max(minsize, s/2.0/self.wcs_pixel_scale) for s in sizes]  # radii in pixels
@@ -1445,8 +1463,8 @@ class Field(object):
         """
         Makes simple WCS object
         """
-        self.wcs_pixel_scale = 10.0 / 3600.0  # degrees/pixel (= 10"/pixel)
-        self.wcs = misc.make_wcs(self.ra, self.dec, self.wcs_pixel_scale)
+        self.wcs_pixel_scale = misc.WCS_PIXEL_SCALE
+        self.wcs = make_wcs(self.ra, self.dec, self.wcs_pixel_scale)
 
     def scan_h5parms(self):
         """
@@ -1762,13 +1780,12 @@ class Field(object):
             # two axes
             wcs_pixel_scale = (wcs.proj_plane_pixel_scales()[0].value +
                                wcs.proj_plane_pixel_scales()[1].value) / 2
-        x, y = misc.radec2xy(wcs, self.ra, self.dec)
-        patch = Ellipse((x, y), width=self.fwhm_ra_deg/wcs_pixel_scale,
-                        height=self.fwhm_dec_deg/wcs_pixel_scale,
-                        edgecolor='k', facecolor='lightgray', linestyle=':',
-                        label='Pointing FWHM', linewidth=2, alpha=0.5)
-
-        return patch
+        xy_pixel = wcs.wcs_world2pix(self.ra, self.dec, misc.WCS_ORIGIN)
+        return Ellipse(xy_pixel,
+                       width=self.fwhm_ra_deg/wcs_pixel_scale,
+                       height=self.fwhm_dec_deg/wcs_pixel_scale,
+                       edgecolor='k', facecolor='lightgray', linestyle=':',
+                       label='Pointing FWHM', linewidth=2, alpha=0.5)
 
     def plot_overview(self, output_filename, show_initial_coverage=False,
                       show_calibration_patches=False, moc=None,
@@ -1880,8 +1897,8 @@ class Field(object):
                 label = 'Calibration facets' if i == 0 else None  # first only to avoid multiple lines in legend
                 facet_patch.set(edgecolor='b', facecolor='lightblue', alpha=0.5, label=label)
                 ax.add_patch(facet_patch)
-                x, y = misc.radec2xy(wcs, facet.ra, facet.dec)
-                ax.annotate(facet.name, (x, y), va='center', ha='center', fontsize='small',
+                xy_sector = wcs.wcs_world2pix(facet.ra, facet.dec, misc.WCS_ORIGIN)
+                ax.annotate(facet.name, xy_sector, va='center', ha='center', fontsize='small',
                             color='b')
 
         # Plot the imaging sectors
@@ -1890,8 +1907,8 @@ class Field(object):
             label = 'Imaging sectors' if i == 0 else None  # first only to avoid multiple lines in legend
             sector_patch.set(label=label)
             ax.add_patch(sector_patch)
-            x, y = misc.radec2xy(wcs, sector.ra, sector.dec+sector.width_dec/2)  # center-top
-            ax.annotate(sector.name, (x, y), va='bottom', ha='center', fontsize='large')
+            xy_sector = wcs.wcs_world2pix(sector.ra, sector.dec+sector.width_dec/2, misc.WCS_ORIGIN)  # center-top
+            ax.annotate(sector.name, xy_sector, va='bottom', ha='center', fontsize='large')
 
         # Plot the observation's FWHM and phase center
         if show_initial_coverage:

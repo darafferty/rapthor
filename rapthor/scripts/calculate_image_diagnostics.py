@@ -4,6 +4,7 @@ Script to calculate various image diagnostics
 """
 from argparse import ArgumentParser, RawTextHelpFormatter
 import lsmtool
+from lsmtool.operations_lib import make_wcs
 import numpy as np
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.facet import SquareFacet, read_ds9_region_file
@@ -52,7 +53,7 @@ def plot_astrometry_offsets(facets, field_ra, field_dec, output_file, plot_label
     plot_labels : bool, optional
         If True, plot the facet labels
     """
-    wcs = misc.make_wcs(field_ra, field_dec)
+    wcs = make_wcs(field_ra, field_dec, misc.WCS_PIXEL_SCALE)
     ra_offsets = []
     dec_offsets = []
     facet_patches = []
@@ -88,7 +89,7 @@ def plot_astrometry_offsets(facets, field_ra, field_dec, output_file, plot_label
     ax.set_title('Positional Offsets (arrows indicate direction and magnitude of correction)')
 
     # Plot the facet polygons
-    x, y = misc.radec2xy(wcs, facet_ra, facet_dec)
+    x, y = wcs.wcs_world2pix(facet_ra, facet_dec, misc.WCS_ORIGIN)
     for i, patch in enumerate(facet_patches):
         ax.add_patch(patch)
         if plot_labels:
