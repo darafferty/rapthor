@@ -54,7 +54,7 @@ def set_strategy(field):
 
     # Check the strategy for the presence of deprecated and/or missing
     # parameters
-    strategy_steps = check_and_adjust_parameters(strategy_steps)
+    strategy_steps = check_and_adjust_parameters(field, strategy_steps)
 
     return strategy_steps
 
@@ -258,7 +258,7 @@ def set_user_strategy(field):
     return strategy_steps
 
 
-def check_and_adjust_parameters(strategy_steps):
+def check_and_adjust_parameters(field, strategy_steps):
     """
     Checks the strategy for deprecated or missing parameters
 
@@ -270,6 +270,8 @@ def check_and_adjust_parameters(strategy_steps):
 
     Parameters
     ----------
+    field : Field object
+        Field object
     strategy_steps : list of dicts
         List of strategy steps to check
 
