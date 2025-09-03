@@ -42,12 +42,14 @@ dependencies = [
     "numpy",
     "python-casacore",
     "python-dateutil",
+    "pyyaml",
     "reproject",
     "requests",
     "Rtree",
     "scipy",
     "shapely",
-    "toil[cwl]>=8.0",
+    "toil[cwl]>=9.0",
+    "streamflow>=0.2.0.dev13"
 ]
 dynamic = ["version"]
 
