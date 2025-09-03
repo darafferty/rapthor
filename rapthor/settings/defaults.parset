@@ -347,7 +347,8 @@ global_scratch_dir = None
 use_container = False
 container_type = docker
 
-# CWL runner to use. Currently supported runners are: cwltool and toil (default)
+# CWL runner to use. Currently supported runners are: cwltool, streamflow,
+# and toil (default)
 cwl_runner = toil
 
 # Debug workflow related issues. Enabling this will require significantly more

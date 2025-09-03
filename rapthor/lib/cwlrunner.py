@@ -8,7 +8,10 @@ import logging
 import os
 import shutil
 import subprocess
+import sys
 from typing import TYPE_CHECKING, List, Union
+
+import yaml
 
 if TYPE_CHECKING:
     from rapthor.lib.operation import Operation
@@ -16,7 +19,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger("rapthor:cwlrunner")
 
 
-class CWLRunner:
+class BaseCWLRunner:
     """
     Base class.
     CWLRunner should be used inside a context. This will ensure that the object is
@@ -43,6 +46,59 @@ class CWLRunner:
         Called when exiting a context.
         """
         self.teardown()
+
+    def setup(self) -> None:
+        """
+        Prepare runner for running. Set up the list of arguments to pass to the
+        actual CWL runner.
+        Derived classes can add their own arguments by overriding this method.
+        """
+        self.args.extend(["--outdir", self.operation.pipeline_working_dir])
+
+        # Make a copy of the environment to allow changes made to it in the
+        # setup() method of derived classes to be reverted in teardown()
+        self._environment = os.environ.copy()
+
+    def teardown(self) -> None:
+        """
+        Clean up after the runner has run.
+        """
+        os.environ.clear()
+        os.environ.update(self._environment)
+
+    def run(self) -> bool:
+        """
+        Start the runner in a subprocess.
+        Every CWL runner requires two input files:
+          - the CWL workflow, provided by `self.operation.pipeline_parset_file`
+          - inputs for the CWL workflow, provided by `self.operation.pipeline_inputs_file`
+        Every CWL runner is supposed to print to:
+          - `stdout`: a JSON file of the generated outputs
+          - `stderr`: workflow diagnostics
+        These streams are redirected:
+          - `stdout` -> `self.operation.pipeline_outputs_file`
+          - `stderr` -> `self.operation.pipeline_log_file`
+        """
+        if self.command is None:
+            raise RuntimeError(
+                "Don't know how to start CWL runner {}".format(self.__class__.__name__)
+            )
+        args = [self.command] + self.args
+        args.extend([self.operation.pipeline_parset_file,
+                     self.operation.pipeline_inputs_file])
+        logger.debug("Executing command: %s", ' '.join(args))
+        with open(self.operation.pipeline_outputs_file, 'w') as stdout, \
+             open(self.operation.pipeline_log_file, 'w') as stderr:
+            try:
+                result = subprocess.run(args=args, stdout=stdout, stderr=stderr, check=True)
+                logger.debug(str(result))
+                return True
+            except subprocess.CalledProcessError as err:
+                logger.critical(str(err))
+                return False
+
+
+class CWLRunner(BaseCWLRunner):
 
     def _create_mpi_config_file(self) -> None:
         """
@@ -115,7 +171,6 @@ class CWLRunner:
             )
         return os.path.join(prefix, self.command + ".") if prefix else None
 
-
     def _get_tmp_outdir_prefix(self) -> Union[str, None]:
         """
         Return the prefix to be passed as value to the command-line option
@@ -136,14 +191,11 @@ class CWLRunner:
         prefix = self.operation.global_scratch_dir
         return os.path.join(prefix, self.command + ".") if prefix else None
 
-
     def setup(self) -> None:
         """
-        Prepare runner for running. Set up the list of arguments to pass to the
-        actual CWL runner.
-        Derived classes can add their own arguments by overriding this method.
+        Prepare runner for running. Adds some additional preparations to base class.
         """
-        self.args.extend(["--outdir", self.operation.pipeline_working_dir])
+        super().setup()
         if self.operation.container is not None:
             # If the container is Docker, no extra args are needed. For other
             # containers, set the required args
@@ -161,49 +213,13 @@ class CWLRunner:
         if prefix := self._get_tmpdir_prefix():
             self.args.extend(['--tmpdir-prefix', prefix])
 
-        # Make a copy of the environment to allow changes made to it in the
-        # setup() method of derived classes to be reverted in teardown()
-        self._environment = os.environ.copy()
-
     def teardown(self) -> None:
         """
         Clean up after the runner has run.
         """
-        os.environ.clear()
-        os.environ.update(self._environment)
         if self.operation.use_mpi:
             self._delete_mpi_config_file()
-
-    def run(self) -> bool:
-        """
-        Start the runner in a subprocess.
-        Every CWL runner requires two input files:
-          - the CWL workflow, provided by `self.operation.pipeline_parset_file`
-          - inputs for the CWL workflow, provided by `self.operation.pipeline_inputs_file`
-        Every CWL runner is supposed to print to:
-          - `stdout`: a JSON file of the generated outputs
-          - `stderr`: workflow diagnostics
-        These streams are redirected:
-          - `stdout` -> `self.operation.pipeline_outputs_file`
-          - `stderr` -> `self.operation.pipeline_log_file`
-        """
-        if self.command is None:
-            raise RuntimeError(
-                "Don't know how to start CWL runner {}".format(self.__class__.__name__)
-            )
-        args = [self.command] + self.args
-        args.extend([self.operation.pipeline_parset_file,
-                     self.operation.pipeline_inputs_file])
-        logger.debug("Executing command: %s", ' '.join(args))
-        with open(self.operation.pipeline_outputs_file, 'w') as stdout, \
-             open(self.operation.pipeline_log_file, 'w') as stderr:
-            try:
-                result = subprocess.run(args=args, stdout=stdout, stderr=stderr, check=True)
-                logger.debug(str(result))
-                return True
-            except subprocess.CalledProcessError as err:
-                logger.critical(str(err))
-                return False
+        super().teardown()
 
 
 class ToilRunner(CWLRunner):
@@ -385,6 +401,104 @@ class CWLToolRunner(CWLRunner):
         return super().teardown()
 
 
+class StreamFlowRunner(BaseCWLRunner):
+    """
+    Wrapper class for the StreamFlow CWL runner
+    """
+    def __init__(self, operation: Operation) -> None:
+        super().__init__(operation)
+        self.command = "streamflow"
+        self.args.extend(['run'])
+        self.streamflow_file = None
+
+    def setup(self) -> None:
+        """
+        Set arguments that are specific to this CWL runner.
+        """
+        super().setup()
+        self.args.extend(["--name", self.operation.name])
+        if self.operation.debug_workflow:
+            self.args.extend(["--debug"])
+        workflow = {
+            "type": "cwl",
+            "config": {
+                "file": self.operation.pipeline_parset_file,
+                "settings": self.operation.pipeline_inputs_file
+            },
+            "bindings": [
+                {"step": "/", "target": {"deployment": self.operation.name}}
+            ]
+        }
+        if self.operation.container is not None:
+            if self.operation.container == 'singularity':
+                workflow["config"]["docker"] = [
+                    {"step": "/", "deployment": {"type": "singularity", "config": {}}}
+                ]
+            else:
+                raise ValueError(
+                    f'The `{self.operation.container}` container engine is not supported by StreamFlow'
+                )
+        else:
+            workflow["config"]["docker"] = [
+                {"step": "/", "deployment": {"type": "none", "config": {}}}
+            ]
+        if self.operation.batch_system == 'single_machine':
+            deployment = {
+                "type": "local",
+                "config": {}
+            }
+        elif self.operation.batch_system == 'slurm':
+            deployment = {
+                "type": "slurm",
+                "config": {
+                    "maxConcurrentJobs": self.operation.max_nodes if self.operation.max_nodes > 0 else sys.maxsize,
+                    "services": {
+                        self.operation.name: {
+                            "cpusPerTask": self.operation.cpus_per_task
+                        }
+                    }
+                }
+            }
+            if self.operation.mem_per_node_gb > 0:
+                deployment["config"]["services"][self.operation.name]["mem"] = f"{self.operation.mem_per_node_gb}G"
+            workflow["bindings"][0]["target"]["service"] = self.operation.name
+        else:
+            raise ValueError(
+                f'The `{self.operation.batch_system}` batch system is not supported by StreamFlow'
+            )
+        if self.operation.global_scratch_dir is not None:
+            deployment["workdir"] = self.operation.global_scratch_dir
+        if self.operation.use_mpi:
+            raise ValueError(
+                'The `cwltool:MPIRequirement` extension is not supported by StreamFlow'
+            )
+        config = {
+            "version": "v1.0",
+            "workflows": {
+                self.operation.name: workflow
+            },
+            "database": {
+                "type": "default",
+                "config": {
+                    "connection": f"{self.operation.rapthor_working_dir}/.streamflow/sqlite.db"
+                }
+            },
+            "deployments": {
+                self.operation.name: deployment
+            }
+        }
+        self.streamflow_file = os.path.join(self.operation.pipeline_working_dir, "streamflow.yml")
+        with open(self.streamflow_file, "w") as f:
+            logger.debug(f"Creating StreamFlow configuration file {self.streamflow_file}:\n{yaml.safe_dump(config)}")
+            yaml.safe_dump(config, f)
+        self.args.extend([self.streamflow_file])
+
+    def teardown(self) -> None:
+        if self.streamflow_file is not None and not self.operation.debug_workflow:
+            os.remove(self.streamflow_file)
+        super().teardown()
+
+
 def create_cwl_runner(runner: str, operation: Operation) -> CWLRunner:
     """
     Factory method that creates a CWLRunner instance based on the `runner` argument.
@@ -394,4 +508,6 @@ def create_cwl_runner(runner: str, operation: Operation) -> CWLRunner:
         return ToilRunner(operation)
     if runner.lower() == "cwltool":
         return CWLToolRunner(operation)
+    if runner.lower() == "streamflow":
+        return StreamFlowRunner(operation)
     raise ValueError(f"Don't know how to create CWL runner '{runner}'")
