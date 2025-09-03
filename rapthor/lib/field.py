@@ -325,7 +325,7 @@ class Field(object):
             self.observations = []
             for obs in prev_observations:
                 tottime = obs.endtime - obs.starttime
-                nchunks = min(minnobs, max(1, int(tottime / mintime))) if mintime is not None else minobs
+                nchunks = min(minnobs, max(1, int(tottime / mintime))) if mintime is not None else minnobs
                 if nchunks > 1:
                     steptime = tottime / nchunks
                     if mintime is not None:
