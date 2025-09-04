@@ -32,7 +32,7 @@ def run(parset_file, logging_level='info'):
     parset = parset_read(parset_file)
 
     # Set up logger
-    parset['logging_level'] = logging_level
+    log.info("Setting log level to %s", logging_level.upper())
     _logging.set_level(logging_level)
 
     # Initialize field object and do concatenation if needed
