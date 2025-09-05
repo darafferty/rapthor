@@ -13,9 +13,10 @@ ARG PYTHONCASACORE_COMMIT=master
 ARG SAGECAL_COMMIT=master
 ARG WSCLEAN_COMMIT=master
 
-# Build binaries targeted at the oldest CPU that supports AVX2
+# Build binaries for CPUs that support AVX2 (x86-64 feature level 3):
+# Intel Haswell and newer, AMD Excavator and newer
 ARG PORTABLE=FALSE
-ARG TARGET_CPU=haswell
+ARG TARGET_CPU=x86-64-v3
 
 # Suppress warning from pip when installing packages as root
 ENV PIP_ROOT_USER_ACTION=ignore
