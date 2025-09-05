@@ -9,6 +9,7 @@ from argparse import ArgumentParser, RawTextHelpFormatter
 from astropy.utils import iers
 from rapthor.lib import miscellaneous as misc
 from lsmtool.filter_skymodel import filter_skymodel
+from lsmtool.io import check_file_exists
 
 # Turn off astropy's IERS downloads to fix problems in cases where compute
 # node does not have internet access
@@ -80,6 +81,14 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, apparent_sky_skymo
     ncores : int, optional
         Maximum number of cores to use
     """
+    try:
+        check_file_exists(true_sky_skymodel)
+    except FileNotFoundError:
+        true_sky_skymodel = None
+    try:
+        check_file_exists(apparent_sky_skymodel)
+    except FileNotFoundError:
+        apparent_sky_skymodel = None
 
     nsources = filter_skymodel(
         flat_noise_image,
