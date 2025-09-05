@@ -33,12 +33,11 @@ for i in range(max_selfcal_loops):
     strategy_steps[i]['max_normalization_delta'] = 0.3
     strategy_steps[i]['scale_normalization_delta'] = True
 
-    # For HBA data, we use the same solution intervals for every cycle, but if
-    # LBA data were to be used, the intervals for the early cycles can be longer to
+    # Here we use the same solution intervals for every cycle, but it is possible to
+    # adjust the intervals so that, for example, the early cycles have longer intervals to
     # compensate for the generally lower signal-to-noise ratios of the solves
     strategy_steps[i]['fast_timestep_sec'] = 8.0
-    strategy_steps[i]['slow_timestep_joint_sec'] = 0.0
-    strategy_steps[i]['slow_timestep_separate_sec'] = 600.0
+    strategy_steps[i]['slow_timestep_sec'] = 600.0
 
     # Here we activate flux-scale normalization (adjusts the amplitudes to
     # achieve obs_flux / true_flux = 1) for the first cycle (the adjustments

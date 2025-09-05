@@ -149,7 +149,7 @@ class Sector(object):
             self.mem_limit_gb = cluster.get_available_memory()
         self.reweight = imaging_parameters['reweight']
         self.target_fast_timestep = self.field.fast_timestep_sec
-        self.target_slow_timstep = self.field.slow_timestep_separate_sec
+        self.target_slow_timstep = self.field.slow_timestep_sec
         self.target_slow_freqstep = self.field.parset['calibration_specific']['slow_freqstep_hz']
         self.apply_screens = self.field.apply_screens
 

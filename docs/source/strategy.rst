@@ -113,11 +113,8 @@ The following processing parameters can be set for each cycle:
     do_slowgain_solve
         Boolean flag that determines whether the slow-gain part of calibration should be done for this cycle.
 
-    slow_timestep_joint_sec
-        Solution interval in sec to use in the "joint" slow-gain solves (where all stations share a joint solution).
-
-    slow_timestep_separate_sec
-        Solution interval in sec to use in the "separate" slow-gain solves (where each station gets a separate solution).
+    slow_timestep_sec
+        Solution interval in sec to use in the slow-gain solves.
 
     do_fulljones_solve
         Boolean flag that determines whether the direction-independent full-Jones part of calibration should be done for this cycle.
