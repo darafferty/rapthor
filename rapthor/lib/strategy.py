@@ -32,6 +32,11 @@ def set_strategy(field):
     -------
     strategy_steps : list
         List of strategy parameter dicts (one per processing cycle)
+
+    Raises
+    ------
+    ValueError
+        If the strategy could not be set successfully
     """
     if field.parset['strategy'] == 'selfcal':
         # Standard selfcal
@@ -47,36 +52,9 @@ def set_strategy(field):
 
     log.info('Using "{}" processing strategy'.format(field.parset['strategy']))
 
-    # Check for required parameters. If any are missing, either print a warning if the
-    # parameter has a default defined or raise an error if not
-    primary_parameters = ['do_calibrate', 'do_normalize', 'do_image', 'do_check']
-    secondary_parameters = {'do_calibrate': ['do_slowgain_solve', 'do_fulljones_solve',
-                                             'target_flux', 'max_directions', 'regroup_model',
-                                             'max_normalization_delta', 'solve_min_uv_lambda',
-                                             'fast_timestep_sec', 'slow_timestep_joint_sec',
-                                             'slow_timestep_separate_sec',
-                                             'scale_normalization_delta', 'max_directions'],
-                            'do_normalize': [],
-                            'do_image': ['auto_mask', 'auto_mask_nmiter', 'threshisl',
-                                         'threshpix', 'max_nmiter', 'peel_outliers',
-                                         'peel_bright_sources'],
-                            'do_check': ['convergence_ratio', 'divergence_ratio',
-                                         'failure_ratio']}
-    for primary in primary_parameters:
-        for i in range(len(strategy_steps)):
-            if primary not in strategy_steps[i]:
-                raise ValueError('Required parameter "{0}" not defined in the '
-                                 'strategy for cycle {1}.'.format(primary, i+1))
-            if strategy_steps[i][primary]:
-                for secondary in secondary_parameters[primary]:
-                    if secondary not in strategy_steps[i]:
-                        if hasattr(field, secondary):
-                            log.warn('Parameter "{0}" not defined in the strategy for '
-                                     'cycle {1}. Using the default value of '
-                                     '{2}'.format(secondary, i+1, getattr(field, secondary)))
-                        else:
-                            raise ValueError('Required parameter "{0}" not defined in the '
-                                             'strategy for cycle {1}.'.format(secondary, i+1))
+    # Check the strategy for the presence of deprecated and/or missing
+    # parameters
+    strategy_steps = check_and_adjust_parameters(field, strategy_steps)
 
     return strategy_steps
 
@@ -141,31 +119,8 @@ def set_selfcal_strategy(field):
         strategy_steps[i]['peel_bright_sources'] = False
         strategy_steps[i]['max_normalization_delta'] = 0.3
         strategy_steps[i]['scale_normalization_delta'] = True
-        if field.antenna == 'LBA':
-            if i == 0:
-                strategy_steps[i]['fast_timestep_sec'] = 64.0
-                strategy_steps[i]['slow_timestep_joint_sec'] = 0.0
-                strategy_steps[i]['slow_timestep_separate_sec'] = 0.0
-            elif i == 1:
-                strategy_steps[i]['fast_timestep_sec'] = 32.0
-                strategy_steps[i]['slow_timestep_joint_sec'] = 0.0
-                strategy_steps[i]['slow_timestep_separate_sec'] = 0.0
-            elif i == 2:
-                strategy_steps[i]['fast_timestep_sec'] = 8.0
-                strategy_steps[i]['slow_timestep_joint_sec'] = 240.0
-                strategy_steps[i]['slow_timestep_separate_sec'] = 960.0
-            elif i == 3:
-                strategy_steps[i]['fast_timestep_sec'] = 8.0
-                strategy_steps[i]['slow_timestep_joint_sec'] = 160.0
-                strategy_steps[i]['slow_timestep_separate_sec'] = 480.0
-            else:
-                strategy_steps[i]['fast_timestep_sec'] = 8.0
-                strategy_steps[i]['slow_timestep_joint_sec'] = 80.0
-                strategy_steps[i]['slow_timestep_separate_sec'] = 480.0
-        elif field.antenna == 'HBA':
-            strategy_steps[i]['fast_timestep_sec'] = 8.0
-            strategy_steps[i]['slow_timestep_joint_sec'] = 0.0
-            strategy_steps[i]['slow_timestep_separate_sec'] = 600.0
+        strategy_steps[i]['fast_timestep_sec'] = 8.0
+        strategy_steps[i]['slow_timestep_sec'] = 600.0
 
         if i == 0:
             strategy_steps[i]['do_normalize'] = True
@@ -216,9 +171,6 @@ def set_selfcal_strategy(field):
             strategy_steps[i]['target_flux'] = 0.25
             strategy_steps[i]['max_directions'] = 50
             strategy_steps[i]['max_distance'] = 4.0
-        if field.antenna == 'LBA':
-            strategy_steps[i]['max_directions'] //= 2
-            strategy_steps[i]['max_nmiter'] = int(strategy_steps[i]['max_nmiter'] / 1.5)
         strategy_steps[i]['regroup_model'] = True
 
         if i < min_selfcal_loops - 1:
@@ -256,17 +208,14 @@ def set_image_strategy(field):
 
     strategy_steps[0]['do_calibrate'] = False
     strategy_steps[0]['do_normalize'] = False
-    strategy_steps[0]['peel_outliers'] = False
+    strategy_steps[0]['peel_outliers'] = True
     strategy_steps[0]['peel_bright_sources'] = False
     strategy_steps[0]['do_image'] = True
     strategy_steps[0]['auto_mask'] = 3.0
     strategy_steps[0]['auto_mask_nmiter'] = 2
     strategy_steps[0]['threshisl'] = 3.0
     strategy_steps[0]['threshpix'] = 5.0
-    if field.antenna == 'LBA':
-        strategy_steps[0]['max_nmiter'] = 8
-    else:
-        strategy_steps[0]['max_nmiter'] = 12
+    strategy_steps[0]['max_nmiter'] = 12
     strategy_steps[0]['do_check'] = False
     strategy_steps[0]['regroup_model'] = False
 
@@ -293,6 +242,11 @@ def set_user_strategy(field):
     -------
     strategy_steps : list
         List of strategy parameter dicts
+
+    Raises
+    ------
+    ValueError
+        If the strategy file did not define strategy_steps
     """
     try:
         strategy_steps = runpy.run_path(field.parset['strategy'],
@@ -300,5 +254,86 @@ def set_user_strategy(field):
     except KeyError:
         raise ValueError('Strategy "{}" does not define '
                          'strategy_steps.'.format(field.parset['strategy']))
+
+    return strategy_steps
+
+
+def check_and_adjust_parameters(field, strategy_steps):
+    """
+    Checks the strategy for deprecated or missing parameters
+
+    A deprecated parameter is replaced with its corresponding new parameter
+    when possible; if there is no replacement, it is removed entirely.
+
+    A missing required parameter is set to its default when possible; if there
+    is no default defined, a ValueError error is raised.
+
+    Parameters
+    ----------
+    field : Field object
+        Field object
+    strategy_steps : list of dicts
+        List of strategy steps to check
+
+    Returns
+    -------
+    strategy_steps : list of dicts
+        Adjusted version of the input strategy_steps
+
+    Raises
+    ------
+    ValueError
+        If a required parameter is not defined and no suitable default
+        is available for it
+    """
+    # Define the deprecated parameters and their replacements (if any)
+    deprecated_parameters = {'slow_timestep_joint_sec': None,
+                             'slow_timestep_separate_sec': 'slow_timestep_sec'}
+
+    # Define the required parameters for each of the main strategy parts
+    required_parameters = {'do_calibrate': ['do_slowgain_solve', 'do_fulljones_solve',
+                                            'target_flux', 'max_directions', 'regroup_model',
+                                            'max_normalization_delta', 'solve_min_uv_lambda',
+                                            'fast_timestep_sec', 'slow_timestep_sec',
+                                            'scale_normalization_delta', 'max_directions'],
+                           'do_normalize': [],
+                           'do_image': ['auto_mask', 'auto_mask_nmiter', 'threshisl',
+                                        'threshpix', 'max_nmiter', 'peel_outliers',
+                                        'peel_bright_sources'],
+                           'do_check': ['convergence_ratio', 'divergence_ratio',
+                                        'failure_ratio']}
+
+    # Check for deprectaed parameters, updating the steps to use the new
+    # names when defined
+    for deprecated, replacement in deprecated_parameters.items():
+        for i in range(len(strategy_steps)):
+            if deprecated in strategy_steps[i]:
+                if replacement is not None:
+                    log.warn(f'Parameter "{deprecated}" is defined in the strategy for '
+                             f'cycle {i+1} but is deprecated. Please use "{replacement}" '
+                             'instead.')
+                    strategy_steps[i][replacement] = strategy_steps[i][deprecated]
+                else:
+                    log.warn(f'Parameter "{deprecated}" is defined in the strategy for '
+                             f'cycle {i+1} but is no longer used.')
+                strategy_steps[i].pop(deprecated)
+
+    # Check for required parameters. If any are missing, either print a warning if the
+    # parameter has a default defined or raise an error if not
+    for primary, secondary_parameters in required_parameters.items():
+        for i in range(len(strategy_steps)):
+            if primary not in strategy_steps[i]:
+                raise ValueError(f'Required parameter "{primary}" is not defined in the '
+                                 f'strategy for cycle {i+1}.')
+            if strategy_steps[i][primary]:
+                for secondary in secondary_parameters:
+                    if secondary not in strategy_steps[i]:
+                        if hasattr(field, secondary):
+                            log.warn(f'Parameter "{secondary}" is not defined in the '
+                                     f'strategy for cycle {i+1}. Using the default value '
+                                     f'of {getattr(field, secondary)}.')
+                        else:
+                            raise ValueError(f'Required parameter "{secondary}" is not '
+                                             f'defined in the strategy for cycle {i+1}.')
 
     return strategy_steps

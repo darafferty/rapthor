@@ -56,8 +56,7 @@ class Field(object):
         self.data_colname = self.parset['data_colname']
         self.use_image_based_predict = self.parset['calibration_specific']['use_image_based_predict']
         self.bda_timebase_fast = self.parset['calibration_specific']['fast_bda_timebase']
-        self.bda_timebase_slow_joint = self.parset['calibration_specific']['slow_bda_timebase_joint']
-        self.bda_timebase_slow_separate = self.parset['calibration_specific']['slow_bda_timebase_separate']
+        self.bda_timebase_slow = self.parset['calibration_specific']['slow_bda_timebase']
         self.dd_interval_factor = self.parset['calibration_specific']['dd_interval_factor']
         self.h5parm_filename = self.parset['input_h5parm']
         self.fulljones_h5parm_filename = self.parset['input_fulljones_h5parm']
@@ -65,8 +64,7 @@ class Field(object):
         self.fast_smoothnessconstraint = self.parset['calibration_specific']['fast_smoothnessconstraint']
         self.fast_smoothnessreffrequency = self.parset['calibration_specific']['fast_smoothnessreffrequency']
         self.fast_smoothnessrefdistance = self.parset['calibration_specific']['fast_smoothnessrefdistance']
-        self.slow_smoothnessconstraint_joint = self.parset['calibration_specific']['slow_smoothnessconstraint_joint']
-        self.slow_smoothnessconstraint_separate = self.parset['calibration_specific']['slow_smoothnessconstraint_separate']
+        self.slow_smoothnessconstraint = self.parset['calibration_specific']['slow_smoothnessconstraint']
         self.fulljones_timestep_sec = self.parset['calibration_specific']['fulljones_timestep_sec']
         self.smoothnessconstraint_fulljones = self.parset['calibration_specific']['fulljones_smoothnessconstraint']
         self.propagatesolutions = self.parset['calibration_specific']['propagatesolutions']
@@ -99,6 +97,7 @@ class Field(object):
         self.cycle_number = 1
         self.apply_amplitudes = False
         self.apply_screens = False
+        self.generate_screens = False
         self.apply_fulljones = False
         self.apply_normalizations = False
         self.fast_phases_h5parm_filename = None
@@ -108,8 +107,7 @@ class Field(object):
 
         # Set strategy parameter defaults
         self.fast_timestep_sec = 8.0
-        self.slow_timestep_joint_sec = 0
-        self.slow_timestep_separate_sec = 600.0
+        self.slow_timestep_sec = 600.0
         self.convergence_ratio = 0.95
         self.divergence_ratio = 1.1
         self.failure_ratio = 10.0
@@ -359,21 +357,18 @@ class Field(object):
         Sets parameters for all observations from current parset and sky model
         """
         ntimechunks = 0
-        nfreqchunks_joint = 0
-        nfreqchunks_separate = 0
+        nfreqchunks_slow = 0
         nfreqchunks_fulljones = 0
         for obs in self.observations:
             obs.set_calibration_parameters(self.parset, self.num_patches, len(self.observations),
                                            self.calibrator_fluxes, self.fast_timestep_sec,
-                                           self.slow_timestep_joint_sec, self.slow_timestep_separate_sec,
-                                           self.fulljones_timestep_sec, self.target_flux)
+                                           self.slow_timestep_sec, self.fulljones_timestep_sec,
+                                           self.target_flux)
             ntimechunks += obs.ntimechunks
-            nfreqchunks_joint += obs.nfreqchunks_joint
-            nfreqchunks_separate += obs.nfreqchunks_separate
+            nfreqchunks_slow += obs.nfreqchunks_slow
             nfreqchunks_fulljones += obs.nfreqchunks_fulljones
         self.ntimechunks = ntimechunks
-        self.nfreqchunks_joint = nfreqchunks_joint
-        self.nfreqchunks_separate = nfreqchunks_separate
+        self.nfreqchunks_slow = nfreqchunks_slow
         self.nfreqchunks_fulljones = nfreqchunks_fulljones
 
     def get_obs_parameters(self, parameter):
@@ -1638,7 +1633,7 @@ class Field(object):
                 # Report converged (and not diverged)
                 converged.append(True)
                 diverged.append(False)
-            if rmspost > self.failure_ratio * rmsideal:
+            if rmspost > failure_ratio * rmsideal:
                 failed.append(True)
             else:
                 failed.append(False)
