@@ -7,7 +7,7 @@ from pathlib import Path
 
 import numpy as np
 from astropy.io import fits as pyfits
-from astropy.wcs import WCS as pywcs
+from astropy.wcs import WCS
 from lsmtool.io import read_vertices_ra_dec
 from lsmtool.utils import rasterize
 from shapely.geometry import Polygon

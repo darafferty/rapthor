@@ -11,6 +11,7 @@ from importlib import resources
 import astropy.coordinates
 import rapthor.lib.miscellaneous as misc
 from rapthor._logging import set_log_file
+from rapthor._version import __version__
 
 log = logging.getLogger("rapthor:parset")
 
@@ -482,7 +483,8 @@ def parset_read(parset_file, use_log_file=True):
         )
     if use_log_file:
         set_log_file(os.path.join(parset_dict["dir_working"], "logs", "rapthor.log"))
-    log.info("=========================================================\n")
+    log.info("=========================================================")
+    log.info("Rapthor version %s", __version__)
     log.info("CWLRunner is %s", parset_dict["cluster_specific"]["cwl_runner"])
     log.info("Working directory is {}".format(parset_dict["dir_working"]))
 
@@ -553,5 +555,7 @@ def parset_read(parset_file, use_log_file=True):
                 "Disabling download and using sky model provided by the user."
             )
             parset_dict["download_initial_skymodel"] = False
+
+    log.info("=========================================================")
 
     return parset_dict
