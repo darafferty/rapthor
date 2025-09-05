@@ -494,7 +494,7 @@ class CalibrateDD(Operation):
             size = [int(self.field.sector_bounds_width_ra / cellsize), int(self.field.sector_bounds_width_dec / cellsize)]  # pixels
 
         # Convert RA and Dec to strings (required by WSClean)
-        center_coords = [lsmtool.utils.format_coordinates(*center_coords)]
+        center_coords = lsmtool.utils.format_coordinates(*center_coords)
 
         return frequency_bandwidth, center_coords, size, cellsize
 
