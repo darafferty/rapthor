@@ -81,6 +81,9 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, apparent_sky_skymo
     ncores : int, optional
         Maximum number of cores to use
     """
+    # Check that the true- and apparent-sky models exist (they may have been
+    # set in the CWL workflow to dummy names; the bright-sky model will never
+    # have a dummy name). If not, set to None as expected by filter_skymodel()
     try:
         check_file_exists(true_sky_skymodel)
     except FileNotFoundError:
