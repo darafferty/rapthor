@@ -3,9 +3,10 @@ FROM ubuntu:22.04 as builder
 # This Dockerfile builds a Docker image for the Rapthor pipeline
 # and all its dependencies.
 
-# By default, build non-portable code, for the oldest CPU that supports AVX2
+# Build binaries for CPUs that support AVX2 (x86-64 feature level 3):
+# Intel Haswell and newer, AMD Excavator and newer
 ARG PORTABLE=FALSE
-ARG TARGET_CPU=haswell
+ARG TARGET_CPU=x86-64-v3
 
 # Install all build-time dependencies
 RUN export DEBIAN_FRONTEND=noninteractive && \
