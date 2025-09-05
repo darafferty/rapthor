@@ -4,12 +4,12 @@ Script to filter and group a sky model with an image
 """
 import ast
 import json
+import os
 from argparse import ArgumentParser, RawTextHelpFormatter
 
 from astropy.utils import iers
 from rapthor.lib import miscellaneous as misc
 from lsmtool.filter_skymodel import filter_skymodel
-from lsmtool.io import check_file_exists
 
 # Turn off astropy's IERS downloads to fix problems in cases where compute
 # node does not have internet access
@@ -84,14 +84,8 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, apparent_sky_skymo
     # Check that the true- and apparent-sky models exist (they may have been
     # set in the CWL workflow to dummy names; the bright-sky model will never
     # have a dummy name). If not, set to None as expected by filter_skymodel()
-    try:
-        check_file_exists(true_sky_skymodel)
-    except FileNotFoundError:
-        true_sky_skymodel = None
-    try:
-        check_file_exists(apparent_sky_skymodel)
-    except FileNotFoundError:
-        apparent_sky_skymodel = None
+    true_sky_model = true_sky_model if os.path.exists(true_sky_skymodel) else None
+    apparent_sky_model = apparent_sky_model if os.path.exists(apparent_sky_skymodel) else None
 
     nsources = filter_skymodel(
         flat_noise_image,
