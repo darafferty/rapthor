@@ -21,12 +21,12 @@ facet_layout = /my/data/facets.reg
 dde_mode = hybrid
 
 [calibration]
-bda_frequencybase = 20000.0
-bda_timebase = 0
+bda_frequencybase = 0.0
+bda_timebase = 0.0
 use_included_skymodels = True
 use_image_based_predict = True
 dd_interval_factor = 1
-dd_smoothness_factor = 1
+dd_smoothness_factor = 3
 llssolver = qr
 maxiter = 50
 propagatesolutions = False
@@ -44,7 +44,6 @@ fast_smoothnessrefdistance = 5.0
 fast_datause = dual
 slow_freqstep_hz = 2e6
 slow_smoothnessconstraint = 4e6
-slow_bda_timebase = 10000.0
 slow_datause = full
 fulljones_timestep_sec = 600.0
 fulljones_freqstep_hz = 1e6

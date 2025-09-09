@@ -99,10 +99,14 @@ use_included_skymodels = False
 use_image_based_predict = False
 
 # Maximum factor by which the direction-dependent solution intervals can be
-# increased, so that fainter calibrators get longer intervals. The maximum factor
-# by which the smoothnessconstraints are increased, such that fainter calibrators
-# get more smoothing, can be set in a similar way (default = 3)
-dd_interval_factor = 3
+# increased, so that fainter calibrators get longer intervals (default = 1).
+# The maximum factor by which the smoothnessconstraints are increased, such
+# that fainter calibrators get more smoothing, can be set in a similar way
+# (default = 3).
+#
+# Note: direction-dependent solutions intervals are not currently supported;
+# they will be re-enabled in a future update.
+dd_interval_factor = 1
 dd_smoothness_factor = 3
 
 # General solver parameters
