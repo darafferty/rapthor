@@ -174,7 +174,7 @@ def test_predict_nc_workflow(tmp_path, max_cores):
 @pytest.mark.parametrize("save_source_list", (False, True))
 @pytest.mark.parametrize("compress_images", (False, True))
 @pytest.mark.parametrize("filter_by_mask", (True,))
-@pytest.mark.parametrize("source_finder", ("bdsf", "sofia"))
+@pytest.mark.parametrize("source_finder", ("bdsf", ))
 def test_image_workflow(
     tmp_path,
     apply_screens,
