@@ -160,3 +160,5 @@ cython_debug/
 tests/resources/test.ms
 tests/test.ms_di.ms
 
+# JetBrains
+.idea/

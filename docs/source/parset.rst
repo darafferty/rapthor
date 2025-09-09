@@ -562,9 +562,9 @@ The available options are described below under their respective sections.
 .. glossary::
 
     batch_system
-        Cluster batch system (only used when Toil is the CWL runner; default =
-        ``single_machine``). Use ``single_machine`` when running on a single machine and
-        ``slurm`` to use multiple nodes of a Slurm-based cluster.
+        Cluster batch system (only used when either StreamFlow or Toil is the CWL runner;
+        default = ``single_machine``). Use ``single_machine`` when running on a single
+        machine and ``slurm`` to use multiple nodes of a Slurm-based cluster.
 
         .. note::
 
@@ -678,14 +678,14 @@ The available options are described below under their respective sections.
         types are: ``docker`` (the default), ``udocker``, or ``singularity``.
 
     cwl_runner
-        CWL runner to use. Currently supported runners are: ``cwltool`` and ``toil``
-        (default). Toil is the recommended runner, since it provides much more
-        fine-grained control over the execution of a workflow. For example, Toil can use
-        Slurm to automatically distribute workflow steps over different compute nodes,
-        whereas CWLTool can only execute workflows on a single node. With CWLTool you also
-        run the risk of overloading your machine when too many jobs are run in parallel.
-        For debugging purposes CWLTool outshines Toil, because its logs are easier to
-        understand.
+        CWL runner to use. Currently supported runners are: ``cwltool``, ``streamflow``,
+        and ``toil`` (default). Toil is the recommended runner, since it provides much
+        more fine-grained control over the execution of a workflow. For example, Toil and
+        StreamFlow can use Slurm to automatically distribute workflow steps over different
+        compute nodes, whereas CWLTool can only execute workflows on a single node. With
+        CWLTool you also run the risk of overloading your machine when too many jobs are
+        run in parallel. For debugging purposes CWLTool outshines Toil, because its logs
+        are easier to understand.
 
     debug_workflow
         Debug workflow related issues. Enabling this will require significantly more disk
