@@ -35,6 +35,28 @@ def allow_combination(params):
     return True
 
 
+def generate_and_validate(tmp_path, operation, params, template, sub_template=None):
+
+    pipeline_working_dir = tmp_path / "pipelines" / operation
+    parset_path = create_parsets(pipeline_working_dir, params, template, sub_template)
+
+    validate(params, parset_path)
+
+
+def create_parsets(pipeline_working_dir, params, template, sub_template):
+
+    pipeline_working_dir.mkdir(parents=True, exist_ok=True)
+
+    parset_path = pipeline_working_dir / "pipeline_parset.cwl"
+    write_parset(template, params, pipeline_working_dir, parset_path)
+
+    if sub_template:
+        sub_parset_path = pipeline_working_dir / "subpipeline_parset.cwl"
+        write_parset(sub_template, params, pipeline_working_dir, sub_parset_path)
+
+    return parset_path
+
+
 def write_parset(template, params, pipeline_working_dir, output_path):
 
     output_path.write_text(
@@ -54,20 +76,6 @@ def validate(params, parset_path):
         subprocess.run(["cwltool", "--validate", "--enable-ext", parset_path], check=True)
     except subprocess.CalledProcessError as err:
         raise AssertionError(f"FAILED with parameters: {params}") from err
-
-
-def generate_and_validate(tmp_path, operation, params, template, sub_template=None):
-
-    pipeline_working_dir = tmp_path / "pipelines" / operation
-    pipeline_working_dir.mkdir(parents=True, exist_ok=True)
-
-    parset_path = pipeline_working_dir / "pipeline_parset.cwl"
-    write_parset(template, params, pipeline_working_dir, parset_path)
-    if sub_template:
-        sub_parset_path = pipeline_working_dir / "subpipeline_parset.cwl"
-        write_parset(sub_template, params, pipeline_working_dir, sub_parset_path)
-
-    validate(params, parset_path)
 
 
 @pytest.mark.parametrize("max_cores", (None, 8))
@@ -206,19 +214,8 @@ class TestImageWorkflow:
         `rapthor.lib.operation.Operation.setup()` does this.
         """
         pipeline_working_dir = tmp_path / "pipelines" / self.operation
-        pipeline_working_dir.mkdir(parents=True, exist_ok=True)
-        return self.create_parsets(pipeline_working_dir, params)
-
-    def create_parsets(self, working_dir, params):
-
-        parset = working_dir / "pipeline_parset.cwl"
-        write_parset(self.template, params, working_dir, parset)
-
-        if self.sub_template:
-            sub_parset = working_dir / "subpipeline_parset.cwl"
-            write_parset(self.sub_template, params, working_dir, sub_parset)
-
-        return parset
+        return create_parsets(pipeline_working_dir, params, 
+                              self.template, self.sub_template)
 
     def test_image_workflow(self, params, parset):
         """
