@@ -64,7 +64,8 @@ def generate_and_validate(tmp_path, operation, params, template, sub_template=No
     parset_path = pipeline_working_dir / "pipeline_parset.cwl"
     write_parset(template, params, pipeline_working_dir, parset_path)
     if sub_template:
-        write_parset(sub_template, params, pipeline_working_dir, parset_path)
+        sub_parset_path = pipeline_working_dir / "subpipeline_parset.cwl"
+        write_parset(sub_template, params, pipeline_working_dir, sub_parset_path)
 
     validate(params, parset_path)
 
