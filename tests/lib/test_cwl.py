@@ -21,15 +21,15 @@ def generate_keyword_combinations(params_pool):
 
 def allow_combination(params):
     if params.get("use_facets") and params.get("apply_screens"):
-        # pytest.skip("'use_facets' and 'apply_screens' cannot both be enabled")
+        # 'use_facets' and 'apply_screens' cannot both be enabled
         return False
 
     if params.get("normalize_flux_scale") and not params.get("make_image_cube"):
-        # pytest.skip("'normalize_flux_scale' must be used with 'make_image_cube'")
+        # 'normalize_flux_scale' must be used with 'make_image_cube'
         return False
 
     if (params.get("use_facets") or params.get("apply_screens")) and params.get("preapply_dde_solutions"):
-        # pytest.skip("'preapply_dde_solutions' cannot be used with 'use_facets' or 'apply_screens'")
+        # 'preapply_dde_solutions' cannot be used with 'use_facets' or 'apply_screens'
         return False
 
     return True
