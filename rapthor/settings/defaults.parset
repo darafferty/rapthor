@@ -104,7 +104,7 @@ use_image_based_predict = False
 # that fainter calibrators get more smoothing, can be set in a similar way
 # (default = 3).
 #
-# Note: direction-dependent solutions intervals are not currently supported;
+# Note: direction-dependent solution intervals are not currently supported;
 # they will be re-enabled in a future update.
 dd_interval_factor = 1
 dd_smoothness_factor = 3
@@ -149,22 +149,22 @@ bda_frequencybase = 20000.0
 
 
 [imaging]
-# Imaging parameters: pixel size in arcsec (default = 1.25, suitable for HBA
-# data), Briggs robust parameter (default = -0.5), min and max uv distance in
-# lambda (default = 0, none), cleaning gain (default = 0.8), taper in arcsec
-# (default = none), local rms parameters (defaults = 0.8, 50, and "rms-with-min"
+# Imaging parameters: pixel size in arcsec (default = 1.5, suitable for HBA
+# data), Briggs robust parameter (default = -0.65), min and max uv distance in
+# lambda (default = 80), cleaning gain (default = 0.8), taper in arcsec
+# (default = none), local rms parameters (defaults = 0.8, 50, and "rms"
 # for the strength, window, and method, respectively), whether multiscale
 # clean should be used (default = True), and the baseline-dependent averaging
 # (BDA) timebase value in m (default = 20000)
-cellsize_arcsec = 1.25
-robust = -0.5
-min_uv_lambda = 0.0
+cellsize_arcsec = 1.5
+robust = -0.65
+min_uv_lambda = 80.0
 max_uv_lambda = 1e6
 mgain = 0.8
 taper_arcsec = 0.0
 local_rms_strength = 0.8
 local_rms_window = 50
-local_rms_method = rms-with-min
+local_rms_method = rms
 do_multiscale_clean = True
 bda_timebase = 20000.0
 
