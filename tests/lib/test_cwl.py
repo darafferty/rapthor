@@ -18,6 +18,22 @@ def generate_keyword_combinations(params_pool):
         if allow_combination(params := dict(zip(params_pool, values))):
             yield params
 
+    # Add a single test case using sofia as source finder
+    yield {
+        "apply_screens": False,
+        "use_facets": True,
+        "peel_bright_sources": True,
+        "max_cores": None,
+        "use_mpi": False,
+        "make_image_cube": True,
+        "normalize_flux_scale": True,
+        "preapply_dde_solutions": False,
+        "save_source_list": True,
+        "compress_images": False,
+        "filter_by_mask": True,
+        "source_finder": "sofia"
+    }
+
 
 def allow_combination(params):
     if params.get("use_facets") and params.get("apply_screens"):
@@ -201,8 +217,8 @@ class TestImageWorkflow:
             "preapply_dde_solutions": (False, True),
             "save_source_list": (False, True),
             "compress_images": (False, True),
-        }
-        ))
+        })
+    )
     def params(self, request):
         return request.param
 
