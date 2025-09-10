@@ -215,7 +215,7 @@ class TestImageWorkflow:
         write_parset(self.template, params, working_dir, parset)
 
         if self.sub_template:
-            sub_parset = working_dir / "pipeline_parset.cwl"
+            sub_parset = working_dir / "subpipeline_parset.cwl"
             write_parset(self.sub_template, params, working_dir, sub_parset)
 
         return parset
