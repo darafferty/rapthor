@@ -211,7 +211,6 @@ class TestImageWorkflow:
 
     def create_parsets(self, working_dir, params):
 
-        # for pipeline in ("sub_", ""):
         parset = working_dir / "pipeline_parset.cwl"
         write_parset(self.template, params, working_dir, parset)
 
