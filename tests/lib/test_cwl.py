@@ -3,58 +3,79 @@ Test module for testing the CWL workflows _generated_ by the pipeline
 """
 
 import subprocess
+import itertools as itt
 from pathlib import Path
 
 import pytest
 from rapthor.lib.operation import DIR, env_parset
 
 
-def generate_and_validate(tmp_path, operation, parms, templ, sub_templ=None):
-    """
-    Generate a CWL workflow using `templ`, and sub-workflow if `sub_templ` is
-    given, the same way that `rapthor.lib.operation.Operation.setup()` does
-    this. Validate the workflow file using `cwltool`.
-    """
-    if parms.get("use_facets") and parms.get("apply_screens"):
-        pytest.skip("'use_facets' and 'apply_screens' cannot both be enabled")
+PIPELINE_PATH = Path(DIR, "..", "pipeline").resolve()
 
-    if parms.get("normalize_flux_scale") and not parms.get("make_image_cube"):
-        pytest.skip(
-            "'normalize_flux_scale' must be used with 'make_image_cube'"
-        )
-    if (parms.get("use_facets") or parms.get("apply_screens")) and parms.get(
-        "preapply_dde_solutions"
-    ):
-        pytest.skip(
-            "'preapply_dde_solutions' cannot be used with 'use_facets' or "
-            "'apply_screens'"
-        )
+
+def generate_keyword_combinations(params_pool):
+    for values in itt.product(*params_pool.values()):
+        if allow_combination(params := dict(zip(params_pool, values))):
+            yield params
+
+
+def allow_combination(params):
+    if params.get("use_facets") and params.get("apply_screens"):
+        # 'use_facets' and 'apply_screens' cannot both be enabled
+        return False
+
+    if params.get("normalize_flux_scale") and not params.get("make_image_cube"):
+        # 'normalize_flux_scale' must be used with 'make_image_cube'
+        return False
+
+    if (params.get("use_facets") or params.get("apply_screens")) and params.get("preapply_dde_solutions"):
+        # 'preapply_dde_solutions' cannot be used with 'use_facets' or 'apply_screens'
+        return False
+
+    return True
+
+
+def generate_and_validate(tmp_path, operation, params, template, sub_template=None):
+
     pipeline_working_dir = tmp_path / "pipelines" / operation
+    parset_path = create_parsets(pipeline_working_dir, params, template, sub_template)
+
+    validate(params, parset_path)
+
+
+def create_parsets(pipeline_working_dir, params, template, sub_template):
+
     pipeline_working_dir.mkdir(parents=True, exist_ok=True)
-    parset = pipeline_working_dir / "pipeline_parset.cwl"
-    sub_parset = pipeline_working_dir / "subpipeline_parset.cwl"
-    rapthor_pipeline_dir = (Path(DIR) / "../pipeline").resolve()
-    parset.write_text(
-        templ.render(
-            parms,
+
+    parset_path = pipeline_working_dir / "pipeline_parset.cwl"
+    write_parset(template, params, pipeline_working_dir, parset_path)
+
+    if sub_template:
+        sub_parset_path = pipeline_working_dir / "subpipeline_parset.cwl"
+        write_parset(sub_template, params, pipeline_working_dir, sub_parset_path)
+
+    return parset_path
+
+
+def write_parset(template, params, pipeline_working_dir, output_path):
+
+    output_path.write_text(
+        template.render(
+            params,
             pipeline_working_dir=pipeline_working_dir,
-            rapthor_pipeline_dir=rapthor_pipeline_dir,
+            rapthor_pipeline_dir=PIPELINE_PATH,
         )
     )
-    if sub_templ:
-        sub_parset.write_text(
-            sub_templ.render(
-                parms,
-                pipeline_working_dir=pipeline_working_dir,
-                rapthor_pipeline_dir=rapthor_pipeline_dir,
-            )
-        )
+
+
+def validate(params, parset_path):
+    """
+    Validate the workflow file using `cwltool` in a subprocess call.
+    """
     try:
-        subprocess.run(
-            ["cwltool", "--validate", "--enable-ext", parset], check=True
-        )
+        subprocess.run(["cwltool", "--validate", "--enable-ext", parset_path], check=True)
     except subprocess.CalledProcessError as err:
-        raise AssertionError(f"FAILED with parameters: {parms}") from err
+        raise AssertionError(f"FAILED with parameters: {params}") from err
 
 
 @pytest.mark.parametrize("max_cores", (None, 8))
@@ -110,11 +131,11 @@ def test_calibrate_di_workflow(
     template. Parameters were taken from `CalibrateDI.set_parset_parameters()`.
     """
     operation = "calibrate_di"
-    templ = env_parset.get_template("calibrate_di_pipeline.cwl")
+    template = env_parset.get_template("calibrate_di_pipeline.cwl")
     parms = {
         "max_cores": max_cores,
     }
-    generate_and_validate(tmp_path, operation, parms, templ)
+    generate_and_validate(tmp_path, operation, parms, template)
 
 
 @pytest.mark.parametrize("max_cores", (None, 8))
@@ -125,11 +146,11 @@ def test_predict_workflow(tmp_path, max_cores):
     Parameters were taken from `PredictDD.set_parset_parameters()`.
     """
     operation = "predict"
-    templ = env_parset.get_template("predict_pipeline.cwl")
+    template = env_parset.get_template("predict_pipeline.cwl")
     parms = {
         "max_cores": max_cores,
     }
-    generate_and_validate(tmp_path, operation, parms, templ)
+    generate_and_validate(tmp_path, operation, parms, template)
 
 
 @pytest.mark.parametrize("max_cores", (None, 8))
@@ -140,11 +161,11 @@ def test_predict_di_workflow(tmp_path, max_cores):
     Parameters were taken from `PredictDI.set_parset_parameters()`.
     """
     operation = "predict_di"
-    templ = env_parset.get_template("predict_di_pipeline.cwl")
+    template = env_parset.get_template("predict_di_pipeline.cwl")
     parms = {
         "max_cores": max_cores,
     }
-    generate_and_validate(tmp_path, operation, parms, templ)
+    generate_and_validate(tmp_path, operation, parms, template)
 
 
 @pytest.mark.parametrize("max_cores", (None, 8))
@@ -155,64 +176,54 @@ def test_predict_nc_workflow(tmp_path, max_cores):
     Parameters were taken from `PredictNC.set_parset_parameters()`.
     """
     operation = "predict_nc"
-    templ = env_parset.get_template("predict_nc_pipeline.cwl")
+    template = env_parset.get_template("predict_nc_pipeline.cwl")
     parms = {
         "max_cores": max_cores,
     }
-    generate_and_validate(tmp_path, operation, parms, templ)
+    generate_and_validate(tmp_path, operation, parms, template)
 
 
-@pytest.mark.slow
-@pytest.mark.parametrize("apply_screens", (False, True))
-@pytest.mark.parametrize("use_facets", (False, True))
-@pytest.mark.parametrize("peel_bright_sources", (False, True))
-@pytest.mark.parametrize("max_cores", (None, 8))
-@pytest.mark.parametrize("use_mpi", (False, True))
-@pytest.mark.parametrize("make_image_cube", (False, True))
-@pytest.mark.parametrize("normalize_flux_scale", (False, True))
-@pytest.mark.parametrize("preapply_dde_solutions", (False, True))
-@pytest.mark.parametrize("save_source_list", (False, True))
-@pytest.mark.parametrize("compress_images", (False, True))
-@pytest.mark.parametrize("filter_by_mask", (True,))
-@pytest.mark.parametrize("source_finder", ("bdsf", ))
-def test_image_workflow(
-    tmp_path,
-    apply_screens,
-    use_facets,
-    peel_bright_sources,
-    max_cores,
-    use_mpi,
-    make_image_cube,
-    normalize_flux_scale,
-    preapply_dde_solutions,
-    save_source_list,
-    compress_images,
-    filter_by_mask,
-    source_finder,
-):
-    """
-    Test the Image workflow, using all possible combinations of parameters that
-    control the way the CWL workflow is generated from the template. Parameters
-    were taken from `Image.set_parset_parameters()`.
-    """
+class TestImageWorkflow:
+
     operation = "image"
-    templ = env_parset.get_template("image_pipeline.cwl")
-    sub_templ = env_parset.get_template("image_sector_pipeline.cwl")
-    parms = {
-        "apply_screens": apply_screens,
-        "use_facets": use_facets,
-        "peel_bright_sources": peel_bright_sources,
-        "max_cores": max_cores,
-        "use_mpi": use_mpi,
-        "make_image_cube": make_image_cube,
-        "normalize_flux_scale": normalize_flux_scale,
-        "preapply_dde_solutions": preapply_dde_solutions,
-        "save_source_list": save_source_list,
-        "compress_images": compress_images,
-        "filter_by_mask": filter_by_mask,
-        "source_finder": source_finder,
-    }
-    generate_and_validate(tmp_path, operation, parms, templ, sub_templ)
+    template = env_parset.get_template("image_pipeline.cwl")
+    sub_template = env_parset.get_template("image_sector_pipeline.cwl")
+
+    @pytest.fixture(
+        params=generate_keyword_combinations({
+            "apply_screens": (False, True),
+            "use_facets": (False, True),
+            "peel_bright_sources": (False, True),
+            "max_cores": (None, 8),
+            "use_mpi": (False, True),
+            "make_image_cube": (False, True),
+            "normalize_flux_scale": (False, True),
+            "preapply_dde_solutions": (False, True),
+            "save_source_list": (False, True),
+            "compress_images": (False, True),
+        }
+        ))
+    def params(self, request):
+        return request.param
+
+    @pytest.fixture()
+    def parset(self, params, tmp_path):
+        """
+        Generate a CWL workflow using `template`, and sub-workflow if
+        `sub_template` is given, the same way that
+        `rapthor.lib.operation.Operation.setup()` does this.
+        """
+        pipeline_working_dir = tmp_path / "pipelines" / self.operation
+        return create_parsets(pipeline_working_dir, params, 
+                              self.template, self.sub_template)
+
+    def test_image_workflow(self, params, parset):
+        """
+        Test the Image workflow, using all possible combinations of parameters
+        that control the way the CWL workflow is generated from the template.
+        Parameters were taken from `Image.set_parset_parameters()`.
+        """
+        validate(params, parset)
 
 
 @pytest.mark.parametrize("max_cores", (None, 8))
@@ -227,11 +238,11 @@ def test_mosaic_workflow(
     Parameters were taken from `Mosaic.set_parset_parameters()`.
     """
     operation = "mosaic"
-    templ = env_parset.get_template("mosaic_pipeline.cwl")
-    sub_templ = env_parset.get_template("mosaic_type_pipeline.cwl")
+    template = env_parset.get_template("mosaic_pipeline.cwl")
+    sub_template = env_parset.get_template("mosaic_type_pipeline.cwl")
     parms = {
         "max_cores": max_cores,
         "skip_processing": skip_processing,
         "compress_images": compress_images,
     }
-    generate_and_validate(tmp_path, operation, parms, templ, sub_templ)
+    generate_and_validate(tmp_path, operation, parms, template, sub_template)
