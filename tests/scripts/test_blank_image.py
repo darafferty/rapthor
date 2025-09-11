@@ -17,7 +17,6 @@ def test_main(tmp_path):
     reference_dec_deg = 41.269  # Example Dec in degrees
     cellsize_deg = 0.001  # Example cell size in degrees
     imsize = "100,100"  # Example image size
-    region_file = "[]"  # No region file for this test
     main(
         output_image_file,
         input_image_file,
@@ -26,5 +25,4 @@ def test_main(tmp_path):
         reference_dec_deg=reference_dec_deg,
         cellsize_deg=cellsize_deg,
         imsize=imsize,
-        region_file=region_file,
     )
