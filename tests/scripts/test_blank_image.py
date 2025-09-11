@@ -2,7 +2,6 @@
 Tests for the blank_image script.
 """
 
-import pytest
 from rapthor.scripts.blank_image import main
 
 

@@ -6,10 +6,8 @@ a clean mask
 import logging
 from argparse import ArgumentParser, RawTextHelpFormatter
 
-import numpy as np
 from astropy import wcs
 from astropy.io import fits as pyfits
-from lsmtool.io import read_vertices_ra_dec
 from lsmtool.utils import rasterize
 
 from rapthor.lib import miscellaneous as misc
