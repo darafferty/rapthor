@@ -255,9 +255,9 @@ inputs:
   - id: bda_maxinterval
     label: BDA maxinterval
     doc: |
-      The maximum interval duration (in time slots) over which BDA time averaging is
+      The maximum interval duration (in sec) over which BDA time averaging is
       done in the calibration (length = n_obs * n_time_chunks).
-    type: int[]
+    type: float[]
 
   - id: bda_minchannels
     label: BDA minchannels

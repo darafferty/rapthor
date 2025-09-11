@@ -219,8 +219,8 @@ inputs:
   - id: maxinterval
     label: BDA maxinterval
     doc: |
-      The maximum interval duration (in time slots) over which BDA time averaging is done.
-    type: int?
+      The maximum interval duration (in sec) over which BDA time averaging is done.
+    type: float?
     inputBinding:
       prefix: avg.maxinterval=
       separate: False
