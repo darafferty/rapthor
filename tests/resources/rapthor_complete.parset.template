@@ -66,6 +66,7 @@ do_multiscale_clean = False
 bda_timebase = 10000.0
 dde_method = single
 filter_skymodel = False
+source_finder = bdsf
 save_visibilities = True
 save_supplementary_images = True
 compress_selfcal_images = False

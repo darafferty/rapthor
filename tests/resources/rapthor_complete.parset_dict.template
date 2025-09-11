@@ -60,6 +60,7 @@
                       'dd_psf_grid': [2, 2],
                       'dde_method': 'single',
                       'filter_skymodel': False,
+                      'source_finder': 'bdsf',
                       'do_multiscale_clean': False,
                       'grid_center_dec': 35.50875555555555,
                       'grid_center_ra': 220.25785,
