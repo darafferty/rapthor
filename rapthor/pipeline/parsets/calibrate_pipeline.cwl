@@ -637,8 +637,6 @@ steps:
       - id: normalize_h5parm
         source: normalize_h5parm
 {% endif %}
-      - id: ddecal_normalize_h5parm
-        source: normalize_h5parm
       - id: timebase
         source: bda_timebase
       - id: maxinterval
@@ -668,6 +666,8 @@ steps:
 {% endif %}
       - id: numthreads
         source: max_threads
+      - id: solve1_normalize_h5parm
+        source: normalize_h5parm
       - id: solve1_h5parm
         source: output_fast_h5parm
       - id: solve1_solint
@@ -725,6 +725,8 @@ steps:
 {% else %}
         valueFrom: '[solve1.*]'
 {% endif %}
+      - id: solve2_normalize_h5parm
+        source: normalize_h5parm
       - id: solve2_h5parm
         source: output_slow_h5parm
       - id: solve2_solint
