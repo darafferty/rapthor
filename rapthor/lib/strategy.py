@@ -120,6 +120,7 @@ def set_selfcal_strategy(field):
         strategy_steps[i]['max_normalization_delta'] = 0.3
         strategy_steps[i]['scale_normalization_delta'] = True
         strategy_steps[i]['fast_timestep_sec'] = 32.0
+        strategy_steps[i]['medium_timestep_sec'] = 120.0
         strategy_steps[i]['slow_timestep_sec'] = 600.0
 
         if i == 0:

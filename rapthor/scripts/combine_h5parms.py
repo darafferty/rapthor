@@ -259,6 +259,52 @@ def combine_phase1_amp1_amp2(ss1, ss2, sso):
     return sso
 
 
+def combine_phase1_phase2_scalar(ss1, ss2, sso):
+    """
+    Take phases from 1 and phases from 2 (phases 2 are interpolated to time
+    grid of 1 and summed)
+
+    Parameters
+    ----------
+    ss1 : solset
+        Solution set #1
+    ss2 : solset
+        Solution set #2
+    sso : solset
+        Output solution set
+
+    Returns
+    -------
+    sso : solset
+        Updated output solution set
+    """
+    # First, copy phases from 1
+    ss1.obj._f_copy_children(sso.obj, recursive=True, overwrite=True)
+
+    # Next, make the axes and their values for the output soltab
+    st1 = ss1.getSoltab('phase000')
+    st2 = ss2.getSoltab('phase000')
+    axes_names = st1.getAxesNames()
+    axes_vals = []
+    for axis in axes_names:
+        axis_vals = st1.getAxisValues(axis)
+        axes_vals.append(axis_vals)
+    axes_shapes = [len(axis) for axis in axes_vals]
+
+    # Average and interpolate the slow phases, then add them to the fast ones
+    vals, weights = interpolate_solutions(st1, st2, axes_shapes, slow_vals=vals,
+                                          slow_weights=weights)
+    vals += st1.val
+    weights *= st1.weight
+    if 'phase000' in sso.getSoltabNames():
+        st = sso.getSoltab('phase000')
+        st.delete()
+    sto = sso.makeSoltab(soltype='phase', soltabName='phase000', axesNames=axes_names,
+                         axesVals=axes_vals, vals=vals, weights=weights)
+
+    return sso
+
+
 def combine_phase1_phase2_amp2(ss1, ss2, sso):
     """
     Take phases from 1 and phases and amplitudes from 2 (phases 2 are averaged
@@ -521,6 +567,10 @@ def main(h5parm1, h5parm2, outh5parm, mode, solset1='sol000', solset2='sol000',
             if mode == 'p1a2':
                 # Take phases from 1 and amplitudes from 2
                 sso = combine_phase1_amp2(ss1, ss2, sso)
+
+            if mode == 'p1p2_scalar':
+                # Take phases from 1 and phases from 2
+                sso = combine_phase1_phase2_scalar(ss1, ss2, sso)
 
             elif mode == 'p1a1a2':
                 # Take phases and amplitudes from 1 and amplitudes from 2
