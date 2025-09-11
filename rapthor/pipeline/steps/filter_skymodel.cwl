@@ -108,7 +108,6 @@ inputs:
     type: string
     inputBinding:
       prefix: --source_finder=
-      valueFrom: "$(['bdsf', 'sofia'])"
       separate: False
   - id: ncores
     type: int

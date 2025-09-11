@@ -19,7 +19,7 @@ iers.conf.auto_download = False
 def main(flat_noise_image, true_sky_image, true_sky_skymodel, apparent_sky_skymodel,
          output_root, vertices_file, beamMS, bright_true_sky_skymodel=None, threshisl=5.0,
          threshpix=7.5, rmsbox=(150, 50), rmsbox_bright=(35, 7), adaptive_thresh=75.0,
-         filter_by_mask=True, ncores=8):
+         filter_by_mask=True, ncores=8, source_finder='bdsf'):
     """
     Filter the input sky model
 
@@ -80,6 +80,8 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, apparent_sky_skymo
         removing sources that lie in unmasked regions
     ncores : int, optional
         Maximum number of cores to use
+    source_finder : str, optional
+        The source finder to use, either "sofia" or "bdsf"
     """
     # Check that the true- and apparent-sky models exist (they may have been
     # set in the CWL workflow to dummy names; the bright-sky model will never
@@ -100,7 +102,7 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, apparent_sky_skymo
         output_flat_noise_rms=f'{output_root}.flat_noise_rms.fits',
         output_true_rms=f'{output_root}.true_sky_rms.fits',
         output_catalog=f'{output_root}.source_catalog.fits',
-        source_finder='bdsf',
+        source_finder=source_finder,
         thresh_isl=threshisl,
         thresh_pix=threshpix,
         rmsbox=rmsbox,
@@ -141,6 +143,7 @@ if __name__ == '__main__':
     parser.add_argument('--filter_by_mask', help='Filter sources by mask',
                         type=ast.literal_eval, default=True)
     parser.add_argument('--ncores', help='Max number of cores to use', type=int, default=8)
+    parser.add_argument('--source_finder', help='Source finder to use, either "sofia" or "bdsf"', type=str, default='bdsf'}
 
     args = parser.parse_args()
     main(args.flat_noise_image, args.true_sky_image, args.true_sky_skymodel,
@@ -149,4 +152,4 @@ if __name__ == '__main__':
          bright_true_sky_skymodel=args.bright_true_sky_skymodel, threshisl=args.threshisl,
          threshpix=args.threshpix, rmsbox=args.rmsbox, rmsbox_bright=args.rmsbox_bright,
          adaptive_thresh=args.adaptive_thresh, filter_by_mask=args.filter_by_mask,
-         ncores=args.ncores)
+         ncores=args.ncores, source_finder=args.source_finder)
