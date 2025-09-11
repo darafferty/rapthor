@@ -143,7 +143,7 @@ if __name__ == '__main__':
     parser.add_argument('--filter_by_mask', help='Filter sources by mask',
                         type=ast.literal_eval, default=True)
     parser.add_argument('--ncores', help='Max number of cores to use', type=int, default=8)
-    parser.add_argument('--source_finder', help='Source finder to use, either "sofia" or "bdsf"', type=str, default='bdsf'}
+    parser.add_argument('--source_finder', help='Source finder to use, either "sofia" or "bdsf"', type=str, default='bdsf')
 
     args = parser.parse_args()
     main(args.flat_noise_image, args.true_sky_image, args.true_sky_skymodel,
