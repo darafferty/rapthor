@@ -9,6 +9,7 @@ from argparse import ArgumentParser, RawTextHelpFormatter
 from astropy import wcs
 from astropy.io import fits as pyfits
 from lsmtool.utils import rasterize
+from lsmtool.io import read_vertices
 
 from rapthor.lib import miscellaneous as misc
 
@@ -57,7 +58,7 @@ def main(output_image, input_image=None, vertices_file=None, reference_ra_deg=No
             header = pyfits.getheader(output_image, 0)
         else:
             header = pyfits.getheader(input_image, 0)
-        vertices = misc.read_vertices(vertices_file, wcs.WCS(header))
+        vertices = read_vertices(vertices_file, wcs.WCS(header))
 
         if make_blank_image:
             hdu = pyfits.open(output_image, memmap=False)

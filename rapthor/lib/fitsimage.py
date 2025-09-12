@@ -8,7 +8,7 @@ from pathlib import Path
 import numpy as np
 from astropy.io import fits as pyfits
 from astropy.wcs import WCS
-from lsmtool.io import read_vertices_ra_dec
+from lsmtool.io import read_vertices
 from lsmtool.utils import rasterize
 from shapely.geometry import Polygon
 
@@ -150,7 +150,7 @@ class FITSImage(object):
         # Construct polygon
         if vertices_file is None:
             vertices_file = self.vertices_file
-        vertices = misc.read_vertices(vertices_file, WCS(self.header))
+        vertices = read_vertices(vertices_file, WCS(self.header))
         poly = Polygon(vertices)
         poly_padded = poly.buffer(2)
         vertices = list(zip(poly_padded.exterior.coords.xy[0].tolist(),
