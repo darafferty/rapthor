@@ -202,7 +202,8 @@ class Observation(object):
             self.high_el_endtime = self.endtime
 
     def set_calibration_parameters(self, parset, ndir, nobs, calibrator_fluxes,
-                                   target_fast_timestep, target_slow_timestep,
+                                   target_fast_timestep, target_medium_timestep,
+                                   target_slow_timestep,
                                    target_fulljones_timestep, target_flux=None):
         """
         Sets the calibration parameters

@@ -60,7 +60,7 @@ class CalibrateDD(Operation):
         solint_medium_timestep = self.field.get_obs_parameters('solint_medium_timestep')
         solint_slow_timestep = self.field.get_obs_parameters('solint_slow_timestep')
         solint_fast_freqstep = self.field.get_obs_parameters('solint_fast_freqstep')
-        solint_medium_freqstep = self.field.get_obs_parameters('solint_mediumfreqstep')
+        solint_medium_freqstep = self.field.get_obs_parameters('solint_medium_freqstep')
         solint_slow_freqstep = self.field.get_obs_parameters('solint_slow_freqstep')
 
         # Get the number of solutions per direction
