@@ -748,16 +748,6 @@ inputs:
       prefix: solve2.reusemodel=
       separate: False
 
-  - id: solve2_reusemodel
-    label: Reuse model list
-    doc: |
-      A list of model data columns that will be reused from an earlier
-      step for solve2.
-    type: string?
-    inputBinding:
-      prefix: solve2.reusemodel=
-      separate: False
-
   - id: solve3_normalize_h5parm
     label: Filename of h5parm
     doc: |
@@ -1015,16 +1005,6 @@ inputs:
       prefix: solve3.reusemodel=
       separate: False
 
-  - id: solve3_reusemodel
-    label: Reuse model list
-    doc: |
-      A list of model data columns that will be reused from an earlier
-      step for solve3.
-    type: string?
-    inputBinding:
-      prefix: solve3.reusemodel=
-      separate: False
-
   - id: solve4_normalize_h5parm
     label: Filename of h5parm
     doc: |
@@ -1270,16 +1250,6 @@ inputs:
     type: string?
     inputBinding:
       prefix: solve4.keepmodel=
-      separate: False
-
-  - id: solve4_reusemodel
-    label: Reuse model list
-    doc: |
-      A list of model data columns that will be reused from an earlier
-      step for solve4.
-    type: string?
-    inputBinding:
-      prefix: solve4.reusemodel=
       separate: False
 
   - id: solve4_reusemodel

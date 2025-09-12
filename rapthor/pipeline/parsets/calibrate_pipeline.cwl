@@ -1206,7 +1206,7 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/combine_h5parms.cwl
     in:
       - id: inh5parm1
-        source: combine_fast_medium1_h5parms/outh5parm
+        source: combine_fast_medium1_h5parms/combinedh5parm
       - id: inh5parm2
         source: combine_medium2_phases/outh5parm
       - id: outh5parm
