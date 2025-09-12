@@ -858,7 +858,7 @@ steps:
       - id: solve2_normalize_h5parm
         source: normalize_h5parm
       - id: solve2_h5parm
-        source: output_fast_h5parm
+        source: output_medium1_h5parm
       - id: solve2_solint
         source: solint_fast_timestep
       - id: solve2_mode
@@ -963,7 +963,7 @@ steps:
       - id: solve4_normalize_h5parm
         source: normalize_h5parm
       - id: solve4_h5parm
-        source: output_fast_h5parm
+        source: output_medium2_h5parm
       - id: solve4_solint
         source: solint_fast_timestep
       - id: solve4_mode
@@ -1231,7 +1231,7 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/combine_h5parms.cwl
     in:
       - id: inh5parm1
-        source: combine_fast_medium1_medium2_h5parms/outh5parm
+        source: combine_fast_medium1_medium2_h5parms/combinedh5parm
       - id: inh5parm2
         source: process_slow_gains/outh5parm
       - id: outh5parm
