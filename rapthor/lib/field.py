@@ -106,7 +106,8 @@ class Field(object):
         self.selfcal_state = None
 
         # Set strategy parameter defaults
-        self.fast_timestep_sec = 8.0
+        self.fast_timestep_sec = 32.0
+        self.medium_timestep_sec = 120.0
         self.slow_timestep_sec = 600.0
         self.convergence_ratio = 0.95
         self.divergence_ratio = 1.1
@@ -363,6 +364,7 @@ class Field(object):
         for obs in self.observations:
             obs.set_calibration_parameters(self.parset, self.num_patches, len(self.observations),
                                            self.calibrator_fluxes, self.fast_timestep_sec,
+                                           self.medium_timestep_sec,
                                            self.slow_timestep_sec, self.fulljones_timestep_sec,
                                            self.target_flux)
             ntimechunks += obs.ntimechunks

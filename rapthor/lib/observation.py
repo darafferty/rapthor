@@ -219,6 +219,8 @@ class Observation(object):
             List of calibrator apparent flux densities in Jy
         target_fast_timestep : float
             Target solution interval for fast solves in sec
+        target_medium_timestep : float
+            Target solution interval for medium solves in sec
         target_slow_timestep : float
             Target solution interval for slow solves in sec
         target_fulljones_timestep : float
