@@ -909,7 +909,7 @@ steps:
       - id: solve2_keepmodel
         valueFrom: 'True'
       - id: solve3_reusemodel
-        valueFrom: '[solve2.*]'
+        valueFrom: '[solve1.*]'
       - id: solve3_normalize_h5parm
         source: normalize_h5parm
       - id: solve3_h5parm
@@ -959,7 +959,7 @@ steps:
       - id: solve3_keepmodel
         valueFrom: 'True'
       - id: solve4_reusemodel
-        valueFrom: '[solve3.*]'
+        valueFrom: '[solve1.*]'
       - id: solve4_normalize_h5parm
         source: normalize_h5parm
       - id: solve4_h5parm
@@ -1050,6 +1050,8 @@ steps:
         source: combine_fast_phases/outh5parm
       - id: soltype
         valueFrom: 'phase'
+      - id: root
+        valueFrom: 'fast_phase_'
     out:
       - id: plots
 
@@ -1077,6 +1079,8 @@ steps:
         source: combine_medium1_phases/outh5parm
       - id: soltype
         valueFrom: 'phase'
+      - id: root
+        valueFrom: 'medium1_phase_'
     out:
       - id: plots
 
@@ -1155,6 +1159,8 @@ steps:
         source: process_slow_gains/outh5parm
       - id: soltype
         valueFrom: 'phase'
+      - id: root
+        valueFrom: 'slow_phase_'
     out:
       - id: plots
 
@@ -1168,6 +1174,8 @@ steps:
         source: process_slow_gains/outh5parm
       - id: soltype
         valueFrom: 'amplitude'
+      - id: root
+        valueFrom: 'slow_amplitude_'
     out:
       - id: plots
 
@@ -1195,6 +1203,8 @@ steps:
         source: combine_medium2_phases/outh5parm
       - id: soltype
         valueFrom: 'phase'
+      - id: root
+        valueFrom: 'medium2_phase_'
     out:
       - id: plots
 
