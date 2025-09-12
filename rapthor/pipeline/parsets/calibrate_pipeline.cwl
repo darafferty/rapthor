@@ -249,7 +249,7 @@ inputs:
   - id: combined_medium1_h5parm
     label: Combined medium output solution table
     doc: |
-      The filename of the output combined h5parm solution table for the medium phase solve
+      The filename of the output combined h5parm solution table for the medium1 phase solve
       (length = 1).
     type: string
 
@@ -539,6 +539,13 @@ inputs:
       The filename of the input h5parm solution table to use for the medium2-phase
       initial solutions (length = 1).
     type: File?
+
+  - id: combined_medium2_h5parm
+    label: Combined medium output solution table
+    doc: |
+      The filename of the output combined h5parm solution table for the medium2 phase solve
+      (length = 1).
+    type: string
 
   - id: max_normalization_delta
     label: Maximum normalization delta
