@@ -1314,11 +1314,29 @@ outputs:
   - id: output_h5parm2
     label: Solution table
     doc: |
-      The filename of the output solution table of solve1. The value is taken from the input
+      The filename of the output solution table of solve2. The value is taken from the input
       parameter "solve2_h5parm".
     type: File?
     outputBinding:
       glob: $(inputs.solve2_h5parm)
+
+  - id: output_h5parm3
+    label: Solution table
+    doc: |
+      The filename of the output solution table of solve3. The value is taken from the input
+      parameter "solve3_h5parm".
+    type: File?
+    outputBinding:
+      glob: $(inputs.solve3_h5parm)
+
+  - id: output_h5parm4
+    label: Solution table
+    doc: |
+      The filename of the output solution table of solve4. The value is taken from the input
+      parameter "solve4_h5parm".
+    type: File?
+    outputBinding:
+      glob: $(inputs.solve4_h5parm)
 
 hints:
   - class: DockerRequirement

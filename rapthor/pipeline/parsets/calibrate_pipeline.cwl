@@ -662,6 +662,7 @@ outputs:
   - id: medium2_phase_plots
     outputSource:
       - plot_medium2_phase_solutions/plots
+    type: File[]
 {% endif %}
 
 
