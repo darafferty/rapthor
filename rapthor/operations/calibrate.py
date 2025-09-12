@@ -170,9 +170,9 @@ class CalibrateDD(Operation):
                 dp3_steps = ['avg', 'solve1', 'solve2', 'null']
         else:
             if self.field.do_slowgain_solve:
-                dp3_steps = ['solve1', 'solve2']
+                dp3_steps = ['solve1', 'solve2', 'solve3', 'solve4']
             else:
-                dp3_steps = ['solve1']
+                dp3_steps = ['solve1', 'solve2']
         if self.field.use_image_based_predict:
             # Add a predict, applybeam, and applycal steps to the beginning
             dp3_steps = (['predict', 'applybeam', 'applycal'] if self.field.apply_normalizations else

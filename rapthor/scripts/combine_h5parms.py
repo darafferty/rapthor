@@ -292,8 +292,7 @@ def combine_phase1_phase2_scalar(ss1, ss2, sso):
     axes_shapes = [len(axis) for axis in axes_vals]
 
     # Average and interpolate the slow phases, then add them to the fast ones
-    vals, weights = interpolate_solutions(st1, st2, axes_shapes, slow_vals=vals,
-                                          slow_weights=weights)
+    vals, weights = interpolate_solutions(st1, st2, axes_shapes)
     vals += st1.val
     weights *= st1.weight
     if 'phase000' in sso.getSoltabNames():
@@ -542,7 +541,7 @@ def main(h5parm1, h5parm2, outh5parm, mode, solset1='sol000', solset2='sol000',
     cal_names = misc.string2list(cal_names)
     cal_fluxes = misc.string2list(cal_fluxes)
 
-    known_modes = ('p1a2', 'p1a1a2', 'p1p2a2', 'p1p2a2_diagonal', 'p1p2a2_scalar', 'separate')
+    known_modes = ('p1a2', 'p1p2_scalar', 'p1a1a2', 'p1p2a2', 'p1p2a2_diagonal', 'p1p2a2_scalar', 'separate')
     if mode not in known_modes:
         raise ValueError(f'Mode {mode} unknown. Supported modes are: {", ".join(known_modes)}')
 
