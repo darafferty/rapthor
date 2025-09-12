@@ -1004,7 +1004,7 @@ steps:
         source: fast_antennaconstraint
 {% endif %}
     scatter: [msin, starttime, ntimes, maxinterval,
-              solve1_h5parm, solve1_solint, solve1_nchan, solve1_smoothnessreffrequency, solve1_solutions_per_direction, solve1_smoothness_dd_factors
+              solve1_h5parm, solve1_solint, solve1_nchan, solve1_smoothnessreffrequency, solve1_solutions_per_direction, solve1_smoothness_dd_factors,
               solve2_h5parm, solve2_solint, solve2_nchan, solve2_smoothnessreffrequency, solve2_solutions_per_direction, solve2_smoothness_dd_factors,
 {% if do_slowgain_solve %}
               solve3_h5parm, solve3_solint, solve3_nchan, solve3_solutions_per_direction, solve3_smoothness_dd_factors,
@@ -1086,7 +1086,7 @@ steps:
       - id: outh5parm
         source: combined_fast_medium1_h5parm
       - id: mode
-        source: 'p1p2_scalar'
+        valueFrom: 'p1p2_scalar'
       - id: reweight
         valueFrom: 'False'
       - id: calibrator_names
@@ -1204,7 +1204,7 @@ steps:
       - id: outh5parm
         source: combined_fast_medium1_medium2_h5parm
       - id: mode
-        source: 'p1p2_scalar'
+        valueFrom: 'p1p2_scalar'
       - id: reweight
         valueFrom: 'False'
       - id: calibrator_names
