@@ -375,6 +375,13 @@ inputs:
       initial solutions (length = 1).
     type: File?
 
+  - id: medium1_initialsolutions_h5parm
+    label: Input solution table
+    doc: |
+      The filename of the input h5parm solution table to use for the medium1-phase
+      initial solutions (length = 1).
+    type: File?
+
   - id: solveralgorithm
     label: Solver algorithm
     doc: |
@@ -524,6 +531,13 @@ inputs:
     doc: |
       The filename of the input h5parm solution table to use for the
       slow-gain initial solutions (length = 1).
+    type: File?
+
+  - id: medium2_initialsolutions_h5parm
+    label: Input solution table
+    doc: |
+      The filename of the input h5parm solution table to use for the medium2-phase
+      initial solutions (length = 1).
     type: File?
 
   - id: max_normalization_delta
@@ -852,7 +866,7 @@ steps:
       - id: solve2_propagatesolutions
         source: propagatesolutions
       - id: solve2_initialsolutions_h5parm
-        source: fast_initialsolutions_h5parm
+        source: medium1_initialsolutions_h5parm
       - id: solve2_initialsolutions_soltab
         valueFrom: '[phase000]'
       - id: solve2_solveralgorithm
@@ -957,7 +971,7 @@ steps:
       - id: solve4_propagatesolutions
         source: propagatesolutions
       - id: solve4_initialsolutions_h5parm
-        source: fast_initialsolutions_h5parm
+        source: medium2_initialsolutions_h5parm
       - id: solve4_initialsolutions_soltab
         valueFrom: '[phase000]'
       - id: solve4_solveralgorithm

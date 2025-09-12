@@ -104,6 +104,8 @@ class Field(object):
         self.apply_fulljones = False
         self.apply_normalizations = False
         self.fast_phases_h5parm_filename = None
+        self.medium1_phases_h5parm_filename = None
+        self.medium2_phases_h5parm_filename = None
         self.slow_gains_h5parm_filename = None
         self.calibration_diagnostics = []
         self.selfcal_state = None

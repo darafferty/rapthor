@@ -203,6 +203,20 @@ class CalibrateDD(Operation):
         else:
             fast_initialsolutions_h5parm = None
         if (
+            self.field.medium1_phases_h5parm_filename is not None and
+            os.path.exists(self.field.medium1_phases_h5parm_filename)
+        ):
+            medium1_initialsolutions_h5parm = CWLFile(self.field.medium1_phases_h5parm_filename).to_json()
+        else:
+            medium1_initialsolutions_h5parm = None
+        if (
+            self.field.medium2_phases_h5parm_filename is not None and
+            os.path.exists(self.field.medium2_phases_h5parm_filename)
+        ):
+            medium2_initialsolutions_h5parm = CWLFile(self.field.medium2_phases_h5parm_filename).to_json()
+        else:
+            medium2_initialsolutions_h5parm = None
+        if (
             self.field.slow_gains_h5parm_filename is not None and
             os.path.exists(self.field.slow_gains_h5parm_filename)
         ):
@@ -255,7 +269,7 @@ class CalibrateDD(Operation):
                             'fast_smoothnessrefdistance': fast_smoothnessrefdistance,
                             'medium_smoothnessconstraint': medium_smoothnessconstraint,
                             'medium_smoothnessreffrequency': medium_smoothnessreffrequency,
-                            'medium_smoothnessrefdistance': mediuim_smoothnessrefdistance,
+                            'medium_smoothnessrefdistance': medium_smoothnessrefdistance,
                             'slow_smoothnessconstraint': slow_smoothnessconstraint,
                             'dp3_steps': f"[{','.join(dp3_steps)}]",
                             'ddecal_applycal_steps': ddecal_applycal_steps,
@@ -266,7 +280,8 @@ class CalibrateDD(Operation):
                             'bda_frequencybase': bda_frequencybase,
                             'normalize_h5parm': normalize_h5parm,
                             'fast_initialsolutions_h5parm': fast_initialsolutions_h5parm,
-                            'medium_initialsolutions_h5parm': medium_initialsolutions_h5parm,
+                            'medium1_initialsolutions_h5parm': medium1_initialsolutions_h5parm,
+                            'medium2_initialsolutions_h5parm': medium2_initialsolutions_h5parm,
                             'slow_initialsolutions_h5parm': slow_initialsolutions_h5parm,
                             'max_normalization_delta': max_normalization_delta,
                             'scale_normalization_delta': scale_normalization_delta,
@@ -435,6 +450,8 @@ class CalibrateDD(Operation):
         os.makedirs(dst_dir, exist_ok=True)
         self.field.h5parm_filename = os.path.join(dst_dir, 'field-solutions.h5')
         self.field.fast_phases_h5parm_filename = os.path.join(dst_dir, 'field-solutions-fast-phase.h5')
+        self.field.medium1_phases_h5parm_filename = os.path.join(dst_dir, 'field-solutions-medium1-phase.h5')
+        self.field.medium2_phases_h5parm_filename = os.path.join(dst_dir, 'field-solutions-medium2-phase.h5')
         self.field.slow_gains_h5parm_filename = os.path.join(dst_dir, 'field-solutions-slow-gain.h5')
         if os.path.exists(self.field.h5parm_filename):
             os.remove(self.field.h5parm_filename)
@@ -443,6 +460,10 @@ class CalibrateDD(Operation):
                         os.path.join(dst_dir, self.field.h5parm_filename))
             shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_slow_h5parm),
                         os.path.join(dst_dir, self.field.slow_gains_h5parm_filename))
+            shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_medium1_h5parm),
+                        os.path.join(dst_dir, self.field.medium1_phases_h5parm_filename))
+            shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_medium2_h5parm),
+                        os.path.join(dst_dir, self.field.medium2_phases_h5parm_filename))
             shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_fast_h5parm),
                         os.path.join(dst_dir, self.field.fast_phases_h5parm_filename))
         else:
