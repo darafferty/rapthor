@@ -6,10 +6,7 @@ a clean mask
 import logging
 from argparse import ArgumentParser, RawTextHelpFormatter
 
-from astropy import wcs
-from astropy.io import fits as pyfits
-from lsmtool.utils import rasterize
-from lsmtool.io import read_vertices
+from lsmtool.utils import rasterize_polygon_mask_exterior
 
 from rapthor.lib import miscellaneous as misc
 
@@ -54,20 +51,8 @@ def main(output_image, input_image=None, vertices_file=None, reference_ra_deg=No
 
     if vertices_file is not None:
         fitsfile = output_image if make_blank_image else input_image
-        mask_from_vertices(fitsfile, vertices_file, output_image)
+        rasterize_polygon_mask_exterior(fitsfile, vertices_file, output_image)
 
-
-def mask_from_vertices(fitsfile, vertices_file, output_image):
-    # Construct polygon
-    hdu = pyfits.open(fitsfile, memmap=False)
-    vertices = read_vertices(vertices_file, wcs.WCS(hdu[0].header))
-    data = hdu[0].data
-
-    # Rasterize the poly
-    data[0, 0, :, :] = rasterize(vertices, data[0, 0, :, :])
-
-    hdu[0].data = data
-    hdu.writeto(output_image, overwrite=True)
 
 
 if __name__ == '__main__':
