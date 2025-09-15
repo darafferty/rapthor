@@ -36,9 +36,8 @@ def main(output_image, input_image=None, vertices_file=None, reference_ra_deg=No
     imsize : int, optional
         Size of image as "xsize ysize"
     """
-    if input_image is None:
+    if make_blank_image := (input_image is None):
         print('Input image not given. Making empty image...')
-        make_blank_image = True
         if reference_ra_deg is not None and reference_dec_deg is not None:
             reference_ra_deg = float(reference_ra_deg)
             reference_dec_deg = float(reference_dec_deg)
@@ -49,28 +48,23 @@ def main(output_image, input_image=None, vertices_file=None, reference_ra_deg=No
                                      cellsize_deg=float(cellsize_deg), fill_val=1)
         else:
             raise ValueError('ERROR: a reference position must be given to make an empty template image')
-    else:
-        make_blank_image = False
 
     if vertices_file is not None:
-        # Construct polygon
-        if make_blank_image:
-            header = pyfits.getheader(output_image, 0)
-        else:
-            header = pyfits.getheader(input_image, 0)
-        vertices = read_vertices(vertices_file, wcs.WCS(header))
+        fitsfile = output_image if make_blank_image else input_image
+        mask_from_vertices(fitsfile, vertices_file, output_image)
 
-        if make_blank_image:
-            hdu = pyfits.open(output_image, memmap=False)
-        else:
-            hdu = pyfits.open(input_image, memmap=False)
-        data = hdu[0].data
 
-        # Rasterize the poly
-        data[0, 0, :, :] = rasterize(vertices, data[0, 0, :, :])
+def mask_from_vertices(fitsfile, vertices_file, output_image):
+    # Construct polygon
+    hdu = pyfits.open(fitsfile, memmap=False)
+    vertices = read_vertices(vertices_file, wcs.WCS(hdu[0].header))
+    data = hdu[0].data
 
-        hdu[0].data = data
-        hdu.writeto(output_image, overwrite=True)
+    # Rasterize the poly
+    data[0, 0, :, :] = rasterize(vertices, data[0, 0, :, :])
+
+    hdu[0].data = data
+    hdu.writeto(output_image, overwrite=True)
 
 
 if __name__ == '__main__':
