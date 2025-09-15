@@ -36,7 +36,6 @@ def main(h5file, soltype, root=None, refstat=None, soltab=None, dir=None):
         Name of soltab to use. If None, the default for the given soltype is used
     dir : str, optional
         Name of direction to use. If None, all directions are used
-
     """
     with h5parm(h5file) as h:
         ss = h.getSolset('sol000')
@@ -96,9 +95,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
     parser.add_argument('h5file', help="Name of solution h5parm file")
     parser.add_argument('soltype', help="Type of solution to plot: 'phase' or 'amplitude'")
-    parser.add_argument('--root', help="Root name for output plots (default: 'soltype_')", default=None)
-    parser.add_argument('--refstat', help="Name of referance station (default: first)", default=None)
-    parser.add_argument('--soltab', help="Name of solution table (default: default for soltype)", default=None)
+    parser.add_argument('--root', help="Root name for output plots (default: 'soltype_')", type=str, default=None)
+    parser.add_argument('--refstat', help="Name of referance station (default: first)", type=str, default=None)
+    parser.add_argument('--soltab', help="Name of solution table (default: default for soltype)", type=str, default=None)
     parser.add_argument('--dir', help="Name of direction (default: all)", type=str, default=None)
 
     args = parser.parse_args()
