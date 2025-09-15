@@ -14,6 +14,9 @@ from lsmtool.io import read_vertices
 from rapthor.lib import miscellaneous as misc
 
 
+log = logging.getLogger('rapthor:blank_image')
+
+
 def main(output_image, input_image=None, vertices_file=None, reference_ra_deg=None,
          reference_dec_deg=None, cellsize_deg=None, imsize=None):
     """
@@ -37,7 +40,7 @@ def main(output_image, input_image=None, vertices_file=None, reference_ra_deg=No
         Size of image as "xsize ysize"
     """
     if make_blank_image := (input_image is None):
-        print('Input image not given. Making empty image...')
+        log.info('Input image not given. Making empty image...')
         if reference_ra_deg is not None and reference_dec_deg is not None:
             reference_ra_deg = float(reference_ra_deg)
             reference_dec_deg = float(reference_dec_deg)
@@ -84,5 +87,4 @@ if __name__ == '__main__':
              reference_ra_deg=args.reference_ra_deg, reference_dec_deg=args.reference_dec_deg,
              cellsize_deg=args.cellsize_deg, imsize=args.imsize)
     except ValueError as e:
-        log = logging.getLogger('rapthor:blank_image')
         log.critical(e)
