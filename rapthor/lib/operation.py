@@ -62,6 +62,10 @@ class Operation(object):
         # CWL runner settings
         self.cwl_runner = self.parset['cluster_specific']['cwl_runner']
         self.debug_workflow = self.parset['cluster_specific']['debug_workflow']
+        self.keep_temporary_files = (
+            self.debug_workflow or
+            self.parset['cluster_specific']['keep_temporary_files']
+        )
 
         # Maximum number of nodes to use
         self.max_nodes = self.parset['cluster_specific']['max_nodes']
