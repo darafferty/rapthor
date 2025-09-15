@@ -261,6 +261,7 @@ class Parset:
 
         for opt, valid_values in {
             "fast_datause": ("single", "dual", "full"),
+            "medium_datause": ("single", "dual", "full"),
             "slow_datause": ("dual", "full"),
             "solveralgorithm": ("hybrid", "lbfgs", "directioniterative", "directionsolve"),
         }.items():
@@ -300,7 +301,7 @@ class Parset:
             )
             options["dd_interval_factor"] = 1
         if (
-            (options["fast_datause"] != "full" or options["slow_datause"] != "full") and
+            (options["fast_datause"] != "full" or options["medium_datause"] != "full" or options["slow_datause"] != "full") and
             options["solveralgorithm"] != "directioniterative"
         ):
             log.warning(
