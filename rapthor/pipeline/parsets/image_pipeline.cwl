@@ -471,7 +471,9 @@ inputs:
     label: Source finder
     doc: |
       Name of the source finder to use.
-    type: string
+    type:
+      type: enum
+      symbols: ["bdsf", "sofia"]
 
 {% if peel_bright_sources %}
   - id: bright_skymodel_pb
