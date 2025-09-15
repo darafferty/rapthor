@@ -1282,7 +1282,7 @@ steps:
       - id: skymodel
         source: calibration_skymodel_file
       - id: h5parm
-        source: combine_fast_medium1_h5parms/outh5parm
+        source: combine_fast_medium1_h5parms/combinedh5parm
     out:
       - id: adjustedh5parm
 
