@@ -67,8 +67,11 @@
         "bda_timebase": 20000.0,
         "dde_method": "full",
         "filter_skymodel": true,
+        "source_finder": "bdsf",
         "save_visibilities": false,
         "save_supplementary_images": false,
+        "compress_selfcal_images": true,
+        "compress_final_images": false,
         "idg_mode": "cpu",
         "mem_gb": 0,
         "apply_diagonal_solutions": true,
@@ -108,6 +111,7 @@
         "use_container": false,
         "container_type": "docker",
         "cwl_runner": "toil",
-        "debug_workflow": false
+        "debug_workflow": false,
+        "keep_temporary_files": false
     }
 }
