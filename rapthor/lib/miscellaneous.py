@@ -732,15 +732,15 @@ def calc_theoretical_noise(obs_list, w_factor=1.5, use_lotss_estimate=False):
         # 40 degrees, where the relation is not calibrated, use the value
         # at 40 degrees as a lower limit
         mean_elevation_deg = max(40, mean_elevation_deg)
-        noise = 62e-6 / np.cos(np.pi / 2 - mean_elevation_deg / 180 * np.pi)**2  # Jy
-        noise /= np.sqrt(total_bandwidth / 48e6)  # adjust for LoTSS bandwidth
-        noise /= np.sqrt(total_time / (8 * 3600))  # adjust for LoTSS time
+        noise = 62e-6 / np.cos(np.pi / 2 - mean_elevation_deg / 180 * np.pi)**2  # Jy/beam
+        noise /= np.sqrt(total_bandwidth / 48e6)  # adjust for LoTSS bandwidth (48 MHz)
+        noise /= np.sqrt(total_time / (8 * 3600))  # adjust for LoTSS time (8 hours)
     else:
         core_term = ncore * (ncore - 1) / 2 / sefd_core**2
         remote_term = nremote * (nremote - 1) / 2 / sefd_remote**2
         mixed_term = ncore * nremote / (sefd_core * sefd_remote)
         noise = w_factor / np.sqrt(2 * (2 * total_time * total_bandwidth) *
-                                   (core_term + mixed_term + remote_term))  # Jy
+                                   (core_term + mixed_term + remote_term))  # Jy/beam
     noise /= np.sqrt(unflagged_fraction)
 
     return (noise, unflagged_fraction)
