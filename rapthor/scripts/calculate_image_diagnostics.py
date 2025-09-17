@@ -502,6 +502,7 @@ def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_im
         obs_starttime = misc.string2list(obs_starttime)
     if isinstance(obs_ntimes, str):
         obs_ntimes = misc.string2list(obs_ntimes)
+        obs_ntimes = [int(ntimes) for ntimes in obs_ntimes]
     if len(obs_ms) > 1:
         ms_times = []
         for ms in obs_ms:
