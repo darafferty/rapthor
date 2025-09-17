@@ -396,6 +396,7 @@ class CWLToolRunner(CWLRunner):
             self.args.extend(['--tmp-outdir-prefix', prefix])
         if self.operation.debug_workflow:
             self.args.extend(["--debug"])
+        if self.operation.keep_temporary_files:
             self.args.extend(["--leave-tmpdir"])
 
     def teardown(self) -> None:
@@ -495,7 +496,7 @@ class StreamFlowRunner(BaseCWLRunner):
         self.args.extend([self.streamflow_file])
 
     def teardown(self) -> None:
-        if self.streamflow_file is not None and not self.operation.debug_workflow:
+        if self.streamflow_file is not None and not self.operation.keep_temporary_files:
             os.remove(self.streamflow_file)
         super().teardown()
 
