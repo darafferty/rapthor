@@ -314,9 +314,10 @@ def chunk_observations(field, steps, data_fraction):
         The target data fraction
     """
     # Find the overall minimum duration that can be used and still satisfy the
-    # specified solution intervals
+    # specified solution intervals. This is only needed when the data fraction
+    # is less than one, so that the uv coverage can be optimized in this case
     min_time = None
-    if steps and any([step['do_calibrate'] for step in steps]):
+    if steps and any([step['do_calibrate'] for step in steps]) and data_fraction < 1.0:
         fast_solint = max([step['fast_timestep_sec'] if 'fast_timestep_sec'
                            in step else 0 for step in steps])
         slow_solint = max([step['slow_timestep_sec'] if 'slow_timestep_sec'
