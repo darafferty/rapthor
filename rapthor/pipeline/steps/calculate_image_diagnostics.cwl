@@ -64,20 +64,38 @@ inputs:
     inputBinding:
       position: 7
       itemSeparator: ","
+  - id: obs_starttime
+    label: Start time of obs
+    doc: |
+      The start times in casacore MVTime of the observations corresponding to
+      those in obs_ms.
+    type: string[]
+    inputBinding:
+      position: 8
+      itemSeparator: ","
+  - id: obs_ntimes
+    label: Number of time slots of obs
+    doc: |
+      The number of time slots of the observations corresponding to those in
+      obs_ms.
+    type: int[]
+    inputBinding:
+      position: 9
+      itemSeparator: ","
   - id: diagnostics_file
     label: Input diagnostics file
     doc: |
       The filename of the input diagnostics JSON file.
     type: File
     inputBinding:
-      position: 8
+      position: 10
   - id: output_root
     label: Output root name
     doc: |
       The root of the filenames of the output filtered sky models.
     type: string
     inputBinding:
-      position: 9
+      position: 11
   - id: facet_region_file
     label: Input ds9 region file
     doc: |
