@@ -854,7 +854,11 @@ steps:
       - id: solve1_keepmodel
         valueFrom: 'True'
       - id: solve2_reusemodel
+{% if use_image_based_predict %}
+        valueFrom: '[predict.*]'
+{% else %}
         valueFrom: '[solve1.*]'
+{% endif %}
       - id: solve2_normalize_h5parm
         source: normalize_h5parm
       - id: solve2_h5parm
@@ -909,7 +913,11 @@ steps:
       - id: solve2_keepmodel
         valueFrom: 'True'
       - id: solve3_reusemodel
+{% if use_image_based_predict %}
+        valueFrom: '[predict.*]'
+{% else %}
         valueFrom: '[solve1.*]'
+{% endif %}
       - id: solve3_normalize_h5parm
         source: normalize_h5parm
       - id: solve3_h5parm
@@ -959,7 +967,11 @@ steps:
       - id: solve3_keepmodel
         valueFrom: 'True'
       - id: solve4_reusemodel
+{% if use_image_based_predict %}
+        valueFrom: '[predict.*]'
+{% else %}
         valueFrom: '[solve1.*]'
+{% endif %}
       - id: solve4_normalize_h5parm
         source: normalize_h5parm
       - id: solve4_h5parm
