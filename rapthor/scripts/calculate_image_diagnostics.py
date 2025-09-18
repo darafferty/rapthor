@@ -438,8 +438,8 @@ def check_astrometry(obs, input_catalog, image, facet_region_file, min_number,
 
 
 def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_image,
-         input_catalog, input_skymodel, obs_ms, diagnostics_file, output_root,
-         facet_region_file=None, photometry_comparison_skymodel=None,
+         input_catalog, input_skymodel, obs_ms, obs_starttime, obs_ntimes, diagnostics_file,
+         output_root, facet_region_file=None, photometry_comparison_skymodel=None,
          photometry_comparison_surveys=['TGSS', 'LOTSS'], photometry_backup_survey='NVSS',
          astrometry_comparison_skymodel=None, min_number=5):
     """
@@ -462,6 +462,10 @@ def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_im
     obs_ms : list of str
         List of MS files to use to derive the theoretical image noise and
         other properties of the observation
+    obs_starttime : list of str
+        List of start times in casacore MVTime format for each input MS
+    obs_ntimes : list of int
+        List of nuber of time slots for each input MS
     diagnostics_file : str
         Filename of the input JSON file containing image diagnostics derived
         by the sky model filtering script
@@ -494,6 +498,11 @@ def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_im
     # Select the best MS
     if isinstance(obs_ms, str):
         obs_ms = misc.string2list(obs_ms)
+    if isinstance(obs_starttime, str):
+        obs_starttime = misc.string2list(obs_starttime)
+    if isinstance(obs_ntimes, str):
+        obs_ntimes = misc.string2list(obs_ntimes)
+        obs_ntimes = [int(ntimes) for ntimes in obs_ntimes]
     if len(obs_ms) > 1:
         ms_times = []
         for ms in obs_ms:
@@ -516,8 +525,12 @@ def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_im
 
     # Collect some diagnostic numbers from the images. Note: we ensure all
     # non-integer numbers are float, as, e.g., np.float32 is not supported by json.dump()
-    obs_list = [Observation(ms) for ms in obs_ms]
-    theoretical_rms, unflagged_fraction = misc.calc_theoretical_noise(obs_list)  # Jy/beam
+    obs_list = []
+    for ms, starttime, ntimes in zip(obs_ms, obs_starttime, obs_ntimes, strict=True):
+        starttime_mjd = misc.convert_mvt2mjd(starttime)  # MJD sec
+        endtime_mjd = starttime_mjd + ntimes * Observation(ms).timepersample  # MJD sec
+        obs_list.append(Observation(ms, starttime_mjd, endtime_mjd))
+    theoretical_rms, unflagged_fraction = misc.calc_theoretical_noise(obs_list, use_lotss_estimate=True)  # Jy/beam
     dynamic_range_global_true_sky = float(img_true_sky.max_value / rms_img_true_sky.min_value)
     dynamic_range_local_true_sky = float(np.nanmax(rms_img_flat_noise.img_data / rms_img_true_sky.img_data))
     dynamic_range_global_flat_noise = float(img_flat_noise.max_value / rms_img_flat_noise.min_value)
@@ -577,6 +590,8 @@ if __name__ == '__main__':
     parser.add_argument('input_catalog', help='Filename of input PyBDSF FITS catalog')
     parser.add_argument('input_skymodel', help='Filename of input sky model')
     parser.add_argument('obs_ms', help='Filename of observation MS')
+    parser.add_argument('obs_starttime', help='Start time of observation')
+    parser.add_argument('obs_ntimes', help='Number of time slots of observation')
     parser.add_argument('diagnostics_file', help='Filename of diagnostics JSON file')
     parser.add_argument('output_root', help='Root of output files')
     parser.add_argument('--facet_region_file', help='Filename of ds9 facet region file', type=str, default=None)
@@ -590,7 +605,9 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     main(args.flat_noise_image, args.flat_noise_rms_image, args.true_sky_image, args.true_sky_rms_image,
-         args.input_catalog, args.input_skymodel, args.obs_ms, args.diagnostics_file, args.output_root,
-         facet_region_file=args.facet_region_file, photometry_comparison_skymodel=args.photometry_comparison_skymodel,
-         photometry_comparison_surveys=args.photometry_comparison_surveys, photometry_backup_survey=args.photometry_backup_survey,
+         args.input_catalog, args.input_skymodel, args.obs_ms, args.obs_starttime, args.obs_ntimes,
+         args.diagnostics_file, args.output_root, facet_region_file=args.facet_region_file,
+         photometry_comparison_skymodel=args.photometry_comparison_skymodel,
+         photometry_comparison_surveys=args.photometry_comparison_surveys,
+         photometry_backup_survey=args.photometry_backup_survey,
          astrometry_comparison_skymodel=args.astrometry_comparison_skymodel, min_number=args.min_number)
