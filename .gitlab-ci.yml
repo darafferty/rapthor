@@ -63,7 +63,9 @@ stages:
       dotenv: versions.env
 
 .setup_git:
-  image: alpine/git
+  image:
+    name: alpine/git
+    entrypoint: [""]
   before_script:
     # Use a token that has git push permissions. Token must be created in the
     # GitLab GUI; a project variable must be created containing the token.
@@ -166,6 +168,7 @@ versioning:
   extends: .versioning
   image:
     name: alpine/git
+    entrypoint: [""]
   script:
     - git fetch --unshallow
     - !reference [.versioning, script]
