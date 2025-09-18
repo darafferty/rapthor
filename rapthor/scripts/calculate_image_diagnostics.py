@@ -526,7 +526,7 @@ def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_im
     # Collect some diagnostic numbers from the images. Note: we ensure all
     # non-integer numbers are float, as, e.g., np.float32 is not supported by json.dump()
     obs_list = []
-    for ms, starttime, ntimes in zip(obs_ms, obs_starttime, obs_ntimes):
+    for ms, starttime, ntimes in zip(obs_ms, obs_starttime, obs_ntimes, strict=True):
         starttime_mjd = misc.convert_mvt2mjd(starttime)  # MJD sec
         endtime_mjd = starttime_mjd + ntimes * Observation(ms).timepersample  # MJD sec
         obs_list.append(Observation(ms, starttime_mjd, endtime_mjd))

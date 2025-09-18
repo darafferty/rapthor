@@ -662,8 +662,8 @@ def calc_theoretical_noise(obs_list, w_factor=1.5, use_lotss_estimate=False):
     Note: by default, the calculations follow those of SKA Memo 113 (see
     https://arxiv.org/abs/1308.4267) and assume no tapering. International
     stations are not included. A alternvate estimate can be made for LOFAR data
-    following Shimwell et. al (2022), where the noise in LOFAR images was found
-    to behave as follows (for an 8 hour, 48 MHz observation):
+    following Shimwell et. al (2022, A&A, 659, A1), where the noise in LOFAR
+    images was found to behave as follows (for an 8 hour, 48 MHz observation):
         noise = A×cos(90-elevation)^−2.0, where A is 62 μJy beam−1
 
     Parameters
@@ -713,7 +713,7 @@ def calc_theoretical_noise(obs_list, w_factor=1.5, use_lotss_estimate=False):
     nremote = int(np.round(nremote / nobs))
     mean_freq = mid_freq / nobs
     unflagged_fraction /= nobs
-    mean_elevation_deg = elevation / nobs * 180 / np.pi  # deg
+    elevation /= nobs
 
     # Define table of system equivalent flux densities and interpolate
     # to get the values at the mean frequency of the input observations.
@@ -731,8 +731,8 @@ def calc_theoretical_noise(obs_list, w_factor=1.5, use_lotss_estimate=False):
         # Use the empirical LoTSS relation. If the mean elevation is below
         # 40 degrees, where the relation is not calibrated, use the value
         # at 40 degrees as a lower limit
-        mean_elevation_deg = max(40, mean_elevation_deg)
-        noise = 62e-6 / np.cos(np.pi / 2 - mean_elevation_deg / 180 * np.pi)**2  # Jy/beam
+        elevation = max(40 * np.pi / 180, elevation)
+        noise = 62e-6 / np.cos(np.pi / 2 - elevation)**2  # Jy/beam
         noise /= np.sqrt(total_bandwidth / 48e6)  # adjust for LoTSS bandwidth (48 MHz)
         noise /= np.sqrt(total_time / (8 * 3600))  # adjust for LoTSS time (8 hours)
     else:
