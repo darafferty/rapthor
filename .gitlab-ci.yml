@@ -166,11 +166,7 @@ prepare_release:
 versioning:
   stage: versioning
   extends: .versioning
-  image:
-    name: alpine/git
-    entrypoint: [""]
   script:
-    - git fetch --unshallow
     - !reference [.versioning, script]
     - ./Docker/fetch_commit_hashes.sh | tee commits.txt >> versions.env
     # Use hash of commits and CI/CD build files to determine tag of base image
