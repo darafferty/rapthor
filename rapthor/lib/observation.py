@@ -24,9 +24,16 @@ class Observation(object):
         is the start of the MS file
     endtime : float, optional
         The end time of the observation (in MJD seconds). If None, the end time
-        is the end of the MS file
+        is the end of the MS file, unless ntimes is specified.
+    ntimes : int, optional
+        The number of time slots in the observation. If None, the end time
+        is the end of the MS file, unless endtime is specified
     """
-    def __init__(self, ms_filename, starttime=None, endtime=None):
+    def __init__(self, ms_filename, starttime=None, endtime=None, ntimes=None):
+        if endtime is not None and ntimes is not None:
+            raise ValueError('Values cannot be specified for both endtime and ntimes. '
+                             'Please specify one or the other.')
+
         self.ms_filename = str(ms_filename)
         self.ms_predict_di_filename = None
         self.ms_predict_nc_filename = None
@@ -34,6 +41,7 @@ class Observation(object):
         self.log = logging.getLogger('rapthor:{}'.format(self.name))
         self.starttime = starttime
         self.endtime = endtime
+        self.numsamples = ntimes
         self.data_fraction = 1.0
         self.parameters = {}
         self.scan_ms()
@@ -82,19 +90,28 @@ class Observation(object):
             self.startsat_startofms = False
         else:
             self.startsat_startofms = True
+
+        # Set the end time if not specified from the number of time samples
+        self.timepersample = tab.getcell('EXPOSURE', 0)
         if self.endtime is None:
-            self.endtime = np.max(tab.getcol('TIME'))
-        else:
-            valid_times = np.where(tab.getcol('TIME') <= self.endtime)[0]
-            if len(valid_times) == 0:
-                raise ValueError('End time of {0} is less than the first time in the '
-                                 'MS'.format(self.endtime))
-            self.endtime = tab.getcol('TIME')[valid_times[-1]]
+            if self.numsamples is None:
+                self.endtime = np.max(tab.getcol('TIME'))
+            else:
+                self.endtime = self.starttime + self.numsamples * self.timepersample
+
+        # Check that the end time is valid and adjust if needed
+        valid_times = np.where(tab.getcol('TIME') <= self.endtime)[0]
+        if len(valid_times) == 0:
+            raise ValueError('End time of {0} is less than the first time in the '
+                             'MS'.format(self.endtime))
+        self.endtime = tab.getcol('TIME')[valid_times[-1]]
         if self.endtime < np.max(tab.getcol('TIME')):
             self.goesto_endofms = False
         else:
             self.goesto_endofms = True
-        self.timepersample = tab.getcell('EXPOSURE', 0)
+
+        # Recalculate the number of time samples to ensure it agrees with
+        # the total time of the observation
         self.numsamples = int(np.ceil((self.endtime - self.starttime) / self.timepersample))
         tab.close()
 
@@ -202,7 +219,8 @@ class Observation(object):
             self.high_el_endtime = self.endtime
 
     def set_calibration_parameters(self, parset, ndir, nobs, calibrator_fluxes,
-                                   target_fast_timestep, target_slow_timestep,                                  target_fulljones_timestep, target_flux=None):
+                                   target_fast_timestep, target_slow_timestep,
+                                   target_fulljones_timestep, target_flux=None):
         """
         Sets the calibration parameters
 
