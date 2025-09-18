@@ -63,7 +63,7 @@ stages:
       dotenv: versions.env
 
 .setup_git:
-  image: bitnami/git
+  image: alpine/git
   before_script:
     # Use a token that has git push permissions. Token must be created in the
     # GitLab GUI; a project variable must be created containing the token.
