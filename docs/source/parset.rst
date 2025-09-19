@@ -688,13 +688,27 @@ The available options are described below under their respective sections.
         are easier to understand.
 
     debug_workflow
-        Debug workflow related issues. Enabling this will require significantly more disk
-        space. The working directory will never be cleaned up, ``stdout`` and ``stderr``
-        will not be redirectied, and log level of the CWL runner will be set to ``DEBUG``.
-        Additionally, when using Toil as the CWL runner, some tasks will run using only a
-        single thread (to make debugging easier). Use this option with care!
+        Debug workflow related issues (default = ``False``). Enabling this option
+        implies that temporary files, produced during the workflow run, will be kept
+        (i.e. the option ``keep_temporary_files`` is implicitly set to ``True``). This
+        will require significantly more disk space.  The working directory will never be
+        cleaned up, ``stdout`` and ``stderr`` will not be redirectied, and log level of
+        the CWL runner will be set to ``DEBUG``.  Additionally, when using Toil as the
+        CWL runner, some tasks will run using only a single thread (to make debugging
+        easier). Use this option with care!
 
         .. note::
 
             If Toil is the CWL runner, this option will only work when
             :term:`batch_system` = ``single_machine`` (the default).
+
+    keep_temporary_files
+        Keep temporary files created during the workflow execution (default =
+        ``False``). If ``True``, temporary files and directories created during the
+        workflow execution will not be deleted at the end of the run. This will require
+        significantly more disk space. This option is useful for debugging purposes.
+
+        .. note::
+
+            This option will be set to ``True`` automatically when
+            :term:`debug_workflow` = ``True``.
