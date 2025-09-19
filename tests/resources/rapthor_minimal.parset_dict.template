@@ -38,6 +38,7 @@
                       'dir_local': None,
                       'local_scratch_dir': None,
                       'global_scratch_dir': None,
+                      'keep_temporary_files': False,
                       'max_cores': 8,
                       'max_nodes': 1,
                       'max_threads': 8,
