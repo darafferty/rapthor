@@ -54,7 +54,7 @@ How can I troubleshoot a Rapthor problem?
     If the error or its cause is not clear from the log files, it may be useful
     to run with the :term:`keep_temporary_files` option enabled. When this option
     is enabled, the working directory will not be cleaned up. In addition, most
-    CWL runners also provide extra debugging options. These can be enabled by
-    enabling :term:`debug_workflow`. In that case, ``stdout`` and ``stderr``
+    CWL runners also provide extra debugging options. These can be enabled with
+    :term:`debug_workflow`. In that case, ``stdout`` and ``stderr``
     will not be redirectied, and the log level of the CWL runner will be set to
     ``DEBUG``.
