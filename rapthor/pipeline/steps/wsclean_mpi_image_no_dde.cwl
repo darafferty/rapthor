@@ -20,6 +20,7 @@ arguments:
   - -join-channels
   - -apply-primary-beam
   - -log-time
+  - -apply-time-frequency-smearing
   - valueFrom: 'wgridder'
     prefix: -gridder
   - valueFrom: '$(runtime.tmpdir)'

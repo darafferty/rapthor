@@ -711,7 +711,7 @@ def report_sector_diagnostics(sector_name, diagnostics_dict, log):
         unflagged_data_fraction = '{0:.2f}'.format(diagnostics_dict['unflagged_data_fraction'])
         log.info('Diagnostics for {}:'.format(sector_name))
         log.info('    Min RMS noise = {0} (non-PB-corrected), '
-                 '{1} (PB-corrected), {2} (theoretical)'.format(min_rms_flat_noise, min_rms_true_sky,
+                 '{1} (PB-corrected), {2} (expected)'.format(min_rms_flat_noise, min_rms_true_sky,
                                                                 theoretical_rms))
         if (
             diagnostics_dict['min_rms_flat_noise'] == 0.0 or
