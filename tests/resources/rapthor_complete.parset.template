@@ -113,3 +113,4 @@ use_container = True
 container_type = singularity
 cwl_runner = cwltool
 debug_workflow = True
+keep_temporary_files = True

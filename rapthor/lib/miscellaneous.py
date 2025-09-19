@@ -23,7 +23,7 @@ from scipy.interpolate import interp1d
 # Always use a 0-based origin in wcs_pix2world and wcs_world2pix calls.
 WCS_ORIGIN = 0
 # Default WCS pixel scale within Rapthor, which differs from LSMTool (20"/pixel).
-WCS_PIXEL_SCALE = 10.0 / 3600.0 # degrees/pixel (= 10"/pixel)
+WCS_PIXEL_SCALE = 10.0 / 3600.0  # degrees/pixel (= 10"/pixel)
 
 
 def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, source='TGSS',
@@ -654,14 +654,17 @@ def remove_soltabs(solset, soltabnames):
             print('Error: soltab "{}" could not be removed'.format(soltabname))
 
 
-def calc_theoretical_noise(obs_list, w_factor=1.5):
+def calc_theoretical_noise(obs_list, w_factor=1.5, use_lotss_estimate=False):
     """
     Return the expected theoretical image noise for a dataset. For convenience,
     the total unflagged fraction is also returned.
 
-    Note: the calculations follow those of SKA Memo 113 (see
-    https://arxiv.org/abs/1308.4267) and assume no tapering.
-    International stations are not included.
+    Note: by default, the calculations follow those of SKA Memo 113 (see
+    https://arxiv.org/abs/1308.4267) and assume no tapering. International
+    stations are not included. A alternvate estimate can be made for LOFAR data
+    following Shimwell et. al (2022, A&A, 659, A1), where the noise in LOFAR
+    images was found to behave as follows (for an 8 hour, 48 MHz observation):
+        noise = A×cos(90-elevation)^−2.0, where A is 62 μJy beam−1
 
     Parameters
     ----------
@@ -670,6 +673,9 @@ def calc_theoretical_noise(obs_list, w_factor=1.5):
     w_factor : float, optional
         Factor for increase of noise due to the weighting scheme used
         in imaging (typically ranges from 1.3 - 2)
+    use_lotss_estimate : bool, optional
+        If True, the empirical LoTSS noise estimate from Shimwell et. al
+        (2022) is used instead of the one from SKA Memo 113
 
     Returns
     -------
@@ -693,6 +699,7 @@ def calc_theoretical_noise(obs_list, w_factor=1.5):
     nremote = 0
     mid_freq = 0
     unflagged_fraction = 0
+    elevation = 0
     for obs in obs_list:
         total_time += obs.numsamples * obs.timepersample  # sec
         total_bandwidth += obs.numchannels * obs.channelwidth  # Hz
@@ -700,11 +707,13 @@ def calc_theoretical_noise(obs_list, w_factor=1.5):
         nremote += len([stat for stat in obs.stations if stat.startswith('RS')])
         mid_freq += (obs.endfreq + obs.startfreq) / 2 / 1e6  # MHz
         unflagged_fraction += find_unflagged_fraction(obs.ms_filename, obs.starttime, obs.endtime)
+        elevation += obs.mean_el_rad  # radians
     total_bandwidth /= nobs
     ncore = int(np.round(ncore / nobs))
     nremote = int(np.round(nremote / nobs))
     mean_freq = mid_freq / nobs
     unflagged_fraction /= nobs
+    elevation /= nobs
 
     # Define table of system equivalent flux densities and interpolate
     # to get the values at the mean frequency of the input observations.
@@ -718,11 +727,20 @@ def calc_theoretical_noise(obs_list, w_factor=1.5):
     sefd_remote = f_remote(mean_freq) * 1e3  # Jy
 
     # Calculate the theoretical noise, adjusted for the unflagged fraction
-    core_term = ncore * (ncore - 1) / 2 / sefd_core**2
-    remote_term = nremote * (nremote - 1) / 2 / sefd_remote**2
-    mixed_term = ncore * nremote / (sefd_core * sefd_remote)
-    noise = w_factor / np.sqrt(2 * (2 * total_time * total_bandwidth) *
-                               (core_term + mixed_term + remote_term))  # Jy
+    if use_lotss_estimate:
+        # Use the empirical LoTSS relation. If the mean elevation is below
+        # 40 degrees, where the relation is not calibrated, use the value
+        # at 40 degrees as a lower limit
+        elevation = max(40 * np.pi / 180, elevation)
+        noise = 62e-6 / np.cos(np.pi / 2 - elevation)**2  # Jy/beam
+        noise /= np.sqrt(total_bandwidth / 48e6)  # adjust for LoTSS bandwidth (48 MHz)
+        noise /= np.sqrt(total_time / (8 * 3600))  # adjust for LoTSS time (8 hours)
+    else:
+        core_term = ncore * (ncore - 1) / 2 / sefd_core**2
+        remote_term = nremote * (nremote - 1) / 2 / sefd_remote**2
+        mixed_term = ncore * nremote / (sefd_core * sefd_remote)
+        noise = w_factor / np.sqrt(2 * (2 * total_time * total_bandwidth) *
+                                   (core_term + mixed_term + remote_term))  # Jy/beam
     noise /= np.sqrt(unflagged_fraction)
 
     return (noise, unflagged_fraction)

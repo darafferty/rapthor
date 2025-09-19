@@ -1034,6 +1034,10 @@ steps:
         source: image_name
       - id: obs_ms
         source: obs_filename
+      - id: obs_starttime
+        source: starttime
+      - id: obs_ntimes
+        source: ntimes
       - id: diagnostics_file
         source: filter/diagnostics
       - id: facet_region_file
