@@ -291,7 +291,7 @@ The available options are described below under their respective sections.
     dd_interval_factor
         Maximum factor by which the direction-dependent solution intervals can be
         increased, so that fainter calibrators get longer intervals (in the fast and slow
-        solves only; default = 3). The value determines the maximum allowed adjustment
+        solves only; default = 1). The value determines the maximum allowed adjustment
         factor by which the solution intervals are allowed to be increased for faint
         sources. For a given direction, the adjustment is calculated from the ratio of the
         apparent flux density of the calibrator to the target flux density of the cycle
@@ -299,6 +299,11 @@ The available options are described below under their respective sections.
         faintest calibrator in the sky model. A value of 1 disables the use of
         direction-dependent solution intervals; a value greater than 1 enables
         direction-dependent solution intervals.
+
+        .. note::
+
+            Direction-dependent solution intervals are not currently supported;
+            they will be re-enabled in a future update.
 
         .. note::
 
