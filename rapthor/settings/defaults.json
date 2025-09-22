@@ -54,7 +54,7 @@
         "solverlbfgs_minibatches": 1
     },
     "imaging": {
-        "cellsize_arcsec": 1.55,
+        "cellsize_arcsec": 1.5,
         "robust": -0.65,
         "min_uv_lambda": 80.0,
         "max_uv_lambda": 1000000.0,
