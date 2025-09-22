@@ -29,8 +29,7 @@ for i in range(max_selfcal_loops):
     strategy_steps[i]['scale_normalization_delta'] = True
     strategy_steps[i]['solve_min_uv_lambda'] = 150
     strategy_steps[i]['fast_timestep_sec'] = 8.0
-    strategy_steps[i]['slow_timestep_joint_sec'] = 0.0
-    strategy_steps[i]['slow_timestep_separate_sec'] = 600.0
+    strategy_steps[i]['slow_timestep_sec'] = 600.0
 
     # Here we set adjust the imaging strategy from the default, using fixed
     # thresholds for source finding and higher thresholds for calibrator

@@ -202,9 +202,7 @@ class Observation(object):
             self.high_el_endtime = self.endtime
 
     def set_calibration_parameters(self, parset, ndir, nobs, calibrator_fluxes,
-                                   target_fast_timestep, target_slow_timestep_joint,
-                                   target_slow_timestep_separate,
-                                   target_fulljones_timestep, target_flux=None,
+                                   target_fast_timestep, target_slow_timestep,                                  target_fulljones_timestep, target_flux=None,
                                    generate_screens=False):
         """
         Sets the calibration parameters
@@ -221,10 +219,8 @@ class Observation(object):
             List of calibrator apparent flux densities in Jy
         target_fast_timestep : float
             Target solution interval for fast solves in sec
-        target_slow_timestep_joint : float
-            Target solution interval for joint slow solves in sec
-        target_slow_timestep_separate : float
-            Target solution interval for separate slow solves in sec
+        target_slow_timestep : float
+            Target solution interval for slow solves in sec
         target_fulljones_timestep : float
             Target solution interval for full-Jones solves in sec
         target_flux: float, optional
@@ -301,8 +297,7 @@ class Observation(object):
         #
         # Note: as with the fast-phase solve, we don't explicitly check that the resulting
         # solution intervals fit within the observation's size, as this is handled by DP3
-        solint_slow_timestep_joint = max(1, int(round(target_slow_timestep_joint / round(self.timepersample)) * solve_max_factor))
-        solint_slow_timestep_separate = max(1, int(round(target_slow_timestep_separate / round(self.timepersample)) * solve_max_factor))
+        solint_slow_timestep = max(1, int(round(target_slow_timestep / round(self.timepersample)) * solve_max_factor))
         solint_slow_freqstep = max(1, self.get_nearest_freqstep(target_slow_freqstep / self.channelwidth))
         solint_timestep_fulljones = max(1, int(round(target_fulljones_timestep / round(self.timepersample))))
         solint_freqstep_fulljones = max(1, self.get_nearest_freqstep(target_fulljones_freqstep / self.channelwidth))
@@ -320,13 +315,11 @@ class Observation(object):
         # For simplicity, we do this process for all potential types of gain solve, even
         # if they are not all required by the current strategy
         target_chunksize = 8e6  # Hz
-        solint_timesteps = {'joint': solint_slow_timestep_joint,
-                            'separate': solint_slow_timestep_separate,
+        solint_timesteps = {'slow': solint_slow_timestep,
                             'fulljones': solint_timestep_fulljones}
-        solint_freqsteps = {'joint': solint_slow_freqstep,
-                            'separate': solint_slow_freqstep,
+        solint_freqsteps = {'slow': solint_slow_freqstep,
                             'fulljones': solint_freqstep_fulljones}
-        for solve_type in ['joint', 'separate', 'fulljones']:
+        for solve_type in ['slow', 'fulljones']:
             solint_freqstep = solint_freqsteps[solve_type]
             solint_timestep = solint_timesteps[solve_type]
             if solve_type == 'fulljones':
@@ -363,17 +356,16 @@ class Observation(object):
             self.parameters[f'startchan_{solve_type}'] = [samplesperchunk * i for i in range(nfreqchunks)]
             self.parameters[f'nchan_{solve_type}'] = [samplesperchunk] * nfreqchunks
             self.parameters[f'nchan_{solve_type}'][-1] = 0  # set last entry to extend until end
-            self.parameters[f'slow_starttime_{solve_type}'] = [misc.convert_mjd2mvt(self.starttime)] * nfreqchunks
-            self.parameters[f'slow_ntimes_{solve_type}'] = [self.numsamples] * nfreqchunks
-            self.parameters[f'solint_slow_timestep_{solve_type}'] = [solint_timestep] * nfreqchunks
-            self.parameters[f'solint_slow_freqstep_{solve_type}'] = [solint_freqstep] * nfreqchunks
+            self.parameters[f'{solve_type}_starttime'] = [misc.convert_mjd2mvt(self.starttime)] * nfreqchunks
+            self.parameters[f'{solve_type}_ntimes'] = [self.numsamples] * nfreqchunks
+            self.parameters[f'solint_{solve_type}_timestep'] = [solint_timestep] * nfreqchunks
+            self.parameters[f'solint_{solve_type}_freqstep'] = [solint_freqstep] * nfreqchunks
 
         # Define the direction-dependent solution interval list for the fast and
         # slow solves (the full-Jones solve is direction-independent so is not included).
         # The list values are defined as the number of solutions that will be obtained for
         # each base solution interval, with one entry per direction
-        input_solint_keys = {'slow_joint': 'solint_slow_timestep_joint',
-                             'slow_separate': 'solint_slow_timestep_separate',
+        input_solint_keys = {'slow': 'solint_slow_timestep',
                              'fast': 'solint_fast_timestep'}
         if target_flux is None:
             target_flux = min(calibrator_fluxes)
@@ -383,7 +375,7 @@ class Observation(object):
             smoothness_dd_factors[smoothness_dd_factors < 1 / smoothness_max_factor] = 1 / smoothness_max_factor
         else:
             smoothness_dd_factors = [1] * len(calibrator_fluxes)
-        for solve_type in ['fast', 'slow_joint', 'slow_separate']:
+        for solve_type in ['fast', 'slow']:
             solint = self.parameters[input_solint_keys[solve_type]][0]  # number of time slots
             nchunks = len(self.parameters[input_solint_keys[solve_type]])  # number of time or frequency chunks
 

@@ -13,6 +13,9 @@ Starting a Rapthor run
     to run everything within a container (see :ref:`using_containers` for
     details).
 
+.. note::
+    For running rapthor in an SKAO context, see :ref:`running_skao`.
+
 Rapthor can be run from the command line as follows:
 
 .. code-block:: console

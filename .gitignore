@@ -3,6 +3,8 @@
 # Project specific
 rapthor/_version.py
 test/resources/
+tests/resources/test.ms
+tests/test.ms_di.ms
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -155,3 +157,9 @@ cython_debug/
 
 # Flake8 config file
 .flake8
+
+# JetBrains
+.idea/
+
+# pyenv
+.python-version

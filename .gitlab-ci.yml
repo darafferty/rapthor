@@ -226,6 +226,7 @@ run_tests:
   extends: .run_tests
   script:
     - tox -e py310
+  coverage: '/TOTAL.*\s+(\d+%)$/'
 
 
 ### Stage: docs

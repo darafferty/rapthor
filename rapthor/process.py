@@ -32,7 +32,7 @@ def run(parset_file, logging_level='info'):
     parset = parset_read(parset_file)
 
     # Set up logger
-    parset['logging_level'] = logging_level
+    log.info("Setting log level to %s", logging_level.upper())
     _logging.set_level(logging_level)
 
     # Initialize field object and do concatenation if needed
@@ -69,31 +69,12 @@ def run(parset_file, logging_level='info'):
 
     # Run the self calibration
     if selfcal_steps:
-        if field.antenna == 'LBA' and not np.isclose(parset['final_data_fraction'],
-                                                     parset['selfcal_data_fraction']):
-            # This check ensures that the solutions derived during selfcal can
-            # be used to peel non-calibrator sources before the final
-            # calibration is done (i.e., they must have the same time coverage).
-            # This peeling is done only for LBA data
-            raise ValueError("When processing LBA data, the selfcal_data_fraction (currently "
-                             "set to {0:.2f}) and final_data_fraction (currently set to {1:.2f}) "
-                             "must be identical.".format(parset['selfcal_data_fraction'],
-                                                         parset['final_data_fraction']))
         log.info("Starting self calibration with a data fraction of "
                  "{0:.2f}".format(parset['selfcal_data_fraction']))
 
         # Set the data chunking to match the longest solution interval set in
         # the strategy
-        if field.antenna == 'LBA':
-            # For LBA data, consider all steps (given by strategy_steps) when doing
-            # the chunking, since the chunks used for selfcal must be the same
-            # as those used in the final pass. Note that selfcal_data_fraction =
-            # final_data_fraction for LBA data
-            chunk_observations(field, strategy_steps, parset['selfcal_data_fraction'])
-        else:
-            # For other (HBA) data, the chunks used for selfcal can differ from
-            # those used in the final pass, so consider only selfcal_steps here
-            chunk_observations(field, selfcal_steps, parset['selfcal_data_fraction'])
+        chunk_observations(field, selfcal_steps, parset['selfcal_data_fraction'])
         run_steps(field, selfcal_steps)
 
     # Run a final pass if needed
@@ -145,14 +126,8 @@ def run(parset_file, logging_level='info'):
 
         # Set the data chunking to match the longest solution interval set in
         # the strategy
-        if field.antenna == 'LBA' and selfcal_steps:
-            # For LBA data when selfcal has been done, consider all steps (given
-            # by strategy_steps) when doing the chunking to ensure the chunks do
-            # not change from those used in selfcal
-            chunk_observations(field, strategy_steps, parset['final_data_fraction'])
-        else:
-            # For other cases, consider only final_step in the chunking
-            chunk_observations(field, [final_step], parset['final_data_fraction'])
+        chunk_observations(field, [final_step], parset['final_data_fraction'])
+
         run_steps(field, [final_step], final=True)
 
     # Make a summary report for the run and finish

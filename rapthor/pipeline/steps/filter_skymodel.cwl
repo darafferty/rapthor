@@ -3,9 +3,8 @@ class: CommandLineTool
 baseCommand: [filter_skymodel.py]
 label: Filter a sky model
 doc: |
-  This tool uses PyBDSF to filter artifacts from the sky model and
-  to attenuate the source flux densities to make an apparent-sky
-  sky model.
+  This tool uses PyBDSF or SoFiA-2 to filter artifacts from the sky model and
+  to attenuate the source flux densities to make an apparent-sky sky model.
 
 requirements:
   - class: InlineJavascriptRequirement
@@ -101,6 +100,16 @@ inputs:
     inputBinding:
       prefix: --filter_by_mask=
       valueFrom: "$(self ? 'True': 'False')"
+      separate: False
+  - id: source_finder
+    label: Source finder
+    doc: |
+      Name of the source finder to use.
+    type:
+      type: enum
+      symbols: ['bdsf', 'sofia']
+    inputBinding:
+      prefix: --source_finder=
       separate: False
   - id: ncores
     type: int

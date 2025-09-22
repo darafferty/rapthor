@@ -31,6 +31,7 @@ arguments:
   - -join-channels
   - -use-idg
   - -log-time
+  - -apply-time-frequency-smearing
   - valueFrom: '$(runtime.tmpdir)'
     prefix: -temp-dir
   - valueFrom: '0.8'

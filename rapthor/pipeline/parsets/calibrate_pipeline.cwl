@@ -2,15 +2,13 @@ cwlVersion: v1.2
 class: Workflow
 label: Rapthor DD calibration workflow
 doc: |
-  This workflow performs direction-dependent calibration. In general,
-  calibration is done in three steps: (1) a fast phase-only calibration (with
-  core stations constrianed to have the same solutions) to correct for
-  ionospheric effects, (2) a joint slow amplitude calibration (with all stations
-  constrained to have the same solutions) to correct for beam errors, and (3) a
-  further unconstrained slow gain calibration to correct for station-to-station
-  differences. Steps (2) and (3) are skipped if the calibration is phase-only.
-  This calibration scheme works for both HBA and LBA data. The final products of
-  this workflow are solution tables (h5parm files) and plots.
+  This workflow performs direction-dependent calibration. In general, calibration is done
+  in two parts: (1) a fast phase-only calibration (with core stations constrianed to
+  have the same solutions) to correct for ionospheric effects and (2) a further
+  unconstrained slow gain calibration to correct for station-to-station differences. Part
+  (2) is skipped if the calibration is phase-only. This calibration scheme currently works
+  for HBA data only. The final products of this workflow are solution tables
+  (h5parm files) and plots.
 
 requirements:
   ScatterFeatureRequirement: {}
@@ -411,195 +409,100 @@ inputs:
 
 {% if do_slowgain_solve %}
 # start do_slowgain_solve
-  - id: dp3_steps_slow_joint
-    label: Steps for joint solve
-    doc: |
-      The list of DP3 steps to use in the first (joint) slow-gain calibration
-      (length = 1).
-    type: string
-
   - id: slow_datause
     doc: |
       DDECal datause option for the slow-gain calibration (length = 1).
     type: string
 
-  - id: bda_timebase_slow_joint
-    label: BDA timebase for joint solve
+  - id: dp3_steps_slow
+    label: Steps for slow solve
+    doc: |
+      The list of DP3 steps to use in the slow-gain calibration
+      (length = 1).
+    type: string
+
+  - id: ddecal_applycal_steps_slow
+    label: DDECal applycal steps for slow solve
+    doc: |
+      The list of DDECal applycal steps to use in the slow-gain calibration
+      (length = 1).
+    type: string
+
+  - id: applycal_steps_slow
+    label: Applycal steps for slow solve
+    doc: |
+      The list of stand-alone applycal steps to use in the slow-gain calibration
+      (length = 1).
+    type: string
+
+  - id: bda_timebase_slow
+    label: BDA timebase for slow solve
     doc: |
       The baseline length (in meters) below which BDA time averaging is done in the
-      first (joint) slow-gain calibration (length = 1).
+      slow-gain calibration (length = 1).
     type: float
 
-  - id: bda_maxinterval_slow_joint
-    label: BDA maxinterval for joint solve
+  - id: bda_maxinterval_slow
+    label: BDA maxinterval for slow solve
     doc: |
       The maximum interval duration (in time slots) over which BDA time averaging is
-      done in the first (joint) slow-gain calibration (length = n_obs * n_freq_chunks).
-    type: int[]
-
-  - id: dp3_steps_slow_separate
-    label: Steps for separate solve
-    doc: |
-      The list of DP3 steps to use in the second (separate) slow-gain calibration
-      (length = 1).
-    type: string
-
-  - id: ddecal_applycal_steps_slow_joint
-    label: DDECal applycal steps for slow joint solve
-    doc: |
-      The list of DDECal applycal steps to use in the first (joint) slow-gain calibration
-      (length = 1).
-    type: string
-
-  - id: applycal_steps_slow_joint
-    label: Applycal steps for slow joint solve
-    doc: |
-      The list of stand-alone applycal steps to use in the first (joint) slow-gain calibration
-      (length = 1).
-    type: string
-
-  - id: ddecal_applycal_steps_slow_separate
-    label: DDECal applycal steps for slow separate solve
-    doc: |
-      The list of DDECal applycal steps to use in the second (separate) slow-gain calibration
-      (length = 1).
-    type: string
-
-  - id: applycal_steps_slow_separate
-    label: Applycal steps for slow separate solve
-    doc: |
-      The list of stand-alone applycal steps to use in the second (separate) slow-gain calibration
-      (length = 1).
-    type: string
-
-  - id: bda_timebase_slow_separate
-    label: BDA timebase for separate solve
-    doc: |
-      The baseline length (in meters) below which BDA time averaging is done in the
-      second (separate) slow-gain calibration (length = 1).
-    type: float
-
-  - id: bda_maxinterval_slow_separate
-    label: BDA maxinterval for separate solve
-    doc: |
-      The maximum interval duration (in time slots) over which BDA time averaging is
-      done in the second (separate) slow-gain calibration (length = n_obs *
+      done in the slow-gain calibration (length = n_obs *
       n_freq_chunks).
     type: int[]
 
-  - id: freqchunk_filename_joint
-    label: Filename of input MS for joint solve (frequency)
+  - id: freqchunk_filename
+    label: Filename of input MS for slow solve (frequency)
     doc: |
-      The filenames of input MS files for which the first (joint) slow-gain calibration
-      will be done (length = n_obs * n_freq_chunks).
-    type: Directory[]
-
-  - id: freqchunk_filename_separate
-    label: Filename of input MS for separate solve (frequency)
-    doc: |
-      The filenames of input MS files for which the second (separate) slow-gain
+      The filenames of input MS files for which the slow-gain
       calibration will be done (length = n_obs * n_freq_chunks).
     type: Directory[]
 
-  - id: slow_starttime_joint
-    label: Start time of each chunk for joint solve
+  - id: slow_starttime
+    label: Start time of each chunk for slow solve
     doc: |
-      The start time (in casacore MVTime) for each time chunk used in the first (joint)
+      The start time (in casacore MVTime) for each time chunk used in the
       slow-gain calibration (length = n_obs * n_freq_chunks).
     type: string[]
 
-  - id: slow_starttime_separate
-    label: Start time of each chunk for separate solve
+  - id: slow_ntimes
+    label: Number of times of each chunk for slow solve
     doc: |
-      The start time (in casacore MVTime) for each time chunk used in the second
-      (separate) slow-gain calibration (length = n_obs * n_freq_chunks).
-    type: string[]
-
-  - id: slow_ntimes_joint
-    label: Number of times of each chunk for joint solve
-    doc: |
-      The number of timeslots for each time chunk used in the first (joint) slow-gain
-      calibration (length = n_obs * n_freq_chunks).
-    type: int[]
-
-  - id: slow_ntimes_separate
-    label: Number of times of each chunk for separate solve
-    doc: |
-      The number of timeslots for each time chunk used in the second (separate) slow-
+      The number of timeslots for each time chunk used in the slow-
       gain calibration (length = n_obs * n_freq_chunks).
     type: int[]
 
-  - id: startchan_joint
-    label: Start channel of each chunk for joint solve
+  - id: startchan
+    label: Start channel of each chunk for slow solve
     doc: |
-      The start channel for each frequency chunk used in the first (joint) slow-gain
+      The start channel for each frequency chunk used in the slow-gain
       calibration (length = n_obs * n_freq_chunks).
     type: int[]
 
-  - id: startchan_separate
-    label: Start channel of each chunk for separate solve
+  - id: nchan
+    label: Number of channels of each chunk for slow solve
     doc: |
-      The start channel for each frequency chunk used in the second (separate) slow-gain
-      calibration (length = n_obs * n_freq_chunks).
-    type: int[]
-
-  - id: nchan_joint
-    label: Number of channels of each chunk for joint solve
-    doc: |
-      The number of channels for each frequency chunk used in the first (joint) slow-
-      gain calibration (length = n_obs * n_freq_chunks).
-    type: int[]
-
-  - id: nchan_separate
-    label: Number of channels of each chunk for separate solve
-    doc: |
-      The number of channels for each frequency chunk used in the second (separate)
+      The number of channels for each frequency chunk used in the
       slow-gain calibration (length = n_obs * n_freq_chunks).
     type: int[]
 
-  - id: solint_slow_timestep_joint
-    label: Joint slow solution interval in time
+  - id: solint_slow_timestep
+    label: Slow solution interval in time
     doc: |
-      The solution interval in number of timeslots for the first (joint) slow-gain
+      The solution interval in number of timeslots for the slow-gain
       solve (length = n_obs * n_freq_chunks).
     type: int[]
 
-  - id: solint_slow_timestep_separate
-    label: Separate slow solution interval in time
+  - id: solint_slow_freqstep
+    label: Slow solution interval in frequency
     doc: |
-      The solution interval in number of timeslots for the second (separate) slow-gain
-      solve (length = n_obs * n_freq_chunks).
-    type: int[]
-
-  - id: solint_slow_freqstep_joint
-    label: Joint slow solution interval in frequency
-    doc: |
-      The solution interval in number of frequency channels for the first (joint) slow-
-      gain solve (length = n_obs * n_freq_chunks).
-    type: int[]
-
-  - id: solint_slow_freqstep_separate
-    label: Separate slow solution interval in frequency
-    doc: |
-      The solution interval in number of frequency channels for the second (separate)
+      The solution interval in number of frequency channels for the
       slow-gain solve (length = n_obs * n_freq_chunks).
     type: int[]
 
-  - id: solutions_per_direction_slow_joint
-    label: Joint slow number of solutions per direction
+  - id: solutions_per_direction_slow
+    label: Slow number of solutions per direction
     doc: |
-      The number of solutions per direction for the first (joint) slow-
-      gain solve (length = n_obs * n_directions * n_freq_chunks).
-    type:
-      type: array
-      items:
-        type: array
-        items: int
-
-  - id: solutions_per_direction_slow_separate
-    label: Separate slow number of solutions per direction
-    doc: |
-      The number of solutions per direction for the second (separate)
+      The number of solutions per direction for the
       slow-gain solve (length = n_obs * n_directions * n_freq_chunks).
     type:
       type: array
@@ -607,10 +510,10 @@ inputs:
         type: array
         items: int
 
-  - id: smoothness_dd_factors_slow_joint
+  - id: smoothness_dd_factors_slow
     label: Smoothness factors
     doc: |
-      The factor by which to multiply the smoothnesscontraint for the first (joint)
+      The factor by which to multiply the smoothnesscontraint for the
       slow-gain solve, per direction (length = n_obs * n_calibrators * n_freq_chunks).
     type:
       type: array
@@ -618,42 +521,24 @@ inputs:
         type: array
         items: float
 
-  - id: smoothness_dd_factors_slow_separate
-    label: Smoothness factors
+  - id: slow_smoothnessconstraint
+    label: Slow smoothnessconstraint
     doc: |
-      The factor by which to multiply the smoothnesscontraint for the second (separate)
-      slow-gain solve, per direction (length = n_obs * n_calibrators * n_freq_chunks).
-    type:
-      type: array
-      items:
-        type: array
-        items: float
-
-  - id: slow_smoothnessconstraint_joint
-    label: Joint slow smoothnessconstraint
-    doc: |
-      The smoothnessconstraint kernel size in Hz for the first (joint) slow-gain solve
-      (length = 1).
-    type: float
-
-  - id: slow_smoothnessconstraint_separate
-    label: Separate slow smoothnessconstraint
-    doc: |
-      The smoothnessconstraint kernel size in Hz for the second (separate) slow-gain
+      The smoothnessconstraint kernel size in Hz for the slow-gain
       solve (length = 1).
     type: float
 
   - id: slow_antennaconstraint
     label: Slow antenna constraint
     doc: |
-      The antenna constraint for the first (joint) slow-gain solve (length = 1).
+      The antenna constraint for the slow-gain solve (length = 1).
     type: string
 
   - id: slow_initialsolutions_h5parm
     label: Input solution table
     doc: |
-      The filename of the input h5parm solution table to use for the second
-      (separate) slow-gain initial solutions (length = 1).
+      The filename of the input h5parm solution table to use for the
+      slow-gain initial solutions (length = 1).
     type: File?
 
   - id: max_normalization_delta
@@ -683,31 +568,17 @@ inputs:
       The Dec in degrees of the phase center (length = 1).
     type: float
 
-  - id: output_slow_h5parm_joint
-    label: Joint slow solve output solution table
+  - id: output_slow_h5parm
+    label: Slow solve output solution table
     doc: |
-      The filename of the output h5parm solution table for the first (joint) slow-gain
-      solve (length = n_obs * n_freq_chunks).
-    type: string[]
-
-  - id: output_slow_h5parm_separate
-    label: Separate slow solve output solution table
-    doc: |
-      The filename of the output h5parm solution table for the second (separate) slow-
+      The filename of the output h5parm solution table for the slow-
       gain solve (length = n_obs * n_freq_chunks).
     type: string[]
 
-  - id: combined_slow_h5parm_joint
-    label: Combined joint slow output solution table
+  - id: combined_slow_h5parm
+    label: Combined slow output solution table
     doc: |
-      The filename of the output combined h5parm solution table for the first (joint)
-      slow-gain solve (length = 1).
-    type: string
-
-  - id: combined_slow_h5parm_separate
-    label: Combined separate slow output solution table
-    doc: |
-      The filename of the output combined h5parm solution table for the second (separate)
+      The filename of the output combined h5parm solution table for the
       slow-gain solve (length = 1).
     type: string
 
@@ -718,24 +589,10 @@ inputs:
       (length = 1).
     type: string
 
-  - id: combined_h5parms_fast_slow_joint
-    label: Combined output solution table
-    doc: |
-      The filename of the output combined h5parm solution table for the fast-phase +
-      first (joint) slow-gain solve (length = 1).
-    type: string
-
-  - id: combined_h5parms_slow_joint_separate
-    label: Combined output solution table
-    doc: |
-      The filename of the output combined h5parm solution table for the first (joint) and
-      second (separate) slow-gain solves (length = 1).
-    type: string
-
   - id: solution_combine_mode
     label: Mode for combining solutions
     doc: |
-      The mode used for combining the fast-phase and joint slow-gain solutions
+      The mode used for combining the fast-phase and slow-gain solutions
       (length = 1).
     type: string?
 
@@ -766,7 +623,7 @@ outputs:
 {% if do_slowgain_solve %}
   - id: slow_gain_solutions
     outputSource:
-      - combine_slow_gains_separate/outh5parm
+      - combine_slow_gains/outh5parm
     type: File
   - id: slow_phase_plots
     outputSource:
@@ -949,7 +806,6 @@ steps:
 {% else %}
 # start not generate_screens
 
-{% if use_image_based_predict %}
   - id: adjust_normalize_sources
     label: Adjust normalize h5parm sources
     doc: |
@@ -965,6 +821,10 @@ steps:
     out:
       - id: adjustedh5parm
 {% endif %}
+
+
+
+# end use_image_based_predict
 
   - id: solve_fast_phases
     label: Solve for fast phases
@@ -1113,199 +973,13 @@ steps:
 {% if do_slowgain_solve %}
 # start do_slowgain_solve
 
-{% if do_joint_solve %}
-# start do_joint_solve (solve_slow_gains_joint)
-
-  - id: solve_slow_gains_joint
-    label: Joint solve for slow gains
+  - id: solve_slow_gains
+    label: Solve for slow gains
     doc: |
       This step uses DDECal (in DP3) to solve for diagonal gain corrections on long
       timescales (> 10 minute), using the input MS files and sourcedb. These
-      corrections are used to correct primarily for beam errors. The fast-
-      phase solutions are preapplied and all stations are constrained to
-      have the same (joint) solutions.
-    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve.cwl
-{% if max_cores is not none %}
-    hints:
-      ResourceRequirement:
-        coresMin: {{ max_cores }}
-        coresMax: {{ max_cores }}
-{% endif %}
-    in:
-      - id: msin
-        source: freqchunk_filename_joint
-      - id: data_colname
-        source: data_colname
-      - id: starttime
-        source: slow_starttime_joint
-      - id: ntimes
-        source: slow_ntimes_joint
-      - id: startchan
-        source: startchan_joint
-      - id: nchan
-        source: nchan_joint
-      - id: mode
-        valueFrom: 'diagonal'
-      - id: steps
-        source: dp3_steps_slow_joint
-      - id: applycal_steps
-        source:  applycal_steps_slow_joint
-      - id: ddecal_applycal_steps
-        source:  ddecal_applycal_steps_slow_joint
-      - id: timebase
-        source: bda_timebase_slow_joint
-      - id: maxinterval
-        source: bda_maxinterval_slow_joint
-      - id: fastphase_h5parm
-        source: combine_fast_phases/outh5parm
-      - id: ddecal_fastphase_h5parm
-        source: combine_fast_phases/outh5parm
-{% if use_image_based_predict %}
-      - id: normalize_h5parm
-        source: adjust_normalize_sources/adjustedh5parm
-{% else %}
-      - id: normalize_h5parm
-        source: normalize_h5parm
-{% endif %}
-      - id: ddecal_normalize_h5parm
-        source: normalize_h5parm
-      - id: h5parm
-        source: output_slow_h5parm_joint
-      - id: solint
-        source: solint_slow_timestep_joint
-      - id: solve_nchan
-        source: solint_slow_freqstep_joint
-      - id: solutions_per_direction
-        source: solutions_per_direction_slow_joint
-      - id: llssolver
-        source: llssolver
-      - id: maxiter
-        source: maxiter
-      - id: propagatesolutions
-        source: propagatesolutions
-      - id: solveralgorithm
-        source: solveralgorithm
-      - id: solverlbfgs_dof
-        source: solverlbfgs_dof
-      - id: solverlbfgs_iter
-        source: solverlbfgs_iter
-      - id: solverlbfgs_minibatches
-        source: solverlbfgs_minibatches
-      - id: onebeamperpatch
-        source: onebeamperpatch
-      - id: parallelbaselines
-        source: parallelbaselines
-      - id: sagecalpredict
-        source: sagecalpredict
-      - id: datause
-        source: slow_datause
-      - id: stepsize
-        source: stepsize
-      - id: stepsigma
-        source: stepsigma
-      - id: tolerance
-        source: tolerance
-      - id: uvlambdamin
-        source: uvlambdamin
-      - id: smoothness_dd_factors
-        source: smoothness_dd_factors_slow_joint
-      - id: smoothnessconstraint
-        source: slow_smoothnessconstraint_joint
-      - id: antennaconstraint
-        source: slow_antennaconstraint
-{% if use_image_based_predict %}
-      - id: predict_regions
-        source: make_region_file/region_file
-      - id: predict_images
-        source: draw_model/model_images
-      - id: reuse_model
-        valueFrom: '[predict.*]'
-{% else %}
-      - id: sourcedb
-        source: calibration_skymodel_file
-      - id: directions
-        source: calibrator_patch_names
-{% endif %}
-      - id: numthreads
-        source: max_threads
-    scatter: [msin, starttime, ntimes, startchan, nchan, maxinterval, h5parm, solint, solve_nchan, solutions_per_direction, smoothness_dd_factors]
-    scatterMethod: dotproduct
-    out:
-      - id: output_h5parm
-
-  - id: combine_slow_gains_joint
-    label: Combine joint slow-gain solutions
-    doc: |
-      This step combines all the gain solutions from the solve_slow_gains_joint step
-      into a single solution table (h5parm file).
-    run: {{ rapthor_pipeline_dir }}/steps/collect_h5parms.cwl
-    in:
-      - id: inh5parms
-        source: solve_slow_gains_joint/output_h5parm
-      - id: outputh5parm
-        source: combined_slow_h5parm_joint
-    out:
-      - id: outh5parm
-
-  - id: process_slow_gains_joint
-    label: Process joint slow-gain solutions
-    doc: |
-      This step processes the joint slow-gain solutions, flagging, smoothing and
-      renormalizing them.
-    run: {{ rapthor_pipeline_dir }}/steps/process_gains.cwl
-    in:
-      - id: h5parm
-        source: combine_slow_gains_joint/outh5parm
-      - id: flag
-        valueFrom: 'True'
-      - id: smooth
-        valueFrom: 'True'
-      - id: max_station_delta
-        source: max_normalization_delta
-      - id: scale_station_delta
-        source: scale_normalization_delta
-      - id: phase_center_ra
-        source: phase_center_ra
-      - id: phase_center_dec
-        source: phase_center_dec
-    out:
-      - id: outh5parm
-
-  - id: combine_fast_and_joint_slow_h5parms
-    label: Combine fast-phase and joint slow-gain solutions
-    doc: |
-      This step combines the fast-phase solutions from the solve_fast_phases step
-      and the slow-gain solutions from the solve_slow_gains_joint into a single
-      solution table (h5parm file).
-    run: {{ rapthor_pipeline_dir }}/steps/combine_h5parms.cwl
-    in:
-      - id: inh5parm1
-        source: combine_fast_phases/outh5parm
-      - id: inh5parm2
-        source: process_slow_gains_joint/outh5parm
-      - id: outh5parm
-        source: combined_h5parms_fast_slow_joint
-      - id: mode
-        valueFrom: 'p1a2'
-      - id: reweight
-        valueFrom: 'False'
-      - id: calibrator_names
-        source: calibrator_patch_names
-      - id: calibrator_fluxes
-        source: calibrator_fluxes
-    out:
-      - id: combinedh5parm
-
-{% endif %}
-
-  - id: solve_slow_gains_separate
-    label: Separate solve for slow gains
-    doc: |
-      This step uses DDECal (in DP3) to solve for diagonal gain corrections on long
-      timescales (> 10 minute), using the input MS files and sourcedb. These
-      corrections are used to correct primarily for beam errors. The fast-
-      phase solutions and first (joint) slow-gain solutions are preapplied
-      and stations are solve for separately (so different stations are free
+      corrections are used to correct primarily for beam errors. The fast-phase solutions
+      are preapplied and stations are solved for separately (so different stations are free
       to have different solutions).
     run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve.cwl
 {% if max_cores is not none %}
@@ -1316,39 +990,33 @@ steps:
 {% endif %}
     in:
       - id: msin
-        source: freqchunk_filename_separate
+        source: freqchunk_filename
       - id: data_colname
         source: data_colname
       - id: starttime
-        source: slow_starttime_separate
+        source: slow_starttime
       - id: ntimes
-        source: slow_ntimes_separate
+        source: slow_ntimes
       - id: startchan
-        source: startchan_separate
+        source: startchan
       - id: mode
         valueFrom: 'diagonal'
       - id: steps
-        source: dp3_steps_slow_separate
+        source: dp3_steps_slow
       - id: applycal_steps
-        source:  applycal_steps_slow_separate
+        source:  applycal_steps_slow
       - id: ddecal_applycal_steps
-        source:  ddecal_applycal_steps_slow_separate
+        source:  ddecal_applycal_steps_slow
       - id: timebase
-        source: bda_timebase_slow_separate
+        source: bda_timebase_slow
       - id: maxinterval
-        source: bda_maxinterval_slow_separate
+        source: bda_maxinterval_slow
       - id: nchan
-        source: nchan_separate
+        source: nchan
       - id: fastphase_h5parm
         source: combine_fast_phases/outh5parm
       - id: ddecal_fastphase_h5parm
         source: combine_fast_phases/outh5parm
-{% if do_joint_solve %}
-      - id: slowgain_h5parm
-        source: process_slow_gains_joint/outh5parm
-      - id: ddecal_slowgain_h5parm
-        source: process_slow_gains_joint/outh5parm
-{% endif %}
 {% if use_image_based_predict %}
       - id: normalize_h5parm
         source: adjust_normalize_sources/adjustedh5parm
@@ -1359,13 +1027,13 @@ steps:
       - id: ddecal_normalize_h5parm
         source: normalize_h5parm
       - id: h5parm
-        source: output_slow_h5parm_separate
+        source: output_slow_h5parm
       - id: solint
-        source: solint_slow_timestep_separate
+        source: solint_slow_timestep
       - id: solve_nchan
-        source: solint_slow_freqstep_separate
+        source: solint_slow_freqstep
       - id: solutions_per_direction
-        source: solutions_per_direction_slow_separate
+        source: solutions_per_direction_slow
       - id: llssolver
         source: llssolver
       - id: maxiter
@@ -1401,9 +1069,9 @@ steps:
       - id: uvlambdamin
         source: uvlambdamin
       - id: smoothness_dd_factors
-        source: smoothness_dd_factors_slow_separate
+        source: smoothness_dd_factors_slow
       - id: smoothnessconstraint
-        source: slow_smoothnessconstraint_separate
+        source: slow_smoothnessconstraint
 {% if use_image_based_predict %}
       - id: predict_regions
         source: make_region_file/region_file
@@ -1424,91 +1092,33 @@ steps:
     out:
       - id: output_h5parm
 
-  - id: combine_slow_gains_separate
-    label: Combine separate slow-gain solutions
+  - id: combine_slow_gains
+    label: Combine slow-gain solutions
     doc: |
-      This step combines all the gain solutions from the solve_slow_gains_separate step
+      This step combines all the gain solutions from the solve_slow_gains_step
       into a single solution table (h5parm file).
     run: {{ rapthor_pipeline_dir }}/steps/collect_h5parms.cwl
     in:
       - id: inh5parms
-        source: solve_slow_gains_separate/output_h5parm
+        source: solve_slow_gains/output_h5parm
       - id: outputh5parm
-        source: combined_slow_h5parm_separate
+        source: combined_slow_h5parm
     out:
       - id: outh5parm
 
-  - id: process_slow_gains_separate
-    label: Process separate slow-gain solutions
+  - id: process_slow_gains
+    label: Process slow-gain solutions
     doc: |
-      This step processes the gain solutions from the separate solve, flagging,
+      This step processes the gain solutions from the slow solve, flagging,
       smoothing and renormalizing them.
     run: {{ rapthor_pipeline_dir }}/steps/process_gains.cwl
     in:
       - id: h5parm
-        source: combine_slow_gains_separate/outh5parm
+        source: combine_slow_gains/outh5parm
       - id: flag
         valueFrom: 'True'
       - id: smooth
         valueFrom: 'True'
-      - id: max_station_delta
-        source: max_normalization_delta
-      - id: scale_station_delta
-        source: scale_normalization_delta
-      - id: phase_center_ra
-        source: phase_center_ra
-      - id: phase_center_dec
-        source: phase_center_dec
-    out:
-      - id: outh5parm
-
-{% if do_joint_solve %}
-
-  - id: combine_joint_and_separate_slow_h5parms
-    label: Combine slow-gain solutions
-    doc: |
-      This step combines the gain solutions from the solve_slow_gains_joint and
-      solve_slow_gains_separate steps into a single solution table (h5parm file).
-      The phases and amplitudes from solve_slow_gains_separate and the amplitudes from
-      solve_slow_gains_joint are used.
-    run: {{ rapthor_pipeline_dir }}/steps/combine_h5parms.cwl
-    in:
-      - id: inh5parm1
-        source: process_slow_gains_separate/outh5parm
-      - id: inh5parm2
-        source: combine_slow_gains_joint/outh5parm
-      - id: outh5parm
-        source: combined_h5parms_slow_joint_separate
-      - id: mode
-        valueFrom: 'p1a1a2'
-      - id: reweight
-        valueFrom: 'False'
-      - id: calibrator_names
-        source: calibrator_patch_names
-      - id: calibrator_fluxes
-        source: calibrator_fluxes
-    out:
-      - id: combinedh5parm
-
-{% endif %}
-
-  - id: normalize_slow_amplitudes
-    label: Normalize slow-gain amplitudes
-    doc: |
-      This step processes the combined amplitude solutions from
-      combine_joint_and_separate_slow_h5parms, flagging and renormalizing them.
-    run: {{ rapthor_pipeline_dir }}/steps/process_gains.cwl
-    in:
-      - id: h5parm
-{% if do_joint_solve %}
-        source: combine_joint_and_separate_slow_h5parms/combinedh5parm
-{% else %}
-        source: process_slow_gains_separate/outh5parm
-{% endif %}
-      - id: flag
-        valueFrom: 'True'
-      - id: smooth
-        valueFrom: 'False'
       - id: max_station_delta
         source: max_normalization_delta
       - id: scale_station_delta
@@ -1527,7 +1137,7 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/plot_solutions.cwl
     in:
       - id: h5parm
-        source: normalize_slow_amplitudes/outh5parm
+        source: process_slow_gains/outh5parm
       - id: soltype
         valueFrom: 'phase'
     out:
@@ -1540,7 +1150,7 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/plot_solutions.cwl
     in:
       - id: h5parm
-        source: normalize_slow_amplitudes/outh5parm
+        source: process_slow_gains/outh5parm
       - id: soltype
         valueFrom: 'amplitude'
     out:
@@ -1559,7 +1169,7 @@ steps:
       - id: inh5parm1
         source: combine_fast_phases/outh5parm
       - id: inh5parm2
-        source: normalize_slow_amplitudes/outh5parm
+        source: process_slow_gains/outh5parm
       - id: outh5parm
         source: combined_h5parms
       - id: mode

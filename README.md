@@ -1,6 +1,6 @@
 # Rapthor: LOFAR DDE Pipeline
 
-Rapthor is an experimental pipeline for correcting direction-dependent effects in LOFAR data. It uses DP3 and WSClean to derive and apply the corrections in facets or as smooth 2-D screens. It uses [CWL](https://www.commonwl.org) for the pipeline language and [Toil](http://toil.ucsc-cgl.org) to run the pipelines.
+Rapthor is an experimental pipeline for correcting direction-dependent effects in LOFAR data. It is also being developed for use on SKA-Low data. It uses DP3 and WSClean to derive and apply the corrections in facets or as smooth 2-D screens. It uses [CWL](https://www.commonwl.org) for the pipeline language and either [Toil](http://toil.ucsc-cgl.org) or [StreamFlow](https://streamflow.di.unito.it) to run the pipelines.
 
 ## Documentation
 
@@ -9,7 +9,10 @@ Extensive documentation can be found on [Read the Docs](https://rapthor.readthed
 
 ## Installation
 
-To install rapthor, follow the instructions below.
+To install rapthor, follow the instructions below. 
+
+If you are using the SKAO AWS cluster, follow the 
+instructions [here](https://rapthor.readthedocs.io/en/latest/running_skao.html).
 
 
 ### Dependencies

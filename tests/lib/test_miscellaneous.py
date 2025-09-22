@@ -2,10 +2,9 @@
 Tests for the `rapthor.lib.miscellaneous` module.
 """
 
-import numpy
 import pytest
 from rapthor.lib.miscellaneous import *
-
+from astropy.wcs import WCS
 
 @pytest.mark.parametrize("ra", (10.75,))
 @pytest.mark.parametrize("dec", (5.34,))
@@ -25,34 +24,6 @@ def test_download_skymodel(
 def test_normalize_ra_dec(ra, dec):
     normalize_ra_dec(ra, dec)
 
-
-@pytest.mark.parametrize("wcs", (None,))  # maybe use make_wcs to create a WCS object?
-@pytest.mark.parametrize("ra", (10.75,))
-@pytest.mark.parametrize("dec", (5.34,))
-def test_radec2xy(wcs, ra, dec):
-    # radec2xy(wcs, ra, dec)
-    pass
-
-
-@pytest.mark.parametrize("wcs", (None,))  # maybe use make_wcs to create a WCS object?
-@pytest.mark.parametrize("x", (3.98,))
-@pytest.mark.parametrize("y", (-2.74,))
-def test_xy2radec(wcs, x, y):
-    # xy2radec(wcs, x, y)
-    pass
-
-
-@pytest.mark.parametrize("ra", (None,))
-@pytest.mark.parametrize("dec", (None,))
-@pytest.mark.parametrize("wcs_pixel_scale", (10.0 / 3600.0,))
-def test_make_wcs(ra, dec, wcs_pixel_scale):
-    make_wcs(ra, dec, wcs_pixel_scale)
-
-
-@pytest.mark.parametrize("filename", ("/path/to/vertices.file",))
-def test_read_vertices(filename):
-    with pytest.raises(FileNotFoundError):
-        read_vertices(filename)
 
 
 @pytest.mark.parametrize("image_name", (None,))
@@ -92,13 +63,6 @@ def test_make_template_image(
         aterm_type,
         fill_val,
     )
-
-
-@pytest.mark.parametrize("verts", ([(2.7, 3.1), (3.2, 4.5), (5.1, 6.3)],))
-@pytest.mark.parametrize("data", (numpy.zeros((5, 5)),))
-@pytest.mark.parametrize("blank_value", (0,))
-def test_rasterize(verts, data, blank_value):
-    rasterize(verts, data, blank_value)
 
 
 @pytest.mark.parametrize("invar", (None,))
@@ -181,14 +145,6 @@ def test_find_unflagged_fraction(ms_file, start_time, end_time):
 @pytest.mark.parametrize("solsetname", ("sol000",))
 def test_get_flagged_solution_fraction(h5file, solsetname):
     # get_flagged_solution_fraction(h5file, solsetname)
-    pass
-
-
-@pytest.mark.parametrize("from_skymodel", (None,))  # we may want to use a fixture here
-@pytest.mark.parametrize("to_skymodel", (None,))
-@pytest.mark.parametrize("patch_dict", (None,))
-def test_transfer_patches(from_skymodel, to_skymodel, patch_dict):
-    # transfer_patches(from_skymodel, to_skymodel, patch_dict)
     pass
 
 

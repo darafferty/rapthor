@@ -36,18 +36,20 @@ dependencies = [
     "bdsf",
     "jinja2",
     "losoto>=2.4.3",
-    "lsmtool>=1.6",
+    "lsmtool @ git+https://git.astron.nl/RD/LSMTool.git@master",
     "matplotlib",
     "mocpy",
     "numpy",
     "python-casacore",
     "python-dateutil",
+    "pyyaml",
     "reproject",
     "requests",
     "Rtree",
     "scipy",
     "shapely",
-    "toil[cwl]>=8.0",
+    "toil[cwl]>=9.0",
+    "streamflow>=0.2.0.dev13"
 ]
 dynamic = ["version"]
 
@@ -111,19 +113,33 @@ requires = ["tox>4"]
 envlist = ["py3{9,10,11,12,13}"]
 
 [tool.tox.env_run_base]
+description = "Run all tests"
 deps = [
     "mock",
     "pytest",
     "pytest-cov",
+    "pytest-xdist",
 ]
 commands = [
+    # test_field.py does not support parallel runs, so run sequentially.
     [
         "python", "-m", "pytest",
         # "-m", "not slow",
+        "-k", "test_field.py",
+        "--cov=rapthor",
+    ],
+    # Run all other tests with 4 parallel processes.
+    # Add to the existing coverage report from the run above.
+    [
+        "python", "-m", "pytest",
+        # "-m", "not slow",
+        "-n", "4",
+        "-k", "not test_field.py",
         "--cov-report", "term-missing",
         "--cov-report", "xml",
         "--cov-report", "html",
         "--cov=rapthor",
-    ]
+        "--cov-append",
+    ],
 ]
 changedir = "{toxinidir}/tests"

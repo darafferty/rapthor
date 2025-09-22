@@ -14,6 +14,7 @@ from rapthor.lib import miscellaneous as misc
 from matplotlib import patches
 import lsmtool
 from lsmtool import tableio
+from lsmtool.operations_lib import make_wcs
 import tempfile
 import re
 
@@ -46,10 +47,12 @@ class Facet(object):
         self.vertices = np.array(vertices)
 
         # Convert input (RA, Dec) vertices to (x, y) polygon
-        self.wcs = misc.make_wcs(self.ra, self.dec)
+        self.wcs = make_wcs(self.ra, self.dec, misc.WCS_PIXEL_SCALE)
         self.polygon_ras = [radec[0] for radec in self.vertices]
         self.polygon_decs = [radec[1] for radec in self.vertices]
-        x_values, y_values = misc.radec2xy(self.wcs, self.polygon_ras, self.polygon_decs)
+        x_values, y_values = self.wcs.wcs_world2pix(self.polygon_ras,
+                                                    self.polygon_decs,
+                                                    misc.WCS_ORIGIN)
         polygon_vertices = [(x, y) for x, y in zip(x_values, y_values)]
         self.polygon = Polygon(polygon_vertices)
 
@@ -59,11 +62,17 @@ class Facet(object):
                         abs(self.wcs.wcs.cdelt[0]))  # degrees
         self.x_center = xmin + (xmax - xmin)/2
         self.y_center = ymin + (ymax - ymin)/2
-        self.ra_center, self.dec_center = misc.xy2radec(self.wcs, self.x_center, self.y_center)
+        self.ra_center, self.dec_center = map(
+            float, self.wcs.wcs_pix2world(self.x_center, self.y_center, misc.WCS_ORIGIN)
+        )
 
         # Find the centroid of the facet
-        self.ra_centroid, self.dec_centroid = misc.xy2radec(self.wcs, self.polygon.centroid.x,
-                                                            self.polygon.centroid.y)
+        self.ra_centroid, self.dec_centroid = map(
+            float, self.wcs.wcs_pix2world(self.polygon.centroid.x,
+                                          self.polygon.centroid.y,
+                                          misc.WCS_ORIGIN)
+        )
+
 
     def set_skymodel(self, skymodel):
         """
@@ -178,10 +187,11 @@ class Facet(object):
             The patch for the facet polygon
         """
         if wcs is not None:
-            x, y = misc.radec2xy(wcs, self.polygon_ras, self.polygon_decs)
+            x, y = wcs.wcs_world2pix(self.polygon_ras,
+                                     self.polygon_decs,
+                                     misc.WCS_ORIGIN)
         else:
-            x = self.polygon.exterior.coords.xy[0]
-            y = self.polygon.exterior.coords.xy[1]
+            x, y = self.polygon.exterior.coords.xy
         xy = np.vstack([x, y]).transpose()
         patch = patches.Polygon(xy=xy, edgecolor='black', facecolor='white')
 
@@ -211,18 +221,19 @@ class SquareFacet(Facet):
         if type(dec) is str:
             dec = Angle(dec).to('deg').value
         ra, dec = misc.normalize_ra_dec(ra, dec)
-        wcs = misc.make_wcs(ra, dec)
+        wcs = make_wcs(ra, dec, misc.WCS_PIXEL_SCALE)
 
-        # Make the vertices
+        # Make the vertices.
         xmin = wcs.wcs.crpix[0] - width / 2 / abs(wcs.wcs.cdelt[0])
         xmax = wcs.wcs.crpix[0] + width / 2 / abs(wcs.wcs.cdelt[0])
         ymin = wcs.wcs.crpix[1] - width / 2 / abs(wcs.wcs.cdelt[1])
         ymax = wcs.wcs.crpix[1] + width / 2 / abs(wcs.wcs.cdelt[1])
-        ra_llc, dec_llc = misc.xy2radec(wcs, xmin, ymin)  # (RA, Dec) of lower-left corner
-        ra_tlc, dec_tlc = misc.xy2radec(wcs, xmin, ymax)  # (RA, Dec) of top-left corner
-        ra_trc, dec_trc = misc.xy2radec(wcs, xmax, ymax)  # (RA, Dec) of top-right corner
-        ra_lrc, dec_lrc = misc.xy2radec(wcs, xmax, ymin)  # (RA, Dec) of lower-right corner
-        vertices = [(ra_llc, dec_llc), (ra_tlc, dec_tlc), (ra_trc, dec_trc), (ra_lrc, dec_lrc)]
+        # Corner order: lower-left, top-left, top-right and lower-right.
+        corners_ra, corners_dec = wcs.wcs_pix2world([xmin, xmin, xmax, xmax],
+                                                    [ymin, ymax, ymax, ymin],
+                                                    misc.WCS_ORIGIN)
+
+        vertices = list(zip(corners_ra, corners_dec))
 
         super().__init__(name, ra, dec, vertices)
 
@@ -259,9 +270,9 @@ def make_facet_polygons(ra_cal, dec_cal, ra_mid, dec_mid, width_ra, width_dec):
     if width_ra <= 0.0 or width_dec <= 0.0:
         raise ValueError('The RA/Dec width cannot be zero or less')
     wcs_pixel_scale = 20.0 / 3600.0  # 20"/pixel
-    wcs = misc.make_wcs(ra_mid, dec_mid, wcs_pixel_scale)
-    x_cal, y_cal = misc.radec2xy(wcs, ra_cal, dec_cal)
-    x_mid, y_mid = misc.radec2xy(wcs, ra_mid, dec_mid)
+    wcs = make_wcs(ra_mid, dec_mid, wcs_pixel_scale)
+    x_cal, y_cal = wcs.wcs_world2pix(ra_cal, dec_cal, misc.WCS_ORIGIN)
+    x_mid, y_mid = wcs.wcs_world2pix(ra_mid, dec_mid, misc.WCS_ORIGIN)
     width_x = width_ra / wcs_pixel_scale / 2.0
     width_y = width_dec / wcs_pixel_scale / 2.0
     bounding_box = np.array([x_mid - width_x, x_mid + width_x,
@@ -272,14 +283,12 @@ def make_facet_polygons(ra_cal, dec_cal, ra_mid, dec_mid, width_ra, width_dec):
     facet_polys = []
     for region in vor.filtered_regions:
         vertices = vor.vertices[region + [region[0]], :]
-        ra, dec = misc.xy2radec(wcs, vertices[:, 0], vertices[:, 1])
+        ra, dec = wcs.wcs_pix2world(vertices[:, 0], vertices[:, 1], misc.WCS_ORIGIN)
         vertices = np.stack((ra, dec)).T
         facet_polys.append(vertices)
-    facet_points = []
-    for point in vor.filtered_points:
-        ra, dec = misc.xy2radec(wcs, point[0], point[1])
-        facet_points.append((ra, dec))
-
+    facet_points = list(map(
+        tuple, wcs.wcs_pix2world(vor.filtered_points, misc.WCS_ORIGIN)
+    ))
     return facet_points, facet_polys
 
 
@@ -561,7 +570,7 @@ def read_skymodel(skymodel, ra_mid, dec_mid, width_ra, width_dec):
     return facets
 
 
-def filter_skymodel(polygon, skymodel, wcs):
+def filter_skymodel(polygon, skymodel, wcs, invert=False):
     """
     Filters input skymodel to select only sources that lie inside the input facet
 
@@ -573,6 +582,9 @@ def filter_skymodel(polygon, skymodel, wcs):
         Input sky model to be filtered
     wcs : WCS object
         WCS object defining image to sky transformations
+    invert : bool, optional
+        If True, invert the selection (so select only sources that lie outside
+        the facet)
 
     Returns
     -------
@@ -582,23 +594,22 @@ def filter_skymodel(polygon, skymodel, wcs):
     # Make list of sources
     RA = skymodel.getColValues('Ra')
     Dec = skymodel.getColValues('Dec')
-    x, y = misc.radec2xy(wcs, RA, Dec)
-    x = np.array(x)
-    y = np.array(y)
+    x, y = wcs.wcs_world2pix(RA, Dec, misc.WCS_ORIGIN)
 
     # Keep only those sources inside the bounding box
     inside = np.zeros(len(skymodel), dtype=bool)
     xmin, ymin, xmax, ymax = polygon.bounds
     inside_ind = np.where((x >= xmin) & (x <= xmax) & (y >= ymin) & (y <= ymax))
     inside[inside_ind] = True
-    skymodel.select(inside)
+    if invert:
+        skymodel.remove(inside)
+    else:
+        skymodel.select(inside)
     if len(skymodel) == 0:
         return skymodel
     RA = skymodel.getColValues('Ra')
     Dec = skymodel.getColValues('Dec')
-    x, y = misc.radec2xy(wcs, RA, Dec)
-    x = np.array(x)
-    y = np.array(y)
+    x, y = wcs.wcs_world2pix(RA, Dec, misc.WCS_ORIGIN)
 
     # Now check the actual boundary against filtered sky model. We first do a quick (but
     # coarse) check using ImageDraw with a padding of at least a few pixels to ensure the
@@ -635,6 +646,9 @@ def filter_skymodel(polygon, skymodel, wcs):
     i_outside_points = [(i, p) for (i, p) in i_points if not prepared_polygon.contains(p)]
     for idx, _ in i_outside_points:
         inside[idx] = False
-    skymodel.select(inside)
+    if invert:
+        skymodel.remove(inside)
+    else:
+        skymodel.select(inside)
 
     return skymodel

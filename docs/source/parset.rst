@@ -19,8 +19,13 @@ The available options are described below under their respective sections.
 
 .. note::
 
-    An example parset is available `here
+    An example parset is available in the `settings directory
     <https://git.astron.nl/RD/rapthor/-/blob/master/rapthor/settings/defaults.parset>`_.
+    In addition, example parsets for running on the SKAO cluster using either a single node,
+    or multiple nodes, are availble in the `examples directory
+    <https://git.astron.nl/RD/rapthor/-/tree/master/examples>`_ and an example parset 
+    for SKA-low is available in `the settings directory 
+    <https://git.astron.nl/RD/rapthor/-/blob/master/rapthor/settings/defaults_skalow.parset>`_.
 
 .. _parset_global_options:
 
@@ -276,23 +281,12 @@ The available options are described below under their respective sections.
     slow_freqstep_hz
         Frequency step used during slow amplitude calibration, in Hz (default = 1e6).
 
-    slow_smoothnessconstraint_joint
-        Smoothness constraint bandwidth used during the first slow gain calibration,
-        where a joint solution is found for all stations, in Hz (default = 3e6).
+    slow_smoothnessconstraint
+        Smoothness constraint bandwidth used during the slow gain calibration, in Hz
+        (default = 3e6).
 
-    slow_smoothnessconstraint_separate
-        Smoothness constraint bandwidth used during the second slow gain calibration,
-        where separate solutions are found for each station, in Hz (default = 3e6).
-
-    slow_bda_timebase_joint
-        Maximum baseline used in baseline-dependent averaging (BDA) during the first slow
-        gain calibration, in m (default = 20000). A value of 0 will disable the averaging.
-        Depending on the solution time step used during the slow-gain calibration,
-        activating this option may improve the speed of the solve and lower the memory
-        usage during solving.
-
-    slow_bda_timebase_separate
-        Maximum baseline used in baseline-dependent averaging (BDA) during the second slow
+    slow_bda_timebase
+        Maximum baseline used in baseline-dependent averaging (BDA) during the slow
         gain calibration, in m (default = 20000). A value of 0 will disable the averaging.
         Depending on the solution time step used during the slow-gain calibration,
         activating this option may improve the speed of the solve and lower the memory
@@ -492,6 +486,11 @@ The available options are described below under their respective sections.
             Currently, Toil does not fully support ``openmpi``. Because of this, imaging
             can only use the worker nodes, and the master node will be idle.
 
+        .. note::
+            When running on SKAO cluster, be sure to export the ``SALLOC_PARTITION`` to 
+            ensure Toil uses a specific partition (see example SLURM script `here
+            <https://git.astron.nl/RD/rapthor/-/blob/master/examples/rapthor_skao_multinode.slurm>`_).
+
     reweight
         Reweight the visibility data before imaging (default = ``False``). If ``True``,
         data with high residuals (compared to the predicted model visibilities) are
@@ -563,9 +562,9 @@ The available options are described below under their respective sections.
 .. glossary::
 
     batch_system
-        Cluster batch system (only used when Toil is the CWL runner; default =
-        ``single_machine``). Use ``single_machine`` when running on a single machine and
-        ``slurm`` to use multiple nodes of a Slurm-based cluster.
+        Cluster batch system (only used when either StreamFlow or Toil is the CWL runner;
+        default = ``single_machine``). Use ``single_machine`` when running on a single
+        machine and ``slurm`` to use multiple nodes of a Slurm-based cluster.
 
         .. note::
 
@@ -679,23 +678,37 @@ The available options are described below under their respective sections.
         types are: ``docker`` (the default), ``udocker``, or ``singularity``.
 
     cwl_runner
-        CWL runner to use. Currently supported runners are: ``cwltool`` and ``toil``
-        (default). Toil is the recommended runner, since it provides much more
-        fine-grained control over the execution of a workflow. For example, Toil can use
-        Slurm to automatically distribute workflow steps over different compute nodes,
-        whereas CWLTool can only execute workflows on a single node. With CWLTool you also
-        run the risk of overloading your machine when too many jobs are run in parallel.
-        For debugging purposes CWLTool outshines Toil, because its logs are easier to
-        understand.
+        CWL runner to use. Currently supported runners are: ``cwltool``, ``streamflow``,
+        and ``toil`` (default). Toil is the recommended runner, since it provides much
+        more fine-grained control over the execution of a workflow. For example, Toil and
+        StreamFlow can use Slurm to automatically distribute workflow steps over different
+        compute nodes, whereas CWLTool can only execute workflows on a single node. With
+        CWLTool you also run the risk of overloading your machine when too many jobs are
+        run in parallel. For debugging purposes CWLTool outshines Toil, because its logs
+        are easier to understand.
 
     debug_workflow
-        Debug workflow related issues. Enabling this will require significantly more disk
-        space. The working directory will never be cleaned up, ``stdout`` and ``stderr``
-        will not be redirectied, and log level of the CWL runner will be set to ``DEBUG``.
-        Additionally, when using Toil as the CWL runner, some tasks will run using only a
-        single thread (to make debugging easier). Use this option with care!
+        Debug workflow related issues (default = ``False``). Enabling this option
+        implies that temporary files, produced during the workflow run, will be kept
+        (i.e. the option ``keep_temporary_files`` is implicitly set to ``True``). This
+        will require significantly more disk space.  The working directory will never be
+        cleaned up, ``stdout`` and ``stderr`` will not be redirectied, and log level of
+        the CWL runner will be set to ``DEBUG``.  Additionally, when using Toil as the
+        CWL runner, some tasks will run using only a single thread (to make debugging
+        easier). Use this option with care!
 
         .. note::
 
             If Toil is the CWL runner, this option will only work when
             :term:`batch_system` = ``single_machine`` (the default).
+
+    keep_temporary_files
+        Keep temporary files created during the workflow execution (default =
+        ``False``). If ``True``, temporary files and directories created during the
+        workflow execution will not be deleted at the end of the run. This will require
+        significantly more disk space. This option is useful for debugging purposes.
+
+        .. note::
+
+            This option will be set to ``True`` automatically when
+            :term:`debug_workflow` = ``True``.
