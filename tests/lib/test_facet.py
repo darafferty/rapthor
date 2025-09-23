@@ -2,12 +2,7 @@
 Test cases for the rapthor.lib.facet module.
 """
 
-import os
-import pytest
-
-import numpy as np
 from rapthor.lib import facet
-from lsmtool.operations_lib import tessellate
 
 
 def test_read_ds9_region_file(request):
