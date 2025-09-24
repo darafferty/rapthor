@@ -192,6 +192,15 @@ class Image(Operation):
             else:
                 join_polarizations = True
 
+        # Determine whether corrections for time and frequency smearing can
+        # be enabled
+        if self.field.use_image_based_predict:
+            # Smearing corrections are not supported yet for this mode during
+            # calibration, do they should not be used in imaging either
+            apply_time_frequency_smearing = False
+        else:
+            apply_time_frequency_smearing = True
+
         # Set the DP3 steps and applycal steps depending on whether solutions
         # should be preapplied before imaging and on whether baseline-dependent
         # averaging is activated (and supported) or not
@@ -291,6 +300,7 @@ class Image(Operation):
                             'source_finder': self.imaging_parameters['source_finder'],
                             'do_multiscale': [sector.multiscale for sector in self.imaging_sectors],
                             'dd_psf_grid': [sector.dd_psf_grid for sector in self.imaging_sectors],
+                            'apply_time_frequency_smearing': apply_time_frequency_smearing,
                             'max_threads': self.field.parset['cluster_specific']['max_threads'],
                             'deconvolution_threads': self.field.parset['cluster_specific']['deconvolution_threads']}
 
