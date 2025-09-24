@@ -92,6 +92,7 @@ class Field:
         self.calibration_skymodel_file = "calibration_skymodel.txt"
         self.dec = 0
         self.do_predict = False
+        self.use_image_based_predict = False
         self.fulljones_h5parm_filename = parset["input_fulljones_h5parm"]
         self.h5parm_filename = parset["input_h5parm"]
         self.image_pol = "I"
