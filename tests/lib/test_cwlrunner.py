@@ -37,7 +37,7 @@ class Sector:
         self.region_file = None
         self.threshisl = None
         self.threshpix = None
-        self.vertices_file = "vertices.pkl"
+        self.vertices_file = "vertices.npy"
         self.wsclean_deconvolution_channels = None
         self.wsclean_nchannels = None
         self.wsclean_niter = None
