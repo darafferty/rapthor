@@ -186,7 +186,7 @@ The available options are described below under their respective sections.
             Currently, correction for time and frequency smearing cannot be done
             when image-based prediction is used. If the averaging of the input data
             is such that time or frequency smearing is significant within the field
-            of view of interest, then then use of image-based prediction is not
+            of view of interest, then the use of image-based prediction is not
             recommended.
 
     llssolver
@@ -395,6 +395,13 @@ The available options are described below under their respective sections.
         Maximum baseline used in baseline-dependent averaging (BDA) during imaging, in m
         (default = 0). A value of 0 will disable the averaging. Activating this option
         may improve the speed of imaging.
+
+        .. note::
+
+            Currently, correction for time and frequency smearing cannot be done
+            when BDA is used during imaging. If the averaging of the input data
+            is such that time or frequency smearing is significant within the field
+            of view of interest, then the use of BDA is not recommended.
 
     dde_method
         Method to use to correct for direction-dependent effects during imaging:
