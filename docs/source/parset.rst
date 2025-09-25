@@ -393,7 +393,7 @@ The available options are described below under their respective sections.
 
     bda_timebase
         Maximum baseline used in baseline-dependent averaging (BDA) during imaging, in m
-        (default = 20000). A value of 0 will disable the averaging. Activating this option
+        (default = 0). A value of 0 will disable the averaging. Activating this option
         may improve the speed of imaging.
 
     dde_method

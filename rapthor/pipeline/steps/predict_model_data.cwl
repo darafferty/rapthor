@@ -26,8 +26,6 @@ arguments:
   - predict.usebeammodel=True
   - predict.beam_interval=120
   - predict.beammode=array_factor
-  - predict.correctfreqsmearing=True
-  - predict.correcttimesmearing=True
   - msout.storagemanager=Dysco
   - msout.storagemanager.databitrate=0  # don't compress data, as they are noiseless
 
@@ -84,6 +82,26 @@ inputs:
     type: boolean
     inputBinding:
       prefix: predict.onebeamperpatch=
+      valueFrom: "$(self ? 'True': 'False')"
+      separate: False
+
+  - id: correctfreqsmearing
+    label: One beam per patch
+    doc: |
+      Flag that enables the frequency smearing correction.
+    type: boolean
+    inputBinding:
+      prefix: predict.correctfreqsmearing=
+      valueFrom: "$(self ? 'True': 'False')"
+      separate: False
+
+  - id: correcttimesmearing
+    label: One beam per patch
+    doc: |
+      Flag that enables the time smearing correction.
+    type: boolean
+    inputBinding:
+      prefix: predict.correcttimesmearing=
       valueFrom: "$(self ? 'True': 'False')"
       separate: False
 

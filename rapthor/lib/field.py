@@ -55,6 +55,7 @@ class Field(object):
         self.numMS = len(self.ms_filenames)
         self.data_colname = self.parset['data_colname']
         self.use_image_based_predict = self.parset['calibration_specific']['use_image_based_predict']
+        self.apply_time_frequency_smearing = not self.use_image_based_predict  # remove when smearing supported with image-based predict
         self.bda_timebase_fast = self.parset['calibration_specific']['fast_bda_timebase']
         self.bda_timebase_slow = self.parset['calibration_specific']['slow_bda_timebase']
         self.dd_interval_factor = self.parset['calibration_specific']['dd_interval_factor']

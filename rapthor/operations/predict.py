@@ -133,6 +133,7 @@ class PredictDD(Operation):
                             'nr_bright': nr_bright,
                             'peel_bright': peel_bright,
                             'reweight': reweight,
+                            'apply_time_frequency_smearing': self.field.apply_time_frequency_smearing,
                             'max_threads': self.field.parset['cluster_specific']['max_threads']}
 
     def finalize(self):
@@ -289,6 +290,7 @@ class PredictNC(Operation):
                             'obs_starttime': obs_starttime,
                             'obs_infix': obs_infix,
                             'nr_sectors': nr_sectors,
+                            'apply_time_frequency_smearing': self.field.apply_time_frequency_smearing,
                             'max_threads': self.field.parset['cluster_specific']['max_threads']}
 
     def finalize(self):
@@ -398,6 +400,7 @@ class PredictDI(Operation):
                             'obs_filename': CWLDir(obs_filename).to_json(),
                             'obs_starttime': obs_starttime,
                             'obs_infix': obs_infix,
+                            'apply_time_frequency_smearing': self.field.apply_time_frequency_smearing,
                             'max_threads': self.field.parset['cluster_specific']['max_threads']}
 
     def finalize(self):
