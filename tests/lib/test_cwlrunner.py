@@ -111,6 +111,7 @@ class Field:
         self.auto_mask_nmiter = 1
         self.skip_final_major_iteration = True
         self.image_bda_timebase = 0
+        self.apply_time_frequency_smearing = True
 
     def get_calibration_radius(self):
         return 5.0
