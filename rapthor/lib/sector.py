@@ -451,7 +451,7 @@ class Sector(object):
         Make a vertices file for the sector boundary
         """
         vertices = self.get_vertices_radec()
-        np.save(self.vertices_file, vertices, allow_pickle=False)
+        np.save(self.vertices_file, np.transpose(vertices), allow_pickle=False)
 
     def make_region_file(self, outputfile, region_format='ds9'):
         """
