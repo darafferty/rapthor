@@ -149,7 +149,7 @@ solverlbfgs_minibatches = 1
 # (default = none), local rms parameters (defaults = 0.8, 50, and "rms-with-min"
 # for the strength, window, and method, respectively), whether multiscale
 # clean should be used (default = True), and the baseline-dependent averaging
-# (BDA) timebase value in m (default = 20000)
+# (BDA) timebase value in m (default = 0)
 cellsize_arcsec = 1.25
 robust = -0.5
 min_uv_lambda = 0.0
@@ -160,7 +160,7 @@ local_rms_strength = 0.8
 local_rms_window = 50
 local_rms_method = rms-with-min
 do_multiscale_clean = True
-bda_timebase = 20000.0
+bda_timebase = 0.0
 
 # Method to use to correct for direction-dependent effects during imaging:
 # single or full (default = full). If "single", a single, direction-independent

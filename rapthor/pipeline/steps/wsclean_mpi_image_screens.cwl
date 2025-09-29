@@ -37,7 +37,6 @@ arguments:
   - -join-channels
   - -use-idg
   - -log-time
-  - -apply-time-frequency-smearing
   - valueFrom: '$(runtime.tmpdir)'
     prefix: -temp-dir
   - valueFrom: '0.8'
@@ -197,6 +196,10 @@ inputs:
     doc: |
       The number of nodes to use for the MPI job.
     type: int
+  - id: apply_time_frequency_smearing
+    type: boolean
+    inputBinding:
+      prefix: -apply-time-frequency-smearing
 
 outputs:
   - id: image_I_nonpb_name
