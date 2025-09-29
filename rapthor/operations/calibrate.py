@@ -276,7 +276,6 @@ class CalibrateDD(Operation):
                             'fast_smoothnessreffrequency': fast_smoothnessreffrequency,
                             'fast_smoothnessrefdistance': fast_smoothnessrefdistance,
                             'slow_smoothnessconstraint': slow_smoothnessconstraint,
-                            'dp3_solve_mode_fast': dp3_solve_mode_fast,
                             'dp3_steps_fast': f"[{','.join(dp3_steps_fast)}]",
                             'ddecal_applycal_steps_fast': ddecal_applycal_steps_fast,
                             'applycal_steps_fast': applycal_steps_fast,
@@ -326,13 +325,12 @@ class CalibrateDD(Operation):
             self.input_parms.update({'idgcal_antennaconstraint': idgcal_antennaconstraint,
                                      'output_idgcal_h5parm': output_idgcal_h5parm})
             if self.field.do_slowgain_solve:
-                self.input_parms.update({'solint_slow_timestep': solint_slow_timestep_separate})
+                self.input_parms.update({'solint_slow_timestep': solint_slow_timestep})
         else:
             # Set normal (faceting) mode parameters
             self.input_parms.update({'solint_fast_freqstep': solint_fast_freqstep,
                                      'solutions_per_direction_fast': solutions_per_direction_fast,
-                                     'solutions_per_direction_slow_joint': solutions_per_direction_slow_joint,
-                                     'solutions_per_direction_slow_separate': solutions_per_direction_slow_separate,
+                                     'solutions_per_direction_slow': solutions_per_direction_slow,
                                      'calibrator_patch_names': calibrator_patch_names,
                                      'calibrator_fluxes': calibrator_fluxes,
                                      'output_fast_h5parm': output_fast_h5parm,
@@ -366,36 +364,22 @@ class CalibrateDD(Operation):
                                      'solverlbfgs_iter': solverlbfgs_iter,
                                      'solverlbfgs_minibatches': solverlbfgs_minibatches})
             if self.field.do_slowgain_solve:
-                self.input_parms.update({'freqchunk_filename_joint': CWLDir(freqchunk_filename_joint).to_json(),
-                                         'freqchunk_filename_separate': CWLDir(freqchunk_filename_separate).to_json(),
-                                         'slow_starttime_joint': slow_starttime_joint,
-                                         'slow_starttime_separate': slow_starttime_separate,
-                                         'slow_ntimes_joint': slow_ntimes_joint,
-                                         'slow_ntimes_separate': slow_ntimes_separate,
-                                         'startchan_joint': startchan_joint,
-                                         'startchan_separate': startchan_separate,
-                                         'nchan_joint': nchan_joint,
-                                         'nchan_separate': nchan_separate,
-                                         'solint_slow_timestep_joint': solint_slow_timestep_joint,
-                                         'solint_slow_timestep_separate': solint_slow_timestep_separate,
-                                         'solint_slow_freqstep_joint': solint_slow_freqstep_joint,
-                                         'solint_slow_freqstep_separate': solint_slow_freqstep_separate,
-                                         'output_slow_h5parm_joint': output_slow_h5parm_joint,
-                                         'output_slow_h5parm_separate': output_slow_h5parm_separate,
-                                         'slow_smoothnessconstraint_joint': slow_smoothnessconstraint_joint,
-                                         'slow_smoothnessconstraint_separate': slow_smoothnessconstraint_separate,
-                                         'dp3_steps_slow_joint': dp3_steps_slow_joint,
-                                         'dp3_steps_slow_separate': dp3_steps_slow_separate,
-                                         'bda_maxinterval_slow_joint': bda_maxinterval_slow_joint,
-                                         'bda_timebase_slow_joint': bda_timebase_slow_joint,
-                                         'bda_maxinterval_slow_separate': bda_maxinterval_slow_separate,
-                                         'bda_timebase_slow_separate': bda_timebase_slow_separate,
+                self.input_parms.update({'freqchunk_filename': CWLDir(freqchunk_filename).to_json(),
+                                         'slow_starttime': slow_starttime,
+                                         'slow_ntimes': slow_ntimes,
+                                         'startchan': startchan,
+                                         'nchan': nchan,
+                                         'solint_slow_timestep': solint_slow_timestep,
+                                         'solint_slow_freqstep': solint_slow_freqstep,
+                                         'output_slow_h5parm': output_slow_h5parm,
+                                         'slow_smoothnessconstraint': slow_smoothnessconstraint,
+                                         'dp3_steps_slow': dp3_steps_slow,
+                                         'bda_timebase_slow': bda_timebase_slow,
+                                         'bda_maxinterval_slow': bda_maxinterval_slow,
+                                         'bda_timebase_slow': bda_timebase_slow,
                                          'slow_datause': slow_datause,
                                          'slow_antennaconstraint': slow_antennaconstraint,
-                                         'combined_slow_h5parm_joint': combined_slow_h5parm_joint,
-                                         'combined_slow_h5parm_separate': self.combined_slow_h5parm_separate,
-                                         'combined_h5parms_fast_slow_joint': combined_h5parms_fast_slow_joint,
-                                         'combined_h5parms_slow_joint_separate': combined_h5parms_slow_joint_separate})
+                                         'combined_slow_h5parm': self.combined_slow_h5parm})
 
     def get_baselines_core(self):
         """

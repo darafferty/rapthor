@@ -820,11 +820,6 @@ steps:
         source: normalize_h5parm
     out:
       - id: adjustedh5parm
-{% endif %}
-
-
-
-# end use_image_based_predict
 
   - id: solve_fast_phases
     label: Solve for fast phases
