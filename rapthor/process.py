@@ -335,7 +335,7 @@ def chunk_observations(field, steps, data_fraction):
                 obs.log.warning('The specified value of data_fraction ({0:0.3f}) results in a '
                                 'total time for this observation that is less than the largest '
                                 'potential calibration timestep ({1} s). The data fraction will be '
-                                'increased to {2:0.3f} to atempt to meet the timestep '
+                                'increased to {2:0.3f} to attempt to meet the timestep '
                                 'requirement.'.format(data_fraction, min_time, min_fraction))
                 obs.data_fraction = min_fraction
 
@@ -376,11 +376,11 @@ def make_report(field, outfile=None):
     # Report calibration diagnostics: these are stored in field.calibration_diagnostics
     output_lines.append('Calibration diagnostics:\n')
     if not field.calibration_diagnostics:
-        output_lines.append(f'  No calibration done.\n')
+        output_lines.append('  No calibration done.\n')
     else:
         for index, diagnostics in enumerate(field.calibration_diagnostics):
             if index == 0:
-                output_lines.append(f'  Fraction of solutions flagged:\n')
+                output_lines.append('  Fraction of solutions flagged:\n')
             output_lines.append(f"    cycle {diagnostics['cycle_number']}: "
                                 f"{diagnostics['solution_flagged_fraction']:.1f}\n")
     output_lines.append('\n')
@@ -390,7 +390,7 @@ def make_report(field, outfile=None):
     for sector in field.imaging_sectors:
         output_lines.append(f'Image diagnostics for {sector.name}:\n')
         if not sector.diagnostics:
-            output_lines.append(f'  No imaging done.\n')
+            output_lines.append('  No imaging done.\n')
         else:
             for index, diagnostics in enumerate(sector.diagnostics):
                 if index == 0:

@@ -721,7 +721,7 @@ class Field(object):
             # Transfer from the true-flux sky model
             patch_dict = skymodel_true_sky.getPatchPositions()
             lsmtool.utils.transfer_patches(skymodel_true_sky, bright_source_skymodel,
-                                  patch_dict=patch_dict)
+                                           patch_dict=patch_dict)
         bright_source_skymodel.write(self.calibrators_only_skymodel_file, clobber=True)
         self.calibrators_only_skymodel = bright_source_skymodel.copy()
 
