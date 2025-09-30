@@ -2,7 +2,6 @@
 Module that holds functions and classes related to faceting
 """
 import numpy as np
-import scipy.spatial
 from shapely.geometry import Point, Polygon
 from shapely.prepared import prep
 from PIL import Image, ImageDraw
@@ -14,7 +13,7 @@ from rapthor.lib import miscellaneous as misc
 from matplotlib import patches
 import lsmtool
 from lsmtool import tableio
-from lsmtool.operations_lib import make_wcs, tessellate
+from lsmtool.operations_lib import make_wcs, voronoi, tessellate
 import tempfile
 import re
 
@@ -236,98 +235,6 @@ class SquareFacet(Facet):
         vertices = list(zip(corners_ra, corners_dec))
 
         super().__init__(name, ra, dec, vertices)
-
-
-def in_box(cal_coords, bounding_box):
-    """
-    Checks if coordinates are inside the bounding box
-
-    Parameters
-    ----------
-    cal_coords : array
-        Array of x, y coordinates
-    bounding_box : array
-        Array defining the bounding box as [minx, maxx, miny, maxy]
-
-    Returns
-    -------
-    inside : array
-        Bool array with True for inside and False if not
-    """
-    return np.logical_and(np.logical_and(bounding_box[0] <= cal_coords[:, 0],
-                                         cal_coords[:, 0] <= bounding_box[1]),
-                          np.logical_and(bounding_box[2] <= cal_coords[:, 1],
-                                         cal_coords[:, 1] <= bounding_box[3]))
-
-
-def voronoi(cal_coords, bounding_box):
-    """
-    Produces a Voronoi tessellation for the given coordinates and bounding box
-
-    Parameters
-    ----------
-    cal_coords : array
-        Array of x, y coordinates
-    bounding_box : array
-        Array defining the bounding box as [minx, maxx, miny, maxy]
-
-    Returns
-    -------
-    vor : Voronoi object
-        The resulting Voronoi object
-    """
-    eps = 1e-6
-
-    # Select calibrators inside the bounding box
-    i = in_box(cal_coords, bounding_box)
-
-    # Mirror points
-    points_center = cal_coords[i, :]
-    points_left = np.copy(points_center)
-    points_left[:, 0] = bounding_box[0] - (points_left[:, 0] - bounding_box[0])
-    points_right = np.copy(points_center)
-    points_right[:, 0] = bounding_box[1] + (bounding_box[1] - points_right[:, 0])
-    points_down = np.copy(points_center)
-    points_down[:, 1] = bounding_box[2] - (points_down[:, 1] - bounding_box[2])
-    points_up = np.copy(points_center)
-    points_up[:, 1] = bounding_box[3] + (bounding_box[3] - points_up[:, 1])
-    points = np.append(points_center,
-                       np.append(np.append(points_left,
-                                           points_right,
-                                           axis=0),
-                                 np.append(points_down,
-                                           points_up,
-                                           axis=0),
-                                 axis=0),
-                       axis=0)
-
-    # Compute Voronoi, sorting the output regions to match the order of the
-    # input coordinates
-    vor = scipy.spatial.Voronoi(points)
-    sorted_regions = np.array(vor.regions, dtype=object)[np.array(vor.point_region)]
-    vor.regions = sorted_regions.tolist()
-
-    # Filter regions
-    regions = []
-    for region in vor.regions:
-        flag = True
-        for index in region:
-            if index == -1:
-                flag = False
-                break
-            else:
-                x = vor.vertices[index, 0]
-                y = vor.vertices[index, 1]
-                if not (bounding_box[0] - eps <= x and x <= bounding_box[1] + eps and
-                        bounding_box[2] - eps <= y and y <= bounding_box[3] + eps):
-                    flag = False
-                    break
-        if region and flag:
-            regions.append(region)
-    vor.filtered_points = points_center
-    vor.filtered_regions = regions
-
-    return vor
 
 
 def make_ds9_region_file(facets, outfile, enclose_names=True):
