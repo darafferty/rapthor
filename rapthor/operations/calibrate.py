@@ -376,7 +376,6 @@ class CalibrateDD(Operation):
                                          'dp3_steps_slow': dp3_steps_slow,
                                          'bda_timebase_slow': bda_timebase_slow,
                                          'bda_maxinterval_slow': bda_maxinterval_slow,
-                                         'bda_timebase_slow': bda_timebase_slow,
                                          'slow_datause': slow_datause,
                                          'slow_antennaconstraint': slow_antennaconstraint,
                                          'combined_slow_h5parm': self.combined_slow_h5parm})
