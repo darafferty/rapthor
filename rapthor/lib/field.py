@@ -105,6 +105,10 @@ class Field(object):
         self.calibration_diagnostics = []
         self.selfcal_state = None
 
+        # TODO: remove the following when smearing is supported with image-
+        # based prediction and BDA
+        self.apply_time_frequency_smearing = not (self.use_image_based_predict or self.image_bda_timebase > 0)
+
         # Set strategy parameter defaults
         self.fast_timestep_sec = 8.0
         self.slow_timestep_sec = 600.0
