@@ -51,6 +51,16 @@ inputs:
       source (length = 1).
     type: boolean
 
+  - id: correctfreqsmearing
+    doc: |
+      Flag that enables the frequency smearing correction (length = 1).
+    type: boolean
+
+  - id: correcttimesmearing
+    doc: |
+      Flag that enables the time smearing correction (length = 1).
+    type: boolean
+
   - id: sagecalpredict
     doc: |
       Flag that enables prediction using SAGECAl.
@@ -163,6 +173,10 @@ steps:
         source: sector_ntimes
       - id: onebeamperpatch
         source: onebeamperpatch
+      - id: correctfreqsmearing
+        source: correctfreqsmearing
+      - id: correcttimesmearing
+        source: correcttimesmearing
       - id: sagecalpredict
         source: sagecalpredict
       - id: h5parm
