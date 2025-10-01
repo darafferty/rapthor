@@ -56,7 +56,7 @@
  'facet_layout': None,
  'final_data_fraction': 1.0,
  'imaging_specific': {'apply_diagonal_solutions': True,
-                      'bda_timebase': 0.0,
+                      'bda_timebase': 20000.0,
                       'cellsize_arcsec': 1.25,
                       'dd_psf_grid': [0, 0],
                       'dde_method': 'full',
