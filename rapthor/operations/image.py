@@ -396,7 +396,7 @@ class Image(Operation):
 
                 if self.field.save_supplementary_images:
                     setattr(sector, "I_dirty_file_apparent_sky", f'{image_root}-MFS-dirty.{image_extension}')
-                    setattr(sector, "mask_filename", f'{image_root}.mask.fits')
+                    setattr(sector, "mask_filename", f'{image_root}-MFS-image-pb.fits.mask.fits')
             else:
                 # When making all Stokes images, WSClean includes the Stokes parameter
                 # name in the output filenames
@@ -410,7 +410,7 @@ class Image(Operation):
                     if self.field.save_supplementary_images:
                         setattr(sector, f"{polup}_dirty_file_apparent_sky", f'{image_root}-MFS-{polup}-dirty.{image_extension}')
                         if not hasattr(sector, "mask_filename"):
-                            setattr(sector, "mask_filename", f'{image_root}.mask.fits')
+                            setattr(sector, "mask_filename", f'{image_root}-MFS-{polup}-image-pb.fits.mask.fits')
 
             # The output sky models, both true sky and apparent sky (the filenames are
             # defined in the rapthor/scripts/filter_skymodel.py file)
@@ -713,7 +713,7 @@ def report_sector_diagnostics(sector_name, diagnostics_dict, log):
         log.info('Diagnostics for {}:'.format(sector_name))
         log.info('    Min RMS noise = {0} (non-PB-corrected), '
                  '{1} (PB-corrected), {2} (expected)'.format(min_rms_flat_noise, min_rms_true_sky,
-                                                                theoretical_rms))
+                                                             theoretical_rms))
         if (
             diagnostics_dict['min_rms_flat_noise'] == 0.0 or
             diagnostics_dict['min_rms_true_sky'] == 0.0
