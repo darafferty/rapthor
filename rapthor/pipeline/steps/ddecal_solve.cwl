@@ -35,8 +35,8 @@ arguments:
   - solve.usebeammodel=True
   - solve.beam_interval=120
   - solve.beammode=array_factor
-  - solve.correctfreqsmearing=True
-  - solve.correcttimesmearing=True
+  - solve.correctfreqsmearing=False
+  - solve.correcttimesmearing=False
   - solve.applycal.fastphase.correction=phase000
   - solve.applycal.fastphase.solset=sol000
   - solve.applycal.normalization.correction=amplitude000
