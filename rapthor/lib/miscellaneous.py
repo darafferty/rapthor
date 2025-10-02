@@ -172,36 +172,6 @@ def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, sourc
     skymodel.write(clobber=True)
 
 
-def normalize_ra_dec(ra, dec):
-    """
-    Normalize RA to be in the range [0, 360) and Dec to be in the
-    range [-90, 90].
-
-    Parameters
-    ----------
-    ra : float
-        The RA in degrees to be normalized.
-    dec : float
-        The Dec in degrees to be normalized.
-
-    Returns
-    -------
-    normalized_ra, normalized_dec : float, float
-        The normalized RA in degrees in the range [0, 360) and the
-        Dec in degrees in the range [-90, 90].
-    """
-    normalized_dec = (dec + 180) % 360 - 180
-    normalized_ra = ra % 360
-    if abs(normalized_dec) > 90:
-        normalized_dec = 180 - normalized_dec
-        normalized_ra = normalized_ra + 180
-        normalized_dec = (normalized_dec + 180) % 360 - 180
-        normalized_ra = normalized_ra % 360
-
-    return normalized_ra, normalized_dec
-
-
-
 def make_template_image(image_name, reference_ra_deg, reference_dec_deg,
                         ximsize=512, yimsize=512, cellsize_deg=0.000417, freqs=None, times=None,
                         antennas=None, aterm_type='tec', fill_val=0):

@@ -14,6 +14,7 @@ from shapely.geometry import Polygon
 
 from rapthor.lib import cluster, facet
 from rapthor.lib import miscellaneous as misc
+from lsmtool.operations_lib import normalize_ra_dec
 
 
 class Sector(object):
@@ -43,7 +44,7 @@ class Sector(object):
             ra = Angle(ra).to('deg').value
         if type(dec) is str:
             dec = Angle(dec).to('deg').value
-        self.ra, self.dec = misc.normalize_ra_dec(ra, dec)
+        self.ra, self.dec = normalize_ra_dec(ra, dec)
         self.width_ra = width_ra
         self.width_dec = width_dec
         self.field = field
@@ -544,7 +545,7 @@ class Sector(object):
         Decs = vertices[1]
         distances = []
         for ra, dec in zip(RAs, Decs):
-            ra_norm, dec_norm = misc.normalize_ra_dec(ra, dec)
+            ra_norm, dec_norm = normalize_ra_dec(ra, dec)
             coord = SkyCoord(ra_norm, dec_norm, unit=(u.degree, u.degree), frame='fk5')
             distances.append(obs_coord.separation(coord).value)
 
