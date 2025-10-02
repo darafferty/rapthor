@@ -120,7 +120,7 @@ def normalize_direction(soltab, max_station_delta=0.0, scale_delta_with_dist=Fal
         # First, renormalize the direction so that core stations have a median
         # amplitude of unity
         if any(core_stations := ['CS' in stat for stat in soltab.ant[:]]):
-            # no stations are marked with 'CS' => skip 
+            # no stations are marked with 'CS' => skip
             median_dir = get_median_amp(parms[:, :, core_stations, dir, :],
                                         weights[:, :, core_stations, dir, :])
             parms[:, :, :, dir, :] /= median_dir
@@ -174,11 +174,18 @@ def smooth_solutions(ampsoltab, phasesoltab=None, ref_id=0):
 
     for direction in range(len(ampsoltab.dir[:])):
         # Get the smoothing box size. A value of None indicates that smoothing is
-        # not needed for this direction
-        size = get_smooth_box_size(ampsoltab, direction)
-        if size is not None:
-            # Smooth solutions for each direction, station, and polarization separately
-            for stat in range(nstat):
+        # not needed for this direction. This calculation is done separately for
+        # core and non-core stations, as they tend to have quite different noise
+        # properties
+        core_stations = [ant for ant in ampsoltab.ant if ant.startswith("CS")]
+        size_core = get_smooth_box_size(ampsoltab, direction, ant_list=core_stations)
+        noncore_stations = [ant for ant in ampsoltab.ant if ant not in core_stations]
+        size_noncore = get_smooth_box_size(ampsoltab, direction, ant_list=noncore_stations)
+
+        # Smooth solutions for each direction, station, and polarization separately
+        for stat in range(nstat):
+            size = size_core if ampsoltab.ant[stat].startswith("CS") else size_noncore
+            if size is not None:
                 for pol in range(npol):
                     vals = amps[:, :, stat, direction, pol]
                     vals = np.log10(vals)
@@ -213,7 +220,7 @@ def smooth_solutions(ampsoltab, phasesoltab=None, ref_id=0):
         phasesoltab.setValues(phases)
 
 
-def get_smooth_box_size(ampsoltab, direction):
+def get_smooth_box_size(ampsoltab, direction, ant_list=None):
     """
     Determine the smoothing box size for a given direction from the
     noise in the solutions
@@ -225,15 +232,32 @@ def get_smooth_box_size(ampsoltab, direction):
         standard DDECal order of ['time', 'freq', 'ant', 'dir', 'pol']
     direction : int
         Index of direction to consider
+    ant_list : list of str, optional
+        List of antenna names to use in noise calcuations. If None, all antennas
+        are used
 
     Returns
     -------
-    box_size : int
-        Box size for smoothing
+    box_size_core : int
+        Box size for smoothing of core stations
+    box_size_noncore : int
+        Box size for smoothing of non-core stations
     """
-    unflagged_indx = np.logical_and(np.isfinite(ampsoltab.val[:, :, :, direction, :]),
-                                    ampsoltab.weight[:, :, :, direction, :] != 0.0)
-    noise = sigma_clipped_stats(np.log10(ampsoltab.val[:, :, :, direction, :][unflagged_indx]))[2]
+    # Determine antenna selection to use
+    if ant_list is None:
+        ant_selection = [True] * len(ampsoltab.ant)
+    else:
+        ant_selection = [True if ant in ant_list else False for ant in ampsoltab.ant]
+    if not ant_selection:
+        # No antennas selected, so just return None
+        return None
+
+    # Calculate noise of unflagged solutions
+    unflagged_indx = np.logical_and(np.isfinite(ampsoltab.val[:, :, ant_selection, direction, :]),
+                                    ampsoltab.weight[:, :, ant_selection, direction, :] != 0.0)
+    noise = sigma_clipped_stats(np.log10(ampsoltab.val[:, :, ant_selection, direction, :][unflagged_indx]))[2]
+
+    # Set box size, with larger sizes for higher noise values
     if noise >= 0.1:
         box_size = 9
     elif noise < 0.1 and noise >= 0.08:
