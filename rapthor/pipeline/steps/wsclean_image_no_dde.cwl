@@ -15,7 +15,6 @@ arguments:
   - -join-channels
   - -apply-primary-beam
   - -log-time
-  - -apply-time-frequency-smearing
   - valueFrom: 'wgridder'
     prefix: -gridder
   - valueFrom: '$(runtime.tmpdir)'
@@ -163,6 +162,10 @@ inputs:
     type: int[]
     inputBinding:
       prefix: -dd-psf-grid
+  - id: apply_time_frequency_smearing
+    type: boolean
+    inputBinding:
+      prefix: -apply-time-frequency-smearing
 
 outputs:
   - id: image_I_nonpb_name

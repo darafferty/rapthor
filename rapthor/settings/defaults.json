@@ -71,7 +71,7 @@
         "local_rms_window": 50,
         "local_rms_method": "rms",
         "do_multiscale_clean": true,
-        "bda_timebase": 20000.0,
+        "bda_timebase": 0.0,
         "dde_method": "full",
         "filter_skymodel": true,
         "source_finder": "bdsf",

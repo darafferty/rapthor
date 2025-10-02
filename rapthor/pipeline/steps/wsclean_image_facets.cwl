@@ -15,7 +15,6 @@ arguments:
   - -join-channels
   - -apply-facet-beam
   - -log-time
-  - -apply-time-frequency-smearing
   - valueFrom: 'wgridder'
     prefix: -gridder
   - valueFrom: '$(runtime.tmpdir)'
@@ -208,6 +207,10 @@ inputs:
     type: File
     inputBinding:
       prefix: -facet-regions
+  - id: apply_time_frequency_smearing
+    type: boolean
+    inputBinding:
+      prefix: -apply-time-frequency-smearing
 
 outputs:
   - id: image_I_nonpb_name
@@ -225,7 +228,7 @@ outputs:
   - id: images_extra
     type: File[]
     outputBinding:
-      glob: ['$(inputs.name)-MFS-[QUV]-image.fits', '$(inputs.name)-MFS-[QUV]-image-pb.fits', '$(inputs.name)-MFS-*residual.fits', '$(inputs.name)-MFS-*model-pb.fits']
+      glob: ['$(inputs.name)-MFS-[QUV]-image.fits', '$(inputs.name)-MFS-[QUV]-image-pb.fits', '$(inputs.name)-MFS-*residual.fits', '$(inputs.name)-MFS-*model-pb.fits', '$(inputs.name)-MFS-*dirty.fits']
   - id: skymodel_nonpb
     type: File?
     outputBinding:

@@ -85,6 +85,26 @@ inputs:
       valueFrom: "$(self ? 'True': 'False')"
       separate: False
 
+  - id: correctfreqsmearing
+    label: One beam per patch
+    doc: |
+      Flag that enables the frequency smearing correction.
+    type: boolean
+    inputBinding:
+      prefix: predict.correctfreqsmearing=
+      valueFrom: "$(self ? 'True': 'False')"
+      separate: False
+
+  - id: correcttimesmearing
+    label: One beam per patch
+    doc: |
+      Flag that enables the time smearing correction.
+    type: boolean
+    inputBinding:
+      prefix: predict.correcttimesmearing=
+      valueFrom: "$(self ? 'True': 'False')"
+      separate: False
+
   - id: sagecalpredict
     label: Use SAGECal predict
     doc: |

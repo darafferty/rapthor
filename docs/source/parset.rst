@@ -181,6 +181,14 @@ The available options are described below under their respective sections.
         Use image-based prediction (default = ``False``)? Image-based prediction can be
         faster than the normal prediction, especially for large sky models.
 
+        .. note::
+
+            Currently, correction for time and frequency smearing cannot be done
+            when image-based prediction is used. If the averaging of the input data
+            is such that time or frequency smearing is significant within the field
+            of view of interest, then the use of image-based prediction is not
+            recommended.
+
     llssolver
         The linear least-squares solver to use (one of ``qr``, ``svd``, or ``lsmr``;
         default = ``qr``).
@@ -422,8 +430,15 @@ The available options are described below under their respective sections.
 
     bda_timebase
         Maximum baseline used in baseline-dependent averaging (BDA) during imaging, in m
-        (default = 20000). A value of 0 will disable the averaging. Activating this option
+        (default = 0). A value of 0 will disable the averaging. Activating this option
         may improve the speed of imaging.
+
+        .. note::
+
+            Currently, correction for time and frequency smearing cannot be done
+            when BDA is used during imaging. If the averaging of the input data
+            is such that time or frequency smearing is significant within the field
+            of view of interest, then the use of BDA is not recommended.
 
     dde_method
         Method to use to correct for direction-dependent effects during imaging:

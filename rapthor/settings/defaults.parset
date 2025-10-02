@@ -162,7 +162,7 @@ bda_frequencybase = 20000.0
 # (default = none), local rms parameters (defaults = 0.8, 50, and "rms"
 # for the strength, window, and method, respectively), whether multiscale
 # clean should be used (default = True), and the baseline-dependent averaging
-# (BDA) timebase value in m (default = 20000)
+# (BDA) timebase value in m (default = 0)
 cellsize_arcsec = 1.5
 robust = -0.65
 min_uv_lambda = 80.0
@@ -173,7 +173,7 @@ local_rms_strength = 0.8
 local_rms_window = 50
 local_rms_method = rms
 do_multiscale_clean = True
-bda_timebase = 20000.0
+bda_timebase = 0.0
 
 # Method to use to correct for direction-dependent effects during imaging:
 # single or full (default = full). If "single", a single, direction-independent

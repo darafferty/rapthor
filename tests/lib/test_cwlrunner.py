@@ -92,6 +92,7 @@ class Field:
         self.calibration_skymodel_file = "calibration_skymodel.txt"
         self.dec = 0
         self.do_predict = False
+        self.use_image_based_predict = False
         self.fulljones_h5parm_filename = parset["input_fulljones_h5parm"]
         self.h5parm_filename = parset["input_h5parm"]
         self.image_pol = "I"
@@ -110,6 +111,7 @@ class Field:
         self.auto_mask_nmiter = 1
         self.skip_final_major_iteration = True
         self.image_bda_timebase = 0
+        self.apply_time_frequency_smearing = True
 
     def get_calibration_radius(self):
         return 5.0
