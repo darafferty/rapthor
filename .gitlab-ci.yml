@@ -86,6 +86,11 @@ stages:
     - echo "Logging in as $CI_REGISTRY_USER @ $CI_REGISTRY"
     - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
 
+.lint:
+  stage: lint
+  before_script:
+    - pip install tox
+
 .run_tests:
   stage: run_tests
   image: $FULL_IMAGE
@@ -184,7 +189,7 @@ versioning:
 # Stage: lint
 
 run_lint:
-  stage: lint
+  extends: .lint
   script:
     - tox -e lint
   allow_failure: true
