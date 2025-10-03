@@ -126,6 +126,7 @@ commands = [
         # "-m", "not slow",
         "-k", "test_field.py",
         "--cov=rapthor",
+        "tests/{posargs}",
     ],
     # Run all other tests with 4 parallel processes.
     # Add to the existing coverage report from the run above.
@@ -139,12 +140,15 @@ commands = [
         "--cov-report", "html",
         "--cov=rapthor",
         "--cov-append",
+        "tests/{posargs}",
     ],
 ]
-changedir = "{toxinidir}/tests"
 
 [tool.tox.env.lint]
 deps = ["ruff"]
 commands = [
-    ["python", "-m", "ruff", "check"]
+    [
+        "python", "-m", "ruff", "check",
+        { replace = "posargs", default = ["rapthor", "tests"], extend = true }
+    ],
 ]

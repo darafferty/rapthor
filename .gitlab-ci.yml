@@ -14,6 +14,7 @@ variables:
 stages:
   - initialize
   - versioning
+  - lint
   - build
   - install
   - run_tests
@@ -178,6 +179,15 @@ versioning:
     - echo BASE_IMAGE=${BASE_NAME}:${BASE_TAG} >> versions.env
     - echo FULL_IMAGE=${FULL_NAME}:${FULL_TAG} >> versions.env
     - cat versions.env
+
+
+# Stage: lint
+
+run_lint:
+  stage: lint
+  script:
+    - tox -e lint
+  allow_failure: true
 
 
 ### Stage: build
