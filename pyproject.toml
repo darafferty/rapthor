@@ -142,3 +142,9 @@ commands = [
     ],
 ]
 changedir = "{toxinidir}/tests"
+
+[tool.tox.env.lint]
+deps = ["ruff"]
+commands = [
+    ["python", "-m", "ruff", "check"]
+]
