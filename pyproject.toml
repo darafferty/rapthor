@@ -107,6 +107,18 @@ rapthor = [
 write_to = "rapthor/_version.py"
 
 
+[tool.ruff.lint]
+# Expand basic rules with name and style checks roughly equivalent to flake8 + black + pylint
+# Some additional functional errors such as `await` on none async or wrong return types / args.
+# More info https://docs.astral.sh/ruff/rules/
+# TODO: Slowly add more rules and fix issues. E.g., start with "E" and "F"; then add "B",
+# and so on. The `select` below is from our ASTRON Python project template.
+# select = ["N", "A", "E", "F", "B", "W", "Q", "PL", "ASYNC", "S", "G", "RET", "ARG", "I"]
+# The default behavior of ruff is to use "E" and "F", omitting stylistic rules.
+select = ["E", "F"]
+ignore = ["E501"]
+
+
 [tool.tox]
 requires = ["tox>4"]
 envlist = ["lint", "py3{9,10,11,12,13}"]
@@ -149,6 +161,7 @@ deps = ["ruff"]
 commands = [
     [
         "python", "-m", "ruff", "check",
-        { replace = "posargs", default = ["rapthor", "tests"], extend = true }
+        # For now, only check the `rapthor` package, not `tests` or other files
+        "rapthor",
     ],
 ]
