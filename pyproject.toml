@@ -109,7 +109,7 @@ write_to = "rapthor/_version.py"
 
 [tool.tox]
 requires = ["tox>4"]
-envlist = ["py3{9,10,11,12,13}"]
+envlist = ["lint", "py3{9,10,11,12,13}"]
 
 [tool.tox.env_run_base]
 description = "Run all tests"
