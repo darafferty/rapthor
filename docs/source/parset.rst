@@ -279,26 +279,12 @@ The available options are described below under their respective sections.
         Smoothness constraint reference distance used during fast phase calibration, in
         m (default = 0).
 
-    fast_bda_timebase
-        Maximum baseline used in baseline-dependent averaging (BDA) during the fast-phase
-        calibration, in m (default = 0). A value of 0.0 will disable the averaging.
-        Depending on the solution time step used during the fast-phase calibration,
-        activating this option may improve the speed of the solve and lower the memory
-        usage during solving.
-
     slow_freqstep_hz
         Frequency step used during slow amplitude calibration, in Hz (default = 1e6).
 
     slow_smoothnessconstraint
         Smoothness constraint bandwidth used during the slow gain calibration, in Hz
         (default = 3e6).
-
-    slow_bda_timebase
-        Maximum baseline used in baseline-dependent averaging (BDA) during the slow
-        gain calibration, in m (default = 20000). A value of 0 will disable the averaging.
-        Depending on the solution time step used during the slow-gain calibration,
-        activating this option may improve the speed of the solve and lower the memory
-        usage during solving.
 
     fulljones_timestep_sec
         Time step used during the full-Jones gain calibration, in seconds (default = 600).
@@ -313,7 +299,7 @@ The available options are described below under their respective sections.
     dd_interval_factor
         Maximum factor by which the direction-dependent solution intervals can be
         increased, so that fainter calibrators get longer intervals (in the fast and slow
-        solves only; default = 3). The value determines the maximum allowed adjustment
+        solves only; default = 1). The value determines the maximum allowed adjustment
         factor by which the solution intervals are allowed to be increased for faint
         sources. For a given direction, the adjustment is calculated from the ratio of the
         apparent flux density of the calibrator to the target flux density of the cycle
@@ -321,6 +307,11 @@ The available options are described below under their respective sections.
         faintest calibrator in the sky model. A value of 1 disables the use of
         direction-dependent solution intervals; a value greater than 1 enables
         direction-dependent solution intervals.
+
+        .. note::
+
+            Direction-dependent solution intervals are not currently supported;
+            they will be re-enabled in a future update.
 
         .. note::
 
@@ -349,6 +340,20 @@ The available options are described below under their respective sections.
         Number of iterations per minibatch in the LBFGS solver (only used when
         :term:`solveralgorithm` = ``lbfgs``; default = 4).
 
+    bda_timebase
+        Maximum baseline used in baseline-dependent time averaging (BDA) during the
+        calibration, in m (default = 20000). A value of 0 will disable the averaging.
+        Depending on the solution time step used during the calibration,
+        activating this option may improve the speed of the solve and lower the memory
+        usage during solving.
+
+    bda_frequencybase
+        Maximum baseline used in baseline-dependent frequency averaging (BDA) during the
+        calibration, in m (default = 20000). A value of 0 will disable the averaging.
+        Depending on the solution time step used during the calibration,
+        activating this option may improve the speed of the solve and lower the memory
+        usage during solving.
+
 .. _parset_imaging_options:
 
 ``[imaging]``
@@ -357,13 +362,13 @@ The available options are described below under their respective sections.
 .. glossary::
 
     cellsize_arcsec
-        Pixel size in arcsec (default = 1.25).
+        Pixel size in arcsec (default = 1.5).
 
     robust
-        Briggs robust parameter (default = -0.5).
+        Briggs robust parameter (default = -0.65).
 
     min_uv_lambda
-        Minimum uv distance in lambda to use in imaging (default = 0).
+        Minimum uv distance in lambda to use in imaging (default = 80).
 
     max_uv_lambda
         Maximum uv distance in lambda to use in imaging (default = 1e6).
@@ -384,9 +389,9 @@ The available options are described below under their respective sections.
         Size of the window (in number of PSFs) to use for the local RMS thresholding
         (default = 50).
 
-    local_rms_method = rms-with-min
+    local_rms_method
         Method to use for the local RMS thresholding: ``rms`` or ``rms-with-min``
-        (default = ``rms-with-min``).
+        (default = ``rms``).
 
     do_multiscale_clean
         Use multiscale cleaning (default = ``True``)?
