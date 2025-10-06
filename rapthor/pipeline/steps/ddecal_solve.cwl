@@ -36,8 +36,8 @@ arguments:
   - solve1.applycal.normalization.correction=amplitude000
   - solve1.applycal.normalization.solset=sol000
   - solve1.initialsolutions.missingantennabehavior=unit
-  - solve1.correctfreqsmearing=True
-  - solve1.correcttimesmearing=True
+  - solve1.correctfreqsmearing=False
+  - solve1.correcttimesmearing=False
   - solve2.type=ddecal
   - solve2.initialsolutions.missingantennabehavior=unit
 
