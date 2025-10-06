@@ -178,7 +178,7 @@ def smooth_solutions(ampsoltab, phasesoltab=None, ref_id=0):
         # core and non-core stations, as they tend to have quite different noise
         # properties
         core_stations = [ant for ant in ampsoltab.ant if ant.startswith("CS")]
-        size_core = get_smooth_box_size(ampsoltab, direction, ant_list=core_stations)
+        size_core = get_smooth_box_size(ampsoltab, direction, ant_list=core_stations, min_box_size=3)
         noncore_stations = [ant for ant in ampsoltab.ant if ant not in core_stations]
         size_noncore = get_smooth_box_size(ampsoltab, direction, ant_list=noncore_stations)
 
@@ -220,7 +220,7 @@ def smooth_solutions(ampsoltab, phasesoltab=None, ref_id=0):
         phasesoltab.setValues(phases)
 
 
-def get_smooth_box_size(ampsoltab, direction, ant_list=None):
+def get_smooth_box_size(ampsoltab, direction, ant_list=None, min_box_size=None):
     """
     Determine the smoothing box size for a given direction from the
     noise in the solutions
@@ -267,7 +267,7 @@ def get_smooth_box_size(ampsoltab, direction, ant_list=None):
     elif noise < 0.07 and noise >= 0.04:
         box_size = 3
     else:
-        box_size = None
+        box_size = min_box_size
 
     return box_size
 
