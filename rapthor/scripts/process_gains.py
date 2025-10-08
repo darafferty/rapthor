@@ -176,16 +176,17 @@ def smooth_solutions(ampsoltab, phasesoltab=None, ref_id=0):
         # Get the smoothing box size. A value of None indicates that smoothing is
         # not needed for this direction. This calculation is done separately for
         # core and non-core stations, as they tend to have quite different noise
-        # properties
+        # properties. Additionally, the non-core stations get less smoothing for
+        # a given noise level than the core stations (to preserve finer structure)
         core_stations = [ant for ant in ampsoltab.ant if ant.startswith("CS")]
         size_core = get_smooth_box_size(ampsoltab, direction, ant_list=core_stations, min_box_size=3)
         noncore_stations = [ant for ant in ampsoltab.ant if ant not in core_stations]
-        size_noncore = get_smooth_box_size(ampsoltab, direction, ant_list=noncore_stations)
+        size_noncore = get_smooth_box_size(ampsoltab, direction, ant_list=noncore_stations) - 1
 
         # Smooth solutions for each direction, station, and polarization separately
         for stat in range(nstat):
             size = size_core if ampsoltab.ant[stat].startswith("CS") else size_noncore
-            if size is not None:
+            if size > 1:
                 for pol in range(npol):
                     vals = amps[:, :, stat, direction, pol]
                     vals = np.log10(vals)
@@ -220,7 +221,7 @@ def smooth_solutions(ampsoltab, phasesoltab=None, ref_id=0):
         phasesoltab.setValues(phases)
 
 
-def get_smooth_box_size(ampsoltab, direction, ant_list=None, min_box_size=None):
+def get_smooth_box_size(ampsoltab, direction, ant_list=None, min_box_size=1):
     """
     Determine the smoothing box size for a given direction from the
     noise in the solutions
@@ -235,13 +236,13 @@ def get_smooth_box_size(ampsoltab, direction, ant_list=None, min_box_size=None):
     ant_list : list of str, optional
         List of antenna names to use in noise calcuations. If None, all antennas
         are used
+    min_box_size : int, optional
+        Minimum allowed box size for smoothing
 
     Returns
     -------
-    box_size_core : int
-        Box size for smoothing of core stations
-    box_size_noncore : int
-        Box size for smoothing of non-core stations
+    box_size : int
+        Box size for smoothing
     """
     # Determine antenna selection to use
     if ant_list is None:
