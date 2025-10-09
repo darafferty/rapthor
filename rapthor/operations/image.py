@@ -72,7 +72,7 @@ class Image(Operation):
                 self.preapply_dde_solutions = False
         if self.compress_images is None:
             self.compress_images = self.field.compress_images
-        if self.batch_system == 'slurm':
+        if self.batch_system.startswith('slurm'):
             # For some reason, setting coresMax ResourceRequirement hints does
             # not work with SLURM
             max_cores = None
