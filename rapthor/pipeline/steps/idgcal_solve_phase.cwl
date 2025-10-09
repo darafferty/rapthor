@@ -25,7 +25,7 @@ arguments:
   - solve.atermsupport=5
   - solve.solverupdategain=0.5
   - solve.tolerancepinv=1e-9
-  - solve.polynomialdegphase=1
+  - solve.polynomialdegphase=2
   - solve.nr_channels_per_block=30
   - solve.lbfgshistory=10
   - solve.lbfgsminibatches=3
