@@ -92,6 +92,7 @@ class Field:
         self.calibration_skymodel_file = "calibration_skymodel.txt"
         self.dec = 0
         self.do_predict = False
+        self.use_image_based_predict = False
         self.fulljones_h5parm_filename = parset["input_fulljones_h5parm"]
         self.h5parm_filename = parset["input_h5parm"]
         self.image_pol = "I"
@@ -111,6 +112,7 @@ class Field:
         self.skip_final_major_iteration = True
         self.image_bda_timebase = 0
         self.slow_timestep_sec = 1
+        self.apply_time_frequency_smearing = True
 
     def get_calibration_radius(self):
         return 5.0
@@ -188,7 +190,7 @@ class TestCWLRunner:
     def test_mpi_config_file(self, runner):
         """
         Test if the MPI configuration file is present and has the correct content.
-        """        
+        """
         if runner.operation.use_mpi:
             mpi_config_file = runner.args[runner.args.index("--mpi-config-file") + 1]
             assert os.path.isfile(mpi_config_file)
@@ -341,4 +343,3 @@ class TestToilRunner:
             else:
                 assert workdir.startswith(parset["dir_working"])
             assert os.path.isdir(workdir)
-

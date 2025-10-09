@@ -290,6 +290,15 @@ class Parset:
                 "'directioniterative' solver, since dd_interval_factor > 1."
             )
             options["solveralgorithm"] = "directioniterative"
+        if dd_interval_factor > 1:
+            # TODO: direction-dependent solution intervals cannot yet be used with
+            # multi-calibration; once they can be, the restriction on their use
+            # should be removed
+            log.warning(
+                "Switching off direction-dependent intervals, since they are "
+                "not yet supported."
+            )
+            options["dd_interval_factor"] = 1
         if (
             (options["fast_datause"] != "full" or options["slow_datause"] != "full") and
             options["solveralgorithm"] != "directioniterative"
@@ -303,15 +312,13 @@ class Parset:
 
         if (
             options['use_image_based_predict'] and
-            (options['fast_bda_timebase'] > 0 or
-             options['slow_bda_timebase'] > 0)
+            options['bda_timebase'] > 0
         ):
             log.warning(
                 "Switching off BDA during solving, since image-based predict is "
                 "activated."
             )
-            options['fast_bda_timebase'] = 0
-            options['slow_bda_timebase'] = 0
+            options['bda_timebase'] = 0
 
         # Imaging options
         options = settings["imaging"]

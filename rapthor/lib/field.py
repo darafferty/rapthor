@@ -55,8 +55,8 @@ class Field(object):
         self.numMS = len(self.ms_filenames)
         self.data_colname = self.parset['data_colname']
         self.use_image_based_predict = self.parset['calibration_specific']['use_image_based_predict']
-        self.bda_timebase_fast = self.parset['calibration_specific']['fast_bda_timebase']
-        self.bda_timebase_slow = self.parset['calibration_specific']['slow_bda_timebase']
+        self.bda_timebase = self.parset['calibration_specific']['bda_timebase']
+        self.bda_frequencybase = self.parset['calibration_specific']['bda_frequencybase']
         self.dd_interval_factor = self.parset['calibration_specific']['dd_interval_factor']
         self.h5parm_filename = self.parset['input_h5parm']
         self.fulljones_h5parm_filename = self.parset['input_fulljones_h5parm']
@@ -106,6 +106,11 @@ class Field(object):
         self.calibration_diagnostics = []
         self.selfcal_state = None
 
+        # TODO: remove the following when smearing is supported with image-
+        # based prediction and BDA
+        correct_smearing_in_calibration = False  # explicitly disabled for now; later should depend on self.use_image_based_predict
+        self.apply_time_frequency_smearing = (correct_smearing_in_calibration and not (self.use_image_based_predict or self.image_bda_timebase > 0))
+
         # Set strategy parameter defaults
         self.fast_timestep_sec = 8.0
         self.slow_timestep_sec = 600.0
@@ -125,7 +130,6 @@ class Field(object):
         self.do_slowgain_solve = False
         self.do_normalize = False
         self.make_image_cube = False
-        self.use_scalarphase = True
         self.field_image_filename_prev = None
         self.field_image_filename = None
 
@@ -257,8 +261,8 @@ class Field(object):
 
         Parameters
         ----------
-        mintime : float
-            Minimum time in sec for a chunk
+        mintime : float or None
+            Minimum time in sec for a chunk. If None, chunking is unconstrained by time
         prefer_high_el_periods : bool, optional
             Prefer periods for which the elevation is in the highest 80% of values for a
             given observation. This option is useful for removing periods of lower
@@ -273,7 +277,7 @@ class Field(object):
             target_starttime = obs.starttime
             target_endtime = obs.endtime
             data_fraction = obs.data_fraction
-            if prefer_high_el_periods and (mintime < obs.high_el_endtime - obs.high_el_starttime):
+            if prefer_high_el_periods and (mintime is None or (mintime < obs.high_el_endtime - obs.high_el_starttime)):
                 # Use high-elevation period for chunking. We increase the data fraction
                 # to account for the decreased total observation time so that the
                 # amount of data used is kept the same
@@ -283,12 +287,15 @@ class Field(object):
                                     (target_endtime - target_starttime))
             tottime = target_endtime - target_starttime
 
-            nchunks = max(1, int(np.floor(data_fraction / (mintime / tottime))))
+            nchunks = max(1, int(np.floor(data_fraction / (mintime / tottime)))) if mintime is not None else 1
             if nchunks == 1:
                 # Center the chunk around the midpoint (which is generally the most
                 # sensitive, near transit)
                 midpoint = target_starttime + tottime / 2
-                chunktime = min(tottime, max(mintime, data_fraction*tottime))
+                if mintime is not None:
+                    chunktime = min(tottime, max(mintime, data_fraction * tottime))
+                else:
+                    chunktime = data_fraction * tottime
                 if chunktime < tottime:
                     self.observations.append(Observation(obs.ms_filename,
                                                          starttime=midpoint-chunktime/2,
@@ -324,13 +331,14 @@ class Field(object):
             self.observations = []
             for obs in prev_observations:
                 tottime = obs.endtime - obs.starttime
-                nchunks = min(minnobs, max(1, int(tottime / mintime)))
+                nchunks = min(minnobs, max(1, int(tottime / mintime))) if mintime is not None else minnobs
                 if nchunks > 1:
                     steptime = tottime / nchunks
-                    steptime -= steptime % mintime
+                    if mintime is not None:
+                        steptime -= steptime % mintime
                     numsamples = int(np.ceil(steptime / obs.timepersample))
                     if numsamples < 2:
-                        steptime += mintime
+                        steptime *= 2
                     starttimes = np.arange(obs.starttime, obs.endtime, steptime)
                     endtimes = [st+steptime for st in starttimes]
                     for nc, (starttime, endtime) in enumerate(zip(starttimes, endtimes)):
@@ -358,19 +366,13 @@ class Field(object):
         Sets parameters for all observations from current parset and sky model
         """
         ntimechunks = 0
-        nfreqchunks_slow = 0
-        nfreqchunks_fulljones = 0
         for obs in self.observations:
             obs.set_calibration_parameters(self.parset, self.num_patches, len(self.observations),
                                            self.calibrator_fluxes, self.fast_timestep_sec,
                                            self.slow_timestep_sec, self.fulljones_timestep_sec,
                                            self.target_flux, self.generate_screens)
             ntimechunks += obs.ntimechunks
-            nfreqchunks_slow += obs.nfreqchunks_slow
-            nfreqchunks_fulljones += obs.nfreqchunks_fulljones
         self.ntimechunks = ntimechunks
-        self.nfreqchunks_slow = nfreqchunks_slow
-        self.nfreqchunks_fulljones = nfreqchunks_fulljones
 
     def get_obs_parameters(self, parameter):
         """
@@ -730,7 +732,7 @@ class Field(object):
             # Transfer from the true-flux sky model
             patch_dict = skymodel_true_sky.getPatchPositions()
             lsmtool.utils.transfer_patches(skymodel_true_sky, bright_source_skymodel,
-                                  patch_dict=patch_dict)
+                                           patch_dict=patch_dict)
         bright_source_skymodel.write(self.calibrators_only_skymodel_file, clobber=True)
         self.calibrators_only_skymodel = bright_source_skymodel.copy()
 

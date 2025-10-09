@@ -59,17 +59,6 @@ class CalibrateDD(Operation):
         # calibration)
         starttime = self.field.get_obs_parameters('starttime')
         ntimes = self.field.get_obs_parameters('ntimes')
-        slow_starttime = self.field.get_obs_parameters('slow_starttime')
-        slow_ntimes = self.field.get_obs_parameters('slow_ntimes')
-
-        # Get the filenames of the input files for each frequency chunk
-        # (used for the slow solve)
-        freqchunk_filename = self.field.get_obs_parameters('freqchunk_filename_slow')
-
-        # Get the start channel and number of channels for the frequency
-        # chunks (used for the slow solve)
-        startchan = self.field.get_obs_parameters('startchan_slow')
-        nchan = self.field.get_obs_parameters('nchan_slow')
 
         # Get the solution intervals for the calibrations
         solint_fast_timestep = self.field.get_obs_parameters('solint_fast_timestep')
@@ -78,14 +67,14 @@ class CalibrateDD(Operation):
         solint_slow_freqstep = self.field.get_obs_parameters('solint_slow_freqstep')
 
         # Get the number of solutions per direction
-        solutions_per_direction_fast = self.field.get_obs_parameters('solutions_per_direction_fast')
-        solutions_per_direction_slow = self.field.get_obs_parameters('solutions_per_direction_slow')
+        fast_solutions_per_direction = self.field.get_obs_parameters('fast_solutions_per_direction')
+        slow_solutions_per_direction = self.field.get_obs_parameters('slow_solutions_per_direction')
 
         # Get the BDA (baseline-dependent averaging) parameters
-        bda_maxinterval_fast = self.field.get_obs_parameters('bda_maxinterval_fast')
-        bda_maxinterval_slow = self.field.get_obs_parameters('bda_maxinterval_slow')
-        bda_timebase_fast = self.field.bda_timebase_fast
-        bda_timebase_slow = self.field.bda_timebase_slow
+        bda_maxinterval = self.field.get_obs_parameters('bda_maxinterval')
+        bda_minchannels = self.field.get_obs_parameters('bda_minchannels')
+        bda_timebase = self.field.bda_timebase
+        bda_frequencybase = self.field.bda_frequencybase
 
         # Define various output filenames for the solution tables. We save some
         # as attributes since they are needed in finalize()
@@ -96,7 +85,7 @@ class CalibrateDD(Operation):
         output_idgcal_h5parm = ['idgcal_{}.h5parm'.format(i)  # TODO: chunk the solve over frequency as well as time?
                                 for i in range(self.field.ntimechunks)]
         output_slow_h5parm = ['slow_gain_{}.h5parm'.format(i)
-                              for i in range(self.field.nfreqchunks_slow)]
+                              for i in range(self.field.ntimechunks)]
         self.combined_slow_h5parm = 'slow_gains.h5parm'
         if self.field.apply_diagonal_solutions:
             solution_combine_mode = 'p1p2a2_diagonal'
@@ -119,12 +108,12 @@ class CalibrateDD(Operation):
         calibrator_fluxes = self.field.calibrator_fluxes
 
         # Set the constraints used in the calibrations
-        smoothness_dd_factors_fast = self.field.get_obs_parameters('smoothness_dd_factors_fast')
-        smoothness_dd_factors_slow = self.field.get_obs_parameters('smoothness_dd_factors_slow')
-        fast_smoothnessconstraint = self.field.fast_smoothnessconstraint / np.min(smoothness_dd_factors_fast)
+        fast_smoothness_dd_factors = self.field.get_obs_parameters('fast_smoothness_dd_factors')
+        slow_smoothness_dd_factors = self.field.get_obs_parameters('slow_smoothness_dd_factors')
+        fast_smoothnessconstraint = self.field.fast_smoothnessconstraint / np.min(fast_smoothness_dd_factors)
         fast_smoothnessreffrequency = self.field.get_obs_parameters('fast_smoothnessreffrequency')
         fast_smoothnessrefdistance = self.field.fast_smoothnessrefdistance
-        slow_smoothnessconstraint = (self.field.slow_smoothnessconstraint / np.min(smoothness_dd_factors_slow))
+        slow_smoothnessconstraint = (self.field.slow_smoothnessconstraint / np.min(slow_smoothness_dd_factors))
         if self.field.do_slowgain_solve or self.field.antenna == 'LBA':
             # Use the core stationconstraint if the slow solves will be done or if
             # we have LBA data (which has lower sensitivity than HBA data)
@@ -141,12 +130,13 @@ class CalibrateDD(Operation):
             # stationconstraint to allow each station to get its own fast phase
             # corrections
             fast_antennaconstraint = '[]'
-        slow_antennaconstraint = '[[{}]]'.format(','.join(self.field.stations))
         idgcal_antennaconstraint = '[]'  # TODO: set different constraints for phase and gain solves
+        slow_antennaconstraint = '[]'
         max_normalization_delta = self.field.max_normalization_delta
         scale_normalization_delta = '{}'.format(self.field.scale_normalization_delta)
 
-        # Get various DDECal solver parameters
+        # Get various DDECal solver parameters. Most of these are the same for both fast
+        # and slow solves
         llssolver = self.field.llssolver
         maxiter = self.field.maxiter
         propagatesolutions = self.field.propagatesolutions
@@ -163,10 +153,6 @@ class CalibrateDD(Operation):
         solverlbfgs_minibatches = self.field.solverlbfgs_minibatches
         fast_datause = self.field.fast_datause
         slow_datause = self.field.slow_datause
-        if self.field.use_scalarphase:
-            dp3_solve_mode_fast = 'scalarphase'
-        else:
-            dp3_solve_mode_fast = 'scalar'
 
         # Get the size of the imaging area (for use in making the a-term images)
         sector_bounds_deg = '{}'.format(self.field.sector_bounds_deg)
@@ -179,19 +165,20 @@ class CalibrateDD(Operation):
         # TODO: image-based predict doesn't yet work with BDA; once it does,
         # the restriction on this mode should be removed
         all_regular = all([obs.channels_are_regular for obs in self.field.observations])
-        if self.field.bda_timebase_fast > 0 and all_regular and not self.use_image_based_predict:
-            dp3_steps_fast = ['avg', 'solve', 'null']
+        if self.field.bda_timebase > 0 and all_regular and not self.field.use_image_based_predict:
+            if self.field.do_slowgain_solve:
+                dp3_steps = ['avg', 'solve1', 'solve2', 'null']
+            else:
+                dp3_steps = ['avg', 'solve1', 'null']
         else:
-            dp3_steps_fast = ['solve']
-        if self.field.bda_timebase_slow > 0 and all_regular and not self.field.use_image_based_predict:
-            dp3_steps_slow = ['avg', 'solve', 'null']
-        else:
-            dp3_steps_slow = ['solve']
+            if self.field.do_slowgain_solve:
+                dp3_steps = ['solve1', 'solve2']
+            else:
+                dp3_steps = ['solve1']
         if self.field.use_image_based_predict:
             # Add a predict, applybeam, and applycal steps to the beginning
-            dp3_steps_fast = (['predict', 'applybeam', 'applycal'] if self.field.apply_normalizations else
-                              ['predict', 'applybeam']) + dp3_steps_fast
-            dp3_steps_slow = ['predict', 'applybeam', 'applycal'] + dp3_steps_slow
+            dp3_steps = (['predict', 'applybeam', 'applycal'] if self.field.apply_normalizations else
+                         ['predict', 'applybeam']) + dp3_steps
 
         # Set the DP3 applycal steps and input H5parm files depending on what
         # solutions need to be applied. Note: applycal steps are needed for
@@ -200,29 +187,16 @@ class CalibrateDD(Operation):
         # The latter is used when image-based predict is done
         if self.field.apply_normalizations:
             normalize_h5parm = CWLFile(self.field.normalize_h5parm).to_json()
-            ddecal_applycal_steps_fast = ['normalization']
-            applycal_steps_fast = ['normalization']
+            ddecal_applycal_steps = ['normalization']
+            applycal_steps = ['normalization']
 
             # Convert the lists to strings, with square brackets as required by DP3
-            ddecal_applycal_steps_fast = f"[{','.join(ddecal_applycal_steps_fast)}]"
-            applycal_steps_fast = f"[{','.join(applycal_steps_fast)}]"
+            ddecal_applycal_steps = f"[{','.join(ddecal_applycal_steps)}]"
+            applycal_steps = f"[{','.join(applycal_steps)}]"
         else:
             normalize_h5parm = None
-            ddecal_applycal_steps_fast = None
-            applycal_steps_fast = None
-        if self.field.do_slowgain_solve:
-            ddecal_applycal_steps_slow = ['fastphase']
-            applycal_steps_slow = ['fastphase']
-            if self.field.apply_normalizations:
-                ddecal_applycal_steps_slow.append('normalization')
-                applycal_steps_slow.append('normalization')
-
-            # Convert the lists to strings, with square brackets as required by DP3
-            ddecal_applycal_steps_slow = f"[{','.join(ddecal_applycal_steps_slow)}]"
-            applycal_steps_slow = f"[{','.join(applycal_steps_slow)}]"
-        else:
-            ddecal_applycal_steps_slow = None
-            applycal_steps_slow = None
+            ddecal_applycal_steps = None
+            applycal_steps = None
         if (
             self.field.fast_phases_h5parm_filename is not None and
             os.path.exists(self.field.fast_phases_h5parm_filename)
@@ -239,25 +213,21 @@ class CalibrateDD(Operation):
             slow_initialsolutions_h5parm = None
 
         self.input_parms = {'timechunk_filename': CWLDir(timechunk_filename).to_json(),
-                            'freqchunk_filename': CWLDir(freqchunk_filename).to_json(),
                             'data_colname': self.field.data_colname,
                             'starttime': starttime,
                             'ntimes': ntimes,
-                            'slow_starttime': slow_starttime,
-                            'slow_ntimes': slow_ntimes,
-                            'startchan': startchan,
-                            'nchan': nchan,
                             'solint_fast_timestep': solint_fast_timestep,
                             'solint_slow_timestep': solint_slow_timestep,
                             'solint_fast_freqstep': solint_fast_freqstep,
                             'solint_slow_freqstep': solint_slow_freqstep,
-                            'solutions_per_direction_fast': solutions_per_direction_fast,
-                            'solutions_per_direction_slow': solutions_per_direction_slow,
+                            'fast_solutions_per_direction': fast_solutions_per_direction,
+                            'slow_solutions_per_direction': slow_solutions_per_direction,
                             'calibrator_patch_names': calibrator_patch_names,
                             'calibrator_fluxes': calibrator_fluxes,
                             'output_fast_h5parm': output_fast_h5parm,
                             'combined_fast_h5parm': self.combined_fast_h5parm,
                             'output_slow_h5parm': output_slow_h5parm,
+                            'combined_slow_h5parm': self.combined_slow_h5parm,
                             'calibration_skymodel_file': CWLFile(calibration_skymodel_file).to_json(),
                             'model_image_root': model_image_root,
                             'model_image_ra_dec': model_image_ra_dec,
@@ -270,23 +240,19 @@ class CalibrateDD(Operation):
                             'facet_region_width_ra': facet_region_width,
                             'facet_region_width_dec': facet_region_width,
                             'facet_region_file': facet_region_file,
-                            'smoothness_dd_factors_fast': smoothness_dd_factors_fast,
-                            'smoothness_dd_factors_slow': smoothness_dd_factors_slow,
+                            'fast_smoothness_dd_factors': fast_smoothness_dd_factors,
+                            'slow_smoothness_dd_factors': slow_smoothness_dd_factors,
                             'fast_smoothnessconstraint': fast_smoothnessconstraint,
+                            'slow_smoothnessconstraint': slow_smoothnessconstraint,
                             'fast_smoothnessreffrequency': fast_smoothnessreffrequency,
                             'fast_smoothnessrefdistance': fast_smoothnessrefdistance,
-                            'slow_smoothnessconstraint': slow_smoothnessconstraint,
-                            'dp3_steps_fast': f"[{','.join(dp3_steps_fast)}]",
-                            'ddecal_applycal_steps_fast': ddecal_applycal_steps_fast,
-                            'applycal_steps_fast': applycal_steps_fast,
-                            'dp3_steps_slow': f"[{','.join(dp3_steps_slow)}]",
-                            'ddecal_applycal_steps_slow': ddecal_applycal_steps_slow,
-                            'applycal_steps_slow': applycal_steps_slow,
-                            'dp3_solve_mode_fast': dp3_solve_mode_fast,
-                            'bda_maxinterval_fast': bda_maxinterval_fast,
-                            'bda_timebase_fast': bda_timebase_fast,
-                            'bda_maxinterval_slow': bda_maxinterval_slow,
-                            'bda_timebase_slow': bda_timebase_slow,
+                            'dp3_steps': f"[{','.join(dp3_steps)}]",
+                            'ddecal_applycal_steps': ddecal_applycal_steps,
+                            'applycal_steps': applycal_steps,
+                            'bda_maxinterval': bda_maxinterval,
+                            'bda_timebase': bda_timebase,
+                            'bda_minchannels': bda_minchannels,
+                            'bda_frequencybase': bda_frequencybase,
                             'normalize_h5parm': normalize_h5parm,
                             'fast_initialsolutions_h5parm': fast_initialsolutions_h5parm,
                             'slow_initialsolutions_h5parm': slow_initialsolutions_h5parm,
@@ -312,73 +278,13 @@ class CalibrateDD(Operation):
                             'combined_h5parms': self.combined_h5parms,
                             'fast_antennaconstraint': fast_antennaconstraint,
                             'slow_antennaconstraint': slow_antennaconstraint,
-                            'combined_slow_h5parm': self.combined_slow_h5parm,
+                            'idgcal_antennaconstraint': idgcal_antennaconstraint,
+                            'output_idgcal_h5parm': output_idgcal_h5parm,
                             'solution_combine_mode': solution_combine_mode,
                             'solverlbfgs_dof': solverlbfgs_dof,
                             'solverlbfgs_iter': solverlbfgs_iter,
                             'solverlbfgs_minibatches': solverlbfgs_minibatches,
                             'max_threads': self.parset['cluster_specific']['max_threads']}
-
-        # Set parameters specific to the selected mode
-        if self.field.generate_screens:
-            # Set the IDGCal mode parameters
-            self.input_parms.update({'idgcal_antennaconstraint': idgcal_antennaconstraint,
-                                     'output_idgcal_h5parm': output_idgcal_h5parm})
-            if self.field.do_slowgain_solve:
-                self.input_parms.update({'solint_slow_timestep': solint_slow_timestep})
-        else:
-            # Set normal (faceting) mode parameters
-            self.input_parms.update({'solint_fast_freqstep': solint_fast_freqstep,
-                                     'solutions_per_direction_fast': solutions_per_direction_fast,
-                                     'solutions_per_direction_slow': solutions_per_direction_slow,
-                                     'calibrator_patch_names': calibrator_patch_names,
-                                     'calibrator_fluxes': calibrator_fluxes,
-                                     'output_fast_h5parm': output_fast_h5parm,
-                                     'combined_fast_h5parm': self.combined_fast_h5parm,
-                                     'calibration_skymodel_file': CWLFile(calibration_skymodel_file).to_json(),
-                                     'fast_smoothnessconstraint': fast_smoothnessconstraint,
-                                     'fast_smoothnessreffrequency': fast_smoothnessreffrequency,
-                                     'fast_smoothnessrefdistance': fast_smoothnessrefdistance,
-                                     'dp3_steps_fast': dp3_steps_fast,
-                                     'bda_maxinterval_fast': bda_maxinterval_fast,
-                                     'bda_timebase_fast': bda_timebase_fast,
-                                     'max_normalization_delta': max_normalization_delta,
-                                     'scale_normalization_delta': scale_normalization_delta,
-                                     'phase_center_ra': self.field.ra,
-                                     'phase_center_dec': self.field.dec,
-                                     'llssolver': llssolver,
-                                     'propagatesolutions': propagatesolutions,
-                                     'solveralgorithm': solveralgorithm,
-                                     'onebeamperpatch': onebeamperpatch,
-                                     'stepsize': stepsize,
-                                     'stepsigma': stepsigma,
-                                     'tolerance': tolerance,
-                                     'uvlambdamin': uvlambdamin,
-                                     'parallelbaselines': parallelbaselines,
-                                     'sagecalpredict': sagecalpredict,
-                                     'fast_datause': fast_datause,
-                                     'sector_bounds_deg': sector_bounds_deg,
-                                     'sector_bounds_mid_deg': sector_bounds_mid_deg,
-                                     'fast_antennaconstraint': fast_antennaconstraint,
-                                     'solverlbfgs_dof': solverlbfgs_dof,
-                                     'solverlbfgs_iter': solverlbfgs_iter,
-                                     'solverlbfgs_minibatches': solverlbfgs_minibatches})
-            if self.field.do_slowgain_solve:
-                self.input_parms.update({'freqchunk_filename': CWLDir(freqchunk_filename).to_json(),
-                                         'slow_starttime': slow_starttime,
-                                         'slow_ntimes': slow_ntimes,
-                                         'startchan': startchan,
-                                         'nchan': nchan,
-                                         'solint_slow_timestep': solint_slow_timestep,
-                                         'solint_slow_freqstep': solint_slow_freqstep,
-                                         'output_slow_h5parm': output_slow_h5parm,
-                                         'slow_smoothnessconstraint': slow_smoothnessconstraint,
-                                         'dp3_steps_slow': dp3_steps_slow,
-                                         'bda_timebase_slow': bda_timebase_slow,
-                                         'bda_maxinterval_slow': bda_maxinterval_slow,
-                                         'slow_datause': slow_datause,
-                                         'slow_antennaconstraint': slow_antennaconstraint,
-                                         'combined_slow_h5parm': self.combined_slow_h5parm})
 
     def get_baselines_core(self):
         """
@@ -591,15 +497,11 @@ class CalibrateDI(Operation):
         #
         # Get the start times and number of times for the time chunks (fast and slow
         # calibration)
-        starttime_fulljones = self.field.get_obs_parameters('slow_starttime_fulljones')
-        ntimes_fulljones = self.field.get_obs_parameters('slow_ntimes_fulljones')
+        starttime_fulljones = self.field.get_obs_parameters('starttime')
+        ntimes_fulljones = self.field.get_obs_parameters('ntimes')
 
-        # Get the filenames of the input files for each frequency chunk
-        freqchunk_filename_fulljones = self.field.get_obs_parameters('freqchunk_filename_fulljones')
-
-        # Get the start channel and number of channels for the frequency chunks
-        startchan_fulljones = self.field.get_obs_parameters('startchan_fulljones')
-        nchan_fulljones = self.field.get_obs_parameters('nchan_fulljones')
+        # Get the filenames of the input files for each time chunk
+        timechunk_filename_fulljones = self.field.get_obs_parameters('timechunk_filename')
 
         # Get the solution intervals for the calibrations
         solint_fulljones_timestep = self.field.get_obs_parameters('solint_slow_timestep_fulljones')
@@ -608,7 +510,7 @@ class CalibrateDI(Operation):
         # Define various output filenames for the solution tables. We save some
         # as attributes since they are needed in finalize()
         output_h5parm_fulljones = ['fulljones_gain_{}.h5parm'.format(i)
-                                   for i in range(self.field.nfreqchunks)]
+                                   for i in range(self.field.ntimechunks)]
         self.combined_h5parm_fulljones = 'fulljones_gains.h5'
 
         # Set the constraints used in the calibrations
@@ -628,12 +530,10 @@ class CalibrateDI(Operation):
         solverlbfgs_iter = self.field.solverlbfgs_iter
         solverlbfgs_minibatches = self.field.solverlbfgs_minibatches
 
-        self.input_parms = {'freqchunk_filename_fulljones': CWLDir(freqchunk_filename_fulljones).to_json(),
+        self.input_parms = {'timechunk_filename_fulljones': CWLDir(timechunk_filename_fulljones).to_json(),
                             'data_colname': 'DATA',
                             'starttime_fulljones': starttime_fulljones,
                             'ntimes_fulljones': ntimes_fulljones,
-                            'startchan_fulljones': startchan_fulljones,
-                            'nchan_fulljones': nchan_fulljones,
                             'solint_fulljones_timestep': solint_fulljones_timestep,
                             'solint_fulljones_freqstep': solint_fulljones_freqstep,
                             'output_h5parm_fulljones': output_h5parm_fulljones,

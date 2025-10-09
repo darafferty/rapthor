@@ -31,7 +31,6 @@ arguments:
   - -join-channels
   - -use-idg
   - -log-time
-  - -apply-time-frequency-smearing
   - valueFrom: '$(runtime.tmpdir)'
     prefix: -temp-dir
   - valueFrom: '0.8'
@@ -322,6 +321,14 @@ inputs:
     type: int[]
     inputBinding:
       prefix: -interval
+
+  - id: apply_time_frequency_smearing
+    label: Apply smearing corrections
+    doc: |
+      Apply corrections for time and frequency smearing.
+    type: boolean
+    inputBinding:
+      prefix: -apply-time-frequency-smearing
 
 outputs:
   - id: image_I_nonpb_name

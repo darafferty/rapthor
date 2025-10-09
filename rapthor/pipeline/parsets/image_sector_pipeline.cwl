@@ -470,6 +470,12 @@ inputs:
       2).
     type: int[]
 
+  - id: apply_time_frequency_smearing
+    label: Apply smearing corrections
+    doc: |
+      Apply corrections for time and frequency smearing (length = 1).
+    type: boolean
+
 {% if make_image_cube %}
   - id: image_cube_name
     label: Filename of output image cube
@@ -854,6 +860,8 @@ steps:
       - id: interval
         source: interval
 {% endif %}
+      - id: apply_time_frequency_smearing
+        source: apply_time_frequency_smearing
     out:
       - id: image_I_nonpb_name
       - id: image_I_pb_name
