@@ -665,7 +665,7 @@ steps:
       - id: model_image
         source: draw_model/model_images
       - id: maxiter
-        source: maxiter
+        source: solverlbfgs_iter
       - id: antennaconstraint
         source: idgcal_antennaconstraint
       - id: numthreads
@@ -709,7 +709,7 @@ steps:
       - id: model_image
         source: draw_model/model_images
       - id: maxiter
-        source: maxiter
+        source: solverlbfgs_iter
       - id: antennaconstraint
         source: idgcal_antennaconstraint
       - id: numthreads
