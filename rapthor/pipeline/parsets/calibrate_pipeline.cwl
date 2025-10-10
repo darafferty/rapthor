@@ -69,12 +69,6 @@ inputs:
       The maximum number of threads to use for a job (length = 1).
     type: int
 
-  - id: fast_solutions_per_direction
-    label: Fast number of solutions per direction
-    doc: |
-      The maximum number of threads to use for a job (length = 1).
-    type: int
-
   - id: calibration_skymodel_file
     label: Filename of sky model
     doc: |
@@ -193,7 +187,7 @@ inputs:
       (length = n_obs * n_time_chunks).
     type: int[]
 
-  - id: solutions_per_direction_fast
+  - id: fast_solutions_per_direction
     label: Fast number of solutions per direction
     doc: |
       The number of solutions per direction for the fast phase solve (length =
