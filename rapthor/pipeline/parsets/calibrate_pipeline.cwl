@@ -76,6 +76,12 @@ inputs:
       in DDECal solve steps (length = 1).
     type: File
 
+  - id: solverlbfgs_iter
+    label: LBFGS iterations per minibatch
+    doc: |
+      The number of iterations per minibatch in LBFGS solver (length = 1).
+    type: int
+
 {% if use_image_based_predict %}
   - id: num_spectral_terms
     label: Number of spectral terms
@@ -344,12 +350,6 @@ inputs:
     doc: |
       The degrees of freedom in LBFGS solver (length = 1).
     type: float
-
-  - id: solverlbfgs_iter
-    label: LBFGS iterations per minibatch
-    doc: |
-      The number of iterations per minibatch in LBFGS solver (length = 1).
-    type: int
 
   - id: solverlbfgs_minibatches
     label: LBFGS minibatches
