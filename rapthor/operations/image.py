@@ -147,7 +147,6 @@ class Image(Operation):
             # adjusted if needed (from rectangular to square). If screens are
             # not used, we keep the image size fixed to make comparisons
             # between cycles easier
-            recalculate_imsize =
             sector.set_imaging_parameters(self.do_multiscale_clean,
                                           recalculate_imsize=self.apply_screens,
                                           imaging_parameters=self.imaging_parameters,
