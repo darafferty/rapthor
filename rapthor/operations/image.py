@@ -139,18 +139,17 @@ class Image(Operation):
         for sector in self.imaging_sectors:
             image_root.append(sector.name)
 
-            # Set the imaging parameters for each imaging sector
-            if self.apply_screens:
-                # Since IDG (used by WSClean to apply the screens) does not yet support
-                # rectangular images, we recalculate the image size to allow the image
-                # to be adjusted if needed (from rectangular to square)
-                recalculate_imsize = True
-            else:
-                # If IDG is not used, keep the image size fixed to make comparisons
-                # between cycles easier
-                recalculate_imsize = False
+            # Set the imaging parameters for each imaging sector.
+            #
+            # Note: IDG (used by WSClean to apply the screens) does not yet
+            # support rectangular images. Therefore, when screens need to be
+            # applied, we recalculate the image size to allow the image to be
+            # adjusted if needed (from rectangular to square). If screens are
+            # not used, we keep the image size fixed to make comparisons
+            # between cycles easier
+            recalculate_imsize =
             sector.set_imaging_parameters(self.do_multiscale_clean,
-                                          recalculate_imsize=recalculate_imsize,
+                                          recalculate_imsize=self.apply_screens,
                                           imaging_parameters=self.imaging_parameters,
                                           preapply_dde_solutions=self.preapply_dde_solutions)
 

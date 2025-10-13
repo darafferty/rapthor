@@ -630,7 +630,7 @@ steps:
     out:
       - id: region_file
 {% endif %}
-# end use_image_based_predict
+# end use_image_based_predict or generate_screens
 
 {% if generate_screens %}
 # start generate_screens

@@ -31,11 +31,10 @@ class CalibrateDD(Operation):
             max_cores = None
         else:
             max_cores = self.parset['cluster_specific']['max_cores']
-        if self.field.generate_screens:
-            # IDGCal requires image-based predict
-            self.use_image_based_predict = True
-        else:
-            self.use_image_based_predict = self.field.use_image_based_predict
+
+        # Set whether image-based prediction is used. Note that generation of
+        # screens (IDGCal) requires image-based prediction
+        self.use_image_based_predict = self.field.generate_screens or self.field.use_image_based_predict
 
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
                              'use_image_based_predict': self.use_image_based_predict,
