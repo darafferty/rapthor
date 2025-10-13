@@ -131,7 +131,7 @@ def test_calibrate_workflow(
     operation = "calibrate"
     templ = env_parset.get_template("calibrate_pipeline.cwl")
     parms = {
-        "use_image_based_predict": use_image_based_predict,
+        "use_image_based_predict": use_image_based_predict or generate_screens,
         "do_slowgain_solve": do_slowgain_solve,
         "generate_screens": generate_screens,
         "max_cores": max_cores,
