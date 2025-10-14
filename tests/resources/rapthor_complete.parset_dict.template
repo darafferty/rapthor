@@ -57,7 +57,7 @@
  'facet_layout': '/my/data/facets.reg',
  'final_data_fraction': 0.8,
  'imaging_specific': {'apply_diagonal_solutions': False,
-                      'bda_timebase': 10000.0,
+                      'bda_timebase': 0.0,
                       'cellsize_arcsec': 2.25,
                       'dd_psf_grid': [2, 2],
                       'dde_method': 'single',
