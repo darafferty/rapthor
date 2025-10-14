@@ -991,6 +991,12 @@ class Field(object):
             self.predict_sectors = []
             self.non_calibrator_source_sectors = []
 
+        # Make imaging sector region and vertices files
+        for sector in self.imaging_sectors:
+            sector.make_vertices_file()
+            sector.make_region_file(os.path.join(self.working_dir, 'regions',
+                                                 '{}_region_ds9.reg'.format(sector.name)))
+
         # Finally, make a list containing all sectors
         self.sectors = (self.imaging_sectors + self.outlier_sectors +
                         self.bright_source_sectors + self.predict_sectors +
@@ -1415,12 +1421,6 @@ class Field(object):
                     if type(sector.poly) is not Polygon:
                         # use backup
                         sector.poly = poly_bkup
-
-        # Make sector region and vertices files
-        for sector in self.imaging_sectors:
-            sector.make_vertices_file()
-            sector.make_region_file(os.path.join(self.working_dir, 'regions',
-                                                 '{}_region_ds9.reg'.format(sector.name)))
 
     def make_outlier_skymodel(self):
         """
