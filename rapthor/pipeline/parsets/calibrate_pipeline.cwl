@@ -374,6 +374,20 @@ inputs:
       The mid point of the boundary of all imaging sectors in degrees (length = 1).
     type: string
 
+  - id: correctfreqsmearing
+    label: Correct for frequency smearing
+    doc: |
+      Flag that determines whether the effects of frequency smearing are
+      corrected for during the prediction part of the solve (length = 1).
+    type: boolean
+
+  - id: correcttimesmearing
+    label: Correct for time smearing
+    doc: |
+      Flag that determines whether the effects of time smearing are
+      corrected for during the prediction part of the solve (length = 1).
+    type: boolean
+
   - id: max_threads
     label: Max number of threads
     doc: |
@@ -716,6 +730,10 @@ steps:
         source: fast_smoothnessrefdistance
       - id: solve1_antennaconstraint
         source: fast_antennaconstraint
+      - id: solve1_correctfreqsmearing
+        source: correctfreqsmearing
+      - id: solve1_correcttimesmearing
+        source: correcttimesmearing
 {% if do_slowgain_solve %}
       - id: solve1_keepmodel
         valueFrom: 'True'

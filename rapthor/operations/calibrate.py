@@ -274,6 +274,8 @@ class CalibrateDD(Operation):
                             'solverlbfgs_dof': solverlbfgs_dof,
                             'solverlbfgs_iter': solverlbfgs_iter,
                             'solverlbfgs_minibatches': solverlbfgs_minibatches,
+                            'correctfreqsmearing': self.field.correct_smearing_in_calibration,
+                            'correcttimesmearing': self.field.correct_smearing_in_calibration,
                             'max_threads': self.parset['cluster_specific']['max_threads']}
 
     def get_baselines_core(self):
@@ -536,6 +538,8 @@ class CalibrateDI(Operation):
                             'solverlbfgs_dof': solverlbfgs_dof,
                             'solverlbfgs_iter': solverlbfgs_iter,
                             'solverlbfgs_minibatches': solverlbfgs_minibatches,
+                            'correctfreqsmearing': self.field.correct_smearing_in_calibration,
+                            'correcttimesmearing': self.field.correct_smearing_in_calibration,
                             'max_threads': self.parset['cluster_specific']['max_threads']}
 
     def finalize(self):
