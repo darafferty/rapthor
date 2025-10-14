@@ -13,7 +13,8 @@ from rapthor.lib import miscellaneous as misc
 from matplotlib import patches
 import lsmtool
 from lsmtool import tableio
-from lsmtool.operations_lib import make_wcs, normalize_ra_dec, tessellate
+from lsmtool.operations_lib import make_wcs, normalize_ra_dec
+from lsmtool.facet import tessellate
 import tempfile
 import re
 
