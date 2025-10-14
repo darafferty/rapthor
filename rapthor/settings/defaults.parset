@@ -147,9 +147,10 @@ solverlbfgs_minibatches = 1
 bda_timebase = 20000.0
 bda_frequencybase = 20000.0
 
-# Correct for frequency and time smearing during prediction (default = False).
-# Generally, if imaging is to be done, the identical option in the [imaging] section
-# should be set in the same way (i.e., both disabled or both enabled)
+# Correct for frequency and time smearing during prediction part of calibration
+# (default = False). Generally, if imaging is to be done, the identical option
+# in the [imaging] section should be set in the same way (i.e., both disabled
+# or both enabled)
 correct_time_frequency_smearing = False
 
 

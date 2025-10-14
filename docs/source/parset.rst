@@ -354,6 +354,12 @@ The available options are described below under their respective sections.
         activating this option may improve the speed of the solve and lower the memory
         usage during solving.
 
+    correct_time_frequency_smearing
+        Correct for frequency and time smearing during the prediction part of
+        calibration (default = ``False``). Generally, if imaging is to be done, the
+        identical option in the ``[imaging]`` section should be set in the same way
+        (i.e., both disabled or both enabled).
+
 .. _parset_imaging_options:
 
 ``[imaging]``
@@ -556,6 +562,12 @@ The available options are described below under their respective sections.
         bandwidth smearing (at the mean frequency) and time smearing (default = 0.15 = 15%
         reduction in peak flux). Higher values result in shorter run times but more
         smearing away from the image centers.
+
+    correct_time_frequency_smearing
+        Correct for frequency and time smearing during imaging (default = ``False``).
+        Generally, if calibration is to be done, the identical option in the
+        ``[calibration]`` section should be set in the same way (i.e., both disabled or
+        both enabled).
 
     skip_final_major_iteration
         Skip the final WSClean major iteration for all but the last processing cycle

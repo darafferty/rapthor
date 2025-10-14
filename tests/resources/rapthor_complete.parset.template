@@ -51,6 +51,7 @@ fulljones_smoothnessconstraint = 0
 solverlbfgs_dof = 100.0
 solverlbfgs_iter = 6
 solverlbfgs_minibatches = 3
+correct_time_frequency_smearing = True
 
 [imaging]
 cellsize_arcsec = 2.25
@@ -89,7 +90,8 @@ sector_center_dec_list = [+35d30m31.52, +37d21m56.86]
 sector_width_ra_deg_list = [0.532, 0.127]
 sector_width_dec_deg_list = [0.532, 0.127]
 max_peak_smearing = 0.25
-skip_final_major_iteration = False
+correct_time_frequency_smearing = False
+skip_final_major_iteration = True
 skip_corner_sectors = True
 
 [cluster]
