@@ -312,13 +312,17 @@ class Parset:
 
         if (
             options['use_image_based_predict'] and
-            options['bda_timebase'] > 0
+            (
+                options['bda_timebase'] > 0 or
+                options['bda_frequencybase'] > 0
+            )
         ):
             log.warning(
                 "Switching off BDA during solving, since image-based predict is "
                 "activated."
             )
             options['bda_timebase'] = 0
+            options['bda_frequencybase'] = 0
 
         # Imaging options
         options = settings["imaging"]
@@ -351,6 +355,16 @@ class Parset:
             raise ValueError(
                 "The option 'dd_psf_grid' must be a list of length 2 (e.g. '[3, 3]')"
             )
+
+        if (
+            options["correct_time_frequency_smearing"] and
+            options["bda_timebase"] > 0
+        ):
+            log.warning(
+                "Switching off BDA during imaging, since correction for time "
+                "and frequency smearing is activated."
+            )
+            options["bda_timebase"] = 0
 
         # Cluster options
         options = settings["cluster"]

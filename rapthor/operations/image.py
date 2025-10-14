@@ -291,7 +291,7 @@ class Image(Operation):
                             'source_finder': self.imaging_parameters['source_finder'],
                             'do_multiscale': [sector.multiscale for sector in self.imaging_sectors],
                             'dd_psf_grid': [sector.dd_psf_grid for sector in self.imaging_sectors],
-                            'apply_time_frequency_smearing': self.field.apply_time_frequency_smearing,
+                            'apply_time_frequency_smearing': self.field.correct_smearing_in_imaging,
                             'max_threads': self.field.parset['cluster_specific']['max_threads'],
                             'deconvolution_threads': self.field.parset['cluster_specific']['deconvolution_threads']}
 

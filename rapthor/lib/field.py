@@ -94,6 +94,8 @@ class Field(object):
         self.solverlbfgs_dof = self.parset['calibration_specific']['solverlbfgs_dof']
         self.solverlbfgs_iter = self.parset['calibration_specific']['solverlbfgs_iter']
         self.solverlbfgs_minibatches = self.parset['calibration_specific']['solverlbfgs_minibatches']
+        self.correct_smearing_in_calibration = self.parset['calibration_specific']['correct_time_frequency_smearing']
+        self.correct_smearing_in_imaging = self.parset['imaging_specific']['correct_time_frequency_smearing']
         self.cycle_number = 1
         self.apply_amplitudes = False
         self.apply_screens = False
@@ -105,12 +107,7 @@ class Field(object):
         self.calibration_diagnostics = []
         self.selfcal_state = None
 
-        # TODO: remove the following when smearing is supported with image-
-        # based prediction and BDA
-        correct_smearing_in_calibration = False  # explicitly disabled for now; later should depend on self.use_image_based_predict
-        self.apply_time_frequency_smearing = (correct_smearing_in_calibration and not (self.use_image_based_predict or self.image_bda_timebase > 0))
-
-        # Set strategy parameter defaults
+       # Set strategy parameter defaults
         self.fast_timestep_sec = 8.0
         self.slow_timestep_sec = 600.0
         self.convergence_ratio = 0.95
