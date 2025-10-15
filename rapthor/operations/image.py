@@ -4,6 +4,7 @@ Module that holds the Image classes
 import glob
 import json
 import logging
+import numpy as np
 import os
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.operation import Operation
@@ -138,8 +139,16 @@ class Image(Operation):
         for sector in self.imaging_sectors:
             image_root.append(sector.name)
 
-            # Set the imaging parameters for each imaging sector
-            sector.set_imaging_parameters(self.do_multiscale_clean, recalculate_imsize=True,
+            # Set the imaging parameters for each imaging sector.
+            #
+            # Note: IDG (used by WSClean to apply the screens) does not yet
+            # support rectangular images. Therefore, when screens need to be
+            # applied, we recalculate the image size to allow the image to be
+            # adjusted if needed (from rectangular to square). If screens are
+            # not used, we keep the image size fixed to make comparisons
+            # between cycles easier
+            sector.set_imaging_parameters(self.do_multiscale_clean,
+                                          recalculate_imsize=self.apply_screens,
                                           imaging_parameters=self.imaging_parameters,
                                           preapply_dde_solutions=self.preapply_dde_solutions)
 
@@ -224,17 +233,23 @@ class Image(Operation):
             if prepare_data_applycal_steps:
                 prepare_data_applycal_steps = f"[{','.join(prepare_data_applycal_steps)}]"
         all_regular = all([obs.channels_are_regular for obs in self.field.observations])
-        if all_regular:
+        if all_regular and not self.apply_screens:
+            # Currently, BDA cannot be used with irregular data or screens (IDG)
             prepare_data_steps.append('bdaavg')
         prepare_data_steps = f"[{','.join(prepare_data_steps)}]"
 
         # Set the h5parm to use to apply the DDE solutions as needed
-        h5parm = None
-        idgcal_h5parm = None
-        if self.use_facets or self.preapply_dde_solutions:
-            h5parm = CWLFile(self.field.h5parm_filename).to_json()
-        if self.apply_screens:
-            idgcal_h5parm = CWLFile(self.field.idgcal_h5parm_filename).to_json()
+        h5parm = CWLFile(self.field.h5parm_filename).to_json() if not self.apply_none else None
+
+        # Set the data interval to use when screens are applied so that final solution
+        # interval is removed
+        #
+        # TODO: This interval is needed due to a bug in IDGCal that results in partial
+        # solution intervals being ignored during calibration (and hence unavailable
+        # during imaging). Once the bug is fixed, the interval can be removed
+        max_solint = self.field.slow_timestep_sec
+        numsamples_to_remove = int(np.ceil(max_solint / self.field.observations[0].timepersample))
+        interval = [0, max(1, self.field.observations[0].numsamples - numsamples_to_remove)]
 
         # Set the parameters common to all modes
         self.input_parms = {'obs_filename': [CWLDir(name).to_json() for name in obs_filename],
@@ -259,7 +274,6 @@ class Image(Operation):
                             'prepare_data_applycal_steps': prepare_data_applycal_steps,
                             'h5parm': h5parm,
                             'fulljones_h5parm': fulljones_h5parm,
-                            'idgcal_h5parm': idgcal_h5parm,
                             'input_normalize_h5parm': input_normalize_h5parm,
                             'channels_out': [sector.wsclean_nchannels for sector in self.imaging_sectors],
                             'deconvolution_channels': [sector.wsclean_deconvolution_channels for sector in self.imaging_sectors],
@@ -291,6 +305,7 @@ class Image(Operation):
                             'source_finder': self.imaging_parameters['source_finder'],
                             'do_multiscale': [sector.multiscale for sector in self.imaging_sectors],
                             'dd_psf_grid': [sector.dd_psf_grid for sector in self.imaging_sectors],
+                            'interval': interval,
                             'apply_time_frequency_smearing': self.field.apply_time_frequency_smearing,
                             'max_threads': self.field.parset['cluster_specific']['max_threads'],
                             'deconvolution_threads': self.field.parset['cluster_specific']['deconvolution_threads']}

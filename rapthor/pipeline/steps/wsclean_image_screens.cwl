@@ -17,7 +17,7 @@ requirements:
         entry: |
           aterms = [idgcalsolutions, beam]
           idgcalsolutions.type = h5parm
-          idgcalsolutions.files = [$(inputs.h5parm)]
+          idgcalsolutions.files = [$(inputs.h5parm.path)]
           idgcalsolutions.update_interval = 8
           beam.differential = true
           beam.update_interval = 120
@@ -313,6 +313,14 @@ inputs:
     type: int[]
     inputBinding:
       prefix: -dd-psf-grid
+
+  - id: interval
+    label: Data interval
+    doc: |
+      The start and end timeslots of the input data to consider.
+    type: int[]
+    inputBinding:
+      prefix: -interval
 
   - id: apply_time_frequency_smearing
     label: Apply smearing corrections

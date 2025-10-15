@@ -165,10 +165,6 @@ The available options are described below under their respective sections.
         completed successfully), IDGCal is used during calibration to generate smooth 2-D
         screens that are then applied by WSClean in the final imaging step.
 
-        .. note::
-
-            The hybrid mode is not yet available; it will be enabled in a future
-            update.
 
 .. _parset_calibration_options:
 
@@ -202,7 +198,8 @@ The available options are described below under their respective sections.
     solveralgorithm
         The algorithm used for solving (one of ``directionsolve``, ``directioniterative``,
         ``lbfgs``, or ``hybrid``; default = ``directioniterative``). When using ``lbfgs``,
-        the :term:`stepsize` should be set to a small value like 0.001.
+        the :term:`stepsize` should be set to a small value like 0.001. For IDGCal solves,
+        the ``lbfgs`` algorithm is always used.
 
     onebeamperpatch
         Calculate the beam correction once per calibration patch (default = ``False``)? If

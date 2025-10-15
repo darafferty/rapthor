@@ -463,6 +463,13 @@ inputs:
       vertically in the image (length = 2).
     type: int[]
 
+  - id: interval
+    label: Input data interval
+    doc: |
+      The interval to use for the input data, as [start_timeslot, end_timeslot] (length =
+      2).
+    type: int[]
+
   - id: apply_time_frequency_smearing
     label: Apply smearing corrections
     doc: |
@@ -849,6 +856,10 @@ steps:
         source: deconvolution_threads
       - id: dd_psf_grid
         source: dd_psf_grid
+{% if apply_screens %}
+      - id: interval
+        source: interval
+{% endif %}
       - id: apply_time_frequency_smearing
         source: apply_time_frequency_smearing
     out:
