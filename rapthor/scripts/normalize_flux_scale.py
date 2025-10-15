@@ -11,9 +11,8 @@ import casacore.tables as pt
 from losoto.h5parm import h5parm
 import lsmtool
 import numpy as np
-from rapthor.lib import miscellaneous as misc
 import tempfile
-
+from lsmtool.operations_lib import normalize_ra_dec
 
 def fit_sed(fluxes, errors, frequencies):
     """
@@ -254,7 +253,7 @@ def main(source_catalog, ms_file, output_h5parm, radius_cut=3.0, major_axis_cut=
         source_ra = []
         source_dec = []
         for ra_deg, dec_deg in zip(data['RA'], data['DEC']):
-            ra_norm, dec_norm = misc.normalize_ra_dec(ra_deg, dec_deg)
+            ra_norm, dec_norm = normalize_ra_dec(ra_deg, dec_deg)
             source_ra.append(ra_norm)
             source_dec.append(dec_norm)
         source_coords = SkyCoord(ra=np.array(source_ra)*u.degree,
@@ -308,7 +307,7 @@ def main(source_catalog, ms_file, output_h5parm, radius_cut=3.0, major_axis_cut=
             survey_ra = []
             survey_dec = []
             for ra_deg, dec_deg in zip(survey_data['RA'], survey_data['DEC']):
-                ra_norm, dec_norm = misc.normalize_ra_dec(ra_deg, dec_deg)
+                ra_norm, dec_norm = normalize_ra_dec(ra_deg, dec_deg)
                 survey_ra.append(ra_norm)
                 survey_dec.append(dec_norm)
             survey_coords = SkyCoord(ra=np.array(survey_ra)*u.degree,

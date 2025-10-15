@@ -32,8 +32,12 @@ class CalibrateDD(Operation):
         else:
             max_cores = self.parset['cluster_specific']['max_cores']
 
+        # Set whether image-based prediction is used. Note that generation of
+        # screens (IDGCal) requires image-based prediction
+        self.use_image_based_predict = self.field.generate_screens or self.field.use_image_based_predict
+
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
-                             'use_image_based_predict': self.field.use_image_based_predict,
+                             'use_image_based_predict': self.use_image_based_predict,
                              'generate_screens': self.field.generate_screens,
                              'do_slowgain_solve': self.field.do_slowgain_solve,
                              'max_cores': max_cores}
@@ -89,6 +93,8 @@ class CalibrateDD(Operation):
         combined_fast_medium1_medium2_h5parm = 'combined_fast_medium1_medium2_phases.h5parm'
         output_slow_h5parm = ['slow_gain_{}.h5parm'.format(i)
                               for i in range(self.field.ntimechunks)]
+        output_idgcal_h5parm = ['idgcal_{}.h5parm'.format(i)  # TODO: chunk the solve over frequency as well as time?
+                                for i in range(self.field.ntimechunks)]
         self.combined_slow_h5parm = 'slow_gains.h5parm'
 
         self.combined_h5parms = 'combined_solutions.h5'
@@ -129,6 +135,7 @@ class CalibrateDD(Operation):
         else:
             fast_antennaconstraint = '[]'
         medium_antennaconstraint = fast_antennaconstraint
+        idgcal_antennaconstraint = '[]'  # TODO: set different constraints for phase and gain solves
         slow_antennaconstraint = '[]'
         max_normalization_delta = self.field.max_normalization_delta
         scale_normalization_delta = '{}'.format(self.field.scale_normalization_delta)
@@ -306,6 +313,8 @@ class CalibrateDD(Operation):
                             'fast_antennaconstraint': fast_antennaconstraint,
                             'medium_antennaconstraint': medium_antennaconstraint,
                             'slow_antennaconstraint': slow_antennaconstraint,
+                            'idgcal_antennaconstraint': idgcal_antennaconstraint,
+                            'output_idgcal_h5parm': output_idgcal_h5parm,
                             'solution_combine_mode': solution_combine_mode,
                             'solverlbfgs_dof': solverlbfgs_dof,
                             'solverlbfgs_iter': solverlbfgs_iter,
@@ -455,7 +464,11 @@ class CalibrateDD(Operation):
         self.field.slow_gains_h5parm_filename = os.path.join(dst_dir, 'field-solutions-slow-gain.h5')
         if os.path.exists(self.field.h5parm_filename):
             os.remove(self.field.h5parm_filename)
-        if self.field.do_slowgain_solve:
+        if self.field.generate_screens:
+            # IDGCal (screens) only gives a combined h5parm, regardless of the type of solve
+            shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_h5parms),
+                        os.path.join(dst_dir, self.field.h5parm_filename))
+        elif self.field.do_slowgain_solve:
             shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_h5parms),
                         os.path.join(dst_dir, self.field.h5parm_filename))
             shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_slow_h5parm),
@@ -474,7 +487,8 @@ class CalibrateDD(Operation):
             shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_fast_h5parm),
                         os.path.join(dst_dir, self.field.fast_phases_h5parm_filename))
         self.field.scan_h5parms()  # verify h5parm and update flags for predict/image operations
-        flagged_frac = misc.get_flagged_solution_fraction(self.field.h5parm_filename)
+        solsetname = 'coefficients000' if self.field.generate_screens else 'sol000'
+        flagged_frac = misc.get_flagged_solution_fraction(self.field.h5parm_filename, solsetname=solsetname)
         self.log.info('Fraction of solutions that are flagged = {0:.2f}'.format(flagged_frac))
         self.field.calibration_diagnostics.append({'cycle_number': self.index,
                                                    'solution_flagged_fraction': flagged_frac})

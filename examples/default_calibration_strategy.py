@@ -37,7 +37,7 @@ for i in range(max_selfcal_loops):
     # adjust the intervals so that, for example, the early cycles have longer intervals to
     # compensate for the generally lower signal-to-noise ratios of the solves
     strategy_steps[i]['fast_timestep_sec'] = 32.0
-    strategy_steps[i]['fast_timestep_sec'] = 120.0
+    strategy_steps[i]['medium_timestep_sec'] = 120.0
     strategy_steps[i]['slow_timestep_sec'] = 600.0
 
     # Here we activate flux-scale normalization (adjusts the amplitudes to

@@ -13,7 +13,8 @@ from rapthor.lib import miscellaneous as misc
 from matplotlib import patches
 import lsmtool
 from lsmtool import tableio
-from lsmtool.operations_lib import make_wcs, voronoi, tessellate
+from lsmtool.operations_lib import make_wcs, normalize_ra_dec
+from lsmtool.facet import tessellate
 import tempfile
 import re
 
@@ -42,7 +43,7 @@ class Facet(object):
             ra = Angle(ra).to('deg').value
         if type(dec) is str:
             dec = Angle(dec).to('deg').value
-        self.ra, self.dec = misc.normalize_ra_dec(ra, dec)
+        self.ra, self.dec = normalize_ra_dec(ra, dec)
         self.vertices = np.array(vertices)
 
         # Convert input (RA, Dec) vertices to (x, y) polygon
@@ -219,7 +220,7 @@ class SquareFacet(Facet):
             ra = Angle(ra).to('deg').value
         if type(dec) is str:
             dec = Angle(dec).to('deg').value
-        ra, dec = misc.normalize_ra_dec(ra, dec)
+        ra, dec = normalize_ra_dec(ra, dec)
         wcs = make_wcs(ra, dec, misc.WCS_PIXEL_SCALE)
 
         # Make the vertices.
@@ -398,7 +399,7 @@ def read_skymodel(skymodel, ra_mid, dec_mid, width_ra, width_dec):
     for k, v in source_dict.items():
         name_cal.append(k)
         # Make sure RA is between [0, 360) deg and Dec between [-90, 90]
-        ra, dec = misc.normalize_ra_dec(v[0].value, v[1].value)
+        ra, dec = normalize_ra_dec(v[0].value, v[1].value)
         ra_cal.append(ra)
         dec_cal.append(dec)
     patch_coords = SkyCoord(ra=np.array(ra_cal)*u.degree, dec=np.array(dec_cal)*u.degree)
