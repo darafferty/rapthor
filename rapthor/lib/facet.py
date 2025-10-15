@@ -405,7 +405,11 @@ def read_skymodel(skymodel, ra_mid, dec_mid, width_ra, width_dec):
     patch_coords = SkyCoord(ra=np.array(ra_cal)*u.degree, dec=np.array(dec_cal)*u.degree)
 
     # Do the tessellation
-    facet_points, facet_polys = tessellate(ra_cal, dec_cal, ra_mid, dec_mid, width_ra, width_dec)
+    facet_points, facet_polys = tessellate(
+        SkyCoord(ra_cal, dec_cal, unit='deg'),
+        SkyCoord(ra_mid, dec_mid, unit='deg'),
+        [width_ra, width_dec]
+    )
     facet_names = []
     for facet_point in facet_points:
         # For each facet, match the correct patch name (i.e., the name of the
