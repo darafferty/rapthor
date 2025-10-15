@@ -17,7 +17,7 @@ for i in range(max_selfcal_loops):
     # Here we set the calibration strategy. We specify that outliers -- sources
     # that lie outside of imaged regions -- are peeled in the first cycle only
     # and that slow-gain calibration is done in every cycle. The minimum uv
-    # distance used in the solves is set to 150 lambda. Lastly, the maximum
+    # distance used in the solves is set to 750 lambda. Lastly, the maximum
     # allowed difference from unity in the normalized amplitude solutions (per
     # station) is set to 0.3, to allow for small adjustments to the station
     # calibration (done in LINC).
@@ -27,7 +27,7 @@ for i in range(max_selfcal_loops):
         strategy_steps[i]['peel_outliers'] = True
     else:
         strategy_steps[i]['peel_outliers'] = False
-    strategy_steps[i]['solve_min_uv_lambda'] = 150
+    strategy_steps[i]['solve_min_uv_lambda'] = 750
     strategy_steps[i]['peel_bright_sources'] = False
     strategy_steps[i]['do_fulljones_solve'] = False
     strategy_steps[i]['max_normalization_delta'] = 0.3
@@ -36,7 +36,7 @@ for i in range(max_selfcal_loops):
     # Here we use the same solution intervals for every cycle, but it is possible to
     # adjust the intervals so that, for example, the early cycles have longer intervals to
     # compensate for the generally lower signal-to-noise ratios of the solves
-    strategy_steps[i]['fast_timestep_sec'] = 8.0
+    strategy_steps[i]['fast_timestep_sec'] = 32.0
     strategy_steps[i]['slow_timestep_sec'] = 600.0
 
     # Here we activate flux-scale normalization (adjusts the amplitudes to

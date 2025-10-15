@@ -1,10 +1,10 @@
 cwlVersion: v1.2
 class: CommandLineTool
-baseCommand: [H5parm_collector.py, -c]
-label: Collects multiple h5parms
+baseCommand: [collect_screen_h5parms.py, -c]
+label: Collects multiple screen h5parms
 doc: |
-  This tool collects the solution tables from multiple h5parm files
-  into a single output h5parm using LoSoTo's H5parm_collector.py script.
+  This tool collects the screen solution tables from multiple h5parm files
+  into a single output h5parm.
 
 requirements:
   InlineJavascriptRequirement: {}
@@ -26,14 +26,6 @@ inputs:
     inputBinding:
       prefix: --outh5parm=
       separate: false
-  - id: insolset
-    label: Input solution set
-    doc: |
-      The name of the input solution set.
-    type: string?
-    inputBinding:
-      prefix: --insolset=
-      separate: false
 
 outputs:
   - id: outh5parm
@@ -44,6 +36,7 @@ outputs:
     type: File
     outputBinding:
       glob: $(inputs.outputh5parm)
+
 hints:
   - class: DockerRequirement
-    dockerPull: astronrd/rapthor
+    dockerPull: 'astronrd/rapthor'

@@ -203,7 +203,8 @@ class Observation(object):
 
     def set_calibration_parameters(self, parset, ndir, nobs, calibrator_fluxes,
                                    target_fast_timestep, target_slow_timestep,
-                                   target_fulljones_timestep, target_flux=None):
+                                   target_fulljones_timestep, target_flux=None,
+                                   generate_screens=False):
         """
         Sets the calibration parameters
 
@@ -226,6 +227,9 @@ class Observation(object):
         target_flux: float, optional
             Target calibrator flux in Jy. If None, the lowest calibrator flux density
             is used.
+        generate_screens : bool, optional
+            If True, adjust parameters to account for differences in the way
+            solving is done for screens (IDGCal)
         """
         # Get the target solution intervals and maximum factor by which they can
         # be increased when using direction-dependent solution intervals
@@ -234,6 +238,11 @@ class Observation(object):
         target_fulljones_freqstep = parset['calibration_specific']['fulljones_freqstep_hz']
         solve_max_factor = parset['calibration_specific']['dd_interval_factor']
         smoothness_max_factor = parset['calibration_specific']['dd_smoothness_factor']
+        if generate_screens:
+            # Screens do not support the direction-dependent smoothness contraint or
+            # solve intervals, so disable them
+            solve_max_factor = 1
+            smoothness_max_factor = 1
 
         # Find the maximum solution interval in time that can be used in any solve
         max_timestep = max(target_fast_timestep, target_slow_timestep, target_fulljones_timestep)

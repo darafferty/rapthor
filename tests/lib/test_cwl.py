@@ -114,11 +114,13 @@ def test_concatenate_workflow(
 
 @pytest.mark.parametrize("use_image_based_predict", (False, True))
 @pytest.mark.parametrize("do_slowgain_solve", (False, True))
+@pytest.mark.parametrize("generate_screens", (False, True))
 @pytest.mark.parametrize("max_cores", (None, 8))
 def test_calibrate_workflow(
     tmp_path,
     use_image_based_predict,
     do_slowgain_solve,
+    generate_screens,
     max_cores,
 ):
     """
@@ -129,8 +131,9 @@ def test_calibrate_workflow(
     operation = "calibrate"
     templ = env_parset.get_template("calibrate_pipeline.cwl")
     parms = {
-        "use_image_based_predict": use_image_based_predict,
+        "use_image_based_predict": use_image_based_predict or generate_screens,
         "do_slowgain_solve": do_slowgain_solve,
+        "generate_screens": generate_screens,
         "max_cores": max_cores,
     }
     generate_and_validate(tmp_path, operation, parms, templ)
@@ -230,7 +233,7 @@ class TestImageWorkflow:
         `rapthor.lib.operation.Operation.setup()` does this.
         """
         pipeline_working_dir = tmp_path / "pipelines" / self.operation
-        return create_parsets(pipeline_working_dir, params, 
+        return create_parsets(pipeline_working_dir, params,
                               self.template, self.sub_template)
 
     def test_image_workflow(self, params, parset):

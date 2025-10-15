@@ -98,6 +98,7 @@ class Field(object):
         self.correct_smearing_in_imaging = self.parset['imaging_specific']['correct_time_frequency_smearing']
         self.cycle_number = 1
         self.apply_amplitudes = False
+        self.generate_screens = False
         self.apply_screens = False
         self.generate_screens = False
         self.apply_fulljones = False
@@ -366,7 +367,7 @@ class Field(object):
             obs.set_calibration_parameters(self.parset, self.num_patches, len(self.observations),
                                            self.calibrator_fluxes, self.fast_timestep_sec,
                                            self.slow_timestep_sec, self.fulljones_timestep_sec,
-                                           self.target_flux)
+                                           self.target_flux, self.generate_screens)
             ntimechunks += obs.ntimechunks
         self.ntimechunks = ntimechunks
 
@@ -498,6 +499,15 @@ class Field(object):
                 if skymodel_apparent_sky is not None:
                     skymodel_apparent_sky.concatenate(s, matchBy='position', radius=matching_radius_deg,
                                                       keep='from2', inheritPatches=True)
+
+        # If screens are to be generated, we can skip most of the sky model
+        # manipulation
+        if self.generate_screens:
+            calibration_skymodel = skymodel_true_sky
+            calibration_skymodel.write(self.calibration_skymodel_file, clobber=True)
+            self.calibration_skymodel = calibration_skymodel
+            self.calibrators_only_skymodel = calibration_skymodel
+            return
 
         # If an apparent sky model is given, use it for defining the calibration patches.
         # Otherwise, attenuate the true sky model while grouping into patches
@@ -931,46 +941,58 @@ class Field(object):
         self.calibrator_fluxes = self.calibrators_only_skymodel.getColValues('I', aggregate='sum').tolist()
         self.calibrator_positions = self.calibrators_only_skymodel.getPatchPositions()
         self.num_patches = len(self.calibrator_patch_names)
-        suffix = 'es' if self.num_patches > 1 else ''
-        self.log.info('Using {0} calibration patch{1}'.format(self.num_patches, suffix))
+        if not self.generate_screens:
+            suffix = 'es' if self.num_patches > 1 else ''
+            self.log.info('Using {0} calibration patch{1}'.format(self.num_patches, suffix))
 
-        # Plot an overview of the field for this cycle, showing the calibration facets
-        # (patches)
-        self.log.info('Plotting field overview with calibration patches...')
-        if index == 1 or combine_current_and_intial:
-            # Check the sky model bounds, as they may differ from the sector ones
-            check_skymodel_bounds = True
+            # Plot an overview of the field for this cycle, showing the calibration facets
+            # (patches)
+            self.log.info('Plotting field overview with calibration patches...')
+            if index == 1 or combine_current_and_intial:
+                # Check the sky model bounds, as they may differ from the sector ones
+                check_skymodel_bounds = True
+            else:
+                # Sky model bounds will always match the sector ones
+                check_skymodel_bounds = False
+            self.plot_overview(f'field_overview_{index}.png', show_calibration_patches=True,
+                               check_skymodel_bounds=check_skymodel_bounds)
+
+            # Adjust sector boundaries to avoid known sources and update their sky models.
+            self.adjust_sector_boundaries()
+            self.log.info('Making sector sky models (for predicting)...')
+            for sector in self.imaging_sectors:
+                sector.calibration_skymodel = self.calibration_skymodel.copy()
+                sector.make_skymodel(index)
+
+            # Make bright-source sectors containing only the bright sources that may be
+            # subtracted before imaging. These sectors, like the outlier sectors above, are not
+            # imaged
+            self.define_bright_source_sectors(index)
+
+            # Make outlier sectors containing any remaining calibration sources (not
+            # included in any imaging or bright-source sector sky model). These sectors are
+            # not imaged; they are only used in prediction and subtraction
+            self.define_outlier_sectors(index)
+
+            # Make predict sectors containing all calibration sources. These sectors are
+            # not imaged; they are only used in prediction for direction-independent solves
+            self.define_predict_sectors(index)
+
+            # Make non-calibrator-source sectors containing non-calibrator sources
+            # that may be subtracted before calibration. These sectors are not
+            # imaged
+            self.define_non_calibrator_source_sectors(index)
         else:
-            # Sky model bounds will always match the sector ones
-            check_skymodel_bounds = False
-        self.plot_overview(f'field_overview_{index}.png', show_calibration_patches=True,
-                           check_skymodel_bounds=check_skymodel_bounds)
+            self.outlier_sectors = []
+            self.bright_source_sectors = []
+            self.predict_sectors = []
+            self.non_calibrator_source_sectors = []
 
-        # Adjust sector boundaries to avoid known sources and update their sky models.
-        self.adjust_sector_boundaries()
-        self.log.info('Making sector sky models (for predicting)...')
+        # Make imaging sector region and vertices files
         for sector in self.imaging_sectors:
-            sector.calibration_skymodel = self.calibration_skymodel.copy()
-            sector.make_skymodel(index)
-
-        # Make bright-source sectors containing only the bright sources that may be
-        # subtracted before imaging. These sectors, like the outlier sectors above, are not
-        # imaged
-        self.define_bright_source_sectors(index)
-
-        # Make outlier sectors containing any remaining calibration sources (not
-        # included in any imaging or bright-source sector sky model). These sectors are
-        # not imaged; they are only used in prediction and subtraction
-        self.define_outlier_sectors(index)
-
-        # Make predict sectors containing all calibration sources. These sectors are
-        # not imaged; they are only used in prediction for direction-independent solves
-        self.define_predict_sectors(index)
-
-        # Make non-calibrator-source sectors containing non-calibrator sources
-        # that may be subtracted before calibration. These sectors are not
-        # imaged
-        self.define_non_calibrator_source_sectors(index)
+            sector.make_vertices_file()
+            sector.make_region_file(os.path.join(self.working_dir, 'regions',
+                                                 '{}_region_ds9.reg'.format(sector.name)))
 
         # Finally, make a list containing all sectors
         self.sectors = (self.imaging_sectors + self.outlier_sectors +
@@ -1397,12 +1419,6 @@ class Field(object):
                         # use backup
                         sector.poly = poly_bkup
 
-        # Make sector region and vertices files
-        for sector in self.imaging_sectors:
-            sector.make_vertices_file()
-            sector.make_region_file(os.path.join(self.working_dir, 'regions',
-                                                 '{}_region_ds9.reg'.format(sector.name)))
-
     def make_outlier_skymodel(self):
         """
         Make a sky model of any outlier calibration sources, not included in any
@@ -1477,18 +1493,28 @@ class Field(object):
         """
         if self.h5parm_filename is not None:
             with h5parm(self.h5parm_filename) as solutions:
-                if 'sol000' not in solutions.getSolsetNames():
-                    raise ValueError('The direction-dependent solutions file "{0}" must '
-                                     'have the solutions stored in the sol000 '
-                                     'solset.'.format(self.h5parm_filename))
-                solset = solutions.getSolset('sol000')
-                if 'phase000' not in solset.getSoltabNames():
-                    raise ValueError('The direction-dependent solutions file "{0}" must '
-                                     'have a phase000 soltab.'.format(self.h5parm_filename))
-                if 'amplitude000' in solset.getSoltabNames():
-                    self.apply_amplitudes = True
+                if 'coefficients000' in solutions.getSolsetNames():
+                    solset = solutions.getSolset('coefficients000')
+                    if 'phase_coefficients' not in solset.getSoltabNames():
+                        raise ValueError('The screen solutions file "{0}" must '
+                                         'have a phase_coefficients soltab.'.format(self.h5parm_filename))
+                    if 'amplitude1_coefficients' in solset.getSoltabNames():
+                        self.apply_amplitudes = True
+                    else:
+                        self.apply_amplitudes = False
+                elif 'sol000' in solutions.getSolsetNames():
+                    solset = solutions.getSolset('sol000')
+                    if 'phase000' not in solset.getSoltabNames():
+                        raise ValueError('The direction-dependent solutions file "{0}" must '
+                                         'have a phase000 soltab.'.format(self.h5parm_filename))
+                    if 'amplitude000' in solset.getSoltabNames():
+                        self.apply_amplitudes = True
+                    else:
+                        self.apply_amplitudes = False
                 else:
-                    self.apply_amplitudes = False
+                    raise ValueError('The direction-dependent solutions file "{0}" must '
+                                     'have the solutions stored in the sol000 or coefficients000'
+                                     'solset.'.format(self.h5parm_filename))
         else:
             self.apply_amplitudes = False
 

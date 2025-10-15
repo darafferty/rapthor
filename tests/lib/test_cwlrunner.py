@@ -76,6 +76,20 @@ class Sector:
         return obs_parameters[parameter]
 
 
+class Observation:
+    """
+    Mock class that provides the minimal number of attributes needed to
+    mimick the real `Observation` class in the module `rapthor.lib.observation`.
+    """
+
+    def __init__(self):
+        self.ms_imaging_filename = "filename.ms"
+        self.starttime = 5086015124.0
+        self.numsamples = 1
+        self.channels_are_regular = True
+        self.timepersample = 1
+
+
 class Field:
     """
     Mock class that provides the minimal number of attributes needed to
@@ -97,7 +111,7 @@ class Field:
         self.h5parm_filename = parset["input_h5parm"]
         self.image_pol = "I"
         self.imaging_sectors = [Sector("sector_1", field=self)]
-        self.observations = []
+        self.observations = [Observation()]
         self.peel_bright_sources = False
         self.ra = 0
         self.correct_smearing_in_calibration = True
@@ -112,6 +126,7 @@ class Field:
         self.auto_mask_nmiter = 1
         self.skip_final_major_iteration = True
         self.image_bda_timebase = 0
+        self.slow_timestep_sec = 1
         self.apply_time_frequency_smearing = True
         self.correct_smearing_in_imaging = True
 
@@ -191,7 +206,7 @@ class TestCWLRunner:
     def test_mpi_config_file(self, runner):
         """
         Test if the MPI configuration file is present and has the correct content.
-        """        
+        """
         if runner.operation.use_mpi:
             mpi_config_file = runner.args[runner.args.index("--mpi-config-file") + 1]
             assert os.path.isfile(mpi_config_file)
@@ -344,4 +359,3 @@ class TestToilRunner:
             else:
                 assert workdir.startswith(parset["dir_working"])
             assert os.path.isdir(workdir)
-
