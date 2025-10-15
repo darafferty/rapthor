@@ -107,7 +107,7 @@ class Field(object):
         self.calibration_diagnostics = []
         self.selfcal_state = None
 
-       # Set strategy parameter defaults
+        # Set strategy parameter defaults
         self.fast_timestep_sec = 8.0
         self.slow_timestep_sec = 600.0
         self.convergence_ratio = 0.95
@@ -1596,8 +1596,8 @@ class Field(object):
                 rms_diverged = False
                 self.log.warning('Median image noise found in the previous cycle is 0 '
                                  'for {0}. Skipping noise convergence check...'.format(sector.name))
-            self.log.info('Ratio of current median image noise (non-PB-corrected) to theorectical '
-                          'minimum image noise for {0} = {1:.2f}'.format(sector.name, rmspost/rmsideal))
+            self.log.info('Ratio of current median image noise (non-PB-corrected) to expected '
+                          'image noise for {0} = {1:.2f}'.format(sector.name, rmspost/rmsideal))
 
             dynrpre = sector.diagnostics[-2]['dynamic_range_global_flat_noise']
             dynrpost = sector.diagnostics[-1]['dynamic_range_global_flat_noise']
