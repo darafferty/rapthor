@@ -9,6 +9,7 @@ from rapthor.lib.cluster import get_chunk_size
 from scipy.special import erf
 from rapthor.lib import miscellaneous as misc
 import copy
+from lsmtool.operations_lib import normalize_ra_dec
 
 
 class Observation(object):
@@ -131,8 +132,8 @@ class Observation(object):
 
         # Get pointing info
         obs = pt.table(self.ms_filename+'::FIELD', ack=False)
-        self.ra, self.dec = misc.normalize_ra_dec(np.degrees(float(obs.col('REFERENCE_DIR')[0][0][0])),
-                                                  np.degrees(float(obs.col('REFERENCE_DIR')[0][0][1])))
+        self.ra, self.dec = normalize_ra_dec(np.degrees(float(obs.col('REFERENCE_DIR')[0][0][0])),
+                                             np.degrees(float(obs.col('REFERENCE_DIR')[0][0][1])))
         obs.close()
 
         # Get station names and diameter
