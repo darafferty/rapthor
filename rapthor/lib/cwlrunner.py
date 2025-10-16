@@ -314,7 +314,12 @@ class ToilRunner(CWLRunner):
         super().setup()
         # Bypass the file store; it only has benefits when using object stores like S3
         self.args.extend(['--bypass-file-store'])
-        self.args.extend(['--batchSystem', self.operation.batch_system.replace("slurm_static", "slurm")])
+        self.args.extend(
+            [
+                "--batchSystem",
+                self.operation.batch_system.replace("slurm_static", "single_machine"),
+            ]
+        )
         self.args.extend(['--maxLocalJobs', str(self.operation.max_nodes)])
         self.args.extend(['--maxJobs', str(self.operation.max_nodes)])
         self.args.extend(['--jobStore', self.operation.jobstore])
