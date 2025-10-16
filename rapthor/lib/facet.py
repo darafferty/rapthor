@@ -408,7 +408,8 @@ def read_skymodel(skymodel, ra_mid, dec_mid, width_ra, width_dec):
     facet_points, facet_polys = tessellate(
         SkyCoord(ra_cal, dec_cal, unit='deg'),
         SkyCoord(ra_mid, dec_mid, unit='deg'),
-        [width_ra, width_dec]
+        [width_ra, width_dec],
+        wcs_pixel_scale=misc.WCS_PIXEL_SCALE
     )
     facet_names = []
     for facet_point in facet_points:
