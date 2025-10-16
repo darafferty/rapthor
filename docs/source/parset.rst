@@ -352,10 +352,10 @@ The available options are described below under their respective sections.
         usage during solving.
 
     correct_time_frequency_smearing
-        Correct for frequency and time smearing during the prediction part of
-        calibration (default = ``False``). Generally, if imaging is to be done, the
-        identical option in the ``[imaging]`` section should be set in the same way
-        (i.e., both disabled or both enabled).
+        Correct for time and frequency smearing during the prediction part of
+        calibration (default = ``False``). Generally, if enabled and imaging is
+        to be done, the identical parameter in the ``[imaging]`` section should
+        also be enabled.
 
 .. _parset_imaging_options:
 
@@ -561,10 +561,10 @@ The available options are described below under their respective sections.
         smearing away from the image centers.
 
     correct_time_frequency_smearing
-        Correct for frequency and time smearing during imaging (default = ``False``).
-        Generally, if calibration is to be done, the identical option in the
-        ``[calibration]`` section should be set in the same way (i.e., both disabled or
-        both enabled).
+        Correct for time and frequency smearing during imaging (default =
+        ``False``). Generally, if enabled and calibration is to be done, the
+        identical parameter in the ``[calibration]`` section should also be
+        enabled.
 
     skip_final_major_iteration
         Skip the final WSClean major iteration for all but the last processing cycle

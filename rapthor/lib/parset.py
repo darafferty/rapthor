@@ -324,6 +324,8 @@ class Parset:
             options['bda_timebase'] = 0
             options['bda_frequencybase'] = 0
 
+        correct_smearing_in_calibration = options["correct_time_frequency_smearing"]
+
         # Imaging options
         options = settings["imaging"]
 
@@ -365,6 +367,13 @@ class Parset:
                 "and frequency smearing is activated."
             )
             options["bda_timebase"] = 0
+            # options["bda_frequencybase"] = 0  # TODO: also disable frequency BDA once implemented
+
+        if correct_smearing_in_calibration != options["correct_time_frequency_smearing"]:
+            log.warning("Correction for time and frequency smearing is enabled "
+                        "in either calibration or imaging, but not in both. "
+                        "Generally, the correction should be enabled (or disabled) "
+                        "together in both sections.")
 
         # Cluster options
         options = settings["cluster"]

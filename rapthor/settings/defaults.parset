@@ -147,10 +147,9 @@ solverlbfgs_minibatches = 1
 bda_timebase = 20000.0
 bda_frequencybase = 20000.0
 
-# Correct for frequency and time smearing during prediction part of calibration
-# (default = False). Generally, if imaging is to be done, the identical option
-# in the [imaging] section should be set in the same way (i.e., both disabled
-# or both enabled)
+# Correct for time and frequency smearing during prediction part of calibration
+# (default = False). Generally, if enabled and imaging is to be done, the
+# identical parameter in the [imaging] section should also be enabled
 correct_time_frequency_smearing = False
 
 
@@ -282,10 +281,9 @@ sector_width_dec_deg_list = []
 # more smearing away from the sector centers
 max_peak_smearing = 0.15
 
-# Correct for frequency and time smearing during imaging (default = False).
-# Generally, if calibration is to be done, the identical option in the
-# [calibration] section should be set in the same way (i.e., both disabled or
-# both enabled)
+# Correct for time and frequency smearing during imaging (default = False).
+# Generally, if enabled and calibration is to be done, the identical parameter
+# in the [calibration] section should also be enabled
 correct_time_frequency_smearing = False
 
 # Skip the final WSClean major iteration for all but the last processing cycle
