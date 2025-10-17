@@ -114,6 +114,7 @@ class Field:
         self.observations = [Observation()]
         self.peel_bright_sources = False
         self.ra = 0
+        self.correct_smearing_in_calibration = True
 
         imaging_parameters = self.parset["imaging_specific"]
         self.compress_images = True
@@ -127,6 +128,7 @@ class Field:
         self.image_bda_timebase = 0
         self.slow_timestep_sec = 1
         self.apply_time_frequency_smearing = True
+        self.correct_smearing_in_imaging = True
 
     def get_calibration_radius(self):
         return 5.0

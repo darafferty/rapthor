@@ -158,6 +158,20 @@ inputs:
       The minimum uv distance in lambda used during the solve (length = 1).
     type: float
 
+  - id: correctfreqsmearing
+    label: Correct for frequency smearing
+    doc: |
+      Flag that determines whether the effects of frequency smearing are
+      corrected for during the prediction part of the solve (length = 1).
+    type: boolean
+
+  - id: correcttimesmearing
+    label: Correct for time smearing
+    doc: |
+      Flag that determines whether the effects of time smearing are
+      corrected for during the prediction part of the solve (length = 1).
+    type: boolean
+
   - id: max_threads
     label: Max number of threads
     doc: |
@@ -239,6 +253,10 @@ steps:
         source: uvlambdamin
       - id: solve1_smoothnessconstraint
         source: smoothnessconstraint_fulljones
+      - id: solve1_correctfreqsmearing
+        source: correctfreqsmearing
+      - id: solve1_correcttimesmearing
+        source: correcttimesmearing
       - id: numthreads
         source: max_threads
     scatter: [msin, starttime, ntimes, solve1_h5parm, solve1_solint, solve1_nchan]
