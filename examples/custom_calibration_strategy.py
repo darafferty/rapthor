@@ -29,7 +29,7 @@ for i in range(max_selfcal_loops):
     strategy_steps[i]['scale_normalization_delta'] = True
     strategy_steps[i]['solve_min_uv_lambda'] = 150
     strategy_steps[i]['fast_timestep_sec'] = 32.0
-    strategy_steps[i]['fast_timestep_sec'] = 120.0
+    strategy_steps[i]['medium_timestep_sec'] = 120.0
     strategy_steps[i]['slow_timestep_sec'] = 600.0
 
     # Here we set adjust the imaging strategy from the default, using fixed

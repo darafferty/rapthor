@@ -181,7 +181,7 @@ def smooth_solutions(ampsoltab, phasesoltab=None, ref_id=0):
         core_stations = [ant for ant in ampsoltab.ant if ant.startswith("CS")]
         size_core = get_smooth_box_size(ampsoltab, direction, ant_list=core_stations, min_box_size=3)
         noncore_stations = [ant for ant in ampsoltab.ant if ant not in core_stations]
-        size_noncore = get_smooth_box_size(ampsoltab, direction, ant_list=noncore_stations) - 1
+        size_noncore = get_smooth_box_size(ampsoltab, direction, ant_list=noncore_stations) - 2
 
         # Smooth solutions for each direction, station, and polarization separately
         for stat in range(nstat):
@@ -237,12 +237,12 @@ def get_smooth_box_size(ampsoltab, direction, ant_list=None, min_box_size=1):
         List of antenna names to use in noise calcuations. If None, all antennas
         are used
     min_box_size : int, optional
-        Minimum allowed box size for smoothing
+        Minimum allowed box size for smoothing (1 = no smoothing)
 
     Returns
     -------
     box_size : int
-        Box size for smoothing
+        Box size for smoothing (1 = no smoothing)
     """
     # Determine antenna selection to use
     if ant_list is None:
