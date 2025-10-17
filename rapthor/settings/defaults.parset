@@ -154,6 +154,11 @@ solverlbfgs_minibatches = 1
 bda_timebase = 20000.0
 bda_frequencybase = 20000.0
 
+# Correct for time and frequency smearing during prediction part of calibration
+# (default = False). Generally, if enabled and imaging is to be done, the
+# identical parameter in the [imaging] section should also be enabled
+correct_time_frequency_smearing = False
+
 
 [imaging]
 # Imaging parameters: pixel size in arcsec (default = 1.5, suitable for HBA
@@ -282,6 +287,11 @@ sector_width_dec_deg_list = []
 # 15% reduction in peak flux). Higher values can result in shorter run times but
 # more smearing away from the sector centers
 max_peak_smearing = 0.15
+
+# Correct for time and frequency smearing during imaging (default = False).
+# Generally, if enabled and calibration is to be done, the identical parameter
+# in the [calibration] section should also be enabled
+correct_time_frequency_smearing = False
 
 # Skip the final WSClean major iteration for all but the last processing cycle
 # (default = True). If True, the final major iteration is skipped during

@@ -98,6 +98,8 @@ class Field(object):
         self.solverlbfgs_dof = self.parset['calibration_specific']['solverlbfgs_dof']
         self.solverlbfgs_iter = self.parset['calibration_specific']['solverlbfgs_iter']
         self.solverlbfgs_minibatches = self.parset['calibration_specific']['solverlbfgs_minibatches']
+        self.correct_smearing_in_calibration = self.parset['calibration_specific']['correct_time_frequency_smearing']
+        self.correct_smearing_in_imaging = self.parset['imaging_specific']['correct_time_frequency_smearing']
         self.cycle_number = 1
         self.apply_amplitudes = False
         self.generate_screens = False
@@ -111,11 +113,6 @@ class Field(object):
         self.slow_gains_h5parm_filename = None
         self.calibration_diagnostics = []
         self.selfcal_state = None
-
-        # TODO: remove the following when smearing is supported with image-
-        # based prediction and BDA
-        correct_smearing_in_calibration = False  # explicitly disabled for now; later should depend on self.use_image_based_predict
-        self.apply_time_frequency_smearing = (correct_smearing_in_calibration and not (self.use_image_based_predict or self.image_bda_timebase > 0))
 
         # Set strategy parameter defaults
         self.fast_timestep_sec = 32.0
@@ -1633,8 +1630,8 @@ class Field(object):
                 rms_diverged = False
                 self.log.warning('Median image noise found in the previous cycle is 0 '
                                  'for {0}. Skipping noise convergence check...'.format(sector.name))
-            self.log.info('Ratio of current median image noise (non-PB-corrected) to theorectical '
-                          'minimum image noise for {0} = {1:.2f}'.format(sector.name, rmspost/rmsideal))
+            self.log.info('Ratio of current median image noise (non-PB-corrected) to expected '
+                          'image noise for {0} = {1:.2f}'.format(sector.name, rmspost/rmsideal))
 
             dynrpre = sector.diagnostics[-2]['dynamic_range_global_flat_noise']
             dynrpost = sector.diagnostics[-1]['dynamic_range_global_flat_noise']

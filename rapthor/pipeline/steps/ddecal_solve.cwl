@@ -473,6 +473,30 @@ inputs:
       prefix: solve1.antennaconstraint=
       separate: False
 
+  - id: solve1_correctfreqsmearing
+    label: Correct for frequency smearing
+    doc: |
+      Flag that determines whether the effects of frequency smearing are
+      corrected for during the prediction part of solve1. Note: this parameter
+      affects the prediction and therefore only applies to solve1 (there is no
+      prediction done in the other solves).
+    type: boolean?
+    inputBinding:
+      prefix: solve1.correctfreqsmearing=
+      valueFrom: "$(self ? 'True': 'False')"
+      separate: False
+
+  - id: solve1_correcttimesmearing
+    label: Correct for time smearing
+    doc: |
+      Flag that determines whether the effects of time smearing are
+      corrected for during the prediction part of solve1.
+    type: boolean?
+    inputBinding:
+      prefix: solve1.correcttimesmearing=
+      valueFrom: "$(self ? 'True': 'False')"
+      separate: False
+
   - id: solve1_keepmodel
     label: Keep model data
     doc: |
