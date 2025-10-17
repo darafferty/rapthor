@@ -305,10 +305,10 @@ The available options are described below under their respective sections.
         midpoint of the frequency coverage for LBA.
 
     medium_smoothnessrefdistance
-        Smoothness constraint reference distance used during fast phase calibration, in
+        Smoothness constraint reference distance used during medium phase calibration, in
         m (default = 0).
 
-    medium_freqstep_hz
+    slow_freqstep_hz
         Frequency step used during slow amplitude calibration, in Hz (default = 1e6).
 
     slow_smoothnessconstraint

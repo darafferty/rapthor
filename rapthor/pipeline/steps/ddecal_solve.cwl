@@ -497,7 +497,7 @@ inputs:
     label: Filename of h5parm
     doc: |
       The filename of the h5parm file with the flux-scale normalization corrections.
-      These solutions are applied during solve1.
+      These solutions are applied during solve2.
     type: File?
     inputBinding:
       prefix: solve2.applycal.normalization.parmdb=
@@ -754,7 +754,7 @@ inputs:
     label: Filename of h5parm
     doc: |
       The filename of the h5parm file with the flux-scale normalization corrections.
-      These solutions are applied during solve1.
+      These solutions are applied during solve3.
     type: File?
     inputBinding:
       prefix: solve3.applycal.normalization.parmdb=
@@ -1011,7 +1011,7 @@ inputs:
     label: Filename of h5parm
     doc: |
       The filename of the h5parm file with the flux-scale normalization corrections.
-      These solutions are applied during solve1.
+      These solutions are applied during solve4.
     type: File?
     inputBinding:
       prefix: solve4.applycal.normalization.parmdb=

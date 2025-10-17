@@ -87,6 +87,7 @@ class Field(object):
         self.parallelbaselines = self.parset['calibration_specific']['parallelbaselines']
         self.sagecalpredict = self.parset['calibration_specific']['sagecalpredict']
         self.fast_datause = self.parset['calibration_specific']['fast_datause']
+        self.medium_datause = self.parset['calibration_specific']['medium_datause']
         self.slow_datause = self.parset['calibration_specific']['slow_datause']
         self.reweight = self.parset['imaging_specific']['reweight']
         self.image_bda_timebase = self.parset['imaging_specific']['bda_timebase']

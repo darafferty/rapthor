@@ -157,6 +157,7 @@ class CalibrateDD(Operation):
         solverlbfgs_iter = self.field.solverlbfgs_iter
         solverlbfgs_minibatches = self.field.solverlbfgs_minibatches
         fast_datause = self.field.fast_datause
+        medium_datause = self.field.medium_datause
         slow_datause = self.field.slow_datause
 
         # Get the size of the imaging area (for use in making the a-term images)
@@ -306,6 +307,7 @@ class CalibrateDD(Operation):
                             'parallelbaselines': parallelbaselines,
                             'sagecalpredict': sagecalpredict,
                             'fast_datause': fast_datause,
+                            'medium_datause': medium_datause,
                             'slow_datause': slow_datause,
                             'sector_bounds_deg': sector_bounds_deg,
                             'sector_bounds_mid_deg': sector_bounds_mid_deg,

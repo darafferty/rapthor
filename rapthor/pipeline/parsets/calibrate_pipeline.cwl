@@ -468,6 +468,11 @@ inputs:
       DDECal datause option for the fast-phase calibration (length = 1).
     type: string
 
+  - id: medium_datause
+    doc: |
+      DDECal datause option for the medium-phase calibration (length = 1).
+    type: string
+
   - id: stepsize
     label: Solver step size
     doc: |
@@ -960,8 +965,6 @@ steps:
 {% endif %}
       - id: numthreads
         source: max_threads
-      - id: solve1_normalize_h5parm
-        source: normalize_h5parm
       - id: solve1_h5parm
         source: output_fast_h5parm
       - id: solve1_solint
@@ -1018,18 +1021,16 @@ steps:
 {% else %}
         valueFrom: '[solve1.*]'
 {% endif %}
-      - id: solve2_normalize_h5parm
-        source: normalize_h5parm
       - id: solve2_h5parm
         source: output_medium1_h5parm
       - id: solve2_solint
-        source: solint_fast_timestep
+        source: solint_medium_timestep
       - id: solve2_mode
         valueFrom: 'scalarphase'
       - id: solve2_nchan
-        source: solint_fast_freqstep
+        source: solint_medium_freqstep
       - id: solve2_solutions_per_direction
-        source: fast_solutions_per_direction
+        source: medium_solutions_per_direction
       - id: solve2_llssolver
         source: llssolver
       - id: solve2_maxiter
@@ -1049,7 +1050,7 @@ steps:
       - id: solve2_solverlbfgs_minibatches
         source: solverlbfgs_minibatches
       - id: solve2_datause
-        source: fast_datause
+        source: medium_datause
       - id: solve2_stepsize
         source: stepsize
       - id: solve2_stepsigma
@@ -1059,13 +1060,13 @@ steps:
       - id: solve2_uvlambdamin
         source: uvlambdamin
       - id: solve2_smoothness_dd_factors
-        source: fast_smoothness_dd_factors
+        source: medium_smoothness_dd_factors
       - id: solve2_smoothnessconstraint
-        source: fast_smoothnessconstraint
+        source: medium_smoothnessconstraint
       - id: solve2_smoothnessreffrequency
-        source: fast_smoothnessreffrequency
+        source: medium_smoothnessreffrequency
       - id: solve2_smoothnessrefdistance
-        source: fast_smoothnessrefdistance
+        source: medium_smoothnessrefdistance
       - id: solve2_antennaconstraint
         valueFrom: '[]'
 {% if do_slowgain_solve %}
@@ -1131,18 +1132,16 @@ steps:
 {% else %}
         valueFrom: '[solve1.*]'
 {% endif %}
-      - id: solve4_normalize_h5parm
-        source: normalize_h5parm
       - id: solve4_h5parm
         source: output_medium2_h5parm
       - id: solve4_solint
-        source: solint_fast_timestep
+        source: solint_medium_timestep
       - id: solve4_mode
         valueFrom: 'scalarphase'
       - id: solve4_nchan
-        source: solint_fast_freqstep
+        source: solint_medium_freqstep
       - id: solve4_solutions_per_direction
-        source: fast_solutions_per_direction
+        source: medium_solutions_per_direction
       - id: solve4_llssolver
         source: llssolver
       - id: solve4_maxiter
@@ -1162,7 +1161,7 @@ steps:
       - id: solve4_solverlbfgs_minibatches
         source: solverlbfgs_minibatches
       - id: solve4_datause
-        source: fast_datause
+        source: medium_datause
       - id: solve4_stepsize
         source: stepsize
       - id: solve4_stepsigma
@@ -1172,15 +1171,15 @@ steps:
       - id: solve4_uvlambdamin
         source: uvlambdamin
       - id: solve4_smoothness_dd_factors
-        source: fast_smoothness_dd_factors
+        source: medium_smoothness_dd_factors
       - id: solve4_smoothnessconstraint
-        source: fast_smoothnessconstraint
+        source: medium_smoothnessconstraint
       - id: solve4_smoothnessreffrequency
-        source: fast_smoothnessreffrequency
+        source: medium_smoothnessreffrequency
       - id: solve4_smoothnessrefdistance
-        source: fast_smoothnessrefdistance
+        source: medium_smoothnessrefdistance
       - id: solve4_antennaconstraint
-        source: fast_antennaconstraint
+        source: medium_antennaconstraint
 {% endif %}
     scatter: [msin, starttime, ntimes, maxinterval,
               solve1_h5parm, solve1_solint, solve1_nchan, solve1_smoothnessreffrequency, solve1_solutions_per_direction, solve1_smoothness_dd_factors,
