@@ -1037,7 +1037,6 @@ steps:
         source: correctfreqsmearing
       - id: solve1_correcttimesmearing
         source: correcttimesmearing
-{% if do_slowgain_solve %}
       - id: solve1_keepmodel
         valueFrom: 'True'
       - id: solve2_reusemodel
