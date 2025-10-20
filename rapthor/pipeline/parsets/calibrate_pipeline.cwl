@@ -947,8 +947,6 @@ steps:
         source: dp3_steps
       - id: applycal_steps
         source: applycal_steps
-      - id: ddecal_applycal_steps
-        source: ddecal_applycal_steps
 {% if use_image_based_predict %}
       - id: normalize_h5parm
         source: adjust_normalize_sources/adjustedh5parm
@@ -1104,6 +1102,8 @@ steps:
 {% endif %}
       - id: solve3_normalize_h5parm
         source: normalize_h5parm
+      - id: solve3_applycal_steps
+        source: ddecal_applycal_steps
       - id: solve3_h5parm
         source: output_slow_h5parm
       - id: solve3_solint

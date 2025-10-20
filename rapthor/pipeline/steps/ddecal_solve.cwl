@@ -19,10 +19,6 @@ arguments:
   - applybeam.usemodeldata=True
   - applybeam.invert=False
   - applycal.type=applycal
-  - applycal.fastphase.correction=phase000
-  - applycal.fastphase.solset=sol000
-  - applycal.fastphase.usemodeldata=True
-  - applycal.fastphase.invert=False
   - applycal.normalization.correction=amplitude000
   - applycal.normalization.solset=sol000
   - applycal.normalization.usemodeldata=True
@@ -33,17 +29,23 @@ arguments:
   - solve1.usebeammodel=True
   - solve1.beam_interval=120
   - solve1.beammode=array_factor
-  - solve1.applycal.normalization.correction=amplitude000
-  - solve1.applycal.normalization.solset=sol000
   - solve1.initialsolutions.missingantennabehavior=unit
   - solve1.correctfreqsmearing=False
   - solve1.correcttimesmearing=False
+  - solve1.applycal.normalization.correction=amplitude000
+  - solve1.applycal.normalization.solset=sol000
   - solve2.type=ddecal
   - solve2.initialsolutions.missingantennabehavior=unit
+  - solve2.applycal.normalization.correction=amplitude000
+  - solve2.applycal.normalization.solset=sol000
   - solve3.type=ddecal
   - solve3.initialsolutions.missingantennabehavior=unit
+  - solve3.applycal.normalization.correction=amplitude000
+  - solve3.applycal.normalization.solset=sol000
   - solve4.type=ddecal
   - solve4.initialsolutions.missingantennabehavior=unit
+  - solve4.applycal.normalization.correction=amplitude000
+  - solve4.applycal.normalization.solset=sol000
 
 inputs:
 
@@ -95,21 +97,11 @@ inputs:
   - id: applycal_steps
     label: List of applycal steps
     doc: |
-      The list of applycal steps to perform. Allowed steps are "fastphase",
-      "slowgain", and "normalization".
-    type: string?
-    inputBinding:
-      prefix: applycal.steps=
-      separate: False
-
-  - id: ddecal_applycal_steps
-    label: List of DDECal applycal steps
-    doc: |
-      The list of DDECal applycal steps to perform in solve1. Currently, only "normalization"
+      The list of applycal steps to perform. Currently, only "normalization"
       is allowed.
     type: string?
     inputBinding:
-      prefix: solve1.applycal.steps=
+      prefix: applycal.steps=
       separate: False
 
   - id: normalize_h5parm
@@ -244,6 +236,16 @@ inputs:
     type: File?
     inputBinding:
       prefix: solve1.applycal.normalization.parmdb=
+      separate: False
+
+  - id: solve1_applycal_steps
+    label: List of DDECal applycal steps
+    doc: |
+      The list of DDECal applycal steps to perform in solve1. Currently, only
+      "normalization" is allowed.
+    type: string?
+    inputBinding:
+      prefix: solve1.applycal.steps=
       separate: False
 
   - id: solve1_h5parm
@@ -527,6 +529,16 @@ inputs:
       prefix: solve2.applycal.normalization.parmdb=
       separate: False
 
+  - id: solve2_applycal_steps
+    label: List of DDECal applycal steps
+    doc: |
+      The list of DDECal applycal steps to perform in solve2. Currently, only
+      "normalization" is allowed.
+    type: string?
+    inputBinding:
+      prefix: solve2.applycal.steps=
+      separate: False
+
   - id: solve2_h5parm
     label: Solution table
     doc: |
@@ -784,6 +796,16 @@ inputs:
       prefix: solve3.applycal.normalization.parmdb=
       separate: False
 
+  - id: solve3_applycal_steps
+    label: List of DDECal applycal steps
+    doc: |
+      The list of DDECal applycal steps to perform in solve3. Currently, only
+      "normalization" is allowed.
+    type: string?
+    inputBinding:
+      prefix: solve3.applycal.steps=
+      separate: False
+
   - id: solve3_h5parm
     label: Solution table
     doc: |
@@ -1039,6 +1061,16 @@ inputs:
     type: File?
     inputBinding:
       prefix: solve4.applycal.normalization.parmdb=
+      separate: False
+
+  - id: solve4_applycal_steps
+    label: List of DDECal applycal steps
+    doc: |
+      The list of DDECal applycal steps to perform in solve4. Currently, only
+      "normalization" is allowed.
+    type: string?
+    inputBinding:
+      prefix: solve4.applycal.steps=
       separate: False
 
   - id: solve4_h5parm
