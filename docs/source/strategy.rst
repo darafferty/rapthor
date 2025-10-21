@@ -108,16 +108,16 @@ The following processing parameters can be set for each cycle:
         Minimum uv distance in lambda used during calibration for this cycle (applies to both fast-phase and slow-gain solves).
 
     fast_timestep_sec
-        Solution interval in sec to use in the fast-phase solves. For this solve, all the core stations are constrained to have the same solutions.
+        Solution interval in sec to use in the fast-phase solve. For this solve, all the core stations are constrained to have the same solutions.
 
     medium_timestep_sec
-        Solution interval in sec to use in the medium-phase solves. For the first medium solve, each station is solved for independently. For the second medium solve (done only when ``do_slowgain_solve`` is activated), the core stations are constrained to have the same solutions.
+        Solution interval in sec to use in the medium-fast-phase solves. For the first medium-fast solve, each station is solved for independently. For the second medium-fast solve (done only when ``do_slowgain_solve`` is activated), the core stations are constrained to have the same solutions.
 
     do_slowgain_solve
-        Boolean flag that determines whether the slow-gain part of calibration should be done for this cycle. If enabled, a slow-gain solve is done, followed by a second medium-phase solve.
+        Boolean flag that determines whether the slow-gain part of calibration should be done for this cycle. If enabled, a slow-gain solve is done, followed by a second medium-fast-phase solve.
 
     slow_timestep_sec
-        Solution interval in sec to use in the slow-gain solves. For this solve, each station is solved for independently.
+        Solution interval in sec to use in the slow-gain solve. For this solve, each station is solved for independently.
 
     do_fulljones_solve
         Boolean flag that determines whether the direction-independent full-Jones part of calibration should be done for this cycle.

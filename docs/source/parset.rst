@@ -293,19 +293,19 @@ The available options are described below under their respective sections.
         m (default = 0).
 
     medium_freqstep_hz
-        Frequency step used during medium phase calibration, in Hz (default = 1e6).
+        Frequency step used during medium-fast phase calibration, in Hz (default = 1e6).
 
     medium_smoothnessconstraint
-        Smoothness constraint bandwidth used during medium phase calibration, in
+        Smoothness constraint bandwidth used during medium-fast phase calibration, in
         Hz (default = 3e6).
 
     medium_smoothnessreffrequency
-        Smoothness constraint reference frequency used during medium phase calibration, in
+        Smoothness constraint reference frequency used during medium-fast phase calibration, in
         Hz. If not specified this will automatically be set to 144 MHz for HBA or the
         midpoint of the frequency coverage for LBA.
 
     medium_smoothnessrefdistance
-        Smoothness constraint reference distance used during medium phase calibration, in
+        Smoothness constraint reference distance used during medium-fast phase calibration, in
         m (default = 0).
 
     slow_freqstep_hz

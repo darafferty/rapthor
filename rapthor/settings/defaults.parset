@@ -128,7 +128,7 @@ fast_smoothnessreffrequency = None
 fast_smoothnessrefdistance = 0.0
 fast_datause = single
 
-# Medium solve parameters. Note that the solution intervals are set in the strategy
+# Medium-fast solve parameters. Note that the solution intervals are set in the strategy
 medium_freqstep_hz = 1e6
 medium_smoothnessconstraint = 6e6
 medium_smoothnessreffrequency = None
