@@ -36,7 +36,7 @@ dependencies = [
     "bdsf",
     "jinja2",
     "losoto>=2.4.3",
-    "lsmtool @ git+https://git.astron.nl/RD/LSMTool.git@master",
+    "lsmtool @ git+https://git.astron.nl/RD/LSMTool.git@gec-115-migrate-download-skymodel",
     "matplotlib",
     "mocpy",
     "numpy",

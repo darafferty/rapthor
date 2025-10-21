@@ -10,6 +10,7 @@ from typing import Dict, List
 
 import astropy.units as u
 import lsmtool
+from lsmtool.download_skymodel import download_skymodel
 import lsmtool.skymodel
 from lsmtool.operations_lib import make_wcs
 
@@ -801,11 +802,13 @@ class Field(object):
                 self.parset['input_skymodel'] = os.path.join(self.working_dir, 'skymodels',
                                                              f'initial_skymodel_{catalog}.txt')
                 self.parset['apparent_skymodel'] = None
-                misc.download_skymodel(self.ra, self.dec,
-                                       skymodel_path=self.parset['input_skymodel'],
-                                       radius=self.parset['download_initial_skymodel_radius'],
-                                       source=self.parset['download_initial_skymodel_server'],
-                                       overwrite=self.parset['download_overwrite_skymodel'])
+                skymodel_cone_params = {'ra': self.ra,
+                                        'dec': self.dec,
+                                        'radius': self.parset['download_initial_skymodel_radius']}
+                download_skymodel(skymodel_cone_params,
+                                  skymodel_path=self.parset['input_skymodel'],
+                                  source=self.parset['download_initial_skymodel_server'],
+                                  overwrite=self.parset['download_overwrite_skymodel'])
                 if catalog == 'lotss':
                     moc = os.path.join(self.working_dir, 'skymodels', 'dr2-moc.moc')
             elif not self.parset['input_skymodel']:
