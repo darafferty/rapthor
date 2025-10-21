@@ -15,6 +15,7 @@ import lsmtool
 from lsmtool import tableio
 from lsmtool.operations_lib import make_wcs, normalize_ra_dec
 from lsmtool.facet import tessellate
+from lsmtool.download_skymodel import download_skymodel
 import tempfile
 import re
 
@@ -109,9 +110,13 @@ class Facet(object):
         """
         try:
             with tempfile.NamedTemporaryFile() as fp:
-                misc.download_skymodel(self.ra_center, self.dec_center, fp.name,
-                                       radius=min(max_search_cone_radius, self.size/2),
-                                       overwrite=True, source='PANSTARRS')
+                skymodel_cone_params = {'ra': self.ra_center,
+                                        'dec': self.dec_center,
+                                        'radius': min(max_search_cone_radius, self.size/2)}
+                download_skymodel(skymodel_cone_params,
+                                  skymodel_path=fp.name,
+                                  overwrite=True,
+                                  source='PANSTARRS')
                 skymodel = lsmtool.load(fp.name)
                 skymodel.group('every')
         except IOError:
