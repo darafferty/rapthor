@@ -277,52 +277,52 @@ The available options are described below under their respective sections.
         Tolerance used to check convergence during calibration (default = 5e-3).
 
     fast_freqstep_hz
-        Frequency step used during fast phase calibration, in Hz (default = 1e6).
+        Frequency step used during the fast calibration, in Hz (default = 1e6).
 
     fast_smoothnessconstraint
-        Smoothness constraint bandwidth used during fast phase calibration, in
+        Smoothness constraint bandwidth used during the fast calibration, in
         Hz (default = 3e6).
 
     fast_smoothnessreffrequency
-        Smoothness constraint reference frequency used during fast phase calibration, in
+        Smoothness constraint reference frequency used during the fast calibration, in
         Hz. If not specified this will automatically be set to 144 MHz for HBA or the
         midpoint of the frequency coverage for LBA.
 
     fast_smoothnessrefdistance
-        Smoothness constraint reference distance used during fast phase calibration, in
+        Smoothness constraint reference distance used during the fast calibration, in
         m (default = 0).
 
     medium_freqstep_hz
-        Frequency step used during medium-fast phase calibration, in Hz (default = 1e6).
+        Frequency step used during the medium-fast calibration, in Hz (default = 1e6).
 
     medium_smoothnessconstraint
-        Smoothness constraint bandwidth used during medium-fast phase calibration, in
+        Smoothness constraint bandwidth used during the medium-fast calibration, in
         Hz (default = 3e6).
 
     medium_smoothnessreffrequency
-        Smoothness constraint reference frequency used during medium-fast phase calibration, in
+        Smoothness constraint reference frequency used during the medium-fast calibration, in
         Hz. If not specified this will automatically be set to 144 MHz for HBA or the
         midpoint of the frequency coverage for LBA.
 
     medium_smoothnessrefdistance
-        Smoothness constraint reference distance used during medium-fast phase calibration, in
+        Smoothness constraint reference distance used during the medium-fast calibration, in
         m (default = 0).
 
     slow_freqstep_hz
-        Frequency step used during slow amplitude calibration, in Hz (default = 1e6).
+        Frequency step used during the slow calibration, in Hz (default = 1e6).
 
     slow_smoothnessconstraint
-        Smoothness constraint bandwidth used during the slow gain calibration, in Hz
+        Smoothness constraint bandwidth used during the slow calibration, in Hz
         (default = 3e6).
 
     fulljones_timestep_sec
-        Time step used during the full-Jones gain calibration, in seconds (default = 600).
+        Time step used during the full-Jones calibration, in seconds (default = 600).
 
     fulljones_freqstep_hz
-        Frequency step used during full-Jones amplitude calibration, in Hz (default = 1e6).
+        Frequency step used during the full-Jones calibration, in Hz (default = 1e6).
 
     fulljones_smoothnessconstraint
-        Smoothness constraint bandwidth used during the full-Jones gain calibration,
+        Smoothness constraint bandwidth used during the full-Jones calibration,
         in Hz (default = 0).
 
     dd_interval_factor

@@ -14,10 +14,10 @@ Calibrate
 This operation calibrates the data using the current sky model. It uses a calibration strategy based on that of the `Facet-Selfcal package
 <https://github.com/rvweeren/lofar_facet_selfcal>`_). The exact steps done during calibration depend on the strategy, but essentially there are four main parts:
 
-    # A phase-only (scalar) solve on short timescales (the "fast-phase" solve, which corrects for ionospheric errors on the longer baselines). A core constraint is used to force all the core stations to have the same solutions.
-    # A phase-only (scalar) solve on medium timescales (the first "medium-phase" solve, which corrects mostly for ionospheric errors on the shorter baselines). Each station is solved for independently.
-    # A phase and amplitude (diagonal) solve on long time scales (the "slow-gain" solve, which corrects mostly for beam errors). Each station is solved for independently.
-    # Lastly, a second phase-only (scalar) solve (the second "medium-phase" solve, which corrects mostly for any remaining errors on the longer baselines).
+    # A phase-only (scalar) solve on short timescales (the "fast" solve, which corrects for ionospheric errors on the longer baselines). A core constraint is used to force all the core stations to have the same solutions.
+    # A phase-only (scalar) solve on medium timescales (the first "medium-fast" solve, which corrects mostly for ionospheric errors on the shorter baselines). Each station is solved for independently.
+    # A phase and amplitude (diagonal) solve on long time scales (the "slow" solve, which corrects mostly for beam errors). Each station is solved for independently.
+    # Lastly, a second phase-only (scalar) solve (the second "medium-fast" solve, which corrects mostly for any remaining errors on the longer baselines).
 
 Lastly, processing of the resulting solutions is done, including smoothing and renormalization.
 
@@ -29,13 +29,13 @@ Primary products:
     * In ``skymodels/calibrate_X``, where ``X`` is the cycle number:
         * ``calibration_skymodel.txt`` - the sky model used for calibration, grouped into calibration patches (one per facet/direction). If a sky model was supplied by the user, this model will be identical (but potentially with a different grouping of the sources). If the sky model results from the previous cycle of self calibration, this model will be the sum of models from the imaging sectors (see :ref:`image` for details).
     * In ``solutions/calibrate_X``, where ``X`` is the cycle number:
-        * ``field-solutions-fast-phase.h5`` - the calibration solution table containing the fast-phase solutions.
-        * ``field-solutions-medium1-phase.h5`` - the calibration solution table containing the first medium-phase solutions.
-        * ``field-solutions-medium2-phase.h5`` - the calibration solution table containing the second medium-phase solutions (if the "slow-gain" solve was done).
-        * ``field-solutions-slow-gain.h5`` - the calibration solution table containing the slow-gain solutions  (if the "slow-gain" solve was done).
+        * ``field-solutions-fast-phase.h5`` - the calibration solution table containing the fast solutions.
+        * ``field-solutions-medium1-phase.h5`` - the calibration solution table containing the first medium-fast solutions.
+        * ``field-solutions-medium2-phase.h5`` - the calibration solution table containing the second medium-fast solutions (created if the slow solve was done).
+        * ``field-solutions-slow-gain.h5`` - the calibration solution table containing the slow solutions  (created if the slow solve was done).
         * ``field-solutions.h5`` - the calibration solution table containing all the fast-, medium-, and slow-solve solutions combined together.
     * In ``plots/calibrate_X``, where ``X`` is the cycle number:
-        * ``*.png`` files - plots of the calibration solutions. Plots are typically made with one file per direction (calibration patch), per solution type (amplitude, phase, or scalar phase). For example, the files ``fast_scalarphase_dir[Patch_127].png`` and ``medium1_scalarphase_dir[Patch_127].png`` contain the scalar phase solutions (from the fast-phase and first medium-phase solves) for patch 127. If the slow-gain solve was done, additional files should be present with the names ``slow_phase_dir[Patch_127]_polXX.png`` and ``slow_amplitude_dir[Patch_127]_polXX.png`` (and similarly for the YY polarization) from the slow-gain solve and ``medium2_scalarphase_dir[Patch_127].png`` from the second medium-phase solve.
+        * ``*.png`` files - plots of the calibration solutions. Plots are typically made with one file per direction (calibration patch), per solution type (amplitude, phase, or scalar phase). For example, the files ``fast_scalarphase_dir[Patch_127].png`` and ``medium1_scalarphase_dir[Patch_127].png`` contain the scalar phase solutions (from the fast and first medium-fast solves) for patch 127. If the slow solve was done, additional files should be present with the names ``slow_phase_dir[Patch_127]_polXX.png`` and ``slow_amplitude_dir[Patch_127]_polXX.png`` (and similarly for the YY polarization) from the slow solve and ``medium2_scalarphase_dir[Patch_127].png`` from the second medium-fast solve.
 
 If a full-Jones solve was done for a given cycle, then a number of further products are created:
     * In ``solutions/calibrate_di_X``, where ``X`` is the cycle number:
