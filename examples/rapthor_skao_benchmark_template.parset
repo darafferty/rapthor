@@ -74,4 +74,3 @@ global_scratch_dir = $TMPDIR
 use_container = False
 container_type = docker
 cwl_runner = toil
-debug_workflow = False
