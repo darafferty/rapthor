@@ -52,7 +52,6 @@
 # ---------------------------------------------------------------------------- #
 #SBATCH --job-name=sp-5859-rapthor-benchmark-test
 #SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=96
 #SBATCH --time 196:00:00
 #SBATCH --output=%x-%j-leader-slurm.out
 #SBATCH --error=%x-%j-leader-slurm.out
@@ -78,7 +77,9 @@ echo "Generated parset file for run: $PARSET_PATH"
 
 # Export SLURM options for worker nodes for toil to use
 # --cpus-per-task and --nodes are taken from the parset file
-export TOIL_SLURM_ARGS="--exclusive --time 196:00:00 -p $SLURM_JOB_PARTITION"
+
+export TOIL_SLURM_ARGS="--exclusive --time 196:00:00 -p $SLURM_JOB_PARTITION --nodes=$((SLURM_JOB_NUM_NODES -1))"
+                    #    "-p $SLURM_JOB_PARTITION --nodes=$(SLURM_JOB_NUM_NODES -1)"
 echo "TOIL_SLURM_ARGS: $TOIL_SLURM_ARGS"
 
 # Export partition list for SALLOC to use
