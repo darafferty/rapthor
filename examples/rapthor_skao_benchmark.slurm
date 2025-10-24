@@ -28,8 +28,9 @@
 # The `run_bench.sh` wrapper script will synchronise the parset and strategy
 # files into the INPUT_PATH before executing this script. The parset used for
 # this run is available in the rapthor repository under
-# `/examples/rapthor_skao_benchmark.parset`. 
-# These files are also hosted on S3 at: s3://skao-sdp-testdata/gecko/
+# `/examples/rapthor_skao_benchmark_template.parset`. 
+# These files are also hosted on S3 at: 
+#   s3://skao-sdp-testdata/gecko/ical-benchmark-input/extra-inputs/2025.10.24
 # 
 # Since the parset needs to refer to paths within the benchmark environment,
 # which is set by the wrapper script, we need to update paths in the template
@@ -42,9 +43,9 @@
 # https://confluence.skatelescope.org/display/SE/%5BSimulations%5D+--+New+data+for+benchmarking
 # 
 # The data is available on S3 at:
-# s3://skao-sdp-testdata/PI28-Low-G3/product/eb-low68s_tec_lotss_noise-20000104-00000/ska-sdp/pb-low68s_lotss_noise-20000104-00000/visibility.scan-400_applybeam.ms
-# Also available at:
-# /shared/fsx1/shared/product/eb-low68s_tec_lotss_noise-20000104-00000/ska-sdp/pb-low68s_lotss_noise-20000104-00000/visibility.scan-400_applybeam.ms
+# s3://skao-sdp-testdata/PI28-Low-G3/product/eb-low68s_tec_lotss_noise_small-20000104-00000/ska-sdp/pb-low68s_tec_lotss_noise_small-20000104-00000/visibility.scan-400_applybeam.ms
+# Also available on the shared FSx storage at:
+# /shared/fsx1/shared/product/eb-low68s_tec_lotss_noise_small-20000104-00000/ska-sdp/pb-low68s_tec_lotss_noise_small-20000104-00000/visibility.scan-400_applybeam.ms
 #
 ################################################################################
 # SLURM settings:
