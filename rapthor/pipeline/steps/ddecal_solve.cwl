@@ -30,8 +30,6 @@ arguments:
   - solve1.beam_interval=120
   - solve1.beammode=array_factor
   - solve1.initialsolutions.missingantennabehavior=unit
-  - solve1.correctfreqsmearing=False
-  - solve1.correcttimesmearing=False
   - solve1.applycal.normalization.correction=amplitude000
   - solve1.applycal.normalization.solset=sol000
   - solve2.type=ddecal

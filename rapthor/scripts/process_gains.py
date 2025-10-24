@@ -249,7 +249,7 @@ def get_smooth_box_size(ampsoltab, direction, ant_list=None, min_box_size=1):
         ant_selection = [True] * len(ampsoltab.ant)
     else:
         ant_selection = [True if ant in ant_list else False for ant in ampsoltab.ant]
-    if not ant_selection:
+    if not any(ant_selection):
         # No antennas selected, so just return None
         return None
 

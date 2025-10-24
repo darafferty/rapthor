@@ -93,10 +93,9 @@ class CalibrateDD(Operation):
         combined_fast_medium1_medium2_h5parm = 'combined_fast_medium1_medium2_phases.h5parm'
         output_slow_h5parm = ['slow_gain_{}.h5parm'.format(i)
                               for i in range(self.field.ntimechunks)]
+        self.combined_slow_h5parm = 'slow_gains.h5parm'
         output_idgcal_h5parm = ['idgcal_{}.h5parm'.format(i)  # TODO: chunk the solve over frequency as well as time?
                                 for i in range(self.field.ntimechunks)]
-        self.combined_slow_h5parm = 'slow_gains.h5parm'
-
         self.combined_h5parms = 'combined_solutions.h5'
         if self.field.apply_diagonal_solutions:
             solution_combine_mode = 'p1p2a2_diagonal'
