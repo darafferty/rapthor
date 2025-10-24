@@ -61,7 +61,7 @@ skip_corner_sectors = False
   
 [cluster]
 batch_system = slurm
-max_nodes = 5
+max_nodes = $SLURM_JOB_NUM_NODES
 cpus_per_task = $SLURM_CPUS_ON_NODE
 mem_per_node_gb = 0
 max_cores = $SLURM_CPUS_ON_NODE
