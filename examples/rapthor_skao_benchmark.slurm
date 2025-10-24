@@ -69,7 +69,7 @@ PARSET_PATH=$INPUT_PATH/rapthor_skao_benchmark.parset
 export INPUT_MS_FULL_PATH=$(readlink -f "$INPUT_PATH/visibility.scan-400.ms")
 # Export TMPDIR - without this some steps in rapthor use the default which may
 # run out of space - this is also substituted into parset file
-export TMPDIR=/tmp
+export TMPDIR=$WORK_PATH/tmp
 
 # Substitute the environment variables into the parset template
 envsubst < $PARSET_TEMPLATE_PATH > $PARSET_PATH
