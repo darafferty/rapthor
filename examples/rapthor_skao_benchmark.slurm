@@ -51,6 +51,7 @@
 # SLURM settings:
 # ---------------------------------------------------------------------------- #
 #SBATCH --job-name=sp-5859-rapthor-benchmark-test
+#SBATCH --nodes=1                  # Use a single node by default.
 #SBATCH --ntasks-per-node=1
 #SBATCH --time 196:00:00
 #SBATCH --output=%x-%j-leader-slurm.out
@@ -61,31 +62,42 @@ echo "Starting Rapthor benchmark script on $(hostname) at $(date)"
 
 # Configure
 # ---------------------------------------------------------------------------- #
-# Set paths to parset template file / output parset file
-PARSET_TEMPLATE_PATH=$INPUT_PATH/rapthor_skao_benchmark_template.parset
-PARSET_PATH=$INPUT_PATH/rapthor_skao_benchmark.parset
-# Export the full path to the input measurement set. This is needed for
-# populating the environmental variables in the parset file template.
+# Set environmental variables
+# These are used for populating the parset template file.
+
+# Full path to the input measurement set. 
 export INPUT_MS_FULL_PATH=$(readlink -f "$INPUT_PATH/visibility.scan-400.ms")
+
 # Export TMPDIR - without this some steps in rapthor use the default which may
 # run out of space - this is also substituted into parset file
 export TMPDIR=$WORK_PATH/tmp
 
+# Options for toil worker nodes. These are substituted into the parset template.
+# Partition list for toil SALLOC to use
+export SALLOC_PARTITION=c7i-metal-24xl-ond
+export WORKER_NODE_COUNT=3
+export TOIL_SLURM_ARGS="--exclusive --time 196:00:00 -p $SALLOC_PARTITION -N $WORKER_NODE_COUNT --ntasks-per-node=1"
+# Get the cpu count for the partition to set
+#  `max_nodes`, `cpus_per_task`, `max_cores`, `max_threads` in parset
+export CPUS_ON_NODE=$(sinfo -p $SALLOC_PARTITION -o "%c" -h)
+
+# Set number of threads for numexpr
+export NUMEXPR_MAX_THREADS=$CPUS_ON_NODE
+
+# Print configuration
+echo "Worker node configuration:"
+echo "SALLOC_PARTITION: $SALLOC_PARTITION"
+echo "WORKER_NODE_COUNT: $WORKER_NODE_COUNT"
+echo "CPUS_ON_NODE: $CPUS_ON_NODE"
+echo "TOIL_SLURM_ARGS: $TOIL_SLURM_ARGS"
+
+# Set paths to parset template file / output parset file
+PARSET_TEMPLATE_PATH=$INPUT_PATH/rapthor_skao_benchmark_template.parset
+PARSET_PATH=$INPUT_PATH/rapthor_skao_benchmark.parset
+
 # Substitute the environment variables into the parset template
 envsubst < $PARSET_TEMPLATE_PATH > $PARSET_PATH
 echo "Generated parset file for run: $PARSET_PATH"
-
-# Export SLURM options for worker nodes for toil to use
-# --cpus-per-task and --nodes are taken from the parset file
-
-export TOIL_SLURM_ARGS="--exclusive --time 196:00:00 -p $SLURM_JOB_PARTITION --nodes=$((SLURM_JOB_NUM_NODES -1))"
-                    #    "-p $SLURM_JOB_PARTITION --nodes=$(SLURM_JOB_NUM_NODES -1)"
-echo "TOIL_SLURM_ARGS: $TOIL_SLURM_ARGS"
-
-# Export partition list for SALLOC to use
-export SALLOC_PARTITION=$SLURM_JOB_PARTITION
-# Set number of threads for numexpr
-export NUMEXPR_MAX_THREADS=$SLURM_CPUS_ON_NODE
 
 # Change to working directory
 cd $WORK_PATH
