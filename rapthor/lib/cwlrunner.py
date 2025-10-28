@@ -86,11 +86,18 @@ class BaseCWLRunner:
         args = [self.command] + self.args
         args.extend([self.operation.pipeline_parset_file,
                      self.operation.pipeline_inputs_file])
+
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        script_dir = os.path.join(script_dir, "toil_batch_systems")
+        current_env = os.environ.copy()
+        python_path = os.pathsep.join([current_env.get("PYTHONPATH", ""), script_dir])
+        modified_env = current_env | {"PYTHONPATH": python_path}
+
         logger.debug("Executing command: %s", ' '.join(args))
         with open(self.operation.pipeline_outputs_file, 'w') as stdout, \
              open(self.operation.pipeline_log_file, 'w') as stderr:
             try:
-                result = subprocess.run(args=args, stdout=stdout, stderr=stderr, check=True)
+                result = subprocess.run(args=args, env=modified_env, stdout=stdout, stderr=stderr, check=True)
                 logger.debug(str(result))
                 return True
             except subprocess.CalledProcessError as err:
@@ -314,12 +321,7 @@ class ToilRunner(CWLRunner):
         super().setup()
         # Bypass the file store; it only has benefits when using object stores like S3
         self.args.extend(['--bypass-file-store'])
-        self.args.extend(
-            [
-                "--batchSystem",
-                self.operation.batch_system.replace("slurm_static", "single_machine"),
-            ]
-        )
+        self.args.extend(["--batchSystem", self.operation.batch_system])
         self.args.extend(['--maxLocalJobs', str(self.operation.max_nodes)])
         self.args.extend(['--maxJobs', str(self.operation.max_nodes)])
         self.args.extend(['--jobStore', self.operation.jobstore])
