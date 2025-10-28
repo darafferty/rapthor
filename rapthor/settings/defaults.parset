@@ -224,10 +224,9 @@ pol_combine_method = link
 
 # Use MPI to distribute WSClean jobs over multiple nodes (default = False)? If
 # True and more than one node can be allocated to each WSClean job (i.e.,
-# max_nodes / num_images >= 2), then distributed imaging will be used (only
-# available if batch_system = slurm). Note that if MPI is activated, dir_local
-# (under the [cluster] section below) must not be set unless it is on a shared
-# filesystem
+# max_nodes / num_images >= 2), then distributed imaging will be used.
+# Note that if MPI is activated, dir_local (under the [cluster] section below) 
+# must not be set unless it is on a shared filesystem
 use_mpi = False
 
 # Reweight the visibility data before imaging (default = False)
@@ -286,17 +285,20 @@ skip_corner_sectors = False
 
 
 [cluster]
-# Cluster batch system (default = single_machine). Use batch_system = slurm to
-# use a Slurm-based cluster
+# Cluster batch system (default = single_machine).
+# Use batch_system = slurm to use a Slurm-based cluster with dynamic node
+# allocation. (Nodes allocated using salloc during run)
+# Use batch_system = slurm_static to use a Slurm-based cluster with static
+# node allocation. (Nodes reserved by your sbatch call prior to run)
 batch_system = single_machine
 
-# For batch_system = slurm, the maximum number of nodes of the cluster to use at
-# once can be specified with the max_nodes option (default = 12), the number of
-# processors and amount of memory per node to request from SLURM can be
-# specified with the cpus_per_task (default = 0 = all) and mem_per_node_gb
-# options (default = 0 = all). By setting the cpus_per_task value to the number
-# of processors per node, one can ensure that each task gets the entire node to
-# itself, which is the recommended way of running Rapthor
+# For batch_system = slurm or slurm_static, the maximum number of nodes of the
+# cluster to use at once can be specified with the max_nodes option
+# (default = 12), the number of processors and amount of memory per node to
+# request from SLURM can be specified with the cpus_per_task (default = 0 = all)
+# and mem_per_node_gb options (default = 0 = all). By setting the cpus_per_task
+# value to the number of processors per node, one can ensure that each task gets
+# the entire node to itself, which is the recommended way of running Rapthor
 max_nodes = 0
 cpus_per_task = 0
 mem_per_node_gb = 0
@@ -330,9 +332,9 @@ parallel_gridding_threads = 0
 dir_local = None
 
 # Full path to a local disk on the nodes for IO-intensive processing (default =
-# /tmp). When batch_system = slurm, the path must exist on all the compute nodes,
-# but not necessarily on the head node. This parameter is useful if you have a
-# fast local disk (e.g., an SSD).
+# /tmp). When batch_system = slurm or slurm_static, the path must exist on all
+# the compute nodes, but not necessarily on the head node. This parameter is
+# useful if you have a fast local disk (e.g., an SSD).
 local_scratch_dir = None
 
 # Full path to a directory on a shared disk that is readable and writable by all
