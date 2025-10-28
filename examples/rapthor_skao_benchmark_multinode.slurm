@@ -74,9 +74,10 @@ export TMPDIR=$WORK_PATH/tmp
 
 # Options for toil worker nodes. These are substituted into the parset template.
 # Partition list for toil SALLOC to use
+export BATCH_SYSTEM="slurm"
 export SALLOC_PARTITION=c7i-metal-24xl-ond
 export WORKER_NODE_COUNT=3
-export TOIL_SLURM_ARGS="--exclusive --time 196:00:00 -p $SALLOC_PARTITION -N $WORKER_NODE_COUNT --ntasks-per-node=1"
+export TOIL_SLURM_ARGS="--exclusive --time 196:00:00 -p $SALLOC_PARTITION -N $WORKER_NODE_COUNT --ntasks-per-node=5"
 # Get the cpu count for the partition to set
 #  `max_nodes`, `cpus_per_task`, `max_cores`, `max_threads` in parset
 export CPUS_ON_NODE=$(sinfo -p $SALLOC_PARTITION -o "%c" -h)
@@ -130,6 +131,6 @@ rapthor $PARSET_PATH
 benchmon-multinode-stop
 
 # Visualize monitoring results
-benchmon-visu --recursive --cpu --cpu-all --mem --net --disk \
+benchmon-visu --recursive --cpu --cpu-all --mem --net --disk --inline-call \
  --fig-fmt png --fig-dpi medium "$REPORT_PATH"
 
