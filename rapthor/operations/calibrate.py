@@ -82,18 +82,18 @@ class CalibrateDD(Operation):
         # as attributes since they are needed in finalize()
         output_fast_h5parm = ['fast_phase_{}.h5parm'.format(i)
                               for i in range(self.field.ntimechunks)]
-        self.combined_fast_h5parm = 'fast_phases.h5parm'
+        self.fast_h5parm = 'fast_phases.h5parm'
         output_medium1_h5parm = ['medium1_phase_{}.h5parm'.format(i)
                                  for i in range(self.field.ntimechunks)]
-        self.combined_medium1_h5parm = 'medium1_phases.h5parm'
+        self.medium1_h5parm = 'medium1_phases.h5parm'
         combined_fast_medium1_h5parm = 'combined_fast_medium1_phases.h5parm'
         output_medium2_h5parm = ['medium2_phase_{}.h5parm'.format(i)
                                  for i in range(self.field.ntimechunks)]
-        self.combined_medium2_h5parm = 'medium2_phases.h5parm'
+        self.medium2_h5parm = 'medium2_phases.h5parm'
         combined_fast_medium1_medium2_h5parm = 'combined_fast_medium1_medium2_phases.h5parm'
         output_slow_h5parm = ['slow_gain_{}.h5parm'.format(i)
                               for i in range(self.field.ntimechunks)]
-        self.combined_slow_h5parm = 'slow_gains.h5parm'
+        self.slow_h5parm = 'slow_gains.h5parm'
         output_idgcal_h5parm = ['idgcal_{}.h5parm'.format(i)  # TODO: chunk the solve over frequency as well as time?
                                 for i in range(self.field.ntimechunks)]
         self.combined_h5parms = 'combined_solutions.h5'
@@ -247,15 +247,15 @@ class CalibrateDD(Operation):
                             'calibrator_patch_names': calibrator_patch_names,
                             'calibrator_fluxes': calibrator_fluxes,
                             'output_fast_h5parm': output_fast_h5parm,
-                            'combined_fast_h5parm': self.combined_fast_h5parm,
+                            'collected_fast_h5parm': self.fast_h5parm,
                             'output_medium1_h5parm': output_medium1_h5parm,
                             'output_medium2_h5parm': output_medium2_h5parm,
-                            'combined_medium1_h5parm': self.combined_medium1_h5parm,
-                            'combined_medium2_h5parm': self.combined_medium2_h5parm,
+                            'collected_medium1_h5parm': self.medium1_h5parm,
+                            'collected_medium2_h5parm': self.medium2_h5parm,
                             'combined_fast_medium1_h5parm': combined_fast_medium1_h5parm,
                             'combined_fast_medium1_medium2_h5parm': combined_fast_medium1_medium2_h5parm,
                             'output_slow_h5parm': output_slow_h5parm,
-                            'combined_slow_h5parm': self.combined_slow_h5parm,
+                            'collected_slow_h5parm': self.slow_h5parm,
                             'calibration_skymodel_file': CWLFile(calibration_skymodel_file).to_json(),
                             'model_image_root': model_image_root,
                             'model_image_ra_dec': model_image_ra_dec,
@@ -474,20 +474,20 @@ class CalibrateDD(Operation):
         elif self.field.do_slowgain_solve:
             shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_h5parms),
                         os.path.join(dst_dir, self.field.h5parm_filename))
-            shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_slow_h5parm),
+            shutil.copy(os.path.join(self.pipeline_working_dir, self.slow_h5parm),
                         os.path.join(dst_dir, self.field.slow_gains_h5parm_filename))
-            shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_medium1_h5parm),
+            shutil.copy(os.path.join(self.pipeline_working_dir, self.medium1_h5parm),
                         os.path.join(dst_dir, self.field.medium1_phases_h5parm_filename))
-            shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_medium2_h5parm),
+            shutil.copy(os.path.join(self.pipeline_working_dir, self.medium2_h5parm),
                         os.path.join(dst_dir, self.field.medium2_phases_h5parm_filename))
-            shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_fast_h5parm),
+            shutil.copy(os.path.join(self.pipeline_working_dir, self.fast_h5parm),
                         os.path.join(dst_dir, self.field.fast_phases_h5parm_filename))
         else:
             # The h5parm with the full, combined solutions is also the fast-phases
             # h5parm
-            shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_fast_h5parm),
+            shutil.copy(os.path.join(self.pipeline_working_dir, self.fast_h5parm),
                         os.path.join(dst_dir, self.field.h5parm_filename))
-            shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_fast_h5parm),
+            shutil.copy(os.path.join(self.pipeline_working_dir, self.fast_h5parm),
                         os.path.join(dst_dir, self.field.fast_phases_h5parm_filename))
         self.field.scan_h5parms()  # verify h5parm and update flags for predict/image operations
         solsetname = 'coefficients000' if self.field.generate_screens else 'sol000'

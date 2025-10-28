@@ -224,10 +224,10 @@ inputs:
       = n_obs * n_time_chunks).
     type: string[]
 
-  - id: combined_fast_h5parm
-    label: Combined fast output solution table
+  - id: collected_fast_h5parm
+    label: Collected fast output solution table
     doc: |
-      The filename of the output combined h5parm solution table for the fast phase solve
+      The filename of the output collected h5parm solution table for the fast phase solve
       (length = 1).
     type: string
 
@@ -299,10 +299,10 @@ inputs:
       = n_obs * n_time_chunks).
     type: string[]
 
-  - id: combined_medium1_h5parm
-    label: Combined medium output solution table
+  - id: collected_medium1_h5parm
+    label: Collected medium output solution table
     doc: |
-      The filename of the output combined h5parm solution table for the medium1 phase solve
+      The filename of the output collected h5parm solution table for the medium1 phase solve
       (length = 1).
     type: string
 
@@ -600,10 +600,10 @@ inputs:
       initial solutions (length = 1).
     type: File?
 
-  - id: combined_medium2_h5parm
-    label: Combined medium output solution table
+  - id: collected_medium2_h5parm
+    label: Collected medium output solution table
     doc: |
-      The filename of the output combined h5parm solution table for the medium2 phase solve
+      The filename of the output collected h5parm solution table for the medium2 phase solve
       (length = 1).
     type: string
 
@@ -641,10 +641,10 @@ inputs:
       gain solve (length = n_obs * n_freq_chunks).
     type: string[]
 
-  - id: combined_slow_h5parm
-    label: Combined slow output solution table
+  - id: collected_slow_h5parm
+    label: Collected slow output solution table
     doc: |
-      The filename of the output combined h5parm solution table for the
+      The filename of the output collected h5parm solution table for the
       slow-gain solve (length = 1).
     type: string
 
@@ -695,11 +695,11 @@ outputs:
     type: File
   - id: fast_phase_solutions
     outputSource:
-      - combine_fast_phases/outh5parm
+      - collect_fast_phases/outh5parm
     type: File
   - id: medium1_phase_solutions
     outputSource:
-      - combine_medium1_phases/outh5parm
+      - collect_medium1_phases/outh5parm
     type: File
   - id: combined_solutions
     outputSource:
@@ -716,7 +716,7 @@ outputs:
 {% if do_slowgain_solve %}
   - id: slow_gain_solutions
     outputSource:
-      - combine_slow_gains/outh5parm
+      - collect_slow_gains/outh5parm
     type: File
   - id: slow_phase_plots
     outputSource:
@@ -728,7 +728,7 @@ outputs:
     type: File[]
   - id: medium2_phase_solutions
     outputSource:
-      - combine_medium2_phases/outh5parm
+      - collect_medium2_phases/outh5parm
     type: File
   - id: medium2_phase_plots
     outputSource:
@@ -1223,17 +1223,17 @@ steps:
       - id: output_h5parm3
       - id: output_h5parm4
 
-  - id: combine_fast_phases
-    label: Combine fast-phase solutions
+  - id: collect_fast_phases
+    label: Collect fast-phase solutions
     doc: |
-      This step combines all the fast phase solutions from the solve step
+      This step collects all the fast phase solutions from the solve step
       into a single solution table (h5parm file).
     run: {{ rapthor_pipeline_dir }}/steps/collect_h5parms.cwl
     in:
       - id: inh5parms
         source: solve/output_h5parm1
       - id: outputh5parm
-        source: combined_fast_h5parm
+        source: collected_fast_h5parm
     out:
       - id: outh5parm
 
@@ -1244,7 +1244,7 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/plot_solutions.cwl
     in:
       - id: h5parm
-        source: combine_fast_phases/outh5parm
+        source: collect_fast_phases/outh5parm
       - id: soltype
         valueFrom: 'phase'
       - id: root
@@ -1252,17 +1252,17 @@ steps:
     out:
       - id: plots
 
-  - id: combine_medium1_phases
-    label: Combine medium-phase solutions
+  - id: collect_medium1_phases
+    label: Collect medium-phase solutions
     doc: |
-      This step combines all the medium1 phase solutions from the solve step
+      This step collects all the medium1 phase solutions from the solve step
       into a single solution table (h5parm file).
     run: {{ rapthor_pipeline_dir }}/steps/collect_h5parms.cwl
     in:
       - id: inh5parms
         source: solve/output_h5parm2
       - id: outputh5parm
-        source: combined_medium1_h5parm
+        source: collected_medium1_h5parm
     out:
       - id: outh5parm
 
@@ -1273,7 +1273,7 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/plot_solutions.cwl
     in:
       - id: h5parm
-        source: combine_medium1_phases/outh5parm
+        source: collect_medium1_phases/outh5parm
       - id: soltype
         valueFrom: 'phase'
       - id: root
@@ -1289,9 +1289,9 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/combine_h5parms.cwl
     in:
       - id: inh5parm1
-        source: combine_fast_phases/outh5parm
+        source: collect_fast_phases/outh5parm
       - id: inh5parm2
-        source: combine_medium1_phases/outh5parm
+        source: collect_medium1_phases/outh5parm
       - id: outh5parm
         source: combined_fast_medium1_h5parm
       - id: mode
@@ -1308,17 +1308,17 @@ steps:
 {% if do_slowgain_solve %}
 # start do_slowgain_solve
 
-  - id: combine_slow_gains
-    label: Combine slow-gain solutions
+  - id: collect_slow_gains
+    label: Collect slow-gain solutions
     doc: |
-      This step combines all the gain solutions from the solve
+      This step collects all the gain solutions from the solve
       into a single solution table (h5parm file).
     run: {{ rapthor_pipeline_dir }}/steps/collect_h5parms.cwl
     in:
       - id: inh5parms
         source: solve/output_h5parm3
       - id: outputh5parm
-        source: combined_slow_h5parm
+        source: collected_slow_h5parm
     out:
       - id: outh5parm
 
@@ -1330,7 +1330,7 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/process_gains.cwl
     in:
       - id: h5parm
-        source: combine_slow_gains/outh5parm
+        source: collect_slow_gains/outh5parm
       - id: flag
         valueFrom: 'True'
       - id: smooth
@@ -1376,17 +1376,17 @@ steps:
     out:
       - id: plots
 
-  - id: combine_medium2_phases
-    label: Combine medium-phase solutions
+  - id: collect_medium2_phases
+    label: Collect medium-phase solutions
     doc: |
-      This step combines all the medium2 phase solutions from the solve step
+      This step collects all the medium2 phase solutions from the solve step
       into a single solution table (h5parm file).
     run: {{ rapthor_pipeline_dir }}/steps/collect_h5parms.cwl
     in:
       - id: inh5parms
         source: solve/output_h5parm4
       - id: outputh5parm
-        source: combined_medium2_h5parm
+        source: collected_medium2_h5parm
     out:
       - id: outh5parm
 
@@ -1397,7 +1397,7 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/plot_solutions.cwl
     in:
       - id: h5parm
-        source: combine_medium2_phases/outh5parm
+        source: collect_medium2_phases/outh5parm
       - id: soltype
         valueFrom: 'phase'
       - id: root
@@ -1415,7 +1415,7 @@ steps:
       - id: inh5parm1
         source: combine_fast_medium1_h5parms/combinedh5parm
       - id: inh5parm2
-        source: combine_medium2_phases/outh5parm
+        source: collect_medium2_phases/outh5parm
       - id: outh5parm
         source: combined_fast_medium1_medium2_h5parm
       - id: mode
