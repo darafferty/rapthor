@@ -177,7 +177,10 @@ def smooth_solutions(ampsoltab, phasesoltab=None, ref_id=0):
         # not needed for this direction. This calculation is done separately for
         # core and non-core stations, as they tend to have quite different noise
         # properties. Additionally, the non-core stations get less smoothing for
-        # a given noise level than the core stations (to preserve finer structure)
+        # a given noise level than the core stations (to preserve finer structure).
+        # This reduced smoothing is particularly important for bright sources,
+        # where testing has shown that smoothing the non-core stations with the
+        # same box size results in worse artifacts)
         core_stations = [ant for ant in ampsoltab.ant if ant.startswith("CS")]
         size_core = get_smooth_box_size(ampsoltab, direction, ant_list=core_stations, min_box_size=3)
         noncore_stations = [ant for ant in ampsoltab.ant if ant not in core_stations]
