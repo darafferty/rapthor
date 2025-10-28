@@ -60,7 +60,7 @@ skip_final_major_iteration = True
 skip_corner_sectors = False
   
 [cluster]
-batch_system = slurm
+batch_system = $BATCH_SYSTEM
 max_nodes = $WORKER_NODE_COUNT
 cpus_per_task = $CPUS_ON_NODE
 mem_per_node_gb = 0
