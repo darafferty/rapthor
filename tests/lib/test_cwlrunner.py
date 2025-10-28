@@ -134,7 +134,7 @@ class Field:
         return 5.0
 
 
-@pytest.fixture(params=("single_machine", "slurm"))
+@pytest.fixture(params=("single_machine", "slurm", "slurm_static"))
 def batch_system(request):
     return request.param
 
@@ -216,7 +216,7 @@ class TestCWLRunner:
                 assert "runner: 'mpi_runner.sh'" in content
                 assert "nproc_flag: '-N'" in content
                 assert "extra_flags: ['--cpus-per-task=4', 'mpirun', '-pernode', '--bind-to', 'none', '-x', 'OPENBLAS_NUM_THREADS']" in content
-            elif runner.operation.batch_system == "single_machine":
+            elif runner.operation.batch_system in ("single_machine", "slurm_static":
                 assert "runner: 'mpirun'" in content
                 assert "nproc_flag: '-np'" in content
                 assert "extra_flags: ['-pernode', '--bind-to', 'none', '-x', 'OPENBLAS_NUM_THREADS']" in content
