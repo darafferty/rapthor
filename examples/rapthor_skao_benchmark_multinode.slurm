@@ -75,12 +75,12 @@ export TMPDIR=$WORK_PATH/tmp
 # Options for toil worker nodes. These are substituted into the parset template.
 # Partition list for toil SALLOC to use
 export BATCH_SYSTEM="slurm"
-export SALLOC_PARTITION=c7i-metal-24xl-spt
+export SALLOC_PARTITION=$SLURM_SUBMIT_HOST
 export WORKER_NODE_COUNT=3
-export TOIL_SLURM_ARGS="--exclusive --time 196:00:00 -p $SALLOC_PARTITION -N $WORKER_NODE_COUNT --ntasks-per-node=5"
+export TOIL_SLURM_ARGS="--time 48:00:00 -p $SALLOC_PARTITION -N $WORKER_NODE_COUNT --ntasks-per-node=5"
 # Get the cpu count for the partition to set
 #  `max_nodes`, `cpus_per_task`, `max_cores`, `max_threads` in parset
-export CPUS_ON_NODE=$(sinfo -p $SALLOC_PARTITION -o "%c" -h)
+export CPUS_ON_NODE=$SLURM_JOB_CPUS_PER_NODE
 
 # Set number of threads for numexpr
 export NUMEXPR_MAX_THREADS=$CPUS_ON_NODE
@@ -123,24 +123,25 @@ echo $LD_LIBRARY_PATH
 # ---------------------------------------------------------------------------- #
 # Start monitoring on leader node
 BENCHMON_PARAMS="--save-dir $REPORT_PATH --system --sys --call"
-benchmon-start $BENCHMON_PARAMS
-# Benchmon needs to be started on the worker nodes manually. We don't know 
-# which nodes will be allocated, so just monitor all nodes in the partition.
-ALL_NODES=($(sinfo -p $SALLOC_PARTITION -o "%n" -h))
-for NODE_NAME in ${ALL_NODES[@]}; do
-    srun --nodes=1 --ntasks=1 --nodelist="$NODE_NAME" --cpus-per-task=1 \
-        benchmon-start $BENCHMON_PARAMS 
-done
+benchmon-multinode-start $BENCHMON_PARAMS
+
+# # Benchmon needs to be started on the worker nodes manually. We don't know 
+# # which nodes will be allocated, so just monitor all nodes in the partition.
+# ALL_NODES=($(sinfo -p $SALLOC_PARTITION -o "%n" -h))
+# for NODE_NAME in ${ALL_NODES[@]}; do
+#     srun --nodes=1 --ntasks=1 --nodelist="$NODE_NAME" --cpus-per-task=1 \
+#         benchmon-start $BENCHMON_PARAMS 
+# done
 
 # Run rapthor on parset
 rapthor $PARSET_PATH
 
 # Stop monitoring
-benchmon-stop
-for NODE_NAME in ${ALL_NODES[@]}; do
-    srun --wait --nodes=1 --ntasks=1 --nodelist="$NODE_NAME" --cpus-per-task=1 \
-        benchmon-stop
-done
+benchmon-multinode-stop
+# for NODE_NAME in ${ALL_NODES[@]}; do
+#     srun --wait --nodes=1 --ntasks=1 --nodelist="$NODE_NAME" --cpus-per-task=1 \
+#         benchmon-stop
+# done
 
 # Visualize monitoring results
 benchmon-visu --recursive --cpu --cpu-all --mem --net --disk --inline-call \
