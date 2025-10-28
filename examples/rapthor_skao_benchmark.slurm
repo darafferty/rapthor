@@ -131,5 +131,5 @@ benchmon-multinode-stop
 
 # Visualize monitoring results
 benchmon-visu --recursive --cpu --cpu-all --mem --net --disk \
- --fig-fmt png --fig-dpi medium "$REPORT_PATH/benchmon_traces_$(hostname)"
+ --fig-fmt png --fig-dpi medium "$REPORT_PATH"
 
