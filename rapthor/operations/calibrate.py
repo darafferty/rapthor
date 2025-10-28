@@ -555,7 +555,7 @@ class CalibrateDI(Operation):
         # as attributes since they are needed in finalize()
         output_h5parm_fulljones = ['fulljones_gain_{}.h5parm'.format(i)
                                    for i in range(self.field.ntimechunks)]
-        self.combined_h5parm_fulljones = 'fulljones_gains.h5'
+        self.collected_h5parm_fulljones = 'fulljones_gains.h5'
 
         # Set the constraints used in the calibrations
         smoothnessconstraint_fulljones = self.field.smoothnessconstraint_fulljones
@@ -581,7 +581,7 @@ class CalibrateDI(Operation):
                             'solint_fulljones_timestep': solint_fulljones_timestep,
                             'solint_fulljones_freqstep': solint_fulljones_freqstep,
                             'output_h5parm_fulljones': output_h5parm_fulljones,
-                            'combined_h5parm_fulljones': self.combined_h5parm_fulljones,
+                            'collected_h5parm_fulljones': self.collected_h5parm_fulljones,
                             'smoothnessconstraint_fulljones': smoothnessconstraint_fulljones,
                             'max_normalization_delta': max_normalization_delta,
                             'llssolver': llssolver,
@@ -609,7 +609,7 @@ class CalibrateDI(Operation):
         self.field.fulljones_h5parm_filename = os.path.join(dst_dir, 'fulljones-solutions.h5')
         if os.path.exists(self.field.fulljones_h5parm_filename):
             os.remove(self.field.fulljones_h5parm_filename)
-        shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_h5parm_fulljones),
+        shutil.copy(os.path.join(self.pipeline_working_dir, self.collected_h5parm_fulljones),
                     os.path.join(dst_dir, self.field.fulljones_h5parm_filename))
         self.field.scan_h5parms()  # verify h5parm and update flags for predict/image operations
         flagged_frac = misc.get_flagged_solution_fraction(self.field.fulljones_h5parm_filename)

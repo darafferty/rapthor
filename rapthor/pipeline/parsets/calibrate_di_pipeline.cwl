@@ -76,10 +76,10 @@ inputs:
       gain solve (length = n_obs * n_freq_chunks).
     type: string[]
 
-  - id: combined_h5parm_fulljones
-    label: Combined full-Jones output solution table
+  - id: collected_h5parm_fulljones
+    label: Collected full-Jones output solution table
     doc: |
-      The filename of the output combined h5parm solution table for the full-Jones
+      The filename of the output collected h5parm solution table for the full-Jones
       gain solve (length = 1).
     type: string
 
@@ -264,17 +264,17 @@ steps:
     out:
       - id: output_h5parm1
 
-  - id: combine_fulljones_gains
-    label: Combine full-Jones gain solutions
+  - id: collect_fulljones_gains
+    label: Collect full-Jones gain solutions
     doc: |
-      This step combines all the gain solutions from the solve_fulljones_gains step
+      This step collects all the gain solutions from the solve_fulljones_gains step
       into a single solution table (h5parm file).
     run: {{ rapthor_pipeline_dir }}/steps/collect_h5parms.cwl
     in:
       - id: inh5parms
         source: solve_fulljones_gains/output_h5parm1
       - id: outputh5parm
-        source: combined_h5parm_fulljones
+        source: collected_h5parm_fulljones
     out:
       - id: outh5parm
 
@@ -286,7 +286,7 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/process_gains.cwl
     in:
       - id: h5parm
-        source: combine_fulljones_gains/outh5parm
+        source: collect_fulljones_gains/outh5parm
       - id: flag
         valueFrom: 'False'
       - id: smooth
