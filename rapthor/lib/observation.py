@@ -203,7 +203,8 @@ class Observation(object):
             self.high_el_endtime = self.endtime
 
     def set_calibration_parameters(self, parset, ndir, nobs, calibrator_fluxes,
-                                   target_fast_timestep, target_slow_timestep,
+                                   target_fast_timestep, target_medium_timestep,
+                                   target_slow_timestep,
                                    target_fulljones_timestep, target_flux=None,
                                    generate_screens=False):
         """
@@ -221,6 +222,8 @@ class Observation(object):
             List of calibrator apparent flux densities in Jy
         target_fast_timestep : float
             Target solution interval for fast solves in sec
+        target_medium_timestep : float
+            Target solution interval for medium solves in sec
         target_slow_timestep : float
             Target solution interval for slow solves in sec
         target_fulljones_timestep : float
@@ -235,6 +238,7 @@ class Observation(object):
         # Get the target solution intervals and maximum factor by which they can
         # be increased when using direction-dependent solution intervals
         target_fast_freqstep = parset['calibration_specific']['fast_freqstep_hz']
+        target_medium_freqstep = parset['calibration_specific']['medium_freqstep_hz']
         target_slow_freqstep = parset['calibration_specific']['slow_freqstep_hz']
         target_fulljones_freqstep = parset['calibration_specific']['fulljones_freqstep_hz']
         solve_max_factor = parset['calibration_specific']['dd_interval_factor']
@@ -246,7 +250,7 @@ class Observation(object):
             smoothness_max_factor = 1
 
         # Find the maximum solution interval in time that can be used in any solve
-        max_timestep = max(target_fast_timestep, target_slow_timestep, target_fulljones_timestep)
+        max_timestep = max(target_fast_timestep, target_medium_freqstep, target_slow_timestep, target_fulljones_timestep)
         solint_max_timestep = max(1, int(round(max_timestep / round(self.timepersample)) * solve_max_factor))
 
         # Determine how many calibration chunks to make (to allow parallel jobs)
@@ -292,10 +296,14 @@ class Observation(object):
         # within the observation's size, as this is handled by DP3
         solint_fast_timestep = max(1, int(round(target_fast_timestep / round(self.timepersample)) * solve_max_factor))
         solint_fast_freqstep = max(1, self.get_nearest_freqstep(target_fast_freqstep / self.channelwidth))
+        solint_medium_timestep = max(1, int(round(target_medium_timestep / round(self.timepersample)) * solve_max_factor))
+        solint_medium_freqstep = max(1, self.get_nearest_freqstep(target_medium_freqstep / self.channelwidth))
 
         # Set the fast solve solution intervals
         self.parameters['solint_fast_timestep'] = [solint_fast_timestep] * self.ntimechunks
         self.parameters['solint_fast_freqstep'] = [solint_fast_freqstep] * self.ntimechunks
+        self.parameters['solint_medium_timestep'] = [solint_medium_timestep] * self.ntimechunks
+        self.parameters['solint_medium_freqstep'] = [solint_medium_freqstep] * self.ntimechunks
 
         # Find solution intervals for the gain solves
         #
@@ -322,6 +330,7 @@ class Observation(object):
         # The list values are defined as the number of solutions that will be obtained for
         # each base solution interval, with one entry per direction
         input_solint_keys = {'slow': 'solint_slow_timestep',
+                             'medium': 'solint_medium_timestep',
                              'fast': 'solint_fast_timestep'}
         if target_flux is None:
             target_flux = min(calibrator_fluxes)
@@ -331,7 +340,7 @@ class Observation(object):
             smoothness_dd_factors[smoothness_dd_factors < 1 / smoothness_max_factor] = 1 / smoothness_max_factor
         else:
             smoothness_dd_factors = [1] * len(calibrator_fluxes)
-        for solve_type in ['fast', 'slow']:
+        for solve_type in ['fast', 'medium', 'slow']:
             solint = self.parameters[input_solint_keys[solve_type]][0]  # number of time slots
 
             if solve_max_factor > 1:
@@ -372,6 +381,10 @@ class Observation(object):
                 # Select a frequency at the midpoint of the frequency coverage of this observation
                 fast_smoothnessreffrequency = (self.startfreq + self.endfreq) / 2.0
         self.parameters['fast_smoothnessreffrequency'] = [fast_smoothnessreffrequency] * self.ntimechunks
+        medium_smoothnessreffrequency = parset['calibration_specific']['medium_smoothnessreffrequency']
+        if medium_smoothnessreffrequency is None:
+            medium_smoothnessreffrequency = fast_smoothnessreffrequency
+        self.parameters['medium_smoothnessreffrequency'] = [medium_smoothnessreffrequency] * self.ntimechunks
 
     def set_prediction_parameters(self, sector_name, patch_names):
         """

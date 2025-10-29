@@ -64,6 +64,9 @@ class Field(object):
         self.fast_smoothnessconstraint = self.parset['calibration_specific']['fast_smoothnessconstraint']
         self.fast_smoothnessreffrequency = self.parset['calibration_specific']['fast_smoothnessreffrequency']
         self.fast_smoothnessrefdistance = self.parset['calibration_specific']['fast_smoothnessrefdistance']
+        self.medium_smoothnessconstraint = self.parset['calibration_specific']['medium_smoothnessconstraint']
+        self.medium_smoothnessreffrequency = self.parset['calibration_specific']['medium_smoothnessreffrequency']
+        self.medium_smoothnessrefdistance = self.parset['calibration_specific']['medium_smoothnessrefdistance']
         self.slow_smoothnessconstraint = self.parset['calibration_specific']['slow_smoothnessconstraint']
         self.fulljones_timestep_sec = self.parset['calibration_specific']['fulljones_timestep_sec']
         self.smoothnessconstraint_fulljones = self.parset['calibration_specific']['fulljones_smoothnessconstraint']
@@ -84,6 +87,7 @@ class Field(object):
         self.parallelbaselines = self.parset['calibration_specific']['parallelbaselines']
         self.sagecalpredict = self.parset['calibration_specific']['sagecalpredict']
         self.fast_datause = self.parset['calibration_specific']['fast_datause']
+        self.medium_datause = self.parset['calibration_specific']['medium_datause']
         self.slow_datause = self.parset['calibration_specific']['slow_datause']
         self.reweight = self.parset['imaging_specific']['reweight']
         self.image_bda_timebase = self.parset['imaging_specific']['bda_timebase']
@@ -104,12 +108,15 @@ class Field(object):
         self.apply_fulljones = False
         self.apply_normalizations = False
         self.fast_phases_h5parm_filename = None
+        self.medium1_phases_h5parm_filename = None
+        self.medium2_phases_h5parm_filename = None
         self.slow_gains_h5parm_filename = None
         self.calibration_diagnostics = []
         self.selfcal_state = None
 
         # Set strategy parameter defaults
-        self.fast_timestep_sec = 8.0
+        self.fast_timestep_sec = 32.0
+        self.medium_timestep_sec = 120.0
         self.slow_timestep_sec = 600.0
         self.convergence_ratio = 0.95
         self.divergence_ratio = 1.1
@@ -366,6 +373,7 @@ class Field(object):
         for obs in self.observations:
             obs.set_calibration_parameters(self.parset, self.num_patches, len(self.observations),
                                            self.calibrator_fluxes, self.fast_timestep_sec,
+                                           self.medium_timestep_sec,
                                            self.slow_timestep_sec, self.fulljones_timestep_sec,
                                            self.target_flux, self.generate_screens)
             ntimechunks += obs.ntimechunks

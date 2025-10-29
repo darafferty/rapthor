@@ -231,6 +231,22 @@ The available options are described below under their respective sections.
             and a different solver is specified, the solver will be automatically switched
             to the ``directioniterative`` one.
 
+    medium_datause
+        This parameter sets the visibilities mode used during the medium-phase solves  (one
+        of ``single``, ``dual``, or ``full``; default = ``single``). If set to ``single``,
+        the XX and YY visibilities are averaged together to a single (Stokes I)
+        visibility. If set to ``dual``, only the XX and YY visibilities are used (YX and
+        XY are not used). If set to ``full``, all visibilities are used. Activating the
+        ``single`` or ``dual`` mode improves the speed of the solves and lowers the memory
+        usage during solving.
+
+        .. note::
+
+            Currently, only :term:`solveralgorithm` = ``directioniterative`` is supported
+            when using ``single`` or ``dual`` modes. If one of these modes is activated
+            and a different solver is specified, the solver will be automatically switched
+            to the ``directioniterative`` one.
+
     slow_datause
         This parameter sets the the visibilities used during the slow-gain solves  (one
         of ``dual`` or ``full``; default = ``dual``). If set to ``dual``, only the XX and
@@ -261,36 +277,52 @@ The available options are described below under their respective sections.
         Tolerance used to check convergence during calibration (default = 5e-3).
 
     fast_freqstep_hz
-        Frequency step used during fast phase calibration, in Hz (default = 1e6).
+        Frequency step used during the fast calibration, in Hz (default = 1e6).
 
     fast_smoothnessconstraint
-        Smoothness constraint bandwidth used during fast phase calibration, in
+        Smoothness constraint bandwidth used during the fast calibration, in
         Hz (default = 3e6).
 
     fast_smoothnessreffrequency
-        Smoothness constraint reference frequency used during fast phase calibration, in
+        Smoothness constraint reference frequency used during the fast calibration, in
         Hz. If not specified this will automatically be set to 144 MHz for HBA or the
         midpoint of the frequency coverage for LBA.
 
     fast_smoothnessrefdistance
-        Smoothness constraint reference distance used during fast phase calibration, in
+        Smoothness constraint reference distance used during the fast calibration, in
+        m (default = 0).
+
+    medium_freqstep_hz
+        Frequency step used during the medium-fast calibration, in Hz (default = 1e6).
+
+    medium_smoothnessconstraint
+        Smoothness constraint bandwidth used during the medium-fast calibration, in
+        Hz (default = 3e6).
+
+    medium_smoothnessreffrequency
+        Smoothness constraint reference frequency used during the medium-fast calibration, in
+        Hz. If not specified this will automatically be set to 144 MHz for HBA or the
+        midpoint of the frequency coverage for LBA.
+
+    medium_smoothnessrefdistance
+        Smoothness constraint reference distance used during the medium-fast calibration, in
         m (default = 0).
 
     slow_freqstep_hz
-        Frequency step used during slow amplitude calibration, in Hz (default = 1e6).
+        Frequency step used during the slow calibration, in Hz (default = 1e6).
 
     slow_smoothnessconstraint
-        Smoothness constraint bandwidth used during the slow gain calibration, in Hz
+        Smoothness constraint bandwidth used during the slow calibration, in Hz
         (default = 3e6).
 
     fulljones_timestep_sec
-        Time step used during the full-Jones gain calibration, in seconds (default = 600).
+        Time step used during the full-Jones calibration, in seconds (default = 600).
 
     fulljones_freqstep_hz
-        Frequency step used during full-Jones amplitude calibration, in Hz (default = 1e6).
+        Frequency step used during the full-Jones calibration, in Hz (default = 1e6).
 
     fulljones_smoothnessconstraint
-        Smoothness constraint bandwidth used during the full-Jones gain calibration,
+        Smoothness constraint bandwidth used during the full-Jones calibration,
         in Hz (default = 0).
 
     dd_interval_factor

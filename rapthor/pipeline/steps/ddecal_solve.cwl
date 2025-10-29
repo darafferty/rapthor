@@ -19,10 +19,6 @@ arguments:
   - applybeam.usemodeldata=True
   - applybeam.invert=False
   - applycal.type=applycal
-  - applycal.fastphase.correction=phase000
-  - applycal.fastphase.solset=sol000
-  - applycal.fastphase.usemodeldata=True
-  - applycal.fastphase.invert=False
   - applycal.normalization.correction=amplitude000
   - applycal.normalization.solset=sol000
   - applycal.normalization.usemodeldata=True
@@ -33,13 +29,21 @@ arguments:
   - solve1.usebeammodel=True
   - solve1.beam_interval=120
   - solve1.beammode=array_factor
+  - solve1.initialsolutions.missingantennabehavior=unit
   - solve1.applycal.normalization.correction=amplitude000
   - solve1.applycal.normalization.solset=sol000
-  - solve1.initialsolutions.missingantennabehavior=unit
-  - solve1.correctfreqsmearing=False
-  - solve1.correcttimesmearing=False
   - solve2.type=ddecal
   - solve2.initialsolutions.missingantennabehavior=unit
+  - solve2.applycal.normalization.correction=amplitude000
+  - solve2.applycal.normalization.solset=sol000
+  - solve3.type=ddecal
+  - solve3.initialsolutions.missingantennabehavior=unit
+  - solve3.applycal.normalization.correction=amplitude000
+  - solve3.applycal.normalization.solset=sol000
+  - solve4.type=ddecal
+  - solve4.initialsolutions.missingantennabehavior=unit
+  - solve4.applycal.normalization.correction=amplitude000
+  - solve4.applycal.normalization.solset=sol000
 
 inputs:
 
@@ -91,21 +95,11 @@ inputs:
   - id: applycal_steps
     label: List of applycal steps
     doc: |
-      The list of applycal steps to perform. Allowed steps are "fastphase",
-      "slowgain", and "normalization".
-    type: string?
-    inputBinding:
-      prefix: applycal.steps=
-      separate: False
-
-  - id: ddecal_applycal_steps
-    label: List of DDECal applycal steps
-    doc: |
-      The list of DDECal applycal steps to perform in solve1. Currently, only "normalization"
+      The list of applycal steps to perform. Currently, only "normalization"
       is allowed.
     type: string?
     inputBinding:
-      prefix: solve1.applycal.steps=
+      prefix: applycal.steps=
       separate: False
 
   - id: normalize_h5parm
@@ -240,6 +234,16 @@ inputs:
     type: File?
     inputBinding:
       prefix: solve1.applycal.normalization.parmdb=
+      separate: False
+
+  - id: solve1_applycal_steps
+    label: List of DDECal applycal steps
+    doc: |
+      The list of DDECal applycal steps to perform in solve1. Currently, only
+      "normalization" is allowed.
+    type: string?
+    inputBinding:
+      prefix: solve1.applycal.steps=
       separate: False
 
   - id: solve1_h5parm
@@ -517,10 +521,20 @@ inputs:
     label: Filename of h5parm
     doc: |
       The filename of the h5parm file with the flux-scale normalization corrections.
-      These solutions are applied during solve1.
+      These solutions are applied during solve2.
     type: File?
     inputBinding:
       prefix: solve2.applycal.normalization.parmdb=
+      separate: False
+
+  - id: solve2_applycal_steps
+    label: List of DDECal applycal steps
+    doc: |
+      The list of DDECal applycal steps to perform in solve2. Currently, only
+      "normalization" is allowed.
+    type: string?
+    inputBinding:
+      prefix: solve2.applycal.steps=
       separate: False
 
   - id: solve2_h5parm
@@ -770,14 +784,538 @@ inputs:
       prefix: solve2.reusemodel=
       separate: False
 
-  - id: solve2_reusemodel
+  - id: solve3_normalize_h5parm
+    label: Filename of h5parm
+    doc: |
+      The filename of the h5parm file with the flux-scale normalization corrections.
+      These solutions are applied during solve3.
+    type: File?
+    inputBinding:
+      prefix: solve3.applycal.normalization.parmdb=
+      separate: False
+
+  - id: solve3_applycal_steps
+    label: List of DDECal applycal steps
+    doc: |
+      The list of DDECal applycal steps to perform in solve3. Currently, only
+      "normalization" is allowed.
+    type: string?
+    inputBinding:
+      prefix: solve3.applycal.steps=
+      separate: False
+
+  - id: solve3_h5parm
+    label: Solution table
+    doc: |
+      The filename of the output solution table for solve3.
+    type: string?
+    inputBinding:
+      prefix: solve3.h5parm=
+      separate: False
+
+  - id: solve3_solint
+    label: Solution interval
+    doc: |
+      The solution interval in number of time slots for solve3.
+    type: int?
+    inputBinding:
+      prefix: solve3.solint=
+      separate: False
+
+  - id: solve3_nchan
+    label: Solution interval
+    doc: |
+      The solution interval in number of channels for solve3.
+    type: int?
+    inputBinding:
+      prefix: solve3.nchan=
+      separate: False
+
+  - id: solve3_llssolver
+    label: Linear least-squares solver
+    doc: |
+      The linear least-squares solver to use for solve3 (one of 'qr', 'svd', or 'lsmr').
+    type: string?
+    inputBinding:
+      prefix: solve3.llssolver=
+      separate: False
+
+  - id: solve3_mode
+    label: Solver mode
+    doc: |
+      The solver mode to use for solve3.
+    type: string?
+    inputBinding:
+      prefix: solve3.mode=
+      separate: False
+
+  - id: solve3_solutions_per_direction
+    label: Solutions per direction
+    doc: |
+      The number of solution intervals (in time) per direction for solve3.
+      Note: this parameter is not yet supported in multi-calibration and so
+      should either not be set or be set to a list of ones.
+    type: int[]?
+    inputBinding:
+      valueFrom: $('['+self+']')
+      prefix: solve3.solutions_per_direction=
+      itemSeparator: ','
+      separate: False
+
+  - id: solve3_maxiter
+    label: Maximum iterations
+    doc: |
+      The maximum number of iterations in solve3.
+    type: int?
+    inputBinding:
+      prefix: solve3.maxiter=
+      separate: False
+
+  - id: solve3_propagatesolutions
+    label: Propagate solutions
+    doc: |
+      Flag that determines whether solutions are propagated as initial start values
+      for the next solution interval in solve3.
+    type: boolean?
+    inputBinding:
+      prefix: solve3.propagatesolutions=
+      valueFrom: "$(self ? 'True': 'False')"
+      separate: False
+
+  - id: solve3_initialsolutions_h5parm
+    label: Initial solutions H5parm
+    doc: |
+      The input H5parm file containing initial solutions for solve3.
+    type: File?
+    inputBinding:
+      prefix: solve3.initialsolutions.h5parm=
+      separate: False
+
+  - id: solve3_initialsolutions_soltab
+    label: Initial solutions soltab
+    doc: |
+      The solution table containing initial solutions for solve3.
+    type: string?
+    inputBinding:
+      prefix: solve3.initialsolutions.soltab=
+      separate: False
+
+  - id: solve3_solveralgorithm
+    label: Solver algorithm
+    doc: |
+      The algorithm used for solving in solve3.
+    type: string?
+    inputBinding:
+      prefix: solve3.solveralgorithm=
+      separate: False
+
+  - id: solve3_solverlbfgs_dof
+    label: LBFGS solver DOF
+    doc: |
+      The degrees of freedom for the LBFGS solve algorithm in solve3.
+    type: float?
+    inputBinding:
+      prefix: solve3.solverlbfgs.dof=
+      separate: False
+
+  - id: solve3_solverlbfgs_iter
+    label: LBFGS solver iterations
+    doc: |
+      The number of iterations for the LBFGS solve algorithm in solve3.
+    type: int?
+    inputBinding:
+      prefix: solve3.solverlbfgs.iter=
+      separate: False
+
+  - id: solve3_solverlbfgs_minibatches
+    label: LBFGS solver minibatches
+    doc: |
+      The number of minibatches for the LBFGS solve algorithm in solve3.
+    type: int?
+    inputBinding:
+      prefix: solve3.solverlbfgs.minibatches=
+      separate: False
+
+  - id: solve3_datause
+    label: Datause parameter
+    doc: |
+      The datause parameter that determines how the visibilies are used in
+      the solve3.
+    type: string?
+    inputBinding:
+      prefix: solve3.datause=
+      separate: False
+
+  - id: solve3_stepsize
+    label: Solver step size
+    doc: |
+      The solver step size used between iterations in solve3.
+    type: float?
+    inputBinding:
+      prefix: solve3.stepsize=
+      separate: False
+
+  - id: solve3_stepsigma
+    label: Solver step size standard deviation factor.
+    doc: |
+      If the solver step size mean is lower than its standard deviation by this
+      factor, stop iterations.
+    type: float?
+    inputBinding:
+      prefix: solve3.stepsigma=
+      separate: False
+
+  - id: solve3_tolerance
+    label: Solver tolerance
+    doc: |
+      The solver tolerance used to define convergence in solve3.
+    type: float?
+    inputBinding:
+      prefix: solve3.tolerance=
+      separate: False
+
+  - id: solve3_uvlambdamin
+    label: Minimum uv distance in lambda
+    doc: |
+      The minimum uv distance to use in the calibration for solve3.
+    type: float?
+    inputBinding:
+      prefix: solve3.uvlambdamin=
+      separate: False
+
+  - id: solve3_smoothness_dd_factors
+    label: Smoothness factors
+    doc: |
+      The factor by which to multiply the smoothnesscontraint, per direction, for solve3.
+    type: float[]?
+    inputBinding:
+      valueFrom: $('['+self+']')
+      prefix: solve3.smoothness_dd_factors=
+      itemSeparator: ','
+      separate: False
+
+  - id: solve3_smoothnessconstraint
+    label: Smoothness constraint kernel size
+    doc: |
+      The smoothness constraint kernel size in Hz, used to enforce a smooth frequency
+      dependence, for solve3.
+    type: float?
+    inputBinding:
+      prefix: solve3.smoothnessconstraint=
+      separate: False
+
+  - id: solve3_smoothnessreffrequency
+    label: Smoothness constraint reference frequency
+    doc: |
+      The smoothness constraint reference frequency in Hz for solve3.
+    type: float?
+    inputBinding:
+      prefix: solve3.smoothnessreffrequency=
+      separate: False
+
+  - id: solve3_smoothnessrefdistance
+    label: Smoothness constraint reference distance
+    doc: |
+      The smoothness constraint reference distance in m for solve3.
+    type: float?
+    inputBinding:
+      prefix: solve3.smoothnessrefdistance=
+      separate: False
+
+  - id: solve3_antennaconstraint
+    label: Antenna constraint
+    doc: |
+      A list of antennas that will be constrained to have the same solutions in solve3.
+    type: string?
+    inputBinding:
+      prefix: solve3.antennaconstraint=
+      separate: False
+
+  - id: solve3_keepmodel
+    label: Keep model data
+    doc: |
+      Flag that determines whether model data used in solve3 is kept for
+      subsequent steps.
+    type: string?
+    inputBinding:
+      prefix: solve3.keepmodel=
+      separate: False
+
+  - id: solve3_reusemodel
     label: Reuse model list
     doc: |
       A list of model data columns that will be reused from an earlier
-      step for solve2.
+      step for solve3.
     type: string?
     inputBinding:
-      prefix: solve2.reusemodel=
+      prefix: solve3.reusemodel=
+      separate: False
+
+  - id: solve4_normalize_h5parm
+    label: Filename of h5parm
+    doc: |
+      The filename of the h5parm file with the flux-scale normalization corrections.
+      These solutions are applied during solve4.
+    type: File?
+    inputBinding:
+      prefix: solve4.applycal.normalization.parmdb=
+      separate: False
+
+  - id: solve4_applycal_steps
+    label: List of DDECal applycal steps
+    doc: |
+      The list of DDECal applycal steps to perform in solve4. Currently, only
+      "normalization" is allowed.
+    type: string?
+    inputBinding:
+      prefix: solve4.applycal.steps=
+      separate: False
+
+  - id: solve4_h5parm
+    label: Solution table
+    doc: |
+      The filename of the output solution table for solve4.
+    type: string?
+    inputBinding:
+      prefix: solve4.h5parm=
+      separate: False
+
+  - id: solve4_solint
+    label: Solution interval
+    doc: |
+      The solution interval in number of time slots for solve4.
+    type: int?
+    inputBinding:
+      prefix: solve4.solint=
+      separate: False
+
+  - id: solve4_nchan
+    label: Solution interval
+    doc: |
+      The solution interval in number of channels for solve4.
+    type: int?
+    inputBinding:
+      prefix: solve4.nchan=
+      separate: False
+
+  - id: solve4_llssolver
+    label: Linear least-squares solver
+    doc: |
+      The linear least-squares solver to use for solve4 (one of 'qr', 'svd', or 'lsmr').
+    type: string?
+    inputBinding:
+      prefix: solve4.llssolver=
+      separate: False
+
+  - id: solve4_mode
+    label: Solver mode
+    doc: |
+      The solver mode to use for solve4.
+    type: string?
+    inputBinding:
+      prefix: solve4.mode=
+      separate: False
+
+  - id: solve4_solutions_per_direction
+    label: Solutions per direction
+    doc: |
+      The number of solution intervals (in time) per direction for solve4.
+      Note: this parameter is not yet supported in multi-calibration and so
+      should either not be set or be set to a list of ones.
+    type: int[]?
+    inputBinding:
+      valueFrom: $('['+self+']')
+      prefix: solve4.solutions_per_direction=
+      itemSeparator: ','
+      separate: False
+
+  - id: solve4_maxiter
+    label: Maximum iterations
+    doc: |
+      The maximum number of iterations in solve4.
+    type: int?
+    inputBinding:
+      prefix: solve4.maxiter=
+      separate: False
+
+  - id: solve4_propagatesolutions
+    label: Propagate solutions
+    doc: |
+      Flag that determines whether solutions are propagated as initial start values
+      for the next solution interval in solve4.
+    type: boolean?
+    inputBinding:
+      prefix: solve4.propagatesolutions=
+      valueFrom: "$(self ? 'True': 'False')"
+      separate: False
+
+  - id: solve4_initialsolutions_h5parm
+    label: Initial solutions H5parm
+    doc: |
+      The input H5parm file containing initial solutions for solve4.
+    type: File?
+    inputBinding:
+      prefix: solve4.initialsolutions.h5parm=
+      separate: False
+
+  - id: solve4_initialsolutions_soltab
+    label: Initial solutions soltab
+    doc: |
+      The solution table containing initial solutions for solve4.
+    type: string?
+    inputBinding:
+      prefix: solve4.initialsolutions.soltab=
+      separate: False
+
+  - id: solve4_solveralgorithm
+    label: Solver algorithm
+    doc: |
+      The algorithm used for solving in solve4.
+    type: string?
+    inputBinding:
+      prefix: solve4.solveralgorithm=
+      separate: False
+
+  - id: solve4_solverlbfgs_dof
+    label: LBFGS solver DOF
+    doc: |
+      The degrees of freedom for the LBFGS solve algorithm in solve4.
+    type: float?
+    inputBinding:
+      prefix: solve4.solverlbfgs.dof=
+      separate: False
+
+  - id: solve4_solverlbfgs_iter
+    label: LBFGS solver iterations
+    doc: |
+      The number of iterations for the LBFGS solve algorithm in solve4.
+    type: int?
+    inputBinding:
+      prefix: solve4.solverlbfgs.iter=
+      separate: False
+
+  - id: solve4_solverlbfgs_minibatches
+    label: LBFGS solver minibatches
+    doc: |
+      The number of minibatches for the LBFGS solve algorithm in solve4.
+    type: int?
+    inputBinding:
+      prefix: solve4.solverlbfgs.minibatches=
+      separate: False
+
+  - id: solve4_datause
+    label: Datause parameter
+    doc: |
+      The datause parameter that determines how the visibilies are used in
+      the solve4.
+    type: string?
+    inputBinding:
+      prefix: solve4.datause=
+      separate: False
+
+  - id: solve4_stepsize
+    label: Solver step size
+    doc: |
+      The solver step size used between iterations in solve4.
+    type: float?
+    inputBinding:
+      prefix: solve4.stepsize=
+      separate: False
+
+  - id: solve4_stepsigma
+    label: Solver step size standard deviation factor.
+    doc: |
+      If the solver step size mean is lower than its standard deviation by this
+      factor, stop iterations.
+    type: float?
+    inputBinding:
+      prefix: solve4.stepsigma=
+      separate: False
+
+  - id: solve4_tolerance
+    label: Solver tolerance
+    doc: |
+      The solver tolerance used to define convergence in solve4.
+    type: float?
+    inputBinding:
+      prefix: solve4.tolerance=
+      separate: False
+
+  - id: solve4_uvlambdamin
+    label: Minimum uv distance in lambda
+    doc: |
+      The minimum uv distance to use in the calibration for solve4.
+    type: float?
+    inputBinding:
+      prefix: solve4.uvlambdamin=
+      separate: False
+
+  - id: solve4_smoothness_dd_factors
+    label: Smoothness factors
+    doc: |
+      The factor by which to multiply the smoothnesscontraint, per direction, for solve4.
+    type: float[]?
+    inputBinding:
+      valueFrom: $('['+self+']')
+      prefix: solve4.smoothness_dd_factors=
+      itemSeparator: ','
+      separate: False
+
+  - id: solve4_smoothnessconstraint
+    label: Smoothness constraint kernel size
+    doc: |
+      The smoothness constraint kernel size in Hz, used to enforce a smooth frequency
+      dependence, for solve4.
+    type: float?
+    inputBinding:
+      prefix: solve4.smoothnessconstraint=
+      separate: False
+
+  - id: solve4_smoothnessreffrequency
+    label: Smoothness constraint reference frequency
+    doc: |
+      The smoothness constraint reference frequency in Hz for solve4.
+    type: float?
+    inputBinding:
+      prefix: solve4.smoothnessreffrequency=
+      separate: False
+
+  - id: solve4_smoothnessrefdistance
+    label: Smoothness constraint reference distance
+    doc: |
+      The smoothness constraint reference distance in m for solve4.
+    type: float?
+    inputBinding:
+      prefix: solve4.smoothnessrefdistance=
+      separate: False
+
+  - id: solve4_antennaconstraint
+    label: Antenna constraint
+    doc: |
+      A list of antennas that will be constrained to have the same solutions in solve4.
+    type: string?
+    inputBinding:
+      prefix: solve4.antennaconstraint=
+      separate: False
+
+  - id: solve4_keepmodel
+    label: Keep model data
+    doc: |
+      Flag that determines whether model data used in solve4 is kept for
+      subsequent steps.
+    type: string?
+    inputBinding:
+      prefix: solve4.keepmodel=
+      separate: False
+
+  - id: solve4_reusemodel
+    label: Reuse model list
+    doc: |
+      A list of model data columns that will be reused from an earlier
+      step for solve4.
+    type: string?
+    inputBinding:
+      prefix: solve4.reusemodel=
       separate: False
 
   - id: numthreads
@@ -802,11 +1340,29 @@ outputs:
   - id: output_h5parm2
     label: Solution table
     doc: |
-      The filename of the output solution table of solve1. The value is taken from the input
+      The filename of the output solution table of solve2. The value is taken from the input
       parameter "solve2_h5parm".
     type: File?
     outputBinding:
       glob: $(inputs.solve2_h5parm)
+
+  - id: output_h5parm3
+    label: Solution table
+    doc: |
+      The filename of the output solution table of solve3. The value is taken from the input
+      parameter "solve3_h5parm".
+    type: File?
+    outputBinding:
+      glob: $(inputs.solve3_h5parm)
+
+  - id: output_h5parm4
+    label: Solution table
+    doc: |
+      The filename of the output solution table of solve4. The value is taken from the input
+      parameter "solve4_h5parm".
+    type: File?
+    outputBinding:
+      glob: $(inputs.solve4_h5parm)
 
 hints:
   - class: DockerRequirement
