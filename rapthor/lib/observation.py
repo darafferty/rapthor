@@ -83,8 +83,8 @@ class Observation(object):
                                  'MS'.format(self.starttime))
             self.starttime = np.min(tab.getcol('TIME')[valid_times])
 
-        # DPPP takes ceil(startTimeParset - startTimeMS), so ensure that our start time is
-        # slightly less than the true one (if it's slightly larger, DPPP sets the first
+        # DP3 takes ceil(startTimeParset - startTimeMS), so ensure that our start time is
+        # slightly less than the true one (if it's slightly larger, DP3 sets the first
         # time to the next time, skipping the first time slot)
         self.starttime -= 0.1
         if self.starttime > np.min(tab.getcol('TIME')):
