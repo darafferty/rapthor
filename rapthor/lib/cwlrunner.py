@@ -87,6 +87,8 @@ class BaseCWLRunner:
         args.extend([self.operation.pipeline_parset_file,
                      self.operation.pipeline_inputs_file])
 
+        # Ensure our custom batch system is on the path
+        # So that toil can load it as a plugin
         script_dir = os.path.dirname(os.path.abspath(__file__))
         script_dir = os.path.join(script_dir, "toil_batch_systems")
         current_env = os.environ.copy()
@@ -321,7 +323,7 @@ class ToilRunner(CWLRunner):
         super().setup()
         # Bypass the file store; it only has benefits when using object stores like S3
         self.args.extend(['--bypass-file-store'])
-        self.args.extend(["--batchSystem", self.operation.batch_system])
+        self.args.extend(['--batchSystem', self.operation.batch_system])
         self.args.extend(['--maxLocalJobs', str(self.operation.max_nodes)])
         self.args.extend(['--maxJobs', str(self.operation.max_nodes)])
         self.args.extend(['--jobStore', self.operation.jobstore])
