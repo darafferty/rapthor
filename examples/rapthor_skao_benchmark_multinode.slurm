@@ -54,7 +54,7 @@
 #SBATCH --nodes=1                  # Use a single node by default.
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=96
-#SBATCH --time 48:00:00
+#SBATCH --time 168:00:00
 #SBATCH --output=%x-%j-leader-slurm.out
 #SBATCH --error=%x-%j-leader-slurm.out
 # ---------------------------------------------------------------------------- #
