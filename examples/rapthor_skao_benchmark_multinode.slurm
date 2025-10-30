@@ -135,7 +135,7 @@ benchmon-multinode-start $BENCHMON_PARAMS
 # done
 
 # Run rapthor on parset
-rapthor $PARSET_PATH
+time rapthor $PARSET_PATH
 
 # Stop monitoring
 benchmon-multinode-stop
