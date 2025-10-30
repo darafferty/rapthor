@@ -13,41 +13,93 @@ input_skymodel = $INPUT_PATH/lotss_p207+24_negdec.skymodel
 apparent_skymodel = $INPUT_PATH/lotss_p207+24_negdec.skymodel
 regroup_input_skymodel = True
 strategy = $INPUT_PATH/custom_benchmark_strategy.py
-selfcal_data_fraction = 0.2
+selfcal_data_fraction = 1.0
 final_data_fraction = 1.0
 input_h5parm = None
 input_fulljones_h5parm = None
 facet_layout = None
 dde_mode = faceting
-  
+
+
+[calibration]
+use_included_skymodels = False
+use_image_based_predict = False
+dd_interval_factor = 1
+dd_smoothness_factor = 3
+
+# General solver parameters
+llssolver = qr
+maxiter = 150
+propagatesolutions = True
+solveralgorithm = directioniterative
+onebeamperpatch = False
+stepsize = 0.02
+stepsigma = 2.0
+tolerance = 5e-3
+parallelbaselines = False
+sagecalpredict = False
+
+# Fast solve parameters. Note that the solution intervals are set in the strategy
+fast_freqstep_hz = 1e6
+fast_smoothnessconstraint = 3e6
+fast_smoothnessreffrequency = None
+fast_smoothnessrefdistance = 0.0
+fast_datause = single
+ 
+# Slow solve parameters. Note that the solution intervals are set in the strategy
+slow_freqstep_hz = 1e6
+slow_smoothnessconstraint = 3e6
+slow_datause = dual
+ 
+# Full-Jones solve parameters
+fulljones_timestep_sec = 600.0
+fulljones_freqstep_hz = 1e6
+fulljones_smoothnessconstraint = 0
+ 
+# Parameters for the LBFGS solver
+solverlbfgs_dof = 200.0
+solverlbfgs_iter = 4
+solverlbfgs_minibatches = 1
+ 
+# Baseline-dependent averaging (BDA) baseline limits (default = 20000 m)
+bda_timebase = 0.0
+bda_frequencybase = 0.0
+ 
+# Correct for time and frequency smearing during prediction part of calibration
+# (default = False). Generally, if enabled and imaging is to be done, the
+# identical parameter in the [imaging] section should also be enabled
+correct_time_frequency_smearing = False
+
+ 
 [imaging]
-cellsize_arcsec = 8
-robust = -3
+cellsize_arcsec = 2
+robust = -0.5
 min_uv_lambda = 0.0
-max_uv_lambda = 1000000.0
+max_uv_lambda = 1e7
 mgain = 0.8
 taper_arcsec = 0.0
 local_rms_strength = 0.8
 local_rms_window = 50
-local_rms_method = rms-with-min
+local_rms_method = rms
 do_multiscale_clean = True
-bda_timebase = 20000.0
+bda_timebase = 0.0
+
 dde_method = full
 filter_skymodel = True
 save_visibilities = False
-save_supplementary_images = True
+save_supplementary_images = False
 compress_selfcal_images = True
-compress_final_images = False
+compress_final_images = True
 idg_mode = cpu
 mem_gb = 0
 apply_diagonal_solutions = True
-dd_psf_grid = [8, 8]
-make_quv_images = False
+dd_psf_grid = [0, 0]
+make_quv_images = True
 pol_combine_method = link
 use_mpi = False
 reweight = False
-grid_width_ra_deg = 8.88888888888889
-grid_width_dec_deg = 8.88888888888889
+grid_width_ra_deg = 6
+grid_width_dec_deg = 6
 grid_center_ra = None
 grid_center_dec = None
 grid_nsectors_ra = 0
@@ -74,3 +126,5 @@ global_scratch_dir = $TMPDIR
 use_container = False
 container_type = docker
 cwl_runner = toil
+debug_workflow = False
+keep_temporary_files = False
