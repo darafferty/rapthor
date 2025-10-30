@@ -116,7 +116,7 @@ echo $LD_LIBRARY_PATH
 benchmon-start --save-dir $REPORT_PATH --system --sys --call
 
 # Run rapthor on parset
-rapthor $PARSET_PATH
+time rapthor $PARSET_PATH
 
 # Stop monitoring
 benchmon-stop
