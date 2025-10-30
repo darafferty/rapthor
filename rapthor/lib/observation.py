@@ -78,7 +78,7 @@ class Observation(object):
             self.starttime = np.min(tab.getcol('TIME'))
         else:
             valid_times = np.where(tab.getcol('TIME') >= self.starttime)[0]
-            if not valid_times:
+            if len(valid_times) == 0:
                 raise ValueError('Start time of {0} is greater than the last time in the '
                                  'MS'.format(self.starttime))
             self.starttime = np.min(tab.getcol('TIME')[valid_times])
@@ -102,7 +102,7 @@ class Observation(object):
 
         # Check that the end time is valid and adjust if needed
         valid_times = np.where(tab.getcol('TIME') <= self.endtime)[0]
-        if not valid_times:
+        if len(valid_times) == 0:
             raise ValueError('End time of {0} is less than the first time in the '
                              'MS'.format(self.endtime))
         self.endtime = np.max(tab.getcol('TIME')[valid_times])
