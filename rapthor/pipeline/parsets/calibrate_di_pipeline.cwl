@@ -34,7 +34,6 @@ inputs:
       The data column to be read from the MS files (length = 1).
     type: string
 
-
   - id: starttime_fulljones
     label: Start time of each chunk for full-Jones solve
     doc: |
@@ -46,20 +45,6 @@ inputs:
     label: Number of times of each chunk for full-Jones solve
     doc: |
       The number of timeslots for each time chunk used in the full-Jones
-      gain calibration (length = n_obs * n_freq_chunks).
-    type: int[]
-
-  - id: startchan_fulljones
-    label: Start channel of each chunk for full-Jones solve
-    doc: |
-      The start channel for each frequency chunk used in the full-Jones gain
-      calibration (length = n_obs * n_freq_chunks).
-    type: int[]
-
-  - id: nchan_fulljones
-    label: Number of channels of each chunk for full-Jones solve
-    doc: |
-      The number of channels for each frequency chunk used in the full-Jones
       gain calibration (length = n_obs * n_freq_chunks).
     type: int[]
 
@@ -91,10 +76,10 @@ inputs:
       gain solve (length = n_obs * n_freq_chunks).
     type: string[]
 
-  - id: combined_h5parm_fulljones
-    label: Combined full-Jones output solution table
+  - id: collected_h5parm_fulljones
+    label: Collected full-Jones output solution table
     doc: |
-      The filename of the output combined h5parm solution table for the full-Jones
+      The filename of the output collected h5parm solution table for the full-Jones
       gain solve (length = 1).
     type: string
 
@@ -173,6 +158,20 @@ inputs:
       The minimum uv distance in lambda used during the solve (length = 1).
     type: float
 
+  - id: correctfreqsmearing
+    label: Correct for frequency smearing
+    doc: |
+      Flag that determines whether the effects of frequency smearing are
+      corrected for during the prediction part of the solve (length = 1).
+    type: boolean
+
+  - id: correcttimesmearing
+    label: Correct for time smearing
+    doc: |
+      Flag that determines whether the effects of time smearing are
+      corrected for during the prediction part of the solve (length = 1).
+    type: boolean
+
   - id: max_threads
     label: Max number of threads
     doc: |
@@ -218,64 +217,64 @@ steps:
         source: starttime_fulljones
       - id: ntimes
         source: ntimes_fulljones
-      - id: startchan
-        source: startchan_fulljones
-      - id: mode
+      - id: solve1_mode
         valueFrom: 'fulljones'
       - id: steps
-        valueFrom: '[solve]'
-      - id: nchan
-        source: nchan_fulljones
-      - id: h5parm
+        valueFrom: '[solve1]'
+      - id: solve1_h5parm
         source: output_h5parm_fulljones
-      - id: solint
+      - id: solve1_solint
         source: solint_fulljones_timestep
-      - id: solve_nchan
+      - id: solve1_nchan
         source: solint_fulljones_freqstep
       - id: modeldatacolumn
         valueFrom: '[MODEL_DATA]'
-      - id: llssolver
+      - id: solve1_llssolver
         source: llssolver
-      - id: maxiter
+      - id: solve1_maxiter
         source: maxiter
-      - id: propagatesolutions
+      - id: solve1_propagatesolutions
         source: propagatesolutions
-      - id: solveralgorithm
+      - id: solve1_solveralgorithm
         source: solveralgorithm
-      - id: solverlbfgs_dof
+      - id: solve1_solverlbfgs_dof
         source: solverlbfgs_dof
-      - id: solverlbfgs_iter
+      - id: solve1_solverlbfgs_iter
         source: solverlbfgs_iter
-      - id: solverlbfgs_minibatches
+      - id: solve1_solverlbfgs_minibatches
         source: solverlbfgs_minibatches
-      - id: stepsize
+      - id: solve1_stepsize
         source: stepsize
-      - id: stepsigma
+      - id: solve1_stepsigma
         source: stepsigma
-      - id: tolerance
+      - id: solve1_tolerance
         source: tolerance
-      - id: uvlambdamin
+      - id: solve1_uvlambdamin
         source: uvlambdamin
-      - id: smoothnessconstraint
+      - id: solve1_smoothnessconstraint
         source: smoothnessconstraint_fulljones
+      - id: solve1_correctfreqsmearing
+        source: correctfreqsmearing
+      - id: solve1_correcttimesmearing
+        source: correcttimesmearing
       - id: numthreads
         source: max_threads
-    scatter: [msin, starttime, ntimes, startchan, nchan, h5parm, solint, solve_nchan]
+    scatter: [msin, starttime, ntimes, solve1_h5parm, solve1_solint, solve1_nchan]
     scatterMethod: dotproduct
     out:
-      - id: output_h5parm
+      - id: output_h5parm1
 
-  - id: combine_fulljones_gains
-    label: Combine full-Jones gain solutions
+  - id: collect_fulljones_gains
+    label: Collect full-Jones gain solutions
     doc: |
-      This step combines all the gain solutions from the solve_fulljones_gains step
+      This step collects all the gain solutions from the solve_fulljones_gains step
       into a single solution table (h5parm file).
     run: {{ rapthor_pipeline_dir }}/steps/collect_h5parms.cwl
     in:
       - id: inh5parms
-        source: solve_fulljones_gains/output_h5parm
+        source: solve_fulljones_gains/output_h5parm1
       - id: outputh5parm
-        source: combined_h5parm_fulljones
+        source: collected_h5parm_fulljones
     out:
       - id: outh5parm
 
@@ -287,7 +286,7 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/process_gains.cwl
     in:
       - id: h5parm
-        source: combine_fulljones_gains/outh5parm
+        source: collect_fulljones_gains/outh5parm
       - id: flag
         valueFrom: 'False'
       - id: smooth

@@ -19,18 +19,6 @@ def test_download_skymodel(
     download_skymodel(ra, dec, skymodel_path, radius, overwrite, source, targetname)
 
 
-@pytest.mark.parametrize("ra", (190.75,))
-@pytest.mark.parametrize("dec", (-115.34,))
-def test_normalize_ra_dec(ra, dec):
-    normalize_ra_dec(ra, dec)
-
-
-@pytest.mark.parametrize("filename", ("/path/to/vertices.file",))
-def test_read_vertices(filename):
-    with pytest.raises(FileNotFoundError):
-        read_vertices(filename, WCS())
-
-
 @pytest.mark.parametrize("image_name", (None,))
 @pytest.mark.parametrize("reference_ra_deg", (None,))
 @pytest.mark.parametrize("reference_dec_deg", (None,))

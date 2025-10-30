@@ -261,6 +261,7 @@ class Parset:
 
         for opt, valid_values in {
             "fast_datause": ("single", "dual", "full"),
+            "medium_datause": ("single", "dual", "full"),
             "slow_datause": ("dual", "full"),
             "solveralgorithm": ("hybrid", "lbfgs", "directioniterative", "directionsolve"),
         }.items():
@@ -290,8 +291,17 @@ class Parset:
                 "'directioniterative' solver, since dd_interval_factor > 1."
             )
             options["solveralgorithm"] = "directioniterative"
+        if dd_interval_factor > 1:
+            # TODO: direction-dependent solution intervals cannot yet be used with
+            # multi-calibration; once they can be, the restriction on their use
+            # should be removed
+            log.warning(
+                "Switching off direction-dependent intervals, since they are "
+                "not yet supported."
+            )
+            options["dd_interval_factor"] = 1
         if (
-            (options["fast_datause"] != "full" or options["slow_datause"] != "full") and
+            (options["fast_datause"] != "full" or options["medium_datause"] != "full" or options["slow_datause"] != "full") and
             options["solveralgorithm"] != "directioniterative"
         ):
             log.warning(
@@ -303,15 +313,17 @@ class Parset:
 
         if (
             options['use_image_based_predict'] and
-            (options['fast_bda_timebase'] > 0 or
-             options['slow_bda_timebase'] > 0)
+            (
+                options['bda_timebase'] > 0 or
+                options['bda_frequencybase'] > 0
+            )
         ):
             log.warning(
                 "Switching off BDA during solving, since image-based predict is "
                 "activated."
             )
-            options['fast_bda_timebase'] = 0
-            options['slow_bda_timebase'] = 0
+            options['bda_timebase'] = 0
+            options['bda_frequencybase'] = 0
 
         # Imaging options
         options = settings["imaging"]
@@ -343,6 +355,28 @@ class Parset:
         if len(options["dd_psf_grid"]) != 2:
             raise ValueError(
                 "The option 'dd_psf_grid' must be a list of length 2 (e.g. '[3, 3]')"
+            )
+
+        if (
+            options["correct_time_frequency_smearing"] and
+            options["bda_timebase"] > 0
+        ):
+            log.warning(
+                "Switching off BDA during imaging, since correction for time "
+                "and frequency smearing is activated."
+            )
+            options["bda_timebase"] = 0
+            # options["bda_frequencybase"] = 0  # TODO: also disable frequency BDA once implemented
+
+        if (
+            settings["imaging"]["correct_time_frequency_smearing"] !=
+            settings["calibration"]["correct_time_frequency_smearing"]
+        ):
+            log.warning(
+                "Correction for time and frequency smearing is enabled "
+                "in either calibration or imaging, but not in both. "
+                "Generally, the correction should be enabled (or disabled) "
+                "together in both sections."
             )
 
         # Cluster options

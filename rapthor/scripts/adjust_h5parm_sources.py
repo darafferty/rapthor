@@ -3,12 +3,11 @@
 Script to adjust h5parm source coordinates to match those in the sky model
 """
 from argparse import ArgumentParser, RawTextHelpFormatter
-from rapthor.lib import miscellaneous as misc
 import lsmtool
 from losoto.h5parm import h5parm
 import numpy as np
 import sys
-
+from lsmtool.operations_lib import normalize_ra_dec
 
 def main(skymodel, h5parm_file, solset_name='sol000'):
     """
@@ -46,8 +45,8 @@ def main(skymodel, h5parm_file, solset_name='sol000'):
             # model
             for skymodel_source_name, skymodel_source_position in source_dict.items():
                 source_names.append(f'[{skymodel_source_name}]')
-                ra, dec = misc.normalize_ra_dec(skymodel_source_position[0].value,
-                                                skymodel_source_position[1].value)
+                ra, dec = normalize_ra_dec(skymodel_source_position[0].value,
+                                           skymodel_source_position[1].value)
                 source_positions.append([ra, dec])
         else:
             for source in soltab.dir:
@@ -57,7 +56,7 @@ def main(skymodel, h5parm_file, solset_name='sol000'):
                     radecpos = source_dict[source.strip('[]')]  # degrees
                 except KeyError:
                     sys.exit('ERROR: A direction is present in the h5parm that is not in the sky model')
-                ra, dec = misc.normalize_ra_dec(radecpos[0].value, radecpos[1].value)
+                ra, dec = normalize_ra_dec(radecpos[0].value, radecpos[1].value)
                 source_names.append(source)
                 source_positions.append([ra, dec])
         source_positions = np.array(source_positions)

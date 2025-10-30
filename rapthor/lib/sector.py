@@ -4,7 +4,6 @@ Definition of the Sector class that holds parameters for an image or predict sec
 import copy
 import logging
 import os
-import pickle
 
 import astropy.units as u
 import lsmtool
@@ -15,6 +14,7 @@ from shapely.geometry import Polygon
 
 from rapthor.lib import cluster, facet
 from rapthor.lib import miscellaneous as misc
+from lsmtool.operations_lib import normalize_ra_dec
 
 
 class Sector(object):
@@ -44,12 +44,12 @@ class Sector(object):
             ra = Angle(ra).to('deg').value
         if type(dec) is str:
             dec = Angle(dec).to('deg').value
-        self.ra, self.dec = misc.normalize_ra_dec(ra, dec)
+        self.ra, self.dec = normalize_ra_dec(ra, dec)
         self.width_ra = width_ra
         self.width_dec = width_dec
         self.field = field
         self.vertices_file = os.path.join(field.working_dir, 'regions',
-                                          '{}_vertices.pkl'.format(self.name))
+                                          f'{self.name}_vertices.npy')
         self.region_file = None
         self.I_image_file_true_sky = None  # set by the Image operation
         self.I_image_file_apparent_sky = None  # set by the Image operation
@@ -452,9 +452,7 @@ class Sector(object):
         Make a vertices file for the sector boundary
         """
         vertices = self.get_vertices_radec()
-
-        with open(self.vertices_file, 'wb') as f:
-            pickle.dump(vertices, f)
+        np.save(self.vertices_file, np.transpose(vertices), allow_pickle=False)
 
     def make_region_file(self, outputfile, region_format='ds9'):
         """
@@ -547,7 +545,7 @@ class Sector(object):
         Decs = vertices[1]
         distances = []
         for ra, dec in zip(RAs, Decs):
-            ra_norm, dec_norm = misc.normalize_ra_dec(ra, dec)
+            ra_norm, dec_norm = normalize_ra_dec(ra, dec)
             coord = SkyCoord(ra_norm, dec_norm, unit=(u.degree, u.degree), frame='fk5')
             distances.append(obs_coord.separation(coord).value)
 

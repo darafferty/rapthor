@@ -14,6 +14,7 @@ variables:
 stages:
   - initialize
   - versioning
+  - lint
   - build
   - install
   - run_tests
@@ -63,7 +64,9 @@ stages:
       dotenv: versions.env
 
 .setup_git:
-  image: bitnami/git
+  image:
+    name: alpine/git
+    entrypoint: [""]
   before_script:
     # Use a token that has git push permissions. Token must be created in the
     # GitLab GUI; a project variable must be created containing the token.
@@ -82,6 +85,12 @@ stages:
     - !reference [.release, before_script]
     - echo "Logging in as $CI_REGISTRY_USER @ $CI_REGISTRY"
     - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
+
+.lint:
+  image: python
+  stage: lint
+  before_script:
+    - pip install tox
 
 .run_tests:
   stage: run_tests
@@ -176,6 +185,15 @@ versioning:
     - echo BASE_IMAGE=${BASE_NAME}:${BASE_TAG} >> versions.env
     - echo FULL_IMAGE=${FULL_NAME}:${FULL_TAG} >> versions.env
     - cat versions.env
+
+
+# Stage: lint
+
+run_lint:
+  extends: .lint
+  script:
+    - tox -e lint
+  allow_failure: true
 
 
 ### Stage: build

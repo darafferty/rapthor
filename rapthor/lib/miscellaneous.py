@@ -172,61 +172,6 @@ def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, sourc
     skymodel.write(clobber=True)
 
 
-def normalize_ra_dec(ra, dec):
-    """
-    Normalize RA to be in the range [0, 360) and Dec to be in the
-    range [-90, 90].
-
-    Parameters
-    ----------
-    ra : float
-        The RA in degrees to be normalized.
-    dec : float
-        The Dec in degrees to be normalized.
-
-    Returns
-    -------
-    normalized_ra, normalized_dec : float, float
-        The normalized RA in degrees in the range [0, 360) and the
-        Dec in degrees in the range [-90, 90].
-    """
-    normalized_dec = (dec + 180) % 360 - 180
-    normalized_ra = ra % 360
-    if abs(normalized_dec) > 90:
-        normalized_dec = 180 - normalized_dec
-        normalized_ra = normalized_ra + 180
-        normalized_dec = (normalized_dec + 180) % 360 - 180
-        normalized_ra = normalized_ra % 360
-
-    return normalized_ra, normalized_dec
-
-
-def read_vertices(filename, wcs):
-    """
-    Read facet vertices from a file and convert them to pixel coordinates.
-
-    Parameters
-    ----------
-    wcs : astropy.wcs.WCS object
-        WCS object for converting the vertices to pixel coordinates.
-
-    Returns
-    -------
-    vertices: list of (x, y) tuples of float
-        The converted coordinates.
-    """
-    # The input file always contains vertices as RA,Dec coordinates.
-    vertices_celestial = lsmtool.io.read_vertices_ra_dec(filename)
-
-    # Convert to image pixel coordinates (x, y). Note: we need to add two extra
-    # (dummy) elements to the celestial coordinates, since the wcs has four
-    # axes, and then remove them from the resulting image coordinates.
-    vertices_image = wcs.wcs_world2pix(np.pad(vertices_celestial, [(0, 0), (0, 2)]), WCS_ORIGIN)[:, 0:2]
-
-    # Convert to a list of (x, y) tuples.
-    return list(zip(*vertices_image))
-
-
 def make_template_image(image_name, reference_ra_deg, reference_dec_deg,
                         ximsize=512, yimsize=512, cellsize_deg=0.000417, freqs=None, times=None,
                         antennas=None, aterm_type='tec', fill_val=0):

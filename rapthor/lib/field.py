@@ -55,8 +55,8 @@ class Field(object):
         self.numMS = len(self.ms_filenames)
         self.data_colname = self.parset['data_colname']
         self.use_image_based_predict = self.parset['calibration_specific']['use_image_based_predict']
-        self.bda_timebase_fast = self.parset['calibration_specific']['fast_bda_timebase']
-        self.bda_timebase_slow = self.parset['calibration_specific']['slow_bda_timebase']
+        self.bda_timebase = self.parset['calibration_specific']['bda_timebase']
+        self.bda_frequencybase = self.parset['calibration_specific']['bda_frequencybase']
         self.dd_interval_factor = self.parset['calibration_specific']['dd_interval_factor']
         self.h5parm_filename = self.parset['input_h5parm']
         self.fulljones_h5parm_filename = self.parset['input_fulljones_h5parm']
@@ -64,6 +64,9 @@ class Field(object):
         self.fast_smoothnessconstraint = self.parset['calibration_specific']['fast_smoothnessconstraint']
         self.fast_smoothnessreffrequency = self.parset['calibration_specific']['fast_smoothnessreffrequency']
         self.fast_smoothnessrefdistance = self.parset['calibration_specific']['fast_smoothnessrefdistance']
+        self.medium_smoothnessconstraint = self.parset['calibration_specific']['medium_smoothnessconstraint']
+        self.medium_smoothnessreffrequency = self.parset['calibration_specific']['medium_smoothnessreffrequency']
+        self.medium_smoothnessrefdistance = self.parset['calibration_specific']['medium_smoothnessrefdistance']
         self.slow_smoothnessconstraint = self.parset['calibration_specific']['slow_smoothnessconstraint']
         self.fulljones_timestep_sec = self.parset['calibration_specific']['fulljones_timestep_sec']
         self.smoothnessconstraint_fulljones = self.parset['calibration_specific']['fulljones_smoothnessconstraint']
@@ -84,6 +87,7 @@ class Field(object):
         self.parallelbaselines = self.parset['calibration_specific']['parallelbaselines']
         self.sagecalpredict = self.parset['calibration_specific']['sagecalpredict']
         self.fast_datause = self.parset['calibration_specific']['fast_datause']
+        self.medium_datause = self.parset['calibration_specific']['medium_datause']
         self.slow_datause = self.parset['calibration_specific']['slow_datause']
         self.reweight = self.parset['imaging_specific']['reweight']
         self.image_bda_timebase = self.parset['imaging_specific']['bda_timebase']
@@ -94,19 +98,25 @@ class Field(object):
         self.solverlbfgs_dof = self.parset['calibration_specific']['solverlbfgs_dof']
         self.solverlbfgs_iter = self.parset['calibration_specific']['solverlbfgs_iter']
         self.solverlbfgs_minibatches = self.parset['calibration_specific']['solverlbfgs_minibatches']
+        self.correct_smearing_in_calibration = self.parset['calibration_specific']['correct_time_frequency_smearing']
+        self.correct_smearing_in_imaging = self.parset['imaging_specific']['correct_time_frequency_smearing']
         self.cycle_number = 1
         self.apply_amplitudes = False
+        self.generate_screens = False
         self.apply_screens = False
         self.generate_screens = False
         self.apply_fulljones = False
         self.apply_normalizations = False
         self.fast_phases_h5parm_filename = None
+        self.medium1_phases_h5parm_filename = None
+        self.medium2_phases_h5parm_filename = None
         self.slow_gains_h5parm_filename = None
         self.calibration_diagnostics = []
         self.selfcal_state = None
 
         # Set strategy parameter defaults
-        self.fast_timestep_sec = 8.0
+        self.fast_timestep_sec = 32.0
+        self.medium_timestep_sec = 120.0
         self.slow_timestep_sec = 600.0
         self.convergence_ratio = 0.95
         self.divergence_ratio = 1.1
@@ -124,7 +134,6 @@ class Field(object):
         self.do_slowgain_solve = False
         self.do_normalize = False
         self.make_image_cube = False
-        self.use_scalarphase = True
         self.field_image_filename_prev = None
         self.field_image_filename = None
 
@@ -256,8 +265,8 @@ class Field(object):
 
         Parameters
         ----------
-        mintime : float
-            Minimum time in sec for a chunk
+        mintime : float or None
+            Minimum time in sec for a chunk. If None, chunking is unconstrained by time
         prefer_high_el_periods : bool, optional
             Prefer periods for which the elevation is in the highest 80% of values for a
             given observation. This option is useful for removing periods of lower
@@ -272,7 +281,7 @@ class Field(object):
             target_starttime = obs.starttime
             target_endtime = obs.endtime
             data_fraction = obs.data_fraction
-            if prefer_high_el_periods and (mintime < obs.high_el_endtime - obs.high_el_starttime):
+            if prefer_high_el_periods and (mintime is None or (mintime < obs.high_el_endtime - obs.high_el_starttime)):
                 # Use high-elevation period for chunking. We increase the data fraction
                 # to account for the decreased total observation time so that the
                 # amount of data used is kept the same
@@ -282,12 +291,15 @@ class Field(object):
                                     (target_endtime - target_starttime))
             tottime = target_endtime - target_starttime
 
-            nchunks = max(1, int(np.floor(data_fraction / (mintime / tottime))))
+            nchunks = max(1, int(np.floor(data_fraction / (mintime / tottime)))) if mintime is not None else 1
             if nchunks == 1:
                 # Center the chunk around the midpoint (which is generally the most
                 # sensitive, near transit)
                 midpoint = target_starttime + tottime / 2
-                chunktime = min(tottime, max(mintime, data_fraction*tottime))
+                if mintime is not None:
+                    chunktime = min(tottime, max(mintime, data_fraction * tottime))
+                else:
+                    chunktime = data_fraction * tottime
                 if chunktime < tottime:
                     self.observations.append(Observation(obs.ms_filename,
                                                          starttime=midpoint-chunktime/2,
@@ -323,13 +335,14 @@ class Field(object):
             self.observations = []
             for obs in prev_observations:
                 tottime = obs.endtime - obs.starttime
-                nchunks = min(minnobs, max(1, int(tottime / mintime)))
+                nchunks = min(minnobs, max(1, int(tottime / mintime))) if mintime is not None else minnobs
                 if nchunks > 1:
                     steptime = tottime / nchunks
-                    steptime -= steptime % mintime
+                    if mintime is not None:
+                        steptime -= steptime % mintime
                     numsamples = int(np.ceil(steptime / obs.timepersample))
                     if numsamples < 2:
-                        steptime += mintime
+                        steptime *= 2
                     starttimes = np.arange(obs.starttime, obs.endtime, steptime)
                     endtimes = [st+steptime for st in starttimes]
                     for nc, (starttime, endtime) in enumerate(zip(starttimes, endtimes)):
@@ -357,19 +370,14 @@ class Field(object):
         Sets parameters for all observations from current parset and sky model
         """
         ntimechunks = 0
-        nfreqchunks_slow = 0
-        nfreqchunks_fulljones = 0
         for obs in self.observations:
             obs.set_calibration_parameters(self.parset, self.num_patches, len(self.observations),
                                            self.calibrator_fluxes, self.fast_timestep_sec,
+                                           self.medium_timestep_sec,
                                            self.slow_timestep_sec, self.fulljones_timestep_sec,
-                                           self.target_flux)
+                                           self.target_flux, self.generate_screens)
             ntimechunks += obs.ntimechunks
-            nfreqchunks_slow += obs.nfreqchunks_slow
-            nfreqchunks_fulljones += obs.nfreqchunks_fulljones
         self.ntimechunks = ntimechunks
-        self.nfreqchunks_slow = nfreqchunks_slow
-        self.nfreqchunks_fulljones = nfreqchunks_fulljones
 
     def get_obs_parameters(self, parameter):
         """
@@ -499,6 +507,15 @@ class Field(object):
                 if skymodel_apparent_sky is not None:
                     skymodel_apparent_sky.concatenate(s, matchBy='position', radius=matching_radius_deg,
                                                       keep='from2', inheritPatches=True)
+
+        # If screens are to be generated, we can skip most of the sky model
+        # manipulation
+        if self.generate_screens:
+            calibration_skymodel = skymodel_true_sky
+            calibration_skymodel.write(self.calibration_skymodel_file, clobber=True)
+            self.calibration_skymodel = calibration_skymodel
+            self.calibrators_only_skymodel = calibration_skymodel
+            return
 
         # If an apparent sky model is given, use it for defining the calibration patches.
         # Otherwise, attenuate the true sky model while grouping into patches
@@ -720,7 +737,7 @@ class Field(object):
             # Transfer from the true-flux sky model
             patch_dict = skymodel_true_sky.getPatchPositions()
             lsmtool.utils.transfer_patches(skymodel_true_sky, bright_source_skymodel,
-                                  patch_dict=patch_dict)
+                                           patch_dict=patch_dict)
         bright_source_skymodel.write(self.calibrators_only_skymodel_file, clobber=True)
         self.calibrators_only_skymodel = bright_source_skymodel.copy()
 
@@ -932,46 +949,58 @@ class Field(object):
         self.calibrator_fluxes = self.calibrators_only_skymodel.getColValues('I', aggregate='sum').tolist()
         self.calibrator_positions = self.calibrators_only_skymodel.getPatchPositions()
         self.num_patches = len(self.calibrator_patch_names)
-        suffix = 'es' if self.num_patches > 1 else ''
-        self.log.info('Using {0} calibration patch{1}'.format(self.num_patches, suffix))
+        if not self.generate_screens:
+            suffix = 'es' if self.num_patches > 1 else ''
+            self.log.info('Using {0} calibration patch{1}'.format(self.num_patches, suffix))
 
-        # Plot an overview of the field for this cycle, showing the calibration facets
-        # (patches)
-        self.log.info('Plotting field overview with calibration patches...')
-        if index == 1 or combine_current_and_intial:
-            # Check the sky model bounds, as they may differ from the sector ones
-            check_skymodel_bounds = True
+            # Plot an overview of the field for this cycle, showing the calibration facets
+            # (patches)
+            self.log.info('Plotting field overview with calibration patches...')
+            if index == 1 or combine_current_and_intial:
+                # Check the sky model bounds, as they may differ from the sector ones
+                check_skymodel_bounds = True
+            else:
+                # Sky model bounds will always match the sector ones
+                check_skymodel_bounds = False
+            self.plot_overview(f'field_overview_{index}.png', show_calibration_patches=True,
+                               check_skymodel_bounds=check_skymodel_bounds)
+
+            # Adjust sector boundaries to avoid known sources and update their sky models.
+            self.adjust_sector_boundaries()
+            self.log.info('Making sector sky models (for predicting)...')
+            for sector in self.imaging_sectors:
+                sector.calibration_skymodel = self.calibration_skymodel.copy()
+                sector.make_skymodel(index)
+
+            # Make bright-source sectors containing only the bright sources that may be
+            # subtracted before imaging. These sectors, like the outlier sectors above, are not
+            # imaged
+            self.define_bright_source_sectors(index)
+
+            # Make outlier sectors containing any remaining calibration sources (not
+            # included in any imaging or bright-source sector sky model). These sectors are
+            # not imaged; they are only used in prediction and subtraction
+            self.define_outlier_sectors(index)
+
+            # Make predict sectors containing all calibration sources. These sectors are
+            # not imaged; they are only used in prediction for direction-independent solves
+            self.define_predict_sectors(index)
+
+            # Make non-calibrator-source sectors containing non-calibrator sources
+            # that may be subtracted before calibration. These sectors are not
+            # imaged
+            self.define_non_calibrator_source_sectors(index)
         else:
-            # Sky model bounds will always match the sector ones
-            check_skymodel_bounds = False
-        self.plot_overview(f'field_overview_{index}.png', show_calibration_patches=True,
-                           check_skymodel_bounds=check_skymodel_bounds)
+            self.outlier_sectors = []
+            self.bright_source_sectors = []
+            self.predict_sectors = []
+            self.non_calibrator_source_sectors = []
 
-        # Adjust sector boundaries to avoid known sources and update their sky models.
-        self.adjust_sector_boundaries()
-        self.log.info('Making sector sky models (for predicting)...')
+        # Make imaging sector region and vertices files
         for sector in self.imaging_sectors:
-            sector.calibration_skymodel = self.calibration_skymodel.copy()
-            sector.make_skymodel(index)
-
-        # Make bright-source sectors containing only the bright sources that may be
-        # subtracted before imaging. These sectors, like the outlier sectors above, are not
-        # imaged
-        self.define_bright_source_sectors(index)
-
-        # Make outlier sectors containing any remaining calibration sources (not
-        # included in any imaging or bright-source sector sky model). These sectors are
-        # not imaged; they are only used in prediction and subtraction
-        self.define_outlier_sectors(index)
-
-        # Make predict sectors containing all calibration sources. These sectors are
-        # not imaged; they are only used in prediction for direction-independent solves
-        self.define_predict_sectors(index)
-
-        # Make non-calibrator-source sectors containing non-calibrator sources
-        # that may be subtracted before calibration. These sectors are not
-        # imaged
-        self.define_non_calibrator_source_sectors(index)
+            sector.make_vertices_file()
+            sector.make_region_file(os.path.join(self.working_dir, 'regions',
+                                                 '{}_region_ds9.reg'.format(sector.name)))
 
         # Finally, make a list containing all sectors
         self.sectors = (self.imaging_sectors + self.outlier_sectors +
@@ -1398,12 +1427,6 @@ class Field(object):
                         # use backup
                         sector.poly = poly_bkup
 
-        # Make sector region and vertices files
-        for sector in self.imaging_sectors:
-            sector.make_vertices_file()
-            sector.make_region_file(os.path.join(self.working_dir, 'regions',
-                                                 '{}_region_ds9.reg'.format(sector.name)))
-
     def make_outlier_skymodel(self):
         """
         Make a sky model of any outlier calibration sources, not included in any
@@ -1478,18 +1501,28 @@ class Field(object):
         """
         if self.h5parm_filename is not None:
             with h5parm(self.h5parm_filename) as solutions:
-                if 'sol000' not in solutions.getSolsetNames():
-                    raise ValueError('The direction-dependent solutions file "{0}" must '
-                                     'have the solutions stored in the sol000 '
-                                     'solset.'.format(self.h5parm_filename))
-                solset = solutions.getSolset('sol000')
-                if 'phase000' not in solset.getSoltabNames():
-                    raise ValueError('The direction-dependent solutions file "{0}" must '
-                                     'have a phase000 soltab.'.format(self.h5parm_filename))
-                if 'amplitude000' in solset.getSoltabNames():
-                    self.apply_amplitudes = True
+                if 'coefficients000' in solutions.getSolsetNames():
+                    solset = solutions.getSolset('coefficients000')
+                    if 'phase_coefficients' not in solset.getSoltabNames():
+                        raise ValueError('The screen solutions file "{0}" must '
+                                         'have a phase_coefficients soltab.'.format(self.h5parm_filename))
+                    if 'amplitude1_coefficients' in solset.getSoltabNames():
+                        self.apply_amplitudes = True
+                    else:
+                        self.apply_amplitudes = False
+                elif 'sol000' in solutions.getSolsetNames():
+                    solset = solutions.getSolset('sol000')
+                    if 'phase000' not in solset.getSoltabNames():
+                        raise ValueError('The direction-dependent solutions file "{0}" must '
+                                         'have a phase000 soltab.'.format(self.h5parm_filename))
+                    if 'amplitude000' in solset.getSoltabNames():
+                        self.apply_amplitudes = True
+                    else:
+                        self.apply_amplitudes = False
                 else:
-                    self.apply_amplitudes = False
+                    raise ValueError('The direction-dependent solutions file "{0}" must '
+                                     'have the solutions stored in the sol000 or coefficients000'
+                                     'solset.'.format(self.h5parm_filename))
         else:
             self.apply_amplitudes = False
 
@@ -1597,8 +1630,8 @@ class Field(object):
                 rms_diverged = False
                 self.log.warning('Median image noise found in the previous cycle is 0 '
                                  'for {0}. Skipping noise convergence check...'.format(sector.name))
-            self.log.info('Ratio of current median image noise (non-PB-corrected) to theorectical '
-                          'minimum image noise for {0} = {1:.2f}'.format(sector.name, rmspost/rmsideal))
+            self.log.info('Ratio of current median image noise (non-PB-corrected) to expected '
+                          'image noise for {0} = {1:.2f}'.format(sector.name, rmspost/rmsideal))
 
             dynrpre = sector.diagnostics[-2]['dynamic_range_global_flat_noise']
             dynrpost = sector.diagnostics[-1]['dynamic_range_global_flat_noise']

@@ -20,6 +20,14 @@ inputs:
     type: string
     inputBinding:
       position: 1
+  - id: root
+    label: Output filename root
+    doc: |
+      The root to use for the output files.
+    type: string?
+    inputBinding:
+      prefix: --root=
+      separate: False
 
 outputs:
   - id: plots

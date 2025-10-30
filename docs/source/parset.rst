@@ -165,10 +165,6 @@ The available options are described below under their respective sections.
         completed successfully), IDGCal is used during calibration to generate smooth 2-D
         screens that are then applied by WSClean in the final imaging step.
 
-        .. note::
-
-            The hybrid mode is not yet available; it will be enabled in a future
-            update.
 
 .. _parset_calibration_options:
 
@@ -180,6 +176,14 @@ The available options are described below under their respective sections.
     use_image_based_predict
         Use image-based prediction (default = ``False``)? Image-based prediction can be
         faster than the normal prediction, especially for large sky models.
+
+        .. note::
+
+            Currently, correction for time and frequency smearing cannot be done
+            when image-based prediction is used. If the averaging of the input data
+            is such that time or frequency smearing is significant within the field
+            of view of interest, then the use of image-based prediction is not
+            recommended.
 
     llssolver
         The linear least-squares solver to use (one of ``qr``, ``svd``, or ``lsmr``;
@@ -194,7 +198,8 @@ The available options are described below under their respective sections.
     solveralgorithm
         The algorithm used for solving (one of ``directionsolve``, ``directioniterative``,
         ``lbfgs``, or ``hybrid``; default = ``directioniterative``). When using ``lbfgs``,
-        the :term:`stepsize` should be set to a small value like 0.001.
+        the :term:`stepsize` should be set to a small value like 0.001. For IDGCal solves,
+        the ``lbfgs`` algorithm is always used.
 
     onebeamperpatch
         Calculate the beam correction once per calibration patch (default = ``False``)? If
@@ -212,6 +217,22 @@ The available options are described below under their respective sections.
 
     fast_datause
         This parameter sets the visibilities mode used during the fast-phase solves  (one
+        of ``single``, ``dual``, or ``full``; default = ``single``). If set to ``single``,
+        the XX and YY visibilities are averaged together to a single (Stokes I)
+        visibility. If set to ``dual``, only the XX and YY visibilities are used (YX and
+        XY are not used). If set to ``full``, all visibilities are used. Activating the
+        ``single`` or ``dual`` mode improves the speed of the solves and lowers the memory
+        usage during solving.
+
+        .. note::
+
+            Currently, only :term:`solveralgorithm` = ``directioniterative`` is supported
+            when using ``single`` or ``dual`` modes. If one of these modes is activated
+            and a different solver is specified, the solver will be automatically switched
+            to the ``directioniterative`` one.
+
+    medium_datause
+        This parameter sets the visibilities mode used during the medium-phase solves  (one
         of ``single``, ``dual``, or ``full``; default = ``single``). If set to ``single``,
         the XX and YY visibilities are averaged together to a single (Stokes I)
         visibility. If set to ``dual``, only the XX and YY visibilities are used (YX and
@@ -256,56 +277,58 @@ The available options are described below under their respective sections.
         Tolerance used to check convergence during calibration (default = 5e-3).
 
     fast_freqstep_hz
-        Frequency step used during fast phase calibration, in Hz (default = 1e6).
+        Frequency step used during the fast calibration, in Hz (default = 1e6).
 
     fast_smoothnessconstraint
-        Smoothness constraint bandwidth used during fast phase calibration, in
+        Smoothness constraint bandwidth used during the fast calibration, in
         Hz (default = 3e6).
 
     fast_smoothnessreffrequency
-        Smoothness constraint reference frequency used during fast phase calibration, in
+        Smoothness constraint reference frequency used during the fast calibration, in
         Hz. If not specified this will automatically be set to 144 MHz for HBA or the
         midpoint of the frequency coverage for LBA.
 
     fast_smoothnessrefdistance
-        Smoothness constraint reference distance used during fast phase calibration, in
+        Smoothness constraint reference distance used during the fast calibration, in
         m (default = 0).
 
-    fast_bda_timebase
-        Maximum baseline used in baseline-dependent averaging (BDA) during the fast-phase
-        calibration, in m (default = 0). A value of 0.0 will disable the averaging.
-        Depending on the solution time step used during the fast-phase calibration,
-        activating this option may improve the speed of the solve and lower the memory
-        usage during solving.
+    medium_freqstep_hz
+        Frequency step used during the medium-fast calibration, in Hz (default = 1e6).
+
+    medium_smoothnessconstraint
+        Smoothness constraint bandwidth used during the medium-fast calibration, in
+        Hz (default = 3e6).
+
+    medium_smoothnessreffrequency
+        Smoothness constraint reference frequency used during the medium-fast calibration, in
+        Hz. If not specified this will automatically be set to 144 MHz for HBA or the
+        midpoint of the frequency coverage for LBA.
+
+    medium_smoothnessrefdistance
+        Smoothness constraint reference distance used during the medium-fast calibration, in
+        m (default = 0).
 
     slow_freqstep_hz
-        Frequency step used during slow amplitude calibration, in Hz (default = 1e6).
+        Frequency step used during the slow calibration, in Hz (default = 1e6).
 
     slow_smoothnessconstraint
-        Smoothness constraint bandwidth used during the slow gain calibration, in Hz
+        Smoothness constraint bandwidth used during the slow calibration, in Hz
         (default = 3e6).
 
-    slow_bda_timebase
-        Maximum baseline used in baseline-dependent averaging (BDA) during the slow
-        gain calibration, in m (default = 20000). A value of 0 will disable the averaging.
-        Depending on the solution time step used during the slow-gain calibration,
-        activating this option may improve the speed of the solve and lower the memory
-        usage during solving.
-
     fulljones_timestep_sec
-        Time step used during the full-Jones gain calibration, in seconds (default = 600).
+        Time step used during the full-Jones calibration, in seconds (default = 600).
 
     fulljones_freqstep_hz
-        Frequency step used during full-Jones amplitude calibration, in Hz (default = 1e6).
+        Frequency step used during the full-Jones calibration, in Hz (default = 1e6).
 
     fulljones_smoothnessconstraint
-        Smoothness constraint bandwidth used during the full-Jones gain calibration,
+        Smoothness constraint bandwidth used during the full-Jones calibration,
         in Hz (default = 0).
 
     dd_interval_factor
         Maximum factor by which the direction-dependent solution intervals can be
         increased, so that fainter calibrators get longer intervals (in the fast and slow
-        solves only; default = 3). The value determines the maximum allowed adjustment
+        solves only; default = 1). The value determines the maximum allowed adjustment
         factor by which the solution intervals are allowed to be increased for faint
         sources. For a given direction, the adjustment is calculated from the ratio of the
         apparent flux density of the calibrator to the target flux density of the cycle
@@ -313,6 +336,11 @@ The available options are described below under their respective sections.
         faintest calibrator in the sky model. A value of 1 disables the use of
         direction-dependent solution intervals; a value greater than 1 enables
         direction-dependent solution intervals.
+
+        .. note::
+
+            Direction-dependent solution intervals are not currently supported;
+            they will be re-enabled in a future update.
 
         .. note::
 
@@ -341,6 +369,26 @@ The available options are described below under their respective sections.
         Number of iterations per minibatch in the LBFGS solver (only used when
         :term:`solveralgorithm` = ``lbfgs``; default = 4).
 
+    bda_timebase
+        Maximum baseline used in baseline-dependent time averaging (BDA) during the
+        calibration, in m (default = 20000). A value of 0 will disable the averaging.
+        Depending on the solution time step used during the calibration,
+        activating this option may improve the speed of the solve and lower the memory
+        usage during solving.
+
+    bda_frequencybase
+        Maximum baseline used in baseline-dependent frequency averaging (BDA) during the
+        calibration, in m (default = 20000). A value of 0 will disable the averaging.
+        Depending on the solution time step used during the calibration,
+        activating this option may improve the speed of the solve and lower the memory
+        usage during solving.
+
+    correct_time_frequency_smearing
+        Correct for time and frequency smearing during the prediction part of
+        calibration (default = ``False``). Generally, if enabled and imaging is
+        to be done, the identical parameter in the ``[imaging]`` section should
+        also be enabled.
+
 .. _parset_imaging_options:
 
 ``[imaging]``
@@ -349,13 +397,13 @@ The available options are described below under their respective sections.
 .. glossary::
 
     cellsize_arcsec
-        Pixel size in arcsec (default = 1.25).
+        Pixel size in arcsec (default = 1.5).
 
     robust
-        Briggs robust parameter (default = -0.5).
+        Briggs robust parameter (default = -0.65).
 
     min_uv_lambda
-        Minimum uv distance in lambda to use in imaging (default = 0).
+        Minimum uv distance in lambda to use in imaging (default = 80).
 
     max_uv_lambda
         Maximum uv distance in lambda to use in imaging (default = 1e6).
@@ -376,17 +424,24 @@ The available options are described below under their respective sections.
         Size of the window (in number of PSFs) to use for the local RMS thresholding
         (default = 50).
 
-    local_rms_method = rms-with-min
+    local_rms_method
         Method to use for the local RMS thresholding: ``rms`` or ``rms-with-min``
-        (default = ``rms-with-min``).
+        (default = ``rms``).
 
     do_multiscale_clean
         Use multiscale cleaning (default = ``True``)?
 
     bda_timebase
         Maximum baseline used in baseline-dependent averaging (BDA) during imaging, in m
-        (default = 20000). A value of 0 will disable the averaging. Activating this option
+        (default = 0). A value of 0 will disable the averaging. Activating this option
         may improve the speed of imaging.
+
+        .. note::
+
+            Currently, correction for time and frequency smearing cannot be done
+            when BDA is used during imaging. If the averaging of the input data
+            is such that time or frequency smearing is significant within the field
+            of view of interest, then the use of BDA is not recommended.
 
     dde_method
         Method to use to correct for direction-dependent effects during imaging:
@@ -536,6 +591,12 @@ The available options are described below under their respective sections.
         bandwidth smearing (at the mean frequency) and time smearing (default = 0.15 = 15%
         reduction in peak flux). Higher values result in shorter run times but more
         smearing away from the image centers.
+
+    correct_time_frequency_smearing
+        Correct for time and frequency smearing during imaging (default =
+        ``False``). Generally, if enabled and calibration is to be done, the
+        identical parameter in the ``[calibration]`` section should also be
+        enabled.
 
     skip_final_major_iteration
         Skip the final WSClean major iteration for all but the last processing cycle
@@ -688,13 +749,27 @@ The available options are described below under their respective sections.
         are easier to understand.
 
     debug_workflow
-        Debug workflow related issues. Enabling this will require significantly more disk
-        space. The working directory will never be cleaned up, ``stdout`` and ``stderr``
-        will not be redirectied, and log level of the CWL runner will be set to ``DEBUG``.
-        Additionally, when using Toil as the CWL runner, some tasks will run using only a
-        single thread (to make debugging easier). Use this option with care!
+        Debug workflow related issues (default = ``False``). Enabling this option
+        implies that temporary files, produced during the workflow run, will be kept
+        (i.e. the option ``keep_temporary_files`` is implicitly set to ``True``). This
+        will require significantly more disk space.  The working directory will never be
+        cleaned up, ``stdout`` and ``stderr`` will not be redirectied, and log level of
+        the CWL runner will be set to ``DEBUG``.  Additionally, when using Toil as the
+        CWL runner, some tasks will run using only a single thread (to make debugging
+        easier). Use this option with care!
 
         .. note::
 
             If Toil is the CWL runner, this option will only work when
             :term:`batch_system` = ``single_machine`` (the default).
+
+    keep_temporary_files
+        Keep temporary files created during the workflow execution (default =
+        ``False``). If ``True``, temporary files and directories created during the
+        workflow execution will not be deleted at the end of the run. This will require
+        significantly more disk space. This option is useful for debugging purposes.
+
+        .. note::
+
+            This option will be set to ``True`` automatically when
+            :term:`debug_workflow` = ``True``.

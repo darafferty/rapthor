@@ -109,6 +109,7 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, apparent_sky_skymo
         rmsbox_bright=rmsbox_bright,
         adaptive_thresh=adaptive_thresh,
         filter_by_mask=filter_by_mask,
+        keep_mask=True,
         ncores=ncores)
 
     # Write out number of sources found by PyBDSF for later use

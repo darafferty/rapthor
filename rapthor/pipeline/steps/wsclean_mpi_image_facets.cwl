@@ -20,7 +20,6 @@ arguments:
   - -join-channels
   - -apply-facet-beam
   - -log-time
-  - -apply-time-frequency-smearing
   - valueFrom: 'wgridder'
     prefix: -gridder
   - valueFrom: '$(runtime.tmpdir)'
@@ -211,6 +210,10 @@ inputs:
     doc: |
       The number of nodes to use for the MPI job.
     type: int
+  - id: apply_time_frequency_smearing
+    type: boolean
+    inputBinding:
+      prefix: -apply-time-frequency-smearing
 
 outputs:
   - id: image_I_nonpb_name

@@ -99,10 +99,14 @@ use_included_skymodels = False
 use_image_based_predict = False
 
 # Maximum factor by which the direction-dependent solution intervals can be
-# increased, so that fainter calibrators get longer intervals. The maximum factor
-# by which the smoothnessconstraints are increased, such that fainter calibrators
-# get more smoothing, can be set in a similar way (default = 3)
-dd_interval_factor = 3
+# increased, so that fainter calibrators get longer intervals (default = 1).
+# The maximum factor by which the smoothnessconstraints are increased, such
+# that fainter calibrators get more smoothing, can be set in a similar way
+# (default = 3).
+#
+# Note: direction-dependent solution intervals are not currently supported;
+# they will be re-enabled in a future update.
+dd_interval_factor = 1
 dd_smoothness_factor = 3
 
 # General solver parameters
@@ -122,13 +126,18 @@ fast_freqstep_hz = 1e6
 fast_smoothnessconstraint = 3e6
 fast_smoothnessreffrequency = None
 fast_smoothnessrefdistance = 0.0
-fast_bda_timebase = 0.0
 fast_datause = single
+
+# Medium-fast solve parameters. Note that the solution intervals are set in the strategy
+medium_freqstep_hz = 1e6
+medium_smoothnessconstraint = 6e6
+medium_smoothnessreffrequency = None
+medium_smoothnessrefdistance = 0.0
+medium_datause = single
 
 # Slow solve parameters. Note that the solution intervals are set in the strategy
 slow_freqstep_hz = 1e6
 slow_smoothnessconstraint = 3e6
-slow_bda_timebase = 20000.0
 slow_datause = dual
 
 # Full-Jones solve parameters
@@ -141,24 +150,33 @@ solverlbfgs_dof = 200.0
 solverlbfgs_iter = 4
 solverlbfgs_minibatches = 1
 
+# Baseline-dependent averaging (BDA) baseline limits (default = 20000 m)
+bda_timebase = 20000.0
+bda_frequencybase = 20000.0
+
+# Correct for time and frequency smearing during prediction part of calibration
+# (default = False). Generally, if enabled and imaging is to be done, the
+# identical parameter in the [imaging] section should also be enabled
+correct_time_frequency_smearing = False
+
 
 [imaging]
-# Imaging parameters: pixel size in arcsec (default = 1.25, suitable for HBA
-# data), Briggs robust parameter (default = -0.5), min and max uv distance in
-# lambda (default = 0, none), cleaning gain (default = 0.8), taper in arcsec
-# (default = none), local rms parameters (defaults = 0.8, 50, and "rms-with-min"
+# Imaging parameters: pixel size in arcsec (default = 1.5, suitable for HBA
+# data), Briggs robust parameter (default = -0.65), min and max uv distance in
+# lambda (default = 80), cleaning gain (default = 0.8), taper in arcsec
+# (default = none), local rms parameters (defaults = 0.8, 50, and "rms"
 # for the strength, window, and method, respectively), whether multiscale
 # clean should be used (default = True), and the baseline-dependent averaging
-# (BDA) timebase value in m (default = 20000)
-cellsize_arcsec = 1.25
-robust = -0.5
-min_uv_lambda = 0.0
+# (BDA) timebase value in m (default = 0)
+cellsize_arcsec = 1.5
+robust = -0.65
+min_uv_lambda = 80.0
 max_uv_lambda = 1e6
 mgain = 0.8
 taper_arcsec = 0.0
 local_rms_strength = 0.8
 local_rms_window = 50
-local_rms_method = rms-with-min
+local_rms_method = rms
 do_multiscale_clean = True
 bda_timebase = 20000.0
 
@@ -270,6 +288,11 @@ sector_width_dec_deg_list = []
 # more smearing away from the sector centers
 max_peak_smearing = 0.15
 
+# Correct for time and frequency smearing during imaging (default = False).
+# Generally, if enabled and calibration is to be done, the identical parameter
+# in the [calibration] section should also be enabled
+correct_time_frequency_smearing = False
+
 # Skip the final WSClean major iteration for all but the last processing cycle
 # (default = True). If True, the final major iteration is skipped during
 # imaging, which speeds up imaging but degrades the image slightly; however, the
@@ -352,9 +375,18 @@ container_type = docker
 # and toil (default)
 cwl_runner = toil
 
-# Debug workflow related issues. Enabling this will require significantly more
-# disk space. Additionally, when Toil is the CWL runner, some tasks will run on
-# a single thread to make debugging easier. The working directory will never be
+# Debug workflow related issues (default = False). Enabling this option
+# implies that temporary files, produced during the workflow run, will be kept
+# (i.e. the option keep_temporary_files is implicitly set to True). This will
+# require significantly more disk space.  The working directory will never be
 # cleaned up, stdout and stderr will not be redirectied, and log level of the
-# CWL runner will be set to DEBUG.
+# CWL runner will be set to DEBUG.  Additionally, when using Toil as the CWL
+# runner, some tasks will run using only a single thread (to make debugging
+# easier). Use this option with care!
 debug_workflow = False
+
+# Keep temporary files created during the workflow execution. If True,
+# temporary files and directories created during the workflow execution will
+# not be deleted at the end of the run. This will require significantly more
+# disk space. This option is useful for debugging purposes.
+keep_temporary_files = False
