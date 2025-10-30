@@ -528,8 +528,7 @@ def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_im
     obs_list = []
     for ms, starttime, ntimes in zip(obs_ms, obs_starttime, obs_ntimes, strict=True):
         starttime_mjd = misc.convert_mvt2mjd(starttime)  # MJD sec
-        endtime_mjd = starttime_mjd + ntimes * Observation(ms).timepersample  # MJD sec
-        obs_list.append(Observation(ms, starttime_mjd, endtime_mjd))
+        obs_list.append(Observation(ms, starttime_mjd, ntimes=ntimes))
     theoretical_rms, unflagged_fraction = misc.calc_theoretical_noise(obs_list, use_lotss_estimate=True)  # Jy/beam
     dynamic_range_global_true_sky = float(img_true_sky.max_value / rms_img_true_sky.min_value)
     dynamic_range_local_true_sky = float(np.nanmax(rms_img_flat_noise.img_data / rms_img_true_sky.img_data))

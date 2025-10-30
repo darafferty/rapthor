@@ -78,10 +78,10 @@ class Observation(object):
             self.starttime = np.min(tab.getcol('TIME'))
         else:
             valid_times = np.where(tab.getcol('TIME') >= self.starttime)[0]
-            if len(valid_times) == 0:
+            if not valid_times:
                 raise ValueError('Start time of {0} is greater than the last time in the '
                                  'MS'.format(self.starttime))
-            self.starttime = tab.getcol('TIME')[valid_times[0]]
+            self.starttime = np.min(tab.getcol('TIME')[valid_times])
 
         # DPPP takes ceil(startTimeParset - startTimeMS), so ensure that our start time is
         # slightly less than the true one (if it's slightly larger, DPPP sets the first
@@ -92,7 +92,7 @@ class Observation(object):
         else:
             self.startsat_startofms = True
 
-        # Set the end time if not specified from the number of time samples
+        # If not set already, set the end time from the number of time samples
         self.timepersample = tab.getcell('EXPOSURE', 0)
         if self.endtime is None:
             if self.numsamples is None:
@@ -102,17 +102,17 @@ class Observation(object):
 
         # Check that the end time is valid and adjust if needed
         valid_times = np.where(tab.getcol('TIME') <= self.endtime)[0]
-        if len(valid_times) == 0:
+        if not valid_times:
             raise ValueError('End time of {0} is less than the first time in the '
                              'MS'.format(self.endtime))
-        self.endtime = tab.getcol('TIME')[valid_times[-1]]
+        self.endtime = np.max(tab.getcol('TIME')[valid_times])
         if self.endtime < np.max(tab.getcol('TIME')):
             self.goesto_endofms = False
         else:
             self.goesto_endofms = True
 
-        # Recalculate the number of time samples to ensure it agrees with
-        # the total time of the observation
+        # Calculate (or adjust if set already) the number of time samples to
+        # ensure it agrees with the total time of the observation
         self.numsamples = int(np.ceil((self.endtime - self.starttime) / self.timepersample))
         tab.close()
 
