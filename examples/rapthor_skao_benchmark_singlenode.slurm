@@ -31,7 +31,7 @@
 # `/examples/rapthor_skao_benchmark_template.parset`. 
 # These files are also hosted on S3 at: 
 #   s3://skao-sdp-testdata/gecko/ical-benchmark-input/extra-inputs/2025.10.24
-# 
+#
 # Since the parset needs to refer to paths within the benchmark environment,
 # which is set by the wrapper script, we need to update paths in the template
 # parset mentioned above.
@@ -51,8 +51,10 @@
 # SLURM settings:
 # ---------------------------------------------------------------------------- #
 #SBATCH --job-name=sp-5859-rapthor-benchmark-test
+#SBATCH --exclusive
 #SBATCH --nodes=1                  # Use a single node by default.
 #SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=192
 #SBATCH --time 48:00:00
 #SBATCH --output=%x-%j-leader-slurm.out
 #SBATCH --error=%x-%j-leader-slurm.out
