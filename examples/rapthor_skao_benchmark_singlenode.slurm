@@ -54,7 +54,7 @@
 #SBATCH --exclusive
 #SBATCH --nodes=1                  # Use a single node by default.
 #SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=192
+#SBATCH --cpus-per-task=86
 #SBATCH --time 168:00:00
 #SBATCH --output=%x-%j-leader-slurm.out
 #SBATCH --error=%x-%j-leader-slurm.out
@@ -123,5 +123,5 @@ benchmon-stop
 
 # Visualize monitoring results
 benchmon-visu --recursive --cpu --cpu-all --mem --net --disk --inline-call \
- --fig-fmt png --fig-dpi medium "$REPORT_PATH"
+    --fig-fmt png --fig-dpi medium "$REPORT_PATH"
 
