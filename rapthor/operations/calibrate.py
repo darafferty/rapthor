@@ -75,8 +75,8 @@ class CalibrateDD(Operation):
         # Get the BDA (baseline-dependent averaging) parameters
         bda_maxinterval = self.field.get_obs_parameters('bda_maxinterval')
         bda_minchannels = self.field.get_obs_parameters('bda_minchannels')
-        bda_timebase = self.field.bda_timebase
-        bda_frequencybase = self.field.bda_frequencybase
+        bda_timebase = self.field.calibrate_bda_timebase
+        bda_frequencybase = self.field.calibrate_bda_frequencybase
 
         # Define various output filenames for the solution tables. We save some
         # as attributes since they are needed in finalize()
@@ -172,8 +172,8 @@ class CalibrateDD(Operation):
         all_regular = all([obs.channels_are_regular for obs in self.field.observations])
         if (
             (
-                self.field.calibrate_bda_timebase > 0
-                or self.field.calibrate_bda_frequencybase > 0
+                bda_timebase > 0
+                bda_frequencybase > 0
             )
             and all_regular
             and not self.field.use_image_based_predict
