@@ -233,7 +233,7 @@ class Image(Operation):
             if prepare_data_applycal_steps:
                 prepare_data_applycal_steps = f"[{','.join(prepare_data_applycal_steps)}]"
         all_regular = all([obs.channels_are_regular for obs in self.field.observations])
-        if all_regular and not self.apply_screens:
+        if self.field.image_bda_timebase > 0 and all_regular and not self.apply_screens:
             # Currently, BDA cannot be used with irregular data or screens (IDG)
             prepare_data_steps.append('bdaavg')
         prepare_data_steps = f"[{','.join(prepare_data_steps)}]"
