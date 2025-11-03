@@ -495,8 +495,8 @@ class Observation(object):
         target_bandwidth_mhz = min(2.0, self.get_target_bandwidth(mean_freq_mhz,
                                    delta_theta_deg, resolution_deg, peak_smearing_rapthor))
         target_bandwidth_mhz = min(target_bandwidth_mhz, solve_slow_freqstep/1e6)
-        self.log.debug('Target timewidth for imaging is {0:.1f} s'.format(target_timewidth_sec))
-        self.log.debug('Target bandwidth for imaging is {0:.1f} MHz'.format(target_bandwidth_mhz))
+        self.log.debug('Target averaging timewidth for imaging is {0:.1f} s'.format(target_timewidth_sec))
+        self.log.debug('Target averaging bandwidth for imaging is {0:.1f} MHz'.format(target_bandwidth_mhz))
 
         # Find averaging steps for above target values
         image_freqstep = max(1, min(int(round(target_bandwidth_mhz * 1e6 / chan_width_hz)), nchan))

@@ -49,13 +49,14 @@ for i in range(max_selfcal_loops):
         strategy_steps[i]['do_normalize'] = False
 
     # Here we set the imaging strategy, lowering the masking thresholds as
-    # selfcal proceeds to ensure all emission is properly cleaned and artifacts,
-    # if any, are excluded from the resulting sky models. Conversely, the
-    # maximum number of major iterations allowed during imaging is raised to
-    # allow deeper cleaning in the later cycles. Lastly, the maximum number of
-    # WSClean major iterations allowed after the automasking threshold is reached
-    # is set to 2, which has been found to be a sufficient number of iterations in
-    # most cases
+    # selfcal proceeds to ensure all emission is properly cleaned and
+    # artifacts, if any, are excluded from the resulting sky models.
+    # Conversely, the maximum number of major iterations allowed during imaging
+    # is raised to allow deeper cleaning in the later cycles. The maximum
+    # number of WSClean major iterations allowed after the automasking
+    # threshold is reached is set to 2, which has been found to be a sufficient
+    # number of iterations in most cases. Lastly, the target width of the
+    # output channel images is set to 4 MHz
     strategy_steps[i]['do_image'] = True
     if i == 0:
         strategy_steps[i]['auto_mask'] = 4.0
@@ -68,6 +69,7 @@ for i in range(max_selfcal_loops):
         strategy_steps[i]['threshpix'] = 5.0
         strategy_steps[i]['max_nmiter'] = 12
     strategy_steps[i]['auto_mask_nmiter'] = 2
+    strategy_steps[i]['channel_width_hz'] = 4e6
 
     # Here we set the calibrator selection strategy, decreasing the target
     # minimum flux density for sources to be used as calibrators as selfcal
@@ -100,5 +102,7 @@ for i in range(max_selfcal_loops):
         strategy_steps[i]['divergence_ratio'] = 1.1
         strategy_steps[i]['failure_ratio'] = 10.0
 
-# Set the parameters for the final pass as duplicates of the last selfcal step
+# Set the parameters for the final pass as duplicates of the last selfcal step,
+# except that the target output imaging channel width is set to 4 MHz
 strategy_steps.append(strategy_steps[-1])
+strategy_steps[-1]['channel_width_hz'] = 4e6
