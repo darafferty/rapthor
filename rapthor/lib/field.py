@@ -55,8 +55,8 @@ class Field(object):
         self.numMS = len(self.ms_filenames)
         self.data_colname = self.parset['data_colname']
         self.use_image_based_predict = self.parset['calibration_specific']['use_image_based_predict']
-        self.bda_timebase = self.parset['calibration_specific']['bda_timebase']
-        self.bda_frequencybase = self.parset['calibration_specific']['bda_frequencybase']
+        self.calibrate_bda_timebase = self.parset['calibration_specific']['bda_timebase']
+        self.calibrate_bda_frequencybase = self.parset['calibration_specific']['bda_frequencybase']
         self.dd_interval_factor = self.parset['calibration_specific']['dd_interval_factor']
         self.h5parm_filename = self.parset['input_h5parm']
         self.fulljones_h5parm_filename = self.parset['input_fulljones_h5parm']

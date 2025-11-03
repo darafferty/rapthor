@@ -170,7 +170,14 @@ class CalibrateDD(Operation):
         # TODO: image-based predict doesn't yet work with BDA; once it does,
         # the restriction on this mode should be removed
         all_regular = all([obs.channels_are_regular for obs in self.field.observations])
-        if self.field.bda_timebase > 0 and all_regular and not self.field.use_image_based_predict:
+        if (
+            (
+                self.field.calibrate_bda_timebase > 0
+                or self.field.calibrate_bda_frequencybase > 0
+            )
+            and all_regular
+            and not self.field.use_image_based_predict
+        ):
             if self.field.do_slowgain_solve:
                 dp3_steps = ['avg', 'solve1', 'solve2', 'solve3', 'solve4', 'null']
             else:
