@@ -173,7 +173,7 @@ class CalibrateDD(Operation):
         if (
             (
                 bda_timebase > 0
-                bda_frequencybase > 0
+                or bda_frequencybase > 0
             )
             and all_regular
             and not self.field.use_image_based_predict
