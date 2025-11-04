@@ -651,6 +651,7 @@ class ImageNormalize(Image):
         self.do_predict = False
         self.do_multiscale_clean = False
         self.field.skip_final_major_iteration = False
+        self.field.channel_width_hz = 4e6
         super().set_input_parameters()
 
     def finalize(self):
