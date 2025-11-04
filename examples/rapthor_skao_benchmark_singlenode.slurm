@@ -91,18 +91,42 @@ PARSET_PATH=$INPUT_PATH/rapthor_skao_benchmark.parset
 envsubst < $PARSET_TEMPLATE_PATH > $PARSET_PATH
 echo "Generated parset file for run: $PARSET_PATH"
 
-# Change to working directory
-cd $WORK_PATH
 
 # Create output directories
-mkdir -p logs
+mkdir -p "$WORK_PATH/logs"
 
 # Load spack modules
 module load "$META_MODULE"
 
 # Load module for rapthor and its dependencies
-RAPTHOR_MODULES="py-rapthor boost py-ska-sdp-benchmark-monitor"
+RAPTHOR_MODULES="boost py-ska-sdp-benchmark-monitor"
 module load $RAPTHOR_MODULES
+
+# Change to working directory
+cd $WORK_PATH
+
+git checkout gec-182-test-benchmark
+
+if [ -f $CODE_PATH/.venv/bin/activate ]; then
+  # Activate existing virtual environment
+  echo "Activating existing virtual environment." >&2
+  source $CODE_PATH/.venv/bin/activate
+else
+  # Create virtual environment
+  echo "WARNING: virtual environment not found. Creating a new one..." >&2
+  python -m venv $CODE_PATH/.venv
+  source $CODE_PATH/.venv/bin/activate
+
+  # Install poetry using pip
+  pip install --upgrade pip
+  pip install -e . -vvv
+
+  # Check installation
+  python -c "from rapthor._version import __version__; print(f'Installed rapthor version: {__version__}')"
+  echo "Environment ready!"
+fi
+
+
 echo "Loaded $(rapthor --version)"
 
 # Ensure bdsf can find libboost_numpy311.so.1.86.0
