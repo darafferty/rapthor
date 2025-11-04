@@ -291,6 +291,11 @@ class Field(object):
                                     (target_endtime - target_starttime))
             tottime = target_endtime - target_starttime
 
+            if mintime is None and data_fraction < 1:
+                # If less than the entire dataset is to be used, pick a reasonable
+                # value for mintime (600 s) to ensure the resulting chunks provide good
+                # uv coverage
+                mintime = 600.0
             nchunks = max(1, int(np.floor(data_fraction / (mintime / tottime)))) if mintime is not None else 1
             if nchunks == 1:
                 # Center the chunk around the midpoint (which is generally the most
