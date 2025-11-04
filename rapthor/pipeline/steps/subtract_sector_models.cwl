@@ -11,6 +11,8 @@ doc: |
 
 requirements:
   - class: InlineJavascriptRequirement
+  - class: ResourceRequirement
+    coresMin: 1
 
 arguments:
   - '--weights_colname=WEIGHT_SPECTRUM'
