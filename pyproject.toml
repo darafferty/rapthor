@@ -37,7 +37,7 @@ dependencies = [
     "jinja2",
     "losoto>=2.4.3",
     "lsmtool @ git+https://git.astron.nl/RD/LSMTool.git@master",
-    "matplotlib",
+    "matplotlib < 3.10.3",
     "mocpy",
     "numpy",
     "python-casacore",
