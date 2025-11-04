@@ -530,6 +530,8 @@ class ImageInitial(Image):
         self.field.full_field_sector.auto_mask_nmiter = 1
         self.field.full_field_sector.threshisl = 4.0
         self.field.full_field_sector.threshpix = 5.0
+        self.field.full_field_sector.max_nmiter = 8
+        self.field.full_field_sector.max_wsclean_nchannels = 8
         self.imaging_sectors = [self.field.full_field_sector]
         self.imaging_parameters = self.field.parset['imaging_specific'].copy()
         self.imaging_parameters['cellsize_arcsec'] = 1.5
@@ -540,9 +542,8 @@ class ImageInitial(Image):
         self.imaging_parameters['dd_psf_grid'] = [1, 1]
         self.do_predict = False
         self.do_multiscale_clean = True
-        self.field.full_field_sector.max_nmiter = 8
-        self.field.full_field_sector.max_wsclean_nchannels = 8
         self.field.skip_final_major_iteration = True
+        self.field.channel_width_hz = 6e6
         super().set_input_parameters()
 
     def finalize(self):
