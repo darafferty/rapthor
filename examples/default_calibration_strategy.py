@@ -69,7 +69,7 @@ for i in range(max_selfcal_loops):
         strategy_steps[i]['threshpix'] = 5.0
         strategy_steps[i]['max_nmiter'] = 12
     strategy_steps[i]['auto_mask_nmiter'] = 2
-    strategy_steps[i]['channel_width_hz'] = 4e6
+    strategy_steps[i]['channel_width_hz'] = 8e6
 
     # Here we set the calibrator selection strategy, decreasing the target
     # minimum flux density for sources to be used as calibrators as selfcal
