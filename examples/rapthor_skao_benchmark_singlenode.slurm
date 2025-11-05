@@ -119,7 +119,7 @@ source $CODE_PATH/.venv/bin/activate
 
 # Install poetry using pip
 pip install --upgrade pip
-pip install -e . -vvv
+pip install -e . -v
 
 # Check installation
 echo "Installed $(rapthor --version)"
