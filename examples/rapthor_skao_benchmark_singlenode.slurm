@@ -92,6 +92,7 @@ mkdir -p $WORK_PATH/logs
 
 # Load spack modules
 # ---------------------------------------------------------------------------- #
+module purge
 module load "$META_MODULE"
 # rapthor dependencies
 RAPTHOR_MODULES="python git node-js \
