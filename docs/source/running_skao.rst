@@ -62,17 +62,18 @@ number of options are available (see :ref:`running` for details).
     Due to storage limits on the default ``/tmp`` directory on AWS, it is best 
     to create a new temporary folder on the shared ``/shared/fsx1`` directory. 
     You will then need to set ``local_scratch_dir`` and ``global_scratch_dir`` 
-    in the parset, as well ``TMPDIR`` in the slurm script to this path. See also 
-    warning below.
-
-.. warning::
-
-    Since socket file paths have a character limit (107 bytes on unix systems), 
-    long path names cause issues during multiprocessing. Since Toil creates 
-    path names for temporary storage files using random hexadecimal strings, 
-    the base location of the temporary storage paths ``global_scratch_dir`` and 
-    ``local_scratch_dir`` must not be too long (less than 35 characters or so) 
-    to avoid this issue.
+    in the parset, as well ``TMPDIR`` in the slurm script to this path. This 
+    is necessary because toil/cwl is used by rapthor to create intermediate files in 
+    ``TMPDIR``, ``local_scratch_dir`` and ``global_scratch_dir`` during the 
+    run which may exceed the available space on ``/tmp``.
+    Note, however, that the filter_skymodel step will always set
+    ``/tmp`` as the temporary directory. This is a workaround for
+    socket file paths having a character limit (107 bytes on unix systems), 
+    causing issues with long path names during multiprocessing (used by pybdsf). 
+    Since Toil creates path names for temporary storage files using random
+    hexadecimal strings, the base location of the temporary storage paths 
+    ``global_scratch_dir`` and ``local_scratch_dir`` can be too long, 
+    resulting in errors.
 
 
 Running rapthor on a single node
