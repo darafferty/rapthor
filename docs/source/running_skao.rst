@@ -62,8 +62,8 @@ number of options are available (see :ref:`running` for details).
     Due to storage limits on the default ``/tmp`` directory on AWS, it is best 
     to create a new temporary folder on the shared ``/shared/fsx1`` directory. 
     You will then need to set ``local_scratch_dir`` and ``global_scratch_dir`` 
-    in the parset, as well ``TMPDIR`` in the slurm script to this path. The 
-    reason is that toil/cwl used by rapthor will create intermediate files in 
+    in the parset, as well ``TMPDIR`` in the slurm script to this path. This 
+    is necessary because toil/cwl is used by rapthor to create intermediate files in 
     ``TMPDIR``, ``local_scratch_dir`` and ``global_scratch_dir`` during the 
     run which may exceed the available space on ``/tmp``.
     Note, however, that the filter_skymodel step will always set
