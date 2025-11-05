@@ -65,6 +65,7 @@ class Sector(object):
         self.diagnostics = []  # list to hold dicts of image diagnostics
         self.calibration_skymodel = None  # set by Field.update_skymodel()
         self.max_nmiter = None  # set by the strategy
+        self.channel_width_hz = None  # set by the strategy
         self.normalize_h5parm = None  # set by the ImageNormalize operation
 
         # Make copies of the observation objects, as each sector may have its own
@@ -199,7 +200,7 @@ class Sector(object):
                                 max(1, int(np.round(self.width_dec)))]
 
         # Set number of output channels to get the requested bandwidth per channel
-        target_bandwidth = self.field.channel_width_hz
+        target_bandwidth = self.channel_width_hz
         max_nchannels = np.max([obs.numchannels for obs in self.observations])
         min_nchannels = 4
         tot_bandwidth = 0.0

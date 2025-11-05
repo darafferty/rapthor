@@ -532,6 +532,7 @@ class ImageInitial(Image):
         self.field.full_field_sector.threshpix = 5.0
         self.field.full_field_sector.max_nmiter = 8
         self.field.full_field_sector.max_wsclean_nchannels = 8
+        self.field.full_field_sector.channel_width_hz = 6e6
         self.imaging_sectors = [self.field.full_field_sector]
         self.imaging_parameters = self.field.parset['imaging_specific'].copy()
         self.imaging_parameters['cellsize_arcsec'] = 1.5
@@ -543,7 +544,6 @@ class ImageInitial(Image):
         self.do_predict = False
         self.do_multiscale_clean = True
         self.field.skip_final_major_iteration = True
-        self.field.channel_width_hz = 6e6
         super().set_input_parameters()
 
     def finalize(self):
@@ -643,6 +643,7 @@ class ImageNormalize(Image):
         self.field.normalize_sector.threshpix = 5.0
         self.field.normalize_sector.max_nmiter = 8
         self.field.normalize_sector.max_wsclean_nchannels = 8
+        self.field.normalize_sector.channel_width_hz = 4e6
         self.imaging_sectors = [self.field.normalize_sector]
         self.imaging_parameters = self.field.parset['imaging_specific'].copy()
         self.imaging_parameters['cellsize_arcsec'] = 6.0
@@ -651,7 +652,6 @@ class ImageNormalize(Image):
         self.do_predict = False
         self.do_multiscale_clean = False
         self.field.skip_final_major_iteration = False
-        self.field.channel_width_hz = 4e6
         super().set_input_parameters()
 
     def finalize(self):
