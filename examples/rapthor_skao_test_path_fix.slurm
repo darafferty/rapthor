@@ -81,8 +81,8 @@ else
 fi
 
 export WORK_PATH=$WORK_PATH
-REPORT_PATH=$WORK_PATH/report
 export CODE_PATH=/home/hannes.breytenbach/repos/rapthor
+# REPORT_PATH=$WORK_PATH/report
 
 # Full path to the input measurement set. 
 export INPUT_MS_FULL_PATH="/shared/fsx1/shared/ical_workshop/data/visibility.scan-400_applybeam.ms"
@@ -127,8 +127,8 @@ RAPTHOR_MODULES="python node-js \
 module load $RAPTHOR_MODULES
 
 # Change to working directory
-# cd $CODE_PATH
-# git checkout gec-182-test-benchmark
+cd $CODE_PATH
+git checkout gec-182-test-benchmark
 
 if [ -f $CODE_PATH/.venv/bin/activate ]; then
   # Activate existing virtual environment
