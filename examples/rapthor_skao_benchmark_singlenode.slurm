@@ -30,7 +30,7 @@
 # this run is available in the rapthor repository under
 # `/examples/rapthor_skao_benchmark_template.parset`. 
 # These files are also hosted on S3 at: 
-#   s3://skao-sdp-testdata/gecko/ical-benchmark-input/extra-inputs/2025.10.24
+#   s3://skao-sdp-testdata/gecko/ical-benchmark-input/extra-inputs/2025.10.4
 #
 # Since the parset needs to refer to paths within the benchmark environment,
 # which is set by the wrapper script, we need to update paths in the template
@@ -102,7 +102,7 @@ RAPTHOR_MODULES="python git node-js \
     aoflagger boost casacore dp3 everybeam gcc-runtime glibc idg \
     py-astropy py-bdsf py-casacore py-jinja2 \
     py-losoto py-matplotlib py-mocpy py-numpy py-python-dateutil py-reproject \
-    py-requests py-rtree py-scipy py-shapely py-toil python-venv wsclean \ 
+    py-requests py-rtree py-scipy py-shapely py-toil python-venv wsclean \
     py-ska-sdp-benchmark-monitor"
 module load $RAPTHOR_MODULES
 
@@ -118,7 +118,6 @@ cd $CODE_PATH
 git status --porcelain
 echo "Installing rapthor from branch $(git rev-parse --abbrev-ref HEAD)"
 
-cd $WORK_PATH
 python -m venv $CODE_PATH/.venv
 source $CODE_PATH/.venv/bin/activate
 
@@ -132,6 +131,9 @@ echo "Environment ready!"
 
 # Run Rapthor
 # ---------------------------------------------------------------------------- #
+# Change to working directory
+cd $WORK_PATH
+
 # Start monitoring
 benchmon-start --save-dir $REPORT_PATH --system --sys --call
 

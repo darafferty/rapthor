@@ -30,7 +30,7 @@
 # this run is available in the rapthor repository under
 # `/examples/rapthor_skao_benchmark_template.parset`. 
 # These files are also hosted on S3 at: 
-#   s3://skao-sdp-testdata/gecko/ical-benchmark-input/extra-inputs/2025.10.24
+#   s3://skao-sdp-testdata/gecko/ical-benchmark-input/extra-inputs/2025.10.4
 # 
 # Since the parset needs to refer to paths within the benchmark environment,
 # which is set by the wrapper script, we need to update paths in the template
