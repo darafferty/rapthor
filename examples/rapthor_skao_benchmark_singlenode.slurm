@@ -91,24 +91,44 @@ PARSET_PATH=$INPUT_PATH/rapthor_skao_benchmark.parset
 envsubst < $PARSET_TEMPLATE_PATH > $PARSET_PATH
 echo "Generated parset file for run: $PARSET_PATH"
 
-# Change to working directory
-cd $WORK_PATH
-
 # Create output directories
-mkdir -p logs
+mkdir -p $WORK_PATH/logs
 
 # Load spack modules
+# ---------------------------------------------------------------------------- #
 module load "$META_MODULE"
-
-# Load module for rapthor and its dependencies
-RAPTHOR_MODULES="py-rapthor boost py-ska-sdp-benchmark-monitor"
+# rapthor dependencies
+RAPTHOR_MODULES="python git node-js \
+    aoflagger boost casacore dp3 everybeam gcc-runtime glibc idg \
+    py-astropy py-bdsf py-casacore py-jinja2 \
+    py-losoto py-matplotlib py-mocpy py-numpy py-python-dateutil py-reproject \
+    py-requests py-rtree py-scipy py-shapely py-toil python-venv wsclean \ 
+    py-ska-sdp-benchmark-monitor"
 module load $RAPTHOR_MODULES
-echo "Loaded $(rapthor --version)"
 
 # Ensure bdsf can find libboost_numpy311.so.1.86.0
 module show boost
 export LD_LIBRARY_PATH=$BOOST_ROOT/lib:$LD_LIBRARY_PATH
 echo $LD_LIBRARY_PATH
+
+# Install rapthor from branch
+# ---------------------------------------------------------------------------- #
+# Check repo status
+cd $CODE_PATH
+git status --porcelain
+echo "Installing rapthor from branch $(git rev-parse --abbrev-ref HEAD)"
+
+cd $WORK_PATH
+python -m venv $CODE_PATH/.venv
+source $CODE_PATH/.venv/bin/activate
+
+# Install poetry using pip
+pip install --upgrade pip
+pip install -e . -vvv
+
+# Check installation
+echo "Installed $(rapthor --version)"
+echo "Environment ready!"
 
 # Run Rapthor
 # ---------------------------------------------------------------------------- #
