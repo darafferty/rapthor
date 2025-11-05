@@ -50,7 +50,8 @@
 ################################################################################
 # SLURM settings:
 # ---------------------------------------------------------------------------- #
-#SBATCH --job-name=sp-5859-rapthor-benchmark-test
+#SBATCH --job-name=sp-5859-rapthor-long-path-test
+#SBATCH --partition=any-7i-metal-24xl-spt
 #SBATCH --exclusive
 #SBATCH --nodes=1                  # Use a single node by default.
 #SBATCH --ntasks-per-node=1
@@ -67,8 +68,24 @@ echo "Starting Rapthor benchmark script on $(hostname) at $(date)"
 # Set environmental variables
 # These are used for populating the parset template file.
 
+export INPUT_PATH=/shared/fsx1/hannes/gec-182
+WORK_PATH=$INPUT_PATH/test-path-fix-with-really-really-long-name-just-to-make-extra-sure-this-works
+
+if [ -e $WORK_PATH ]; then
+    for ((i=1;;i++)); do
+        if [ ! -e $WORK_PATH-$i ]; then break; fi
+    done
+    WORK_PATH=$WORK_PATH-$i
+else
+    mkdir -p $WORK_PATH
+fi
+
+export WORK_PATH=$WORK_PATH
+REPORT_PATH=$WORK_PATH/report
+export CODE_PATH=/home/hannes.breytenbach/repos/rapthor
+
 # Full path to the input measurement set. 
-export INPUT_MS_FULL_PATH=$(readlink -f "$INPUT_PATH/ska-test-data.ms")
+export INPUT_MS_FULL_PATH="/shared/fsx1/shared/ical_workshop/data/visibility.scan-400_applybeam.ms"
 
 # Export TMPDIR - without this some steps in rapthor use the default which may
 # run out of space - this is also substituted into parset file
@@ -78,34 +95,40 @@ export TMPDIR=$WORK_PATH/tmp
 #  `max_nodes`, `cpus_per_task`, `max_cores`, `max_threads` in parset
 export BATCH_SYSTEM="single_machine"
 export WORKER_NODE_COUNT=1
-export CPUS_ON_NODE=$SLURM_CPUS_ON_NODE
+export CPUS_ON_NODE=46
 
 # Set number of threads for numexpr
-export NUMEXPR_MAX_THREADS=$CPUS_ON_NODE
+export NUMEXPR_MAX_THREADS=46
 
 # Set paths to parset template file / output parset file
-PARSET_TEMPLATE_PATH=$INPUT_PATH/rapthor_skao_benchmark_template.parset
-PARSET_PATH=$INPUT_PATH/rapthor_skao_benchmark.parset
+PARSET_TEMPLATE_PATH=$INPUT_PATH/rapthor_ws_template.parset
+# PARSET_TEMPLATE_PATH=/shared/fsx1/shared/ical-bench/rapthor_skao_benchmark_template.parset
+PARSET_PATH=$INPUT_PATH/rapthor_ws_test.parset
 
 # Substitute the environment variables into the parset template
 envsubst < $PARSET_TEMPLATE_PATH > $PARSET_PATH
 echo "Generated parset file for run: $PARSET_PATH"
 
-
 # Create output directories
-mkdir -p "$WORK_PATH/logs"
+mkdir -p "$WORK_PATH/logs" $REPORT_PATH
 
 # Load spack modules
+module purge
+export MODULEPATH=/shared/fsx1/shared/metamodules
+META_MODULE=ska-sdp-spack/2025.10.3
 module load "$META_MODULE"
 
 # Load module for rapthor and its dependencies
-RAPTHOR_MODULES="boost py-ska-sdp-benchmark-monitor"
+RAPTHOR_MODULES="python node-js \
+    aoflagger boost casacore dp3 everybeam gcc-runtime glibc idg \
+    py-astropy py-bdsf py-casacore py-jinja2 \
+    py-losoto py-matplotlib py-mocpy py-numpy py-python-dateutil py-reproject \
+    py-requests py-rtree py-scipy py-shapely py-toil python python-venv wsclean"
 module load $RAPTHOR_MODULES
 
 # Change to working directory
-cd $WORK_PATH
-
-git checkout gec-182-test-benchmark
+# cd $CODE_PATH
+# git checkout gec-182-test-benchmark
 
 if [ -f $CODE_PATH/.venv/bin/activate ]; then
   # Activate existing virtual environment
@@ -118,16 +141,14 @@ else
   source $CODE_PATH/.venv/bin/activate
 
   # Install poetry using pip
+  cd $CODE_PATH
   pip install --upgrade pip
-  pip install -e . -vvv
+  pip install -e . -v
 
   # Check installation
-  python -c "from rapthor._version import __version__; print(f'Installed rapthor version: {__version__}')"
+  echo "RAPTHOR VERSION $(rapthor --version)"
   echo "Environment ready!"
 fi
-
-
-echo "Loaded $(rapthor --version)"
 
 # Ensure bdsf can find libboost_numpy311.so.1.86.0
 module show boost
@@ -137,15 +158,18 @@ echo $LD_LIBRARY_PATH
 # Run Rapthor
 # ---------------------------------------------------------------------------- #
 # Start monitoring
-benchmon-start --save-dir $REPORT_PATH --system --sys --call
+# benchmon-start --save-dir $REPORT_PATH --system --sys --call
+
+# Change to working directory
+cd $WORK_PATH
 
 # Run rapthor on parset
 time rapthor $PARSET_PATH
 
 # Stop monitoring
-benchmon-stop
+# benchmon-stop
 
 # Visualize monitoring results
-benchmon-visu --recursive --cpu --cpu-all --mem --net --disk --inline-call \
-    --fig-fmt png --fig-dpi medium "$REPORT_PATH"
+# benchmon-visu --recursive --cpu --cpu-all --mem --net --disk --inline-call \
+#     --fig-fmt png --fig-dpi medium "$REPORT_PATH"
 
