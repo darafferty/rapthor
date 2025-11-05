@@ -87,10 +87,6 @@ export NUMEXPR_MAX_THREADS=$CPUS_ON_NODE
 PARSET_TEMPLATE_PATH=$INPUT_PATH/rapthor_skao_benchmark_template.parset
 PARSET_PATH=$INPUT_PATH/rapthor_skao_benchmark.parset
 
-# Substitute the environment variables into the parset template
-envsubst < $PARSET_TEMPLATE_PATH > $PARSET_PATH
-echo "Generated parset file for run: $PARSET_PATH"
-
 # Create output directories
 mkdir -p $WORK_PATH/logs
 
@@ -133,6 +129,14 @@ echo "Environment ready!"
 # ---------------------------------------------------------------------------- #
 # Change to working directory
 cd $WORK_PATH
+
+# Substitute the environment variables into the parset template
+envsubst < $PARSET_TEMPLATE_PATH > $PARSET_PATH
+echo "Generated parset file for run: $PARSET_PATH"
+echo -e "Parset contents:\n\
+-----------------------------------------------------------------------------\n\
+$(cat $PARSET_PATH)\n\
+-----------------------------------------------------------------------------\n"
 
 # Start monitoring
 benchmon-start --save-dir $REPORT_PATH --system --sys --call
