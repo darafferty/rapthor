@@ -83,10 +83,6 @@ export CPUS_ON_NODE=$SLURM_CPUS_ON_NODE
 # Set number of threads for numexpr
 export NUMEXPR_MAX_THREADS=$CPUS_ON_NODE
 
-# Set paths to parset template file / output parset file
-PARSET_TEMPLATE_PATH=$INPUT_PATH/rapthor_skao_benchmark_template.parset
-PARSET_PATH=$INPUT_PATH/rapthor_skao_benchmark.parset
-
 # Create output directories
 mkdir -p $WORK_PATH/logs
 
@@ -131,8 +127,13 @@ echo "Environment ready!"
 # Change to working directory
 cd $WORK_PATH
 
+# Set paths to parset template file / output parset file
+PARSET_TEMPLATE_PATH=$INPUT_PATH/rapthor_skao_benchmark_template.parset
+PARSET_PATH=$INPUT_PATH/rapthor_skao_benchmark.parset
+
 # Substitute the environment variables into the parset template
 envsubst < $PARSET_TEMPLATE_PATH > $PARSET_PATH
+# Show parset contents
 echo "Generated parset file for run: $PARSET_PATH"
 echo -e "Parset contents:\n\
 -----------------------------------------------------------------------------\n\
