@@ -128,9 +128,6 @@ export NUMEXPR_MAX_THREADS=$SLURM_CPUS_PER_TASK
 # Create output directories
 mkdir -p $WORK_PATH/logs
 
-# Create output directories
-mkdir -p $WORK_PATH/logs
-
 # Set paths to parset template file / output parset file
 PARSET_TEMPLATE_PATH=$INPUT_PATH/rapthor_skao_benchmark_template.parset
 PARSET_PATH=$INPUT_PATH/rapthor_skao_benchmark.parset
