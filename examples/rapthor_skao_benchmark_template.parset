@@ -113,11 +113,11 @@ skip_corner_sectors = False
   
 [cluster]
 batch_system = $BATCH_SYSTEM
-max_nodes = $WORKER_NODE_COUNT
-cpus_per_task = $CPUS_ON_NODE
+max_nodes = $SLURM_JOB_NUM_NODES
+cpus_per_task = $SLURM_CPUS_PER_TASK
 mem_per_node_gb = 0
-max_cores = $CPUS_ON_NODE
-max_threads = $CPUS_ON_NODE
+max_cores = $SLURM_CPUS_PER_TASK
+max_threads = $SLURM_CPUS_PER_TASK
 deconvolution_threads = 0
 parallel_gridding_threads = 0
 local_scratch_dir = $TMPDIR
