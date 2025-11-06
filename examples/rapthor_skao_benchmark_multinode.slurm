@@ -54,7 +54,7 @@
 #SBATCH --job-name=sp-5859-rapthor-benchmark-test
 #SBATCH --nodes=4                  # This must match max_nodes in the parset.
 #SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=96         # Must be set. Should be less than the total
+#SBATCH --cpus-per-task=86         # Must be set. Should be less than the total
 # number of cpus on the node to avoid resource contention
 #SBATCH --time 168:00:00
 #SBATCH --output=%x-%j-leader-slurm.out
