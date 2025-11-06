@@ -52,15 +52,53 @@
 # SLURM settings:
 # ---------------------------------------------------------------------------- #
 #SBATCH --job-name=sp-5859-rapthor-benchmark-test
-#SBATCH --nodes=1                  # Use a single node by default.
+#SBATCH --nodes=4                  # This must match max_nodes in the parset.
 #SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=96
+#SBATCH --cpus-per-task=96         # Must be set. Should be less than the total
+# number of cpus on the node to avoid resource contention
 #SBATCH --time 168:00:00
 #SBATCH --output=%x-%j-leader-slurm.out
 #SBATCH --error=%x-%j-leader-slurm.out
 # ---------------------------------------------------------------------------- #
 #
 echo "Starting Rapthor benchmark script on $(hostname) at $(date)"
+
+# Load spack modules
+# ---------------------------------------------------------------------------- #
+echo "Loading meta-module: $META_MODULE"
+module purge
+module load "$META_MODULE"
+# rapthor dependencies
+RAPTHOR_MODULES="python git node-js \
+    aoflagger boost casacore dp3 everybeam gcc-runtime glibc idg \
+    py-astropy py-bdsf py-casacore py-jinja2 \
+    py-losoto py-matplotlib py-mocpy py-numpy py-python-dateutil py-reproject \
+    py-requests py-rtree py-scipy py-shapely py-toil python-venv wsclean \
+    py-ska-sdp-benchmark-monitor"
+module load $RAPTHOR_MODULES
+
+# Ensure bdsf can find libboost_numpy311.so.1.86.0
+module show boost
+export LD_LIBRARY_PATH=$BOOST_ROOT/lib:$LD_LIBRARY_PATH
+echo $LD_LIBRARY_PATH
+
+# Install rapthor from branch
+# ---------------------------------------------------------------------------- #
+# Check repo status
+cd $CODE_PATH
+git status --porcelain
+echo "Installing rapthor from branch $(git rev-parse --abbrev-ref HEAD)"
+
+python -m venv $CODE_PATH/.venv
+source $CODE_PATH/.venv/bin/activate
+
+# Install poetry using pip
+pip install --upgrade pip
+pip install -e . -v
+
+# Check installation
+echo "Installed $(rapthor --version)"
+echo "Environment ready!"
 
 # Configure
 # ---------------------------------------------------------------------------- #
@@ -72,27 +110,36 @@ export INPUT_MS_FULL_PATH=$(readlink -f "$INPUT_PATH/visibility.scan-400.ms")
 
 # Export TMPDIR - without this some steps in rapthor use the default which may
 # run out of space - this is also substituted into parset file
-export TMPDIR=$WORK_PATH/tmp
+export TMPDIR=/dev/shm
 
 # Options for toil worker nodes. These are substituted into the parset template.
-# Partition list for toil SALLOC to use
-export BATCH_SYSTEM="slurm"
+export BATCH_SYSTEM="slurm_static"
+export WORKER_NODE_COUNT=4
+
 export SALLOC_PARTITION=$SLURM_SUBMIT_HOST
-export WORKER_NODE_COUNT=3
-export TOIL_SLURM_ARGS="--time 48:00:00 -p $SALLOC_PARTITION -N $WORKER_NODE_COUNT --ntasks-per-node=5"
+export TOIL_SLURM_ARGS="--exclusive --exact -p $SALLOC_PARTITION --time 24:00:00"
 # Get the cpu count for the partition to set
-#  `max_nodes`, `cpus_per_task`, `max_cores`, `max_threads` in parset
-export CPUS_ON_NODE=$SLURM_JOB_CPUS_PER_NODE
+# `max_nodes`, `cpus_per_task`, `max_cores`, `max_threads` in parset
 
 # Set number of threads for numexpr
-export NUMEXPR_MAX_THREADS=$CPUS_ON_NODE
+export NUMEXPR_MAX_THREADS=$SLURM_CPUS_PER_TASK
 
 # Print configuration
 echo "Worker node configuration:"
+echo "BATCH_SYSTEM: $BATCH_SYSTEM"
 echo "SALLOC_PARTITION: $SALLOC_PARTITION"
 echo "WORKER_NODE_COUNT: $WORKER_NODE_COUNT"
-echo "CPUS_ON_NODE: $CPUS_ON_NODE"
+echo "SLURM_JOB_CPUS_PER_NODE: $SLURM_JOB_CPUS_PER_NODE"
+echo "SLURM_CPUS_PER_TASK: $SLURM_CPUS_PER_TASK"
 echo "TOIL_SLURM_ARGS: $TOIL_SLURM_ARGS"
+
+# Run Rapthor
+# ---------------------------------------------------------------------------- #
+# Change to working directory
+cd $WORK_PATH
+
+# Create output directories
+mkdir -p $WORK_PATH/logs
 
 # Set paths to parset template file / output parset file
 PARSET_TEMPLATE_PATH=$INPUT_PATH/rapthor_skao_benchmark_template.parset
@@ -100,50 +147,21 @@ PARSET_PATH=$INPUT_PATH/rapthor_skao_benchmark.parset
 
 # Substitute the environment variables into the parset template
 envsubst < $PARSET_TEMPLATE_PATH > $PARSET_PATH
+# Show parset contents
 echo "Generated parset file for run: $PARSET_PATH"
+echo -e "Parset contents:\n\
+-----------------------------------------------------------------------------\n\
+$(cat $PARSET_PATH)\n\
+-----------------------------------------------------------------------------\n"
 
-# Change to working directory
-cd $WORK_PATH
-
-# Create output directories
-mkdir -p logs
-
-# Load spack modules
-module load "$META_MODULE"
-
-# Load module for rapthor and its dependencies
-RAPTHOR_MODULES="py-rapthor boost py-ska-sdp-benchmark-monitor"
-module load $RAPTHOR_MODULES
-echo "Loaded $(rapthor --version)"
-
-# Ensure bdsf can find libboost_numpy311.so.1.86.0
-module show boost
-export LD_LIBRARY_PATH=$BOOST_ROOT/lib:$LD_LIBRARY_PATH
-echo $LD_LIBRARY_PATH
-
-# Run Rapthor
-# ---------------------------------------------------------------------------- #
 # Start monitoring on leader node
-BENCHMON_PARAMS="--save-dir $REPORT_PATH --system --sys --call"
-benchmon-multinode-start $BENCHMON_PARAMS
-
-# # Benchmon needs to be started on the worker nodes manually. We don't know 
-# # which nodes will be allocated, so just monitor all nodes in the partition.
-# ALL_NODES=($(sinfo -p $SALLOC_PARTITION -o "%n" -h))
-# for NODE_NAME in ${ALL_NODES[@]}; do
-#     srun --nodes=1 --ntasks=1 --nodelist="$NODE_NAME" --cpus-per-task=1 \
-#         benchmon-start $BENCHMON_PARAMS 
-# done
+benchmon-multinode-start --save-dir $REPORT_PATH --system --sys --call
 
 # Run rapthor on parset
 time rapthor $PARSET_PATH
 
 # Stop monitoring
 benchmon-multinode-stop
-# for NODE_NAME in ${ALL_NODES[@]}; do
-#     srun --wait --nodes=1 --ntasks=1 --nodelist="$NODE_NAME" --cpus-per-task=1 \
-#         benchmon-stop
-# done
 
 # Visualize monitoring results
 benchmon-visu --recursive --cpu --cpu-all --mem --net --disk --inline-call \

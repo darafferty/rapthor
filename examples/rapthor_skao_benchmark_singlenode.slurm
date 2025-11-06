@@ -53,9 +53,9 @@
 # ---------------------------------------------------------------------------- #
 #SBATCH --job-name=sp-5859-rapthor-benchmark-test
 #SBATCH --exclusive
-#SBATCH --nodes=1                  # Use a single node by default.
+#SBATCH --nodes=1                   # Use a single node by default.
 #SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=86
+#SBATCH --cpus-per-task=86          # must be set. Use less than the total number of cpus on the node to avoid oversubscription
 #SBATCH --time 168:00:00
 #SBATCH --output=%x-%j-leader-slurm.out
 #SBATCH --error=%x-%j-leader-slurm.out
@@ -125,6 +125,9 @@ export NUMEXPR_MAX_THREADS=$SLURM_CPUS_PER_TASK
 
 # Run Rapthor
 # ---------------------------------------------------------------------------- #
+# Create output directories
+mkdir -p $WORK_PATH/logs
+
 # Create output directories
 mkdir -p $WORK_PATH/logs
 
