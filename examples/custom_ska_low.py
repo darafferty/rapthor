@@ -44,6 +44,7 @@ for cycle in range(max_selfcal_loops):
         strategy_steps[cycle]['max_directions'] = 1
         strategy_steps[cycle]['auto_mask'] = 5.0
         strategy_steps[cycle]['auto_mask_nmiter'] = 2
+        strategy_steps[cycle]['channel_width_hz'] = 4e6
         strategy_steps[cycle]['threshisl'] = 4.0
         strategy_steps[cycle]['threshpix'] = 5.0
     # Do phase-only DD cycle
@@ -53,6 +54,7 @@ for cycle in range(max_selfcal_loops):
         strategy_steps[cycle]['max_directions'] = 5
         strategy_steps[cycle]['auto_mask'] = 5.0
         strategy_steps[cycle]['auto_mask_nmiter'] = 2
+        strategy_steps[cycle]['channel_width_hz'] = 4e6
         strategy_steps[cycle]['threshisl'] = 4.0
         strategy_steps[cycle]['threshpix'] = 5.0
     # Do complex gain DD cycle
@@ -62,6 +64,7 @@ for cycle in range(max_selfcal_loops):
         strategy_steps[cycle]['max_directions'] = 5
         strategy_steps[cycle]['auto_mask'] = 3.0
         strategy_steps[cycle]['auto_mask_nmiter'] = 5
+        strategy_steps[cycle]['channel_width_hz'] = 4e6
         strategy_steps[cycle]['threshisl'] = 3.0
         strategy_steps[cycle]['threshpix'] = 3.0
 

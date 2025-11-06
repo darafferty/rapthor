@@ -18,6 +18,7 @@ strategy_steps[0]['peel_bright_sources'] = False
 strategy_steps[0]['do_image'] = True
 strategy_steps[0]['auto_mask'] = 3.0
 strategy_steps[0]['auto_mask_nmiter'] = 2
+strategy_steps[i]['channel_width_hz'] = 4e6
 strategy_steps[0]['threshisl'] = 3.0
 strategy_steps[0]['threshpix'] = 5.0
 strategy_steps[0]['max_nmiter'] = 12
