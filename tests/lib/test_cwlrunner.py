@@ -217,7 +217,7 @@ class TestCWLRunner:
                 assert "runner: 'mpi_runner.sh'" in content
                 assert "nproc_flag: '-N'" in content
                 assert "extra_flags: ['--cpus-per-task=4', 'mpirun', '-pernode', '--bind-to', 'none', '-x', 'OPENBLAS_NUM_THREADS']" in content
-            elif runner.operation.batch_system in ("single_machine", "slurm_static":
+            elif runner.operation.batch_system in ("single_machine", "slurm_static"):
                 assert "runner: 'mpirun'" in content
                 assert "nproc_flag: '-np'" in content
                 assert "extra_flags: ['-pernode', '--bind-to', 'none', '-x', 'OPENBLAS_NUM_THREADS']" in content
