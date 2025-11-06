@@ -85,16 +85,19 @@ echo $LD_LIBRARY_PATH
 # Install rapthor from branch
 # ---------------------------------------------------------------------------- #
 # Check repo status
-cd $CODE_PATH
-git status --porcelain
-echo "Installing rapthor from branch $(git rev-parse --abbrev-ref HEAD)"
+git -C $CODE_PATH status --porcelain
+echo "Installing rapthor from branch $(git -C $CODE_PATH rev-parse --abbrev-ref HEAD)"
 
-python -m venv $CODE_PATH/.venv
-source $CODE_PATH/.venv/bin/activate
+# Change to working directory
+cd $WORK_PATH
+
+# Create and activate virtual environment
+python -m venv $WORK_PATH/.venv
+source $WORK_PATH/.venv/bin/activate
 
 # Install poetry using pip
 pip install --upgrade pip
-pip install -e . -v
+pip install $CODE_PATH -v
 
 # Check installation
 echo "Installed $(rapthor --version)"
@@ -135,9 +138,6 @@ echo "TOIL_SLURM_ARGS: $TOIL_SLURM_ARGS"
 
 # Run Rapthor
 # ---------------------------------------------------------------------------- #
-# Change to working directory
-cd $WORK_PATH
-
 # Create output directories
 mkdir -p $WORK_PATH/logs
 
