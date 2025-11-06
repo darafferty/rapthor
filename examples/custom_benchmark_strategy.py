@@ -9,6 +9,7 @@ This file is provided to base custom strategies from. See the documentation for
 detailed information on each parameter.
 """
 
+
 strategy_steps = []
 do_phase_only_solves = True
 min_selfcal_loops = 4 if do_phase_only_solves else 2
