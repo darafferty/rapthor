@@ -88,6 +88,7 @@ mkdir -p $WORK_PATH/logs
 
 # Load spack modules
 # ---------------------------------------------------------------------------- #
+echo "Loading meta-module: $META_MODULE"
 module purge
 module load "$META_MODULE"
 # rapthor dependencies
