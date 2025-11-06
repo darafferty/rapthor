@@ -62,30 +62,6 @@
 #
 echo "Starting Rapthor benchmark script on $(hostname) at $(date)"
 
-# Configure
-# ---------------------------------------------------------------------------- #
-# Set environmental variables
-# These are used for populating the parset template file.
-
-# Full path to the input measurement set. 
-export INPUT_MS_FULL_PATH=$(readlink -f "$INPUT_PATH/visibility.scan-400.ms")
-
-# Export TMPDIR - without this some steps in rapthor use the default which may
-# run out of space - this is also substituted into parset file
-export TMPDIR=/dev/shm
-
-# Get the cpu count for the partition to set
-#  `max_nodes`, `cpus_per_task`, `max_cores`, `max_threads` in parset
-export BATCH_SYSTEM="single_machine"
-export WORKER_NODE_COUNT=1
-export CPUS_ON_NODE=$SLURM_CPUS_ON_NODE
-
-# Set number of threads for numexpr
-export NUMEXPR_MAX_THREADS=$CPUS_ON_NODE
-
-# Create output directories
-mkdir -p $WORK_PATH/logs
-
 # Load spack modules
 # ---------------------------------------------------------------------------- #
 echo "Loading meta-module: $META_MODULE"
@@ -122,6 +98,30 @@ pip install -e . -v
 # Check installation
 echo "Installed $(rapthor --version)"
 echo "Environment ready!"
+
+# Configure
+# ---------------------------------------------------------------------------- #
+# Set environmental variables
+# These are used for populating the parset template file.
+
+# Full path to the input measurement set. 
+export INPUT_MS_FULL_PATH=$(readlink -f "$INPUT_PATH/visibility.scan-400.ms")
+
+# Export TMPDIR - without this some steps in rapthor use the default which may
+# run out of space - this is also substituted into parset file
+export TMPDIR=/dev/shm
+
+# Get the cpu count for the partition to set
+#  `max_nodes`, `cpus_per_task`, `max_cores`, `max_threads` in parset
+export BATCH_SYSTEM="single_machine"
+export WORKER_NODE_COUNT=1
+export CPUS_ON_NODE=$SLURM_CPUS_ON_NODE
+
+# Set number of threads for numexpr
+export NUMEXPR_MAX_THREADS=$CPUS_ON_NODE
+
+# Create output directories
+mkdir -p $WORK_PATH/logs
 
 # Run Rapthor
 # ---------------------------------------------------------------------------- #
