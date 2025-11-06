@@ -66,15 +66,13 @@ echo "Starting Rapthor benchmark script on $(hostname) at $(date)"
 # ---------------------------------------------------------------------------- #
 echo "Loading meta-module: $META_MODULE"
 module purge
-module load "$META_MODULE"
 # rapthor dependencies
-RAPTHOR_MODULES="python git node-js \
+module load python git node-js \
     aoflagger boost casacore dp3 everybeam gcc-runtime glibc idg \
     py-astropy py-bdsf py-casacore py-jinja2 \
     py-losoto py-matplotlib py-mocpy py-numpy py-python-dateutil py-reproject \
     py-requests py-rtree py-scipy py-shapely py-toil python-venv wsclean \
-    py-ska-sdp-benchmark-monitor"
-module load $RAPTHOR_MODULES
+    py-ska-sdp-benchmark-monitor
 
 # Ensure bdsf can find libboost_numpy311.so.1.86.0
 module show boost
@@ -84,20 +82,26 @@ echo $LD_LIBRARY_PATH
 # Install rapthor from branch
 # ---------------------------------------------------------------------------- #
 # Check repo status
+echo -e "Installing rapthor\n\
+-------------------------------------------------------------------------------"
 cd $CODE_PATH
-git status --porcelain
-echo "Installing rapthor from branch $(git rev-parse --abbrev-ref HEAD)"
+git checkout gec-182-prepare-benchmark-multinode
+git -C $CODE_PATH status --porcelain
+echo "Installing rapthor from branch: $(git -C $CODE_PATH rev-parse --abbrev-ref HEAD)"
 
-python -m venv $CODE_PATH/.venv
-source $CODE_PATH/.venv/bin/activate
+# Create and activate virtual environment
+python -m venv $WORK_PATH/.venv
+source $WORK_PATH/.venv/bin/activate
 
-# Install poetry using pip
-pip install --upgrade pip
-pip install -e . -v
+# Install using pip
+INSTALL_LOG=$LOG_PATH/rapthor-install.log
+pip install --upgrade pip 2>&1 > $INSTALL_LOG
+pip install $CODE_PATH -v 2>&1 >> $INSTALL_LOG
 
 # Check installation
 echo "Installed $(rapthor --version)"
-echo "Environment ready!"
+echo -e "Environment ready!\n\
+-------------------------------------------------------------------------------"
 
 # Configure
 # ---------------------------------------------------------------------------- #
@@ -114,19 +118,14 @@ export TMPDIR=/dev/shm
 # Get the cpu count for the partition to set
 #  `max_nodes`, `cpus_per_task`, `max_cores`, `max_threads` in parset
 export BATCH_SYSTEM="single_machine"
-export WORKER_NODE_COUNT=1
-export CPUS_ON_NODE=$SLURM_CPUS_ON_NODE
 
 # Set number of threads for numexpr
-export NUMEXPR_MAX_THREADS=$CPUS_ON_NODE
-
-# Create output directories
-mkdir -p $WORK_PATH/logs
+export NUMEXPR_MAX_THREADS=$SLURM_CPUS_PER_TASK
 
 # Run Rapthor
 # ---------------------------------------------------------------------------- #
-# Change to working directory
-cd $WORK_PATH
+# Create output directories
+mkdir -p $WORK_PATH/logs
 
 # Set paths to parset template file / output parset file
 PARSET_TEMPLATE_PATH=$INPUT_PATH/rapthor_skao_benchmark_template.parset
