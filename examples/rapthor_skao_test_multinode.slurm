@@ -178,7 +178,7 @@ $(cat $PARSET_PATH)\n\
 -----------------------------------------------------------------------------\n"
 
 # Start monitoring on leader node
-benchmon-multinode-start --save-dir $REPORT_PATH --system --sys --call
+benchmon-multinode-start --verbose --save-dir $REPORT_PATH --system --sys --call
 
 # Run rapthor on parset
 time rapthor $PARSET_PATH
@@ -194,4 +194,3 @@ benchmon-visu --recursive \
  --disk \
  --inline-call \
  --fig-fmt png --fig-dpi medium $REPORT_PATH
-
