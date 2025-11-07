@@ -3,11 +3,12 @@
 ###############################################################################
 # Rapthor Benchmark Script for SKAO AWS cluster
 #
-# This script is run by the `run_bench_all.sh` script in ska-sdp-spack/scripts/:
+# This script is intended to be run by the `run_bench_all.sh` script in
+# ska-sdp-spack/scripts/:
 # https://gitlab.com/ska-telescope/sdp/ska-sdp-spack/-/blob/sp-5859-add-bench-scripts/scripts/run_bench.sh
-# This loads the environmental variables set in the file
-# `ska-sdp-spack/scripts/bench_specs/_ical.sh`, and executed the script by
-# running the wrapper script `run_bench.sh`.
+# The wrapper script loads the environmental variables from the file
+# `ska-sdp-spack/scripts/bench_specs/_ical.sh`, and executes this script by
+# running the benchmark wrapper script `run_bench.sh`.
 
 # Environment variables:
 # ---------------------------------------------------------------------------- #
@@ -30,8 +31,8 @@
 # this run is available in the rapthor repository under
 # `/examples/rapthor_skao_benchmark_template.parset`. 
 # These files are also hosted on S3 at: 
-#   s3://skao-sdp-testdata/gecko/ical-benchmark-input/extra-inputs/2025.10.4
-#
+#   s3://skao-sdp-testdata/gecko/ical-benchmark-input/extra-inputs/2025.10.3
+# 
 # Since the parset needs to refer to paths within the benchmark environment,
 # which is set by the wrapper script, we need to update paths in the template
 # parset mentioned above.
