@@ -333,7 +333,7 @@ class TestToilRunner:
             scratch_dir = os.path.dirname(prefix)
             if global_scratch_dir:
                 assert scratch_dir == global_scratch_dir
-            elif batch_system == "slurm":
+            elif batch_system in ("slurm", "slurm_static"):
                 assert scratch_dir.startswith(parset["dir_working"])
             else:
                 assert False
@@ -353,7 +353,7 @@ class TestToilRunner:
         try:
             workdir = runner.args[runner.args.index("--workDir") + 1]
         except ValueError:
-            assert batch_system != "slurm"
+            assert batch_system not in ("slurm", "slurm_static")
         else:
             if global_scratch_dir:
                 assert os.path.dirname(workdir) == global_scratch_dir
