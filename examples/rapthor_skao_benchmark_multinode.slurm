@@ -95,9 +95,10 @@ cd $WORK_PATH
 python -m venv $WORK_PATH/.venv
 source $WORK_PATH/.venv/bin/activate
 
-# Install poetry using pip
-pip install --upgrade pip
-pip install $CODE_PATH -v
+# Install using pip
+INSTALL_LOG=$LOG_PATH/rapthor-install.log
+pip install --upgrade pip > $INSTALL_LOG
+pip install $CODE_PATH -v >> $INSTALL_LOG
 
 # Check installation
 echo "Installed $(rapthor --version)"

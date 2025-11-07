@@ -77,6 +77,7 @@ fi
 
 export WORK_PATH=$WORK_PATH
 export CODE_PATH=/home/hannes.breytenbach/repos/rapthor
+LOG_PATH=$WORK_PATH/logs
 REPORT_PATH=$WORK_PATH/report
 mkdir -p $LOG_PATH $REPORT_PATH
 
