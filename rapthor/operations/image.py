@@ -45,7 +45,7 @@ class Image(Operation):
         self.do_multiscale_clean = None
         self.pol_combine_method = None
         self.apply_none = False  # no solutions applied before or during imaging (ImageInitial only)
-        self.make_image_cube = False  # make an image cube (for now ImageNormalize only)
+        self.make_image_cube = self.field.make_image_cube  # make an image cube
         self.normalize_flux_scale = False  # derive flux scale normalizations (ImageNormalize only)
         self.compress_images = None
 
