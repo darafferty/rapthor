@@ -9,7 +9,6 @@ This file is provided to base custom strategies from. See the documentation for
 detailed information on each parameter.
 """
 
-
 strategy_steps = []
 do_phase_only_solves = True
 min_selfcal_loops = 4 if do_phase_only_solves else 2
@@ -25,7 +24,7 @@ for i in range(max_selfcal_loops):
     # amplitude solutions (per station) is set to 0.3, to allow for small adjustments to
     # the station calibration (done in LINC).
     step['do_calibrate'] = True
-    step['peel_outliers'] = (i == 0)
+    step['peel_outliers'] = False
     step['do_slowgain_solve'] = not do_phase_only_solves if i < 2 else True
     step['solve_min_uv_lambda'] = 2000 if i == 2 and do_phase_only_solves else 750
     step['do_fulljones_solve'] = False
@@ -69,6 +68,7 @@ for i in range(max_selfcal_loops):
         step['threshpix'] = 5.0
         step['max_nmiter'] = 12
     step['auto_mask_nmiter'] = 2
+    step['channel_width_hz'] = 8e6
 
     # Here we set the calibrator selection strategy, decreasing the target
     # minimum flux density for sources to be used as calibrators as selfcal
@@ -111,3 +111,4 @@ for i in range(max_selfcal_loops):
 
 # Set the parameters for the final pass as duplicates of the last selfcal step
 strategy_steps.append(strategy_steps[-1])
+strategy_steps[-1]['channel_width_hz'] = 4e6
