@@ -201,7 +201,9 @@ def run_steps(field, steps, final=False):
 
             # Set whether an image-frequency cube should be made
             field.make_image_cube = (
-                True if (field.save_image_cube and field.image_pol == "I") else False
+                True
+                if (field.save_image_cube and field.image_pol == "I" and final)
+                else False
             )
 
             # Set whether screens should be applied
