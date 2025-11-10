@@ -338,8 +338,11 @@ def chunk_observations(field, steps, data_fraction):
                 ]
             )
             max_dd_timestep = max(fast_solint, slow_solint)
-            max_di_timestep = max(fulljones_solint)
-            min_time = max(max_dd_timestep * field.dd_interval_factor, max_di_timestep)  # sec
+
+            # For DD solves (all solves except the full-Jones ones), include the effect
+            # of DD solution intervals (given by dd_interval_factor), which increases
+            # the solution intervals
+            min_time = max(max_dd_timestep * field.dd_interval_factor, fulljones_solint)  # sec
         else:
             # If no calibration is to be done, set the minimum time to a typical value
             # (600 s) that should result in enough chunks to obtain good uv coverage
