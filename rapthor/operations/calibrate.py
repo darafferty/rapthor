@@ -555,8 +555,8 @@ class CalibrateDI(Operation):
         timechunk_filename_fulljones = self.field.get_obs_parameters('timechunk_filename')
 
         # Get the solution intervals for the calibrations
-        solint_fulljones_timestep = self.field.get_obs_parameters('solint_slow_timestep_fulljones')
-        solint_fulljones_freqstep = self.field.get_obs_parameters('solint_slow_freqstep_fulljones')
+        solint_fulljones_timestep = self.field.get_obs_parameters('solint_fulljones_timestep')
+        solint_fulljones_freqstep = self.field.get_obs_parameters('solint_fulljones_freqstep')
 
         # Define various output filenames for the solution tables. We save some
         # as attributes since they are needed in finalize()

@@ -28,6 +28,7 @@ arguments:
   - predict.beammode=array_factor
   - msout.storagemanager=Dysco
   - msout.storagemanager.databitrate=0  # don't compress data, as they are noiseless
+  - msout.antennacompression=False
 
 inputs:
   - id: msin
