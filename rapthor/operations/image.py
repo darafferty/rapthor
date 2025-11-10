@@ -427,6 +427,22 @@ class Image(Operation):
                         if not hasattr(sector, "mask_filename"):
                             setattr(sector, "mask_filename", f'{image_root}-MFS-{polup}-image-pb.fits.mask.fits')
 
+            # Save the output image cubes. Note that, unlike the normal images above,
+            # the cubes are copied directly since mosaicking of the cubes is not yet
+            # supported
+            if self.make_image_cube:
+                src_filename = f'{image_root}_freq_cube.fits'
+                dst_dir = os.path.join(self.parset['dir_working'], 'images', self.name)
+                os.makedirs(dst_dir, exist_ok=True)
+                sector.I_freq_cube = os.path.join(dst_dir, os.path.basename(src_filename))
+                shutil.copy(src_filename, sector.I_freq_cube)
+
+                # Save the output beams and frequencies files
+                for suffix in ['_beams.txt', '_frequencies.txt']:
+                    src_filename = f'{image_root}_freq_cube.fits{suffix}'
+                    dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
+                    shutil.copy(src_filename, dst_filename)
+
             # The output sky models, both true sky and apparent sky (the filenames are
             # defined in the rapthor/scripts/filter_skymodel.py file)
             #
