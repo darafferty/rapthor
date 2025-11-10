@@ -17,6 +17,7 @@ for cycle in range(max_selfcal_loops):
     # Solution intervals (maxmimum for slow gains)
     strategy_steps[cycle]['fast_timestep_sec'] = 10.19349
     strategy_steps[cycle]['slow_timestep_separate_sec'] = 1800
+    strategy_steps[cycle]['fulljones_timestep_sec'] = 1800
 
     # Don't bootstrap fluxes from LoTSS/TGSS
     strategy_steps[cycle]['do_normalize'] = False

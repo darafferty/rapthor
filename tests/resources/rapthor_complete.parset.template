@@ -50,7 +50,6 @@ medium_datause = dual
 slow_freqstep_hz = 2e6
 slow_smoothnessconstraint = 4e6
 slow_datause = full
-fulljones_timestep_sec = 600.0
 fulljones_freqstep_hz = 1e6
 fulljones_smoothnessconstraint = 0
 solverlbfgs_dof = 100.0

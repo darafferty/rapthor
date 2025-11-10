@@ -119,6 +119,9 @@ The following processing parameters can be set for each cycle:
     slow_timestep_sec
         Float that sets the solution interval in sec to use in the slow-gain solve. For this solve, each station is solved for independently.
 
+    fulljones_timestep_sec
+        Float that sets the solution interval in sec to use in the full-Jones solve. For this solve, each station is solved for independently.
+
     do_fulljones_solve
         Boolean flag that determines whether the direction-independent full-Jones part of calibration should be done for this cycle.
 

@@ -327,8 +327,18 @@ def chunk_observations(field, steps, data_fraction):
                             in step else 0 for step in steps])
             slow_solint = max([step['slow_timestep_sec'] if 'slow_timestep_sec'
                             in step else 0 for step in steps])
+            fulljones_solint = max(
+                [
+                    (
+                        step["fulljones_timestep_sec"]
+                        if "fulljones_timestep_sec" in step
+                        else 0
+                    )
+                    for step in steps
+                ]
+            )
             max_dd_timestep = max(fast_solint, slow_solint)
-            max_di_timestep = field.fulljones_timestep_sec
+            max_di_timestep = max(fulljones_solint)
             min_time = max(max_dd_timestep * field.dd_interval_factor, max_di_timestep)  # sec
         else:
             # If no calibration is to be done, set the minimum time to a typical value

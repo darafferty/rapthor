@@ -49,7 +49,6 @@
         "slow_freqstep_hz": 1000000.0,
         "slow_smoothnessconstraint": 3000000.0,
         "slow_datause": "dual",
-        "fulljones_timestep_sec": 600.0,
         "fulljones_freqstep_hz": 1000000.0,
         "fulljones_smoothnessconstraint": 0,
         "solverlbfgs_dof": 200.0,

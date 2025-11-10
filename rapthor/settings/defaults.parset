@@ -140,8 +140,7 @@ slow_freqstep_hz = 1e6
 slow_smoothnessconstraint = 3e6
 slow_datause = dual
 
-# Full-Jones solve parameters
-fulljones_timestep_sec = 600.0
+# Full-Jones solve parameters. Note that the solution interval is set in the strategy
 fulljones_freqstep_hz = 1e6
 fulljones_smoothnessconstraint = 0
 
