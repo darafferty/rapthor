@@ -551,8 +551,9 @@ class CalibrateDI(Operation):
         starttime_fulljones = self.field.get_obs_parameters('starttime')
         ntimes_fulljones = self.field.get_obs_parameters('ntimes')
 
-        # Get the filenames of the input files for each time chunk
-        timechunk_filename_fulljones = self.field.get_obs_parameters('timechunk_filename')
+        # Get the filenames of the input files for each time chunk. These are the
+        # output of the predict_di pipeline done before this calibration
+        timechunk_filename_fulljones = self.field.get_obs_parameters('predict_di_output_filename')
 
         # Get the solution intervals for the calibrations
         solint_fulljones_timestep = self.field.get_obs_parameters('solint_fulljones_timestep')
