@@ -40,6 +40,7 @@ for i in range(max_selfcal_loops):
     strategy_steps[i]['do_image'] = True
     strategy_steps[i]['auto_mask'] = 3.0
     strategy_steps[i]['auto_mask_nmiter'] = 2
+    strategy_steps[i]['channel_width_hz'] = 4e6
     strategy_steps[i]['threshisl'] = 4.0
     strategy_steps[i]['threshpix'] = 5.0
     if i < 1:
@@ -54,6 +55,7 @@ for i in range(max_selfcal_loops):
     else:
         strategy_steps[i]['target_flux'] = 0.5
         strategy_steps[i]['max_nmiter'] = 12
+
     strategy_steps[i]['regroup_model'] = True
     strategy_steps[i]['max_directions'] = 30
     strategy_steps[i]['max_distance'] = 3.0

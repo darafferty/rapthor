@@ -233,7 +233,7 @@ class Image(Operation):
             if prepare_data_applycal_steps:
                 prepare_data_applycal_steps = f"[{','.join(prepare_data_applycal_steps)}]"
         all_regular = all([obs.channels_are_regular for obs in self.field.observations])
-        if all_regular and not self.apply_screens:
+        if self.field.image_bda_timebase > 0 and all_regular and not self.apply_screens:
             # Currently, BDA cannot be used with irregular data or screens (IDG)
             prepare_data_steps.append('bdaavg')
         prepare_data_steps = f"[{','.join(prepare_data_steps)}]"
@@ -530,6 +530,9 @@ class ImageInitial(Image):
         self.field.full_field_sector.auto_mask_nmiter = 1
         self.field.full_field_sector.threshisl = 4.0
         self.field.full_field_sector.threshpix = 5.0
+        self.field.full_field_sector.max_nmiter = 8
+        self.field.full_field_sector.max_wsclean_nchannels = 8
+        self.field.full_field_sector.channel_width_hz = 6e6
         self.imaging_sectors = [self.field.full_field_sector]
         self.imaging_parameters = self.field.parset['imaging_specific'].copy()
         self.imaging_parameters['cellsize_arcsec'] = 1.5
@@ -540,8 +543,6 @@ class ImageInitial(Image):
         self.imaging_parameters['dd_psf_grid'] = [1, 1]
         self.do_predict = False
         self.do_multiscale_clean = True
-        self.field.full_field_sector.max_nmiter = 8
-        self.field.full_field_sector.max_wsclean_nchannels = 8
         self.field.skip_final_major_iteration = True
         super().set_input_parameters()
 
@@ -642,6 +643,7 @@ class ImageNormalize(Image):
         self.field.normalize_sector.threshpix = 5.0
         self.field.normalize_sector.max_nmiter = 8
         self.field.normalize_sector.max_wsclean_nchannels = 8
+        self.field.normalize_sector.channel_width_hz = 4e6
         self.imaging_sectors = [self.field.normalize_sector]
         self.imaging_parameters = self.field.parset['imaging_specific'].copy()
         self.imaging_parameters['cellsize_arcsec'] = 6.0

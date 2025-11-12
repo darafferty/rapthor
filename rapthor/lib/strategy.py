@@ -145,6 +145,7 @@ def set_selfcal_strategy(field):
             strategy_steps[i]['threshpix'] = 5.0
             strategy_steps[i]['max_nmiter'] = 12
         strategy_steps[i]['auto_mask_nmiter'] = 2
+        strategy_steps[i]['channel_width_hz'] = 8e6
 
         if i == 0:
             if do_phase_only_solves:
@@ -182,9 +183,11 @@ def set_selfcal_strategy(field):
             strategy_steps[i]['divergence_ratio'] = 1.1
             strategy_steps[i]['failure_ratio'] = 10.0
 
-    # Set a final step as a duplicate of the last selfcal one
+    # Set a final step as a duplicate of the last selfcal one, except that
+    # the target output imaging channel width is smaller
     if strategy_steps:
         strategy_steps.append(strategy_steps[-1])
+        strategy_steps[-1]['channel_width_hz'] = 4e6
 
     return strategy_steps
 
@@ -300,7 +303,7 @@ def check_and_adjust_parameters(field, strategy_steps):
                            'do_normalize': [],
                            'do_image': ['auto_mask', 'auto_mask_nmiter', 'threshisl',
                                         'threshpix', 'max_nmiter', 'peel_outliers',
-                                        'peel_bright_sources'],
+                                        'peel_bright_sources', 'channel_width_hz'],
                            'do_check': ['convergence_ratio', 'divergence_ratio',
                                         'failure_ratio']}
 

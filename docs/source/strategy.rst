@@ -105,19 +105,19 @@ The following processing parameters can be set for each cycle:
         Boolean flag that determines whether the calibration step should be done for this cycle.
 
     solve_min_uv_lambda
-        Minimum uv distance in lambda used during calibration for this cycle (applies to both fast-phase and slow-gain solves).
+        Float that sets the minimum uv distance in lambda used during calibration for this cycle (applies to both fast-phase and slow-gain solves).
 
     fast_timestep_sec
-        Solution interval in sec to use in the fast (scalarphase) solve. For this solve, all the core stations are constrained to have the same solutions.
+        Float that sets the solution interval in sec to use in the fast (scalarphase) solve. For this solve, all the core stations are constrained to have the same solutions.
 
     medium_timestep_sec
-        Solution interval in sec to use in the medium-fast (scalarphase) solves. For the first medium-fast solve, each station is solved for independently. For the second medium-fast solve (done only when ``do_slowgain_solve`` is activated), the core stations are constrained to have the same solutions.
+        Float that sets the solution interval in sec to use in the medium-fast (scalarphase) solves. For the first medium-fast solve, each station is solved for independently. For the second medium-fast solve (done only when ``do_slowgain_solve`` is activated), the core stations are constrained to have the same solutions.
 
     do_slowgain_solve
         Boolean flag that determines whether the slow (diagonal) solve should be done for this cycle. If enabled, a slow solve is done, followed by a second medium-fast solve.
 
     slow_timestep_sec
-        Solution interval in sec to use in the slow-gain solve. For this solve, each station is solved for independently.
+        Float that sets the solution interval in sec to use in the slow-gain solve. For this solve, each station is solved for independently.
 
     do_fulljones_solve
         Boolean flag that determines whether the direction-independent full-Jones part of calibration should be done for this cycle.
@@ -154,6 +154,9 @@ The following processing parameters can be set for each cycle:
 
     max_nmiter
         Integer that sets the maximum number of major iterations done during imaging for this cycle.
+
+    channel_width_hz
+        Float that sets the target bandwidth in Hz of each output image channel.
 
     target_flux
         Float (or ``None``) that sets the target flux density in Jy for DDE calibrators for this cycle. If ``None``, a value must be specified for ``max_directions``.
