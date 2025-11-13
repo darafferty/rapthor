@@ -318,7 +318,7 @@ class Image(Operation):
             self.use_mpi = True
             nnodes = self.parset['cluster_specific']['max_nodes']
             nsubpipes = min(nsectors, nnodes)
-            if self.batch_system =='slurm_static':
+            if self.batch_system == 'slurm_static':
                 nnodes_per_subpipeline = max(1, int(nnodes / nsubpipes))
             else:
                 # We subtract one node because Toil must use one node for its job,
