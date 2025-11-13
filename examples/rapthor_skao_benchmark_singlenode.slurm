@@ -44,9 +44,9 @@
 # https://confluence.skatelescope.org/display/SE/%5BSimulations%5D+--+New+data+for+benchmarking
 # 
 # The data is available on S3 at:
-# s3://skao-sdp-testdata/PI28-Low-G3/product/eb-low68s_tec_lotss_noise_small-20000104-00000/ska-sdp/pb-low68s_tec_lotss_noise_small-20000104-00000/visibility.scan-400_applybeam.ms
+# s3://skao-sdp-testdata/PI28-Low-G3/product/eb-low68s_tec_lotss_noise_20000104-00000/ska-sdp/pb-low68s_tec_lotss_noise_20000104-00000/visibility.scan-400_applybeam.ms
 # Also available on the shared FSx storage at:
-# /shared/fsx1/shared/product/eb-low68s_tec_lotss_noise_small-20000104-00000/ska-sdp/pb-low68s_tec_lotss_noise_small-20000104-00000/visibility.scan-400_applybeam.ms
+# /shared/fsx1/shared/product/eb-low68s_tec_lotss_noise_20000104-00000/ska-sdp/pb-low68s_tec_lotss_noise_20000104-00000/visibility.scan-400_applybeam.ms
 #
 ################################################################################
 # SLURM settings:
@@ -68,35 +68,12 @@ echo "Starting Rapthor benchmark script on $(hostname) at $(date)"
 echo "Loading meta-module: $META_MODULE"
 module purge
 # rapthor dependencies
-module load python git node-js \
-    aoflagger boost casacore dp3 everybeam gcc-runtime glibc idg \
-    py-astropy py-bdsf py-casacore py-jinja2 \
-    py-losoto py-matplotlib py-mocpy py-numpy py-python-dateutil py-reproject \
-    py-requests py-rtree py-scipy py-shapely py-toil python-venv wsclean \
-    py-ska-sdp-benchmark-monitor
+module load python git node-js py-rapthor py-ska-sdp-benchmark-monitor
 
 # Ensure bdsf can find libboost_numpy311.so.1.86.0
 module show boost
 export LD_LIBRARY_PATH=$BOOST_ROOT/lib:$LD_LIBRARY_PATH
 echo $LD_LIBRARY_PATH
-
-# Install rapthor from branch
-# ---------------------------------------------------------------------------- #
-# Check repo status
-echo -e "Installing rapthor\n\
--------------------------------------------------------------------------------"
-cd $CODE_PATH
-git -C $CODE_PATH status --porcelain
-echo "Installing rapthor from branch: $(git -C $CODE_PATH rev-parse --abbrev-ref HEAD)"
-
-# Create and activate virtual environment
-python -m venv $WORK_PATH/.venv
-source $WORK_PATH/.venv/bin/activate
-
-# Install using pip
-INSTALL_LOG=$LOG_PATH/rapthor-install.log
-pip install --upgrade pip 2>&1 > $INSTALL_LOG
-pip install $CODE_PATH -v 2>&1 >> $INSTALL_LOG
 
 # Check installation
 echo "Installed $(rapthor --version)"
