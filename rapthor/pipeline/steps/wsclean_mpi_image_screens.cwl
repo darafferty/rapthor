@@ -184,6 +184,7 @@ inputs:
     type: int
     inputBinding:
       prefix: -j
+      valueFrom: $(runtime.cores)
   - id: num_deconvolution_threads
     type: int
     inputBinding:
