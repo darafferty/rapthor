@@ -108,7 +108,7 @@ Primary products:
 
         .. note::
 
-            If a Stokes-I image cube is also made (see :term:`make_image_cube`), then there will be an output cube, one for each imaging sector, named as ``sector_1_freq_cube.fits``, ``sector_2_freq_cube.fits``, etc. For each image cube, two auxilary files are also saved that list the frequencies (e.g., ``sector_1_freq_cube.fits_frequencies.txt``) and beam shapes (e.g., ``sector_1_freq_cube.fits_beams.txt``) of each image channel in the cube. These files can be useful for, e.g., processing the cube with source finders such as PyBDSF.
+            If a Stokes-I image cube is also made (see :term:`save_image_cube`), then there will be an output cube, one for each imaging sector, named as ``sector_1_freq_cube.fits``, ``sector_2_freq_cube.fits``, etc. For each image cube, two auxilary files are also saved that list the frequencies (e.g., ``sector_1_freq_cube.fits_frequencies.txt``) and beam shapes (e.g., ``sector_1_freq_cube.fits_beams.txt``) of each image channel in the cube. These files can be useful for, e.g., processing the cube with source finders such as PyBDSF.
 
         .. note::
 
