@@ -29,6 +29,7 @@ arguments:
   - solve1.usebeammodel=True
   - solve1.beam_interval=120
   - solve1.beammode=array_factor
+  - solve1.usefastpredict=False
   - solve1.initialsolutions.missingantennabehavior=unit
   - solve1.applycal.normalization.correction=amplitude000
   - solve1.applycal.normalization.solset=sol000
