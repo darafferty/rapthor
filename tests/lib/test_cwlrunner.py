@@ -129,6 +129,7 @@ class Field:
         self.slow_timestep_sec = 1
         self.apply_time_frequency_smearing = True
         self.correct_smearing_in_imaging = True
+        self.make_image_cube = False
 
     def get_calibration_radius(self):
         return 5.0

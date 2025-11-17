@@ -199,6 +199,11 @@ def run_steps(field, steps, final=False):
             # Set the Stokes polarizations for imaging
             field.image_pol = 'IQUV' if (field.make_quv_images and final) else 'I'
 
+            # Set whether an image-frequency cube should be made
+            field.make_image_cube = (
+                field.save_image_cube and field.image_pol == "I" and final
+            )
+
             # Set whether screens should be applied
             field.apply_screens = True if (field.dde_mode == 'hybrid' and final) else False
 
@@ -323,11 +328,20 @@ def chunk_observations(field, steps, data_fraction):
         if steps and any([step['do_calibrate'] for step in steps]):
             # When calibration is to be done, use the solution intervals to
             # set the minimum time
-            fast_solint = max([step['fast_timestep_sec'] if 'fast_timestep_sec'
-                            in step else 0 for step in steps])
-            slow_solint = max([step['slow_timestep_sec'] if 'slow_timestep_sec'
-                            in step else 0 for step in steps])
-            fulljones_solint = max(
+            fast_solint = max(
+                [
+                    step["fast_timestep_sec"] if "fast_timestep_sec" in step else 0
+                    for step in steps
+                ]
+            )
+            slow_solint = max(
+                [
+                    step["slow_timestep_sec"] if "slow_timestep_sec" in step else 0
+                    for step in steps
+                ]
+            )
+            max_dd_timestep = max(fast_solint, slow_solint)
+            max_di_timestep = max(
                 [
                     (
                         step["fulljones_timestep_sec"]
@@ -337,12 +351,11 @@ def chunk_observations(field, steps, data_fraction):
                     for step in steps
                 ]
             )
-            max_dd_timestep = max(fast_solint, slow_solint)
 
-            # For DD solves (all solves except the full-Jones ones), include the effect
-            # of DD solution intervals (given by dd_interval_factor), which increases
-            # the solution intervals
-            min_time = max(max_dd_timestep * field.dd_interval_factor, fulljones_solint)  # sec
+            # For DD solves, include the effect of DD solution intervals (given by
+            # dd_interval_factor), which increases the solution intervals. This effect
+            # does not apply to the DI solves
+            min_time = max(max_dd_timestep * field.dd_interval_factor, max_di_timestep)  # sec
         else:
             # If no calibration is to be done, set the minimum time to a typical value
             # (600 s) that should result in enough chunks to obtain good uv coverage

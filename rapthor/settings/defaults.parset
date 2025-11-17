@@ -201,11 +201,17 @@ source_finder = bdsf
 # closest to the image centers are used
 save_visibilities = False
 
+# Save the Stokes I frequency cube (default = False). If True, a cube is constructed
+# from the channel images made during the final imaging step, once self calibration has
+# been completed. The width of the frequency channels in the cube is set by the
+# channel_width_hz parameter in the strategy file
+save_image_cube = False
+
 # Save supplementary images for diagnostics e.g. dirty images and pybdsf masks
-# made during each imaging cycle (default = False).
+# made during each imaging cycle (default = False)
 save_supplementary_images = False
 
-# Compress intermediate selfcal images to reduce storage space (default = True).
+# Compress intermediate selfcal images to reduce storage space (default = True)
 compress_selfcal_images = True
 
 # Compress the final images to reduce storage space (default = False).
