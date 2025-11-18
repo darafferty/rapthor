@@ -21,8 +21,8 @@ hints:
 {% endif %}
 
 inputs:
-  - id: freqchunk_filename_fulljones
-    label: Filename of input MS for full-Jones solve (frequency)
+  - id: timechunk_filename_fulljones
+    label: Filename of input MS for full-Jones solve
     doc: |
       The filenames of input MS files for which the full-Jones gain
       calibration will be done (length = n_obs * n_freq_chunks).
@@ -210,7 +210,7 @@ steps:
 {% endif %}
     in:
       - id: msin
-        source: freqchunk_filename_fulljones
+        source: timechunk_filename_fulljones
       - id: data_colname
         source: data_colname
       - id: starttime

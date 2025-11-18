@@ -279,6 +279,7 @@ class Observation(object):
         else:
             # For other data, use the primary MS files
             self.parameters['timechunk_filename'] = [self.ms_filename] * self.ntimechunks
+        self.parameters['predict_di_output_filename'] = [self.ms_predict_di_filename] * self.ntimechunks
         self.parameters['starttime'] = [misc.convert_mjd2mvt(t) for t in starttimes]
         self.parameters['ntimes'] = [samplesperchunk] * self.ntimechunks
 

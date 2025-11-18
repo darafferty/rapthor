@@ -68,7 +68,6 @@ class Field(object):
         self.medium_smoothnessreffrequency = self.parset['calibration_specific']['medium_smoothnessreffrequency']
         self.medium_smoothnessrefdistance = self.parset['calibration_specific']['medium_smoothnessrefdistance']
         self.slow_smoothnessconstraint = self.parset['calibration_specific']['slow_smoothnessconstraint']
-        self.fulljones_timestep_sec = self.parset['calibration_specific']['fulljones_timestep_sec']
         self.smoothnessconstraint_fulljones = self.parset['calibration_specific']['fulljones_smoothnessconstraint']
         self.propagatesolutions = self.parset['calibration_specific']['propagatesolutions']
         self.solveralgorithm = self.parset['calibration_specific']['solveralgorithm']
@@ -119,6 +118,7 @@ class Field(object):
         self.fast_timestep_sec = 32.0
         self.medium_timestep_sec = 120.0
         self.slow_timestep_sec = 600.0
+        self.fulljones_timestep_sec = 600.0
         self.convergence_ratio = 0.95
         self.divergence_ratio = 1.1
         self.failure_ratio = 10.0

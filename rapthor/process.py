@@ -341,7 +341,20 @@ def chunk_observations(field, steps, data_fraction):
                 ]
             )
             max_dd_timestep = max(fast_solint, slow_solint)
-            max_di_timestep = field.fulljones_timestep_sec
+            max_di_timestep = max(
+                [
+                    (
+                        step["fulljones_timestep_sec"]
+                        if "fulljones_timestep_sec" in step
+                        else 0
+                    )
+                    for step in steps
+                ]
+            )
+
+            # For DD solves, include the effect of DD solution intervals (given by
+            # dd_interval_factor), which increases the solution intervals. This effect
+            # does not apply to the DI solves
             min_time = max(max_dd_timestep * field.dd_interval_factor, max_di_timestep)  # sec
         else:
             # If no calibration is to be done, set the minimum time to a typical value
