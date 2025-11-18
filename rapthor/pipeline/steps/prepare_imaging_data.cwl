@@ -9,8 +9,10 @@ doc: |
   Output is an MS file containing the imaging visibilities in the DATA column.
 
 requirements:
-  InlineJavascriptRequirement: {}
-  ShellCommandRequirement: {}
+  - class: InlineJavascriptRequirement
+  - class: ResourceRequirement
+    coresMin: 1
+  - class: ShellCommandRequirement
 
 arguments:
   - msout.overwrite=True
