@@ -135,7 +135,7 @@ class Field:
         return 5.0
 
 
-@pytest.fixture(params=("single_machine", "slurm"))
+@pytest.fixture(params=("single_machine", "slurm", "slurm_static"))
 def batch_system(request):
     return request.param
 
@@ -217,7 +217,7 @@ class TestCWLRunner:
                 assert "runner: 'mpi_runner.sh'" in content
                 assert "nproc_flag: '-N'" in content
                 assert "extra_flags: ['--cpus-per-task=4', 'mpirun', '-pernode', '--bind-to', 'none', '-x', 'OPENBLAS_NUM_THREADS']" in content
-            elif runner.operation.batch_system == "single_machine":
+            elif runner.operation.batch_system in ("single_machine", "slurm_static"):
                 assert "runner: 'mpirun'" in content
                 assert "nproc_flag: '-np'" in content
                 assert "extra_flags: ['-pernode', '--bind-to', 'none', '-x', 'OPENBLAS_NUM_THREADS']" in content
@@ -333,7 +333,7 @@ class TestToilRunner:
             scratch_dir = os.path.dirname(prefix)
             if global_scratch_dir:
                 assert scratch_dir == global_scratch_dir
-            elif batch_system == "slurm":
+            elif batch_system in ("slurm", "slurm_static"):
                 assert scratch_dir.startswith(parset["dir_working"])
             else:
                 assert False
@@ -353,7 +353,7 @@ class TestToilRunner:
         try:
             workdir = runner.args[runner.args.index("--workDir") + 1]
         except ValueError:
-            assert batch_system != "slurm"
+            assert batch_system not in ("slurm", "slurm_static")
         else:
             if global_scratch_dir:
                 assert os.path.dirname(workdir) == global_scratch_dir

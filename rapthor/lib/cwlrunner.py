@@ -86,11 +86,20 @@ class BaseCWLRunner:
         args = [self.command] + self.args
         args.extend([self.operation.pipeline_parset_file,
                      self.operation.pipeline_inputs_file])
+
+        # Ensure our custom batch system is on the path
+        # So that toil can load it as a plugin
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        script_dir = os.path.join(script_dir, "toil_batch_systems")
+        current_env = os.environ.copy()
+        python_path = os.pathsep.join([current_env.get("PYTHONPATH", ""), script_dir])
+        modified_env = current_env | {"PYTHONPATH": python_path}
+
         logger.debug("Executing command: %s", ' '.join(args))
         with open(self.operation.pipeline_outputs_file, 'w') as stdout, \
              open(self.operation.pipeline_log_file, 'w') as stderr:
             try:
-                result = subprocess.run(args=args, stdout=stdout, stderr=stderr, check=True)
+                result = subprocess.run(args=args, env=modified_env, stdout=stdout, stderr=stderr, check=True)
                 logger.debug(str(result))
                 return True
             except subprocess.CalledProcessError as err:
@@ -118,8 +127,9 @@ class CWLRunner(BaseCWLRunner):
                 "nproc_flag: '-np'",
                 "extra_flags: ['-pernode', '--bind-to', 'none', '-x', 'OPENBLAS_NUM_THREADS']"
             ]
-            logger.warning('MPI support for non-Slurm clusters is experimental. '
-                           'Please report any issues encountered.')
+            if self.operation.batch_system != 'slurm_static':
+                logger.warning('MPI support for non-Slurm clusters is experimental. '
+                            'Please report any issues encountered.')
         with open(self.operation.mpi_config_file, 'w') as cfg_file:
             cfg_file.write('\n'.join(mpi_config_lines))
 
@@ -242,7 +252,7 @@ class ToilRunner(CWLRunner):
         working directory as fall-back.
         """
         prefix = super()._get_tmp_outdir_prefix()
-        if not prefix and self.operation.batch_system == "slurm":
+        if not prefix and self.operation.batch_system.startswith("slurm"):
             prefix = os.path.join(
                 self.operation.pipeline_working_dir, "tmp-out", self.command + "."
             )
@@ -256,7 +266,7 @@ class ToilRunner(CWLRunner):
         `[cluster]` of the parset file, else use a temporary directory inside
         the pipeline working directory.
         """
-        if self.operation.batch_system == "slurm":
+        if self.operation.batch_system.startswith("slurm"):
             return os.path.join(
                 self.operation.global_scratch_dir
                 if self.operation.global_scratch_dir
@@ -322,7 +332,7 @@ class ToilRunner(CWLRunner):
         self._add_logging_options()
         if os.path.exists(self.operation.jobstore):
             self.args.extend(['--restart'])
-        if self.operation.batch_system == 'slurm':
+        if self.operation.batch_system.startswith('slurm'):
             self._add_slurm_options()
         elif self.operation.batch_system == "single_machine":
             if tmpdir_prefix := self._get_tmpdir_prefix():
