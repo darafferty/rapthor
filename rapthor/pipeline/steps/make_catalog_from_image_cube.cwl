@@ -55,7 +55,7 @@ inputs:
       prefix: --threshpix=
       separate: false
   - id: ncores
-    type: int?
+    type: int
     inputBinding:
       prefix: --ncores=
       valueFrom: $(runtime.cores)
