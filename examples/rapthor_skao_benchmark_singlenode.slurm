@@ -141,21 +141,12 @@ $(cat $PARSET_PATH)\n\
 -----------------------------------------------------------------------------\n"
 
 # Start monitoring
-benchmon-start --save-dir $REPORT_PATH --system --sys --call
+benchmon-start --level 0 --save-dir $REPORT_PATH
 
 # Run rapthor on parset
 time rapthor $PARSET_PATH
 
 # Stop monitoring
 benchmon-stop
-
-# Visualize monitoring results
-benchmon-visu --recursive \
- --cpu --cpu-all --cpu-freq \
- --mem \
- --net --net-data \
- --disk \
- --inline-call \
- --fig-fmt png --fig-dpi medium $REPORT_PATH
 
 echo "Rapthor benchmark script completed at $(date)"
