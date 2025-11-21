@@ -95,6 +95,7 @@ class Field(object):
         self.do_multiscale_clean = self.parset['imaging_specific']['do_multiscale_clean']
         self.apply_diagonal_solutions = self.parset['imaging_specific']['apply_diagonal_solutions']
         self.make_quv_images = self.parset['imaging_specific']['make_quv_images']
+        self.image_cube_stokes_list = self.parset['imaging_specific']['image_cube_stokes_list']
         self.pol_combine_method = self.parset['imaging_specific']['pol_combine_method']
         self.solverlbfgs_dof = self.parset['calibration_specific']['solverlbfgs_dof']
         self.solverlbfgs_iter = self.parset['calibration_specific']['solverlbfgs_iter']

@@ -91,7 +91,8 @@ class Image(Operation):
                              'preapply_dde_solutions': self.preapply_dde_solutions,
                              'max_cores': max_cores,
                              'use_mpi': self.field.use_mpi,
-                             'compress_images': self.compress_images}
+                             'compress_images': self.compress_images,
+                             'image_cube_stokes_list': self.field.image_cube_stokes_list}
 
     def set_input_parameters(self):
         """

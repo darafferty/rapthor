@@ -618,18 +618,62 @@ outputs:
       items: File
 {% endif %}
 {% if make_image_cube %}
-  - id: sector_image_cube
+{% if "i" in image_cube_stokes_list %}
+  - id: sector_image_I_cube
     outputSource:
-      - image_sector/sector_image_cube
+      - image_sector/sector_image_I_cube
     type: File[]
-  - id: sector_image_cube_beams
+  - id: sector_image_I_cube_beams
     outputSource:
-      - image_sector/sector_image_cube_beams
+      - image_sector/sector_image_I_cube_beams
     type: File[]
-  - id: sector_image_cube_frequencies
+  - id: sector_image_I_cube_frequencies
     outputSource:
-      - image_sector/sector_image_cube_frequencies
+      - image_sector/sector_image_cube_I_frequencies
     type: File[]
+{% endif %}
+{% if "q" in image_cube_stokes_list %}
+  - id: sector_image_Q_cube
+    outputSource:
+      - image_sector/sector_image_Q_cube
+    type: File[]
+  - id: sector_image_Q_cube_beams
+    outputSource:
+      - image_sector/sector_image_Q_cube_beams
+    type: File[]
+  - id: sector_image_Q_cube_frequencies
+    outputSource:
+      - image_sector/sector_image_cube_Q_frequencies
+    type: File[]
+{% endif %}
+{% if "u" in image_cube_stokes_list %}
+  - id: sector_image_U_cube
+    outputSource:
+      - image_sector/sector_image_U_cube
+    type: File[]
+  - id: sector_image_U_cube_beams
+    outputSource:
+      - image_sector/sector_image_U_cube_beams
+    type: File[]
+  - id: sector_image_U_cube_frequencies
+    outputSource:
+      - image_sector/sector_image_cube_U_frequencies
+    type: File[]
+{% endif %}
+{% if "v" in image_cube_stokes_list %}
+  - id: sector_image_V_cube
+    outputSource:
+      - image_sector/sector_image_V_cube
+    type: File[]
+  - id: sector_image_V_cube_beams
+    outputSource:
+      - image_sector/sector_image_V_cube_beams
+    type: File[]
+  - id: sector_image_V_cube_frequencies
+    outputSource:
+      - image_sector/sector_image_cube_V_frequencies
+    type: File[]
+{% endif %}
 {% endif %}
 {% if normalize_flux_scale %}
   - id: sector_source_catalog

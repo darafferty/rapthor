@@ -575,18 +575,62 @@ outputs:
     type: File
 {% endif %}
 {% if make_image_cube %}
-  - id: sector_image_cube
+{% if "i" in image_cube_stokes_list %}
+  - id: sector_image_I_cube
     outputSource:
-      - make_image_cube/image_cube
+      - make_image_I_cube/image_cube
     type: File
-  - id: sector_image_cube_beams
+  - id: sector_image_I_cube_beams
     outputSource:
-      - make_image_cube/image_cube_beams
+      - make_image_I_cube/image_cube_beams
     type: File
-  - id: sector_image_cube_frequencies
+  - id: sector_image_I_cube_frequencies
     outputSource:
-      - make_image_cube/image_cube_frequencies
+      - make_image_I_cube/image_cube_frequencies
     type: File
+{% endif %}
+{% if "q" in image_cube_stokes_list %}
+  - id: sector_image_Q_cube
+    outputSource:
+      - make_image_Q_cube/image_cube
+    type: File?
+  - id: sector_image_Q_cube_beams
+    outputSource:
+      - make_image_Q_cube/image_cube_beams
+    type: File
+  - id: sector_image_Q_cube_frequencies
+    outputSource:
+      - make_image_Q_cube/image_cube_frequencies
+    type: File
+{% endif %}
+{% if "u" in image_cube_stokes_list %}
+  - id: sector_image_U_cube
+    outputSource:
+      - make_image_U_cube/image_cube
+    type: File?
+  - id: sector_image_U_cube_beams
+    outputSource:
+      - make_image_U_cube/image_cube_beams
+    type: File
+  - id: sector_image_U_cube_frequencies
+    outputSource:
+      - make_image_U_cube/image_cube_frequencies
+    type: File
+{% endif %}
+{% if "v" in image_cube_stokes_list %}
+  - id: sector_image_V_cube
+    outputSource:
+      - make_image_V_cube/image_cube
+    type: File?
+  - id: sector_image_V_cube_beams
+    outputSource:
+      - make_image_V_cube/image_cube_beams
+    type: File
+  - id: sector_image_V_cube_frequencies
+    outputSource:
+      - make_image_V_cube/image_cube_frequencies
+    type: File
+{% endif %}
 {% endif %}
 {% if normalize_flux_scale %}
   - id: sector_source_catalog
@@ -957,21 +1001,79 @@ steps:
 
 {% if make_image_cube %}
 # start make_image_cube
-  - id: make_image_cube
-    label: Make an image cube
+
+{% if "i" in image_cube_stokes_list %}
+  - id: make_image_I_cube
+    label: Make Stokes-I image cube
     doc: |
       This step uses combines the channel images from WSClean
-      into an image cube.
+      into a Stokes-I image cube.
     run: {{ rapthor_pipeline_dir }}/steps/make_image_cube.cwl
     in:
       - id: input_image_list
         source: image/image_I_pb_channels
       - id: output_image
-        source: image_cube_name
+        source: image_I_cube_name
     out:
       - id: image_cube
       - id: image_cube_beams
       - id: image_cube_frequencies
+{% endif %}
+
+{% if "q" in image_cube_stokes_list %}
+  - id: make_image_Q_cube
+    label: Make Stokes-Q image cube
+    doc: |
+      This step uses combines the channel images from WSClean
+      into a Stokes-Q image cube.
+    run: {{ rapthor_pipeline_dir }}/steps/make_image_cube.cwl
+    in:
+      - id: input_image_list
+        source: image/image_Q_pb_channels
+      - id: output_image
+        source: image_Q_cube_name
+    out:
+      - id: image_cube
+      - id: image_cube_beams
+      - id: image_cube_frequencies
+{% endif %}
+
+{% if "u" in image_cube_stokes_list %}
+  - id: make_image_U_cube
+    label: Make Stokes-U image cube
+    doc: |
+      This step uses combines the channel images from WSClean
+      into a Stokes-U image cube.
+    run: {{ rapthor_pipeline_dir }}/steps/make_image_cube.cwl
+    in:
+      - id: input_image_list
+        source: image/image_U_pb_channels
+      - id: output_image
+        source: image_U_cube_name
+    out:
+      - id: image_cube
+      - id: image_cube_beams
+      - id: image_cube_frequencies
+{% endif %}
+
+{% if "v" in image_cube_stokes_list %}
+  - id: make_image_V_cube
+    label: Make Stokes-V image cube
+    doc: |
+      This step uses combines the channel images from WSClean
+      into a Stokes-V image cube.
+    run: {{ rapthor_pipeline_dir }}/steps/make_image_cube.cwl
+    in:
+      - id: input_image_list
+        source: image/image_V_pb_channels
+      - id: output_image
+        source: image_V_cube_name
+    out:
+      - id: image_cube
+      - id: image_cube_beams
+      - id: image_cube_frequencies
+{% endif %}
+
 {% endif %}
 # end make_image_cube
 
@@ -1079,11 +1181,11 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/make_catalog_from_image_cube.cwl
     in:
       - id: cube
-        source: make_image_cube/image_cube
+        source: make_image_I_cube/image_cube
       - id: cube_beams
-        source: make_image_cube/image_cube_beams
+        source: make_image_I_cube/image_cube_beams
       - id: cube_frequencies
-        source: make_image_cube/image_cube_frequencies
+        source: make_image_I_cube/image_cube_frequencies
       - id: output_catalog
         source: output_source_catalog
       - id: threshisl
