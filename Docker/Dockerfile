@@ -44,8 +44,8 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         libboost-test-dev \
         libcfitsio-dev \
         libfftw3-dev \
+        libglib2.0-dev \
         libgsl-dev \
-        libgtkmm-3.0-dev \
         libhdf5-serial-dev \
         liblua5.3-dev \
         libpng-dev \
@@ -123,6 +123,7 @@ RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
     -DPORTABLE=${PORTABLE} \
     -DTARGET_CPU=${TARGET_CPU} \
+    -DENABLE_GUI=OFF \
     -H/src/aoflagger \
     -B/src/aoflagger/build \
     -G Ninja
@@ -225,29 +226,23 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get install -y --no-install-recommends \
         ca-certificates \
         git \
-        libatkmm-1.6-1v5 \
         libblas3 \
         libboost-filesystem1.74.0 \
         libboost-program-options1.74.0 \
         libboost-python1.74.0 \
-        libcairomm-1.0-1v5 \
-        libcfitsio-bin \
+        libcfitsio9 \
         libfftw3-double3 \
         libfftw3-single3 \
         libgfortran5 \
         libglib2.0-0 \
-        libglibmm-2.4-1v5 \
         libgomp1 \
         libgsl27 \
-        libgtkmm-3.0-1v5 \
         libhdf5-103-1 \
         libhdf5-cpp-103-1 \
         liblapack3 \
         liblua5.3-0 \
-        libpangomm-1.4-1v5 \
         libpng16-16 \
         libpython3.10 \
-        libsigc++-2.0-0v5 \
         libstdc++6 \
         libwcs7 \
         nodejs \
