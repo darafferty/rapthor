@@ -384,31 +384,28 @@ class Parset:
         ]
         if any([pol not in "IQUV" for pol in options["image_cube_stokes_list"]]):
             raise ValueError(
-                "The option 'image_cube_stokes_list' specifies an invalid Stokes "
-                "parameter. Allowed Stokes parameters are any combination of 'I', "
-                "'Q', 'U', or 'V'. "
+                "The option 'image_cube_stokes_list' specifies one or more invalid "
+                "Stokes parameters. Allowed Stokes parameters are 'I', 'Q', 'U', or "
+                "'V'."
             )
 
-        if (
-            options["save_image_cube"] and
-            options["image_cube_stokes_list"] == []
-        ):
+        if options["save_image_cube"] and options["image_cube_stokes_list"] == []:
             log.warning(
                 "The option 'save_image_cube' is enabled, but 'image_cube_stokes_list' "
-                "does not specify any Stokes parameters for which the cube should be "
-                "made. Setting 'image_cube_stokes_list' = [I]."
+                "is empty. Setting 'image_cube_stokes_list' to '[I]'."
             )
             options["image_cube_stokes_list"] = ["I"]
         if (
-            options["save_image_cube"] and
-            not options["make_quv_images"] and
-            options["image_cube_stokes_list"] != ["I"]
+            options["save_image_cube"]
+            and not options["make_quv_images"]
+            and options["image_cube_stokes_list"] != ["I"]
         ):
             raise ValueError(
-                "The option 'image_cube_stokes_list' specifies that a cube for a Stokes parameter "
-                "other than I should be saved, but non-Stokes-I images will not be made since "
-                "make_quv_images' is not enabled. Please enable 'make_quv_images' or set "
-                "'image_cube_stokes_list' = [I]."
+                "The option 'image_cube_stokes_list' specifies that a cube for a "
+                "Stokes parameter other than I should be saved, but non-Stokes-I "
+                "images will not be made (since 'make_quv_images' is not enabled). "
+                "Please enable 'make_quv_images' or set 'image_cube_stokes_list' to "
+                "'[I]'."
             )
 
         # Cluster options
