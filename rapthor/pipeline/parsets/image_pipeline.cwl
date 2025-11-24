@@ -653,7 +653,7 @@ outputs:
     type: File[]
   - id: sector_image_I_cube_frequencies
     outputSource:
-      - image_sector/sector_image_cube_I_frequencies
+      - image_sector/sector_image_I_cube_frequencies
     type: File[]
 {% endif %}
 {% if "Q" in image_cube_stokes_list %}
@@ -667,7 +667,7 @@ outputs:
     type: File[]
   - id: sector_image_Q_cube_frequencies
     outputSource:
-      - image_sector/sector_image_cube_Q_frequencies
+      - image_sector/sector_image_Q_cube_frequencies
     type: File[]
 {% endif %}
 {% if "U" in image_cube_stokes_list %}
@@ -681,7 +681,7 @@ outputs:
     type: File[]
   - id: sector_image_U_cube_frequencies
     outputSource:
-      - image_sector/sector_image_cube_U_frequencies
+      - image_sector/sector_image_U_cube_frequencies
     type: File[]
 {% endif %}
 {% if "V" in image_cube_stokes_list %}
@@ -695,7 +695,7 @@ outputs:
     type: File[]
   - id: sector_image_V_cube_frequencies
     outputSource:
-      - image_sector/sector_image_cube_V_frequencies
+      - image_sector/sector_image_V_cube_frequencies
     type: File[]
 {% endif %}
 {% endif %}
