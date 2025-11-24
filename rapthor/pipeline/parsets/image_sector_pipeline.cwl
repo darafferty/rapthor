@@ -477,11 +477,34 @@ inputs:
     type: boolean
 
 {% if make_image_cube %}
-  - id: image_cube_name
+{% if "I" in image_cube_stokes_list %}
+  - id: image_I_cube_name
     label: Filename of output image cube
     doc: |
-      The filename of the output image cube (length = 1).
+      The filename of the output Stokes-I image cube (length = 1).
     type: string
+{% endif %}
+{% if "Q" in image_cube_stokes_list %}
+  - id: image_Q_cube_name
+    label: Filename of output image cube
+    doc: |
+      The filename of the output Stokes-Q image cube (length = 1).
+    type: string
+{% endif %}
+{% if "U" in image_cube_stokes_list %}
+  - id: image_U_cube_name
+    label: Filename of output image cube
+    doc: |
+      The filename of the output Stokes-U image cube (length = 1).
+    type: string
+{% endif %}
+{% if "V" in image_cube_stokes_list %}
+  - id: image_V_cube_name
+    label: Filename of output image cube
+    doc: |
+      The filename of the output Stokes-V image cube (length = 1).
+    type: string
+{% endif %}
 {% endif %}
 
 {% if normalize_flux_scale %}
@@ -575,7 +598,7 @@ outputs:
     type: File
 {% endif %}
 {% if make_image_cube %}
-{% if "i" in image_cube_stokes_list %}
+{% if "I" in image_cube_stokes_list %}
   - id: sector_image_I_cube
     outputSource:
       - make_image_I_cube/image_cube
@@ -589,7 +612,7 @@ outputs:
       - make_image_I_cube/image_cube_frequencies
     type: File
 {% endif %}
-{% if "q" in image_cube_stokes_list %}
+{% if "Q" in image_cube_stokes_list %}
   - id: sector_image_Q_cube
     outputSource:
       - make_image_Q_cube/image_cube
@@ -603,7 +626,7 @@ outputs:
       - make_image_Q_cube/image_cube_frequencies
     type: File
 {% endif %}
-{% if "u" in image_cube_stokes_list %}
+{% if "U" in image_cube_stokes_list %}
   - id: sector_image_U_cube
     outputSource:
       - make_image_U_cube/image_cube
@@ -617,7 +640,7 @@ outputs:
       - make_image_U_cube/image_cube_frequencies
     type: File
 {% endif %}
-{% if "v" in image_cube_stokes_list %}
+{% if "V" in image_cube_stokes_list %}
   - id: sector_image_V_cube
     outputSource:
       - make_image_V_cube/image_cube
@@ -1002,7 +1025,7 @@ steps:
 {% if make_image_cube %}
 # start make_image_cube
 
-{% if "i" in image_cube_stokes_list %}
+{% if "I" in image_cube_stokes_list %}
   - id: make_image_I_cube
     label: Make Stokes-I image cube
     doc: |
@@ -1020,7 +1043,7 @@ steps:
       - id: image_cube_frequencies
 {% endif %}
 
-{% if "q" in image_cube_stokes_list %}
+{% if "Q" in image_cube_stokes_list %}
   - id: make_image_Q_cube
     label: Make Stokes-Q image cube
     doc: |
@@ -1038,7 +1061,7 @@ steps:
       - id: image_cube_frequencies
 {% endif %}
 
-{% if "u" in image_cube_stokes_list %}
+{% if "U" in image_cube_stokes_list %}
   - id: make_image_U_cube
     label: Make Stokes-U image cube
     doc: |
@@ -1056,7 +1079,7 @@ steps:
       - id: image_cube_frequencies
 {% endif %}
 
-{% if "v" in image_cube_stokes_list %}
+{% if "V" in image_cube_stokes_list %}
   - id: make_image_V_cube
     label: Make Stokes-V image cube
     doc: |

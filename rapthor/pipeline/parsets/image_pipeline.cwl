@@ -519,12 +519,36 @@ inputs:
     type: boolean
 
 {% if make_image_cube %}
-  - id: image_cube_name
+{% if "I" in image_cube_stokes_list %}
+  - id: image_I_cube_name
     label: Filename of output image cube
     doc: |
-      The filename of the output image cube (length = n_sectors).
-    type: string[]
+      The filename of the output Stokes-I image cube (length = 1).
+    type: string
 {% endif %}
+{% if "Q" in image_cube_stokes_list %}
+  - id: image_Q_cube_name
+    label: Filename of output image cube
+    doc: |
+      The filename of the output Stokes-Q image cube (length = 1).
+    type: string
+{% endif %}
+{% if "U" in image_cube_stokes_list %}
+  - id: image_U_cube_name
+    label: Filename of output image cube
+    doc: |
+      The filename of the output Stokes-U image cube (length = 1).
+    type: string
+{% endif %}
+{% if "V" in image_cube_stokes_list %}
+  - id: image_V_cube_name
+    label: Filename of output image cube
+    doc: |
+      The filename of the output Stokes-V image cube (length = 1).
+    type: string
+{% endif %}
+{% endif %}
+
 
 {% if normalize_flux_scale %}
   - id: output_source_catalog
@@ -618,7 +642,7 @@ outputs:
       items: File
 {% endif %}
 {% if make_image_cube %}
-{% if "i" in image_cube_stokes_list %}
+{% if "I" in image_cube_stokes_list %}
   - id: sector_image_I_cube
     outputSource:
       - image_sector/sector_image_I_cube
@@ -632,7 +656,7 @@ outputs:
       - image_sector/sector_image_cube_I_frequencies
     type: File[]
 {% endif %}
-{% if "q" in image_cube_stokes_list %}
+{% if "Q" in image_cube_stokes_list %}
   - id: sector_image_Q_cube
     outputSource:
       - image_sector/sector_image_Q_cube
@@ -646,7 +670,7 @@ outputs:
       - image_sector/sector_image_cube_Q_frequencies
     type: File[]
 {% endif %}
-{% if "u" in image_cube_stokes_list %}
+{% if "U" in image_cube_stokes_list %}
   - id: sector_image_U_cube
     outputSource:
       - image_sector/sector_image_U_cube
@@ -660,7 +684,7 @@ outputs:
       - image_sector/sector_image_cube_U_frequencies
     type: File[]
 {% endif %}
-{% if "v" in image_cube_stokes_list %}
+{% if "V" in image_cube_stokes_list %}
   - id: sector_image_V_cube
     outputSource:
       - image_sector/sector_image_V_cube
@@ -852,8 +876,26 @@ steps:
         source: bright_skymodel_pb
 {% endif %}
 {% if make_image_cube %}
-      - id: image_cube_name
-        source: image_cube_name
+
+{% if make_image_cube %}
+{% if "I" in image_cube_stokes_list %}
+      - id: image_I_cube_name
+        source: image_I_cube_name
+{% endif %}
+{% if "Q" in image_cube_stokes_list %}
+      - id: image_Q_cube_name
+        source: image_Q_cube_name
+{% endif %}
+{% if "U" in image_cube_stokes_list %}
+      - id: image_U_cube_name
+        source: image_U_cube_name
+{% endif %}
+{% if "V" in image_cube_stokes_list %}
+      - id: image_V_cube_name
+        source: image_V_cube_name
+{% endif %}
+{% endif %}
+
 {% endif %}
 {% if normalize_flux_scale %}
       - id: output_source_catalog
@@ -908,22 +950,22 @@ steps:
       - id: sector_region_file
 {% endif %}
 {% if make_image_cube %}
-{% if "i" in image_cube_stokes_list %}
+{% if "I" in image_cube_stokes_list %}
       - id: sector_image_I_cube
       - id: sector_image_I_cube_beams
       - id: sector_image_I_cube_frequencies
 {% endif %}
-{% if "q" in image_cube_stokes_list %}
+{% if "Q" in image_cube_stokes_list %}
       - id: sector_image_Q_cube
       - id: sector_image_Q_cube_beams
       - id: sector_image_Q_cube_frequencies
 {% endif %}
-{% if "u" in image_cube_stokes_list %}
+{% if "U" in image_cube_stokes_list %}
       - id: sector_image_U_cube
       - id: sector_image_U_cube_beams
       - id: sector_image_U_cube_frequencies
 {% endif %}
-{% if "v" in image_cube_stokes_list %}
+{% if "V" in image_cube_stokes_list %}
       - id: sector_image_V_cube
       - id: sector_image_V_cube_beams
       - id: sector_image_V_cube_frequencies
