@@ -918,7 +918,18 @@ steps:
 {% endif %}
 {% endif %}
 {% if make_image_cube %}
-              image_cube_name,
+{% if "I" in image_cube_stokes_list %}
+              image_I_cube_name,
+{% endif %}
+{% if "Q" in image_cube_stokes_list %}
+              image_Q_cube_name,
+{% endif %}
+{% if "U" in image_cube_stokes_list %}
+              image_U_cube_name,
+{% endif %}
+{% if "V" in image_cube_stokes_list %}
+              image_V_cube_name,
+{% endif %}
 {% endif %}
 {% if normalize_flux_scale %}
               output_source_catalog,

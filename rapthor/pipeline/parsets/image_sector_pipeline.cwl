@@ -484,6 +484,7 @@ inputs:
       The filename of the output Stokes-I image cube (length = 1).
     type: string
 {% endif %}
+
 {% if "Q" in image_cube_stokes_list %}
   - id: image_Q_cube_name
     label: Filename of output image cube
@@ -491,6 +492,7 @@ inputs:
       The filename of the output Stokes-Q image cube (length = 1).
     type: string
 {% endif %}
+
 {% if "U" in image_cube_stokes_list %}
   - id: image_U_cube_name
     label: Filename of output image cube
@@ -498,6 +500,7 @@ inputs:
       The filename of the output Stokes-U image cube (length = 1).
     type: string
 {% endif %}
+
 {% if "V" in image_cube_stokes_list %}
   - id: image_V_cube_name
     label: Filename of output image cube
