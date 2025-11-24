@@ -936,6 +936,9 @@ steps:
       - id: image_I_nonpb_name
       - id: image_I_pb_name
       - id: image_I_pb_channels
+      - id: image_Q_pb_channels
+      - id: image_U_pb_channels
+      - id: image_V_pb_channels
       - id: images_extra
 {% if save_source_list %}
       - id: skymodel_nonpb
