@@ -710,7 +710,7 @@ class ImageNormalize(Image):
 
         # Save the output cube, beams, and frequencies files
         for suffix in ['', '_beams.txt', '_frequencies.txt']:
-            src_filename = f'{image_root}_freq_cube.fits{suffix}'
+            src_filename = f'{image_root}_I_freq_cube.fits{suffix}'
             dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
             shutil.copy(src_filename, dst_filename)
 
