@@ -73,7 +73,7 @@ class Image(Operation):
                 self.preapply_dde_solutions = False
         if self.compress_images is None:
             self.compress_images = self.field.compress_images
-        if self.batch_system == 'slurm':
+        if self.batch_system.startswith('slurm'):
             # For some reason, setting coresMax ResourceRequirement hints does
             # not work with SLURM
             max_cores = None
@@ -315,13 +315,16 @@ class Image(Operation):
         if self.peel_bright_sources:
             self.input_parms.update({'bright_skymodel_pb': CWLFile(self.field.bright_source_skymodel_file).to_json()})
         if self.field.use_mpi:
-            # Set number of nodes to allocate to each imaging subworkflow. We subtract
-            # one node because Toil must use one node for its job, which in turn calls
-            # salloc to reserve the nodes for the MPI job
+            # Set number of nodes to allocate to each imaging subworkflow.
             self.use_mpi = True
             nnodes = self.parset['cluster_specific']['max_nodes']
             nsubpipes = min(nsectors, nnodes)
-            nnodes_per_subpipeline = max(1, int(nnodes / nsubpipes) - 1)
+            if self.batch_system == 'slurm_static':
+                nnodes_per_subpipeline = max(1, int(nnodes / nsubpipes))
+            else:
+                # We subtract one node because Toil must use one node for its job,
+                # which in turn calls salloc to reserve the nodes for the MPI job
+                nnodes_per_subpipeline = max(1, int(nnodes / nsubpipes) - 1)
             self.input_parms.update({'mpi_nnodes': [nnodes_per_subpipeline] * nsectors})
             self.input_parms.update({'mpi_cpus_per_task': [self.parset['cluster_specific']['cpus_per_task']] * nsectors})
         if not self.apply_none and self.use_facets:

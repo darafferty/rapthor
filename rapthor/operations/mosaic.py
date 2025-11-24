@@ -29,7 +29,7 @@ class Mosaic(Operation):
         """
         Define parameters needed for the CWL workflow template
         """
-        if self.batch_system == 'slurm':
+        if self.batch_system.startswith('slurm'):
             # For some reason, setting coresMax ResourceRequirement hints does
             # not work with SLURM
             max_cores = None

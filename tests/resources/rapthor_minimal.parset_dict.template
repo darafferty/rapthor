@@ -9,7 +9,6 @@
                           'fast_datause': 'single',
                           'fulljones_freqstep_hz': 1000000.0,
                           'fulljones_smoothnessconstraint': 0,
-                          'fulljones_timestep_sec': 600.0,
                           'llssolver': 'qr',
                           'maxiter': 150,
                           'medium_datause': 'single',

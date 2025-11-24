@@ -5,7 +5,7 @@
 # SLURM settings:
 #SBATCH --job-name==mn-rapthor
 #SBATCH --partition=c7i-metal-24xl-spt   # Use spot partitions where possible.
-#SBATCH --nodes=1                  # Use a single node by default.
+#SBATCH --nodes=4                  # This must match max_nodes in the parset.
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=96          # For the leader node that starts jobs on other worker nodes
 #SBATCH --time 24:00:00            # Set job timeout.

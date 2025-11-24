@@ -412,7 +412,7 @@ class Parset:
         options = settings["cluster"]
 
         for opt, valid_values in {
-            "batch_system": ("single_machine", "slurm"),
+            "batch_system": ("single_machine", "slurm", "slurm_static"),
             "cwl_runner": ("cwltool", "streamflow", "toil"),
         }.items():
             if options[opt] not in valid_values:

@@ -122,6 +122,7 @@ def set_selfcal_strategy(field):
         strategy_steps[i]['fast_timestep_sec'] = 32.0
         strategy_steps[i]['medium_timestep_sec'] = 120.0
         strategy_steps[i]['slow_timestep_sec'] = 600.0
+        strategy_steps[i]['fulljones_timestep_sec'] = 600.0
 
         if i == 0:
             strategy_steps[i]['do_normalize'] = True
@@ -295,17 +296,34 @@ def check_and_adjust_parameters(field, strategy_steps):
                              'slow_timestep_separate_sec': 'slow_timestep_sec'}
 
     # Define the required parameters for each of the main strategy parts
-    required_parameters = {'do_calibrate': ['do_slowgain_solve', 'do_fulljones_solve',
-                                            'target_flux', 'max_directions', 'regroup_model',
-                                            'max_normalization_delta', 'solve_min_uv_lambda',
-                                            'fast_timestep_sec', 'slow_timestep_sec',
-                                            'scale_normalization_delta', 'max_directions'],
-                           'do_normalize': [],
-                           'do_image': ['auto_mask', 'auto_mask_nmiter', 'threshisl',
-                                        'threshpix', 'max_nmiter', 'peel_outliers',
-                                        'peel_bright_sources', 'channel_width_hz'],
-                           'do_check': ['convergence_ratio', 'divergence_ratio',
-                                        'failure_ratio']}
+    required_parameters = {
+        "do_calibrate": [
+            "do_slowgain_solve",
+            "do_fulljones_solve",
+            "target_flux",
+            "max_directions",
+            "regroup_model",
+            "max_normalization_delta",
+            "solve_min_uv_lambda",
+            "fast_timestep_sec",
+            "slow_timestep_sec",
+            "fulljones_timestep_sec",
+            "scale_normalization_delta",
+            "max_directions",
+        ],
+        "do_normalize": [],
+        "do_image": [
+            "auto_mask",
+            "auto_mask_nmiter",
+            "threshisl",
+            "threshpix",
+            "max_nmiter",
+            "peel_outliers",
+            "peel_bright_sources",
+            "channel_width_hz",
+        ],
+        "do_check": ["convergence_ratio", "divergence_ratio", "failure_ratio"],
+    }
 
     # Check for deprectaed parameters, updating the steps to use the new
     # names when defined

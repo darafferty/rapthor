@@ -315,9 +315,6 @@ The available options are described below under their respective sections.
         Smoothness constraint bandwidth used during the slow calibration, in Hz
         (default = 3e6).
 
-    fulljones_timestep_sec
-        Time step used during the full-Jones calibration, in seconds (default = 600).
-
     fulljones_freqstep_hz
         Frequency step used during the full-Jones calibration, in Hz (default = 1e6).
 
