@@ -48,6 +48,7 @@ class Image(Operation):
         self.make_image_cube = self.field.make_image_cube  # make an image cube
         self.normalize_flux_scale = False  # derive flux scale normalizations (ImageNormalize only)
         self.compress_images = None
+        self.image_cube_stokes_list = None
 
     def set_parset_parameters(self):
         """
@@ -73,6 +74,8 @@ class Image(Operation):
                 self.preapply_dde_solutions = False
         if self.compress_images is None:
             self.compress_images = self.field.compress_images
+        if self.image_cube_stokes_list is None:
+            self.image_cube_stokes_list = self.field.image_cube_stokes_list
         if self.batch_system.startswith('slurm'):
             # For some reason, setting coresMax ResourceRequirement hints does
             # not work with SLURM
@@ -92,7 +95,7 @@ class Image(Operation):
                              'max_cores': max_cores,
                              'use_mpi': self.field.use_mpi,
                              'compress_images': self.compress_images,
-                             'image_cube_stokes_list': self.field.image_cube_stokes_list}
+                             'image_cube_stokes_list': self.image_cube_stokes_list}
 
     def set_input_parameters(self):
         """
@@ -551,6 +554,7 @@ class ImageInitial(Image):
         self.use_facets = False
         self.save_source_list = True
         self.peel_bright_sources = False
+        self.make_image_cube = False
         self.image_pol = 'I'
         self.compress_images = self.field.compress_selfcal_images
         super().set_parset_parameters()
@@ -658,6 +662,7 @@ class ImageNormalize(Image):
         self.make_image_cube = True
         self.normalize_flux_scale = True
         self.compress_images = self.field.compress_selfcal_images
+        self.image_cube_stokes_list = ["I"]
         if self.field.h5parm_filename is None:
             # No calibration has yet been done, so set various flags as needed
             self.use_facets = False
