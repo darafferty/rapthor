@@ -220,6 +220,7 @@ class TestImageWorkflow:
             "preapply_dde_solutions": (False, True),
             "save_source_list": (False, True),
             "compress_images": (False, True),
+            'image_cube_stokes_list': (["I"]),
         })
     )
     def params(self, request):
