@@ -908,9 +908,26 @@ steps:
       - id: sector_region_file
 {% endif %}
 {% if make_image_cube %}
-      - id: sector_image_cube
-      - id: sector_image_cube_beams
-      - id: sector_image_cube_frequencies
+{% if "i" in image_cube_stokes_list %}
+      - id: sector_image_I_cube
+      - id: sector_image_I_cube_beams
+      - id: sector_image_I_cube_frequencies
+{% endif %}
+{% if "q" in image_cube_stokes_list %}
+      - id: sector_image_Q_cube
+      - id: sector_image_Q_cube_beams
+      - id: sector_image_Q_cube_frequencies
+{% endif %}
+{% if "u" in image_cube_stokes_list %}
+      - id: sector_image_U_cube
+      - id: sector_image_U_cube_beams
+      - id: sector_image_U_cube_frequencies
+{% endif %}
+{% if "v" in image_cube_stokes_list %}
+      - id: sector_image_V_cube
+      - id: sector_image_V_cube_beams
+      - id: sector_image_V_cube_frequencies
+{% endif %}
 {% endif %}
 {% if normalize_flux_scale %}
       - id: sector_source_catalog
