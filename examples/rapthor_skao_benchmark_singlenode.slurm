@@ -65,9 +65,10 @@ echo "Starting Rapthor benchmark script on $(hostname) at $(date)"
 
 # Load spack modules
 # ---------------------------------------------------------------------------- #
-echo "Loading meta-module: $META_MODULE"
 module purge
+
 # rapthor dependencies
+echo "Loading rapthor modules"
 module load python git node-js \
     aoflagger boost casacore dp3 everybeam gcc-runtime glibc idg \
     py-astropy py-bdsf py-casacore py-jinja2 \
@@ -82,9 +83,9 @@ echo $LD_LIBRARY_PATH
 
 # Install rapthor from branch
 # ---------------------------------------------------------------------------- #
-# Check repo status
 echo -e "Installing rapthor\n\
 -------------------------------------------------------------------------------"
+# Check repo status
 cd $CODE_PATH
 git -C $CODE_PATH status --porcelain
 echo "Installing rapthor from branch: $(git -C $CODE_PATH rev-parse --abbrev-ref HEAD)"
