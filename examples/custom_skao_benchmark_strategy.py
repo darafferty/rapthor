@@ -32,6 +32,7 @@ for i in range(max_selfcal_loops):
     step['max_normalization_delta'] = 0.3
     step['scale_normalization_delta'] = True
     step['fast_timestep_sec'] = 32.0
+    step['medium_timestep_sec'] = 120.0
     step['slow_timestep_sec'] = 600.0
 
     # Here we use the same solution intervals for every cycle, but it is possible to
@@ -68,7 +69,7 @@ for i in range(max_selfcal_loops):
         step['threshpix'] = 5.0
         step['max_nmiter'] = 12
     step['auto_mask_nmiter'] = 2
-    step['channel_width_hz'] = 8e6
+    step['channel_width_hz'] = 4e6
 
     # Here we set the calibrator selection strategy, decreasing the target
     # minimum flux density for sources to be used as calibrators as selfcal
@@ -111,4 +112,3 @@ for i in range(max_selfcal_loops):
 
 # Set the parameters for the final pass as duplicates of the last selfcal step
 strategy_steps.append(strategy_steps[-1])
-strategy_steps[-1]['channel_width_hz'] = 4e6
