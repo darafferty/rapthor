@@ -74,6 +74,7 @@
                       'grid_width_dec_deg': None,
                       'grid_width_ra_deg': None,
                       'idg_mode': 'cpu',
+                      'image_cube_stokes_list': ['I'],
                       'make_quv_images': False,
                       'pol_combine_method': 'link',
                       'max_peak_smearing': 0.15,
