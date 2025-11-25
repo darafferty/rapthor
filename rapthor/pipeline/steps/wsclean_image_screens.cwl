@@ -378,7 +378,7 @@ outputs:
     doc: |
       The filename of the output Stokes-U primary-beam-corrected channel images. The
       value is constructed from the input parameter "name".
-type: File[]?
+    type: File[]?
     outputBinding:
       glob: [$(inputs.name)-0???-U-image-pb.fits]
 
