@@ -24,34 +24,37 @@ ENV PIP_ROOT_USER_ACTION=ignore
 # Set our working directory
 WORKDIR /src
 
+# Use "nl.archive.ubuntu.com", instead of "archive.ubuntu.com".
+RUN sed -ri "s/(archive\.ubuntu\.com)/nl.\1/" /etc/apt/sources.list
+
 # Install all build-time dependencies
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get update && \
     apt-get install -y \
         bison \
-        build-essential \
         cmake \
         flex \
+        g++ \
         gfortran \
         git \
-        libarmadillo-dev \
         libboost-date-time-dev \
         libboost-filesystem-dev \
-        libboost-numpy-dev \
         libboost-program-options-dev \
         libboost-python-dev \
-        libboost-system-dev \
-        libboost-test-dev \
         libcfitsio-dev \
         libfftw3-dev \
         libglib2.0-dev \
         libgsl-dev \
-        libhdf5-serial-dev \
-        liblua5.3-dev \
+        libhdf5-dev \
+        liblapack-dev \
+        liblua5.4-dev \
         libpng-dev \
+        libpython3-dev \
+        libreadline-dev \
         ninja-build \
+        pkgconf \
         pybind11-dev \
-        python3-dev \
+        python3 \
         wcslib-dev \
         wget
 
@@ -240,7 +243,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         libhdf5-103-1 \
         libhdf5-cpp-103-1 \
         liblapack3 \
-        liblua5.3-0 \
+        liblua5.4-0 \
         libpng16-16 \
         libpython3.10 \
         libstdc++6 \
