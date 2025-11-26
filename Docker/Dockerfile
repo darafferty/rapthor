@@ -43,7 +43,6 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         libboost-python-dev \
         libcfitsio-dev \
         libfftw3-dev \
-        libglib2.0-dev \
         libgsl-dev \
         libhdf5-dev \
         liblapack-dev \
@@ -237,7 +236,6 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         libfftw3-double3 \
         libfftw3-single3 \
         libgfortran5 \
-        libglib2.0-0 \
         libgomp1 \
         libgsl27 \
         libhdf5-103-1 \
