@@ -112,7 +112,7 @@ echo -e "Environment ready!\n\
 # These are used for populating the parset template file.
 
 # Full path to the input measurement set. 
-export INPUT_MS_FULL_PATH=$(readlink -f "$INPUT_PATH/visibility.scan-400.ms")
+export INPUT_MS_FULL_PATH=$(readlink -f "$INPUT_PATH/visibility.scan-400_applybeam.ms")
 
 # Export TMPDIR - without this some steps in rapthor use the default which may
 # run out of space - this is also substituted into parset file
