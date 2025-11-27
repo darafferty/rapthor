@@ -230,19 +230,24 @@ class Sector(object):
         scaling_factor = np.sqrt(float(tot_bandwidth / 2e6) * total_time_hr / 16.0)
         min_dist_deg, max_dist_deg = self.get_distance_to_obs_center()
         sens_factor = np.e**(-4.0 * np.log(2.0) * min_dist_deg**2 / self.field.fwhm_deg**2)
-        self.wsclean_niter = int(1e7)  # set to high value and just use nmiter to limit clean
-        self.wsclean_nmiter = min(self.max_nmiter, max(2, int(round(8 * scaling_factor * sens_factor))))
-        if self.field.peel_bright_sources:
-            # If bright sources are peeled, reduce nmiter by 25% (since they no longer
-            # need to be cleaned)
+        if disable_clean:
+            self.log.debug("Clean disabled.")
+            self.wsclean_niter = 0
+            self.wsclean_nmiter = 0
+        else:
             self.wsclean_niter = int(1e7)  # set to high value and just use nmiter to limit clean
-            self.wsclean_nmiter = max(2, int(round(self.wsclean_nmiter * 0.75)))
+            self.wsclean_nmiter = min(self.max_nmiter, max(2, int(round(8 * scaling_factor * sens_factor))))
+            if self.field.peel_bright_sources:
+                # If bright sources are peeled, reduce nmiter by 25% (since they no longer
+                # need to be cleaned)
+                self.wsclean_niter = int(1e7)  # set to high value and just use nmiter to limit clean
+                self.wsclean_nmiter = max(2, int(round(self.wsclean_nmiter * 0.75)))
 
-        # Set multiscale clean
-        self.multiscale = do_multiscale
-        if self.multiscale:
-            self.wsclean_niter = int(self.wsclean_niter/1.5)  # fewer iterations are needed
-            self.log.debug("Will do multiscale cleaning.")
+            # Set multiscale clean
+            self.multiscale = do_multiscale
+            if self.multiscale:
+                self.wsclean_niter = int(self.wsclean_niter/1.5)  # fewer iterations are needed
+                self.log.debug("Will do multiscale cleaning.")
 
         # Set the observation-specific parameters
         max_peak_smearing = imaging_parameters['max_peak_smearing']
