@@ -60,7 +60,9 @@
 #SBATCH --output=%x-%j-leader-slurm.out
 #SBATCH --error=%x-%j-leader-slurm.out
 # ---------------------------------------------------------------------------- #
-#
+
+set -euo pipefail
+
 echo "Starting Rapthor benchmark script on $(hostname) at $(date)"
 
 # Load spack modules
@@ -97,7 +99,7 @@ source $WORK_PATH/.venv/bin/activate
 # Install using pip
 INSTALL_LOG=$LOG_PATH/rapthor-install.log
 pip install --upgrade pip 2>&1 > $INSTALL_LOG
-pip install $CODE_PATH -v 2>&1 >> $INSTALL_LOG
+pip install $CODE_PATH 2>&1 >> $INSTALL_LOG
 
 # Check installation
 echo "Installed $(rapthor --version)"
