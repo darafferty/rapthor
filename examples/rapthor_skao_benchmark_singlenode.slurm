@@ -5,9 +5,9 @@
 #
 # This script is intended to be run by the `run_bench_all.sh` script in
 # ska-sdp-spack/scripts/:
-# https://gitlab.com/ska-telescope/sdp/ska-sdp-spack/-/blob/sp-5859-add-bench-scripts/scripts/run_bench.sh
+# https://gitlab.com/ska-telescope/sdp/ska-sdp-spack/-/blob/sp-5859-add-bench-scripts/scripts/run_test.sh
 # The wrapper script loads the environmental variables from the file
-# `ska-sdp-spack/scripts/bench_specs/_ical.sh`, and executes this script by
+# `ska-sdp-spack/scripts/test_specs/_ical.sh`, and executes this script by
 # running the benchmark wrapper script `run_bench.sh`.
 
 # Environment variables:
@@ -44,9 +44,9 @@
 # https://confluence.skatelescope.org/display/SE/%5BSimulations%5D+--+New+data+for+benchmarking
 # 
 # The data is available on S3 at:
-# s3://skao-sdp-testdata/PI28-Low-G3/product/eb-low68s_tec_lotss_noise-20000104-00000/ska-sdp/pb-low68s_tec_lotss_noise-20000104-00000/visibility.scan-400_applybeam.ms
+# s3://skao-sdp-testdata/PI28-Low-G3/product/eb-low68s_tec_lotss_noise_small-20000104-00000/ska-sdp/pb-low68s_tec_lotss_noise_small-20000104-00000/visibility.scan-400_applybeam.ms
 # Also available on the shared FSx storage at:
-# /shared/fsx1/shared/product/eb-low68s_tec_lotss_noise-20000104-00000/ska-sdp/pb-low68s_tec_lotss_noise-20000104-00000/visibility.scan-400_applybeam.ms
+# /shared/fsx1/shared/product/eb-low68s_tec_lotss_noise_small-20000104-00000/ska-sdp/pb-low68s_tec_lotss_noise_small-20000104-00000/visibility.scan-400_applybeam.ms
 #
 ################################################################################
 # SLURM settings:
@@ -112,7 +112,7 @@ echo -e "Environment ready!\n\
 # These are used for populating the parset template file.
 
 # Full path to the input measurement set. 
-export INPUT_MS_FULL_PATH=$(readlink -f "$INPUT_PATH/visibility.scan-400.ms")
+export INPUT_MS_FULL_PATH=$(readlink -f "$INPUT_PATH/visibility.scan-400_applybeam.ms")
 
 # Export TMPDIR - without this some steps in rapthor use the default which may
 # run out of space - this is also substituted into parset file
