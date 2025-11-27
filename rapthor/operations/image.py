@@ -44,6 +44,7 @@ class Image(Operation):
         self.do_predict = None
         self.do_multiscale_clean = None
         self.pol_combine_method = None
+        self.disable_clean = None
         self.apply_none = False  # no solutions applied before or during imaging (ImageInitial only)
         self.make_image_cube = self.field.make_image_cube  # make an image cube
         self.normalize_flux_scale = False  # derive flux scale normalizations (ImageNormalize only)
@@ -108,6 +109,8 @@ class Image(Operation):
             self.do_multiscale_clean = self.field.do_multiscale_clean
         if self.pol_combine_method is None:
             self.pol_combine_method = self.field.pol_combine_method
+        if self.disable_clean is None:
+            self.disable_clean = self.field.disable_clean
         if self.apply_amplitudes is None:
             self.apply_amplitudes = self.field.apply_amplitudes  # set by CalibrateDD.finalize()
         if self.apply_fulljones is None:
@@ -201,7 +204,7 @@ class Image(Operation):
                 link_polarizations = 'I'
             else:
                 join_polarizations = True
-            if self.field.disable_clean:
+            if self.disable_clean:
                 # Set niter to 0 to disable clean (only allowed for full-Stokes
                 # imaging)
                 wsclean_niter = [0] * len(self.imaging_sectors)
@@ -567,6 +570,7 @@ class ImageInitial(Image):
         self.imaging_parameters['dd_psf_grid'] = [1, 1]
         self.do_predict = False
         self.do_multiscale_clean = True
+        self.disable_clean = False
         self.field.skip_final_major_iteration = True
         super().set_input_parameters()
 
@@ -675,6 +679,7 @@ class ImageNormalize(Image):
         self.imaging_parameters['taper_arcsec'] = 24.0
         self.do_predict = False
         self.do_multiscale_clean = False
+        self.disable_clean = False
         self.field.skip_final_major_iteration = False
         super().set_input_parameters()
 
