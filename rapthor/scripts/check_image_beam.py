@@ -27,7 +27,7 @@ def main(fits_image_filename, beam_size_arcsec):
 
     # Open the input HDU (Header Data Unit) and header. Updates to the header will be
     # automatically written to the input file after the exiting the "with" scope
-    with fits.open(fits_image_filename) as hdu:
+    with fits.open(fits_image_filename, mode="update") as hdu:
         # Replace missing values with ones for a circular beam of size beam_size_arcsec
         # in degrees
         header = hdu[0].header
