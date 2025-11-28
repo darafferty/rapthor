@@ -31,9 +31,9 @@ def main(fits_image_filename, beam_size_arcsec):
         # Replace missing values with ones for a circular beam of size beam_size_arcsec
         # in degrees
         header = hdu[0].header
-        if "BMAJ" not in header:
+        if "BMAJ" not in header or header["BMAJ"] <= 0.0:
             header["BMAJ"] = beam_size_arcsec / 3600
-        if "BMIN" not in header:
+        if "BMIN" not in header or header["BMIN"] <= 0.0:
             header["BMIN"] = beam_size_arcsec / 3600
         if 'BPA' not in header:
             header['BPA'] = 0.0
