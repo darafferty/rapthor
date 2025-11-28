@@ -975,24 +975,55 @@ steps:
 {% endif %}
 # end make_image_cube
 
+  -id: check_beam_true_sky_image
+    label: Check beam
+    doc: |
+      This step checks that the restoring beam in the true-sky image is valid.
+    run: {{ rapthor_pipeline_dir }}/steps/check_image_beam.cwl
+    in:
+{% if peel_bright_sources %}
+      - id: input_image
+        source: restore_pb/restored_image
+{% else %}
+      - id: input_image
+        source: image/image_I_pb_name
+{% endif %}
+      - id: beam_size_arcsec
+        source: taper_arcsec
+    out:
+      - id: validated_image
+
+  -id: check_beam_flat_noise_image
+    label: Check beam
+    doc: |
+      This step checks that the restoring beam in the flat-noise image is valid.
+    run: {{ rapthor_pipeline_dir }}/steps/check_image_beam.cwl
+    in:
+{% if peel_bright_sources %}
+      - id: input_image
+        source: restore_nonpb/restored_image
+{% else %}
+      - id: input_image
+        source: image/image_I_nonpb_name
+{% endif %}
+      - id: beam_size_arcsec
+        source: taper_arcsec
+    out:
+      - id: validated_image
+
   - id: filter
     label: Filter sources
     doc: |
       This step uses PyBDSF to filter artifacts from the sky model.
     run: {{ rapthor_pipeline_dir }}/steps/filter_skymodel.cwl
     in:
-{% if peel_bright_sources %}
       - id: true_sky_image
-        source: restore_pb/restored_image
+        source: check_beam_true_sky_image/validated_image
       - id: flat_noise_image
-        source: restore_nonpb/restored_image
+        source: check_beam_flat_noise_image/validated_image
+{% if peel_bright_sources %}
       - id: bright_true_sky_skymodel
         source: bright_skymodel_pb
-{% else %}
-      - id: true_sky_image
-        source: image/image_I_pb_name
-      - id: flat_noise_image
-        source: image/image_I_nonpb_name
 {% endif %}
       - id: true_sky_skymodel
 {% if save_source_list %}
@@ -1038,11 +1069,11 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/calculate_image_diagnostics.cwl
     in:
       - id: flat_noise_image
-        source: image/image_I_nonpb_name
+        source: check_beam_flat_noise_image/validated_image
       - id: flat_noise_rms_image
         source: filter/flat_noise_rms_image
       - id: true_sky_image
-        source: image/image_I_pb_name
+        source: check_beam_true_sky_image/validated_image
       - id: true_sky_rms_image
         source: filter/true_sky_rms_image
       - id: input_catalog
