@@ -76,6 +76,7 @@
                       'idg_mode': 'gpu',
                       'make_quv_images': True,
                       'pol_combine_method': 'join',
+                      'disable_iquv_clean': True,
                       'max_peak_smearing': 0.25,
                       'correct_time_frequency_smearing': True,
                       'max_uv_lambda': 10000.0,
