@@ -975,7 +975,7 @@ steps:
 {% endif %}
 # end make_image_cube
 
-  -id: check_beam_true_sky_image
+  - id: check_beam_true_sky_image
     label: Check beam
     doc: |
       This step checks that the restoring beam in the true-sky image is valid.
@@ -993,7 +993,7 @@ steps:
     out:
       - id: validated_image
 
-  -id: check_beam_flat_noise_image
+  - id: check_beam_flat_noise_image
     label: Check beam
     doc: |
       This step checks that the restoring beam in the flat-noise image is valid.
