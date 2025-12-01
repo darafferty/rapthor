@@ -22,6 +22,7 @@ strategy_steps[0]['channel_width_hz'] = 4e6
 strategy_steps[0]['threshisl'] = 3.0
 strategy_steps[0]['threshpix'] = 5.0
 strategy_steps[0]['max_nmiter'] = 12
+strategy_steps[i]['channel_width_hz'] = 4e6
 
 # Here we disable the self-calbration convergence check and the
 # sky model regrouping (both useful only when there is more
