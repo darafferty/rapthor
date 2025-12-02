@@ -26,8 +26,23 @@ This minor release includes the following improvements:
     - IDGCal can now be used for calibration during the final cycle (note: this
       mode should be considered experimental).
     - Improvements in components used by Rapthor, like: AOFlagger, DP3,
-      EveryBeam, WSClean, etc. Please refer to their respective changelogs for
-      details.
+      EveryBeam, WSClean, etc. For more details, please refer to their
+      respective changelogs.
+    - For WSClean, the most relevant changes are:
+        - use of multi-frequency interface;
+        - sub-pixel rendering;
+        - smearing corrections;
+        - better I/O in MPI mode thanks to shared facet reads/writes;
+        - new options to tweak iteration strategy that lower the number of
+          required major iterations;
+        - support for time-BDA in facetting mode;
+        - and lots of generic code improvements.
+    - For DP3, the most relevant changes are:
+        - meta data compression;
+        - specify initial solutions in DDECal;
+        - allow per-direction smoothness values as well as per-antenna
+          smoothness and time-integration settings in DDECal;
+        - better support of BDA data.
     - Many more improvements and bug fixes. See the git log for details.
 
 
