@@ -21,13 +21,14 @@ This minor release includes the following improvements:
       especially for large sky models. It is disabled by default, but can be
       useful in certain situations (e.g., when filtering of the calibration
       sky model is disabled).
-    - Rapthor can now produce spectral image cubes for Stokes-I with a user-specified
-      channel width.
+    - Rapthor can now produce spectral image cubes for Stokes-I with a
+      user-specified channel width.
     - IDGCal can now be used for calibration during the final cycle (note: this
       mode should be considered experimental).
-    - Improvements in components: DP3, WSClean, etc. (TODO: which exactly?)
+    - Improvements in components used by Rapthor, like: AOFlagger, DP3,
+      EveryBeam, WSClean, etc. Please refer to their respective changelogs for
+      details.
     - Many more improvements and bug fixes. See the git log for details.
-      (TODO: more details here?)
 
 
 Version 2.0 (2025/04/11)
