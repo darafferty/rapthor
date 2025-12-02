@@ -3,6 +3,28 @@
 Changelog
 =========
 
+Version 2.1 (2025/12/xx)
+------------------------
+
+This minor release includes the following improvements:
+
+    - Image quality has improved significantly. This is mainly due to the use
+      of a more sophisticated calibration strategy.
+    - Processing speed has improved further, with typical processing times
+      reduced by a factor ~2 compared to v2.0.
+    - Time and frequency smearing effects can now be corrected for, during the
+      prediction part of calibration and during imaging. It is disabled by
+      default. (TODO: add reason why)
+    - The calibration operation can now use image-based prediction.
+      Image-based prediction can be faster than the normal prediction,
+      especially for large sky models, and may improve the quality of the sky
+      model. It is disabled by default. (TODO: add reason why)
+    - Rapthor can now produce image cubes for Stokes-I.
+    - Improvements in components: DP3, WSClean, etc. (TODO: which exactly?)
+    - Many more improvements and bug fixes. See the git log for details.
+      (TODO: more details here?)
+
+
 Version 2.0 (2025/04/11)
 ------------------------
 
