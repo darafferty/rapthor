@@ -12,14 +12,19 @@ This minor release includes the following improvements:
       of a more sophisticated calibration strategy.
     - Processing speed has improved further, with typical processing times
       reduced by a factor ~2 compared to v2.0.
-    - Time and frequency smearing effects can now be corrected for, during the
+    - Time and frequency smearing effects can now be corrected for during the
       prediction part of calibration and during imaging. It is disabled by
-      default. (TODO: add reason why)
+      default, as full support for the smearing corrections is not yet
+      available in WSClean.
     - The calibration operation can now use image-based prediction.
       Image-based prediction can be faster than the normal prediction,
-      especially for large sky models, and may improve the quality of the sky
-      model. It is disabled by default. (TODO: add reason why)
-    - Rapthor can now produce image cubes for Stokes-I.
+      especially for large sky models. It is disabled by default, but can be
+      useful in certain situations (e.g., when filtering of the calibration
+      sky model is disabled).
+    - Rapthor can now produce image cubes for Stokes-I with a user-specified
+      channel width.
+    - IDGCal can now be used for calibration during the final cycle (note: this
+      mode should be considered experimental).
     - Improvements in components: DP3, WSClean, etc. (TODO: which exactly?)
     - Many more improvements and bug fixes. See the git log for details.
       (TODO: more details here?)
