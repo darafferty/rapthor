@@ -86,4 +86,4 @@ outputs:
       glob: $(inputs.maskfile)
 hints:
   - class: DockerRequirement
-    dockerPull: astronrd/rapthor:2.1
+    dockerPull: astronrd/rapthor
