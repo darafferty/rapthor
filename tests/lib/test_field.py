@@ -722,3 +722,251 @@ def test_set_obs_parameters(monkeypatch, minimal_parset):
     
     field.set_obs_parameters()
     assert field.ntimechunks == 4  # 2 obs * 2 chunks each
+
+
+def test_scan_observations_overlapping_frequency(monkeypatch, minimal_parset):
+    # Test error when observations have overlapping frequency coverage
+    from rapthor.lib import observation as observation_mod
+    class OverlapObs(observation_mod.Observation):
+        _counter = 0
+        def __init__(self, ms_filename, *args, **kwargs):
+            OverlapObs._counter += 1
+            self.ms_filename = ms_filename
+            self.name = f'obs{OverlapObs._counter}'
+            self.antenna = 'HBA'
+            self.starttime = 0.0
+            self.endtime = 3600.0
+            # Create overlapping frequency ranges
+            if OverlapObs._counter == 1:
+                self.startfreq = 120e6
+                self.endfreq = 140e6
+            else:
+                self.startfreq = 135e6  # Overlaps with first obs
+                self.endfreq = 155e6
+            self.channelwidth = 0.195e6
+            self.mean_el_rad = np.deg2rad(60.0)
+            self.referencefreq = 150e6
+            self.ra = 180.0
+            self.dec = 45.0
+            self.diam = 30.0
+            self.stations = ['ST01', 'ST02']
+    monkeypatch.setattr(observation_mod, 'Observation', OverlapObs)
+    import rapthor.lib.field as field_mod
+    monkeypatch.setattr(field_mod, 'Observation', OverlapObs)
+    
+    minimal_parset['mss'] = ['dummy1.ms', 'dummy2.ms']
+    with pytest.raises(ValueError, match='Overlapping frequency coverage'):
+        Field(minimal_parset, minimal=True)
+
+
+def test_scan_observations_pointing_mismatch(monkeypatch, minimal_parset):
+    # Test error when observations have different pointings
+    from rapthor.lib import observation as observation_mod
+    class PointingObs(observation_mod.Observation):
+        _counter = 0
+        def __init__(self, ms_filename, *args, **kwargs):
+            PointingObs._counter += 1
+            self.ms_filename = ms_filename
+            self.name = f'obs{PointingObs._counter}'
+            self.antenna = 'HBA'
+            # Different starttimes to avoid frequency overlap check
+            self.starttime = 0.0 if PointingObs._counter == 1 else 7200.0
+            self.endtime = 3600.0 if PointingObs._counter == 1 else 10800.0
+            self.mean_el_rad = np.deg2rad(60.0)
+            self.referencefreq = 150e6
+            self.startfreq = 120e6
+            self.endfreq = 140e6
+            self.channelwidth = 0.195e6
+            # Different pointing for second obs
+            if PointingObs._counter == 1:
+                self.ra = 180.0
+                self.dec = 45.0
+            else:
+                self.ra = 180.01  # ~36 arcsec difference
+                self.dec = 45.0
+            self.diam = 30.0
+            self.stations = ['ST01', 'ST02']
+    monkeypatch.setattr(observation_mod, 'Observation', PointingObs)
+    import rapthor.lib.field as field_mod
+    monkeypatch.setattr(field_mod, 'Observation', PointingObs)
+    
+    minimal_parset['mss'] = ['dummy1.ms', 'dummy2.ms']
+    with pytest.raises(ValueError, match='Pointing difference'):
+        Field(minimal_parset, minimal=True)
+
+
+def test_scan_observations_diameter_mismatch(monkeypatch, minimal_parset):
+    # Test error when observations have different station diameters
+    from rapthor.lib import observation as observation_mod
+    class DiamObs(observation_mod.Observation):
+        _counter = 0
+        def __init__(self, ms_filename, *args, **kwargs):
+            DiamObs._counter += 1
+            self.ms_filename = ms_filename
+            self.name = f'obs{DiamObs._counter}'
+            self.antenna = 'HBA'
+            # Different starttimes to avoid frequency overlap check
+            self.starttime = 0.0 if DiamObs._counter == 1 else 7200.0
+            self.endtime = 3600.0 if DiamObs._counter == 1 else 10800.0
+            self.mean_el_rad = np.deg2rad(60.0)
+            self.referencefreq = 150e6
+            self.startfreq = 120e6
+            self.endfreq = 140e6
+            self.channelwidth = 0.195e6
+            self.ra = 180.0
+            self.dec = 45.0
+            # Different diameter
+            self.diam = 30.0 if DiamObs._counter == 1 else 25.0
+            self.stations = ['ST01', 'ST02']
+    monkeypatch.setattr(observation_mod, 'Observation', DiamObs)
+    import rapthor.lib.field as field_mod
+    monkeypatch.setattr(field_mod, 'Observation', DiamObs)
+    
+    minimal_parset['mss'] = ['dummy1.ms', 'dummy2.ms']
+    with pytest.raises(ValueError, match='Station diameter'):
+        Field(minimal_parset, minimal=True)
+
+
+def test_scan_observations_stations_mismatch(monkeypatch, minimal_parset):
+    # Test error when observations have different stations
+    from rapthor.lib import observation as observation_mod
+    class StationObs(observation_mod.Observation):
+        _counter = 0
+        def __init__(self, ms_filename, *args, **kwargs):
+            StationObs._counter += 1
+            self.ms_filename = ms_filename
+            self.name = f'obs{StationObs._counter}'
+            self.antenna = 'HBA'
+            # Different starttimes to avoid frequency overlap check
+            self.starttime = 0.0 if StationObs._counter == 1 else 7200.0
+            self.endtime = 3600.0 if StationObs._counter == 1 else 10800.0
+            self.mean_el_rad = np.deg2rad(60.0)
+            self.referencefreq = 150e6
+            self.startfreq = 120e6
+            self.endfreq = 140e6
+            self.channelwidth = 0.195e6
+            self.ra = 180.0
+            self.dec = 45.0
+            self.diam = 30.0
+            # Different stations
+            self.stations = ['ST01', 'ST02'] if StationObs._counter == 1 else ['ST03', 'ST04']
+    monkeypatch.setattr(observation_mod, 'Observation', StationObs)
+    import rapthor.lib.field as field_mod
+    monkeypatch.setattr(field_mod, 'Observation', StationObs)
+    
+    minimal_parset['mss'] = ['dummy1.ms', 'dummy2.ms']
+    with pytest.raises(ValueError, match='Stations in MS'):
+        Field(minimal_parset, minimal=True)
+
+
+def test_chunk_observations_short_final_chunk(monkeypatch, minimal_parset):
+    # Test chunking where final chunk is too short and gets skipped
+    from rapthor.lib import observation as observation_mod
+    class ShortChunkObs(observation_mod.Observation):
+        def __init__(self, ms_filename, *args, **kwargs):
+            self.ms_filename = ms_filename
+            self.name = 'dummy'
+            self.antenna = 'HBA'
+            # Use kwargs if provided (for chunk creation)
+            self.starttime = kwargs.get('starttime', 0.0)
+            self.endtime = kwargs.get('endtime', 1800.0)  # 30 min total
+            self.mean_el_rad = np.deg2rad(60.0)
+            self.referencefreq = 150e6
+            self.ra = 180.0
+            self.dec = 45.0
+            self.diam = 30.0
+            self.stations = ['ST01', 'ST02']
+            self.data_fraction = 0.95  # Request almost all data
+            self.high_el_starttime = self.starttime
+            self.high_el_endtime = self.endtime
+            self.channels_are_regular = True
+            self.ntimechunks = 1
+            self.timepersample = 1.0
+        def copy(self):
+            return ShortChunkObs(self.ms_filename, starttime=self.starttime, endtime=self.endtime)
+    
+    monkeypatch.setattr(observation_mod, 'Observation', ShortChunkObs)
+    import rapthor.lib.field as field_mod
+    monkeypatch.setattr(field_mod, 'Observation', ShortChunkObs)
+    field = make_field(monkeypatch, minimal_parset)
+    from rapthor.lib.sector import Sector
+    monkeypatch.setattr(Sector, 'make_vertices_file', lambda self: None)
+    monkeypatch.setattr(Sector, 'make_region_file', lambda self, path: None)
+    field.imaging_sectors = [Sector('s1', field.ra, field.dec, 2.0, 2.0, field)]
+    
+    # This should create chunks but skip the last one if too short
+    field.chunk_observations(600.0, prefer_high_el_periods=False)
+    # Should have observations even if final chunk was skipped
+    assert len(field.observations) >= 1
+
+
+def test_scan_h5parms_screen_coefficients(monkeypatch, minimal_parset, tmp_path):
+    # Test h5parm scanning with screen coefficients (coefficients000 solset)
+    h5_file = tmp_path / "screen.h5"
+    minimal_parset['input_h5parm'] = str(h5_file)
+    
+    class MockSolset:
+        def getSoltabNames(self):
+            return ['phase_coefficients', 'amplitude1_coefficients']
+        def getSoltab(self, name):
+            class MockSoltab:
+                def getAxesNames(self):
+                    return ['time', 'freq', 'ant', 'dir', 'pol']
+            return MockSoltab()
+    
+    class MockH5parm:
+        def getSolsetNames(self):
+            return ['coefficients000']
+        def getSolset(self, name):
+            return MockSolset()
+        def close(self):
+            pass
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            pass
+    
+    h5_file.write_bytes(b'dummy')
+    
+    import rapthor.lib.field as field_mod
+    monkeypatch.setattr(field_mod, 'h5parm', lambda x: MockH5parm())
+    
+    field = make_field(monkeypatch, minimal_parset)
+    field.scan_h5parms()
+    assert field.apply_amplitudes is True
+
+
+def test_scan_h5parms_no_amplitudes(monkeypatch, minimal_parset, tmp_path):
+    # Test h5parm scanning without amplitude solutions
+    h5_file = tmp_path / "no_amp.h5"
+    minimal_parset['input_h5parm'] = str(h5_file)
+    
+    class MockSolset:
+        def getSoltabNames(self):
+            return ['phase000']  # No amplitude000
+        def getSoltab(self, name):
+            class MockSoltab:
+                def getAxesNames(self):
+                    return ['time', 'freq', 'ant', 'dir', 'pol']
+            return MockSoltab()
+    
+    class MockH5parm:
+        def getSolsetNames(self):
+            return ['sol000']
+        def getSolset(self, name):
+            return MockSolset()
+        def close(self):
+            pass
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            pass
+    
+    h5_file.write_bytes(b'dummy')
+    
+    import rapthor.lib.field as field_mod
+    monkeypatch.setattr(field_mod, 'h5parm', lambda x: MockH5parm())
+    
+    field = make_field(monkeypatch, minimal_parset)
+    field.scan_h5parms()
+    assert field.apply_amplitudes is False
