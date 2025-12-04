@@ -205,4 +205,4 @@ outputs:
 
 hints:
   - class: DockerRequirement
-    dockerPull: astronrd/rapthor
+    dockerPull: astronrd/rapthor:2.1
