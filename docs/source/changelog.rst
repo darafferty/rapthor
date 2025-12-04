@@ -3,7 +3,7 @@
 Changelog
 =========
 
-Version 2.1 (2025/12/xx)
+Version 2.1 (2025/12/04)
 ------------------------
 
 This minor release includes the following improvements:
