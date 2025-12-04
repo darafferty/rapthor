@@ -1,9 +1,9 @@
-#!/bin/bash
-echo AOFLAGGER_COMMIT=72af21873f657427c99493a56742074be70d5d11
-echo CASACORE_COMMIT=5b671c5ae03747b586a1baac9505bf15dd6cd1a8
-echo DP3_COMMIT=c503722934e8b487cf73d279cfa3e8d456a4adda
-echo EVERYBEAM_COMMIT=92976a2475f1ffef1c7535bf7d7536958ace10a4
-echo IDG_COMMIT=afeeadae064fd237ba64b8b16992a9cc5dbbf4d7
-echo PYTHONCASACORE_COMMIT=294fae11abda2641c9d75b68acbb9a3b36bb7484
-echo SAGECAL_COMMIT=33d21c45000bf13e5e29077ba3413405c42c503f
-echo WSCLEAN_COMMIT=b8eb40ae9c7d9f2df0bfe9d7852982d09bfc42a5
+#!/bin/sh -e
+git ls-remote https://gitlab.com/aroffringa/aoflagger.git     HEAD | awk '{ print "AOFLAGGER_COMMIT="$1 }'
+git ls-remote https://github.com/casacore/casacore.git        HEAD | awk '{ print "CASACORE_COMMIT="$1 }'
+git ls-remote https://git.astron.nl/RD/DP3.git                HEAD | awk '{ print "DP3_COMMIT="$1 }'
+git ls-remote https://git.astron.nl/RD/EveryBeam.git          HEAD | awk '{ print "EVERYBEAM_COMMIT="$1 }'
+git ls-remote https://git.astron.nl/RD/idg.git                HEAD | awk '{ print "IDG_COMMIT="$1 }'
+git ls-remote https://github.com/casacore/python-casacore.git HEAD | awk '{ print "PYTHONCASACORE_COMMIT="$1 }'
+git ls-remote https://github.com/nlesc-dirac/sagecal.git      HEAD | awk '{ print "SAGECAL_COMMIT="$1 }'
+git ls-remote https://gitlab.com/aroffringa/wsclean.git       HEAD | awk '{ print "WSCLEAN_COMMIT="$1 }'
