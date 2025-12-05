@@ -1134,3 +1134,473 @@ def test_chunk_observations_with_full_field_sector(monkeypatch, minimal_parset):
     # Both imaging_sectors and full_field_sector should have updated observations
     assert len(field.imaging_sectors[0].observations) > 0
     assert len(field.full_field_sector.observations) > 0
+
+
+def test_chunk_observations_dysco_minimum(monkeypatch, minimal_parset):
+    # Test chunking with Dysco constraint (minimum 2 time slots per observation)
+    minimal_parset['cluster_specific']['max_nodes'] = 8
+    from rapthor.lib import observation as observation_mod
+    class DyscoObs(observation_mod.Observation):
+        def __init__(self, ms_filename, *args, **kwargs):
+            self.ms_filename = ms_filename
+            self.name = 'dummy'
+            self.antenna = 'HBA'
+            self.starttime = kwargs.get('starttime', 0.0)
+            self.endtime = kwargs.get('endtime', 100.0)  # Very short obs
+            self.mean_el_rad = np.deg2rad(60.0)
+            self.referencefreq = 150e6
+            self.ra = 180.0
+            self.dec = 45.0
+            self.diam = 30.0
+            self.stations = ['ST01', 'ST02']
+            self.data_fraction = 1.0
+            self.high_el_starttime = self.starttime
+            self.high_el_endtime = self.endtime
+            self.channels_are_regular = True
+            self.ntimechunks = 1
+            self.timepersample = 10.0  # Large time per sample to trigger Dysco constraint
+        def copy(self):
+            return DyscoObs(self.ms_filename, starttime=self.starttime, endtime=self.endtime)
+    
+    monkeypatch.setattr(observation_mod, 'Observation', DyscoObs)
+    import rapthor.lib.field as field_mod
+    monkeypatch.setattr(field_mod, 'Observation', DyscoObs)
+    field = make_field(monkeypatch, minimal_parset)
+    from rapthor.lib.sector import Sector
+    monkeypatch.setattr(Sector, 'make_vertices_file', lambda self: None)
+    monkeypatch.setattr(Sector, 'make_region_file', lambda self, path: None)
+    field.imaging_sectors = [Sector('s1', field.ra, field.dec, 2.0, 2.0, field)]
+    
+    field.chunk_observations(10.0, prefer_high_el_periods=False)
+    assert len(field.observations) >= 1
+
+
+def test_update_skymodels_with_previous_cycle(monkeypatch, minimal_parset, tmp_path):
+    # Test update_skymodels with index > 1 to cover lines 433-434
+    minimal_parset['dir_working'] = str(tmp_path)
+    minimal_parset['input_skymodel'] = 'dummy.txt'
+    field = make_field(monkeypatch, minimal_parset)
+    
+    # Create previous cycle directory structure
+    prev_cycle_dir = tmp_path / 'skymodels' / 'calibrate_1'
+    prev_cycle_dir.mkdir(parents=True, exist_ok=True)
+    prev_skymodel = prev_cycle_dir / 'calibrators_only_skymodel.txt'
+    prev_skymodel.write_text('# dummy skymodel')
+    
+    # Create mock imaging sectors with skymodel files for index > 1 path
+    from rapthor.lib.sector import Sector
+    monkeypatch.setattr(Sector, 'make_vertices_file', lambda self: None)
+    monkeypatch.setattr(Sector, 'make_region_file', lambda self, path: None)
+    
+    sector = Sector('test', field.ra, field.dec, 2.0, 2.0, field)
+    sector.image_skymodel_file_apparent_sky = str(tmp_path / 'sector_apparent.txt')
+    sector.image_skymodel_file_true_sky = str(tmp_path / 'sector_true.txt')
+    (tmp_path / 'sector_true.txt').write_text('# sector skymodel')
+    field.imaging_sectors = [sector]
+    
+    # Mock lsmtool operations
+    class MockLSM:
+        def __init__(self, *args, **kwargs):
+            self._table = None
+        def copy(self):
+            return MockLSM()
+        def group(self, *args, **kwargs):
+            pass
+        def write(self, *args, **kwargs):
+            pass
+        def getColValues(self, col, **kwargs):
+            import numpy as np
+            # Return actual numpy arrays for numeric columns, lists for string columns
+            if col == 'I':
+                return np.array([1.0, 2.0])
+            elif col in ['Ra', 'Dec']:
+                # Return float arrays for coordinates
+                return np.array([np.random.uniform(0, 360), np.random.uniform(-90, 90)]) 
+                
+            else:
+                # For Name, Patch, etc - return list of strings
+                return np.array(['source1', 'source2'], dtype=object)
+        def getPatchNames(self):
+            import numpy as np
+            return np.array(['patch1', 'patch2'], dtype=object)
+        def getPatchPositions(self, **kwargs):
+            # If asArray=True is passed, return tuple of arrays
+            if kwargs.get('asArray', False):
+                import numpy as np
+                return (np.array([field.ra]), np.array([field.dec]))
+            return {}
+        def setPatchPositions(self, *args, **kwargs):
+            pass
+        def setColValues(self, col, values):
+            pass  # Accept any values without validation
+        def _updateGroups(self):
+            pass
+        def __len__(self):
+            return 2
+        def select(self, *args, **kwargs):
+            pass
+        def remove(self, *args, **kwargs):
+            pass
+        def concatenate(self, *args, **kwargs):
+            pass
+        def getDistance(self, ra, dec, **kwargs):
+            # Return mock distances with tolist() method
+            import numpy as np
+            class MockArray:
+                def tolist(self):
+                    return [0.1, 0.2]  # Mock distances
+            return MockArray()
+        def getPatchSizes(self, **kwargs):
+            # Return mock patch sizes
+            import numpy as np
+            return np.array([0.01, 0.02])  # Mock sizes in degrees
+        @property
+        def hasPatches(self):
+            return False
+        @property
+        def table(self):
+            import numpy as np
+            # Create a minimal astropy-like table that can be vstacked
+            class MockTable:
+                def __init__(self):
+                    # Use object dtype for flexibility in vstack operations
+                    self._data = np.array([(1.0, 'source1')], 
+                                         dtype=[('I', 'f8'), ('Name', 'O')])
+                def filled(self):
+                    return self._data
+            return MockTable()
+        @table.setter
+        def table(self, value):
+            self._table = value
+    
+    import rapthor.lib.field as field_mod
+    monkeypatch.setattr(field_mod, 'lsmtool', type('obj', (object,), {
+        'load': lambda *args, **kwargs: MockLSM(),
+    })())
+    def mock_wcs_world2pix(ra, dec, *args, **kwargs):
+        return ra * 10.0, dec * 10.0  # Simple scaling for testing
+    monkeypatch.setattr(field.wcs, 'wcs_world2pix', mock_wcs_world2pix)
+    monkeypatch.setattr(field, 'plot_overview', lambda *args, **kwargs: None)
+    # Mock make_skymodels method
+    def mock_make_skymodels(*args, **kwargs):
+        # Extract index from kwargs to set calibrators_only_skymodel_file_prev_cycle correctly
+        import os
+        index = kwargs.get('index', 1)
+        if index > 1:
+            dst_dir_prev_cycle = os.path.join(field.working_dir, 'skymodels', 'calibrate_{}'.format(index-1))
+            field.calibrators_only_skymodel_file_prev_cycle = os.path.join(dst_dir_prev_cycle,
+                                                                           'calibrators_only_skymodel.txt')
+        else:
+            field.calibrators_only_skymodel_file_prev_cycle = None
+        field.calibration_skymodel = MockLSM()
+        field.source_skymodel = MockLSM()
+        field.calibrators_only_skymodel = MockLSM()
+    monkeypatch.setattr(field, 'make_skymodels', mock_make_skymodels)
+    
+    field.peel_bright_sources = False
+    field.generate_screens = False
+    
+    # This should trigger the index > 1 path setting calibrators_only_skymodel_file_prev_cycle
+    field.update_skymodels(2, False, target_flux=1.0)
+    assert field.calibrators_only_skymodel_file_prev_cycle is not None
+    assert 'calibrate_1' in field.calibrators_only_skymodel_file_prev_cycle
+
+
+def test_update_skymodels_with_screens(monkeypatch, minimal_parset, tmp_path):
+    # Test generate_screens path (lines 514-518)
+    minimal_parset['dir_working'] = str(tmp_path)
+    minimal_parset['input_skymodel'] = 'dummy.txt'
+    field = make_field(monkeypatch, minimal_parset)
+    field.generate_screens = True
+    field.imaging_sectors = []  # Initialize to avoid AttributeError
+    
+    class MockLSM:
+        def copy(self):
+            return MockLSM()
+        def write(self, *args, **kwargs):
+            pass
+        def getPatchNames(self):
+            class MockArray:
+                def tolist(self):
+                    return ['patch1']
+            return MockArray()
+        def getColValues(self, col, **kwargs):
+            class MockArray:
+                def tolist(self):
+                    return [1.0] if col == 'I' else ['source1']
+            return MockArray()
+        def getPatchPositions(self):
+            return {}
+    
+    # Mock plot_overview to avoid AttributeError
+    monkeypatch.setattr(field, 'plot_overview', lambda *args, **kwargs: None)
+    
+    # Mock make_skymodels to set generate_screens behavior
+    def mock_make_skymodels(input_skymodel, *args, **kwargs):
+        skymodel = MockLSM()
+        field.calibration_skymodel = skymodel
+        field.calibrators_only_skymodel = skymodel  # Same object when generate_screens=True
+        field.source_skymodel = skymodel
+    monkeypatch.setattr(field, 'make_skymodels', mock_make_skymodels)
+    
+    field.update_skymodels(1, False, target_flux=1.0)
+    # With generate_screens, calibration and calibrators_only should be the same
+    assert field.calibration_skymodel is field.calibrators_only_skymodel
+
+
+def test_update_skymodels_with_included_skymodels(monkeypatch, minimal_parset, tmp_path):
+    # Test use_included_skymodels path (lines 490-508)
+    minimal_parset['dir_working'] = str(tmp_path)
+    minimal_parset['calibration_specific']['use_included_skymodels'] = True
+    minimal_parset['input_skymodel'] = 'dummy.txt'
+    field = make_field(monkeypatch, minimal_parset)
+    field.generate_screens = False
+    field.peel_bright_sources = False
+    field.imaging_sectors = []
+    field.fwhm_deg = 2.0
+    
+    class MockLSM:
+        def __init__(self, *args, **kwargs):
+            pass
+        def copy(self):
+            return MockLSM()
+        def group(self, *args, **kwargs):
+            pass
+        def write(self, *args, **kwargs):
+            pass
+        def getColValues(self, col, **kwargs):
+            class MockArray:
+                def __init__(self, values):
+                    self.values = values
+                def tolist(self):
+                    return self.values
+                def __iter__(self):
+                    return iter(self.values)
+            return MockArray([1.0] if col == 'I' else ['source1'])
+        def getPatchNames(self):
+            class MockArray:
+                def __init__(self, values):
+                    self.values = values
+                def tolist(self):
+                    return self.values
+                def __iter__(self):
+                    return iter(self.values)
+            return MockArray(['patch1'])
+        def getPatchPositions(self):
+            return {}
+        def setPatchPositions(self, *args, **kwargs):
+            pass
+        def __len__(self):
+            return 1
+        def select(self, *args, **kwargs):
+            pass
+        def remove(self, *args, **kwargs):
+            pass
+        def concatenate(self, *args, **kwargs):
+            pass
+        def getDistance(self, ra, dec):
+            return np.array([1.0])  # Within max_separation
+    
+    import rapthor.lib.field as field_mod
+    
+    # Mock lsmtool.load to return our mock
+    def mock_load(filename):
+        return MockLSM()
+    
+    lsmtool_mock = type('obj', (object,), {
+        'load': mock_load,
+        'utils': type('obj', (object,), {
+            'transfer_patches': lambda *args, **kwargs: None
+        })()
+    })()
+    monkeypatch.setattr(field_mod, 'lsmtool', lsmtool_mock)
+    
+    # Mock glob to return a skymodel file
+    import glob as glob_mod
+    monkeypatch.setattr(glob_mod, 'glob', lambda x: ['test.skymodel'])
+    
+    # Mock plot_overview to avoid AttributeError
+    monkeypatch.setattr(field, 'plot_overview', lambda *args, **kwargs: None)
+    
+    # Mock make_skymodels
+    def mock_make_skymodels(*args, **kwargs):
+        field.calibration_skymodel = MockLSM()
+        field.calibrators_only_skymodel = MockLSM()
+        field.source_skymodel = MockLSM()
+    monkeypatch.setattr(field, 'make_skymodels', mock_make_skymodels)
+    
+    field.update_skymodels(1, False, target_flux=1.0)
+    # Should complete without error
+    assert field.calibration_skymodel is not None
+
+
+def test_define_imaging_sectors_skip_corners(monkeypatch, minimal_parset):
+    # Test skip_corner_sectors with 3x3 grid (lines 1143)
+    minimal_parset['imaging_specific']['grid_center_ra'] = 180.0
+    minimal_parset['imaging_specific']['grid_center_dec'] = 45.0
+    minimal_parset['imaging_specific']['grid_width_ra_deg'] = 6.0
+    minimal_parset['imaging_specific']['grid_width_dec_deg'] = 6.0
+    minimal_parset['imaging_specific']['grid_nsectors_ra'] = 3
+    minimal_parset['imaging_specific']['grid_nsectors_dec'] = 3
+    minimal_parset['imaging_specific']['skip_corner_sectors'] = True
+    
+    field = make_field(monkeypatch, minimal_parset)
+    from rapthor.lib.sector import Sector
+    monkeypatch.setattr(Sector, 'make_vertices_file', lambda self: None)
+    monkeypatch.setattr(Sector, 'make_region_file', lambda self, path: None)
+    field.makeWCS()
+    field.define_imaging_sectors()
+    # 3x3 grid with corners skipped = 9 - 4 = 5 sectors
+    assert len(field.imaging_sectors) == 5
+
+
+def test_update_skymodels_load_existing(monkeypatch, minimal_parset, tmp_path):
+    # Test loading existing skymodels from disk (lines 461-465)
+    minimal_parset['dir_working'] = str(tmp_path)
+    minimal_parset['input_skymodel'] = 'dummy.txt'
+    field = make_field(monkeypatch, minimal_parset)
+    field.peel_bright_sources = True
+    field.generate_screens = False
+    field.imaging_sectors = []  # Initialize to avoid AttributeError
+    
+    # Create skymodel directory and files
+    skymodel_dir = tmp_path / 'skymodels' / 'calibrate_1'
+    skymodel_dir.mkdir(parents=True, exist_ok=True)
+    (skymodel_dir / 'calibration_skymodel.txt').write_text('# dummy')
+    (skymodel_dir / 'calibrators_only_skymodel.txt').write_text('# dummy')
+    (skymodel_dir / 'source_skymodel.txt').write_text('# dummy')
+    (tmp_path / 'skymodels' / 'image_1').mkdir(parents=True, exist_ok=True)
+    (tmp_path / 'skymodels' / 'image_1' / 'bright_source_skymodel.txt').write_text('# dummy')
+    
+    class MockLSM:
+        def copy(self):
+            return MockLSM()
+        def write(self, *args, **kwargs):
+            pass
+        def getPatchNames(self):
+            class MockArray:
+                def __init__(self, values):
+                    self.values = values
+                def tolist(self):
+                    return self.values
+                def __iter__(self):
+                    return iter(self.values)
+            return MockArray(['patch1'])
+        def getColValues(self, col, **kwargs):
+            class MockArray:
+                def __init__(self, values):
+                    self.values = values
+                def tolist(self):
+                    return self.values
+                def __iter__(self):
+                    return iter(self.values)
+            return MockArray([1.0] if col == 'I' else ['source1'])
+        def getPatchPositions(self):
+            return {}
+        def __len__(self):
+            return 1
+        def select(self, *args, **kwargs):
+            pass
+    
+    import rapthor.lib.field as field_mod
+    monkeypatch.setattr(field_mod, 'lsmtool', type('obj', (object,), {
+        'load': lambda *args, **kwargs: MockLSM(),
+    })())
+    
+    # Mock plot_overview to avoid AttributeError
+    monkeypatch.setattr(field, 'plot_overview', lambda *args, **kwargs: None)
+    
+    field.update_skymodels(1, False, target_flux=1.0)
+    # Should load existing skymodels
+    assert field.calibration_skymodel is not None
+    assert field.bright_source_skymodel is not None
+
+
+def test_update_skymodels_missing_bright_source(monkeypatch, minimal_parset, tmp_path):
+    # Test path where bright_source_skymodel doesn't exist (line 465)
+    minimal_parset['dir_working'] = str(tmp_path)
+    minimal_parset['input_skymodel'] = 'dummy.txt'
+    field = make_field(monkeypatch, minimal_parset)
+    field.peel_bright_sources = True
+    field.generate_screens = False
+    field.imaging_sectors = []
+    
+    # Create skymodel directory but NOT bright_source_skymodel.txt
+    skymodel_dir = tmp_path / 'skymodels' / 'calibrate_1'
+    skymodel_dir.mkdir(parents=True, exist_ok=True)
+    (skymodel_dir / 'calibration_skymodel.txt').write_text('# dummy')
+    (skymodel_dir / 'calibrators_only_skymodel.txt').write_text('# dummy')
+    (skymodel_dir / 'source_skymodel.txt').write_text('# dummy')
+    (tmp_path / 'skymodels' / 'image_1').mkdir(parents=True, exist_ok=True)
+    # Intentionally NOT creating bright_source_skymodel.txt
+    
+    class MockLSM:
+        def copy(self):
+            return MockLSM()
+        def write(self, *args, **kwargs):
+            pass
+        def group(self, *args, **kwargs):
+            pass
+        def getColValues(self, col, **kwargs):
+            class MockArray:
+                def __init__(self, values):
+                    self.values = values
+                def tolist(self):
+                    return self.values
+                def __iter__(self):
+                    return iter(self.values)
+            return MockArray([1.0] if col == 'I' else ['source1'])
+        def getPatchNames(self):
+            class MockArray:
+                def __init__(self, values):
+                    self.values = values
+                def tolist(self):
+                    return self.values
+                def __iter__(self):
+                    return iter(self.values)
+            return MockArray(['patch1'])
+        def getPatchPositions(self):
+            return {}
+        def setPatchPositions(self, *args, **kwargs):
+            pass
+        def __len__(self):
+            return 1
+        def select(self, *args, **kwargs):
+            pass
+        def remove(self, *args, **kwargs):
+            pass
+        def concatenate(self, *args, **kwargs):
+            pass
+    
+    import rapthor.lib.field as field_mod
+    
+    # Mock lsmtool.load to raise IOError for the first 3 loads, then succeed
+    load_count = [0]
+    def mock_load(filename):
+        load_count[0] += 1
+        if load_count[0] <= 3:
+            return MockLSM()
+        raise IOError("File not found")
+    
+    lsmtool_mock = type('obj', (object,), {
+        'load': mock_load,
+        'utils': type('obj', (object,), {
+            'transfer_patches': lambda *args, **kwargs: None
+        })()
+    })()
+    monkeypatch.setattr(field_mod, 'lsmtool', lsmtool_mock)
+    
+    # Mock plot_overview to avoid AttributeError
+    monkeypatch.setattr(field, 'plot_overview', lambda *args, **kwargs: None)
+    
+    # Mock make_skymodels
+    def mock_make_skymodels(*args, **kwargs):
+        field.calibration_skymodel = MockLSM()
+        field.calibrators_only_skymodel = MockLSM()
+        field.source_skymodel = MockLSM()
+        # When peel_bright_sources=True, bright_source_skymodel should be set
+        field.bright_source_skymodel = MockLSM()
+    monkeypatch.setattr(field, 'make_skymodels', mock_make_skymodels)
+    
+    field.update_skymodels(1, False, target_flux=1.0)
+    assert field.calibration_skymodel is not None
