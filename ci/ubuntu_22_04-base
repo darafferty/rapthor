@@ -34,29 +34,28 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get update && \
     apt-get install -y \
         bison \
-        build-essential \
         cmake \
         flex \
+        g++ \
         gfortran \
         git \
-        libarmadillo-dev \
         libboost-date-time-dev \
         libboost-filesystem-dev \
-        libboost-numpy-dev \
         libboost-program-options-dev \
         libboost-python-dev \
-        libboost-system-dev \
-        libboost-test-dev \
         libcfitsio-dev \
         libfftw3-dev \
         libgsl-dev \
-        libgtkmm-3.0-dev \
-        libhdf5-serial-dev \
-        liblua5.3-dev \
+        libhdf5-dev \
+        liblapack-dev \
+        liblua5.4-dev \
         libpng-dev \
+        libpython3-dev \
+        libreadline-dev \
         ninja-build \
+        pkgconf \
         pybind11-dev \
-        python3-dev \
+        python3 \
         wcslib-dev \
         wget
 
@@ -128,6 +127,7 @@ RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
     -DPORTABLE=${PORTABLE} \
     -DTARGET_CPU=${TARGET_CPU} \
+    -DENABLE_GUI=OFF \
     -H/src/aoflagger \
     -B/src/aoflagger/build \
     -G Ninja
@@ -231,29 +231,22 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get install -y --no-install-recommends \
         ca-certificates \
         git \
-        libatkmm-1.6-1v5 \
         libblas3 \
         libboost-filesystem1.74.0 \
         libboost-program-options1.74.0 \
         libboost-python1.74.0 \
-        libcairomm-1.0-1v5 \
-        libcfitsio-bin \
+        libcfitsio9 \
         libfftw3-double3 \
         libfftw3-single3 \
         libgfortran5 \
-        libglib2.0-0 \
-        libglibmm-2.4-1v5 \
         libgomp1 \
         libgsl27 \
-        libgtkmm-3.0-1v5 \
         libhdf5-103-1 \
         libhdf5-cpp-103-1 \
         liblapack3 \
-        liblua5.3-0 \
-        libpangomm-1.4-1v5 \
+        liblua5.4-0 \
         libpng16-16 \
         libpython3.10 \
-        libsigc++-2.0-0v5 \
         libstdc++6 \
         libwcs7 \
         nodejs \

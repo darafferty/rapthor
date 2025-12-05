@@ -17,6 +17,8 @@ arguments:
   - -log-time
   - valueFrom: 'wgridder'
     prefix: -gridder
+  - valueFrom: 'single'
+    prefix: -major-iteration-mode
   - valueFrom: '$(runtime.tmpdir)'
     prefix: -temp-dir
   - valueFrom: '2048'
