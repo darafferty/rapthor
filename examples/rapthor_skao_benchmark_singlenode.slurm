@@ -67,16 +67,8 @@ echo "Starting Rapthor benchmark script on $(hostname) at $(date)"
 
 # Load spack modules
 # ---------------------------------------------------------------------------- #
-module purge
-
-# rapthor dependencies
-echo "Loading rapthor modules"
-module load python git node-js \
-    aoflagger boost casacore dp3 everybeam gcc-runtime glibc idg \
-    py-astropy py-bdsf py-casacore py-jinja2 \
-    py-losoto py-matplotlib py-mocpy py-numpy py-python-dateutil py-reproject \
-    py-requests py-rtree py-scipy py-shapely py-toil python-venv wsclean \
-    py-ska-sdp-benchmark-monitor
+# echo "Loading rapthor modules"
+module load py-rapthor@master
 
 # Ensure bdsf can find libboost_numpy311.so.1.86.0
 module show boost
