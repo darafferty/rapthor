@@ -68,7 +68,6 @@ class Field(object):
         self.medium_smoothnessreffrequency = self.parset['calibration_specific']['medium_smoothnessreffrequency']
         self.medium_smoothnessrefdistance = self.parset['calibration_specific']['medium_smoothnessrefdistance']
         self.slow_smoothnessconstraint = self.parset['calibration_specific']['slow_smoothnessconstraint']
-        self.fulljones_timestep_sec = self.parset['calibration_specific']['fulljones_timestep_sec']
         self.smoothnessconstraint_fulljones = self.parset['calibration_specific']['fulljones_smoothnessconstraint']
         self.propagatesolutions = self.parset['calibration_specific']['propagatesolutions']
         self.solveralgorithm = self.parset['calibration_specific']['solveralgorithm']
@@ -80,6 +79,7 @@ class Field(object):
         self.tolerance = self.parset['calibration_specific']['tolerance']
         self.dde_method = self.parset['imaging_specific']['dde_method']
         self.save_visibilities = self.parset['imaging_specific']['save_visibilities']
+        self.save_image_cube = self.parset['imaging_specific']['save_image_cube']
         self.save_supplementary_images = self.parset['imaging_specific']['save_supplementary_images']
         self.compress_selfcal_images = self.parset['imaging_specific']['compress_selfcal_images']
         self.compress_final_images = self.parset['imaging_specific']['compress_final_images']
@@ -118,6 +118,7 @@ class Field(object):
         self.fast_timestep_sec = 32.0
         self.medium_timestep_sec = 120.0
         self.slow_timestep_sec = 600.0
+        self.fulljones_timestep_sec = 600.0
         self.convergence_ratio = 0.95
         self.divergence_ratio = 1.1
         self.failure_ratio = 10.0

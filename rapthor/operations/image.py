@@ -45,7 +45,7 @@ class Image(Operation):
         self.do_multiscale_clean = None
         self.pol_combine_method = None
         self.apply_none = False  # no solutions applied before or during imaging (ImageInitial only)
-        self.make_image_cube = False  # make an image cube (for now ImageNormalize only)
+        self.make_image_cube = self.field.make_image_cube  # make an image cube
         self.normalize_flux_scale = False  # derive flux scale normalizations (ImageNormalize only)
         self.compress_images = None
 
@@ -73,7 +73,7 @@ class Image(Operation):
                 self.preapply_dde_solutions = False
         if self.compress_images is None:
             self.compress_images = self.field.compress_images
-        if self.batch_system == 'slurm':
+        if self.batch_system.startswith('slurm'):
             # For some reason, setting coresMax ResourceRequirement hints does
             # not work with SLURM
             max_cores = None
@@ -314,13 +314,16 @@ class Image(Operation):
         if self.peel_bright_sources:
             self.input_parms.update({'bright_skymodel_pb': CWLFile(self.field.bright_source_skymodel_file).to_json()})
         if self.field.use_mpi:
-            # Set number of nodes to allocate to each imaging subworkflow. We subtract
-            # one node because Toil must use one node for its job, which in turn calls
-            # salloc to reserve the nodes for the MPI job
+            # Set number of nodes to allocate to each imaging subworkflow.
             self.use_mpi = True
             nnodes = self.parset['cluster_specific']['max_nodes']
             nsubpipes = min(nsectors, nnodes)
-            nnodes_per_subpipeline = max(1, int(nnodes / nsubpipes) - 1)
+            if self.batch_system == 'slurm_static':
+                nnodes_per_subpipeline = max(1, int(nnodes / nsubpipes))
+            else:
+                # We subtract one node because Toil must use one node for its job,
+                # which in turn calls salloc to reserve the nodes for the MPI job
+                nnodes_per_subpipeline = max(1, int(nnodes / nsubpipes) - 1)
             self.input_parms.update({'mpi_nnodes': [nnodes_per_subpipeline] * nsectors})
             self.input_parms.update({'mpi_cpus_per_task': [self.parset['cluster_specific']['cpus_per_task']] * nsectors})
         if not self.apply_none and self.use_facets:
@@ -426,6 +429,22 @@ class Image(Operation):
                         setattr(sector, f"{polup}_dirty_file_apparent_sky", f'{image_root}-MFS-{polup}-dirty.{image_extension}')
                         if not hasattr(sector, "mask_filename"):
                             setattr(sector, "mask_filename", f'{image_root}-MFS-{polup}-image-pb.fits.mask.fits')
+
+            # Save the output image cubes. Note that, unlike the normal images above,
+            # the cubes are copied directly since mosaicking of the cubes is not yet
+            # supported
+            if self.make_image_cube:
+                src_filename = f'{image_root}_freq_cube.fits'
+                dst_dir = os.path.join(self.parset['dir_working'], 'images', self.name)
+                os.makedirs(dst_dir, exist_ok=True)
+                sector.I_freq_cube = os.path.join(dst_dir, os.path.basename(src_filename))
+                shutil.copy(src_filename, sector.I_freq_cube)
+
+                # Save the output beams and frequencies files
+                for suffix in ['_beams.txt', '_frequencies.txt']:
+                    src_filename = f'{image_root}_freq_cube.fits{suffix}'
+                    dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
+                    shutil.copy(src_filename, dst_filename)
 
             # The output sky models, both true sky and apparent sky (the filenames are
             # defined in the rapthor/scripts/filter_skymodel.py file)

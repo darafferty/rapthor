@@ -25,7 +25,7 @@ class CalibrateDD(Operation):
         """
         Define parameters needed for the CWL workflow template
         """
-        if self.batch_system == 'slurm':
+        if self.batch_system.startswith('slurm'):
             # For some reason, setting coresMax ResourceRequirement hints does
             # not work with SLURM
             max_cores = None
@@ -528,7 +528,7 @@ class CalibrateDI(Operation):
         """
         Define parameters needed for the CWL workflow template
         """
-        if self.batch_system == 'slurm':
+        if self.batch_system.startswith('slurm'):
             # For some reason, setting coresMax ResourceRequirement hints does
             # not work with SLURM
             max_cores = None
@@ -551,12 +551,13 @@ class CalibrateDI(Operation):
         starttime_fulljones = self.field.get_obs_parameters('starttime')
         ntimes_fulljones = self.field.get_obs_parameters('ntimes')
 
-        # Get the filenames of the input files for each time chunk
-        timechunk_filename_fulljones = self.field.get_obs_parameters('timechunk_filename')
+        # Get the filenames of the input files for each time chunk. These are the
+        # output of the predict_di pipeline done before this calibration
+        timechunk_filename_fulljones = self.field.get_obs_parameters('predict_di_output_filename')
 
         # Get the solution intervals for the calibrations
-        solint_fulljones_timestep = self.field.get_obs_parameters('solint_slow_timestep_fulljones')
-        solint_fulljones_freqstep = self.field.get_obs_parameters('solint_slow_freqstep_fulljones')
+        solint_fulljones_timestep = self.field.get_obs_parameters('solint_fulljones_timestep')
+        solint_fulljones_freqstep = self.field.get_obs_parameters('solint_fulljones_freqstep')
 
         # Define various output filenames for the solution tables. We save some
         # as attributes since they are needed in finalize()

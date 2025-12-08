@@ -3,6 +3,49 @@
 Changelog
 =========
 
+Version 2.1 (2025/12/04)
+------------------------
+
+This minor release includes the following improvements:
+
+    - Image quality has improved significantly. This is mainly due to the use
+      of a more sophisticated calibration strategy.
+    - Processing speed has improved further, with typical processing times
+      reduced by a factor ~2 compared to v2.0.
+    - Time and frequency smearing effects can now be corrected for during the
+      prediction part of calibration and during imaging. It is disabled by
+      default, as the smearing corrections are still experimental in WSClean,
+      and need more testing.
+    - The calibration operation can now use image-based prediction.
+      Image-based prediction can be faster than the normal prediction,
+      especially for large sky models. It is disabled by default, but can be
+      useful in certain situations (e.g., when filtering of the calibration
+      sky model is disabled).
+    - Rapthor can now produce spectral image cubes for Stokes-I with a
+      user-specified channel width.
+    - IDGCal can now be used for calibration during the final cycle (note: this
+      mode should be considered experimental).
+    - Improvements in components used by Rapthor, like: AOFlagger, DP3,
+      EveryBeam, WSClean, etc. For more details, please refer to their
+      respective changelogs.
+    - For WSClean, the most relevant changes are:
+        - use of multi-frequency interface;
+        - sub-pixel rendering;
+        - smearing corrections;
+        - better I/O in MPI mode thanks to shared facet reads/writes;
+        - new options to tweak iteration strategy that lower the number of
+          required major iterations;
+        - support for time-BDA in facetting mode;
+        - and lots of generic code improvements.
+    - For DP3, the most relevant changes are:
+        - meta data compression;
+        - specify initial solutions in DDECal;
+        - allow per-direction smoothness values as well as per-antenna
+          smoothness and time-integration settings in DDECal;
+        - better support of BDA data.
+    - Many more improvements and bug fixes. See the git log for details.
+
+
 Version 2.0 (2025/04/11)
 ------------------------
 

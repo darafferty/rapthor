@@ -315,9 +315,6 @@ The available options are described below under their respective sections.
         Smoothness constraint bandwidth used during the slow calibration, in Hz
         (default = 3e6).
 
-    fulljones_timestep_sec
-        Time step used during the full-Jones calibration, in seconds (default = 600).
-
     fulljones_freqstep_hz
         Frequency step used during the full-Jones calibration, in Hz (default = 1e6).
 
@@ -471,6 +468,12 @@ The available options are described below under their respective sections.
         if available, applied. Note, however, that the direction-dependent solutions will
         not be applied unless :term:`dde_method` = ``single``, in which case the solutions
         closest to the image centers are used.
+
+    save_image_cube
+        Save the Stokes I frequency cube (default = ``False``). If ``True``, a cube is
+        constructed from the channel images made during the final imaging step, once
+        self calibration has been completed. The width of the frequency channels in the
+        cube is set by the :term:`channel_width_hz` parameter in the strategy file.
 
     save_supplementary_images
         Save dirty images and the clean masks made during each imaging cycle (default =

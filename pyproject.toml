@@ -36,7 +36,7 @@ dependencies = [
     "bdsf",
     "jinja2",
     "losoto>=2.4.3",
-    "lsmtool @ git+https://git.astron.nl/RD/LSMTool.git@master",
+    "lsmtool>=1.8.0",
     "matplotlib",
     "mocpy",
     "numpy",
@@ -69,6 +69,7 @@ include-package-data = false
 packages = [
     "rapthor",
     "rapthor.lib",
+    "rapthor.lib.toil_batch_systems",
     "rapthor.operations",
 ]
 script-files = [

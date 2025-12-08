@@ -29,7 +29,10 @@ arguments:
   - -no-update-model-required
   - -local-rms
   - -join-channels
-  - -use-idg
+  - valueFrom: 'idg'
+    prefix: -gridder
+  - valueFrom: 'single'
+    prefix: -major-iteration-mode
   - -log-time
   - valueFrom: '$(runtime.tmpdir)'
     prefix: -temp-dir

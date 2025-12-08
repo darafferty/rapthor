@@ -108,6 +108,10 @@ Primary products:
 
         .. note::
 
+            If a Stokes-I image cube is also made (see :term:`make_image_cube`), then there will be an output cube, one for each imaging sector, named as ``sector_1_freq_cube.fits``, ``sector_2_freq_cube.fits``, etc. For each image cube, two auxilary files are also saved that list the frequencies (e.g., ``sector_1_freq_cube.fits_frequencies.txt``) and beam shapes (e.g., ``sector_1_freq_cube.fits_beams.txt``) of each image channel in the cube. These files can be useful for, e.g., processing the cube with source finders such as PyBDSF.
+
+        .. note::
+
             If an initial sky model was generated from the input data (see :term:`generate_initial_skymodel`), then there will be a set of output images in ``images/initial_image``. These images are generated directly from the input data (with no additional calibration) and are used to derive the initial sky model.
 
     * In ``plots/image_X``, where ``X`` is the cycle number:
