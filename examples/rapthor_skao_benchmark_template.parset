@@ -112,14 +112,14 @@ skip_final_major_iteration = True
 skip_corner_sectors = False
   
 [cluster]
-batch_system = $BATCH_SYSTEM
-max_nodes = $SLURM_JOB_NUM_NODES
-cpus_per_task = $SLURM_CPUS_PER_TASK
-mem_per_node_gb = 0
-max_cores = $SLURM_CPUS_PER_TASK
-max_threads = $SLURM_CPUS_PER_TASK
-deconvolution_threads = 0
-parallel_gridding_threads = 0
+batch_system = $RAPTHOR_BATCH_SYSTEM
+max_nodes = $RAPTHOR_MAX_NODES
+cpus_per_task = $RAPTHOR_CPUS_PER_TASK
+mem_per_node_gb = $RAPTHOR_MEM_PER_NODE_GB
+max_cores = $RAPTHOR_MAX_CORES
+max_threads = $RAPTHOR_MAX_THREADS
+deconvolution_threads = $RAPTHOR_DECONV_THREADS
+parallel_gridding_threads = $RAPTHOR_PARALLEL_GRIDDING_THREADS
 local_scratch_dir = $TMPDIR
 global_scratch_dir = $TMPDIR
 use_container = False

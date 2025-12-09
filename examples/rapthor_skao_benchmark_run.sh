@@ -18,11 +18,24 @@
 #     WORK_PATH    : Scratch/work directory
 #     OUTPUT_PATH  : Directory where pipeline outputs will be written
 #     REPORT_PATH  : Directory where reports will be copied
+#     CODE_PATH    : Path to the rapthor code repository
 #     META_MODULE  : Spack meta-module to load dependencies
 #
 # The following are set by `_ical.sh`:
 #     PARTITION    : SLURM partition to use
 #     NODE_COUNT   : Number of nodes to use
+# 
+# The following environmental variables should be set to configure compute
+# resources for rapthor. These are used to populate the `[cluster]` section of
+# the parset file.:
+#    batch_system = $RAPTHOR_BATCH_SYSTEM
+#    max_nodes = $RAPTHOR_MAX_NODES
+#    cpus_per_task = $RAPTHOR_CPUS_PER_TASK
+#    mem_per_node_gb = $RAPTHOR_MEM_PER_NODE_GB
+#    max_cores = $RAPTHOR_MAX_CORES
+#    max_threads = $RAPTHOR_MAX_THREADS
+#    deconvolution_threads = $RAPTHOR_DECONV_THREADS
+#    parallel_gridding_threads = $RAPTHOR_PARALLEL_GRIDDING_THREADS
 #
 # Parset and Strategy:
 # ---------------------------------------------------------------------------- #
@@ -49,17 +62,6 @@
 # /shared/fsx1/shared/product/eb-low68s_tec_lotss_noise_small-20000104-00000/ska-sdp/pb-low68s_tec_lotss_noise_small-20000104-00000/visibility.scan-400_applybeam.ms
 #
 ################################################################################
-# SLURM settings:
-# ---------------------------------------------------------------------------- #
-#SBATCH --job-name=sp-5859-rapthor-benchmark-test
-#SBATCH --exclusive
-#SBATCH --nodes=1                   # Use a single node by default.
-#SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=120         # must be set. Use less than the total number of cpus on the node to avoid oversubscription
-#SBATCH --time 168:00:00
-#SBATCH --output=%x-%j-leader-slurm.out
-#SBATCH --error=%x-%j-leader-slurm.out
-# ---------------------------------------------------------------------------- #
 
 set -euo pipefail
 
@@ -109,13 +111,6 @@ export INPUT_MS_FULL_PATH=$(readlink -f "$INPUT_PATH/visibility.scan-400_applybe
 # Export TMPDIR - without this some steps in rapthor use the default which may
 # run out of space - this is also substituted into parset file
 export TMPDIR=/dev/shm
-
-# Get the cpu count for the partition to set
-#  `max_nodes`, `cpus_per_task`, `max_cores`, `max_threads` in parset
-export BATCH_SYSTEM="single_machine"
-
-# Set number of threads for numexpr
-export NUMEXPR_MAX_THREADS=$SLURM_CPUS_PER_TASK
 
 # Run Rapthor
 # ---------------------------------------------------------------------------- #
