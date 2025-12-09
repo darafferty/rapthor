@@ -136,7 +136,7 @@ $(cat $PARSET_PATH)\n\
 -----------------------------------------------------------------------------\n"
 
 # Start monitoring
-benchmon-start --level 0 --save-dir $REPORT_PATH
+benchmon-start --sys --sys-freq 1 --call --call-prof-freq 1 --save-dir $REPORT_PATH
 
 # Run rapthor on parset
 time rapthor $PARSET_PATH
