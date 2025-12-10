@@ -72,36 +72,7 @@ echo "Starting Rapthor benchmark script on $(hostname) at $(date)"
 
 # Load spack modules
 # ---------------------------------------------------------------------------- #
-# echo "Loading rapthor modules"
 module load py-rapthor py-ska-sdp-benchmark-monitor
-
-# Ensure bdsf can find libboost_numpy311.so.1.86.0
-module show boost
-export LD_LIBRARY_PATH=$BOOST_ROOT/lib:$LD_LIBRARY_PATH
-echo $LD_LIBRARY_PATH
-
-# Install rapthor from branch
-# ---------------------------------------------------------------------------- #
-echo -e "Installing rapthor\n\
--------------------------------------------------------------------------------"
-# Check repo status
-cd $CODE_PATH
-git -C $CODE_PATH status --porcelain
-echo "Installing rapthor from branch: $(git -C $CODE_PATH rev-parse --abbrev-ref HEAD)"
-
-# Create and activate virtual environment
-python -m venv $WORK_PATH/.venv
-source $WORK_PATH/.venv/bin/activate
-
-# Install using pip
-INSTALL_LOG=$LOG_PATH/rapthor-install.log
-pip install --upgrade pip 2>&1 > $INSTALL_LOG
-pip install $CODE_PATH 2>&1 >> $INSTALL_LOG
-
-# Check installation
-echo "Installed $(rapthor --version)"
-echo -e "Environment ready!\n\
--------------------------------------------------------------------------------"
 
 # Configure
 # ---------------------------------------------------------------------------- #
