@@ -1,12 +1,7 @@
 """
-Script that defines the default user processing strategy for HBA data when the
-initial sky model is generated from the input data. Specifying this file as the
-strategy in the Rapthor parset causes Rapthor to use the default self-
-calibration behaviour, which is equal to specifying no specific calibration
-strategy.
- 
-This file is provided to base custom strategies from. See the documentation for
-detailed information on each parameter.
+Strategy for simulated AA2 benchmark dataset. Further details on this dataset
+and strategy can be found on confluence:
+https://confluence.skatelescope.org/display/SE/%5BSimulations%5D+--+New+data+for+benchmarking
 """
 
 strategy_steps = []
