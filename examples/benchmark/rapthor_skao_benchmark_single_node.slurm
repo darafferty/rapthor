@@ -16,7 +16,7 @@
 set -euo pipefail
 
 # Set the required environmental variables to configure the rapthor run
-export RAPTHOR_BATCH_SYSTEM="single node"
+export RAPTHOR_BATCH_SYSTEM="single_machine"
 export RAPTHOR_MAX_NODES=1
 
 # the number of processors and amount of memory per node to
