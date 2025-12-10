@@ -72,6 +72,7 @@ echo "Starting Rapthor benchmark script on $(hostname) at $(date)"
 
 # Load spack modules
 # ---------------------------------------------------------------------------- #
+# Use rapthor master from ska-sdp-spack
 module load py-rapthor@master py-ska-sdp-benchmark-monitor
 
 # Configure
