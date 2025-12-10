@@ -16,7 +16,6 @@
 set -euo pipefail
 
 # Set the required environmental variables to configure the rapthor run
-
 export RAPTHOR_BATCH_SYSTEM="single node"
 export RAPTHOR_MAX_NODES=1
 
@@ -43,4 +42,4 @@ export RAPTHOR_DECONV_THREADS=0
 export RAPTHOR_PARALLEL_GRIDDING_THREADS=0
 
 # run benchmark
-source rapthor_skao_benchmark_runner.sh
+source $CODE_PATH/examples/benchmark/rapthor_skao_benchmark_runner.sh

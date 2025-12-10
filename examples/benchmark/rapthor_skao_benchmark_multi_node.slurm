@@ -45,4 +45,4 @@ export RAPTHOR_DECONV_THREADS=0
 export RAPTHOR_PARALLEL_GRIDDING_THREADS=0
 
 # run benchmark
-source rapthor_skao_benchmark_runner.sh
+source $CODE_PATH/examples/benchmark/rapthor_skao_benchmark_runner.sh
