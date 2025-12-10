@@ -1,7 +1,27 @@
 #!/bin/bash
 
 ###############################################################################
-# Rapthor Benchmark Script for Single Node run on SKAO DP cluster on AWS
+# SLURM script for benchmarking rapthor multi-node runs on SKAO AWS cluster
+#
+# This script exports the required environmental variables to configure a
+# rapthor benchmark run. It calls the `skao_aws_benchmark_runner.sh` script to
+# perform the actual benchmark run.
+#
+# NOTE:  This script is intended to be run by a wrapper script that sets some
+# key environmental variables such as $CODE_PATH. Please see the documentation
+# in the `./skao_aws_benchmark_runner.sh` script.
+#
+# The following environmental variables can be set here to configure compute
+# resources for rapthor. These are used to populate the `[cluster]` section of
+# the template parset file:
+#    RAPTHOR_BATCH_SYSTEM
+#    RAPTHOR_MAX_NODES
+#    RAPTHOR_CPUS_PER_TASK
+#    RAPTHOR_MEM_PER_NODE_GB
+#    RAPTHOR_MAX_CORES
+#    RAPTHOR_MAX_THREADS
+#    RAPTHOR_DECONV_THREADS
+#    RAPTHOR_PARALLEL_GRIDDING_THREADS
 #
 # SLURM settings:
 # ---------------------------------------------------------------------------- #
