@@ -54,6 +54,8 @@ export RAPTHOR_MEM_PER_NODE_GB=0
 # = all)
 export RAPTHOR_MAX_CORES=0
 export RAPTHOR_MAX_THREADS=0
+# max_thread cannot be larger than environment variable NUMEXPR_MAX_THREADS
+export NUMEXPR_MAX_THREADS=$SLURM_CPUS_PER_TASK
 
 # Number of threads to use by WSClean during deconvolution (default = 0 = 2/5
 # of max_threads, but not more than 14). Higher values will speed up imaging at
