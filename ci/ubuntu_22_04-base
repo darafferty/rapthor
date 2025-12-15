@@ -255,8 +255,9 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         wget
 RUN rm -rf /var/lib/apt/lists/*
 
-# Try to run the compiled tools to make sure they run without
-# a problem (e.g. no missing libraries).
+# Try to run the compiled tools and binaries that Rapthor needs, to make
+# sure the software runs without problems (e.g. no missing libraries).
 RUN aoflagger --version && \
     DP3 --version && \
-    wsclean --version
+    wsclean --version && \
+    fpack -H
