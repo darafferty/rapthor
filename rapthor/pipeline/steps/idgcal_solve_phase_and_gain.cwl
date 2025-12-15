@@ -137,4 +137,4 @@ outputs:
       glob: $(inputs.h5parm)
 hints:
   - class: DockerRequirement
-    dockerPull: astronrd/rapthor:2.1.post1
+    dockerPull: astronrd/rapthor
