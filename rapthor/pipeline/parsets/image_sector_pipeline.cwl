@@ -607,12 +607,6 @@ steps:
       averaging, phase shifting, and optionally the application of the
       calibration solutions.
     run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data.cwl
-{% if max_cores is not none %}
-    hints:
-      ResourceRequirement:
-        coresMin: {{ max_cores }}
-        coresMax: {{ max_cores }}
-{% endif %}
     in:
       - id: msin
         source: obs_filename
@@ -765,12 +759,6 @@ steps:
 {% endif %}
 # end apply_screens / not apply_screens
 
-{% if max_cores is not none %}
-    hints:
-      ResourceRequirement:
-        coresMin: {{ max_cores }}
-        coresMax: {{ max_cores }}
-{% endif %}
     in:
       - id: msin
         source: concat_in_time/msconcat
@@ -909,12 +897,6 @@ steps:
       This step uses WSClean to restore the bright sources to the primary-beam-
       corrected image.
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_restore.cwl
-{% if max_cores is not none %}
-    hints:
-      ResourceRequirement:
-        coresMin: {{ max_cores }}
-        coresMax: {{ max_cores }}
-{% endif %}
     in:
       - id: residual_image
         source: image/image_I_pb_name
@@ -934,12 +916,6 @@ steps:
       This step uses WSClean to restore the bright sources to the non-primary-beam-
       corrected image.
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_restore.cwl
-{% if max_cores is not none %}
-    hints:
-      ResourceRequirement:
-        coresMin: {{ max_cores }}
-        coresMax: {{ max_cores }}
-{% endif %}
     in:
       - id: residual_image
         source: image/image_I_nonpb_name
