@@ -232,7 +232,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         libboost-filesystem1.74.0 \
         libboost-program-options1.74.0 \
         libboost-python1.74.0 \
-        libcfitsio9 \
+        libcfitsio-bin \
         libfftw3-double3 \
         libfftw3-single3 \
         libgfortran5 \
