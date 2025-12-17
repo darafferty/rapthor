@@ -21,11 +21,6 @@ The available options are described below under their respective sections.
 
     An example parset is available in the `settings directory
     <https://git.astron.nl/RD/rapthor/-/blob/master/rapthor/settings/defaults.parset>`_.
-    In addition, example parsets for running on the SKAO cluster using either a single node,
-    or multiple nodes, are availble in the `examples directory
-    <https://git.astron.nl/RD/rapthor/-/tree/master/examples>`_ and an example parset 
-    for SKA-low is available in `the settings directory 
-    <https://git.astron.nl/RD/rapthor/-/blob/master/rapthor/settings/defaults_skalow.parset>`_.
 
 .. _parset_global_options:
 
@@ -555,10 +550,6 @@ The available options are described below under their respective sections.
             Currently, Toil does not fully support ``openmpi``. Because of this, imaging
             can only use the worker nodes, and the master node will be idle.
 
-        .. note::
-            When running on SKAO cluster, be sure to export the ``SALLOC_PARTITION`` to 
-            ensure Toil uses a specific partition (see example SLURM script `here
-            <https://git.astron.nl/RD/rapthor/-/blob/master/examples/rapthor_skao_multinode.slurm>`_).
 
     reweight
         Reweight the visibility data before imaging (default = ``False``). If ``True``,

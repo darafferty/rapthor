@@ -6,14 +6,12 @@ Rapthor is an experimental pipeline for correcting direction-dependent effects i
 
 Extensive documentation can be found on [Read the Docs](https://rapthor.readthedocs.io/en/latest/).
 
+For details on how rapthor is installed and used as part of the SKAO ICAL pipeline see SKAO 
+documentation [here](https://developer.skao.int/projects/ska-sdp-ical/en/latest/).
 
 ## Installation
 
 To install rapthor, follow the instructions below. 
-
-If you are using the SKAO AWS cluster, follow the 
-instructions [here](https://rapthor.readthedocs.io/en/latest/running_skao.html).
-
 
 ### Dependencies
 
