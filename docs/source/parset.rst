@@ -369,7 +369,7 @@ The available options are described below under their respective sections.
     average_visibilities
         Perform averaging of the input visibilities for imaging (default = ``True``), 
         determined by the maximum allowed before smearing effects become important (see
-        max_peak_smearing). 
+        :term:`max_peak_smearing`). 
          
         .. note:: 
 
