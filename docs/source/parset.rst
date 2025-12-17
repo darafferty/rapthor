@@ -365,6 +365,17 @@ The available options are described below under their respective sections.
     solverlbfgs_iter
         Number of iterations per minibatch in the LBFGS solver (only used when
         :term:`solveralgorithm` = ``lbfgs``; default = 4).
+    
+    average_visibilities
+        Perform averaging of the input visibilities for imaging (default = ``True``), 
+        determined by the maximum allowed before smearing effects become important (see
+        :term:`max_peak_smearing`). 
+         
+        .. note:: 
+
+            This works in conjuntion with :term:`save_visibilities`, so that 
+            visibilities used in each imaging cycle can be saved without averaging 
+            (unless other averaging such as bda is requested).
 
     bda_timebase
         Maximum baseline used in baseline-dependent time averaging (BDA) during the
@@ -593,7 +604,8 @@ The available options are described below under their respective sections.
         Max desired peak flux density reduction at center of the image edges due to
         bandwidth smearing (at the mean frequency) and time smearing (default = 0.15 = 15%
         reduction in peak flux). Higher values result in shorter run times but more
-        smearing away from the image centers.
+        smearing away from the image centers. Note this option is not considered if 
+        :term:`average_visibilities` = ``False``.
 
     correct_time_frequency_smearing
         Correct for time and frequency smearing during imaging (default =

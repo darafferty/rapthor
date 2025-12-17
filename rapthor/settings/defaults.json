@@ -74,6 +74,7 @@
         "filter_skymodel": true,
         "source_finder": "bdsf",
         "save_visibilities": false,
+        "average_visibilities": true,
         "save_image_cube": false,
         "save_supplementary_images": false,
         "compress_selfcal_images": true,

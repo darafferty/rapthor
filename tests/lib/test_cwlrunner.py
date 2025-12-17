@@ -130,6 +130,8 @@ class Field:
         self.apply_time_frequency_smearing = True
         self.correct_smearing_in_imaging = True
         self.make_image_cube = False
+        self.save_visibilities = False
+        self.average_visibilities = True
 
     def get_calibration_radius(self):
         return 5.0
