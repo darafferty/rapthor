@@ -85,7 +85,7 @@
                       'reweight': False,
                       'robust': -0.65,
                       'save_visibilities': False,
-                      'save_averaged_visibilities': True,
+                      'average_visibilities': True,
                       'save_image_cube': False,
                       'save_supplementary_images': False,
                       'compress_selfcal_images': True,

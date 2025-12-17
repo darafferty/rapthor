@@ -233,10 +233,8 @@ class Image(Operation):
             if prepare_data_applycal_steps:
                 prepare_data_applycal_steps = f"[{','.join(prepare_data_applycal_steps)}]"
         all_regular = all([obs.channels_are_regular for obs in self.field.observations])
-        # Default is to average visibilities for imaging, except if you want to save
-        # unaveraged visibilities
-        averaged_visibilities = (not self.field.save_visibilities or self.field.save_averaged_visibilities)
-        if averaged_visibilities:
+        # Default is to average visibilities for imaging up to the smearing limit
+        if self.field.average_visibilities:
             # Average visibilities
             prepare_data_steps.append('avg')
         if self.field.image_bda_timebase > 0 and all_regular and not self.apply_screens:

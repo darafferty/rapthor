@@ -198,11 +198,12 @@ source_finder = bdsf
 # files will be saved, with the the direction-independent full-Jones solutions,
 # if available, applied. Note, however, that the direction-dependent solutions
 # will not be applied unless dde_method = "single", in which case the solutions
-# closest to the image centers are used. If save_averaged_visibilities=True, the
-# visibilities that are saved and that are used for imaging are not averaged in 
-# frequency and time to the limit allowed that prevents time and frequency smearing.
+# closest to the image centers are used.
 save_visibilities = False
-save_averaged_visibilities = True
+
+# Perform averaging of visibilities for imaging, up to that allowed by smearing
+# constraints (default = True). 
+average_visibilities = True
 
 # Save the Stokes I frequency cube (default = False). If True, a cube is constructed
 # from the channel images made during the final imaging step, once self calibration has
