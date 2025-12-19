@@ -31,7 +31,7 @@ outputs:
     doc: |
       The filename of the output FITS image cube. The value is taken from the input
       parameter "output_image".
-    type: File?
+    type: File
     outputBinding:
       glob: $(inputs.output_image)
   - id: image_cube_beams
@@ -39,7 +39,7 @@ outputs:
     doc: |
       The filename of the output image cube beams. The value is taken from the input
       parameter "output_image".
-    type: File?
+    type: File
     outputBinding:
       glob: $(inputs.output_image)_beams.txt
   - id: image_cube_frequencies
@@ -47,7 +47,7 @@ outputs:
     doc: |
       The filename of the output FITS image cube. The value is taken from the input
       parameter "output_image".
-    type: File?
+    type: File
     outputBinding:
       glob: $(inputs.output_image)_frequencies.txt
 
