@@ -9,7 +9,7 @@ import tempfile
 import textwrap
 import unittest
 
-import mock
+import unittest.mock as mock
 from rapthor.lib.parset import parset_read
 
 

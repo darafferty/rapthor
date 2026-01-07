@@ -3,15 +3,40 @@ This files contains the configuration for pytest, including fixtures and hooks
 for this directory.
 """
 
+import configparser
 import shutil
 from pathlib import Path
 
 import pytest
 
+from rapthor.lib.field import Field
+from rapthor.lib.parset import parset_read
+
 RESOURCE_DIR = Path(__file__).parent / "resources"
+
 
 def pytest_configure(config):
     config.resource_dir = RESOURCE_DIR
+
+
+@pytest.fixture
+def field(test_ms, tmp_path):
+    """
+    Yield a Field built from the test parset and copied MS.
+    """
+    cfg = configparser.ConfigParser(interpolation=None)
+    cfg.read(RESOURCE_DIR / "test.parset")
+    cfg.set("global", "dir_working", tmp_path.as_posix())
+    cfg.set("global", "input_ms", test_ms)
+    cfg.set("global", "input_skymodel", (RESOURCE_DIR / "test_true_sky.txt").as_posix())
+    cfg.set("global", "apparent_skymodel", (RESOURCE_DIR / "test_apparent_sky.txt").as_posix())
+
+    parset_file = tmp_path / "test.parset"
+    with parset_file.open("w") as fh:
+        cfg.write(fh)
+
+    parset = parset_read(parset_file, use_log_file=False)
+    yield Field(parset)
 
 
 @pytest.fixture

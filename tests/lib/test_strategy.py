@@ -10,7 +10,7 @@ from rapthor.lib.parset import parset_read
 from rapthor.lib.strategy import (set_image_strategy, set_selfcal_strategy,
                                   set_strategy, set_user_strategy)
 
-RESOURCE_DIR = Path(__file__).parent / ".." / "resources"
+RESOURCE_DIR = (Path(__file__).parent / ".." / "resources").resolve()
 
 
 @pytest.fixture

@@ -474,7 +474,9 @@ inputs:
     type:
       type: enum
       symbols: ["bdsf", "sofia"]
-
+  - id: save_model_image
+    label: Save filtered model
+    type: boolean
 {% if peel_bright_sources %}
   - id: bright_skymodel_pb
     label: Bright-source sky model
@@ -641,7 +643,10 @@ outputs:
       - image_sector/sector_normalize_h5parm
     type: File[]
 {% endif %}
-
+  - id: sector_skymodel_image_fits
+    outputSource:
+      - image_sector/skymodel_image_fits
+    type: File[]
 
 steps:
   - id: image_sector
@@ -691,6 +696,8 @@ steps:
         source: vertices_file
       - id: region_file
         source: region_file
+      - id: save_model_image
+        source: save_model_image
 {% if use_mpi %}
       - id: mpi_cpus_per_task
         source: mpi_cpus_per_task
@@ -872,3 +879,4 @@ steps:
       - id: sector_source_catalog
       - id: sector_normalize_h5parm
 {% endif %}
+      - id: skymodel_image_fits

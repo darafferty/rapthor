@@ -469,6 +469,12 @@ class Image(Operation):
             dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
             shutil.copy(src_filename, dst_filename)
 
+            # The output PyBDSF source catalog image
+            src_filename = image_root + '.model-pb.fits'
+            if os.path.exists(src_filename):
+                dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
+            shutil.copy(src_filename, dst_filename)
+
             # The output ds9 region file, if made
             if self.use_facets:
                 dst_dir = os.path.join(self.parset['dir_working'], 'regions', 'image_{}'.format(self.index))
