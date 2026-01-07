@@ -12,7 +12,7 @@ import pytest
 from rapthor.lib.field import Field
 from rapthor.lib.parset import parset_read
 
-RESOURCE_DIR = Path(__file__).parent / "resources"
+RESOURCE_DIR = (Path(__file__).parent / "resources").resolve()
 
 
 def pytest_configure(config):
@@ -20,9 +20,18 @@ def pytest_configure(config):
 
 
 @pytest.fixture
-def field(test_ms, tmp_path):
+def test_ms(tmp_path):
     """
-    Yield a Field built from the test parset and copied MS.
+    Fixture to provide a copy of the test MS in the resources directory.
+    Yield the POSIX path to the copy of the MS.
+    """
+    shutil.copytree(RESOURCE_DIR / "test.ms", tmp_path/ "test.ms")
+    yield (tmp_path / "test.ms").as_posix()
+
+@pytest.fixture
+def parset(test_ms, tmp_path):
+    """
+    Fixture to create a parset dictionary for testing.
     """
     cfg = configparser.ConfigParser(interpolation=None)
     cfg.read(RESOURCE_DIR / "test.parset")
@@ -35,15 +44,13 @@ def field(test_ms, tmp_path):
     with parset_file.open("w") as fh:
         cfg.write(fh)
 
-    parset = parset_read(parset_file, use_log_file=False)
-    yield Field(parset)
+    parset_dict = parset_read(parset_file, use_log_file=False)
+    yield parset_dict
 
 
 @pytest.fixture
-def test_ms(tmp_path):
+def field(parset):
     """
-    Fixture to provide a copy of the test MS in the resources directory.
-    Yield the POSIX path to the copy of the MS.
+    Fixture to create a Field object for testing.
     """
-    shutil.copytree(RESOURCE_DIR / "test.ms", tmp_path / "test.ms")
-    yield (tmp_path / "test.ms").as_posix()
+    return Field(parset)
