@@ -90,7 +90,7 @@ def run(parset_file, logging_level='info'):
         else:
             if not final_step['do_calibrate']:
                 if not parset["input_h5parm"]:
-                    raise ValueError("The stratgey indicates that no calibration is to be done "
+                    raise ValueError("The strategy indicates that no calibration is to be done "
                                      "but no calibration solutions were provided. Please provide "
                                      "the solutions with the input_h5parm parameter")
                 elif (
