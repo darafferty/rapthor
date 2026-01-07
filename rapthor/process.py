@@ -81,11 +81,6 @@ def run(parset_file, logging_level='info'):
     field.do_final = do_final_pass(field, selfcal_steps, final_step)
     if field.do_final:
         if selfcal_steps:
-            if not any([len(obs) > 1 for obs in field.epoch_observations]):
-                # Use concatenation was not done the user input data column
-                # for the final calibration run
-                field.data_colname = parset['data_colname']
-
             # If selfcal was done, set peel_outliers to that of the initial cycle, since the
             # observations will be regenerated and outliers (if any) need to be peeled again
             final_step['peel_outliers'] = selfcal_steps[0]['peel_outliers']
