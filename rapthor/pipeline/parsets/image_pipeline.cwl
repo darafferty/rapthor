@@ -639,15 +639,27 @@ outputs:
   - id: sector_image_cubes
     outputSource:
       - image_sector/sector_image_cubes
-    type: File[]
+    type:
+      type: array
+      items:
+        - type: array
+          items: File
   - id: sector_image_cube_beams
     outputSource:
       - image_sector/sector_image_cube_beams
-    type: File[]
+    type:
+      type: array
+      items:
+        - type: array
+          items: File
   - id: sector_image_cube_frequencies
     outputSource:
       - image_sector/sector_image_cube_frequencies
-    type: File[]
+    type:
+      type: array
+      items:
+        - type: array
+          items: File
 {% endif %}
 {% if normalize_flux_scale %}
   - id: sector_source_catalog
@@ -826,8 +838,6 @@ steps:
         source: bright_skymodel_pb
 {% endif %}
 {% if make_image_cube %}
-
-{% if make_image_cube %}
       - id: image_I_cube_name
         source: image_I_cube_name
       - id: image_Q_cube_name
@@ -836,8 +846,6 @@ steps:
         source: image_U_cube_name
       - id: image_V_cube_name
         source: image_V_cube_name
-{% endif %}
-
 {% endif %}
 {% if normalize_flux_scale %}
       - id: output_source_catalog
@@ -860,18 +868,10 @@ steps:
 {% endif %}
 {% endif %}
 {% if make_image_cube %}
-{% if "I" in image_cube_stokes_list %}
               image_I_cube_name,
-{% endif %}
-{% if "Q" in image_cube_stokes_list %}
               image_Q_cube_name,
-{% endif %}
-{% if "U" in image_cube_stokes_list %}
               image_U_cube_name,
-{% endif %}
-{% if "V" in image_cube_stokes_list %}
               image_V_cube_name,
-{% endif %}
 {% endif %}
 {% if normalize_flux_scale %}
               output_source_catalog,

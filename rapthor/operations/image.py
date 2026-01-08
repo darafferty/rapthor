@@ -193,14 +193,10 @@ class Image(Operation):
             if self.preapply_dde_solutions:
                 central_patch_name.append(sector.central_patch)
             if self.make_image_cube:
-                if "I" in self.field.image_cube_stokes_list:
-                    image_I_cube_name.append(sector.name + '_I_freq_cube.fits')
-                if "Q" in self.field.image_cube_stokes_list:
-                    image_Q_cube_name.append(sector.name + '_Q_freq_cube.fits')
-                if "U" in self.field.image_cube_stokes_list:
-                    image_U_cube_name.append(sector.name + '_U_freq_cube.fits')
-                if "V" in self.field.image_cube_stokes_list:
-                    image_V_cube_name.append(sector.name + '_V_freq_cube.fits')
+                image_I_cube_name.append(sector.name + '_I_freq_cube.fits')
+                image_Q_cube_name.append(sector.name + '_Q_freq_cube.fits')
+                image_U_cube_name.append(sector.name + '_U_freq_cube.fits')
+                image_V_cube_name.append(sector.name + '_V_freq_cube.fits')
             if self.normalize_flux_scale:
                 output_source_catalog.append(sector.name + '_source_catalog.fits')
                 normalize_h5parm.append(sector.name + '_normalize.h5parm')
@@ -398,14 +394,10 @@ class Image(Operation):
         elif self.preapply_dde_solutions:
             self.input_parms.update({'central_patch_name': central_patch_name})
         if self.make_image_cube:
-            if "I" in self.field.image_cube_stokes_list:
-                self.input_parms.update({'image_I_cube_name': image_I_cube_name})
-            if "Q" in self.field.image_cube_stokes_list:
-                self.input_parms.update({'image_Q_cube_name': image_Q_cube_name})
-            if "U" in self.field.image_cube_stokes_list:
-                self.input_parms.update({'image_U_cube_name': image_U_cube_name})
-            if "V" in self.field.image_cube_stokes_list:
-                self.input_parms.update({'image_V_cube_name': image_V_cube_name})
+            self.input_parms.update({'image_I_cube_name': image_I_cube_name})
+            self.input_parms.update({'image_Q_cube_name': image_Q_cube_name})
+            self.input_parms.update({'image_U_cube_name': image_U_cube_name})
+            self.input_parms.update({'image_V_cube_name': image_V_cube_name})
         if self.normalize_flux_scale:
             self.input_parms.update({'output_source_catalog': output_source_catalog})
             self.input_parms.update({'output_normalize_h5parm': normalize_h5parm})

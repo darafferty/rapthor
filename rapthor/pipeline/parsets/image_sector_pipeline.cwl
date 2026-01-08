@@ -596,15 +596,15 @@ outputs:
   - id: sector_image_cubes
     outputSource:
       - make_image_cubes/image_cube
-    type: File
+    type: File[]
   - id: sector_image_cube_beams
     outputSource:
       - make_image_cubes/image_cube_beams
-    type: File
+    type: File[]
   - id: sector_image_cube_frequencies
     outputSource:
       - make_image_cubes/image_cube_frequencies
-    type: File
+    type: File[]
 {% endif %}
 {% if normalize_flux_scale %}
   - id: sector_source_catalog
