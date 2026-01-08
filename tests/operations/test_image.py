@@ -6,12 +6,8 @@ import pytest
 from rapthor.operations.image import (Image, ImageInitial, ImageNormalize,
                                       report_sector_diagnostics)
 
-
-@pytest.fixture
-def field():
-    # Mock or create a field object as needed for testing
-    return "mock_field"
-
+from rapthor.lib.strategy import set_selfcal_strategy
+from rapthor.process import chunk_observations
 
 @pytest.fixture
 def image(field, index=1):
@@ -53,6 +49,27 @@ class TestImage:
         # image.finalize()
         pass
 
+def test_save_model_image(field):
+    # This is the required setup to configure an Image operation
+    # avoiding any other setting will make it throw an expeception
+    # refactoring of the fild and image classes seems advisable here
+    field.parset["imaging_specific"]["save_model_image"] = True
+    field.parset["regroup_input_skymodel"] = False
+    field.do_predict = False
+    field.scan_observations()
+    steps = set_selfcal_strategy(field)
+    field.update(steps[0], index=1, final=False)
+    field.image_pol = 'I'
+    field.skip_final_major_iteration = True
+    image = Image(field, index=1)
+    image.do_predict = False
+    image.apply_none = True
+    image.set_parset_parameters()
+    image.set_input_parameters()
+    
+    assert image.input_parms["save_model_image"] is True
+
+    pass
 
 class TestImageInitial:
     def test_set_parset_parameters(self, image_initial):

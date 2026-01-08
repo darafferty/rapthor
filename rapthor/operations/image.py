@@ -312,7 +312,9 @@ class Image(Operation):
                             'apply_time_frequency_smearing': self.field.correct_smearing_in_imaging,
                             'interval': interval,
                             'max_threads': self.field.parset['cluster_specific']['max_threads'],
-                            'deconvolution_threads': self.field.parset['cluster_specific']['deconvolution_threads']}
+                            'deconvolution_threads': self.field.parset['cluster_specific']['deconvolution_threads'],
+                            'save_model_image': self.field.parset["imaging_specific"].get("save_model_image", False)
+                            }
 
         # Add parameters that depend on the set_parset parameters (set in set_parset_parameters())
         if self.peel_bright_sources:
