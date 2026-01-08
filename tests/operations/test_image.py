@@ -49,27 +49,28 @@ class TestImage:
         # image.finalize()
         pass
 
-def test_save_model_image(field):
+    def test_save_model_image(self,field):
     # This is the required setup to configure an Image operation
     # avoiding any other setting will make it throw an expeception
     # refactoring of the fild and image classes seems advisable here
-    field.parset["imaging_specific"]["save_model_image"] = True
-    field.parset["regroup_input_skymodel"] = False
-    field.do_predict = False
-    field.scan_observations()
-    steps = set_selfcal_strategy(field)
-    field.update(steps[0], index=1, final=False)
-    field.image_pol = 'I'
-    field.skip_final_major_iteration = True
-    image = Image(field, index=1)
-    image.do_predict = False
-    image.apply_none = True
-    image.set_parset_parameters()
-    image.set_input_parameters()
-    
-    assert image.input_parms["save_model_image"] is True
+        field.parset["imaging_specific"]["save_model_image"] = True
+        field.parset["regroup_input_skymodel"] = False
+        field.do_predict = False
+        field.scan_observations()
+        steps = set_selfcal_strategy(field)
+        field.update(steps[0], index=1, final=False)
+        field.image_pol = 'I'
+        field.skip_final_major_iteration = True
+        image = Image(field, index=1)
+        image.do_predict = False
+        image.apply_none = True
+        image.set_parset_parameters()
+        image.set_input_parameters()
+        
+        assert image.input_parms["save_model_image"] is True
 
-    pass
+
+
 
 class TestImageInitial:
     def test_set_parset_parameters(self, image_initial):
@@ -84,6 +85,19 @@ class TestImageInitial:
         # image_initial.finalize()
         pass
 
+    def test_initial_image_save_model_image(self, field):
+        field.parset["imaging_specific"]["save_model_image"] = True
+        field.do_predict = False
+        field.scan_observations()
+        field.define_full_field_sector()
+        field.image_pol = 'I'
+        image_initial = ImageInitial(field)
+        image_initial.set_parset_parameters()
+        image_initial.set_input_parameters()
+
+        assert image_initial.input_parms["save_model_image"] is True
+
+
 
 class TestImageNormalize:
     def test_set_parset_parameters(self, image_normalize):
@@ -97,6 +111,21 @@ class TestImageNormalize:
     def test_finalize(self, image_normalize):
         # image_normalize.finalize()
         pass
+
+    def test_save_model_image(self, field):
+        field.parset["imaging_specific"]["save_model_image"] = True
+        field.do_predict = False
+        field.scan_observations()
+        field.define_normalize_sector()
+        field.image_pol = 'I'
+        field.apply_screens = False
+        field.skip_final_major_iteration = False
+        image_norm = ImageNormalize(field, index=1)
+        image_norm.do_predict = False
+        image_norm.set_parset_parameters()
+        image_norm.set_input_parameters()
+
+        assert image_norm.input_parms["save_model_image"] is True
 
 
 def test_report_sector_diagnostics(sector_name=None, diagnostics_dict=None, log=None):
