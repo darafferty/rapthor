@@ -7,3 +7,5 @@ test/
 venv/
 *.egg-info/
 *.sif
+.git
+.devcontainer
