@@ -70,6 +70,31 @@ class TestImage:
         assert image.input_parms["save_model_image"] is True
 
 
+def parse_cwl_outputs(workflow):
+    import yaml
+    with open(workflow, 'r') as f:
+        return yaml.safe_load(f)['outputs']
+    
+def generate_mock_files(output_path, outputs, mock_n_files=3):
+    for output_info in outputs:
+        output_class = output_info["type"]
+        for output_source in output_info.get('outputSource', []):
+            if output_class == "File[]":
+                for idx in range(mock_n_files):
+                    output_file = output_path / Path(output_source.replace('/', '.') + f"_{idx}")
+                    output_file.touch()
+            if output_class == "File":
+                output_file = output_path / output_source.replace('/', '.')
+                output_file.touch()
+            if output_class == "Directory":
+                output_dir = output_path / output_source.replace('/', '.')
+                output_dir.mkdir(parents=True, exist_ok=True)
+
+from pathlib import Path
+def mocked_cwl_execution(self,args, env):
+    outputs = parse_cwl_outputs(self.operation.pipeline_parset_file)
+    generate_mock_files(Path(self.operation.parset['dir_working']), outputs)
+    return True
 
 
 class TestImageInitial:
@@ -124,8 +149,25 @@ class TestImageNormalize:
         image_norm.do_predict = False
         image_norm.set_parset_parameters()
         image_norm.set_input_parameters()
-
         assert image_norm.input_parms["save_model_image"] is True
+
+    def test_run_with_execute_mock(self, field, monkeypatch):
+        # Mock the CWL runner's execute to avoid spawning subprocesses
+        monkeypatch.setattr(
+            "rapthor.lib.cwlrunner.BaseCWLRunner.execute",
+            mocked_cwl_execution,
+        )
+
+        field.parset["imaging_specific"]["save_model_image"] = True
+        field.do_predict = False
+        field.scan_observations()
+        field.define_normalize_sector()
+        field.image_pol = 'I'
+        field.apply_screens = False
+        field.skip_final_major_iteration = False
+
+        image_norm = ImageNormalize(field, index=1)
+        image_norm.run()
 
 
 def test_report_sector_diagnostics(sector_name=None, diagnostics_dict=None, log=None):
