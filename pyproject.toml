@@ -117,9 +117,13 @@ write_to = "rapthor/_version.py"
 # and so on. The `select` below is from our ASTRON Python project template.
 # select = ["N", "A", "E", "F", "B", "W", "Q", "PL", "ASYNC", "S", "G", "RET", "ARG", "I"]
 # The default behavior of ruff is to use "E" and "F", omitting stylistic rules.
+exclude = ["debug/**"]
 select = ["E", "F"]
 ignore = ["E501"]
 
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+"tests/**" = ["F401", "F403", "F405", "F841"]
 
 [tool.tox]
 requires = ["tox>4"]
