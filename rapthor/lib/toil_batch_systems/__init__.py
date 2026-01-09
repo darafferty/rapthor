@@ -1,2 +1,2 @@
-from . import toil_batch_system_slurm_static
+from . import toil_batch_system_slurm_static as toil_batch_system_slurm_static
 
