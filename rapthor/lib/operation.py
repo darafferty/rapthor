@@ -32,7 +32,7 @@ class Operation(object):
     name : str, optional
         Name of the operation
     """
-    def __init__(self, field, index=None, name=None):
+    def __init__(self, field, index=None, name:str=""):
         self.parset = field.parset.copy()
         self.field = field
         self.rootname = name.lower()
@@ -133,6 +133,7 @@ class Operation(object):
             self.container = self.parset['cluster_specific']['container_type']
         else:
             self.container = None
+        self.outputs = {}
 
     def set_parset_parameters(self):
         """
@@ -208,6 +209,8 @@ class Operation(object):
             with Timer(self.log):
                 with create_cwl_runner(self.cwl_runner, self) as runner:
                     success = runner.run()
+                    if success:
+                        self.outputs = runner.parse_outputs()
 
         # Finalize
         if success:
