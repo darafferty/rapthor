@@ -520,27 +520,27 @@ inputs:
 
 {% if make_image_cube %}
   - id: image_I_cube_name
-    label: Filename of output image cube
+    label: Filename of I image cube
     doc: |
-      The filename of the output Stokes-I image cube (length = 1).
+      The filename of the output Stokes-I image cube (length = n_sectors).
     type: string[]
 
   - id: image_Q_cube_name
-    label: Filename of output image cube
+    label: Filename of Q image cube
     doc: |
-      The filename of the output Stokes-Q image cube (length = 1).
+      The filename of the output Stokes-Q image cube (length = n_sectors).
     type: string[]
 
   - id: image_U_cube_name
-    label: Filename of output image cube
+    label: Filename of U image cube
     doc: |
-      The filename of the output Stokes-U image cube (length = 1).
+      The filename of the output Stokes-U image cube (length = n_sectors).
     type: string[]
 
   - id: image_V_cube_name
-    label: Filename of output image cube
+    label: Filename of V image cube
     doc: |
-      The filename of the output Stokes-V image cube (length = 1).
+      The filename of the output Stokes-V image cube (length = n_sectors).
     type: string[]
 {% endif %}
 

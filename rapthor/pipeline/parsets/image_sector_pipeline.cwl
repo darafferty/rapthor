@@ -10,6 +10,7 @@ doc: |
 requirements:
   ScatterFeatureRequirement: {}
   StepInputExpressionRequirement: {}
+  InlineJavascriptRequirement: {}
 
 {% if max_cores is not none %}
 hints:
@@ -478,25 +479,25 @@ inputs:
 
 {% if make_image_cube %}
   - id: image_I_cube_name
-    label: Filename of output image cube
+    label: Filename of I image cube
     doc: |
       The filename of the output Stokes-I image cube (length = 1).
     type: string?
 
   - id: image_Q_cube_name
-    label: Filename of output image cube
+    label: Filename of Q image cube
     doc: |
       The filename of the output Stokes-Q image cube (length = 1).
     type: string?
 
   - id: image_U_cube_name
-    label: Filename of output image cube
+    label: Filename of U image cube
     doc: |
       The filename of the output Stokes-U image cube (length = 1).
     type: string?
 
   - id: image_V_cube_name
-    label: Filename of output image cube
+    label: Filename of V image cube
     doc: |
       The filename of the output Stokes-V image cube (length = 1).
     type: string?
@@ -1122,7 +1123,8 @@ steps:
       - id: input_file_list
         source: make_image_cubes/image_cube_beams
       - id: filename_to_match
-        source: image_I_cube_beams_name
+        source: pick_I_cube/picked_file
+        valueFrom: $(self[0].basename)
       - id: suffix
         valueFrom: '_beams.txt'
     out:
