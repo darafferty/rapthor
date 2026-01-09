@@ -3,7 +3,6 @@
 Script to concatenate MS files
 """
 from argparse import ArgumentParser, RawTextHelpFormatter
-import errno
 import os
 import shutil
 import subprocess

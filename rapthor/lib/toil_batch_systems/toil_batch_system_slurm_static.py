@@ -26,17 +26,13 @@
 # This is a minal implementation that uses SingleMachineBatchSystem to do
 # the bulk of the job management and simply adds a srun wrapper.
 
-import datetime
 import logging
-import math
 import os
-import signal
 import subprocess
 import time
 import traceback
 
-from typing import Type, Optional, Union
-from argparse import ArgumentParser, _ArgumentGroup
+from typing import Type, Optional
 from toil.batchSystems.registry import add_batch_system_factory
 from toil.batchSystems.singleMachine import SingleMachineBatchSystem, Info
 from toil.batchSystems.abstractBatchSystem import AbstractBatchSystem
