@@ -161,10 +161,10 @@ def concat_freq_command(msfiles, data_colname, output_file, make_dummies=True):
             # dummy_multiplier now contains the number of dummies that need to be inserted.
             # This list needs to be flat for NumPy's insert later on.
             dummies = [['dummy.ms'] * x for x in dummy_multiplier]
-            dummies_flat = [i for l in dummies for i in l]
+            dummies_flat = [i for d in dummies for i in d]
             # Generate the indices at which each dummy needs to be inserted.
             final_idx = [[dummy_idx_u[i]] * len(dummies[i]) for i in range(len(dummies))]
-            final_idx_flat = [i for l in final_idx for i in l]
+            final_idx_flat = [i for f in final_idx for i in f]
             # Finally insert them all at once.
             mslist = np.insert(mslist, final_idx_flat, dummies_flat)
 
