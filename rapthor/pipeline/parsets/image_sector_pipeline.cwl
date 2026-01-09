@@ -1110,6 +1110,8 @@ steps:
         source: make_image_cubes/image_cube
       - id: filename_to_match
         source: image_I_cube_name
+      - id: suffix
+        valueFrom: ''
     out:
       - id: picked_file
 
