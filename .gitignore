@@ -151,6 +151,8 @@ cython_debug/
 
 # Visual Studio settings
 .vscode
+.devcontainer
+.github
 
 # Singularity/Apptainer images
 *.sif
