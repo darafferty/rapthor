@@ -1140,7 +1140,8 @@ steps:
       - id: input_file_list
         source: make_image_cubes/image_cube_frequencies
       - id: filename_to_match
-        source: image_I_cube_frequences_name
+        source: pick_I_cube/picked_file
+        valueFrom: $(self[0].basename)
       - id: suffix
         valueFrom: '_frequencies.txt'
     out:
