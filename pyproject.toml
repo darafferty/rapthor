@@ -167,7 +167,5 @@ deps = ["ruff"]
 commands = [
     [
         "python", "-m", "ruff", "check",
-        # For now, only check the `rapthor` package, not `tests` or other files
-        "rapthor",
     ],
 ]
