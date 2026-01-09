@@ -66,6 +66,17 @@ class BaseCWLRunner:
         os.environ.clear()
         os.environ.update(self._environment)
 
+    def execute(self, args, modified_env) -> bool:
+        with open(self.operation.pipeline_outputs_file, 'w') as stdout, \
+             open(self.operation.pipeline_log_file, 'w') as stderr:
+            try:
+                result = subprocess.run(args=args, env=modified_env, stdout=stdout, stderr=stderr, check=True)
+                logger.debug(str(result))
+                return True
+            except subprocess.CalledProcessError as err:
+                logger.critical(str(err))
+                return False
+
     def run(self) -> bool:
         """
         Start the runner in a subprocess.
@@ -84,8 +95,8 @@ class BaseCWLRunner:
                 "Don't know how to start CWL runner {}".format(self.__class__.__name__)
             )
         args = [self.command] + self.args
-        args.extend([self.operation.pipeline_parset_file,
-                     self.operation.pipeline_inputs_file])
+        args += [self.operation.pipeline_parset_file,
+                 self.operation.pipeline_inputs_file]
 
         # Ensure our custom batch system is on the path
         # So that toil can load it as a plugin
@@ -96,16 +107,7 @@ class BaseCWLRunner:
         modified_env = current_env | {"PYTHONPATH": python_path}
 
         logger.debug("Executing command: %s", ' '.join(args))
-        with open(self.operation.pipeline_outputs_file, 'w') as stdout, \
-             open(self.operation.pipeline_log_file, 'w') as stderr:
-            try:
-                result = subprocess.run(args=args, env=modified_env, stdout=stdout, stderr=stderr, check=True)
-                logger.debug(str(result))
-                return True
-            except subprocess.CalledProcessError as err:
-                logger.critical(str(err))
-                return False
-
+        return self.execute(args, modified_env)
 
 class CWLRunner(BaseCWLRunner):
 
