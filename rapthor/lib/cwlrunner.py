@@ -9,7 +9,7 @@ import os
 import shutil
 import subprocess
 import sys
-from typing import TYPE_CHECKING, List, Union
+from typing import TYPE_CHECKING, Union
 
 import yaml
 
