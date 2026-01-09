@@ -422,7 +422,7 @@ class Image(Operation):
         # by the mosaic operation
         self.field.lofar_to_true_flux_ratio = 1.0  # reset values for this cycle
         self.field.lofar_to_true_flux_std = 0.0
-        for sector in self.field.imaging_sectors:
+        for index, sector in enumerate(self.field.imaging_sectors):
             # The output image filenames
             image_root = os.path.join(self.pipeline_working_dir, sector.name)
             image_extension = 'fits.fz' if self.compress_images else 'fits'
@@ -480,12 +480,16 @@ class Image(Operation):
             if self.field.image_pol.lower() == 'i':
                 sector.image_skymodel_file_true_sky = image_root + '.true_sky.txt'
                 sector.image_skymodel_file_apparent_sky = image_root + '.apparent_sky.txt'
-                for src_filename in [sector.image_skymodel_file_true_sky, sector.image_skymodel_file_apparent_sky]:
-                    dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
+                for src_filename, filename in zip(
+                                    [self.outputs["sector_skymodel_true_sky"][index],
+                                     self.outputs["sector_skymodel_apparent_sky"][index]],
+                                    [sector.image_skymodel_file_true_sky,
+                                     sector.image_skymodel_file_apparent_sky]):
+                    dst_filename = os.path.join(dst_dir, os.path.basename(filename))
                     shutil.copy(src_filename, dst_filename)
 
             # The output PyBDSF source catalog
-            src_filename = image_root + '.source_catalog.fits'
+            src_filename = self.outputs["pybdsf_catalog"][index]
             dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
             shutil.copy(src_filename, dst_filename)
 
@@ -493,8 +497,8 @@ class Image(Operation):
             if self.use_facets:
                 dst_dir = os.path.join(self.parset['dir_working'], 'regions', 'image_{}'.format(self.index))
                 os.makedirs(dst_dir, exist_ok=True)
+                src_filename = self.outputs["sector_region_file"][index]
                 region_filename = '{}_facets_ds9.reg'.format(sector.name)
-                src_filename = os.path.join(self.pipeline_working_dir, region_filename)
                 dst_filename = os.path.join(dst_dir, region_filename)
                 shutil.copy(src_filename, dst_filename)
 
@@ -503,10 +507,11 @@ class Image(Operation):
                 dst_dir = os.path.join(self.parset['dir_working'], 'visibilities',
                                        'image_{}'.format(self.index), sector.name)
                 os.makedirs(dst_dir, exist_ok=True)
-                ms_filenames = sector.get_obs_parameters('ms_prep_filename')
-                for ms_filename in ms_filenames:
-                    src_filename = os.path.join(self.pipeline_working_dir, ms_filename)
-                    dst_filename = os.path.join(dst_dir, ms_filename)
+                # NOTE: Not needed anymore since visibilities are now returned
+                # ms_filenames = sector.get_obs_parameters('ms_prep_filename')
+                ms_filenames = self.outputs["visibilities"][index]
+                for src_filename in ms_filenames:
+                    dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
                     if os.path.exists(dst_filename):
                         shutil.rmtree(dst_filename)
                     shutil.copytree(src_filename, dst_filename)
@@ -514,13 +519,13 @@ class Image(Operation):
             # The astrometry and photometry plots
             dst_dir = os.path.join(self.parset['dir_working'], 'plots', 'image_{}'.format(self.index))
             os.makedirs(dst_dir, exist_ok=True)
-            diagnostic_plots = glob.glob(os.path.join(self.pipeline_working_dir, f'{sector.name}*.pdf'))
+            diagnostic_plots = self.outputs["sector_diagnostics_plots"][index]
             for src_filename in diagnostic_plots:
                 dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
                 shutil.copy(src_filename, dst_filename)
 
             # Read in the image diagnostics and log a summary of them
-            diagnostics_file = image_root + '.image_diagnostics.json'
+            diagnostics_file = self.outputs["sector_diagnostics"][index]
             with open(diagnostics_file, 'r') as f:
                 diagnostics_dict = json.load(f)
             diagnostics_dict['cycle_number'] = self.index
@@ -601,11 +606,7 @@ class ImageInitial(Image):
 
         # The output image filenames
         image_root = os.path.join(self.pipeline_working_dir, sector.name)
-        image_extension = 'fits.fz' if self.compress_images else 'fits'
-        image_names = [f'{image_root}-MFS-image-pb.{image_extension}',
-                       f'{image_root}-MFS-image.{image_extension}',
-                       f'{image_root}-MFS-model-pb.{image_extension}',
-                       f'{image_root}-MFS-residual.{image_extension}']
+        image_names = self.outputs["sector_images"][0] + self.outputs["sector_extra_images"][0]
         dst_dir = os.path.join(self.parset['dir_working'], 'images', self.name)
         os.makedirs(dst_dir, exist_ok=True)
         for src_filename in image_names:
@@ -616,22 +617,26 @@ class ImageInitial(Image):
         # defined in the rapthor/scripts/filter_skymodel.py file)
         sector.image_skymodel_file_true_sky = image_root + '.true_sky.txt'
         sector.image_skymodel_file_apparent_sky = image_root + '.apparent_sky.txt'
+
+
         dst_dir = os.path.join(self.parset['dir_working'], 'skymodels', self.name)
         os.makedirs(dst_dir, exist_ok=True)
-        for src_filename in [sector.image_skymodel_file_true_sky, sector.image_skymodel_file_apparent_sky]:
-            dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
+        for (src_filename, filename) in [
+            [self.outputs["sector_skymodel_true_sky"][0], sector.image_skymodel_file_true_sky],
+            [self.outputs["sector_skymodel_apparent_sky"][0], sector.image_skymodel_file_apparent_sky]]:
+            dst_filename = os.path.join(dst_dir, filename)
             shutil.copy(src_filename, dst_filename)
 
         # The astrometry and photometry plots
         dst_dir = os.path.join(self.parset['dir_working'], 'plots', self.name)
         os.makedirs(dst_dir, exist_ok=True)
-        diagnostic_plots = glob.glob(os.path.join(self.pipeline_working_dir, f'{sector.name}*.pdf'))
+        diagnostic_plots = self.outputs["sector_diagnostics_plots"][0]
         for src_filename in diagnostic_plots:
             dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
             shutil.copy(src_filename, dst_filename)
 
         # Read in the image diagnostics and log a summary of them
-        diagnostics_file = image_root + '.image_diagnostics.json'
+        diagnostics_file = self.outputs["sector_diagnostics"][0]
         with open(diagnostics_file, 'r') as f:
             diagnostics_dict = json.load(f)
         sector.diagnostics.append(diagnostics_dict)
@@ -708,17 +713,19 @@ class ImageNormalize(Image):
         # Save the output image cube filenames
         sector = self.field.normalize_sector
         image_root = os.path.join(self.pipeline_working_dir, sector.name)
+
+        src_filename = self.outputs["sector_image_cube"][0]
         dst_dir = os.path.join(self.parset['dir_working'], 'images', self.name)
         os.makedirs(dst_dir, exist_ok=True)
 
-        # Save the output cube, beams, and frequencies files
-        for suffix in ['', '_beams.txt', '_frequencies.txt']:
-            src_filename = f'{image_root}_I_freq_cube.fits{suffix}'
+        # Save the output beams and frequencies files
+        for src_filename in [self.outputs["sector_image_cube_beams"][0],
+                             self.outputs["sector_image_cube_frequencies"][0]]:
             dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
             shutil.copy(src_filename, dst_filename)
 
         # Save the output h5parm with the flux-scale corrections
-        src_filename = f'{image_root}_normalize.h5parm'
+        src_filename = self.outputs["sector_normalize_h5parm"][0]
         dst_dir = os.path.join(self.parset['dir_working'], 'solutions', self.name)
         os.makedirs(dst_dir, exist_ok=True)
         dst_basename = os.path.basename(f'{image_root}_normalize.h5')
