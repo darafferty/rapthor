@@ -251,7 +251,6 @@ def do_final_pass(field, selfcal_steps, final_step):
         - selfcal was not done
         - selfcal was done, but:
             - the final data fraction is different from the selfcal one, or
-            - QUV images are to be made, or
             - the parameters for the final pass differ from those of the last
               cycle of selfcal
 
@@ -285,7 +284,7 @@ def do_final_pass(field, selfcal_steps, final_step):
             # identical to those of the last step of selfcal. Only do final pass if
             # required by other settings
             if not np.isclose(field.parset['final_data_fraction'],
-                              field.parset['selfcal_data_fraction']) or field.make_quv_images:
+                              field.parset['selfcal_data_fraction']):
                 # Parset parameters require final pass
                 final_pass = True
             else:
