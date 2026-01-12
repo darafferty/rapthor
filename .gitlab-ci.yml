@@ -193,7 +193,6 @@ run_lint:
   extends: .lint
   script:
     - tox -e lint
-  allow_failure: true
 
 
 ### Stage: build
