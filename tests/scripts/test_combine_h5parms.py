@@ -12,8 +12,6 @@ from rapthor.scripts.combine_h5parms import (
 
 
 def test_expand_array():
-    import numpy as np
-
     array = np.array([[1, 2], [3, 4]])
     new_shape = (2, 2, 2)
     new_axis_ind = 1

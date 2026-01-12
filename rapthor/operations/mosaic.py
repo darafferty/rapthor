@@ -6,7 +6,6 @@ import logging
 import shutil
 from rapthor.lib.operation import Operation
 from rapthor.lib.cwl import CWLFile
-from rapthor.lib import miscellaneous as misc
 
 log = logging.getLogger('rapthor:mosaic')
 
