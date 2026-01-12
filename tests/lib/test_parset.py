@@ -8,8 +8,10 @@ import string
 import tempfile
 import textwrap
 import unittest
-
-import mock
+try:
+    import mock
+except ImportError:
+    from unittest import mock
 from rapthor.lib.parset import parset_read
 
 
