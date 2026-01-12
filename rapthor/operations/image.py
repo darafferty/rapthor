@@ -222,11 +222,11 @@ class Image(Operation):
                                not self.apply_normalizations):
             # No solutions should be preapplied, so define steps
             # without an applycal step
-            prepare_data_steps = ['applybeam', 'shift', 'avg']
+            prepare_data_steps = ['applybeam', 'shift']
         else:
             # Solutions should be applied, so add an applycal step
             # and set various parameters as needed
-            prepare_data_steps = ['applybeam', 'shift', 'applycal', 'avg']
+            prepare_data_steps = ['applybeam', 'shift', 'applycal']
             prepare_data_applycal_steps = []
             if self.preapply_dde_solutions:
                 # Fast phases and slow amplitudes (if generated) should be
@@ -243,6 +243,10 @@ class Image(Operation):
             if prepare_data_applycal_steps:
                 prepare_data_applycal_steps = f"[{','.join(prepare_data_applycal_steps)}]"
         all_regular = all([obs.channels_are_regular for obs in self.field.observations])
+        # Default is to average visibilities for imaging up to the smearing limit
+        if self.field.average_visibilities:
+            # Average visibilities
+            prepare_data_steps.append('avg')
         if self.field.image_bda_timebase > 0 and all_regular and not self.apply_screens:
             # Currently, BDA cannot be used with irregular data or screens (IDG)
             prepare_data_steps.append('bdaavg')

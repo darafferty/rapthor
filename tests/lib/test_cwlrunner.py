@@ -131,6 +131,8 @@ class Field:
         self.correct_smearing_in_imaging = True
         self.make_image_cube = False
         self.image_cube_stokes_list = ["I"]
+        self.save_visibilities = False
+        self.average_visibilities = True
 
     def get_calibration_radius(self):
         return 5.0
