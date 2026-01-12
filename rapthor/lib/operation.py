@@ -4,13 +4,15 @@ Definition of the master Operation class
 import os
 import logging
 import json
+import shutil
 from jinja2 import Environment, FileSystemLoader
 from rapthor.lib.context import Timer
-from rapthor.lib.cwl import NpEncoder
+from rapthor.lib.cwl import NpEncoder, copy_cwl_recursive, clean_if_cwl_file_or_directory
 from rapthor.lib.cwlrunner import create_cwl_runner
 
 DIR = os.path.dirname(os.path.abspath(__file__))
 env_parset = Environment(loader=FileSystemLoader(os.path.join(DIR, '..', 'pipeline', 'parsets')))
+
 
 
 class Operation(object):
@@ -188,6 +190,21 @@ class Operation(object):
         Specializations should be defined in the subclasses as needed.
         """
         open(self.done_file, "w").close()
+
+    def copy_outputs_to(self, dest_dir, exclude={}):
+        """
+        Copy output files to a specified directory.
+        """
+        for output in self.outputs.values():
+            if output not in exclude:
+                copy_cwl_recursive(output, dest_dir)
+
+    def clean_outputs(self):
+        """
+        Clean temporary output files, if needed.
+        """
+        for output in self.outputs.values():
+            clean_if_cwl_file_or_directory(output)
 
     def is_done(self):
         """
