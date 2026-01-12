@@ -9,6 +9,8 @@ from pathlib import Path
 
 import pytest
 
+from ..cwl_mock import generate_mock_files, _create_json_output, get_output_type
+        
 
 class TestRealCWLExecution:
     """Compare mock outputs with real CWL execution."""
@@ -87,7 +89,6 @@ class TestRealCWLExecution:
 
     def test_mock_matches_real_cwl_structure(self):
         """Verify our mock produces the same structure as real CWL."""
-        from ..cwl_mock import parse_cwl_outputs, generate_mock_files, _create_json_output, get_output_type
         
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir = Path(tmpdir)
@@ -108,7 +109,7 @@ class TestRealCWLExecution:
             
             # Generate mock files
             output_path = tmpdir / "mock_outputs"
-            generate_mock_files(output_path, outputs, mock_n_files=3)
+            generate_mock_files(output_path, outputs, mock_n_inner=3)
             
             # Create JSON outputs
             mock_outputs = {}

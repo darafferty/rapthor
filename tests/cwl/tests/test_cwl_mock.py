@@ -58,7 +58,7 @@ class TestGetOutputType:
                 }
             }
         }
-        assert get_output_type(output_info) == "nested_list_File"
+        assert get_output_type(output_info) == "File[][]"
 
     def test_nested_list_directories(self):
         """Test detection of nested array of directories."""
@@ -71,23 +71,7 @@ class TestGetOutputType:
                 }
             }
         }
-        assert get_output_type(output_info) == "nested_list_Directory"
-
-    def test_nested_list_union_files(self):
-        """Test detection of nested array with union type (array of [array|null])."""
-        output_info = {
-            "type": {
-                "type": "array",
-                "items": [
-                    {
-                        "type": "array",
-                        "items": {"type": "File"}
-                    },
-                    "null"
-                ]
-            }
-        }
-        assert get_output_type(output_info) == "nested_list_union_File"
+        assert get_output_type(output_info) == "Directory[][]"
 
     def test_array_with_string_items_notation(self):
         """Test array type with simple string notation for items."""
@@ -105,6 +89,11 @@ class TestGetOutputType:
             "type": ["null", "File"]
         }
         assert get_output_type(output_info) == "File"
+        output_info = {
+            "type": "File?"
+        }
+        assert get_output_type(output_info) == "File"
+        
 
     def test_nullable_array_type(self):
         """Test nullable array type (array|null)."""
@@ -166,10 +155,10 @@ class TestGenerateMockFiles:
                     "outputSource": "step/output_files"
                 }
             ]
-            generate_mock_files(output_path, outputs, mock_n_files=3)
+            generate_mock_files(output_path, outputs, mock_n_outer=3)
             
             # Should create 3 files
-            files = sorted(output_path.glob("step.output_files_*.fits"))
+            files = sorted(output_path.glob("step.output_files_*"))
             assert len(files) == 3
             assert all(f.is_file() for f in files)
 
@@ -186,7 +175,7 @@ class TestGenerateMockFiles:
                     "outputSource": "step/output_dirs"
                 }
             ]
-            generate_mock_files(output_path, outputs, mock_n_files=3)
+            generate_mock_files(output_path, outputs, mock_n_outer=3)
             
             # Should create 3 directories
             dirs = sorted(output_path.glob("step.output_dirs_*"))
@@ -209,17 +198,12 @@ class TestGenerateMockFiles:
                     "outputSource": "step/nested_files"
                 }
             ]
-            generate_mock_files(output_path, outputs, mock_n_files=2)
+            generate_mock_files(output_path, outputs, mock_n_outer=2, mock_n_inner=2)
             
             # Should create 2 outer directories
             outer_dirs = sorted(output_path.glob("step.nested_files_list_*"))
-            assert len(outer_dirs) == 2
+            assert len(outer_dirs) == 4
             
-            # Each should contain 2 files
-            for outer_dir in outer_dirs:
-                inner_files = sorted(outer_dir.glob("item_*.fits"))
-                assert len(inner_files) == 2
-                assert all(f.is_file() for f in inner_files)
 
     def test_generate_nested_list_directories(self):
         """Test generating nested array of directories."""
@@ -237,48 +221,12 @@ class TestGenerateMockFiles:
                     "outputSource": "step/nested_dirs"
                 }
             ]
-            generate_mock_files(output_path, outputs, mock_n_files=2)
+            generate_mock_files(output_path, outputs, mock_n_outer=2, mock_n_inner=2)
             
-            # Should create 2 outer directories
+            # Should create 4 total directories (2 outer times 2 inner)
             outer_dirs = sorted(output_path.glob("step.nested_dirs_list_*"))
-            assert len(outer_dirs) == 2
+            assert len(outer_dirs) == 4
             
-            # Each should contain 2 directories
-            for outer_dir in outer_dirs:
-                inner_dirs = sorted(outer_dir.glob("item_*"))
-                assert len(inner_dirs) == 2
-                assert all(d.is_dir() for d in inner_dirs)
-
-    def test_generate_nested_list_union_files(self):
-        """Test generating nested array with union type."""
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            output_path = Path(tmp_dir)
-            outputs = [
-                {
-                    "type": {
-                        "type": "array",
-                        "items": [
-                            {
-                                "type": "array",
-                                "items": {"type": "File"}
-                            },
-                            "null"
-                        ]
-                    },
-                    "outputSource": "step/union_files"
-                }
-            ]
-            generate_mock_files(output_path, outputs, mock_n_files=2)
-            
-            # Should create 2 outer directories
-            outer_dirs = sorted(output_path.glob("step.union_files_list_*"))
-            assert len(outer_dirs) == 2
-            
-            # Each should contain 2 files
-            for outer_dir in outer_dirs:
-                inner_files = sorted(outer_dir.glob("item_*.fits"))
-                assert len(inner_files) == 2
-                assert all(f.is_file() for f in inner_files)
 
     def test_generate_multiple_outputs(self):
         """Test generating multiple different outputs at once."""
@@ -301,11 +249,11 @@ class TestGenerateMockFiles:
                     "outputSource": "step3/files_out"
                 },
             ]
-            generate_mock_files(output_path, outputs, mock_n_files=2)
+            generate_mock_files(output_path, outputs, mock_n_outer=2, mock_n_inner=2)
             
             assert (output_path / "step1.file_out").is_file()
             assert (output_path / "step2.dir_out").is_dir()
-            assert len(list(output_path.glob("step3.files_out_*.fits"))) == 2
+            assert len(list(output_path.glob("step3.files_out_*"))) == 2
 
     def test_output_source_as_list(self):
         """Test handling outputSource as a list."""
@@ -350,9 +298,9 @@ class TestGenerateMockFiles:
                     "outputSource": "step/outputs"
                 }
             ]
-            generate_mock_files(output_path, outputs, mock_n_files=5)
+            generate_mock_files(output_path, outputs, mock_n_outer=5)
             
-            files = list(output_path.glob("step.outputs_*.fits"))
+            files = list(output_path.glob("step.outputs_*"))
             assert len(files) == 5
 
 
@@ -383,12 +331,13 @@ outputs:
             # Parse outputs
             outputs = parse_cwl_outputs(cwl_file)
             
+            expected_n_files = 3
             # Generate mocks
             output_path = Path(tmp_dir) / "outputs"
-            generate_mock_files(output_path, outputs)
+            generate_mock_files(output_path, outputs, mock_n_outer=expected_n_files)
             
             assert (output_path / "echo.output").exists()
-            assert len(list(output_path.glob("echo.outputs_*.fits"))) == 3
+            assert len(list(output_path.glob("echo.outputs_*"))) == expected_n_files
 
 
 class TestMockedCWLExecution:

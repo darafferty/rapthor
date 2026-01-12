@@ -30,70 +30,51 @@ def parse_cwl_workflow(workflow):
     
     return {
         'steps': steps,
-        'inputs': cwl_data.get('inputs', {}),
-        'outputs': cwl_data.get('outputs', {})
+        'inputs': cwl_data.get('inputs'),
+        'outputs': cwl_data.get('outputs')
     }
 
 
-def _extract_item_type(items_type):
-    """Extract item type from items specification."""
-    if isinstance(items_type, dict):
-        return items_type.get("type", "File")
-    elif isinstance(items_type, str):
-        return items_type
-    return "File"
-
-
-def _get_array_type(items_type):
-    """Get array type from items specification."""
-    return f"{_extract_item_type(items_type)}[]"
-
+def _walk_array_type(array_object, suffix=""):
+    """Recursively walk through nested array types to find the base type."""
+    if isinstance(array_object, dict) and array_object.get("type") == "array":
+        return _walk_array_type(array_object.get("items", {}), suffix=suffix + "[]")
+    if isinstance(array_object, dict) and isinstance(array_object.get("type"), dict):
+        return _walk_array_type(array_object.get("type", {}))
+    if isinstance(array_object, dict) and isinstance(array_object.get("type"), str):
+        return array_object["type"] + suffix
+    if isinstance(array_object, str):
+        return array_object + suffix
+    return None
 
 def get_output_type(output_info):
     """
     Determine the output type from CWL output specification.
     
-    Returns one of: 'File', 'Directory', 'File[]', 'Directory[]', 'nested_list_File', 
-    'nested_list_Directory', or 'nested_list_union'
+    Returns one of:
+    - "File"
+    - "Directory"
+    - "File[]"
+    - "Directory[]"
+    - "File[][]" (nested list)
+    - "Directory[][]" (nested list)
+    - None (if not a file/directory type)
     """
     output_type = output_info.get("type")
     
     # Handle simple types (string)
     if isinstance(output_type, str):
-        return output_type
-    
-    # Handle dict types (array, object, etc.)
-    if isinstance(output_type, dict) and output_type.get("type") == "array":
-        items_type = output_type.get("items")
-        
-        # Nested array: array of arrays
-        if isinstance(items_type, dict) and items_type.get("type") == "array":
-            inner_type = _extract_item_type(items_type.get("items", {}))
-            return f"nested_list_{inner_type}"
-        
-        # Union with array: array of [array|null]
-        if isinstance(items_type, list):
-            for item in items_type:
-                if isinstance(item, dict) and item.get("type") == "array":
-                    inner_type = _extract_item_type(item.get("items", {}))
-                    return f"nested_list_union_{inner_type}"
-        
-        # Simple array
-        return _get_array_type(items_type)
-    
-    # Handle union types as list [type, "null"]
+        return output_type.rstrip("?")
     if isinstance(output_type, list):
-        for t in output_type:
-            if t != "null":
-                if isinstance(t, str):
-                    return t
-                if isinstance(t, dict) and t.get("type") == "array":
-                    return _get_array_type(t.get("items", {}))
-    
-    return "File"
+        first_not_null, *_ = [t for t in output_type if t != "null"]
+        if isinstance(first_not_null, str):
+            return first_not_null.rstrip("?")
+        output_type = first_not_null
+    # Handle dict types (array, object, etc.)
+    return _walk_array_type(output_type)
 
 
-def _create_mock_output(output_path, base_name, output_type, n_files=3):
+def _create_mock_output(output_path, base_name, output_type, inner_size=3, outer_size=1):
     """Create a single mock output (file or directory).
     
     Args:
@@ -101,29 +82,44 @@ def _create_mock_output(output_path, base_name, output_type, n_files=3):
         base_name: Base name for the output
         output_type: Type of output (File, Directory, File[], etc.)
         n_files: Number of files/directories to create for array types
+        outer_size: Size of the outer array for nested arrays (if applicable)
     """
     if output_type == "File":
         (output_path / base_name).touch()
     elif output_type == "Directory":
         (output_path / base_name).mkdir(parents=True, exist_ok=True)
     elif output_type == "File[]":
-        for idx in range(n_files):
-            (output_path / f"{base_name}_{idx}.fits").touch()
+        for idx in range(inner_size):
+            (output_path / f"{base_name}_{idx}").touch()
     elif output_type == "Directory[]":
-        for idx in range(n_files):
+        for idx in range(inner_size):
             (output_path / f"{base_name}_{idx}").mkdir(parents=True, exist_ok=True)
-    elif output_type.startswith("nested_list"):
-        item_type = output_type.replace("nested_list_", "").replace("union_", "")
-        for outer_idx in range(n_files):
-            outer_dir = output_path / f"{base_name}_list_{outer_idx}"
-            outer_dir.mkdir(parents=True, exist_ok=True)
-            # For nested lists, inner size is 2 by default (can be made configurable if needed)
-            for inner_idx in range(2):
-                if item_type == "File":
-                    (outer_dir / f"item_{inner_idx}.fits").touch()
-                elif item_type == "Directory":
-                    (outer_dir / f"item_{inner_idx}").mkdir(parents=True, exist_ok=True)
+    elif output_type.endswith("[][]"):
+        item_type = output_type.replace("[]", "", 1) # Remove one level of array
+        for outer_idx in range(outer_size):
+            _create_mock_output(output_path, f"{base_name}_list_{outer_idx}", item_type, inner_size=inner_size)
 
+def _get_step_by_id(workflow, step_id):
+    """Get a step from the workflow by its ID."""
+    steps: list = workflow['steps']
+    for step in steps:
+        if step.get('id') == step_id:
+            return step
+    return None
+
+def _get_size_of_input_array(inputs, param):
+    """Get the size of an input array parameter."""
+    if param in inputs:
+        input_value = inputs[param]
+        if isinstance(input_value, list):
+            return len(input_value)
+    return None
+
+def _get_name_from_output_source(output_source):
+    """Extract the name from an output source string."""
+    if '/' in output_source:
+        return output_source.split('/')[0]
+    return output_source
 
 def get_scatter_length(workflow, output_source, inputs=None):
     """Get the length of scatter array for a given output source.
@@ -146,20 +142,12 @@ def get_scatter_length(workflow, output_source, inputs=None):
         workflow_data = workflow
     
     # Extract step name from output source
-    if '/' in output_source:
-        step_id = output_source.split('/')[0]
-    else:
-        return None
+    step_id = _get_name_from_output_source(output_source)
     
     # Find the step with matching ID
-    steps = workflow_data.get('steps', [])
-    target_step = None
-    for step in steps:
-        if step.get('id') == step_id:
-            target_step = step
-            break
+    target_step = _get_step_by_id(workflow_data, step_id)
     
-    if not target_step or 'scatter' not in target_step:
+    if target_step is None or 'scatter' not in target_step:
         return None
     
     # Get the scatter parameter(s)
@@ -168,19 +156,20 @@ def get_scatter_length(workflow, output_source, inputs=None):
         scatter_params = [scatter_params]
     
     # If we have inputs, determine actual length
-    if inputs and len(scatter_params) > 0:
+    if inputs and scatter_params:
         # Find the first scatter parameter and get its length
+        n_params = 0
         for param in scatter_params:
-            if param in inputs:
-                input_value = inputs[param]
-                if isinstance(input_value, list):
-                    return len(input_value)
-    
+            n_items_for_param  = _get_size_of_input_array(inputs, param)
+            if n_items_for_param is not None:
+                n_params += n_items_for_param
+        if n_params > 0:
+            return n_params
     # Default fallback
     return None
 
 
-def generate_mock_files(output_path, outputs, mock_n_files=3, workflow=None, inputs=None):
+def generate_mock_files(output_path, outputs, mock_n_outer=3, mock_n_inner=3, workflow=None, inputs=None):
     """
     Generate mock output files/directories to mimic CWL execution.
     
@@ -189,7 +178,8 @@ def generate_mock_files(output_path, outputs, mock_n_files=3, workflow=None, inp
     Args:
         output_path: Directory where outputs should be created
         outputs: List of output specifications from CWL workflow
-        mock_n_files: Default number of files to create for arrays (used if no scatter info)
+        mock_n_outer_files: Default number of outer files/directories to create for arrays (used if no scatter info)
+        mock_n_inner_files: Default number of inner files/directories to create for nested arrays (used if no scatter info)
         workflow: Optional path to CWL workflow file for scatter information
         inputs: Optional dict of input values for determining scatter array lengths
     """
@@ -198,6 +188,10 @@ def generate_mock_files(output_path, outputs, mock_n_files=3, workflow=None, inp
     
     for output_info in outputs:
         output_type = get_output_type(output_info)
+        if output_type is None:
+            # Skip types that are not File or Directory
+            # or their nested conterparts
+            continue  
         output_sources = output_info.get('outputSource', [])
         if not isinstance(output_sources, list):
             output_sources = [output_sources]
@@ -206,13 +200,13 @@ def generate_mock_files(output_path, outputs, mock_n_files=3, workflow=None, inp
             base_name = output_source.replace('/', '.')
             
             # Determine array length: use scatter info if available, otherwise default
-            n_files = mock_n_files
-            if workflow and output_type in ['File[]', 'Directory[]'] or output_type.startswith('nested_list'):
+            n_files = mock_n_outer
+            if workflow and ("File" in output_type or "Directory" in output_type):
                 scatter_length = get_scatter_length(workflow, output_source, inputs)
                 if scatter_length is not None:
                     n_files = scatter_length
             
-            _create_mock_output(output_path, base_name, output_type, n_files)
+            _create_mock_output(output_path, base_name, output_type, inner_size=n_files, outer_size=mock_n_inner)
 
 
 def _create_json_output(base_name, output_type, output_path):
@@ -232,12 +226,12 @@ def _create_json_output(base_name, output_type, output_path):
         return {"class": "Directory", "path": str(output_path / base_name)}
     elif output_type == "File[]":
         return [{"class": "File", "path": str(f)} 
-                for f in sorted(output_path.glob(f"{base_name}_*.fits"))]
+                for f in sorted(output_path.glob(f"{base_name}_*")) if f.is_file()]
     elif output_type == "Directory[]":
         return [{"class": "Directory", "path": str(d)} 
                 for d in sorted(output_path.glob(f"{base_name}_*")) if d.is_dir()]
-    elif output_type.startswith("nested_list"):
-        item_type = output_type.replace("nested_list_", "").replace("union_", "")
+    elif output_type.endswith("[][]"):
+        item_type = output_type.replace("[]", "") # Remove one level of array
         nested_list = []
         for outer_dir in sorted(output_path.glob(f"{base_name}_list_*")):
             if outer_dir.is_dir():
@@ -317,6 +311,10 @@ def mocked_cwl_execution(self, args, env, expected_outputs=None):
     
     for output_info in outputs:
         output_type = get_output_type(output_info)
+        if output_type is None:
+            # Skip types that are not File or Directory
+            # or their nested conterparts
+            continue
         output_sources = output_info.get('outputSource', [])
         if not isinstance(output_sources, list):
             output_sources = [output_sources]
@@ -347,7 +345,8 @@ def mocked_cwl_execution(self, args, env, expected_outputs=None):
                 # No override, generate with auto names based on CWL output type
                 # Determine array length from scatter if available
                 n_files = 3  # default
-                if workflow_file and (output_type in ['File[]', 'Directory[]'] or output_type.startswith('nested_list')):
+                print("output_type:", output_type)
+                if workflow_file and ("File" in output_type or "Directory" in output_type):
                     scatter_length = get_scatter_length(workflow_file, output_source, inputs)
                     if scatter_length is not None:
                         n_files = scatter_length
