@@ -4,8 +4,9 @@ Definition of the master Operation class
 import os
 import logging
 import json
-import shutil
+from typing import Union
 from jinja2 import Environment, FileSystemLoader
+
 from rapthor.lib.context import Timer
 from rapthor.lib.cwl import NpEncoder, copy_cwl_recursive, clean_if_cwl_file_or_directory
 from rapthor.lib.cwlrunner import create_cwl_runner
@@ -191,12 +192,12 @@ class Operation(object):
         """
         open(self.done_file, "w").close()
 
-    def copy_outputs_to(self, dest_dir, exclude={}):
+    def copy_outputs_to(self, dest_dir, exclude=None):
         """
         Copy output files to a specified directory.
         """
         for output_key, output_value in self.outputs.items():
-            if output_key not in exclude:
+            if exclude is None or output_key not in exclude:
                 copy_cwl_recursive(output_value, dest_dir)
 
     def clean_outputs(self):
