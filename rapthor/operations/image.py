@@ -462,8 +462,8 @@ class Image(Operation):
             "sector_image_cube",
             "sector_image_cube_beams",
             "sector_image_cube_frequencies",
-            "sector_skymodel_true_sky",
-            "sector_skymodel_apparent_sky",
+            "filtered_skymodel_true_sky",
+            "filtered_skymodel_apparent_sky",
             "pybdsf_catalog",
             "sector_region_file",
             "visibilities",
@@ -472,7 +472,8 @@ class Image(Operation):
         }
         for index, sector in enumerate(self.field.imaging_sectors):
             # Get the list of output files for this sector
-            file_list = self.outputs["sector_I_images"][index]["path"] + self.outputs["sector_extra_images"][index]["path"]
+            file_list = map(lambda x: x["path"], self.outputs["sector_I_images"][index] +
+                            self.outputs["sector_extra_images"][index])
             type_path_map = find_in_file_list(file_list, ext_mapping)
             for type, path in type_path_map.items():
                 if type != "mask_filename":
@@ -512,13 +513,13 @@ class Image(Operation):
             os.makedirs(dst_dir, exist_ok=True)
             if self.field.image_pol.lower() == 'i':
                 for skymodel_type in ['true_sky', 'apparent_sky']:
-                    src_sector_skymodel = self.outputs[f"sector_skymodel_{skymodel_type}"][index]
+                    src_sector_skymodel = self.outputs[f"filtered_skymodel_{skymodel_type}"][index]["path"]
                     sector_skymodel_file = os.path.join(dst_dir, os.path.basename(src_sector_skymodel))
                     setattr(sector, f"image_skymodel_file_{skymodel_type}", sector_skymodel_file)
                     shutil.copy(src_sector_skymodel, sector_skymodel_file)
 
             # The output PyBDSF source catalog
-            src_filename = self.outputs["pybdsf_catalog"][index]
+            src_filename = self.outputs["pybdsf_catalog"][index]["path"]
             dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
             shutil.copy(src_filename, dst_filename)
 
@@ -548,13 +549,13 @@ class Image(Operation):
             # The astrometry and photometry plots
             dst_dir = os.path.join(self.parset['dir_working'], 'plots', 'image_{}'.format(self.index))
             os.makedirs(dst_dir, exist_ok=True)
-            diagnostic_plots = self.outputs["sector_diagnostics_plots"][index]
+            diagnostic_plots = map(lambda x: x["path"], self.outputs["sector_diagnostic_plots"][index])
             for src_filename in diagnostic_plots:
                 dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
                 shutil.copy(src_filename, dst_filename)
 
             # Read in the image diagnostics and log a summary of them
-            diagnostics_file = self.outputs["sector_diagnostics"][index]
+            diagnostics_file = self.outputs["sector_diagnostics"][index]["path"]
             with open(diagnostics_file, 'r') as f:
                 diagnostics_dict = json.load(f)
             diagnostics_dict['cycle_number'] = self.index
