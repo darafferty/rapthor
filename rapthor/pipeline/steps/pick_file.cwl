@@ -7,9 +7,6 @@ doc: |
 requirements:
     - class: InlineJavascriptRequirement
     - class: MultipleInputFeatureRequirement
-    - class: InitialWorkDirRequirement
-      listing:
-        - $(inputs.input_file_list)
 
 inputs:
   - id: input_file_list
