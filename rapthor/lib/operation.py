@@ -4,7 +4,6 @@ Definition of the master Operation class
 import os
 import logging
 import json
-from typing import Union
 from jinja2 import Environment, FileSystemLoader
 
 from rapthor.lib.context import Timer
