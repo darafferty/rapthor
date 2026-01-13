@@ -12,14 +12,23 @@ from rapthor.lib.strategy import set_selfcal_strategy
 from rapthor.operations.image import (Image, ImageInitial, ImageNormalize)
 
 @pytest.fixture
-def image(field):
+def expected_image_output():
     """
-    Create an instance of the Image operation.
+    Fixture to provide expected output structure for CWL execution.
     """
-    return Image(field, index=1)
+    return {
+        "sector_I_images": [["sector0-MFS-I-image-pb.fits", "sector0-MFS-I-image.fits"]],
+        "sector_extra_images": [["sector0-MFS-I-residual.fits", "sector0-MFS-I-model-pb.fits"]],
+        "filtered_skymodel_true_sky": ["sector0.true_sky.txt"],
+        "filtered_skymodel_apparent_sky": ["sector0.apparent_sky.txt"],
+        "pybdsf_catalog": ["sector0.source_catalog.fits"],
+        "sector_diagnostics": ["sector0_diagnostics.json"],
+        "sector_offsets": ["sector0_offsets.txt"],
+    }
+
     
 @pytest.fixture
-def image_mocked_execution(field, monkeypatch):
+def image(field, monkeypatch, expected_image_output):
     """
     Fixture to mock CWL execution for the Image operation.
     """
@@ -36,21 +45,10 @@ def image_mocked_execution(field, monkeypatch):
     field.image_pol = 'I'
     field.skip_final_major_iteration = True
     
-    # Define expected outputs for the mock
-    expected_outputs = {
-        "sector_I_images": [["sector0-MFS-I-image-pb.fits", "sector0-MFS-I-image.fits"]],
-        "sector_extra_images": [["sector0-MFS-I-residual.fits", "sector0-MFS-I-model-pb.fits"]],
-        "filtered_skymodel_true_sky": ["sector0.true_sky.txt"],
-        "filtered_skymodel_apparent_sky": ["sector0.apparent_sky.txt"],
-        "pybdsf_catalog": ["sector0.source_catalog.fits"],
-        "sector_diagnostics": ["sector0_diagnostics.json"],
-        "sector_offsets": ["sector0_offsets.txt"],
-    }
-    
     # Mock the execute method on the instance
     monkeypatch.setattr(
         "rapthor.lib.cwlrunner.BaseCWLRunner.execute",
-        lambda self, args, env: mocked_cwl_execution(self, args, env, expected_outputs),
+        lambda self, args, env: mocked_cwl_execution(self, args, env, expected_image_output),
         raising=False
     )
     image = Image(field=field, index=1)
@@ -62,20 +60,51 @@ def image_mocked_execution(field, monkeypatch):
 
 
 @pytest.fixture
-def image_initial(field):
+def image_initial(field, monkeypatch, expected_image_output):
     """
     Create an instance of the ImageInitial operation.
     """
-    return ImageInitial(field)
+    # Mock the execute method on the instance
+    monkeypatch.setattr(
+    "rapthor.lib.cwlrunner.BaseCWLRunner.execute",
+    lambda self, args, env: mocked_cwl_execution(self, args, env, expected_outputs=expected_image_output),
+    raising=False
+    )
+    field.do_predict = False
+    field.scan_observations()
+    field.define_full_field_sector()
+    field.image_pol = 'I'
+    image_initial = ImageInitial(field)
+    image_initial.set_parset_parameters()
+    image_initial.set_input_parameters()
+
+    return image_initial
     
 
 
 @pytest.fixture
-def image_normalize(field):
+def image_normalize(field, monkeypatch, expected_image_output):
     """
     Create an instance of the ImageNormalize operation.
     """
-    return ImageNormalize(field, index=1)
+    # Mock the execute method on the instance
+    monkeypatch.setattr(
+    "rapthor.lib.cwlrunner.BaseCWLRunner.execute",
+    lambda self, args, env: mocked_cwl_execution(self, args, env, expected_outputs=expected_image_output),
+    raising=False
+    )
+    field.do_predict = False
+    field.scan_observations()
+    field.define_normalize_sector()
+    field.image_pol = 'I'
+    field.apply_screens = False
+    field.skip_final_major_iteration = False
+    image_norm = ImageNormalize(field, index=1)
+    image_norm.do_predict = False
+    image_norm.set_parset_parameters()
+    image_norm.set_input_parameters()
+    return image_norm
+
     
 
 class TestImage:
@@ -90,6 +119,9 @@ class TestImage:
     def test_finalize(self, image):
         # image.finalize()
         pass
+    def test_run(self, image):
+        image.run()
+        assert image.is_done()
 
 
 class TestImageInitial:
@@ -101,10 +133,10 @@ class TestImageInitial:
         # image_initial.set_input_parameters()
         pass
 
-    def test_finalize(self, image_initial):
-        # image_initial.finalize()
-        pass
-
+    def test_run(self, image_initial):
+        image_initial.run()
+        assert image_initial.is_done()
+        
 
 class TestImageNormalize:
     def test_set_parset_parameters(self, image_normalize):
@@ -119,16 +151,11 @@ class TestImageNormalize:
         # image_normalize.finalize()
         pass
 
+    def test_run(self, image_normalize):
+        image_normalize.run()
+        assert image_normalize.is_done()
+    
 
 def test_report_sector_diagnostics(sector_name=None, diagnostics_dict=None, log=None):
     # report_sector_diagnostics(sector_name, diagnostics_dict, log)
     pass
-
-
-def test_image_workflow(image_mocked_execution):
-    """
-    Test the complete workflow of the Image operation.
-    """
-    image_mocked_execution.run()
-    assert image_mocked_execution.is_done()
-    
