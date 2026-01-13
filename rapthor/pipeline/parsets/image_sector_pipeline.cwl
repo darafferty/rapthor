@@ -1126,7 +1126,7 @@ steps:
         source: make_image_cubes/image_cube_beams
       - id: filename_to_match
         source: pick_I_cube/picked_file
-        valueFrom: $(self[0].basename)
+        valueFrom: $(self.basename)
       - id: suffix
         valueFrom: '_beams.txt'
     out:
@@ -1143,7 +1143,7 @@ steps:
         source: make_image_cubes/image_cube_frequencies
       - id: filename_to_match
         source: pick_I_cube/picked_file
-        valueFrom: $(self[0].basename)
+        valueFrom: $(self.basename)
       - id: suffix
         valueFrom: '_frequencies.txt'
     out:
