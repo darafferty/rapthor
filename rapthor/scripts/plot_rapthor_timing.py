@@ -210,7 +210,7 @@ def make_cycle_pdfs_sublogs() -> None:
         for f in glob.glob('temp_*.pdf'):
             os.remove(f)
             os.remove(f.replace('pdf', 'png'))
-    except Exception as e:
+    except Exception:
         print('Concatenation failed. Is pdfunite installed?')
 
 

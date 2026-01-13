@@ -165,7 +165,8 @@ class Parset:
                 for opt in self.__parser.options(section)
                 if self.__parser.get(section, opt) not in ("None", "")
             )
-        missing_sections = self.required_sections - given_sections
+        # Currently, `missing_sections` is unused, but we may need it in the future
+        missing_sections = self.required_sections - given_sections  # noqa: F841
         missing_options = {
             sect: self.required_options[sect] - given_options[sect]
             for sect in self.required_sections
