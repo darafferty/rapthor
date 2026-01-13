@@ -5,6 +5,10 @@ import json
 import numpy as np
 import os
 import shutil
+import logging
+from pathlib import Path
+
+logger = logging.getLogger("rapthor:cwl")
 
 class CWLPath(object):
     """
@@ -87,6 +91,7 @@ class NpEncoder(json.JSONEncoder):
             return obj.tolist()
         return super(NpEncoder, self).default(obj)
 
+
 def is_cwl_file(cwl_obj):
     """
     Check if the given object is a CWL file representation.
@@ -94,6 +99,7 @@ def is_cwl_file(cwl_obj):
     A CWL file representation is a dictionary with 'class' key set to 'File'.
     """
     return isinstance(cwl_obj, dict) and cwl_obj.get('class') == 'File'
+
 
 def is_cwl_directory(cwl_obj):
     """
@@ -103,11 +109,13 @@ def is_cwl_directory(cwl_obj):
     """
     return isinstance(cwl_obj, dict) and cwl_obj.get('class') == 'Directory'
 
+
 def is_cwl_file_or_directory(cwl_obj):
     """
     Check if the given object is a CWL file or directory representation.
     """
     return is_cwl_file(cwl_obj) or is_cwl_directory(cwl_obj)
+
 
 def copy_cwl_object(src_obj, dest_dir):
     """
@@ -115,13 +123,14 @@ def copy_cwl_object(src_obj, dest_dir):
     """
     if is_cwl_file_or_directory(src_obj):
         os.makedirs(dest_dir, exist_ok=True)
-        src = src_obj['path']
-        dest = os.path.join(dest_dir, os.path.basename(src_obj['path']))
+        src = Path(src_obj['path'])
+        dest = Path(dest_dir) / src.name
         if is_cwl_file(src_obj):
             shutil.copy(src, dest)
         elif is_cwl_directory(src_obj):
             shutil.copytree(src, dest, dirs_exist_ok=True)
     # Otherwise, do nothing
+
 
 def copy_cwl_recursive(src_obj, dest_dir):
     """
@@ -134,6 +143,20 @@ def copy_cwl_recursive(src_obj, dest_dir):
         copy_cwl_object(src_obj, dest_dir)
     # Otherwise, do nothing
 
+
+def remove_or_log_error(path: Path):
+    """
+    Remove a file or directory at the specified path.
+    Log a warning if the file or directory does not exist.
+    """
+    try:
+        if path.is_file():
+            path.unlink()
+        elif path.is_dir():
+            shutil.rmtree(path)
+    except FileNotFoundError:
+        logger.warning("Cannot remove non-existing path: %s", path)
+
 def clean_if_cwl_file_or_directory(src_obj):
     """
     Remove CWL file or directory objects from the filesystem.
@@ -141,14 +164,6 @@ def clean_if_cwl_file_or_directory(src_obj):
     if isinstance(src_obj, list):
         for item in src_obj:
             clean_if_cwl_file_or_directory(item)
-    elif is_cwl_file(src_obj):
-        try:
-            os.remove(src_obj['path'])
-        except FileNotFoundError:
-            pass
-    elif is_cwl_directory(src_obj):
-        try:
-            shutil.rmtree(src_obj['path'])
-        except FileNotFoundError:
-            pass
+    elif is_cwl_file_or_directory(src_obj):
+        remove_or_log_error(Path(src_obj['path']))
     # Otherwise, do nothing
