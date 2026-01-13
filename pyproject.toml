@@ -117,9 +117,18 @@ write_to = "rapthor/_version.py"
 # and so on. The `select` below is from our ASTRON Python project template.
 # select = ["N", "A", "E", "F", "B", "W", "Q", "PL", "ASYNC", "S", "G", "RET", "ARG", "I"]
 # The default behavior of ruff is to use "E" and "F", omitting stylistic rules.
-select = ["E", "F"]
-ignore = ["E501"]
+exclude = ["debug/**"]
+select = ["E", "F"]  # pycodestyle and pyflakes
+ignore = ["E501"]  # line-too-long
 
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]  # unused-import
+"tests/**" = [
+    "F401",  # unused-import
+    "F403",  # undefined-local-with-import-star
+    "F405",  # undefined-local-with-import-star-usage
+    "F841",  # unused-variable
+]
 
 [tool.tox]
 requires = ["tox>4"]
@@ -163,7 +172,5 @@ deps = ["ruff"]
 commands = [
     [
         "python", "-m", "ruff", "check",
-        # For now, only check the `rapthor` package, not `tests` or other files
-        "rapthor",
     ],
 ]

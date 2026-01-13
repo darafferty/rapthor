@@ -38,7 +38,7 @@ stages:
       fi
 
 .versioning:
-  image: python
+  image: python:3.13
   before_script:
     - !reference [.release, before_script]
     - pip install setuptools_scm
@@ -87,7 +87,7 @@ stages:
     - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
 
 .lint:
-  image: python
+  image: python:3.13
   stage: lint
   before_script:
     - pip install tox
@@ -124,7 +124,7 @@ stages:
 
 prepare_release:
   stage: initialize
-  image: python
+  image: python:3.13
   extends: .setup_git
   rules:
     # Run this job when current branch is a release branch
@@ -193,7 +193,6 @@ run_lint:
   extends: .lint
   script:
     - tox -e lint
-  allow_failure: true
 
 
 ### Stage: build

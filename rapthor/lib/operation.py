@@ -5,7 +5,6 @@ import os
 import logging
 import json
 from jinja2 import Environment, FileSystemLoader
-from rapthor.lib import miscellaneous as misc
 from rapthor.lib.context import Timer
 from rapthor.lib.cwl import NpEncoder
 from rapthor.lib.cwlrunner import create_cwl_runner

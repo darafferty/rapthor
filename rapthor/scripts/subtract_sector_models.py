@@ -627,7 +627,7 @@ def readGainFile(gainfile, ms, nt, nchan, nbl, tarray, nAnt, msname, phaseonly, 
         soltabName = "screenamplitude000"
         try:
             gfile = losoto.h5parm.openSoltab(gainfile, solsetName=solsetName, soltabName=soltabName)
-        except:
+        except Exception:
             print("Could not find amplitude gains in h5parm. Assuming gains of 1 everywhere.")
             ant1gainarray1 = np.ones((nt*nbl, nchan))
             ant2gainarray1 = np.ones((nt*nbl, nchan))
