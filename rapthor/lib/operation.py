@@ -195,9 +195,9 @@ class Operation(object):
         """
         Copy output files to a specified directory.
         """
-        for output in self.outputs.values():
-            if output not in exclude:
-                copy_cwl_recursive(output, dest_dir)
+        for output_key, output_value in self.outputs.items():
+            if output_key not in exclude:
+                copy_cwl_recursive(output_value, dest_dir)
 
     def clean_outputs(self):
         """

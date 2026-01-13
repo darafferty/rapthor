@@ -66,6 +66,31 @@ class BaseCWLRunner:
         os.environ.clear()
         os.environ.update(self._environment)
 
+    def execute(self, args: List[str], env: dict) -> bool:
+        """
+        Start the runner in a subprocess.
+        Every CWL runner requires two input files:
+          - the CWL workflow, provided by `self.operation.pipeline_parset_file`
+          - inputs for the CWL workflow, provided by `self.operation.pipeline_inputs_file`
+        Every CWL runner is supposed to print to:
+          - `stdout`: a JSON file of the generated outputs
+          - `stderr`: workflow diagnostics
+        These streams are redirected:
+          - `stdout` -> `self.operation.pipeline_outputs_file`
+          - `stderr` -> `self.operation.pipeline_log_file`
+        """
+        logger.debug("Executing command: %s", ' '.join(args))
+        with open(self.operation.pipeline_outputs_file, 'w') as stdout, \
+             open(self.operation.pipeline_log_file, 'w') as stderr:
+            try:
+                result = subprocess.run(args=args, env=env, stdout=stdout, stderr=stderr, check=True)
+                logger.debug(str(result))
+                return True
+            except subprocess.CalledProcessError as err:
+                logger.critical(str(err))
+                return False
+
+
     def run(self) -> bool:
         """
         Start the runner in a subprocess.
@@ -94,17 +119,7 @@ class BaseCWLRunner:
         current_env = os.environ.copy()
         python_path = os.pathsep.join([current_env.get("PYTHONPATH", ""), script_dir])
         modified_env = current_env | {"PYTHONPATH": python_path}
-
-        logger.debug("Executing command: %s", ' '.join(args))
-        with open(self.operation.pipeline_outputs_file, 'w') as stdout, \
-             open(self.operation.pipeline_log_file, 'w') as stderr:
-            try:
-                result = subprocess.run(args=args, env=modified_env, stdout=stdout, stderr=stderr, check=True)
-                logger.debug(str(result))
-                return True
-            except subprocess.CalledProcessError as err:
-                logger.critical(str(err))
-                return False
+        return self.execute(args, modified_env)
 
     def parse_outputs(self) -> dict:
         """
