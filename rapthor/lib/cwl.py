@@ -120,7 +120,7 @@ def copy_cwl_object(src_obj, dest_dir):
         if is_cwl_file(src_obj):
             shutil.copy(src, dest)
         elif is_cwl_directory(src_obj):
-            shutil.copytree(src, dest)
+            shutil.copytree(src, dest, dirs_exist_ok=True)
     # Otherwise, do nothing
 
 def copy_cwl_recursive(src_obj, dest_dir):
