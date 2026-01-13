@@ -2,43 +2,81 @@
 Test cases for the `rapthor.operations.image` module.
 """
 
+import sys
+from pathlib import Path
 import pytest
-from rapthor.operations.image import (Image, ImageInitial, ImageNormalize,
-                                      report_sector_diagnostics)
 
+from tests.cwl.cwl_mock import mocked_cwl_execution
+from rapthor.lib.strategy import set_selfcal_strategy
 
-@pytest.fixture
-def field():
-    # Mock or create a field object as needed for testing
-    return "mock_field"
-
+from rapthor.operations.image import (Image, ImageInitial, ImageNormalize)
 
 @pytest.fixture
-def image(field, index=1):
+def image(field):
     """
     Create an instance of the Image operation.
     """
-    # return Image(field, index=index)
-    return "mock_image"
+    return Image(field, index=1)
+    
+@pytest.fixture
+def image_mocked_execution(field, monkeypatch):
+    """
+    Fixture to mock CWL execution for the Image operation.
+    """
+    # Set the required attributes directly without running strategy setup
+    # which would do real processing
+    field.parset["regroup_input_skymodel"] = False
+    # Since we are not doing the calibration provide a non-existing h5parm file
+    field.h5parm_filename = "nonexisting_h5parm_file.h5"
+    field.scan_observations()
+    steps = set_selfcal_strategy(field)
+    field.update(steps[0], index=1, final=False)
+    # The field update will set the predict flag to True, override it here
+    field.do_predict = False
+    field.image_pol = 'I'
+    field.skip_final_major_iteration = True
+    
+    # Define expected outputs for the mock
+    expected_outputs = {
+        "sector_I_images": [["sector0-MFS-I-image-pb.fits", "sector0-MFS-I-image.fits"]],
+        "sector_extra_images": [["sector0-MFS-I-residual.fits", "sector0-MFS-I-model-pb.fits"]],
+        "filtered_skymodel_true_sky": ["sector0.true_sky.txt"],
+        "filtered_skymodel_apparent_sky": ["sector0.apparent_sky.txt"],
+        "pybdsf_catalog": ["sector0.source_catalog.fits"],
+        "sector_diagnostics": ["sector0_diagnostics.json"],
+        "sector_offsets": ["sector0_offsets.txt"],
+    }
+    
+    # Mock the execute method on the instance
+    monkeypatch.setattr(
+        "rapthor.lib.cwlrunner.BaseCWLRunner.execute",
+        lambda self, args, env: mocked_cwl_execution(self, args, env, expected_outputs),
+        raising=False
+    )
+    image = Image(field=field, index=1)
+    
+    image.set_parset_parameters()
+    image.set_input_parameters()
+
+    return image
 
 
 @pytest.fixture
-def image_initial(field, index=1):
+def image_initial(field):
     """
     Create an instance of the ImageInitial operation.
     """
-    # return ImageInitial(field, index=index)
-    return "mock_image_initial"
+    return ImageInitial(field)
+    
 
 
 @pytest.fixture
-def image_normalize(field, index=1):
+def image_normalize(field):
     """
     Create an instance of the ImageNormalize operation.
     """
-    # return ImageNormalize(field, index=index)
-    return "mock_image_normalize"
-
+    return ImageNormalize(field, index=1)
+    
 
 class TestImage:
     def test_set_parset_parameters(self, image):
@@ -85,3 +123,12 @@ class TestImageNormalize:
 def test_report_sector_diagnostics(sector_name=None, diagnostics_dict=None, log=None):
     # report_sector_diagnostics(sector_name, diagnostics_dict, log)
     pass
+
+
+def test_image_workflow(image_mocked_execution):
+    """
+    Test the complete workflow of the Image operation.
+    """
+    image_mocked_execution.run()
+    assert image_mocked_execution.is_done()
+    
