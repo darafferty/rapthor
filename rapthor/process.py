@@ -107,8 +107,8 @@ def run(parset_file, logging_level='info'):
             log.info("Using a data fraction of {0:.2f}".format(parset['final_data_fraction']))
 
         if field.make_quv_images:
+            final_step['do_calibrate'] = False
             log.info("Stokes I, Q, U, and V images will be made")
-            field.do_image = True
         if field.dde_mode == 'hybrid':
             log.info("Screens will be used for calibration and imaging (since dde_mode = "
                      "'hybrid' and this is the final iteration)")
@@ -285,7 +285,7 @@ def do_final_pass(field, selfcal_steps, final_step):
             # identical to those of the last step of selfcal. Only do final pass if
             # required by other settings
             if not np.isclose(field.parset['final_data_fraction'],
-                              field.parset['selfcal_data_fraction']):
+                              field.parset['selfcal_data_fraction']) or field.make_quv_images:
                 # Parset parameters require final pass
                 final_pass = True
             else:
