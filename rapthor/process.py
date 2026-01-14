@@ -108,6 +108,7 @@ def run(parset_file, logging_level='info'):
 
         if field.make_quv_images:
             log.info("Stokes I, Q, U, and V images will be made")
+            field.do_image = True
         if field.dde_mode == 'hybrid':
             log.info("Screens will be used for calibration and imaging (since dde_mode = "
                      "'hybrid' and this is the final iteration)")
