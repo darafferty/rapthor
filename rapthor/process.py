@@ -195,9 +195,12 @@ def run_steps(field, steps, final=False):
             field.image_pol = 'IQUV' if (field.make_quv_images and final) else 'I'
 
             # Set whether an image-frequency cube should be made
-            field.make_image_cube = (
-                field.save_image_cube and field.image_pol == "I" and final
-            )
+            field.make_image_cube = field.save_image_cube and final
+            field.image_cube_stokes_list = [
+                pol
+                for pol in field.image_cube_stokes_list
+                if pol.upper() in field.image_pol
+            ]
 
             # Set whether screens should be applied
             field.apply_screens = True if (field.dde_mode == 'hybrid' and final) else False
