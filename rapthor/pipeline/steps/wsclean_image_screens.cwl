@@ -299,6 +299,7 @@ inputs:
     type: int
     inputBinding:
       prefix: -j
+      valueFrom: $(runtime.cores)
 
   - id: num_deconvolution_threads
     label: Number of threads

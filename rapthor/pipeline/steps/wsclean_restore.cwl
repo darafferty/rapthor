@@ -16,6 +16,7 @@ inputs:
     type: int
     inputBinding:
       prefix: -j
+      valueFrom: $(runtime.cores)
       position: 1
   - id: residual_image
     label: Filename of input image
