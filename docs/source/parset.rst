@@ -476,10 +476,16 @@ The available options are described below under their respective sections.
         closest to the image centers are used.
 
     save_image_cube
-        Save the Stokes I frequency cube (default = ``False``). If ``True``, a cube is
-        constructed from the channel images made during the final imaging step, once
-        self calibration has been completed. The width of the frequency channels in the
-        cube is set by the :term:`channel_width_hz` parameter in the strategy file.
+        Save frequency cube(s) for the given Stokes parameters (default = ``False``).
+        If ``True``, a cube is constructed from the channel images made during the
+        final imaging step, once self calibration has been completed. The width of the
+        frequency channels in the cube is set by the :term:`channel_width_hz` parameter
+        in the strategy file. The Stokes parameters for which cubes will be made should
+        be specified with the :term:`image_cube_stokes_list` parameter.
+
+    image_cube_stokes_list
+        The list of Stokes parameters for which frequency cubes should be saved,
+        specified as a comma-separated list (e.g., ``[Q, U]``; default = ``[I]``).
 
     save_supplementary_images
         Save dirty images and the clean masks made during each imaging cycle (default =
