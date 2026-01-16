@@ -13,6 +13,8 @@ requirements:
   - class: InitialWorkDirRequirement
     listing:
       - $(inputs.images)
+  - class: ResourceRequirement
+    coresMin: 1
 
 inputs:
   - id: images
