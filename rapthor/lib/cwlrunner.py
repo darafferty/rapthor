@@ -348,8 +348,9 @@ class ToilRunner(CWLRunner):
         # Bypass the file store; it only has benefits when using object stores like S3
         self.args.extend(['--bypass-file-store'])
         self.args.extend(['--batchSystem', self.operation.batch_system])
-        self.args.extend(['--maxLocalJobs', str(self.operation.max_nodes)])
-        self.args.extend(['--maxJobs', str(self.operation.max_nodes)])
+        # self.args.extend(['--maxLocalJobs', str(self.operation.max_nodes)])
+        # self.args.extend(['--maxJobs', str(self.operation.max_nodes)])
+        self.args.extend(['--logDebug'])
         self.args.extend(['--jobStore', self.operation.jobstore])
         self.args.extend(['--stats'])  # implicitly preserves the job store for future runs
         self.args.extend(['--servicePollingInterval', '10'])
