@@ -1,0 +1,65 @@
+{
+	"name": "Rapthor Development Container",
+	"build": {
+		"dockerfile": "../Docker/Dockerfile",
+		"context": "..",
+		"args": {
+			"AOFLAGGER_COMMIT": "master",
+			"CASACORE_COMMIT": "master",
+			"DP3_COMMIT": "master",
+			"EVERYBEAM_COMMIT": "master",
+			"IDG_COMMIT": "master",
+			"PYTHONCASACORE_COMMIT": "master",
+			"SAGECAL_COMMIT": "master",
+			"WSCLEAN_COMMIT": "master",
+			"TARGET_CPU": "native"
+		}
+	},
+	
+	// Configure tool-specific properties
+	"customizations": {
+		"vscode": {
+			"settings": {
+				"python.defaultInterpreterPath": "/usr/bin/python3",
+				"python.linting.enabled": true,
+				"python.linting.pylintEnabled": false,
+				"python.linting.flake8Enabled": true,
+				"python.formatting.provider": "black",
+				"python.testing.pytestEnabled": true,
+				"python.testing.pytestArgs": [
+					"tests",
+					"-v"
+				],
+				"terminal.integrated.defaultProfile.linux": "bash"
+			}
+		}
+	},
+
+	// Mount the workspace and use it as the working directory
+	"workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+	"workspaceFolder": "/workspace",
+
+	// Run commands after the container is created
+	"postCreateCommand": "pip install -e .",
+
+	// Use 'forwardPorts' to make a list of ports inside the container available locally
+	"forwardPorts": [],
+
+	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root
+	// "remoteUser": "root",
+
+	// Features to add to the dev container
+	"features": {
+		"ghcr.io/devcontainers/features/git:1": {
+			"version": "latest"
+		}
+	},
+
+	// Set environment variables
+	"remoteEnv": {
+		"PYTHONPATH": "/workspace:${PYTHONPATH}"
+	},
+
+	// Keep container running
+	"overrideCommand": false
+}
