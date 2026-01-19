@@ -333,27 +333,48 @@ class Image(Operation):
         if not self.apply_none and self.use_facets:
             # For faceting, we need inputs for making the ds9 facet region files
             self.input_parms.update({'skymodel': CWLFile(self.field.calibration_skymodel_file).to_json()})
-            ra_mid = []
-            dec_mid = []
-            width_ra = []
-            width_dec = []
+
+            #We want to use region files from previous cycle when final imaging with
+            #iquv because calibration is skipped.
+            reuse_facet_regions = (self.field.final_cycle and self.field.make_quv_images)
+
             facet_region_file = []
-            min_width = 2 * self.field.get_calibration_radius() * 1.2
-            for sector in self.imaging_sectors:
-                # Note: WSClean requires that all sources in the h5parm must have
-                # corresponding regions in the facets region file. We ensure this
-                # requirement is met by extending the regions to cover the larger of
-                # the calibration region and the sector region, plus a 20% padding
-                ra_mid.append(self.field.ra)
-                dec_mid.append(self.field.dec)
-                width_ra.append(max(min_width, sector.width_ra*1.2))
-                width_dec.append(max(min_width, sector.width_dec*1.2))
-                facet_region_file.append('{}_facets_ds9.reg'.format(sector.name))
-            self.input_parms.update({'ra_mid': ra_mid})
-            self.input_parms.update({'dec_mid': dec_mid})
-            self.input_parms.update({'width_ra': width_ra})
-            self.input_parms.update({'width_dec': width_dec})
+            if not reuse_facet_regions:
+                ra_mid = []
+                dec_mid = []
+                width_ra = []
+                width_dec = []
+                min_width = 2 * self.field.get_calibration_radius() * 1.2
+            
+                for sector in self.imaging_sectors:
+                    # Note: WSClean requires that all sources in the h5parm must have
+                    # corresponding regions in the facets region file. We ensure this
+                    # requirement is met by extending the regions to cover the larger of
+                    # the calibration region and the sector region, plus a 20% padding
+                    ra_mid.append(self.field.ra)
+                    dec_mid.append(self.field.dec)
+                    width_ra.append(max(min_width, sector.width_ra*1.2))
+                    width_dec.append(max(min_width, sector.width_dec*1.2))
+                    facet_region_file.append('{}_facets_ds9.reg'.format(sector.name))
+                
+                self.input_parms.update({'ra_mid': ra_mid})
+                self.input_parms.update({'dec_mid': dec_mid})
+                self.input_parms.update({'width_ra': width_ra})
+                self.input_parms.update({'width_dec': width_dec})
+                self.input_parms.update({'facet_region_file': facet_region_file})
+
+            else:
+                self.logger.info("Reusing DD solutions and regions from previous cycle")
+
+                for sector in self.imaging_sectors:
+                    facet_region_file.append('{}_facets_ds9.reg'.format(sector.name))
+
+                for region in facet_region_file:
+                    if not os.path.exists(region):
+                        raise RuntimeError(f"Expected facet region file not found: {region}")
+
             self.input_parms.update({'facet_region_file': facet_region_file})
+
             if self.apply_amplitudes:
                 self.input_parms.update({'soltabs': 'amplitude000,phase000'})
             else:
