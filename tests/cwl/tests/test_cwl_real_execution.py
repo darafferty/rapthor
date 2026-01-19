@@ -41,19 +41,7 @@ class TestRealCWLExecution:
             
             # Parse the JSON output from cwltool
             # cwltool outputs JSON to stdout
-            try:
-                cwl_outputs = json.loads(result.stdout)
-            except json.JSONDecodeError:
-                # Sometimes cwltool mixes logging with JSON, look for JSON in output
-                for line in result.stdout.split('\n'):
-                    if line.strip().startswith('{'):
-                        try:
-                            cwl_outputs = json.loads(line)
-                            break
-                        except:
-                            continue
-                else:
-                    pytest.skip(f"Could not parse CWL output: {result.stdout}")
+            cwl_outputs = json.loads(result.stdout)
             
             # Verify structure matches what our mock produces
             # Single file should have class and path
