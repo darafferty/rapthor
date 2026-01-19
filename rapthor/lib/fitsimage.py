@@ -58,9 +58,9 @@ class FITSImage(object):
         Find frequency value in most common places of a fits header
         """
         self.freq = None
-        if not self.header.get('RESTFREQ') is None and not self.header.get('RESTFREQ') == 0:
+        if self.header.get('RESTFREQ') is not None and not self.header.get('RESTFREQ') == 0:
             self.freq = float(self.header.get('RESTFREQ'))
-        elif not self.header.get('FREQ') is None and not self.header.get('FREQ') == 0:
+        elif self.header.get('FREQ') is not None and not self.header.get('FREQ') == 0:
             self.freq = float(self.header.get('FREQ'))
         else:
             for i in range(5):

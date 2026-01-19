@@ -242,8 +242,8 @@ def combine_phase1_amp1_amp2(ss1, ss2, sso):
     if 'amplitude000' in sso.getSoltabNames():
         st = sso.getSoltab('amplitude000')
         st.delete()
-    sto = sso.makeSoltab(soltype='amplitude', soltabName='amplitude000', axesNames=axes_names,
-                         axesVals=axes_vals, vals=vals, weights=weights)
+    sso.makeSoltab(soltype='amplitude', soltabName='amplitude000', axesNames=axes_names,
+                   axesVals=axes_vals, vals=vals, weights=weights)
 
     # Interpolate the slow phases in st1 to the fast grid.
     # Note: the output axes and their values are the same as for the amplitude solutions
@@ -253,8 +253,8 @@ def combine_phase1_amp1_amp2(ss1, ss2, sso):
     if 'phase000' in sso.getSoltabNames():
         st = sso.getSoltab('phase000')
         st.delete()
-    sto = sso.makeSoltab(soltype='phase', soltabName='phase000', axesNames=axes_names,
-                         axesVals=axes_vals, vals=vals, weights=weights)
+    sso.makeSoltab(soltype='phase', soltabName='phase000', axesNames=axes_names,
+                   axesVals=axes_vals, vals=vals, weights=weights)
 
     return sso
 
@@ -298,8 +298,8 @@ def combine_phase1_phase2_scalar(ss1, ss2, sso):
     if 'phase000' in sso.getSoltabNames():
         st = sso.getSoltab('phase000')
         st.delete()
-    sto = sso.makeSoltab(soltype='phase', soltabName='phase000', axesNames=axes_names,
-                         axesVals=axes_vals, vals=vals, weights=weights)
+    sso.makeSoltab(soltype='phase', soltabName='phase000', axesNames=axes_names,
+                   axesVals=axes_vals, vals=vals, weights=weights)
 
     return sso
 
@@ -345,8 +345,8 @@ def combine_phase1_phase2_amp2(ss1, ss2, sso):
     if 'phase000' in sso.getSoltabNames():
         st = sso.getSoltab('phase000')
         st.delete()
-    sto = sso.makeSoltab(soltype='phase', soltabName='phase000', axesNames=axes_names,
-                         axesVals=axes_vals, vals=vals, weights=weights)
+    sso.makeSoltab(soltype='phase', soltabName='phase000', axesNames=axes_names,
+                   axesVals=axes_vals, vals=vals, weights=weights)
 
     # Copy amplitudes from 2
     # Remove unneeded phase soltab from 2, then copy
@@ -405,8 +405,8 @@ def combine_phase1_phase2_amp2_diagonal(ss1, ss2, sso):
     if 'phase000' in sso.getSoltabNames():
         st = sso.getSoltab('phase000')
         st.delete()
-    sto = sso.makeSoltab(soltype='phase', soltabName='phase000', axesNames=axes_names,
-                         axesVals=axes_vals, vals=vals, weights=weights)
+    sso.makeSoltab(soltype='phase', soltabName='phase000', axesNames=axes_names,
+                   axesVals=axes_vals, vals=vals, weights=weights)
 
     # Copy amplitudes from 2
     # Remove unneeded phase soltab from 2, then copy
@@ -459,8 +459,8 @@ def combine_phase1_phase2_amp2_scalar(ss1, ss2, sso):
     if 'phase000' in sso.getSoltabNames():
         st = sso.getSoltab('phase000')
         st.delete()
-    sto = sso.makeSoltab(soltype='phase', soltabName='phase000', axesNames=axes_names,
-                         axesVals=axes_vals, vals=vals, weights=weights)
+    sso.makeSoltab(soltype='phase', soltabName='phase000', axesNames=axes_names,
+                   axesVals=axes_vals, vals=vals, weights=weights)
 
     # Average the amplitudes (no interpolation needed)
     st2 = ss2.getSoltab('amplitude000')
@@ -473,8 +473,8 @@ def combine_phase1_phase2_amp2_scalar(ss1, ss2, sso):
     for axis in axes_names2:
         axis_vals = st2.getAxisValues(axis)
         axes_vals.append(axis_vals)
-    sto = sso.makeSoltab(soltype='amplitude', soltabName='amplitude000', axesNames=axes_names2,
-                         axesVals=axes_vals, vals=vals, weights=weights)
+    sso.makeSoltab(soltype='amplitude', soltabName='amplitude000', axesNames=axes_names2,
+                   axesVals=axes_vals, vals=vals, weights=weights)
 
     return sso
 

@@ -13,9 +13,6 @@ Starting a Rapthor run
     to run everything within a container (see :ref:`using_containers` for
     details).
 
-.. note::
-    For running rapthor in an SKAO context, see :ref:`running_skao`.
-
 Rapthor can be run from the command line as follows:
 
 .. code-block:: console
@@ -61,9 +58,9 @@ compute cluster).
 Running everything in a container (single-machine mode)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-For runs on a single machine, the recommended method of running Rapthor is to
-run everything within a container. To use this method, first obtain the
-container image as follows:
+For runs on a single machine (i.e., when :term:`batch_system` = ``single_machine``),
+the recommended method of running Rapthor is to run everything within a container. To
+use this method, first obtain the container image as follows:
 
 For Docker:
 

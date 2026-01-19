@@ -4,10 +4,20 @@ Test module for testing the CWL workflows _generated_ by the pipeline
 
 import subprocess
 import itertools as itt
+import os
+import tempfile
 from pathlib import Path
 
 import pytest
 from rapthor.lib.operation import DIR, env_parset
+from rapthor.lib.cwl import (
+    is_cwl_file,
+    is_cwl_directory,
+    is_cwl_file_or_directory,
+    copy_cwl_object,
+    copy_cwl_recursive,
+    clean_if_cwl_file_or_directory,
+)
 
 
 PIPELINE_PATH = Path(DIR, "..", "pipeline").resolve()
@@ -26,6 +36,7 @@ def generate_keyword_combinations(params_pool):
         "max_cores": None,
         "use_mpi": False,
         "make_image_cube": True,
+        "image_cube_stokes_list": "I",
         "normalize_flux_scale": True,
         "preapply_dde_solutions": False,
         "save_source_list": True,
@@ -216,10 +227,12 @@ class TestImageWorkflow:
             "max_cores": (None, 8),
             "use_mpi": (False, True),
             "make_image_cube": (False, True),
+            "image_cube_stokes_list": "I",
             "normalize_flux_scale": (False, True),
             "preapply_dde_solutions": (False, True),
             "save_source_list": (False, True),
             "compress_images": (False, True),
+            
         })
     )
     def params(self, request):
@@ -265,3 +278,285 @@ def test_mosaic_workflow(
         "compress_images": compress_images,
     }
     generate_and_validate(tmp_path, operation, parms, template, sub_template)
+
+
+# Unit tests for CWL utility functions
+
+class TestIsCWLFile:
+    """Tests for is_cwl_file() function"""
+
+    def test_valid_file(self):
+        """Test with a valid CWL file object"""
+        obj = {"class": "File", "path": "/path/to/file.txt"}
+        assert is_cwl_file(obj) is True
+
+    def test_valid_directory_not_file(self):
+        """Test that CWL directory is not identified as file"""
+        obj = {"class": "Directory", "path": "/path/to/dir"}
+        assert is_cwl_file(obj) is False
+
+    def test_missing_class_key(self):
+        """Test with missing 'class' key"""
+        obj = {"path": "/path/to/file.txt"}
+        assert is_cwl_file(obj) is False
+
+    def test_wrong_class_value(self):
+        """Test with wrong class value"""
+        obj = {"class": "InvalidClass", "path": "/path/to/file.txt"}
+        assert is_cwl_file(obj) is False
+
+    def test_non_dict_input(self):
+        """Test with non-dict input"""
+        assert is_cwl_file("not a dict") is False
+        assert is_cwl_file([]) is False
+        assert is_cwl_file(None) is False
+
+
+class TestIsCWLDirectory:
+    """Tests for is_cwl_directory() function"""
+
+    def test_valid_directory(self):
+        """Test with a valid CWL directory object"""
+        obj = {"class": "Directory", "path": "/path/to/dir"}
+        assert is_cwl_directory(obj) is True
+
+    def test_valid_file_not_directory(self):
+        """Test that CWL file is not identified as directory"""
+        obj = {"class": "File", "path": "/path/to/file.txt"}
+        assert is_cwl_directory(obj) is False
+
+    def test_missing_class_key(self):
+        """Test with missing 'class' key"""
+        obj = {"path": "/path/to/dir"}
+        assert is_cwl_directory(obj) is False
+
+    def test_wrong_class_value(self):
+        """Test with wrong class value"""
+        obj = {"class": "InvalidClass", "path": "/path/to/dir"}
+        assert is_cwl_directory(obj) is False
+
+    def test_non_dict_input(self):
+        """Test with non-dict input"""
+        assert is_cwl_directory("not a dict") is False
+        assert is_cwl_directory([]) is False
+        assert is_cwl_directory(None) is False
+
+
+class TestIsCWLFileOrDirectory:
+    """Tests for is_cwl_file_or_directory() function"""
+
+    def test_valid_file(self):
+        """Test with a valid CWL file object"""
+        obj = {"class": "File", "path": "/path/to/file.txt"}
+        assert is_cwl_file_or_directory(obj) is True
+
+    def test_valid_directory(self):
+        """Test with a valid CWL directory object"""
+        obj = {"class": "Directory", "path": "/path/to/dir"}
+        assert is_cwl_file_or_directory(obj) is True
+
+    def test_invalid_class(self):
+        """Test with invalid class"""
+        obj = {"class": "InvalidClass", "path": "/path/to/something"}
+        assert is_cwl_file_or_directory(obj) is False
+
+    def test_non_dict_input(self):
+        """Test with non-dict input"""
+        assert is_cwl_file_or_directory("not a dict") is False
+        assert is_cwl_file_or_directory([]) is False
+        assert is_cwl_file_or_directory(None) is False
+
+
+class TestCopyCWLObject:
+    """Tests for copy_cwl_object() function"""
+
+    def test_copy_file(self, tmp_path):
+        """Test copying a CWL file object"""
+        # Create a source file
+        src_file = tmp_path / "source" / "test.txt"
+        src_file.parent.mkdir(parents=True, exist_ok=True)
+        src_file.write_text("test content")
+
+        # Create CWL file object
+        cwl_obj = {"class": "File", "path": str(src_file)}
+
+        # Copy to destination
+        dest_dir = tmp_path / "destination"
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        copy_cwl_object(cwl_obj, str(dest_dir))
+
+        # Verify file was copied
+        dest_file = dest_dir / "test.txt"
+        assert dest_file.exists()
+        assert dest_file.read_text() == "test content"
+
+    def test_copy_directory(self, tmp_path):
+        """Test copying a CWL directory object"""
+        # Create a source directory with files
+        src_dir = tmp_path / "source_dir"
+        src_dir.mkdir()
+        (src_dir / "file1.txt").write_text("content1")
+        (src_dir / "file2.txt").write_text("content2")
+
+        # Create CWL directory object
+        cwl_obj = {"class": "Directory", "path": str(src_dir)}
+
+        # Copy to destination
+        dest_parent = tmp_path / "destination"
+        copy_cwl_object(cwl_obj, str(dest_parent))
+
+        # Verify directory was copied
+        dest_dir = dest_parent / "source_dir"
+        assert dest_dir.exists()
+        assert (dest_dir / "file1.txt").read_text() == "content1"
+        assert (dest_dir / "file2.txt").read_text() == "content2"
+
+    def test_copy_non_cwl_object(self, tmp_path):
+        """Test that non-CWL objects are silently ignored"""
+        # Should not raise an exception
+        copy_cwl_object({"not": "cwl"}, str(tmp_path))
+        copy_cwl_object("string", str(tmp_path))
+        copy_cwl_object(None, str(tmp_path))
+
+
+class TestCopyCWLRecursive:
+    """Tests for copy_cwl_recursive() function"""
+
+    def test_copy_single_file(self, tmp_path):
+        """Test recursive copy of a single CWL file"""
+        src_file = tmp_path / "source" / "test.txt"
+        src_file.parent.mkdir(parents=True, exist_ok=True)
+        src_file.write_text("test")
+
+        cwl_obj = {"class": "File", "path": str(src_file)}
+        dest_dir = tmp_path / "destination"
+        dest_dir.mkdir(parents=True, exist_ok=True)
+
+        copy_cwl_recursive(cwl_obj, str(dest_dir))
+
+        assert (dest_dir / "test.txt").exists()
+        assert (dest_dir / "test.txt").read_text() == "test"
+
+    def test_copy_list_of_files(self, tmp_path):
+        """Test recursive copy of a list of CWL files"""
+        # Create source files
+        src1 = tmp_path / "source" / "file1.txt"
+        src2 = tmp_path / "source" / "file2.txt"
+        src1.parent.mkdir(parents=True, exist_ok=True)
+        src1.write_text("content1")
+        src2.write_text("content2")
+
+        cwl_list = [
+            {"class": "File", "path": str(src1)},
+            {"class": "File", "path": str(src2)},
+        ]
+        dest_dir = tmp_path / "destination"
+        dest_dir.mkdir(parents=True, exist_ok=True)
+
+        copy_cwl_recursive(cwl_list, str(dest_dir))
+
+        assert (dest_dir / "file1.txt").exists()
+        assert (dest_dir / "file2.txt").exists()
+        assert (dest_dir / "file1.txt").read_text() == "content1"
+        assert (dest_dir / "file2.txt").read_text() == "content2"
+
+    def test_copy_nested_list(self, tmp_path):
+        """Test recursive copy of nested lists"""
+        src1 = tmp_path / "source" / "file1.txt"
+        src2 = tmp_path / "source" / "file2.txt"
+        src1.parent.mkdir(parents=True, exist_ok=True)
+        src1.write_text("content1")
+        src2.write_text("content2")
+
+        nested_list = [
+            [{"class": "File", "path": str(src1)}],
+            [{"class": "File", "path": str(src2)}],
+        ]
+        dest_dir = tmp_path / "destination"
+        dest_dir.mkdir(parents=True, exist_ok=True)
+
+        copy_cwl_recursive(nested_list, str(dest_dir))
+
+        assert (dest_dir / "file1.txt").exists()
+        assert (dest_dir / "file2.txt").exists()
+        assert (dest_dir / "file1.txt").read_text() == "content1"
+        assert (dest_dir / "file2.txt").read_text() == "content2"
+
+    def test_copy_non_cwl_in_list(self, tmp_path):
+        """Test that non-CWL objects in lists are ignored"""
+        src_file = tmp_path / "source" / "test.txt"
+        src_file.parent.mkdir(parents=True, exist_ok=True)
+        src_file.write_text("test")
+
+        mixed_list = [
+            {"class": "File", "path": str(src_file)},
+            "not a cwl object",
+            {"not": "cwl"},
+        ]
+        dest_dir = tmp_path / "destination"
+        dest_dir.mkdir(parents=True, exist_ok=True)
+
+        # Should not raise an exception
+        copy_cwl_recursive(mixed_list, str(dest_dir))
+
+        # CWL file should still be copied
+        assert (dest_dir / "test.txt").exists()
+        assert (dest_dir / "test.txt").read_text() == "test"
+
+
+class TestCleanIfCWLFileOrDirectory:
+    """Tests for clean_if_cwl_file_or_directory() function"""
+
+    def test_remove_file(self, tmp_path):
+        """Test removing a CWL file object"""
+        src_file = tmp_path / "test.txt"
+        src_file.write_text("test")
+
+        cwl_obj = {"class": "File", "path": str(src_file)}
+
+        assert src_file.exists()
+        clean_if_cwl_file_or_directory(cwl_obj)
+        assert not src_file.exists()
+
+    def test_remove_directory(self, tmp_path):
+        """Test removing a CWL directory object"""
+        src_dir = tmp_path / "test_dir"
+        src_dir.mkdir()
+        (src_dir / "file.txt").write_text("content")
+
+        cwl_obj = {"class": "Directory", "path": str(src_dir)}
+
+        assert src_dir.exists()
+        clean_if_cwl_file_or_directory(cwl_obj)
+        assert not src_dir.exists()
+
+    def test_remove_list_of_files(self, tmp_path):
+        """Test removing a list of CWL file objects"""
+        file1 = tmp_path / "file1.txt"
+        file2 = tmp_path / "file2.txt"
+        file1.write_text("content1")
+        file2.write_text("content2")
+
+        cwl_list = [
+            {"class": "File", "path": str(file1)},
+            {"class": "File", "path": str(file2)},
+        ]
+
+        assert file1.exists() and file2.exists()
+        clean_if_cwl_file_or_directory(cwl_list)
+        assert not file1.exists() and not file2.exists()
+
+    def test_remove_nonexistent_file(self):
+        """Test that removing nonexistent files doesn't raise exception"""
+        cwl_obj = {"class": "File", "path": "/nonexistent/path/file.txt"}
+
+        # Should not raise an exception
+        clean_if_cwl_file_or_directory(cwl_obj)
+
+    def test_remove_non_cwl_object(self, tmp_path):
+        """Test that non-CWL objects are silently ignored"""
+        # Should not raise exceptions
+        clean_if_cwl_file_or_directory({"not": "cwl"})
+        clean_if_cwl_file_or_directory("string")
+        clean_if_cwl_file_or_directory(None)
+

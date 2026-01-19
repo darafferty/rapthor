@@ -230,6 +230,18 @@ outputs:
     type: File[]
     outputBinding:
       glob: [$(inputs.name)-0???-image-pb.fits, $(inputs.name)-0???-I-image-pb.fits]
+  - id: image_Q_pb_channels
+    type: File[]?
+    outputBinding:
+      glob: [$(inputs.name)-0???-Q-image-pb.fits]
+  - id: image_U_pb_channels
+    type: File[]?
+    outputBinding:
+      glob: [$(inputs.name)-0???-U-image-pb.fits]
+  - id: image_V_pb_channels
+    type: File[]?
+    outputBinding:
+      glob: [$(inputs.name)-0???-V-image-pb.fits]
   - id: images_extra
     type: File[]
     outputBinding:

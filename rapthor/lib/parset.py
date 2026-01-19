@@ -165,7 +165,8 @@ class Parset:
                 for opt in self.__parser.options(section)
                 if self.__parser.get(section, opt) not in ("None", "")
             )
-        missing_sections = self.required_sections - given_sections
+        # Currently, `missing_sections` is unused, but we may need it in the future
+        missing_sections = self.required_sections - given_sections  # noqa: F841
         missing_options = {
             sect: self.required_options[sect] - given_options[sect]
             for sect in self.required_sections
@@ -377,6 +378,35 @@ class Parset:
                 "in either calibration or imaging, but not in both. "
                 "Generally, the correction should be enabled (or disabled) "
                 "together in both sections."
+            )
+
+        options["image_cube_stokes_list"] = [
+            pol.upper() for pol in options["image_cube_stokes_list"]
+        ]
+        if any([pol not in "IQUV" for pol in options["image_cube_stokes_list"]]):
+            raise ValueError(
+                "The option 'image_cube_stokes_list' specifies one or more invalid "
+                "Stokes parameters. Allowed Stokes parameters are 'I', 'Q', 'U', or "
+                "'V'."
+            )
+
+        if options["save_image_cube"] and options["image_cube_stokes_list"] == []:
+            log.warning(
+                "The option 'save_image_cube' is enabled, but 'image_cube_stokes_list' "
+                "is empty. Setting 'image_cube_stokes_list' to '[I]'."
+            )
+            options["image_cube_stokes_list"] = ["I"]
+        if (
+            options["save_image_cube"]
+            and not options["make_quv_images"]
+            and options["image_cube_stokes_list"] != ["I"]
+        ):
+            raise ValueError(
+                "The option 'image_cube_stokes_list' specifies that a cube for a "
+                "Stokes parameter other than I should be saved, but non-Stokes-I "
+                "images will not be made (since 'make_quv_images' is not enabled). "
+                "Please enable 'make_quv_images' or set 'image_cube_stokes_list' to "
+                "'[I]'."
             )
 
         # Cluster options

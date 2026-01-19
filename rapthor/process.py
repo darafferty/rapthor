@@ -81,11 +81,6 @@ def run(parset_file, logging_level='info'):
     field.do_final = do_final_pass(field, selfcal_steps, final_step)
     if field.do_final:
         if selfcal_steps:
-            if not any([len(obs) > 1 for obs in field.epoch_observations]):
-                # Use concatenation was not done the user input data column
-                # for the final calibration run
-                field.data_colname = parset['data_colname']
-
             # If selfcal was done, set peel_outliers to that of the initial cycle, since the
             # observations will be regenerated and outliers (if any) need to be peeled again
             final_step['peel_outliers'] = selfcal_steps[0]['peel_outliers']
@@ -95,7 +90,7 @@ def run(parset_file, logging_level='info'):
         else:
             if not final_step['do_calibrate']:
                 if not parset["input_h5parm"]:
-                    raise ValueError("The stratgey indicates that no calibration is to be done "
+                    raise ValueError("The strategy indicates that no calibration is to be done "
                                      "but no calibration solutions were provided. Please provide "
                                      "the solutions with the input_h5parm parameter")
                 elif (
@@ -208,9 +203,12 @@ def run_steps(field, steps, final=False):
             )
 
             # Set whether an image-frequency cube should be made
-            field.make_image_cube = (
-                field.save_image_cube and field.image_pol == "I" and final
-            )
+            field.make_image_cube = field.save_image_cube and final
+            field.image_cube_stokes_list = [
+                pol
+                for pol in field.image_cube_stokes_list
+                if pol.upper() in field.image_pol
+            ]
 
             # Set whether screens should be applied
             field.apply_screens = True if (field.dde_mode == 'hybrid' and final) else False

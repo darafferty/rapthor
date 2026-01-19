@@ -21,11 +21,6 @@ The available options are described below under their respective sections.
 
     An example parset is available in the `settings directory
     <https://git.astron.nl/RD/rapthor/-/blob/master/rapthor/settings/defaults.parset>`_.
-    In addition, example parsets for running on the SKAO cluster using either a single node,
-    or multiple nodes, are availble in the `examples directory
-    <https://git.astron.nl/RD/rapthor/-/tree/master/examples>`_ and an example parset 
-    for SKA-low is available in `the settings directory 
-    <https://git.astron.nl/RD/rapthor/-/blob/master/rapthor/settings/defaults_skalow.parset>`_.
 
 .. _parset_global_options:
 
@@ -365,6 +360,17 @@ The available options are described below under their respective sections.
     solverlbfgs_iter
         Number of iterations per minibatch in the LBFGS solver (only used when
         :term:`solveralgorithm` = ``lbfgs``; default = 4).
+    
+    average_visibilities
+        Perform averaging of the input visibilities for imaging (default = ``True``), 
+        determined by the maximum allowed before smearing effects become important (see
+        :term:`max_peak_smearing`). 
+         
+        .. note:: 
+
+            This works in conjuntion with :term:`save_visibilities`, so that 
+            visibilities used in each imaging cycle can be saved without averaging 
+            (unless other averaging such as bda is requested).
 
     bda_timebase
         Maximum baseline used in baseline-dependent time averaging (BDA) during the
@@ -470,10 +476,16 @@ The available options are described below under their respective sections.
         closest to the image centers are used.
 
     save_image_cube
-        Save the Stokes I frequency cube (default = ``False``). If ``True``, a cube is
-        constructed from the channel images made during the final imaging step, once
-        self calibration has been completed. The width of the frequency channels in the
-        cube is set by the :term:`channel_width_hz` parameter in the strategy file.
+        Save frequency cube(s) for the given Stokes parameters (default = ``False``).
+        If ``True``, a cube is constructed from the channel images made during the
+        final imaging step, once self calibration has been completed. The width of the
+        frequency channels in the cube is set by the :term:`channel_width_hz` parameter
+        in the strategy file. The Stokes parameters for which cubes will be made should
+        be specified with the :term:`image_cube_stokes_list` parameter.
+
+    image_cube_stokes_list
+        The list of Stokes parameters for which frequency cubes should be saved,
+        specified as a comma-separated list (e.g., ``[Q, U]``; default = ``[I]``).
 
     save_supplementary_images
         Save dirty images and the clean masks made during each imaging cycle (default =
@@ -559,10 +571,6 @@ The available options are described below under their respective sections.
             Currently, Toil does not fully support ``openmpi``. Because of this, imaging
             can only use the worker nodes, and the master node will be idle.
 
-        .. note::
-            When running on SKAO cluster, be sure to export the ``SALLOC_PARTITION`` to 
-            ensure Toil uses a specific partition (see example SLURM script `here
-            <https://git.astron.nl/RD/rapthor/-/blob/master/examples/rapthor_skao_multinode.slurm>`_).
 
     reweight
         Reweight the visibility data before imaging (default = ``False``). If ``True``,
@@ -608,7 +616,8 @@ The available options are described below under their respective sections.
         Max desired peak flux density reduction at center of the image edges due to
         bandwidth smearing (at the mean frequency) and time smearing (default = 0.15 = 15%
         reduction in peak flux). Higher values result in shorter run times but more
-        smearing away from the image centers.
+        smearing away from the image centers. Note this option is not considered if 
+        :term:`average_visibilities` = ``False``.
 
     correct_time_frequency_smearing
         Correct for time and frequency smearing during imaging (default =

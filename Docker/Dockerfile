@@ -232,7 +232,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         libboost-filesystem1.74.0 \
         libboost-program-options1.74.0 \
         libboost-python1.74.0 \
-        libcfitsio9 \
+        libcfitsio-bin \
         libfftw3-double3 \
         libfftw3-single3 \
         libgfortran5 \
@@ -252,11 +252,12 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         wget
 RUN rm -rf /var/lib/apt/lists/*
 
-# Basic sanity check: try to run the compiled tools and Rapthor itself, to
-# make sure the software runs without problems (e.g. no missing libraries)
+# Basic sanity check: try to run the compiled tools, binaries that Rapthor
+# needs, and Rapthor itself, to make sure the software runs without problems
 RUN aoflagger --version && \
     DP3 --version && \
     wsclean --version && \
+    fpack -H && \
     rapthor --version
 
 # Set environment variables needed at run-time

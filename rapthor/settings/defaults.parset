@@ -198,16 +198,24 @@ source_finder = bdsf
 # files will be saved, with the the direction-independent full-Jones solutions,
 # if available, applied. Note, however, that the direction-dependent solutions
 # will not be applied unless dde_method = "single", in which case the solutions
-# closest to the image centers are used
+# closest to the image centers are used.
 save_visibilities = False
 
-# Save the Stokes I frequency cube (default = False). If True, a cube is constructed
-# from the channel images made during the final imaging step, once self calibration has
-# been completed. The width of the frequency channels in the cube is set by the
-# channel_width_hz parameter in the strategy file
-save_image_cube = False
+# Perform averaging of visibilities for imaging, up to that allowed by smearing
+# constraints (default = True).
+average_visibilities = True
 
-# Save supplementary images for diagnostics e.g. dirty images and pybdsf masks
+# Save frequency cube(s) for the given Stokes parameters (default = False). If True,
+# a cube is constructed from the channel images made during the final imaging step,
+# once self calibration has been completed. The width of the frequency channels in each
+# cube is set by the channel_width_hz parameter in the strategy file. The Stokes
+# parameters for which cubes will be made should be specified as a comma-separated list
+# (e.g., [Q, U]; default = [I]). Note that in order to make Stokes-QUV cubes,
+# the make_quv_images option must be set to True
+save_image_cube = False
+image_cube_stokes_list = [I]
+
+# Save supplementary images for diagnostics (e.g., dirty images and pybdsf masks)
 # made during each imaging cycle (default = False)
 save_supplementary_images = False
 

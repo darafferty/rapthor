@@ -49,6 +49,7 @@ class Image(Operation):
         self.make_image_cube = self.field.make_image_cube  # make an image cube
         self.normalize_flux_scale = False  # derive flux scale normalizations (ImageNormalize only)
         self.compress_images = None
+        self.image_cube_stokes_list = None
 
     def set_parset_parameters(self):
         """
@@ -74,6 +75,8 @@ class Image(Operation):
                 self.preapply_dde_solutions = False
         if self.compress_images is None:
             self.compress_images = self.field.compress_images
+        if self.image_cube_stokes_list is None:
+            self.image_cube_stokes_list = self.field.image_cube_stokes_list
         if self.batch_system.startswith('slurm'):
             # For some reason, setting coresMax ResourceRequirement hints does
             # not work with SLURM
@@ -92,7 +95,8 @@ class Image(Operation):
                              'preapply_dde_solutions': self.preapply_dde_solutions,
                              'max_cores': max_cores,
                              'use_mpi': self.field.use_mpi,
-                             'compress_images': self.compress_images}
+                             'compress_images': self.compress_images,
+                             'image_cube_stokes_list': self.image_cube_stokes_list}
 
     def set_input_parameters(self):
         """
@@ -134,7 +138,10 @@ class Image(Operation):
         phasecenter = []
         image_root = []
         central_patch_name = []
-        image_cube_name = []
+        image_I_cube_name = []
+        image_Q_cube_name = []
+        image_U_cube_name = []
+        image_V_cube_name = []
         normalize_h5parm = []
         output_source_catalog = []
         for sector in self.imaging_sectors:
@@ -187,7 +194,10 @@ class Image(Operation):
             if self.preapply_dde_solutions:
                 central_patch_name.append(sector.central_patch)
             if self.make_image_cube:
-                image_cube_name.append(sector.name + '_freq_cube.fits')
+                image_I_cube_name.append(sector.name + '_I_freq_cube.fits')
+                image_Q_cube_name.append(sector.name + '_Q_freq_cube.fits')
+                image_U_cube_name.append(sector.name + '_U_freq_cube.fits')
+                image_V_cube_name.append(sector.name + '_V_freq_cube.fits')
             if self.normalize_flux_scale:
                 output_source_catalog.append(sector.name + '_source_catalog.fits')
                 normalize_h5parm.append(sector.name + '_normalize.h5parm')
@@ -217,11 +227,11 @@ class Image(Operation):
                                not self.apply_normalizations):
             # No solutions should be preapplied, so define steps
             # without an applycal step
-            prepare_data_steps = ['applybeam', 'shift', 'avg']
+            prepare_data_steps = ['applybeam', 'shift']
         else:
             # Solutions should be applied, so add an applycal step
             # and set various parameters as needed
-            prepare_data_steps = ['applybeam', 'shift', 'applycal', 'avg']
+            prepare_data_steps = ['applybeam', 'shift', 'applycal']
             prepare_data_applycal_steps = []
             if self.preapply_dde_solutions:
                 # Fast phases and slow amplitudes (if generated) should be
@@ -238,6 +248,10 @@ class Image(Operation):
             if prepare_data_applycal_steps:
                 prepare_data_applycal_steps = f"[{','.join(prepare_data_applycal_steps)}]"
         all_regular = all([obs.channels_are_regular for obs in self.field.observations])
+        # Default is to average visibilities for imaging up to the smearing limit
+        if self.field.average_visibilities:
+            # Average visibilities
+            prepare_data_steps.append('avg')
         if self.field.image_bda_timebase > 0 and all_regular and not self.apply_screens:
             # Currently, BDA cannot be used with irregular data or screens (IDG)
             prepare_data_steps.append('bdaavg')
@@ -389,7 +403,10 @@ class Image(Operation):
         elif self.preapply_dde_solutions:
             self.input_parms.update({'central_patch_name': central_patch_name})
         if self.make_image_cube:
-            self.input_parms.update({'image_cube_name': image_cube_name})
+            self.input_parms.update({'image_I_cube_name': image_I_cube_name})
+            self.input_parms.update({'image_Q_cube_name': image_Q_cube_name})
+            self.input_parms.update({'image_U_cube_name': image_U_cube_name})
+            self.input_parms.update({'image_V_cube_name': image_V_cube_name})
         if self.normalize_flux_scale:
             self.input_parms.update({'output_source_catalog': output_source_catalog})
             self.input_parms.update({'output_normalize_h5parm': normalize_h5parm})
@@ -439,17 +456,19 @@ class Image(Operation):
             # the cubes are copied directly since mosaicking of the cubes is not yet
             # supported
             if self.make_image_cube:
-                src_filename = f'{image_root}_freq_cube.fits'
                 dst_dir = os.path.join(self.parset['dir_working'], 'images', self.name)
                 os.makedirs(dst_dir, exist_ok=True)
-                sector.I_freq_cube = os.path.join(dst_dir, os.path.basename(src_filename))
-                shutil.copy(src_filename, sector.I_freq_cube)
-
-                # Save the output beams and frequencies files
-                for suffix in ['_beams.txt', '_frequencies.txt']:
-                    src_filename = f'{image_root}_freq_cube.fits{suffix}'
+                for pol in self.field.image_cube_stokes_list:
+                    polup = pol.upper()
+                    src_filename = f'{image_root}_{polup}_freq_cube.fits'
                     dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
                     shutil.copy(src_filename, dst_filename)
+
+                    # Save the output beams and frequencies files
+                    for suffix in ['_beams.txt', '_frequencies.txt']:
+                        src_filename = f'{image_root}_{polup}_freq_cube.fits{suffix}'
+                        dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
+                        shutil.copy(src_filename, dst_filename)
 
             # The output sky models, both true sky and apparent sky (the filenames are
             # defined in the rapthor/scripts/filter_skymodel.py file)
@@ -536,6 +555,7 @@ class ImageInitial(Image):
         self.use_facets = False
         self.save_source_list = True
         self.peel_bright_sources = False
+        self.make_image_cube = False
         self.image_pol = 'I'
         self.compress_images = self.field.compress_selfcal_images
         super().set_parset_parameters()
@@ -644,6 +664,7 @@ class ImageNormalize(Image):
         self.make_image_cube = True
         self.normalize_flux_scale = True
         self.compress_images = self.field.compress_selfcal_images
+        self.image_cube_stokes_list = ["I"]
         if self.field.h5parm_filename is None:
             # No calibration has yet been done, so set various flags as needed
             self.use_facets = False
@@ -687,15 +708,12 @@ class ImageNormalize(Image):
         # Save the output image cube filenames
         sector = self.field.normalize_sector
         image_root = os.path.join(self.pipeline_working_dir, sector.name)
-        src_filename = f'{image_root}_freq_cube.fits'
         dst_dir = os.path.join(self.parset['dir_working'], 'images', self.name)
         os.makedirs(dst_dir, exist_ok=True)
-        sector.I_freq_cube = os.path.join(dst_dir, os.path.basename(src_filename))
-        shutil.copy(src_filename, sector.I_freq_cube)
 
-        # Save the output beams and frequencies files
-        for suffix in ['_beams.txt', '_frequencies.txt']:
-            src_filename = f'{image_root}_freq_cube.fits{suffix}'
+        # Save the output cube, beams, and frequencies files
+        for suffix in ['', '_beams.txt', '_frequencies.txt']:
+            src_filename = f'{image_root}_I_freq_cube.fits{suffix}'
             dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
             shutil.copy(src_filename, dst_filename)
 

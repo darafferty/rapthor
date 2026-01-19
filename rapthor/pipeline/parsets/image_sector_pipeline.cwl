@@ -10,6 +10,7 @@ doc: |
 requirements:
   ScatterFeatureRequirement: {}
   StepInputExpressionRequirement: {}
+  InlineJavascriptRequirement: {}
 
 {% if max_cores is not none %}
 hints:
@@ -477,11 +478,29 @@ inputs:
     type: boolean
 
 {% if make_image_cube %}
-  - id: image_cube_name
-    label: Filename of output image cube
+  - id: image_I_cube_name
+    label: Filename of I image cube
     doc: |
-      The filename of the output image cube (length = 1).
-    type: string
+      The filename of the output Stokes-I image cube (length = 1).
+    type: string?
+
+  - id: image_Q_cube_name
+    label: Filename of Q image cube
+    doc: |
+      The filename of the output Stokes-Q image cube (length = 1).
+    type: string?
+
+  - id: image_U_cube_name
+    label: Filename of U image cube
+    doc: |
+      The filename of the output Stokes-U image cube (length = 1).
+    type: string?
+
+  - id: image_V_cube_name
+    label: Filename of V image cube
+    doc: |
+      The filename of the output Stokes-V image cube (length = 1).
+    type: string?
 {% endif %}
 
 {% if normalize_flux_scale %}
@@ -575,18 +594,18 @@ outputs:
     type: File
 {% endif %}
 {% if make_image_cube %}
-  - id: sector_image_cube
+  - id: sector_image_cubes
     outputSource:
-      - make_image_cube/image_cube
-    type: File
+      - make_image_cubes/image_cube
+    type: File[]
   - id: sector_image_cube_beams
     outputSource:
-      - make_image_cube/image_cube_beams
-    type: File
+      - make_image_cubes/image_cube_beams
+    type: File[]
   - id: sector_image_cube_frequencies
     outputSource:
-      - make_image_cube/image_cube_frequencies
-    type: File
+      - make_image_cubes/image_cube_frequencies
+    type: File[]
 {% endif %}
 {% if normalize_flux_scale %}
   - id: sector_source_catalog
@@ -866,6 +885,9 @@ steps:
       - id: image_I_nonpb_name
       - id: image_I_pb_name
       - id: image_I_pb_channels
+      - id: image_Q_pb_channels
+      - id: image_U_pb_channels
+      - id: image_V_pb_channels
       - id: images_extra
 {% if save_source_list %}
       - id: skymodel_nonpb
@@ -956,24 +978,28 @@ steps:
 # end peel_bright_sources
 
 {% if make_image_cube %}
-# start make_image_cube
-  - id: make_image_cube
-    label: Make an image cube
+  - id: make_image_cubes
+    label: Make image cubes
     doc: |
-      This step uses combines the channel images from WSClean
-      into an image cube.
+      This step combines the channel images from WSClean into one or more image cubes
+      (one per Stokes parameter).
     run: {{ rapthor_pipeline_dir }}/steps/make_image_cube.cwl
     in:
       - id: input_image_list
-        source: image/image_I_pb_channels
+        source: [image/image_I_pb_channels, image/image_Q_pb_channels, image/image_U_pb_channels, image/image_V_pb_channels]
+        linkMerge: merge_nested
+        pickValue: all_non_null
       - id: output_image
-        source: image_cube_name
+        source: [image_I_cube_name, image_Q_cube_name, image_U_cube_name, image_V_cube_name]
+        linkMerge: merge_flattened
+        pickValue: all_non_null
+    scatter: [input_image_list, output_image]
+    scatterMethod: dotproduct
     out:
       - id: image_cube
       - id: image_cube_beams
       - id: image_cube_frequencies
 {% endif %}
-# end make_image_cube
 
   - id: check_beam_true_sky_image
     label: Check beam
@@ -1103,6 +1129,57 @@ steps:
 
 {% if normalize_flux_scale %}
 # start normalize_flux_scale
+
+  - id: pick_I_cube
+    label: Pick I cube file
+    doc: |
+      This step picks the Stokes-I image cube from those made by the make_image_cube
+      step.
+    run: {{ rapthor_pipeline_dir }}/steps/pick_file.cwl
+    in:
+      - id: input_file_list
+        source: make_image_cubes/image_cube
+      - id: filename_to_match
+        source: image_I_cube_name
+      - id: suffix
+        valueFrom: ''
+    out:
+      - id: picked_file
+
+  - id: pick_I_beams
+    label: Pick I beams file
+    doc: |
+      This step picks the Stokes-I cube beams file from those made by the
+      make_image_cube step.
+    run: {{ rapthor_pipeline_dir }}/steps/pick_file.cwl
+    in:
+      - id: input_file_list
+        source: make_image_cubes/image_cube_beams
+      - id: filename_to_match
+        source: pick_I_cube/picked_file
+        valueFrom: $(self.basename)
+      - id: suffix
+        valueFrom: '_beams.txt'
+    out:
+      - id: picked_file
+
+  - id: pick_I_frequencies
+    label: Pick I freuqencies file
+    doc: |
+      This step picks the Stokes-I cube frequencies file from those made by the
+      make_image_cube step.
+    run: {{ rapthor_pipeline_dir }}/steps/pick_file.cwl
+    in:
+      - id: input_file_list
+        source: make_image_cubes/image_cube_frequencies
+      - id: filename_to_match
+        source: pick_I_cube/picked_file
+        valueFrom: $(self.basename)
+      - id: suffix
+        valueFrom: '_frequencies.txt'
+    out:
+      - id: picked_file
+
   - id: make_catalog_from_image_cube
     label: Make a source catalog from an image cube
     doc: |
@@ -1110,11 +1187,11 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/make_catalog_from_image_cube.cwl
     in:
       - id: cube
-        source: make_image_cube/image_cube
+        source: pick_I_cube/picked_file
       - id: cube_beams
-        source: make_image_cube/image_cube_beams
+        source: pick_I_beams/picked_file
       - id: cube_frequencies
-        source: make_image_cube/image_cube_frequencies
+        source: pick_I_frequencies/picked_file
       - id: output_catalog
         source: output_source_catalog
       - id: threshisl
