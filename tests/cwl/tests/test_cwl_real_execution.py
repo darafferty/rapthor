@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from ..cwl_mock import generate_mock_files, _create_json_output, get_output_type
+from ..cwl_mock import build_mock_outputs
         
 
 class TestRealCWLExecution:
@@ -38,9 +38,6 @@ class TestRealCWLExecution:
                 text=True,
                 cwd=tmpdir
             )
-            
-            if result.returncode != 0:
-                pytest.skip(f"CWL execution failed: {result.stderr}")
             
             # Parse the JSON output from cwltool
             # cwltool outputs JSON to stdout
@@ -94,44 +91,38 @@ class TestRealCWLExecution:
             tmpdir = Path(tmpdir)
             
             # Define outputs matching the CWL tool
-            outputs = [
-                {"type": "File", "outputSource": "tool/single_file"},
-                {"type": "Directory", "outputSource": "tool/single_dir"},
-                {
+            outputs = {
+                "single_file": {"type": "File", "outputSource": "tool/single_file"},
+                "single_dir": {"type": "Directory", "outputSource": "tool/single_dir"},
+                "file_array": {
                     "type": {"type": "array", "items": "File"},
                     "outputSource": "tool/file_array"
                 },
-                {
+                "dir_array": {
                     "type": {"type": "array", "items": "Directory"},
                     "outputSource": "tool/dir_array"
                 }
-            ]
+            }
             
             # Generate mock files
             output_path = tmpdir / "mock_outputs"
-            generate_mock_files(output_path, outputs, mock_n_inner=3)
-            
-            # Create JSON outputs
-            mock_outputs = {}
-            for output_info in outputs:
-                output_type = get_output_type(output_info)
-                output_source = output_info.get('outputSource')
-                base_name = output_source.replace('/', '.')
-                key = base_name.split(".")[-1]
-                mock_outputs[key] = _create_json_output(base_name, output_type, output_path)
+            mock_outputs = build_mock_outputs(output_path, outputs, mock_n_outer=3)
             
             # Verify mock structure matches CWL format
             # Single file
+            assert "single_file" in mock_outputs
             assert isinstance(mock_outputs["single_file"], dict)
             assert mock_outputs["single_file"]["class"] == "File"
             assert "path" in mock_outputs["single_file"]
             
             # Single directory
+            assert "single_dir" in mock_outputs
             assert isinstance(mock_outputs["single_dir"], dict)
             assert mock_outputs["single_dir"]["class"] == "Directory"
             assert "path" in mock_outputs["single_dir"]
             
             # File array
+            assert "file_array" in mock_outputs
             assert isinstance(mock_outputs["file_array"], list)
             assert len(mock_outputs["file_array"]) == 3
             for file_obj in mock_outputs["file_array"]:
@@ -140,6 +131,7 @@ class TestRealCWLExecution:
                 assert "path" in file_obj
             
             # Directory array
+            assert "dir_array" in mock_outputs
             assert isinstance(mock_outputs["dir_array"], list)
             assert len(mock_outputs["dir_array"]) == 3
             for dir_obj in mock_outputs["dir_array"]:
