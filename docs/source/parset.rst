@@ -535,9 +535,9 @@ The available options are described below under their respective sections.
 
     disable_iquv_clean
         Disable clean for the full-Stokes imaging (default = ``False``). If ``True``,
-        no cleaning is done during imaging.
+        no cleaning is done during full-Stokes imaging.
 
-        .. note::
+        .. warning::
 
             Clean can be disabled only for full-Stokes imaging (i.e., only when
             :term:`make_quv_images` = ``True``).

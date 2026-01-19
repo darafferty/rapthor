@@ -3,7 +3,7 @@ class: CommandLineTool
 baseCommand: [check_image_beam.py]
 label: Check image beam information
 doc: |
-  This tool checks that valid beam information is present in the image header.
+  This tool ensures that valid beam information is present in the image header.
 
 requirements:
   - class: InlineJavascriptRequirement

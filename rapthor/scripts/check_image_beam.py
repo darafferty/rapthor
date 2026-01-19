@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Script to check that valid beam information is present in the image header
+Script to ensure that valid beam information is present in the image header
 """
 from argparse import ArgumentParser, RawTextHelpFormatter
 from astropy.io import fits
@@ -41,7 +41,7 @@ def main(fits_image_filename, beam_size_arcsec):
 
 if __name__ == '__main__':
     descriptiontext = (
-        "Check that valid beam information is present in the image header.\n"
+        "Ensure that valid beam information is present in the image header.\n"
     )
 
     parser = ArgumentParser(

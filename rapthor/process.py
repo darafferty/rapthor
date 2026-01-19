@@ -196,11 +196,7 @@ def run_steps(field, steps, final=False):
 
             # Set whether clean should be disabled for full-Stokes imaging. For now,
             # it can only be disabled when full-Stokes imaging is done
-            field.disable_clean = (
-                True
-                if (field.image_pol == "IQUV" and field.disable_iquv_clean)
-                else False
-            )
+            field.disable_clean = field.image_pol == "IQUV" and field.disable_iquv_clean
 
             # Set whether an image-frequency cube should be made
             field.make_image_cube = field.save_image_cube and final
