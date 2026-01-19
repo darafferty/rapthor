@@ -336,7 +336,7 @@ class Image(Operation):
 
             #We want to use region files from previous cycle when final imaging with
             #iquv because calibration is skipped.
-            reuse_facet_regions = (self.field.final_cycle and self.field.make_quv_images)
+            reuse_facet_regions = (self.field.do_final and self.field.make_quv_images)
 
             facet_region_file = []
             if not reuse_facet_regions:
