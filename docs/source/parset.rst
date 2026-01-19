@@ -537,12 +537,12 @@ The available options are described below under their respective sections.
         Disable clean for the full-Stokes imaging (default = ``False``). If ``True``,
         no cleaning is done during full-Stokes imaging.
 
-        .. warning::
+        .. note::
 
             Clean can be disabled only for full-Stokes imaging (i.e., only when
             :term:`make_quv_images` = ``True``).
 
-        .. note::
+        .. warning::
 
             Disabling clean can speed up processing, but the resulting images
             (including Stokes I) may be of poor quality and/or have sources with
