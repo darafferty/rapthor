@@ -77,6 +77,7 @@
                       'image_cube_stokes_list': ['I'],
                       'make_quv_images': False,
                       'pol_combine_method': 'link',
+                      'disable_iquv_clean': False,
                       'max_peak_smearing': 0.15,
                       'correct_time_frequency_smearing': False,
                       'max_uv_lambda': 1000000.0,

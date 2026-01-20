@@ -52,10 +52,16 @@ class Mosaic(Operation):
         self.image_names = []  # list of input image names
         for pol in self.field.image_pol:
             polup = pol.upper()
-            self.image_names.extend([f'{polup}_image_file_true_sky',
-                                     f'{polup}_image_file_apparent_sky',
-                                     f'{polup}_model_file_true_sky',
-                                     f'{polup}_residual_file_apparent_sky'])
+            self.image_names.extend(
+                [f"{polup}_image_file_true_sky", f"{polup}_image_file_apparent_sky"]
+            )
+            if not self.field.disable_clean:
+                self.image_names.extend(
+                    [
+                        f"{polup}_model_file_true_sky",
+                        f"{polup}_residual_file_apparent_sky",
+                    ]
+                )
             if self.field.save_supplementary_images:
                 self.image_names.append(f'{polup}_dirty_file_apparent_sky')
                 if 'mask_filename' not in self.image_names:

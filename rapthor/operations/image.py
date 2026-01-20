@@ -44,6 +44,7 @@ class Image(Operation):
         self.do_predict = None
         self.do_multiscale_clean = None
         self.pol_combine_method = None
+        self.disable_clean = None
         self.apply_none = False  # no solutions applied before or during imaging (ImageInitial only)
         self.make_image_cube = self.field.make_image_cube  # make an image cube
         self.normalize_flux_scale = False  # derive flux scale normalizations (ImageNormalize only)
@@ -204,12 +205,16 @@ class Image(Operation):
         # Handle the polarization-related options
         link_polarizations = False
         join_polarizations = False
+        wsclean_niter = [sector.wsclean_niter for sector in self.imaging_sectors]
         if self.image_pol.lower() != 'i':
             if self.pol_combine_method == 'link':
                 # Note: link_polarizations can be of CWL type boolean or string
                 link_polarizations = 'I'
             else:
                 join_polarizations = True
+        if self.field.disable_clean:
+            # Set niter to 0 to disable clean
+            wsclean_niter = [0] * len(self.imaging_sectors)
 
         # Set the DP3 steps and applycal steps depending on whether solutions
         # should be preapplied before imaging and on whether baseline-dependent
@@ -297,7 +302,7 @@ class Image(Operation):
                             'wsclean_imsize': [sector.imsize for sector in self.imaging_sectors],
                             'vertices_file': [CWLFile(sector.vertices_file).to_json() for sector in self.imaging_sectors],
                             'region_file': [None if sector.region_file is None else CWLFile(sector.region_file).to_json() for sector in self.imaging_sectors],
-                            'wsclean_niter': [sector.wsclean_niter for sector in self.imaging_sectors],
+                            'wsclean_niter': wsclean_niter,
                             'wsclean_nmiter': [sector.wsclean_nmiter for sector in self.imaging_sectors],
                             'skip_final_iteration': self.field.skip_final_major_iteration,
                             'robust': [sector.robust for sector in self.imaging_sectors],
@@ -582,6 +587,7 @@ class ImageInitial(Image):
         self.imaging_parameters['dd_psf_grid'] = [1, 1]
         self.do_predict = False
         self.do_multiscale_clean = True
+        self.field.disable_clean = False
         self.field.skip_final_major_iteration = True
         super().set_input_parameters()
 
@@ -691,6 +697,7 @@ class ImageNormalize(Image):
         self.imaging_parameters['taper_arcsec'] = 24.0
         self.do_predict = False
         self.do_multiscale_clean = False
+        self.field.disable_clean = False
         self.field.skip_final_major_iteration = False
         super().set_input_parameters()
 

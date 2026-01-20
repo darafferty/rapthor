@@ -194,6 +194,10 @@ def run_steps(field, steps, final=False):
             # Set the Stokes polarizations for imaging
             field.image_pol = 'IQUV' if (field.make_quv_images and final) else 'I'
 
+            # Set whether clean should be disabled. For now, it can only be disabled
+            # when full-Stokes imaging is done
+            field.disable_clean = field.image_pol == "IQUV" and field.disable_iquv_clean
+
             # Set whether an image-frequency cube should be made
             field.make_image_cube = field.save_image_cube and final
             field.image_cube_stokes_list = [

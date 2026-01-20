@@ -533,6 +533,21 @@ The available options are described below under their respective sections.
         the Stokes I image is used for cleaning and its clean components are subtracted
         from all polarizations.
 
+    disable_iquv_clean
+        Disable clean for the full-Stokes imaging (default = ``False``). If ``True``,
+        no cleaning is done during full-Stokes imaging.
+
+        .. note::
+
+            Clean can be disabled only for full-Stokes imaging (i.e., only when
+            :term:`make_quv_images` = ``True``).
+
+        .. warning::
+
+            Disabling clean can speed up processing, but the resulting images
+            (including Stokes I) may be of poor quality and/or have sources with
+            incorrect flux densities.
+
     dd_psf_grid
         The number of direction-dependent PSFs which should be fit horizontally and
         vertically in the image (default = ``[0, 0]`` = scale with the image size, with

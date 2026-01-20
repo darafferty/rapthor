@@ -248,9 +248,13 @@ dd_psf_grid = [0, 0]
 # calibration has been completed. The method used to combine the polarizations
 # during deconvolution can also be specified. This method can be "link" to use
 # linked polarization cleaning or "join" to use joined polarization cleaning
-# (default = link)
+# (default = link). Lastly, clean can be completely disabled for the full-
+# Stokes imaging to speed up processing, but note that the resulting images
+# (including Stokes I) may be of poor quality and/or have sources with incorrect
+# flux densities
 make_quv_images = False
 pol_combine_method = link
+disable_iquv_clean = False
 
 # Use MPI to distribute WSClean jobs over multiple nodes (default = False)? If
 # True and more than one node can be allocated to each WSClean job (i.e.,

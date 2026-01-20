@@ -84,6 +84,7 @@ apply_diagonal_solutions = False
 dd_psf_grid = [2, 2]
 make_quv_images = True
 pol_combine_method = join
+disable_iquv_clean = True
 use_mpi = True
 reweight = False
 grid_width_ra_deg = 3.0
