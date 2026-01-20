@@ -114,7 +114,7 @@ class Field(object):
         self.slow_gains_h5parm_filename = None
         self.calibration_diagnostics = []
         self.selfcal_state = None
-
+        self.do_final = False
         # Set strategy parameter defaults
         self.fast_timestep_sec = 32.0
         self.medium_timestep_sec = 120.0
