@@ -339,40 +339,32 @@ class Image(Operation):
             reuse_facet_regions = (self.field.do_final and self.field.make_quv_images)
 
             facet_region_file = []
-            if not reuse_facet_regions:
-                ra_mid = []
-                dec_mid = []
-                width_ra = []
-                width_dec = []
-                min_width = 2 * self.field.get_calibration_radius() * 1.2
+            ra_mid, dec_mid, width_ra, width_dec = [], [], [], []
+            min_width = 2 * self.field.get_calibration_radius() * 1.2
+            for sector in self.imaging_sectors:
+                # Note: WSClean requires that all sources in the h5parm must have
+                # corresponding regions in the facets region file. We ensure this
+                # requirement is met by extending the regions to cover the larger of
+                # the calibration region and the sector region, plus a 20% padding
+                facet_region_file.append('{}_facets_ds9.reg'.format(sector.name))
             
-                for sector in self.imaging_sectors:
-                    # Note: WSClean requires that all sources in the h5parm must have
-                    # corresponding regions in the facets region file. We ensure this
-                    # requirement is met by extending the regions to cover the larger of
-                    # the calibration region and the sector region, plus a 20% padding
+
+                if not reuse_facet_regions:
                     ra_mid.append(self.field.ra)
                     dec_mid.append(self.field.dec)
-                    width_ra.append(max(min_width, sector.width_ra*1.2))
-                    width_dec.append(max(min_width, sector.width_dec*1.2))
-                    facet_region_file.append('{}_facets_ds9.reg'.format(sector.name))
-                
-                self.input_parms.update({'ra_mid': ra_mid})
-                self.input_parms.update({'dec_mid': dec_mid})
-                self.input_parms.update({'width_ra': width_ra})
-                self.input_parms.update({'width_dec': width_dec})
-                self.input_parms.update({'facet_region_file': facet_region_file})
-
-            else:
-
-                for sector in self.imaging_sectors:
-                    facet_region_file.append('{}_facets_ds9.reg'.format(sector.name))
-
-                for region in facet_region_file:
-                    if not os.path.exists(region):
-                        raise RuntimeError(f"Expected facet region file not found: {region}")
-
-            self.input_parms.update({'facet_region_file': facet_region_file})
+                    width_ra.append(max(min_width, sector.width_ra * 1.2))
+                    width_dec.append(max(min_width, sector.width_dec * 1.2))
+            if not reuse_facet_regions:
+                self.input_parms.update({
+                'ra_mid': ra_mid,
+                'dec_mid': dec_mid,
+                'width_ra': width_ra,
+                'width_dec': width_dec
+                })
+                self.make_region_file()
+            self.input_parms.update({
+            'facet_region_file': facet_region_file
+            })
 
             if self.apply_amplitudes:
                 self.input_parms.update({'soltabs': 'amplitude000,phase000'})
