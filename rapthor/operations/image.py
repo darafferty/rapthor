@@ -364,7 +364,7 @@ class Image(Operation):
                 self.input_parms.update({'facet_region_file': facet_region_file})
 
             else:
-                self.logger.info("Reusing DD solutions and regions from previous cycle")
+                self.field.logger.info("Reusing DD solutions and regions from previous cycle")
 
                 for sector in self.imaging_sectors:
                     facet_region_file.append('{}_facets_ds9.reg'.format(sector.name))
