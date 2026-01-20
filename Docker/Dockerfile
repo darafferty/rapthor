@@ -40,6 +40,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         libboost-date-time-dev \
         libboost-filesystem-dev \
         libboost-program-options-dev \
+        libboost-numpy-dev \
         libboost-python-dev \
         libcfitsio-dev \
         libfftw3-dev \
@@ -232,6 +233,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         libboost-filesystem1.74.0 \
         libboost-program-options1.74.0 \
         libboost-python1.74.0 \
+        libboost-numpy1.74.0 \
         libcfitsio-bin \
         libfftw3-double3 \
         libfftw3-single3 \
