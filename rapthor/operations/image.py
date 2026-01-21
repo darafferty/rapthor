@@ -361,8 +361,9 @@ class Image(Operation):
                 'width_ra': width_ra,
                 'width_dec': width_dec
                 })
-                for sector in self.imaging_sectors:
-                    sector.make_region_file()
+                region_dir = os.path.join(self.working_dir, 'regions')
+                for sector,region_file in zip(self.imaging_sectors,facet_region_file):
+                    sector.make_region_file(os.path.join(region_dir,region_file))
 
             self.input_parms.update({
             'facet_region_file': facet_region_file
