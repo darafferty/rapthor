@@ -358,7 +358,8 @@ class Image(Operation):
                 'ra_mid': ra_mid,
                 'dec_mid': dec_mid,
                 'width_ra': width_ra,
-                'width_dec': width_dec
+                'width_dec': width_dec,
+                'facet_region_file': facet_region_file
                 })
 
             #Only create new region files if reuse_facet_regions=False
