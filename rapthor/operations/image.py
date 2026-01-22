@@ -451,7 +451,7 @@ class Image(Operation):
                         "dirty_file_apparent_sky": "dirty",
                         "mask_filename": "mask" }
 
-        def find_in_file_list(file_list, contents):
+        def find_in_file_list(file_list):
             type_path_map = {}
             for name, ext in ext_mapping.items():
                 for filename in file_list:
@@ -482,7 +482,7 @@ class Image(Operation):
             # Get the list of output files for this sector
             file_list = map(lambda x: x["path"], self.outputs["sector_I_images"][index] +
                             self.outputs["sector_extra_images"][index])
-            type_path_map = find_in_file_list(file_list, ext_mapping)
+            type_path_map = find_in_file_list(file_list)
             for type, path in type_path_map.items():
                 if type != "mask_filename":
                     pol = derive_pol_from_filename(path)
