@@ -9,7 +9,7 @@ import pytest
 from tests.cwl.cwl_mock import mocked_cwl_execution
 from rapthor.lib.strategy import set_selfcal_strategy
 
-from rapthor.operations.image import (Image, ImageInitial, ImageNormalize)
+from rapthor.operations.image import Image, ImageInitial, ImageNormalize
 
 @pytest.fixture
 def expected_image_output():
