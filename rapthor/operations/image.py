@@ -480,8 +480,8 @@ class Image(Operation):
         }
         for index, sector in enumerate(self.field.imaging_sectors):
             # Get the list of output files for this sector
-            file_list = map(lambda x: x["path"], self.outputs["sector_I_images"][index] +
-                            self.outputs["sector_extra_images"][index])
+            file_list = [x["path"] for x in self.outputs["sector_I_images"][index] +
+                            self.outputs["sector_extra_images"][index]]
             type_path_map = find_in_file_list(file_list)
             for type, path in type_path_map.items():
                 if type != "mask_filename":
@@ -655,8 +655,8 @@ class ImageInitial(Image):
         }
         # The output image filenames
         image_root = os.path.join(self.pipeline_working_dir, sector.name)
-        image_names = map(lambda x: x["path"], self.outputs["sector_I_images"][0] +
-                           self.outputs["sector_extra_images"][0])
+        image_names = [x["path"] for x in self.outputs["sector_I_images"][0] +
+                           self.outputs["sector_extra_images"][0]]
         dst_dir = os.path.join(self.parset['dir_working'], 'images', self.name)
         os.makedirs(dst_dir, exist_ok=True)
         for src_filename in image_names:
@@ -680,8 +680,7 @@ class ImageInitial(Image):
         # The astrometry and photometry plots
         dst_dir = os.path.join(self.parset['dir_working'], 'plots', self.name)
         os.makedirs(dst_dir, exist_ok=True)
-        diagnostic_plots = map(lambda x: x["path"],
-                                self.outputs["sector_diagnostic_plots"][0])
+        diagnostic_plots = [x["path"] for x in self.outputs["sector_diagnostic_plots"][0]]
         for src_filename in diagnostic_plots:
             dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
             shutil.copy(src_filename, dst_filename)
