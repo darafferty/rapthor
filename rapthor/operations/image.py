@@ -341,33 +341,33 @@ class Image(Operation):
             facet_region_file = []
             ra_mid, dec_mid, width_ra, width_dec = [], [], [], []
             min_width = 2 * self.field.get_calibration_radius() * 1.2
+
             for sector in self.imaging_sectors:
                 # Note: WSClean requires that all sources in the h5parm must have
                 # corresponding regions in the facets region file. We ensure this
                 # requirement is met by extending the regions to cover the larger of
                 # the calibration region and the sector region, plus a 20% padding
                 facet_region_file.append('{}_facets_ds9.reg'.format(sector.name))
-            
 
-                if not reuse_facet_regions:
-                    ra_mid.append(self.field.ra)
-                    dec_mid.append(self.field.dec)
-                    width_ra.append(max(min_width, sector.width_ra * 1.2))
-                    width_dec.append(max(min_width, sector.width_dec * 1.2))
-            if not reuse_facet_regions:
-                self.input_parms.update({
+                ra_mid.append(self.field.ra)
+                dec_mid.append(self.field.dec)
+                width_ra.append(max(min_width, sector.width_ra * 1.2))
+                width_dec.append(max(min_width, sector.width_dec * 1.2))
+
+            self.input_parms.update({
                 'ra_mid': ra_mid,
                 'dec_mid': dec_mid,
                 'width_ra': width_ra,
                 'width_dec': width_dec
                 })
+
+            #Only create new region files if reuse_facet_regions=False
+            if not reuse_facet_regions:
                 region_dir = os.path.join(self.field.working_dir, 'regions')
+                os.makedirs(region_dir, exist_ok=True)
+
                 for sector,region_file in zip(self.imaging_sectors,facet_region_file):
                     sector.make_region_file(os.path.join(region_dir,region_file))
-
-            self.input_parms.update({
-            'facet_region_file': facet_region_file
-            })
 
             if self.apply_amplitudes:
                 self.input_parms.update({'soltabs': 'amplitude000,phase000'})
