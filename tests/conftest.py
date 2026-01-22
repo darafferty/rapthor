@@ -18,26 +18,6 @@ RESOURCE_DIR = Path(__file__).parent / "resources"
 def pytest_configure(config):
     config.resource_dir = RESOURCE_DIR
 
-"""
-This files contains the configuration for pytest, including fixtures and hooks
-for this directory.
-"""
-
-import configparser
-import shutil
-from pathlib import Path
-
-import pytest
-
-from rapthor.lib.field import Field
-from rapthor.lib.parset import parset_read
-
-RESOURCE_DIR = (Path(__file__).parent / "resources").resolve()
-
-
-def pytest_configure(config):
-    config.resource_dir = RESOURCE_DIR
-
 
 @pytest.fixture
 def test_ms(tmp_path):
