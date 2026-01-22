@@ -462,8 +462,7 @@ class Image(Operation):
             for pol in "IQUV":
                 if f"-{pol}-" in filename:
                     return pol
-            else:
-                return "I"  # default
+            return "I"  # default
         
         copied_manually = {
             "sector_I_images",
