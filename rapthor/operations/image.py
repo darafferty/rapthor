@@ -537,7 +537,7 @@ class Image(Operation):
             if self.use_facets:
                 dst_dir = os.path.join(self.parset['dir_working'], 'regions', 'image_{}'.format(self.index))
                 os.makedirs(dst_dir, exist_ok=True)
-                src_filename = self.outputs["sector_region_file"][index]["path"]
+                src_filename =  self.outputs["sector_region_file"][index]["path"]
                 dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
                 shutil.copy(src_filename, dst_filename)
 
@@ -558,7 +558,7 @@ class Image(Operation):
             # The astrometry and photometry plots
             dst_dir = os.path.join(self.parset['dir_working'], 'plots', 'image_{}'.format(self.index))
             os.makedirs(dst_dir, exist_ok=True)
-            diagnostic_plots = map(lambda x: x["path"], self.outputs["sector_diagnostic_plots"][index])
+            diagnostic_plots = [x["path"] for x in self.outputs["sector_diagnostic_plots"][index]]
             for src_filename in diagnostic_plots:
                 dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
                 shutil.copy(src_filename, dst_filename)
@@ -778,10 +778,11 @@ class ImageNormalize(Image):
         os.makedirs(dst_dir, exist_ok=True)
         sector_index = 0  # only one sector here
         # Save the output beams and frequencies files
-        for src_file_obj in self.outputs["sector_image_cube_beams"][sector_index] + \
-                            self.outputs["sector_image_cube_frequencies"][sector_index]:
-            dst_filename = os.path.join(dst_dir, os.path.basename(src_file_obj["path"]))
-            shutil.copy(src_file_obj["path"], dst_filename)
+        if "sector_image_cube" in self.outputs:
+            for src_file_obj in self.outputs["sector_image_cube_beams"][sector_index] + \
+                                self.outputs["sector_image_cube_frequencies"][sector_index]:
+                dst_filename = os.path.join(dst_dir, os.path.basename(src_file_obj["path"]))
+                shutil.copy(src_file_obj["path"], dst_filename)
 
         # Save the output h5parm with the flux-scale corrections
         src_filename = self.outputs["sector_normalize_h5parm"][0]["path"]
