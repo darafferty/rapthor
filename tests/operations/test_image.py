@@ -2,8 +2,6 @@
 Test cases for the `rapthor.operations.image` module.
 """
 
-import sys
-from pathlib import Path
 import pytest
 
 from tests.cwl.cwl_mock import mocked_cwl_execution
