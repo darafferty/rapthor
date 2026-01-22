@@ -1,7 +1,6 @@
 """
 Module that holds the Image classes
 """
-import glob
 import json
 import logging
 import numpy as np
@@ -227,7 +226,7 @@ class Image(Operation):
         link_polarizations = False
         join_polarizations = False
         wsclean_niter = [sector.wsclean_niter for sector in self.imaging_sectors]
-        if is_only_pol_I(self.image_pol):
+        if not is_only_pol_I(self.image_pol):
             if self.pol_combine_method == 'link':
                 # Note: link_polarizations can be of CWL type boolean or string
                 link_polarizations = 'I'
