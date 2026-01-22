@@ -483,14 +483,12 @@ class Image(Operation):
             file_list = [x["path"] for x in self.outputs["sector_I_images"][index] +
                             self.outputs["sector_extra_images"][index]]
             type_path_map = find_in_file_list(file_list)
-            for type, path in type_path_map.items():
-                if type != "mask_filename":
+            for output_type, path in type_path_map.items():
+                if output_type != "mask_filename":
                     pol = derive_pol_from_filename(path)
-                    setattr(sector, f"{pol}_{type}", path)
-
+                    setattr(sector, f"{pol}_{output_type}", path)
                 else:
-                    if not hasattr(sector, "mask_filename"):
-                        setattr(sector, type, path)
+                    setattr(sector, output_type, path)
                 
             
             # Save the output image cubes. Note that, unlike the normal images above,
