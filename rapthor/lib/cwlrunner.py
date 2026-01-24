@@ -444,8 +444,7 @@ class StreamFlowRunner(BaseCWLRunner):
     """
     def __init__(self, operation: Operation) -> None:
         super().__init__(operation)
-        self.command = "streamflow"
-        self.args.extend(['run'])
+        self.command = "cwl-runner"
         self.streamflow_file = None
 
     def setup(self) -> None:
@@ -528,7 +527,7 @@ class StreamFlowRunner(BaseCWLRunner):
         with open(self.streamflow_file, "w") as f:
             logger.debug(f"Creating StreamFlow configuration file {self.streamflow_file}:\n{yaml.safe_dump(config)}")
             yaml.safe_dump(config, f)
-        self.args.extend([self.streamflow_file])
+        self.args.extend(["--streamflow-file", self.streamflow_file])
 
     def teardown(self) -> None:
         if self.streamflow_file is not None and not self.operation.keep_temporary_files:
