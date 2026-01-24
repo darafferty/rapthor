@@ -15,4 +15,4 @@ Rtree
 scipy
 shapely
 toil[cwl]>=9.0
-streamflow>=0.2.0.dev13
+streamflow>=0.2.0.dev14
