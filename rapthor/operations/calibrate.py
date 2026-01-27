@@ -67,6 +67,16 @@ class CalibrateDD(Operation):
         solint_medium_freqstep = self.field.get_obs_parameters('solint_medium_freqstep')
         solint_slow_freqstep = self.field.get_obs_parameters('solint_slow_freqstep')
 
+        # For IDGCal solves, we need to set the number of channels that are solved for.
+        # Note: we cannot use different values per observation, as any subsequent
+        # imaging operation that applies the solulions must use the same number of
+        # channel images (and imaging can only use one value over all observations).
+        # Therefore, we use the mean number of channels over all observations and force
+        # imaging to use the same value
+        self.field.idgcal_nr_channels_per_block = np.mean(
+            self.field.get_obs_parameters("idgcal_nr_channels_per_block")
+        )
+
         # Get the number of solutions per direction
         fast_solutions_per_direction = self.field.get_obs_parameters('fast_solutions_per_direction')
         medium_solutions_per_direction = self.field.get_obs_parameters('medium_solutions_per_direction')
@@ -138,6 +148,8 @@ class CalibrateDD(Operation):
         slow_antennaconstraint = '[]'
         max_normalization_delta = self.field.max_normalization_delta
         scale_normalization_delta = '{}'.format(self.field.scale_normalization_delta)
+        idgcal_polynomialdegphase = self.field.idgcal_polynomialdegphase
+        idgcal_polynomialdegamplitude = self.field.idgcal_polynomialdegamplitude
 
         # Get various DDECal solver parameters. Most of these are the same for both fast
         # and slow solves
@@ -322,6 +334,9 @@ class CalibrateDD(Operation):
                             'medium_antennaconstraint': medium_antennaconstraint,
                             'slow_antennaconstraint': slow_antennaconstraint,
                             'idgcal_antennaconstraint': idgcal_antennaconstraint,
+                            'idgcal_nr_channels_per_block': idgcal_nr_channels_per_block,
+                            'idgcal_polynomialdegphase': idgcal_polynomialdegphase,
+                            'idgcal_polynomialdegamplitude': idgcal_polynomialdegamplitude,
                             'output_idgcal_h5parm': output_idgcal_h5parm,
                             'solution_combine_mode': solution_combine_mode,
                             'solverlbfgs_dof': solverlbfgs_dof,

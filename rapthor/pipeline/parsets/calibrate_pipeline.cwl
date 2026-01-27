@@ -161,13 +161,33 @@ inputs:
       = n_obs * n_time_chunks).
     type: string[]
 
+  - id: nr_channels_per_block
+    label: Channels per block
+    doc: |
+      The number of channels per block for the IDGCal solves (length = 1).
+    type: int
+
+  - id: polynomialdegphase
+    label: Degree of phase polynomial
+    doc: |
+      The degree to use for the phase-screen polynomial of the IDGCal solves (length =
+      1).
+    type: int
+
 {% if do_slowgain_solve %}
   - id: solint_slow_timestep
     label: Slow solution interval in time
     doc: |
-      The solution interval in number of timeslots for the slow gain solve (length =
-      n_obs * n_time_chunks).
+      The solution interval in number of timeslots for the slow-gain IDGCal solves
+      (length = n_obs * n_time_chunks).
     type: int[]
+
+  - id: polynomialdegamplitude
+    label: Degree of amplitude polynomial
+    doc: |
+      The degree to use for the amplitude-screen polynomial of the IDGCal solves
+      (length = 1.
+    type: int
 {% endif %}
 
   - id: idgcal_antennaconstraint
@@ -832,6 +852,10 @@ steps:
         source: solverlbfgs_iter
       - id: antennaconstraint
         source: idgcal_antennaconstraint
+      - id: nr_channels_per_block
+        source: nr_channels_per_block
+      - id: polynomialdegphase
+        source: polynomialdegphase
       - id: numthreads
         source: max_threads
     scatter: [msin, starttime, ntimes, h5parm, solint]
@@ -876,6 +900,12 @@ steps:
         source: solverlbfgs_iter
       - id: antennaconstraint
         source: idgcal_antennaconstraint
+      - id: nr_channels_per_block
+        source: nr_channels_per_block
+      - id: polynomialdegphase
+        source: polynomialdegphase
+      - id: polynomialdegamplitude
+        source: polynomialdegamplitude
       - id: numthreads
         source: max_threads
     scatter: [msin, starttime, ntimes, h5parm, solint_fast, solint_slow]

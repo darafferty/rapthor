@@ -25,9 +25,6 @@ arguments:
   - solve.atermsupport=5
   - solve.solverupdategain=0.5
   - solve.tolerancepinv=1e-9
-  - solve.polynomialdegphase=2
-  - solve.polynomialdegamplitude=2
-  - solve.nr_channels_per_block=30
   - solve.lbfgshistory=10
   - solve.lbfgsminibatches=3
   - solve.lbfgsepochs=3
@@ -115,6 +112,33 @@ inputs:
     type: string
     inputBinding:
       prefix: solve.antennaconstraint=
+      separate: False
+
+  - id: nr_channels_per_block
+    label: Channels per block
+    doc: |
+      The number of channels per block in the solve.
+    type: int
+    inputBinding:
+      prefix: solve.nr_channels_per_block=
+      separate: False
+
+  - id: polynomialdegphase
+    label: Degree of phase polynomial
+    doc: |
+      The degree to use for the phase-screen polynomial in the solve.
+    type: int
+    inputBinding:
+      prefix: solve.polynomialdegphase=
+      separate: False
+
+  - id: polynomialdegamplitude
+    label: Degree of amplitude polynomial
+    doc: |
+      The degree to use for the amplitude-screen polynomial in the solve.
+    type: int
+    inputBinding:
+      prefix: solve.polynomialdegamplitude=
       separate: False
 
   - id: numthreads

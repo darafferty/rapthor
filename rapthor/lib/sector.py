@@ -200,18 +200,20 @@ class Sector(object):
                                 max(1, int(np.round(self.width_dec)))]
 
         # Set number of output channels to get the requested bandwidth per channel
-        target_bandwidth = self.channel_width_hz
-        max_nchannels = np.max([obs.numchannels for obs in self.observations])
-        min_nchannels = 4
-        tot_bandwidth = 0.0
-        for obs in self.observations:
-            # Find observation with largest bandwidth
-            obs_bandwidth = obs.numchannels * obs.channelwidth
-            if obs_bandwidth > tot_bandwidth:
-                tot_bandwidth = obs_bandwidth
-        self.wsclean_nchannels = max(min_nchannels, min(max_nchannels, int(np.ceil(tot_bandwidth / target_bandwidth))))
-        if self.max_wsclean_nchannels is not None:
-            self.wsclean_nchannels = min(self.wsclean_nchannels, self.max_wsclean_nchannels)
+        tot_bandwidth = max(
+            [obs.numchannels * obs.channelwidth for obs in self.observations]
+        )
+        if self.field.idgcal_nr_channels_per_block is not None:
+            # Here we set the number of channel images to the number of channels
+            # sovled for by IDGCal, as they must be the same
+            self.wsclean_nchannels = self.field.idgcal_nr_channels_per_block
+        else:
+            target_bandwidth = self.channel_width_hz
+            max_nchannels = np.max([obs.numchannels for obs in self.observations])
+            min_nchannels = 4
+            self.wsclean_nchannels = max(min_nchannels, min(max_nchannels, int(np.ceil(tot_bandwidth / target_bandwidth))))
+            if self.max_wsclean_nchannels is not None:
+                self.wsclean_nchannels = min(self.wsclean_nchannels, self.max_wsclean_nchannels)
 
         # Set number of channels to use in spectral fitting. We set this to the
         # number of channels, up to a maximum of 4 (and the fit spectral order to

@@ -289,9 +289,10 @@ class Observation(object):
         else:
             self.parameters['ntimes'][-1] += int(self.numsamples - (samplesperchunk * self.ntimechunks))
 
-        # Find solution intervals for fast-phase solve. The solve is split into time
-        # chunks instead of frequency chunks, since continuous frequency coverage is
-        # desirable to recover the expected smooth, TEC-like behavior (phase ~ nu^-1)
+        # Find solution intervals for fast- and medium-phase solves. The solve is split
+        # into time chunks instead of frequency chunks, since continuous frequency
+        # coverage is desirable to recover the expected smooth, TEC-like behavior
+        # (phase ~ nu^-1)
         #
         # Note: we don't explicitly check that the resulting solution intervals fit
         # within the observation's size, as this is handled by DP3
@@ -300,7 +301,7 @@ class Observation(object):
         solint_medium_timestep = max(1, int(round(target_medium_timestep / round(self.timepersample)) * solve_max_factor))
         solint_medium_freqstep = max(1, self.get_nearest_freqstep(target_medium_freqstep / self.channelwidth))
 
-        # Set the fast solve solution intervals
+        # Set the solution intervals for the fast- and medium-phase solves
         self.parameters['solint_fast_timestep'] = [solint_fast_timestep] * self.ntimechunks
         self.parameters['solint_fast_freqstep'] = [solint_fast_freqstep] * self.ntimechunks
         self.parameters['solint_medium_timestep'] = [solint_medium_timestep] * self.ntimechunks
@@ -308,8 +309,9 @@ class Observation(object):
 
         # Find solution intervals for the gain solves
         #
-        # Note: as with the fast-phase solve, we don't explicitly check that the resulting
-        # solution intervals fit within the observation's size, as this is handled by DP3
+        # Note: as with the fast/medium-phase solves, we don't explicitly check that the
+        # resulting solution intervals fit within the observation's size, as this is
+        # handled by DP3
         solint_slow_timestep = max(1, int(round(target_slow_timestep / round(self.timepersample)) * solve_max_factor))
         solint_slow_freqstep = max(1, self.get_nearest_freqstep(target_slow_freqstep / self.channelwidth))
         self.parameters['solint_slow_timestep'] = [solint_slow_timestep] * self.ntimechunks
@@ -318,6 +320,9 @@ class Observation(object):
         solint_fulljones_freqstep = max(1, self.get_nearest_freqstep(target_fulljones_freqstep / self.channelwidth))
         self.parameters['solint_fulljones_timestep'] = [solint_fulljones_timestep] * self.ntimechunks
         self.parameters['solint_fulljones_freqstep'] = [solint_fulljones_freqstep] * self.ntimechunks
+        self.parameters["idgcal_nr_channels_per_block"] = [
+            (self.endfreq - self.startfreq) / solint_slow_freqstep
+        ] * self.ntimechunks
 
         # Define the BDA (baseline-dependent averaging) max interval constraints. They
         # are set to the solution intervals *before* adjusting for the DD intervals
