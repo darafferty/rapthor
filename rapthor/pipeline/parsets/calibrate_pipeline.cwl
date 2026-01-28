@@ -745,6 +745,12 @@ steps:
     doc: |
       This step uses WSClean to draw model images using image-based predict.
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_draw_model.cwl
+{% if max_cores is not none %}
+    hints:
+      ResourceRequirement:
+        coresMin: {{ max_cores }}
+        coresMax: {{ max_cores }}
+{% endif %}
     in:
       - id: skymodel
         source: calibration_skymodel_file
@@ -803,6 +809,12 @@ steps:
       timescales (< 1 minute), using the input MS files and model images. These
       corrections are used to correct primarily for ionospheric effects.
     run: {{ rapthor_pipeline_dir }}/steps/idgcal_solve_phase.cwl
+{% if max_cores is not none %}
+    hints:
+      ResourceRequirement:
+        coresMin: {{ max_cores }}
+        coresMax: {{ max_cores }}
+{% endif %}
     in:
       - id: msin
         source: timechunk_filename
@@ -839,6 +851,12 @@ steps:
       corrections are used to correct primarily primarily for ionospheric effects
       and the gain corrections for beam errors.
     run: {{ rapthor_pipeline_dir }}/steps/idgcal_solve_phase_and_gain.cwl
+{% if max_cores is not none %}
+    hints:
+      ResourceRequirement:
+        coresMin: {{ max_cores }}
+        coresMax: {{ max_cores }}
+{% endif %}
     in:
       - id: msin
         source: timechunk_filename
@@ -910,6 +928,12 @@ steps:
       This step uses DDECal (in DP3) to solve for phase and/or gain corrections, using the
       input MS files and sourcedb
     run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve.cwl
+{% if max_cores is not none %}
+    hints:
+      ResourceRequirement:
+        coresMin: {{ max_cores }}
+        coresMax: {{ max_cores }}
+{% endif %}
     in:
       - id: msin
         source: timechunk_filename

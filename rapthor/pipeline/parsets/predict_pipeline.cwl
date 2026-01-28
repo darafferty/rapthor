@@ -210,6 +210,12 @@ steps:
       input MS files. It also corrupts the model data with the calibration
       solutions. For each sector, prediction is done for all observations.
     run: {{ rapthor_pipeline_dir }}/steps/predict_model_data.cwl
+{% if max_cores is not none %}
+    hints:
+      ResourceRequirement:
+        coresMin: {{ max_cores }}
+        coresMax: {{ max_cores }}
+{% endif %}
     in:
       - id: msin
         source: sector_filename
@@ -255,6 +261,12 @@ steps:
       workflow. Reweighting by the residuals can also be done, by generating data in
       which all sources have been subtracted.
     run: {{ rapthor_pipeline_dir }}/steps/subtract_sector_models.cwl
+{% if max_cores is not none %}
+    hints:
+      ResourceRequirement:
+        coresMin: {{ max_cores }}
+        coresMax: {{ max_cores }}
+{% endif %}
     in:
       - id: msobs
         source: obs_filename

@@ -154,6 +154,12 @@ steps:
       input MS files. It also corrupts the model data with the calibration
       solutions. For each sector, prediction is done for all observations.
     run: {{ rapthor_pipeline_dir }}/steps/predict_model_data.cwl
+{% if max_cores is not none %}
+    hints:
+      ResourceRequirement:
+        coresMin: {{ max_cores }}
+        coresMax: {{ max_cores }}
+{% endif %}
     in:
       - id: msin
         source: sector_filename
@@ -195,6 +201,12 @@ steps:
     doc: |
       This step adds sector model uv data to the input MS files.
     run: {{ rapthor_pipeline_dir }}/steps/add_sector_models.cwl
+{% if max_cores is not none %}
+    hints:
+      ResourceRequirement:
+        coresMin: {{ max_cores }}
+        coresMax: {{ max_cores }}
+{% endif %}
     in:
       - id: msobs
         source: obs_filename

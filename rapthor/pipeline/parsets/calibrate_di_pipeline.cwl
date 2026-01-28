@@ -202,6 +202,12 @@ steps:
       corrections, using the input MS files and model data. These corrections are used to
       correct primarily for polarization errors.
     run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve.cwl
+{% if max_cores is not none %}
+    hints:
+      ResourceRequirement:
+        coresMin: {{ max_cores }}
+        coresMax: {{ max_cores }}
+{% endif %}
     in:
       - id: msin
         source: timechunk_filename_fulljones
