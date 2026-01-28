@@ -32,7 +32,6 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get update && \
     apt-get install -y \
         bison \
-        cmake \
         flex \
         g++ \
         gfortran \
@@ -67,6 +66,7 @@ RUN wget -q https://bootstrap.pypa.io/get-pip.py && \
 
 # Install required python packages
 RUN python3 -m pip install \
+    'cmake<4' \
     'numpy<2'
 
 # Install the casacore measures data. We purposely do not install these from
