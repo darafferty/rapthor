@@ -334,7 +334,7 @@ class CalibrateDD(Operation):
                             'medium_antennaconstraint': medium_antennaconstraint,
                             'slow_antennaconstraint': slow_antennaconstraint,
                             'idgcal_antennaconstraint': idgcal_antennaconstraint,
-                            'idgcal_nr_channels_per_block': idgcal_nr_channels_per_block,
+                            'idgcal_nr_channels_per_block': self.field.idgcal_nr_channels_per_block,
                             'idgcal_polynomialdegphase': idgcal_polynomialdegphase,
                             'idgcal_polynomialdegamplitude': idgcal_polynomialdegamplitude,
                             'output_idgcal_h5parm': output_idgcal_h5parm,
