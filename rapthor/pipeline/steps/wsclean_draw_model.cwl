@@ -17,6 +17,7 @@ inputs:
     type: int
     inputBinding:
       prefix: -j
+      valueFrom: $(runtime.cores)
 
   - id: skymodel
     label: Filename of input sky model
