@@ -7,8 +7,6 @@ doc: |
 
 requirements:
   - class: InlineJavascriptRequirement
-  - class: ResourceRequirement
-    coresMin: 1
 
 inputs:
   - id: flat_noise_image

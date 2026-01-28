@@ -7,8 +7,6 @@ doc: |
 
 requirements:
   - class: InlineJavascriptRequirement
-  - class: ResourceRequirement
-    coresMin: 1
   - class: ShellCommandRequirement
 
 inputs:
