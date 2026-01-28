@@ -23,6 +23,14 @@ def extract_cwl_outputs(workflow: Union[str, Path]) -> Dict[str, Any]:
     with open(workflow, 'r') as f:
         cwl_data = yaml.safe_load(f)
         outputs = cwl_data.get('outputs', {})
+        if isinstance(outputs, list):
+            # Convert list of outputs to dict format
+            outputs_dict = {}
+            for output in outputs:
+                output_id = output.get('id', None)
+                if output_id:
+                    outputs_dict[output_id] = output
+            return outputs_dict
     return outputs
 
 
@@ -117,7 +125,7 @@ def _find_step(workflow: Dict[str, Any], step_id: str) -> Optional[Dict[str, Any
             return step
     return None
 
-def _input_array_len(inputs: Dict[str, Any], param: str) -> Optional[int]:
+def _input_array_len(inputs: Dict[str, Any], param: str) -> int:
     """Get the size of an input array parameter.
     
     Args:
@@ -186,7 +194,8 @@ def infer_scatter_length(workflow: Optional[Union[str, Path, Dict[str, Any]]], o
         n_params = 0
         for param in scatter_params:
             n_items_for_param  = _input_array_len(inputs, param)
-            n_params += n_items_for_param
+            
+            n_params = max(n_params, n_items_for_param)
         if n_params > 0:
             return n_params
     # Default fallback
@@ -319,7 +328,12 @@ def _build_outputs_for_sources(output_path: Path,
         
         # Determine array length: use scatter info if available, otherwise default
         mock_n_outer = _resolve_outer_length(workflow, output_source, inputs, mock_n_outer)
-        output_summary.append(_build_mock_output(output_path, base_name, output_type, inner_size=mock_n_inner, outer_size=mock_n_outer))
+        mock_output = _build_mock_output(output_path, base_name, output_type, inner_size=mock_n_inner, outer_size=mock_n_outer)
+        if isinstance(mock_output, list):
+            output_summary.extend(mock_output)
+        else:
+            output_summary.append(mock_output)
+
     return output_summary
 
 
@@ -427,7 +441,7 @@ def mock_cwl_execution(expected_outputs: Optional[Dict[str, Any]]) -> Callable:
             return func(self, *args, **kwargs)
         return wrapper
     return decorator
-
+ 
 
 def mocked_cwl_execution(self: Any, args: Any, env: Any, expected_outputs: Optional[Dict[str, Any]] = None) -> bool:
     """Mock CWL execution by generating output files and outputs JSON.
@@ -454,8 +468,7 @@ def mocked_cwl_execution(self: Any, args: Any, env: Any, expected_outputs: Optio
     outputs = extract_cwl_outputs(workflow_file)
     
     # Try to get inputs if available (for scatter length determination)
-    inputs = getattr(self.operation, 'inputs', None)
-    
+    inputs = getattr(self.operation, 'input_parms', None)
     outputs_json = build_mock_outputs(output_path, outputs,
                         expected_outputs=expected_outputs,
                         workflow=workflow_file,
