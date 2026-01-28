@@ -474,7 +474,7 @@ inputs:
     type:
       type: enum
       symbols: ["bdsf", "sofia"]
-  - id: save_model_image
+  - id: save_filtered_model_image
     label: Save filtered model
     type: boolean
 {% if peel_bright_sources %}
@@ -676,11 +676,7 @@ outputs:
   - id: sector_skymodel_image_fits
     outputSource:
       - image_sector/skymodel_image_fits
-    type: 
-      type: array
-      items:
-        type: array
-        items: File
+    type: File[]
 
 steps:
   - id: image_sector
@@ -730,8 +726,8 @@ steps:
         source: vertices_file
       - id: region_file
         source: region_file
-      - id: save_model_image
-        source: save_model_image
+      - id: save_filtered_model_image
+        source: save_filtered_model_image
 {% if use_mpi %}
       - id: mpi_cpus_per_task
         source: mpi_cpus_per_task

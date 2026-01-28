@@ -19,7 +19,7 @@ iers.conf.auto_download = False
 def main(flat_noise_image, true_sky_image, true_sky_skymodel, apparent_sky_skymodel,
          output_root, vertices_file, beamMS, bright_true_sky_skymodel=None, threshisl=5.0,
          threshpix=7.5, rmsbox=(150, 50), rmsbox_bright=(35, 7), adaptive_thresh=75.0,
-         filter_by_mask=True, ncores=8, source_finder='bdsf', save_model_image=False):
+         filter_by_mask=True, ncores=8, source_finder='bdsf'):
     """
     Filter the input sky model
 
@@ -111,10 +111,6 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, apparent_sky_skymo
         filter_by_mask=filter_by_mask,
         keep_mask=True,
         ncores=ncores)
-
-    if save_model_image:
-        with open(f'{output_root}.model-pb.fits', 'w') as fp:
-            fp.write('')  # Create empty file to indicate model-pb.fits is present
     
     # Write out number of sources found by PyBDSF for later use
     output_diagnostics = f'{output_root}.image_diagnostics.json'
@@ -149,8 +145,7 @@ if __name__ == '__main__':
                         type=ast.literal_eval, default=True)
     parser.add_argument('--ncores', help='Max number of cores to use', type=int, default=8)
     parser.add_argument('--source_finder', help='Source finder to use, either "sofia" or "bdsf"', type=str, default='bdsf')
-    parser.add_argument('--save_model_image', help='Save model-pb.fits with the sky model',
-                        action='store_true')
+    
     args = parser.parse_args()
     main(args.flat_noise_image, args.true_sky_image, args.true_sky_skymodel,
          args.apparent_sky_skymodel, args.output_root, args.vertices_file,
