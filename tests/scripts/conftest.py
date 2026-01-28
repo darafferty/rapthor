@@ -9,6 +9,14 @@ from pathlib import Path
 import pytest
 
 
+RESOURCE_DIR = (Path(__file__).parent.parent / "resources").resolve()
+
+
+def pytest_configure(config):
+    config.resource_dir = RESOURCE_DIR
+
+
+
 @pytest.fixture
 def soltab():
     """
@@ -17,3 +25,12 @@ def soltab():
     """
     # Create a dummy soltab or return a mock object as needed
     return "dummy_soltab"  # Replace with actual soltab creation logic if necessary
+
+
+@pytest.fixture
+def sky_model_path(tmp_path):
+    """
+    Fixture to create an apparent SkyModel for testing.
+    """
+    shutil.copy((RESOURCE_DIR / "test_apparent_sky.txt"), tmp_path / "test_apparent_sky.txt")
+    return (tmp_path / "test_apparent_sky.txt")

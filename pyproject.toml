@@ -94,6 +94,7 @@ script-files = [
     "rapthor/scripts/normalize_flux_scale.py",
     "rapthor/scripts/process_gains.py",
     "rapthor/scripts/regrid_image.py",
+    "rapthor/scripts/restore_sky_model.py",
     "rapthor/scripts/subtract_sector_models.py",
 ]
 
