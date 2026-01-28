@@ -10,9 +10,7 @@ doc: |
   visibilities in the DATA column.
 
 requirements:
-  - class: InlineJavascriptRequirement
-  - class: ResourceRequirement
-    coresMin: 1
+  InlineJavascriptRequirement: {}
 
 arguments:
   - msout.overwrite=True
