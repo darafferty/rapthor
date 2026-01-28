@@ -476,7 +476,11 @@ inputs:
     doc: |
       Apply corrections for time and frequency smearing (length = 1).
     type: boolean
-
+  - id: save_model_image
+    label: Save filtered model image
+    doc: |
+      Save the image generate from the skymodel used for calibration
+    type: boolean
 {% if make_image_cube %}
   - id: image_I_cube_name
     label: Filename of I image cube
@@ -532,6 +536,12 @@ outputs:
     outputSource:
       - filter/source_catalog
     type: File
+  - id: skymodel_image_fits
+    outputSource:
+      - filter/skymodel_image_fits
+      - make_skymodel_image/output_image
+    pickValue: all_non_null
+    type: File[]
   - id: sector_diagnostics
     outputSource:
       - find_diagnostics/diagnostics
@@ -931,7 +941,6 @@ steps:
         source: max_threads
     out:
       - id: restored_image
-
   - id: restore_nonpb
     label: Restore sources to non-PB image
     doc: |
@@ -1059,6 +1068,8 @@ steps:
         source: source_finder
       - id: ncores
         source: max_threads
+      - id: save_model_image
+        source: save_model_image
     out:
       - id: filtered_skymodel_true_sky
       - id: filtered_skymodel_apparent_sky
@@ -1067,7 +1078,21 @@ steps:
       - id: true_sky_rms_image
       - id: source_catalog
       - id: source_filtering_mask
+      - id: skymodel_image_fits
 
+  - id: make_skymodel_image
+    run: {{ rapthor_pipeline_dir }}/steps/make_skymodel_image.cwl
+    in:
+      - id: source_catalog
+        source: filter/filtered_skymodel_apparent_sky
+      - id: reference_image
+        source: filter/skymodel_image_fits
+      - id: output_image_name
+        source: filter/skymodel_image_fits
+        valueFrom: $(self.basename) + ".fits.fz"
+    when: $(inputs.save_model_image == true)
+    out:
+      - id: output_image
   - id: find_diagnostics
     label: Find image diagnostics
     doc: |

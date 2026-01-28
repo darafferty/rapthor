@@ -120,8 +120,13 @@ inputs:
       prefix: --ncores=
       valueFrom: $(runtime.cores)
       separate: False
-
-outputs:
+  - id: save_model_image
+    type: boolean
+    inputBinding:
+      prefix: --filter_by_mask=
+      valueFrom: "$(self ? 'True': 'False')"
+      separate: False
+outputs:  
   - id: filtered_skymodel_true_sky
     label: Processed true-sky sky model
     doc: |
@@ -171,7 +176,14 @@ outputs:
     type: File?
     outputBinding:
       glob: '$(inputs.true_sky_image.basename).mask.fits'
-
+  - id: skymodel_image_fits
+    type: File?
+    outputBinding:
+      glob: '$(inputs.true_sky_image.basename).model-pb.fits'
+  - id: skymodel_image_png
+    type: File?
+    outputBinding:
+      glob: '$(inputs.true_sky_image.basename).model-pb.png'
 
 hints:
   - class: DockerRequirement
