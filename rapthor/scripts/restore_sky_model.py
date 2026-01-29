@@ -20,15 +20,20 @@ logger = logging.getLogger(__name__)
 def restore_with_wsclean(source_catalog: Path, reference_image: Path, beam_size: float) -> Path:
     """
     Restore a skymodel into an image using wsclean.
-    
-    :param source_catalog: Source catalog file in text format
-    :type source_catalog: Path
-    :param reference_image: Reference image file in FITS format
-    :type reference_image: Path
-    :param beam_size: Size of the restoring beam in arcseconds.
-    :type beam_size: float
-    :return: Restored skymodel image path
-    :rtype: Path
+
+    Parameters
+    ----------
+    source_catalog : Path
+        Source catalog file in text format
+    reference_image : Path
+        Reference image file in FITS format
+    beam_size : float
+        Size of the restoring beam in arcseconds.
+
+    Returns
+    -------
+    Path
+        Restored skymodel image path
     """
     logger.info("Restoring sky model using wsclean.")
     output_image = Path(NamedTemporaryFile(suffix=".fits", delete=False).name)
@@ -54,10 +59,16 @@ def log_fits_info(fits_obj):
 def get_primary_hdu_or_compressed(fits_obj) -> Union[FitsHDU, CompImageHDU]:
     """
     Get the primary HDU or the compressed image HDU from a FITS object.
-    
-    :param fits_obj: FITS object
-    :return: The primary HDU or compressed image HDU
-    :rtype: FitsHDU | CompImageHDU
+
+    Parameters
+    ----------
+    fits_obj
+        FITS object
+
+    Returns
+    -------
+    FitsHDU | CompImageHDU
+        The primary HDU or compressed image HDU
     """
     compressed_hdu = next(
         (hdu for hdu in fits_obj
@@ -72,10 +83,16 @@ def get_primary_hdu_or_compressed(fits_obj) -> Union[FitsHDU, CompImageHDU]:
 def derive_minimum_scale(header) -> float:
     """
     Derive the minimum scale from the FITS header.
-    
-    :param header: FITS header
-    :return: Minimum scale in arcseconds
-    :rtype: float
+
+    Parameters
+    ----------
+    header
+        FITS header
+
+    Returns
+    -------
+    float
+        Minimum scale in arcseconds
     """
     min_scale = None
     for axis in range(1, header["NAXIS"] + 1):
@@ -92,10 +109,16 @@ def derive_minimum_scale(header) -> float:
 def make_zero_image(reference_image: Path) -> Tuple[Path, float]:
     """
     Make a zero image based on the dimensions and header of a reference image.
-    :param reference_image: Reference image path
-    :type reference_image: Path
-    :return: Path to the created zero image and scale factor for pixels
-    :rtype: Path, float
+
+    Parameters
+    ----------
+    reference_image : Path
+        Reference image path
+
+    Returns
+    -------
+    Path, float
+        Path to the created zero image and scale factor for pixels
     """
     with fits_open(reference_image) as ref_fits:
         logger.info("Creating zero image based on reference image dimensions and header.")
@@ -117,11 +140,18 @@ def make_zero_image(reference_image: Path) -> Tuple[Path, float]:
 def compress_image_if_needed(input_image: Path, output_image: Path)-> Path:
     """
     Compress the image if the output filename indicates compression.
-    
-    :param input_image: Input image path
-    :type input_image: Path
-    :param output_image: Output image path
-    :type output_image: Path
+
+    Parameters
+    ----------
+    input_image : Path
+        Input image path
+    output_image : Path
+        Output image path
+
+    Returns
+    -------
+    Path
+        Path to the output image
     """
     if output_image.suffixes != ".fits":
         logger.info("Compressing output image %s", output_image)
@@ -136,13 +166,15 @@ def compress_image_if_needed(input_image: Path, output_image: Path)-> Path:
 def main(source_catalog: Path, reference_image: Path, output_image: Path):
     """
     Main entrypoint for restoring a skymodel into an image.
-    
-    :param source_catalog: Source catalog path
-    :type source_catalog: Path
-    :param reference_image: Reference image path
-    :type reference_image: Path
-    :param output_image: Output image path
-    :type output_image: Path
+
+    Parameters
+    ----------
+    source_catalog : Path
+        Source catalog path
+    reference_image : Path
+        Reference image path
+    output_image : Path
+        Output image path
     """
     temp_images = []
     temp_image, pixel_scale = make_zero_image(reference_image)
