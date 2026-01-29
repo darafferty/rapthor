@@ -153,7 +153,7 @@ def compress_image_if_needed(input_image: Path, output_image: Path)-> Path:
     Path
         Path to the output image
     """
-    if output_image.suffixes != ".fits":
+    if output_image.suffix != ".fits":
         logger.info("Compressing output image %s", output_image)
         with fits_open(input_image) as fits_obj:
             fits_obj.writeto(output_image, overwrite=True)
