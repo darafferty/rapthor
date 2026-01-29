@@ -5,7 +5,7 @@ import astropy.coordinates as coords
 from astropy.io.fits import CompImageHDU, PrimaryHDU
 import astropy.io.fits as fits
 import numpy as np
-from rapthor.scripts.restore_sky_model import (
+from rapthor.scripts.restore_skymodel import (
     main as restore_main,
     log_fits_info,
     get_primary_hdu_or_compressed,
@@ -81,12 +81,12 @@ def reference_image_compressed(tmp_path, sky_model_path):
 
 def test_integration_restore_skymodel(reference_image, sky_model_path, tmp_path):
     """
-    Integration test for the restore_sky_model script.
+    Integration test for the restore_skymodel script.
     This test checks if the restored image is created correctly from the apparent skymodel.
     """
     output_image = tmp_path / "restored_image.fits"
 
-    # Run the restore_sky_model script
+    # Run the restore_skymodel script
     restore_main(
         source_catalog=sky_model_path,
         reference_image=reference_image,
@@ -99,12 +99,12 @@ def test_integration_restore_skymodel(reference_image, sky_model_path, tmp_path)
 
 def test_integration_restore_skymodel_compressed(reference_image_compressed, sky_model_path, tmp_path):
     """
-    Integration test for the restore_sky_model script with compressed reference image.
+    Integration test for the restore_skymodel script with compressed reference image.
     This test checks if the restored image is created correctly from the apparent skymodel.
     """
     output_image = tmp_path / "restored_image_compressed.fits.fz"
 
-    # Run the restore_sky_model script
+    # Run the restore_skymodel script
     restore_main(
         source_catalog=sky_model_path,
         reference_image=reference_image_compressed,
