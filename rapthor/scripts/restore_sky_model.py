@@ -4,7 +4,7 @@ Script to restore a skymodel into an image
 """
 
 from argparse import ArgumentParser, RawTextHelpFormatter
-from typing import Tuple
+from typing import Tuple, Union
 import numpy as np
 from astropy.io.fits import open as fits_open, writeto as fits_write, CompImageHDU, FitsHDU
 import subprocess 
@@ -17,7 +17,19 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 
-def restore_with_wsclean(source_catalog: Path, reference_image: Path, beam_size: float = None) -> Path:
+def restore_with_wsclean(source_catalog: Path, reference_image: Path, beam_size: float) -> Path:
+    """
+    Restore a skymodel into an image using wsclean.
+    
+    :param source_catalog: Source catalog file in text format
+    :type source_catalog: Path
+    :param reference_image: Reference image file in FITS format
+    :type reference_image: Path
+    :param beam_size: Size of the restoring beam in arcseconds.
+    :type beam_size: float
+    :return: Restored skymodel image path
+    :rtype: Path
+    """
     logger.info("Restoring sky model using wsclean.")
     output_image = Path(NamedTemporaryFile(suffix=".fits", delete=False).name)
     cmd = [
@@ -35,21 +47,36 @@ def restore_with_wsclean(source_catalog: Path, reference_image: Path, beam_size:
 
 def log_fits_info(fits_obj):
     for i, name, version, type, cards, dimensions, format, _ in fits_obj.info(output=False):
-            logger.info("HDU %s: name=%s, version=%s, type=%s, cards=%s, dimensions=%s, format=%s",
-                        i, name, version, type, cards, dimensions, format)   
+        logger.info("HDU %s: name=%s, version=%s, type=%s, cards=%s, dimensions=%s, format=%s",
+                    i, name, version, type, cards, dimensions, format)   
 
 
-def get_primary_hdu_or_compressed(fits_obj) -> FitsHDU:
-    compressed_hdus = [
-        hdu for hdu in fits_obj
-        if isinstance(hdu, CompImageHDU)
-    ]
-    if compressed_hdus:
-        return compressed_hdus[0]
+def get_primary_hdu_or_compressed(fits_obj) -> Union[FitsHDU, CompImageHDU]:
+    """
+    Get the primary HDU or the compressed image HDU from a FITS object.
+    
+    :param fits_obj: FITS object
+    :return: The primary HDU or compressed image HDU
+    :rtype: FitsHDU | CompImageHDU
+    """
+    compressed_hdu = next(
+        (hdu for hdu in fits_obj
+        if isinstance(hdu, CompImageHDU)), None
+    )
+    if compressed_hdu:
+        return compressed_hdu
     else:
         return fits_obj[0]
 
+
 def derive_minimum_scale(header) -> float:
+    """
+    Derive the minimum scale from the FITS header.
+    
+    :param header: FITS header
+    :return: Minimum scale in arcseconds
+    :rtype: float
+    """
     min_scale = None
     for axis in range(1, header["NAXIS"] + 1):
         if "RA" in str(header[f"CTYPE{axis}"]) or "DEC" in str(header[f"CTYPE{axis}"]):
@@ -60,6 +87,7 @@ def derive_minimum_scale(header) -> float:
     if min_scale is None:
         raise ValueError("Could not determine minimum scale from header.")
     return min_scale
+
 
 def make_zero_image(reference_image: Path) -> Tuple[Path, float]:
     """
@@ -86,7 +114,15 @@ def make_zero_image(reference_image: Path) -> Tuple[Path, float]:
         return output_image, min_scale
 
 
-def compress_image_if_needed(input_image: Path, output_image: Path):
+def compress_image_if_needed(input_image: Path, output_image: Path)-> Path:
+    """
+    Compress the image if the output filename indicates compression.
+    
+    :param input_image: Input image path
+    :type input_image: Path
+    :param output_image: Output image path
+    :type output_image: Path
+    """
     if output_image.suffixes != ".fits":
         logger.info("Compressing output image %s", output_image)
         with fits_open(input_image) as fits_obj:
@@ -98,6 +134,16 @@ def compress_image_if_needed(input_image: Path, output_image: Path):
 
 
 def main(source_catalog: Path, reference_image: Path, output_image: Path):
+    """
+    Main entrypoint for restoring a skymodel into an image.
+    
+    :param source_catalog: Source catalog path
+    :type source_catalog: Path
+    :param reference_image: Reference image path
+    :type reference_image: Path
+    :param output_image: Output image path
+    :type output_image: Path
+    """
     temp_images = []
     temp_image, pixel_scale = make_zero_image(reference_image)
     temp_images.append(temp_image)
