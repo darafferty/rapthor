@@ -573,7 +573,6 @@ class Image(Operation):
 
             dst_dir = os.path.join(self.parset['dir_working'], 'image_{}'.format(self.index), sector.name)
             self.copy_outputs_to(dst_dir, exclude=copied_manually)
-            self.clean_outputs()
         
         # Finally call finalize() in the parent class
         super().finalize()
@@ -693,7 +692,7 @@ class ImageInitial(Image):
 
         self.copy_outputs_to(os.path.join(self.parset['dir_working'], self.name, sector.name),
                              exclude=copied_manually)
-        self.clean_outputs()
+        
         # Finally call finalize() of the Operation class
         super(Image, self).finalize()
 
@@ -791,7 +790,7 @@ class ImageNormalize(Image):
         self.field.apply_normalizations = True
         self.copy_outputs_to(os.path.join(self.parset['dir_working'], self.name, sector.name),
                              exclude=copied_manually)
-        self.clean_outputs()
+        
         # Finally call finalize() of the Operation class
         super(Image, self).finalize()
 
