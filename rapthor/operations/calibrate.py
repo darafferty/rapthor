@@ -73,8 +73,8 @@ class CalibrateDD(Operation):
         # channel images (and imaging can only use one value over all observations).
         # Therefore, we use the mean number of channels over all observations and force
         # imaging to use the same value
-        self.field.idgcal_nr_channels_per_block = np.mean(
-            self.field.get_obs_parameters("idgcal_nr_channels_per_block")
+        self.field.idgcal_nr_channels_per_block = int(
+            np.mean(self.field.get_obs_parameters("idgcal_nr_channels_per_block"))
         )
 
         # Get the number of solutions per direction
