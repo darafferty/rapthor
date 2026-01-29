@@ -176,9 +176,8 @@ def main(source_catalog: Path, reference_image: Path, output_image: Path):
     output_image : Path
         Output image path
     """
-    temp_images = []
     temp_image, pixel_scale = make_zero_image(reference_image)
-    temp_images.append(temp_image)
+    temp_images = [temp_image]
     try:
         restored_image = restore_with_wsclean(source_catalog, temp_image, pixel_scale)
         temp_images.append(restored_image)
