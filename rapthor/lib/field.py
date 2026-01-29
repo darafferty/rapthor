@@ -941,6 +941,10 @@ class Field(object):
                                                   radius=matching_radius_deg, keep='from1')
                     skymodel_true_sky.setPatchPositions()
 
+                    # Force recalculation of the apparent-flux sky model from the new
+                    # true-flux one
+                    skymodel_apparent_sky = None
+
             # Use concatenated sky models to make new calibration model (we set find_sources
             # to False to preserve the source patches defined in the image operation by PyBDSF)
             self.make_skymodels(skymodel_true_sky, skymodel_apparent_sky=skymodel_apparent_sky,
