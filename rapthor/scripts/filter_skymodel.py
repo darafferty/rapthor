@@ -111,7 +111,7 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, apparent_sky_skymo
         filter_by_mask=filter_by_mask,
         keep_mask=True,
         ncores=ncores)
-    
+
     # Write out number of sources found by PyBDSF for later use
     output_diagnostics = f'{output_root}.image_diagnostics.json'
     cwl_output = {'nsources': nsources}
@@ -145,7 +145,7 @@ if __name__ == '__main__':
                         type=ast.literal_eval, default=True)
     parser.add_argument('--ncores', help='Max number of cores to use', type=int, default=8)
     parser.add_argument('--source_finder', help='Source finder to use, either "sofia" or "bdsf"', type=str, default='bdsf')
-    
+
     args = parser.parse_args()
     main(args.flat_noise_image, args.true_sky_image, args.true_sky_skymodel,
          args.apparent_sky_skymodel, args.output_root, args.vertices_file,
