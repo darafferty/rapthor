@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 def restore_with_wsclean(source_catalog: Path, reference_image: Path, beam_size: float = None) -> Path:
     logger.info("Restoring sky model using wsclean.")
-    output_image: Path = Path(NamedTemporaryFile(suffix=".fits", delete=False).name)
+    output_image = Path(NamedTemporaryFile(suffix=".fits", delete=False).name)
     cmd = [
         "wsclean",
         "-restore-list",
