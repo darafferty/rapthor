@@ -140,7 +140,9 @@ class Field(object):
         self.make_image_cube = False
         self.field_image_filename_prev = None
         self.field_image_filename = None
-        self.idgcal_nr_channels_per_block = None
+        self.idgcal_nr_channels_per_block = None  # TODO: add to strategy
+        self.idgcal_polynomialdegphase = 3  # TODO: add to strategy
+        self.idgcal_polynomialdegamplitude = 3  # TODO: add to strategy
 
         # Scan MS files to get observation info
         self.scan_observations()

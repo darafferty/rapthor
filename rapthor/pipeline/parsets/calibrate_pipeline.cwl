@@ -161,13 +161,13 @@ inputs:
       = n_obs * n_time_chunks).
     type: string[]
 
-  - id: nr_channels_per_block
+  - id: idgcal_nr_channels_per_block
     label: Channels per block
     doc: |
       The number of channels per block for the IDGCal solves (length = 1).
     type: int
 
-  - id: polynomialdegphase
+  - id: idgcal_polynomialdegphase
     label: Degree of phase polynomial
     doc: |
       The degree to use for the phase-screen polynomial of the IDGCal solves (length =
@@ -182,7 +182,7 @@ inputs:
       (length = n_obs * n_time_chunks).
     type: int[]
 
-  - id: polynomialdegamplitude
+  - id: idgcal_polynomialdegamplitude
     label: Degree of amplitude polynomial
     doc: |
       The degree to use for the amplitude-screen polynomial of the IDGCal solves
@@ -853,9 +853,9 @@ steps:
       - id: antennaconstraint
         source: idgcal_antennaconstraint
       - id: nr_channels_per_block
-        source: nr_channels_per_block
+        source: idgcal_nr_channels_per_block
       - id: polynomialdegphase
-        source: polynomialdegphase
+        source: idgcal_polynomialdegphase
       - id: numthreads
         source: max_threads
     scatter: [msin, starttime, ntimes, h5parm, solint]
@@ -901,11 +901,11 @@ steps:
       - id: antennaconstraint
         source: idgcal_antennaconstraint
       - id: nr_channels_per_block
-        source: nr_channels_per_block
+        source: idgcal_nr_channels_per_block
       - id: polynomialdegphase
-        source: polynomialdegphase
+        source: idgcal_polynomialdegphase
       - id: polynomialdegamplitude
-        source: polynomialdegamplitude
+        source: idgcal_polynomialdegamplitude
       - id: numthreads
         source: max_threads
     scatter: [msin, starttime, ntimes, h5parm, solint_fast, solint_slow]

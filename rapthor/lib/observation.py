@@ -321,7 +321,7 @@ class Observation(object):
         self.parameters['solint_fulljones_timestep'] = [solint_fulljones_timestep] * self.ntimechunks
         self.parameters['solint_fulljones_freqstep'] = [solint_fulljones_freqstep] * self.ntimechunks
         self.parameters["idgcal_nr_channels_per_block"] = [
-            (self.endfreq - self.startfreq) / solint_slow_freqstep
+            round((self.endfreq - self.startfreq) / target_slow_freqstep)
         ] * self.ntimechunks
 
         # Define the BDA (baseline-dependent averaging) max interval constraints. They
