@@ -153,5 +153,4 @@ if __name__ == '__main__':
          bright_true_sky_skymodel=args.bright_true_sky_skymodel, threshisl=args.threshisl,
          threshpix=args.threshpix, rmsbox=args.rmsbox, rmsbox_bright=args.rmsbox_bright,
          adaptive_thresh=args.adaptive_thresh, filter_by_mask=args.filter_by_mask,
-         ncores=args.ncores, source_finder=args.source_finder,
-         save_model_image=args.save_model_image)
+         ncores=args.ncores, source_finder=args.source_finder)
