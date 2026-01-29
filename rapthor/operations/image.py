@@ -571,9 +571,8 @@ class Image(Operation):
                 self.field.lofar_to_true_flux_ratio = ratio
                 self.field.lofar_to_true_flux_std = std
 
-            dst_dir = os.path.join(self.parset['dir_working'], 'ancillary', 'image_{}'.format(self.index), sector.name)
+            dst_dir = os.path.join(self.parset['dir_working'], 'image_{}'.format(self.index), sector.name)
             self.copy_outputs_to(dst_dir, exclude=copied_manually)
-            self.clean_outputs()
         
         # Finally call finalize() in the parent class
         super().finalize()
@@ -691,9 +690,9 @@ class ImageInitial(Image):
         self.field.lofar_to_true_flux_ratio = ratio
         self.field.lofar_to_true_flux_std = std
 
-        self.copy_outputs_to(os.path.join(self.parset['dir_working'], 'ancillary', self.name, sector.name),
+        self.copy_outputs_to(os.path.join(self.parset['dir_working'], self.name, sector.name),
                              exclude=copied_manually)
-        self.clean_outputs()
+        
         # Finally call finalize() of the Operation class
         super(Image, self).finalize()
 
@@ -789,9 +788,9 @@ class ImageNormalize(Image):
         # Set the flags for subsequent processing
         self.field.normalize_flux_scale = False
         self.field.apply_normalizations = True
-        self.copy_outputs_to(os.path.join(self.parset['dir_working'], 'ancillary', self.name, sector.name),
+        self.copy_outputs_to(os.path.join(self.parset['dir_working'], self.name, sector.name),
                              exclude=copied_manually)
-        self.clean_outputs()
+        
         # Finally call finalize() of the Operation class
         super(Image, self).finalize()
 
