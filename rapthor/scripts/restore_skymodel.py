@@ -94,16 +94,15 @@ def derive_minimum_scale(header) -> float:
     float
         Minimum scale in arcseconds
     """
-    min_scale = None
-    for axis in range(1, header["NAXIS"] + 1):
-        if "RA" in str(header[f"CTYPE{axis}"]) or "DEC" in str(header[f"CTYPE{axis}"]):
-            if min_scale is None:
-                min_scale = abs(float(header[f"CDELT{axis}"])) * 3600.0  # arcseconds
-            else:
-                min_scale = min(min_scale, abs(float(header[f"CDELT{axis}"]))) * 3600.0  # arcseconds
-    if min_scale is None:
+    pixels_scales = [
+        abs(float(header[f"CDELT{axis}"])) * 3600.0  # arcseconds
+        for axis in range(1, header["NAXIS"] + 1)
+        if "RA" in (ctype := str(header[f"CTYPE{axis}"])) or "DEC" in ctype
+    ]
+    if not pixels_scales:
         raise ValueError("Could not determine minimum scale from header.")
-    return min_scale
+
+    return min(pixels_scales)
 
 
 def make_zero_image(reference_image: Path) -> Tuple[Path, float]:
