@@ -74,6 +74,8 @@ class Image(Operation):
         self.normalize_flux_scale = False  # derive flux scale normalizations (ImageNormalize only)
         self.compress_images = None
         self.image_cube_stokes_list = None
+        self.photometry_skymodel = None
+        self.astrometry_skymodel = None
 
     def set_parset_parameters(self):
         """
@@ -101,6 +103,10 @@ class Image(Operation):
             self.compress_images = self.field.compress_images
         if self.image_cube_stokes_list is None:
             self.image_cube_stokes_list = self.field.image_cube_stokes_list
+        if self.photometry_skymodel is None:
+            self.photometry_skymodel = self.field.photometry_skymodel
+        if self.astrometry_skymodel is None:
+            self.astrometry_skymodel = self.field.astrometry_skymodel
         if self.batch_system.startswith('slurm'):
             # For some reason, setting coresMax ResourceRequirement hints does
             # not work with SLURM

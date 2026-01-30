@@ -106,7 +106,9 @@
         "max_peak_smearing": 0.15,
         "correct_time_frequency_smearing": false,
         "skip_final_major_iteration": true,
-        "skip_corner_sectors": false
+        "skip_corner_sectors": false,
+        "photometry_skymodel": null,
+        "astrometry_skymodel": null
     },
     "cluster": {
         "batch_system": "single_machine",

@@ -652,6 +652,18 @@ The available options are described below under their respective sections.
         and a grid is used (defined by the ``grid_*`` parameters above), the four corner
         sectors are not processed (if possible for the given grid).
 
+    photometry_skymodel
+        Full path to the sky model file for photometry comparison when generating 
+        image diagnostics. If this is not set, a sky model will be downloaded from 
+        the TGSS and LOTSS catalogs. If this is not possible a backup sky model will be
+        downloaded from the NVSS catalog. Default = ``None`` (sky model will be 
+        downloaded by default).
+
+    astrometry_skymodel
+        Full path to the sky model file for astrometry comparison when generating 
+        image diagnostics. If this is not set, a sky model will be downloaded from 
+        Pan-STARRS. Default = ``None`` (sky model will be downloaded by default).
+
 .. _parset_cluster_options:
 
 ``[cluster]``
