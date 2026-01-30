@@ -646,8 +646,10 @@ class ImageInitial(Image):
             "sector_extra_images",
             "sector_skymodel_true_sky",
             "sector_skymodel_apparent_sky",
-            "sector_diagnostics_plots",
-            "sector_diagnostics"
+            "sector_diagnostic_plots",
+            "sector_diagnostics",
+            "filtered_skymodel_true_sky",
+            "filtered_skymodel_apparent_sky"
         }
         # The output image filenames
         image_root = os.path.join(self.pipeline_working_dir, sector.name)
@@ -670,7 +672,7 @@ class ImageInitial(Image):
         for (src_filename, filename) in [
             [self.outputs["filtered_skymodel_true_sky"][0]["path"], sector.image_skymodel_file_true_sky],
             [self.outputs["filtered_skymodel_apparent_sky"][0]["path"], sector.image_skymodel_file_apparent_sky]]:
-            dst_filename = os.path.join(dst_dir, filename)
+            dst_filename = os.path.join(dst_dir, os.path.basename(filename))
             shutil.copy(src_filename, dst_filename)
 
         # The astrometry and photometry plots
