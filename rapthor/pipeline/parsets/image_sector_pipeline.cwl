@@ -528,6 +528,18 @@ inputs:
     type: string
 {% endif %}
 
+  - id: photometry_skymodel
+    label: Comparison sky model for photometry diagnostics
+    doc: |
+      Filename of comparison sky model for photometry diagnostics.
+    type: File?
+
+  - id: astrometry_skymodel
+    label: Comparison sky model for astrometry diagnostics
+    doc: |
+      Filename of comparison sky model for astrometry diagnostics.
+    type: File?
+
 outputs:
   - id: filtered_skymodel_true_sky
     outputSource:
@@ -1134,6 +1146,11 @@ steps:
 {% else %}
         valueFrom: 'none'
 {% endif %}
+      - id: photometry_skymodel
+        source: photometry_skymodel
+      - id: astrometry_skymodel
+        source: astrometry_skymodel
+
     out:
       - id: diagnostics
       - id: offsets
