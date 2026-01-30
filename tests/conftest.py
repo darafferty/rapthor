@@ -12,6 +12,7 @@ import pytest
 from rapthor.lib.field import Field
 from rapthor.lib.parset import parset_read
 
+from rapthor.lib.observation import Observation
 
 RESOURCE_DIR = Path(__file__).parent / "resources"
 
@@ -57,3 +58,9 @@ def field(parset):
     return Field(parset)
 
 
+@pytest.fixture
+def observation(test_ms):
+    """
+    Fixture to create an Observation object for testing.
+    """
+    return Observation(test_ms)
