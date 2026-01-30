@@ -176,8 +176,7 @@ def test_make_zero_image(reference_image):
             assert zero_hdu.header['NAXIS2'] == ref_hdu.header['NAXIS2'], "NAXIS2 should match"
     finally:
         # Clean up temporary file
-        if zero_image_path.exists():
-            zero_image_path.unlink()
+        zero_image_path.unlink(missing_ok=True)
 
 
 def test_make_zero_image_with_compressed(reference_image_compressed):
@@ -200,8 +199,7 @@ def test_make_zero_image_with_compressed(reference_image_compressed):
             assert zero_hdu.header['NAXIS'] == 2, "Should have 2 axes"
     finally:
         # Clean up temporary file
-        if zero_image_path.exists():
-            zero_image_path.unlink()
+        zero_image_path.unlink(missing_ok=True)
 
 
 def test_compress_image_if_needed_no_compression(tmp_path):
