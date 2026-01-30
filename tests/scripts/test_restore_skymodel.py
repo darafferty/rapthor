@@ -50,7 +50,8 @@ def make_reference_image(image_path, sky_model_path):
     header['CRPIX2'] = 0
     header['CDELT1'] = -0.01
     header['CDELT2'] = 0.01
-    data = np.random.rand(n_pixels, n_pixels).astype(np.float32)
+    generator = np.random.default_rng(42)
+    data = generator.random((n_pixels, n_pixels)).astype(np.float32)
     
     if ".fz" in image_path.suffixes:    
         compressed_hdu = CompImageHDU(data=data, header=header, compression_type='RICE_1')
