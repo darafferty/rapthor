@@ -99,6 +99,8 @@ class Field(object):
         self.image_cube_stokes_list = self.parset['imaging_specific']['image_cube_stokes_list']
         self.pol_combine_method = self.parset['imaging_specific']['pol_combine_method']
         self.disable_iquv_clean = self.parset['imaging_specific']['disable_iquv_clean']
+        self.photometry_skymodel = self.parset['imaging_specific']['photometry_skymodel']
+        self.astrometry_skymodel = self.parset['imaging_specific']['astrometry_skymodel']
         self.solverlbfgs_dof = self.parset['calibration_specific']['solverlbfgs_dof']
         self.solverlbfgs_iter = self.parset['calibration_specific']['solverlbfgs_iter']
         self.solverlbfgs_minibatches = self.parset['calibration_specific']['solverlbfgs_minibatches']

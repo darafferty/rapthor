@@ -337,6 +337,10 @@ skip_final_major_iteration = True
 # processed (if possible for the given grid)
 skip_corner_sectors = False
 
+# Full paths to comparison sky model files for photometry and astrometry
+# diagnostics
+photometry_skymodel = None
+astrometry_skymodel = None
 
 [cluster]
 # Cluster batch system (default = single_machine).

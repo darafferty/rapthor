@@ -28,6 +28,8 @@ grid_nsectors_ra = 1
 idg_mode = cpu
 reweight = True
 use_mpi = True
+photometry_skymodel = None
+astrometry_skymodel = None
 
 [cluster]
 cpus_per_task = 4

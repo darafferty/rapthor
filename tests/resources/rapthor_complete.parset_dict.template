@@ -106,7 +106,10 @@
                       'skip_final_major_iteration': False,
                       'use_clean_mask': False,
                       'use_mpi': True,
-                      'shared_facet_rw': False},
+                      'shared_facet_rw': False,
+                      'photometry_skymodel': None,
+                      'astrometry_skymodel': None
+              },
  'input_h5parm': '/my/data/dirdependent.h5',
  'input_fulljones_h5parm': '/my/data/fulljones.h5',
  'input_normalization_h5parm': '/my/data/normalization.h5',

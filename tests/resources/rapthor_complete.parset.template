@@ -104,6 +104,8 @@ correct_time_frequency_smearing = True
 skip_final_major_iteration = False
 skip_corner_sectors = True
 use_clean_mask = False
+photometry_skymodel = None
+astrometry_skymodel = None
 
 [cluster]
 batch_system = slurm
