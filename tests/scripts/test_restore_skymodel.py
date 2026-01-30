@@ -17,13 +17,10 @@ def get_first_source(sky_model_path)-> list:
     """
     Fixture to get the first source from the apparent skymodel for testing.
     """
-    with open(sky_model_path, "r") as f:
-        for line in f.readlines():
-            if not line.startswith("#") and \
-               not line.startswith(" ") and \
-               line.strip() and \
-               not line.startswith("FORMAT"):
-                return [value.strip() for value in line.strip().split(",")]
+    for line in sky_model_path.read_text().splitlines():
+        if (line := line.strip()) and not line.startswith(("#", "FORMAT", ",")):
+            return [value.strip() for value in line.split(",")]
+
     raise ValueError("No valid source found in the skymodel.")
 
 
