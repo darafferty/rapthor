@@ -140,6 +140,7 @@ class Field(object):
         self.make_image_cube = False
         self.field_image_filename_prev = None
         self.field_image_filename = None
+        self.disable_clean = False
 
         # Scan MS files to get observation info
         self.scan_observations()
@@ -939,6 +940,10 @@ class Field(object):
                     skymodel_true_sky.concatenate(skymodel_true_sky_start, matchBy='position',
                                                   radius=matching_radius_deg, keep='from1')
                     skymodel_true_sky.setPatchPositions()
+
+                    # Force recalculation of the apparent-flux sky model from the new
+                    # true-flux one
+                    skymodel_apparent_sky = None
 
             # Use concatenated sky models to make new calibration model (we set find_sources
             # to False to preserve the source patches defined in the image operation by PyBDSF)

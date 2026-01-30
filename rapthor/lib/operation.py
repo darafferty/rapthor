@@ -104,6 +104,7 @@ class Operation(object):
 
         # File indicating whether a step was completely done.
         self.done_file = os.path.join(self.pipeline_working_dir, '.done')
+        self.outputs_file = os.path.join(self.pipeline_working_dir, '.outputs.json')
 
         # Get the batch system to use
         self.batch_system = self.parset['cluster_specific']['batch_system']
@@ -211,6 +212,20 @@ class Operation(object):
         Check if this operation is done, by checking if a "done" file exists.
         """
         return os.path.isfile(self.done_file)
+    
+    def store_outputs(self):
+        """
+        Store outputs to a JSON file.
+        """
+        with open(self.outputs_file, 'w') as f:
+            f.write(json.dumps(self.outputs, cls=NpEncoder, indent=4, sort_keys=True))
+
+    def load_outputs(self):
+        """
+        Load outputs from a JSON file.
+        """
+        with open(self.outputs_file, 'r') as f:
+            self.outputs = json.load(f)
 
     def run(self):
         """
@@ -228,10 +243,15 @@ class Operation(object):
                     success = runner.run()
                     if success:
                         self.outputs = runner.parse_outputs()
-
+        else:
+            self.log.info('Operation {0} already done, skipping.'.format(self.name))
+            # Reloads outputs
+            self.load_outputs()
+            
         # Finalize
         if success:
             self.log.info('--> Operation {0} completed'.format(self.name))
             self.finalize()
+            self.store_outputs()
         else:
             raise RuntimeError('Operation {0} failed due to an error'.format(self.name))
