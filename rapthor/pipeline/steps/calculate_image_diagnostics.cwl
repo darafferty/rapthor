@@ -108,6 +108,33 @@ inputs:
     inputBinding:
       prefix: --facet_region_file=
       separate: false
+  - id: photometry_skymodel
+    label: Comparison sky model for photometry diagnostics
+    doc: |
+      The filename of the comparison sky model for checking
+      photometry. Note that when this file is unavailable, the filename can be
+      set to a dummy string, in which case it is then ignored by the script 
+      and a sky model will be downloaded from TGSS and LOTSS surveys (if these 
+      fail it will be downloaded from NVSS).
+    type:
+      - string?
+      - File?
+    inputBinding:
+      prefix: --photometry_comparison_skymodel=
+      separate: false
+  - id: astrometry_skymodel
+    label: Comparison sky model for astrometry diagnostics
+    doc: |
+      The filename of the comparison sky model for checking
+      astrometry. Note that when this file is unavailable, the filename can be
+      set to a dummy string, in which case it is then ignored by the script 
+      and a sky model will be downloaded from Pan-STARRs.
+    type:
+      - string?
+      - File?
+    inputBinding:
+      prefix: --astrometry_comparison_skymodel=
+      separate: false
 
 outputs:
   - id: diagnostics
