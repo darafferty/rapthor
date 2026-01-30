@@ -2,7 +2,7 @@
 Test cases for the `rapthor.lib.observation` module.
 """
 
-from rapthor.lib.observation import Observation
+import pytest
 
 
 class TestObservation:
@@ -64,3 +64,23 @@ class TestObservation:
         self, freq=None, delta_theta=None, resolution=None, reduction_factor=None
     ):
         pass
+
+    @pytest.mark.parametrize(
+        "solints_seconds, solve_max_factor, expected_max",
+        [
+            ([20, 120, 600, 600], 1, 60),  # Default case
+            ([20, 120, 600, 600], 2, 120),  # Increased solve_max_factor
+            ([10, 10, 10, 10], 1, 1),  # All timesteps the same
+            ([0.5, 0.5, 0.5, 0.5], 1, 1),  # All timesteps < 1 should return 1
+        ],
+    )
+    def test_get_max_solint_timesteps(
+        self, observation, solints_seconds, solve_max_factor, expected_max
+    ):
+        """
+        Test the get_max_solint_timesteps method of the Observation class.
+        """
+        max_solint = observation.get_max_solint_timesteps(
+            solints_seconds, solve_max_factor
+        )
+        assert max_solint == expected_max

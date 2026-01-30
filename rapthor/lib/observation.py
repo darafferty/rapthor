@@ -250,9 +250,16 @@ class Observation(object):
             smoothness_max_factor = 1
 
         # Find the maximum solution interval in time that can be used in any solve
-        max_timestep = max(target_fast_timestep, target_medium_freqstep, target_slow_timestep, target_fulljones_timestep)
-        solint_max_timestep = max(1, int(round(max_timestep / round(self.timepersample)) * solve_max_factor))
-
+        solint_max_timestep = self.get_max_solint_timesteps(
+            [
+                target_fast_timestep,
+                target_medium_timestep,
+                target_slow_timestep,
+                target_fulljones_timestep,
+            ],
+            solve_max_factor,
+        )
+    
         # Determine how many calibration chunks to make (to allow parallel jobs)
         samplesperchunk = get_chunk_size(parset['cluster_specific'], self.numsamples, nobs, solint_max_timestep)
 
@@ -387,6 +394,27 @@ class Observation(object):
             medium_smoothnessreffrequency = fast_smoothnessreffrequency
         self.parameters['medium_smoothnessreffrequency'] = [medium_smoothnessreffrequency] * self.ntimechunks
 
+    def get_max_solint_timesteps(self, solints_seconds: list, solve_max_factor: int) -> int:
+        """
+        Get the maximum solution interval that can be used based on the provided
+        solution intervals.
+
+        Parameters
+        ----------
+        solints_seconds : list
+            List of solution intervals for different solution types in seconds.
+        solve_max_factor : int
+            Maximum factor by which the solution intervals can be increased.
+
+        Returns
+        -------
+        max_solint_timesteps: int
+            The maximum solution interval in number of timesteps.
+        """
+        max_solint_seconds = max(solints_seconds)
+        max_solint_timesteps = max(1, int(round(max_solint_seconds / round(self.timepersample)) * solve_max_factor))
+        return max_solint_timesteps
+    
     def set_prediction_parameters(self, sector_name, patch_names):
         """
         Sets the prediction parameters
