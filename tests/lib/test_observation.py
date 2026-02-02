@@ -68,6 +68,7 @@ class TestObservation:
     @pytest.mark.parametrize(
         "solints_seconds, solve_max_factor, expected_max",
         [
+            # timepersample in test MS is 10.0139008 seconds
             ([20, 120, 600, 600], 1, 60),  # Default case
             ([20, 120, 600, 600], 2, 120),  # Increased solve_max_factor
             ([10, 10, 10, 10], 1, 1),  # All timesteps the same
