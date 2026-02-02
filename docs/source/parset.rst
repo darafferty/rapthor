@@ -491,6 +491,10 @@ The available options are described below under their respective sections.
         Save dirty images and the clean masks made during each imaging cycle (default =
         ``False``).
 
+    save_filtered_model_image
+        Save image of the filtered sky model made during each imaging cycle
+        (default = ``False``).
+
     compress_selfcal_images
         Compress intermediate selfcal images to reduce storage space (default = ``True``). Uses default
         ``fpack`` compression parameters, see `fpack documentation <https://heasarc.gsfc.nasa.gov/fitsio/fpack/>`_ 

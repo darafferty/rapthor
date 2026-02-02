@@ -178,7 +178,7 @@ local_rms_window = 50
 local_rms_method = rms
 do_multiscale_clean = True
 bda_timebase = 20000.0
-
+save_filtered_model_image = False
 # Method to use to correct for direction-dependent effects during imaging:
 # single or full (default = full). If "single", a single, direction-independent
 # solution (i.e., constant across the image sector) will be applied for each
