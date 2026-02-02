@@ -491,8 +491,8 @@ The available options are described below under their respective sections.
         Save dirty images and the clean masks made during each imaging cycle (default =
         ``False``).
 
-    save_filtered_model_images
-        Save images of the filtered sky model made during each imaging cycle
+    save_filtered_model_image
+        Save image of the filtered sky model made during each imaging cycle
         (default = ``False``).
 
     compress_selfcal_images
