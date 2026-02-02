@@ -1087,7 +1087,9 @@ steps:
         source: check_beam_true_sky_image/validated_image
       - id: output_image_name
         source: filter/filtered_skymodel_apparent_sky
-        valueFrom: $(self.basename) + ".fits.fz"
+        valueFrom: $(self.basename).fits.fz
+      - id: save_filtered_model_image
+        source: save_filtered_model_image
     when: $(inputs.save_filtered_model_image == true)
     out:
       - id: output_image

@@ -10,17 +10,17 @@ requirements:
   InlineJavascriptRequirement: {}
 
 inputs:
-  - id: reference_image
-    label: Reference image
-    doc: |
-      The reference FITS image file used to get the image dimensions and header.
-    type: File
-    inputBinding:
-      position: 1
   - id: source_catalog
     label: Filename of source catalog
     doc: |
       The filename of the source catalog text file.
+    type: File
+    inputBinding:
+      position: 1
+  - id: reference_image
+    label: Reference image
+    doc: |
+      The reference FITS image file used to get the image dimensions and header.
     type: File
     inputBinding:
       position: 2
