@@ -1,6 +1,7 @@
 """
 Definition of the Observation class that holds parameters for each measurement set
 """
+import math
 import os
 import logging
 import casacore.tables as pt
@@ -412,7 +413,7 @@ class Observation(object):
             The maximum solution interval in number of timesteps.
         """
         max_solint_seconds = max(solints_seconds)
-        max_solint_timesteps = max(1, int(round(max_solint_seconds / round(self.timepersample)) * solve_max_factor))
+        max_solint_timesteps = max(1, math.ceil(max_solint_seconds / self.timepersample) * solve_max_factor)
         return max_solint_timesteps
     
     def set_prediction_parameters(self, sector_name, patch_names):

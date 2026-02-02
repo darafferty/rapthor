@@ -71,8 +71,10 @@ class TestObservation:
             # timepersample in test MS is 10.0139008 seconds
             ([20, 120, 600, 600], 1, 60),  # Default case
             ([20, 120, 600, 600], 2, 120),  # Increased solve_max_factor
-            ([10, 10, 10, 10], 1, 1),  # All timesteps the same
-            ([0.5, 0.5, 0.5, 0.5], 1, 1),  # All timesteps < 1 should return 1
+            ([10, 10, 10, 10], 1, 1),  # All solints the same
+            ([0.5, 0.5, 0.5, 0.5], 1, 1),  # All solints < 1 should return 1
+            ([10.0139008, 10.0139008, 10.0139008, 10.0139008], 1, 1), # Exact match to timepersample
+            ([10, 10.014, 10, 10], 1, 2), # Max solint above timepersample
         ],
     )
     def test_get_max_solint_timesteps(
@@ -85,3 +87,4 @@ class TestObservation:
             solints_seconds, solve_max_factor
         )
         assert max_solint == expected_max
+        assert isinstance(max_solint, int)
