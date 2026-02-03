@@ -328,9 +328,7 @@ class Parset:
 
         # Imaging options
         options = settings["imaging"]
-        photometry_skymodel = options["photometry_skymodel"]
-        astrometry_skymodel = options["astrometry_skymodel"]
-
+        
         for opt, valid_values in {
             "idg_mode": ("cpu", "gpu", "hybrid"),
             "dde_method": ("single", "full"),
