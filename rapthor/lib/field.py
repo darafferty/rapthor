@@ -320,6 +320,7 @@ class Field(object):
                             obs.ms_filename,
                             starttime=midpoint - chunktime / 2,
                             endtime=midpoint + chunktime / 2,
+                            name=f"{os.path.basename(obs.ms_filename)}_chunk1"
                         )
                     )
                 else:
@@ -335,10 +336,13 @@ class Field(object):
                     target_endtime + obs_mintime,
                     steptime,
                 )
-                for starttime, endtime in zip(starttimes, endtimes):
+                for index, (starttime, endtime) in enumerate(zip(starttimes, endtimes)):
                     self.observations.append(
                         Observation(
-                            obs.ms_filename, starttime=starttime, endtime=endtime
+                            obs.ms_filename,
+                            starttime=starttime,
+                            endtime=endtime,
+                            name=f"{os.path.basename(obs.ms_filename)}_chunk{index+1}",
                         )
                     )
 

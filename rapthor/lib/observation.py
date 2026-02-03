@@ -27,13 +27,15 @@ class Observation(object):
     endtime : float, optional
         The end time of the observation (in MJD seconds). If None, the end time
         is the end of the MS file
+    name : str, optional
+        The observation's name. If None, the basename of ms_filename is used
     """
-    def __init__(self, ms_filename, starttime=None, endtime=None):
+    def __init__(self, ms_filename, starttime=None, endtime=None, name=None):
         self.ms_filename = str(ms_filename)
         self.ms_predict_di_filename = None
         self.ms_predict_nc_filename = None
-        self.name = os.path.basename(self.ms_filename)
-        self.log = logging.getLogger('rapthor:{}'.format(self.name))
+        self.name = name if name is not None else os.path.basename(self.ms_filename)
+        self.log = logging.getLogger("rapthor:{}".format(self.name))
         self.starttime = starttime
         self.endtime = endtime
         self.data_fraction = 1.0
