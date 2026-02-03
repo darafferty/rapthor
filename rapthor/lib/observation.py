@@ -23,10 +23,10 @@ class Observation(object):
         Filename of the MS file
     starttime : float, optional
         The start time of the observation (in MJD seconds). If None, the start time
-        is the start of the MS file
+        is the start of the MS file. Note: the time is that of the time slot centers
     endtime : float, optional
         The end time of the observation (in MJD seconds). If None, the end time
-        is the end of the MS file
+        is the end of the MS file. Note: the time is that of the time slot centers
     name : str, optional
         The observation's name. If None, the basename of ms_filename is used
     """
@@ -77,15 +77,6 @@ class Observation(object):
                 raise ValueError('Start time of {0} is greater than the last time in the '
                                  'MS'.format(self.starttime))
             self.starttime = tab.getcol('TIME')[valid_times[0]]
-
-        # DPPP takes ceil(startTimeParset - startTimeMS), so ensure that our start time is
-        # slightly less than the true one (if it's slightly larger, DPPP sets the first
-        # time to the next time, skipping the first time slot)
-        self.starttime -= 0.1
-        if self.starttime > np.min(tab.getcol('TIME')):
-            self.startsat_startofms = False
-        else:
-            self.startsat_startofms = True
         if self.endtime is None:
             self.endtime = np.max(tab.getcol('TIME'))
         else:
@@ -94,6 +85,17 @@ class Observation(object):
                 raise ValueError('End time of {0} is less than the first time in the '
                                  'MS'.format(self.endtime))
             self.endtime = tab.getcol('TIME')[valid_times[-1]]
+
+        # Expand the time range covered by the observation slightly to avoid rounding
+        # issues. For example, DPPP takes ceil(startTimeParset - startTimeMS) when
+        # determining which timeslot to start with, so we need to ensure that our start
+        # time is slightly less than the true one
+        self.starttime -= self.timepersample / 100
+        self.endtime += self.timepersample / 100
+        if self.starttime > np.min(tab.getcol('TIME')):
+            self.startsat_startofms = False
+        else:
+            self.startsat_startofms = True
         if self.endtime < np.max(tab.getcol('TIME')):
             self.goesto_endofms = False
         else:

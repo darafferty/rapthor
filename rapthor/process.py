@@ -322,75 +322,86 @@ def chunk_observations(field, steps, data_fraction):
     data_fraction : float
         The target data fraction
     """
-    # Find the overall minimum duration that can be used for chunking and still satisfy
-    # the specified solution intervals. Chunking is only needed when the data fraction
+    # Find the minimum duration that is needed for the solves
+    if steps and any([step['do_calibrate'] for step in steps]):
+        # When calibration is to be done, use the solution intervals to
+        # set the minimum duration
+        fast_solint = max(
+            [
+                step["fast_timestep_sec"] if "fast_timestep_sec" in step else 0
+                for step in steps
+            ]
+        )
+        slow_solint = max(
+            [
+                step["slow_timestep_sec"] if "slow_timestep_sec" in step else 0
+                for step in steps
+            ]
+        )
+        max_dd_timestep = max(fast_solint, slow_solint)
+        max_di_timestep = max(
+            [
+                (
+                    step["fulljones_timestep_sec"]
+                    if "fulljones_timestep_sec" in step
+                    else 0
+                )
+                for step in steps
+            ]
+        )
+
+        # For DD solves, include the effect of DD solution intervals (given by
+        # dd_interval_factor), which increases the solution intervals. This effect
+        # does not apply to the DI solves
+        solve_time = max(max_dd_timestep * field.dd_interval_factor, max_di_timestep)  # sec
+
+        # Check if we need to increase the data fraction to meet the minimum time
+        # needed for the solves
+        for obs in field.full_observations:
+            obs.data_fraction = data_fraction
+            min_fraction = min(1.0, solve_time/(obs.endtime - obs.starttime))
+            if data_fraction < min_fraction:
+                obs.log.warning('The specified value of data_fraction ({0:0.3f}) results in a '
+                                'total time for this observation that is less than the largest '
+                                'potential calibration timestep ({1} s). The data fraction will be '
+                                'increased to {2:0.3f} to attempt to meet the timestep '
+                                'requirement.'.format(data_fraction, solve_time, min_fraction))
+                obs.data_fraction = min_fraction
+    else:
+        # No calibration to be done
+        solve_time = None
+
+    # Set the chunking time. Chunking is only needed when the data fraction
     # is less than one (so that the uv coverage can be optimized in this case) or when
     # there is more than one node (so the processing can be parallelized efficiently)
     max_nodes = field.parset['cluster_specific']['max_nodes']
     if data_fraction < 1.0:
-        if steps and any([step['do_calibrate'] for step in steps]):
-            # When calibration is to be done, use the solution intervals to
-            # set the minimum duration
-            fast_solint = max(
-                [
-                    step["fast_timestep_sec"] if "fast_timestep_sec" in step else 0
-                    for step in steps
-                ]
-            )
-            slow_solint = max(
-                [
-                    step["slow_timestep_sec"] if "slow_timestep_sec" in step else 0
-                    for step in steps
-                ]
-            )
-            max_dd_timestep = max(fast_solint, slow_solint)
-            max_di_timestep = max(
-                [
-                    (
-                        step["fulljones_timestep_sec"]
-                        if "fulljones_timestep_sec" in step
-                        else 0
-                    )
-                    for step in steps
-                ]
-            )
-
-            # For DD solves, include the effect of DD solution intervals (given by
-            # dd_interval_factor), which increases the solution intervals. This effect
-            # does not apply to the DI solves
-            min_time = max(max_dd_timestep * field.dd_interval_factor, max_di_timestep)  # sec
-        else:
-            # If no calibration is to be done, set the minimum duration to a typical
-            # value (600 s) that should result in enough chunks to obtain good uv
-            # coverage
-            min_time = 600.0  # sec
+        # Use the minmum duration set by the calibration. If no calibration is to be
+        # done, set the minimum duration to a typical value (600 s) that should result
+        # in enough chunks to obtain good uv coverage
+        chunk_time = solve_time if solve_time is not None else 600.0
     elif max_nodes > 1:
         # Set the minimum duration that results in at least as many chunks for each
         # observation as there are nodes (for parallelization over nodes)
-        min_times = []
+        #
+        # Note: we reduce the duration slightly to avoid making fewer chunks than
+        # desired due to rounding done during the chunking
+        split_times = []
         for obs in field.full_observations:
-            min_times.append((obs.endtime - obs.starttime) / max_nodes)
+            split_times.append(
+                (obs.endtime - obs.starttime) / max_nodes - obs.timepersample / 10
+            )
+        split_time = np.min(split_times)
 
-        # Take the minimum time over all observations for min_time. Note: one
-        # second is subtracted to avoid making fewer chunks than desired due to
-        # rounding done during the chunking
-        min_time = np.min(min_times) - 1.0
+        # Use the largest of the solve and split times as the chunking time
+        chunk_time = (
+            np.max(solve_time, split_time) if solve_time is not None else split_time
+        )
     else:
         # Chunking not needed
         return
 
-    for obs in field.full_observations:
-        obs.data_fraction = data_fraction
-        min_fraction = min(1.0, min_time/(obs.endtime - obs.starttime))
-        if data_fraction < min_fraction:
-            obs.log.warning('The specified value of data_fraction ({0:0.3f}) results in a '
-                            'total time for this observation that is less than the largest '
-                            'potential calibration timestep ({1} s). The data fraction will be '
-                            'increased to {2:0.3f} to attempt to meet the timestep '
-                            'requirement.'.format(data_fraction, min_time, min_fraction))
-            obs.data_fraction = min_fraction
-
-    field.chunk_observations(min_time)
+    field.chunk_observations(chunk_time)
 
 
 def make_report(field, outfile=None):
