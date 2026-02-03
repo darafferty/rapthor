@@ -68,56 +68,61 @@ class Observation(object):
         Scans input MS and stores info
         """
         # Get time info
-        tab = pt.table(self.ms_filename, ack=False)
-        if self.starttime is None:
-            self.starttime = np.min(tab.getcol('TIME'))
-        else:
-            valid_times = np.where(tab.getcol('TIME') >= self.starttime)[0]
-            if len(valid_times) == 0:
-                raise ValueError('Start time of {0} is greater than the last time in the '
-                                 'MS'.format(self.starttime))
-            self.starttime = tab.getcol('TIME')[valid_times[0]]
-        if self.endtime is None:
-            self.endtime = np.max(tab.getcol('TIME'))
-        else:
-            valid_times = np.where(tab.getcol('TIME') <= self.endtime)[0]
-            if len(valid_times) == 0:
-                raise ValueError('End time of {0} is less than the first time in the '
-                                 'MS'.format(self.endtime))
-            self.endtime = tab.getcol('TIME')[valid_times[-1]]
+        with pt.table(self.ms_filename, ack=False) as tab:
+            if self.starttime is None:
+                self.starttime = np.min(tab.getcol('TIME'))
+            else:
+                valid_times = np.where(tab.getcol('TIME') >= self.starttime)[0]
+                if len(valid_times) == 0:
+                    raise ValueError(
+                        "Start time of {0} is greater than the last time in the "
+                        "MS".format(self.starttime)
+                    )
+                self.starttime = tab.getcol("TIME")[valid_times[0]]
+            if self.endtime is None:
+                self.endtime = np.max(tab.getcol('TIME'))
+            else:
+                valid_times = np.where(tab.getcol('TIME') <= self.endtime)[0]
+                if len(valid_times) == 0:
+                    raise ValueError(
+                        "End time of {0} is less than the first time in the "
+                        "MS".format(self.endtime)
+                    )
+                self.endtime = tab.getcol("TIME")[valid_times[-1]]
 
-        # Expand the time range covered by the observation slightly to avoid rounding
-        # issues. For example, DPPP takes ceil(startTimeParset - startTimeMS) when
-        # determining which timeslot to start with, so we need to ensure that our start
-        # time is slightly less than the true one
-        self.starttime -= self.timepersample / 100
-        self.endtime += self.timepersample / 100
-        if self.starttime > np.min(tab.getcol('TIME')):
-            self.startsat_startofms = False
-        else:
-            self.startsat_startofms = True
-        if self.endtime < np.max(tab.getcol('TIME')):
-            self.goesto_endofms = False
-        else:
-            self.goesto_endofms = True
-        self.timepersample = tab.getcell('EXPOSURE', 0)
-        self.numsamples = int(np.ceil((self.endtime - self.starttime) / self.timepersample))
-        tab.close()
+            # Expand the time range covered by the observation slightly to avoid
+            # rounding issues. For example, DPPP takes ceil(startTimeParset -
+            # startTimeMS) when determining which timeslot to start with, so we need to
+            # ensure that our start time is slightly less than the true one
+            self.timepersample = tab.getcell('EXPOSURE', 0)
+            self.starttime -= self.timepersample / 100
+            self.endtime += self.timepersample / 100
+            if self.starttime > np.min(tab.getcol('TIME')):
+                self.startsat_startofms = False
+            else:
+                self.startsat_startofms = True
+            if self.endtime < np.max(tab.getcol('TIME')):
+                self.goesto_endofms = False
+            else:
+                self.goesto_endofms = True
+            self.numsamples = int(
+                np.ceil((self.endtime - self.starttime) / self.timepersample)
+            )
 
         # Get frequency info
-        sw = pt.table(self.ms_filename+'::SPECTRAL_WINDOW', ack=False)
-        self.referencefreq = sw.col('REF_FREQUENCY')[0]
-        self.channelfreqs = sw.col('CHAN_FREQ')[0]
-        self.startfreq = np.min(sw.col('CHAN_FREQ')[0])
-        self.endfreq = np.max(sw.col('CHAN_FREQ')[0])
-        self.numchannels = sw.col('NUM_CHAN')[0]
-        self.channelwidths = sw.col('CHAN_WIDTH')[0]
-        self.channelwidth = sw.col('CHAN_WIDTH')[0][0]
-        sw.close()
+        with pt.table(self.ms_filename+'::SPECTRAL_WINDOW', ack=False) as sw:
+            self.referencefreq = sw.col('REF_FREQUENCY')[0]
+            self.channelfreqs = sw.col('CHAN_FREQ')[0]
+            self.startfreq = np.min(sw.col('CHAN_FREQ')[0])
+            self.endfreq = np.max(sw.col('CHAN_FREQ')[0])
+            self.numchannels = sw.col('NUM_CHAN')[0]
+            self.channelwidths = sw.col('CHAN_WIDTH')[0]
+            self.channelwidth = sw.col('CHAN_WIDTH')[0][0]
 
         # Check that the channels are evenly spaced, as the use of baseline-dependent
-        # averaging (BDA) during calibration requires it. If the channels are not evenly
-        # spaced, BDA will not be used in DDECal steps even if activated in the parset
+        # averaging (BDA) during calibration requires it. If the channels are not
+        # evenly spaced, BDA will not be used in DDECal steps even if activated in the
+        # parset
         #
         # Note: the code is based on that used in DP3
         # (see https://git.astron.nl/RD/DP3/-/blob/master/base/DPInfo.cc)
@@ -127,48 +132,53 @@ class Observation(object):
             atol = 1e3  # use an absolute tolerance of 1 kHz
             for i in range(1, self.numchannels):
                 if (
-                    (self.channelfreqs[i] - self.channelfreqs[i-1] - freqstep0 >= atol) or
-                    (self.channelwidths[i] - self.channelwidths[0] >= atol)
-                ):
+                    self.channelfreqs[i] - self.channelfreqs[i - 1] - freqstep0 >= atol
+                ) or (self.channelwidths[i] - self.channelwidths[0] >= atol):
                     self.channels_are_regular = False
         if not self.channels_are_regular:
-            self.log.warning('Irregular spacing of channel frequencies found. Baseline-'
-                             'dependent averaging (if any) will be disabled.')
+            self.log.warning(
+                "Irregular spacing of channel frequencies found. Baseline-"
+                "dependent averaging (if any) will be disabled."
+            )
 
         # Get pointing info
-        obs = pt.table(self.ms_filename+'::FIELD', ack=False)
-        self.ra, self.dec = normalize_ra_dec(np.degrees(float(obs.col('REFERENCE_DIR')[0][0][0])),
-                                             np.degrees(float(obs.col('REFERENCE_DIR')[0][0][1])))
-        obs.close()
+        with pt.table(self.ms_filename+'::FIELD', ack=False) as obs:
+            self.ra, self.dec = normalize_ra_dec(
+                np.degrees(float(obs.col("REFERENCE_DIR")[0][0][0])),
+                np.degrees(float(obs.col("REFERENCE_DIR")[0][0][1])),
+            )
 
         # Get station names and diameter
-        ant = pt.table(self.ms_filename+'::ANTENNA', ack=False)
-        self.stations = ant.col('NAME')[:]
-        self.diam = float(ant.col('DISH_DIAMETER')[0])
-        if 'HBA' in self.stations[0]:
-            self.antenna = 'HBA'
-        elif 'LBA' in self.stations[0]:
-            self.antenna = 'LBA'
-        else:
-            # Set antenna to HBA to at least let Rapthor proceed.
-            self.antenna = "HBA"
-            self.log.warning(
-                "Antenna type not recognized (only LBA and HBA data "
-                "are supported at this time)"
-            )
-        ant.close()
+        with pt.table(self.ms_filename+'::ANTENNA', ack=False) as ant:
+            self.stations = ant.col('NAME')[:]
+            self.diam = float(ant.col('DISH_DIAMETER')[0])
+            if 'HBA' in self.stations[0]:
+                self.antenna = 'HBA'
+            elif 'LBA' in self.stations[0]:
+                self.antenna = 'LBA'
+            else:
+                # Set antenna to HBA to at least let Rapthor proceed.
+                self.antenna = "HBA"
+                self.log.warning(
+                    "Antenna type not recognized (only LBA and HBA data "
+                    "are supported at this time)"
+                )
 
         # Find mean elevation and time range for periods where the elevation
         # falls below the lowest 20% of all values. We sample every 10000 entries to
         # avoid very large arrays (note that for each time slot, there is an entry for
         # each baseline, so a typical HBA LOFAR observation would have around 1500 entries
         # per time slot)
-        el_values = pt.taql("SELECT mscal.azel1()[1] AS el from "
-                            + self.ms_filename + " limit ::10000").getcol("el")
+        el_values = pt.taql(
+            "SELECT mscal.azel1()[1] AS el from " + self.ms_filename + " limit ::10000"
+        ).getcol("el")
         self.mean_el_rad = np.mean(el_values)
-        times = pt.taql("select TIME from "
-                        + self.ms_filename + " limit ::10000").getcol("TIME")
-        low_indices = np.sort(el_values.argpartition(len(el_values)//5)[:len(el_values)//5])
+        times = pt.taql(
+            "select TIME from " + self.ms_filename + " limit ::10000"
+        ).getcol("TIME")
+        low_indices = np.sort(
+            el_values.argpartition(len(el_values) // 5)[: len(el_values) // 5]
+        )
         if len(low_indices):
             # At least one element is needed for the start and end time check. The check
             # assumes that the elevation either increases smoothly to a maximum and then
