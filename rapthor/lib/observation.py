@@ -203,11 +203,20 @@ class Observation(object):
             self.high_el_starttime = self.starttime
             self.high_el_endtime = self.endtime
 
-    def set_calibration_parameters(self, parset, ndir, nobs, calibrator_fluxes,
-                                   target_fast_timestep, target_medium_timestep,
-                                   target_slow_timestep,
-                                   target_fulljones_timestep, target_flux=None,
-                                   generate_screens=False):
+    def set_calibration_parameters(
+        self,
+        parset,
+        ndir,
+        nobs,
+        calibrator_fluxes,
+        target_fast_timestep,
+        target_medium_timestep,
+        target_slow_timestep,
+        target_fulljones_timestep,
+        target_flux=None,
+        generate_screens=False,
+        chunk_by_time=False
+    ):
         """
         Sets the calibration parameters
 
@@ -235,6 +244,8 @@ class Observation(object):
         generate_screens : bool, optional
             If True, adjust parameters to account for differences in the way
             solving is done for screens (IDGCal)
+        chunk_by_time : bool, optional
+            If True, chunking over time is done during calibration
         """
         # Get the target solution intervals and maximum factor by which they can
         # be increased when using direction-dependent solution intervals
@@ -250,19 +261,24 @@ class Observation(object):
             solve_max_factor = 1
             smoothness_max_factor = 1
 
-        # Find the maximum solution interval in time that can be used in any solve
-        solint_max_timestep = self.get_max_solint_timesteps(
-            [
-                target_fast_timestep,
-                target_medium_timestep,
-                target_slow_timestep,
-                target_fulljones_timestep,
-            ],
-            solve_max_factor,
-        )
-    
-        # Determine how many calibration chunks to make (to allow parallel jobs)
-        samplesperchunk = get_chunk_size(parset['cluster_specific'], self.numsamples, nobs, solint_max_timestep)
+        if chunk_by_time:
+            # Find the maximum solution interval in time that can be used in any solve
+            solint_max_timestep = self.get_max_solint_timesteps(
+                [
+                    target_fast_timestep,
+                    target_medium_timestep,
+                    target_slow_timestep,
+                    target_fulljones_timestep,
+                ],
+                solve_max_factor,
+            )
+
+            # Determine how many calibration chunks to make (to allow parallel jobs)
+            samplesperchunk = get_chunk_size(
+                parset["cluster_specific"], self.numsamples, nobs, solint_max_timestep
+            )
+        else:
+            samplesperchunk = self.numsamples
 
         # Calculate start times, etc.
         chunksize = samplesperchunk * self.timepersample
@@ -415,7 +431,7 @@ class Observation(object):
         max_solint_seconds = max(solints_seconds)
         max_solint_timesteps = max(1, math.ceil(max_solint_seconds / self.timepersample) * solve_max_factor)
         return max_solint_timesteps
-    
+
     def set_prediction_parameters(self, sector_name, patch_names):
         """
         Sets the prediction parameters
