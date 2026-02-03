@@ -354,19 +354,6 @@ def chunk_observations(field, steps, data_fraction):
         # dd_interval_factor), which increases the solution intervals. This effect
         # does not apply to the DI solves
         solve_time = max(max_dd_timestep * field.dd_interval_factor, max_di_timestep)  # sec
-
-        # Check if we need to increase the data fraction to meet the minimum time
-        # needed for the solves
-        for obs in field.full_observations:
-            obs.data_fraction = data_fraction
-            min_fraction = min(1.0, solve_time/(obs.endtime - obs.starttime))
-            if data_fraction < min_fraction:
-                obs.log.warning('The specified value of data_fraction ({0:0.3f}) results in a '
-                                'total time for this observation that is less than the largest '
-                                'potential calibration timestep ({1} s). The data fraction will be '
-                                'increased to {2:0.3f} to attempt to meet the timestep '
-                                'requirement.'.format(data_fraction, solve_time, min_fraction))
-                obs.data_fraction = min_fraction
     else:
         # No calibration to be done
         solve_time = None
@@ -391,15 +378,29 @@ def chunk_observations(field, steps, data_fraction):
             split_times.append(
                 (obs.endtime - obs.starttime) / max_nodes - obs.timepersample / 10
             )
-        split_time = np.min(split_times)
+        split_time = min(split_times)
 
         # Use the largest of the solve and split times as the chunking time
         chunk_time = (
-            np.max(solve_time, split_time) if solve_time is not None else split_time
+            max(solve_time, split_time) if solve_time is not None else split_time
         )
     else:
         # Chunking not needed
         return
+
+    # Before chunking, set the data fraction per observation, increasing it if needed
+    # to meet the solve requirements
+    for obs in field.full_observations:
+        obs.data_fraction = data_fraction
+        if solve_time is not None:
+            min_fraction = min(1.0, solve_time/(obs.endtime - obs.starttime))
+            if data_fraction < min_fraction:
+                obs.log.warning('The specified value of data_fraction ({0:0.3f}) results in a '
+                                'total time for this observation that is less than the largest '
+                                'potential calibration timestep ({1} s). The data fraction will be '
+                                'increased to {2:0.3f} to attempt to meet the timestep '
+                                'requirement.'.format(data_fraction, solve_time, min_fraction))
+                obs.data_fraction = min_fraction
 
     field.chunk_observations(chunk_time)
 
