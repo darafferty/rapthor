@@ -369,7 +369,9 @@ class Field(object):
         # Note: self.observations are those that are used in processing;
         # self.full_observations are the original, full obserations and should
         # not be altered
-        self.observations = new_observations
+        self.observations = new_observations[
+            :
+        ]  # make copy so input is not altered inadvertently at some later stage
 
         # Update the copies stored in the imaging sectors (including the full-field
         # sector, used to make the initial sky model). The copies in other (non-
