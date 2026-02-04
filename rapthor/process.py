@@ -387,6 +387,7 @@ def chunk_observations(field, steps, data_fraction):
     else:
         # Chunking not needed: use the original (full) observations
         field.update_observations(field.full_observations)
+        return
 
     # Before chunking, set the data fraction per observation, increasing it if needed
     # to meet the solve requirements
