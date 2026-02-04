@@ -491,7 +491,7 @@ class Image(Operation):
                 else:
                     setattr(sector, output_type, path)
                 
-            
+
             # Save the output image cubes. Note that, unlike the normal images above,
             # the cubes are copied directly since mosaicking of the cubes is not yet
             # supported
@@ -506,7 +506,7 @@ class Image(Operation):
                                  self.outputs["sector_image_cube_beams"][index]["path"],
                                  self.outputs["sector_image_cube_frequencies"][index]["path"]]
                 
-                
+
                 for src_filename in src_filenames:
                     dst_filename = os.path.join(dest_dir, os.path.basename(src_filename))
                     shutil.copy(src_filename, dst_filename)
@@ -530,7 +530,7 @@ class Image(Operation):
             dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
             shutil.copy(src_filename, dst_filename)
 
-        
+
             # The output ds9 region file, if made
             if self.use_facets:
                 dst_dir = os.path.join(self.parset['dir_working'], 'regions', 'image_{}'.format(self.index))

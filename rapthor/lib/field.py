@@ -274,7 +274,7 @@ class Field(object):
             observation, then the full observation is used instead
         """
         # Set the chunk size so that it is at least mintime
-        self.observations = []
+        chunked_observations = []
         for obs in self.full_observations:
             # Adjust the minimum time for chunks made from this observation to one that
             # is an integer multiple of its time per sample
@@ -315,7 +315,7 @@ class Field(object):
                 midpoint = target_starttime + tottime / 2
                 chunktime = min(tottime, max(obs_mintime, data_fraction * tottime))
                 if chunktime < tottime:
-                    self.observations.append(
+                    chunked_observations.append(
                         Observation(
                             obs.ms_filename,
                             starttime=midpoint - chunktime / 2,
@@ -324,7 +324,7 @@ class Field(object):
                         )
                     )
                 else:
-                    self.observations.append(obs)
+                    chunked_observations.append(obs)
             else:
                 steptime = (
                     obs_mintime * (tottime / obs_mintime - nchunks) / nchunks
@@ -337,7 +337,7 @@ class Field(object):
                     steptime,
                 )
                 for index, (starttime, endtime) in enumerate(zip(starttimes, endtimes)):
-                    self.observations.append(
+                    chunked_observations.append(
                         Observation(
                             obs.ms_filename,
                             starttime=starttime,
@@ -346,11 +346,36 @@ class Field(object):
                         )
                     )
 
+        # Update the observations in the field and imaging sectors with the new ones
+        self.update_observations(chunked_observations)
+
+    def update_observations(self, new_observations):
+        """
+        Update the observations used for processing
+
+        This method should be run when any changes to the observations has been done,
+        such as chunking or reseting the observations to the original, full ones.
+
+        Parameters
+        ----------
+        observations : list of Observation objects
+            The list of observations to use for processing
+        """
+        # Update the field's list of observations
+        #
+        # Note: self.observations are those that are used in processing;
+        # self.full_observations are the original, full obserations and should
+        # not be altered
+        self.observations = new_observations
+
         # Update the copies stored in the imaging sectors (including the full-field
-        # sector, used to make the initial sky model). Other (non-imaging) sectors do not
-        # need to be updated
-        sectors_to_update = self.imaging_sectors[:]  # don't alter original with append below
-        if hasattr(self, 'full_field_sector'):
+        # sector, used to make the initial sky model). The copies in other (non-
+        # imaging) sectors do not need to be updated as they are not used for
+        # processing
+        sectors_to_update = self.imaging_sectors[
+            :
+        ]  # make a copy so we don't alter the original list with the append below
+        if hasattr(self, "full_field_sector"):
             sectors_to_update.append(self.full_field_sector)
         for sector in sectors_to_update:
             sector.observations = []

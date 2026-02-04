@@ -385,8 +385,8 @@ def chunk_observations(field, steps, data_fraction):
             max(solve_time, split_time) if solve_time is not None else split_time
         )
     else:
-        # Chunking not needed
-        return
+        # Chunking not needed: use the original (full) observations
+        field.update_observations(field.full_observations)
 
     # Before chunking, set the data fraction per observation, increasing it if needed
     # to meet the solve requirements
