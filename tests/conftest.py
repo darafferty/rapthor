@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 
+from rapthor.lib.facet import Facet
 from rapthor.lib.field import Field
 from rapthor.lib.parset import parset_read
 
@@ -83,3 +84,48 @@ def observation(test_ms):
     Fixture to create an Observation object for testing.
     """
     return Observation(test_ms)
+
+
+@pytest.fixture
+def input_catalog_fits(tmp_path):
+    """
+    Fixture to provide a path for a mock input catalog FITS file.
+    """
+    catalog_path = tmp_path / "input_catalog.fits"
+    # Create an empty file or copy a test FITS file if needed
+    catalog_path.touch()
+    return catalog_path
+
+
+@pytest.fixture
+def image_fits(tmp_path):
+    """
+    Fixture to provide a path for a mock image FITS file.
+    """
+    image_path = tmp_path / "test_image.fits"
+    # Create an empty file or copy a test FITS file if needed
+    image_path.touch()
+    return image_path
+
+
+@pytest.fixture
+def facet_region_ds9(tmp_path):
+    """
+    Fixture to create a region file for testing.
+    """
+    shutil.copy((RESOURCE_DIR / "test.reg"), tmp_path / "test.reg")
+    return Path(tmp_path / "test.reg")
+
+
+@pytest.fixture
+def facet():
+    """
+    Fixture to create a facet for testing.
+    """
+    return Facet(name="Square Facet",
+                 ra=1.0,
+                 dec=1.0,
+                 vertices=[(0, 2.0),
+                           (2.0, 2.0),
+                           (2.0, 0),
+                           (0, 0)])
