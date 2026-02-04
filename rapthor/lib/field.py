@@ -263,7 +263,7 @@ class Field(object):
 
         Parameters
         ----------
-        mintime : float or None
+        mintime : float
             Minimum duration in sec for a chunk
         prefer_high_el_periods : bool, optional
             Prefer periods for which the elevation is in the highest 80% of values for a
@@ -273,6 +273,9 @@ class Field(object):
             larger than the total time of the high-elevation period for a given
             observation, then the full observation is used instead
         """
+        if mintime <= 0:
+            raise ValueError("mintime must be greater than zero")
+
         # Set the chunk size so that it is at least mintime
         chunked_observations = []
         for obs in self.full_observations:
@@ -283,7 +286,7 @@ class Field(object):
             # Due to a limitation in Dysco, we make sure to have at least two time
             # slots per observation, otherwise the output MS cannot be written with
             # compression
-            while int(np.ceil(obs_mintime / obs.timepersample)) < 2:
+            if int(np.ceil(obs_mintime / obs.timepersample)) < 2:
                 obs_mintime *= 2
 
             # Find the data fraction implied by the minimum time
