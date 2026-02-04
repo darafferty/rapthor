@@ -134,6 +134,8 @@ class Field:
         self.image_cube_stokes_list = ["I"]
         self.save_visibilities = False
         self.average_visibilities = True
+        self.photometry_skymodel = None
+        self.astrometry_skymodel = None
 
     def get_calibration_radius(self):
         return 5.0
