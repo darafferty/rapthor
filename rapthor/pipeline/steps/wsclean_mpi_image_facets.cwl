@@ -219,12 +219,12 @@ inputs:
       prefix: -apply-time-frequency-smearing
   - id: shared-facet-reads
     type: boolean
-    default: true
+    default: false
     inputBinding:
       prefix: -shared-facet-reads
   - id: shared-facet-writes
     type: boolean
-    default: true
+    default: false
     inputBinding:
       prefix: -shared-facet-writes
 outputs:
