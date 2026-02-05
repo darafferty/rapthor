@@ -503,7 +503,7 @@ class Image(Operation):
             # supported
 
             if "sector_image_cube" in self.outputs:
-                dest_dir = os.path.join(self.parset['dir_working'], 'images', self.name)
+                dest_dir = os.path.join(self.parset["dir_working"], "images", self.name)
                 os.makedirs(dest_dir, exist_ok=True)
 
                 image_cube_path = self.outputs["sector_image_cube"][index]["path"]
@@ -522,10 +522,12 @@ class Image(Operation):
             #
             # Note: these are not generated when QUV images are made (WSClean does not
             # currently support writing a source list in this mode)
-            dst_dir = os.path.join(self.parset['dir_working'], 'skymodels', 'image_{}'.format(self.index))
+            dst_dir = os.path.join(
+                self.parset["dir_working"], "skymodels", "image_{}".format(self.index)
+            )
             os.makedirs(dst_dir, exist_ok=True)
             if self.field.image_pol.lower() == 'i':
-                for skymodel_type in ['true_sky', 'apparent_sky']:
+                for skymodel_type in ["true_sky", "apparent_sky"]:
                     src_sector_skymodel = self.outputs[f"filtered_skymodel_{skymodel_type}"][index]["path"]
                     sector_skymodel_file = os.path.join(dst_dir, os.path.basename(src_sector_skymodel))
                     setattr(sector, f"image_skymodel_file_{skymodel_type}", sector_skymodel_file)
@@ -540,7 +542,9 @@ class Image(Operation):
 
             # The output ds9 region file, if made
             if self.use_facets:
-                dst_dir = os.path.join(self.parset['dir_working'], 'regions', 'image_{}'.format(self.index))
+                dst_dir = os.path.join(
+                    self.parset["dir_working"], "regions", "image_{}".format(self.index)
+                )
                 os.makedirs(dst_dir, exist_ok=True)
                 src_filename = self.outputs["sector_region_file"][index]["path"]
                 dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
@@ -549,8 +553,12 @@ class Image(Operation):
 
             # The imaging visibilities
             if self.field.save_visibilities:
-                dst_dir = os.path.join(self.parset['dir_working'], 'visibilities',
-                                       'image_{}'.format(self.index), sector.name)
+                dst_dir = os.path.join(
+                    self.parset["dir_working"],
+                    "visibilities",
+                    "image_{}".format(self.index),
+                    sector.name,
+                )
                 os.makedirs(dst_dir, exist_ok=True)
                 # NOTE: Not needed anymore since visibilities are now returned
                 # ms_filenames = sector.get_obs_parameters('ms_prep_filename')
@@ -561,7 +569,9 @@ class Image(Operation):
                         shutil.copytree(src_filename, dst_filename)
 
             # The astrometry and photometry plots
-            dst_dir = os.path.join(self.parset['dir_working'], 'plots', 'image_{}'.format(self.index))
+            dst_dir = os.path.join(
+                self.parset["dir_working"], "plots", "image_{}".format(self.index)
+            )
             os.makedirs(dst_dir, exist_ok=True)
             diagnostic_plots = [x["path"] for x in self.outputs["sector_diagnostic_plots"][index]]
             for src_filename in diagnostic_plots:
@@ -571,9 +581,9 @@ class Image(Operation):
 
             # Read in the image diagnostics and log a summary of them
             diagnostics_file = self.outputs["sector_diagnostics"][index]["path"]
-            with open(diagnostics_file, 'r') as f:
+            with open(diagnostics_file, "r") as f:
                 diagnostics_dict = json.load(f)
-            diagnostics_dict['cycle_number'] = self.index
+            diagnostics_dict["cycle_number"] = self.index
             sector.diagnostics.append(diagnostics_dict)
             ratio, std = report_sector_diagnostics(sector.name, diagnostics_dict, self.log)
             if self.field.lofar_to_true_flux_std == 0.0 or std < self.field.lofar_to_true_flux_std:
@@ -675,13 +685,13 @@ class ImageInitial(Image):
             "filtered_skymodel_apparent_sky"
         }
 
-        # The output sky models, both true sky and apparent sky (the filenames are
-        # defined in the rapthor/scripts/filter_skymodel.py file)
-        sector.image_skymodel_file_true_sky = image_root + '.true_sky.txt'
-        sector.image_skymodel_file_apparent_sky = image_root + '.apparent_sky.txt'
-        dst_dir = os.path.join(self.parset['dir_working'], 'skymodels', self.name)
+        # The output sky models, both true sky and apparent sky
+        dst_dir = os.path.join(self.parset["dir_working"], "skymodels", self.name)
         os.makedirs(dst_dir, exist_ok=True)
-        for src_filename, filename in [
+        image_root = os.path.join(dst_dir, sector.name)
+        sector.image_skymodel_file_true_sky = f"{image_root}.true_sky.txt"
+        sector.image_skymodel_file_apparent_sky = f"{image_root}.apparent_sky.txt"
+        for src_filename, dst_filename in [
             [
                 self.outputs["filtered_skymodel_true_sky"][0]["path"],
                 sector.image_skymodel_file_true_sky,
@@ -691,12 +701,11 @@ class ImageInitial(Image):
                 sector.image_skymodel_file_apparent_sky,
             ],
         ]:
-            dst_filename = os.path.join(dst_dir, os.path.basename(filename))
             if not os.path.exists(dst_filename):
                 shutil.copy(src_filename, dst_filename)
 
         # The astrometry and photometry plots
-        dst_dir = os.path.join(self.parset['dir_working'], 'plots', self.name)
+        dst_dir = os.path.join(self.parset["dir_working"], "plots", self.name)
         os.makedirs(dst_dir, exist_ok=True)
         diagnostic_plots = [x["path"] for x in self.outputs["sector_diagnostic_plots"][0]]
         for src_filename in diagnostic_plots:
@@ -809,7 +818,7 @@ class ImageNormalize(Image):
 
         # Save the output h5parm with the flux-scale corrections
         src_filename = self.outputs["sector_normalize_h5parm"][0]["path"]
-        dst_dir = os.path.join(self.parset['dir_working'], 'solutions', self.name)
+        dst_dir = os.path.join(self.parset["dir_working"], "solutions", self.name)
         os.makedirs(dst_dir, exist_ok=True)
         self.field.normalize_h5parm = os.path.join(dst_dir, os.path.basename(src_filename))
         if not os.path.exists(self.field.normalize_h5parm):
