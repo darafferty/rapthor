@@ -157,11 +157,6 @@ inputs:
     doc: |
       The number of nodes for MPI jobs (length = 1).
     type: int
-  - id: shared_facet_rw
-    label: Shared facets read and write
-    type: boolean
-    doc: |
-      Enable the -shared-facet-reads and -shared-facet-writes options in wsclean
 {% endif %}
 
   - id: prepare_data_steps
@@ -262,6 +257,11 @@ inputs:
       The maximum number of threads to use during parallel gridding (length = 1).
     type: int
 
+  - id: shared_facet_rw
+    label: Shared facets read and write
+    type: boolean
+    doc: |
+      Enable the -shared-facet-reads and -shared-facet-writes options in wsclean
 {% else %}
 # start not use_facets
 
@@ -816,12 +816,7 @@ steps:
         source: scalar_visibilities
       - id: diagonal_visibilities
         source: diagonal_visibilities
-{% if use_mpi %}
-      - id: shared-facets-reads
-        source: shared_facet_rw
-      - id: shared-facets-writes
-        source: shared_facet_rw
-{% else %}
+{% if not use_mpi %}
       - id: num_gridding_threads
         source: parallel_gridding_threads
 {% endif %}
