@@ -471,6 +471,7 @@ class Image(Operation):
             "sector_image_cube",
             "sector_image_cube_beams",
             "sector_image_cube_frequencies",
+            "source_filtering_mask",
             "filtered_skymodel_true_sky",
             "filtered_skymodel_apparent_sky",
             "pybdsf_catalog",
@@ -530,7 +531,14 @@ class Image(Operation):
             dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
             shutil.copy(src_filename, dst_filename)
 
-        
+            # Save sector imaging mask
+            dst_dir = os.path.join(self.parset['dir_working'], 'masks', 'image_{}'.format(self.index))
+            os.makedirs(dst_dir, exist_ok=True)
+            src_filename = self.outputs["source_filtering_mask"][index]["path"]
+            dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
+            sector.I_mask_file = dst_filename
+            shutil.copy(src_filename, dst_filename)
+            
             # The output ds9 region file, if made
             if self.use_facets:
                 dst_dir = os.path.join(self.parset['dir_working'], 'regions', 'image_{}'.format(self.index))
