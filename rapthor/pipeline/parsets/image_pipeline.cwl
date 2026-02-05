@@ -197,7 +197,7 @@ inputs:
   - id: shared_facets_rw
     label: Shared facets read and write
     type: boolean
-    default: true
+    default: false
     doc: |
       Enable shared facets read&write in wsclean
 {% endif %}
