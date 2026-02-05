@@ -740,8 +740,6 @@ steps:
         source: mpi_cpus_per_task
       - id: mpi_nnodes
         source: mpi_nnodes
-      - id: shared_facet_rw
-        source: shared_facet_rw
 {% endif %}
       - id: prepare_data_steps
         source: prepare_data_steps
@@ -773,6 +771,8 @@ steps:
         source: scalar_visibilities
       - id: diagonal_visibilities
         source: diagonal_visibilities
+      - id: shared_facet_rw
+        source: shared_facet_rw
 {% else %}
 # start not use_facets
 {% if preapply_dde_solutions %}
