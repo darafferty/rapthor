@@ -581,6 +581,16 @@ The available options are described below under their respective sections.
             Currently, Toil does not fully support ``openmpi``. Because of this, imaging
             can only use the worker nodes, and the master node will be idle.
 
+    shared_facets_rw
+        When using facet-based imaging with MPI (i.e., when
+        :term:`use_mpi` = ``True`` and facet-based imaging is used),
+        this parameter specifies whether to use shared
+        per-facet read-write access to the visibilities. Using
+        shared read-write access can save IO time that will result in faster imaging
+        performance. 
+
+        .. warning:: 
+            This option is currently experimental and should be used with caution.
 
     reweight
         Reweight the visibility data before imaging (default = ``False``). If ``True``,

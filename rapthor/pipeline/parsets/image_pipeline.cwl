@@ -193,6 +193,13 @@ inputs:
     doc: |
       The number of nodes for MPI jobs (length = n_sectors).
     type: int[]
+
+  - id: shared_facets_rw
+    label: Shared facets read and write
+    type: boolean
+    default: true
+    doc: |
+      Enable shared facets read&write in wsclean
 {% endif %}
 
   - id: prepare_data_steps
@@ -733,6 +740,8 @@ steps:
         source: mpi_cpus_per_task
       - id: mpi_nnodes
         source: mpi_nnodes
+      - id: shared_facets_rw
+        source: shared_facets_rw
 {% endif %}
       - id: prepare_data_steps
         source: prepare_data_steps

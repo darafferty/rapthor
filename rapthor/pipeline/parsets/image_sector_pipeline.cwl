@@ -157,6 +157,11 @@ inputs:
     doc: |
       The number of nodes for MPI jobs (length = 1).
     type: int
+  - id: shared_facets_rw
+    label: Shared facets read and write
+    type: boolean
+    doc: |
+      Enable shared facets read&write in wsclean
 {% endif %}
 
   - id: prepare_data_steps
@@ -811,7 +816,12 @@ steps:
         source: scalar_visibilities
       - id: diagonal_visibilities
         source: diagonal_visibilities
-{% if not use_mpi %}
+{% if use_mpi %}
+      - id: shared-facets-reads
+        source: shared_facets_rw
+      - id: shared-facets-writes
+        source: shared_facets_rw
+{% else %}
       - id: num_gridding_threads
         source: parallel_gridding_threads
 {% endif %}
