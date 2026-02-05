@@ -101,12 +101,21 @@ def input_catalog_fits(tmp_path):
 def image_fits(tmp_path):
     """
     Fixture to provide a path for a mock image FITS file.
-    """
-    image_path = tmp_path / "test_image.fits"
-    # Create an empty file or copy a test FITS file if needed
-    image_path.touch()
-    return image_path
 
+    Copy file from resources folder to temporary directory. 
+    Data adapted from fits.util.get_testdata_filepath('test0.fits'):
+        fits_image_filename = fits.util.get_testdata_filepath('test0.fits')
+        image_path = tmp_path /"test_image.fits"
+        with fits.open(fits_image_filename) as hdul:
+            hdr = hdul[1].header
+            hdr["BMAJ"] = 0.1
+            hdr["BMIN"] = 0.1
+            hdr["PA"] = 0.0
+            hdul[1].header = hdr
+            hdul.writeto(image_path)
+    """
+    shutil.copy((RESOURCE_DIR / "test_image.fits"), tmp_path / "test_image.fits")
+    return Path(tmp_path / "test_image.fits")
 
 @pytest.fixture
 def facet_region_ds9(tmp_path):

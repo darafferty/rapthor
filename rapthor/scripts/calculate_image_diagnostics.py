@@ -360,7 +360,7 @@ def check_astrometry(obs, input_catalog, image, facet_region_file, min_number,
     if len(catalog) < min_number:
         print(f'Fewer than {min_number} sources found in the LOFAR image meet the '
               'astrometry cuts (major axis < 10" with positional errors < 2"). '
-              'Skipping the astromety check...')
+              'Skipping the astrometry check...')
         return {}
 
     # Do the astrometry check
