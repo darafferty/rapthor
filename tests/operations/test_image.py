@@ -143,6 +143,92 @@ class TestImage:
         
         assert image.input_parms["save_filtered_model_image"] is True
 
+    def test_image_operation_sets_mask_file(self, field, monkeypatch, tmp_path, expected_image_output):
+        """
+        Test that running an image operation with mocked CWL execution
+        sets sector.I_mask_file to the correct value
+        """
+        h5parm = tmp_path / "h5parm_file.h5"
+        h5parm.touch()
+        
+        field.parset["regroup_input_skymodel"] = False
+        field.h5parm_filename = str(h5parm)
+        field.scan_observations()
+        steps = set_selfcal_strategy(field)
+        field.update(steps[0], index=1, final=False)
+        field.do_predict = False
+        field.image_pol = 'I'
+        field.skip_final_major_iteration = True
+        
+        # Mock the execute method
+        monkeypatch.setattr(
+            "rapthor.lib.cwlrunner.BaseCWLRunner.execute",
+            lambda self, args, env: mocked_cwl_execution(self, args, env, expected_image_output),
+            raising=False
+        )
+        
+        image = Image(field=field, index=1)
+        image.set_parset_parameters()
+        image.set_input_parameters()
+        image.run()
+        
+        # Check that the sector's I_mask_file is set
+        sector = field.imaging_sectors[0]
+        assert sector.I_mask_file is not None
+        assert 'masks' in sector.I_mask_file
+        assert 'image_1' in sector.I_mask_file
+
+    def test_image_with_previous_mask(self, field, monkeypatch, tmp_path, expected_image_output):
+        """
+        Test that a second image operation uses the mask from the first one.
+        The first image operation mocks CWL execution, and the second one checks
+        that previous_mask_filename is set correctly in input_parms.
+        """
+        h5parm = tmp_path / "h5parm_file.h5"
+        h5parm.touch()
+        
+        field.parset["regroup_input_skymodel"] = False
+        field.h5parm_filename = str(h5parm)
+        field.scan_observations()
+        steps = set_selfcal_strategy(field)
+        field.update(steps[0], index=1, final=False)
+        field.do_predict = False
+        field.image_pol = 'I'
+        field.skip_final_major_iteration = True
+        
+        # Mock the execute method
+        monkeypatch.setattr(
+            "rapthor.lib.cwlrunner.BaseCWLRunner.execute",
+            lambda self, args, env: mocked_cwl_execution(self, args, env, expected_image_output),
+            raising=False
+        )
+        
+        # First image operation
+        image1 = Image(field=field, index=1)
+        image1.set_parset_parameters()
+        image1.set_input_parameters()
+        image1.run()
+        
+        # Get the mask file from the first operation
+        sector = field.imaging_sectors[0]
+        first_mask_file = sector.I_mask_file
+        assert first_mask_file is not None
+        
+        # Second image operation - simulate reusing the mask from first operation
+        # Create a new Image operation with index=2 but don't call field.update()
+        image2 = Image(field=field, index=2)
+        image2.set_parset_parameters()
+        image2.set_input_parameters()
+        
+        # Check that previous_mask_filename is set to the mask from the first operation
+        assert image2.input_parms["previous_mask_filename"] is not None
+        # previous_mask_filename should be a list with one element for one sector
+        previous_masks = image2.input_parms["previous_mask_filename"]
+        assert isinstance(previous_masks, list)
+        assert len(previous_masks) == 1
+        # The first mask should be set to the CWL file format of the first operation's mask
+        assert previous_masks[0] is not None
+
 class TestImageInitial:
     def test_set_parset_parameters(self, image_initial):
         # image_initial.set_parset_parameters()
