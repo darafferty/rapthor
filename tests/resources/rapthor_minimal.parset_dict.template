@@ -110,6 +110,7 @@
  'data_colname': 'DATA',
  'input_skymodel': None,
  'mss': ['${input_ms}'],
+ 'separation_tolerance_arcsec': 0.05,
  'regroup_input_skymodel': True,
  'selfcal_data_fraction': 0.2,
  'strategy': 'selfcal',
