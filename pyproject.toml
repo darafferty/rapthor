@@ -143,6 +143,8 @@ deps = [
     "pytest",
     "pytest-cov",
     "pytest-xdist",
+    "pytest-mock",
+    "pytest-socket"
 ]
 commands = [
     # test_field.py does not support parallel runs, so run sequentially.
