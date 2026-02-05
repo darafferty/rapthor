@@ -266,7 +266,7 @@ use_mpi = False
 # Enable shared reads and writes for imaging when working with facets. If multiple nodes are used
 # this option can significantly speed up the processing time of wsclean
 # NOTE: it is currently experimental and it should be used with caution.
-shared_facets_rw = False
+shared_facet_rw = False
 
 # Reweight the visibility data before imaging (default = False)
 reweight = False

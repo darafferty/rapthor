@@ -368,7 +368,7 @@ class Image(Operation):
             self.input_parms.update({'mpi_nnodes': [nnodes_per_subpipeline] * nsectors})
             self.input_parms.update({'mpi_cpus_per_task': [self.parset['cluster_specific']['cpus_per_task']] * nsectors})
         if self.use_facets:
-            self.input_parms["shared_facets_rw"] = self.parset["imaging_specific"]["shared_facets_rw"]
+            self.input_parms["shared_facet_rw"] = self.parset["imaging_specific"]["shared_facet_rw"]
         if not self.apply_none and self.use_facets:
             # For faceting, we need inputs for making the ds9 facet region files
             self.input_parms.update({'skymodel': CWLFile(self.field.calibration_skymodel_file).to_json()})
