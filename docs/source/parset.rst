@@ -491,8 +491,8 @@ The available options are described below under their respective sections.
         Save dirty images and the clean masks made during each imaging cycle (default =
         ``False``).
 
-    save_filtered_model_image
-        Save image of the filtered sky model made during each imaging cycle
+    save_filtered_model_images
+        Save images of the filtered sky model made during each imaging cycle
         (default = ``False``).
 
     compress_selfcal_images
@@ -575,14 +575,11 @@ The available options are described below under their respective sections.
             Currently, Toil does not fully support ``openmpi``. Because of this, imaging
             can only use the worker nodes, and the master node will be idle.
 
-    shared_facets_rw
-        When using facet-based imaging with MPI (i.e., when
-        :term:`use_mpi` = ``True`` and facet-based imaging is used),
-        this parameter specifies whether to use shared
-        per-facet read-write access to the visibilities. Using
-        shared read-write access can save IO time that will result in faster imaging
-        performance. 
-
+    shared_facet_rw
+        When using facet-based imaging, enables runs WSClean with the options
+        -shared-facet-reads and -shared-facet-writes 
+        (https://wsclean.readthedocs.io/en/latest/facet_based_imaging.html#enabling-shared-reads).
+        
         .. warning:: 
             This option is currently experimental and should be used with caution.
 
