@@ -192,13 +192,23 @@ class Operation(object):
         """
         open(self.done_file, "w").close()
 
-    def copy_outputs_to(self, dest_dir, exclude=None):
+    def copy_outputs_to(self, dest_dir, exclude=None, overwrite=False):
         """
         Copy output files to a specified directory.
+
+        Parameters
+        ----------
+        dest_dir: str
+            Path of directory to which outputs will be copied
+        exclude : list or None
+            List of files to exclude from the copy
+        overwrite : bool, optional
+            If True, existing files will be overwritten by a new copy. If False,
+            existing files are not overwritten
         """
         for output_key, output_value in self.outputs.items():
             if exclude is None or output_key not in exclude:
-                copy_cwl_recursive(output_value, dest_dir)
+                copy_cwl_recursive(output_value, dest_dir, overwrite=overwrite)
 
     def clean_outputs(self):
         """

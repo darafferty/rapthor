@@ -13,6 +13,7 @@ import shutil
 
 log = logging.getLogger('rapthor:image')
 
+
 def merge_list_flatten(input_list: List[List]) -> List:
     """
     Merge a list of lists into a single flattened list
@@ -21,6 +22,7 @@ def merge_list_flatten(input_list: List[List]) -> List:
     for sublist in input_list:
         merged_list.extend(sublist)
     return merged_list
+
 
 def is_only_pol_I(image_pol: Union[List[str], str, None]) -> bool:
     """
@@ -33,6 +35,7 @@ def is_only_pol_I(image_pol: Union[List[str], str, None]) -> bool:
     if isinstance(image_pol, list):
         return len(image_pol) == 1 and image_pol[0].lower() == 'i'
     return False
+
 
 class Image(Operation):
     """
@@ -444,13 +447,13 @@ class Image(Operation):
         # by the mosaic operation
         self.field.lofar_to_true_flux_ratio = 1.0  # reset values for this cycle
         self.field.lofar_to_true_flux_std = 0.0
-        
-        ext_mapping = { "image_file_true_sky": "image-pb",
-                        "image_file_apparent_sky": "image",
-                        "model_file_true_sky": "model-pb",
-                        "residual_file_apparent_sky": "residual",
-                        "dirty_file_apparent_sky": "dirty",
-                        "mask_filename": "mask" }
+
+        ext_mapping = {"image_file_true_sky": "image-pb.fits",
+                       "image_file_apparent_sky": "image.fits",
+                       "model_file_true_sky": "model-pb.fits",
+                       "residual_file_apparent_sky": "residual.fits",
+                       "dirty_file_apparent_sky": "dirty.fits",
+                       "mask_filename": "mask.fits"}
 
         def find_in_file_list(file_list):
             type_path_map = {}
@@ -459,12 +462,16 @@ class Image(Operation):
                     if ext in filename:
                         type_path_map[name] = filename
             return type_path_map
+
         def derive_pol_from_filename(filename):
             for pol in "IQUV":
                 if f"-{pol}-" in filename:
                     return pol
             return "I"  # default
-        
+
+        do_not_copy = {
+            "sector_offsets"
+        }
         copied_manually = {
             "sector_I_images",
             "sector_extra_images",
@@ -482,7 +489,7 @@ class Image(Operation):
         for index, sector in enumerate(self.field.imaging_sectors):
             # Get the list of output files for this sector
             file_list = [x["path"] for x in self.outputs["sector_I_images"][index] +
-                            self.outputs["sector_extra_images"][index]]
+                         self.outputs["sector_extra_images"][index]]
             type_path_map = find_in_file_list(file_list)
             for output_type, path in type_path_map.items():
                 if output_type != "mask_filename":
@@ -490,8 +497,7 @@ class Image(Operation):
                     setattr(sector, f"{pol}_{output_type}", path)
                 else:
                     setattr(sector, output_type, path)
-                
-            
+
             # Save the output image cubes. Note that, unlike the normal images above,
             # the cubes are copied directly since mosaicking of the cubes is not yet
             # supported
@@ -505,11 +511,11 @@ class Image(Operation):
                 src_filenames = [image_cube_path,
                                  self.outputs["sector_image_cube_beams"][index]["path"],
                                  self.outputs["sector_image_cube_frequencies"][index]["path"]]
-                
-                
+
                 for src_filename in src_filenames:
                     dst_filename = os.path.join(dest_dir, os.path.basename(src_filename))
-                    shutil.copy(src_filename, dst_filename)
+                    if not os.path.exists(dst_filename):
+                        shutil.copy(src_filename, dst_filename)
 
             # The output sky models, both true sky and apparent sky (the filenames are
             # defined in the rapthor/scripts/filter_skymodel.py file)
@@ -523,21 +529,23 @@ class Image(Operation):
                     src_sector_skymodel = self.outputs[f"filtered_skymodel_{skymodel_type}"][index]["path"]
                     sector_skymodel_file = os.path.join(dst_dir, os.path.basename(src_sector_skymodel))
                     setattr(sector, f"image_skymodel_file_{skymodel_type}", sector_skymodel_file)
-                    shutil.copy(src_sector_skymodel, sector_skymodel_file)
+                    if not os.path.exists(sector_skymodel_file):
+                        shutil.copy(src_sector_skymodel, sector_skymodel_file)
 
             # The output PyBDSF source catalog
             src_filename = self.outputs["pybdsf_catalog"][index]["path"]
             dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
-            shutil.copy(src_filename, dst_filename)
+            if not os.path.exists(dst_filename):
+                shutil.copy(src_filename, dst_filename)
 
-        
             # The output ds9 region file, if made
             if self.use_facets:
                 dst_dir = os.path.join(self.parset['dir_working'], 'regions', 'image_{}'.format(self.index))
                 os.makedirs(dst_dir, exist_ok=True)
-                src_filename =  self.outputs["sector_region_file"][index]["path"]
+                src_filename = self.outputs["sector_region_file"][index]["path"]
                 dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
-                shutil.copy(src_filename, dst_filename)
+                if not os.path.exists(dst_filename):
+                    shutil.copy(src_filename, dst_filename)
 
             # The imaging visibilities
             if self.field.save_visibilities:
@@ -549,9 +557,8 @@ class Image(Operation):
                 ms_filenames = self.outputs["visibilities"][index]["path"]
                 for src_filename in ms_filenames:
                     dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
-                    if os.path.exists(dst_filename):
-                        shutil.rmtree(dst_filename)
-                    shutil.copytree(src_filename, dst_filename)
+                    if not os.path.exists(dst_filename):
+                        shutil.copytree(src_filename, dst_filename)
 
             # The astrometry and photometry plots
             dst_dir = os.path.join(self.parset['dir_working'], 'plots', 'image_{}'.format(self.index))
@@ -559,7 +566,8 @@ class Image(Operation):
             diagnostic_plots = [x["path"] for x in self.outputs["sector_diagnostic_plots"][index]]
             for src_filename in diagnostic_plots:
                 dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
-                shutil.copy(src_filename, dst_filename)
+                if not os.path.exists(dst_filename):
+                    shutil.copy(src_filename, dst_filename)
 
             # Read in the image diagnostics and log a summary of them
             diagnostics_file = self.outputs["sector_diagnostics"][index]["path"]
@@ -573,9 +581,16 @@ class Image(Operation):
                 self.field.lofar_to_true_flux_ratio = ratio
                 self.field.lofar_to_true_flux_std = std
 
-            dst_dir = os.path.join(self.parset['dir_working'], 'image_{}'.format(self.index), sector.name)
-            self.copy_outputs_to(dst_dir, exclude=copied_manually)
-        
+            self.copy_outputs_to(
+                os.path.join(
+                    self.parset["dir_working"],
+                    "images",
+                    "image_{}".format(self.index),
+                    sector.name,
+                ),
+                exclude=copied_manually.union(do_not_copy),
+            )
+
         # Finally call finalize() in the parent class
         super().finalize()
 
@@ -640,12 +655,18 @@ class ImageInitial(Image):
         """
         Finalize this operation
         """
-        # Save the output FITS images and sky models. Also read the image diagnostics (rms
-        # noise, etc.) derived by PyBDSF and print them to the log
+        # Set the outputs to copy to their final destinations.
+        #
+        # For this operation, the output images go to the default destination so they
+        # are not copied manually
         sector = self.field.full_field_sector
+        do_not_copy = {
+            "pybdsf_catalog",
+            "sector_region_file",
+            "visibilities",
+            "sector_offsets"
+        }
         copied_manually = {
-            "sector_I_images",
-            "sector_extra_images",
             "sector_skymodel_true_sky",
             "sector_skymodel_apparent_sky",
             "sector_diagnostic_plots",
@@ -653,29 +674,26 @@ class ImageInitial(Image):
             "filtered_skymodel_true_sky",
             "filtered_skymodel_apparent_sky"
         }
-        # The output image filenames
-        image_root = os.path.join(self.pipeline_working_dir, sector.name)
-        image_names = [x["path"] for x in self.outputs["sector_I_images"][0] +
-                           self.outputs["sector_extra_images"][0]]
-        dst_dir = os.path.join(self.parset['dir_working'], 'images', self.name)
-        os.makedirs(dst_dir, exist_ok=True)
-        for src_filename in image_names:
-            dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
-            shutil.copy(src_filename, dst_filename)
 
         # The output sky models, both true sky and apparent sky (the filenames are
         # defined in the rapthor/scripts/filter_skymodel.py file)
         sector.image_skymodel_file_true_sky = image_root + '.true_sky.txt'
         sector.image_skymodel_file_apparent_sky = image_root + '.apparent_sky.txt'
-
-
         dst_dir = os.path.join(self.parset['dir_working'], 'skymodels', self.name)
         os.makedirs(dst_dir, exist_ok=True)
-        for (src_filename, filename) in [
-            [self.outputs["filtered_skymodel_true_sky"][0]["path"], sector.image_skymodel_file_true_sky],
-            [self.outputs["filtered_skymodel_apparent_sky"][0]["path"], sector.image_skymodel_file_apparent_sky]]:
+        for src_filename, filename in [
+            [
+                self.outputs["filtered_skymodel_true_sky"][0]["path"],
+                sector.image_skymodel_file_true_sky,
+            ],
+            [
+                self.outputs["filtered_skymodel_apparent_sky"][0]["path"],
+                sector.image_skymodel_file_apparent_sky,
+            ],
+        ]:
             dst_filename = os.path.join(dst_dir, os.path.basename(filename))
-            shutil.copy(src_filename, dst_filename)
+            if not os.path.exists(dst_filename):
+                shutil.copy(src_filename, dst_filename)
 
         # The astrometry and photometry plots
         dst_dir = os.path.join(self.parset['dir_working'], 'plots', self.name)
@@ -683,7 +701,8 @@ class ImageInitial(Image):
         diagnostic_plots = [x["path"] for x in self.outputs["sector_diagnostic_plots"][0]]
         for src_filename in diagnostic_plots:
             dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
-            shutil.copy(src_filename, dst_filename)
+            if not os.path.exists(dst_filename):
+                shutil.copy(src_filename, dst_filename)
 
         # Read in the image diagnostics and log a summary of them
         diagnostics_file = self.outputs["sector_diagnostics"][0]["path"]
@@ -694,9 +713,11 @@ class ImageInitial(Image):
         self.field.lofar_to_true_flux_ratio = ratio
         self.field.lofar_to_true_flux_std = std
 
-        self.copy_outputs_to(os.path.join(self.parset['dir_working'], self.name, sector.name),
-                             exclude=copied_manually)
-        
+        self.copy_outputs_to(
+            os.path.join(self.parset["dir_working"], "images", self.name, sector.name),
+            exclude=copied_manually.union(do_not_copy)
+        )
+
         # Finally call finalize() of the Operation class
         super(Image, self).finalize()
 
@@ -763,38 +784,47 @@ class ImageNormalize(Image):
         """
         Finalize this operation
         """
-        # Save the output image cube filenames
         sector = self.field.normalize_sector
 
+        # Set the outputs to copy to their final destinations.
+        #
+        # For this operation, only the image cubes and the normilzed h5parm need to be
+        # saved. The image cubes go to the default destination so they are not copied
+        # manually
+        do_not_copy = {
+            "sector_I_images",
+            "sector_extra_images",
+            "filtered_skymodel_true_sky",
+            "filtered_skymodel_apparent_sky",
+            "pybdsf_catalog",
+            "sector_region_file",
+            "visibilities",
+            "sector_diagnostics_plots",
+            "sector_diagnostics",
+            "sector_offsets"
+        }
         copied_manually = {
-            "sector_image_cube",
-            "sector_image_cube_beams",
-            "sector_image_cube_frequencies",
             "sector_normalize_h5parm"
         }
-        dst_dir = os.path.join(self.parset['dir_working'], 'images', self.name)
-        os.makedirs(dst_dir, exist_ok=True)
-        sector_index = 0  # only one sector here
-        # Save the output beams and frequencies files
-        if "sector_image_cube" in self.outputs:
-            for src_file_obj in self.outputs["sector_image_cube_beams"][sector_index] + \
-                                self.outputs["sector_image_cube_frequencies"][sector_index]:
-                dst_filename = os.path.join(dst_dir, os.path.basename(src_file_obj["path"]))
-                shutil.copy(src_file_obj["path"], dst_filename)
 
         # Save the output h5parm with the flux-scale corrections
         src_filename = self.outputs["sector_normalize_h5parm"][0]["path"]
         dst_dir = os.path.join(self.parset['dir_working'], 'solutions', self.name)
         os.makedirs(dst_dir, exist_ok=True)
         self.field.normalize_h5parm = os.path.join(dst_dir, os.path.basename(src_filename))
-        shutil.copy(src_filename, self.field.normalize_h5parm)
+        if not os.path.exists(self.field.normalize_h5parm):
+            shutil.copy(src_filename, self.field.normalize_h5parm)
+
+        # Save other outputs
+        self.copy_outputs_to(
+            os.path.join(self.parset["dir_working"], "images", self.name, sector.name),
+            exclude=copied_manually.union(do_not_copy),
+        )
 
         # Set the flags for subsequent processing
         self.field.normalize_flux_scale = False
         self.field.apply_normalizations = True
-        self.copy_outputs_to(os.path.join(self.parset['dir_working'], self.name, sector.name),
-                             exclude=copied_manually)
-        
+
         # Finally call finalize() of the Operation class
         super(Image, self).finalize()
 
