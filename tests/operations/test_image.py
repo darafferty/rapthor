@@ -127,7 +127,7 @@ class TestImage:
     @pytest.mark.parametrize("shared_facet_rw", [True, False])
     @pytest.mark.parametrize("use_facets", [True, False])
     @pytest.mark.parametrize("use_mpi", [True, False])
-    def test_setting_shared_facets_rw(self, field, tmp_path, shared_facet_rw, use_facets, use_mpi):
+    def test_setting_shared_facet_rw(self, field, tmp_path, shared_facet_rw, use_facets, use_mpi):
         h5parm = tmp_path / "h5parm_file.h5"
         h5parm.touch()  # Create an empty file to satisfy the existence check
         field.parset["imaging_specific"]["use_mpi"] = use_mpi
