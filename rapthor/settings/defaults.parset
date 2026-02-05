@@ -263,7 +263,7 @@ disable_iquv_clean = False
 # must not be set unless it is on a shared filesystem
 use_mpi = False
 
-# Use shared facets shared read and write. If multiple nodes are used
+# Enable shared reads and writes for imaging when working with facets. If multiple nodes are used
 # this option can significantly speed up the processing time of wsclean
 # NOTE: it is currently experimental and it should be used with caution.
 shared_facets_rw = False
