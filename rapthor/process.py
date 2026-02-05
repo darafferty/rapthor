@@ -323,18 +323,18 @@ def chunk_observations(field, steps, data_fraction):
         The target data fraction
     """
     # Find the minimum duration that is needed for the solves
-    if steps and any([step['do_calibrate'] for step in steps]):
+    if steps and any(step['do_calibrate'] for step in steps):
         # When calibration is to be done, use the solution intervals to
         # set the minimum duration
         fast_solint = max(
             [
-                step["fast_timestep_sec"] if "fast_timestep_sec" in step else 0
+                step.get("fast_timestep_sec", 0)
                 for step in steps
             ]
         )
         slow_solint = max(
             [
-                step["slow_timestep_sec"] if "slow_timestep_sec" in step else 0
+                step.get("slow_timestep_sec", 0)
                 for step in steps
             ]
         )
@@ -342,9 +342,7 @@ def chunk_observations(field, steps, data_fraction):
         max_di_timestep = max(
             [
                 (
-                    step["fulljones_timestep_sec"]
-                    if "fulljones_timestep_sec" in step
-                    else 0
+                    step.get("fulljones_timestep_sec", 0)
                 )
                 for step in steps
             ]
@@ -366,23 +364,21 @@ def chunk_observations(field, steps, data_fraction):
         # Use the minmum duration set by the calibration. If no calibration is to be
         # done, set the minimum duration to a typical value (600 s) that should result
         # in enough chunks to obtain good uv coverage
-        chunk_time = solve_time if solve_time is not None else 600.0
+        chunk_time = solve_time or 600.0
     elif max_nodes > 1:
         # Set the minimum duration that results in at least as many chunks for each
         # observation as there are nodes (for parallelization over nodes)
         #
         # Note: we reduce the duration slightly to avoid making fewer chunks than
         # desired due to rounding done during the chunking
-        split_times = []
-        for obs in field.full_observations:
-            split_times.append(
-                (obs.endtime - obs.starttime) / max_nodes - obs.timepersample / 10
-            )
-        split_time = min(split_times)
+        split_time = min(
+            (obs.endtime - obs.starttime) / max_nodes - obs.timepersample / 10
+            for obs in field.full_observations
+        )
 
         # Use the largest of the solve and split times as the chunking time
         chunk_time = (
-            max(solve_time, split_time) if solve_time is not None else split_time
+            max(solve_time or 0, split_time)
         )
     else:
         # Chunking not needed: use the original (full) observations

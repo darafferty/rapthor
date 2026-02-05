@@ -34,7 +34,7 @@ class Observation(object):
         self.ms_filename = str(ms_filename)
         self.ms_predict_di_filename = None
         self.ms_predict_nc_filename = None
-        self.name = name if name is not None else os.path.basename(self.ms_filename)
+        self.name = name or os.path.basename(self.ms_filename)
         self.log = logging.getLogger("rapthor:{}".format(self.name))
         self.starttime = starttime
         self.endtime = endtime
@@ -75,8 +75,8 @@ class Observation(object):
                 valid_times = np.where(tab.getcol('TIME') >= self.starttime)[0]
                 if len(valid_times) == 0:
                     raise ValueError(
-                        "Start time of {0} is greater than the last time in the "
-                        "MS".format(self.starttime)
+                        f"Start time of {self.starttime} is greater than the "
+                        "last time in the MS"
                     )
                 self.starttime = tab.getcol("TIME")[valid_times[0]]
             if self.endtime is None:
@@ -85,8 +85,8 @@ class Observation(object):
                 valid_times = np.where(tab.getcol('TIME') <= self.endtime)[0]
                 if len(valid_times) == 0:
                     raise ValueError(
-                        "End time of {0} is less than the first time in the "
-                        "MS".format(self.endtime)
+                        f"End time of {self.endtime} is less than the first "
+                        "time in the MS"
                     )
                 self.endtime = tab.getcol("TIME")[valid_times[-1]]
 
@@ -97,20 +97,14 @@ class Observation(object):
             self.timepersample = tab.getcell('EXPOSURE', 0)
             self.starttime -= self.timepersample / 100
             self.endtime += self.timepersample / 100
-            if self.starttime > np.min(tab.getcol('TIME')):
-                self.startsat_startofms = False
-            else:
-                self.startsat_startofms = True
-            if self.endtime < np.max(tab.getcol('TIME')):
-                self.goesto_endofms = False
-            else:
-                self.goesto_endofms = True
+            self.startsat_startofms = (self.starttime <= np.min(tab.getcol('TIME')))
+            self.goesto_endofms = (self.endtime >= np.max(tab.getcol('TIME')))
             self.numsamples = int(
                 np.ceil((self.endtime - self.starttime) / self.timepersample)
             )
 
         # Get frequency info
-        with pt.table(self.ms_filename+'::SPECTRAL_WINDOW', ack=False) as sw:
+        with pt.table(f"{self.ms_filename}::SPECTRAL_WINDOW", ack=False) as sw:
             self.referencefreq = sw.col('REF_FREQUENCY')[0]
             self.channelfreqs = sw.col('CHAN_FREQ')[0]
             self.startfreq = np.min(sw.col('CHAN_FREQ')[0])
@@ -149,7 +143,7 @@ class Observation(object):
             )
 
         # Get station names and diameter
-        with pt.table(self.ms_filename+'::ANTENNA', ack=False) as ant:
+        with pt.table(f"{self.ms_filename}::ANTENNA", ack=False) as ant:
             self.stations = ant.col('NAME')[:]
             self.diam = float(ant.col('DISH_DIAMETER')[0])
             if 'HBA' in self.stations[0]:
@@ -170,11 +164,11 @@ class Observation(object):
         # each baseline, so a typical HBA LOFAR observation would have around 1500 entries
         # per time slot)
         el_values = pt.taql(
-            "SELECT mscal.azel1()[1] AS el from " + self.ms_filename + " limit ::10000"
+            f"SELECT mscal.azel1()[1] AS el from {self.ms_filename} limit ::10000"
         ).getcol("el")
         self.mean_el_rad = np.mean(el_values)
         times = pt.taql(
-            "select TIME from " + self.ms_filename + " limit ::10000"
+            f"select TIME from {self.ms_filename} limit ::10000"
         ).getcol("TIME")
         low_indices = np.sort(
             el_values.argpartition(len(el_values) // 5)[: len(el_values) // 5]
