@@ -124,27 +124,36 @@ class TestImage:
         assert image.is_done()
 
     
-    @pytest.mark.parametrize("shared_facets_rw", [True, False])
-    def test_setting_shared_facets_rw(self, field, tmp_path, shared_facets_rw):
+    @pytest.mark.parametrize("shared_facet_rw", [True, False])
+    @pytest.mark.parametrize("use_facets", [True, False])
+    @pytest.mark.parametrize("use_mpi", [True, False])
+    def test_setting_shared_facets_rw(self, field, tmp_path, shared_facet_rw, use_facets, use_mpi):
         h5parm = tmp_path / "h5parm_file.h5"
         h5parm.touch()  # Create an empty file to satisfy the existence check
-        field.parset["imaging_specific"]["use_mpi"] = True  
-        field.parset["imaging_specific"]["use_facets"] = True
-        field.parset["imaging_specific"]["shared_facets_rw"] = shared_facets_rw
+        field.parset["imaging_specific"]["use_mpi"] = use_mpi
+        
+        field.parset["imaging_specific"]["shared_facet_rw"] = shared_facet_rw
         field.parset["regroup_input_skymodel"] = False
         field.do_predict = False
         field.scan_observations()
         steps = set_selfcal_strategy(field)
         field.update(steps[0], index=1, final=False)
+        
         field.image_pol = 'I'
         field.skip_final_major_iteration = True
         image = Image(field, index=1)
+
+        # Force the facets setting for the test
+        image.use_facets = use_facets
         image.do_predict = False
         field.h5parm_filename = str(h5parm)  # Set the h5parm filename to the created file
         image.set_parset_parameters()
         image.set_input_parameters()
-        
-        assert image.input_parms["shared_facets_rw"] is shared_facets_rw
+
+        if use_facets:
+            assert image.input_parms["shared_facet_rw"] == shared_facet_rw
+        else:
+            assert image.input_parms["shared_facet_rw"] == False
 
     def test_save_model_image(self,field):
     # This is the required setup to configure an Image operation
