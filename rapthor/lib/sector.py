@@ -67,7 +67,6 @@ class Sector(object):
         self.max_nmiter = None  # set by the strategy
         self.channel_width_hz = None  # set by the strategy
         self.normalize_h5parm = None  # set by the ImageNormalize operation
-
         # Make copies of the observation objects, as each sector may have its own
         # observation-specific settings
         self.observations = []
