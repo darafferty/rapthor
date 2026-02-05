@@ -161,7 +161,7 @@ inputs:
     label: Shared facets read and write
     type: boolean
     doc: |
-      Enable shared facets read&write in wsclean
+      Enable the -shared-facet-reads and -shared-facet-writes options in wsclean
 {% endif %}
 
   - id: prepare_data_steps
