@@ -261,6 +261,10 @@ make_quv_images = False
 pol_combine_method = link
 disable_iquv_clean = False
 
+
+# Enable the use of a clean mask between imaging runs
+use_clean_mask = False
+
 # Use MPI to distribute WSClean jobs over multiple nodes (default = False)? If
 # True and more than one node can be allocated to each WSClean job (i.e.,
 # max_nodes / num_images >= 2), then distributed imaging will be used.

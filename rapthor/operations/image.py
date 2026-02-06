@@ -196,7 +196,7 @@ class Image(Operation):
             concat_filename.append(image_root[-1] + '_concat.ms')
 
             # Set other parameters
-            if sector.I_mask_file is not None:
+            if self.field.parset["imaging_specific"]["use_clean_mask"] and sector.I_mask_file is not None:
                 # Use the existing mask
                 previous_mask_filename.append(sector.I_mask_file)
             else:
@@ -352,7 +352,7 @@ class Image(Operation):
                             'interval': interval,
                             'max_threads': self.field.parset['cluster_specific']['max_threads'],
                             'deconvolution_threads': self.field.parset['cluster_specific']['deconvolution_threads'],
-                            'save_filtered_model_image': self.field.parset["imaging_specific"]["save_filtered_model_image"]      
+                            'save_filtered_model_image': self.field.parset["imaging_specific"]["save_filtered_model_image"]
                             }
 
         # Add parameters that depend on the set_parset parameters (set in set_parset_parameters())
@@ -454,13 +454,13 @@ class Image(Operation):
         self.field.lofar_to_true_flux_ratio = 1.0  # reset values for this cycle
         self.field.lofar_to_true_flux_std = 0.0
 
-
         copied_manually = {
             "sector_I_images",
             "sector_extra_images",
             "sector_image_cube",
             "sector_image_cube_beams",
             "sector_image_cube_frequencies",
+            "source_filtering_mask",
             "filtered_skymodel_true_sky",
             "filtered_skymodel_apparent_sky",
             "pybdsf_catalog",
@@ -527,6 +527,13 @@ class Image(Operation):
             src_filename = self.outputs["pybdsf_catalog"][index]["path"]
             dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
             shutil.copy(src_filename, dst_filename)
+            # Save sector imaging mask
+            dst_dir = os.path.join(self.parset['dir_working'], 'masks', 'image_{}'.format(self.index))
+            os.makedirs(dst_dir, exist_ok=True)
+            src_filename = self.outputs["source_filtering_mask"][index]["path"]
+            dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
+            sector.I_mask_file = dst_filename
+            shutil.copy(src_filename, dst_filename)
 
             # The output ds9 region file, if made
             if self.use_facets:
@@ -574,7 +581,7 @@ class Image(Operation):
 
         # Finally call finalize() in the parent class
         super().finalize()
-    
+
     @staticmethod
     def find_in_file_list(file_list):
         ext_mapping = {"image_file_true_sky": "image-pb.",
@@ -636,7 +643,7 @@ class ImageInitial(Image):
         # model generation
         self.apply_amplitudes = False
         self.apply_fulljones = False
-        
+
         self.apply_normalizations = False
         self.field.full_field_sector.auto_mask = 5.0
         self.field.full_field_sector.auto_mask_nmiter = 1
@@ -719,6 +726,14 @@ class ImageInitial(Image):
 
         self.copy_outputs_to(os.path.join(self.parset['dir_working'], self.name, sector.name),
                              exclude=copied_manually)
+
+        # Save sector imaging mask
+        dst_dir = os.path.join(self.parset['dir_working'], 'masks', 'image_{}'.format(self.index))
+        os.makedirs(dst_dir, exist_ok=True)
+        src_filename = self.outputs["source_filtering_mask"][0]["path"]
+        dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
+        sector.I_mask_file = dst_filename
+        shutil.copy(src_filename, dst_filename)
 
         # Finally call finalize() of the Operation class
         super(Image, self).finalize()
