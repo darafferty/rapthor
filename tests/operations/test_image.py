@@ -178,8 +178,10 @@ class TestImageInitial:
     def test_finalize_without_diagnostic_plots(self, image_initial):
             image_initial.run()
             image_initial.is_done()
-            image_initial.outputs["sector_diagnostic_plots"][0] = None  # Simulate missing diagnostic plots
-            # Handles missing diagnostic plots gracefully without raising an exception
+            # Simulate missing diagnostic plots
+            image_initial.outputs["sector_diagnostic_plots"][0] = None  
+            # Handles missing diagnostic plots gracefully without raising
+            # an exception
             image_initial.finalize()
 
 class TestImageNormalize:
