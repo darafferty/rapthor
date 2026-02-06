@@ -192,7 +192,7 @@ class Image(Operation):
             concat_filename.append(image_root[-1] + '_concat.ms')
 
             # Set other parameters
-            if sector.I_mask_file is not None:
+            if self.field.parset["imaging_specific"]["use_clean_mask"] and sector.I_mask_file is not None:
                 # Use the existing mask
                 previous_mask_filename.append(sector.I_mask_file)
             else:
@@ -704,6 +704,14 @@ class ImageInitial(Image):
 
         self.copy_outputs_to(os.path.join(self.parset['dir_working'], self.name, sector.name),
                              exclude=copied_manually)
+        
+        # Save sector imaging mask
+        dst_dir = os.path.join(self.parset['dir_working'], 'masks', 'image_{}'.format(self.index))
+        os.makedirs(dst_dir, exist_ok=True)
+        src_filename = self.outputs["source_filtering_mask"][0]["path"]
+        dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
+        sector.I_mask_file = dst_filename
+        shutil.copy(src_filename, dst_filename)
         
         # Finally call finalize() of the Operation class
         super(Image, self).finalize()
