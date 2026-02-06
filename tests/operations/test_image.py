@@ -143,6 +143,13 @@ class TestImage:
         
         assert image.input_parms["save_filtered_model_image"] is True
 
+    def test_finalize_without_diagnostic_plots(self, image):
+        image.run()
+        image.is_done()
+        image.outputs["sector_diagnostic_plots"][0] = None  # Simulate missing diagnostic plots
+        # Handles missing diagnostic plots gracefully without raising an exception
+        image.finalize()
+        
 class TestImageInitial:
     def test_set_parset_parameters(self, image_initial):
         # image_initial.set_parset_parameters()

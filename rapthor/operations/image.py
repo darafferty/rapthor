@@ -556,11 +556,11 @@ class Image(Operation):
             # The astrometry and photometry plots
             dst_dir = os.path.join(self.parset['dir_working'], 'plots', 'image_{}'.format(self.index))
             os.makedirs(dst_dir, exist_ok=True)
-            diagnostic_plots = [x["path"] for x in self.outputs["sector_diagnostic_plots"][index]]
-            for src_filename in diagnostic_plots:
-                dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
-                shutil.copy(src_filename, dst_filename)
-
+            if self.outputs["sector_diagnostic_plots"][index] is not None:
+                diagnostic_plots = [x["path"] for x in self.outputs["sector_diagnostic_plots"][index]]
+                for src_filename in diagnostic_plots:
+                    dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
+                    shutil.copy(src_filename, dst_filename)
             # Read in the image diagnostics and log a summary of them
             diagnostics_file = self.outputs["sector_diagnostics"][index]["path"]
             with open(diagnostics_file, 'r') as f:
@@ -680,10 +680,11 @@ class ImageInitial(Image):
         # The astrometry and photometry plots
         dst_dir = os.path.join(self.parset['dir_working'], 'plots', self.name)
         os.makedirs(dst_dir, exist_ok=True)
-        diagnostic_plots = [x["path"] for x in self.outputs["sector_diagnostic_plots"][0]]
-        for src_filename in diagnostic_plots:
-            dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
-            shutil.copy(src_filename, dst_filename)
+        if self.outputs["sector_diagnostic_plots"][0] is not None:
+            diagnostic_plots = [x["path"] for x in self.outputs["sector_diagnostic_plots"][0]]
+            for src_filename in diagnostic_plots:
+                dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
+                shutil.copy(src_filename, dst_filename)
 
         # Read in the image diagnostics and log a summary of them
         diagnostics_file = self.outputs["sector_diagnostics"][0]["path"]
