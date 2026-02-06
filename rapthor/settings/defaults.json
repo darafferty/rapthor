@@ -76,6 +76,9 @@
         "save_visibilities": false,
         "average_visibilities": true,
         "save_image_cube": false,
+        "image_cube_stokes_list": [
+            "I"
+        ],
         "save_supplementary_images": false,
         "compress_selfcal_images": true,
         "compress_final_images": false,
@@ -88,6 +91,7 @@
         ],
         "make_quv_images": false,
         "pol_combine_method": "link",
+        "disable_iquv_clean": false,
         "use_mpi": false,
         "reweight": false,
         "grid_width_ra_deg": null,

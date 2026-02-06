@@ -201,17 +201,19 @@ class Field(object):
         # Check that all observations have the same pointing upto some tolerance level
         self.ra = obs0.ra
         self.dec = obs0.dec
-        # This value was determined based on 4 observations of the same field
-        # found to have ~0.02 arcsec pointing difference
-        separation_tolerance_arcsec = 0.05
+        separation_tolerance_arcsec = self.parset['separation_tolerance_arcsec']
         for obs in self.full_observations:
-            pointing_difference = misc.angular_separation((self.ra, self.dec), (obs.ra, obs.dec))
-            if pointing_difference.arcsecond >= separation_tolerance_arcsec:
-                raise ValueError('Pointing difference of {0} arcsec found between '
-                                 'msfiles {1} and {2} which exceeds the max tolerance '
-                                 'of {3} arcsec'.format(pointing_difference.arcsecond,
-                                                        obs0.ms_filename, obs.ms_filename,
-                                                        separation_tolerance_arcsec))
+            pointing_difference = misc.angular_separation(
+                (self.ra, self.dec), (obs.ra, obs.dec)
+            )
+            if pointing_difference.arcsecond > separation_tolerance_arcsec:
+                raise ValueError(
+                    f"Pointing difference of {pointing_difference.arcsecond} arcsec "
+                    f"between msfiles {obs0.ms_filename} and {obs.ms_filename} "
+                    f"exceeds the max tolerance of {separation_tolerance_arcsec} "
+                    "arcsec. Please check the files and adjust the "
+                    "separation_tolerance_arcsec option in the parset if necessary."
+                )
 
         # Check that all observations have the same station diameter
         self.diam = obs0.diam
