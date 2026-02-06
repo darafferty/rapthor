@@ -153,7 +153,7 @@ class TestImage:
         if use_facets:
             assert image.input_parms["shared_facet_rw"] == shared_facet_rw
         else:
-            assert image.input_parms["shared_facet_rw"] == False
+            assert not image.input_parms["shared_facet_rw"]
 
     def test_save_model_image(self,field):
     # This is the required setup to configure an Image operation
@@ -173,7 +173,7 @@ class TestImage:
         image.set_parset_parameters()
         image.set_input_parameters()
         
-        assert image.input_parms["save_filtered_model_image"] is True
+        assert image.input_parms["save_filtered_model_image"]
 
 class TestImageInitial:
     def test_set_parset_parameters(self, image_initial):
@@ -198,7 +198,7 @@ class TestImageInitial:
         image_initial.set_parset_parameters()
         image_initial.set_input_parameters()
 
-        assert image_initial.input_parms["save_filtered_model_image"] is True
+        assert image_initial.input_parms["save_filtered_model_image"]
 
 
 
@@ -231,7 +231,7 @@ class TestImageNormalize:
         image_norm.do_predict = False
         image_norm.set_parset_parameters()
         image_norm.set_input_parameters()
-        assert image_norm.input_parms["save_filtered_model_image"] is True
+        assert image_norm.input_parms["save_filtered_model_image"]
 
     def test_run_with_execute_mock(self, field):
         field.parset["imaging_specific"]["save_filtered_model_image"] = True
