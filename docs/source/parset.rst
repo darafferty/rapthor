@@ -576,7 +576,7 @@ The available options are described below under their respective sections.
             can only use the worker nodes, and the master node will be idle.
 
     shared_facet_rw
-        When using facet-based imaging, enables runs WSClean with the options
+        When using facet-based imaging runs WSClean with the options
         -shared-facet-reads and -shared-facet-writes 
         (https://wsclean.readthedocs.io/en/latest/facet_based_imaging.html#enabling-shared-reads).
         
