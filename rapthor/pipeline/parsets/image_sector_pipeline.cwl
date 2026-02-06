@@ -816,6 +816,8 @@ steps:
         source: scalar_visibilities
       - id: diagonal_visibilities
         source: diagonal_visibilities
+      - id: shared_facet_rw
+        source: shared_facet_rw
 {% if not use_mpi %}
       - id: num_gridding_threads
         source: parallel_gridding_threads
