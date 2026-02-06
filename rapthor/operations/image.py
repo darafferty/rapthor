@@ -470,11 +470,14 @@ class Image(Operation):
             return "I"  # default
 
         do_not_copy = {
-            "sector_offsets"
+            "sector_offsets",
+            "sector_skymodels",
+            "sector_diagnostics"
         }
         copied_manually = {
             "sector_I_images",
             "sector_extra_images",
+            "source_filtering_mask",
             "sector_image_cube",
             "sector_image_cube_beams",
             "sector_image_cube_frequencies",
@@ -483,8 +486,7 @@ class Image(Operation):
             "pybdsf_catalog",
             "sector_region_file",
             "visibilities",
-            "sector_diagnostics_plots",
-            "sector_diagnostics"
+            "sector_diagnostic_plots"
         }
         for index, sector in enumerate(self.field.imaging_sectors):
             # Get the list of output files for this sector
@@ -501,7 +503,6 @@ class Image(Operation):
             # Save the output image cubes. Note that, unlike the normal images above,
             # the cubes are copied directly since mosaicking of the cubes is not yet
             # supported
-
             if "sector_image_cube" in self.outputs:
                 dest_dir = os.path.join(self.parset["dir_working"], "images", self.name)
                 os.makedirs(dest_dir, exist_ok=True)
@@ -674,13 +675,14 @@ class ImageInitial(Image):
             "pybdsf_catalog",
             "sector_region_file",
             "visibilities",
-            "sector_offsets"
+            "sector_offsets",
+            "sector_diagnostics",
+            "sector_skymodels"
         }
         copied_manually = {
             "sector_skymodel_true_sky",
             "sector_skymodel_apparent_sky",
             "sector_diagnostic_plots",
-            "sector_diagnostics",
             "filtered_skymodel_true_sky",
             "filtered_skymodel_apparent_sky"
         }
@@ -723,7 +725,7 @@ class ImageInitial(Image):
         self.field.lofar_to_true_flux_std = std
 
         self.copy_outputs_to(
-            os.path.join(self.parset["dir_working"], "images", self.name, sector.name),
+            os.path.join(self.parset["dir_working"], "images", self.name),
             exclude=copied_manually.union(do_not_copy)
         )
 
@@ -793,8 +795,6 @@ class ImageNormalize(Image):
         """
         Finalize this operation
         """
-        sector = self.field.normalize_sector
-
         # Set the outputs to copy to their final destinations.
         #
         # For this operation, only the image cubes and the normilzed h5parm need to be
@@ -805,10 +805,11 @@ class ImageNormalize(Image):
             "sector_extra_images",
             "filtered_skymodel_true_sky",
             "filtered_skymodel_apparent_sky",
+            "sector_skymodels",
             "pybdsf_catalog",
             "sector_region_file",
             "visibilities",
-            "sector_diagnostics_plots",
+            "sector_diagnostic_plots",
             "sector_diagnostics",
             "sector_offsets"
         }
@@ -826,7 +827,7 @@ class ImageNormalize(Image):
 
         # Save other outputs
         self.copy_outputs_to(
-            os.path.join(self.parset["dir_working"], "images", self.name, sector.name),
+            os.path.join(self.parset["dir_working"], "images", self.name),
             exclude=copied_manually.union(do_not_copy),
         )
 
