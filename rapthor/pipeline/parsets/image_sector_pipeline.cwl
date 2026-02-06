@@ -1141,6 +1141,9 @@ steps:
       This step picks the Stokes-I image cube from those made by the make_image_cube
       step.
     run: {{ rapthor_pipeline_dir }}/steps/pick_file.cwl
+    hints:
+      ResourceRequirement:
+        coresMin: 1
     in:
       - id: input_file_list
         source: make_image_cubes/image_cube
@@ -1157,6 +1160,9 @@ steps:
       This step picks the Stokes-I cube beams file from those made by the
       make_image_cube step.
     run: {{ rapthor_pipeline_dir }}/steps/pick_file.cwl
+    hints:
+      ResourceRequirement:
+        coresMin: 1
     in:
       - id: input_file_list
         source: make_image_cubes/image_cube_beams
@@ -1174,6 +1180,9 @@ steps:
       This step picks the Stokes-I cube frequencies file from those made by the
       make_image_cube step.
     run: {{ rapthor_pipeline_dir }}/steps/pick_file.cwl
+    hints:
+      ResourceRequirement:
+        coresMin: 1
     in:
       - id: input_file_list
         source: make_image_cubes/image_cube_frequencies
