@@ -195,11 +195,11 @@ inputs:
     type: int[]
 
   - id: shared_facet_rw
-    label: Shared facets read and write
+    label: Shared facet reads and writes
     type: boolean
     default: false
     doc: |
-      Enable shared facets read&write in wsclean
+      Enable -shared-facet-reads and shared-facet-writes in wsclean
 {% endif %}
 
   - id: prepare_data_steps
