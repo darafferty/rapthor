@@ -178,7 +178,8 @@ class TestImage:
         assert 'masks' in sector.I_mask_file
         assert 'image_1' in sector.I_mask_file
 
-    def test_image_with_previous_mask(self, field, monkeypatch, tmp_path, expected_image_output):
+    @pytest.mark.parametrize("use_clean_mask", [True, False])
+    def test_image_with_previous_mask(self, field, monkeypatch, tmp_path, expected_image_output, use_clean_mask):
         """
         Test that a second image operation uses the mask from the first one.
         The first image operation mocks CWL execution, and the second one checks
@@ -188,6 +189,7 @@ class TestImage:
         h5parm.touch()
         
         field.parset["regroup_input_skymodel"] = False
+        field.parset["imaging_specific"]["use_clean_mask"] = use_clean_mask
         field.h5parm_filename = str(h5parm)
         field.scan_observations()
         steps = set_selfcal_strategy(field)
@@ -227,7 +229,10 @@ class TestImage:
         assert isinstance(previous_masks, list)
         assert len(previous_masks) == 1
         # The first mask should be set to the CWL file format of the first operation's mask
-        assert previous_masks[0] is not None
+        if use_clean_mask:
+            assert previous_masks[0] is not None
+        else:
+            assert previous_masks[0] is None
 
 class TestImageInitial:
     def test_set_parset_parameters(self, image_initial):
