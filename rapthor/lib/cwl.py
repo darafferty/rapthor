@@ -117,7 +117,7 @@ def is_cwl_file_or_directory(cwl_obj):
     return is_cwl_file(cwl_obj) or is_cwl_directory(cwl_obj)
 
 
-def copy_cwl_object(src_obj, dest_dir, overwrite):
+def copy_cwl_object(src_obj, dest_dir, overwrite=False):
     """
     Copy a CWL file or directory object to the specified destination directory.
 
@@ -127,7 +127,7 @@ def copy_cwl_object(src_obj, dest_dir, overwrite):
         Source object of the copy
     dest_dir: str
         Path of destination directory to which src_obj will be copied
-    overwrite : bool
+    overwrite : bool, optional
         If True, existing files will be overwritten by a new copy. If False, existing
         files are not overwritten
     """
@@ -143,7 +143,7 @@ def copy_cwl_object(src_obj, dest_dir, overwrite):
     # Otherwise, do nothing
 
 
-def copy_cwl_recursive(src_obj, dest_dir, overwrite):
+def copy_cwl_recursive(src_obj, dest_dir, overwrite=False):
     """
     Recursively copy CWL file or directory objects to the specified destination
     directory.
@@ -154,7 +154,7 @@ def copy_cwl_recursive(src_obj, dest_dir, overwrite):
         Source object(s) of the copy
     dest_dir: str
         Path of destination directory to which src_obj will be copied
-    overwrite : bool
+    overwrite : bool, optional
         If True, existing files will be overwritten by a new copy. If False, existing
         files are not overwritten
     """
