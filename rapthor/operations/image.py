@@ -13,6 +13,7 @@ import shutil
 
 log = logging.getLogger('rapthor:image')
 
+
 def merge_list_flatten(input_list: List[List]) -> List:
     """
     Merge a list of lists into a single flattened list
@@ -21,6 +22,7 @@ def merge_list_flatten(input_list: List[List]) -> List:
     for sublist in input_list:
         merged_list.extend(sublist)
     return merged_list
+
 
 def is_only_pol_I(image_pol: Union[List[str], str, None]) -> bool:
     """
@@ -34,10 +36,12 @@ def is_only_pol_I(image_pol: Union[List[str], str, None]) -> bool:
         return len(image_pol) == 1 and image_pol[0].lower() == 'i'
     return False
 
+
 class Image(Operation):
     """
     Operation to image a field sector
     """
+
     def __init__(self, field, index, name='image'):
         super().__init__(field, index=index, name=name)
 
@@ -366,7 +370,8 @@ class Image(Operation):
                 # which in turn calls salloc to reserve the nodes for the MPI job
                 nnodes_per_subpipeline = max(1, int(nnodes / nsubpipes) - 1)
             self.input_parms.update({'mpi_nnodes': [nnodes_per_subpipeline] * nsectors})
-            self.input_parms.update({'mpi_cpus_per_task': [self.parset['cluster_specific']['cpus_per_task']] * nsectors})
+            self.input_parms.update(
+                {'mpi_cpus_per_task': [self.parset['cluster_specific']['cpus_per_task']] * nsectors})
         if not self.apply_none and self.use_facets:
             # For faceting, we need inputs for making the ds9 facet region files
             self.input_parms.update({'skymodel': CWLFile(self.field.calibration_skymodel_file).to_json()})
@@ -444,13 +449,13 @@ class Image(Operation):
         # by the mosaic operation
         self.field.lofar_to_true_flux_ratio = 1.0  # reset values for this cycle
         self.field.lofar_to_true_flux_std = 0.0
-        
-        ext_mapping = { "image_file_true_sky": "image-pb",
-                        "image_file_apparent_sky": "image",
-                        "model_file_true_sky": "model-pb",
-                        "residual_file_apparent_sky": "residual",
-                        "dirty_file_apparent_sky": "dirty",
-                        "mask_filename": "mask" }
+
+        ext_mapping = {"image_file_true_sky": "image-pb",
+                       "image_file_apparent_sky": "image",
+                       "model_file_true_sky": "model-pb",
+                       "residual_file_apparent_sky": "residual",
+                       "dirty_file_apparent_sky": "dirty",
+                       "mask_filename": "mask"}
 
         def find_in_file_list(file_list):
             type_path_map = {}
@@ -459,12 +464,13 @@ class Image(Operation):
                     if ext in filename:
                         type_path_map[name] = filename
             return type_path_map
+
         def derive_pol_from_filename(filename):
             for pol in "IQUV":
                 if f"-{pol}-" in filename:
                     return pol
             return "I"  # default
-        
+
         copied_manually = {
             "sector_I_images",
             "sector_extra_images",
@@ -482,7 +488,7 @@ class Image(Operation):
         for index, sector in enumerate(self.field.imaging_sectors):
             # Get the list of output files for this sector
             file_list = [x["path"] for x in self.outputs["sector_I_images"][index] +
-                            self.outputs["sector_extra_images"][index]]
+                         self.outputs["sector_extra_images"][index]]
             type_path_map = find_in_file_list(file_list)
             for output_type, path in type_path_map.items():
                 if output_type != "mask_filename":
@@ -490,7 +496,6 @@ class Image(Operation):
                     setattr(sector, f"{pol}_{output_type}", path)
                 else:
                     setattr(sector, output_type, path)
-                
 
             # Save the output image cubes. Note that, unlike the normal images above,
             # the cubes are copied directly since mosaicking of the cubes is not yet
@@ -505,7 +510,6 @@ class Image(Operation):
                 src_filenames = [image_cube_path,
                                  self.outputs["sector_image_cube_beams"][index]["path"],
                                  self.outputs["sector_image_cube_frequencies"][index]["path"]]
-                
 
                 for src_filename in src_filenames:
                     dst_filename = os.path.join(dest_dir, os.path.basename(src_filename))
@@ -530,12 +534,11 @@ class Image(Operation):
             dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
             shutil.copy(src_filename, dst_filename)
 
-
             # The output ds9 region file, if made
             if self.use_facets:
                 dst_dir = os.path.join(self.parset['dir_working'], 'regions', 'image_{}'.format(self.index))
                 os.makedirs(dst_dir, exist_ok=True)
-                src_filename =  self.outputs["sector_region_file"][index]["path"]
+                src_filename = self.outputs["sector_region_file"][index]["path"]
                 dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
                 shutil.copy(src_filename, dst_filename)
 
@@ -544,9 +547,8 @@ class Image(Operation):
                 dst_dir = os.path.join(self.parset['dir_working'], 'visibilities',
                                        'image_{}'.format(self.index), sector.name)
                 os.makedirs(dst_dir, exist_ok=True)
-                # NOTE: Not needed anymore since visibilities are now returned
-                # ms_filenames = sector.get_obs_parameters('ms_prep_filename')
-                ms_filenames = self.outputs["visibilities"][index]["path"]
+                ms_filenames = [visibility_ms["path"]
+                                for visibility_ms in self.outputs["visibilities"][index]]
                 for src_filename in ms_filenames:
                     dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
                     if os.path.exists(dst_filename):
@@ -575,7 +577,7 @@ class Image(Operation):
 
             dst_dir = os.path.join(self.parset['dir_working'], 'image_{}'.format(self.index), sector.name)
             self.copy_outputs_to(dst_dir, exclude=copied_manually)
-        
+
         # Finally call finalize() in the parent class
         super().finalize()
 
@@ -584,6 +586,7 @@ class ImageInitial(Image):
     """
     Operation to image the field to generate an initial sky model
     """
+
     def __init__(self, field):
         super().__init__(field, index=None, name='initial_image')
 
@@ -656,7 +659,7 @@ class ImageInitial(Image):
         # The output image filenames
         image_root = os.path.join(self.pipeline_working_dir, sector.name)
         image_names = [x["path"] for x in self.outputs["sector_I_images"][0] +
-                           self.outputs["sector_extra_images"][0]]
+                       self.outputs["sector_extra_images"][0]]
         dst_dir = os.path.join(self.parset['dir_working'], 'images', self.name)
         os.makedirs(dst_dir, exist_ok=True)
         for src_filename in image_names:
@@ -668,12 +671,11 @@ class ImageInitial(Image):
         sector.image_skymodel_file_true_sky = image_root + '.true_sky.txt'
         sector.image_skymodel_file_apparent_sky = image_root + '.apparent_sky.txt'
 
-
         dst_dir = os.path.join(self.parset['dir_working'], 'skymodels', self.name)
         os.makedirs(dst_dir, exist_ok=True)
         for (src_filename, filename) in [
             [self.outputs["filtered_skymodel_true_sky"][0]["path"], sector.image_skymodel_file_true_sky],
-            [self.outputs["filtered_skymodel_apparent_sky"][0]["path"], sector.image_skymodel_file_apparent_sky]]:
+                [self.outputs["filtered_skymodel_apparent_sky"][0]["path"], sector.image_skymodel_file_apparent_sky]]:
             dst_filename = os.path.join(dst_dir, os.path.basename(filename))
             shutil.copy(src_filename, dst_filename)
 
@@ -697,7 +699,7 @@ class ImageInitial(Image):
 
         self.copy_outputs_to(os.path.join(self.parset['dir_working'], self.name, sector.name),
                              exclude=copied_manually)
-        
+
         # Finally call finalize() of the Operation class
         super(Image, self).finalize()
 
@@ -706,6 +708,7 @@ class ImageNormalize(Image):
     """
     Operation to image for flux-scale normalization
     """
+
     def __init__(self, field, index):
         super().__init__(field, index=index, name='normalize')
 
@@ -779,7 +782,7 @@ class ImageNormalize(Image):
         # Save the output beams and frequencies files
         if "sector_image_cube" in self.outputs:
             for src_file_obj in self.outputs["sector_image_cube_beams"][sector_index] + \
-                                self.outputs["sector_image_cube_frequencies"][sector_index]:
+                    self.outputs["sector_image_cube_frequencies"][sector_index]:
                 dst_filename = os.path.join(dst_dir, os.path.basename(src_file_obj["path"]))
                 shutil.copy(src_file_obj["path"], dst_filename)
 
@@ -795,7 +798,7 @@ class ImageNormalize(Image):
         self.field.apply_normalizations = True
         self.copy_outputs_to(os.path.join(self.parset['dir_working'], self.name, sector.name),
                              exclude=copied_manually)
-        
+
         # Finally call finalize() of the Operation class
         super(Image, self).finalize()
 
