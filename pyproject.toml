@@ -181,6 +181,6 @@ commands = [
 deps = ["ruff"]
 commands = [
     [
-        "python", "-m", "ruff", "format", "--check",
+        "python", "-m", "ruff", "format", "--check", "--diff",
     ],
 ]
