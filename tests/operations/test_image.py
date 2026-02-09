@@ -144,7 +144,7 @@ class TestImage:
 
     def test_finalize_without_diagnostic_plots(self, image):
         image.run()
-        image.is_done()
+        assert image.is_done()
         image.outputs["sector_diagnostic_plots"][0] = None  # Simulate missing diagnostic plots
         # Handles missing diagnostic plots gracefully without raising an exception
         image.finalize()
@@ -153,8 +153,7 @@ class TestImage:
     def test_finalize_save_visibilities(self, image, save_visibilities):
         image.field.save_visibilities = save_visibilities
         image.run()
-        image.finalize()
-
+        assert image.is_done()
 
 class TestImageInitial:
     def test_set_parset_parameters(self, image_initial):
@@ -183,7 +182,7 @@ class TestImageInitial:
 
     def test_finalize_without_diagnostic_plots(self, image_initial):
         image_initial.run()
-        image_initial.is_done()
+        assert image_initial.is_done()
         # Simulate missing diagnostic plots
         image_initial.outputs["sector_diagnostic_plots"][0] = None
         # Handles missing diagnostic plots gracefully without raising
