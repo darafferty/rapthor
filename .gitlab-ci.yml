@@ -194,6 +194,10 @@ run_lint:
   script:
     - tox -e lint
 
+run_format_check:
+  extends: .lint
+  script:
+    - tox -e format-check
 
 ### Stage: build
 

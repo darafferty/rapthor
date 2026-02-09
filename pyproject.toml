@@ -134,7 +134,7 @@ ignore = ["E501"]  # line-too-long
 
 [tool.tox]
 requires = ["tox>4"]
-envlist = ["lint", "py3{9,10,11,12,13}"]
+envlist = ["lint", "format-check", "py3{9,10,11,12,13}"]
 
 [tool.tox.env_run_base]
 description = "Run all tests"
@@ -174,5 +174,13 @@ deps = ["ruff"]
 commands = [
     [
         "python", "-m", "ruff", "check",
+    ],
+]
+
+[tool.tox.env.format-check]
+deps = ["ruff"]
+commands = [
+    [
+        "python", "-m", "ruff", "format", "--check",
     ],
 ]
