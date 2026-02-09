@@ -118,9 +118,7 @@ class TestImage:
         # image.finalize()
         pass
 
-    @pytest.mark.parametrize("save_visibilities", [True, False])
-    def test_run(self, image, save_visibilities):
-        image.field.save_visibilities = save_visibilities
+    def test_run(self, image):
         image.run()
         assert image.is_done()
 
@@ -144,13 +142,17 @@ class TestImage:
 
         assert image.input_parms["save_filtered_model_image"] is True
 
-    @pytest.mark.parametrize("save_visibilities", [True, False])
-    def test_finalize_without_diagnostic_plots(self, image, save_visibilities):
-        image.field.save_visibilities = save_visibilities
+    def test_finalize_without_diagnostic_plots(self, image):
         image.run()
         image.is_done()
         image.outputs["sector_diagnostic_plots"][0] = None  # Simulate missing diagnostic plots
         # Handles missing diagnostic plots gracefully without raising an exception
+        image.finalize()
+
+    @pytest.mark.parametrize("save_visibilities", [True, False])
+    def test_finalize_save_visibilities(self, image, save_visibilities):
+        image.field.save_visibilities = save_visibilities
+        image.run()
         image.finalize()
 
 
