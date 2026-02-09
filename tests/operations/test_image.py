@@ -9,6 +9,7 @@ from rapthor.lib.strategy import set_selfcal_strategy
 
 from rapthor.operations.image import Image, ImageInitial, ImageNormalize
 
+
 @pytest.fixture
 def expected_image_output():
     """
@@ -24,7 +25,7 @@ def expected_image_output():
         "sector_offsets": ["sector0_offsets.txt"],
     }
 
-    
+
 @pytest.fixture
 def image(field, monkeypatch, expected_image_output):
     """
@@ -43,7 +44,7 @@ def image(field, monkeypatch, expected_image_output):
     field.do_predict = False
     field.image_pol = 'I'
     field.skip_final_major_iteration = True
-    
+
     # Mock the execute method on the instance
     monkeypatch.setattr(
         "rapthor.lib.cwlrunner.BaseCWLRunner.execute",
@@ -51,7 +52,7 @@ def image(field, monkeypatch, expected_image_output):
         raising=False
     )
     image = Image(field=field, index=1)
-    
+
     image.set_parset_parameters()
     image.set_input_parameters()
 
@@ -65,9 +66,9 @@ def image_initial(field, monkeypatch, expected_image_output):
     """
     # Mock the execute method on the instance
     monkeypatch.setattr(
-    "rapthor.lib.cwlrunner.BaseCWLRunner.execute",
-    lambda self, args, env: mocked_cwl_execution(self, args, env, expected_outputs=expected_image_output),
-    raising=False
+        "rapthor.lib.cwlrunner.BaseCWLRunner.execute",
+        lambda self, args, env: mocked_cwl_execution(self, args, env, expected_outputs=expected_image_output),
+        raising=False
     )
     field.do_predict = False
     field.scan_observations()
@@ -78,7 +79,6 @@ def image_initial(field, monkeypatch, expected_image_output):
     image_initial.set_input_parameters()
 
     return image_initial
-    
 
 
 @pytest.fixture
@@ -88,9 +88,9 @@ def image_normalize(field, monkeypatch, expected_image_output):
     """
     # Mock the execute method on the instance
     monkeypatch.setattr(
-    "rapthor.lib.cwlrunner.BaseCWLRunner.execute",
-    lambda self, args, env: mocked_cwl_execution(self, args, env, expected_outputs=expected_image_output),
-    raising=False
+        "rapthor.lib.cwlrunner.BaseCWLRunner.execute",
+        lambda self, args, env: mocked_cwl_execution(self, args, env, expected_outputs=expected_image_output),
+        raising=False
     )
     field.do_predict = False
     field.scan_observations()
@@ -104,7 +104,6 @@ def image_normalize(field, monkeypatch, expected_image_output):
     image_norm.set_input_parameters()
     return image_norm
 
-    
 
 class TestImage:
     def test_set_parset_parameters(self, image):
@@ -123,10 +122,10 @@ class TestImage:
         image.run()
         assert image.is_done()
 
-    def test_save_model_image(self,field):
-    # This is the required setup to configure an Image operation
-    # avoiding any other setting will make it throw an expeception
-    # refactoring of the fild and image classes seems advisable here
+    def test_save_model_image(self, field):
+        # This is the required setup to configure an Image operation
+        # avoiding any other setting will make it throw an expeception
+        # refactoring of the fild and image classes seems advisable here
         field.parset["imaging_specific"]["save_filtered_model_image"] = True
         field.parset["regroup_input_skymodel"] = False
         field.do_predict = False
@@ -140,8 +139,9 @@ class TestImage:
         image.apply_none = True
         image.set_parset_parameters()
         image.set_input_parameters()
-        
+
         assert image.input_parms["save_filtered_model_image"] is True
+
 
 class TestImageInitial:
     def test_set_parset_parameters(self, image_initial):
@@ -155,7 +155,7 @@ class TestImageInitial:
     def test_run(self, image_initial):
         image_initial.run()
         assert image_initial.is_done()
-        
+
     def test_initial_image_save_model_image(self, field):
         field.parset["imaging_specific"]["save_filtered_model_image"] = True
         field.do_predict = False
@@ -167,7 +167,6 @@ class TestImageInitial:
         image_initial.set_input_parameters()
 
         assert image_initial.input_parms["save_filtered_model_image"] is True
-
 
 
 class TestImageNormalize:
@@ -186,7 +185,7 @@ class TestImageNormalize:
     def test_run(self, image_normalize):
         image_normalize.run()
         assert image_normalize.is_done()
-    
+
     def test_save_model_image(self, field):
         field.parset["imaging_specific"]["save_filtered_model_image"] = True
         field.do_predict = False
@@ -210,7 +209,6 @@ class TestImageNormalize:
         field.apply_screens = False
         field.skip_final_major_iteration = False
 
-        
 
 def test_report_sector_diagnostics(sector_name=None, diagnostics_dict=None, log=None):
     # report_sector_diagnostics(sector_name, diagnostics_dict, log)
