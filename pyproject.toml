@@ -181,6 +181,10 @@ commands = [
 deps = ["ruff"]
 commands = [
     [
-        "python", "-m", "ruff", "format", "--check", "--diff",
+        "python", "-m", "ruff",
+                        "format",
+                        "--check",
+                        "--diff",
+                        "{posargs}",
     ],
 ]

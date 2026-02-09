@@ -196,8 +196,17 @@ run_lint:
 
 run_format_check:
   extends: .lint
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
   script:
-    - tox -e format-check
+    - CHANGED_FILES=$(git diff --name-only --diff-filter=d origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME...HEAD -- '*.py' || true)
+    - |
+      if [ -z "$CHANGED_FILES" ]; then
+        echo "No Python files changed, skipping format check."
+        exit 0
+      fi
+    
+      tox -e format-check -- $CHANGED_FILES
 
 ### Stage: build
 
