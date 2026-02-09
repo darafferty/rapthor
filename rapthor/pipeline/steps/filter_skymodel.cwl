@@ -118,6 +118,7 @@ inputs:
     type: int
     inputBinding:
       prefix: --ncores=
+      valueFrom: $(runtime.cores)
       separate: False
 
 outputs:

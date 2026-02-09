@@ -1,6 +1,7 @@
 """
 Definition of the Observation class that holds parameters for each measurement set
 """
+import math
 import os
 import logging
 import casacore.tables as pt
@@ -22,17 +23,19 @@ class Observation(object):
         Filename of the MS file
     starttime : float, optional
         The start time of the observation (in MJD seconds). If None, the start time
-        is the start of the MS file
+        is the start of the MS file. Note: the time is that of the time slot centers
     endtime : float, optional
         The end time of the observation (in MJD seconds). If None, the end time
-        is the end of the MS file
+        is the end of the MS file. Note: the time is that of the time slot centers
+    name : str, optional
+        The observation's name. If None, the basename of ms_filename is used
     """
-    def __init__(self, ms_filename, starttime=None, endtime=None):
+    def __init__(self, ms_filename, starttime=None, endtime=None, name=None):
         self.ms_filename = str(ms_filename)
         self.ms_predict_di_filename = None
         self.ms_predict_nc_filename = None
-        self.name = os.path.basename(self.ms_filename)
-        self.log = logging.getLogger('rapthor:{}'.format(self.name))
+        self.name = name or os.path.basename(self.ms_filename)
+        self.log = logging.getLogger("rapthor:{}".format(self.name))
         self.starttime = starttime
         self.endtime = endtime
         self.data_fraction = 1.0
@@ -65,54 +68,55 @@ class Observation(object):
         Scans input MS and stores info
         """
         # Get time info
-        tab = pt.table(self.ms_filename, ack=False)
-        if self.starttime is None:
-            self.starttime = np.min(tab.getcol('TIME'))
-        else:
-            valid_times = np.where(tab.getcol('TIME') >= self.starttime)[0]
-            if len(valid_times) == 0:
-                raise ValueError('Start time of {0} is greater than the last time in the '
-                                 'MS'.format(self.starttime))
-            self.starttime = tab.getcol('TIME')[valid_times[0]]
+        with pt.table(self.ms_filename, ack=False) as tab:
+            if self.starttime is None:
+                self.starttime = np.min(tab.getcol('TIME'))
+            else:
+                valid_times = np.where(tab.getcol('TIME') >= self.starttime)[0]
+                if len(valid_times) == 0:
+                    raise ValueError(
+                        f"Start time of {self.starttime} is greater than the "
+                        "last time in the MS"
+                    )
+                self.starttime = tab.getcol("TIME")[valid_times[0]]
+            if self.endtime is None:
+                self.endtime = np.max(tab.getcol('TIME'))
+            else:
+                valid_times = np.where(tab.getcol('TIME') <= self.endtime)[0]
+                if len(valid_times) == 0:
+                    raise ValueError(
+                        f"End time of {self.endtime} is less than the first "
+                        "time in the MS"
+                    )
+                self.endtime = tab.getcol("TIME")[valid_times[-1]]
 
-        # DPPP takes ceil(startTimeParset - startTimeMS), so ensure that our start time is
-        # slightly less than the true one (if it's slightly larger, DPPP sets the first
-        # time to the next time, skipping the first time slot)
-        self.starttime -= 0.1
-        if self.starttime > np.min(tab.getcol('TIME')):
-            self.startsat_startofms = False
-        else:
-            self.startsat_startofms = True
-        if self.endtime is None:
-            self.endtime = np.max(tab.getcol('TIME'))
-        else:
-            valid_times = np.where(tab.getcol('TIME') <= self.endtime)[0]
-            if len(valid_times) == 0:
-                raise ValueError('End time of {0} is less than the first time in the '
-                                 'MS'.format(self.endtime))
-            self.endtime = tab.getcol('TIME')[valid_times[-1]]
-        if self.endtime < np.max(tab.getcol('TIME')):
-            self.goesto_endofms = False
-        else:
-            self.goesto_endofms = True
-        self.timepersample = tab.getcell('EXPOSURE', 0)
-        self.numsamples = int(np.ceil((self.endtime - self.starttime) / self.timepersample))
-        tab.close()
+            # Expand the time range covered by the observation slightly to avoid
+            # rounding issues. For example, DPPP takes ceil(startTimeParset -
+            # startTimeMS) when determining which timeslot to start with, so we need to
+            # ensure that our start time is slightly less than the true one
+            self.timepersample = tab.getcell('EXPOSURE', 0)
+            self.starttime -= self.timepersample / 100
+            self.endtime += self.timepersample / 100
+            self.startsat_startofms = (self.starttime <= np.min(tab.getcol('TIME')))
+            self.goesto_endofms = (self.endtime >= np.max(tab.getcol('TIME')))
+            self.numsamples = int(
+                np.ceil((self.endtime - self.starttime) / self.timepersample)
+            )
 
         # Get frequency info
-        sw = pt.table(self.ms_filename+'::SPECTRAL_WINDOW', ack=False)
-        self.referencefreq = sw.col('REF_FREQUENCY')[0]
-        self.channelfreqs = sw.col('CHAN_FREQ')[0]
-        self.startfreq = np.min(sw.col('CHAN_FREQ')[0])
-        self.endfreq = np.max(sw.col('CHAN_FREQ')[0])
-        self.numchannels = sw.col('NUM_CHAN')[0]
-        self.channelwidths = sw.col('CHAN_WIDTH')[0]
-        self.channelwidth = sw.col('CHAN_WIDTH')[0][0]
-        sw.close()
+        with pt.table(f"{self.ms_filename}::SPECTRAL_WINDOW", ack=False) as sw:
+            self.referencefreq = sw.col('REF_FREQUENCY')[0]
+            self.channelfreqs = sw.col('CHAN_FREQ')[0]
+            self.startfreq = np.min(sw.col('CHAN_FREQ')[0])
+            self.endfreq = np.max(sw.col('CHAN_FREQ')[0])
+            self.numchannels = sw.col('NUM_CHAN')[0]
+            self.channelwidths = sw.col('CHAN_WIDTH')[0]
+            self.channelwidth = sw.col('CHAN_WIDTH')[0][0]
 
         # Check that the channels are evenly spaced, as the use of baseline-dependent
-        # averaging (BDA) during calibration requires it. If the channels are not evenly
-        # spaced, BDA will not be used in DDECal steps even if activated in the parset
+        # averaging (BDA) during calibration requires it. If the channels are not
+        # evenly spaced, BDA will not be used in DDECal steps even if activated in the
+        # parset
         #
         # Note: the code is based on that used in DP3
         # (see https://git.astron.nl/RD/DP3/-/blob/master/base/DPInfo.cc)
@@ -122,48 +126,53 @@ class Observation(object):
             atol = 1e3  # use an absolute tolerance of 1 kHz
             for i in range(1, self.numchannels):
                 if (
-                    (self.channelfreqs[i] - self.channelfreqs[i-1] - freqstep0 >= atol) or
-                    (self.channelwidths[i] - self.channelwidths[0] >= atol)
-                ):
+                    self.channelfreqs[i] - self.channelfreqs[i - 1] - freqstep0 >= atol
+                ) or (self.channelwidths[i] - self.channelwidths[0] >= atol):
                     self.channels_are_regular = False
         if not self.channels_are_regular:
-            self.log.warning('Irregular spacing of channel frequencies found. Baseline-'
-                             'dependent averaging (if any) will be disabled.')
+            self.log.warning(
+                "Irregular spacing of channel frequencies found. Baseline-"
+                "dependent averaging (if any) will be disabled."
+            )
 
         # Get pointing info
-        obs = pt.table(self.ms_filename+'::FIELD', ack=False)
-        self.ra, self.dec = normalize_ra_dec(np.degrees(float(obs.col('REFERENCE_DIR')[0][0][0])),
-                                             np.degrees(float(obs.col('REFERENCE_DIR')[0][0][1])))
-        obs.close()
+        with pt.table(self.ms_filename+'::FIELD', ack=False) as obs:
+            self.ra, self.dec = normalize_ra_dec(
+                np.degrees(float(obs.col("REFERENCE_DIR")[0][0][0])),
+                np.degrees(float(obs.col("REFERENCE_DIR")[0][0][1])),
+            )
 
         # Get station names and diameter
-        ant = pt.table(self.ms_filename+'::ANTENNA', ack=False)
-        self.stations = ant.col('NAME')[:]
-        self.diam = float(ant.col('DISH_DIAMETER')[0])
-        if 'HBA' in self.stations[0]:
-            self.antenna = 'HBA'
-        elif 'LBA' in self.stations[0]:
-            self.antenna = 'LBA'
-        else:
-            # Set antenna to HBA to at least let Rapthor proceed.
-            self.antenna = "HBA"
-            self.log.warning(
-                "Antenna type not recognized (only LBA and HBA data "
-                "are supported at this time)"
-            )
-        ant.close()
+        with pt.table(f"{self.ms_filename}::ANTENNA", ack=False) as ant:
+            self.stations = ant.col('NAME')[:]
+            self.diam = float(ant.col('DISH_DIAMETER')[0])
+            if 'HBA' in self.stations[0]:
+                self.antenna = 'HBA'
+            elif 'LBA' in self.stations[0]:
+                self.antenna = 'LBA'
+            else:
+                # Set antenna to HBA to at least let Rapthor proceed.
+                self.antenna = "HBA"
+                self.log.warning(
+                    "Antenna type not recognized (only LBA and HBA data "
+                    "are supported at this time)"
+                )
 
         # Find mean elevation and time range for periods where the elevation
         # falls below the lowest 20% of all values. We sample every 10000 entries to
         # avoid very large arrays (note that for each time slot, there is an entry for
         # each baseline, so a typical HBA LOFAR observation would have around 1500 entries
         # per time slot)
-        el_values = pt.taql("SELECT mscal.azel1()[1] AS el from "
-                            + self.ms_filename + " limit ::10000").getcol("el")
+        el_values = pt.taql(
+            f"SELECT mscal.azel1()[1] AS el from {self.ms_filename} limit ::10000"
+        ).getcol("el")
         self.mean_el_rad = np.mean(el_values)
-        times = pt.taql("select TIME from "
-                        + self.ms_filename + " limit ::10000").getcol("TIME")
-        low_indices = np.sort(el_values.argpartition(len(el_values)//5)[:len(el_values)//5])
+        times = pt.taql(
+            f"select TIME from {self.ms_filename} limit ::10000"
+        ).getcol("TIME")
+        low_indices = np.sort(
+            el_values.argpartition(len(el_values) // 5)[: len(el_values) // 5]
+        )
         if len(low_indices):
             # At least one element is needed for the start and end time check. The check
             # assumes that the elevation either increases smoothly to a maximum and then
@@ -202,11 +211,20 @@ class Observation(object):
             self.high_el_starttime = self.starttime
             self.high_el_endtime = self.endtime
 
-    def set_calibration_parameters(self, parset, ndir, nobs, calibrator_fluxes,
-                                   target_fast_timestep, target_medium_timestep,
-                                   target_slow_timestep,
-                                   target_fulljones_timestep, target_flux=None,
-                                   generate_screens=False):
+    def set_calibration_parameters(
+        self,
+        parset,
+        ndir,
+        nobs,
+        calibrator_fluxes,
+        target_fast_timestep,
+        target_medium_timestep,
+        target_slow_timestep,
+        target_fulljones_timestep,
+        target_flux=None,
+        generate_screens=False,
+        chunk_by_time=False
+    ):
         """
         Sets the calibration parameters
 
@@ -234,6 +252,8 @@ class Observation(object):
         generate_screens : bool, optional
             If True, adjust parameters to account for differences in the way
             solving is done for screens (IDGCal)
+        chunk_by_time : bool, optional
+            If True, chunking over time is done during calibration
         """
         # Get the target solution intervals and maximum factor by which they can
         # be increased when using direction-dependent solution intervals
@@ -249,12 +269,24 @@ class Observation(object):
             solve_max_factor = 1
             smoothness_max_factor = 1
 
-        # Find the maximum solution interval in time that can be used in any solve
-        max_timestep = max(target_fast_timestep, target_medium_freqstep, target_slow_timestep, target_fulljones_timestep)
-        solint_max_timestep = max(1, int(round(max_timestep / round(self.timepersample)) * solve_max_factor))
+        if chunk_by_time:
+            # Find the maximum solution interval in time that can be used in any solve
+            solint_max_timestep = self.get_max_solint_timesteps(
+                [
+                    target_fast_timestep,
+                    target_medium_timestep,
+                    target_slow_timestep,
+                    target_fulljones_timestep,
+                ],
+                solve_max_factor,
+            )
 
-        # Determine how many calibration chunks to make (to allow parallel jobs)
-        samplesperchunk = get_chunk_size(parset['cluster_specific'], self.numsamples, nobs, solint_max_timestep)
+            # Determine how many calibration chunks to make (to allow parallel jobs)
+            samplesperchunk = get_chunk_size(
+                parset["cluster_specific"], self.numsamples, nobs, solint_max_timestep
+            )
+        else:
+            samplesperchunk = self.numsamples
 
         # Calculate start times, etc.
         chunksize = samplesperchunk * self.timepersample
@@ -391,6 +423,27 @@ class Observation(object):
         if medium_smoothnessreffrequency is None:
             medium_smoothnessreffrequency = fast_smoothnessreffrequency
         self.parameters['medium_smoothnessreffrequency'] = [medium_smoothnessreffrequency] * self.ntimechunks
+
+    def get_max_solint_timesteps(self, solints_seconds: list, solve_max_factor: int) -> int:
+        """
+        Get the maximum solution interval that can be used based on the provided
+        solution intervals.
+
+        Parameters
+        ----------
+        solints_seconds : list
+            List of solution intervals for different solution types in seconds.
+        solve_max_factor : int
+            Maximum factor by which the solution intervals can be increased.
+
+        Returns
+        -------
+        max_solint_timesteps: int
+            The maximum solution interval in number of timesteps.
+        """
+        max_solint_seconds = max(solints_seconds)
+        max_solint_timesteps = max(1, math.ceil(max_solint_seconds / self.timepersample) * solve_max_factor)
+        return max_solint_timesteps
 
     def set_prediction_parameters(self, sector_name, patch_names):
         """

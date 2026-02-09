@@ -143,6 +143,7 @@ class Field(object):
         self.idgcal_nr_channels_per_block = None  # TODO: add to strategy
         self.idgcal_polynomialdegphase = 3  # TODO: add to strategy
         self.idgcal_polynomialdegamplitude = 3  # TODO: add to strategy
+        self.disable_clean = False
 
         # Scan MS files to get observation info
         self.scan_observations()
@@ -203,17 +204,19 @@ class Field(object):
         # Check that all observations have the same pointing upto some tolerance level
         self.ra = obs0.ra
         self.dec = obs0.dec
-        # This value was determined based on 4 observations of the same field
-        # found to have ~0.02 arcsec pointing difference
-        separation_tolerance_arcsec = 0.05
+        separation_tolerance_arcsec = self.parset['separation_tolerance_arcsec']
         for obs in self.full_observations:
-            pointing_difference = misc.angular_separation((self.ra, self.dec), (obs.ra, obs.dec))
-            if pointing_difference.arcsecond >= separation_tolerance_arcsec:
-                raise ValueError('Pointing difference of {0} arcsec found between '
-                                 'msfiles {1} and {2} which exceeds the max tolerance '
-                                 'of {3} arcsec'.format(pointing_difference.arcsecond,
-                                                        obs0.ms_filename, obs.ms_filename,
-                                                        separation_tolerance_arcsec))
+            pointing_difference = misc.angular_separation(
+                (self.ra, self.dec), (obs.ra, obs.dec)
+            )
+            if pointing_difference.arcsecond > separation_tolerance_arcsec:
+                raise ValueError(
+                    f"Pointing difference of {pointing_difference.arcsecond} arcsec "
+                    f"between msfiles {obs0.ms_filename} and {obs.ms_filename} "
+                    f"exceeds the max tolerance of {separation_tolerance_arcsec} "
+                    "arcsec. Please check the files and adjust the "
+                    "separation_tolerance_arcsec option in the parset if necessary."
+                )
 
         # Check that all observations have the same station diameter
         self.diam = obs0.diam
@@ -261,19 +264,12 @@ class Field(object):
 
     def chunk_observations(self, mintime, prefer_high_el_periods=True):
         """
-        Break observations into smaller time chunks if desired
-
-        Chunking is done if:
-
-        - obs.data_fraction < 1 (so part of an observation is to be processed)
-        - nobs * nsectors < nnodes (so all nodes can be used efficiently. In particular,
-          the predict operation parallelizes over sectors and observations, so we need
-          enough observations to allow all nodes to be occupied.)
+        Break existing observations into smaller observations
 
         Parameters
         ----------
-        mintime : float or None
-            Minimum time in sec for a chunk. If None, chunking is unconstrained by time
+        mintime : float
+            Minimum duration in sec for a chunk
         prefer_high_el_periods : bool, optional
             Prefer periods for which the elevation is in the highest 80% of values for a
             given observation. This option is useful for removing periods of lower
@@ -282,89 +278,114 @@ class Field(object):
             larger than the total time of the high-elevation period for a given
             observation, then the full observation is used instead
         """
+        if mintime <= 0:
+            raise ValueError("mintime must be greater than zero")
+
         # Set the chunk size so that it is at least mintime
-        self.observations = []
+        chunked_observations = []
         for obs in self.full_observations:
+            # Adjust the minimum time for chunks made from this observation to one that
+            # is an integer multiple of its time per sample
+            obs_mintime = np.ceil(mintime / obs.timepersample) * obs.timepersample
+
+            # Due to a limitation in Dysco, we make sure to have at least two time
+            # slots per observation, otherwise the output MS cannot be written with
+            # compression
+            if int(np.ceil(obs_mintime / obs.timepersample)) < 2:
+                obs_mintime *= 2
+
+            # Find the data fraction implied by the minimum time
             target_starttime = obs.starttime
             target_endtime = obs.endtime
             data_fraction = obs.data_fraction
-            if prefer_high_el_periods and (mintime is None or (mintime < obs.high_el_endtime - obs.high_el_starttime)):
+            if prefer_high_el_periods and (
+                data_fraction
+                < (obs.high_el_endtime - obs.high_el_starttime)
+                / (obs.endtime - obs.starttime)
+            ):
                 # Use high-elevation period for chunking. We increase the data fraction
                 # to account for the decreased total observation time so that the
                 # amount of data used is kept the same
                 target_starttime = obs.high_el_starttime
                 target_endtime = obs.high_el_endtime
-                data_fraction = min(1, data_fraction * (obs.endtime - obs.starttime) /
-                                    (target_endtime - target_starttime))
+                data_fraction = min(
+                    1,
+                    data_fraction
+                    * (obs.endtime - obs.starttime)
+                    / (target_endtime - target_starttime),
+                )
             tottime = target_endtime - target_starttime
 
-            nchunks = max(1, int(np.floor(data_fraction / (mintime / tottime)))) if mintime is not None else 1
+            nchunks = max(1, int(np.floor(data_fraction / (obs_mintime / tottime))))
             if nchunks == 1:
-                # Center the chunk around the midpoint (which is generally the most
+                # Center the chunk at the midpoint (which is generally the most
                 # sensitive, near transit)
                 midpoint = target_starttime + tottime / 2
-                if mintime is not None:
-                    chunktime = min(tottime, max(mintime, data_fraction * tottime))
-                else:
-                    chunktime = data_fraction * tottime
+                chunktime = min(tottime, max(obs_mintime, data_fraction * tottime))
                 if chunktime < tottime:
-                    self.observations.append(Observation(obs.ms_filename,
-                                                         starttime=midpoint-chunktime/2,
-                                                         endtime=midpoint+chunktime/2))
+                    chunked_observations.append(
+                        Observation(
+                            obs.ms_filename,
+                            starttime=midpoint - chunktime / 2,
+                            endtime=midpoint + chunktime / 2,
+                            name=f"{os.path.basename(obs.ms_filename)}_chunk1"
+                        )
+                    )
                 else:
-                    self.observations.append(obs)
+                    chunked_observations.append(obs)
             else:
-                steptime = mintime * (tottime / mintime - nchunks) / nchunks + mintime
+                steptime = (
+                    obs_mintime * (tottime / obs_mintime - nchunks) / nchunks
+                    + obs_mintime
+                )
                 starttimes = np.arange(target_starttime, target_endtime, steptime)
-                endtimes = np.arange(target_starttime+mintime, target_endtime+mintime, steptime)
-                for starttime, endtime in zip(starttimes, endtimes):
-                    if endtime > target_endtime:
-                        endtime = target_endtime
-                        if endtime - starttime < mintime / 2:
-                            # Skip this chunk if too short
-                            self.log.warning('Skipping final chunk as being too short. Fraction '
-                                             'of data used will be lower than requested.')
-                            continue
-                    self.observations.append(Observation(obs.ms_filename, starttime=starttime,
-                                                         endtime=endtime))
+                endtimes = np.arange(
+                    target_starttime + obs_mintime,
+                    target_endtime + obs_mintime,
+                    steptime,
+                )
+                for index, (starttime, endtime) in enumerate(zip(starttimes, endtimes)):
+                    chunked_observations.append(
+                        Observation(
+                            obs.ms_filename,
+                            starttime=starttime,
+                            endtime=endtime,
+                            name=f"{os.path.basename(obs.ms_filename)}_chunk{index+1}",
+                        )
+                    )
 
-        minnobs = self.parset['cluster_specific']['max_nodes']
-        if len(self.imaging_sectors)*len(self.observations) < minnobs:
-            # To ensure all the nodes are used efficiently, try to divide up the observations
-            # to reach at least minnobs in total. For simplicity, we try to divide each existing
-            # observation into minnobs number of new observations (since there is no
-            # drawback to having more than minnobs observations in total)
-            #
-            # Note: Due to a limitation in Dysco, we make sure to have at least
-            # 2 time slots per observation, otherwise the output MS cannot be
-            # written with compression
-            prev_observations = self.observations[:]
-            self.observations = []
-            for obs in prev_observations:
-                tottime = obs.endtime - obs.starttime
-                nchunks = min(minnobs, max(1, int(tottime / mintime))) if mintime is not None else minnobs
-                if nchunks > 1:
-                    steptime = tottime / nchunks
-                    if mintime is not None:
-                        steptime -= steptime % mintime
-                    numsamples = int(np.ceil(steptime / obs.timepersample))
-                    if numsamples < 2:
-                        steptime *= 2
-                    starttimes = np.arange(obs.starttime, obs.endtime, steptime)
-                    endtimes = [st+steptime for st in starttimes]
-                    for nc, (starttime, endtime) in enumerate(zip(starttimes, endtimes)):
-                        if nc == len(endtimes)-1:
-                            endtime = obs.endtime
-                        self.observations.append(Observation(obs.ms_filename, starttime=starttime,
-                                                             endtime=endtime))
-                else:
-                    self.observations.append(obs)
+        # Update the observations in the field and imaging sectors with the new ones
+        self.update_observations(chunked_observations)
+
+    def update_observations(self, new_observations):
+        """
+        Update the observations used for processing
+
+        This method should be run when any changes to the observations has been done,
+        such as chunking or reseting the observations to the original, full ones.
+
+        Parameters
+        ----------
+        observations : list of Observation objects
+            The list of observations to use for processing
+        """
+        # Update the field's list of observations
+        #
+        # Note: self.observations are those that are used in processing;
+        # self.full_observations are the original, full obserations and should
+        # not be altered
+        self.observations = new_observations[
+            :
+        ]  # make copy so input is not altered inadvertently at some later stage
 
         # Update the copies stored in the imaging sectors (including the full-field
-        # sector, used to make the initial sky model). Other (non-imaging) sectors do not
-        # need to be updated
-        sectors_to_update = self.imaging_sectors[:]  # don't alter original with append below
-        if hasattr(self, 'full_field_sector'):
+        # sector, used to make the initial sky model). The copies in other (non-
+        # imaging) sectors do not need to be updated as they are not used for
+        # processing
+        sectors_to_update = self.imaging_sectors[
+            :
+        ]  # make a copy so we don't alter the original list with the append below
+        if hasattr(self, "full_field_sector"):
             sectors_to_update.append(self.full_field_sector)
         for sector in sectors_to_update:
             sector.observations = []
@@ -942,6 +963,10 @@ class Field(object):
                     skymodel_true_sky.concatenate(skymodel_true_sky_start, matchBy='position',
                                                   radius=matching_radius_deg, keep='from1')
                     skymodel_true_sky.setPatchPositions()
+
+                    # Force recalculation of the apparent-flux sky model from the new
+                    # true-flux one
+                    skymodel_apparent_sky = None
 
             # Use concatenated sky models to make new calibration model (we set find_sources
             # to False to preserve the source patches defined in the image operation by PyBDSF)

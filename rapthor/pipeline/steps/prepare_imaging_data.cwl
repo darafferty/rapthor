@@ -175,6 +175,7 @@ inputs:
     type: int
     inputBinding:
       prefix: numthreads=
+      valueFrom: $(runtime.cores)
       separate: False
 
   - id: steps

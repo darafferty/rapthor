@@ -46,6 +46,12 @@ The available options are described below under their respective sections.
             <https://linc.readthedocs.io/>`_ pipeline can be directly used with Rapthor.
             See :doc:`preparation` for details.
 
+    separation_tolerance_arcsec
+        Sets the pointing separation tolerance (the maximum allowed separation between
+        the pointings; default = 0.05 arcsec). This tolerance is used when more than
+        one observation is included in :term:`input_ms` to ensure that the observation
+        pointings are consistent with one another.
+
     data_colname
         Data column to be read from the input MS files (default = ``DATA``).
 
@@ -490,6 +496,10 @@ The available options are described below under their respective sections.
     save_supplementary_images
         Save dirty images and the clean masks made during each imaging cycle (default =
         ``False``).
+
+    save_filtered_model_image
+        Save image of the filtered sky model made during each imaging cycle
+        (default = ``False``).
 
     compress_selfcal_images
         Compress intermediate selfcal images to reduce storage space (default = ``True``). Uses default
