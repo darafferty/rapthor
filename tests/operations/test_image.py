@@ -144,7 +144,9 @@ class TestImage:
 
         assert image.input_parms["save_filtered_model_image"] is True
 
-    def test_finalize_without_diagnostic_plots(self, image):
+    @pytest.mark.parametrize("save_visibilities", [True, False])
+    def test_finalize_without_diagnostic_plots(self, image, save_visibilities):
+        image.field.save_visibilities = save_visibilities
         image.run()
         image.is_done()
         image.outputs["sector_diagnostic_plots"][0] = None  # Simulate missing diagnostic plots
