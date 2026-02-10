@@ -25,6 +25,42 @@ def expected_image_output():
         "sector_offsets": ["sector0_offsets.txt"],
     }
 
+@pytest.fixture
+def expected_image_output_last_cycle():
+    """
+    Fixture to provide expected output structure for CWL execution in the last cycle.
+    """
+    return {
+        "sector_I_images": [["sector0-MFS-I-image-pb.fits", "sector0-MFS-I-image.fits"]],
+        "filtered_skymodel_true_sky": ["sector0.true_sky.txt"],
+        "filtered_skymodel_apparent_sky": ["sector0.apparent_sky.txt"],
+        "pybdsf_catalog": ["sector0.source_catalog.fits"],
+        "sector_diagnostics": ["sector0_diagnostics.json"],
+        "sector_offsets": ["sector0_offsets.txt"],
+        "sector_extra_images": [[
+            'sector_1-MFS-I-image-pb.fits',
+            'sector_1-MFS-I-image-pb.fits',
+            'sector_1-MFS-I-image.fits',
+            'sector_1-MFS-Q-image.fits',
+            'sector_1-MFS-U-image.fits',
+            'sector_1-MFS-V-image.fits',
+            'sector_1-MFS-Q-image-pb.fits',
+            'sector_1-MFS-U-image-pb.fits',
+            'sector_1-MFS-V-image-pb.fits', 
+            'sector_1-MFS-I-residual.fits', 
+            'sector_1-MFS-Q-residual.fits', 
+            'sector_1-MFS-U-residual.fits', 
+            'sector_1-MFS-V-residual.fits', 
+            'sector_1-MFS-I-model-pb.fits', 
+            'sector_1-MFS-Q-model-pb.fits', 
+            'sector_1-MFS-U-model-pb.fits', 
+            'sector_1-MFS-V-model-pb.fits', 
+            'sector_1-MFS-I-dirty.fits', 
+            'sector_1-MFS-Q-dirty.fits', 
+            'sector_1-MFS-U-dirty.fits', 
+            'sector_1-MFS-V-dirty.fits'
+        ]]
+    }
 
 @pytest.fixture
 def image(field, monkeypatch, expected_image_output):
@@ -49,6 +85,39 @@ def image(field, monkeypatch, expected_image_output):
     monkeypatch.setattr(
         "rapthor.lib.cwlrunner.BaseCWLRunner.execute",
         lambda self, args, env: mocked_cwl_execution(self, args, env, expected_image_output),
+        raising=False
+    )
+    image = Image(field=field, index=1)
+
+    image.set_parset_parameters()
+    image.set_input_parameters()
+
+    return image
+
+
+@pytest.fixture
+def image_last_cycle(field, monkeypatch, expected_image_output_last_cycle):
+    """
+    Fixture to mock CWL execution for the Image operation.
+    Create an instance of the Image operation.
+    """
+    # Set the required attributes directly without running strategy setup
+    # which would do real processing
+    field.parset["regroup_input_skymodel"] = False
+    # Since we are not doing the calibration provide a non-existing h5parm file
+    field.h5parm_filename = "nonexisting_h5parm_file.h5"
+    field.scan_observations()
+    steps = set_selfcal_strategy(field)
+    field.update(steps[0], index=1, final=False)
+    # The field update will set the predict flag to True, override it here
+    field.do_predict = False
+    field.image_pol = 'I'
+    field.skip_final_major_iteration = True
+
+    # Mock the execute method on the instance
+    monkeypatch.setattr(
+        "rapthor.lib.cwlrunner.BaseCWLRunner.execute",
+        lambda self, args, env: mocked_cwl_execution(self, args, env, expected_image_output_last_cycle),
         raising=False
     )
     image = Image(field=field, index=1)
@@ -154,7 +223,17 @@ class TestImage:
         image.field.save_visibilities = save_visibilities
         image.run()
         assert image.is_done()
-
+    
+    def test_sector_extra_images_on_last_cycle(self, image_last_cycle):
+        image_last_cycle.run()
+        assert image_last_cycle.is_done()
+        # Check that the expected Q images are in the outputs
+        sector_0 = image_last_cycle.field.imaging_sectors[0]
+        assert sector_0.name == "sector_1", f"Expected sector name 'sector_1', got '{sector_0.name}'"
+        for pol in ['I', 'Q', 'U', 'V']:
+            assert hasattr(sector_0, f"{pol}_image_file_true_sky"), f"Expected {pol}_image_file_true_sky to be set in sector_1"
+        
+        
 class TestImageInitial:
     def test_set_parset_parameters(self, image_initial):
         # image_initial.set_parset_parameters()
