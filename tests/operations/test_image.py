@@ -252,11 +252,12 @@ class TestImage:
         }
         assert type_path_map == expected_map, f"Expected {expected_map}, got {type_path_map}"
     
-    def test_derive_pol_from_filename(self):
-        filename = 'sector_1-MFS-Q-image-pb.fits'
-        pol = Image.derive_pol_from_filename(filename)
-        expected_pol = 'Q'
-        assert pol == expected_pol, f"Expected polarization '{expected_pol}', got '{pol}'"
+    @pytest.mark.parametrize("pol", ["I", "Q", "U", "V", "X"])
+    def test_derive_pol_from_filename(self, pol):
+        filename = f'sector_1-MFS-{pol}-image-pb.fits'
+        derived_pol = Image.derive_pol_from_filename(filename)
+        expected_pol = pol if pol in "IQUV" else "I"
+        assert derived_pol == expected_pol, f"Expected polarization '{expected_pol}', got '{derived_pol}'"
 
 class TestImageInitial:
     def test_set_parset_parameters(self, image_initial):
