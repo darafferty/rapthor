@@ -232,8 +232,32 @@ class TestImage:
         assert sector_0.name == "sector_1", f"Expected sector name 'sector_1', got '{sector_0.name}'"
         for pol in ['I', 'Q', 'U', 'V']:
             assert hasattr(sector_0, f"{pol}_image_file_true_sky"), f"Expected {pol}_image_file_true_sky to be set in sector_1"
-        
-        
+    
+    def test_find_in_file_list(self):
+        # Test the find_in_file_list method with a sample file list
+        file_list = [
+            'sector_1-MFS-I-image-pb.fits',
+            'sector_1-MFS-I-image.fits',
+            'sector_1-MFS-Q-image-pb.fits',
+            'sector_1-MFS-Q-image.fits',
+            'sector_1-MFS-U-image-pb.fits',
+            'sector_1-MFS-U-image.fits',
+            'sector_1-MFS-V-image-pb.fits',
+            'sector_1-MFS-V-image.fits'
+        ]
+        type_path_map = Image.find_in_file_list(file_list)
+        expected_map = {
+            "image_file_true_sky": ['sector_1-MFS-I-image-pb.fits', 'sector_1-MFS-Q-image-pb.fits', 'sector_1-MFS-U-image-pb.fits', 'sector_1-MFS-V-image-pb.fits'],
+            "image_file_apparent_sky": ['sector_1-MFS-I-image.fits', 'sector_1-MFS-Q-image.fits', 'sector_1-MFS-U-image.fits', 'sector_1-MFS-V-image.fits']
+        }
+        assert type_path_map == expected_map, f"Expected {expected_map}, got {type_path_map}"
+    
+    def test_derive_pol_from_filename(self):
+        filename = 'sector_1-MFS-Q-image-pb.fits'
+        pol = Image.derive_pol_from_filename(filename)
+        expected_pol = 'Q'
+        assert pol == expected_pol, f"Expected polarization '{expected_pol}', got '{pol}'"
+
 class TestImageInitial:
     def test_set_parset_parameters(self, image_initial):
         # image_initial.set_parset_parameters()

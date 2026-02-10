@@ -450,29 +450,6 @@ class Image(Operation):
         self.field.lofar_to_true_flux_ratio = 1.0  # reset values for this cycle
         self.field.lofar_to_true_flux_std = 0.0
 
-        ext_mapping = {"image_file_true_sky": "image-pb.",
-                       "image_file_apparent_sky": "image.",
-                       "model_file_true_sky": "model-pb.",
-                       "residual_file_apparent_sky": "residual.",
-                       "dirty_file_apparent_sky": "dirty.",
-                       "mask_filename": "mask."}
-
-        def find_in_file_list(file_list):
-            type_path_map = {}
-            for name, ext in ext_mapping.items():
-                for filename in file_list:
-                    if ext in filename:
-                        if name in type_path_map:
-                            type_path_map[name] += [filename]
-                        else:
-                            type_path_map[name] = [filename]
-            return type_path_map
-
-        def derive_pol_from_filename(filename):
-            for pol in "IQUV":
-                if f"-{pol}-" in filename:
-                    return pol
-            return "I"  # default
 
         copied_manually = {
             "sector_I_images",
@@ -492,11 +469,11 @@ class Image(Operation):
             # Get the list of output files for this sector
             file_list = [x["path"] for x in self.outputs["sector_I_images"][index] +
                          self.outputs["sector_extra_images"][index]]
-            type_path_map = find_in_file_list(file_list)
+            type_path_map = Image.find_in_file_list(file_list)
             for output_type, paths in type_path_map.items():
                 if output_type != "mask_filename":
                     for path in paths:
-                        pol = derive_pol_from_filename(path)
+                        pol = Image.derive_pol_from_filename(path)
                         setattr(sector, f"{pol}_{output_type}", path)
                 else:
                     for path in paths:
@@ -585,6 +562,31 @@ class Image(Operation):
 
         # Finally call finalize() in the parent class
         super().finalize()
+    
+    @staticmethod
+    def find_in_file_list(file_list):
+        ext_mapping = {"image_file_true_sky": "image-pb.",
+                       "image_file_apparent_sky": "image.",
+                       "model_file_true_sky": "model-pb.",
+                       "residual_file_apparent_sky": "residual.",
+                       "dirty_file_apparent_sky": "dirty.",
+                       "mask_filename": "mask."}
+        type_path_map = {}
+        for name, ext in ext_mapping.items():
+            for filename in file_list:
+                if ext in filename:
+                    if name in type_path_map:
+                        type_path_map[name] += [filename]
+                    else:
+                        type_path_map[name] = [filename]
+        return type_path_map
+
+    @staticmethod
+    def derive_pol_from_filename(filename):
+        for pol in "IQUV":
+            if f"-{pol}-" in filename:
+                return pol
+        return "I"  # default
 
 
 class ImageInitial(Image):
