@@ -227,7 +227,7 @@ class TestImage:
     def test_sector_extra_images_on_last_cycle(self, image_last_cycle):
         image_last_cycle.run()
         assert image_last_cycle.is_done()
-        # Check that the expected Q images are in the outputs
+        # Check that the expected I, Q, U, V images are in the outputs
         sector_0 = image_last_cycle.field.imaging_sectors[0]
         assert sector_0.name == "sector_1", f"Expected sector name 'sector_1', got '{sector_0.name}'"
         for pol in ['I', 'Q', 'U', 'V']:
