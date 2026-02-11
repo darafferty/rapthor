@@ -4,6 +4,7 @@ Test cases for the `rapthor.operations.image` module.
 
 import pytest
 
+from pathlib import Path
 from cwl.cwl_mock import mocked_cwl_execution
 from rapthor.lib.strategy import set_selfcal_strategy
 
@@ -254,7 +255,7 @@ class TestImage:
         assert image.is_done()
         sector_0 = image.field.imaging_sectors[0]
         assert hasattr(sector_0, "mask_filename"), "Expected mask_filename to be set in sector_1"
-
+        assert isinstance(sector_0.mask_filename, str) or isinstance(sector_0.mask_filename, Path), f"Expected mask_filename to be a string, got {type(sector_0.mask_filename)}"
     def test_find_in_file_list(self):
         # Test the find_in_file_list method with a sample file list
         file_list = [
