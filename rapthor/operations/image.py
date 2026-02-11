@@ -479,10 +479,16 @@ class Image(Operation):
                     for path in paths:
                         setattr(sector, output_type, path)
 
+            # It is not saving it only recording them in the sector
+            # object
+            if self.field.save_supplementary_images:
+                filtering_mask = self.outputs["source_filtering_mask"][index]
+                if filtering_mask:
+                    setattr(sector, "mask_filename", filtering_mask)
+
             # Save the output image cubes. Note that, unlike the normal images above,
             # the cubes are copied directly since mosaicking of the cubes is not yet
             # supported
-
             if "sector_image_cube" in self.outputs:
                 dest_dir = os.path.join(self.parset['dir_working'], 'images', self.name)
                 os.makedirs(dest_dir, exist_ok=True)
