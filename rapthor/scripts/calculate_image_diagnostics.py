@@ -215,6 +215,7 @@ def check_photometry(obs, input_catalog, freq, min_number, comparison_skymodel=N
         try:
             comparison_skymodels = [lsmtool.load(comparison_skymodel)]
             comparison_surveys = ['USER_SUPPLIED']
+            print('Using the supplied comparison sky model for the photometry check')
         except (OSError, ConnectionError) as e:
             # Comparison catalog not loaded successfully
             print('Comparison sky model could not be loaded. Error was: {}. Trying to '
@@ -383,6 +384,7 @@ def check_astrometry(obs, input_catalog, image, facet_region_file, min_number,
         try:
             s_comp_astrometry = lsmtool.load(comparison_skymodel)
             s_comp_astrometry.group('every')
+            print('Using the supplied comparison sky model for the astrometry check')
         except (OSError, ConnectionError) as e:
             # Comparison catalog not loaded successfully
             s_comp_astrometry = None
