@@ -479,8 +479,10 @@ class Image(Operation):
                     for path in paths:
                         setattr(sector, output_type, path)
 
-            # It is not saving it only recording them in the sector
-            # object
+            # If the option to save supplementary images is set
+            # set the sector mask_filename attribute to the filtering mask
+            # if it exists. The saving is done in the finalize of the mosaic
+            # operation.
             if self.field.save_supplementary_images:
                 filtering_mask = self.outputs["source_filtering_mask"][index]
                 if filtering_mask:
