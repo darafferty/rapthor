@@ -570,13 +570,13 @@ inputs:
   - id: photometry_skymodel
     label: Comparison sky model for photometry diagnostics
     doc: |
-      Filename of comparison sky model for photometry diagnostics.
+      Comparison sky model for photometry diagnostics.
     type: File?
   
   - id: astrometry_skymodel
     label: Comparison sky model for astrometry diagnostics
     doc: |
-      Filename of comparison sky model for astrometry diagnostics.
+      Comparison sky model for astrometry diagnostics.
     type: File?
 
 outputs:
