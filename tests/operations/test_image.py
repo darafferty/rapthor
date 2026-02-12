@@ -211,6 +211,28 @@ class TestImage:
 
         assert image.input_parms["save_filtered_model_image"] is True
 
+    def test_diagnostic_skymodels(self, field):
+        """Test to check that the paths to the comparison sky models are set"""
+        field.photometry_skymodel = "path/to/photometry_skymodel.txt"
+        field.astrometry_skymodel = "path/to/astrometry_skymodel.txt"
+        field.parset["regroup_input_skymodel"] = False
+        field.image_pol = 'I'
+        field.skip_final_major_iteration = True
+        
+        field.scan_observations()
+
+        steps = set_selfcal_strategy(field)
+        field.update(steps[0], index=1, final=False)
+        
+        image = Image(field, index=1)
+        image.do_predict = False
+        image.apply_none = True
+        image.set_parset_parameters()
+        image.set_input_parameters()
+
+        assert image.input_parms["photometry_skymodel"]["path"] == "path/to/photometry_skymodel.txt"
+        assert image.input_parms["astrometry_skymodel"]["path"] == "path/to/astrometry_skymodel.txt"
+
     def test_finalize_without_diagnostic_plots(self, image):
         image.run()
         assert image.is_done()
