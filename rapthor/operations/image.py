@@ -362,8 +362,8 @@ class Image(Operation):
                             'max_threads': self.field.parset['cluster_specific']['max_threads'],
                             'deconvolution_threads': self.field.parset['cluster_specific']['deconvolution_threads'],
                             'save_filtered_model_image': self.field.parset["imaging_specific"]["save_filtered_model_image"],
-                            'photometry_skymodel': None if not self.photometry_skymodel else CWLFile(self.photometry_skymodel).to_json(),
-                            'astrometry_skymodel': None if not self.astrometry_skymodel else CWLFile(self.astrometry_skymodel).to_json()
+                            'photometry_skymodel': CWLFile(self.photometry_skymodel).to_json() if self.photometry_skymodel else None,
+                            'astrometry_skymodel': CWLFile(self.astrometry_skymodel).to_json() if self.astrometry_skymodel else None
                             }
         # Add parameters that depend on the set_parset parameters (set in set_parset_parameters())
         if self.peel_bright_sources:
