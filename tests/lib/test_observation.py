@@ -3,12 +3,23 @@ Test cases for the `rapthor.lib.observation` module.
 """
 
 import pytest
-
+from logging import Logger
+import numpy as np
 
 class TestObservation:
     """
     Test cases for the Observation class.
     """
+    def test_constructor(self, observation, test_ms):
+        assert observation.ms_filename == test_ms
+        assert observation.ms_predict_di_filename is None
+        assert observation.ms_predict_nc_filename is None
+        assert observation.name == "test.ms"
+        assert isinstance(observation.log, Logger)
+        assert np.isclose(observation.starttime, 4871282392.906812, rtol=1e-9)
+        assert np.isclose(observation.endtime, 4871282443.176593, rtol=1e-9)
+        assert observation.data_fraction == 1.0
+        assert observation.parameters == {}
 
     def test_copy(self):
         pass
