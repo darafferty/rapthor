@@ -158,11 +158,6 @@ def run_steps(field, steps, final=False):
             # Set whether screens should be generated
             field.generate_screens = True if (field.dde_mode == 'hybrid' and final) else False
 
-            if field.peel_non_calibrator_sources:
-                # Predict and subtract non-calibrator sources before calibration
-                op = PredictNC(field, cycle_number)
-                op.run()
-
             # Calibrate (direction-dependent)
             op = CalibrateDD(field, cycle_number)
             op.run()

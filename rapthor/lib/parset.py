@@ -256,6 +256,19 @@ class Parset:
                 "Both 'generate_initial_skymodel' and 'download_initial_skymodel' are "
                 "activated. Only one of these options can be active."
             )
+        if (
+            options["regroup_input_skymodel"]
+            and options["input_skymodel"]
+            and options["input_h5parm"]
+            and not options["facet_layout"]
+        ):
+            raise ValueError(
+                "Regrouping of the input sky model was activated, but regrouping "
+                "cannot be done when input solutions are provided unless a facet "
+                "layout file is also provided. This restriction ensures that the "
+                "directions defined for the solutions match the patches defined in "
+                "the sky model"
+            )
 
         # Calibration options
         options = settings["calibration"]

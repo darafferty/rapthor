@@ -131,13 +131,25 @@ The available options are described below under their respective sections.
 
         .. note::
 
-            The directions in the H5parm file must match the patches in the input sky
-            model, and the time and frequency coverage must be sufficient to cover the
-            duration and bandwidth of the input dataset.
+            The time and frequency coverage must be sufficient to cover the duration
+            and bandwidth of the input dataset.
+
+        .. note::
+
+            If an imput sky model is also supplied, the directions in the H5parm file
+            must match the patches in the input sky model, or, if not, a facet layout
+            file with matching directions must be supplied and
+            :term:`regroup_input_skymodel` activated.
 
     input_fulljones_h5parm
         Full path to an H5parm file with full-Jones solutions (default = None). This
-        file is used if no calibration is to be done.
+        file is used if no calibration is to be done. The notes given for
+        :term:`input_h5parm` also apply to this file.
+
+    input_normalization_h5parm
+        Full path to an H5parm file with flux-scale normalization solutions (default =
+        None). This file is used if no calibration is to be done. The notes given for
+        :term:`input_h5parm` also apply to this file.
 
     facet_layout
         Full path to a text file that defines the facet layout (default = None). This file
