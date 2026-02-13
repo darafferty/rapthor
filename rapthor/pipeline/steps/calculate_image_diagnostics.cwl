@@ -117,7 +117,6 @@ inputs:
       and a sky model will be downloaded from TGSS and LOTSS surveys (if these 
       fail it will be downloaded from NVSS).
     type:
-      - string?
       - File?
     inputBinding:
       prefix: --photometry_comparison_skymodel=
@@ -130,7 +129,6 @@ inputs:
       set to a dummy string, in which case it is then ignored by the script 
       and a sky model will be downloaded from Pan-STARRs.
     type:
-      - string?
       - File?
     inputBinding:
       prefix: --astrometry_comparison_skymodel=
