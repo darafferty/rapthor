@@ -43,6 +43,7 @@
                       'dir_local': '/tmp',
                       'global_scratch_dir': '/shared/scratch',
                       'keep_temporary_files': True,
+                      'allow_internet_access': True,
                       'local_scratch_dir': '/local',
                       'max_cores': 32,
                       'max_nodes': 8,

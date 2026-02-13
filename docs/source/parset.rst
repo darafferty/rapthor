@@ -846,3 +846,11 @@ The available options are described below under their respective sections.
 
             This option will be set to ``True`` automatically when
             :term:`debug_workflow` = ``True``.
+
+    allow_internet_access
+        Allow internet access for downloading sky models when these are not provided.
+        Default = ``True``. If ``False``, then the user must either provide the path
+        to a sky model (see :term:`input_skymodel`) or set 
+        :term:`generate_initial_skymodel` = ``True``. If photometry and/or astrometry
+        skymodels are not provided, then these will not be downloaded and the image
+        diagnostics will not be generated.
