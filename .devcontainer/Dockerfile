@@ -216,14 +216,14 @@ RUN apt-get update && \
     FROM base AS dev 
 
     WORKDIR /app
-    # copy files compiled in /build
+    # Copy files compiled in /build
     COPY --from=build /usr/local/bin /usr/local/bin
     COPY --from=build /usr/local/lib /usr/local/lib
     COPY --from=build /usr/local/share /usr/local/share
 
     CMD ["/bin/bash"]
     
-    #sanity check that the installed binaries are working
+    # Sanity check that the installed binaries are working
     RUN aoflagger --version && \
     DP3 --version && \
     wsclean --version
