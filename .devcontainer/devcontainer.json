@@ -1,0 +1,22 @@
+{
+  "name": "Rapthor Dev Container",
+  "build": {
+	"context": "..",
+    "dockerfile": "Dockerfile",
+    "target": "dev"
+  },
+  "workspaceFolder": "/src",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/src,type=bind,consistency=cached",
+  "postCreateCommand": "pip install --no-deps -e /src && pip install .[test]",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance"
+      ]
+    }
+  },
+  "remoteEnv": {
+    "PYTHONPATH": "/app:/src:${PYTHONPATH}"
+  }
+}
