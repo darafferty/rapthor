@@ -214,7 +214,6 @@ class Observation(object):
     def set_calibration_parameters(
         self,
         parset,
-        ndir,
         nobs,
         calibrator_fluxes,
         target_fast_timestep,
@@ -232,8 +231,6 @@ class Observation(object):
         ----------
         parset : dict
             Parset with processing parameters
-        ndir : int
-            Number of calibration directions/patches
         nobs : int
             Number of observations in total
         calibrator_fluxes : list

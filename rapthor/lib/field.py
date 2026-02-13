@@ -396,7 +396,7 @@ class Field(object):
         """
         ntimechunks = 0
         for obs in self.observations:
-            obs.set_calibration_parameters(self.parset, self.num_patches, len(self.observations),
+            obs.set_calibration_parameters(self.parset, len(self.observations),
                                            self.calibrator_fluxes, self.fast_timestep_sec,
                                            self.medium_timestep_sec,
                                            self.slow_timestep_sec, self.fulljones_timestep_sec,
