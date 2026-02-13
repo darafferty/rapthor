@@ -5,6 +5,7 @@ Test cases for the `rapthor.lib.observation` module.
 import pytest
 from logging import Logger
 import numpy as np
+from unittest.mock import patch
 
 class TestObservation:
     """
@@ -27,19 +28,59 @@ class TestObservation:
     def test_scan_ms(self):
         pass
 
-    def test_set_calibration_parameters(
-        self,
-        parset=None,
-        ndir=None,
-        nobs=None,
-        calibrator_fluxes=None,
-        target_fast_timestep=None,
-        target_slow_timestep_joint=None,
-        target_slow_timestep_separate=None,
-        target_fulljones_timestep=None,
-        target_flux=None,
-    ):
-        pass
+    @pytest.mark.parametrize("generate_screens", [True, False])
+    @pytest.mark.parametrize("chunk_by_time", [True, False])
+    def test_set_calibration_parameters(self, observation, generate_screens, chunk_by_time):
+        fast_timestep_sec = 20 * observation.timepersample
+        medium_timestep_sec = 120 * observation.timepersample
+        slow_timestep_sec = 300 * observation.timepersample
+        fulljones_timestep_sec = 600 * observation.timepersample
+        parset = {
+            "calibration_specific": {
+                "fast_freqstep_hz": 1e5,
+                "medium_freqstep_hz": 1.5e5,
+                "slow_freqstep_hz": 2e6,
+                "fulljones_freqstep_hz": 1e6,
+                "dd_interval_factor": 1,
+                "dd_smoothness_factor": 3,
+                "fast_smoothnessreffrequency": None,
+                "medium_smoothnessreffrequency": None,
+            }
+        }
+
+        if not generate_screens:
+            # When generate_screens is True, set_calibration_parameters should
+            # not read these parset keys.
+            parset["calibration_specific"]["dd_interval_factor"] = 1
+            parset["calibration_specific"]["dd_smoothness_factor"] = 1
+
+        if chunk_by_time:
+            cluster_specific_parameters = "mock cluster specific parameters"
+            parset["cluster_specific"] = cluster_specific_parameters
+
+        with patch("rapthor.lib.observation.get_chunk_size") as mock_get_chunk_size:
+            mock_get_chunk_size.return_value = 10
+
+            n_observations = 4
+            calibrator_fluxes = [1.0, 0.5, 0.25, 0.125]
+            observation.set_calibration_parameters(
+                parset,
+                n_observations,
+                calibrator_fluxes,
+                fast_timestep_sec,
+                medium_timestep_sec,
+                slow_timestep_sec,
+                fulljones_timestep_sec,
+                generate_screens=generate_screens,
+                chunk_by_time=chunk_by_time,
+            )
+
+            if chunk_by_time:
+                mock_get_chunk_size.assert_called_once_with(
+                    cluster_specific_parameters, observation.numsamples, n_observations,
+                    600)
+            else:
+                mock_get_chunk_size.assert_not_called()
 
     def test_set_prediction_parameters(self, sector_name=None, patch_names=None):
         pass
