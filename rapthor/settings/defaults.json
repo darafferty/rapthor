@@ -126,6 +126,7 @@
         "container_type": "docker",
         "cwl_runner": "toil",
         "debug_workflow": false,
-        "keep_temporary_files": false
+        "keep_temporary_files": false,
+        "allow_internet_access": true
     }
 }
