@@ -486,7 +486,7 @@ class Image(Operation):
             if self.field.save_supplementary_images:
                 filtering_mask = self.outputs["source_filtering_mask"][index]
                 if filtering_mask:
-                    setattr(sector, "mask_filename", filtering_mask["path"])
+                    sector.mask_filename = filtering_mask["path"]
 
             # Save the output image cubes. Note that, unlike the normal images above,
             # the cubes are copied directly since mosaicking of the cubes is not yet
