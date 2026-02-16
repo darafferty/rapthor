@@ -4,6 +4,7 @@ Test cases for the `rapthor.operations.image` module.
 
 import pytest
 
+from pathlib import Path
 from cwl.cwl_mock import mocked_cwl_execution
 from rapthor.lib.strategy import set_selfcal_strategy
 
@@ -25,6 +26,7 @@ def expected_image_output():
         "sector_offsets": ["sector0_offsets.txt"],
     }
 
+
 @pytest.fixture
 def expected_image_output_last_cycle():
     """
@@ -37,6 +39,7 @@ def expected_image_output_last_cycle():
         "pybdsf_catalog": ["sector0.source_catalog.fits"],
         "sector_diagnostics": ["sector0_diagnostics.json"],
         "sector_offsets": ["sector0_offsets.txt"],
+        "source_filtering_mask": ["sector0_mask.fits"],
         "sector_extra_images": [[
             'sector_1-MFS-I-image-pb.fits',
             'sector_1-MFS-I-image-pb.fits',
@@ -46,21 +49,22 @@ def expected_image_output_last_cycle():
             'sector_1-MFS-V-image.fits',
             'sector_1-MFS-Q-image-pb.fits',
             'sector_1-MFS-U-image-pb.fits',
-            'sector_1-MFS-V-image-pb.fits', 
-            'sector_1-MFS-I-residual.fits', 
-            'sector_1-MFS-Q-residual.fits', 
-            'sector_1-MFS-U-residual.fits', 
-            'sector_1-MFS-V-residual.fits', 
-            'sector_1-MFS-I-model-pb.fits', 
-            'sector_1-MFS-Q-model-pb.fits', 
-            'sector_1-MFS-U-model-pb.fits', 
-            'sector_1-MFS-V-model-pb.fits', 
-            'sector_1-MFS-I-dirty.fits', 
-            'sector_1-MFS-Q-dirty.fits', 
-            'sector_1-MFS-U-dirty.fits', 
+            'sector_1-MFS-V-image-pb.fits',
+            'sector_1-MFS-I-residual.fits',
+            'sector_1-MFS-Q-residual.fits',
+            'sector_1-MFS-U-residual.fits',
+            'sector_1-MFS-V-residual.fits',
+            'sector_1-MFS-I-model-pb.fits',
+            'sector_1-MFS-Q-model-pb.fits',
+            'sector_1-MFS-U-model-pb.fits',
+            'sector_1-MFS-V-model-pb.fits',
+            'sector_1-MFS-I-dirty.fits',
+            'sector_1-MFS-Q-dirty.fits',
+            'sector_1-MFS-U-dirty.fits',
             'sector_1-MFS-V-dirty.fits'
         ]]
     }
+
 
 @pytest.fixture
 def image(field, monkeypatch, expected_image_output):
@@ -223,7 +227,7 @@ class TestImage:
         image.field.save_visibilities = save_visibilities
         image.run()
         assert image.is_done()
-    
+
     def test_sector_extra_images_on_last_cycle(self, image_last_cycle):
         image_last_cycle.run()
         assert image_last_cycle.is_done()
@@ -231,8 +235,27 @@ class TestImage:
         sector_0 = image_last_cycle.field.imaging_sectors[0]
         assert sector_0.name == "sector_1", f"Expected sector name 'sector_1', got '{sector_0.name}'"
         for pol in ['I', 'Q', 'U', 'V']:
-            assert hasattr(sector_0, f"{pol}_image_file_true_sky"), f"Expected {pol}_image_file_true_sky to be set in sector_1"
+            assert hasattr(
+                sector_0, f"{pol}_image_file_true_sky"), f"Expected {pol}_image_file_true_sky to be set in sector_1"
+     
+    def test_sector_save_supplementary_images_null_mask(self, image):
+        image.field.save_supplementary_images = True
+        image.set_input_parameters()
+        image.run()
+        assert image.is_done()
+        # Simulate a null mask output and check that it is handled gracefully
+        image.outputs["source_filtering_mask"] = [None] 
+        sector_0 = image.field.imaging_sectors[0]
+        assert hasattr(sector_0, "mask_filename"), "Expected mask_filename to be set in sector_1"
     
+    def test_sector_save_supplementary_images(self, image):
+        image.field.save_supplementary_images = True
+        image.set_input_parameters()
+        image.run()
+        assert image.is_done()
+        sector_0 = image.field.imaging_sectors[0]
+        assert hasattr(sector_0, "mask_filename"), "Expected mask_filename to be set in sector_1"
+        assert isinstance(sector_0.mask_filename, (str, Path)), f"Expected mask_filename to be a string, got {type(sector_0.mask_filename)}"
     def test_find_in_file_list(self):
         # Test the find_in_file_list method with a sample file list
         file_list = [
@@ -251,13 +274,14 @@ class TestImage:
             "image_file_apparent_sky": ['sector_1-MFS-I-image.fits', 'sector_1-MFS-Q-image.fits', 'sector_1-MFS-U-image.fits', 'sector_1-MFS-V-image.fits']
         }
         assert type_path_map == expected_map, f"Expected {expected_map}, got {type_path_map}"
-    
+
     @pytest.mark.parametrize("pol", ["I", "Q", "U", "V", "X"])
     def test_derive_pol_from_filename(self, pol):
         filename = f'sector_1-MFS-{pol}-image-pb.fits'
         derived_pol = Image.derive_pol_from_filename(filename)
         expected_pol = pol if pol in "IQUV" else "I"
         assert derived_pol == expected_pol, f"Expected polarization '{expected_pol}', got '{derived_pol}'"
+
 
 class TestImageInitial:
     def test_set_parset_parameters(self, image_initial):
