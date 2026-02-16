@@ -51,11 +51,10 @@ class CalibrateDD(Operation):
 
         # Next, get the various parameters needed by the workflow
         #
-        # Get the filenames of the input files for each time chunk
-        timechunk_filename = self.field.get_obs_parameters('timechunk_filename')
+        # Get the filenames of the input files for each chunk
+        calibration_filename = self.field.get_obs_parameters('calibration_filename')
 
-        # Get the start times and number of times for the time chunks (fast and slow
-        # calibration)
+        # Get the start times and number of times for the chunks
         starttime = self.field.get_obs_parameters('starttime')
         ntimes = self.field.get_obs_parameters('ntimes')
 
@@ -90,23 +89,28 @@ class CalibrateDD(Operation):
 
         # Define various output filenames for the solution tables. We save some
         # as attributes since they are needed in finalize()
-        output_fast_h5parm = ['fast_phase_{}.h5parm'.format(i)
-                              for i in range(self.field.ntimechunks)]
-        self.fast_h5parm = 'fast_phases.h5parm'
-        output_medium1_h5parm = ['medium1_phase_{}.h5parm'.format(i)
-                                 for i in range(self.field.ntimechunks)]
-        self.medium1_h5parm = 'medium1_phases.h5parm'
-        combined_fast_medium1_h5parm = 'combined_fast_medium1_phases.h5parm'
-        output_medium2_h5parm = ['medium2_phase_{}.h5parm'.format(i)
-                                 for i in range(self.field.ntimechunks)]
-        self.medium2_h5parm = 'medium2_phases.h5parm'
+        output_fast_h5parm = [
+            "fast_phase_{}.h5parm".format(i) for i in range(self.field.nfreqchunks)
+        ]
+        self.fast_h5parm = "fast_phases.h5parm"
+        output_medium1_h5parm = [
+            "medium1_phase_{}.h5parm".format(i) for i in range(self.field.nfreqchunks)
+        ]
+        self.medium1_h5parm = "medium1_phases.h5parm"
+        combined_fast_medium1_h5parm = "combined_fast_medium1_phases.h5parm"
+        output_medium2_h5parm = [
+            "medium2_phase_{}.h5parm".format(i) for i in range(self.field.nfreqchunks)
+        ]
+        self.medium2_h5parm = "medium2_phases.h5parm"
         combined_fast_medium1_medium2_h5parm = 'combined_fast_medium1_medium2_phases.h5parm'
-        output_slow_h5parm = ['slow_gain_{}.h5parm'.format(i)
-                              for i in range(self.field.ntimechunks)]
-        self.slow_h5parm = 'slow_gains.h5parm'
-        output_idgcal_h5parm = ['idgcal_{}.h5parm'.format(i)  # TODO: chunk the solve over frequency as well as time?
-                                for i in range(self.field.ntimechunks)]
-        self.combined_h5parms = 'combined_solutions.h5'
+        output_slow_h5parm = [
+            "slow_gain_{}.h5parm".format(i) for i in range(self.field.nfreqchunks)
+        ]
+        self.slow_h5parm = "slow_gains.h5parm"
+        output_idgcal_h5parm = [
+            "idgcal_{}.h5parm".format(i) for i in range(self.field.nfreqchunks)
+        ]
+        self.combined_h5parms = "combined_solutions.h5"
         if self.field.apply_diagonal_solutions:
             solution_combine_mode = 'p1p2a2_diagonal'
         else:
@@ -250,7 +254,7 @@ class CalibrateDD(Operation):
         else:
             slow_initialsolutions_h5parm = None
 
-        self.input_parms = {'timechunk_filename': CWLDir(timechunk_filename).to_json(),
+        self.input_parms = {'calibration_filename': CWLDir(calibration_filename).to_json(),
                             'data_colname': self.field.data_colname,
                             'starttime': starttime,
                             'ntimes': ntimes,
@@ -561,14 +565,13 @@ class CalibrateDI(Operation):
 
         # Next, get the various parameters needed by the workflow
         #
-        # Get the start times and number of times for the time chunks (fast and slow
-        # calibration)
+        # Get the start times and number of times for the chunks
         starttime_fulljones = self.field.get_obs_parameters('starttime')
         ntimes_fulljones = self.field.get_obs_parameters('ntimes')
 
-        # Get the filenames of the input files for each time chunk. These are the
+        # Get the filenames of the input files for each chunk. These are the
         # output of the predict_di pipeline done before this calibration
-        timechunk_filename_fulljones = self.field.get_obs_parameters('predict_di_output_filename')
+        calibration_filename = self.field.get_obs_parameters('predict_di_output_filename')
 
         # Get the solution intervals for the calibrations
         solint_fulljones_timestep = self.field.get_obs_parameters('solint_fulljones_timestep')
@@ -576,9 +579,10 @@ class CalibrateDI(Operation):
 
         # Define various output filenames for the solution tables. We save some
         # as attributes since they are needed in finalize()
-        output_h5parm_fulljones = ['fulljones_gain_{}.h5parm'.format(i)
-                                   for i in range(self.field.ntimechunks)]
-        self.collected_h5parm_fulljones = 'fulljones_gains.h5'
+        output_h5parm_fulljones = [
+            "fulljones_gain_{}.h5parm".format(i) for i in range(self.field.nfreqchunks)
+        ]
+        self.collected_h5parm_fulljones = "fulljones_gains.h5"
 
         # Set the constraints used in the calibrations
         smoothnessconstraint_fulljones = self.field.smoothnessconstraint_fulljones
@@ -597,7 +601,7 @@ class CalibrateDI(Operation):
         solverlbfgs_iter = self.field.solverlbfgs_iter
         solverlbfgs_minibatches = self.field.solverlbfgs_minibatches
 
-        self.input_parms = {'timechunk_filename_fulljones': CWLDir(timechunk_filename_fulljones).to_json(),
+        self.input_parms = {'calibration_filename': CWLDir(calibration_filename).to_json(),
                             'data_colname': 'DATA',
                             'starttime_fulljones': starttime_fulljones,
                             'ntimes_fulljones': ntimes_fulljones,

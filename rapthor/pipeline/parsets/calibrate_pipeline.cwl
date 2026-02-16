@@ -2,13 +2,14 @@ cwlVersion: v1.2
 class: Workflow
 label: Rapthor DD calibration workflow
 doc: |
-  This workflow performs direction-dependent calibration. In general, calibration is done
-  in two parts: (1) a fast phase-only calibration (with core stations constrianed to
-  have the same solutions) to correct for ionospheric effects and (2) a further
-  unconstrained slow gain calibration to correct for station-to-station differences. Part
-  (2) is skipped if the calibration is phase-only. This calibration scheme currently works
-  for HBA data only. The final products of this workflow are solution tables
-  (h5parm files) and plots.
+  This workflow performs direction-dependent calibration. In general, calibration is
+  done in four parts: (1) a fast phase-only calibration (with core stations constrianed
+  to have the same solutions), (2) an unconstrained medium-length phase-only solve, (3)
+  an unconstrained slow gain calibration, and (4) a medium-length phase-only solve
+  (with core stations constrianed to have the same solutions). Parts (3) and  (4) are
+  skipped if the calibration is phase-only. This calibration scheme currently works for
+  HBA data only. The final products of this workflow are solution tables (h5parm files)
+  and plots.
 
 requirements:
   ScatterFeatureRequirement: {}
@@ -23,11 +24,11 @@ hints:
 {% endif %}
 
 inputs:
-  - id: timechunk_filename
-    label: Filename of input MS (time)
+  - id: calibration_filename
+    label: Filename of input MS
     doc: |
       The filenames of input MS files for which calibration will be done (length =
-      n_obs * n_time_chunks).
+      n_obs * n_freq_chunks).
     type: Directory[]
 
   - id: data_colname
@@ -37,24 +38,23 @@ inputs:
     type: string
 
   - id: starttime
-    label: Start time of each chunk
+    label: Start tim
     doc: |
-      The start time (in casacore MVTime) for each time chunk used in the fast-phase
-      calibration (length = n_obs * n_time_chunks).
+      The start time (in casacore MVTime) for each observation (length = n_obs *
+      n_freq_chunks).
     type: string[]
 
   - id: ntimes
-    label: Number of times of each chunk
+    label: Number of times
     doc: |
-      The number of timeslots for each time chunk used in the fast-phase calibration
-      (length = n_obs * n_time_chunks).
+      The number of timeslots for each observation (length = n_obs * n_freq_chunks).
     type: int[]
 
   - id: solint_fast_timestep
     label: Fast solution interval in time
     doc: |
       The solution interval in number of timeslots for the fast phase solve (length =
-      n_obs * n_time_chunks).
+      n_obs * n_freq_chunks).
     type: int[]
 
   - id: maxiter
@@ -157,8 +157,8 @@ inputs:
   - id: output_idgcal_h5parm
     label: Output solution table
     doc: |
-      The filename of the output h5parm solution table for the IDGCal solves (length
-      = n_obs * n_time_chunks).
+      The filename of the output h5parm solution table for the IDGCal solves (length =
+      n_obs * n_freq_chunks).
     type: string[]
 
   - id: idgcal_nr_channels_per_block
@@ -179,7 +179,7 @@ inputs:
     label: Slow solution interval in time
     doc: |
       The solution interval in number of timeslots for the slow-gain IDGCal solves
-      (length = n_obs * n_time_chunks).
+      (length = n_obs * n_freq_chunks).
     type: int[]
 
   - id: idgcal_polynomialdegamplitude
@@ -210,14 +210,14 @@ inputs:
     label: Fast solution interval in frequency
     doc: |
       The solution interval in number of frequency channels for the fast phase solve
-      (length = n_obs * n_time_chunks).
+      (length = n_obs * n_freq_chunks).
     type: int[]
 
   - id: fast_solutions_per_direction
     label: Fast number of solutions per direction
     doc: |
       The number of solutions per direction for the fast phase solve (length =
-      n_obs * n_calibrators * n_time_chunks).
+      n_obs * n_calibrators * n_freq_chunks).
     type:
       type: array
       items:
@@ -241,7 +241,7 @@ inputs:
     label: Fast output solution table
     doc: |
       The filename of the output h5parm solution table for the fast phase solve (length
-      = n_obs * n_time_chunks).
+      = n_obs * n_freq_chunks).
     type: string[]
 
   - id: collected_fast_h5parm
@@ -255,7 +255,7 @@ inputs:
     label: Smoothness factors
     doc: |
       The factor by which to multiply the smoothnesscontraint for the fast phase
-      solve, per direction (length = n_obs * n_calibrators * n_time_chunks).
+      solve, per direction (length = n_obs * n_calibrators * n_freq_chunks).
     type:
       type: array
       items:
@@ -272,7 +272,7 @@ inputs:
     label: Fast smoothnessreffrequency
     doc: |
       The smoothnessreffrequency Hz for the fast phase solve (length = n_obs *
-      n_time_chunks).
+      n_freq_chunks).
     type: float[]
 
   - id: fast_smoothnessrefdistance
@@ -291,21 +291,21 @@ inputs:
     label: Medium solution interval in time
     doc: |
       The solution interval in number of timeslots for the medium phase solve (length =
-      n_obs * n_time_chunks).
+      n_obs * n_freq_chunks).
     type: int[]
 
   - id: solint_medium_freqstep
     label: Medium solution interval in frequency
     doc: |
       The solution interval in number of frequency channels for the medium phase solve
-      (length = n_obs * n_time_chunks).
+      (length = n_obs * n_freq_chunks).
     type: int[]
 
   - id: medium_solutions_per_direction
     label: Medium number of solutions per direction
     doc: |
       The number of solutions per direction for the medium phase solve (length =
-      n_obs * n_calibrators * n_time_chunks).
+      n_obs * n_calibrators * n_freq_chunks).
     type:
       type: array
       items:
@@ -316,7 +316,7 @@ inputs:
     label: Medium output solution table
     doc: |
       The filename of the output h5parm solution table for the medium1 phase solve (length
-      = n_obs * n_time_chunks).
+      = n_obs * n_freq_chunks).
     type: string[]
 
   - id: collected_medium1_h5parm
@@ -338,7 +338,7 @@ inputs:
     label: Smoothness factors
     doc: |
       The factor by which to multiply the smoothnesscontraint for the medium phase
-      solve, per direction (length = n_obs * n_calibrators * n_time_chunks).
+      solve, per direction (length = n_obs * n_calibrators * n_freq_chunks).
     type:
       type: array
       items:
@@ -355,7 +355,7 @@ inputs:
     label: Fast smoothnessreffrequency
     doc: |
       The smoothnessreffrequency Hz for the medium phase solve (length = n_obs *
-      n_time_chunks).
+      n_freq_chunks).
     type: float[]
 
   - id: medium_smoothnessrefdistance
@@ -412,14 +412,14 @@ inputs:
     label: BDA maxinterval
     doc: |
       The maximum interval duration (in sec) over which BDA time averaging is
-      done in the calibration (length = n_obs * n_time_chunks).
+      done in the calibration (length = n_obs * n_freq_chunks).
     type: float[]
 
   - id: bda_minchannels
     label: BDA minchannels
     doc: |
       The minimum number of channles remaining after BDA frequency averaging is
-      done in the calibration (length = n_obs * n_time_chunks).
+      done in the calibration (length = n_obs * n_freq_chunks).
     type: int[]
 
   - id: llssolver
@@ -575,7 +575,7 @@ inputs:
     label: Slow number of solutions per direction
     doc: |
       The number of solutions per direction for the
-      slow-gain solve (length = n_obs * n_directions * n_time_chunks).
+      slow-gain solve (length = n_obs * n_directions * n_freq_chunks).
     type:
       type: array
       items:
@@ -586,7 +586,7 @@ inputs:
     label: Smoothness factors
     doc: |
       The factor by which to multiply the smoothnesscontraint for the
-      slow-gain solve, per direction (length = n_obs * n_calibrators * n_time_chunks).
+      slow-gain solve, per direction (length = n_obs * n_calibrators * n_freq_chunks).
     type:
       type: array
       items:
@@ -672,7 +672,7 @@ inputs:
     label: Medium output solution table
     doc: |
       The filename of the output h5parm solution table for the medium2 phase solve (length
-      = n_obs * n_time_chunks).
+      = n_obs * n_freq_chunks).
     type: string[]
 
   - id: combined_fast_medium1_medium2_h5parm

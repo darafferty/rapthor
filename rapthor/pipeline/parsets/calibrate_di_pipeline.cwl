@@ -21,7 +21,7 @@ hints:
 {% endif %}
 
 inputs:
-  - id: timechunk_filename_fulljones
+  - id: calibration_filename
     label: Filename of input MS for full-Jones solve
     doc: |
       The filenames of input MS files for which the full-Jones gain

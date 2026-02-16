@@ -222,8 +222,7 @@ class Observation(object):
         target_slow_timestep,
         target_fulljones_timestep,
         target_flux=None,
-        generate_screens=False,
-        chunk_by_time=False
+        generate_screens=False
     ):
         """
         Sets the calibration parameters
@@ -252,8 +251,6 @@ class Observation(object):
         generate_screens : bool, optional
             If True, adjust parameters to account for differences in the way
             solving is done for screens (IDGCal)
-        chunk_by_time : bool, optional
-            If True, chunking over time is done during calibration
         """
         # Get the target solution intervals and maximum factor by which they can
         # be increased when using direction-dependent solution intervals
@@ -269,57 +266,53 @@ class Observation(object):
             solve_max_factor = 1
             smoothness_max_factor = 1
 
-        if chunk_by_time:
-            # Find the maximum solution interval in time that can be used in any solve
-            solint_max_timestep = self.get_max_solint_timesteps(
-                [
-                    target_fast_timestep,
-                    target_medium_timestep,
-                    target_slow_timestep,
-                    target_fulljones_timestep,
-                ],
-                solve_max_factor,
-            )
+        # Find the frequency chunk size in number of channels. We use the target
+        # frequency step size for the slow solve, as this is the solve that determines
+        # the frequency chunking
+        nchannels_per_chunk = max(
+            1, self.get_nearest_freqstep(target_slow_freqstep / self.channelwidth)
+        )
 
-            # Determine how many calibration chunks to make (to allow parallel jobs)
-            samplesperchunk = get_chunk_size(
-                parset["cluster_specific"], self.numsamples, nobs, solint_max_timestep
-            )
+        # Calculate the number of frequency chunks to use. Frequency chunking is only
+        # needed by IDGCal
+        if generate_screens and self.numchannels > nchannels_per_chunk:
+            # Divide up the total bandwidth into chunks of at least nchannels_per_chunk
+            self.nfreqchunks = max(1, int(self.numchannels / nchannels_per_chunk))
         else:
-            samplesperchunk = self.numsamples
+            self.nfreqchunks = 1
+        startchan_list = [(nchannels_per_chunk * i) for i in range(self.nfreqchunks)]
+        if startchan_list[-1] >= self.numchannels:
+            # Make sure the last start channel does not equal or exceed the total
+            # number of channels
+            startchan_list.pop(-1)
+            self.nfreqchunks -= 1
+        self.log.debug(
+            "Using {0} frequency chunk{1} for "
+            "calibration".format(self.nfreqchunks, "s" if self.nfreqchunks > 1 else "")
+        )
 
-        # Calculate start times, etc.
-        chunksize = samplesperchunk * self.timepersample
-        mystarttime = self.starttime
-        myendtime = self.endtime
-        if (myendtime - mystarttime) > chunksize:
-            # Divide up the total duration into chunks of chunksize
-            nchunks = int(np.ceil(self.numsamples * self.timepersample / chunksize))
-        else:
-            nchunks = 1
-        starttimes = [mystarttime+(chunksize * i) for i in range(nchunks)]
-        if starttimes[-1] >= myendtime:
-            # Make sure the last start time does not equal or exceed the end time
-            starttimes.pop(-1)
-            nchunks -= 1
-        self.ntimechunks = nchunks
-        self.log.debug('Using {0} time chunk{1} for '
-                       'calibration'.format(self.ntimechunks, "s" if self.ntimechunks > 1 else ""))
-        if self.antenna == 'LBA':
-            # For LBA, use the MS files with non-calibrator sources subtracted
-            self.parameters['timechunk_filename'] = [self.ms_predict_nc_filename] * self.ntimechunks
-        else:
-            # For other data, use the primary MS files
-            self.parameters['timechunk_filename'] = [self.ms_filename] * self.ntimechunks
-        self.parameters['predict_di_output_filename'] = [self.ms_predict_di_filename] * self.ntimechunks
-        self.parameters['starttime'] = [misc.convert_mjd2mvt(t) for t in starttimes]
-        self.parameters['ntimes'] = [samplesperchunk] * self.ntimechunks
+        # Set the MS filename, start channel, and number of channels for each frequncy
+        # chunk
+        #
+        # Note: here and later we make lists of the parameters by duplicating the
+        # values (for a list of length self.nfreqchunks). This duplication is done
+        # because all observation parameters must be scatterable over lists of the same
+        # length. This restriction is due to the way the scatter is done in the CWL
+        # workflow
+        self.parameters['calibration_filename'] = [self.ms_filename] * self.nfreqchunks
+        self.parameters["predict_di_output_filename"] = [
+            self.ms_predict_di_filename
+        ] * self.nfreqchunks
+        self.parameters["startchan"] = startchan_list * self.nfreqchunks
+        self.parameters['nchans'] = [nchannels_per_chunk] * self.nfreqchunks
 
-        # Set last entry in ntimes list to extend to end of observation
-        if self.goesto_endofms:
-            self.parameters['ntimes'][-1] = 0
-        else:
-            self.parameters['ntimes'][-1] += int(self.numsamples - (samplesperchunk * self.ntimechunks))
+        # Calculate start time and number of time slots to use. We set ntimes to 0 if
+        # the observation extends to the end of the MS file, as DP3 interprets that to
+        # mean it should use all time slots from the start time onwards
+        self.parameters['starttime'] = [self.starttime] * self.nfreqchunks
+        self.parameters["ntimes"] = [
+            0 if self.goesto_endofms else math.ceil(self.endtime / self.timepersample)
+        ] * self.nfreqchunks
 
         # Find solution intervals for fast- and medium-phase solves. The solve is split
         # into time chunks instead of frequency chunks, since continuous frequency
@@ -328,42 +321,87 @@ class Observation(object):
         #
         # Note: we don't explicitly check that the resulting solution intervals fit
         # within the observation's size, as this is handled by DP3
-        solint_fast_timestep = max(1, int(round(target_fast_timestep / round(self.timepersample)) * solve_max_factor))
-        solint_fast_freqstep = max(1, self.get_nearest_freqstep(target_fast_freqstep / self.channelwidth))
-        solint_medium_timestep = max(1, int(round(target_medium_timestep / round(self.timepersample)) * solve_max_factor))
-        solint_medium_freqstep = max(1, self.get_nearest_freqstep(target_medium_freqstep / self.channelwidth))
-
-        # Set the solution intervals for the fast- and medium-phase solves
-        self.parameters['solint_fast_timestep'] = [solint_fast_timestep] * self.ntimechunks
-        self.parameters['solint_fast_freqstep'] = [solint_fast_freqstep] * self.ntimechunks
-        self.parameters['solint_medium_timestep'] = [solint_medium_timestep] * self.ntimechunks
-        self.parameters['solint_medium_freqstep'] = [solint_medium_freqstep] * self.ntimechunks
+        solint_fast_timestep = max(
+            1,
+            int(
+                round(target_fast_timestep / round(self.timepersample))
+                * solve_max_factor
+            ),
+        )
+        solint_fast_freqstep = max(
+            1, self.get_nearest_freqstep(target_fast_freqstep / self.channelwidth)
+        )
+        solint_medium_timestep = max(
+            1,
+            int(
+                round(target_medium_timestep / round(self.timepersample))
+                * solve_max_factor
+            ),
+        )
+        solint_medium_freqstep = max(
+            1, self.get_nearest_freqstep(target_medium_freqstep / self.channelwidth)
+        )
+        self.parameters["solint_fast_timestep"] = [solint_fast_timestep] * self.nfreqchunks
+        self.parameters['solint_fast_freqstep'] = [solint_fast_freqstep] * self.nfreqchunks
+        self.parameters['solint_medium_timestep'] = [solint_medium_timestep] * self.nfreqchunks
+        self.parameters['solint_medium_freqstep'] = [solint_medium_freqstep] * self.nfreqchunks
 
         # Find solution intervals for the gain solves
         #
         # Note: as with the fast/medium-phase solves, we don't explicitly check that the
         # resulting solution intervals fit within the observation's size, as this is
         # handled by DP3
-        solint_slow_timestep = max(1, int(round(target_slow_timestep / round(self.timepersample)) * solve_max_factor))
-        solint_slow_freqstep = max(1, self.get_nearest_freqstep(target_slow_freqstep / self.channelwidth))
-        self.parameters['solint_slow_timestep'] = [solint_slow_timestep] * self.ntimechunks
-        self.parameters['solint_slow_freqstep'] = [solint_slow_freqstep] * self.ntimechunks
-        solint_fulljones_timestep = max(1, int(round(target_fulljones_timestep / round(self.timepersample))))
-        solint_fulljones_freqstep = max(1, self.get_nearest_freqstep(target_fulljones_freqstep / self.channelwidth))
-        self.parameters['solint_fulljones_timestep'] = [solint_fulljones_timestep] * self.ntimechunks
-        self.parameters['solint_fulljones_freqstep'] = [solint_fulljones_freqstep] * self.ntimechunks
+        solint_slow_timestep = max(
+            1,
+            int(
+                round(target_slow_timestep / round(self.timepersample))
+                * solve_max_factor
+            ),
+        )
+        solint_slow_freqstep = max(
+            1, self.get_nearest_freqstep(target_slow_freqstep / self.channelwidth)
+        )
+        self.parameters["solint_slow_timestep"] = [
+            solint_slow_timestep
+        ] * self.nfreqchunks
+        self.parameters["solint_slow_freqstep"] = [
+            solint_slow_freqstep
+        ] * self.nfreqchunks
+        solint_fulljones_timestep = max(
+            1, int(round(target_fulljones_timestep / round(self.timepersample)))
+        )
+        solint_fulljones_freqstep = max(
+            1, self.get_nearest_freqstep(target_fulljones_freqstep / self.channelwidth)
+        )
+        self.parameters["solint_fulljones_timestep"] = [
+            solint_fulljones_timestep
+        ] * self.nfreqchunks
+        self.parameters["solint_fulljones_freqstep"] = [
+            solint_fulljones_freqstep
+        ] * self.nfreqchunks
         self.parameters["idgcal_nr_channels_per_block"] = [
-            round((self.endfreq - self.startfreq) / target_slow_freqstep)
-        ] * self.ntimechunks
+            nchannels_per_chunk
+        ] * self.nfreqchunks
 
         # Define the BDA (baseline-dependent averaging) max interval constraints. They
         # are set to the solution intervals *before* adjusting for the DD intervals
         # to ensure that they match the smallest interval used in the solves (since
         # maxinterval cannot exceed solint in DDECal)
-        self.parameters['bda_maxinterval'] = [max(1.0, int(min(solint_fast_timestep, solint_slow_timestep) / solve_max_factor) * self.timepersample)] * self.ntimechunks  # sec
-        self.parameters['bda_minchannels'] = [max(1, int(self.numchannels / min(solint_fast_freqstep, solint_slow_freqstep)))] * self.ntimechunks  # channels
+        self.parameters["bda_maxinterval"] = [
+            max(
+                1.0,
+                int(min(solint_fast_timestep, solint_slow_timestep) / solve_max_factor)
+                * self.timepersample,
+            )
+        ] * self.nfreqchunks  # sec
+        self.parameters["bda_minchannels"] = [
+            max(
+                1,
+                int(self.numchannels / min(solint_fast_freqstep, solint_slow_freqstep)),
+            )
+        ] * self.nfreqchunks  # channels
 
-        # Define the direction-dependent solution interval list for the fast and
+        # Define the direction-dependent solution interval list for the fast, medium, and
         # slow solves (the full-Jones solve is direction-independent so is not included).
         # The list values are defined as the number of solutions that will be obtained for
         # each base solution interval, with one entry per direction
@@ -401,16 +439,20 @@ class Observation(object):
                     while solint % n_sols:
                         n_sols -= 1
                     solutions_per_direction.append(n_sols)
-                self.parameters[f'{solve_type}_solutions_per_direction'] = [solutions_per_direction] * self.ntimechunks
-
+                self.parameters[f"{solve_type}_solutions_per_direction"] = [
+                    solutions_per_direction
+                ] * self.nfreqchunks
             else:
-                self.parameters[f'{solve_type}_solutions_per_direction'] = [[1] * len(calibrator_fluxes)] * self.ntimechunks
+                self.parameters[f"{solve_type}_solutions_per_direction"] = [
+                    [1] * len(calibrator_fluxes)
+                ] * self.nfreqchunks
 
             # Set the smoothness_dd_factors so that brighter sources have smaller
             # smoothing factors
-            self.parameters[f'{solve_type}_smoothness_dd_factors'] = [smoothness_dd_factors] * self.ntimechunks
+            self.parameters[f'{solve_type}_smoothness_dd_factors'] = smoothness_dd_factors
 
-        # Set the smoothnessreffrequency for the fast solves, if not set by the user
+        # Set the smoothnessreffrequency for the phase-only solves, if not set by the
+        # user
         fast_smoothnessreffrequency = parset['calibration_specific']['fast_smoothnessreffrequency']
         if fast_smoothnessreffrequency is None:
             if self.antenna == 'HBA':
@@ -418,32 +460,16 @@ class Observation(object):
             elif self.antenna == 'LBA':
                 # Select a frequency at the midpoint of the frequency coverage of this observation
                 fast_smoothnessreffrequency = (self.startfreq + self.endfreq) / 2.0
-        self.parameters['fast_smoothnessreffrequency'] = [fast_smoothnessreffrequency] * self.ntimechunks
-        medium_smoothnessreffrequency = parset['calibration_specific']['medium_smoothnessreffrequency']
-        if medium_smoothnessreffrequency is None:
-            medium_smoothnessreffrequency = fast_smoothnessreffrequency
-        self.parameters['medium_smoothnessreffrequency'] = [medium_smoothnessreffrequency] * self.ntimechunks
-
-    def get_max_solint_timesteps(self, solints_seconds: list, solve_max_factor: int) -> int:
-        """
-        Get the maximum solution interval that can be used based on the provided
-        solution intervals.
-
-        Parameters
-        ----------
-        solints_seconds : list
-            List of solution intervals for different solution types in seconds.
-        solve_max_factor : int
-            Maximum factor by which the solution intervals can be increased.
-
-        Returns
-        -------
-        max_solint_timesteps: int
-            The maximum solution interval in number of timesteps.
-        """
-        max_solint_seconds = max(solints_seconds)
-        max_solint_timesteps = max(1, math.ceil(max_solint_seconds / self.timepersample) * solve_max_factor)
-        return max_solint_timesteps
+        self.parameters["fast_smoothnessreffrequency"] = [
+            fast_smoothnessreffrequency
+        ] * self.nfreqchunks
+        medium_smoothnessreffrequency = (
+            parset["calibration_specific"]["medium_smoothnessreffrequency"]
+            or fast_smoothnessreffrequency
+        )
+        self.parameters["medium_smoothnessreffrequency"] = [
+            medium_smoothnessreffrequency
+        ] * self.nfreqchunks
 
     def set_prediction_parameters(self, sector_name, patch_names):
         """
