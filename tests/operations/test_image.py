@@ -296,6 +296,31 @@ class TestImageInitial:
         image_initial.run()
         assert image_initial.is_done()
 
+    @pytest.mark.parametrize("dde_method", ["single", "full"])
+    def test_initial_image_with_dde_method_single_does_not_raise(self, field, dde_method):
+        """
+        Regression test for AttributeError when generate_initial_image=True.
+        """
+        # Set dde_method to 'single' to trigger the bug condition
+        field.parset["imaging_specific"]["dde_method"] = dde_method
+        field.dde_method = dde_method  # Ensure the field attribute is also set
+        field.do_predict = False
+        field.scan_observations()
+        field.define_full_field_sector()
+        field.image_pol = 'I'
+        
+        image_initial = ImageInitial(field)
+        
+        # This should NOT raise AttributeError: 'Sector' object has no attribute 'central_patch'
+        # The bug causes this to fail because preapply_dde_solutions is incorrectly True
+        image_initial.set_parset_parameters()
+        image_initial.set_input_parameters()
+        
+        # Verify apply_none is True and preapply_dde_solutions is False
+        assert image_initial.apply_none is True, "apply_none should be True for ImageInitial"
+        assert image_initial.preapply_dde_solutions is False, \
+            "preapply_dde_solutions should be False for ImageInitial even with dde_method='single'"
+
     def test_initial_image_save_model_image(self, field):
         field.parset["imaging_specific"]["save_filtered_model_image"] = True
         field.do_predict = False

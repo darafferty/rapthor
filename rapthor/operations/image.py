@@ -608,6 +608,7 @@ class ImageInitial(Image):
         # Set the template filenames
         self.pipeline_parset_template = 'image_pipeline.cwl'
         self.subpipeline_parset_template = 'image_sector_pipeline.cwl'
+        self.apply_none = True
 
     def set_parset_parameters(self):
         """
@@ -631,7 +632,7 @@ class ImageInitial(Image):
         # model generation
         self.apply_amplitudes = False
         self.apply_fulljones = False
-        self.apply_none = True
+        
         self.apply_normalizations = False
         self.field.full_field_sector.auto_mask = 5.0
         self.field.full_field_sector.auto_mask_nmiter = 1
