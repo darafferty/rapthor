@@ -104,15 +104,19 @@ def image_fits(tmp_path):
 
     Copy file from resources folder to temporary directory. 
     Data adapted from fits.util.get_testdata_filepath('test0.fits'):
+    
+    .. code-block:: python
+
+        from astropy.io import fits
+
         fits_image_filename = fits.util.get_testdata_filepath('test0.fits')
-        image_path = tmp_path /"test_image.fits"
         with fits.open(fits_image_filename) as hdul:
             hdr = hdul[1].header
             hdr["BMAJ"] = 0.1
             hdr["BMIN"] = 0.1
             hdr["PA"] = 0.0
-            hdul[1].header = hdr
-            hdul.writeto(image_path)
+            hdul.writeto(tmp_path / "test_image.fits")
+
     """
     shutil.copy((RESOURCE_DIR / "test_image.fits"), tmp_path / "test_image.fits")
     return Path(tmp_path / "test_image.fits")
