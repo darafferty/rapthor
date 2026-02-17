@@ -7,6 +7,7 @@ workflow:
 
 variables:
   BUILD_DOCKER_IMAGE: "0"
+  DOCKER_BUILD_OPTIONS: "--provenance=false --sbom=false"
   GIT_DEPTH: 0  # do not do shallow clones, needed for `git describe --tags`
   GIT_STRATEGY: clone  # ensure every job starts with a pristine working copy
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
@@ -204,9 +205,9 @@ build_base:
     - |
       if ! docker manifest inspect $BASE_IMAGE > /dev/null || [ "$BUILD_DOCKER_IMAGE" = "1" ]
       then
-        [ "$BUILD_DOCKER_IMAGE" = "1" ] && DOCKER_CACHE="--no-cache" || DOCKER_CACHE=""
+        [ "$BUILD_DOCKER_IMAGE" = "1" ] && DOCKER_BUILD_OPTIONS="$DOCKER_BUILD_OPTIONS --no-cache"
         docker build \
-          $DOCKER_CACHE \
+          $DOCKER_BUILD_OPTIONS \
           --build-arg AOFLAGGER_COMMIT \
           --build-arg CASACORE_COMMIT \
           --build-arg DP3_COMMIT \
