@@ -196,7 +196,7 @@ class Image(Operation):
             concat_filename.append(image_root[-1] + '_concat.ms')
 
             # Set other parameters
-            if self.field.parset["imaging_specific"]["use_clean_mask"] and sector.I_mask_file is not None:
+            if self.field.parset["imaging_specific"]["use_clean_mask"] and sector.I_mask_file:
                 # Use the existing mask
                 previous_mask_filename.append(sector.I_mask_file)
             else:
@@ -467,7 +467,8 @@ class Image(Operation):
             "sector_region_file",
             "visibilities",
             "sector_diagnostics_plots",
-            "sector_diagnostics"
+            "sector_diagnostics",
+            "visibilities"
         }
         for index, sector in enumerate(self.field.imaging_sectors):
             # Get the list of output files for this sector
@@ -530,10 +531,14 @@ class Image(Operation):
             # Save sector imaging mask
             dst_dir = os.path.join(self.parset['dir_working'], 'masks', 'image_{}'.format(self.index))
             os.makedirs(dst_dir, exist_ok=True)
-            src_filename = self.outputs["source_filtering_mask"][index]["path"]
-            dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
-            sector.I_mask_file = dst_filename
-            shutil.copy(src_filename, dst_filename)
+            # if IQUV images are made, the mask is not generated.
+            if self.outputs["source_filtering_mask"][index]:
+                src_filename = self.outputs["source_filtering_mask"][index]["path"]
+                dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
+                sector.I_mask_file = dst_filename
+                shutil.copy(src_filename, dst_filename)
+            else:
+                sector.I_mask_file = None
 
             # The output ds9 region file, if made
             if self.use_facets:
@@ -681,7 +686,8 @@ class ImageInitial(Image):
             "sector_diagnostic_plots",
             "sector_diagnostics",
             "filtered_skymodel_true_sky",
-            "filtered_skymodel_apparent_sky"
+            "filtered_skymodel_apparent_sky",
+            "visibilities"
         }
         # The output image filenames
         image_root = os.path.join(self.pipeline_working_dir, sector.name)
@@ -809,7 +815,8 @@ class ImageNormalize(Image):
             "sector_image_cube",
             "sector_image_cube_beams",
             "sector_image_cube_frequencies",
-            "sector_normalize_h5parm"
+            "sector_normalize_h5parm",
+            "visibilities"
         }
         dst_dir = os.path.join(self.parset['dir_working'], 'images', self.name)
         os.makedirs(dst_dir, exist_ok=True)
