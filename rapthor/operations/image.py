@@ -552,6 +552,10 @@ class Image(Operation):
             copied_manually.update({"sector_diagnostic_plots"})
 
             # Read in the image diagnostics and log a summary of them
+            #
+            # Note: this file is currently not moved (or deleted during the cleanup
+            # below), and so should remain in its original location if needed (e.g.,
+            # for restarted runs)
             diagnostics_file = self.outputs["sector_diagnostics"][index]["path"]
             with open(diagnostics_file, "r") as f:
                 diagnostics_dict = json.load(f)
@@ -563,17 +567,18 @@ class Image(Operation):
                 self.field.lofar_to_true_flux_ratio = ratio
                 self.field.lofar_to_true_flux_std = std
 
-            # Save other outputs
-            self.copy_outputs_to(
-                os.path.join(
-                    self.parset["dir_working"],
-                    "images",
-                    f"image_{self.index}",
-                    sector.name,
-                ),
-                exclude=copied_manually.union(do_not_copy),
-                move=True
-            )
+        # Save other outputs and clean up
+        self.copy_outputs_to(
+            os.path.join(
+                self.parset["dir_working"],
+                "images",
+                f"image_{self.index}",
+                sector.name,
+            ),
+            exclude=copied_manually.union(do_not_copy),
+            move=True
+        )
+        self.clean_outputs(do_not_copy)
 
         # Finally call finalize() in the parent class
         super().finalize()
@@ -710,6 +715,10 @@ class ImageInitial(Image):
         copied_manually.update({"sector_diagnostic_plots"})
 
         # Read in the image diagnostics and log a summary of them
+        #
+        # Note: this file is currently not moved (or deleted during the cleanup below),
+        # and so should remain in its original location if needed (e.g., for restarted
+        # runs)
         diagnostics_file = self.outputs["sector_diagnostics"][0]["path"]
         with open(diagnostics_file, 'r') as f:
             diagnostics_dict = json.load(f)
@@ -718,12 +727,13 @@ class ImageInitial(Image):
         self.field.lofar_to_true_flux_ratio = ratio
         self.field.lofar_to_true_flux_std = std
 
-        # Save other outputs
+        # Save other outputs and clean up
         self.copy_outputs_to(
             os.path.join(self.parset["dir_working"], "images", self.name),
             exclude=copied_manually.union(do_not_copy),
             move=True
         )
+        self.clean_outputs(do_not_copy)
 
         # Finally call finalize() of the Operation class
         super(Image, self).finalize()
@@ -819,12 +829,13 @@ class ImageNormalize(Image):
         self.copy_outputs_to(dest_dir, include={"sector_normalize_h5parm"}, move=True)
         copied_manually.update({"sector_normalize_h5parm"})
 
-        # Save other outputs
+        # Save other outputs and clean up
         self.copy_outputs_to(
             os.path.join(self.parset["dir_working"], "images", self.name),
             exclude=copied_manually.union(do_not_copy),
             move=True
         )
+        self.clean_outputs(do_not_copy)
 
         # Set the flags for subsequent processing
         self.field.normalize_flux_scale = False

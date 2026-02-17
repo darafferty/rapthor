@@ -226,12 +226,18 @@ class Operation(object):
                         output_value, dest_dir, overwrite=overwrite, move=move
                     )
 
-    def clean_outputs(self):
+    def clean_outputs(self, include=None):
         """
         Clean temporary output files, if needed.
+
+        Parameters
+        ----------
+        include : list or None
+            List of files to include in the cleanup
         """
-        for output in self.outputs.values():
-            clean_if_cwl_file_or_directory(output)
+        for output_key, output_value in self.outputs.items():
+            if include is None or output_key in include:
+                clean_if_cwl_file_or_directory(output_value)
 
     def is_done(self):
         """
