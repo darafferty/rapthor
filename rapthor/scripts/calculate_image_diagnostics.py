@@ -553,7 +553,7 @@ def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_im
                        'dynamic_range_local_flat_noise': dynamic_range_local_flat_noise,
                        'freq': img_true_sky.freq,
                        'beam_fwhm': img_true_sky.beam})
-
+    """ see if skipping these lines just works
     # Do the photometry check and update the ouput dict
     result = check_photometry(obs_list[beam_ind], input_catalog, img_true_sky.freq,
                               min_number, comparison_skymodel=photometry_comparison_skymodel,
@@ -579,7 +579,7 @@ def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_im
             if os.path.exists(dst_filename):
                 os.remove(dst_filename)
             shutil.copy(src_filename, dst_filename)
-
+    """
 
 if __name__ == '__main__':
     descriptiontext = "Calculate image photometry and astrometry diagnostics.\n"
