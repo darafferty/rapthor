@@ -231,6 +231,7 @@ install_rapthor:
   script:
     - |
       docker build \
+        $DOCKER_BUILD_OPTIONS \
         --build-arg BASE_IMAGE \
         --build-arg RAPTHOR_VERSION \
         --file ci/ubuntu_22_04-rapthor \
