@@ -203,11 +203,9 @@ build_base:
   extends: .setup_docker
   script:
     - |
-      set -x
       if ! docker manifest inspect $BASE_IMAGE > /dev/null || [ "$BUILD_DOCKER_IMAGE" = "1" ]
       then
         [ "$BUILD_DOCKER_IMAGE" = "1" ] && DOCKER_BUILD_OPTIONS="$DOCKER_BUILD_OPTIONS --no-cache"
-        echo "DOCKER_BUILD_OPTIONS=$DOCKER_BUILD_OPTIONS"
         docker build \
           $DOCKER_BUILD_OPTIONS \
           --build-arg AOFLAGGER_COMMIT \
