@@ -513,11 +513,11 @@ class Image(Operation):
                         include={f"filtered_skymodel_{skymodel_type}"},
                         move=True,
                     )
-                    copied_manually.update(f"filtered_skymodel_{skymodel_type}")
+                    copied_manually.update({f"filtered_skymodel_{skymodel_type}"})
 
             # The output PyBDSF source catalog
             self.copy_outputs_to(dest_dir, index=index, include={"pybdsf_catalog"}, move=True)
-            copied_manually.update("pybdsf_catalog")
+            copied_manually.update({"pybdsf_catalog"})
 
             # The output ds9 region file, if made
             if self.use_facets:
@@ -525,7 +525,7 @@ class Image(Operation):
                     self.parset["dir_working"], "regions", "image_{}".format(self.index)
                 )
                 self.copy_outputs_to(dest_dir, index=index, include={"sector_region_file"}, move=True)
-            copied_manually.update("sector_region_file")
+            copied_manually.update({"sector_region_file"})
 
             # The imaging visibilities
             if self.field.save_visibilities:
@@ -536,7 +536,7 @@ class Image(Operation):
                     sector.name,
                 )
                 self.copy_outputs_to(dest_dir, index=index, include={"visibilities"}, move=True)
-            copied_manually.update("visibilities")
+            copied_manually.update({"visibilities"})
 
             # The astrometry and photometry plots
             dest_dir = os.path.join(
@@ -549,7 +549,7 @@ class Image(Operation):
                     include={"sector_diagnostic_plots"},
                     move=True,
                 )
-            copied_manually.update("sector_diagnostic_plots")
+            copied_manually.update({"sector_diagnostic_plots"})
 
             # Read in the image diagnostics and log a summary of them
             diagnostics_file = self.outputs["sector_diagnostics"][index]["path"]
@@ -707,7 +707,7 @@ class ImageInitial(Image):
         dest_dir = os.path.join(self.parset["dir_working"], "plots", self.name)
         if self.outputs["sector_diagnostic_plots"][0]:
             self.copy_outputs_to(dest_dir, include={"sector_diagnostic_plots"}, move=True)
-        copied_manually.update("sector_diagnostic_plots")
+        copied_manually.update({"sector_diagnostic_plots"})
 
         # Read in the image diagnostics and log a summary of them
         diagnostics_file = self.outputs["sector_diagnostics"][0]["path"]
@@ -817,7 +817,7 @@ class ImageNormalize(Image):
         dest_dir = os.path.join(self.parset["dir_working"], "solutions", self.name)
         self.field.normalize_h5parm = os.path.join(dest_dir, os.path.basename(src_filename))
         self.copy_outputs_to(dest_dir, include={"sector_normalize_h5parm"}, move=True)
-        copied_manually.update("sector_normalize_h5parm")
+        copied_manually.update({"sector_normalize_h5parm"})
 
         # Save other outputs
         self.copy_outputs_to(
