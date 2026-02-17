@@ -455,20 +455,7 @@ class Image(Operation):
             "sector_skymodels",
             "sector_diagnostics"
         }
-        copied_manually = {
-            "sector_I_images",
-            "sector_extra_images",
-            "source_filtering_mask",
-            "sector_image_cube",
-            "sector_image_cube_beams",
-            "sector_image_cube_frequencies",
-            "filtered_skymodel_true_sky",
-            "filtered_skymodel_apparent_sky",
-            "pybdsf_catalog",
-            "sector_region_file",
-            "visibilities",
-            "sector_diagnostic_plots"
-        }
+        copied_manually = set()
         for index, sector in enumerate(self.field.imaging_sectors):
             # Get the list of output files for this sector
             file_list = [x["path"] for x in self.outputs["sector_I_images"][index] +
@@ -497,80 +484,72 @@ class Image(Operation):
             # supported
             if "sector_image_cube" in self.outputs:
                 dest_dir = os.path.join(self.parset["dir_working"], "images", self.name)
-                os.makedirs(dest_dir, exist_ok=True)
-
-                image_cube_path = self.outputs["sector_image_cube"][index]["path"]
-                self.I_freq_cube = os.path.join(dest_dir, os.path.basename(image_cube_path))
-                src_filenames = [image_cube_path,
-                                 self.outputs["sector_image_cube_beams"][index]["path"],
-                                 self.outputs["sector_image_cube_frequencies"][index]["path"]]
-
-                for src_filename in src_filenames:
-                    dst_filename = os.path.join(dest_dir, os.path.basename(src_filename))
-                    if not os.path.exists(dst_filename):
-                        shutil.copy(src_filename, dst_filename)
+                keys_to_copy = {
+                    "sector_image_cube",
+                    "sector_image_cube_beams",
+                    "sector_image_cube_frequencies",
+                }
+                self.copy_outputs_to(
+                    dest_dir, index=index, include=keys_to_copy, move=True
+                )
+                copied_manually.update(keys_to_copy)
 
             # The output sky models, both true sky and apparent sky (the filenames are
             # defined in the rapthor/scripts/filter_skymodel.py file)
             #
             # Note: these are not generated when QUV images are made (WSClean does not
             # currently support writing a source list in this mode)
-            dst_dir = os.path.join(
+            dest_dir = os.path.join(
                 self.parset["dir_working"], "skymodels", "image_{}".format(self.index)
             )
-            os.makedirs(dst_dir, exist_ok=True)
             if self.field.image_pol.lower() == 'i':
                 for skymodel_type in ["true_sky", "apparent_sky"]:
                     src_sector_skymodel = self.outputs[f"filtered_skymodel_{skymodel_type}"][index]["path"]
-                    sector_skymodel_file = os.path.join(dst_dir, os.path.basename(src_sector_skymodel))
+                    sector_skymodel_file = os.path.join(dest_dir, os.path.basename(src_sector_skymodel))
                     setattr(sector, f"image_skymodel_file_{skymodel_type}", sector_skymodel_file)
-                    if not os.path.exists(sector_skymodel_file):
-                        shutil.copy(src_sector_skymodel, sector_skymodel_file)
+                    self.copy_outputs_to(
+                        dest_dir,
+                        index=index,
+                        include={f"filtered_skymodel_{skymodel_type}"},
+                        move=True,
+                    )
+                    copied_manually.update(f"filtered_skymodel_{skymodel_type}")
 
             # The output PyBDSF source catalog
-            src_filename = self.outputs["pybdsf_catalog"][index]["path"]
-            dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
-            if not os.path.exists(dst_filename):
-                shutil.copy(src_filename, dst_filename)
+            self.copy_outputs_to(dest_dir, index=index, include={"pybdsf_catalog"}, move=True)
+            copied_manually.update("pybdsf_catalog")
 
             # The output ds9 region file, if made
             if self.use_facets:
-                dst_dir = os.path.join(
+                dest_dir = os.path.join(
                     self.parset["dir_working"], "regions", "image_{}".format(self.index)
                 )
-                os.makedirs(dst_dir, exist_ok=True)
-                src_filename = self.outputs["sector_region_file"][index]["path"]
-                dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
-                if not os.path.exists(dst_filename):
-                    shutil.copy(src_filename, dst_filename)
+                self.copy_outputs_to(dest_dir, index=index, include={"sector_region_file"}, move=True)
+            copied_manually.update("sector_region_file")
 
             # The imaging visibilities
             if self.field.save_visibilities:
-                dst_dir = os.path.join(
+                dest_dir = os.path.join(
                     self.parset["dir_working"],
                     "visibilities",
                     "image_{}".format(self.index),
                     sector.name,
                 )
-                os.makedirs(dst_dir, exist_ok=True)
-                ms_filenames = [visibility_ms["path"]
-                                for visibility_ms in self.outputs["visibilities"][index]]
-                for src_filename in ms_filenames:
-                    dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
-                    if not os.path.exists(dst_filename):
-                        shutil.copytree(src_filename, dst_filename)
+                self.copy_outputs_to(dest_dir, index=index, include={"visibilities"}, move=True)
+            copied_manually.update("visibilities")
 
             # The astrometry and photometry plots
-            dst_dir = os.path.join(
+            dest_dir = os.path.join(
                 self.parset["dir_working"], "plots", "image_{}".format(self.index)
             )
-            os.makedirs(dst_dir, exist_ok=True)
             if self.outputs["sector_diagnostic_plots"][index]:
-                diagnostic_plots = [x["path"] for x in self.outputs["sector_diagnostic_plots"][index]]
-                for src_filename in diagnostic_plots:
-                    dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
-                    if not os.path.exists(dst_filename):
-                        shutil.copy(src_filename, dst_filename)
+                self.copy_outputs_to(
+                    dest_dir,
+                    index=index,
+                    include={"sector_diagnostic_plots"},
+                    move=True,
+                )
+            copied_manually.update("sector_diagnostic_plots")
 
             # Read in the image diagnostics and log a summary of them
             diagnostics_file = self.outputs["sector_diagnostics"][index]["path"]
@@ -593,6 +572,7 @@ class Image(Operation):
                     sector.name,
                 ),
                 exclude=copied_manually.union(do_not_copy),
+                move=True
             )
 
         # Finally call finalize() in the parent class
@@ -696,22 +676,15 @@ class ImageInitial(Image):
             "visibilities",
             "sector_offsets",
             "sector_diagnostics",
-            "sector_skymodels"
+            "sector_skymodels",
+            "sector_extra_images"
         }
-        copied_manually = {
-            "sector_skymodel_true_sky",
-            "sector_skymodel_apparent_sky",
-            "sector_diagnostic_plots",
-            "filtered_skymodel_true_sky",
-            "filtered_skymodel_apparent_sky"
-        }
+        copied_manually = set()
 
-        # The output sky models, both true sky and apparent sky (the filenames are
-        # defined in the rapthor/scripts/filter_skymodel.py file)
         # The output sky models, both true sky and apparent sky
-        dst_dir = os.path.join(self.parset["dir_working"], "skymodels", self.name)
-        os.makedirs(dst_dir, exist_ok=True)
-        image_root = os.path.join(dst_dir, sector.name)
+        dest_dir = os.path.join(self.parset["dir_working"], "skymodels", self.name)
+        os.makedirs(dest_dir, exist_ok=True)
+        image_root = os.path.join(dest_dir, sector.name)
         sector.image_skymodel_file_true_sky = f"{image_root}.true_sky.txt"
         sector.image_skymodel_file_apparent_sky = f"{image_root}.apparent_sky.txt"
         for src_filename, dst_filename in [
@@ -726,16 +699,15 @@ class ImageInitial(Image):
         ]:
             if not os.path.exists(dst_filename):
                 shutil.copy(src_filename, dst_filename)
+        copied_manually.update(
+            {"filtered_skymodel_true_sky", "filtered_skymodel_apparent_sky"}
+        )
 
         # The astrometry and photometry plots
-        dst_dir = os.path.join(self.parset["dir_working"], "plots", self.name)
-        os.makedirs(dst_dir, exist_ok=True)
+        dest_dir = os.path.join(self.parset["dir_working"], "plots", self.name)
         if self.outputs["sector_diagnostic_plots"][0]:
-            diagnostic_plots = [x["path"] for x in self.outputs["sector_diagnostic_plots"][0]]
-            for src_filename in diagnostic_plots:
-                dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
-                if not os.path.exists(dst_filename):
-                    shutil.copy(src_filename, dst_filename)
+            self.copy_outputs_to(dest_dir, include={"sector_diagnostic_plots"}, move=True)
+        copied_manually.update("sector_diagnostic_plots")
 
         # Read in the image diagnostics and log a summary of them
         diagnostics_file = self.outputs["sector_diagnostics"][0]["path"]
@@ -749,7 +721,8 @@ class ImageInitial(Image):
         # Save other outputs
         self.copy_outputs_to(
             os.path.join(self.parset["dir_working"], "images", self.name),
-            exclude=copied_manually.union(do_not_copy)
+            exclude=copied_manually.union(do_not_copy),
+            move=True
         )
 
         # Finally call finalize() of the Operation class
@@ -837,22 +810,20 @@ class ImageNormalize(Image):
             "sector_diagnostics",
             "sector_offsets"
         }
-        copied_manually = {
-            "sector_normalize_h5parm"
-        }
+        copied_manually = set()
 
         # Save the output h5parm with the flux-scale corrections
         src_filename = self.outputs["sector_normalize_h5parm"][0]["path"]
-        dst_dir = os.path.join(self.parset["dir_working"], "solutions", self.name)
-        os.makedirs(dst_dir, exist_ok=True)
-        self.field.normalize_h5parm = os.path.join(dst_dir, os.path.basename(src_filename))
-        if not os.path.exists(self.field.normalize_h5parm):
-            shutil.copy(src_filename, self.field.normalize_h5parm)
+        dest_dir = os.path.join(self.parset["dir_working"], "solutions", self.name)
+        self.field.normalize_h5parm = os.path.join(dest_dir, os.path.basename(src_filename))
+        self.copy_outputs_to(dest_dir, include={"sector_normalize_h5parm"}, move=True)
+        copied_manually.update("sector_normalize_h5parm")
 
         # Save other outputs
         self.copy_outputs_to(
             os.path.join(self.parset["dir_working"], "images", self.name),
             exclude=copied_manually.union(do_not_copy),
+            move=True
         )
 
         # Set the flags for subsequent processing

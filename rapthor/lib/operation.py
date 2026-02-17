@@ -14,7 +14,6 @@ DIR = os.path.dirname(os.path.abspath(__file__))
 env_parset = Environment(loader=FileSystemLoader(os.path.join(DIR, '..', 'pipeline', 'parsets')))
 
 
-
 class Operation(object):
     """
     Generic operation class
@@ -34,7 +33,7 @@ class Operation(object):
     name : str, optional
         Name of the operation
     """
-    def __init__(self, field, index=None, name:str=""):
+    def __init__(self, field, index=None, name: str = ""):
         self.parset = field.parset.copy()
         self.field = field
         self.rootname = name.lower()
@@ -192,7 +191,15 @@ class Operation(object):
         """
         open(self.done_file, "w").close()
 
-    def copy_outputs_to(self, dest_dir, exclude=None, overwrite=False):
+    def copy_outputs_to(
+        self,
+        dest_dir,
+        index=None,
+        include=None,
+        exclude=None,
+        overwrite=False,
+        move=False,
+    ):
         """
         Copy output files to a specified directory.
 
@@ -200,15 +207,24 @@ class Operation(object):
         ----------
         dest_dir: str
             Path of directory to which outputs will be copied
+        index : int
+            Copy only the item with the given index
+        include : list or None
+            List of files to include in the copy
         exclude : list or None
             List of files to exclude from the copy
         overwrite : bool, optional
             If True, existing files will be overwritten by a new copy. If False,
             existing files are not overwritten
+        move : bool, optional
+            If True, move files instead of copying them
         """
         for output_key, output_value in self.outputs.items():
-            if exclude is None or output_key not in exclude:
-                copy_cwl_recursive(output_value, dest_dir, overwrite=overwrite)
+            if include is None or output_key in include:
+                if exclude is None or output_key not in exclude:
+                    copy_cwl_recursive(
+                        output_value, dest_dir, overwrite=overwrite, move=move
+                    )
 
     def clean_outputs(self):
         """
@@ -222,7 +238,7 @@ class Operation(object):
         Check if this operation is done, by checking if a "done" file exists.
         """
         return os.path.isfile(self.done_file)
-    
+
     def store_outputs(self):
         """
         Store outputs to a JSON file.
@@ -257,7 +273,7 @@ class Operation(object):
             self.log.info('Operation {0} already done, skipping.'.format(self.name))
             # Reloads outputs
             self.load_outputs()
-            
+
         # Finalize
         if success:
             self.log.info('--> Operation {0} completed'.format(self.name))
