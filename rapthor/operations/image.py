@@ -460,7 +460,8 @@ class Image(Operation):
         for index, sector in enumerate(self.field.imaging_sectors):
             # Get the list of images for this sector and save their filenames
             # for use in the mosaic operation. These files are left in place
-            # at their original locations
+            # at their original locations for processing by the mosaic
+            # operation
             file_list = [x["path"] for x in self.outputs["sector_I_images"][index] +
                          self.outputs["sector_extra_images"][index]]
             type_path_map = Image.find_in_file_list(file_list)
@@ -693,7 +694,7 @@ class ImageInitial(Image):
             "sector_offsets",
             "sector_diagnostics",
             "sector_skymodels",
-            "sector_extra_images"
+            "source_filtering_mask"
         }
         leave_in_place = set()
         copied_manually = set()
