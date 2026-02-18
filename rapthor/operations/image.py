@@ -457,7 +457,6 @@ class Image(Operation):
         unused = {
             "sector_offsets",
             "sector_skymodels",
-            "sector_diagnostics"
         }
         leave_in_place = set()
         copied_manually = set()
@@ -697,7 +696,6 @@ class ImageInitial(Image):
             "sector_region_file",
             "visibilities",
             "sector_offsets",
-            "sector_diagnostics",
             "sector_skymodels",
             "source_filtering_mask"
         }
