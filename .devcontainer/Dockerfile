@@ -110,7 +110,7 @@ RUN mkdir -p /usr/local/share/casacore/data && \
 RUN git clone --no-checkout https://github.com/casacore/casacore.git
 RUN git -C casacore checkout ${CASACORE_COMMIT}
 RUN cmake \
-    -DCMAKE_BUILD_TYPE:STRING=Release \
+    -DCMAKE_BUILD_TYPE:STRING=RelWithDebInfo \
     -DBUILD_TESTING=OFF \
     -DPORTABLE=${PORTABLE} \
     -DTARGET_CPU=${TARGET_CPU} \
@@ -123,7 +123,7 @@ RUN ninja -C /build/casacore/build install
 RUN git clone --no-checkout https://git.astron.nl/RD/idg.git
 RUN git -C idg checkout ${IDG_COMMIT}
 RUN cmake \
-    -DCMAKE_BUILD_TYPE:STRING=Release \
+    -DCMAKE_BUILD_TYPE:STRING=RelWithDebInfo \
     -DBUILD_WITH_PYTHON=OFF \
     -DBUILD_TESTING=OFF \
     -DPORTABLE=${PORTABLE} \
@@ -140,7 +140,7 @@ RUN git -C EveryBeam checkout ${EVERYBEAM_COMMIT}
 # Initialize git submodules before CMake to avoid fetch failures during configuration
 RUN git -C EveryBeam submodule update --init --recursive
 RUN cmake \
-    -DCMAKE_BUILD_TYPE:STRING=Release \
+    -DCMAKE_BUILD_TYPE:STRING=RelWithDebInfo \
     -DBUILD_WITH_PYTHON=OFF \
     -DBUILD_TESTING=OFF \
     -DPORTABLE=${PORTABLE} \
@@ -154,7 +154,7 @@ RUN ninja -C /build/EveryBeam/build install
 RUN git clone --no-checkout https://gitlab.com/aroffringa/aoflagger.git
 RUN git -C aoflagger checkout ${AOFLAGGER_COMMIT}
 RUN cmake \
-    -DCMAKE_BUILD_TYPE:STRING=Release \
+    -DCMAKE_BUILD_TYPE:STRING=RelWithDebInfo \
     -DPORTABLE=${PORTABLE} \
     -DTARGET_CPU=${TARGET_CPU} \
     -DENABLE_GUI=OFF \
@@ -167,7 +167,7 @@ RUN ninja -C /build/aoflagger/build install
 RUN git clone --no-checkout https://gitlab.com/aroffringa/wsclean.git
 RUN git -C wsclean checkout ${WSCLEAN_COMMIT}
 RUN cmake \
-    -DCMAKE_BUILD_TYPE:STRING=Release \
+    -DCMAKE_BUILD_TYPE:STRING=RelWithDebInfo \
     -DBUILD_TESTING=OFF \
     -DPORTABLE=${PORTABLE} \
     -DTARGET_CPU=${TARGET_CPU} \
@@ -180,7 +180,7 @@ RUN ninja -C /build/wsclean/build install
 RUN git clone --no-checkout https://github.com/nlesc-dirac/sagecal.git
 RUN git -C sagecal checkout ${SAGECAL_COMMIT}
 RUN cmake \
-    -DCMAKE_BUILD_TYPE:STRING=Release \
+    -DCMAKE_BUILD_TYPE:STRING=RelWithDebInfo \
     -DLIB_ONLY=1 \
     -H/build/sagecal \
     -B/build/sagecal/build \
@@ -191,7 +191,7 @@ RUN ninja -C /build/sagecal/build install
 RUN git clone --no-checkout https://git.astron.nl/RD/DP3.git
 RUN git -C DP3 checkout ${DP3_COMMIT}
 RUN cmake \
-    -DCMAKE_BUILD_TYPE:STRING=Release \
+    -DCMAKE_BUILD_TYPE:STRING=RelWithDebInfo \
     -DBUILD_TESTING=OFF \
     -DPORTABLE=${PORTABLE} \
     -DTARGET_CPU=${TARGET_CPU} \
