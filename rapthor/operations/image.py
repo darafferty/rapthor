@@ -450,14 +450,17 @@ class Image(Operation):
         self.field.lofar_to_true_flux_ratio = 1.0  # reset values for this cycle
         self.field.lofar_to_true_flux_std = 0.0
 
-        do_not_copy = {
+        unused = {
             "sector_offsets",
             "sector_skymodels",
             "sector_diagnostics"
         }
+        leave_in_place = set()
         copied_manually = set()
         for index, sector in enumerate(self.field.imaging_sectors):
-            # Get the list of output files for this sector
+            # Get the list of images for this sector and save their filenames
+            # for use in the mosaic operation. These files are left in place
+            # at their original locations
             file_list = [x["path"] for x in self.outputs["sector_I_images"][index] +
                          self.outputs["sector_extra_images"][index]]
             type_path_map = Image.find_in_file_list(file_list)
@@ -469,6 +472,7 @@ class Image(Operation):
                 else:
                     for path in paths:
                         setattr(sector, output_type, path)
+            leave_in_place.update({"sector_I_images", "sector_extra_images"})
 
             # If the option to save supplementary images is set
             # set the sector mask_filename attribute to the filtering mask
@@ -516,7 +520,9 @@ class Image(Operation):
                     copied_manually.update({f"filtered_skymodel_{skymodel_type}"})
 
             # The output PyBDSF source catalog
-            self.copy_outputs_to(dest_dir, index=index, include={"pybdsf_catalog"}, move=True)
+            self.copy_outputs_to(
+                dest_dir, index=index, include={"pybdsf_catalog"}, move=True
+            )
             copied_manually.update({"pybdsf_catalog"})
 
             # The output ds9 region file, if made
@@ -524,7 +530,9 @@ class Image(Operation):
                 dest_dir = os.path.join(
                     self.parset["dir_working"], "regions", "image_{}".format(self.index)
                 )
-                self.copy_outputs_to(dest_dir, index=index, include={"sector_region_file"}, move=True)
+                self.copy_outputs_to(
+                    dest_dir, index=index, include={"sector_region_file"}, move=True
+                )
             copied_manually.update({"sector_region_file"})
 
             # The imaging visibilities
@@ -535,7 +543,9 @@ class Image(Operation):
                     "image_{}".format(self.index),
                     sector.name,
                 )
-                self.copy_outputs_to(dest_dir, index=index, include={"visibilities"}, move=True)
+                self.copy_outputs_to(
+                    dest_dir, index=index, include={"visibilities"}, move=True
+                )
             copied_manually.update({"visibilities"})
 
             # The astrometry and photometry plots
@@ -566,6 +576,7 @@ class Image(Operation):
                 # Save the ratio with the lowest scatter for later use
                 self.field.lofar_to_true_flux_ratio = ratio
                 self.field.lofar_to_true_flux_std = std
+            leave_in_place.update({"sector_diagnostics"})
 
         # Save other outputs and clean up
         self.copy_outputs_to(
@@ -575,10 +586,10 @@ class Image(Operation):
                 f"image_{self.index}",
                 sector.name,
             ),
-            exclude=copied_manually.union(do_not_copy),
+            exclude=copied_manually.union(leave_in_place, unused),
             move=True
         )
-        self.clean_outputs(do_not_copy)
+        self.clean_outputs(unused)
 
         # Finally call finalize() in the parent class
         super().finalize()
@@ -675,7 +686,7 @@ class ImageInitial(Image):
         # For this operation, the output images go to the default destination so they
         # are not copied manually
         sector = self.field.full_field_sector
-        do_not_copy = {
+        unused = {
             "pybdsf_catalog",
             "sector_region_file",
             "visibilities",
@@ -684,6 +695,7 @@ class ImageInitial(Image):
             "sector_skymodels",
             "sector_extra_images"
         }
+        leave_in_place = set()
         copied_manually = set()
 
         # The output sky models, both true sky and apparent sky
@@ -711,7 +723,9 @@ class ImageInitial(Image):
         # The astrometry and photometry plots
         dest_dir = os.path.join(self.parset["dir_working"], "plots", self.name)
         if self.outputs["sector_diagnostic_plots"][0]:
-            self.copy_outputs_to(dest_dir, include={"sector_diagnostic_plots"}, move=True)
+            self.copy_outputs_to(
+                dest_dir, include={"sector_diagnostic_plots"}, move=True
+            )
         copied_manually.update({"sector_diagnostic_plots"})
 
         # Read in the image diagnostics and log a summary of them
@@ -726,14 +740,15 @@ class ImageInitial(Image):
         ratio, std = report_sector_diagnostics(sector.name, diagnostics_dict, self.log)
         self.field.lofar_to_true_flux_ratio = ratio
         self.field.lofar_to_true_flux_std = std
+        leave_in_place.update({"sector_diagnostics"})
 
         # Save other outputs and clean up
         self.copy_outputs_to(
             os.path.join(self.parset["dir_working"], "images", self.name),
-            exclude=copied_manually.union(do_not_copy),
+            exclude=copied_manually.union(leave_in_place, unused),
             move=True
         )
-        self.clean_outputs(do_not_copy)
+        self.clean_outputs(unused)
 
         # Finally call finalize() of the Operation class
         super(Image, self).finalize()
@@ -807,7 +822,7 @@ class ImageNormalize(Image):
         # For this operation, only the image cubes and the normilzed h5parm need to be
         # saved. The image cubes go to the default destination so they are not copied
         # manually
-        do_not_copy = {
+        unused = {
             "sector_I_images",
             "sector_extra_images",
             "filtered_skymodel_true_sky",
@@ -832,10 +847,10 @@ class ImageNormalize(Image):
         # Save other outputs and clean up
         self.copy_outputs_to(
             os.path.join(self.parset["dir_working"], "images", self.name),
-            exclude=copied_manually.union(do_not_copy),
+            exclude=copied_manually.union(unused),
             move=True
         )
-        self.clean_outputs(do_not_copy)
+        self.clean_outputs(unused)
 
         # Set the flags for subsequent processing
         self.field.normalize_flux_scale = False

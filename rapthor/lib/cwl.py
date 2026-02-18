@@ -118,7 +118,7 @@ def is_cwl_file_or_directory(cwl_obj):
     return is_cwl_file(cwl_obj) or is_cwl_directory(cwl_obj)
 
 
-def copy_cwl_object(src_obj, dest_dir, overwrite=False, move=False):
+def copy_cwl_object(src_obj, dest_dir, move=False):
     """
     Copy a CWL file or directory object to the specified destination directory.
 
@@ -128,18 +128,13 @@ def copy_cwl_object(src_obj, dest_dir, overwrite=False, move=False):
         Source object of the copy
     dest_dir: str
         Path of destination directory to which src_obj will be copied
-    overwrite : bool, optional
-        If True, existing files will be overwritten by a new copy. If False, existing
-        files are not overwritten
     move : bool, optional
         If True, move files instead of copying them
     """
-    if is_cwl_file_or_directory(src_obj):
+    if is_cwl_file_or_directory(src_obj) and os.path.exists(src_obj['path']):
         os.makedirs(dest_dir, exist_ok=True)
         src = Path(src_obj['path'])
         dest = Path(dest_dir) / src.name
-        if os.path.exists(dest) and overwrite:
-            remove_or_log_error(dest)
         if move:
             shutil.move(src, dest)
         else:
@@ -150,7 +145,7 @@ def copy_cwl_object(src_obj, dest_dir, overwrite=False, move=False):
     # Otherwise, do nothing
 
 
-def copy_cwl_recursive(src_obj, dest_dir, index=None, overwrite=False, move=False):
+def copy_cwl_recursive(src_obj, dest_dir, index=None, move=False):
     """
     Recursively copy CWL file or directory objects to the specified destination
     directory.
@@ -161,18 +156,15 @@ def copy_cwl_recursive(src_obj, dest_dir, index=None, overwrite=False, move=Fals
         Source object(s) of the copy
     dest_dir: str
         Path of destination directory to which src_obj will be copied
-    overwrite : bool, optional
-        If True, existing files will be overwritten by a new copy. If False, existing
-        files are not overwritten
     move : bool, optional
         If True, move files instead of copying them
     """
     if isinstance(src_obj, list):
         for i, item in enumerate(src_obj):
             if index is None or i == index:
-                copy_cwl_recursive(item, dest_dir, None, overwrite, move)
+                copy_cwl_recursive(item, dest_dir, None, move)
     elif is_cwl_file_or_directory(src_obj):
-        copy_cwl_object(src_obj, dest_dir, overwrite, move)
+        copy_cwl_object(src_obj, dest_dir, move)
     # Otherwise, do nothing
 
 

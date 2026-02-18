@@ -197,7 +197,6 @@ class Operation(object):
         index=None,
         include=None,
         exclude=None,
-        overwrite=False,
         move=False,
     ):
         """
@@ -213,9 +212,6 @@ class Operation(object):
             List of files to include in the copy
         exclude : list or None
             List of files to exclude from the copy
-        overwrite : bool, optional
-            If True, existing files will be overwritten by a new copy. If False,
-            existing files are not overwritten
         move : bool, optional
             If True, move files instead of copying them
         """
@@ -223,7 +219,7 @@ class Operation(object):
             if include is None or output_key in include:
                 if exclude is None or output_key not in exclude:
                     copy_cwl_recursive(
-                        output_value, dest_dir, overwrite=overwrite, move=move
+                        output_value, dest_dir, move=move
                     )
 
     def clean_outputs(self, include=None):
