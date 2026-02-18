@@ -17,6 +17,6 @@
     }
   },
   "remoteEnv": {
-    "PYTHONPATH": "/app:/src:${PYTHONPATH}"
+    "PYTHONPATH": "/src:${PYTHONPATH}"
   }
 }
