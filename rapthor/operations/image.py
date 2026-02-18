@@ -478,29 +478,32 @@ class Image(Operation):
                         setattr(sector, output_type, path)
             leave_in_place.update({"sector_I_images", "sector_extra_images"})
 
-            # If the option to save supplementary images is set
-            # set the sector mask_filename attribute to the filtering mask
-            # if it exists. The saving is done in the finalize of the mosaic
-            # operation.
+            # If the option to save supplementary images is set, set the sector
+            # mask_filename attribute to the filtering mask if it exists. This file is
+            # left in place at its original location for processing by the mosaic
+            # operation
             if self.field.save_supplementary_images:
                 filtering_mask = self.outputs["source_filtering_mask"][index]
                 if filtering_mask:
                     sector.mask_filename = filtering_mask["path"]
+                    leave_in_place.update({"source_filtering_mask"})
+            else:
+                unused.update({"source_filtering_mask"})
 
             # Save the output image cubes. Note that, unlike the normal images above,
             # the cubes are copied directly since mosaicking of the cubes is not yet
             # supported
+            image_cube_keys = {
+                "sector_image_cube",
+                "sector_image_cube_beams",
+                "sector_image_cube_frequencies",
+            }
             if "sector_image_cube" in self.outputs:
                 dest_dir = os.path.join(self.parset["dir_working"], "images", self.name)
-                keys_to_copy = {
-                    "sector_image_cube",
-                    "sector_image_cube_beams",
-                    "sector_image_cube_frequencies",
-                }
                 self.copy_outputs_to(
-                    dest_dir, index=index, include=keys_to_copy, move=True
+                    dest_dir, index=index, include=image_cube_keys, move=True
                 )
-                copied_manually.update(keys_to_copy)
+                copied_manually.update(image_cube_keys)
 
             # The output sky models, both true sky and apparent sky (the filenames are
             # defined in the rapthor/scripts/filter_skymodel.py file)
@@ -537,7 +540,7 @@ class Image(Operation):
                 self.copy_outputs_to(
                     dest_dir, index=index, include={"sector_region_file"}, move=True
                 )
-            copied_manually.update({"sector_region_file"})
+                copied_manually.update({"sector_region_file"})
 
             # The imaging visibilities
             if self.field.save_visibilities:
@@ -550,7 +553,9 @@ class Image(Operation):
                 self.copy_outputs_to(
                     dest_dir, index=index, include={"visibilities"}, move=True
                 )
-            copied_manually.update({"visibilities"})
+                copied_manually.update({"visibilities"})
+            else:
+                unused.update({"visibilities"})
 
             # The astrometry and photometry plots
             dest_dir = os.path.join(
@@ -563,7 +568,7 @@ class Image(Operation):
                     include={"sector_diagnostic_plots"},
                     move=True,
                 )
-            copied_manually.update({"sector_diagnostic_plots"})
+                copied_manually.update({"sector_diagnostic_plots"})
 
             # Read in the image diagnostics and log a summary of them
             #
@@ -659,7 +664,6 @@ class ImageInitial(Image):
         # model generation
         self.apply_amplitudes = False
         self.apply_fulljones = False
-        
         self.apply_normalizations = False
         self.field.full_field_sector.auto_mask = 5.0
         self.field.full_field_sector.auto_mask_nmiter = 1
