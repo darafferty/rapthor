@@ -332,7 +332,8 @@ class Field(object):
                     chunked_observations.append(obs)
             else:
                 # Calculate the start time of each chunk so that they are spaced out
-                # evently over the full observation. This is calculated as:
+                # evenly over the full observation. The time between gaps (steptime)
+                # is calculated as:
                 #   time_between_gaps = total_time_in_gaps / (nchunks - 1) + chunk_time
                 steptime = (tottime - nchunks * obs_mintime) / (
                     nchunks - 1
