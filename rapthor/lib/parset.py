@@ -582,8 +582,28 @@ def parset_read(parset_file, use_log_file=True):
     suffix = 's' if len(parset_dict["mss"]) > 1 else ''
     log.info("Working on {0} input MS file{1}".format(len(parset_dict["mss"]), suffix))
 
-    # Make sure the initial sky model is present or, if not, that generation or download
-    # is requested
+    check_skymodel_settings(parset_dict)
+    log.info("=========================================================")
+
+    return parset_dict
+
+
+def check_skymodel_settings(parset_dict):
+    """
+    En‌sure·‌the·‌initial·‌sky·‌model·‌is·‌present·‌or,·‌if·‌not,·‌that·‌generation·‌or
+    download·‌is·‌requested
+
+    Parameters
+    ----------
+    parset_dict : dict
+        Dictionary containing parset parameters
+
+    Raises
+    ------
+    FileNotFoundError
+        If the input sky model file is not found.
+    """
+    
     if parset_dict["input_skymodel"]:
         if not os.path.exists(parset_dict["input_skymodel"]):
             raise FileNotFoundError(
@@ -612,7 +632,7 @@ def parset_read(parset_file, use_log_file=True):
             "Will automatically generate sky model from input data."
         )
         if parset_dict["apparent_skymodel"]:
-            log.info(
+            log.warning(
                 "The input apparent sky model will not be used "
                 "because sky model generation has been requested."
             )
@@ -622,7 +642,7 @@ def parset_read(parset_file, use_log_file=True):
             "Will automatically download sky model."
         )
         if parset_dict["apparent_skymodel"]:
-            log.info(
+            log.warning(
                 "The input apparent sky model will not be used "
                 "because sky model download has been requested."
             )
@@ -632,6 +652,3 @@ def parset_read(parset_file, use_log_file=True):
             "sky model requested. If no calibration is to be done, this warning can "
             "be ignored."
         )
-    log.info("=========================================================")
-
-    return parset_dict
