@@ -204,7 +204,6 @@ inputs:
     type: boolean
     inputBinding:
       prefix: -apply-time-frequency-smearing
-
 outputs:
   - id: image_I_nonpb_name
     type: File

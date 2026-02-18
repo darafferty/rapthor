@@ -295,6 +295,12 @@ inputs:
       The maximum number of threads to use during parallel gridding (length = 1).
     type: int
 
+  - id: shared_facet_rw
+    label: Shared facet reads and writes
+    type: boolean
+    default: false
+    doc: |
+      Enable -shared-facet-reads and shared-facet-writes in wsclean
 {% else %}
 # start not use_facets
 
@@ -764,6 +770,8 @@ steps:
         source: scalar_visibilities
       - id: diagonal_visibilities
         source: diagonal_visibilities
+      - id: shared_facet_rw
+        source: shared_facet_rw
 {% else %}
 # start not use_facets
 {% if preapply_dde_solutions %}
