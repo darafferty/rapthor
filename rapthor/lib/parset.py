@@ -584,37 +584,10 @@ def parset_read(parset_file, use_log_file=True):
 
     # Make sure the initial sky model is present or, if not, that generation or download
     # is requested
-    if not parset_dict["input_skymodel"]:
-        if parset_dict["generate_initial_skymodel"]:
-            log.info(
-                "No input sky model file given and generation requested. "
-                "Will automatically generate sky model from input data."
-            )
-            if parset_dict["apparent_skymodel"]:
-                log.info(
-                    "The input apparent sky model will not be used "
-                    "because sky model generation has been requested."
-                )
-        elif parset_dict["download_initial_skymodel"]:
-            log.info(
-                "No input sky model file given and download requested. "
-                "Will automatically download sky model."
-            )
-            if parset_dict["apparent_skymodel"]:
-                log.info(
-                    "The input apparent sky model will not be used "
-                    "because sky model download has been requested."
-                )
-        else:
-            log.warning(
-                "No input sky model file given and neither generation nor download of "
-                "sky model requested. If no calibration is to be done, this warning can "
-                "be ignored."
-            )
-    else:
+    if parset_dict["input_skymodel"]:
         if not os.path.exists(parset_dict["input_skymodel"]):
             raise FileNotFoundError(
-                'Input sky model file "{}" not found.'.format(parset_dict["input_skymodel"])
+                f'Input sky model file "{parset_dict["input_skymodel"]}" not found.'
             )
         if parset_dict["generate_initial_skymodel"]:
             # If sky model is given but generation requested, disable generation and use
@@ -633,6 +606,32 @@ def parset_read(parset_file, use_log_file=True):
             )
             parset_dict["download_initial_skymodel"] = False
 
+    elif parset_dict["generate_initial_skymodel"]:
+        log.info(
+            "No input sky model file given and generation requested. "
+            "Will automatically generate sky model from input data."
+        )
+        if parset_dict["apparent_skymodel"]:
+            log.info(
+                "The input apparent sky model will not be used "
+                "because sky model generation has been requested."
+            )
+    elif parset_dict["download_initial_skymodel"]:
+        log.info(
+            "No input sky model file given and download requested. "
+            "Will automatically download sky model."
+        )
+        if parset_dict["apparent_skymodel"]:
+            log.info(
+                "The input apparent sky model will not be used "
+                "because sky model download has been requested."
+            )
+    else:
+        log.warning(
+            "No input sky model file given and neither generation nor download of "
+            "sky model requested. If no calibration is to be done, this warning can "
+            "be ignored."
+        )
     log.info("=========================================================")
 
     return parset_dict
