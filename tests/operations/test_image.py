@@ -195,6 +195,37 @@ class TestImage:
         image.run()
         assert image.is_done()
 
+    @pytest.mark.parametrize("shared_facet_rw", [True, False])
+    @pytest.mark.parametrize("use_facets", [True, False])
+    @pytest.mark.parametrize("use_mpi", [True, False])
+    def test_setting_shared_facet_rw(self, field, tmp_path, shared_facet_rw, use_facets, use_mpi):
+        h5parm = tmp_path / "h5parm_file.h5"
+        h5parm.touch()  # Create an empty file to satisfy the existence check
+        field.parset["imaging_specific"]["use_mpi"] = use_mpi
+
+        field.parset["imaging_specific"]["shared_facet_rw"] = shared_facet_rw
+        field.parset["regroup_input_skymodel"] = False
+        field.do_predict = False
+        field.scan_observations()
+        steps = set_selfcal_strategy(field)
+        field.update(steps[0], index=1, final=False)
+
+        field.image_pol = 'I'
+        field.skip_final_major_iteration = True
+        image = Image(field, index=1)
+
+        # Force the facets setting for the test
+        image.use_facets = use_facets
+        image.do_predict = False
+        field.h5parm_filename = str(h5parm)  # Set the h5parm filename to the created file
+        image.set_parset_parameters()
+        image.set_input_parameters()
+
+        if use_facets:
+            assert image.input_parms["shared_facet_rw"] == shared_facet_rw
+        else:
+            assert not image.input_parms["shared_facet_rw"]
+
     def test_save_model_image(self, field):
         # This is the required setup to configure an Image operation
         # avoiding any other setting will make it throw an expeception
@@ -213,7 +244,7 @@ class TestImage:
         image.set_parset_parameters()
         image.set_input_parameters()
 
-        assert image.input_parms["save_filtered_model_image"] is True
+        assert image.input_parms["save_filtered_model_image"]
 
     def test_finalize_without_diagnostic_plots(self, image):
         image.run()
@@ -237,17 +268,17 @@ class TestImage:
         for pol in ['I', 'Q', 'U', 'V']:
             assert hasattr(
                 sector_0, f"{pol}_image_file_true_sky"), f"Expected {pol}_image_file_true_sky to be set in sector_1"
-     
+
     def test_sector_save_supplementary_images_null_mask(self, image):
         image.field.save_supplementary_images = True
         image.set_input_parameters()
         image.run()
         assert image.is_done()
         # Simulate a null mask output and check that it is handled gracefully
-        image.outputs["source_filtering_mask"] = [None] 
+        image.outputs["source_filtering_mask"] = [None]
         sector_0 = image.field.imaging_sectors[0]
         assert hasattr(sector_0, "mask_filename"), "Expected mask_filename to be set in sector_1"
-    
+
     def test_sector_save_supplementary_images(self, image):
         image.field.save_supplementary_images = True
         image.set_input_parameters()
@@ -255,7 +286,9 @@ class TestImage:
         assert image.is_done()
         sector_0 = image.field.imaging_sectors[0]
         assert hasattr(sector_0, "mask_filename"), "Expected mask_filename to be set in sector_1"
-        assert isinstance(sector_0.mask_filename, (str, Path)), f"Expected mask_filename to be a string, got {type(sector_0.mask_filename)}"
+        assert isinstance(sector_0.mask_filename, (str, Path)
+                          ), f"Expected mask_filename to be a string, got {type(sector_0.mask_filename)}"
+
     def test_find_in_file_list(self):
         # Test the find_in_file_list method with a sample file list
         file_list = [
@@ -296,6 +329,31 @@ class TestImageInitial:
         image_initial.run()
         assert image_initial.is_done()
 
+    @pytest.mark.parametrize("dde_method", ["single", "full"])
+    def test_initial_image_with_dde_method_single_does_not_raise(self, field, dde_method):
+        """
+        Regression test for AttributeError when generate_initial_image=True.
+        """
+        # Set dde_method to 'single' to trigger the bug condition
+        field.parset["imaging_specific"]["dde_method"] = dde_method
+        field.dde_method = dde_method  # Ensure the field attribute is also set
+        field.do_predict = False
+        field.scan_observations()
+        field.define_full_field_sector()
+        field.image_pol = 'I'
+        
+        image_initial = ImageInitial(field)
+        
+        # This should NOT raise AttributeError: 'Sector' object has no attribute 'central_patch'
+        # The bug causes this to fail because preapply_dde_solutions is incorrectly True
+        image_initial.set_parset_parameters()
+        image_initial.set_input_parameters()
+        
+        # Verify apply_none is True and preapply_dde_solutions is False
+        assert image_initial.apply_none is True, "apply_none should be True for ImageInitial"
+        assert image_initial.preapply_dde_solutions is False, \
+            "preapply_dde_solutions should be False for ImageInitial even with dde_method='single'"
+
     def test_initial_image_save_model_image(self, field):
         field.parset["imaging_specific"]["save_filtered_model_image"] = True
         field.do_predict = False
@@ -306,7 +364,7 @@ class TestImageInitial:
         image_initial.set_parset_parameters()
         image_initial.set_input_parameters()
 
-        assert image_initial.input_parms["save_filtered_model_image"] is True
+        assert image_initial.input_parms["save_filtered_model_image"]
 
     def test_finalize_without_diagnostic_plots(self, image_initial):
         image_initial.run()
@@ -347,7 +405,7 @@ class TestImageNormalize:
         image_norm.do_predict = False
         image_norm.set_parset_parameters()
         image_norm.set_input_parameters()
-        assert image_norm.input_parms["save_filtered_model_image"] is True
+        assert image_norm.input_parms["save_filtered_model_image"]
 
     def test_run_with_execute_mock(self, field):
         field.parset["imaging_specific"]["save_filtered_model_image"] = True

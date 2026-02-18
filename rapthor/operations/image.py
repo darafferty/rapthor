@@ -352,7 +352,7 @@ class Image(Operation):
                             'interval': interval,
                             'max_threads': self.field.parset['cluster_specific']['max_threads'],
                             'deconvolution_threads': self.field.parset['cluster_specific']['deconvolution_threads'],
-                            'save_filtered_model_image': self.field.parset["imaging_specific"]["save_filtered_model_image"]
+                            'save_filtered_model_image': self.field.parset["imaging_specific"]["save_filtered_model_image"]      
                             }
 
         # Add parameters that depend on the set_parset parameters (set in set_parset_parameters())
@@ -372,6 +372,10 @@ class Image(Operation):
             self.input_parms.update({'mpi_nnodes': [nnodes_per_subpipeline] * nsectors})
             self.input_parms.update(
                 {'mpi_cpus_per_task': [self.parset['cluster_specific']['cpus_per_task']] * nsectors})
+        if self.use_facets:
+            self.input_parms["shared_facet_rw"] = self.parset["imaging_specific"]["shared_facet_rw"]
+        else:
+            self.input_parms["shared_facet_rw"] = False
         if not self.apply_none and self.use_facets:
             # For faceting, we need inputs for making the ds9 facet region files
             self.input_parms.update({'skymodel': CWLFile(self.field.calibration_skymodel_file).to_json()})
@@ -632,6 +636,7 @@ class ImageInitial(Image):
         # Set the template filenames
         self.pipeline_parset_template = 'image_pipeline.cwl'
         self.subpipeline_parset_template = 'image_sector_pipeline.cwl'
+        self.apply_none = True
 
     def set_parset_parameters(self):
         """
@@ -655,7 +660,7 @@ class ImageInitial(Image):
         # model generation
         self.apply_amplitudes = False
         self.apply_fulljones = False
-        self.apply_none = True
+        
         self.apply_normalizations = False
         self.field.full_field_sector.auto_mask = 5.0
         self.field.full_field_sector.auto_mask_nmiter = 1
