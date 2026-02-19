@@ -217,7 +217,16 @@ inputs:
     type: boolean
     inputBinding:
       prefix: -apply-time-frequency-smearing
-
+  - id: shared-facet-reads
+    type: boolean
+    default: false
+    inputBinding:
+      prefix: -shared-facet-reads
+  - id: shared-facet-writes
+    type: boolean
+    default: false
+    inputBinding:
+      prefix: -shared-facet-writes
 outputs:
   - id: image_I_nonpb_name
     type: File

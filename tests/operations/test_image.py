@@ -4,6 +4,7 @@ Test cases for the `rapthor.operations.image` module.
 
 import pytest
 
+from pathlib import Path
 from cwl.cwl_mock import mocked_cwl_execution
 from rapthor.lib.strategy import set_selfcal_strategy
 
@@ -25,6 +26,7 @@ def expected_image_output():
         "sector_offsets": ["sector0_offsets.txt"],
     }
 
+
 @pytest.fixture
 def expected_image_output_last_cycle():
     """
@@ -37,6 +39,7 @@ def expected_image_output_last_cycle():
         "pybdsf_catalog": ["sector0.source_catalog.fits"],
         "sector_diagnostics": ["sector0_diagnostics.json"],
         "sector_offsets": ["sector0_offsets.txt"],
+        "source_filtering_mask": ["sector0_mask.fits"],
         "sector_extra_images": [[
             'sector_1-MFS-I-image-pb.fits',
             'sector_1-MFS-I-image-pb.fits',
@@ -46,21 +49,22 @@ def expected_image_output_last_cycle():
             'sector_1-MFS-V-image.fits',
             'sector_1-MFS-Q-image-pb.fits',
             'sector_1-MFS-U-image-pb.fits',
-            'sector_1-MFS-V-image-pb.fits', 
-            'sector_1-MFS-I-residual.fits', 
-            'sector_1-MFS-Q-residual.fits', 
-            'sector_1-MFS-U-residual.fits', 
-            'sector_1-MFS-V-residual.fits', 
-            'sector_1-MFS-I-model-pb.fits', 
-            'sector_1-MFS-Q-model-pb.fits', 
-            'sector_1-MFS-U-model-pb.fits', 
-            'sector_1-MFS-V-model-pb.fits', 
-            'sector_1-MFS-I-dirty.fits', 
-            'sector_1-MFS-Q-dirty.fits', 
-            'sector_1-MFS-U-dirty.fits', 
+            'sector_1-MFS-V-image-pb.fits',
+            'sector_1-MFS-I-residual.fits',
+            'sector_1-MFS-Q-residual.fits',
+            'sector_1-MFS-U-residual.fits',
+            'sector_1-MFS-V-residual.fits',
+            'sector_1-MFS-I-model-pb.fits',
+            'sector_1-MFS-Q-model-pb.fits',
+            'sector_1-MFS-U-model-pb.fits',
+            'sector_1-MFS-V-model-pb.fits',
+            'sector_1-MFS-I-dirty.fits',
+            'sector_1-MFS-Q-dirty.fits',
+            'sector_1-MFS-U-dirty.fits',
             'sector_1-MFS-V-dirty.fits'
         ]]
     }
+
 
 @pytest.fixture
 def image(field, monkeypatch, expected_image_output):
@@ -191,6 +195,37 @@ class TestImage:
         image.run()
         assert image.is_done()
 
+    @pytest.mark.parametrize("shared_facet_rw", [True, False])
+    @pytest.mark.parametrize("use_facets", [True, False])
+    @pytest.mark.parametrize("use_mpi", [True, False])
+    def test_setting_shared_facet_rw(self, field, tmp_path, shared_facet_rw, use_facets, use_mpi):
+        h5parm = tmp_path / "h5parm_file.h5"
+        h5parm.touch()  # Create an empty file to satisfy the existence check
+        field.parset["imaging_specific"]["use_mpi"] = use_mpi
+
+        field.parset["imaging_specific"]["shared_facet_rw"] = shared_facet_rw
+        field.parset["regroup_input_skymodel"] = False
+        field.do_predict = False
+        field.scan_observations()
+        steps = set_selfcal_strategy(field)
+        field.update(steps[0], index=1, final=False)
+
+        field.image_pol = 'I'
+        field.skip_final_major_iteration = True
+        image = Image(field, index=1)
+
+        # Force the facets setting for the test
+        image.use_facets = use_facets
+        image.do_predict = False
+        field.h5parm_filename = str(h5parm)  # Set the h5parm filename to the created file
+        image.set_parset_parameters()
+        image.set_input_parameters()
+
+        if use_facets:
+            assert image.input_parms["shared_facet_rw"] == shared_facet_rw
+        else:
+            assert not image.input_parms["shared_facet_rw"]
+
     def test_save_model_image(self, field):
         # This is the required setup to configure an Image operation
         # avoiding any other setting will make it throw an expeception
@@ -209,7 +244,7 @@ class TestImage:
         image.set_parset_parameters()
         image.set_input_parameters()
 
-        assert image.input_parms["save_filtered_model_image"] is True
+        assert image.input_parms["save_filtered_model_image"]
 
     def test_finalize_without_diagnostic_plots(self, image):
         image.run()
@@ -223,7 +258,7 @@ class TestImage:
         image.field.save_visibilities = save_visibilities
         image.run()
         assert image.is_done()
-    
+
     def test_sector_extra_images_on_last_cycle(self, image_last_cycle):
         image_last_cycle.run()
         assert image_last_cycle.is_done()
@@ -231,8 +266,29 @@ class TestImage:
         sector_0 = image_last_cycle.field.imaging_sectors[0]
         assert sector_0.name == "sector_1", f"Expected sector name 'sector_1', got '{sector_0.name}'"
         for pol in ['I', 'Q', 'U', 'V']:
-            assert hasattr(sector_0, f"{pol}_image_file_true_sky"), f"Expected {pol}_image_file_true_sky to be set in sector_1"
-    
+            assert hasattr(
+                sector_0, f"{pol}_image_file_true_sky"), f"Expected {pol}_image_file_true_sky to be set in sector_1"
+
+    def test_sector_save_supplementary_images_null_mask(self, image):
+        image.field.save_supplementary_images = True
+        image.set_input_parameters()
+        image.run()
+        assert image.is_done()
+        # Simulate a null mask output and check that it is handled gracefully
+        image.outputs["source_filtering_mask"] = [None]
+        sector_0 = image.field.imaging_sectors[0]
+        assert hasattr(sector_0, "mask_filename"), "Expected mask_filename to be set in sector_1"
+
+    def test_sector_save_supplementary_images(self, image):
+        image.field.save_supplementary_images = True
+        image.set_input_parameters()
+        image.run()
+        assert image.is_done()
+        sector_0 = image.field.imaging_sectors[0]
+        assert hasattr(sector_0, "mask_filename"), "Expected mask_filename to be set in sector_1"
+        assert isinstance(sector_0.mask_filename, (str, Path)
+                          ), f"Expected mask_filename to be a string, got {type(sector_0.mask_filename)}"
+
     def test_find_in_file_list(self):
         # Test the find_in_file_list method with a sample file list
         file_list = [
@@ -251,13 +307,105 @@ class TestImage:
             "image_file_apparent_sky": ['sector_1-MFS-I-image.fits', 'sector_1-MFS-Q-image.fits', 'sector_1-MFS-U-image.fits', 'sector_1-MFS-V-image.fits']
         }
         assert type_path_map == expected_map, f"Expected {expected_map}, got {type_path_map}"
-    
+
     @pytest.mark.parametrize("pol", ["I", "Q", "U", "V", "X"])
     def test_derive_pol_from_filename(self, pol):
         filename = f'sector_1-MFS-{pol}-image-pb.fits'
         derived_pol = Image.derive_pol_from_filename(filename)
         expected_pol = pol if pol in "IQUV" else "I"
         assert derived_pol == expected_pol, f"Expected polarization '{expected_pol}', got '{derived_pol}'"
+
+    def test_image_operation_sets_mask_file(self, field, monkeypatch, tmp_path, expected_image_output):
+        """
+        Test that running an image operation with mocked CWL execution
+        sets sector.I_mask_file to the correct value
+        """
+        h5parm = tmp_path / "h5parm_file.h5"
+        h5parm.touch()
+
+        field.parset["regroup_input_skymodel"] = False
+        field.h5parm_filename = str(h5parm)
+        field.scan_observations()
+        steps = set_selfcal_strategy(field)
+        field.update(steps[0], index=1, final=False)
+        field.do_predict = False
+        field.image_pol = 'I'
+        field.skip_final_major_iteration = True
+
+        # Mock the execute method
+        monkeypatch.setattr(
+            "rapthor.lib.cwlrunner.BaseCWLRunner.execute",
+            lambda self, args, env: mocked_cwl_execution(self, args, env, expected_image_output),
+            raising=False
+        )
+
+        image = Image(field=field, index=1)
+        image.set_parset_parameters()
+        image.set_input_parameters()
+        image.run()
+
+        # Check that the sector's I_mask_file is set
+        sector = field.imaging_sectors[0]
+        assert sector.I_mask_file is not None
+        assert 'masks' in sector.I_mask_file
+        assert 'image_1' in sector.I_mask_file
+
+    @pytest.mark.parametrize("use_clean_mask", [True, False])
+    def test_image_with_previous_mask(self, field, monkeypatch, tmp_path, expected_image_output, use_clean_mask):
+        """
+        Test that a second image operation uses the mask from the first one.
+        The first image operation mocks CWL execution, and the second one checks
+        that previous_mask_filename is set correctly in input_parms.
+        """
+        h5parm = tmp_path / "h5parm_file.h5"
+        h5parm.touch()
+
+        field.parset["regroup_input_skymodel"] = False
+        field.parset["imaging_specific"]["use_clean_mask"] = use_clean_mask
+        field.h5parm_filename = str(h5parm)
+        field.scan_observations()
+        steps = set_selfcal_strategy(field)
+        field.update(steps[0], index=1, final=False)
+        field.do_predict = False
+        field.image_pol = 'I'
+        field.skip_final_major_iteration = True
+
+        # Mock the execute method
+        monkeypatch.setattr(
+            "rapthor.lib.cwlrunner.BaseCWLRunner.execute",
+            lambda self, args, env: mocked_cwl_execution(self, args, env, expected_image_output),
+            raising=False
+        )
+
+        # First image operation
+        image1 = Image(field=field, index=1)
+        image1.set_parset_parameters()
+        image1.set_input_parameters()
+        image1.run()
+
+        # Get the mask file from the first operation
+        sector = field.imaging_sectors[0]
+        first_mask_file = sector.I_mask_file
+        assert first_mask_file is not None
+
+        # Second image operation - simulate reusing the mask from first operation
+        # Create a new Image operation with index=2 but don't call field.update()
+        image2 = Image(field=field, index=2)
+        image2.set_parset_parameters()
+        image2.set_input_parameters()
+
+        # Check that previous_mask_filename is set to the mask from the first operation
+        assert image2.input_parms["previous_mask_filename"] is not None
+        # previous_mask_filename should be a list with one element for one sector
+        previous_masks = image2.input_parms["previous_mask_filename"]
+        assert isinstance(previous_masks, list)
+        assert len(previous_masks) == 1
+        # The first mask should be set to the CWL file format of the first operation's mask
+        if use_clean_mask:
+            assert previous_masks[0] is not None
+        else:
+            assert previous_masks[0] is None
+
 
 class TestImageInitial:
     def test_set_parset_parameters(self, image_initial):
@@ -272,6 +420,31 @@ class TestImageInitial:
         image_initial.run()
         assert image_initial.is_done()
 
+    @pytest.mark.parametrize("dde_method", ["single", "full"])
+    def test_initial_image_with_dde_method_single_does_not_raise(self, field, dde_method):
+        """
+        Regression test for AttributeError when generate_initial_image=True.
+        """
+        # Set dde_method to 'single' to trigger the bug condition
+        field.parset["imaging_specific"]["dde_method"] = dde_method
+        field.dde_method = dde_method  # Ensure the field attribute is also set
+        field.do_predict = False
+        field.scan_observations()
+        field.define_full_field_sector()
+        field.image_pol = 'I'
+        
+        image_initial = ImageInitial(field)
+        
+        # This should NOT raise AttributeError: 'Sector' object has no attribute 'central_patch'
+        # The bug causes this to fail because preapply_dde_solutions is incorrectly True
+        image_initial.set_parset_parameters()
+        image_initial.set_input_parameters()
+        
+        # Verify apply_none is True and preapply_dde_solutions is False
+        assert image_initial.apply_none is True, "apply_none should be True for ImageInitial"
+        assert image_initial.preapply_dde_solutions is False, \
+            "preapply_dde_solutions should be False for ImageInitial even with dde_method='single'"
+
     def test_initial_image_save_model_image(self, field):
         field.parset["imaging_specific"]["save_filtered_model_image"] = True
         field.do_predict = False
@@ -282,7 +455,7 @@ class TestImageInitial:
         image_initial.set_parset_parameters()
         image_initial.set_input_parameters()
 
-        assert image_initial.input_parms["save_filtered_model_image"] is True
+        assert image_initial.input_parms["save_filtered_model_image"]
 
     def test_finalize_without_diagnostic_plots(self, image_initial):
         image_initial.run()
@@ -323,7 +496,7 @@ class TestImageNormalize:
         image_norm.do_predict = False
         image_norm.set_parset_parameters()
         image_norm.set_input_parameters()
-        assert image_norm.input_parms["save_filtered_model_image"] is True
+        assert image_norm.input_parms["save_filtered_model_image"]
 
     def test_run_with_execute_mock(self, field):
         field.parset["imaging_specific"]["save_filtered_model_image"] = True

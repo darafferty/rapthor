@@ -88,6 +88,7 @@ make_quv_images = True
 pol_combine_method = join
 disable_iquv_clean = True
 use_mpi = True
+shared_facet_rw = False
 reweight = False
 grid_width_ra_deg = 3.0
 grid_width_dec_deg = 5.0
@@ -102,6 +103,7 @@ max_peak_smearing = 0.25
 correct_time_frequency_smearing = True
 skip_final_major_iteration = False
 skip_corner_sectors = True
+use_clean_mask = False
 
 [cluster]
 batch_system = slurm

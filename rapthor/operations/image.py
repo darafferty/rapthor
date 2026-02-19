@@ -196,7 +196,7 @@ class Image(Operation):
             concat_filename.append(image_root[-1] + '_concat.ms')
 
             # Set other parameters
-            if sector.I_mask_file is not None:
+            if self.field.parset["imaging_specific"]["use_clean_mask"] and sector.I_mask_file:
                 # Use the existing mask
                 previous_mask_filename.append(sector.I_mask_file)
             else:
@@ -372,6 +372,10 @@ class Image(Operation):
             self.input_parms.update({'mpi_nnodes': [nnodes_per_subpipeline] * nsectors})
             self.input_parms.update(
                 {'mpi_cpus_per_task': [self.parset['cluster_specific']['cpus_per_task']] * nsectors})
+        if self.use_facets:
+            self.input_parms["shared_facet_rw"] = self.parset["imaging_specific"]["shared_facet_rw"]
+        else:
+            self.input_parms["shared_facet_rw"] = False
         if not self.apply_none and self.use_facets:
             # For faceting, we need inputs for making the ds9 facet region files
             self.input_parms.update({'skymodel': CWLFile(self.field.calibration_skymodel_file).to_json()})
@@ -450,20 +454,21 @@ class Image(Operation):
         self.field.lofar_to_true_flux_ratio = 1.0  # reset values for this cycle
         self.field.lofar_to_true_flux_std = 0.0
 
-
         copied_manually = {
             "sector_I_images",
             "sector_extra_images",
             "sector_image_cube",
             "sector_image_cube_beams",
             "sector_image_cube_frequencies",
+            "source_filtering_mask",
             "filtered_skymodel_true_sky",
             "filtered_skymodel_apparent_sky",
             "pybdsf_catalog",
             "sector_region_file",
             "visibilities",
             "sector_diagnostics_plots",
-            "sector_diagnostics"
+            "sector_diagnostics",
+            "visibilities"
         }
         for index, sector in enumerate(self.field.imaging_sectors):
             # Get the list of output files for this sector
@@ -479,10 +484,18 @@ class Image(Operation):
                     for path in paths:
                         setattr(sector, output_type, path)
 
+            # If the option to save supplementary images is set
+            # set the sector mask_filename attribute to the filtering mask
+            # if it exists. The saving is done in the finalize of the mosaic
+            # operation.
+            if self.field.save_supplementary_images:
+                filtering_mask = self.outputs["source_filtering_mask"][index]
+                if filtering_mask:
+                    sector.mask_filename = filtering_mask["path"]
+
             # Save the output image cubes. Note that, unlike the normal images above,
             # the cubes are copied directly since mosaicking of the cubes is not yet
             # supported
-
             if "sector_image_cube" in self.outputs:
                 dest_dir = os.path.join(self.parset['dir_working'], 'images', self.name)
                 os.makedirs(dest_dir, exist_ok=True)
@@ -515,6 +528,17 @@ class Image(Operation):
             src_filename = self.outputs["pybdsf_catalog"][index]["path"]
             dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
             shutil.copy(src_filename, dst_filename)
+            # Save sector imaging mask
+            dst_dir = os.path.join(self.parset['dir_working'], 'masks', 'image_{}'.format(self.index))
+            os.makedirs(dst_dir, exist_ok=True)
+            # if IQUV images are made, the mask is not generated.
+            if self.outputs["source_filtering_mask"][index]:
+                src_filename = self.outputs["source_filtering_mask"][index]["path"]
+                dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
+                sector.I_mask_file = dst_filename
+                shutil.copy(src_filename, dst_filename)
+            else:
+                sector.I_mask_file = None
 
             # The output ds9 region file, if made
             if self.use_facets:
@@ -562,7 +586,7 @@ class Image(Operation):
 
         # Finally call finalize() in the parent class
         super().finalize()
-    
+
     @staticmethod
     def find_in_file_list(file_list):
         ext_mapping = {"image_file_true_sky": "image-pb.",
@@ -600,6 +624,7 @@ class ImageInitial(Image):
         # Set the template filenames
         self.pipeline_parset_template = 'image_pipeline.cwl'
         self.subpipeline_parset_template = 'image_sector_pipeline.cwl'
+        self.apply_none = True
 
     def set_parset_parameters(self):
         """
@@ -623,7 +648,7 @@ class ImageInitial(Image):
         # model generation
         self.apply_amplitudes = False
         self.apply_fulljones = False
-        self.apply_none = True
+
         self.apply_normalizations = False
         self.field.full_field_sector.auto_mask = 5.0
         self.field.full_field_sector.auto_mask_nmiter = 1
@@ -661,7 +686,8 @@ class ImageInitial(Image):
             "sector_diagnostic_plots",
             "sector_diagnostics",
             "filtered_skymodel_true_sky",
-            "filtered_skymodel_apparent_sky"
+            "filtered_skymodel_apparent_sky",
+            "visibilities"
         }
         # The output image filenames
         image_root = os.path.join(self.pipeline_working_dir, sector.name)
@@ -706,6 +732,14 @@ class ImageInitial(Image):
 
         self.copy_outputs_to(os.path.join(self.parset['dir_working'], self.name, sector.name),
                              exclude=copied_manually)
+
+        # Save sector imaging mask
+        dst_dir = os.path.join(self.parset['dir_working'], 'masks', f'image_{self.index}')
+        os.makedirs(dst_dir, exist_ok=True)
+        src_filename = self.outputs["source_filtering_mask"][0]["path"]
+        dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
+        sector.I_mask_file = dst_filename
+        shutil.copy(src_filename, dst_filename)
 
         # Finally call finalize() of the Operation class
         super(Image, self).finalize()
@@ -781,7 +815,8 @@ class ImageNormalize(Image):
             "sector_image_cube",
             "sector_image_cube_beams",
             "sector_image_cube_frequencies",
-            "sector_normalize_h5parm"
+            "sector_normalize_h5parm",
+            "visibilities"
         }
         dst_dir = os.path.join(self.parset['dir_working'], 'images', self.name)
         os.makedirs(dst_dir, exist_ok=True)
