@@ -10,7 +10,7 @@ from rapthor.operations.concatenate import Concatenate
 from rapthor.operations.calibrate import CalibrateDD, CalibrateDI
 from rapthor.operations.image import Image, ImageInitial, ImageNormalize
 from rapthor.operations.mosaic import Mosaic
-from rapthor.operations.predict import PredictDD, PredictDI, PredictNC
+from rapthor.operations.predict import PredictDD, PredictDI
 from rapthor.lib.field import Field
 import numpy as np
 
@@ -157,11 +157,6 @@ def run_steps(field, steps, final=False):
         if field.do_calibrate:
             # Set whether screens should be generated
             field.generate_screens = True if (field.dde_mode == 'hybrid' and final) else False
-
-            if field.peel_non_calibrator_sources:
-                # Predict and subtract non-calibrator sources before calibration
-                op = PredictNC(field, cycle_number)
-                op.run()
 
             # Calibrate (direction-dependent)
             op = CalibrateDD(field, cycle_number)

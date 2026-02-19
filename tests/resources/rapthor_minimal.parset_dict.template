@@ -108,6 +108,7 @@
                       'use_clean_mask': False},
  'input_h5parm': None,
  'input_fulljones_h5parm': None,
+ 'input_normalization_h5parm': None,
  'input_ms': ['${input_ms}'],
  'data_colname': 'DATA',
  'input_skymodel': None,
