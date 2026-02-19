@@ -10,7 +10,7 @@ from rapthor.operations.concatenate import Concatenate
 from rapthor.operations.calibrate import CalibrateDD, CalibrateDI
 from rapthor.operations.image import Image, ImageInitial, ImageNormalize
 from rapthor.operations.mosaic import Mosaic
-from rapthor.operations.predict import PredictDD, PredictDI, PredictNC
+from rapthor.operations.predict import PredictDD, PredictDI
 from rapthor.lib.field import Field
 import numpy as np
 

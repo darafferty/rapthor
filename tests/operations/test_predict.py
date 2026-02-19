@@ -3,7 +3,7 @@ Test cases for the `rapthor.operations.predict` module.
 """
 
 import pytest
-from rapthor.operations.predict import PredictDD, PredictDI, PredictNC
+from rapthor.operations.predict import PredictDD, PredictDI
 
 
 @pytest.fixture
@@ -28,15 +28,6 @@ def predict_di(field, index=1):
     """
     # return PredictDI(field, index=index)
     return "mock_predict_di"
-
-
-@pytest.fixture
-def predict_nc(field, index=1):
-    """
-    Create an instance of the PredictNC operation.
-    """
-    # return PredictNC(field, index=index)
-    return "mock_predict_nc"
 
 
 class TestPredictDD:
@@ -64,18 +55,4 @@ class TestPredictDI:
 
     def test_finalize(self, predict_di):
         # predict_di.finalize()
-        pass
-
-
-class TestPredictNC:
-    def test_set_parset_parameters(self, predict_nc):
-        # predict_nc.set_parset_parameters()
-        pass
-
-    def test_set_input_parameters(self, predict_nc):
-        # predict_nc.set_input_parameters()
-        pass
-
-    def test_finalize(self, predict_nc):
-        # predict_nc.finalize()
         pass
