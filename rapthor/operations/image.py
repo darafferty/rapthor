@@ -734,7 +734,7 @@ class ImageInitial(Image):
                              exclude=copied_manually)
 
         # Save sector imaging mask
-        dst_dir = os.path.join(self.parset['dir_working'], 'masks', 'image_{}'.format(self.index))
+        dst_dir = os.path.join(self.parset['dir_working'], 'masks', f'image_{self.index}'))
         os.makedirs(dst_dir, exist_ok=True)
         src_filename = self.outputs["source_filtering_mask"][0]["path"]
         dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
