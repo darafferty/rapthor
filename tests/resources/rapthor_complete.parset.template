@@ -102,6 +102,7 @@ max_peak_smearing = 0.25
 correct_time_frequency_smearing = True
 skip_final_major_iteration = False
 skip_corner_sectors = True
+use_clean_mask = False
 
 [cluster]
 batch_system = slurm
