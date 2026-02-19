@@ -9,7 +9,7 @@ from cwl.cwl_mock import mocked_cwl_execution
 from rapthor.lib.strategy import set_selfcal_strategy
 
 from rapthor.operations.image import Image, ImageInitial, ImageNormalize
-
+from unittest import mock
 
 @pytest.fixture
 def expected_image_output():
@@ -67,7 +67,7 @@ def expected_image_output_last_cycle():
 
 
 @pytest.fixture
-def image(field, monkeypatch, expected_image_output):
+def image(field, expected_image_output):
     """
     Fixture to mock CWL execution for the Image operation.
     Create an instance of the Image operation.
@@ -85,22 +85,19 @@ def image(field, monkeypatch, expected_image_output):
     field.image_pol = 'I'
     field.skip_final_major_iteration = True
 
-    # Mock the execute method on the instance
-    monkeypatch.setattr(
-        "rapthor.lib.cwlrunner.BaseCWLRunner.execute",
-        lambda self, args, env: mocked_cwl_execution(self, args, env, expected_image_output),
-        raising=False
-    )
     image = Image(field=field, index=1)
 
     image.set_parset_parameters()
     image.set_input_parameters()
 
-    return image
+    # Mock the execute method on the instance
+    with mock.patch("rapthor.lib.cwlrunner.BaseCWLRunner.execute",
+        new=lambda self, args, env: mocked_cwl_execution(self, args, env, expected_image_output)):
+        yield image
 
 
 @pytest.fixture
-def image_last_cycle(field, monkeypatch, expected_image_output_last_cycle):
+def image_last_cycle(field, expected_image_output_last_cycle):
     """
     Fixture to mock CWL execution for the Image operation.
     Create an instance of the Image operation.
@@ -118,31 +115,22 @@ def image_last_cycle(field, monkeypatch, expected_image_output_last_cycle):
     field.image_pol = 'I'
     field.skip_final_major_iteration = True
 
-    # Mock the execute method on the instance
-    monkeypatch.setattr(
-        "rapthor.lib.cwlrunner.BaseCWLRunner.execute",
-        lambda self, args, env: mocked_cwl_execution(self, args, env, expected_image_output_last_cycle),
-        raising=False
-    )
     image = Image(field=field, index=1)
 
     image.set_parset_parameters()
     image.set_input_parameters()
 
-    return image
+    # Mock the execute method on the instance
+    with mock.patch("rapthor.lib.cwlrunner.BaseCWLRunner.execute",
+        new=lambda self, args, env: mocked_cwl_execution(self, args, env, expected_image_output_last_cycle)):
+        yield image
 
 
 @pytest.fixture
-def image_initial(field, monkeypatch, expected_image_output):
+def image_initial(field, expected_image_output):
     """
     Create an instance of the ImageInitial operation.
     """
-    # Mock the execute method on the instance
-    monkeypatch.setattr(
-        "rapthor.lib.cwlrunner.BaseCWLRunner.execute",
-        lambda self, args, env: mocked_cwl_execution(self, args, env, expected_outputs=expected_image_output),
-        raising=False
-    )
     field.do_predict = False
     field.scan_observations()
     field.define_full_field_sector()
@@ -151,20 +139,17 @@ def image_initial(field, monkeypatch, expected_image_output):
     image_initial.set_parset_parameters()
     image_initial.set_input_parameters()
 
-    return image_initial
+    # Mock the execute method on the instance
+    with mock.patch("rapthor.lib.cwlrunner.BaseCWLRunner.execute",
+        new=lambda self, args, env: mocked_cwl_execution(self, args, env, expected_outputs=expected_image_output)):
+        yield image_initial
 
 
 @pytest.fixture
-def image_normalize(field, monkeypatch, expected_image_output):
+def image_normalize(field, expected_image_output):
     """
     Create an instance of the ImageNormalize operation.
     """
-    # Mock the execute method on the instance
-    monkeypatch.setattr(
-        "rapthor.lib.cwlrunner.BaseCWLRunner.execute",
-        lambda self, args, env: mocked_cwl_execution(self, args, env, expected_outputs=expected_image_output),
-        raising=False
-    )
     field.do_predict = False
     field.scan_observations()
     field.define_normalize_sector()
@@ -175,7 +160,12 @@ def image_normalize(field, monkeypatch, expected_image_output):
     image_norm.do_predict = False
     image_norm.set_parset_parameters()
     image_norm.set_input_parameters()
-    return image_norm
+
+    # Mock the execute method on the instance
+    with mock.patch(
+        "rapthor.lib.cwlrunner.BaseCWLRunner.execute",
+        new=lambda self, args, env: mocked_cwl_execution(self, args, env, expected_outputs=expected_image_output)):
+        yield image_norm
 
 
 class TestImage:
@@ -454,14 +444,14 @@ class TestImageInitial:
         field.scan_observations()
         field.define_full_field_sector()
         field.image_pol = 'I'
-        
+
         image_initial = ImageInitial(field)
-        
+
         # This should NOT raise AttributeError: 'Sector' object has no attribute 'central_patch'
         # The bug causes this to fail because preapply_dde_solutions is incorrectly True
         image_initial.set_parset_parameters()
         image_initial.set_input_parameters()
-        
+
         # Verify apply_none is True and preapply_dde_solutions is False
         assert image_initial.apply_none is True, "apply_none should be True for ImageInitial"
         assert image_initial.preapply_dde_solutions is False, \
