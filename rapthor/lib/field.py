@@ -400,15 +400,15 @@ class Field(object):
         """
         Sets parameters for all observations from current parset and sky model
         """
-        ntimechunks = 0
+        nfreqchunks = 0
         for obs in self.observations:
             obs.set_calibration_parameters(self.parset, self.num_patches, len(self.observations),
                                            self.calibrator_fluxes, self.fast_timestep_sec,
                                            self.medium_timestep_sec,
                                            self.slow_timestep_sec, self.fulljones_timestep_sec,
                                            self.target_flux, self.generate_screens)
-            ntimechunks += obs.ntimechunks
-        self.ntimechunks = ntimechunks
+            nfreqchunks += obs.nfreqchunks
+        self.nfreqchunks = nfreqchunks
 
     def get_obs_parameters(self, parameter):
         """
