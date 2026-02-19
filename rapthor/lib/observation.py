@@ -6,7 +6,6 @@ import os
 import logging
 import casacore.tables as pt
 import numpy as np
-from rapthor.lib.cluster import get_chunk_size
 from scipy.special import erf
 from rapthor.lib import miscellaneous as misc
 import copy
@@ -309,7 +308,7 @@ class Observation(object):
         # Calculate start time and number of time slots to use. We set ntimes to 0 if
         # the observation extends to the end of the MS file, as DP3 interprets that to
         # mean it should use all time slots from the start time onwards
-        self.parameters['starttime'] = [self.starttime] * self.nfreqchunks
+        self.parameters['starttime'] = [misc.convert_mjd2mvt(self.starttime)] * self.nfreqchunks
         self.parameters["ntimes"] = [
             0 if self.goesto_endofms else math.ceil(self.endtime / self.timepersample)
         ] * self.nfreqchunks

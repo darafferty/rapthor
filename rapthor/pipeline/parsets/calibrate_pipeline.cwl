@@ -825,7 +825,7 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/idgcal_solve_phase.cwl
     in:
       - id: msin
-        source: timechunk_filename
+        source: calibration_filename
       - id: starttime
         source: starttime
       - id: ntimes
@@ -865,7 +865,7 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/idgcal_solve_phase_and_gain.cwl
     in:
       - id: msin
-        source: timechunk_filename
+        source: calibration_filename
       - id: starttime
         source: starttime
       - id: ntimes
@@ -942,7 +942,7 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve.cwl
     in:
       - id: msin
-        source: timechunk_filename
+        source: calibration_filename
       - id: data_colname
         source: data_colname
       - id: starttime
