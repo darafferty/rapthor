@@ -8,7 +8,7 @@ from cwl.cwl_mock import mocked_cwl_execution
 from rapthor.lib.strategy import set_selfcal_strategy
 
 from rapthor.operations.image import Image, ImageInitial, ImageNormalize
-
+from unittest import mock
 
 @pytest.fixture
 def expected_image_output():
@@ -46,24 +46,25 @@ def expected_image_output_last_cycle():
             'sector_1-MFS-V-image.fits',
             'sector_1-MFS-Q-image-pb.fits',
             'sector_1-MFS-U-image-pb.fits',
-            'sector_1-MFS-V-image-pb.fits', 
-            'sector_1-MFS-I-residual.fits', 
-            'sector_1-MFS-Q-residual.fits', 
-            'sector_1-MFS-U-residual.fits', 
-            'sector_1-MFS-V-residual.fits', 
-            'sector_1-MFS-I-model-pb.fits', 
-            'sector_1-MFS-Q-model-pb.fits', 
-            'sector_1-MFS-U-model-pb.fits', 
-            'sector_1-MFS-V-model-pb.fits', 
-            'sector_1-MFS-I-dirty.fits', 
-            'sector_1-MFS-Q-dirty.fits', 
-            'sector_1-MFS-U-dirty.fits', 
+            'sector_1-MFS-V-image-pb.fits',
+            'sector_1-MFS-I-residual.fits',
+            'sector_1-MFS-Q-residual.fits',
+            'sector_1-MFS-U-residual.fits',
+            'sector_1-MFS-V-residual.fits',
+            'sector_1-MFS-I-model-pb.fits',
+            'sector_1-MFS-Q-model-pb.fits',
+            'sector_1-MFS-U-model-pb.fits',
+            'sector_1-MFS-V-model-pb.fits',
+            'sector_1-MFS-I-dirty.fits',
+            'sector_1-MFS-Q-dirty.fits',
+            'sector_1-MFS-U-dirty.fits',
             'sector_1-MFS-V-dirty.fits'
         ]]
     }
 
+
 @pytest.fixture
-def image(field, monkeypatch, expected_image_output):
+def image(field, expected_image_output):
     """
     Fixture to mock CWL execution for the Image operation.
     Create an instance of the Image operation.
@@ -81,22 +82,19 @@ def image(field, monkeypatch, expected_image_output):
     field.image_pol = 'I'
     field.skip_final_major_iteration = True
 
-    # Mock the execute method on the instance
-    monkeypatch.setattr(
-        "rapthor.lib.cwlrunner.BaseCWLRunner.execute",
-        lambda self, args, env: mocked_cwl_execution(self, args, env, expected_image_output),
-        raising=False
-    )
     image = Image(field=field, index=1)
 
     image.set_parset_parameters()
     image.set_input_parameters()
 
-    return image
+    # Mock the execute method on the instance
+    with mock.patch("rapthor.lib.cwlrunner.BaseCWLRunner.execute",
+        new=lambda self, args, env: mocked_cwl_execution(self, args, env, expected_image_output)):
+        yield image
 
 
 @pytest.fixture
-def image_last_cycle(field, monkeypatch, expected_image_output_last_cycle):
+def image_last_cycle(field, expected_image_output_last_cycle):
     """
     Fixture to mock CWL execution for the Image operation.
     Create an instance of the Image operation.
@@ -114,31 +112,22 @@ def image_last_cycle(field, monkeypatch, expected_image_output_last_cycle):
     field.image_pol = 'I'
     field.skip_final_major_iteration = True
 
-    # Mock the execute method on the instance
-    monkeypatch.setattr(
-        "rapthor.lib.cwlrunner.BaseCWLRunner.execute",
-        lambda self, args, env: mocked_cwl_execution(self, args, env, expected_image_output_last_cycle),
-        raising=False
-    )
     image = Image(field=field, index=1)
 
     image.set_parset_parameters()
     image.set_input_parameters()
 
-    return image
+    # Mock the execute method on the instance
+    with mock.patch("rapthor.lib.cwlrunner.BaseCWLRunner.execute",
+        new=lambda self, args, env: mocked_cwl_execution(self, args, env, expected_image_output_last_cycle)):
+        yield image
 
 
 @pytest.fixture
-def image_initial(field, monkeypatch, expected_image_output):
+def image_initial(field, expected_image_output):
     """
     Create an instance of the ImageInitial operation.
     """
-    # Mock the execute method on the instance
-    monkeypatch.setattr(
-        "rapthor.lib.cwlrunner.BaseCWLRunner.execute",
-        lambda self, args, env: mocked_cwl_execution(self, args, env, expected_outputs=expected_image_output),
-        raising=False
-    )
     field.do_predict = False
     field.scan_observations()
     field.define_full_field_sector()
@@ -147,20 +136,17 @@ def image_initial(field, monkeypatch, expected_image_output):
     image_initial.set_parset_parameters()
     image_initial.set_input_parameters()
 
-    return image_initial
+    # Mock the execute method on the instance
+    with mock.patch("rapthor.lib.cwlrunner.BaseCWLRunner.execute",
+        new=lambda self, args, env: mocked_cwl_execution(self, args, env, expected_outputs=expected_image_output)):
+        yield image_initial
 
 
 @pytest.fixture
-def image_normalize(field, monkeypatch, expected_image_output):
+def image_normalize(field, expected_image_output):
     """
     Create an instance of the ImageNormalize operation.
     """
-    # Mock the execute method on the instance
-    monkeypatch.setattr(
-        "rapthor.lib.cwlrunner.BaseCWLRunner.execute",
-        lambda self, args, env: mocked_cwl_execution(self, args, env, expected_outputs=expected_image_output),
-        raising=False
-    )
     field.do_predict = False
     field.scan_observations()
     field.define_normalize_sector()
@@ -171,7 +157,12 @@ def image_normalize(field, monkeypatch, expected_image_output):
     image_norm.do_predict = False
     image_norm.set_parset_parameters()
     image_norm.set_input_parameters()
-    return image_norm
+
+    # Mock the execute method on the instance
+    with mock.patch(
+        "rapthor.lib.cwlrunner.BaseCWLRunner.execute",
+        new=lambda self, args, env: mocked_cwl_execution(self, args, env, expected_outputs=expected_image_output)):
+        yield image_norm
 
 
 class TestImage:
@@ -223,7 +214,7 @@ class TestImage:
         image.field.save_visibilities = save_visibilities
         image.run()
         assert image.is_done()
-    
+
     def test_sector_extra_images_on_last_cycle(self, image_last_cycle):
         image_last_cycle.run()
         assert image_last_cycle.is_done()
@@ -232,7 +223,7 @@ class TestImage:
         assert sector_0.name == "sector_1", f"Expected sector name 'sector_1', got '{sector_0.name}'"
         for pol in ['I', 'Q', 'U', 'V']:
             assert hasattr(sector_0, f"{pol}_image_file_true_sky"), f"Expected {pol}_image_file_true_sky to be set in sector_1"
-    
+
     def test_find_in_file_list(self):
         # Test the find_in_file_list method with a sample file list
         file_list = [
@@ -251,7 +242,7 @@ class TestImage:
             "image_file_apparent_sky": ['sector_1-MFS-I-image.fits', 'sector_1-MFS-Q-image.fits', 'sector_1-MFS-U-image.fits', 'sector_1-MFS-V-image.fits']
         }
         assert type_path_map == expected_map, f"Expected {expected_map}, got {type_path_map}"
-    
+
     @pytest.mark.parametrize("pol", ["I", "Q", "U", "V", "X"])
     def test_derive_pol_from_filename(self, pol):
         filename = f'sector_1-MFS-{pol}-image-pb.fits'
