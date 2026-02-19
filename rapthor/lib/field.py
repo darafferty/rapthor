@@ -1228,8 +1228,8 @@ class Field(object):
             outlier_skymodel = self.make_outlier_skymodel()
             nsources = len(outlier_skymodel)
             if nsources > 0:
-                # To allow effecient parallelization, choose number of sectors to be
-                # the no more than the maximum number of nodes, but don't allow fewer
+                # To allow effecient parallelization, choose the number of sectors to
+                # be no more than the maximum number of nodes, but don't allow fewer
                 # than ~ 1000 sources per sector if possible
                 nsectors = max(
                     min(
@@ -1266,8 +1266,8 @@ class Field(object):
         if self.peel_bright_sources:
             nsources = len(self.bright_source_skymodel)
             if nsources > 0:
-                # To allow effecient parallelization, choose number of sectors to be
-                # the no more than the maximum number of nodes, but don't allow fewer
+                # To allow effecient parallelization, choose the number of sectors to
+                # be no more than the maximum number of nodes, but don't allow fewer
                 # than ~ 1000 sources per sector if possible
                 nsectors = max(
                     min(
@@ -1305,9 +1305,9 @@ class Field(object):
         predict_skymodel = self.calibration_skymodel
         nsources = len(predict_skymodel)
         if nsources > 0:
-            # To allow effecient parallelization, choose number of sectors to be
-            # the no more than the maximum number of nodes, but don't allow fewer
-            # than ~ 1000 sources per sector if possible
+            # To allow effecient parallelization, choose the number of sectors to be no
+            # more than the maximum number of nodes, but don't allow fewer than ~ 1000
+            # sources per sector if possible
             nnodes = max(
                 min(
                     self.parset["cluster_specific"]["max_nodes"],
