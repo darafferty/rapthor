@@ -168,16 +168,17 @@ def fits_to_makesourcedb(
     """
     # Convert the result to makesourcedb format and write to a tempfile
     out_lines = [
-        f'FORMAT = Name, Type, Ra, Dec, I, ReferenceFrequency={reference_freq}\n'
+        f'FORMAT = Name, Type, Ra, Dec, I, ReferenceFrequency={reference_freq}\n',
+        *(
+            f'{name}, POINT, {ra}, {dec}, {flux}, \n'
+            for name, ra, dec, flux in zip(
+                catalog['Source_id'],
+                catalog['RA'],
+                catalog['DEC'],
+                catalog[flux_colname],
+            )
+        ),
     ]
-    for name, ra, dec, flux in zip(
-        catalog['Source_id'],
-        catalog['RA'],
-        catalog['DEC'],
-        catalog[flux_colname],
-    ):
-        out_lines.append(f'{name}, POINT, {ra}, {dec}, {flux}, \n')
-
     skymodel_file = tempfile.NamedTemporaryFile()
     with open(skymodel_file.name, 'w') as f:
         f.writelines(out_lines)
