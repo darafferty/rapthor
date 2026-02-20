@@ -193,10 +193,8 @@ def test_check_photometry_with_comparison_skymodel_does_not_access_internet(
     }
     mocker.patch.object(lsmtool.skymodel.SkyModel, "compare", return_value=mock_compare_result)
     mocker.patch.object(lsmtool.skymodel.SkyModel, "group")
-    mocker.patch("rapthor.scripts.calculate_image_diagnostics.os.rename", autospec=True)
     mocker.patch(
-        "rapthor.scripts.calculate_image_diagnostics.os.path.exists",
-        return_value=False,
+        "rapthor.scripts.calculate_image_diagnostics.rename_plots", autospec=True
     )
     monkeypatch.setattr(
         "astropy.table.Table.read", lambda *args, **kwargs: Table(mock_data)
