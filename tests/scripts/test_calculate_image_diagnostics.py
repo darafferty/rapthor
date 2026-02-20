@@ -7,16 +7,16 @@ import lsmtool.skymodel
 import pytest
 from astropy.table import Table
 
-from rapthor.lib import fitsimage
-from rapthor.scripts.calculate_image_diagnostics import (
-    check_astrometry,
-    check_photometry,
-)
-import pytest
-from astropy.table import Table
+import logging
+
 import astropy.units as u
 import lsmtool.skymodel
-import logging
+import pytest
+from astropy.table import Table
+
+from rapthor.lib import fitsimage
+from rapthor.scripts.calculate_image_diagnostics import (check_astrometry,
+                                                         check_photometry)
 
 
 def test_check_astrometry_zero_sources(

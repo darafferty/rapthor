@@ -3,9 +3,14 @@
 Script to calculate various image diagnostics
 """
 
+import glob
 import json
+import logging
+import os
+import shutil
 import tempfile
 from argparse import ArgumentParser, RawTextHelpFormatter
+from collections import defaultdict
 
 import astropy.units as u
 import casacore.tables as pt
@@ -18,29 +23,17 @@ from astropy.utils import iers
 from astropy.visualization.wcsaxes import WCSAxes
 from lsmtool.operations_lib import make_wcs
 
+
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.facet import SquareFacet, read_ds9_region_file
 from rapthor.lib.fitsimage import FITSImage
 from rapthor.lib.observation import Observation
-import casacore.tables as pt
-from astropy.utils import iers
-from astropy.table import Table
-import astropy.units as u
-from astropy.coordinates import SkyCoord
-import json
-from astropy.visualization.wcsaxes import WCSAxes
-import tempfile
-import matplotlib
-from collections import defaultdict
+
 if matplotlib.get_backend() != 'Agg':
     matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-import os
-import glob
-import os
-import shutil
-import logging
-import matplotlib.pyplot as plt
+
+
 
 # Turn off astropy's IERS downloads to fix problems in cases where compute
 # node does not have internet access
