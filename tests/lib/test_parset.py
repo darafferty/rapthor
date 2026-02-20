@@ -12,7 +12,8 @@ try:
     import mock
 except ImportError:
     from unittest import mock
-from rapthor.lib.parset import parset_read
+
+from rapthor.lib.parset import parset_read, check_skymodel_settings
 
 
 class TestParset(unittest.TestCase):
@@ -179,6 +180,221 @@ class TestParset(unittest.TestCase):
             ).substitute(dir_working=self.dir_working.name, input_ms=self.input_ms.name)
         )
         self.assertEqual(parset, ref_parset)
+
+
+class TestCheckSkymodelSettings(unittest.TestCase):
+    """
+    Tests for the `check_skymodel_settings` function.
+    """
+
+    def _make_parset_dict(self, **overrides):
+        """Helper to create a minimal parset_dict with sensible defaults."""
+        parset_dict = {
+            "input_skymodel": None,
+            "generate_initial_skymodel": False,
+            "download_initial_skymodel": False,
+            "apparent_skymodel": None,
+            "cluster_specific": {"allow_internet_access": True},
+            "imaging_specific": {
+                "astrometry_skymodel": None,
+                "photometry_skymodel": None,
+            },
+        }
+        for key, value in overrides.items():
+            if key in ("cluster_specific", "imaging_specific"):
+                parset_dict[key].update(value)
+            else:
+                parset_dict[key] = value
+        return parset_dict
+
+    # ---- input_skymodel given ----
+
+    def test_input_skymodel_not_found_raises(self):
+        parset_dict = self._make_parset_dict(
+            input_skymodel="/nonexistent/skymodel.txt"
+        )
+        with self.assertRaises(FileNotFoundError):
+            check_skymodel_settings(parset_dict)
+
+    def test_input_skymodel_exists(self):
+        with tempfile.NamedTemporaryFile(suffix=".skymodel") as f:
+            parset_dict = self._make_parset_dict(input_skymodel=f.name)
+            # Should not raise
+            check_skymodel_settings(parset_dict)
+
+    def test_input_skymodel_with_generate_disables_download(self):
+        with tempfile.NamedTemporaryFile(suffix=".skymodel") as f:
+            parset_dict = self._make_parset_dict(
+                input_skymodel=f.name,
+                generate_initial_skymodel=True,
+            )
+            with self.assertLogs(logger="rapthor:parset", level="WARN") as cm:
+                check_skymodel_settings(parset_dict)
+            self.assertFalse(parset_dict["download_initial_skymodel"])
+            self.assertTrue(
+                any("Sky model generation requested" in msg for msg in cm.output)
+            )
+
+    def test_input_skymodel_with_download_disables_download(self):
+        with tempfile.NamedTemporaryFile(suffix=".skymodel") as f:
+            parset_dict = self._make_parset_dict(
+                input_skymodel=f.name,
+                download_initial_skymodel=True,
+            )
+            with self.assertLogs(logger="rapthor:parset", level="WARN") as cm:
+                check_skymodel_settings(parset_dict)
+            self.assertFalse(parset_dict["download_initial_skymodel"])
+            self.assertTrue(
+                any("Sky model download requested" in msg for msg in cm.output)
+            )
+
+    # ---- no input_skymodel, generate requested ----
+
+    def test_no_input_generate_requested(self):
+        parset_dict = self._make_parset_dict(generate_initial_skymodel=True)
+        with self.assertLogs(logger="rapthor:parset", level="INFO") as cm:
+            check_skymodel_settings(parset_dict)
+        self.assertTrue(
+            any("Will automatically generate sky model" in msg for msg in cm.output)
+        )
+
+    def test_no_input_generate_requested_with_apparent_warns(self):
+        parset_dict = self._make_parset_dict(
+            generate_initial_skymodel=True,
+            apparent_skymodel="some_apparent.skymodel",
+        )
+        with self.assertLogs(logger="rapthor:parset", level="WARN") as cm:
+            check_skymodel_settings(parset_dict)
+        self.assertTrue(
+            any("apparent sky model will not be used" in msg for msg in cm.output)
+        )
+
+    # ---- no input_skymodel, download requested ----
+
+    def test_no_input_download_requested(self):
+        parset_dict = self._make_parset_dict(download_initial_skymodel=True)
+        with self.assertLogs(logger="rapthor:parset", level="INFO") as cm:
+            check_skymodel_settings(parset_dict)
+        self.assertTrue(
+            any("Will automatically download sky model" in msg for msg in cm.output)
+        )
+
+    def test_no_input_download_requested_with_apparent_warns(self):
+        parset_dict = self._make_parset_dict(
+            download_initial_skymodel=True,
+            apparent_skymodel="some_apparent.skymodel",
+        )
+        with self.assertLogs(logger="rapthor:parset", level="WARN") as cm:
+            check_skymodel_settings(parset_dict)
+        self.assertTrue(
+            any("apparent sky model will not be used" in msg for msg in cm.output)
+        )
+
+    # ---- no input_skymodel, neither generate nor download ----
+
+    def test_no_input_no_generate_no_download_warns(self):
+        parset_dict = self._make_parset_dict()
+        with self.assertLogs(logger="rapthor:parset", level="WARN") as cm:
+            check_skymodel_settings(parset_dict)
+        self.assertTrue(
+            any("neither generation nor download" in msg for msg in cm.output)
+        )
+
+    # ---- internet access checks ----
+
+    def test_download_no_internet_raises(self):
+        parset_dict = self._make_parset_dict(
+            download_initial_skymodel=True,
+            cluster_specific={"allow_internet_access": False},
+        )
+        with self.assertRaises(ValueError):
+            check_skymodel_settings(parset_dict)
+
+    def test_internet_allowed_download_ok(self):
+        parset_dict = self._make_parset_dict(
+            download_initial_skymodel=True,
+            cluster_specific={"allow_internet_access": True},
+        )
+        # Should not raise
+        with self.assertLogs(logger="rapthor:parset", level="INFO"):
+            check_skymodel_settings(parset_dict)
+
+    # ---- diagnostic skymodel checks (no internet) ----
+
+    def test_astrometry_skymodel_missing_no_internet_raises(self):
+        parset_dict = self._make_parset_dict(
+            generate_initial_skymodel=True,
+            cluster_specific={"allow_internet_access": False},
+            imaging_specific={"astrometry_skymodel": "/nonexistent/astro.skymodel",
+                              "photometry_skymodel": None,
+                              },
+        )
+        with self.assertRaises(FileNotFoundError):
+            check_skymodel_settings(parset_dict)
+
+    def test_photometry_skymodel_missing_no_internet_raises(self):
+        parset_dict = self._make_parset_dict(
+            generate_initial_skymodel=True,
+            cluster_specific={"allow_internet_access": False},
+            imaging_specific={"astrometry_skymodel": None,
+                              "photometry_skymodel": "/nonexistent/photo.skymodel",
+                             },
+        )
+        with self.assertRaises(FileNotFoundError):
+            check_skymodel_settings(parset_dict)
+
+    def test_astrometry_skymodel_exists_no_internet_ok(self):
+        with tempfile.NamedTemporaryFile(suffix=".skymodel") as f:
+            parset_dict = self._make_parset_dict(
+                cluster_specific={"allow_internet_access": False},
+                imaging_specific={
+                    "astrometry_skymodel": f.name,
+                    "photometry_skymodel": None,
+                },
+            )
+            # Should not raise (warning about no skymodel is expected)
+            with self.assertLogs(logger="rapthor:parset", level="WARN") as cm:
+                check_skymodel_settings(parset_dict)
+
+            self.assertTrue(
+                any("The photometry check will be skipped" in msg for msg in cm.output)
+            )
+
+    def test_photometry_skymodel_exists_no_internet_ok(self):
+        with tempfile.NamedTemporaryFile(suffix=".skymodel") as f:
+            parset_dict = self._make_parset_dict(
+                cluster_specific={"allow_internet_access": False},
+                imaging_specific={
+                    "astrometry_skymodel": None,
+                    "photometry_skymodel": f.name,
+                },
+            )
+            # Should not raise (warning about no skymodel is expected)
+            with self.assertLogs(logger="rapthor:parset", level="WARN") as cm:
+                check_skymodel_settings(parset_dict)
+
+            self.assertTrue(
+                any("The astrometry check will be skipped" in msg for msg in cm.output)
+            )
+
+    def test_diagnostic_skymodel_empty_no_internet_ok(self):
+        parset_dict = self._make_parset_dict(
+            cluster_specific={"allow_internet_access": False},
+            imaging_specific={
+                "astrometry_skymodel": None,
+                "photometry_skymodel": None,
+            },
+        )
+        # Should not raise
+        with self.assertLogs(logger="rapthor:parset", level="WARN") as cm:
+            check_skymodel_settings(parset_dict)
+
+        self.assertTrue(
+            any("The astrometry check will be skipped" in msg for msg in cm.output)
+        )
+        self.assertTrue(
+            any("The photometry check will be skipped" in msg for msg in cm.output)
+        )
 
 
 if __name__ == "__main__":
