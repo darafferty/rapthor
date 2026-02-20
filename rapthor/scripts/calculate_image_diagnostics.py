@@ -3,6 +3,7 @@
 Script to calculate various image diagnostics
 """
 
+import contextlib
 import glob
 import json
 import logging
@@ -39,6 +40,36 @@ iers.conf.auto_download = False
 
 # Initialize logger
 logger = logging.getLogger('rapthor:calculate_image_diagnostics')
+
+
+@contextlib.contextmanager
+def safe_load_skymodel(skymodel, message, post, **kws):
+    """
+    Context manager to catch loading errors and log an appropriate message
+
+    Parameters
+    ----------
+    skymodel : str
+        Skymodel to load.
+    message : str
+        Message to log if loading fails
+    post : str
+        Message to log after the error message and error details
+
+    Yields
+    -------
+    lsmtool.SkyModel
+        Loaded skymodel object
+    """
+    try:
+        yield lsmtool.load(skymodel, **kws)
+    except OSError as error:
+        logger.info(
+            '%s The error was: \n%s\n%s',
+            message,
+            error,
+            post,
+        )
 
 
 def plot_astrometry_offsets(
@@ -329,20 +360,18 @@ def load_photometry_surveys(
     # Load photometry comparison model
     comparison_skymodels = []
     if comparison_skymodel:
-        try:
-            comparison_skymodels = [lsmtool.load(comparison_skymodel)]
+        with safe_load_skymodel(
+            comparison_skymodel,
+            'Comparison sky model could not be loaded.',
+            'Trying to download sky model(s) instead...',
+        ) as skymodel:
+            comparison_skymodels.append(skymodel)
             comparison_surveys = ['USER_SUPPLIED']
             logger.info(
                 'Using the supplied comparison sky model for the photometry '
                 'check'
             )
-        except OSError as error:
-            # Comparison catalog not loaded successfully
-            logger.info(
-                'Comparison sky model could not be loaded. Error was: \n%s\n'
-                'Trying to download sky model(s) instead...',
-                error,
-            )
+
     if not comparison_skymodels:
         # Download sky model(s) given by comparison_surveys around the phase
         # center, using a 5-deg radius to ensure the field is fully covered
@@ -353,6 +382,7 @@ def load_photometry_surveys(
                 'check...'
             )
             return {}
+
         if backup_survey is not None:
             if backup_survey in comparison_surveys:
                 logger.info(
@@ -368,24 +398,18 @@ def load_photometry_surveys(
                     backup_survey,
                 )
                 comparison_surveys.append(backup_survey)
+
         for survey in comparison_surveys:
-            try:
-                comparison_skymodels.append(
-                    lsmtool.load(
-                        survey,
-                        VOPosition=[observation.ra, observation.dec],
-                        VORadius=5.0,
-                    )
-                )
-            except OSError as error:
-                # Comparison catalog not downloaded successfully
-                logger.info(
-                    'A problem occurred when downloading the %s catalog for use'
-                    ' in the photometry check. Error was: \n%s\n. Skipping this'
-                    ' survey...',
-                    survey,
-                    error,
-                )
+            with safe_load_skymodel(
+                survey,
+                'A problem occurred when downloading the %s catalog for use'
+                ' in the photometry check.',
+                'Skipping this survey...',
+                VOPosition=[observation.ra, observation.dec],
+                VORadius=5.0,
+            ) as skymodel:
+                comparison_skymodels.append(skymodel)
+
     return comparison_skymodels
 
 
@@ -534,24 +558,18 @@ def check_astrometry(
     s_pybdsf = fits_to_makesourcedb(catalog, image.freq)
 
     # Loop over the facets, performing the astrometry checks for each
+    astrometry_skymodel = None
     if comparison_skymodel:
-        try:
-            s_comp_astrometry = lsmtool.load(comparison_skymodel)
-            s_comp_astrometry.group('every')
+        with safe_load_skymodel(
+            comparison_skymodel,
+            'Comparison sky model could not be loaded.',
+            'Trying default sky model instead...'
+        ) as astrometry_skymodel:
+            astrometry_skymodel.group('every')
             logger.info(
                 'Using the supplied comparison sky model for the astrometry '
                 'check'
             )
-        except OSError as error:
-            # Comparison catalog not loaded successfully
-            s_comp_astrometry = None
-            logger.info(
-                'Comparison sky model could not be loaded. Error was: \n%s\n '
-                'Trying default sky model instead...',
-                error,
-            )
-    else:
-        s_comp_astrometry = None
 
     astrometry_keys = (
         'meanRAOffsetDeg',
@@ -566,7 +584,7 @@ def check_astrometry(
     astrometry_diagnostics = defaultdict(list)
     for facet in facets:
         facet.set_skymodel(s_pybdsf.copy())
-        facet.find_astrometry_offsets(s_comp_astrometry, min_number=min_number)
+        facet.find_astrometry_offsets(astrometry_skymodel, min_number=min_number)
         if facet.astrometry_diagnostics:
             astrometry_diagnostics['facet_name'].append(facet.name)
             for key in astrometry_keys:
