@@ -459,14 +459,16 @@ def check_astrometry(
         return {}
 
     # Do the astrometry check
-    max_search_cone_radius = 0.5  # deg; Pan-STARRS search limit
     if facet_region_file is not None and os.path.isfile(facet_region_file):
         facets = read_ds9_region_file(facet_region_file)
     else:
         # Use a single rectangular facet centered on the phase center
         ra = obs.ra
         dec = obs.dec
-        image_width = max(image.img_data.shape[-2:]) * abs(image.img_hdr["CDELT1"])
+        image_width = max(image.img_data.shape[-2:]) * abs(
+            image.img_hdr["CDELT1"]
+        )
+        max_search_cone_radius = 0.5  # deg; Pan-STARRS search limit
         width = min(max_search_cone_radius * 2, image_width)
         facets = [SquareFacet("field", ra, dec, width)]
 
