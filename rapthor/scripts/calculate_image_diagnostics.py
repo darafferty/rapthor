@@ -463,14 +463,12 @@ def check_astrometry(
         facets = read_ds9_region_file(facet_region_file)
     else:
         # Use a single rectangular facet centered on the phase center
-        ra = obs.ra
-        dec = obs.dec
         image_width = max(image.img_data.shape[-2:]) * abs(
             image.img_hdr["CDELT1"]
         )
         max_search_cone_radius = 0.5  # deg; Pan-STARRS search limit
         width = min(max_search_cone_radius * 2, image_width)
-        facets = [SquareFacet("field", ra, dec, width)]
+        facets = [SquareFacet("field", obs.ra, obs.dec, width)]
 
     # Convert the filtered catalog into a minimal sky model for use with LSMTool
     s_pybdsf = fits_to_makesourcedb(catalog, image.freq)
@@ -540,9 +538,7 @@ def check_astrometry(
     if len(astrometry_diagnostics["facet_name"]):
         with open(output_root + ".astrometry_offsets.json", "w") as fp:
             json.dump(astrometry_diagnostics, fp)
-        ra = obs.ra
-        dec = obs.dec
-        plot_astrometry_offsets(facets, ra, dec, output_root + ".astrometry_offsets.pdf")
+        plot_astrometry_offsets(facets, obs.ra, obs.dec, output_root + ".astrometry_offsets.pdf")
 
         # Calculate mean offsets
         mean_astrometry_diagnostics = {
