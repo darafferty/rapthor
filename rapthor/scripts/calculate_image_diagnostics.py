@@ -169,9 +169,8 @@ def fits_to_makesourcedb(catalog, reference_freq, flux_colname="Isl_Total_flux")
     skymodel_file = tempfile.NamedTemporaryFile()
     with open(skymodel_file.name, "w") as f:
         f.writelines(out_lines)
-    skymodel = lsmtool.load(skymodel_file.name)
 
-    return skymodel
+    return lsmtool.load(skymodel_file.name)
 
 
 def check_photometry(
