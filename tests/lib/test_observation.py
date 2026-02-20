@@ -5,7 +5,7 @@ Test cases for the `rapthor.lib.observation` module.
 import pytest
 from logging import Logger
 import numpy as np
-from unittest.mock import patch
+from unittest import mock
 
 class TestObservation:
     """
@@ -30,11 +30,12 @@ class TestObservation:
 
     @pytest.mark.parametrize("generate_screens", [True, False])
     @pytest.mark.parametrize("chunk_by_time", [True, False])
-    def test_set_calibration_parameters(self, observation, generate_screens, chunk_by_time):
-        fast_timestep_sec = 20 * observation.timepersample
-        medium_timestep_sec = 120 * observation.timepersample
-        slow_timestep_sec = 300 * observation.timepersample
-        fulljones_timestep_sec = 600 * observation.timepersample
+    def test_set_calibration_parameters(self, observation, test_ms, generate_screens, chunk_by_time):
+        solint_fast_timestep = 20
+        solint_medium_timestep = 120
+        solint_slow_timestep = 300
+        solint_fulljones_timestep = 600
+
         parset = {
             "calibration_specific": {
                 "fast_freqstep_hz": 1e5,
@@ -58,7 +59,7 @@ class TestObservation:
             cluster_specific_parameters = "mock cluster specific parameters"
             parset["cluster_specific"] = cluster_specific_parameters
 
-        with patch("rapthor.lib.observation.get_chunk_size") as mock_get_chunk_size:
+        with mock.patch("rapthor.lib.observation.get_chunk_size") as mock_get_chunk_size:
             mock_get_chunk_size.return_value = 10
 
             n_observations = 4
@@ -67,10 +68,10 @@ class TestObservation:
                 parset,
                 n_observations,
                 calibrator_fluxes,
-                fast_timestep_sec,
-                medium_timestep_sec,
-                slow_timestep_sec,
-                fulljones_timestep_sec,
+                solint_fast_timestep * observation.timepersample,
+                solint_medium_timestep * observation.timepersample,
+                solint_slow_timestep * observation.timepersample,
+                solint_fulljones_timestep * observation.timepersample,
                 generate_screens=generate_screens,
                 chunk_by_time=chunk_by_time,
             )
@@ -81,6 +82,36 @@ class TestObservation:
                     600)
             else:
                 mock_get_chunk_size.assert_not_called()
+
+        assert observation.ntimechunks == 1
+
+        assert observation.parameters['timechunk_filename'] == [test_ms]
+        assert observation.parameters['predict_di_output_filename'] == [None]
+        assert observation.parameters['starttime'] == ['29Mar2013/13:59:52.907']
+        assert observation.parameters['ntimes'] == [0]
+
+        assert observation.parameters['solint_fast_timestep'] == [solint_fast_timestep]
+        assert observation.parameters['solint_fast_freqstep'] == [4]
+        assert observation.parameters['solint_medium_timestep'] == [solint_medium_timestep]
+        assert observation.parameters['solint_medium_freqstep'] == [8]
+        assert observation.parameters['solint_slow_timestep'] == [solint_slow_timestep]
+        assert observation.parameters['solint_slow_freqstep'] == [8]
+        assert observation.parameters['solint_fulljones_timestep'] == [solint_fulljones_timestep + 1]
+        assert observation.parameters['solint_fulljones_freqstep'] == [8]
+
+        assert observation.parameters['bda_maxinterval'] == [200.278016]
+        assert observation.parameters['bda_minchannels'] == [2]
+
+        assert observation.parameters['fast_solutions_per_direction'] == [[1, 1, 1, 1]]
+        assert observation.parameters['medium_solutions_per_direction'] == [[1, 1, 1, 1]]
+        assert observation.parameters['slow_solutions_per_direction'] == [[1, 1, 1, 1]]
+        assert observation.parameters['fast_smoothness_dd_factors'] == [[1, 1, 1, 1]]
+        assert observation.parameters['medium_smoothness_dd_factors'] == [[1, 1, 1, 1]]
+        assert observation.parameters['slow_smoothness_dd_factors'] == [[1, 1, 1, 1]]
+
+        assert observation.parameters['fast_smoothnessreffrequency'] == [144e6]
+        assert observation.parameters['medium_smoothnessreffrequency'] == [144e6]
+
 
     def test_set_prediction_parameters(self, sector_name=None, patch_names=None):
         pass
