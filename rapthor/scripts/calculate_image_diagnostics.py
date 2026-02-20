@@ -345,8 +345,10 @@ def check_photometry(
     ]  # other plots not related to photometry check
     successful_surveys = []
     photometry_diagnostics = {}
-    for i, s_comp_photometry in enumerate(comparison_skymodels):
-        survey = comparison_surveys[i].strip().upper()
+    for survey, s_comp_photometry in zip(
+        comparison_surveys, comparison_skymodels
+    ):
+        survey = survey.strip().upper()
 
         # Check if we're dealing with the backup survey and use it only if none
         # of the other surveys succeeded (the backup survey is always appended
