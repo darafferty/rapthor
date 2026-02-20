@@ -1112,6 +1112,7 @@ steps:
     when: $(inputs.save_filtered_model_image == true)
     out:
       - id: output_image
+
   - id: find_diagnostics
     label: Find image diagnostics
     doc: |
@@ -1128,8 +1129,6 @@ steps:
         source: filter/true_sky_rms_image
       - id: input_catalog
         source: filter/source_catalog
-      - id: input_skymodel
-        source: filter/filtered_skymodel_true_sky
       - id: output_root
         source: image_name
       - id: obs_ms
