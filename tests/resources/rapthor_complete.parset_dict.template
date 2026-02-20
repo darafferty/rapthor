@@ -109,6 +109,7 @@
                       'shared_facet_rw': False},
  'input_h5parm': '/my/data/dirdependent.h5',
  'input_fulljones_h5parm': '/my/data/fulljones.h5',
+ 'input_normalization_h5parm': '/my/data/normalization.h5',
  'input_ms': ['${input_ms}'],
  'data_colname': 'DATA',
  'input_skymodel': None,

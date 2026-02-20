@@ -29,11 +29,6 @@ The PredictDD class
 .. autoclass:: rapthor.operations.predict.PredictDD
    :members:
 
-The PredictNC class
-^^^^^^^^^^^^^^^^^^^
-.. autoclass:: rapthor.operations.predict.PredictNC
-   :members:
-
 The PredictDI class
 ^^^^^^^^^^^^^^^^^^^
 .. autoclass:: rapthor.operations.predict.PredictDI

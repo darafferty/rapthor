@@ -2,6 +2,7 @@
     "global": {
         "dir_working": null,
         "input_ms": null,
+        "separation_tolerance_arcsec": 0.05,
         "data_colname": "DATA",
         "generate_initial_skymodel": true,
         "generate_initial_skymodel_radius": null,
@@ -18,6 +19,7 @@
         "final_data_fraction": 1.0,
         "input_h5parm": null,
         "input_fulljones_h5parm": null,
+        "input_normalization_h5parm": null,
         "facet_layout": null,
         "dde_mode": "faceting"
     },
@@ -73,6 +75,7 @@
         "dde_method": "full",
         "filter_skymodel": true,
         "source_finder": "bdsf",
+        "save_filtered_model_image": false,
         "save_visibilities": false,
         "average_visibilities": true,
         "save_image_cube": false,
@@ -92,7 +95,9 @@
         "make_quv_images": false,
         "pol_combine_method": "link",
         "disable_iquv_clean": false,
+        "use_clean_mask": false,
         "use_mpi": false,
+        "shared_facet_rw": false,
         "reweight": false,
         "grid_width_ra_deg": null,
         "grid_width_dec_deg": null,

@@ -62,14 +62,15 @@ strategy = selfcal
 selfcal_data_fraction = 0.2
 final_data_fraction = 1.0
 
-# Full path to an H5parm file with direction-dependent solutions (default =
-# None). This file is required if no calibration is to be done. Full-Jones
-# solutions can also be supplied. Note: the directions in the H5parm file must
-# match the patches in the input sky model, and the time and frequency coverage
-# of the solutions must be sufficient to cover the duration and bandwidth of
-# the input dataset
+# Full path to an H5parm file with direction-dependent solutions (default = None). This
+# file is required if no calibration is to be done. Full-Jones and flux- scale
+# normalization solutions can also be supplied. Note: the directions in the H5parm file
+# must match the patches in the input sky model (or facet layout file, if supplied),
+# and the time and frequency coverage of the solutions must be sufficient to cover the
+# duration and bandwidth of the input dataset
 input_h5parm = None
 input_fulljones_h5parm = None
+input_normalization_h5parm = None
 
 # Full path to a text file (in ds9 format) that defines the facet layout
 # (default = None). If a facet file is supplied, calibration patches and imaging
