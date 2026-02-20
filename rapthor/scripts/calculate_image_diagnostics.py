@@ -269,65 +269,11 @@ def check_photometry(
         )
         return {}
 
-    # Do the photometry check
-    # Load photometry comparison model
-    comparison_skymodels = []
-    if comparison_skymodel:
-        try:
-            comparison_skymodels = [lsmtool.load(comparison_skymodel)]
-            comparison_surveys = ['USER_SUPPLIED']
-            logger.info(
-                'Using the supplied comparison sky model for the photometry '
-                'check'
-            )
-        except OSError as error:
-            # Comparison catalog not loaded successfully
-            logger.info(
-                'Comparison sky model could not be loaded. Error was: \n%s\n'
-                'Trying to download sky model(s) instead...',
-                error,
-            )
-    if not comparison_skymodels:
-        # Download sky model(s) given by comparison_surveys around the phase
-        # center, using a 5-deg radius to ensure the field is fully covered
-        if not comparison_surveys:
-            logger.info(
-                'A comparison sky model is not available and a list of '
-                'comparison surveys was not supplied. Skipping photometry '
-                'check...'
-            )
-            return {}
-        if backup_survey is not None:
-            if backup_survey in comparison_surveys:
-                logger.info(
-                    'The backup survey "%s" is already included in '
-                    'comparison_surveys. Disabling the backup',
-                    backup_survey,
-                )
-                backup_survey = None
-            else:
-                logger.info(
-                    'Using "%s" as the backup survey catalog for the '
-                    'photometry check',
-                    backup_survey,
-                )
-                comparison_surveys.append(backup_survey)
-        for survey in comparison_surveys:
-            try:
-                comparison_skymodels.append(
-                    lsmtool.load(
-                        survey, VOPosition=[obs.ra, obs.dec], VORadius=5.0
-                    )
-                )
-            except OSError as error:
-                # Comparison catalog not downloaded successfully
-                logger.info(
-                    'A problem occurred when downloading the %s catalog for use'
-                    ' in the photometry check. Error was: \n%s\n. Skipping this'
-                    ' survey...',
-                    survey,
-                    error,
-                )
+    # Load photometry survey skymodels, fall back to backup if needed
+    comparison_surveys = list(comparison_surveys)
+    comparison_skymodels = load_photometry_surveys(
+        obs, comparison_skymodel, comparison_surveys, backup_survey
+    )
 
     # Convert the filtered catalog to a minimal sky model for use with LSMTool
     # and do the comparison for each survey.
@@ -398,6 +344,7 @@ def check_photometry(
         # remove other, unneeded plots
         for plot in photometry_plots:
             os.rename(f'{plot}.pdf', f'{plot}_{survey}.pdf')
+
         for plot in other_plots:
             if os.path.exists(f'{plot}.pdf'):
                 os.remove(f'{plot}.pdf')
@@ -411,6 +358,72 @@ def check_photometry(
         }
 
     return photometry_diagnostics
+
+
+def load_photometry_surveys(
+    observation, comparison_skymodel, comparison_surveys, backup_survey
+):
+    # Load photometry comparison model
+    comparison_skymodels = []
+    if comparison_skymodel:
+        try:
+            comparison_skymodels = [lsmtool.load(comparison_skymodel)]
+            comparison_surveys = ['USER_SUPPLIED']
+            logger.info(
+                'Using the supplied comparison sky model for the photometry '
+                'check'
+            )
+        except OSError as error:
+            # Comparison catalog not loaded successfully
+            logger.info(
+                'Comparison sky model could not be loaded. Error was: \n%s\n'
+                'Trying to download sky model(s) instead...',
+                error,
+            )
+    if not comparison_skymodels:
+        # Download sky model(s) given by comparison_surveys around the phase
+        # center, using a 5-deg radius to ensure the field is fully covered
+        if not comparison_surveys:
+            logger.info(
+                'A comparison sky model is not available and a list of '
+                'comparison surveys was not supplied. Skipping photometry '
+                'check...'
+            )
+            return {}
+        if backup_survey is not None:
+            if backup_survey in comparison_surveys:
+                logger.info(
+                    'The backup survey "%s" is already included in '
+                    'comparison_surveys. Disabling the backup',
+                    backup_survey,
+                )
+                backup_survey = None
+            else:
+                logger.info(
+                    'Using "%s" as the backup survey catalog for the '
+                    'photometry check',
+                    backup_survey,
+                )
+                comparison_surveys.append(backup_survey)
+        for survey in comparison_surveys:
+            try:
+                comparison_skymodels.append(
+                    lsmtool.load(
+                        survey,
+                        VOPosition=[observation.ra, observation.dec],
+                        VORadius=5.0,
+                    )
+                )
+            except OSError as error:
+                # Comparison catalog not downloaded successfully
+                logger.info(
+                    'A problem occurred when downloading the %s catalog for use'
+                    ' in the photometry check. Error was: \n%s\n. Skipping this'
+                    ' survey...',
+                    survey,
+                    error,
+                )
+    return comparison_skymodels
 
 
 def check_astrometry(
