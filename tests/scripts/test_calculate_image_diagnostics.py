@@ -188,10 +188,10 @@ def test_check_photometry_with_comparison_skymodel_does_not_access_internet(
         "meanClippedDecOffsetDeg": 1,
         "stdClippedDecOffsetDeg": 1,
     }
-    mocker.patch.object(
-        lsmtool.skymodel.SkyModel, "compare", return_value=mock_compare_result
+    mocker.patch(
+        'rapthor.scripts.calculate_image_diagnostics.compare_photometry_survey',
+        return_value=mock_compare_result
     )
-    mocker.patch.object(lsmtool.skymodel.SkyModel, "group")
     mocker.patch(
         "rapthor.scripts.calculate_image_diagnostics.rename_plots", autospec=True
     )
