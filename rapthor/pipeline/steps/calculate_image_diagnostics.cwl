@@ -46,14 +46,6 @@ inputs:
     type: File
     inputBinding:
       position: 5
-  - id: input_skymodel
-    label: Input sky model
-    doc: |
-      The filename of the input sky model (in makesourcedb format). This model
-      should be grouped into source patches.
-    type: File
-    inputBinding:
-      position: 6
   - id: obs_ms
     label: Filenames of MS files
     doc: |
@@ -62,7 +54,7 @@ inputs:
       the observation.
     type: Directory[]
     inputBinding:
-      position: 7
+      position: 6
       itemSeparator: ","
   - id: obs_starttime
     label: Start time of obs
@@ -71,7 +63,7 @@ inputs:
       those in obs_ms.
     type: string[]
     inputBinding:
-      position: 8
+      position: 7
       itemSeparator: ","
   - id: obs_ntimes
     label: Number of time slots of obs
@@ -80,7 +72,7 @@ inputs:
       obs_ms.
     type: int[]
     inputBinding:
-      position: 9
+      position: 8
       itemSeparator: ","
   - id: diagnostics_file
     label: Input diagnostics file
@@ -88,14 +80,14 @@ inputs:
       The filename of the input diagnostics JSON file.
     type: File
     inputBinding:
-      position: 10
+      position: 9
   - id: output_root
     label: Output root name
     doc: |
       The root of the filenames of the output filtered sky models.
     type: string
     inputBinding:
-      position: 11
+      position: 10
   - id: facet_region_file
     label: Input ds9 region file
     doc: |

@@ -614,7 +614,6 @@ def main(
     true_sky_image,
     true_sky_rms_image,
     input_catalog,
-    input_skymodel,
     obs_ms,
     obs_starttime,
     obs_ntimes,
@@ -642,8 +641,6 @@ def main(
         Filename of the background RMS image derived from the true-sky image
     input_catalog : str
         Filename of the input PyBDSF FITS catalog derived from the LOFAR image
-    input_skymodel : str
-        Filename of input sky model produced during imaging
     obs_ms : list of str
         List of MS files to use to derive the theoretical image noise and
         other properties of the observation
@@ -821,7 +818,6 @@ if __name__ == '__main__':
     parser.add_argument(
         'input_catalog', help='Filename of input PyBDSF FITS catalog'
     )
-    parser.add_argument('input_skymodel', help='Filename of input sky model')
     parser.add_argument('obs_ms', help='Filename of observation MS')
     parser.add_argument('obs_starttime', help='Start time of observation')
     parser.add_argument(
@@ -877,7 +873,6 @@ if __name__ == '__main__':
         args.true_sky_image,
         args.true_sky_rms_image,
         args.input_catalog,
-        args.input_skymodel,
         args.obs_ms,
         args.obs_starttime,
         args.obs_ntimes,
