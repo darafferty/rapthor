@@ -562,10 +562,8 @@ def check_astrometry(
     with open(f'{output_root}.astrometry_offsets.json', 'w') as fp:
         json.dump(astrometry_diagnostics, fp)
 
-    ra = obs.ra
-    dec = obs.dec
     plot_astrometry_offsets(
-        facets, ra, dec, f'{output_root}.astrometry_offsets.pdf'
+        facets, obs.ra, obs.dec, f'{output_root}.astrometry_offsets.pdf'
     )
 
     # Calculate mean offsets
