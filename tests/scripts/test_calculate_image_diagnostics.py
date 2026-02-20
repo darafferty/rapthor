@@ -11,6 +11,7 @@ import pytest
 from astropy.table import Table
 import astropy.units as u
 import lsmtool.skymodel
+import logging
 
 
 def test_check_astrometry_zero_sources(
@@ -21,30 +22,30 @@ def test_check_astrometry_zero_sources(
     sky_model_path,
     tmp_path,
     monkeypatch,
-    capsys,
+    caplog,
 ):
     """Test the check_astrometry function."""
     # Mock Table.read for FITS files to return a catalog with length zero
     monkeypatch.setattr("astropy.table.Table.read", lambda *args, **kwargs: [])
 
-    expected_result = {}
-    actual_result = check_astrometry(
-        observation,
-        input_catalog_fits,
-        image_fits,
-        facet_region_ds9,
-        min_number=1,
-        output_root=tmp_path / "astrometry_check",
-        comparison_skymodel=sky_model_path,
-    )
-    captured_print = capsys.readouterr()
-    assert "No sources found" in captured_print.out
-    assert "Skipping the astrometry check..." in captured_print.out
-    assert actual_result == expected_result
+    with caplog.at_level(logging.INFO):
+        actual_result = check_astrometry(
+            observation,
+            input_catalog_fits,
+            image_fits,
+            facet_region_ds9,
+            min_number=1,
+            output_root=tmp_path / "astrometry_check",
+            comparison_skymodel=sky_model_path,
+        )
+        assert "No sources found" in caplog.text
+        assert "Skipping the astrometry check..." in caplog.text
+
+    assert actual_result == {}
 
 
 @pytest.mark.parametrize(
-    "min_number,num_sources",
+    "min_number, num_sources",
     [
         (1, 0),  # Test with zero sources
         (2, 1),  # Test with one source
@@ -59,7 +60,7 @@ def test_check_astrometry_sources_below_minimum_number(
     sky_model_path,
     tmp_path,
     monkeypatch,
-    capsys,
+    caplog,
     min_number,
     num_sources,
 ):
@@ -76,44 +77,45 @@ def test_check_astrometry_sources_below_minimum_number(
     monkeypatch.setattr(
         "astropy.table.Table.read", lambda *args, **kwargs: Table(mock_data)
     )
-    expected_result = {}
-    actual_result = check_astrometry(
-        observation,
-        input_catalog_fits,
-        image_fits,
-        facet_region_ds9,
-        min_number=min_number,
-        output_root=tmp_path / "astrometry_check",
-        comparison_skymodel=sky_model_path,
-    )
-    captured_print = capsys.readouterr()
-    if num_sources == 0:
-        assert "No sources found" in captured_print.out
-    else:
-        assert f"Fewer than {min_number} sources found" in captured_print.out
-    assert "Skipping the astrometry check..." in captured_print.out
-    assert actual_result == expected_result
+
+    with caplog.at_level(logging.INFO):
+        actual_result = check_astrometry(
+            observation,
+            input_catalog_fits,
+            image_fits,
+            facet_region_ds9,
+            min_number=min_number,
+            output_root=tmp_path / "astrometry_check",
+            comparison_skymodel=sky_model_path,
+        )
+        if num_sources == 0:
+            assert "No sources found" in caplog.text
+        else:
+            assert f"Fewer than {min_number} sources found" in caplog.text
+        assert "Skipping the astrometry check..." in caplog.text
+
+    assert actual_result == {}
 
 
 def test_check_photometry_zero_sources(
-    observation, input_catalog_fits, sky_model_path, monkeypatch, capsys
+    observation, input_catalog_fits, sky_model_path, monkeypatch, caplog
 ):
     """Test the check_astrometry function."""
     # Mock Table.read for FITS files to return a catalog with length zero
     monkeypatch.setattr("astropy.table.Table.read", lambda *args, **kwargs: [])
 
-    expected_result = {}
-    actual_result = check_photometry(
-        observation,
-        input_catalog_fits,
-        freq=150e6,  # Example frequency in Hz
-        comparison_skymodel=sky_model_path,
-        min_number=1,
-    )
-    captured_print = capsys.readouterr()
-    assert "No sources found" in captured_print.out
-    assert "Skipping the photometry check..." in captured_print.out
-    assert actual_result == expected_result
+    with caplog.at_level(logging.INFO):
+        actual_result = check_photometry(
+            observation,
+            input_catalog_fits,
+            freq=150e6,  # Example frequency in Hz
+            comparison_skymodel=sky_model_path,
+            min_number=1,
+        )
+        assert "No sources found" in caplog.text
+        assert "Skipping the photometry check..." in caplog.text
+
+    assert actual_result == {}
 
 
 @pytest.mark.parametrize(
@@ -128,7 +130,7 @@ def test_check_photometry_below_min_number_sources(
     input_catalog_fits,
     sky_model_path,
     monkeypatch,
-    capsys,
+    caplog,
     min_number,
     num_sources,
 ):
@@ -143,23 +145,23 @@ def test_check_photometry_below_min_number_sources(
         "astropy.table.Table.read", lambda *args, **kwargs: Table(mock_data)
     )
     freq = 150e6  # Example frequency in Hz
-    expected_result = {}
-    actual_result = check_photometry(
-        observation,
-        input_catalog_fits,
-        freq,
-        comparison_skymodel=sky_model_path,
-        min_number=min_number,
-    )
-    captured_print = capsys.readouterr()
-    assert f"Fewer than {min_number} sources found" in captured_print.out
-    assert "Skipping the photometry check..." in captured_print.out
-    assert actual_result == expected_result
+    with caplog.at_level(logging.INFO):
+        actual_result = check_photometry(
+            observation,
+            input_catalog_fits,
+            freq,
+            comparison_skymodel=sky_model_path,
+            min_number=min_number,
+        )
+        assert f"Fewer than {min_number} sources found" in caplog.text
+        assert "Skipping the photometry check..." in caplog.text
+
+    assert actual_result == {}
 
 
 @pytest.mark.disable_socket
 def test_check_photometry_with_comparison_skymodel_does_not_access_internet(
-    observation, input_catalog_fits, sky_model_path, monkeypatch, mocker, capsys
+    observation, input_catalog_fits, sky_model_path, monkeypatch, mocker, caplog
 ):
     """Test the check_photometry function."""
     num_sources = 10  # Test with more sources than min_number
@@ -200,16 +202,17 @@ def test_check_photometry_with_comparison_skymodel_does_not_access_internet(
     monkeypatch.setattr(
         "astropy.table.Table.read", lambda *args, **kwargs: Table(mock_data)
     )
-    diagnostics_dict = check_photometry(
-        observation,
-        input_catalog_fits,
-        freq=15,
-        comparison_skymodel=sky_model_path,
-        min_number=1,
-    )
-    captured_print = capsys.readouterr()
-    assert "No sources found" not in captured_print.out
-    assert "Skipping the photometry check..." not in captured_print.out
+    with caplog.at_level(logging.INFO):
+        diagnostics_dict = check_photometry(
+            observation,
+            input_catalog_fits,
+            freq=15,
+            comparison_skymodel=sky_model_path,
+            min_number=1,
+        )
+        assert "No sources found" not in caplog.text
+        assert "Skipping the photometry check..." not in caplog.text
+
     assert diagnostics_dict != {}
 
 
@@ -223,7 +226,7 @@ def test_check_astrometry_with_comparison_skymodel_does_not_access_internet(
     tmp_path,
     monkeypatch,
     mocker,
-    capsys,
+    caplog,
 ):
     """Test the check_astrometry function."""
     num_sources = 10  # Test with more sources than min_number
@@ -266,18 +269,19 @@ def test_check_astrometry_with_comparison_skymodel_does_not_access_internet(
         "astropy.table.Table.read", lambda *args, **kwargs: Table(mock_data)
     )
 
-    diagnostics_dict = check_astrometry(
-        observation,
-        input_catalog_fits,
-        mock_image,
-        facet_region_ds9,
-        min_number=1,
-        output_root=str(tmp_path / "astrometry_check"),
-        comparison_skymodel=sky_model_path,
-    )
-    captured_print = capsys.readouterr()
-    assert "No sources found" not in captured_print.out
-    assert "Skipping the astrometry check..." not in captured_print.out
+    with caplog.at_level(logging.INFO):
+        diagnostics_dict = check_astrometry(
+            observation,
+            input_catalog_fits,
+            mock_image,
+            facet_region_ds9,
+            min_number=1,
+            output_root=str(tmp_path / "astrometry_check"),
+            comparison_skymodel=sky_model_path,
+        )
+        assert "No sources found" not in caplog.text
+        assert "Skipping the astrometry check..." not in caplog.text
+
     assert diagnostics_dict != {}
     assert "meanClippedRAOffsetDeg" in diagnostics_dict
     assert "meanClippedDecOffsetDeg" in diagnostics_dict

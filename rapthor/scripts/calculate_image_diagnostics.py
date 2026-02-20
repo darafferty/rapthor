@@ -27,11 +27,14 @@ import matplotlib.pyplot as plt
 import os
 import glob
 import shutil
-
+import logging
 
 # Turn off astropy's IERS downloads to fix problems in cases where compute
 # node does not have internet access
 iers.conf.auto_download = False
+
+# Initialize logger
+logger = logging.getLogger('rapthor:calculate_image_diagnostics')
 
 
 def plot_astrometry_offsets(
@@ -237,8 +240,9 @@ def check_photometry(
     #     that may be poorly modeled)
     catalog = Table.read(input_catalog, format='fits')
     if len(catalog) == 0:
-        print(
-            'No sources found in the LOFAR image. Skipping the photometry check...'
+        logger.info(
+            'No sources found in the LOFAR image. Skipping the photometry '
+            'check...'
         )
         return {}
 
@@ -253,10 +257,11 @@ def check_photometry(
 
     # Check number of sources against min_number set by user. If too few, return
     if len(catalog) < min_number:
-        print(
-            f'Fewer than {min_number} sources found in the LOFAR image that meet '
-            'the photometry cuts (major axis < 10" and located inside the FWHM '
-            'of the primary beam"). Skipping the photometry check...'
+        logger.info(
+            'Fewer than %s sources found in the LOFAR image that '
+            'meet the photometry cuts (major axis < 10" and located inside the '
+            'FWHM of the primary beam"). Skipping the photometry check...',
+            min_number,
         )
         return {}
 
@@ -267,21 +272,22 @@ def check_photometry(
         try:
             comparison_skymodels = [lsmtool.load(comparison_skymodel)]
             comparison_surveys = ['USER_SUPPLIED']
-            print(
+            logger.info(
                 'Using the supplied comparison sky model for the photometry '
                 'check'
             )
-        except (OSError, ConnectionError) as e:
+        except (OSError, ConnectionError) as error:
             # Comparison catalog not loaded successfully
-            print(
-                'Comparison sky model could not be loaded. Error was: {}. '
-                'Trying to download sky model(s) instead...'.format(e)
+            logger.info(
+                'Comparison sky model could not be loaded. Error was: \n%s\n'
+                'Trying to download sky model(s) instead...',
+                error,
             )
     if not comparison_skymodels:
         # Download sky model(s) given by comparison_surveys around the phase
         # center, using a 5-deg radius to ensure the field is fully covered
         if not comparison_surveys:
-            print(
+            logger.info(
                 'A comparison sky model is not available and a list of '
                 'comparison surveys was not supplied. Skipping photometry '
                 'check...'
@@ -289,15 +295,17 @@ def check_photometry(
             return {}
         if backup_survey is not None:
             if backup_survey in comparison_surveys:
-                print(
-                    f'The backup survey "{backup_survey}" is already included '
-                    f'in  comparison_surveys. Disabling the backup'
+                logger.info(
+                    'The backup survey "%s" is already included in '
+                    'comparison_surveys. Disabling the backup',
+                    backup_survey,
                 )
                 backup_survey = None
             else:
-                print(
-                    f'Using "{backup_survey}" as the backup survey catalog for '
-                    f'the photometry check'
+                logger.info(
+                    'Using "%s" as the backup survey catalog for the '
+                    'photometry check',
+                    backup_survey,
                 )
                 comparison_surveys.append(backup_survey)
         for survey in comparison_surveys:
@@ -307,12 +315,14 @@ def check_photometry(
                         survey, VOPosition=[obs.ra, obs.dec], VORadius=5.0
                     )
                 )
-            except (OSError, ConnectionError) as e:
+            except (OSError, ConnectionError) as error:
                 # Comparison catalog not downloaded successfully
-                print(
-                    f'A problem occurred when downloading the {survey} catalog '
-                    'for use in the photometry check. Error was: {}. Skipping '
-                    'this survey...'.format(e)
+                logger.info(
+                    'A problem occurred when downloading the %s catalog for use'
+                    ' in the photometry check. Error was: \n%s\n. Skipping this'
+                    ' survey...',
+                    survey,
+                    error,
                 )
 
     # Convert the filtered catalog to a minimal sky model for use with LSMTool
@@ -344,10 +354,11 @@ def check_photometry(
                 continue
             else:
                 # Backup needed
-                print(
-                    f'The backup survey catalog "{backup_survey}" will be used '
+                logger.info(
+                    'The backup survey catalog "%s" will be used '
                     'for the photometry check, as the queries for all other '
-                    f'survey catalogs were unsuccessful'
+                    'survey catalogs were unsuccessful',
+                    backup_survey,
                 )
 
         # Convert the output and compare, using the total flux from the
@@ -368,9 +379,10 @@ def check_photometry(
         if result is None:
             # Comparison failed due to insufficient matches. Continue with the
             # next comparison model (if any)
-            print(
-                f'The photometry check with the {survey} catalog could not '
-                'be done due to insufficient matches. Skipping this survey...'
+            logger.info(
+                'The photometry check with the %s catalog could not '
+                'be done due to insufficient matches. Skipping this survey...',
+                survey,
             )
             continue
         else:
@@ -443,7 +455,7 @@ def check_astrometry(
     #     with high positional uncertainties)
     catalog = Table.read(input_catalog, format='fits')
     if len(catalog) == 0:
-        print(
+        logger.info(
             'No sources found in the LOFAR image. Skipping the astrometry '
             'check...'
         )
@@ -458,10 +470,11 @@ def check_astrometry(
 
     # Check number of sources against min_number set by user. If too few, return
     if len(catalog) < min_number:
-        print(
-            f'Fewer than {min_number} sources found in the LOFAR image meet '
-            'the astrometry cuts (major axis < 10" with positional errors < '
-            f'2"). Skipping the astrometry check...'
+        logger.info(
+            'Fewer than %d sources found in the LOFAR image meet the astrometry'
+            ' cuts (major axis < 10" with positional errors < 2"). Skipping the'
+            ' astrometry check...',
+            min_number,
         )
         return {}
 
@@ -487,16 +500,17 @@ def check_astrometry(
         try:
             s_comp_astrometry = lsmtool.load(comparison_skymodel)
             s_comp_astrometry.group('every')
-            print(
+            logger.info(
                 'Using the supplied comparison sky model for the astrometry '
                 'check'
             )
-        except (OSError, ConnectionError) as e:
+        except (OSError, ConnectionError) as error:
             # Comparison catalog not loaded successfully
             s_comp_astrometry = None
-            print(
-                'Comparison sky model could not be loaded. Error was: {}. '
-                'Trying default sky model instead...'.format(e)
+            logger.info(
+                'Comparison sky model could not be loaded. Error was: \n%s\n '
+                'Trying default sky model instead...',
+                error,
             )
     else:
         s_comp_astrometry = None
