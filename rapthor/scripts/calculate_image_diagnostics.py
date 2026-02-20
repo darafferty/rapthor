@@ -182,9 +182,8 @@ def fits_to_makesourcedb(
     skymodel_file = tempfile.NamedTemporaryFile()
     with open(skymodel_file.name, 'w') as f:
         f.writelines(out_lines)
-    skymodel = lsmtool.load(skymodel_file.name)
 
-    return skymodel
+    return lsmtool.load(skymodel_file.name)
 
 
 def check_photometry(
@@ -193,7 +192,7 @@ def check_photometry(
     freq,
     min_number,
     comparison_skymodel=None,
-    comparison_surveys=['TGSS', 'LOTSS'],
+    comparison_surveys=('TGSS', 'LOTSS'),
     backup_survey='NVSS',
 ):
     """
