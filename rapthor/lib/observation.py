@@ -284,23 +284,19 @@ class Observation(object):
             samplesperchunk = get_chunk_size(
                 parset["cluster_specific"], self.numsamples, nobs, solint_max_timestep
             )
+            nchunks = int(np.ceil(self.numsamples / samplesperchunk))
+
+            chunk_size = samplesperchunk * self.timepersample
+            starttimes = [self.starttime+(chunk_size * i) for i in range(nchunks)]
+            # Make sure the last start time does not equal or exceed the end time
+            if starttimes[-1] >= self.endtime:
+                starttimes.pop(-1)
+                nchunks -= 1
         else:
             samplesperchunk = self.numsamples
-
-        # Calculate start times, etc.
-        chunksize = samplesperchunk * self.timepersample
-        mystarttime = self.starttime
-        myendtime = self.endtime
-        if (myendtime - mystarttime) > chunksize:
-            # Divide up the total duration into chunks of chunksize
-            nchunks = int(np.ceil(self.numsamples * self.timepersample / chunksize))
-        else:
             nchunks = 1
-        starttimes = [mystarttime+(chunksize * i) for i in range(nchunks)]
-        if starttimes[-1] >= myendtime:
-            # Make sure the last start time does not equal or exceed the end time
-            starttimes.pop(-1)
-            nchunks -= 1
+            starttimes = [self.starttime]
+
         self.ntimechunks = nchunks
         self.log.debug('Using {0} time chunk{1} for '
                        'calibration'.format(self.ntimechunks, "s" if self.ntimechunks > 1 else ""))
