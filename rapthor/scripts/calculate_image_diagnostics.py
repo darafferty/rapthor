@@ -276,7 +276,7 @@ def check_photometry(
                 'Using the supplied comparison sky model for the photometry '
                 'check'
             )
-        except (OSError, ConnectionError) as error:
+        except OSError as error:
             # Comparison catalog not loaded successfully
             logger.info(
                 'Comparison sky model could not be loaded. Error was: \n%s\n'
@@ -315,7 +315,7 @@ def check_photometry(
                         survey, VOPosition=[obs.ra, obs.dec], VORadius=5.0
                     )
                 )
-            except (OSError, ConnectionError) as error:
+            except OSError as error:
                 # Comparison catalog not downloaded successfully
                 logger.info(
                     'A problem occurred when downloading the %s catalog for use'
@@ -504,7 +504,7 @@ def check_astrometry(
                 'Using the supplied comparison sky model for the astrometry '
                 'check'
             )
-        except (OSError, ConnectionError) as error:
+        except OSError as error:
             # Comparison catalog not loaded successfully
             s_comp_astrometry = None
             logger.info(
