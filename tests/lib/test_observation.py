@@ -21,12 +21,70 @@ class TestObservation:
         assert np.isclose(observation.endtime, 4871282443.176593, rtol=1e-9)
         assert observation.data_fraction == 1.0
         assert observation.parameters == {}
+        assert observation.antenna == 'HBA'
+        assert np.isclose(observation.channelwidth, 24414.0625)
+        assert observation.numchannels == 8
 
     def test_copy(self):
         pass
 
     def test_scan_ms(self):
         pass
+
+    def test_set_calibration_parameters_basic(self, observation, test_ms):
+        """
+        Basic set_calibration_parameters() test.
+        All solution intervals and all DD factors are 1.
+        """
+        parset = {
+            "calibration_specific": {
+                "fast_freqstep_hz": observation.channelwidth,
+                "medium_freqstep_hz": observation.channelwidth,
+                "slow_freqstep_hz": observation.channelwidth,
+                "fulljones_freqstep_hz": observation.channelwidth,
+                "dd_interval_factor": 1,
+                "dd_smoothness_factor": 1,
+                "fast_smoothnessreffrequency": None,
+                "medium_smoothnessreffrequency": None,
+            }
+        }
+
+        n_observations = -1 # Not used in this test, since chunk_by_time is False.
+        calibrator_fluxes = [1.0]
+        observation.set_calibration_parameters(
+            parset,
+            n_observations,
+            calibrator_fluxes,
+            observation.timepersample,
+            observation.timepersample,
+            observation.timepersample,
+            observation.timepersample,
+        )
+
+        assert observation.ntimechunks == 1
+
+        params = observation.parameters
+        assert params['timechunk_filename'] == [test_ms]
+        assert params['predict_di_output_filename'] == [None]
+        assert params['starttime'] == ['29Mar2013/13:59:52.907']
+        assert params['ntimes'] == [0]
+
+        for solve_type in ['fast', 'medium', 'slow', 'fulljones']:
+            assert params[f'solint_{solve_type}_timestep'] == [1]
+            assert params[f'solint_{solve_type}_freqstep'] == [1]
+
+        assert params['bda_maxinterval'] == [observation.timepersample]
+        assert params['bda_minchannels'] == [observation.numchannels]
+
+        for solve_type in ['fast', 'medium', 'slow']:
+            assert params[f'{solve_type}_solutions_per_direction'] == [[1]]
+            assert params[f'{solve_type}_smoothness_dd_factors'] == [[1]]
+
+        hba_reference_frequency = 144e6 # Hardcoded value for HBA antennas.
+        assert params['fast_smoothnessreffrequency'] == [hba_reference_frequency]
+        assert params['medium_smoothnessreffrequency'] == [hba_reference_frequency]
+
+
 
     @pytest.mark.parametrize("generate_screens", [True, False])
     @pytest.mark.parametrize("chunk_by_time", [True, False])
@@ -36,24 +94,30 @@ class TestObservation:
         solint_slow_timestep = 300
         solint_fulljones_timestep = 600
 
+        dd_interval_factor = 2
+        dd_smoothness_factor = 10
+
         parset = {
             "calibration_specific": {
                 "fast_freqstep_hz": 1e5,
                 "medium_freqstep_hz": 1.5e5,
                 "slow_freqstep_hz": 2e6,
                 "fulljones_freqstep_hz": 1e6,
-                "dd_interval_factor": 1,
-                "dd_smoothness_factor": 3,
+                "dd_interval_factor": dd_interval_factor,
+                "dd_smoothness_factor": dd_smoothness_factor,
                 "fast_smoothnessreffrequency": None,
                 "medium_smoothnessreffrequency": None,
             }
         }
 
-        if not generate_screens:
+        if generate_screens:
+            dd_interval_factor = 1
+            dd_smoothness_factor = 1
+        else:
             # When generate_screens is True, set_calibration_parameters should
             # not read these parset keys.
-            parset["calibration_specific"]["dd_interval_factor"] = 1
-            parset["calibration_specific"]["dd_smoothness_factor"] = 1
+            parset["calibration_specific"]["dd_interval_factor"] = dd_interval_factor
+            parset["calibration_specific"]["dd_smoothness_factor"] = dd_smoothness_factor
 
         if chunk_by_time:
             cluster_specific_parameters = "mock cluster specific parameters"
@@ -79,38 +143,45 @@ class TestObservation:
             if chunk_by_time:
                 mock_get_chunk_size.assert_called_once_with(
                     cluster_specific_parameters, observation.numsamples, n_observations,
-                    600)
+                    solint_fulljones_timestep * dd_interval_factor)
             else:
                 mock_get_chunk_size.assert_not_called()
 
         assert observation.ntimechunks == 1
 
-        assert observation.parameters['timechunk_filename'] == [test_ms]
-        assert observation.parameters['predict_di_output_filename'] == [None]
-        assert observation.parameters['starttime'] == ['29Mar2013/13:59:52.907']
-        assert observation.parameters['ntimes'] == [0]
+        params = observation.parameters
+        assert params['timechunk_filename'] == [test_ms]
+        assert params['predict_di_output_filename'] == [None]
+        assert params['starttime'] == ['29Mar2013/13:59:52.907']
+        assert params['ntimes'] == [0]
 
-        assert observation.parameters['solint_fast_timestep'] == [solint_fast_timestep]
-        assert observation.parameters['solint_fast_freqstep'] == [4]
-        assert observation.parameters['solint_medium_timestep'] == [solint_medium_timestep]
-        assert observation.parameters['solint_medium_freqstep'] == [8]
-        assert observation.parameters['solint_slow_timestep'] == [solint_slow_timestep]
-        assert observation.parameters['solint_slow_freqstep'] == [8]
-        assert observation.parameters['solint_fulljones_timestep'] == [solint_fulljones_timestep + 1]
-        assert observation.parameters['solint_fulljones_freqstep'] == [8]
+        assert params['solint_fast_timestep'] == [solint_fast_timestep * dd_interval_factor]
+        assert params['solint_fast_freqstep'] == [4]
+        assert params['solint_medium_timestep'] == [solint_medium_timestep * dd_interval_factor]
+        assert params['solint_medium_freqstep'] == [8]
+        assert params['solint_slow_timestep'] == [solint_slow_timestep * dd_interval_factor]
+        assert params['solint_slow_freqstep'] == [8]
+        assert params['solint_fulljones_timestep'] == [(solint_fulljones_timestep + 1) * dd_interval_factor]
+        assert params['solint_fulljones_freqstep'] == [8]
 
-        assert observation.parameters['bda_maxinterval'] == [200.278016]
-        assert observation.parameters['bda_minchannels'] == [2]
+        assert params['bda_maxinterval'] == [200.278016]
+        assert params['bda_minchannels'] == [2]
 
-        assert observation.parameters['fast_solutions_per_direction'] == [[1, 1, 1, 1]]
-        assert observation.parameters['medium_solutions_per_direction'] == [[1, 1, 1, 1]]
-        assert observation.parameters['slow_solutions_per_direction'] == [[1, 1, 1, 1]]
-        assert observation.parameters['fast_smoothness_dd_factors'] == [[1, 1, 1, 1]]
-        assert observation.parameters['medium_smoothness_dd_factors'] == [[1, 1, 1, 1]]
-        assert observation.parameters['slow_smoothness_dd_factors'] == [[1, 1, 1, 1]]
+        solutions_per_direction = [dd_interval_factor, dd_interval_factor, dd_interval_factor, 1]
+        assert params['fast_solutions_per_direction'] == [solutions_per_direction]
+        assert params['medium_solutions_per_direction'] == [solutions_per_direction]
+        assert params['slow_solutions_per_direction'] == [solutions_per_direction]
 
-        assert observation.parameters['fast_smoothnessreffrequency'] == [144e6]
-        assert observation.parameters['medium_smoothnessreffrequency'] == [144e6]
+        if generate_screens:
+            smoothness_dd_factors = np.array([[1, 1, 1, 1]])
+        else:
+            smoothness_dd_factors = np.array([[1/3, 1/3, 1/2, 1]])
+        assert (params['fast_smoothness_dd_factors'] == smoothness_dd_factors).all()
+        assert (params['medium_smoothness_dd_factors'] == smoothness_dd_factors).all()
+        assert (params['slow_smoothness_dd_factors'] == smoothness_dd_factors).all()
+
+        assert params['fast_smoothnessreffrequency'] == [144e6]
+        assert params['medium_smoothnessreffrequency'] == [144e6]
 
 
     def test_set_prediction_parameters(self, sector_name=None, patch_names=None):
