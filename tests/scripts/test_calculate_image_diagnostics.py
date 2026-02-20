@@ -15,9 +15,66 @@ import pytest
 from astropy.table import Table
 
 from rapthor.lib import fitsimage
-from rapthor.scripts.calculate_image_diagnostics import (check_astrometry,
-                                                         check_photometry)
+from rapthor.scripts.calculate_image_diagnostics import (
+    check_astrometry,
+    check_photometry,
+)
 
+
+# ---------------------------------------------------------------------------- #
+
+@pytest.fixture(scope="session", params=[0, 1, 9])
+def mock_minimal_table(request):
+    num_sources = request.param
+    # Create mock Table for FITS files to return a catalog
+    dec_maj_max = 10 / 3600  # Hardcoded value in check_astrometry()
+    ra_dec_max = 2 / 3600  # Hardcoded value in check_astrometry()
+    # Ensure all sources are within the maximum allowed values
+    mock_data = {
+        "DC_Maj": [dec_maj_max - 0.0001] * num_sources,
+        "E_RA": [ra_dec_max - 0.0001] * num_sources,
+        "E_DEC": [ra_dec_max - 0.0001] * num_sources,
+        "RA": [2 / 3600 * u.degree] * num_sources,
+        "DEC": [2 / 3600 * u.degree] * num_sources,
+    }
+
+    # Test with fewer sources than min_number
+    return Table(mock_data)
+
+
+@pytest.fixture(params=[10])
+def mock_full_photometry_table(request):
+    # Create a mock Table for photometry with the same data as mock_full_table
+    mock_data = mock_full_table_data(
+        num_sources=request.param, total_flux_keyword="Total_flux"
+    )
+    return Table(mock_data)
+
+
+@pytest.fixture(params=[10])
+def mock_full_astrometry_table(request):
+    # Create a mock Table for astrometry with the same data as mock_full_table
+    mock_data = mock_full_table_data(
+        num_sources=request.param, total_flux_keyword="Isl_Total_flux"
+    )
+    return Table(mock_data)
+
+
+def mock_full_table_data(num_sources, total_flux_keyword):
+    # Test with more sources than min_number
+    return {
+        "Source_id": [f"Source_{i}" for i in range(num_sources)],
+        "DC_Maj": [10 / 3600 - 0.0001] * num_sources,
+        "E_RA": [2 / 3600 - 0.0001] * num_sources,
+        "E_DEC": [2 / 3600 - 0.0001] * num_sources,
+        "RA": [2 / 3600 * u.degree] * num_sources,
+        "DEC": [2 / 3600 * u.degree] * num_sources,
+        total_flux_keyword: [1.0] * num_sources,
+    }
+
+
+# ---------------------------------------------------------------------------- #
+# Test: check_astrometry
 
 def test_check_astrometry_zero_sources(
     observation,
@@ -26,11 +83,14 @@ def test_check_astrometry_zero_sources(
     facet_region_ds9,
     sky_model_path,
     tmp_path,
-    monkeypatch,
     caplog,
+    monkeypatch,
 ):
-    """Test the check_astrometry function."""
-    # Mock Table.read for FITS files to return a catalog with length zero
+    """
+    Test the check_astrometry function when the input skymodel contains zero
+    sources.
+    """
+
     monkeypatch.setattr("astropy.table.Table.read", lambda *args, **kwargs: [])
 
     with caplog.at_level(logging.INFO):
@@ -49,14 +109,6 @@ def test_check_astrometry_zero_sources(
     assert actual_result == {}
 
 
-@pytest.mark.parametrize(
-    "min_number, num_sources",
-    [
-        (1, 0),  # Test with zero sources
-        (2, 1),  # Test with one source
-        (10, 9),  # Test with fewer sources than min_number
-    ],
-)
 def test_check_astrometry_sources_below_minimum_number(
     observation,
     input_catalog_fits,
@@ -64,48 +116,60 @@ def test_check_astrometry_sources_below_minimum_number(
     facet_region_ds9,
     sky_model_path,
     tmp_path,
-    monkeypatch,
     caplog,
-    min_number,
-    num_sources,
+    mocker,
+    monkeypatch,
+    mock_minimal_table,
 ):
-    """Test the check_astrometry function."""
-    # Create mock Table for FITS files to return a catalog
-    DC_Maj_max = 10 / 3600  # Hardcoded value in check_astrometry()
-    RA_DEC_max = 2 / 3600  # Hardcoded value in check_astrometry()
-    # Ensure all sources are within the maximum allowed values
-    mock_data = {
-        "DC_Maj": [DC_Maj_max - 0.0001] * num_sources,
-        "E_RA": [RA_DEC_max - 0.0001] * num_sources,
-        "E_DEC": [RA_DEC_max - 0.0001] * num_sources,
-    }
+    """
+    Test the check_astrometry function when the input skymodel contains fewer
+    sources than the required minimum.
+    """
+
+    # Mock Table.read for FITS files to return a catalog with length zero
     monkeypatch.setattr(
-        "astropy.table.Table.read", lambda *args, **kwargs: Table(mock_data)
+        "astropy.table.Table.read", lambda *args, **kwargs: mock_minimal_table
     )
+
+    num_sources = len(mock_minimal_table)
+    min_number = num_sources + 1
+
+    fitsimage.FITSImage = mocker.MagicMock()
+    mock_image = fitsimage.FITSImage(image_fits)
+    mock_image.freq.return_value = 150e6  # Mock frequency in Hz
 
     with caplog.at_level(logging.INFO):
         actual_result = check_astrometry(
             observation,
             input_catalog_fits,
-            image_fits,
+            mock_image,
             facet_region_ds9,
             min_number=min_number,
             output_root=tmp_path / "astrometry_check",
             comparison_skymodel=sky_model_path,
         )
-        if num_sources == 0:
-            assert "No sources found" in caplog.text
-        else:
-            assert f"Fewer than {min_number} sources found" in caplog.text
+
+        msg = (
+            "No sources found"
+            if num_sources == 0
+            else f"Fewer than {min_number} sources found"
+        )
+        assert msg in caplog.text
         assert "Skipping the astrometry check..." in caplog.text
 
     assert actual_result == {}
 
 
+# ---------------------------------------------------------------------------- #
+# Test: check_photometry
+
 def test_check_photometry_zero_sources(
-    observation, input_catalog_fits, sky_model_path, monkeypatch, caplog
+    observation, input_catalog_fits, sky_model_path, caplog, monkeypatch
 ):
-    """Test the check_astrometry function."""
+    """
+    Test the check_photometry function when the skymodel contains zero sources.
+    """
+
     # Mock Table.read for FITS files to return a catalog with length zero
     monkeypatch.setattr("astropy.table.Table.read", lambda *args, **kwargs: [])
 
@@ -113,7 +177,7 @@ def test_check_photometry_zero_sources(
         actual_result = check_photometry(
             observation,
             input_catalog_fits,
-            freq=150e6,  # Example frequency in Hz
+            freq=1.5e8,  # Example frequency in Hz
             comparison_skymodel=sky_model_path,
             min_number=1,
         )
@@ -123,40 +187,40 @@ def test_check_photometry_zero_sources(
     assert actual_result == {}
 
 
-@pytest.mark.parametrize(
-    "min_number,num_sources",
-    [
-        (2, 1),  # Test with one source
-        (10, 9),  # Test with fewer sources than min_number
-    ],
-)
 def test_check_photometry_below_min_number_sources(
     observation,
     input_catalog_fits,
     sky_model_path,
-    monkeypatch,
     caplog,
-    min_number,
-    num_sources,
+    monkeypatch,
+    mock_minimal_table,
 ):
-    """Test the check_photometry function."""
-    monkeypatch.setattr("astropy.table.Table.read", lambda *args, **kwargs: [])
-    mock_data = {
-        "DC_Maj": [10 / 3600] * num_sources,
-        "RA": [2 / 3600 * u.degree] * num_sources,
-        "DEC": [2 / 3600 * u.degree] * num_sources,
-    }
-    monkeypatch.setattr("astropy.table.Table.read", lambda *args, **kwargs: Table(mock_data))
-    freq = 150e6  # Example frequency in Hz
+    """
+    Test the check_photometry function when the skymodel contains fewer sources
+    than the required minimum.
+    """
+
+    # Mock Table.read for FITS files to return a catalog with length zero
+    monkeypatch.setattr(
+        "astropy.table.Table.read", lambda *args, **kwargs: mock_minimal_table
+    )
+    num_sources = len(mock_minimal_table)
+    min_number = num_sources + 1
+
     with caplog.at_level(logging.INFO):
         actual_result = check_photometry(
             observation,
             input_catalog_fits,
-            freq,
+            freq=1.5e8,  # Example frequency in Hz
             comparison_skymodel=sky_model_path,
             min_number=min_number,
         )
-        assert f"Fewer than {min_number} sources found" in caplog.text
+        msg = (
+            "No sources found"
+            if num_sources == 0
+            else f"Fewer than {min_number} sources found"
+        )
+        assert msg in caplog.text
         assert "Skipping the photometry check..." in caplog.text
 
     assert actual_result == {}
@@ -164,43 +228,47 @@ def test_check_photometry_below_min_number_sources(
 
 @pytest.mark.disable_socket
 def test_check_photometry_with_comparison_skymodel_does_not_access_internet(
-    observation, input_catalog_fits, sky_model_path, monkeypatch, mocker, caplog
+    observation,
+    input_catalog_fits,
+    sky_model_path,
+    mocker,
+    caplog,
+    monkeypatch,
+    mock_full_photometry_table,
 ):
-    """Test the check_photometry function."""
-    num_sources = 10  # Test with more sources than min_number
-    mock_data = {
-        "Source_id": [f"Source_{i}" for i in range(num_sources)],
-        "DC_Maj": [10 / 3600 - 0.0001] * num_sources,
-        "E_RA": [2 / 3600 - 0.0001] * num_sources,
-        "E_DEC": [2 / 3600 - 0.0001] * num_sources,
-        "RA": [2 / 3600 * u.degree] * num_sources,
-        "DEC": [2 / 3600 * u.degree] * num_sources,
-        "Total_flux": [1.0] * num_sources,
-    }
-    mock_compare_result = {
-        "meanRatio": 1,
-        "stdRatio": 1,
-        "meanClippedRatio": 1,
-        "stdClippedRatio": 1,
-        "meanRAOffsetDeg": 1,
-        "stdRAOffsetDeg": 1,
-        "meanClippedRAOffsetDeg": 1,
-        "stdClippedRAOffsetDeg": 1,
-        "meanDecOffsetDeg": 1,
-        "stdDecOffsetDeg": 1,
-        "meanClippedDecOffsetDeg": 1,
-        "stdClippedDecOffsetDeg": 1,
-    }
+    """
+    Test that the  check_photometry function does not access the internet
+    when a comparison skymodel is provided.
+    """
+
+    # Mock Table.read for FITS files to return a catalog with length zero
+    monkeypatch.setattr(
+        "astropy.table.Table.read",
+        lambda *args, **kwargs: mock_full_photometry_table,
+    )
+
     mocker.patch(
         "rapthor.scripts.calculate_image_diagnostics.compare_photometry_survey",
-        return_value=mock_compare_result
+        return_value={
+            "meanRatio": 1,
+            "stdRatio": 1,
+            "meanClippedRatio": 1,
+            "stdClippedRatio": 1,
+            "meanRAOffsetDeg": 1,
+            "stdRAOffsetDeg": 1,
+            "meanClippedRAOffsetDeg": 1,
+            "stdClippedRAOffsetDeg": 1,
+            "meanDecOffsetDeg": 1,
+            "stdDecOffsetDeg": 1,
+            "meanClippedDecOffsetDeg": 1,
+            "stdClippedDecOffsetDeg": 1,
+        },
     )
     mocker.patch(
-        "rapthor.scripts.calculate_image_diagnostics.rename_plots", autospec=True
+        "rapthor.scripts.calculate_image_diagnostics.rename_plots",
+        autospec=True,
     )
-    monkeypatch.setattr(
-        "astropy.table.Table.read", lambda *args, **kwargs: Table(mock_data)
-    )
+
     with caplog.at_level(logging.INFO):
         diagnostics_dict = check_photometry(
             observation,
@@ -223,46 +291,48 @@ def test_check_astrometry_with_comparison_skymodel_does_not_access_internet(
     facet_region_ds9,
     sky_model_path,
     tmp_path,
-    monkeypatch,
     mocker,
     caplog,
+    monkeypatch,
+    mock_full_astrometry_table,
 ):
-    """Test the check_astrometry function."""
-    num_sources = 10  # Test with more sources than min_number
-    mock_data = {
-        "Source_id": [f"Source_{i}" for i in range(num_sources)],
-        "DC_Maj": [10 / 3600 - 0.0001] * num_sources,
-        "E_RA": [2 / 3600 - 0.0001] * num_sources,
-        "E_DEC": [2 / 3600 - 0.0001] * num_sources,
-        "RA": [2 / 3600 * u.degree] * num_sources,
-        "DEC": [2 / 3600 * u.degree] * num_sources,
-        "Isl_Total_flux": [1.0] * num_sources,
-    }
+    """
+    Test that the  check_astrometry function does not access the internet
+    when a comparison skymodel is provided.
+    """
+    # Mock Table.read for FITS files to return a catalog with length zero
+    monkeypatch.setattr(
+        "astropy.table.Table.read",
+        lambda *args, **kwargs: mock_full_astrometry_table,
+    )
+
     fitsimage.FITSImage = mocker.MagicMock()
     mock_image = fitsimage.FITSImage(image_fits)
     mock_image.freq.return_value = 150e6  # Mock frequency in Hz
 
     mocker.patch.object(lsmtool.skymodel.SkyModel, "group")
-    mock_compare_result = {
-        "meanRatio": 1,
-        "stdRatio": 1,
-        "meanClippedRatio": 1,
-        "stdClippedRatio": 1,
-        "meanRAOffsetDeg": 1,
-        "stdRAOffsetDeg": 1,
-        "meanClippedRAOffsetDeg": 1,
-        "stdClippedRAOffsetDeg": 1,
-        "meanDecOffsetDeg": 1,
-        "stdDecOffsetDeg": 1,
-        "meanClippedDecOffsetDeg": 1,
-        "stdClippedDecOffsetDeg": 1,
-    }
-    mocker.patch.object(lsmtool.skymodel.SkyModel, "compare", return_value=mock_compare_result)
+    mocker.patch.object(
+        lsmtool.skymodel.SkyModel,
+        "compare",
+        return_value={
+            "meanRatio": 1,
+            "stdRatio": 1,
+            "meanClippedRatio": 1,
+            "stdClippedRatio": 1,
+            "meanRAOffsetDeg": 1,
+            "stdRAOffsetDeg": 1,
+            "meanClippedRAOffsetDeg": 1,
+            "stdClippedRAOffsetDeg": 1,
+            "meanDecOffsetDeg": 1,
+            "stdDecOffsetDeg": 1,
+            "meanClippedDecOffsetDeg": 1,
+            "stdClippedDecOffsetDeg": 1,
+        },
+    )
     mocker.patch(
         "rapthor.lib.facet.filter_skymodel",
         side_effect=lambda polygon, sm, wcs: sm,
     )
-    monkeypatch.setattr("astropy.table.Table.read", lambda *args, **kwargs: Table(mock_data))
 
     with caplog.at_level(logging.INFO):
         diagnostics_dict = check_astrometry(
@@ -277,7 +347,6 @@ def test_check_astrometry_with_comparison_skymodel_does_not_access_internet(
         assert "No sources found" not in caplog.text
         assert "Skipping the astrometry check..." not in caplog.text
 
-    assert diagnostics_dict != {}
     assert "meanClippedRAOffsetDeg" in diagnostics_dict
     assert "meanClippedDecOffsetDeg" in diagnostics_dict
     assert "stdClippedRAOffsetDeg" in diagnostics_dict
