@@ -403,14 +403,12 @@ def check_photometry(
                 os.remove(f'{plot}.pdf')
 
         # Save the diagnostics for the comparison
-        photometry_diagnostics.update(
-            {
-                f'meanRatio_{survey}': result['meanRatio'],
-                f'stdRatio_{survey}': result['stdRatio'],
-                f'meanClippedRatio_{survey}': result['meanClippedRatio'],
-                f'stdClippedRatio_{survey}': result['stdClippedRatio'],
-            }
-        )
+        photometry_diagnostics |= {
+            f'meanRatio_{survey}': result['meanRatio'],
+            f'stdRatio_{survey}': result['stdRatio'],
+            f'meanClippedRatio_{survey}': result['meanClippedRatio'],
+            f'stdClippedRatio_{survey}': result['stdClippedRatio'],
+        }
 
     return photometry_diagnostics
 
