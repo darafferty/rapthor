@@ -20,7 +20,7 @@ import json
 from astropy.visualization.wcsaxes import WCSAxes
 import tempfile
 import matplotlib
-
+from collections import defaultdict
 if matplotlib.get_backend() != 'Agg':
     matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -515,52 +515,32 @@ def check_astrometry(
     else:
         s_comp_astrometry = None
 
-    astrometry_diagnostics = {
-        'facet_name': [],
-        'meanRAOffsetDeg': [],
-        'stdRAOffsetDeg': [],
-        'meanClippedRAOffsetDeg': [],
-        'stdClippedRAOffsetDeg': [],
-        'meanDecOffsetDeg': [],
-        'stdDecOffsetDeg': [],
-        'meanClippedDecOffsetDeg': [],
-        'stdClippedDecOffsetDeg': [],
-    }
+    astrometry_keys = (
+        'meanRAOffsetDeg',
+        'stdRAOffsetDeg',
+        'meanClippedRAOffsetDeg',
+        'stdClippedRAOffsetDeg',
+        'meanDecOffsetDeg',
+        'stdDecOffsetDeg',
+        'meanClippedDecOffsetDeg',
+        'stdClippedDecOffsetDeg',
+    )
+    astrometry_diagnostics = defaultdict(list)
     for facet in facets:
         facet.set_skymodel(s_pybdsf.copy())
         facet.find_astrometry_offsets(s_comp_astrometry, min_number=min_number)
-        if len(facet.astrometry_diagnostics):
+        if facet.astrometry_diagnostics:
             astrometry_diagnostics['facet_name'].append(facet.name)
-            astrometry_diagnostics['meanRAOffsetDeg'].append(
-                facet.astrometry_diagnostics['meanRAOffsetDeg']
-            )
-            astrometry_diagnostics['stdRAOffsetDeg'].append(
-                facet.astrometry_diagnostics['stdRAOffsetDeg']
-            )
-            astrometry_diagnostics['meanClippedRAOffsetDeg'].append(
-                facet.astrometry_diagnostics['meanClippedRAOffsetDeg']
-            )
-            astrometry_diagnostics['stdClippedRAOffsetDeg'].append(
-                facet.astrometry_diagnostics['stdClippedRAOffsetDeg']
-            )
-            astrometry_diagnostics['meanDecOffsetDeg'].append(
-                facet.astrometry_diagnostics['meanDecOffsetDeg']
-            )
-            astrometry_diagnostics['stdDecOffsetDeg'].append(
-                facet.astrometry_diagnostics['stdDecOffsetDeg']
-            )
-            astrometry_diagnostics['meanClippedDecOffsetDeg'].append(
-                facet.astrometry_diagnostics['meanClippedDecOffsetDeg']
-            )
-            astrometry_diagnostics['stdClippedDecOffsetDeg'].append(
-                facet.astrometry_diagnostics['stdClippedDecOffsetDeg']
-            )
+            for key in astrometry_keys:
+                astrometry_diagnostics[key].append(
+                    facet.astrometry_diagnostics[key]
+                )
 
     if not astrometry_diagnostics['facet_name']:
         return {}
 
     with open(f'{output_root}.astrometry_offsets.json', 'w') as fp:
-        json.dump(astrometry_diagnostics, fp)
+        json.dump(dict(astrometry_diagnostics), fp)
 
     plot_astrometry_offsets(
         facets, obs.ra, obs.dec, f'{output_root}.astrometry_offsets.pdf'
@@ -568,22 +548,7 @@ def check_astrometry(
 
     # Calculate mean offsets
     return {
-        'meanRAOffsetDeg': np.mean(astrometry_diagnostics['meanRAOffsetDeg']),
-        'stdRAOffsetDeg': np.mean(astrometry_diagnostics['stdRAOffsetDeg']),
-        'meanClippedRAOffsetDeg': np.mean(
-            astrometry_diagnostics['meanClippedRAOffsetDeg']
-        ),
-        'stdClippedRAOffsetDeg': np.mean(
-            astrometry_diagnostics['stdClippedRAOffsetDeg']
-        ),
-        'meanDecOffsetDeg': np.mean(astrometry_diagnostics['meanDecOffsetDeg']),
-        'stdDecOffsetDeg': np.mean(astrometry_diagnostics['stdDecOffsetDeg']),
-        'meanClippedDecOffsetDeg': np.mean(
-            astrometry_diagnostics['meanClippedDecOffsetDeg']
-        ),
-        'stdClippedDecOffsetDeg': np.mean(
-            astrometry_diagnostics['stdClippedDecOffsetDeg']
-        ),
+        key: np.mean(astrometry_diagnostics[key]) for key in astrometry_keys
     }
 
 
