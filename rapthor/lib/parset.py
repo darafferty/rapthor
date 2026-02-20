@@ -591,7 +591,7 @@ def parset_read(parset_file, use_log_file=True):
 def check_skymodel_settings(parset_dict):
     """
     En‌sure·‌the·‌initial·‌sky·‌model·‌is·‌present·‌or,·‌if·‌not,·‌that·‌generation·‌or
-    download·‌is·‌requested
+    download·‌is·‌requested.
 
     Parameters
     ----------
@@ -603,8 +603,7 @@ def check_skymodel_settings(parset_dict):
     FileNotFoundError
         If the input sky model file is not found.
     """
-    
-    input_skymodel = parset_dict["input_skymodel"]
+
     generate_initial_skymodel = parset_dict["generate_initial_skymodel"]
     download_initial_skymodel = parset_dict["download_initial_skymodel"]
     apparent_skymodel = parset_dict["apparent_skymodel"]
@@ -617,16 +616,18 @@ def check_skymodel_settings(parset_dict):
             # If sky model is given but generation requested, disable
             # generation and use the given skymodel.
             log.warning(
-                "Sky model generation requested, but user-provided sky model is present. "
-                "Disabling generation and using sky model provided by the user."
+                "Sky model generation requested, but user-provided sky model is"
+                " present. Disabling generation and using sky model provided by"
+                " the user."
             )
             parset_dict["download_initial_skymodel"] = False
         elif download_initial_skymodel:
             # If sky model is given but download requested, use the given
             # skymodel and disable download.
             log.warning(
-                "Sky model download requested, but user-provided sky model is present. "
-                "Disabling download and using sky model provided by the user."
+                "Sky model download requested, but user-provided sky model is "
+                "present. Disabling download and using sky model provided by "
+                "the user."
             )
             parset_dict["download_initial_skymodel"] = False
 
@@ -652,7 +653,10 @@ def check_skymodel_settings(parset_dict):
             )
     else:
         log.warning(
-
+            "No input sky model file given and neither generation nor download "
+            "of sky model requested. If no calibration is to be done, this "
+            "warning can be ignored."
+        )
 
     # If `astrometry_skymodel` or `photometry_skymodel` is given, check if the
     # file exists, if not raise an error.
