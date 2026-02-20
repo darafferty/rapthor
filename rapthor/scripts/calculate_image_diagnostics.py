@@ -285,7 +285,7 @@ def check_photometry(
     # Do the photometry check
     successful_surveys = []
     photometry_diagnostics = {}
-    for survey, s_comp_photometry in zip(
+    for survey, comparison_skymodel in zip(
         comparison_surveys, comparison_skymodels
     ):
         survey = survey.strip().upper()
@@ -313,9 +313,9 @@ def check_photometry(
         s_pybdsf = fits_to_makesourcedb(
             catalog, freq, flux_colname='Total_flux'
         )
-        s_comp_photometry.group('every')
+        comparison_skymodel.group('every')
         result = s_pybdsf.compare(
-            s_comp_photometry,
+            comparison_skymodel,
             radius='5 arcsec',
             excludeMultiple=True,
             make_plots=True,
