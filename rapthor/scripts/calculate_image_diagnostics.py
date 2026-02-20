@@ -203,9 +203,9 @@ def fits_to_makesourcedb(
     """
     # Convert the result to makesourcedb format and write to a tempfile
     out_lines = [
-        f'FORMAT = Name, Type, Ra, Dec, I, ReferenceFrequency={reference_freq}\n',
+        f'FORMAT = Name, Type, Ra, Dec, I, ReferenceFrequency={reference_freq}',
         *(
-            f'{name}, POINT, {ra}, {dec}, {flux}, \n'
+            f'{name}, POINT, {ra}, {dec}, {flux}, '
             for name, ra, dec, flux in zip(
                 catalog['Source_id'],
                 catalog['RA'],
@@ -214,11 +214,9 @@ def fits_to_makesourcedb(
             )
         ),
     ]
-    skymodel_file = tempfile.NamedTemporaryFile()
-    with open(skymodel_file.name, 'w') as f:
-        f.writelines(out_lines)
-
-    return lsmtool.load(skymodel_file.name)
+    with tempfile.NamedTemporaryFile('w+') as skymodel_file:
+        skymodel_file.write('\n'.join(out_lines))
+        return lsmtool.load(skymodel_file.name)
 
 
 def check_photometry(
