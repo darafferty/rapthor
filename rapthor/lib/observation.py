@@ -275,8 +275,10 @@ class Observation(object):
         # Calculate the number of frequency chunks to use. Frequency chunking is only
         # needed by IDGCal
         if generate_screens and self.numchannels > nchannels_per_chunk:
-            # Divide up the total bandwidth into chunks of at least nchannels_per_chunk
-            self.nfreqchunks = max(1, int(self.numchannels / nchannels_per_chunk))
+            # Divide up the total bandwidth into chunks of nchannels_per_chunk
+            # Note: due to the rounding, the final chunk may have fewer or more
+            # channels than the other chunks
+            self.nfreqchunks = max(1, int(np.round(self.numchannels / nchannels_per_chunk)))
         else:
             self.nfreqchunks = 1
         startchan_list = [(nchannels_per_chunk * i) for i in range(self.nfreqchunks)]
@@ -302,8 +304,21 @@ class Observation(object):
         self.parameters["predict_di_output_filename"] = [
             self.ms_predict_di_filename
         ] * self.nfreqchunks
-        self.parameters["startchan"] = startchan_list * self.nfreqchunks
+        self.parameters["startchan"] = startchan_list
         self.parameters['nchans'] = [nchannels_per_chunk] * self.nfreqchunks
+        self.parameters["central_frequency"] = [
+            (startchan + nchannels_per_chunk / 2) * self.channelwidth + self.startfreq
+            for startchan in startchan_list
+        ]
+
+        # Make sure nchan and central_frequency are correct for the final chunk
+        numchannels_final_chunk = (
+            self.numchannels - (self.nfreqchunks - 1) * nchannels_per_chunk
+        )
+        self.parameters["nchans"][-1] = numchannels_final_chunk
+        self.parameters["central_frequency"][-1] = (
+            startchan_list[-1] + numchannels_final_chunk / 2
+        ) * self.channelwidth + self.startfreq
 
         # Calculate start time and number of time slots to use. We set ntimes to 0 if
         # the observation extends to the end of the MS file, as DP3 interprets that to

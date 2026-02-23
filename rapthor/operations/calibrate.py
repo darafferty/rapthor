@@ -126,7 +126,11 @@ class CalibrateDD(Operation):
         model_image_root = [
             f"calibration_model_{i}" for i in range(self.field.nfreqchunks)
         ]
-        model_image_frequency_bandwidth, model_image_ra_dec, model_image_imsize, model_image_cellsize = self.get_model_image_parameters()
+        central_frequencies = self.field.get_obs_parameters("central_frequency")
+        model_image_frequency_bandwidth = [[freq, 1e6] for freq in central_frequencies]
+        model_image_ra_dec, model_image_imsize, model_image_cellsize = (
+            self.get_model_image_parameters()
+        )
         facet_region_width = max(model_image_imsize) * model_image_cellsize * 1.2  # deg
         facet_region_file = 'field_facets_ds9.reg'
 
@@ -426,8 +430,6 @@ class CalibrateDD(Operation):
 
         Returns
         -------
-        frequency_bandwidth : [float, float]
-            Central frequency and bandwidth as [frequency, bandwidth] of model image in Hz
         center_coords : [str, str]
             Center of the image as [HHMMSS.S, DDMMSS.S] strings
         size : [int, int]
@@ -435,19 +437,8 @@ class CalibrateDD(Operation):
         cellsize : float
             Size of image cell (pixel) in degrees/pixel
         """
-        # Set frequency parameters. For the central frequency, we use the reference
-        # frequency of the sky model (i.e., the frequency to which the fluxes are
-        # referenced). For the bandwidth, we use 1 MHz as it is appropriate for images at
-        # LOFAR frequencies, but the exact value is not important since the bandwidth does
-        # not have any effect on the processing done in Rapthor
+        # Load the sky model
         skymodel = lsmtool.load(self.field.calibration_skymodel_file)
-        if 'ReferenceFrequency' in skymodel.getColNames():
-            # Each source can have its own reference frequency, so use the median over all
-            # sources
-            ref_freq = np.median(skymodel.getColValues('ReferenceFrequency'))  # Hz
-        else:
-            ref_freq = skymodel.table.meta['ReferenceFrequency']  # Hz
-        frequency_bandwidth = [ref_freq, 1e6]  # Hz
 
         # Set the image coordinates, size, and cellsize
         if self.index == 1:
@@ -480,7 +471,7 @@ class CalibrateDD(Operation):
         # Convert RA and Dec to strings (required by WSClean)
         center_coords = lsmtool.utils.format_coordinates(*center_coords)
 
-        return frequency_bandwidth, center_coords, size, cellsize
+        return center_coords, size, cellsize
 
     def finalize(self):
         """
