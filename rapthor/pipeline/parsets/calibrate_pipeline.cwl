@@ -848,7 +848,7 @@ steps:
         source: idgcal_polynomialdegphase
       - id: numthreads
         source: max_threads
-    scatter: [msin, starttime, ntimes, h5parm, solint]
+    scatter: [msin, starttime, ntimes, h5parm, solint, model_image]
     scatterMethod: dotproduct
     out:
       - id: output_h5parm
@@ -892,7 +892,7 @@ steps:
         source: idgcal_polynomialdegamplitude
       - id: numthreads
         source: max_threads
-    scatter: [msin, starttime, ntimes, h5parm, solint_fast, solint_slow]
+    scatter: [msin, starttime, ntimes, h5parm, solint_fast, solint_slow, model_image]
     scatterMethod: dotproduct
     out:
       - id: output_h5parm
