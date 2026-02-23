@@ -528,6 +528,13 @@ inputs:
     type: string
 {% endif %}
 
+  - id: allow_internet_access
+    label: Allow internet access
+    doc: |
+      Whether to allow internet access for downloading comparison sky models for
+      diagnostics.
+    type: boolean
+
   - id: photometry_skymodel
     label: Comparison sky model for photometry diagnostics
     doc: |
@@ -1145,6 +1152,8 @@ steps:
 {% else %}
         valueFrom: 'none'
 {% endif %}
+      - id: allow_internet_access
+        source: allow_internet_access
       - id: photometry_skymodel
         source: photometry_skymodel
       - id: astrometry_skymodel

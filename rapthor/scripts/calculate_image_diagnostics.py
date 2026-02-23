@@ -42,6 +42,13 @@ iers.conf.auto_download = False
 # Initialize logger
 logger = logging.getLogger('rapthor:calculate_image_diagnostics')
 
+# ---------------------------------------------------------------------------- #
+# Module constants
+DEFAULT_PHOTOMETRY_COMPARISON_SURVEYS = ['TGSS', 'LOTSS']
+PHOTOMETRY_BACKUP_SURVEY = 'NVSS'
+
+# ---------------------------------------------------------------------------- #
+
 
 @contextlib.contextmanager
 def safe_load_skymodel(skymodel, message, post, **kws):
@@ -211,8 +218,8 @@ def check_photometry(
     freq,
     min_number,
     comparison_skymodel=None,
-    comparison_surveys=["TGSS", "LOTSS"],
-    backup_survey="NVSS",
+    comparison_surveys=None,
+    backup_survey=PHOTOMETRY_BACKUP_SURVEY,
 ):
     """
     Calculate and plot various photometry diagnostics.
@@ -285,6 +292,11 @@ def check_photometry(
         return {}
 
     # Load photometry survey skymodels, fall back to backup if needed
+    comparison_surveys = (
+        DEFAULT_PHOTOMETRY_COMPARISON_SURVEYS
+        if comparison_surveys is None
+        else comparison_surveys
+    )
     comparison_surveys = list(comparison_surveys)
     comparison_skymodels = load_photometry_surveys(
         obs, comparison_skymodel, comparison_surveys, backup_survey
@@ -463,6 +475,7 @@ def check_astrometry(
     min_number,
     output_root,
     comparison_skymodel=None,
+    allow_internet_access=True,
 ):
     """
     Calculate and plot various astrometry diagnostics
@@ -486,6 +499,11 @@ def check_astrometry(
         Filename of the sky model to use for the photometry (flux scale)
         comparison (in makesourcedb format). If not given, a Pan-STARRS model
         is downloaded
+    allow_internet_access : bool, optional
+        Whether to allow internet access for downloading sky models when they
+        are not available locally. If False, the diagnostics relying on
+        internet access will be skipped if no skymodel path is provided for the
+        comparison skymodel.
 
     Returns
     -------
@@ -545,13 +563,19 @@ def check_astrometry(
         with safe_load_skymodel(
             comparison_skymodel,
             'Comparison sky model could not be loaded.',
-            'Trying default sky model instead...'
+            'Trying default sky model instead...',
         ) as astrometry_skymodel:
             astrometry_skymodel.group("every")
             logger.info(
                 "Using the supplied comparison sky model for the astrometry "
                 "check"
             )
+    elif not allow_internet_access:
+        logger.info(
+            'Skipping astrometry check since no comparison skymodel is '
+            'provided, and internet acess is not permitted'
+        )
+        return {}
 
     astrometry_keys = (
         "meanRAOffsetDeg",
@@ -566,7 +590,9 @@ def check_astrometry(
     astrometry_diagnostics = defaultdict(list)
     for facet in facets:
         facet.set_skymodel(s_pybdsf.copy())
-        facet.find_astrometry_offsets(astrometry_skymodel, min_number=min_number)
+        facet.find_astrometry_offsets(
+            astrometry_skymodel, min_number=min_number
+        )
         if facet.astrometry_diagnostics:
             astrometry_diagnostics['facet_name'].append(facet.name)
             for key in astrometry_keys:
@@ -602,9 +628,10 @@ def main(
     diagnostics_file,
     output_root,
     facet_region_file=None,
+    allow_internet_access=True,
     photometry_comparison_skymodel=None,
-    photometry_comparison_surveys=["TGSS", "LOTSS"],
-    photometry_backup_survey="NVSS",
+    photometry_comparison_surveys=None,
+    photometry_backup_survey=PHOTOMETRY_BACKUP_SURVEY,
     astrometry_comparison_skymodel=None,
     min_number=5,
 ):
@@ -638,6 +665,11 @@ def main(
     facet_region_file : str, optional
         Filename of the facet region file (in ds9 format) that defines the
         facets used in imaging
+    allow_internet_access : bool, optional
+        Whether to allow internet access for downloading sky models when they
+        are not available locally. If False, the diagnostics relying on
+        internet access will be skipped if no skymodel path is provided for the
+        comparison skymodels.
     photometry_comparison_skymodel : str, optional
         Filename of the sky model to use for the photometry (flux scale)
         comparison (in makesourcedb format). If not given, models are
@@ -729,6 +761,10 @@ def main(
         }
     )
 
+    if not allow_internet_access:
+        photometry_comparison_surveys = ()
+        photometry_backup_survey = None
+
     # Do the photometry check and update the ouput dict
     result = check_photometry(
         obs_list[beam_ind],
@@ -750,6 +786,7 @@ def main(
         min_number,
         output_root,
         comparison_skymodel=astrometry_comparison_skymodel,
+        allow_internet_access=allow_internet_access,
     )
     cwl_output.update(result)
 
@@ -789,6 +826,13 @@ if __name__ == "__main__":
         default=None,
     )
     parser.add_argument(
+        "--allow_internet_access",
+        help="Whether to allow internet access for downloading sky models when "
+        "they are not available locally.",
+        type=bool,
+        default=True,
+    )
+    parser.add_argument(
         "--photometry_comparison_skymodel",
         help="Filename of photometry sky model",
         type=str,
@@ -798,14 +842,14 @@ if __name__ == "__main__":
         "--photometry_comparison_surveys",
         help="List of photometry surveys to use when photometry_comparison_skymodel is not given",
         type=list,
-        default=["TGSS", "LOTSS"],
+        default=DEFAULT_PHOTOMETRY_COMPARISON_SURVEYS,
     )
     parser.add_argument(
         "--photometry_backup_survey",
         help="Name of photometry survey to use as backup "
         "if all queries to photometry_comparison_surveys fail",
         type=str,
-        default="NVSS",
+        default=PHOTOMETRY_BACKUP_SURVEY,
     )
     parser.add_argument(
         "--astrometry_comparison_skymodel",
@@ -833,6 +877,7 @@ if __name__ == "__main__":
         args.diagnostics_file,
         args.output_root,
         facet_region_file=args.facet_region_file,
+        allow_internet_access=args.allow_internet_access,
         photometry_comparison_skymodel=args.photometry_comparison_skymodel,
         photometry_comparison_surveys=args.photometry_comparison_surveys,
         photometry_backup_survey=args.photometry_backup_survey,

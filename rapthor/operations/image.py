@@ -73,11 +73,13 @@ class Image(Operation):
         self.do_multiscale_clean = None
         self.pol_combine_method = None
         self.disable_clean = None
-        self.apply_none = False  # no solutions applied before or during imaging (ImageInitial only)
+        # no solutions applied before or during imaging (ImageInitial only)
+        self.apply_none = False
         self.make_image_cube = self.field.make_image_cube  # make an image cube
         self.normalize_flux_scale = False  # derive flux scale normalizations (ImageNormalize only)
         self.compress_images = None
         self.image_cube_stokes_list = None
+        self.allow_internet_access = True
         self.photometry_skymodel = None
         self.astrometry_skymodel = None
 
@@ -119,6 +121,9 @@ class Image(Operation):
         else:
             max_cores = self.field.parset["cluster_specific"]["max_cores"]
 
+        self.allow_internet_access = self.field.parset["cluster_specific"][
+            "allow_internet_access"
+        ]
         self.parset_parms = {
             "rapthor_pipeline_dir": self.rapthor_pipeline_dir,
             "pipeline_working_dir": self.pipeline_working_dir,
@@ -135,6 +140,7 @@ class Image(Operation):
             "image_cube_stokes_list": self.image_cube_stokes_list,
             "photometry_skymodel": self.photometry_skymodel,
             "astrometry_skymodel": self.astrometry_skymodel,
+            "allow_internet_access": self.allow_internet_access,
         }
 
     def set_input_parameters(self):
@@ -324,7 +330,6 @@ class Image(Operation):
             0,
             max(1, self.field.observations[0].numsamples - numsamples_to_remove),
         ]
-
         # Set the parameters common to all modes
         self.input_parms = {
             "obs_filename": [CWLDir(name).to_json() for name in obs_filename],
@@ -398,12 +403,17 @@ class Image(Operation):
             "save_filtered_model_image": self.field.parset["imaging_specific"][
                 "save_filtered_model_image"
             ],
-            "photometry_skymodel": CWLFile(self.photometry_skymodel).to_json()
-            if self.photometry_skymodel
-            else None,
-            "astrometry_skymodel": CWLFile(self.astrometry_skymodel).to_json()
-            if self.astrometry_skymodel
-            else None,
+            "allow_internet_access": self.allow_internet_access,
+            "photometry_skymodel": (
+                CWLFile(self.photometry_skymodel).to_json()
+                if self.photometry_skymodel
+                else None
+            ),
+            "astrometry_skymodel": (
+                CWLFile(self.astrometry_skymodel).to_json()
+                if self.astrometry_skymodel
+                else None
+            ),
         }
         # Add parameters that depend on the set_parset parameters (set in set_parset_parameters())
         if self.peel_bright_sources:

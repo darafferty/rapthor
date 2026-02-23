@@ -125,6 +125,15 @@ inputs:
     inputBinding:
       prefix: --astrometry_comparison_skymodel=
       separate: false
+  - id: allow_internet_access
+    label: Allow internet access
+    doc: |
+      Whether to allow internet access for downloading sky models when they are
+      not available locally.
+    type: boolean
+    inputBinding:
+      prefix: --allow_internet_access=
+      separate: false
 
 outputs:
   - id: diagnostics
