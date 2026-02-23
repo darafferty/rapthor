@@ -518,7 +518,6 @@ class Image(Operation):
             "filtered_skymodel_apparent_sky",
             "pybdsf_catalog",
             "sector_region_file",
-            "visibilities",
             "sector_diagnostics_plots",
             "sector_diagnostics",
             "visibilities",
