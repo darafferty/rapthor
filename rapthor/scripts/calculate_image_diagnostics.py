@@ -215,41 +215,41 @@ def check_photometry(
     backup_survey="NVSS",
 ):
     """
-    Calculate and plot various photometry diagnostics
+    Calculate and plot various photometry diagnostics.
 
     Parameters
     ----------
     obs : Observation object
         Representative observation, used to derive pointing, etc.
     input_catalog : str
-        Filename of the input PyBDSF FITS catalog derived from the LOFAR image
+        Filename of the input PyBDSF FITS catalog derived from the input image.
     freq : float
-        Frequency in Hz of the LOFAR image
+        Frequency in Hz of the input image
     min_number : int
-        Minimum number of matched sources required for the comparisons
+        Minimum number of matched sources required for the comparisons.
     comparison_skymodel : str, optional
         Filename of the sky model to use for the photometry (flux scale)
         comparison (in makesourcedb format). If not given (or if it cannot be
         loaded), models are downloaded from the surveys defined by
-        comparison_surveys
+        comparison_surveys.
     comparison_surveys : list, optional
         A list giving the names of surveys to use for the photometry comparison
         when a sky model is not supplied with the comparison_skymodel argument
         (each name must be one of the VO services supported by LSMTool: see
         https://lsmtool.readthedocs.io/en/latest/lsmtool.html#lsmtool.load for
-        the supported services)
+        the supported services).
     backup_survey : str, optional
         Survey name to use if the queries fail for all surveys given by
         comparison_surveys (as with comparison_surveys, the survey name must be
         one of the VO services supported by LSMTool). Ideally, a survey with
         full sky coverage should be used for this purpose. Set to None to
-        disable
+        disable.
 
     Returns
     -------
     photometry_diagnostics : dict
         Photometry diagnostics. An empty dict is returned if the comparison
-        could not be done successfully
+        could not be done successfully.
     """
     # Load and filter the input PyBDSF FITS catalog as needed for the
     # photometry check. Sources are filtered to keep only those that:
@@ -260,7 +260,7 @@ def check_photometry(
     catalog = Table.read(input_catalog, format="fits")
     if len(catalog) == 0:
         logger.info(
-            "No sources found in the LOFAR image. Skipping the photometry "
+            "No sources found in the input image. Skipping the photometry "
             "check..."
         )
         return {}
@@ -277,7 +277,7 @@ def check_photometry(
     # Check number of sources against min_number set by user. If too few, return
     if len(catalog) < min_number:
         logger.info(
-            'Fewer than %s sources found in the LOFAR image that '
+            'Fewer than %s sources found in the input image that '
             'meet the photometry cuts (major axis < 10" and located inside the '
             'FWHM of the primary beam"). Skipping the photometry check...',
             min_number,
@@ -472,9 +472,9 @@ def check_astrometry(
     obs : Observation object
         Representative observation, used to derive pointing, etc.
     input_catalog : str
-        Filename of the input PyBDSF FITS catalog derived from the LOFAR image
+        Filename of the input PyBDSF FITS catalog derived from the input image
     image : FITSImage object
-        The LOFAR image, used to derive frequency, coverage, etc.
+        The input image, used to derive frequency, coverage, etc.
     facet_region_file : str, optional
         Filename of the facet region file (in ds9 format) that defines the
         facets used in imaging
@@ -502,7 +502,7 @@ def check_astrometry(
     catalog = Table.read(input_catalog, format="fits")
     if len(catalog) == 0:
         logger.info(
-            "No sources found in the LOFAR image. Skipping the astrometry "
+            "No sources found in the input image. Skipping the astrometry "
             "check..."
         )
         return {}
@@ -517,7 +517,7 @@ def check_astrometry(
     # Check number of sources against min_number set by user. If too few, return
     if len(catalog) < min_number:
         logger.info(
-            'Fewer than %d sources found in the LOFAR image meet the astrometry'
+            'Fewer than %d sources found in the input image meet the astrometry'
             ' cuts (major axis < 10" with positional errors < 2"). Skipping the'
             ' astrometry check...',
             min_number,
@@ -622,7 +622,7 @@ def main(
     true_sky_rms_image : str
         Filename of the background RMS image derived from the true-sky image
     input_catalog : str
-        Filename of the input PyBDSF FITS catalog derived from the LOFAR image
+        Filename of the input PyBDSF FITS catalog derived from the input image
     obs_ms : list of str
         List of MS files to use to derive the theoretical image noise and
         other properties of the observation
