@@ -74,6 +74,8 @@ class Image(Operation):
         self.normalize_flux_scale = False  # derive flux scale normalizations (ImageNormalize only)
         self.compress_images = None
         self.image_cube_stokes_list = None
+        self.photometry_skymodel = None
+        self.astrometry_skymodel = None
 
     def set_parset_parameters(self):
         """
@@ -101,6 +103,10 @@ class Image(Operation):
             self.compress_images = self.field.compress_images
         if self.image_cube_stokes_list is None:
             self.image_cube_stokes_list = self.field.image_cube_stokes_list
+        if self.photometry_skymodel is None:
+            self.photometry_skymodel = self.field.photometry_skymodel
+        if self.astrometry_skymodel is None:
+            self.astrometry_skymodel = self.field.astrometry_skymodel
         if self.batch_system.startswith('slurm'):
             # For some reason, setting coresMax ResourceRequirement hints does
             # not work with SLURM
@@ -120,7 +126,10 @@ class Image(Operation):
                              'max_cores': max_cores,
                              'use_mpi': self.field.use_mpi,
                              'compress_images': self.compress_images,
-                             'image_cube_stokes_list': self.image_cube_stokes_list}
+                             'image_cube_stokes_list': self.image_cube_stokes_list,
+                             'photometry_skymodel': self.photometry_skymodel,
+                             'astrometry_skymodel': self.astrometry_skymodel
+                             }
 
     def set_input_parameters(self):
         """
@@ -352,9 +361,10 @@ class Image(Operation):
                             'interval': interval,
                             'max_threads': self.field.parset['cluster_specific']['max_threads'],
                             'deconvolution_threads': self.field.parset['cluster_specific']['deconvolution_threads'],
-                            'save_filtered_model_image': self.field.parset["imaging_specific"]["save_filtered_model_image"]
+                            'save_filtered_model_image': self.field.parset["imaging_specific"]["save_filtered_model_image"],
+                            'photometry_skymodel': CWLFile(self.photometry_skymodel).to_json() if self.photometry_skymodel else None,
+                            'astrometry_skymodel': CWLFile(self.astrometry_skymodel).to_json() if self.astrometry_skymodel else None
                             }
-
         # Add parameters that depend on the set_parset parameters (set in set_parset_parameters())
         if self.peel_bright_sources:
             self.input_parms.update({'bright_skymodel_pb': CWLFile(self.field.bright_source_skymodel_file).to_json()})

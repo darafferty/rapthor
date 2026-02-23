@@ -341,7 +341,7 @@ class Parset:
 
         # Imaging options
         options = settings["imaging"]
-
+        
         for opt, valid_values in {
             "idg_mode": ("cpu", "gpu", "hybrid"),
             "dde_method": ("single", "full"),
