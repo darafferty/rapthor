@@ -55,20 +55,22 @@ def run(parset_file, logging_level="info"):
         final_step = strategy_steps[-1]
     else:
         log.warning(
-            "The strategy '{}' does not define any processing steps. No "
-            "processing can be done.".format(parset["strategy"])
+            "The strategy %r does not define any processing steps. No "
+            "processing can be done.",
+            parset["strategy"],
         )
         return
 
     # Generate an initial sky model from the input data if needed
     if parset["generate_initial_skymodel"]:
-        if not any([step["do_calibrate"] for step in strategy_steps]):
+        if not any(step["do_calibrate"] for step in strategy_steps):
             log.warning(
-                "Generation of an initial sky model has been activated but "
-                "the strategy '{}' does not contain any calibration steps. "
-                "Skipping the initial skymodel generation...".format(parset["strategy"])
+                "Generation of an initial sky model has been activated but the "
+                "strategy %r does not contain any calibration steps. Skipping "
+                "the initial skymodel generation...",
+                parset["strategy"],
             )
-            field.parset["generate_initial_skymodel"] = False
+            field.parset['generate_initial_skymodel'] = False
         else:
             field.define_full_field_sector(radius=parset["generate_initial_skymodel_radius"])
             log.info("Imaging full field to generate an initial sky model...")
@@ -79,9 +81,8 @@ def run(parset_file, logging_level="info"):
     # Run the self calibration
     if selfcal_steps:
         log.info(
-            "Starting self calibration with a data fraction of {0:.2f}".format(
-                parset["selfcal_data_fraction"]
-            )
+            "Starting self calibration with a data fraction of %.2f",
+            parset["selfcal_data_fraction"],
         )
 
         # Set the data chunking to match the longest solution interval set in
@@ -95,11 +96,10 @@ def run(parset_file, logging_level="info"):
         if selfcal_steps:
             # If selfcal was done, set peel_outliers to that of the initial cycle, since the
             # observations will be regenerated and outliers (if any) need to be peeled again
-            final_step["peel_outliers"] = selfcal_steps[0]["peel_outliers"]
+            final_step['peel_outliers'] = selfcal_steps[0]['peel_outliers']
             log.info(
-                "Starting final cycle with a data fraction of {0:.2f}".format(
-                    parset["final_data_fraction"]
-                )
+                "Starting final cycle with a data fraction of %.2f",
+                parset["final_data_fraction"],
             )
             field.cycle_number += 1
         else:
@@ -223,8 +223,8 @@ def run_steps(field, steps, final=False):
             # Set whether screens should be applied
             field.apply_screens = (field.dde_mode == "hybrid") and final
 
-            # Set whether the final major iteration is skipped (note: it is never skipped
-            # for the final iteration)
+            # Set whether the final major iteration is skipped (note: it is
+            # never skipped for the final iteration)
             field.skip_final_major_iteration = (
                 False if final else field.parset["imaging_specific"]["skip_final_major_iteration"]
             )
@@ -242,30 +242,39 @@ def run_steps(field, steps, final=False):
             if not any(selfcal_state):
                 # Continue selfcal
                 log.info(
-                    "Improvement in image noise, dynamic range, and/or number of "
-                    "sources exceeds that set by the convergence ratio of "
-                    "{0}.".format(field.convergence_ratio)
+                    "Improvement in image noise, dynamic range, and/or number "
+                    "of sources exceeds that set by the convergence ratio of "
+                    "%s.",
+                    field.convergence_ratio
                 )
                 log.info("Continuing selfcal...")
             else:
                 # Stop selfcal
                 if selfcal_state.converged:
                     log.info(
-                        "Selfcal has converged (improvement in image noise, dynamic "
-                        "range, and number of sources does not exceed that set by the "
-                        "convergence ratio of {0})".format(field.convergence_ratio)
+                        "Selfcal has converged (improvement in image noise, "
+                        "dynamic range, and number of sources does not exceed "
+                        "that set by the convergence ratio of %f)",
+                        field.convergence_ratio,
                     )
                 if selfcal_state.diverged:
                     log.warning(
                         "Selfcal has diverged (ratio of current image noise "
-                        "to previous value is > {})".format(field.divergence_ratio)
+                        "to previous value is > %f)",
+                        field.divergence_ratio,
                     )
+
                 if selfcal_state.failed:
                     log.warning(
-                        "Selfcal has failed due to high noise (ratio of current image noise "
-                        "to theoretical value is > {})".format(field.failure_ratio)
+                        "Selfcal has failed due to high noise (ratio of current"
+                        " image noise to theoretical value is > %f)",
+                        field.failure_ratio,
                     )
-                log.info("Stopping selfcal at cycle {0} of {1}".format(cycle_number, len(steps)))
+                log.info(
+                    "Stopping selfcal at cycle %i of %i",
+                    cycle_number,
+                    len(steps),
+                )
                 break
         else:
             selfcal_state = None
@@ -309,8 +318,9 @@ def do_final_pass(field, selfcal_steps, final_step):
             # Selfcal was found to have diverged or failed, so don't do the final pass
             # even if required otherwise
             log.warning(
-                "Selfcal diverged or failed, so skipping final cycle (with a data "
-                "fraction of {0:.2f})".format(field.parset["final_data_fraction"])
+                "Selfcal diverged or failed, so skipping final cycle (with a "
+                "data fraction of %.2f)",
+                field.parset["final_data_fraction"]
             )
             final_pass = False
         elif final_step == selfcal_steps[field.cycle_number - 1]:
@@ -408,11 +418,14 @@ def chunk_observations(field, steps, data_fraction):
             min_fraction = min(1.0, solve_time / (obs.endtime - obs.starttime))
             if data_fraction < min_fraction:
                 obs.log.warning(
-                    "The specified value of data_fraction ({0:0.3f}) results in a "
-                    "total time for this observation that is less than the largest "
-                    "potential calibration timestep ({1} s). The data fraction will be "
-                    "increased to {2:0.3f} to attempt to meet the timestep "
-                    "requirement.".format(data_fraction, solve_time, min_fraction)
+                    "The specified value of data_fraction (%0.3f) results in"
+                    " a total time for this observation that is less than the "
+                    "largest potential calibration timestep (%.3f s). The data "
+                    "fraction will be increased to %0.3f to attempt to meet "
+                    "the timestep requirement.",
+                    data_fraction,
+                    solve_time,
+                    min_fraction,
                 )
                 obs.data_fraction = min_fraction
 
