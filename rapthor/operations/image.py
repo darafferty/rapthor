@@ -90,20 +90,17 @@ class Image(Operation):
         if self.dde_method is None:
             self.dde_method = self.field.dde_method
         if self.use_facets is None:
-            self.use_facets = (
-                True if (self.dde_method == "full" and not self.apply_screens) else False
-            )
+            self.use_facets = (self.dde_method == "full") and not self.apply_screens
         if self.image_pol is None:
             self.image_pol = self.field.image_pol  # set by process.run_steps()
         if self.save_source_list is None:
-            self.save_source_list = True if is_only_pol_I(self.image_pol) else False
+            self.save_source_list = is_only_pol_I(self.image_pol)
         if self.peel_bright_sources is None:
             self.peel_bright_sources = self.field.peel_bright_sources
         if self.preapply_dde_solutions is None:
-            if self.dde_method == "single" and not self.apply_none:
-                self.preapply_dde_solutions = True
-            else:
-                self.preapply_dde_solutions = False
+            self.preapply_dde_solutions = (
+                self.dde_method == "single" and not self.apply_none
+            )
         if self.compress_images is None:
             self.compress_images = self.field.compress_images
         if self.image_cube_stokes_list is None:
@@ -885,11 +882,7 @@ class ImageNormalize(Image):
         """
         # Set the imaging parameters that are optimal for the flux-scale
         # normalization
-        if self.field.h5parm_filename is None:
-            # No calibration has yet been done
-            self.apply_none = True
-        else:
-            self.apply_none = False
+        self.apply_none = self.field.h5parm_filename is None
         self.apply_normalizations = False
         self.field.normalize_sector.auto_mask = 5.0
         self.field.normalize_sector.auto_mask_nmiter = 2
