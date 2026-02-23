@@ -782,6 +782,8 @@ steps:
         source: model_image_imsize
       - id: numthreads
         source: max_threads
+    scatter: [frequency_bandwidth, name]
+    scatterMethod: dotproduct
     out:
       - id: model_images
 
