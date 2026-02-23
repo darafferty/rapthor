@@ -356,32 +356,33 @@ def load_photometry_surveys(
                 "check"
             )
 
-    if not comparison_skymodels:
-        # Download sky model(s) given by comparison_surveys around the phase
-        # center, using a 5-deg radius to ensure the field is fully covered
-        if not comparison_surveys:
-            logger.info(
-                'A comparison sky model is not available and a list of '
-                'comparison surveys was not supplied. Skipping photometry '
-                'check...'
-            )
-            return {}
+    if comparison_skymodels:
+        return comparison_skymodels
 
-        if backup_survey is not None:
-            if backup_survey in comparison_surveys:
-                logger.info(
-                    'The backup survey "%s" is already included in '
-                    'comparison_surveys. Disabling the backup',
-                    backup_survey,
-                )
-                backup_survey = None
-            else:
-                logger.info(
-                    'Using "%s" as the backup survey catalog for the '
-                    'photometry check',
-                    backup_survey,
-                )
-                comparison_surveys.append(backup_survey)
+    # Download sky model(s) given by comparison_surveys around the phase
+    # center, using a 5-deg radius to ensure the field is fully covered
+    if not comparison_surveys:
+        logger.info(
+            'A comparison sky model is not available and a list of comparison '
+            'surveys was not supplied. Skipping photometry check...'
+        )
+        return {}
+
+    if backup_survey is not None:
+        if backup_survey in comparison_surveys:
+            logger.info(
+                'The backup survey "%s" is already included in '
+                'comparison_surveys. Disabling the backup',
+                backup_survey,
+            )
+            backup_survey = None
+        else:
+            logger.info(
+                'Using "%s" as the backup survey catalog for the photometry '
+                'check',
+                backup_survey,
+            )
+            comparison_surveys.append(backup_survey)
 
         for survey in comparison_surveys:
             with safe_load_skymodel(
