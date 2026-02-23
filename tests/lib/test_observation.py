@@ -151,7 +151,9 @@ class TestObservation:
         params = observation.parameters
 
         for solve_type in ['fast', 'medium', 'slow', 'fulljones']:
-            expected_timestep = time_factor[solve_type] * dd_interval_factor
+            expected_timestep = time_factor[solve_type]
+            if solve_type != 'fulljones':
+                expected_timestep *= dd_interval_factor
             expected_freqstep = expected_freq_factor[solve_type]
             assert params[f'solint_{solve_type}_timestep'] == [expected_timestep]
             assert params[f'solint_{solve_type}_freqstep'] == [expected_freqstep]
