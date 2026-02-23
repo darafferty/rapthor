@@ -2,6 +2,7 @@
 Module that holds the Image classes
 """
 
+
 import json
 import logging
 import os
@@ -53,8 +54,8 @@ class Image(Operation):
 
         # Initialize various parameters
         # Note:
-        #   Parameters set to None will be set in the set_parset_parameters() method
-        #       as needed for the given imaging mode
+        #   Parameters set to None will be set in the set_parset_parameters()
+        #       method as needed for the given imaging mode
         #   Paramters set to True or False must be explicitly set by a subclass
         self.apply_amplitudes = None
         self.apply_fulljones = None
@@ -90,7 +91,9 @@ class Image(Operation):
         if self.dde_method is None:
             self.dde_method = self.field.dde_method
         if self.use_facets is None:
-            self.use_facets = (self.dde_method == "full") and not self.apply_screens
+            self.use_facets = (
+                self.dde_method == "full" and not self.apply_screens
+            )
         if self.image_pol is None:
             self.image_pol = self.field.image_pol  # set by process.run_steps()
         if self.save_source_list is None:
@@ -300,8 +303,11 @@ class Image(Operation):
         prepare_data_steps = f"[{','.join(prepare_data_steps)}]"
 
         # Set the h5parm to use to apply the DDE solutions as needed
-        h5parm = CWLFile(self.field.h5parm_filename).to_json() if not self.apply_none else None
-
+        h5parm = (
+            None
+            if self.apply_none
+            else CWLFile(self.field.h5parm_filename).to_json()
+        )
         # Set the data interval to use when screens are applied so that final solution
         # interval is removed
         #
