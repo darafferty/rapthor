@@ -119,11 +119,13 @@ class CalibrateDD(Operation):
         # Define the input sky model
         calibration_skymodel_file = self.field.calibration_skymodel_file
         if self.field.generate_screens:
-            # IDGCal does not yet support multiple spectral terms
+            # IDGCal does not yet support multiple spectral terms, so set number to 1
             num_spectral_terms = 1
         else:
             num_spectral_terms = misc.get_max_spectral_terms(calibration_skymodel_file)
-        model_image_root = 'calibration_model'
+        model_image_root = [
+            f"calibration_model_{i}" for i in range(self.field.nfreqchunks)
+        ]
         model_image_frequency_bandwidth, model_image_ra_dec, model_image_imsize, model_image_cellsize = self.get_model_image_parameters()
         facet_region_width = max(model_image_imsize) * model_image_cellsize * 1.2  # deg
         facet_region_file = 'field_facets_ds9.reg'
