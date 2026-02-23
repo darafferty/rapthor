@@ -291,8 +291,12 @@ class Image(Operation):
                 prepare_data_applycal_steps.append("normalization")
                 input_normalize_h5parm = CWLFile(self.field.normalize_h5parm).to_json()
             if prepare_data_applycal_steps:
-                prepare_data_applycal_steps = f"[{','.join(prepare_data_applycal_steps)}]"
-        all_regular = all([obs.channels_are_regular for obs in self.field.observations])
+                prepare_data_applycal_steps = (
+                    f"[{','.join(prepare_data_applycal_steps)}]"
+                )
+        all_regular = all(
+            obs.channels_are_regular for obs in self.field.observations
+        )
         # Default is to average visibilities for imaging up to the smearing limit
         if self.field.average_visibilities:
             # Average visibilities
