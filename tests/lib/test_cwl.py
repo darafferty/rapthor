@@ -4,8 +4,6 @@ Test module for testing the CWL workflows _generated_ by the pipeline
 
 import subprocess
 import itertools as itt
-import os
-import tempfile
 from pathlib import Path
 
 import pytest
