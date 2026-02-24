@@ -111,6 +111,10 @@ rapthor = [
 write_to = "rapthor/_version.py"
 
 
+[tool.ruff]
+line-length = 80
+
+
 [tool.ruff.lint]
 # Expand basic rules with name and style checks roughly equivalent to flake8 + black + pylint
 # Some additional functional errors such as `await` on none async or wrong return types / args.
@@ -131,6 +135,20 @@ ignore = ["E501"]  # line-too-long
     "F405",  # undefined-local-with-import-star-usage
     "F841",  # unused-variable
 ]
+
+[tool.ruff.format]
+# Use single quotes for strings.
+quote-style = "single"
+
+# Like Black, indent with spaces, rather than tabs.
+indent-style = "space"
+
+# Like Black, respect magic trailing commas.
+skip-magic-trailing-comma = false
+
+# Like Black, automatically detect the appropriate line ending.
+line-ending = "auto"
+
 
 [tool.tox]
 requires = ["tox>4"]
