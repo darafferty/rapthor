@@ -38,7 +38,7 @@ inputs:
     type: string
 
   - id: starttime
-    label: Start tim
+    label: Start time
     doc: |
       The start time (in casacore MVTime) for each observation (length = n_obs *
       n_freq_chunks).
@@ -48,6 +48,19 @@ inputs:
     label: Number of times
     doc: |
       The number of timeslots for each observation (length = n_obs * n_freq_chunks).
+    type: int[]
+
+  - id: startchan
+    label: Start channel
+    doc: |
+      The start channel number for each frequency chunk (length = n_obs *
+      n_freq_chunks).
+    type: int[]
+
+  - id: nchans
+    label: Number of channels
+    doc: |
+      The number of channels for each frequncy chunk (length = n_obs * n_freq_chunks).
     type: int[]
 
   - id: solint_fast_timestep
@@ -837,6 +850,10 @@ steps:
         source: starttime
       - id: ntimes
         source: ntimes
+      - id: startchan
+        source: startchan
+      - id: nchans
+        source: nchans
       - id: h5parm
         source: output_idgcal_h5parm
       - id: solint
@@ -853,7 +870,7 @@ steps:
         source: idgcal_polynomialdegphase
       - id: numthreads
         source: max_threads
-    scatter: [msin, starttime, ntimes, h5parm, solint, model_image]
+    scatter: [msin, starttime, ntimes, startchan, nchans, h5parm, solint, model_image]
     scatterMethod: dotproduct
     out:
       - id: output_h5parm
@@ -877,6 +894,10 @@ steps:
         source: starttime
       - id: ntimes
         source: ntimes
+      - id: startchan
+        source: startchan
+      - id: nchans
+        source: nchans
       - id: h5parm
         source: output_idgcal_h5parm
       - id: solint_fast
@@ -897,7 +918,7 @@ steps:
         source: idgcal_polynomialdegamplitude
       - id: numthreads
         source: max_threads
-    scatter: [msin, starttime, ntimes, h5parm, solint_fast, solint_slow, model_image]
+    scatter: [msin, starttime, ntimes, startchan, nchans, h5parm, solint_fast, solint_slow, model_image]
     scatterMethod: dotproduct
     out:
       - id: output_h5parm

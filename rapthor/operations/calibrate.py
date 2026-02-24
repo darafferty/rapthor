@@ -51,12 +51,16 @@ class CalibrateDD(Operation):
 
         # Next, get the various parameters needed by the workflow
         #
-        # Get the filenames of the input files for each chunk
+        # Get the filenames of the input files for each observation
         calibration_filename = self.field.get_obs_parameters('calibration_filename')
 
-        # Get the start times and number of times for the chunks
+        # Get the start times and number of times for each observation
         starttime = self.field.get_obs_parameters('starttime')
         ntimes = self.field.get_obs_parameters('ntimes')
+
+        # Get the start channel and number of channels for each frequency chunk
+        startchan = self.field.get_obs_parameters('startchan')
+        nchans = self.field.get_obs_parameters('nchans')
 
         # Get the solution intervals for the calibrations
         solint_fast_timestep = self.field.get_obs_parameters('solint_fast_timestep')
@@ -265,6 +269,8 @@ class CalibrateDD(Operation):
                             'data_colname': self.field.data_colname,
                             'starttime': starttime,
                             'ntimes': ntimes,
+                            'startchan': startchan,
+                            'nchans': nchans,
                             'solint_fast_timestep': solint_fast_timestep,
                             'solint_medium_timestep': solint_medium_timestep,
                             'solint_slow_timestep': solint_slow_timestep,
