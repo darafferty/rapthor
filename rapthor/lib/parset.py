@@ -546,12 +546,13 @@ def parset_read(parset_file, use_log_file=True):
         raise RuntimeError(
             "Cannot use the working dir {0}: {1}".format(parset_dict["dir_working"], e)
         )
+
     if use_log_file:
         set_log_file(os.path.join(parset_dict["dir_working"], "logs", "rapthor.log"))
     log.info("=========================================================")
     log.info("Rapthor version %s", __version__)
     log.info("CWLRunner is %s", parset_dict["cluster_specific"]["cwl_runner"])
-    log.info("Working directory is {}".format(parset_dict["dir_working"]))
+    log.info("Working directory is %s", parset_dict["dir_working"])
 
     # Get the input MS files; it can either be a string, or a list of strings
     input_ms = parset_dict["input_ms"]
@@ -562,12 +563,14 @@ def parset_read(parset_file, use_log_file=True):
     parset_dict["mss"] = sorted(ms_files)
     if len(parset_dict["mss"]) == 0:
         raise FileNotFoundError(
-            "No input MS files were found (searched for files matching: {}).".format(
-                ", ".join('"{0}"'.format(search_str) for search_str in ms_search_list)
-            )
+            "No input MS files were found (searched for files matching: "
+            f"{', '.join(map(repr, ms_search_list))})."
         )
-    suffix = "s" if len(parset_dict["mss"]) > 1 else ""
-    log.info("Working on {0} input MS file{1}".format(len(parset_dict["mss"]), suffix))
+    log.info(
+        "Working on %s input MS file%s",
+        (nfiles := len(parset_dict["mss"])),
+        "s" * (nfiles > 1),
+    )
 
     check_skymodel_settings(parset_dict)
     log.info("=========================================================")
