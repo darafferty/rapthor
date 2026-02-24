@@ -196,21 +196,30 @@ commands = [
         "python", "-m", "ruff", "check",
     ],
     [
-        "python", "-m", "ruff", "format", "--check"
+        "python", "-m", "ruff", "format", "--check", "-v",
+        { replace = "ref", of = ["tool", "tox", "env", "format", "format_targets"], extend=true },
     ]
 ]
 
 [tool.tox.env.format]
 deps = "ruff"
+format_targets = [
+    "rapthor/lib/parset.py",
+    "rapthor/operations/image.py",
+    "rapthor/scripts/calculate_image_diagnostics.py",
+    "tests/lib/test_parset.py",
+    "tests/scripts/test_calculate_image_diagnostics.py",
+]
 commands = [
     [
         # sort imports
         "python", "-m", "ruff", "check", "--select", "I", "--fix", 
-        "--exclude",
-        { replace = "ref", of = ["tool", "ruff", "format", "exclude"], extend = true },
+        { replace = "ref", of = ["tool", "tox", "env", "format", "format_targets"], extend=true },
     ],
     [   
         # format code
         "python", "-m", "ruff", "format",
+        { replace = "ref", of = ["tool", "tox", "env", "format", "format_targets"], extend=true },
     ],
+
 ]
