@@ -100,9 +100,11 @@ def validate(params, parset_path):
     Validate the workflow file using `cwltool` in a subprocess call.
     """
     try:
-        subprocess.run(["cwltool", "--validate", "--enable-ext", parset_path], check=True)
-    except subprocess.CalledProcessError as err:
-        raise AssertionError(f"FAILED with parameters: {params}") from err
+        subprocess.run(
+            ["cwltool", "--validate", "--enable-ext", parset_path], check=True
+        )
+    except subprocess.CalledProcessError:
+        raise AssertionError(f"FAILED with parameters: {params}") from None
 
 
 @pytest.mark.parametrize("max_cores", (None, 8))
