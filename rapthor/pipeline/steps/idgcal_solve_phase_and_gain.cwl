@@ -57,6 +57,24 @@ inputs:
       prefix: msin.ntimes=
       separate: False
 
+  - id: startchan
+    label: Start channel
+    doc: |
+      The start channel for the frequency chunk to be processed.
+    type: int
+    inputBinding:
+      prefix: msin.startchan=
+      separate: False
+
+  - id: nchans
+    label: Number of channels
+    doc: |
+      The number of channels for the frequency chunk to be processed.
+    type: int
+    inputBinding:
+      prefix: msin.nchan=
+      separate: False
+
   - id: h5parm
     label: Solution table
     doc: |
