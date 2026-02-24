@@ -196,7 +196,7 @@ commands = [
         "python", "-m", "ruff", "check",
     ],
     [
-        "python", "-m", "ruff", "format", "--check", 
+        "python", "-m", "ruff", "format", "--check"
     ]
 ]
 
@@ -204,6 +204,13 @@ commands = [
 deps = "ruff"
 commands = [
     [
+        # sort imports
+        "python", "-m", "ruff", "check", "--select", "I", "--fix", 
+        "--exclude",
+        { replace = "ref", of = ["tool", "ruff", "format", "exclude"], extend = true },
+    ],
+    [   
+        # format code
         "python", "-m", "ruff", "format",
     ],
 ]
