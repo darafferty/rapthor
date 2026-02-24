@@ -229,6 +229,7 @@ class TestCheckSkymodelSettings(unittest.TestCase):
             parset_dict = self._make_parset_dict(
                 input_skymodel=f.name,
                 generate_initial_skymodel=True,
+                download_initial_skymodel=True,
             )
             with self.assertLogs(logger="rapthor:parset", level="WARN") as cm:
                 check_skymodel_settings(parset_dict)
@@ -248,6 +249,9 @@ class TestCheckSkymodelSettings(unittest.TestCase):
             self.assertFalse(parset_dict["download_initial_skymodel"])
             self.assertTrue(
                 any("Sky model download requested" in msg for msg in cm.output)
+            )
+            self.assertTrue(
+                any("Disabling download" in msg for msg in cm.output)
             )
 
     # ---- no input_skymodel, generate requested ----
