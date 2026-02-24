@@ -2,15 +2,16 @@
 Test suite for rapthor.scripts.calculate_image_diagnostics.
 """
 
+import astropy.units as u
+import lsmtool.skymodel
+import pytest
+from astropy.table import Table
+
 from rapthor.lib import fitsimage
 from rapthor.scripts.calculate_image_diagnostics import (
     check_astrometry,
     check_photometry,
 )
-import pytest
-from astropy.table import Table
-import astropy.units as u
-import lsmtool.skymodel
 
 
 def test_check_astrometry_zero_sources(
@@ -190,9 +191,12 @@ def test_check_photometry_with_comparison_skymodel_does_not_access_internet(
         lsmtool.skymodel.SkyModel, "compare", return_value=mock_compare_result
     )
     mocker.patch.object(lsmtool.skymodel.SkyModel, "group")
-    mocker.patch("rapthor.scripts.calculate_image_diagnostics.os.rename", autospec=True)
     mocker.patch(
-        "rapthor.scripts.calculate_image_diagnostics.os.path.exists", return_value=False
+        "rapthor.scripts.calculate_image_diagnostics.os.rename", autospec=True
+    )
+    mocker.patch(
+        "rapthor.scripts.calculate_image_diagnostics.os.path.exists",
+        return_value=False,
     )
     monkeypatch.setattr(
         "astropy.table.Table.read", lambda *args, **kwargs: Table(mock_data)
@@ -256,7 +260,8 @@ def test_check_astrometry_with_comparison_skymodel_does_not_access_internet(
         lsmtool.skymodel.SkyModel, "compare", return_value=mock_compare_result
     )
     mocker.patch(
-        "rapthor.lib.facet.filter_skymodel", side_effect=lambda polygon, sm, wcs: sm
+        "rapthor.lib.facet.filter_skymodel",
+        side_effect=lambda polygon, sm, wcs: sm,
     )
     monkeypatch.setattr(
         "astropy.table.Table.read", lambda *args, **kwargs: Table(mock_data)
