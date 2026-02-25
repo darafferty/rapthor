@@ -190,6 +190,7 @@ commands = [
 [tool.tox.env.format]
 deps = "ruff"
 format_targets = [
+    "rapthor/process.py",
     "rapthor/lib/parset.py",
     "rapthor/operations/image.py",
     "rapthor/scripts/calculate_image_diagnostics.py",
