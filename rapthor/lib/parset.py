@@ -1,6 +1,7 @@
 """
 Module that holds all parset-related functions
 """
+
 import ast
 import configparser
 import glob
@@ -9,6 +10,7 @@ import os
 from importlib import resources
 
 import astropy.coordinates
+
 import rapthor.lib.miscellaneous as misc
 from rapthor._logging import set_log_file
 from rapthor._version import __version__
@@ -36,7 +38,9 @@ def lexical_cast(string_value):
         except (ValueError, TypeError):
             # Try to convert a more complex list by converting each item separately
             if string_value.startswith("[") and string_value.endswith("]"):
-                values = [val.strip() for val in string_value.strip("[]").split(",")]
+                values = [
+                    val.strip() for val in string_value.strip("[]").split(",")
+                ]
                 return [lexical_cast(val) for val in values]
     # Return the unaltered string
     return string_value
@@ -84,7 +88,8 @@ class Parset:
         # options are based on the contents of `defaults.parset`, required options are
         # hard-coded below. Also define sets of allowed and required sections.
         self.allowed_options = {
-            sect: set(self.__parser.options(sect)) for sect in self.__parser.sections()
+            sect: set(self.__parser.options(sect))
+            for sect in self.__parser.sections()
         }
         self.allowed_sections = set(self.allowed_options)
         self.required_options = {
@@ -97,9 +102,7 @@ class Parset:
         # Deprecated options are hard-coded below. Each deprecated option can have
         # zero or more suggestions for alternative options.
         self.deprecated_options = {
-            "cluster": {
-                "dir_local": {"local_scratch_dir"}
-            }
+            "cluster": {"dir_local": {"local_scratch_dir"}}
         }
 
         # Sanity check. Ensure that all required sections and options are also allowed.
@@ -141,7 +144,8 @@ class Parset:
         settings = dict()
         for section in parser.sections():
             settings[section] = dict(
-                (key, lexical_cast(value)) for key, value in parser.items(section)
+                (key, lexical_cast(value))
+                for key, value in parser.items(section)
             )
         return settings
 
@@ -190,7 +194,8 @@ class Parset:
             if options:
                 raise ValueError(
                     "Missing required option(s) in section [{}]: {}".format(
-                        section, ", ".join("'{}'".format(opt) for opt in options)
+                        section,
+                        ", ".join("'{}'".format(opt) for opt in options),
                     )
                 )
 
@@ -203,13 +208,17 @@ class Parset:
         for section in invalid_options:
             for option in invalid_options[section]:
                 self.__parser.remove_option(section, option)
-                log.warning("Option '%s' in section [%s] is invalid", option, section)
+                log.warning(
+                    "Option '%s' in section [%s] is invalid", option, section
+                )
 
         # Check for deprecated options
         for section in deprecated_options:
             for option in deprecated_options[section]:
                 alternatives = self.deprecated_options[section][option]
-                message = f"Option '{option}' in section [{section}] is deprecated"
+                message = (
+                    f"Option '{option}' in section [{section}] is deprecated"
+                )
                 if alternatives:
                     message += "; use %s instead" % (
                         ", or ".join("'{}'".format(opt) for opt in alternatives)
@@ -251,7 +260,10 @@ class Parset:
                 f"The final_data_fraction ({final_data_fraction}) "
                 f"is less than selfcal_data_fraction ({selfcal_data_fraction})"
             )
-        if options["generate_initial_skymodel"] and options["download_initial_skymodel"]:
+        if (
+            options["generate_initial_skymodel"]
+            and options["download_initial_skymodel"]
+        ):
             raise ValueError(
                 "Both 'generate_initial_skymodel' and 'download_initial_skymodel' are "
                 "activated. Only one of these options can be active."
@@ -277,12 +289,18 @@ class Parset:
             "fast_datause": ("single", "dual", "full"),
             "medium_datause": ("single", "dual", "full"),
             "slow_datause": ("dual", "full"),
-            "solveralgorithm": ("hybrid", "lbfgs", "directioniterative", "directionsolve"),
+            "solveralgorithm": (
+                "hybrid",
+                "lbfgs",
+                "directioniterative",
+                "directionsolve",
+            ),
         }.items():
             if options[opt] not in valid_values:
                 raise ValueError(
                     "The option '{}' must be one of {}".format(
-                        opt, ", ".join("'{}'".format(val) for val in valid_values)
+                        opt,
+                        ", ".join("'{}'".format(val) for val in valid_values),
                     )
                 )
 
@@ -315,9 +333,10 @@ class Parset:
             )
             options["dd_interval_factor"] = 1
         if (
-            (options["fast_datause"] != "full" or options["medium_datause"] != "full" or options["slow_datause"] != "full") and
-            options["solveralgorithm"] != "directioniterative"
-        ):
+            options["fast_datause"] != "full"
+            or options["medium_datause"] != "full"
+            or options["slow_datause"] != "full"
+        ) and options["solveralgorithm"] != "directioniterative":
             log.warning(
                 f"Switching from the '{solveralgorithm}' solver to the "
                 "'directioniterative' solver, since single or dual visibilities "
@@ -325,23 +344,19 @@ class Parset:
             )
             options["solveralgorithm"] = "directioniterative"
 
-        if (
-            options['use_image_based_predict'] and
-            (
-                options['bda_timebase'] > 0 or
-                options['bda_frequencybase'] > 0
-            )
+        if options["use_image_based_predict"] and (
+            options["bda_timebase"] > 0 or options["bda_frequencybase"] > 0
         ):
             log.warning(
                 "Switching off BDA during solving, since image-based predict is "
                 "activated."
             )
-            options['bda_timebase'] = 0
-            options['bda_frequencybase'] = 0
+            options["bda_timebase"] = 0
+            options["bda_frequencybase"] = 0
 
         # Imaging options
         options = settings["imaging"]
-        
+
         for opt, valid_values in {
             "idg_mode": ("cpu", "gpu", "hybrid"),
             "dde_method": ("single", "full"),
@@ -350,7 +365,8 @@ class Parset:
             if options[opt] not in valid_values:
                 raise ValueError(
                     "The option '{}' must be one of {}".format(
-                        opt, ", ".join("'{}'".format(val) for val in valid_values)
+                        opt,
+                        ", ".join("'{}'".format(val) for val in valid_values),
                     )
                 )
 
@@ -372,8 +388,8 @@ class Parset:
             )
 
         if (
-            options["correct_time_frequency_smearing"] and
-            options["bda_timebase"] > 0
+            options["correct_time_frequency_smearing"]
+            and options["bda_timebase"] > 0
         ):
             log.warning(
                 "Switching off BDA during imaging, since correction for time "
@@ -383,8 +399,8 @@ class Parset:
             # options["bda_frequencybase"] = 0  # TODO: also disable frequency BDA once implemented
 
         if (
-            settings["imaging"]["correct_time_frequency_smearing"] !=
-            settings["calibration"]["correct_time_frequency_smearing"]
+            settings["imaging"]["correct_time_frequency_smearing"]
+            != settings["calibration"]["correct_time_frequency_smearing"]
         ):
             log.warning(
                 "Correction for time and frequency smearing is enabled "
@@ -396,14 +412,19 @@ class Parset:
         options["image_cube_stokes_list"] = [
             pol.upper() for pol in options["image_cube_stokes_list"]
         ]
-        if any([pol not in "IQUV" for pol in options["image_cube_stokes_list"]]):
+        if any(
+            [pol not in "IQUV" for pol in options["image_cube_stokes_list"]]
+        ):
             raise ValueError(
                 "The option 'image_cube_stokes_list' specifies one or more invalid "
                 "Stokes parameters. Allowed Stokes parameters are 'I', 'Q', 'U', or "
                 "'V'."
             )
 
-        if options["save_image_cube"] and options["image_cube_stokes_list"] == []:
+        if (
+            options["save_image_cube"]
+            and options["image_cube_stokes_list"] == []
+        ):
             log.warning(
                 "The option 'save_image_cube' is enabled, but 'image_cube_stokes_list' "
                 "is empty. Setting 'image_cube_stokes_list' to '[I]'."
@@ -432,7 +453,8 @@ class Parset:
             if options[opt] not in valid_values:
                 raise ValueError(
                     "The option '{}' must be one of {}".format(
-                        opt, ", ".join("'{}'".format(val) for val in valid_values)
+                        opt,
+                        ", ".join("'{}'".format(val) for val in valid_values),
                     )
                 )
 
@@ -445,15 +467,21 @@ class Parset:
         if not options["max_nodes"]:
             options["max_nodes"] = 1 if single_machine else 12
         if not options["max_cores"]:
-            options["max_cores"] = cpu_count if single_machine else cpus_per_task
+            options["max_cores"] = (
+                cpu_count if single_machine else cpus_per_task
+            )
         if not options["max_threads"]:
             options["max_threads"] = cpu_count
 
         max_threads = options["max_threads"]
         if not options["deconvolution_threads"]:
-            options["deconvolution_threads"] = max(1, min(14, max_threads * 2 // 5))
+            options["deconvolution_threads"] = max(
+                1, min(14, max_threads * 2 // 5)
+            )
         if not options["parallel_gridding_threads"]:
-            options["parallel_gridding_threads"] = max(1, min(6, max_threads * 2 // 5))
+            options["parallel_gridding_threads"] = max(
+                1, min(6, max_threads * 2 // 5)
+            )
 
     def read_file(self, parset_file):
         """
@@ -556,10 +584,14 @@ def parset_read(parset_file, use_log_file=True):
                 os.mkdir(subdir_path)
     except Exception as e:
         raise RuntimeError(
-            "Cannot use the working dir {0}: {1}".format(parset_dict["dir_working"], e)
+            "Cannot use the working dir {0}: {1}".format(
+                parset_dict["dir_working"], e
+            )
         )
     if use_log_file:
-        set_log_file(os.path.join(parset_dict["dir_working"], "logs", "rapthor.log"))
+        set_log_file(
+            os.path.join(parset_dict["dir_working"], "logs", "rapthor.log")
+        )
     log.info("=========================================================")
     log.info("Rapthor version %s", __version__)
     log.info("CWLRunner is %s", parset_dict["cluster_specific"]["cwl_runner"])
@@ -576,11 +608,17 @@ def parset_read(parset_file, use_log_file=True):
         raise FileNotFoundError(
             "No input MS files were found (searched for files "
             "matching: {}).".format(
-                ", ".join('"{0}"'.format(search_str) for search_str in ms_search_list)
+                ", ".join(
+                    '"{0}"'.format(search_str) for search_str in ms_search_list
+                )
             )
         )
-    suffix = 's' if len(parset_dict["mss"]) > 1 else ''
-    log.info("Working on {0} input MS file{1}".format(len(parset_dict["mss"]), suffix))
+    suffix = "s" if len(parset_dict["mss"]) > 1 else ""
+    log.info(
+        "Working on {0} input MS file{1}".format(
+            len(parset_dict["mss"]), suffix
+        )
+    )
 
     # Make sure the initial sky model is present or, if not, that generation or download
     # is requested
@@ -614,7 +652,9 @@ def parset_read(parset_file, use_log_file=True):
     else:
         if not os.path.exists(parset_dict["input_skymodel"]):
             raise FileNotFoundError(
-                'Input sky model file "{}" not found.'.format(parset_dict["input_skymodel"])
+                'Input sky model file "{}" not found.'.format(
+                    parset_dict["input_skymodel"]
+                )
             )
         if parset_dict["generate_initial_skymodel"]:
             # If sky model is given but generation requested, disable generation and use

@@ -111,6 +111,9 @@ rapthor = [
 write_to = "rapthor/_version.py"
 
 
+[tool.ruff]
+line-length = 80
+
 [tool.ruff.lint]
 # Expand basic rules with name and style checks roughly equivalent to flake8 + black + pylint
 # Some additional functional errors such as `await` on none async or wrong return types / args.
@@ -132,9 +135,10 @@ ignore = ["E501"]  # line-too-long
     "F841",  # unused-variable
 ]
 
+
 [tool.tox]
 requires = ["tox>4"]
-envlist = ["lint", "py3{9,10,11,12,13}"]
+envlist = ["lint", "format", "py3{9,10,11,12,13}"]
 
 [tool.tox.env_run_base]
 description = "Run all tests"
@@ -172,9 +176,36 @@ commands = [
 ]
 
 [tool.tox.env.lint]
-deps = ["ruff"]
+deps = "ruff"
 commands = [
     [
         "python", "-m", "ruff", "check",
     ],
+    [
+        "python", "-m", "ruff", "format", "--check", "-v",
+        { replace = "ref", of = ["tool", "tox", "env", "format", "format_targets"], extend=true },
+    ]
+]
+
+[tool.tox.env.format]
+deps = "ruff"
+format_targets = [
+    "rapthor/lib/parset.py",
+    "rapthor/operations/image.py",
+    "rapthor/scripts/calculate_image_diagnostics.py",
+    "tests/lib/test_parset.py",
+    "tests/scripts/test_calculate_image_diagnostics.py",
+]
+commands = [
+    [
+        # sort imports
+        "python", "-m", "ruff", "check", "--select", "I", "--fix", 
+        { replace = "ref", of = ["tool", "tox", "env", "format", "format_targets"], extend=true },
+    ],
+    [   
+        # format code
+        "python", "-m", "ruff", "format",
+        { replace = "ref", of = ["tool", "tox", "env", "format", "format_targets"], extend=true },
+    ],
+
 ]
