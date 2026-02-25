@@ -23,29 +23,26 @@ from astropy.utils import iers
 from astropy.visualization.wcsaxes import WCSAxes
 from lsmtool.operations_lib import make_wcs
 
-
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.facet import SquareFacet, read_ds9_region_file
 from rapthor.lib.fitsimage import FITSImage
 from rapthor.lib.observation import Observation
 
-if matplotlib.get_backend() != 'Agg':
-    matplotlib.use('Agg')
+if matplotlib.get_backend() != "Agg":
+    matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-
-
 
 # Turn off astropy's IERS downloads to fix problems in cases where compute
 # node does not have internet access
 iers.conf.auto_download = False
 
 # Initialize logger
-logger = logging.getLogger('rapthor:calculate_image_diagnostics')
+logger = logging.getLogger("rapthor:calculate_image_diagnostics")
 
 # ---------------------------------------------------------------------------- #
 # Module constants
-DEFAULT_PHOTOMETRY_COMPARISON_SURVEYS = ['TGSS', 'LOTSS']
-PHOTOMETRY_BACKUP_SURVEY = 'NVSS'
+DEFAULT_PHOTOMETRY_COMPARISON_SURVEYS = ["TGSS", "LOTSS"]
+PHOTOMETRY_BACKUP_SURVEY = "NVSS"
 
 # ---------------------------------------------------------------------------- #
 
@@ -73,7 +70,7 @@ def safe_load_skymodel(skymodel, message, post, **kws):
         yield lsmtool.load(skymodel, **kws)
     except OSError as error:
         logger.info(
-            '%s The error was: \n%s\n%s',
+            "%s The error was: \n%s\n%s",
             message,
             error,
             post,
@@ -284,9 +281,9 @@ def check_photometry(
     # Check number of sources against min_number set by user. If too few, return
     if len(catalog) < min_number:
         logger.info(
-            'Fewer than %s sources found in the input image that '
+            "Fewer than %s sources found in the input image that "
             'meet the photometry cuts (major axis < 10" and located inside the '
-            'FWHM of the primary beam"). Skipping the photometry check...',
+            "FWHM of the primary beam). Skipping the photometry check...",
             min_number,
         )
         return {}
@@ -328,9 +325,9 @@ def check_photometry(
 
             # Backup needed
             logger.info(
-                'The backup survey catalog "%s" will be used for the photometry'
-                ' check, as the queries for all other survey catalogs were '
-                'unsuccessful',
+                "The backup survey catalog %r will be used for the photometry"
+                " check, as the queries for all other survey catalogs were "
+                "unsuccessful",
                 backup_survey,
             )
 
@@ -358,8 +355,8 @@ def load_photometry_surveys(
     if comparison_skymodel:
         with safe_load_skymodel(
             comparison_skymodel,
-            'Comparison sky model could not be loaded.',
-            'Trying to download sky model(s) instead...',
+            "Comparison sky model could not be loaded.",
+            "Trying to download sky model(s) instead...",
         ) as skymodel:
             comparison_skymodels.append(skymodel)
             comparison_surveys = ["USER_SUPPLIED"]
@@ -375,8 +372,8 @@ def load_photometry_surveys(
     # center, using a 5-deg radius to ensure the field is fully covered
     if not comparison_surveys:
         logger.info(
-            'A comparison sky model is not available and a list of comparison '
-            'surveys was not supplied. Skipping photometry check...'
+            "A comparison sky model is not available and a list of comparison "
+            "surveys was not supplied. Skipping photometry check..."
         )
         return {}
 
@@ -384,14 +381,14 @@ def load_photometry_surveys(
         if backup_survey in comparison_surveys:
             logger.info(
                 'The backup survey "%s" is already included in '
-                'comparison_surveys. Disabling the backup',
+                "comparison_surveys. Disabling the backup",
                 backup_survey,
             )
             backup_survey = None
         else:
             logger.info(
                 'Using "%s" as the backup survey catalog for the photometry '
-                'check',
+                "check",
                 backup_survey,
             )
             comparison_surveys.append(backup_survey)
@@ -411,21 +408,20 @@ def load_photometry_surveys(
 
 
 def compare_photometry_survey(catalog, survey, comparison_skymodel, freq):
-
     # Convert the output and compare, using the total flux from the
     # Gaussian fits ('Total_flux') to be consistent with the flux-scale
     # normalization
-    comparison_skymodel.group('every')
+    comparison_skymodel.group("every")
     reference_skymodel = fits_to_makesourcedb(
-        catalog, freq, flux_colname='Total_flux'
+        catalog, freq, flux_colname="Total_flux"
     )
 
     if result := reference_skymodel.compare(
         comparison_skymodel,
-        radius='5 arcsec',
+        radius="5 arcsec",
         excludeMultiple=True,
         make_plots=True,
-        name1='LOFAR',
+        name1="LOFAR",
         name2=survey,
     ):
         # Append survey name to the diagnostic plots generated by LSMTool and
@@ -434,20 +430,20 @@ def compare_photometry_survey(catalog, survey, comparison_skymodel, freq):
 
         # Save the diagnostics for the comparison
         return {
-            f'{key}_{survey}': result[key]
+            f"{key}_{survey}": result[key]
             for key in (
-                'meanRatio',
-                'stdRatio',
-                'meanClippedRatio',
-                'stdClippedRatio',
+                "meanRatio",
+                "stdRatio",
+                "meanClippedRatio",
+                "stdClippedRatio",
             )
         }
 
     # Comparison failed due to insufficient matches. Continue with the
     # next comparison model (if any)
     logger.info(
-        'The photometry check with the %s catalog could not be done due to '
-        'insufficient matches. Skipping this survey...',
+        "The photometry check with the %s catalog could not be done due to "
+        "insufficient matches. Skipping this survey...",
         survey,
     )
 
@@ -456,15 +452,15 @@ def rename_plots(survey):
     # Append survey name to the diagnostic plots generated by LSMTool and
     # remove other, unneeded plots
     for plot in [
-        'flux_ratio_vs_distance',
-        'flux_ratio_vs_flux',
-        'flux_ratio_sky',
+        "flux_ratio_vs_distance",
+        "flux_ratio_vs_flux",
+        "flux_ratio_sky",
     ]:
-        Path(f'{plot}.pdf').rename(f'{plot}_{survey}.pdf')
+        Path(f"{plot}.pdf").rename(f"{plot}_{survey}.pdf")
 
     # other plots not related to photometry check
-    for plot in ['positional_offsets_sky']:
-        Path(f'{plot}.pdf').unlink(missing_ok=True)
+    for plot in ["positional_offsets_sky"]:
+        Path(f"{plot}.pdf").unlink(missing_ok=True)
 
 
 def check_astrometry(
@@ -535,9 +531,9 @@ def check_astrometry(
     # Check number of sources against min_number set by user. If too few, return
     if len(catalog) < min_number:
         logger.info(
-            'Fewer than %d sources found in the input image meet the astrometry'
+            "Fewer than %d sources found in the input image meet the astrometry"
             ' cuts (major axis < 10" with positional errors < 2"). Skipping the'
-            ' astrometry check...',
+            " astrometry check...",
             min_number,
         )
         return {}
@@ -562,8 +558,8 @@ def check_astrometry(
     if comparison_skymodel:
         with safe_load_skymodel(
             comparison_skymodel,
-            'Comparison sky model could not be loaded.',
-            'Trying default sky model instead...',
+            "Comparison sky model could not be loaded.",
+            "Trying default sky model instead...",
         ) as astrometry_skymodel:
             astrometry_skymodel.group("every")
             logger.info(
@@ -572,8 +568,8 @@ def check_astrometry(
             )
     elif not allow_internet_access:
         logger.info(
-            'Skipping astrometry check since no comparison skymodel is '
-            'provided, and internet acess is not permitted'
+            "Skipping astrometry check since no comparison skymodel is "
+            "provided, and internet acess is not permitted"
         )
         return {}
 
@@ -581,7 +577,7 @@ def check_astrometry(
         "meanRAOffsetDeg",
         "stdRAOffsetDeg",
         "meanClippedRAOffsetDeg",
-        'stdClippedRAOffsetDeg',
+        "stdClippedRAOffsetDeg",
         "meanDecOffsetDeg",
         "stdDecOffsetDeg",
         "meanClippedDecOffsetDeg",
@@ -594,20 +590,20 @@ def check_astrometry(
             astrometry_skymodel, min_number=min_number
         )
         if facet.astrometry_diagnostics:
-            astrometry_diagnostics['facet_name'].append(facet.name)
+            astrometry_diagnostics["facet_name"].append(facet.name)
             for key in astrometry_keys:
                 astrometry_diagnostics[key].append(
                     facet.astrometry_diagnostics[key]
                 )
 
-    if not astrometry_diagnostics['facet_name']:
+    if not astrometry_diagnostics["facet_name"]:
         return {}
 
-    with open(f'{output_root}.astrometry_offsets.json', 'w') as fp:
+    with open(f"{output_root}.astrometry_offsets.json", "w") as fp:
         json.dump(dict(astrometry_diagnostics), fp)
 
     plot_astrometry_offsets(
-        facets, obs.ra, obs.dec, f'{output_root}.astrometry_offsets.pdf'
+        facets, obs.ra, obs.dec, f"{output_root}.astrometry_offsets.pdf"
     )
 
     # Calculate mean offsets

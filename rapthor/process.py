@@ -36,14 +36,15 @@ def run(parset_file, logging_level="info"):
 
     # Set up logger
     log.info("Setting log level to %s", logging_level.upper())
+    log.info("Setting log level to %s", logging_level.upper())
     _logging.set_level(logging_level)
 
     # Initialize field object and do concatenation if needed
     field = Field(parset)
     if any(len(obs) > 1 for obs in field.epoch_observations):
         log.info(
-            "MS files with different frequencies found for one "
-            "or more epochs. Concatenation over frequency will be done."
+            "MS files with different frequencies found for one or more epochs. "
+            "Concatenation over frequency will be done."
         )
         op = Concatenate(field, 1)
         op.run()
@@ -70,7 +71,7 @@ def run(parset_file, logging_level="info"):
                 "the initial skymodel generation...",
                 parset["strategy"],
             )
-            field.parset['generate_initial_skymodel'] = False
+            field.parset["generate_initial_skymodel"] = False
         else:
             field.define_full_field_sector(radius=parset["generate_initial_skymodel_radius"])
             log.info("Imaging full field to generate an initial sky model...")
@@ -96,7 +97,7 @@ def run(parset_file, logging_level="info"):
         if selfcal_steps:
             # If selfcal was done, set peel_outliers to that of the initial cycle, since the
             # observations will be regenerated and outliers (if any) need to be peeled again
-            final_step['peel_outliers'] = selfcal_steps[0]['peel_outliers']
+            final_step["peel_outliers"] = selfcal_steps[0]["peel_outliers"]
             log.info(
                 "Starting final cycle with a data fraction of %.2f",
                 parset["final_data_fraction"],
@@ -245,7 +246,7 @@ def run_steps(field, steps, final=False):
                     "Improvement in image noise, dynamic range, and/or number "
                     "of sources exceeds that set by the convergence ratio of "
                     "%s.",
-                    field.convergence_ratio
+                    field.convergence_ratio,
                 )
                 log.info("Continuing selfcal...")
             else:
@@ -320,7 +321,7 @@ def do_final_pass(field, selfcal_steps, final_step):
             log.warning(
                 "Selfcal diverged or failed, so skipping final cycle (with a "
                 "data fraction of %.2f)",
-                field.parset["final_data_fraction"]
+                field.parset["final_data_fraction"],
             )
             final_pass = False
         elif final_step == selfcal_steps[field.cycle_number - 1]:
@@ -371,8 +372,7 @@ def chunk_observations(field, steps, data_fraction):
         slow_solint = max(step.get("slow_timestep_sec", 0) for step in steps)
         max_dd_timestep = max(fast_solint, slow_solint)
         max_di_timestep = max(
-                step.get("fulljones_timestep_sec", 0)
-                for step in steps
+            step.get("fulljones_timestep_sec", 0) for step in steps
         )
 
         # For DD solves, include the effect of DD solution intervals (given by

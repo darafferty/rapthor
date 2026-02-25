@@ -598,7 +598,9 @@ def check_skymodel_settings(parset_dict):
     generate_initial_skymodel = parset_dict["generate_initial_skymodel"]
     download_initial_skymodel = parset_dict["download_initial_skymodel"]
     action = "generation" if generate_initial_skymodel else "download"
-    generate_or_download_skymodel = generate_initial_skymodel or download_initial_skymodel
+    generate_or_download_skymodel = (
+        generate_initial_skymodel or download_initial_skymodel
+    )
 
     if input_skymodel := parset_dict["input_skymodel"]:
         if not os.path.exists(input_skymodel):
@@ -611,24 +613,33 @@ def check_skymodel_settings(parset_dict):
             log.warning(
                 "Sky model %s requested, but user-provided sky model is "
                 "present. Disabling %s and using sky model provided by the "
-                "user.", action, action
+                "user.",
+                action,
+                action,
             )
-            parset_dict["download_initial_skymodel"] = download_initial_skymodel = False
+            parset_dict["download_initial_skymodel"] = (
+                download_initial_skymodel
+            ) = False
             parset_dict["generate_initial_skymodel"] = False
 
     elif generate_or_download_skymodel:
         verb, suffix = (
-            ("generate", " from input data") if generate_initial_skymodel else
-            ("download", "")
+            ("generate", " from input data")
+            if generate_initial_skymodel
+            else ("download", "")
         )
         log.info(
             "No input sky model file given and %s requested. Will automatically"
-            " %s sky model%s.", action, verb, suffix
+            " %s sky model%s.",
+            action,
+            verb,
+            suffix,
         )
         if apparent_skymodel:
             log.warning(
                 "The input apparent sky model will not be used because sky "
-                "model %s has been requested.", action
+                "model %s has been requested.",
+                action,
             )
     else:
         log.warning(
@@ -639,9 +650,12 @@ def check_skymodel_settings(parset_dict):
 
     # If `astrometry_skymodel` or `photometry_skymodel` is given, check if the
     # file exists, if not raise an error.
-    for diagnostic in ('astrometry', 'photometry'):
-        if ((skymodel := parset_dict['imaging_specific'][f'{diagnostic}_skymodel'])
-                and not os.path.exists(skymodel)):
+    for diagnostic in ("astrometry", "photometry"):
+        if (
+            skymodel := parset_dict["imaging_specific"][
+                f"{diagnostic}_skymodel"
+            ]
+        ) and not os.path.exists(skymodel):
             raise FileNotFoundError(
                 f"Comparison sky model for {diagnostic} check not found at "
                 f'"{skymodel}"'
@@ -649,7 +663,7 @@ def check_skymodel_settings(parset_dict):
 
     # Check if we need to access the internet to get any skymodels and if we
     # are allowed to do so according to the parset settings.
-    if parset_dict['cluster_specific']['allow_internet_access']:
+    if parset_dict["cluster_specific"]["allow_internet_access"]:
         return
 
     if download_initial_skymodel:
@@ -661,12 +675,14 @@ def check_skymodel_settings(parset_dict):
 
     # If diagnostics skymodels are not given, the diagnostics that require them
     # will be skipped.
-    for diagnostic in ('astrometry', 'photometry'):
-        if parset_dict['imaging_specific'][f'{diagnostic}_skymodel'] is None:
+    for diagnostic in ("astrometry", "photometry"):
+        if parset_dict["imaging_specific"][f"{diagnostic}_skymodel"] is None:
             log.warning(
                 "Comparison sky model for %s check not provided while "
                 "`allow_internet_access` is False. The %s check will be "
                 "skipped. If you want to run the %s check, please provide a "
                 "path to the comparison sky model or allow internet access.",
-                diagnostic, diagnostic, diagnostic
+                diagnostic,
+                diagnostic,
+                diagnostic,
             )

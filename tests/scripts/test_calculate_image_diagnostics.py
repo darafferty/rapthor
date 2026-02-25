@@ -2,11 +2,6 @@
 Test suite for rapthor.scripts.calculate_image_diagnostics.
 """
 
-import astropy.units as u
-import lsmtool.skymodel
-import pytest
-from astropy.table import Table
-
 import logging
 
 import astropy.units as u
@@ -20,8 +15,8 @@ from rapthor.scripts.calculate_image_diagnostics import (
     check_photometry,
 )
 
-
 # ---------------------------------------------------------------------------- #
+
 
 @pytest.fixture(scope="session", params=[0, 1, 9])
 def mock_minimal_table(request):
@@ -75,6 +70,7 @@ def mock_full_table_data(num_sources, total_flux_keyword):
 
 # ---------------------------------------------------------------------------- #
 # Test: check_astrometry
+
 
 def test_check_astrometry_zero_sources(
     observation,
@@ -162,6 +158,7 @@ def test_check_astrometry_sources_below_minimum_number(
 
 # ---------------------------------------------------------------------------- #
 # Test: check_photometry
+
 
 def test_check_photometry_zero_sources(
     observation, input_catalog_fits, sky_model_path, caplog, monkeypatch

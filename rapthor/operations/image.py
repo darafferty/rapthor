@@ -2,7 +2,6 @@
 Module that holds the Image classes
 """
 
-
 import json
 import logging
 import os
