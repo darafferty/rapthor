@@ -803,13 +803,24 @@ def main(
 if __name__ == "__main__":
     descriptiontext = "Calculate image photometry and astrometry diagnostics.\n"
 
-    parser = ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
-    parser.add_argument("flat_noise_image", help="Filename of flat-noise FITS image")
-    parser.add_argument("flat_noise_rms_image", help="Filename of flat-noise FITS image")
-    parser.add_argument("true_sky_image", help="Filename of flat-noise FITS image")
-    parser.add_argument("true_sky_rms_image", help="Filename of flat-noise FITS image")
-    parser.add_argument("input_catalog", help="Filename of input PyBDSF FITS catalog")
-    parser.add_argument("input_skymodel", help="Filename of input sky model")
+    parser = ArgumentParser(
+        description=descriptiontext, formatter_class=RawTextHelpFormatter
+    )
+    parser.add_argument(
+        "flat_noise_image", help="Filename of flat-noise FITS image"
+    )
+    parser.add_argument(
+        "flat_noise_rms_image", help="Filename of flat-noise RMS FITS image"
+    )
+    parser.add_argument(
+        "true_sky_image", help="Filename of true sky FITS image"
+    )
+    parser.add_argument(
+        "true_sky_rms_image", help="Filename of true sky RMS FITS image"
+    )
+    parser.add_argument(
+        "input_catalog", help="Filename of input PyBDSF FITS catalog"
+    )
     parser.add_argument("obs_ms", help="Filename of observation MS")
     parser.add_argument("obs_starttime", help="Start time of observation")
     parser.add_argument("obs_ntimes", help="Number of time slots of observation")
