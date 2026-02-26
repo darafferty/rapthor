@@ -13,14 +13,14 @@ import os
 
 def main(h5parm_files, outh5parm_file, overwrite):
     """
-    Collects multiple screen h5parms into a single h5parm by concatenating in
-    time and frequency
+    Collects multiple screen h5parms into a single h5parm by concatenating in time and
+    frequency
 
     Parameters
     ----------
     h5parm_files : list
-        Filenames of input screen h5parms. The h5parms should contian solutions
-        with the same structure but for different times or frequencies
+        Filenames of input screen h5parms. The h5parms should contain solutions with
+        the same structure but for different times or frequencies
     outh5parm_file : str
         Filename of the output h5parm
     overwrite : bool
@@ -46,7 +46,7 @@ def main(h5parm_files, outh5parm_file, overwrite):
                 if itembasename == "freq":
                     shape = (shape[0] * nr_frequency_blocks,)
                 elif itembasename in ["val", "weight"]:
-                    # Value and weight array zxes are always [freq, ant, time, dir]
+                    # Value and weight array axes are always [freq, ant, time, dir]
                     shape = (
                         shape[0] * nr_frequency_blocks,
                         shape[1],
@@ -81,19 +81,17 @@ def main(h5parm_files, outh5parm_file, overwrite):
             else:
                 outh5parm[itemname][:] = item[:]
 
-    # Define the visitor function used to get the frequencies
+    # Define the visitor function used to get the minimum frequency
     def get_min_frequency(itemname, item):
-        """ Return frequency of solutions """
         if 'freq' in itemname:
             return np.min(item)
 
-    # Define the visitor function used to get the times
+    # Define the visitor function used to get the minimum time
     def get_min_time(itemname, item):
-        """ Return frequency of solutions """
         if 'time' in itemname:
             return np.min(item)
 
-    # Determine frequency and time chunks
+    # Determine frequency and time chunks present in the input files
     frequencies = []
     times = []
     chunks = []
@@ -108,7 +106,7 @@ def main(h5parm_files, outh5parm_file, overwrite):
     nr_time_blocks = len(times)
     nr_frequency_blocks = len(frequencies)
 
-    # Collect values from each input file and place them in the output
+    # Collect values from each chunk and place them in the output
     for i, time in enumerate(times):
         for j, freq in enumerate(frequencies):
             chunk = [c for c in chunks if (c.time == time and c.freq == freq)][0]
