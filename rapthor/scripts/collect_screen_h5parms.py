@@ -75,8 +75,8 @@ def main(h5parm_files, outh5parm_file, overwrite):
                 f_slice = slice(j * item.shape[0], (j + 1) * item.shape[0])
                 outh5parm[itemname][f_slice] = item[:]
             elif itembasename in ["val", "weight"]:
-                t_slice = slice(j * item.shape[0], (j + 1) * item.shape[0])
-                f_slice = slice(i * item.shape[2], (i + 1) * item.shape[2])
+                t_slice = slice(i * item.shape[2], (i + 1) * item.shape[2])
+                f_slice = slice(j * item.shape[0], (j + 1) * item.shape[0])
                 outh5parm[itemname][f_slice, :, t_slice, :] = item[:]
             else:
                 outh5parm[itemname][:] = item[:]
@@ -94,24 +94,24 @@ def main(h5parm_files, outh5parm_file, overwrite):
             return np.min(item)
 
     # Determine frequency and time chunks
-    frequencies = set()
-    times = set()
+    frequencies = []
+    times = []
     chunks = []
     Chunk = namedtuple('Chunk', ['filename', 'time', 'freq'])
     for h5parm_file in h5parm_files:
         with h5py.File(h5parm_file, "r") as h5parm:
-            frequencies.union(h5parm.visititems(get_min_frequency))
-            times.union(h5parm.visititems(get_min_time))
+            frequencies.append(h5parm.visititems(get_min_frequency))
+            times.append(h5parm.visititems(get_min_time))
             chunks.append(Chunk(h5parm_file, times[-1], frequencies[-1]))
-    frequencies = list(frequencies).sort()
-    times = list(times).sort()
+    frequencies = sorted(set(frequencies))
+    times = sorted(set(times))
     nr_time_blocks = len(times)
     nr_frequency_blocks = len(frequencies)
 
     # Collect values from each input file and place them in the output
     for i, time in enumerate(times):
         for j, freq in enumerate(frequencies):
-            chunk = [c for c in chunks if (c.time == time and c.freq == freq)]
+            chunk = [c for c in chunks if (c.time == time and c.freq == freq)][0]
             with h5py.File(chunk.filename, "r") as h5parm:
                 h5parm.visititems(visitor)
 
