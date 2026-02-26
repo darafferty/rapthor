@@ -65,9 +65,9 @@ def main(h5parm_files, outh5parm_file, overwrite):
                     g.attrs["h5parmversion"] = item.attrs["h5parmversion"]
                 else:
                     g.attrs['h5parm_version'] = 1.0
-        elif isinstance(item, h5py.Dataset):
-            # Update the existing entry in the output table by filling in the
-            # appropriate time and/or frequency ranges
+        if isinstance(item, h5py.Dataset):
+            # Update the output table by filling in the appropriate time and/or
+            # frequency ranges
             if itembasename == "time":
                 t_slice = slice(i * item.shape[0], (i + 1) * item.shape[0])
                 outh5parm[itemname][t_slice] = item[:]
