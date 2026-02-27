@@ -268,6 +268,11 @@ class TestObservation:
         assert len(params['starttime']) == expected_n_chunks
         assert len(params['ntimes']) == expected_n_chunks
 
+        for solve_type in ['fast', 'medium', 'slow', 'fulljones']:
+            expected_timestep = 1 if solve_type == 'fulljones' else dd_interval_factor
+            assert params[f'solint_{solve_type}_timestep'] == [expected_timestep] * expected_n_chunks
+            assert params[f'solint_{solve_type}_freqstep'] == [1] * expected_n_chunks
+
         for i in range(expected_n_chunks):
             assert params['timechunk_filename'][i] == test_ms
             assert params['predict_di_output_filename'][i] is None
