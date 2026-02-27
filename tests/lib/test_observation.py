@@ -7,6 +7,23 @@ from logging import Logger
 import numpy as np
 from unittest import mock
 
+@pytest.fixture
+def calibration_parset(observation):
+    """Create a basic parset dictionary for testing calibration."""
+    return {
+        "calibration_specific": {
+            "fast_freqstep_hz": observation.channelwidth,
+            "medium_freqstep_hz": observation.channelwidth,
+            "slow_freqstep_hz": observation.channelwidth,
+            "fulljones_freqstep_hz": observation.channelwidth,
+            "dd_interval_factor": 1,
+            "dd_smoothness_factor": 1,
+            "fast_smoothnessreffrequency": None,
+            "medium_smoothnessreffrequency": None,
+        }
+    }
+
+
 class TestObservation:
     """
     Test cases for the Observation class.
@@ -41,28 +58,15 @@ class TestObservation:
         assert params['starttime'] == ['29Mar2013/13:59:52.907']
         assert params['ntimes'] == [0]
 
-    def test_set_calibration_parameters_basic(self, observation, test_ms):
+    def test_set_calibration_parameters_basic(self, observation, test_ms, calibration_parset):
         """
         Basic set_calibration_parameters() test.
         All solution intervals and all DD factors are 1.
         """
-        parset = {
-            "calibration_specific": {
-                "fast_freqstep_hz": observation.channelwidth,
-                "medium_freqstep_hz": observation.channelwidth,
-                "slow_freqstep_hz": observation.channelwidth,
-                "fulljones_freqstep_hz": observation.channelwidth,
-                "dd_interval_factor": 1,
-                "dd_smoothness_factor": 1,
-                "fast_smoothnessreffrequency": None,
-                "medium_smoothnessreffrequency": None,
-            }
-        }
-
         n_observations = -1 # Not used in this test, since chunk_by_time is False.
         calibrator_fluxes = [1.0]
         observation.set_calibration_parameters(
-            parset,
+            calibration_parset,
             n_observations,
             calibrator_fluxes,
             observation.timepersample,
@@ -166,20 +170,11 @@ class TestObservation:
         assert params['bda_minchannels'] == [expected_bda_minchannels]
 
     @pytest.mark.parametrize("generate_screens", [True, False])
-    def test_set_calibration_parameters_multiple_fluxes(self, observation, test_ms, generate_screens):
+    def test_set_calibration_parameters_multiple_fluxes(self, observation, test_ms, calibration_parset, generate_screens):
         """Test set_calibration_parameters() with multiple calibrator fluxes."""
-        parset = {
-            "calibration_specific": {
-                "fast_freqstep_hz": observation.channelwidth,
-                "medium_freqstep_hz": observation.channelwidth,
-                "slow_freqstep_hz": observation.channelwidth,
-                "fulljones_freqstep_hz": observation.channelwidth,
-                "dd_interval_factor": 4,
-                "dd_smoothness_factor": 2,
-                "fast_smoothnessreffrequency": None,
-                "medium_smoothnessreffrequency": None,
-            }
-        }
+        parset = calibration_parset
+        parset["calibration_specific"]["dd_interval_factor"] = 4
+        parset["calibration_specific"]["dd_smoothness_factor"] = 2
 
         n_observations = -1 # Not used in this test, since chunk_by_time is False.
         calibrator_fluxes = [1.0, 1.5, 2.5, 5.0]
@@ -220,7 +215,7 @@ class TestObservation:
 
 
     @pytest.mark.parametrize("chunk_size, expected_n_chunks", [(1, 6), (2, 3), (4, 2), (42, 1)])
-    def test_set_calibration_parameters_time_chunking(self, observation, test_ms, chunk_size, expected_n_chunks):
+    def test_set_calibration_parameters_time_chunking(self, observation, test_ms, calibration_parset, chunk_size, expected_n_chunks):
         """Test set_calibration_parameters() with time chunking enabled."""
 
         # Set expected values for the get_chunk_size() call.
@@ -228,19 +223,10 @@ class TestObservation:
         cluster_specific_parameters = "mock cluster specific parameters"
         n_observations = 42
 
-        parset = {
-            "calibration_specific": {
-                "fast_freqstep_hz": observation.channelwidth,
-                "medium_freqstep_hz": observation.channelwidth,
-                "slow_freqstep_hz": observation.channelwidth,
-                "fulljones_freqstep_hz": observation.channelwidth,
-                "dd_interval_factor": dd_interval_factor,
-                "dd_smoothness_factor": 1,
-                "fast_smoothnessreffrequency": None,
-                "medium_smoothnessreffrequency": None,
-            },
-            "cluster_specific": cluster_specific_parameters,
-        }
+        parset = calibration_parset
+        parset["calibration_specific"]["dd_interval_factor"] = dd_interval_factor
+        parset["cluster_specific"] = cluster_specific_parameters
+
         calibrator_fluxes = [1.0]
 
         with mock.patch("rapthor.lib.observation.get_chunk_size") as mock_get_chunk_size:
