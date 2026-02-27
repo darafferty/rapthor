@@ -124,7 +124,6 @@ if __name__ == '__main__':
         description=descriptiontext, formatter_class=RawTextHelpFormatter
     )
     parser.add_argument("h5parm_files", nargs="+", help="List of input h5parms")
-    parser.add_argument("num_time_chunks", help="Number of time chunks ")
     parser.add_argument(
         "--outh5parm",
         "-o",

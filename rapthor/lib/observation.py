@@ -1,7 +1,6 @@
 """
 Definition of the Observation class that holds parameters for each measurement set
 """
-import math
 import os
 import logging
 import casacore.tables as pt
