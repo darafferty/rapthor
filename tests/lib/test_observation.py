@@ -28,6 +28,8 @@ class TestObservation:
     """
     Test cases for the Observation class.
     """
+    hba_reference_frequency = 144e6 # Hardcoded value for HBA antennas.
+
     def test_constructor(self, observation, test_ms):
         assert observation.ms_filename == test_ms
         assert observation.ms_predict_di_filename is None
@@ -90,9 +92,8 @@ class TestObservation:
             assert params[f'{solve_type}_solutions_per_direction'] == [[1]]
             assert params[f'{solve_type}_smoothness_dd_factors'] == [[1]]
 
-        hba_reference_frequency = 144e6 # Hardcoded value for HBA antennas.
-        assert params['fast_smoothnessreffrequency'] == [hba_reference_frequency]
-        assert params['medium_smoothnessreffrequency'] == [hba_reference_frequency]
+        assert params['fast_smoothnessreffrequency'] == [self.hba_reference_frequency]
+        assert params['medium_smoothnessreffrequency'] == [self.hba_reference_frequency]
 
 
     def test_set_calibration_parameters_solint(self, observation, test_ms):
@@ -254,11 +255,6 @@ class TestObservation:
         assert len(params['starttime']) == expected_n_chunks
         assert len(params['ntimes']) == expected_n_chunks
 
-        for solve_type in ['fast', 'medium', 'slow', 'fulljones']:
-            expected_timestep = 1 if solve_type == 'fulljones' else dd_interval_factor
-            assert params[f'solint_{solve_type}_timestep'] == [expected_timestep] * expected_n_chunks
-            assert params[f'solint_{solve_type}_freqstep'] == [1] * expected_n_chunks
-
         for i in range(expected_n_chunks):
             assert params['timechunk_filename'][i] == test_ms
             assert params['predict_di_output_filename'][i] is None
@@ -291,6 +287,44 @@ class TestObservation:
         else:
             assert False, f"Error in test: invalid chunk_size value: {chunk_size}"
 
+        for solve_type in ['fast', 'medium', 'slow']:
+            assert params[f'solint_{solve_type}_timestep'] == [dd_interval_factor] * expected_n_chunks
+            assert params[f'solint_{solve_type}_freqstep'] == [1] * expected_n_chunks
+            assert params[f'{solve_type}_smoothness_dd_factors'] == [[1]] * expected_n_chunks
+
+        # fulljones time steps are not multiplied by dd_interval_factor
+        assert params['solint_fulljones_timestep'] == [1] * expected_n_chunks
+        assert params['solint_fulljones_freqstep'] == [1] * expected_n_chunks
+
+        assert params["fast_smoothnessreffrequency"] == [self.hba_reference_frequency] * expected_n_chunks
+        assert params["medium_smoothnessreffrequency"] == [self.hba_reference_frequency] * expected_n_chunks
+
+    def test_set_calibration_parameters_smoothness_ref_frequency(self, observation, test_ms, calibration_parset):
+        """Test set_calibration_parameters() with custom smoothness reference frequencies."""
+        fast_reference_frequency = 42e6
+        medium_reference_frequency = 43e6
+
+        parset = calibration_parset
+        parset["calibration_specific"]["fast_smoothnessreffrequency"] = fast_reference_frequency
+        parset["calibration_specific"]["medium_smoothnessreffrequency"] = medium_reference_frequency
+
+        n_observations = -1 # Not used in this test, since chunk_by_time is False.
+        calibrator_fluxes = [1.0]
+        observation.set_calibration_parameters(
+            parset,
+            n_observations,
+            calibrator_fluxes,
+            observation.timepersample,
+            observation.timepersample,
+            observation.timepersample,
+            observation.timepersample,
+        )
+
+        self.check_single_timechunk(observation, test_ms)
+
+        params = observation.parameters
+        assert params['fast_smoothnessreffrequency'] == [fast_reference_frequency]
+        assert params['medium_smoothnessreffrequency'] == [medium_reference_frequency]
 
     def test_set_prediction_parameters(self, sector_name=None, patch_names=None):
         pass
