@@ -199,21 +199,21 @@ class TestObservation:
         params = observation.parameters
 
         for solve_type in ['fast', 'medium', 'slow']:
-            solution_per_direction = params[f'{solve_type}_solutions_per_direction']
+            solutions_per_direction = params[f'{solve_type}_solutions_per_direction']
             smoothness_dd_factors = params[f'{solve_type}_smoothness_dd_factors']
 
             # There is one list for each time chunk.
-            assert len(solution_per_direction) == 1
+            assert len(solutions_per_direction) == 1
             assert len(smoothness_dd_factors) == 1
 
             if generate_screens:
                 # When generate_screens is True, the dd factors are always 1.
                 # The solutions per direction and smoothness factors are then also all 1.
-                assert solution_per_direction[0] == [1, 1, 1, 1]
+                assert solutions_per_direction[0] == [1, 1, 1, 1]
                 assert smoothness_dd_factors[0] == [1, 1, 1, 1]
             else:
                 # The dd_interval_factor limits the solutions per direction to 4.
-                assert params[f'{solve_type}_solutions_per_direction'] == [[1, 2, 2, 4]]
+                assert solutions_per_direction[0] == [1, 2, 2, 4]
                 # The dd_smoothness factor limits the minimum value to 1.0/2.0.
                 # The inner list is an np.array instead of a plain list now.
                 assert (smoothness_dd_factors[0] == [1.0, 1.0/1.5, 1.0/2.0, 1.0/2.0]).all()
