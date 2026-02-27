@@ -320,12 +320,12 @@ class Observation(object):
             startchan_list[-1] + numchannels_final_chunk / 2
         ) * self.channelwidth + self.startfreq
 
-        # Calculate start time and number of time slots to use. We set ntimes to 0 if
+        # Set the start time and number of time slots to use. We set ntimes to 0 if
         # the observation extends to the end of the MS file, as DP3 interprets that to
         # mean it should use all time slots from the start time onwards
         self.parameters['starttime'] = [misc.convert_mjd2mvt(self.starttime)] * self.nfreqchunks
         self.parameters["ntimes"] = [
-            0 if self.goesto_endofms else math.ceil(self.endtime / self.timepersample)
+            0 if self.goesto_endofms else self.numsamples
         ] * self.nfreqchunks
 
         # Find solution intervals for fast- and medium-phase solves. The solve is split
