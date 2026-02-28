@@ -49,9 +49,7 @@ class Image(Operation):
         super().__init__(field, index=index, name=name)
 
         # For imaging we use a subworkflow, so we set the template filename for that here
-        self.subpipeline_parset_template = "{0}_sector_pipeline.cwl".format(
-            self.rootname
-        )
+        self.subpipeline_parset_template = "{0}_sector_pipeline.cwl".format(self.rootname)
 
         # Initialize various parameters
         # Note:
@@ -76,9 +74,7 @@ class Image(Operation):
         self.disable_clean = None
         self.apply_none = False  # no solutions applied before or during imaging (ImageInitial only)
         self.make_image_cube = self.field.make_image_cube  # make an image cube
-        self.normalize_flux_scale = (
-            False  # derive flux scale normalizations (ImageNormalize only)
-        )
+        self.normalize_flux_scale = False  # derive flux scale normalizations (ImageNormalize only)
         self.compress_images = None
         self.image_cube_stokes_list = None
         self.photometry_skymodel = None
@@ -90,23 +86,17 @@ class Image(Operation):
         """
         # Set parameters as needed
         if self.apply_screens is None:
-            self.apply_screens = (
-                self.field.apply_screens
-            )  # set by process.run_steps()
+            self.apply_screens = self.field.apply_screens  # set by process.run_steps()
         if self.dde_method is None:
             self.dde_method = self.field.dde_method
         if self.use_facets is None:
             self.use_facets = (
-                True
-                if (self.dde_method == "full" and not self.apply_screens)
-                else False
+                True if (self.dde_method == "full" and not self.apply_screens) else False
             )
         if self.image_pol is None:
             self.image_pol = self.field.image_pol  # set by process.run_steps()
         if self.save_source_list is None:
-            self.save_source_list = (
-                True if is_only_pol_I(self.image_pol) else False
-            )
+            self.save_source_list = True if is_only_pol_I(self.image_pol) else False
         if self.peel_bright_sources is None:
             self.peel_bright_sources = self.field.peel_bright_sources
         if self.preapply_dde_solutions is None:
@@ -155,9 +145,7 @@ class Image(Operation):
         if self.imaging_sectors is None:
             self.imaging_sectors = self.field.imaging_sectors
         if self.imaging_parameters is None:
-            self.imaging_parameters = self.field.parset[
-                "imaging_specific"
-            ].copy()
+            self.imaging_parameters = self.field.parset["imaging_specific"].copy()
         if self.do_predict is None:
             self.do_predict = self.field.do_predict
         if self.do_multiscale_clean is None:
@@ -165,13 +153,9 @@ class Image(Operation):
         if self.pol_combine_method is None:
             self.pol_combine_method = self.field.pol_combine_method
         if self.apply_amplitudes is None:
-            self.apply_amplitudes = (
-                self.field.apply_amplitudes
-            )  # set by CalibrateDD.finalize()
+            self.apply_amplitudes = self.field.apply_amplitudes  # set by CalibrateDD.finalize()
         if self.apply_fulljones is None:
-            self.apply_fulljones = (
-                self.field.apply_fulljones
-            )  # set by CalibrateDI.finalize()
+            self.apply_fulljones = self.field.apply_fulljones  # set by CalibrateDI.finalize()
         if self.apply_normalizations is None:
             if self.normalize_flux_scale:
                 self.apply_normalizations = False
@@ -221,24 +205,17 @@ class Image(Operation):
 
             # Set input MS filenames
             if self.do_predict:
-                sector_obs_filename = [
-                    obs.ms_imaging_filename for obs in sector.observations
-                ]
+                sector_obs_filename = [obs.ms_imaging_filename for obs in sector.observations]
             else:
                 sector_obs_filename = sector.get_obs_parameters("ms_filename")
             obs_filename.append(sector_obs_filename)
 
             # Set output MS filenames for step that prepares the data for WSClean
-            prepare_filename.append(
-                sector.get_obs_parameters("ms_prep_filename")
-            )
+            prepare_filename.append(sector.get_obs_parameters("ms_prep_filename"))
             concat_filename.append(image_root[-1] + "_concat.ms")
 
             # Set other parameters
-            if (
-                self.field.parset["imaging_specific"]["use_clean_mask"]
-                and sector.I_mask_file
-            ):
+            if self.field.parset["imaging_specific"]["use_clean_mask"] and sector.I_mask_file:
                 # Use the existing mask
                 previous_mask_filename.append(sector.I_mask_file)
             else:
@@ -247,9 +224,7 @@ class Image(Operation):
             mask_filename.append(image_root[-1] + "_mask.fits")
             image_freqstep.append(sector.get_obs_parameters("image_freqstep"))
             image_timestep.append(sector.get_obs_parameters("image_timestep"))
-            image_bda_maxinterval.append(
-                sector.get_obs_parameters("image_bda_maxinterval")
-            )
+            image_bda_maxinterval.append(sector.get_obs_parameters("image_bda_maxinterval"))
             image_bda_timebase.append(self.field.image_bda_timebase)
             sector_starttime = []
             sector_ntimes = []
@@ -258,9 +233,7 @@ class Image(Operation):
                 sector_ntimes.append(obs.numsamples)
             starttime.append(sector_starttime)
             ntimes.append(sector_ntimes)
-            phasecenter.append(
-                "'[{0}deg, {1}deg]'".format(sector.ra, sector.dec)
-            )
+            phasecenter.append("'[{0}deg, {1}deg]'".format(sector.ra, sector.dec))
             if self.preapply_dde_solutions:
                 central_patch_name.append(sector.central_patch)
             if self.make_image_cube:
@@ -269,17 +242,13 @@ class Image(Operation):
                 image_U_cube_name.append(sector.name + "_U_freq_cube.fits")
                 image_V_cube_name.append(sector.name + "_V_freq_cube.fits")
             if self.normalize_flux_scale:
-                output_source_catalog.append(
-                    sector.name + "_source_catalog.fits"
-                )
+                output_source_catalog.append(sector.name + "_source_catalog.fits")
                 normalize_h5parm.append(sector.name + "_normalize.h5parm")
 
         # Handle the polarization-related options
         link_polarizations = False
         join_polarizations = False
-        wsclean_niter = [
-            sector.wsclean_niter for sector in self.imaging_sectors
-        ]
+        wsclean_niter = [sector.wsclean_niter for sector in self.imaging_sectors]
         if not is_only_pol_I(self.image_pol):
             if self.pol_combine_method == "link":
                 # Note: link_polarizations can be of CWL type boolean or string
@@ -317,40 +286,24 @@ class Image(Operation):
                     prepare_data_applycal_steps.append("slowgain")
             if self.apply_fulljones:
                 prepare_data_applycal_steps.append("fulljones")
-                fulljones_h5parm = CWLFile(
-                    self.field.fulljones_h5parm_filename
-                ).to_json()
+                fulljones_h5parm = CWLFile(self.field.fulljones_h5parm_filename).to_json()
             if self.apply_normalizations:
                 prepare_data_applycal_steps.append("normalization")
-                input_normalize_h5parm = CWLFile(
-                    self.field.normalize_h5parm
-                ).to_json()
+                input_normalize_h5parm = CWLFile(self.field.normalize_h5parm).to_json()
             if prepare_data_applycal_steps:
-                prepare_data_applycal_steps = (
-                    f"[{','.join(prepare_data_applycal_steps)}]"
-                )
-        all_regular = all(
-            [obs.channels_are_regular for obs in self.field.observations]
-        )
+                prepare_data_applycal_steps = f"[{','.join(prepare_data_applycal_steps)}]"
+        all_regular = all([obs.channels_are_regular for obs in self.field.observations])
         # Default is to average visibilities for imaging up to the smearing limit
         if self.field.average_visibilities:
             # Average visibilities
             prepare_data_steps.append("avg")
-        if (
-            self.field.image_bda_timebase > 0
-            and all_regular
-            and not self.apply_screens
-        ):
+        if self.field.image_bda_timebase > 0 and all_regular and not self.apply_screens:
             # Currently, BDA cannot be used with irregular data or screens (IDG)
             prepare_data_steps.append("bdaavg")
         prepare_data_steps = f"[{','.join(prepare_data_steps)}]"
 
         # Set the h5parm to use to apply the DDE solutions as needed
-        h5parm = (
-            CWLFile(self.field.h5parm_filename).to_json()
-            if not self.apply_none
-            else None
-        )
+        h5parm = CWLFile(self.field.h5parm_filename).to_json() if not self.apply_none else None
 
         # Set the data interval to use when screens are applied so that final solution
         # interval is removed
@@ -359,14 +312,10 @@ class Image(Operation):
         # solution intervals being ignored during calibration (and hence unavailable
         # during imaging). Once the bug is fixed, the interval can be removed
         max_solint = self.field.slow_timestep_sec
-        numsamples_to_remove = int(
-            np.ceil(max_solint / self.field.observations[0].timepersample)
-        )
+        numsamples_to_remove = int(np.ceil(max_solint / self.field.observations[0].timepersample))
         interval = [
             0,
-            max(
-                1, self.field.observations[0].numsamples - numsamples_to_remove
-            ),
+            max(1, self.field.observations[0].numsamples - numsamples_to_remove),
         ]
 
         # Set the parameters common to all modes
@@ -376,8 +325,7 @@ class Image(Operation):
             "prepare_filename": prepare_filename,
             "concat_filename": concat_filename,
             "previous_mask_filename": [
-                None if name is None else CWLFile(name).to_json()
-                for name in previous_mask_filename
+                None if name is None else CWLFile(name).to_json() for name in previous_mask_filename
             ],
             "mask_filename": mask_filename,
             "starttime": starttime,
@@ -397,84 +345,49 @@ class Image(Operation):
             "h5parm": h5parm,
             "fulljones_h5parm": fulljones_h5parm,
             "input_normalize_h5parm": input_normalize_h5parm,
-            "channels_out": [
-                sector.wsclean_nchannels for sector in self.imaging_sectors
-            ],
+            "channels_out": [sector.wsclean_nchannels for sector in self.imaging_sectors],
             "deconvolution_channels": [
-                sector.wsclean_deconvolution_channels
-                for sector in self.imaging_sectors
+                sector.wsclean_deconvolution_channels for sector in self.imaging_sectors
             ],
             "fit_spectral_pol": [
-                sector.wsclean_spectral_poly_order
-                for sector in self.imaging_sectors
+                sector.wsclean_spectral_poly_order for sector in self.imaging_sectors
             ],
             "ra": [sector.ra for sector in self.imaging_sectors],
             "dec": [sector.dec for sector in self.imaging_sectors],
-            "wsclean_imsize": [
-                sector.imsize for sector in self.imaging_sectors
-            ],
+            "wsclean_imsize": [sector.imsize for sector in self.imaging_sectors],
             "vertices_file": [
-                CWLFile(sector.vertices_file).to_json()
-                for sector in self.imaging_sectors
+                CWLFile(sector.vertices_file).to_json() for sector in self.imaging_sectors
             ],
             "region_file": [
-                None
-                if sector.region_file is None
-                else CWLFile(sector.region_file).to_json()
+                None if sector.region_file is None else CWLFile(sector.region_file).to_json()
                 for sector in self.imaging_sectors
             ],
             "wsclean_niter": wsclean_niter,
-            "wsclean_nmiter": [
-                sector.wsclean_nmiter for sector in self.imaging_sectors
-            ],
+            "wsclean_nmiter": [sector.wsclean_nmiter for sector in self.imaging_sectors],
             "skip_final_iteration": self.field.skip_final_major_iteration,
             "robust": [sector.robust for sector in self.imaging_sectors],
-            "cellsize_deg": [
-                sector.cellsize_deg for sector in self.imaging_sectors
-            ],
-            "min_uv_lambda": [
-                sector.min_uv_lambda for sector in self.imaging_sectors
-            ],
-            "max_uv_lambda": [
-                sector.max_uv_lambda for sector in self.imaging_sectors
-            ],
+            "cellsize_deg": [sector.cellsize_deg for sector in self.imaging_sectors],
+            "min_uv_lambda": [sector.min_uv_lambda for sector in self.imaging_sectors],
+            "max_uv_lambda": [sector.max_uv_lambda for sector in self.imaging_sectors],
             "mgain": [sector.mgain for sector in self.imaging_sectors],
-            "taper_arcsec": [
-                sector.taper_arcsec for sector in self.imaging_sectors
-            ],
-            "local_rms_strength": [
-                sector.local_rms_strength for sector in self.imaging_sectors
-            ],
-            "local_rms_window": [
-                sector.local_rms_window for sector in self.imaging_sectors
-            ],
-            "local_rms_method": [
-                sector.local_rms_method for sector in self.imaging_sectors
-            ],
+            "taper_arcsec": [sector.taper_arcsec for sector in self.imaging_sectors],
+            "local_rms_strength": [sector.local_rms_strength for sector in self.imaging_sectors],
+            "local_rms_window": [sector.local_rms_window for sector in self.imaging_sectors],
+            "local_rms_method": [sector.local_rms_method for sector in self.imaging_sectors],
             "auto_mask": [sector.auto_mask for sector in self.imaging_sectors],
-            "auto_mask_nmiter": [
-                sector.auto_mask_nmiter for sector in self.imaging_sectors
-            ],
+            "auto_mask_nmiter": [sector.auto_mask_nmiter for sector in self.imaging_sectors],
             "idg_mode": [sector.idg_mode for sector in self.imaging_sectors],
-            "wsclean_mem": [
-                sector.mem_limit_gb for sector in self.imaging_sectors
-            ],
+            "wsclean_mem": [sector.mem_limit_gb for sector in self.imaging_sectors],
             "threshisl": [sector.threshisl for sector in self.imaging_sectors],
             "threshpix": [sector.threshpix for sector in self.imaging_sectors],
             "filter_by_mask": self.imaging_parameters["filter_skymodel"],
             "source_finder": self.imaging_parameters["source_finder"],
-            "do_multiscale": [
-                sector.multiscale for sector in self.imaging_sectors
-            ],
-            "dd_psf_grid": [
-                sector.dd_psf_grid for sector in self.imaging_sectors
-            ],
+            "do_multiscale": [sector.multiscale for sector in self.imaging_sectors],
+            "dd_psf_grid": [sector.dd_psf_grid for sector in self.imaging_sectors],
             "apply_time_frequency_smearing": self.field.correct_smearing_in_imaging,
             "interval": interval,
             "max_threads": self.field.parset["cluster_specific"]["max_threads"],
-            "deconvolution_threads": self.field.parset["cluster_specific"][
-                "deconvolution_threads"
-            ],
+            "deconvolution_threads": self.field.parset["cluster_specific"]["deconvolution_threads"],
             "save_filtered_model_image": self.field.parset["imaging_specific"][
                 "save_filtered_model_image"
             ],
@@ -488,11 +401,7 @@ class Image(Operation):
         # Add parameters that depend on the set_parset parameters (set in set_parset_parameters())
         if self.peel_bright_sources:
             self.input_parms.update(
-                {
-                    "bright_skymodel_pb": CWLFile(
-                        self.field.bright_source_skymodel_file
-                    ).to_json()
-                }
+                {"bright_skymodel_pb": CWLFile(self.field.bright_source_skymodel_file).to_json()}
             )
         if self.field.use_mpi:
             # Set number of nodes to allocate to each imaging subworkflow.
@@ -505,31 +414,18 @@ class Image(Operation):
                 # We subtract one node because Toil must use one node for its job,
                 # which in turn calls salloc to reserve the nodes for the MPI job
                 nnodes_per_subpipeline = max(1, int(nnodes / nsubpipes) - 1)
+            self.input_parms.update({"mpi_nnodes": [nnodes_per_subpipeline] * nsectors})
             self.input_parms.update(
-                {"mpi_nnodes": [nnodes_per_subpipeline] * nsectors}
-            )
-            self.input_parms.update(
-                {
-                    "mpi_cpus_per_task": [
-                        self.parset["cluster_specific"]["cpus_per_task"]
-                    ]
-                    * nsectors
-                }
+                {"mpi_cpus_per_task": [self.parset["cluster_specific"]["cpus_per_task"]] * nsectors}
             )
         if self.use_facets:
-            self.input_parms["shared_facet_rw"] = self.parset[
-                "imaging_specific"
-            ]["shared_facet_rw"]
+            self.input_parms["shared_facet_rw"] = self.parset["imaging_specific"]["shared_facet_rw"]
         else:
             self.input_parms["shared_facet_rw"] = False
         if not self.apply_none and self.use_facets:
             # For faceting, we need inputs for making the ds9 facet region files
             self.input_parms.update(
-                {
-                    "skymodel": CWLFile(
-                        self.field.calibration_skymodel_file
-                    ).to_json()
-                }
+                {"skymodel": CWLFile(self.field.calibration_skymodel_file).to_json()}
             )
             ra_mid = []
             dec_mid = []
@@ -546,9 +442,7 @@ class Image(Operation):
                 dec_mid.append(self.field.dec)
                 width_ra.append(max(min_width, sector.width_ra * 1.2))
                 width_dec.append(max(min_width, sector.width_dec * 1.2))
-                facet_region_file.append(
-                    "{}_facets_ds9.reg".format(sector.name)
-                )
+                facet_region_file.append("{}_facets_ds9.reg".format(sector.name))
             self.input_parms.update({"ra_mid": ra_mid})
             self.input_parms.update({"dec_mid": dec_mid})
             self.input_parms.update({"width_ra": width_ra})
@@ -560,9 +454,9 @@ class Image(Operation):
                 self.input_parms.update({"soltabs": "phase000"})
             self.input_parms.update(
                 {
-                    "parallel_gridding_threads": self.field.parset[
-                        "cluster_specific"
-                    ]["parallel_gridding_threads"]
+                    "parallel_gridding_threads": self.field.parset["cluster_specific"][
+                        "parallel_gridding_threads"
+                    ]
                 }
             )
             if is_only_pol_I(self.image_pol):
@@ -578,9 +472,7 @@ class Image(Operation):
                         # Diagonal solutions should not be used during imaging (they
                         # were in fact converted to scalar solutions at the end of
                         # calibration)
-                        self.input_parms.update(
-                            {"diagonal_visibilities": False}
-                        )
+                        self.input_parms.update({"diagonal_visibilities": False})
                         self.input_parms.update({"scalar_visibilities": True})
                 else:
                     # Diagonal solutions not generated; only scalar solutions are
@@ -600,12 +492,8 @@ class Image(Operation):
             self.input_parms.update({"image_U_cube_name": image_U_cube_name})
             self.input_parms.update({"image_V_cube_name": image_V_cube_name})
         if self.normalize_flux_scale:
-            self.input_parms.update(
-                {"output_source_catalog": output_source_catalog}
-            )
-            self.input_parms.update(
-                {"output_normalize_h5parm": normalize_h5parm}
-            )
+            self.input_parms.update({"output_source_catalog": output_source_catalog})
+            self.input_parms.update({"output_normalize_h5parm": normalize_h5parm})
 
     def finalize(self):
         """
@@ -665,29 +553,19 @@ class Image(Operation):
             # the cubes are copied directly since mosaicking of the cubes is not yet
             # supported
             if "sector_image_cube" in self.outputs:
-                dest_dir = os.path.join(
-                    self.parset["dir_working"], "images", self.name
-                )
+                dest_dir = os.path.join(self.parset["dir_working"], "images", self.name)
                 os.makedirs(dest_dir, exist_ok=True)
 
-                image_cube_path = self.outputs["sector_image_cube"][index][
-                    "path"
-                ]
-                self.I_freq_cube = os.path.join(
-                    dest_dir, os.path.basename(image_cube_path)
-                )
+                image_cube_path = self.outputs["sector_image_cube"][index]["path"]
+                self.I_freq_cube = os.path.join(dest_dir, os.path.basename(image_cube_path))
                 src_filenames = [
                     image_cube_path,
                     self.outputs["sector_image_cube_beams"][index]["path"],
-                    self.outputs["sector_image_cube_frequencies"][index][
-                        "path"
-                    ],
+                    self.outputs["sector_image_cube_frequencies"][index]["path"],
                 ]
 
                 for src_filename in src_filenames:
-                    dst_filename = os.path.join(
-                        dest_dir, os.path.basename(src_filename)
-                    )
+                    dst_filename = os.path.join(dest_dir, os.path.basename(src_filename))
                     shutil.copy(src_filename, dst_filename)
 
             # The output sky models, both true sky and apparent sky (the filenames are
@@ -703,9 +581,9 @@ class Image(Operation):
             os.makedirs(dst_dir, exist_ok=True)
             if self.field.image_pol.lower() == "i":
                 for skymodel_type in ["true_sky", "apparent_sky"]:
-                    src_sector_skymodel = self.outputs[
-                        f"filtered_skymodel_{skymodel_type}"
-                    ][index]["path"]
+                    src_sector_skymodel = self.outputs[f"filtered_skymodel_{skymodel_type}"][index][
+                        "path"
+                    ]
                     sector_skymodel_file = os.path.join(
                         dst_dir, os.path.basename(src_sector_skymodel)
                     )
@@ -729,12 +607,8 @@ class Image(Operation):
             os.makedirs(dst_dir, exist_ok=True)
             # if IQUV images are made, the mask is not generated.
             if self.outputs["source_filtering_mask"][index]:
-                src_filename = self.outputs["source_filtering_mask"][index][
-                    "path"
-                ]
-                dst_filename = os.path.join(
-                    dst_dir, os.path.basename(src_filename)
-                )
+                src_filename = self.outputs["source_filtering_mask"][index]["path"]
+                dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
                 sector.I_mask_file = dst_filename
                 shutil.copy(src_filename, dst_filename)
             else:
@@ -749,9 +623,7 @@ class Image(Operation):
                 )
                 os.makedirs(dst_dir, exist_ok=True)
                 src_filename = self.outputs["sector_region_file"][index]["path"]
-                dst_filename = os.path.join(
-                    dst_dir, os.path.basename(src_filename)
-                )
+                dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
                 shutil.copy(src_filename, dst_filename)
 
             # The imaging visibilities
@@ -764,13 +636,10 @@ class Image(Operation):
                 )
                 os.makedirs(dst_dir, exist_ok=True)
                 ms_filenames = [
-                    visibility_ms["path"]
-                    for visibility_ms in self.outputs["visibilities"][index]
+                    visibility_ms["path"] for visibility_ms in self.outputs["visibilities"][index]
                 ]
                 for src_filename in ms_filenames:
-                    dst_filename = os.path.join(
-                        dst_dir, os.path.basename(src_filename)
-                    )
+                    dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
                     if os.path.exists(dst_filename):
                         shutil.rmtree(dst_filename)
                     shutil.copytree(src_filename, dst_filename)
@@ -784,13 +653,10 @@ class Image(Operation):
             os.makedirs(dst_dir, exist_ok=True)
             if self.outputs["sector_diagnostic_plots"][index]:
                 diagnostic_plots = [
-                    x["path"]
-                    for x in self.outputs["sector_diagnostic_plots"][index]
+                    x["path"] for x in self.outputs["sector_diagnostic_plots"][index]
                 ]
                 for src_filename in diagnostic_plots:
-                    dst_filename = os.path.join(
-                        dst_dir, os.path.basename(src_filename)
-                    )
+                    dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
                     shutil.copy(src_filename, dst_filename)
             # Read in the image diagnostics and log a summary of them
             diagnostics_file = self.outputs["sector_diagnostics"][index]["path"]
@@ -798,13 +664,8 @@ class Image(Operation):
                 diagnostics_dict = json.load(f)
             diagnostics_dict["cycle_number"] = self.index
             sector.diagnostics.append(diagnostics_dict)
-            ratio, std = report_sector_diagnostics(
-                sector.name, diagnostics_dict, self.log
-            )
-            if (
-                self.field.lofar_to_true_flux_std == 0.0
-                or std < self.field.lofar_to_true_flux_std
-            ):
+            ratio, std = report_sector_diagnostics(sector.name, diagnostics_dict, self.log)
+            if self.field.lofar_to_true_flux_std == 0.0 or std < self.field.lofar_to_true_flux_std:
                 # Save the ratio with the lowest scatter for later use
                 self.field.lofar_to_true_flux_ratio = ratio
                 self.field.lofar_to_true_flux_std = std
@@ -927,8 +788,7 @@ class ImageInitial(Image):
         image_root = os.path.join(self.pipeline_working_dir, sector.name)
         image_names = [
             x["path"]
-            for x in self.outputs["sector_I_images"][0]
-            + self.outputs["sector_extra_images"][0]
+            for x in self.outputs["sector_I_images"][0] + self.outputs["sector_extra_images"][0]
         ]
         dst_dir = os.path.join(self.parset["dir_working"], "images", self.name)
         os.makedirs(dst_dir, exist_ok=True)
@@ -939,13 +799,9 @@ class ImageInitial(Image):
         # The output sky models, both true sky and apparent sky (the filenames are
         # defined in the rapthor/scripts/filter_skymodel.py file)
         sector.image_skymodel_file_true_sky = image_root + ".true_sky.txt"
-        sector.image_skymodel_file_apparent_sky = (
-            image_root + ".apparent_sky.txt"
-        )
+        sector.image_skymodel_file_apparent_sky = image_root + ".apparent_sky.txt"
 
-        dst_dir = os.path.join(
-            self.parset["dir_working"], "skymodels", self.name
-        )
+        dst_dir = os.path.join(self.parset["dir_working"], "skymodels", self.name)
         os.makedirs(dst_dir, exist_ok=True)
         for src_filename, filename in [
             [
@@ -964,13 +820,9 @@ class ImageInitial(Image):
         dst_dir = os.path.join(self.parset["dir_working"], "plots", self.name)
         os.makedirs(dst_dir, exist_ok=True)
         if self.outputs["sector_diagnostic_plots"][0]:
-            diagnostic_plots = [
-                x["path"] for x in self.outputs["sector_diagnostic_plots"][0]
-            ]
+            diagnostic_plots = [x["path"] for x in self.outputs["sector_diagnostic_plots"][0]]
             for src_filename in diagnostic_plots:
-                dst_filename = os.path.join(
-                    dst_dir, os.path.basename(src_filename)
-                )
+                dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
                 shutil.copy(src_filename, dst_filename)
 
         # Read in the image diagnostics and log a summary of them
@@ -978,9 +830,7 @@ class ImageInitial(Image):
         with open(diagnostics_file, "r") as f:
             diagnostics_dict = json.load(f)
         sector.diagnostics.append(diagnostics_dict)
-        ratio, std = report_sector_diagnostics(
-            sector.name, diagnostics_dict, self.log
-        )
+        ratio, std = report_sector_diagnostics(sector.name, diagnostics_dict, self.log)
         self.field.lofar_to_true_flux_ratio = ratio
         self.field.lofar_to_true_flux_std = std
 
@@ -990,9 +840,7 @@ class ImageInitial(Image):
         )
 
         # Save sector imaging mask
-        dst_dir = os.path.join(
-            self.parset["dir_working"], "masks", f"image_{self.index}"
-        )
+        dst_dir = os.path.join(self.parset["dir_working"], "masks", f"image_{self.index}")
         os.makedirs(dst_dir, exist_ok=True)
         src_filename = self.outputs["source_filtering_mask"][0]["path"]
         dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
@@ -1085,20 +933,14 @@ class ImageNormalize(Image):
                 self.outputs["sector_image_cube_beams"][sector_index]
                 + self.outputs["sector_image_cube_frequencies"][sector_index]
             ):
-                dst_filename = os.path.join(
-                    dst_dir, os.path.basename(src_file_obj["path"])
-                )
+                dst_filename = os.path.join(dst_dir, os.path.basename(src_file_obj["path"]))
                 shutil.copy(src_file_obj["path"], dst_filename)
 
         # Save the output h5parm with the flux-scale corrections
         src_filename = self.outputs["sector_normalize_h5parm"][0]["path"]
-        dst_dir = os.path.join(
-            self.parset["dir_working"], "solutions", self.name
-        )
+        dst_dir = os.path.join(self.parset["dir_working"], "solutions", self.name)
         os.makedirs(dst_dir, exist_ok=True)
-        self.field.normalize_h5parm = os.path.join(
-            dst_dir, os.path.basename(src_filename)
-        )
+        self.field.normalize_h5parm = os.path.join(dst_dir, os.path.basename(src_filename))
         shutil.copy(src_filename, self.field.normalize_h5parm)
 
         # Set the flags for subsequent processing
@@ -1138,27 +980,17 @@ def report_sector_diagnostics(sector_name, diagnostics_dict, log):
         Stdev of the ratio of the LOFAR flux densities to the "true" ones
     """
     try:
-        theoretical_rms = "{0:.1f} uJy/beam".format(
-            diagnostics_dict["theoretical_rms"] * 1e6
-        )
-        min_rms_true_sky = "{0:.1f} uJy/beam".format(
-            diagnostics_dict["min_rms_true_sky"] * 1e6
-        )
+        theoretical_rms = "{0:.1f} uJy/beam".format(diagnostics_dict["theoretical_rms"] * 1e6)
+        min_rms_true_sky = "{0:.1f} uJy/beam".format(diagnostics_dict["min_rms_true_sky"] * 1e6)
         median_rms_true_sky = "{0:.1f} uJy/beam".format(
             diagnostics_dict["median_rms_true_sky"] * 1e6
         )
-        dynr_true_sky = "{0:.2g}".format(
-            diagnostics_dict["dynamic_range_global_true_sky"]
-        )
-        min_rms_flat_noise = "{0:.1f} uJy/beam".format(
-            diagnostics_dict["min_rms_flat_noise"] * 1e6
-        )
+        dynr_true_sky = "{0:.2g}".format(diagnostics_dict["dynamic_range_global_true_sky"])
+        min_rms_flat_noise = "{0:.1f} uJy/beam".format(diagnostics_dict["min_rms_flat_noise"] * 1e6)
         median_rms_flat_noise = "{0:.1f} uJy/beam".format(
             diagnostics_dict["median_rms_flat_noise"] * 1e6
         )
-        dynr_flat_noise = "{0:.2g}".format(
-            diagnostics_dict["dynamic_range_global_flat_noise"]
-        )
+        dynr_flat_noise = "{0:.2g}".format(diagnostics_dict["dynamic_range_global_flat_noise"])
         nsources = "{0}".format(diagnostics_dict["nsources"])
         freq = "{0:.1f} MHz".format(diagnostics_dict["freq"] / 1e6)
         beam = '{0:.1f}" x {1:.1f}", PA = {2:.1f} deg'.format(
@@ -1166,13 +998,10 @@ def report_sector_diagnostics(sector_name, diagnostics_dict, log):
             diagnostics_dict["beam_fwhm"][1] * 3600,
             diagnostics_dict["beam_fwhm"][2],
         )
-        unflagged_data_fraction = "{0:.2f}".format(
-            diagnostics_dict["unflagged_data_fraction"]
-        )
+        unflagged_data_fraction = "{0:.2f}".format(diagnostics_dict["unflagged_data_fraction"])
         log.info("Diagnostics for {}:".format(sector_name))
         log.info(
-            "    Min RMS noise = {0} (non-PB-corrected), "
-            "{1} (PB-corrected), {2} (expected)".format(
+            "    Min RMS noise = {0} (non-PB-corrected), {1} (PB-corrected), {2} (expected)".format(
                 min_rms_flat_noise, min_rms_true_sky, theoretical_rms
             )
         )
@@ -1180,26 +1009,22 @@ def report_sector_diagnostics(sector_name, diagnostics_dict, log):
             diagnostics_dict["min_rms_flat_noise"] == 0.0
             or diagnostics_dict["min_rms_true_sky"] == 0.0
         ):
-            log.warning(
-                "The min RMS noise is 0, likely indicating a problem with the processing."
-            )
+            log.warning("The min RMS noise is 0, likely indicating a problem with the processing.")
         log.info(
-            "    Median RMS noise = {0} (non-PB-corrected), "
-            "{1} (PB-corrected)".format(
+            "    Median RMS noise = {0} (non-PB-corrected), {1} (PB-corrected)".format(
                 median_rms_flat_noise, median_rms_true_sky
             )
         )
         log.info(
-            "    Dynamic range = {0} (non-PB-corrected), "
-            "{1} (PB-corrected)".format(dynr_flat_noise, dynr_true_sky)
+            "    Dynamic range = {0} (non-PB-corrected), {1} (PB-corrected)".format(
+                dynr_flat_noise, dynr_true_sky
+            )
         )
         if (
             diagnostics_dict["dynamic_range_global_flat_noise"] == 0.0
             or diagnostics_dict["dynamic_range_global_true_sky"] == 0.0
         ):
-            log.warning(
-                "The dynamic range is 0, likely indicating a problem with the processing."
-            )
+            log.warning("The dynamic range is 0, likely indicating a problem with the processing.")
         log.info("    Number of sources found by PyBDSF = {}".format(nsources))
         if diagnostics_dict["nsources"] == 0:
             log.warning(
@@ -1207,11 +1032,7 @@ def report_sector_diagnostics(sector_name, diagnostics_dict, log):
             )
         log.info("    Reference frequency = {}".format(freq))
         log.info("    Beam = {}".format(beam))
-        log.info(
-            "    Fraction of unflagged data = {}".format(
-                unflagged_data_fraction
-            )
-        )
+        log.info("    Fraction of unflagged data = {}".format(unflagged_data_fraction))
 
         # Log the estimates of the global flux ratio and astrometry offsets.
         # If the required keys are not present, then there were not enough
@@ -1241,26 +1062,19 @@ def report_sector_diagnostics(sector_name, diagnostics_dict, log):
                     f"meanClippedRatio_{survey}" in diagnostics_dict
                     and f"stdClippedRatio_{survey}" in diagnostics_dict
                 ):
-                    ratio = "{0:.1f}".format(
-                        diagnostics_dict[f"meanClippedRatio_{survey}"]
-                    )
+                    ratio = "{0:.1f}".format(diagnostics_dict[f"meanClippedRatio_{survey}"])
                     stdratio = "{0:.1f}".format(
                         max(0.1, diagnostics_dict[f"stdClippedRatio_{survey}"])
                     )
-                    log.info(
-                        f"    LOFAR/{survey} flux ratio = {ratio} +/- {stdratio}{warn_text}"
-                    )
+                    log.info(f"    LOFAR/{survey} flux ratio = {ratio} +/- {stdratio}{warn_text}")
 
                     if (
                         lofar_to_true_flux_std == 0.0
-                        or diagnostics_dict[f"stdClippedRatio_{survey}"]
-                        < lofar_to_true_flux_std
+                        or diagnostics_dict[f"stdClippedRatio_{survey}"] < lofar_to_true_flux_std
                     ) and survey != "NVSS":
                         # Save the ratio with the lowest scatter (excluding NVSS
                         # estimate) for later use
-                        lofar_to_true_flux_ratio = diagnostics_dict[
-                            f"meanClippedRatio_{survey}"
-                        ]
+                        lofar_to_true_flux_ratio = diagnostics_dict[f"meanClippedRatio_{survey}"]
                         lofar_to_true_flux_std = max(
                             0.1, diagnostics_dict[f"stdClippedRatio_{survey}"]
                         )
@@ -1271,34 +1085,20 @@ def report_sector_diagnostics(sector_name, diagnostics_dict, log):
             "meanClippedRAOffsetDeg" in diagnostics_dict
             and "stdClippedRAOffsetDeg" in diagnostics_dict
         ):
-            raoff = '{0:.1f}"'.format(
-                diagnostics_dict["meanClippedRAOffsetDeg"] * 3600
-            )
-            stdraoff = '{0:.1f}"'.format(
-                max(0.5, diagnostics_dict["stdClippedRAOffsetDeg"] * 3600)
-            )
-            log.info(
-                "    LOFAR-PanSTARRS RA offset = {0} +/- {1}".format(
-                    raoff, stdraoff
-                )
-            )
+            raoff = '{0:.1f}"'.format(diagnostics_dict["meanClippedRAOffsetDeg"] * 3600)
+            stdraoff = '{0:.1f}"'.format(max(0.5, diagnostics_dict["stdClippedRAOffsetDeg"] * 3600))
+            log.info("    LOFAR-PanSTARRS RA offset = {0} +/- {1}".format(raoff, stdraoff))
         else:
             log.info("    LOFAR-PanSTARRS RA offset = N/A")
         if (
             "meanClippedDecOffsetDeg" in diagnostics_dict
             and "stdClippedDecOffsetDeg" in diagnostics_dict
         ):
-            decoff = '{0:.1f}"'.format(
-                diagnostics_dict["meanClippedDecOffsetDeg"] * 3600
-            )
+            decoff = '{0:.1f}"'.format(diagnostics_dict["meanClippedDecOffsetDeg"] * 3600)
             stddecoff = '{0:.1f}"'.format(
                 max(0.5, diagnostics_dict["stdClippedDecOffsetDeg"] * 3600)
             )
-            log.info(
-                "    LOFAR-PanSTARRS Dec offset = {0} +/- {1}".format(
-                    decoff, stddecoff
-                )
-            )
+            log.info("    LOFAR-PanSTARRS Dec offset = {0} +/- {1}".format(decoff, stddecoff))
         else:
             log.info("    LOFAR-PanSTARRS Dec offset = N/A")
 
@@ -1332,10 +1132,6 @@ def report_sector_diagnostics(sector_name, diagnostics_dict, log):
         for key in req_keys:
             if key not in diagnostics_dict:
                 missing_keys.append(key)
-        log.debug(
-            "Keys missing from the diagnostics dict: {}.".format(
-                ", ".join(missing_keys)
-            )
-        )
+        log.debug("Keys missing from the diagnostics dict: {}.".format(", ".join(missing_keys)))
 
         return (1.0, 0.0)

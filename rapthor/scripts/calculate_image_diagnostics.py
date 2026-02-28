@@ -36,9 +36,7 @@ import matplotlib.pyplot as plt
 iers.conf.auto_download = False
 
 
-def plot_astrometry_offsets(
-    facets, field_ra, field_dec, output_file, plot_labels=False
-):
+def plot_astrometry_offsets(facets, field_ra, field_dec, output_file, plot_labels=False):
     """
     Plots the astrometry offsets across the field
 
@@ -72,12 +70,8 @@ def plot_astrometry_offsets(
         # lie on average to the North of the comparison source positions. Therefore, we
         # multiply by -1 to obtain the correct arrow directions in the quiver plot
         if facet.astrometry_diagnostics:
-            ra_offsets.append(
-                -1 * facet.astrometry_diagnostics["meanClippedRAOffsetDeg"]
-            )
-            dec_offsets.append(
-                -1 * facet.astrometry_diagnostics["meanClippedDecOffsetDeg"]
-            )
+            ra_offsets.append(-1 * facet.astrometry_diagnostics["meanClippedRAOffsetDeg"])
+            dec_offsets.append(-1 * facet.astrometry_diagnostics["meanClippedDecOffsetDeg"])
             facet_ra.append(facet.ra)
             facet_dec.append(facet.dec)
             facet_names.append(facet.name)
@@ -85,13 +79,9 @@ def plot_astrometry_offsets(
 
     # Set up the figure. We use various values that should produce a reasonably
     # sized figure with readable labels in most cases
-    fig = plt.figure(
-        1, figsize=(7.66, 7)
-    )  # increase x size to ensure room for Dec label
+    fig = plt.figure(1, figsize=(7.66, 7))  # increase x size to ensure room for Dec label
     plt.clf()
-    ax = WCSAxes(
-        fig, [0.16, 0.1, 0.8, 0.8], wcs=wcs
-    )  # set start x to give room for Dec label
+    ax = WCSAxes(fig, [0.16, 0.1, 0.8, 0.8], wcs=wcs)  # set start x to give room for Dec label
     fig.add_axes(ax)
     RAAxis = ax.coords["ra"]
     RAAxis.set_axislabel("RA", minpad=0.75)
@@ -100,9 +90,7 @@ def plot_astrometry_offsets(
     DecAxis.set_axislabel("Dec", minpad=0.75)
     DecAxis.set_major_formatter("dd:mm:ss")
     ax.coords.grid(color="black", alpha=0.5, linestyle="solid")
-    ax.set_title(
-        "Positional Offsets (arrows indicate direction and magnitude of correction)"
-    )
+    ax.set_title("Positional Offsets (arrows indicate direction and magnitude of correction)")
 
     # Plot the facet polygons
     x, y = wcs.wcs_world2pix(facet_ra, facet_dec, misc.WCS_ORIGIN)
@@ -137,9 +125,7 @@ def plot_astrometry_offsets(
     plt.savefig(output_file, format="pdf")
 
 
-def fits_to_makesourcedb(
-    catalog, reference_freq, flux_colname="Isl_Total_flux"
-):
+def fits_to_makesourcedb(catalog, reference_freq, flux_colname="Isl_Total_flux"):
     """
     Converts a PyBDSF catalog to a makesourcedb sky model
 
@@ -164,9 +150,7 @@ def fits_to_makesourcedb(
         The makesourcedb sky model
     """
     # Convert the result to makesourcedb format and write to a tempfile
-    out_lines = [
-        f"FORMAT = Name, Type, Ra, Dec, I, ReferenceFrequency={reference_freq}\n"
-    ]
+    out_lines = [f"FORMAT = Name, Type, Ra, Dec, I, ReferenceFrequency={reference_freq}\n"]
     for name, ra, dec, flux in zip(
         catalog["Source_id"],
         catalog["RA"],
@@ -235,9 +219,7 @@ def check_photometry(
     #     that may be poorly modeled)
     catalog = Table.read(input_catalog, format="fits")
     if len(catalog) == 0:
-        print(
-            "No sources found in the LOFAR image. Skipping the photometry check..."
-        )
+        print("No sources found in the LOFAR image. Skipping the photometry check...")
         return {}
 
     phase_center = SkyCoord(ra=obs.ra * u.degree, dec=obs.dec * u.degree)
@@ -265,9 +247,7 @@ def check_photometry(
         try:
             comparison_skymodels = [lsmtool.load(comparison_skymodel)]
             comparison_surveys = ["USER_SUPPLIED"]
-            print(
-                "Using the supplied comparison sky model for the photometry check"
-            )
+            print("Using the supplied comparison sky model for the photometry check")
         except (OSError, ConnectionError) as e:
             # Comparison catalog not loaded successfully
             print(
@@ -292,16 +272,13 @@ def check_photometry(
                 backup_survey = None
             else:
                 print(
-                    f'Using "{backup_survey}" as the backup survey catalog for the '
-                    "photometry check"
+                    f'Using "{backup_survey}" as the backup survey catalog for the photometry check'
                 )
                 comparison_surveys.append(backup_survey)
         for survey in comparison_surveys:
             try:
                 comparison_skymodels.append(
-                    lsmtool.load(
-                        survey, VOPosition=[obs.ra, obs.dec], VORadius=5.0
-                    )
+                    lsmtool.load(survey, VOPosition=[obs.ra, obs.dec], VORadius=5.0)
                 )
             except (OSError, ConnectionError) as e:
                 # Comparison catalog not downloaded successfully
@@ -322,9 +299,7 @@ def check_photometry(
         "flux_ratio_vs_flux",
         "flux_ratio_sky",
     ]
-    other_plots = [
-        "positional_offsets_sky"
-    ]  # other plots not related to photometry check
+    other_plots = ["positional_offsets_sky"]  # other plots not related to photometry check
     successful_surveys = []
     photometry_diagnostics = {}
     for i, s_comp_photometry in enumerate(comparison_skymodels):
@@ -348,9 +323,7 @@ def check_photometry(
 
         # Convert the output and compare, using the total flux from the Gaussian fits
         # ('Total_flux') to be consistent with the flux-scale normalization
-        s_pybdsf = fits_to_makesourcedb(
-            catalog, freq, flux_colname="Total_flux"
-        )
+        s_pybdsf = fits_to_makesourcedb(catalog, freq, flux_colname="Total_flux")
         s_comp_photometry.group("every")
         result = s_pybdsf.compare(
             s_comp_photometry,
@@ -438,9 +411,7 @@ def check_astrometry(
     #     with high positional uncertainties)
     catalog = Table.read(input_catalog, format="fits")
     if len(catalog) == 0:
-        print(
-            "No sources found in the LOFAR image. Skipping the astrometry check..."
-        )
+        print("No sources found in the LOFAR image. Skipping the astrometry check...")
         return {}
 
     major_axis = catalog["DC_Maj"]  # degrees
@@ -467,9 +438,7 @@ def check_astrometry(
         # Use a single rectangular facet centered on the phase center
         ra = obs.ra
         dec = obs.dec
-        image_width = max(image.img_data.shape[-2:]) * abs(
-            image.img_hdr["CDELT1"]
-        )
+        image_width = max(image.img_data.shape[-2:]) * abs(image.img_hdr["CDELT1"])
         width = min(max_search_cone_radius * 2, image_width)
         facets = [SquareFacet("field", ra, dec, width)]
 
@@ -481,9 +450,7 @@ def check_astrometry(
         try:
             s_comp_astrometry = lsmtool.load(comparison_skymodel)
             s_comp_astrometry.group("every")
-            print(
-                "Using the supplied comparison sky model for the astrometry check"
-            )
+            print("Using the supplied comparison sky model for the astrometry check")
         except (OSError, ConnectionError) as e:
             # Comparison catalog not loaded successfully
             s_comp_astrometry = None
@@ -541,34 +508,18 @@ def check_astrometry(
             json.dump(astrometry_diagnostics, fp)
         ra = obs.ra
         dec = obs.dec
-        plot_astrometry_offsets(
-            facets, ra, dec, output_root + ".astrometry_offsets.pdf"
-        )
+        plot_astrometry_offsets(facets, ra, dec, output_root + ".astrometry_offsets.pdf")
 
         # Calculate mean offsets
         mean_astrometry_diagnostics = {
-            "meanRAOffsetDeg": np.mean(
-                astrometry_diagnostics["meanRAOffsetDeg"]
-            ),
+            "meanRAOffsetDeg": np.mean(astrometry_diagnostics["meanRAOffsetDeg"]),
             "stdRAOffsetDeg": np.mean(astrometry_diagnostics["stdRAOffsetDeg"]),
-            "meanClippedRAOffsetDeg": np.mean(
-                astrometry_diagnostics["meanClippedRAOffsetDeg"]
-            ),
-            "stdClippedRAOffsetDeg": np.mean(
-                astrometry_diagnostics["stdClippedRAOffsetDeg"]
-            ),
-            "meanDecOffsetDeg": np.mean(
-                astrometry_diagnostics["meanDecOffsetDeg"]
-            ),
-            "stdDecOffsetDeg": np.mean(
-                astrometry_diagnostics["stdDecOffsetDeg"]
-            ),
-            "meanClippedDecOffsetDeg": np.mean(
-                astrometry_diagnostics["meanClippedDecOffsetDeg"]
-            ),
-            "stdClippedDecOffsetDeg": np.mean(
-                astrometry_diagnostics["stdClippedDecOffsetDeg"]
-            ),
+            "meanClippedRAOffsetDeg": np.mean(astrometry_diagnostics["meanClippedRAOffsetDeg"]),
+            "stdClippedRAOffsetDeg": np.mean(astrometry_diagnostics["stdClippedRAOffsetDeg"]),
+            "meanDecOffsetDeg": np.mean(astrometry_diagnostics["meanDecOffsetDeg"]),
+            "stdDecOffsetDeg": np.mean(astrometry_diagnostics["stdDecOffsetDeg"]),
+            "meanClippedDecOffsetDeg": np.mean(astrometry_diagnostics["meanClippedDecOffsetDeg"]),
+            "stdClippedDecOffsetDeg": np.mean(astrometry_diagnostics["stdClippedDecOffsetDeg"]),
         }
     else:
         mean_astrometry_diagnostics = {}
@@ -679,26 +630,18 @@ def main(
     # Collect some diagnostic numbers from the images. Note: we ensure all
     # non-integer numbers are float, as, e.g., np.float32 is not supported by json.dump()
     obs_list = []
-    for ms, starttime, ntimes in zip(
-        obs_ms, obs_starttime, obs_ntimes, strict=True
-    ):
+    for ms, starttime, ntimes in zip(obs_ms, obs_starttime, obs_ntimes, strict=True):
         starttime_mjd = misc.convert_mvt2mjd(starttime)  # MJD sec
-        endtime_mjd = (
-            starttime_mjd + ntimes * Observation(ms).timepersample
-        )  # MJD sec
+        endtime_mjd = starttime_mjd + ntimes * Observation(ms).timepersample  # MJD sec
         obs_list.append(Observation(ms, starttime_mjd, endtime_mjd))
     theoretical_rms, unflagged_fraction = misc.calc_theoretical_noise(
         obs_list, use_lotss_estimate=True
     )  # Jy/beam
-    dynamic_range_global_true_sky = float(
-        img_true_sky.max_value / rms_img_true_sky.min_value
-    )
+    dynamic_range_global_true_sky = float(img_true_sky.max_value / rms_img_true_sky.min_value)
     dynamic_range_local_true_sky = float(
         np.nanmax(rms_img_flat_noise.img_data / rms_img_true_sky.img_data)
     )
-    dynamic_range_global_flat_noise = float(
-        img_flat_noise.max_value / rms_img_flat_noise.min_value
-    )
+    dynamic_range_global_flat_noise = float(img_flat_noise.max_value / rms_img_flat_noise.min_value)
     dynamic_range_local_flat_noise = float(
         np.nanmax(img_flat_noise.img_data / rms_img_flat_noise.img_data)
     )
@@ -756,9 +699,7 @@ def main(
     diagnostic_plots = glob.glob(os.path.join(".", "*.pdf"))
     for src_filename in diagnostic_plots:
         if not os.path.basename(src_filename).startswith(output_root):
-            dst_filename = os.path.join(
-                ".", f"{output_root}." + os.path.basename(src_filename)
-            )
+            dst_filename = os.path.join(".", f"{output_root}." + os.path.basename(src_filename))
             if os.path.exists(dst_filename):
                 os.remove(dst_filename)
             shutil.copy(src_filename, dst_filename)
@@ -767,33 +708,17 @@ def main(
 if __name__ == "__main__":
     descriptiontext = "Calculate image photometry and astrometry diagnostics.\n"
 
-    parser = ArgumentParser(
-        description=descriptiontext, formatter_class=RawTextHelpFormatter
-    )
-    parser.add_argument(
-        "flat_noise_image", help="Filename of flat-noise FITS image"
-    )
-    parser.add_argument(
-        "flat_noise_rms_image", help="Filename of flat-noise FITS image"
-    )
-    parser.add_argument(
-        "true_sky_image", help="Filename of flat-noise FITS image"
-    )
-    parser.add_argument(
-        "true_sky_rms_image", help="Filename of flat-noise FITS image"
-    )
-    parser.add_argument(
-        "input_catalog", help="Filename of input PyBDSF FITS catalog"
-    )
+    parser = ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
+    parser.add_argument("flat_noise_image", help="Filename of flat-noise FITS image")
+    parser.add_argument("flat_noise_rms_image", help="Filename of flat-noise FITS image")
+    parser.add_argument("true_sky_image", help="Filename of flat-noise FITS image")
+    parser.add_argument("true_sky_rms_image", help="Filename of flat-noise FITS image")
+    parser.add_argument("input_catalog", help="Filename of input PyBDSF FITS catalog")
     parser.add_argument("input_skymodel", help="Filename of input sky model")
     parser.add_argument("obs_ms", help="Filename of observation MS")
     parser.add_argument("obs_starttime", help="Start time of observation")
-    parser.add_argument(
-        "obs_ntimes", help="Number of time slots of observation"
-    )
-    parser.add_argument(
-        "diagnostics_file", help="Filename of diagnostics JSON file"
-    )
+    parser.add_argument("obs_ntimes", help="Number of time slots of observation")
+    parser.add_argument("diagnostics_file", help="Filename of diagnostics JSON file")
     parser.add_argument("output_root", help="Root of output files")
     parser.add_argument(
         "--facet_region_file",
@@ -809,8 +734,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--photometry_comparison_surveys",
-        help="List of photometry surveys to use when "
-        "photometry_comparison_skymodel is not given",
+        help="List of photometry surveys to use when photometry_comparison_skymodel is not given",
         type=list,
         default=["TGSS", "LOTSS"],
     )

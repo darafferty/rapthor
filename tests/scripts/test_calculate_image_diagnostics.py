@@ -74,9 +74,7 @@ def test_check_astrometry_sources_below_minimum_number(
         "E_RA": [RA_DEC_max - 0.0001] * num_sources,
         "E_DEC": [RA_DEC_max - 0.0001] * num_sources,
     }
-    monkeypatch.setattr(
-        "astropy.table.Table.read", lambda *args, **kwargs: Table(mock_data)
-    )
+    monkeypatch.setattr("astropy.table.Table.read", lambda *args, **kwargs: Table(mock_data))
     expected_result = {}
     actual_result = check_astrometry(
         observation,
@@ -140,9 +138,7 @@ def test_check_photometry_below_min_number_sources(
         "RA": [2 / 3600 * u.degree] * num_sources,
         "DEC": [2 / 3600 * u.degree] * num_sources,
     }
-    monkeypatch.setattr(
-        "astropy.table.Table.read", lambda *args, **kwargs: Table(mock_data)
-    )
+    monkeypatch.setattr("astropy.table.Table.read", lambda *args, **kwargs: Table(mock_data))
     freq = 150e6  # Example frequency in Hz
     expected_result = {}
     actual_result = check_photometry(
@@ -187,20 +183,14 @@ def test_check_photometry_with_comparison_skymodel_does_not_access_internet(
         "meanClippedDecOffsetDeg": 1,
         "stdClippedDecOffsetDeg": 1,
     }
-    mocker.patch.object(
-        lsmtool.skymodel.SkyModel, "compare", return_value=mock_compare_result
-    )
+    mocker.patch.object(lsmtool.skymodel.SkyModel, "compare", return_value=mock_compare_result)
     mocker.patch.object(lsmtool.skymodel.SkyModel, "group")
-    mocker.patch(
-        "rapthor.scripts.calculate_image_diagnostics.os.rename", autospec=True
-    )
+    mocker.patch("rapthor.scripts.calculate_image_diagnostics.os.rename", autospec=True)
     mocker.patch(
         "rapthor.scripts.calculate_image_diagnostics.os.path.exists",
         return_value=False,
     )
-    monkeypatch.setattr(
-        "astropy.table.Table.read", lambda *args, **kwargs: Table(mock_data)
-    )
+    monkeypatch.setattr("astropy.table.Table.read", lambda *args, **kwargs: Table(mock_data))
     diagnostics_dict = check_photometry(
         observation,
         input_catalog_fits,
@@ -256,16 +246,12 @@ def test_check_astrometry_with_comparison_skymodel_does_not_access_internet(
         "meanClippedDecOffsetDeg": 1,
         "stdClippedDecOffsetDeg": 1,
     }
-    mocker.patch.object(
-        lsmtool.skymodel.SkyModel, "compare", return_value=mock_compare_result
-    )
+    mocker.patch.object(lsmtool.skymodel.SkyModel, "compare", return_value=mock_compare_result)
     mocker.patch(
         "rapthor.lib.facet.filter_skymodel",
         side_effect=lambda polygon, sm, wcs: sm,
     )
-    monkeypatch.setattr(
-        "astropy.table.Table.read", lambda *args, **kwargs: Table(mock_data)
-    )
+    monkeypatch.setattr("astropy.table.Table.read", lambda *args, **kwargs: Table(mock_data))
 
     diagnostics_dict = check_astrometry(
         observation,

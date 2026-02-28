@@ -38,9 +38,7 @@ def lexical_cast(string_value):
         except (ValueError, TypeError):
             # Try to convert a more complex list by converting each item separately
             if string_value.startswith("[") and string_value.endswith("]"):
-                values = [
-                    val.strip() for val in string_value.strip("[]").split(",")
-                ]
+                values = [val.strip() for val in string_value.strip("[]").split(",")]
                 return [lexical_cast(val) for val in values]
     # Return the unaltered string
     return string_value
@@ -88,8 +86,7 @@ class Parset:
         # options are based on the contents of `defaults.parset`, required options are
         # hard-coded below. Also define sets of allowed and required sections.
         self.allowed_options = {
-            sect: set(self.__parser.options(sect))
-            for sect in self.__parser.sections()
+            sect: set(self.__parser.options(sect)) for sect in self.__parser.sections()
         }
         self.allowed_sections = set(self.allowed_options)
         self.required_options = {
@@ -101,9 +98,7 @@ class Parset:
 
         # Deprecated options are hard-coded below. Each deprecated option can have
         # zero or more suggestions for alternative options.
-        self.deprecated_options = {
-            "cluster": {"dir_local": {"local_scratch_dir"}}
-        }
+        self.deprecated_options = {"cluster": {"dir_local": {"local_scratch_dir"}}}
 
         # Sanity check. Ensure that all required sections and options are also allowed.
         assert self.required_sections <= self.allowed_sections, "%s <= %s" % (
@@ -111,9 +106,7 @@ class Parset:
             self.allowed_sections,
         )
         for section in self.required_options:
-            assert (
-                self.required_options[section] <= self.allowed_options[section]
-            ), "%s <= %s" % (
+            assert self.required_options[section] <= self.allowed_options[section], "%s <= %s" % (
                 self.required_options[section],
                 self.allowed_options[section],
             )
@@ -144,8 +137,7 @@ class Parset:
         settings = dict()
         for section in parser.sections():
             settings[section] = dict(
-                (key, lexical_cast(value))
-                for key, value in parser.items(section)
+                (key, lexical_cast(value)) for key, value in parser.items(section)
             )
         return settings
 
@@ -177,8 +169,7 @@ class Parset:
         }
         invalid_sections = given_sections - self.allowed_sections
         invalid_options = {
-            sect: given_options[sect] - self.allowed_options[sect]
-            for sect in self.allowed_sections
+            sect: given_options[sect] - self.allowed_options[sect] for sect in self.allowed_sections
         }
         deprecated_options = {
             sect: set(self.deprecated_options[sect]) & given_options[sect]
@@ -208,17 +199,13 @@ class Parset:
         for section in invalid_options:
             for option in invalid_options[section]:
                 self.__parser.remove_option(section, option)
-                log.warning(
-                    "Option '%s' in section [%s] is invalid", option, section
-                )
+                log.warning("Option '%s' in section [%s] is invalid", option, section)
 
         # Check for deprecated options
         for section in deprecated_options:
             for option in deprecated_options[section]:
                 alternatives = self.deprecated_options[section][option]
-                message = (
-                    f"Option '{option}' in section [{section}] is deprecated"
-                )
+                message = f"Option '{option}' in section [{section}] is deprecated"
                 if alternatives:
                     message += "; use %s instead" % (
                         ", or ".join("'{}'".format(opt) for opt in alternatives)
@@ -260,10 +247,7 @@ class Parset:
                 f"The final_data_fraction ({final_data_fraction}) "
                 f"is less than selfcal_data_fraction ({selfcal_data_fraction})"
             )
-        if (
-            options["generate_initial_skymodel"]
-            and options["download_initial_skymodel"]
-        ):
+        if options["generate_initial_skymodel"] and options["download_initial_skymodel"]:
             raise ValueError(
                 "Both 'generate_initial_skymodel' and 'download_initial_skymodel' are "
                 "activated. Only one of these options can be active."
@@ -307,15 +291,13 @@ class Parset:
         dd_smoothness_factor = options["dd_smoothness_factor"]
         if dd_smoothness_factor < 1:
             raise ValueError(
-                f"The dd_smoothness_factor parameter is {dd_smoothness_factor}; "
-                f"it must be >= 1"
+                f"The dd_smoothness_factor parameter is {dd_smoothness_factor}; it must be >= 1"
             )
         dd_interval_factor = options["dd_interval_factor"]
         solveralgorithm = options["solveralgorithm"]
         if dd_interval_factor < 1:
             raise ValueError(
-                f"The dd_interval_factor parameter is {dd_interval_factor}; "
-                f"it must be >= 1"
+                f"The dd_interval_factor parameter is {dd_interval_factor}; it must be >= 1"
             )
         elif dd_interval_factor > 1 and solveralgorithm != "directioniterative":
             log.warning(
@@ -328,8 +310,7 @@ class Parset:
             # multi-calibration; once they can be, the restriction on their use
             # should be removed
             log.warning(
-                "Switching off direction-dependent intervals, since they are "
-                "not yet supported."
+                "Switching off direction-dependent intervals, since they are not yet supported."
             )
             options["dd_interval_factor"] = 1
         if (
@@ -347,10 +328,7 @@ class Parset:
         if options["use_image_based_predict"] and (
             options["bda_timebase"] > 0 or options["bda_frequencybase"] > 0
         ):
-            log.warning(
-                "Switching off BDA during solving, since image-based predict is "
-                "activated."
-            )
+            log.warning("Switching off BDA during solving, since image-based predict is activated.")
             options["bda_timebase"] = 0
             options["bda_frequencybase"] = 0
 
@@ -383,14 +361,9 @@ class Parset:
             )
 
         if len(options["dd_psf_grid"]) != 2:
-            raise ValueError(
-                "The option 'dd_psf_grid' must be a list of length 2 (e.g. '[3, 3]')"
-            )
+            raise ValueError("The option 'dd_psf_grid' must be a list of length 2 (e.g. '[3, 3]')")
 
-        if (
-            options["correct_time_frequency_smearing"]
-            and options["bda_timebase"] > 0
-        ):
+        if options["correct_time_frequency_smearing"] and options["bda_timebase"] > 0:
             log.warning(
                 "Switching off BDA during imaging, since correction for time "
                 "and frequency smearing is activated."
@@ -412,19 +385,14 @@ class Parset:
         options["image_cube_stokes_list"] = [
             pol.upper() for pol in options["image_cube_stokes_list"]
         ]
-        if any(
-            [pol not in "IQUV" for pol in options["image_cube_stokes_list"]]
-        ):
+        if any([pol not in "IQUV" for pol in options["image_cube_stokes_list"]]):
             raise ValueError(
                 "The option 'image_cube_stokes_list' specifies one or more invalid "
                 "Stokes parameters. Allowed Stokes parameters are 'I', 'Q', 'U', or "
                 "'V'."
             )
 
-        if (
-            options["save_image_cube"]
-            and options["image_cube_stokes_list"] == []
-        ):
+        if options["save_image_cube"] and options["image_cube_stokes_list"] == []:
             log.warning(
                 "The option 'save_image_cube' is enabled, but 'image_cube_stokes_list' "
                 "is empty. Setting 'image_cube_stokes_list' to '[I]'."
@@ -467,21 +435,15 @@ class Parset:
         if not options["max_nodes"]:
             options["max_nodes"] = 1 if single_machine else 12
         if not options["max_cores"]:
-            options["max_cores"] = (
-                cpu_count if single_machine else cpus_per_task
-            )
+            options["max_cores"] = cpu_count if single_machine else cpus_per_task
         if not options["max_threads"]:
             options["max_threads"] = cpu_count
 
         max_threads = options["max_threads"]
         if not options["deconvolution_threads"]:
-            options["deconvolution_threads"] = max(
-                1, min(14, max_threads * 2 // 5)
-            )
+            options["deconvolution_threads"] = max(1, min(14, max_threads * 2 // 5))
         if not options["parallel_gridding_threads"]:
-            options["parallel_gridding_threads"] = max(
-                1, min(6, max_threads * 2 // 5)
-            )
+            options["parallel_gridding_threads"] = max(1, min(6, max_threads * 2 // 5))
 
     def read_file(self, parset_file):
         """
@@ -515,9 +477,7 @@ class Parset:
             if not self.__parser.read(parset_file):
                 raise FileNotFoundError(f"Missing parset file ({parset_file}).")
         except configparser.ParsingError as err:
-            raise ValueError(
-                f"Parset file '{parset_file}' could not be parsed correctly.\n{err}"
-            )
+            raise ValueError(f"Parset file '{parset_file}' could not be parsed correctly.\n{err}")
 
         self.__sanitize()
         settings = Parset.config_as_dict(self.__parser)
@@ -584,14 +544,10 @@ def parset_read(parset_file, use_log_file=True):
                 os.mkdir(subdir_path)
     except Exception as e:
         raise RuntimeError(
-            "Cannot use the working dir {0}: {1}".format(
-                parset_dict["dir_working"], e
-            )
+            "Cannot use the working dir {0}: {1}".format(parset_dict["dir_working"], e)
         )
     if use_log_file:
-        set_log_file(
-            os.path.join(parset_dict["dir_working"], "logs", "rapthor.log")
-        )
+        set_log_file(os.path.join(parset_dict["dir_working"], "logs", "rapthor.log"))
     log.info("=========================================================")
     log.info("Rapthor version %s", __version__)
     log.info("CWLRunner is %s", parset_dict["cluster_specific"]["cwl_runner"])
@@ -606,19 +562,12 @@ def parset_read(parset_file, use_log_file=True):
     parset_dict["mss"] = sorted(ms_files)
     if len(parset_dict["mss"]) == 0:
         raise FileNotFoundError(
-            "No input MS files were found (searched for files "
-            "matching: {}).".format(
-                ", ".join(
-                    '"{0}"'.format(search_str) for search_str in ms_search_list
-                )
+            "No input MS files were found (searched for files matching: {}).".format(
+                ", ".join('"{0}"'.format(search_str) for search_str in ms_search_list)
             )
         )
     suffix = "s" if len(parset_dict["mss"]) > 1 else ""
-    log.info(
-        "Working on {0} input MS file{1}".format(
-            len(parset_dict["mss"]), suffix
-        )
-    )
+    log.info("Working on {0} input MS file{1}".format(len(parset_dict["mss"]), suffix))
 
     # Make sure the initial sky model is present or, if not, that generation or download
     # is requested
@@ -652,9 +601,7 @@ def parset_read(parset_file, use_log_file=True):
     else:
         if not os.path.exists(parset_dict["input_skymodel"]):
             raise FileNotFoundError(
-                'Input sky model file "{}" not found.'.format(
-                    parset_dict["input_skymodel"]
-                )
+                'Input sky model file "{}" not found.'.format(parset_dict["input_skymodel"])
             )
         if parset_dict["generate_initial_skymodel"]:
             # If sky model is given but generation requested, disable generation and use

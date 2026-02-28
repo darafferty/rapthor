@@ -94,9 +94,7 @@ class TestParset(unittest.TestCase):
             parset_read(self.parset.name)
             self.assertEqual(
                 cm.output,
-                [
-                    f"WARNING:rapthor:parset:Option '{option}' in section [global] is invalid"
-                ],
+                [f"WARNING:rapthor:parset:Option '{option}' in section [global] is invalid"],
             )
 
     def test_deprecated_option(self):
@@ -129,9 +127,7 @@ class TestParset(unittest.TestCase):
         with open(self.parset.name, "a") as f:
             f.write("[imaging]\n")
             f.write(f"{option} = {value}")
-        with self.assertRaisesRegex(
-            ValueError, f"The option '{option}' must be one of"
-        ):
+        with self.assertRaisesRegex(ValueError, f"The option '{option}' must be one of"):
             parset_read(self.parset.name)
 
     def test_unequal_sector_list_lengths(self):
@@ -161,9 +157,7 @@ class TestParset(unittest.TestCase):
         ref_parset = ast.literal_eval(
             string.Template(
                 open("resources/rapthor_minimal.parset_dict.template").read()
-            ).substitute(
-                dir_working=self.dir_working.name, input_ms=self.input_ms.name
-            )
+            ).substitute(dir_working=self.dir_working.name, input_ms=self.input_ms.name)
         )
         self.assertEqual(parset, ref_parset)
 
@@ -184,9 +178,7 @@ class TestParset(unittest.TestCase):
         ref_parset = ast.literal_eval(
             string.Template(
                 open("resources/rapthor_complete.parset_dict.template").read()
-            ).substitute(
-                dir_working=self.dir_working.name, input_ms=self.input_ms.name
-            )
+            ).substitute(dir_working=self.dir_working.name, input_ms=self.input_ms.name)
         )
         self.assertEqual(parset, ref_parset)
 

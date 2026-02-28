@@ -112,7 +112,7 @@ write_to = "rapthor/_version.py"
 
 
 [tool.ruff]
-line-length = 80
+line-length = 100
 
 [tool.ruff.lint]
 # Expand basic rules with name and style checks roughly equivalent to flake8 + black + pylint
@@ -200,10 +200,10 @@ format_targets = [
 commands = [
     [
         # sort imports
-        "python", "-m", "ruff", "check", "--select", "I", "--fix", 
+        "python", "-m", "ruff", "check", "--select", "I", "--fix",
         { replace = "ref", of = ["tool", "tox", "env", "format", "format_targets"], extend=true },
     ],
-    [   
+    [
         # format code
         "python", "-m", "ruff", "format",
         { replace = "ref", of = ["tool", "tox", "env", "format", "format_targets"], extend=true },

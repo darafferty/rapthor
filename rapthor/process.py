@@ -51,9 +51,7 @@ def run(parset_file, logging_level="info"):
     # Set the processing strategy
     strategy_steps = set_strategy(field)
     if strategy_steps:
-        selfcal_steps = strategy_steps[
-            :-1
-        ]  # can be an empty list (when no selfcal needed)
+        selfcal_steps = strategy_steps[:-1]  # can be an empty list (when no selfcal needed)
         final_step = strategy_steps[-1]
     else:
         log.warning(
@@ -68,19 +66,13 @@ def run(parset_file, logging_level="info"):
             log.warning(
                 "Generation of an initial sky model has been activated but "
                 "the strategy '{}' does not contain any calibration steps. "
-                "Skipping the initial skymodel generation...".format(
-                    parset["strategy"]
-                )
+                "Skipping the initial skymodel generation...".format(parset["strategy"])
             )
             field.parset["generate_initial_skymodel"] = False
         else:
-            field.define_full_field_sector(
-                radius=parset["generate_initial_skymodel_radius"]
-            )
+            field.define_full_field_sector(radius=parset["generate_initial_skymodel_radius"])
             log.info("Imaging full field to generate an initial sky model...")
-            chunk_observations(
-                field, [], parset["generate_initial_skymodel_data_fraction"]
-            )
+            chunk_observations(field, [], parset["generate_initial_skymodel_data_fraction"])
             op = ImageInitial(field)
             op.run()
 
@@ -94,9 +86,7 @@ def run(parset_file, logging_level="info"):
 
         # Set the data chunking to match the longest solution interval set in
         # the strategy
-        chunk_observations(
-            field, selfcal_steps, parset["selfcal_data_fraction"]
-        )
+        chunk_observations(field, selfcal_steps, parset["selfcal_data_fraction"])
         run_steps(field, selfcal_steps)
 
     # Run a final pass if needed
@@ -121,8 +111,7 @@ def run(parset_file, logging_level="info"):
                         "the solutions with the input_h5parm parameter"
                     )
                 elif (
-                    final_step["peel_outliers"]
-                    or final_step["peel_bright_sources"]
+                    final_step["peel_outliers"] or final_step["peel_bright_sources"]
                 ) and not parset["input_skymodel"]:
                     raise ValueError(
                         "Peeling of outliers or bright sources was activated but no "
@@ -133,11 +122,7 @@ def run(parset_file, logging_level="info"):
                     # Turn off conflicting flags
                     field.parset["generate_initial_skymodel"] = False
                     field.parset["download_initial_skymodel"] = False
-            log.info(
-                "Using a data fraction of {0:.2f}".format(
-                    parset["final_data_fraction"]
-                )
-            )
+            log.info("Using a data fraction of {0:.2f}".format(parset["final_data_fraction"]))
 
         if field.make_quv_images:
             log.info("Stokes I, Q, U, and V images will be made")
@@ -192,9 +177,7 @@ def run_steps(field, steps, final=False):
         # Calibrate
         if field.do_calibrate:
             # Set whether screens should be generated
-            field.generate_screens = (
-                True if (field.dde_mode == "hybrid" and final) else False
-            )
+            field.generate_screens = True if (field.dde_mode == "hybrid" and final) else False
 
             # Calibrate (direction-dependent)
             op = CalibrateDD(field, cycle_number)
@@ -225,37 +208,25 @@ def run_steps(field, steps, final=False):
                 op.run()
 
             # Set the Stokes polarizations for imaging
-            field.image_pol = (
-                "IQUV" if (field.make_quv_images and final) else "I"
-            )
+            field.image_pol = "IQUV" if (field.make_quv_images and final) else "I"
 
             # Set whether clean should be disabled. For now, it can only be disabled
             # when full-Stokes imaging is done
-            field.disable_clean = (
-                field.image_pol == "IQUV" and field.disable_iquv_clean
-            )
+            field.disable_clean = field.image_pol == "IQUV" and field.disable_iquv_clean
 
             # Set whether an image-frequency cube should be made
             field.make_image_cube = field.save_image_cube and final
             field.image_cube_stokes_list = [
-                pol
-                for pol in field.image_cube_stokes_list
-                if pol.upper() in field.image_pol
+                pol for pol in field.image_cube_stokes_list if pol.upper() in field.image_pol
             ]
 
             # Set whether screens should be applied
-            field.apply_screens = (
-                True if (field.dde_mode == "hybrid" and final) else False
-            )
+            field.apply_screens = True if (field.dde_mode == "hybrid" and final) else False
 
             # Set whether the final major iteration is skipped (note: it is never skipped
             # for the final iteration)
             field.skip_final_major_iteration = (
-                False
-                if final
-                else field.parset["imaging_specific"][
-                    "skip_final_major_iteration"
-                ]
+                False if final else field.parset["imaging_specific"]["skip_final_major_iteration"]
             )
 
             op = Image(field, cycle_number)
@@ -282,29 +253,19 @@ def run_steps(field, steps, final=False):
                     log.info(
                         "Selfcal has converged (improvement in image noise, dynamic "
                         "range, and number of sources does not exceed that set by the "
-                        "convergence ratio of {0})".format(
-                            field.convergence_ratio
-                        )
+                        "convergence ratio of {0})".format(field.convergence_ratio)
                     )
                 if selfcal_state.diverged:
                     log.warning(
                         "Selfcal has diverged (ratio of current image noise "
-                        "to previous value is > {})".format(
-                            field.divergence_ratio
-                        )
+                        "to previous value is > {})".format(field.divergence_ratio)
                     )
                 if selfcal_state.failed:
                     log.warning(
                         "Selfcal has failed due to high noise (ratio of current image noise "
-                        "to theoretical value is > {})".format(
-                            field.failure_ratio
-                        )
+                        "to theoretical value is > {})".format(field.failure_ratio)
                     )
-                log.info(
-                    "Stopping selfcal at cycle {0} of {1}".format(
-                        cycle_number, len(steps)
-                    )
-                )
+                log.info("Stopping selfcal at cycle {0} of {1}".format(cycle_number, len(steps)))
                 break
         else:
             selfcal_state = None
@@ -344,16 +305,12 @@ def do_final_pass(field, selfcal_steps, final_step):
         final_pass = True
     else:
         # Selfcal was done
-        if field.do_check and (
-            field.selfcal_state.diverged or field.selfcal_state.failed
-        ):
+        if field.do_check and (field.selfcal_state.diverged or field.selfcal_state.failed):
             # Selfcal was found to have diverged or failed, so don't do the final pass
             # even if required otherwise
             log.warning(
                 "Selfcal diverged or failed, so skipping final cycle (with a data "
-                "fraction of {0:.2f})".format(
-                    field.parset["final_data_fraction"]
-                )
+                "fraction of {0:.2f})".format(field.parset["final_data_fraction"])
             )
             final_pass = False
         elif final_step == selfcal_steps[field.cycle_number - 1]:
@@ -403,16 +360,12 @@ def chunk_observations(field, steps, data_fraction):
         fast_solint = max([step.get("fast_timestep_sec", 0) for step in steps])
         slow_solint = max([step.get("slow_timestep_sec", 0) for step in steps])
         max_dd_timestep = max(fast_solint, slow_solint)
-        max_di_timestep = max(
-            [(step.get("fulljones_timestep_sec", 0)) for step in steps]
-        )
+        max_di_timestep = max([(step.get("fulljones_timestep_sec", 0)) for step in steps])
 
         # For DD solves, include the effect of DD solution intervals (given by
         # dd_interval_factor), which increases the solution intervals. This effect
         # does not apply to the DI solves
-        solve_time = max(
-            max_dd_timestep * field.dd_interval_factor, max_di_timestep
-        )  # sec
+        solve_time = max(max_dd_timestep * field.dd_interval_factor, max_di_timestep)  # sec
     else:
         # No calibration to be done
         solve_time = None
@@ -456,9 +409,7 @@ def chunk_observations(field, steps, data_fraction):
                     "total time for this observation that is less than the largest "
                     "potential calibration timestep ({1} s). The data fraction will be "
                     "increased to {2:0.3f} to attempt to meet the timestep "
-                    "requirement.".format(
-                        data_fraction, solve_time, min_fraction
-                    )
+                    "requirement.".format(data_fraction, solve_time, min_fraction)
                 )
                 obs.data_fraction = min_fraction
 
@@ -557,8 +508,6 @@ def make_report(field, outfile=None):
 
     # Open output file
     if outfile is None:
-        outfile = os.path.join(
-            field.parset["dir_working"], "logs", "diagnostics.txt"
-        )
+        outfile = os.path.join(field.parset["dir_working"], "logs", "diagnostics.txt")
     with open(outfile, "w") as f:
         f.writelines(output_lines)
