@@ -454,12 +454,7 @@ class Image(Operation):
         self.field.lofar_to_true_flux_ratio = 1.0  # reset values for this cycle
         self.field.lofar_to_true_flux_std = 0.0
 
-        unused = {
-            "sector_offsets",
-            "sector_skymodels",
-        }
         leave_in_place = set()
-        copied_manually = set()
         for index, sector in enumerate(self.field.imaging_sectors):
             # Get the list of images for this sector and save their filenames
             # for use in the mosaic operation. These files are left in place
@@ -487,8 +482,6 @@ class Image(Operation):
                 if filtering_mask:
                     sector.mask_filename = filtering_mask["path"]
                     leave_in_place.update({"source_filtering_mask"})
-            else:
-                unused.update({"source_filtering_mask"})
 
             # Save the output image cubes. Note that, unlike the normal images above,
             # the cubes are copied directly since mosaicking of the cubes is not yet
@@ -499,83 +492,81 @@ class Image(Operation):
                 "sector_image_cube_frequencies",
             }
             if "sector_image_cube" in self.outputs:
-                dest_dir = os.path.join(self.parset["dir_working"], "images", self.name)
                 self.copy_outputs_to(
-                    dest_dir, index=index, include=image_cube_keys, move=True
+                    os.path.join(self.parset["dir_working"], "images", self.name),
+                    index=index,
+                    include=image_cube_keys,
+                    move=True,
                 )
-                copied_manually.update(image_cube_keys)
 
-            # The output sky models, both true sky and apparent sky (the filenames are
-            # defined in the rapthor/scripts/filter_skymodel.py file)
+            # The output sky models. We also set the paths as attributes of the sector for later
+            # use
             #
             # Note: these are not generated when QUV images are made (WSClean does not
             # currently support writing a source list in this mode)
-            dest_dir = os.path.join(
+            skymodel_dest_dir = os.path.join(
                 self.parset["dir_working"], "skymodels", "image_{}".format(self.index)
             )
             if self.field.image_pol.lower() == 'i':
                 for skymodel_type in ["true_sky", "apparent_sky"]:
                     src_sector_skymodel = self.outputs[f"filtered_skymodel_{skymodel_type}"][index]["path"]
-                    sector_skymodel_file = os.path.join(dest_dir, os.path.basename(src_sector_skymodel))
+                    sector_skymodel_file = os.path.join(skymodel_dest_dir, os.path.basename(src_sector_skymodel))
                     setattr(sector, f"image_skymodel_file_{skymodel_type}", sector_skymodel_file)
                     self.copy_outputs_to(
-                        dest_dir,
+                        skymodel_dest_dir,
                         index=index,
                         include={f"filtered_skymodel_{skymodel_type}"},
                         move=True,
                     )
-                    copied_manually.update({f"filtered_skymodel_{skymodel_type}"})
 
             # The output PyBDSF source catalog
             self.copy_outputs_to(
-                dest_dir, index=index, include={"pybdsf_catalog"}, move=True
+                skymodel_dest_dir, index=index, include={"pybdsf_catalog"}, move=True
             )
-            copied_manually.update({"pybdsf_catalog"})
 
             # The output ds9 region file, if made
             if self.use_facets:
-                dest_dir = os.path.join(
-                    self.parset["dir_working"], "regions", "image_{}".format(self.index)
-                )
                 self.copy_outputs_to(
-                    dest_dir, index=index, include={"sector_region_file"}, move=True
+                    self.parset["dir_working"],
+                    "regions",
+                    "image_{}".format(self.index),
+                    index=index,
+                    include={"sector_region_file"},
+                    move=True,
                 )
-                copied_manually.update({"sector_region_file"})
 
             # The imaging visibilities
             if self.field.save_visibilities:
-                dest_dir = os.path.join(
-                    self.parset["dir_working"],
-                    "visibilities",
-                    "image_{}".format(self.index),
-                    sector.name,
-                )
                 self.copy_outputs_to(
-                    dest_dir, index=index, include={"visibilities"}, move=True
-                )
-                copied_manually.update({"visibilities"})
-            else:
-                unused.update({"visibilities"})
-
-            # The astrometry and photometry plots
-            dest_dir = os.path.join(
-                self.parset["dir_working"], "plots", "image_{}".format(self.index)
-            )
-            if self.outputs["sector_diagnostic_plots"][index]:
-                self.copy_outputs_to(
-                    dest_dir,
+                    dest_dir=os.path.join(
+                        self.parset["dir_working"],
+                        "visibilities",
+                        "image_{}".format(self.index),
+                        sector.name,
+                    ),
                     index=index,
-                    include={"sector_diagnostic_plots"},
+                    include={"visibilities"},
                     move=True,
                 )
-                copied_manually.update({"sector_diagnostic_plots"})
+
+            # The astrometry and photometry plots and diagnostics file
+            diagnostics_dest_dir = os.path.join(
+                self.parset["dir_working"], "plots", "image_{}".format(self.index)
+            )
+            diagnotics = {"sector_diagnostics"}
+            if self.outputs["sector_diagnostic_plots"][index]:
+                diagnotics.union("sector_diagnostic_plots")
+            self.copy_outputs_to(
+                diagnostics_dest_dir,
+                index=index,
+                include=diagnotics,
+                move=True,
+            )
 
             # Read in the image diagnostics and log a summary of them
-            #
-            # Note: this file is currently not moved (or deleted during the cleanup
-            # below), and so should remain in its original location if needed (e.g.,
-            # for restarted runs)
-            diagnostics_file = self.outputs["sector_diagnostics"][index]["path"]
+            diagnostics_file = os.path.join(
+                diagnostics_dest_dir, os.path.basename(self.outputs["sector_diagnostics"][0]["path"])
+            )
             with open(diagnostics_file, "r") as f:
                 diagnostics_dict = json.load(f)
             diagnostics_dict["cycle_number"] = self.index
@@ -585,20 +576,9 @@ class Image(Operation):
                 # Save the ratio with the lowest scatter for later use
                 self.field.lofar_to_true_flux_ratio = ratio
                 self.field.lofar_to_true_flux_std = std
-            leave_in_place.update({"sector_diagnostics"})
 
-        # Save other outputs and clean up
-        self.copy_outputs_to(
-            os.path.join(
-                self.parset["dir_working"],
-                "images",
-                f"image_{self.index}",
-                sector.name,
-            ),
-            exclude=copied_manually.union(leave_in_place, unused),
-            move=True
-        )
-        self.clean_outputs(unused)
+        # Clean up other files
+        self.clean_outputs(exclude=leave_in_place)
 
         # Finally call finalize() in the parent class
         super().finalize()
@@ -690,73 +670,63 @@ class ImageInitial(Image):
         """
         Finalize this operation
         """
-        # Set the outputs to copy to their final destinations.
-        #
-        # For this operation, the output images go to the default destination so they
-        # are not copied manually
         sector = self.field.full_field_sector
-        unused = {
-            "pybdsf_catalog",
-            "sector_region_file",
-            "visibilities",
-            "sector_offsets",
-            "sector_skymodels",
-            "source_filtering_mask"
-        }
-        leave_in_place = set()
-        copied_manually = set()
 
-        # The output sky models, both true sky and apparent sky
-        dest_dir = os.path.join(self.parset["dir_working"], "skymodels", self.name)
-        os.makedirs(dest_dir, exist_ok=True)
-        image_root = os.path.join(dest_dir, sector.name)
-        sector.image_skymodel_file_true_sky = f"{image_root}.true_sky.txt"
-        sector.image_skymodel_file_apparent_sky = f"{image_root}.apparent_sky.txt"
-        for src_filename, dst_filename in [
-            [
-                self.outputs["filtered_skymodel_true_sky"][0]["path"],
-                sector.image_skymodel_file_true_sky,
-            ],
-            [
-                self.outputs["filtered_skymodel_apparent_sky"][0]["path"],
-                sector.image_skymodel_file_apparent_sky,
-            ],
-        ]:
-            if not os.path.exists(dst_filename):
-                shutil.copy(src_filename, dst_filename)
-        copied_manually.update(
-            {"filtered_skymodel_true_sky", "filtered_skymodel_apparent_sky"}
+        # Save the output images
+        images = {"sector_I_images", "sector_extra_images"}
+        if self.field.save_supplementary_images:
+            if self.outputs["source_filtering_mask"][0]:
+                images.update({"source_filtering_mask"})
+        self.copy_outputs_to(
+            os.path.join(self.parset["dir_working"], "images", self.name),
+            include=images,
+            move=True
         )
 
-        # The astrometry and photometry plots
-        dest_dir = os.path.join(self.parset["dir_working"], "plots", self.name)
-        if self.outputs["sector_diagnostic_plots"][0]:
+        # Save the output sky models. We also set the paths as attributes of the sector for later
+        # use
+        skymodel_dest_dir = os.path.join(self.parset["dir_working"], "skymodels", self.name)
+        for skymodel_type in ["true_sky", "apparent_sky"]:
+            src_sector_skymodel = self.outputs[f"filtered_skymodel_{skymodel_type}"][0]["path"]
+            sector_skymodel_file = os.path.join(skymodel_dest_dir, os.path.basename(src_sector_skymodel))
+            setattr(sector, f"image_skymodel_file_{skymodel_type}", sector_skymodel_file)
             self.copy_outputs_to(
-                dest_dir, include={"sector_diagnostic_plots"}, move=True
+                skymodel_dest_dir,
+                include={f"filtered_skymodel_{skymodel_type}"},
+                move=True,
             )
-        copied_manually.update({"sector_diagnostic_plots"})
+
+        # Save the output PyBDSF source catalog
+        self.copy_outputs_to(
+            skymodel_dest_dir, include={"pybdsf_catalog"}, move=True
+        )
+
+        # Save the astrometry and photometry plots and diagnostics file
+        diagnostics_dest_dir = os.path.join(
+            os.path.join(self.parset["dir_working"], "plots", self.name)
+        )
+        diagnotics = {"sector_diagnostics"}
+        if self.outputs["sector_diagnostic_plots"][0]:
+            diagnotics.union("sector_diagnostic_plots")
+        self.copy_outputs_to(
+            diagnostics_dest_dir,
+            include=diagnotics,
+            move=True
+        )
 
         # Read in the image diagnostics and log a summary of them
-        #
-        # Note: this file is currently not moved (or deleted during the cleanup below),
-        # and so should remain in its original location if needed (e.g., for restarted
-        # runs)
-        diagnostics_file = self.outputs["sector_diagnostics"][0]["path"]
-        with open(diagnostics_file, 'r') as f:
+        diagnostics_file = os.path.join(
+            diagnostics_dest_dir, os.path.basename(self.outputs["sector_diagnostics"][0]["path"])
+        )
+        with open(diagnostics_file, "r") as f:
             diagnostics_dict = json.load(f)
         sector.diagnostics.append(diagnostics_dict)
         ratio, std = report_sector_diagnostics(sector.name, diagnostics_dict, self.log)
         self.field.lofar_to_true_flux_ratio = ratio
         self.field.lofar_to_true_flux_std = std
-        leave_in_place.update({"sector_diagnostics"})
 
-        # Save other outputs and clean up
-        self.copy_outputs_to(
-            os.path.join(self.parset["dir_working"], "images", self.name),
-            exclude=copied_manually.union(leave_in_place, unused),
-            move=True
-        )
-        self.clean_outputs(unused)
+        # Clean up other files
+        self.clean_outputs()
 
         # Finally call finalize() of the Operation class
         super(Image, self).finalize()
@@ -825,40 +795,25 @@ class ImageNormalize(Image):
         """
         Finalize this operation
         """
-        # Set the outputs to copy to their final destinations.
-        #
-        # For this operation, only the image cubes and the normilzed h5parm need to be
-        # saved. The image cubes go to the default destination so they are not copied
-        # manually
-        unused = {
-            "sector_I_images",
-            "sector_extra_images",
-            "filtered_skymodel_true_sky",
-            "filtered_skymodel_apparent_sky",
-            "sector_skymodels",
-            "pybdsf_catalog",
-            "sector_region_file",
-            "visibilities",
-            "sector_diagnostic_plots",
-            "sector_diagnostics",
-            "sector_offsets"
-        }
-        copied_manually = set()
-
         # Save the output h5parm with the flux-scale corrections
         src_filename = self.outputs["sector_normalize_h5parm"][0]["path"]
         dest_dir = os.path.join(self.parset["dir_working"], "solutions", self.name)
         self.field.normalize_h5parm = os.path.join(dest_dir, os.path.basename(src_filename))
         self.copy_outputs_to(dest_dir, include={"sector_normalize_h5parm"}, move=True)
-        copied_manually.update({"sector_normalize_h5parm"})
 
-        # Save other outputs and clean up
+        # Save the output image cubes
+        image_cube_keys = {
+            "sector_image_cube",
+            "sector_image_cube_beams",
+            "sector_image_cube_frequencies",
+        }
+        dest_dir = os.path.join(self.parset["dir_working"], "images", self.name)
         self.copy_outputs_to(
-            os.path.join(self.parset["dir_working"], "images", self.name),
-            exclude=copied_manually.union(unused),
-            move=True
+            dest_dir, include=image_cube_keys, move=True
         )
-        self.clean_outputs(unused)
+
+        # Clean up other files
+        self.clean_outputs()
 
         # Set the flags for subsequent processing
         self.field.normalize_flux_scale = False
