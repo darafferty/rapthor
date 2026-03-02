@@ -214,9 +214,9 @@ class Image(Operation):
             concat_filename.append(image_root[-1] + "_concat.ms")
 
             # Set other parameters
-            if self.field.parset["imaging_specific"]["use_clean_mask"] and sector.mask_filename:
+            if self.field.parset["imaging_specific"]["use_clean_mask"] and sector.I_mask_file:
                 # Use the existing mask
-                previous_mask_filename.append(sector.mask_filename)
+                previous_mask_filename.append(sector.I_mask_file)
             else:
                 # Use a dummy mask
                 previous_mask_filename.append(None)
@@ -528,15 +528,38 @@ class Image(Operation):
                         setattr(sector, output_type, path)
             leave_in_place.update({"sector_I_images", "sector_extra_images"})
 
-            # If the option to save supplementary images is set, set the sector
-            # mask_filename attribute to the filtering mask if it exists. This file is
-            # left in place at its original location for processing by the mosaic
-            # operation
-            if self.field.save_supplementary_images:
+            # If the option to save supplementary images is set or the use of the clean mask is
+            # desired in the next imaging operation, set the sector mask_filename attribute to the
+            # filtering mask if it exists
+            if (
+                self.field.save_supplementary_images
+                or self.field.parset["imaging_specific"]["use_clean_mask"]
+            ):
                 filtering_mask = self.outputs["source_filtering_mask"][index]
                 if filtering_mask:
+                    # Leave the mask file in place and set its path for use in the
+                    # mosaic operation
                     sector.mask_filename = filtering_mask["path"]
                     leave_in_place.update({"source_filtering_mask"})
+
+                    if self.field.parset["imaging_specific"]["use_clean_mask"]:
+                        # Copy the sector mask to save it for use in the next imaging operation.
+                        # The path to this file is saved in the sector's I_mask_file attribute
+                        dest_dir = os.path.join(
+                            self.parset["dir_working"],
+                            "images",
+                            self.name,
+                            sector.name,
+                        )
+                        self.copy_outputs_to(
+                            dest_dir,
+                            index=index,
+                            include={"source_filtering_mask"},
+                            move=False,
+                        )
+                        sector.I_mask_file = os.path.join(
+                            dest_dir, os.path.basename(filtering_mask["path"])
+                        )
                 else:
                     sector.mask_filename = None
 

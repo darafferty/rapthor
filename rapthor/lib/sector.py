@@ -53,7 +53,7 @@ class Sector(object):
         self.region_file = None
         self.I_image_file_true_sky = None  # set by the Image operation
         self.I_image_file_apparent_sky = None  # set by the Image operation
-        self.mask_filename = None   # set by the Image operation
+        self.I_mask_file = None   # set by the Image operation
         self.image_skymodel_file_apparent_sky = None  # set by the Image operation
         self.image_skymodel_file_true_sky = None  # set by the Image operation
         self.max_wsclean_nchannels = None  # set by the Image operation

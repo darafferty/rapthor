@@ -31,7 +31,7 @@ class Sector:
         self.auto_mask = None
         self.auto_mask_nmiter = 1
         self.central_patch = None
-        self.mask_filename = None
+        self.I_mask_file = None
         self.imsize = None
         self.multiscale = None
         self.region_file = None

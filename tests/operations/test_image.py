@@ -340,7 +340,7 @@ class TestImage:
     def test_image_operation_sets_mask_file(self, field, monkeypatch, tmp_path, expected_image_output):
         """
         Test that running an image operation with mocked CWL execution
-        sets sector.mask_filename to the correct value
+        sets sector.I_mask_file to the correct value
         """
         h5parm = tmp_path / "h5parm_file.h5"
         h5parm.touch()
@@ -368,9 +368,9 @@ class TestImage:
 
         # Check that the sector's mask_filename is set
         sector = field.imaging_sectors[0]
-        assert sector.mask_filename is not None
-        assert 'masks' in sector.mask_filename
-        assert 'image_1' in sector.mask_filename
+        assert sector.I_mask_file is not None
+        assert 'masks' in sector.I_mask_file
+        assert 'image_1' in sector.I_mask_file
 
     @pytest.mark.parametrize("use_clean_mask", [True, False])
     def test_image_with_previous_mask(self, field, monkeypatch, tmp_path, expected_image_output, use_clean_mask):
@@ -407,7 +407,7 @@ class TestImage:
 
         # Get the mask file from the first operation
         sector = field.imaging_sectors[0]
-        first_mask_file = sector.mask_filename
+        first_mask_file = sector.I_mask_file
         assert first_mask_file is not None
 
         # Second image operation - simulate reusing the mask from first operation
