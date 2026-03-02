@@ -323,21 +323,28 @@ class Observation(object):
         #
         # Note: we don't explicitly check that the resulting solution intervals fit
         # within the observation's size, as this is handled by DP3
-        solint_fast_timestep, solint_fast_freqstep = (
-            self.set_solution_interval('fast', target_fast_timestep, target_fast_freqstep, solve_max_factor)
-        )
+        self.set_solution_interval('fast', target_fast_timestep, target_fast_freqstep, solve_max_factor)
         self.set_solution_interval('medium', target_medium_timestep, target_medium_freqstep, solve_max_factor)
-        solint_slow_timestep, solint_slow_freqstep = (
-            self.set_solution_interval('slow', target_slow_timestep, target_slow_freqstep, solve_max_factor)
-        )
+        self.set_solution_interval('slow', target_slow_timestep, target_slow_freqstep, solve_max_factor)
         self.set_solution_interval('fulljones', target_fulljones_timestep, target_fulljones_freqstep, 1)
 
         # Define the BDA (baseline-dependent averaging) max interval constraints. They
         # are set to the solution intervals *before* adjusting for the DD intervals
         # to ensure that they match the smallest interval used in the solves (since
         # maxinterval cannot exceed solint in DDECal)
-        self.parameters['bda_maxinterval'] = [max(1.0, int(min(solint_fast_timestep, solint_slow_timestep) / solve_max_factor) * self.timepersample)] * self.ntimechunks  # sec
-        self.parameters['bda_minchannels'] = [max(1, int(self.numchannels / min(solint_fast_freqstep, solint_slow_freqstep)))] * self.ntimechunks  # channels
+        min_timestep = min(
+            self.parameters['solint_fast_timestep'][0],
+            self.parameters['solint_slow_timestep'][0],
+        )
+        bda_maxinterval = max(1.0, int(min_timestep / solve_max_factor) * self.timepersample) # sec
+        self.parameters['bda_maxinterval'] = [bda_maxinterval] * self.ntimechunks
+
+        min_freqstep = min(
+            self.parameters['solint_fast_freqstep'][0],
+            self.parameters['solint_slow_freqstep'][0],
+        )
+        bda_minchannels = max(1, int(self.numchannels / min_freqstep))  # channels
+        self.parameters['bda_minchannels'] = [bda_minchannels] * self.ntimechunks
 
         # Define the direction-dependent solution interval list for the fast and
         # slow solves (the full-Jones solve is direction-independent so is not included).
@@ -599,8 +606,6 @@ class Observation(object):
 
         self.parameters[f'solint_{solve_type}_timestep'] = [timestep] * self.ntimechunks
         self.parameters[f'solint_{solve_type}_freqstep'] = [freqstep] * self.ntimechunks
-
-        return timestep, freqstep
 
     def get_target_timewidth(self, delta_theta, resolution, reduction_factor):
         """
