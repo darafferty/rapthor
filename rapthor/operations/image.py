@@ -579,9 +579,11 @@ class Image(Operation):
             # The output ds9 region file, if made
             if self.use_facets:
                 self.copy_outputs_to(
-                    self.parset["dir_working"],
-                    "regions",
-                    "image_{}".format(self.index),
+                    os.path.join(
+                        self.parset["dir_working"],
+                        "regions",
+                        "image_{}".format(self.index),
+                    ),
                     index=index,
                     include={"sector_region_file"},
                     move=True,
@@ -741,9 +743,15 @@ class ImageInitial(Image):
         # use
         skymodel_dest_dir = os.path.join(self.parset["dir_working"], "skymodels", self.name)
         for skymodel_type in ["true_sky", "apparent_sky"]:
-            src_sector_skymodel = self.outputs[f"filtered_skymodel_{skymodel_type}"][0]["path"]
-            sector_skymodel_file = os.path.join(skymodel_dest_dir, os.path.basename(src_sector_skymodel))
-            setattr(sector, f"image_skymodel_file_{skymodel_type}", sector_skymodel_file)
+            src_sector_skymodel = self.outputs[f"filtered_skymodel_{skymodel_type}"][0][
+                "path"
+            ]
+            sector_skymodel_file = os.path.join(
+                skymodel_dest_dir, os.path.basename(src_sector_skymodel)
+            )
+            setattr(
+                sector, f"image_skymodel_file_{skymodel_type}", sector_skymodel_file
+            )
             self.copy_outputs_to(
                 skymodel_dest_dir,
                 include={f"filtered_skymodel_{skymodel_type}"},
@@ -770,7 +778,8 @@ class ImageInitial(Image):
 
         # Read in the image diagnostics and log a summary of them
         diagnostics_file = os.path.join(
-            diagnostics_dest_dir, os.path.basename(self.outputs["sector_diagnostics"][0]["path"])
+            diagnostics_dest_dir,
+            os.path.basename(self.outputs["sector_diagnostics"][0]["path"]),
         )
         with open(diagnostics_file, "r") as f:
             diagnostics_dict = json.load(f)
