@@ -3,7 +3,6 @@ Module that holds the Mosaic class
 """
 import os
 import logging
-import path
 import shutil
 from rapthor.lib.operation import Operation
 from rapthor.lib.cwl import CWLFile
@@ -126,7 +125,7 @@ class Mosaic(Operation):
             # Remove the individual sector images, as they are not needed
             for image_name in self.image_names:
                 for sector in self.field.imaging_sectors:
-                    path.unlink(getattr(sector, image_name))
+                    os.unlink(getattr(sector, image_name))
 
         # Finally call finalize() in the parent class
         super().finalize()
