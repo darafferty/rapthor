@@ -214,7 +214,6 @@ class Observation(object):
     def set_calibration_parameters(
         self,
         parset,
-        ndir,
         nobs,
         calibrator_fluxes,
         target_fast_timestep,
@@ -232,8 +231,6 @@ class Observation(object):
         ----------
         parset : dict
             Parset with processing parameters
-        ndir : int
-            Number of calibration directions/patches
         nobs : int
             Number of observations in total
         calibrator_fluxes : list
@@ -261,13 +258,15 @@ class Observation(object):
         target_medium_freqstep = parset['calibration_specific']['medium_freqstep_hz']
         target_slow_freqstep = parset['calibration_specific']['slow_freqstep_hz']
         target_fulljones_freqstep = parset['calibration_specific']['fulljones_freqstep_hz']
-        solve_max_factor = parset['calibration_specific']['dd_interval_factor']
-        smoothness_max_factor = parset['calibration_specific']['dd_smoothness_factor']
+
         if generate_screens:
             # Screens do not support the direction-dependent smoothness contraint or
             # solve intervals, so disable them
             solve_max_factor = 1
             smoothness_max_factor = 1
+        else:
+            solve_max_factor = parset['calibration_specific']['dd_interval_factor']
+            smoothness_max_factor = parset['calibration_specific']['dd_smoothness_factor']
 
         if chunk_by_time:
             # Find the maximum solution interval in time that can be used in any solve
