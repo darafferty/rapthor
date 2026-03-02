@@ -214,9 +214,9 @@ class Image(Operation):
             concat_filename.append(image_root[-1] + "_concat.ms")
 
             # Set other parameters
-            if self.field.parset["imaging_specific"]["use_clean_mask"] and sector.I_mask_file:
+            if self.field.parset["imaging_specific"]["use_clean_mask"] and sector.mask_filename:
                 # Use the existing mask
-                previous_mask_filename.append(sector.I_mask_file)
+                previous_mask_filename.append(sector.mask_filename)
             else:
                 # Use a dummy mask
                 previous_mask_filename.append(None)
@@ -537,6 +537,8 @@ class Image(Operation):
                 if filtering_mask:
                     sector.mask_filename = filtering_mask["path"]
                     leave_in_place.update({"source_filtering_mask"})
+                else:
+                    sector.mask_filename = None
 
             # Save the output image cubes. Note that, unlike the normal images above,
             # the cubes are copied directly since mosaicking of the cubes is not yet
