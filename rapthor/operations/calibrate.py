@@ -103,10 +103,7 @@ class CalibrateDD(Operation):
             solution_combine_mode = 'p1p2a2_scalar'
 
         # Define the input sky model
-        if self.field.peel_non_calibrator_sources:
-            calibration_skymodel_file = self.field.calibrators_only_skymodel_file
-        else:
-            calibration_skymodel_file = self.field.calibration_skymodel_file
+        calibration_skymodel_file = self.field.calibration_skymodel_file
         num_spectral_terms = misc.get_max_spectral_terms(calibration_skymodel_file)
         model_image_root = 'calibration_model'
         model_image_frequency_bandwidth, model_image_ra_dec, model_image_imsize, model_image_cellsize = self.get_model_image_parameters()

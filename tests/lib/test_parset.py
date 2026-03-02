@@ -8,6 +8,7 @@ import string
 import tempfile
 import textwrap
 import unittest
+
 try:
     import mock
 except ImportError:
@@ -81,7 +82,8 @@ class TestParset(unittest.TestCase):
         with self.assertLogs(logger="rapthor:parset", level="WARN") as cm:
             parset_read(self.parset.name)
             self.assertEqual(
-                cm.output, [f"WARNING:rapthor:parset:Section [{section}] is invalid"]
+                cm.output,
+                [f"WARNING:rapthor:parset:Section [{section}] is invalid"],
             )
 
     def test_misspelled_option(self):
@@ -92,9 +94,7 @@ class TestParset(unittest.TestCase):
             parset_read(self.parset.name)
             self.assertEqual(
                 cm.output,
-                [
-                    f"WARNING:rapthor:parset:Option '{option}' in section [global] is invalid"
-                ],
+                [f"WARNING:rapthor:parset:Option '{option}' in section [global] is invalid"],
             )
 
     def test_deprecated_option(self):
@@ -116,7 +116,8 @@ class TestParset(unittest.TestCase):
         with open(self.parset.name, "a") as f:
             f.write(f"{option} = {value}")
         with self.assertRaisesRegex(
-            ValueError, f"The {option} parameter is {value}; it must be > 0 and <= 1"
+            ValueError,
+            f"The {option} parameter is {value}; it must be > 0 and <= 1",
         ):
             parset_read(self.parset.name)
 
@@ -126,9 +127,7 @@ class TestParset(unittest.TestCase):
         with open(self.parset.name, "a") as f:
             f.write("[imaging]\n")
             f.write(f"{option} = {value}")
-        with self.assertRaisesRegex(
-            ValueError, f"The option '{option}' must be one of"
-        ):
+        with self.assertRaisesRegex(ValueError, f"The option '{option}' must be one of"):
             parset_read(self.parset.name)
 
     def test_unequal_sector_list_lengths(self):
@@ -136,7 +135,8 @@ class TestParset(unittest.TestCase):
             f.write("[imaging]\n")
             f.write("sector_center_ra_list = [1]")
         with self.assertRaisesRegex(
-            ValueError, "The options .* must all have the same number of entries"
+            ValueError,
+            "The options .* must all have the same number of entries",
         ):
             parset_read(self.parset.name)
 
@@ -149,7 +149,8 @@ class TestParset(unittest.TestCase):
                 string.Template(
                     open("resources/rapthor_minimal.parset.template").read()
                 ).substitute(
-                    dir_working=self.dir_working.name, input_ms=self.input_ms.name
+                    dir_working=self.dir_working.name,
+                    input_ms=self.input_ms.name,
                 )
             )
         parset = parset_read(self.parset.name)
@@ -169,7 +170,8 @@ class TestParset(unittest.TestCase):
                 string.Template(
                     open("resources/rapthor_complete.parset.template").read()
                 ).substitute(
-                    dir_working=self.dir_working.name, input_ms=self.input_ms.name
+                    dir_working=self.dir_working.name,
+                    input_ms=self.input_ms.name,
                 )
             )
         parset = parset_read(self.parset.name)

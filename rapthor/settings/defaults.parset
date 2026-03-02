@@ -62,14 +62,15 @@ strategy = selfcal
 selfcal_data_fraction = 0.2
 final_data_fraction = 1.0
 
-# Full path to an H5parm file with direction-dependent solutions (default =
-# None). This file is required if no calibration is to be done. Full-Jones
-# solutions can also be supplied. Note: the directions in the H5parm file must
-# match the patches in the input sky model, and the time and frequency coverage
-# of the solutions must be sufficient to cover the duration and bandwidth of
-# the input dataset
+# Full path to an H5parm file with direction-dependent solutions (default = None). This
+# file is required if no calibration is to be done. Full-Jones and flux- scale
+# normalization solutions can also be supplied. Note: the directions in the H5parm file
+# must match the patches in the input sky model (or facet layout file, if supplied),
+# and the time and frequency coverage of the solutions must be sufficient to cover the
+# duration and bandwidth of the input dataset
 input_h5parm = None
 input_fulljones_h5parm = None
+input_normalization_h5parm = None
 
 # Full path to a text file (in ds9 format) that defines the facet layout
 # (default = None). If a facet file is supplied, calibration patches and imaging
@@ -261,6 +262,10 @@ make_quv_images = False
 pol_combine_method = link
 disable_iquv_clean = False
 
+
+# Enable the use of a clean mask between imaging runs
+use_clean_mask = False
+
 # Use MPI to distribute WSClean jobs over multiple nodes (default = False)? If
 # True and more than one node can be allocated to each WSClean job (i.e.,
 # max_nodes / num_images >= 2), then distributed imaging will be used.
@@ -332,6 +337,10 @@ skip_final_major_iteration = True
 # processed (if possible for the given grid)
 skip_corner_sectors = False
 
+# Full paths to comparison sky model files for photometry and astrometry
+# diagnostics
+photometry_skymodel = None
+astrometry_skymodel = None
 
 [cluster]
 # Cluster batch system (default = single_machine).

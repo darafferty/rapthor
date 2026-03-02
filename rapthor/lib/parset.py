@@ -1,6 +1,7 @@
 """
 Module that holds all parset-related functions
 """
+
 import ast
 import configparser
 import glob
@@ -9,6 +10,7 @@ import os
 from importlib import resources
 
 import astropy.coordinates
+
 import rapthor.lib.miscellaneous as misc
 from rapthor._logging import set_log_file
 from rapthor._version import __version__
@@ -96,11 +98,7 @@ class Parset:
 
         # Deprecated options are hard-coded below. Each deprecated option can have
         # zero or more suggestions for alternative options.
-        self.deprecated_options = {
-            "cluster": {
-                "dir_local": {"local_scratch_dir"}
-            }
-        }
+        self.deprecated_options = {"cluster": {"dir_local": {"local_scratch_dir"}}}
 
         # Sanity check. Ensure that all required sections and options are also allowed.
         assert self.required_sections <= self.allowed_sections, "%s <= %s" % (
@@ -108,9 +106,7 @@ class Parset:
             self.allowed_sections,
         )
         for section in self.required_options:
-            assert (
-                self.required_options[section] <= self.allowed_options[section]
-            ), "%s <= %s" % (
+            assert self.required_options[section] <= self.allowed_options[section], "%s <= %s" % (
                 self.required_options[section],
                 self.allowed_options[section],
             )
@@ -173,8 +169,7 @@ class Parset:
         }
         invalid_sections = given_sections - self.allowed_sections
         invalid_options = {
-            sect: given_options[sect] - self.allowed_options[sect]
-            for sect in self.allowed_sections
+            sect: given_options[sect] - self.allowed_options[sect] for sect in self.allowed_sections
         }
         deprecated_options = {
             sect: set(self.deprecated_options[sect]) & given_options[sect]
@@ -190,7 +185,8 @@ class Parset:
             if options:
                 raise ValueError(
                     "Missing required option(s) in section [{}]: {}".format(
-                        section, ", ".join("'{}'".format(opt) for opt in options)
+                        section,
+                        ", ".join("'{}'".format(opt) for opt in options),
                     )
                 )
 
@@ -256,6 +252,19 @@ class Parset:
                 "Both 'generate_initial_skymodel' and 'download_initial_skymodel' are "
                 "activated. Only one of these options can be active."
             )
+        if (
+            options["regroup_input_skymodel"]
+            and options["input_skymodel"]
+            and options["input_h5parm"]
+            and not options["facet_layout"]
+        ):
+            raise ValueError(
+                "Regrouping of the input sky model was activated, but regrouping "
+                "cannot be done when input solutions are provided unless a facet "
+                "layout file is also provided. This restriction ensures that the "
+                "directions defined for the solutions match the patches defined in "
+                "the sky model"
+            )
 
         # Calibration options
         options = settings["calibration"]
@@ -264,27 +273,31 @@ class Parset:
             "fast_datause": ("single", "dual", "full"),
             "medium_datause": ("single", "dual", "full"),
             "slow_datause": ("dual", "full"),
-            "solveralgorithm": ("hybrid", "lbfgs", "directioniterative", "directionsolve"),
+            "solveralgorithm": (
+                "hybrid",
+                "lbfgs",
+                "directioniterative",
+                "directionsolve",
+            ),
         }.items():
             if options[opt] not in valid_values:
                 raise ValueError(
                     "The option '{}' must be one of {}".format(
-                        opt, ", ".join("'{}'".format(val) for val in valid_values)
+                        opt,
+                        ", ".join("'{}'".format(val) for val in valid_values),
                     )
                 )
 
         dd_smoothness_factor = options["dd_smoothness_factor"]
         if dd_smoothness_factor < 1:
             raise ValueError(
-                f"The dd_smoothness_factor parameter is {dd_smoothness_factor}; "
-                f"it must be >= 1"
+                f"The dd_smoothness_factor parameter is {dd_smoothness_factor}; it must be >= 1"
             )
         dd_interval_factor = options["dd_interval_factor"]
         solveralgorithm = options["solveralgorithm"]
         if dd_interval_factor < 1:
             raise ValueError(
-                f"The dd_interval_factor parameter is {dd_interval_factor}; "
-                f"it must be >= 1"
+                f"The dd_interval_factor parameter is {dd_interval_factor}; it must be >= 1"
             )
         elif dd_interval_factor > 1 and solveralgorithm != "directioniterative":
             log.warning(
@@ -297,14 +310,14 @@ class Parset:
             # multi-calibration; once they can be, the restriction on their use
             # should be removed
             log.warning(
-                "Switching off direction-dependent intervals, since they are "
-                "not yet supported."
+                "Switching off direction-dependent intervals, since they are not yet supported."
             )
             options["dd_interval_factor"] = 1
         if (
-            (options["fast_datause"] != "full" or options["medium_datause"] != "full" or options["slow_datause"] != "full") and
-            options["solveralgorithm"] != "directioniterative"
-        ):
+            options["fast_datause"] != "full"
+            or options["medium_datause"] != "full"
+            or options["slow_datause"] != "full"
+        ) and options["solveralgorithm"] != "directioniterative":
             log.warning(
                 f"Switching from the '{solveralgorithm}' solver to the "
                 "'directioniterative' solver, since single or dual visibilities "
@@ -312,19 +325,12 @@ class Parset:
             )
             options["solveralgorithm"] = "directioniterative"
 
-        if (
-            options['use_image_based_predict'] and
-            (
-                options['bda_timebase'] > 0 or
-                options['bda_frequencybase'] > 0
-            )
+        if options["use_image_based_predict"] and (
+            options["bda_timebase"] > 0 or options["bda_frequencybase"] > 0
         ):
-            log.warning(
-                "Switching off BDA during solving, since image-based predict is "
-                "activated."
-            )
-            options['bda_timebase'] = 0
-            options['bda_frequencybase'] = 0
+            log.warning("Switching off BDA during solving, since image-based predict is activated.")
+            options["bda_timebase"] = 0
+            options["bda_frequencybase"] = 0
 
         # Imaging options
         options = settings["imaging"]
@@ -337,7 +343,8 @@ class Parset:
             if options[opt] not in valid_values:
                 raise ValueError(
                     "The option '{}' must be one of {}".format(
-                        opt, ", ".join("'{}'".format(val) for val in valid_values)
+                        opt,
+                        ", ".join("'{}'".format(val) for val in valid_values),
                     )
                 )
 
@@ -354,14 +361,9 @@ class Parset:
             )
 
         if len(options["dd_psf_grid"]) != 2:
-            raise ValueError(
-                "The option 'dd_psf_grid' must be a list of length 2 (e.g. '[3, 3]')"
-            )
+            raise ValueError("The option 'dd_psf_grid' must be a list of length 2 (e.g. '[3, 3]')")
 
-        if (
-            options["correct_time_frequency_smearing"] and
-            options["bda_timebase"] > 0
-        ):
+        if options["correct_time_frequency_smearing"] and options["bda_timebase"] > 0:
             log.warning(
                 "Switching off BDA during imaging, since correction for time "
                 "and frequency smearing is activated."
@@ -370,8 +372,8 @@ class Parset:
             # options["bda_frequencybase"] = 0  # TODO: also disable frequency BDA once implemented
 
         if (
-            settings["imaging"]["correct_time_frequency_smearing"] !=
-            settings["calibration"]["correct_time_frequency_smearing"]
+            settings["imaging"]["correct_time_frequency_smearing"]
+            != settings["calibration"]["correct_time_frequency_smearing"]
         ):
             log.warning(
                 "Correction for time and frequency smearing is enabled "
@@ -419,7 +421,8 @@ class Parset:
             if options[opt] not in valid_values:
                 raise ValueError(
                     "The option '{}' must be one of {}".format(
-                        opt, ", ".join("'{}'".format(val) for val in valid_values)
+                        opt,
+                        ", ".join("'{}'".format(val) for val in valid_values),
                     )
                 )
 
@@ -474,9 +477,7 @@ class Parset:
             if not self.__parser.read(parset_file):
                 raise FileNotFoundError(f"Missing parset file ({parset_file}).")
         except configparser.ParsingError as err:
-            raise ValueError(
-                f"Parset file '{parset_file}' could not be parsed correctly.\n{err}"
-            )
+            raise ValueError(f"Parset file '{parset_file}' could not be parsed correctly.\n{err}")
 
         self.__sanitize()
         settings = Parset.config_as_dict(self.__parser)
@@ -561,12 +562,11 @@ def parset_read(parset_file, use_log_file=True):
     parset_dict["mss"] = sorted(ms_files)
     if len(parset_dict["mss"]) == 0:
         raise FileNotFoundError(
-            "No input MS files were found (searched for files "
-            "matching: {}).".format(
+            "No input MS files were found (searched for files matching: {}).".format(
                 ", ".join('"{0}"'.format(search_str) for search_str in ms_search_list)
             )
         )
-    suffix = 's' if len(parset_dict["mss"]) > 1 else ''
+    suffix = "s" if len(parset_dict["mss"]) > 1 else ""
     log.info("Working on {0} input MS file{1}".format(len(parset_dict["mss"]), suffix))
 
     # Make sure the initial sky model is present or, if not, that generation or download
