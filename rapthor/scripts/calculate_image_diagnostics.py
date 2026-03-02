@@ -576,7 +576,7 @@ def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_im
             dst_filename = os.path.join('.', f'{output_root}.' + os.path.basename(src_filename))
             if os.path.exists(dst_filename):
                 os.remove(dst_filename)
-            shutil.copy(src_filename, dst_filename)
+            shutil.move(src_filename, dst_filename)
 
 
 if __name__ == '__main__':
