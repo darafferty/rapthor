@@ -599,7 +599,7 @@ class Image(Operation):
             # The imaging visibilities
             if self.field.save_visibilities:
                 self.copy_outputs_to(
-                    dest_dir=os.path.join(
+                    os.path.join(
                         self.parset["dir_working"],
                         "visibilities",
                         "image_{}".format(self.index),
