@@ -9,7 +9,6 @@ from typing import List, Union
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.operation import Operation
 from rapthor.lib.cwl import CWLFile, CWLDir
-import shutil
 
 log = logging.getLogger('rapthor:image')
 
@@ -352,7 +351,7 @@ class Image(Operation):
                             'interval': interval,
                             'max_threads': self.field.parset['cluster_specific']['max_threads'],
                             'deconvolution_threads': self.field.parset['cluster_specific']['deconvolution_threads'],
-                            'save_filtered_model_image': self.field.parset["imaging_specific"]["save_filtered_model_image"]      
+                            'save_filtered_model_image': self.field.parset["imaging_specific"]["save_filtered_model_image"]
                             }
 
         # Add parameters that depend on the set_parset parameters (set in set_parset_parameters())
@@ -555,7 +554,7 @@ class Image(Operation):
             )
             diagnotics = {"sector_diagnostics"}
             if self.outputs["sector_diagnostic_plots"][index]:
-                diagnotics.union("sector_diagnostic_plots")
+                diagnotics.update({"sector_diagnostic_plots"})
             self.copy_outputs_to(
                 diagnostics_dest_dir,
                 index=index,
@@ -707,7 +706,7 @@ class ImageInitial(Image):
         )
         diagnotics = {"sector_diagnostics"}
         if self.outputs["sector_diagnostic_plots"][0]:
-            diagnotics.union("sector_diagnostic_plots")
+            diagnotics.update({"sector_diagnostic_plots"})
         self.copy_outputs_to(
             diagnostics_dest_dir,
             include=diagnotics,
