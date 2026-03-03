@@ -225,4 +225,21 @@ RUN aoflagger --version && \
 DP3 --version && \
 wsclean --version
 
+
+# Install development dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    gfortran \
+    cmake \
+    git \
+    ninja-build \
+    python3-dev \
+    python3-pip \
+    python3-dev \
+    libboost-python-dev \
+    libboost-numpy-dev \
+    libhdf5-dev \
+    python3-pytest \
+    && rm -rf /var/lib/apt/lists/*
+
 CMD ["/bin/bash"]
