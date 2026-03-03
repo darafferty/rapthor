@@ -122,10 +122,10 @@ class Mosaic(Operation):
             shutil.copy(os.path.join(self.pipeline_working_dir, self.mosaic_filename[i]),
                         field_image_filename)
 
-            # Remove the individual sector images, as they are not needed
-            for image_name in self.image_names:
-                for sector in self.field.imaging_sectors:
-                    os.unlink(getattr(sector, image_name))
+            # Remove the individual sector images that were used to make the mosaic, as they are no
+            # longer needed
+            for sector in self.field.imaging_sectors:
+                os.unlink(getattr(sector, image_name))
 
         # Finally call finalize() in the parent class
         super().finalize()
