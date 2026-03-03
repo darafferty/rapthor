@@ -506,8 +506,9 @@ The available options are described below under their respective sections.
         specified as a comma-separated list (e.g., ``[Q, U]``; default = ``[I]``).
 
     save_supplementary_images
-        Save dirty images and the clean masks made during each imaging cycle (default =
-        ``False``).
+        Save the supplementary images during each imaging cycle (default = ``False``). For now,
+        this is just the PyBDSF-generated masks used for filtering of the sky model (if
+        :term:`filter_skymodel` = ``True``).
 
     save_filtered_model_images
         Save images of the filtered sky model made during each imaging cycle

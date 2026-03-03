@@ -221,8 +221,8 @@ average_visibilities = True
 save_image_cube = False
 image_cube_stokes_list = [I]
 
-# Save supplementary images for diagnostics (e.g., dirty images and pybdsf masks)
-# made during each imaging cycle (default = False)
+# Save supplementary images for diagnostics (for now, just the PyBDSF-generated
+# source-filtering masks) made during each imaging cycle (default = False)
 save_supplementary_images = False
 
 # Compress intermediate selfcal images to reduce storage space (default = True)
