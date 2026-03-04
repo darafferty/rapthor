@@ -6,8 +6,12 @@ from rapthor.lib.strategy import set_selfcal_strategy
 from rapthor.operations.image import Image
 from rapthor.operations.mosaic import Mosaic
 
+
 @pytest.fixture
 def field_I_no_predict(field):
+    """
+    Fixture to set up the field for the image operation with predict disabled.
+    """
     field.h5parm_filename = "nonexisting_h5parm_file.h5"
     field.scan_observations()
     field.parset["regroup_input_skymodel"] = False
@@ -19,27 +23,30 @@ def field_I_no_predict(field):
     field.skip_final_major_iteration = True
     return field
 
+
 @pytest.fixture
 def image_patched_execution(field_I_no_predict, monkeypatch, expected_image_output):
     """                       
     Fixture to patch the CWL execution for the Image operation.
-    """                             
+    """
+
+    # Patch the CWL execution to return the expected output for the Image operation
     monkeypatch.setattr(
-            "rapthor.lib.cwlrunner.BaseCWLRunner.execute",
-            lambda self, args, env: mocked_cwl_execution(self, args, env, expected_image_output),
-            raising=False
-        )
+        "rapthor.lib.cwlrunner.BaseCWLRunner.execute",
+        lambda self, args, env: mocked_cwl_execution(self, args, env, expected_image_output),
+        raising=False
+    )
     image = Image(field=field_I_no_predict, index=1)
     return image
+
 
 @pytest.mark.integration
 def test_image_to_mosaic(image_patched_execution, monkeypatch):
     """
-    Test the `image_to_mosaic` operation.
+    Test the execution of the following operations in sequence:
+    1. Image (with predict disabled)
+    2. Mosaic (with the output of the Image operation as input)
     """
-    # Run the Image operation first to set sector attributes
-    image_patched_execution.run()
-
     # Now create and run the Mosaic operation (after sector image attributes are set)
     with monkeypatch.context() as m:
         m.setattr(
