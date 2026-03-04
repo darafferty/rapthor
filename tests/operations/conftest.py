@@ -5,7 +5,8 @@ import pytest
 @pytest.fixture
 def expected_image_output():
     """
-    Fixture to provide expected output structure for CWL execution.
+    Fixture which provides the expected output structure for CWL execution
+    of an image step in the non-last cycle.
     """
     return {
         "sector_I_images": [["sector0-MFS-I-image-pb.fits", "sector0-MFS-I-image.fits"]],
@@ -21,7 +22,8 @@ def expected_image_output():
 @pytest.fixture
 def expected_image_output_last_cycle():
     """
-    Fixture to provide expected output structure for CWL execution in the last cycle.
+    Fixture which provides the expected output structure for CWL execution
+    of the image step in the last cycle.
     """
     return {
         "sector_I_images": [["sector0-MFS-I-image-pb.fits", "sector0-MFS-I-image.fits"]],
