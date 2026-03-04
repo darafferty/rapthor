@@ -60,14 +60,11 @@ class Mosaic(Operation):
                     [
                         f"{polup}_model_file_true_sky",
                         f"{polup}_residual_file_apparent_sky",
-                        f'{polup}_dirty_file_apparent_sky'
+                        f"{polup}_dirty_file_apparent_sky"
                     ]
                 )
-            if (
-                self.field.save_supplementary_images
-                and "mask_filename" not in self.image_names
-            ):
-                self.image_names.append("mask_filename")
+        if self.field.save_supplementary_images:
+            self.image_names.append("filtering_mask_file")
 
         for image_name in self.image_names:
             image_list = []
@@ -114,8 +111,12 @@ class Mosaic(Operation):
             dst_dir = os.path.join(self.field.parset['dir_working'], 'images',
                                    'image_{}'.format(self.index))
             os.makedirs(dst_dir, exist_ok=True)
-            suffix = getattr(self.field.imaging_sectors[0], image_name).split('MFS')[-1]
-            field_image_filename = os.path.join(dst_dir, 'field-MFS{}'.format(suffix))
+            if image_name == "filtered_model_file_apparent_sky":
+                # The filtered model image has a different naming convention from the other images
+                suffix = getattr(self.field.imaging_sectors[0], image_name).split('sector_1.')[-1]
+            else:
+                suffix = getattr(self.field.imaging_sectors[0], image_name).split('sector_1-')[-1]
+            field_image_filename = os.path.join(dst_dir, 'field-{}'.format(suffix))
             if image_name == 'I_image_file_true_sky':
                 # Save the Stokes I true-sky image filename as an attribute of the field
                 # object for later use

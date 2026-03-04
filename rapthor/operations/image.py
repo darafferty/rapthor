@@ -517,9 +517,17 @@ class Image(Operation):
                 for x in self.outputs["sector_I_images"][index]
                 + self.outputs["sector_extra_images"][index]
             ]
+            if self.field.save_supplementary_images:
+                file_list.extend(
+                    [x["path"] for x in self.outputs["source_filtering_mask"][index]]
+                )
+            if self.field.parset["imaging_specific"]["save_filtered_model_image"]:
+                file_list.extend(
+                    [x["path"] for x in self.outputs["sector_skymodel_image_fits"][index]]
+                )
             type_path_map = Image.find_in_file_list(file_list)
             for output_type, paths in type_path_map.items():
-                if output_type != "mask_filename":
+                if output_type not in ["filtering_mask_file", "filtered_model_file_apparent_sky"]:
                     for path in paths:
                         pol = Image.derive_pol_from_filename(path)
                         setattr(sector, f"{pol}_{output_type}", path)
@@ -527,41 +535,33 @@ class Image(Operation):
                     for path in paths:
                         setattr(sector, output_type, path)
             leave_in_place.update({"sector_I_images", "sector_extra_images"})
+            if self.field.save_supplementary_images:
+                leave_in_place.update({"source_filtering_mask"})
+            if self.field.parset["imaging_specific"]["save_filtered_model_image"]:
+                leave_in_place.update({"sector_skymodel_image_fits"})
 
-            # If the option to save supplementary images is set or the use of the clean mask is
-            # desired in the next imaging operation, set the sector mask_filename attribute to the
-            # filtering mask if it exists
-            if (
-                self.field.save_supplementary_images
-                or self.field.parset["imaging_specific"]["use_clean_mask"]
-            ):
-                filtering_mask = self.outputs["source_filtering_mask"][index]
-                if filtering_mask:
-                    # Leave the mask file in place and set its path for use in the
-                    # mosaic operation
-                    sector.mask_filename = filtering_mask["path"]
-                    leave_in_place.update({"source_filtering_mask"})
-
-                    if self.field.parset["imaging_specific"]["use_clean_mask"]:
-                        # Copy the sector mask to save it for use in the next imaging operation.
-                        # The path to this file is saved in the sector's I_mask_file attribute
-                        dest_dir = os.path.join(
-                            self.parset["dir_working"],
-                            "images",
-                            self.name,
-                            sector.name,
-                        )
-                        self.copy_outputs_to(
-                            dest_dir,
-                            index=index,
-                            include={"source_filtering_mask"},
-                            move=False,
-                        )
-                        sector.I_mask_file = os.path.join(
-                            dest_dir, os.path.basename(filtering_mask["path"])
-                        )
-                else:
-                    sector.mask_filename = None
+            if self.field.parset["imaging_specific"]["use_clean_mask"]:
+                # Copy the sector mask to save it for use in a subsequent imaging operation. Note
+                # that, unlike the normal images above, this image is copied directly since
+                # mosaiking is not needed.
+                # The path to this file is saved in the sector's I_mask_file attribute
+                dest_dir = os.path.join(
+                    self.parset["dir_working"],
+                    "images",
+                    self.name,
+                    sector.name,
+                )
+                self.copy_outputs_to(
+                    dest_dir,
+                    index=index,
+                    include={"source_filtering_mask"},
+                    move=False,
+                )
+                sector.I_mask_file = os.path.join(
+                    dest_dir, os.path.basename(self.outputs["source_filtering_mask"][index]["path"])
+                )
+            else:
+                sector.I_mask_file = None
 
             # Save the output image cubes. Note that, unlike the normal images above,
             # the cubes are copied directly since mosaicking of the cubes is not yet
@@ -676,9 +676,10 @@ class Image(Operation):
             "image_file_true_sky": "image-pb.",
             "image_file_apparent_sky": "image.",
             "model_file_true_sky": "model-pb.",
+            "filtered_model_file_apparent_sky": "apparent_sky.txt.",
             "residual_file_apparent_sky": "residual.",
             "dirty_file_apparent_sky": "dirty.",
-            "mask_filename": "mask.",
+            "filtering_mask_file": "mask.",
         }
         type_path_map = {}
         for name, ext in ext_mapping.items():
