@@ -36,8 +36,7 @@ def image_patched_execution(field_I_no_predict, monkeypatch, expected_image_outp
         lambda self, args, env: mocked_cwl_execution(self, args, env, expected_image_output),
         raising=False
     )
-    image = Image(field=field_I_no_predict, index=1)
-    return image
+    return Image(field=field_I_no_predict, index=1)
 
 
 @pytest.mark.integration
@@ -47,6 +46,10 @@ def test_image_to_mosaic(image_patched_execution, monkeypatch):
     1. Image (with predict disabled)
     2. Mosaic (with the output of the Image operation as input)
     """
+
+    image_patched_execution.set_input_parameters()
+    image_patched_execution.set_parset_parameters()
+    image_patched_execution.run()
     # Now create and run the Mosaic operation (after sector image attributes are set)
     with monkeypatch.context() as m:
         m.setattr(
@@ -54,9 +57,6 @@ def test_image_to_mosaic(image_patched_execution, monkeypatch):
             lambda self, args, env: mocked_cwl_execution(self, args, env),
             raising=False
         )
-        image_patched_execution.set_input_parameters()
-        image_patched_execution.set_parset_parameters()
-        image_patched_execution.run()
 
         mosaic = Mosaic(field=image_patched_execution.field, index=1)
         mosaic.set_input_parameters()
