@@ -384,3 +384,31 @@ class TestObservation:
         )
         assert max_solint == expected_max
         assert isinstance(max_solint, int)
+
+
+def test_chunking_by_time(observation, field, monkeypatch):
+
+    def assert_chunking_by_time(observations, expected_n_chunks):
+        assert len(observations) == expected_n_chunks
+    def scan_ms(self):
+        self.startsat_startofms = True
+        self.goesto_endofms = False
+        return None
+    monkeypatch.setattr("rapthor.lib.field.Field.update_observations", lambda _, observation_chunks: assert_chunking_by_time(observation_chunks, expected_n_chunks=3))
+    monkeypatch.setattr("rapthor.lib.observation.Observation.scan_ms", lambda self: scan_ms(self))
+    steps = [
+        {"do_calibrate": True,
+         'fast_timestep_seconds': 20,
+         'slow_timestep_seconds': 600, 
+         'fulljones_timestep_seconds': 600},
+    ]
+    field.parset["cluster_specific"]["max_nodes"] = 3
+    
+    observation.starttime = 4453731780.0
+    observation.endtime = 4453737180.0
+    observation.numsamples = 900
+
+    from rapthor.process import chunk_observations
+    field.full_observations = [observation]
+    chunk_observations(field, steps, 1)
+    
