@@ -279,6 +279,41 @@ def test_check_photometry_with_comparison_skymodel_does_not_access_internet(
 
     assert diagnostics_dict != {}
 
+@pytest.mark.disable_socket
+def test_check_photometry_without_comparison_surveys_does_not_access_internet(
+    observation,
+    input_catalog_fits,
+    sky_model_path,
+    mocker,
+    caplog,
+    monkeypatch,
+    mock_full_photometry_table,
+):
+    """
+    Test that the  check_photometry function does not access the internet
+    when comparison surveys are not provided.
+    """
+
+    # Mock Table.read for FITS files to return a catalog with length zero
+    monkeypatch.setattr(
+        "astropy.table.Table.read",
+        lambda *args, **kwargs: mock_full_photometry_table,
+    )
+
+    with caplog.at_level(logging.INFO):
+        diagnostics_dict = check_photometry(
+            observation,
+            input_catalog_fits,
+            freq=15,
+            comparison_skymodel=None,
+            comparison_surveys=(),
+            min_number=1,
+        )
+        assert "No sources found" not in caplog.text
+        assert "The backup survey catalog" not in caplog.text
+        assert "A comparison sky model is not available and a list of comparison surveys was not supplied. Skipping photometry check..." in caplog.text
+    assert diagnostics_dict == {}
+
 
 @pytest.mark.disable_socket
 def test_check_astrometry_with_comparison_skymodel_does_not_access_internet(
