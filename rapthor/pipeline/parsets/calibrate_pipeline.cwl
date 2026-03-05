@@ -524,12 +524,6 @@ inputs:
       corrected for during the prediction part of the solve (length = 1).
     type: boolean
 
-  - id: max_threads
-    label: Max number of threads
-    doc: |
-      The maximum number of threads to use for a job (length = 1).
-    type: int
-
 {% if do_slowgain_solve %}
 # start do_slowgain_solve
   - id: slow_datause
@@ -700,10 +694,6 @@ outputs:
   - id: medium1_phase_solutions
     outputSource:
       - collect_medium1_phases/outh5parm
-    type: File
-  - id: combined_solutions
-    outputSource:
-      - adjust_h5parm_sources/adjustedh5parm
     type: File
   - id: fast_phase_plots
     outputSource:
