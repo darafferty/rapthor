@@ -65,6 +65,8 @@ class Mosaic(Operation):
                 )
         if self.field.save_supplementary_images:
             self.image_names.append("filtering_mask_file")
+        if self.field.parset["imaging_specific"]["save_filtered_model_image"]:
+            self.image_names.append("filtered_model_file_apparent_sky")
 
         for image_name in self.image_names:
             image_list = []
@@ -122,8 +124,9 @@ class Mosaic(Operation):
                 # object for later use
                 self.field.field_image_filename_prev = self.field.field_image_filename
                 self.field.field_image_filename = field_image_filename
-            shutil.copy(os.path.join(self.pipeline_working_dir, self.mosaic_filename[i]),
-                        field_image_filename)
+            src_filename = os.path.join(self.pipeline_working_dir, self.mosaic_filename[i])
+            if os.path.exits(src_filename):
+                shutil.copy(src_filename, field_image_filename)
 
             # Remove the individual sector images that were used to make the mosaic, as they are no
             # longer needed
