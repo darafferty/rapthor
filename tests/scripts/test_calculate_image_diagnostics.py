@@ -348,3 +348,71 @@ def test_check_astrometry_with_comparison_skymodel_does_not_access_internet(
     assert "meanClippedDecOffsetDeg" in diagnostics_dict
     assert "stdClippedRAOffsetDeg" in diagnostics_dict
     assert "stdClippedDecOffsetDeg" in diagnostics_dict
+
+@pytest.mark.disable_socket
+def test_check_astrometry_with_no_internet_access_does_not_access_internet(
+    observation,
+    input_catalog_fits,
+    image_fits,
+    facet_region_ds9,
+    sky_model_path,
+    tmp_path,
+    mocker,
+    caplog,
+    monkeypatch,
+    mock_full_astrometry_table,
+):
+    """
+    Test that the  check_astrometry function does not access the internet
+    when internet access is not permitted.
+    """
+    # Mock Table.read for FITS files to return a catalog with length zero
+    monkeypatch.setattr(
+        "astropy.table.Table.read",
+        lambda *args, **kwargs: mock_full_astrometry_table,
+    )
+
+    fitsimage.FITSImage = mocker.MagicMock()
+    mock_image = fitsimage.FITSImage(image_fits)
+    mock_image.freq.return_value = 150e6  # Mock frequency in Hz
+
+    mocker.patch.object(lsmtool.skymodel.SkyModel, "group")
+    mocker.patch.object(
+        lsmtool.skymodel.SkyModel,
+        "compare",
+        return_value={
+            "meanRatio": 1,
+            "stdRatio": 1,
+            "meanClippedRatio": 1,
+            "stdClippedRatio": 1,
+            "meanRAOffsetDeg": 1,
+            "stdRAOffsetDeg": 1,
+            "meanClippedRAOffsetDeg": 1,
+            "stdClippedRAOffsetDeg": 1,
+            "meanDecOffsetDeg": 1,
+            "stdDecOffsetDeg": 1,
+            "meanClippedDecOffsetDeg": 1,
+            "stdClippedDecOffsetDeg": 1,
+        },
+    )
+    mocker.patch(
+        "rapthor.lib.facet.filter_skymodel",
+        side_effect=lambda polygon, sm, wcs: sm,
+    )
+
+    with caplog.at_level(logging.INFO):
+        diagnostics_dict = check_astrometry(
+            observation,
+            input_catalog_fits,
+            mock_image,
+            facet_region_ds9,
+            min_number=1,
+            output_root=str(tmp_path / "astrometry_check"),
+            comparison_skymodel=None, 
+            allow_internet_access=False,
+        )
+        assert "No sources found" not in caplog.text
+        assert "internet access is not permitted" in caplog.text
+
+    assert diagnostics_dict == {}
+

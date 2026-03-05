@@ -569,7 +569,7 @@ def check_astrometry(
     elif not allow_internet_access:
         logger.info(
             "Skipping astrometry check since no comparison skymodel is "
-            "provided, and internet acess is not permitted"
+            "provided, and internet access is not permitted"
         )
         return {}
 
