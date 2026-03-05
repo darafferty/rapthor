@@ -518,13 +518,9 @@ class Image(Operation):
                 + self.outputs["sector_extra_images"][index]
             ]
             if self.field.save_supplementary_images:
-                file_list.extend(
-                    [x["path"] for x in self.outputs["source_filtering_mask"][index]]
-                )
+                file_list.append(self.outputs["source_filtering_mask"][index]["path"])
             if self.field.parset["imaging_specific"]["save_filtered_model_image"]:
-                file_list.extend(
-                    [x["path"] for x in self.outputs["sector_skymodel_image_fits"][index]]
-                )
+                file_list.append(self.outputs["sector_skymodel_image_fits"][index]["path"])
             type_path_map = Image.find_in_file_list(file_list)
             for output_type, paths in type_path_map.items():
                 if output_type not in ["filtering_mask_file", "filtered_model_file_apparent_sky"]:
@@ -673,18 +669,18 @@ class Image(Operation):
     @staticmethod
     def find_in_file_list(file_list):
         ext_mapping = {
-            "image_file_true_sky": "image-pb.",
-            "image_file_apparent_sky": "image.",
-            "model_file_true_sky": "model-pb.",
-            "filtered_model_file_apparent_sky": "apparent_sky.txt.",
-            "residual_file_apparent_sky": "residual.",
-            "dirty_file_apparent_sky": "dirty.",
-            "filtering_mask_file": "mask.",
+            "image_file_true_sky": "image-pb.fits",
+            "image_file_apparent_sky": "image.fits",
+            "model_file_true_sky": "model-pb.fits",
+            "filtered_model_file_apparent_sky": "apparent_sky.txt.fits",
+            "residual_file_apparent_sky": "residual.fits",
+            "dirty_file_apparent_sky": "dirty.fits",
+            "filtering_mask_file": "mask.fits",
         }
         type_path_map = {}
         for name, ext in ext_mapping.items():
             for filename in file_list:
-                if ext in filename:
+                if filename.endswith(ext) or filename.endswith(ext + ".fz"):
                     if name in type_path_map:
                         type_path_map[name] += [filename]
                     else:
