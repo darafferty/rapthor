@@ -429,6 +429,29 @@ def load_photometry_surveys(
 
 
 def compare_photometry_survey(catalog, survey, comparison_skymodel, freq):
+    """
+    Compare the photometry of the input catalog to a given survey skymodel and
+    return a dictionary with statistics of the compared sources.
+
+    Parameters
+    ----------
+    catalog : astropy.table.Table
+        Input catalog.
+    survey : str
+        Name of the survey being compared.
+    comparison_skymodel : lsmtool.skymodel.SkyModel
+        SkyModel object for the comparison survey.
+    freq : float
+        Frequency of the observation.
+
+    Returns
+    -------
+    dict
+        Statistics derived from comparing the input catalog to the survey
+        catalog. An empty dict is returned if there are too few matching sources
+        in the catalog and skymodel for a meaningful comparison. 
+    """
+
     # Convert the output and compare, using the total flux from the
     # Gaussian fits ('Total_flux') to be consistent with the flux-scale
     # normalization
@@ -467,6 +490,7 @@ def compare_photometry_survey(catalog, survey, comparison_skymodel, freq):
         "insufficient matches. Skipping this survey...",
         survey,
     )
+    return {}
 
 
 def rename_plots(survey):
