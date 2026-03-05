@@ -572,13 +572,13 @@ def parset_read(parset_file, use_log_file=True):
         "s" * (nfiles > 1),
     )
 
-    check_skymodel_settings(parset_dict)
+    check_and_adjust_skymodel_settings(parset_dict)
     log.info("=========================================================")
 
     return parset_dict
 
 
-def check_skymodel_settings(parset_dict):
+def check_and_adjust_skymodel_settings(parset_dict):
     """
     En‌sure·‌the·‌initial·‌sky·‌model·‌is·‌present·‌or,·‌if·‌not,·‌that·‌generation·‌or
     download·‌is·‌requested.

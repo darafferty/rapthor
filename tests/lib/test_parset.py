@@ -14,7 +14,7 @@ try:
 except ImportError:
     from unittest import mock
 
-from rapthor.lib.parset import check_skymodel_settings, parset_read
+from rapthor.lib.parset import check_and_adjust_skymodel_settings, parset_read
 
 
 class TestParset(unittest.TestCase):
@@ -186,7 +186,7 @@ class TestParset(unittest.TestCase):
 
 class TestCheckSkymodelSettings(unittest.TestCase):
     """
-    Tests for the `check_skymodel_settings` function.
+    Tests for the `check_and_adjust_skymodel_settings` function.
     """
 
     def _make_parset_dict(self, **overrides):
@@ -216,13 +216,13 @@ class TestCheckSkymodelSettings(unittest.TestCase):
             input_skymodel="/nonexistent/skymodel.txt"
         )
         with self.assertRaises(FileNotFoundError):
-            check_skymodel_settings(parset_dict)
+            check_and_adjust_skymodel_settings(parset_dict)
 
     def test_input_skymodel_exists(self):
         with tempfile.NamedTemporaryFile(suffix=".skymodel") as f:
             parset_dict = self._make_parset_dict(input_skymodel=f.name)
             # Should not raise
-            check_skymodel_settings(parset_dict)
+            check_and_adjust_skymodel_settings(parset_dict)
 
     def test_input_skymodel_with_generate_disables_download(self):
         with tempfile.NamedTemporaryFile(suffix=".skymodel") as f:
@@ -232,7 +232,7 @@ class TestCheckSkymodelSettings(unittest.TestCase):
                 download_initial_skymodel=True,
             )
             with self.assertLogs(logger="rapthor:parset", level="WARN") as cm:
-                check_skymodel_settings(parset_dict)
+                check_and_adjust_skymodel_settings(parset_dict)
             self.assertFalse(parset_dict["download_initial_skymodel"])
             self.assertTrue(
                 any(
@@ -247,7 +247,7 @@ class TestCheckSkymodelSettings(unittest.TestCase):
                 download_initial_skymodel=True,
             )
             with self.assertLogs(logger="rapthor:parset", level="WARN") as cm:
-                check_skymodel_settings(parset_dict)
+                check_and_adjust_skymodel_settings(parset_dict)
             self.assertFalse(parset_dict["download_initial_skymodel"])
             self.assertTrue(
                 any("Sky model download requested" in msg for msg in cm.output)
@@ -261,7 +261,7 @@ class TestCheckSkymodelSettings(unittest.TestCase):
     def test_no_input_generate_requested(self):
         parset_dict = self._make_parset_dict(generate_initial_skymodel=True)
         with self.assertLogs(logger="rapthor:parset", level="INFO") as cm:
-            check_skymodel_settings(parset_dict)
+            check_and_adjust_skymodel_settings(parset_dict)
         self.assertTrue(
             any(
                 "Will automatically generate sky model" in msg
@@ -275,7 +275,7 @@ class TestCheckSkymodelSettings(unittest.TestCase):
             apparent_skymodel="some_apparent.skymodel",
         )
         with self.assertLogs(logger="rapthor:parset", level="WARN") as cm:
-            check_skymodel_settings(parset_dict)
+            check_and_adjust_skymodel_settings(parset_dict)
         self.assertTrue(
             any(
                 "apparent sky model will not be used" in msg
@@ -288,7 +288,7 @@ class TestCheckSkymodelSettings(unittest.TestCase):
     def test_no_input_download_requested(self):
         parset_dict = self._make_parset_dict(download_initial_skymodel=True)
         with self.assertLogs(logger="rapthor:parset", level="INFO") as cm:
-            check_skymodel_settings(parset_dict)
+            check_and_adjust_skymodel_settings(parset_dict)
         self.assertTrue(
             any(
                 "Will automatically download sky model" in msg
@@ -302,7 +302,7 @@ class TestCheckSkymodelSettings(unittest.TestCase):
             apparent_skymodel="some_apparent.skymodel",
         )
         with self.assertLogs(logger="rapthor:parset", level="WARN") as cm:
-            check_skymodel_settings(parset_dict)
+            check_and_adjust_skymodel_settings(parset_dict)
         self.assertTrue(
             any(
                 "apparent sky model will not be used" in msg
@@ -315,7 +315,7 @@ class TestCheckSkymodelSettings(unittest.TestCase):
     def test_no_input_no_generate_no_download_warns(self):
         parset_dict = self._make_parset_dict()
         with self.assertLogs(logger="rapthor:parset", level="WARN") as cm:
-            check_skymodel_settings(parset_dict)
+            check_and_adjust_skymodel_settings(parset_dict)
         self.assertTrue(
             any("neither generation nor download" in msg for msg in cm.output)
         )
@@ -328,7 +328,7 @@ class TestCheckSkymodelSettings(unittest.TestCase):
             cluster_specific={"allow_internet_access": False},
         )
         with self.assertRaises(ValueError):
-            check_skymodel_settings(parset_dict)
+            check_and_adjust_skymodel_settings(parset_dict)
 
     def test_internet_allowed_download_ok(self):
         parset_dict = self._make_parset_dict(
@@ -337,7 +337,7 @@ class TestCheckSkymodelSettings(unittest.TestCase):
         )
         # Should not raise
         with self.assertLogs(logger="rapthor:parset", level="INFO"):
-            check_skymodel_settings(parset_dict)
+            check_and_adjust_skymodel_settings(parset_dict)
 
     # ---- diagnostic skymodel checks (no internet) ----
 
@@ -351,7 +351,7 @@ class TestCheckSkymodelSettings(unittest.TestCase):
             },
         )
         with self.assertRaises(FileNotFoundError):
-            check_skymodel_settings(parset_dict)
+            check_and_adjust_skymodel_settings(parset_dict)
 
     def test_photometry_skymodel_missing_no_internet_raises(self):
         parset_dict = self._make_parset_dict(
@@ -363,7 +363,7 @@ class TestCheckSkymodelSettings(unittest.TestCase):
             },
         )
         with self.assertRaises(FileNotFoundError):
-            check_skymodel_settings(parset_dict)
+            check_and_adjust_skymodel_settings(parset_dict)
 
     def test_astrometry_skymodel_exists_no_internet_ok(self):
         with tempfile.NamedTemporaryFile(suffix=".skymodel") as f:
@@ -376,7 +376,7 @@ class TestCheckSkymodelSettings(unittest.TestCase):
             )
             # Should not raise (warning about no skymodel is expected)
             with self.assertLogs(logger="rapthor:parset", level="WARN") as cm:
-                check_skymodel_settings(parset_dict)
+                check_and_adjust_skymodel_settings(parset_dict)
 
             self.assertTrue(
                 any(
@@ -396,7 +396,7 @@ class TestCheckSkymodelSettings(unittest.TestCase):
             )
             # Should not raise (warning about no skymodel is expected)
             with self.assertLogs(logger="rapthor:parset", level="WARN") as cm:
-                check_skymodel_settings(parset_dict)
+                check_and_adjust_skymodel_settings(parset_dict)
 
             self.assertTrue(
                 any(
@@ -415,7 +415,7 @@ class TestCheckSkymodelSettings(unittest.TestCase):
         )
         # Should not raise
         with self.assertLogs(logger="rapthor:parset", level="WARN") as cm:
-            check_skymodel_settings(parset_dict)
+            check_and_adjust_skymodel_settings(parset_dict)
 
         self.assertTrue(
             any(
