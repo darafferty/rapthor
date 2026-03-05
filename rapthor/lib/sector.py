@@ -184,8 +184,7 @@ class Sector(object):
                 self.imsize[1] += 1
 
         self.wsclean_imsize = "'{0} {1}'".format(self.imsize[0], self.imsize[1])
-        self.log.debug('Image size is {0} x {1} pixels'.format(
-                       self.imsize[0], self.imsize[1]))
+        self.log.debug('Image size is %i x %i pixels', *self.imsize)
 
         # Set the direction-dependent PSF grid (defined as [# in RA, # in Dec]):
         #   [0, 0] => scale automatically with image size

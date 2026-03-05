@@ -496,7 +496,7 @@ class CalibrateDD(Operation):
         self.field.scan_h5parms()  # verify h5parm and update flags for predict/image operations
         solsetname = 'coefficients000' if self.field.generate_screens else 'sol000'
         flagged_frac = misc.get_flagged_solution_fraction(self.field.h5parm_filename, solsetname=solsetname)
-        self.log.info('Fraction of solutions that are flagged = {0:.2f}'.format(flagged_frac))
+        self.log.info('Fraction of solutions that are flagged = %.2f', flagged_frac)
         self.field.calibration_diagnostics.append({'cycle_number': self.index,
                                                    'solution_flagged_fraction': flagged_frac})
 
@@ -618,7 +618,7 @@ class CalibrateDI(Operation):
                     os.path.join(dst_dir, self.field.fulljones_h5parm_filename))
         self.field.scan_h5parms()  # verify h5parm and update flags for predict/image operations
         flagged_frac = misc.get_flagged_solution_fraction(self.field.fulljones_h5parm_filename)
-        self.log.info('Fraction of solutions that are flagged = {0:.2f}'.format(flagged_frac))
+        self.log.info('Fraction of solutions that are flagged = %.2f', flagged_frac)
 
         # Copy the plots (PNG files)
         dst_dir = os.path.join(self.parset['dir_working'], 'plots', 'calibrate_di_{}'.format(self.index))

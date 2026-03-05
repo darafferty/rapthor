@@ -526,8 +526,8 @@ class StreamFlowRunner(BaseCWLRunner):
         }
         self.streamflow_file = os.path.join(self.operation.pipeline_working_dir, "streamflow.yml")
         with open(self.streamflow_file, "w") as f:
-            logger.debug(f"Creating StreamFlow configuration file {self.streamflow_file}:\n{yaml.safe_dump(config)}")
-            yaml.safe_dump(config, f)
+            logger.debug("Creating StreamFlow configuration file: %r\n%s",
+                         self.streamflow_file, yaml.safe_dump(config, f))
         self.args.extend([self.streamflow_file])
 
     def teardown(self) -> None:

@@ -160,7 +160,7 @@ class Field(object):
         Checks input MS files and initializes the associated Observation objects
         """
         suffix = 's' if len(self.ms_filenames) > 1 else ''
-        self.log.debug('Scanning input MS file{}...'.format(suffix))
+        self.log.debug('Scanning input MS file%s...', suffix)
         self.full_observations = []
         for ms_filename in self.ms_filenames:
             self.full_observations.append(Observation(ms_filename))
@@ -178,8 +178,9 @@ class Field(object):
 
         # Check for multiple epochs
         self.epoch_starttimes = set([obs.starttime for obs in self.full_observations])
-        suffix = 's' if len(self.epoch_starttimes) > 1 else ''
-        self.log.debug('Input data comprise {0} epoch{1}'.format(len(self.epoch_starttimes), suffix))
+        self.log.debug('Input data comprise %s epoch%s',
+                       len(self.epoch_starttimes),
+                       's' * (len(self.epoch_starttimes) > 1))
         self.epoch_observations = []
         for i, epoch_starttime in enumerate(self.epoch_starttimes):
             epoch_observations = [obs for obs in self.full_observations if
@@ -583,9 +584,11 @@ class Field(object):
             if self.parset['facet_layout'] is not None:
                 # Regroup using the supplied ds9 region file of the facets
                 facets = read_ds9_region_file(self.parset['facet_layout'])
-                suffix = 'es' if len(facets) > 1 else ''
-                self.log.info(f'Read {len(facets)} patch{suffix} from supplied facet '
-                              'layout file')
+                self.log.info(
+                    'Read %i patch%s from supplied facet layout file',
+                    len(facets),
+                    'es' * bool(facets)
+                )
                 facet_names = []
                 facet_patches_dict = {}
                 for facet in facets:
@@ -623,10 +626,13 @@ class Field(object):
                 if n_removed > 0:
                     # One or more empty facets removed during grouping, so
                     # report this to user
-                    suffix = 'es' if n_removed > 1 else ''
-                    self.log.warning(f'Removed {n_removed} empty patch{suffix}. The facet '
-                                     'layout used in this cycle will therefore differ '
-                                     'from that given in the input facet layout file.')
+                    self.log.warning(
+                        'Removed %i empty patch%s. The facet layout used in '
+                        'this cycle will therefore differ from that given in '
+                        'the input facet layout file.',
+                        n_removed,    
+                        'es' * bool(n_removed > 1)
+                    )
             else:
                 # Regroup by tessellating with the bright sources as the tessellation
                 # centers.
@@ -693,22 +699,30 @@ class Field(object):
 
                     if target_flux is None:
                         target_flux = target_flux_for_number
-                        self.log.info('Using a target flux density of {0:.2f} Jy for grouping '
-                                      'to meet the specified target number of '
-                                      'directions ({1:.2f})'.format(target_flux, target_number))
+                        self.log.info(
+                            'Using a target flux density of %.2f Jy for grouping '
+                            'to meet the specified target number of '
+                            'directions (%.2f)', 
+                            target_flux, target_number)
                     else:
                         if target_flux_for_number > target_flux and target_number < len(fluxes):
                             # Only use the new target flux if the old value might result
                             # in more than target_number of calibrators
-                            self.log.info('Using a target flux density of {0:.2f} Jy for '
-                                          'grouping (raised from {1:.2f} Jy to ensure that '
-                                          'the target number of {2} directions is not '
-                                          'exceeded)'.format(target_flux_for_number, target_flux, target_number))
+                            self.log.info(
+                                'Using a target flux density of %.2f Jy for '
+                                'grouping (raised from %.2f Jy to ensure that '
+                                'the target number of %s directions is not '
+                                'exceeded)',
+                                target_flux_for_number, target_flux, target_number)
                             target_flux = target_flux_for_number
                         else:
-                            self.log.info('Using a target flux density of {0:.2f} Jy for grouping'.format(target_flux))
+                            self.log.info(
+                                'Using a target flux density of %.2f Jy for grouping',
+                                target_flux)
                 else:
-                    self.log.info('Using a target flux density of {0:.2f} Jy for grouping'.format(target_flux))
+                    self.log.info(
+                        'Using a target flux density of %.2f Jy for grouping',
+                        target_flux)
 
                 # Check if target flux can be met for at least one source
                 #
@@ -984,7 +998,7 @@ class Field(object):
         self.num_patches = len(self.calibrator_patch_names)
         if not self.generate_screens:
             suffix = 'es' if self.num_patches > 1 else ''
-            self.log.info('Using {0} calibration patch{1}'.format(self.num_patches, suffix))
+            self.log.info('Using %s calibration patch%s', self.num_patches, suffix)
 
             # Plot an overview of the field for this cycle, showing the calibration facets
             # (patches)
@@ -1107,7 +1121,10 @@ class Field(object):
                 self.imaging_sectors.append(Sector(name, ra, dec, width_ra, width_dec, self))
                 n += 1
             suffix = 's' if len(self.imaging_sectors) > 1 else ''
-            self.log.info('Using {0} user-defined imaging sector{1}'.format(len(self.imaging_sectors), suffix))
+            self.log.info(
+                'Using %s user-defined imaging sector%s', 
+                len(self.imaging_sectors), suffix
+            )
             self.uses_sector_grid = False
         else:
             # Make a regular grid of sectors
@@ -1178,8 +1195,10 @@ class Field(object):
             if len(self.imaging_sectors) == 1:
                 self.log.info('Using 1 imaging sector')
             else:
-                self.log.info('Using {0} imaging sectors ({1} in RA, {2} in Dec)'.format(
-                              len(self.imaging_sectors), nsectors_ra, nsectors_dec))
+                self.log.info(
+                    'Using %i imaging sectors (%i in RA, %i in Dec)',
+                    len(self.imaging_sectors), nsectors_ra, nsectors_dec
+                )
             self.uses_sector_grid = True
 
         self.define_sector_bounds()
@@ -1575,20 +1594,32 @@ class Field(object):
 
         # Check that convergence and divergence limits are sensible
         if convergence_ratio > 2.0:
-            self.log.warning('The convergence ratio is set to {} but must be <= 2. '
-                             'Using 2.0 instead'.format(convergence_ratio))
+            self.log.warning(
+                'The convergence ratio is set to %.1f but must be <= 2. '
+                'Using 2.0 instead',
+                convergence_ratio
+            )
             convergence_ratio = 2.0
         if convergence_ratio < 0.5:
-            self.log.warning('The convergence ratio is set to {} but must be >= 0.5. '
-                             'Using 0.5 instead'.format(convergence_ratio))
+            self.log.warning(
+                'The convergence ratio is set to %.1f but must be >= 0.5. '
+                'Using 0.5 instead', 
+                convergence_ratio
+            )
             convergence_ratio = 0.5
         if divergence_ratio < 1.0:
-            self.log.warning('The divergence ratio is set to {} but must be >= 1. '
-                             'Using 1.0 instead'.format(divergence_ratio))
+            self.log.warning(
+                'The divergence ratio is set to %.1f but must be >= 1. '
+                'Using 1.0 instead',
+                divergence_ratio
+            )
             divergence_ratio = 1.0
         if failure_ratio < 1.0:
-            self.log.warning('The failure ratio is set to {} but must be >= 1. '
-                             'Using 1.0 instead'.format(failure_ratio))
+            self.log.warning(
+                'The failure ratio is set to %.1f but must be >= 1. '
+                'Using 1.0 instead',
+                failure_ratio
+            )
             failure_ratio = 1.0
 
         if (not hasattr(self, 'imaging_sectors') or
@@ -1610,37 +1641,57 @@ class Field(object):
             if rmspre > 0:
                 rms_unconverged = rmspost / rmspre < convergence_ratio
                 rms_diverged = rmspost / rmspre > divergence_ratio
-                self.log.info('Ratio of current median image noise (non-PB-corrected) to previous image '
-                              'noise for {0} = {1:.2f}'.format(sector.name, rmspost/rmspre))
+                self.log.info(
+                    'Ratio of current median image noise (non-PB-corrected) to previous image '
+                    'noise for %s = %.2f',
+                    sector.name, rmspost/rmspre)
             else:
                 rms_unconverged = True
                 rms_diverged = False
-                self.log.warning('Median image noise found in the previous cycle is 0 '
-                                 'for {0}. Skipping noise convergence check...'.format(sector.name))
-            self.log.info('Ratio of current median image noise (non-PB-corrected) to expected '
-                          'image noise for {0} = {1:.2f}'.format(sector.name, rmspost/rmsideal))
+                self.log.warning(
+                    'Median image noise found in the previous cycle is 0 '
+                    'for %s. Skipping noise convergence check...', 
+                    sector.name
+                )
+            self.log.info(
+                'Ratio of current median image noise (non-PB-corrected) to expected '
+                'image noise for %s = %.2f',
+                sector.name, rmspost/rmsideal
+            )
 
             dynrpre = sector.diagnostics[-2]['dynamic_range_global_flat_noise']
             dynrpost = sector.diagnostics[-1]['dynamic_range_global_flat_noise']
             if dynrpre > 0:
                 dynr_unconverged = dynrpost / dynrpre > 1 / convergence_ratio
-                self.log.info('Ratio of current image dynamic range (non-PB-corrected) to previous image '
-                              'dynamic range for {0} = {1:.2f}'.format(sector.name, dynrpost/dynrpre))
+                self.log.info(
+                    'Ratio of current image dynamic range (non-PB-corrected) to previous image '
+                    'dynamic range for %s = %.2f',
+                    sector.name, dynrpost/dynrpre
+                )
             else:
                 dynr_unconverged = True
-                self.log.warning('Image dynamic range found in the previous cycle is 0 '
-                                 'for {0}. Skipping dynamic range convergence check...'.format(sector.name))
+                self.log.warning(
+                    'Image dynamic range found in the previous cycle is 0 '
+                    'for %s. Skipping dynamic range convergence check...', 
+                    sector.name
+                )
 
             nsrcpre = sector.diagnostics[-2]['nsources']
             nsrcpost = sector.diagnostics[-1]['nsources']
             if nsrcpre > 0:
                 nsrc_unconverged = nsrcpost / nsrcpre > 1 / convergence_ratio
-                self.log.info('Ratio of current number of sources to previous number '
-                              'of sources for {0} = {1:.2f}'.format(sector.name, nsrcpost/nsrcpre))
+                self.log.info(
+                    'Ratio of current number of sources to previous number '
+                    'of sources for %s = %.2f',
+                    sector.name, nsrcpost/nsrcpre
+                )
             else:
                 nsrc_unconverged = True
-                self.log.warning('No sources were found in the previous cycle '
-                                 'for {0}. Skipping source number convergence check...'.format(sector.name))
+                self.log.warning(
+                    'No sources were found in the previous cycle '
+                    'for %s. Skipping source number convergence check...',
+                    sector.name
+                )
             if rms_unconverged or dynr_unconverged or nsrc_unconverged:
                 # Report not converged (and not diverged)
                 converged.append(False)
@@ -1719,10 +1770,12 @@ class Field(object):
                 fractional_change = self.lofar_to_true_flux_ratio - 1
             if fractional_change > self.lofar_to_true_flux_std and not self.apply_normalizations:
                 target_flux *= self.lofar_to_true_flux_ratio
-                self.log.info('Adjusting the target flux for calibrator selection '
-                              'from {0:.2f} Jy to {1:.2f} Jy to account for the offset found '
-                              'in the global flux scale'.format(step_dict['target_flux'],
-                                                                target_flux))
+                self.log.info(
+                    'Adjusting the target flux for calibrator selection '
+                    'from %.2f Jy to %.2f Jy to account for the offset found '
+                    'in the global flux scale',
+                    step_dict['target_flux'], target_flux
+                )
         else:
             target_flux = None
             target_number = None

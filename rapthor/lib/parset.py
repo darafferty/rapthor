@@ -569,7 +569,7 @@ def parset_read(parset_file, use_log_file=True):
     log.info(
         "Working on %s input MS file%s",
         (nfiles := len(parset_dict["mss"])),
-        "s" * (nfiles > 1),
+        "s" if nfiles > 1 else "",
     )
 
     check_and_adjust_skymodel_settings(parset_dict)
