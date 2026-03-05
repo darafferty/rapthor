@@ -131,7 +131,8 @@ class Mosaic(Operation):
             # Remove the individual sector images that were used to make the mosaic, as they are no
             # longer needed
             for sector in self.field.imaging_sectors:
-                os.unlink(getattr(sector, image_name))
+                if os.path.exists(getattr(sector, image_name)):
+                    os.unlink(getattr(sector, image_name))
 
         # Finally call finalize() in the parent class
         super().finalize()
