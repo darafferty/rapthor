@@ -308,9 +308,7 @@ def check_photometry(
     # Do the photometry check
     successful_surveys = []
     photometry_diagnostics = {}
-    for survey, comparison_skymodel in zip(
-        comparison_surveys, comparison_skymodels
-    ):
+    for survey, comparison_skymodel in comparison_skymodels.items():
         survey = survey.strip().upper()
 
         # Check if we're dealing with the backup survey and use it only if none
@@ -349,16 +347,40 @@ def check_photometry(
 def load_photometry_surveys(
     observation, comparison_skymodel, comparison_surveys, backup_survey
 ):
+    """
+    Load skymodels for the photometry comparison, using the backup survey if
+    needed.
+
+    Parameters
+    ----------
+    observation : rapthor.lib.observation.Observation
+        The observation object containing the necessary metadata.
+    comparison_skymodel : str or None
+        Path to a user-supplied comparison skymodel file, or None to use
+        default surveys.
+    comparison_surveys : list of str or None
+        List of survey names to use for comparison. If None, an empty dictionary
+         is returned.
+    backup_survey : str or None
+        Name of the backup survey to use if the primary surveys fail, or None
+        to disable the backup.
+
+    Returns
+    -------
+    dict
+        Dictionary of loaded rapthor.lib.skymodel.SkyModel objects for the
+        photometry comparison.
+    """
+    
     # Load photometry comparison model
-    comparison_skymodels = []
+    comparison_skymodels = {}
     if comparison_skymodel:
         with safe_load_skymodel(
             comparison_skymodel,
             "Comparison sky model could not be loaded.",
             "Trying to download sky model(s) instead...",
         ) as skymodel:
-            comparison_skymodels.append(skymodel)
-            comparison_surveys = ["USER_SUPPLIED"]
+            comparison_skymodels["USER_SUPPLIED"] = skymodel
             logger.info(
                 "Using the supplied comparison sky model for the photometry "
                 "check"
@@ -379,29 +401,29 @@ def load_photometry_surveys(
     if backup_survey is not None:
         if backup_survey in comparison_surveys:
             logger.info(
-                'The backup survey "%s" is already included in '
+                "The backup survey %r is already included in "
                 "comparison_surveys. Disabling the backup",
                 backup_survey,
             )
             backup_survey = None
         else:
             logger.info(
-                'Using "%s" as the backup survey catalog for the photometry '
-                "check",
+                "Using %r as the backup survey catalog for the photometry check",
                 backup_survey,
             )
             comparison_surveys.append(backup_survey)
 
-        for survey in comparison_surveys:
-            with safe_load_skymodel(
-                survey,
-                "A problem occurred when downloading the %s catalog for use"
-                " in the photometry check.",
-                "Skipping this survey...",
-                VOPosition=[observation.ra, observation.dec],
-                VORadius=5.0,
-            ) as skymodel:
-                comparison_skymodels.append(skymodel)
+    # Loop over the surveys and load the skymodels
+    for survey in comparison_surveys:
+        with safe_load_skymodel(
+            survey,
+            "A problem occurred when downloading the %s catalog for use"
+            " in the photometry check.",
+            "Skipping this survey...",
+            VOPosition=[observation.ra, observation.dec],
+            VORadius=5.0,
+        ) as skymodel:
+            comparison_skymodels[survey] = skymodel
 
     return comparison_skymodels
 
