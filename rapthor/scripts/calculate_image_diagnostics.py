@@ -289,12 +289,11 @@ def check_photometry(
         return {}
 
     # Load photometry survey skymodels, fall back to backup if needed
-    comparison_surveys = (
+    comparison_surveys = list(
         DEFAULT_PHOTOMETRY_COMPARISON_SURVEYS
         if comparison_surveys is None
         else comparison_surveys
     )
-    comparison_surveys = list(comparison_surveys)
     comparison_skymodels = load_photometry_surveys(
         obs, comparison_skymodel, comparison_surveys, backup_survey
     )
