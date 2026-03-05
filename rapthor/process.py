@@ -92,60 +92,63 @@ def run(parset_file, logging_level="info"):
     # Run a final pass if needed
     field.do_final = do_final_pass(field, selfcal_steps, final_step)
     if field.do_final:
-        if selfcal_steps:
-            # If selfcal was done, set peel_outliers to that of the initial cycle, since the
-            # observations will be regenerated and outliers (if any) need to be peeled again
-            final_step["peel_outliers"] = selfcal_steps[0]["peel_outliers"]
-            log.info(
-                "Starting final cycle with a data fraction of {0:.2f}".format(
-                    parset["final_data_fraction"]
-                )
-            )
-            field.cycle_number += 1
-        else:
-            if not final_step["do_calibrate"]:
-                if not parset["input_h5parm"]:
-                    raise ValueError(
-                        "The strategy indicates that no calibration is to be done "
-                        "but no calibration solutions were provided. Please provide "
-                        "the solutions with the input_h5parm parameter"
+        for i in range(parset["ntimes_to_repeat_final_cycle"]):
+            if selfcal_steps:
+                # If selfcal was done, set peel_outliers to that of the initial cycle, since the
+                # observations will be regenerated and outliers (if any) need to be peeled again
+                final_step["peel_outliers"] = selfcal_steps[0]["peel_outliers"]
+                log.info(
+                    "Starting final cycle with a data fraction of {0:.2f}".format(
+                        parset["final_data_fraction"]
                     )
-                elif (
-                    final_step["peel_outliers"] or final_step["peel_bright_sources"]
-                ) and not parset["input_skymodel"]:
-                    raise ValueError(
-                        "Peeling of outliers or bright sources was activated but no "
-                        "sky model was provided. Please provide a sky model with the "
-                        "input_skymodel parameter"
-                    )
-                else:
-                    # Turn off conflicting flags
-                    field.parset["generate_initial_skymodel"] = False
-                    field.parset["download_initial_skymodel"] = False
-            log.info("Using a data fraction of {0:.2f}".format(parset["final_data_fraction"]))
-
-        if field.make_quv_images:
-            log.info("Stokes I, Q, U, and V images will be made")
-        if field.dde_mode == "hybrid":
-            log.info(
-                "Screens will be used for calibration and imaging (since dde_mode = "
-                "'hybrid' and this is the final iteration)"
-            )
-            field.generate_screens = True
-            field.apply_screens = True
-            if final_step["peel_outliers"]:
-                # Currently, when screens are used peeling cannot be done
-                log.warning(
-                    "Peeling of outliers is currently not supported when using "
-                    "screens. Peeling will be skipped"
                 )
-                final_step["peel_outliers"] = False
+                field.cycle_number += 1  # continue counting from the last selfcal cycle
+            else:
+                if not final_step["do_calibrate"]:
+                    if not parset["input_h5parm"]:
+                        raise ValueError(
+                            "The strategy indicates that no calibration is to be done "
+                            "but no calibration solutions were provided. Please provide "
+                            "the solutions with the input_h5parm parameter"
+                        )
+                    elif (
+                        final_step["peel_outliers"] or final_step["peel_bright_sources"]
+                    ) and not parset["input_skymodel"]:
+                        raise ValueError(
+                            "Peeling of outliers or bright sources was activated but no "
+                            "sky model was provided. Please provide a sky model with the "
+                            "input_skymodel parameter"
+                        )
+                    else:
+                        # Turn off conflicting flags
+                        field.parset["generate_initial_skymodel"] = False
+                        field.parset["download_initial_skymodel"] = False
+                log.info("Using a data fraction of {0:.2f}".format(parset["final_data_fraction"]))
+                field.cycle_number = i + 1
 
-        # Set the data chunking to match the longest solution interval set in
-        # the strategy
-        chunk_observations(field, [final_step], parset["final_data_fraction"])
+            if field.make_quv_images:
+                log.info("Stokes I, Q, U, and V images will be made")
+            if field.dde_mode == "hybrid":
+                log.info(
+                    "Screens will be used for calibration and imaging (since dde_mode = "
+                    "'hybrid' and this is the final iteration)"
+                )
+                field.generate_screens = True
+                field.apply_screens = True
+                if final_step["peel_outliers"]:
+                    # Currently, when screens are used peeling cannot be done
+                    log.warning(
+                        "Peeling of outliers is currently not supported when using "
+                        "screens. Peeling will be skipped"
+                    )
+                    final_step["peel_outliers"] = False
 
-        run_steps(field, [final_step], final=True)
+            # Set the data chunking to match the longest solution interval set in
+            # the strategy
+            if i == 0:
+                chunk_observations(field, [final_step], parset["final_data_fraction"])
+
+            run_steps(field, [final_step], final=True)
 
     # Make a summary report for the run and finish
     make_report(field)
