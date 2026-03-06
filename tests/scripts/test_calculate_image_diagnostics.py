@@ -246,7 +246,7 @@ def test_check_photometry_with_comparison_skymodel_does_not_access_internet(
         },
     )
     mocker.patch(
-        "rapthor.scripts.calculate_image_diagnostics.rename_plots",
+        "rapthor.scripts.calculate_image_diagnostics._rename_plots",
         autospec=True,
     )
 
