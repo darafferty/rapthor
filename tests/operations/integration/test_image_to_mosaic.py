@@ -17,11 +17,10 @@ Currently the execution in process of a step has the following 3 stages:
 3. run: where the actual execution of the operation happens, which 
    includes the execution of the CWL workflow.  
 During the run stage, the CWL execution is mocked to return the expected
-output for the Image operation, which is then used as input for the Mosaic
-operation. At the end of the run stage the finalise call is made within 
-the Operation. Successful completion, sets various attributes in the field
-and sector image, which are then used by the Mosaic operation to set its
-input parameters and parset parameters.
+output for the Image operation. Upon successful completion, the Image 
+operation sets various attributes in the field using the mocked CWL output.
+The Mosaic operation uses the updated field to set its input parameters
+and parset parameters.
 """
 
 @pytest.fixture
