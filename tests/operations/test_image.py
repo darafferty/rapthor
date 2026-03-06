@@ -12,61 +12,6 @@ from rapthor.operations.image import Image, ImageInitial, ImageNormalize
 
 
 @pytest.fixture
-def expected_image_output():
-    """
-    Fixture to provide expected output structure for CWL execution.
-    """
-    return {
-        "sector_I_images": [["sector0-MFS-I-image-pb.fits", "sector0-MFS-I-image.fits"]],
-        "sector_extra_images": [["sector0-MFS-I-residual.fits", "sector0-MFS-I-model-pb.fits"]],
-        "filtered_skymodel_true_sky": ["sector0.true_sky.txt"],
-        "filtered_skymodel_apparent_sky": ["sector0.apparent_sky.txt"],
-        "pybdsf_catalog": ["sector0.source_catalog.fits"],
-        "sector_diagnostics": ["sector0_diagnostics.json"],
-        "sector_offsets": ["sector0_offsets.txt"],
-    }
-
-
-@pytest.fixture
-def expected_image_output_last_cycle():
-    """
-    Fixture to provide expected output structure for CWL execution in the last cycle.
-    """
-    return {
-        "sector_I_images": [["sector0-MFS-I-image-pb.fits", "sector0-MFS-I-image.fits"]],
-        "filtered_skymodel_true_sky": ["sector0.true_sky.txt"],
-        "filtered_skymodel_apparent_sky": ["sector0.apparent_sky.txt"],
-        "pybdsf_catalog": ["sector0.source_catalog.fits"],
-        "sector_diagnostics": ["sector0_diagnostics.json"],
-        "sector_offsets": ["sector0_offsets.txt"],
-        "source_filtering_mask": ["sector0_mask.fits"],
-        "sector_extra_images": [[
-            'sector_1-MFS-I-image-pb.fits',
-            'sector_1-MFS-I-image-pb.fits',
-            'sector_1-MFS-I-image.fits',
-            'sector_1-MFS-Q-image.fits',
-            'sector_1-MFS-U-image.fits',
-            'sector_1-MFS-V-image.fits',
-            'sector_1-MFS-Q-image-pb.fits',
-            'sector_1-MFS-U-image-pb.fits',
-            'sector_1-MFS-V-image-pb.fits',
-            'sector_1-MFS-I-residual.fits',
-            'sector_1-MFS-Q-residual.fits',
-            'sector_1-MFS-U-residual.fits',
-            'sector_1-MFS-V-residual.fits',
-            'sector_1-MFS-I-model-pb.fits',
-            'sector_1-MFS-Q-model-pb.fits',
-            'sector_1-MFS-U-model-pb.fits',
-            'sector_1-MFS-V-model-pb.fits',
-            'sector_1-MFS-I-dirty.fits',
-            'sector_1-MFS-Q-dirty.fits',
-            'sector_1-MFS-U-dirty.fits',
-            'sector_1-MFS-V-dirty.fits'
-        ]]
-    }
-
-
-@pytest.fixture
 def image(field, monkeypatch, expected_image_output):
     """
     Fixture to mock CWL execution for the Image operation.
@@ -253,12 +198,12 @@ class TestImage:
         field.parset["regroup_input_skymodel"] = False
         field.image_pol = 'I'
         field.skip_final_major_iteration = True
-        
+
         field.scan_observations()
 
         steps = set_selfcal_strategy(field)
         field.update(steps[0], index=1, final=False)
-        
+
         image = Image(field, index=1)
         image.do_predict = False
         image.apply_none = True
@@ -454,14 +399,14 @@ class TestImageInitial:
         field.scan_observations()
         field.define_full_field_sector()
         field.image_pol = 'I'
-        
+
         image_initial = ImageInitial(field)
-        
+
         # This should NOT raise AttributeError: 'Sector' object has no attribute 'central_patch'
         # The bug causes this to fail because preapply_dde_solutions is incorrectly True
         image_initial.set_parset_parameters()
         image_initial.set_input_parameters()
-        
+
         # Verify apply_none is True and preapply_dde_solutions is False
         assert image_initial.apply_none is True, "apply_none should be True for ImageInitial"
         assert image_initial.preapply_dde_solutions is False, \

@@ -6,13 +6,18 @@ WORKDIR /app
 # Install runtime dependencies only
 RUN apt-get update && \
 	apt-get install -y --no-install-recommends \
+		build-essential \
 		ca-certificates \
+		cmake \
+		gfortran \
 		git \
 		libblas3 \
 		libboost-filesystem1.74.0 \
-		libboost-program-options1.74.0 \
-		libboost-python1.74.0 \
+		libboost-numpy-dev \
 		libboost-numpy1.74.0 \
+		libboost-program-options1.74.0 \
+		libboost-python-dev \
+		libboost-python1.74.0 \
 		libcfitsio-bin \
 		libfftw3-double3 \
 		libfftw3-single3 \
@@ -21,17 +26,21 @@ RUN apt-get update && \
 		libgsl27 \
 		libhdf5-103-1 \
 		libhdf5-cpp-103-1 \
+		libhdf5-dev \
 		liblapack3 \
 		liblua5.4-0 \
 		libpng16-16 \
 		libpython3.10 \
 		libstdc++6 \
 		libwcs7 \
+		ninja-build \
 		nodejs \
 		python3 \
+		python3-dev \
 		python3-distutils \
-		wget && \
-	rm -rf /var/lib/apt/lists/*
+		python3-pip \
+		python3-pytest \
+		&& rm -rf /var/lib/apt/lists/*
 
 ENV LD_LIBRARY_PATH=/usr/local/lib
 
