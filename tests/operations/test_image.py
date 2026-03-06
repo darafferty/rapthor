@@ -2,8 +2,6 @@
 Test cases for the `rapthor.operations.image` module.
 """
 
-import json
-
 import pytest
 
 from pathlib import Path
@@ -218,10 +216,10 @@ class TestImage:
     @pytest.mark.parametrize("allow_internet_access", [True, False])
     def test_allow_internet_access(
         self,
-        monkeypatch,
         field,
         allow_internet_access,
-        expected_image_output,
+        monkeypatch,
+        expected_image_output
     ):
         """Test to check that the allow_internet_access flag is set"""
         field.parset["regroup_input_skymodel"] = False
@@ -244,6 +242,12 @@ class TestImage:
         assert image.parset_parms["allow_internet_access"] is allow_internet_access
         assert image.allow_internet_access is allow_internet_access
 
+        # Mock the execute method on the instance
+        monkeypatch.setattr(
+            "rapthor.lib.cwlrunner.BaseCWLRunner.execute",
+            lambda self, args, env: mocked_cwl_execution(self, args, env, expected_image_output),
+            raising=False
+        )
         image.run()
         assert image.is_done()
     
