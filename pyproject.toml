@@ -1,7 +1,7 @@
 [build-system]
 build-backend = "setuptools.build_meta"
 requires = [
-    "setuptools>=45",
+    "setuptools>=64",
     "setuptools_scm[toml]>=6.2",
     "wheel",
 ]
@@ -60,6 +60,7 @@ test = ["tox"]
 [tool.pytest.ini_options]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks test as integration tests"
 ]
 
 
