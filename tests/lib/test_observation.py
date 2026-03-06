@@ -385,10 +385,8 @@ class TestObservation:
         assert max_solint == expected_max
         assert isinstance(max_solint, int)
 
-
-def test_chunking_by_time(observation, field, monkeypatch):
-    max_nodes = 3 
-
+@pytest.mark.parametrize("max_nodes, data_fraction", [(3, 1.0), (3, 0.5)])
+def test_chunking_by_time(observation, field, monkeypatch, max_nodes, data_fraction):
     def assert_chunking_by_time(observations):
         assert len(observations) == max_nodes
         assert abs(observations[0].endtime - observations[1].starttime) < 1e-6   
@@ -398,7 +396,7 @@ def test_chunking_by_time(observation, field, monkeypatch):
         self.goesto_endofms = False
         return None
     
-    monkeypatch.setattr("rapthor.lib.field.Field.update_observations", lambda _, observation_chunks: assert_chunking_by_time(observation_chunks, expected_n_chunks=3))
+    monkeypatch.setattr("rapthor.lib.field.Field.update_observations", lambda _, observation_chunks: assert_chunking_by_time(observation_chunks))
     monkeypatch.setattr("rapthor.lib.observation.Observation.scan_ms", scan_ms)
     steps = [
         {"do_calibrate": True,
@@ -415,9 +413,9 @@ def test_chunking_by_time(observation, field, monkeypatch):
     observation.high_el_endtime = 4453738676.0
     observation.numsamples = 900
     observation.timepersample = 8.0
-    observation.data_fraction = 1.0
+    observation.data_fraction = data_fraction
 
     from rapthor.process import chunk_observations
     field.full_observations = [observation]
-    chunk_observations(field, steps, 1)
+    chunk_observations(field, steps, data_fraction)
     
