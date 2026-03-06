@@ -60,6 +60,7 @@
  'download_overwrite_skymodel': True,
  'facet_layout': '/my/data/facets.reg',
  'final_data_fraction': 0.8,
+ 'ntimes_to_repeat_final_cycle': 1,
  'imaging_specific': {'apply_diagonal_solutions': False,
                       'bda_timebase': 0,
                       'cellsize_arcsec': 2.25,

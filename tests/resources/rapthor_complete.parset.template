@@ -16,6 +16,7 @@ regroup_input_skymodel = False
 strategy = selfcal
 selfcal_data_fraction = 0.4
 final_data_fraction = 0.8
+ntimes_to_repeat_final_cycle = 1
 input_h5parm = /my/data/dirdependent.h5
 input_fulljones_h5parm = /my/data/fulljones.h5
 input_normalization_h5parm = /my/data/normalization.h5
