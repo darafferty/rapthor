@@ -814,8 +814,8 @@ def main(
             dst_filename.unlink(missing_ok=True)
             shutil.copy(src_filename, dst_filename)
 
-
-if __name__ == "__main__":
+def parse_args():
+    """Parse command-line arguments."""
     descriptiontext = "Calculate image photometry and astrometry diagnostics.\n"
 
     parser = ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
@@ -874,7 +874,10 @@ if __name__ == "__main__":
         default=5,
     )
 
-    args = parser.parse_args()
+    return parser.parse_args()
+
+if __name__ == "__main__":
+    args = parse_args()
     main(
         args.flat_noise_image,
         args.flat_noise_rms_image,
