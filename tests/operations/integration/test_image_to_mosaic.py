@@ -51,26 +51,24 @@ def test_image_I_to_mosaic(field_I_no_predict, expected_image_output, monkeypatc
     1. Image (with predict disabled)
     2. Mosaic (with the output of the Image operation as input)
     """
-    with monkeypatch.context() as m:
-        # Patch the CWL execution to return the expected output for the Image operation
-        m.setattr(
-            "rapthor.lib.cwlrunner.BaseCWLRunner.execute",
-            lambda self, args, env: mocked_cwl_execution(self, args, env, expected_image_output),
-            raising=False
-        )
+    # Patch the CWL execution to return the expected output for the Image operation
+    monkeypatch.setattr(
+        "rapthor.lib.cwlrunner.BaseCWLRunner.execute",
+        lambda self, args, env: mocked_cwl_execution(self, args, env, expected_image_output),
+        raising=False
+    )
     image = Image(field=field_I_no_predict, index=1)
     image.set_input_parameters()
     image.set_parset_parameters()
     image.run()
     # Now create and run the Mosaic operation (after sector image attributes are set)
-    with monkeypatch.context() as m:
-        m.setattr(
-            "rapthor.lib.cwlrunner.BaseCWLRunner.execute",
-            lambda self, args, env: mocked_cwl_execution(self, args, env),
-            raising=False
-        )
+    monkeypatch.setattr(
+        "rapthor.lib.cwlrunner.BaseCWLRunner.execute",
+        lambda self, args, env: mocked_cwl_execution(self, args, env),
+        raising=False
+    )
 
-        mosaic = Mosaic(field=image_patched_execution.field, index=1)
-        mosaic.set_input_parameters()
-        mosaic.set_parset_parameters()
-        mosaic.run()
+    mosaic = Mosaic(field=image.field, index=1)
+    mosaic.set_input_parameters()
+    mosaic.set_parset_parameters()
+    mosaic.run()
