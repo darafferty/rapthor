@@ -6,11 +6,12 @@ import logging
 
 import astropy.units as u
 import lsmtool.skymodel
+import numpy as np
 import pytest
 from astropy.table import Table
-
 from rapthor.lib import fitsimage
 from rapthor.scripts.calculate_image_diagnostics import check_astrometry, check_photometry, parse_args
+from rapthor.scripts.calculate_image_diagnostics import fits_to_makesourcedb
 
 # ---------------------------------------------------------------------------- #
 
@@ -478,5 +479,47 @@ def test_calculate_image_diagnostics_parse_args(monkeypatch, allow_internet_acce
     assert args.min_number == 5
 
     assert args.allow_internet_access is allow_internet_access
-    
-    
+
+# ---------------------------------------------------------------------------- #
+# Test: fits_to_makesourcedb
+
+
+def test_fits_to_makesourcedb(mock_full_astrometry_table):
+    """
+    Test that fits_to_makesourcedb correctly converts a PyBDSF catalog to a
+    makesourcedb sky model with correct format and content.
+    """
+    reference_freq = 150e6
+    skymodel = fits_to_makesourcedb(mock_full_astrometry_table, reference_freq)
+
+    assert skymodel is not None
+    assert len(skymodel) == len(mock_full_astrometry_table)
+    assert skymodel.getColNames() == ["Name", "Type", "Ra", "Dec", "I", "ReferenceFrequency"]
+    assert np.array_equal(skymodel.getColValues("Name"), mock_full_astrometry_table["Source_id"])
+    assert np.array_equal(skymodel.getColValues("Type"), ["POINT"] * len(mock_full_astrometry_table))
+    assert np.array_equal(skymodel.getColValues("I"), mock_full_astrometry_table["Isl_Total_flux"])
+    assert np.array_equal(skymodel.getColValues("ReferenceFrequency"), [reference_freq] * len(mock_full_astrometry_table))
+    assert np.allclose(skymodel.getColValues("Ra"), mock_full_astrometry_table["RA"])
+    assert np.allclose(skymodel.getColValues("Dec"), mock_full_astrometry_table["DEC"])
+
+
+def test_fits_to_makesourcedb_single_source():
+    """
+    Test that fits_to_makesourcedb correctly handles a catalog with a single
+    source.
+    """
+
+    single_source = Table({
+        "Source_id": ["TestSource"],
+        "RA": [2.5],
+        "DEC": [45.0],
+        "Total_flux": [1.5],
+    })
+
+    reference_freq = 150e6
+    skymodel = fits_to_makesourcedb(single_source, reference_freq, flux_colname="Total_flux")
+
+    assert len(skymodel) == 1
+    assert skymodel.getColValues("Name")[0] == "TestSource"
+    assert np.isclose(skymodel.getColValues("Ra")[0], 2.5)
+    assert np.isclose(skymodel.getColValues("Dec")[0], 45.0)
