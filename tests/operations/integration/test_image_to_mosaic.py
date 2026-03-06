@@ -58,11 +58,10 @@ def test_image_I_to_mosaic(field_I_no_predict, expected_image_output, monkeypatc
             lambda self, args, env: mocked_cwl_execution(self, args, env, expected_image_output),
             raising=False
         )
-    image_patched_execution = Image(field=field_I_no_predict, index=1)
-
-    image_patched_execution.set_input_parameters()
-    image_patched_execution.set_parset_parameters()
-    image_patched_execution.run()
+    image = Image(field=field_I_no_predict, index=1)
+    image.set_input_parameters()
+    image.set_parset_parameters()
+    image.run()
     # Now create and run the Mosaic operation (after sector image attributes are set)
     with monkeypatch.context() as m:
         m.setattr(
