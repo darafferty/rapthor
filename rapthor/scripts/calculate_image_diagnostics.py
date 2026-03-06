@@ -585,7 +585,6 @@ def check_astrometry(
         )
         return {}
 
-    # Do the astrometry check
     if facet_region_file is not None and os.path.isfile(facet_region_file):
         facets = read_ds9_region_file(facet_region_file)
     else:
