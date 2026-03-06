@@ -10,10 +10,7 @@ import pytest
 from astropy.table import Table
 
 from rapthor.lib import fitsimage
-from rapthor.scripts.calculate_image_diagnostics import (
-    check_astrometry,
-    check_photometry,
-)
+from rapthor.scripts.calculate_image_diagnostics import check_astrometry, check_photometry, parse_args
 
 # ---------------------------------------------------------------------------- #
 
@@ -379,7 +376,6 @@ def test_check_astrometry_with_no_internet_access_does_not_access_internet(
     input_catalog_fits,
     image_fits,
     facet_region_ds9,
-    sky_model_path,
     tmp_path,
     mocker,
     caplog,
@@ -439,3 +435,48 @@ def test_check_astrometry_with_no_internet_access_does_not_access_internet(
         assert "internet access is not permitted" in caplog.text
 
     assert diagnostics_dict == {}
+
+
+# ---------------------------------------------------------------------------- #
+# Test: parse_args
+
+@pytest.mark.parametrize("allow_internet_access", [True, False])
+def test_calculate_image_diagnostics_parse_args(monkeypatch, allow_internet_access):
+    """
+    Test that parse_args() is called with the correct default arguments when the CLI is invoked without the --allow_internet_access flag.
+    """
+    monkeypatch.setattr(
+        "sys.argv", ["calculate_image_diagnostics",
+                     "flat_noise_image",
+                     "flat_noise_rms_image", 
+                     "true_sky_image",
+                     "true_sky_rms_image",
+                     "input_catalog",
+                     "obs_ms",
+                     "obs_starttime",
+                     "obs_ntimes",
+                     "diagnostics_file",
+                     "output_root",
+                     "--allow_internet_access=" + str(allow_internet_access),]
+    )
+    args = parse_args()
+    assert args.flat_noise_image == "flat_noise_image"
+    assert args.flat_noise_rms_image == "flat_noise_rms_image"
+    assert args.true_sky_image == "true_sky_image"
+    assert args.true_sky_rms_image == "true_sky_rms_image"
+    assert args.input_catalog == "input_catalog"
+    assert args.obs_ms == "obs_ms"
+    assert args.obs_starttime == "obs_starttime"
+    assert args.obs_ntimes == "obs_ntimes"
+    assert args.diagnostics_file == "diagnostics_file"
+    assert args.output_root == "output_root"
+    
+    assert args.photometry_comparison_skymodel is None
+    assert args.photometry_comparison_surveys == ["TGSS", "LOTSS"]
+    assert args.photometry_backup_survey == "NVSS"
+    assert args.astrometry_comparison_skymodel is None
+    assert args.min_number == 5
+
+    assert args.allow_internet_access is allow_internet_access
+    
+    
