@@ -79,24 +79,24 @@ def safe_load_skymodel(skymodel, message, post, **kws):
 
 def plot_astrometry_offsets(facets, field_ra, field_dec, output_file, plot_labels=False):
     """
-    Plots the astrometry offsets across the field
+    Plots the astrometry offsets across the field.
 
-    Note: The arrows indicate the direction and magnitude of the
-    corrections that should be applied to the LOFAR positions in
-    each facet to obtain a mean offset of zero
+    Note: The arrows indicate the direction and magnitude of the corrections
+    that should be applied to the source positions in each facet to obtain a
+    mean offset of zero.
 
     Parameters
     ----------
     facets : list
-        List of Facet objects
+        List of Facet objects.
     field_ra : float
-        RA in degrees of the field
+        Right Ascension in degrees of the field.
     field_dec : float
-        Dec in degrees of the field
+        Declination in degrees of the field.
     output_file : str
-        Filename for the output plot
+        Filename for the output plot.
     plot_labels : bool, optional
-        If True, plot the facet labels
+        If True, plot the facet labels.
     """
     wcs = make_wcs(field_ra, field_dec, misc.WCS_PIXEL_SCALE)
     ra_offsets = []
@@ -169,27 +169,26 @@ def plot_astrometry_offsets(facets, field_ra, field_dec, output_file, plot_label
 
 def fits_to_makesourcedb(catalog, reference_freq, flux_colname="Isl_Total_flux"):
     """
-    Converts a PyBDSF catalog to a makesourcedb sky model
+    Converts a PyBDSF catalog to a makesourcedb sky model.
 
     Note: the resulting makesourcedb catalog is a minimal catalog suitable for
     use in photometry and astrometry comparisons and should not be used for
-    calibration
+    calibration.
 
     Parameters
     ----------
-    catalog : astropy Table object
-        Input PyBDSF catalog
+    catalog : astropy.table.Table
+        Input PyBDSF catalog.
     reference_freq : float
         The reference frequency in Hz for the input catalog at which the flux
-        densities were measured
+        densities were measured.
     flux_colname : str, optional
         The name of the column in the input catalog that contains the flux
-        density values
-
+        density values.
     Returns
     -------
-    skymodel : LSMTool skymodel object
-        The makesourcedb sky model
+    skymodel : lsmtool.skymodel.SkyModel
+        The makesourcedb sky model.
     """
     # Convert the result to makesourcedb format and write to a tempfile
     out_lines = [
@@ -223,12 +222,12 @@ def check_photometry(
 
     Parameters
     ----------
-    obs : Observation object
+    obs :  rapthor.lib.observation.Observation
         Representative observation, used to derive pointing, etc.
     input_catalog : str
         Filename of the input PyBDSF FITS catalog derived from the input image.
     freq : float
-        Frequency in Hz of the input image
+        Frequency in Hz of the input image.
     min_number : int
         Minimum number of matched sources required for the comparisons.
     comparison_skymodel : str, optional
