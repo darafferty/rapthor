@@ -56,8 +56,7 @@ def run(parset_file, logging_level="info"):
         final_step = strategy_steps[-1]
     else:
         log.warning(
-            "The strategy %r does not define any processing steps. No "
-            "processing can be done.",
+            "The strategy %r does not define any processing steps. No processing can be done.",
             parset["strategy"],
         )
         return
@@ -371,9 +370,7 @@ def chunk_observations(field, steps, data_fraction):
         fast_solint = max(step.get("fast_timestep_sec", 0) for step in steps)
         slow_solint = max(step.get("slow_timestep_sec", 0) for step in steps)
         max_dd_timestep = max(fast_solint, slow_solint)
-        max_di_timestep = max(
-            step.get("fulljones_timestep_sec", 0) for step in steps
-        )
+        max_di_timestep = max(step.get("fulljones_timestep_sec", 0) for step in steps)
 
         # For DD solves, include the effect of DD solution intervals (given by
         # dd_interval_factor), which increases the solution intervals. This effect

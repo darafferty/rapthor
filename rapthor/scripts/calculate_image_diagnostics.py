@@ -262,10 +262,7 @@ def check_photometry(
     #     that may be poorly modeled)
     catalog = Table.read(input_catalog, format="fits")
     if len(catalog) == 0:
-        logger.info(
-            "No sources found in the input image. Skipping the photometry "
-            "check..."
-        )
+        logger.info("No sources found in the input image. Skipping the photometry check...")
         return {}
 
     phase_center = SkyCoord(ra=obs.ra * u.degree, dec=obs.dec * u.degree)
@@ -289,9 +286,7 @@ def check_photometry(
 
     # Load photometry survey skymodels, fall back to backup if needed
     comparison_surveys = list(
-        DEFAULT_PHOTOMETRY_COMPARISON_SURVEYS
-        if comparison_surveys is None
-        else comparison_surveys
+        DEFAULT_PHOTOMETRY_COMPARISON_SURVEYS if comparison_surveys is None else comparison_surveys
     )
     comparison_skymodels = load_photometry_surveys(
         obs, comparison_skymodel, comparison_surveys, backup_survey
@@ -327,9 +322,7 @@ def check_photometry(
                 backup_survey,
             )
 
-        if statistics := compare_photometry_survey(
-            catalog, survey, comparison_skymodel, freq
-        ):
+        if statistics := compare_photometry_survey(catalog, survey, comparison_skymodel, freq):
             # Comparison succeeded
             successful_surveys.append(survey)
 
@@ -343,9 +336,7 @@ def check_photometry(
     return photometry_diagnostics
 
 
-def load_photometry_surveys(
-    observation, comparison_skymodel, comparison_surveys, backup_survey
-):
+def load_photometry_surveys(observation, comparison_skymodel, comparison_surveys, backup_survey):
     """
     Load skymodels for the photometry comparison, using the backup survey if
     needed.
@@ -370,7 +361,7 @@ def load_photometry_surveys(
         Dictionary of loaded rapthor.lib.skymodel.SkyModel objects for the
         photometry comparison.
     """
-    
+
     # Load photometry comparison model
     comparison_skymodels = {}
     if comparison_skymodel:
@@ -380,10 +371,7 @@ def load_photometry_surveys(
             "Trying to download sky model(s) instead...",
         ) as skymodel:
             comparison_skymodels["USER_SUPPLIED"] = skymodel
-            logger.info(
-                "Using the supplied comparison sky model for the photometry "
-                "check"
-            )
+            logger.info("Using the supplied comparison sky model for the photometry check")
 
     if comparison_skymodels:
         return comparison_skymodels
@@ -416,8 +404,7 @@ def load_photometry_surveys(
     for survey in comparison_surveys:
         with safe_load_skymodel(
             survey,
-            "A problem occurred when downloading the %s catalog for use"
-            " in the photometry check.",
+            "A problem occurred when downloading the %s catalog for use in the photometry check.",
             "Skipping this survey...",
             VOPosition=[observation.ra, observation.dec],
             VORadius=5.0,
@@ -448,16 +435,14 @@ def compare_photometry_survey(catalog, survey, comparison_skymodel, freq):
     dict
         Statistics derived from comparing the input catalog to the survey
         catalog. An empty dict is returned if there are too few matching sources
-        in the catalog and skymodel for a meaningful comparison. 
+        in the catalog and skymodel for a meaningful comparison.
     """
 
     # Convert the output and compare, using the total flux from the
     # Gaussian fits ('Total_flux') to be consistent with the flux-scale
     # normalization
     comparison_skymodel.group("every")
-    reference_skymodel = fits_to_makesourcedb(
-        catalog, freq, flux_colname="Total_flux"
-    )
+    reference_skymodel = fits_to_makesourcedb(catalog, freq, flux_colname="Total_flux")
 
     if result := reference_skymodel.compare(
         comparison_skymodel,
@@ -561,10 +546,7 @@ def check_astrometry(
     #     with high positional uncertainties)
     catalog = Table.read(input_catalog, format="fits")
     if len(catalog) == 0:
-        logger.info(
-            "No sources found in the input image. Skipping the astrometry "
-            "check..."
-        )
+        logger.info("No sources found in the input image. Skipping the astrometry check...")
         return {}
 
     major_axis = catalog["DC_Maj"]  # degrees
@@ -588,9 +570,7 @@ def check_astrometry(
         facets = read_ds9_region_file(facet_region_file)
     else:
         # Use a single rectangular facet centered on the phase center
-        image_width = max(image.img_data.shape[-2:]) * abs(
-            image.img_hdr["CDELT1"]
-        )
+        image_width = max(image.img_data.shape[-2:]) * abs(image.img_hdr["CDELT1"])
         max_search_cone_radius = 0.5  # deg; Pan-STARRS search limit
         width = min(max_search_cone_radius * 2, image_width)
         facets = [SquareFacet("field", obs.ra, obs.dec, width)]
@@ -607,10 +587,7 @@ def check_astrometry(
             "Trying default sky model instead...",
         ) as astrometry_skymodel:
             astrometry_skymodel.group("every")
-            logger.info(
-                "Using the supplied comparison sky model for the astrometry "
-                "check"
-            )
+            logger.info("Using the supplied comparison sky model for the astrometry check")
     elif not allow_internet_access:
         logger.info(
             "Skipping astrometry check since no comparison skymodel is "
@@ -631,15 +608,11 @@ def check_astrometry(
     astrometry_diagnostics = defaultdict(list)
     for facet in facets:
         facet.set_skymodel(s_pybdsf.copy())
-        facet.find_astrometry_offsets(
-            astrometry_skymodel, min_number=min_number
-        )
+        facet.find_astrometry_offsets(astrometry_skymodel, min_number=min_number)
         if facet.astrometry_diagnostics:
             astrometry_diagnostics["facet_name"].append(facet.name)
             for key in astrometry_keys:
-                astrometry_diagnostics[key].append(
-                    facet.astrometry_diagnostics[key]
-                )
+                astrometry_diagnostics[key].append(facet.astrometry_diagnostics[key])
 
     if not astrometry_diagnostics["facet_name"]:
         return {}
@@ -647,14 +620,10 @@ def check_astrometry(
     with open(f"{output_root}.astrometry_offsets.json", "w") as fp:
         json.dump(dict(astrometry_diagnostics), fp)
 
-    plot_astrometry_offsets(
-        facets, obs.ra, obs.dec, f"{output_root}.astrometry_offsets.pdf"
-    )
+    plot_astrometry_offsets(facets, obs.ra, obs.dec, f"{output_root}.astrometry_offsets.pdf")
 
     # Calculate mean offsets
-    return {
-        key: np.mean(astrometry_diagnostics[key]) for key in astrometry_keys
-    }
+    return {key: np.mean(astrometry_diagnostics[key]) for key in astrometry_keys}
 
 
 def main(
@@ -848,24 +817,12 @@ def main(
 if __name__ == "__main__":
     descriptiontext = "Calculate image photometry and astrometry diagnostics.\n"
 
-    parser = ArgumentParser(
-        description=descriptiontext, formatter_class=RawTextHelpFormatter
-    )
-    parser.add_argument(
-        "flat_noise_image", help="Filename of flat-noise FITS image"
-    )
-    parser.add_argument(
-        "flat_noise_rms_image", help="Filename of flat-noise RMS FITS image"
-    )
-    parser.add_argument(
-        "true_sky_image", help="Filename of true sky FITS image"
-    )
-    parser.add_argument(
-        "true_sky_rms_image", help="Filename of true sky RMS FITS image"
-    )
-    parser.add_argument(
-        "input_catalog", help="Filename of input PyBDSF FITS catalog"
-    )
+    parser = ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
+    parser.add_argument("flat_noise_image", help="Filename of flat-noise FITS image")
+    parser.add_argument("flat_noise_rms_image", help="Filename of flat-noise RMS FITS image")
+    parser.add_argument("true_sky_image", help="Filename of true sky FITS image")
+    parser.add_argument("true_sky_rms_image", help="Filename of true sky RMS FITS image")
+    parser.add_argument("input_catalog", help="Filename of input PyBDSF FITS catalog")
     parser.add_argument("obs_ms", help="Filename of observation MS")
     parser.add_argument("obs_starttime", help="Start time of observation")
     parser.add_argument("obs_ntimes", help="Number of time slots of observation")

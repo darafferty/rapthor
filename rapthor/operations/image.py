@@ -92,9 +92,7 @@ class Image(Operation):
         if self.dde_method is None:
             self.dde_method = self.field.dde_method
         if self.use_facets is None:
-            self.use_facets = (
-                self.dde_method == "full" and not self.apply_screens
-            )
+            self.use_facets = self.dde_method == "full" and not self.apply_screens
         if self.image_pol is None:
             self.image_pol = self.field.image_pol  # set by process.run_steps()
         if self.save_source_list is None:
@@ -102,9 +100,7 @@ class Image(Operation):
         if self.peel_bright_sources is None:
             self.peel_bright_sources = self.field.peel_bright_sources
         if self.preapply_dde_solutions is None:
-            self.preapply_dde_solutions = (
-                self.dde_method == "single" and not self.apply_none
-            )
+            self.preapply_dde_solutions = self.dde_method == "single" and not self.apply_none
         if self.compress_images is None:
             self.compress_images = self.field.compress_images
         if self.image_cube_stokes_list is None:
@@ -120,9 +116,7 @@ class Image(Operation):
         else:
             max_cores = self.field.parset["cluster_specific"]["max_cores"]
 
-        self.allow_internet_access = self.field.parset["cluster_specific"][
-            "allow_internet_access"
-        ]
+        self.allow_internet_access = self.field.parset["cluster_specific"]["allow_internet_access"]
         self.parset_parms = {
             "rapthor_pipeline_dir": self.rapthor_pipeline_dir,
             "pipeline_working_dir": self.pipeline_working_dir,
@@ -296,12 +290,8 @@ class Image(Operation):
                 prepare_data_applycal_steps.append("normalization")
                 input_normalize_h5parm = CWLFile(self.field.normalize_h5parm).to_json()
             if prepare_data_applycal_steps:
-                prepare_data_applycal_steps = (
-                    f"[{','.join(prepare_data_applycal_steps)}]"
-                )
-        all_regular = all(
-            obs.channels_are_regular for obs in self.field.observations
-        )
+                prepare_data_applycal_steps = f"[{','.join(prepare_data_applycal_steps)}]"
+        all_regular = all(obs.channels_are_regular for obs in self.field.observations)
         # Default is to average visibilities for imaging up to the smearing limit
         if self.field.average_visibilities:
             # Average visibilities
@@ -312,11 +302,7 @@ class Image(Operation):
         prepare_data_steps = f"[{','.join(prepare_data_steps)}]"
 
         # Set the h5parm to use to apply the DDE solutions as needed
-        h5parm = (
-            None
-            if self.apply_none
-            else CWLFile(self.field.h5parm_filename).to_json()
-        )
+        h5parm = None if self.apply_none else CWLFile(self.field.h5parm_filename).to_json()
         # Set the data interval to use when screens are applied so that final solution
         # interval is removed
         #
@@ -404,14 +390,10 @@ class Image(Operation):
             ],
             "allow_internet_access": self.allow_internet_access,
             "photometry_skymodel": (
-                CWLFile(self.photometry_skymodel).to_json()
-                if self.photometry_skymodel
-                else None
+                CWLFile(self.photometry_skymodel).to_json() if self.photometry_skymodel else None
             ),
             "astrometry_skymodel": (
-                CWLFile(self.astrometry_skymodel).to_json()
-                if self.astrometry_skymodel
-                else None
+                CWLFile(self.astrometry_skymodel).to_json() if self.astrometry_skymodel else None
             ),
         }
         # Add parameters that depend on the set_parset parameters (set in set_parset_parameters())

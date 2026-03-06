@@ -40,18 +40,14 @@ def mock_minimal_table(request):
 @pytest.fixture(params=[10])
 def mock_full_photometry_table(request):
     # Create a mock Table for photometry with the same data as mock_full_table
-    mock_data = mock_full_table_data(
-        num_sources=request.param, total_flux_keyword="Total_flux"
-    )
+    mock_data = mock_full_table_data(num_sources=request.param, total_flux_keyword="Total_flux")
     return Table(mock_data)
 
 
 @pytest.fixture(params=[10])
 def mock_full_astrometry_table(request):
     # Create a mock Table for astrometry with the same data as mock_full_table
-    mock_data = mock_full_table_data(
-        num_sources=request.param, total_flux_keyword="Isl_Total_flux"
-    )
+    mock_data = mock_full_table_data(num_sources=request.param, total_flux_keyword="Isl_Total_flux")
     return Table(mock_data)
 
 
@@ -123,9 +119,7 @@ def test_check_astrometry_sources_below_minimum_number(
     """
 
     # Mock Table.read for FITS files to return a catalog with length zero
-    monkeypatch.setattr(
-        "astropy.table.Table.read", lambda *args, **kwargs: mock_minimal_table
-    )
+    monkeypatch.setattr("astropy.table.Table.read", lambda *args, **kwargs: mock_minimal_table)
 
     num_sources = len(mock_minimal_table)
     min_number = num_sources + 1
@@ -145,11 +139,7 @@ def test_check_astrometry_sources_below_minimum_number(
             comparison_skymodel=sky_model_path,
         )
 
-        msg = (
-            "No sources found"
-            if num_sources == 0
-            else f"Fewer than {min_number} sources found"
-        )
+        msg = "No sources found" if num_sources == 0 else f"Fewer than {min_number} sources found"
         assert msg in caplog.text
         assert "Skipping the astrometry check..." in caplog.text
 
@@ -198,9 +188,7 @@ def test_check_photometry_below_min_number_sources(
     """
 
     # Mock Table.read for FITS files to return a catalog with length zero
-    monkeypatch.setattr(
-        "astropy.table.Table.read", lambda *args, **kwargs: mock_minimal_table
-    )
+    monkeypatch.setattr("astropy.table.Table.read", lambda *args, **kwargs: mock_minimal_table)
     num_sources = len(mock_minimal_table)
     min_number = num_sources + 1
 
@@ -212,11 +200,7 @@ def test_check_photometry_below_min_number_sources(
             comparison_skymodel=sky_model_path,
             min_number=min_number,
         )
-        msg = (
-            "No sources found"
-            if num_sources == 0
-            else f"Fewer than {min_number} sources found"
-        )
+        msg = "No sources found" if num_sources == 0 else f"Fewer than {min_number} sources found"
         assert msg in caplog.text
         assert "Skipping the photometry check..." in caplog.text
 
@@ -279,6 +263,7 @@ def test_check_photometry_with_comparison_skymodel_does_not_access_internet(
 
     assert diagnostics_dict != {}
 
+
 @pytest.mark.disable_socket
 def test_check_photometry_without_comparison_surveys_does_not_access_internet(
     observation,
@@ -311,7 +296,10 @@ def test_check_photometry_without_comparison_surveys_does_not_access_internet(
         )
         assert "No sources found" not in caplog.text
         assert "The backup survey catalog" not in caplog.text
-        assert "A comparison sky model is not available and a list of comparison surveys was not supplied. Skipping photometry check..." in caplog.text
+        assert (
+            "A comparison sky model is not available and a list of comparison surveys was not supplied. Skipping photometry check..."
+            in caplog.text
+        )
     assert diagnostics_dict == {}
 
 
@@ -384,6 +372,7 @@ def test_check_astrometry_with_comparison_skymodel_does_not_access_internet(
     assert "stdClippedRAOffsetDeg" in diagnostics_dict
     assert "stdClippedDecOffsetDeg" in diagnostics_dict
 
+
 @pytest.mark.disable_socket
 def test_check_astrometry_with_no_internet_access_does_not_access_internet(
     observation,
@@ -443,11 +432,10 @@ def test_check_astrometry_with_no_internet_access_does_not_access_internet(
             facet_region_ds9,
             min_number=1,
             output_root=str(tmp_path / "astrometry_check"),
-            comparison_skymodel=None, 
+            comparison_skymodel=None,
             allow_internet_access=False,
         )
         assert "No sources found" not in caplog.text
         assert "internet access is not permitted" in caplog.text
 
     assert diagnostics_dict == {}
-

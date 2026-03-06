@@ -598,15 +598,11 @@ def check_and_adjust_skymodel_settings(parset_dict):
     generate_initial_skymodel = parset_dict["generate_initial_skymodel"]
     download_initial_skymodel = parset_dict["download_initial_skymodel"]
     action = "generation" if generate_initial_skymodel else "download"
-    generate_or_download_skymodel = (
-        generate_initial_skymodel or download_initial_skymodel
-    )
+    generate_or_download_skymodel = generate_initial_skymodel or download_initial_skymodel
 
     if input_skymodel := parset_dict["input_skymodel"]:
         if not os.path.exists(input_skymodel):
-            raise FileNotFoundError(
-                f'Input sky model file "{input_skymodel}" not found.'
-            )
+            raise FileNotFoundError(f'Input sky model file "{input_skymodel}" not found.')
         if generate_or_download_skymodel:
             # If sky model is given but generation/download requested,
             # disable generation/download and use the given skymodel.
@@ -617,20 +613,15 @@ def check_and_adjust_skymodel_settings(parset_dict):
                 action,
                 action,
             )
-            parset_dict["download_initial_skymodel"] = (
-                download_initial_skymodel
-            ) = False
+            parset_dict["download_initial_skymodel"] = download_initial_skymodel = False
             parset_dict["generate_initial_skymodel"] = False
 
     elif generate_or_download_skymodel:
         verb, suffix = (
-            ("generate", " from input data")
-            if generate_initial_skymodel
-            else ("download", "")
+            ("generate", " from input data") if generate_initial_skymodel else ("download", "")
         )
         log.info(
-            "No input sky model file given and %s requested. Will automatically"
-            " %s sky model%s.",
+            "No input sky model file given and %s requested. Will automatically %s sky model%s.",
             action,
             verb,
             suffix,
@@ -652,13 +643,10 @@ def check_and_adjust_skymodel_settings(parset_dict):
     # file exists, if not raise an error.
     for diagnostic in ("astrometry", "photometry"):
         if (
-            skymodel := parset_dict["imaging_specific"][
-                f"{diagnostic}_skymodel"
-            ]
+            skymodel := parset_dict["imaging_specific"][f"{diagnostic}_skymodel"]
         ) and not os.path.exists(skymodel):
             raise FileNotFoundError(
-                f"Comparison sky model for {diagnostic} check not found at "
-                f'"{skymodel}"'
+                f'Comparison sky model for {diagnostic} check not found at "{skymodel}"'
             )
 
     # Check if we need to access the internet to get any skymodels and if we
