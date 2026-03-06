@@ -1451,26 +1451,54 @@ class Field(object):
                         # use backup
                         sector.poly = poly_bkup
 
-    def make_outlier_skymodel(self):
+    def make_outlier_skymodel(self, threshold_ratio=0.001, threshold_jy=0.1):
         """
-        Make a sky model of any outlier calibration sources, not included in any
-        imaging sector
+        Make a sky model of any outlier calibration sources, not included in any imaging sector
+
+        Thresholds can be used to avoid unnecessary processing in cases where the total flux
+        density of the outlier sky model is negligable (either relative to that in the imaged
+        regions or in absolute terms). Note that outlier sources will be considered for processing
+        when either threshold is met.
+
+        Parameters
+        ----------
+        threshold_ratio : float, optional
+            The threshold of the ratio of the total flux in outlier sources relative to the total
+            flux in imaged sources, above which outlier sources will be considered
+        threshold_jy : float, optional
+            The threshold (in Jy) of the total flux density of all outlier sources, above which
+            outlier sources will be considered
+
+        Returns
+        -------
+        outlier_skymodel: LSMTool sky model object
+            Sky model of the outlier sources
         """
         all_source_names = self.calibration_skymodel.getColValues('Name').tolist()
+        sector_flux_jy = 0
         sector_source_names = []
         for sector in self.imaging_sectors:
             skymodel = lsmtool.load(str(sector.predict_skymodel_file))
+            sector_flux_jy += np.sum(skymodel.getColValues('I', units='Jy'))
             sector_source_names.extend(skymodel.getColValues('Name').tolist())
         if self.peel_bright_sources:
             # The bright sources were removed from the sector predict sky models, so
             # add them to the list
             sector_source_names.extend(self.bright_source_skymodel.getColValues('Name').tolist())
+            sector_flux_jy += np.sum(self.bright_source_skymodel.getColValues('I', units='Jy'))
 
         outlier_ind = np.array([all_source_names.index(sn) for sn in all_source_names
                                 if sn not in sector_source_names])
         outlier_skymodel = self.calibration_skymodel.copy()
         outlier_skymodel.select(outlier_ind, force=True)
-        return outlier_skymodel
+        outlier_flux_jy = np.sum(outlier_skymodel.getColValues('I', units='Jy'))
+        if (
+            outlier_flux_jy / sector_flux_jy > threshold_ratio
+            or outlier_flux_jy > threshold_jy
+        ):
+            return outlier_skymodel
+        else:
+            return []
 
     def makeWCS(self):
         """
