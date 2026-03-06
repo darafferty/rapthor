@@ -839,8 +839,7 @@ def parse_args():
         "--allow_internet_access",
         help="Whether to allow internet access for downloading sky models when "
         "they are not available locally.",
-        type=bool,
-        default=True,
+        action="store_true",
     )
     parser.add_argument(
         "--photometry_comparison_skymodel",

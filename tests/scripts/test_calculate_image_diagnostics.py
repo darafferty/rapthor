@@ -456,8 +456,8 @@ def test_calculate_image_diagnostics_parse_args(monkeypatch, allow_internet_acce
                      "obs_starttime",
                      "obs_ntimes",
                      "diagnostics_file",
-                     "output_root",
-                     "--allow_internet_access=" + str(allow_internet_access),]
+                     "output_root"]
+                     + (["--allow_internet_access"] if allow_internet_access else []),
     )
     args = parse_args()
     assert args.flat_noise_image == "flat_noise_image"
