@@ -6,11 +6,32 @@ from rapthor.lib.strategy import set_selfcal_strategy
 from rapthor.operations.image import Image
 from rapthor.operations.mosaic import Mosaic
 
+"""
+Integration tests from the Image operation to the Mosaic operation.
+
+Currently the execution in process of a step has the following 3 stages:
+1. set_input_parameters: where the input parameters are set based on the 
+   field and the index
+2. set_parset_parameters: where the parset parameters are set based on 
+   the field and the index
+3. run: where the actual execution of the operation happens, which 
+   includes the execution of the CWL workflow.  
+During the run stage, the CWL execution is mocked to return the expected
+output for the Image operation, which is then used as input for the Mosaic
+operation. At the end of the run stage the finalise call is made within 
+the Operation. Successful completion, sets various attributes in the field
+and sector image, which are then used by the Mosaic operation to set its
+input parameters and parset parameters.
+"""
 
 @pytest.fixture
 def field_I_no_predict(field):
     """
     Fixture to set up the field for the image operation with predict disabled.
+    This fixture modifies the field to disable the predict step and sets the
+    image polarization to 'I'.
+    With the testing skymodel this is the only way to avoid getting an error in the clustering
+    of the sources performed in the Field.update() method.
     """
     field.h5parm_filename = "nonexisting_h5parm_file.h5"
     field.scan_observations()
@@ -24,28 +45,21 @@ def field_I_no_predict(field):
     return field
 
 
-@pytest.fixture
-def image_patched_execution(field_I_no_predict, monkeypatch, expected_image_output):
-    """                       
-    Fixture to patch the CWL execution for the Image operation.
-    """
-
-    # Patch the CWL execution to return the expected output for the Image operation
-    monkeypatch.setattr(
-        "rapthor.lib.cwlrunner.BaseCWLRunner.execute",
-        lambda self, args, env: mocked_cwl_execution(self, args, env, expected_image_output),
-        raising=False
-    )
-    return Image(field=field_I_no_predict, index=1)
-
-
 @pytest.mark.integration
-def test_image_to_mosaic(image_patched_execution, monkeypatch):
+def test_image_I_to_mosaic(field_I_no_predict, expected_image_output, monkeypatch):
     """
     Test the execution of the following operations in sequence:
     1. Image (with predict disabled)
     2. Mosaic (with the output of the Image operation as input)
     """
+    with monkeypatch.context() as m:
+        # Patch the CWL execution to return the expected output for the Image operation
+        m.setattr(
+            "rapthor.lib.cwlrunner.BaseCWLRunner.execute",
+            lambda self, args, env: mocked_cwl_execution(self, args, env, expected_image_output),
+            raising=False
+        )
+    image_patched_execution = Image(field=field_I_no_predict, index=1)
 
     image_patched_execution.set_input_parameters()
     image_patched_execution.set_parset_parameters()
