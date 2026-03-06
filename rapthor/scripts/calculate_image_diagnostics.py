@@ -540,6 +540,14 @@ def check_astrometry(
         Mean astrometry diagnostics. An empty dict is returned if the
         comparison could not be done successfully
     """
+    # Check if a comparison sky model is provided or can be downloaded, 
+    # and if not, skip the astrometry check.
+    if not (comparison_skymodel or allow_internet_access):
+        logger.info(
+            "Skipping astrometry check since no comparison skymodel is "
+            "provided, and internet access is not permitted"
+        )
+        return {}
     # Load and filter the input PyBDSF FITS catalog as needed for the
     # astrometry check. Sources are filtered to keep only those that:
     #   - have deconvolved major axis < 10 arcsec (to exclude extended sources
@@ -580,23 +588,22 @@ def check_astrometry(
     # Convert the filtered catalog into a minimal sky model for use with LSMTool
     s_pybdsf = fits_to_makesourcedb(catalog, image.freq)
 
-    # Loop over the facets, performing the astrometry checks for each
     astrometry_skymodel = None
     if comparison_skymodel:
         with safe_load_skymodel(
             comparison_skymodel,
             "Comparison sky model could not be loaded.",
-            "Trying default sky model instead...",
+            "Checking for internet access...",
         ) as astrometry_skymodel:
             astrometry_skymodel.group("every")
             logger.info("Using the supplied comparison sky model for the astrometry check")
-    elif not allow_internet_access:
+    if not(astrometry_skymodel or allow_internet_access):
         logger.info(
-            "Skipping astrometry check since no comparison skymodel is "
-            "provided, and internet access is not permitted"
+            "Internet access not allowed. Skipping astrometry check..."
         )
         return {}
 
+    # Loop over the facets, performing the astrometry checks for each
     astrometry_keys = (
         "meanRAOffsetDeg",
         "stdRAOffsetDeg",

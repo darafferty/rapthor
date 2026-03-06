@@ -75,6 +75,7 @@ def test_check_astrometry_zero_sources(
     tmp_path,
     caplog,
     monkeypatch,
+    mocker
 ):
     """
     Test the check_astrometry function when the input skymodel contains zero
@@ -82,6 +83,7 @@ def test_check_astrometry_zero_sources(
     """
 
     monkeypatch.setattr("astropy.table.Table.read", lambda *args, **kwargs: [])
+    mocker.patch.object(lsmtool.skymodel.SkyModel, "group")
 
     with caplog.at_level(logging.INFO):
         actual_result = check_astrometry(
@@ -125,6 +127,7 @@ def test_check_astrometry_sources_below_minimum_number(
     fitsimage.FITSImage = mocker.MagicMock()
     mock_image = fitsimage.FITSImage(image_fits)
     mock_image.freq.return_value = 150e6  # Mock frequency in Hz
+    mocker.patch.object(lsmtool.skymodel.SkyModel, "group")
 
     with caplog.at_level(logging.INFO):
         actual_result = check_astrometry(
