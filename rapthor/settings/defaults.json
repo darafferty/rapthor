@@ -17,6 +17,7 @@
         "strategy": "selfcal",
         "selfcal_data_fraction": 0.2,
         "final_data_fraction": 1.0,
+        "ntimes_to_repeat_final_cycle": 0,
         "input_h5parm": null,
         "input_fulljones_h5parm": null,
         "input_normalization_h5parm": null,
