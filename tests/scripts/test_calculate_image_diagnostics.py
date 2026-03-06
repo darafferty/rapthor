@@ -10,7 +10,11 @@ import numpy as np
 import pytest
 from astropy.table import Table
 from rapthor.lib import fitsimage
-from rapthor.scripts.calculate_image_diagnostics import check_astrometry, check_photometry, parse_args
+from rapthor.scripts.calculate_image_diagnostics import (
+    check_astrometry,
+    check_photometry,
+    parse_args,
+)
 from rapthor.scripts.calculate_image_diagnostics import fits_to_makesourcedb
 
 # ---------------------------------------------------------------------------- #
@@ -75,7 +79,7 @@ def test_check_astrometry_zero_sources(
     tmp_path,
     caplog,
     monkeypatch,
-    mocker
+    mocker,
 ):
     """
     Test the check_astrometry function when the input skymodel contains zero
@@ -444,24 +448,28 @@ def test_check_astrometry_with_no_internet_access_does_not_access_internet(
 # ---------------------------------------------------------------------------- #
 # Test: parse_args
 
+
 @pytest.mark.parametrize("allow_internet_access", [True, False])
 def test_calculate_image_diagnostics_parse_args(monkeypatch, allow_internet_access):
     """
     Test that parse_args() is called with the correct default arguments when the CLI is invoked without the --allow_internet_access flag.
     """
     monkeypatch.setattr(
-        "sys.argv", ["calculate_image_diagnostics",
-                     "flat_noise_image",
-                     "flat_noise_rms_image", 
-                     "true_sky_image",
-                     "true_sky_rms_image",
-                     "input_catalog",
-                     "obs_ms",
-                     "obs_starttime",
-                     "obs_ntimes",
-                     "diagnostics_file",
-                     "output_root"]
-                     + (["--allow_internet_access"] if allow_internet_access else []),
+        "sys.argv",
+        [
+            "calculate_image_diagnostics",
+            "flat_noise_image",
+            "flat_noise_rms_image",
+            "true_sky_image",
+            "true_sky_rms_image",
+            "input_catalog",
+            "obs_ms",
+            "obs_starttime",
+            "obs_ntimes",
+            "diagnostics_file",
+            "output_root",
+        ]
+        + (["--allow_internet_access"] if allow_internet_access else []),
     )
     args = parse_args()
     assert args.flat_noise_image == "flat_noise_image"
@@ -474,7 +482,7 @@ def test_calculate_image_diagnostics_parse_args(monkeypatch, allow_internet_acce
     assert args.obs_ntimes == "obs_ntimes"
     assert args.diagnostics_file == "diagnostics_file"
     assert args.output_root == "output_root"
-    
+
     assert args.photometry_comparison_skymodel is None
     assert args.photometry_comparison_surveys == ["TGSS", "LOTSS"]
     assert args.photometry_backup_survey == "NVSS"
@@ -482,6 +490,7 @@ def test_calculate_image_diagnostics_parse_args(monkeypatch, allow_internet_acce
     assert args.min_number == 5
 
     assert args.allow_internet_access is allow_internet_access
+
 
 # ---------------------------------------------------------------------------- #
 # Test: fits_to_makesourcedb
@@ -499,9 +508,14 @@ def test_fits_to_makesourcedb(mock_full_astrometry_table):
     assert len(skymodel) == len(mock_full_astrometry_table)
     assert skymodel.getColNames() == ["Name", "Type", "Ra", "Dec", "I", "ReferenceFrequency"]
     assert np.array_equal(skymodel.getColValues("Name"), mock_full_astrometry_table["Source_id"])
-    assert np.array_equal(skymodel.getColValues("Type"), ["POINT"] * len(mock_full_astrometry_table))
+    assert np.array_equal(
+        skymodel.getColValues("Type"), ["POINT"] * len(mock_full_astrometry_table)
+    )
     assert np.array_equal(skymodel.getColValues("I"), mock_full_astrometry_table["Isl_Total_flux"])
-    assert np.array_equal(skymodel.getColValues("ReferenceFrequency"), [reference_freq] * len(mock_full_astrometry_table))
+    assert np.array_equal(
+        skymodel.getColValues("ReferenceFrequency"),
+        [reference_freq] * len(mock_full_astrometry_table),
+    )
     assert np.allclose(skymodel.getColValues("Ra"), mock_full_astrometry_table["RA"])
     assert np.allclose(skymodel.getColValues("Dec"), mock_full_astrometry_table["DEC"])
 
@@ -512,12 +526,14 @@ def test_fits_to_makesourcedb_single_source():
     source.
     """
 
-    single_source = Table({
-        "Source_id": ["TestSource"],
-        "RA": [2.5],
-        "DEC": [45.0],
-        "Total_flux": [1.5],
-    })
+    single_source = Table(
+        {
+            "Source_id": ["TestSource"],
+            "RA": [2.5],
+            "DEC": [45.0],
+            "Total_flux": [1.5],
+        }
+    )
 
     reference_freq = 150e6
     skymodel = fits_to_makesourcedb(single_source, reference_freq, flux_colname="Total_flux")

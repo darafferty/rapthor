@@ -202,7 +202,7 @@ def fits_to_makesourcedb(catalog, reference_freq, flux_colname="Isl_Total_flux")
                 catalog["DEC"],
                 catalog[flux_colname],
             )
-        )
+        ),
     ]
     with tempfile.TemporaryDirectory() as tmpdir:
         skymodel_path = Path(tmpdir) / "skymodel.txt"
@@ -540,7 +540,7 @@ def check_astrometry(
         Mean astrometry diagnostics. An empty dict is returned if the
         comparison could not be done successfully
     """
-    # Check if a comparison sky model is provided or can be downloaded, 
+    # Check if a comparison sky model is provided or can be downloaded,
     # and if not, skip the astrometry check.
     if not (comparison_skymodel or allow_internet_access):
         logger.info(
@@ -597,10 +597,8 @@ def check_astrometry(
         ) as astrometry_skymodel:
             astrometry_skymodel.group("every")
             logger.info("Using the supplied comparison sky model for the astrometry check")
-    if not(astrometry_skymodel or allow_internet_access):
-        logger.info(
-            "Internet access not allowed. Skipping astrometry check..."
-        )
+    if not (astrometry_skymodel or allow_internet_access):
+        logger.info("Internet access not allowed. Skipping astrometry check...")
         return {}
 
     # Loop over the facets, performing the astrometry checks for each
@@ -822,6 +820,7 @@ def main(
             dst_filename.unlink(missing_ok=True)
             shutil.copy(src_filename, dst_filename)
 
+
 def parse_args():
     """Parse command-line arguments."""
     descriptiontext = "Calculate image photometry and astrometry diagnostics.\n"
@@ -882,6 +881,7 @@ def parse_args():
     )
 
     return parser.parse_args()
+
 
 if __name__ == "__main__":
     args = parse_args()
