@@ -92,7 +92,7 @@ def run(parset_file, logging_level="info"):
     # Run a final pass if needed
     field.do_final = do_final_pass(field, selfcal_steps, final_step)
     if field.do_final:
-        for i in range(parset["ntimes_to_repeat_final_cycle"]):
+        for i in range(parset["ntimes_to_repeat_final_cycle"] + 1):
             if selfcal_steps:
                 # If selfcal was done, set peel_outliers to that of the initial cycle, since the
                 # observations will be regenerated and outliers (if any) need to be peeled again
