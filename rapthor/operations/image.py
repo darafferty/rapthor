@@ -1008,12 +1008,15 @@ def report_sector_diagnostics(sector_name, diagnostics_dict, log):
                 "No sources were found by PyBDSF, possibly indicating a problem with the processing."
             )
         log.info("    Reference frequency = %.1f MHz", diagnostics_dict["freq"] / 1e6)
-        log.info("    Beam = %.1f\" x %.1f\", PA = %.1f deg",
+        log.info(
+            '    Beam = %.1f" x %.1f", PA = %.1f deg',
             diagnostics_dict["beam_fwhm"][0] * 3600,
             diagnostics_dict["beam_fwhm"][1] * 3600,
             diagnostics_dict["beam_fwhm"][2],
         )
-        log.info("    Fraction of unflagged data = %.2f", diagnostics_dict["unflagged_data_fraction"])
+        log.info(
+            "    Fraction of unflagged data = %.2f", diagnostics_dict["unflagged_data_fraction"]
+        )
 
         # Log the estimates of the global flux ratio and astrometry offsets.
         # If the required keys are not present, then there were not enough
