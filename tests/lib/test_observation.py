@@ -387,10 +387,20 @@ class TestObservation:
 
 @pytest.mark.parametrize("max_nodes, data_fraction", [(3, 1.0), (3, 0.5)])
 def test_chunking_by_time(observation, field, monkeypatch, max_nodes, data_fraction):
+    observation.starttime = 4453731483.92
+    observation.endtime = 4453738676.08
+    observation.high_el_starttime = 4453732884.0
+    observation.high_el_endtime = 4453738676.0
+    observation.numsamples = 900
+    observation.timepersample = 8.0
+    observation.data_fraction = data_fraction
+
     def assert_chunking_by_time(observations):
         assert len(observations) == max_nodes
-        assert abs(observations[0].endtime - observations[1].starttime) < 1e-6   
-
+        for i in range(len(observations) - 1):
+            assert abs(observations[i].endtime - observations[i + 1].starttime) < 1e-6   
+        assert observations[-1].endtime == observation.endtime
+        
     def scan_ms(self):
         self.startsat_startofms = True
         self.goesto_endofms = False
@@ -407,13 +417,6 @@ def test_chunking_by_time(observation, field, monkeypatch, max_nodes, data_fract
     ]
     field.parset["cluster_specific"]["max_nodes"] = max_nodes
     
-    observation.starttime = 4453731483.92
-    observation.endtime = 4453738676.08
-    observation.high_el_starttime = 4453732884.0
-    observation.high_el_endtime = 4453738676.0
-    observation.numsamples = 900
-    observation.timepersample = 8.0
-    observation.data_fraction = data_fraction
 
     from rapthor.process import chunk_observations
     field.full_observations = [observation]
