@@ -406,8 +406,6 @@ def test_chunking_by_time(observation, field, monkeypatch, max_nodes, data_fract
         self.goesto_endofms = False
         return None
     
-    monkeypatch.setattr("rapthor.lib.field.Field.update_observations", lambda _, observation_chunks: assert_chunking_by_time(observation_chunks))
-    monkeypatch.setattr("rapthor.lib.observation.Observation.scan_ms", scan_ms)
     steps = [
         {"do_calibrate": True,
          'fast_timestep_sec': 20,
@@ -417,8 +415,12 @@ def test_chunking_by_time(observation, field, monkeypatch, max_nodes, data_fract
     ]
     field.parset["cluster_specific"]["max_nodes"] = max_nodes
     
+    # The asserts for the chunking are doine in the pathed update_observations method, which is called by chunk_observations.
+    monkeypatch.setattr("rapthor.lib.field.Field.update_observations", lambda _, observation_chunks: assert_chunking_by_time(observation_chunks))
+    monkeypatch.setattr("rapthor.lib.observation.Observation.scan_ms", scan_ms)
 
     from rapthor.process import chunk_observations
     field.full_observations = [observation]
+    
     chunk_observations(field, steps, data_fraction)
     
