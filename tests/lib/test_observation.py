@@ -416,8 +416,26 @@ def test_chunking_by_time(observation, field, monkeypatch, max_nodes, data_fract
 
     chunk_observations(field, steps, data_fraction)
 
-    assert len(field.observations) == max_nodes
-    assert field.observations[0].starttime == observation.starttime
+    n_chunks = max_nodes / data_fraction
+    assert len(field.observations) == n_chunks
+
+    if (data_fraction == 1.0):
+        assert field.observations[0].starttime == observation.starttime
+        assert field.observations[-1].endtime == observation.endtime
+        gap_time = 0 * observation.timepersample
+    elif (data_fraction == 0.5):
+        assert field.observations[0].starttime == observation.high_el_starttime
+        assert field.observations[-1].endtime == observation.high_el_endtime
+        # chunk_observations only chunks the time between high_el_starttime and high_el_endtime.
+        # The number of samples in the gaps between chunks becomes 55 this way.
+        gap_time = 55 * observation.timepersample
+
     for i in range(len(field.observations) - 1):
-        assert abs(field.observations[i].endtime - field.observations[i + 1].starttime) < 1e-6
-    assert field.observations[-1].endtime == observation.endtime
+        # Since the start time and end time are mid points, add one time sample.
+        # The tolerance is 5 % of the sample time, since Rapthor adjusts the start and
+        # end times for avoiding rounding errors.
+        assert np.isclose(
+            field.observations[i].endtime + observation.timepersample + gap_time,
+            field.observations[i + 1].starttime,
+            rtol=0, atol=observation.timepersample * 0.05,
+        )
