@@ -1493,12 +1493,14 @@ class Field(object):
         outlier_skymodel.select(outlier_ind, force=True)
         outlier_flux_jy = np.sum(outlier_skymodel.getColValues('I', units='Jy'))
         if (
-            outlier_flux_jy / sector_flux_jy > threshold_ratio
-            or outlier_flux_jy > threshold_jy
+            len(outlier_skymodel)
+            and outlier_flux_jy / sector_flux_jy < threshold_ratio
+            and outlier_flux_jy < threshold_jy
         ):
-            return outlier_skymodel
-        else:
-            return []
+            # Thresholds not met, so remove all sources from the sky model
+            outlier_skymodel.select(np.array([]), force=True)
+
+        return outlier_skymodel
 
     def makeWCS(self):
         """
