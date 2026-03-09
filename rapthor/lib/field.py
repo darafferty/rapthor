@@ -285,48 +285,44 @@ class Field(object):
         for obs in self.full_observations:
             # Adjust the minimum time for chunks made from this observation to one that
             # is an integer multiple of its time per sample
-            obs_mintime = np.ceil(mintime / obs.timepersample) * obs.timepersample
+            chunk_samples = np.ceil(mintime / obs.timepersample)
 
             # Due to a limitation in Dysco, we make sure to have at least two time
             # slots per observation, otherwise the output MS cannot be written with
             # compression
-            if int(np.ceil(obs_mintime / obs.timepersample)) < 2:
-                obs_mintime *= 2
+            chunk_samples = max(chunk_samples, 2)
 
-            # Find the data fraction implied by the minimum time
+            chunk_time = chunk_samples * obs.timepersample
+
             target_starttime = obs.starttime
             target_endtime = obs.endtime
+            total_samples = obs.numsamples
+            # Add one interval, since starttime and endtime are mid points.
+            total_time = obs.endtime - obs.starttime + obs.timepersample
+            total_high_el_time = obs.high_el_endtime - obs.high_el_starttime + obs.timepersample
             data_fraction = obs.data_fraction
-            if prefer_high_el_periods and (
-                data_fraction
-                < (obs.high_el_endtime - obs.high_el_starttime)
-                / (obs.endtime - obs.starttime)
-            ):
+            if prefer_high_el_periods and data_fraction < total_high_el_time / total_time:
                 # Use high-elevation period for chunking. We increase the data fraction
                 # to account for the decreased total observation time so that the
                 # amount of data used is kept the same
+                data_fraction = min(1, data_fraction * total_time / total_high_el_time)
                 target_starttime = obs.high_el_starttime
                 target_endtime = obs.high_el_endtime
-                data_fraction = min(
-                    1,
-                    data_fraction
-                    * (obs.endtime - obs.starttime)
-                    / (target_endtime - target_starttime),
-                )
-            tottime = target_endtime - target_starttime
+                total_time = total_high_el_time
+                total_samples = np.round(total_high_el_time / obs.timepersample)
 
-            nchunks = max(1, int(np.floor(data_fraction / (obs_mintime / tottime))))
+            nchunks = max(1, int(data_fraction * total_time / chunk_time))
             if nchunks == 1:
-                # Center the chunk at the midpoint (which is generally the most
-                # sensitive, near transit)
-                midpoint = target_starttime + tottime / 2
-                chunktime = min(tottime, max(obs_mintime, data_fraction * tottime))
-                if chunktime < tottime:
+                if data_fraction < 1.0:
+                    # Center the chunk at the midpoint (which is generally the most
+                    # sensitive, near transit)
+                    midpoint = (target_starttime + target_endtime) / 2
+                    half_chunk_time = data_fraction * total_time / 2
                     chunked_observations.append(
                         Observation(
                             obs.ms_filename,
-                            starttime=midpoint - chunktime / 2,
-                            endtime=midpoint + chunktime / 2,
+                            starttime=midpoint - half_chunk_time,
+                            endtime=midpoint + half_chunk_time,
                             name=f"{os.path.basename(obs.ms_filename)}_chunk1"
                         )
                     )
@@ -334,17 +330,17 @@ class Field(object):
                     chunked_observations.append(obs)
             else:
                 # Calculate the start time of each chunk so that they are spaced out
-                # evenly over the full observation. The time between gaps (steptime)
-                # is calculated as:
-                #   time_between_gaps = total_time_in_gaps / (nchunks - 1) + chunk_time
-                steptime = (tottime - nchunks * obs_mintime) / (
-                    nchunks - 1
-                ) + obs_mintime
-                starttimes = np.arange(target_starttime, target_endtime, steptime)
+                # evenly over the full observation.
+                total_gap_samples = total_samples - nchunks * chunk_samples
+                gap_samples = int(total_gap_samples / (nchunks - 1))
+                step_samples = gap_samples + chunk_samples
+                step_time = step_samples * obs.timepersample
+
+                starttimes = np.arange(target_starttime, target_endtime, step_time)
                 endtimes = np.arange(
-                    target_starttime + obs_mintime,
-                    target_endtime + obs_mintime,
-                    steptime,
+                    target_endtime - (total_samples - chunk_samples) * obs.timepersample,
+                    target_endtime + chunk_time,
+                    step_time,
                 )
                 for index, (starttime, endtime) in enumerate(zip(starttimes, endtimes)):
                     chunked_observations.append(
