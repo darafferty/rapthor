@@ -973,31 +973,13 @@ def report_sector_diagnostics(sector_name, diagnostics_dict, log):
         Stdev of the ratio of the LOFAR flux densities to the "true" ones
     """
     try:
-        theoretical_rms = "{0:.1f} uJy/beam".format(diagnostics_dict["theoretical_rms"] * 1e6)
-        min_rms_true_sky = "{0:.1f} uJy/beam".format(diagnostics_dict["min_rms_true_sky"] * 1e6)
-        median_rms_true_sky = "{0:.1f} uJy/beam".format(
-            diagnostics_dict["median_rms_true_sky"] * 1e6
-        )
-        dynr_true_sky = "{0:.2g}".format(diagnostics_dict["dynamic_range_global_true_sky"])
-        min_rms_flat_noise = "{0:.1f} uJy/beam".format(diagnostics_dict["min_rms_flat_noise"] * 1e6)
-        median_rms_flat_noise = "{0:.1f} uJy/beam".format(
-            diagnostics_dict["median_rms_flat_noise"] * 1e6
-        )
-        dynr_flat_noise = "{0:.2g}".format(diagnostics_dict["dynamic_range_global_flat_noise"])
-        nsources = "{0}".format(diagnostics_dict["nsources"])
-        freq = "{0:.1f} MHz".format(diagnostics_dict["freq"] / 1e6)
-        beam = '{0:.1f}" x {1:.1f}", PA = {2:.1f} deg'.format(
-            diagnostics_dict["beam_fwhm"][0] * 3600,
-            diagnostics_dict["beam_fwhm"][1] * 3600,
-            diagnostics_dict["beam_fwhm"][2],
-        )
-        unflagged_data_fraction = "{0:.2f}".format(diagnostics_dict["unflagged_data_fraction"])
         log.info("Diagnostics for %s:", sector_name)
         log.info(
-            "    Min RMS noise = %f (non-PB-corrected), %f (PB-corrected), %f (expected)",
-            min_rms_flat_noise,
-            min_rms_true_sky,
-            theoretical_rms,
+            "    Min RMS noise = %.1f uJy/beam (non-PB-corrected), %.1f uJy/beam (PB-corrected), "
+            "%f (expected)",
+            diagnostics_dict["min_rms_flat_noise"] * 1e6,
+            diagnostics_dict["min_rms_true_sky"] * 1e6,
+            diagnostics_dict["theoretical_rms"] * 1e6,
         )
         if (
             diagnostics_dict["min_rms_flat_noise"] == 0.0
@@ -1005,28 +987,33 @@ def report_sector_diagnostics(sector_name, diagnostics_dict, log):
         ):
             log.warning("The min RMS noise is 0, likely indicating a problem with the processing.")
         log.info(
-            "    Median RMS noise = %s (non-PB-corrected), %s (PB-corrected)",
-            median_rms_flat_noise,
-            median_rms_true_sky,
+            "    Median RMS noise = %.1f uJy/beam (non-PB-corrected), %.1f uJy/beam (PB-corrected)",
+            diagnostics_dict["median_rms_flat_noise"] * 1e6,
+            diagnostics_dict["median_rms_true_sky"] * 1e6,
         )
         log.info(
-            "    Dynamic range = %s (non-PB-corrected), %s (PB-corrected)",
-            dynr_flat_noise,
-            dynr_true_sky,
+            "    Dynamic range = %.2g (non-PB-corrected), %.2g (PB-corrected)",
+            diagnostics_dict["dynamic_range_global_flat_noise"],
+            diagnostics_dict["dynamic_range_global_true_sky"],
         )
         if (
             diagnostics_dict["dynamic_range_global_flat_noise"] == 0.0
             or diagnostics_dict["dynamic_range_global_true_sky"] == 0.0
         ):
             log.warning("The dynamic range is 0, likely indicating a problem with the processing.")
-        log.info("    Number of sources found by PyBDSF = %i", nsources)
+
+        log.info("    Number of sources found by PyBDSF = %s", diagnostics_dict["nsources"])
         if diagnostics_dict["nsources"] == 0:
             log.warning(
                 "No sources were found by PyBDSF, possibly indicating a problem with the processing."
             )
-        log.info("    Reference frequency = %s", freq)
-        log.info("    Beam = %s", beam)
-        log.info("    Fraction of unflagged data = %s", unflagged_data_fraction)
+        log.info("    Reference frequency = %.1f MHz", diagnostics_dict["freq"] / 1e6)
+        log.info("    Beam = %.1f\" x %.1f\", PA = %.1f deg",
+            diagnostics_dict["beam_fwhm"][0] * 3600,
+            diagnostics_dict["beam_fwhm"][1] * 3600,
+            diagnostics_dict["beam_fwhm"][2],
+        )
+        log.info("    Fraction of unflagged data = %.2f", diagnostics_dict["unflagged_data_fraction"])
 
         # Log the estimates of the global flux ratio and astrometry offsets.
         # If the required keys are not present, then there were not enough
