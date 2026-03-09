@@ -298,8 +298,7 @@ class Observation(object):
             starttimes = [self.starttime]
 
         self.ntimechunks = nchunks
-        self.log.debug('Using %i time chunk%s for calibration', 
-                       self.ntimechunks, "s" * (self.ntimechunks > 1))
+        self.log.debug('Using %s time chunk%s for calibration', 
         if self.antenna == 'LBA':
             # For LBA, use the MS files with non-calibrator sources subtracted
             self.parameters['timechunk_filename'] = [self.ms_predict_nc_filename] * self.ntimechunks

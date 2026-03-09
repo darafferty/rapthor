@@ -1005,12 +1005,12 @@ def report_sector_diagnostics(sector_name, diagnostics_dict, log):
         ):
             log.warning("The min RMS noise is 0, likely indicating a problem with the processing.")
         log.info(
-            "    Median RMS noise = %f (non-PB-corrected), %f (PB-corrected)",
+            "    Median RMS noise = %s (non-PB-corrected), %s (PB-corrected)",
             median_rms_flat_noise,
             median_rms_true_sky,
         )
         log.info(
-            "    Dynamic range = %f (non-PB-corrected), %f (PB-corrected)",
+            "    Dynamic range = %s (non-PB-corrected), %s (PB-corrected)",
             dynr_flat_noise,
             dynr_true_sky,
         )
@@ -1024,9 +1024,9 @@ def report_sector_diagnostics(sector_name, diagnostics_dict, log):
             log.warning(
                 "No sources were found by PyBDSF, possibly indicating a problem with the processing."
             )
-        log.info("    Reference frequency = %f", freq)
-        log.info("    Beam = %f", beam)
-        log.info("    Fraction of unflagged data = %f", unflagged_data_fraction)
+        log.info("    Reference frequency = %s", freq)
+        log.info("    Beam = %s", beam)
+        log.info("    Fraction of unflagged data = %s", unflagged_data_fraction)
 
         # Log the estimates of the global flux ratio and astrometry offsets.
         # If the required keys are not present, then there were not enough

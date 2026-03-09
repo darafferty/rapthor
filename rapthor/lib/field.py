@@ -700,9 +700,9 @@ class Field(object):
                     if target_flux is None:
                         target_flux = target_flux_for_number
                         self.log.info(
-                            'Using a target flux density of %.2f Jy for grouping '
-                            'to meet the specified target number of '
-                            'directions (%.2f)', 
+                            'Using a target flux density of %.2f Jy for '
+                            'grouping to meet the specified target number of '
+                            'directions (%i)', 
                             target_flux, target_number)
                     else:
                         if target_flux_for_number > target_flux and target_number < len(fluxes):
@@ -711,7 +711,7 @@ class Field(object):
                             self.log.info(
                                 'Using a target flux density of %.2f Jy for '
                                 'grouping (raised from %.2f Jy to ensure that '
-                                'the target number of %s directions is not '
+                                'the target number of %i directions is not '
                                 'exceeded)',
                                 target_flux_for_number, target_flux, target_number)
                             target_flux = target_flux_for_number
@@ -1196,7 +1196,7 @@ class Field(object):
                 self.log.info('Using 1 imaging sector')
             else:
                 self.log.info(
-                    'Using %i imaging sectors (%i in RA, %i in Dec)',
+                    'Using %i imaging sectors (%s in RA, %s in Dec)',
                     len(self.imaging_sectors), nsectors_ra, nsectors_dec
                 )
             self.uses_sector_grid = True
