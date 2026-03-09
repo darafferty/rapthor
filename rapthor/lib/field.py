@@ -1595,28 +1595,28 @@ class Field(object):
         # Check that convergence and divergence limits are sensible
         if convergence_ratio > 2.0:
             self.log.warning(
-                'The convergence ratio is set to %.1f but must be <= 2. '
+                'The convergence ratio is set to %.2f but must be <= 2. '
                 'Using 2.0 instead',
                 convergence_ratio
             )
             convergence_ratio = 2.0
         if convergence_ratio < 0.5:
             self.log.warning(
-                'The convergence ratio is set to %.1f but must be >= 0.5. '
+                'The convergence ratio is set to %.2f but must be >= 0.5. '
                 'Using 0.5 instead', 
                 convergence_ratio
             )
             convergence_ratio = 0.5
         if divergence_ratio < 1.0:
             self.log.warning(
-                'The divergence ratio is set to %.1f but must be >= 1. '
+                'The divergence ratio is set to %.2f but must be >= 1. '
                 'Using 1.0 instead',
                 divergence_ratio
             )
             divergence_ratio = 1.0
         if failure_ratio < 1.0:
             self.log.warning(
-                'The failure ratio is set to %.1f but must be >= 1. '
+                'The failure ratio is set to %.2f but must be >= 1. '
                 'Using 1.0 instead',
                 failure_ratio
             )
