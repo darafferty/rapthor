@@ -180,7 +180,7 @@ class Field(object):
         self.epoch_starttimes = set([obs.starttime for obs in self.full_observations])
         self.log.debug('Input data comprise %s epoch%s',
                        len(self.epoch_starttimes),
-                       's' * (len(self.epoch_starttimes) > 1))
+                       's' if len(self.epoch_starttimes) > 1 else '')
         self.epoch_observations = []
         for i, epoch_starttime in enumerate(self.epoch_starttimes):
             epoch_observations = [obs for obs in self.full_observations if
@@ -587,7 +587,7 @@ class Field(object):
                 self.log.info(
                     'Read %i patch%s from supplied facet layout file',
                     len(facets),
-                    'es' * bool(facets)
+                    'es' if len(facets) > 1 else ''
                 )
                 facet_names = []
                 facet_patches_dict = {}
@@ -631,7 +631,7 @@ class Field(object):
                         'this cycle will therefore differ from that given in '
                         'the input facet layout file.',
                         n_removed,    
-                        'es' * bool(n_removed > 1)
+                        'es' if n_removed > 1 else ''
                     )
             else:
                 # Regroup by tessellating with the bright sources as the tessellation
@@ -1120,10 +1120,10 @@ class Field(object):
                 name = 'sector_{0}'.format(n)
                 self.imaging_sectors.append(Sector(name, ra, dec, width_ra, width_dec, self))
                 n += 1
-            suffix = 's' if len(self.imaging_sectors) > 1 else ''
             self.log.info(
                 'Using %s user-defined imaging sector%s', 
-                len(self.imaging_sectors), suffix
+                len(self.imaging_sectors), 
+                's' if len(self.imaging_sectors) > 1 else ''
             )
             self.uses_sector_grid = False
         else:

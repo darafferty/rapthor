@@ -299,6 +299,8 @@ class Observation(object):
 
         self.ntimechunks = nchunks
         self.log.debug('Using %s time chunk%s for calibration', 
+                       self.ntimechunks, 
+                       "s" if self.ntimechunks > 1 else '')
         if self.antenna == 'LBA':
             # For LBA, use the MS files with non-calibrator sources subtracted
             self.parameters['timechunk_filename'] = [self.ms_predict_nc_filename] * self.ntimechunks
@@ -546,9 +548,9 @@ class Observation(object):
         self.log.debug('Using averaging steps of %s channel%s and %s time slot%s '
                        'for imaging', 
                        self.parameters['image_freqstep'],
-                        "s" * (self.parameters['image_freqstep'] > 1),
+                        "s" if self.parameters['image_freqstep'] > 1 else "",
                         self.parameters['image_timestep'],
-                        "s" * (self.parameters['image_timestep'] > 1))
+                        "s" if self.parameters['image_timestep'] > 1 else "")
 
         # Find BDA maxinterval: the max time interval in time slots over which to average
         # (for the shortest baselines). We set this to be the slow solve time step to ensure

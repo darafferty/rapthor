@@ -167,7 +167,7 @@ def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, sourc
                     tries,
                     source,
                     (remaining := max_tries - tries), 
-                    's' * bool(remaining > 1)
+                    's' if remaining > 1 else ''
                 )
                 time.sleep(5)
 
