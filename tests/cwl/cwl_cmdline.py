@@ -14,6 +14,7 @@ try:
     from cwltool.context import LoadingContext, RuntimeContext
     from cwltool.load_tool import load_tool
     from cwltool.command_line_tool import CommandLineTool
+    from cwltool.job import CommandLineJob
     from cwltool.workflow import default_make_tool
 except ImportError:
     raise ImportError(
@@ -30,15 +31,16 @@ def load_cwl_tool(cwl_path: Union[str, Path]) -> "Process":
     Returns:
         Parsed CWL tool/workflow object from cwltool
     """
-    ctx = LoadingContext()  # type: ignore[misc]
-    ctx.construct_tool_object = default_make_tool  # type: ignore[assignment]
-    return load_tool(str(Path(cwl_path).resolve()), ctx)  # type: ignore[misc]
+    ctx = LoadingContext()
+    ctx.construct_tool_object = default_make_tool
+    return load_tool(str(Path(cwl_path).resolve()), ctx)
+
 
 
 def generate_command_line(
     cwl_path: Union[str, Path],
     inputs: Optional[Dict[str, Any]] = None,
-) -> List[str]:
+) -> Optional[List[str]]:
     """Generate the command line that would be executed for a CWL CommandLineTool.
     
     Uses cwltool's native job generation to produce the exact command line.
@@ -69,14 +71,20 @@ def generate_command_line(
         )
     
     # Set up runtime context with temp directories
-    rtctx = RuntimeContext()  # type: ignore[misc]
+    rtctx = RuntimeContext()
     rtctx.outdir = tempfile.mkdtemp()
     rtctx.tmpdir = tempfile.mkdtemp()
     rtctx.stagedir = tempfile.mkdtemp()
     
     # Generate job and extract command line
     job_order = inputs or {}
-    for job in tool.job(job_order, None, rtctx):  # type: ignore[arg-type]
-        return job.command_line  # type: ignore[union-attr]
     
-    return []
+    def output_callback(outputs: Any, process_status: str) -> None:
+        """No-op callback for outputs."""
+        pass
+    
+    for job in tool.job(job_order, output_callback, rtctx):
+        if isinstance(job, CommandLineJob):
+            return job.command_line
+    
+    return None
