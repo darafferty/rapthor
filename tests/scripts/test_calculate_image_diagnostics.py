@@ -3,16 +3,21 @@ Test suite for rapthor.scripts.calculate_image_diagnostics.
 """
 
 import logging
+from zipfile import Path
 
 import astropy.units as u
+import lsmtool
 import lsmtool.skymodel
 import numpy as np
 import pytest
+from astropy.coordinates import SkyCoord
 from astropy.table import Table
 from rapthor.lib import fitsimage
 from rapthor.scripts.calculate_image_diagnostics import (
+    _rename_plots,
     check_astrometry,
     check_photometry,
+    compare_photometry_survey,
     parse_args,
 )
 from rapthor.scripts.calculate_image_diagnostics import fits_to_makesourcedb
@@ -39,11 +44,17 @@ def mock_minimal_table(request):
     return Table(mock_data)
 
 
-@pytest.fixture(params=[10])
-def mock_full_photometry_table(request):
-    # Create a mock Table for photometry with the same data as mock_full_table
-    mock_data = mock_full_table_data(num_sources=request.param, total_flux_keyword="Total_flux")
-    return Table(mock_data)
+@pytest.fixture
+def mock_full_photometry_table(observation, mock_comparison_skymodel_table):
+    # Use selected sources, but anchor coordinates to the observation center so
+    # they always pass the FWHM beam cut in check_photometry().
+    table = mock_comparison_skymodel_table.copy()
+    num_sources = len(table)
+    offsets_deg = np.linspace(-2e-4, 2e-4, num_sources)
+    table["RA"] = (observation.ra + offsets_deg) * u.degree
+    table["DEC"] = (observation.dec + offsets_deg) * u.degree
+    table["DC_Maj"] = np.full(num_sources, 1 / 3600)
+    return table
 
 
 @pytest.fixture(params=[10])
@@ -64,6 +75,47 @@ def mock_full_table_data(num_sources, total_flux_keyword):
         "DEC": [2 / 3600 * u.degree] * num_sources,
         total_flux_keyword: [1.0] * num_sources,
     }
+
+
+@pytest.fixture()
+def mock_comparison_skymodel_table():
+    # Subset copied from tests/resources/test_apparent_sky.txt
+    selected_data = [
+        ("s0c0", "-6:48:16.324", "56:56:59.178", 0.004379054102049962),
+        ("s0c1", "-6:48:16.476", "56:56:59.175", 0.0013177344234482774),
+        ("s0c2", "-6:48:16.784", "56:57:04.168", 0.00023802236965550248),
+        ("s0c761", "-6:50:28.524", "57:26:08.192", 0.00015119098359826986),
+        ("s0c762", "-6:50:28.371", "57:26:09.455", 0.0014859517024192579),
+        ("s0c763", "-6:50:28.526", "57:26:09.442", 0.0027168816209913564),
+        ("s0c764", "-6:49:11.444", "57:26:42.234", 0.00107158521926894),
+        ("s0c765", "-6:49:11.6", "57:26:43.477", 0.0002788397060369219),
+        ("s0c766", "-6:46:30.998", "57:26:56.315", 0.005508009846638286),
+        ("s0c767", "-6:46:30.997", "57:26:57.565", 0.0009893880953724564),
+    ]
+    source_ids = [name for name, _, _, _ in selected_data]
+    coords = SkyCoord(
+        ra=[ra for _, ra, _, _ in selected_data],
+        dec=[dec for _, _, dec, _ in selected_data],
+        unit=(u.hourangle, u.deg),
+    )
+    flux_values = [flux for _, _, _, flux in selected_data]
+
+    return Table(
+        {
+            "Source_id": source_ids,
+            "DC_Maj": [10 / 3600 - 0.0001] * len(source_ids),
+            "E_RA": [2 / 3600 - 0.0001] * len(source_ids),
+            "E_DEC": [2 / 3600 - 0.0001] * len(source_ids),
+            "RA": coords.ra.deg * u.degree,
+            "DEC": coords.dec.deg * u.degree,
+            "Total_flux": flux_values,
+        }
+    )
+
+
+@pytest.fixture()
+def grouped_comparison_skymodel(mock_comparison_skymodel_table):
+    return fits_to_makesourcedb(mock_comparison_skymodel_table, 150e6, flux_colname="Total_flux")
 
 
 # ---------------------------------------------------------------------------- #
@@ -542,3 +594,185 @@ def test_fits_to_makesourcedb_single_source():
     assert skymodel.getColValues("Name")[0] == "TestSource"
     assert np.isclose(skymodel.getColValues("Ra")[0], 2.5)
     assert np.isclose(skymodel.getColValues("Dec")[0], 45.0)
+
+
+# ---------------------------------------------------------------------------- #
+# Test: _rename_plots
+
+
+def test_rename_plots(tmp_path):
+    """
+    Test that _rename_plots correctly renames plot files according to the specified output root.
+    """
+    # Temporarily create some dummy plot files to test the renaming
+    for filename in [
+        "flux_ratio_vs_distance.pdf",  # Should be renamed to flux_ratio_vs_distance_TEST.pdf
+        "flux_ratio_vs_flux.pdf",  # Should be renamed to flux_ratio_vs_flux_TEST.pdf
+        "flux_ratio_sky.pdf",  # Should be renamed to flux_ratio_sky_TEST.pdf
+        "positional_offsets_sky.pdf",  # Should be removed by _rename_plots
+    ]:
+        (tmp_path / filename).touch()
+
+    expected_files = [
+        "flux_ratio_vs_distance_TEST.pdf",
+        "flux_ratio_vs_flux_TEST.pdf",
+        "flux_ratio_sky_TEST.pdf",
+    ]
+    _rename_plots("TEST", tmp_path)
+    for expected_file in expected_files:
+        assert (tmp_path / expected_file).exists(), f"{expected_file} was not found in {tmp_path}"
+
+    assert not (tmp_path / "positional_offsets_sky.pdf").exists(), (
+        "positional_offsets_sky.pdf should have been removed"
+    )
+
+
+def test_compare_skymodel(
+    grouped_comparison_skymodel, mock_comparison_skymodel_table, monkeypatch, tmp_path
+):
+    """
+    Test that compare_photometry_survey correctly generates diagnostic plots and returns expected statistics.
+    """
+    catalog = mock_comparison_skymodel_table
+    survey = "TEST_SURVEY"
+    comparison_skymodel = grouped_comparison_skymodel
+    reference_skymodel = fits_to_makesourcedb(catalog, 150e6, flux_colname="Total_flux")
+    monkeypatch.chdir(tmp_path)
+    result = reference_skymodel.compare(
+        comparison_skymodel,
+        radius="5 arcsec",
+        excludeMultiple=True,
+        make_plots=True,
+        name1="Input Catalog",
+        name2=survey,
+    )
+    expected_keys = ["meanRatio", "stdRatio", "meanClippedRatio", "stdClippedRatio"]
+    expected_plot_files = [
+        "flux_ratio_vs_distance.pdf",
+        "flux_ratio_vs_flux.pdf",
+        "flux_ratio_sky.pdf",
+        "positional_offsets_sky.pdf",
+    ]
+    assert all(key in result for key in expected_keys), (
+        "Not all expected keys are present in the result"
+    )
+    assert all((tmp_path / plot).exists() for plot in expected_plot_files), (
+        "Not all expected plot files were generated"
+    )
+
+
+def test_compare_photometry_survey(
+    grouped_comparison_skymodel, mock_comparison_skymodel_table, monkeypatch, tmp_path
+):
+    """
+    Test that compare_photometry_survey correctly compares photometry between the input catalog
+    and the specified survey, and returns expected statistics.
+    """
+    survey = "TEST_SURVEY"
+    monkeypatch.chdir(tmp_path)
+    result = compare_photometry_survey(
+        mock_comparison_skymodel_table,
+        survey,
+        grouped_comparison_skymodel,
+        freq=150e6,
+    )
+    expected_keys = [
+        "meanRatio_TEST_SURVEY",
+        "stdRatio_TEST_SURVEY",
+        "meanClippedRatio_TEST_SURVEY",
+        "stdClippedRatio_TEST_SURVEY",
+    ]
+    expected_plot_files = [
+        "flux_ratio_vs_distance_TEST_SURVEY.pdf",
+        "flux_ratio_vs_flux_TEST_SURVEY.pdf",
+        "flux_ratio_sky_TEST_SURVEY.pdf",
+    ]
+    assert all(key in result for key in expected_keys), (
+        "Not all expected keys are present in the result"
+    )
+    assert all((tmp_path / plot).exists() for plot in expected_plot_files), (
+        "Not all expected plot files were generated"
+    )
+
+
+def test_compare_photometry_survey_no_matches(
+    grouped_comparison_skymodel, mock_comparison_skymodel_table, monkeypatch, tmp_path, caplog
+):
+    """
+    Test that compare_photometry_survey correctly handles the case where there are no matches between the input catalog and the survey.
+    """
+    survey = "TEST_SURVEY"
+    # Modify the comparison skymodel to have no sources within the matching radius
+    monkeypatch.setattr(
+        "lsmtool.skymodel.SkyModel.compare",
+        lambda self, *args, **kwargs: None,
+    )
+    monkeypatch.chdir(tmp_path)
+    with caplog.at_level(logging.INFO):
+        result = compare_photometry_survey(
+            mock_comparison_skymodel_table,
+            survey,
+            grouped_comparison_skymodel,
+            freq=150e6,
+        )
+    assert result == {}, (
+        "Expected an empty result when there are no matches between the input catalog and the survey"
+    )
+    assert (
+        "The photometry check with the TEST_SURVEY catalog could not be done due to insufficient matches. Skipping this survey..."
+        in caplog.text
+    )
+
+
+def test_check_photometry_expected_plots(
+    observation,
+    input_catalog_fits,
+    mock_full_photometry_table,
+    selected_sky_model_path,
+    monkeypatch,
+    tmp_path,
+):
+    """
+    Test that check_photometry generates the expected diagnostic plots for a given survey.
+    """
+    survey = "TEST_SURVEY"
+    original_table_read = Table.read
+
+    def patched_table_read(*args, **kwargs):
+        if args and str(args[0]) == str(input_catalog_fits):
+            return mock_full_photometry_table
+        return original_table_read(*args, **kwargs)
+
+    monkeypatch.setattr(
+        "rapthor.scripts.calculate_image_diagnostics.Table.read",
+        patched_table_read,
+    )
+    comparison_skymodel = fits_to_makesourcedb(
+        mock_full_photometry_table,
+        150e6,
+        flux_colname="Total_flux",
+    )
+    monkeypatch.setattr(
+        "rapthor.scripts.calculate_image_diagnostics.load_photometry_surveys",
+        lambda *args, **kwargs: {"USER_SUPPLIED": comparison_skymodel},
+    )
+    monkeypatch.chdir(tmp_path)
+    result = check_photometry(
+        obs=observation,
+        input_catalog=input_catalog_fits,
+        freq=150e6,
+        min_number=1,
+        comparison_skymodel=str(selected_sky_model_path),
+        comparison_surveys=[survey],
+    )
+    expected_plot_files = [
+        "flux_ratio_vs_distance_USER_SUPPLIED.pdf",
+        "flux_ratio_vs_flux_USER_SUPPLIED.pdf",
+        "flux_ratio_sky_USER_SUPPLIED.pdf",
+    ]
+    assert all((tmp_path / plot).exists() for plot in expected_plot_files), (
+        "Not all expected plot files were generated"
+    )
+    assert result != {}, (
+        "Expected non-empty result from check_photometry when there are matches between the input catalog and the survey"
+    )
