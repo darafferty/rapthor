@@ -1,4 +1,5 @@
 """Test CWL command line generation."""
+
 from pathlib import Path
 
 import pytest
@@ -15,7 +16,7 @@ def simple_tool_cwl():
 def test_simple_tool_command_line(simple_tool_cwl):
     """Test that simple_tool.cwl generates the expected command line."""
     cmd = generate_command_line(simple_tool_cwl)
-    
+
     assert cmd[0] == "bash"
     assert cmd[1] == "-c"
     assert "Hello CWL" in cmd[2]
