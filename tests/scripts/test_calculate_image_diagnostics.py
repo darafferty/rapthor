@@ -12,16 +12,17 @@ import numpy as np
 import pytest
 from astropy.coordinates import SkyCoord
 from astropy.table import Table
+
 from rapthor.lib import fitsimage
 from rapthor.scripts.calculate_image_diagnostics import (
     _rename_plots,
     check_astrometry,
     check_photometry,
     compare_photometry_survey,
-    parse_args,
     filter_skymodel_for_photometry,
+    fits_to_makesourcedb,
+    parse_args,
 )
-from rapthor.scripts.calculate_image_diagnostics import fits_to_makesourcedb
 
 # ---------------------------------------------------------------------------- #
 
