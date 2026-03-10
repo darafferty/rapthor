@@ -293,8 +293,6 @@ class Field(object):
             # compression
             chunk_samples = max(chunk_samples, 2)
 
-            chunk_time = chunk_samples * obs.timepersample
-
             target_starttime = obs.starttime
             target_endtime = obs.endtime
             total_samples = obs.numsamples
@@ -340,7 +338,7 @@ class Field(object):
                 starttimes = np.arange(target_starttime, target_endtime, step_time)
                 endtimes = np.arange(
                     target_endtime - (total_samples - chunk_samples) * obs.timepersample,
-                    target_endtime + chunk_time,
+                    target_endtime + chunk_samples * obs.timepersample,
                     step_time,
                 )
                 for index, (starttime, endtime) in enumerate(zip(starttimes, endtimes)):
