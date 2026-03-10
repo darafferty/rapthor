@@ -992,7 +992,7 @@ def report_sector_diagnostics(sector_name, diagnostics_dict, log):
             diagnostics_dict["median_rms_true_sky"] * 1e6,
         )
         log.info(
-            "    Dynamic range = %.2g (non-PB-corrected), %.2g (PB-corrected)",
+            "    Dynamic range = %.2f (non-PB-corrected), %.2f (PB-corrected)",
             diagnostics_dict["dynamic_range_global_flat_noise"],
             diagnostics_dict["dynamic_range_global_true_sky"],
         )
