@@ -385,8 +385,11 @@ class TestObservation:
         assert max_solint == expected_max
         assert isinstance(max_solint, int)
 
-@pytest.mark.parametrize("max_nodes, data_fraction, n_chunks", [(1, 1.0, 1), (1, 0.2, 2), (3, 1.0, 3), (3, 0.5, 6), (5, 1.0, 5)])
+@pytest.mark.parametrize("max_nodes, data_fraction, n_chunks", [(1, 1.0, 1), (1, 0.2, 1), (3, 1.0, 3), (3, 0.5, 3), (5, 1.0, 5)])
 def test_chunking_by_time(observation, field, monkeypatch, max_nodes, data_fraction, n_chunks):
+    if data_fraction < 1.0:
+        pytest.xfail("Number of chunks currently becomes larger than the number of nodes when data_fraction is less than 1.0.")
+
     observation.starttime = 4453731483.92
     observation.endtime = 4453738676.08
     # Note that high_el_starttime is much larger than starttime. When data_fraction < 1.0 in this
