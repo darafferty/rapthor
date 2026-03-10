@@ -528,6 +528,13 @@ inputs:
     type: string
 {% endif %}
 
+  - id: allow_internet_access
+    label: Allow internet access
+    doc: |
+      Whether to allow internet access for downloading comparison sky models for
+      diagnostics.
+    type: boolean
+
   - id: photometry_skymodel
     label: Comparison sky model for photometry diagnostics
     doc: |
@@ -1112,6 +1119,7 @@ steps:
     when: $(inputs.save_filtered_model_image == true)
     out:
       - id: output_image
+
   - id: find_diagnostics
     label: Find image diagnostics
     doc: |
@@ -1128,8 +1136,6 @@ steps:
         source: filter/true_sky_rms_image
       - id: input_catalog
         source: filter/source_catalog
-      - id: input_skymodel
-        source: filter/filtered_skymodel_true_sky
       - id: output_root
         source: image_name
       - id: obs_ms
@@ -1146,6 +1152,8 @@ steps:
 {% else %}
         valueFrom: 'none'
 {% endif %}
+      - id: allow_internet_access
+        source: allow_internet_access
       - id: photometry_skymodel
         source: photometry_skymodel
       - id: astrometry_skymodel

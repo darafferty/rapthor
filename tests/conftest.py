@@ -69,6 +69,15 @@ def sky_model_path(tmp_path):
 
 
 @pytest.fixture
+def selected_sky_model_path(tmp_path):
+    """
+    Fixture to create a selected apparent SkyModel for testing.
+    """
+    shutil.copy((RESOURCE_DIR / "test_apparent_sky_selected.txt"), tmp_path / "test_apparent_sky_selected.txt")
+    return Path(tmp_path / "test_apparent_sky_selected.txt")
+
+
+@pytest.fixture
 def soltab():
     """
     Fixture to provide a dummy soltab for testing.

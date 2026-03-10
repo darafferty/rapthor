@@ -197,6 +197,17 @@ format_targets = [
     "rapthor/scripts/calculate_image_diagnostics.py",
     "tests/lib/test_parset.py",
     "tests/scripts/test_calculate_image_diagnostics.py",
+    "rapthor/lib/cwl.py",
+    "rapthor/lib/cwlrunner.py",
+    "tests/lib/test_cwl.py",
+    "tests/lib/test_cwlrunner.py",
+    "tests/cwl/__init__.py",
+    "tests/cwl/cwl_cmdline.py",
+    "tests/cwl/cwl_mock.py",
+    "tests/cwl/tests/test_cwl_cmdline.py",
+    "tests/cwl/tests/test_cwl_mock.py",
+    "tests/cwl/tests/test_cwl_real_execution.py",
+    "tests/cwl/tests/test_cwl_scatter.py",
 ]
 commands = [
     [

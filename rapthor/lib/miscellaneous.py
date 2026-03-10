@@ -55,9 +55,9 @@ def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, sourc
 
     file_exists = os.path.isfile(skymodel_path)
     if file_exists and not overwrite:
-        logger.warning('Sky model "{}" exists and overwrite is set to False! Not '
+        logger.warning('Sky model %r exists and overwrite is set to False! Not '
                        'downloading sky model. If this is a restart this may be '
-                       'intentional.'.format(skymodel_path))
+                       'intentional.', skymodel_path)
         return
 
     if not file_exists and os.path.exists(skymodel_path):
@@ -73,8 +73,8 @@ def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, sourc
         os.makedirs(os.path.dirname(skymodel_path))
 
     if file_exists and overwrite:
-        logger.warning('Found existing sky model "{}" and overwrite is True. Deleting '
-                       'existing sky model!'.format(skymodel_path))
+        logger.warning('Found existing sky model %r and overwrite is True. Deleting '
+                       'existing sky model!', skymodel_path)
         os.remove(skymodel_path)
 
     # Check the radius for Pan-STARRS (it must be <= 0.5 degrees)
@@ -154,17 +154,26 @@ def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, sourc
 
         if retry:
             if tries == max_tries:
-                logger.error('Attempt #{0:d} to download {1} sky model failed.'.format(tries, source))
+                logger.error(
+                    'Attempt #%i to download %r sky model failed.',
+                    tries, source
+                )
                 raise IOError('Download of {0} sky model failed after {1} attempts.'.format(source, max_tries))
             else:
-                suffix = 's' if max_tries - tries > 1 else ''
-                logger.error('Attempt #{0:d} to download {1} sky model failed. Attempting '
-                             '{2:d} more time{3}.'.format(tries, source, max_tries - tries, suffix))
+                
+                logger.error(
+                    'Attempt #%i to download %r sky model failed. Attempting '
+                    '%i more time%s.',
+                    tries,
+                    source,
+                    (remaining := max_tries - tries), 
+                    's' if remaining > 1 else ''
+                )
                 time.sleep(5)
 
     if not os.path.isfile(skymodel_path):
-        raise IOError('Sky model file "{}" does not exist after trying to download the '
-                      'sky model.'.format(skymodel_path))
+        raise IOError('Sky model file %r does not exist after trying to download the '
+                      'sky model.', skymodel_path)
 
     # Treat all sources as one group (direction)
     skymodel = lsmtool.load(skymodel_path)

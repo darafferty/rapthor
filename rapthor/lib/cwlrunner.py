@@ -1,18 +1,19 @@
 """
 Classes that wrap the CWL runners that Rapthor supports.
 """
+
 from __future__ import annotations
 
 import glob
+import json
 import logging
 import os
 import shutil
 import subprocess
 import sys
-import json
-import yaml
 from typing import TYPE_CHECKING, List, Union
 
+import yaml
 
 if TYPE_CHECKING:
     from rapthor.lib.operation import Operation
@@ -27,6 +28,7 @@ class BaseCWLRunner:
     properly configured when its `run()` method is invoked. We need to have access
     to some of the settings in the `operation` that is calling us.
     """
+
     def __init__(self, operation: Operation) -> None:
         """
         Initializer
@@ -80,17 +82,20 @@ class BaseCWLRunner:
           - `stdout` -> `self.operation.pipeline_outputs_file`
           - `stderr` -> `self.operation.pipeline_log_file`
         """
-        logger.debug("Executing command: %s", ' '.join(args))
-        with open(self.operation.pipeline_outputs_file, 'w') as stdout, \
-             open(self.operation.pipeline_log_file, 'w') as stderr:
+        logger.debug("Executing command: %s", " ".join(args))
+        with (
+            open(self.operation.pipeline_outputs_file, "w") as stdout,
+            open(self.operation.pipeline_log_file, "w") as stderr,
+        ):
             try:
-                result = subprocess.run(args=args, env=env, stdout=stdout, stderr=stderr, check=True)
+                result = subprocess.run(
+                    args=args, env=env, stdout=stdout, stderr=stderr, check=True
+                )
                 logger.debug(str(result))
                 return True
             except subprocess.CalledProcessError as err:
                 logger.critical(str(err))
                 return False
-
 
     def run(self) -> bool:
         """
@@ -110,8 +115,7 @@ class BaseCWLRunner:
                 "Don't know how to start CWL runner {}".format(self.__class__.__name__)
             )
         args = [self.command] + self.args
-        args += [self.operation.pipeline_parset_file,
-                     self.operation.pipeline_inputs_file]
+        args += [self.operation.pipeline_parset_file, self.operation.pipeline_inputs_file]
 
         # Ensure our custom batch system is on the path
         # So that toil can load it as a plugin
@@ -128,34 +132,36 @@ class BaseCWLRunner:
         the outputs of the workflow.
         """
 
-        with open(self.operation.pipeline_outputs_file, 'r') as f:
+        with open(self.operation.pipeline_outputs_file, "r") as f:
             return json.load(f)
 
-class CWLRunner(BaseCWLRunner):
 
+class CWLRunner(BaseCWLRunner):
     def _create_mpi_config_file(self) -> None:
         """
         Create the config file for MPI jobs and add the required args
         """
         logger.debug("Creating MPI config file %s", self.operation.mpi_config_file)
-        if self.operation.batch_system == 'slurm':
+        if self.operation.batch_system == "slurm":
             mpi_config_lines = [
                 "runner: 'mpi_runner.sh'",
                 "nproc_flag: '-N'",
                 f"extra_flags: ['--cpus-per-task={self.operation.cpus_per_task}', "
-                "'mpirun', '-pernode', '--bind-to', 'none', '-x', 'OPENBLAS_NUM_THREADS']"
+                "'mpirun', '-pernode', '--bind-to', 'none', '-x', 'OPENBLAS_NUM_THREADS']",
             ]
         else:
             mpi_config_lines = [
                 "runner: 'mpirun'",
                 "nproc_flag: '-np'",
-                "extra_flags: ['-pernode', '--bind-to', 'none', '-x', 'OPENBLAS_NUM_THREADS']"
+                "extra_flags: ['-pernode', '--bind-to', 'none', '-x', 'OPENBLAS_NUM_THREADS']",
             ]
-            if self.operation.batch_system != 'slurm_static':
-                logger.warning('MPI support for non-Slurm clusters is experimental. '
-                            'Please report any issues encountered.')
-        with open(self.operation.mpi_config_file, 'w') as cfg_file:
-            cfg_file.write('\n'.join(mpi_config_lines))
+            if self.operation.batch_system != "slurm_static":
+                logger.warning(
+                    "MPI support for non-Slurm clusters is experimental. "
+                    "Please report any issues encountered."
+                )
+        with open(self.operation.mpi_config_file, "w") as cfg_file:
+            cfg_file.write("\n".join(mpi_config_lines))
 
     def _delete_mpi_config_file(self) -> None:
         """
@@ -233,19 +239,19 @@ class CWLRunner(BaseCWLRunner):
         if self.operation.container is not None:
             # If the container is Docker, no extra args are needed. For other
             # containers, set the required args
-            if self.operation.container == 'singularity':
-                self.args.extend(['--singularity'])
-            elif self.operation.container == 'udocker':
-                self.args.extend(['--user-space-docker-cmd', 'udocker'])
+            if self.operation.container == "singularity":
+                self.args.extend(["--singularity"])
+            elif self.operation.container == "udocker":
+                self.args.extend(["--user-space-docker-cmd", "udocker"])
         else:
-            self.args.extend(['--no-container'])
-            self.args.extend(['--preserve-entire-environment'])
+            self.args.extend(["--no-container"])
+            self.args.extend(["--preserve-entire-environment"])
         if self.operation.use_mpi:
             self._create_mpi_config_file()
-            self.args.extend(['--mpi-config-file', self.operation.mpi_config_file])
-            self.args.extend(['--enable-ext'])
+            self.args.extend(["--mpi-config-file", self.operation.mpi_config_file])
+            self.args.extend(["--enable-ext"])
         if prefix := self._get_tmpdir_prefix():
-            self.args.extend(['--tmpdir-prefix', prefix])
+            self.args.extend(["--tmpdir-prefix", prefix])
 
     def teardown(self) -> None:
         """
@@ -260,6 +266,7 @@ class ToilRunner(CWLRunner):
     """
     Wrapper class for the Toil CWL runner
     """
+
     def __init__(self, operation: Operation) -> None:
         """
         Initializer
@@ -295,7 +302,7 @@ class ToilRunner(CWLRunner):
                 self.operation.global_scratch_dir
                 if self.operation.global_scratch_dir
                 else os.path.join(self.operation.pipeline_working_dir, "workdir"),
-                ""  # adds a trailing directory separator, required by Toil
+                "",  # adds a trailing directory separator, required by Toil
             )
         else:
             return None
@@ -304,17 +311,15 @@ class ToilRunner(CWLRunner):
         """
         Add options specific for running a workflow on a Slurm cluster
         """
-        self.args.extend(['--disableCaching'])
-        self.args.extend(['--defaultCores', str(self.operation.cpus_per_task)])
+        self.args.extend(["--disableCaching"])
+        self.args.extend(["--defaultCores", str(self.operation.cpus_per_task)])
         if self.operation.mem_per_node_gb > 0:
-            self.args.extend(['--defaultMemory', f'{self.operation.mem_per_node_gb}G'])
+            self.args.extend(["--defaultMemory", f"{self.operation.mem_per_node_gb}G"])
         else:
-            self.args.extend(['--dont_allocate_mem'])
+            self.args.extend(["--dont_allocate_mem"])
 
         # Set any Toil-specific environment variables.
-        toil_env_variables = {
-            "TOIL_SLURM_ARGS": "--export=ALL"
-        }
+        toil_env_variables = {"TOIL_SLURM_ARGS": "--export=ALL"}
         if "TOIL_SLURM_ARGS" in self._environment:
             # Add any args already set in the existing environment
             toil_env_variables["TOIL_SLURM_ARGS"] += " " + self._environment["TOIL_SLURM_ARGS"]
@@ -325,20 +330,20 @@ class ToilRunner(CWLRunner):
         Add options specific for debugging a workflow. Debugging of workflows
         is currently only supported when running on a single machine.
         """
-        if self.operation.batch_system != 'single_machine':
+        if self.operation.batch_system != "single_machine":
             raise ValueError(
                 'The debug_workflow option can only be used when batch_system = "single_machine".'
             )
-        self.args.extend(['--debugWorker'])  # NOTE: stdout/stderr are not redirected to the log
-        self.args.extend(['--logDebug'])
+        self.args.extend(["--debugWorker"])  # NOTE: stdout/stderr are not redirected to the log
+        self.args.extend(["--logDebug"])
 
     def _add_logging_options(self) -> None:
         """
         Add options specific for logging.
         """
-        self.args.extend(['--writeLogs', self.operation.log_dir])
-        self.args.extend(['--writeLogsFromAllJobs', 'True'])  # also keep logs of successful jobs
-        self.args.extend(['--maxLogFileSize', '1gb'])  # set to large value to prevent truncation
+        self.args.extend(["--writeLogs", self.operation.log_dir])
+        self.args.extend(["--writeLogsFromAllJobs", "True"])  # also keep logs of successful jobs
+        self.args.extend(["--maxLogFileSize", "1gb"])  # set to large value to prevent truncation
 
     def setup(self) -> None:
         """
@@ -346,17 +351,17 @@ class ToilRunner(CWLRunner):
         """
         super().setup()
         # Bypass the file store; it only has benefits when using object stores like S3
-        self.args.extend(['--bypass-file-store'])
-        self.args.extend(['--batchSystem', self.operation.batch_system])
-        self.args.extend(['--maxLocalJobs', str(self.operation.max_nodes)])
-        self.args.extend(['--maxJobs', str(self.operation.max_nodes)])
-        self.args.extend(['--jobStore', self.operation.jobstore])
-        self.args.extend(['--stats'])  # implicitly preserves the job store for future runs
-        self.args.extend(['--servicePollingInterval', '10'])
+        self.args.extend(["--bypass-file-store"])
+        self.args.extend(["--batchSystem", self.operation.batch_system])
+        self.args.extend(["--maxLocalJobs", str(self.operation.max_nodes)])
+        self.args.extend(["--maxJobs", str(self.operation.max_nodes)])
+        self.args.extend(["--jobStore", self.operation.jobstore])
+        self.args.extend(["--stats"])  # implicitly preserves the job store for future runs
+        self.args.extend(["--servicePollingInterval", "10"])
         self._add_logging_options()
         if os.path.exists(self.operation.jobstore):
-            self.args.extend(['--restart'])
-        if self.operation.batch_system.startswith('slurm'):
+            self.args.extend(["--restart"])
+        if self.operation.batch_system.startswith("slurm"):
             self._add_slurm_options()
         elif self.operation.batch_system == "single_machine":
             if tmpdir_prefix := self._get_tmpdir_prefix():
@@ -365,13 +370,13 @@ class ToilRunner(CWLRunner):
         if tmp_outdir_prefix := self._get_tmp_outdir_prefix():
             # Toil requires that temporary output directory exists
             os.makedirs(os.path.dirname(tmp_outdir_prefix), exist_ok=True)
-            self.args.extend(['--tmp-outdir-prefix', tmp_outdir_prefix])
+            self.args.extend(["--tmp-outdir-prefix", tmp_outdir_prefix])
         if workdir := self._get_workdir():
             # Toil requires that working directory exists
             os.makedirs(workdir, exist_ok=True)
-            self.args.extend(['--workDir', workdir])
+            self.args.extend(["--workDir", workdir])
         if self.operation.keep_temporary_files:
-            self.args.extend(['--cleanWorkDir', 'never'])
+            self.args.extend(["--cleanWorkDir", "never"])
         if self.operation.debug_workflow:
             self._add_debug_options()
 
@@ -393,9 +398,7 @@ class ToilRunner(CWLRunner):
             # Remove directories used for storing intermediate job results
             if prefix := self._get_tmp_outdir_prefix():
                 paths = glob.glob(f"{prefix}*")
-                logger.debug(
-                    "Removing temporary output directories: %s", " ".join(paths)
-                )
+                logger.debug("Removing temporary output directories: %s", " ".join(paths))
                 for path in paths:
                     shutil.rmtree(path)
 
@@ -403,9 +406,7 @@ class ToilRunner(CWLRunner):
                 # Remove directories used for storing temporary data by single jobs
                 if prefix := self._get_tmpdir_prefix():
                     paths = glob.glob(f"{prefix}*")
-                    logger.debug(
-                        "Removing temporary directories: %s", " ".join(paths)
-                    )
+                    logger.debug("Removing temporary directories: %s", " ".join(paths))
                     for path in paths:
                         shutil.rmtree(path)
         super().teardown()
@@ -415,6 +416,7 @@ class CWLToolRunner(CWLRunner):
     """
     Wrapper class for the CWLTool CWL runner
     """
+
     def __init__(self, operation: Operation) -> None:
         super().__init__(operation)
         self.command = "cwltool"
@@ -424,11 +426,11 @@ class CWLToolRunner(CWLRunner):
         Set arguments that are specific to this CWL runner.
         """
         super().setup()
-        self.args.extend(['--disable-color'])
-        self.args.extend(['--parallel'])
-        self.args.extend(['--timestamps'])
+        self.args.extend(["--disable-color"])
+        self.args.extend(["--parallel"])
+        self.args.extend(["--timestamps"])
         if prefix := self._get_tmp_outdir_prefix():
-            self.args.extend(['--tmp-outdir-prefix', prefix])
+            self.args.extend(["--tmp-outdir-prefix", prefix])
         if self.operation.debug_workflow:
             self.args.extend(["--debug"])
         if self.operation.keep_temporary_files:
@@ -442,10 +444,11 @@ class StreamFlowRunner(BaseCWLRunner):
     """
     Wrapper class for the StreamFlow CWL runner
     """
+
     def __init__(self, operation: Operation) -> None:
         super().__init__(operation)
         self.command = "streamflow"
-        self.args.extend(['run'])
+        self.args.extend(["run"])
         self.streamflow_file = None
 
     def setup(self) -> None:
@@ -460,74 +463,70 @@ class StreamFlowRunner(BaseCWLRunner):
             "type": "cwl",
             "config": {
                 "file": self.operation.pipeline_parset_file,
-                "settings": self.operation.pipeline_inputs_file
+                "settings": self.operation.pipeline_inputs_file,
             },
-            "bindings": [
-                {"step": "/", "target": {"deployment": self.operation.name}}
-            ]
+            "bindings": [{"step": "/", "target": {"deployment": self.operation.name}}],
         }
         if self.operation.container is not None:
-            if self.operation.container == 'singularity':
+            if self.operation.container == "singularity":
                 workflow["config"]["docker"] = [
                     {"step": "/", "deployment": {"type": "singularity", "config": {}}}
                 ]
             else:
                 raise ValueError(
-                    f'The `{self.operation.container}` container engine is not supported by StreamFlow'
+                    f"The `{self.operation.container}` container engine is not supported by StreamFlow"
                 )
         else:
             workflow["config"]["docker"] = [
                 {"step": "/", "deployment": {"type": "none", "config": {}}}
             ]
-        if self.operation.batch_system == 'single_machine':
-            deployment = {
-                "type": "local",
-                "config": {}
-            }
-        elif self.operation.batch_system == 'slurm':
+        if self.operation.batch_system == "single_machine":
+            deployment = {"type": "local", "config": {}}
+        elif self.operation.batch_system == "slurm":
             deployment = {
                 "type": "slurm",
                 "config": {
-                    "maxConcurrentJobs": self.operation.max_nodes if self.operation.max_nodes > 0 else sys.maxsize,
+                    "maxConcurrentJobs": self.operation.max_nodes
+                    if self.operation.max_nodes > 0
+                    else sys.maxsize,
                     "services": {
-                        self.operation.name: {
-                            "cpusPerTask": self.operation.cpus_per_task
-                        }
-                    }
-                }
+                        self.operation.name: {"cpusPerTask": self.operation.cpus_per_task}
+                    },
+                },
             }
             if self.operation.mem_per_node_gb > 0:
-                deployment["config"]["services"][self.operation.name]["mem"] = f"{self.operation.mem_per_node_gb}G"
+                deployment["config"]["services"][self.operation.name]["mem"] = (
+                    f"{self.operation.mem_per_node_gb}G"
+                )
             workflow["bindings"][0]["target"]["service"] = self.operation.name
         else:
             raise ValueError(
-                f'The `{self.operation.batch_system}` batch system is not supported by StreamFlow'
+                f"The `{self.operation.batch_system}` batch system is not supported by StreamFlow"
             )
         if self.operation.global_scratch_dir is not None:
             deployment["workdir"] = self.operation.global_scratch_dir
         if self.operation.use_mpi:
             raise ValueError(
-                'The `cwltool:MPIRequirement` extension is not supported by StreamFlow'
+                "The `cwltool:MPIRequirement` extension is not supported by StreamFlow"
             )
         config = {
             "version": "v1.0",
-            "workflows": {
-                self.operation.name: workflow
-            },
+            "workflows": {self.operation.name: workflow},
             "database": {
                 "type": "default",
                 "config": {
                     "connection": f"{self.operation.rapthor_working_dir}/.streamflow/sqlite.db"
-                }
+                },
             },
-            "deployments": {
-                self.operation.name: deployment
-            }
+            "deployments": {self.operation.name: deployment},
         }
         self.streamflow_file = os.path.join(self.operation.pipeline_working_dir, "streamflow.yml")
         with open(self.streamflow_file, "w") as f:
-            logger.debug(f"Creating StreamFlow configuration file {self.streamflow_file}:\n{yaml.safe_dump(config)}")
-            yaml.safe_dump(config, f)
+            logger.debug(
+                "Creating StreamFlow configuration file: %r\n%s",
+                self.streamflow_file,
+                yaml.safe_dump(config, f),
+            )
         self.args.extend([self.streamflow_file])
 
     def teardown(self) -> None:

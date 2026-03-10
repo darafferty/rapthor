@@ -213,6 +213,44 @@ class TestImage:
         assert image.input_parms["photometry_skymodel"]["path"] == "path/to/photometry_skymodel.txt"
         assert image.input_parms["astrometry_skymodel"]["path"] == "path/to/astrometry_skymodel.txt"
 
+    @pytest.mark.parametrize("allow_internet_access", [True, False])
+    def test_allow_internet_access(
+        self,
+        field,
+        allow_internet_access,
+        monkeypatch,
+        expected_image_output
+    ):
+        """Test to check that the allow_internet_access flag is set"""
+        field.parset["regroup_input_skymodel"] = False
+        field.parset["cluster_specific"]["allow_internet_access"] = allow_internet_access
+        field.image_pol = 'I'
+        field.skip_final_major_iteration = True
+        
+        field.scan_observations()
+
+        steps = set_selfcal_strategy(field)
+        field.update(steps[0], index=1, final=False)
+        
+        image = Image(field, index=1)
+        image.do_predict = False
+        image.apply_none = True
+        image.set_parset_parameters()
+        image.set_input_parameters()
+
+        assert image.input_parms["allow_internet_access"] is allow_internet_access
+        assert image.parset_parms["allow_internet_access"] is allow_internet_access
+        assert image.allow_internet_access is allow_internet_access
+
+        # Mock the execute method on the instance
+        monkeypatch.setattr(
+            "rapthor.lib.cwlrunner.BaseCWLRunner.execute",
+            lambda self, args, env: mocked_cwl_execution(self, args, env, expected_image_output),
+            raising=False
+        )
+        image.run()
+        assert image.is_done()
+    
     def test_finalize_without_diagnostic_plots(self, image):
         image.run()
         assert image.is_done()
