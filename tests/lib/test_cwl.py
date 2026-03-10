@@ -2,21 +2,21 @@
 Test module for testing the CWL workflows _generated_ by the pipeline
 """
 
-import subprocess
 import itertools as itt
+import subprocess
 from pathlib import Path
 
 import pytest
-from rapthor.lib.operation import DIR, env_parset
+
 from rapthor.lib.cwl import (
-    is_cwl_file,
-    is_cwl_directory,
-    is_cwl_file_or_directory,
+    clean_if_cwl_file_or_directory,
     copy_cwl_object,
     copy_cwl_recursive,
-    clean_if_cwl_file_or_directory,
+    is_cwl_directory,
+    is_cwl_file,
+    is_cwl_file_or_directory,
 )
-
+from rapthor.lib.operation import DIR, env_parset
 
 PIPELINE_PATH = Path(DIR, "..", "pipeline").resolve()
 
@@ -40,7 +40,7 @@ def generate_keyword_combinations(params_pool):
         "save_source_list": True,
         "compress_images": False,
         "filter_by_mask": True,
-        "source_finder": "sofia"
+        "source_finder": "sofia",
     }
 
 
@@ -53,7 +53,9 @@ def allow_combination(params):
         # 'normalize_flux_scale' must be used with 'make_image_cube'
         return False
 
-    if (params.get("use_facets") or params.get("apply_screens")) and params.get("preapply_dde_solutions"):
+    if (params.get("use_facets") or params.get("apply_screens")) and params.get(
+        "preapply_dde_solutions"
+    ):
         # 'preapply_dde_solutions' cannot be used with 'use_facets' or 'apply_screens'
         return False
 
@@ -98,9 +100,7 @@ def validate(params, parset_path):
     Validate the workflow file using `cwltool` in a subprocess call.
     """
     try:
-        subprocess.run(
-            ["cwltool", "--validate", "--enable-ext", parset_path], check=True
-        )
+        subprocess.run(["cwltool", "--validate", "--enable-ext", parset_path], check=True)
     except subprocess.CalledProcessError:
         raise AssertionError(f"FAILED with parameters: {params}") from None
 
@@ -199,26 +199,26 @@ def test_predict_di_workflow(tmp_path, max_cores):
 
 
 class TestImageWorkflow:
-
     operation = "image"
     template = env_parset.get_template("image_pipeline.cwl")
     sub_template = env_parset.get_template("image_sector_pipeline.cwl")
 
     @pytest.fixture(
-        params=generate_keyword_combinations({
-            "apply_screens": (False, True),
-            "use_facets": (False, True),
-            "peel_bright_sources": (False, True),
-            "max_cores": (None, 8),
-            "use_mpi": (False, True),
-            "make_image_cube": (False, True),
-            "image_cube_stokes_list": "I",
-            "normalize_flux_scale": (False, True),
-            "preapply_dde_solutions": (False, True),
-            "save_source_list": (False, True),
-            "compress_images": (False, True),
-            
-        })
+        params=generate_keyword_combinations(
+            {
+                "apply_screens": (False, True),
+                "use_facets": (False, True),
+                "peel_bright_sources": (False, True),
+                "max_cores": (None, 8),
+                "use_mpi": (False, True),
+                "make_image_cube": (False, True),
+                "image_cube_stokes_list": "I",
+                "normalize_flux_scale": (False, True),
+                "preapply_dde_solutions": (False, True),
+                "save_source_list": (False, True),
+                "compress_images": (False, True),
+            }
+        )
     )
     def params(self, request):
         return request.param
@@ -231,8 +231,7 @@ class TestImageWorkflow:
         `rapthor.lib.operation.Operation.setup()` does this.
         """
         pipeline_working_dir = tmp_path / "pipelines" / self.operation
-        return create_parsets(pipeline_working_dir, params,
-                              self.template, self.sub_template)
+        return create_parsets(pipeline_working_dir, params, self.template, self.sub_template)
 
     def test_image_workflow(self, params, parset):
         """
@@ -246,9 +245,7 @@ class TestImageWorkflow:
 @pytest.mark.parametrize("max_cores", (None, 8))
 @pytest.mark.parametrize("skip_processing", (False, True))
 @pytest.mark.parametrize("compress_images", (False, True))
-def test_mosaic_workflow(
-    tmp_path, max_cores, skip_processing, compress_images
-):
+def test_mosaic_workflow(tmp_path, max_cores, skip_processing, compress_images):
     """
     Test the Mosaic workflow, using all possible combinations of parameters
     that control the way the CWL workflow is generated from the template.
@@ -266,6 +263,7 @@ def test_mosaic_workflow(
 
 
 # Unit tests for CWL utility functions
+
 
 class TestIsCWLFile:
     """Tests for is_cwl_file() function"""
@@ -544,4 +542,3 @@ class TestCleanIfCWLFileOrDirectory:
         clean_if_cwl_file_or_directory({"not": "cwl"})
         clean_if_cwl_file_or_directory("string")
         clean_if_cwl_file_or_directory(None)
-
