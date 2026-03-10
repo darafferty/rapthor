@@ -1064,28 +1064,21 @@ def report_sector_diagnostics(sector_name, diagnostics_dict, log):
                 else:
                     missing_surveys.append(survey)
                     log.info("    LOFAR/%s flux ratio = N/A", survey)
-        if (
-            "meanClippedRAOffsetDeg" in diagnostics_dict
-            and "stdClippedRAOffsetDeg" in diagnostics_dict
-        ):
-            log.info(
-                "    LOFAR-PanSTARRS RA offset = %.1f +/- %.1f",
-                diagnostics_dict["meanClippedRAOffsetDeg"] * 3600,
-                max(0.5, diagnostics_dict["stdClippedRAOffsetDeg"] * 3600),
-            )
-        else:
-            log.info("    LOFAR-PanSTARRS RA offset = N/A")
-        if (
-            "meanClippedDecOffsetDeg" in diagnostics_dict
-            and "stdClippedDecOffsetDeg" in diagnostics_dict
-        ):
-            log.info(
-                "    LOFAR-PanSTARRS Dec offset = %.1f +/- %.1f",
-                diagnostics_dict["meanClippedDecOffsetDeg"] * 3600,
-                max(0.5, diagnostics_dict["stdClippedDecOffsetDeg"] * 3600),
-            )
-        else:
-            log.info("    LOFAR-PanSTARRS Dec offset = N/A")
+        
+        for axis in ('RA', 'DEC'):
+            if (
+                (clipped_mean := f"meanClipped{axis}OffsetDeg") in diagnostics_dict
+                and (clipped_std := f"stdClipped{axis}OffsetDeg") in diagnostics_dict
+            ):
+                log.info(
+                    "    LOFAR-PanSTARRS %s offset = %.1f +/- %.1f",
+                    axis,
+                    diagnostics_dict[clipped_mean] * 3600,
+                    max(0.5, diagnostics_dict[clipped_std] * 3600),
+                )
+            else:
+                log.info("    LOFAR-PanSTARRS %s offset = N/A", axis)
+    
 
         return (lofar_to_true_flux_ratio, lofar_to_true_flux_std)
 
