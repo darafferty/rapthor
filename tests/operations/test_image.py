@@ -24,6 +24,7 @@ def expected_image_output():
         "pybdsf_catalog": ["sector0.source_catalog.fits"],
         "sector_diagnostics": ["sector0_diagnostics.json"],
         "sector_offsets": ["sector0_offsets.txt"],
+        "source_filtering_mask": ["sector0_mask.fits"],
     }
 
 
@@ -308,8 +309,8 @@ class TestImage:
         assert image.is_done()
         sector_0 = image.field.imaging_sectors[0]
         assert hasattr(sector_0, "filtering_mask_file"), "Expected filtering_mask_file to be set in sector_1"
-        assert isinstance(sector_0.mask_filename, (str, Path)
-                          ), f"Expected mask_filename to be a string, got {type(sector_0.mask_filename)}"
+        assert isinstance(sector_0.filtering_mask_file, (str, Path)
+                          ), f"Expected filtering_mask_file to be a string, got {type(sector_0.filtering_mask_file)}"
 
     def test_find_in_file_list(self):
         # Test the find_in_file_list method with a sample file list
@@ -371,8 +372,8 @@ class TestImage:
         # Check that the sector's mask_filename is set
         sector = field.imaging_sectors[0]
         assert sector.I_mask_file is not None
-        assert 'masks' in sector.I_mask_file
-        assert 'image_1' in sector.I_mask_file
+        assert 'mask.fits' in sector.I_mask_file
+        assert 'sector0' in sector.I_mask_file
 
     @pytest.mark.parametrize("use_clean_mask", [True, False])
     def test_image_with_previous_mask(self, field, monkeypatch, tmp_path, expected_image_output, use_clean_mask):
