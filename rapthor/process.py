@@ -102,7 +102,7 @@ def run(parset_file, logging_level="info"):
                     "Starting final cycle with a data fraction of %.2f",
                     parset["final_data_fraction"],
                 )
-                field.cycle_number += 1
+                field.cycle_number += 1  # continue counting from the last selfcal cycle
             else:
                 if not final_step["do_calibrate"]:
                     if not parset["input_h5parm"]:
@@ -124,6 +124,7 @@ def run(parset_file, logging_level="info"):
                         field.parset["generate_initial_skymodel"] = False
                         field.parset["download_initial_skymodel"] = False
                 log.info("Using a data fraction of %.2f", parset["final_data_fraction"])
+                field.cycle_number = i + 1  # start counting from 1
 
             if field.make_quv_images:
                 log.info("Stokes I, Q, U, and V images will be made")
