@@ -266,15 +266,7 @@ def check_photometry(
     if len(catalog) == 0:
         logger.info("No sources found in the input image. Skipping the photometry check...")
         return {}
-
-    phase_center = SkyCoord(ra=obs.ra * u.degree, dec=obs.dec * u.degree)
-    coords_comp = SkyCoord(ra=catalog["RA"], dec=catalog["DEC"])
-    separation = phase_center.separation(coords_comp)
-    sec_el = 1.0 / np.sin(obs.mean_el_rad)
-    fwhm_deg = 1.1 * ((3.0e8 / freq) / obs.diam) * 180 / np.pi * sec_el
-    catalog = catalog[separation < fwhm_deg / 2 * u.degree]
-    major_axis = catalog["DC_Maj"]  # degrees
-    catalog = catalog[major_axis < 10 / 3600]
+    catalog = filter_skymodel_for_photometry(catalog, obs, freq)
 
     # Check number of sources against min_number set by user. If too few, return
     if len(catalog) < min_number:
@@ -625,6 +617,42 @@ def check_astrometry(
 
     # Calculate mean offsets
     return {key: np.mean(astrometry_diagnostics[key]) for key in astrometry_keys}
+
+
+def filter_skymodel_for_photometry(catalog, obs, freq, max_major_axis=10 / 3600):
+    """
+    Filter the input catalog for use in the photometry comparison.
+
+    Filter the input catalog to keep only sources that:
+        - Lie within the FWHM of the primary beam (to exclude sources with
+          uncertain primary beam corrections)
+        - Have deconvolved major axis < max_major_axis (default 10 arcsec,
+          to exclude extended sources that may be poorly modeled)
+
+    Parameters
+    ----------
+    catalog : astropy.table.Table
+        Input PyBDSF catalog.
+    obs : rapthor.lib.observation.Observation
+        Representative observation with phase centre, elevation, and dish diameter.
+    freq : float
+        Reference frequency in Hz.
+    max_major_axis : float, optional
+        Maximum allowed deconvolved major axis in degrees (default 10 arcsec).
+
+    Returns
+    -------
+    astropy.table.Table
+        Filtered catalog.
+    """
+    phase_center = SkyCoord(ra=obs.ra * u.degree, dec=obs.dec * u.degree)
+    coords_comp = SkyCoord(ra=catalog["RA"], dec=catalog["DEC"])
+    separation = phase_center.separation(coords_comp)
+    sec_el = 1.0 / np.sin(obs.mean_el_rad)
+    fwhm_deg = 1.1 * ((3.0e8 / freq) / obs.diam) * 180 / np.pi * sec_el
+    catalog = catalog[separation < fwhm_deg / 2 * u.degree]
+    major_axis = catalog["DC_Maj"]  # degrees
+    return catalog[major_axis < max_major_axis]
 
 
 def main(

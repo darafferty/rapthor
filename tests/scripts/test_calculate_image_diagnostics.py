@@ -19,6 +19,7 @@ from rapthor.scripts.calculate_image_diagnostics import (
     check_photometry,
     compare_photometry_survey,
     parse_args,
+    filter_skymodel_for_photometry,
 )
 from rapthor.scripts.calculate_image_diagnostics import fits_to_makesourcedb
 
@@ -775,4 +776,38 @@ def test_check_photometry_expected_plots(
     )
     assert result != {}, (
         "Expected non-empty result from check_photometry when there are matches between the input catalog and the survey"
+    )
+
+
+def test_filter_skymodel_for_photometry_keeps_expected_sources(
+    mock_full_photometry_table, observation
+):
+    """
+    Test that the filter_skymodel function correctly filters sources.
+    """
+    max_major_axis = 10 / 3600  # 10 arcseconds in degrees (default)
+    freq = 150e6
+    filtered_catalog = filter_skymodel_for_photometry(
+        mock_full_photometry_table, observation, freq, max_major_axis
+    )
+    assert len(filtered_catalog) == len(mock_full_photometry_table), (
+        "Expected all sources to pass the filtering criteria since they are all within the specified limits"
+    )
+
+
+def test_filter_skymodel_for_photometry_filters_out_sources_major_axis(
+    mock_full_photometry_table, observation
+):
+    """
+    Test that the filter_skymodel function correctly filters out sources that do not meet the criteria.
+    """
+    max_major_axis = (
+        0.001 / 3600
+    )  # 0.001 arcseconds in degrees, which is smaller than the DC_Maj of the sources
+    freq = 150e6
+    filtered_catalog = filter_skymodel_for_photometry(
+        mock_full_photometry_table, observation, freq, max_major_axis=max_major_axis
+    )
+    assert len(filtered_catalog) == 0, (
+        "Expected all sources to be filtered out since they do not meet the specified criteria"
     )
