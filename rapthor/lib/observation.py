@@ -298,8 +298,9 @@ class Observation(object):
             starttimes = [self.starttime]
 
         self.ntimechunks = nchunks
-        self.log.debug('Using {0} time chunk{1} for '
-                       'calibration'.format(self.ntimechunks, "s" if self.ntimechunks > 1 else ""))
+        self.log.debug('Using %s time chunk%s for calibration', 
+                       self.ntimechunks, 
+                       "s" if self.ntimechunks > 1 else '')
         if self.antenna == 'LBA':
             # For LBA, use the MS files with non-calibrator sources subtracted
             self.parameters['timechunk_filename'] = [self.ms_predict_nc_filename] * self.ntimechunks
@@ -537,26 +538,27 @@ class Observation(object):
         target_bandwidth_mhz = min(2.0, self.get_target_bandwidth(mean_freq_mhz,
                                    delta_theta_deg, resolution_deg, peak_smearing_rapthor))
         target_bandwidth_mhz = min(target_bandwidth_mhz, solve_slow_freqstep/1e6)
-        self.log.debug('Target averaging timewidth for imaging is {0:.1f} s'.format(target_timewidth_sec))
-        self.log.debug('Target averaging bandwidth for imaging is {0:.1f} MHz'.format(target_bandwidth_mhz))
+        self.log.debug('Target averaging timewidth for imaging is %.1f s', target_timewidth_sec)
+        self.log.debug('Target averaging bandwidth for imaging is %.1f MHz', target_bandwidth_mhz)
 
         # Find averaging steps for above target values
         image_freqstep = max(1, min(int(round(target_bandwidth_mhz * 1e6 / chan_width_hz)), nchan))
         self.parameters['image_freqstep'] = self.get_nearest_freqstep(image_freqstep)
         self.parameters['image_timestep'] = max(1, int(round(target_timewidth_sec / timestep_sec)))
-        self.log.debug('Using averaging steps of {0} channel{1} and {2} time slot{3} '
-                       'for imaging'.format(self.parameters['image_freqstep'],
-                                            "s" if self.parameters['image_freqstep'] > 1 else "",
-                                            self.parameters['image_timestep'],
-                                            "s" if self.parameters['image_timestep'] > 1 else ""))
+        self.log.debug('Using averaging steps of %s channel%s and %s time slot%s '
+                       'for imaging', 
+                       self.parameters['image_freqstep'],
+                        "s" if self.parameters['image_freqstep'] > 1 else "",
+                        self.parameters['image_timestep'],
+                        "s" if self.parameters['image_timestep'] > 1 else "")
 
         # Find BDA maxinterval: the max time interval in time slots over which to average
         # (for the shortest baselines). We set this to be the slow solve time step to ensure
         # we don't average more than the timescale of the slow corrections
         target_maxinterval = min(self.numsamples, int(round(solve_slow_timestep / timestep_sec)))  # time slots
         self.parameters['image_bda_maxinterval'] = max(1, target_maxinterval)
-        self.log.debug('Using BDA with maxinterval = {0:.1f} s for '
-                       'imaging'.format(self.parameters['image_bda_maxinterval'] * timestep_sec))
+        self.log.debug('Using BDA with maxinterval = %.1f s for imaging', 
+                       self.parameters['image_bda_maxinterval'] * timestep_sec)
 
     def get_nearest_freqstep(self, freqstep):
         """
