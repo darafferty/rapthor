@@ -217,7 +217,6 @@ class TestImageWorkflow:
             "preapply_dde_solutions": (False, True),
             "save_source_list": (False, True),
             "compress_images": (False, True),
-            
         })
     )
     def params(self, request):
@@ -375,6 +374,27 @@ class TestCopyCWLObject:
         assert dest_file.exists()
         assert dest_file.read_text() == "test content"
 
+    def test_move_file(self, tmp_path):
+        """Test moving a CWL file object"""
+        # Create a source file
+        src_file = tmp_path / "source" / "test.txt"
+        src_file.parent.mkdir(parents=True, exist_ok=True)
+        src_file.write_text("test content")
+
+        # Create CWL file object
+        cwl_obj = {"class": "File", "path": str(src_file)}
+
+        # Move to destination
+        dest_dir = tmp_path / "destination"
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        copy_cwl_object(cwl_obj, str(dest_dir), move=True)
+
+        # Verify file was moved
+        dest_file = dest_dir / "test.txt"
+        assert dest_file.exists()
+        assert dest_file.read_text() == "test content"
+        assert not src_file.exists()
+
     def test_copy_directory(self, tmp_path):
         """Test copying a CWL directory object"""
         # Create a source directory with files
@@ -396,12 +416,37 @@ class TestCopyCWLObject:
         assert (dest_dir / "file1.txt").read_text() == "content1"
         assert (dest_dir / "file2.txt").read_text() == "content2"
 
+    def test_move_directory(self, tmp_path):
+        """Test moving a CWL directory object"""
+        # Create a source directory with files
+        src_dir = tmp_path / "source_dir"
+        src_dir.mkdir()
+        (src_dir / "file1.txt").write_text("content1")
+        (src_dir / "file2.txt").write_text("content2")
+
+        # Create CWL directory object
+        cwl_obj = {"class": "Directory", "path": str(src_dir)}
+
+        # Move to destination
+        dest_parent = tmp_path / "destination"
+        copy_cwl_object(cwl_obj, str(dest_parent), move=True)
+
+        # Verify directory was moved
+        dest_dir = dest_parent / "source_dir"
+        assert dest_dir.exists()
+        assert (dest_dir / "file1.txt").read_text() == "content1"
+        assert (dest_dir / "file2.txt").read_text() == "content2"
+        assert not src_dir.exists()
+
     def test_copy_non_cwl_object(self, tmp_path):
         """Test that non-CWL objects are silently ignored"""
         # Should not raise an exception
         copy_cwl_object({"not": "cwl"}, str(tmp_path))
         copy_cwl_object("string", str(tmp_path))
         copy_cwl_object(None, str(tmp_path))
+        copy_cwl_object({"not": "cwl"}, str(tmp_path), move=True)
+        copy_cwl_object("string", str(tmp_path), move=True)
+        copy_cwl_object(None, str(tmp_path), move=True)
 
 
 class TestCopyCWLRecursive:
@@ -421,6 +466,22 @@ class TestCopyCWLRecursive:
 
         assert (dest_dir / "test.txt").exists()
         assert (dest_dir / "test.txt").read_text() == "test"
+
+    def test_move_single_file(self, tmp_path):
+        """Test recursive move of a single CWL file"""
+        src_file = tmp_path / "source" / "test.txt"
+        src_file.parent.mkdir(parents=True, exist_ok=True)
+        src_file.write_text("test")
+
+        cwl_obj = {"class": "File", "path": str(src_file)}
+        dest_dir = tmp_path / "destination"
+        dest_dir.mkdir(parents=True, exist_ok=True)
+
+        copy_cwl_recursive(cwl_obj, str(dest_dir), move=True)
+
+        assert (dest_dir / "test.txt").exists()
+        assert (dest_dir / "test.txt").read_text() == "test"
+        assert not src_file.exists()
 
     def test_copy_list_of_files(self, tmp_path):
         """Test recursive copy of a list of CWL files"""
@@ -445,6 +506,31 @@ class TestCopyCWLRecursive:
         assert (dest_dir / "file1.txt").read_text() == "content1"
         assert (dest_dir / "file2.txt").read_text() == "content2"
 
+    def test_move_list_of_files(self, tmp_path):
+        """Test recursive move of a list of CWL files"""
+        # Create source files
+        src1 = tmp_path / "source" / "file1.txt"
+        src2 = tmp_path / "source" / "file2.txt"
+        src1.parent.mkdir(parents=True, exist_ok=True)
+        src1.write_text("content1")
+        src2.write_text("content2")
+
+        cwl_list = [
+            {"class": "File", "path": str(src1)},
+            {"class": "File", "path": str(src2)},
+        ]
+        dest_dir = tmp_path / "destination"
+        dest_dir.mkdir(parents=True, exist_ok=True)
+
+        copy_cwl_recursive(cwl_list, str(dest_dir), move=True)
+
+        assert (dest_dir / "file1.txt").exists()
+        assert (dest_dir / "file2.txt").exists()
+        assert (dest_dir / "file1.txt").read_text() == "content1"
+        assert (dest_dir / "file2.txt").read_text() == "content2"
+        assert not src1.exists()
+        assert not src2.exists()
+
     def test_copy_nested_list(self, tmp_path):
         """Test recursive copy of nested lists"""
         src1 = tmp_path / "source" / "file1.txt"
@@ -467,8 +553,32 @@ class TestCopyCWLRecursive:
         assert (dest_dir / "file1.txt").read_text() == "content1"
         assert (dest_dir / "file2.txt").read_text() == "content2"
 
+    def test_move_nested_list(self, tmp_path):
+        """Test recursive move of nested lists"""
+        src1 = tmp_path / "source" / "file1.txt"
+        src2 = tmp_path / "source" / "file2.txt"
+        src1.parent.mkdir(parents=True, exist_ok=True)
+        src1.write_text("content1")
+        src2.write_text("content2")
+
+        nested_list = [
+            [{"class": "File", "path": str(src1)}],
+            [{"class": "File", "path": str(src2)}],
+        ]
+        dest_dir = tmp_path / "destination"
+        dest_dir.mkdir(parents=True, exist_ok=True)
+
+        copy_cwl_recursive(nested_list, str(dest_dir), move=True)
+
+        assert (dest_dir / "file1.txt").exists()
+        assert (dest_dir / "file2.txt").exists()
+        assert (dest_dir / "file1.txt").read_text() == "content1"
+        assert (dest_dir / "file2.txt").read_text() == "content2"
+        assert not src1.exists()
+        assert not src2.exists()
+
     def test_copy_non_cwl_in_list(self, tmp_path):
-        """Test that non-CWL objects in lists are ignored"""
+        """Test that non-CWL objects in lists are ignored when copying"""
         src_file = tmp_path / "source" / "test.txt"
         src_file.parent.mkdir(parents=True, exist_ok=True)
         src_file.write_text("test")
@@ -487,6 +597,28 @@ class TestCopyCWLRecursive:
         # CWL file should still be copied
         assert (dest_dir / "test.txt").exists()
         assert (dest_dir / "test.txt").read_text() == "test"
+
+    def test_move_non_cwl_in_list(self, tmp_path):
+        """Test that non-CWL objects in lists are ignored when moving"""
+        src_file = tmp_path / "source" / "test.txt"
+        src_file.parent.mkdir(parents=True, exist_ok=True)
+        src_file.write_text("test")
+
+        mixed_list = [
+            {"class": "File", "path": str(src_file)},
+            "not a cwl object",
+            {"not": "cwl"},
+        ]
+        dest_dir = tmp_path / "destination"
+        dest_dir.mkdir(parents=True, exist_ok=True)
+
+        # Should not raise an exception
+        copy_cwl_recursive(mixed_list, str(dest_dir), move=True)
+
+        # CWL file should still be copied
+        assert (dest_dir / "test.txt").exists()
+        assert (dest_dir / "test.txt").read_text() == "test"
+        assert not src_file.exists()
 
 
 class TestCleanIfCWLFileOrDirectory:
@@ -544,4 +676,3 @@ class TestCleanIfCWLFileOrDirectory:
         clean_if_cwl_file_or_directory({"not": "cwl"})
         clean_if_cwl_file_or_directory("string")
         clean_if_cwl_file_or_directory(None)
-
