@@ -517,10 +517,13 @@ class Image(Operation):
                 for x in self.outputs["sector_I_images"][index]
                 + self.outputs["sector_extra_images"][index]
             ]
+            leave_in_place.update({"sector_I_images", "sector_extra_images"})
             if self.field.save_supplementary_images:
                 file_list.append(self.outputs["source_filtering_mask"][index]["path"])
+                leave_in_place.update({"source_filtering_mask"})
             if self.field.parset["imaging_specific"]["save_filtered_model_image"]:
                 file_list.append(self.outputs["sector_skymodel_image_fits"][index]["path"])
+                leave_in_place.update({"sector_skymodel_image_fits"})
             type_path_map = Image.find_in_file_list(file_list)
             for output_type, paths in type_path_map.items():
                 if output_type not in ["filtering_mask_file", "filtered_model_file_apparent_sky"]:
@@ -530,11 +533,6 @@ class Image(Operation):
                 else:
                     for path in paths:
                         setattr(sector, output_type, path)
-            leave_in_place.update({"sector_I_images", "sector_extra_images"})
-            if self.field.save_supplementary_images:
-                leave_in_place.update({"source_filtering_mask"})
-            if self.field.parset["imaging_specific"]["save_filtered_model_image"]:
-                leave_in_place.update({"sector_skymodel_image_fits"})
 
             if self.field.parset["imaging_specific"]["use_clean_mask"]:
                 # Copy the sector mask to save it for use in a subsequent imaging operation. Note

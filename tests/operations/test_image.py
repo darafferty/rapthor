@@ -253,12 +253,12 @@ class TestImage:
         field.parset["regroup_input_skymodel"] = False
         field.image_pol = 'I'
         field.skip_final_major_iteration = True
-        
+
         field.scan_observations()
 
         steps = set_selfcal_strategy(field)
         field.update(steps[0], index=1, final=False)
-        
+
         image = Image(field, index=1)
         image.do_predict = False
         image.apply_none = True
@@ -299,7 +299,7 @@ class TestImage:
         # Simulate a null mask output and check that it is handled gracefully
         image.outputs["source_filtering_mask"] = [None]
         sector_0 = image.field.imaging_sectors[0]
-        assert hasattr(sector_0, "mask_filename"), "Expected mask_filename to be set in sector_1"
+        assert hasattr(sector_0, "filtering_mask_file"), "Expected filtering_mask_file to be set in sector_1"
 
     def test_sector_save_supplementary_images(self, image):
         image.field.save_supplementary_images = True
@@ -307,7 +307,7 @@ class TestImage:
         image.run()
         assert image.is_done()
         sector_0 = image.field.imaging_sectors[0]
-        assert hasattr(sector_0, "mask_filename"), "Expected mask_filename to be set in sector_1"
+        assert hasattr(sector_0, "filtering_mask_file"), "Expected filtering_mask_file to be set in sector_1"
         assert isinstance(sector_0.mask_filename, (str, Path)
                           ), f"Expected mask_filename to be a string, got {type(sector_0.mask_filename)}"
 
@@ -340,12 +340,14 @@ class TestImage:
     def test_image_operation_sets_mask_file(self, field, monkeypatch, tmp_path, expected_image_output):
         """
         Test that running an image operation with mocked CWL execution
-        sets sector.I_mask_file to the correct value
+        sets sector.I_mask_file to the correct value when use_clean_mask
+        is set to True in the parset.
         """
         h5parm = tmp_path / "h5parm_file.h5"
         h5parm.touch()
 
         field.parset["regroup_input_skymodel"] = False
+        field.parset["imaging_specific"]["use_clean_mask"] = True
         field.h5parm_filename = str(h5parm)
         field.scan_observations()
         steps = set_selfcal_strategy(field)
@@ -408,7 +410,10 @@ class TestImage:
         # Get the mask file from the first operation
         sector = field.imaging_sectors[0]
         first_mask_file = sector.I_mask_file
-        assert first_mask_file is not None
+        if use_clean_mask:
+            assert first_mask_file is not None
+        else:
+            assert first_mask_file is None
 
         # Second image operation - simulate reusing the mask from first operation
         # Create a new Image operation with index=2 but don't call field.update()
@@ -418,6 +423,7 @@ class TestImage:
 
         # Check that previous_mask_filename is set to the mask from the first operation
         assert image2.input_parms["previous_mask_filename"] is not None
+
         # previous_mask_filename should be a list with one element for one sector
         previous_masks = image2.input_parms["previous_mask_filename"]
         assert isinstance(previous_masks, list)
@@ -454,14 +460,14 @@ class TestImageInitial:
         field.scan_observations()
         field.define_full_field_sector()
         field.image_pol = 'I'
-        
+
         image_initial = ImageInitial(field)
-        
+
         # This should NOT raise AttributeError: 'Sector' object has no attribute 'central_patch'
         # The bug causes this to fail because preapply_dde_solutions is incorrectly True
         image_initial.set_parset_parameters()
         image_initial.set_input_parameters()
-        
+
         # Verify apply_none is True and preapply_dde_solutions is False
         assert image_initial.apply_none is True, "apply_none should be True for ImageInitial"
         assert image_initial.preapply_dde_solutions is False, \
