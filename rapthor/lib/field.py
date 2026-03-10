@@ -309,21 +309,21 @@ class Field(object):
                 data_fraction = min(1, data_fraction * total_time / total_high_el_time)
                 target_starttime = obs.high_el_starttime
                 target_endtime = obs.high_el_endtime
-                total_time = total_high_el_time
                 total_samples = np.round(total_high_el_time / obs.timepersample)
 
-            nchunks = max(1, int(data_fraction * total_time / chunk_time))
+            nchunks = max(1, int(data_fraction * total_samples / chunk_samples))
             if nchunks == 1:
                 if data_fraction < 1.0:
                     # Center the chunk at the midpoint (which is generally the most
                     # sensitive, near transit)
-                    midpoint = (target_starttime + target_endtime) / 2
-                    half_chunk_time = data_fraction * total_time / 2
+                    chunk_samples = np.round(data_fraction * total_samples)
+                    start_samples = int((total_samples - chunk_samples) / 2)
+                    samples_from_end = total_samples - start_samples - chunk_samples
                     chunked_observations.append(
                         Observation(
                             obs.ms_filename,
-                            starttime=midpoint - half_chunk_time,
-                            endtime=midpoint + half_chunk_time,
+                            starttime=target_starttime + start_samples * obs.timepersample,
+                            endtime=target_endtime - samples_from_end * obs.timepersample,
                             name=f"{os.path.basename(obs.ms_filename)}_chunk1"
                         )
                     )
