@@ -355,7 +355,7 @@ class TestImage:
         sector = field.imaging_sectors[0]
         assert sector.I_mask_file is not None
         assert 'mask.fits' in sector.I_mask_file
-        assert 'sector0' in sector.I_mask_file
+        assert 'sector_1' in sector.I_mask_file
 
     @pytest.mark.parametrize("use_clean_mask", [True, False])
     def test_image_with_previous_mask(self, field, monkeypatch, tmp_path, expected_image_output, use_clean_mask):
