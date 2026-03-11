@@ -10,12 +10,13 @@ def expected_image_output():
     """
     return {
         "sector_I_images": [["sector0-MFS-I-image-pb.fits", "sector0-MFS-I-image.fits"]],
-        "sector_extra_images": [["sector0-MFS-I-residual.fits", "sector0-MFS-I-model-pb.fits"]],
+        "sector_extra_images": [["sector0-MFS-I-residual.fits", "sector0-MFS-I-model-pb.fits", "sector0-MFS-I-dirty.fits"]],
         "filtered_skymodel_true_sky": ["sector0.true_sky.txt"],
         "filtered_skymodel_apparent_sky": ["sector0.apparent_sky.txt"],
         "pybdsf_catalog": ["sector0.source_catalog.fits"],
         "sector_diagnostics": ["sector0_diagnostics.json"],
         "sector_offsets": ["sector0_offsets.txt"],
+        "source_filtering_mask": ["sector0_mask.fits"],
     }
 
 
