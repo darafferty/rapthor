@@ -9,14 +9,14 @@ def expected_image_output():
     of an image step in the non-last cycle.
     """
     return {
-        "sector_I_images": [["sector0-MFS-I-image-pb.fits", "sector0-MFS-I-image.fits"]],
-        "sector_extra_images": [["sector0-MFS-I-residual.fits", "sector0-MFS-I-model-pb.fits", "sector0-MFS-I-dirty.fits"]],
-        "filtered_skymodel_true_sky": ["sector0.true_sky.txt"],
-        "filtered_skymodel_apparent_sky": ["sector0.apparent_sky.txt"],
-        "pybdsf_catalog": ["sector0.source_catalog.fits"],
-        "sector_diagnostics": ["sector0_diagnostics.json"],
-        "sector_offsets": ["sector0_offsets.txt"],
-        "source_filtering_mask": ["sector0_mask.fits"],
+        "sector_I_images": [["sector_1-MFS-I-image-pb.fits", "sector_1-MFS-I-image.fits"]],
+        "sector_extra_images": [["sector_1-MFS-I-residual.fits", "sector_1-MFS-I-model-pb.fits", "sector_1-MFS-I-dirty.fits"]],
+        "filtered_skymodel_true_sky": ["sector_1.true_sky.txt"],
+        "filtered_skymodel_apparent_sky": ["sector_1.apparent_sky.txt"],
+        "pybdsf_catalog": ["sector_1.source_catalog.fits"],
+        "sector_diagnostics": ["sector_1_diagnostics.json"],
+        "sector_offsets": ["sector_1_offsets.txt"],
+        "source_filtering_mask": ["sector_1_mask.fits"],
     }
 
 
@@ -27,13 +27,13 @@ def expected_image_output_last_cycle():
     of the image step in the last cycle.
     """
     return {
-        "sector_I_images": [["sector0-MFS-I-image-pb.fits", "sector0-MFS-I-image.fits"]],
-        "filtered_skymodel_true_sky": ["sector0.true_sky.txt"],
-        "filtered_skymodel_apparent_sky": ["sector0.apparent_sky.txt"],
-        "pybdsf_catalog": ["sector0.source_catalog.fits"],
-        "sector_diagnostics": ["sector0_diagnostics.json"],
-        "sector_offsets": ["sector0_offsets.txt"],
-        "source_filtering_mask": ["sector0_mask.fits"],
+        "sector_I_images": [["sector_1-MFS-I-image-pb.fits", "sector_1-MFS-I-image.fits"]],
+        "filtered_skymodel_true_sky": ["sector_1.true_sky.txt"],
+        "filtered_skymodel_apparent_sky": ["sector_1.apparent_sky.txt"],
+        "pybdsf_catalog": ["sector_1.source_catalog.fits"],
+        "sector_diagnostics": ["sector_1_diagnostics.json"],
+        "sector_offsets": ["sector_1_offsets.txt"],
+        "source_filtering_mask": ["sector_1_mask.fits"],
         "sector_extra_images": [[
             'sector_1-MFS-I-image-pb.fits',
             'sector_1-MFS-I-image-pb.fits',
