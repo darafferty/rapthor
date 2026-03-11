@@ -280,16 +280,14 @@ class Field(object):
         if mintime <= 0:
             raise ValueError("mintime must be greater than zero")
 
-        # Set the chunk size so that it is at least mintime
         chunked_observations = []
         for obs in self.full_observations:
-            # Adjust the minimum time for chunks made from this observation to one that
-            # is an integer multiple of its time per sample
+            # The computations below first determine the number of samples, e.g., per chunk, and
+            # then derive the corresponding time intervals.
             chunk_samples = np.ceil(mintime / obs.timepersample)
 
-            # Due to a limitation in Dysco, we make sure to have at least two time
-            # slots per observation, otherwise the output MS cannot be written with
-            # compression
+            # Due to a limitation in Dysco, we make sure to have at least two time slots
+            # per observation, otherwise the output MS cannot be written with compression.
             chunk_samples = max(chunk_samples, 2)
 
             target_starttime = obs.starttime
