@@ -115,6 +115,7 @@ class Mosaic(Operation):
             os.makedirs(dst_dir, exist_ok=True)
             if image_name == "filtered_model_file_apparent_sky":
                 # The filtered model image has a different naming convention from the other images
+                # (it has a "." after the sector name, rather than a "-")
                 suffix = getattr(self.field.imaging_sectors[0], image_name).split('sector_1.')[-1]
             else:
                 suffix = getattr(self.field.imaging_sectors[0], image_name).split('sector_1-')[-1]
