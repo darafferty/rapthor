@@ -137,7 +137,7 @@ def copy_cwl_object(src_obj, dest_dir, move=False):
     move : bool, optional
         If True, move files instead of copying them
     """
-    if is_cwl_file_or_directory(src_obj) and os.path.exists(src_obj['path']):
+    if is_cwl_file_or_directory(src_obj) and os.path.exists(src_obj["path"]):
         os.makedirs(dest_dir, exist_ok=True)
         src = Path(src_obj["path"])
         dest = Path(dest_dir) / src.name
