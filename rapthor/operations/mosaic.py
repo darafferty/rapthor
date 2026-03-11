@@ -125,7 +125,7 @@ class Mosaic(Operation):
                 self.field.field_image_filename_prev = self.field.field_image_filename
                 self.field.field_image_filename = field_image_filename
             src_filename = os.path.join(self.pipeline_working_dir, self.mosaic_filename[i])
-            if os.path.exits(src_filename):
+            if os.path.exists(src_filename):
                 shutil.copy(src_filename, field_image_filename)
 
             # Remove the individual sector images that were used to make the mosaic, as they are no
