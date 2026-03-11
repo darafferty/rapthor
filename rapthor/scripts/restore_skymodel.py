@@ -46,14 +46,16 @@ def restore_with_wsclean(source_catalog: Path, reference_image: Path, beam_size:
         "-beam-size", str(beam_size)
     ]
     subprocess.run(cmd, check=True)
-    logger.info(f"Restored image saved to {output_image}")
+    logger.info("Restored image saved to %s", output_image)
     return output_image
 
 
 def log_fits_info(fits_obj):
     for i, name, version, type, cards, dimensions, format, _ in fits_obj.info(output=False):
-        logger.info("HDU %s: name=%s, version=%s, type=%s, cards=%s, dimensions=%s, format=%s",
-                    i, name, version, type, cards, dimensions, format)   
+        logger.info(
+            "HDU %s: name=%s, version=%s, type=%s, cards=%s, dimensions=%s, format=%s",
+            i, name, version, type, cards, dimensions, format
+        )   
 
 
 def get_primary_hdu_or_compressed(fits_obj) -> Union[FitsHDU, CompImageHDU]:
@@ -128,11 +130,11 @@ def make_zero_image(reference_image: Path) -> Tuple[Path, float]:
         ref_image = get_primary_hdu_or_compressed(ref_fits)
         header = ref_image.header
         min_scale = derive_minimum_scale(header)
-        logger.info(f"Derived minimum scale: {min_scale} arcseconds")
+        logger.info("Derived minimum scale: %.3f arcseconds", min_scale)
         data = np.zeros_like(ref_image.data)
         output_image = Path(NamedTemporaryFile(suffix=".fits", delete=False).name)
         fits_write(output_image, data=data, header=header, overwrite=True)
-        logger.info(f"Zero image saved to {output_image.name}")
+        logger.info("Zero image saved to %r", output_image.name)
         return output_image, min_scale
 
 

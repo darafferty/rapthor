@@ -1,12 +1,14 @@
 """
 Definition of CWL-related classes
 """
+
 import json
-import numpy as np
+import logging
 import os
 import shutil
-import logging
 from pathlib import Path
+
+import numpy as np
 
 logger = logging.getLogger("rapthor:cwl")
 
@@ -22,14 +24,15 @@ class CWLPath(object):
     path_type : str
         Type of path: 'file' or 'directory'
     """
+
     def __init__(self, path, path_type):
         if type(path) not in [str, list]:
-            raise ValueError('path must be a string or a list of strings')
+            raise ValueError("path must be a string or a list of strings")
         self.path = path
-        if path_type.lower() == 'file':
-            self.path_type = 'File'
-        elif path_type.lower() == 'directory':
-            self.path_type = 'Directory'
+        if path_type.lower() == "file":
+            self.path_type = "File"
+        elif path_type.lower() == "directory":
+            self.path_type = "Directory"
         else:
             raise ValueError('path type must be one of "file" or "directory"')
 
@@ -39,12 +42,12 @@ class CWLPath(object):
         """
         if type(self.path) is str:
             # File type
-            cwl_value = {'class': self.path_type, 'path': self.path}
+            cwl_value = {"class": self.path_type, "path": self.path}
         else:
             # File[] type
             cwl_value = []
             for p in self.path:
-                cwl_value.append({'class': self.path_type, 'path': p})
+                cwl_value.append({"class": self.path_type, "path": p})
 
         return cwl_value
 
@@ -58,8 +61,9 @@ class CWLFile(CWLPath):
     filename : str or list of str
         Filename or list of filenames
     """
+
     def __init__(self, filename):
-        super(CWLFile, self).__init__(filename, 'file')
+        super(CWLFile, self).__init__(filename, "file")
 
 
 class CWLDir(CWLPath):
@@ -71,8 +75,9 @@ class CWLDir(CWLPath):
     dirname : str or list of str
         Directory name or list of directory names
     """
+
     def __init__(self, dirname):
-        super(CWLDir, self).__init__(dirname, 'directory')
+        super(CWLDir, self).__init__(dirname, "directory")
 
 
 class NpEncoder(json.JSONEncoder):
@@ -83,6 +88,7 @@ class NpEncoder(json.JSONEncoder):
     class is used in json.dumps() calls when numpy types are
     present
     """
+
     def default(self, obj):
         if isinstance(obj, np.integer):
             return int(obj)
@@ -99,7 +105,7 @@ def is_cwl_file(cwl_obj):
 
     A CWL file representation is a dictionary with 'class' key set to 'File'.
     """
-    return isinstance(cwl_obj, dict) and cwl_obj.get('class') == 'File'
+    return isinstance(cwl_obj, dict) and cwl_obj.get("class") == "File"
 
 
 def is_cwl_directory(cwl_obj):
@@ -108,7 +114,7 @@ def is_cwl_directory(cwl_obj):
 
     A CWL directory representation is a dictionary with 'class' key set to 'Directory'.
     """
-    return isinstance(cwl_obj, dict) and cwl_obj.get('class') == 'Directory'
+    return isinstance(cwl_obj, dict) and cwl_obj.get("class") == "Directory"
 
 
 def is_cwl_file_or_directory(cwl_obj):
@@ -133,7 +139,7 @@ def copy_cwl_object(src_obj, dest_dir, move=False):
     """
     if is_cwl_file_or_directory(src_obj) and os.path.exists(src_obj['path']):
         os.makedirs(dest_dir, exist_ok=True)
-        src = Path(src_obj['path'])
+        src = Path(src_obj["path"])
         dest = Path(dest_dir) / src.name
         if move:
             shutil.move(src, dest)
@@ -200,5 +206,5 @@ def clean_if_cwl_file_or_directory(src_obj):
         for item in src_obj:
             clean_if_cwl_file_or_directory(item)
     elif is_cwl_file_or_directory(src_obj):
-        remove_or_log_error(Path(src_obj['path']))
+        remove_or_log_error(Path(src_obj["path"]))
     # Otherwise, do nothing

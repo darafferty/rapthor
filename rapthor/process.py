@@ -36,14 +36,15 @@ def run(parset_file, logging_level="info"):
 
     # Set up logger
     log.info("Setting log level to %s", logging_level.upper())
+    log.info("Setting log level to %s", logging_level.upper())
     _logging.set_level(logging_level)
 
     # Initialize field object and do concatenation if needed
     field = Field(parset)
-    if any([len(obs) > 1 for obs in field.epoch_observations]):
+    if any(len(obs) > 1 for obs in field.epoch_observations):
         log.info(
-            "MS files with different frequencies found for one "
-            "or more epochs. Concatenation over frequency will be done."
+            "MS files with different frequencies found for one or more epochs. "
+            "Concatenation over frequency will be done."
         )
         op = Concatenate(field, 1)
         op.run()
@@ -55,18 +56,19 @@ def run(parset_file, logging_level="info"):
         final_step = strategy_steps[-1]
     else:
         log.warning(
-            "The strategy '{}' does not define any processing steps. No "
-            "processing can be done.".format(parset["strategy"])
+            "The strategy %r does not define any processing steps. No processing can be done.",
+            parset["strategy"],
         )
         return
 
     # Generate an initial sky model from the input data if needed
     if parset["generate_initial_skymodel"]:
-        if not any([step["do_calibrate"] for step in strategy_steps]):
+        if not any(step["do_calibrate"] for step in strategy_steps):
             log.warning(
                 "Generation of an initial sky model has been activated but "
-                "the strategy '{}' does not contain any calibration steps. "
-                "Skipping the initial skymodel generation...".format(parset["strategy"])
+                "the strategy %r does not contain any calibration steps. "
+                "Skipping the initial skymodel generation...",
+                parset["strategy"],
             )
             field.parset["generate_initial_skymodel"] = False
         else:
@@ -79,9 +81,8 @@ def run(parset_file, logging_level="info"):
     # Run the self calibration
     if selfcal_steps:
         log.info(
-            "Starting self calibration with a data fraction of {0:.2f}".format(
-                parset["selfcal_data_fraction"]
-            )
+            "Starting self calibration with a data fraction of %.2f",
+            parset["selfcal_data_fraction"],
         )
 
         # Set the data chunking to match the longest solution interval set in
@@ -97,9 +98,8 @@ def run(parset_file, logging_level="info"):
             # observations will be regenerated and outliers (if any) need to be peeled again
             final_step["peel_outliers"] = selfcal_steps[0]["peel_outliers"]
             log.info(
-                "Starting final cycle with a data fraction of {0:.2f}".format(
-                    parset["final_data_fraction"]
-                )
+                "Starting final cycle with a data fraction of %.2f",
+                parset["final_data_fraction"],
             )
             field.cycle_number += 1
         else:
@@ -122,7 +122,7 @@ def run(parset_file, logging_level="info"):
                     # Turn off conflicting flags
                     field.parset["generate_initial_skymodel"] = False
                     field.parset["download_initial_skymodel"] = False
-            log.info("Using a data fraction of {0:.2f}".format(parset["final_data_fraction"]))
+            log.info("Using a data fraction of %.2f", parset["final_data_fraction"])
 
         if field.make_quv_images:
             log.info("Stokes I, Q, U, and V images will be made")
@@ -137,7 +137,7 @@ def run(parset_file, logging_level="info"):
                 # Currently, when screens are used peeling cannot be done
                 log.warning(
                     "Peeling of outliers is currently not supported when using "
-                    "screens. Peeling will be skipped"
+                    "screens. Peeling will be skipped."
                 )
                 final_step["peel_outliers"] = False
 
@@ -177,7 +177,7 @@ def run_steps(field, steps, final=False):
         # Calibrate
         if field.do_calibrate:
             # Set whether screens should be generated
-            field.generate_screens = True if (field.dde_mode == "hybrid" and final) else False
+            field.generate_screens = (field.dde_mode == "hybrid") and final
 
             # Calibrate (direction-dependent)
             op = CalibrateDD(field, cycle_number)
@@ -221,10 +221,10 @@ def run_steps(field, steps, final=False):
             ]
 
             # Set whether screens should be applied
-            field.apply_screens = True if (field.dde_mode == "hybrid" and final) else False
+            field.apply_screens = (field.dde_mode == "hybrid") and final
 
-            # Set whether the final major iteration is skipped (note: it is never skipped
-            # for the final iteration)
+            # Set whether the final major iteration is skipped (note: it is
+            # never skipped for the final iteration)
             field.skip_final_major_iteration = (
                 False if final else field.parset["imaging_specific"]["skip_final_major_iteration"]
             )
@@ -242,30 +242,39 @@ def run_steps(field, steps, final=False):
             if not any(selfcal_state):
                 # Continue selfcal
                 log.info(
-                    "Improvement in image noise, dynamic range, and/or number of "
-                    "sources exceeds that set by the convergence ratio of "
-                    "{0}.".format(field.convergence_ratio)
+                    "Improvement in image noise, dynamic range, and/or number "
+                    "of sources exceeds that set by the convergence ratio of "
+                    "%.2f.",
+                    field.convergence_ratio,
                 )
                 log.info("Continuing selfcal...")
             else:
                 # Stop selfcal
                 if selfcal_state.converged:
                     log.info(
-                        "Selfcal has converged (improvement in image noise, dynamic "
-                        "range, and number of sources does not exceed that set by the "
-                        "convergence ratio of {0})".format(field.convergence_ratio)
+                        "Selfcal has converged (improvement in image noise, "
+                        "dynamic range, and number of sources does not exceed "
+                        "that set by the convergence ratio of %.2f)",
+                        field.convergence_ratio,
                     )
                 if selfcal_state.diverged:
                     log.warning(
                         "Selfcal has diverged (ratio of current image noise "
-                        "to previous value is > {})".format(field.divergence_ratio)
+                        "to previous value is > %.2f)",
+                        field.divergence_ratio,
                     )
+
                 if selfcal_state.failed:
                     log.warning(
-                        "Selfcal has failed due to high noise (ratio of current image noise "
-                        "to theoretical value is > {})".format(field.failure_ratio)
+                        "Selfcal has failed due to high noise (ratio of current"
+                        " image noise to theoretical value is > %.2f)",
+                        field.failure_ratio,
                     )
-                log.info("Stopping selfcal at cycle {0} of {1}".format(cycle_number, len(steps)))
+                log.info(
+                    "Stopping selfcal at cycle %i of %i",
+                    cycle_number,
+                    len(steps),
+                )
                 break
         else:
             selfcal_state = None
@@ -309,8 +318,9 @@ def do_final_pass(field, selfcal_steps, final_step):
             # Selfcal was found to have diverged or failed, so don't do the final pass
             # even if required otherwise
             log.warning(
-                "Selfcal diverged or failed, so skipping final cycle (with a data "
-                "fraction of {0:.2f})".format(field.parset["final_data_fraction"])
+                "Selfcal diverged or failed, so skipping final cycle (with a "
+                "data fraction of %.2f)",
+                field.parset["final_data_fraction"],
             )
             final_pass = False
         elif final_step == selfcal_steps[field.cycle_number - 1]:
@@ -357,10 +367,10 @@ def chunk_observations(field, steps, data_fraction):
     if steps and any(step["do_calibrate"] for step in steps):
         # When calibration is to be done, use the solution intervals to
         # set the minimum duration
-        fast_solint = max([step.get("fast_timestep_sec", 0) for step in steps])
-        slow_solint = max([step.get("slow_timestep_sec", 0) for step in steps])
+        fast_solint = max(step.get("fast_timestep_sec", 0) for step in steps)
+        slow_solint = max(step.get("slow_timestep_sec", 0) for step in steps)
         max_dd_timestep = max(fast_solint, slow_solint)
-        max_di_timestep = max([(step.get("fulljones_timestep_sec", 0)) for step in steps])
+        max_di_timestep = max(step.get("fulljones_timestep_sec", 0) for step in steps)
 
         # For DD solves, include the effect of DD solution intervals (given by
         # dd_interval_factor), which increases the solution intervals. This effect
@@ -405,11 +415,14 @@ def chunk_observations(field, steps, data_fraction):
             min_fraction = min(1.0, solve_time / (obs.endtime - obs.starttime))
             if data_fraction < min_fraction:
                 obs.log.warning(
-                    "The specified value of data_fraction ({0:0.3f}) results in a "
-                    "total time for this observation that is less than the largest "
-                    "potential calibration timestep ({1} s). The data fraction will be "
-                    "increased to {2:0.3f} to attempt to meet the timestep "
-                    "requirement.".format(data_fraction, solve_time, min_fraction)
+                    "The specified value of data_fraction (%0.3f) results in "
+                    "a total time for this observation that is less than the "
+                    "largest potential calibration timestep (%.3f s). The data "
+                    "fraction will be increased to %0.3f to attempt to meet "
+                    "the timestep requirement.",
+                    data_fraction,
+                    solve_time,
+                    min_fraction,
                 )
                 obs.data_fraction = min_fraction
 

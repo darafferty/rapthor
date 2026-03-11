@@ -30,8 +30,8 @@ class Timer(object):
 
     def __exit__(self, *args):
         elapsed = timer() - self.start
-        self.log.debug('Time for {0}: {1}'.format(self.type,
-                       datetime.timedelta(seconds=elapsed)))
+        self.log.debug('Time for %s: %s', self.type,
+                       datetime.timedelta(seconds=elapsed))
 
 
 class RedirectStdStreams(object):

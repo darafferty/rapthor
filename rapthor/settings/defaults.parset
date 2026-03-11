@@ -428,3 +428,6 @@ debug_workflow = False
 # not be deleted at the end of the run. This will require significantly more
 # disk space. This option is useful for debugging purposes.
 keep_temporary_files = False
+
+# Allow sky models to be downloaded from sky surveys.
+allow_internet_access = True

@@ -12,62 +12,6 @@ from rapthor.operations.image import Image, ImageInitial, ImageNormalize
 
 
 @pytest.fixture
-def expected_image_output():
-    """
-    Fixture to provide expected output structure for CWL execution.
-    """
-    return {
-        "sector_I_images": [["sector0-MFS-I-image-pb.fits", "sector0-MFS-I-image.fits"]],
-        "sector_extra_images": [["sector0-MFS-I-residual.fits", "sector0-MFS-I-model-pb.fits"]],
-        "filtered_skymodel_true_sky": ["sector0.true_sky.txt"],
-        "filtered_skymodel_apparent_sky": ["sector0.apparent_sky.txt"],
-        "pybdsf_catalog": ["sector0.source_catalog.fits"],
-        "sector_diagnostics": ["sector0_diagnostics.json"],
-        "sector_offsets": ["sector0_offsets.txt"],
-        "source_filtering_mask": ["sector0_mask.fits"],
-    }
-
-
-@pytest.fixture
-def expected_image_output_last_cycle():
-    """
-    Fixture to provide expected output structure for CWL execution in the last cycle.
-    """
-    return {
-        "sector_I_images": [["sector0-MFS-I-image-pb.fits", "sector0-MFS-I-image.fits"]],
-        "filtered_skymodel_true_sky": ["sector0.true_sky.txt"],
-        "filtered_skymodel_apparent_sky": ["sector0.apparent_sky.txt"],
-        "pybdsf_catalog": ["sector0.source_catalog.fits"],
-        "sector_diagnostics": ["sector0_diagnostics.json"],
-        "sector_offsets": ["sector0_offsets.txt"],
-        "source_filtering_mask": ["sector0_mask.fits"],
-        "sector_extra_images": [[
-            'sector_1-MFS-I-image-pb.fits',
-            'sector_1-MFS-I-image-pb.fits',
-            'sector_1-MFS-I-image.fits',
-            'sector_1-MFS-Q-image.fits',
-            'sector_1-MFS-U-image.fits',
-            'sector_1-MFS-V-image.fits',
-            'sector_1-MFS-Q-image-pb.fits',
-            'sector_1-MFS-U-image-pb.fits',
-            'sector_1-MFS-V-image-pb.fits',
-            'sector_1-MFS-I-residual.fits',
-            'sector_1-MFS-Q-residual.fits',
-            'sector_1-MFS-U-residual.fits',
-            'sector_1-MFS-V-residual.fits',
-            'sector_1-MFS-I-model-pb.fits',
-            'sector_1-MFS-Q-model-pb.fits',
-            'sector_1-MFS-U-model-pb.fits',
-            'sector_1-MFS-V-model-pb.fits',
-            'sector_1-MFS-I-dirty.fits',
-            'sector_1-MFS-Q-dirty.fits',
-            'sector_1-MFS-U-dirty.fits',
-            'sector_1-MFS-V-dirty.fits'
-        ]]
-    }
-
-
-@pytest.fixture
 def image(field, monkeypatch, expected_image_output):
     """
     Fixture to mock CWL execution for the Image operation.
@@ -268,6 +212,44 @@ class TestImage:
 
         assert image.input_parms["photometry_skymodel"]["path"] == "path/to/photometry_skymodel.txt"
         assert image.input_parms["astrometry_skymodel"]["path"] == "path/to/astrometry_skymodel.txt"
+
+    @pytest.mark.parametrize("allow_internet_access", [True, False])
+    def test_allow_internet_access(
+        self,
+        field,
+        allow_internet_access,
+        monkeypatch,
+        expected_image_output
+    ):
+        """Test to check that the allow_internet_access flag is set"""
+        field.parset["regroup_input_skymodel"] = False
+        field.parset["cluster_specific"]["allow_internet_access"] = allow_internet_access
+        field.image_pol = 'I'
+        field.skip_final_major_iteration = True
+
+        field.scan_observations()
+
+        steps = set_selfcal_strategy(field)
+        field.update(steps[0], index=1, final=False)
+
+        image = Image(field, index=1)
+        image.do_predict = False
+        image.apply_none = True
+        image.set_parset_parameters()
+        image.set_input_parameters()
+
+        assert image.input_parms["allow_internet_access"] is allow_internet_access
+        assert image.parset_parms["allow_internet_access"] is allow_internet_access
+        assert image.allow_internet_access is allow_internet_access
+
+        # Mock the execute method on the instance
+        monkeypatch.setattr(
+            "rapthor.lib.cwlrunner.BaseCWLRunner.execute",
+            lambda self, args, env: mocked_cwl_execution(self, args, env, expected_image_output),
+            raising=False
+        )
+        image.run()
+        assert image.is_done()
 
     def test_finalize_without_diagnostic_plots(self, image):
         image.run()

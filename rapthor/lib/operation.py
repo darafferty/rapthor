@@ -262,7 +262,7 @@ class Operation(object):
         """
         # Set up CWL workflow and call CWL runner
         self.setup()
-        self.log.info('<-- Operation {0} started'.format(self.name))
+        self.log.info('<-- Operation %s started', self.name)
 
         # Run current operation only if it hasn't run already.
         success = self.is_done()
@@ -273,13 +273,13 @@ class Operation(object):
                     if success:
                         self.outputs = runner.parse_outputs()
         else:
-            self.log.info('Operation {0} already done, skipping.'.format(self.name))
+            self.log.info('Operation %s already done, skipping.', self.name)
             # Reloads outputs
             self.load_outputs()
 
         # Finalize
         if success:
-            self.log.info('--> Operation {0} completed'.format(self.name))
+            self.log.info('--> Operation %s completed', self.name)
             self.finalize()
             self.store_outputs()
         else:

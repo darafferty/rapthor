@@ -52,8 +52,8 @@ class Image(Operation):
 
         # Initialize various parameters
         # Note:
-        #   Parameters set to None will be set in the set_parset_parameters() method
-        #       as needed for the given imaging mode
+        #   Parameters set to None will be set in the set_parset_parameters()
+        #       method as needed for the given imaging mode
         #   Paramters set to True or False must be explicitly set by a subclass
         self.apply_amplitudes = None
         self.apply_fulljones = None
@@ -71,11 +71,13 @@ class Image(Operation):
         self.do_multiscale_clean = None
         self.pol_combine_method = None
         self.disable_clean = None
-        self.apply_none = False  # no solutions applied before or during imaging (ImageInitial only)
+        # no solutions applied before or during imaging (ImageInitial only)
+        self.apply_none = False
         self.make_image_cube = self.field.make_image_cube  # make an image cube
         self.normalize_flux_scale = False  # derive flux scale normalizations (ImageNormalize only)
         self.compress_images = None
         self.image_cube_stokes_list = None
+        self.allow_internet_access = True
         self.photometry_skymodel = None
         self.astrometry_skymodel = None
 
@@ -89,20 +91,15 @@ class Image(Operation):
         if self.dde_method is None:
             self.dde_method = self.field.dde_method
         if self.use_facets is None:
-            self.use_facets = (
-                True if (self.dde_method == "full" and not self.apply_screens) else False
-            )
+            self.use_facets = self.dde_method == "full" and not self.apply_screens
         if self.image_pol is None:
             self.image_pol = self.field.image_pol  # set by process.run_steps()
         if self.save_source_list is None:
-            self.save_source_list = True if is_only_pol_I(self.image_pol) else False
+            self.save_source_list = is_only_pol_I(self.image_pol)
         if self.peel_bright_sources is None:
             self.peel_bright_sources = self.field.peel_bright_sources
         if self.preapply_dde_solutions is None:
-            if self.dde_method == "single" and not self.apply_none:
-                self.preapply_dde_solutions = True
-            else:
-                self.preapply_dde_solutions = False
+            self.preapply_dde_solutions = self.dde_method == "single" and not self.apply_none
         if self.compress_images is None:
             self.compress_images = self.field.compress_images
         if self.image_cube_stokes_list is None:
@@ -118,6 +115,7 @@ class Image(Operation):
         else:
             max_cores = self.field.parset["cluster_specific"]["max_cores"]
 
+        self.allow_internet_access = self.field.parset["cluster_specific"]["allow_internet_access"]
         self.parset_parms = {
             "rapthor_pipeline_dir": self.rapthor_pipeline_dir,
             "pipeline_working_dir": self.pipeline_working_dir,
@@ -134,6 +132,7 @@ class Image(Operation):
             "image_cube_stokes_list": self.image_cube_stokes_list,
             "photometry_skymodel": self.photometry_skymodel,
             "astrometry_skymodel": self.astrometry_skymodel,
+            "allow_internet_access": self.allow_internet_access,
         }
 
     def set_input_parameters(self):
@@ -291,7 +290,7 @@ class Image(Operation):
                 input_normalize_h5parm = CWLFile(self.field.normalize_h5parm).to_json()
             if prepare_data_applycal_steps:
                 prepare_data_applycal_steps = f"[{','.join(prepare_data_applycal_steps)}]"
-        all_regular = all([obs.channels_are_regular for obs in self.field.observations])
+        all_regular = all(obs.channels_are_regular for obs in self.field.observations)
         # Default is to average visibilities for imaging up to the smearing limit
         if self.field.average_visibilities:
             # Average visibilities
@@ -302,8 +301,7 @@ class Image(Operation):
         prepare_data_steps = f"[{','.join(prepare_data_steps)}]"
 
         # Set the h5parm to use to apply the DDE solutions as needed
-        h5parm = CWLFile(self.field.h5parm_filename).to_json() if not self.apply_none else None
-
+        h5parm = None if self.apply_none else CWLFile(self.field.h5parm_filename).to_json()
         # Set the data interval to use when screens are applied so that final solution
         # interval is removed
         #
@@ -316,7 +314,6 @@ class Image(Operation):
             0,
             max(1, self.field.observations[0].numsamples - numsamples_to_remove),
         ]
-
         # Set the parameters common to all modes
         self.input_parms = {
             "obs_filename": [CWLDir(name).to_json() for name in obs_filename],
@@ -390,12 +387,13 @@ class Image(Operation):
             "save_filtered_model_image": self.field.parset["imaging_specific"][
                 "save_filtered_model_image"
             ],
-            "photometry_skymodel": CWLFile(self.photometry_skymodel).to_json()
-            if self.photometry_skymodel
-            else None,
-            "astrometry_skymodel": CWLFile(self.astrometry_skymodel).to_json()
-            if self.astrometry_skymodel
-            else None,
+            "allow_internet_access": self.allow_internet_access,
+            "photometry_skymodel": (
+                CWLFile(self.photometry_skymodel).to_json() if self.photometry_skymodel else None
+            ),
+            "astrometry_skymodel": (
+                CWLFile(self.astrometry_skymodel).to_json() if self.astrometry_skymodel else None
+            ),
         }
         # Add parameters that depend on the set_parset parameters (set in set_parset_parameters())
         if self.peel_bright_sources:
@@ -846,11 +844,7 @@ class ImageNormalize(Image):
         """
         # Set the imaging parameters that are optimal for the flux-scale
         # normalization
-        if self.field.h5parm_filename is None:
-            # No calibration has yet been done
-            self.apply_none = True
-        else:
-            self.apply_none = False
+        self.apply_none = self.field.h5parm_filename is None
         self.apply_normalizations = False
         self.field.normalize_sector.auto_mask = 5.0
         self.field.normalize_sector.auto_mask_nmiter = 2
@@ -925,30 +919,13 @@ def report_sector_diagnostics(sector_name, diagnostics_dict, log):
         Stdev of the ratio of the LOFAR flux densities to the "true" ones
     """
     try:
-        theoretical_rms = "{0:.1f} uJy/beam".format(diagnostics_dict["theoretical_rms"] * 1e6)
-        min_rms_true_sky = "{0:.1f} uJy/beam".format(diagnostics_dict["min_rms_true_sky"] * 1e6)
-        median_rms_true_sky = "{0:.1f} uJy/beam".format(
-            diagnostics_dict["median_rms_true_sky"] * 1e6
-        )
-        dynr_true_sky = "{0:.2g}".format(diagnostics_dict["dynamic_range_global_true_sky"])
-        min_rms_flat_noise = "{0:.1f} uJy/beam".format(diagnostics_dict["min_rms_flat_noise"] * 1e6)
-        median_rms_flat_noise = "{0:.1f} uJy/beam".format(
-            diagnostics_dict["median_rms_flat_noise"] * 1e6
-        )
-        dynr_flat_noise = "{0:.2g}".format(diagnostics_dict["dynamic_range_global_flat_noise"])
-        nsources = "{0}".format(diagnostics_dict["nsources"])
-        freq = "{0:.1f} MHz".format(diagnostics_dict["freq"] / 1e6)
-        beam = '{0:.1f}" x {1:.1f}", PA = {2:.1f} deg'.format(
-            diagnostics_dict["beam_fwhm"][0] * 3600,
-            diagnostics_dict["beam_fwhm"][1] * 3600,
-            diagnostics_dict["beam_fwhm"][2],
-        )
-        unflagged_data_fraction = "{0:.2f}".format(diagnostics_dict["unflagged_data_fraction"])
-        log.info("Diagnostics for {}:".format(sector_name))
+        log.info("Diagnostics for %s:", sector_name)
         log.info(
-            "    Min RMS noise = {0} (non-PB-corrected), {1} (PB-corrected), {2} (expected)".format(
-                min_rms_flat_noise, min_rms_true_sky, theoretical_rms
-            )
+            "    Min RMS noise = %.1f uJy/beam (non-PB-corrected), %.1f uJy/beam (PB-corrected), "
+            "%f (expected)",
+            diagnostics_dict["min_rms_flat_noise"] * 1e6,
+            diagnostics_dict["min_rms_true_sky"] * 1e6,
+            diagnostics_dict["theoretical_rms"] * 1e6,
         )
         if (
             diagnostics_dict["min_rms_flat_noise"] == 0.0
@@ -956,28 +933,36 @@ def report_sector_diagnostics(sector_name, diagnostics_dict, log):
         ):
             log.warning("The min RMS noise is 0, likely indicating a problem with the processing.")
         log.info(
-            "    Median RMS noise = {0} (non-PB-corrected), {1} (PB-corrected)".format(
-                median_rms_flat_noise, median_rms_true_sky
-            )
+            "    Median RMS noise = %.1f uJy/beam (non-PB-corrected), %.1f uJy/beam (PB-corrected)",
+            diagnostics_dict["median_rms_flat_noise"] * 1e6,
+            diagnostics_dict["median_rms_true_sky"] * 1e6,
         )
         log.info(
-            "    Dynamic range = {0} (non-PB-corrected), {1} (PB-corrected)".format(
-                dynr_flat_noise, dynr_true_sky
-            )
+            "    Dynamic range = %.2f (non-PB-corrected), %.2f (PB-corrected)",
+            diagnostics_dict["dynamic_range_global_flat_noise"],
+            diagnostics_dict["dynamic_range_global_true_sky"],
         )
         if (
             diagnostics_dict["dynamic_range_global_flat_noise"] == 0.0
             or diagnostics_dict["dynamic_range_global_true_sky"] == 0.0
         ):
             log.warning("The dynamic range is 0, likely indicating a problem with the processing.")
-        log.info("    Number of sources found by PyBDSF = {}".format(nsources))
+
+        log.info("    Number of sources found by PyBDSF = %s", diagnostics_dict["nsources"])
         if diagnostics_dict["nsources"] == 0:
             log.warning(
                 "No sources were found by PyBDSF, possibly indicating a problem with the processing."
             )
-        log.info("    Reference frequency = {}".format(freq))
-        log.info("    Beam = {}".format(beam))
-        log.info("    Fraction of unflagged data = {}".format(unflagged_data_fraction))
+        log.info("    Reference frequency = %.1f MHz", diagnostics_dict["freq"] / 1e6)
+        log.info(
+            '    Beam = %.1f" x %.1f", PA = %.1f deg',
+            diagnostics_dict["beam_fwhm"][0] * 3600,
+            diagnostics_dict["beam_fwhm"][1] * 3600,
+            diagnostics_dict["beam_fwhm"][2],
+        )
+        log.info(
+            "    Fraction of unflagged data = %.2f", diagnostics_dict["unflagged_data_fraction"]
+        )
 
         # Log the estimates of the global flux ratio and astrometry offsets.
         # If the required keys are not present, then there were not enough
@@ -998,20 +983,19 @@ def report_sector_diagnostics(sector_name, diagnostics_dict, log):
                 # report NVSS values if both the TGSS and LoTSS comparisons failed (the
                 # NVSS ones can be highly uncertain due to the large extrapolation needed).
                 # We add the warning below for NVSS
-                warn_text = (
-                    " (warning: may be highly uncertain due to large extrapolation)"
-                    if survey == "NVSS"
-                    else ""
-                )
                 if (
                     f"meanClippedRatio_{survey}" in diagnostics_dict
                     and f"stdClippedRatio_{survey}" in diagnostics_dict
                 ):
-                    ratio = "{0:.1f}".format(diagnostics_dict[f"meanClippedRatio_{survey}"])
-                    stdratio = "{0:.1f}".format(
-                        max(0.1, diagnostics_dict[f"stdClippedRatio_{survey}"])
+                    log.info(
+                        "    LOFAR/%s flux ratio = %.1f +/- %.1f%s",
+                        survey,
+                        diagnostics_dict[f"meanClippedRatio_{survey}"],
+                        max(0.1, diagnostics_dict[f"stdClippedRatio_{survey}"]),
+                        " (warning: may be highly uncertain due to large extrapolation)"
+                        if survey == "NVSS"
+                        else "",
                     )
-                    log.info(f"    LOFAR/{survey} flux ratio = {ratio} +/- {stdratio}{warn_text}")
 
                     if (
                         lofar_to_true_flux_std == 0.0
@@ -1025,35 +1009,30 @@ def report_sector_diagnostics(sector_name, diagnostics_dict, log):
                         )
                 else:
                     missing_surveys.append(survey)
-                    log.info(f"    LOFAR/{survey} flux ratio = N/A")
-        if (
-            "meanClippedRAOffsetDeg" in diagnostics_dict
-            and "stdClippedRAOffsetDeg" in diagnostics_dict
-        ):
-            raoff = '{0:.1f}"'.format(diagnostics_dict["meanClippedRAOffsetDeg"] * 3600)
-            stdraoff = '{0:.1f}"'.format(max(0.5, diagnostics_dict["stdClippedRAOffsetDeg"] * 3600))
-            log.info("    LOFAR-PanSTARRS RA offset = {0} +/- {1}".format(raoff, stdraoff))
-        else:
-            log.info("    LOFAR-PanSTARRS RA offset = N/A")
-        if (
-            "meanClippedDecOffsetDeg" in diagnostics_dict
-            and "stdClippedDecOffsetDeg" in diagnostics_dict
-        ):
-            decoff = '{0:.1f}"'.format(diagnostics_dict["meanClippedDecOffsetDeg"] * 3600)
-            stddecoff = '{0:.1f}"'.format(
-                max(0.5, diagnostics_dict["stdClippedDecOffsetDeg"] * 3600)
-            )
-            log.info("    LOFAR-PanSTARRS Dec offset = {0} +/- {1}".format(decoff, stddecoff))
-        else:
-            log.info("    LOFAR-PanSTARRS Dec offset = N/A")
+                    log.info("    LOFAR/%s flux ratio = N/A", survey)
+
+        for axis in ("RA", "DEC"):
+            if (clipped_mean := f"meanClipped{axis}OffsetDeg") in diagnostics_dict and (
+                clipped_std := f"stdClipped{axis}OffsetDeg"
+            ) in diagnostics_dict:
+                log.info(
+                    "    LOFAR-PanSTARRS %s offset = %.1f +/- %.1f",
+                    axis,
+                    diagnostics_dict[clipped_mean] * 3600,
+                    max(0.5, diagnostics_dict[clipped_std] * 3600),
+                )
+            else:
+                log.info("    LOFAR-PanSTARRS %s offset = N/A", axis)
 
         return (lofar_to_true_flux_ratio, lofar_to_true_flux_std)
 
     except KeyError:
         log.warning(
             "One or more of the expected image diagnostics is unavailable "
-            "for {}. Logging of diagnostics skipped.".format(sector_name)
+            "for %s. Logging of diagnostics skipped.",
+            sector_name,
         )
+
         req_keys = [
             "theoretical_rms",
             "min_rms_flat_noise",
@@ -1077,6 +1056,6 @@ def report_sector_diagnostics(sector_name, diagnostics_dict, log):
         for key in req_keys:
             if key not in diagnostics_dict:
                 missing_keys.append(key)
-        log.debug("Keys missing from the diagnostics dict: {}.".format(", ".join(missing_keys)))
+        log.debug("Keys missing from the diagnostics dict: %s.", ", ".join(missing_keys))
 
         return (1.0, 0.0)

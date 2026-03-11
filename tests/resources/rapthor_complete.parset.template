@@ -103,7 +103,7 @@ max_peak_smearing = 0.25
 correct_time_frequency_smearing = True
 skip_final_major_iteration = False
 skip_corner_sectors = True
-use_clean_mask·‌=·‌False
+use_clean_mask = False
 photometry_skymodel = None
 astrometry_skymodel = None
 
@@ -124,3 +124,4 @@ container_type = singularity
 cwl_runner = cwltool
 debug_workflow = True
 keep_temporary_files = True
+allow_internet_access = True

@@ -546,12 +546,13 @@ def parset_read(parset_file, use_log_file=True):
         raise RuntimeError(
             "Cannot use the working dir {0}: {1}".format(parset_dict["dir_working"], e)
         )
+
     if use_log_file:
         set_log_file(os.path.join(parset_dict["dir_working"], "logs", "rapthor.log"))
     log.info("=========================================================")
     log.info("Rapthor version %s", __version__)
     log.info("CWLRunner is %s", parset_dict["cluster_specific"]["cwl_runner"])
-    log.info("Working directory is {}".format(parset_dict["dir_working"]))
+    log.info("Working directory is %s", parset_dict["dir_working"])
 
     # Get the input MS files; it can either be a string, or a list of strings
     input_ms = parset_dict["input_ms"]
@@ -562,64 +563,114 @@ def parset_read(parset_file, use_log_file=True):
     parset_dict["mss"] = sorted(ms_files)
     if len(parset_dict["mss"]) == 0:
         raise FileNotFoundError(
-            "No input MS files were found (searched for files matching: {}).".format(
-                ", ".join('"{0}"'.format(search_str) for search_str in ms_search_list)
-            )
+            "No input MS files were found (searched for files matching: "
+            f"{', '.join(map(repr, ms_search_list))})."
         )
-    suffix = "s" if len(parset_dict["mss"]) > 1 else ""
-    log.info("Working on {0} input MS file{1}".format(len(parset_dict["mss"]), suffix))
+    log.info(
+        "Working on %s input MS file%s",
+        (nfiles := len(parset_dict["mss"])),
+        "s" if nfiles > 1 else "",
+    )
 
-    # Make sure the initial sky model is present or, if not, that generation or download
-    # is requested
-    if not parset_dict["input_skymodel"]:
-        if parset_dict["generate_initial_skymodel"]:
-            log.info(
-                "No input sky model file given and generation requested. "
-                "Will automatically generate sky model from input data."
-            )
-            if parset_dict["apparent_skymodel"]:
-                log.info(
-                    "The input apparent sky model will not be used "
-                    "because sky model generation has been requested."
-                )
-        elif parset_dict["download_initial_skymodel"]:
-            log.info(
-                "No input sky model file given and download requested. "
-                "Will automatically download sky model."
-            )
-            if parset_dict["apparent_skymodel"]:
-                log.info(
-                    "The input apparent sky model will not be used "
-                    "because sky model download has been requested."
-                )
-        else:
-            log.warning(
-                "No input sky model file given and neither generation nor download of "
-                "sky model requested. If no calibration is to be done, this warning can "
-                "be ignored."
-            )
-    else:
-        if not os.path.exists(parset_dict["input_skymodel"]):
-            raise FileNotFoundError(
-                'Input sky model file "{}" not found.'.format(parset_dict["input_skymodel"])
-            )
-        if parset_dict["generate_initial_skymodel"]:
-            # If sky model is given but generation requested, disable generation and use
-            # the given skymodel.
-            log.warning(
-                "Sky model generation requested, but user-provided sky model is present. "
-                "Disabling generation and using sky model provided by the user."
-            )
-            parset_dict["generate_initial_skymodel"] = False
-        elif parset_dict["download_initial_skymodel"]:
-            # If sky model is given but download requested, use the given skymodel and
-            # disable download.
-            log.warning(
-                "Sky model download requested, but user-provided sky model is present. "
-                "Disabling download and using sky model provided by the user."
-            )
-            parset_dict["download_initial_skymodel"] = False
-
+    check_and_adjust_skymodel_settings(parset_dict)
     log.info("=========================================================")
 
     return parset_dict
+
+
+def check_and_adjust_skymodel_settings(parset_dict):
+    """
+    En‌sure·‌the·‌initial·‌sky·‌model·‌is·‌present·‌or,·‌if·‌not,·‌that·‌generation·‌or
+    download·‌is·‌requested.
+
+    Parameters
+    ----------
+    parset_dict : dict
+        Dictionary containing parset parameters
+
+    Raises
+    ------
+    FileNotFoundError
+        If the input sky model file is not found.
+    """
+
+    apparent_skymodel = parset_dict["apparent_skymodel"]
+    generate_initial_skymodel = parset_dict["generate_initial_skymodel"]
+    download_initial_skymodel = parset_dict["download_initial_skymodel"]
+    action = "generation" if generate_initial_skymodel else "download"
+    generate_or_download_skymodel = generate_initial_skymodel or download_initial_skymodel
+
+    if input_skymodel := parset_dict["input_skymodel"]:
+        if not os.path.exists(input_skymodel):
+            raise FileNotFoundError(f'Input sky model file "{input_skymodel}" not found.')
+        if generate_or_download_skymodel:
+            # If sky model is given but generation/download requested,
+            # disable generation/download and use the given skymodel.
+            log.warning(
+                "Sky model %s requested, but user-provided sky model is "
+                "present. Disabling %s and using sky model provided by the "
+                "user.",
+                action,
+                action,
+            )
+            parset_dict["download_initial_skymodel"] = download_initial_skymodel = False
+            parset_dict["generate_initial_skymodel"] = False
+
+    elif generate_or_download_skymodel:
+        verb, suffix = (
+            ("generate", " from input data") if generate_initial_skymodel else ("download", "")
+        )
+        log.info(
+            "No input sky model file given and %s requested. Will automatically %s sky model%s.",
+            action,
+            verb,
+            suffix,
+        )
+        if apparent_skymodel:
+            log.warning(
+                "The input apparent sky model will not be used because sky "
+                "model %s has been requested.",
+                action,
+            )
+    else:
+        log.warning(
+            "No input sky model file given and neither generation nor download "
+            "of sky model requested. If no calibration is to be done, this "
+            "warning can be ignored."
+        )
+
+    # If `astrometry_skymodel` or `photometry_skymodel` is given, check if the
+    # file exists, if not raise an error.
+    for diagnostic in ("astrometry", "photometry"):
+        if (
+            skymodel := parset_dict["imaging_specific"][f"{diagnostic}_skymodel"]
+        ) and not os.path.exists(skymodel):
+            raise FileNotFoundError(
+                f'Comparison sky model for {diagnostic} check not found at "{skymodel}"'
+            )
+
+    # Check if we need to access the internet to get any skymodels and if we
+    # are allowed to do so according to the parset settings.
+    if parset_dict["cluster_specific"]["allow_internet_access"]:
+        return
+
+    if download_initial_skymodel:
+        raise ValueError(
+            "Sky model download requested, but internet access is not allowed. "
+            "Please allow internet access or provide a path to the input sky "
+            "model file."
+        )
+
+    # If diagnostics skymodels are not given, the diagnostics that require them
+    # will be skipped.
+    for diagnostic in ("astrometry", "photometry"):
+        if parset_dict["imaging_specific"][f"{diagnostic}_skymodel"] is None:
+            log.warning(
+                "Comparison sky model for %s check not provided while "
+                "`allow_internet_access` is False. The %s check will be "
+                "skipped. If you want to run the %s check, please provide a "
+                "path to the comparison sky model or allow internet access.",
+                diagnostic,
+                diagnostic,
+                diagnostic,
+            )
