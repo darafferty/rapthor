@@ -561,11 +561,11 @@ class Image(Operation):
             # the cubes are copied directly since mosaicking of the cubes is not yet
             # supported
             image_cube_keys = {
-                "sector_image_cube",
+                "sector_image_cubes",
                 "sector_image_cube_beams",
                 "sector_image_cube_frequencies",
             }
-            if "sector_image_cube" in self.outputs:
+            if "sector_image_cubes" in self.outputs:
                 self.copy_outputs_to(
                     os.path.join(self.parset["dir_working"], "images", self.name),
                     index=index,
@@ -882,7 +882,7 @@ class ImageNormalize(Image):
 
         # Save the output image cubes
         image_cube_keys = {
-            "sector_image_cube",
+            "sector_image_cubes",
             "sector_image_cube_beams",
             "sector_image_cube_frequencies",
         }
