@@ -851,7 +851,7 @@ class Field(object):
                                         'radius': self.parset['download_initial_skymodel_radius']}
                 download_skymodel(skymodel_cone_params,
                                   skymodel_path=self.parset['input_skymodel'],
-                                  source=self.parset['download_initial_skymodel_server'],
+                                  survey=self.parset['download_initial_skymodel_server'],
                                   overwrite=self.parset['download_overwrite_skymodel'])
                 if catalog == 'lotss':
                     moc = os.path.join(self.working_dir, 'skymodels', 'dr2-moc.moc')
