@@ -7,6 +7,8 @@ from logging import Logger
 import numpy as np
 from unittest import mock
 
+from rapthor.process import chunk_observations
+
 @pytest.fixture
 def calibration_parset(observation):
     """Create a basic parset dictionary for testing calibration."""
@@ -422,9 +424,6 @@ def test_chunking_by_time(observation, field, monkeypatch, max_nodes, data_fract
         },
     ]
     field.parset["cluster_specific"]["max_nodes"] = max_nodes
-
-    from rapthor.process import chunk_observations
-
     field.full_observations = [observation]
 
     chunk_observations(field, steps, data_fraction)
