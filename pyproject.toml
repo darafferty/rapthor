@@ -194,6 +194,7 @@ format_targets = [
     "rapthor/lib/parset.py",
     "rapthor/operations/image.py",
     "rapthor/scripts/calculate_image_diagnostics.py",
+    "tests/lib/test_observation.py",
     "tests/lib/test_parset.py",
     "tests/scripts/test_calculate_image_diagnostics.py",
 ]
