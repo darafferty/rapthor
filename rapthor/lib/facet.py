@@ -116,7 +116,7 @@ class Facet(object):
                 download_skymodel(skymodel_cone_params,
                                   skymodel_path=fp.name,
                                   overwrite=True,
-                                  source='PANSTARRS')
+                                  survey='PANSTARRS')
                 skymodel = lsmtool.load(fp.name)
                 skymodel.group('every')
         except IOError:
