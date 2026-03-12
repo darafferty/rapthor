@@ -306,8 +306,8 @@ class Field(object):
                 target_endtime = obs.high_el_endtime
                 num_samples = np.round(total_high_el_time / obs.timepersample)
 
-            nchunks = max(1, int(data_fraction * num_samples / num_samples_in_chunk))
-            if nchunks == 1:
+            num_chunks = max(1, int(data_fraction * num_samples / num_samples_in_chunk))
+            if num_chunks == 1:
                 if data_fraction < 1.0:
                     # Center the chunk at the midpoint (which is generally the most
                     # sensitive, near transit)
@@ -327,8 +327,8 @@ class Field(object):
             else:
                 # Calculate the start time of each chunk so that they are spaced out
                 # evenly over the full observation.
-                num_samples_in_all_gaps = num_samples - nchunks * num_samples_in_chunk
-                num_samples_in_gap = int(num_samples_in_all_gaps / (nchunks - 1))
+                num_samples_in_all_gaps = num_samples - num_chunks * num_samples_in_chunk
+                num_samples_in_gap = int(num_samples_in_all_gaps / (num_chunks - 1))
                 num_samples_in_step = num_samples_in_gap + num_samples_in_chunk
                 step_time = num_samples_in_step * obs.timepersample
 
