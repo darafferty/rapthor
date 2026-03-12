@@ -162,6 +162,9 @@ def copy_cwl_recursive(src_obj, dest_dir, index=None, move=False):
         Source object(s) of the copy
     dest_dir: str
         Path of destination directory to which src_obj will be copied
+    index : int
+        If src_obj is a list and index is specified, only the item with the specified index is
+        copied (other items in the list are ignored)
     move : bool, optional
         If True, move files instead of copying them
     """

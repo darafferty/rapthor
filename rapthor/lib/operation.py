@@ -200,14 +200,18 @@ class Operation(object):
         move=False,
     ):
         """
-        Copy output files to a specified directory.
+        Copy output files to a specified directory, with optional filters.
+
+        Note: if both include and exclude filters are specified, items common to both will be
+        excluded from the copy.
 
         Parameters
         ----------
         dest_dir: str
             Path of directory to which outputs will be copied
         index : int
-            Copy only the item with the given index
+            If an output is a list and index is specified, only the item with the specified index
+            is copied (other items in the list are ignored)
         include : list or None
             List of files to include in the copy
         exclude : list or None
@@ -219,7 +223,7 @@ class Operation(object):
             if include is None or output_key in include:
                 if exclude is None or output_key not in exclude:
                     copy_cwl_recursive(
-                        output_value, dest_dir, move=move
+                        output_value, dest_dir, index=index, move=move
                     )
 
     def clean_outputs(self, exclude=None):

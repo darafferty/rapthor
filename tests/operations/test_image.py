@@ -268,11 +268,11 @@ class TestImage:
         image_last_cycle.run()
         assert image_last_cycle.is_done()
         # Check that the expected I, Q, U, V images are in the outputs
-        sector_0 = image_last_cycle.field.imaging_sectors[0]
-        assert sector_0.name == "sector_1", f"Expected sector name 'sector_1', got '{sector_0.name}'"
+        sector_1 = image_last_cycle.field.imaging_sectors[0]
+        assert sector_1.name == "sector_1", f"Expected sector name 'sector_1', got '{sector_1.name}'"
         for pol in ['I', 'Q', 'U', 'V']:
             assert hasattr(
-                sector_0, f"{pol}_image_file_true_sky"), f"Expected {pol}_image_file_true_sky to be set in sector_1"
+                sector_1, f"{pol}_image_file_true_sky"), f"Expected {pol}_image_file_true_sky to be set in sector_1"
 
     def test_sector_save_supplementary_images_null_mask(self, image):
         image.field.save_supplementary_images = True
@@ -281,18 +281,18 @@ class TestImage:
         assert image.is_done()
         # Simulate a null mask output and check that it is handled gracefully
         image.outputs["source_filtering_mask"] = [None]
-        sector_0 = image.field.imaging_sectors[0]
-        assert hasattr(sector_0, "filtering_mask_file"), "Expected filtering_mask_file to be set in sector_1"
+        sector_1 = image.field.imaging_sectors[0]
+        assert hasattr(sector_1, "filtering_mask_file"), "Expected filtering_mask_file to be set in sector_1"
 
     def test_sector_save_supplementary_images(self, image):
         image.field.save_supplementary_images = True
         image.set_input_parameters()
         image.run()
         assert image.is_done()
-        sector_0 = image.field.imaging_sectors[0]
-        assert hasattr(sector_0, "filtering_mask_file"), "Expected filtering_mask_file to be set in sector_1"
-        assert isinstance(sector_0.filtering_mask_file, (str, Path)
-                          ), f"Expected filtering_mask_file to be a string, got {type(sector_0.filtering_mask_file)}"
+        sector_1 = image.field.imaging_sectors[0]
+        assert hasattr(sector_1, "filtering_mask_file"), "Expected filtering_mask_file to be set in sector_1"
+        assert isinstance(sector_1.filtering_mask_file, (str, Path)
+                          ), f"Expected filtering_mask_file to be a string, got {type(sector_1.filtering_mask_file)}"
 
     def test_find_in_file_list(self):
         # Test the find_in_file_list method with a sample file list
