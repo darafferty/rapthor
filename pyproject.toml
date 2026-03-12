@@ -54,7 +54,7 @@ dependencies = [
 dynamic = ["version"]
 
 [project.optional-dependencies]
-tests = [
+test = [
     "tox",
     "mock",
     "pytest",
@@ -63,11 +63,21 @@ tests = [
     "pytest-mock",
     "pytest-socket"
 ]
-dev = ["ruff", "rapthor[tests]"]
+tests = ["rapthor[test]"]
+dev =  ["ruff", "rapthor[test]" ]
 
 [dependency-groups]
-tests = ["rapthor[tests]"]
-dev = ["rapthor[dev]"]
+test =  [
+    "tox",
+    "mock",
+    "pytest",
+    "pytest-cov",
+    "pytest-xdist",
+    "pytest-mock",
+    "pytest-socket"
+]
+tests = [ {include-group = "test"} ]
+dev = ["ruff", {include-group = "test"} ]
 
 
 [tool.pytest.ini_options]
@@ -156,7 +166,7 @@ envlist = ["lint", "format", "py3{9,10,11,12,13}"]
 
 [tool.tox.env_run_base]
 description = "Run all tests"
-deps = [{ replace = "ref", of = ["project", "optional-dependencies", "tests"], extend = true }]
+deps = [{ replace = "ref", of = ["project", "optional-dependencies", "test"], extend = true }]
 commands = [
     # test_field.py does not support parallel runs, so run sequentially.
     [
