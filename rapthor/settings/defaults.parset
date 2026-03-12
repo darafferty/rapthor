@@ -62,6 +62,11 @@ strategy = selfcal
 selfcal_data_fraction = 0.2
 final_data_fraction = 1.0
 
+# Number of times to repeat the final cycle, if done (default = 0). Setting this
+# parameter to a value of one or more may improve the final results but will increase
+# the processing time
+ntimes_to_repeat_final_cycle = 0
+
 # Full path to an H5parm file with direction-dependent solutions (default = None). This
 # file is required if no calibration is to be done. Full-Jones and flux- scale
 # normalization solutions can also be supplied. Note: the directions in the H5parm file

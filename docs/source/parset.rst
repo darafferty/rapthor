@@ -125,6 +125,11 @@ The available options are described below under their respective sections.
         A final data fraction can be specified (default = 1.0) such that a final
         processing pass (i.e., after selfcal finishes) is done with a different fraction.
 
+    ntimes_to_repeat_final_cycle
+        Number of times to repeat the final cycle, if done (default = 0). Setting this
+        parameter to a value of one or more may improve the final results but will increase
+        the processing time
+
     input_h5parm
         Full path to an H5parm file with direction-dependent solutions (default = None).
         This file is used if no calibration is to be done.
