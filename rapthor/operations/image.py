@@ -671,7 +671,7 @@ class Image(Operation):
             "image_file_true_sky": "image-pb.fits",
             "image_file_apparent_sky": "image.fits",
             "model_file_true_sky": "model-pb.fits",
-            "filtered_model_file_apparent_sky": "filtered-model.fits"
+            "filtered_model_file_apparent_sky": "filtered-model.fits",
             "residual_file_apparent_sky": "residual.fits",
             "dirty_file_apparent_sky": "dirty.fits",
             "filtering_mask_file": "mask.fits",
