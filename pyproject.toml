@@ -54,7 +54,6 @@ dependencies = [
 dynamic = ["version"]
 
 [project.optional-dependencies]
-test = ["tox"]
 tests = [
     "tox",
     "mock",
