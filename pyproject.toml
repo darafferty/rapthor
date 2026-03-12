@@ -156,7 +156,7 @@ envlist = ["lint", "format", "py3{9,10,11,12,13}"]
 
 [tool.tox.env_run_base]
 description = "Run all tests"
-deps = [{ replace = "ref", of = ["dependency-groups", "tests"], extend = true }]
+deps = [{ replace = "ref", of = ["project", "optional-dependencies", "tests"], extend = true }]
 commands = [
     # test_field.py does not support parallel runs, so run sequentially.
     [
