@@ -63,7 +63,6 @@ test = [
     "pytest-mock",
     "pytest-socket"
 ]
-tests = ["rapthor[test]"]
 dev =  ["ruff", "rapthor[test]" ]
 
 [dependency-groups]
@@ -76,7 +75,6 @@ test =  [
     "pytest-mock",
     "pytest-socket"
 ]
-tests = [ {include-group = "test"} ]
 dev = ["ruff", {include-group = "test"} ]
 
 
