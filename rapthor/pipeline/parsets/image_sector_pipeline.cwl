@@ -481,11 +481,19 @@ inputs:
     doc: |
       Apply corrections for time and frequency smearing (length = 1).
     type: boolean
+
   - id: save_filtered_model_image
     label: Save filtered model image
     doc: |
       Save the image generated from the skymodel used for calibration
     type: boolean
+
+  - id: filtered_model_image_name
+    label: Filename of sky model image
+    doc: |
+      The filename of the output filtered sky model image (length = 1).
+    type: string
+
 {% if make_image_cube %}
   - id: image_I_cube_name
     label: Filename of I image cube
@@ -1112,8 +1120,7 @@ steps:
       - id: reference_image
         source: check_beam_true_sky_image/validated_image
       - id: output_image_name
-        source: filter/filtered_skymodel_apparent_sky
-        valueFrom: $(self.basename).fits.fz
+        source: filtered_model_image_name
       - id: save_filtered_model_image
         source: save_filtered_model_image
     when: $(inputs.save_filtered_model_image == true)

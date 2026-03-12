@@ -168,6 +168,7 @@ class Image(Operation):
         concat_filename = []
         previous_mask_filename = []
         mask_filename = []
+        filtered_model_image_name = []
         starttime = []
         ntimes = []
         image_freqstep = []
@@ -220,6 +221,7 @@ class Image(Operation):
                 # Use a dummy mask
                 previous_mask_filename.append(None)
             mask_filename.append(image_root[-1] + "_mask.fits")
+            filtered_model_image_name.append(image_root[-1] + "-MFS-filtered-model.fits")
             image_freqstep.append(sector.get_obs_parameters("image_freqstep"))
             image_timestep.append(sector.get_obs_parameters("image_timestep"))
             image_bda_maxinterval.append(sector.get_obs_parameters("image_bda_maxinterval"))
@@ -387,6 +389,7 @@ class Image(Operation):
             "save_filtered_model_image": self.field.parset["imaging_specific"][
                 "save_filtered_model_image"
             ],
+            "filtered_model_image_name": filtered_model_image_name,
             "allow_internet_access": self.allow_internet_access,
             "photometry_skymodel": (
                 CWLFile(self.photometry_skymodel).to_json() if self.photometry_skymodel else None
@@ -668,7 +671,7 @@ class Image(Operation):
             "image_file_true_sky": "image-pb.fits",
             "image_file_apparent_sky": "image.fits",
             "model_file_true_sky": "model-pb.fits",
-            "filtered_model_file_apparent_sky": "apparent_sky.txt.fits",
+            "filtered_model_file_apparent_sky": "filtered-model.fits"
             "residual_file_apparent_sky": "residual.fits",
             "dirty_file_apparent_sky": "dirty.fits",
             "filtering_mask_file": "mask.fits",

@@ -91,8 +91,9 @@ class Mosaic(Operation):
                 self.mosaic_filename.append(None)
         else:
             for image_name in self.image_names:
-                suffix = getattr(self.field.imaging_sectors[0], image_name).split('MFS')[-1]
-                self.mosaic_filename.append('{0}-MFS{1}'.format(self.name, suffix))
+
+                suffix = getattr(self.field.imaging_sectors[0], image_name).split('sector_1')[-1]
+                self.mosaic_filename.append('{0}{1}'.format(self.name, suffix))
 
         self.input_parms = {'skip_processing': self.skip_processing,
                             'sector_image_filename': sector_image_filename,
@@ -113,13 +114,8 @@ class Mosaic(Operation):
             dst_dir = os.path.join(self.field.parset['dir_working'], 'images',
                                    'image_{}'.format(self.index))
             os.makedirs(dst_dir, exist_ok=True)
-            if image_name == "filtered_model_file_apparent_sky":
-                # The filtered model image has a different naming convention from the other images
-                # (it has a "." after the sector name, rather than a "-")
-                suffix = getattr(self.field.imaging_sectors[0], image_name).split('sector_1.')[-1]
-            else:
-                suffix = getattr(self.field.imaging_sectors[0], image_name).split('sector_1-')[-1]
-            field_image_filename = os.path.join(dst_dir, 'field-{}'.format(suffix))
+            suffix = getattr(self.field.imaging_sectors[0], image_name).split('sector_1')[-1]
+            field_image_filename = os.path.join(dst_dir, 'field{}'.format(suffix))
             if image_name == 'I_image_file_true_sky':
                 # Save the Stokes I true-sky image filename as an attribute of the field
                 # object for later use
