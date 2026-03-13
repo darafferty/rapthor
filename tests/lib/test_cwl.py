@@ -765,19 +765,23 @@ class TestCleanIfCWLFileOrDirectory:
                 },
             ],
         ),
-        ("invalid_output", ValueError),
-        (
-            [{"my_item": {"class": "File", "path": "file3.txt"}}],
-            [{"my_item": {"class": "File", "path": "file3.txt"}}],
-        ),
     ],
 )
 def test_naturalize_cwl_output(cwl_output, expected):
-    if isinstance(expected, type) and issubclass(expected, Exception):
-        with pytest.raises(expected):
-            naturalize_cwl_output(cwl_output)
-    else:
-        assert naturalize_cwl_output(cwl_output) == expected
+
+    assert naturalize_cwl_output(cwl_output) == expected
+
+
+@pytest.mark.parametrize(
+    "cwl_output",
+    [
+        "invalid",
+        0.1,
+    ],
+)
+def test_naturalze_cwl_raises_on_invalid_output(cwl_output):
+    with pytest.raises(ValueError):
+        naturalize_cwl_output(cwl_output)
 
 
 @pytest.mark.parametrize(
