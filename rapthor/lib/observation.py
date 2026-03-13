@@ -545,8 +545,8 @@ class Observation(object):
         image_freqstep = max(1, min(int(round(target_bandwidth_mhz * 1e6 / chan_width_hz)), nchan))
         self.parameters['image_freqstep'] = self.get_nearest_freqstep(image_freqstep)
         self.parameters['image_timestep'] = max(1, int(round(target_timewidth_sec / timestep_sec)))
-        self.log.debug('If averaging visibilities is enabled, %s channel%s and %s time slot%s '
-                       'will be used for imaging',
+        self.log.debug('Using averaging steps of %s channel%s and %s time slot%s '
+                       'for imaging if averaging visibilities is enabled.',
                        self.parameters['image_freqstep'],
                         "s" if self.parameters['image_freqstep'] > 1 else "",
                         self.parameters['image_timestep'],
