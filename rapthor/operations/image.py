@@ -681,7 +681,7 @@ class Image(Operation):
         for name, ext in ext_mapping.items():
             for filename in file_list:
                 filename = Path(filename)
-                if filename.name.endswith(ext) or filename.name.endswith(ext + ".fz"):
+                if filename.name.endswith((ext, f"{ext}.fz")):
                     if name in type_path_map:
                         type_path_map[name] += [filename]
                     else:
