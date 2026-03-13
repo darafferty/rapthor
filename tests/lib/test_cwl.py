@@ -2,6 +2,9 @@
 Test module for testing the CWL workflows _generated_ by the pipeline
 """
 
+import json
+import numpy as np
+from rapthor.lib.cwl import MultiEncoder
 import itertools as itt
 import subprocess
 from pathlib import Path
@@ -15,6 +18,7 @@ from rapthor.lib.cwl import (
     is_cwl_file,
     is_cwl_file_or_directory,
     naturalize_cwl_output,
+    parse_cwl_output_recursive
 )
 
 from rapthor.lib.operation import DIR, env_parset
@@ -765,3 +769,34 @@ class TestCleanIfCWLFileOrDirectory:
 )
 def test_naturalize_cwl_output(cwl_output, expected):
     assert naturalize_cwl_output(cwl_output) == expected
+
+
+@pytest.mark.parametrize(
+    "input_obj, expected_paths",
+    [
+        ( {"class": "File", "path": "/tmp/file.txt"}, ["/tmp/file.txt"] ),
+        ( {"class": "Directory", "path": "/tmp/dir"}, ["/tmp/dir"] ),
+        ( [
+            {"class": "File", "path": "/tmp/file1.txt"},
+            {"class": "File", "path": "/tmp/file2.txt"},
+          ], ["/tmp/file1.txt", "/tmp/file2.txt"] ),
+        ( {
+            "output1": {"class": "File", "path": "/tmp/file.txt"},
+            "output2": {"class": "Directory", "path": "/tmp/dir"},
+          }, ["/tmp/file.txt", "/tmp/dir"] ),
+    ]
+)
+def test_parse_cwl_output_recursive_param(input_obj, expected_paths):
+    result = parse_cwl_output_recursive(input_obj)
+    # Single file or directory
+    if isinstance(result, dict) and "class" in result:
+        assert isinstance(result["path"], Path)
+        assert str(result["path"]) == expected_paths[0]
+    # List of files
+    elif isinstance(result, list):
+        assert all(isinstance(item["path"], Path) for item in result)
+        assert [str(item["path"]) for item in result] == expected_paths
+    # Nested dict
+    elif isinstance(result, dict):
+        paths = [str(result[k]["path"]) for k in result]
+        assert sorted(paths) == sorted(expected_paths)

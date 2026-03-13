@@ -50,8 +50,8 @@ class CWLPath(object):
                 cwl_value.append({"class": self.path_type, "path": p})
 
         return cwl_value
-
-
+    
+            
 class CWLFile(CWLPath):
     """
     CWL File class
@@ -97,7 +97,26 @@ class NpEncoder(json.JSONEncoder):
         if isinstance(obj, np.ndarray):
             return obj.tolist()
         return super(NpEncoder, self).default(obj)
+    
 
+class PosixPathEncoder(json.JSONEncoder):
+    """
+    JSON encoder that converts Path objects to their string representation.
+    """
+
+    def default(self, obj):
+        if isinstance(obj, Path):
+            return str(obj.absolute())
+        return super(PosixPathEncoder, self).default(obj)
+
+
+class MultiEncoder(PosixPathEncoder, NpEncoder):
+    """
+    JSON encoder that combines the functionality of PosixPathEncoder and NpEncoder.
+    """
+    def default(self, obj):
+        return super().default(obj)
+    
 
 def is_cwl_file(cwl_obj):
     """
@@ -254,4 +273,44 @@ def clean_if_cwl_file_or_directory(src_obj):
             clean_if_cwl_file_or_directory(item)
     elif is_cwl_file_or_directory(src_obj):
         remove_or_log_error(Path(src_obj["path"]))
-    # Otherwise, do nothing
+
+
+def parse_cwl_output_recursive(object):
+    """
+    Recursively parse a CWL output object, converting any CWL file or directory
+    representations into CWLFile or CWLDir objects.
+
+    Parameters
+    ----------
+    object : object
+        Object to be parsed
+
+    Returns
+    -------
+    object
+        Parsed object with CWL file and directory representations converted to
+        CWLFile and CWLDir objects
+    """
+    if isinstance(object, list):
+        return [parse_cwl_output_recursive(item) for item in object]
+    elif is_cwl_file(object) or is_cwl_directory(object):
+        return {**object, "path": Path(object["path"])}
+    elif isinstance(object, dict):
+        return {key: parse_cwl_output_recursive(value) for key, value in object.items()}
+    else:
+        return object
+    
+
+def store_cwl_output(output_obj, output_file):
+    """
+    Store a CWL output object to a JSON file.
+
+    Parameters
+    ----------
+    output_obj : object
+        CWL output object to be stored
+    output_file : str
+        Path of JSON file to which the output object will be stored
+    """
+    with open(output_file, "w") as f:
+        json.dump(output_obj, f, cls=MultiEncoder)
