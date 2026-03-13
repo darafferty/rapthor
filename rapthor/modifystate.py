@@ -78,7 +78,7 @@ def run(parset_file):
                 i += 1
                 print('    {0}) {1}'.format(i, p))
         try:
-            while(True):
+            while True:
                 p_number_raw = input('Enter number of operation to reset or "q" to quit: ')
                 try:
                     if p_number_raw.lower() == "q":
@@ -92,10 +92,18 @@ def run(parset_file):
         except KeyboardInterrupt:
             sys.exit(0)
         pipeline = pipelines[int(p_number_raw)-1]
+        if pipeline.startswith("mosaic"):
+            print(
+                "WARNING: The operation chosen for reset is a mosaic operation. The preceeding image "
+                "operation must also be reset. Setting the operation number to reset to {}...".format(
+                    int(p_number_raw) - 1
+                )
+            )
+            pipeline = pipelines[int(p_number_raw) - 2]
 
         # Ask for confirmation
         try:
-            while(True):
+            while True:
                 answer = input('Reset all operations from {} onwards (y/n)? '.format(pipeline))
                 if (answer.lower() == "n" or answer.lower() == "no" or
                     answer.lower() == "y" or answer.lower() == "yes"):

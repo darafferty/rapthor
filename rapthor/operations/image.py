@@ -221,7 +221,7 @@ class Image(Operation):
                 # Use a dummy mask
                 previous_mask_filename.append(None)
             mask_filename.append(image_root[-1] + "_mask.fits")
-            filtered_model_image_name.append(image_root[-1] + "-MFS-filtered-model.fits")
+            filtered_model_image_name.append(image_root[-1] + "-MFS-filtered-model.fits.fz")
             image_freqstep.append(sector.get_obs_parameters("image_freqstep"))
             image_timestep.append(sector.get_obs_parameters("image_timestep"))
             image_bda_maxinterval.append(sector.get_obs_parameters("image_bda_maxinterval"))
