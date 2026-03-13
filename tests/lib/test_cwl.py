@@ -7,7 +7,6 @@ import subprocess
 from pathlib import Path
 
 import pytest
-
 from rapthor.lib.cwl import (
     clean_if_cwl_file_or_directory,
     copy_cwl_object,
@@ -15,7 +14,9 @@ from rapthor.lib.cwl import (
     is_cwl_directory,
     is_cwl_file,
     is_cwl_file_or_directory,
+    naturalize_cwl_output,
 )
+
 from rapthor.lib.operation import DIR, env_parset
 
 PIPELINE_PATH = Path(DIR, "..", "pipeline").resolve()
@@ -675,3 +676,92 @@ class TestCleanIfCWLFileOrDirectory:
         clean_if_cwl_file_or_directory({"not": "cwl"})
         clean_if_cwl_file_or_directory("string")
         clean_if_cwl_file_or_directory(None)
+
+
+@pytest.mark.parametrize(
+    "cwl_output,expected",
+    [
+        (
+            {
+                "output1": [
+                    {"class": "File", "path": "file1.txt"},
+                    {"class": "File", "path": "file2.txt"}
+                ],
+                "output2": {"class": "File", "path": "file3.txt"}
+            },
+            [
+                {
+                    "output1": {"class": "File", "path": "file1.txt"},
+                    "output2": {"class": "File", "path": "file3.txt"}
+                },
+                {
+                    "output1": {"class": "File", "path": "file2.txt"},
+                    "output2": {"class": "File", "path": "file3.txt"}
+                }
+            ]
+        ),
+        (
+            {
+                "output1": {"class": "File", "path": "file1.txt"},
+                "output2": {"class": "File", "path": "file2.txt"}
+            },
+            [
+                {
+                    "output1": {"class": "File", "path": "file1.txt"},
+                    "output2": {"class": "File", "path": "file2.txt"}
+                }
+            ]
+        ),
+        (
+            {
+                "output1": [
+                    {"class": "File", "path": "file1.txt"},
+                    {"class": "File", "path": "file2.txt"}
+                ],
+                "output2": [
+                    {"class": "File", "path": "file3.txt"},
+                    {"class": "File", "path": "file4.txt"}
+                ]
+            },
+            [
+                {
+                    "output1": {"class": "File", "path": "file1.txt"},
+                    "output2": {"class": "File", "path": "file3.txt"}
+                },
+                {
+                    "output1": {"class": "File", "path": "file2.txt"},
+                    "output2": {"class": "File", "path": "file4.txt"}
+                }
+            ]
+        ),
+        (
+            {
+                "output1": [
+                    {"class": "File", "path": "file1.txt"},
+                    {"class": "File", "path": "file2.txt"},
+                    {"class": "File", "path": "file3.txt"}
+                ],
+                "output2": [
+                    {"class": "File", "path": "file4.txt"},
+                    {"class": "File", "path": "file5.txt"}
+                ]
+            },
+            [
+                {
+                    "output1": {"class": "File", "path": "file1.txt"},
+                    "output2": {"class": "File", "path": "file4.txt"}
+                },
+                {
+                    "output1": {"class": "File", "path": "file2.txt"},
+                    "output2": {"class": "File", "path": "file5.txt"}
+                },
+                {
+                    "output1": {"class": "File", "path": "file3.txt"},
+                    "output2": {"class": "File", "path": "file5.txt"}
+                }
+            ]
+        ),
+    ]
+)
+def test_naturalize_cwl_output(cwl_output, expected):
+    assert naturalize_cwl_output(cwl_output) == expected

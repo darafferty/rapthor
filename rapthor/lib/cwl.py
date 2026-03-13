@@ -124,6 +124,50 @@ def is_cwl_file_or_directory(cwl_obj):
     return is_cwl_file(cwl_obj) or is_cwl_directory(cwl_obj)
 
 
+def naturalize_cwl_output(cwl_output):
+    """
+    Convert a CWL output object with more elements per field
+    into a list of CWL output objects with one element per field.
+    The output with just one element per field will be repeated.
+
+    For example, if the input is:
+    {
+        "output1": [{"class": "File", "path": "file1.txt"}, {"class": "File", "path": "file2.txt"}],
+        "output2": {"class": "File", "path": "file3.txt"}
+    }
+    the output will be:
+    [
+        {
+            "output1": {"class": "File", "path": "file1.txt"},
+            "output2": {"class": "File", "path": "file3.txt"}
+        },
+        {
+            "output1": {"class": "File", "path": "file2.txt"},
+            "output2": {"class": "File", "path": "file3.txt"}
+        }
+    ]
+    """
+    # First, determine the number of items in the output
+    num_items = 1
+    single_valued_keys = set()
+    for key, value in cwl_output.items():
+        if isinstance(value, list):
+            num_items = max(num_items, len(value))
+        else:
+            single_valued_keys.add(key)
+
+    # Then, create a list of output objects with one element per field
+    naturalized_output = []
+    for i in range(num_items):
+        item = {key: cwl_output[key] for key in single_valued_keys}
+        for key, value in cwl_output.items():
+            if key not in single_valued_keys:
+                item[key] = value[i] if i < len(value) else value[-1]
+        naturalized_output.append(item)
+
+    return naturalized_output
+
+
 def copy_cwl_object(src_obj, dest_dir, move=False):
     """
     Copy a CWL file or directory object to the specified destination directory.
