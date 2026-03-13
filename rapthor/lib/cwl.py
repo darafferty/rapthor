@@ -281,7 +281,7 @@ def clean_if_cwl_file_or_directory(src_obj):
         remove_or_log_error(Path(src_obj["path"]))
 
 
-def parse_cwl_output_recursive(object):
+def parse_cwl_output_recursive(cwl_object):
     """
     Recursively parse a CWL output object, converting any CWL file or directory
     representations into CWLFile or CWLDir objects.
@@ -297,14 +297,14 @@ def parse_cwl_output_recursive(object):
         Parsed object with CWL file and directory representations converted to
         CWLFile and CWLDir objects
     """
-    if isinstance(object, list):
-        return [parse_cwl_output_recursive(item) for item in object]
-    elif is_cwl_file(object) or is_cwl_directory(object):
-        return {**object, "path": Path(object["path"])}
-    elif isinstance(object, dict):
-        return {key: parse_cwl_output_recursive(value) for key, value in object.items()}
+    if isinstance(cwl_object, list):
+        return [parse_cwl_output_recursive(item) for item in cwl_object]
+    elif is_cwl_file(cwl_object) or is_cwl_directory(cwl_object):
+        return {**cwl_object, "path": Path(cwl_object["path"])}
+    elif isinstance(cwl_object, dict):
+        return {key: parse_cwl_output_recursive(value) for key, value in cwl_object.items()}
     else:
-        return object
+        return cwl_object
     
 
 def store_cwl_output(output_obj, output_file):
