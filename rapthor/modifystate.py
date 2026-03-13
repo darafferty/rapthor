@@ -94,7 +94,7 @@ def run(parset_file):
         pipeline = pipelines[int(p_number_raw)-1]
         if pipeline.startswith("mosaic"):
             print(
-                "WARNING: The operation chosen for reset is a mosaic operation. The preceeding image "
+                "WARNING: The operation chosen for reset is a mosaic operation. The preceding image "
                 "operation must also be reset. Setting the operation number to reset to {}...".format(
                     int(p_number_raw) - 1
                 )
