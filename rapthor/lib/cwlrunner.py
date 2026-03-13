@@ -12,7 +12,7 @@ import shutil
 import subprocess
 import sys
 from typing import TYPE_CHECKING, List, Union
-from rapthor.lib.cwl import parse_cwl_output_recursive, store_cwl_output
+from rapthor.lib.cwl import parse_cwl_output_recursive
 import yaml
 
 if TYPE_CHECKING:

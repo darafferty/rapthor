@@ -166,6 +166,12 @@ def naturalize_cwl_output(cwl_output):
         }
     ]
     """
+    # Check if output is already naturalized (i.e., all fields have one element)
+    if isinstance(cwl_output, list):
+        return cwl_output
+    if not isinstance(cwl_output, dict):
+        raise ValueError("CWL output must be a dictionary or a list of dictionaries")
+
     # First, determine the number of items in the output
     num_items = 1
     single_valued_keys = set()
