@@ -7,7 +7,12 @@ import json
 from jinja2 import Environment, FileSystemLoader
 
 from rapthor.lib.context import Timer
-from rapthor.lib.cwl import NpEncoder, copy_cwl_recursive, clean_if_cwl_file_or_directory
+from rapthor.lib.cwl import (
+    MultiEncoder,
+    copy_cwl_recursive, 
+    clean_if_cwl_file_or_directory,
+    store_cwl_output
+)
 from rapthor.lib.cwlrunner import create_cwl_runner
 
 DIR = os.path.dirname(os.path.abspath(__file__))
@@ -180,7 +185,7 @@ class Operation(object):
         # Save the workflow inputs to a file
         self.set_input_parameters()
         with open(self.pipeline_inputs_file, 'w') as f:
-            f.write(json.dumps(self.input_parms, cls=NpEncoder, indent=4, sort_keys=True))
+            f.write(json.dumps(self.input_parms, cls=MultiEncoder, indent=4, sort_keys=True))
 
     def finalize(self):
         """
@@ -250,8 +255,7 @@ class Operation(object):
         """
         Store outputs to a JSON file.
         """
-        with open(self.outputs_file, 'w') as f:
-            f.write(json.dumps(self.outputs, cls=NpEncoder, indent=4, sort_keys=True))
+        store_cwl_output(self.outputs, self.outputs_file)
 
     def load_outputs(self):
         """

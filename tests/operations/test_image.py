@@ -297,25 +297,25 @@ class TestImage:
     def test_find_in_file_list(self):
         # Test the find_in_file_list method with a sample file list
         file_list = [
-            'sector_1-MFS-I-image-pb.fits',
-            'sector_1-MFS-I-image.fits',
-            'sector_1-MFS-Q-image-pb.fits',
-            'sector_1-MFS-Q-image.fits',
-            'sector_1-MFS-U-image-pb.fits',
-            'sector_1-MFS-U-image.fits',
-            'sector_1-MFS-V-image-pb.fits',
-            'sector_1-MFS-V-image.fits'
+            Path('sector_1-MFS-I-image-pb.fits'),
+            Path('sector_1-MFS-I-image.fits'),
+            Path('sector_1-MFS-Q-image-pb.fits'),
+            Path('sector_1-MFS-Q-image.fits'),
+            Path('sector_1-MFS-U-image-pb.fits'),
+            Path('sector_1-MFS-U-image.fits'),
+            Path('sector_1-MFS-V-image-pb.fits'),
+            Path('sector_1-MFS-V-image.fits')
         ]
         type_path_map = Image.find_in_file_list(file_list)
         expected_map = {
-            "image_file_true_sky": ['sector_1-MFS-I-image-pb.fits', 'sector_1-MFS-Q-image-pb.fits', 'sector_1-MFS-U-image-pb.fits', 'sector_1-MFS-V-image-pb.fits'],
-            "image_file_apparent_sky": ['sector_1-MFS-I-image.fits', 'sector_1-MFS-Q-image.fits', 'sector_1-MFS-U-image.fits', 'sector_1-MFS-V-image.fits']
+            "image_file_true_sky": [Path('sector_1-MFS-I-image-pb.fits'), Path('sector_1-MFS-Q-image-pb.fits'), Path('sector_1-MFS-U-image-pb.fits'), Path('sector_1-MFS-V-image-pb.fits')],
+            "image_file_apparent_sky": [Path('sector_1-MFS-I-image.fits'), Path('sector_1-MFS-Q-image.fits'), Path('sector_1-MFS-U-image.fits'), Path('sector_1-MFS-V-image.fits')]
         }
         assert type_path_map == expected_map, f"Expected {expected_map}, got {type_path_map}"
 
     @pytest.mark.parametrize("pol", ["I", "Q", "U", "V", "X"])
     def test_derive_pol_from_filename(self, pol):
-        filename = f'sector_1-MFS-{pol}-image-pb.fits'
+        filename = Path(f'sector_1-MFS-{pol}-image-pb.fits')
         derived_pol = Image.derive_pol_from_filename(filename)
         expected_pol = pol if pol in "IQUV" else "I"
         assert derived_pol == expected_pol, f"Expected polarization '{expected_pol}', got '{derived_pol}'"
