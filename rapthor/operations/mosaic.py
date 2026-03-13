@@ -14,6 +14,7 @@ class Mosaic(Operation):
     """
     Operation to mosaic sector images
     """
+
     def __init__(self, field, index):
         super().__init__(field, index=index, name='mosaic')
 
