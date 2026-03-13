@@ -50,8 +50,8 @@ class CWLPath(object):
                 cwl_value.append({"class": self.path_type, "path": p})
 
         return cwl_value
-    
-            
+
+
 class CWLFile(CWLPath):
     """
     CWL File class
@@ -97,7 +97,7 @@ class NpEncoder(json.JSONEncoder):
         if isinstance(obj, np.ndarray):
             return obj.tolist()
         return super(NpEncoder, self).default(obj)
-    
+
 
 class PosixPathEncoder(json.JSONEncoder):
     """
@@ -114,9 +114,10 @@ class MultiEncoder(PosixPathEncoder, NpEncoder):
     """
     JSON encoder that combines the functionality of PosixPathEncoder and NpEncoder.
     """
+
     def default(self, obj):
         return super().default(obj)
-    
+
 
 def is_cwl_file(cwl_obj):
     """
@@ -305,7 +306,7 @@ def parse_cwl_output_recursive(cwl_object):
         return {key: parse_cwl_output_recursive(value) for key, value in cwl_object.items()}
     else:
         return cwl_object
-    
+
 
 def store_cwl_output(output_obj, output_file):
     """

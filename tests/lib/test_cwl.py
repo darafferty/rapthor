@@ -18,7 +18,7 @@ from rapthor.lib.cwl import (
     is_cwl_file,
     is_cwl_file_or_directory,
     naturalize_cwl_output,
-    parse_cwl_output_recursive
+    parse_cwl_output_recursive,
 )
 
 from rapthor.lib.operation import DIR, env_parset
@@ -689,96 +689,88 @@ class TestCleanIfCWLFileOrDirectory:
             {
                 "output1": [
                     {"class": "File", "path": "file1.txt"},
-                    {"class": "File", "path": "file2.txt"}
+                    {"class": "File", "path": "file2.txt"},
                 ],
-                "output2": {"class": "File", "path": "file3.txt"}
+                "output2": {"class": "File", "path": "file3.txt"},
             },
             [
                 {
                     "output1": {"class": "File", "path": "file1.txt"},
-                    "output2": {"class": "File", "path": "file3.txt"}
+                    "output2": {"class": "File", "path": "file3.txt"},
                 },
                 {
                     "output1": {"class": "File", "path": "file2.txt"},
-                    "output2": {"class": "File", "path": "file3.txt"}
-                }
-            ]
+                    "output2": {"class": "File", "path": "file3.txt"},
+                },
+            ],
         ),
         (
             {
                 "output1": {"class": "File", "path": "file1.txt"},
-                "output2": {"class": "File", "path": "file2.txt"}
+                "output2": {"class": "File", "path": "file2.txt"},
             },
             [
                 {
                     "output1": {"class": "File", "path": "file1.txt"},
-                    "output2": {"class": "File", "path": "file2.txt"}
+                    "output2": {"class": "File", "path": "file2.txt"},
                 }
-            ]
-        ),
-        (
-            {
-                "output1": [
-                    {"class": "File", "path": "file1.txt"},
-                    {"class": "File", "path": "file2.txt"}
-                ],
-                "output2": [
-                    {"class": "File", "path": "file3.txt"},
-                    {"class": "File", "path": "file4.txt"}
-                ]
-            },
-            [
-                {
-                    "output1": {"class": "File", "path": "file1.txt"},
-                    "output2": {"class": "File", "path": "file3.txt"}
-                },
-                {
-                    "output1": {"class": "File", "path": "file2.txt"},
-                    "output2": {"class": "File", "path": "file4.txt"}
-                }
-            ]
+            ],
         ),
         (
             {
                 "output1": [
                     {"class": "File", "path": "file1.txt"},
                     {"class": "File", "path": "file2.txt"},
-                    {"class": "File", "path": "file3.txt"}
                 ],
                 "output2": [
+                    {"class": "File", "path": "file3.txt"},
                     {"class": "File", "path": "file4.txt"},
-                    {"class": "File", "path": "file5.txt"}
-                ]
+                ],
             },
             [
                 {
                     "output1": {"class": "File", "path": "file1.txt"},
-                    "output2": {"class": "File", "path": "file4.txt"}
+                    "output2": {"class": "File", "path": "file3.txt"},
                 },
                 {
                     "output1": {"class": "File", "path": "file2.txt"},
-                    "output2": {"class": "File", "path": "file5.txt"}
+                    "output2": {"class": "File", "path": "file4.txt"},
+                },
+            ],
+        ),
+        (
+            {
+                "output1": [
+                    {"class": "File", "path": "file1.txt"},
+                    {"class": "File", "path": "file2.txt"},
+                    {"class": "File", "path": "file3.txt"},
+                ],
+                "output2": [
+                    {"class": "File", "path": "file4.txt"},
+                    {"class": "File", "path": "file5.txt"},
+                ],
+            },
+            [
+                {
+                    "output1": {"class": "File", "path": "file1.txt"},
+                    "output2": {"class": "File", "path": "file4.txt"},
+                },
+                {
+                    "output1": {"class": "File", "path": "file2.txt"},
+                    "output2": {"class": "File", "path": "file5.txt"},
                 },
                 {
                     "output1": {"class": "File", "path": "file3.txt"},
-                    "output2": {"class": "File", "path": "file5.txt"}
-                }
-            ]
-        ),
-        (
-            "invalid_output",
-            ValueError
-        ),
-        ( 
-            [
-                {"my_item": {"class": "File", "path": "file3.txt"}}
+                    "output2": {"class": "File", "path": "file5.txt"},
+                },
             ],
-            [
-             {"my_item": {"class": "File", "path": "file3.txt"}}
-            ]
-        )
-
-    ]
+        ),
+        ("invalid_output", ValueError),
+        (
+            [{"my_item": {"class": "File", "path": "file3.txt"}}],
+            [{"my_item": {"class": "File", "path": "file3.txt"}}],
+        ),
+    ],
 )
 def test_naturalize_cwl_output(cwl_output, expected):
     if isinstance(expected, type) and issubclass(expected, Exception):
@@ -791,17 +783,23 @@ def test_naturalize_cwl_output(cwl_output, expected):
 @pytest.mark.parametrize(
     "input_obj, expected_paths",
     [
-        ( {"class": "File", "path": "/tmp/file.txt"}, ["/tmp/file.txt"] ),
-        ( {"class": "Directory", "path": "/tmp/dir"}, ["/tmp/dir"] ),
-        ( [
-            {"class": "File", "path": "/tmp/file1.txt"},
-            {"class": "File", "path": "/tmp/file2.txt"},
-          ], ["/tmp/file1.txt", "/tmp/file2.txt"] ),
-        ( {
-            "output1": {"class": "File", "path": "/tmp/file.txt"},
-            "output2": {"class": "Directory", "path": "/tmp/dir"},
-          }, ["/tmp/file.txt", "/tmp/dir"] ),
-    ]
+        ({"class": "File", "path": "/tmp/file.txt"}, ["/tmp/file.txt"]),
+        ({"class": "Directory", "path": "/tmp/dir"}, ["/tmp/dir"]),
+        (
+            [
+                {"class": "File", "path": "/tmp/file1.txt"},
+                {"class": "File", "path": "/tmp/file2.txt"},
+            ],
+            ["/tmp/file1.txt", "/tmp/file2.txt"],
+        ),
+        (
+            {
+                "output1": {"class": "File", "path": "/tmp/file.txt"},
+                "output2": {"class": "Directory", "path": "/tmp/dir"},
+            },
+            ["/tmp/file.txt", "/tmp/dir"],
+        ),
+    ],
 )
 def test_parse_cwl_output_recursive_param(input_obj, expected_paths):
     result = parse_cwl_output_recursive(input_obj)
