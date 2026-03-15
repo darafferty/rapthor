@@ -1101,8 +1101,6 @@ steps:
         source: source_finder
       - id: ncores
         source: max_threads
-      - id: save_filtered_model_image
-        source: save_filtered_model_image
     out:
       - id: filtered_skymodel_true_sky
       - id: filtered_skymodel_apparent_sky

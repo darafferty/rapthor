@@ -12,6 +12,7 @@ import numpy as np
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.cwl import CWLDir, CWLFile
 from rapthor.lib.operation import Operation
+from pathlib import Path
 
 log = logging.getLogger("rapthor:image")
 
@@ -679,7 +680,8 @@ class Image(Operation):
         type_path_map = {}
         for name, ext in ext_mapping.items():
             for filename in file_list:
-                if filename.endswith(ext) or filename.endswith(ext + ".fz"):
+                filename = Path(filename)
+                if filename.name.endswith((ext, f"{ext}.fz")):
                     if name in type_path_map:
                         type_path_map[name] += [filename]
                     else:
@@ -689,7 +691,7 @@ class Image(Operation):
     @staticmethod
     def derive_pol_from_filename(filename):
         for pol in "IQUV":
-            if f"-{pol}-" in filename:
+            if f"-{pol}-" in filename.name:
                 return pol
         return "I"  # default
 

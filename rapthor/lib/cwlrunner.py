@@ -12,7 +12,7 @@ import shutil
 import subprocess
 import sys
 from typing import TYPE_CHECKING, List, Union
-
+from rapthor.lib.cwl import parse_cwl_output_recursive
 import yaml
 
 if TYPE_CHECKING:
@@ -133,7 +133,8 @@ class BaseCWLRunner:
         """
 
         with open(self.operation.pipeline_outputs_file, "r") as f:
-            return json.load(f)
+            json_obj = json.load(f)
+            return parse_cwl_output_recursive(json_obj)
 
 
 class CWLRunner(BaseCWLRunner):

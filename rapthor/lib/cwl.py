@@ -99,6 +99,26 @@ class NpEncoder(json.JSONEncoder):
         return super(NpEncoder, self).default(obj)
 
 
+class PosixPathEncoder(json.JSONEncoder):
+    """
+    JSON encoder that converts Path objects to their string representation.
+    """
+
+    def default(self, obj):
+        if isinstance(obj, Path):
+            return str(obj.absolute())
+        return super(PosixPathEncoder, self).default(obj)
+
+
+class MultiEncoder(PosixPathEncoder, NpEncoder):
+    """
+    JSON encoder that combines the functionality of PosixPathEncoder and NpEncoder.
+    """
+
+    def default(self, obj):
+        return super().default(obj)
+
+
 def is_cwl_file(cwl_obj):
     """
     Check if the given object is a CWL file representation.
@@ -122,6 +142,56 @@ def is_cwl_file_or_directory(cwl_obj):
     Check if the given object is a CWL file or directory representation.
     """
     return is_cwl_file(cwl_obj) or is_cwl_directory(cwl_obj)
+
+
+def naturalize_cwl_output(cwl_output):
+    """
+    Convert a CWL output object with more elements per field
+    into a list of CWL output objects with one element per field.
+    The output with just one element per field will be repeated.
+
+    For example, if the input is:
+    {
+        "output1": [{"class": "File", "path": "file1.txt"}, {"class": "File", "path": "file2.txt"}],
+        "output2": {"class": "File", "path": "file3.txt"}
+    }
+    the output will be:
+    [
+        {
+            "output1": {"class": "File", "path": "file1.txt"},
+            "output2": {"class": "File", "path": "file3.txt"}
+        },
+        {
+            "output1": {"class": "File", "path": "file2.txt"},
+            "output2": {"class": "File", "path": "file3.txt"}
+        }
+    ]
+    """
+    # Check if output is already naturalized (i.e., all fields have one element)
+    if isinstance(cwl_output, list):
+        return cwl_output
+    if not isinstance(cwl_output, dict):
+        raise ValueError("CWL output must be a dictionary or a list of dictionaries")
+
+    # First, determine the number of items in the output
+    num_items = 1
+    single_valued_keys = set()
+    for key, value in cwl_output.items():
+        if isinstance(value, list):
+            num_items = max(num_items, len(value))
+        else:
+            single_valued_keys.add(key)
+
+    # Then, create a list of output objects with one element per field
+    naturalized_output = []
+    for i in range(num_items):
+        item = {key: cwl_output[key] for key in single_valued_keys}
+        for key, value in cwl_output.items():
+            if key not in single_valued_keys:
+                item[key] = value[i] if i < len(value) else value[-1]
+        naturalized_output.append(item)
+
+    return naturalized_output
 
 
 def copy_cwl_object(src_obj, dest_dir, move=False):
@@ -210,4 +280,44 @@ def clean_if_cwl_file_or_directory(src_obj):
             clean_if_cwl_file_or_directory(item)
     elif is_cwl_file_or_directory(src_obj):
         remove_or_log_error(Path(src_obj["path"]))
-    # Otherwise, do nothing
+
+
+def parse_cwl_output_recursive(cwl_object):
+    """
+    Recursively parse a CWL output object, converting any CWL file or directory
+    representations into CWLFile or CWLDir objects.
+
+    Parameters
+    ----------
+    object : object
+        Object to be parsed
+
+    Returns
+    -------
+    object
+        Parsed object with CWL file and directory representations converted to
+        CWLFile and CWLDir objects
+    """
+    if isinstance(cwl_object, list):
+        return [parse_cwl_output_recursive(item) for item in cwl_object]
+    elif is_cwl_file(cwl_object) or is_cwl_directory(cwl_object):
+        return {**cwl_object, "path": Path(cwl_object["path"])}
+    elif isinstance(cwl_object, dict):
+        return {key: parse_cwl_output_recursive(value) for key, value in cwl_object.items()}
+    else:
+        return cwl_object
+
+
+def store_cwl_output(output_obj, output_file):
+    """
+    Store a CWL output object to a JSON file.
+
+    Parameters
+    ----------
+    output_obj : object
+        CWL output object to be stored
+    output_file : str
+        Path of JSON file to which the output object will be stored
+    """
+    with open(output_file, "w") as f:
+        json.dump(output_obj, f, cls=MultiEncoder)
