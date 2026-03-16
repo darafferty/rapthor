@@ -92,14 +92,6 @@ def run(parset_file):
         except KeyboardInterrupt:
             sys.exit(0)
         pipeline = pipelines[int(p_number_raw)-1]
-        if pipeline.startswith("mosaic"):
-            print(
-                "WARNING: The operation chosen for reset is a mosaic operation. The preceding image "
-                "operation must also be reset. Setting the operation number to reset to {}...".format(
-                    int(p_number_raw) - 1
-                )
-            )
-            pipeline = pipelines[int(p_number_raw) - 2]
 
         # Ask for confirmation
         try:
