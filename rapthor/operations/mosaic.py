@@ -118,7 +118,9 @@ class Mosaic(Operation):
                 # Add ".fz" to the filename, since the mosaic image was compressed
                 self.mosaic_filename[i] += ".fz"
 
-            # Copy the image to the images directory
+            # Copy the image to the images directory. Note: the individual sector images that were
+            # used to make the mosaic are left in place, as they will be needed if the mosaic
+            # operation is reset without reseting the preceding image operation as well
             dst_dir = os.path.join(self.field.parset['dir_working'], 'images',
                                    'image_{}'.format(self.index))
             os.makedirs(dst_dir, exist_ok=True)
@@ -132,12 +134,6 @@ class Mosaic(Operation):
             src_filename = os.path.join(self.pipeline_working_dir, self.mosaic_filename[i])
             if os.path.exists(src_filename):
                 shutil.copy(src_filename, field_image_filename)
-
-            # Remove the individual sector images that were used to make the mosaic, as they are no
-            # longer needed
-            for sector in self.field.imaging_sectors:
-                if os.path.exists(getattr(sector, image_name)):
-                    os.unlink(getattr(sector, image_name))
 
         # Finally call finalize() in the parent class
         super().finalize()
