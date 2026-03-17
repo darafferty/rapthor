@@ -60,13 +60,27 @@ class TestField(unittest.TestCase):
         for obs in self.field.full_observations:
             obs.data_fraction = 0.8
         self.field.chunk_observations(600.0, prefer_high_el_periods=False)
-        self.assertEqual(self.field.imaging_sectors[0].observations[0].starttime, 4871282392.906812)
+        # A data fraction of 0.8 and an observation with 6 time steps should
+        # yields a single chunk with 5 time steps (indices 0 through 4).
+        full_obs = self.field.full_observations[0]
+        obs = self.field.imaging_sectors[0].observations[0]
+        chunked_starttime = full_obs.starttime
+        chunked_endtime = full_obs.endtime - full_obs.timepersample
+        self.assertEqual(obs.starttime, chunked_starttime)
+        self.assertEqual(obs.endtime, chunked_endtime)
 
     def test_chunk_observations_high_el(self):
         for obs in self.field.full_observations:
             obs.data_fraction = 0.2
         self.field.chunk_observations(600.0, prefer_high_el_periods=True)
-        self.assertEqual(self.field.imaging_sectors[0].observations[0].starttime, 4871282392.906812)
+        # A data fraction of 0.2 and an observation with 6 time steps should
+        # yields a single chunk with 1 time step (index 2).
+        full_obs = self.field.full_observations[0]
+        obs = self.field.imaging_sectors[0].observations[0]
+        chunked_starttime = full_obs.starttime + 2 * full_obs.timepersample
+        chunked_endtime = full_obs.endtime - 3 * full_obs.timepersample
+        self.assertEqual(obs.starttime, chunked_starttime)
+        self.assertEqual(obs.endtime, chunked_endtime)
 
     def test_get_obs_parameters(self):
         obsp = self.field.get_obs_parameters('starttime')
