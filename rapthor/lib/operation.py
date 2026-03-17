@@ -196,14 +196,10 @@ class Operation(object):
         dest_dir,
         index=None,
         include=None,
-        exclude=None,
         move=False,
     ):
         """
         Copy output files to a specified directory, with optional filters.
-
-        Note: if both include and exclude filters are specified, items common to both will be
-        excluded from the copy.
 
         Parameters
         ----------
@@ -214,17 +210,14 @@ class Operation(object):
             is copied (other items in the list are ignored)
         include : list or None
             List of files to include in the copy
-        exclude : list or None
-            List of files to exclude from the copy
         move : bool, optional
             If True, move files instead of copying them
         """
         for output_key, output_value in self.outputs.items():
             if include is None or output_key in include:
-                if exclude is None or output_key not in exclude:
-                    copy_cwl_recursive(
-                        output_value, dest_dir, index=index, move=move
-                    )
+                copy_cwl_recursive(
+                    output_value, dest_dir, index=index, move=move
+                )
 
     def clean_outputs(self, exclude=None):
         """
