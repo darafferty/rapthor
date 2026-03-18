@@ -546,7 +546,7 @@ class Observation(object):
         self.parameters['image_freqstep'] = self.get_nearest_freqstep(image_freqstep)
         self.parameters['image_timestep'] = max(1, int(round(target_timewidth_sec / timestep_sec)))
         self.log.debug('Using averaging steps of %s channel%s and %s time slot%s '
-                       'for imaging', 
+                       'for imaging if averaging visibilities is enabled.',
                        self.parameters['image_freqstep'],
                         "s" if self.parameters['image_freqstep'] > 1 else "",
                         self.parameters['image_timestep'],
@@ -557,7 +557,7 @@ class Observation(object):
         # we don't average more than the timescale of the slow corrections
         target_maxinterval = min(self.numsamples, int(round(solve_slow_timestep / timestep_sec)))  # time slots
         self.parameters['image_bda_maxinterval'] = max(1, target_maxinterval)
-        self.log.debug('Using BDA with maxinterval = %.1f s for imaging', 
+        self.log.debug('If BDA is enabled, maxinterval = %.1f s will be used for imaging', 
                        self.parameters['image_bda_maxinterval'] * timestep_sec)
 
     def get_nearest_freqstep(self, freqstep):

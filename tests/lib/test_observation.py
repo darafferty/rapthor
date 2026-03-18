@@ -7,6 +7,8 @@ from logging import Logger
 import numpy as np
 from unittest import mock
 
+from rapthor.process import chunk_observations
+
 @pytest.fixture
 def calibration_parset(observation):
     """Create a basic parset dictionary for testing calibration."""
@@ -384,3 +386,77 @@ class TestObservation:
         )
         assert max_solint == expected_max
         assert isinstance(max_solint, int)
+
+@pytest.mark.parametrize(
+    "max_nodes, data_fraction, num_chunks",
+    [(1, 1.0, 1), (1, 0.2, 1), (3, 1.0, 3), (3, 0.5, 3), (5, 1.0, 5)],
+)
+def test_chunking_by_time(observation, field, monkeypatch, max_nodes, data_fraction, num_chunks):
+    if data_fraction < 1.0:
+        pytest.xfail(
+            "Number of chunks currently becomes larger than the number of nodes when data_fraction is less than 1.0."
+        )
+
+    observation.starttime = 4453731483.92
+    observation.endtime = 4453738676.08
+    # Note that high_el_starttime is much larger than starttime. When data_fraction < 1.0 in this
+    # test, chunk_observations creates chunks between high_el_starttime and high_el_endtime.
+    observation.high_el_starttime = 4453732884.0
+    observation.high_el_endtime = 4453738676.0
+    observation.numsamples = 900
+    observation.timepersample = 8.0
+    observation.data_fraction = data_fraction
+
+    def scan_ms(self):
+        self.startsat_startofms = True
+        self.goesto_endofms = False
+        return None
+
+    monkeypatch.setattr("rapthor.lib.observation.Observation.scan_ms", scan_ms)
+
+    steps = [
+        {
+            "do_calibrate": True,
+            "fast_timestep_sec": 20,
+            "medium_timestep_sec": 120,
+            "slow_timestep_sec": 600,
+            "fulljones_timestep_sec": 600,
+        },
+    ]
+    field.parset["cluster_specific"]["max_nodes"] = max_nodes
+    field.full_observations = [observation]
+
+    chunk_observations(field, steps, data_fraction)
+
+    assert len(field.observations) == num_chunks
+
+    if data_fraction == 1.0:
+        assert field.observations[0].starttime == observation.starttime
+        assert field.observations[-1].endtime == observation.endtime
+    else:
+        assert field.observations[0].starttime == observation.high_el_starttime
+        assert field.observations[-1].endtime == observation.high_el_endtime
+
+    if data_fraction == 1.0:
+        # With a data fraction of 1.0 there are no gaps between the chunks.
+        gap_time = 0 * observation.timepersample
+    elif data_fraction == 0.5:
+        # chunk_observations only chunks the time between high_el_starttime and high_el_endtime,
+        # which has 725 samples. The chunks consume 6*75=450 samples, which leaves 275 samples
+        # for 5 gaps, thus 55 samples per gap.
+        gap_time = 55 * observation.timepersample
+    elif data_fraction == 0.2:
+        # With a data fraction of 0.2, there are again 725 samples between high_el_starttime and
+        # high_el_endtime. There are two chunks of 75 samples and a single gap of 575 samples.
+        gap_time = 575 * observation.timepersample
+
+    for i in range(len(field.observations) - 1):
+        # Since the start time and end time are mid points, add one time sample.
+        # The tolerance is 5 % of the sample time, since Rapthor may adjust the start and
+        # end times for avoiding rounding errors.
+        assert np.isclose(
+            field.observations[i].endtime + observation.timepersample + gap_time,
+            field.observations[i + 1].starttime,
+            rtol=0,
+            atol=observation.timepersample * 0.05,
+        )
