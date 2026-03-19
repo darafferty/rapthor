@@ -112,8 +112,9 @@ class Mosaic(Operation):
         """
         for i, image_name in enumerate(self.image_names):
             if self.mosaic_filename[i] is None:
+                # No imaging sectors
                 continue
-            if self.field.compress_images:
+            if not self.skip_processing and self.field.compress_images:
                 # Add ".fz" to the filename, since the mosaic image was compressed
                 self.mosaic_filename[i] += ".fz"
 
@@ -123,7 +124,12 @@ class Mosaic(Operation):
             dst_dir = os.path.join(self.field.parset['dir_working'], 'images',
                                    'image_{}'.format(self.index))
             os.makedirs(dst_dir, exist_ok=True)
-            suffix = self.mosaic_filename[i].split(self.name)[-1]
+            if self.skip_processing:
+                # Single imaging sector: split on the sector name
+                suffix = self.mosaic_filename[i].split('sector_1')[-1]
+            else:
+                # Mosacking done: split on the mosaic name
+                suffix = self.mosaic_filename[i].split(self.name)[-1]
             field_image_filename = os.path.join(dst_dir, 'field{}'.format(suffix))
             if image_name == 'I_image_file_true_sky':
                 # Save the Stokes I true-sky image filename as an attribute of the field
