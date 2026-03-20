@@ -6,6 +6,7 @@ that would be executed.
 """
 
 import tempfile
+from argparse import Namespace
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
@@ -14,21 +15,25 @@ try:
     from cwltool.context import LoadingContext, RuntimeContext
     from cwltool.job import CommandLineJob
     from cwltool.load_tool import load_tool
+    from cwltool.main import setup_schema
     from cwltool.process import Process
     from cwltool.workflow import default_make_tool
 except ImportError:
     raise ImportError("cwltool is required for CWL parsing. Install with: pip install cwltool")
 
 
-def load_cwl_tool(cwl_path: Union[str, Path]) -> "Process":
+def load_cwl_tool(cwl_path: Union[str, Path], enable_ext: bool = False) -> "Process":
     """Load and parse a CWL CommandLineTool or Workflow using cwltool.
 
     Args:
         cwl_path: Path to the CWL file
+        enable_ext: Enable cwltool extensions (required for cwltool:MPIRequirement)
 
     Returns:
         Parsed CWL tool/workflow object from cwltool
     """
+    if enable_ext:
+        setup_schema(Namespace(enable_ext=True), None)
     ctx = LoadingContext()
     ctx.construct_tool_object = default_make_tool
     return load_tool(str(Path(cwl_path).resolve()), ctx)
@@ -37,6 +42,7 @@ def load_cwl_tool(cwl_path: Union[str, Path]) -> "Process":
 def generate_command_line(
     cwl_path: Union[str, Path],
     inputs: Optional[Dict[str, Any]] = None,
+    enable_ext: bool = False,
 ) -> Optional[List[str]]:
     """Generate the command line that would be executed for a CWL CommandLineTool.
 
@@ -45,6 +51,7 @@ def generate_command_line(
     Args:
         cwl_path: Path to the CWL CommandLineTool file
         inputs: Dict of input values (all required inputs must be provided)
+        enable_ext: Enable cwltool extensions while loading the CWL tool
 
     Returns:
         List of command line arguments
@@ -59,7 +66,7 @@ def generate_command_line(
         >>> print(" ".join(cmd))
         bash -c echo "Hello" > output.txt
     """
-    tool = load_cwl_tool(cwl_path)
+    tool = load_cwl_tool(cwl_path, enable_ext=enable_ext)
 
     if not isinstance(tool, CommandLineTool):  # type: ignore[arg-type]
         raise ValueError(
@@ -81,7 +88,7 @@ def generate_command_line(
         pass
 
     for job in tool.job(job_order, output_callback, rtctx):
-        if isinstance(job, CommandLineJob):
+        if isinstance(job, CommandLineJob) or hasattr(job, "command_line"):
             return job.command_line
 
     return None
