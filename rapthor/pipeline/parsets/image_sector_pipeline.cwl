@@ -258,7 +258,7 @@ inputs:
     type: int
 
   - id: shared_facet_rw
-    label: Shared facets read and write
+    label: Shared facet reads and writes
     type: boolean
     doc: |
       Enable the -shared-facet-reads and -shared-facet-writes options in wsclean
