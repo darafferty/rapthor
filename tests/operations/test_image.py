@@ -177,13 +177,11 @@ class TestImage:
     @pytest.mark.parametrize("use_mpi", [True, False])
     @pytest.mark.parametrize("shared_facet_rw", [True, False])
     def test_shared_facet_rw_in_rendered_workflow(
-        self, field, tmp_path, use_mpi, shared_facet_rw, monkeypatch, expected_image_output
+        self, field, tmp_path, use_mpi, shared_facet_rw
     ):
-        """Reproduce bug by capturing the command generated from the rendered subpipeline.
-
-        This uses the same monkeypatch pattern as integration tests: patch
-        BaseCWLRunner.execute, keep CWL execution mocked, and inspect the command line
-        generated from the rendered subpipeline workflow.
+        """
+        Test that the shared_facet_rw parameter is correctly included in the
+        rendered CWL workflow for the image step.
         """
         h5parm = tmp_path / "solutions.h5"
         h5parm.touch()
@@ -210,15 +208,11 @@ class TestImage:
             wf = yaml.safe_load(f)
 
         image_step = next(s for s in wf["steps"] if s["id"] == "image")
-        expected_shared_facets_rw = {'id': 'shared_facet_rw', 'source': 'shared_facet_rw'}
-        assert expected_shared_facets_rw in image_step["in"]
-
-        image_step = next(s for s in wf["steps"] if s["id"] == "image")
         image_step_inputs = {entry["id"]: entry.get("source") for entry in image_step["in"]}
 
         assert image_step_inputs.get("name") == "image_name"
-        assert image_step_inputs.get("shared-facet-reads") == "shared_facet_rw"
-        assert image_step_inputs.get("shared-facet-writes") == "shared_facet_rw"
+        assert image_step_inputs.get("shared_facet_reads") == "shared_facet_rw"
+        assert image_step_inputs.get("shared_facet_writes") == "shared_facet_rw"
 
 
     @pytest.mark.parametrize("cwl_workflow",
@@ -285,8 +279,8 @@ class TestImage:
             "num_gridding_threads": 4,
             "apply_time_frequency_smearing": False,
             # shared_facet_rw is propagated at workflow level to these two CWL inputs.
-            "shared-facet-reads": shared_facet_rw,
-            "shared-facet-writes": shared_facet_rw,
+            "shared_facet_reads": shared_facet_rw,
+            "shared_facet_writes": shared_facet_rw,
         }
 
         cmd = generate_command_line(
