@@ -8,6 +8,8 @@ from pathlib import Path
 from cwl.cwl_mock import mocked_cwl_execution
 from rapthor.lib.strategy import set_selfcal_strategy
 
+from cwl.cwl_cmdline import generate_command_line
+import yaml
 from rapthor.operations.image import Image, ImageInitial, ImageNormalize
 
 
@@ -170,6 +172,141 @@ class TestImage:
             assert image.input_parms["shared_facet_rw"] == shared_facet_rw
         else:
             assert not image.input_parms["shared_facet_rw"]
+
+
+    @pytest.mark.parametrize("use_mpi", [True, False])
+    @pytest.mark.parametrize("shared_facet_rw", [True, False])
+    def test_shared_facet_rw_in_rendered_workflow(
+        self, field, tmp_path, use_mpi, shared_facet_rw, monkeypatch, expected_image_output
+    ):
+        """Reproduce bug by capturing the command generated from the rendered subpipeline.
+
+        This uses the same monkeypatch pattern as integration tests: patch
+        BaseCWLRunner.execute, keep CWL execution mocked, and inspect the command line
+        generated from the rendered subpipeline workflow.
+        """
+        h5parm = tmp_path / "solutions.h5"
+        h5parm.touch()
+        
+        field.parset["imaging_specific"]["use_mpi"] = use_mpi
+        field.parset["imaging_specific"]["shared_facet_rw"] = shared_facet_rw
+        field.parset["regroup_input_skymodel"] = False
+        field.do_predict = False
+        field.scan_observations()
+        steps = set_selfcal_strategy(field)
+        field.update(steps[0], index=1, final=False)
+        field.image_pol = 'I'
+        field.skip_final_major_iteration = True
+        field.h5parm_filename = str(h5parm)
+        image = Image(field, index=1)
+        image.use_facets = True  # Force faceting
+        image.do_predict = False
+        
+        image.set_parset_parameters()
+        image.set_input_parameters()
+        image.setup()  # renders subpipeline_parset.cwl
+
+        with open(image.subpipeline_parset_file) as f:
+            wf = yaml.safe_load(f)
+
+        image_step = next(s for s in wf["steps"] if s["id"] == "image")
+        expected_shared_facets_rw = {'id': 'shared_facet_rw', 'source': 'shared_facet_rw'}
+        assert expected_shared_facets_rw in image_step["in"]
+
+        image_step = next(s for s in wf["steps"] if s["id"] == "image")
+        image_step_inputs = {entry["id"]: entry.get("source") for entry in image_step["in"]}
+
+        assert image_step_inputs.get("name") == "image_name"
+        assert image_step_inputs.get("shared-facet-reads") == "shared_facet_rw"
+        assert image_step_inputs.get("shared-facet-writes") == "shared_facet_rw"
+
+
+    @pytest.mark.parametrize("cwl_workflow",
+                         [Path(__file__).parents[2] / "rapthor" / "pipeline" / "steps" / "wsclean_image_facets.cwl", 
+                          Path(__file__).parents[2] / "rapthor" / "pipeline" / "steps" / "wsclean_mpi_image_facets.cwl",
+                        ]
+    )
+    @pytest.mark.parametrize("shared_facet_rw", [True, False])
+    def test_wsclean_image_facets_shared_facet_rw_in_final_cli(
+        self, tmp_path, cwl_workflow, shared_facet_rw
+    ):
+        """Verify shared facet read/write options are present in the final WSClean command.
+        
+        This test directly passes the correct input names (shared-facet-reads, shared-facet-writes)
+        to the CWL step. The bug is upstream in the workflow template that needs to map
+        shared_facet_rw to these two separate inputs.
+        """
+        msdir = tmp_path / "input.ms"
+        msdir.mkdir()
+        mask = tmp_path / "mask.fits"
+        mask.touch()
+        h5parm = tmp_path / "solutions.h5"
+        h5parm.touch()
+        region_file = tmp_path / "facets.reg"
+        region_file.touch()
+
+        inputs = {
+            "msin": {"class": "Directory", "location": str(msdir)},
+            "name": "test-image",
+            "mask": {"class": "File", "location": str(mask)},
+            "wsclean_imsize": [1024, 1024],
+            "wsclean_niter": 1000,
+            "wsclean_nmiter": 5,
+            "robust": -0.5,
+            "min_uv_lambda": 100.0,
+            "max_uv_lambda": 100000.0,
+            "mgain": 0.8,
+            "multiscale": True,
+            "scalar_visibilities": False,
+            "diagonal_visibilities": True,
+            "save_source_list": False,
+            "pol": "I",
+            "join_polarizations": False,
+            "skip_final_iteration": False,
+            "cellsize_deg": 0.001,
+            "channels_out": 4,
+            "deconvolution_channels": 2,
+            "fit_spectral_pol": 2,
+            "taper_arcsec": 0.0,
+            "local_rms_strength": 0.0,
+            "local_rms_window": 25.0,
+            "local_rms_method": "rms-with-min",
+            "wsclean_mem": 8.0,
+            "auto_mask": 3.0,
+            "auto_mask_nmiter": 2,
+            "idg_mode": "cpu",
+            "num_threads": 4,
+            "num_deconvolution_threads": 2,
+            "dd_psf_grid": [2, 2],
+            "h5parm": {"class": "File", "location": str(h5parm)},
+            "soltabs": "phase000",
+            "region_file": {"class": "File", "location": str(region_file)},
+            "nnodes": 2,
+            "num_gridding_threads": 4,
+            "apply_time_frequency_smearing": False,
+            # shared_facet_rw is propagated at workflow level to these two CWL inputs.
+            "shared-facet-reads": shared_facet_rw,
+            "shared-facet-writes": shared_facet_rw,
+        }
+
+        cmd = generate_command_line(
+            cwl_workflow,
+            inputs,
+            enable_ext=("mpi" in cwl_workflow.name),
+        )
+
+        assert cmd is not None
+        assert cmd[0] == ("wsclean-mp" if "mpi" in cwl_workflow.name else "wsclean")
+        assert "-name" in cmd
+        assert "test-image" in cmd
+
+        # When shared_facet_rw is True, these flags should appear
+        has_reads = "-shared-facet-reads" in cmd
+        has_writes = "-shared-facet-writes" in cmd
+
+        assert has_writes is shared_facet_rw
+        assert has_reads is shared_facet_rw
+
 
     def test_save_model_image(self, field):
         # This is the required setup to configure an Image operation
