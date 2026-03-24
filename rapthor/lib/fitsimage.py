@@ -30,16 +30,37 @@ class FITSImage(object):
         self.shift = 0.
         self.noise = 1.
 
-        self.header = pyfits.open(imagefile)[0].header
+        self.find_header()
         self.find_beam()
         self.find_freq()
         self.flatten()
         self.ra = self.img_hdr['CRVAL1']
         self.dec = self.img_hdr['CRVAL2']
 
+    def find_header(self):
+        """
+        Find the image header
+        """
+        self.image_index = None
+        with pyfits.open(self.imagefile) as hdu_list:
+            # Find the index of the image HDU. We assume that only a single image HDU is present,
+            # and search first for an uncompressed or compressed image HDU and, if neither is
+            # found, we fall back to the primary HDU
+            for key in ["IMAGE", "COMPRESSED_IMAGE", "PRIMARY"]:
+                try:
+                    self.image_index = hdu_list.index_of(key)
+                    break
+                except KeyError:
+                    continue
+            if self.image_index is None:
+                raise ValueError('No valid image HDU was found')
+
+            # Save the header
+            self.header = hdu_list[self.image_index].header
+
     def find_beam(self):
         """
-        Find the primary beam headers following AIPS convention
+        Find the primary beam headers (if any) following AIPS convention
         """
         if ('BMAJ' in self.header) and ('BMIN' in self.header) and ('PA' in self.header):
             pass
@@ -51,7 +72,10 @@ class FITSImage(object):
                     self.header['BMAJ'] = float(bmaj)
                     self.header['BMIN'] = float(bmin)
                     self.header['BPA'] = float(pa)
-        self.beam = [float(self.header['BMAJ']), float(self.header['BMIN']), float(self.header['BPA'])]
+        try:
+            self.beam = [float(self.header['BMAJ']), float(self.header['BMIN']), float(self.header['BPA'])]
+        except KeyError:
+            self.beam = None
 
     def find_freq(self):
         """
@@ -72,47 +96,48 @@ class FITSImage(object):
         """
         Flatten a FITS image so that it becomes a 2D image
         """
-        f = pyfits.open(self.imagefile)
+        with pyfits.open(self.imagefile) as hdu_list:
+            hdu = hdu_list[self.image_index]
+            naxis = self.header['NAXIS']
+            if naxis < 2:
+                raise RuntimeError('Can\'t make map from this')
+            if naxis == 2:
+                self.img_hdr = self.header
+                self.img_data = hdu.data
+            else:
+                w = WCS(self.header)
+                wn = WCS(naxis=2)
+                wn.wcs.crpix[0] = w.wcs.crpix[0]
+                wn.wcs.crpix[1] = w.wcs.crpix[1]
+                wn.wcs.cdelt = w.wcs.cdelt[0:2]
+                wn.wcs.crval = w.wcs.crval[0:2]
+                wn.wcs.ctype[0] = w.wcs.ctype[0]
+                wn.wcs.ctype[1] = w.wcs.ctype[1]
 
-        naxis = f[0].header['NAXIS']
-        if naxis < 2:
-            raise RuntimeError('Can\'t make map from this')
-        if naxis == 2:
-            self.img_hdr = f[0].header
-            self.img_data = f[0].data
-        else:
-            w = WCS(f[0].header)
-            wn = WCS(naxis=2)
-            wn.wcs.crpix[0] = w.wcs.crpix[0]
-            wn.wcs.crpix[1] = w.wcs.crpix[1]
-            wn.wcs.cdelt = w.wcs.cdelt[0:2]
-            wn.wcs.crval = w.wcs.crval[0:2]
-            wn.wcs.ctype[0] = w.wcs.ctype[0]
-            wn.wcs.ctype[1] = w.wcs.ctype[1]
+                header = wn.to_header()
+                header["NAXIS"] = 2
+                header["NAXIS1"] = self.header['NAXIS1']
+                header["NAXIS2"] = self.header['NAXIS2']
+                header["FREQ"] = self.freq
+                header['RESTFREQ'] = self.freq
+                if self.beam is not None:
+                    header['BMAJ'] = self.beam[0]
+                    header['BMIN'] = self.beam[1]
+                    header['BPA'] = self.beam[2]
+                copy = ('EQUINOX', 'EPOCH')
+                for k in copy:
+                    r = self.header.get(k)
+                    if r:
+                        header[k] = r
 
-            header = wn.to_header()
-            header["NAXIS"] = 2
-            header["NAXIS1"] = f[0].header['NAXIS1']
-            header["NAXIS2"] = f[0].header['NAXIS2']
-            header["FREQ"] = self.freq
-            header['RESTFREQ'] = self.freq
-            header['BMAJ'] = self.beam[0]
-            header['BMIN'] = self.beam[1]
-            header['BPA'] = self.beam[2]
-            copy = ('EQUINOX', 'EPOCH')
-            for k in copy:
-                r = f[0].header.get(k)
-                if r:
-                    header[k] = r
-
-            dataslice = []
-            for i in range(naxis, 0, -1):
-                if i <= 2:
-                    dataslice.append(np.s_[:],)
-                else:
-                    dataslice.append(0)
-            self.img_hdr = header
-            self.img_data = f[0].data[tuple(dataslice)]
+                dataslice = []
+                for i in range(naxis, 0, -1):
+                    if i <= 2:
+                        dataslice.append(np.s_[:],)
+                    else:
+                        dataslice.append(0)
+                self.img_hdr = header
+                self.img_data = hdu.data[tuple(dataslice)]
         self.min_value = float(np.nanmin(self.img_data))
         self.max_value = float(np.nanmax(self.img_data))
         self.mean_value = float(np.nanmean(self.img_data))

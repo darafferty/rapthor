@@ -124,30 +124,56 @@ def is_cwl_file_or_directory(cwl_obj):
     return is_cwl_file(cwl_obj) or is_cwl_directory(cwl_obj)
 
 
-def copy_cwl_object(src_obj, dest_dir):
+def copy_cwl_object(src_obj, dest_dir, move=False):
     """
     Copy a CWL file or directory object to the specified destination directory.
+
+    Parameters
+    ----------
+    src_obj : object
+        Source object of the copy
+    dest_dir: str
+        Path of destination directory to which src_obj will be copied
+    move : bool, optional
+        If True, move files instead of copying them
     """
-    if is_cwl_file_or_directory(src_obj):
+    if is_cwl_file_or_directory(src_obj) and os.path.exists(src_obj["path"]):
         os.makedirs(dest_dir, exist_ok=True)
         src = Path(src_obj["path"])
         dest = Path(dest_dir) / src.name
-        if is_cwl_file(src_obj):
-            shutil.copy(src, dest)
-        elif is_cwl_directory(src_obj):
-            shutil.copytree(src, dest, dirs_exist_ok=True)
+        if move:
+            shutil.move(src, dest)
+        else:
+            if is_cwl_file(src_obj):
+                shutil.copy(src, dest)
+            elif is_cwl_directory(src_obj):
+                shutil.copytree(src, dest, dirs_exist_ok=True)
     # Otherwise, do nothing
 
 
-def copy_cwl_recursive(src_obj, dest_dir):
+def copy_cwl_recursive(src_obj, dest_dir, index=None, move=False):
     """
-    Recursively copy CWL file or directory objects to the specified destination directory.
+    Recursively copy CWL file or directory objects to the specified destination
+    directory.
+
+    Parameters
+    ----------
+    src_obj : object or list of objects
+        Source object(s) of the copy
+    dest_dir: str
+        Path of destination directory to which src_obj will be copied
+    index : int
+        If src_obj is a list and index is specified, only the item with the specified index is
+        copied (other items in the list are ignored)
+    move : bool, optional
+        If True, move files instead of copying them
     """
     if isinstance(src_obj, list):
-        for item in src_obj:
-            copy_cwl_recursive(item, dest_dir)
+        for i, item in enumerate(src_obj):
+            if index is None or i == index:
+                copy_cwl_recursive(item, dest_dir, None, move)
     elif is_cwl_file_or_directory(src_obj):
-        copy_cwl_object(src_obj, dest_dir)
+        copy_cwl_object(src_obj, dest_dir, move)
     # Otherwise, do nothing
 
 
@@ -155,6 +181,11 @@ def remove_or_log_error(path: Path):
     """
     Remove a file or directory at the specified path.
     Log a warning if the file or directory does not exist.
+
+    Parameters
+    ----------
+    path: Path object
+        Path of file or directory to remove
     """
     try:
         if path.is_file():
@@ -168,6 +199,11 @@ def remove_or_log_error(path: Path):
 def clean_if_cwl_file_or_directory(src_obj):
     """
     Remove CWL file or directory objects from the filesystem.
+
+    Parameters
+    ----------
+    src_obj : object or list of objects
+        Source object(s) to be removed
     """
     if isinstance(src_obj, list):
         for item in src_obj:

@@ -40,9 +40,18 @@ def run(parset_file):
 
     # Check each operation for started pipelines (workflows)
     # Note: the order here should match the order in which the operations were run
-    operation_list = ['concatenate', 'initial_image', 'predict_nc', 'calibrate',
-                      'predict_di', 'calibrate_di', 'predict', 'normalize',  'image',
-                      'mosaic']
+    operation_list = [
+        "concatenate",
+        "initial_image",
+        "predict_nc",
+        "calibrate",
+        "predict_di",
+        "calibrate_di",
+        "predict",
+        "normalize",
+        "image",
+        "mosaic",
+    ]
     while True:
         pipelines = []
         for index, step in enumerate(strategy_steps):
@@ -69,7 +78,7 @@ def run(parset_file):
                 i += 1
                 print('    {0}) {1}'.format(i, p))
         try:
-            while(True):
+            while True:
                 p_number_raw = input('Enter number of operation to reset or "q" to quit: ')
                 try:
                     if p_number_raw.lower() == "q":
@@ -86,7 +95,7 @@ def run(parset_file):
 
         # Ask for confirmation
         try:
-            while(True):
+            while True:
                 answer = input('Reset all operations from {} onwards (y/n)? '.format(pipeline))
                 if (answer.lower() == "n" or answer.lower() == "no" or
                     answer.lower() == "y" or answer.lower() == "yes"):
@@ -110,7 +119,15 @@ def run(parset_file):
 
             # Now remove any sub-directories in the other output directories, that
             # are _not_ present in the 'pipelines' directory.
-            for dirname in ('skymodels', 'solutions', 'logs', 'plots', 'regions', 'images'):
+            for dirname in (
+                "skymodels",
+                "solutions",
+                "logs",
+                "plots",
+                "regions",
+                "images",
+                "visibilities",
+            ):
                 dcmp = filecmp.dircmp(
                     os.path.join(parset['dir_working'], 'pipelines'),
                     os.path.join(parset['dir_working'], dirname)

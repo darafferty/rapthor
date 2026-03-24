@@ -226,12 +226,12 @@ class TestImage:
         field.parset["cluster_specific"]["allow_internet_access"] = allow_internet_access
         field.image_pol = 'I'
         field.skip_final_major_iteration = True
-        
+
         field.scan_observations()
 
         steps = set_selfcal_strategy(field)
         field.update(steps[0], index=1, final=False)
-        
+
         image = Image(field, index=1)
         image.do_predict = False
         image.apply_none = True
@@ -250,7 +250,7 @@ class TestImage:
         )
         image.run()
         assert image.is_done()
-    
+
     def test_finalize_without_diagnostic_plots(self, image):
         image.run()
         assert image.is_done()
@@ -268,11 +268,11 @@ class TestImage:
         image_last_cycle.run()
         assert image_last_cycle.is_done()
         # Check that the expected I, Q, U, V images are in the outputs
-        sector_0 = image_last_cycle.field.imaging_sectors[0]
-        assert sector_0.name == "sector_1", f"Expected sector name 'sector_1', got '{sector_0.name}'"
+        sector_1 = image_last_cycle.field.imaging_sectors[0]
+        assert sector_1.name == "sector_1", f"Expected sector name 'sector_1', got '{sector_1.name}'"
         for pol in ['I', 'Q', 'U', 'V']:
             assert hasattr(
-                sector_0, f"{pol}_image_file_true_sky"), f"Expected {pol}_image_file_true_sky to be set in sector_1"
+                sector_1, f"{pol}_image_file_true_sky"), f"Expected {pol}_image_file_true_sky to be set in sector_1"
 
     def test_sector_save_supplementary_images_null_mask(self, image):
         image.field.save_supplementary_images = True
@@ -281,18 +281,18 @@ class TestImage:
         assert image.is_done()
         # Simulate a null mask output and check that it is handled gracefully
         image.outputs["source_filtering_mask"] = [None]
-        sector_0 = image.field.imaging_sectors[0]
-        assert hasattr(sector_0, "mask_filename"), "Expected mask_filename to be set in sector_1"
+        sector_1 = image.field.imaging_sectors[0]
+        assert hasattr(sector_1, "filtering_mask_file"), "Expected filtering_mask_file to be set in sector_1"
 
     def test_sector_save_supplementary_images(self, image):
         image.field.save_supplementary_images = True
         image.set_input_parameters()
         image.run()
         assert image.is_done()
-        sector_0 = image.field.imaging_sectors[0]
-        assert hasattr(sector_0, "mask_filename"), "Expected mask_filename to be set in sector_1"
-        assert isinstance(sector_0.mask_filename, (str, Path)
-                          ), f"Expected mask_filename to be a string, got {type(sector_0.mask_filename)}"
+        sector_1 = image.field.imaging_sectors[0]
+        assert hasattr(sector_1, "filtering_mask_file"), "Expected filtering_mask_file to be set in sector_1"
+        assert isinstance(sector_1.filtering_mask_file, (str, Path)
+                          ), f"Expected filtering_mask_file to be a string, got {type(sector_1.filtering_mask_file)}"
 
     def test_find_in_file_list(self):
         # Test the find_in_file_list method with a sample file list
@@ -323,12 +323,14 @@ class TestImage:
     def test_image_operation_sets_mask_file(self, field, monkeypatch, tmp_path, expected_image_output):
         """
         Test that running an image operation with mocked CWL execution
-        sets sector.I_mask_file to the correct value
+        sets sector.I_mask_file to the correct value when use_clean_mask
+        is set to True in the parset.
         """
         h5parm = tmp_path / "h5parm_file.h5"
         h5parm.touch()
 
         field.parset["regroup_input_skymodel"] = False
+        field.parset["imaging_specific"]["use_clean_mask"] = True
         field.h5parm_filename = str(h5parm)
         field.scan_observations()
         steps = set_selfcal_strategy(field)
@@ -349,11 +351,11 @@ class TestImage:
         image.set_input_parameters()
         image.run()
 
-        # Check that the sector's I_mask_file is set
+        # Check that the sector's mask_filename is set
         sector = field.imaging_sectors[0]
         assert sector.I_mask_file is not None
-        assert 'masks' in sector.I_mask_file
-        assert 'image_1' in sector.I_mask_file
+        assert 'mask.fits' in sector.I_mask_file
+        assert 'sector_1' in sector.I_mask_file
 
     @pytest.mark.parametrize("use_clean_mask", [True, False])
     def test_image_with_previous_mask(self, field, monkeypatch, tmp_path, expected_image_output, use_clean_mask):
@@ -391,7 +393,10 @@ class TestImage:
         # Get the mask file from the first operation
         sector = field.imaging_sectors[0]
         first_mask_file = sector.I_mask_file
-        assert first_mask_file is not None
+        if use_clean_mask:
+            assert first_mask_file is not None
+        else:
+            assert first_mask_file is None
 
         # Second image operation - simulate reusing the mask from first operation
         # Create a new Image operation with index=2 but don't call field.update()
@@ -401,6 +406,7 @@ class TestImage:
 
         # Check that previous_mask_filename is set to the mask from the first operation
         assert image2.input_parms["previous_mask_filename"] is not None
+
         # previous_mask_filename should be a list with one element for one sector
         previous_masks = image2.input_parms["previous_mask_filename"]
         assert isinstance(previous_masks, list)

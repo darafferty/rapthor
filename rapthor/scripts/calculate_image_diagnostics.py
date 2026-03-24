@@ -840,7 +840,7 @@ def main(
         if not src_filename.name.startswith(output_root):
             dst_filename = Path(f"{output_root}.{src_filename.name}")
             dst_filename.unlink(missing_ok=True)
-            shutil.copy(src_filename, dst_filename)
+            shutil.move(src_filename, dst_filename)
 
 
 def parse_args():

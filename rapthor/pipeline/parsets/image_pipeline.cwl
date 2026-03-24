@@ -480,9 +480,17 @@ inputs:
     type:
       type: enum
       symbols: ["bdsf", "sofia"]
+
   - id: save_filtered_model_image
-    label: Save filtered model
+    label: Save filtered model image
     type: boolean
+
+  - id: filtered_model_image_name
+    label: Filename of filtered model image
+    doc: |
+      The filename of the output filtered sky model image (length = n_sectors).
+    type: string[]
+
 {% if peel_bright_sources %}
   - id: bright_skymodel_pb
     label: Bright-source sky model
@@ -753,6 +761,8 @@ steps:
         source: region_file
       - id: save_filtered_model_image
         source: save_filtered_model_image
+      - id: filtered_model_image_name
+        source: filtered_model_image_name
 {% if use_mpi %}
       - id: mpi_cpus_per_task
         source: mpi_cpus_per_task
@@ -898,6 +908,7 @@ steps:
               image_freqstep, image_timestep, image_maxinterval, image_timebase,
               previous_mask_filename, mask_filename, phasecenter, ra, dec,
               image_name, cellsize_deg, wsclean_imsize, vertices_file, region_file,
+              filtered_model_image_name,
 {% if use_mpi %}
               mpi_cpus_per_task, mpi_nnodes,
 {% endif %}
