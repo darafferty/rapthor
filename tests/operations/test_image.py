@@ -331,7 +331,6 @@ class TestImage:
         image.run()
         assert image.is_done()
 
-
     def test_finalize_without_diagnostic_plots(self, image):
         image.run()
         assert image.is_done()
@@ -350,10 +349,13 @@ class TestImage:
         assert image_last_cycle.is_done()
         # Check that the expected I, Q, U, V images are in the outputs
         sector_1 = image_last_cycle.field.imaging_sectors[0]
-        assert sector_1.name == "sector_1", f"Expected sector name 'sector_1', got '{sector_1.name}'"
-        for pol in ['I', 'Q', 'U', 'V']:
-            assert hasattr(
-                sector_1, f"{pol}_image_file_true_sky"), f"Expected {pol}_image_file_true_sky to be set in sector_1"
+        assert sector_1.name == "sector_1", (
+            f"Expected sector name 'sector_1', got '{sector_1.name}'"
+        )
+        for pol in ["I", "Q", "U", "V"]:
+            assert hasattr(sector_1, f"{pol}_image_file_true_sky"), (
+                f"Expected {pol}_image_file_true_sky to be set in sector_1"
+            )
 
     def test_sector_save_supplementary_images_null_mask(self, image):
         image.field.save_supplementary_images = True
@@ -363,7 +365,9 @@ class TestImage:
         # Simulate a null mask output and check that it is handled gracefully
         image.outputs["source_filtering_mask"] = [None]
         sector_1 = image.field.imaging_sectors[0]
-        assert hasattr(sector_1, "filtering_mask_file"), "Expected filtering_mask_file to be set in sector_1"
+        assert hasattr(sector_1, "filtering_mask_file"), (
+            "Expected filtering_mask_file to be set in sector_1"
+        )
 
     def test_sector_save_supplementary_images(self, image):
         image.field.save_supplementary_images = True
@@ -371,9 +375,12 @@ class TestImage:
         image.run()
         assert image.is_done()
         sector_1 = image.field.imaging_sectors[0]
-        assert hasattr(sector_1, "filtering_mask_file"), "Expected filtering_mask_file to be set in sector_1"
-        assert isinstance(sector_1.filtering_mask_file, (str, Path)
-                          ), f"Expected filtering_mask_file to be a string, got {type(sector_1.filtering_mask_file)}"
+        assert hasattr(sector_1, "filtering_mask_file"), (
+            "Expected filtering_mask_file to be set in sector_1"
+        )
+        assert isinstance(sector_1.filtering_mask_file, (str, Path)), (
+            f"Expected filtering_mask_file to be a string, got {type(sector_1.filtering_mask_file)}"
+        )
 
     def test_find_in_file_list(self):
         # Test the find_in_file_list method with a sample file list
@@ -430,8 +437,8 @@ class TestImage:
         # Check that the sector's mask_filename is set
         sector = field.imaging_sectors[0]
         assert sector.I_mask_file is not None
-        assert 'mask.fits' in sector.I_mask_file
-        assert 'sector_1' in sector.I_mask_file
+        assert "mask.fits" in sector.I_mask_file
+        assert "sector_1" in sector.I_mask_file
 
     @pytest.mark.parametrize("use_clean_mask", [True, False])
     def test_image_with_previous_mask(
