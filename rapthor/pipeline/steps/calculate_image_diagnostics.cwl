@@ -46,14 +46,6 @@ inputs:
     type: File
     inputBinding:
       position: 5
-  - id: input_skymodel
-    label: Input sky model
-    doc: |
-      The filename of the input sky model (in makesourcedb format). This model
-      should be grouped into source patches.
-    type: File
-    inputBinding:
-      position: 6
   - id: obs_ms
     label: Filenames of MS files
     doc: |
@@ -62,7 +54,7 @@ inputs:
       the observation.
     type: Directory[]
     inputBinding:
-      position: 7
+      position: 6
       itemSeparator: ","
   - id: obs_starttime
     label: Start time of obs
@@ -71,7 +63,7 @@ inputs:
       those in obs_ms.
     type: string[]
     inputBinding:
-      position: 8
+      position: 7
       itemSeparator: ","
   - id: obs_ntimes
     label: Number of time slots of obs
@@ -80,7 +72,7 @@ inputs:
       obs_ms.
     type: int[]
     inputBinding:
-      position: 9
+      position: 8
       itemSeparator: ","
   - id: diagnostics_file
     label: Input diagnostics file
@@ -88,14 +80,14 @@ inputs:
       The filename of the input diagnostics JSON file.
     type: File
     inputBinding:
-      position: 10
+      position: 9
   - id: output_root
     label: Output root name
     doc: |
       The root of the filenames of the output filtered sky models.
     type: string
     inputBinding:
-      position: 11
+      position: 10
   - id: facet_region_file
     label: Input ds9 region file
     doc: |
@@ -108,6 +100,39 @@ inputs:
     inputBinding:
       prefix: --facet_region_file=
       separate: false
+  - id: photometry_skymodel
+    label: Comparison sky model for photometry diagnostics
+    doc: |
+      The filename of the comparison sky model for checking
+      photometry. Note that when this file is unavailable, the filename can be
+      set to a dummy string, in which case it is then ignored by the script 
+      and a sky model will be downloaded from TGSS and LOTSS surveys (if these 
+      fail it will be downloaded from NVSS).
+    type:
+      - File?
+    inputBinding:
+      prefix: --photometry_comparison_skymodel=
+      separate: false
+  - id: astrometry_skymodel
+    label: Comparison sky model for astrometry diagnostics
+    doc: |
+      The filename of the comparison sky model for checking
+      astrometry. Note that when this file is unavailable, the filename can be
+      set to a dummy string, in which case it is then ignored by the script 
+      and a sky model will be downloaded from Pan-STARRs.
+    type:
+      - File?
+    inputBinding:
+      prefix: --astrometry_comparison_skymodel=
+      separate: false
+  - id: allow_internet_access
+    label: Allow internet access
+    doc: |
+      Enable access to the internet for downloading sky models when they are
+      not available locally.
+    type: boolean
+    inputBinding:
+      prefix: --allow_internet_access
 
 outputs:
   - id: diagnostics

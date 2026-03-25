@@ -212,7 +212,6 @@ class Observation(object):
     def set_calibration_parameters(
         self,
         parset,
-        ndir,
         nobs,
         calibrator_fluxes,
         target_fast_timestep,
@@ -229,8 +228,6 @@ class Observation(object):
         ----------
         parset : dict
             Parset with processing parameters
-        ndir : int
-            Number of calibration directions/patches
         nobs : int
             Number of observations in total
         calibrator_fluxes : list
@@ -256,13 +253,15 @@ class Observation(object):
         target_medium_freqstep = parset['calibration_specific']['medium_freqstep_hz']
         target_slow_freqstep = parset['calibration_specific']['slow_freqstep_hz']
         target_fulljones_freqstep = parset['calibration_specific']['fulljones_freqstep_hz']
-        solve_max_factor = parset['calibration_specific']['dd_interval_factor']
-        smoothness_max_factor = parset['calibration_specific']['dd_smoothness_factor']
+
         if generate_screens:
             # Screens do not support the direction-dependent smoothness contraint or
             # solve intervals, so disable them
             solve_max_factor = 1
             smoothness_max_factor = 1
+        else:
+            solve_max_factor = parset['calibration_specific']['dd_interval_factor']
+            smoothness_max_factor = parset['calibration_specific']['dd_smoothness_factor']
 
         # Find the frequency chunk size in number of channels. We use the target
         # frequency step size for the slow solve, as this is the solve that determines
@@ -593,26 +592,27 @@ class Observation(object):
         target_bandwidth_mhz = min(2.0, self.get_target_bandwidth(mean_freq_mhz,
                                    delta_theta_deg, resolution_deg, peak_smearing_rapthor))
         target_bandwidth_mhz = min(target_bandwidth_mhz, solve_slow_freqstep/1e6)
-        self.log.debug('Target averaging timewidth for imaging is {0:.1f} s'.format(target_timewidth_sec))
-        self.log.debug('Target averaging bandwidth for imaging is {0:.1f} MHz'.format(target_bandwidth_mhz))
+        self.log.debug('Target averaging timewidth for imaging is %.1f s', target_timewidth_sec)
+        self.log.debug('Target averaging bandwidth for imaging is %.1f MHz', target_bandwidth_mhz)
 
         # Find averaging steps for above target values
         image_freqstep = max(1, min(int(round(target_bandwidth_mhz * 1e6 / chan_width_hz)), nchan))
         self.parameters['image_freqstep'] = self.get_nearest_freqstep(image_freqstep)
         self.parameters['image_timestep'] = max(1, int(round(target_timewidth_sec / timestep_sec)))
-        self.log.debug('Using averaging steps of {0} channel{1} and {2} time slot{3} '
-                       'for imaging'.format(self.parameters['image_freqstep'],
-                                            "s" if self.parameters['image_freqstep'] > 1 else "",
-                                            self.parameters['image_timestep'],
-                                            "s" if self.parameters['image_timestep'] > 1 else ""))
+        self.log.debug('Using averaging steps of %s channel%s and %s time slot%s '
+                       'for imaging if averaging visibilities is enabled.',
+                       self.parameters['image_freqstep'],
+                        "s" if self.parameters['image_freqstep'] > 1 else "",
+                        self.parameters['image_timestep'],
+                        "s" if self.parameters['image_timestep'] > 1 else "")
 
         # Find BDA maxinterval: the max time interval in time slots over which to average
         # (for the shortest baselines). We set this to be the slow solve time step to ensure
         # we don't average more than the timescale of the slow corrections
         target_maxinterval = min(self.numsamples, int(round(solve_slow_timestep / timestep_sec)))  # time slots
         self.parameters['image_bda_maxinterval'] = max(1, target_maxinterval)
-        self.log.debug('Using BDA with maxinterval = {0:.1f} s for '
-                       'imaging'.format(self.parameters['image_bda_maxinterval'] * timestep_sec))
+        self.log.debug('If BDA is enabled, maxinterval = %.1f s will be used for imaging', 
+                       self.parameters['image_bda_maxinterval'] * timestep_sec)
 
     def get_nearest_freqstep(self, freqstep):
         """
@@ -640,6 +640,28 @@ class Observation(object):
         idx = np.argmin(np.abs(self.freq_divisors - freqstep))
 
         return self.freq_divisors[idx]
+
+    def set_solution_interval(self, solve_type, target_timestep, target_freqstep, solve_max_factor):
+        """
+        Sets the solution interval for a given solve type
+
+        Parameters
+        ----------
+        solve_type : str
+            Solve type, one of 'fast', 'medium', 'slow', or 'fulljones'
+        target_timestep : float
+            Target solution interval in seconds
+        target_freqstep : float
+            Target solution interval in Hz
+        solve_max_factor : int
+            Maximum factor by which the solution interval can be increased when using
+            direction-dependent solution intervals
+        """
+        timestep = max(1, int(round(target_timestep / round(self.timepersample)) * solve_max_factor))
+        freqstep = max(1, self.get_nearest_freqstep(target_freqstep / self.channelwidth))
+
+        self.parameters[f'solint_{solve_type}_timestep'] = [timestep] * self.ntimechunks
+        self.parameters[f'solint_{solve_type}_freqstep'] = [freqstep] * self.ntimechunks
 
     def get_target_timewidth(self, delta_theta, resolution, reduction_factor):
         """

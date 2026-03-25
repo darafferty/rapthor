@@ -50,7 +50,7 @@ def set_strategy(field):
     else:
         raise ValueError('Strategy "{}" not understood.'.format(field.parset['strategy']))
 
-    log.info('Using "{}" processing strategy'.format(field.parset['strategy']))
+    log.info('Using %r processing strategy', field.parset['strategy'])
 
     # Check the strategy for the presence of deprecated and/or missing
     # parameters
@@ -332,13 +332,18 @@ def check_and_adjust_parameters(field, strategy_steps):
         for i in range(len(strategy_steps)):
             if deprecated in strategy_steps[i]:
                 if replacement is not None:
-                    log.warn(f'Parameter "{deprecated}" is defined in the strategy for '
-                             f'cycle {i+1} but is deprecated. Please use "{replacement}" '
-                             'instead.')
+                    log.warning(
+                        'Parameter %r is defined in the strategy for cycle %i '
+                        'but is deprecated. Please use %r instead.',
+                        deprecated, i+1, replacement
+                        )
                     strategy_steps[i][replacement] = strategy_steps[i][deprecated]
                 else:
-                    log.warn(f'Parameter "{deprecated}" is defined in the strategy for '
-                             f'cycle {i+1} but is no longer used.')
+                    log.warning(
+                        'Parameter %r is defined in the strategy for cycle %i '
+                        'but is no longer used.',
+                        deprecated, i+1
+                    ) 
                 strategy_steps[i].pop(deprecated)
 
     # Check for required parameters. If any are missing, either print a warning if the
@@ -352,9 +357,11 @@ def check_and_adjust_parameters(field, strategy_steps):
                 for secondary in secondary_parameters:
                     if secondary not in strategy_steps[i]:
                         if hasattr(field, secondary):
-                            log.warn(f'Parameter "{secondary}" is not defined in the '
-                                     f'strategy for cycle {i+1}. Using the default value '
-                                     f'of {getattr(field, secondary)}.')
+                            log.warning(
+                                'Parameter %r is not defined in the strategy '
+                                'for cycle %i. Using the default value of %r.',
+                                secondary, i+1, getattr(field, secondary)
+                            )
                         else:
                             raise ValueError(f'Required parameter "{secondary}" is not '
                                              f'defined in the strategy for cycle {i+1}.')

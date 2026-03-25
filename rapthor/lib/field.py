@@ -99,6 +99,8 @@ class Field(object):
         self.image_cube_stokes_list = self.parset['imaging_specific']['image_cube_stokes_list']
         self.pol_combine_method = self.parset['imaging_specific']['pol_combine_method']
         self.disable_iquv_clean = self.parset['imaging_specific']['disable_iquv_clean']
+        self.photometry_skymodel = self.parset['imaging_specific']['photometry_skymodel']
+        self.astrometry_skymodel = self.parset['imaging_specific']['astrometry_skymodel']
         self.solverlbfgs_dof = self.parset['calibration_specific']['solverlbfgs_dof']
         self.solverlbfgs_iter = self.parset['calibration_specific']['solverlbfgs_iter']
         self.solverlbfgs_minibatches = self.parset['calibration_specific']['solverlbfgs_minibatches']
@@ -161,7 +163,7 @@ class Field(object):
         Checks input MS files and initializes the associated Observation objects
         """
         suffix = 's' if len(self.ms_filenames) > 1 else ''
-        self.log.debug('Scanning input MS file{}...'.format(suffix))
+        self.log.debug('Scanning input MS file%s...', suffix)
         self.full_observations = []
         for ms_filename in self.ms_filenames:
             self.full_observations.append(Observation(ms_filename))
@@ -179,8 +181,9 @@ class Field(object):
 
         # Check for multiple epochs
         self.epoch_starttimes = set([obs.starttime for obs in self.full_observations])
-        suffix = 's' if len(self.epoch_starttimes) > 1 else ''
-        self.log.debug('Input data comprise {0} epoch{1}'.format(len(self.epoch_starttimes), suffix))
+        self.log.debug('Input data comprise %s epoch%s',
+                       len(self.epoch_starttimes),
+                       's' if len(self.epoch_starttimes) > 1 else '')
         self.epoch_observations = []
         for i, epoch_starttime in enumerate(self.epoch_starttimes):
             epoch_observations = [obs for obs in self.full_observations if
@@ -281,53 +284,45 @@ class Field(object):
         if mintime <= 0:
             raise ValueError("mintime must be greater than zero")
 
-        # Set the chunk size so that it is at least mintime
         chunked_observations = []
         for obs in self.full_observations:
-            # Adjust the minimum time for chunks made from this observation to one that
-            # is an integer multiple of its time per sample
-            obs_mintime = np.ceil(mintime / obs.timepersample) * obs.timepersample
+            # The computations below first determine the number of samples, e.g., per chunk, and
+            # then derive the corresponding time intervals.
+            num_samples_in_chunk = np.ceil(mintime / obs.timepersample)
 
-            # Due to a limitation in Dysco, we make sure to have at least two time
-            # slots per observation, otherwise the output MS cannot be written with
-            # compression
-            if int(np.ceil(obs_mintime / obs.timepersample)) < 2:
-                obs_mintime *= 2
+            # Due to a limitation in Dysco, we make sure to have at least two time slots
+            # per observation, otherwise the output MS cannot be written with compression.
+            num_samples_in_chunk = max(num_samples_in_chunk, 2)
 
-            # Find the data fraction implied by the minimum time
             target_starttime = obs.starttime
             target_endtime = obs.endtime
+            num_samples = obs.numsamples
+            # Add one interval, since starttime and endtime are mid points.
+            total_time = obs.endtime - obs.starttime + obs.timepersample
+            total_high_el_time = obs.high_el_endtime - obs.high_el_starttime + obs.timepersample
             data_fraction = obs.data_fraction
-            if prefer_high_el_periods and (
-                data_fraction
-                < (obs.high_el_endtime - obs.high_el_starttime)
-                / (obs.endtime - obs.starttime)
-            ):
+            if prefer_high_el_periods and data_fraction < total_high_el_time / total_time:
                 # Use high-elevation period for chunking. We increase the data fraction
                 # to account for the decreased total observation time so that the
                 # amount of data used is kept the same
+                data_fraction = min(1, data_fraction * total_time / total_high_el_time)
                 target_starttime = obs.high_el_starttime
                 target_endtime = obs.high_el_endtime
-                data_fraction = min(
-                    1,
-                    data_fraction
-                    * (obs.endtime - obs.starttime)
-                    / (target_endtime - target_starttime),
-                )
-            tottime = target_endtime - target_starttime
+                num_samples = int(np.round(total_high_el_time / obs.timepersample))
 
-            nchunks = max(1, int(np.floor(data_fraction / (obs_mintime / tottime))))
-            if nchunks == 1:
-                # Center the chunk at the midpoint (which is generally the most
-                # sensitive, near transit)
-                midpoint = target_starttime + tottime / 2
-                chunktime = min(tottime, max(obs_mintime, data_fraction * tottime))
-                if chunktime < tottime:
+            num_chunks = max(1, int(data_fraction * num_samples / num_samples_in_chunk))
+            if num_chunks == 1:
+                if data_fraction < 1.0:
+                    # Center the chunk at the midpoint (which is generally the most
+                    # sensitive, near transit)
+                    num_samples_in_chunk = int(np.round(data_fraction * num_samples))
+                    num_samples_from_start = int((num_samples - num_samples_in_chunk) / 2)
+                    num_samples_from_end = num_samples - num_samples_from_start - num_samples_in_chunk
                     chunked_observations.append(
                         Observation(
                             obs.ms_filename,
-                            starttime=midpoint - chunktime / 2,
-                            endtime=midpoint + chunktime / 2,
+                            starttime=target_starttime + num_samples_from_start * obs.timepersample,
+                            endtime=target_endtime - num_samples_from_end * obs.timepersample,
                             name=f"{os.path.basename(obs.ms_filename)}_chunk1"
                         )
                     )
@@ -335,17 +330,17 @@ class Field(object):
                     chunked_observations.append(obs)
             else:
                 # Calculate the start time of each chunk so that they are spaced out
-                # evenly over the full observation. The time between gaps (steptime)
-                # is calculated as:
-                #   time_between_gaps = total_time_in_gaps / (nchunks - 1) + chunk_time
-                steptime = (tottime - nchunks * obs_mintime) / (
-                    nchunks - 1
-                ) + obs_mintime
-                starttimes = np.arange(target_starttime, target_endtime, steptime)
+                # evenly over the full observation.
+                num_samples_in_all_gaps = num_samples - num_chunks * num_samples_in_chunk
+                num_samples_in_gap = int(num_samples_in_all_gaps / (num_chunks - 1))
+                num_samples_in_step = num_samples_in_gap + num_samples_in_chunk
+                step_time = num_samples_in_step * obs.timepersample
+
+                starttimes = np.arange(target_starttime, target_endtime, step_time)
                 endtimes = np.arange(
-                    target_starttime + obs_mintime,
-                    target_endtime + obs_mintime,
-                    steptime,
+                    target_endtime - (num_samples - num_samples_in_chunk) * obs.timepersample,
+                    target_endtime + num_samples_in_chunk * obs.timepersample,
+                    step_time,
                 )
                 for index, (starttime, endtime) in enumerate(zip(starttimes, endtimes)):
                     chunked_observations.append(
@@ -402,7 +397,7 @@ class Field(object):
         """
         nfreqchunks = 0
         for obs in self.observations:
-            obs.set_calibration_parameters(self.parset, self.num_patches, len(self.observations),
+            obs.set_calibration_parameters(self.parset, len(self.observations),
                                            self.calibrator_fluxes, self.fast_timestep_sec,
                                            self.medium_timestep_sec,
                                            self.slow_timestep_sec, self.fulljones_timestep_sec,
@@ -584,9 +579,11 @@ class Field(object):
             if self.parset['facet_layout'] is not None:
                 # Regroup using the supplied ds9 region file of the facets
                 facets = read_ds9_region_file(self.parset['facet_layout'])
-                suffix = 'es' if len(facets) > 1 else ''
-                self.log.info(f'Read {len(facets)} patch{suffix} from supplied facet '
-                              'layout file')
+                self.log.info(
+                    'Read %i patch%s from supplied facet layout file',
+                    len(facets),
+                    'es' if len(facets) > 1 else ''
+                )
                 facet_names = []
                 facet_patches_dict = {}
                 for facet in facets:
@@ -624,10 +621,13 @@ class Field(object):
                 if n_removed > 0:
                     # One or more empty facets removed during grouping, so
                     # report this to user
-                    suffix = 'es' if n_removed > 1 else ''
-                    self.log.warning(f'Removed {n_removed} empty patch{suffix}. The facet '
-                                     'layout used in this cycle will therefore differ '
-                                     'from that given in the input facet layout file.')
+                    self.log.warning(
+                        'Removed %i empty patch%s. The facet layout used in '
+                        'this cycle will therefore differ from that given in '
+                        'the input facet layout file.',
+                        n_removed,    
+                        'es' if n_removed > 1 else ''
+                    )
             else:
                 # Regroup by tessellating with the bright sources as the tessellation
                 # centers.
@@ -694,22 +694,30 @@ class Field(object):
 
                     if target_flux is None:
                         target_flux = target_flux_for_number
-                        self.log.info('Using a target flux density of {0:.2f} Jy for grouping '
-                                      'to meet the specified target number of '
-                                      'directions ({1:.2f})'.format(target_flux, target_number))
+                        self.log.info(
+                            'Using a target flux density of %.2f Jy for '
+                            'grouping to meet the specified target number of '
+                            'directions (%i)', 
+                            target_flux, target_number)
                     else:
                         if target_flux_for_number > target_flux and target_number < len(fluxes):
                             # Only use the new target flux if the old value might result
                             # in more than target_number of calibrators
-                            self.log.info('Using a target flux density of {0:.2f} Jy for '
-                                          'grouping (raised from {1:.2f} Jy to ensure that '
-                                          'the target number of {2} directions is not '
-                                          'exceeded)'.format(target_flux_for_number, target_flux, target_number))
+                            self.log.info(
+                                'Using a target flux density of %.2f Jy for '
+                                'grouping (raised from %.2f Jy to ensure that '
+                                'the target number of %i directions is not '
+                                'exceeded)',
+                                target_flux_for_number, target_flux, target_number)
                             target_flux = target_flux_for_number
                         else:
-                            self.log.info('Using a target flux density of {0:.2f} Jy for grouping'.format(target_flux))
+                            self.log.info(
+                                'Using a target flux density of %.2f Jy for grouping',
+                                target_flux)
                 else:
-                    self.log.info('Using a target flux density of {0:.2f} Jy for grouping'.format(target_flux))
+                    self.log.info(
+                        'Using a target flux density of %.2f Jy for grouping',
+                        target_flux)
 
                 # Check if target flux can be met for at least one source
                 #
@@ -985,7 +993,7 @@ class Field(object):
         self.num_patches = len(self.calibrator_patch_names)
         if not self.generate_screens:
             suffix = 'es' if self.num_patches > 1 else ''
-            self.log.info('Using {0} calibration patch{1}'.format(self.num_patches, suffix))
+            self.log.info('Using %s calibration patch%s', self.num_patches, suffix)
 
             # Plot an overview of the field for this cycle, showing the calibration facets
             # (patches)
@@ -1107,8 +1115,11 @@ class Field(object):
                 name = 'sector_{0}'.format(n)
                 self.imaging_sectors.append(Sector(name, ra, dec, width_ra, width_dec, self))
                 n += 1
-            suffix = 's' if len(self.imaging_sectors) > 1 else ''
-            self.log.info('Using {0} user-defined imaging sector{1}'.format(len(self.imaging_sectors), suffix))
+            self.log.info(
+                'Using %s user-defined imaging sector%s', 
+                len(self.imaging_sectors), 
+                's' if len(self.imaging_sectors) > 1 else ''
+            )
             self.uses_sector_grid = False
         else:
             # Make a regular grid of sectors
@@ -1179,8 +1190,10 @@ class Field(object):
             if len(self.imaging_sectors) == 1:
                 self.log.info('Using 1 imaging sector')
             else:
-                self.log.info('Using {0} imaging sectors ({1} in RA, {2} in Dec)'.format(
-                              len(self.imaging_sectors), nsectors_ra, nsectors_dec))
+                self.log.info(
+                    'Using %i imaging sectors (%s in RA, %s in Dec)',
+                    len(self.imaging_sectors), nsectors_ra, nsectors_dec
+                )
             self.uses_sector_grid = True
 
         self.define_sector_bounds()
@@ -1452,25 +1465,55 @@ class Field(object):
                         # use backup
                         sector.poly = poly_bkup
 
-    def make_outlier_skymodel(self):
+    def make_outlier_skymodel(self, threshold_ratio=0.001, threshold_jy=0.1):
         """
-        Make a sky model of any outlier calibration sources, not included in any
-        imaging sector
+        Make a sky model of any outlier calibration sources, not included in any imaging sector
+
+        Thresholds can be used to avoid unnecessary processing in cases where the total flux
+        density of the outlier sky model is negligable (either relative to that in the imaged
+        regions or in absolute terms). Note that outlier sources will be considered for processing
+        when either threshold is met.
+
+        Parameters
+        ----------
+        threshold_ratio : float, optional
+            The threshold of the ratio of the total flux in outlier sources relative to the total
+            flux in imaged sources, above which outlier sources will be considered
+        threshold_jy : float, optional
+            The threshold (in Jy) of the total flux density of all outlier sources, above which
+            outlier sources will be considered
+
+        Returns
+        -------
+        outlier_skymodel: LSMTool sky model object
+            Sky model of the outlier sources
         """
         all_source_names = self.calibration_skymodel.getColValues('Name').tolist()
+        sector_flux_jy = 0
         sector_source_names = []
         for sector in self.imaging_sectors:
             skymodel = lsmtool.load(str(sector.predict_skymodel_file))
+            sector_flux_jy += np.sum(skymodel.getColValues('I', units='Jy'))
             sector_source_names.extend(skymodel.getColValues('Name').tolist())
         if self.peel_bright_sources:
             # The bright sources were removed from the sector predict sky models, so
             # add them to the list
             sector_source_names.extend(self.bright_source_skymodel.getColValues('Name').tolist())
+            sector_flux_jy += np.sum(self.bright_source_skymodel.getColValues('I', units='Jy'))
 
         outlier_ind = np.array([all_source_names.index(sn) for sn in all_source_names
                                 if sn not in sector_source_names])
         outlier_skymodel = self.calibration_skymodel.copy()
         outlier_skymodel.select(outlier_ind, force=True)
+        outlier_flux_jy = np.sum(outlier_skymodel.getColValues('I', units='Jy'))
+        if (
+            len(outlier_skymodel)
+            and outlier_flux_jy / sector_flux_jy < threshold_ratio
+            and outlier_flux_jy < threshold_jy
+        ):
+            # Thresholds not met, so remove all sources from the sky model
+            outlier_skymodel.select(np.array([]), force=True)
+
         return outlier_skymodel
 
     def makeWCS(self):
@@ -1576,20 +1619,32 @@ class Field(object):
 
         # Check that convergence and divergence limits are sensible
         if convergence_ratio > 2.0:
-            self.log.warning('The convergence ratio is set to {} but must be <= 2. '
-                             'Using 2.0 instead'.format(convergence_ratio))
+            self.log.warning(
+                'The convergence ratio is set to %.2f but must be <= 2. '
+                'Using 2.0 instead',
+                convergence_ratio
+            )
             convergence_ratio = 2.0
         if convergence_ratio < 0.5:
-            self.log.warning('The convergence ratio is set to {} but must be >= 0.5. '
-                             'Using 0.5 instead'.format(convergence_ratio))
+            self.log.warning(
+                'The convergence ratio is set to %.2f but must be >= 0.5. '
+                'Using 0.5 instead', 
+                convergence_ratio
+            )
             convergence_ratio = 0.5
         if divergence_ratio < 1.0:
-            self.log.warning('The divergence ratio is set to {} but must be >= 1. '
-                             'Using 1.0 instead'.format(divergence_ratio))
+            self.log.warning(
+                'The divergence ratio is set to %.2f but must be >= 1. '
+                'Using 1.0 instead',
+                divergence_ratio
+            )
             divergence_ratio = 1.0
         if failure_ratio < 1.0:
-            self.log.warning('The failure ratio is set to {} but must be >= 1. '
-                             'Using 1.0 instead'.format(failure_ratio))
+            self.log.warning(
+                'The failure ratio is set to %.2f but must be >= 1. '
+                'Using 1.0 instead',
+                failure_ratio
+            )
             failure_ratio = 1.0
 
         if (not hasattr(self, 'imaging_sectors') or
@@ -1611,37 +1666,57 @@ class Field(object):
             if rmspre > 0:
                 rms_unconverged = rmspost / rmspre < convergence_ratio
                 rms_diverged = rmspost / rmspre > divergence_ratio
-                self.log.info('Ratio of current median image noise (non-PB-corrected) to previous image '
-                              'noise for {0} = {1:.2f}'.format(sector.name, rmspost/rmspre))
+                self.log.info(
+                    'Ratio of current median image noise (non-PB-corrected) to previous image '
+                    'noise for %s = %.2f',
+                    sector.name, rmspost/rmspre)
             else:
                 rms_unconverged = True
                 rms_diverged = False
-                self.log.warning('Median image noise found in the previous cycle is 0 '
-                                 'for {0}. Skipping noise convergence check...'.format(sector.name))
-            self.log.info('Ratio of current median image noise (non-PB-corrected) to expected '
-                          'image noise for {0} = {1:.2f}'.format(sector.name, rmspost/rmsideal))
+                self.log.warning(
+                    'Median image noise found in the previous cycle is 0 '
+                    'for %s. Skipping noise convergence check...', 
+                    sector.name
+                )
+            self.log.info(
+                'Ratio of current median image noise (non-PB-corrected) to expected '
+                'image noise for %s = %.2f',
+                sector.name, rmspost/rmsideal
+            )
 
             dynrpre = sector.diagnostics[-2]['dynamic_range_global_flat_noise']
             dynrpost = sector.diagnostics[-1]['dynamic_range_global_flat_noise']
             if dynrpre > 0:
                 dynr_unconverged = dynrpost / dynrpre > 1 / convergence_ratio
-                self.log.info('Ratio of current image dynamic range (non-PB-corrected) to previous image '
-                              'dynamic range for {0} = {1:.2f}'.format(sector.name, dynrpost/dynrpre))
+                self.log.info(
+                    'Ratio of current image dynamic range (non-PB-corrected) to previous image '
+                    'dynamic range for %s = %.2f',
+                    sector.name, dynrpost/dynrpre
+                )
             else:
                 dynr_unconverged = True
-                self.log.warning('Image dynamic range found in the previous cycle is 0 '
-                                 'for {0}. Skipping dynamic range convergence check...'.format(sector.name))
+                self.log.warning(
+                    'Image dynamic range found in the previous cycle is 0 '
+                    'for %s. Skipping dynamic range convergence check...', 
+                    sector.name
+                )
 
             nsrcpre = sector.diagnostics[-2]['nsources']
             nsrcpost = sector.diagnostics[-1]['nsources']
             if nsrcpre > 0:
                 nsrc_unconverged = nsrcpost / nsrcpre > 1 / convergence_ratio
-                self.log.info('Ratio of current number of sources to previous number '
-                              'of sources for {0} = {1:.2f}'.format(sector.name, nsrcpost/nsrcpre))
+                self.log.info(
+                    'Ratio of current number of sources to previous number '
+                    'of sources for %s = %.2f',
+                    sector.name, nsrcpost/nsrcpre
+                )
             else:
                 nsrc_unconverged = True
-                self.log.warning('No sources were found in the previous cycle '
-                                 'for {0}. Skipping source number convergence check...'.format(sector.name))
+                self.log.warning(
+                    'No sources were found in the previous cycle '
+                    'for %s. Skipping source number convergence check...',
+                    sector.name
+                )
             if rms_unconverged or dynr_unconverged or nsrc_unconverged:
                 # Report not converged (and not diverged)
                 converged.append(False)
@@ -1720,10 +1795,12 @@ class Field(object):
                 fractional_change = self.lofar_to_true_flux_ratio - 1
             if fractional_change > self.lofar_to_true_flux_std and not self.apply_normalizations:
                 target_flux *= self.lofar_to_true_flux_ratio
-                self.log.info('Adjusting the target flux for calibrator selection '
-                              'from {0:.2f} Jy to {1:.2f} Jy to account for the offset found '
-                              'in the global flux scale'.format(step_dict['target_flux'],
-                                                                target_flux))
+                self.log.info(
+                    'Adjusting the target flux for calibrator selection '
+                    'from %.2f Jy to %.2f Jy to account for the offset found '
+                    'in the global flux scale',
+                    step_dict['target_flux'], target_flux
+                )
         else:
             target_flux = None
             target_number = None

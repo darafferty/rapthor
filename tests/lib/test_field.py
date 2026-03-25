@@ -2,7 +2,6 @@ import os
 import unittest
 
 import requests
-from rapthor.lib import miscellaneous as misc
 from rapthor.lib.field import Field
 from rapthor.lib.parset import parset_read
 
@@ -12,9 +11,8 @@ class TestField(unittest.TestCase):
     def downloadms(cls, filename):
         url = 'https://support.astron.nl/software/ci_data/rapthor/tDDECal.in_MS.tgz'
         r = requests.get(url)
-        f = open('downloaded.tgz', 'wb')
-        f.write(r.content)
-        f.close()
+        with open('downloaded.tgz', 'wb') as f:
+            f.write(r.content)
 
         os.system('tar xvf downloaded.tgz')
         os.system('rm downloaded.tgz')
@@ -32,18 +30,19 @@ class TestField(unittest.TestCase):
         else:
             print('ms file found')
 
-        cls.par = parset_read('resources/test.parset')
-        cls.field = Field(cls.par)
-        cls.field.fast_timestep_sec = 32.0  # needed for test_get_obs_parameters() below
-        cls.field.scan_observations()
-        cls.field.update_skymodels(1, True, target_flux=0.2)
-        cls.field.set_obs_parameters()
-        cls.field.define_imaging_sectors()
-        cls.field.define_outlier_sectors(1)
+    def setUp(self):
+        # Note: parset_read() creates various directories. tearDown() removes them after each test.
+        parset = parset_read('resources/test.parset')
 
-    @classmethod
-    def tearDownClass(cls):
-        os.system('rm -r images/ logs/ pipelines/ regions/ skymodels/ solutions/ plots/')
+        self.field = Field(parset)
+        self.field.fast_timestep_sec = 32.0  # needed for test_get_obs_parameters() below
+        self.field.update_skymodels(1, True, target_flux=0.2)
+        self.field.set_obs_parameters()
+        self.field.define_imaging_sectors()
+        self.field.define_outlier_sectors(1)
+
+    def tearDown(self):
+        os.system('rm -r images/ logs/ pipelines/ plots/ regions/ skymodels/ solutions/')
 
     def test_scan_observations(self):
         self.assertEqual(self.field.fwhm_ra_deg, 4.500843683229519)
@@ -61,13 +60,27 @@ class TestField(unittest.TestCase):
         for obs in self.field.full_observations:
             obs.data_fraction = 0.8
         self.field.chunk_observations(600.0, prefer_high_el_periods=False)
-        self.assertEqual(self.field.imaging_sectors[0].observations[0].starttime, 4871282392.906812)
+        # A data fraction of 0.8 and an observation with 6 time steps should
+        # yields a single chunk with 5 time steps (indices 0 through 4).
+        full_obs = self.field.full_observations[0]
+        obs = self.field.imaging_sectors[0].observations[0]
+        chunked_starttime = full_obs.starttime
+        chunked_endtime = full_obs.endtime - full_obs.timepersample
+        self.assertEqual(obs.starttime, chunked_starttime)
+        self.assertEqual(obs.endtime, chunked_endtime)
 
     def test_chunk_observations_high_el(self):
         for obs in self.field.full_observations:
             obs.data_fraction = 0.2
         self.field.chunk_observations(600.0, prefer_high_el_periods=True)
-        self.assertEqual(self.field.imaging_sectors[0].observations[0].starttime, 4871282392.906812)
+        # A data fraction of 0.2 and an observation with 6 time steps should
+        # yields a single chunk with 1 time step (index 2).
+        full_obs = self.field.full_observations[0]
+        obs = self.field.imaging_sectors[0].observations[0]
+        chunked_starttime = full_obs.starttime + 2 * full_obs.timepersample
+        chunked_endtime = full_obs.endtime - 3 * full_obs.timepersample
+        self.assertEqual(obs.starttime, chunked_starttime)
+        self.assertEqual(obs.endtime, chunked_endtime)
 
     def test_get_obs_parameters(self):
         obsp = self.field.get_obs_parameters('starttime')
@@ -93,19 +106,31 @@ class TestField(unittest.TestCase):
         self.assertEqual(self.field.check_selfcal_progress(), (False, False, False))
 
     def test_plot_overview_patches(self):
-        self.field.plot_overview('field_overview_1.png', show_calibration_patches=True)
-        self.assertTrue(os.path.exists(os.path.join('plots', 'field_overview_1.png')))
+        plot_filename = 'field_overview_1.png'
+        plot_path = os.path.join('plots', plot_filename)
+        self.assertTrue(os.path.exists(plot_path))
+        os.system('rm ' + plot_path)  # remove the existing plot to ensure it's regenerated
+        self.field.plot_overview(plot_filename, show_calibration_patches=True)
+        self.assertTrue(os.path.exists(plot_path))
 
     def test_plot_overview_initial(self):
-        self.field.plot_overview('initial_field_overview.png', show_initial_coverage=True)
-        self.assertTrue(os.path.exists(os.path.join('plots', 'initial_field_overview.png')))
-        os.system('rm plots/initial_field_overview.png')
+        plot_filename = 'initial_field_overview.png'
+        plot_path = os.path.join('plots', plot_filename)
+        self.assertTrue(os.path.exists(plot_path))
+        os.system('rm ' + plot_path)  # remove the existing plot to ensure it's regenerated
+
+        self.field.plot_overview(plot_filename, show_initial_coverage=True)
+        self.assertTrue(os.path.exists(plot_path))
 
     def test_plot_overview_initial_near_pole(self):
+        plot_filename = 'initial_field_overview.png'
+        plot_path = os.path.join('plots', plot_filename)
+        self.assertTrue(os.path.exists(plot_path))
+        os.system('rm ' + plot_path)  # remove the existing plot to ensure it's regenerated
+
         self.field.dec = 89.5  # test behavior near pole
-        self.field.plot_overview('initial_field_overview.png', show_initial_coverage=True)
-        self.assertTrue(os.path.exists(os.path.join('plots', 'initial_field_overview.png')))
-        os.system('rm plots/initial_field_overview.png')
+        self.field.plot_overview(plot_filename, show_initial_coverage=True)
+        self.assertTrue(os.path.exists(plot_path))
 
 
 def suite():

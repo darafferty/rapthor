@@ -17,6 +17,7 @@
         "strategy": "selfcal",
         "selfcal_data_fraction": 0.2,
         "final_data_fraction": 1.0,
+        "ntimes_to_repeat_final_cycle": 0,
         "input_h5parm": null,
         "input_fulljones_h5parm": null,
         "input_normalization_h5parm": null,
@@ -111,7 +112,9 @@
         "max_peak_smearing": 0.15,
         "correct_time_frequency_smearing": false,
         "skip_final_major_iteration": true,
-        "skip_corner_sectors": false
+        "skip_corner_sectors": false,
+        "photometry_skymodel": null,
+        "astrometry_skymodel": null
     },
     "cluster": {
         "batch_system": "single_machine",
@@ -129,6 +132,7 @@
         "container_type": "docker",
         "cwl_runner": "toil",
         "debug_workflow": false,
-        "keep_temporary_files": false
+        "keep_temporary_files": false,
+        "allow_internet_access": true
     }
 }

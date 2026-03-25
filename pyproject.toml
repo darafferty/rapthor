@@ -1,7 +1,7 @@
 [build-system]
 build-backend = "setuptools.build_meta"
 requires = [
-    "setuptools>=45",
+    "setuptools>=64",
     "setuptools_scm[toml]>=6.2",
     "wheel",
 ]
@@ -55,11 +55,25 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 test = ["tox"]
+dev =  ["ruff", "rapthor[test]" ]
+
+[dependency-groups]
+test =  [
+    "tox",
+    "mock",
+    "pytest",
+    "pytest-cov",
+    "pytest-xdist",
+    "pytest-mock",
+    "pytest-socket"
+]
+dev = ["ruff", {include-group = "test"} ]
 
 
 [tool.pytest.ini_options]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks test as integration tests"
 ]
 
 
@@ -111,6 +125,9 @@ rapthor = [
 write_to = "rapthor/_version.py"
 
 
+[tool.ruff]
+line-length = 100
+
 [tool.ruff.lint]
 # Expand basic rules with name and style checks roughly equivalent to flake8 + black + pylint
 # Some additional functional errors such as `await` on none async or wrong return types / args.
@@ -132,18 +149,14 @@ ignore = ["E501"]  # line-too-long
     "F841",  # unused-variable
 ]
 
+
 [tool.tox]
 requires = ["tox>4"]
-envlist = ["lint", "py3{9,10,11,12,13}"]
+envlist = ["lint", "format", "py3{9,10,11,12,13}"]
 
 [tool.tox.env_run_base]
 description = "Run all tests"
-deps = [
-    "mock",
-    "pytest",
-    "pytest-cov",
-    "pytest-xdist",
-]
+deps = [{ replace = "ref", of = ["dependency-groups", "test"], extend = true }]
 commands = [
     # test_field.py does not support parallel runs, so run sequentially.
     [
@@ -170,9 +183,48 @@ commands = [
 ]
 
 [tool.tox.env.lint]
-deps = ["ruff"]
+deps = "ruff"
 commands = [
     [
         "python", "-m", "ruff", "check",
     ],
+    [
+        "python", "-m", "ruff", "format", "--check", "-v",
+        { replace = "ref", of = ["tool", "tox", "env", "format", "format_targets"], extend=true },
+    ]
+]
+
+[tool.tox.env.format]
+deps = "ruff"
+format_targets = [
+    "rapthor/process.py",
+    "rapthor/lib/parset.py",
+    "rapthor/operations/image.py",
+    "rapthor/scripts/calculate_image_diagnostics.py",
+    "tests/lib/test_parset.py",
+    "tests/scripts/test_calculate_image_diagnostics.py",
+    "rapthor/lib/cwl.py",
+    "rapthor/lib/cwlrunner.py",
+    "tests/lib/test_cwl.py",
+    "tests/lib/test_cwlrunner.py",
+    "tests/cwl/__init__.py",
+    "tests/cwl/cwl_cmdline.py",
+    "tests/cwl/cwl_mock.py",
+    "tests/cwl/tests/test_cwl_cmdline.py",
+    "tests/cwl/tests/test_cwl_mock.py",
+    "tests/cwl/tests/test_cwl_real_execution.py",
+    "tests/cwl/tests/test_cwl_scatter.py",
+]
+commands = [
+    [
+        # sort imports
+        "python", "-m", "ruff", "check", "--select", "I", "--fix",
+        { replace = "ref", of = ["tool", "tox", "env", "format", "format_targets"], extend=true },
+    ],
+    [
+        # format code
+        "python", "-m", "ruff", "format",
+        { replace = "ref", of = ["tool", "tox", "env", "format", "format_targets"], extend=true },
+    ],
+
 ]

@@ -1,6 +1,7 @@
 """
 Module that holds all parset-related functions
 """
+
 import ast
 import configparser
 import glob
@@ -9,6 +10,7 @@ import os
 from importlib import resources
 
 import astropy.coordinates
+
 import rapthor.lib.miscellaneous as misc
 from rapthor._logging import set_log_file
 from rapthor._version import __version__
@@ -96,11 +98,7 @@ class Parset:
 
         # Deprecated options are hard-coded below. Each deprecated option can have
         # zero or more suggestions for alternative options.
-        self.deprecated_options = {
-            "cluster": {
-                "dir_local": {"local_scratch_dir"}
-            }
-        }
+        self.deprecated_options = {"cluster": {"dir_local": {"local_scratch_dir"}}}
 
         # Sanity check. Ensure that all required sections and options are also allowed.
         assert self.required_sections <= self.allowed_sections, "%s <= %s" % (
@@ -108,9 +106,7 @@ class Parset:
             self.allowed_sections,
         )
         for section in self.required_options:
-            assert (
-                self.required_options[section] <= self.allowed_options[section]
-            ), "%s <= %s" % (
+            assert self.required_options[section] <= self.allowed_options[section], "%s <= %s" % (
                 self.required_options[section],
                 self.allowed_options[section],
             )
@@ -173,8 +169,7 @@ class Parset:
         }
         invalid_sections = given_sections - self.allowed_sections
         invalid_options = {
-            sect: given_options[sect] - self.allowed_options[sect]
-            for sect in self.allowed_sections
+            sect: given_options[sect] - self.allowed_options[sect] for sect in self.allowed_sections
         }
         deprecated_options = {
             sect: set(self.deprecated_options[sect]) & given_options[sect]
@@ -190,7 +185,8 @@ class Parset:
             if options:
                 raise ValueError(
                     "Missing required option(s) in section [{}]: {}".format(
-                        section, ", ".join("'{}'".format(opt) for opt in options)
+                        section,
+                        ", ".join("'{}'".format(opt) for opt in options),
                     )
                 )
 
@@ -277,27 +273,31 @@ class Parset:
             "fast_datause": ("single", "dual", "full"),
             "medium_datause": ("single", "dual", "full"),
             "slow_datause": ("dual", "full"),
-            "solveralgorithm": ("hybrid", "lbfgs", "directioniterative", "directionsolve"),
+            "solveralgorithm": (
+                "hybrid",
+                "lbfgs",
+                "directioniterative",
+                "directionsolve",
+            ),
         }.items():
             if options[opt] not in valid_values:
                 raise ValueError(
                     "The option '{}' must be one of {}".format(
-                        opt, ", ".join("'{}'".format(val) for val in valid_values)
+                        opt,
+                        ", ".join("'{}'".format(val) for val in valid_values),
                     )
                 )
 
         dd_smoothness_factor = options["dd_smoothness_factor"]
         if dd_smoothness_factor < 1:
             raise ValueError(
-                f"The dd_smoothness_factor parameter is {dd_smoothness_factor}; "
-                f"it must be >= 1"
+                f"The dd_smoothness_factor parameter is {dd_smoothness_factor}; it must be >= 1"
             )
         dd_interval_factor = options["dd_interval_factor"]
         solveralgorithm = options["solveralgorithm"]
         if dd_interval_factor < 1:
             raise ValueError(
-                f"The dd_interval_factor parameter is {dd_interval_factor}; "
-                f"it must be >= 1"
+                f"The dd_interval_factor parameter is {dd_interval_factor}; it must be >= 1"
             )
         elif dd_interval_factor > 1 and solveralgorithm != "directioniterative":
             log.warning(
@@ -310,14 +310,14 @@ class Parset:
             # multi-calibration; once they can be, the restriction on their use
             # should be removed
             log.warning(
-                "Switching off direction-dependent intervals, since they are "
-                "not yet supported."
+                "Switching off direction-dependent intervals, since they are not yet supported."
             )
             options["dd_interval_factor"] = 1
         if (
-            (options["fast_datause"] != "full" or options["medium_datause"] != "full" or options["slow_datause"] != "full") and
-            options["solveralgorithm"] != "directioniterative"
-        ):
+            options["fast_datause"] != "full"
+            or options["medium_datause"] != "full"
+            or options["slow_datause"] != "full"
+        ) and options["solveralgorithm"] != "directioniterative":
             log.warning(
                 f"Switching from the '{solveralgorithm}' solver to the "
                 "'directioniterative' solver, since single or dual visibilities "
@@ -325,19 +325,12 @@ class Parset:
             )
             options["solveralgorithm"] = "directioniterative"
 
-        if (
-            options['use_image_based_predict'] and
-            (
-                options['bda_timebase'] > 0 or
-                options['bda_frequencybase'] > 0
-            )
+        if options["use_image_based_predict"] and (
+            options["bda_timebase"] > 0 or options["bda_frequencybase"] > 0
         ):
-            log.warning(
-                "Switching off BDA during solving, since image-based predict is "
-                "activated."
-            )
-            options['bda_timebase'] = 0
-            options['bda_frequencybase'] = 0
+            log.warning("Switching off BDA during solving, since image-based predict is activated.")
+            options["bda_timebase"] = 0
+            options["bda_frequencybase"] = 0
 
         # Imaging options
         options = settings["imaging"]
@@ -350,7 +343,8 @@ class Parset:
             if options[opt] not in valid_values:
                 raise ValueError(
                     "The option '{}' must be one of {}".format(
-                        opt, ", ".join("'{}'".format(val) for val in valid_values)
+                        opt,
+                        ", ".join("'{}'".format(val) for val in valid_values),
                     )
                 )
 
@@ -367,24 +361,11 @@ class Parset:
             )
 
         if len(options["dd_psf_grid"]) != 2:
-            raise ValueError(
-                "The option 'dd_psf_grid' must be a list of length 2 (e.g. '[3, 3]')"
-            )
+            raise ValueError("The option 'dd_psf_grid' must be a list of length 2 (e.g. '[3, 3]')")
 
         if (
-            options["correct_time_frequency_smearing"] and
-            options["bda_timebase"] > 0
-        ):
-            log.warning(
-                "Switching off BDA during imaging, since correction for time "
-                "and frequency smearing is activated."
-            )
-            options["bda_timebase"] = 0
-            # options["bda_frequencybase"] = 0  # TODO: also disable frequency BDA once implemented
-
-        if (
-            settings["imaging"]["correct_time_frequency_smearing"] !=
-            settings["calibration"]["correct_time_frequency_smearing"]
+            settings["imaging"]["correct_time_frequency_smearing"]
+            != settings["calibration"]["correct_time_frequency_smearing"]
         ):
             log.warning(
                 "Correction for time and frequency smearing is enabled "
@@ -432,7 +413,8 @@ class Parset:
             if options[opt] not in valid_values:
                 raise ValueError(
                     "The option '{}' must be one of {}".format(
-                        opt, ", ".join("'{}'".format(val) for val in valid_values)
+                        opt,
+                        ", ".join("'{}'".format(val) for val in valid_values),
                     )
                 )
 
@@ -487,9 +469,7 @@ class Parset:
             if not self.__parser.read(parset_file):
                 raise FileNotFoundError(f"Missing parset file ({parset_file}).")
         except configparser.ParsingError as err:
-            raise ValueError(
-                f"Parset file '{parset_file}' could not be parsed correctly.\n{err}"
-            )
+            raise ValueError(f"Parset file '{parset_file}' could not be parsed correctly.\n{err}")
 
         self.__sanitize()
         settings = Parset.config_as_dict(self.__parser)
@@ -558,12 +538,13 @@ def parset_read(parset_file, use_log_file=True):
         raise RuntimeError(
             "Cannot use the working dir {0}: {1}".format(parset_dict["dir_working"], e)
         )
+
     if use_log_file:
         set_log_file(os.path.join(parset_dict["dir_working"], "logs", "rapthor.log"))
     log.info("=========================================================")
     log.info("Rapthor version %s", __version__)
     log.info("CWLRunner is %s", parset_dict["cluster_specific"]["cwl_runner"])
-    log.info("Working directory is {}".format(parset_dict["dir_working"]))
+    log.info("Working directory is %s", parset_dict["dir_working"])
 
     # Get the input MS files; it can either be a string, or a list of strings
     input_ms = parset_dict["input_ms"]
@@ -574,65 +555,114 @@ def parset_read(parset_file, use_log_file=True):
     parset_dict["mss"] = sorted(ms_files)
     if len(parset_dict["mss"]) == 0:
         raise FileNotFoundError(
-            "No input MS files were found (searched for files "
-            "matching: {}).".format(
-                ", ".join('"{0}"'.format(search_str) for search_str in ms_search_list)
-            )
+            "No input MS files were found (searched for files matching: "
+            f"{', '.join(map(repr, ms_search_list))})."
         )
-    suffix = 's' if len(parset_dict["mss"]) > 1 else ''
-    log.info("Working on {0} input MS file{1}".format(len(parset_dict["mss"]), suffix))
+    log.info(
+        "Working on %s input MS file%s",
+        (nfiles := len(parset_dict["mss"])),
+        "s" if nfiles > 1 else "",
+    )
 
-    # Make sure the initial sky model is present or, if not, that generation or download
-    # is requested
-    if not parset_dict["input_skymodel"]:
-        if parset_dict["generate_initial_skymodel"]:
-            log.info(
-                "No input sky model file given and generation requested. "
-                "Will automatically generate sky model from input data."
-            )
-            if parset_dict["apparent_skymodel"]:
-                log.info(
-                    "The input apparent sky model will not be used "
-                    "because sky model generation has been requested."
-                )
-        elif parset_dict["download_initial_skymodel"]:
-            log.info(
-                "No input sky model file given and download requested. "
-                "Will automatically download sky model."
-            )
-            if parset_dict["apparent_skymodel"]:
-                log.info(
-                    "The input apparent sky model will not be used "
-                    "because sky model download has been requested."
-                )
-        else:
-            log.warning(
-                "No input sky model file given and neither generation nor download of "
-                "sky model requested. If no calibration is to be done, this warning can "
-                "be ignored."
-            )
-    else:
-        if not os.path.exists(parset_dict["input_skymodel"]):
-            raise FileNotFoundError(
-                'Input sky model file "{}" not found.'.format(parset_dict["input_skymodel"])
-            )
-        if parset_dict["generate_initial_skymodel"]:
-            # If sky model is given but generation requested, disable generation and use
-            # the given skymodel.
-            log.warning(
-                "Sky model generation requested, but user-provided sky model is present. "
-                "Disabling generation and using sky model provided by the user."
-            )
-            parset_dict["generate_initial_skymodel"] = False
-        elif parset_dict["download_initial_skymodel"]:
-            # If sky model is given but download requested, use the given skymodel and
-            # disable download.
-            log.warning(
-                "Sky model download requested, but user-provided sky model is present. "
-                "Disabling download and using sky model provided by the user."
-            )
-            parset_dict["download_initial_skymodel"] = False
-
+    check_and_adjust_skymodel_settings(parset_dict)
     log.info("=========================================================")
 
     return parset_dict
+
+
+def check_and_adjust_skymodel_settings(parset_dict):
+    """
+    En‌sure·‌the·‌initial·‌sky·‌model·‌is·‌present·‌or,·‌if·‌not,·‌that·‌generation·‌or
+    download·‌is·‌requested.
+
+    Parameters
+    ----------
+    parset_dict : dict
+        Dictionary containing parset parameters
+
+    Raises
+    ------
+    FileNotFoundError
+        If the input sky model file is not found.
+    """
+
+    apparent_skymodel = parset_dict["apparent_skymodel"]
+    generate_initial_skymodel = parset_dict["generate_initial_skymodel"]
+    download_initial_skymodel = parset_dict["download_initial_skymodel"]
+    action = "generation" if generate_initial_skymodel else "download"
+    generate_or_download_skymodel = generate_initial_skymodel or download_initial_skymodel
+
+    if input_skymodel := parset_dict["input_skymodel"]:
+        if not os.path.exists(input_skymodel):
+            raise FileNotFoundError(f'Input sky model file "{input_skymodel}" not found.')
+        if generate_or_download_skymodel:
+            # If sky model is given but generation/download requested,
+            # disable generation/download and use the given skymodel.
+            log.warning(
+                "Sky model %s requested, but user-provided sky model is "
+                "present. Disabling %s and using sky model provided by the "
+                "user.",
+                action,
+                action,
+            )
+            parset_dict["download_initial_skymodel"] = download_initial_skymodel = False
+            parset_dict["generate_initial_skymodel"] = False
+
+    elif generate_or_download_skymodel:
+        verb, suffix = (
+            ("generate", " from input data") if generate_initial_skymodel else ("download", "")
+        )
+        log.info(
+            "No input sky model file given and %s requested. Will automatically %s sky model%s.",
+            action,
+            verb,
+            suffix,
+        )
+        if apparent_skymodel:
+            log.warning(
+                "The input apparent sky model will not be used because sky "
+                "model %s has been requested.",
+                action,
+            )
+    else:
+        log.warning(
+            "No input sky model file given and neither generation nor download "
+            "of sky model requested. If no calibration is to be done, this "
+            "warning can be ignored."
+        )
+
+    # If `astrometry_skymodel` or `photometry_skymodel` is given, check if the
+    # file exists, if not raise an error.
+    for diagnostic in ("astrometry", "photometry"):
+        if (
+            skymodel := parset_dict["imaging_specific"][f"{diagnostic}_skymodel"]
+        ) and not os.path.exists(skymodel):
+            raise FileNotFoundError(
+                f'Comparison sky model for {diagnostic} check not found at "{skymodel}"'
+            )
+
+    # Check if we need to access the internet to get any skymodels and if we
+    # are allowed to do so according to the parset settings.
+    if parset_dict["cluster_specific"]["allow_internet_access"]:
+        return
+
+    if download_initial_skymodel:
+        raise ValueError(
+            "Sky model download requested, but internet access is not allowed. "
+            "Please allow internet access or provide a path to the input sky "
+            "model file."
+        )
+
+    # If diagnostics skymodels are not given, the diagnostics that require them
+    # will be skipped.
+    for diagnostic in ("astrometry", "photometry"):
+        if parset_dict["imaging_specific"][f"{diagnostic}_skymodel"] is None:
+            log.warning(
+                "Comparison sky model for %s check not provided while "
+                "`allow_internet_access` is False. The %s check will be "
+                "skipped. If you want to run the %s check, please provide a "
+                "path to the comparison sky model or allow internet access.",
+                diagnostic,
+                diagnostic,
+                diagnostic,
+            )

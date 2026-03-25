@@ -16,6 +16,7 @@ regroup_input_skymodel = False
 strategy = selfcal
 selfcal_data_fraction = 0.4
 final_data_fraction = 0.8
+ntimes_to_repeat_final_cycle = 1
 input_h5parm = /my/data/dirdependent.h5
 input_fulljones_h5parm = /my/data/fulljones.h5
 input_normalization_h5parm = /my/data/normalization.h5
@@ -104,6 +105,8 @@ correct_time_frequency_smearing = True
 skip_final_major_iteration = False
 skip_corner_sectors = True
 use_clean_mask = False
+photometry_skymodel = None
+astrometry_skymodel = None
 
 [cluster]
 batch_system = slurm
@@ -122,3 +125,4 @@ container_type = singularity
 cwl_runner = cwltool
 debug_workflow = True
 keep_temporary_files = True
+allow_internet_access = True

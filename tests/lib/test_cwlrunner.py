@@ -9,6 +9,7 @@ on the command-line to the different CWL runners.
 import os
 
 import pytest
+
 from rapthor.lib.cwlrunner import create_cwl_runner
 from rapthor.lib.parset import Parset
 from rapthor.operations.image import Image
@@ -60,8 +61,11 @@ class Sector:
         self.dd_psf_grid = imaging_parameters["dd_psf_grid"]
 
     def set_imaging_parameters(
-        self, do_multiscale=False, recalculate_imsize=False, imaging_parameters=None,
-        preapply_dde_solutions=False
+        self,
+        do_multiscale=False,
+        recalculate_imsize=False,
+        imaging_parameters=None,
+        preapply_dde_solutions=False,
     ):
         pass
 
@@ -99,7 +103,7 @@ class Field:
     def __init__(self, parset):
         self.parset = parset
 
-        self.data_colname = 'DATA'
+        self.data_colname = "DATA"
         self.apply_amplitudes = False
         self.apply_fulljones = False
         self.apply_screens = False
@@ -134,6 +138,8 @@ class Field:
         self.image_cube_stokes_list = ["I"]
         self.save_visibilities = False
         self.average_visibilities = True
+        self.photometry_skymodel = None
+        self.astrometry_skymodel = None
 
     def get_calibration_radius(self):
         return 5.0
@@ -220,13 +226,21 @@ class TestCWLRunner:
             if runner.operation.batch_system == "slurm":
                 assert "runner: 'mpi_runner.sh'" in content
                 assert "nproc_flag: '-N'" in content
-                assert "extra_flags: ['--cpus-per-task=4', 'mpirun', '-pernode', '--bind-to', 'none', '-x', 'OPENBLAS_NUM_THREADS']" in content
+                assert (
+                    "extra_flags: ['--cpus-per-task=4', 'mpirun', '-pernode', '--bind-to', 'none', '-x', 'OPENBLAS_NUM_THREADS']"
+                    in content
+                )
             elif runner.operation.batch_system in ("single_machine", "slurm_static"):
                 assert "runner: 'mpirun'" in content
                 assert "nproc_flag: '-np'" in content
-                assert "extra_flags: ['-pernode', '--bind-to', 'none', '-x', 'OPENBLAS_NUM_THREADS']" in content
+                assert (
+                    "extra_flags: ['-pernode', '--bind-to', 'none', '-x', 'OPENBLAS_NUM_THREADS']"
+                    in content
+                )
         else:
-            assert "--mpi-config-file" not in runner.args, "MPI config file should not be present when not using MPI"
+            assert "--mpi-config-file" not in runner.args, (
+                "MPI config file should not be present when not using MPI"
+            )
 
 
 @pytest.mark.parametrize("cwl_runner", ("cwltool",))

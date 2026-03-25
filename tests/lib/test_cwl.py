@@ -2,23 +2,21 @@
 Test module for testing the CWL workflows _generated_ by the pipeline
 """
 
-import subprocess
 import itertools as itt
-import os
-import tempfile
+import subprocess
 from pathlib import Path
 
 import pytest
-from rapthor.lib.operation import DIR, env_parset
+
 from rapthor.lib.cwl import (
-    is_cwl_file,
-    is_cwl_directory,
-    is_cwl_file_or_directory,
+    clean_if_cwl_file_or_directory,
     copy_cwl_object,
     copy_cwl_recursive,
-    clean_if_cwl_file_or_directory,
+    is_cwl_directory,
+    is_cwl_file,
+    is_cwl_file_or_directory,
 )
-
+from rapthor.lib.operation import DIR, env_parset
 
 PIPELINE_PATH = Path(DIR, "..", "pipeline").resolve()
 
@@ -42,7 +40,7 @@ def generate_keyword_combinations(params_pool):
         "save_source_list": True,
         "compress_images": False,
         "filter_by_mask": True,
-        "source_finder": "sofia"
+        "source_finder": "sofia",
     }
 
 
@@ -55,7 +53,9 @@ def allow_combination(params):
         # 'normalize_flux_scale' must be used with 'make_image_cube'
         return False
 
-    if (params.get("use_facets") or params.get("apply_screens")) and params.get("preapply_dde_solutions"):
+    if (params.get("use_facets") or params.get("apply_screens")) and params.get(
+        "preapply_dde_solutions"
+    ):
         # 'preapply_dde_solutions' cannot be used with 'use_facets' or 'apply_screens'
         return False
 
@@ -101,8 +101,8 @@ def validate(params, parset_path):
     """
     try:
         subprocess.run(["cwltool", "--validate", "--enable-ext", parset_path], check=True)
-    except subprocess.CalledProcessError as err:
-        raise AssertionError(f"FAILED with parameters: {params}") from err
+    except subprocess.CalledProcessError:
+        raise AssertionError(f"FAILED with parameters: {params}") from None
 
 
 @pytest.mark.parametrize("max_cores", (None, 8))
@@ -199,26 +199,26 @@ def test_predict_di_workflow(tmp_path, max_cores):
 
 
 class TestImageWorkflow:
-
     operation = "image"
     template = env_parset.get_template("image_pipeline.cwl")
     sub_template = env_parset.get_template("image_sector_pipeline.cwl")
 
     @pytest.fixture(
-        params=generate_keyword_combinations({
-            "apply_screens": (False, True),
-            "use_facets": (False, True),
-            "peel_bright_sources": (False, True),
-            "max_cores": (None, 8),
-            "use_mpi": (False, True),
-            "make_image_cube": (False, True),
-            "image_cube_stokes_list": "I",
-            "normalize_flux_scale": (False, True),
-            "preapply_dde_solutions": (False, True),
-            "save_source_list": (False, True),
-            "compress_images": (False, True),
-            
-        })
+        params=generate_keyword_combinations(
+            {
+                "apply_screens": (False, True),
+                "use_facets": (False, True),
+                "peel_bright_sources": (False, True),
+                "max_cores": (None, 8),
+                "use_mpi": (False, True),
+                "make_image_cube": (False, True),
+                "image_cube_stokes_list": "I",
+                "normalize_flux_scale": (False, True),
+                "preapply_dde_solutions": (False, True),
+                "save_source_list": (False, True),
+                "compress_images": (False, True),
+            }
+        )
     )
     def params(self, request):
         return request.param
@@ -231,8 +231,7 @@ class TestImageWorkflow:
         `rapthor.lib.operation.Operation.setup()` does this.
         """
         pipeline_working_dir = tmp_path / "pipelines" / self.operation
-        return create_parsets(pipeline_working_dir, params,
-                              self.template, self.sub_template)
+        return create_parsets(pipeline_working_dir, params, self.template, self.sub_template)
 
     def test_image_workflow(self, params, parset):
         """
@@ -246,9 +245,7 @@ class TestImageWorkflow:
 @pytest.mark.parametrize("max_cores", (None, 8))
 @pytest.mark.parametrize("skip_processing", (False, True))
 @pytest.mark.parametrize("compress_images", (False, True))
-def test_mosaic_workflow(
-    tmp_path, max_cores, skip_processing, compress_images
-):
+def test_mosaic_workflow(tmp_path, max_cores, skip_processing, compress_images):
     """
     Test the Mosaic workflow, using all possible combinations of parameters
     that control the way the CWL workflow is generated from the template.
@@ -266,6 +263,7 @@ def test_mosaic_workflow(
 
 
 # Unit tests for CWL utility functions
+
 
 class TestIsCWLFile:
     """Tests for is_cwl_file() function"""
@@ -375,6 +373,27 @@ class TestCopyCWLObject:
         assert dest_file.exists()
         assert dest_file.read_text() == "test content"
 
+    def test_move_file(self, tmp_path):
+        """Test moving a CWL file object"""
+        # Create a source file
+        src_file = tmp_path / "source" / "test.txt"
+        src_file.parent.mkdir(parents=True, exist_ok=True)
+        src_file.write_text("test content")
+
+        # Create CWL file object
+        cwl_obj = {"class": "File", "path": str(src_file)}
+
+        # Move to destination
+        dest_dir = tmp_path / "destination"
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        copy_cwl_object(cwl_obj, str(dest_dir), move=True)
+
+        # Verify file was moved
+        dest_file = dest_dir / "test.txt"
+        assert dest_file.exists()
+        assert dest_file.read_text() == "test content"
+        assert not src_file.exists()
+
     def test_copy_directory(self, tmp_path):
         """Test copying a CWL directory object"""
         # Create a source directory with files
@@ -396,12 +415,37 @@ class TestCopyCWLObject:
         assert (dest_dir / "file1.txt").read_text() == "content1"
         assert (dest_dir / "file2.txt").read_text() == "content2"
 
+    def test_move_directory(self, tmp_path):
+        """Test moving a CWL directory object"""
+        # Create a source directory with files
+        src_dir = tmp_path / "source_dir"
+        src_dir.mkdir()
+        (src_dir / "file1.txt").write_text("content1")
+        (src_dir / "file2.txt").write_text("content2")
+
+        # Create CWL directory object
+        cwl_obj = {"class": "Directory", "path": str(src_dir)}
+
+        # Move to destination
+        dest_parent = tmp_path / "destination"
+        copy_cwl_object(cwl_obj, str(dest_parent), move=True)
+
+        # Verify directory was moved
+        dest_dir = dest_parent / "source_dir"
+        assert dest_dir.exists()
+        assert (dest_dir / "file1.txt").read_text() == "content1"
+        assert (dest_dir / "file2.txt").read_text() == "content2"
+        assert not src_dir.exists()
+
     def test_copy_non_cwl_object(self, tmp_path):
         """Test that non-CWL objects are silently ignored"""
         # Should not raise an exception
         copy_cwl_object({"not": "cwl"}, str(tmp_path))
         copy_cwl_object("string", str(tmp_path))
         copy_cwl_object(None, str(tmp_path))
+        copy_cwl_object({"not": "cwl"}, str(tmp_path), move=True)
+        copy_cwl_object("string", str(tmp_path), move=True)
+        copy_cwl_object(None, str(tmp_path), move=True)
 
 
 class TestCopyCWLRecursive:
@@ -421,6 +465,22 @@ class TestCopyCWLRecursive:
 
         assert (dest_dir / "test.txt").exists()
         assert (dest_dir / "test.txt").read_text() == "test"
+
+    def test_move_single_file(self, tmp_path):
+        """Test recursive move of a single CWL file"""
+        src_file = tmp_path / "source" / "test.txt"
+        src_file.parent.mkdir(parents=True, exist_ok=True)
+        src_file.write_text("test")
+
+        cwl_obj = {"class": "File", "path": str(src_file)}
+        dest_dir = tmp_path / "destination"
+        dest_dir.mkdir(parents=True, exist_ok=True)
+
+        copy_cwl_recursive(cwl_obj, str(dest_dir), move=True)
+
+        assert (dest_dir / "test.txt").exists()
+        assert (dest_dir / "test.txt").read_text() == "test"
+        assert not src_file.exists()
 
     def test_copy_list_of_files(self, tmp_path):
         """Test recursive copy of a list of CWL files"""
@@ -445,6 +505,31 @@ class TestCopyCWLRecursive:
         assert (dest_dir / "file1.txt").read_text() == "content1"
         assert (dest_dir / "file2.txt").read_text() == "content2"
 
+    def test_move_list_of_files(self, tmp_path):
+        """Test recursive move of a list of CWL files"""
+        # Create source files
+        src1 = tmp_path / "source" / "file1.txt"
+        src2 = tmp_path / "source" / "file2.txt"
+        src1.parent.mkdir(parents=True, exist_ok=True)
+        src1.write_text("content1")
+        src2.write_text("content2")
+
+        cwl_list = [
+            {"class": "File", "path": str(src1)},
+            {"class": "File", "path": str(src2)},
+        ]
+        dest_dir = tmp_path / "destination"
+        dest_dir.mkdir(parents=True, exist_ok=True)
+
+        copy_cwl_recursive(cwl_list, str(dest_dir), move=True)
+
+        assert (dest_dir / "file1.txt").exists()
+        assert (dest_dir / "file2.txt").exists()
+        assert (dest_dir / "file1.txt").read_text() == "content1"
+        assert (dest_dir / "file2.txt").read_text() == "content2"
+        assert not src1.exists()
+        assert not src2.exists()
+
     def test_copy_nested_list(self, tmp_path):
         """Test recursive copy of nested lists"""
         src1 = tmp_path / "source" / "file1.txt"
@@ -467,8 +552,32 @@ class TestCopyCWLRecursive:
         assert (dest_dir / "file1.txt").read_text() == "content1"
         assert (dest_dir / "file2.txt").read_text() == "content2"
 
+    def test_move_nested_list(self, tmp_path):
+        """Test recursive move of nested lists"""
+        src1 = tmp_path / "source" / "file1.txt"
+        src2 = tmp_path / "source" / "file2.txt"
+        src1.parent.mkdir(parents=True, exist_ok=True)
+        src1.write_text("content1")
+        src2.write_text("content2")
+
+        nested_list = [
+            [{"class": "File", "path": str(src1)}],
+            [{"class": "File", "path": str(src2)}],
+        ]
+        dest_dir = tmp_path / "destination"
+        dest_dir.mkdir(parents=True, exist_ok=True)
+
+        copy_cwl_recursive(nested_list, str(dest_dir), move=True)
+
+        assert (dest_dir / "file1.txt").exists()
+        assert (dest_dir / "file2.txt").exists()
+        assert (dest_dir / "file1.txt").read_text() == "content1"
+        assert (dest_dir / "file2.txt").read_text() == "content2"
+        assert not src1.exists()
+        assert not src2.exists()
+
     def test_copy_non_cwl_in_list(self, tmp_path):
-        """Test that non-CWL objects in lists are ignored"""
+        """Test that non-CWL objects in lists are ignored when copying"""
         src_file = tmp_path / "source" / "test.txt"
         src_file.parent.mkdir(parents=True, exist_ok=True)
         src_file.write_text("test")
@@ -487,6 +596,28 @@ class TestCopyCWLRecursive:
         # CWL file should still be copied
         assert (dest_dir / "test.txt").exists()
         assert (dest_dir / "test.txt").read_text() == "test"
+
+    def test_move_non_cwl_in_list(self, tmp_path):
+        """Test that non-CWL objects in lists are ignored when moving"""
+        src_file = tmp_path / "source" / "test.txt"
+        src_file.parent.mkdir(parents=True, exist_ok=True)
+        src_file.write_text("test")
+
+        mixed_list = [
+            {"class": "File", "path": str(src_file)},
+            "not a cwl object",
+            {"not": "cwl"},
+        ]
+        dest_dir = tmp_path / "destination"
+        dest_dir.mkdir(parents=True, exist_ok=True)
+
+        # Should not raise an exception
+        copy_cwl_recursive(mixed_list, str(dest_dir), move=True)
+
+        # CWL file should still be copied
+        assert (dest_dir / "test.txt").exists()
+        assert (dest_dir / "test.txt").read_text() == "test"
+        assert not src_file.exists()
 
 
 class TestCleanIfCWLFileOrDirectory:
@@ -544,4 +675,3 @@ class TestCleanIfCWLFileOrDirectory:
         clean_if_cwl_file_or_directory({"not": "cwl"})
         clean_if_cwl_file_or_directory("string")
         clean_if_cwl_file_or_directory(None)
-

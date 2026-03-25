@@ -300,7 +300,7 @@ inputs:
     type: boolean
     default: false
     doc: |
-      Enable -shared-facet-reads and shared-facet-writes in wsclean
+      Enable the -shared-facet-reads and -shared-facet-writes options in wsclean
 {% else %}
 # start not use_facets
 
@@ -480,9 +480,17 @@ inputs:
     type:
       type: enum
       symbols: ["bdsf", "sofia"]
+
   - id: save_filtered_model_image
-    label: Save filtered model
+    label: Save filtered model image
     type: boolean
+
+  - id: filtered_model_image_name
+    label: Filename of filtered model image
+    doc: |
+      The filename of the output filtered sky model image (length = n_sectors).
+    type: string[]
+
 {% if peel_bright_sources %}
   - id: bright_skymodel_pb
     label: Bright-source sky model
@@ -566,6 +574,25 @@ inputs:
       (length = n_sectors).
     type: string[]
 {% endif %}
+
+  - id: allow_internet_access
+    label: Allow internet access
+    doc: |
+      Whether to allow internet access for downloading comparison sky models for
+      diagnostics.
+    type: boolean
+
+  - id: photometry_skymodel
+    label: Comparison sky model for photometry diagnostics
+    doc: |
+      Comparison sky model for photometry diagnostics.
+    type: File?
+  
+  - id: astrometry_skymodel
+    label: Comparison sky model for astrometry diagnostics
+    doc: |
+      Comparison sky model for astrometry diagnostics.
+    type: File?
 
 outputs:
   - id: filtered_skymodel_true_sky
@@ -734,6 +761,8 @@ steps:
         source: region_file
       - id: save_filtered_model_image
         source: save_filtered_model_image
+      - id: filtered_model_image_name
+        source: filtered_model_image_name
 {% if use_mpi %}
       - id: mpi_cpus_per_task
         source: mpi_cpus_per_task
@@ -868,10 +897,18 @@ steps:
       - id: output_normalize_h5parm
         source: output_normalize_h5parm
 {% endif %}
+      - id: allow_internet_access
+        source: allow_internet_access
+      - id: photometry_skymodel
+        source: photometry_skymodel
+      - id: astrometry_skymodel
+        source: astrometry_skymodel
+
     scatter: [obs_filename, prepare_filename, concat_filename, starttime, ntimes,
               image_freqstep, image_timestep, image_maxinterval, image_timebase,
               previous_mask_filename, mask_filename, phasecenter, ra, dec,
               image_name, cellsize_deg, wsclean_imsize, vertices_file, region_file,
+              filtered_model_image_name,
 {% if use_mpi %}
               mpi_cpus_per_task, mpi_nnodes,
 {% endif %}

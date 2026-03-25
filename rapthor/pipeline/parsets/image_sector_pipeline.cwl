@@ -258,7 +258,7 @@ inputs:
     type: int
 
   - id: shared_facet_rw
-    label: Shared facets read and write
+    label: Shared facet reads and writes
     type: boolean
     doc: |
       Enable the -shared-facet-reads and -shared-facet-writes options in wsclean
@@ -481,11 +481,19 @@ inputs:
     doc: |
       Apply corrections for time and frequency smearing (length = 1).
     type: boolean
+
   - id: save_filtered_model_image
     label: Save filtered model image
     doc: |
       Save the image generated from the skymodel used for calibration
     type: boolean
+
+  - id: filtered_model_image_name
+    label: Filename of sky model image
+    doc: |
+      The filename of the output filtered sky model image (length = 1).
+    type: string
+
 {% if make_image_cube %}
   - id: image_I_cube_name
     label: Filename of I image cube
@@ -527,6 +535,25 @@ inputs:
       (length = 1).
     type: string
 {% endif %}
+
+  - id: allow_internet_access
+    label: Allow internet access
+    doc: |
+      Whether to allow internet access for downloading comparison sky models for
+      diagnostics.
+    type: boolean
+
+  - id: photometry_skymodel
+    label: Comparison sky model for photometry diagnostics
+    doc: |
+      Comparison sky model for photometry diagnostics.
+    type: File?
+
+  - id: astrometry_skymodel
+    label: Comparison sky model for astrometry diagnostics
+    doc: |
+      Comparison sky model for astrometry diagnostics.
+    type: File?
 
 outputs:
   - id: filtered_skymodel_true_sky
@@ -816,7 +843,9 @@ steps:
         source: scalar_visibilities
       - id: diagonal_visibilities
         source: diagonal_visibilities
-      - id: shared_facet_rw
+      - id: shared_facet_reads
+        source: shared_facet_rw
+      - id: shared_facet_writes
         source: shared_facet_rw
 {% if not use_mpi %}
       - id: num_gridding_threads
@@ -1093,13 +1122,13 @@ steps:
       - id: reference_image
         source: check_beam_true_sky_image/validated_image
       - id: output_image_name
-        source: filter/filtered_skymodel_apparent_sky
-        valueFrom: $(self.basename).fits.fz
+        source: filtered_model_image_name
       - id: save_filtered_model_image
         source: save_filtered_model_image
     when: $(inputs.save_filtered_model_image == true)
     out:
       - id: output_image
+
   - id: find_diagnostics
     label: Find image diagnostics
     doc: |
@@ -1116,8 +1145,6 @@ steps:
         source: filter/true_sky_rms_image
       - id: input_catalog
         source: filter/source_catalog
-      - id: input_skymodel
-        source: filter/filtered_skymodel_true_sky
       - id: output_root
         source: image_name
       - id: obs_ms
@@ -1134,6 +1161,13 @@ steps:
 {% else %}
         valueFrom: 'none'
 {% endif %}
+      - id: allow_internet_access
+        source: allow_internet_access
+      - id: photometry_skymodel
+        source: photometry_skymodel
+      - id: astrometry_skymodel
+        source: astrometry_skymodel
+
     out:
       - id: diagnostics
       - id: offsets

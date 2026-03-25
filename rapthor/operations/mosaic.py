@@ -60,12 +60,13 @@ class Mosaic(Operation):
                     [
                         f"{polup}_model_file_true_sky",
                         f"{polup}_residual_file_apparent_sky",
+                        f"{polup}_dirty_file_apparent_sky"
                     ]
                 )
-            if self.field.save_supplementary_images:
-                self.image_names.append(f'{polup}_dirty_file_apparent_sky')
-                if 'mask_filename' not in self.image_names:
-                    self.image_names.append('mask_filename')
+        if self.field.save_supplementary_images:
+            self.image_names.append("filtering_mask_file")
+        if self.field.parset["imaging_specific"]["save_filtered_model_image"]:
+            self.image_names.append("filtered_model_file_apparent_sky")
 
         for image_name in self.image_names:
             image_list = []
@@ -90,8 +91,13 @@ class Mosaic(Operation):
                 self.mosaic_filename.append(None)
         else:
             for image_name in self.image_names:
-                suffix = getattr(self.field.imaging_sectors[0], image_name).split('MFS')[-1]
-                self.mosaic_filename.append('{0}-MFS{1}'.format(self.name, suffix))
+                # Define output filenames for each mosaic image
+                suffix = getattr(self.field.imaging_sectors[0], image_name).split('sector_1')[-1]
+                if suffix.endswith(".fz"):
+                    # Remove the compressed extension, as the output mosaic files are not
+                    # compressed until a later step in the pipeline
+                    suffix = os.path.splitext(suffix)[0]
+                self.mosaic_filename.append('{0}{1}'.format(self.name, suffix))
 
         self.input_parms = {'skip_processing': self.skip_processing,
                             'sector_image_filename': sector_image_filename,
@@ -106,21 +112,33 @@ class Mosaic(Operation):
         """
         for i, image_name in enumerate(self.image_names):
             if self.mosaic_filename[i] is None:
+                # No imaging sectors
                 continue
+            if not self.skip_processing and self.field.compress_images:
+                # Add ".fz" to the filename, since the mosaic image was compressed
+                self.mosaic_filename[i] += ".fz"
 
-            # Copy the image to the images directory
+            # Copy the image to the images directory. Note: the individual sector images that were
+            # used to make the mosaic are left in place, as they will be needed if the mosaic
+            # operation is reset without reseting the preceding image operation as well
             dst_dir = os.path.join(self.field.parset['dir_working'], 'images',
                                    'image_{}'.format(self.index))
             os.makedirs(dst_dir, exist_ok=True)
-            suffix = getattr(self.field.imaging_sectors[0], image_name).split('MFS')[-1]
-            field_image_filename = os.path.join(dst_dir, 'field-MFS{}'.format(suffix))
+            if self.skip_processing:
+                # Single imaging sector: split on the sector name
+                suffix = self.mosaic_filename[i].split('sector_1')[-1]
+            else:
+                # Mosacking done: split on the mosaic name
+                suffix = self.mosaic_filename[i].split(self.name)[-1]
+            field_image_filename = os.path.join(dst_dir, 'field{}'.format(suffix))
             if image_name == 'I_image_file_true_sky':
                 # Save the Stokes I true-sky image filename as an attribute of the field
                 # object for later use
                 self.field.field_image_filename_prev = self.field.field_image_filename
                 self.field.field_image_filename = field_image_filename
-            shutil.copy(os.path.join(self.pipeline_working_dir, self.mosaic_filename[i]),
-                        field_image_filename)
+            src_filename = os.path.join(self.pipeline_working_dir, self.mosaic_filename[i])
+            if os.path.exists(src_filename):
+                shutil.copy(src_filename, field_image_filename)
 
         # Finally call finalize() in the parent class
         super().finalize()

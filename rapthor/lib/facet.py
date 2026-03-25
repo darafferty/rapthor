@@ -168,8 +168,8 @@ class Facet(object):
                 self.astrometry_diagnostics.update(result)
         else:
             self.log.warning('Too few matches to determine astrometry offsets '
-                             '(min_number = {0} but number of matches '
-                             '= {1})'.format(min_number, len(comparison_skymodel)))
+                             '(min_number = %i but number of matches = %i)',
+                             min_number, len(comparison_skymodel))
 
     def get_matplotlib_patch(self, wcs=None):
         """

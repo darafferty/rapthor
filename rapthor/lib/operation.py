@@ -14,7 +14,6 @@ DIR = os.path.dirname(os.path.abspath(__file__))
 env_parset = Environment(loader=FileSystemLoader(os.path.join(DIR, '..', 'pipeline', 'parsets')))
 
 
-
 class Operation(object):
     """
     Generic operation class
@@ -34,7 +33,7 @@ class Operation(object):
     name : str, optional
         Name of the operation
     """
-    def __init__(self, field, index=None, name:str=""):
+    def __init__(self, field, index=None, name: str = ""):
         self.parset = field.parset.copy()
         self.field = field
         self.rootname = name.lower()
@@ -192,27 +191,54 @@ class Operation(object):
         """
         open(self.done_file, "w").close()
 
-    def copy_outputs_to(self, dest_dir, exclude=None):
+    def copy_outputs_to(
+        self,
+        dest_dir,
+        index=None,
+        include=None,
+        move=False,
+    ):
         """
-        Copy output files to a specified directory.
+        Copy output files to a specified directory, with optional filters.
+
+        Parameters
+        ----------
+        dest_dir: str
+            Path of directory to which outputs will be copied
+        index : int
+            If an output is a list and index is specified, only the item with the specified index
+            is copied (other items in the list are ignored)
+        include : list or None
+            List of files to include in the copy
+        move : bool, optional
+            If True, move files instead of copying them
         """
         for output_key, output_value in self.outputs.items():
-            if exclude is None or output_key not in exclude:
-                copy_cwl_recursive(output_value, dest_dir)
+            if include is None or output_key in include:
+                copy_cwl_recursive(
+                    output_value, dest_dir, index=index, move=move
+                )
 
-    def clean_outputs(self):
+    def clean_outputs(self, exclude=None):
         """
         Clean temporary output files, if needed.
+
+        Parameters
+        ----------
+        exclude : list or None
+            List of files to exclude from the cleanup
         """
-        for output in self.outputs.values():
-            clean_if_cwl_file_or_directory(output)
+        if not self.keep_temporary_files:
+            for output_key, output_value in self.outputs.items():
+                if exclude is None or output_key not in exclude:
+                    clean_if_cwl_file_or_directory(output_value)
 
     def is_done(self):
         """
         Check if this operation is done, by checking if a "done" file exists.
         """
         return os.path.isfile(self.done_file)
-    
+
     def store_outputs(self):
         """
         Store outputs to a JSON file.
@@ -233,7 +259,7 @@ class Operation(object):
         """
         # Set up CWL workflow and call CWL runner
         self.setup()
-        self.log.info('<-- Operation {0} started'.format(self.name))
+        self.log.info('<-- Operation %s started', self.name)
 
         # Run current operation only if it hasn't run already.
         success = self.is_done()
@@ -244,13 +270,13 @@ class Operation(object):
                     if success:
                         self.outputs = runner.parse_outputs()
         else:
-            self.log.info('Operation {0} already done, skipping.'.format(self.name))
+            self.log.info('Operation %s already done, skipping.', self.name)
             # Reloads outputs
             self.load_outputs()
-            
+
         # Finalize
         if success:
-            self.log.info('--> Operation {0} completed'.format(self.name))
+            self.log.info('--> Operation %s completed', self.name)
             self.finalize()
             self.store_outputs()
         else:
