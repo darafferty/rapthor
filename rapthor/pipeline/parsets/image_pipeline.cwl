@@ -300,7 +300,7 @@ inputs:
     type: boolean
     default: false
     doc: |
-      Enable -shared-facet-reads and shared-facet-writes in wsclean
+      Enable the -shared-facet-reads and -shared-facet-writes options in wsclean
 {% else %}
 # start not use_facets
 

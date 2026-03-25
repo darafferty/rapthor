@@ -217,12 +217,12 @@ inputs:
     type: boolean
     inputBinding:
       prefix: -apply-time-frequency-smearing
-  - id: shared-facet-reads
+  - id: shared_facet_reads
     type: boolean
     default: false
     inputBinding:
       prefix: -shared-facet-reads
-  - id: shared-facet-writes
+  - id: shared_facet_writes
     type: boolean
     default: false
     inputBinding:
