@@ -10,7 +10,7 @@ import numpy as np
 from rapthor import _logging
 from rapthor.lib.field import Field
 from rapthor.lib.parset import parset_read
-from rapthor.lib.strategy import _strategy_requires_internet_access, set_strategy
+from rapthor.lib.strategy import set_strategy, validate_strategy
 from rapthor.operations.calibrate import CalibrateDD, CalibrateDI
 from rapthor.operations.concatenate import Concatenate
 from rapthor.operations.image import Image, ImageInitial, ImageNormalize
@@ -59,17 +59,8 @@ def run(parset_file, logging_level="info"):
             parset["strategy"],
         )
         return
-
-    # Check that the strategy is consistent with the parset setttings for
-    # allowing internet access
-    if not parset["cluster_specific"][
-        "allow_internet_access"
-    ] and _strategy_requires_internet_access(strategy_steps):
-        raise ValueError(
-            "The strategy includes do_normalize which requires internet access but the "
-            "parset setting allow_internet_access is set to False. Please set "
-            "allow_internet_access to True or remove normalization from the strategy"
-        )
+    # Cross-check strategy with parset for compatibility.
+    validate_strategy(strategy_steps, parset)
 
     # Generate an initial sky model from the input data if needed
     if parset["generate_initial_skymodel"]:

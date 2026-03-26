@@ -12,6 +12,7 @@ from rapthor.lib.strategy import (
     set_user_strategy,
     check_and_adjust_parameters,
     _strategy_requires_internet_access,
+    validate_strategy,
 )
 
 
@@ -21,6 +22,19 @@ def strategy_path():
     Fixture to provide the path to the default imaging strategy file.
     """
     return Path(__file__).parent.parent.parent / "examples" / "default_imaging_strategy.py"
+
+
+@pytest.fixture
+def strategy_steps(field, custom_strategy):
+    """
+    Fixture to create a strategy steps list for testing with do_normalize set to False
+    for all cycles.
+    """
+    field.parset["strategy"] = str(custom_strategy)
+    strategy_steps = set_user_strategy(field)
+    for step in strategy_steps:
+        step["do_normalize"] = False
+    return strategy_steps
 
 
 @pytest.mark.parametrize("strategy", ["selfcal", "image", "custom_strategy", "unrecognised"])
@@ -217,16 +231,7 @@ def test_check_and_adjust_parameters_warns_for_missing_parameters_without_defaul
 @pytest.mark.parametrize(
     "do_normalize, cycle", [(True, 0), (False, 0), (True, 1), (False, 1), (True, 2), (False, 2)]
 )
-def test_strategy_requires_internet_access_for_normalization(
-    field, custom_strategy, do_normalize, cycle
-):
-    field.parset["strategy"] = str(custom_strategy)
-    strategy_steps = set_user_strategy(field)
-
-    # Initialise all do_normalize parameters to False
-    for step in strategy_steps:
-        step["do_normalize"] = False
-
+def test_strategy_requires_internet_access_for_normalization(strategy_steps, do_normalize, cycle):
     # Set do_normalize for the specified step
     strategy_steps[cycle]["do_normalize"] = do_normalize
 
@@ -235,3 +240,29 @@ def test_strategy_requires_internet_access_for_normalization(
         assert _strategy_requires_internet_access(strategy_steps)
     else:
         assert not _strategy_requires_internet_access(strategy_steps)
+
+
+@pytest.mark.parametrize(
+    "do_normalize, cycle", [(True, 0), (False, 0), (True, 1), (False, 1), (True, 2), (False, 2)]
+)
+@pytest.mark.parametrize("allow_internet_access", [True, False])
+def test_validate_strategy_raises_error_for_inconsistent_strategy_and_parset_settings(
+    parset, strategy_steps, do_normalize, cycle, allow_internet_access
+):
+    # Set do_normalize for the specified step
+    strategy_steps[cycle]["do_normalize"] = do_normalize
+    # Set "allow_internet_access" in parset
+    parset["cluster_specific"]["allow_internet_access"] = allow_internet_access
+
+    if (not allow_internet_access) and do_normalize:
+        with pytest.raises(
+            ValueError,
+            match=(
+                "The strategy includes do_normalize which requires internet access but the "
+                "parset setting allow_internet_access is set to False. Please set "
+                "allow_internet_access to True or remove normalization from the strategy"
+            ),
+        ):
+            validate_strategy(strategy_steps, parset)
+    else:
+        validate_strategy(strategy_steps, parset)
