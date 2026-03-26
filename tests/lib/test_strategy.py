@@ -11,6 +11,7 @@ from rapthor.lib.strategy import (
     set_strategy,
     set_user_strategy,
     check_and_adjust_parameters,
+    _strategy_requires_internet_access,
 )
 
 
@@ -211,3 +212,26 @@ def test_check_and_adjust_parameters_warns_for_missing_parameters_without_defaul
         match=f'Required parameter "{missing_parameter}" is not defined in the strategy for cycle 1.',
     ):
         check_and_adjust_parameters(field, strategy_steps)
+
+
+@pytest.mark.parametrize(
+    "do_normalize, cycle", [(True, 0), (False, 0), (True, 1), (False, 1), (True, 2), (False, 2)]
+)
+def test_strategy_requires_internet_access_for_normalization(
+    field, custom_strategy, do_normalize, cycle
+):
+    field.parset["strategy"] = str(custom_strategy)
+    strategy_steps = set_user_strategy(field)
+
+    # Initialise all do_normalize parameters to False
+    for step in strategy_steps:
+        step["do_normalize"] = False
+
+    # Set do_normalize for the specified step
+    strategy_steps[cycle]["do_normalize"] = do_normalize
+
+    # Any step requiring normalization requires internet access
+    if do_normalize:
+        assert _strategy_requires_internet_access(strategy_steps)
+    else:
+        assert not _strategy_requires_internet_access(strategy_steps)
