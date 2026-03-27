@@ -572,8 +572,8 @@ def parset_read(parset_file, use_log_file=True):
 
 def check_and_adjust_skymodel_settings(parset_dict):
     """
-    En‌sure·‌the·‌initial·‌sky·‌model·‌is·‌present·‌or,·‌if·‌not,·‌that·‌generation·‌or
-    download·‌is·‌requested.
+    En‌sure the initial sky model is present or, if not, that generation or
+    download is requested.
 
     Parameters
     ----------
