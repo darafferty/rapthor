@@ -10,7 +10,7 @@ import numpy as np
 from rapthor import _logging
 from rapthor.lib.field import Field
 from rapthor.lib.parset import parset_read
-from rapthor.lib.strategy import set_strategy
+from rapthor.lib.strategy import set_strategy, validate_strategy
 from rapthor.operations.calibrate import CalibrateDD, CalibrateDI
 from rapthor.operations.concatenate import Concatenate
 from rapthor.operations.image import Image, ImageInitial, ImageNormalize
@@ -59,6 +59,8 @@ def run(parset_file, logging_level="info"):
             parset["strategy"],
         )
         return
+    # Cross-check strategy with parset for compatibility.
+    validate_strategy(strategy_steps, parset)
 
     # Generate an initial sky model from the input data if needed
     if parset["generate_initial_skymodel"]:

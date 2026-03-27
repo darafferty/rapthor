@@ -151,3 +151,11 @@ def facet():
                            (2.0, 2.0),
                            (2.0, 0),
                            (0, 0)])
+
+@pytest.fixture
+def custom_strategy(tmp_path):
+    """
+    Fixture to create a region file for testing.
+    """
+    shutil.copy((RESOURCE_DIR / "custom_strategy.py"), tmp_path / "custom_strategy.py")
+    return tmp_path / "custom_strategy.py"

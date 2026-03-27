@@ -367,3 +367,56 @@ def check_and_adjust_parameters(field, strategy_steps):
                                              f'defined in the strategy for cycle {i+1}.')
 
     return strategy_steps
+
+
+def validate_strategy(strategy_steps, parset):
+    """
+    Validates the strategy for internal consistency and against the parset.
+
+    Includes checks for:
+        - Steps in the strategy that require internet access ("do_normalize")
+          when the parset setting "allow_internet_access" is set to False.
+
+
+    Parameters
+    ----------
+    strategy_steps : list of dicts
+        List of strategy steps to validate
+    parset : Parset object
+        Parset object containing the processing parameters
+
+    Raises
+    ------
+    ValueError
+        If any inconsistencies are found in the strategy or between the strategy and
+        the parset
+    """
+    # Check that the strategy is consistent with the parset setttings for
+    # allowing internet access
+    if not parset["cluster_specific"][
+        "allow_internet_access"
+    ] and _strategy_requires_internet_access(strategy_steps):
+        raise ValueError(
+            "The strategy includes do_normalize which requires internet access but the "
+            "parset setting allow_internet_access is set to False. Please set "
+            "allow_internet_access to True or remove normalization from the strategy"
+        )
+
+def _strategy_requires_internet_access(strategy_steps):
+    """
+    Check for any strategy steps that require internet access.
+
+    This includes:
+        - do_normalize: if True, ImageNormalize operation is run, which 
+            requires internet access to query the fluxes of the sources in the
+            sky model from external catalogs.
+
+    Parameters
+    ----------
+    strategy_steps : list of dicts
+        List of strategy step dicts containing the processing parameters.
+    """
+    for step in strategy_steps:
+        if step.get("do_normalize", False):
+            return True
+    return False
