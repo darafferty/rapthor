@@ -630,13 +630,16 @@ class Image(Operation):
                     move=True,
                 )
 
-            # The astrometry and photometry plots and diagnostics file
+            # The astrometry and photometry plots, image diagnostics file, and astrometry offsets
+            # file
             diagnostics_dest_dir = os.path.join(
                 self.parset["dir_working"], "plots", "image_{}".format(self.index)
             )
             diagnotics = {"sector_diagnostics"}
             if self.outputs["sector_diagnostic_plots"][index]:
                 diagnotics.update({"sector_diagnostic_plots"})
+            if self.outputs["sector_offsets"][index]:
+                diagnotics.update({"sector_offsets"})
             self.copy_outputs_to(
                 diagnostics_dest_dir,
                 index=index,
