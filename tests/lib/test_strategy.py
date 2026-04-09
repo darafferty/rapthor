@@ -5,13 +5,14 @@ Test cases for the `rapthor.lib.strategy` module.
 from pathlib import Path
 
 import pytest
+
 from rapthor.lib.strategy import (
+    _strategy_requires_internet_access,
+    check_and_adjust_parameters,
     set_image_strategy,
     set_selfcal_strategy,
     set_strategy,
     set_user_strategy,
-    check_and_adjust_parameters,
-    _strategy_requires_internet_access,
     validate_strategy,
 )
 
