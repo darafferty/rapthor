@@ -12,6 +12,8 @@ from pathlib import Path
 from rapthor.lib.facet import read_ds9_region_file
 from rapthor.lib.fitsimage import FITSImage
 import scipy.ndimage as nd
+import subprocess
+import sys
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -29,14 +31,15 @@ def main(
 
     Parameters
     ----------
-    input_image : str
+    input_image : Path
         Filename of uncorrected input FITS image
-    region_file : str
+    region_file : Path
         Filename of input ds9 region file that defines the facets
-    corrections_file : str
+    corrections_file : Path
         Filename of input JSON file that contains the corrections to apply
-    output_image : str
-        Filename of corrected output FITS image
+    output_image : Path or None
+        Filename of corrected output FITS image. If None, the Filename is constructed from
+        input_image by adding the infix ".astcorr" before ".fits"
     overwrite : bool
         If True, overwrite existing output file
     """
@@ -96,8 +99,8 @@ def main(
                     "Skipping correction for facet %s since total shift (%.3f +/- %.3f arcsec) "
                     "is not significant",
                     facet.name,
-                    total_correction * 3600,
-                    total_error * 3600,
+                    total_correction * ra_scale * 3600,
+                    total_error * dec_scale * 3600,
                 )
 
         # Reduce padding to avoid any edge effects
@@ -113,14 +116,34 @@ def main(
         corrected_data += rasterize(vertices, facet_data.copy())
         sum_map += rasterize(vertices, np.ones_like(facet_data))
 
-    # Write out the corrected image
+    # Ensure that all values in the sum map are at least one
     sum_map[sum_map < 1] = 1
+
+    # Write out the corrected image (always uncompressed, as astropy.io.fits.writeto does not
+    # support fpack compression)
+    if output_image is None:
+        root = input_image.name
+        if root.endswith(".fz"):
+            root = root[:-3]
+        if root.endswith(".fits"):
+            root = root[:-5]
+        output_image = Path(f"{root}.astcorr.fits")
     fits_write(
         output_image,
         data=corrected_data / sum_map,
         header=uncorrected_image.header,
         overwrite=overwrite,
     )
+
+    # Compress with fpack if input image was compressed
+    if input_image.suffix == ".fz":
+        cmd = ["fpack", output_image]
+        try:
+            subprocess.run(cmd, check=True)
+            output_image.unlink()  # remove uncompressed version
+        except subprocess.CalledProcessError as err:
+            print(err, file=sys.stderr)
+            return err.returncode
 
 
 if __name__ == '__main__':
@@ -130,7 +153,7 @@ if __name__ == '__main__':
     parser.add_argument('input_image', help='Filename of uncorrected input FITS image', type=Path)
     parser.add_argument('region_file', help='Filename of input ds9 region file', type=Path)
     parser.add_argument('corrections_file', help='Filename of input json file with astrometry corrections', type=Path)
-    parser.add_argument('output_image', help='Filename of corrected output FITS image', type=Path)
+    parser.add_argument('--output_image', default=None, help='Filename of corrected output FITS image', type=Path)
     parser.add_argument('--overwrite', default=False, action='store_true', help='Overwrite an exising output image file (default=False)')
     args = parser.parse_args()
 

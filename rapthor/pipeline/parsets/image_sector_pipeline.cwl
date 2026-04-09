@@ -1167,11 +1167,35 @@ steps:
         source: photometry_skymodel
       - id: astrometry_skymodel
         source: astrometry_skymodel
-
     out:
       - id: diagnostics
       - id: offsets
       - id: plots
+
+{% if use_facets %}
+  - id: correct_astrometry
+    label: Correct astrometry offsets
+    doc: |
+      This step corrects an image for astrometry offsets
+    run: {{ rapthor_pipeline_dir }}/steps/correct_astrometry.cwl
+    in:
+      - id: input_image
+{% if compress_images %}
+        source: compress/image_I_pb_name
+{% else %}
+{% if peel_bright_sources %}
+        source: restore_pb/restored_image
+{% else %}
+        source: image/image_I_pb_name
+{% endif %}
+{% endif %}
+      - id: region_file
+        source: make_region_file/region_file
+      - id: corrections_file
+        source: find_diagnostics/offsets
+    out:
+      - id: corrected_image
+{% endif %}
 
 {% if normalize_flux_scale %}
 # start normalize_flux_scale
