@@ -35,8 +35,11 @@ class Facet(object):
         format supported by astropy.coordinates.Angle
     vertices : list of tuples
         List of (RA, Dec) tuples, one for each vertex of the facet
+    wcs : astropy.wcs.WCS object, optional
+        WCS object that defines the world coordinate system to used for coordinate-to-pixel
+        transformations. If None, a generic WCS system is used
     """
-    def __init__(self, name, ra, dec, vertices):
+    def __init__(self, name, ra, dec, vertices, wcs=None):
         self.name = name
         self.log = logging.getLogger('rapthor:{0}'.format(self.name))
         if type(ra) is str:
@@ -47,7 +50,7 @@ class Facet(object):
         self.vertices = np.array(vertices)
 
         # Convert input (RA, Dec) vertices to (x, y) polygon
-        self.wcs = make_wcs(self.ra, self.dec, misc.WCS_PIXEL_SCALE)
+        self.wcs = wcs if wcs is not None else make_wcs(self.ra, self.dec, misc.WCS_PIXEL_SCALE)
         self.polygon_ras = [radec[0] for radec in self.vertices]
         self.polygon_decs = [radec[1] for radec in self.vertices]
         x_values, y_values = self.wcs.wcs_world2pix(self.polygon_ras,
@@ -72,7 +75,6 @@ class Facet(object):
                                           self.polygon.centroid.y,
                                           misc.WCS_ORIGIN)
         )
-
 
     def set_skymodel(self, skymodel):
         """
@@ -275,7 +277,7 @@ def make_ds9_region_file(facets, outfile, enclose_names=True):
         f.writelines(lines)
 
 
-def read_ds9_region_file(region_file):
+def read_ds9_region_file(region_file, wcs=None):
     """
     Read a ds9 facet region file and return facets
 
@@ -359,12 +361,12 @@ def read_ds9_region_file(region_file):
             facet_name = f'facet_{indx}'
 
         # Lastly, add the facet to the list
-        facets.append(Facet(facet_name, ra, dec, vertices))
+        facets.append(Facet(facet_name, ra, dec, vertices, wcs=wcs))
 
     return facets
 
 
-def read_skymodel(skymodel, ra_mid, dec_mid, width_ra, width_dec):
+def read_skymodel(skymodel, ra_mid, dec_mid, width_ra, width_dec, wcs=None):
     """
     Reads a sky model file and returns facets
 
@@ -424,7 +426,7 @@ def read_skymodel(skymodel, ra_mid, dec_mid, width_ra, width_dec):
     # Create the facets
     facets = []
     for name, center_coord, vertices in zip(facet_names, facet_points, facet_polys):
-        facets.append(Facet(name, center_coord[0], center_coord[1], vertices))
+        facets.append(Facet(name, center_coord[0], center_coord[1], vertices, wcs=wcs))
 
     return facets
 
