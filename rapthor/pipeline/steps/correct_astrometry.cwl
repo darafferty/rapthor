@@ -38,7 +38,7 @@ outputs:
       The filename of the output corrected FITS image.
     type: File
     outputBinding:
-      glob: [*.fits, *.fits.fz]
+      glob: ['*.fits', '*.fits.fz']
 
 hints:
   - class: DockerRequirement
