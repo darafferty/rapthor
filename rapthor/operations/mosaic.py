@@ -77,7 +77,10 @@ class Mosaic(Operation):
             if len(self.field.imaging_sectors) > 0:
                 # Use unprocessed files as mosaic files
                 for image_name in self.image_names:
-                    self.mosaic_filename.append(getattr(self.field.imaging_sectors[0], image_name))
+                    if hasattr(self.field.imaging_sectors[0], image_name):
+                        self.mosaic_filename.append(
+                            getattr(self.field.imaging_sectors[0], image_name)
+                        )
             else:
                 self.mosaic_filename.append(None)
         else:

@@ -9,7 +9,7 @@ def expected_image_output():
     of an image step in the non-last cycle.
     """
     return {
-        "sector_I_images": [["sector_1-MFS-I-image-pb.fits", "sector_1-MFS-I-image.fits"]],
+        "sector_I_images": [["sector_1-MFS-I-image-pb.fits", "sector_1-MFS-I-image-pb-ast.fits" "sector_1-MFS-I-image.fits"]],
         "sector_extra_images": [["sector_1-MFS-I-residual.fits", "sector_1-MFS-I-model-pb.fits", "sector_1-MFS-I-dirty.fits"]],
         "filtered_skymodel_true_sky": ["sector_1.true_sky.txt"],
         "filtered_skymodel_apparent_sky": ["sector_1.apparent_sky.txt"],
@@ -27,7 +27,7 @@ def expected_image_output_last_cycle():
     of the image step in the last cycle.
     """
     return {
-        "sector_I_images": [["sector_1-MFS-I-image-pb.fits", "sector_1-MFS-I-image.fits"]],
+        "sector_I_images": [["sector_1-MFS-I-image-pb.fits", "sector_1-MFS-I-image-pb-ast.fits", "sector_1-MFS-I-image.fits"]],
         "filtered_skymodel_true_sky": ["sector_1.true_sky.txt"],
         "filtered_skymodel_apparent_sky": ["sector_1.apparent_sky.txt"],
         "pybdsf_catalog": ["sector_1.source_catalog.fits"],
@@ -35,9 +35,6 @@ def expected_image_output_last_cycle():
         "sector_offsets": ["sector_1_offsets.txt"],
         "source_filtering_mask": ["sector_1_mask.fits"],
         "sector_extra_images": [[
-            'sector_1-MFS-I-image-pb.fits',
-            'sector_1-MFS-I-image-pb.fits',
-            'sector_1-MFS-I-image.fits',
             'sector_1-MFS-Q-image.fits',
             'sector_1-MFS-U-image.fits',
             'sector_1-MFS-V-image.fits',
