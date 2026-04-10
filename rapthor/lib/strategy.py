@@ -343,7 +343,7 @@ def check_and_adjust_parameters(field, strategy_steps):
                         'Parameter %r is defined in the strategy for cycle %i '
                         'but is no longer used.',
                         deprecated, i+1
-                    ) 
+                    )
                 strategy_steps[i].pop(deprecated)
 
     # Check for required parameters. If any are missing, either print a warning if the
@@ -391,6 +391,14 @@ def validate_strategy(strategy_steps, parset):
         If any inconsistencies are found in the strategy or between the strategy and
         the parset
     """
+    # Check do_normalize in all cycles except the first one.
+    for i in range(1, len(strategy_steps)):
+        if strategy_steps[i].get("do_normalize", False):
+            raise ValueError(
+                f"do_normalize is True in cycle {i+1} but it may only be True in the "
+                "first cycle."
+            )
+
     # Check that the strategy is consistent with the parset setttings for
     # allowing internet access
     if not parset["cluster_specific"][
@@ -407,7 +415,7 @@ def _strategy_requires_internet_access(strategy_steps):
     Check for any strategy steps that require internet access.
 
     This includes:
-        - do_normalize: if True, ImageNormalize operation is run, which 
+        - do_normalize: if True, ImageNormalize operation is run, which
             requires internet access to query the fluxes of the sources in the
             sky model from external catalogs.
 

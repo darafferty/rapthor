@@ -5,13 +5,14 @@ Test cases for the `rapthor.lib.strategy` module.
 from pathlib import Path
 
 import pytest
+
 from rapthor.lib.strategy import (
+    _strategy_requires_internet_access,
+    check_and_adjust_parameters,
     set_image_strategy,
     set_selfcal_strategy,
     set_strategy,
     set_user_strategy,
-    check_and_adjust_parameters,
-    _strategy_requires_internet_access,
     validate_strategy,
 )
 
@@ -242,15 +243,29 @@ def test_strategy_requires_internet_access_for_normalization(strategy_steps, do_
         assert not _strategy_requires_internet_access(strategy_steps)
 
 
-@pytest.mark.parametrize(
-    "do_normalize, cycle", [(True, 0), (False, 0), (True, 1), (False, 1), (True, 2), (False, 2)]
-)
+@pytest.mark.parametrize("cycle", [1, 2])
+def test_validate_strategy_raises_error_for_do_normalize_in_non_first_cycle(
+    parset, strategy_steps, cycle
+):
+    # Set do_normalize for the specified cycle.
+    strategy_steps[cycle]["do_normalize"] = True
+
+    with pytest.raises(
+        ValueError,
+        match=(
+            f"do_normalize is True in cycle {cycle + 1} but it may only be True in the first cycle."
+        ),
+    ):
+        validate_strategy(strategy_steps, parset)
+
+
+@pytest.mark.parametrize("do_normalize", [True, False])
 @pytest.mark.parametrize("allow_internet_access", [True, False])
 def test_validate_strategy_raises_error_for_inconsistent_strategy_and_parset_settings(
-    parset, strategy_steps, do_normalize, cycle, allow_internet_access
+    parset, strategy_steps, do_normalize, allow_internet_access
 ):
-    # Set do_normalize for the specified step
-    strategy_steps[cycle]["do_normalize"] = do_normalize
+    # Set do_normalize for the first step (for other steps, it must be False).
+    strategy_steps[0]["do_normalize"] = do_normalize
     # Set "allow_internet_access" in parset
     parset["cluster_specific"]["allow_internet_access"] = allow_internet_access
 
