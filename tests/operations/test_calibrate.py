@@ -6,6 +6,59 @@ import pytest
 
 from rapthor.operations.calibrate import CalibrateDD, CalibrateDI
 
+CORE_STATION_CASES = [
+    (
+        "HBA",
+        True,
+        ["RS106HBA0", "CS002HBA0", "DE601HBA"],
+        ["CS002HBA0", "RS106HBA0"],
+    ),
+    (
+        "HBA",
+        False,
+        ["RS106HBA0", "CS002HBA0", "DE601HBA"],
+        ["CS002HBA0"],
+    ),
+    (
+        "LBA",
+        True,
+        ["RS205LBA", "CS003LBA", "CS999LBA"],
+        ["CS003LBA", "RS205LBA"],
+    ),
+    (
+        "LBA",
+        False,
+        ["RS205LBA", "CS003LBA", "CS999LBA"],
+        ["CS003LBA"],
+    ),
+]
+
+
+@pytest.fixture
+def calibrate_dd(field):
+    """
+    Create an instance of the CalibrateDD operation.
+    """
+    return CalibrateDD(field, index=1)
+
+
+@pytest.fixture
+def calibrate_di(field):
+    """
+    Create an instance of the CalibrateDI operation.
+    """
+    return CalibrateDI(field, index=1)
+
+
+@pytest.fixture
+def field(parset):
+    """Create a mock field object for testing."""
+
+    class Field:
+        def __init__(self, parset):
+            self.parset = parset
+
+    return Field(parset)
 
 @pytest.fixture
 def calibrate_field(operation_parset, mocker):
@@ -56,7 +109,7 @@ class TestCalibrateDD:
         # calibrate_dd.get_superterp_stations()
         pass
 
-    def test_get_core_stations(self):
+    def test_get_core_stations(self, calibrate_dd):
         # calibrate_dd.get_core_stations(include_nearest_remote=True)
         pass
 
