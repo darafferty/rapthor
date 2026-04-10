@@ -3,6 +3,7 @@ Test cases for the `rapthor.operations.calibrate` module.
 """
 
 import pytest
+
 from rapthor.operations.calibrate import CalibrateDD, CalibrateDI
 
 
