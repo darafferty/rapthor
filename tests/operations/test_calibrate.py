@@ -37,6 +37,40 @@ def finalize_prepare_plots(pipelines_path, plots_path):
     # Simulate one existing plot in the plots directory. finalize() should remove it.
     plots_path.mkdir(parents=True)
     (plots_path / "plot2.png").touch()
+SUPERTERP_STATION_CASES = [
+    (
+        "HBA",
+        ["RS106HBA0", "DE601HBA"],
+        [],
+    ),
+    (
+        "HBA",
+        ["CS003HBA0", "RS106HBA0", "CS007HBA1", "DE601HBA"],
+        ["CS003HBA0", "CS007HBA1"],
+    ),
+    (
+        "LBA",
+        ["RS205LBA", "CS004LBA", "CS007LBA", "DE601LBA"],
+        ["CS004LBA", "CS007LBA"],
+    ),
+]
+
+
+@pytest.fixture
+def calibrate_dd(field):
+    """
+    Create an instance of the CalibrateDD operation.
+    """
+    return CalibrateDD(field, index=1)
+
+
+@pytest.fixture
+def calibrate_di(field, index=1):
+    """
+    Create an instance of the CalibrateDI operation.
+    """
+    # return CalibrateDI(field, index=index)
+    return "mock_calibrate_di"
 
 
 class TestCalibrateDD:
@@ -52,7 +86,7 @@ class TestCalibrateDD:
         # calibrate_dd.get_baselines_core()
         pass
 
-    def test_get_superterp_stations(self):
+    def test_get_superterp_stations(self, calibrate_dd):
         # calibrate_dd.get_superterp_stations()
         pass
 
