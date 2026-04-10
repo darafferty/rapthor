@@ -1,12 +1,15 @@
 cwlVersion: v1.2
 class: CommandLineTool
-baseCommand: [correct_astrometry.py, -c]
+baseCommand: [correct_astrometry.py]
 label: Correct image astrometry
 doc: |
   This tool applies astrometry corrections to a FITS image made using faceting.
 
 requirements:
   InlineJavascriptRequirement: {}
+
+arguments:
+  - --overwrite
 
 inputs:
   - id: input_image

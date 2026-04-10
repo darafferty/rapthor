@@ -672,6 +672,7 @@ class Image(Operation):
     def find_in_file_list(file_list):
         ext_mapping = {
             "image_file_true_sky": "image-pb.fits",
+            "image_file_true_sky_astcorr": "image-pb-astcorr.fits",
             "image_file_apparent_sky": "image.fits",
             "model_file_true_sky": "model-pb.fits",
             "filtered_model_file_apparent_sky": "filtered-model.fits",

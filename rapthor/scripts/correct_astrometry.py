@@ -39,7 +39,7 @@ def main(
         Filename of input JSON file that contains the corrections to apply
     output_image : Path or None
         Filename of corrected output FITS image. If None, the Filename is constructed from
-        input_image by adding the infix ".astcorr" before ".fits"
+        input_image by adding the infix "-astcorr" before ".fits"
     overwrite : bool
         If True, overwrite existing output file
     """
@@ -127,7 +127,7 @@ def main(
             root = root[:-3]
         if root.endswith(".fits"):
             root = root[:-5]
-        output_image = Path(f"{root}.astcorr.fits")
+        output_image = Path(f"{root}-astcorr.fits")
     fits_write(
         output_image,
         data=corrected_data / sum_map,
@@ -154,7 +154,7 @@ if __name__ == '__main__':
     parser.add_argument('region_file', help='Filename of input ds9 region file', type=Path)
     parser.add_argument('corrections_file', help='Filename of input json file with astrometry corrections', type=Path)
     parser.add_argument('--output_image', default=None, help='Filename of corrected output FITS image', type=Path)
-    parser.add_argument('--overwrite', default=False, action='store_true', help='Overwrite an exising output image file (default=False)')
+    parser.add_argument('--overwrite', default=False, action='store_true', help='Overwrite an exising output image file')
     args = parser.parse_args()
 
     try:

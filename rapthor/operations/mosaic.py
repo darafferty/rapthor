@@ -53,7 +53,11 @@ class Mosaic(Operation):
         for pol in self.field.image_pol:
             polup = pol.upper()
             self.image_names.extend(
-                [f"{polup}_image_file_true_sky", f"{polup}_image_file_apparent_sky"]
+                [
+                    f"{polup}_image_file_true_sky",
+                    f"{polup}_image_file_true_sky_astcorr",
+                    f"{polup}_image_file_apparent_sky",
+                ]
             )
             if not self.field.disable_clean:
                 self.image_names.extend(
@@ -68,19 +72,6 @@ class Mosaic(Operation):
         if self.field.parset["imaging_specific"]["save_filtered_model_image"]:
             self.image_names.append("filtered_model_file_apparent_sky")
 
-        for image_name in self.image_names:
-            image_list = []
-            vertices_list = []
-            regridded_list = []
-            for sector in self.field.imaging_sectors:
-                image_list.append(getattr(sector, image_name))
-                vertices_list.append(sector.vertices_file)
-                regridded_list.append(os.path.basename(getattr(sector, image_name)) + '.regridded')
-            sector_image_filename.append(CWLFile(image_list).to_json())
-            sector_vertices_filename.append(CWLFile(vertices_list).to_json())
-            regridded_image_filename.append(regridded_list)
-            template_image_filename.append(self.name + '_template.fits')
-
         self.mosaic_filename = []
         if self.skip_processing:
             if len(self.field.imaging_sectors) > 0:
@@ -91,6 +82,22 @@ class Mosaic(Operation):
                 self.mosaic_filename.append(None)
         else:
             for image_name in self.image_names:
+                # Define various input and internal filenames
+                image_list = []
+                vertices_list = []
+                regridded_list = []
+                for sector in self.field.imaging_sectors:
+                    if hasattr(sector, image_name):
+                        image_list.append(getattr(sector, image_name))
+                        vertices_list.append(sector.vertices_file)
+                        regridded_list.append(
+                            os.path.basename(getattr(sector, image_name)) + ".regridded"
+                        )
+                sector_image_filename.append(CWLFile(image_list).to_json())
+                sector_vertices_filename.append(CWLFile(vertices_list).to_json())
+                regridded_image_filename.append(regridded_list)
+                template_image_filename.append(self.name + '_template.fits')
+
                 # Define output filenames for each mosaic image
                 suffix = getattr(self.field.imaging_sectors[0], image_name).split('sector_1')[-1]
                 if suffix.endswith(".fz"):

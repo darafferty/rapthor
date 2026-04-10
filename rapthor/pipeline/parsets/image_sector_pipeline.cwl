@@ -598,6 +598,9 @@ outputs:
     outputSource:
       - compress/image_I_nonpb_name
       - compress/image_I_pb_name
+{% if use_facets %}
+      - correct_astrometry/corrected_image
+{% endif %}
     type: File[]
   - id: sector_extra_images
     outputSource:
@@ -612,6 +615,9 @@ outputs:
 {% else %}
       - image/image_I_nonpb_name
       - image/image_I_pb_name
+{% endif %}
+{% if use_facets %}
+      - correct_astrometry/corrected_image
 {% endif %}
     type: File[]
   - id: sector_extra_images
