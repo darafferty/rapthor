@@ -38,8 +38,10 @@ def main(
     corrections_file : Path
         Filename of input JSON file that contains the corrections to apply
     output_image : Path or None
-        Filename of corrected output FITS image. If None, the Filename is constructed from
-        input_image by adding the infix "-astcorr" before ".fits"
+        Filename of corrected output FITS image. If None, the filename is constructed from
+        input_image by adding the infix "-ast" before the extensions ".fits" or ".fits.fz" (if
+        present). If these extensions are not present, the filename is constructed by adding
+        "-ast.fits" to the end of input_image
     overwrite : bool
         If True, overwrite existing output file
     """
@@ -127,7 +129,7 @@ def main(
             root = root[:-3]
         if root.endswith(".fits"):
             root = root[:-5]
-        output_image = Path(f"{root}-astcorr.fits")
+        output_image = Path(f"{root}-ast.fits")
     fits_write(
         output_image,
         data=corrected_data / sum_map,
