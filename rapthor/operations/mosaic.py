@@ -71,17 +71,22 @@ class Mosaic(Operation):
             self.image_names.append("filtering_mask_file")
         if self.field.parset["imaging_specific"]["save_filtered_model_image"]:
             self.image_names.append("filtered_model_file_apparent_sky")
+        if self.field.imaging_sectors:
+            # Remove any images that were not made
+            for image_name in self.image_names[:]:
+                if not hasattr(self.field.imaging_sectors[0], image_name):
+                    self.image_names.remove(image_name)
 
         self.mosaic_filename = []
         if self.skip_processing:
-            if len(self.field.imaging_sectors) > 0:
+            if self.field.imaging_sectors:
                 # Use unprocessed files as mosaic files
                 for image_name in self.image_names:
-                    if hasattr(self.field.imaging_sectors[0], image_name):
-                        self.mosaic_filename.append(
-                            getattr(self.field.imaging_sectors[0], image_name)
-                        )
+                    self.mosaic_filename.append(
+                        getattr(self.field.imaging_sectors[0], image_name)
+                    )
             else:
+                # No imaging sectors
                 self.mosaic_filename.append(None)
         else:
             for image_name in self.image_names:
@@ -90,12 +95,11 @@ class Mosaic(Operation):
                 vertices_list = []
                 regridded_list = []
                 for sector in self.field.imaging_sectors:
-                    if hasattr(sector, image_name):
-                        image_list.append(getattr(sector, image_name))
-                        vertices_list.append(sector.vertices_file)
-                        regridded_list.append(
-                            os.path.basename(getattr(sector, image_name)) + ".regridded"
-                        )
+                    image_list.append(getattr(sector, image_name))
+                    vertices_list.append(sector.vertices_file)
+                    regridded_list.append(
+                        os.path.basename(getattr(sector, image_name)) + ".regridded"
+                    )
                 sector_image_filename.append(CWLFile(image_list).to_json())
                 sector_vertices_filename.append(CWLFile(vertices_list).to_json())
                 regridded_image_filename.append(regridded_list)
