@@ -152,7 +152,7 @@ ignore = ["E501"]  # line-too-long
 
 [tool.tox]
 requires = ["tox>4"]
-envlist = ["lint", "format", "py3{9,10,11,12,13}"]
+envlist = ["lint", "format", "py3{9,10,11,12,13}", "test_integration"]
 
 [tool.tox.env_run_base]
 description = "Run all tests"
@@ -180,6 +180,18 @@ commands = [
         "--cov-append",
         "tests/{posargs}",
     ],
+]
+
+[tool.tox.env.test_integration]
+description = "Run integration tests"
+deps = [{ replace = "ref", of = ["dependency-groups", "test"], extend = true }]
+commands = [
+    [
+        "python", "-m", "pytest",
+        "-m", "integration",
+        "-n", "4", 
+        "tests/{posargs}",
+    ]
 ]
 
 [tool.tox.env.lint]

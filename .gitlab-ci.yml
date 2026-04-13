@@ -19,6 +19,7 @@ stages:
   - build
   - install
   - run_tests
+  - run_integration_tests
   - docs
   - deploy
   - finalize
@@ -245,6 +246,14 @@ run_tests:
   extends: .run_tests
   script:
     - tox -e py310
+  coverage: '/TOTAL.*\s+(\d+%)$/'
+
+### Stage: run_integration_tests
+
+run_integration_tests:
+  extends: .run_tests
+  script:
+    - tox -e test_integration
   coverage: '/TOTAL.*\s+(\d+%)$/'
 
 
