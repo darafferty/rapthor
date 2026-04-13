@@ -118,8 +118,15 @@ def main(
         corrected_data += rasterize(vertices, facet_data.copy())
         sum_map += rasterize(vertices, np.ones_like(facet_data))
 
-    # Ensure that all values in the sum map are at least one
+    # Ensure that all values in the sum map are at least one, then divide it into
+    # the corrected image
     sum_map[sum_map < 1] = 1
+    corrected_data /= sum_map
+
+    # Adjust the shape of the corrected data to match the number of axes of the original image
+    output_shape = [1 for axis in range(uncorrected_image.header["NAXIS"] - 2)] + list(
+        corrected_data.shape
+    )
 
     # Write out the corrected image (always uncompressed, as astropy.io.fits.writeto does not
     # support fpack compression)
@@ -132,7 +139,7 @@ def main(
         output_image = Path(f"{root}-ast.fits")
     fits_write(
         output_image,
-        data=corrected_data / sum_map,
+        data=corrected_data.reshape(output_shape),
         header=uncorrected_image.header,
         overwrite=overwrite,
     )
