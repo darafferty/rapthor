@@ -47,10 +47,11 @@ def finalize_mocks(mocker):
     """Setup mocks for the finalize() method tests."""
     mocker.patch("rapthor.lib.miscellaneous.get_flagged_solution_fraction", return_value=0.042)
     return {
-      "makedirs": mocker.patch("os.makedirs"),
-      "remove": mocker.patch("os.remove"),
-      "copy": mocker.patch("shutil.copy"),
+        "makedirs": mocker.patch("os.makedirs"),
+        "remove": mocker.patch("os.remove"),
+        "copy": mocker.patch("shutil.copy"),
     }
+
 
 def check_makedirs(mock_makedirs, *expected_paths):
     """Helper function to check that makedirs was called with the expected paths."""
@@ -135,10 +136,18 @@ class TestCalibrateDD:
         calibrate_dd.finalize()
 
         assert field.h5parm_filename == str(h5parm_path)
-        assert field.fast_phases_h5parm_filename == str(solutions_path / "field-solutions-fast-phase.h5")
-        assert field.medium1_phases_h5parm_filename == str(solutions_path / "field-solutions-medium1-phase.h5")
-        assert field.medium2_phases_h5parm_filename == str(solutions_path / "field-solutions-medium2-phase.h5")
-        assert field.slow_gains_h5parm_filename == str(solutions_path / "field-solutions-slow-gain.h5")
+        assert field.fast_phases_h5parm_filename == str(
+            solutions_path / "field-solutions-fast-phase.h5"
+        )
+        assert field.medium1_phases_h5parm_filename == str(
+            solutions_path / "field-solutions-medium1-phase.h5"
+        )
+        assert field.medium2_phases_h5parm_filename == str(
+            solutions_path / "field-solutions-medium2-phase.h5"
+        )
+        assert field.slow_gains_h5parm_filename == str(
+            solutions_path / "field-solutions-slow-gain.h5"
+        )
 
         check_makedirs(finalize_mocks["makedirs"], solutions_path, plots_path)
 
@@ -164,10 +173,12 @@ class TestCalibrateDD:
             )
 
         field.scan_h5parms.assert_called_once()
-        assert field.calibration_diagnostics == [{
-            "cycle_number": 2,
-            "solution_flagged_fraction": 0.042, # See finalize_mocks fixture.
-        }]
+        assert field.calibration_diagnostics == [
+            {
+                "cycle_number": 2,
+                "solution_flagged_fraction": 0.042,  # See finalize_mocks fixture.
+            }
+        ]
 
         finalize_check_plots(pipelines_path, plots_path, finalize_mocks)
 
