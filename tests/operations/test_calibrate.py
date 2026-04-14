@@ -3,7 +3,6 @@ Test cases for the `rapthor.operations.calibrate` module.
 """
 
 import pytest
-
 from rapthor.operations.calibrate import CalibrateDD, CalibrateDI
 
 BASELINES_CORE_CASES = [
@@ -18,8 +17,6 @@ BASELINES_CORE_CASES = [
         '[CR]*&&;!DE601HBA;!UK902HBA',
     ),
 ]
-
-
 
 @pytest.fixture
 def calibrate_field(operation_parset, mocker):
@@ -63,7 +60,8 @@ class TestCalibrateDD:
         pass
 
     @pytest.mark.parametrize('antenna, stations, expected', BASELINES_CORE_CASES)
-    def test_get_baselines_core(self, calibrate_dd, antenna, stations, expected):
+    def test_get_baselines_core(self, antenna, stations, expected):
+        calibrate_dd = CalibrateDD(field=None, index=1)
         calibrate_dd.field.antenna = antenna
         calibrate_dd.field.stations = stations
         baselines = calibrate_dd.get_baselines_core()
