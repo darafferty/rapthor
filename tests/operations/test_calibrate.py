@@ -243,3 +243,124 @@ class TestCalibrateDI:
 
         # finalize() should create a .done file (via the base Operation class).
         assert (pipelines_path / ".done").exists()
+
+
+class TestCalibrate:
+    @pytest.mark.parametrize("scenario", ["dd_fast_only", "dd_with_slowgain", "di_fulljones"])
+    def test_finalize(self, mocker, field, tmp_path, scenario):
+        # Setup mocks
+        flagged_fraction = 0.042
+        mocker.patch(
+            "rapthor.lib.miscellaneous.get_flagged_solution_fraction", return_value=flagged_fraction
+        )
+        mock_makedirs = mocker.patch("os.makedirs")
+        mock_remove = mocker.patch("os.remove")
+        mock_copy = mocker.patch("shutil.copy")
+
+        # Setup working directory
+        workdir_path = tmp_path / "working"
+        name = "calibrate_2" if scenario.startswith("dd") else "calibrate_di_4"
+        solutions_path = workdir_path / "solutions" / name
+        solutions_path.mkdir(parents=True)
+
+        # Create an existing solutions file. finalize() should remove it.
+        if scenario.startswith("dd"):
+            h5parm_path = solutions_path / "field-solutions.h5"
+        else:
+            h5parm_path = solutions_path / "fulljones-solutions.h5"
+        h5parm_path.touch()
+
+        pipelines_path = workdir_path / "pipelines" / name
+        plots_path = workdir_path / "plots" / name
+        finalize_prepare_plots(pipelines_path, plots_path)
+
+        # Setup the object itself
+        field.generate_screens = False
+        field.do_slowgain_solve = scenario == "dd_with_slowgain"
+
+        if scenario.startswith("dd"):
+            calibrate = CalibrateDD(field, index=2)
+        else:
+            calibrate = CalibrateDI(field, index=4)
+
+        if scenario.startswith("dd"):
+            calibrate.combined_h5parms = "combined.test.h5"
+            calibrate.fast_h5parm = "fast.test.h5"
+        if scenario == "dd_with_slowgain":
+            calibrate.slow_h5parm = "slow.test.h5"
+            calibrate.medium1_h5parm = "medium1.test.h5"
+            calibrate.medium2_h5parm = "medium2.test.h5"
+        elif scenario == "di_fulljones":
+            calibrate.collected_h5parm_fulljones = "collected_fulljones.h5"
+
+        # Ignore os.makedirs calls from the base Operation class constructor.
+        mock_makedirs.reset_mock()
+
+        # Act
+        calibrate.finalize()
+
+        # Assert
+        if scenario.startswith("dd"):
+            assert field.h5parm_filename == str(h5parm_path)
+            assert field.fast_phases_h5parm_filename == str(
+                solutions_path / "field-solutions-fast-phase.h5"
+            )
+        if scenario == "dd_with_slowgain":
+            assert field.medium1_phases_h5parm_filename == str(
+                solutions_path / "field-solutions-medium1-phase.h5"
+            )
+            assert field.medium2_phases_h5parm_filename == str(
+                solutions_path / "field-solutions-medium2-phase.h5"
+            )
+            assert field.slow_gains_h5parm_filename == str(
+                solutions_path / "field-solutions-slow-gain.h5"
+            )
+        elif scenario == "di_fulljones":
+            assert field.fulljones_h5parm_filename == str(h5parm_path)
+
+        check_makedirs(mock_makedirs, solutions_path, plots_path)
+
+        # Check removing and copying solutions.
+        mock_remove.assert_any_call(str(h5parm_path))
+
+        if scenario == "dd_with_slowgain":
+            solution_src_dst_list = [
+                ("combined.test.h5", h5parm_path.name),
+                ("slow.test.h5", "field-solutions-slow-gain.h5"),
+                ("medium1.test.h5", "field-solutions-medium1-phase.h5"),
+                ("medium2.test.h5", "field-solutions-medium2-phase.h5"),
+                ("fast.test.h5", "field-solutions-fast-phase.h5"),
+            ]
+        elif scenario == "dd_fast_only":
+            solution_src_dst_list = [
+                ("fast.test.h5", h5parm_path.name),
+                ("fast.test.h5", "field-solutions-fast-phase.h5"),
+            ]
+        elif scenario == "di_fulljones":
+            solution_src_dst_list = [
+                ("collected_fulljones.h5", h5parm_path.name),
+            ]
+
+        for src, dst in solution_src_dst_list:
+            mock_copy.assert_any_call(str(pipelines_path / src), str(solutions_path / dst))
+
+        field.scan_h5parms.assert_called_once()
+
+        if scenario.startswith("dd"):
+            assert field.calibration_diagnostics == [
+                {
+                    "cycle_number": 2,
+                    "solution_flagged_fraction": 0.042,  # See finalize_mocks fixture.
+                }
+            ]
+
+        # Check that the correct plot files were removed and copied.
+        mock_remove.assert_any_call(str(plots_path / "plot2.png"))
+        mock_copy.assert_any_call(str(pipelines_path / "plot1.png"), str(plots_path / "plot1.png"))
+        mock_copy.assert_any_call(str(pipelines_path / "plot2.png"), str(plots_path / "plot2.png"))
+
+        assert mock_remove.call_count == 2  # h5parm_path and plot2.png
+        assert mock_copy.call_count == len(solution_src_dst_list) + 2
+
+        # finalize() should create a .done file (via the base Operation class).
+        assert (pipelines_path / ".done").exists()
