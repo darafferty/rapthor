@@ -107,21 +107,21 @@ class TestCalibrateDD:
     def test_finalize(self, field, tmp_path, finalize_mocks, do_slowgain):
         # Setup working directory
         workdir_path = tmp_path / "working"
-        solutions_path = workdir_path / "solutions" / "calibrate_0"
+        solutions_path = workdir_path / "solutions" / "calibrate_2"
         solutions_path.mkdir(parents=True)
 
         # Create an existing solutions file. finalize() should remove it.
         h5parm_path = solutions_path / "field-solutions.h5"
         h5parm_path.touch()
 
-        pipelines_path = workdir_path / "pipelines" / "calibrate_0"
-        plots_path = workdir_path / "plots" / "calibrate_0"
+        pipelines_path = workdir_path / "pipelines" / "calibrate_2"
+        plots_path = workdir_path / "plots" / "calibrate_2"
         finalize_prepare_plots(pipelines_path, plots_path)
 
         # Setup the object itself
         field.generate_screens = False
         field.do_slowgain_solve = do_slowgain
-        calibrate_dd = CalibrateDD(field, index=0)
+        calibrate_dd = CalibrateDD(field, index=2)
         calibrate_dd.combined_h5parms = "combined.test.h5"
         if do_slowgain:
             calibrate_dd.slow_h5parm = "slow.test.h5"
@@ -165,7 +165,7 @@ class TestCalibrateDD:
 
         field.scan_h5parms.assert_called_once()
         assert field.calibration_diagnostics == [{
-            "cycle_number": 0,
+            "cycle_number": 2,
             "solution_flagged_fraction": 0.042, # See finalize_mocks fixture.
         }]
 
@@ -191,19 +191,19 @@ class TestCalibrateDI:
     def test_finalize(self, field, tmp_path, finalize_mocks):
         # Setup working directory
         workdir_path = tmp_path / "working"
-        solutions_path = workdir_path / "solutions" / "calibrate_di_0"
+        solutions_path = workdir_path / "solutions" / "calibrate_di_4"
         solutions_path.mkdir(parents=True)
 
         # Create an existing fulljones solutions file. finalize() should remove it.
         fulljones_h5parm_path = solutions_path / "fulljones-solutions.h5"
         fulljones_h5parm_path.touch()
 
-        pipelines_path = workdir_path / "pipelines" / "calibrate_di_0"
-        plots_path = workdir_path / "plots" / "calibrate_di_0"
+        pipelines_path = workdir_path / "pipelines" / "calibrate_di_4"
+        plots_path = workdir_path / "plots" / "calibrate_di_4"
         finalize_prepare_plots(pipelines_path, plots_path)
 
         # Setup the object itself
-        calibrate_di = CalibrateDI(field, index=0)
+        calibrate_di = CalibrateDI(field, index=4)
         collected_fulljones_filename = "collected_fulljones.h5"
         calibrate_di.collected_h5parm_fulljones = collected_fulljones_filename
 
