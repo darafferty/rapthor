@@ -37,6 +37,7 @@ def finalize_prepare_plots(pipelines_path, plots_path):
     # Simulate one existing plot in the plots directory. finalize() should remove it.
     plots_path.mkdir(parents=True)
     (plots_path / "plot2.png").touch()
+
 SUPERTERP_STATION_CASES = [
     (
         "HBA",
@@ -57,20 +58,35 @@ SUPERTERP_STATION_CASES = [
 
 
 @pytest.fixture
-def calibrate_dd(field):
-    """
-    Create an instance of the CalibrateDD operation.
-    """
-    return CalibrateDD(field, index=1)
+def calibrate_field(operation_parset, mocker):
+    """Create a mock field object for testing a Calibrate operation."""
+
+    class Field:
+        def __init__(self, parset):
+            self.parset = parset
+            self.scan_h5parms = mocker.MagicMock()
+            self.calibration_diagnostics = []
+
+    return Field(operation_parset)
 
 
-@pytest.fixture
-def calibrate_di(field, index=1):
-    """
-    Create an instance of the CalibrateDI operation.
-    """
-    # return CalibrateDI(field, index=index)
-    return "mock_calibrate_di"
+def check_makedirs(mock_makedirs, *expected_paths):
+    """Helper function to check that makedirs was called with the expected paths."""
+    for path in expected_paths:
+        mock_makedirs.assert_any_call(str(path), exist_ok=True)
+    assert mock_makedirs.call_count == len(expected_paths)
+
+
+def finalize_prepare_plots(pipelines_path, plots_path):
+    """Helper function to prepare the plot files for the finalize() tests."""
+    # Create dummy plot files. finalize() should copy them to the plots directory.
+    pipelines_path.mkdir(parents=True)
+    (pipelines_path / "plot1.png").touch()
+    (pipelines_path / "plot2.png").touch()
+
+    # Simulate one existing plot in the plots directory. finalize() should remove it.
+    plots_path.mkdir(parents=True)
+    (plots_path / "plot2.png").touch()
 
 
 class TestCalibrateDD:
@@ -86,9 +102,15 @@ class TestCalibrateDD:
         # calibrate_dd.get_baselines_core()
         pass
 
-    def test_get_superterp_stations(self, calibrate_dd):
-        # calibrate_dd.get_superterp_stations()
-        pass
+    @pytest.mark.parametrize("antenna,stations,expected", SUPERTERP_STATION_CASES)
+    def test_get_superterp_stations(
+        self, antenna, stations, expected
+    ):
+        calibrate_dd = CalibrateDD(field=None, index=1)
+        calibrate_dd.field.antenna = antenna
+        calibrate_dd.field.stations = stations
+        assert calibrate_dd.get_superterp_stations() == expected
+
 
     CORE_STATION_CASES = [
         (
