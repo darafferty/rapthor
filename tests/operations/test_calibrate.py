@@ -33,7 +33,6 @@ CORE_STATION_CASES = [
     ),
 ]
 
-
 @pytest.fixture
 def calibrate_field(operation_parset, mocker):
     """Create a mock field object for testing a Calibrate operation."""
@@ -66,35 +65,14 @@ def finalize_prepare_plots(pipelines_path, plots_path):
     (plots_path / "plot2.png").touch()
 
 @pytest.fixture
-def calibrate_field(operation_parset, mocker):
-    """Create a mock field object for testing a Calibrate operation."""
+def field(parset):
+    """Create a mock field object for testing."""
 
     class Field:
         def __init__(self, parset):
             self.parset = parset
-            self.scan_h5parms = mocker.MagicMock()
-            self.calibration_diagnostics = []
 
-    return Field(operation_parset)
-
-
-def check_makedirs(mock_makedirs, *expected_paths):
-    """Helper function to check that makedirs was called with the expected paths."""
-    for path in expected_paths:
-        mock_makedirs.assert_any_call(str(path), exist_ok=True)
-    assert mock_makedirs.call_count == len(expected_paths)
-
-
-def finalize_prepare_plots(pipelines_path, plots_path):
-    """Helper function to prepare the plot files for the finalize() tests."""
-    # Create dummy plot files. finalize() should copy them to the plots directory.
-    pipelines_path.mkdir(parents=True)
-    (pipelines_path / "plot1.png").touch()
-    (pipelines_path / "plot2.png").touch()
-
-    # Simulate one existing plot in the plots directory. finalize() should remove it.
-    plots_path.mkdir(parents=True)
-    (plots_path / "plot2.png").touch()
+    return Field(parset)
 
 
 class TestCalibrateDD:
@@ -128,11 +106,7 @@ class TestCalibrateDD:
         calibrate_dd.field.stations = ["DE601HBA", "DE602HBA"]
         assert calibrate_dd.get_core_stations(include_nearest_remote=True) == []
 
-    def test_get_model_image_parameters(self):
-        # calibrate_dd.get_model_image_parameters()
-        pass
-
-    def test_get_model_image_parameters(self):
+    def test_get_model_image_parameters(self, calibrate_dd):
         # calibrate_dd.get_model_image_parameters()
         pass
 
