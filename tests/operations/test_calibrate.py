@@ -80,27 +80,27 @@ def finalize_check_plots(pipelines_path, plots_path, mocks):
 
 
 class TestCalibrateDD:
-    def test_set_parset_parameters(self, calibrate_dd):
+    def test_set_parset_parameters(self):
         # calibrate_dd.set_parset_parameters()
         pass
 
-    def test_set_input_parameters(self, calibrate_dd):
+    def test_set_input_parameters(self):
         # calibrate_dd.set_input_parameters()
         pass
 
-    def test_get_baselines_core(self, calibrate_dd):
+    def test_get_baselines_core(self):
         # calibrate_dd.get_baselines_core()
         pass
 
-    def test_get_superterp_stations(self, calibrate_dd):
+    def test_get_superterp_stations(self):
         # calibrate_dd.get_superterp_stations()
         pass
 
-    def test_get_core_stations(self, calibrate_dd):
+    def test_get_core_stations(self):
         # calibrate_dd.get_core_stations(include_nearest_remote=True)
         pass
 
-    def test_get_model_image_parameters(self, calibrate_dd):
+    def test_get_model_image_parameters(self):
         # calibrate_dd.get_model_image_parameters()
         pass
 
@@ -191,11 +191,11 @@ class TestCalibrateDD:
 
 
 class TestCalibrateDI:
-    def test_set_parset_parameters(self, calibrate_di):
+    def test_set_parset_parameters(self):
         # calibrate_di.set_parset_parameters()
         pass
 
-    def test_set_input_parameters(self, calibrate_di):
+    def test_set_input_parameters(self):
         # calibrate_di.set_input_parameters()
         pass
 
