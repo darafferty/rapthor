@@ -176,6 +176,7 @@ versioning:
   stage: versioning
   extends: .versioning
   script:
+    - export DP3_COMMIT=81865fc6c9bf6b01129f8f66e29c490a7f04f870
     - !reference [.versioning, script]
     - ./Docker/fetch_commit_hashes.sh | tee commits.txt >> versions.env
     # Use hash of commits and CI/CD build files to determine tag of base image
