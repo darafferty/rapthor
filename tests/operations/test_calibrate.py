@@ -165,7 +165,7 @@ class TestCalibrate:
                 ("fast.test.h5", h5parm_filename),
                 ("fast.test.h5", "field-solutions-fast-phase.h5"),
             ]
-        else: # di_fulljones scenario
+        else:  # di_fulljones scenario
             solution_src_dst_list = [
                 ("collected_fulljones.h5", h5parm_filename),
             ]
