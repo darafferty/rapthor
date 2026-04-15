@@ -5,9 +5,12 @@ for this directory.
 
 import configparser
 import shutil
+import tarfile
+import tempfile
 from pathlib import Path
 
 import pytest
+import requests
 
 from rapthor.lib.facet import Facet
 from rapthor.lib.field import Field
@@ -16,6 +19,44 @@ from rapthor.lib.parset import parset_read
 from rapthor.lib.observation import Observation
 
 RESOURCE_DIR = Path(__file__).parent / "resources"
+TEST_MS_ARCHIVE_URL = "https://support.astron.nl/software/ci_data/rapthor/tDDECal.in_MS.tgz"
+TEST_MS_ARCHIVE_DIRNAME = "tDDECal.MS"
+TEST_MS_DIRNAME = "test.ms"
+
+
+def _download_test_ms(destination):
+    response = requests.get(TEST_MS_ARCHIVE_URL, timeout=300)
+    response.raise_for_status()
+
+    with tempfile.TemporaryDirectory(dir=destination.parent) as tmp_dir_name:
+        tmp_dir = Path(tmp_dir_name)
+        archive_path = tmp_dir / "test.ms.tgz"
+        archive_path.write_bytes(response.content)
+
+        with tarfile.open(archive_path, "r:gz") as archive:
+            archive.extractall(tmp_dir)
+
+        extracted_dir = tmp_dir / TEST_MS_ARCHIVE_DIRNAME
+        if not extracted_dir.exists():
+            raise FileNotFoundError(
+                f"Downloaded archive did not contain {TEST_MS_ARCHIVE_DIRNAME}"
+            )
+
+        try:
+            shutil.move(extracted_dir.as_posix(), destination.as_posix())
+        except shutil.Error:
+            if not destination.exists():
+                raise
+
+
+def ensure_test_ms(resource_dir):
+    resource_dir = Path(resource_dir)
+    destination = resource_dir / TEST_MS_DIRNAME
+    if destination.exists():
+        return destination
+
+    _download_test_ms(destination)
+    return destination
 
 def pytest_configure(config):
     config.resource_dir = RESOURCE_DIR
@@ -27,7 +68,7 @@ def test_ms(tmp_path):
     Fixture to provide a copy of the test MS in the resources directory.
     Yield the POSIX path to the copy of the MS.
     """
-    shutil.copytree(RESOURCE_DIR / "test.ms", tmp_path/ "test.ms")
+    shutil.copytree(ensure_test_ms(RESOURCE_DIR), tmp_path / "test.ms")
     yield (tmp_path / "test.ms").as_posix()
 
 

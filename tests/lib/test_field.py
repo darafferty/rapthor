@@ -1,34 +1,19 @@
 import os
 import unittest
+from pathlib import Path
 
-import requests
 from rapthor.lib.field import Field
 from rapthor.lib.parset import parset_read
+from tests.conftest import ensure_test_ms
 
 
 class TestField(unittest.TestCase):
-    @classmethod
-    def downloadms(cls, filename):
-        url = 'https://support.astron.nl/software/ci_data/rapthor/tDDECal.in_MS.tgz'
-        r = requests.get(url)
-        with open('downloaded.tgz', 'wb') as f:
-            f.write(r.content)
-
-        os.system('tar xvf downloaded.tgz')
-        os.system('rm downloaded.tgz')
-        os.system('mv tDDECal.MS ' + filename)
-
     @classmethod
     def setUpClass(cls):
         # Change directory to the tests directory (one level up from this file),
         # because that's where these tests need to be run from.
         os.chdir(os.path.join(os.path.dirname(__file__), ".."))
-        testmsname = 'resources/test.ms'
-        if (not os.path.exists(testmsname)):
-            print('downloading ms file')
-            cls.downloadms(testmsname)
-        else:
-            print('ms file found')
+        ensure_test_ms(Path("resources"))
 
     def setUp(self):
         # Note: parset_read() creates various directories. tearDown() removes them after each test.
