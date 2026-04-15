@@ -5,7 +5,7 @@ Test cases for the `rapthor.operations.calibrate` module.
 from pathlib import Path
 
 import pytest
-
+from unittest.mock import MagicMock, patch
 import rapthor
 from rapthor.lib.operation import DIR as OPERATION_DIR
 from rapthor.operations.calibrate import CalibrateDD, CalibrateDI
@@ -52,9 +52,151 @@ def finalize_prepare_plots(pipelines_path, plots_path):
 
 
 class TestCalibrateDD:
-    def test_set_input_parameters(self):
-        # calibrate_dd.set_input_parameters()
+    def test_set_parset_parameters(self):
+        # calibrate_dd.set_parset_parameters()
         pass
+
+#--------------------test set input parameters--------------------
+    
+    def test_set_input_parameters_dd_all_disabled(self, field):
+        """Tests the method where all optional features are disabled"""
+
+        # --- Minimal valid configuration ---
+        field.apply_diagonal_solutions = False
+        field.use_image_based_predict = False
+        field.do_slowgain_solve = False
+        field.apply_normalizations = False
+
+        field.calibrate_bda_timebase = 0
+        field.calibrate_bda_frequencybase = 0
+
+        field.fast_phases_h5parm_filename = None
+        field.medium1_phases_h5parm_filename = None
+        field.medium2_phases_h5parm_filename = None
+        field.slow_gains_h5parm_filename = None
+
+        # --- Create object ---
+        calibrate_dd = CalibrateDD(field=field, index=1)
+
+        # --- Execute ---
+        calibrate_dd.set_input_parameters()
+
+        # --- Basic structure checks ---
+        assert isinstance(calibrate_dd.input_parms, dict)
+        assert len(calibrate_dd.input_parms) > 0
+
+        # --- Key invariants ---
+        required_keys = [
+            "timechunk_filename",
+            "data_colname",
+            "dp3_steps",
+            "solution_combine_mode",
+            "fast_antennaconstraint",
+            "collected_fast_h5parm",
+            "collected_slow_h5parm",
+        ]
+
+        for key in required_keys:
+            assert key in calibrate_dd.input_parms
+
+        # --- Stable value checks ---
+        assert calibrate_dd.input_parms["data_colname"] == field.data_colname
+        assert calibrate_dd.input_parms["solution_combine_mode"] == "p1p2a2_scalar"
+
+        # BDA disabled + slowgain disabled = only solve1 and solve2 should be present
+        dp3 = calibrate_dd.input_parms["dp3_steps"]
+        assert "solve1" in dp3
+        assert "solve2" in dp3
+        assert "solve3" not in dp3
+        assert "solve4" not in dp3
+        assert "avg" not in dp3
+        assert "null" not in dp3
+
+        # Antenna constraint sanity check
+        assert "fast_antennaconstraint" in calibrate_dd.input_parms
+        assert "CS002HBA0" in calibrate_dd.input_parms["fast_antennaconstraint"]
+
+        # Normalization disabled
+        assert calibrate_dd.input_parms["normalize_h5parm"] is None
+        assert calibrate_dd.input_parms["ddecal_applycal_steps"] is None
+
+        # No initial solutions
+        assert calibrate_dd.input_parms["fast_initialsolutions_h5parm"] is None
+        assert calibrate_dd.input_parms["slow_initialsolutions_h5parm"] is None
+
+    def test_set_input_parameters_dd_all_enabled(self, field):
+        """Tests the method where all optional features are enabled"""
+
+        # Enable all major features
+        field.apply_diagonal_solutions = True
+        field.use_image_based_predict = True
+        field.do_slowgain_solve = True
+        field.apply_normalizations = True
+
+        # Enable BDA
+        
+        field.calibrate_bda_timebase = 1
+        field.calibrate_bda_frequencybase = 1
+        # bda_enabled = True if field.calibrate_bda_timebase > 0 or field.calibrate_bda_frequencybase > 0 else False
+
+        # Ensure core stations exist
+        field.fast_phases_h5parm_filename = "fast.h5"
+        field.medium1_phases_h5parm_filename = "medium1.h5"
+        field.medium2_phases_h5parm_filename = "medium2.h5"
+        field.slow_gains_h5parm_filename = "slow.h5"
+
+
+        calibrate_dd = CalibrateDD(field=field, index=1)
+        calibrate_dd.set_input_parameters()
+
+        # Basic structure
+        assert isinstance(calibrate_dd.input_parms, dict)
+        assert len(calibrate_dd.input_parms) > 0
+
+        # Combine mode branch
+        assert calibrate_dd.input_parms["solution_combine_mode"] == "p1p2a2_diagonal"
+
+        # DP3 steps: image-based predict should prepend steps
+        dp3 = calibrate_dd.input_parms["dp3_steps"]
+
+        assert "predict" in dp3
+        assert "applybeam" in dp3
+
+        # BDA enabled + slowgain enabled = all solve steps should be present
+        assert "avg" in dp3
+        assert "solve1" in dp3
+        assert "solve2" in dp3
+        assert "solve3" in dp3
+        assert "solve4" in dp3
+
+        # Normalization enabled
+        assert calibrate_dd.input_parms["normalize_h5parm"] is not None
+        assert calibrate_dd.input_parms["ddecal_applycal_steps"] == "[normalization]"
+        assert calibrate_dd.input_parms["applycal_steps"] == "[normalization]"
+
+        # Initial solutions loaded (all present)
+        assert calibrate_dd.input_parms["fast_initialsolutions_h5parm"] is not None
+        assert calibrate_dd.input_parms["medium1_initialsolutions_h5parm"] is not None
+        assert calibrate_dd.input_parms["medium2_initialsolutions_h5parm"] is not None
+        assert calibrate_dd.input_parms["slow_initialsolutions_h5parm"] is not None
+
+        # Antenna constraints with core stations
+        assert "fast_antennaconstraint" in calibrate_dd.input_parms
+        assert "medium_antennaconstraint" in calibrate_dd.input_parms
+        assert "CS002HBA0" in calibrate_dd.input_parms["fast_antennaconstraint"]
+
+        # BDA fields reflected
+        assert calibrate_dd.input_parms["bda_timebase"] == 1
+        assert calibrate_dd.input_parms["bda_frequencybase"] == 1
+
+        # File outputs exist
+        assert len(calibrate_dd.input_parms["output_fast_h5parm"]) == field.ntimechunks
+        assert len(calibrate_dd.input_parms["output_slow_h5parm"]) == field.ntimechunks
+
+
+# TODO: Need to test BDA on, slowgain off, and vice versa
+
+#--------------------test set input parameters--------------------
 
     BASELINES_CORE_CASES = [
         (
@@ -187,6 +329,10 @@ class TestCalibrateDD:
             field.get_source_distances.assert_not_called()
             assert size == [width_ra_pixels, width_dec_pixels]
         assert cellsize == cellsize_degrees
+
+    def test_finalize(self, calibrate_dd):
+        # calibrate_dd.finalize()
+        pass
 
 
 class TestCalibrateDI:
