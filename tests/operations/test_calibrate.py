@@ -8,30 +8,8 @@ from rapthor.operations.calibrate import CalibrateDD, CalibrateDI
 
 
 @pytest.fixture
-def parset(tmp_path):
-    """Create a mock parset, which only has keys for calibration."""
-    return {
-        "dir_working": str(tmp_path / "working"),
-        # Cluster-specific parameters are needed for the base Operation class.
-        "cluster_specific": {
-            "cwl_runner": "mock_cwl_runner",
-            "debug_workflow": False,
-            "keep_temporary_files": False,
-            "max_nodes": 1,
-            "batch_system": "mock_batch_system",
-            "cpus_per_task": 1,
-            "mem_per_node_gb": 1,
-            "dir_local": str(tmp_path / "scratch"),
-            "local_scratch_dir": str(tmp_path / "local_scratch"),
-            "global_scratch_dir": str(tmp_path / "global_scratch"),
-            "use_container": False,
-        },
-    }
-
-
-@pytest.fixture
-def field(parset, mocker):
-    """Create a mock field object for testing."""
+def calibrate_field(operation_parset, mocker):
+    """Create a mock field object for testing a Calibrate operation."""
 
     class Field:
         def __init__(self, parset):
@@ -39,7 +17,7 @@ def field(parset, mocker):
             self.scan_h5parms = mocker.MagicMock()
             self.calibration_diagnostics = []
 
-    return Field(parset)
+    return Field(operation_parset)
 
 
 def check_makedirs(mock_makedirs, *expected_paths):
@@ -99,7 +77,8 @@ class TestCalibrateDI:
 
 class TestCalibrate:
     @pytest.mark.parametrize("scenario", ["dd_fast_only", "dd_with_slowgain", "di_fulljones"])
-    def test_finalize(self, mocker, field, tmp_path, scenario):
+    def test_finalize(self, mocker, calibrate_field, tmp_path, scenario):
+        field = calibrate_field
         is_dd = scenario.startswith("dd")
         with_slow = scenario == "dd_with_slowgain"
 
