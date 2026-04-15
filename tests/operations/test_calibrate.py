@@ -42,17 +42,6 @@ def field(parset, mocker):
     return Field(parset)
 
 
-@pytest.fixture
-def finalize_mocks(mocker):
-    """Setup mocks for the finalize() method tests."""
-    mocker.patch("rapthor.lib.miscellaneous.get_flagged_solution_fraction", return_value=0.042)
-    return {
-        "makedirs": mocker.patch("os.makedirs"),
-        "remove": mocker.patch("os.remove"),
-        "copy": mocker.patch("shutil.copy"),
-    }
-
-
 def check_makedirs(mock_makedirs, *expected_paths):
     """Helper function to check that makedirs was called with the expected paths."""
     for path in expected_paths:
@@ -70,13 +59,6 @@ def finalize_prepare_plots(pipelines_path, plots_path):
     # Simulate one existing plot in the plots directory. finalize() should remove it.
     plots_path.mkdir(parents=True)
     (plots_path / "plot2.png").touch()
-
-
-def finalize_check_plots(pipelines_path, plots_path, mocks):
-    """Helper function to check that the correct plot files were removed and copied."""
-    mocks["remove"].assert_any_call(str(plots_path / "plot2.png"))
-    mocks["copy"].assert_any_call(str(pipelines_path / "plot1.png"), str(plots_path / "plot1.png"))
-    mocks["copy"].assert_any_call(str(pipelines_path / "plot2.png"), str(plots_path / "plot2.png"))
 
 
 class TestCalibrateDD:
@@ -104,91 +86,6 @@ class TestCalibrateDD:
         # calibrate_dd.get_model_image_parameters()
         pass
 
-    @pytest.mark.parametrize("do_slowgain", [True, False])
-    def test_finalize(self, field, tmp_path, finalize_mocks, do_slowgain):
-        # Setup working directory
-        workdir_path = tmp_path / "working"
-        solutions_path = workdir_path / "solutions" / "calibrate_2"
-        solutions_path.mkdir(parents=True)
-
-        # Create an existing solutions file. finalize() should remove it.
-        h5parm_path = solutions_path / "field-solutions.h5"
-        h5parm_path.touch()
-
-        pipelines_path = workdir_path / "pipelines" / "calibrate_2"
-        plots_path = workdir_path / "plots" / "calibrate_2"
-        finalize_prepare_plots(pipelines_path, plots_path)
-
-        # Setup the object itself
-        field.generate_screens = False
-        field.do_slowgain_solve = do_slowgain
-        calibrate_dd = CalibrateDD(field, index=2)
-        calibrate_dd.combined_h5parms = "combined.test.h5"
-        if do_slowgain:
-            calibrate_dd.slow_h5parm = "slow.test.h5"
-            calibrate_dd.medium1_h5parm = "medium1.test.h5"
-            calibrate_dd.medium2_h5parm = "medium2.test.h5"
-        calibrate_dd.fast_h5parm = "fast.test.h5"
-
-        # Ignore os.makedirs calls from the base Operation class constructor.
-        finalize_mocks["makedirs"].reset_mock()
-
-        calibrate_dd.finalize()
-
-        assert field.h5parm_filename == str(h5parm_path)
-        assert field.fast_phases_h5parm_filename == str(
-            solutions_path / "field-solutions-fast-phase.h5"
-        )
-        assert field.medium1_phases_h5parm_filename == str(
-            solutions_path / "field-solutions-medium1-phase.h5"
-        )
-        assert field.medium2_phases_h5parm_filename == str(
-            solutions_path / "field-solutions-medium2-phase.h5"
-        )
-        assert field.slow_gains_h5parm_filename == str(
-            solutions_path / "field-solutions-slow-gain.h5"
-        )
-
-        check_makedirs(finalize_mocks["makedirs"], solutions_path, plots_path)
-
-        # Check removing and copying solutions.
-        finalize_mocks["remove"].assert_any_call(str(h5parm_path))
-        if do_slowgain:
-            solution_src_dst_list = [
-                ("combined.test.h5", str(h5parm_path)),
-                ("slow.test.h5", "field-solutions-slow-gain.h5"),
-                ("medium1.test.h5", "field-solutions-medium1-phase.h5"),
-                ("medium2.test.h5", "field-solutions-medium2-phase.h5"),
-                ("fast.test.h5", "field-solutions-fast-phase.h5"),
-            ]
-        else:
-            solution_src_dst_list = [
-                ("fast.test.h5", str(h5parm_path)),
-                ("fast.test.h5", "field-solutions-fast-phase.h5"),
-            ]
-
-        for src, dst in solution_src_dst_list:
-            finalize_mocks["copy"].assert_any_call(
-                str(pipelines_path / src), str(solutions_path / dst)
-            )
-
-        field.scan_h5parms.assert_called_once()
-        assert field.calibration_diagnostics == [
-            {
-                "cycle_number": 2,
-                "solution_flagged_fraction": 0.042,  # See finalize_mocks fixture.
-            }
-        ]
-
-        finalize_check_plots(pipelines_path, plots_path, finalize_mocks)
-
-        # For the plots, there is 1 remove and 2 copies. See finalize_check_plots.
-        assert finalize_mocks["remove"].call_count == 1 + 1
-        assert finalize_mocks["copy"].call_count == len(solution_src_dst_list) + 2
-
-        # finalize() should create a .done file (via the base Operation class).
-        assert (pipelines_path / ".done").exists()
-
 
 class TestCalibrateDI:
     def test_set_parset_parameters(self):
@@ -198,51 +95,6 @@ class TestCalibrateDI:
     def test_set_input_parameters(self):
         # calibrate_di.set_input_parameters()
         pass
-
-    def test_finalize(self, field, tmp_path, finalize_mocks):
-        # Setup working directory
-        workdir_path = tmp_path / "working"
-        solutions_path = workdir_path / "solutions" / "calibrate_di_4"
-        solutions_path.mkdir(parents=True)
-
-        # Create an existing fulljones solutions file. finalize() should remove it.
-        fulljones_h5parm_path = solutions_path / "fulljones-solutions.h5"
-        fulljones_h5parm_path.touch()
-
-        pipelines_path = workdir_path / "pipelines" / "calibrate_di_4"
-        plots_path = workdir_path / "plots" / "calibrate_di_4"
-        finalize_prepare_plots(pipelines_path, plots_path)
-
-        # Setup the object itself
-        calibrate_di = CalibrateDI(field, index=4)
-        collected_fulljones_filename = "collected_fulljones.h5"
-        calibrate_di.collected_h5parm_fulljones = collected_fulljones_filename
-
-        # Ignore os.makedirs calls from the base Operation class constructor.
-        finalize_mocks["makedirs"].reset_mock()
-
-        # Act
-        calibrate_di.finalize()
-
-        # Assert
-        assert field.fulljones_h5parm_filename == str(fulljones_h5parm_path)
-        field.scan_h5parms.assert_called_once()
-
-        check_makedirs(finalize_mocks["makedirs"], solutions_path, plots_path)
-
-        # Check removing and copying solutions.
-        finalize_mocks["remove"].assert_any_call(str(fulljones_h5parm_path))
-        finalize_mocks["copy"].assert_any_call(
-            str(pipelines_path / collected_fulljones_filename), str(fulljones_h5parm_path)
-        )
-
-        finalize_check_plots(pipelines_path, plots_path, finalize_mocks)
-
-        assert finalize_mocks["remove"].call_count == 2
-        assert finalize_mocks["copy"].call_count == 3
-
-        # finalize() should create a .done file (via the base Operation class).
-        assert (pipelines_path / ".done").exists()
 
 
 class TestCalibrate:
@@ -334,7 +186,7 @@ class TestCalibrate:
                 ("fast.test.h5", h5parm_filename),
                 ("fast.test.h5", "field-solutions-fast-phase.h5"),
             ]
-        else:
+        else: # di_fulljones scenario
             solution_src_dst_list = [
                 ("collected_fulljones.h5", h5parm_filename),
             ]
@@ -348,7 +200,7 @@ class TestCalibrate:
             assert field.calibration_diagnostics == [
                 {
                     "cycle_number": 2,
-                    "solution_flagged_fraction": 0.042,  # See finalize_mocks fixture.
+                    "solution_flagged_fraction": flagged_fraction,
                 }
             ]
 
