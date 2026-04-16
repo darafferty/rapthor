@@ -38,23 +38,6 @@ def finalize_prepare_plots(pipelines_path, plots_path):
     plots_path.mkdir(parents=True)
     (plots_path / "plot2.png").touch()
 
-SUPERTERP_STATION_CASES = [
-    (
-        "HBA",
-        ["RS106HBA0", "DE601HBA"],
-        [],
-    ),
-    (
-        "HBA",
-        ["CS003HBA0", "RS106HBA0", "CS007HBA1", "DE601HBA"],
-        ["CS003HBA0", "CS007HBA1"],
-    ),
-    (
-        "LBA",
-        ["RS205LBA", "CS004LBA", "CS007LBA", "DE601LBA"],
-        ["CS004LBA", "CS007LBA"],
-    ),
-]
 
 class TestCalibrateDD:
     def test_set_parset_parameters(self):
@@ -69,13 +52,29 @@ class TestCalibrateDD:
         # calibrate_dd.get_baselines_core()
         pass
 
+    SUPERTERP_STATION_CASES = [
+        (
+            "HBA",
+            ["RS106HBA0", "DE601HBA"],
+            [],
+        ),
+        (
+            "HBA",
+            ["CS003HBA0", "RS106HBA0", "CS007HBA1", "DE601HBA"],
+            ["CS003HBA0", "CS007HBA1"],
+        ),
+        (
+            "LBA",
+            ["RS205LBA", "CS004LBA", "CS007LBA", "DE601LBA"],
+            ["CS004LBA", "CS007LBA"],
+        ),
+    ]
+
     @pytest.mark.parametrize("antenna,stations,expected", SUPERTERP_STATION_CASES)
-    def test_get_superterp_stations(
-        self, field, antenna, stations, expected
-    ):
-        calibrate_dd = CalibrateDD(field=field, index=1)
-        calibrate_dd.field.antenna = antenna
-        calibrate_dd.field.stations = stations
+    def test_get_superterp_stations(self, calibrate_field, antenna, stations, expected):
+        calibrate_field.antenna = antenna
+        calibrate_field.stations = stations
+        calibrate_dd = CalibrateDD(field=calibrate_field, index=1)
         assert calibrate_dd.get_superterp_stations() == expected
 
     CORE_STATION_CASES = [
@@ -123,6 +122,7 @@ class TestCalibrateDD:
         # calibrate_dd.get_model_image_parameters()
         pass
 
+
 class TestCalibrateDI:
     def test_set_parset_parameters(self):
         # calibrate_di.set_parset_parameters()
@@ -131,6 +131,7 @@ class TestCalibrateDI:
     def test_set_input_parameters(self):
         # calibrate_di.set_input_parameters()
         pass
+
 
 class TestCalibrate:
     @pytest.mark.parametrize("scenario", ["dd_fast_only", "dd_with_slowgain", "di_fulljones"])
