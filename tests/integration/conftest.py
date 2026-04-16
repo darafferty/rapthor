@@ -5,6 +5,7 @@ import tempfile
 from pathlib import Path
 
 import pytest
+from tests.conftest import ensure_test_ms
 
 REPO_ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 RESOURCES_DIR = REPO_ROOT_DIR / "tests" / "resources"
@@ -48,7 +49,7 @@ def generated_parset_path(request, tmp_path):
         input_skymodel_path = REPO_ROOT_DIR / input_skymodel_path
     if apparent_skymodel_path:
         apparent_skymodel_path = REPO_ROOT_DIR / apparent_skymodel_path
-    input_ms_path = RESOURCES_DIR / "test.ms"
+    input_ms_path = ensure_test_ms(RESOURCES_DIR)
 
     # Keep runtime paths short to avoid AF_UNIX socket path length limits
     # in multiprocessing-based tooling (e.g. PyBDSF).
