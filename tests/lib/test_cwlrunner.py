@@ -140,8 +140,7 @@ class Field:
         self.average_visibilities = True
         self.photometry_skymodel = None
         self.astrometry_skymodel = None
-        self.normalization_skymodels = None
-        self.normalization_reference_frequencies = None
+        self.normalization_skymodel = None
 
     def get_calibration_radius(self):
         return 5.0
