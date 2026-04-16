@@ -3,7 +3,6 @@
 import configparser
 import pytest
 import subprocess
-import logging
 
 
 def update_parset_path(parset_path, param_dict):
