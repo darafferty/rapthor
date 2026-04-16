@@ -45,18 +45,18 @@ def test_rapthor_help(help_option):
     [
         (
             "tests/resources/integration_template.parset",
-            "tests/integration/strategies/single_loop.py",
             "tests/resources/integration_true_sky.txt",
             "tests/resources/integration_apparent_sky.txt",
         )
     ],
     indirect=True,
 )
-def test_rapthor_run_single_loop(generated_parset_path):
+def test_rapthor_run_single_loop(generated_parset_path, single_loop_strategy_path):
     """Test a single self-calibration loop end to end."""
+
     updated_parset_path = update_parset_path(
         generated_parset_path,
-        {"allow_internet_access": "False"},
+        {"allow_internet_access": "False", "strategy": str(single_loop_strategy_path)},
     )
 
     command = ["rapthor", str(updated_parset_path)]
