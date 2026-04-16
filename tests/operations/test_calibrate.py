@@ -2,8 +2,12 @@
 Test cases for the `rapthor.operations.calibrate` module.
 """
 
+from pathlib import Path
+
 import pytest
 
+import rapthor
+from rapthor.lib.operation import DIR as OPERATION_DIR
 from rapthor.operations.calibrate import CalibrateDD, CalibrateDI
 
 
@@ -40,10 +44,6 @@ def finalize_prepare_plots(pipelines_path, plots_path):
 
 
 class TestCalibrateDD:
-    def test_set_parset_parameters(self):
-        # calibrate_dd.set_parset_parameters()
-        pass
-
     def test_set_input_parameters(self):
         # calibrate_dd.set_input_parameters()
         pass
@@ -142,16 +142,55 @@ class TestCalibrateDD:
 
 
 class TestCalibrateDI:
-    def test_set_parset_parameters(self):
-        # calibrate_di.set_parset_parameters()
-        pass
-
     def test_set_input_parameters(self):
         # calibrate_di.set_input_parameters()
         pass
 
 
 class TestCalibrate:
+    @pytest.mark.parametrize(
+        "scenario, batch_system",
+        [
+            ("dd_fast_only", "slurm"),
+            ("dd_with_slowgain", "some_other_batch_system"),
+            ("di_fulljones", "slurm"),
+            ("di_fulljones", "some_other_batch_system"),
+        ],
+    )
+    def test_set_parset_parameters(self, calibrate_field, scenario, batch_system):
+        is_dd = scenario.startswith("dd")
+        with_slow = scenario == "dd_with_slowgain"
+        max_cores = 42
+
+        # Setup field object
+        calibrate_field.generate_screens = False
+        calibrate_field.use_image_based_predict = True
+        calibrate_field.do_slowgain_solve = with_slow
+        calibrate_field.parset["cluster_specific"]["batch_system"] = batch_system
+        calibrate_field.parset["cluster_specific"]["max_cores"] = max_cores
+
+        # Setup calibrate object
+        calibrate = (
+            CalibrateDD(calibrate_field, index=1)
+            if is_dd
+            else CalibrateDI(calibrate_field, index=2)
+        )
+
+        # Act
+        calibrate.set_parset_parameters()
+
+        # Assert
+        rapthor_pipeline_path = Path(rapthor.__file__).parent / "pipeline"
+        assert calibrate.parset_parms["rapthor_pipeline_dir"] == str(rapthor_pipeline_path)
+
+        expected_max_cores = None if batch_system == "slurm" else max_cores
+        assert calibrate.parset_parms["max_cores"] == expected_max_cores
+
+        if is_dd:  # CalibrateDD sets some extra parameters.
+            assert calibrate.parset_parms["use_image_based_predict"] is True
+            assert calibrate.parset_parms["generate_screens"] is False
+            assert calibrate.parset_parms["do_slowgain_solve"] is with_slow
+
     @pytest.mark.parametrize("scenario", ["dd_fast_only", "dd_with_slowgain", "di_fulljones"])
     def test_finalize(self, mocker, calibrate_field, tmp_path, scenario):
         field = calibrate_field
