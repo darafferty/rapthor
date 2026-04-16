@@ -6,6 +6,7 @@ import pytest
 
 from rapthor.operations.calibrate import CalibrateDD, CalibrateDI
 
+
 @pytest.fixture
 def calibrate_field(operation_parset, mocker):
     """Create a mock field object for testing a Calibrate operation."""
@@ -17,6 +18,7 @@ def calibrate_field(operation_parset, mocker):
             self.calibration_diagnostics = []
 
     return Field(operation_parset)
+
 
 def check_makedirs(mock_makedirs, *expected_paths):
     """Helper function to check that makedirs was called with the expected paths."""
@@ -35,6 +37,7 @@ def finalize_prepare_plots(pipelines_path, plots_path):
     # Simulate one existing plot in the plots directory. finalize() should remove it.
     plots_path.mkdir(parents=True)
     (plots_path / "plot2.png").touch()
+
 
 class TestCalibrateDD:
     def test_set_parset_parameters(self):
@@ -78,21 +81,21 @@ class TestCalibrateDD:
             ["RS205LBA", "CS003LBA", "CS999LBA"],
             ["CS003LBA"],
         ),
+        (
+            "HBA",
+            True,
+            ["DE601HBA", "DE602HBA"],
+            [],
+        ),
     ]
 
     @pytest.mark.parametrize("antenna,include_remote,stations,expected", CORE_STATION_CASES)
     def test_get_core_stations(self, field, antenna, include_remote, stations, expected):
         field.antenna = antenna
         field.stations = stations
-        calibrate_dd = CalibrateDD(field=field, index=1) 
+        calibrate_dd = CalibrateDD(field=field, index=1)
         result = calibrate_dd.get_core_stations(include_nearest_remote=include_remote)
         assert result == expected
-
-    def test_get_core_stations_returns_empty_if_no_core_matches(self, field):
-        field.antenna = "HBA"
-        field.stations = ["DE601HBA", "DE602HBA"]
-        calibrate_dd = CalibrateDD(field=field, index=1)
-        assert calibrate_dd.get_core_stations(include_nearest_remote=True) == []
 
     def test_get_model_image_parameters(self):
         # calibrate_dd.get_model_image_parameters()
