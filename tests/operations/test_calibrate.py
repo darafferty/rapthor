@@ -90,10 +90,10 @@ class TestCalibrateDD:
     ]
 
     @pytest.mark.parametrize("antenna,include_remote,stations,expected", CORE_STATION_CASES)
-    def test_get_core_stations(self, field, antenna, include_remote, stations, expected):
-        field.antenna = antenna
-        field.stations = stations
-        calibrate_dd = CalibrateDD(field=field, index=1)
+    def test_get_core_stations(self, calibrate_field, antenna, include_remote, stations, expected):
+        calibrate_field.antenna = antenna
+        calibrate_field.stations = stations
+        calibrate_dd = CalibrateDD(field=calibrate_field, index=1)
         result = calibrate_dd.get_core_stations(include_nearest_remote=include_remote)
         assert result == expected
 
