@@ -6,6 +6,7 @@ import pytest
 
 from rapthor.operations.calibrate import CalibrateDD, CalibrateDI
 
+
 @pytest.fixture
 def calibrate_field(operation_parset, mocker):
     """Create a mock field object for testing a Calibrate operation."""
@@ -59,9 +60,13 @@ class TestCalibrateDD:
         # calibrate_dd.get_core_stations(include_nearest_remote=True)
         pass
 
-    def test_get_model_image_parameters(self, tmp_path, calibrate_field):
+    @pytest.mark.parametrize("cycle", [1, 2])
+    @pytest.mark.parametrize("have_full_field_sector", [True, False])
+    def test_get_model_image_parameters(
+        self, tmp_path, calibrate_field, mocker, cycle, have_full_field_sector
+    ):
         ref_frequency = 142000000.0
-        bandwidth = 1e6 # hardcoded value in Rapthor.
+        bandwidth = 1e6  # hardcoded value in Rapthor.
         center_ra = 42.0
         center_dec = -42.0
         cellsize_arcsec = 1.8
@@ -70,26 +75,55 @@ class TestCalibrateDD:
         width_dec_pixels = 4800
         width_ra_degrees = cellsize_degrees * width_ra_pixels
         width_dec_degrees = cellsize_degrees * width_dec_pixels
+        source_name = "src"
+        skymodel_ra = 4.0
+        skymodel_dec = 2.0
 
-        # Create a dummy skymodel. Only the reference frequency is relevant for this test.
+        # Create a dummy skymodel with a single source.
         skymodel_path = tmp_path / "test_skymodel.txt"
         skymodel_path.write_text(
             "FORMAT = Name, Type, Ra, Dec, I, ReferenceFrequency\n"
-            f"src, POINT, 13:42:42, -24.24.42.42, 0.042, {ref_frequency}\n"
+            f"{source_name}, POINT, {skymodel_ra}, {skymodel_dec}, 0.042, {ref_frequency}\n"
         )
+
+        # Setup the field for the test. Only set the attributes required for the test scenario.
         field = calibrate_field
         field.calibration_skymodel_file = str(skymodel_path)
-        field.parset["imaging_specific"] = { "cellsize_arcsec": cellsize_arcsec }
-        field.sector_bounds_mid_ra = center_ra
-        field.sector_bounds_mid_dec = center_dec
-        field.sector_bounds_width_ra = width_ra_degrees
-        field.sector_bounds_width_dec = width_dec_degrees
+        if cycle == 1 and have_full_field_sector:
+            field.full_field_sector = mocker.MagicMock()
+            field.full_field_sector.cellsize_deg = cellsize_degrees
+            field.full_field_sector.imsize = [width_ra_pixels, width_dec_pixels]
+        else:
+            field.parset["imaging_specific"] = {"cellsize_arcsec": cellsize_arcsec}
 
-        calibrate_dd = CalibrateDD(field, index=2)
-        frequency_bandwidth, center_coords, size, cellsize = calibrate_dd.get_model_image_parameters()
-        assert frequency_bandwidth == [ ref_frequency, bandwidth ]
+        if cycle == 1:
+            field.ra = center_ra
+            field.dec = center_dec
+            field.get_source_distances = mocker.MagicMock(
+                return_value=("foo", [width_ra_degrees, width_dec_degrees])
+            )
+        else:
+            field.sector_bounds_mid_ra = center_ra
+            field.sector_bounds_mid_dec = center_dec
+            field.sector_bounds_width_ra = width_ra_degrees
+            field.sector_bounds_width_dec = width_dec_degrees
+
+        # Act
+        calibrate_dd = CalibrateDD(field, index=cycle)
+        frequency_bandwidth, center_coords, size, cellsize = (
+            calibrate_dd.get_model_image_parameters()
+        )
+
+        # Assert. In this test, all scenarios yield equal values, except for the size.
+        assert frequency_bandwidth == [ref_frequency, bandwidth]
         assert center_coords == ("2:48:00.000000", "-42.00.00.000000")
-        assert size == [width_ra_pixels, width_dec_pixels]
+        if cycle == 1 and not have_full_field_sector:
+            field.get_source_distances.assert_called_once_with(
+                {source_name: [skymodel_ra, skymodel_dec]}
+            )
+            assert size == [width_dec_pixels * 2, width_dec_pixels * 2]
+        else:
+            assert size == [width_ra_pixels, width_dec_pixels]
         assert cellsize == cellsize_degrees
 
 
