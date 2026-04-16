@@ -587,6 +587,34 @@ class TestImageNormalize:
         field.parset["imaging_specific"]["save_filtered_model_image"] = True
         _prepare_field_for_normalize_image(field)
 
+    def test_normalization_skymodel(self, field):
+        """Test to check that the paths to the normalization sky models are set"""
+        field.normalization_skymodel = "path/to/normalization_skymodel.txt"
+        _prepare_field_for_normalize_image(field)
+        image_norm = _initialize_operation(ImageNormalize(field, index=1))
+
+        assert (
+            image_norm.input_parms["normalization_skymodel"]["path"]
+            == "path/to/normalization_skymodel.txt"
+        )
+
+    @pytest.mark.parametrize("allow_internet_access", [True, False])
+    def test_allow_internet_access(
+        self, field, allow_internet_access, monkeypatch, expected_image_output
+    ):
+        """Test to check that the allow_internet_access flag is set for ImageNormalize"""
+        field.parset["cluster_specific"]["allow_internet_access"] = allow_internet_access
+        _prepare_field_for_normalize_image(field)
+        image_norm = _initialize_operation(ImageNormalize(field, index=1))
+
+        assert image_norm.input_parms["allow_internet_access"] is allow_internet_access
+        assert image_norm.parset_parms["allow_internet_access"] is allow_internet_access
+        assert image_norm.allow_internet_access is allow_internet_access
+
+        _mock_cwl_execute(monkeypatch, expected_image_output)
+        image_norm.run()
+        assert image_norm.is_done()
+
 
 def test_report_sector_diagnostics(sector_name=None, diagnostics_dict=None, log=None):
     # report_sector_diagnostics(sector_name, diagnostics_dict, log)
