@@ -536,17 +536,42 @@ class TestImageInitial:
 
 
 class TestImageNormalize:
-    def test_set_parset_parameters(self, image_normalize):
-        # image_normalize.set_parset_parameters()
-        pass
+    def test_set_parset_parameters(self, field):
+        _prepare_field_for_normalize_image(field)
+        image_normalize = ImageNormalize(field=field, index=1)
+        image_normalize.set_parset_parameters()
+        assert (
+            image_normalize.parset_parms["use_mpi"] == field.parset["imaging_specific"]["use_mpi"]
+        )
+        assert image_normalize.parset_parms["rapthor_pipeline_dir"] is not None
+        assert image_normalize.parset_parms["pipeline_working_dir"] is not None
+        assert image_normalize.parset_parms["normalize_flux_scale"] is True
+        assert image_normalize.parset_parms["image_cube_stokes_list"] == ["I"]
 
-    def test_set_input_parameters(self, image_normalize):
-        # image_normalize.set_input_parameters()
-        pass
+    def test_set_input_parameters(self, field):
+        _prepare_field_for_normalize_image(field)
+        image_normalize = ImageNormalize(field=field, index=1)
+        image_normalize.set_parset_parameters()
+        image_normalize.set_input_parameters()
+        assert image_normalize.field.normalize_sector.auto_mask == 5.0
+        assert image_normalize.field.normalize_sector.auto_mask_nmiter == 2.0
+        assert image_normalize.field.normalize_sector.threshisl == 4.0
+        assert image_normalize.field.normalize_sector.threshpix == 5.0
+        assert image_normalize.field.normalize_sector.max_nmiter == 8
+        assert image_normalize.field.normalize_sector.max_wsclean_nchannels == 8
+        assert image_normalize.field.normalize_sector.channel_width_hz == 4e6
+        assert image_normalize.field.normalize_sector.channel_width_hz == 4e6
+
+        assert image_normalize.apply_normalizations is False
+        assert image_normalize.do_predict is False
+        assert image_normalize.do_multiscale_clean is False
+        assert image_normalize.imaging_parameters["cellsize_arcsec"] == 6.0
+        assert image_normalize.imaging_parameters["robust"] == -0.5
+        assert image_normalize.imaging_parameters["taper_arcsec"] == 24.0
 
     def test_finalize(self, image_normalize):
-        # image_normalize.finalize()
-        pass
+        image_normalize.run()
+        image_normalize.finalize()
 
     def test_run(self, image_normalize):
         image_normalize.run()
