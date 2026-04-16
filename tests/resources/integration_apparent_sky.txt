@@ -1,0 +1,11 @@
+FORMAT = Name, Type, Patch, Ra, Dec, I, SpectralIndex='[]', LogarithmicSI, ReferenceFrequency='148240661.621094', MajorAxis, MinorAxis, Orientation
+
+ , , Patch_patch_1, 1:37:41.299, 33.09.35.132
+ , , Patch_patch_2, 1:37:49.200, 33.11.10.000
+ , , Patch_patch_3, 1:37:30.500, 33.08.20.000
+s0c0, POINT, Patch_patch_1, 1:37:41.100, 33.09.30.000, 0.50, [-0.8], false, 148240661.621094, 0, 0, 0
+s0c1, POINT, Patch_patch_1, 1:37:41.500, 33.09.40.000, 0.27, [-0.7], false, 148240661.621094, 0, 0, 0
+s0c2, POINT, Patch_patch_2, 1:37:49.100, 33.11.05.000, 0.58, [-0.9], false, 148240661.621094, 0, 0, 0
+s0c3, POINT, Patch_patch_2, 1:37:49.400, 33.11.15.000, 0.22, [-0.6], false, 148240661.621094, 0, 0, 0
+s0c4, POINT, Patch_patch_3, 1:37:30.200, 33.08.15.000, 0.40, [-0.8], false, 148240661.621094, 0, 0, 0
+s0c5, POINT, Patch_patch_3, 1:37:30.800, 33.08.25.000, 0.18, [-0.7], false, 148240661.621094, 0, 0, 0

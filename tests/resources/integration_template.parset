@@ -1,0 +1,68 @@
+# Template parset for integration tests
+# 
+# Missing values in this template are provided by a pytest fixture to generate
+# a complete parset for integration testing. Parameters may be further updated 
+# using the update_parset() helper function provided in test_rapthor.py.
+# This facilitates running integration tests with different parset options.
+
+[global]
+dir_working = 
+input_ms = 
+data_colname = DATA
+generate_initial_skymodel = False
+generate_initial_skymodel_radius = None
+generate_initial_skymodel_data_fraction = 0.2
+download_initial_skymodel = False
+download_initial_skymodel_radius = 5.0
+download_initial_skymodel_server = TGSS
+download_overwrite_skymodel = True
+input_skymodel = 
+apparent_skymodel = 
+regroup_input_skymodel = True
+strategy = 
+selfcal_data_fraction = 0.2
+input_h5parm = None
+input_fulljones_h5parm = None
+facet_layout = None
+dde_mode = faceting
+
+[calibration]
+fast_freqstep_hz = 1e6
+slow_freqstep_hz = 1e6
+fast_smoothnessconstraint = 6.0e6
+slow_smoothnessconstraint = 4.0e6
+propagatesolutions = True
+maxiter = 50
+maxapproxiter = 25
+stepsize = 0.2
+tolerance = 0.001
+
+[imaging]
+grid_width_ra_deg = 1.0
+grid_width_dec_deg = 1.0
+grid_center_ra = 1h37m41.299s
+grid_center_dec = +33d09m35.132s
+grid_nsectors_ra = 1
+idg_mode = cpu
+reweight = True
+average_visibilities = False
+photometry_skymodel =
+astrometry_skymodel =
+  
+[cluster]
+batch_system = single_machine
+max_nodes = 1
+cpus_per_task = 0
+mem_per_node_gb = 0
+max_cores = 0
+max_threads = 0
+deconvolution_threads = 0
+parallel_gridding_threads = 0
+local_scratch_dir = 
+global_scratch_dir = 
+use_container = False
+container_type = docker
+cwl_runner = toil
+debug_workflow = False
+keep_temporary_files = False
+allow_internet_access = 
