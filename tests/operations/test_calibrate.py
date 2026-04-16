@@ -136,10 +136,9 @@ class TestCalibrateDD:
         result = calibrate_dd.get_core_stations(include_nearest_remote=include_remote)
         assert result == expected
 
-    @pytest.mark.parametrize("cycle", [1, 2])
-    @pytest.mark.parametrize("have_full_field_sector", [True, False])
+    @pytest.mark.parametrize("cycle,have_full_field_sector", [(1, False), (1, True), (2, False)])
     def test_get_model_image_parameters(
-        self, tmp_path, calibrate_field, mocker, cycle, have_full_field_sector
+        self, dummy_sky_model_path, calibrate_field, mocker, cycle, have_full_field_sector
     ):
         ref_frequency = 142000000.0
         bandwidth = 1e6  # hardcoded value in Rapthor.
@@ -156,15 +155,14 @@ class TestCalibrateDD:
         skymodel_dec = 2.0
 
         # Create a dummy skymodel with a single source.
-        skymodel_path = tmp_path / "test_skymodel.txt"
-        skymodel_path.write_text(
+        dummy_sky_model_path.write_text(
             "FORMAT = Name, Type, Ra, Dec, I, ReferenceFrequency\n"
             f"{source_name}, POINT, {skymodel_ra}, {skymodel_dec}, 0.042, {ref_frequency}\n"
         )
 
         # Setup the field for the test. Only set the attributes required for the test scenario.
         field = calibrate_field
-        field.calibration_skymodel_file = str(skymodel_path)
+        field.calibration_skymodel_file = str(dummy_sky_model_path)
         if cycle == 1 and have_full_field_sector:
             field.full_field_sector = mocker.MagicMock()
             field.full_field_sector.cellsize_deg = cellsize_degrees
