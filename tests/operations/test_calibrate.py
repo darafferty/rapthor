@@ -6,33 +6,6 @@ import pytest
 
 from rapthor.operations.calibrate import CalibrateDD, CalibrateDI
 
-CORE_STATION_CASES = [
-    (
-        "HBA",
-        True,
-        ["RS106HBA0", "CS002HBA0", "DE601HBA"],
-        ["CS002HBA0", "RS106HBA0"],
-    ),
-    (
-        "HBA",
-        False,
-        ["RS106HBA0", "CS002HBA0", "DE601HBA"],
-        ["CS002HBA0"],
-    ),
-    (
-        "LBA",
-        True,
-        ["RS205LBA", "CS003LBA", "CS999LBA"],
-        ["CS003LBA", "RS205LBA"],
-    ),
-    (
-        "LBA",
-        False,
-        ["RS205LBA", "CS003LBA", "CS999LBA"],
-        ["CS003LBA"],
-    ),
-]
-
 @pytest.fixture
 def calibrate_field(operation_parset, mocker):
     """Create a mock field object for testing a Calibrate operation."""
@@ -44,7 +17,6 @@ def calibrate_field(operation_parset, mocker):
             self.calibration_diagnostics = []
 
     return Field(operation_parset)
-    
 
 def check_makedirs(mock_makedirs, *expected_paths):
     """Helper function to check that makedirs was called with the expected paths."""
@@ -80,6 +52,33 @@ class TestCalibrateDD:
     def test_get_superterp_stations(self):
         # calibrate_dd.get_superterp_stations()
         pass
+
+    CORE_STATION_CASES = [
+        (
+            "HBA",
+            True,
+            ["RS106HBA0", "CS002HBA0", "DE601HBA"],
+            ["CS002HBA0", "RS106HBA0"],
+        ),
+        (
+            "HBA",
+            False,
+            ["RS106HBA0", "CS002HBA0", "DE601HBA"],
+            ["CS002HBA0"],
+        ),
+        (
+            "LBA",
+            True,
+            ["RS205LBA", "CS003LBA", "CS999LBA"],
+            ["CS003LBA", "RS205LBA"],
+        ),
+        (
+            "LBA",
+            False,
+            ["RS205LBA", "CS003LBA", "CS999LBA"],
+            ["CS003LBA"],
+        ),
+    ]
 
     @pytest.mark.parametrize("antenna,include_remote,stations,expected", CORE_STATION_CASES)
     def test_get_core_stations(self, field, antenna, include_remote, stations, expected):
