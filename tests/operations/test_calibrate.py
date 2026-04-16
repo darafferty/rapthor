@@ -56,9 +56,46 @@ class TestCalibrateDD:
         # calibrate_dd.get_superterp_stations()
         pass
 
-    def test_get_core_stations(self):
-        # calibrate_dd.get_core_stations(include_nearest_remote=True)
-        pass
+    CORE_STATION_CASES = [
+        (
+            "HBA",
+            True,
+            ["RS106HBA0", "CS002HBA0", "DE601HBA"],
+            ["CS002HBA0", "RS106HBA0"],
+        ),
+        (
+            "HBA",
+            False,
+            ["RS106HBA0", "CS002HBA0", "DE601HBA"],
+            ["CS002HBA0"],
+        ),
+        (
+            "LBA",
+            True,
+            ["RS205LBA", "CS003LBA", "CS999LBA"],
+            ["CS003LBA", "RS205LBA"],
+        ),
+        (
+            "LBA",
+            False,
+            ["RS205LBA", "CS003LBA", "CS999LBA"],
+            ["CS003LBA"],
+        ),
+        (
+            "HBA",
+            True,
+            ["DE601HBA", "DE602HBA"],
+            [],
+        ),
+    ]
+
+    @pytest.mark.parametrize("antenna,include_remote,stations,expected", CORE_STATION_CASES)
+    def test_get_core_stations(self, calibrate_field, antenna, include_remote, stations, expected):
+        calibrate_field.antenna = antenna
+        calibrate_field.stations = stations
+        calibrate_dd = CalibrateDD(field=calibrate_field, index=1)
+        result = calibrate_dd.get_core_stations(include_nearest_remote=include_remote)
+        assert result == expected
 
     def test_get_model_image_parameters(self):
         # calibrate_dd.get_model_image_parameters()
