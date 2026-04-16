@@ -572,7 +572,7 @@ def parset_read(parset_file, use_log_file=True):
 
 def check_and_adjust_skymodel_settings(parset_dict):
     """
-    En‌sure the initial sky model is present or, if not, that generation or
+    Ensure the initial sky model is present or, if not, that generation or
     download is requested.
 
     Parameters
@@ -631,9 +631,9 @@ def check_and_adjust_skymodel_settings(parset_dict):
             "warning can be ignored."
         )
 
-    # If `astrometry_skymodel` or `photometry_skymodel` is given, check if the
+    # If `astrometry_skymodel`, `photometry_skymodel`, or `normalization_skymodel` is given, check if the
     # file exists, if not raise an error.
-    for diagnostic in ("astrometry", "photometry"):
+    for diagnostic in ("astrometry", "photometry", "normalization"):
         if (
             skymodel := parset_dict["imaging_specific"][f"{diagnostic}_skymodel"]
         ) and not os.path.exists(skymodel):
@@ -655,12 +655,12 @@ def check_and_adjust_skymodel_settings(parset_dict):
 
     # If diagnostics skymodels are not given, the diagnostics that require them
     # will be skipped.
-    for diagnostic in ("astrometry", "photometry"):
+    for diagnostic in ("astrometry", "photometry", "normalization"):
         if parset_dict["imaging_specific"][f"{diagnostic}_skymodel"] is None:
             log.warning(
-                "Comparison sky model for %s check not provided while "
-                "`allow_internet_access` is False. The %s check will be "
-                "skipped. If you want to run the %s check, please provide a "
+                "Comparison sky model for %s not provided while "
+                "`allow_internet_access` is False. The %s will be "
+                "skipped. If you want to run the %s, please provide a "
                 "path to the comparison sky model or allow internet access.",
                 diagnostic,
                 diagnostic,

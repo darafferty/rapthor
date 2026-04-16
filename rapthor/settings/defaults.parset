@@ -343,9 +343,10 @@ skip_final_major_iteration = True
 skip_corner_sectors = False
 
 # Full paths to comparison sky model files for photometry and astrometry
-# diagnostics
+# diagnostics and flux normalization
 photometry_skymodel = None
 astrometry_skymodel = None
+normalization_skymodel = None
 
 [cluster]
 # Cluster batch system (default = single_machine).

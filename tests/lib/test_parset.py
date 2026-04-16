@@ -418,8 +418,5 @@ class TestCheckSkymodelSettings(unittest.TestCase):
         self.assertTrue(any("The normalization will be skipped" in msg for msg in cm.output))
 
 
-    
-
-
 if __name__ == "__main__":
     unittest.main()

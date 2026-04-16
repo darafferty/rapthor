@@ -102,6 +102,7 @@ class Field(object):
         self.disable_iquv_clean = self.parset['imaging_specific']['disable_iquv_clean']
         self.photometry_skymodel = self.parset['imaging_specific']['photometry_skymodel']
         self.astrometry_skymodel = self.parset['imaging_specific']['astrometry_skymodel']
+        self.normalization_skymodel = self.parset['imaging_specific']['normalization_skymodel']
         self.solverlbfgs_dof = self.parset['calibration_specific']['solverlbfgs_dof']
         self.solverlbfgs_iter = self.parset['calibration_specific']['solverlbfgs_iter']
         self.solverlbfgs_minibatches = self.parset['calibration_specific']['solverlbfgs_minibatches']
