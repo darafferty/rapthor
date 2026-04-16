@@ -346,11 +346,7 @@ skip_corner_sectors = False
 # diagnostics and flux normalization
 photometry_skymodel = None
 astrometry_skymodel = None
-# List of (at least two) paths to sky model files and their reference frequencies
-# for flux normalization if this is enabled in the strategy file (default None 
-# will attempt to download sky models if internet access is allowed)
-normalization_skymodels = None
-normalization_reference_frequencies = None
+normalization_skymodel = None
 
 [cluster]
 # Cluster batch system (default = single_machine).

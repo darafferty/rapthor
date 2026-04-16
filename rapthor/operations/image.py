@@ -822,8 +822,7 @@ class ImageNormalize(Image):
         # Set the template filenames
         self.pipeline_parset_template = "image_pipeline.cwl"
         self.subpipeline_parset_template = "image_sector_pipeline.cwl"
-        self.normalization_skymodels = None
-        self.normalization_reference_frequencies = None
+        self.normalization_skymodel = None
 
     def set_parset_parameters(self):
         """
@@ -840,18 +839,10 @@ class ImageNormalize(Image):
             # No calibration has yet been done, so set various flags as needed
             self.use_facets = False
             self.apply_screens = False
-        if self.normalization_skymodels is None:
-            self.normalization_skymodels = self.field.normalization_skymodels
-            self.normalization_reference_frequencies = (
-                self.field.normalization_reference_frequencies
-            )
+        if self.normalization_skymodel is None:
+            self.normalization_skymodel = self.field.normalization_skymodel
         super().set_parset_parameters()
-        self.parset_parms.update(
-            {
-                "normalization_skymodels": self.normalization_skymodels,
-                "normalization_reference_frequencies": self.normalization_reference_frequencies,
-            }
-        )
+        self.parset_parms.update({"normalization_skymodel": self.normalization_skymodel})
 
     def set_input_parameters(self):
         """
@@ -880,11 +871,9 @@ class ImageNormalize(Image):
         super().set_input_parameters()
         self.input_parms.update(
             {
-                "normalization_skymodels": [
-                    CWLFile(filename).to_json() for filename in self.normalization_skymodels or ()
-                ]
-                or None,
-                "normalization_reference_frequencies": self.normalization_reference_frequencies,
+                "normalization_skymodel": None
+                if self.normalization_skymodel is None
+                else CWLFile(self.normalization_skymodel).to_json()
             }
         )
 
