@@ -110,7 +110,8 @@
                       'use_mpi': True,
                       'shared_facet_rw': False,
                       'photometry_skymodel': None,
-                      'astrometry_skymodel': None
+                      'astrometry_skymodel': None,
+                      'normalization_skymodel': None
               },
  'input_h5parm': '/my/data/dirdependent.h5',
  'input_fulljones_h5parm': '/my/data/fulljones.h5',

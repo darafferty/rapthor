@@ -200,6 +200,7 @@ class TestCheckSkymodelSettings(unittest.TestCase):
             "imaging_specific": {
                 "astrometry_skymodel": None,
                 "photometry_skymodel": None,
+                "normalization_skymodel": None,
             },
         }
         for key, value in overrides.items():
@@ -307,7 +308,7 @@ class TestCheckSkymodelSettings(unittest.TestCase):
         with self.assertLogs(logger="rapthor:parset", level="INFO"):
             check_and_adjust_skymodel_settings(parset_dict)
 
-    # ---- diagnostic skymodel checks (no internet) ----
+    # ---- diagnostic and normalization skymodel checks (no internet) ----
 
     def test_astrometry_skymodel_missing_no_internet_raises(self):
         parset_dict = self._make_parset_dict(
@@ -316,6 +317,7 @@ class TestCheckSkymodelSettings(unittest.TestCase):
             imaging_specific={
                 "astrometry_skymodel": "/nonexistent/astro.skymodel",
                 "photometry_skymodel": None,
+                "normalization_skymodel": None,
             },
         )
         with self.assertRaises(FileNotFoundError):
@@ -328,6 +330,20 @@ class TestCheckSkymodelSettings(unittest.TestCase):
             imaging_specific={
                 "astrometry_skymodel": None,
                 "photometry_skymodel": "/nonexistent/photo.skymodel",
+                "normalization_skymodel": None,
+            },
+        )
+        with self.assertRaises(FileNotFoundError):
+            check_and_adjust_skymodel_settings(parset_dict)
+
+    def test_normalization_skymodel_missing_no_internet_raises(self):
+        parset_dict = self._make_parset_dict(
+            generate_initial_skymodel=True,
+            cluster_specific={"allow_internet_access": False},
+            imaging_specific={
+                "astrometry_skymodel": None,
+                "photometry_skymodel": None,
+                "normalization_skymodel": "/nonexistent/norm.skymodel",
             },
         )
         with self.assertRaises(FileNotFoundError):
@@ -340,13 +356,15 @@ class TestCheckSkymodelSettings(unittest.TestCase):
                 imaging_specific={
                     "astrometry_skymodel": f.name,
                     "photometry_skymodel": None,
+                    "normalization_skymodel": None,
                 },
             )
             # Should not raise (warning about no skymodel is expected)
             with self.assertLogs(logger="rapthor:parset", level="WARN") as cm:
                 check_and_adjust_skymodel_settings(parset_dict)
 
-            self.assertTrue(any("The photometry check will be skipped" in msg for msg in cm.output))
+            self.assertTrue(any("The photometry will be skipped" in msg for msg in cm.output))
+            self.assertTrue(any("The normalization will be skipped" in msg for msg in cm.output))
 
     def test_photometry_skymodel_exists_no_internet_ok(self):
         with tempfile.NamedTemporaryFile(suffix=".skymodel") as f:
@@ -355,13 +373,32 @@ class TestCheckSkymodelSettings(unittest.TestCase):
                 imaging_specific={
                     "astrometry_skymodel": None,
                     "photometry_skymodel": f.name,
+                    "normalization_skymodel": None,
                 },
             )
             # Should not raise (warning about no skymodel is expected)
             with self.assertLogs(logger="rapthor:parset", level="WARN") as cm:
                 check_and_adjust_skymodel_settings(parset_dict)
 
-            self.assertTrue(any("The astrometry check will be skipped" in msg for msg in cm.output))
+            self.assertTrue(any("The astrometry will be skipped" in msg for msg in cm.output))
+            self.assertTrue(any("The normalization will be skipped" in msg for msg in cm.output))
+
+    def test_normalization_skymodel_exists_no_internet_ok(self):
+        with tempfile.NamedTemporaryFile(suffix=".skymodel") as f:
+            parset_dict = self._make_parset_dict(
+                cluster_specific={"allow_internet_access": False},
+                imaging_specific={
+                    "astrometry_skymodel": None,
+                    "photometry_skymodel": None,
+                    "normalization_skymodel": f.name,
+                },
+            )
+            # Should not raise (warning about no skymodel is expected)
+            with self.assertLogs(logger="rapthor:parset", level="WARN") as cm:
+                check_and_adjust_skymodel_settings(parset_dict)
+
+            self.assertTrue(any("The astrometry will be skipped" in msg for msg in cm.output))
+            self.assertTrue(any("The photometry will be skipped" in msg for msg in cm.output))
 
     def test_diagnostic_skymodel_empty_no_internet_ok(self):
         parset_dict = self._make_parset_dict(
@@ -369,14 +406,19 @@ class TestCheckSkymodelSettings(unittest.TestCase):
             imaging_specific={
                 "astrometry_skymodel": None,
                 "photometry_skymodel": None,
+                "normalization_skymodel": None,
             },
         )
         # Should not raise
         with self.assertLogs(logger="rapthor:parset", level="WARN") as cm:
             check_and_adjust_skymodel_settings(parset_dict)
 
-        self.assertTrue(any("The astrometry check will be skipped" in msg for msg in cm.output))
-        self.assertTrue(any("The photometry check will be skipped" in msg for msg in cm.output))
+        self.assertTrue(any("The astrometry will be skipped" in msg for msg in cm.output))
+        self.assertTrue(any("The photometry will be skipped" in msg for msg in cm.output))
+        self.assertTrue(any("The normalization will be skipped" in msg for msg in cm.output))
+
+
+    
 
 
 if __name__ == "__main__":
