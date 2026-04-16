@@ -20,6 +20,10 @@ def calibrate_field(operation_parset, mocker):
             self.parset = parset
             self.scan_h5parms = mocker.MagicMock()
             self.calibration_diagnostics = []
+            self.ra = 42.0
+            self.dec = -42.0
+            self.sector_bounds_mid_ra = self.ra
+            self.sector_bounds_mid_dec = self.dec
 
     return Field(operation_parset)
 
@@ -142,14 +146,12 @@ class TestCalibrateDD:
     ):
         ref_frequency = 142000000.0
         bandwidth = 1e6  # hardcoded value in Rapthor.
-        center_ra = 42.0
-        center_dec = -42.0
-        cellsize_arcsec = 1.8
+        cellsize_arcsec = 2
         cellsize_degrees = cellsize_arcsec / 3600.0
-        width_ra_pixels = 3600
-        width_dec_pixels = 4800
-        width_ra_degrees = cellsize_degrees * width_ra_pixels
-        width_dec_degrees = cellsize_degrees * width_dec_pixels
+        width_ra_pixels = 7200
+        width_dec_pixels = 9000
+        width_ra_degrees = 4
+        width_dec_degrees = 5
         source_name = "src"
         skymodel_ra = 4.0
         skymodel_dec = 2.0
@@ -160,27 +162,20 @@ class TestCalibrateDD:
             f"{source_name}, POINT, {skymodel_ra}, {skymodel_dec}, 0.042, {ref_frequency}\n"
         )
 
-        # Setup the field for the test. Only set the attributes required for the test scenario.
+        # Setup the field for the test.
+        # Set all attributes required for all test scenarios.
         field = calibrate_field
         field.calibration_skymodel_file = str(dummy_sky_model_path)
-        if cycle == 1 and have_full_field_sector:
+        field.parset["imaging_specific"] = {"cellsize_arcsec": cellsize_arcsec}
+        field.get_source_distances = mocker.MagicMock(
+            return_value=("foo", [width_ra_degrees, width_dec_degrees])
+        )
+        field.sector_bounds_width_ra = width_ra_degrees
+        field.sector_bounds_width_dec = width_dec_degrees
+        if have_full_field_sector:
             field.full_field_sector = mocker.MagicMock()
             field.full_field_sector.cellsize_deg = cellsize_degrees
             field.full_field_sector.imsize = [width_ra_pixels, width_dec_pixels]
-        else:
-            field.parset["imaging_specific"] = {"cellsize_arcsec": cellsize_arcsec}
-
-        if cycle == 1:
-            field.ra = center_ra
-            field.dec = center_dec
-            field.get_source_distances = mocker.MagicMock(
-                return_value=("foo", [width_ra_degrees, width_dec_degrees])
-            )
-        else:
-            field.sector_bounds_mid_ra = center_ra
-            field.sector_bounds_mid_dec = center_dec
-            field.sector_bounds_width_ra = width_ra_degrees
-            field.sector_bounds_width_dec = width_dec_degrees
 
         # Act
         calibrate_dd = CalibrateDD(field, index=cycle)
@@ -197,6 +192,7 @@ class TestCalibrateDD:
             )
             assert size == [width_dec_pixels * 2, width_dec_pixels * 2]
         else:
+            field.get_source_distances.assert_not_called()
             assert size == [width_ra_pixels, width_dec_pixels]
         assert cellsize == cellsize_degrees
 
