@@ -24,6 +24,8 @@ def calibrate_field(operation_parset, mocker):
             self.dec = -42.0
             self.sector_bounds_mid_ra = self.ra
             self.sector_bounds_mid_dec = self.dec
+            self.sector_bounds_width_ra = 4
+            self.sector_bounds_width_dec = 5
 
     return Field(operation_parset)
 
@@ -144,14 +146,18 @@ class TestCalibrateDD:
     def test_get_model_image_parameters(
         self, dummy_sky_model_path, calibrate_field, mocker, cycle, have_full_field_sector
     ):
+        field = calibrate_field
+
         ref_frequency = 142000000.0
         bandwidth = 1e6  # hardcoded value in Rapthor.
         cellsize_arcsec = 2
         cellsize_degrees = cellsize_arcsec / 3600.0
-        width_ra_pixels = 7200
-        width_dec_pixels = 9000
-        width_ra_degrees = 4
-        width_dec_degrees = 5
+        cellsize_pixels = 1800
+        width_ra_pixels = field.sector_bounds_width_ra * cellsize_pixels
+        width_dec_pixels = field.sector_bounds_width_dec * cellsize_pixels
+        source_distance_ra = 6
+        source_distance_dec = 7
+        expected_source_distance_size = [25200, 25200]  # 2 * 7 * cellsize_pixels
         source_name = "src"
         skymodel_ra = 4.0
         skymodel_dec = 2.0
@@ -164,14 +170,11 @@ class TestCalibrateDD:
 
         # Setup the field for the test.
         # Set all attributes required for all test scenarios.
-        field = calibrate_field
         field.calibration_skymodel_file = str(dummy_sky_model_path)
         field.parset["imaging_specific"] = {"cellsize_arcsec": cellsize_arcsec}
         field.get_source_distances = mocker.MagicMock(
-            return_value=("foo", [width_ra_degrees, width_dec_degrees])
+            return_value=("foo", [source_distance_ra, source_distance_dec])
         )
-        field.sector_bounds_width_ra = width_ra_degrees
-        field.sector_bounds_width_dec = width_dec_degrees
         if have_full_field_sector:
             field.full_field_sector = mocker.MagicMock()
             field.full_field_sector.cellsize_deg = cellsize_degrees
@@ -190,7 +193,7 @@ class TestCalibrateDD:
             field.get_source_distances.assert_called_once_with(
                 {source_name: [skymodel_ra, skymodel_dec]}
             )
-            assert size == [width_dec_pixels * 2, width_dec_pixels * 2]
+            assert size == expected_source_distance_size
         else:
             field.get_source_distances.assert_not_called()
             assert size == [width_ra_pixels, width_dec_pixels]
