@@ -214,6 +214,7 @@ format_targets = [
     "tests/lib/test_cwlrunner.py",
     "tests/lib/test_parset.py",
     "tests/lib/test_strategy.py",
+    "tests/operations/test_calibrate.py",
     "tests/scripts/test_calculate_image_diagnostics.py",
 ]
 commands = [
