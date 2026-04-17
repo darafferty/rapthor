@@ -5,9 +5,6 @@ Test cases for the `rapthor.operations.calibrate` module.
 from pathlib import Path
 
 import pytest
-from unittest.mock import MagicMock, patch
-import rapthor
-from rapthor.lib.operation import DIR as OPERATION_DIR
 from rapthor.operations.calibrate import CalibrateDD, CalibrateDI
 
 
@@ -58,34 +55,34 @@ class TestCalibrateDD:
 
 #--------------------test set input parameters--------------------
     
-    def test_set_input_parameters_dd_all_disabled(self, field):
+    def test_set_input_parameters_dd_all_disabled(self, calibrate_field):
         """Tests the method where all optional features are disabled"""
 
-        # --- Minimal valid configuration ---
-        field.apply_diagonal_solutions = False
-        field.use_image_based_predict = False
-        field.do_slowgain_solve = False
-        field.apply_normalizations = False
+        #  Minimal valid configuration
+        calibrate_field.apply_diagonal_solutions = False
+        calibrate_field.use_image_based_predict = False
+        calibrate_field.do_slowgain_solve = False
+        calibrate_field.apply_normalizations = False
 
-        field.calibrate_bda_timebase = 0
-        field.calibrate_bda_frequencybase = 0
+        calibrate_field.calibrate_bda_timebase = 0
+        calibrate_field.calibrate_bda_frequencybase = 0
 
-        field.fast_phases_h5parm_filename = None
-        field.medium1_phases_h5parm_filename = None
-        field.medium2_phases_h5parm_filename = None
-        field.slow_gains_h5parm_filename = None
+        calibrate_field.fast_phases_h5parm_filename = None
+        calibrate_field.medium1_phases_h5parm_filename = None
+        calibrate_field.medium2_phases_h5parm_filename = None
+        calibrate_field.slow_gains_h5parm_filename = None
 
-        # --- Create object ---
-        calibrate_dd = CalibrateDD(field=field, index=1)
+        # Create object
+        calibrate_dd = CalibrateDD(field=calibrate_field, index=1)
 
-        # --- Execute ---
+        #  Execute 
         calibrate_dd.set_input_parameters()
 
-        # --- Basic structure checks ---
+        #  Basic structure checks
         assert isinstance(calibrate_dd.input_parms, dict)
         assert len(calibrate_dd.input_parms) > 0
 
-        # --- Key invariants ---
+        # Key invariants
         required_keys = [
             "timechunk_filename",
             "data_colname",
@@ -99,8 +96,8 @@ class TestCalibrateDD:
         for key in required_keys:
             assert key in calibrate_dd.input_parms
 
-        # --- Stable value checks ---
-        assert calibrate_dd.input_parms["data_colname"] == field.data_colname
+        # Stable value checks 
+        assert calibrate_dd.input_parms["data_colname"] == calibrate_field.data_colname
         assert calibrate_dd.input_parms["solution_combine_mode"] == "p1p2a2_scalar"
 
         # BDA disabled + slowgain disabled = only solve1 and solve2 should be present
@@ -124,29 +121,28 @@ class TestCalibrateDD:
         assert calibrate_dd.input_parms["fast_initialsolutions_h5parm"] is None
         assert calibrate_dd.input_parms["slow_initialsolutions_h5parm"] is None
 
-    def test_set_input_parameters_dd_all_enabled(self, field):
+    def test_set_input_parameters_dd_all_enabled(self, calibrate_field):
         """Tests the method where all optional features are enabled"""
 
         # Enable all major features
-        field.apply_diagonal_solutions = True
-        field.use_image_based_predict = True
-        field.do_slowgain_solve = True
-        field.apply_normalizations = True
+        calibrate_field.apply_diagonal_solutions = True
+        calibrate_field.use_image_based_predict = True
+        calibrate_field.do_slowgain_solve = True
+        calibrate_field.apply_normalizations = True
 
         # Enable BDA
-        
-        field.calibrate_bda_timebase = 1
-        field.calibrate_bda_frequencybase = 1
-        # bda_enabled = True if field.calibrate_bda_timebase > 0 or field.calibrate_bda_frequencybase > 0 else False
+        calibrate_field.calibrate_bda_timebase = 1
+        calibrate_field.calibrate_bda_frequencybase = 1
+        # bda_enabled = True if calibrate_field.calibrate_bda_timebase > 0 or calibrate_field.calibrate_bda_frequencybase > 0 else False
 
         # Ensure core stations exist
-        field.fast_phases_h5parm_filename = "fast.h5"
-        field.medium1_phases_h5parm_filename = "medium1.h5"
-        field.medium2_phases_h5parm_filename = "medium2.h5"
-        field.slow_gains_h5parm_filename = "slow.h5"
+        calibrate_field.fast_phases_h5parm_filename = "fast.h5"
+        calibrate_field.medium1_phases_h5parm_filename = "medium1.h5"
+        calibrate_field.medium2_phases_h5parm_filename = "medium2.h5"
+        calibrate_field.slow_gains_h5parm_filename = "slow.h5"
 
 
-        calibrate_dd = CalibrateDD(field=field, index=1)
+        calibrate_dd = CalibrateDD(field=calibrate_field, index=1)
         calibrate_dd.set_input_parameters()
 
         # Basic structure
@@ -190,8 +186,8 @@ class TestCalibrateDD:
         assert calibrate_dd.input_parms["bda_frequencybase"] == 1
 
         # File outputs exist
-        assert len(calibrate_dd.input_parms["output_fast_h5parm"]) == field.ntimechunks
-        assert len(calibrate_dd.input_parms["output_slow_h5parm"]) == field.ntimechunks
+        assert len(calibrate_dd.input_parms["output_fast_h5parm"]) == calibrate_field.ntimechunks
+        assert len(calibrate_dd.input_parms["output_slow_h5parm"]) == calibrate_field.ntimechunks
 
 
 # TODO: Need to test BDA on, slowgain off, and vice versa
