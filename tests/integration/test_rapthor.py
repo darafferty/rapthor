@@ -2,8 +2,8 @@
 
 import configparser
 import pytest
-import subprocess
 import shlex
+import subprocess
 
 
 def update_parset_path(parset_path, param_dict):
