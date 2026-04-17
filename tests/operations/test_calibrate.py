@@ -12,14 +12,16 @@ from rapthor.operations.calibrate import CalibrateDD, CalibrateDI
 
 
 @pytest.fixture
-def calibrate_field(operation_parset, mocker):
+def calibrate_field(operation_parset, mocker, single_source_sky_model):
     """Create a mock field object for testing a Calibrate operation."""
 
     class Field:
         def __init__(self, parset):
             self.parset = parset
+            self.get_source_distances = mocker.MagicMock()
             self.scan_h5parms = mocker.MagicMock()
             self.calibration_diagnostics = []
+            self.calibration_skymodel_file = str(single_source_sky_model["path"])
             self.ra = 42.0
             self.dec = -42.0
             self.sector_bounds_mid_ra = self.ra
@@ -160,13 +162,10 @@ class TestCalibrateDD:
         expected_source_distance_size = [25200, 25200]  # 2 * 7 * cellsize_pixels
 
         # Setup the field for the test.
-        field.calibration_skymodel_file = str(sky_model["path"])
         field.parset["imaging_specific"] = {"cellsize_arcsec": cellsize_arcsec}
-        field.get_source_distances = mocker.MagicMock(
-            return_value=("foo", [source_distance_ra, source_distance_dec])
-        )
+        field.get_source_distances.return_value = ("foo", [source_distance_ra, source_distance_dec])
         if have_full_field_sector:
-            field.full_field_sector = mocker.MagicMock()
+            field.full_field_sector = mocker.NonCallableMagicMock()
             field.full_field_sector.cellsize_deg = cellsize_degrees
             field.full_field_sector.imsize = [width_ra_pixels, width_dec_pixels]
 
