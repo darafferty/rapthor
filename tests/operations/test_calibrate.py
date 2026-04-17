@@ -169,7 +169,6 @@ class TestCalibrateDD:
         )
 
         # Setup the field for the test.
-        # Set all attributes required for all test scenarios.
         field.calibration_skymodel_file = str(dummy_sky_model_path)
         field.parset["imaging_specific"] = {"cellsize_arcsec": cellsize_arcsec}
         field.get_source_distances = mocker.MagicMock(
