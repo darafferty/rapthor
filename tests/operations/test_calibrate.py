@@ -52,9 +52,30 @@ class TestCalibrateDD:
         # calibrate_dd.get_baselines_core()
         pass
 
-    def test_get_superterp_stations(self):
-        # calibrate_dd.get_superterp_stations()
-        pass
+    SUPERTERP_STATION_CASES = [
+        (
+            "HBA",
+            ["RS106HBA0", "DE601HBA"],
+            [],
+        ),
+        (
+            "HBA",
+            ["CS003HBA0", "RS106HBA0", "CS007HBA1", "DE601HBA"],
+            ["CS003HBA0", "CS007HBA1"],
+        ),
+        (
+            "LBA",
+            ["RS205LBA", "CS004LBA", "CS007LBA", "DE601LBA"],
+            ["CS004LBA", "CS007LBA"],
+        ),
+    ]
+
+    @pytest.mark.parametrize("antenna,stations,expected", SUPERTERP_STATION_CASES)
+    def test_get_superterp_stations(self, calibrate_field, antenna, stations, expected):
+        calibrate_field.antenna = antenna
+        calibrate_field.stations = stations
+        calibrate_dd = CalibrateDD(field=calibrate_field, index=1)
+        assert calibrate_dd.get_superterp_stations() == expected
 
     CORE_STATION_CASES = [
         (
