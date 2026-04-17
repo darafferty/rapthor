@@ -1,9 +1,10 @@
 """Integration tests for the Rapthor pipeline."""
 
 import configparser
-import pytest
 import shlex
 import subprocess
+
+import pytest
 
 
 def update_parset_path(parset_path, param_dict):
