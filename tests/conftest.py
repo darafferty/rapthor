@@ -323,3 +323,15 @@ def generated_parset_path(request, tmp_path, test_ms):
 
     return output_parset_path
 
+
+@pytest.fixture
+def parset_for_field_test(tmp_path_factory, test_ms):
+    target = tmp_path_factory.mktemp("test_field") / "generated.parset"
+    generate_parset_path(
+        RESOURCE_DIR / "test.parset",
+        target,
+        test_ms,
+        RESOURCE_DIR / "test_true_sky.txt",
+        RESOURCE_DIR / "test_apparent_sky.txt",
+    )
+    return parset_read(target)
