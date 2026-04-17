@@ -53,9 +53,9 @@ def generated_parset_path(request, tmp_path):
     """Fixture to generate a complete parset from a template and return the
     path.
 
-    This fixture accepts a request.param tuple, which is used to read in and
-    update a template parset file. The request param tuple should contain
-    three paths to the following files:
+    This fixture is used to read in and update a template parset file. It is
+    parametrised using the pytest request fixture and expects a tuple
+    containing three paths to the following files:
 
     1. Template parset (e.g. in tests/resources/parsets/)
     2. True sky model (e.g. in tests/resources/)
