@@ -190,7 +190,7 @@ commands = [
         "python", "-m", "pytest",
         "-m", "integration",
         "-vv", "-ra",
-        "-n", "4", 
+        "-n", "4",
         "tests/{posargs}",
     ]
 ]
@@ -216,6 +216,7 @@ format_targets = [
     "rapthor/operations/image.py",
     "rapthor/process.py",
     "rapthor/scripts/calculate_image_diagnostics.py",
+    "tests/__init__.py",
     "tests/conftest.py",
     "tests/cwl/__init__.py",
     "tests/cwl/cwl_cmdline.py",
