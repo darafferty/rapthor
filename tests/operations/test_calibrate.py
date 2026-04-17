@@ -5,6 +5,7 @@ Test cases for the `rapthor.operations.calibrate` module.
 from pathlib import Path
 
 import pytest
+
 from rapthor.operations.calibrate import CalibrateDD, CalibrateDI
 
 
@@ -47,9 +48,10 @@ def finalize_prepare_plots(pipelines_path, plots_path):
     plots_path.mkdir(parents=True)
     (plots_path / "plot2.png").touch()
 
+
 def parse_dp3(dp3_string):
     """
-    Converts DP3 string like:
+    Helper function to convert DP3 string like:
         "[solve1,solve2]"
     into:
         ["solve1", "solve2"]
@@ -66,24 +68,12 @@ class TestCalibrateDD:
         # (bda_time, bda_freq, slowgain, expected_dp3)
         (0, 0, False, ["solve1", "solve2"]),
         (1, 1, False, ["avg", "solve1", "solve2", "null"]),
-        (1, 1, True,  ["avg", "solve1", "solve2", "solve3", "solve4", "null"]),
-    ]
-            
-    IMAGE_BASED_PREDICT_CASES = [
-         # (normalize, expected_prefix, expect_applycal)
-        (False, ["predict", "applybeam"], False),
-        (True,  ["predict", "applybeam", "applycal"], True),
+        (1, 1, True, ["avg", "solve1", "solve2", "solve3", "solve4", "null"]),
     ]
 
-    COMBINE_MODE_CASES = [
-         # (diagonal_flag, expected_mode)
-        (True,  "p1p2a2_diagonal"),
-        (False, "p1p2a2_scalar"),
-    ]
-        
     def test_set_input_parameters_dd_all_disabled(self, calibrate_field, mocker):
         """
-        Everything disabled → minimal dp3, no optional features.
+        Everything disabled,  minimal dp3, no optional features.
         """
 
         calibrate_field.apply_diagonal_solutions = False
@@ -113,19 +103,23 @@ class TestCalibrateDD:
 
         assert params["fast_initialsolutions_h5parm"] is None
         assert params["slow_initialsolutions_h5parm"] is None
-    
 
     @pytest.mark.parametrize(
-    "bda_time, bda_freq, slowgain, expected_dp3",
-    BDA_CASES,
-)
-    def test_set_input_parameters_dd_bda_cases(self, calibrate_field, mocker, bda_time, bda_freq, slowgain, expected_dp3):
+        "bda_time, bda_freq, slowgain, expected_dp3",
+        BDA_CASES,
+    )
+    def test_set_input_parameters_dd_bda_cases(
+        self, calibrate_field, mocker, bda_time, bda_freq, slowgain, expected_dp3
+    ):
+        """
+        Test the effect of BDA and slowgain settings on the dp3 steps.
+        """
         calibrate_field.calibrate_bda_timebase = bda_time
         calibrate_field.calibrate_bda_frequencybase = bda_freq
         calibrate_field.do_slowgain_solve = slowgain
         calibrate_field.use_image_based_predict = False
 
-        # # set os.path.exists to always return False to test the default dp3 steps without loading from existing h5parms
+        # set os.path.exists to always return False to test the default dp3 steps without loading from existing h5parms
         mocker.patch("os.path.exists", return_value=False)
         calibrate_dd = CalibrateDD(field=calibrate_field, index=1)
         calibrate_dd.set_input_parameters()
@@ -133,16 +127,26 @@ class TestCalibrateDD:
 
         assert dp3 == expected_dp3
 
+    IMAGE_BASED_PREDICT_CASES = [
+        # (normalize, expected_prefix, expect_applycal)
+        (False, ["predict", "applybeam"], False),
+        (True, ["predict", "applybeam", "applycal"], True),
+    ]
+
     @pytest.mark.parametrize(
         "normalize, expected_prefix, expect_applycal",
         IMAGE_BASED_PREDICT_CASES,
     )
-
-    def test_set_input_parameters_dd_ibp_cases(self, calibrate_field, mocker, normalize, expected_prefix, expect_applycal):
+    def test_set_input_parameters_dd_ibp_cases(
+        self, calibrate_field, mocker, normalize, expected_prefix, expect_applycal
+    ):
+        """
+        Test the effect of image-based predict and normalization settings on the dp3 steps and applycal steps.
+        """
         calibrate_field.use_image_based_predict = True
         calibrate_field.apply_normalizations = normalize
 
-        # set os.path.exists to always return False to test to test the default dp3 steps without loading from existing h5parms
+        # set os.path.exists to always return False to test the default dp3 steps without loading from existing h5parms
         mocker.patch("os.path.exists", return_value=False)
         calibrate_dd = CalibrateDD(field=calibrate_field, index=1)
         calibrate_dd.set_input_parameters()
@@ -157,7 +161,22 @@ class TestCalibrateDD:
         else:
             assert params["ddecal_applycal_steps"] is None
 
-    def test_set_input_parameters_dd_solution_combine_mode_switch(self, calibrate_field, mocker, diagonal_flag, expected_mode):
+    COMBINE_MODE_CASES = [
+        # (diagonal_flag, expected_mode)
+        (True, "p1p2a2_diagonal"),
+        (False, "p1p2a2_scalar"),
+    ]
+
+    @pytest.mark.parametrize(
+        "diagonal_flag, expected_mode",
+        COMBINE_MODE_CASES,
+    )
+    def test_set_input_parameters_dd_solution_combine_mode_switch(
+        self, calibrate_field, mocker, diagonal_flag, expected_mode
+    ):
+        """
+        Test the effect of diagonal solutions on the solution_combine_mode.
+        """
         calibrate_field.apply_diagonal_solutions = diagonal_flag
 
         mocker.patch("os.path.exists", return_value=False)
@@ -165,7 +184,6 @@ class TestCalibrateDD:
         calibrate_dd.set_input_parameters()
 
         assert calibrate_dd.input_parms["solution_combine_mode"] == expected_mode
-#--------------------test set input parameters--------------------
 
     BASELINES_CORE_CASES = [
         (
@@ -305,9 +323,46 @@ class TestCalibrateDD:
 
 
 class TestCalibrateDI:
-    def test_set_input_parameters(self):
-        # calibrate_di.set_input_parameters()
+    def test_set_parset_parameters(self, calibrate_di):
+        # calibrate_di.set_parset_parameters()
         pass
+
+    def test_set_input_parameters_di(self, calibrate_field, mocker):
+        # Set up the field attributes required by CalibrateDI.set_input_parameters()
+        calibrate_field.parset["cluster_specific"]["max_threads"] = 4
+
+        calibrate_field.set_obs_parameters = mocker.MagicMock()
+        calibrate_field.get_obs_parameters = mocker.MagicMock(return_value=[])
+        calibrate_field.ntimechunks = 2
+
+        calibrate_field.smoothnessconstraint_fulljones = 1.0
+        calibrate_field.max_normalization_delta = 0.3
+        calibrate_field.llssolver = "qr"
+        calibrate_field.maxiter = 50
+        calibrate_field.propagatesolutions = True
+        calibrate_field.solveralgorithm = "directionsolve"
+        calibrate_field.stepsize = 0.2
+        calibrate_field.stepsigma = 0.0
+        calibrate_field.tolerance = 1e-4
+        calibrate_field.solve_min_uv_lambda = 0.0
+        calibrate_field.solverlbfgs_dof = 200.0
+        calibrate_field.solverlbfgs_iter = 4
+        calibrate_field.solverlbfgs_minibatches = 1
+        calibrate_field.correct_smearing_in_calibration = False
+
+        calibrate_di = CalibrateDI(field=calibrate_field, index=1)
+        calibrate_di.set_input_parameters()
+
+        assert calibrate_di.collected_h5parm_fulljones == "fulljones_gains.h5"
+        assert calibrate_di.input_parms["data_colname"] == "DATA"
+        assert calibrate_di.input_parms["collected_h5parm_fulljones"] == "fulljones_gains.h5"
+        assert calibrate_di.input_parms["output_h5parm_fulljones"] == [
+            "fulljones_gain_0.h5parm",
+            "fulljones_gain_1.h5parm",
+        ]
+        assert calibrate_di.input_parms["smoothnessconstraint_fulljones"] == 1.0
+        assert calibrate_di.input_parms["max_normalization_delta"] == 0.3
+        assert calibrate_di.input_parms["max_threads"] == 4
 
 
 class TestCalibrate:
