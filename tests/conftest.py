@@ -59,18 +59,16 @@ def ensure_test_ms(resource_dir):
     return destination
 
 
-def pytest_configure(config):
-    config.resource_dir = RESOURCE_DIR
-
-
-@pytest.fixture
-def test_ms(tmp_path):
+@pytest.fixture(scope="session")
+def test_ms(tmp_path_factory):
     """
     Fixture to provide a copy of the test MS in the resources directory.
     Yield the POSIX path to the copy of the MS.
     """
-    shutil.copytree(ensure_test_ms(RESOURCE_DIR), tmp_path / "test.ms")
-    yield (tmp_path / "test.ms").as_posix()
+    source = ensure_test_ms(RESOURCE_DIR)
+    target = (tmp_path_factory.mktemp("test_ms") / TEST_MS_DIRNAME).as_posix()
+    shutil.copytree(source, target)
+    yield target
 
 
 @pytest.fixture
