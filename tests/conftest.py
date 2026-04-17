@@ -201,37 +201,42 @@ def custom_strategy(tmp_path):
     Fixture to create a region file for testing.
     """
 
-@pytest.fixture
-def generated_parset_path(request, tmp_path, test_ms):
-    """Fixture to generate a complete parset from a template and return the
-    path.
 
-    This fixture is used to read in and update a template parset file. It is
-    parametrised using the pytest request fixture and expects a tuple
-    containing three paths to the following files:
-
-    1. Template parset (e.g. in tests/resources/parsets/)
-    2. True sky model (e.g. in tests/resources/)
-    3. Apparent sky model (e.g. in tests/resources/)
-
-    A new parset file is created in a temporary directory, updating the
-    template parset with the provided strategy and sky model paths as well
-    as setting the following:
-
-    - `dir_working` to a temporary directory
-    - `input_ms` to the test measurement set in tests/data/
-    - `apparent_skymodel` to the provided sky model path
-    - `input_skymodel` to the provided sky model path
-    - `photometry_skymodel` to the provided sky model path
-    - `astrometry_skymodel` to the provided sky model path
-    - `local_scratch_dir` to a temporary directory
-    - `global_scratch_dir` to a temporary directory
-
-    This fixture can be used to test rapthor runs end to end on a small input
-    measurement set with different strategies and sky models.
+def generate_parset(template_parset_path, input_ms, input_skymodel_path=None, apparent_skymodel_path=None):
     """
-    parset_path, input_skymodel_path, apparent_skymodel_path = request.param
-    parset_path = REPO_ROOT_DIR / parset_path
+    Generate a complete parset from a template, optionally update the input
+    skymodel paths and return the parset as a configparser.ConfigParser object.
+
+    This function creates a temporary working folder and scratch folder, and
+    updates the provided template parset with
+     - `dir_working` to a temporary directory
+     - `local_scratch_dir` to a temporary directory
+     - `global_scratch_dir` to a temporary directory
+
+    If either skymodel is provided, the following keys in the parset will be
+    updated:
+     - `input_skymodel` in [global] to the provided sky model path
+     - `apparent_skymodel` in [global] to the provided sky model path
+     - `photometry_skymodel` in [imaging] to the provided sky model path
+     - `astrometry_skymodel` in [imaging] to the provided sky model path
+
+    Parameters
+    ----------
+    template_parset_path : str
+        Path to the template parset file.
+    input_ms : str
+        Path to the input measurement set to set in the parset.
+    input_skymodel_path : str, optional (default=None)
+        Path to the input skymodel file to set in the parset.
+    apparent_skymodel_path : str, optional (default=None)
+        Path to the apparent skymodel file to set in the parset.
+
+    Returns
+    -------
+    configparser.ConfigParser
+        The updated parset as a ConfigParser object.
+    """
+    parset_path = REPO_ROOT_DIR / template_parset_path
     if input_skymodel_path:
         input_skymodel_path = REPO_ROOT_DIR / input_skymodel_path
     if apparent_skymodel_path:
@@ -249,7 +254,7 @@ def generated_parset_path(request, tmp_path, test_ms):
     parset.read(parset_path)
     parset["global"].update(
         dir_working=str(work_dir),
-        input_ms=str(test_ms),
+        input_ms=str(input_ms),
     )
     if input_skymodel_path:
         parset["global"]["input_skymodel"] = str(input_skymodel_path)
@@ -261,8 +266,60 @@ def generated_parset_path(request, tmp_path, test_ms):
         local_scratch_dir=str(scratch_dir),
         global_scratch_dir=str(scratch_dir),
     )
+    return parset
 
-    path_to_generated_parset = tmp_path / "generated.parset"
-    with path_to_generated_parset.open("w") as fp:
+
+def generate_parset_path(template_path, output_path, test_ms, input_skymodel_path, apparent_skymodel_path):
+    """
+    Fixture to generate a complete parset from a template and return the path.
+
+    This fixture is used to read in and update a template parset file. It is
+    parametrised using the pytest request fixture and expects a tuple
+    containing three paths to the following files:
+
+    1. Template parset (e.g. in tests/resources/parsets/)
+    2. True sky model (e.g. in tests/resources/)
+    3. Apparent sky model (e.g. in tests/resources/)
+
+    This fixture can be used to test rapthor runs end to end on a small input
+    measurement set with different strategies and sky models.
+    For further details see `generate_parset` function.
+    """
+    parset_path = REPO_ROOT_DIR / template_path
+    parset = generate_parset(parset_path, test_ms, input_skymodel_path, apparent_skymodel_path)
+
+    with output_path.open("w") as fp:
         parset.write(fp)
-    return path_to_generated_parset
+
+
+@pytest.fixture
+def generated_parset_path(request, tmp_path, test_ms):
+    """
+    Fixture to generate a complete parset from a template and return the path.
+
+    This fixture is used to read in and update a template parset file. It is
+    parametrised using the pytest request fixture and expects a tuple
+    containing three paths to the following files:
+
+    1. Template parset (e.g. in tests/resources/parsets/)
+    2. True sky model (e.g. in tests/resources/)
+    3. Apparent sky model (e.g. in tests/resources/)
+
+    This fixture can be used to test rapthor runs end to end on a small input
+    measurement set with different strategies and sky models.
+    For further details see `generate_parset` function.
+    """
+    parset_path, input_skymodel_path, apparent_skymodel_path = request.param
+    parset_path = REPO_ROOT_DIR / parset_path
+    output_parset_path = tmp_path / "generated.parset"
+
+    generate_parset_path(
+        parset_path,
+        output_parset_path,
+        test_ms,
+        input_skymodel_path,
+        apparent_skymodel_path
+    )
+
+    return output_parset_path
+
