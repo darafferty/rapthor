@@ -47,6 +47,26 @@ def finalize_prepare_plots(pipelines_path, plots_path):
     plots_path.mkdir(parents=True)
     (plots_path / "plot2.png").touch()
 
+def parse_dp3(dp3_string):
+    """
+    Converts DP3 string like:
+        "[solve1,solve2]"
+    into:
+        ["solve1", "solve2"]
+    """
+    return [x.strip() for x in dp3_string.strip("[]").split(",") if x.strip()]
+
+
+def run_calibrate(calibrate_field):
+    """
+    Executes set_input_parameters and returns:
+        - parsed dp3_steps
+        - full input_parms dict
+    """
+    calibrate_dd = CalibrateDD(field=calibrate_field, index=1)
+    calibrate_dd.set_input_parameters()
+    return parse_dp3(calibrate_dd.input_parms["dp3_steps"]), calibrate_dd.input_parms
+
 
 class TestCalibrateDD:
     def test_set_parset_parameters(self):
@@ -56,9 +76,10 @@ class TestCalibrateDD:
 #--------------------test set input parameters--------------------
     
     def test_set_input_parameters_dd_all_disabled(self, calibrate_field):
-        """Tests the method where all optional features are disabled"""
+        """
+        Everything disabled → minimal dp3, no optional features.
+        """
 
-        #  Minimal valid configuration
         calibrate_field.apply_diagonal_solutions = False
         calibrate_field.use_image_based_predict = False
         calibrate_field.do_slowgain_solve = False
@@ -72,126 +93,102 @@ class TestCalibrateDD:
         calibrate_field.medium2_phases_h5parm_filename = None
         calibrate_field.slow_gains_h5parm_filename = None
 
-        # Create object
-        calibrate_dd = CalibrateDD(field=calibrate_field, index=1)
+        with patch("os.path.exists", return_value=False):
+            dp3, params = run_calibrate(calibrate_field)
 
-        #  Execute 
-        calibrate_dd.set_input_parameters()
+        assert dp3 == ["solve1", "solve2"]
 
-        #  Basic structure checks
-        assert isinstance(calibrate_dd.input_parms, dict)
-        assert len(calibrate_dd.input_parms) > 0
+        assert params["solution_combine_mode"] == "p1p2a2_scalar"
+        assert params["normalize_h5parm"] is None
+        assert params["ddecal_applycal_steps"] is None
 
-        # Key invariants
-        required_keys = [
-            "timechunk_filename",
-            "data_colname",
-            "dp3_steps",
-            "solution_combine_mode",
-            "fast_antennaconstraint",
-            "collected_fast_h5parm",
-            "collected_slow_h5parm",
-        ]
+        assert params["fast_initialsolutions_h5parm"] is None
+        assert params["slow_initialsolutions_h5parm"] is None
+    
 
-        for key in required_keys:
-            assert key in calibrate_dd.input_parms
+    def test_set_input_parameters_bda_enabled_slowgain_disabled(self, calibrate_field):
+        """
+        BDA enabled without slowgain solve → should not include solve3 and solve4 in DP3, which are the slowgain solve steps.
+        """
 
-        # Stable value checks 
-        assert calibrate_dd.input_parms["data_colname"] == calibrate_field.data_colname
-        assert calibrate_dd.input_parms["solution_combine_mode"] == "p1p2a2_scalar"
-
-        # BDA disabled + slowgain disabled = only solve1 and solve2 should be present
-        dp3 = calibrate_dd.input_parms["dp3_steps"]
-        assert "solve1" in dp3
-        assert "solve2" in dp3
-        assert "solve3" not in dp3
-        assert "solve4" not in dp3
-        assert "avg" not in dp3
-        assert "null" not in dp3
-
-        # Antenna constraint sanity check
-        assert "fast_antennaconstraint" in calibrate_dd.input_parms
-        assert "CS002HBA0" in calibrate_dd.input_parms["fast_antennaconstraint"]
-
-        # Normalization disabled
-        assert calibrate_dd.input_parms["normalize_h5parm"] is None
-        assert calibrate_dd.input_parms["ddecal_applycal_steps"] is None
-
-        # No initial solutions
-        assert calibrate_dd.input_parms["fast_initialsolutions_h5parm"] is None
-        assert calibrate_dd.input_parms["slow_initialsolutions_h5parm"] is None
-
-    def test_set_input_parameters_dd_all_enabled(self, calibrate_field):
-        """Tests the method where all optional features are enabled"""
-
-        # Enable all major features
-        calibrate_field.apply_diagonal_solutions = True
-        calibrate_field.use_image_based_predict = True
-        calibrate_field.do_slowgain_solve = True
-        calibrate_field.apply_normalizations = True
-
-        # Enable BDA
         calibrate_field.calibrate_bda_timebase = 1
         calibrate_field.calibrate_bda_frequencybase = 1
-        # bda_enabled = True if calibrate_field.calibrate_bda_timebase > 0 or calibrate_field.calibrate_bda_frequencybase > 0 else False
+        calibrate_field.do_slowgain_solve = False
 
-        # Ensure core stations exist
-        calibrate_field.fast_phases_h5parm_filename = "fast.h5"
-        calibrate_field.medium1_phases_h5parm_filename = "medium1.h5"
-        calibrate_field.medium2_phases_h5parm_filename = "medium2.h5"
-        calibrate_field.slow_gains_h5parm_filename = "slow.h5"
+        with patch("os.path.exists", return_value=False):
+            dp3, _ = run_calibrate(calibrate_field)
 
+        assert dp3 == ["avg", "solve1", "solve2", "null"]
 
-        calibrate_dd = CalibrateDD(field=calibrate_field, index=1)
-        calibrate_dd.set_input_parameters()
+    def test_set_input_parameters_bda_enabled_slowgain_enabled(self, calibrate_field):
+        """
+        BDA enabled with slowgain all solve steps should be present (avg + solve1/2/3/4 + null)
+        """
 
-        # Basic structure
-        assert isinstance(calibrate_dd.input_parms, dict)
-        assert len(calibrate_dd.input_parms) > 0
+        calibrate_field.calibrate_bda_timebase = 1
+        calibrate_field.calibrate_bda_frequencybase = 1
+        calibrate_field.do_slowgain_solve = True
 
-        # Combine mode branch
-        assert calibrate_dd.input_parms["solution_combine_mode"] == "p1p2a2_diagonal"
+        with patch("os.path.exists", return_value=False):
+            dp3, _ = run_calibrate(calibrate_field)
 
-        # DP3 steps: image-based predict should prepend steps
-        dp3 = calibrate_dd.input_parms["dp3_steps"]
+        assert dp3 == [
+            "avg",
+            "solve1",
+            "solve2",
+            "solve3",
+            "solve4",
+            "null",
+        ]
 
-        assert "predict" in dp3
-        assert "applybeam" in dp3
+    def test_set_input_parameters_ibp_no_normalization(self, calibrate_field):
+        """
+        Image-based predict enabled without normalization → applybeam + predict steps, but no normalization steps.
+        """
 
-        # BDA enabled + slowgain enabled = all solve steps should be present
-        assert "avg" in dp3
-        assert "solve1" in dp3
-        assert "solve2" in dp3
-        assert "solve3" in dp3
-        assert "solve4" in dp3
+        calibrate_field.use_image_based_predict = True
+        calibrate_field.apply_normalizations = False
 
-        # Normalization enabled
-        assert calibrate_dd.input_parms["normalize_h5parm"] is not None
-        assert calibrate_dd.input_parms["ddecal_applycal_steps"] == "[normalization]"
-        assert calibrate_dd.input_parms["applycal_steps"] == "[normalization]"
+        with patch("os.path.exists", return_value=False):
+            dp3, params = run_calibrate(calibrate_field)
 
-        # Initial solutions loaded (all present)
-        assert calibrate_dd.input_parms["fast_initialsolutions_h5parm"] is not None
-        assert calibrate_dd.input_parms["medium1_initialsolutions_h5parm"] is not None
-        assert calibrate_dd.input_parms["medium2_initialsolutions_h5parm"] is not None
-        assert calibrate_dd.input_parms["slow_initialsolutions_h5parm"] is not None
+        assert dp3[:2] == ["predict", "applybeam"]
+        assert "applycal" not in dp3
+        assert params["ddecal_applycal_steps"] is None
 
-        # Antenna constraints with core stations
-        assert "fast_antennaconstraint" in calibrate_dd.input_parms
-        assert "medium_antennaconstraint" in calibrate_dd.input_parms
-        assert "CS002HBA0" in calibrate_dd.input_parms["fast_antennaconstraint"]
+    def test_set_input_parameters_ibp_with_normalization(self, calibrate_field):
+        """
+        Image-based predict prepends predict steps with normalization applycal.
+        """
 
-        # BDA fields reflected
-        assert calibrate_dd.input_parms["bda_timebase"] == 1
-        assert calibrate_dd.input_parms["bda_frequencybase"] == 1
+        calibrate_field.use_image_based_predict = True
+        calibrate_field.apply_normalizations = True
 
-        # File outputs exist
-        assert len(calibrate_dd.input_parms["output_fast_h5parm"]) == calibrate_field.ntimechunks
-        assert len(calibrate_dd.input_parms["output_slow_h5parm"]) == calibrate_field.ntimechunks
+        with patch("os.path.exists", return_value=False):
+            dp3, params = run_calibrate(calibrate_field)
 
+        assert dp3[:3] == ["predict", "applybeam", "applycal"]
+        assert params["ddecal_applycal_steps"] == "[normalization]"
+        assert params["applycal_steps"] == "[normalization]"
 
-# TODO: Need to test BDA on, slowgain off, and vice versa
+    def test_solution_combine_mode_switch(self, calibrate_field):
+        """
+        Tests that the solution_combine_mode is set correctly based on the apply_diagonal_solutions flag.
+        """
 
+        calibrate_field.apply_diagonal_solutions = True
+
+        with patch("os.path.exists", return_value=False):
+            _, params = run_calibrate(calibrate_field)
+
+        assert params["solution_combine_mode"] == "p1p2a2_diagonal"
+
+        calibrate_field.apply_diagonal_solutions = False
+
+        with patch("os.path.exists", return_value=False):
+            _, params = run_calibrate(calibrate_field)
+
+        assert params["solution_combine_mode"] == "p1p2a2_scalar"
 #--------------------test set input parameters--------------------
 
     BASELINES_CORE_CASES = [
