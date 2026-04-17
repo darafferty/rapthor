@@ -43,7 +43,7 @@ COMMON_STRATEGY_SETTINGS = {
 }
 
 
-def make_step(**overrides):
+def make_strategy_step(**overrides):
     """Helper to create a strategy step with settings and overrides."""
     return {**COMMON_STRATEGY_SETTINGS, **overrides}
 
@@ -119,7 +119,7 @@ def generated_parset_path(request, tmp_path):
 @pytest.fixture
 def single_loop_strategy_path(tmp_path):
     """Fixture to generate a strategy file for a single self-calibration loop."""
-    strategy_steps = [make_step(do_calibrate=True, do_image=True)]
+    strategy_steps = [make_strategy_step(do_calibrate=True, do_image=True)]
     strategy_content = f"strategy_steps = {strategy_steps}"
     strategy_path = tmp_path / "single_loop_strategy.py"
     strategy_path.write_text(strategy_content)
