@@ -7,7 +7,9 @@ import configparser
 import shutil
 import tarfile
 import tempfile
+import numpy as np
 from pathlib import Path
+from astropy.table import Table
 
 import pytest
 import requests
@@ -372,3 +374,76 @@ def parset_for_field_test(tmp_path_factory, test_ms):
         RESOURCE_DIR / "test_apparent_sky.txt",
     )
     return parset_read(target)
+
+
+def _make_source_catalog(n_sources=8, alpha=-0.7, ref_flux=1.0):
+    """
+    Build a minimal synthetic PyBDSF spectral-index-mode source catalog.
+
+    Sources are placed on a small grid around the MS phase center so that
+    they pass the radius, major-axis, and neighbor-distance cuts used by
+    ``main()``.
+    """
+    # Frequencies of the test MS (tests/resources/test.ms), 8 channels ~134 MHz
+    ms_channel_frequencies = np.array(
+        [
+            1.34288025e08,
+            1.34312439e08,
+            1.34336853e08,
+            1.34361267e08,
+            1.34385681e08,
+            1.34410095e08,
+            1.34434509e08,
+            1.34458923e08,
+        ]
+    )
+
+    # Phase center of the test MS in degrees (RA, Dec)
+    ra0, dec0 = (24.422081, 33.159759)
+
+    # Number of channels
+    n_chan = len(ms_channel_frequencies)
+
+    ref_freq = ms_channel_frequencies[n_chan // 2]
+
+    # Place sources on a regular grid with ~0.3 deg spacing (well within
+    # radius_cut=3 deg and well above neighbor_cut=30/3600 deg)
+    step = 0.3  # degrees
+    offsets = np.arange(-(n_sources // 2), n_sources - (n_sources // 2)) * step
+    source_ra = ra0 + offsets
+    source_dec = np.full(n_sources, dec0)
+
+    # Assign power-law SEDs with slight per-source flux variation
+    base_fluxes = ref_flux * (1.0 + 0.1 * np.arange(n_sources))
+
+    # Build the column data
+    columns = {
+        "RA": source_ra.astype(np.float32),
+        "DEC": source_dec.astype(np.float32),
+        "Total_flux": base_fluxes.astype(np.float32),
+        "E_Total_flux": (base_fluxes * 0.05).astype(np.float32),
+        # Small deconvolved major axis — well below major_axis_cut=30/3600 deg
+        "DC_Maj": np.full(n_sources, 5.0 / 3600.0, dtype=np.float32),
+    }
+
+    # Per-channel fluxes and errors
+    for ch, freq in enumerate(ms_channel_frequencies, start=1):
+        ch_flux = base_fluxes * (freq / ref_freq) ** alpha
+        columns[f"Total_flux_ch{ch}"] = ch_flux.astype(np.float32)
+        columns[f"E_Total_flux_ch{ch}"] = (ch_flux * 0.05).astype(np.float32)
+        columns[f"Freq_ch{ch}"] = np.full(n_sources, freq, dtype=np.float64)
+
+    table = Table(columns)
+    return table
+
+
+@pytest.fixture
+def source_catalog_fits(tmp_path):
+    """
+    A synthetic PyBDSF spectral-index-mode source catalog FITS file whose
+    sources are centered on the test MS phase center.
+    """
+    catalog_path = str(tmp_path / "test_source_catalog.fits")
+    table = _make_source_catalog()
+    table.write(catalog_path, format="fits", overwrite=True)
+    return catalog_path
