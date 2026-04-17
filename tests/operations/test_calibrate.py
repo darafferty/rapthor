@@ -159,7 +159,9 @@ class TestCalibrate:
             ("di_fulljones", "some_other_batch_system", "don't", "care"),
         ],
     )
-    def test_set_parset_parameters(self, calibrate_field, scenario, batch_system, generate_screens, use_image_based_predict):
+    def test_set_parset_parameters(
+        self, calibrate_field, scenario, batch_system, generate_screens, use_image_based_predict
+    ):
         is_dd = scenario.startswith("dd")
         with_slow = scenario == "dd_with_slowgain"
         max_cores = 42
@@ -191,7 +193,10 @@ class TestCalibrate:
         if is_dd:  # CalibrateDD sets some extra parameters.
             expected_use_image_based_predict = generate_screens or use_image_based_predict
             assert calibrate.use_image_based_predict is expected_use_image_based_predict
-            assert calibrate.parset_parms["use_image_based_predict"] is expected_use_image_based_predict
+            assert (
+                calibrate.parset_parms["use_image_based_predict"]
+                is expected_use_image_based_predict
+            )
             assert calibrate.parset_parms["generate_screens"] is generate_screens
             assert calibrate.parset_parms["do_slowgain_solve"] is with_slow
 
