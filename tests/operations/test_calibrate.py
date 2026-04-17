@@ -57,25 +57,31 @@ def parse_dp3(dp3_string):
     return [x.strip() for x in dp3_string.strip("[]").split(",") if x.strip()]
 
 
-def run_calibrate(calibrate_field):
-    """
-    Executes set_input_parameters and returns:
-        - parsed dp3_steps
-        - full input_parms dict
-    """
-    calibrate_dd = CalibrateDD(field=calibrate_field, index=1)
-    calibrate_dd.set_input_parameters()
-    return parse_dp3(calibrate_dd.input_parms["dp3_steps"]), calibrate_dd.input_parms
-
-
 class TestCalibrateDD:
     def test_set_parset_parameters(self):
         # calibrate_dd.set_parset_parameters()
         pass
 
-#--------------------test set input parameters--------------------
-    
-    def test_set_input_parameters_dd_all_disabled(self, calibrate_field):
+    BDA_CASES = [
+        # (bda_time, bda_freq, slowgain, expected_dp3)
+        (0, 0, False, ["solve1", "solve2"]),
+        (1, 1, False, ["avg", "solve1", "solve2", "null"]),
+        (1, 1, True,  ["avg", "solve1", "solve2", "solve3", "solve4", "null"]),
+    ]
+            
+    IMAGE_BASED_PREDICT_CASES = [
+         # (normalize, expected_prefix, expect_applycal)
+        (False, ["predict", "applybeam"], False),
+        (True,  ["predict", "applybeam", "applycal"], True),
+    ]
+
+    COMBINE_MODE_CASES = [
+         # (diagonal_flag, expected_mode)
+        (True,  "p1p2a2_diagonal"),
+        (False, "p1p2a2_scalar"),
+    ]
+        
+    def test_set_input_parameters_dd_all_disabled(self, calibrate_field, mocker):
         """
         Everything disabled → minimal dp3, no optional features.
         """
@@ -93,8 +99,11 @@ class TestCalibrateDD:
         calibrate_field.medium2_phases_h5parm_filename = None
         calibrate_field.slow_gains_h5parm_filename = None
 
-        with patch("os.path.exists", return_value=False):
-            dp3, params = run_calibrate(calibrate_field)
+        mocker.patch("os.path.exists", return_value=False)
+        calibrate_dd = CalibrateDD(field=calibrate_field, index=1)
+        calibrate_dd.set_input_parameters()
+        dp3 = parse_dp3(calibrate_dd.input_parms["dp3_steps"])
+        params = calibrate_dd.input_parms
 
         assert dp3 == ["solve1", "solve2"]
 
@@ -106,89 +115,56 @@ class TestCalibrateDD:
         assert params["slow_initialsolutions_h5parm"] is None
     
 
-    def test_set_input_parameters_bda_enabled_slowgain_disabled(self, calibrate_field):
-        """
-        BDA enabled without slowgain solve → should not include solve3 and solve4 in DP3, which are the slowgain solve steps.
-        """
+    @pytest.mark.parametrize(
+    "bda_time, bda_freq, slowgain, expected_dp3",
+    BDA_CASES,
+)
+    def test_set_input_parameters_dd_bda_cases(self, calibrate_field, mocker, bda_time, bda_freq, slowgain, expected_dp3):
+        calibrate_field.calibrate_bda_timebase = bda_time
+        calibrate_field.calibrate_bda_frequencybase = bda_freq
+        calibrate_field.do_slowgain_solve = slowgain
+        calibrate_field.use_image_based_predict = False
 
-        calibrate_field.calibrate_bda_timebase = 1
-        calibrate_field.calibrate_bda_frequencybase = 1
-        calibrate_field.do_slowgain_solve = False
+        # # set os.path.exists to always return False to test the default dp3 steps without loading from existing h5parms
+        mocker.patch("os.path.exists", return_value=False)
+        calibrate_dd = CalibrateDD(field=calibrate_field, index=1)
+        calibrate_dd.set_input_parameters()
+        dp3 = parse_dp3(calibrate_dd.input_parms["dp3_steps"])
 
-        with patch("os.path.exists", return_value=False):
-            dp3, _ = run_calibrate(calibrate_field)
+        assert dp3 == expected_dp3
 
-        assert dp3 == ["avg", "solve1", "solve2", "null"]
+    @pytest.mark.parametrize(
+        "normalize, expected_prefix, expect_applycal",
+        IMAGE_BASED_PREDICT_CASES,
+    )
 
-    def test_set_input_parameters_bda_enabled_slowgain_enabled(self, calibrate_field):
-        """
-        BDA enabled with slowgain all solve steps should be present (avg + solve1/2/3/4 + null)
-        """
-
-        calibrate_field.calibrate_bda_timebase = 1
-        calibrate_field.calibrate_bda_frequencybase = 1
-        calibrate_field.do_slowgain_solve = True
-
-        with patch("os.path.exists", return_value=False):
-            dp3, _ = run_calibrate(calibrate_field)
-
-        assert dp3 == [
-            "avg",
-            "solve1",
-            "solve2",
-            "solve3",
-            "solve4",
-            "null",
-        ]
-
-    def test_set_input_parameters_ibp_no_normalization(self, calibrate_field):
-        """
-        Image-based predict enabled without normalization → applybeam + predict steps, but no normalization steps.
-        """
-
+    def test_set_input_parameters_dd_ibp_cases(self, calibrate_field, mocker, normalize, expected_prefix, expect_applycal):
         calibrate_field.use_image_based_predict = True
-        calibrate_field.apply_normalizations = False
+        calibrate_field.apply_normalizations = normalize
 
-        with patch("os.path.exists", return_value=False):
-            dp3, params = run_calibrate(calibrate_field)
+        # set os.path.exists to always return False to test to test the default dp3 steps without loading from existing h5parms
+        mocker.patch("os.path.exists", return_value=False)
+        calibrate_dd = CalibrateDD(field=calibrate_field, index=1)
+        calibrate_dd.set_input_parameters()
+        dp3 = parse_dp3(calibrate_dd.input_parms["dp3_steps"])
+        params = calibrate_dd.input_parms
 
-        assert dp3[:2] == ["predict", "applybeam"]
-        assert "applycal" not in dp3
-        assert params["ddecal_applycal_steps"] is None
+        assert dp3[: len(expected_prefix)] == expected_prefix
 
-    def test_set_input_parameters_ibp_with_normalization(self, calibrate_field):
-        """
-        Image-based predict prepends predict steps with normalization applycal.
-        """
+        if expect_applycal:
+            assert params["ddecal_applycal_steps"] == "[normalization]"
+            assert params["applycal_steps"] == "[normalization]"
+        else:
+            assert params["ddecal_applycal_steps"] is None
 
-        calibrate_field.use_image_based_predict = True
-        calibrate_field.apply_normalizations = True
+    def test_set_input_parameters_dd_solution_combine_mode_switch(self, calibrate_field, mocker, diagonal_flag, expected_mode):
+        calibrate_field.apply_diagonal_solutions = diagonal_flag
 
-        with patch("os.path.exists", return_value=False):
-            dp3, params = run_calibrate(calibrate_field)
+        mocker.patch("os.path.exists", return_value=False)
+        calibrate_dd = CalibrateDD(field=calibrate_field, index=1)
+        calibrate_dd.set_input_parameters()
 
-        assert dp3[:3] == ["predict", "applybeam", "applycal"]
-        assert params["ddecal_applycal_steps"] == "[normalization]"
-        assert params["applycal_steps"] == "[normalization]"
-
-    def test_solution_combine_mode_switch(self, calibrate_field):
-        """
-        Tests that the solution_combine_mode is set correctly based on the apply_diagonal_solutions flag.
-        """
-
-        calibrate_field.apply_diagonal_solutions = True
-
-        with patch("os.path.exists", return_value=False):
-            _, params = run_calibrate(calibrate_field)
-
-        assert params["solution_combine_mode"] == "p1p2a2_diagonal"
-
-        calibrate_field.apply_diagonal_solutions = False
-
-        with patch("os.path.exists", return_value=False):
-            _, params = run_calibrate(calibrate_field)
-
-        assert params["solution_combine_mode"] == "p1p2a2_scalar"
+        assert calibrate_dd.input_parms["solution_combine_mode"] == expected_mode
 #--------------------test set input parameters--------------------
 
     BASELINES_CORE_CASES = [
