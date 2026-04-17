@@ -5,9 +5,12 @@ for this directory.
 
 import configparser
 import shutil
+import tarfile
+import tempfile
 from pathlib import Path
 
 import pytest
+import requests
 
 from rapthor.lib.facet import Facet
 from rapthor.lib.field import Field
@@ -16,6 +19,43 @@ from rapthor.lib.parset import parset_read
 from rapthor.lib.observation import Observation
 
 RESOURCE_DIR = Path(__file__).parent / "resources"
+TEST_MS_ARCHIVE_URL = "https://support.astron.nl/software/ci_data/rapthor/tDDECal.in_MS.tgz"
+TEST_MS_ARCHIVE_DIRNAME = "tDDECal.MS"
+TEST_MS_DIRNAME = "test.ms"
+
+
+def _download_test_ms(destination):
+    response = requests.get(TEST_MS_ARCHIVE_URL, timeout=300)
+    response.raise_for_status()
+
+    with tempfile.TemporaryDirectory(dir=destination.parent) as tmp_dir_name:
+        tmp_dir = Path(tmp_dir_name)
+        archive_path = tmp_dir / "test.ms.tgz"
+        archive_path.write_bytes(response.content)
+
+        with tarfile.open(archive_path, "r:gz") as archive:
+            archive.extractall(tmp_dir)
+
+        extracted_dir = tmp_dir / TEST_MS_ARCHIVE_DIRNAME
+        if not extracted_dir.exists():
+            raise FileNotFoundError(f"Downloaded archive did not contain {TEST_MS_ARCHIVE_DIRNAME}")
+
+        try:
+            shutil.move(extracted_dir.as_posix(), destination.as_posix())
+        except shutil.Error:
+            if not destination.exists():
+                raise
+
+
+def ensure_test_ms(resource_dir):
+    resource_dir = Path(resource_dir)
+    destination = resource_dir / TEST_MS_DIRNAME
+    if destination.exists():
+        return destination
+
+    _download_test_ms(destination)
+    return destination
+
 
 def pytest_configure(config):
     config.resource_dir = RESOURCE_DIR
@@ -27,7 +67,7 @@ def test_ms(tmp_path):
     Fixture to provide a copy of the test MS in the resources directory.
     Yield the POSIX path to the copy of the MS.
     """
-    shutil.copytree(RESOURCE_DIR / "test.ms", tmp_path/ "test.ms")
+    shutil.copytree(ensure_test_ms(RESOURCE_DIR), tmp_path / "test.ms")
     yield (tmp_path / "test.ms").as_posix()
 
 
@@ -73,7 +113,10 @@ def selected_sky_model_path(tmp_path):
     """
     Fixture to create a selected apparent SkyModel for testing.
     """
-    shutil.copy((RESOURCE_DIR / "test_apparent_sky_selected.txt"), tmp_path / "test_apparent_sky_selected.txt")
+    shutil.copy(
+        (RESOURCE_DIR / "test_apparent_sky_selected.txt"),
+        tmp_path / "test_apparent_sky_selected.txt",
+    )
     return Path(tmp_path / "test_apparent_sky_selected.txt")
 
 
@@ -111,9 +154,9 @@ def image_fits(tmp_path):
     """
     Fixture to provide a path for a mock image FITS file.
 
-    Copy file from resources folder to temporary directory. 
+    Copy file from resources folder to temporary directory.
     Data adapted from fits.util.get_testdata_filepath('test0.fits'):
-    
+
     .. code-block:: python
 
         from astropy.io import fits
@@ -130,6 +173,7 @@ def image_fits(tmp_path):
     shutil.copy((RESOURCE_DIR / "test_image.fits"), tmp_path / "test_image.fits")
     return Path(tmp_path / "test_image.fits")
 
+
 @pytest.fixture
 def facet_region_ds9(tmp_path):
     """
@@ -144,13 +188,10 @@ def facet():
     """
     Fixture to create a facet for testing.
     """
-    return Facet(name="Square Facet",
-                 ra=1.0,
-                 dec=1.0,
-                 vertices=[(0, 2.0),
-                           (2.0, 2.0),
-                           (2.0, 0),
-                           (0, 0)])
+    return Facet(
+        name="Square Facet", ra=1.0, dec=1.0, vertices=[(0, 2.0), (2.0, 2.0), (2.0, 0), (0, 0)]
+    )
+
 
 @pytest.fixture
 def custom_strategy(tmp_path):

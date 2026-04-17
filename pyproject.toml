@@ -152,7 +152,7 @@ ignore = ["E501"]  # line-too-long
 
 [tool.tox]
 requires = ["tox>4"]
-envlist = ["lint", "format", "py3{9,10,11,12,13}"]
+envlist = ["lint", "format", "py3{9,10,11,12,13}", "test_integration"]
 
 [tool.tox.env_run_base]
 description = "Run all tests"
@@ -182,6 +182,19 @@ commands = [
     ],
 ]
 
+[tool.tox.env.test_integration]
+description = "Run integration tests"
+deps = [{ replace = "ref", of = ["dependency-groups", "test"], extend = true }]
+commands = [
+    [
+        "python", "-m", "pytest",
+        "-m", "integration",
+        "-vv", "-ra",
+        "-n", "4", 
+        "tests/{posargs}",
+    ]
+]
+
 [tool.tox.env.lint]
 deps = "ruff"
 commands = [
@@ -203,6 +216,7 @@ format_targets = [
     "rapthor/operations/image.py",
     "rapthor/process.py",
     "rapthor/scripts/calculate_image_diagnostics.py",
+    "tests/conftest.py",
     "tests/cwl/__init__.py",
     "tests/cwl/cwl_cmdline.py",
     "tests/cwl/cwl_mock.py",
@@ -210,8 +224,11 @@ format_targets = [
     "tests/cwl/tests/test_cwl_mock.py",
     "tests/cwl/tests/test_cwl_real_execution.py",
     "tests/cwl/tests/test_cwl_scatter.py",
+    "tests/integration/conftest.py",
+    "tests/integration/test_rapthor.py",
     "tests/lib/test_cwl.py",
     "tests/lib/test_cwlrunner.py",
+    "tests/lib/test_field.py",
     "tests/lib/test_parset.py",
     "tests/lib/test_strategy.py",
     "tests/operations/test_calibrate.py",
