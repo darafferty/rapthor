@@ -48,9 +48,27 @@ class TestCalibrateDD:
         # calibrate_dd.set_input_parameters()
         pass
 
-    def test_get_baselines_core(self):
-        # calibrate_dd.get_baselines_core()
-        pass
+    BASELINES_CORE_CASES = [
+        (
+            "LBA",
+            ["CS001LBA", "CS002LBA", "RS106LBA", "DE601LBA", "UK608LBA"],
+            "[CR]*&&;!DE601LBA;!UK608LBA",
+        ),
+        (
+            "HBA",
+            ["CS003HBA0", "RS106HBA0", "DE601HBA", "UK902HBA"],
+            "[CR]*&&;!DE601HBA;!UK902HBA",
+        ),
+    ]
+
+    @pytest.mark.parametrize("antenna, stations, expected", BASELINES_CORE_CASES)
+    def test_get_baselines_core(self, calibrate_field, antenna, stations, expected):
+        calibrate_field.antenna = antenna
+        calibrate_field.stations = stations
+        calibrate_dd = CalibrateDD(field=calibrate_field, index=1)
+
+        baselines = calibrate_dd.get_baselines_core()
+        assert baselines == expected
 
     SUPERTERP_STATION_CASES = [
         (
