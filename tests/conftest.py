@@ -142,11 +142,28 @@ def selected_sky_model_path(tmp_path):
 
 
 @pytest.fixture
-def dummy_sky_model_path(tmp_path):
+def single_source_sky_model(tmp_path):
     """
-    Fixture to create a path to a non-existent SkyModel for testing.
+    Fixture to create simple sky model file with a single source.
+
+    It returns a dictionary with the path of the file and the source values.
     """
-    return tmp_path / "dummy_sky.txt"
+    name = "src"
+    ra = 4.0
+    dec = 2.0
+    reference_frequency = 142000000.0
+    path = tmp_path / "single_source_sky.txt"
+    path.write_text(
+        "FORMAT = Name, Type, Ra, Dec, I, ReferenceFrequency\n"
+        f"{name}, POINT, {ra}, {dec}, 0.042, {reference_frequency}\n"
+    )
+    return {
+        "path": path,
+        "name": name,
+        "ra": ra,
+        "dec": dec,
+        "reference_frequency": reference_frequency,
+    }
 
 
 @pytest.fixture

@@ -144,11 +144,11 @@ class TestCalibrateDD:
 
     @pytest.mark.parametrize("cycle,have_full_field_sector", [(1, False), (1, True), (2, False)])
     def test_get_model_image_parameters(
-        self, dummy_sky_model_path, calibrate_field, mocker, cycle, have_full_field_sector
+        self, single_source_sky_model, calibrate_field, mocker, cycle, have_full_field_sector
     ):
+        sky_model = single_source_sky_model
         field = calibrate_field
 
-        ref_frequency = 142000000.0
         bandwidth = 1e6  # hardcoded value in Rapthor.
         cellsize_arcsec = 2
         cellsize_degrees = cellsize_arcsec / 3600.0
@@ -158,18 +158,9 @@ class TestCalibrateDD:
         source_distance_ra = 6
         source_distance_dec = 7
         expected_source_distance_size = [25200, 25200]  # 2 * 7 * cellsize_pixels
-        source_name = "src"
-        skymodel_ra = 4.0
-        skymodel_dec = 2.0
-
-        # Create a dummy skymodel with a single source.
-        dummy_sky_model_path.write_text(
-            "FORMAT = Name, Type, Ra, Dec, I, ReferenceFrequency\n"
-            f"{source_name}, POINT, {skymodel_ra}, {skymodel_dec}, 0.042, {ref_frequency}\n"
-        )
 
         # Setup the field for the test.
-        field.calibration_skymodel_file = str(dummy_sky_model_path)
+        field.calibration_skymodel_file = str(sky_model["path"])
         field.parset["imaging_specific"] = {"cellsize_arcsec": cellsize_arcsec}
         field.get_source_distances = mocker.MagicMock(
             return_value=("foo", [source_distance_ra, source_distance_dec])
@@ -186,11 +177,11 @@ class TestCalibrateDD:
         )
 
         # Assert. In this test, all scenarios yield equal values, except for the size.
-        assert frequency_bandwidth == [ref_frequency, bandwidth]
+        assert frequency_bandwidth == [sky_model["reference_frequency"], bandwidth]
         assert center_coords == ("2:48:00.000000", "-42.00.00.000000")
         if cycle == 1 and not have_full_field_sector:
             field.get_source_distances.assert_called_once_with(
-                {source_name: [skymodel_ra, skymodel_dec]}
+                {sky_model["name"]: [sky_model["ra"], sky_model["dec"]]}
             )
             assert size == expected_source_distance_size
         else:
