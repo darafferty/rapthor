@@ -13,6 +13,9 @@ import lsmtool
 import numpy as np
 import tempfile
 from lsmtool.operations_lib import normalize_ra_dec
+import logging
+
+log = logging.getLogger('rapthor:normalize_flux_scale')
 
 def fit_sed(fluxes, errors, frequencies):
     """
@@ -180,7 +183,8 @@ def create_normalization_h5parm(antenna_file, field_file, h5parm_file, frequenci
 
 def main(source_catalog, ms_file, output_h5parm, radius_cut=3.0, major_axis_cut=30/3600,
          neighbor_cut=30/3600, spurious_match_cut=30/3600, min_sources=5,
-         weight_by_flux_err=False, ignore_frequency_dependence=False):
+         weight_by_flux_err=False, ignore_frequency_dependence=False,
+         reference_skymodel=None):
     """
     Calculate flux-scale normalization corrections
 
@@ -216,6 +220,8 @@ def main(source_catalog, ms_file, output_h5parm, radius_cut=3.0, major_axis_cut=
     ignore_frequency_dependence : bool, optional
         If True, any frequency dependence of the normalization is ignored and the
         normalization is taken as the mean over all frequencies
+    reference_skymodel : str, optional
+        Filename of a reference sky model to use for normalization (instead of external survey catalogs)
     """
     # Read in the source catalog
     with fits.open(source_catalog) as hdul:
@@ -241,9 +247,9 @@ def main(source_catalog, ms_file, output_h5parm, radius_cut=3.0, major_axis_cut=
         ra, dec = np.squeeze(fieldTable.getcol('PHASE_DIR'))  # radians
 
     do_normalization = True
-    print(f"Number of sources before applying cuts: {data['RA'].size}")
+    log.info(f"Number of sources before applying cuts: {data['RA'].size}")
     if data['RA'].size < min_sources:
-        print('Too few sources. Flux normalization will be skipped.')
+        log.info('Too few sources. Flux normalization will be skipped.')
         do_normalization = False
     else:
         # Filter the sources to keep only:
@@ -275,9 +281,9 @@ def main(source_catalog, ms_file, output_h5parm, radius_cut=3.0, major_axis_cut=
         data = data[radius_filter & major_axis_filter & neighbor_filter]
         source_coords = source_coords[radius_filter & major_axis_filter & neighbor_filter]
         n_sources = len(source_coords)
-        print(f"Number of sources after applying cuts: {n_sources}")
+        log.info(f"Number of sources after applying cuts: {n_sources}")
         if n_sources < min_sources:
-            print('Too few sources remain after applying cuts. Flux normalization will be skipped.')
+            log.info('Too few sources remain after applying cuts. Flux normalization will be skipped.')
             do_normalization = False
 
     # Cross match sources with external catalogs
@@ -289,13 +295,15 @@ def main(source_catalog, ms_file, output_h5parm, radius_cut=3.0, major_axis_cut=
             # Download sky model(s), using a 5-deg radius to ensure the field is
             # fully covered
             try:
+                log.info(f'Downloading {survey} catalog for this field...')
                 skymodel = lsmtool.load(survey, VOPosition=[ra*180/np.pi, dec*180/np.pi], VORadius=5.0)
             except (OSError, ConnectionError) as e:
-                print(f'A problem occurred when downloading the {survey} catalog. '
-                      'Error was: {}. Flux normalization will be skipped.'.format(e))
+                log.error(f'A problem occurred when downloading the {survey} catalog. '
+                      f'Error was: {e}. Flux normalization will be skipped.')
                 do_normalization = False
+                continue
             if not len(skymodel):
-                print(f'No sources found in the {survey} catalog for this field. '
+                log.warning(f'No sources found in the {survey} catalog for this field. '
                       'Flux normalization will be skipped.')
                 do_normalization = False
             if not do_normalization:
@@ -377,13 +385,15 @@ def main(source_catalog, ms_file, output_h5parm, radius_cut=3.0, major_axis_cut=
         valid_fits = np.all(~np.isnan(corrections), axis=1)
         n_valid = np.where(valid_fits)[0].size
         if n_valid < min_sources:
-            print('Too few sources with successful SED fits. Flux normalization will be skipped.')
+            log.warning('Too few sources with successful SED fits. Flux normalization will be skipped.')
             avg_corrections = np.ones(len(output_frequencies))
         else:
             if weight_by_flux_err:
                 # TODO: check that the limit of 1e3 is a good choice (or is needed at all)
+                log.info('Calculating weights given by the inverse of the errors on the source flux densities.')
                 weights = [min(1e3, 1/err) if err > 0 else 1e3 for err in data['E_Total_flux'][valid_fits]]
             else:
+                log.info('Weights will be set to 1 (i.e., no weighting by flux density errors).')
                 weights = np.ones(n_valid)
             avg_corrections = np.average(corrections[valid_fits], axis=0,
                                          weights=weights)
@@ -393,6 +403,7 @@ def main(source_catalog, ms_file, output_h5parm, radius_cut=3.0, major_axis_cut=
 
     if ignore_frequency_dependence:
         # Use a single correction for all frequencies
+        log.info('Ignoring frequency dependence of normalizations. A single correction will be applied at all frequencies.')
         avg_corrections[:] = np.mean(avg_corrections)
 
     # Write corrections to the output H5parm file as amplitude corrections
@@ -415,9 +426,11 @@ if __name__ == '__main__':
     parser.add_argument('--min_sources', help='Minimum number of souces required for normalization calculation', type=int, default=5)
     parser.add_argument('--weight_by_flux_err', help='Weight by error on flux density', action='store_true', default=False)
     parser.add_argument('--ignore_frequency_dependence', help='Ignore frequency dependence of normalizations', action='store_true', default=False)
+    parser.add_argument('--reference_skymodel', help='Filename of a reference sky model to use for normalization (instead of external survey catalogs)', type=str, default=None)
 
     args = parser.parse_args()
     main(args.source_catalog, args.ms_file, args.output_h5parm, radius_cut=args.radius_cut,
          major_axis_cut=args.major_axis_cut, neighbor_cut=args.neighbor_cut,
          spurious_match_cut=args.spurious_match_cut, min_sources=args.min_sources,
-         weight_by_flux_err=args.weight_by_flux_err, ignore_frequency_dependence=args.ignore_frequency_dependence)
+         weight_by_flux_err=args.weight_by_flux_err, ignore_frequency_dependence=args.ignore_frequency_dependence,
+         reference_skymodel=args.reference_skymodel)

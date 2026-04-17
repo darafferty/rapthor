@@ -13,6 +13,8 @@ from astropy.table import Table
 
 import pytest
 import requests
+
+import lsmtool
 from lsmtool.facet import Facet
 
 from rapthor.lib.field import Field
@@ -166,6 +168,24 @@ def single_source_sky_model(tmp_path):
         "dec": dec,
         "reference_frequency": reference_frequency,
     }
+
+
+@pytest.fixture
+def true_sky_path(tmp_path):
+    """
+    Fixture to create a true SkyModel for testing.
+    """
+    shutil.copy((RESOURCE_DIR / "integration_true_sky.txt"), tmp_path / "integration_true_sky.txt")
+    return Path(tmp_path / "integration_true_sky.txt")
+
+
+@pytest.fixture
+def true_sky_model(sky_model_path):
+    """
+    Fixture to provide a mock sky model from a survey for testing.
+    This is a placeholder and should be replaced with actual sky model creation logic.
+    """
+    return lsmtool.load(sky_model_path.as_posix())
 
 
 @pytest.fixture
@@ -376,7 +396,7 @@ def parset_for_field_test(tmp_path_factory, test_ms):
     return parset_read(target)
 
 
-def _make_source_catalog(n_sources=8, alpha=-0.7, ref_flux=1.0):
+def _make_source_catalog(n_channels=8, n_sources=8, alpha=-0.7, ref_flux=1.0):
     """
     Build a minimal synthetic PyBDSF spectral-index-mode source catalog.
 
@@ -385,17 +405,10 @@ def _make_source_catalog(n_sources=8, alpha=-0.7, ref_flux=1.0):
     ``main()``.
     """
     # Frequencies of the test MS (tests/resources/test.ms), 8 channels ~134 MHz
-    ms_channel_frequencies = np.array(
-        [
-            1.34288025e08,
-            1.34312439e08,
-            1.34336853e08,
-            1.34361267e08,
-            1.34385681e08,
-            1.34410095e08,
-            1.34434509e08,
-            1.34458923e08,
-        ]
+    ms_channel_frequencies = (
+        np.arange(1.34288025e08, 1.34458923e08, (1.34458923e08 - 1.34288025e08) / n_channels)
+        if n_channels > 0
+        else np.array([])
     )
 
     # Phase center of the test MS in degrees (RA, Dec)
@@ -404,7 +417,9 @@ def _make_source_catalog(n_sources=8, alpha=-0.7, ref_flux=1.0):
     # Number of channels
     n_chan = len(ms_channel_frequencies)
 
-    ref_freq = ms_channel_frequencies[n_chan // 2]
+    ref_freq = (
+        ms_channel_frequencies[n_chan // 2] if n_chan > 0 else 1.0
+    )  # Use middle channel as reference frequency, or 1.0 if no channels
 
     # Place sources on a regular grid with ~0.3 deg spacing (well within
     # radius_cut=3 deg and well above neighbor_cut=30/3600 deg)
@@ -412,6 +427,9 @@ def _make_source_catalog(n_sources=8, alpha=-0.7, ref_flux=1.0):
     offsets = np.arange(-(n_sources // 2), n_sources - (n_sources // 2)) * step
     source_ra = ra0 + offsets
     source_dec = np.full(n_sources, dec0)
+
+    # Add source outside the radius cut for testing
+    source_ra[0] = ra0 + 4.0  # 4 degrees, which is outside the radius_cut of 3 degrees
 
     # Assign power-law SEDs with slight per-source flux variation
     base_fluxes = ref_flux * (1.0 + 0.1 * np.arange(n_sources))
@@ -445,5 +463,17 @@ def source_catalog_fits(tmp_path):
     """
     catalog_path = str(tmp_path / "test_source_catalog.fits")
     table = _make_source_catalog()
+    table.write(catalog_path, format="fits", overwrite=True)
+    return catalog_path
+
+
+@pytest.fixture
+def source_catalog_zero_channels_fits(tmp_path):
+    """
+    A synthetic PyBDSF spectral-index-mode source catalog FITS file whose
+    sources are centered on the test MS phase center but with zero channels.
+    """
+    catalog_path = str(tmp_path / "test_source_catalog.fits")
+    table = _make_source_catalog(n_channels=0)
     table.write(catalog_path, format="fits", overwrite=True)
     return catalog_path

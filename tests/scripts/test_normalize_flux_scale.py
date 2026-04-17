@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import numpy as np
 import pytest
+import rapthor.scripts.normalize_flux_scale
 from rapthor.scripts.normalize_flux_scale import (
     create_normalization_h5parm,
     find_normalizations,
@@ -209,31 +210,288 @@ def test_create_normalization_h5parm(test_ms, tmp_path):
     assert os.path.exists(h5parm_file), f"Expected {h5parm_file} to be created."
 
 
-def test_main(test_ms, source_catalog_fits, tmp_path):
+@pytest.mark.parametrize("use_input_skymodel", [False, True])
+def test_main(
+    test_ms,
+    source_catalog_fits,
+    tmp_path,
+    use_input_skymodel,
+    true_sky_path,
+    true_sky_model,
+    caplog,
+    mocker,
+):
     """
     Test the main function of the normalize_flux_scale script.
     """
-    # Define test parameters
-    output_h5parm = str(tmp_path / "test_output.h5parm")
-    radius_cut = 3.0  # in arcseconds
-    major_axis_cut = 30 / 3600  # in degrees
-    neighbor_cut = 30 / 3600  # in degrees
-    spurious_match_cut = 30 / 3600  # in degrees
-    min_sources = 5  # Minimum number of sources to consider
-    weight_by_flux_err = False  # Whether to weight by flux error
-    ignore_frequency_dependence = False  # Whether to ignore frequency dependence
-    main(
-        source_catalog_fits,
-        test_ms,
-        output_h5parm,
-        radius_cut=radius_cut,
-        major_axis_cut=major_axis_cut,
-        neighbor_cut=neighbor_cut,
-        spurious_match_cut=spurious_match_cut,
-        min_sources=min_sources,
-        weight_by_flux_err=weight_by_flux_err,
-        ignore_frequency_dependence=ignore_frequency_dependence,
+
+    if not use_input_skymodel:
+        # Mock the lsmtool.load function when called with survey to return
+        # the true sky model, to avoid actual downloading during the test
+        mocker.patch(
+            "rapthor.scripts.normalize_flux_scale.lsmtool.load", return_value=true_sky_model
+        )
+
+    # Spy on match_coordinates_sky to ensure it is called
+    match_coordinates_sky_spy = mocker.spy(
+        rapthor.scripts.normalize_flux_scale, "match_coordinates_sky"
     )
+    normalize_ra_dec_spy = mocker.spy(rapthor.scripts.normalize_flux_scale, "normalize_ra_dec")
+    # Mock the fit_sed function to return a function that always returns 1.0
+    mocker.patch("rapthor.scripts.normalize_flux_scale.fit_sed", return_value=lambda x: 1.0)
+
+    output_h5parm = str(tmp_path / "test_output.h5parm")
+    with caplog.at_level("INFO"):
+        main(
+            source_catalog_fits,
+            test_ms,
+            output_h5parm,
+            radius_cut=3.0,  # in arcseconds
+            major_axis_cut=30 / 3600,  # in degrees
+            neighbor_cut=30 / 3600,  # in degrees
+            spurious_match_cut=30 / 3600,  # in degrees
+            min_sources=5,
+            weight_by_flux_err=False,  # Whether to weight by flux error
+            ignore_frequency_dependence=False,  # Whether to ignore frequency dependence,
+            reference_skymodel=true_sky_path if use_input_skymodel else None,
+        )
     # Check if the file is created
     assert os.path.exists(output_h5parm), f"Expected {output_h5parm} to be created."
-    pass
+    assert "Number of sources before applying cuts: 8" in caplog.text, (
+        "Expected log message about number of sources before cuts."
+    )
+    assert "Number of sources after applying cuts: 7" in caplog.text, (
+        "Expected log message about number of sources after cuts."
+    )
+    if not use_input_skymodel:
+        for survey in ["vlssr", "wenss"]:
+            assert f"Downloading {survey} catalog for this field..." in caplog.text, (
+                f"Expected log message about downloading {survey} catalog."
+            )
+    assert match_coordinates_sky_spy.call_count == 3, (
+        "Expected match_coordinates_sky to be called three times "
+        "(once for each survey and once for nearest neighbour distance). "
+        f"Got {match_coordinates_sky_spy.call_count} calls."
+    )
+    assert normalize_ra_dec_spy.call_count > 0, (
+        "Expected normalize_ra_dec to be called at least once."
+    )
+
+
+def test_main_raises_error_if_zero_channels_in_source_catalog(
+    test_ms, source_catalog_zero_channels_fits, tmp_path
+):
+    """
+    Test that the main function raises an error if there are zero channels in the source catalog.
+    """
+    with pytest.raises(
+        ValueError, match="No channel frequency columns were found in the input source catalog."
+    ):
+        main(
+            source_catalog_zero_channels_fits,
+            test_ms,
+            str(tmp_path / "test_output.h5parm"),
+            radius_cut=3.0,
+            major_axis_cut=30 / 3600,
+            neighbor_cut=30 / 3600,
+            spurious_match_cut=30 / 3600,
+            min_sources=5,
+            weight_by_flux_err=False,
+            ignore_frequency_dependence=False,
+        )
+
+
+def test_main_skips_normalization_if_too_few_sources_before_cuts(
+    test_ms, source_catalog_fits, tmp_path, caplog
+):
+    """
+    Test that the main function skips normalization if there are too few sources.
+    """
+    with caplog.at_level("INFO"):
+        main(
+            source_catalog_fits,
+            test_ms,
+            str(tmp_path / "test_output.h5parm"),
+            radius_cut=3.0,
+            major_axis_cut=30 / 3600,
+            neighbor_cut=30 / 3600,
+            spurious_match_cut=30 / 3600,
+            min_sources=10,  # Set min_sources higher than the number of sources in the catalog (8)
+            weight_by_flux_err=False,
+            ignore_frequency_dependence=False,
+        )
+    assert "Too few sources. Flux normalization will be skipped." in caplog.text, (
+        "Expected log message about too few sources."
+    )
+
+
+def test_main_skips_normalization_if_too_few_sources_after_cuts(
+    test_ms, source_catalog_fits, tmp_path, caplog
+):
+    """
+    Test that the main function skips normalization if there are too few sources after applying cuts.
+    """
+    with caplog.at_level("INFO"):
+        main(
+            source_catalog_fits,
+            test_ms,
+            str(tmp_path / "test_output.h5parm"),
+            radius_cut=3.0,
+            major_axis_cut=30 / 3600,
+            neighbor_cut=30 / 3600,
+            spurious_match_cut=30 / 3600,
+            min_sources=8,  # Set min_sources to 8, since one source is outside the radius cut, only 7 will remain after cuts
+            weight_by_flux_err=False,
+            ignore_frequency_dependence=False,
+        )
+    assert (
+        "Too few sources remain after applying cuts. Flux normalization will be skipped."
+        in caplog.text
+    ), "Expected log message about too few sources after cuts."
+
+
+def test_main_raises_error_if_download_fails(
+    test_ms, source_catalog_fits, tmp_path, caplog, mocker
+):
+    """
+    Test that the main function raises an error if the survey catalog download fails.
+    """
+    # Mock the lsmtool.load function to raise a ConnectionError
+    mocker.patch(
+        "rapthor.scripts.normalize_flux_scale.lsmtool.load",
+        side_effect=ConnectionError("Mocked connection error"),
+    )
+
+    with caplog.at_level("ERROR"):
+        main(
+            source_catalog_fits,
+            test_ms,
+            str(tmp_path / "test_output.h5parm"),
+            radius_cut=3.0,
+            major_axis_cut=30 / 3600,
+            neighbor_cut=30 / 3600,
+            spurious_match_cut=30 / 3600,
+            min_sources=5,
+            weight_by_flux_err=False,
+            ignore_frequency_dependence=False,
+        )
+    assert "A problem occurred when downloading the" in caplog.text, (
+        "Expected log message about download problem."
+    )
+
+
+def test_main_skips_normalization_if_no_sources_in_survey_catalog(
+    test_ms, source_catalog_fits, tmp_path, caplog, mocker
+):
+    """
+    Test that the main function skips normalization if no sources are found in the survey catalog.
+    """
+    # Mock the lsmtool.load function to return an empty skymodel
+    mocker.patch("rapthor.scripts.normalize_flux_scale.lsmtool.load", return_value=[])
+
+    with caplog.at_level("WARNING"):
+        main(
+            source_catalog_fits,
+            test_ms,
+            str(tmp_path / "test_output.h5parm"),
+            radius_cut=3.0,
+            major_axis_cut=30 / 3600,
+            neighbor_cut=30 / 3600,
+            spurious_match_cut=30 / 3600,
+            min_sources=5,
+            weight_by_flux_err=False,
+            ignore_frequency_dependence=False,
+        )
+    assert "No sources found in the" in caplog.text, (
+        "Expected log message about no sources in survey catalog."
+    )
+
+
+def test_main_logs_warning_when_too_few_sources_with_valid_fits(
+    test_ms, source_catalog_fits, tmp_path, caplog, mocker
+):
+    """
+    Test that the main function logs a warning when too few sources have valid SED fits.
+    """
+    # Mock the fit_sed function to return a function that always returns NaN
+    mocker.patch("rapthor.scripts.normalize_flux_scale.fit_sed", return_value=lambda x: np.nan)
+
+    with caplog.at_level("WARNING"):
+        main(
+            source_catalog_fits,
+            test_ms,
+            str(tmp_path / "test_output.h5parm"),
+            radius_cut=3.0,
+            major_axis_cut=30 / 3600,
+            neighbor_cut=30 / 3600,
+            spurious_match_cut=30 / 3600,
+            min_sources=5,
+            weight_by_flux_err=False,
+            ignore_frequency_dependence=False,
+        )
+    assert (
+        "Too few sources with successful SED fits. Flux normalization will be skipped."
+        in caplog.text
+    ), "Expected log message about too few sources with valid SED fits."
+
+
+@pytest.mark.parametrize("weight_by_flux_err", [False, True])
+def test_main_weights_by_flux_error(
+    test_ms, source_catalog_fits, tmp_path, caplog, weight_by_flux_err, mocker
+):
+    """
+    Test that the main function correctly applies weighting by flux error when the flag is set.
+    """
+    # Mock the normalization calculations to ensure there are valid fits for the test
+    mocker.patch("rapthor.scripts.normalize_flux_scale.find_normalizations", return_value=1.0)
+
+    with caplog.at_level("INFO"):
+        main(
+            source_catalog_fits,
+            test_ms,
+            str(tmp_path / "test_output.h5parm"),
+            radius_cut=3.0,
+            major_axis_cut=30 / 3600,
+            neighbor_cut=30 / 3600,
+            spurious_match_cut=30 / 3600,
+            min_sources=5,
+            weight_by_flux_err=weight_by_flux_err,  # Enable weighting by flux error
+            ignore_frequency_dependence=False,
+        )
+
+    # Check for log messages indicating that weighting by flux error was applied
+    if weight_by_flux_err:
+        assert (
+            "Calculating weights given by the inverse of the errors on the source flux densities."
+            in caplog.text
+        ), "Expected log message about weighting by flux error."
+    else:
+        assert (
+            "Weights will be set to 1 (i.e., no weighting by flux density errors)." in caplog.text
+        ), "Expected log message about not weighting by flux error."
+
+
+def test_main_ignores_frequency_dependence(test_ms, source_catalog_fits, tmp_path, caplog, mocker):
+    """
+    Test that the main function ignores frequency dependence when the flag is set.
+    """
+    # Mock the normalization calculations to ensure there are valid fits for the test
+    mocker.patch("rapthor.scripts.normalize_flux_scale.find_normalizations", return_value=1.0)
+
+    with caplog.at_level("INFO"):
+        main(
+            source_catalog_fits,
+            test_ms,
+            str(tmp_path / "test_output.h5parm"),
+            radius_cut=3.0,
+            major_axis_cut=30 / 3600,
+            neighbor_cut=30 / 3600,
+            spurious_match_cut=30 / 3600,
+            min_sources=5,
+            weight_by_flux_err=False,
+            ignore_frequency_dependence=True,  # Enable ignoring frequency dependence
+        )
+    assert (
+        "Ignoring frequency dependence of normalizations. A single correction will be applied at all frequencies."
+        in caplog.text
+    ), "Expected log message about ignoring frequency dependence."
