@@ -317,11 +317,6 @@ class TestCalibrateDD:
             assert size == [width_ra_pixels, width_dec_pixels]
         assert cellsize == cellsize_degrees
 
-    def test_finalize(self, calibrate_dd):
-        # calibrate_dd.finalize()
-        pass
-
-
 class TestCalibrateDI:
     def test_set_parset_parameters(self, calibrate_di):
         # calibrate_di.set_parset_parameters()
