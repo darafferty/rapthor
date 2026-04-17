@@ -149,22 +149,24 @@ class TestCalibrateDI:
 
 class TestCalibrate:
     @pytest.mark.parametrize(
-        "scenario, batch_system",
+        "scenario, batch_system, generate_screens, use_image_based_predict",
         [
-            ("dd_fast_only", "slurm"),
-            ("dd_with_slowgain", "some_other_batch_system"),
-            ("di_fulljones", "slurm"),
-            ("di_fulljones", "some_other_batch_system"),
+            ("dd_fast_only", "slurm", False, False),
+            ("dd_fast_only", "slurm", True, False),
+            ("dd_with_slowgain", "some_other_batch_system", False, True),
+            ("dd_with_slowgain", "some_other_batch_system", True, True),
+            ("di_fulljones", "slurm", "don't", "care"),
+            ("di_fulljones", "some_other_batch_system", "don't", "care"),
         ],
     )
-    def test_set_parset_parameters(self, calibrate_field, scenario, batch_system):
+    def test_set_parset_parameters(self, calibrate_field, scenario, batch_system, generate_screens, use_image_based_predict):
         is_dd = scenario.startswith("dd")
         with_slow = scenario == "dd_with_slowgain"
         max_cores = 42
 
         # Setup field object
-        calibrate_field.generate_screens = False
-        calibrate_field.use_image_based_predict = True
+        calibrate_field.generate_screens = generate_screens
+        calibrate_field.use_image_based_predict = use_image_based_predict
         calibrate_field.do_slowgain_solve = with_slow
         calibrate_field.parset["cluster_specific"]["batch_system"] = batch_system
         calibrate_field.parset["cluster_specific"]["max_cores"] = max_cores
@@ -187,8 +189,10 @@ class TestCalibrate:
         assert calibrate.parset_parms["max_cores"] == expected_max_cores
 
         if is_dd:  # CalibrateDD sets some extra parameters.
-            assert calibrate.parset_parms["use_image_based_predict"] is True
-            assert calibrate.parset_parms["generate_screens"] is False
+            expected_use_image_based_predict = generate_screens or use_image_based_predict
+            assert calibrate.use_image_based_predict is expected_use_image_based_predict
+            assert calibrate.parset_parms["use_image_based_predict"] is expected_use_image_based_predict
+            assert calibrate.parset_parms["generate_screens"] is generate_screens
             assert calibrate.parset_parms["do_slowgain_solve"] is with_slow
 
     @pytest.mark.parametrize("scenario", ["dd_fast_only", "dd_with_slowgain", "di_fulljones"])
