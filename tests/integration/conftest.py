@@ -1,10 +1,12 @@
 """Module for pytest fixtures."""
 
 import configparser
+import shutil
 import tempfile
 from pathlib import Path
 
 import pytest
+
 from tests.conftest import ensure_test_ms
 
 REPO_ROOT_DIR = Path(__file__).resolve().parent.parent.parent
@@ -113,7 +115,9 @@ def generated_parset_path(request, tmp_path):
     path_to_generated_parset = tmp_path / "generated.parset"
     with path_to_generated_parset.open("w") as fp:
         parset.write(fp)
-    return path_to_generated_parset
+    yield path_to_generated_parset
+
+    shutil.rmtree(run_dir)
 
 
 @pytest.fixture
