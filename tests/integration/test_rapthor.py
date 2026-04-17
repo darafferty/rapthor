@@ -3,7 +3,7 @@
 import configparser
 import pytest
 import subprocess
-
+import shlex
 
 def update_parset_path(parset_path, param_dict):
     """Helper function to update parset parameters and return a new path."""
@@ -21,12 +21,11 @@ def update_parset_path(parset_path, param_dict):
     return updated_parset_path
 
 
-@pytest.mark.parametrize("help_option", ["--help", "-h", None])
+@pytest.mark.parametrize("help_option", ["--help", "-h", ""])
 @pytest.mark.integration
 def test_rapthor_help(help_option):
     """Test the Rapthor pipeline CLI options."""
-    command = ["rapthor", help_option] if help_option else ["rapthor"]
-
+    command = shlex.split(f"rapthor {help_option}")
     result = subprocess.run(
         command,
         capture_output=True,
