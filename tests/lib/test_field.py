@@ -17,7 +17,7 @@ class TestField(unittest.TestCase):
 
     def setUp(self):
         # Note: parset_read() creates various directories. tearDown() removes them after each test.
-        parset = parset_read('resources/test.parset')
+        parset = parset_read("resources/test.parset")
 
         self.field = Field(parset)
         self.field.fast_timestep_sec = 32.0  # needed for test_get_obs_parameters() below
@@ -27,7 +27,7 @@ class TestField(unittest.TestCase):
         self.field.define_outlier_sectors(1)
 
     def tearDown(self):
-        os.system('rm -r images/ logs/ pipelines/ plots/ regions/ skymodels/ solutions/')
+        os.system("rm -r images/ logs/ pipelines/ plots/ regions/ skymodels/ solutions/")
 
     def test_scan_observations(self):
         self.assertEqual(self.field.fwhm_ra_deg, 4.500843683229519)
@@ -36,7 +36,9 @@ class TestField(unittest.TestCase):
         self.assertTrue(all([obs.channels_are_regular for obs in self.field.observations]))
 
     def test_imaging_sectors(self):
-        self.assertEqual(self.field.sector_bounds_deg, '[258.558431;57.961675;259.103519;56.885818]')
+        self.assertEqual(
+            self.field.sector_bounds_deg, "[258.558431;57.961675;259.103519;56.885818]"
+        )
 
     def test_outlier_sectors(self):
         self.assertEqual(self.field.outlier_sectors, [])
@@ -68,12 +70,12 @@ class TestField(unittest.TestCase):
         self.assertEqual(obs.endtime, chunked_endtime)
 
     def test_get_obs_parameters(self):
-        obsp = self.field.get_obs_parameters('starttime')
-        self.assertEqual(obsp, ['29Mar2013/13:59:52.907'])
+        obsp = self.field.get_obs_parameters("starttime")
+        self.assertEqual(obsp, ["29Mar2013/13:59:52.907"])
 
     def test_define_imaging_sectors(self):
         self.field.define_imaging_sectors()
-        self.assertEqual(self.field.sector_bounds_mid_deg, '[258.841667;57.410833]')
+        self.assertEqual(self.field.sector_bounds_mid_deg, "[258.841667;57.410833]")
 
     def test_define_outlier_sectors(self):
         self.field.define_outlier_sectors(1)
@@ -91,27 +93,27 @@ class TestField(unittest.TestCase):
         self.assertEqual(self.field.check_selfcal_progress(), (False, False, False))
 
     def test_plot_overview_patches(self):
-        plot_filename = 'field_overview_1.png'
-        plot_path = os.path.join('plots', plot_filename)
+        plot_filename = "field_overview_1.png"
+        plot_path = os.path.join("plots", plot_filename)
         self.assertTrue(os.path.exists(plot_path))
-        os.system('rm ' + plot_path)  # remove the existing plot to ensure it's regenerated
+        os.system("rm " + plot_path)  # remove the existing plot to ensure it's regenerated
         self.field.plot_overview(plot_filename, show_calibration_patches=True)
         self.assertTrue(os.path.exists(plot_path))
 
     def test_plot_overview_initial(self):
-        plot_filename = 'initial_field_overview.png'
-        plot_path = os.path.join('plots', plot_filename)
+        plot_filename = "initial_field_overview.png"
+        plot_path = os.path.join("plots", plot_filename)
         self.assertTrue(os.path.exists(plot_path))
-        os.system('rm ' + plot_path)  # remove the existing plot to ensure it's regenerated
+        os.system("rm " + plot_path)  # remove the existing plot to ensure it's regenerated
 
         self.field.plot_overview(plot_filename, show_initial_coverage=True)
         self.assertTrue(os.path.exists(plot_path))
 
     def test_plot_overview_initial_near_pole(self):
-        plot_filename = 'initial_field_overview.png'
-        plot_path = os.path.join('plots', plot_filename)
+        plot_filename = "initial_field_overview.png"
+        plot_path = os.path.join("plots", plot_filename)
         self.assertTrue(os.path.exists(plot_path))
-        os.system('rm ' + plot_path)  # remove the existing plot to ensure it's regenerated
+        os.system("rm " + plot_path)  # remove the existing plot to ensure it's regenerated
 
         self.field.dec = 89.5  # test behavior near pole
         self.field.plot_overview(plot_filename, show_initial_coverage=True)
@@ -120,23 +122,23 @@ class TestField(unittest.TestCase):
 
 def suite():
     suite = unittest.TestSuite()
-    suite.addTest(TestField('test_scan_observations'))
-    suite.addTest(TestField('test_regular_frequency_spacing'))
-    suite.addTest(TestField('test_imaging_sectors'))
-    suite.addTest(TestField('test_outlier_sectors'))
-    suite.addTest(TestField('test_chunk_observations'))
-    suite.addTest(TestField('test_chunk_observations_high_el'))
-    suite.addTest(TestField('test_get_obs_parameters'))
-    suite.addTest(TestField('test_define_imaging_sectors'))
-    suite.addTest(TestField('test_define_outlier_sectors'))
-    suite.addTest(TestField('test_define_bright_source_sectors'))
-    suite.addTest(TestField('test_find_intersecting_sources'))
-    suite.addTest(TestField('test_check_selfcal_progress'))
-    suite.addTest(TestField('test_plot_overview_patches'))
-    suite.addTest(TestField('test_plot_overview_initial'))
-    suite.addTest(TestField('test_plot_overview_initial_near_pole'))
+    suite.addTest(TestField("test_scan_observations"))
+    suite.addTest(TestField("test_regular_frequency_spacing"))
+    suite.addTest(TestField("test_imaging_sectors"))
+    suite.addTest(TestField("test_outlier_sectors"))
+    suite.addTest(TestField("test_chunk_observations"))
+    suite.addTest(TestField("test_chunk_observations_high_el"))
+    suite.addTest(TestField("test_get_obs_parameters"))
+    suite.addTest(TestField("test_define_imaging_sectors"))
+    suite.addTest(TestField("test_define_outlier_sectors"))
+    suite.addTest(TestField("test_define_bright_source_sectors"))
+    suite.addTest(TestField("test_find_intersecting_sources"))
+    suite.addTest(TestField("test_check_selfcal_progress"))
+    suite.addTest(TestField("test_plot_overview_patches"))
+    suite.addTest(TestField("test_plot_overview_initial"))
+    suite.addTest(TestField("test_plot_overview_initial_near_pole"))
     return suite
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

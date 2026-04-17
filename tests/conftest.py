@@ -38,9 +38,7 @@ def _download_test_ms(destination):
 
         extracted_dir = tmp_dir / TEST_MS_ARCHIVE_DIRNAME
         if not extracted_dir.exists():
-            raise FileNotFoundError(
-                f"Downloaded archive did not contain {TEST_MS_ARCHIVE_DIRNAME}"
-            )
+            raise FileNotFoundError(f"Downloaded archive did not contain {TEST_MS_ARCHIVE_DIRNAME}")
 
         try:
             shutil.move(extracted_dir.as_posix(), destination.as_posix())
@@ -57,6 +55,7 @@ def ensure_test_ms(resource_dir):
 
     _download_test_ms(destination)
     return destination
+
 
 def pytest_configure(config):
     config.resource_dir = RESOURCE_DIR
@@ -114,7 +113,10 @@ def selected_sky_model_path(tmp_path):
     """
     Fixture to create a selected apparent SkyModel for testing.
     """
-    shutil.copy((RESOURCE_DIR / "test_apparent_sky_selected.txt"), tmp_path / "test_apparent_sky_selected.txt")
+    shutil.copy(
+        (RESOURCE_DIR / "test_apparent_sky_selected.txt"),
+        tmp_path / "test_apparent_sky_selected.txt",
+    )
     return Path(tmp_path / "test_apparent_sky_selected.txt")
 
 
@@ -152,9 +154,9 @@ def image_fits(tmp_path):
     """
     Fixture to provide a path for a mock image FITS file.
 
-    Copy file from resources folder to temporary directory. 
+    Copy file from resources folder to temporary directory.
     Data adapted from fits.util.get_testdata_filepath('test0.fits'):
-    
+
     .. code-block:: python
 
         from astropy.io import fits
@@ -171,6 +173,7 @@ def image_fits(tmp_path):
     shutil.copy((RESOURCE_DIR / "test_image.fits"), tmp_path / "test_image.fits")
     return Path(tmp_path / "test_image.fits")
 
+
 @pytest.fixture
 def facet_region_ds9(tmp_path):
     """
@@ -185,13 +188,10 @@ def facet():
     """
     Fixture to create a facet for testing.
     """
-    return Facet(name="Square Facet",
-                 ra=1.0,
-                 dec=1.0,
-                 vertices=[(0, 2.0),
-                           (2.0, 2.0),
-                           (2.0, 0),
-                           (0, 0)])
+    return Facet(
+        name="Square Facet", ra=1.0, dec=1.0, vertices=[(0, 2.0), (2.0, 2.0), (2.0, 0), (0, 0)]
+    )
+
 
 @pytest.fixture
 def custom_strategy(tmp_path):

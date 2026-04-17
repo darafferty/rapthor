@@ -5,6 +5,7 @@ import pytest
 import subprocess
 import shlex
 
+
 def update_parset_path(parset_path, param_dict):
     """Helper function to update parset parameters and return a new path."""
     parset = configparser.ConfigParser()
