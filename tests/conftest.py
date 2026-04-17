@@ -144,7 +144,7 @@ def selected_sky_model_path(tmp_path):
 @pytest.fixture
 def dummy_sky_model_path(tmp_path):
     """
-    Fixture to create an path to a non-existent SkyModel for testing.
+    Fixture to create a path to a non-existent SkyModel for testing.
     """
     return tmp_path / "dummy_sky.txt"
 
