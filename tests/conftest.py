@@ -14,8 +14,8 @@ import requests
 
 from rapthor.lib.facet import Facet
 from rapthor.lib.field import Field
+from rapthor.lib.observation import Observation
 from rapthor.lib.parset import parset_read
-
 
 TEST_ROOT_DIR = Path(__file__).parent
 REPO_ROOT_DIR = TEST_ROOT_DIR.parent
@@ -24,6 +24,12 @@ RESOURCE_DIR = TEST_ROOT_DIR / "resources"
 TEST_MS_ARCHIVE_URL = "https://support.astron.nl/software/ci_data/rapthor/tDDECal.in_MS.tgz"
 TEST_MS_ARCHIVE_DIRNAME = "tDDECal.MS"
 TEST_MS_DIRNAME = "test.ms"
+TEST_TRUE_SKYMODEL = (RESOURCE_DIR / "test_true_sky.txt").as_posix()
+TEST_APPARENT_SKYMODEL = (RESOURCE_DIR / "test_apparent_sky.txt").as_posix()
+
+
+def pytest_configure(config):
+    config.resource_dir = RESOURCE_DIR
 
 
 def _download_test_ms(destination):
@@ -49,9 +55,30 @@ def _download_test_ms(destination):
                 raise
 
 
+def _copy_from_resource_folder_to_test_path(filename, tmp_path):
+    """
+    Copy test resource file to temporary test folder.
+
+    Parameters
+    ----------
+    filename : str
+        Name of the file in the resources folder to copy.
+    tmp_path : pathlib.Path
+        Path to the temporary directory where the file will be copied.
+
+    Returns
+    -------
+    pathlib.Path
+        Path to the copied file.
+    """
+    source = RESOURCE_DIR / filename
+    target = tmp_path / filename
+    shutil.copy(source, target)
+    return target
+
+
 def ensure_test_ms(resource_dir):
-    resource_dir = Path(resource_dir)
-    destination = resource_dir / TEST_MS_DIRNAME
+    destination = Path(resource_dir) / TEST_MS_DIRNAME
     if destination.exists():
         return destination
 
@@ -80,15 +107,14 @@ def parset(test_ms, tmp_path):
     cfg.read(RESOURCE_DIR / "test.parset")
     cfg.set("global", "dir_working", tmp_path.as_posix())
     cfg.set("global", "input_ms", test_ms)
-    cfg.set("global", "input_skymodel", (RESOURCE_DIR / "test_true_sky.txt").as_posix())
-    cfg.set("global", "apparent_skymodel", (RESOURCE_DIR / "test_apparent_sky.txt").as_posix())
+    cfg.set("global", "input_skymodel", TEST_TRUE_SKYMODEL)
+    cfg.set("global", "apparent_skymodel", TEST_APPARENT_SKYMODEL)
 
     parset_file = tmp_path / "test.parset"
     with parset_file.open("w") as fh:
         cfg.write(fh)
 
-    parset_dict = parset_read(parset_file, use_log_file=False)
-    yield parset_dict
+    yield parset_read(parset_file, use_log_file=False)
 
 
 @pytest.fixture
@@ -104,8 +130,7 @@ def sky_model_path(tmp_path):
     """
     Fixture to create an apparent SkyModel for testing.
     """
-    shutil.copy((RESOURCE_DIR / "test_apparent_sky.txt"), tmp_path / "test_apparent_sky.txt")
-    return Path(tmp_path / "test_apparent_sky.txt")
+    return _copy_from_resource_folder_to_test_path("test_apparent_sky.txt", tmp_path)
 
 
 @pytest.fixture
@@ -113,11 +138,7 @@ def selected_sky_model_path(tmp_path):
     """
     Fixture to create a selected apparent SkyModel for testing.
     """
-    shutil.copy(
-        (RESOURCE_DIR / "test_apparent_sky_selected.txt"),
-        tmp_path / "test_apparent_sky_selected.txt",
-    )
-    return Path(tmp_path / "test_apparent_sky_selected.txt")
+    return _copy_from_resource_folder_to_test_path("test_apparent_sky_selected.txt", tmp_path)
 
 
 @pytest.fixture
@@ -170,8 +191,7 @@ def image_fits(tmp_path):
             hdul.writeto(tmp_path / "test_image.fits")
 
     """
-    shutil.copy((RESOURCE_DIR / "test_image.fits"), tmp_path / "test_image.fits")
-    return Path(tmp_path / "test_image.fits")
+    return _copy_from_resource_folder_to_test_path("test_image.fits", tmp_path)
 
 
 @pytest.fixture
@@ -179,8 +199,7 @@ def facet_region_ds9(tmp_path):
     """
     Fixture to create a region file for testing.
     """
-    shutil.copy((RESOURCE_DIR / "test.reg"), tmp_path / "test.reg")
-    return Path(tmp_path / "test.reg")
+    return _copy_from_resource_folder_to_test_path("test.reg", tmp_path)
 
 
 @pytest.fixture
@@ -196,11 +215,14 @@ def facet():
 @pytest.fixture
 def custom_strategy(tmp_path):
     """
-    Fixture to create a region file for testing.
+    Fixture to create a custom strategy file for testing.
     """
+    return _copy_from_resource_folder_to_test_path("custom_strategy.py", tmp_path)
 
 
-def generate_parset(template_parset_path, input_ms, input_skymodel_path=None, apparent_skymodel_path=None):
+def generate_parset(
+    template_parset_path, input_ms, input_skymodel_path=None, apparent_skymodel_path=None
+):
     """
     Generate a complete parset from a template, optionally update the input
     skymodel paths and return the parset as a configparser.ConfigParser object.
@@ -267,7 +289,9 @@ def generate_parset(template_parset_path, input_ms, input_skymodel_path=None, ap
     return parset
 
 
-def generate_parset_path(template_path, output_path, test_ms, input_skymodel_path, apparent_skymodel_path):
+def generate_parset_path(
+    template_path, output_path, test_ms, input_skymodel_path, apparent_skymodel_path
+):
     """
     Fixture to generate a complete parset from a template and return the path.
 
@@ -316,7 +340,7 @@ def generated_parset_path(request, tmp_path, test_ms):
         output_parset_path,
         test_ms,
         input_skymodel_path,
-        apparent_skymodel_path
+        apparent_skymodel_path,
     )
 
     return output_parset_path

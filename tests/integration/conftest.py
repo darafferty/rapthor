@@ -2,7 +2,6 @@
 
 import pytest
 
-
 COMMON_STRATEGY_SETTINGS = {
     "channel_width_hz": 195312.5,
     # Set slow-gain and fulljones solves to False except when required
