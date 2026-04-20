@@ -117,7 +117,7 @@ def test_download_panstarrs(facet, mocker):
     Test that download_panstarrs is called.
     """
     mock_download_skymodel = mocker.patch(
-        "rapthor.lib.facet.misc.download_skymodel", return_value="mock_skymodel"
+        "rapthor.lib.facet.download_skymodel", return_value="mock_skymodel"
     )
     _ = facet.download_panstarrs()
     assert mock_download_skymodel.called

@@ -5,10 +5,10 @@ Test cases for the `rapthor.operations.image` module.
 import pytest
 
 from pathlib import Path
-from cwl.cwl_mock import mocked_cwl_execution
+from tests.cwl.cwl_mock import mocked_cwl_execution
 from rapthor.lib.strategy import set_selfcal_strategy
 
-from cwl.cwl_cmdline import generate_command_line
+from tests.cwl.cwl_cmdline import generate_command_line
 import yaml
 from rapthor.operations.image import Image, ImageInitial, ImageNormalize
 

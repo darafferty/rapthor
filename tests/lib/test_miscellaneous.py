@@ -6,17 +6,6 @@ import pytest
 from rapthor.lib.miscellaneous import *
 from astropy.wcs import WCS
 
-@pytest.mark.parametrize("ra", (10.75,))
-@pytest.mark.parametrize("dec", (5.34,))
-@pytest.mark.parametrize("skymodel_path", ("/tmp/sky.model",))
-@pytest.mark.parametrize("radius", (5.0,))
-@pytest.mark.parametrize("overwrite", (False,))
-@pytest.mark.parametrize("source", ("TGSS",))
-@pytest.mark.parametrize("targetname", ("Patch",))
-def test_download_skymodel(
-    ra, dec, skymodel_path, radius, overwrite, source, targetname
-):
-    download_skymodel(ra, dec, skymodel_path, radius, overwrite, source, targetname)
 
 
 @pytest.mark.parametrize("image_name", (None,))

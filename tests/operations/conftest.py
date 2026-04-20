@@ -1,6 +1,29 @@
 
 import pytest
 
+@pytest.fixture
+def operation_parset(tmp_path):
+    """Create a mock parset for creating an Operation or an object derived from it.
+
+    The parset only has the keys needed to create an Operation.
+    """
+    return {
+        "dir_working": str(tmp_path / "working"),
+        "cluster_specific": {
+            "cwl_runner": "mock_cwl_runner",
+            "debug_workflow": False,
+            "keep_temporary_files": False,
+            "max_nodes": 1,
+            "batch_system": "mock_batch_system",
+            "cpus_per_task": 1,
+            "mem_per_node_gb": 1,
+            "dir_local": str(tmp_path / "scratch"),
+            "local_scratch_dir": str(tmp_path / "local_scratch"),
+            "global_scratch_dir": str(tmp_path / "global_scratch"),
+            "use_container": False,
+        },
+    }
+
 
 @pytest.fixture
 def expected_image_output():
