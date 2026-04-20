@@ -5,6 +5,7 @@
     "dockerfile": "Dockerfile",
     "target": "dev"
   },
+  "runArgs": ["--shm-size=4g"],
   "workspaceFolder": "/src",
   "workspaceMount": "source=${localWorkspaceFolder},target=/src,type=bind,consistency=cached",
   "postCreateCommand": "pip install -e . && pip install --group=dev",
