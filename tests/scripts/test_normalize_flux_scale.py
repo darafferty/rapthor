@@ -11,6 +11,7 @@ from rapthor.scripts.normalize_flux_scale import (
     create_normalization_h5parm,
     find_normalizations,
     fit_sed,
+    get_output_frequencies,
     read_source_catalog,
     main,
 )
@@ -538,3 +539,21 @@ def test_read_source_catalog_returns_data_and_num_channels(source_catalog_fits):
     source_catalog_data, num_channels = read_source_catalog(source_catalog_fits)
     assert source_catalog_data is not None, "Expected source catalog data to be returned."
     assert num_channels == 8, f"Expected number of channels to be 8, got {num_channels}."
+
+
+def test_get_output_frequencies(test_ms):
+    """
+    Test that the get_output_frequencies function returns the correct frequencies from the measurement set.
+    """
+    expected_channel_width = 24414.0625  # Hz
+    expected_min_freq = 134288024.90234375  # Hz
+    expected_max_freq = 134458923.33984375  # Hz
+    expected_frequencies = np.arange(
+        expected_min_freq - expected_channel_width,
+        expected_max_freq + expected_channel_width / 2,
+        expected_channel_width,
+    )  # Hz
+    frequencies = get_output_frequencies(test_ms)
+    assert np.allclose(frequencies, expected_frequencies), (
+        f"Expected frequencies {expected_frequencies}, got {frequencies}"
+    )

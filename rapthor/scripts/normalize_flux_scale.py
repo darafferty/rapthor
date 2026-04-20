@@ -375,11 +375,6 @@ def _cross_match_sources(source_coords, survey_coords, survey_data, spurious_mat
         Filename of a reference sky model to use for normalization (instead of external survey catalogs)
     """
     source_catalog_data, n_chan = read_source_catalog(source_catalog)
-    spectral_window_file = ms_file + '::SPECTRAL_WINDOW'
-    with pt.table(spectral_window_file, ack=False) as sw:
-        min_frequency = np.min(sw.col('CHAN_FREQ')[0])
-        max_frequency = np.max(sw.col('CHAN_FREQ')[0])
-        channel_width = sw.col('CHAN_WIDTH')[0][0]
 
     # Get the RA and Dec of the phase center from the MS file's FIELD table
     field_file = ms_file + '::FIELD'
@@ -496,7 +491,7 @@ def _cross_match_sources(source_coords, survey_coords, survey_data, spurious_mat
     #
     # TODO: Test whether a coarser grid would work (it just needs to be fine enough to
     # capture the frequency behavior of the corrections sufficiently well)
-    output_frequencies = np.arange(min_frequency-channel_width, max_frequency+channel_width, channel_width)
+    output_frequencies = get_output_frequencies(ms_file)
     if do_normalization:
         # Make arrays of flux density vs. frequency for each source, for both
         # the observed fluxes and the catalog fluxes, and find the corrections
@@ -553,6 +548,29 @@ def _cross_match_sources(source_coords, survey_coords, survey_data, spurious_mat
     antenna_file = ms_file + '::ANTENNA'
     create_normalization_h5parm(antenna_file, field_file, output_h5parm, output_frequencies,
                                 avg_corrections)
+
+def get_output_frequencies(ms_file):
+    """
+    Get the output frequencies for the normalization corrections from the input MS.
+    
+    Parameters
+    ----------
+    ms_file : str
+        Filename of the MS file used for imaging (needed to get the channel frequencies from the
+        SPECTRAL_WINDOW table)
+    Returns
+    -------
+    output_frequencies : numpy array
+        Array of frequencies in Hz corresponding to the channels of the input MS,
+        ordered from low to high
+    """
+    spectral_window_file = ms_file + '::SPECTRAL_WINDOW'
+    with pt.table(spectral_window_file, ack=False) as sw:
+        min_frequency = np.min(sw.col('CHAN_FREQ')[0])
+        max_frequency = np.max(sw.col('CHAN_FREQ')[0])
+        channel_width = sw.col('CHAN_WIDTH')[0][0]
+    output_frequencies = np.arange(min_frequency-channel_width, max_frequency+channel_width, channel_width)
+    return output_frequencies
 
 def read_source_catalog(source_catalog):
     """
