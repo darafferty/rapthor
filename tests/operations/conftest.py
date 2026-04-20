@@ -21,6 +21,11 @@ def operation_parset(tmp_path):
             "local_scratch_dir": str(tmp_path / "local_scratch"),
             "global_scratch_dir": str(tmp_path / "global_scratch"),
             "use_container": False,
+            "max_threads": 4,
+            "max_cores": 4,
+        },
+        "imaging_specific": {
+            "cellsize_arcsec": 1.5,
         },
     }
 

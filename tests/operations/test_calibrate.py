@@ -11,21 +11,74 @@ from rapthor.operations.calibrate import CalibrateDD, CalibrateDI
 
 @pytest.fixture
 def calibrate_field(operation_parset, mocker, single_source_sky_model):
+def calibrate_field(operation_parset, mocker, single_source_sky_model):
     """Create a mock field object for testing a Calibrate operation."""
 
     class Field:
         def __init__(self, parset):
             self.parset = parset
-            self.get_source_distances = mocker.MagicMock()
-            self.scan_h5parms = mocker.MagicMock()
             self.calibration_diagnostics = []
+            self.observations = []
+
+            # Needed for arithmetic in set_input_parameters
+            self.ntimechunks = 2
             self.calibration_skymodel_file = str(single_source_sky_model["path"])
-            self.ra = 42.0
-            self.dec = -42.0
-            self.sector_bounds_mid_ra = self.ra
-            self.sector_bounds_mid_dec = self.dec
-            self.sector_bounds_width_ra = 4
-            self.sector_bounds_width_dec = 5
+            self.ra = 0.0
+            self.dec = 0.0
+            self.fast_smoothnessconstraint = 1.0
+            self.medium_smoothnessconstraint = 1.0
+            self.slow_smoothnessconstraint = 1.0
+            self.data_colname = "DATA"
+
+            # Callables that need to be mocked
+            self.scan_h5parms = mocker.MagicMock()
+            self.set_obs_parameters = mocker.MagicMock()
+            self.get_obs_parameters = mocker.MagicMock(return_value=[1])
+            self.get_source_distances = mocker.MagicMock(return_value=(["src"], [0.1]))
+
+            # Remaining attributes accessed in set_input_parameters
+            self.fast_smoothnessrefdistance = 0.0
+            self.medium_smoothnessrefdistance = 0.0
+            self.max_normalization_delta = 0.3
+            self.scale_normalization_delta = True
+            self.llssolver = "qr"
+            self.maxiter = 50
+            self.propagatesolutions = True
+            self.solveralgorithm = "directionsolve"
+            self.onebeamperpatch = False
+            self.stepsize = 0.2
+            self.stepsigma = 0.0
+            self.tolerance = 1e-4
+            self.solve_min_uv_lambda = 0.0
+            self.parallelbaselines = False
+            self.sagecalpredict = False
+            self.solverlbfgs_dof = 200.0
+            self.solverlbfgs_iter = 4
+            self.solverlbfgs_minibatches = 1
+            self.fast_datause = "full"
+            self.medium_datause = "full"
+            self.slow_datause = "full"
+            self.correct_smearing_in_calibration = False
+            self.sector_bounds_deg = "[0,0,1,1]"
+            self.sector_bounds_mid_deg = "[0.5,0.5]"
+            self.calibrator_patch_names = []
+            self.calibrator_fluxes = []
+            self.antenna = "HBA"
+            self.stations = []
+
+            # Feature flags (defaults off; individual tests override as needed)
+            self.apply_diagonal_solutions = False
+            self.use_image_based_predict = False
+            self.do_slowgain_solve = False
+            self.apply_normalizations = False
+            self.generate_screens = False
+            self.normalize_h5parm = None
+            self.calibrate_bda_timebase = 0
+            self.calibrate_bda_frequencybase = 0
+            self.fast_phases_h5parm_filename = None
+            self.medium1_phases_h5parm_filename = None
+            self.medium2_phases_h5parm_filename = None
+            self.slow_gains_h5parm_filename = None
 
     return Field(operation_parset)
 
@@ -76,18 +129,18 @@ class TestCalibrateDD:
         Everything disabled,  minimal dp3, no optional features.
         """
 
-        calibrate_field.apply_diagonal_solutions = False
-        calibrate_field.use_image_based_predict = False
-        calibrate_field.do_slowgain_solve = False
-        calibrate_field.apply_normalizations = False
+        # calibrate_field.apply_diagonal_solutions = False
+        # calibrate_field.use_image_based_predict = False
+        # calibrate_field.do_slowgain_solve = False
+        # calibrate_field.apply_normalizations = False
 
-        calibrate_field.calibrate_bda_timebase = 0
-        calibrate_field.calibrate_bda_frequencybase = 0
+        # calibrate_field.calibrate_bda_timebase = 0
+        # calibrate_field.calibrate_bda_frequencybase = 0
 
-        calibrate_field.fast_phases_h5parm_filename = None
-        calibrate_field.medium1_phases_h5parm_filename = None
-        calibrate_field.medium2_phases_h5parm_filename = None
-        calibrate_field.slow_gains_h5parm_filename = None
+        # calibrate_field.fast_phases_h5parm_filename = None
+        # calibrate_field.medium1_phases_h5parm_filename = None
+        # calibrate_field.medium2_phases_h5parm_filename = None
+        # calibrate_field.slow_gains_h5parm_filename = None
 
         mocker.patch("os.path.exists", return_value=False)
         calibrate_dd = CalibrateDD(field=calibrate_field, index=1)
@@ -118,7 +171,7 @@ class TestCalibrateDD:
         calibrate_field.calibrate_bda_timebase = bda_time
         calibrate_field.calibrate_bda_frequencybase = bda_freq
         calibrate_field.do_slowgain_solve = slowgain
-        calibrate_field.use_image_based_predict = False
+        #calibrate_field.use_image_based_predict = False
 
         # set os.path.exists to always return False to test the default dp3 steps without loading from existing h5parms
         mocker.patch("os.path.exists", return_value=False)
@@ -139,13 +192,15 @@ class TestCalibrateDD:
         IMAGE_BASED_PREDICT_CASES,
     )
     def test_set_input_parameters_dd_ibp_cases(
-        self, calibrate_field, mocker, normalize, expected_prefix, expect_applycal
+        self, calibrate_field, mocker, tmp_path, normalize, expected_prefix, expect_applycal
     ):
         """
         Test the effect of image-based predict and normalization settings on the dp3 steps and applycal steps.
         """
         calibrate_field.use_image_based_predict = True
         calibrate_field.apply_normalizations = normalize
+        if normalize:
+            calibrate_field.normalize_h5parm = str(tmp_path / "normalize.h5parm")
 
         # set os.path.exists to always return False to test the default dp3 steps without loading from existing h5parms
         mocker.patch("os.path.exists", return_value=False)
@@ -320,7 +375,7 @@ class TestCalibrateDD:
 
 
 class TestCalibrateDI:
-    def test_set_parset_parameters(self, calibrate_di):
+    def test_set_parset_parameters(self):
         # calibrate_di.set_parset_parameters()
         pass
 
@@ -446,7 +501,7 @@ class TestCalibrate:
         finalize_prepare_plots(pipelines_path, plots_path)
 
         # Setup the object itself
-        field.generate_screens = False
+        # field.generate_screens = False
         field.do_slowgain_solve = scenario == "dd_with_slowgain"
 
         calibrate = CalibrateDD(field, index=2) if is_dd else CalibrateDI(field, index=4)
