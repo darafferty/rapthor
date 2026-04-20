@@ -59,8 +59,7 @@ def test_update_parset_path_missing_param(tmp_path):
                         param3 = value3
                         param4 = value4"""
     parset_path = tmp_path / "test.parset"
-    with parset_path.open("w") as fp:
-        fp.write(parset_content)
+    parset_path.write_text(parset_content)
     with pytest.raises(ValueError, match="Parameters .* not found in parset."):
         update_parset_path(parset_path, {"param1": "new_value1", "param5": "new_value5"})
 
