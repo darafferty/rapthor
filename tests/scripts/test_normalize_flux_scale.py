@@ -11,8 +11,18 @@ from rapthor.scripts.normalize_flux_scale import (
     create_normalization_h5parm,
     find_normalizations,
     fit_sed,
+    read_source_catalog,
     main,
 )
+
+
+@pytest.fixture
+def mock_survey_catalog_with_single_source(mocker, true_sky_model):
+    """Mock lsmtool.load to return a valid non-empty survey sky model."""
+    return mocker.patch(
+        "rapthor.scripts.normalize_flux_scale.lsmtool.load",
+        return_value=true_sky_model,
+    )
 
 
 def test_fit_sed():
@@ -217,20 +227,13 @@ def test_main(
     tmp_path,
     use_input_skymodel,
     true_sky_path,
-    true_sky_model,
     caplog,
     mocker,
+    mock_survey_catalog_with_single_source,
 ):
     """
     Test the main function of the normalize_flux_scale script.
     """
-
-    if not use_input_skymodel:
-        # Mock the lsmtool.load function when called with survey to return
-        # the true sky model, to avoid actual downloading during the test
-        mocker.patch(
-            "rapthor.scripts.normalize_flux_scale.lsmtool.load", return_value=true_sky_model
-        )
 
     # Spy on match_coordinates_sky to ensure it is called
     match_coordinates_sky_spy = mocker.spy(
@@ -408,11 +411,18 @@ def test_main_skips_normalization_if_no_sources_in_survey_catalog(
 
 
 def test_main_logs_warning_when_too_few_sources_with_valid_fits(
-    test_ms, source_catalog_fits, tmp_path, caplog, mocker
+    test_ms,
+    source_catalog_fits,
+    tmp_path,
+    caplog,
+    mocker,
+    mock_survey_catalog_with_single_source,
 ):
     """
     Test that the main function logs a warning when too few sources have valid SED fits.
     """
+    # Use fixture to mock survey download with a valid, minimal skymodel.
+    _ = mock_survey_catalog_with_single_source
     # Mock the fit_sed function to return a function that always returns NaN
     mocker.patch("rapthor.scripts.normalize_flux_scale.fit_sed", return_value=lambda x: np.nan)
 
@@ -437,7 +447,13 @@ def test_main_logs_warning_when_too_few_sources_with_valid_fits(
 
 @pytest.mark.parametrize("weight_by_flux_err", [False, True])
 def test_main_weights_by_flux_error(
-    test_ms, source_catalog_fits, tmp_path, caplog, weight_by_flux_err, mocker
+    test_ms,
+    source_catalog_fits,
+    tmp_path,
+    caplog,
+    weight_by_flux_err,
+    mocker,
+    mock_survey_catalog_with_single_source,
 ):
     """
     Test that the main function correctly applies weighting by flux error when the flag is set.
@@ -471,7 +487,14 @@ def test_main_weights_by_flux_error(
         ), "Expected log message about not weighting by flux error."
 
 
-def test_main_ignores_frequency_dependence(test_ms, source_catalog_fits, tmp_path, caplog, mocker):
+def test_main_ignores_frequency_dependence(
+    test_ms,
+    source_catalog_fits,
+    tmp_path,
+    caplog,
+    mocker,
+    mock_survey_catalog_with_single_source,
+):
     """
     Test that the main function ignores frequency dependence when the flag is set.
     """
@@ -495,3 +518,23 @@ def test_main_ignores_frequency_dependence(test_ms, source_catalog_fits, tmp_pat
         "Ignoring frequency dependence of normalizations. A single correction will be applied at all frequencies."
         in caplog.text
     ), "Expected log message about ignoring frequency dependence."
+
+
+def test_read_source_catalog_raises_error_if_no_channel_columns(source_catalog_zero_channels_fits):
+    """
+    Test that the read_source_catalog function raises an error if there are no
+    channel frequency columns in the source catalog.
+    """
+    with pytest.raises(
+        ValueError, match="No channel frequency columns were found in the input source catalog."
+    ):
+        read_source_catalog(source_catalog_zero_channels_fits)
+
+
+def test_read_source_catalog_returns_data_and_num_channels(source_catalog_fits):
+    """
+    Test that the read_source_catalog function returns the source catalog data and the number of channels.
+    """
+    source_catalog_data, num_channels = read_source_catalog(source_catalog_fits)
+    assert source_catalog_data is not None, "Expected source catalog data to be returned."
+    assert num_channels == 8, f"Expected number of channels to be 8, got {num_channels}."

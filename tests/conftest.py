@@ -459,7 +459,7 @@ def _make_source_catalog(n_channels=8, n_sources=8, alpha=-0.7, ref_flux=1.0):
 def source_catalog_fits(tmp_path):
     """
     A synthetic PyBDSF spectral-index-mode source catalog FITS file whose
-    sources are centered on the test MS phase center.
+    sources are centered on the test MS phase center. Contains 8 channels.
     """
     catalog_path = str(tmp_path / "test_source_catalog.fits")
     table = _make_source_catalog()

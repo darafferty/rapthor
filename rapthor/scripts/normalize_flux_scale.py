@@ -223,15 +223,7 @@ def main(source_catalog, ms_file, output_h5parm, radius_cut=3.0, major_axis_cut=
     reference_skymodel : str, optional
         Filename of a reference sky model to use for normalization (instead of external survey catalogs)
     """
-    # Read in the source catalog
-    with fits.open(source_catalog) as hdul:
-        data = hdul[1].data
-
-    # Find the number of frequency channels and the total bandwidth covered
-    n_chan = len([colname for colname in data.columns.names if colname.startswith('Freq_ch')])
-    if n_chan == 0:
-        raise ValueError('No channel frequency columns were found in the input source catalog. '
-                         'Please run PyBDSF with the spectral-index mode activated.')
+    source_catalog_data, n_chan = read_source_catalog(source_catalog)
     spectral_window_file = ms_file + '::SPECTRAL_WINDOW'
     with pt.table(spectral_window_file, ack=False) as sw:
         min_frequency = np.min(sw.col('CHAN_FREQ')[0])
@@ -247,8 +239,8 @@ def main(source_catalog, ms_file, output_h5parm, radius_cut=3.0, major_axis_cut=
         ra, dec = np.squeeze(fieldTable.getcol('PHASE_DIR'))  # radians
 
     do_normalization = True
-    log.info(f"Number of sources before applying cuts: {data['RA'].size}")
-    if data['RA'].size < min_sources:
+    log.info(f"Number of sources before applying cuts: {source_catalog_data['RA'].size}")
+    if source_catalog_data['RA'].size < min_sources:
         log.info('Too few sources. Flux normalization will be skipped.')
         do_normalization = False
     else:
@@ -258,7 +250,7 @@ def main(source_catalog, ms_file, output_h5parm, radius_cut=3.0, major_axis_cut=
         #  - sources that have no neighbors within neighbor_cut degrees
         source_ra = []
         source_dec = []
-        for ra_deg, dec_deg in zip(data['RA'], data['DEC']):
+        for ra_deg, dec_deg in zip(source_catalog_data['RA'], source_catalog_data['DEC']):
             ra_norm, dec_norm = normalize_ra_dec(ra_deg, dec_deg)
             source_ra.append(ra_norm)
             source_dec.append(dec_norm)
@@ -276,9 +268,9 @@ def main(source_catalog, ms_file, output_h5parm, radius_cut=3.0, major_axis_cut=
 
         # Apply the cuts
         radius_filter = source_distances < radius_cut
-        major_axis_filter = data['DC_Maj'] < major_axis_cut
+        major_axis_filter = source_catalog_data['DC_Maj'] < major_axis_cut
         neighbor_filter = neighbor_distances > neighbor_cut
-        data = data[radius_filter & major_axis_filter & neighbor_filter]
+        source_catalog_data = source_catalog_data[radius_filter & major_axis_filter & neighbor_filter]
         source_coords = source_coords[radius_filter & major_axis_filter & neighbor_filter]
         n_sources = len(source_coords)
         log.info(f"Number of sources after applying cuts: {n_sources}")
@@ -364,10 +356,10 @@ def main(source_catalog, ms_file, output_h5parm, radius_cut=3.0, major_axis_cut=
             rapthor_errors = []
             rapthor_frequencies = []
             for ch_ind in range(n_chan):
-                if not np.isnan(data[f'Total_flux_ch{ch_ind+1}'][i]):
-                    rapthor_fluxes.append(data[f'Total_flux_ch{ch_ind+1}'][i])  # Jy
-                    rapthor_errors.append(data[f'E_Total_flux_ch{ch_ind+1}'][i])  # Jy
-                    rapthor_frequencies.append(data[f'Freq_ch{ch_ind+1}'][i])  # Hz
+                if not np.isnan(source_catalog_data[f'Total_flux_ch{ch_ind+1}'][i]):
+                    rapthor_fluxes.append(source_catalog_data[f'Total_flux_ch{ch_ind+1}'][i])  # Jy
+                    rapthor_errors.append(source_catalog_data[f'E_Total_flux_ch{ch_ind+1}'][i])  # Jy
+                    rapthor_frequencies.append(source_catalog_data[f'Freq_ch{ch_ind+1}'][i])  # Hz
             rapthor_fluxes = np.array(rapthor_fluxes)
             rapthor_errors = np.array(rapthor_errors)
             rapthor_frequencies = np.array(rapthor_frequencies)
@@ -391,7 +383,7 @@ def main(source_catalog, ms_file, output_h5parm, radius_cut=3.0, major_axis_cut=
             if weight_by_flux_err:
                 # TODO: check that the limit of 1e3 is a good choice (or is needed at all)
                 log.info('Calculating weights given by the inverse of the errors on the source flux densities.')
-                weights = [min(1e3, 1/err) if err > 0 else 1e3 for err in data['E_Total_flux'][valid_fits]]
+                weights = [min(1e3, 1/err) if err > 0 else 1e3 for err in source_catalog_data['E_Total_flux'][valid_fits]]
             else:
                 log.info('Weights will be set to 1 (i.e., no weighting by flux density errors).')
                 weights = np.ones(n_valid)
@@ -411,6 +403,34 @@ def main(source_catalog, ms_file, output_h5parm, radius_cut=3.0, major_axis_cut=
     create_normalization_h5parm(antenna_file, field_file, output_h5parm, output_frequencies,
                                 avg_corrections)
 
+def read_source_catalog(source_catalog):
+    """
+    Read in the input source catalog.
+    
+    Parameters
+    ----------
+    source_catalog : str
+        Filename of the input FITS source catalog. This catalog should have been
+        created by PyBDSF from an image cube with the spectral-index mode
+        activated, so that it contains columns for the flux density of each source.
+    
+    Returns
+    -------
+    source_catalog_data : astropy.io.fits.FITS_rec
+        Data from the input FITS source catalog.
+    num_channels : int
+        Number of frequency channels in the input source catalog.
+    """
+    with fits.open(source_catalog) as hdul:
+        source_catalog_data = hdul[1].data
+
+    num_channels = len([colname for colname in source_catalog_data.columns.names if colname.startswith('Freq_ch')])
+    if num_channels == 0:
+        raise ValueError('No channel frequency columns were found in the input source catalog. '
+                         'Please run PyBDSF with the spectral-index mode activated.')
+                         
+    return source_catalog_data, num_channels
+
 
 if __name__ == '__main__':
     descriptiontext = "Calculate flux-scale normalization corrections.\n"
@@ -423,7 +443,7 @@ if __name__ == '__main__':
     parser.add_argument('--major_axis_cut', help='Major-axis size cut in degrees', type=float, default=30/3600)
     parser.add_argument('--neighbor_cut', help='Nearest-neighbor distance cut in degrees', type=float, default=30/3600)
     parser.add_argument('--spurious_match_cut', help='Spurious match distance cut in degrees', type=float, default=30/3600)
-    parser.add_argument('--min_sources', help='Minimum number of souces required for normalization calculation', type=int, default=5)
+    parser.add_argument('--min_sources', help='Minimum number of sources required for normalization calculation', type=int, default=5)
     parser.add_argument('--weight_by_flux_err', help='Weight by error on flux density', action='store_true', default=False)
     parser.add_argument('--ignore_frequency_dependence', help='Ignore frequency dependence of normalizations', action='store_true', default=False)
     parser.add_argument('--reference_skymodel', help='Filename of a reference sky model to use for normalization (instead of external survey catalogs)', type=str, default=None)
