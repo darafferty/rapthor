@@ -91,6 +91,7 @@ class TestCalibrateDD:
 
         mocker.patch("os.path.exists", return_value=False)
         calibrate_dd = CalibrateDD(field=calibrate_field, index=1)
+
         calibrate_dd.set_input_parameters()
         dp3 = parse_dp3(calibrate_dd.input_parms["dp3_steps"])
         params = calibrate_dd.input_parms
@@ -316,6 +317,7 @@ class TestCalibrateDD:
             field.get_source_distances.assert_not_called()
             assert size == [width_ra_pixels, width_dec_pixels]
         assert cellsize == cellsize_degrees
+
 
 class TestCalibrateDI:
     def test_set_parset_parameters(self, calibrate_di):
