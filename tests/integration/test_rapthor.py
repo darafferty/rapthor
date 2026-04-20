@@ -11,16 +11,59 @@ def update_parset_path(parset_path, param_dict):
     """Helper function to update parset parameters and return a new path."""
     parset = configparser.ConfigParser()
     parset.read(parset_path)
+    param_check = {key: False for key in param_dict.keys()}
 
     for section in parset.sections():
         for key, value in param_dict.items():
             if key in parset[section]:
                 parset[section][key] = value
-
+                param_check[key] = True
     updated_parset_path = parset_path.parent / "updated.parset"
+
+    if not all(param_check.values()):
+        missing_params = [key for key, found in param_check.items() if not found]
+        raise ValueError(f"Parameters {missing_params} not found in parset.")
+
     with updated_parset_path.open("w") as fp:
         parset.write(fp)
     return updated_parset_path
+
+
+def test_update_parset_path(tmp_path):
+    """Test the update_parset_path helper function."""
+    parset_content = """[section1]
+                        param1 = value1
+                        param2 = value2
+                        [section2]
+                        param3 = value3
+                        param4 = value4"""
+    parset_path = tmp_path / "test.parset"
+    with parset_path.open("w") as fp:
+        fp.write(parset_content)
+    updated_parset_path = update_parset_path(
+        parset_path, {"param1": "new_value1", "param3": "new_value3"}
+    )
+    updated_parset = configparser.ConfigParser()
+    updated_parset.read(updated_parset_path)
+    assert updated_parset["section1"]["param1"] == "new_value1"
+    assert updated_parset["section1"]["param2"] == "value2"
+    assert updated_parset["section2"]["param3"] == "new_value3"
+    assert updated_parset["section2"]["param4"] == "value4"
+
+
+def test_update_parset_path_missing_param(tmp_path):
+    """Test the update_parset_path helper function with a missing parameter."""
+    parset_content = """[section1]
+                        param1 = value1
+                        param2 = value2
+                        [section2]
+                        param3 = value3
+                        param4 = value4"""
+    parset_path = tmp_path / "test.parset"
+    with parset_path.open("w") as fp:
+        fp.write(parset_content)
+    with pytest.raises(ValueError, match="Parameters .* not found in parset."):
+        update_parset_path(parset_path, {"param1": "new_value1", "param5": "new_value5"})
 
 
 @pytest.mark.parametrize("help_option", ["--help", "-h", ""])
@@ -41,6 +84,9 @@ def test_rapthor_help(help_option):
 
 @pytest.mark.integration
 @pytest.mark.parametrize(
+    "shared_facet_rw", [True, False], ids=["shared_facet_rw_true", "shared_facet_rw_false"]
+)
+@pytest.mark.parametrize(
     "generated_parset_path",
     [
         (
@@ -51,12 +97,16 @@ def test_rapthor_help(help_option):
     ],
     indirect=True,
 )
-def test_rapthor_run_single_loop(generated_parset_path, single_loop_strategy_path):
+def test_rapthor_run_single_loop(generated_parset_path, single_loop_strategy_path, shared_facet_rw):
     """Test a single self-calibration loop end to end."""
 
     updated_parset_path = update_parset_path(
         generated_parset_path,
-        {"allow_internet_access": "False", "strategy": str(single_loop_strategy_path)},
+        {
+            "allow_internet_access": "False",
+            "strategy": str(single_loop_strategy_path),
+            "shared_facet_rw": str(shared_facet_rw),
+        },
     )
 
     command = ["rapthor", str(updated_parset_path)]
@@ -67,7 +117,7 @@ def test_rapthor_run_single_loop(generated_parset_path, single_loop_strategy_pat
         check=False,
     )
     output = f"{result.stdout}\n{result.stderr}"
-    assert result.returncode == 0
+    assert result.returncode == 0, f"Rapthor failed with output:\n{output}"
     assert "Operation calibrate_1 completed" in output
     assert "Operation image_1 completed" in output
     assert "Operation mosaic_1 completed" in output
