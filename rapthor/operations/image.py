@@ -309,7 +309,10 @@ class Image(Operation):
         #
         # TODO: This interval is needed due to a bug in IDGCal that results in partial
         # solution intervals being ignored during calibration (and hence unavailable
-        # during imaging). Once the bug is fixed, the interval can be removed
+        # during imaging). Once the bug is fixed, the interval can be removed. Note that
+        # the calculation below does not work well if there are multiple observations.
+        # However, since it is only used in the final cycle, when the data fraction is
+        # usually 1.0, this limitation should not be too important in practice
         max_solint = self.field.slow_timestep_sec
         numsamples_to_remove = int(np.ceil(max_solint / self.field.observations[0].timepersample))
         interval = [
