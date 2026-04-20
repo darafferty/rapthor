@@ -11,17 +11,17 @@ def update_parset_path(parset_path, param_dict):
     """Helper function to update parset parameters and return a new path."""
     parset = configparser.ConfigParser()
     parset.read(parset_path)
-    param_check = {key: False for key in param_dict.keys()}
+    missing_params = set(param_dict.keys())
 
     for section in parset.sections():
         for key, value in param_dict.items():
             if key in parset[section]:
                 parset[section][key] = value
-                param_check[key] = True
+                missing_params.discard(key)
+
     updated_parset_path = parset_path.parent / "updated.parset"
 
-    if not all(param_check.values()):
-        missing_params = [key for key, found in param_check.items() if not found]
+    if missing_params:
         raise ValueError(f"Parameters {missing_params} not found in parset.")
 
     with updated_parset_path.open("w") as fp:
@@ -38,8 +38,7 @@ def test_update_parset_path(tmp_path):
                         param3 = value3
                         param4 = value4"""
     parset_path = tmp_path / "test.parset"
-    with parset_path.open("w") as fp:
-        fp.write(parset_content)
+    parset_path.write_text(parset_content)
     updated_parset_path = update_parset_path(
         parset_path, {"param1": "new_value1", "param3": "new_value3"}
     )
