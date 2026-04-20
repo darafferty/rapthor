@@ -130,8 +130,7 @@ def sky_model_path(tmp_path):
     """
     Fixture to create an apparent SkyModel for testing.
     """
-    shutil.copy((RESOURCE_DIR / "test_apparent_sky.txt"), tmp_path / "test_apparent_sky.txt")
-    return tmp_path / "test_apparent_sky.txt"
+    return _copy_from_resource_folder_to_test_path("test_apparent_sky.txt", tmp_path)
 
 
 @pytest.fixture
@@ -139,11 +138,7 @@ def selected_sky_model_path(tmp_path):
     """
     Fixture to create a selected apparent SkyModel for testing.
     """
-    shutil.copy(
-        (RESOURCE_DIR / "test_apparent_sky_selected.txt"),
-        tmp_path / "test_apparent_sky_selected.txt",
-    )
-    return tmp_path / "test_apparent_sky_selected.txt"
+    return _copy_from_resource_folder_to_test_path("test_apparent_sky_selected.txt", tmp_path)
 
 
 @pytest.fixture
@@ -221,8 +216,7 @@ def image_fits(tmp_path):
             hdul.writeto(tmp_path / "test_image.fits")
 
     """
-    shutil.copy((RESOURCE_DIR / "test_image.fits"), tmp_path / "test_image.fits")
-    return tmp_path / "test_image.fits"
+    return _copy_from_resource_folder_to_test_path("test_image.fits", tmp_path)
 
 
 @pytest.fixture
@@ -230,8 +224,7 @@ def facet_region_ds9(tmp_path):
     """
     Fixture to create a region file for testing.
     """
-    shutil.copy((RESOURCE_DIR / "test.reg"), tmp_path / "test.reg")
-    return tmp_path / "test.reg"
+    return _copy_from_resource_folder_to_test_path("test.reg", tmp_path)
 
 
 @pytest.fixture
