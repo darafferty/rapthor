@@ -171,18 +171,21 @@ class TestCalibrate:
             assert calibrate.parset_parms["generate_screens"] is generate_screens
             assert calibrate.parset_parms["do_slowgain_solve"] is with_slow
 
-    @pytest.mark.parametrize("antenna, stations, expected", [
-        (
-            "LBA",
-            ["CS001LBA", "CS002LBA", "RS106LBA", "DE601LBA", "UK608LBA"],
-            "[CR]*&&;!DE601LBA;!UK608LBA",
-        ),
-        (
-            "HBA",
-            ["CS003HBA0", "RS106HBA0", "DE601HBA", "UK902HBA"],
-            "[CR]*&&;!DE601HBA;!UK902HBA",
-        ),
-    ])
+    @pytest.mark.parametrize(
+        "antenna, stations, expected",
+        [
+            (
+                "LBA",
+                ["CS001LBA", "CS002LBA", "RS106LBA", "DE601LBA", "UK608LBA"],
+                "[CR]*&&;!DE601LBA;!UK608LBA",
+            ),
+            (
+                "HBA",
+                ["CS003HBA0", "RS106HBA0", "DE601HBA", "UK902HBA"],
+                "[CR]*&&;!DE601HBA;!UK902HBA",
+            ),
+        ],
+    )
     def test_get_baselines_core(self, calibrate_field, antenna, stations, expected):
         calibrate_field.antenna = antenna
         calibrate_field.stations = stations
@@ -191,61 +194,67 @@ class TestCalibrate:
         baselines = calibrate_dd.get_baselines_core()
         assert baselines == expected
 
-    @pytest.mark.parametrize("antenna,stations,expected", [
-        (
-            "HBA",
-            ["RS106HBA0", "DE601HBA"],
-            [],
-        ),
-        (
-            "HBA",
-            ["CS003HBA0", "RS106HBA0", "CS007HBA1", "DE601HBA"],
-            ["CS003HBA0", "CS007HBA1"],
-        ),
-        (
-            "LBA",
-            ["RS205LBA", "CS004LBA", "CS007LBA", "DE601LBA"],
-            ["CS004LBA", "CS007LBA"],
-        ),
-    ])
+    @pytest.mark.parametrize(
+        "antenna,stations,expected",
+        [
+            (
+                "HBA",
+                ["RS106HBA0", "DE601HBA"],
+                [],
+            ),
+            (
+                "HBA",
+                ["CS003HBA0", "RS106HBA0", "CS007HBA1", "DE601HBA"],
+                ["CS003HBA0", "CS007HBA1"],
+            ),
+            (
+                "LBA",
+                ["RS205LBA", "CS004LBA", "CS007LBA", "DE601LBA"],
+                ["CS004LBA", "CS007LBA"],
+            ),
+        ],
+    )
     def test_get_superterp_stations(self, calibrate_field, antenna, stations, expected):
         calibrate_field.antenna = antenna
         calibrate_field.stations = stations
         calibrate_dd = CalibrateDD(field=calibrate_field, index=1)
         assert calibrate_dd.get_superterp_stations() == expected
 
-    @pytest.mark.parametrize("antenna,include_remote,stations,expected", [
-        (
-            "HBA",
-            True,
-            ["RS106HBA0", "CS002HBA0", "DE601HBA"],
-            ["CS002HBA0", "RS106HBA0"],
-        ),
-        (
-            "HBA",
-            False,
-            ["RS106HBA0", "CS002HBA0", "DE601HBA"],
-            ["CS002HBA0"],
-        ),
-        (
-            "LBA",
-            True,
-            ["RS205LBA", "CS003LBA", "CS999LBA"],
-            ["CS003LBA", "RS205LBA"],
-        ),
-        (
-            "LBA",
-            False,
-            ["RS205LBA", "CS003LBA", "CS999LBA"],
-            ["CS003LBA"],
-        ),
-        (
-            "HBA",
-            True,
-            ["DE601HBA", "DE602HBA"],
-            [],
-        ),
-    ])
+    @pytest.mark.parametrize(
+        "antenna,include_remote,stations,expected",
+        [
+            (
+                "HBA",
+                True,
+                ["RS106HBA0", "CS002HBA0", "DE601HBA"],
+                ["CS002HBA0", "RS106HBA0"],
+            ),
+            (
+                "HBA",
+                False,
+                ["RS106HBA0", "CS002HBA0", "DE601HBA"],
+                ["CS002HBA0"],
+            ),
+            (
+                "LBA",
+                True,
+                ["RS205LBA", "CS003LBA", "CS999LBA"],
+                ["CS003LBA", "RS205LBA"],
+            ),
+            (
+                "LBA",
+                False,
+                ["RS205LBA", "CS003LBA", "CS999LBA"],
+                ["CS003LBA"],
+            ),
+            (
+                "HBA",
+                True,
+                ["DE601HBA", "DE602HBA"],
+                [],
+            ),
+        ],
+    )
     def test_get_core_stations(self, calibrate_field, antenna, include_remote, stations, expected):
         calibrate_field.antenna = antenna
         calibrate_field.stations = stations
@@ -451,13 +460,16 @@ class TestCalibrate:
             assert params["max_normalization_delta"] == calibrate_field.max_normalization_delta
 
     # special cases for dd
-    @pytest.mark.parametrize("bda_time, bda_freq, slowgain, expected_dp3", [
-        (0, 0, False, ["solve1", "solve2"]),
-        (1, 1, False, ["avg", "solve1", "solve2", "null"]),
-        (1, 1, True, ["avg", "solve1", "solve2", "solve3", "solve4", "null"]),
-    ])
+    @pytest.mark.parametrize(
+        "bda_time, bda_freq, slowgain, expected_dp3_steps",
+        [
+            (0, 0, False, ["solve1", "solve2"]),
+            (1, 1, False, ["avg", "solve1", "solve2", "null"]),
+            (1, 1, True, ["avg", "solve1", "solve2", "solve3", "solve4", "null"]),
+        ],
+    )
     def test_set_input_parameters_dd_bda_cases(
-        self, calibrate_field, bda_time, bda_freq, slowgain, expected_dp3
+        self, calibrate_field, bda_time, bda_freq, slowgain, expected_dp3_steps
     ):
         """
         Test the effect of BDA and slowgain settings on the dp3 steps.
@@ -468,15 +480,17 @@ class TestCalibrate:
 
         calibrate_dd = CalibrateDD(field=calibrate_field, index=1)
         calibrate_dd.set_input_parameters()
-        dp3 = parse_dp3(calibrate_dd.input_parms["dp3_steps"])
+        dp3_steps = parse_dp3(calibrate_dd.input_parms["dp3_steps"])
 
-        assert dp3 == expected_dp3
+        assert dp3_steps == expected_dp3_steps
 
     @pytest.mark.parametrize(
-        "normalize, expected_prefix, expect_applycal", [
-        (False, ["predict", "applybeam"], False),
-        (True, ["predict", "applybeam", "applycal"], True),
-    ])
+        "normalize, expected_prefix, expect_applycal",
+        [
+            (False, ["predict", "applybeam"], False),
+            (True, ["predict", "applybeam", "applycal"], True),
+        ],
+    )
     def test_set_input_parameters_dd_ibp_cases(
         self, calibrate_field, tmp_path, normalize, expected_prefix, expect_applycal
     ):
@@ -490,8 +504,8 @@ class TestCalibrate:
 
         calibrate_dd = CalibrateDD(field=calibrate_field, index=1)
         calibrate_dd.set_input_parameters()
-        dp3 = parse_dp3(calibrate_dd.input_parms["dp3_steps"])
         params = calibrate_dd.input_parms
+        dp3 = parse_dp3(params["dp3_steps"])
 
         assert dp3[: len(expected_prefix)] == expected_prefix
         if expect_applycal:
@@ -500,10 +514,13 @@ class TestCalibrate:
         else:
             assert params["ddecal_applycal_steps"] is None
 
-    @pytest.mark.parametrize("diagonal_flag, expected_mode", [
-        (True, "p1p2a2_diagonal"),
-        (False, "p1p2a2_scalar"),
-    ])
+    @pytest.mark.parametrize(
+        "diagonal_flag, expected_mode",
+        [
+            (True, "p1p2a2_diagonal"),
+            (False, "p1p2a2_scalar"),
+        ],
+    )
     def test_set_input_parameters_dd_solution_combine_mode(
         self, calibrate_field, diagonal_flag, expected_mode
     ):
