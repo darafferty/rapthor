@@ -7,7 +7,7 @@
   },
   "workspaceFolder": "/src",
   "workspaceMount": "source=${localWorkspaceFolder},target=/src,type=bind,consistency=cached",
-  "postCreateCommand": "pip install -e .[test]",
+  "postCreateCommand": "pip install -e . && pip install --group=dev",
   "customizations": {
     "vscode": {
       "extensions": [
