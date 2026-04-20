@@ -77,14 +77,20 @@ def test_dec2ddmmss(deg, as_string):
     dec2ddmmss(deg, as_string)
 
 
-@pytest.mark.parametrize("mjd_sec", (4567890123,))
-def test_convert_mjd2mvt(mjd_sec):
-    assert convert_mvt2mjd(convert_mjd2mvt(mjd_sec)) == mjd_sec
+def test_convert_mjd_mvt():
+    mjd_sec = 4567890123.125
+    mvt_str = "18Aug2003/02:22:03.125"
+    assert convert_mjd2mvt(mjd_sec) == mvt_str
+    assert convert_mvt2mjd(mvt_str) == mjd_sec
 
 
-@pytest.mark.parametrize("mvt_str", ("18Aug2003/02:22:03.000",))
-def test_convert_mvt2mjd(mvt_str):
-    assert convert_mjd2mvt(convert_mvt2mjd(mvt_str)) == mvt_str
+# Converting MJD 0 triggers an ERFA warning.
+@pytest.mark.filterwarnings("ignore:ERFA.*dubious year")
+def test_convert_mjd_mvt_zero():
+    mjd_sec = 0
+    mvt_str = "17Nov1858/00:00:00.000"
+    assert convert_mjd2mvt(mjd_sec) == mvt_str
+    assert convert_mvt2mjd(mvt_str) == mjd_sec
 
 
 @pytest.mark.parametrize(
