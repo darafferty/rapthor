@@ -1,246 +1,21 @@
 """
 Module that holds functions and classes related to faceting
 """
-import numpy as np
-from shapely.geometry import Point, Polygon
-from shapely.prepared import prep
-from PIL import Image, ImageDraw
-from astropy.coordinates import SkyCoord, Angle
-import astropy.units as u
+
 import ast
-import logging
-from rapthor.lib import miscellaneous as misc
-from matplotlib import patches
-import lsmtool
-from lsmtool import tableio
-from lsmtool.operations_lib import make_wcs, normalize_ra_dec
-from lsmtool.facet import tessellate
-from lsmtool.download_skymodel import download_skymodel
-import tempfile
 import re
 
-
-class Facet(object):
-    """
-    Base Facet class
-
-    Parameters
-    ----------
-    name : str
-        Name of facet
-    ra : float or str
-        RA of reference coordinate in degrees (if float) or as a string in a
-        format supported by astropy.coordinates.Angle
-    dec : float or str
-        Dec of reference coordinate in degrees (if float) or as a string in a
-        format supported by astropy.coordinates.Angle
-    vertices : list of tuples
-        List of (RA, Dec) tuples, one for each vertex of the facet
-    """
-    def __init__(self, name, ra, dec, vertices):
-        self.name = name
-        self.log = logging.getLogger('rapthor:{0}'.format(self.name))
-        if type(ra) is str:
-            ra = Angle(ra).to('deg').value
-        if type(dec) is str:
-            dec = Angle(dec).to('deg').value
-        self.ra, self.dec = normalize_ra_dec(ra, dec)
-        self.vertices = np.array(vertices)
-
-        # Convert input (RA, Dec) vertices to (x, y) polygon
-        self.wcs = make_wcs(self.ra, self.dec, misc.WCS_PIXEL_SCALE)
-        self.polygon_ras = [radec[0] for radec in self.vertices]
-        self.polygon_decs = [radec[1] for radec in self.vertices]
-        x_values, y_values = self.wcs.wcs_world2pix(self.polygon_ras,
-                                                    self.polygon_decs,
-                                                    misc.WCS_ORIGIN)
-        polygon_vertices = [(x, y) for x, y in zip(x_values, y_values)]
-        self.polygon = Polygon(polygon_vertices)
-
-        # Find the size and center coordinates of the facet
-        xmin, ymin, xmax, ymax = self.polygon.bounds
-        self.size = min(0.5, max(xmax-xmin, ymax-ymin) *
-                        abs(self.wcs.wcs.cdelt[0]))  # degrees
-        self.x_center = xmin + (xmax - xmin)/2
-        self.y_center = ymin + (ymax - ymin)/2
-        self.ra_center, self.dec_center = map(
-            float, self.wcs.wcs_pix2world(self.x_center, self.y_center, misc.WCS_ORIGIN)
-        )
-
-        # Find the centroid of the facet
-        self.ra_centroid, self.dec_centroid = map(
-            float, self.wcs.wcs_pix2world(self.polygon.centroid.x,
-                                          self.polygon.centroid.y,
-                                          misc.WCS_ORIGIN)
-        )
-
-
-    def set_skymodel(self, skymodel):
-        """
-        Sets the facet's sky model
-
-        The input sky model is filtered to contain only those sources that lie
-        inside the facet's polygon. The filtered sky model is stored in
-        self.skymodel
-
-        Parameters
-        ----------
-        skymodel : LSMTool skymodel object
-            Input sky model
-        """
-        self.skymodel = filter_skymodel(self.polygon, skymodel, self.wcs)
-
-    def download_panstarrs(self, max_search_cone_radius=0.5):
-        """
-        Returns a Pan-STARRS sky model for the area around the facet
-
-        Note: the resulting sky model may contain sources outside the facet's
-        polygon
-
-        Parameters
-        ----------
-        max_search_cone_radius : float, optional
-            The maximum radius in degrees to use in the cone search. The smaller
-            of this radius and the minimum radius that covers the facet is used
-
-        Returns
-        -------
-        skymodel : LSMTool skymodel object
-            The Pan-STARRS sky model
-        """
-        try:
-            with tempfile.NamedTemporaryFile() as fp:
-                skymodel_cone_params = {'ra': self.ra_center,
-                                        'dec': self.dec_center,
-                                        'radius': min(max_search_cone_radius, self.size/2)}
-                download_skymodel(skymodel_cone_params,
-                                  skymodel_path=fp.name,
-                                  overwrite=True,
-                                  survey='PANSTARRS')
-                skymodel = lsmtool.load(fp.name)
-                skymodel.group('every')
-        except IOError:
-            # Comparison catalog not downloaded successfully
-            self.log.warning('The Pan-STARRS catalog could not be successfully '
-                             'downloaded')
-            skymodel = tableio.makeEmptyTable()
-
-        return skymodel
-
-    def find_astrometry_offsets(self, comparison_skymodel=None, min_number=5):
-        """
-        Finds the astrometry offsets for sources in the facet
-
-        The offsets are calculated as (LOFAR model value) - (comparison model
-        value); e.g., a positive Dec offset indicates that the LOFAR sources
-        are on average North of the comparison source positions.
-
-        The offsets are stored in self.astrometry_diagnostics, a dict with
-        the following keys (see LSMTool's compare operation for details of the
-        diagnostics):
-
-            'meanRAOffsetDeg', 'stdRAOffsetDeg', 'meanClippedRAOffsetDeg',
-            'stdClippedRAOffsetDeg', 'meanDecOffsetDeg', 'stdDecOffsetDeg',
-            'meanClippedDecOffsetDeg', 'stdClippedDecOffsetDeg'
-
-        Note: if the comparison is unsuccessful, self.astrometry_diagnostics is
-        an empty dict
-
-        Parameters
-        ----------
-        comparison_skymodel : LSMTool skymodel object, optional
-            Comparison sky model. If not given, the Pan-STARRS catalog is
-            used
-        min_number : int, optional
-            Minimum number of sources required for comparison
-        """
-        self.astrometry_diagnostics = {}
-        if comparison_skymodel is None:
-            comparison_skymodel = self.download_panstarrs()
-
-        # Find the astrometry offsets between the facet's sky model and the
-        # comparison sky model
-        #
-        # Note: If there are no successful matches, the compare() method
-        # returns None
-        if len(comparison_skymodel) >= min_number:
-            result = self.skymodel.compare(comparison_skymodel,
-                                           radius='5 arcsec',
-                                           excludeMultiple=True,
-                                           make_plots=False)
-            # Save offsets
-            if result is not None:
-                self.astrometry_diagnostics.update(result)
-        else:
-            self.log.warning('Too few matches to determine astrometry offsets '
-                             '(min_number = %i but number of matches = %i)',
-                             min_number, len(comparison_skymodel))
-
-    def get_matplotlib_patch(self, wcs=None):
-        """
-        Returns a matplotlib patch for the facet polygon
-
-        Parameters
-        ----------
-        wcs : WCS object, optional
-            WCS object defining (RA, Dec) <-> (x, y) transformation. If not given,
-            the facet's transformation is used
-
-        Returns
-        -------
-        patch : matplotlib patch object
-            The patch for the facet polygon
-        """
-        if wcs is not None:
-            x, y = wcs.wcs_world2pix(self.polygon_ras,
-                                     self.polygon_decs,
-                                     misc.WCS_ORIGIN)
-        else:
-            x, y = self.polygon.exterior.coords.xy
-        xy = np.vstack([x, y]).transpose()
-        patch = patches.Polygon(xy=xy, edgecolor='black', facecolor='white')
-
-        return patch
-
-
-class SquareFacet(Facet):
-    """
-    Wrapper class for a square facet
-
-    Parameters
-    ----------
-    name : str
-        Name of facet
-    ra : float or str
-        RA of reference coordinate in degrees (if float) or as a string in a
-        format supported by astropy.coordinates.Angle
-    dec : float or str
-        Dec of reference coordinate in degrees (if float) or as a string in a
-        format supported by astropy.coordinates.Angle
-    width : float
-        Width in degrees of facet
-    """
-    def __init__(self, name, ra, dec, width):
-        if type(ra) is str:
-            ra = Angle(ra).to('deg').value
-        if type(dec) is str:
-            dec = Angle(dec).to('deg').value
-        ra, dec = normalize_ra_dec(ra, dec)
-        wcs = make_wcs(ra, dec, misc.WCS_PIXEL_SCALE)
-
-        # Make the vertices.
-        xmin = wcs.wcs.crpix[0] - width / 2 / abs(wcs.wcs.cdelt[0])
-        xmax = wcs.wcs.crpix[0] + width / 2 / abs(wcs.wcs.cdelt[0])
-        ymin = wcs.wcs.crpix[1] - width / 2 / abs(wcs.wcs.cdelt[1])
-        ymax = wcs.wcs.crpix[1] + width / 2 / abs(wcs.wcs.cdelt[1])
-        # Corner order: lower-left, top-left, top-right and lower-right.
-        corners_ra, corners_dec = wcs.wcs_pix2world([xmin, xmin, xmax, xmax],
-                                                    [ymin, ymax, ymax, ymin],
-                                                    misc.WCS_ORIGIN)
-
-        vertices = list(zip(corners_ra, corners_dec))
-
-        super().__init__(name, ra, dec, vertices)
+from astropy.coordinates import SkyCoord
+import astropy.units as u
+from lsmtool.facet import Facet
+from lsmtool.constants import WCS_PIXEL_SCALE
+from lsmtool.io import load
+from lsmtool.operations_lib import normalize_ra_dec
+import numpy as np
+from lsmtool.facet import tessellate
+from PIL import Image, ImageDraw
+from shapely.prepared import prep
+from shapely.geometry import Point, Polygon
 
 
 def make_ds9_region_file(facets, outfile, enclose_names=True):
@@ -260,23 +35,25 @@ def make_ds9_region_file(facets, outfile, enclose_names=True):
         case they can be excluded by setting this option to False
     """
     lines = []
-    lines.append('# Region file format: DS9 version 4.0\nglobal color=green '
-                 'font="helvetica 10 normal" select=1 highlite=1 edit=1 '
-                 'move=1 delete=1 include=1 fixed=0 source=1\nfk5\n')
+    lines.append(
+        "# Region file format: DS9 version 4.0\nglobal color=green "
+        'font="helvetica 10 normal" select=1 highlite=1 edit=1 '
+        "move=1 delete=1 include=1 fixed=0 source=1\nfk5\n"
+    )
 
     for facet in facets:
         radec_list = []
         RAs = facet.polygon_ras
         Decs = facet.polygon_decs
         for ra, dec in zip(RAs, Decs):
-            radec_list.append('{0}, {1}'.format(ra, dec))
-        lines.append('polygon({0})\n'.format(', '.join(radec_list)))
+            radec_list.append("{0}, {1}".format(ra, dec))
+        lines.append("polygon({0})\n".format(", ".join(radec_list)))
         if enclose_names:
-            lines.append('point({0}, {1}) # text={{{2}}}\n'.format(facet.ra, facet.dec, facet.name))
+            lines.append("point({0}, {1}) # text={{{2}}}\n".format(facet.ra, facet.dec, facet.name))
         else:
-            lines.append('point({0}, {1}) # text={2}\n'.format(facet.ra, facet.dec, facet.name))
+            lines.append("point({0}, {1}) # text={2}\n".format(facet.ra, facet.dec, facet.name))
 
-    with open(outfile, 'w') as f:
+    with open(outfile, "w") as f:
         f.writelines(lines)
 
 
@@ -295,7 +72,7 @@ def read_ds9_region_file(region_file):
         List of Facet objects
     """
     facets = []
-    with open(region_file, 'r') as f:
+    with open(region_file, "r") as f:
         lines = f.readlines()
 
     indx = 0
@@ -308,10 +85,10 @@ def read_ds9_region_file(region_file):
         #
         # The facet name may be set in the text property of either line
         # (see https://wsclean.readthedocs.io/en/latest/ds9_facet_file.html)
-        if line.startswith('polygon'):
+        if line.startswith("polygon"):
             # New facet definition begins
             indx += 1
-            vertices = ast.literal_eval(line.split('polygon')[1])
+            vertices = ast.literal_eval(line.split("polygon")[1])
             polygon_ras = [ra for ra in vertices[::2]]
             polygon_decs = [dec for dec in vertices[1::2]]
             vertices = [(ra, dec) for ra, dec in zip(polygon_ras, polygon_decs)]
@@ -319,18 +96,20 @@ def read_ds9_region_file(region_file):
             # Make a temporary facet to get centroid and make new facet with
             # reference point at centroid (this point may be overridden by
             # a following 'point' line)
-            facet_tmp = Facet('temp', polygon_ras[0], polygon_decs[0], vertices)
+            facet_tmp = Facet("temp", polygon_ras[0], polygon_decs[0], vertices)
             ra = facet_tmp.ra_centroid
             dec = facet_tmp.dec_centroid
 
-        elif line.startswith('point'):
+        elif line.startswith("point"):
             # Facet definition continues
             if not len(facets):
-                raise ValueError(f'Error parsing region file "{region_file}": "point" '
-                                 'line found without a preceding "polygon" line')
+                raise ValueError(
+                    f'Error parsing region file "{region_file}": "point" '
+                    'line found without a preceding "polygon" line'
+                )
             facet_tmp = facets.pop()
             vertices = facet_tmp.vertices
-            ra, dec = ast.literal_eval(line.split('point')[1])
+            ra, dec = ast.literal_eval(line.split("point")[1])
 
         else:
             continue
@@ -347,21 +126,23 @@ def read_ds9_region_file(region_file):
         #
         # Note: if a name is defined for both the facet polygon and the facet
         # reference point, the one for the point takes precedence
-        if 'text' in line:
+        if "text" in line:
             pattern = r'^[^#]*#\s*text\s*=\s*[{"\']([^}"\']*)[}"\'].*$'
             try:
                 facet_name = re.match(pattern, line).group(1)
             except AttributeError:  # raised if `re.match()` returns `None`
-                raise ValueError(f'Error parsing region file "{region_file}": '
-                                 '"text" property could not be parsed for line: '
-                                 f'{line}')
+                raise ValueError(
+                    f'Error parsing region file "{region_file}": '
+                    '"text" property could not be parsed for line: '
+                    f"{line}"
+                )
 
             # Replace characters that are potentially problematic for Rapthor,
             # DP3, etc. with an underscore
-            for invalid_char in [' ', '{', '}', '"', "'"]:
-                facet_name = facet_name.replace(invalid_char, '_')
+            for invalid_char in [" ", "{", "}", '"', "'"]:
+                facet_name = facet_name.replace(invalid_char, "_")
         else:
-            facet_name = f'facet_{indx}'
+            facet_name = f"facet_{indx}"
 
         # Lastly, add the facet to the list
         facets.append(Facet(facet_name, ra, dec, vertices))
@@ -391,9 +172,9 @@ def read_skymodel(skymodel, ra_mid, dec_mid, width_ra, width_dec):
     facets : list
         List of Facet objects
     """
-    skymod = lsmtool.load(skymodel)
+    skymod = load(skymodel)
     if not skymod.hasPatches:
-        raise ValueError('The sky model must be grouped into patches')
+        raise ValueError("The sky model must be grouped into patches")
 
     # Set the position of the calibration patches to those of
     # the input sky model
@@ -407,14 +188,14 @@ def read_skymodel(skymodel, ra_mid, dec_mid, width_ra, width_dec):
         ra, dec = normalize_ra_dec(v[0].value, v[1].value)
         ra_cal.append(ra)
         dec_cal.append(dec)
-    patch_coords = SkyCoord(ra=np.array(ra_cal)*u.degree, dec=np.array(dec_cal)*u.degree)
+    patch_coords = SkyCoord(ra=np.array(ra_cal) * u.degree, dec=np.array(dec_cal) * u.degree)
 
     # Do the tessellation
     facet_points, facet_polys = tessellate(
-        SkyCoord(ra_cal, dec_cal, unit='deg'),
-        SkyCoord(ra_mid, dec_mid, unit='deg'),
+        SkyCoord(ra_cal, dec_cal, unit="deg"),
+        SkyCoord(ra_mid, dec_mid, unit="deg"),
         [width_ra, width_dec],
-        wcs_pixel_scale=misc.WCS_PIXEL_SCALE
+        wcs_pixel_scale=WCS_PIXEL_SCALE,
     )
     facet_names = []
     for facet_point in facet_points:
@@ -422,7 +203,7 @@ def read_skymodel(skymodel, ra_mid, dec_mid, width_ra, width_dec):
         # patch closest to the facet reference point). This step is needed
         # because some patches in the sky model may not appear in the facet list if
         # they lie outside the bounding box
-        facet_coord = SkyCoord(ra=facet_point[0]*u.degree, dec=facet_point[1]*u.degree)
+        facet_coord = SkyCoord(ra=facet_point[0] * u.degree, dec=facet_point[1] * u.degree)
         separations = facet_coord.separation(patch_coords)
         facet_names.append(np.array(name_cal)[np.argmin(separations)])
 
@@ -456,8 +237,8 @@ def filter_skymodel(polygon, skymodel, wcs, invert=False):
         Filtered sky model
     """
     # Make list of sources
-    RA = skymodel.getColValues('Ra')
-    Dec = skymodel.getColValues('Dec')
+    RA = skymodel.getColValues("Ra")
+    Dec = skymodel.getColValues("Dec")
     x, y = wcs.wcs_world2pix(RA, Dec, misc.WCS_ORIGIN)
 
     # Keep only those sources inside the bounding box
@@ -471,8 +252,8 @@ def filter_skymodel(polygon, skymodel, wcs, invert=False):
         skymodel.select(inside)
     if len(skymodel) == 0:
         return skymodel
-    RA = skymodel.getColValues('Ra')
-    Dec = skymodel.getColValues('Dec')
+    RA = skymodel.getColValues("Ra")
+    Dec = skymodel.getColValues("Dec")
     x, y = wcs.wcs_world2pix(RA, Dec, misc.WCS_ORIGIN)
 
     # Now check the actual boundary against filtered sky model. We first do a quick (but
@@ -483,23 +264,25 @@ def filter_skymodel(polygon, skymodel, wcs, invert=False):
     ypadding = max(int(0.1 * (max(y) - min(y))), 3)
     xshift = int(min(x)) - xpadding
     yshift = int(min(y)) - ypadding
-    xsize = int(np.ceil(max(x) - min(x))) + 2*xpadding
-    ysize = int(np.ceil(max(y) - min(y))) + 2*ypadding
+    xsize = int(np.ceil(max(x) - min(x))) + 2 * xpadding
+    ysize = int(np.ceil(max(y) - min(y))) + 2 * ypadding
     x -= xshift
     y -= yshift
     prepared_polygon = prep(polygon)
 
     # Unmask everything outside of the polygon + its border (outline)
     inside = np.zeros(len(skymodel), dtype=bool)
-    mask = Image.new('L', (xsize, ysize), 0)
-    verts = [(xv-xshift, yv-yshift) for xv, yv in zip(polygon.exterior.coords.xy[0],
-                                                      polygon.exterior.coords.xy[1])]
+    mask = Image.new("L", (xsize, ysize), 0)
+    verts = [
+        (xv - xshift, yv - yshift)
+        for xv, yv in zip(polygon.exterior.coords.xy[0], polygon.exterior.coords.xy[1])
+    ]
     ImageDraw.Draw(mask).polygon(verts, outline=1, fill=1)
     inside_ind = np.where(np.array(mask).transpose()[(x.astype(int), y.astype(int))])
     inside[inside_ind] = True
 
     # Now check sources in the border precisely
-    mask = Image.new('L', (xsize, ysize), 0)
+    mask = Image.new("L", (xsize, ysize), 0)
     ImageDraw.Draw(mask).polygon(verts, outline=1, fill=0)
     border_ind = np.where(np.array(mask).transpose()[(x.astype(int), y.astype(int))])
     points = [Point(xs, ys) for xs, ys in zip(x[border_ind], y[border_ind])]

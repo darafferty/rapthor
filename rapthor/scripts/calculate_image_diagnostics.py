@@ -22,10 +22,11 @@ from astropy.coordinates import SkyCoord
 from astropy.table import Table
 from astropy.utils import iers
 from astropy.visualization.wcsaxes import WCSAxes
+from lsmtool.facet import SquareFacet
 from lsmtool.operations_lib import make_wcs
 
 from rapthor.lib import miscellaneous as misc
-from rapthor.lib.facet import SquareFacet, read_ds9_region_file
+from rapthor.lib.facet import read_ds9_region_file
 from rapthor.lib.fitsimage import FITSImage
 from rapthor.lib.observation import Observation
 

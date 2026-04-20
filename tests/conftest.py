@@ -11,8 +11,8 @@ from pathlib import Path
 
 import pytest
 import requests
+from lsmtool.facet import Facet
 
-from rapthor.lib.facet import Facet
 from rapthor.lib.field import Field
 from rapthor.lib.observation import Observation
 from rapthor.lib.parset import parset_read
