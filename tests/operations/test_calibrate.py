@@ -422,14 +422,12 @@ class TestCalibrate:
 
     # basic case for both di and dd
     @pytest.mark.parametrize("scenario", ["dd", "di"])
-    def test_set_input_parameters(self, calibrate_field, mocker, scenario):
+    def test_set_input_parameters(self, calibrate_field, scenario):
         """
         Basic test that set_input_parameters() populates input_parms with expected
         values for both CalibrateDD and CalibrateDI.
         """
         is_dd = scenario == "dd"
-        mocker.patch("os.path.exists", return_value=False)
-
         calibrate = (
             CalibrateDD(field=calibrate_field, index=1)
             if is_dd
@@ -468,7 +466,7 @@ class TestCalibrate:
     # special cases for dd
     @pytest.mark.parametrize("bda_time, bda_freq, slowgain, expected_dp3", BDA_CASES)
     def test_set_input_parameters_dd_bda_cases(
-        self, calibrate_field, mocker, bda_time, bda_freq, slowgain, expected_dp3
+        self, calibrate_field, bda_time, bda_freq, slowgain, expected_dp3
     ):
         """
         Test the effect of BDA and slowgain settings on the dp3 steps.
@@ -477,7 +475,6 @@ class TestCalibrate:
         calibrate_field.calibrate_bda_frequencybase = bda_freq
         calibrate_field.do_slowgain_solve = slowgain
 
-        mocker.patch("os.path.exists", return_value=False)
         calibrate_dd = CalibrateDD(field=calibrate_field, index=1)
         calibrate_dd.set_input_parameters()
         dp3 = parse_dp3(calibrate_dd.input_parms["dp3_steps"])
@@ -494,7 +491,7 @@ class TestCalibrate:
         "normalize, expected_prefix, expect_applycal", IMAGE_BASED_PREDICT_CASES
     )
     def test_set_input_parameters_dd_ibp_cases(
-        self, calibrate_field, mocker, tmp_path, normalize, expected_prefix, expect_applycal
+        self, calibrate_field, tmp_path, normalize, expected_prefix, expect_applycal
     ):
         """
         DD: Test the effect of image-based predict and normalization settings on the dp3 steps and applycal steps.
@@ -504,7 +501,6 @@ class TestCalibrate:
         if normalize:
             calibrate_field.normalize_h5parm = str(tmp_path / "normalize.h5parm")
 
-        mocker.patch("os.path.exists", return_value=False)
         calibrate_dd = CalibrateDD(field=calibrate_field, index=1)
         calibrate_dd.set_input_parameters()
         dp3 = parse_dp3(calibrate_dd.input_parms["dp3_steps"])
@@ -525,14 +521,13 @@ class TestCalibrate:
 
     @pytest.mark.parametrize("diagonal_flag, expected_mode", COMBINE_MODE_CASES)
     def test_set_input_parameters_dd_solution_combine_mode(
-        self, calibrate_field, mocker, diagonal_flag, expected_mode
+        self, calibrate_field, diagonal_flag, expected_mode
     ):
         """
         DD: Test the effect of diagonal solutions on the solution_combine_mode.
         """
         calibrate_field.apply_diagonal_solutions = diagonal_flag
 
-        mocker.patch("os.path.exists", return_value=False)
         calibrate_dd = CalibrateDD(field=calibrate_field, index=1)
         calibrate_dd.set_input_parameters()
 
