@@ -95,6 +95,12 @@ def test_ms(tmp_path_factory):
     """
     Fixture to provide a copy of the test MS in the resources directory.
     Yield the POSIX path to the copy of the MS.
+
+    The test MS contains:
+        - 8 channels
+        - Minimum frequency = 134288024.90234375 Hz
+        - Maximum frequency = 134458923.33984375 Hz
+        - Channel width = 24414.0625 Hz
     """
     source = ensure_test_ms(RESOURCE_DIR)
     target = (tmp_path_factory.mktemp("test_ms") / TEST_MS_DIRNAME).as_posix()
