@@ -444,10 +444,30 @@ class TestCalibrate:
         f = calibrate_field
         obs_param = f.get_obs_parameters.return_value  # [1]
 
-        if is_dd:
+        # Common to both DD and DI
+        assert params["max_normalization_delta"] == f.max_normalization_delta
+        assert params["llssolver"] == f.llssolver
+        assert params["maxiter"] == f.maxiter
+        assert params["propagatesolutions"] == f.propagatesolutions
+        assert params["solveralgorithm"] == f.solveralgorithm
+        assert params["stepsize"] == f.stepsize
+        assert params["stepsigma"] == f.stepsigma
+        assert params["tolerance"] == f.tolerance
+        assert params["uvlambdamin"] == f.solve_min_uv_lambda
+        assert params["solverlbfgs_dof"] == f.solverlbfgs_dof
+        assert params["solverlbfgs_iter"] == f.solverlbfgs_iter
+        assert params["solverlbfgs_minibatches"] == f.solverlbfgs_minibatches
+        assert params["correctfreqsmearing"] == f.correct_smearing_in_calibration
+        assert params["correcttimesmearing"] == f.correct_smearing_in_calibration
+        assert params["max_threads"] == f.parset["cluster_specific"]["max_threads"]
+
+        if is_dd:  # speific to CalibrateDD
             # CWL-wrapped inputs
             assert params["timechunk_filename"] == CWLDir(obs_param).to_json()
-            assert params["calibration_skymodel_file"] == CWLFile(f.calibration_skymodel_file).to_json()
+            assert (
+                params["calibration_skymodel_file"]
+                == CWLFile(f.calibration_skymodel_file).to_json()
+            )
 
             # get_obs_parameters pass-throughs
             assert params["starttime"] == obs_param
@@ -479,29 +499,14 @@ class TestCalibrate:
             assert params["calibrator_fluxes"] == f.calibrator_fluxes
             assert params["fast_smoothnessrefdistance"] == f.fast_smoothnessrefdistance
             assert params["medium_smoothnessrefdistance"] == f.medium_smoothnessrefdistance
-            assert params["max_normalization_delta"] == f.max_normalization_delta
-            assert params["llssolver"] == f.llssolver
-            assert params["maxiter"] == f.maxiter
-            assert params["propagatesolutions"] == f.propagatesolutions
-            assert params["solveralgorithm"] == f.solveralgorithm
             assert params["onebeamperpatch"] == f.onebeamperpatch
-            assert params["stepsize"] == f.stepsize
-            assert params["stepsigma"] == f.stepsigma
-            assert params["tolerance"] == f.tolerance
-            assert params["uvlambdamin"] == f.solve_min_uv_lambda
             assert params["parallelbaselines"] == f.parallelbaselines
             assert params["sagecalpredict"] == f.sagecalpredict
-            assert params["solverlbfgs_dof"] == f.solverlbfgs_dof
-            assert params["solverlbfgs_iter"] == f.solverlbfgs_iter
-            assert params["solverlbfgs_minibatches"] == f.solverlbfgs_minibatches
             assert params["fast_datause"] == f.fast_datause
             assert params["medium_datause"] == f.medium_datause
             assert params["slow_datause"] == f.slow_datause
-            assert params["correctfreqsmearing"] == f.correct_smearing_in_calibration
-            assert params["correcttimesmearing"] == f.correct_smearing_in_calibration
             assert params["bda_timebase"] == f.calibrate_bda_timebase
             assert params["bda_frequencybase"] == f.calibrate_bda_frequencybase
-            assert params["max_threads"] == f.parset["cluster_specific"]["max_threads"]
 
             # String-converted values
             assert params["sector_bounds_deg"] == str(f.sector_bounds_deg)
@@ -509,9 +514,15 @@ class TestCalibrate:
             assert params["scale_normalization_delta"] == str(f.scale_normalization_delta)
 
             # Computed smoothness constraints: field.X / min(obs_params)
-            assert params["fast_smoothnessconstraint"] == f.fast_smoothnessconstraint / np.min(obs_param)
-            assert params["medium_smoothnessconstraint"] == f.medium_smoothnessconstraint / np.min(obs_param)
-            assert params["slow_smoothnessconstraint"] == f.slow_smoothnessconstraint / np.min(obs_param)
+            assert params["fast_smoothnessconstraint"] == f.fast_smoothnessconstraint / np.min(
+                obs_param
+            )
+            assert params["medium_smoothnessconstraint"] == f.medium_smoothnessconstraint / np.min(
+                obs_param
+            )
+            assert params["slow_smoothnessconstraint"] == f.slow_smoothnessconstraint / np.min(
+                obs_param
+            )
 
             # Antenna constraints
             assert params["fast_antennaconstraint"] == "[]"
@@ -520,17 +531,30 @@ class TestCalibrate:
             assert params["idgcal_antennaconstraint"] == "[]"
 
             # Output h5parm filenames (derived from ntimechunks)
-            assert params["output_fast_h5parm"] == [f"fast_phase_{i}.h5parm" for i in range(f.ntimechunks)]
+            assert params["output_fast_h5parm"] == [
+                f"fast_phase_{i}.h5parm" for i in range(f.ntimechunks)
+            ]
             assert params["collected_fast_h5parm"] == "fast_phases.h5parm"
-            assert params["output_medium1_h5parm"] == [f"medium1_phase_{i}.h5parm" for i in range(f.ntimechunks)]
-            assert params["output_medium2_h5parm"] == [f"medium2_phase_{i}.h5parm" for i in range(f.ntimechunks)]
+            assert params["output_medium1_h5parm"] == [
+                f"medium1_phase_{i}.h5parm" for i in range(f.ntimechunks)
+            ]
+            assert params["output_medium2_h5parm"] == [
+                f"medium2_phase_{i}.h5parm" for i in range(f.ntimechunks)
+            ]
             assert params["collected_medium1_h5parm"] == "medium1_phases.h5parm"
             assert params["collected_medium2_h5parm"] == "medium2_phases.h5parm"
             assert params["combined_fast_medium1_h5parm"] == "combined_fast_medium1_phases.h5parm"
-            assert params["combined_fast_medium1_medium2_h5parm"] == "combined_fast_medium1_medium2_phases.h5parm"
-            assert params["output_slow_h5parm"] == [f"slow_gain_{i}.h5parm" for i in range(f.ntimechunks)]
+            assert (
+                params["combined_fast_medium1_medium2_h5parm"]
+                == "combined_fast_medium1_medium2_phases.h5parm"
+            )
+            assert params["output_slow_h5parm"] == [
+                f"slow_gain_{i}.h5parm" for i in range(f.ntimechunks)
+            ]
             assert params["collected_slow_h5parm"] == "slow_gains.h5parm"
-            assert params["output_idgcal_h5parm"] == [f"idgcal_{i}.h5parm" for i in range(f.ntimechunks)]
+            assert params["output_idgcal_h5parm"] == [
+                f"idgcal_{i}.h5parm" for i in range(f.ntimechunks)
+            ]
             assert params["combined_h5parms"] == "combined_solutions.h5"
 
             # Model image parameters
@@ -544,7 +568,7 @@ class TestCalibrate:
                 max(params["model_image_imsize"]) * params["model_image_cellsize"] * 1.2
             )
 
-            # Conditional defaults (no prior solutions, no normalizations)
+            # Conditional defaults
             assert params["solution_combine_mode"] == "p1p2a2_scalar"
             assert params["normalize_h5parm"] is None
             assert params["ddecal_applycal_steps"] is None
@@ -554,7 +578,7 @@ class TestCalibrate:
             assert params["medium2_initialsolutions_h5parm"] is None
             assert params["slow_initialsolutions_h5parm"] is None
 
-        else:  # DI
+        else:  # Specific to DI
             # CWL-wrapped inputs
             assert params["timechunk_filename_fulljones"] == CWLDir(obs_param).to_json()
 
@@ -574,21 +598,6 @@ class TestCalibrate:
 
             # Field pass-throughs
             assert params["smoothnessconstraint_fulljones"] == f.smoothnessconstraint_fulljones
-            assert params["max_normalization_delta"] == f.max_normalization_delta
-            assert params["llssolver"] == f.llssolver
-            assert params["maxiter"] == f.maxiter
-            assert params["propagatesolutions"] == f.propagatesolutions
-            assert params["solveralgorithm"] == f.solveralgorithm
-            assert params["stepsize"] == f.stepsize
-            assert params["stepsigma"] == f.stepsigma
-            assert params["tolerance"] == f.tolerance
-            assert params["uvlambdamin"] == f.solve_min_uv_lambda
-            assert params["solverlbfgs_dof"] == f.solverlbfgs_dof
-            assert params["solverlbfgs_iter"] == f.solverlbfgs_iter
-            assert params["solverlbfgs_minibatches"] == f.solverlbfgs_minibatches
-            assert params["correctfreqsmearing"] == f.correct_smearing_in_calibration
-            assert params["correcttimesmearing"] == f.correct_smearing_in_calibration
-            assert params["max_threads"] == f.parset["cluster_specific"]["max_threads"]
 
     # special cases for dd
     @pytest.mark.parametrize(
