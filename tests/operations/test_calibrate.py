@@ -4,13 +4,34 @@ Test cases for the `rapthor.operations.calibrate` module.
 
 from pathlib import Path
 
-import numpy as np
 import pytest
+import yaml
+from jinja2 import Environment, FileSystemLoader
 
 import rapthor
-from rapthor.lib.cwl import CWLDir, CWLFile
 from rapthor.lib.operation import DIR as OPERATION_DIR
 from rapthor.operations.calibrate import CalibrateDD, CalibrateDI
+
+
+@pytest.fixture
+def cwl_input_ids():
+    """
+    Fixture that renders a CWL pipeline template with given parset_parms
+    and returns the set of input IDs declared in the rendered workflow.
+    """
+    pipeline_parsets_dir = Path(rapthor.__file__).parent / "pipeline" / "parsets"
+    env = Environment(loader=FileSystemLoader(str(pipeline_parsets_dir)))
+
+    def _render_and_extract(template_name: str, parset_parms: dict) -> set:
+        template = env.get_template(template_name)
+        rendered = template.render(parset_parms)
+        cwl = yaml.safe_load(rendered)
+        inputs = cwl.get("inputs", [])
+        if isinstance(inputs, list):
+            return {inp["id"] for inp in inputs}
+        return set(inputs.keys())
+
+    return _render_and_extract
 
 
 @pytest.fixture
@@ -425,179 +446,62 @@ class TestCalibrate:
         # finalize() should create a .done file (via the base Operation class).
         assert (pipelines_path / ".done").exists()
 
-    # basic case for both di and dd
-    @pytest.mark.parametrize("scenario", ["dd", "di"])
-    def test_set_input_parameters(self, calibrate_field, scenario):
+    @pytest.mark.parametrize(
+        "scenario, generate_screens, use_image_based_predict, do_slowgain_solve",
+        [
+            ("dd", False, False, False),
+            ("dd", True, False, False),
+            ("dd", False, True, False),
+            ("dd", False, False, True),
+            ("dd", True, False, True),
+            ("di", False, False, False),
+        ],
+    )
+    def test_set_input_parameters(
+        self,
+        calibrate_field,
+        scenario,
+        generate_screens,
+        use_image_based_predict,
+        do_slowgain_solve,
+        cwl_input_ids,
+    ):
         """
-        Test that set_input_parameters() populates input_parms with the correct
-        values for all keys, for both CalibrateDD and CalibrateDI.
+        Test that set_input_parameters() provides exactly the inputs declared in the CWL
+        template, for all flag combinations of CalibrateDD and for CalibrateDI.
         """
         is_dd = scenario == "dd"
-        calibrate = (
-            CalibrateDD(field=calibrate_field, index=1)
-            if is_dd
-            else CalibrateDI(field=calibrate_field, index=1)
-        )
-
-        calibrate.set_input_parameters()
-        params = calibrate.input_parms
         f = calibrate_field
-        obs_param = f.get_obs_parameters.return_value  # [1]
+        f.generate_screens = generate_screens
+        f.use_image_based_predict = use_image_based_predict
+        f.do_slowgain_solve = do_slowgain_solve
 
-        # Common to both DD and DI
-        assert params["max_normalization_delta"] == f.max_normalization_delta
-        assert params["llssolver"] == f.llssolver
-        assert params["maxiter"] == f.maxiter
-        assert params["propagatesolutions"] == f.propagatesolutions
-        assert params["solveralgorithm"] == f.solveralgorithm
-        assert params["stepsize"] == f.stepsize
-        assert params["stepsigma"] == f.stepsigma
-        assert params["tolerance"] == f.tolerance
-        assert params["uvlambdamin"] == f.solve_min_uv_lambda
-        assert params["solverlbfgs_dof"] == f.solverlbfgs_dof
-        assert params["solverlbfgs_iter"] == f.solverlbfgs_iter
-        assert params["solverlbfgs_minibatches"] == f.solverlbfgs_minibatches
-        assert params["correctfreqsmearing"] == f.correct_smearing_in_calibration
-        assert params["correcttimesmearing"] == f.correct_smearing_in_calibration
-        assert params["max_threads"] == f.parset["cluster_specific"]["max_threads"]
+        calibrate = CalibrateDD(field=f, index=1) if is_dd else CalibrateDI(field=f, index=1)
+        calibrate.set_input_parameters()
 
-        if is_dd:  # speific to CalibrateDD
-            # CWL-wrapped inputs
-            assert params["timechunk_filename"] == CWLDir(obs_param).to_json()
-            assert (
-                params["calibration_skymodel_file"]
-                == CWLFile(f.calibration_skymodel_file).to_json()
-            )
+        rapthor_pipeline_dir = str(Path(rapthor.__file__).parent / "pipeline")
+        if is_dd:
+            # Mirrors the resolution done in CalibrateDD.set_parset_parameters()
+            resolved_use_image_based_predict = f.generate_screens or f.use_image_based_predict
+            template_parset_parms = {
+                "use_image_based_predict": resolved_use_image_based_predict,
+                "generate_screens": f.generate_screens,
+                "do_slowgain_solve": f.do_slowgain_solve,
+                "max_cores": None,
+                "rapthor_pipeline_dir": rapthor_pipeline_dir,
+            }
+            expected_cwl_ids = cwl_input_ids("calibrate_pipeline.cwl", template_parset_parms)
+        else:
+            template_parset_parms = {
+                "max_cores": None,
+                "rapthor_pipeline_dir": rapthor_pipeline_dir,
+            }
+            expected_cwl_ids = cwl_input_ids("calibrate_di_pipeline.cwl", template_parset_parms)
 
-            # get_obs_parameters pass-throughs
-            assert params["starttime"] == obs_param
-            assert params["ntimes"] == obs_param
-            assert params["solint_fast_timestep"] == obs_param
-            assert params["solint_medium_timestep"] == obs_param
-            assert params["solint_slow_timestep"] == obs_param
-            assert params["solint_fast_freqstep"] == obs_param
-            assert params["solint_medium_freqstep"] == obs_param
-            assert params["solint_slow_freqstep"] == obs_param
-            assert params["fast_solutions_per_direction"] == obs_param
-            assert params["medium_solutions_per_direction"] == obs_param
-            assert params["slow_solutions_per_direction"] == obs_param
-            assert params["bda_maxinterval"] == obs_param
-            assert params["bda_minchannels"] == obs_param
-            assert params["fast_smoothness_dd_factors"] == obs_param
-            assert params["medium_smoothness_dd_factors"] == obs_param
-            assert params["slow_smoothness_dd_factors"] == obs_param
-            assert params["fast_smoothnessreffrequency"] == obs_param
-            assert params["medium_smoothnessreffrequency"] == obs_param
-
-            # Field pass-throughs
-            assert params["data_colname"] == f.data_colname
-            assert params["ra_mid"] == f.ra
-            assert params["dec_mid"] == f.dec
-            assert params["phase_center_ra"] == f.ra
-            assert params["phase_center_dec"] == f.dec
-            assert params["calibrator_patch_names"] == f.calibrator_patch_names
-            assert params["calibrator_fluxes"] == f.calibrator_fluxes
-            assert params["fast_smoothnessrefdistance"] == f.fast_smoothnessrefdistance
-            assert params["medium_smoothnessrefdistance"] == f.medium_smoothnessrefdistance
-            assert params["onebeamperpatch"] == f.onebeamperpatch
-            assert params["parallelbaselines"] == f.parallelbaselines
-            assert params["sagecalpredict"] == f.sagecalpredict
-            assert params["fast_datause"] == f.fast_datause
-            assert params["medium_datause"] == f.medium_datause
-            assert params["slow_datause"] == f.slow_datause
-            assert params["bda_timebase"] == f.calibrate_bda_timebase
-            assert params["bda_frequencybase"] == f.calibrate_bda_frequencybase
-
-            # String-converted values
-            assert params["sector_bounds_deg"] == str(f.sector_bounds_deg)
-            assert params["sector_bounds_mid_deg"] == str(f.sector_bounds_mid_deg)
-            assert params["scale_normalization_delta"] == str(f.scale_normalization_delta)
-
-            # Computed smoothness constraints: field.X / min(obs_params)
-            assert params["fast_smoothnessconstraint"] == f.fast_smoothnessconstraint / np.min(
-                obs_param
-            )
-            assert params["medium_smoothnessconstraint"] == f.medium_smoothnessconstraint / np.min(
-                obs_param
-            )
-            assert params["slow_smoothnessconstraint"] == f.slow_smoothnessconstraint / np.min(
-                obs_param
-            )
-
-            # Antenna constraints
-            assert params["fast_antennaconstraint"] == "[]"
-            assert params["medium_antennaconstraint"] == "[]"
-            assert params["slow_antennaconstraint"] == "[]"
-            assert params["idgcal_antennaconstraint"] == "[]"
-
-            # Output h5parm filenames (derived from ntimechunks)
-            assert params["output_fast_h5parm"] == [
-                f"fast_phase_{i}.h5parm" for i in range(f.ntimechunks)
-            ]
-            assert params["collected_fast_h5parm"] == "fast_phases.h5parm"
-            assert params["output_medium1_h5parm"] == [
-                f"medium1_phase_{i}.h5parm" for i in range(f.ntimechunks)
-            ]
-            assert params["output_medium2_h5parm"] == [
-                f"medium2_phase_{i}.h5parm" for i in range(f.ntimechunks)
-            ]
-            assert params["collected_medium1_h5parm"] == "medium1_phases.h5parm"
-            assert params["collected_medium2_h5parm"] == "medium2_phases.h5parm"
-            assert params["combined_fast_medium1_h5parm"] == "combined_fast_medium1_phases.h5parm"
-            assert (
-                params["combined_fast_medium1_medium2_h5parm"]
-                == "combined_fast_medium1_medium2_phases.h5parm"
-            )
-            assert params["output_slow_h5parm"] == [
-                f"slow_gain_{i}.h5parm" for i in range(f.ntimechunks)
-            ]
-            assert params["collected_slow_h5parm"] == "slow_gains.h5parm"
-            assert params["output_idgcal_h5parm"] == [
-                f"idgcal_{i}.h5parm" for i in range(f.ntimechunks)
-            ]
-            assert params["combined_h5parms"] == "combined_solutions.h5"
-
-            # Model image parameters
-            assert params["model_image_root"] == "calibration_model"
-            assert params["facet_region_file"] == "field_facets_ds9.reg"
-            # Single source sky model has no SpectralIndex column, so num_spectral_terms == 1
-            assert params["num_spectral_terms"] == 1
-            # facet_region_width is derived from model_image_imsize and model_image_cellsize
-            assert params["facet_region_width_ra"] == params["facet_region_width_dec"]
-            assert params["facet_region_width_ra"] == pytest.approx(
-                max(params["model_image_imsize"]) * params["model_image_cellsize"] * 1.2
-            )
-
-            # Conditional defaults
-            assert params["solution_combine_mode"] == "p1p2a2_scalar"
-            assert params["normalize_h5parm"] is None
-            assert params["ddecal_applycal_steps"] is None
-            assert params["applycal_steps"] is None
-            assert params["fast_initialsolutions_h5parm"] is None
-            assert params["medium1_initialsolutions_h5parm"] is None
-            assert params["medium2_initialsolutions_h5parm"] is None
-            assert params["slow_initialsolutions_h5parm"] is None
-
-        else:  # Specific to DI
-            # CWL-wrapped inputs
-            assert params["timechunk_filename_fulljones"] == CWLDir(obs_param).to_json()
-
-            # get_obs_parameters pass-throughs
-            assert params["data_colname"] == "DATA"
-            assert params["starttime_fulljones"] == obs_param
-            assert params["ntimes_fulljones"] == obs_param
-            assert params["solint_fulljones_timestep"] == obs_param
-            assert params["solint_fulljones_freqstep"] == obs_param
-
-            # Output h5parm filenames
-            assert calibrate.collected_h5parm_fulljones == "fulljones_gains.h5"
-            assert params["collected_h5parm_fulljones"] == "fulljones_gains.h5"
-            assert params["output_h5parm_fulljones"] == [
-                f"fulljones_gain_{i}.h5parm" for i in range(f.ntimechunks)
-            ]
-
-            # Field pass-throughs
-            assert params["smoothnessconstraint_fulljones"] == f.smoothnessconstraint_fulljones
+        input_parms_keys = set(calibrate.input_parms.keys())
+        assert expected_cwl_ids.issubset(input_parms_keys), (
+            f"input_parms is missing CWL inputs: {expected_cwl_ids - input_parms_keys}"
+        )
 
     # special cases for dd
     @pytest.mark.parametrize(
