@@ -77,6 +77,8 @@ def test_dec2ddmmss(deg, as_string):
     dec2ddmmss(deg, as_string)
 
 
+# Normal conversions shouldn't raise any warnings.
+@pytest.mark.filterwarnings("error")
 def test_convert_mjd_mvt():
     mjd_sec = 4567890123.125
     mvt_str = "18Aug2003/02:22:03.125"
@@ -84,7 +86,7 @@ def test_convert_mjd_mvt():
     assert convert_mvt2mjd(mvt_str) == mjd_sec
 
 
-# Converting MJD 0 triggers an ERFA warning.
+# Test the corner case of using MJD 0. It triggers an ERFA warning.
 @pytest.mark.filterwarnings("ignore:ERFA.*dubious year")
 def test_convert_mjd_mvt_zero():
     mjd_sec = 0
