@@ -121,6 +121,7 @@ def test_rapthor_run_single_loop(generated_parset_path, single_loop_strategy_pat
     assert "Operation mosaic_1 completed" in output
     assert "Rapthor has finished :)" in output
 
+
 def test_multiple_sectors_created(
     generated_parset_path,
     single_loop_strategy_path,
