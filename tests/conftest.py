@@ -228,16 +228,6 @@ def facet_region_ds9(tmp_path):
 
 
 @pytest.fixture
-def facet():
-    """
-    Fixture to create a facet for testing.
-    """
-    return Facet(
-        name="Square Facet", ra=1.0, dec=1.0, vertices=[(0, 2.0), (2.0, 2.0), (2.0, 0), (0, 0)]
-    )
-
-
-@pytest.fixture
 def custom_strategy(tmp_path):
     """
     Fixture to create a custom strategy file for testing.

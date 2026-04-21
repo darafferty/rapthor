@@ -22,13 +22,13 @@ from astropy.table import vstack
 from shapely.geometry import MultiPolygon, Point, Polygon
 
 from rapthor.lib import miscellaneous as misc
-from rapthor.lib.facet import read_ds9_region_file, read_skymodel
 from rapthor.lib.observation import Observation
 from rapthor.lib.sector import Sector
 
 matplotlib.use('Agg')
 import mocpy
 from astropy.visualization.wcsaxes import SphericalCircle
+from lsmtool.facet import read_ds9_region_file, read_skymodel
 from losoto.h5parm import h5parm
 from matplotlib.patches import Ellipse
 from matplotlib.pyplot import figure
