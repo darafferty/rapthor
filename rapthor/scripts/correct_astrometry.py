@@ -2,18 +2,22 @@
 """
 Script to apply astrometry corrections to an image made using faceting
 """
-from argparse import ArgumentParser, RawTextHelpFormatter
-from astropy.io.fits import writeto as fits_write
+
 import json
 import logging
-from lsmtool.utils import rasterize
-import numpy as np
-from pathlib import Path
-from rapthor.lib.facet import read_ds9_region_file
-from rapthor.lib.fitsimage import FITSImage
-import scipy.ndimage as nd
+import shutil
 import subprocess
 import sys
+from argparse import ArgumentParser, RawTextHelpFormatter
+from pathlib import Path
+
+import numpy as np
+import scipy.ndimage as nd
+from astropy.io.fits import writeto as fits_write
+from lsmtool.utils import rasterize
+
+from rapthor.lib.facet import read_ds9_region_file
+from rapthor.lib.fitsimage import FITSImage
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -36,15 +40,37 @@ def main(
     region_file : Path
         Filename of input ds9 region file that defines the facets
     corrections_file : Path
-        Filename of input JSON file that contains the corrections to apply
+        Filename of input JSON file that contains the corrections to apply. If None, no
+        corrections are applied, and the input image is just copied to the output image
     output_image : Path or None
         Filename of corrected output FITS image. If None, the filename is constructed from
         input_image by adding the infix "-ast" before the extensions ".fits" or ".fits.fz" (if
         present). If these extensions are not present, the filename is constructed by adding
-        "-ast.fits" to the end of input_image
+        "-ast.fits" to the end of input_image (or "-ast.fits.fz" if input_image ends with ".fz",
+        indicating compression with fpack)
     overwrite : bool
         If True, overwrite existing output file
     """
+    # Check inputs
+    if output_image is None:
+        # Construct the output image filename by adding the infix "-ast" before ".fits" (if
+        # present). Note that if the input image is compressed with fpack (as indicated by the
+        # extension ".fz"), the output filename does not include this extension, as it must be
+        # written without compression. In this case, compression is done with a call to fpack
+        root = input_image.name
+        if root.endswith(".fz"):
+            root = root[:-3]
+        if root.endswith(".fits"):
+            root = root[:-5]
+        output_image = Path(f"{root}-ast.fits")
+    if corrections_file is None:
+        # No correction possible: copy input file to output and return
+        if input_image.name.endswith(".fz") and not output_image.name.endswith(".fz"):
+            output_image.with_suffix(output_image.suffix + ".fz")
+        if not output_image.exists() or overwrite:
+            shutil.copy(input_image, output_image)
+        return
+
     # Read in facets, corrections, and input image
     with open(corrections_file, "r") as fp:
         corrections = json.load(fp)
@@ -89,12 +115,12 @@ def main(
             total_correction = np.hypot(ra_correction, dec_correction)
             total_error = np.hypot(ra_correction_std, dec_correction_std)
             if total_correction > total_error:
-                facet_data = nd.shift(
-                    facet_data, [dec_correction, ra_correction], order=3
-                )
+                facet_data = nd.shift(facet_data, [dec_correction, ra_correction], order=3)
                 logger.info(
                     "Corrected facet %s by %.3f arcsec in RA and %.3f arcsec in Dec",
-                    facet.name, ra_correction * ra_scale * 3600, dec_correction * dec_scale * 3600,
+                    facet.name,
+                    ra_correction * ra_scale * 3600,
+                    dec_correction * dec_scale * 3600,
                 )
             else:
                 logger.info(
@@ -130,13 +156,6 @@ def main(
 
     # Write out the corrected image (always uncompressed, as astropy.io.fits.writeto does not
     # support fpack compression)
-    if output_image is None:
-        root = input_image.name
-        if root.endswith(".fz"):
-            root = root[:-3]
-        if root.endswith(".fits"):
-            root = root[:-5]
-        output_image = Path(f"{root}-ast.fits")
     fits_write(
         output_image,
         data=corrected_data.reshape(output_shape),
@@ -144,7 +163,7 @@ def main(
         overwrite=overwrite,
     )
 
-    # Compress with fpack if input image was compressed
+    # Compress with fpack if input image was compressed. fpack adds the extension ".fz" to the file
     if input_image.suffix == ".fz":
         cmd = ["fpack", output_image]
         try:
@@ -155,19 +174,37 @@ def main(
             return err.returncode
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     descriptiontext = "Apply astrometry corrections to an image.\n"
 
     parser = ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
-    parser.add_argument('input_image', help='Filename of uncorrected input FITS image', type=Path)
-    parser.add_argument('region_file', help='Filename of input ds9 region file', type=Path)
-    parser.add_argument('corrections_file', help='Filename of input json file with astrometry corrections', type=Path)
-    parser.add_argument('--output_image', default=None, help='Filename of corrected output FITS image', type=Path)
-    parser.add_argument('--overwrite', default=False, action='store_true', help='Overwrite an exising output image file')
+    parser.add_argument("input_image", help="Filename of uncorrected input FITS image", type=Path)
+    parser.add_argument("region_file", help="Filename of input ds9 region file", type=Path)
+    parser.add_argument(
+        "--corrections_file",
+        default=None,
+        help="Filename of input json file with astrometry corrections",
+        type=Path,
+    )
+    parser.add_argument(
+        "--output_image", default=None, help="Filename of corrected output FITS image", type=Path
+    )
+    parser.add_argument(
+        "--overwrite",
+        default=False,
+        action="store_true",
+        help="Overwrite an exising output image file",
+    )
     args = parser.parse_args()
 
     try:
-        main(args.input_image, args.region_file, args.corrections_file, args.output_image, args.overwrite)
+        main(
+            args.input_image,
+            args.region_file,
+            args.corrections_file,
+            args.output_image,
+            args.overwrite,
+        )
     except ValueError as e:
-        log = logging.getLogger('rapthor:correct_astrometry')
+        log = logging.getLogger("rapthor:correct_astrometry")
         log.critical(e)

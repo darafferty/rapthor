@@ -30,9 +30,11 @@ inputs:
     label: Input corrections file
     doc: |
       The filename of the input json file that defines the astrometry corrections per facet.
-    type: File
+      If not available, no correction is done.
+    type: File?
     inputBinding:
-      position: 2
+      prefix: --corrections_file=
+      separate: false
 
 outputs:
   - id: corrected_image
