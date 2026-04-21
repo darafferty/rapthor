@@ -1977,7 +1977,8 @@ class Field(object):
                                    self.sector_bounds_mid_ra,
                                    self.sector_bounds_mid_dec,
                                    max(skymodel_bounds_width_ra, sector_bounds_width_ra),
-                                   max(skymodel_bounds_width_dec, sector_bounds_width_dec))
+                                   max(skymodel_bounds_width_dec, sector_bounds_width_dec),
+                                   wcs_pixel_scale=misc.WCS_PIXEL_SCALE)
             for i, facet in enumerate(facets):
                 facet_patch = facet.get_matplotlib_patch(wcs=wcs)
                 label = 'Calibration facets' if i == 0 else None  # first only to avoid multiple lines in legend
