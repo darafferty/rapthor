@@ -213,6 +213,7 @@ format_targets = [
     "rapthor/lib/cwl.py",
     "rapthor/lib/cwlrunner.py",
     "rapthor/lib/parset.py",
+    "rapthor/operations/calibrate.py",
     "rapthor/operations/image.py",
     "rapthor/process.py",
     "rapthor/scripts/calculate_image_diagnostics.py",
