@@ -5,28 +5,11 @@ Test cases for the `rapthor.operations.calibrate` module.
 from pathlib import Path
 
 import pytest
-import yaml
-from jinja2 import Environment, FileSystemLoader
 
 import rapthor
 from rapthor.lib.operation import DIR as OPERATION_DIR
 from rapthor.operations.calibrate import CalibrateDD, CalibrateDI
-
-
-def cwl_input_ids(template_name: str, parset_parms: dict) -> set:
-    """
-    Render a CWL pipeline template with given parset_parms and return
-    the set of input IDs declared in the rendered workflow.
-    """
-    pipeline_parsets_dir = Path(rapthor.__file__).parent / "pipeline" / "parsets"
-    env = Environment(loader=FileSystemLoader(str(pipeline_parsets_dir)))
-    template = env.get_template(template_name)
-    rendered = template.render(parset_parms)
-    cwl = yaml.safe_load(rendered)
-    inputs = cwl.get("inputs", [])
-    if isinstance(inputs, list):
-        return {inp["id"] for inp in inputs}
-    return set(inputs.keys())
+from tests.operations.conftest import get_cwl_input_ids
 
 
 @pytest.fixture
@@ -459,7 +442,6 @@ class TestCalibrate:
         generate_screens,
         use_image_based_predict,
         do_slowgain_solve,
-        cwl_input_ids,
     ):
         """
         Test that set_input_parameters() provides exactly the inputs declared in the CWL
@@ -476,7 +458,6 @@ class TestCalibrate:
 
         rapthor_pipeline_dir = str(Path(rapthor.__file__).parent / "pipeline")
         if is_dd:
-            # Mirrors the resolution done in CalibrateDD.set_parset_parameters()
             resolved_use_image_based_predict = f.generate_screens or f.use_image_based_predict
             template_parset_parms = {
                 "use_image_based_predict": resolved_use_image_based_predict,
@@ -485,13 +466,13 @@ class TestCalibrate:
                 "max_cores": None,
                 "rapthor_pipeline_dir": rapthor_pipeline_dir,
             }
-            expected_cwl_ids = cwl_input_ids("calibrate_pipeline.cwl", template_parset_parms)
+            expected_cwl_ids = get_cwl_input_ids("calibrate_pipeline.cwl", template_parset_parms)
         else:
             template_parset_parms = {
                 "max_cores": None,
                 "rapthor_pipeline_dir": rapthor_pipeline_dir,
             }
-            expected_cwl_ids = cwl_input_ids("calibrate_di_pipeline.cwl", template_parset_parms)
+            expected_cwl_ids = get_cwl_input_ids("calibrate_di_pipeline.cwl", template_parset_parms)
 
         input_parms_keys = set(calibrate.input_parms.keys())
         assert expected_cwl_ids.issubset(input_parms_keys), (
