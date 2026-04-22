@@ -101,6 +101,7 @@ def test_ms(tmp_path_factory):
         - Minimum frequency = 134288024.90234375 Hz
         - Maximum frequency = 134458923.33984375 Hz
         - Channel width = 24414.0625 Hz
+        - Phase center at RA = 0.4262457236387493 radians, Dec = 0.5787469737178225 radians
     """
     source = ensure_test_ms(RESOURCE_DIR)
     target = (tmp_path_factory.mktemp("test_ms") / TEST_MS_DIRNAME).as_posix()

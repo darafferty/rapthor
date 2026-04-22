@@ -224,15 +224,8 @@ def main(source_catalog, ms_file, output_h5parm, radius_cut=3.0, major_axis_cut=
         Filename of a reference sky model to use for normalization (instead of external survey catalogs)
     """
     source_catalog_data, n_chan = read_source_catalog(source_catalog)
-
-    # Get the RA and Dec of the phase center from the MS file's FIELD table
-    field_file = ms_file + '::FIELD'
-    with pt.table(field_file, ack=False) as fieldTable:
-        # Note: getcol() here returns a nested array, for example:
-        #     array([[[-1.7654,  1.0020]]])
-        # so we use np.squeeze to remove the length-one axes
-        ra, dec = np.squeeze(fieldTable.getcol('PHASE_DIR'))  # radians
-
+    phase_center_ra, phase_center_dec = get_field_phase_center(ms_file)
+    
     do_normalization = True
     log.info(f"Number of sources before applying cuts: {source_catalog_data['RA'].size}")
     if source_catalog_data['RA'].size < min_sources:
@@ -251,7 +244,7 @@ def main(source_catalog, ms_file, output_h5parm, radius_cut=3.0, major_axis_cut=
             source_dec.append(dec_norm)
         source_coords = SkyCoord(ra=np.array(source_ra)*u.degree,
                                  dec=np.array(source_dec)*u.degree)
-        center_coord = SkyCoord(ra=ra*u.radian, dec=dec*u.radian)
+        center_coord = SkyCoord(ra=phase_center_ra*u.radian, dec=phase_center_dec*u.radian)
         source_distances = np.array([sep.value for sep in center_coord.separation(source_coords)])
 
         # To find the distance to the nearest neighbor of each source, cross match
@@ -283,7 +276,7 @@ def main(source_catalog, ms_file, output_h5parm, radius_cut=3.0, major_axis_cut=
             # fully covered
             try:
                 log.info(f'Downloading {survey} catalog for this field...')
-                skymodel = lsmtool.load(survey, VOPosition=[ra*180/np.pi, dec*180/np.pi], VORadius=5.0)
+                skymodel = lsmtool.load(survey, VOPosition=[phase_center_ra*180/np.pi, phase_center_dec*180/np.pi], VORadius=5.0)
             except (OSError, ConnectionError) as e:
                 log.error(f'A problem occurred when downloading the {survey} catalog. '
                       f'Error was: {e}. Flux normalization will be skipped.')
@@ -395,6 +388,7 @@ def main(source_catalog, ms_file, output_h5parm, radius_cut=3.0, major_axis_cut=
 
     # Write corrections to the output H5parm file as amplitude corrections
     antenna_file = ms_file + '::ANTENNA'
+    field_file = ms_file + '::FIELD'
     create_normalization_h5parm(antenna_file, field_file, output_h5parm, output_frequencies,
                                 avg_corrections)
 
@@ -449,6 +443,92 @@ def read_source_catalog(source_catalog):
                          
     return source_catalog_data, num_channels
 
+
+def get_field_phase_center(ms_file):
+    """
+    Get the RA and Dec of the phase center from the MS file's FIELD table.
+    
+    Parameters
+    ----------
+    ms_file : str
+        Filename of the MS file used for imaging (needed to get the phase center from the FIELD table)
+    
+    Returns
+    -------
+    ra : float
+        RA of the phase center in radians
+    dec : float
+        Dec of the phase center in radians
+    """
+    field_file = ms_file + '::FIELD'
+    with pt.table(field_file, ack=False) as fieldTable:
+        # Note: getcol() here returns a nested array, for example:
+        #     array([[[-1.7654,  1.0020]]])
+        # so we use np.squeeze to remove the length-one axes
+        ra, dec = np.squeeze(fieldTable.getcol('PHASE_DIR'))  # radians
+    return ra, dec
+
+def filter_sources(source_catalog_data, phase_center_ra, phase_center_dec, radius_cut, major_axis_cut, neighbor_cut):
+    """
+    Filter the sources in the input catalog.
+     
+    Keeps only:
+      - sources within radius_cut degrees of the phase center
+      - sources with major axes less than major_axis_cut degrees
+      - sources that have no neighbors within neighbor_cut degrees
+
+    Parameters
+    ----------
+    source_catalog_data : astropy.io.fits.FITS_rec
+        Data from the input FITS source catalog.
+    phase_center_ra : float
+        RA of the phase center in radians
+    phase_center_dec : float
+        Dec of the phase center in radians
+    radius_cut : float
+        Radius cut in degrees. Sources that lie at radii from the image
+        center larger than this value are excluded from the analysis
+    major_axis_cut : float
+        Major-axis size cut in degrees. Sources with major axes larger
+        than this value are excluded from the analysis
+    neighbor_cut : float
+        Nearest-neighbor distance cut in degrees. Sources with neighbors
+        closer than this value are excluded from the analysis
+
+    Returns
+    -------
+    filtered_source_catalog_data : astropy.io.fits.FITS_rec
+        Filtered data from the input FITS source catalog.
+    """
+    # Filter the sources to keep only:
+    #  - sources within radius_cut degrees of phase center
+    #  - sources with major axes less than major_axis_cut degrees
+    #  - sources that have no neighbors within neighbor_cut degrees
+    source_ra = []
+    source_dec = []
+    for ra_deg, dec_deg in zip(source_catalog_data['RA'], source_catalog_data['DEC']):
+        ra_norm, dec_norm = normalize_ra_dec(ra_deg, dec_deg)
+        source_ra.append(ra_norm)
+        source_dec.append(dec_norm)
+    source_coords = SkyCoord(ra=np.array(source_ra)*u.degree,
+                                dec=np.array(source_dec)*u.degree)
+    center_coord = SkyCoord(ra=phase_center_ra*u.radian, dec=phase_center_dec*u.radian)
+    source_distances = np.array([sep.value for sep in center_coord.separation(source_coords)])
+
+    # To find the distance to the nearest neighbor of each source, cross match
+    # the source catalog with itself and take the second-closest match using
+    # nthneighbor = 2 (the closest match, returned by nthneighbor = 1, will
+    # always be each source matched to itself and hence at a distance of 0)
+    _, separation, _ = match_coordinates_sky(source_coords, source_coords, nthneighbor=2)
+    neighbor_distances = np.array([sep.value for sep in separation])
+
+    # Apply the cuts
+    radius_filter = source_distances < radius_cut
+    major_axis_filter = source_catalog_data['DC_Maj'] < major_axis_cut
+    neighbor_filter = neighbor_distances > neighbor_cut
+    source_catalog_data = source_catalog_data[radius_filter & major_axis_filter & neighbor_filter]
+    source_coords = source_coords[radius_filter & major_axis_filter & neighbor_filter]
+    return source_coords
 
 if __name__ == '__main__':
     descriptiontext = "Calculate flux-scale normalization corrections.\n"
