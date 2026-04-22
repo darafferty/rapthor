@@ -12,14 +12,22 @@ from rapthor.operations.calibrate import CalibrateDD, CalibrateDI
 
 
 @pytest.fixture
-def calibrate_field(operation_parset, mocker):
+def calibrate_field(operation_parset, mocker, single_source_sky_model):
     """Create a mock field object for testing a Calibrate operation."""
 
     class Field:
         def __init__(self, parset):
             self.parset = parset
+            self.get_source_distances = mocker.MagicMock()
             self.scan_h5parms = mocker.MagicMock()
             self.calibration_diagnostics = []
+            self.calibration_skymodel_file = str(single_source_sky_model["path"])
+            self.ra = 42.0
+            self.dec = -42.0
+            self.sector_bounds_mid_ra = self.ra
+            self.sector_bounds_mid_dec = self.dec
+            self.sector_bounds_width_ra = 4
+            self.sector_bounds_width_dec = 5
 
     return Field(operation_parset)
 
@@ -136,9 +144,49 @@ class TestCalibrateDD:
         result = calibrate_dd.get_core_stations(include_nearest_remote=include_remote)
         assert result == expected
 
-    def test_get_model_image_parameters(self):
-        # calibrate_dd.get_model_image_parameters()
-        pass
+    @pytest.mark.parametrize("cycle,have_full_field_sector", [(1, False), (1, True), (2, False)])
+    def test_get_model_image_parameters(
+        self, single_source_sky_model, calibrate_field, mocker, cycle, have_full_field_sector
+    ):
+        sky_model = single_source_sky_model
+        field = calibrate_field
+
+        bandwidth = 1e6  # hardcoded value in Rapthor.
+        cellsize_arcsec = 2
+        cellsize_degrees = cellsize_arcsec / 3600.0
+        cellsize_pixels = 1800
+        width_ra_pixels = field.sector_bounds_width_ra * cellsize_pixels
+        width_dec_pixels = field.sector_bounds_width_dec * cellsize_pixels
+        source_distance_ra = 6
+        source_distance_dec = 7
+        expected_source_distance_size = [25200, 25200]  # 2 * 7 * cellsize_pixels
+
+        # Setup the field for the test.
+        field.parset["imaging_specific"] = {"cellsize_arcsec": cellsize_arcsec}
+        field.get_source_distances.return_value = ("foo", [source_distance_ra, source_distance_dec])
+        if have_full_field_sector:
+            field.full_field_sector = mocker.NonCallableMagicMock()
+            field.full_field_sector.cellsize_deg = cellsize_degrees
+            field.full_field_sector.imsize = [width_ra_pixels, width_dec_pixels]
+
+        # Act
+        calibrate_dd = CalibrateDD(field, index=cycle)
+        frequency_bandwidth, center_coords, size, cellsize = (
+            calibrate_dd.get_model_image_parameters()
+        )
+
+        # Assert. In this test, all scenarios yield equal values, except for the size.
+        assert frequency_bandwidth == [sky_model["reference_frequency"], bandwidth]
+        assert center_coords == ("2:48:00.000000", "-42.00.00.000000")
+        if cycle == 1 and not have_full_field_sector:
+            field.get_source_distances.assert_called_once_with(
+                {sky_model["name"]: [sky_model["ra"], sky_model["dec"]]}
+            )
+            assert size == expected_source_distance_size
+        else:
+            field.get_source_distances.assert_not_called()
+            assert size == [width_ra_pixels, width_dec_pixels]
+        assert cellsize == cellsize_degrees
 
 
 class TestCalibrateDI:
