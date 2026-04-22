@@ -255,6 +255,9 @@ run_integration_tests:
   script:
     - tox -e test_integration
   coverage: '/TOTAL.*\s+(\d+%)$/'
+  artifacts:
+    paths:
+      - /tmp/ical*/work/logs
 
 
 ### Stage: docs

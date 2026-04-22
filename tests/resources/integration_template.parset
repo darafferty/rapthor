@@ -25,6 +25,7 @@ input_h5parm = None
 input_fulljones_h5parm = None
 facet_layout = None
 dde_mode = faceting
+allow_internet_access = False
 
 [calibration]
 fast_freqstep_hz = 1e6
@@ -48,6 +49,7 @@ reweight = True
 average_visibilities = False
 photometry_skymodel =
 astrometry_skymodel =
+shared_facet_rw = False
   
 [cluster]
 batch_system = single_machine
