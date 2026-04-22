@@ -13,25 +13,20 @@ from rapthor.lib.operation import DIR as OPERATION_DIR
 from rapthor.operations.calibrate import CalibrateDD, CalibrateDI
 
 
-@pytest.fixture
-def cwl_input_ids():
+def cwl_input_ids(template_name: str, parset_parms: dict) -> set:
     """
-    Fixture that renders a CWL pipeline template with given parset_parms
-    and returns the set of input IDs declared in the rendered workflow.
+    Render a CWL pipeline template with given parset_parms and return
+    the set of input IDs declared in the rendered workflow.
     """
     pipeline_parsets_dir = Path(rapthor.__file__).parent / "pipeline" / "parsets"
     env = Environment(loader=FileSystemLoader(str(pipeline_parsets_dir)))
-
-    def _render_and_extract(template_name: str, parset_parms: dict) -> set:
-        template = env.get_template(template_name)
-        rendered = template.render(parset_parms)
-        cwl = yaml.safe_load(rendered)
-        inputs = cwl.get("inputs", [])
-        if isinstance(inputs, list):
-            return {inp["id"] for inp in inputs}
-        return set(inputs.keys())
-
-    return _render_and_extract
+    template = env.get_template(template_name)
+    rendered = template.render(parset_parms)
+    cwl = yaml.safe_load(rendered)
+    inputs = cwl.get("inputs", [])
+    if isinstance(inputs, list):
+        return {inp["id"] for inp in inputs}
+    return set(inputs.keys())
 
 
 @pytest.fixture
