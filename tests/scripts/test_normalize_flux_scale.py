@@ -9,8 +9,10 @@ import pytest
 import rapthor.scripts.normalize_flux_scale
 from rapthor.scripts.normalize_flux_scale import (
     create_normalization_h5parm,
+    filter_sources,
     find_normalizations,
     fit_sed,
+    get_field_phase_center,
     get_output_frequencies,
     read_source_catalog,
     main,
@@ -556,4 +558,81 @@ def test_get_output_frequencies(test_ms):
     frequencies = get_output_frequencies(test_ms)
     assert np.allclose(frequencies, expected_frequencies), (
         f"Expected frequencies {expected_frequencies}, got {frequencies}"
+    )
+
+
+def test_get_field_phase_center(test_ms):
+    """
+    Test that the get_field_phase_center function returns the correct RA and Dec of the phase center from the FIELD table of the measurement set.
+    """
+    expected_ra = 0.4262457236387493  # radians
+    expected_dec = 0.5787469737178225  # radians
+    ra, dec = get_field_phase_center(test_ms)
+    assert np.isclose(ra, expected_ra), f"Expected RA {expected_ra}, got {ra}"
+    assert np.isclose(dec, expected_dec), f"Expected Dec {expected_dec}, got {dec}"
+
+
+def test_filter_sources(source_catalog_fits):
+    """
+    Test that the filter_sources function correctly filters sources based on the specified criteria.
+    """
+    source_catalog_data, num_channels = read_source_catalog(source_catalog_fits)
+    source_coords = np.array(
+        [
+            [0.4262457236387493, 0.5787469737178225],  # Source 1: at phase center
+            [
+                0.4262457236387493 + np.deg2rad(4 / 3600),
+                0.5787469737178225,
+            ],  # Source 2: outside radius cut
+            [
+                0.4262457236387493,
+                0.5787469737178225 + np.deg2rad(4 / 3600),
+            ],  # Source 3: outside radius cut
+            [
+                0.4262457236387493 + np.deg2rad(2 / 3600),
+                0.5787469737178225,
+            ],  # Source 4: within radius cut, major axis > cut
+            [
+                0.4262457236387493,
+                0.5787469737178225 + np.deg2rad(2 / 3600),
+            ],  # Source 5: within radius cut, major axis > cut
+            [
+                0.4262457236387493 + np.deg2rad(1 / 3600),
+                0.5787469737178225,
+            ],  # Source 6: within radius cut, major axis < cut, neighbor within cut
+            [
+                0.4262457236387493 + np.deg2rad(1 / 3600),
+                0.5787469737178225 + np.deg2rad(1 / 3600),
+            ],  # Source 7: within radius cut, major axis < cut, neighbor within cut
+            [
+                0.4262457236387493 + np.deg2rad(1 / 3600),
+                0.5787469737178225 + np.deg2rad(4 / 3600),
+            ],  # Source 8: within radius cut, major axis < cut, no neighbors within cut
+        ]
+    )
+    expected_filtered_coords = np.array(
+        [
+            [0.4262457236387493, 0.5787469737178225],  # Source 1: at phase center
+            [
+                0.4262457236387493 + np.deg2rad(1 / 3600),
+                0.5787469737178225 + np.deg2rad(4 / 3600),
+            ],  # Source 8: within radius cut, major axis < cut, no neighbors within cut
+        ]
+    )
+    phase_center_ra = source_coords[0][0]
+    phase_center_dec = source_coords[0][1]
+    radius_cut = np.deg2rad(3 / 3600)  # radians
+    major_axis_cut = np.deg2rad(30 / 3600)  # radians
+    neighbor_cut = np.deg2rad(30 / 3600)  # radians
+    filtered_coords = filter_sources(
+        source_catalog_data,
+        phase_center_ra,
+        phase_center_dec,
+        radius_cut,
+        major_axis_cut,
+        neighbor_cut,
+    )
+
+    assert np.allclose(filtered_coords, expected_filtered_coords), (
+        f"Expected filtered coordinates {expected_filtered_coords}, got {filtered_coords}"
     )
