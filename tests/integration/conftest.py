@@ -79,3 +79,13 @@ def single_loop_strategy_path_calibrate_di(tmp_path):
     strategy_path = tmp_path / "single_loop_strategy_calibrate_di.py"
     strategy_path.write_text(strategy_content)
     return strategy_path
+
+
+@pytest.fixture
+def single_loop_do_normalize_strategy_path(tmp_path):
+    """Strategy file for a single self-calibration loop with do_normalize."""
+    strategy_steps = [make_strategy_step(do_calibrate=True, do_image=True, do_normalize=True)]
+    strategy_content = f"strategy_steps = {strategy_steps}"
+    strategy_path = tmp_path / "single_loop_do_normalize_strategy.py"
+    strategy_path.write_text(strategy_content)
+    return strategy_path

@@ -75,7 +75,6 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         libboost-date-time-dev \
         libboost-filesystem-dev \
         libboost-program-options-dev \
-        libboost-numpy-dev \
         libboost-python-dev \
         libcfitsio-dev \
         libfftw3-dev \
@@ -105,6 +104,20 @@ RUN python3 -m pip install \
     'cmake<4' \
     numpy
 
+# Build Boost.NumPy from source against pip NumPy 2 (the apt package is compiled
+# against NumPy 1.x and causes runtime failures when importing PyBDSF).
+ARG BOOST_VERSION=1.88.0
+ARG BOOST_VERSION_UNDERSCORED=1_88_0
+RUN wget -q https://archives.boost.io/release/${BOOST_VERSION}/source/boost_${BOOST_VERSION_UNDERSCORED}.tar.bz2 && \
+    tar -xjf boost_${BOOST_VERSION_UNDERSCORED}.tar.bz2 && \
+    cd boost_${BOOST_VERSION_UNDERSCORED} && \
+    NUMPY_INC=$(python3 -c "import numpy; print(numpy.get_include())") && \
+    ./bootstrap.sh --with-libraries=python && \
+    ./b2 --with-python \
+        include="/usr/include/python3.10:${NUMPY_INC}" \
+        install && \
+    cd .. && rm -rf boost_${BOOST_VERSION_UNDERSCORED}*
+
 # Install the casacore measures data. We purposely do not install these from
 # the Ubuntu repository, but download the latest version from the ASTRON site.
 # Note: The file on the ftp site is updated daily. When warnings regarding
@@ -118,6 +131,7 @@ RUN git clone --no-checkout https://github.com/casacore/casacore.git
 RUN git -C casacore checkout ${CASACORE_COMMIT}
 RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=RelWithDebInfo \
+    -DBoost_NO_BOOST_CMAKE=ON \
     -DBUILD_TESTING=OFF \
     -DPORTABLE=${PORTABLE} \
     -DTARGET_CPU=${TARGET_CPU} \
@@ -226,6 +240,11 @@ WORKDIR /app
 COPY --from=build /usr/local/bin /usr/local/bin
 COPY --from=build /usr/local/lib /usr/local/lib
 COPY --from=build /usr/local/share /usr/local/share
+
+# Remove the apt-provided libboost-numpy (NumPy 1.x) so PyBDSF links against
+# the Boost.NumPy built from source in the build stage (NumPy 2-compatible).
+RUN dpkg -l libboost-numpy* 2>/dev/null | grep ^ii | awk '{print $2}' | \
+    xargs -r apt-get remove -y
 
 # Sanity check that the installed binaries are working
 RUN aoflagger --version && \

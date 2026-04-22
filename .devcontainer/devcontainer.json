@@ -8,7 +8,7 @@
   "runArgs": ["--shm-size=4g"],
   "workspaceFolder": "/src",
   "workspaceMount": "source=${localWorkspaceFolder},target=/src,type=bind,consistency=cached",
-  "postCreateCommand": "pip install -e . && pip install --group=dev",
+  "postCreateCommand": "pip install --upgrade pip && pip install --force-reinstall --no-binary=bdsf bdsf && pip install -e . && pip install --group=dev",
   "customizations": {
     "vscode": {
       "extensions": [

@@ -73,7 +73,8 @@ dev = ["ruff", {include-group = "test"} ]
 [tool.pytest.ini_options]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
-    "integration: marks test as integration tests"
+    "integration: marks test as integration tests",
+    "internet: marks tests that require internet access"
 ]
 
 
