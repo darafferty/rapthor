@@ -8,7 +8,7 @@ import pytest
 
 import rapthor
 from rapthor.lib.operation import DIR as OPERATION_DIR
-from rapthor.operations.calibrate import CalibrateDD, CalibrateDI
+from rapthor.operations.calibrate import Calibrate, CalibrateDI
 from tests.operations.conftest import get_cwl_input_ids
 
 
@@ -121,21 +121,20 @@ def parse_dp3(dp3_string):
 
 class TestCalibrate:
     @pytest.mark.parametrize(
-        "scenario, batch_system, generate_screens, use_image_based_predict",
+        "mode, solve, batch_system, generate_screens, use_image_based_predict",
         [
-            ("dd_fast_only", "slurm", False, False),
-            ("dd_fast_only", "slurm", True, False),
-            ("dd_with_slowgain", "some_other_batch_system", False, True),
-            ("dd_with_slowgain", "some_other_batch_system", True, True),
-            ("di_fulljones", "slurm", "don't", "care"),
-            ("di_fulljones", "some_other_batch_system", "don't", "care"),
+            ("dd", "fast_only", "slurm", False, False),
+            ("dd", "fast_only", "slurm", True, False),
+            ("dd", "with_slowgain", "some_other_batch_system", False, True),
+            ("dd", "with_slowgain", "some_other_batch_system", True, True),
+            ("di", "fulljones", "slurm", None, None),
+            ("di", "fulljones", "some_other_batch_system", None, None),
         ],
     )
     def test_set_parset_parameters(
-        self, calibrate_field, scenario, batch_system, generate_screens, use_image_based_predict
+        self, calibrate_field, mode, solve, batch_system, generate_screens, use_image_based_predict
     ):
-        is_dd = scenario.startswith("dd")
-        with_slow = scenario == "dd_with_slowgain"
+        with_slow = solve == "with_slowgain"
         max_cores = 42
 
         # Setup field object
@@ -145,12 +144,7 @@ class TestCalibrate:
         calibrate_field.parset["cluster_specific"]["batch_system"] = batch_system
         calibrate_field.parset["cluster_specific"]["max_cores"] = max_cores
 
-        # Setup calibrate object
-        calibrate = (
-            CalibrateDD(calibrate_field, index=1)
-            if is_dd
-            else CalibrateDI(calibrate_field, index=2)
-        )
+        calibrate = Calibrate(mode=mode, field=calibrate_field, index=1 if mode == "dd" else 2)
 
         # Act
         calibrate.set_parset_parameters()
@@ -162,7 +156,7 @@ class TestCalibrate:
         expected_max_cores = None if batch_system == "slurm" else max_cores
         assert calibrate.parset_parms["max_cores"] == expected_max_cores
 
-        if is_dd:  # CalibrateDD sets some extra parameters.
+        if mode == "dd":  # CalibrateDD sets some extra parameters.
             expected_use_image_based_predict = generate_screens or use_image_based_predict
             assert calibrate.use_image_based_predict is expected_use_image_based_predict
             assert (
@@ -190,7 +184,7 @@ class TestCalibrate:
     def test_get_baselines_core(self, calibrate_field, antenna, stations, expected):
         calibrate_field.antenna = antenna
         calibrate_field.stations = stations
-        calibrate_dd = CalibrateDD(field=calibrate_field, index=1)
+        calibrate_dd = Calibrate(field=calibrate_field, index=1)
 
         baselines = calibrate_dd.get_baselines_core()
         assert baselines == expected
@@ -218,7 +212,7 @@ class TestCalibrate:
     def test_get_superterp_stations(self, calibrate_field, antenna, stations, expected):
         calibrate_field.antenna = antenna
         calibrate_field.stations = stations
-        calibrate_dd = CalibrateDD(field=calibrate_field, index=1)
+        calibrate_dd = Calibrate(field=calibrate_field, index=1)
         assert calibrate_dd.get_superterp_stations() == expected
 
     @pytest.mark.parametrize(
@@ -259,7 +253,7 @@ class TestCalibrate:
     def test_get_core_stations(self, calibrate_field, antenna, include_remote, stations, expected):
         calibrate_field.antenna = antenna
         calibrate_field.stations = stations
-        calibrate_dd = CalibrateDD(field=calibrate_field, index=1)
+        calibrate_dd = Calibrate(field=calibrate_field, index=1)
         result = calibrate_dd.get_core_stations(include_nearest_remote=include_remote)
         assert result == expected
 
@@ -289,7 +283,7 @@ class TestCalibrate:
             field.full_field_sector.imsize = [width_ra_pixels, width_dec_pixels]
 
         # Act
-        calibrate_dd = CalibrateDD(field, index=cycle)
+        calibrate_dd = Calibrate(field, index=cycle)
         frequency_bandwidth, center_coords, size, cellsize = (
             calibrate_dd.get_model_image_parameters()
         )
@@ -340,7 +334,7 @@ class TestCalibrate:
         # Setup the object itself
         field.do_slowgain_solve = scenario == "dd_with_slowgain"
 
-        calibrate = CalibrateDD(field, index=2) if is_dd else CalibrateDI(field, index=4)
+        calibrate = Calibrate(field, index=2) if is_dd else CalibrateDI(field, index=4)
 
         if is_dd:
             calibrate.combined_h5parms = "combined.test.h5"
@@ -453,7 +447,7 @@ class TestCalibrate:
         f.use_image_based_predict = use_image_based_predict
         f.do_slowgain_solve = do_slowgain_solve
 
-        calibrate = CalibrateDD(field=f, index=1) if is_dd else CalibrateDI(field=f, index=1)
+        calibrate = Calibrate(field=f, index=1) if is_dd else CalibrateDI(field=f, index=1)
         calibrate.set_input_parameters()
 
         rapthor_pipeline_dir = str(Path(rapthor.__file__).parent / "pipeline")
@@ -498,7 +492,7 @@ class TestCalibrate:
         calibrate_field.calibrate_bda_frequencybase = bda_freq
         calibrate_field.do_slowgain_solve = slowgain
 
-        calibrate_dd = CalibrateDD(field=calibrate_field, index=1)
+        calibrate_dd = Calibrate(field=calibrate_field, index=1)
         calibrate_dd.set_input_parameters()
         dp3_steps = parse_dp3(calibrate_dd.input_parms["dp3_steps"])
 
@@ -522,7 +516,7 @@ class TestCalibrate:
         if normalize:
             calibrate_field.normalize_h5parm = str(tmp_path / "normalize.h5parm")
 
-        calibrate_dd = CalibrateDD(field=calibrate_field, index=1)
+        calibrate_dd = Calibrate(field=calibrate_field, index=1)
         calibrate_dd.set_input_parameters()
         params = calibrate_dd.input_parms
         dp3 = parse_dp3(params["dp3_steps"])
@@ -549,7 +543,7 @@ class TestCalibrate:
         """
         calibrate_field.apply_diagonal_solutions = diagonal_flag
 
-        calibrate_dd = CalibrateDD(field=calibrate_field, index=1)
+        calibrate_dd = Calibrate(field=calibrate_field, index=1)
         calibrate_dd.set_input_parameters()
 
         assert calibrate_dd.input_parms["solution_combine_mode"] == expected_mode
