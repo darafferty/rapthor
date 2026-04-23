@@ -167,82 +167,92 @@ class TestCalibrate:
             assert calibrate.parset_parms["do_slowgain_solve"] is with_slow
 
     @pytest.mark.parametrize(
-        "antenna, stations, expected",
+        "mode, antenna, stations, expected",
         [
-            (
+            (   
+                "dd",
                 "LBA",
                 ["CS001LBA", "CS002LBA", "RS106LBA", "DE601LBA", "UK608LBA"],
                 "[CR]*&&;!DE601LBA;!UK608LBA",
             ),
-            (
+            (   
+                "dd",
                 "HBA",
                 ["CS003HBA0", "RS106HBA0", "DE601HBA", "UK902HBA"],
                 "[CR]*&&;!DE601HBA;!UK902HBA",
             ),
         ],
     )
-    def test_get_baselines_core(self, calibrate_field, antenna, stations, expected):
+    def test_get_baselines_core(self, mode, calibrate_field, antenna, stations, expected):
         calibrate_field.antenna = antenna
         calibrate_field.stations = stations
-        calibrate_dd = Calibrate(field=calibrate_field, index=1)
+        calibrate_dd = Calibrate(mode=mode, field=calibrate_field, index=1 if mode == "dd" else 2)
 
         baselines = calibrate_dd.get_baselines_core()
         assert baselines == expected
 
     @pytest.mark.parametrize(
-        "antenna,stations,expected",
+        "mode, antenna,stations,expected",
         [
             (
+                "dd",
                 "HBA",
                 ["RS106HBA0", "DE601HBA"],
                 [],
             ),
-            (
+            (   
+                "dd",
                 "HBA",
                 ["CS003HBA0", "RS106HBA0", "CS007HBA1", "DE601HBA"],
                 ["CS003HBA0", "CS007HBA1"],
             ),
-            (
+            (   
+                "dd",
                 "LBA",
                 ["RS205LBA", "CS004LBA", "CS007LBA", "DE601LBA"],
                 ["CS004LBA", "CS007LBA"],
             ),
         ],
     )
-    def test_get_superterp_stations(self, calibrate_field, antenna, stations, expected):
+    def test_get_superterp_stations(self, mode, calibrate_field, antenna, stations, expected):
         calibrate_field.antenna = antenna
         calibrate_field.stations = stations
-        calibrate_dd = Calibrate(field=calibrate_field, index=1)
+        calibrate_dd = Calibrate(mode=mode, field=calibrate_field, index=1 if mode == "dd" else 2)
         assert calibrate_dd.get_superterp_stations() == expected
 
     @pytest.mark.parametrize(
-        "antenna,include_remote,stations,expected",
+        "mode,antenna,include_remote,stations,expected",
         [
             (
+                "dd",
                 "HBA",
                 True,
                 ["RS106HBA0", "CS002HBA0", "DE601HBA"],
                 ["CS002HBA0", "RS106HBA0"],
             ),
             (
+                "dd",
                 "HBA",
                 False,
                 ["RS106HBA0", "CS002HBA0", "DE601HBA"],
                 ["CS002HBA0"],
             ),
             (
+                "dd",
                 "LBA",
                 True,
                 ["RS205LBA", "CS003LBA", "CS999LBA"],
                 ["CS003LBA", "RS205LBA"],
             ),
             (
+                "dd",
                 "LBA",
                 False,
                 ["RS205LBA", "CS003LBA", "CS999LBA"],
                 ["CS003LBA"],
             ),
-            (
+            (   
+                "dd",
                 "HBA",
                 True,
                 ["DE601HBA", "DE602HBA"],
@@ -250,10 +260,10 @@ class TestCalibrate:
             ),
         ],
     )
-    def test_get_core_stations(self, calibrate_field, antenna, include_remote, stations, expected):
+    def test_get_core_stations(self, mode, calibrate_field, antenna, include_remote, stations, expected):
         calibrate_field.antenna = antenna
         calibrate_field.stations = stations
-        calibrate_dd = Calibrate(field=calibrate_field, index=1)
+        calibrate_dd = Calibrate(mode=mode, field=calibrate_field, index=1 if mode == "dd" else 2)
         result = calibrate_dd.get_core_stations(include_nearest_remote=include_remote)
         assert result == expected
 
