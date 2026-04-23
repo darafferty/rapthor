@@ -593,6 +593,7 @@ inputs:
     type: File?
 
   - id: peel_bright_sources
+    type: boolean
     label: Peel bright sources
     doc: |
       Peel bright sources
