@@ -16,6 +16,7 @@ from rapthor.scripts.normalize_flux_scale import (
     get_output_frequencies,
     read_source_catalog,
     main,
+    _validate_source_catalog,
 )
 
 
@@ -263,10 +264,10 @@ def test_main(
         )
     # Check if the file is created
     assert os.path.exists(output_h5parm), f"Expected {output_h5parm} to be created."
-    assert "Number of sources before applying cuts: 8" in caplog.text, (
+    assert "Number of sources in source catalog: 8" in caplog.text, (
         "Expected log message about number of sources before cuts."
     )
-    assert "Number of sources after applying cuts: 7" in caplog.text, (
+    assert "Number of sources in source catalog: 7" in caplog.text, (
         "Expected log message about number of sources after cuts."
     )
     if not use_input_skymodel:
@@ -350,10 +351,9 @@ def test_main_skips_normalization_if_too_few_sources_after_cuts(
             weight_by_flux_err=False,
             ignore_frequency_dependence=False,
         )
-    assert (
-        "Too few sources remain after applying cuts. Flux normalization will be skipped."
-        in caplog.text
-    ), "Expected log message about too few sources after cuts."
+    assert "Too few sources. Flux normalization will be skipped." in caplog.text, (
+        "Expected log message about too few sources after cuts."
+    )
 
 
 def test_main_raises_error_if_download_fails(
@@ -572,59 +572,37 @@ def test_get_field_phase_center(test_ms):
     assert np.isclose(dec, expected_dec), f"Expected Dec {expected_dec}, got {dec}"
 
 
-def test_filter_sources(source_catalog_fits):
+def test_filter_sources(source_catalog_with_outliers_fits):
     """
     Test that the filter_sources function correctly filters sources based on the specified criteria.
+
+    Fixture contains 10 sources, 5 of which are valid and 5 of which are outliers.
     """
-    source_catalog_data, num_channels = read_source_catalog(source_catalog_fits)
-    source_coords = np.array(
+    source_catalog_data, _ = read_source_catalog(source_catalog_with_outliers_fits)
+    original_coords = np.array([(data["RA"], data["DEC"]) for data in source_catalog_data])
+    original_source_catalog_data = source_catalog_data.copy()
+    radius_cut = 3  # degrees
+    major_axis_cut = 0.01  # degrees
+    neighbor_cut = 0.01  # degrees
+    phase_center_ra = np.deg2rad(24.422081)
+    phase_center_dec = np.deg2rad(33.159759)
+    expected_coords = np.array(
         [
-            [0.4262457236387493, 0.5787469737178225],  # Source 1: at phase center
-            [
-                0.4262457236387493 + np.deg2rad(4 / 3600),
-                0.5787469737178225,
-            ],  # Source 2: outside radius cut
-            [
-                0.4262457236387493,
-                0.5787469737178225 + np.deg2rad(4 / 3600),
-            ],  # Source 3: outside radius cut
-            [
-                0.4262457236387493 + np.deg2rad(2 / 3600),
-                0.5787469737178225,
-            ],  # Source 4: within radius cut, major axis > cut
-            [
-                0.4262457236387493,
-                0.5787469737178225 + np.deg2rad(2 / 3600),
-            ],  # Source 5: within radius cut, major axis > cut
-            [
-                0.4262457236387493 + np.deg2rad(1 / 3600),
-                0.5787469737178225,
-            ],  # Source 6: within radius cut, major axis < cut, neighbor within cut
-            [
-                0.4262457236387493 + np.deg2rad(1 / 3600),
-                0.5787469737178225 + np.deg2rad(1 / 3600),
-            ],  # Source 7: within radius cut, major axis < cut, neighbor within cut
-            [
-                0.4262457236387493 + np.deg2rad(1 / 3600),
-                0.5787469737178225 + np.deg2rad(4 / 3600),
-            ],  # Source 8: within radius cut, major axis < cut, no neighbors within cut
+            # Source 0 fails radius cut, should be removed
+            (23.22208, 33.15976),  # Source 1: at phase center, should be kept
+            # Sources 2-4: fail radius and major axis cuts, should be removed
+            # Sources 5-9: within all cuts, should be kept
+            (24.422081, 33.15976),
+            (24.72208, 33.15976),
+            (25.022081, 33.15976),
+            (25.32208, 33.15976),
+            (25.622082, 33.15976),
         ]
     )
-    expected_filtered_coords = np.array(
-        [
-            [0.4262457236387493, 0.5787469737178225],  # Source 1: at phase center
-            [
-                0.4262457236387493 + np.deg2rad(1 / 3600),
-                0.5787469737178225 + np.deg2rad(4 / 3600),
-            ],  # Source 8: within radius cut, major axis < cut, no neighbors within cut
-        ]
-    )
-    phase_center_ra = source_coords[0][0]
-    phase_center_dec = source_coords[0][1]
-    radius_cut = np.deg2rad(3 / 3600)  # radians
-    major_axis_cut = np.deg2rad(30 / 3600)  # radians
-    neighbor_cut = np.deg2rad(30 / 3600)  # radians
-    filtered_coords = filter_sources(
+    expected_data = (
+        source_catalog_data[1:2].tolist() + source_catalog_data[5:10].tolist()
+    )  # Sources 1 and 5-9 should be kept
+    filtered_coords, filtered_data = filter_sources(
         source_catalog_data,
         phase_center_ra,
         phase_center_dec,
@@ -632,7 +610,25 @@ def test_filter_sources(source_catalog_fits):
         major_axis_cut,
         neighbor_cut,
     )
-
-    assert np.allclose(filtered_coords, expected_filtered_coords), (
-        f"Expected filtered coordinates {expected_filtered_coords}, got {filtered_coords}"
+    # Convert filtered coordinates to numpy array for easier comparison
+    filtered_coords = np.array([(coord.ra.deg, coord.dec.deg) for coord in filtered_coords])
+    assert np.allclose(filtered_coords, expected_coords), (
+        f"Expected filtered coordinates {expected_coords}, got {filtered_coords}"
     )
+    assert filtered_data.tolist() == expected_data, (
+        f"Expected filtered data {expected_data}, got {filtered_data}"
+    )
+
+    # Check original data is unchanged
+    assert np.array_equal(source_catalog_data, original_source_catalog_data), (
+        "Expected original source catalog data to be unchanged."
+    )
+
+
+def test_validate_input_source_catalog_valid(source_catalog_fits):
+    """
+    Test that source catalog with enough sources is considered valid.
+    """
+    source_catalog_data, _ = read_source_catalog(source_catalog_fits)
+    assert _validate_source_catalog(source_catalog_data, min_sources=8)
+    assert not _validate_source_catalog(source_catalog_data, min_sources=9)

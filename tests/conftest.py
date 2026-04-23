@@ -403,7 +403,7 @@ def parset_for_field_test(tmp_path_factory, test_ms):
     return parset_read(target)
 
 
-def _make_source_catalog(n_channels=8, n_sources=8, alpha=-0.7, ref_flux=1.0):
+def _make_source_catalog(n_channels=8, n_sources=8, alpha=-0.7, ref_flux=1.0, outliers=False):
     """
     Build a minimal synthetic PyBDSF spectral-index-mode source catalog.
 
@@ -458,6 +458,11 @@ def _make_source_catalog(n_channels=8, n_sources=8, alpha=-0.7, ref_flux=1.0):
         columns[f"E_Total_flux_ch{ch}"] = (ch_flux * 0.05).astype(np.float32)
         columns[f"Freq_ch{ch}"] = np.full(n_sources, freq, dtype=np.float64)
 
+    # Add some outliers that fail the major axis and radius cuts for testing
+    if n_sources >= 10 and outliers:
+        columns["DC_Maj"][2] = 0.02  # Source 2: above the major_axis_cut of 0.01 degrees
+        columns["RA"][3] = columns["RA"][4] + 0.005 # Sources 3 and 4: inside neighbor_cut distance
+        columns["DEC"][3] = columns["DEC"][4]
     table = Table(columns)
     return table
 
@@ -482,5 +487,16 @@ def source_catalog_zero_channels_fits(tmp_path):
     """
     catalog_path = str(tmp_path / "test_source_catalog.fits")
     table = _make_source_catalog(n_channels=0)
+    table.write(catalog_path, format="fits", overwrite=True)
+    return catalog_path
+
+@pytest.fixture
+def source_catalog_with_outliers_fits(tmp_path):
+    """
+    A synthetic PyBDSF spectral-index-mode source catalog FITS file whose
+    sources include some that fail the radius and major axis cuts.
+    """
+    catalog_path = str(tmp_path / "test_source_catalog_with_outliers.fits")
+    table = _make_source_catalog(n_sources=10, outliers=True)  # 10 sources, 4 of which will be outliers
     table.write(catalog_path, format="fits", overwrite=True)
     return catalog_path
