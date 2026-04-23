@@ -4,6 +4,7 @@ for this directory.
 """
 
 import configparser
+import os
 import shutil
 import tarfile
 import tempfile
@@ -30,6 +31,15 @@ TEST_MS_ARCHIVE_DIRNAME = "tDDECal.MS"
 TEST_MS_DIRNAME = "test.ms"
 TEST_TRUE_SKYMODEL = (RESOURCE_DIR / "test_true_sky.txt").as_posix()
 TEST_APPARENT_SKYMODEL = (RESOURCE_DIR / "test_apparent_sky.txt").as_posix()
+
+
+def _get_test_run_root():
+    """Keep CI integration runs inside the project so GitLab can upload logs."""
+    if ci_project_dir := os.environ.get("CI_PROJECT_DIR"):
+        run_root = Path(ci_project_dir) / "ci_artifacts" / "integration-runs"
+        run_root.mkdir(parents=True, exist_ok=True)
+        return run_root
+    return Path("/tmp")
 
 
 def pytest_configure(config):
@@ -307,8 +317,9 @@ def generate_parset(
         apparent_skymodel_path = REPO_ROOT_DIR / apparent_skymodel_path
 
     # Keep runtime paths short to avoid AF_UNIX socket path length limits
-    # in multiprocessing-based tooling (e.g. PyBDSF).
-    run_dir = Path(tempfile.mkdtemp(prefix="ical-", dir="/tmp"))
+    # in multiprocessing-based tooling (e.g. PyBDSF). In CI, place runs under
+    # the project directory so the generated logs can be collected as artifacts.
+    run_dir = Path(tempfile.mkdtemp(prefix="ical-", dir=_get_test_run_root()))
     work_dir = run_dir / "work"
     scratch_dir = run_dir / "scratch"
     work_dir.mkdir()
@@ -391,6 +402,38 @@ def generated_parset_path(request, tmp_path, test_ms):
 
 
 @pytest.fixture
+def generated_parset_path_normalisation(request, tmp_path, ms_for_normalisation):
+    """
+    Fixture to generate a complete parset from a template and return the path.
+
+    This fixture is used to read in and update a template parset file. It is
+    parametrised using the pytest request fixture and expects a tuple
+    containing three paths to the following files:
+
+    1. Template parset (e.g. in tests/resources/parsets/)
+    2. True sky model (e.g. in tests/resources/)
+    3. Apparent sky model (e.g. in tests/resources/)
+
+    This fixture can be used to test rapthor runs end to end on a small input
+    measurement set with different strategies and sky models.
+    For further details see `generate_parset` function.
+    """
+    parset_path, input_skymodel_path, apparent_skymodel_path = request.param
+    parset_path = REPO_ROOT_DIR / parset_path
+    output_parset_path = tmp_path / "generated.parset"
+
+    generate_parset_path(
+        parset_path,
+        output_parset_path,
+        ms_for_normalisation,
+        input_skymodel_path,
+        apparent_skymodel_path,
+    )
+
+    return output_parset_path
+
+
+@pytest.fixture
 def parset_for_field_test(tmp_path_factory, test_ms):
     target = tmp_path_factory.mktemp("test_field") / "generated.parset"
     generate_parset_path(
@@ -461,7 +504,7 @@ def _make_source_catalog(n_channels=8, n_sources=8, alpha=-0.7, ref_flux=1.0, ou
     # Add some outliers that fail the major axis and radius cuts for testing
     if n_sources >= 10 and outliers:
         columns["DC_Maj"][2] = 0.02  # Source 2: above the major_axis_cut of 0.01 degrees
-        columns["RA"][3] = columns["RA"][4] + 0.005 # Sources 3 and 4: inside neighbor_cut distance
+        columns["RA"][3] = columns["RA"][4] + 0.005  # Sources 3 and 4: inside neighbor_cut distance
         columns["DEC"][3] = columns["DEC"][4]
     table = Table(columns)
     return table
@@ -490,6 +533,7 @@ def source_catalog_zero_channels_fits(tmp_path):
     table.write(catalog_path, format="fits", overwrite=True)
     return catalog_path
 
+
 @pytest.fixture
 def source_catalog_with_outliers_fits(tmp_path):
     """
@@ -497,6 +541,8 @@ def source_catalog_with_outliers_fits(tmp_path):
     sources include some that fail the radius and major axis cuts.
     """
     catalog_path = str(tmp_path / "test_source_catalog_with_outliers.fits")
-    table = _make_source_catalog(n_sources=10, outliers=True)  # 10 sources, 4 of which will be outliers
+    table = _make_source_catalog(
+        n_sources=10, outliers=True
+    )  # 10 sources, 4 of which will be outliers
     table.write(catalog_path, format="fits", overwrite=True)
     return catalog_path

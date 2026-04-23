@@ -151,7 +151,7 @@ def test_rapthor_run_single_loop(generated_parset_path, single_loop_strategy_pat
 @pytest.mark.internet
 @pytest.mark.integration
 @pytest.mark.parametrize(
-    "generated_parset_path",
+    "generated_parset_path_normalisation",
     [
         (
             "tests/resources/integration_template.parset",
@@ -161,11 +161,13 @@ def test_rapthor_run_single_loop(generated_parset_path, single_loop_strategy_pat
     ],
     indirect=True,
 )
-def test_rapthor_run_single_loop_with_do_normalize(generated_parset_path, single_loop_do_normalize_strategy_path):
+def test_rapthor_run_single_loop_with_do_normalize(
+    generated_parset_path_normalisation, single_loop_do_normalize_strategy_path
+):
     """Test a single self-calibration loop end to end."""
 
     updated_parset_path = update_parset_path(
-        generated_parset_path,
+        generated_parset_path_normalisation,
         {
             "allow_internet_access": "True",
             "strategy": str(single_loop_do_normalize_strategy_path),
@@ -200,7 +202,9 @@ def test_rapthor_run_single_loop_with_do_normalize(generated_parset_path, single
     ],
     indirect=True,
 )
-def test_rapthor_run_single_loop_with_do_normalize_no_internet_raises_error(generated_parset_path, single_loop_do_normalize_strategy_path):
+def test_rapthor_run_single_loop_with_do_normalize_no_internet_raises_error(
+    generated_parset_path, single_loop_do_normalize_strategy_path
+):
     """Test that rapthor raises an error when do_normalize is used without internet access."""
 
     updated_parset_path = update_parset_path(
@@ -210,7 +214,7 @@ def test_rapthor_run_single_loop_with_do_normalize_no_internet_raises_error(gene
             "strategy": str(single_loop_do_normalize_strategy_path),
         },
     )
-    
+
     command = ["rapthor", str(updated_parset_path)]
     result = subprocess.run(
         command,
@@ -219,9 +223,13 @@ def test_rapthor_run_single_loop_with_do_normalize_no_internet_raises_error(gene
         check=False,
     )
     output = f"{result.stdout}\n{result.stderr}"
-    assert result.returncode != 0, f"Rapthor should have failed but succeeded with output:\n{output}"
-    assert "The strategy includes do_normalize which requires internet access but the parset setting allow_internet_access is set to False." in output
-
+    assert result.returncode != 0, (
+        f"Rapthor should have failed but succeeded with output:\n{output}"
+    )
+    assert (
+        "The strategy includes do_normalize which requires internet access but the parset setting allow_internet_access is set to False."
+        in output
+    )
 
 
 @pytest.mark.integration

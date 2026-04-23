@@ -1,5 +1,10 @@
 """Module for pytest fixtures."""
 
+from pathlib import Path
+import shutil
+
+import casacore.tables as pt
+import numpy as np
 import pytest
 
 COMMON_STRATEGY_SETTINGS = {
@@ -39,6 +44,56 @@ def make_strategy_step(**overrides):
     return {**COMMON_STRATEGY_SETTINGS, **overrides}
 
 
+def _write_normalization_skymodel(output_path):
+    """Write an apparent sky model with one extra bright source for normalization tests."""
+    source_model_path = Path("tests/resources/integration_apparent_sky.txt")
+    output_path.write_text(source_model_path.read_text(encoding="utf-8"), encoding="utf-8")
+    with output_path.open("a", encoding="utf-8") as handle:
+        handle.write(" , , Patch_patch_norm_1, 1:37:41.299, 33.09.35.132\n")
+        handle.write(
+            "snorm0, POINT, Patch_patch_norm_1, 1:37:41.299, 33.09.35.132, "
+            "20.0, [-0.8], false, 148240661.621094, 0, 0, 0\n"
+        )
+
+
+def _set_synthetic_uvw_geometry(ms_path):
+    """Replace UVW with a denser antenna-consistent synthetic geometry."""
+    ref_wavelength_m = 299792458.0 / 134373474.12109375
+    with pt.table(str(ms_path), readonly=False, ack=False) as table:
+        uvw = table.getcol("UVW")
+        ant1 = table.getcol("ANTENNA1")
+        ant2 = table.getcol("ANTENNA2")
+        times = table.getcol("TIME")
+
+        unique_times = np.unique(times)
+        antennas = np.unique(np.concatenate([ant1, ant2]))
+        base_radius_lambda = np.linspace(0.0, 2500.0, len(antennas))
+        antenna_index = {antenna: index for index, antenna in enumerate(antennas)}
+        time_index = {time_value: index for index, time_value in enumerate(unique_times)}
+
+        positions = {}
+        for time_value in unique_times:
+            t_index = time_index[time_value]
+            for antenna in antennas:
+                a_index = antenna_index[antenna]
+                theta = (2.0 * np.pi * a_index / len(antennas)) + 0.35 * t_index
+                radius_lambda = base_radius_lambda[a_index]
+                positions[(time_value, antenna)] = np.array(
+                    [
+                        np.cos(theta) * radius_lambda * ref_wavelength_m,
+                        np.sin(theta) * radius_lambda * ref_wavelength_m,
+                        0.0,
+                    ]
+                )
+
+        for row_index in range(len(uvw)):
+            first_position = positions[(times[row_index], ant1[row_index])]
+            second_position = positions[(times[row_index], ant2[row_index])]
+            uvw[row_index] = second_position - first_position
+
+        table.putcol("UVW", uvw)
+
+
 @pytest.fixture
 def single_loop_strategy_path(tmp_path):
     """Fixture to generate a strategy file for a single self-calibration loop."""
@@ -71,6 +126,7 @@ def single_loop_strategy_path_peel_bright_sources(request, tmp_path):
     return strategy_path, peel
 
 
+
 @pytest.fixture
 def single_loop_strategy_path_calibrate_di(tmp_path):
     """Fixture to generate a strategy file for a single self-calibration loop with DI calibration."""
@@ -89,3 +145,44 @@ def single_loop_do_normalize_strategy_path(tmp_path):
     strategy_path = tmp_path / "single_loop_do_normalize_strategy.py"
     strategy_path.write_text(strategy_content)
     return strategy_path
+
+
+@pytest.fixture
+def ms_for_normalisation(tmp_path, test_ms):
+    """Provide a synthetic MS with denser UV coverage for normalization tests."""
+    ms_path = tmp_path / "test_ms_for_normalization.ms"
+    shutil.copytree(test_ms, ms_path)
+    _set_synthetic_uvw_geometry(ms_path)
+    with pt.table(str(ms_path), readonly=False, ack=False) as table:
+        data = table.getcol("DATA")
+        data[...] = 0.0j
+        table.putcol("DATA", data)
+
+    skymodel_path = tmp_path / "integration_apparent_sky_normalization.txt"
+    _write_normalization_skymodel(skymodel_path)
+
+    predicted_ms = tmp_path / "test_ms_for_normalization_predicted.ms"
+
+    dp3_command = (
+        f"DP3 msin={ms_path} steps=[predict] "
+        f"predict.usebeammodel=True "
+        f"predict.beam_interval=120 "
+        f"predict.beammode=array_factor "
+        f"predict.sourcedb={skymodel_path} "
+        f"msout={predicted_ms}"
+    )
+    import subprocess
+    import shlex
+
+    subprocess.run(shlex.split(dp3_command), check=True)
+    rng = np.random.default_rng(0)
+    with pt.table(str(predicted_ms), readonly=False, ack=False) as table:
+        data = table.getcol("DATA")
+        noise = (
+            rng.normal(scale=0.05, size=data.shape) + 1j * rng.normal(scale=0.05, size=data.shape)
+        ).astype(data.dtype)
+        table.putcol("DATA", data + noise)
+    shutil.rmtree(ms_path)
+    predicted_ms.rename(ms_path)
+    return ms_path
+
