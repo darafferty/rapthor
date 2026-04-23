@@ -1012,7 +1012,6 @@ steps:
       - id: image_cube_beams
       - id: image_cube_frequencies
 {% endif %}
-
   - id: check_beam_true_sky_image
     label: Check beam
     doc: |
@@ -1022,7 +1021,7 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/check_image_beam.cwl
     in:
       - id: input_image
-        source: select_pb/selected
+        source: select_pb_image/selected
       - id: beam_size_arcsec
         source: taper_arcsec
     out:
@@ -1037,7 +1036,7 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/check_image_beam.cwl
     in:
       - id: input_image
-        source: select_nonpb_image
+        source: select_nonpb_image/selected
       - id: beam_size_arcsec
         source: taper_arcsec
     out:
@@ -1257,26 +1256,26 @@ steps:
 {% endif %}
 # end normalize_flux_scale
 
-- id: select_nonpb_image:
-  run: {{rapthor_pipeline_dir}}/steps/select_file.cwl
-  in:
-  - id: option_a
-    source: restore_nonpb/restored_image
-  - id: option_b
-    source: image/image_I_nonpb_name
-  - id: use_option_a
-    source: peel_bright_sources
-  out:
-  - id: selected
+  - id: select_nonpb_image
+    run: {{rapthor_pipeline_dir}}/steps/select_file.cwl
+    in:
+    - id: option_a
+      source: restore_nonpb/restored_image
+    - id: option_b
+      source: image/image_I_nonpb_name
+    - id: use_option_a
+      source: peel_bright_sources
+    out:
+    - id: selected
 
-- id: select_pb_image:
-  run: {{rapthor_pipeline_dir}}/steps/select_file.cwl
-  in:
-  - id: option_a
-    source: restore_pb/restored_image
-  - id: option_b
-    source: image/image_I_pb_name
-  - id: use_option_a
-    source: peel_bright_sources
-  out:
-  - id: selected
+  - id: select_pb_image
+    run: {{rapthor_pipeline_dir}}/steps/select_file.cwl
+    in:
+    - id: option_a
+      source: restore_pb/restored_image
+    - id: option_b
+      source: image/image_I_pb_name
+    - id: use_option_a
+      source: peel_bright_sources
+    out:
+    - id: selected
