@@ -966,6 +966,8 @@ steps:
         valueFrom: $(self.basename)
       - id: numthreads
         source: max_threads
+      - id: peel_bright_sources
+        source: peel_bright_sources
     out:
       - id: restored_image
     when: $(inputs.peel_bright_sources)
@@ -985,6 +987,8 @@ steps:
         valueFrom: $(self.basename)
       - id: numthreads
         source: max_threads
+      - id: peel_bright_sources
+        source: peel_bright_sources
     out:
       - id: restored_image
     when: $(inputs.peel_bright_sources)

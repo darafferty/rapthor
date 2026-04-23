@@ -6,9 +6,9 @@ requirements:
 inputs:
   use_option_a: boolean
   option_a:
-    type: File
+    type: File?
   option_b:
-    type: File
+    type: File?
 
 outputs:
   selected:
