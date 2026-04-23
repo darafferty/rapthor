@@ -134,13 +134,17 @@ def test_rapthor_run_single_loop(generated_parset_path, single_loop_strategy_pat
     ],
     indirect=True,
 )
-def test_rapthor_run_single_loop_peel_bright_sources(generated_parset_path,
-                                                     single_loop_strategy_path_peel_bright_sources):
+def test_rapthor_run_single_loop_peel_bright_sources(
+    generated_parset_path, single_loop_strategy_path_peel_bright_sources
+):
     """Test a single self-calibration loop end to end."""
 
     updated_parset_path = update_parset_path(
         generated_parset_path,
-        {"allow_internet_access": "False", "strategy": str(single_loop_strategy_path_peel_bright_sources)},
+        {
+            "allow_internet_access": "False",
+            "strategy": str(single_loop_strategy_path_peel_bright_sources),
+        },
     )
 
     command = ["rapthor", str(updated_parset_path)]

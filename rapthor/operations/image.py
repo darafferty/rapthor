@@ -395,7 +395,7 @@ class Image(Operation):
             "astrometry_skymodel": (
                 CWLFile(self.astrometry_skymodel).to_json() if self.astrometry_skymodel else None
             ),
-            "peel_bright_sources": self.peel_bright_sources
+            "peel_bright_sources": self.peel_bright_sources,
         }
         # Add parameters that depend on the set_parset parameters (set in set_parset_parameters())
         if self.peel_bright_sources:
