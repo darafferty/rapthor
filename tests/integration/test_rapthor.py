@@ -134,7 +134,6 @@ def test_multiple_sectors_created(
         generated_parset_path,
         {
             "strategy": str(single_loop_strategy_path),
-            "allow_internet_access": "False",
             "grid_nsectors_ra": "0",
         },
     )
@@ -163,7 +162,6 @@ def test_multiple_sectors_created(
         generated_parset_path,
         {
             "strategy": str(single_loop_strategy_path),
-            "allow_internet_access": "False",
             "grid_nsectors_ra": "2",
         },
     )
