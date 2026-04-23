@@ -106,15 +106,25 @@ RUN python3 -m pip install \
 
 # Build Boost.NumPy from source against pip NumPy 2 (the apt package is compiled
 # against NumPy 1.x and causes runtime failures when importing PyBDSF).
+# Install it into an isolated prefix so downstream CMake projects continue to
+# use distro Boost packages without version-mix issues.
 ARG BOOST_VERSION=1.88.0
 ARG BOOST_VERSION_UNDERSCORED=1_88_0
 RUN wget -q https://archives.boost.io/release/${BOOST_VERSION}/source/boost_${BOOST_VERSION_UNDERSCORED}.tar.bz2 && \
     tar -xjf boost_${BOOST_VERSION_UNDERSCORED}.tar.bz2 && \
     cd boost_${BOOST_VERSION_UNDERSCORED} && \
     NUMPY_INC=$(python3 -c "import numpy; print(numpy.get_include())") && \
-    ./bootstrap.sh --with-libraries=python && \
+    ./bootstrap.sh --with-libraries=python --with-python=/usr/bin/python3 && \
     ./b2 --with-python \
+        python=3.10 \
+        cxxflags="-I${NUMPY_INC}" \
         include="/usr/include/python3.10:${NUMPY_INC}" \
+        variant=release \
+        threading=multi \
+        link=shared \
+        --layout=system \
+        --prefix=/opt/boost-numpy \
+        --libdir=/opt/boost-numpy/lib \
         install && \
     cd .. && rm -rf boost_${BOOST_VERSION_UNDERSCORED}*
 
@@ -250,11 +260,6 @@ ENV BOOST_LIBRARYDIR=/opt/boost-numpy/lib
 ENV CMAKE_ARGS="-DBoost_NO_BOOST_CMAKE=ON -DBOOST_ROOT=/opt/boost-numpy -DBOOST_INCLUDEDIR=/opt/boost-numpy/include -DBOOST_LIBRARYDIR=/opt/boost-numpy/lib -DBoost_PYTHON_LIBRARY=/opt/boost-numpy/lib/libboost_python310.so -DBoost_PYTHON_LIBRARY_RELEASE=/opt/boost-numpy/lib/libboost_python310.so -DBoost_NUMPY_LIBRARY=/opt/boost-numpy/lib/libboost_numpy310.so -DBoost_NUMPY_LIBRARY_RELEASE=/opt/boost-numpy/lib/libboost_numpy310.so"
 ENV CPLUS_INCLUDE_PATH=/opt/boost-numpy/include
 ENV LD_LIBRARY_PATH=/opt/boost-numpy/lib:/usr/local/lib
-
-# Remove the apt-provided libboost-numpy (NumPy 1.x) so PyBDSF links against
-# the Boost.NumPy built from source in the build stage (NumPy 2-compatible).
-RUN dpkg -l libboost-numpy* 2>/dev/null | grep ^ii | awk '{print $2}' | \
-    xargs -r apt-get remove -y
 
 # Sanity check that the installed binaries are working
 RUN aoflagger --version && \

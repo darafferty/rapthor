@@ -396,9 +396,7 @@ def _cross_match_sources(source_coords, survey_coords, survey_data, spurious_mat
             major_axis_cut,
             neighbor_cut,
         )
-        do_normalization = _validate_source_catalog(
-            source_catalog_data_filtered, min_sources
-        )
+        do_normalization = _validate_source_catalog(source_catalog_data_filtered, min_sources)
 
     # Cross match sources with external catalogs
     if do_normalization:
