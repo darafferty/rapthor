@@ -491,13 +491,11 @@ inputs:
       The filename of the output filtered sky model image (length = n_sectors).
     type: string[]
 
-{% if peel_bright_sources %}
   - id: bright_skymodel_pb
     label: Bright-source sky model
     doc: |
       The primary-beam-corrected bright-source sky model (length = 1).
-    type: File
-{% endif %}
+    type: File?
 
   - id: max_threads
     label: Max number of threads
@@ -594,6 +592,10 @@ inputs:
       Comparison sky model for astrometry diagnostics.
     type: File?
 
+  - id: peel_bright_sources
+    label: Peel bright sources
+    doc: |
+      Peel bright sources
 outputs:
   - id: filtered_skymodel_true_sky
     outputSource:
@@ -877,10 +879,8 @@ steps:
       - id: parallel_gridding_threads
         source: parallel_gridding_threads
 {% endif %}
-{% if peel_bright_sources %}
       - id: bright_skymodel_pb
         source: bright_skymodel_pb
-{% endif %}
 {% if make_image_cube %}
       - id: image_I_cube_name
         source: image_I_cube_name
@@ -903,7 +903,8 @@ steps:
         source: photometry_skymodel
       - id: astrometry_skymodel
         source: astrometry_skymodel
-
+      - id: peel_bright_sources
+        source: peel_bright_sources
     scatter: [obs_filename, prepare_filename, concat_filename, starttime, ntimes,
               image_freqstep, image_timestep, image_maxinterval, image_timebase,
               previous_mask_filename, mask_filename, phasecenter, ra, dec,

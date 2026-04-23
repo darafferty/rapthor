@@ -96,8 +96,6 @@ class Image(Operation):
             self.image_pol = self.field.image_pol  # set by process.run_steps()
         if self.save_source_list is None:
             self.save_source_list = is_only_pol_I(self.image_pol)
-        if self.peel_bright_sources is None:
-            self.peel_bright_sources = self.field.peel_bright_sources
         if self.preapply_dde_solutions is None:
             self.preapply_dde_solutions = self.dde_method == "single" and not self.apply_none
         if self.compress_images is None:
@@ -124,7 +122,6 @@ class Image(Operation):
             "normalize_flux_scale": self.normalize_flux_scale,
             "use_facets": self.use_facets,
             "save_source_list": self.save_source_list,
-            "peel_bright_sources": self.peel_bright_sources,
             "preapply_dde_solutions": self.preapply_dde_solutions,
             "max_cores": max_cores,
             "use_mpi": self.field.use_mpi,
@@ -161,7 +158,8 @@ class Image(Operation):
                 self.apply_normalizations = (
                     self.field.apply_normalizations
                 )  # set by ImageNormalize.finalize()
-
+        if self.peel_bright_sources is None:
+            self.peel_bright_sources = self.field.peel_bright_sources
         nsectors = len(self.imaging_sectors)
         obs_filename = []
         prepare_filename = []
@@ -397,6 +395,7 @@ class Image(Operation):
             "astrometry_skymodel": (
                 CWLFile(self.astrometry_skymodel).to_json() if self.astrometry_skymodel else None
             ),
+            "peel_bright_sources": self.peel_bright_sources
         }
         # Add parameters that depend on the set_parset parameters (set in set_parset_parameters())
         if self.peel_bright_sources:
