@@ -120,3 +120,38 @@ def test_rapthor_run_single_loop(generated_parset_path, single_loop_strategy_pat
     assert "Operation image_1 completed" in output
     assert "Operation mosaic_1 completed" in output
     assert "Rapthor has finished :)" in output
+
+def test_multiple_sectors_created(
+    generated_parset_path,
+    single_loop_strategy_path,
+    tmp_path,
+):
+    """Test that multiple sectors are produced when grid_nsectors_ra > 1."""
+
+    """ --- Run 1: single sector --- """
+    parset_single = update_parset_path(
+        generated_parset_path,
+        {
+            "strategy": str(single_loop_strategy_path),
+            "grid_nsectors_ra": "0",
+        },
+    )
+
+    run1_dir = tmp_path / "run_single"
+    run1_dir.mkdir()
+
+    command_single = ["rapthor", str(parset_single)]
+    result1 = subprocess.run(
+        command_single,
+        cwd=run1_dir,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result1.returncode == 0
+
+    single_outputs = list(run1_dir.rglob("sector_1-*.fits*"))
+    single_sector2 = list(run1_dir.rglob("sector_2-*.fits*"))
+
+    assert len(single_outputs) > 0
+    assert len(single_sector2) == 0, "Unexpected sector_2 files in single-sector run"
