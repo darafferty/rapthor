@@ -300,12 +300,13 @@ class TestCalibrate:
             assert size == [width_ra_pixels, width_dec_pixels]
         assert cellsize == cellsize_degrees
 
-    @pytest.mark.parametrize("mode, solve", [("dd", "fast_only"), ("dd", "with_slowgain"), ("di", "fulljones")])
+    @pytest.mark.parametrize(
+        "mode, solve", [("dd", "fast_only"), ("dd", "with_slowgain"), ("di", "fulljones")]
+    )
     def test_finalize(self, mocker, calibrate_field, tmp_path, mode, solve):
         field = calibrate_field
         index = 2 if mode == "dd" else 4
         with_slow = solve == "with_slowgain"
-
 
         # Setup mocks
         flagged_fraction = 0.042
@@ -334,7 +335,7 @@ class TestCalibrate:
         # Setup the object itself
         field.do_slowgain_solve = with_slow
 
-        calibrate = (Calibrate(mode=mode, field=field, index=index))
+        calibrate = Calibrate(mode=mode, field=field, index=index)
 
         if mode == "dd":
             calibrate.combined_h5parms = "combined.test.h5"
