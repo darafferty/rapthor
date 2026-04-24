@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -u
 #SBATCH --cpus-per-task=16
 #SBATCH --constraint=amd
 #
@@ -16,7 +16,7 @@
 # Error function
 error()
 {
-  echo -e "ERROR: $@" >&2
+  echo -e "\nERROR: $@\n" >&2
   exit 1
 }
 
@@ -26,11 +26,14 @@ setup()
 {
   echo -e "\n**** Running on node $(hostname) ****"
 
+  # Check if the parset file is provided as an argument
+  [ $# -ne 1 ] && error "Usage: $0 <parset-file>"
+
   # check if parset exists and make it an absolute path
-  local parset=${1:-rapthor.parset}
+  local parset=${1}
   PARSET=$(readlink -e ${parset}) || error "Parset file ${parset} not found!"
 
-  # Extract the working directory from the parset file.
+  # Extract the working directory from the parset file
   WORKING_DIR=$(
     sed -n 's,^[[:space:]]*dir_working[[:space:]]*=[[:space:]]*,,p' ${PARSET}
   )
@@ -39,13 +42,16 @@ setup()
 
   # Load the rapthor environment
   . /project/rapthor/Software/rapthor/etc/rapthor.rc
+
+  # Print the software versions to the console for debugging purposes.
+  echo -e "\n**** C++ packages ****"
+  cat ${RAPTHOR_INSTALL_DIR}/sw-versions.txt
+  echo -e "\n**** Python packages ****"
+  python -m pip list
 }
 
 run_rapthor()
 {
-  # Print the software versions to the console for logging purposes.
-  echo -e "\n**** Software versions ****"
-  cat ${RAPTHOR_INSTALL_DIR}/sw-versions.txt
   echo -e "\nRunning Rapthor with parset file ${PARSET} ..."
   rapthor -v ${PARSET}
 }
@@ -61,10 +67,12 @@ create_tarball()
       sed -n "s/^[[:space:]]*${name}[[:space:]]*=[[:space:]]*//p" ${PARSET} | \
       sed -n "/\//p"
     )
-    # Create a symbolic link to each file in the working directory, so that
-    # they are included in the tar-ball without including the full path.
-    ln -sf ${file} ${WORKING_DIR} 2>/dev/null || true
-    tarball_contents="${tarball_contents} $(basename ${file})"
+    # If the file exists, create a symbolic link to it in the working directory,
+    # so that it is included in the tar-ball without including the full path.
+    if [ -f "${file}" ]; then
+      ln -sf ${file} ${WORKING_DIR} 2>/dev/null || true
+      tarball_contents="${tarball_contents} $(basename ${file})"
+    fi
   done
   echo -e "\nCreating tar-ball of logs and configuration files ..."
   tar -C ${WORKING_DIR} -chzf ${tarball_path} ${tarball_contents}
