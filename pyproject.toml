@@ -192,7 +192,6 @@ commands = [
         "python", "-m", "pytest",
         "-m", "integration",
         "-vv", "-ra",
-        "-n", "auto",
         "tests/{posargs}",
     ]
 ]

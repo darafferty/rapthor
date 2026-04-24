@@ -38,7 +38,8 @@ TEST_INTEGRATION_APPARENT_SKYMODEL = (RESOURCE_DIR / "integration_apparent_sky.t
 def _get_test_run_root():
     """Keep CI integration runs inside the project so GitLab can upload logs."""
     if ci_project_dir := os.environ.get("CI_PROJECT_DIR"):
-        run_root = Path(ci_project_dir) / "ci_artifacts" / "integration-runs"
+        # Keep the path short enough for multiprocessing AF_UNIX socket names.
+        run_root = Path(ci_project_dir) / "ci" / "i"
         run_root.mkdir(parents=True, exist_ok=True)
         return run_root
     return Path("/tmp")
