@@ -631,14 +631,36 @@ def check_and_adjust_skymodel_settings(parset_dict):
             "warning can be ignored."
         )
 
-    # If `astrometry_skymodel`, `photometry_skymodel`, or `normalization_skymodel` is given, check if the
+    # If `astrometry_skymodel`, `photometry_skymodel`, or `normalization_skymodels` is given, check if the
     # file exists, if not raise an error.
-    for diagnostic in ("astrometry", "photometry", "normalization"):
+    for diagnostic in ("astrometry", "photometry"):
         if (
             skymodel := parset_dict["imaging_specific"][f"{diagnostic}_skymodel"]
         ) and not os.path.exists(skymodel):
             raise FileNotFoundError(
                 f'Comparison sky model for {diagnostic} check not found at "{skymodel}"'
+            )
+
+    # If `normalization_skymodels` is given, check if it is a list of length >= 2,
+    # and if the files exist; if not, raise an error. Check reference frequencies
+    # are also provided if normalization skymodels are provided, and that they are a list of
+    # the same length as the normalization skymodels; if not, raise an error.
+    if normalization_skymodels := parset_dict["imaging_specific"]["normalization_skymodels"]:
+        if not isinstance(normalization_skymodels, list) or len(normalization_skymodels) < 2:
+            raise ValueError("Normalization sky models must be a list of at least two files.")
+        for skymodel in normalization_skymodels:
+            if not os.path.exists(skymodel):
+                raise FileNotFoundError(f'Normalization sky model file not found at "{skymodel}"')
+        normalization_reference_frequencies = parset_dict["imaging_specific"][
+            "normalization_reference_frequencies"
+        ]
+        if not normalization_reference_frequencies:
+            raise ValueError("Reference frequencies must be provided for normalization sky models.")
+        if not isinstance(normalization_reference_frequencies, list) or len(
+            normalization_reference_frequencies
+        ) != len(normalization_skymodels):
+            raise ValueError(
+                "Reference frequencies for normalization sky models must be a list of the same length as the list of normalization sky models."
             )
 
     # Check if we need to access the internet to get any skymodels and if we
@@ -655,7 +677,7 @@ def check_and_adjust_skymodel_settings(parset_dict):
 
     # If diagnostics skymodels are not given, the diagnostics that require them
     # will be skipped.
-    for diagnostic in ("astrometry", "photometry", "normalization"):
+    for diagnostic in ("astrometry", "photometry"):
         if parset_dict["imaging_specific"][f"{diagnostic}_skymodel"] is None:
             log.warning(
                 "Comparison sky model for %s not provided while "
@@ -666,3 +688,13 @@ def check_and_adjust_skymodel_settings(parset_dict):
                 diagnostic,
                 diagnostic,
             )
+
+    # If normalization skymodels are not given and internet access is not allowed,
+    # the normalization check will be skipped.
+    if parset_dict["imaging_specific"]["normalization_skymodels"] is None:
+        log.warning(
+            "Comparison sky model for normalization not provided while "
+            "`allow_internet_access` is False. The normalization will be "
+            "skipped. If you want to run the normalization, please provide a "
+            "path to the comparison sky model or allow internet access.",
+        )

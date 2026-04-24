@@ -238,6 +238,7 @@ def main(
     weight_by_flux_err=False,
     ignore_frequency_dependence=False,
     reference_skymodels=None,
+    reference_skymodels_frequencies=None,
 ):
     """
     Calculate flux-scale normalization corrections
@@ -276,6 +277,8 @@ def main(
         normalization is taken as the mean over all frequencies
     reference_skymodels : list of str, optional
         Filenames of reference sky models to use for normalization (instead of external survey catalogs)
+    reference_skymodels_frequencies : list of float, optional
+        Frequencies corresponding to the reference sky models (only needed if reference_skymodels is given)
     """
     source_catalog_data, n_chan = read_source_catalog(source_catalog)
     phase_center_ra, phase_center_dec = get_field_phase_center(ms_file)
@@ -293,7 +296,9 @@ def main(
 
     # Cross match sources with external catalogs
     if do_normalization:
-        survey_meta_data = _get_survey_metadata(reference_skymodels)
+        survey_meta_data = _get_survey_metadata(
+            reference_skymodels, reference_skymodels_frequencies
+        )
 
         survey_catalogs = []
         for survey, metadata in survey_meta_data.items():
@@ -332,21 +337,7 @@ def main(
         corrections = np.zeros((n_sources, len(output_frequencies)))
         survey_frequencies = np.array([sc["frequency"] for sc in survey_catalogs])  # Hz
         for i in range(n_sources):
-            rapthor_fluxes = []
-            rapthor_errors = []
-            rapthor_frequencies = []
-            for ch_ind in range(n_chan):
-                if not np.isnan(source_catalog_data[f"Total_flux_ch{ch_ind + 1}"][i]):
-                    rapthor_fluxes.append(
-                        source_catalog_data[f"Total_flux_ch{ch_ind + 1}"][i]
-                    )  # Jy
-                    rapthor_errors.append(
-                        source_catalog_data[f"E_Total_flux_ch{ch_ind + 1}"][i]
-                    )  # Jy
-                    rapthor_frequencies.append(source_catalog_data[f"Freq_ch{ch_ind + 1}"][i])  # Hz
-            rapthor_fluxes = np.array(rapthor_fluxes)
-            rapthor_errors = np.array(rapthor_errors)
-            rapthor_frequencies = np.array(rapthor_frequencies)
+            rapthor_fluxes, rapthor_errors, rapthor_frequencies = _get_source_data(source_catalog_data, n_chan, i)
             survey_fluxes = np.array([sc["flux"][i] for sc in survey_catalogs])  # Jy
             survey_errors = np.array([sc["flux_err"] for sc in survey_catalogs])  # Jy
             corrections[i, :] = find_normalizations(
@@ -402,6 +393,46 @@ def main(
     create_normalization_h5parm(
         antenna_file, field_file, output_h5parm, output_frequencies, avg_corrections
     )
+
+def _get_source_data(source_catalog_data, n_chan, i):
+    """Get the fluxes, errors, and frequencies for a given source from the input catalog.
+    
+    Parameters
+    ----------
+    source_catalog_data : astropy.io.fits.FITS_rec
+        Data from the input FITS source catalog.
+    n_chan : int
+        Number of frequency channels in source catalog data
+    i : int
+        Index of the source for which to get the data
+
+    Returns
+    -------
+    rapthor_fluxes : numpy array
+        Array of the source flux densities in Jy for the input catalog
+    rapthor_errors : numpy array
+        Array of the 1-sigma errors on the source flux densities in Jy for the input
+        catalog
+    rapthor_frequencies : numpy array
+        Array of the frequencies in Hz corresponding to the source flux densities for   
+        the input catalog
+    """
+    rapthor_fluxes = []
+    rapthor_errors = []
+    rapthor_frequencies = []
+    for ch_ind in range(n_chan):
+        if not np.isnan(source_catalog_data[f"Total_flux_ch{ch_ind + 1}"][i]):
+            rapthor_fluxes.append(
+                        source_catalog_data[f"Total_flux_ch{ch_ind + 1}"][i]
+                    )  # Jy
+            rapthor_errors.append(
+                        source_catalog_data[f"E_Total_flux_ch{ch_ind + 1}"][i]
+                    )  # Jy
+            rapthor_frequencies.append(source_catalog_data[f"Freq_ch{ch_ind + 1}"][i])  # Hz
+    rapthor_fluxes = np.array(rapthor_fluxes)
+    rapthor_errors = np.array(rapthor_errors)
+    rapthor_frequencies = np.array(rapthor_frequencies)
+    return rapthor_fluxes, rapthor_errors, rapthor_frequencies
 
 
 def get_output_frequencies(ms_file):
@@ -710,7 +741,7 @@ def _get_survey_coords(survey_data):
     return survey_coords
 
 
-def _get_survey_metadata(reference_skymodels=None):
+def _get_survey_metadata(reference_skymodels=None, reference_frequencies=None):
     """Get the metadata for the surveys to be used for normalization.
 
     If reference sky models are provided as input, the metadata for these will be used
@@ -720,6 +751,8 @@ def _get_survey_metadata(reference_skymodels=None):
     ----------
     reference_skymodels : list of str
         Filenames of reference sky models to use for normalization (instead of external survey catalogs)
+    reference_frequencies: list of float
+        Reference frequency for each sky model in Hz (only needed if reference_skymodels is given)
     Returns
     -------
     survey_metadata : dict
@@ -727,13 +760,17 @@ def _get_survey_metadata(reference_skymodels=None):
         names and the values are dictionaries containing the metadata for each survey
         (e.g., flux correction factor, flux error, frequency).
     """
-    if reference_skymodels:
+    if reference_skymodels is not None and len(reference_skymodels) > 1:
+        if reference_frequencies is None or any(freq is None for freq in reference_frequencies):
+            raise ValueError(
+                "Frequencies corresponding to the reference sky models must be provided if reference sky models are given."
+            )
         log.info(
             "Using reference sky models provided as input for normalization, instead of external survey catalogs."
         )
         return {
-            survey: {"flux_correction": 1.0, "flux_err": 0.0, "frequency": None}
-            for survey in reference_skymodels
+            survey: {"flux_correction": 1.0, "flux_err": 0.0, "frequency": freq}
+            for survey, freq in zip(reference_skymodels, reference_frequencies)
         }
     else:
         log.info(
@@ -809,9 +846,17 @@ if __name__ == "__main__":
         default=False,
     )
     parser.add_argument(
-        "--reference_skymodel",
-        help="Filename of a reference sky model to use for normalization (instead of external survey catalogs)",
+        "--reference_skymodels",
+        help="Filenames of reference sky models to use for normalization (instead of external survey catalogs)",
         type=str,
+        nargs="+",
+        default=None,
+    )
+    parser.add_argument(
+        "--reference_skymodels_frequencies",
+        help="Frequencies corresponding to the reference sky models",
+        type=float,
+        nargs="+",
         default=None,
     )
 
@@ -827,5 +872,6 @@ if __name__ == "__main__":
         min_sources=args.min_sources,
         weight_by_flux_err=args.weight_by_flux_err,
         ignore_frequency_dependence=args.ignore_frequency_dependence,
-        reference_skymodels=args.reference_skymodel,
+        reference_skymodels=args.reference_skymodels,
+        reference_skymodels_frequencies=args.reference_skymodels_frequencies,
     )

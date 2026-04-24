@@ -7,7 +7,6 @@ from pathlib import Path
 from astropy.io import fits
 from astropy.coordinates import SkyCoord
 import astropy.units as u
-import lsmtool
 import numpy as np
 import pytest
 import rapthor.scripts.normalize_flux_scale
@@ -27,6 +26,7 @@ from rapthor.scripts.normalize_flux_scale import (
     _cross_match_sources,
     _get_data_from_skymodel,
     _sort_metadata_by_frequency,
+    _get_source_data
 )
 
 
@@ -325,6 +325,9 @@ def test_main(
             weight_by_flux_err=False,  # Whether to weight by flux error
             ignore_frequency_dependence=False,  # Whether to ignore frequency dependence,
             reference_skymodels=[str(true_sky_path), str(apparent_sky_path)]
+            if use_input_skymodel
+            else None,
+            reference_skymodels_frequencies=[142000000.0, 142100000.0]
             if use_input_skymodel
             else None,
         )
@@ -789,20 +792,51 @@ def test_get_survey_metadata_without_reference_skymodels(caplog):
     assert list(survey_metadata.items()) == list(expected_metadata.items())
 
 
-def test_get_survey_metadata_with_reference_skymodels(true_sky_path, caplog):
+def test_get_survey_metadata_with_reference_skymodels(caplog):
     """
     Test that the _get_survey_metadata function correctly retrieves the survey metadata when reference skymodels are provided.
     """
     with caplog.at_level("INFO"):
-        survey_metadata = _get_survey_metadata(reference_skymodels=[str(true_sky_path)])
+        survey_metadata = _get_survey_metadata(
+            reference_skymodels=["skymodel1", "skymodel2"],
+            reference_frequencies=[142200000.0, 142100000.0],
+        )
     expected_metadata = {
-        f"{str(true_sky_path)}": {
+        "skymodel2": {
             "flux_correction": 1.0,
             "flux_err": 0.0,
-            "frequency": None,
-        }
+            "frequency": 142100000.0,
+        },
+        "skymodel1": {
+            "flux_correction": 1.0,
+            "flux_err": 0.0,
+            "frequency": 142200000.0,
+        },
     }
     assert survey_metadata == expected_metadata
+
+
+@pytest.mark.parametrize(
+    "reference_frequencies",
+    [
+        [None, 142000000.0],  # One frequency is None
+        None,  # All frequencies are None
+    ],
+)
+def test_get_survey_metadata_with_reference_skymodels_and_missing_frequencies(
+    true_sky_path, reference_frequencies
+):
+    """
+    Test that the _get_survey_metadata function raises an error when reference skymodels are provided but frequencies are missing.
+    """
+    with pytest.raises(
+        ValueError,
+        match="Frequencies corresponding to the reference sky models must be provided if reference sky models are given.",
+    ):
+        _get_survey_metadata(
+            reference_skymodels=[str(true_sky_path), str(true_sky_path)],
+            reference_frequencies=reference_frequencies,
+        )
 
 
 def test_get_data_from_skymodel(true_sky_model):
@@ -830,3 +864,12 @@ def test_sort_metadata_by_frequency():
     assert list(sorted_metadata.keys()) == expected_order, (
         f"Expected order {expected_order}, got {list(sorted_metadata.keys())}"
     )
+
+def test_get_source_data(source_catalog):
+    """Test that the correct fluxes, errors and frequencies are returned"""
+    n_chan = 3  # Example number of channels
+    i = 0  # Example source index
+    rapthor_fluxes, rapthor_errors, rapthor_frequencies = _get_source_data(source_catalog, n_chan, i)
+    assert rapthor_fluxes.shape[0] == n_chan
+    assert rapthor_errors.shape[0] == n_chan
+    assert rapthor_frequencies.shape[0] == n_chan

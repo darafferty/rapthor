@@ -111,7 +111,8 @@
                       'shared_facet_rw': False,
                       'photometry_skymodel': None,
                       'astrometry_skymodel': None,
-                      'normalization_skymodel': None
+                      'normalization_skymodels': None,
+                      'normalization_reference_frequencies': None
               },
  'input_h5parm': '/my/data/dirdependent.h5',
  'input_fulljones_h5parm': '/my/data/fulljones.h5',
