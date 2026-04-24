@@ -600,27 +600,27 @@ class Calibrate(Operation):
         """
         Finalize this operation
         """
+        workdir=self.parset["dir_working"]
+        plot_filenames = glob.glob(os.path.join(self.pipeline_working_dir, "*.png"))
         if self.mode == "dd":
             # Copy the solutions (h5parm files) and report the flagged fraction
             dst_dir = os.path.join(
-                self.parset["dir_working"], "solutions", "calibrate_{}".format(self.index)
+                workdir, "solutions", "calibrate_{}".format(self.index)
             )
             os.makedirs(dst_dir, exist_ok=True)
+
+            # set filenames
             self.field.h5parm_filename = os.path.join(dst_dir, "field-solutions.h5")
-            self.field.fast_phases_h5parm_filename = os.path.join(
-                dst_dir, "field-solutions-fast-phase.h5"
-            )
-            self.field.medium1_phases_h5parm_filename = os.path.join(
-                dst_dir, "field-solutions-medium1-phase.h5"
-            )
-            self.field.medium2_phases_h5parm_filename = os.path.join(
-                dst_dir, "field-solutions-medium2-phase.h5"
-            )
-            self.field.slow_gains_h5parm_filename = os.path.join(
-                dst_dir, "field-solutions-slow-gain.h5"
-            )
+            self.field.fast_phases_h5parm_filename = os.path.join(dst_dir, "field-solutions-fast-phase.h5")
+            self.field.medium1_phases_h5parm_filename = os.path.join(dst_dir, "field-solutions-medium1-phase.h5")
+            self.field.medium2_phases_h5parm_filename = os.path.join(dst_dir, "field-solutions-medium2-phase.h5")
+            self.field.slow_gains_h5parm_filename = os.path.join(dst_dir, "field-solutions-slow-gain.h5")
+            
+            # Clean old file if present
             if os.path.exists(self.field.h5parm_filename):
                 os.remove(self.field.h5parm_filename)
+
+            # copy solutions
             if self.field.generate_screens:
                 # IDGCal (screens) only gives a combined h5parm, regardless of the type of solve
                 shutil.copy(
@@ -659,6 +659,7 @@ class Calibrate(Operation):
                     os.path.join(self.pipeline_working_dir, self.fast_h5parm),
                     os.path.join(dst_dir, self.field.fast_phases_h5parm_filename),
                 )
+            # verify    
             self.field.scan_h5parms()  # verify h5parm and update flags for predict/image operations
             solsetname = "coefficients000" if self.field.generate_screens else "sol000"
             flagged_frac = misc.get_flagged_solution_fraction(
@@ -671,10 +672,10 @@ class Calibrate(Operation):
 
             # Copy the plots (PNG files)
             dst_dir = os.path.join(
-                self.parset["dir_working"], "plots", "calibrate_{}".format(self.index)
+                workdir, "plots", "calibrate_{}".format(self.index)
             )
             os.makedirs(dst_dir, exist_ok=True)
-            plot_filenames = glob.glob(os.path.join(self.pipeline_working_dir, "*.png"))
+
             for plot_filename in plot_filenames:
                 dst_filename = os.path.join(dst_dir, os.path.basename(plot_filename))
                 if os.path.exists(dst_filename):
@@ -683,10 +684,10 @@ class Calibrate(Operation):
 
             # Finally call finalize() in the parent class
             super().finalize()
-        else:
+        else: # DI calibration
             # Copy the solutions (h5parm file) and report the flagged fraction
             dst_dir = os.path.join(
-                self.parset["dir_working"], "solutions", "calibrate_di_{}".format(self.index)
+                workdir, "solutions", "calibrate_di_{}".format(self.index)
             )
             os.makedirs(dst_dir, exist_ok=True)
             self.field.fulljones_h5parm_filename = os.path.join(dst_dir, "fulljones-solutions.h5")
@@ -702,10 +703,10 @@ class Calibrate(Operation):
 
             # Copy the plots (PNG files)
             dst_dir = os.path.join(
-                self.parset["dir_working"], "plots", "calibrate_di_{}".format(self.index)
+                workdir, "plots", "calibrate_di_{}".format(self.index)
             )
             os.makedirs(dst_dir, exist_ok=True)
-            plot_filenames = glob.glob(os.path.join(self.pipeline_working_dir, "*.png"))
+           
             for plot_filename in plot_filenames:
                 dst_filename = os.path.join(dst_dir, os.path.basename(plot_filename))
                 if os.path.exists(dst_filename):
