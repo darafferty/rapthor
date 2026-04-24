@@ -334,7 +334,11 @@ class TestCalibrate:
         # Setup the object itself
         field.do_slowgain_solve = scenario == "dd_with_slowgain"
 
-        calibrate = Calibrate("dd", field, index=2) if is_dd else CalibrateDI(field, index=4)
+        calibrate = (
+            Calibrate(mode=mode, field=field, index=2)
+            if is_dd
+            else Calibrate(mode="di", field=field, index=4)
+        )
 
         if is_dd:
             calibrate.combined_h5parms = "combined.test.h5"
