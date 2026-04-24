@@ -197,10 +197,10 @@ def test_rapthor_run_single_loop_peel_bright_sources(
             "restore_nonpb stdout log should not exist when peeling is disabled"
         )
         assert "completed success" not in restore_pb_logs[-1].read_text(), (
-            f"restore_pb wsclean_restore should have been skipped when peeling is disabled"
+            "restore_pb wsclean_restore should have been skipped when peeling is disabled"
         )
         assert "completed success" not in restore_nonpb_logs[-1].read_text(), (
-            f"restore_nonpb wsclean_restore should have been skipped when peeling is disabled"
+            "restore_nonpb wsclean_restore should have been skipped when peeling is disabled"
         )
 
     assert "Rapthor has finished :)" in output
