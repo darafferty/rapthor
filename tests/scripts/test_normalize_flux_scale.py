@@ -4,6 +4,9 @@ Test cases for the normalize_flux_scale script in the rapthor package.
 
 import os
 from pathlib import Path
+from astropy.io import fits
+from astropy.coordinates import SkyCoord
+import astropy.units as u
 import numpy as np
 import pytest
 import rapthor.scripts.normalize_flux_scale
@@ -17,16 +20,73 @@ from rapthor.scripts.normalize_flux_scale import (
     read_source_catalog,
     main,
     _validate_source_catalog,
+    _get_survey_data,
+    _get_survey_coords,
+    _cross_match_sources,
 )
 
 
 @pytest.fixture
-def mock_survey_catalog_with_single_source(mocker, true_sky_model):
+def mock_survey_catalog(mocker, true_sky_model):
     """Mock lsmtool.load to return a valid non-empty survey sky model."""
     return mocker.patch(
         "rapthor.scripts.normalize_flux_scale.lsmtool.load",
         return_value=true_sky_model,
     )
+
+
+@pytest.fixture
+def mock_survey_catalog_with_no_sources(mocker):
+    """Mock lsmtool.load to return an empty survey sky model."""
+    return mocker.patch(
+        "rapthor.scripts.normalize_flux_scale.lsmtool.load",
+        return_value=[],
+    )
+
+
+@pytest.fixture
+def phase_center():
+    """Return the test phase center in degrees for the lsmtool query."""
+    return [24.422081, 33.159759]
+
+
+@pytest.fixture
+def source_catalog(source_catalog_fits):
+    """Return parsed source catalog data for the default test catalog."""
+    with fits.open(source_catalog_fits) as hdul:
+        return hdul[1].data
+
+
+@pytest.fixture
+def source_coords(source_catalog):
+    """Return SkyCoord objects for the source catalog."""
+    return SkyCoord(
+        ra=np.array(source_catalog["RA"]) * u.degree, dec=np.array(source_catalog["DEC"]) * u.degree
+    )
+
+
+@pytest.fixture
+def survey_data(true_sky_model, tmp_path):
+    """Return parsed survey catalog data from the mock sky model."""
+    survey_fits = tmp_path / "survey_catalog.fits"
+    true_sky_model.write(survey_fits.as_posix(), format="fits", clobber=True)
+    with fits.open(survey_fits) as hdul:
+        return hdul[1].data
+
+
+@pytest.fixture
+def survey_coords(survey_data):
+    """Return SkyCoord objects for the survey catalog."""
+    return SkyCoord(
+        ra=np.array(survey_data["RA"]) * u.degree, dec=np.array(survey_data["DEC"]) * u.degree
+    )
+
+
+@pytest.fixture
+def source_catalog_with_outliers(source_catalog_with_outliers_fits):
+    """Return parsed source catalog data for the outlier test catalog."""
+    with fits.open(source_catalog_with_outliers_fits) as hdul:
+        return hdul[1].data
 
 
 def test_fit_sed():
@@ -233,12 +293,11 @@ def test_main(
     true_sky_path,
     caplog,
     mocker,
-    mock_survey_catalog_with_single_source,
+    mock_survey_catalog,
 ):
     """
     Test the main function of the normalize_flux_scale script.
     """
-
     # Spy on match_coordinates_sky to ensure it is called
     match_coordinates_sky_spy = mocker.spy(
         rapthor.scripts.normalize_flux_scale, "match_coordinates_sky"
@@ -413,19 +472,17 @@ def test_main_skips_normalization_if_no_sources_in_survey_catalog(
     )
 
 
+@pytest.mark.usefixtures("mock_survey_catalog")
 def test_main_logs_warning_when_too_few_sources_with_valid_fits(
     test_ms,
     source_catalog_fits,
     tmp_path,
     caplog,
     mocker,
-    mock_survey_catalog_with_single_source,
 ):
     """
     Test that the main function logs a warning when too few sources have valid SED fits.
     """
-    # Use fixture to mock survey download with a valid, minimal skymodel.
-    _ = mock_survey_catalog_with_single_source
     # Mock the fit_sed function to return a function that always returns NaN
     mocker.patch("rapthor.scripts.normalize_flux_scale.fit_sed", return_value=lambda x: np.nan)
 
@@ -449,6 +506,7 @@ def test_main_logs_warning_when_too_few_sources_with_valid_fits(
 
 
 @pytest.mark.parametrize("weight_by_flux_err", [False, True])
+@pytest.mark.usefixtures("mock_survey_catalog")
 def test_main_weights_by_flux_error(
     test_ms,
     source_catalog_fits,
@@ -456,7 +514,6 @@ def test_main_weights_by_flux_error(
     caplog,
     weight_by_flux_err,
     mocker,
-    mock_survey_catalog_with_single_source,
 ):
     """
     Test that the main function correctly applies weighting by flux error when the flag is set.
@@ -490,13 +547,13 @@ def test_main_weights_by_flux_error(
         ), "Expected log message about not weighting by flux error."
 
 
+@pytest.mark.usefixtures("mock_survey_catalog")
 def test_main_ignores_frequency_dependence(
     test_ms,
     source_catalog_fits,
     tmp_path,
     caplog,
     mocker,
-    mock_survey_catalog_with_single_source,
 ):
     """
     Test that the main function ignores frequency dependence when the flag is set.
@@ -572,15 +629,14 @@ def test_get_field_phase_center(test_ms):
     assert np.isclose(dec, expected_dec), f"Expected Dec {expected_dec}, got {dec}"
 
 
-def test_filter_sources(source_catalog_with_outliers_fits):
+def test_filter_sources(source_catalog_with_outliers):
     """
     Test that the filter_sources function correctly filters sources based on the specified criteria.
 
     Fixture contains 10 sources, 5 of which are valid and 5 of which are outliers.
     """
-    source_catalog_data, _ = read_source_catalog(source_catalog_with_outliers_fits)
-    original_coords = np.array([(data["RA"], data["DEC"]) for data in source_catalog_data])
-    original_source_catalog_data = source_catalog_data.copy()
+    original_coords = np.array([(data["RA"], data["DEC"]) for data in source_catalog_with_outliers])
+    original_source_catalog_data = source_catalog_with_outliers.copy()
     radius_cut = 3  # degrees
     major_axis_cut = 0.01  # degrees
     neighbor_cut = 0.01  # degrees
@@ -600,10 +656,10 @@ def test_filter_sources(source_catalog_with_outliers_fits):
         ]
     )
     expected_data = (
-        source_catalog_data[1:2].tolist() + source_catalog_data[5:10].tolist()
+        source_catalog_with_outliers[1:2].tolist() + source_catalog_with_outliers[5:10].tolist()
     )  # Sources 1 and 5-9 should be kept
     filtered_coords, filtered_data = filter_sources(
-        source_catalog_data,
+        source_catalog_with_outliers,
         phase_center_ra,
         phase_center_dec,
         radius_cut,
@@ -620,15 +676,82 @@ def test_filter_sources(source_catalog_with_outliers_fits):
     )
 
     # Check original data is unchanged
-    assert np.array_equal(source_catalog_data, original_source_catalog_data), (
+    assert np.array_equal(source_catalog_with_outliers, original_source_catalog_data), (
         "Expected original source catalog data to be unchanged."
     )
 
 
-def test_validate_input_source_catalog_valid(source_catalog_fits):
+def test_validate_input_source_catalog_valid(source_catalog):
     """
     Test that source catalog with enough sources is considered valid.
     """
-    source_catalog_data, _ = read_source_catalog(source_catalog_fits)
-    assert _validate_source_catalog(source_catalog_data, min_sources=8)
-    assert not _validate_source_catalog(source_catalog_data, min_sources=9)
+    assert _validate_source_catalog(source_catalog, min_sources=8)
+    assert not _validate_source_catalog(source_catalog, min_sources=9)
+
+
+@pytest.mark.parametrize("survey", ["vlssr", "wenss"])
+def test_download_get_survey_data(survey, phase_center, mock_survey_catalog):
+    """
+    Test downloading a survey sky model and returning the data for normalization.
+    """
+    survey_data = _get_survey_data(
+        survey, phase_center=[np.deg2rad(phase_center[0]), np.deg2rad(phase_center[1])]
+    )
+
+    radius = 5.0  # degrees hardcoded in rapthor
+    mock_survey_catalog.assert_called_once()
+    call_args, call_kwargs = mock_survey_catalog.call_args
+    assert call_args == (survey,)
+    assert np.allclose(call_kwargs["VOPosition"], phase_center)
+    assert call_kwargs["VORadius"] == radius
+    assert len(survey_data) > 0, f"Expected non-empty survey data, got {len(survey_data)}"
+
+
+@pytest.mark.parametrize("survey", ["vlssr", "wenss"])
+def test_download_get_survey_data_download_fails(survey, mocker):
+    """
+    Test that an error is raised when downloading a survey sky model fails.
+    """
+    # Mock the lsmtool.load function to raise a ConnectionError
+    mocker.patch(
+        "rapthor.scripts.normalize_flux_scale.lsmtool.load",
+        side_effect=ConnectionError("Mocked connection error"),
+    )
+    survey_data = _get_survey_data(
+        survey, phase_center=[np.deg2rad(24.422081), np.deg2rad(33.159759)]
+    )
+    assert survey_data is None
+
+
+@pytest.mark.parametrize("survey", ["vlssr", "wenss"])
+@pytest.mark.usefixtures("mock_survey_catalog_with_no_sources")
+def test_download_get_survey_data_no_sources(survey):
+    """
+    Test that an error is raised when no sources are found in the downloaded survey sky model.
+    """
+    survey_data = _get_survey_data(
+        survey, phase_center=[np.deg2rad(24.422081), np.deg2rad(33.159759)]
+    )
+    assert survey_data is None
+
+
+def test_get_survey_coords(survey_data):
+    """
+    Test that the get_survey_coords function returns the correct coordinates from the survey data.
+    """
+    coords = _get_survey_coords(survey_data)
+    assert len(coords) == len(survey_data)
+    for coord, source in zip(coords, survey_data):
+        assert np.isclose(coord.ra.deg, source["RA"])
+        assert np.isclose(coord.dec.deg, source["DEC"])
+
+
+def test_cross_match_sources(source_catalog, source_coords, survey_data, survey_coords):
+    """
+    Test that the _cross_match_sources function correctly cross-matches
+    sources between the source catalog and the survey catalog.
+    """
+    survey_fluxes = _cross_match_sources(
+        source_coords, survey_coords, survey_data, spurious_match_cut=30 / 3600
+    )
+    assert len(survey_fluxes) == len(source_catalog)
