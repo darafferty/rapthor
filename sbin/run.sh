@@ -1,4 +1,4 @@
-#!/bin/bash -u
+#!/bin/bash
 #SBATCH --cpus-per-task=16
 #SBATCH --constraint=amd
 #
@@ -16,7 +16,7 @@
 # Error function
 error()
 {
-  echo -e "\nERROR: $@\n" >&2
+  echo -e "\nERROR: $*\n" >&2
   exit 1
 }
 
@@ -31,11 +31,11 @@ setup()
 
   # check if parset exists and make it an absolute path
   local parset=${1}
-  PARSET=$(readlink -e ${parset}) || error "Parset file ${parset} not found!"
+  PARSET=$(readlink -e "${parset}") || error "Parset file ${parset} not found!"
 
   # Extract the working directory from the parset file
   WORKING_DIR=$(
-    sed -n 's,^[[:space:]]*dir_working[[:space:]]*=[[:space:]]*,,p' ${PARSET}
+    sed -n 's,^[[:space:]]*dir_working[[:space:]]*=[[:space:]]*,,p' "${PARSET}"
   )
   [ -n "${WORKING_DIR}" ] || error "Working directory not set in ${PARSET}!"
   [ -d "${WORKING_DIR}" ] || error "Working directory ${WORKING_DIR} does not exist!"
@@ -45,7 +45,7 @@ setup()
 
   # Print the software versions to the console for debugging purposes.
   echo -e "\n**** C++ packages ****"
-  cat ${RAPTHOR_INSTALL_DIR}/sw-versions.txt
+  cat "${RAPTHOR_INSTALL_DIR}/sw-versions.txt"
   echo -e "\n**** Python packages ****"
   python -m pip list
 }
@@ -53,7 +53,7 @@ setup()
 run_rapthor()
 {
   echo -e "\nRunning Rapthor with parset file ${PARSET} ..."
-  rapthor -v ${PARSET}
+  rapthor -v "${PARSET}"
 }
 
 create_tarball()
@@ -61,24 +61,26 @@ create_tarball()
   local timestamp=$(date +%Y%m%d_%H%M%S)
   local tarball_name="rapthor_logs_${timestamp}.tar.gz"
   local tarball_path="${WORKING_DIR}/${tarball_name}"
-  local tarball_contents="logs"
+  local tarball_contents=("logs")
   for name in input_skymodel apparent_skymodel strategy; do
-    file=$(
-      sed -n "s/^[[:space:]]*${name}[[:space:]]*=[[:space:]]*//p" ${PARSET} | \
-      sed -n "/\//p"
+    local file=$(
+      sed -n "s/^[[:space:]]*${name}[[:space:]]*=[[:space:]]*//p" "${PARSET}" | \
+      grep "/"
     )
     # If the file exists, create a symbolic link to it in the working directory,
     # so that it is included in the tar-ball without including the full path.
     if [ -f "${file}" ]; then
-      ln -sf ${file} ${WORKING_DIR} 2>/dev/null || true
-      tarball_contents="${tarball_contents} $(basename ${file})"
+      ln -sf "${file}" "${WORKING_DIR}/" 2>/dev/null || true
+      tarball_contents+=("$(basename "$file")")
     fi
   done
   echo -e "\nCreating tar-ball of logs and configuration files ..."
-  tar -C ${WORKING_DIR} -chzf ${tarball_path} ${tarball_contents}
+  tar -C "${WORKING_DIR}" -chzf "${tarball_path}" "${tarball_contents[@]}"
   echo -e "\nTar-ball created successfully: ${tarball_path}"
 }
 
-setup $@
+set -euo pipefail
+
+setup "$@"
 run_rapthor
 create_tarball
