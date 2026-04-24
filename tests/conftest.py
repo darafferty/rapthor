@@ -38,16 +38,6 @@ TEST_INTEGRATION_APPARENT_SKYMODEL = (RESOURCE_DIR / "integration_apparent_sky.t
 def _get_test_run_root():
     """Keep CI integration runs inside the project so GitLab can upload logs."""
     if ci_project_dir := os.environ.get("CI_PROJECT_DIR"):
-        # Keep the path short enough for multiprocessing AF_UNIX socket names.
-        run_root = Path(ci_project_dir) / "ci" / "i"
-        run_root.mkdir(parents=True, exist_ok=True)
-        return run_root
-    return Path("/tmp")
-
-
-def _get_test_run_root():
-    """Keep CI integration runs inside the project so GitLab can upload logs."""
-    if ci_project_dir := os.environ.get("CI_PROJECT_DIR"):
         run_root = Path(ci_project_dir) / "ci_artifacts" / "integration-runs"
         run_root.mkdir(parents=True, exist_ok=True)
         return run_root
@@ -209,6 +199,17 @@ def true_sky_path(tmp_path):
 
 
 @pytest.fixture
+def apparent_sky_path(tmp_path):
+    """
+    Fixture to create an apparent SkyModel for testing.
+    """
+    shutil.copy(
+        (RESOURCE_DIR / "integration_apparent_sky.txt"), tmp_path / "integration_apparent_sky.txt"
+    )
+    return Path(tmp_path / "integration_apparent_sky.txt")
+
+
+@pytest.fixture
 def true_sky_model(sky_model_path):
     """
     Fixture to provide a mock sky model from a survey for testing.
@@ -360,21 +361,8 @@ def generate_parset(
     if apparent_skymodel_path:
         parset["global"]["apparent_skymodel"] = str(apparent_skymodel_path)
     if normalization_skymodel_paths:
-        parset["imaging"]["normalization_skymodels"] = (
-            "["
-            + ", ".join([str(path) for path in normalization_skymodel_paths if path is not None])
-            + "]"
-        )
-        parset["imaging"]["normalization_reference_frequencies"] = (
-            "["
-            + ", ".join(
-                [
-                    str(142000000.0 + i * 1000.0)
-                    for i, _ in enumerate(normalization_skymodel_paths)
-                    if _ is not None
-                ]
-            )
-            + "]"
+        parset["imaging"]["normalization_skymodels"] = ", ".join(
+            [str(path) for path in normalization_skymodel_paths if path is not None]
         )
     parset["cluster"].update(
         local_scratch_dir=str(scratch_dir),
@@ -497,37 +485,6 @@ def generated_parset_path_normalisation(
         input_skymodel_path,
         apparent_skymodel_path,
         normalization_skymodel_paths=normalization_skymodel_paths,
-    )
-    return output_parset_path
-
-
-@pytest.fixture
-def generated_parset_path_normalisation(request, tmp_path, ms_for_normalisation):
-    """
-    Fixture to generate a complete parset from a template and return the path.
-
-    This fixture is used to read in and update a template parset file. It is
-    parametrised using the pytest request fixture and expects a tuple
-    containing three paths to the following files:
-
-    1. Template parset (e.g. in tests/resources/parsets/)
-    2. True sky model (e.g. in tests/resources/)
-    3. Apparent sky model (e.g. in tests/resources/)
-
-    This fixture can be used to test rapthor runs end to end on a small input
-    measurement set with different strategies and sky models.
-    For further details see `generate_parset` function.
-    """
-    parset_path, input_skymodel_path, apparent_skymodel_path = request.param
-    parset_path = REPO_ROOT_DIR / parset_path
-    output_parset_path = tmp_path / "generated.parset"
-
-    generate_parset_path(
-        parset_path,
-        output_parset_path,
-        ms_for_normalisation,
-        input_skymodel_path,
-        apparent_skymodel_path,
     )
 
     return output_parset_path
