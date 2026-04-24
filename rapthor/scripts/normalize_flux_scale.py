@@ -343,9 +343,7 @@ def main(
                     rapthor_errors.append(
                         source_catalog_data[f"E_Total_flux_ch{ch_ind + 1}"][i]
                     )  # Jy
-                    rapthor_frequencies.append(
-                        source_catalog_data[f"Freq_ch{ch_ind + 1}"][i]
-                    )  # Hz
+                    rapthor_frequencies.append(source_catalog_data[f"Freq_ch{ch_ind + 1}"][i])  # Hz
             rapthor_fluxes = np.array(rapthor_fluxes)
             rapthor_errors = np.array(rapthor_errors)
             rapthor_frequencies = np.array(rapthor_frequencies)
@@ -742,7 +740,29 @@ def _get_survey_metadata(reference_skymodels=None):
             "Using external survey catalogs for normalization. The following surveys will be used: "
             + ", ".join(SURVEY_METADATA.keys())
         )
-        return {survey: metadata for survey, metadata in SURVEY_METADATA.items()}
+        survey_metadata = {survey: metadata for survey, metadata in SURVEY_METADATA.items()}
+        return _sort_metadata_by_frequency(survey_metadata)
+
+
+def _sort_metadata_by_frequency(survey_metadata):
+    """Sort the survey metadata by frequency.
+
+    Parameters
+    ----------
+    survey_metadata : dict
+        Dictionary containing the metadata for the surveys to be used for normalization. The keys are the survey
+        names and the values are dictionaries containing the metadata for each survey
+        (e.g., flux correction factor, flux error, frequency).
+
+    Returns
+    -------
+    sorted_survey_metadata : dict
+        Dictionary containing the metadata for the surveys to be used for normalization, sorted by frequency. The keys are the survey
+        names and the values are dictionaries containing the metadata for each survey
+        (e.g., flux correction factor, flux error, frequency).
+    """
+    sorted_survey_metadata = sorted(survey_metadata.items(), key=lambda item: item[1]["frequency"])
+    return dict(sorted_survey_metadata)
 
 
 if __name__ == "__main__":
