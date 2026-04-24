@@ -169,13 +169,13 @@ class TestCalibrate:
     @pytest.mark.parametrize(
         "mode, antenna, stations, expected",
         [
-            (   
+            (
                 "dd",
                 "LBA",
                 ["CS001LBA", "CS002LBA", "RS106LBA", "DE601LBA", "UK608LBA"],
                 "[CR]*&&;!DE601LBA;!UK608LBA",
             ),
-            (   
+            (
                 "dd",
                 "HBA",
                 ["CS003HBA0", "RS106HBA0", "DE601HBA", "UK902HBA"],
@@ -200,13 +200,13 @@ class TestCalibrate:
                 ["RS106HBA0", "DE601HBA"],
                 [],
             ),
-            (   
+            (
                 "dd",
                 "HBA",
                 ["CS003HBA0", "RS106HBA0", "CS007HBA1", "DE601HBA"],
                 ["CS003HBA0", "CS007HBA1"],
             ),
-            (   
+            (
                 "dd",
                 "LBA",
                 ["RS205LBA", "CS004LBA", "CS007LBA", "DE601LBA"],
@@ -251,7 +251,7 @@ class TestCalibrate:
                 ["RS205LBA", "CS003LBA", "CS999LBA"],
                 ["CS003LBA"],
             ),
-            (   
+            (
                 "dd",
                 "HBA",
                 True,
@@ -260,7 +260,9 @@ class TestCalibrate:
             ),
         ],
     )
-    def test_get_core_stations(self, mode, calibrate_field, antenna, include_remote, stations, expected):
+    def test_get_core_stations(
+        self, mode, calibrate_field, antenna, include_remote, stations, expected
+    ):
         calibrate_field.antenna = antenna
         calibrate_field.stations = stations
         calibrate_dd = Calibrate(mode=mode, field=calibrate_field, index=1 if mode == "dd" else 2)
@@ -526,7 +528,7 @@ class TestCalibrate:
         if normalize:
             calibrate_field.normalize_h5parm = str(tmp_path / "normalize.h5parm")
 
-        calibrate_dd = Calibrate(field=calibrate_field, index=1)
+        calibrate_dd = Calibrate("dd", field=calibrate_field, index=1)
         calibrate_dd.set_input_parameters()
         params = calibrate_dd.input_parms
         dp3 = parse_dp3(params["dp3_steps"])

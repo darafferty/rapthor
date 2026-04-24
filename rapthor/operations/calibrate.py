@@ -16,12 +16,13 @@ from rapthor.lib.operation import Operation
 
 log = logging.getLogger("rapthor:calibrate")
 
+
 # is do_di == True (in strategy?)then mode is "di", else "dd"
 class Calibrate(Operation):
     """
-    Class for performing the calibration operation, which runs the CWL workflow template for calibration. 
-    This class is used for both direction-dependent (DD) and direction-independent (DI) calibration, with 
-    the mode specified by the "mode" parameter in the constructor. 
+    Class for performing the calibration operation, which runs the CWL workflow template for calibration.
+    This class is used for both direction-dependent (DD) and direction-independent (DI) calibration, with
+    the mode specified by the "mode" parameter in the constructor.
     """
 
     def __init__(self, mode, field, index):
@@ -49,12 +50,13 @@ class Calibrate(Operation):
                 self.field.generate_screens or self.field.use_image_based_predict
             )
 
-            self.parset_parms.update({
-                "use_image_based_predict": self.use_image_based_predict,
-                "generate_screens": self.field.generate_screens,
-                "do_slowgain_solve": self.field.do_slowgain_solve,
-            })
-
+            self.parset_parms.update(
+                {
+                    "use_image_based_predict": self.use_image_based_predict,
+                    "generate_screens": self.field.generate_screens,
+                    "do_slowgain_solve": self.field.do_slowgain_solve,
+                }
+            )
 
     def set_input_parameters(self):
         """
