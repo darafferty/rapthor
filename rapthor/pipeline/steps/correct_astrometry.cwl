@@ -3,7 +3,10 @@ class: CommandLineTool
 baseCommand: [correct_astrometry.py]
 label: Correct image astrometry
 doc: |
-  This tool applies astrometry corrections to a FITS image made using faceting.
+  This tool applies astrometry corrections to a FITS image made using faceting. The corrections are
+  derived by the calculate_image_diagnostics.cwl step by comparing the positions of sources in
+  Rapthor images to those of an external catalog with high astrometric accuracy (e.g., Pan-STARRs).
+  The corrections are assumed to have the sense Rapthor value - comparison value
 
 requirements:
   InlineJavascriptRequirement: {}

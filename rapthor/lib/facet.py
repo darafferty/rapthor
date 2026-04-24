@@ -51,7 +51,7 @@ class Facet(object):
         self.vertices = np.array(vertices)
 
         # Convert input (RA, Dec) vertices to (x, y) polygon
-        self.wcs = wcs if wcs is not None else make_wcs(self.ra, self.dec, misc.WCS_PIXEL_SCALE)
+        self.wcs = wcs if wcs else make_wcs(self.ra, self.dec, misc.WCS_PIXEL_SCALE)
         self.polygon_ras = [radec[0] for radec in self.vertices]
         self.polygon_decs = [radec[1] for radec in self.vertices]
         x_values, y_values = self.wcs.wcs_world2pix(self.polygon_ras,

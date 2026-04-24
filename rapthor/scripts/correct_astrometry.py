@@ -23,15 +23,49 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 
+def validate_corrections(corrections: dict) -> dict:
+    """
+    Validates that an astrometry corrections dict has the expected structure
+
+    Parameters
+    ----------
+    corrections : dict
+        Astrometry corrections dict to be validated
+
+    Returns
+    -------
+    validated_corrections : dict
+        Validated astrometry corrections dict
+    """
+    required_keys = [
+        "facet_name", "meanRAOffsetDeg", "meanDecOffsetDeg",
+        "stdRAOffsetDeg", "stdDecOffsetDeg"
+    ]
+
+    for key in required_keys:
+        if key not in corrections:
+            raise ValueError(f"Missing key in corrections dict: {key}")
+
+    if not len({len(item) for item in corrections.values()}) == 1:
+        raise ValueError("Corrections should have equal length")
+
+    return corrections
+
+
 def main(
     input_image: Path,
     region_file: Path,
     corrections_file: Path,
     output_image: Path,
     overwrite: bool,
-):
+) -> int:
     """
     Applies astrometry corrections to a FITS image
+
+    Corrections are done by cutting out facet images and shifting them by the given offsets in RA
+    and Dec. The facet cutouts are then added back together to produce the full, corrected image.
+    The facet image cutouts are padded before shifting to avoid gaps between the facets, averaging
+    the values in regions with contributions from more than one facet
 
     Parameters
     ----------
@@ -65,25 +99,33 @@ def main(
         output_image = Path(f"{root}-ast.fits")
     if corrections_file is None:
         # No correction possible: copy input file to output and return
-        if input_image.name.endswith(".fz") and not output_image.name.endswith(".fz"):
-            output_image.with_suffix(output_image.suffix + ".fz")
+        if input_image.suffix == ".fz" and output_image.suffix != ".fz":
+            output_image = output_image.with_suffix(output_image.suffix + ".fz")
         if not output_image.exists() or overwrite:
             shutil.copy(input_image, output_image)
         return
 
-    # Read in facets, corrections, and input image
+    # Read in corrections and check they have the expected structure
     with open(corrections_file, "r") as fp:
-        corrections = json.load(fp)
+        corrections = validate_corrections(json.load(fp))
+
+    # Read in the input image and construct the output arrays
     uncorrected_image = FITSImage(input_image)
     wcs = uncorrected_image.get_wcs()
-    facets = read_ds9_region_file(region_file, wcs=wcs)
     ra_scale = wcs.wcs.cdelt[0]  # degrees / pix
     dec_scale = wcs.wcs.cdelt[1]  # degrees / pix
     corrected_data = np.zeros_like(uncorrected_image.img_data)  # flattened, 2-D image
     sum_map = np.zeros_like(uncorrected_image.img_data)
 
+    # Read in the facets, using the WCS from the input image to keep the coordinate transformations
+    # the same
+    facets = read_ds9_region_file(region_file, wcs=wcs)
+
     # Loop over the facets, applying the corrections
-    for facet in facets:
+    facet_map = {name: i for i, name in enumerate(corrections["facet_name"])}
+    for idx, facet in enumerate(facets):
+        logger.info("Processing facet %d/%d", idx, len(facets))
+
         # Pad the facet polygon by 2 pixels
         poly_padded = facet.polygon.buffer(2)
         vertices = list(
@@ -102,12 +144,12 @@ def main(
         # positive Dec offset indicates that the LOFAR sources are on average North of the
         # comparison source positions. So we negate the offsets during correction
         if facet.name not in corrections["facet_name"]:
-            logger.warn(
+            logger.warning(
                 f"Astrometry offsets for Facet {facet.name} not found. No corrections will "
                 "be done for this facet"
             )
         else:
-            facet_index = corrections["facet_name"].index(facet.name)
+            facet_index = facet_map[facet.name]
             ra_correction = -corrections["meanRAOffsetDeg"][facet_index] / ra_scale
             dec_correction = -corrections["meanDecOffsetDeg"][facet_index] / dec_scale
             ra_correction_std = corrections["stdRAOffsetDeg"][facet_index] / ra_scale
@@ -167,8 +209,9 @@ def main(
     if input_image.suffix == ".fz":
         cmd = ["fpack", output_image]
         try:
-            subprocess.run(cmd, check=True)
+            result = subprocess.run(cmd, check=True)
             output_image.unlink()  # remove uncompressed version
+            return result.returncode
         except subprocess.CalledProcessError as err:
             print(err, file=sys.stderr)
             return err.returncode
@@ -193,7 +236,7 @@ if __name__ == "__main__":
         "--overwrite",
         default=False,
         action="store_true",
-        help="Overwrite an exising output image file",
+        help="Overwrite an existing output image file",
     )
     args = parser.parse_args()
 
