@@ -293,7 +293,7 @@ class TestCalibrate:
             field.full_field_sector.imsize = [width_ra_pixels, width_dec_pixels]
 
         # Act
-        calibrate_dd = Calibrate(field, index=cycle)
+        calibrate_dd = Calibrate("dd", field, index=cycle)
         frequency_bandwidth, center_coords, size, cellsize = (
             calibrate_dd.get_model_image_parameters()
         )
@@ -344,7 +344,7 @@ class TestCalibrate:
         # Setup the object itself
         field.do_slowgain_solve = scenario == "dd_with_slowgain"
 
-        calibrate = Calibrate(field, index=2) if is_dd else CalibrateDI(field, index=4)
+        calibrate = Calibrate("dd", field, index=2) if is_dd else CalibrateDI(field, index=4)
 
         if is_dd:
             calibrate.combined_h5parms = "combined.test.h5"
@@ -457,7 +457,7 @@ class TestCalibrate:
         f.use_image_based_predict = use_image_based_predict
         f.do_slowgain_solve = do_slowgain_solve
 
-        calibrate = Calibrate(field=f, index=1) if is_dd else CalibrateDI(field=f, index=1)
+        calibrate = Calibrate("dd", field=f, index=1) if is_dd else CalibrateDI(field=f, index=1)
         calibrate.set_input_parameters()
 
         rapthor_pipeline_dir = str(Path(rapthor.__file__).parent / "pipeline")
@@ -502,7 +502,7 @@ class TestCalibrate:
         calibrate_field.calibrate_bda_frequencybase = bda_freq
         calibrate_field.do_slowgain_solve = slowgain
 
-        calibrate_dd = Calibrate(field=calibrate_field, index=1)
+        calibrate_dd = Calibrate("dd", field=calibrate_field, index=1)
         calibrate_dd.set_input_parameters()
         dp3_steps = parse_dp3(calibrate_dd.input_parms["dp3_steps"])
 
@@ -553,7 +553,7 @@ class TestCalibrate:
         """
         calibrate_field.apply_diagonal_solutions = diagonal_flag
 
-        calibrate_dd = Calibrate(field=calibrate_field, index=1)
+        calibrate_dd = Calibrate("dd", field=calibrate_field, index=1)
         calibrate_dd.set_input_parameters()
 
         assert calibrate_dd.input_parms["solution_combine_mode"] == expected_mode
