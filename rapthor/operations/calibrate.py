@@ -674,13 +674,7 @@ class Calibrate(Operation):
             dst_dir = os.path.join(
                 workdir, "plots", "calibrate_{}".format(self.index)
             )
-            os.makedirs(dst_dir, exist_ok=True)
-
-            for plot_filename in plot_filenames:
-                dst_filename = os.path.join(dst_dir, os.path.basename(plot_filename))
-                if os.path.exists(dst_filename):
-                    os.remove(dst_filename)
-                shutil.copy(plot_filename, dst_filename)
+            self._copy_plots(plot_filenames, dst_dir)
 
             # Finally call finalize() in the parent class
             super().finalize()
@@ -705,16 +699,19 @@ class Calibrate(Operation):
             dst_dir = os.path.join(
                 workdir, "plots", "calibrate_di_{}".format(self.index)
             )
-            os.makedirs(dst_dir, exist_ok=True)
-           
-            for plot_filename in plot_filenames:
-                dst_filename = os.path.join(dst_dir, os.path.basename(plot_filename))
-                if os.path.exists(dst_filename):
-                    os.remove(dst_filename)
-                shutil.copy(plot_filename, dst_filename)
-
+            self._copy_plots(plot_filenames, dst_dir)
             # Finally call finalize() in the parent class
             super().finalize()
+
+    # finalize helper functions
+    def _copy_plots(self, plot_filenames, dst_dir):
+        os.makedirs(dst_dir, exist_ok=True)
+
+        for plot_filename in plot_filenames:
+            dst_filename = os.path.join(dst_dir, os.path.basename(plot_filename))
+            if os.path.exists(dst_filename):
+                os.remove(dst_filename)
+            shutil.copy(plot_filename, dst_filename)
 
 
 class CalibrateDI(Operation):
