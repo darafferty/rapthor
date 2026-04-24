@@ -26,6 +26,7 @@ from rapthor.scripts.normalize_flux_scale import (
     _get_survey_metadata,
     _cross_match_sources,
     _get_data_from_skymodel,
+    _sort_metadata_by_frequency,
 )
 
 
@@ -773,18 +774,19 @@ def test_get_survey_metadata_without_reference_skymodels(caplog):
         "Expected log message about using external survey catalogs."
     )
     expected_metadata = {
-        "wenss": {
-            "flux_correction": 0.9,
-            "flux_err": 3.6e-3,
-            "frequency": 327e6,
-        },
         "vlssr": {
             "flux_correction": 1,
             "flux_err": 0.1,
             "frequency": 74e6,
         },
+        "wenss": {
+            "flux_correction": 0.9,
+            "flux_err": 3.6e-3,
+            "frequency": 327e6,
+        },
     }
-    assert survey_metadata == expected_metadata
+    # Make sure metadata is sorted by frequency (low to high)
+    assert list(survey_metadata.items()) == list(expected_metadata.items())
 
 
 def test_get_survey_metadata_with_reference_skymodels(true_sky_path, caplog):
@@ -814,3 +816,17 @@ def test_get_data_from_skymodel(true_sky_model):
     assert np.allclose(data["Ra"], true_sky_model.getColValues("Ra", units="degree"))
     assert np.allclose(data["Dec"], true_sky_model.getColValues("Dec", units="degree"))
     assert np.allclose(data["I"], true_sky_model.getColValues("I"))
+
+
+def test_sort_metadata_by_frequency():
+    """Test that the _sort_metadata_by_frequency function correctly sorts the survey metadata by frequency."""
+    metadata = {
+        "survey1": {"frequency": 327e6, "flux_correction": 0.9, "flux_err": 3.6e-3},
+        "survey2": {"frequency": 74e6, "flux_correction": 1, "flux_err": 0.1},
+        "survey3": {"frequency": 150e6, "flux_correction": 0.8, "flux_err": 0.05},
+    }
+    sorted_metadata = _sort_metadata_by_frequency(metadata)
+    expected_order = ["survey2", "survey3", "survey1"]
+    assert list(sorted_metadata.keys()) == expected_order, (
+        f"Expected order {expected_order}, got {list(sorted_metadata.keys())}"
+    )
