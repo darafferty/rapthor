@@ -3,10 +3,13 @@ Test module for testing the CWL workflows _generated_ by the pipeline
 """
 
 import itertools as itt
-import subprocess
 from pathlib import Path
 
 import pytest
+from cwltool.context import LoadingContext
+from cwltool.load_tool import load_tool
+from cwltool.main import get_default_args
+from schema_salad.ref_resolver import file_uri
 
 from rapthor.lib.cwl import (
     clean_if_cwl_file_or_directory,
@@ -67,7 +70,7 @@ def generate_and_validate(tmp_path, operation, params, template, sub_template=No
     pipeline_working_dir = tmp_path / "pipelines" / operation
     parset_path = create_parsets(pipeline_working_dir, params, template, sub_template)
 
-    validate(params, parset_path)
+    assert validate_cwl(parset_path), f"CWL validation FAILED with parameters: {params}"
 
 
 def create_parsets(pipeline_working_dir, params, template, sub_template):
@@ -95,14 +98,20 @@ def write_parset(template, params, pipeline_working_dir, output_path):
     )
 
 
-def validate(params, parset_path):
-    """
-    Validate the workflow file using `cwltool` in a subprocess call.
-    """
+def validate_cwl(path: str | Path) -> bool:
+    # Convert local path to file:// URI, like the CLI does
+    uri = file_uri(str(path))
+
+    # Default CLI-style arguments, then tweak if needed
+    loading_context = LoadingContext(get_default_args())
+
     try:
-        subprocess.run(["cwltool", "--validate", "--enable-ext", parset_path], check=True)
-    except subprocess.CalledProcessError:
-        raise AssertionError(f"FAILED with parameters: {params}") from None
+        # load_tool does: fetch, preprocess, normalize, and validate.[web:1]
+        tool = load_tool(uri, loading_context)
+        return True
+    except Exception as err:
+        print(f"CWL validation failed: {err}")
+        return False
 
 
 @pytest.mark.parametrize("max_cores", (None, 8))
@@ -239,7 +248,7 @@ class TestImageWorkflow:
         that control the way the CWL workflow is generated from the template.
         Parameters were taken from `Image.set_parset_parameters()`.
         """
-        validate(params, parset)
+        assert validate_cwl(parset), f"CWL validation FAILED with parameters: {params}"
 
 
 @pytest.mark.parametrize("max_cores", (None, 8))
