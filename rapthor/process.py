@@ -11,7 +11,7 @@ from rapthor import _logging
 from rapthor.lib.field import Field
 from rapthor.lib.parset import parset_read
 from rapthor.lib.strategy import set_strategy, validate_strategy
-from rapthor.operations.calibrate import CalibrateDD, CalibrateDI
+from rapthor.operations.calibrate import Calibrate, CalibrateDI
 from rapthor.operations.concatenate import Concatenate
 from rapthor.operations.image import Image, ImageInitial, ImageNormalize
 from rapthor.operations.mosaic import Mosaic
@@ -184,7 +184,7 @@ def run_steps(field, steps, final=False):
             field.generate_screens = (field.dde_mode == "hybrid") and final
 
             # Calibrate (direction-dependent)
-            op = CalibrateDD(field, cycle_number)
+            op = Calibrate("dd", field, cycle_number)
             op.run()
 
             # Calibrate (direction-independent)
