@@ -18,6 +18,20 @@ import logging
 
 log = logging.getLogger("rapthor:normalize_flux_scale")
 
+# External catalog details
+SURVEY_METADATA = {
+    "wenss": {
+        "flux_correction": 0.9,  # adjust to Scaife and Heald (2012) flux scale
+        "flux_err": 3.6e-3,  # Jy (reported average rms noise level)
+        "frequency": 327e6,
+    },
+    "vlssr": {
+        "flux_correction": 1,  # already on Scaife and Heald (2012) flux scale
+        "flux_err": 0.1,  # Jy (reported average rms noise level)
+        "frequency": 74e6,
+    },
+}
+
 
 def fit_sed(fluxes, errors, frequencies):
     """
@@ -280,82 +294,21 @@ def main(
     # Cross match sources with external catalogs
     if do_normalization:
         survey_catalogs = []
-        surveys = ["vlssr", "wenss"]  # the survey names
-        frequencies = [
-            74e6,
-            327e6,
-        ]  # the survey reference frequencies in Hz, ordered from low to high
-        for survey, frequency in zip(surveys, frequencies):
-            # Download sky model(s), using a 5-deg radius to ensure the field is
-            # fully covered
-            try:
-                log.info(f"Downloading {survey} catalog for this field...")
-                skymodel = lsmtool.load(
-                    survey,
-                    VOPosition=[phase_center_ra * 180 / np.pi, phase_center_dec * 180 / np.pi],
-                    VORadius=5.0,
-                )
-            except (OSError, ConnectionError) as e:
-                log.error(
-                    f"A problem occurred when downloading the {survey} catalog. "
-                    f"Error was: {e}. Flux normalization will be skipped."
-                )
-                do_normalization = False
+        for survey, metadata in SURVEY_METADATA.items():
+            survey_data = _get_survey_data(survey, [phase_center_ra, phase_center_dec])
+            if survey_data is None:
                 continue
-            if not len(skymodel):
-                log.warning(
-                    f"No sources found in the {survey} catalog for this field. "
-                    "Flux normalization will be skipped."
-                )
-                do_normalization = False
-            if not do_normalization:
-                continue
-            with tempfile.NamedTemporaryFile() as fp:
-                skymodel.write(fp.name, format="fits", clobber=True)
-                with fits.open(fp.name) as hdul:
-                    survey_data = hdul[1].data
-            survey_ra = []
-            survey_dec = []
-            for ra_deg, dec_deg in zip(survey_data["RA"], survey_data["DEC"]):
-                ra_norm, dec_norm = normalize_ra_dec(ra_deg, dec_deg)
-                survey_ra.append(ra_norm)
-                survey_dec.append(dec_norm)
-            survey_coords = SkyCoord(
-                ra=np.array(survey_ra) * u.degree, dec=np.array(survey_dec) * u.degree
+            survey_coords = _get_survey_coords(survey_data)
+            survey_fluxes = _cross_match_sources(
+                source_coords_filtered, survey_coords, survey_data, spurious_match_cut
             )
-
-            # Cross match the survey sources with the Rapthor sources
-            match_ind, separation, _ = match_coordinates_sky(source_coords_filtered, survey_coords)
-
-            # Check each Rapthor source, rejecting distant matches that are likely to be
-            # spurious (e.g., due to the true source not being present in the survey catalog)
-            # and keeping only the closest match
-            survey_fluxes = []
-            for dist, ind in zip(separation, match_ind):
-                all_matches_ind = np.where(match_ind == ind)[0]
-                if (
-                    dist.value > np.min(separation.value[all_matches_ind])
-                    or dist.value > spurious_match_cut
-                ):
-                    # Reject match by setting its survey flux to 0 (which will be ignored
-                    # during SED fitting)
-                    survey_fluxes.append(0.0)
-                else:
-                    survey_fluxes.append(survey_data["I"][ind])
-
             # Save the catalog details for use in SED fitting
-            if survey == "wenss":
-                flux_correction = 0.9  # adjust to Scaife and Heald (2012) flux scale
-                flux_err = 3.6e-3  # Jy (reported average rms noise level)
-            elif survey == "vlssr":
-                flux_correction = 1  # already on Scaife and Heald (2012) flux scale
-                flux_err = 0.1  # Jy (reported average rms noise level)
             survey_catalogs.append(
                 {
                     "survey": survey,
-                    "flux": np.array(survey_fluxes) * flux_correction,
-                    "flux_err": flux_err,
-                    "frequency": frequency,
+                    "flux": np.array(survey_fluxes) * metadata["flux_correction"],
+                    "flux_err": metadata["flux_err"],
+                    "frequency": metadata["frequency"],
                 }
             )
 
@@ -628,6 +581,111 @@ def _validate_source_catalog(source_catalog_data, min_sources):
         return False
     else:
         return True
+
+
+def _get_survey_data(survey, phase_center):
+    """
+    Get the survey data for a given survey and frequency.
+
+    Downloads a sky model, using a 5-deg radius to ensure the field is
+    fully covered
+
+    Parameters
+    ----------
+    survey : str
+        The name of the survey (e.g., "vlssr", "wenss")
+    phase_center : list of float
+        List containing the RA and Dec of the phase center in radians, ordered as [RA, Dec]
+
+    Returns
+    -------
+    survey_data : astropy.io.fits.FITS_rec
+        Data from the FITS file containing the survey catalog for this field
+    """
+
+    try:
+        log.info(f"Downloading {survey} catalog for this field...")
+        skymodel = lsmtool.load(
+            survey,
+            VOPosition=[phase_center[0] * 180 / np.pi, phase_center[1] * 180 / np.pi],
+            VORadius=5.0,
+        )
+    except (OSError, ConnectionError) as e:
+        log.error(
+            f"A problem occurred when downloading the {survey} catalog. "
+            f"Error was: {e}. Flux normalization will be skipped."
+        )
+        return
+    if not len(skymodel):
+        log.warning(
+            f"No sources found in the {survey} catalog for this field. "
+            "Flux normalization will be skipped."
+        )
+        return
+    with tempfile.NamedTemporaryFile() as fp:
+        skymodel.write(fp.name, format="fits", clobber=True)
+        with fits.open(fp.name) as hdul:
+            survey_data = hdul[1].data
+    return survey_data
+
+
+def _cross_match_sources(source_coords, survey_coords, survey_data, spurious_match_cut):
+    """Cross match the sources in the input catalog with the sources in the survey catalog.
+
+    Checks each Rapthor source, rejecting distant matches that are likely to be
+    spurious (e.g., due to the true source not being present in the survey catalog)
+    and keeping only the closest match.
+
+    Parameters
+    ----------
+    source_coords : astropy.coordinates.SkyCoord
+        SkyCoord object containing the coordinates of the sources in the input catalog
+    survey_coords : astropy.coordinates.SkyCoord
+        SkyCoord object containing the coordinates of the sources in the survey catalog
+    survey_data : astropy.io.fits.FITS_rec
+        Data from the FITS file containing the survey catalog for this field
+    spurious_match_cut : float
+        Distance cut in degrees for spurious matches. Sources with matches in
+        the survey catalogs with distances greater than this value are excluded
+    """
+    match_ind, separation, _ = match_coordinates_sky(source_coords, survey_coords)
+
+    survey_fluxes = []
+    for dist, ind in zip(separation, match_ind):
+        all_matches_ind = np.where(match_ind == ind)[0]
+        if (
+            dist.value > np.min(separation.value[all_matches_ind])
+            or dist.value > spurious_match_cut
+        ):
+            # Reject match by setting its survey flux to 0 (which will be ignored
+            # during SED fitting)
+            survey_fluxes.append(0.0)
+        else:
+            survey_fluxes.append(survey_data["I"][ind])
+    return survey_fluxes
+
+
+def _get_survey_coords(survey_data):
+    """Get the coordinates of the sources in the survey catalog in degrees.
+
+    Parameters
+    ----------
+    survey_data : astropy.io.fits.FITS_rec
+        Data from the FITS file containing the survey catalog for this field
+
+    Returns
+    -------
+    survey_coords : astropy.coordinates.SkyCoord
+        Coordinates of the sources in the survey catalog in degrees
+    """
+    survey_ra = []
+    survey_dec = []
+    for ra_deg, dec_deg in zip(survey_data["RA"], survey_data["DEC"]):
+        ra_norm, dec_norm = normalize_ra_dec(ra_deg, dec_deg)
+        survey_ra.append(ra_norm)
+        survey_dec.append(dec_norm)
+    survey_coords = SkyCoord(ra=np.array(survey_ra) * u.degree, dec=np.array(survey_dec) * u.degree)
+    return survey_coords
 
 
 if __name__ == "__main__":
