@@ -17,7 +17,6 @@ from rapthor.lib.operation import Operation
 log = logging.getLogger("rapthor:calibrate")
 
 
-# is do_di == True (in strategy?)then mode is "di", else "dd"
 class Calibrate(Operation):
     """
     Class for performing the calibration operation, which runs the CWL workflow template for calibration.
@@ -25,9 +24,8 @@ class Calibrate(Operation):
     the mode specified by the "mode" parameter in the constructor.
     """
 
-    def __init__(self, mode, field, index):
+    def __init__(self, field, index):
         super().__init__(field, index=index, name="calibrate")
-        self.mode = mode
 
     def set_parset_parameters(self):
         """
@@ -602,88 +600,120 @@ class Calibrate(Operation):
         """
         Finalize this operation
         """
-        # Copy the solutions (h5parm files) and report the flagged fraction
-        dst_dir = os.path.join(
-            self.parset["dir_working"], "solutions", "calibrate_{}".format(self.index)
-        )
-        os.makedirs(dst_dir, exist_ok=True)
-        self.field.h5parm_filename = os.path.join(dst_dir, "field-solutions.h5")
-        self.field.fast_phases_h5parm_filename = os.path.join(
-            dst_dir, "field-solutions-fast-phase.h5"
-        )
-        self.field.medium1_phases_h5parm_filename = os.path.join(
-            dst_dir, "field-solutions-medium1-phase.h5"
-        )
-        self.field.medium2_phases_h5parm_filename = os.path.join(
-            dst_dir, "field-solutions-medium2-phase.h5"
-        )
-        self.field.slow_gains_h5parm_filename = os.path.join(
-            dst_dir, "field-solutions-slow-gain.h5"
-        )
-        if os.path.exists(self.field.h5parm_filename):
-            os.remove(self.field.h5parm_filename)
-        if self.field.generate_screens:
-            # IDGCal (screens) only gives a combined h5parm, regardless of the type of solve
-            shutil.copy(
-                os.path.join(self.pipeline_working_dir, self.combined_h5parms),
-                os.path.join(dst_dir, self.field.h5parm_filename),
+        if self.mode == "dd":
+            # Copy the solutions (h5parm files) and report the flagged fraction
+            dst_dir = os.path.join(
+                self.parset["dir_working"], "solutions", "calibrate_{}".format(self.index)
             )
-        elif self.field.do_slowgain_solve:
-            shutil.copy(
-                os.path.join(self.pipeline_working_dir, self.combined_h5parms),
-                os.path.join(dst_dir, self.field.h5parm_filename),
+            os.makedirs(dst_dir, exist_ok=True)
+            self.field.h5parm_filename = os.path.join(dst_dir, "field-solutions.h5")
+            self.field.fast_phases_h5parm_filename = os.path.join(
+                dst_dir, "field-solutions-fast-phase.h5"
             )
-            shutil.copy(
-                os.path.join(self.pipeline_working_dir, self.slow_h5parm),
-                os.path.join(dst_dir, self.field.slow_gains_h5parm_filename),
+            self.field.medium1_phases_h5parm_filename = os.path.join(
+                dst_dir, "field-solutions-medium1-phase.h5"
             )
-            shutil.copy(
-                os.path.join(self.pipeline_working_dir, self.medium1_h5parm),
-                os.path.join(dst_dir, self.field.medium1_phases_h5parm_filename),
+            self.field.medium2_phases_h5parm_filename = os.path.join(
+                dst_dir, "field-solutions-medium2-phase.h5"
             )
-            shutil.copy(
-                os.path.join(self.pipeline_working_dir, self.medium2_h5parm),
-                os.path.join(dst_dir, self.field.medium2_phases_h5parm_filename),
+            self.field.slow_gains_h5parm_filename = os.path.join(
+                dst_dir, "field-solutions-slow-gain.h5"
             )
-            shutil.copy(
-                os.path.join(self.pipeline_working_dir, self.fast_h5parm),
-                os.path.join(dst_dir, self.field.fast_phases_h5parm_filename),
+            if os.path.exists(self.field.h5parm_filename):
+                os.remove(self.field.h5parm_filename)
+            if self.field.generate_screens:
+                # IDGCal (screens) only gives a combined h5parm, regardless of the type of solve
+                shutil.copy(
+                    os.path.join(self.pipeline_working_dir, self.combined_h5parms),
+                    os.path.join(dst_dir, self.field.h5parm_filename),
+                )
+            elif self.field.do_slowgain_solve:
+                shutil.copy(
+                    os.path.join(self.pipeline_working_dir, self.combined_h5parms),
+                    os.path.join(dst_dir, self.field.h5parm_filename),
+                )
+                shutil.copy(
+                    os.path.join(self.pipeline_working_dir, self.slow_h5parm),
+                    os.path.join(dst_dir, self.field.slow_gains_h5parm_filename),
+                )
+                shutil.copy(
+                    os.path.join(self.pipeline_working_dir, self.medium1_h5parm),
+                    os.path.join(dst_dir, self.field.medium1_phases_h5parm_filename),
+                )
+                shutil.copy(
+                    os.path.join(self.pipeline_working_dir, self.medium2_h5parm),
+                    os.path.join(dst_dir, self.field.medium2_phases_h5parm_filename),
+                )
+                shutil.copy(
+                    os.path.join(self.pipeline_working_dir, self.fast_h5parm),
+                    os.path.join(dst_dir, self.field.fast_phases_h5parm_filename),
+                )
+            else:
+                # The h5parm with the full, combined solutions is also the fast-phases
+                # h5parm
+                shutil.copy(
+                    os.path.join(self.pipeline_working_dir, self.fast_h5parm),
+                    os.path.join(dst_dir, self.field.h5parm_filename),
+                )
+                shutil.copy(
+                    os.path.join(self.pipeline_working_dir, self.fast_h5parm),
+                    os.path.join(dst_dir, self.field.fast_phases_h5parm_filename),
+                )
+            self.field.scan_h5parms()  # verify h5parm and update flags for predict/image operations
+            solsetname = "coefficients000" if self.field.generate_screens else "sol000"
+            flagged_frac = misc.get_flagged_solution_fraction(
+                self.field.h5parm_filename, solsetname=solsetname
             )
+            self.log.info("Fraction of solutions that are flagged = %.2f", flagged_frac)
+            self.field.calibration_diagnostics.append(
+                {"cycle_number": self.index, "solution_flagged_fraction": flagged_frac}
+            )
+
+            # Copy the plots (PNG files)
+            dst_dir = os.path.join(
+                self.parset["dir_working"], "plots", "calibrate_{}".format(self.index)
+            )
+            os.makedirs(dst_dir, exist_ok=True)
+            plot_filenames = glob.glob(os.path.join(self.pipeline_working_dir, "*.png"))
+            for plot_filename in plot_filenames:
+                dst_filename = os.path.join(dst_dir, os.path.basename(plot_filename))
+                if os.path.exists(dst_filename):
+                    os.remove(dst_filename)
+                shutil.copy(plot_filename, dst_filename)
+
+            # Finally call finalize() in the parent class
+            super().finalize()
         else:
-            # The h5parm with the full, combined solutions is also the fast-phases
-            # h5parm
-            shutil.copy(
-                os.path.join(self.pipeline_working_dir, self.fast_h5parm),
-                os.path.join(dst_dir, self.field.h5parm_filename),
+            # Copy the solutions (h5parm file) and report the flagged fraction
+            dst_dir = os.path.join(
+                self.parset["dir_working"], "solutions", "calibrate_di_{}".format(self.index)
             )
+            os.makedirs(dst_dir, exist_ok=True)
+            self.field.fulljones_h5parm_filename = os.path.join(dst_dir, "fulljones-solutions.h5")
+            if os.path.exists(self.field.fulljones_h5parm_filename):
+                os.remove(self.field.fulljones_h5parm_filename)
             shutil.copy(
-                os.path.join(self.pipeline_working_dir, self.fast_h5parm),
-                os.path.join(dst_dir, self.field.fast_phases_h5parm_filename),
+                os.path.join(self.pipeline_working_dir, self.collected_h5parm_fulljones),
+                os.path.join(dst_dir, self.field.fulljones_h5parm_filename),
             )
-        self.field.scan_h5parms()  # verify h5parm and update flags for predict/image operations
-        solsetname = "coefficients000" if self.field.generate_screens else "sol000"
-        flagged_frac = misc.get_flagged_solution_fraction(
-            self.field.h5parm_filename, solsetname=solsetname
-        )
-        self.log.info("Fraction of solutions that are flagged = %.2f", flagged_frac)
-        self.field.calibration_diagnostics.append(
-            {"cycle_number": self.index, "solution_flagged_fraction": flagged_frac}
-        )
+            self.field.scan_h5parms()  # verify h5parm and update flags for predict/image operations
+            flagged_frac = misc.get_flagged_solution_fraction(self.field.fulljones_h5parm_filename)
+            self.log.info("Fraction of solutions that are flagged = %.2f", flagged_frac)
 
-        # Copy the plots (PNG files)
-        dst_dir = os.path.join(
-            self.parset["dir_working"], "plots", "calibrate_{}".format(self.index)
-        )
-        os.makedirs(dst_dir, exist_ok=True)
-        plot_filenames = glob.glob(os.path.join(self.pipeline_working_dir, "*.png"))
-        for plot_filename in plot_filenames:
-            dst_filename = os.path.join(dst_dir, os.path.basename(plot_filename))
-            if os.path.exists(dst_filename):
-                os.remove(dst_filename)
-            shutil.copy(plot_filename, dst_filename)
+            # Copy the plots (PNG files)
+            dst_dir = os.path.join(
+                self.parset["dir_working"], "plots", "calibrate_di_{}".format(self.index)
+            )
+            os.makedirs(dst_dir, exist_ok=True)
+            plot_filenames = glob.glob(os.path.join(self.pipeline_working_dir, "*.png"))
+            for plot_filename in plot_filenames:
+                dst_filename = os.path.join(dst_dir, os.path.basename(plot_filename))
+                if os.path.exists(dst_filename):
+                    os.remove(dst_filename)
+                shutil.copy(plot_filename, dst_filename)
 
-        # Finally call finalize() in the parent class
-        super().finalize()
+            # Finally call finalize() in the parent class
+            super().finalize()
 
 
 class CalibrateDI(Operation):

@@ -305,6 +305,7 @@ class TestCalibrate:
         field = calibrate_field
         is_dd = scenario.startswith("dd")
         with_slow = scenario == "dd_with_slowgain"
+        mode = "di" if not is_dd else "dd"
 
         # Setup mocks
         flagged_fraction = 0.042
