@@ -361,8 +361,21 @@ def generate_parset(
     if apparent_skymodel_path:
         parset["global"]["apparent_skymodel"] = str(apparent_skymodel_path)
     if normalization_skymodel_paths:
-        parset["imaging"]["normalization_skymodels"] = ", ".join(
-            [str(path) for path in normalization_skymodel_paths if path is not None]
+        parset["imaging"]["normalization_skymodels"] = (
+            "["
+            + ", ".join([str(path) for path in normalization_skymodel_paths if path is not None])
+            + "]"
+        )
+        parset["imaging"]["normalization_reference_frequencies"] = (
+            "["
+            + ", ".join(
+                [
+                    str(142000000.0 + i * 1000.0)
+                    for i, _ in enumerate(normalization_skymodel_paths)
+                    if _ is not None
+                ]
+            )
+            + "]"
         )
     parset["cluster"].update(
         local_scratch_dir=str(scratch_dir),
@@ -486,7 +499,6 @@ def generated_parset_path_normalisation(
         apparent_skymodel_path,
         normalization_skymodel_paths=normalization_skymodel_paths,
     )
-
     return output_parset_path
 
 

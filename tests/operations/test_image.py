@@ -589,14 +589,25 @@ class TestImageNormalize:
 
     def test_normalization_skymodel(self, field):
         """Test to check that the paths to the normalization sky models are set"""
-        field.normalization_skymodel = "path/to/normalization_skymodel.txt"
+        field.normalization_skymodels = [
+            "path/to/normalization_skymodel_1.txt",
+            "path/to/normalization_skymodel_2.txt",
+        ]
+        field.normalization_reference_frequencies = [142000000.0, 142001000.0]
         _prepare_field_for_normalize_image(field)
         image_norm = _initialize_operation(ImageNormalize(field, index=1))
-
         assert (
-            image_norm.input_parms["normalization_skymodel"]["path"]
-            == "path/to/normalization_skymodel.txt"
+            image_norm.input_parms["normalization_skymodels"][0]["path"]
+            == "path/to/normalization_skymodel_1.txt"
         )
+        assert (
+            image_norm.input_parms["normalization_skymodels"][1]["path"]
+            == "path/to/normalization_skymodel_2.txt"
+        )
+        assert image_norm.input_parms["normalization_reference_frequencies"] == [
+            142000000.0,
+            142001000.0,
+        ]
 
     @pytest.mark.parametrize("allow_internet_access", [True, False])
     def test_allow_internet_access(

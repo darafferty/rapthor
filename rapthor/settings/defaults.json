@@ -115,7 +115,7 @@
         "skip_corner_sectors": false,
         "photometry_skymodel": null,
         "astrometry_skymodel": null,
-        "normalization_skymodel": null
+        "normalization_skymodels": null
     },
     "cluster": {
         "batch_system": "single_machine",
