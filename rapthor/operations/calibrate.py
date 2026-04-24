@@ -1,46 +1,54 @@
 """
 Module that holds the Calibrate classes
 """
+
 import glob
 import logging
-import lsmtool
-import numpy as np
 import os
-from rapthor.lib.operation import Operation
-from rapthor.lib import miscellaneous as misc
-from rapthor.lib.cwl import CWLFile, CWLDir
 import shutil
 
-log = logging.getLogger('rapthor:calibrate')
+import lsmtool
+import numpy as np
+
+from rapthor.lib import miscellaneous as misc
+from rapthor.lib.cwl import CWLDir, CWLFile
+from rapthor.lib.operation import Operation
+
+log = logging.getLogger("rapthor:calibrate")
 
 
 class CalibrateDD(Operation):
     """
     Operation to perform direction-dependent (DD) calibration of the field
     """
+
     def __init__(self, field, index):
-        super().__init__(field, index=index, name='calibrate')
+        super().__init__(field, index=index, name="calibrate")
 
     def set_parset_parameters(self):
         """
         Define parameters needed for the CWL workflow template
         """
-        if self.batch_system.startswith('slurm'):
+        if self.batch_system.startswith("slurm"):
             # For some reason, setting coresMax ResourceRequirement hints does
             # not work with SLURM
             max_cores = None
         else:
-            max_cores = self.parset['cluster_specific']['max_cores']
+            max_cores = self.parset["cluster_specific"]["max_cores"]
 
         # Set whether image-based prediction is used. Note that generation of
         # screens (IDGCal) requires image-based prediction
-        self.use_image_based_predict = self.field.generate_screens or self.field.use_image_based_predict
+        self.use_image_based_predict = (
+            self.field.generate_screens or self.field.use_image_based_predict
+        )
 
-        self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
-                             'use_image_based_predict': self.use_image_based_predict,
-                             'generate_screens': self.field.generate_screens,
-                             'do_slowgain_solve': self.field.do_slowgain_solve,
-                             'max_cores': max_cores}
+        self.parset_parms = {
+            "rapthor_pipeline_dir": self.rapthor_pipeline_dir,
+            "use_image_based_predict": self.use_image_based_predict,
+            "generate_screens": self.field.generate_screens,
+            "do_slowgain_solve": self.field.do_slowgain_solve,
+            "max_cores": max_cores,
+        }
 
     def set_input_parameters(self):
         """
@@ -52,89 +60,110 @@ class CalibrateDD(Operation):
         # Next, get the various parameters needed by the workflow
         #
         # Get the filenames of the input files for each time chunk
-        timechunk_filename = self.field.get_obs_parameters('timechunk_filename')
+        timechunk_filename = self.field.get_obs_parameters("timechunk_filename")
 
         # Get the start times and number of times for the time chunks (fast and slow
         # calibration)
-        starttime = self.field.get_obs_parameters('starttime')
-        ntimes = self.field.get_obs_parameters('ntimes')
+        starttime = self.field.get_obs_parameters("starttime")
+        ntimes = self.field.get_obs_parameters("ntimes")
 
         # Get the solution intervals for the calibrations
-        solint_fast_timestep = self.field.get_obs_parameters('solint_fast_timestep')
-        solint_medium_timestep = self.field.get_obs_parameters('solint_medium_timestep')
-        solint_slow_timestep = self.field.get_obs_parameters('solint_slow_timestep')
-        solint_fast_freqstep = self.field.get_obs_parameters('solint_fast_freqstep')
-        solint_medium_freqstep = self.field.get_obs_parameters('solint_medium_freqstep')
-        solint_slow_freqstep = self.field.get_obs_parameters('solint_slow_freqstep')
+        solint_fast_timestep = self.field.get_obs_parameters("solint_fast_timestep")
+        solint_medium_timestep = self.field.get_obs_parameters("solint_medium_timestep")
+        solint_slow_timestep = self.field.get_obs_parameters("solint_slow_timestep")
+        solint_fast_freqstep = self.field.get_obs_parameters("solint_fast_freqstep")
+        solint_medium_freqstep = self.field.get_obs_parameters("solint_medium_freqstep")
+        solint_slow_freqstep = self.field.get_obs_parameters("solint_slow_freqstep")
 
         # Get the number of solutions per direction
-        fast_solutions_per_direction = self.field.get_obs_parameters('fast_solutions_per_direction')
-        medium_solutions_per_direction = self.field.get_obs_parameters('medium_solutions_per_direction')
-        slow_solutions_per_direction = self.field.get_obs_parameters('slow_solutions_per_direction')
+        fast_solutions_per_direction = self.field.get_obs_parameters("fast_solutions_per_direction")
+        medium_solutions_per_direction = self.field.get_obs_parameters(
+            "medium_solutions_per_direction"
+        )
+        slow_solutions_per_direction = self.field.get_obs_parameters("slow_solutions_per_direction")
 
         # Get the BDA (baseline-dependent averaging) parameters
-        bda_maxinterval = self.field.get_obs_parameters('bda_maxinterval')
-        bda_minchannels = self.field.get_obs_parameters('bda_minchannels')
+        bda_maxinterval = self.field.get_obs_parameters("bda_maxinterval")
+        bda_minchannels = self.field.get_obs_parameters("bda_minchannels")
         bda_timebase = self.field.calibrate_bda_timebase
         bda_frequencybase = self.field.calibrate_bda_frequencybase
 
         # Define various output filenames for the solution tables. We save some
         # as attributes since they are needed in finalize()
-        output_fast_h5parm = ['fast_phase_{}.h5parm'.format(i)
-                              for i in range(self.field.ntimechunks)]
-        self.fast_h5parm = 'fast_phases.h5parm'
-        output_medium1_h5parm = ['medium1_phase_{}.h5parm'.format(i)
-                                 for i in range(self.field.ntimechunks)]
-        self.medium1_h5parm = 'medium1_phases.h5parm'
-        combined_fast_medium1_h5parm = 'combined_fast_medium1_phases.h5parm'
-        output_medium2_h5parm = ['medium2_phase_{}.h5parm'.format(i)
-                                 for i in range(self.field.ntimechunks)]
-        self.medium2_h5parm = 'medium2_phases.h5parm'
-        combined_fast_medium1_medium2_h5parm = 'combined_fast_medium1_medium2_phases.h5parm'
-        output_slow_h5parm = ['slow_gain_{}.h5parm'.format(i)
-                              for i in range(self.field.ntimechunks)]
-        self.slow_h5parm = 'slow_gains.h5parm'
-        output_idgcal_h5parm = ['idgcal_{}.h5parm'.format(i)  # TODO: chunk the solve over frequency as well as time?
-                                for i in range(self.field.ntimechunks)]
-        self.combined_h5parms = 'combined_solutions.h5'
+        output_fast_h5parm = [
+            "fast_phase_{}.h5parm".format(i) for i in range(self.field.ntimechunks)
+        ]
+        self.fast_h5parm = "fast_phases.h5parm"
+        output_medium1_h5parm = [
+            "medium1_phase_{}.h5parm".format(i) for i in range(self.field.ntimechunks)
+        ]
+        self.medium1_h5parm = "medium1_phases.h5parm"
+        combined_fast_medium1_h5parm = "combined_fast_medium1_phases.h5parm"
+        output_medium2_h5parm = [
+            "medium2_phase_{}.h5parm".format(i) for i in range(self.field.ntimechunks)
+        ]
+        self.medium2_h5parm = "medium2_phases.h5parm"
+        combined_fast_medium1_medium2_h5parm = "combined_fast_medium1_medium2_phases.h5parm"
+        output_slow_h5parm = [
+            "slow_gain_{}.h5parm".format(i) for i in range(self.field.ntimechunks)
+        ]
+        self.slow_h5parm = "slow_gains.h5parm"
+        output_idgcal_h5parm = [
+            "idgcal_{}.h5parm".format(i)  # TODO: chunk the solve over frequency as well as time?
+            for i in range(self.field.ntimechunks)
+        ]
+        self.combined_h5parms = "combined_solutions.h5"
         if self.field.apply_diagonal_solutions:
-            solution_combine_mode = 'p1p2a2_diagonal'
+            solution_combine_mode = "p1p2a2_diagonal"
         else:
-            solution_combine_mode = 'p1p2a2_scalar'
+            solution_combine_mode = "p1p2a2_scalar"
 
         # Define the input sky model
         calibration_skymodel_file = self.field.calibration_skymodel_file
         num_spectral_terms = misc.get_max_spectral_terms(calibration_skymodel_file)
-        model_image_root = 'calibration_model'
-        model_image_frequency_bandwidth, model_image_ra_dec, model_image_imsize, model_image_cellsize = self.get_model_image_parameters()
+        model_image_root = "calibration_model"
+        (
+            model_image_frequency_bandwidth,
+            model_image_ra_dec,
+            model_image_imsize,
+            model_image_cellsize,
+        ) = self.get_model_image_parameters()
         facet_region_width = max(model_image_imsize) * model_image_cellsize * 1.2  # deg
-        facet_region_file = 'field_facets_ds9.reg'
+        facet_region_file = "field_facets_ds9.reg"
 
         # Get the calibrator names and fluxes
         calibrator_patch_names = self.field.calibrator_patch_names
         calibrator_fluxes = self.field.calibrator_fluxes
 
         # Set the constraints used in the calibrations
-        fast_smoothness_dd_factors = self.field.get_obs_parameters('fast_smoothness_dd_factors')
-        fast_smoothnessconstraint = self.field.fast_smoothnessconstraint / np.min(fast_smoothness_dd_factors)
-        fast_smoothnessreffrequency = self.field.get_obs_parameters('fast_smoothnessreffrequency')
+        fast_smoothness_dd_factors = self.field.get_obs_parameters("fast_smoothness_dd_factors")
+        fast_smoothnessconstraint = self.field.fast_smoothnessconstraint / np.min(
+            fast_smoothness_dd_factors
+        )
+        fast_smoothnessreffrequency = self.field.get_obs_parameters("fast_smoothnessreffrequency")
         fast_smoothnessrefdistance = self.field.fast_smoothnessrefdistance
-        medium_smoothness_dd_factors = self.field.get_obs_parameters('medium_smoothness_dd_factors')
-        medium_smoothnessconstraint = self.field.medium_smoothnessconstraint / np.min(medium_smoothness_dd_factors)
-        medium_smoothnessreffrequency = self.field.get_obs_parameters('medium_smoothnessreffrequency')
+        medium_smoothness_dd_factors = self.field.get_obs_parameters("medium_smoothness_dd_factors")
+        medium_smoothnessconstraint = self.field.medium_smoothnessconstraint / np.min(
+            medium_smoothness_dd_factors
+        )
+        medium_smoothnessreffrequency = self.field.get_obs_parameters(
+            "medium_smoothnessreffrequency"
+        )
         medium_smoothnessrefdistance = self.field.medium_smoothnessrefdistance
-        slow_smoothness_dd_factors = self.field.get_obs_parameters('slow_smoothness_dd_factors')
-        slow_smoothnessconstraint = (self.field.slow_smoothnessconstraint / np.min(slow_smoothness_dd_factors))
+        slow_smoothness_dd_factors = self.field.get_obs_parameters("slow_smoothness_dd_factors")
+        slow_smoothnessconstraint = self.field.slow_smoothnessconstraint / np.min(
+            slow_smoothness_dd_factors
+        )
         core_stations = self.get_core_stations()
         if core_stations:
-            fast_antennaconstraint = '[[{}]]'.format(','.join(core_stations))
+            fast_antennaconstraint = "[[{}]]".format(",".join(core_stations))
         else:
-            fast_antennaconstraint = '[]'
+            fast_antennaconstraint = "[]"
         medium_antennaconstraint = fast_antennaconstraint
-        idgcal_antennaconstraint = '[]'  # TODO: set different constraints for phase and gain solves
-        slow_antennaconstraint = '[]'
+        idgcal_antennaconstraint = "[]"  # TODO: set different constraints for phase and gain solves
+        slow_antennaconstraint = "[]"
         max_normalization_delta = self.field.max_normalization_delta
-        scale_normalization_delta = '{}'.format(self.field.scale_normalization_delta)
+        scale_normalization_delta = "{}".format(self.field.scale_normalization_delta)
 
         # Get various DDECal solver parameters. Most of these are the same for both fast
         # and slow solves
@@ -157,8 +186,8 @@ class CalibrateDD(Operation):
         slow_datause = self.field.slow_datause
 
         # Get the size of the imaging area (for use in making the a-term images)
-        sector_bounds_deg = '{}'.format(self.field.sector_bounds_deg)
-        sector_bounds_mid_deg = '{}'.format(self.field.sector_bounds_mid_deg)
+        sector_bounds_deg = "{}".format(self.field.sector_bounds_deg)
+        sector_bounds_mid_deg = "{}".format(self.field.sector_bounds_mid_deg)
 
         # Set the DDECal steps depending on whether baseline-dependent averaging is
         # activated (and supported) or not. If BDA is used, a "null" step is also added to
@@ -168,26 +197,26 @@ class CalibrateDD(Operation):
         # the restriction on this mode should be removed
         all_regular = all([obs.channels_are_regular for obs in self.field.observations])
         if (
-            (
-                bda_timebase > 0
-                or bda_frequencybase > 0
-            )
+            (bda_timebase > 0 or bda_frequencybase > 0)
             and all_regular
             and not self.field.use_image_based_predict
         ):
             if self.field.do_slowgain_solve:
-                dp3_steps = ['avg', 'solve1', 'solve2', 'solve3', 'solve4', 'null']
+                dp3_steps = ["avg", "solve1", "solve2", "solve3", "solve4", "null"]
             else:
-                dp3_steps = ['avg', 'solve1', 'solve2', 'null']
+                dp3_steps = ["avg", "solve1", "solve2", "null"]
         else:
             if self.field.do_slowgain_solve:
-                dp3_steps = ['solve1', 'solve2', 'solve3', 'solve4']
+                dp3_steps = ["solve1", "solve2", "solve3", "solve4"]
             else:
-                dp3_steps = ['solve1', 'solve2']
+                dp3_steps = ["solve1", "solve2"]
         if self.field.use_image_based_predict:
             # Add a predict, applybeam, and applycal steps to the beginning
-            dp3_steps = (['predict', 'applybeam', 'applycal'] if self.field.apply_normalizations else
-                         ['predict', 'applybeam']) + dp3_steps
+            dp3_steps = (
+                ["predict", "applybeam", "applycal"]
+                if self.field.apply_normalizations
+                else ["predict", "applybeam"]
+            ) + dp3_steps
 
         # Set the DP3 applycal steps and input H5parm files depending on what
         # solutions need to be applied. Note: applycal steps are needed for
@@ -196,8 +225,8 @@ class CalibrateDD(Operation):
         # The latter is used when image-based predict is done
         if self.field.apply_normalizations:
             normalize_h5parm = CWLFile(self.field.normalize_h5parm).to_json()
-            ddecal_applycal_steps = ['normalization']
-            applycal_steps = ['normalization']
+            ddecal_applycal_steps = ["normalization"]
+            applycal_steps = ["normalization"]
 
             # Convert the lists to strings, with square brackets as required by DP3
             ddecal_applycal_steps = f"[{','.join(ddecal_applycal_steps)}]"
@@ -206,127 +235,129 @@ class CalibrateDD(Operation):
             normalize_h5parm = None
             ddecal_applycal_steps = None
             applycal_steps = None
-        if (
-            self.field.fast_phases_h5parm_filename is not None and
-            os.path.exists(self.field.fast_phases_h5parm_filename)
+        if self.field.fast_phases_h5parm_filename is not None and os.path.exists(
+            self.field.fast_phases_h5parm_filename
         ):
             fast_initialsolutions_h5parm = CWLFile(self.field.fast_phases_h5parm_filename).to_json()
         else:
             fast_initialsolutions_h5parm = None
-        if (
-            self.field.medium1_phases_h5parm_filename is not None and
-            os.path.exists(self.field.medium1_phases_h5parm_filename)
+        if self.field.medium1_phases_h5parm_filename is not None and os.path.exists(
+            self.field.medium1_phases_h5parm_filename
         ):
-            medium1_initialsolutions_h5parm = CWLFile(self.field.medium1_phases_h5parm_filename).to_json()
+            medium1_initialsolutions_h5parm = CWLFile(
+                self.field.medium1_phases_h5parm_filename
+            ).to_json()
         else:
             medium1_initialsolutions_h5parm = None
-        if (
-            self.field.medium2_phases_h5parm_filename is not None and
-            os.path.exists(self.field.medium2_phases_h5parm_filename)
+        if self.field.medium2_phases_h5parm_filename is not None and os.path.exists(
+            self.field.medium2_phases_h5parm_filename
         ):
-            medium2_initialsolutions_h5parm = CWLFile(self.field.medium2_phases_h5parm_filename).to_json()
+            medium2_initialsolutions_h5parm = CWLFile(
+                self.field.medium2_phases_h5parm_filename
+            ).to_json()
         else:
             medium2_initialsolutions_h5parm = None
-        if (
-            self.field.slow_gains_h5parm_filename is not None and
-            os.path.exists(self.field.slow_gains_h5parm_filename)
+        if self.field.slow_gains_h5parm_filename is not None and os.path.exists(
+            self.field.slow_gains_h5parm_filename
         ):
             slow_initialsolutions_h5parm = CWLFile(self.field.slow_gains_h5parm_filename).to_json()
         else:
             slow_initialsolutions_h5parm = None
 
-        self.input_parms = {'timechunk_filename': CWLDir(timechunk_filename).to_json(),
-                            'data_colname': self.field.data_colname,
-                            'starttime': starttime,
-                            'ntimes': ntimes,
-                            'solint_fast_timestep': solint_fast_timestep,
-                            'solint_medium_timestep': solint_medium_timestep,
-                            'solint_slow_timestep': solint_slow_timestep,
-                            'solint_fast_freqstep': solint_fast_freqstep,
-                            'solint_medium_freqstep': solint_medium_freqstep,
-                            'solint_slow_freqstep': solint_slow_freqstep,
-                            'fast_solutions_per_direction': fast_solutions_per_direction,
-                            'medium_solutions_per_direction': medium_solutions_per_direction,
-                            'slow_solutions_per_direction': slow_solutions_per_direction,
-                            'calibrator_patch_names': calibrator_patch_names,
-                            'calibrator_fluxes': calibrator_fluxes,
-                            'output_fast_h5parm': output_fast_h5parm,
-                            'collected_fast_h5parm': self.fast_h5parm,
-                            'output_medium1_h5parm': output_medium1_h5parm,
-                            'output_medium2_h5parm': output_medium2_h5parm,
-                            'collected_medium1_h5parm': self.medium1_h5parm,
-                            'collected_medium2_h5parm': self.medium2_h5parm,
-                            'combined_fast_medium1_h5parm': combined_fast_medium1_h5parm,
-                            'combined_fast_medium1_medium2_h5parm': combined_fast_medium1_medium2_h5parm,
-                            'output_slow_h5parm': output_slow_h5parm,
-                            'collected_slow_h5parm': self.slow_h5parm,
-                            'calibration_skymodel_file': CWLFile(calibration_skymodel_file).to_json(),
-                            'model_image_root': model_image_root,
-                            'model_image_ra_dec': model_image_ra_dec,
-                            'model_image_imsize': model_image_imsize,
-                            'model_image_cellsize': model_image_cellsize,
-                            'model_image_frequency_bandwidth': model_image_frequency_bandwidth,
-                            'num_spectral_terms': num_spectral_terms,
-                            'ra_mid': self.field.ra,
-                            'dec_mid': self.field.dec,
-                            'facet_region_width_ra': facet_region_width,
-                            'facet_region_width_dec': facet_region_width,
-                            'facet_region_file': facet_region_file,
-                            'fast_smoothness_dd_factors': fast_smoothness_dd_factors,
-                            'medium_smoothness_dd_factors': medium_smoothness_dd_factors,
-                            'slow_smoothness_dd_factors': slow_smoothness_dd_factors,
-                            'fast_smoothnessconstraint': fast_smoothnessconstraint,
-                            'slow_smoothnessconstraint': slow_smoothnessconstraint,
-                            'fast_smoothnessreffrequency': fast_smoothnessreffrequency,
-                            'fast_smoothnessrefdistance': fast_smoothnessrefdistance,
-                            'medium_smoothnessconstraint': medium_smoothnessconstraint,
-                            'medium_smoothnessreffrequency': medium_smoothnessreffrequency,
-                            'medium_smoothnessrefdistance': medium_smoothnessrefdistance,
-                            'dp3_steps': f"[{','.join(dp3_steps)}]",
-                            'ddecal_applycal_steps': ddecal_applycal_steps,
-                            'applycal_steps': applycal_steps,
-                            'bda_maxinterval': bda_maxinterval,
-                            'bda_timebase': bda_timebase,
-                            'bda_minchannels': bda_minchannels,
-                            'bda_frequencybase': bda_frequencybase,
-                            'normalize_h5parm': normalize_h5parm,
-                            'fast_initialsolutions_h5parm': fast_initialsolutions_h5parm,
-                            'medium1_initialsolutions_h5parm': medium1_initialsolutions_h5parm,
-                            'medium2_initialsolutions_h5parm': medium2_initialsolutions_h5parm,
-                            'slow_initialsolutions_h5parm': slow_initialsolutions_h5parm,
-                            'max_normalization_delta': max_normalization_delta,
-                            'scale_normalization_delta': scale_normalization_delta,
-                            'phase_center_ra': self.field.ra,
-                            'phase_center_dec': self.field.dec,
-                            'llssolver': llssolver,
-                            'maxiter': maxiter,
-                            'propagatesolutions': propagatesolutions,
-                            'solveralgorithm': solveralgorithm,
-                            'onebeamperpatch': onebeamperpatch,
-                            'stepsize': stepsize,
-                            'stepsigma': stepsigma,
-                            'tolerance': tolerance,
-                            'uvlambdamin': uvlambdamin,
-                            'parallelbaselines': parallelbaselines,
-                            'sagecalpredict': sagecalpredict,
-                            'fast_datause': fast_datause,
-                            'medium_datause': medium_datause,
-                            'slow_datause': slow_datause,
-                            'sector_bounds_deg': sector_bounds_deg,
-                            'sector_bounds_mid_deg': sector_bounds_mid_deg,
-                            'combined_h5parms': self.combined_h5parms,
-                            'fast_antennaconstraint': fast_antennaconstraint,
-                            'medium_antennaconstraint': medium_antennaconstraint,
-                            'slow_antennaconstraint': slow_antennaconstraint,
-                            'idgcal_antennaconstraint': idgcal_antennaconstraint,
-                            'output_idgcal_h5parm': output_idgcal_h5parm,
-                            'solution_combine_mode': solution_combine_mode,
-                            'solverlbfgs_dof': solverlbfgs_dof,
-                            'solverlbfgs_iter': solverlbfgs_iter,
-                            'solverlbfgs_minibatches': solverlbfgs_minibatches,
-                            'correctfreqsmearing': self.field.correct_smearing_in_calibration,
-                            'correcttimesmearing': self.field.correct_smearing_in_calibration,
-                            'max_threads': self.parset['cluster_specific']['max_threads']}
+        self.input_parms = {
+            "timechunk_filename": CWLDir(timechunk_filename).to_json(),
+            "data_colname": self.field.data_colname,
+            "starttime": starttime,
+            "ntimes": ntimes,
+            "solint_fast_timestep": solint_fast_timestep,
+            "solint_medium_timestep": solint_medium_timestep,
+            "solint_slow_timestep": solint_slow_timestep,
+            "solint_fast_freqstep": solint_fast_freqstep,
+            "solint_medium_freqstep": solint_medium_freqstep,
+            "solint_slow_freqstep": solint_slow_freqstep,
+            "fast_solutions_per_direction": fast_solutions_per_direction,
+            "medium_solutions_per_direction": medium_solutions_per_direction,
+            "slow_solutions_per_direction": slow_solutions_per_direction,
+            "calibrator_patch_names": calibrator_patch_names,
+            "calibrator_fluxes": calibrator_fluxes,
+            "output_fast_h5parm": output_fast_h5parm,
+            "collected_fast_h5parm": self.fast_h5parm,
+            "output_medium1_h5parm": output_medium1_h5parm,
+            "output_medium2_h5parm": output_medium2_h5parm,
+            "collected_medium1_h5parm": self.medium1_h5parm,
+            "collected_medium2_h5parm": self.medium2_h5parm,
+            "combined_fast_medium1_h5parm": combined_fast_medium1_h5parm,
+            "combined_fast_medium1_medium2_h5parm": combined_fast_medium1_medium2_h5parm,
+            "output_slow_h5parm": output_slow_h5parm,
+            "collected_slow_h5parm": self.slow_h5parm,
+            "calibration_skymodel_file": CWLFile(calibration_skymodel_file).to_json(),
+            "model_image_root": model_image_root,
+            "model_image_ra_dec": model_image_ra_dec,
+            "model_image_imsize": model_image_imsize,
+            "model_image_cellsize": model_image_cellsize,
+            "model_image_frequency_bandwidth": model_image_frequency_bandwidth,
+            "num_spectral_terms": num_spectral_terms,
+            "ra_mid": self.field.ra,
+            "dec_mid": self.field.dec,
+            "facet_region_width_ra": facet_region_width,
+            "facet_region_width_dec": facet_region_width,
+            "facet_region_file": facet_region_file,
+            "fast_smoothness_dd_factors": fast_smoothness_dd_factors,
+            "medium_smoothness_dd_factors": medium_smoothness_dd_factors,
+            "slow_smoothness_dd_factors": slow_smoothness_dd_factors,
+            "fast_smoothnessconstraint": fast_smoothnessconstraint,
+            "slow_smoothnessconstraint": slow_smoothnessconstraint,
+            "fast_smoothnessreffrequency": fast_smoothnessreffrequency,
+            "fast_smoothnessrefdistance": fast_smoothnessrefdistance,
+            "medium_smoothnessconstraint": medium_smoothnessconstraint,
+            "medium_smoothnessreffrequency": medium_smoothnessreffrequency,
+            "medium_smoothnessrefdistance": medium_smoothnessrefdistance,
+            "dp3_steps": f"[{','.join(dp3_steps)}]",
+            "ddecal_applycal_steps": ddecal_applycal_steps,
+            "applycal_steps": applycal_steps,
+            "bda_maxinterval": bda_maxinterval,
+            "bda_timebase": bda_timebase,
+            "bda_minchannels": bda_minchannels,
+            "bda_frequencybase": bda_frequencybase,
+            "normalize_h5parm": normalize_h5parm,
+            "fast_initialsolutions_h5parm": fast_initialsolutions_h5parm,
+            "medium1_initialsolutions_h5parm": medium1_initialsolutions_h5parm,
+            "medium2_initialsolutions_h5parm": medium2_initialsolutions_h5parm,
+            "slow_initialsolutions_h5parm": slow_initialsolutions_h5parm,
+            "max_normalization_delta": max_normalization_delta,
+            "scale_normalization_delta": scale_normalization_delta,
+            "phase_center_ra": self.field.ra,
+            "phase_center_dec": self.field.dec,
+            "llssolver": llssolver,
+            "maxiter": maxiter,
+            "propagatesolutions": propagatesolutions,
+            "solveralgorithm": solveralgorithm,
+            "onebeamperpatch": onebeamperpatch,
+            "stepsize": stepsize,
+            "stepsigma": stepsigma,
+            "tolerance": tolerance,
+            "uvlambdamin": uvlambdamin,
+            "parallelbaselines": parallelbaselines,
+            "sagecalpredict": sagecalpredict,
+            "fast_datause": fast_datause,
+            "medium_datause": medium_datause,
+            "slow_datause": slow_datause,
+            "sector_bounds_deg": sector_bounds_deg,
+            "sector_bounds_mid_deg": sector_bounds_mid_deg,
+            "combined_h5parms": self.combined_h5parms,
+            "fast_antennaconstraint": fast_antennaconstraint,
+            "medium_antennaconstraint": medium_antennaconstraint,
+            "slow_antennaconstraint": slow_antennaconstraint,
+            "idgcal_antennaconstraint": idgcal_antennaconstraint,
+            "output_idgcal_h5parm": output_idgcal_h5parm,
+            "solution_combine_mode": solution_combine_mode,
+            "solverlbfgs_dof": solverlbfgs_dof,
+            "solverlbfgs_iter": solverlbfgs_iter,
+            "solverlbfgs_minibatches": solverlbfgs_minibatches,
+            "correctfreqsmearing": self.field.correct_smearing_in_calibration,
+            "correcttimesmearing": self.field.correct_smearing_in_calibration,
+            "max_threads": self.parset["cluster_specific"]["max_threads"],
+        }
 
     def get_baselines_core(self):
         """
@@ -340,7 +371,7 @@ class CalibrateDD(Operation):
         cs = self.get_core_stations()
         non_core = [a for a in self.field.stations if a not in cs]
 
-        return '[CR]*&&;!{}'.format(';!'.join(non_core))
+        return "[CR]*&&;!{}".format(";!".join(non_core))
 
     def get_superterp_stations(self):
         """
@@ -351,11 +382,23 @@ class CalibrateDD(Operation):
         stations : list
             Station names
         """
-        if self.field.antenna == 'HBA':
-            all_st = ['CS002HBA0', 'CS003HBA0', 'CS004HBA0', 'CS005HBA0', 'CS006HBA0', 'CS007HBA0',
-                      'CS002HBA1', 'CS003HBA1', 'CS004HBA1', 'CS005HBA1', 'CS006HBA1', 'CS007HBA1']
-        elif self.field.antenna == 'LBA':
-            all_st = ['CS002LBA', 'CS003LBA', 'CS004LBA', 'CS005LBA', 'CS006LBA', 'CS007LBA']
+        if self.field.antenna == "HBA":
+            all_st = [
+                "CS002HBA0",
+                "CS003HBA0",
+                "CS004HBA0",
+                "CS005HBA0",
+                "CS006HBA0",
+                "CS007HBA0",
+                "CS002HBA1",
+                "CS003HBA1",
+                "CS004HBA1",
+                "CS005HBA1",
+                "CS006HBA1",
+                "CS007HBA1",
+            ]
+        elif self.field.antenna == "LBA":
+            all_st = ["CS002LBA", "CS003LBA", "CS004LBA", "CS005LBA", "CS006LBA", "CS007LBA"]
 
         return [a for a in all_st if a in self.field.stations]
 
@@ -373,25 +416,101 @@ class CalibrateDD(Operation):
         stations : list
             Station names
         """
-        if self.field.antenna == 'HBA':
-            all_core = ['CS001HBA0', 'CS002HBA0', 'CS003HBA0', 'CS004HBA0', 'CS005HBA0', 'CS006HBA0',
-                        'CS007HBA0', 'CS011HBA0', 'CS013HBA0', 'CS017HBA0', 'CS021HBA0', 'CS024HBA0',
-                        'CS026HBA0', 'CS028HBA0', 'CS030HBA0', 'CS031HBA0', 'CS032HBA0', 'CS101HBA0',
-                        'CS103HBA0', 'CS201HBA0', 'CS301HBA0', 'CS302HBA0', 'CS401HBA0', 'CS501HBA0',
-                        'CS001HBA1', 'CS002HBA1', 'CS003HBA1', 'CS004HBA1', 'CS005HBA1', 'CS006HBA1',
-                        'CS007HBA1', 'CS011HBA1', 'CS013HBA1', 'CS017HBA1', 'CS021HBA1', 'CS024HBA1',
-                        'CS026HBA1', 'CS028HBA1', 'CS030HBA1', 'CS031HBA1', 'CS032HBA1', 'CS101HBA1',
-                        'CS103HBA1', 'CS201HBA1', 'CS301HBA1', 'CS302HBA1', 'CS401HBA1', 'CS501HBA1']
+        if self.field.antenna == "HBA":
+            all_core = [
+                "CS001HBA0",
+                "CS002HBA0",
+                "CS003HBA0",
+                "CS004HBA0",
+                "CS005HBA0",
+                "CS006HBA0",
+                "CS007HBA0",
+                "CS011HBA0",
+                "CS013HBA0",
+                "CS017HBA0",
+                "CS021HBA0",
+                "CS024HBA0",
+                "CS026HBA0",
+                "CS028HBA0",
+                "CS030HBA0",
+                "CS031HBA0",
+                "CS032HBA0",
+                "CS101HBA0",
+                "CS103HBA0",
+                "CS201HBA0",
+                "CS301HBA0",
+                "CS302HBA0",
+                "CS401HBA0",
+                "CS501HBA0",
+                "CS001HBA1",
+                "CS002HBA1",
+                "CS003HBA1",
+                "CS004HBA1",
+                "CS005HBA1",
+                "CS006HBA1",
+                "CS007HBA1",
+                "CS011HBA1",
+                "CS013HBA1",
+                "CS017HBA1",
+                "CS021HBA1",
+                "CS024HBA1",
+                "CS026HBA1",
+                "CS028HBA1",
+                "CS030HBA1",
+                "CS031HBA1",
+                "CS032HBA1",
+                "CS101HBA1",
+                "CS103HBA1",
+                "CS201HBA1",
+                "CS301HBA1",
+                "CS302HBA1",
+                "CS401HBA1",
+                "CS501HBA1",
+            ]
             if include_nearest_remote:
-                all_core.extend(['RS106HBA0', 'RS205HBA0', 'RS305HBA0', 'RS306HBA0', 'RS503HBA0',
-                                 'RS106HBA1', 'RS205HBA1', 'RS305HBA1', 'RS306HBA1', 'RS503HBA1'])
-        elif self.field.antenna == 'LBA':
-            all_core = ['CS001LBA', 'CS002LBA', 'CS003LBA', 'CS004LBA', 'CS005LBA', 'CS006LBA',
-                        'CS007LBA', 'CS011LBA', 'CS013LBA', 'CS017LBA', 'CS021LBA', 'CS024LBA',
-                        'CS026LBA', 'CS028LBA', 'CS030LBA', 'CS031LBA', 'CS032LBA', 'CS101LBA',
-                        'CS103LBA', 'CS201LBA', 'CS301LBA', 'CS302LBA', 'CS401LBA', 'CS501LBA']
+                all_core.extend(
+                    [
+                        "RS106HBA0",
+                        "RS205HBA0",
+                        "RS305HBA0",
+                        "RS306HBA0",
+                        "RS503HBA0",
+                        "RS106HBA1",
+                        "RS205HBA1",
+                        "RS305HBA1",
+                        "RS306HBA1",
+                        "RS503HBA1",
+                    ]
+                )
+        elif self.field.antenna == "LBA":
+            all_core = [
+                "CS001LBA",
+                "CS002LBA",
+                "CS003LBA",
+                "CS004LBA",
+                "CS005LBA",
+                "CS006LBA",
+                "CS007LBA",
+                "CS011LBA",
+                "CS013LBA",
+                "CS017LBA",
+                "CS021LBA",
+                "CS024LBA",
+                "CS026LBA",
+                "CS028LBA",
+                "CS030LBA",
+                "CS031LBA",
+                "CS032LBA",
+                "CS101LBA",
+                "CS103LBA",
+                "CS201LBA",
+                "CS301LBA",
+                "CS302LBA",
+                "CS401LBA",
+                "CS501LBA",
+            ]
             if include_nearest_remote:
-                all_core.extend(['RS106LBA', 'RS205LBA', 'RS305LBA', 'RS306LBA', 'RS503LBA'])
+                all_core.extend(["RS106LBA", "RS205LBA", "RS305LBA", "RS306LBA", "RS503LBA"])
 
         return [a for a in all_core if a in self.field.stations]
 
@@ -416,30 +535,34 @@ class CalibrateDD(Operation):
         # LOFAR frequencies, but the exact value is not important since the bandwidth does
         # not have any effect on the processing done in Rapthor
         skymodel = lsmtool.load(self.field.calibration_skymodel_file)
-        if 'ReferenceFrequency' in skymodel.getColNames():
+        if "ReferenceFrequency" in skymodel.getColNames():
             # Each source can have its own reference frequency, so use the median over all
             # sources
-            ref_freq = np.median(skymodel.getColValues('ReferenceFrequency'))  # Hz
+            ref_freq = np.median(skymodel.getColValues("ReferenceFrequency"))  # Hz
         else:
-            ref_freq = skymodel.table.meta['ReferenceFrequency']  # Hz
+            ref_freq = skymodel.table.meta["ReferenceFrequency"]  # Hz
         frequency_bandwidth = [ref_freq, 1e6]  # Hz
 
         # Set the image coordinates, size, and cellsize
         if self.index == 1:
             # For initial cycle, assume center is the field center
             center_coords = [self.field.ra, self.field.dec]
-            if hasattr(self.field, 'full_field_sector'):
+            if hasattr(self.field, "full_field_sector"):
                 # Sky model generated in initial image step
                 cellsize = self.field.full_field_sector.cellsize_deg  # deg/pixel
                 size = self.field.full_field_sector.imsize  # [xsize, ysize] in pixels
             else:
                 # Sky model generated externally. Use the cellsize defined for imaging and
                 # analyze the sky model to find its extent
-                cellsize = self.parset['imaging_specific']['cellsize_arcsec'] / 3600  # deg/pixel
-                source_dict = {name: [ra, dec] for name, ra, dec in
-                               zip(skymodel.getColValues('Name'),
-                                   skymodel.getColValues('RA'),
-                                   skymodel.getColValues('Dec'))}
+                cellsize = self.parset["imaging_specific"]["cellsize_arcsec"] / 3600  # deg/pixel
+                source_dict = {
+                    name: [ra, dec]
+                    for name, ra, dec in zip(
+                        skymodel.getColValues("Name"),
+                        skymodel.getColValues("RA"),
+                        skymodel.getColValues("Dec"),
+                    )
+                }
                 _, source_distances = self.field.get_source_distances(source_dict)  # deg
                 radius = int(np.max(source_distances) / cellsize)  # pixels
                 size = [radius * 2, radius * 2]  # pixels
@@ -448,9 +571,15 @@ class CalibrateDD(Operation):
             # of the bounding box of all imaging sectors (note that this bounding box
             # includes a 20% padding, so it should include all model components, even
             # those on the very edge of a sector)
-            cellsize = self.parset['imaging_specific']['cellsize_arcsec'] / 3600  # deg/pixel
-            center_coords = [self.field.sector_bounds_mid_ra, self.field.sector_bounds_mid_dec]  # deg
-            size = [int(self.field.sector_bounds_width_ra / cellsize), int(self.field.sector_bounds_width_dec / cellsize)]  # pixels
+            cellsize = self.parset["imaging_specific"]["cellsize_arcsec"] / 3600  # deg/pixel
+            center_coords = [
+                self.field.sector_bounds_mid_ra,
+                self.field.sector_bounds_mid_dec,
+            ]  # deg
+            size = [
+                int(self.field.sector_bounds_width_ra / cellsize),
+                int(self.field.sector_bounds_width_dec / cellsize),
+            ]  # pixels
 
         # Convert RA and Dec to strings (required by WSClean)
         center_coords = lsmtool.utils.format_coordinates(*center_coords)
@@ -462,48 +591,79 @@ class CalibrateDD(Operation):
         Finalize this operation
         """
         # Copy the solutions (h5parm files) and report the flagged fraction
-        dst_dir = os.path.join(self.parset['dir_working'], 'solutions', 'calibrate_{}'.format(self.index))
+        dst_dir = os.path.join(
+            self.parset["dir_working"], "solutions", "calibrate_{}".format(self.index)
+        )
         os.makedirs(dst_dir, exist_ok=True)
-        self.field.h5parm_filename = os.path.join(dst_dir, 'field-solutions.h5')
-        self.field.fast_phases_h5parm_filename = os.path.join(dst_dir, 'field-solutions-fast-phase.h5')
-        self.field.medium1_phases_h5parm_filename = os.path.join(dst_dir, 'field-solutions-medium1-phase.h5')
-        self.field.medium2_phases_h5parm_filename = os.path.join(dst_dir, 'field-solutions-medium2-phase.h5')
-        self.field.slow_gains_h5parm_filename = os.path.join(dst_dir, 'field-solutions-slow-gain.h5')
+        self.field.h5parm_filename = os.path.join(dst_dir, "field-solutions.h5")
+        self.field.fast_phases_h5parm_filename = os.path.join(
+            dst_dir, "field-solutions-fast-phase.h5"
+        )
+        self.field.medium1_phases_h5parm_filename = os.path.join(
+            dst_dir, "field-solutions-medium1-phase.h5"
+        )
+        self.field.medium2_phases_h5parm_filename = os.path.join(
+            dst_dir, "field-solutions-medium2-phase.h5"
+        )
+        self.field.slow_gains_h5parm_filename = os.path.join(
+            dst_dir, "field-solutions-slow-gain.h5"
+        )
         if os.path.exists(self.field.h5parm_filename):
             os.remove(self.field.h5parm_filename)
         if self.field.generate_screens:
             # IDGCal (screens) only gives a combined h5parm, regardless of the type of solve
-            shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_h5parms),
-                        os.path.join(dst_dir, self.field.h5parm_filename))
+            shutil.copy(
+                os.path.join(self.pipeline_working_dir, self.combined_h5parms),
+                os.path.join(dst_dir, self.field.h5parm_filename),
+            )
         elif self.field.do_slowgain_solve:
-            shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_h5parms),
-                        os.path.join(dst_dir, self.field.h5parm_filename))
-            shutil.copy(os.path.join(self.pipeline_working_dir, self.slow_h5parm),
-                        os.path.join(dst_dir, self.field.slow_gains_h5parm_filename))
-            shutil.copy(os.path.join(self.pipeline_working_dir, self.medium1_h5parm),
-                        os.path.join(dst_dir, self.field.medium1_phases_h5parm_filename))
-            shutil.copy(os.path.join(self.pipeline_working_dir, self.medium2_h5parm),
-                        os.path.join(dst_dir, self.field.medium2_phases_h5parm_filename))
-            shutil.copy(os.path.join(self.pipeline_working_dir, self.fast_h5parm),
-                        os.path.join(dst_dir, self.field.fast_phases_h5parm_filename))
+            shutil.copy(
+                os.path.join(self.pipeline_working_dir, self.combined_h5parms),
+                os.path.join(dst_dir, self.field.h5parm_filename),
+            )
+            shutil.copy(
+                os.path.join(self.pipeline_working_dir, self.slow_h5parm),
+                os.path.join(dst_dir, self.field.slow_gains_h5parm_filename),
+            )
+            shutil.copy(
+                os.path.join(self.pipeline_working_dir, self.medium1_h5parm),
+                os.path.join(dst_dir, self.field.medium1_phases_h5parm_filename),
+            )
+            shutil.copy(
+                os.path.join(self.pipeline_working_dir, self.medium2_h5parm),
+                os.path.join(dst_dir, self.field.medium2_phases_h5parm_filename),
+            )
+            shutil.copy(
+                os.path.join(self.pipeline_working_dir, self.fast_h5parm),
+                os.path.join(dst_dir, self.field.fast_phases_h5parm_filename),
+            )
         else:
             # The h5parm with the full, combined solutions is also the fast-phases
             # h5parm
-            shutil.copy(os.path.join(self.pipeline_working_dir, self.fast_h5parm),
-                        os.path.join(dst_dir, self.field.h5parm_filename))
-            shutil.copy(os.path.join(self.pipeline_working_dir, self.fast_h5parm),
-                        os.path.join(dst_dir, self.field.fast_phases_h5parm_filename))
+            shutil.copy(
+                os.path.join(self.pipeline_working_dir, self.fast_h5parm),
+                os.path.join(dst_dir, self.field.h5parm_filename),
+            )
+            shutil.copy(
+                os.path.join(self.pipeline_working_dir, self.fast_h5parm),
+                os.path.join(dst_dir, self.field.fast_phases_h5parm_filename),
+            )
         self.field.scan_h5parms()  # verify h5parm and update flags for predict/image operations
-        solsetname = 'coefficients000' if self.field.generate_screens else 'sol000'
-        flagged_frac = misc.get_flagged_solution_fraction(self.field.h5parm_filename, solsetname=solsetname)
-        self.log.info('Fraction of solutions that are flagged = %.2f', flagged_frac)
-        self.field.calibration_diagnostics.append({'cycle_number': self.index,
-                                                   'solution_flagged_fraction': flagged_frac})
+        solsetname = "coefficients000" if self.field.generate_screens else "sol000"
+        flagged_frac = misc.get_flagged_solution_fraction(
+            self.field.h5parm_filename, solsetname=solsetname
+        )
+        self.log.info("Fraction of solutions that are flagged = %.2f", flagged_frac)
+        self.field.calibration_diagnostics.append(
+            {"cycle_number": self.index, "solution_flagged_fraction": flagged_frac}
+        )
 
         # Copy the plots (PNG files)
-        dst_dir = os.path.join(self.parset['dir_working'], 'plots', 'calibrate_{}'.format(self.index))
+        dst_dir = os.path.join(
+            self.parset["dir_working"], "plots", "calibrate_{}".format(self.index)
+        )
         os.makedirs(dst_dir, exist_ok=True)
-        plot_filenames = glob.glob(os.path.join(self.pipeline_working_dir, '*.png'))
+        plot_filenames = glob.glob(os.path.join(self.pipeline_working_dir, "*.png"))
         for plot_filename in plot_filenames:
             dst_filename = os.path.join(dst_dir, os.path.basename(plot_filename))
             if os.path.exists(dst_filename):
@@ -518,21 +678,24 @@ class CalibrateDI(Operation):
     """
     Operation to perform direction-independent (DI) calibration of the field
     """
+
     def __init__(self, field, index):
-        super().__init__(field, index=index, name='calibrate_di')
+        super().__init__(field, index=index, name="calibrate_di")
 
     def set_parset_parameters(self):
         """
         Define parameters needed for the CWL workflow template
         """
-        if self.batch_system.startswith('slurm'):
+        if self.batch_system.startswith("slurm"):
             # For some reason, setting coresMax ResourceRequirement hints does
             # not work with SLURM
             max_cores = None
         else:
-            max_cores = self.parset['cluster_specific']['max_cores']
-        self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
-                             'max_cores': max_cores}
+            max_cores = self.parset["cluster_specific"]["max_cores"]
+        self.parset_parms = {
+            "rapthor_pipeline_dir": self.rapthor_pipeline_dir,
+            "max_cores": max_cores,
+        }
 
     def set_input_parameters(self):
         """
@@ -545,22 +708,23 @@ class CalibrateDI(Operation):
         #
         # Get the start times and number of times for the time chunks (fast and slow
         # calibration)
-        starttime_fulljones = self.field.get_obs_parameters('starttime')
-        ntimes_fulljones = self.field.get_obs_parameters('ntimes')
+        starttime_fulljones = self.field.get_obs_parameters("starttime")
+        ntimes_fulljones = self.field.get_obs_parameters("ntimes")
 
         # Get the filenames of the input files for each time chunk. These are the
         # output of the predict_di pipeline done before this calibration
-        timechunk_filename_fulljones = self.field.get_obs_parameters('predict_di_output_filename')
+        timechunk_filename_fulljones = self.field.get_obs_parameters("predict_di_output_filename")
 
         # Get the solution intervals for the calibrations
-        solint_fulljones_timestep = self.field.get_obs_parameters('solint_fulljones_timestep')
-        solint_fulljones_freqstep = self.field.get_obs_parameters('solint_fulljones_freqstep')
+        solint_fulljones_timestep = self.field.get_obs_parameters("solint_fulljones_timestep")
+        solint_fulljones_freqstep = self.field.get_obs_parameters("solint_fulljones_freqstep")
 
         # Define various output filenames for the solution tables. We save some
         # as attributes since they are needed in finalize()
-        output_h5parm_fulljones = ['fulljones_gain_{}.h5parm'.format(i)
-                                   for i in range(self.field.ntimechunks)]
-        self.collected_h5parm_fulljones = 'fulljones_gains.h5'
+        output_h5parm_fulljones = [
+            "fulljones_gain_{}.h5parm".format(i) for i in range(self.field.ntimechunks)
+        ]
+        self.collected_h5parm_fulljones = "fulljones_gains.h5"
 
         # Set the constraints used in the calibrations
         smoothnessconstraint_fulljones = self.field.smoothnessconstraint_fulljones
@@ -579,51 +743,59 @@ class CalibrateDI(Operation):
         solverlbfgs_iter = self.field.solverlbfgs_iter
         solverlbfgs_minibatches = self.field.solverlbfgs_minibatches
 
-        self.input_parms = {'timechunk_filename_fulljones': CWLDir(timechunk_filename_fulljones).to_json(),
-                            'data_colname': 'DATA',
-                            'starttime_fulljones': starttime_fulljones,
-                            'ntimes_fulljones': ntimes_fulljones,
-                            'solint_fulljones_timestep': solint_fulljones_timestep,
-                            'solint_fulljones_freqstep': solint_fulljones_freqstep,
-                            'output_h5parm_fulljones': output_h5parm_fulljones,
-                            'collected_h5parm_fulljones': self.collected_h5parm_fulljones,
-                            'smoothnessconstraint_fulljones': smoothnessconstraint_fulljones,
-                            'max_normalization_delta': max_normalization_delta,
-                            'llssolver': llssolver,
-                            'maxiter': maxiter,
-                            'propagatesolutions': propagatesolutions,
-                            'solveralgorithm': solveralgorithm,
-                            'stepsize': stepsize,
-                            'stepsigma': stepsigma,
-                            'tolerance': tolerance,
-                            'uvlambdamin': uvlambdamin,
-                            'solverlbfgs_dof': solverlbfgs_dof,
-                            'solverlbfgs_iter': solverlbfgs_iter,
-                            'solverlbfgs_minibatches': solverlbfgs_minibatches,
-                            'correctfreqsmearing': self.field.correct_smearing_in_calibration,
-                            'correcttimesmearing': self.field.correct_smearing_in_calibration,
-                            'max_threads': self.parset['cluster_specific']['max_threads']}
+        self.input_parms = {
+            "timechunk_filename_fulljones": CWLDir(timechunk_filename_fulljones).to_json(),
+            "data_colname": "DATA",
+            "starttime_fulljones": starttime_fulljones,
+            "ntimes_fulljones": ntimes_fulljones,
+            "solint_fulljones_timestep": solint_fulljones_timestep,
+            "solint_fulljones_freqstep": solint_fulljones_freqstep,
+            "output_h5parm_fulljones": output_h5parm_fulljones,
+            "collected_h5parm_fulljones": self.collected_h5parm_fulljones,
+            "smoothnessconstraint_fulljones": smoothnessconstraint_fulljones,
+            "max_normalization_delta": max_normalization_delta,
+            "llssolver": llssolver,
+            "maxiter": maxiter,
+            "propagatesolutions": propagatesolutions,
+            "solveralgorithm": solveralgorithm,
+            "stepsize": stepsize,
+            "stepsigma": stepsigma,
+            "tolerance": tolerance,
+            "uvlambdamin": uvlambdamin,
+            "solverlbfgs_dof": solverlbfgs_dof,
+            "solverlbfgs_iter": solverlbfgs_iter,
+            "solverlbfgs_minibatches": solverlbfgs_minibatches,
+            "correctfreqsmearing": self.field.correct_smearing_in_calibration,
+            "correcttimesmearing": self.field.correct_smearing_in_calibration,
+            "max_threads": self.parset["cluster_specific"]["max_threads"],
+        }
 
     def finalize(self):
         """
         Finalize this operation
         """
         # Copy the solutions (h5parm file) and report the flagged fraction
-        dst_dir = os.path.join(self.parset['dir_working'], 'solutions', 'calibrate_di_{}'.format(self.index))
+        dst_dir = os.path.join(
+            self.parset["dir_working"], "solutions", "calibrate_di_{}".format(self.index)
+        )
         os.makedirs(dst_dir, exist_ok=True)
-        self.field.fulljones_h5parm_filename = os.path.join(dst_dir, 'fulljones-solutions.h5')
+        self.field.fulljones_h5parm_filename = os.path.join(dst_dir, "fulljones-solutions.h5")
         if os.path.exists(self.field.fulljones_h5parm_filename):
             os.remove(self.field.fulljones_h5parm_filename)
-        shutil.copy(os.path.join(self.pipeline_working_dir, self.collected_h5parm_fulljones),
-                    os.path.join(dst_dir, self.field.fulljones_h5parm_filename))
+        shutil.copy(
+            os.path.join(self.pipeline_working_dir, self.collected_h5parm_fulljones),
+            os.path.join(dst_dir, self.field.fulljones_h5parm_filename),
+        )
         self.field.scan_h5parms()  # verify h5parm and update flags for predict/image operations
         flagged_frac = misc.get_flagged_solution_fraction(self.field.fulljones_h5parm_filename)
-        self.log.info('Fraction of solutions that are flagged = %.2f', flagged_frac)
+        self.log.info("Fraction of solutions that are flagged = %.2f", flagged_frac)
 
         # Copy the plots (PNG files)
-        dst_dir = os.path.join(self.parset['dir_working'], 'plots', 'calibrate_di_{}'.format(self.index))
+        dst_dir = os.path.join(
+            self.parset["dir_working"], "plots", "calibrate_di_{}".format(self.index)
+        )
         os.makedirs(dst_dir, exist_ok=True)
-        plot_filenames = glob.glob(os.path.join(self.pipeline_working_dir, '*.png'))
+        plot_filenames = glob.glob(os.path.join(self.pipeline_working_dir, "*.png"))
         for plot_filename in plot_filenames:
             dst_filename = os.path.join(dst_dir, os.path.basename(plot_filename))
             if os.path.exists(dst_filename):

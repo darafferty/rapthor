@@ -162,7 +162,7 @@ commands = [
     # test_field.py does not support parallel runs, so run sequentially.
     [
         "python", "-m", "pytest",
-        # "-m", "not slow",
+        "-m", "not integration",
         "-k", "test_field.py",
         "--cov=rapthor",
         "tests/{posargs}",
@@ -171,7 +171,7 @@ commands = [
     # Add to the existing coverage report from the run above.
     [
         "python", "-m", "pytest",
-        # "-m", "not slow",
+        "-m", "not integration",
         "-n", "4",
         "-k", "not test_field.py",
         "--cov-report", "term-missing",
@@ -214,6 +214,7 @@ format_targets = [
     "rapthor/lib/cwl.py",
     "rapthor/lib/cwlrunner.py",
     "rapthor/lib/parset.py",
+    "rapthor/operations/calibrate.py",
     "rapthor/operations/image.py",
     "rapthor/process.py",
     "rapthor/scripts/calculate_image_diagnostics.py",

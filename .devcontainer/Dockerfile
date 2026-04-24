@@ -46,13 +46,11 @@ ENV LD_LIBRARY_PATH=/usr/local/lib
 
 FROM ubuntu:22.04 AS build
 
-# Build arguments - pinned by the latest commit hashes as of Jan 2026
+# Build arguments
 ARG CASACORE_COMMIT=master
 ARG EVERYBEAM_COMMIT=master
-# commit hash for WSClean as of 22-Jan-2026
-ARG WSCLEAN_COMMIT=bb0f9bd5
-# commit hash for AOFlagger as of 15-Jan-2026
-ARG AOFLAGGER_COMMIT=9a47b8c8
+ARG WSCLEAN_COMMIT=master
+ARG AOFLAGGER_COMMIT=master
 ARG IDG_COMMIT=master
 ARG SAGECAL_COMMIT=master
 ARG DP3_COMMIT=master
