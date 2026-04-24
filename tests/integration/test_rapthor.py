@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from .utils import find_step_logs, get_working_dir_from_parset, set_parset_option
+from .utils import find_step_logs, get_working_dir_from_parset
 
 
 def update_parset_path(parset_path, param_dict):
