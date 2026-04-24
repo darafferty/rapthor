@@ -251,13 +251,14 @@ run_tests:
 ### Stage: run_integration_tests
 
 run_integration_tests:
-  extends: .run_tests
+  extends: .run_tests    
   script:
     - tox -e test_integration
   coverage: '/TOTAL.*\s+(\d+%)$/'
   artifacts:
+    when: always
     paths:
-      - /tmp/ical*/work/logs
+      - ci/i/**/work/logs/**/*
 
 
 ### Stage: docs
