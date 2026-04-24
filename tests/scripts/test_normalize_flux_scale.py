@@ -7,6 +7,7 @@ from pathlib import Path
 from astropy.io import fits
 from astropy.coordinates import SkyCoord
 import astropy.units as u
+import lsmtool
 import numpy as np
 import pytest
 import rapthor.scripts.normalize_flux_scale
@@ -20,9 +21,11 @@ from rapthor.scripts.normalize_flux_scale import (
     read_source_catalog,
     main,
     _validate_source_catalog,
-    _get_survey_data,
+    _download_survey_data,
     _get_survey_coords,
+    _get_survey_metadata,
     _cross_match_sources,
+    _get_data_from_skymodel,
 )
 
 
@@ -291,6 +294,7 @@ def test_main(
     tmp_path,
     use_input_skymodel,
     true_sky_path,
+    apparent_sky_path,
     caplog,
     mocker,
     mock_survey_catalog,
@@ -319,7 +323,9 @@ def test_main(
             min_sources=5,
             weight_by_flux_err=False,  # Whether to weight by flux error
             ignore_frequency_dependence=False,  # Whether to ignore frequency dependence,
-            reference_skymodel=true_sky_path if use_input_skymodel else None,
+            reference_skymodels=[str(true_sky_path), str(apparent_sky_path)]
+            if use_input_skymodel
+            else None,
         )
     # Check if the file is created
     assert os.path.exists(output_h5parm), f"Expected {output_h5parm} to be created."
@@ -694,7 +700,7 @@ def test_download_get_survey_data(survey, phase_center, mock_survey_catalog):
     """
     Test downloading a survey sky model and returning the data for normalization.
     """
-    survey_data = _get_survey_data(
+    survey_data = _download_survey_data(
         survey, phase_center=[np.deg2rad(phase_center[0]), np.deg2rad(phase_center[1])]
     )
 
@@ -717,7 +723,7 @@ def test_download_get_survey_data_download_fails(survey, mocker):
         "rapthor.scripts.normalize_flux_scale.lsmtool.load",
         side_effect=ConnectionError("Mocked connection error"),
     )
-    survey_data = _get_survey_data(
+    survey_data = _download_survey_data(
         survey, phase_center=[np.deg2rad(24.422081), np.deg2rad(33.159759)]
     )
     assert survey_data is None
@@ -729,7 +735,7 @@ def test_download_get_survey_data_no_sources(survey):
     """
     Test that an error is raised when no sources are found in the downloaded survey sky model.
     """
-    survey_data = _get_survey_data(
+    survey_data = _download_survey_data(
         survey, phase_center=[np.deg2rad(24.422081), np.deg2rad(33.159759)]
     )
     assert survey_data is None
@@ -755,3 +761,56 @@ def test_cross_match_sources(source_catalog, source_coords, survey_data, survey_
         source_coords, survey_coords, survey_data, spurious_match_cut=30 / 3600
     )
     assert len(survey_fluxes) == len(source_catalog)
+
+
+def test_get_survey_metadata_without_reference_skymodels(caplog):
+    """
+    Test that the _get_survey_metadata function correctly retrieves the survey metadata.
+    """
+    with caplog.at_level("INFO"):
+        survey_metadata = _get_survey_metadata()
+    assert "Using external survey catalogs for normalization" in caplog.text, (
+        "Expected log message about using external survey catalogs."
+    )
+    expected_metadata = {
+        "wenss": {
+            "flux_correction": 0.9,
+            "flux_err": 3.6e-3,
+            "frequency": 327e6,
+        },
+        "vlssr": {
+            "flux_correction": 1,
+            "flux_err": 0.1,
+            "frequency": 74e6,
+        },
+    }
+    assert survey_metadata == expected_metadata
+
+
+def test_get_survey_metadata_with_reference_skymodels(true_sky_path, caplog):
+    """
+    Test that the _get_survey_metadata function correctly retrieves the survey metadata when reference skymodels are provided.
+    """
+    with caplog.at_level("INFO"):
+        survey_metadata = _get_survey_metadata(reference_skymodels=[str(true_sky_path)])
+    expected_metadata = {
+        f"{str(true_sky_path)}": {
+            "flux_correction": 1.0,
+            "flux_err": 0.0,
+            "frequency": None,
+        }
+    }
+    assert survey_metadata == expected_metadata
+
+
+def test_get_data_from_skymodel(true_sky_model):
+    """Test data is extracted from LSMTool format skymodel."""
+    data = _get_data_from_skymodel(true_sky_model)
+
+    assert "Ra" in data.columns.names
+    assert "Dec" in data.columns.names
+    assert "I" in data.columns.names
+    assert len(data) == len(true_sky_model)
+    assert np.allclose(data["Ra"], true_sky_model.getColValues("Ra", units="degree"))
+    assert np.allclose(data["Dec"], true_sky_model.getColValues("Dec", units="degree"))
+    assert np.allclose(data["I"], true_sky_model.getColValues("I"))

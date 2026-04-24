@@ -1,11 +1,14 @@
 """Module for pytest fixtures."""
 
+import numpy as np
 from pathlib import Path
+import pytest
+import shlex
 import shutil
+import subprocess
 
 import casacore.tables as pt
-import numpy as np
-import pytest
+
 
 COMMON_STRATEGY_SETTINGS = {
     "channel_width_hz": 195312.5,
@@ -171,8 +174,6 @@ def ms_for_normalisation(tmp_path, test_ms):
         f"predict.sourcedb={skymodel_path} "
         f"msout={predicted_ms}"
     )
-    import subprocess
-    import shlex
 
     subprocess.run(shlex.split(dp3_command), check=True)
     rng = np.random.default_rng(0)

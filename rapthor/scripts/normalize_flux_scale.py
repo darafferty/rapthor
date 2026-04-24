@@ -237,7 +237,7 @@ def main(
     min_sources=5,
     weight_by_flux_err=False,
     ignore_frequency_dependence=False,
-    reference_skymodel=None,
+    reference_skymodels=None,
 ):
     """
     Calculate flux-scale normalization corrections
@@ -274,28 +274,34 @@ def main(
     ignore_frequency_dependence : bool, optional
         If True, any frequency dependence of the normalization is ignored and the
         normalization is taken as the mean over all frequencies
-    reference_skymodel : str, optional
-        Filename of a reference sky model to use for normalization (instead of external survey catalogs)
+    reference_skymodels : list of str, optional
+        Filenames of reference sky models to use for normalization (instead of external survey catalogs)
     """
-    source_catalog_data_filtered, n_chan = read_source_catalog(source_catalog)
+    source_catalog_data, n_chan = read_source_catalog(source_catalog)
     phase_center_ra, phase_center_dec = get_field_phase_center(ms_file)
-    do_normalization = _validate_source_catalog(source_catalog_data_filtered, min_sources)
+    do_normalization = _validate_source_catalog(source_catalog_data, min_sources)
     if do_normalization:
-        source_coords_filtered, source_catalog_data_filtered = filter_sources(
-            source_catalog_data_filtered,
+        source_coords_filtered, source_catalog_data = filter_sources(
+            source_catalog_data,
             phase_center_ra,
             phase_center_dec,
             radius_cut,
             major_axis_cut,
             neighbor_cut,
         )
-        do_normalization = _validate_source_catalog(source_catalog_data_filtered, min_sources)
+        do_normalization = _validate_source_catalog(source_catalog_data, min_sources)
 
     # Cross match sources with external catalogs
     if do_normalization:
+        survey_meta_data = _get_survey_metadata(reference_skymodels)
+
         survey_catalogs = []
-        for survey, metadata in SURVEY_METADATA.items():
-            survey_data = _get_survey_data(survey, [phase_center_ra, phase_center_dec])
+        for survey, metadata in survey_meta_data.items():
+            if not reference_skymodels:
+                survey_data = _download_survey_data(survey, [phase_center_ra, phase_center_dec])
+            else:
+                skymodel = lsmtool.load(survey)
+                survey_data = _get_data_from_skymodel(skymodel)
             if survey_data is None:
                 continue
             survey_coords = _get_survey_coords(survey_data)
@@ -322,7 +328,7 @@ def main(
     if do_normalization:
         # Make arrays of flux density vs. frequency for each source, for both
         # the observed fluxes and the catalog fluxes, and find the corrections
-        n_sources = len(source_catalog_data_filtered)
+        n_sources = len(source_catalog_data)
         corrections = np.zeros((n_sources, len(output_frequencies)))
         survey_frequencies = np.array([sc["frequency"] for sc in survey_catalogs])  # Hz
         for i in range(n_sources):
@@ -330,15 +336,15 @@ def main(
             rapthor_errors = []
             rapthor_frequencies = []
             for ch_ind in range(n_chan):
-                if not np.isnan(source_catalog_data_filtered[f"Total_flux_ch{ch_ind + 1}"][i]):
+                if not np.isnan(source_catalog_data[f"Total_flux_ch{ch_ind + 1}"][i]):
                     rapthor_fluxes.append(
-                        source_catalog_data_filtered[f"Total_flux_ch{ch_ind + 1}"][i]
+                        source_catalog_data[f"Total_flux_ch{ch_ind + 1}"][i]
                     )  # Jy
                     rapthor_errors.append(
-                        source_catalog_data_filtered[f"E_Total_flux_ch{ch_ind + 1}"][i]
+                        source_catalog_data[f"E_Total_flux_ch{ch_ind + 1}"][i]
                     )  # Jy
                     rapthor_frequencies.append(
-                        source_catalog_data_filtered[f"Freq_ch{ch_ind + 1}"][i]
+                        source_catalog_data[f"Freq_ch{ch_ind + 1}"][i]
                     )  # Hz
             rapthor_fluxes = np.array(rapthor_fluxes)
             rapthor_errors = np.array(rapthor_errors)
@@ -375,7 +381,7 @@ def main(
                 )
                 weights = [
                     min(1e3, 1 / err) if err > 0 else 1e3
-                    for err in source_catalog_data_filtered["E_Total_flux"][valid_fits]
+                    for err in source_catalog_data["E_Total_flux"][valid_fits]
                 ]
             else:
                 log.info("Weights will be set to 1 (i.e., no weighting by flux density errors).")
@@ -583,7 +589,7 @@ def _validate_source_catalog(source_catalog_data, min_sources):
         return True
 
 
-def _get_survey_data(survey, phase_center):
+def _download_survey_data(survey, phase_center):
     """
     Get the survey data for a given survey and frequency.
 
@@ -622,6 +628,24 @@ def _get_survey_data(survey, phase_center):
             "Flux normalization will be skipped."
         )
         return
+    return _get_data_from_skymodel(skymodel)
+
+
+def _get_data_from_skymodel(skymodel):
+    """Get the data from a sky model to use for normalization.
+
+    Loads the skymodel in LSMTool format, saves it to a temporary FITS file and
+    reads in the data from this file to get it into FITS format.
+
+    Parameters
+    ----------
+    skymodel : LSMTool skymodel
+
+    Returns
+    -------
+    survey_data : astropy.io.fits.FITS_rec
+        Data from the FITS file containing the survey catalog for this field
+    """
     with tempfile.NamedTemporaryFile() as fp:
         skymodel.write(fp.name, format="fits", clobber=True)
         with fits.open(fp.name) as hdul:
@@ -688,6 +712,39 @@ def _get_survey_coords(survey_data):
     return survey_coords
 
 
+def _get_survey_metadata(reference_skymodels=None):
+    """Get the metadata for the surveys to be used for normalization.
+
+    If reference sky models are provided as input, the metadata for these will be used
+    for normalization. Otherwise, the metadata for the external survey catalogs will be used.
+
+    Parameters
+    ----------
+    reference_skymodels : list of str
+        Filenames of reference sky models to use for normalization (instead of external survey catalogs)
+    Returns
+    -------
+    survey_metadata : dict
+        Dictionary containing the metadata for the surveys to be used for normalization. The keys are the survey
+        names and the values are dictionaries containing the metadata for each survey
+        (e.g., flux correction factor, flux error, frequency).
+    """
+    if reference_skymodels:
+        log.info(
+            "Using reference sky models provided as input for normalization, instead of external survey catalogs."
+        )
+        return {
+            survey: {"flux_correction": 1.0, "flux_err": 0.0, "frequency": None}
+            for survey in reference_skymodels
+        }
+    else:
+        log.info(
+            "Using external survey catalogs for normalization. The following surveys will be used: "
+            + ", ".join(SURVEY_METADATA.keys())
+        )
+        return {survey: metadata for survey, metadata in SURVEY_METADATA.items()}
+
+
 if __name__ == "__main__":
     descriptiontext = "Calculate flux-scale normalization corrections.\n"
 
@@ -750,5 +807,5 @@ if __name__ == "__main__":
         min_sources=args.min_sources,
         weight_by_flux_err=args.weight_by_flux_err,
         ignore_frequency_dependence=args.ignore_frequency_dependence,
-        reference_skymodel=args.reference_skymodel,
+        reference_skymodels=args.reference_skymodel,
     )

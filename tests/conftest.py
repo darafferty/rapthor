@@ -31,6 +31,8 @@ TEST_MS_ARCHIVE_DIRNAME = "tDDECal.MS"
 TEST_MS_DIRNAME = "test.ms"
 TEST_TRUE_SKYMODEL = (RESOURCE_DIR / "test_true_sky.txt").as_posix()
 TEST_APPARENT_SKYMODEL = (RESOURCE_DIR / "test_apparent_sky.txt").as_posix()
+TEST_INTEGRATION_TRUE_SKYMODEL = (RESOURCE_DIR / "integration_true_sky.txt").as_posix()
+TEST_INTEGRATION_APPARENT_SKYMODEL = (RESOURCE_DIR / "integration_apparent_sky.txt").as_posix()
 
 
 def _get_test_run_root():
@@ -197,6 +199,17 @@ def true_sky_path(tmp_path):
 
 
 @pytest.fixture
+def apparent_sky_path(tmp_path):
+    """
+    Fixture to create an apparent SkyModel for testing.
+    """
+    shutil.copy(
+        (RESOURCE_DIR / "integration_apparent_sky.txt"), tmp_path / "integration_apparent_sky.txt"
+    )
+    return Path(tmp_path / "integration_apparent_sky.txt")
+
+
+@pytest.fixture
 def true_sky_model(sky_model_path):
     """
     Fixture to provide a mock sky model from a survey for testing.
@@ -275,7 +288,11 @@ def custom_strategy(tmp_path):
 
 
 def generate_parset(
-    template_parset_path, input_ms, input_skymodel_path=None, apparent_skymodel_path=None
+    template_parset_path,
+    input_ms,
+    input_skymodel_path=None,
+    apparent_skymodel_path=None,
+    normalization_skymodel_paths=None,
 ):
     """
     Generate a complete parset from a template, optionally update the input
@@ -304,6 +321,8 @@ def generate_parset(
         Path to the input skymodel file to set in the parset.
     apparent_skymodel_path : str, optional (default=None)
         Path to the apparent skymodel file to set in the parset.
+    normalization_skymodel_paths : list of str, optional (default=None)
+        List of paths to the normalization skymodel files to set in the parset.
 
     Returns
     -------
@@ -315,6 +334,10 @@ def generate_parset(
         input_skymodel_path = REPO_ROOT_DIR / input_skymodel_path
     if apparent_skymodel_path:
         apparent_skymodel_path = REPO_ROOT_DIR / apparent_skymodel_path
+    if normalization_skymodel_paths:
+        normalization_skymodel_paths = [
+            REPO_ROOT_DIR / path for path in normalization_skymodel_paths
+        ]
 
     # Keep runtime paths short to avoid AF_UNIX socket path length limits
     # in multiprocessing-based tooling (e.g. PyBDSF). In CI, place runs under
@@ -337,6 +360,10 @@ def generate_parset(
         parset["imaging"]["astrometry_skymodel"] = str(input_skymodel_path)
     if apparent_skymodel_path:
         parset["global"]["apparent_skymodel"] = str(apparent_skymodel_path)
+    if normalization_skymodel_paths:
+        parset["imaging"]["normalization_skymodels"] = ", ".join(
+            [str(path) for path in normalization_skymodel_paths if path is not None]
+        )
     parset["cluster"].update(
         local_scratch_dir=str(scratch_dir),
         global_scratch_dir=str(scratch_dir),
@@ -345,7 +372,12 @@ def generate_parset(
 
 
 def generate_parset_path(
-    template_path, output_path, test_ms, input_skymodel_path, apparent_skymodel_path
+    template_path,
+    output_path,
+    test_ms,
+    input_skymodel_path,
+    apparent_skymodel_path,
+    normalization_skymodel_paths=None,
 ):
     """
     Fixture to generate a complete parset from a template and return the path.
@@ -363,7 +395,13 @@ def generate_parset_path(
     For further details see `generate_parset` function.
     """
     parset_path = REPO_ROOT_DIR / template_path
-    parset = generate_parset(parset_path, test_ms, input_skymodel_path, apparent_skymodel_path)
+    parset = generate_parset(
+        parset_path,
+        test_ms,
+        input_skymodel_path,
+        apparent_skymodel_path,
+        normalization_skymodel_paths,
+    )
 
     with output_path.open("w") as fp:
         parset.write(fp)
@@ -396,13 +434,31 @@ def generated_parset_path(request, tmp_path, test_ms):
         test_ms,
         input_skymodel_path,
         apparent_skymodel_path,
+        normalization_skymodel_paths=None,
     )
 
     return output_parset_path
 
 
+@pytest.fixture(
+    params=[
+        None,
+        [
+            TEST_INTEGRATION_APPARENT_SKYMODEL,
+            TEST_INTEGRATION_TRUE_SKYMODEL,
+        ],
+    ],
+    ids=["downloaded_surveys", "reference_skymodels"],
+)
+def normalization_skymodel_paths(request):
+    """Return optional normalization sky model paths for integration tests."""
+    return request.param
+
+
 @pytest.fixture
-def generated_parset_path_normalisation(request, tmp_path, ms_for_normalisation):
+def generated_parset_path_normalisation(
+    request, tmp_path, ms_for_normalisation, normalization_skymodel_paths
+):
     """
     Fixture to generate a complete parset from a template and return the path.
 
@@ -428,6 +484,7 @@ def generated_parset_path_normalisation(request, tmp_path, ms_for_normalisation)
         ms_for_normalisation,
         input_skymodel_path,
         apparent_skymodel_path,
+        normalization_skymodel_paths=normalization_skymodel_paths,
     )
 
     return output_parset_path
