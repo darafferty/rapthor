@@ -34,6 +34,8 @@ class Calibrate(Operation):
         Define parameters needed for the CWL workflow template
         """
         if self.batch_system.startswith("slurm"):
+            # For some reason, setting coresMax ResourceRequirement hints does
+            # not work with SLURM
             max_cores = None
         else:
             max_cores = self.parset["cluster_specific"]["max_cores"]
@@ -46,6 +48,8 @@ class Calibrate(Operation):
 
         # Add DD-specific parameters only when needed
         if self.mode == "dd":
+            # Set whether image-based prediction is used. Note that generation
+            # of screens (IDGCal) requires image-based prediction.
             self.use_image_based_predict = (
                 self.field.generate_screens or self.field.use_image_based_predict
             )
