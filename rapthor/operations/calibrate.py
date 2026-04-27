@@ -25,10 +25,10 @@ class Calibrate(Operation):
     """
 
     def __init__(self, mode, field, index):
-        if mode == "di":
-            super().__init__(field, index=index, name="calibrate_di")
-        else:
-            super().__init__(field, index=index, name="calibrate")
+        if mode not in ["di", "dd"]:
+            raise ValueError(f"Only di and dd mode are supported, chosen: {mode}")
+        super().__init__(field, index=index, name="calibrate_di" if mode == "di" else "calibrate")
+
         self.mode = mode
 
     def set_parset_parameters(self):
