@@ -608,10 +608,8 @@ class Calibrate(Operation):
         # set up directories for copying solutions and plots
         workdir = self.parset["dir_working"]
         plot_filenames = glob.glob(os.path.join(self.pipeline_working_dir, "*.png"))
-        base_name = "calibrate" if self.mode == "dd" else "calibrate_di"
-        run_name = f"{base_name}_{self.index}"
-        sol_dir = os.path.join(workdir, "solutions", run_name)
-        plot_dir = os.path.join(workdir, "plots", run_name)
+        sol_dir = os.path.join(workdir, "solutions", self.name)
+        plot_dir = os.path.join(workdir, "plots", self.name)
 
         # Create the directories if they don't exist
         os.makedirs(sol_dir, exist_ok=True)
