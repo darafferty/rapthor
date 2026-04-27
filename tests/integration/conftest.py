@@ -129,7 +129,6 @@ def single_loop_strategy_path_peel_bright_sources(request, tmp_path):
     return strategy_path, peel
 
 
-
 @pytest.fixture
 def single_loop_strategy_path_calibrate_di(tmp_path):
     """Fixture to generate a strategy file for a single self-calibration loop with DI calibration."""
@@ -186,4 +185,3 @@ def ms_for_normalisation(tmp_path, test_ms):
     shutil.rmtree(ms_path)
     predicted_ms.rename(ms_path)
     return ms_path
-
