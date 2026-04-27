@@ -688,13 +688,3 @@ def check_and_adjust_skymodel_settings(parset_dict):
                 diagnostic,
                 diagnostic,
             )
-
-    # If normalization skymodels are not given and internet access is not allowed,
-    # the normalization check will be skipped.
-    if parset_dict["imaging_specific"]["normalization_skymodels"] is None:
-        log.warning(
-            "Comparison sky model for normalization not provided while "
-            "`allow_internet_access` is False. The normalization will be "
-            "skipped. If you want to run the normalization, please provide a "
-            "path to the comparison sky model or allow internet access.",
-        )
