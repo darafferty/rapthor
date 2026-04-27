@@ -26,7 +26,7 @@ from rapthor.scripts.normalize_flux_scale import (
     _cross_match_sources,
     _get_data_from_skymodel,
     _sort_metadata_by_frequency,
-    _get_source_data
+    _get_source_data,
 )
 
 
@@ -865,11 +865,14 @@ def test_sort_metadata_by_frequency():
         f"Expected order {expected_order}, got {list(sorted_metadata.keys())}"
     )
 
+
 def test_get_source_data(source_catalog):
     """Test that the correct fluxes, errors and frequencies are returned"""
     n_chan = 3  # Example number of channels
     i = 0  # Example source index
-    rapthor_fluxes, rapthor_errors, rapthor_frequencies = _get_source_data(source_catalog, n_chan, i)
+    rapthor_fluxes, rapthor_errors, rapthor_frequencies = _get_source_data(
+        source_catalog, n_chan, i
+    )
     assert rapthor_fluxes.shape[0] == n_chan
     assert rapthor_errors.shape[0] == n_chan
     assert rapthor_frequencies.shape[0] == n_chan
