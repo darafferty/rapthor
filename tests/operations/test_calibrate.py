@@ -420,7 +420,7 @@ class TestCalibrate:
         assert (pipelines_path / ".done").exists()
 
     @pytest.mark.parametrize(
-        "scenario, generate_screens, use_image_based_predict, do_slowgain_solve",
+        "mode, generate_screens, use_image_based_predict, do_slowgain_solve",
         [
             ("dd", False, False, False),
             ("dd", True, False, False),
@@ -432,8 +432,8 @@ class TestCalibrate:
     )
     def test_set_input_parameters(
         self,
+        mode,
         calibrate_field,
-        scenario,
         generate_screens,
         use_image_based_predict,
         do_slowgain_solve,
@@ -442,17 +442,16 @@ class TestCalibrate:
         Test that set_input_parameters() provides exactly the inputs declared in the CWL
         template, for all flag combinations of CalibrateDD and for CalibrateDI.
         """
-        is_dd = scenario == "dd"
         f = calibrate_field
         f.generate_screens = generate_screens
         f.use_image_based_predict = use_image_based_predict
         f.do_slowgain_solve = do_slowgain_solve
 
-        calibrate = Calibrate("dd", field=f, index=1) if is_dd else CalibrateDI(field=f, index=1)
+        calibrate = Calibrate(mode=mode, field=calibrate_field, index=1 if mode == "dd" else 2)
         calibrate.set_input_parameters()
 
         rapthor_pipeline_dir = str(Path(rapthor.__file__).parent / "pipeline")
-        if is_dd:
+        if mode == "dd":
             resolved_use_image_based_predict = f.generate_screens or f.use_image_based_predict
             template_parset_parms = {
                 "use_image_based_predict": resolved_use_image_based_predict,
