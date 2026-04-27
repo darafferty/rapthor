@@ -220,6 +220,7 @@ format_targets = [
     "rapthor/operations/image.py",
     "rapthor/process.py",
     "rapthor/scripts/calculate_image_diagnostics.py",
+    "rapthor/scripts/normalize_flux_scale.py",
     "tests/__init__.py",
     "tests/conftest.py",
     "tests/cwl/__init__.py",
@@ -239,6 +240,7 @@ format_targets = [
     "tests/lib/test_strategy.py",
     "tests/operations/test_calibrate.py",
     "tests/scripts/test_calculate_image_diagnostics.py",
+    "tests/scripts/test_normalize_flux_scale.py"
 ]
 commands = [
     [
