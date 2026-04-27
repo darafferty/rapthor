@@ -48,6 +48,9 @@ average_visibilities = False
 photometry_skymodel =
 astrometry_skymodel =
 shared_facet_rw = False
+normalization_skymodels =
+normalization_reference_frequencies =
+
   
 [cluster]
 batch_system = single_machine

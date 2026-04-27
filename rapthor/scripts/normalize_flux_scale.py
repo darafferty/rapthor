@@ -337,7 +337,9 @@ def main(
         corrections = np.zeros((n_sources, len(output_frequencies)))
         survey_frequencies = np.array([sc["frequency"] for sc in survey_catalogs])  # Hz
         for i in range(n_sources):
-            rapthor_fluxes, rapthor_errors, rapthor_frequencies = _get_source_data(source_catalog_data, n_chan, i)
+            rapthor_fluxes, rapthor_errors, rapthor_frequencies = _get_source_data(
+                source_catalog_data, n_chan, i
+            )
             survey_fluxes = np.array([sc["flux"][i] for sc in survey_catalogs])  # Jy
             survey_errors = np.array([sc["flux_err"] for sc in survey_catalogs])  # Jy
             corrections[i, :] = find_normalizations(
@@ -394,9 +396,10 @@ def main(
         antenna_file, field_file, output_h5parm, output_frequencies, avg_corrections
     )
 
+
 def _get_source_data(source_catalog_data, n_chan, i):
     """Get the fluxes, errors, and frequencies for a given source from the input catalog.
-    
+
     Parameters
     ----------
     source_catalog_data : astropy.io.fits.FITS_rec
@@ -414,7 +417,7 @@ def _get_source_data(source_catalog_data, n_chan, i):
         Array of the 1-sigma errors on the source flux densities in Jy for the input
         catalog
     rapthor_frequencies : numpy array
-        Array of the frequencies in Hz corresponding to the source flux densities for   
+        Array of the frequencies in Hz corresponding to the source flux densities for
         the input catalog
     """
     rapthor_fluxes = []
@@ -422,12 +425,8 @@ def _get_source_data(source_catalog_data, n_chan, i):
     rapthor_frequencies = []
     for ch_ind in range(n_chan):
         if not np.isnan(source_catalog_data[f"Total_flux_ch{ch_ind + 1}"][i]):
-            rapthor_fluxes.append(
-                        source_catalog_data[f"Total_flux_ch{ch_ind + 1}"][i]
-                    )  # Jy
-            rapthor_errors.append(
-                        source_catalog_data[f"E_Total_flux_ch{ch_ind + 1}"][i]
-                    )  # Jy
+            rapthor_fluxes.append(source_catalog_data[f"Total_flux_ch{ch_ind + 1}"][i])  # Jy
+            rapthor_errors.append(source_catalog_data[f"E_Total_flux_ch{ch_ind + 1}"][i])  # Jy
             rapthor_frequencies.append(source_catalog_data[f"Freq_ch{ch_ind + 1}"][i])  # Hz
     rapthor_fluxes = np.array(rapthor_fluxes)
     rapthor_errors = np.array(rapthor_errors)
