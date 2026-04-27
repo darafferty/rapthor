@@ -135,7 +135,7 @@ def main(
             )
         )
 
-        # Blank pixels outside of the polygon
+        # Blank pixels outside of the polygon with zeros
         facet_data = rasterize(vertices, uncorrected_image.img_data.copy())
 
         # Apply corrections (all values in pixels)
@@ -183,8 +183,9 @@ def main(
         )
 
         # Add facet data to corrected image
-        corrected_data += rasterize(vertices, facet_data.copy())
-        sum_map += rasterize(vertices, np.ones_like(facet_data))
+        facet_mask = rasterize(vertices, np.ones_like(facet_data))
+        corrected_data += facet_mask * facet_data
+        sum_map += facet_mask
 
     # Ensure that all values in the sum map are at least one, then divide it into
     # the corrected image
