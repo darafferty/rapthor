@@ -70,28 +70,6 @@ class Calibrate(Operation):
         """
         # First set the calibration parameters for each observation
         field = self.field
-   
-        # Get various DDECal solver parameters (common to di and dd)
-        llssolver = field.llssolver
-        maxiter = field.maxiter
-        propagatesolutions = field.propagatesolutions
-        solveralgorithm = field.solveralgorithm
-        stepsize = field.stepsize
-        stepsigma = field.stepsigma
-        tolerance = field.tolerance
-        uvlambdamin = field.solve_min_uv_lambda
-        solverlbfgs_dof = field.solverlbfgs_dof
-        solverlbfgs_iter = field.solverlbfgs_iter
-        solverlbfgs_minibatches = field.solverlbfgs_minibatches
-
-        # Get various DDECal solver parameters. Most of these are the same for both fast
-        # and slow solves (dd only)
-        onebeamperpatch = field.onebeamperpatch
-        parallelbaselines = field.parallelbaselines
-        sagecalpredict = field.sagecalpredict
-        fast_datause = field.fast_datause
-        medium_datause = field.medium_datause
-        slow_datause = field.slow_datause
 
         if self.mode == "dd":
             # --- Basic observation timing + input files ---
@@ -323,23 +301,31 @@ class Calibrate(Operation):
                 "phase_center_ra": field.ra,
                 "phase_center_dec": field.dec,
 
-                "llssolver": llssolver,
-                "maxiter": maxiter,
-                "propagatesolutions": propagatesolutions,
-                "solveralgorithm": solveralgorithm,
+                # Get various DDECal solver parameters. Most of these are the same for both fast
+                # and slow solves 
+                # ------------------------------------
+                "llssolver": field.llssolver, 
+                "maxiter": field.maxiter, 
+                "propagatesolutions": field.propagatesolutions, 
+                "solveralgorithm": field.solveralgorithm, 
 
-                "onebeamperpatch": onebeamperpatch,
-                "stepsize": stepsize,
-                "stepsigma": stepsigma,
-                "tolerance": tolerance,
-                "uvlambdamin": uvlambdamin,
+                "onebeamperpatch": field.onebeamperpatch,   
+                "stepsize": field.stepsize, 
+                "stepsigma": field.stepsigma, 
+                "tolerance": field.tolerance, 
+                "uvlambdamin": field.solve_min_uv_lambda, 
 
-                "parallelbaselines": parallelbaselines,
-                "sagecalpredict": sagecalpredict,
+                "parallelbaselines": field.parallelbaselines, 
+                "sagecalpredict": field.sagecalpredict, 
 
-                "fast_datause": fast_datause,
-                "medium_datause": medium_datause,
-                "slow_datause": slow_datause,
+                "fast_datause": field.fast_datause, 
+                "medium_datause": field.medium_datause, 
+                "slow_datause": field.slow_datause, 
+                
+                "solverlbfgs_dof": field.solverlbfgs_dof, 
+                "solverlbfgs_iter": field.solverlbfgs_iter, 
+                "solverlbfgs_minibatches": field.solverlbfgs_minibatches, 
+                # ------------------------------------
 
                 "sector_bounds_deg": sector_bounds_deg,
                 "sector_bounds_mid_deg": sector_bounds_mid_deg,
@@ -354,10 +340,6 @@ class Calibrate(Operation):
                 "output_idgcal_h5parm": output_h5parm["idgcal"],
 
                 "solution_combine_mode": solution_combine_mode,
-
-                "solverlbfgs_dof": solverlbfgs_dof,
-                "solverlbfgs_iter": solverlbfgs_iter,
-                "solverlbfgs_minibatches": solverlbfgs_minibatches,
 
                 "correctfreqsmearing": field.correct_smearing_in_calibration,
                 "correcttimesmearing": field.correct_smearing_in_calibration,
@@ -403,21 +385,31 @@ class Calibrate(Operation):
                 "collected_h5parm_fulljones": self.collected_h5parm_fulljones,
                 "smoothnessconstraint_fulljones": smoothnessconstraint_fulljones,
                 "max_normalization_delta": max_normalization_delta,
-                "llssolver": llssolver,
-                "maxiter": maxiter,
-                "propagatesolutions": propagatesolutions,
-                "solveralgorithm": solveralgorithm,
-                "stepsize": stepsize,
-                "stepsigma": stepsigma,
-                "tolerance": tolerance,
-                "uvlambdamin": uvlambdamin,
-                "solverlbfgs_dof": solverlbfgs_dof,
-                "solverlbfgs_iter": solverlbfgs_iter,
-                "solverlbfgs_minibatches": solverlbfgs_minibatches,
+
+                # Get various DDECal solver parameters. Most of these are the same for both fast
+                # and slow solves 
+                # ------------------------------------
+                "llssolver": field.llssolver, 
+                "maxiter": field.maxiter,  
+                "propagatesolutions": field.propagatesolutions, 
+                "solveralgorithm": field.solveralgorithm,  
+                "stepsize": field.stepsize,  
+                "stepsigma": field.stepsigma,  
+                "tolerance": field.tolerance,  
+                "uvlambdamin": field.solve_min_uv_lambda,  
+                "solverlbfgs_dof": field.solverlbfgs_dof,  
+                "solverlbfgs_iter": field.solverlbfgs_iter, 
+                "solverlbfgs_minibatches": field.solverlbfgs_minibatches, 
+                # ---------------------------------
+
                 "correctfreqsmearing": field.correct_smearing_in_calibration,
                 "correcttimesmearing": field.correct_smearing_in_calibration,
                 "max_threads": self.parset["cluster_specific"]["max_threads"],
             }
+
+
+
+     
 
     def _build_dp3_steps(self, bda_timebase, bda_frequencybase):
         """
