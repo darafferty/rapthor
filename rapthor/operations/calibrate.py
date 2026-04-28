@@ -145,7 +145,7 @@ class Calibrate(Operation):
                 model_image_ra_dec,
                 model_image_imsize,
                 model_image_cellsize,
-            ) = self.get_model_image_parameters()
+            ) = self._get_model_image_parameters()
 
             facet_region_width = max(model_image_imsize) * model_image_cellsize * 1.2  # deg
             facet_region_file = "field_facets_ds9.reg"
@@ -185,7 +185,7 @@ class Calibrate(Operation):
             medium_smoothnessrefdistance = field.medium_smoothnessrefdistance
 
             # Antenna constraints
-            core_stations = self.get_core_stations()
+            core_stations = self._get_core_stations()
             fast_antennaconstraint = f"[[{','.join(core_stations)}]]" if core_stations else "[]"
             medium_antennaconstraint = fast_antennaconstraint  # ???
             slow_antennaconstraint = "[]"
@@ -484,7 +484,7 @@ class Calibrate(Operation):
             "slow_initialsolutions_h5parm": slow_initialsolutions_h5parm,
         }
 
-    def get_baselines_core(self):
+    def _get_baselines_core(self):
         """
         Returns DPPP string of baseline selection for core calibration
 
@@ -493,12 +493,12 @@ class Calibrate(Operation):
         baselines : str
             Baseline selection string
         """
-        cs = self.get_core_stations()
+        cs = self._get_core_stations()
         non_core = [a for a in self.field.stations if a not in cs]
 
         return "[CR]*&&;!{}".format(";!".join(non_core))
 
-    def get_superterp_stations(self):
+    def _get_superterp_stations(self):
         """
         Returns list of superterp station names
 
@@ -527,7 +527,7 @@ class Calibrate(Operation):
 
         return [a for a in all_st if a in self.field.stations]
 
-    def get_core_stations(self, include_nearest_remote=True):
+    def _get_core_stations(self, include_nearest_remote=True):
         """
         Returns list of station names for core calibration
 
@@ -639,7 +639,7 @@ class Calibrate(Operation):
 
         return [a for a in all_core if a in self.field.stations]
 
-    def get_model_image_parameters(self):
+    def _get_model_image_parameters(self):
         """
         Returns parameters needed for image-based predict
 
@@ -711,13 +711,11 @@ class Calibrate(Operation):
 
         return frequency_bandwidth, center_coords, size, cellsize
 
-    
     @staticmethod
     def _to_cwl_json_if_exists(filepath):
         if filepath is not None and os.path.exists(filepath):
             return CWLFile(filepath).to_json()
         return None
-
 
     def finalize(self):
         """
