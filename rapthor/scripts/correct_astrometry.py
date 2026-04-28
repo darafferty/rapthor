@@ -38,8 +38,11 @@ def validate_corrections(corrections: dict) -> dict:
         Validated astrometry corrections dict
     """
     required_keys = [
-        "facet_name", "meanRAOffsetDeg", "meanDecOffsetDeg",
-        "stdRAOffsetDeg", "stdDecOffsetDeg"
+        "facet_name",
+        "meanRAOffsetDeg",
+        "meanDecOffsetDeg",
+        "stdRAOffsetDeg",
+        "stdDecOffsetDeg",
     ]
 
     for key in required_keys:
