@@ -68,10 +68,33 @@ class Calibrate(Operation):
         """
         Define the CWL workflow inputs
         """
-        if self.mode == "dd":
-            # First set the calibration parameters for each observation
-            self.field.set_obs_parameters()
+        # First set the calibration parameters for each observation
+        self.field.set_obs_parameters()
 
+        # Get various DDECal solver parameters (common to di and dd)
+        llssolver = self.field.llssolver
+        maxiter = self.field.maxiter
+        propagatesolutions = self.field.propagatesolutions
+        solveralgorithm = self.field.solveralgorithm
+        stepsize = self.field.stepsize
+        stepsigma = self.field.stepsigma
+        tolerance = self.field.tolerance
+        uvlambdamin = self.field.solve_min_uv_lambda
+        solverlbfgs_dof = self.field.solverlbfgs_dof
+        solverlbfgs_iter = self.field.solverlbfgs_iter
+        solverlbfgs_minibatches = self.field.solverlbfgs_minibatches
+
+        # Get various DDECal solver parameters. Most of these are the same for both fast
+        # and slow solves (dd only)
+        
+        onebeamperpatch = self.field.onebeamperpatch
+        parallelbaselines = self.field.parallelbaselines
+        sagecalpredict = self.field.sagecalpredict
+        fast_datause = self.field.fast_datause
+        medium_datause = self.field.medium_datause
+        slow_datause = self.field.slow_datause
+
+        if self.mode == "dd":
             # Next, get the various parameters needed by the workflow
             #
             # Get the filenames of the input files for each time chunk
@@ -92,9 +115,7 @@ class Calibrate(Operation):
 
             # Get the number of solutions per direction
             fast_solutions_per_direction = self.field.get_obs_parameters("fast_solutions_per_direction")
-            medium_solutions_per_direction = self.field.get_obs_parameters(
-                "medium_solutions_per_direction"
-            )
+            medium_solutions_per_direction = self.field.get_obs_parameters("medium_solutions_per_direction")
             slow_solutions_per_direction = self.field.get_obs_parameters("slow_solutions_per_direction")
 
             # Get the BDA (baseline-dependent averaging) parameters
@@ -105,23 +126,15 @@ class Calibrate(Operation):
 
             # Define various output filenames for the solution tables. We save some
             # as attributes since they are needed in finalize()
-            output_fast_h5parm = [
-                "fast_phase_{}.h5parm".format(i) for i in range(self.field.ntimechunks)
-            ]
+            output_fast_h5parm = ["fast_phase_{}.h5parm".format(i) for i in range(self.field.ntimechunks)]
             self.fast_h5parm = "fast_phases.h5parm"
-            output_medium1_h5parm = [
-                "medium1_phase_{}.h5parm".format(i) for i in range(self.field.ntimechunks)
-            ]
+            output_medium1_h5parm = ["medium1_phase_{}.h5parm".format(i) for i in range(self.field.ntimechunks)]
             self.medium1_h5parm = "medium1_phases.h5parm"
             combined_fast_medium1_h5parm = "combined_fast_medium1_phases.h5parm"
-            output_medium2_h5parm = [
-                "medium2_phase_{}.h5parm".format(i) for i in range(self.field.ntimechunks)
-            ]
+            output_medium2_h5parm = ["medium2_phase_{}.h5parm".format(i) for i in range(self.field.ntimechunks)]
             self.medium2_h5parm = "medium2_phases.h5parm"
             combined_fast_medium1_medium2_h5parm = "combined_fast_medium1_medium2_phases.h5parm"
-            output_slow_h5parm = [
-                "slow_gain_{}.h5parm".format(i) for i in range(self.field.ntimechunks)
-            ]
+            output_slow_h5parm = ["slow_gain_{}.h5parm".format(i) for i in range(self.field.ntimechunks)]
             self.slow_h5parm = "slow_gains.h5parm"
             output_idgcal_h5parm = [
                 "idgcal_{}.h5parm".format(i)  # TODO: chunk the solve over frequency as well as time?
@@ -180,26 +193,6 @@ class Calibrate(Operation):
             max_normalization_delta = self.field.max_normalization_delta
             scale_normalization_delta = "{}".format(self.field.scale_normalization_delta)
 
-            # Get various DDECal solver parameters. Most of these are the same for both fast
-            # and slow solves
-            llssolver = self.field.llssolver
-            maxiter = self.field.maxiter
-            propagatesolutions = self.field.propagatesolutions
-            solveralgorithm = self.field.solveralgorithm
-            onebeamperpatch = self.field.onebeamperpatch
-            stepsize = self.field.stepsize
-            stepsigma = self.field.stepsigma
-            tolerance = self.field.tolerance
-            uvlambdamin = self.field.solve_min_uv_lambda
-            parallelbaselines = self.field.parallelbaselines
-            sagecalpredict = self.field.sagecalpredict
-            solverlbfgs_dof = self.field.solverlbfgs_dof
-            solverlbfgs_iter = self.field.solverlbfgs_iter
-            solverlbfgs_minibatches = self.field.solverlbfgs_minibatches
-            fast_datause = self.field.fast_datause
-            medium_datause = self.field.medium_datause
-            slow_datause = self.field.slow_datause
-
             # Get the size of the imaging area (for use in making the a-term images)
             sector_bounds_deg = "{}".format(self.field.sector_bounds_deg)
             sector_bounds_mid_deg = "{}".format(self.field.sector_bounds_mid_deg)
@@ -210,74 +203,24 @@ class Calibrate(Operation):
             #
             # TODO: image-based predict doesn't yet work with BDA; once it does,
             # the restriction on this mode should be removed
-            all_regular = all([obs.channels_are_regular for obs in self.field.observations])
-            if (
-                (bda_timebase > 0 or bda_frequencybase > 0)
-                and all_regular
-                and not self.field.use_image_based_predict
-            ):
-                if self.field.do_slowgain_solve:
-                    dp3_steps = ["avg", "solve1", "solve2", "solve3", "solve4", "null"]
-                else:
-                    dp3_steps = ["avg", "solve1", "solve2", "null"]
-            else:
-                if self.field.do_slowgain_solve:
-                    dp3_steps = ["solve1", "solve2", "solve3", "solve4"]
-                else:
-                    dp3_steps = ["solve1", "solve2"]
-            if self.field.use_image_based_predict:
-                # Add a predict, applybeam, and applycal steps to the beginning
-                dp3_steps = (
-                    ["predict", "applybeam", "applycal"]
-                    if self.field.apply_normalizations
-                    else ["predict", "applybeam"]
-                ) + dp3_steps
+            dp3_steps = self._build_dp3_steps(bda_timebase, bda_frequencybase)
 
             # Set the DP3 applycal steps and input H5parm files depending on what
             # solutions need to be applied. Note: applycal steps are needed for
             # both the case in which applycal is part of the DDECal solve step and
             # the case in which it is a separate step that preceeds the DDECal step.
             # The latter is used when image-based predict is done
-            if self.field.apply_normalizations:
-                normalize_h5parm = CWLFile(self.field.normalize_h5parm).to_json()
-                ddecal_applycal_steps = ["normalization"]
-                applycal_steps = ["normalization"]
+            applycal_results = self._build_applycal(self.field)
+            h5parms_results = self._build_h5parms(self.field)
 
-                # Convert the lists to strings, with square brackets as required by DP3
-                ddecal_applycal_steps = f"[{','.join(ddecal_applycal_steps)}]"
-                applycal_steps = f"[{','.join(applycal_steps)}]"
-            else:
-                normalize_h5parm = None
-                ddecal_applycal_steps = None
-                applycal_steps = None
-            if self.field.fast_phases_h5parm_filename is not None and os.path.exists(
-                self.field.fast_phases_h5parm_filename
-            ):
-                fast_initialsolutions_h5parm = CWLFile(self.field.fast_phases_h5parm_filename).to_json()
-            else:
-                fast_initialsolutions_h5parm = None
-            if self.field.medium1_phases_h5parm_filename is not None and os.path.exists(
-                self.field.medium1_phases_h5parm_filename
-            ):
-                medium1_initialsolutions_h5parm = CWLFile(
-                    self.field.medium1_phases_h5parm_filename
-                ).to_json()
-            else:
-                medium1_initialsolutions_h5parm = None
-            if self.field.medium2_phases_h5parm_filename is not None and os.path.exists(
-                self.field.medium2_phases_h5parm_filename
-            ):
-                medium2_initialsolutions_h5parm = CWLFile(
-                    self.field.medium2_phases_h5parm_filename
-                ).to_json()
-            else:
-                medium2_initialsolutions_h5parm = None
-            if self.field.slow_gains_h5parm_filename is not None and os.path.exists(
-                self.field.slow_gains_h5parm_filename
-            ):
-                slow_initialsolutions_h5parm = CWLFile(self.field.slow_gains_h5parm_filename).to_json()
-            else:
-                slow_initialsolutions_h5parm = None
+            normalize_h5parm = applycal_results["normalize_h5parm"]
+            ddecal_applycal_steps = applycal_results["ddecal_applycal_steps"]
+            applycal_steps = applycal_results["applycal_steps"]
+
+            fast_initialsolutions_h5parm = h5parms_results["fast_initialsolutions_h5parm"]
+            medium1_initialsolutions_h5parm = h5parms_results["medium1_initialsolutions_h5parm"]
+            medium2_initialsolutions_h5parm = h5parms_results["medium2_initialsolutions_h5parm"]
+            slow_initialsolutions_h5parm = h5parms_results["slow_initialsolutions_h5parm"]
 
             self.input_parms = {
                 "timechunk_filename": CWLDir(timechunk_filename).to_json(),
@@ -374,8 +317,6 @@ class Calibrate(Operation):
                 "max_threads": self.parset["cluster_specific"]["max_threads"],
             }
         elif self.mode == "di":
-            # First set the calibration parameters for each observation
-            self.field.set_obs_parameters()
 
             # Next, get the various parameters needed by the workflow
             #
@@ -403,19 +344,6 @@ class Calibrate(Operation):
             smoothnessconstraint_fulljones = self.field.smoothnessconstraint_fulljones
             max_normalization_delta = self.field.max_normalization_delta
 
-            # Get various DDECal solver parameters
-            llssolver = self.field.llssolver
-            maxiter = self.field.maxiter
-            propagatesolutions = self.field.propagatesolutions
-            solveralgorithm = self.field.solveralgorithm
-            stepsize = self.field.stepsize
-            stepsigma = self.field.stepsigma
-            tolerance = self.field.tolerance
-            uvlambdamin = self.field.solve_min_uv_lambda
-            solverlbfgs_dof = self.field.solverlbfgs_dof
-            solverlbfgs_iter = self.field.solverlbfgs_iter
-            solverlbfgs_minibatches = self.field.solverlbfgs_minibatches
-
             self.input_parms = {
                 "timechunk_filename_fulljones": CWLDir(timechunk_filename_fulljones).to_json(),
                 "data_colname": "DATA",
@@ -442,6 +370,101 @@ class Calibrate(Operation):
                 "correcttimesmearing": self.field.correct_smearing_in_calibration,
                 "max_threads": self.parset["cluster_specific"]["max_threads"],
             }
+
+    def _build_dp3_steps(self, bda_timebase, bda_frequencybase):
+        """
+        Set the DDECal steps depending on whether baseline-dependent averaging is
+        activated (and supported) or not. If BDA is used, a "null" step is also added to
+        prevent the writing of the BDA data
+
+        TODO: image-based predict doesn't yet work with BDA; once it does,
+        the restriction on this mode should be removed
+        """
+
+        # Check whether all observations have regular channelization
+        all_regular = all([obs.channels_are_regular for obs in self.field.observations])
+
+        # Base solve chain depending on BDA + solver configuration
+        if (
+            (bda_timebase > 0 or bda_frequencybase > 0)
+            and all_regular
+            and not self.field.use_image_based_predict
+        ):
+            if self.field.do_slowgain_solve:
+                dp3_steps = ["avg", "solve1", "solve2", "solve3", "solve4", "null"]
+            else:
+                dp3_steps = ["avg", "solve1", "solve2", "null"]
+        else:
+            if self.field.do_slowgain_solve:
+                dp3_steps = ["solve1", "solve2", "solve3", "solve4"]
+            else:
+                dp3_steps = ["solve1", "solve2"]
+
+        # Optional image-based predict prefix
+        if self.field.use_image_based_predict:
+            # Add a predict, applybeam, and applycal steps to the beginning
+            prefix = (
+                ["predict", "applybeam", "applycal"]
+                if self.field.apply_normalizations
+                else ["predict", "applybeam"]
+            )
+            dp3_steps = prefix + dp3_steps
+
+        return dp3_steps          
+    
+    def _build_applycal(self, field):
+        """
+        Prepare DP3 applycal steps and normalization H5parm.
+        """
+        if field.apply_normalizations:
+            normalize_h5parm = self._to_cwl_json_if_exists(field.normalize_h5parm)
+
+            steps_str = "[normalization]"
+            ddecal_applycal_steps = steps_str
+            applycal_steps = steps_str
+        else:
+            normalize_h5parm = None
+            ddecal_applycal_steps = None
+            applycal_steps = None
+
+        return {
+            "normalize_h5parm": normalize_h5parm,
+            "ddecal_applycal_steps": ddecal_applycal_steps,
+            "applycal_steps": applycal_steps,
+        }
+
+
+    def _build_h5parms(self, field):
+        """
+        Prepare all initial solution H5parm files.
+        """
+        fast_initialsolutions_h5parm = self._to_cwl_json_if_exists(
+            field.fast_phases_h5parm_filename
+        )
+
+        medium1_initialsolutions_h5parm = self._to_cwl_json_if_exists(
+            field.medium1_phases_h5parm_filename
+        )
+
+        medium2_initialsolutions_h5parm = self._to_cwl_json_if_exists(
+            field.medium2_phases_h5parm_filename
+        )
+
+        slow_initialsolutions_h5parm = self._to_cwl_json_if_exists(
+            field.slow_gains_h5parm_filename
+        )
+
+        return {
+            "fast_initialsolutions_h5parm": fast_initialsolutions_h5parm,
+            "medium1_initialsolutions_h5parm": medium1_initialsolutions_h5parm,
+            "medium2_initialsolutions_h5parm": medium2_initialsolutions_h5parm,
+            "slow_initialsolutions_h5parm": slow_initialsolutions_h5parm,
+        }
+    
+    def _to_cwl_json_if_exists(self, filepath):
+        if filepath is not None and os.path.exists(filepath):
+            return CWLFile(filepath).to_json()
+        return None
 
 
 
