@@ -185,7 +185,7 @@ class TestCalibrate:
         calibrate_field.antenna = antenna
         calibrate_field.stations = stations
         calibrate = Calibrate("dd", field=calibrate_field, index=1)
-        baselines = calibrate.get_baselines_core()
+        baselines = calibrate._get_baselines_core()
         assert baselines == expected
 
     @pytest.mark.parametrize(
@@ -212,7 +212,7 @@ class TestCalibrate:
         calibrate_field.antenna = antenna
         calibrate_field.stations = stations
         calibrate_dd = Calibrate("dd", field=calibrate_field, index=1)
-        assert calibrate_dd.get_superterp_stations() == expected
+        assert calibrate_dd._get_superterp_stations() == expected
 
     @pytest.mark.parametrize(
         "antenna,include_remote,stations,expected",
@@ -253,7 +253,7 @@ class TestCalibrate:
         calibrate_field.antenna = antenna
         calibrate_field.stations = stations
         calibrate_dd = Calibrate("dd", field=calibrate_field, index=1)
-        result = calibrate_dd.get_core_stations(include_nearest_remote=include_remote)
+        result = calibrate_dd._get_core_stations(include_nearest_remote=include_remote)
         assert result == expected
 
     @pytest.mark.parametrize("cycle,have_full_field_sector", [(1, False), (1, True), (2, False)])
@@ -284,7 +284,7 @@ class TestCalibrate:
         # Act
         calibrate_dd = Calibrate("dd", field, index=cycle)
         frequency_bandwidth, center_coords, size, cellsize = (
-            calibrate_dd.get_model_image_parameters()
+            calibrate_dd._get_model_image_parameters()
         )
 
         # Assert. In this test, all scenarios yield equal values, except for the size.
