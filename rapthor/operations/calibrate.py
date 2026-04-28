@@ -642,15 +642,6 @@ class Calibrate(Operation):
         super().finalize()
 
     # finalize helper functions
-    def _copy_plots(self, plot_filenames, dst_dir):
-        os.makedirs(dst_dir, exist_ok=True)
-
-        for plot_filename in plot_filenames:
-            dst_filename = os.path.join(dst_dir, os.path.basename(plot_filename))
-            if os.path.exists(dst_filename):
-                os.remove(dst_filename)
-            shutil.copy(plot_filename, dst_filename)
-
     def _copy_solutions(self, mode, dst_dir):
         """
         Copy calibration solutions into destination directory.
@@ -726,6 +717,18 @@ class Calibrate(Operation):
                 os.path.join(self.pipeline_working_dir, self.collected_h5parm_fulljones),
                 field.fulljones_h5parm_filename,
             )
+
+    @staticmethod
+    def _copy_plots(plot_filenames, dst_dir):
+        """
+        Copy plots into destination directory.
+        """
+        os.makedirs(dst_dir, exist_ok=True)
+        for plot_filename in plot_filenames:
+            dst_filename = os.path.join(dst_dir, os.path.basename(plot_filename))
+            if os.path.exists(dst_filename):
+                os.remove(dst_filename)
+            shutil.copy(plot_filename, dst_filename)
 
 
 class CalibrateDI(Operation):
