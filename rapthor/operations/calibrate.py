@@ -604,7 +604,7 @@ class Calibrate(Operation):
         """
         Finalize this operation
         """
-        f = self.field
+        field = self.field
         # set up directories for copying solutions and plots
         workdir = self.parset["dir_working"]
         plot_filenames = glob.glob(os.path.join(self.pipeline_working_dir, "*.png"))
@@ -615,23 +615,23 @@ class Calibrate(Operation):
         os.makedirs(sol_dir, exist_ok=True)
 
         self._copy_solutions(self.mode, sol_dir)
-        f.scan_h5parms()
+        field.scan_h5parms()
 
         if self.mode == "dd":  # uses solsetname + diagnostics
-            solsetname = "coefficients000" if f.generate_screens else "sol000"
+            solsetname = "coefficients000" if field.generate_screens else "sol000"
             flagged_frac = misc.get_flagged_solution_fraction(
-                f.h5parm_filename,
+                field.h5parm_filename,
                 solsetname=solsetname,
             )
 
-            f.calibration_diagnostics.append(
+            field.calibration_diagnostics.append(
                 {
                     "cycle_number": self.index,
                     "solution_flagged_fraction": flagged_frac,
                 }
             )
         else:  # if self.mode == "di" uses fulljones file
-            flagged_frac = misc.get_flagged_solution_fraction(f.fulljones_h5parm_filename)
+            flagged_frac = misc.get_flagged_solution_fraction(field.fulljones_h5parm_filename)
         # Log the fraction of flagged solutions.
         self.log.info("Fraction of solutions that are flagged = %.2f", flagged_frac)
 
