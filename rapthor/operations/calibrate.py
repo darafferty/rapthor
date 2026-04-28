@@ -484,11 +484,6 @@ class Calibrate(Operation):
             "slow_initialsolutions_h5parm": slow_initialsolutions_h5parm,
         }
 
-    def _to_cwl_json_if_exists(self, filepath):
-        if filepath is not None and os.path.exists(filepath):
-            return CWLFile(filepath).to_json()
-        return None
-
     def get_baselines_core(self):
         """
         Returns DPPP string of baseline selection for core calibration
@@ -715,6 +710,14 @@ class Calibrate(Operation):
         center_coords = lsmtool.utils.format_coordinates(*center_coords)
 
         return frequency_bandwidth, center_coords, size, cellsize
+
+    
+    @staticmethod
+    def _to_cwl_json_if_exists(filepath):
+        if filepath is not None and os.path.exists(filepath):
+            return CWLFile(filepath).to_json()
+        return None
+
 
     def finalize(self):
         """
