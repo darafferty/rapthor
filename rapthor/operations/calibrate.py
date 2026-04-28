@@ -660,7 +660,9 @@ class Calibrate(Operation):
         if mode == "dd":
             # dd solutions
             field.h5parm_filename = os.path.join(dst_dir, "field-solutions.h5")
-            field.fast_phases_h5parm_filename = os.path.join(dst_dir, "field-solutions-fast-phase.h5")
+            field.fast_phases_h5parm_filename = os.path.join(
+                dst_dir, "field-solutions-fast-phase.h5"
+            )
             field.medium1_phases_h5parm_filename = os.path.join(
                 dst_dir, "field-solutions-medium1-phase.h5"
             )
@@ -724,8 +726,6 @@ class Calibrate(Operation):
                 os.path.join(self.pipeline_working_dir, self.collected_h5parm_fulljones),
                 field.fulljones_h5parm_filename,
             )
-        else:
-            raise ValueError(f"Unknown mode: {mode}")
 
 
 class CalibrateDI(Operation):
