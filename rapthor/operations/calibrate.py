@@ -656,73 +656,73 @@ class Calibrate(Operation):
         Copy calibration solutions into destination directory.
         mode: "dd" or "di"
         """
-        f = self.field
+        field = self.field
         if mode == "dd":
             # dd solutions
-            f.h5parm_filename = os.path.join(dst_dir, "field-solutions.h5")
-            f.fast_phases_h5parm_filename = os.path.join(dst_dir, "field-solutions-fast-phase.h5")
-            f.medium1_phases_h5parm_filename = os.path.join(
+            field.h5parm_filename = os.path.join(dst_dir, "field-solutions.h5")
+            field.fast_phases_h5parm_filename = os.path.join(dst_dir, "field-solutions-fast-phase.h5")
+            field.medium1_phases_h5parm_filename = os.path.join(
                 dst_dir, "field-solutions-medium1-phase.h5"
             )
-            f.medium2_phases_h5parm_filename = os.path.join(
+            field.medium2_phases_h5parm_filename = os.path.join(
                 dst_dir, "field-solutions-medium2-phase.h5"
             )
-            f.slow_gains_h5parm_filename = os.path.join(dst_dir, "field-solutions-slow-gain.h5")
+            field.slow_gains_h5parm_filename = os.path.join(dst_dir, "field-solutions-slow-gain.h5")
 
-            if os.path.exists(f.h5parm_filename):
-                os.remove(f.h5parm_filename)
+            if os.path.exists(field.h5parm_filename):
+                os.remove(field.h5parm_filename)
 
-            if f.generate_screens:
+            if field.generate_screens:
                 shutil.copy(
                     os.path.join(self.pipeline_working_dir, self.combined_h5parms),
-                    f.h5parm_filename,
+                    field.h5parm_filename,
                 )
 
-            elif f.do_slowgain_solve:
+            elif field.do_slowgain_solve:
                 shutil.copy(
                     os.path.join(self.pipeline_working_dir, self.combined_h5parms),
-                    f.h5parm_filename,
+                    field.h5parm_filename,
                 )
 
                 shutil.copy(
                     os.path.join(self.pipeline_working_dir, self.slow_h5parm),
-                    f.slow_gains_h5parm_filename,
+                    field.slow_gains_h5parm_filename,
                 )
 
                 shutil.copy(
                     os.path.join(self.pipeline_working_dir, self.medium1_h5parm),
-                    f.medium1_phases_h5parm_filename,
+                    field.medium1_phases_h5parm_filename,
                 )
 
                 shutil.copy(
                     os.path.join(self.pipeline_working_dir, self.medium2_h5parm),
-                    f.medium2_phases_h5parm_filename,
+                    field.medium2_phases_h5parm_filename,
                 )
 
                 shutil.copy(
                     os.path.join(self.pipeline_working_dir, self.fast_h5parm),
-                    f.fast_phases_h5parm_filename,
+                    field.fast_phases_h5parm_filename,
                 )
 
             else:
                 shutil.copy(
-                    os.path.join(self.pipeline_working_dir, self.fast_h5parm), f.h5parm_filename
+                    os.path.join(self.pipeline_working_dir, self.fast_h5parm), field.h5parm_filename
                 )
 
                 shutil.copy(
                     os.path.join(self.pipeline_working_dir, self.fast_h5parm),
-                    f.fast_phases_h5parm_filename,
+                    field.fast_phases_h5parm_filename,
                 )
 
         elif mode == "di":
             # di solutions
-            f = self.field
-            f.fulljones_h5parm_filename = os.path.join(dst_dir, "fulljones-solutions.h5")
-            if os.path.exists(f.fulljones_h5parm_filename):
-                os.remove(f.fulljones_h5parm_filename)
+            field = self.field
+            field.fulljones_h5parm_filename = os.path.join(dst_dir, "fulljones-solutions.h5")
+            if os.path.exists(field.fulljones_h5parm_filename):
+                os.remove(field.fulljones_h5parm_filename)
             shutil.copy(
                 os.path.join(self.pipeline_working_dir, self.collected_h5parm_fulljones),
-                f.fulljones_h5parm_filename,
+                field.fulljones_h5parm_filename,
             )
         else:
             raise ValueError(f"Unknown mode: {mode}")
