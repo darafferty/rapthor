@@ -17,13 +17,17 @@ from rapthor.lib.operation import Operation
 log = logging.getLogger("rapthor:calibrate")
 
 
-class CalibrateDD(Operation):
+# is do_di == True (in strategy?)then mode is "di", else "dd"
+class Calibrate(Operation):
     """
-    Operation to perform direction-dependent (DD) calibration of the field
+    Class for performing the calibration operation, which runs the CWL workflow template for calibration.
+    This class is used for both direction-dependent (DD) and direction-independent (DI) calibration, with
+    the mode specified by the "mode" parameter in the constructor.
     """
 
-    def __init__(self, field, index):
+    def __init__(self, mode, field, index):
         super().__init__(field, index=index, name="calibrate")
+        self.mode = mode
 
     def set_parset_parameters(self):
         """
@@ -36,19 +40,27 @@ class CalibrateDD(Operation):
         else:
             max_cores = self.parset["cluster_specific"]["max_cores"]
 
-        # Set whether image-based prediction is used. Note that generation of
-        # screens (IDGCal) requires image-based prediction
-        self.use_image_based_predict = (
-            self.field.generate_screens or self.field.use_image_based_predict
-        )
-
+        # Base parameters (shared by both DD and DI)
         self.parset_parms = {
             "rapthor_pipeline_dir": self.rapthor_pipeline_dir,
-            "use_image_based_predict": self.use_image_based_predict,
-            "generate_screens": self.field.generate_screens,
-            "do_slowgain_solve": self.field.do_slowgain_solve,
             "max_cores": max_cores,
         }
+
+        # Add DD-specific parameters only when needed
+        if self.mode == "dd":
+            # Set whether image-based prediction is used. Note that generation
+            # of screens (IDGCal) requires image-based prediction.
+            self.use_image_based_predict = (
+                self.field.generate_screens or self.field.use_image_based_predict
+            )
+
+            self.parset_parms.update(
+                {
+                    "use_image_based_predict": self.use_image_based_predict,
+                    "generate_screens": self.field.generate_screens,
+                    "do_slowgain_solve": self.field.do_slowgain_solve,
+                }
+            )
 
     def set_input_parameters(self):
         """

@@ -197,6 +197,7 @@ commands = [
 ]
 
 [tool.tox.env.lint]
+skip_install = true
 deps = "ruff"
 commands = [
     [
@@ -209,6 +210,7 @@ commands = [
 ]
 
 [tool.tox.env.format]
+skip_install = true
 deps = "ruff"
 format_targets = [
     "rapthor/lib/cwl.py",
