@@ -631,7 +631,7 @@ def check_and_adjust_skymodel_settings(parset_dict):
             "warning can be ignored."
         )
 
-    # If `astrometry_skymodel`, `photometry_skymodel`, or `normalization_skymodels` is given, check if the
+    # If `astrometry_skymodel` or `photometry_skymodel` is given, check if the
     # file exists, if not raise an error.
     for diagnostic in ("astrometry", "photometry"):
         if (
@@ -680,9 +680,9 @@ def check_and_adjust_skymodel_settings(parset_dict):
     for diagnostic in ("astrometry", "photometry"):
         if parset_dict["imaging_specific"][f"{diagnostic}_skymodel"] is None:
             log.warning(
-                "Comparison sky model for %s not provided while "
-                "`allow_internet_access` is False. The %s will be "
-                "skipped. If you want to run the %s, please provide a "
+                "Comparison sky model for %s check not provided while "
+                "`allow_internet_access` is False. The %s check will be "
+                "skipped. If you want to run the %s check, please provide a "
                 "path to the comparison sky model or allow internet access.",
                 diagnostic,
                 diagnostic,

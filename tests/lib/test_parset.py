@@ -369,7 +369,7 @@ class TestCheckSkymodelSettings(unittest.TestCase):
             with self.assertLogs(logger="rapthor:parset", level="WARN") as cm:
                 check_and_adjust_skymodel_settings(parset_dict)
 
-            self.assertTrue(any("The photometry will be skipped" in msg for msg in cm.output))
+            self.assertTrue(any("The photometry check will be skipped" in msg for msg in cm.output))
 
     def test_photometry_skymodel_exists_no_internet_ok(self):
         with tempfile.NamedTemporaryFile(suffix=".skymodel") as f:
@@ -384,7 +384,7 @@ class TestCheckSkymodelSettings(unittest.TestCase):
             with self.assertLogs(logger="rapthor:parset", level="WARN") as cm:
                 check_and_adjust_skymodel_settings(parset_dict)
 
-            self.assertTrue(any("The astrometry will be skipped" in msg for msg in cm.output))
+            self.assertTrue(any("The astrometry check will be skipped" in msg for msg in cm.output))
 
     def test_normalization_skymodel_exists_no_internet_ok(self):
         with tempfile.NamedTemporaryFile(suffix=".skymodel") as f:
@@ -462,8 +462,8 @@ class TestCheckSkymodelSettings(unittest.TestCase):
         with self.assertLogs(logger="rapthor:parset", level="WARN") as cm:
             check_and_adjust_skymodel_settings(parset_dict)
 
-        self.assertTrue(any("The astrometry will be skipped" in msg for msg in cm.output))
-        self.assertTrue(any("The photometry will be skipped" in msg for msg in cm.output))
+        self.assertTrue(any("The astrometry check will be skipped" in msg for msg in cm.output))
+        self.assertTrue(any("The photometry check will be skipped" in msg for msg in cm.output))
 
 
 if __name__ == "__main__":
