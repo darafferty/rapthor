@@ -86,7 +86,8 @@ class Mosaic(Operation):
                         getattr(self.field.imaging_sectors[0], image_name)
                     )
             else:
-                # No imaging sectors
+                # No imaging sectors. None is used to indicate this in the loop over image names
+                # in the finalize() method
                 self.mosaic_filename.append(None)
         else:
             for image_name in self.image_names:
