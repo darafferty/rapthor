@@ -1,6 +1,7 @@
 import configparser
 from pathlib import Path
 
+
 def get_working_dir_from_parset(parset_path):
     """Return dir_working from a parset file."""
     parset = configparser.ConfigParser()
