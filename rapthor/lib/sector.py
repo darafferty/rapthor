@@ -40,7 +40,7 @@ class Sector(object):
     """
     def __init__(self, name, ra, dec, width_ra, width_dec, field):
         self.name = name
-        self.log = logging.getLogger('rapthor:{0}'.format(self.name))
+        self.log = logging.getLogger(f'rapthor:{self.name}')
         if type(ra) is str:
             ra = Angle(ra).to('deg').value
         if type(dec) is str:
@@ -74,8 +74,8 @@ class Sector(object):
         for obs in field.observations:
             obs.log = None  # deepcopy cannot copy the log object
             cobs = copy.deepcopy(obs)
-            obs.log = logging.getLogger('rapthor:{}'.format(obs.name))
-            cobs.log = logging.getLogger('rapthor:{}'.format(cobs.name))
+            obs.log = logging.getLogger(f'rapthor:{obs.name}')
+            cobs.log = logging.getLogger(f'rapthor:{cobs.name}')
             self.observations.append(cobs)
 
         # Define the initial sector polygon vertices
@@ -184,7 +184,7 @@ class Sector(object):
             if self.imsize[1] % 2:
                 self.imsize[1] += 1
 
-        self.wsclean_imsize = "'{0} {1}'".format(self.imsize[0], self.imsize[1])
+        self.wsclean_imsize = f"'{self.imsize[0]} {self.imsize[1]}'"
         self.log.debug('Image size is %s x %s pixels', *self.imsize)
 
         # Set the direction-dependent PSF grid (defined as [# in RA, # in Dec]):
@@ -297,9 +297,9 @@ class Sector(object):
         """
         # First check whether sky model already exists due to a previous run and attempt
         # to load it if so
-        dst_dir = os.path.join(self.field.working_dir, 'skymodels', 'predict_{}'.format(index))
+        dst_dir = os.path.join(self.field.working_dir, 'skymodels', f'predict_{index}')
         os.makedirs(dst_dir, exist_ok=True)
-        self.predict_skymodel_file = os.path.join(dst_dir, '{}_predict_skymodel.txt'.format(self.name))
+        self.predict_skymodel_file = os.path.join(dst_dir, f'{self.name}_predict_skymodel.txt')
         if os.path.exists(self.predict_skymodel_file):
             skymodel = lsmtool.load(str(self.predict_skymodel_file))
         else:
@@ -339,15 +339,15 @@ class Sector(object):
                               "ReferenceFrequency='100000000.0', MajorAxis, MinorAxis, Orientation\n"]
                 coord_strings = lsmtool.utils.format_coordinates(self.ra, self.dec, precision=6)
                 patch = self.calibration_skymodel.getPatchNames()[0]
-                dummylines.append(',,{0},{1},{2}\n'.format(patch, *coord_strings))
-                dummylines.append('s0c0,POINT,{0},{1},{2},0.00000001,'
-                                  '[0.0,0.0],false,100000000.0,,,\n'.format(patch, *coord_strings))
+                dummylines.append(f',,{patch},{coord_strings[0]},{coord_strings[1]}\n')
+                dummylines.append(f's0c0,POINT,{patch},{coord_strings[0]},{coord_strings[1]},0.00000001,'
+                                  '[0.0,0.0],false,100000000.0,,,\n')
                 with open(self.predict_skymodel_file, 'w') as f:
                     f.writelines(dummylines)
                 skymodel = lsmtool.load(str(self.predict_skymodel_file))
 
         # Save list of patches (directions) in the format written by DDECal in the h5parm
-        self.patches = ['[{}]'.format(p) for p in skymodel.getPatchNames()]
+        self.patches = [f'[{p}]' for p in skymodel.getPatchNames()]
 
         # Find nearest patch to flux-weighted center of the sector sky model
         if not self.is_outlier and not self.is_bright_source and not self.is_predict:
@@ -471,8 +471,8 @@ class Sector(object):
             RAs = vertices[0][0:-1]  # trim last point, as it is a repeat of the first
             Decs = vertices[1][0:-1]
             for x, y in zip(RAs, Decs):
-                xylist.append('[{0}deg, {1}deg]'.format(x, y))
-            lines.append('poly[{0}]\n'.format(', '.join(xylist)))
+                xylist.append(f'[{x}deg, {y}deg]')
+            lines.append(f'poly[{", ".join(xylist)}]\n')
 
             with open(outputfile, 'w') as f:
                 f.writelines(lines)
@@ -485,10 +485,9 @@ class Sector(object):
             RAs = vertices[0]
             Decs = vertices[1]
             for x, y in zip(RAs, Decs):
-                xylist.append('{0}, {1}'.format(x, y))
-            lines.append('polygon({0})\n'.format(', '.join(xylist)))
-            lines.append('point({0}, {1}) # point=cross width=2 text={{{2}}}\n'.
-                         format(self.ra, self.dec, self.name))
+                xylist.append(f'{x}, {y}')
+            lines.append(f'polygon({", ".join(xylist)})\n')
+            lines.append(f'point({self.ra}, {self.dec}) # point=cross width=2 text={{{self.name}}}\n')
 
             with open(outputfile, 'w') as f:
                 f.writelines(lines)
