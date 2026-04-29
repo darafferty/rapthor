@@ -448,6 +448,29 @@ class TestCheckSkymodelSettings(unittest.TestCase):
             with self.assertRaises(ValueError):
                 check_and_adjust_skymodel_settings(parset_dict)
 
+    def test_normalization_parameters_tuple(self):
+        with tempfile.NamedTemporaryFile(suffix=".skymodel") as f:
+            parset_dict = self._make_parset_dict(
+                cluster_specific={"allow_internet_access": False},
+                imaging_specific={
+                    "normalization_skymodels": (f.name, f.name),
+                    "normalization_reference_frequencies": (142000000.0, 142001000.0),
+                },
+            )
+            check_and_adjust_skymodel_settings(parset_dict)
+
+    def test_normalization_parameters_set_raises_error(self):
+        with tempfile.NamedTemporaryFile(suffix=".skymodel") as f:
+            parset_dict = self._make_parset_dict(
+                cluster_specific={"allow_internet_access": False},
+                imaging_specific={
+                    "normalization_skymodels": {f.name, f.name},
+                    "normalization_reference_frequencies": {142000000.0, 142001000.0},
+                },
+            )
+            with self.assertRaises(ValueError):
+                check_and_adjust_skymodel_settings(parset_dict)
+
     def test_diagnostic_skymodel_empty_no_internet_ok(self):
         parset_dict = self._make_parset_dict(
             cluster_specific={"allow_internet_access": False},
