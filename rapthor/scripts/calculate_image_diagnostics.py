@@ -22,10 +22,10 @@ from astropy.coordinates import SkyCoord
 from astropy.table import Table
 from astropy.utils import iers
 from astropy.visualization.wcsaxes import WCSAxes
+from lsmtool.facet import SquareFacet, read_ds9_region_file
 from lsmtool.operations_lib import make_wcs
 
 from rapthor.lib import miscellaneous as misc
-from rapthor.lib.facet import SquareFacet, read_ds9_region_file
 from rapthor.lib.fitsimage import FITSImage
 from rapthor.lib.observation import Observation
 
@@ -569,7 +569,9 @@ def check_astrometry(
         image_width = max(image.img_data.shape[-2:]) * abs(image.img_hdr["CDELT1"])
         max_search_cone_radius = 0.5  # deg; Pan-STARRS search limit
         width = min(max_search_cone_radius * 2, image_width)
-        facets = [SquareFacet("field", obs.ra, obs.dec, width)]
+        facets = [
+            SquareFacet("field", obs.ra, obs.dec, width, wcs_pixel_scale=misc.WCS_PIXEL_SCALE)
+        ]
 
     # Convert the filtered catalog into a minimal sky model for use with LSMTool
     s_pybdsf = fits_to_makesourcedb(catalog, image.freq)

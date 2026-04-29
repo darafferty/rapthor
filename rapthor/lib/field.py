@@ -22,13 +22,13 @@ from astropy.table import vstack
 from shapely.geometry import MultiPolygon, Point, Polygon
 
 from rapthor.lib import miscellaneous as misc
-from rapthor.lib.facet import read_ds9_region_file, read_skymodel
 from rapthor.lib.observation import Observation
 from rapthor.lib.sector import Sector
 
 matplotlib.use('Agg')
 import mocpy
 from astropy.visualization.wcsaxes import SphericalCircle
+from lsmtool.facet import read_ds9_region_file, read_skymodel
 from losoto.h5parm import h5parm
 from matplotlib.patches import Ellipse
 from matplotlib.pyplot import figure
@@ -1977,7 +1977,8 @@ class Field(object):
                                    self.sector_bounds_mid_ra,
                                    self.sector_bounds_mid_dec,
                                    max(skymodel_bounds_width_ra, sector_bounds_width_ra),
-                                   max(skymodel_bounds_width_dec, sector_bounds_width_dec))
+                                   max(skymodel_bounds_width_dec, sector_bounds_width_dec),
+                                   wcs_pixel_scale=misc.WCS_PIXEL_SCALE)
             for i, facet in enumerate(facets):
                 facet_patch = facet.get_matplotlib_patch(wcs=wcs)
                 label = 'Calibration facets' if i == 0 else None  # first only to avoid multiple lines in legend

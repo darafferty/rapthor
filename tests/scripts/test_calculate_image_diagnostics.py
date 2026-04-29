@@ -409,7 +409,7 @@ def test_check_astrometry_with_comparison_skymodel_does_not_access_internet(
         },
     )
     mocker.patch(
-        "rapthor.lib.facet.filter_skymodel",
+        "lsmtool.facet.filter_skymodel",
         side_effect=lambda polygon, sm, wcs: sm,
     )
 
@@ -478,7 +478,7 @@ def test_check_astrometry_with_no_internet_access_does_not_access_internet(
         },
     )
     mocker.patch(
-        "rapthor.lib.facet.filter_skymodel",
+        "lsmtool.facet.filter_skymodel",
         side_effect=lambda polygon, sm, wcs: sm,
     )
 
