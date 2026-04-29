@@ -200,9 +200,17 @@ skip_install = true
 deps = "ruff"
 commands = [
     [
+        # check all files for selected rules (configured in [tool.ruff.lint])
         "python", "-m", "ruff", "check",
     ],
+    # check formatting on specific files: format_targets in [tool.tox.env.format]
     [
+        # Check imports sorted
+        "python", "-m", "ruff", "check", "--select", "I",
+        { replace = "ref", of = ["tool", "tox", "env", "format", "format_targets"], extend=true },
+    ],
+    [
+        # Check general formatting
         "python", "-m", "ruff", "format", "--check", "-v",
         { replace = "ref", of = ["tool", "tox", "env", "format", "format_targets"], extend=true },
     ]
