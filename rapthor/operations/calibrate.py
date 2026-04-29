@@ -206,7 +206,7 @@ class Calibrate(Operation):
             # the case in which it is a separate step that preceeds the DDECal step.
             # The latter is used when image-based predict is done
             normalize_h5parm, applycal_results = self._build_applycal(field)
-            
+
             ddecal_applycal_steps = applycal_results["ddecal_applycal_steps"]
             applycal_steps = applycal_results["applycal_steps"]
             h5parms_results = self._build_h5parms(field)
@@ -417,6 +417,8 @@ class Calibrate(Operation):
                 else ["predict", "applybeam"]
             )
             dp3_steps = preprocessing_steps + common_steps
+        else:
+            dp3_steps = common_steps
 
         return dp3_steps
 
@@ -434,7 +436,10 @@ class Calibrate(Operation):
             ddecal_applycal_steps = None
             applycal_steps = None
 
-        return normalize_h5parm, {"ddecal_applycal_steps": ddecal_applycal_steps, "applycal_steps": applycal_steps}
+        return normalize_h5parm, {
+            "ddecal_applycal_steps": ddecal_applycal_steps,
+            "applycal_steps": applycal_steps,
+        }
 
     def _build_h5parms(self, field):
         """
