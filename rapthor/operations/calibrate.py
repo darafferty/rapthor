@@ -71,20 +71,15 @@ class Calibrate(Operation):
         # First set the calibration parameters for each observation
         field = self.field
         field.set_obs_parameters()
+        # Get the start times and number of times for the time chunks (fast and slow
+        # calibration)
+        starttime = field.get_obs_parameters("starttime")
+        ntimes = field.get_obs_parameters("ntimes")
 
         if self.mode == "dd":
-            # --- Basic observation timing + input files ---
-            # Next, get the various parameters needed by the workflow
-            #
             # Get the filenames of the input files for each time chunk
             timechunk_filename = field.get_obs_parameters("timechunk_filename")
-
-            # Get the start times and number of times for the time chunks (fast and slow
-            # calibration)
-            starttime = field.get_obs_parameters("starttime")
-            ntimes = field.get_obs_parameters("ntimes")
-
-            # Get the solution intervals for the calibrations  (maybe make a dict of these instead of separate variables?)
+            # Get the solution intervals for the calibrations
             solint_timestep = {
                 "fast": field.get_obs_parameters("solint_fast_timestep"),
                 "medium": field.get_obs_parameters("solint_medium_timestep"),
@@ -114,13 +109,13 @@ class Calibrate(Operation):
             # --- output h5parm configuration ---
             # Define various output filenames for the solution tables. We save some
             # as attributes since they are needed in finalize()
-            n = field.ntimechunks
+            num_time_chunks = field.ntimechunks
             output_h5parm = {
-                "fast": [f"fast_phase_{i}.h5parm" for i in range(n)],
-                "medium1": [f"medium1_phase_{i}.h5parm" for i in range(n)],
-                "medium2": [f"medium2_phase_{i}.h5parm" for i in range(n)],
-                "slow": [f"slow_gain_{i}.h5parm" for i in range(n)],
-                "idgcal": [f"idgcal_{i}" for i in range(n)],
+                "fast": [f"fast_phase_{i}.h5parm" for i in range(num_time_chunks)],
+                "medium1": [f"medium1_phase_{i}.h5parm" for i in range(num_time_chunks)],
+                "medium2": [f"medium2_phase_{i}.h5parm" for i in range(num_time_chunks)],
+                "slow": [f"slow_gain_{i}.h5parm" for i in range(num_time_chunks)],
+                "idgcal": [f"idgcal_{i}" for i in range(num_time_chunks)],
             }
 
             self.fast_h5parm = "fast_phases.h5parm"
@@ -202,12 +197,6 @@ class Calibrate(Operation):
             sector_bounds_mid_deg = str(field.sector_bounds_mid_deg)
 
             # --- DP3 pipeline steps ---
-            # Set the DDECal steps depending on whether baseline-dependent averaging is
-            # activated (and supported) or not. If BDA is used, a "null" step is also added to
-            # prevent the writing of the BDA data
-            #
-            # TODO: image-based predict doesn't yet work with BDA; once it does,
-            # the restriction on this mode should be removed
             dp3_steps = self._build_dp3_steps(bda_timebase, bda_frequencybase)
 
             # --- Applycal + H5parm inputs ---
@@ -216,12 +205,11 @@ class Calibrate(Operation):
             # both the case in which applycal is part of the DDECal solve step and
             # the case in which it is a separate step that preceeds the DDECal step.
             # The latter is used when image-based predict is done
-            applycal_results = self._build_applycal(field)
-            h5parms_results = self._build_h5parms(field)
-
-            normalize_h5parm = applycal_results["normalize_h5parm"]
+            normalize_h5parm, applycal_results = self._build_applycal(field)
+            
             ddecal_applycal_steps = applycal_results["ddecal_applycal_steps"]
             applycal_steps = applycal_results["applycal_steps"]
+            h5parms_results = self._build_h5parms(field)
 
             initialsolutions_h5parms = {
                 "fast": h5parms_results["fast_initialsolutions_h5parm"],
@@ -341,13 +329,6 @@ class Calibrate(Operation):
                 "max_threads": self.parset["cluster_specific"]["max_threads"],
             }
         elif self.mode == "di":
-            # Next, get the various parameters needed by the workflow
-            #
-            # Get the start times and number of times for the time chunks (fast and slow
-            # calibration)
-            starttime_fulljones = field.get_obs_parameters("starttime")
-            ntimes_fulljones = field.get_obs_parameters("ntimes")
-
             # Get the filenames of the input files for each time chunk. These are the
             # output of the predict_di pipeline done before this calibration
             timechunk_filename_fulljones = field.get_obs_parameters("predict_di_output_filename")
@@ -370,8 +351,8 @@ class Calibrate(Operation):
             self.input_parms = {
                 "timechunk_filename_fulljones": CWLDir(timechunk_filename_fulljones).to_json(),
                 "data_colname": "DATA",
-                "starttime_fulljones": starttime_fulljones,
-                "ntimes_fulljones": ntimes_fulljones,
+                "starttime_fulljones": starttime,
+                "ntimes_fulljones": ntimes,
                 "solint_fulljones_timestep": solint_fulljones_timestep,
                 "solint_fulljones_freqstep": solint_fulljones_freqstep,
                 "output_h5parm_fulljones": output_h5parm_fulljones,
@@ -418,24 +399,24 @@ class Calibrate(Operation):
             and not self.field.use_image_based_predict
         ):
             if self.field.do_slowgain_solve:
-                dp3_steps = ["avg", "solve1", "solve2", "solve3", "solve4", "null"]
+                common_steps = ["avg", "solve1", "solve2", "solve3", "solve4", "null"]
             else:
-                dp3_steps = ["avg", "solve1", "solve2", "null"]
+                common_steps = ["avg", "solve1", "solve2", "null"]
         else:
             if self.field.do_slowgain_solve:
-                dp3_steps = ["solve1", "solve2", "solve3", "solve4"]
+                common_steps = ["solve1", "solve2", "solve3", "solve4"]
             else:
-                dp3_steps = ["solve1", "solve2"]
+                common_steps = ["solve1", "solve2"]
 
         # Optional image-based predict prefix
         if self.field.use_image_based_predict:
             # Add a predict, applybeam, and applycal steps to the beginning
-            prefix = (
+            preprocessing_steps = (
                 ["predict", "applybeam", "applycal"]
                 if self.field.apply_normalizations
                 else ["predict", "applybeam"]
             )
-            dp3_steps = prefix + dp3_steps
+            dp3_steps = preprocessing_steps + common_steps
 
         return dp3_steps
 
@@ -445,7 +426,6 @@ class Calibrate(Operation):
         """
         if field.apply_normalizations:
             normalize_h5parm = self._to_cwl_json_if_exists(field.normalize_h5parm)
-
             steps_str = "[normalization]"
             ddecal_applycal_steps = steps_str
             applycal_steps = steps_str
@@ -454,11 +434,7 @@ class Calibrate(Operation):
             ddecal_applycal_steps = None
             applycal_steps = None
 
-        return {
-            "normalize_h5parm": normalize_h5parm,
-            "ddecal_applycal_steps": ddecal_applycal_steps,
-            "applycal_steps": applycal_steps,
-        }
+        return normalize_h5parm, {"ddecal_applycal_steps": ddecal_applycal_steps, "applycal_steps": applycal_steps}
 
     def _build_h5parms(self, field):
         """
