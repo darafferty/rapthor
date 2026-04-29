@@ -883,9 +883,7 @@ class ImageNormalize(Image):
                 "normalization_skymodels": None
                 if self.normalization_skymodels is None
                 else [CWLFile(filename).to_json() for filename in self.normalization_skymodels],
-                "normalization_reference_frequencies": None
-                if self.normalization_reference_frequencies is None
-                else self.normalization_reference_frequencies,
+                "normalization_reference_frequencies": self.normalization_reference_frequencies,
             }
         )
 
