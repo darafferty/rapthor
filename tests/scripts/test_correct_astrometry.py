@@ -160,6 +160,12 @@ def test_main(mock_fits_image, mock_facet_region, mock_astrometry_corrections, t
     #    Patch_3 (was at [300, 300]): +1 in x, -1 in y to [301, 299]
     with fits.open(output_image) as hdu_list:
         # Note: data axes are [STOKES, FREQ, DEC, RA]
-        assert np.isclose(hdu_list[0].data[0, 0, 101, 101], 1), "Source not at expected position."
-        assert np.isclose(hdu_list[0].data[0, 0, 201, 199], 1), "Source not at expected position."
-        assert np.isclose(hdu_list[0].data[0, 0, 299, 301], 1), "Source not at expected position."
+        assert np.isclose(hdu_list[0].data[0, 0, 101, 101], 1), (
+            "Patch_1 not shifted to expected position."
+        )
+        assert np.isclose(hdu_list[0].data[0, 0, 201, 199], 1), (
+            "Patch_2 not shifted to expected position."
+        )
+        assert np.isclose(hdu_list[0].data[0, 0, 299, 301], 1), (
+            "Patch_3 not shifted to expected position."
+        )
