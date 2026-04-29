@@ -880,9 +880,10 @@ class ImageNormalize(Image):
         super().set_input_parameters()
         self.input_parms.update(
             {
-                "normalization_skymodels": None
-                if self.normalization_skymodels is None
-                else [CWLFile(filename).to_json() for filename in self.normalization_skymodels],
+                "normalization_skymodels": [
+                    CWLFile(filename).to_json() for filename in self.normalization_skymodels or ()
+                ]
+                or None,
                 "normalization_reference_frequencies": self.normalization_reference_frequencies,
             }
         )
