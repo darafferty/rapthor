@@ -111,9 +111,7 @@ class BaseCWLRunner:
           - `stderr` -> `self.operation.pipeline_log_file`
         """
         if self.command is None:
-            raise RuntimeError(
-                "Don't know how to start CWL runner {}".format(self.__class__.__name__)
-            )
+            raise RuntimeError(f"Don't know how to start CWL runner {self.__class__.__name__}")
         args = [self.command] + self.args
         args += [self.operation.pipeline_parset_file, self.operation.pipeline_inputs_file]
 

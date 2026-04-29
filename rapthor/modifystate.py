@@ -59,14 +59,14 @@ def run(parset_file):
                 if index == 0 and opname == 'initial_image':
                     # Handle the initial sky model image operation separately, as it only
                     # occurs in the first cycle and does not include an index in its paths
-                    operation = os.path.join(parset['dir_working'], 'pipelines', '{0}'.format(opname))
+                    operation = os.path.join(parset['dir_working'], 'pipelines', f'{opname}')
                 else:
-                    operation = os.path.join(parset['dir_working'], 'pipelines', '{0}_{1}'.format(opname, index+1))
+                    operation = os.path.join(parset['dir_working'], 'pipelines', f'{opname}_{index+1}')
                 if os.path.exists(operation):
                     pipelines.append(os.path.basename(operation))
 
         # List operations and query user
-        print('\nCurrent strategy: {}'.format(field.parset['strategy']))
+        print(f"\nCurrent strategy: {field.parset['strategy']}")
         print('\nOperations:')
         i = 0
         if len(pipelines) == 0:
@@ -76,7 +76,7 @@ def run(parset_file):
         else:
             for p in pipelines:
                 i += 1
-                print('    {0}) {1}'.format(i, p))
+                print(f'    {i}) {p}')
         try:
             while True:
                 p_number_raw = input('Enter number of operation to reset or "q" to quit: ')
@@ -86,7 +86,7 @@ def run(parset_file):
                     elif int(p_number_raw) > 0 and int(p_number_raw) <= i:
                         break
                     else:
-                        print("Please enter a number between 1 and {}".format(i))
+                        print(f"Please enter a number between 1 and {i}")
                 except ValueError:
                     pass
         except KeyboardInterrupt:
@@ -96,7 +96,7 @@ def run(parset_file):
         # Ask for confirmation
         try:
             while True:
-                answer = input('Reset all operations from {} onwards (y/n)? '.format(pipeline))
+                answer = input(f'Reset all operations from {pipeline} onwards (y/n)? ')
                 if (answer.lower() == "n" or answer.lower() == "no" or
                     answer.lower() == "y" or answer.lower() == "yes"):
                     break

@@ -57,8 +57,10 @@ def concat_ms(msfiles, output_file, data_colname='DATA', concat_property="freque
     if os.path.exists(output_file):
         for msfile in msfiles:
             if os.path.samefile(msfile, output_file):
-                raise ValueError("Input Measurement Set '{0}' and output Measurement Set '{1}' "
-                                 "are the same file".format(msfile, output_file))
+                raise ValueError(
+                    f"Input Measurement Set {msfile!r} and output Measurement Set {output_file!r} "
+                    "are the same file"
+                )
         if overwrite:
             shutil.rmtree(output_file)
         else:
@@ -114,7 +116,7 @@ def concat_freq_command(msfiles, data_colname, output_file, make_dummies=True):
     chfreqs_tmp = []
     for ms in msfiles:
         # Get the frequency info
-        with pt.table(ms + "::SPECTRAL_WINDOW", ack=False) as sw:
+        with pt.table(f"{ms}::SPECTRAL_WINDOW", ack=False) as sw:
             freq = sw.col("CHAN_FREQ")[0][0]
             chfreqs = sw.col("CHAN_FREQ")[0]
             if first:
@@ -171,9 +173,9 @@ def concat_freq_command(msfiles, data_colname, output_file, make_dummies=True):
     # Construct DP3 command
     cmd = [
         "DP3",
-        "msin=[{}]".format(",".join(mslist)),
-        "msin.datacolumn={}".format(data_colname),
-        "msout={}".format(output_file),
+        f"msin=[{','.join(mslist)}]",
+        f"msin.datacolumn={data_colname}",
+        f"msout={output_file}",
         "steps=[]",
         "msin.orderms=False",
         "msin.missingdata=True",
@@ -203,9 +205,9 @@ def concat_time_command(msfiles, output_file):
         "taql",
         "select",
         "from",
-        "[{}]".format(",".join(msfiles)),
+        f"[{','.join(msfiles)}]",
         "giving",
-        "{}".format(output_file),
+        str(output_file),
         "AS",
         "PLAIN"
     ]

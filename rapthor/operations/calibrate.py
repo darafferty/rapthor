@@ -104,26 +104,18 @@ class Calibrate(Operation):
 
         # Define various output filenames for the solution tables. We save some
         # as attributes since they are needed in finalize()
-        output_fast_h5parm = [
-            "fast_phase_{}.h5parm".format(i) for i in range(self.field.ntimechunks)
-        ]
+        output_fast_h5parm = [f"fast_phase_{i}.h5parm" for i in range(self.field.ntimechunks)]
         self.fast_h5parm = "fast_phases.h5parm"
-        output_medium1_h5parm = [
-            "medium1_phase_{}.h5parm".format(i) for i in range(self.field.ntimechunks)
-        ]
+        output_medium1_h5parm = [f"medium1_phase_{i}.h5parm" for i in range(self.field.ntimechunks)]
         self.medium1_h5parm = "medium1_phases.h5parm"
         combined_fast_medium1_h5parm = "combined_fast_medium1_phases.h5parm"
-        output_medium2_h5parm = [
-            "medium2_phase_{}.h5parm".format(i) for i in range(self.field.ntimechunks)
-        ]
+        output_medium2_h5parm = [f"medium2_phase_{i}.h5parm" for i in range(self.field.ntimechunks)]
         self.medium2_h5parm = "medium2_phases.h5parm"
         combined_fast_medium1_medium2_h5parm = "combined_fast_medium1_medium2_phases.h5parm"
-        output_slow_h5parm = [
-            "slow_gain_{}.h5parm".format(i) for i in range(self.field.ntimechunks)
-        ]
+        output_slow_h5parm = [f"slow_gain_{i}.h5parm" for i in range(self.field.ntimechunks)]
         self.slow_h5parm = "slow_gains.h5parm"
         output_idgcal_h5parm = [
-            "idgcal_{}.h5parm".format(i)  # TODO: chunk the solve over frequency as well as time?
+            f"idgcal_{i}.h5parm"  # TODO: chunk the solve over frequency as well as time?
             for i in range(self.field.ntimechunks)
         ]
         self.combined_h5parms = "combined_solutions.h5"
@@ -170,14 +162,14 @@ class Calibrate(Operation):
         )
         core_stations = self.get_core_stations()
         if core_stations:
-            fast_antennaconstraint = "[[{}]]".format(",".join(core_stations))
+            fast_antennaconstraint = f"[[{','.join(core_stations)}]]"
         else:
             fast_antennaconstraint = "[]"
         medium_antennaconstraint = fast_antennaconstraint
         idgcal_antennaconstraint = "[]"  # TODO: set different constraints for phase and gain solves
         slow_antennaconstraint = "[]"
         max_normalization_delta = self.field.max_normalization_delta
-        scale_normalization_delta = "{}".format(self.field.scale_normalization_delta)
+        scale_normalization_delta = str(self.field.scale_normalization_delta)
 
         # Get various DDECal solver parameters. Most of these are the same for both fast
         # and slow solves
@@ -200,8 +192,8 @@ class Calibrate(Operation):
         slow_datause = self.field.slow_datause
 
         # Get the size of the imaging area (for use in making the a-term images)
-        sector_bounds_deg = "{}".format(self.field.sector_bounds_deg)
-        sector_bounds_mid_deg = "{}".format(self.field.sector_bounds_mid_deg)
+        sector_bounds_deg = str(self.field.sector_bounds_deg)
+        sector_bounds_mid_deg = str(self.field.sector_bounds_mid_deg)
 
         # Set the DDECal steps depending on whether baseline-dependent averaging is
         # activated (and supported) or not. If BDA is used, a "null" step is also added to
@@ -385,7 +377,7 @@ class Calibrate(Operation):
         cs = self.get_core_stations()
         non_core = [a for a in self.field.stations if a not in cs]
 
-        return "[CR]*&&;!{}".format(";!".join(non_core))
+        return f"[CR]*&&;!{';!'.join(non_core)}"
 
     def get_superterp_stations(self):
         """
@@ -779,7 +771,7 @@ class CalibrateDI(Operation):
         # Define various output filenames for the solution tables. We save some
         # as attributes since they are needed in finalize()
         output_h5parm_fulljones = [
-            "fulljones_gain_{}.h5parm".format(i) for i in range(self.field.ntimechunks)
+            f"fulljones_gain_{i}.h5parm" for i in range(self.field.ntimechunks)
         ]
         self.collected_h5parm_fulljones = "fulljones_gains.h5"
 
@@ -833,7 +825,7 @@ class CalibrateDI(Operation):
         """
         # Copy the solutions (h5parm file) and report the flagged fraction
         dst_dir = os.path.join(
-            self.parset["dir_working"], "solutions", "calibrate_di_{}".format(self.index)
+            self.parset["dir_working"], "solutions", f"calibrate_di_{self.index}"
         )
         os.makedirs(dst_dir, exist_ok=True)
         self.field.fulljones_h5parm_filename = os.path.join(dst_dir, "fulljones-solutions.h5")
@@ -848,9 +840,7 @@ class CalibrateDI(Operation):
         self.log.info("Fraction of solutions that are flagged = %.2f", flagged_frac)
 
         # Copy the plots (PNG files)
-        dst_dir = os.path.join(
-            self.parset["dir_working"], "plots", "calibrate_di_{}".format(self.index)
-        )
+        dst_dir = os.path.join(self.parset["dir_working"], "plots", f"calibrate_di_{self.index}")
         os.makedirs(dst_dir, exist_ok=True)
         plot_filenames = glob.glob(os.path.join(self.pipeline_working_dir, "*.png"))
         for plot_filename in plot_filenames:

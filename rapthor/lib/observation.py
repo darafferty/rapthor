@@ -35,7 +35,7 @@ class Observation(object):
         self.ms_predict_di_filename = None
         self.ms_predict_nc_filename = None
         self.name = name or os.path.basename(self.ms_filename)
-        self.log = logging.getLogger("rapthor:{}".format(self.name))
+        self.log = logging.getLogger(f"rapthor:{self.name}")
         self.starttime = starttime
         self.endtime = endtime
         self.data_fraction = 1.0
@@ -48,7 +48,7 @@ class Observation(object):
             self.infix = ''
         else:
             # Include starttime to avoid naming conflicts
-            self.infix = '.mjd{}'.format(int(self.starttime))
+            self.infix = f'.mjd{int(self.starttime)}'
 
     def copy(self):
         """
@@ -58,7 +58,7 @@ class Observation(object):
         # them by hand:
         self.log, obs_log = None, self.log
         obs_copy = copy.deepcopy(self)
-        obs_copy.log = logging.getLogger('rapthor:{}'.format(self.name))
+        obs_copy.log = logging.getLogger(f'rapthor:{self.name}')
         self.log = obs_log
 
         return obs_copy
@@ -444,19 +444,17 @@ class Observation(object):
 
         # The filename of the sector's model data (from predict)
         root_filename = os.path.basename(self.ms_filename)
-        ms_model_filename = '{0}{1}.{2}_modeldata'.format(root_filename, self.infix,
-                                                          sector_name)
+        ms_model_filename = f'{root_filename}{self.infix}.{sector_name}_modeldata'
         self.parameters['ms_model_filename'] = ms_model_filename
 
         # The filename of the sector's data with all non-sector sources peeled off
         # and/or with the weights adjusted (i.e., the data used as input for the
         # imaging operation)
-        self.ms_subtracted_filename = '{0}{1}.{2}'.format(root_filename, self.infix,
-                                                          sector_name)
+        self.ms_subtracted_filename = f'{root_filename}{self.infix}.{sector_name}'
         self.parameters['ms_subtracted_filename'] = self.ms_subtracted_filename
 
         # The filename of the field data (after subtraction of outlier sources)
-        self.ms_field = '{0}{1}_field'.format(root_filename, self.infix)
+        self.ms_field = f'{root_filename}{self.infix}_field'
 
         # The filename of the model data for direction-independent calibration
         self.ms_predict_di = self.ms_subtracted_filename + '_di.ms'
@@ -508,8 +506,7 @@ class Observation(object):
         if 'ms_filename' not in self.parameters:
             self.parameters['ms_filename'] = self.ms_filename
         root_filename = os.path.basename(self.ms_filename)
-        ms_prep_filename = '{0}{1}.{2}.prep'.format(root_filename, self.infix,
-                                                    sector_name)
+        ms_prep_filename = f'{root_filename}{self.infix}.{sector_name}.prep'
         self.parameters['ms_prep_filename'] = ms_prep_filename
 
         # Get target time and frequency averaging steps.

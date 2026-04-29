@@ -76,44 +76,44 @@ def make_template_image(image_name, reference_ra_deg, reference_dec_deg,
 
     # Add RA, Dec info
     i = 1
-    header['CRVAL{}'.format(i)] = reference_ra_deg
-    header['CDELT{}'.format(i)] = -cellsize_deg
-    header['CRPIX{}'.format(i)] = ximsize / 2.0
-    header['CUNIT{}'.format(i)] = 'deg'
-    header['CTYPE{}'.format(i)] = 'RA---SIN'
+    header[f'CRVAL{i}'] = reference_ra_deg
+    header[f'CDELT{i}'] = -cellsize_deg
+    header[f'CRPIX{i}'] = ximsize / 2.0
+    header[f'CUNIT{i}'] = 'deg'
+    header[f'CTYPE{i}'] = 'RA---SIN'
     i += 1
-    header['CRVAL{}'.format(i)] = reference_dec_deg
-    header['CDELT{}'.format(i)] = cellsize_deg
-    header['CRPIX{}'.format(i)] = yimsize / 2.0
-    header['CUNIT{}'.format(i)] = 'deg'
-    header['CTYPE{}'.format(i)] = 'DEC--SIN'
+    header[f'CRVAL{i}'] = reference_dec_deg
+    header[f'CDELT{i}'] = cellsize_deg
+    header[f'CRPIX{i}'] = yimsize / 2.0
+    header[f'CUNIT{i}'] = 'deg'
+    header[f'CTYPE{i}'] = 'DEC--SIN'
     i += 1
 
     # Add STOKES info or ANTENNA (+MATRIX) info
     if antennas is None:
         # basic image
-        header['CRVAL{}'.format(i)] = 1.0
-        header['CDELT{}'.format(i)] = 1.0
-        header['CRPIX{}'.format(i)] = 1.0
-        header['CUNIT{}'.format(i)] = ''
-        header['CTYPE{}'.format(i)] = 'STOKES'
+        header[f'CRVAL{i}'] = 1.0
+        header[f'CDELT{i}'] = 1.0
+        header[f'CRPIX{i}'] = 1.0
+        header[f'CUNIT{i}'] = ''
+        header[f'CTYPE{i}'] = 'STOKES'
         i += 1
     else:
         if aterm_type == 'gain':
             # gain aterm images: add MATRIX info
-            header['CRVAL{}'.format(i)] = 0.0
-            header['CDELT{}'.format(i)] = 1.0
-            header['CRPIX{}'.format(i)] = 1.0
-            header['CUNIT{}'.format(i)] = ''
-            header['CTYPE{}'.format(i)] = 'MATRIX'
+            header[f'CRVAL{i}'] = 0.0
+            header[f'CDELT{i}'] = 1.0
+            header[f'CRPIX{i}'] = 1.0
+            header[f'CUNIT{i}'] = ''
+            header[f'CTYPE{i}'] = 'MATRIX'
             i += 1
 
         # dTEC or gain: add ANTENNA info
-        header['CRVAL{}'.format(i)] = 0.0
-        header['CDELT{}'.format(i)] = 1.0
-        header['CRPIX{}'.format(i)] = 1.0
-        header['CUNIT{}'.format(i)] = ''
-        header['CTYPE{}'.format(i)] = 'ANTENNA'
+        header[f'CRVAL{i}'] = 0.0
+        header[f'CDELT{i}'] = 1.0
+        header[f'CRPIX{i}'] = 1.0
+        header[f'CUNIT{i}'] = ''
+        header[f'CTYPE{i}'] = 'ANTENNA'
         i += 1
 
     # Add frequency info
@@ -124,11 +124,11 @@ def make_template_image(image_name, reference_ra_deg, reference_dec_deg,
     else:
         del_freq = 1e8
     header['RESTFRQ'] = ref_freq
-    header['CRVAL{}'.format(i)] = ref_freq
-    header['CDELT{}'.format(i)] = del_freq
-    header['CRPIX{}'.format(i)] = 1.0
-    header['CUNIT{}'.format(i)] = 'Hz'
-    header['CTYPE{}'.format(i)] = 'FREQ'
+    header[f'CRVAL{i}'] = ref_freq
+    header[f'CDELT{i}'] = del_freq
+    header[f'CRPIX{i}'] = 1.0
+    header[f'CUNIT{i}'] = 'Hz'
+    header[f'CTYPE{i}'] = 'FREQ'
     i += 1
 
     # Add time info
@@ -145,11 +145,11 @@ def make_template_image(image_name, reference_ra_deg, reference_dec_deg,
                 del_time = deltas[0]
         else:
             del_time = 1.0
-        header['CRVAL{}'.format(i)] = ref_time
-        header['CDELT{}'.format(i)] = del_time
-        header['CRPIX{}'.format(i)] = 1.0
-        header['CUNIT{}'.format(i)] = 's'
-        header['CTYPE{}'.format(i)] = 'TIME'
+        header[f'CRVAL{i}'] = ref_time
+        header[f'CDELT{i}'] = del_time
+        header[f'CRPIX{i}'] = 1.0
+        header[f'CUNIT{i}'] = 's'
+        header[f'CTYPE{i}'] = 'TIME'
         i += 1
 
     # Add equinox
@@ -446,7 +446,7 @@ def remove_soltabs(solset, soltabnames):
             soltab = solset.getSoltab(soltabname)
             soltab.delete()
         except Exception:
-            print('Error: soltab "{}" could not be removed'.format(soltabname))
+            print(f'Error: soltab {soltabname!r} could not be removed')
 
 
 def calc_theoretical_noise(obs_list, w_factor=1.5, use_lotss_estimate=False):
@@ -597,8 +597,10 @@ def get_flagged_solution_fraction(h5file, solsetname='sol000'):
                                                           soltab.weight == 0.0))
             num_all += soltab.val.size
     if num_all == 0:
-        raise ValueError('Cannot calculate flagged fraction: no solutions found in '
-                         'solset {0} of h5parm file {1}'.format(solsetname, h5file))
+        raise ValueError(
+            'Cannot calculate flagged fraction: no solutions found in '
+            f'solset {solsetname} of h5parm file {h5file}'
+        )
 
     return num_flagged / num_all
 

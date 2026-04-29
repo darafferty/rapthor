@@ -184,10 +184,8 @@ class Parset:
         for section, options in missing_options.items():
             if options:
                 raise ValueError(
-                    "Missing required option(s) in section [{}]: {}".format(
-                        section,
-                        ", ".join("'{}'".format(opt) for opt in options),
-                    )
+                    f"Missing required option(s) in section [{section}]: "
+                    f"{', '.join(map(repr, options))}"
                 )
 
         # Check for invalid sections
@@ -205,12 +203,16 @@ class Parset:
         for section in deprecated_options:
             for option in deprecated_options[section]:
                 alternatives = self.deprecated_options[section][option]
-                message = f"Option '{option}' in section [{section}] is deprecated"
-                if alternatives:
-                    message += "; use %s instead" % (
-                        ", or ".join("'{}'".format(opt) for opt in alternatives)
-                    )
-                log.warning(message)
+                log.warning(
+                    "Option %r in section [%s] is deprecated%s",
+                    option,
+                    section,
+                    (
+                        f"; use {', or '.join(map(repr, alternatives))} instead"
+                        if alternatives
+                        else ""
+                    ),
+                )
 
     def __check_and_adjust(self, settings):
         """
@@ -282,10 +284,7 @@ class Parset:
         }.items():
             if options[opt] not in valid_values:
                 raise ValueError(
-                    "The option '{}' must be one of {}".format(
-                        opt,
-                        ", ".join("'{}'".format(val) for val in valid_values),
-                    )
+                    f"The option {opt!r} must be one of {', '.join(map(repr, valid_values))}"
                 )
 
         dd_smoothness_factor = options["dd_smoothness_factor"]
@@ -342,10 +341,7 @@ class Parset:
         }.items():
             if options[opt] not in valid_values:
                 raise ValueError(
-                    "The option '{}' must be one of {}".format(
-                        opt,
-                        ", ".join("'{}'".format(val) for val in valid_values),
-                    )
+                    f"The option {opt!r} must be one of {', '.join(map(repr, valid_values))}"
                 )
 
         if not (
@@ -412,10 +408,7 @@ class Parset:
         }.items():
             if options[opt] not in valid_values:
                 raise ValueError(
-                    "The option '{}' must be one of {}".format(
-                        opt,
-                        ", ".join("'{}'".format(val) for val in valid_values),
-                    )
+                    f"The option {opt!r} must be one of {', '.join(map(repr, valid_values))}"
                 )
 
         cpu_count = misc.nproc()
@@ -535,9 +528,7 @@ def parset_read(parset_file, use_log_file=True):
             if not os.path.isdir(subdir_path):
                 os.mkdir(subdir_path)
     except Exception as e:
-        raise RuntimeError(
-            "Cannot use the working dir {0}: {1}".format(parset_dict["dir_working"], e)
-        )
+        raise RuntimeError(f"Cannot use the working dir {parset_dict['dir_working']}: {e}")
 
     if use_log_file:
         set_log_file(os.path.join(parset_dict["dir_working"], "logs", "rapthor.log"))
