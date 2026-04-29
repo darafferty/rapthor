@@ -7,6 +7,7 @@ import pytest
 
 import rapthor
 from rapthor.operations.predict import PredictDD, PredictDI
+from tests.operations.conftest import get_cwl_input_ids
 
 
 @pytest.fixture
@@ -57,20 +58,13 @@ def predict_di(field, index=1):
 
 class TestPredictDD:
 
-    def test_set_input_parameters(self, predict_dd):
-        # predict_dd.set_input_parameters()
-        pass
-
     def test_finalize(self, predict_dd):
+
         # predict_dd.finalize()
         pass
 
 
 class TestPredictDI:
-
-    def test_set_input_parameters(self, predict_di):
-        # predict_di.set_input_parameters()
-        pass
 
     def test_finalize(self, predict_di):
         # predict_di.finalize()
@@ -104,3 +98,48 @@ class TestPredict:
 
         assert predict.parset_parms["rapthor_pipeline_dir"] == str(rapthor_pipeline_path)
         assert predict.parset_parms["max_cores"] == expected_cores
+
+        
+    @pytest.mark.parametrize(
+        "mode, reweight, peel_outliers, peel_bright_sources",
+        [
+            ("dd", False, False, False),
+            ("dd", True, False, False),
+            ("dd", False, True, False),
+            ("dd", False, False, True),
+            ("di", False, False, False),
+            ("di", True, False, False),
+            ("di", False, True, False),
+            ("di", False, False, True),
+        ],
+    )
+    def test_set_input_parameters(
+        self,
+        predict_field,
+        mode,
+        reweight,
+        peel_outliers,
+        peel_bright_sources,
+    ):
+        field = predict_field
+
+        field.reweight = reweight
+        field.peel_outliers = peel_outliers
+        field.peel_bright_sources = peel_bright_sources
+
+        predict = PredictDD(field, index=1) if mode == "dd" else PredictDI(field, index=1)
+        predict.set_input_parameters()
+
+        
+        rapthor_pipeline_dir = str(Path(rapthor.__file__).parent / "pipeline")
+        template_parset_parms = {
+                "reweight": reweight,
+                "peel_outliers": peel_outliers,
+                "peel_bright_sources": peel_bright_sources,
+                "max_cores": None,
+                "rapthor_pipeline_dir": rapthor_pipeline_dir
+        }
+        expected_cwl_ids = get_cwl_input_ids("predict_pipeline.cwl", template_parset_parms) if mode == "dd" else get_cwl_input_ids("predict_di_pipeline.cwl", template_parset_parms)
+        input_parms_keys = set(predict.input_parms.keys())
+        assert expected_cwl_ids.issubset(input_parms_keys), f"input_parms is missing CWL inputs: {expected_cwl_ids - input_parms_keys}"
+
