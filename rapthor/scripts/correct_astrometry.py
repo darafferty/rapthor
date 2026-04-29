@@ -190,10 +190,9 @@ def main(
         corrected_data += facet_mask * facet_data
         sum_map += facet_mask
 
-    # Ensure that all values in the sum map are at least one, then divide it into
-    # the corrected image
-    sum_map[sum_map < 1] = 1
-    corrected_data /= sum_map
+    # Divide the sum map into the corrected image using a mask to exclude any blank pixels
+    mask = sum_map > 0
+    corrected_data[mask] /= sum_map[mask]
 
     # Adjust the shape of the corrected data to match the number of axes of the original image
     output_shape = [1 for axis in range(uncorrected_image.header["NAXIS"] - 2)] + list(
