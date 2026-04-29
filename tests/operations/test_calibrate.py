@@ -442,21 +442,21 @@ class TestCalibrate:
         Test that set_input_parameters() provides exactly the inputs declared in the CWL
         template, for all flag combinations of CalibrateDD and for CalibrateDI.
         """
-        f = calibrate_field
-        f.generate_screens = generate_screens
-        f.use_image_based_predict = use_image_based_predict
-        f.do_slowgain_solve = do_slowgain_solve
+        field = calibrate_field
+        field.generate_screens = generate_screens
+        field.use_image_based_predict = use_image_based_predict
+        field.do_slowgain_solve = do_slowgain_solve
 
         calibrate = Calibrate(mode=mode, field=calibrate_field, index=1 if mode == "dd" else 2)
         calibrate.set_input_parameters()
 
         rapthor_pipeline_dir = str(Path(rapthor.__file__).parent / "pipeline")
         if mode == "dd":
-            resolved_use_image_based_predict = f.generate_screens or f.use_image_based_predict
+            resolved_use_image_based_predict = field.generate_screens or field.use_image_based_predict
             template_parset_parms = {
                 "use_image_based_predict": resolved_use_image_based_predict,
-                "generate_screens": f.generate_screens,
-                "do_slowgain_solve": f.do_slowgain_solve,
+                "generate_screens": field.generate_screens,
+                "do_slowgain_solve": field.do_slowgain_solve,
                 "max_cores": None,
                 "rapthor_pipeline_dir": rapthor_pipeline_dir,
             }
