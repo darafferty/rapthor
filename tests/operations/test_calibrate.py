@@ -452,7 +452,9 @@ class TestCalibrate:
 
         rapthor_pipeline_dir = str(Path(rapthor.__file__).parent / "pipeline")
         if mode == "dd":
-            resolved_use_image_based_predict = field.generate_screens or field.use_image_based_predict
+            resolved_use_image_based_predict = (
+                field.generate_screens or field.use_image_based_predict
+            )
             template_parset_parms = {
                 "use_image_based_predict": resolved_use_image_based_predict,
                 "generate_screens": field.generate_screens,
