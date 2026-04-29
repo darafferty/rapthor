@@ -1,11 +1,12 @@
 """
 Module that holds all strategy-related functions
 """
-import os
+
 import logging
+import os
 import runpy
 
-log = logging.getLogger('rapthor:strategy')
+log = logging.getLogger("rapthor:strategy")
 
 
 def set_strategy(field):
@@ -38,19 +39,19 @@ def set_strategy(field):
     ValueError
         If the strategy could not be set successfully
     """
-    if field.parset['strategy'] == 'selfcal':
+    if field.parset["strategy"] == "selfcal":
         # Standard selfcal
         strategy_steps = set_selfcal_strategy(field)
-    elif field.parset['strategy'] == 'image':
+    elif field.parset["strategy"] == "image":
         # Standard imaging
         strategy_steps = set_image_strategy(field)
-    elif os.path.exists(field.parset['strategy']):
+    elif os.path.exists(field.parset["strategy"]):
         # User-defined
         strategy_steps = set_user_strategy(field)
     else:
-        raise ValueError('Strategy "{}" not understood.'.format(field.parset['strategy']))
+        raise ValueError('Strategy "{}" not understood.'.format(field.parset["strategy"]))
 
-    log.info('Using %r processing strategy', field.parset['strategy'])
+    log.info("Using %r processing strategy", field.parset["strategy"])
 
     # Check the strategy for the presence of deprecated and/or missing
     # parameters
@@ -92,7 +93,7 @@ def set_selfcal_strategy(field):
     # generated from the input data or not, as other starting models (such as those from
     # the TGSS or LoTSS) have been found to be too poor to start amplitude calibration
     # immediately. Other criteria can be added in future if deemed useful
-    do_phase_only_solves = not field.parset['generate_initial_skymodel']
+    do_phase_only_solves = not field.parset["generate_initial_skymodel"]
 
     strategy_steps = []
 
@@ -101,94 +102,94 @@ def set_selfcal_strategy(field):
     for i in range(max_selfcal_loops):
         strategy_steps.append({})
 
-        strategy_steps[i]['do_calibrate'] = True
+        strategy_steps[i]["do_calibrate"] = True
         if i == 0:
-            strategy_steps[i]['do_slowgain_solve'] = not do_phase_only_solves
-            strategy_steps[i]['peel_outliers'] = True
+            strategy_steps[i]["do_slowgain_solve"] = not do_phase_only_solves
+            strategy_steps[i]["peel_outliers"] = True
         elif i == 1:
-            strategy_steps[i]['do_slowgain_solve'] = not do_phase_only_solves
-            strategy_steps[i]['peel_outliers'] = False
+            strategy_steps[i]["do_slowgain_solve"] = not do_phase_only_solves
+            strategy_steps[i]["peel_outliers"] = False
         else:
-            strategy_steps[i]['do_slowgain_solve'] = True
-            strategy_steps[i]['peel_outliers'] = False
-        if i == 2 and field.antenna == 'HBA' and do_phase_only_solves:
-            strategy_steps[i]['solve_min_uv_lambda'] = 2000
+            strategy_steps[i]["do_slowgain_solve"] = True
+            strategy_steps[i]["peel_outliers"] = False
+        if i == 2 and field.antenna == "HBA" and do_phase_only_solves:
+            strategy_steps[i]["solve_min_uv_lambda"] = 2000
         else:
-            strategy_steps[i]['solve_min_uv_lambda'] = 750
-        strategy_steps[i]['do_fulljones_solve'] = False
-        strategy_steps[i]['peel_bright_sources'] = False
-        strategy_steps[i]['max_normalization_delta'] = 0.3
-        strategy_steps[i]['scale_normalization_delta'] = True
-        strategy_steps[i]['fast_timestep_sec'] = 32.0
-        strategy_steps[i]['medium_timestep_sec'] = 120.0
-        strategy_steps[i]['slow_timestep_sec'] = 600.0
-        strategy_steps[i]['fulljones_timestep_sec'] = 600.0
+            strategy_steps[i]["solve_min_uv_lambda"] = 750
+        strategy_steps[i]["do_fulljones_solve"] = False
+        strategy_steps[i]["peel_bright_sources"] = False
+        strategy_steps[i]["max_normalization_delta"] = 0.3
+        strategy_steps[i]["scale_normalization_delta"] = True
+        strategy_steps[i]["fast_timestep_sec"] = 32.0
+        strategy_steps[i]["medium_timestep_sec"] = 120.0
+        strategy_steps[i]["slow_timestep_sec"] = 600.0
+        strategy_steps[i]["fulljones_timestep_sec"] = 600.0
 
         if i == 0:
-            strategy_steps[i]['do_normalize'] = True
+            strategy_steps[i]["do_normalize"] = True
         else:
-            strategy_steps[i]['do_normalize'] = False
+            strategy_steps[i]["do_normalize"] = False
 
-        strategy_steps[i]['do_image'] = True
+        strategy_steps[i]["do_image"] = True
         if i < 2 and do_phase_only_solves:
-            strategy_steps[i]['auto_mask'] = 5.0
-            strategy_steps[i]['threshisl'] = 4.0
-            strategy_steps[i]['threshpix'] = 5.0
-            strategy_steps[i]['max_nmiter'] = 8
+            strategy_steps[i]["auto_mask"] = 5.0
+            strategy_steps[i]["threshisl"] = 4.0
+            strategy_steps[i]["threshpix"] = 5.0
+            strategy_steps[i]["max_nmiter"] = 8
         elif (i == 2 and do_phase_only_solves) or (i == 0 and not do_phase_only_solves):
-            strategy_steps[i]['auto_mask'] = 4.0
-            strategy_steps[i]['threshisl'] = 3.0
-            strategy_steps[i]['threshpix'] = 5.0
-            strategy_steps[i]['max_nmiter'] = 10
+            strategy_steps[i]["auto_mask"] = 4.0
+            strategy_steps[i]["threshisl"] = 3.0
+            strategy_steps[i]["threshpix"] = 5.0
+            strategy_steps[i]["max_nmiter"] = 10
         else:
-            strategy_steps[i]['auto_mask'] = 3.0
-            strategy_steps[i]['threshisl'] = 3.0
-            strategy_steps[i]['threshpix'] = 5.0
-            strategy_steps[i]['max_nmiter'] = 12
-        strategy_steps[i]['auto_mask_nmiter'] = 2
-        strategy_steps[i]['channel_width_hz'] = 8e6
+            strategy_steps[i]["auto_mask"] = 3.0
+            strategy_steps[i]["threshisl"] = 3.0
+            strategy_steps[i]["threshpix"] = 5.0
+            strategy_steps[i]["max_nmiter"] = 12
+        strategy_steps[i]["auto_mask_nmiter"] = 2
+        strategy_steps[i]["channel_width_hz"] = 8e6
 
         if i == 0:
             if do_phase_only_solves:
-                strategy_steps[i]['target_flux'] = 0.6
-                strategy_steps[i]['max_directions'] = 20
-                strategy_steps[i]['max_distance'] = 3.0
+                strategy_steps[i]["target_flux"] = 0.6
+                strategy_steps[i]["max_directions"] = 20
+                strategy_steps[i]["max_distance"] = 3.0
             else:
-                strategy_steps[i]['target_flux'] = 0.3
-                strategy_steps[i]['max_directions'] = 40
-                strategy_steps[i]['max_distance'] = 3.0
+                strategy_steps[i]["target_flux"] = 0.3
+                strategy_steps[i]["max_directions"] = 40
+                strategy_steps[i]["max_distance"] = 3.0
         elif i == 1:
             if do_phase_only_solves:
-                strategy_steps[i]['target_flux'] = 0.4
-                strategy_steps[i]['max_directions'] = 30
-                strategy_steps[i]['max_distance'] = 3.0
+                strategy_steps[i]["target_flux"] = 0.4
+                strategy_steps[i]["max_directions"] = 30
+                strategy_steps[i]["max_distance"] = 3.0
             else:
-                strategy_steps[i]['target_flux'] = 0.25
-                strategy_steps[i]['max_directions'] = 40
-                strategy_steps[i]['max_distance'] = 3.5
+                strategy_steps[i]["target_flux"] = 0.25
+                strategy_steps[i]["max_directions"] = 40
+                strategy_steps[i]["max_distance"] = 3.5
         elif i == 2 and do_phase_only_solves:
-            strategy_steps[i]['target_flux'] = 0.3
-            strategy_steps[i]['max_directions'] = 40
-            strategy_steps[i]['max_distance'] = 3.5
+            strategy_steps[i]["target_flux"] = 0.3
+            strategy_steps[i]["max_directions"] = 40
+            strategy_steps[i]["max_distance"] = 3.5
         else:
-            strategy_steps[i]['target_flux'] = 0.25
-            strategy_steps[i]['max_directions'] = 50
-            strategy_steps[i]['max_distance'] = 4.0
-        strategy_steps[i]['regroup_model'] = True
+            strategy_steps[i]["target_flux"] = 0.25
+            strategy_steps[i]["max_directions"] = 50
+            strategy_steps[i]["max_distance"] = 4.0
+        strategy_steps[i]["regroup_model"] = True
 
         if i < min_selfcal_loops - 1:
-            strategy_steps[i]['do_check'] = False
+            strategy_steps[i]["do_check"] = False
         else:
-            strategy_steps[i]['do_check'] = True
-            strategy_steps[i]['convergence_ratio'] = 0.95
-            strategy_steps[i]['divergence_ratio'] = 1.1
-            strategy_steps[i]['failure_ratio'] = 10.0
+            strategy_steps[i]["do_check"] = True
+            strategy_steps[i]["convergence_ratio"] = 0.95
+            strategy_steps[i]["divergence_ratio"] = 1.1
+            strategy_steps[i]["failure_ratio"] = 10.0
 
     # Set a final step as a duplicate of the last selfcal one, except that
     # the target output imaging channel width is smaller
     if strategy_steps:
         strategy_steps.append(strategy_steps[-1])
-        strategy_steps[-1]['channel_width_hz'] = 4e6
+        strategy_steps[-1]["channel_width_hz"] = 4e6
 
     return strategy_steps
 
@@ -211,19 +212,19 @@ def set_image_strategy(field):
     """
     strategy_steps = [{}]
 
-    strategy_steps[0]['do_calibrate'] = False
-    strategy_steps[0]['do_normalize'] = False
-    strategy_steps[0]['peel_outliers'] = True
-    strategy_steps[0]['peel_bright_sources'] = False
-    strategy_steps[0]['do_image'] = True
-    strategy_steps[0]['auto_mask'] = 3.0
-    strategy_steps[0]['auto_mask_nmiter'] = 2
-    strategy_steps[0]['channel_width_hz'] = 4e6
-    strategy_steps[0]['threshisl'] = 3.0
-    strategy_steps[0]['threshpix'] = 5.0
-    strategy_steps[0]['max_nmiter'] = 12
-    strategy_steps[0]['do_check'] = False
-    strategy_steps[0]['regroup_model'] = False
+    strategy_steps[0]["do_calibrate"] = False
+    strategy_steps[0]["do_normalize"] = False
+    strategy_steps[0]["peel_outliers"] = True
+    strategy_steps[0]["peel_bright_sources"] = False
+    strategy_steps[0]["do_image"] = True
+    strategy_steps[0]["auto_mask"] = 3.0
+    strategy_steps[0]["auto_mask_nmiter"] = 2
+    strategy_steps[0]["channel_width_hz"] = 4e6
+    strategy_steps[0]["threshisl"] = 3.0
+    strategy_steps[0]["threshpix"] = 5.0
+    strategy_steps[0]["max_nmiter"] = 12
+    strategy_steps[0]["do_check"] = False
+    strategy_steps[0]["regroup_model"] = False
 
     return strategy_steps
 
@@ -255,11 +256,13 @@ def set_user_strategy(field):
         If the strategy file did not define strategy_steps
     """
     try:
-        strategy_steps = runpy.run_path(field.parset['strategy'],
-                                        init_globals={'field': field})['strategy_steps']
+        strategy_steps = runpy.run_path(field.parset["strategy"], init_globals={"field": field})[
+            "strategy_steps"
+        ]
     except KeyError:
-        raise ValueError('Strategy "{}" does not define '
-                         'strategy_steps.'.format(field.parset['strategy']))
+        raise ValueError(
+            'Strategy "{}" does not define strategy_steps.'.format(field.parset["strategy"])
+        )
 
     return strategy_steps
 
@@ -293,8 +296,10 @@ def check_and_adjust_parameters(field, strategy_steps):
         is available for it
     """
     # Define the deprecated parameters and their replacements (if any)
-    deprecated_parameters = {'slow_timestep_joint_sec': None,
-                             'slow_timestep_separate_sec': 'slow_timestep_sec'}
+    deprecated_parameters = {
+        "slow_timestep_joint_sec": None,
+        "slow_timestep_separate_sec": "slow_timestep_sec",
+    }
 
     # Define the required parameters for each of the main strategy parts
     required_parameters = {
@@ -333,16 +338,19 @@ def check_and_adjust_parameters(field, strategy_steps):
             if deprecated in strategy_steps[i]:
                 if replacement is not None:
                     log.warning(
-                        'Parameter %r is defined in the strategy for cycle %i '
-                        'but is deprecated. Please use %r instead.',
-                        deprecated, i+1, replacement
-                        )
+                        "Parameter %r is defined in the strategy for cycle %i "
+                        "but is deprecated. Please use %r instead.",
+                        deprecated,
+                        i + 1,
+                        replacement,
+                    )
                     strategy_steps[i][replacement] = strategy_steps[i][deprecated]
                 else:
                     log.warning(
-                        'Parameter %r is defined in the strategy for cycle %i '
-                        'but is no longer used.',
-                        deprecated, i+1
+                        "Parameter %r is defined in the strategy for cycle %i "
+                        "but is no longer used.",
+                        deprecated,
+                        i + 1,
                     )
                 strategy_steps[i].pop(deprecated)
 
@@ -351,20 +359,26 @@ def check_and_adjust_parameters(field, strategy_steps):
     for primary, secondary_parameters in required_parameters.items():
         for i in range(len(strategy_steps)):
             if primary not in strategy_steps[i]:
-                raise ValueError(f'Required parameter "{primary}" is not defined in the '
-                                 f'strategy for cycle {i+1}.')
+                raise ValueError(
+                    f'Required parameter "{primary}" is not defined in the '
+                    f"strategy for cycle {i + 1}."
+                )
             if strategy_steps[i][primary]:
                 for secondary in secondary_parameters:
                     if secondary not in strategy_steps[i]:
                         if hasattr(field, secondary):
                             log.warning(
-                                'Parameter %r is not defined in the strategy '
-                                'for cycle %i. Using the default value of %r.',
-                                secondary, i+1, getattr(field, secondary)
+                                "Parameter %r is not defined in the strategy "
+                                "for cycle %i. Using the default value of %r.",
+                                secondary,
+                                i + 1,
+                                getattr(field, secondary),
                             )
                         else:
-                            raise ValueError(f'Required parameter "{secondary}" is not '
-                                             f'defined in the strategy for cycle {i+1}.')
+                            raise ValueError(
+                                f'Required parameter "{secondary}" is not '
+                                f"defined in the strategy for cycle {i + 1}."
+                            )
 
     return strategy_steps
 
@@ -395,8 +409,7 @@ def validate_strategy(strategy_steps, parset):
     for i in range(1, len(strategy_steps)):
         if strategy_steps[i].get("do_normalize", False):
             raise ValueError(
-                f"do_normalize is True in cycle {i+1} but it may only be True in the "
-                "first cycle."
+                f"do_normalize is True in cycle {i + 1} but it may only be True in the first cycle."
             )
 
     # Check that the strategy is consistent with the parset setttings for
@@ -409,6 +422,7 @@ def validate_strategy(strategy_steps, parset):
             "parset setting allow_internet_access is set to False. Please set "
             "allow_internet_access to True or remove normalization from the strategy"
         )
+
 
 def _strategy_requires_internet_access(strategy_steps):
     """

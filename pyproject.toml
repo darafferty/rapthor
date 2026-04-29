@@ -215,6 +215,7 @@ format_targets = [
     "rapthor/lib/cwl.py",
     "rapthor/lib/cwlrunner.py",
     "rapthor/lib/parset.py",
+    "rapthor/lib/strategy.py",
     "rapthor/operations/calibrate.py",
     "rapthor/operations/image.py",
     "rapthor/process.py",
