@@ -230,6 +230,7 @@ format_targets = [
     "tests/cwl/tests/test_cwl_scatter.py",
     "tests/integration/conftest.py",
     "tests/integration/test_rapthor.py",
+    "tests/integration/utils.py",
     "tests/lib/test_cwl.py",
     "tests/lib/test_cwlrunner.py",
     "tests/lib/test_field.py",
