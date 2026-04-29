@@ -70,6 +70,7 @@ class Calibrate(Operation):
         """
         # First set the calibration parameters for each observation
         field = self.field
+        field.set_obs_parameters()
 
         if self.mode == "dd":
             # --- Basic observation timing + input files ---
@@ -158,13 +159,13 @@ class Calibrate(Operation):
             # Smoothness constraints
             smoothness_dd_factors = {
                 "fast": field.get_obs_parameters(
-                    "smoothbess_fast_dd_factors"
+                    "fast_smoothness_dd_factors"
                 ),  # (fast_smoothnessconstraint)
                 "medium": field.get_obs_parameters(
-                    "smoothbess_medium_dd_factors"
+                    "medium_smoothness_dd_factors"
                 ),  # (medium_smoothnessconstraint)
                 "slow": field.get_obs_parameters(
-                    "smoothbess_slow_dd_factors"
+                    "slow_smoothness_dd_factors"
                 ),  # (slow_smoothnessconstraint)
             }
             fast_smoothnessconstraint = field.fast_smoothnessconstraint / np.min(
