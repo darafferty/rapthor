@@ -300,11 +300,13 @@ class TestCalibrate:
             assert size == [width_ra_pixels, width_dec_pixels]
         assert cellsize == cellsize_degrees
 
-    @pytest.mark.parametrize("scenario", ["dd_fast_only", "dd_with_slowgain", "di_fulljones"])
-    def test_finalize(self, mocker, calibrate_field, tmp_path, scenario):
+    @pytest.mark.parametrize(
+        "mode, solve", [("dd", "fast_only"), ("dd", "with_slowgain"), ("di", "fulljones")]
+    )
+    def test_finalize(self, mocker, calibrate_field, tmp_path, mode, solve):
         field = calibrate_field
-        is_dd = scenario.startswith("dd")
-        with_slow = scenario == "dd_with_slowgain"
+        index = 2 if mode == "dd" else 4
+        with_slow = solve == "with_slowgain"
 
         # Setup mocks
         flagged_fraction = 0.042
@@ -317,12 +319,12 @@ class TestCalibrate:
 
         # Setup working directory
         workdir_path = tmp_path / "working"
-        name = "calibrate_2" if is_dd else "calibrate_di_4"
+        name = "calibrate_2" if mode == "dd" else "calibrate_di_4"
         solutions_path = workdir_path / "solutions" / name
         solutions_path.mkdir(parents=True)
 
         # Create an existing solutions file. finalize() should remove it.
-        h5parm_filename = "field-solutions.h5" if is_dd else "fulljones-solutions.h5"
+        h5parm_filename = "field-solutions.h5" if mode == "dd" else "fulljones-solutions.h5"
         h5parm_path = solutions_path / h5parm_filename
         h5parm_path.touch()
 
@@ -331,11 +333,11 @@ class TestCalibrate:
         finalize_prepare_plots(pipelines_path, plots_path)
 
         # Setup the object itself
-        field.do_slowgain_solve = scenario == "dd_with_slowgain"
+        field.do_slowgain_solve = with_slow
 
-        calibrate = Calibrate("dd", field, index=2) if is_dd else CalibrateDI(field, index=4)
+        calibrate = Calibrate(mode=mode, field=field, index=index)
 
-        if is_dd:
+        if mode == "dd":
             calibrate.combined_h5parms = "combined.test.h5"
             calibrate.fast_h5parm = "fast.test.h5"
             if with_slow:
@@ -352,7 +354,7 @@ class TestCalibrate:
         calibrate.finalize()
 
         # Assert
-        if is_dd:
+        if mode == "dd":
             assert field.h5parm_filename == str(h5parm_path)
             assert field.fast_phases_h5parm_filename == str(
                 solutions_path / "field-solutions-fast-phase.h5"
@@ -383,12 +385,12 @@ class TestCalibrate:
                 ("medium2.test.h5", "field-solutions-medium2-phase.h5"),
                 ("fast.test.h5", "field-solutions-fast-phase.h5"),
             ]
-        elif scenario == "dd_fast_only":
+        elif solve == "fast_only":
             solution_src_dst_list = [
                 ("fast.test.h5", h5parm_filename),
                 ("fast.test.h5", "field-solutions-fast-phase.h5"),
             ]
-        else:  # di_fulljones scenario
+        else:  # di fulljones scenario
             solution_src_dst_list = [
                 ("collected_fulljones.h5", h5parm_filename),
             ]
@@ -398,7 +400,7 @@ class TestCalibrate:
 
         field.scan_h5parms.assert_called_once()
 
-        if is_dd:
+        if mode == "dd":
             assert field.calibration_diagnostics == [
                 {
                     "cycle_number": 2,
