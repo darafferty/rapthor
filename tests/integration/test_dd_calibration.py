@@ -61,19 +61,3 @@ def test_rapthor_run_dd_fast_phase_medium_phase(generated_parset_path, single_lo
     assert "scalarphase" == dp3_arguments["solve2.mode"]
     assert int(dp3_arguments["solve1.solint"]) < int(dp3_arguments["solve2.solint"])
 
-
-def test_fast_test():
-    working_dir = "/tmp/ical-lsd46y14/work"
-    calibrate_logs_dir = Path(working_dir) / "logs" / "calibrate_1"
-    calibrate_log = find_step_logs(calibrate_logs_dir, "ddecal_solve.cwl")
-    assert calibrate_log, f"Expected calibration logs to be present {calibrate_log}"
-    dp3_arguments = parse_dp3_args_from_log(calibrate_log[0])
-
-    assert "steps" in dp3_arguments
-    assert "solve1" in dp3_arguments["steps"]
-    assert "solve2" in dp3_arguments["steps"]
-    assert "fast_phase_0.h5parm" == dp3_arguments["solve1.h5parm"]
-    assert "medium1_phase_0.h5parm" == dp3_arguments["solve2.h5parm"]
-    assert "scalarphase" == dp3_arguments["solve1.mode"]
-    assert "scalarphase" == dp3_arguments["solve2.mode"]
-    assert int(dp3_arguments["solve1.solint"]) < int(dp3_arguments["solve2.solint"])
