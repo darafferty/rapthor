@@ -305,13 +305,7 @@ def filter_sources(
     log.info(
         "Applying cuts to the input source catalog to select sources for normalization calculation..."
     )
-    source_ra = []
-    source_dec = []
-    for ra_deg, dec_deg in zip(source_catalog_data["RA"], source_catalog_data["DEC"]):
-        ra_norm, dec_norm = normalize_ra_dec(ra_deg, dec_deg)
-        source_ra.append(ra_norm)
-        source_dec.append(dec_norm)
-    source_coords = SkyCoord(ra=np.array(source_ra) * u.degree, dec=np.array(source_dec) * u.degree)
+    source_coords = _get_survey_coords(source_catalog_data)
     center_coord = SkyCoord(ra=phase_center_ra * u.radian, dec=phase_center_dec * u.radian)
     source_distances = np.array([sep.value for sep in center_coord.separation(source_coords)])
 
@@ -730,10 +724,12 @@ def _get_survey_coords(survey_data):
     survey_coords : astropy.coordinates.SkyCoord
         Coordinates of the sources in the survey catalog in degrees
     """
-    survey_ra, survey_dec = zip(*(
+    survey_ra, survey_dec = zip(
+        *(
             normalize_ra_dec(ra_deg, dec_deg)
             for ra_deg, dec_deg in zip(survey_data["RA"], survey_data["DEC"])
-    ))
+        )
+    )
     return SkyCoord(ra=np.array(survey_ra) * u.degree, dec=np.array(survey_dec) * u.degree)
 
 
