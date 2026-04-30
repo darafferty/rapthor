@@ -12,9 +12,10 @@ from astropy.coordinates import Angle, SkyCoord
 from matplotlib import patches
 from shapely.geometry import Polygon
 
-from rapthor.lib import cluster, facet
+from rapthor.lib import cluster
 from rapthor.lib import miscellaneous as misc
 from lsmtool.operations_lib import normalize_ra_dec
+from lsmtool import facet
 
 
 class Sector(object):

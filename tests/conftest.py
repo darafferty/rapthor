@@ -11,8 +11,8 @@ from pathlib import Path
 
 import pytest
 import requests
+from lsmtool.facet import Facet
 
-from rapthor.lib.facet import Facet
 from rapthor.lib.field import Field
 from rapthor.lib.observation import Observation
 from rapthor.lib.parset import parset_read
@@ -225,16 +225,6 @@ def facet_region_ds9(tmp_path):
     Fixture to create a region file for testing.
     """
     return _copy_from_resource_folder_to_test_path("test.reg", tmp_path)
-
-
-@pytest.fixture
-def facet():
-    """
-    Fixture to create a facet for testing.
-    """
-    return Facet(
-        name="Square Facet", ra=1.0, dec=1.0, vertices=[(0, 2.0), (2.0, 2.0), (2.0, 0), (0, 0)]
-    )
 
 
 @pytest.fixture

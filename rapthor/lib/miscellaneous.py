@@ -18,7 +18,7 @@ from scipy.interpolate import interp1d
 
 # Always use a 0-based origin in wcs_pix2world and wcs_world2pix calls.
 WCS_ORIGIN = 0
-# Default WCS pixel scale within Rapthor, which differs from LSMTool (20"/pixel).
+# Default WCS pixel scale within Rapthor
 WCS_PIXEL_SCALE = 10.0 / 3600.0  # degrees/pixel (= 10"/pixel)
 
 
