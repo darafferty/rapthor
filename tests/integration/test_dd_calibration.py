@@ -24,7 +24,9 @@ from .utils import (
     indirect=True,
 )
 def test_rapthor_run_dd_fast_phase_medium_phase(generated_parset_path, single_loop_strategy_path):
-    """Test a calibration-only loop with mocked DP3."""
+    """Test a single selfcal loop with DP3.
+    ddecal fast_gains and medium gains are performed
+    """
 
     updated_parset_path = update_parset_path(
         generated_parset_path,
@@ -55,6 +57,7 @@ def test_rapthor_run_dd_fast_phase_medium_phase(generated_parset_path, single_lo
     assert "steps" in dp3_arguments
     assert "solve1" in dp3_arguments["steps"]
     assert "solve2" in dp3_arguments["steps"]
+    assert "solve3" not in dp3_arguments["steps"]
     assert "fast_phase_0.h5parm" == dp3_arguments["solve1.h5parm"]
     assert "medium1_phase_0.h5parm" == dp3_arguments["solve2.h5parm"]
     assert "scalarphase" == dp3_arguments["solve1.mode"]
