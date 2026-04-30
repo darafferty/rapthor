@@ -114,15 +114,15 @@ def main(
 
     # Read in the input image and construct the output arrays
     uncorrected_image = FITSImage(input_image)
-    wcs = uncorrected_image.get_wcs()
-    ra_scale = wcs.wcs.cdelt[0]  # degrees / pix
-    dec_scale = wcs.wcs.cdelt[1]  # degrees / pix
+    wcs_obj = uncorrected_image.get_wcs()
+    ra_scale = wcs_obj.wcs.cdelt[0]  # degrees / pix
+    dec_scale = wcs_obj.wcs.cdelt[1]  # degrees / pix
     corrected_data = np.zeros_like(uncorrected_image.img_data)  # flattened, 2-D image
     sum_map = np.zeros_like(uncorrected_image.img_data)
 
     # Read in the facets, using the WCS from the input image to keep the coordinate transformations
     # the same
-    facets = read_ds9_region_file(region_file, wcs=wcs)
+    facets = read_ds9_region_file(region_file, wcs_obj=wcs_obj)
 
     # Loop over the facets, applying the corrections
     facet_map = {name: i for i, name in enumerate(corrections["facet_name"])}
