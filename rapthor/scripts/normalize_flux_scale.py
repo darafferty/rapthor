@@ -730,14 +730,11 @@ def _get_survey_coords(survey_data):
     survey_coords : astropy.coordinates.SkyCoord
         Coordinates of the sources in the survey catalog in degrees
     """
-    survey_ra = []
-    survey_dec = []
-    for ra_deg, dec_deg in zip(survey_data["RA"], survey_data["DEC"]):
-        ra_norm, dec_norm = normalize_ra_dec(ra_deg, dec_deg)
-        survey_ra.append(ra_norm)
-        survey_dec.append(dec_norm)
-    survey_coords = SkyCoord(ra=np.array(survey_ra) * u.degree, dec=np.array(survey_dec) * u.degree)
-    return survey_coords
+    survey_ra, survey_dec = zip(*(
+            normalize_ra_dec(ra_deg, dec_deg)
+            for ra_deg, dec_deg in zip(survey_data["RA"], survey_data["DEC"])
+    ))
+    return SkyCoord(ra=np.array(survey_ra) * u.degree, dec=np.array(survey_dec) * u.degree)
 
 
 def _get_survey_metadata(reference_skymodels=None, reference_frequencies=None):
