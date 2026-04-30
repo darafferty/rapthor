@@ -16,7 +16,7 @@ import scipy.ndimage as nd
 from astropy.io.fits import writeto as fits_write
 from lsmtool.utils import rasterize
 
-from rapthor.lib.facet import read_ds9_region_file
+from lsmtool.facet import read_ds9_region_file
 from rapthor.lib.fitsimage import FITSImage
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
