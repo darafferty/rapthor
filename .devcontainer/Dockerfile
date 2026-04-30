@@ -51,7 +51,7 @@ ARG CASACORE_COMMIT=master
 ARG EVERYBEAM_COMMIT=master
 ARG WSCLEAN_COMMIT=master
 ARG AOFLAGGER_COMMIT=master
-ARG IDG_COMMIT=master
+ARG IDG_COMMIT=main
 ARG SAGECAL_COMMIT=master
 ARG DP3_COMMIT=master
 ARG PYTHONCASACORE_COMMIT=master
@@ -75,7 +75,6 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         libboost-date-time-dev \
         libboost-filesystem-dev \
         libboost-program-options-dev \
-        libboost-numpy-dev \
         libboost-python-dev \
         libcfitsio-dev \
         libfftw3-dev \
@@ -105,6 +104,30 @@ RUN python3 -m pip install \
     'cmake<4' \
     numpy
 
+# Build Boost.NumPy from source against pip NumPy 2 (the apt package is compiled
+# against NumPy 1.x and causes runtime failures when importing PyBDSF).
+# Install it into an isolated prefix so downstream CMake projects continue to
+# use distro Boost packages without version-mix issues.
+ARG BOOST_VERSION=1.88.0
+ARG BOOST_VERSION_UNDERSCORED=1_88_0
+RUN wget -q https://archives.boost.io/release/${BOOST_VERSION}/source/boost_${BOOST_VERSION_UNDERSCORED}.tar.bz2 && \
+    tar -xjf boost_${BOOST_VERSION_UNDERSCORED}.tar.bz2 && \
+    cd boost_${BOOST_VERSION_UNDERSCORED} && \
+    NUMPY_INC=$(python3 -c "import numpy; print(numpy.get_include())") && \
+    ./bootstrap.sh --with-libraries=python --with-python=/usr/bin/python3 && \
+    ./b2 --with-python \
+        python=3.10 \
+        cxxflags="-I${NUMPY_INC}" \
+        include="/usr/include/python3.10:${NUMPY_INC}" \
+        variant=release \
+        threading=multi \
+        link=shared \
+        --layout=system \
+        --prefix=/opt/boost-numpy \
+        --libdir=/opt/boost-numpy/lib \
+        install && \
+    cd .. && rm -rf boost_${BOOST_VERSION_UNDERSCORED}*
+
 # Install the casacore measures data. We purposely do not install these from
 # the Ubuntu repository, but download the latest version from the ASTRON site.
 # Note: The file on the ftp site is updated daily. When warnings regarding
@@ -118,6 +141,7 @@ RUN git clone --no-checkout https://github.com/casacore/casacore.git
 RUN git -C casacore checkout ${CASACORE_COMMIT}
 RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=RelWithDebInfo \
+    -DBoost_NO_BOOST_CMAKE=ON \
     -DBUILD_TESTING=OFF \
     -DPORTABLE=${PORTABLE} \
     -DTARGET_CPU=${TARGET_CPU} \
@@ -226,6 +250,16 @@ WORKDIR /app
 COPY --from=build /usr/local/bin /usr/local/bin
 COPY --from=build /usr/local/lib /usr/local/lib
 COPY --from=build /usr/local/share /usr/local/share
+COPY --from=build /opt/boost-numpy /opt/boost-numpy
+
+# Use legacy FindBoost behavior for pip/scikit-build projects (e.g. PyBDSF).
+# This avoids Boost package-config variant matching issues.
+ENV BOOST_ROOT=/opt/boost-numpy
+ENV BOOST_INCLUDEDIR=/opt/boost-numpy/include
+ENV BOOST_LIBRARYDIR=/opt/boost-numpy/lib
+ENV CMAKE_ARGS="-DBoost_NO_BOOST_CMAKE=ON -DBOOST_ROOT=/opt/boost-numpy -DBOOST_INCLUDEDIR=/opt/boost-numpy/include -DBOOST_LIBRARYDIR=/opt/boost-numpy/lib -DBoost_PYTHON_LIBRARY=/opt/boost-numpy/lib/libboost_python310.so -DBoost_PYTHON_LIBRARY_RELEASE=/opt/boost-numpy/lib/libboost_python310.so -DBoost_NUMPY_LIBRARY=/opt/boost-numpy/lib/libboost_numpy310.so -DBoost_NUMPY_LIBRARY_RELEASE=/opt/boost-numpy/lib/libboost_numpy310.so"
+ENV CPLUS_INCLUDE_PATH=/opt/boost-numpy/include
+ENV LD_LIBRARY_PATH=/opt/boost-numpy/lib:/usr/local/lib
 
 # Sanity check that the installed binaries are working
 RUN aoflagger --version && \

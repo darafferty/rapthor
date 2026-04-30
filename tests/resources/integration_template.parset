@@ -25,7 +25,6 @@ input_h5parm = None
 input_fulljones_h5parm = None
 facet_layout = None
 dde_mode = faceting
-allow_internet_access = False
 
 [calibration]
 fast_freqstep_hz = 1e6
@@ -34,7 +33,6 @@ fast_smoothnessconstraint = 6.0e6
 slow_smoothnessconstraint = 4.0e6
 propagatesolutions = True
 maxiter = 50
-maxapproxiter = 25
 stepsize = 0.2
 tolerance = 0.001
 
@@ -50,6 +48,9 @@ average_visibilities = False
 photometry_skymodel =
 astrometry_skymodel =
 shared_facet_rw = False
+normalization_skymodels =
+normalization_reference_frequencies =
+
   
 [cluster]
 batch_system = single_machine

@@ -8,6 +8,8 @@ import glob
 import logging
 import os
 from importlib import resources
+from collections.abc import Sequence
+
 
 import astropy.coordinates
 
@@ -572,7 +574,7 @@ def parset_read(parset_file, use_log_file=True):
 
 def check_and_adjust_skymodel_settings(parset_dict):
     """
-    En‌sure the initial sky model is present or, if not, that generation or
+    Ensure the initial sky model is present or, if not, that generation or
     download is requested.
 
     Parameters
@@ -639,6 +641,39 @@ def check_and_adjust_skymodel_settings(parset_dict):
         ) and not os.path.exists(skymodel):
             raise FileNotFoundError(
                 f'Comparison sky model for {diagnostic} check not found at "{skymodel}"'
+            )
+
+    # If `normalization_skymodels` is given, check if it is a list of length >= 2,
+    # and if the files exist; if not, raise an error. Check reference frequencies
+    # are also provided if normalization skymodels are provided, and that they are a list of
+    # the same length as the normalization skymodels; if not, raise an error.
+    if normalization_skymodels := parset_dict["imaging_specific"]["normalization_skymodels"]:
+        if (
+            isinstance(normalization_skymodels, str)
+            or not isinstance(normalization_skymodels, Sequence)
+            or len(normalization_skymodels) < 2
+        ):
+            raise ValueError(
+                "Normalization sky models must be an ordered list of at least two files."
+            )
+        for skymodel in normalization_skymodels:
+            if not os.path.exists(skymodel):
+                raise FileNotFoundError(f'Normalization sky model file not found at "{skymodel}"')
+        normalization_reference_frequencies = parset_dict["imaging_specific"][
+            "normalization_reference_frequencies"
+        ]
+        if not normalization_reference_frequencies:
+            raise ValueError(
+                "Reference frequencies must be provided and ordered for normalization sky models."
+            )
+        if (
+            isinstance(normalization_reference_frequencies, str)
+            or not isinstance(normalization_reference_frequencies, Sequence)
+            or len(normalization_reference_frequencies) != len(normalization_skymodels)
+        ):
+            raise ValueError(
+                "Reference frequencies for normalization sky models must be an ordered list of the"
+                "same length as the list of normalization sky models."
             )
 
     # Check if we need to access the internet to get any skymodels and if we

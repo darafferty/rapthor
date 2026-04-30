@@ -7,7 +7,6 @@ from pathlib import Path
 import pytest
 
 from rapthor.lib.strategy import (
-    _strategy_requires_internet_access,
     check_and_adjust_parameters,
     set_image_strategy,
     set_selfcal_strategy,
@@ -229,20 +228,6 @@ def test_check_and_adjust_parameters_warns_for_missing_parameters_without_defaul
         check_and_adjust_parameters(field, strategy_steps)
 
 
-@pytest.mark.parametrize(
-    "do_normalize, cycle", [(True, 0), (False, 0), (True, 1), (False, 1), (True, 2), (False, 2)]
-)
-def test_strategy_requires_internet_access_for_normalization(strategy_steps, do_normalize, cycle):
-    # Set do_normalize for the specified step
-    strategy_steps[cycle]["do_normalize"] = do_normalize
-
-    # Any step requiring normalization requires internet access
-    if do_normalize:
-        assert _strategy_requires_internet_access(strategy_steps)
-    else:
-        assert not _strategy_requires_internet_access(strategy_steps)
-
-
 @pytest.mark.parametrize("cycle", [1, 2])
 def test_validate_strategy_raises_error_for_do_normalize_in_non_first_cycle(
     parset, strategy_steps, cycle
@@ -259,23 +244,28 @@ def test_validate_strategy_raises_error_for_do_normalize_in_non_first_cycle(
         validate_strategy(strategy_steps, parset)
 
 
+@pytest.mark.parametrize("normalization_skymodels", [None, ["skymodel1.txt", "skymodel2.txt"]])
 @pytest.mark.parametrize("do_normalize", [True, False])
 @pytest.mark.parametrize("allow_internet_access", [True, False])
 def test_validate_strategy_raises_error_for_inconsistent_strategy_and_parset_settings(
-    parset, strategy_steps, do_normalize, allow_internet_access
+    parset, strategy_steps, do_normalize, allow_internet_access, normalization_skymodels
 ):
     # Set do_normalize for the first step (for other steps, it must be False).
     strategy_steps[0]["do_normalize"] = do_normalize
     # Set "allow_internet_access" in parset
     parset["cluster_specific"]["allow_internet_access"] = allow_internet_access
+    # Set "normalization_skymodels" in parset
+    parset["imaging_specific"]["normalization_skymodels"] = normalization_skymodels
 
-    if (not allow_internet_access) and do_normalize:
+    if (not allow_internet_access) and do_normalize and (not normalization_skymodels):
         with pytest.raises(
             ValueError,
             match=(
-                "The strategy includes do_normalize which requires internet access but the "
-                "parset setting allow_internet_access is set to False. Please set "
-                "allow_internet_access to True or remove normalization from the strategy"
+                "The strategy includes do_normalize in the first cycle, which requires internet access "
+                "or user-provided sky models for normalization but the parset setting "
+                "allow_internet_access is set to False and no normalization skymodels are provided. "
+                "Please set allow_internet_access to True or provide paths to normalization skymodels "
+                "\\(and a list of reference frequencies\\) in the parset."
             ),
         ):
             validate_strategy(strategy_steps, parset)

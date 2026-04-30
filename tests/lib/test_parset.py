@@ -200,6 +200,8 @@ class TestCheckSkymodelSettings(unittest.TestCase):
             "imaging_specific": {
                 "astrometry_skymodel": None,
                 "photometry_skymodel": None,
+                "normalization_skymodels": None,
+                "normalization_reference_frequencies": None,
             },
         }
         for key, value in overrides.items():
@@ -307,7 +309,7 @@ class TestCheckSkymodelSettings(unittest.TestCase):
         with self.assertLogs(logger="rapthor:parset", level="INFO"):
             check_and_adjust_skymodel_settings(parset_dict)
 
-    # ---- diagnostic skymodel checks (no internet) ----
+    # ---- diagnostic and normalization skymodel checks (no internet) ----
 
     def test_astrometry_skymodel_missing_no_internet_raises(self):
         parset_dict = self._make_parset_dict(
@@ -316,6 +318,8 @@ class TestCheckSkymodelSettings(unittest.TestCase):
             imaging_specific={
                 "astrometry_skymodel": "/nonexistent/astro.skymodel",
                 "photometry_skymodel": None,
+                "normalization_skymodels": None,
+                "normalization_reference_frequencies": None,
             },
         )
         with self.assertRaises(FileNotFoundError):
@@ -328,6 +332,25 @@ class TestCheckSkymodelSettings(unittest.TestCase):
             imaging_specific={
                 "astrometry_skymodel": None,
                 "photometry_skymodel": "/nonexistent/photo.skymodel",
+                "normalization_skymodels": None,
+                "normalization_reference_frequencies": None,
+            },
+        )
+        with self.assertRaises(FileNotFoundError):
+            check_and_adjust_skymodel_settings(parset_dict)
+
+    def test_normalization_skymodel_missing_no_internet_raises(self):
+        parset_dict = self._make_parset_dict(
+            generate_initial_skymodel=True,
+            cluster_specific={"allow_internet_access": False},
+            imaging_specific={
+                "astrometry_skymodel": None,
+                "photometry_skymodel": None,
+                "normalization_skymodels": [
+                    "/nonexistent/norm.skymodel",
+                    "/nonexistent/norm2.skymodel",
+                ],
+                "normalization_reference_frequencies": None,
             },
         )
         with self.assertRaises(FileNotFoundError):
@@ -363,12 +386,99 @@ class TestCheckSkymodelSettings(unittest.TestCase):
 
             self.assertTrue(any("The astrometry check will be skipped" in msg for msg in cm.output))
 
+    def test_normalization_skymodel_exists_no_internet_ok(self):
+        with tempfile.NamedTemporaryFile(suffix=".skymodel") as f:
+            parset_dict = self._make_parset_dict(
+                cluster_specific={"allow_internet_access": False},
+                imaging_specific={
+                    "normalization_skymodels": [f.name, f.name],
+                    "normalization_reference_frequencies": [str(142000000.0), str(142001000.0)],
+                },
+            )
+            # Should not raise (warning about no skymodel is expected)
+            with self.assertLogs(logger="rapthor:parset", level="WARN") as cm:
+                check_and_adjust_skymodel_settings(parset_dict)
+
+    def test_single_normalization_skymodel_raises_error(self):
+        with tempfile.NamedTemporaryFile(suffix=".skymodel") as f:
+            parset_dict = self._make_parset_dict(
+                cluster_specific={"allow_internet_access": False},
+                imaging_specific={
+                    "normalization_skymodels": f.name,
+                    "normalization_reference_frequencies": [str(142000000.0)],
+                },
+            )
+            # Should raise ValueError because only one normalization skymodel is provided
+            with self.assertRaises(ValueError):
+                check_and_adjust_skymodel_settings(parset_dict)
+
+    def test_only_one_existing_path_for_normalization_skymodels_raises_error(self):
+        with tempfile.NamedTemporaryFile(suffix=".skymodel") as f:
+            parset_dict = self._make_parset_dict(
+                cluster_specific={"allow_internet_access": False},
+                imaging_specific={
+                    "normalization_skymodels": [f.name, "/nonexistent/norm.skymodel"],
+                    "normalization_reference_frequencies": [str(142000000.0), str(142001000.0)],
+                },
+            )
+            with self.assertRaises(FileNotFoundError):
+                check_and_adjust_skymodel_settings(parset_dict)
+
+    def test_normalization_reference_frequencies_missing_raises_error(self):
+        with tempfile.NamedTemporaryFile(suffix=".skymodel") as f:
+            parset_dict = self._make_parset_dict(
+                cluster_specific={"allow_internet_access": False},
+                imaging_specific={
+                    "normalization_skymodels": [f.name, f.name],
+                    "normalization_reference_frequencies": None,
+                },
+            )
+            with self.assertRaises(ValueError):
+                check_and_adjust_skymodel_settings(parset_dict)
+
+    def test_normalization_reference_frequencies_wrong_length_raises_error(self):
+        with tempfile.NamedTemporaryFile(suffix=".skymodel") as f:
+            parset_dict = self._make_parset_dict(
+                cluster_specific={"allow_internet_access": False},
+                imaging_specific={
+                    "normalization_skymodels": [f.name, f.name],
+                    "normalization_reference_frequencies": [str(142000000.0)],
+                },
+            )
+            with self.assertRaises(ValueError):
+                check_and_adjust_skymodel_settings(parset_dict)
+
+    def test_normalization_parameters_tuple(self):
+        with tempfile.NamedTemporaryFile(suffix=".skymodel") as f:
+            parset_dict = self._make_parset_dict(
+                cluster_specific={"allow_internet_access": False},
+                imaging_specific={
+                    "normalization_skymodels": (f.name, f.name),
+                    "normalization_reference_frequencies": (142000000.0, 142001000.0),
+                },
+            )
+            check_and_adjust_skymodel_settings(parset_dict)
+
+    def test_normalization_parameters_set_raises_error(self):
+        with tempfile.NamedTemporaryFile(suffix=".skymodel") as f:
+            parset_dict = self._make_parset_dict(
+                cluster_specific={"allow_internet_access": False},
+                imaging_specific={
+                    "normalization_skymodels": {f.name, f.name},
+                    "normalization_reference_frequencies": {142000000.0, 142001000.0},
+                },
+            )
+            with self.assertRaises(ValueError):
+                check_and_adjust_skymodel_settings(parset_dict)
+
     def test_diagnostic_skymodel_empty_no_internet_ok(self):
         parset_dict = self._make_parset_dict(
             cluster_specific={"allow_internet_access": False},
             imaging_specific={
                 "astrometry_skymodel": None,
                 "photometry_skymodel": None,
+                "normalization_skymodels": None,
+                "normalization_reference_frequencies": None,
             },
         )
         # Should not raise

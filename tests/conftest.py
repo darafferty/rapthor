@@ -4,13 +4,18 @@ for this directory.
 """
 
 import configparser
+import os
 import shutil
 import tarfile
 import tempfile
+import numpy as np
 from pathlib import Path
+from astropy.table import Table
 
 import pytest
 import requests
+
+import lsmtool
 from lsmtool.facet import Facet
 
 from rapthor.lib.field import Field
@@ -26,6 +31,18 @@ TEST_MS_ARCHIVE_DIRNAME = "tDDECal.MS"
 TEST_MS_DIRNAME = "test.ms"
 TEST_TRUE_SKYMODEL = (RESOURCE_DIR / "test_true_sky.txt").as_posix()
 TEST_APPARENT_SKYMODEL = (RESOURCE_DIR / "test_apparent_sky.txt").as_posix()
+TEST_INTEGRATION_TRUE_SKYMODEL = (RESOURCE_DIR / "integration_true_sky.txt").as_posix()
+TEST_INTEGRATION_APPARENT_SKYMODEL = (RESOURCE_DIR / "integration_apparent_sky.txt").as_posix()
+
+
+def _get_test_run_root():
+    """Keep CI integration runs inside the project so GitLab can upload logs."""
+    if ci_project_dir := os.environ.get("CI_PROJECT_DIR"):
+        # Keep the path short enough for multiprocessing AF_UNIX socket names.
+        run_root = Path(ci_project_dir) / "ci" / "i"
+        run_root.mkdir(parents=True, exist_ok=True)
+        return run_root
+    return Path("/tmp")
 
 
 def pytest_configure(config):
@@ -91,6 +108,13 @@ def test_ms(tmp_path_factory):
     """
     Fixture to provide a copy of the test MS in the resources directory.
     Yield the POSIX path to the copy of the MS.
+
+    The test MS contains:
+        - 8 channels
+        - Minimum frequency = 134288024.90234375 Hz
+        - Maximum frequency = 134458923.33984375 Hz
+        - Channel width = 24414.0625 Hz
+        - Phase center at RA = 0.4262457236387493 radians, Dec = 0.5787469737178225 radians
     """
     source = ensure_test_ms(RESOURCE_DIR)
     target = (tmp_path_factory.mktemp("test_ms") / TEST_MS_DIRNAME).as_posix()
@@ -167,6 +191,35 @@ def single_source_sky_model(tmp_path):
 
 
 @pytest.fixture
+def true_sky_path(tmp_path):
+    """
+    Fixture to create a true SkyModel for testing.
+    """
+    shutil.copy((RESOURCE_DIR / "integration_true_sky.txt"), tmp_path / "integration_true_sky.txt")
+    return Path(tmp_path / "integration_true_sky.txt")
+
+
+@pytest.fixture
+def apparent_sky_path(tmp_path):
+    """
+    Fixture to create an apparent SkyModel for testing.
+    """
+    shutil.copy(
+        (RESOURCE_DIR / "integration_apparent_sky.txt"), tmp_path / "integration_apparent_sky.txt"
+    )
+    return Path(tmp_path / "integration_apparent_sky.txt")
+
+
+@pytest.fixture
+def true_sky_model(sky_model_path):
+    """
+    Fixture to provide a mock sky model from a survey for testing.
+    This is a placeholder and should be replaced with actual sky model creation logic.
+    """
+    return lsmtool.load(sky_model_path.as_posix())
+
+
+@pytest.fixture
 def soltab():
     """
     Fixture to provide a dummy soltab for testing.
@@ -236,7 +289,11 @@ def custom_strategy(tmp_path):
 
 
 def generate_parset(
-    template_parset_path, input_ms, input_skymodel_path=None, apparent_skymodel_path=None
+    template_parset_path,
+    input_ms,
+    input_skymodel_path=None,
+    apparent_skymodel_path=None,
+    normalization_skymodel_paths=None,
 ):
     """
     Generate a complete parset from a template, optionally update the input
@@ -265,6 +322,8 @@ def generate_parset(
         Path to the input skymodel file to set in the parset.
     apparent_skymodel_path : str, optional (default=None)
         Path to the apparent skymodel file to set in the parset.
+    normalization_skymodel_paths : list of str, optional (default=None)
+        List of paths to the normalization skymodel files to set in the parset.
 
     Returns
     -------
@@ -276,10 +335,15 @@ def generate_parset(
         input_skymodel_path = REPO_ROOT_DIR / input_skymodel_path
     if apparent_skymodel_path:
         apparent_skymodel_path = REPO_ROOT_DIR / apparent_skymodel_path
+    if normalization_skymodel_paths:
+        normalization_skymodel_paths = [
+            REPO_ROOT_DIR / path for path in normalization_skymodel_paths
+        ]
 
     # Keep runtime paths short to avoid AF_UNIX socket path length limits
-    # in multiprocessing-based tooling (e.g. PyBDSF).
-    run_dir = Path(tempfile.mkdtemp(prefix="ical-", dir="/tmp"))
+    # in multiprocessing-based tooling (e.g. PyBDSF). In CI, place runs under
+    # the project directory so the generated logs can be collected as artifacts.
+    run_dir = Path(tempfile.mkdtemp(prefix="ical-", dir=_get_test_run_root()))
     work_dir = run_dir / "work"
     scratch_dir = run_dir / "scratch"
     work_dir.mkdir()
@@ -297,6 +361,23 @@ def generate_parset(
         parset["imaging"]["astrometry_skymodel"] = str(input_skymodel_path)
     if apparent_skymodel_path:
         parset["global"]["apparent_skymodel"] = str(apparent_skymodel_path)
+    if normalization_skymodel_paths:
+        parset["imaging"]["normalization_skymodels"] = (
+            "["
+            + ", ".join([str(path) for path in normalization_skymodel_paths if path is not None])
+            + "]"
+        )
+        parset["imaging"]["normalization_reference_frequencies"] = (
+            "["
+            + ", ".join(
+                [
+                    str(142000000.0 + i * 1000.0)
+                    for i, _ in enumerate(normalization_skymodel_paths)
+                    if _ is not None
+                ]
+            )
+            + "]"
+        )
     parset["cluster"].update(
         local_scratch_dir=str(scratch_dir),
         global_scratch_dir=str(scratch_dir),
@@ -305,7 +386,12 @@ def generate_parset(
 
 
 def generate_parset_path(
-    template_path, output_path, test_ms, input_skymodel_path, apparent_skymodel_path
+    template_path,
+    output_path,
+    test_ms,
+    input_skymodel_path,
+    apparent_skymodel_path,
+    normalization_skymodel_paths=None,
 ):
     """
     Fixture to generate a complete parset from a template and return the path.
@@ -323,7 +409,13 @@ def generate_parset_path(
     For further details see `generate_parset` function.
     """
     parset_path = REPO_ROOT_DIR / template_path
-    parset = generate_parset(parset_path, test_ms, input_skymodel_path, apparent_skymodel_path)
+    parset = generate_parset(
+        parset_path,
+        test_ms,
+        input_skymodel_path,
+        apparent_skymodel_path,
+        normalization_skymodel_paths,
+    )
 
     with output_path.open("w") as fp:
         parset.write(fp)
@@ -356,8 +448,58 @@ def generated_parset_path(request, tmp_path, test_ms):
         test_ms,
         input_skymodel_path,
         apparent_skymodel_path,
+        normalization_skymodel_paths=None,
     )
 
+    return output_parset_path
+
+
+@pytest.fixture(
+    params=[
+        None,
+        [
+            TEST_INTEGRATION_APPARENT_SKYMODEL,
+            TEST_INTEGRATION_TRUE_SKYMODEL,
+        ],
+    ],
+    ids=["downloaded_surveys", "reference_skymodels"],
+)
+def normalization_skymodel_paths(request):
+    """Return optional normalization sky model paths for integration tests."""
+    return request.param
+
+
+@pytest.fixture
+def generated_parset_path_normalisation(
+    request, tmp_path, ms_for_normalisation, normalization_skymodel_paths
+):
+    """
+    Fixture to generate a complete parset from a template and return the path.
+
+    This fixture is used to read in and update a template parset file. It is
+    parametrised using the pytest request fixture and expects a tuple
+    containing three paths to the following files:
+
+    1. Template parset (e.g. in tests/resources/parsets/)
+    2. True sky model (e.g. in tests/resources/)
+    3. Apparent sky model (e.g. in tests/resources/)
+
+    This fixture can be used to test rapthor runs end to end on a small input
+    measurement set with different strategies and sky models.
+    For further details see `generate_parset` function.
+    """
+    parset_path, input_skymodel_path, apparent_skymodel_path = request.param
+    parset_path = REPO_ROOT_DIR / parset_path
+    output_parset_path = tmp_path / "generated.parset"
+
+    generate_parset_path(
+        parset_path,
+        output_parset_path,
+        ms_for_normalisation,
+        input_skymodel_path,
+        apparent_skymodel_path,
+        normalization_skymodel_paths=normalization_skymodel_paths,
+    )
     return output_parset_path
 
 
@@ -372,3 +514,105 @@ def parset_for_field_test(tmp_path_factory, test_ms):
         RESOURCE_DIR / "test_apparent_sky.txt",
     )
     return parset_read(target)
+
+
+def _make_source_catalog(n_channels=8, n_sources=8, alpha=-0.7, ref_flux=1.0, outliers=False):
+    """
+    Build a minimal synthetic PyBDSF spectral-index-mode source catalog.
+
+    Sources are placed on a small grid around the MS phase center so that
+    they pass the radius, major-axis, and neighbor-distance cuts used by
+    ``main()``.
+    """
+    # Frequencies of the test MS (tests/resources/test.ms), 8 channels ~134 MHz
+    ms_channel_frequencies = (
+        np.arange(1.34288025e08, 1.34458923e08, (1.34458923e08 - 1.34288025e08) / n_channels)
+        if n_channels > 0
+        else np.array([])
+    )
+
+    # Phase center of the test MS in degrees (RA, Dec)
+    ra0, dec0 = (24.422081, 33.159759)
+
+    # Number of channels
+    n_chan = len(ms_channel_frequencies)
+
+    ref_freq = (
+        ms_channel_frequencies[n_chan // 2] if n_chan > 0 else 1.0
+    )  # Use middle channel as reference frequency, or 1.0 if no channels
+
+    # Place sources on a regular grid with ~0.3 deg spacing (well within
+    # radius_cut=3 deg and well above neighbor_cut=30/3600 deg)
+    step = 0.3  # degrees
+    offsets = np.arange(-(n_sources // 2), n_sources - (n_sources // 2)) * step
+    source_ra = ra0 + offsets
+    source_dec = np.full(n_sources, dec0)
+
+    # Add source outside the radius cut for testing
+    source_ra[0] = ra0 + 4.0  # 4 degrees, which is outside the radius_cut of 3 degrees
+
+    # Assign power-law SEDs with slight per-source flux variation
+    base_fluxes = ref_flux * (1.0 + 0.1 * np.arange(n_sources))
+
+    # Build the column data
+    columns = {
+        "RA": source_ra.astype(np.float32),
+        "DEC": source_dec.astype(np.float32),
+        "Total_flux": base_fluxes.astype(np.float32),
+        "E_Total_flux": (base_fluxes * 0.05).astype(np.float32),
+        # Small deconvolved major axis — well below major_axis_cut=30/3600 deg
+        "DC_Maj": np.full(n_sources, 5.0 / 3600.0, dtype=np.float32),
+    }
+
+    # Per-channel fluxes and errors
+    for ch, freq in enumerate(ms_channel_frequencies, start=1):
+        ch_flux = base_fluxes * (freq / ref_freq) ** alpha
+        columns[f"Total_flux_ch{ch}"] = ch_flux.astype(np.float32)
+        columns[f"E_Total_flux_ch{ch}"] = (ch_flux * 0.05).astype(np.float32)
+        columns[f"Freq_ch{ch}"] = np.full(n_sources, freq, dtype=np.float64)
+
+    # Add some outliers that fail the major axis and radius cuts for testing
+    if n_sources >= 10 and outliers:
+        columns["DC_Maj"][2] = 0.02  # Source 2: above the major_axis_cut of 0.01 degrees
+        columns["RA"][3] = columns["RA"][4] + 0.005  # Sources 3 and 4: inside neighbor_cut distance
+        columns["DEC"][3] = columns["DEC"][4]
+    table = Table(columns)
+    return table
+
+
+@pytest.fixture
+def source_catalog_fits(tmp_path):
+    """
+    A synthetic PyBDSF spectral-index-mode source catalog FITS file whose
+    sources are centered on the test MS phase center. Contains 8 channels.
+    """
+    catalog_path = str(tmp_path / "test_source_catalog.fits")
+    table = _make_source_catalog()
+    table.write(catalog_path, format="fits", overwrite=True)
+    return catalog_path
+
+
+@pytest.fixture
+def source_catalog_zero_channels_fits(tmp_path):
+    """
+    A synthetic PyBDSF spectral-index-mode source catalog FITS file whose
+    sources are centered on the test MS phase center but with zero channels.
+    """
+    catalog_path = str(tmp_path / "test_source_catalog.fits")
+    table = _make_source_catalog(n_channels=0)
+    table.write(catalog_path, format="fits", overwrite=True)
+    return catalog_path
+
+
+@pytest.fixture
+def source_catalog_with_outliers_fits(tmp_path):
+    """
+    A synthetic PyBDSF spectral-index-mode source catalog FITS file whose
+    sources include some that fail the radius and major axis cuts.
+    """
+    catalog_path = str(tmp_path / "test_source_catalog_with_outliers.fits")
+    table = _make_source_catalog(
+        n_sources=10, outliers=True
+    )  # 10 sources, 4 of which will be outliers
+    table.write(catalog_path, format="fits", overwrite=True)
+    return catalog_path

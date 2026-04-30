@@ -2,6 +2,7 @@
 """
 Script to calculate flux-scale normalization corrections
 """
+
 from argparse import ArgumentParser, RawTextHelpFormatter
 from astropy.io import fits
 from astropy.coordinates import SkyCoord, match_coordinates_sky
@@ -13,6 +14,343 @@ import lsmtool
 import numpy as np
 import tempfile
 from lsmtool.operations_lib import normalize_ra_dec
+import logging
+
+log = logging.getLogger("rapthor:normalize_flux_scale")
+
+# External catalog details
+SURVEY_METADATA = {
+    "wenss": {
+        "flux_correction": 0.9,  # adjust to Scaife and Heald (2012) flux scale
+        "flux_err": 3.6e-3,  # Jy (reported average rms noise level)
+        "frequency": 327e6,
+    },
+    "vlssr": {
+        "flux_correction": 1,  # already on Scaife and Heald (2012) flux scale
+        "flux_err": 0.1,  # Jy (reported average rms noise level)
+        "frequency": 74e6,
+    },
+}
+
+
+def main(
+    source_catalog,
+    ms_file,
+    output_h5parm,
+    radius_cut=3.0,
+    major_axis_cut=30 / 3600,
+    neighbor_cut=30 / 3600,
+    spurious_match_cut=30 / 3600,
+    min_sources=5,
+    weight_by_flux_err=False,
+    ignore_frequency_dependence=False,
+    reference_skymodels=None,
+    reference_skymodels_frequencies=None,
+):
+    """
+    Calculate flux-scale normalization corrections
+
+    Parameters
+    ----------
+    source_catalog : str
+        Filename of the input FITS source catalog. This catalog should have been
+        created by PyBDSF from an image cube with the spectral-index mode
+        activated
+    ms_file : str
+        Filename of the MS file used for imaging (needed for antenna and field tables)
+    output_h5parm : str
+        Filename of the output H5parm
+    radius_cut : float, optional
+        Radius cut in degrees. Sources that lie at radii from the image
+        center larger than this value are excluded from the analysis
+    major_axis_cut : float, optional
+        Major-axis size cut in degrees. Sources with major axes larger
+        than this value are excluded from the analysis
+    neighbor_cut : float, optional
+        Nearest-neighbor distance cut in degrees. Sources with neighbors
+        closer than this value are excluded from the analysis
+    spurious_match_cut : float, optional
+        Distance cut in degrees for spurious matches. Sources with matches in
+        the survey catalogs with distances greater than this value are excluded
+        from the analysis
+    min_sources : int, optional
+        The minimum number of souces required for the normalization correction
+        calculation
+    weight_by_flux_err : bool, optional
+        If True, the mean normalization is calculated using a weighted average, where the
+        weights are given by the inverse of the errors on the source flux densities.
+    ignore_frequency_dependence : bool, optional
+        If True, any frequency dependence of the normalization is ignored and the
+        normalization is taken as the mean over all frequencies
+    reference_skymodels : list of str, optional
+        Filenames of reference sky models to use for normalization (instead of external survey catalogs)
+    reference_skymodels_frequencies : list of float, optional
+        Frequencies corresponding to the reference sky models (only needed if reference_skymodels is given)
+    """
+    source_catalog_data, n_chan = read_source_catalog(source_catalog)
+    phase_center_ra, phase_center_dec = get_field_phase_center(ms_file)
+    do_normalization = _validate_source_catalog(source_catalog_data, min_sources)
+    if do_normalization:
+        source_coords_filtered, source_catalog_data = filter_sources(
+            source_catalog_data,
+            phase_center_ra,
+            phase_center_dec,
+            radius_cut,
+            major_axis_cut,
+            neighbor_cut,
+        )
+        do_normalization = _validate_source_catalog(source_catalog_data, min_sources)
+
+    # Cross match sources with external catalogs
+    if do_normalization:
+        survey_meta_data = _get_survey_metadata(
+            reference_skymodels, reference_skymodels_frequencies
+        )
+
+        survey_catalogs = []
+        for survey, metadata in survey_meta_data.items():
+            if not reference_skymodels:
+                survey_data = _download_survey_data(survey, [phase_center_ra, phase_center_dec])
+            else:
+                skymodel = lsmtool.load(survey)
+                survey_data = _get_data_from_skymodel(skymodel)
+            if survey_data is None:
+                continue
+            survey_coords = _get_survey_coords(survey_data)
+            survey_fluxes = _cross_match_sources(
+                source_coords_filtered, survey_coords, survey_data, spurious_match_cut
+            )
+            # Save the catalog details for use in SED fitting
+            survey_catalogs.append(
+                {
+                    "survey": survey,
+                    "flux": np.array(survey_fluxes) * metadata["flux_correction"],
+                    "flux_err": metadata["flux_err"],
+                    "frequency": metadata["frequency"],
+                }
+            )
+
+    # Fit the source SEDs to find the corrections. The frequencies for the
+    # which the corrections are determined are constructed to match the channels
+    # of the input MS file
+    #
+    # TODO: Test whether a coarser grid would work (it just needs to be fine enough to
+    # capture the frequency behavior of the corrections sufficiently well)
+    output_frequencies = get_output_frequencies(ms_file)
+    if do_normalization:
+        # Make arrays of flux density vs. frequency for each source, for both
+        # the observed fluxes and the catalog fluxes, and find the corrections
+        n_sources = len(source_catalog_data)
+        corrections = np.zeros((n_sources, len(output_frequencies)))
+        survey_frequencies = np.array([sc["frequency"] for sc in survey_catalogs])  # Hz
+        for i in range(n_sources):
+            rapthor_fluxes, rapthor_errors, rapthor_frequencies = _get_source_data(
+                source_catalog_data, n_chan, i
+            )
+            survey_fluxes = np.array([sc["flux"][i] for sc in survey_catalogs])  # Jy
+            survey_errors = np.array([sc["flux_err"] for sc in survey_catalogs])  # Jy
+            corrections[i, :] = find_normalizations(
+                rapthor_fluxes,
+                rapthor_errors,
+                rapthor_frequencies,
+                survey_fluxes,
+                survey_errors,
+                survey_frequencies,
+                output_frequencies,
+            )
+
+        # For each output frequency, find the average correction over all sources
+        # (weighted by source flux density)
+        #
+        # Check the number of valid fits first, and if too few, skip the normalization.
+        # This check assumes that the corrections from valid fits do not contain any NaNs
+        valid_fits = np.all(~np.isnan(corrections), axis=1)
+        n_valid = np.where(valid_fits)[0].size
+        if n_valid < min_sources:
+            log.warning(
+                "Too few sources with successful SED fits. Flux normalization will be skipped."
+            )
+            avg_corrections = np.ones(len(output_frequencies))
+        else:
+            if weight_by_flux_err:
+                # TODO: check that the limit of 1e3 is a good choice (or is needed at all)
+                log.info(
+                    "Calculating weights given by the inverse of the errors on the source flux densities."
+                )
+                weights = [
+                    min(1e3, 1 / err) if err > 0 else 1e3
+                    for err in source_catalog_data["E_Total_flux"][valid_fits]
+                ]
+            else:
+                log.info("Weights will be set to 1 (i.e., no weighting by flux density errors).")
+                weights = np.ones(n_valid)
+            avg_corrections = np.average(corrections[valid_fits], axis=0, weights=weights)
+    else:
+        # If normalization cannot be done, just set all corrections to 1
+        avg_corrections = np.ones(len(output_frequencies))
+
+    if ignore_frequency_dependence:
+        # Use a single correction for all frequencies
+        log.info(
+            "Ignoring frequency dependence of normalizations. A single correction will be applied at all frequencies."
+        )
+        avg_corrections[:] = np.mean(avg_corrections)
+
+    # Write corrections to the output H5parm file as amplitude corrections
+    antenna_file = ms_file + "::ANTENNA"
+    field_file = ms_file + "::FIELD"
+    create_normalization_h5parm(
+        antenna_file, field_file, output_h5parm, output_frequencies, avg_corrections
+    )
+
+
+def read_source_catalog(source_catalog):
+    """
+    Read in the input source catalog.
+
+    Parameters
+    ----------
+    source_catalog : str
+        Filename of the input FITS source catalog. This catalog should have been
+        created by PyBDSF from an image cube with the spectral-index mode
+        activated, so that it contains columns for the flux density of each source.
+
+    Returns
+    -------
+    source_catalog_data : astropy.io.fits.FITS_rec
+        Data from the input FITS source catalog.
+    num_channels : int
+        Number of frequency channels in the input source catalog.
+    """
+    source_catalog_data = fits.getdata(source_catalog, 1)
+
+    num_channels = len(
+        [colname for colname in source_catalog_data.columns.names if colname.startswith("Freq_ch")]
+    )
+    if num_channels == 0:
+        raise ValueError(
+            "No channel frequency columns were found in the input source catalog. "
+            "Please run PyBDSF with the spectral-index mode activated."
+        )
+
+    return source_catalog_data, num_channels
+
+
+def get_field_phase_center(ms_file):
+    """
+    Get the RA and Dec of the phase center from the MS file's FIELD table.
+
+    Parameters
+    ----------
+    ms_file : str
+        Filename of the MS file used for imaging (needed to get the phase center from the FIELD table)
+
+    Returns
+    -------
+    ra : float
+        RA of the phase center in radians
+    dec : float
+        Dec of the phase center in radians
+    """
+    field_file = ms_file + "::FIELD"
+    with pt.table(field_file, ack=False) as fieldTable:
+        # Note: getcol() here returns a nested array, for example:
+        #     array([[[-1.7654,  1.0020]]])
+        # so we use np.squeeze to remove the length-one axes
+        ra, dec = np.squeeze(fieldTable.getcol("PHASE_DIR"))  # radians
+    return ra, dec
+
+
+def filter_sources(
+    source_catalog_data, phase_center_ra, phase_center_dec, radius_cut, major_axis_cut, neighbor_cut
+):
+    """
+    Filter the sources in the input catalog.
+
+    Keeps only:
+      - sources within radius_cut degrees of the phase center
+      - sources with major axes less than major_axis_cut degrees
+      - sources that have no neighbors within neighbor_cut degrees
+
+    Parameters
+    ----------
+    source_catalog_data : astropy.io.fits.FITS_rec
+        Data from the input FITS source catalog.
+    phase_center_ra : float
+        RA of the phase center in radians
+    phase_center_dec : float
+        Dec of the phase center in radians
+    radius_cut : float
+        Radius cut in degrees. Sources that lie at radii from the image
+        center larger than this value are excluded from the analysis
+    major_axis_cut : float
+        Major-axis size cut in degrees. Sources with major axes larger
+        than this value are excluded from the analysis
+    neighbor_cut : float
+        Nearest-neighbor distance cut in degrees. Sources with neighbors
+        closer than this value are excluded from the analysis
+
+    Returns
+    -------
+    source_coords_filtered : astropy.coordinates.SkyCoord
+        SkyCoord object containing the coordinates of the sources that passed the cuts
+    source_catalog_data_filtered : astropy.io.fits.FITS_rec
+        Subset of the input source catalog data containing only the sources that passed the cuts
+    """
+    # Filter the sources to keep only:
+    #  - sources within radius_cut degrees of phase center
+    #  - sources with major axes less than major_axis_cut degrees
+    #  - sources that have no neighbors within neighbor_cut degrees
+    log.info(
+        "Applying cuts to the input source catalog to select sources for normalization calculation..."
+    )
+    source_coords = _get_survey_coords(source_catalog_data)
+    center_coord = SkyCoord(ra=phase_center_ra * u.radian, dec=phase_center_dec * u.radian)
+    source_distances = np.array([sep.value for sep in center_coord.separation(source_coords)])
+
+    # To find the distance to the nearest neighbor of each source, cross match
+    # the source catalog with itself and take the second-closest match using
+    # nthneighbor = 2 (the closest match, returned by nthneighbor = 1, will
+    # always be each source matched to itself and hence at a distance of 0)
+    _, separation, _ = match_coordinates_sky(source_coords, source_coords, nthneighbor=2)
+    neighbor_distances = np.array([sep.value for sep in separation])
+
+    # Apply the cuts
+    radius_filter = source_distances < radius_cut
+    major_axis_filter = source_catalog_data["DC_Maj"] < major_axis_cut
+    neighbor_filter = neighbor_distances > neighbor_cut
+    source_catalog_data_filtered = source_catalog_data[
+        radius_filter & major_axis_filter & neighbor_filter
+    ]
+    source_coords_filtered = source_coords[radius_filter & major_axis_filter & neighbor_filter]
+    return source_coords_filtered, source_catalog_data_filtered
+
+
+def get_output_frequencies(ms_file):
+    """
+    Get the output frequencies for the normalization corrections from the input MS.
+
+    Parameters
+    ----------
+    ms_file : str
+        Filename of the MS file used for imaging (needed to get the channel frequencies from the
+        SPECTRAL_WINDOW table)
+    Returns
+    -------
+    output_frequencies : numpy array
+        Array of frequencies in Hz corresponding to the channels of the input MS,
+        ordered from low to high
+    """
+    spectral_window_file = ms_file + "::SPECTRAL_WINDOW"
+    with pt.table(spectral_window_file, ack=False) as sw:
+        min_frequency = np.min(sw.col("CHAN_FREQ")[0])
+        max_frequency = np.max(sw.col("CHAN_FREQ")[0])
+        channel_width = sw.col("CHAN_WIDTH")[0][0]
+    output_frequencies = np.arange(
+        min_frequency - channel_width, max_frequency + channel_width, channel_width
+    )
+    return output_frequencies
+
 
 def fit_sed(fluxes, errors, frequencies):
     """
@@ -45,6 +383,7 @@ def fit_sed(fluxes, errors, frequencies):
         # No fit possible, return 0
         def sed_fit_lt_2(freq):
             return 0.0
+
         sed_fit = sed_fit_lt_2
 
     elif len(fluxes) == 2:
@@ -53,6 +392,7 @@ def fit_sed(fluxes, errors, frequencies):
 
         def sed_fit_2(freq):
             return fluxes[0] * (frequencies[0] / freq) ** -alpha
+
         sed_fit = sed_fit_2
 
     else:
@@ -60,19 +400,28 @@ def fit_sed(fluxes, errors, frequencies):
         fitter = fitting.LinearLSQFitter()
         powerlaw_init = models.Linear1D(slope=-0.8, intercept=np.log10(fluxes[0]))
         # TODO: check that the limit of 1e3 is a good choice (or is needed at all)
-        weights = [min(1e3, 1/err) if err > 0 else 1e3 for err in errors]
-        powerlaw_fit = fitter(powerlaw_init, np.log10(frequencies), np.log10(fluxes), weights=weights)
+        weights = [min(1e3, 1 / err) if err > 0 else 1e3 for err in errors]
+        powerlaw_fit = fitter(
+            powerlaw_init, np.log10(frequencies), np.log10(fluxes), weights=weights
+        )
 
         def sed_fit_gt_2(freq):
-            return 10**(powerlaw_fit(np.log10(freq)))
+            return 10 ** (powerlaw_fit(np.log10(freq)))
+
         sed_fit = sed_fit_gt_2
 
     return sed_fit
 
 
-def find_normalizations(rapthor_fluxes, rapthor_errors, rapthor_frequencies,
-                        survey_fluxes, survey_errors, survey_frequencies,
-                        output_frequencies):
+def find_normalizations(
+    rapthor_fluxes,
+    rapthor_errors,
+    rapthor_frequencies,
+    survey_fluxes,
+    survey_errors,
+    survey_frequencies,
+    output_frequencies,
+):
     """
     Fit source spectral energy distributions (SEDs) to get flux-scale
     normalizations
@@ -111,16 +460,27 @@ def find_normalizations(rapthor_fluxes, rapthor_errors, rapthor_frequencies,
 
     # Derive normalizations per frequency needed to adjust the Rapthor SED to
     # match the survey one
-    normalizations = np.array([rapthor_fit(freq) / survey_fit(freq)
-                               if (survey_fit(freq) > 0 and rapthor_fit(freq) > 0)
-                               else np.nan for freq in output_frequencies])
+    normalizations = np.array(
+        [
+            rapthor_fit(freq) / survey_fit(freq)
+            if (survey_fit(freq) > 0 and rapthor_fit(freq) > 0)
+            else np.nan
+            for freq in output_frequencies
+        ]
+    )
 
     return normalizations
 
 
-def create_normalization_h5parm(antenna_file, field_file, h5parm_file, frequencies,
-                                normalizations, solset_name='sol000',
-                                soltab_name='amplitude000'):
+def create_normalization_h5parm(
+    antenna_file,
+    field_file,
+    h5parm_file,
+    frequencies,
+    normalizations,
+    solset_name="sol000",
+    soltab_name="amplitude000",
+):
     """
     Writes normalization corrections to an H5parm file
 
@@ -153,9 +513,9 @@ def create_normalization_h5parm(antenna_file, field_file, h5parm_file, frequenci
 
         # Get the station info and make the output antenna table
         with pt.table(antenna_file, ack=False) as antennaTable:
-            antennaNames = antennaTable.getcol('NAME')
-            antennaPositions = antennaTable.getcol('POSITION')
-        antennaTable = solset.obj._f_get_child('antenna')
+            antennaNames = antennaTable.getcol("NAME")
+            antennaPositions = antennaTable.getcol("POSITION")
+        antennaTable = solset.obj._f_get_child("antenna")
         antennaTable.append(list(zip(*(antennaNames, antennaPositions))))
 
         # Get the field info and make the output source table
@@ -163,261 +523,343 @@ def create_normalization_h5parm(antenna_file, field_file, h5parm_file, frequenci
             # Note: getcol() here returns a nested array, for example:
             #     array([[[-1.7654,  1.0020]]])
             # so we use np.squeeze to remove the length-one axes
-            pointing = np.squeeze(fieldTable.getcol('PHASE_DIR'))
-        sourceTable = solset.obj._f_get_child('source')
-        sourceTable.append([('pointing', pointing)])
+            pointing = np.squeeze(fieldTable.getcol("PHASE_DIR"))
+        sourceTable = solset.obj._f_get_child("source")
+        sourceTable.append([("pointing", pointing)])
 
         # Create the output solution table
-        amps = np.sqrt(normalizations)  # so that corrected data = data / amp^2 = data / normalizations
+        amps = np.sqrt(
+            normalizations
+        )  # so that corrected data = data / amp^2 = data / normalizations
         weights = np.ones(normalizations.shape)
-        soltab = solset.makeSoltab('amplitude', soltab_name, axesNames=['freq'],
-                                   axesVals=[frequencies], vals=amps,
-                                   weights=weights)
+        soltab = solset.makeSoltab(
+            "amplitude",
+            soltab_name,
+            axesNames=["freq"],
+            axesVals=[frequencies],
+            vals=amps,
+            weights=weights,
+        )
 
         # Add a CREATE entry to the solution table history
-        soltab.addHistory('CREATE (by normalize_flux_scale.py)')
+        soltab.addHistory("CREATE (by normalize_flux_scale.py)")
 
 
-def main(source_catalog, ms_file, output_h5parm, radius_cut=3.0, major_axis_cut=30/3600,
-         neighbor_cut=30/3600, spurious_match_cut=30/3600, min_sources=5,
-         weight_by_flux_err=False, ignore_frequency_dependence=False):
-    """
-    Calculate flux-scale normalization corrections
+def _get_source_data(source_catalog_data, n_chan, i):
+    """Get the fluxes, errors, and frequencies for a given source from the input catalog.
 
     Parameters
     ----------
-    source_catalog : str
-        Filename of the input FITS source catalog. This catalog should have been
-        created by PyBDSF from an image cube with the spectral-index mode
-        activated
-    ms_file : str
-        Filename of the MS file used for imaging (needed for antenna and field tables)
-    output_h5parm : str
-        Filename of the output H5parm
-    radius_cut : float, optional
-        Radius cut in degrees. Sources that lie at radii from the image
-        center larger than this value are excluded from the analysis
-    major_axis_cut : float, optional
-        Major-axis size cut in degrees. Sources with major axes larger
-        than this value are excluded from the analysis
-    neighbor_cut : float, optional
-        Nearest-neighbor distance cut in degrees. Sources with neighbors
-        closer than this value are excluded from the analysis
-    spurious_match_cut : float, optional
+    source_catalog_data : astropy.io.fits.FITS_rec
+        Data from the input FITS source catalog.
+    n_chan : int
+        Number of frequency channels in source catalog data
+    i : int
+        Index of the source for which to get the data
+
+    Returns
+    -------
+    rapthor_fluxes : numpy array
+        Array of the source flux densities in Jy for the input catalog
+    rapthor_errors : numpy array
+        Array of the 1-sigma errors on the source flux densities in Jy for the input
+        catalog
+    rapthor_frequencies : numpy array
+        Array of the frequencies in Hz corresponding to the source flux densities for
+        the input catalog
+    """
+    return tuple(
+        np.transpose(
+            [
+                (
+                    total_flux_ch,  # Jy
+                    source_catalog_data[f"E_Total_flux_ch{ch_ind}"][i],  # Jy
+                    source_catalog_data[f"Freq_ch{ch_ind}"][i],  # Hz
+                )
+                for ch_ind in range(1, n_chan + 1)
+                if not np.isnan((total_flux_ch := source_catalog_data[f"Total_flux_ch{ch_ind}"][i]))
+            ]
+        )
+    )
+
+
+def _validate_source_catalog(source_catalog_data, min_sources):
+    """
+    Validate the input source catalog.
+
+    Checks that the number of sources in the input catalog is greater than or equal to the
+    minimum number of sources required for normalization calculation.
+
+    Parameters
+    ----------
+    source_catalog_data : astropy.io.fits.FITS_rec
+        Data from the input FITS source catalog.
+    min_sources : int
+        The minimum number of souces required for the normalization correction calculation
+
+    Returns
+    -------
+    bool
+        True if the input source catalog is valid for normalization calculation, False otherwise.
+    """
+    n_sources = len(source_catalog_data)
+    log.info(f"Number of sources in source catalog: {n_sources}")
+    if n_sources < min_sources:
+        log.info("Too few sources. Flux normalization will be skipped.")
+        return False
+    else:
+        return True
+
+
+def _download_survey_data(survey, phase_center):
+    """
+    Get the survey data for a given survey and frequency.
+
+    Downloads a sky model, using a 5-deg radius to ensure the field is
+    fully covered
+
+    Parameters
+    ----------
+    survey : str
+        The name of the survey (e.g., "vlssr", "wenss")
+    phase_center : list of float
+        List containing the RA and Dec of the phase center in radians, ordered as [RA, Dec]
+
+    Returns
+    -------
+    survey_data : astropy.io.fits.FITS_rec
+        Data from the FITS file containing the survey catalog for this field
+    """
+
+    try:
+        log.info(f"Downloading {survey} catalog for this field...")
+        skymodel = lsmtool.load(
+            survey,
+            VOPosition=[phase_center[0] * 180 / np.pi, phase_center[1] * 180 / np.pi],
+            VORadius=5.0,
+        )
+    except (OSError, ConnectionError) as e:
+        log.error(
+            f"A problem occurred when downloading the {survey} catalog. "
+            f"Error was: {e}. Flux normalization will be skipped."
+        )
+        return
+    if not len(skymodel):
+        log.warning(
+            f"No sources found in the {survey} catalog for this field. "
+            "Flux normalization will be skipped."
+        )
+        return
+    return _get_data_from_skymodel(skymodel)
+
+
+def _get_data_from_skymodel(skymodel):
+    """Get the data from a sky model to use for normalization.
+
+    Loads the skymodel in LSMTool format, saves it to a temporary FITS file and
+    reads in the data from this file to get it into FITS format.
+
+    Parameters
+    ----------
+    skymodel : LSMTool skymodel
+
+    Returns
+    -------
+    survey_data : astropy.io.fits.FITS_rec
+        Data from the FITS file containing the survey catalog for this field
+    """
+    with tempfile.NamedTemporaryFile() as fp:
+        skymodel.write(fp.name, format="fits", clobber=True)
+        return fits.getdata(fp.name, 1)
+
+
+def _cross_match_sources(source_coords, survey_coords, survey_data, spurious_match_cut):
+    """Cross match the sources in the input catalog with the sources in the survey catalog.
+
+    Checks each Rapthor source, rejecting distant matches that are likely to be
+    spurious (e.g., due to the true source not being present in the survey catalog)
+    and keeping only the closest match.
+
+    Parameters
+    ----------
+    source_coords : astropy.coordinates.SkyCoord
+        SkyCoord object containing the coordinates of the sources in the input catalog
+    survey_coords : astropy.coordinates.SkyCoord
+        SkyCoord object containing the coordinates of the sources in the survey catalog
+    survey_data : astropy.io.fits.FITS_rec
+        Data from the FITS file containing the survey catalog for this field
+    spurious_match_cut : float
         Distance cut in degrees for spurious matches. Sources with matches in
         the survey catalogs with distances greater than this value are excluded
-        from the analysis
-    min_sources : int, optional
-        The minimum number of souces required for the normalization correction
-        calculation
-    weight_by_flux_err : bool, optional
-        If True, the mean normalization is calculated using a weighted average, where the
-        weights are given by the inverse of the errors on the source flux densities.
-    ignore_frequency_dependence : bool, optional
-        If True, any frequency dependence of the normalization is ignored and the
-        normalization is taken as the mean over all frequencies
     """
-    # Read in the source catalog
-    with fits.open(source_catalog) as hdul:
-        data = hdul[1].data
+    match_ind, separation, _ = match_coordinates_sky(source_coords, survey_coords)
 
-    # Find the number of frequency channels and the total bandwidth covered
-    n_chan = len([colname for colname in data.columns.names if colname.startswith('Freq_ch')])
-    if n_chan == 0:
-        raise ValueError('No channel frequency columns were found in the input source catalog. '
-                         'Please run PyBDSF with the spectral-index mode activated.')
-    spectral_window_file = ms_file + '::SPECTRAL_WINDOW'
-    with pt.table(spectral_window_file, ack=False) as sw:
-        min_frequency = np.min(sw.col('CHAN_FREQ')[0])
-        max_frequency = np.max(sw.col('CHAN_FREQ')[0])
-        channel_width = sw.col('CHAN_WIDTH')[0][0]
-
-    # Get the RA and Dec of the phase center from the MS file's FIELD table
-    field_file = ms_file + '::FIELD'
-    with pt.table(field_file, ack=False) as fieldTable:
-        # Note: getcol() here returns a nested array, for example:
-        #     array([[[-1.7654,  1.0020]]])
-        # so we use np.squeeze to remove the length-one axes
-        ra, dec = np.squeeze(fieldTable.getcol('PHASE_DIR'))  # radians
-
-    do_normalization = True
-    print(f"Number of sources before applying cuts: {data['RA'].size}")
-    if data['RA'].size < min_sources:
-        print('Too few sources. Flux normalization will be skipped.')
-        do_normalization = False
-    else:
-        # Filter the sources to keep only:
-        #  - sources within radius_cut degrees of phase center
-        #  - sources with major axes less than major_axis_cut degrees
-        #  - sources that have no neighbors within neighbor_cut degrees
-        source_ra = []
-        source_dec = []
-        for ra_deg, dec_deg in zip(data['RA'], data['DEC']):
-            ra_norm, dec_norm = normalize_ra_dec(ra_deg, dec_deg)
-            source_ra.append(ra_norm)
-            source_dec.append(dec_norm)
-        source_coords = SkyCoord(ra=np.array(source_ra)*u.degree,
-                                 dec=np.array(source_dec)*u.degree)
-        center_coord = SkyCoord(ra=ra*u.radian, dec=dec*u.radian)
-        source_distances = np.array([sep.value for sep in center_coord.separation(source_coords)])
-
-        # To find the distance to the nearest neighbor of each source, cross match
-        # the source catalog with itself and take the second-closest match using
-        # nthneighbor = 2 (the closest match, returned by nthneighbor = 1, will
-        # always be each source matched to itself and hence at a distance of 0)
-        _, separation, _ = match_coordinates_sky(source_coords, source_coords, nthneighbor=2)
-        neighbor_distances = np.array([sep.value for sep in separation])
-
-        # Apply the cuts
-        radius_filter = source_distances < radius_cut
-        major_axis_filter = data['DC_Maj'] < major_axis_cut
-        neighbor_filter = neighbor_distances > neighbor_cut
-        data = data[radius_filter & major_axis_filter & neighbor_filter]
-        source_coords = source_coords[radius_filter & major_axis_filter & neighbor_filter]
-        n_sources = len(source_coords)
-        print(f"Number of sources after applying cuts: {n_sources}")
-        if n_sources < min_sources:
-            print('Too few sources remain after applying cuts. Flux normalization will be skipped.')
-            do_normalization = False
-
-    # Cross match sources with external catalogs
-    if do_normalization:
-        survey_catalogs = []
-        surveys = ['vlssr', 'wenss']  # the survey names
-        frequencies = [74e6, 327e6]  # the survey reference frequencies in Hz, ordered from low to high
-        for survey, frequency in zip(surveys, frequencies):
-            # Download sky model(s), using a 5-deg radius to ensure the field is
-            # fully covered
-            try:
-                skymodel = lsmtool.load(survey, VOPosition=[ra*180/np.pi, dec*180/np.pi], VORadius=5.0)
-            except (OSError, ConnectionError) as e:
-                print(f'A problem occurred when downloading the {survey} catalog. '
-                      'Error was: {}. Flux normalization will be skipped.'.format(e))
-                do_normalization = False
-            if not len(skymodel):
-                print(f'No sources found in the {survey} catalog for this field. '
-                      'Flux normalization will be skipped.')
-                do_normalization = False
-            if not do_normalization:
-                continue
-            with tempfile.NamedTemporaryFile() as fp:
-                skymodel.write(fp.name, format='fits', clobber=True)
-                with fits.open(fp.name) as hdul:
-                    survey_data = hdul[1].data
-            survey_ra = []
-            survey_dec = []
-            for ra_deg, dec_deg in zip(survey_data['RA'], survey_data['DEC']):
-                ra_norm, dec_norm = normalize_ra_dec(ra_deg, dec_deg)
-                survey_ra.append(ra_norm)
-                survey_dec.append(dec_norm)
-            survey_coords = SkyCoord(ra=np.array(survey_ra)*u.degree,
-                                     dec=np.array(survey_dec)*u.degree)
-
-            # Cross match the survey sources with the Rapthor sources
-            match_ind, separation, _ = match_coordinates_sky(source_coords, survey_coords)
-
-            # Check each Rapthor source, rejecting distant matches that are likely to be
-            # spurious (e.g., due to the true source not being present in the survey catalog)
-            # and keeping only the closest match
-            survey_fluxes = []
-            for dist, ind in zip(separation,  match_ind):
-                all_matches_ind = np.where(match_ind == ind)[0]
-                if dist.value > np.min(separation.value[all_matches_ind]) or dist.value > spurious_match_cut:
-                    # Reject match by setting its survey flux to 0 (which will be ignored
-                    # during SED fitting)
-                    survey_fluxes.append(0.0)
-                else:
-                    survey_fluxes.append(survey_data['I'][ind])
-
-            # Save the catalog details for use in SED fitting
-            if survey == 'wenss':
-                flux_correction = 0.9  # adjust to Scaife and Heald (2012) flux scale
-                flux_err = 3.6e-3  # Jy (reported average rms noise level)
-            elif survey == 'vlssr':
-                flux_correction = 1  # already on Scaife and Heald (2012) flux scale
-                flux_err = 0.1  # Jy (reported average rms noise level)
-            survey_catalogs.append({'survey': survey, 'flux': np.array(survey_fluxes)*flux_correction,
-                                    'flux_err': flux_err, 'frequency': frequency})
-
-    # Fit the source SEDs to find the corrections. The frequencies for the
-    # which the corrections are determined are constructed to match the channels
-    # of the input MS file
-    #
-    # TODO: Test whether a coarser grid would work (it just needs to be fine enough to
-    # capture the frequency behavior of the corrections sufficiently well)
-    output_frequencies = np.arange(min_frequency-channel_width, max_frequency+channel_width, channel_width)
-    if do_normalization:
-        # Make arrays of flux density vs. frequency for each source, for both
-        # the observed fluxes and the catalog fluxes, and find the corrections
-        corrections = np.zeros((n_sources, len(output_frequencies)))
-        survey_frequencies = np.array([sc['frequency'] for sc in survey_catalogs])  # Hz
-        for i in range(n_sources):
-            rapthor_fluxes = []
-            rapthor_errors = []
-            rapthor_frequencies = []
-            for ch_ind in range(n_chan):
-                if not np.isnan(data[f'Total_flux_ch{ch_ind+1}'][i]):
-                    rapthor_fluxes.append(data[f'Total_flux_ch{ch_ind+1}'][i])  # Jy
-                    rapthor_errors.append(data[f'E_Total_flux_ch{ch_ind+1}'][i])  # Jy
-                    rapthor_frequencies.append(data[f'Freq_ch{ch_ind+1}'][i])  # Hz
-            rapthor_fluxes = np.array(rapthor_fluxes)
-            rapthor_errors = np.array(rapthor_errors)
-            rapthor_frequencies = np.array(rapthor_frequencies)
-            survey_fluxes = np.array([sc['flux'][i] for sc in survey_catalogs])  # Jy
-            survey_errors = np.array([sc['flux_err'] for sc in survey_catalogs])  # Jy
-            corrections[i, :] = find_normalizations(rapthor_fluxes, rapthor_errors, rapthor_frequencies,
-                                                    survey_fluxes, survey_errors, survey_frequencies,
-                                                    output_frequencies)
-
-        # For each output frequency, find the average correction over all sources
-        # (weighted by source flux density)
-        #
-        # Check the number of valid fits first, and if too few, skip the normalization.
-        # This check assumes that the corrections from valid fits do not contain any NaNs
-        valid_fits = np.all(~np.isnan(corrections), axis=1)
-        n_valid = np.where(valid_fits)[0].size
-        if n_valid < min_sources:
-            print('Too few sources with successful SED fits. Flux normalization will be skipped.')
-            avg_corrections = np.ones(len(output_frequencies))
+    survey_fluxes = []
+    for dist, ind in zip(separation, match_ind):
+        if (
+            dist.value > np.min(separation.value[match_ind == ind])
+            or dist.value > spurious_match_cut
+        ):
+            # Reject match by setting its survey flux to 0 (which will be ignored
+            # during SED fitting)
+            survey_fluxes.append(0.0)
         else:
-            if weight_by_flux_err:
-                # TODO: check that the limit of 1e3 is a good choice (or is needed at all)
-                weights = [min(1e3, 1/err) if err > 0 else 1e3 for err in data['E_Total_flux'][valid_fits]]
-            else:
-                weights = np.ones(n_valid)
-            avg_corrections = np.average(corrections[valid_fits], axis=0,
-                                         weights=weights)
+            survey_fluxes.append(survey_data["I"][ind])
+    return survey_fluxes
+
+
+def _get_survey_coords(survey_data):
+    """Get the coordinates of the sources in the survey catalog in degrees.
+
+    Parameters
+    ----------
+    survey_data : astropy.io.fits.FITS_rec
+        Data from the FITS file containing the survey catalog for this field
+
+    Returns
+    -------
+    survey_coords : astropy.coordinates.SkyCoord
+        Coordinates of the sources in the survey catalog in degrees
+    """
+    survey_ra, survey_dec = zip(
+        *(
+            normalize_ra_dec(ra_deg, dec_deg)
+            for ra_deg, dec_deg in zip(survey_data["RA"], survey_data["DEC"])
+        )
+    )
+    return SkyCoord(ra=np.array(survey_ra) * u.degree, dec=np.array(survey_dec) * u.degree)
+
+
+def _get_survey_metadata(reference_skymodels=None, reference_frequencies=None):
+    """Get the metadata for the surveys to be used for normalization.
+
+    If reference sky models are provided as input, the metadata for these will be used
+    for normalization. Otherwise, the metadata for the external survey catalogs will be used.
+
+    Parameters
+    ----------
+    reference_skymodels : list of str
+        Filenames of reference sky models to use for normalization (instead of external survey catalogs)
+    reference_frequencies: list of float
+        Reference frequency for each sky model in Hz (only needed if reference_skymodels is given)
+    Returns
+    -------
+    survey_metadata : dict
+        Dictionary containing the metadata for the surveys to be used for normalization. The keys are the survey
+        names and the values are dictionaries containing the metadata for each survey
+        (e.g., flux correction factor, flux error, frequency).
+    """
+    if reference_skymodels is not None and len(reference_skymodels) > 1:
+        if reference_frequencies is None or any(freq is None for freq in reference_frequencies):
+            raise ValueError(
+                "Frequencies corresponding to the reference sky models must be provided if reference sky models are given."
+            )
+        log.info(
+            "Using reference sky models provided as input for normalization, instead of external survey catalogs."
+        )
+        return {
+            survey: {"flux_correction": 1.0, "flux_err": 0.0, "frequency": freq}
+            for survey, freq in zip(reference_skymodels, reference_frequencies)
+        }
     else:
-        # If normalization cannot be done, just set all corrections to 1
-        avg_corrections = np.ones(len(output_frequencies))
-
-    if ignore_frequency_dependence:
-        # Use a single correction for all frequencies
-        avg_corrections[:] = np.mean(avg_corrections)
-
-    # Write corrections to the output H5parm file as amplitude corrections
-    antenna_file = ms_file + '::ANTENNA'
-    create_normalization_h5parm(antenna_file, field_file, output_h5parm, output_frequencies,
-                                avg_corrections)
+        log.info(
+            "Using external survey catalogs for normalization. The following surveys will be used: "
+            + ", ".join(SURVEY_METADATA.keys())
+        )
+        return _sort_metadata_by_frequency(SURVEY_METADATA)
 
 
-if __name__ == '__main__':
+def _sort_metadata_by_frequency(survey_metadata):
+    """Sort the survey metadata by frequency.
+
+    Parameters
+    ----------
+    survey_metadata : dict
+        Dictionary containing the metadata for the surveys to be used for normalization. The keys are the survey
+        names and the values are dictionaries containing the metadata for each survey
+        (e.g., flux correction factor, flux error, frequency).
+
+    Returns
+    -------
+    sorted_survey_metadata : dict
+        Dictionary containing the metadata for the surveys to be used for normalization, sorted by frequency. The keys are the survey
+        names and the values are dictionaries containing the metadata for each survey
+        (e.g., flux correction factor, flux error, frequency).
+    """
+    sorted_survey_metadata = sorted(survey_metadata.items(), key=lambda item: item[1]["frequency"])
+    return dict(sorted_survey_metadata)
+
+
+if __name__ == "__main__":
     descriptiontext = "Calculate flux-scale normalization corrections.\n"
 
     parser = ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
-    parser.add_argument('source_catalog', help='Filename of input FITS source catalog')
-    parser.add_argument('ms_file', help='Filename of imaging MS file')
-    parser.add_argument('output_h5parm', help='Filename of output H5parm file with the normalization corrections')
-    parser.add_argument('--radius_cut', help='Radius cut in degrees', type=float, default=3.0)
-    parser.add_argument('--major_axis_cut', help='Major-axis size cut in degrees', type=float, default=30/3600)
-    parser.add_argument('--neighbor_cut', help='Nearest-neighbor distance cut in degrees', type=float, default=30/3600)
-    parser.add_argument('--spurious_match_cut', help='Spurious match distance cut in degrees', type=float, default=30/3600)
-    parser.add_argument('--min_sources', help='Minimum number of souces required for normalization calculation', type=int, default=5)
-    parser.add_argument('--weight_by_flux_err', help='Weight by error on flux density', action='store_true', default=False)
-    parser.add_argument('--ignore_frequency_dependence', help='Ignore frequency dependence of normalizations', action='store_true', default=False)
+    parser.add_argument("source_catalog", help="Filename of input FITS source catalog")
+    parser.add_argument("ms_file", help="Filename of imaging MS file")
+    parser.add_argument(
+        "output_h5parm", help="Filename of output H5parm file with the normalization corrections"
+    )
+    parser.add_argument("--radius_cut", help="Radius cut in degrees", type=float, default=3.0)
+    parser.add_argument(
+        "--major_axis_cut", help="Major-axis size cut in degrees", type=float, default=30 / 3600
+    )
+    parser.add_argument(
+        "--neighbor_cut",
+        help="Nearest-neighbor distance cut in degrees",
+        type=float,
+        default=30 / 3600,
+    )
+    parser.add_argument(
+        "--spurious_match_cut",
+        help="Spurious match distance cut in degrees",
+        type=float,
+        default=30 / 3600,
+    )
+    parser.add_argument(
+        "--min_sources",
+        help="Minimum number of sources required for normalization calculation",
+        type=int,
+        default=5,
+    )
+    parser.add_argument(
+        "--weight_by_flux_err",
+        help="Weight by error on flux density",
+        action="store_true",
+        default=False,
+    )
+    parser.add_argument(
+        "--ignore_frequency_dependence",
+        help="Ignore frequency dependence of normalizations",
+        action="store_true",
+        default=False,
+    )
+    parser.add_argument(
+        "--reference_skymodels",
+        help="Filenames of reference sky models to use for normalization (instead of external survey catalogs)",
+        type=str,
+        nargs="+",
+        default=None,
+    )
+    parser.add_argument(
+        "--reference_skymodels_frequencies",
+        help="Frequencies corresponding to the reference sky models",
+        type=float,
+        nargs="+",
+        default=None,
+    )
 
     args = parser.parse_args()
-    main(args.source_catalog, args.ms_file, args.output_h5parm, radius_cut=args.radius_cut,
-         major_axis_cut=args.major_axis_cut, neighbor_cut=args.neighbor_cut,
-         spurious_match_cut=args.spurious_match_cut, min_sources=args.min_sources,
-         weight_by_flux_err=args.weight_by_flux_err, ignore_frequency_dependence=args.ignore_frequency_dependence)
+    main(
+        args.source_catalog,
+        args.ms_file,
+        args.output_h5parm,
+        radius_cut=args.radius_cut,
+        major_axis_cut=args.major_axis_cut,
+        neighbor_cut=args.neighbor_cut,
+        spurious_match_cut=args.spurious_match_cut,
+        min_sources=args.min_sources,
+        weight_by_flux_err=args.weight_by_flux_err,
+        ignore_frequency_dependence=args.ignore_frequency_dependence,
+        reference_skymodels=args.reference_skymodels,
+        reference_skymodels_frequencies=args.reference_skymodels_frequencies,
+    )

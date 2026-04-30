@@ -73,7 +73,8 @@ dev = ["ruff", {include-group = "test"} ]
 [tool.pytest.ini_options]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
-    "integration: marks test as integration tests"
+    "integration: marks test as integration tests",
+    "internet: marks tests that require internet access"
 ]
 
 
@@ -171,7 +172,7 @@ commands = [
     [
         "python", "-m", "pytest",
         "-m", "not integration",
-        "-n", "4",
+        "-n", "auto",
         "-k", "not test_field.py",
         "--cov-report", "term-missing",
         "--cov-report", "xml",
@@ -185,12 +186,12 @@ commands = [
 [tool.tox.env.test_integration]
 description = "Run integration tests"
 deps = [{ replace = "ref", of = ["dependency-groups", "test"], extend = true }]
+pass_env = ["CI_PROJECT_DIR", "NUMEXPR_MAX_THREADS"]
 commands = [
     [
         "python", "-m", "pytest",
         "-m", "integration",
         "-vv", "-ra",
-        "-n", "4",
         "tests/{posargs}",
     ]
 ]
@@ -219,6 +220,7 @@ format_targets = [
     "rapthor/operations/image.py",
     "rapthor/process.py",
     "rapthor/scripts/calculate_image_diagnostics.py",
+    "rapthor/scripts/normalize_flux_scale.py",
     "tests/__init__.py",
     "tests/conftest.py",
     "tests/cwl/__init__.py",
@@ -238,6 +240,7 @@ format_targets = [
     "tests/lib/test_strategy.py",
     "tests/operations/test_calibrate.py",
     "tests/scripts/test_calculate_image_diagnostics.py",
+    "tests/scripts/test_normalize_flux_scale.py"
 ]
 commands = [
     [

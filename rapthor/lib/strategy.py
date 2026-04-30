@@ -403,28 +403,11 @@ def validate_strategy(strategy_steps, parset):
     # allowing internet access
     if not parset["cluster_specific"][
         "allow_internet_access"
-    ] and _strategy_requires_internet_access(strategy_steps):
+    ] and strategy_steps[0].get("do_normalize", False) and not parset["imaging_specific"]["normalization_skymodels"]:
         raise ValueError(
-            "The strategy includes do_normalize which requires internet access but the "
-            "parset setting allow_internet_access is set to False. Please set "
-            "allow_internet_access to True or remove normalization from the strategy"
+            "The strategy includes do_normalize in the first cycle, which requires internet access "
+            "or user-provided sky models for normalization but the parset setting "
+            "allow_internet_access is set to False and no normalization skymodels are provided. "
+            "Please set allow_internet_access to True or provide paths to normalization skymodels "
+            "(and a list of reference frequencies) in the parset."
         )
-
-def _strategy_requires_internet_access(strategy_steps):
-    """
-    Check for any strategy steps that require internet access.
-
-    This includes:
-        - do_normalize: if True, ImageNormalize operation is run, which
-            requires internet access to query the fluxes of the sources in the
-            sky model from external catalogs.
-
-    Parameters
-    ----------
-    strategy_steps : list of dicts
-        List of strategy step dicts containing the processing parameters.
-    """
-    for step in strategy_steps:
-        if step.get("do_normalize", False):
-            return True
-    return False
