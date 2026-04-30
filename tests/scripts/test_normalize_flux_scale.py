@@ -4,6 +4,7 @@ Test cases for the normalize_flux_scale script in the rapthor package.
 
 import os
 from pathlib import Path
+import runpy
 from astropy.io import fits
 from astropy.coordinates import SkyCoord
 import astropy.units as u
@@ -84,6 +85,25 @@ def survey_coords(survey_data):
     return SkyCoord(
         ra=np.array(survey_data["RA"]) * u.degree, dec=np.array(survey_data["DEC"]) * u.degree
     )
+
+
+@pytest.fixture
+def partially_matching_survey_data(source_catalog):
+    """Return a synthetic survey catalog with matches for all but the first source."""
+    return np.rec.fromarrays(
+        [
+            np.array(source_catalog["RA"][1:], dtype=np.float64),
+            np.array(source_catalog["DEC"][1:], dtype=np.float64),
+            np.array(source_catalog["Total_flux"][1:], dtype=np.float64),
+        ],
+        names=["RA", "DEC", "I"],
+    )
+
+
+@pytest.fixture
+def partially_matching_survey_coords(partially_matching_survey_data):
+    """Return SkyCoord objects for the partially matching synthetic survey catalog."""
+    return _get_survey_coords(partially_matching_survey_data)
 
 
 @pytest.fixture
@@ -263,10 +283,11 @@ def test_create_normalization_h5parm(test_ms, tmp_path):
     """
     # Define test parameters
 
+    h5parm_file = str(tmp_path / "test_h5parm.h5")
     create_normalization_h5parm(
         antenna_file=str(Path(test_ms) / "ANTENNA"),
         field_file=str(Path(test_ms) / "FIELD"),
-        h5parm_file=str(tmp_path / "test_h5parm.h5"),
+        h5parm_file=h5parm_file,
         frequencies=np.array([100e6, 200e6, 300e6]),  # Frequencies in Hz
         normalizations=np.array([1.0, 2.0, 3.0]),  # Normalization values for the test
         solset_name="test_solset",
@@ -752,6 +773,31 @@ def test_cross_match_sources(source_catalog, source_coords, survey_data, survey_
         source_coords, survey_coords, survey_data, spurious_match_cut=30 / 3600
     )
     assert len(survey_fluxes) == len(source_catalog)
+    assert np.allclose(survey_fluxes, 0.0), (
+        f"Expected all survey fluxes to be zero, got {survey_fluxes}"
+    )
+
+
+def test_cross_match_sources_with_some_matches(
+    source_catalog,
+    source_coords,
+    partially_matching_survey_data,
+    partially_matching_survey_coords,
+):
+    """
+    Test that the _cross_match_sources function returns survey fluxes for matching sources.
+    """
+    survey_fluxes = _cross_match_sources(
+        source_coords,
+        partially_matching_survey_coords,
+        partially_matching_survey_data,
+        spurious_match_cut=30 / 3600,
+    )
+    expected_fluxes = np.zeros(len(source_catalog), dtype=np.float64)
+    expected_fluxes[1:] = np.array(source_catalog["Total_flux"][1:], dtype=np.float64)
+    assert np.allclose(survey_fluxes, expected_fluxes), (
+        f"Expected survey fluxes {expected_fluxes}, got {survey_fluxes}"
+    )
 
 
 def test_get_survey_metadata_without_reference_skymodels(caplog):
@@ -863,3 +909,34 @@ def test_get_source_data(source_catalog):
     assert rapthor_fluxes.shape[0] == n_chan
     assert rapthor_errors.shape[0] == n_chan
     assert rapthor_frequencies.shape[0] == n_chan
+
+
+def test_normalize_flux_scale_cli_entrypoint(
+    monkeypatch,
+    source_catalog_fits,
+    test_ms,
+    tmp_path,
+    true_sky_path,
+    apparent_sky_path,
+):
+    """Test that the module CLI entrypoint parses arguments and runs successfully."""
+    output_h5parm = tmp_path / "cli_output.h5"
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "normalize_flux_scale.py",
+            source_catalog_fits,
+            test_ms,
+            str(output_h5parm),
+            "--reference_skymodels",
+            str(true_sky_path),
+            str(apparent_sky_path),
+            "--reference_skymodels_frequencies",
+            "142000000.0",
+            "142100000.0",
+        ],
+    )
+
+    runpy.run_path(rapthor.scripts.normalize_flux_scale.__file__, run_name="__main__")
+
+    assert output_h5parm.exists(), f"Expected {output_h5parm} to be created."
