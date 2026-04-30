@@ -104,7 +104,7 @@ class Calibrate(Operation):
             for key in ("fast", "medium", "slow"):
                 dd_factor_key = f"{key}_smoothness_dd_factors"
                 constraint_key = f"{key}_smoothnessconstraint"
-                dd_factor = smoothness_dd_factors[dd_factor_key] = field.field.get_obs_parameters(
+                dd_factor = smoothness_dd_factors[dd_factor_key] = field.get_obs_parameters(
                     dd_factor_key
                 )
                 smoothness_constraints[constraint_key] = getattr(field, constraint_key) / np.min(
