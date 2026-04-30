@@ -670,9 +670,7 @@ def _get_data_from_skymodel(skymodel):
     """
     with tempfile.NamedTemporaryFile() as fp:
         skymodel.write(fp.name, format="fits", clobber=True)
-        with fits.open(fp.name) as hdul:
-            survey_data = hdul[1].data
-    return survey_data
+        return fits.getdata(fp.name, 1)
 
 
 def _cross_match_sources(source_coords, survey_coords, survey_data, spurious_match_cut):
