@@ -776,8 +776,7 @@ def _get_survey_metadata(reference_skymodels=None, reference_frequencies=None):
             "Using external survey catalogs for normalization. The following surveys will be used: "
             + ", ".join(SURVEY_METADATA.keys())
         )
-        survey_metadata = {survey: metadata for survey, metadata in SURVEY_METADATA.items()}
-        return _sort_metadata_by_frequency(survey_metadata)
+        return _sort_metadata_by_frequency(SURVEY_METADATA)
 
 
 def _sort_metadata_by_frequency(survey_metadata):
