@@ -60,4 +60,3 @@ def test_rapthor_run_dd_fast_phase_medium_phase(generated_parset_path, single_lo
     assert "scalarphase" == dp3_arguments["solve1.mode"]
     assert "scalarphase" == dp3_arguments["solve2.mode"]
     assert int(dp3_arguments["solve1.solint"]) < int(dp3_arguments["solve2.solint"])
-
