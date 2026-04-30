@@ -222,8 +222,7 @@ def read_source_catalog(source_catalog):
     num_channels : int
         Number of frequency channels in the input source catalog.
     """
-    with fits.open(source_catalog) as hdul:
-        source_catalog_data = hdul[1].data
+    source_catalog_data = fits.getdata(source_catalog, 1)
 
     num_channels = len(
         [colname for colname in source_catalog_data.columns.names if colname.startswith("Freq_ch")]
@@ -569,18 +568,19 @@ def _get_source_data(source_catalog_data, n_chan, i):
         Array of the frequencies in Hz corresponding to the source flux densities for
         the input catalog
     """
-    rapthor_fluxes = []
-    rapthor_errors = []
-    rapthor_frequencies = []
-    for ch_ind in range(n_chan):
-        if not np.isnan(source_catalog_data[f"Total_flux_ch{ch_ind + 1}"][i]):
-            rapthor_fluxes.append(source_catalog_data[f"Total_flux_ch{ch_ind + 1}"][i])  # Jy
-            rapthor_errors.append(source_catalog_data[f"E_Total_flux_ch{ch_ind + 1}"][i])  # Jy
-            rapthor_frequencies.append(source_catalog_data[f"Freq_ch{ch_ind + 1}"][i])  # Hz
-    rapthor_fluxes = np.array(rapthor_fluxes)
-    rapthor_errors = np.array(rapthor_errors)
-    rapthor_frequencies = np.array(rapthor_frequencies)
-    return rapthor_fluxes, rapthor_errors, rapthor_frequencies
+    return tuple(
+        np.transpose(
+            [
+                (
+                    total_flux_ch,  # Jy
+                    source_catalog_data[f"E_Total_flux_ch{ch_ind}"][i],  # Jy
+                    source_catalog_data[f"Freq_ch{ch_ind}"][i],  # Hz
+                )
+                for ch_ind in range(1, n_chan + 1)
+                if not np.isnan((total_flux_ch := source_catalog_data[f"Total_flux_ch{ch_ind}"][i]))
+            ]
+        )
+    )
 
 
 def _validate_source_catalog(source_catalog_data, min_sources):
@@ -698,9 +698,8 @@ def _cross_match_sources(source_coords, survey_coords, survey_data, spurious_mat
 
     survey_fluxes = []
     for dist, ind in zip(separation, match_ind):
-        all_matches_ind = np.where(match_ind == ind)[0]
         if (
-            dist.value > np.min(separation.value[all_matches_ind])
+            dist.value > np.min(separation.value[match_ind == ind])
             or dist.value > spurious_match_cut
         ):
             # Reject match by setting its survey flux to 0 (which will be ignored

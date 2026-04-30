@@ -244,21 +244,15 @@ def test_find_normalizations_single_flux_returns_nan():
     """
     Test the find_normalizations function with a single flux.
     """
-    rapthor_fluxes = np.array([2.0])
-    rapthor_errors = np.array([0.1])
-    rapthor_frequencies = np.array([100e6])  # Frequencies in Hz
-    survey_fluxes = np.array([1.0])
-    survey_errors = np.array([0.15])
-    survey_frequencies = np.array([150e6])  # Frequencies in Hz
-    output_frequencies = np.array([100e6])  # Frequencies in Hz
+
     normalizations = find_normalizations(
-        rapthor_fluxes,
-        rapthor_errors,
-        rapthor_frequencies,
-        survey_fluxes,
-        survey_errors,
-        survey_frequencies,
-        output_frequencies,
+        rapthor_fluxes=np.array([2.0]),
+        rapthor_errors=np.array([0.1]),
+        rapthor_frequencies=np.array([100e6]),  # Frequencies in Hz
+        survey_fluxes=np.array([1.0]),
+        survey_errors=np.array([0.15]),
+        survey_frequencies=np.array([150e6]),  # Frequencies in Hz
+        output_frequencies=np.array([100e6]),  # Frequencies in Hz
     )
     assert np.isnan(normalizations).all(), f"Expected [nan], got {normalizations}"
 
@@ -268,21 +262,15 @@ def test_create_normalization_h5parm(test_ms, tmp_path):
     Test the create_normalization_h5parm function.
     """
     # Define test parameters
-    antenna_file = str(Path(test_ms) / "ANTENNA")
-    field_file = str(Path(test_ms) / "FIELD")
-    h5parm_file = str(tmp_path / "test_h5parm.h5")
-    frequencies = np.array([100e6, 200e6, 300e6])  # Frequencies in Hz
-    normalizations = np.array([1.0, 2.0, 3.0])  # Normalization values for the test
-    solset_name = "test_solset"
-    soltab_name = "test_soltab"
+
     create_normalization_h5parm(
-        antenna_file,
-        field_file,
-        h5parm_file,
-        frequencies,
-        normalizations,
-        solset_name,
-        soltab_name,
+        antenna_file=str(Path(test_ms) / "ANTENNA"),
+        field_file=str(Path(test_ms) / "FIELD"),
+        h5parm_file=str(tmp_path / "test_h5parm.h5"),
+        frequencies=np.array([100e6, 200e6, 300e6]),  # Frequencies in Hz
+        normalizations=np.array([1.0, 2.0, 3.0]),  # Normalization values for the test
+        solset_name="test_solset",
+        soltab_name="test_soltab",
     )
     # Check if the file is created
     assert os.path.exists(h5parm_file), f"Expected {h5parm_file} to be created."
@@ -645,7 +633,6 @@ def test_filter_sources(source_catalog_with_outliers):
 
     Fixture contains 10 sources, 5 of which are valid and 5 of which are outliers.
     """
-    original_coords = np.array([(data["RA"], data["DEC"]) for data in source_catalog_with_outliers])
     original_source_catalog_data = source_catalog_with_outliers.copy()
     radius_cut = 3  # degrees
     major_axis_cut = 0.01  # degrees
