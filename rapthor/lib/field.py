@@ -1853,10 +1853,10 @@ class Field(object):
         """
         Sets the calibration strategy for the current cycle.
 
-        If no strategy is specified in the parset (or if it is set to None) then
-        the default strategy is used as determined by the legacy parameters 
-        `do_fulljones_solve`, which triggers DI calibration after DD, and 
-        `do_slowgain_solve`, which triggers a slow gain solve after the main solve.
+        If no calibration_strategy is specified in the strategy file (or if it is set to None) then
+        the default strategy is used as determined by the legacy parameters:
+           - `do_fulljones_solve` set to True triggers DI calibration after DD
+           - `do_slowgain_solve` set to True triggers a slow gain solve after the main solve
         """
         if not self.calibration_strategy:
             # Use legacy strategy based on the `do_fulljones_solve` and `do_slowgain_solve` parameters
