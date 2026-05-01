@@ -165,6 +165,7 @@ def test_check_and_adjust_parameters_raises_error_for_missing_primary_parameters
         ("do_calibrate", "slow_timestep_sec"),
         ("do_calibrate", "fulljones_timestep_sec"),
         ("do_calibrate", "scale_normalization_delta"),
+        ("do_calibrate", "calibration_strategy"),
         ("do_check", "convergence_ratio"),
         ("do_check", "divergence_ratio"),
         ("do_check", "failure_ratio"),

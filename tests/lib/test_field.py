@@ -118,3 +118,141 @@ def test_plot_overview_initial_near_pole(field):
     field.dec = 89.5
     field.plot_overview(plot_filename, show_initial_coverage=True)
     assert plot_path.exists()
+
+
+@pytest.mark.parametrize(
+    "do_slowgain_solve, do_fulljones_solve",
+    [(True, True), (True, False), (False, True), (False, False)],
+)
+def test_set_calibration_strategy_legacy_default(field, do_slowgain_solve, do_fulljones_solve):
+    """Test that the default calibration strategy is set correctly.
+
+    This should capture the current behaviour of the pipeline using the
+    legacy settings 'do_fulljones_solve' and 'do_slowgain_solve'in the strategy file.
+    """
+    step_dict = {
+        "do_calibrate": True,
+        "do_slowgain_solve": do_slowgain_solve,
+        "do_fulljones_solve": do_fulljones_solve,
+        "regroup_model": False,
+    }
+    field.__dict__.update(step_dict)
+    field.set_calibration_strategy()
+    expected_strategy = {
+        "di": {
+            "fast_phase": False,  # Never do a fast DI solve
+            "medium_phase": False,  # Never do a medium DI solve
+            "slow_gain": False,  # Never do a slow DI solve
+            "full_jones": do_fulljones_solve,  # Only type of DI solve supported in legacy code
+        },
+        "dd": {
+            "fast_phase": True,  # Always do a fast DD solve
+            "medium_phase": True,  # Always do a medium DD solve
+            "slow_gain": do_slowgain_solve,  # Only do a slow DD solve if do_slow_gain_solve is True in the strategy file
+            # Never do a full DD solve, even if do_fulljones_solve is True in the strategy file,
+            # because the legacy strategy only uses do_fulljones_solve to control whether a full
+            # DI solve is done, not whether a full DD solve is done.
+            "full_jones": False,
+        },
+    }
+    assert field.calibration_strategy == expected_strategy
+
+
+@pytest.mark.parametrize(
+    "do_slowgain_solve, do_fulljones_solve",
+    [(True, True), (True, False), (False, True), (False, False)],
+)
+def test_set_calibration_strategy_user_provided(field, do_slowgain_solve, do_fulljones_solve):
+    """Test that the calibration strategy is set correctly when provided.
+
+    This captures the behaviour of the pipeline using the merged DD/DI classes.
+    """
+    user_provided_strategy = {
+        "di": {"fast_phase": True, "medium_phase": True, "slow_gain": True, "full_jones": True},
+        "dd": {"fast_phase": True, "medium_phase": True, "slow_gain": True, "full_jones": True},
+    }
+    step_dict = {
+        "do_calibrate": True,
+        "calibration_strategy": user_provided_strategy,
+        # The following legacy settings should be ignored when a user-provided strategy is given
+        "do_slowgain_solve": do_slowgain_solve,
+        "do_fulljones_solve": do_fulljones_solve,
+    }
+    field.__dict__.update(step_dict)
+    field.set_calibration_strategy()
+    assert field.calibration_strategy == user_provided_strategy
+
+
+@pytest.mark.parametrize(
+    "strategy_items",
+    [
+        [
+            ("di", dict([("fast_phase", True), ("medium_phase", True)])),
+            ("dd", dict([("fast_phase", True), ("medium_phase", True)])),
+        ],
+        [
+            ("dd", dict([("fast_phase", True), ("medium_phase", True)])),
+            ("di", dict([("fast_phase", True), ("medium_phase", True)])),
+        ],
+    ],
+)
+def test_strategy_preserves_top_level_order(field, strategy_items):
+    """Test that the order of the top-level keys in the calibration strategy is preserved when set."""
+    user_provided_strategy = dict(strategy_items)
+    field.__dict__.update(
+        {
+            "do_calibrate": True,
+            "calibration_strategy": user_provided_strategy,
+        }
+    )
+    field.set_calibration_strategy()
+
+    assert list(field.calibration_strategy.items()) == strategy_items
+
+
+@pytest.mark.parametrize("didd_order", [("di", "dd"), ("dd", "di")])
+def test_set_calibration_strategy_preserves_order_of_di_vs_dd(field, didd_order):
+    """Test that the calibration strategy preserves the order of DI vs DD keys."""
+    user_provided_strategy = {
+        didd_order[0]: {
+            "fast_phase": True,
+            "medium_phase": True,
+            "slow_gain": True,
+            "full_jones": True,
+        },
+        didd_order[1]: {
+            "fast_phase": True,
+            "medium_phase": True,
+            "slow_gain": True,
+            "full_jones": True,
+        },
+    }
+    step_dict = {"do_calibrate": True, "calibration_strategy": user_provided_strategy}
+    field.__dict__.update(step_dict)
+    field.set_calibration_strategy()
+    assert list(field.calibration_strategy.keys()) == list(user_provided_strategy.keys())
+    assert field.calibration_strategy == user_provided_strategy
+
+
+@pytest.mark.parametrize(
+    "solve_order",
+    [
+        ("fast_phase", "medium_phase", "slow_gain", "full_jones"),
+        ("full_jones", "slow_gain", "medium_phase", "fast_phase"),
+    ],
+)
+def test_set_calibration_strategy_preserves_order_of_solves(field, solve_order):
+    """Test that the calibration strategy preserves the order of DI vs DD keys."""
+    user_provided_strategy = {
+        "di": {key: True for key in solve_order},
+        "dd": {key: True for key in solve_order},
+    }
+    step_dict = {"do_calibrate": True, "calibration_strategy": user_provided_strategy}
+    field.__dict__.update(step_dict)
+    field.set_calibration_strategy()
+    assert list(field.calibration_strategy.keys()) == list(user_provided_strategy.keys())
+    for key in user_provided_strategy.keys():
+        assert list(field.calibration_strategy[key].keys()) == list(
+            user_provided_strategy[key].keys()
+        )
+    assert field.calibration_strategy == user_provided_strategy
