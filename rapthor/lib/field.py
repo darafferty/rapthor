@@ -146,6 +146,7 @@ class Field(object):
         self.field_image_filename_prev = None
         self.field_image_filename = None
         self.disable_clean = False
+        self.calibration_strategy = None
 
         # Scan MS files to get observation info
         self.scan_observations()
@@ -1773,6 +1774,9 @@ class Field(object):
         for sector in self.imaging_sectors:
             sector.__dict__.update(step_dict)
 
+        # Update calibration strategy for this cycle
+        self.set_calibration_strategy()
+
         # Update the sky models
         if index == 1:
             # For the intial cycle, set the regrouping flag if explicity set in the
@@ -1844,6 +1848,36 @@ class Field(object):
 
         # check whether images are to be compressed
         self.compress_images = self.compress_final_images if final else self.compress_selfcal_images
+
+    def set_calibration_strategy(self):
+        """
+        Sets the calibration strategy for the current cycle.
+
+        If no strategy is specified in the parset (or if it is set to None) then
+        the default strategy is used as determined by the legacy parameters 
+        `do_fulljones_solve`, which triggers DI calibration after DD, and 
+        `do_slowgain_solve`, which triggers a slow gain solve after the main solve.
+        """
+        if not self.calibration_strategy:
+            # Use legacy strategy based on the `do_fulljones_solve` and `do_slowgain_solve` parameters
+            self.calibration_strategy = {
+                "di": {
+                    "fast_phase": False,  # Never do a fast DI solve
+                    "medium_phase": False,  # Never do a medium DI solve
+                    "slow_gain": False,  # Never do a slow DI solve
+                    "full_jones": self.do_fulljones_solve,  # Only type of DI solve supported in legacy code
+                },
+                "dd": {
+                    "fast_phase": True,  # Always do a fast DD solve
+                    "medium_phase": True,  # Always do a medium DD solve
+                    "slow_gain": self.do_slowgain_solve,  # Only do a slow DD solve if do_slowgain_solve is True in the strategy file
+                    # Never do a full DD solve, even if do_fulljones_solve is True in the strategy file,
+                    # because the legacy strategy only uses do_fulljones_solve to control whether a full
+                    # DI solve is done, not whether a full DD solve is done.
+                    "full_jones": False,
+                }
+            }
+
 
     def get_matplotlib_patch(self, wcs=None):
         """
