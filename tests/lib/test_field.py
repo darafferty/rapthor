@@ -134,7 +134,6 @@ def test_set_calibration_strategy_legacy_default(field, do_slowgain_solve, do_fu
         "do_calibrate": True,
         "do_slowgain_solve": do_slowgain_solve,
         "do_fulljones_solve": do_fulljones_solve,
-        "regroup_model": False,
     }
     field.__dict__.update(step_dict)
     field.set_calibration_strategy()
