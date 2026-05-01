@@ -77,7 +77,9 @@ def test_rapthor_run_dd_fast_phase_medium_phase(generated_parset_path, single_lo
     ],
     indirect=True,
 )
-def test_rapthor_run_dd_fast_medium_slow_gains(generated_parset_path, single_loop_strategy_path_fast_medium_slow):
+def test_rapthor_run_dd_fast_medium_slow_gains(
+    generated_parset_path, single_loop_strategy_path_fast_medium_slow
+):
     """Test a single selfcal loop with DP3.
     ddecal fast_gains, medium gains, and slow gains are performed
     """
