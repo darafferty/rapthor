@@ -440,7 +440,7 @@ class TestCalibrate:
     ):
         """
         Test that set_input_parameters() provides exactly the inputs declared in the CWL
-        template, for all flag combinations of CalibrateDD and for CalibrateDI.
+        template, for all flag combinations of Calibrate(mode="dd") and for Calibrate(mode="di").
         """
         field = calibrate_field
         field.generate_screens = generate_screens
