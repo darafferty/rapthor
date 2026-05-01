@@ -11,7 +11,7 @@ from rapthor import _logging
 from rapthor.lib.field import Field
 from rapthor.lib.parset import parset_read
 from rapthor.lib.strategy import set_strategy, validate_strategy
-from rapthor.operations.calibrate import Calibrate, CalibrateDI
+from rapthor.operations.calibrate import Calibrate
 from rapthor.operations.concatenate import Concatenate
 from rapthor.operations.image import Image, ImageInitial, ImageNormalize
 from rapthor.operations.mosaic import Mosaic
@@ -191,7 +191,7 @@ def run_steps(field, steps, final=False):
             if field.do_fulljones_solve:
                 op = PredictDI(field, cycle_number)
                 op.run()
-                op = CalibrateDI(field, cycle_number)
+                op = Calibrate("di", field, cycle_number)
                 op.run()
 
         # Predict and subtract the sector models
