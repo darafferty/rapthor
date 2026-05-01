@@ -72,8 +72,9 @@ run_rapthor()
   rapthor -v "${PARSET}" || warning "Rapthor execution failed; collecting logs"
 }
 
-# Make a symbolic link in the working directory to the given file, but only if
-# it doesn't yet exist as a regular file. Print a warning if the link could not
+# Create or update a symbolic link in the working directory pointing to the
+# given file, unless the file already exists in the working directory. Print
+# a warning if the link could not be created, but continue with the tar-ball
 # be created. The link is used to include the user-supplied skymodel file(s)
 # and processing strategy in the tar-ball, without including the full path.
 make_symlink()
@@ -86,7 +87,7 @@ make_symlink()
   }
   [ "$(dirname "${file}")" = "${WORKING_DIR}" ] && return 0
   ln -sfn "${file}" "${WORKING_DIR}/" || {
-    warning "Failed to create symbolic link for ${file};"
+    warning "Failed to create symbolic link for ${file}"
     return 1
   }
 }
@@ -105,7 +106,7 @@ create_tarball()
     )
     make_symlink "${file}" && tarball_contents+=("$(basename "${file}")")
   done
-  [ -d "${WORKING_DIR}/logs" ] && tarball_contents=("logs")
+  [ -d "${WORKING_DIR}/logs" ] && tarball_contents+=("logs")
   echo -e "\nCreating tar-ball of logs and configuration files ..."
   tar -C "${WORKING_DIR}" -chzf "${tarball_path}" "${tarball_contents[@]}"
   echo -e "\nTar-ball created successfully: ${tarball_path}"
