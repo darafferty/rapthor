@@ -38,24 +38,6 @@ def predict_field(operation_parset, mocker, single_source_sky_model):
     return Field(operation_parset)
 
 
-@pytest.fixture
-def predict_dd(field, index=1):
-    """
-    Create an instance of the PredictDD operation.
-    """
-    # return PredictDD(field, index=index)
-    return "mock_predict_dd"
-
-
-@pytest.fixture
-def predict_di(field, index=1):
-    """
-    Create an instance of the PredictDI operation.
-    """
-    # return PredictDI(field, index=index)
-    return "mock_predict_di"
-
-
 class TestPredictDD:
 
     def test_finalize(self, predict_dd):
@@ -92,7 +74,7 @@ class TestPredict:
         predict = PredictDD(predict_field, index = 1) if mode == "dd" else PredictDI(predict_field, index = 1)
         # Act
         predict.set_parset_parameters()
-
+    
         # Assert
         rapthor_pipeline_path = Path(rapthor.__file__).parent / "pipeline"
 
