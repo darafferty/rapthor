@@ -20,6 +20,7 @@ from lsmtool.facet import Facet
 
 from rapthor.lib.field import Field
 from rapthor.lib.observation import Observation
+from rapthor.lib.sector import Sector
 from rapthor.lib.parset import parset_read
 
 TEST_ROOT_DIR = Path(__file__).parent
@@ -148,6 +149,17 @@ def field(parset):
     """
     return Field(parset)
 
+@pytest.fixture
+def sector(field):
+    """Create a sector instance using the test Field and its phase center."""
+    return Sector(
+        name="test_sector",
+        ra=field.ra,
+        dec=field.dec,
+        width_ra=1.0,
+        width_dec=1.0,
+        field=field,
+    )
 
 @pytest.fixture
 def sky_model_path(tmp_path):
