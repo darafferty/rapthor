@@ -8,7 +8,7 @@ import pytest
 
 import rapthor
 from rapthor.lib.operation import DIR as OPERATION_DIR
-from rapthor.operations.calibrate import Calibrate, CalibrateDI
+from rapthor.operations.calibrate import Calibrate
 from tests.operations.conftest import get_cwl_input_ids
 
 
