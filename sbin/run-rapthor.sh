@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
+#
 #SBATCH --cpus-per-task=16
 #SBATCH --constraint=amd
 #
@@ -25,7 +26,7 @@ RAPTHOR_RC=${RAPTHOR_RC:-/project/rapthor/Software/rapthor/etc/rapthor.rc}
 # Error function
 error()
 {
-  echo -e "\nERROR: $*\n" >&2
+  echo -e "\nERROR: $@\n" >&2
   exit 1
 }
 
@@ -68,7 +69,7 @@ setup()
 run_rapthor()
 {
   echo -e "\nRunning Rapthor with parset file ${PARSET} ..."
-  rapthor -v "${PARSET}" || true
+  rapthor -v "${PARSET}" || warning "Rapthor execution failed; collecting logs"
 }
 
 # Make a symbolic link in the working directory to the given file, but only if
@@ -78,12 +79,13 @@ run_rapthor()
 make_symlink()
 {
   local file=${1}
+  [ -n "${file}" ] || return 1
   [ -f "${file}" ] || {
     warning "File ${file} does not exist; skipping symbolic link creation!"
     return 1
   }
-  [ $(dirname "${file}") = "${WORKING_DIR}" ] && return 0
-  ln -sf "${file}" "${WORKING_DIR}/" 2>/dev/null || {
+  [ "$(dirname "${file}")" = "${WORKING_DIR}" ] && return 0
+  ln -sfn "${file}" "${WORKING_DIR}/" || {
     warning "Failed to create symbolic link for ${file};"
     return 1
   }
@@ -94,7 +96,7 @@ create_tarball()
   local timestamp=$(date +%Y%m%d_%H%M%S)
   local tarball_name="rapthor_logs_${timestamp}.tar.gz"
   local tarball_path="${WORKING_DIR}/${tarball_name}"
-  local tarball_contents=("logs")
+  local tarball_contents=()
   make_symlink "${PARSET}" && tarball_contents+=("$(basename "${PARSET}")")
   for name in input_skymodel apparent_skymodel strategy; do
     local file=$(
@@ -103,6 +105,7 @@ create_tarball()
     )
     make_symlink "${file}" && tarball_contents+=("$(basename "${file}")")
   done
+  [ -d "${WORKING_DIR}/logs" ] && tarball_contents=("logs")
   echo -e "\nCreating tar-ball of logs and configuration files ..."
   tar -C "${WORKING_DIR}" -chzf "${tarball_path}" "${tarball_contents[@]}"
   echo -e "\nTar-ball created successfully: ${tarball_path}"
