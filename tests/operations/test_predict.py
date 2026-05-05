@@ -41,6 +41,10 @@ class TestPredict:
             ("dd", "slurm", 42, None),
             ("di", "some_other_system", 42, 42),
             ("di", "slurm", 42, None),
+            ("dd", "single_machine", 42, 42),
+            ("dd", "slurm_static", 42, None),
+            ("di", "single_machine", 42, 42),
+            ("di", "slurm_static", 42, None),
         ],
     )
     def test_set_parset_parameters(
