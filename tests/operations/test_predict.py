@@ -7,6 +7,7 @@ import pytest
 
 import rapthor
 from rapthor.operations.predict import PredictDD, PredictDI
+from tests.conftest import observation, outlier_sector, sector
 from tests.operations.conftest import get_cwl_input_ids
 
 
@@ -16,13 +17,12 @@ def predict_field(operation_parset, mocker, single_source_sky_model):
         def __init__(self, parset):
             self.parset = parset
 
-            self.imaging_sectors = []
+            self.sectors = [sector]
             self.bright_source_sectors = []
-            self.outlier_sectors = []
+            self.outlier_sectors = [outlier_sector]
             self.predict_sectors = []
-            self.sectors = []
 
-            self.observations = []
+            self.observations = [observation]
 
             self.data_colname = "DATA"
             self.h5parm_filename = "h5.parm"
@@ -35,130 +35,9 @@ def predict_field(operation_parset, mocker, single_source_sky_model):
             self.sagecalpredict = False
             self.correct_smearing_in_calibration = False
 
+            self.reweight = False
+
     return Field(operation_parset)
-
-class TestPredictDD:
-    @pytest.mark.parametrize(
-    "peel_outliers, has_outlier_sector, expected_sectors, expect_outlier_removed",
-    [
-        (True, True, 1, True),    # outlier removed
-        (True, False, 1, False),  # nothing removed
-        (False, True, 2, False),  # finalize does NOT filter unless enabled
-    ],
-)
-    def test_predict_dd_finalize(
-        self, predict_field,
-        observation, 
-        mocker,
-        peel_outliers,
-        has_outlier_sector,
-        expected_sectors,
-        expect_outlier_removed,
-    ):
-        field = predict_field
-        field.peel_outliers = peel_outliers
-
-        observation.ms_field = "field1"
-        field.observations = [observation]
-
-        good_sector = mocker.Mock(is_outlier=False, observations=[observation])
-
-        sectors = [good_sector]
-
-        if has_outlier_sector:
-            bad_sector = mocker.Mock(is_outlier=True, observations=[observation])
-            sectors.append(bad_sector)
-            field.outlier_sectors = [bad_sector]
-        else:
-            field.outlier_sectors = []
-
-        field.sectors = sectors
-
-        field.bright_source_sectors = []
-        field.imaging_sectors = []
-        field.reweight = False
-
-        predict = PredictDD(field, index=1)
-
-        mocker.patch(
-            "rapthor.lib.operation.Operation.finalize",
-            return_value=None
-        )
-
-        # Act
-        predict.finalize()
-
-        # Assert: sector filtering
-        assert len(field.sectors) == expected_sectors
-
-        if expect_outlier_removed:
-            assert all(not s.is_outlier for s in field.sectors)
-
-        # Always expected side effects
-        if peel_outliers:
-            assert field.outlier_sectors == []
-            assert field.imaged_sources_only is True
-
-
-        # Observation updates always happen when peel_outliers=True
-        if peel_outliers:
-            assert observation.infix == ""
-            assert observation.ms_filename.endswith(observation.ms_field)
-            assert observation.ms_imaging_filename == observation.ms_filename
-
-        assert Path(predict.done_file).exists()
-
-
-class TestPredictDI:
-
-    @pytest.mark.parametrize(
-        "obs_name_matches, obs_starttime_matches, expect_filename_set",
-        [
-            (True, True, True),
-            (False, True, False),
-            (True, False, False),
-        ],
-    )
-    def test_predict_di_finalize(
-        self,
-        predict_field,
-        observation,
-        sector,
-        obs_name_matches,
-        obs_starttime_matches,
-        expect_filename_set,
-    ):
-        field = predict_field
-
-        # field observation
-        observation.name = "obs1"
-        observation.starttime = 100
-        field.observations = [observation]
-
-        # sector observation (this is what DI iterates over)
-        sector_obs = sector.observations[0]
-        sector_obs.ms_predict_di = "predict_di.ms"
-
-        sector_obs.name = observation.name if obs_name_matches else "other_obs"
-        sector_obs.starttime = observation.starttime if obs_starttime_matches else 999
-
-        field.predict_sectors = [sector]
-        field.sectors = [sector]
-
-        predict = PredictDI(field, index=1)
-
-        # Act
-        predict.finalize()
-
-        # Assert
-        if expect_filename_set:
-            assert observation.ms_predict_di_filename is not None
-            assert observation.ms_predict_di_filename.endswith("predict_di.ms")
-        else:
-            assert getattr(observation, "ms_predict_di_filename", None) is None
-
-        assert Path(predict.done_file).exists()
-
 
 class TestPredict:
     @pytest.mark.parametrize(
@@ -232,3 +111,60 @@ class TestPredict:
         expected_cwl_ids = get_cwl_input_ids("predict_pipeline.cwl", template_parset_parms) if mode == "dd" else get_cwl_input_ids("predict_di_pipeline.cwl", template_parset_parms)
         input_parms_keys = set(predict.input_parms.keys())
         assert expected_cwl_ids.issubset(input_parms_keys), f"input_parms is missing CWL inputs: {expected_cwl_ids - input_parms_keys}"
+
+    @pytest.mark.parametrize(
+    "mode, peel_outliers, has_outlier_sector, expected_sectors, expect_outlier_removed",
+    [
+        ("dd", True, True, 1, True),    # outlier removed
+        ("dd", True, False, 1, False),  # nothing removed
+        ("dd", False, True, 2, False),  # finalize does NOT filter unless enabled
+        ("di", False, False, 1, False), # di case with dummy values
+    ],
+)
+    def test_predict_dd_finalize(
+        self, predict_field,
+        sector, 
+        observation, 
+        mode,
+        peel_outliers,
+        has_outlier_sector,
+        expected_sectors,
+        expect_outlier_removed,
+    ):
+        field = predict_field
+        field.peel_outliers = peel_outliers
+        observation.ms_field = "field1"
+        field.observations = [observation]
+        
+        sector_obs = sector.observations[0]
+        sector_obs.name = observation.name
+        sector_obs.starttime = observation.starttime
+        sector_obs.ms_predict_di = "predict_di.ms"
+
+        if has_outlier_sector:
+            field.sectors.append(outlier_sector)
+            field.outlier_sectors = [outlier_sector]
+
+        predict = PredictDD(field, index=1) if mode == "dd" else PredictDI(field, index=1)
+
+        predict.finalize()
+
+        if mode == "dd":
+            assert len(field.sectors) == expected_sectors
+
+            if expect_outlier_removed:
+                assert all(not sector.is_outlier for sector in field.sectors)
+
+            # Always expected side effects
+            if peel_outliers:
+                assert field.outlier_sectors == []
+                assert field.imaged_sources_only is True
+
+            # Observation updates always happen when peel_outliers=True
+            if peel_outliers:
+                assert observation.infix == ""
+                assert observation.ms_filename.endswith(observation.ms_field)
+                assert observation.ms_imaging_filename == observation.ms_filename
+        if mode == "di":
+            assert observation.ms_predict_di_filename.endswith("predict_di.ms")                      
+        assert Path(predict.done_file).exists()

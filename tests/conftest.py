@@ -158,8 +158,22 @@ def sector(field):
         dec=field.dec,
         width_ra=1.0,
         width_dec=1.0,
-        field=field,
+        field=field
     )
+
+@pytest.fixture
+def outlier_sector(field):
+    """Create an outlier sector instance using the test Field and its phase center."""
+    return Sector(
+        name="outlier_sector",
+        ra=field.ra,
+        dec=field.dec,
+        width_ra=1.0,
+        width_dec=1.0,
+        field=field,
+        is_outlier=True
+    )
+
 
 @pytest.fixture
 def sky_model_path(tmp_path):
