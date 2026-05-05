@@ -1,7 +1,9 @@
 """Integration tests for the Rapthor pipeline using different calibration options."""
 
-import pytest
 import subprocess
+
+import pytest
+
 from .utils import update_parset_path
 
 

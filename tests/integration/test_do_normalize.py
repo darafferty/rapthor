@@ -1,7 +1,9 @@
 """Integration tests for the Rapthor pipeline when using the do_normalize step."""
 
-import pytest
 import subprocess
+
+import pytest
+
 from .utils import update_parset_path
 
 

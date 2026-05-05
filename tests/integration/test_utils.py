@@ -1,8 +1,10 @@
 """Tests for integration test helper functions."""
 
 import configparser
-from .utils import update_parset_path
+
 import pytest
+
+from .utils import update_parset_path
 
 
 def test_update_parset_path(tmp_path):

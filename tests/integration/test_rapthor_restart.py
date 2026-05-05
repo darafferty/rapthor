@@ -1,16 +1,16 @@
 """Integration tests for the Rapthor pipeline restart behavior."""
 
 import os
-
-import pytest
 import subprocess
 from pathlib import Path
 
+import pytest
+
 from .utils import (
     get_working_dir_from_parset,
-    update_parset_path,
     get_wsclean_output_mtimes,
     make_failing_filter_skymodel,
+    update_parset_path,
 )
 
 

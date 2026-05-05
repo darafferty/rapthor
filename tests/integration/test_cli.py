@@ -1,8 +1,9 @@
 """Tests for rapthor CLI."""
 
-import pytest
 import shlex
 import subprocess
+
+import pytest
 
 
 @pytest.mark.parametrize("help_option", ["--help", "-h", ""])

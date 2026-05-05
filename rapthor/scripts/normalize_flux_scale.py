@@ -3,18 +3,19 @@
 Script to calculate flux-scale normalization corrections
 """
 
+import logging
+import tempfile
 from argparse import ArgumentParser, RawTextHelpFormatter
-from astropy.io import fits
-from astropy.coordinates import SkyCoord, match_coordinates_sky
-from astropy.modeling import models, fitting
+
 import astropy.units as u
 import casacore.tables as pt
-from losoto.h5parm import h5parm
 import lsmtool
 import numpy as np
-import tempfile
+from astropy.coordinates import SkyCoord, match_coordinates_sky
+from astropy.io import fits
+from astropy.modeling import fitting, models
+from losoto.h5parm import h5parm
 from lsmtool.operations_lib import normalize_ra_dec
-import logging
 
 log = logging.getLogger("rapthor:normalize_flux_scale")
 

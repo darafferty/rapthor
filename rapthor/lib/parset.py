@@ -7,9 +7,8 @@ import configparser
 import glob
 import logging
 import os
-from importlib import resources
 from collections.abc import Sequence
-
+from importlib import resources
 
 import astropy.coordinates
 

@@ -1,7 +1,9 @@
 """Integration tests for the shared_facet_rw feature."""
 
-import pytest
 import subprocess
+
+import pytest
+
 from .utils import update_parset_path
 
 
