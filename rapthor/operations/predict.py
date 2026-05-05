@@ -196,19 +196,6 @@ class PredictDI(Operation):
     def __init__(self, field, index):
         super().__init__(field, index=index, name='predict_di')
 
-    def set_parset_parameters(self):
-        """
-        Define parameters needed for the CWL workflow template
-        """
-        if self.batch_system.startswith('slurm'):
-            # For some reason, setting coresMax ResourceRequirement hints does
-            # not work with SLURM
-            max_cores = None
-        else:
-            max_cores = self.field.parset['cluster_specific']['max_cores']
-        self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
-                             'max_cores': max_cores}
-
     def set_input_parameters(self):
         """
         Define the CWL workflow inputs
