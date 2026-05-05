@@ -128,6 +128,7 @@ class Predict(Operation):
         # (as required by the rapthor/scripts/subtract_sector_models.py script)
         sectors = []
         if self.mode == "dd":
+            include_solint = True
             if len(self.field.imaging_sectors) > 1 or self.field.reweight:
                 # If we have more than one imaging sector or reweighting is desired,
                 # predict the imaging sector models. (If we have a single imaging
@@ -136,102 +137,58 @@ class Predict(Operation):
                 sectors.extend(self.field.imaging_sectors)
             sectors.extend(self.field.bright_source_sectors)
             sectors.extend(self.field.outlier_sectors)
+        else: # if mode = di
+            sectors = self.field.predict_sectors
 
-            sector_parms = _collect_sector_parameters(sectors, self.field.observations)
-            sector_skymodel = sector_parms['sector_skymodel']
-            sector_filename = sector_parms['sector_filename']
-            sector_model_filename = sector_parms['sector_model_filename']
-            sector_patches = sector_parms['sector_patches']
-            sector_starttime = sector_parms['sector_starttime']
-            sector_ntimes = sector_parms['sector_ntimes']
+        # shared logic
+        sector_parms = _collect_sector_parameters(sectors, self.field.observations)
+        # Set observation-specific parameters (input filenames, solution intervals, etc.)
+        obs_parms = _collect_obs_parameters(self.field.observations, include_solint=include_solint)
 
+        # Set the DP3 applycal steps depending on what solutions need to be
+        # applied
+        dp3_applycal_steps, normalize_h5parm = _get_dp3_applycal_steps(self.field)
 
-            # Set observation-specific parameters (input filenames, solution intervals, etc.)
-            obs_parms = _collect_obs_parameters(self.field.observations, include_solint=True)
+        dd_params = {}
+        if self.mode == "dd":
+            dd_params = {
+                'obs_solint_sec': obs_parms['obs_solint_sec'],
+                'obs_solint_hz': obs_parms['obs_solint_hz'],
+                'min_uv_lambda': self.field.parset['imaging_specific']['min_uv_lambda'],
+                'max_uv_lambda': self.field.parset['imaging_specific']['max_uv_lambda'],
+                'nr_outliers': len(self.field.outlier_sectors),
+                'peel_outliers': self.field.peel_outliers,
+                'nr_bright': len(self.field.bright_source_sectors),
+                'peel_bright': self.field.peel_bright_sources,
+                'reweight': self.field.reweight
 
-            # Set other parameters
-            nr_outliers = len(self.field.outlier_sectors)
-            peel_outliers = self.field.peel_outliers
-            nr_bright = len(self.field.bright_source_sectors)
-            peel_bright = self.field.peel_bright_sources
-            reweight = self.field.reweight
-            min_uv_lambda = self.field.parset['imaging_specific']['min_uv_lambda']
-            max_uv_lambda = self.field.parset['imaging_specific']['max_uv_lambda']
-            onebeamperpatch = self.field.onebeamperpatch
-            sagecalpredict = self.field.sagecalpredict
+            }
+   
+        common_params = {
+            'sector_filename': CWLDir(sector_parms['sector_filename']).to_json(),
+            'data_colname': self.field.data_colname,
+            'sector_starttime': sector_parms['sector_starttime'],
+            'sector_ntimes': sector_parms['sector_ntimes'],
+            'sector_model_filename': sector_parms['sector_model_filename'],
+            'sector_skymodel': CWLFile(sector_parms['sector_skymodel']).to_json(),
+            'sector_patches': sector_parms['sector_patches'],
 
-            # Set the DP3 applycal steps depending on what solutions need to be
-            # applied
-            dp3_applycal_steps, normalize_h5parm = _get_dp3_applycal_steps(self.field)
+            'h5parm': CWLFile(self.field.h5parm_filename).to_json(),
+            'normalize_h5parm': normalize_h5parm,
+            'dp3_applycal_steps': f"[{','.join(dp3_applycal_steps)}]",
 
-            self.input_parms = {'sector_filename': CWLDir(sector_filename).to_json(),
-                                'data_colname': self.field.data_colname,
-                                'sector_starttime': sector_starttime,
-                                'sector_ntimes': sector_ntimes,
-                                'sector_model_filename': sector_model_filename,
-                                'sector_skymodel': CWLFile(sector_skymodel).to_json(),
-                                'sector_patches': sector_patches,
-                                'h5parm': CWLFile(self.field.h5parm_filename).to_json(),
-                                'normalize_h5parm': normalize_h5parm,
-                                'dp3_applycal_steps': f"[{','.join(dp3_applycal_steps)}]",
-                                'obs_solint_sec': obs_parms['obs_solint_sec'],
-                                'obs_solint_hz': obs_parms['obs_solint_hz'],
-                                'min_uv_lambda': min_uv_lambda,
-                                'max_uv_lambda': max_uv_lambda,
-                                'onebeamperpatch': onebeamperpatch,
-                                'sagecalpredict': sagecalpredict,
-                                'obs_filename': CWLDir(obs_parms['obs_filename']).to_json(),
-                                'obs_starttime': obs_parms['obs_starttime'],
-                                'obs_infix': obs_parms['obs_infix'],
-                                'nr_outliers': nr_outliers,
-                                'peel_outliers': peel_outliers,
-                                'nr_bright': nr_bright,
-                                'peel_bright': peel_bright,
-                                'reweight': reweight,
-                                'correctfreqsmearing': self.field.correct_smearing_in_calibration,
-                                'correcttimesmearing': self.field.correct_smearing_in_calibration,
-                                'max_threads': self.field.parset['cluster_specific']['max_threads']}
-        else:
-            sector_parms = _collect_sector_parameters(
-                self.field.predict_sectors, self.field.observations
-            )
-            sector_skymodel = sector_parms['sector_skymodel']
-            sector_filename = sector_parms['sector_filename']
-            sector_model_filename = sector_parms['sector_model_filename']
-            sector_patches = sector_parms['sector_patches']
-            sector_starttime = sector_parms['sector_starttime']
-            sector_ntimes = sector_parms['sector_ntimes']
+            'onebeamperpatch': self.field.onebeamperpatch,
+            'sagecalpredict': self.field.sagecalpredict,
+            'obs_filename': CWLDir(obs_parms['obs_filename']).to_json(),
+            'obs_starttime': obs_parms['obs_starttime'],
+            'obs_infix': obs_parms['obs_infix'],
 
-            # Set observation-specific parameters (input filenames, solution intervals, etc.)
-            obs_parms = _collect_obs_parameters(self.field.observations)
-
-            # Set other parameters
-            onebeamperpatch = self.field.onebeamperpatch
-            sagecalpredict = self.field.sagecalpredict
-
-            # Set the DP3 applycal steps depending on what solutions need to be
-            # applied
-            dp3_applycal_steps, normalize_h5parm = _get_dp3_applycal_steps(self.field)
-
-            self.input_parms = {'sector_filename': CWLDir(sector_filename).to_json(),
-                                'data_colname': self.field.data_colname,
-                                'sector_starttime': sector_starttime,
-                                'sector_ntimes': sector_ntimes,
-                                'sector_model_filename': sector_model_filename,
-                                'sector_skymodel': CWLFile(sector_skymodel).to_json(),
-                                'sector_patches': sector_patches,
-                                'h5parm': CWLFile(self.field.h5parm_filename).to_json(),
-                                'normalize_h5parm': normalize_h5parm,
-                                'dp3_applycal_steps': f"[{','.join(dp3_applycal_steps)}]",
-                                'onebeamperpatch': onebeamperpatch,
-                                'sagecalpredict': sagecalpredict,
-                                'obs_filename': CWLDir(obs_parms['obs_filename']).to_json(),
-                                'obs_starttime': obs_parms['obs_starttime'],
-                                'obs_infix': obs_parms['obs_infix'],
-                                'correctfreqsmearing': self.field.correct_smearing_in_calibration,
-                                'correcttimesmearing': self.field.correct_smearing_in_calibration,
-                                'max_threads': self.field.parset['cluster_specific']['max_threads']}
-
+            'correctfreqsmearing': self.field.correct_smearing_in_calibration,
+            'correcttimesmearing': self.field.correct_smearing_in_calibration,
+            'max_threads': self.field.parset['cluster_specific']['max_threads']}
+        
+        self.input_parms = {**common_params, **dd_params}
+        
 
     def finalize(self):
         """
