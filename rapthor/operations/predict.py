@@ -10,13 +10,16 @@ from rapthor.lib import miscellaneous as misc
 log = logging.getLogger('rapthor:predict')
 
 
-class PredictDD(Operation):
+class Predict(Operation):
     """
     Operation to predict model data for further direction-dependent (DD)
     processing
     """
-    def __init__(self, field, index):
-        super().__init__(field, index=index, name='predict')
+    def __init__(self, mode, field, index):
+        if mode not in ["di", "dd"]:
+            raise ValueError(f"Only di and dd mode are supported, chosen: {mode}")
+        super().__init__(field, index=index, name="predict_di" if mode == "di" else "predict")
+        self.mode = mode
 
     def set_parset_parameters(self):
         """

@@ -3,10 +3,7 @@ Test cases for the `rapthor.operations.predict` module.
 """
 from pathlib import Path
 import pytest
-
-import rapthor
-from rapthor.operations.predict import PredictDD, PredictDI
-from tests.operations.conftest import get_cwl_input_ids
+from rapthor.operations.predict import Predict, PredictDI
 
 
 @pytest.fixture
