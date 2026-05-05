@@ -199,11 +199,18 @@ def concat_time_command(msfiles, output_file):
     cmd : list of str
         Command to be executed by subprocess.run()
     """
+    starttimes = []
+    for ms in msfiles:
+        # Get the start time of each file (MJD time in seconds)
+        with pt.table(ms, ack=False) as tab:
+            starttimes.append(np.min(tab.getcol('TIME')))
+    ind = np.argsort(starttimes)
+
     cmd = [
         "taql",
         "select",
         "from",
-        "[{}]".format(",".join(msfiles)),
+        "[{}]".format(",".join(msfiles[ind])),
         "giving",
         "{}".format(output_file),
         "AS",
