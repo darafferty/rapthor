@@ -311,6 +311,7 @@ def check_and_adjust_parameters(field, strategy_steps):
             "fulljones_timestep_sec",
             "scale_normalization_delta",
             "max_directions",
+            "calibration_strategy"
         ],
         "do_normalize": [],
         "do_image": [
