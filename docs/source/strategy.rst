@@ -78,8 +78,8 @@ cycle.
     (for self calibration), `here
     <https://git.astron.nl/RD/rapthor/-/blob/master/examples/custom_imaging_strategy.py>`_
     (for imaging only) and `here
-    <https://git.astron.nl/RD/rapthor/-/blob/master/examples/custom_ska_low.py>`_
-    (for SKA low). Files that duplicate the default strategies are available `here
+    <https://git.astron.nl/RD/rapthor/-/blob/master/examples/flexible_calibration_strategy.py>`_
+    (for more control over the calibration strategy). Files that duplicate the default strategies are available `here
     <https://git.astron.nl/RD/rapthor/-/blob/master/examples/default_calibration_strategy.py>`_
     (for self calibration) and `here
     <https://git.astron.nl/RD/rapthor/-/blob/master/examples/default_imaging_strategy.py>`_
@@ -185,3 +185,10 @@ The following processing parameters can be set for each cycle:
     failure_ratio
         Float that sets the minimum ratio of the current image noise to the theoretical image noise above which selfcal is considered to have failed (must be > 1).
 
+    calibration_strategy
+        Dictionary that sets the sequence of solves for this cycle. The keys of the dictionary are "di" and "dd", which set the direction-independent and direction-dependent calibration strategies, respectively. The value for each key is itself a dictionary with the following keys:
+
+        - "fast_phase": Boolean flag that determines whether the fast (scalarphase) solve should be done for this type of calibration.
+        - "medium_phase": Boolean flag that determines whether the medium-fast (scalarphase) solve should be done for this type of calibration.
+        - "slow_gain": Boolean flag that determines whether the slow (diagonal) solve should be done for this type of calibration.
+        - "full_jones": Boolean flag that determines whether the full-Jones solve should be done for this type of calibration.
