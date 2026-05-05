@@ -182,20 +182,12 @@ def run_steps(field, steps, final=False):
         if field.do_calibrate:
             # Set whether screens should be generated
             field.generate_screens = (field.dde_mode == "hybrid") and final
-
-            do_calibrate_mode = _do_calibrate_mode(field.calibration_strategy)
-
-            # Calibrate (direction-dependent)
-            if do_calibrate_mode.get("dd", False):
-                op = Calibrate("dd", field, cycle_number)
-                op.run()
-
-            # Calibrate (direction-independent)
-            if do_calibrate_mode.get("di", False):
-                op = PredictDI(field, cycle_number)
-                op.run()
-                op = Calibrate("di", field, cycle_number)
-                op.run()
+            for mode, enabled in _do_calibrate_mode(field.calibration_strategy).items():
+                if not enabled:
+                    continue
+                if mode == "di":
+                    PredictDI(field, cycle_number).run()
+                Calibrate(mode, field, cycle_number).run()
 
         # Predict and subtract the sector models
         # Note: DD predict is not yet supported when screens are used
@@ -542,10 +534,13 @@ def _do_calibrate_mode(calibration_strategy):
     calibration_strategy : dict
         The calibration strategy for this run
     """
-    calibration_modes = ["di", "dd"]
-    if not any(mode in calibration_strategy for mode in calibration_modes):
+    supported_calibration_modes = ["di", "dd"]
+    if not any(mode in calibration_strategy for mode in supported_calibration_modes):
         raise ValueError(
             f"Calibration strategy {calibration_strategy} does not contain any of the "
-            f"calibration modes {calibration_modes}"
+            f"calibration modes {supported_calibration_modes}"
         )
-    return {mode: any(calibration_strategy.get(mode, {}).values()) for mode in calibration_modes}
+    return {
+        mode: any(calibration_strategy.get(mode, {}).values())
+        for mode in calibration_strategy.keys()
+    }
