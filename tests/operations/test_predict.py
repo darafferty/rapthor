@@ -3,7 +3,9 @@ Test cases for the `rapthor.operations.predict` module.
 """
 from pathlib import Path
 import pytest
+import rapthor
 from rapthor.operations.predict import Predict, PredictDI
+from tests.operations.conftest import get_cwl_input_ids
 
 
 @pytest.fixture
@@ -52,7 +54,7 @@ class TestPredict:
         predict_field.parset["cluster_specific"]["batch_system"] = batch_system
         predict_field.parset["cluster_specific"]["max_cores"] = max_cores
 
-        predict = PredictDD(predict_field, index=1) if mode == "dd" else PredictDI(predict_field, index=1)
+        predict = Predict(mode=mode, field=predict_field, index=1)
         predict.set_parset_parameters()
 
         rapthor_pipeline_path = Path(rapthor.__file__).parent / "pipeline"
@@ -79,7 +81,7 @@ class TestPredict:
         predict_field.peel_outliers = peel_outliers
         predict_field.peel_bright_sources = peel_bright_sources
 
-        predict = PredictDD(predict_field, index=1) if mode == "dd" else PredictDI(predict_field, index=1)
+        predict = Predict(mode=mode, field=predict_field, index=1)
         predict.set_input_parameters()
 
         rapthor_pipeline_dir = str(Path(rapthor.__file__).parent / "pipeline")
@@ -161,7 +163,7 @@ class TestPredict:
             field.sectors.append(outlier_sector)
             field.outlier_sectors = [outlier_sector]
 
-        predict = PredictDD(field, index=1) if mode == "dd" else PredictDI(field, index=1)
+        predict = Predict("dd", field, index=1) if mode == "dd" else PredictDI(field, index=1)
         predict.finalize()
 
         if mode == "dd":
