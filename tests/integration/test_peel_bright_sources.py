@@ -1,8 +1,9 @@
 """Integration tests for the Rapthor pipeline when using the peel_bright_sources option."""
 
-import pytest
 import subprocess
 from pathlib import Path
+
+import pytest
 
 from .utils import find_step_logs, get_working_dir_from_parset, update_parset_path
 

@@ -8,20 +8,19 @@ import os
 import shutil
 import tarfile
 import tempfile
-import numpy as np
 from pathlib import Path
-from astropy.table import Table
-
-import pytest
-import requests
 
 import lsmtool
+import numpy as np
+import pytest
+import requests
+from astropy.table import Table
 from lsmtool.facet import Facet
 
 from rapthor.lib.field import Field
 from rapthor.lib.observation import Observation
-from rapthor.lib.sector import Sector
 from rapthor.lib.parset import parset_read
+from rapthor.lib.sector import Sector
 
 TEST_ROOT_DIR = Path(__file__).parent
 REPO_ROOT_DIR = TEST_ROOT_DIR.parent
@@ -149,30 +148,28 @@ def field(parset):
     """
     return Field(parset)
 
+
 @pytest.fixture
 def sector(field):
     """Create a sector instance using the test Field and its phase center."""
     return Sector(
-        name="test_sector",
-        ra=field.ra,
-        dec=field.dec,
-        width_ra=1.0,
-        width_dec=1.0,
-        field=field
+        name="test_sector", ra=field.ra, dec=field.dec, width_ra=1.0, width_dec=1.0, field=field
     )
+
 
 @pytest.fixture
 def outlier_sector(field):
     """Create an outlier sector instance using the test Field and its phase center."""
-    return Sector(
+    s = Sector(
         name="outlier_sector",
         ra=field.ra,
         dec=field.dec,
         width_ra=1.0,
         width_dec=1.0,
         field=field,
-        is_outlier=True
     )
+    s.is_outlier = True
+    return s
 
 
 @pytest.fixture

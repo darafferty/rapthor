@@ -1,14 +1,13 @@
 """Module for pytest fixtures."""
 
-import numpy as np
-from pathlib import Path
-import pytest
 import shlex
 import shutil
 import subprocess
+from pathlib import Path
 
 import casacore.tables as pt
-
+import numpy as np
+import pytest
 
 COMMON_STRATEGY_SETTINGS = {
     "channel_width_hz": 195312.5,
