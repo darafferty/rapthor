@@ -540,4 +540,7 @@ def _do_calibrate_mode(calibration_strategy):
             f"Calibration strategy {calibration_strategy} does not contain any of the "
             f"calibration modes {supported_calibration_modes}"
         )
-    return {mode: bool(calibration_strategy.get(mode, [])) for mode in calibration_strategy.keys()}
+    return {
+        mode: any(calibration_strategy.get(mode, {}).values())
+        for mode in calibration_strategy.keys()
+    }

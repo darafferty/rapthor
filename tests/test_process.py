@@ -39,43 +39,43 @@ def test_make_report(field=None, outfile=None):
     [
         (
             {
-                "di": [],
-                "dd": ["fast_phase", "full_jones"],
+                "di": {"fast_phase": False, "full_jones": False},
+                "dd": {"fast_phase": True, "full_jones": True},
             },
             {"di": False, "dd": True},
         ),  # No DI calibration
         (
             {
-                "di": ["fast_phase"],
-                "dd": [],
+                "di": {"fast_phase": True, "full_jones": False},
+                "dd": {"fast_phase": False, "full_jones": False},
             },
             {"di": True, "dd": False},
         ),  # Fast DI calibration
         (
             {
-                "di": ["full_jones"],
-                "dd": [],
+                "di": {"fast_phase": False, "full_jones": True},
+                "dd": {"fast_phase": False, "full_jones": False},
             },
             {"di": True, "dd": False},
         ),  # Full DI calibration
         (
             {
-                "di": [],
-                "dd": ["fast_phase", "full_jones"],
+                "di": {"fast_phase": False, "full_jones": False},
+                "dd": {"fast_phase": True, "full_jones": True},
             },
             {"di": False, "dd": True},
         ),  # Fast DD calibration
         (
             {
-                "di": ["fast_phase"],
-                "dd": ["full_jones"],
+                "di": {"fast_phase": True, "full_jones": False},
+                "dd": {"fast_phase": False, "full_jones": True},
             },
             {"di": True, "dd": True},
         ),  # Full Jones calibration
         (
             {
-                "di": [],
-                "dd": [],
+                "di": {"fast_phase": False, "full_jones": False},
+                "dd": {"fast_phase": False, "full_jones": False},
             },
             {"di": False, "dd": False},
         ),  # No DD calibration
@@ -90,6 +90,13 @@ def test_do_calibrate_mode_with_unrecognized_modes_raises_error():
     """Test that _do_calibrate_mode raises a ValueError when no calibration modes are present"""
     with pytest.raises(
         ValueError,
-        match=r"Calibration strategy {'unknown_mode': \['fast_phase', 'full_jones'\]} does not contain any of the calibration modes \['di', 'dd'\]",
+        match="Calibration strategy {'unknown_mode': {'fast_phase': True, 'full_jones': True}} does not contain any of the calibration modes \['di', 'dd'\]",
     ):
-        _do_calibrate_mode({"unknown_mode": ["fast_phase", "full_jones"]})
+        _do_calibrate_mode(
+            {
+                "unknown_mode": {
+                    "fast_phase": True,
+                    "full_jones": True,
+                }
+            }
+        )
