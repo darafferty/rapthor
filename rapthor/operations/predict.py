@@ -9,92 +9,6 @@ from rapthor.lib import miscellaneous as misc
 
 log = logging.getLogger('rapthor:predict')
 
-
-def _collect_sector_parameters(sectors, observations):
-    """
-    Collect sector-dependent CWL input parameters for a list of sectors.
-
-    Returns a dict with keys: sector_skymodel, sector_filename,
-    sector_model_filename, sector_patches, sector_starttime, sector_ntimes.
-    """
-    sector_skymodel = []
-    sector_filename = []
-    sector_starttime = []
-    sector_ntimes = []
-    sector_model_filename = []
-    sector_patches = []
-    for sector in sectors:
-        sector.set_prediction_parameters()
-        sector_skymodel.extend([sector.predict_skymodel_file] * len(observations))
-        sector_filename.extend(sector.get_obs_parameters('ms_filename'))
-        sector_model_filename.extend(
-            [os.path.basename(f) for f in sector.get_obs_parameters('ms_model_filename')]
-        )
-        sector_patches.extend(sector.get_obs_parameters('patch_names'))
-        sector_starttime.extend(sector.get_obs_parameters('predict_starttime'))
-        sector_ntimes.extend(sector.get_obs_parameters('predict_ntimes'))
-    return {
-        'sector_skymodel': sector_skymodel,
-        'sector_filename': sector_filename,
-        'sector_model_filename': sector_model_filename,
-        'sector_patches': sector_patches,
-        'sector_starttime': sector_starttime,
-        'sector_ntimes': sector_ntimes,
-    }
-
-
-def _collect_obs_parameters(observations, include_solint=False):
-    """
-    Collect observation-specific CWL input parameters.
-
-    Returns a dict with keys: obs_filename, obs_starttime, obs_infix, and
-    optionally obs_solint_sec, obs_solint_hz (when include_solint=True).
-    """
-    obs_filename = []
-    obs_starttime = []
-    obs_infix = []
-    obs_solint_sec = []
-    obs_solint_hz = []
-    for obs in observations:
-        obs_filename.append(obs.ms_filename)
-        obs_starttime.append(misc.convert_mjd2mvt(obs.starttime))
-        obs_infix.append(obs.infix)
-        if include_solint:
-            if ('solint_fast_timestep' in obs.parameters and
-                    'solint_slow_freqstep_separate' in obs.parameters):
-                obs_solint_sec.append(obs.parameters['solint_fast_timestep'][0] * obs.timepersample)
-                obs_solint_hz.append(obs.parameters['solint_slow_freqstep_separate'][0] * obs.channelwidth)
-            else:
-                obs_solint_sec.append(0)
-                obs_solint_hz.append(0)
-    result = {
-        'obs_filename': obs_filename,
-        'obs_starttime': obs_starttime,
-        'obs_infix': obs_infix,
-    }
-    if include_solint:
-        result['obs_solint_sec'] = obs_solint_sec
-        result['obs_solint_hz'] = obs_solint_hz
-    return result
-
-
-def _get_dp3_applycal_steps(field):
-    """
-    Return the DP3 applycal steps and normalize_h5parm based on field settings.
-
-    Returns a tuple of (dp3_applycal_steps, normalize_h5parm).
-    """
-    dp3_applycal_steps = ['fastphase']
-    if field.apply_amplitudes:
-        dp3_applycal_steps.append('slowgain')
-    if field.apply_normalizations:
-        normalize_h5parm = CWLFile(field.normalize_h5parm).to_json()
-        dp3_applycal_steps.append('normalization')
-    else:
-        normalize_h5parm = None
-    return dp3_applycal_steps, normalize_h5parm
-
-
 class Predict(Operation):
     """
     Operation to predict model data for further direction-dependent (DD)
@@ -142,13 +56,13 @@ class Predict(Operation):
             sectors = self.field.predict_sectors
 
         # shared logic
-        sector_parms = _collect_sector_parameters(sectors, self.field.observations)
+        sector_parms = self._collect_sector_parameters(sectors, self.field.observations)
         # Set observation-specific parameters (input filenames, solution intervals, etc.)
-        obs_parms = _collect_obs_parameters(self.field.observations, include_solint=include_solint)
+        obs_parms = self._collect_obs_parameters(self.field.observations, include_solint=include_solint)
 
         # Set the DP3 applycal steps depending on what solutions need to be
         # applied
-        dp3_applycal_steps, normalize_h5parm = _get_dp3_applycal_steps(self.field)
+        dp3_applycal_steps, normalize_h5parm = self._get_dp3_applycal_steps(self.field)
 
         dd_params = {}
         if self.mode == "dd":
@@ -190,6 +104,89 @@ class Predict(Operation):
         
         self.input_parms = {**common_params, **dd_params}
         
+    def _collect_sector_parameters(self, sectors, observations):
+        """
+        Collect sector-dependent CWL input parameters for a list of sectors.
+
+        Returns a dict with keys: sector_skymodel, sector_filename,
+        sector_model_filename, sector_patches, sector_starttime, sector_ntimes.
+        """
+        sector_skymodel = []
+        sector_filename = []
+        sector_starttime = []
+        sector_ntimes = []
+        sector_model_filename = []
+        sector_patches = []
+        for sector in sectors:
+            sector.set_prediction_parameters()
+            sector_skymodel.extend([sector.predict_skymodel_file] * len(observations))
+            sector_filename.extend(sector.get_obs_parameters('ms_filename'))
+            sector_model_filename.extend(
+                [os.path.basename(f) for f in sector.get_obs_parameters('ms_model_filename')]
+            )
+            sector_patches.extend(sector.get_obs_parameters('patch_names'))
+            sector_starttime.extend(sector.get_obs_parameters('predict_starttime'))
+            sector_ntimes.extend(sector.get_obs_parameters('predict_ntimes'))
+        return {
+            'sector_skymodel': sector_skymodel,
+            'sector_filename': sector_filename,
+            'sector_model_filename': sector_model_filename,
+            'sector_patches': sector_patches,
+            'sector_starttime': sector_starttime,
+            'sector_ntimes': sector_ntimes,
+        }
+
+
+    def _collect_obs_parameters(self, observations, include_solint=False):
+        """
+        Collect observation-specific CWL input parameters.
+
+        Returns a dict with keys: obs_filename, obs_starttime, obs_infix, and
+        optionally obs_solint_sec, obs_solint_hz (when include_solint=True).
+        """
+        obs_filename = []
+        obs_starttime = []
+        obs_infix = []
+        obs_solint_sec = []
+        obs_solint_hz = []
+        for obs in observations:
+            obs_filename.append(obs.ms_filename)
+            obs_starttime.append(misc.convert_mjd2mvt(obs.starttime))
+            obs_infix.append(obs.infix)
+            if include_solint:
+                if ('solint_fast_timestep' in obs.parameters and
+                        'solint_slow_freqstep_separate' in obs.parameters):
+                    obs_solint_sec.append(obs.parameters['solint_fast_timestep'][0] * obs.timepersample)
+                    obs_solint_hz.append(obs.parameters['solint_slow_freqstep_separate'][0] * obs.channelwidth)
+                else:
+                    obs_solint_sec.append(0)
+                    obs_solint_hz.append(0)
+        result = {
+            'obs_filename': obs_filename,
+            'obs_starttime': obs_starttime,
+            'obs_infix': obs_infix,
+        }
+        if include_solint:
+            result['obs_solint_sec'] = obs_solint_sec
+            result['obs_solint_hz'] = obs_solint_hz
+        return result
+
+
+    def _get_dp3_applycal_steps(self, field):
+        """
+        Return the DP3 applycal steps and normalize_h5parm based on field settings.
+
+        Returns a tuple of (dp3_applycal_steps, normalize_h5parm).
+        """
+        dp3_applycal_steps = ['fastphase']
+        if field.apply_amplitudes:
+            dp3_applycal_steps.append('slowgain')
+        if field.apply_normalizations:
+            normalize_h5parm = CWLFile(field.normalize_h5parm).to_json()
+            dp3_applycal_steps.append('normalization')
+        else:
+            normalize_h5parm = None
+        return dp3_applycal_steps, normalize_h5parm
 
     def finalize(self):
         """
@@ -210,6 +207,9 @@ class Predict(Operation):
         super().finalize()
 
     def _handle_peeled_outliers(self):
+        """
+        
+        """
         sectors = self.field.sectors
         field_observations = self.field.observations
         working_dir = self.pipeline_working_dir

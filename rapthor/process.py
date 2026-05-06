@@ -189,7 +189,7 @@ def run_steps(field, steps, final=False):
 
             # Calibrate (direction-independent)
             if field.do_fulljones_solve:
-                op = Predict("di",field, cycle_number)
+                op = Predict("di", field, cycle_number)
                 op.run()
                 op = Calibrate("di", field, cycle_number)
                 op.run()
