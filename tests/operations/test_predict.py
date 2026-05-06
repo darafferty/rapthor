@@ -29,6 +29,8 @@ def predict_field(operation_parset):
             self.onebeamperpatch = True
             self.sagecalpredict = False
             self.correct_smearing_in_calibration = False
+            self.peel_outliers = False
+            self.peel_bright_sources = False
 
     return Field(operation_parset)
 
@@ -97,6 +99,30 @@ class TestPredict:
         assert expected_cwl_ids.issubset(input_parms_keys), (
             f"input_parms is missing CWL inputs: {expected_cwl_ids - input_parms_keys}"
         )
+
+    @pytest.mark.parametrize(
+    "apply_amplitudes, apply_normalizations, expected_steps",
+    [
+        (False, False, "[fastphase]"),
+        (True, False, "[fastphase,slowgain]"),
+        (False, True, "[fastphase,normalization]"),
+        (True, True, "[fastphase,slowgain,normalization]"),
+    ],
+)
+    def test_set_input_parameters_dp3_applycal_steps(
+        self,
+        predict_field,
+        apply_amplitudes,
+        apply_normalizations,
+        expected_steps,
+    ):
+        predict_field.apply_amplitudes = apply_amplitudes
+        predict_field.apply_normalizations = apply_normalizations
+
+        predict = PredictDD(predict_field, index=1)
+        predict.set_input_parameters()
+
+        assert predict.input_parms["dp3_applycal_steps"] == expected_steps
 
     @pytest.mark.parametrize(
         "mode, peel_outliers, has_outlier_sector, expected_sectors, expect_outlier_removed",
