@@ -118,7 +118,7 @@ class TestPredict:
         predict_field.apply_amplitudes = apply_amplitudes
         predict_field.apply_normalizations = apply_normalizations
 
-        predict = PredictDD(predict_field, index=1)
+        predict = Predict("dd", predict_field, index=1)
         predict.set_input_parameters()
 
         assert predict.input_parms["dp3_applycal_steps"] == expected_steps
