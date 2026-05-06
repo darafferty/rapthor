@@ -3,31 +3,33 @@ Test cases for the normalize_flux_scale script in the rapthor package.
 """
 
 import os
-from pathlib import Path
 import runpy
-from astropy.io import fits
-from astropy.coordinates import SkyCoord
+from pathlib import Path
+
 import astropy.units as u
 import numpy as np
 import pytest
+from astropy.coordinates import SkyCoord
+from astropy.io import fits
+
 import rapthor.scripts.normalize_flux_scale
 from rapthor.scripts.normalize_flux_scale import (
+    _cross_match_sources,
+    _download_survey_data,
+    _get_data_from_skymodel,
+    _get_source_data,
+    _get_survey_coords,
+    _get_survey_metadata,
+    _sort_metadata_by_frequency,
+    _validate_source_catalog,
     create_normalization_h5parm,
     filter_sources,
     find_normalizations,
     fit_sed,
     get_field_phase_center,
     get_output_frequencies,
-    read_source_catalog,
     main,
-    _validate_source_catalog,
-    _download_survey_data,
-    _get_survey_coords,
-    _get_survey_metadata,
-    _cross_match_sources,
-    _get_data_from_skymodel,
-    _sort_metadata_by_frequency,
-    _get_source_data,
+    read_source_catalog,
 )
 
 
