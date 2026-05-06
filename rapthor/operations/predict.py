@@ -138,6 +138,7 @@ class Predict(Operation):
             sectors.extend(self.field.bright_source_sectors)
             sectors.extend(self.field.outlier_sectors)
         else: # if mode = di
+            include_solint = False
             sectors = self.field.predict_sectors
 
         # shared logic
@@ -194,71 +195,83 @@ class Predict(Operation):
         """
         Finalize this operation
         """
-        self.field.data_colname = 'DATA'
-        if self.field.peel_outliers:
-            # Update the observations to use the new peeled datasets and remove the
-            # outlier sectors (since, once peeled, they are no longer needed)
-            self.field.sectors = [sector for sector in self.field.sectors if not sector.is_outlier]
-            self.field.outlier_sectors = []
+        if self.mode == "dd":
+            self.field.data_colname = 'DATA'
 
-            # From now on, use imaged sources only in the sky models for selfcal, since
-            # sources outside of imaged areas have been peeled
-            self.field.imaged_sources_only = True
+            if self.field.peel_outliers:
+                self._handle_peeled_outliers()
 
-            for sector in self.field.sectors:
-                for obs in sector.observations:
-                    # Use new peeled datasets in future
-                    obs.ms_filename = os.path.join(self.pipeline_working_dir, obs.ms_field)
+            self._set_imaging_filenames()
 
-                    # Remove infix for the sector observations, otherwise future predict
-                    # operations will add it to the filenames multiple times
-                    obs.infix = ''
+        if self.mode == "di":
+            # Set the filenames of datasets used for direction-independent calibration
+             self._set_di_predict_filenames()
+        # Finally call finalize() in the parent class
+        super().finalize()
 
-                    # Update MS filename and infix of the field's observations to match
-                    # those of the sector's observations. This is required because the
-                    # sector's observations are distinct copies of the field ones
-                    for field_obs in self.field.observations:
-                        if (field_obs.name == obs.name) and (field_obs.starttime == obs.starttime):
-                            field_obs.infix = ''
-                            field_obs.ms_filename = obs.ms_filename
+    def _handle_peeled_outliers(self):
+        sectors = self.field.sectors
+        field_observations = self.field.observations
+        working_dir = self.pipeline_working_dir
 
+        # Update the observations to use the new peeled datasets and remove the
+        # outlier sectors (since, once peeled, they are no longer needed)     
+        self.field.sectors = [s for s in sectors if not s.is_outlier]
+        self.field.outlier_sectors = []
+
+        # From now on, use imaged sources only in the sky models for selfcal, since
+        # sources outside of imaged areas have been peeled
+        self.field.imaged_sources_only = True
+
+        for sector in self.field.sectors:
+            for obs in sector.observations:
+                # Use new peeled datasets in future
+                obs.ms_filename = os.path.join(working_dir, obs.ms_field)
+                # Remove infix for the sector observations, otherwise future predict
+                # operations will add it to the filenames multiple times
+                obs.infix = ''                   
+                self._sync_field_observation(obs, field_observations, obs.ms_filename)
+
+
+    def _set_imaging_filenames(self):
         # Update filenames of datasets used for imaging
-        if (len(self.field.imaging_sectors) > 1 or self.field.reweight or
-                (len(self.field.outlier_sectors) > 0 and self.field.peel_outliers) or
-                (len(self.field.bright_source_sectors) > 0 and self.field.peel_bright_sources)):
-            for sector in self.field.sectors:
-                for obs in sector.observations:
-                    obs.ms_imaging_filename = os.path.join(self.pipeline_working_dir,
-                                                           obs.ms_subtracted_filename)
-        else:
-            for sector in self.field.sectors:
-                for obs in sector.observations:
+        working_dir = self.pipeline_working_dir
+
+        use_subtracted = (
+            len(self.field.imaging_sectors) > 1
+            or self.field.reweight
+            or (self.field.outlier_sectors and self.field.peel_outliers)
+            or (self.field.bright_source_sectors and self.field.peel_bright_sources)
+        )
+
+        for sector in self.field.sectors:
+            for obs in sector.observations:
+                if use_subtracted:
+                    obs.ms_imaging_filename = os.path.join(
+                        working_dir, obs.ms_subtracted_filename
+                    )
+                else:
                     obs.ms_imaging_filename = obs.ms_filename
 
-        # Finally call finalize() in the parent class
-        super().finalize()
 
-
-class PredictDI(Operation):
-    """
-    Operation to predict model data for direction-independent calibration
-    """
-    def __init__(self, field, index):
-        super().__init__(field, index=index, name='predict_di')
-
-    
-    def finalize(self):
-        """
-        Finalize this operation
-        """
-        # Set the filenames of datasets used for direction-independent calibration
+    def _set_di_predict_filenames(self):
+        working_dir = self.pipeline_working_dir
+        field_observations = self.field.observations
+        # Transfer the filenames from the first sector to the field. This is required
+        # because the sector's observations are distinct copies of the field ones  
         for obs in self.field.predict_sectors[0].observations:
-            # Transfer the filenames from the first sector to the field. This is required
-            # because the sector's observations are distinct copies of the field ones
-            for field_obs in self.field.observations:
-                if (field_obs.name == obs.name) and (field_obs.starttime == obs.starttime):
-                    field_obs.ms_predict_di_filename = os.path.join(self.pipeline_working_dir,
-                                                                    obs.ms_predict_di)
+            new_ms = os.path.join(working_dir, obs.ms_predict_di)
+            self._sync_field_observation(obs, field_observations, new_ms, attr="ms_predict_di_filename")
 
-        # Finally call finalize() in the parent class
-        super().finalize()
+
+    def _sync_field_observation(self, obs, field_observations, new_path, attr="ms_filename"):
+        """
+        Sync a sector observation back to the matching field observation.
+        """
+        # Update MS filename and infix of the field's observations to match
+        # those of the sector's observations. This is required because the
+        # sector's observations are distinct copies of the field ones
+        for field_obs in field_observations:
+            if field_obs.name == obs.name and field_obs.starttime == obs.starttime:
+                field_obs.infix = ''
+                setattr(field_obs, attr, new_path)

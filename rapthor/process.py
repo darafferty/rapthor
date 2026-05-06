@@ -15,7 +15,7 @@ from rapthor.operations.calibrate import Calibrate
 from rapthor.operations.concatenate import Concatenate
 from rapthor.operations.image import Image, ImageInitial, ImageNormalize
 from rapthor.operations.mosaic import Mosaic
-from rapthor.operations.predict import Predict, PredictDI
+from rapthor.operations.predict import Predict
 
 log = logging.getLogger("rapthor")
 
@@ -189,7 +189,7 @@ def run_steps(field, steps, final=False):
 
             # Calibrate (direction-independent)
             if field.do_fulljones_solve:
-                op = PredictDI(field, cycle_number)
+                op = Predict("di",field, cycle_number)
                 op.run()
                 op = Calibrate("di", field, cycle_number)
                 op.run()

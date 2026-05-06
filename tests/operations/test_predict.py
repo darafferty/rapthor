@@ -4,7 +4,7 @@ Test cases for the `rapthor.operations.predict` module.
 from pathlib import Path
 import pytest
 import rapthor
-from rapthor.operations.predict import Predict, PredictDI
+from rapthor.operations.predict import Predict
 from tests.operations.conftest import get_cwl_input_ids
 
 
@@ -163,7 +163,7 @@ class TestPredict:
             field.sectors.append(outlier_sector)
             field.outlier_sectors = [outlier_sector]
 
-        predict = Predict("dd", field, index=1) if mode == "dd" else PredictDI(field, index=1)
+        predict = Predict("dd", field, index=1) if mode == "dd" else Predict("di",field, index=1)
         predict.finalize()
 
         if mode == "dd":
