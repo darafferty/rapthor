@@ -210,7 +210,7 @@ def concat_time_command(msfiles, output_file):
         "taql",
         "select",
         "from",
-        "[{}]".format(",".join(msfiles[ind])),
+        "[{}]".format(",".join(np.array(msfiles)[ind])),
         "giving",
         "{}".format(output_file),
         "AS",
