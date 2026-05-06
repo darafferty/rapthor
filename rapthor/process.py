@@ -182,17 +182,12 @@ def run_steps(field, steps, final=False):
         if field.do_calibrate:
             # Set whether screens should be generated
             field.generate_screens = (field.dde_mode == "hybrid") and final
-
-            # Calibrate (direction-dependent)
-            op = Calibrate("dd", field, cycle_number)
-            op.run()
-
-            # Calibrate (direction-independent)
-            if field.do_fulljones_solve:
-                op = Predict("di", field, cycle_number)
-                op.run()
-                op = Calibrate("di", field, cycle_number)
-                op.run()
+            for mode, enabled in _do_calibrate_mode(field.calibration_strategy).items():
+                if not enabled:
+                    continue
+                if mode == "di":
+                    Predict("di", field, cycle_number).run()
+                Calibrate(mode, field, cycle_number).run()
 
         # Predict and subtract the sector models
         # Note: DD predict is not yet supported when screens are used
@@ -531,3 +526,24 @@ def make_report(field, outfile=None):
         outfile = os.path.join(field.parset["dir_working"], "logs", "diagnostics.txt")
     with open(outfile, "w") as f:
         f.writelines(output_lines)
+
+
+def _do_calibrate_mode(calibration_strategy):
+    """
+    Helper function determine whether or not to do DI and/or DD calibration
+
+    Parameters
+    ----------
+    calibration_strategy : dict
+        The calibration strategy for this run
+    """
+    supported_calibration_modes = ["di", "dd"]
+    if not any(mode in calibration_strategy for mode in supported_calibration_modes):
+        raise ValueError(
+            f"Calibration strategy {calibration_strategy} does not contain any of the "
+            f"calibration modes {supported_calibration_modes}"
+        )
+    return {
+        mode: any(calibration_strategy.get(mode, {}).values())
+        for mode in calibration_strategy.keys()
+    }

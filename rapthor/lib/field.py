@@ -46,12 +46,15 @@ class Field(object):
         If True, only initialize the minimal set of required parameters
     """
 
+
     def __init__(self, parset, minimal=False):
         # Initialize basic attributes. These can be overridden later by the strategy
         # values and/or the operations
         self.name = "field"
         self.log = logging.getLogger(f"rapthor:{self.name}")
         self.parset = parset.copy()
+        self.working_dir = self.parset["dir_working"]
+        self.ms_filenames = self.parset["mss"]
         self.working_dir = self.parset["dir_working"]
         self.ms_filenames = self.parset["mss"]
         self.numMS = len(self.ms_filenames)
@@ -2057,12 +2060,8 @@ class Field(object):
         if not self.calibration_strategy:
             # Use legacy strategy based on the `do_fulljones_solve` and `do_slowgain_solve` parameters
             self.calibration_strategy = {
-                "di": {
-                    "fast_phase": False,  # Never do a fast DI solve
-                    "medium_phase": False,  # Never do a medium DI solve
-                    "slow_gain": False,  # Never do a slow DI solve
-                    "full_jones": self.do_fulljones_solve,  # Only type of DI solve supported in legacy code
-                },
+                # DD is always done first in the legacy strategy to support the use case that requires
+                # removing DD effects before doing a DI solve
                 "dd": {
                     "fast_phase": True,  # Always do a fast DD solve
                     "medium_phase": True,  # Always do a medium DD solve
@@ -2071,9 +2070,14 @@ class Field(object):
                     # because the legacy strategy only uses do_fulljones_solve to control whether a full
                     # DI solve is done, not whether a full DD solve is done.
                     "full_jones": False,
-                }
+                },
+                "di": {
+                    "fast_phase": False,  # Never do a fast DI solve
+                    "medium_phase": False,  # Never do a medium DI solve
+                    "slow_gain": False,  # Never do a slow DI solve
+                    "full_jones": self.do_fulljones_solve,  # Only type of DI solve supported in legacy code
+                },
             }
-
 
     def get_matplotlib_patch(self, wcs=None):
         """
