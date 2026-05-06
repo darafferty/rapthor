@@ -137,7 +137,7 @@ class Predict(Operation):
         }
 
 
-    def _collect_obs_parameters(self, observations, include_solint=False):
+    def _collect_obs_parameters(self, observations, include_solint):
         """
         Collect observation-specific CWL input parameters.
 
