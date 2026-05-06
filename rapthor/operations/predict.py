@@ -175,7 +175,6 @@ class Predict(Operation):
     def _get_dp3_applycal_steps(self, field):
         """
         Return the DP3 applycal steps and normalize_h5parm based on field settings.
-
         Returns a tuple of (dp3_applycal_steps, normalize_h5parm).
         """
         dp3_applycal_steps = ['fastphase']
@@ -208,7 +207,7 @@ class Predict(Operation):
 
     def _handle_peeled_outliers(self):
         """
-        
+        Update pipeline state after peeling outlier sectors (DD mode)
         """
         sectors = self.field.sectors
         field_observations = self.field.observations
@@ -234,6 +233,12 @@ class Predict(Operation):
 
 
     def _set_imaging_filenames(self):
+        """
+        Set imaging filenames for downstream processing.
+
+        Chooses between original or subtracted datasets depending on
+        DD calibration configuration.
+        """
         # Update filenames of datasets used for imaging
         working_dir = self.pipeline_working_dir
 
@@ -255,6 +260,9 @@ class Predict(Operation):
 
 
     def _set_di_predict_filenames(self):
+        """
+        Map DI prediction outputs back to field observations.
+        """
         working_dir = self.pipeline_working_dir
         field_observations = self.field.observations
         # Transfer the filenames from the first sector to the field. This is required
@@ -266,7 +274,9 @@ class Predict(Operation):
 
     def _sync_field_observation(self, obs, field_observations, new_path, attr="ms_filename"):
         """
-        Sync a sector observation back to the matching field observation.
+        Sync a sector observation update back to the matching field observation.
+
+        Matches on (name, starttime) and updates the specified attribute.   
         """
         # Update MS filename and infix of the field's observations to match
         # those of the sector's observations. This is required because the
