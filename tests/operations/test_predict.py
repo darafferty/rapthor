@@ -163,7 +163,7 @@ class TestPredict:
             field.sectors.append(outlier_sector)
             field.outlier_sectors = [outlier_sector]
 
-        predict = Predict("dd", field, index=1) if mode == "dd" else Predict("di",field, index=1)
+        predict = Predict(mode=mode, field=predict_field, index=1)
         predict.finalize()
 
         if mode == "dd":
