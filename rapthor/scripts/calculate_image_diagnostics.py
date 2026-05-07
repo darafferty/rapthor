@@ -663,16 +663,13 @@ def _compute_image_stats(image: np.ndarray):
         "median": np.nanmedian(image),
         "std": np.nanstd(image),
         "min": np.nanmin(image),
-        "max": np.nanmax(image)
-        }
+        "max": np.nanmax(image),
+    }
 
 
 def compute_facet_rms_noise(
-        facet_region_file,
-        rms_img_flat_noise,
-        rms_img_true_sky,
-        theoretical_rms
-    ):
+    facet_region_file, rms_img_flat_noise, rms_img_true_sky, theoretical_rms
+):
     """
     Compute facet-based RMS statistics from flat-noise and true-sky RMS maps.
 
@@ -702,7 +699,7 @@ def compute_facet_rms_noise(
             selected_beam_corrected = rms_img_true_sky.select_facet(facet)
             facet_summary = {
                 "flat_noise": _compute_image_stats(selected_flat_noise),
-                "beam_corrected": _compute_image_stats(selected_beam_corrected)
+                "beam_corrected": _compute_image_stats(selected_beam_corrected),
             }
             facets_summary[facet.name] = facet_summary
         return facets_summary
@@ -886,11 +883,8 @@ def main(
     )
     cwl_output.update(result)
 
-    result = check_facet_rms_noise(
-        facet_region_file,
-        rms_img_flat_noise,
-        rms_img_true_sky,
-        theoretical_rms
+    result = compute_facet_rms_noise(
+        facet_region_file, rms_img_flat_noise, rms_img_true_sky, theoretical_rms
     )
 
     # Write out the full diagnostics
