@@ -181,3 +181,76 @@ class TestPredict:
             assert observation.ms_predict_di_filename.endswith("predict_di.ms")
 
         assert Path(predict.done_file).exists()
+
+    @pytest.mark.parametrize(
+    "mode, with_params",
+    [
+        ("dd", True),
+        ("dd", False),
+        ("di", False),
+    ],
+)
+    def test_collect_obs_parameters(
+        self,
+        predict_field,
+        observation,
+        mode,
+        with_params,
+    ):
+
+        if with_params:
+            observation.parameters = {
+                "solint_fast_timestep": [2],
+                "solint_slow_freqstep_separate": [3],
+            }
+            observation.timepersample = 5
+            observation.channelwidth = 7
+        else:
+            observation.parameters = {}
+
+        predict_field.observations = [observation]
+
+        predict = Predict(mode=mode, field=predict_field, index=1)
+
+        result = predict._collect_obs_parameters()
+
+        assert result["obs_filename"] == [observation.ms_filename]
+        assert result["obs_infix"] == [observation.infix]
+        assert len(result["obs_starttime"]) == 1
+
+        if mode == "dd":
+            if with_params:
+                expected_sec = [observation.parameters["solint_fast_timestep"][0] * observation.timepersample]
+                expected_hz = [observation.parameters["solint_slow_freqstep_separate"][0] * observation.channelwidth]
+            else:
+                expected_sec = [0]
+                expected_hz = [0]
+            assert result["obs_solint_sec"] == expected_sec
+            assert result["obs_solint_hz"] == expected_hz
+        else:
+            assert "obs_solint_sec" not in result
+            assert "obs_solint_hz" not in result
+
+    @pytest.mark.parametrize("n_sectors", [1, 2])
+    def test_collect_sector_parameters(
+        self, predict_field, sector, n_sectors
+    ):
+        sector.patches = ["[patch1]"]
+        sector.predict_skymodel_file = "skymodel.ms"
+        predict_field.observations = sector.observations
+        sectors = [sector] * n_sectors
+
+        predict = Predict(mode="dd", field=predict_field, index=1)
+        result = predict._collect_sector_parameters(sectors)
+
+        n_obs = len(sector.observations)
+        expected_len = n_sectors * n_obs
+        assert len(result["sector_skymodel"]) == expected_len
+        assert len(result["sector_filename"]) == expected_len
+        assert len(result["sector_model_filename"]) == expected_len
+        assert len(result["sector_patches"]) == expected_len
+        assert len(result["sector_starttime"]) == expected_len
+        assert len(result["sector_ntimes"]) == expected_len
+
+        # basename should be applied to model filenames
+        assert all("/" not in f for f in result["sector_model_filename"])
