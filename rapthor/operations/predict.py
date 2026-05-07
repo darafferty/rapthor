@@ -40,71 +40,70 @@ class Predict(Operation):
         # Make list of sectors for which prediction needs to be done. Any imaging
         # sectors should come first, followed by bright-source, then outlier sectors
         # (as required by the rapthor/scripts/subtract_sector_models.py script)
+        field = self.field
         sectors = []
         if self.mode == "dd":
-            include_solint = True
-            if len(self.field.imaging_sectors) > 1 or self.field.reweight:
+            if len(field.imaging_sectors) > 1 or field.reweight:
                 # If we have more than one imaging sector or reweighting is desired,
                 # predict the imaging sector models. (If we have a single imaging
                 # sector, we don't need to predict its model data, just that of any
                 # outlier or bright-source sectors)
-                sectors.extend(self.field.imaging_sectors)
-            sectors.extend(self.field.bright_source_sectors)
-            sectors.extend(self.field.outlier_sectors)
-        else: # if mode = di
-            include_solint = False
-            sectors = self.field.predict_sectors
+                sectors.extend(field.imaging_sectors)
+            sectors.extend(field.bright_source_sectors)
+            sectors.extend(field.outlier_sectors)
+        if self.mode == "di":
+            sectors = field.predict_sectors
 
         # shared logic
-        sector_parms = self._collect_sector_parameters(sectors, self.field.observations)
+        sector_parms = self._collect_sector_parameters(sectors)
         # Set observation-specific parameters (input filenames, solution intervals, etc.)
-        obs_parms = self._collect_obs_parameters(self.field.observations, include_solint=include_solint)
+        obs_parms = self._collect_obs_parameters()
 
         # Set the DP3 applycal steps depending on what solutions need to be
         # applied
-        dp3_applycal_steps, normalize_h5parm = self._get_dp3_applycal_steps(self.field)
+        dp3_applycal_steps, normalize_h5parm = self._get_dp3_applycal_steps()
 
         dd_params = {}
         if self.mode == "dd":
             dd_params = {
                 'obs_solint_sec': obs_parms['obs_solint_sec'],
                 'obs_solint_hz': obs_parms['obs_solint_hz'],
-                'min_uv_lambda': self.field.parset['imaging_specific']['min_uv_lambda'],
-                'max_uv_lambda': self.field.parset['imaging_specific']['max_uv_lambda'],
-                'nr_outliers': len(self.field.outlier_sectors),
-                'peel_outliers': self.field.peel_outliers,
-                'nr_bright': len(self.field.bright_source_sectors),
-                'peel_bright': self.field.peel_bright_sources,
-                'reweight': self.field.reweight
+                'min_uv_lambda': field.parset['imaging_specific']['min_uv_lambda'],
+                'max_uv_lambda': field.parset['imaging_specific']['max_uv_lambda'],
+                'nr_outliers': len(field.outlier_sectors),
+                'peel_outliers': field.peel_outliers,
+                'nr_bright': len(field.bright_source_sectors),
+                'peel_bright': field.peel_bright_sources,
+                'reweight': field.reweight
 
             }
    
         common_params = {
             'sector_filename': CWLDir(sector_parms['sector_filename']).to_json(),
-            'data_colname': self.field.data_colname,
+            'data_colname': field.data_colname,
             'sector_starttime': sector_parms['sector_starttime'],
             'sector_ntimes': sector_parms['sector_ntimes'],
             'sector_model_filename': sector_parms['sector_model_filename'],
             'sector_skymodel': CWLFile(sector_parms['sector_skymodel']).to_json(),
             'sector_patches': sector_parms['sector_patches'],
 
-            'h5parm': CWLFile(self.field.h5parm_filename).to_json(),
+            'h5parm': CWLFile(field.h5parm_filename).to_json(),
             'normalize_h5parm': normalize_h5parm,
             'dp3_applycal_steps': f"[{','.join(dp3_applycal_steps)}]",
 
-            'onebeamperpatch': self.field.onebeamperpatch,
-            'sagecalpredict': self.field.sagecalpredict,
+            'onebeamperpatch': field.onebeamperpatch,
+            'sagecalpredict': field.sagecalpredict,
             'obs_filename': CWLDir(obs_parms['obs_filename']).to_json(),
             'obs_starttime': obs_parms['obs_starttime'],
             'obs_infix': obs_parms['obs_infix'],
 
-            'correctfreqsmearing': self.field.correct_smearing_in_calibration,
-            'correcttimesmearing': self.field.correct_smearing_in_calibration,
-            'max_threads': self.field.parset['cluster_specific']['max_threads']}
+            'correctfreqsmearing': field.correct_smearing_in_calibration,
+            'correcttimesmearing': field.correct_smearing_in_calibration,
+            'max_threads': field.parset['cluster_specific']['max_threads']}
         
         self.input_parms = {**common_params, **dd_params}
         
-    def _collect_sector_parameters(self, sectors, observations):
+    def _collect_sector_parameters(self, sectors):
         """
         Collect sector-dependent CWL input parameters for a list of sectors.
 
@@ -119,7 +118,7 @@ class Predict(Operation):
         sector_patches = []
         for sector in sectors:
             sector.set_prediction_parameters()
-            sector_skymodel.extend([sector.predict_skymodel_file] * len(observations))
+            sector_skymodel.extend([sector.predict_skymodel_file] * len(self.field.observations))
             sector_filename.extend(sector.get_obs_parameters('ms_filename'))
             sector_model_filename.extend(
                 [os.path.basename(f) for f in sector.get_obs_parameters('ms_model_filename')]
@@ -137,23 +136,23 @@ class Predict(Operation):
         }
 
 
-    def _collect_obs_parameters(self, observations, include_solint):
+    def _collect_obs_parameters(self):
         """
         Collect observation-specific CWL input parameters.
 
         Returns a dict with keys: obs_filename, obs_starttime, obs_infix, and
-        optionally obs_solint_sec, obs_solint_hz (when include_solint=True).
+        optionally obs_solint_sec, obs_solint_hz (when mode is "dd").
         """
         obs_filename = []
         obs_starttime = []
         obs_infix = []
         obs_solint_sec = []
         obs_solint_hz = []
-        for obs in observations:
+        for obs in self.field.observations:
             obs_filename.append(obs.ms_filename)
             obs_starttime.append(misc.convert_mjd2mvt(obs.starttime))
             obs_infix.append(obs.infix)
-            if include_solint:
+            if self.mode == "dd":
                 if ('solint_fast_timestep' in obs.parameters and
                         'solint_slow_freqstep_separate' in obs.parameters):
                     obs_solint_sec.append(obs.parameters['solint_fast_timestep'][0] * obs.timepersample)
@@ -166,22 +165,22 @@ class Predict(Operation):
             'obs_starttime': obs_starttime,
             'obs_infix': obs_infix,
         }
-        if include_solint:
+        if self.mode == "dd":
             result['obs_solint_sec'] = obs_solint_sec
             result['obs_solint_hz'] = obs_solint_hz
         return result
 
 
-    def _get_dp3_applycal_steps(self, field):
+    def _get_dp3_applycal_steps(self):
         """
         Return the DP3 applycal steps and normalize_h5parm based on field settings.
         Returns a tuple of (dp3_applycal_steps, normalize_h5parm).
         """
         dp3_applycal_steps = ['fastphase']
-        if field.apply_amplitudes:
+        if self.field.apply_amplitudes:
             dp3_applycal_steps.append('slowgain')
-        if field.apply_normalizations:
-            normalize_h5parm = CWLFile(field.normalize_h5parm).to_json()
+        if self.field.apply_normalizations:
+            normalize_h5parm = CWLFile(self.field.normalize_h5parm).to_json()
             dp3_applycal_steps.append('normalization')
         else:
             normalize_h5parm = None
@@ -209,13 +208,10 @@ class Predict(Operation):
         """
         Update pipeline state after peeling outlier sectors (DD mode)
         """
-        sectors = self.field.sectors
-        field_observations = self.field.observations
-        working_dir = self.pipeline_working_dir
 
         # Update the observations to use the new peeled datasets and remove the
         # outlier sectors (since, once peeled, they are no longer needed)     
-        self.field.sectors = [s for s in sectors if not s.is_outlier]
+        self.field.sectors = [s for s in self.field.sectors if not s.is_outlier]
         self.field.outlier_sectors = []
 
         # From now on, use imaged sources only in the sky models for selfcal, since
@@ -225,11 +221,11 @@ class Predict(Operation):
         for sector in self.field.sectors:
             for obs in sector.observations:
                 # Use new peeled datasets in future
-                obs.ms_filename = os.path.join(working_dir, obs.ms_field)
+                obs.ms_filename = os.path.join(self.pipeline_working_dir, obs.ms_field)
                 # Remove infix for the sector observations, otherwise future predict
                 # operations will add it to the filenames multiple times
                 obs.infix = ''                   
-                self._sync_field_observation(obs, field_observations, obs.ms_filename)
+                self._sync_field_observation(obs, obs.ms_filename)
 
 
     def _set_imaging_filenames(self):
@@ -240,7 +236,6 @@ class Predict(Operation):
         DD calibration configuration.
         """
         # Update filenames of datasets used for imaging
-        working_dir = self.pipeline_working_dir
 
         use_subtracted = (
             len(self.field.imaging_sectors) > 1
@@ -253,7 +248,7 @@ class Predict(Operation):
             for obs in sector.observations:
                 if use_subtracted:
                     obs.ms_imaging_filename = os.path.join(
-                        working_dir, obs.ms_subtracted_filename
+                        self.pipeline_working_dir, obs.ms_subtracted_filename
                     )
                 else:
                     obs.ms_imaging_filename = obs.ms_filename
@@ -263,16 +258,14 @@ class Predict(Operation):
         """
         Map DI prediction outputs back to field observations.
         """
-        working_dir = self.pipeline_working_dir
-        field_observations = self.field.observations
         # Transfer the filenames from the first sector to the field. This is required
         # because the sector's observations are distinct copies of the field ones  
         for obs in self.field.predict_sectors[0].observations:
-            new_ms = os.path.join(working_dir, obs.ms_predict_di)
-            self._sync_field_observation(obs, field_observations, new_ms, attr="ms_predict_di_filename")
+            new_ms = os.path.join(self.pipeline_working_dir, obs.ms_predict_di)
+            self._sync_field_observation(obs, new_ms, attr="ms_predict_di_filename")
 
 
-    def _sync_field_observation(self, obs, field_observations, new_path, attr="ms_filename"):
+    def _sync_field_observation(self, obs, new_path, attr="ms_filename"):
         """
         Sync a sector observation update back to the matching field observation.
 
@@ -281,7 +274,7 @@ class Predict(Operation):
         # Update MS filename and infix of the field's observations to match
         # those of the sector's observations. This is required because the
         # sector's observations are distinct copies of the field ones
-        for field_obs in field_observations:
+        for field_obs in self.field.observations:
             if field_obs.name == obs.name and field_obs.starttime == obs.starttime:
                 field_obs.infix = ''
                 setattr(field_obs, attr, new_path)
