@@ -657,6 +657,61 @@ def filter_skymodel_for_photometry(catalog, obs, freq, max_major_axis=10 / 3600)
     return catalog[major_axis < max_major_axis]
 
 
+def _compute_image_stats(image: np.ndarray):
+    return {
+        "mean": np.nanmean(image),
+        "median": np.nanmedian(image),
+        "std": np.nanstd(image),
+        "min": np.nanmin(image),
+        "max": np.nanmax(image)
+        }
+
+
+def compute_facet_rms_noise(
+        facet_region_file,
+        rms_img_flat_noise,
+        rms_img_true_sky,
+        theoretical_rms
+    ):
+    """
+    Compute facet-based RMS statistics from flat-noise and true-sky RMS maps.
+
+    Parameters
+    ----------
+    facet_region_file : str or None
+        Path to a DS9 region file describing imaging facets. If None or missing,
+        facet-based diagnostics cannot be derived.
+    rms_img_flat_noise : rapthor.lib.fitsimage.FITSImage
+        FITSImage object for the non-primary-beam-corrected RMS image.
+    rms_img_true_sky : rapthor.lib.fitsimage.FITSImage
+        FITSImage object for the primary-beam-corrected RMS image.
+    theoretical_rms : float
+        Theoretical image RMS noise in Jy/beam, used as a reference for
+        comparing measured per-facet RMS levels.
+
+    Returns
+    -------
+    dict
+        Dictionary of facet-level RMS diagnostics.
+    """
+    try:
+        facets = read_ds9_region_file(facet_region_file)
+        facets_summary = {}
+        for facet in facets:
+            selected_flat_noise = rms_img_flat_noise.select_facet(facet)
+            selected_beam_corrected = rms_img_true_sky.select_facet(facet)
+            facet_summary = {
+                "flat_noise": _compute_image_stats(selected_flat_noise),
+                "beam_corrected": _compute_image_stats(selected_beam_corrected)
+            }
+            facets_summary[facet.name] = facet_summary
+        return facets_summary
+    except Exception as e:
+        logger.warning("Couldnt determine per facets metrics")
+        logger.exception(e)
+        return {}
+
+
 def main(
     flat_noise_image,
     flat_noise_rms_image,
@@ -830,6 +885,13 @@ def main(
         allow_internet_access=allow_internet_access,
     )
     cwl_output.update(result)
+
+    result = check_facet_rms_noise(
+        facet_region_file,
+        rms_img_flat_noise,
+        rms_img_true_sky,
+        theoretical_rms
+    )
 
     # Write out the full diagnostics
     with open(output_root + ".image_diagnostics.json", "w") as fp:
