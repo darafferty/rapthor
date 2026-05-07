@@ -100,7 +100,7 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
     nsectors = len(model_list)
     if nsectors == 0:
         raise ValueError('No model data found.')
-    print('add_sector_models: Found {} model data files'.format(nsectors))
+    print(f'add_sector_models: Found {nsectors} model data files')
 
     # Define the template MS file. This file is copied to one or more files
     # to be filled with new data
@@ -143,7 +143,7 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
             nrow = nrows_per_chunk
         nrows.append(nrow)
         startrows_tmod.append(startrows_tmod[i-1] + nrows[i-1])
-    print('add_sector_models: Using {} chunk(s)'.format(nchunks))
+    print(f'add_sector_models: Using {nchunks} chunk(s)')
 
     # Open output table and add output column if needed
     msout = os.path.basename(model_list[0]).removesuffix('_modeldata') + '_di.ms'

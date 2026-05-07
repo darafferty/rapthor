@@ -24,8 +24,7 @@ def add_coloring_to_emit_ansi(fn):
             color = '\x1b[0m'   # normal
         if isinstance(args[0].msg, Exception):
             # For exceptions, add the class name to the logged message.
-            args[0].msg = "{0}: {1}".format(args[0].msg.__class__.__name__,
-                                            args[0].msg)
+            args[0].msg = f"{args[0].msg.__class__.__name__}: {args[0].msg}"
         args[0].msg = color + args[0].msg + '\x1b[0m'
         return fn(*args)
     return new

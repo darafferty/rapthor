@@ -19,7 +19,7 @@ class Mosaic(Operation):
 
         # For each image type we use a subworkflow, so we set the template filename
         # for that here
-        self.subpipeline_parset_template = '{0}_type_pipeline.cwl'.format(self.rootname)
+        self.subpipeline_parset_template = f"{self.rootname}_type_pipeline.cwl"
 
         # Determine whether processing is needed
         self.skip_processing = len(self.field.imaging_sectors) < 2
@@ -75,11 +75,13 @@ class Mosaic(Operation):
             for sector in self.field.imaging_sectors:
                 image_list.append(getattr(sector, image_name))
                 vertices_list.append(sector.vertices_file)
-                regridded_list.append(os.path.basename(getattr(sector, image_name)) + '.regridded')
+                regridded_list.append(
+                    f'{os.path.basename(getattr(sector, image_name))}.regridded'
+                )
             sector_image_filename.append(CWLFile(image_list).to_json())
             sector_vertices_filename.append(CWLFile(vertices_list).to_json())
             regridded_image_filename.append(regridded_list)
-            template_image_filename.append(self.name + '_template.fits')
+            template_image_filename.append(f'{self.name}_template.fits')
 
         self.mosaic_filename = []
         if self.skip_processing:
@@ -97,7 +99,7 @@ class Mosaic(Operation):
                     # Remove the compressed extension, as the output mosaic files are not
                     # compressed until a later step in the pipeline
                     suffix = os.path.splitext(suffix)[0]
-                self.mosaic_filename.append('{0}{1}'.format(self.name, suffix))
+                self.mosaic_filename.append(f"{self.name}{suffix}")
 
         self.input_parms = {'skip_processing': self.skip_processing,
                             'sector_image_filename': sector_image_filename,
@@ -122,7 +124,7 @@ class Mosaic(Operation):
             # used to make the mosaic are left in place, as they will be needed if the mosaic
             # operation is reset without reseting the preceding image operation as well
             dst_dir = os.path.join(self.field.parset['dir_working'], 'images',
-                                   'image_{}'.format(self.index))
+                                   f'image_{self.index}')
             os.makedirs(dst_dir, exist_ok=True)
             if self.skip_processing:
                 # Single imaging sector: split on the sector name
@@ -130,7 +132,7 @@ class Mosaic(Operation):
             else:
                 # Mosacking done: split on the mosaic name
                 suffix = self.mosaic_filename[i].split(self.name)[-1]
-            field_image_filename = os.path.join(dst_dir, 'field{}'.format(suffix))
+            field_image_filename = os.path.join(dst_dir, f'field{suffix}')
             if image_name == 'I_image_file_true_sky':
                 # Save the Stokes I true-sky image filename as an attribute of the field
                 # object for later use
