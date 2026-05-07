@@ -36,6 +36,22 @@ def predict_field(operation_parset):
 
 class TestPredict:
     @pytest.mark.parametrize(
+        "mode, expected_name",
+        [
+            ("dd", "predict"),
+            ("di", "predict_di"),
+        ],
+    )
+    def test_init_sets_name_and_mode(self, predict_field, mode, expected_name):
+        predict = Predict(mode=mode, field=predict_field, index=1)
+        assert predict.mode == mode
+        assert predict.name == expected_name
+
+    def test_init_raises_on_invalid_mode(self, predict_field):
+        with pytest.raises(ValueError, match="Only di and dd mode are supported"):
+            Predict(mode="invalid", field=predict_field, index=1)
+
+    @pytest.mark.parametrize(
         "mode, batch_system, max_cores, expected_cores",
         [
             ("dd", "some_other_system", 42, 42),
