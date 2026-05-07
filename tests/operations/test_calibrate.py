@@ -135,7 +135,7 @@ class TestCalibrate:
     def test_init_raises_on_invalid_mode(self, calibrate_field):
         with pytest.raises(ValueError, match="Only di and dd mode are supported"):
             Calibrate(mode="invalid", field=calibrate_field, index=1)
-            
+
     @pytest.mark.parametrize(
         "mode, solve, batch_system, generate_screens, use_image_based_predict",
         [

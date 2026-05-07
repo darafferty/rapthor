@@ -36,18 +36,18 @@ def predict_field(operation_parset):
 
 class TestPredict:
     @pytest.mark.parametrize(
-        "mode, expected_name",
+        "mode, expected_name, index",
         [
-            ("dd", "predict"),
-            ("di", "predict_di"),
+            ("dd", "predict", 1),
+            ("di", "predict_di", 2),
         ],
     )
-    def test_init_sets_name_and_mode(self, predict_field, mode, expected_name):
-        predict = Predict(mode=mode, field=predict_field, index=1)
+    def test_init_sets_name_and_mode(self, predict_field, mode, expected_name, index):
+        predict = Predict(mode=mode, field=predict_field, index=index)
         assert predict.mode == mode
-        assert predict.name == expected_name
+        assert predict.name == f"{expected_name}_{index}"
 
-    def test_init_raises_on_invalid_mode(self, predict_field):
+    def test_init_raises_on_invalid_mode(self, predict_field,):
         with pytest.raises(ValueError, match="Only di and dd mode are supported"):
             Predict(mode="invalid", field=predict_field, index=1)
 
