@@ -29,6 +29,8 @@ def operation_parset(tmp_path):
         },
         "imaging_specific": {
             "cellsize_arcsec": 1.5,
+            "min_uv_lambda": 0,
+            "max_uv_lambda": 1e9,
         },
     }
 

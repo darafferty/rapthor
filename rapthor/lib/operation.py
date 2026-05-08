@@ -39,12 +39,12 @@ class Operation(object):
         self.rootname = name.lower()
         self.index = index
         if self.index is not None:
-            self.name = '{0}_{1}'.format(self.rootname, self.index)
+            self.name = f'{self.rootname}_{self.index}'
         else:
             self.name = self.rootname
         self.rootname
         self.parset['op_name'] = name
-        self.log = logging.getLogger('rapthor:{0}'.format(self.name))
+        self.log = logging.getLogger(f'rapthor:{self.name}')
         self.force_serial_jobs = False  # force jobs to run serially
         self.use_mpi = False
 
@@ -82,7 +82,7 @@ class Operation(object):
         # Input template name and output parset and inputs filenames for the CWL workflow.
         # If the workflow uses a subworkflow, its template filename must be defined in the
         # subclass by self.subpipeline_parset_template to the right path
-        self.pipeline_parset_template = '{0}_pipeline.cwl'.format(self.rootname)
+        self.pipeline_parset_template = f'{self.rootname}_pipeline.cwl'
         self.subpipeline_parset_template = None
         self.pipeline_parset_file = os.path.join(self.pipeline_working_dir,
                                                  'pipeline_parset.cwl')
@@ -280,4 +280,4 @@ class Operation(object):
             self.finalize()
             self.store_outputs()
         else:
-            raise RuntimeError('Operation {0} failed due to an error'.format(self.name))
+            raise RuntimeError(f'Operation {self.name} failed due to an error')

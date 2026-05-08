@@ -8,7 +8,7 @@ import pytest
 
 import rapthor
 from rapthor.lib.operation import DIR as OPERATION_DIR
-from rapthor.operations.calibrate import Calibrate, CalibrateDI
+from rapthor.operations.calibrate import Calibrate
 from tests.operations.conftest import get_cwl_input_ids
 
 
@@ -185,7 +185,7 @@ class TestCalibrate:
         calibrate_field.antenna = antenna
         calibrate_field.stations = stations
         calibrate = Calibrate("dd", field=calibrate_field, index=1)
-        baselines = calibrate.get_baselines_core()
+        baselines = calibrate._get_baselines_core()
         assert baselines == expected
 
     @pytest.mark.parametrize(
@@ -212,7 +212,7 @@ class TestCalibrate:
         calibrate_field.antenna = antenna
         calibrate_field.stations = stations
         calibrate_dd = Calibrate("dd", field=calibrate_field, index=1)
-        assert calibrate_dd.get_superterp_stations() == expected
+        assert calibrate_dd._get_superterp_stations() == expected
 
     @pytest.mark.parametrize(
         "antenna,include_remote,stations,expected",
@@ -253,7 +253,7 @@ class TestCalibrate:
         calibrate_field.antenna = antenna
         calibrate_field.stations = stations
         calibrate_dd = Calibrate("dd", field=calibrate_field, index=1)
-        result = calibrate_dd.get_core_stations(include_nearest_remote=include_remote)
+        result = calibrate_dd._get_core_stations(include_nearest_remote=include_remote)
         assert result == expected
 
     @pytest.mark.parametrize("cycle,have_full_field_sector", [(1, False), (1, True), (2, False)])
@@ -284,7 +284,7 @@ class TestCalibrate:
         # Act
         calibrate_dd = Calibrate("dd", field, index=cycle)
         frequency_bandwidth, center_coords, size, cellsize = (
-            calibrate_dd.get_model_image_parameters()
+            calibrate_dd._get_model_image_parameters()
         )
 
         # Assert. In this test, all scenarios yield equal values, except for the size.
@@ -420,7 +420,7 @@ class TestCalibrate:
         assert (pipelines_path / ".done").exists()
 
     @pytest.mark.parametrize(
-        "scenario, generate_screens, use_image_based_predict, do_slowgain_solve",
+        "mode, generate_screens, use_image_based_predict, do_slowgain_solve",
         [
             ("dd", False, False, False),
             ("dd", True, False, False),
@@ -432,32 +432,33 @@ class TestCalibrate:
     )
     def test_set_input_parameters(
         self,
+        mode,
         calibrate_field,
-        scenario,
         generate_screens,
         use_image_based_predict,
         do_slowgain_solve,
     ):
         """
         Test that set_input_parameters() provides exactly the inputs declared in the CWL
-        template, for all flag combinations of CalibrateDD and for CalibrateDI.
+        template, for all flag combinations of Calibrate(mode="dd") and for Calibrate(mode="di").
         """
-        is_dd = scenario == "dd"
-        f = calibrate_field
-        f.generate_screens = generate_screens
-        f.use_image_based_predict = use_image_based_predict
-        f.do_slowgain_solve = do_slowgain_solve
+        field = calibrate_field
+        field.generate_screens = generate_screens
+        field.use_image_based_predict = use_image_based_predict
+        field.do_slowgain_solve = do_slowgain_solve
 
-        calibrate = Calibrate("dd", field=f, index=1) if is_dd else CalibrateDI(field=f, index=1)
+        calibrate = Calibrate(mode=mode, field=calibrate_field, index=1 if mode == "dd" else 2)
         calibrate.set_input_parameters()
 
         rapthor_pipeline_dir = str(Path(rapthor.__file__).parent / "pipeline")
-        if is_dd:
-            resolved_use_image_based_predict = f.generate_screens or f.use_image_based_predict
+        if mode == "dd":
+            resolved_use_image_based_predict = (
+                field.generate_screens or field.use_image_based_predict
+            )
             template_parset_parms = {
                 "use_image_based_predict": resolved_use_image_based_predict,
-                "generate_screens": f.generate_screens,
-                "do_slowgain_solve": f.do_slowgain_solve,
+                "generate_screens": field.generate_screens,
+                "do_slowgain_solve": field.do_slowgain_solve,
                 "max_cores": None,
                 "rapthor_pipeline_dir": rapthor_pipeline_dir,
             }

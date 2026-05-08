@@ -7,6 +7,7 @@ import configparser
 import glob
 import logging
 import os
+from collections.abc import Sequence
 from importlib import resources
 
 import astropy.coordinates
@@ -184,10 +185,8 @@ class Parset:
         for section, options in missing_options.items():
             if options:
                 raise ValueError(
-                    "Missing required option(s) in section [{}]: {}".format(
-                        section,
-                        ", ".join("'{}'".format(opt) for opt in options),
-                    )
+                    f"Missing required option(s) in section [{section}]: "
+                    f"{', '.join(map(repr, options))}"
                 )
 
         # Check for invalid sections
@@ -205,12 +204,16 @@ class Parset:
         for section in deprecated_options:
             for option in deprecated_options[section]:
                 alternatives = self.deprecated_options[section][option]
-                message = f"Option '{option}' in section [{section}] is deprecated"
-                if alternatives:
-                    message += "; use %s instead" % (
-                        ", or ".join("'{}'".format(opt) for opt in alternatives)
-                    )
-                log.warning(message)
+                log.warning(
+                    "Option %r in section [%s] is deprecated%s",
+                    option,
+                    section,
+                    (
+                        f"; use {', or '.join(map(repr, alternatives))} instead"
+                        if alternatives
+                        else ""
+                    ),
+                )
 
     def __check_and_adjust(self, settings):
         """
@@ -282,10 +285,7 @@ class Parset:
         }.items():
             if options[opt] not in valid_values:
                 raise ValueError(
-                    "The option '{}' must be one of {}".format(
-                        opt,
-                        ", ".join("'{}'".format(val) for val in valid_values),
-                    )
+                    f"The option {opt!r} must be one of {', '.join(map(repr, valid_values))}"
                 )
 
         dd_smoothness_factor = options["dd_smoothness_factor"]
@@ -342,10 +342,7 @@ class Parset:
         }.items():
             if options[opt] not in valid_values:
                 raise ValueError(
-                    "The option '{}' must be one of {}".format(
-                        opt,
-                        ", ".join("'{}'".format(val) for val in valid_values),
-                    )
+                    f"The option {opt!r} must be one of {', '.join(map(repr, valid_values))}"
                 )
 
         if not (
@@ -412,10 +409,7 @@ class Parset:
         }.items():
             if options[opt] not in valid_values:
                 raise ValueError(
-                    "The option '{}' must be one of {}".format(
-                        opt,
-                        ", ".join("'{}'".format(val) for val in valid_values),
-                    )
+                    f"The option {opt!r} must be one of {', '.join(map(repr, valid_values))}"
                 )
 
         cpu_count = misc.nproc()
@@ -535,9 +529,7 @@ def parset_read(parset_file, use_log_file=True):
             if not os.path.isdir(subdir_path):
                 os.mkdir(subdir_path)
     except Exception as e:
-        raise RuntimeError(
-            "Cannot use the working dir {0}: {1}".format(parset_dict["dir_working"], e)
-        )
+        raise RuntimeError(f"Cannot use the working dir {parset_dict['dir_working']}: {e}")
 
     if use_log_file:
         set_log_file(os.path.join(parset_dict["dir_working"], "logs", "rapthor.log"))
@@ -572,7 +564,7 @@ def parset_read(parset_file, use_log_file=True):
 
 def check_and_adjust_skymodel_settings(parset_dict):
     """
-    En‌sure the initial sky model is present or, if not, that generation or
+    Ensure the initial sky model is present or, if not, that generation or
     download is requested.
 
     Parameters
@@ -639,6 +631,39 @@ def check_and_adjust_skymodel_settings(parset_dict):
         ) and not os.path.exists(skymodel):
             raise FileNotFoundError(
                 f'Comparison sky model for {diagnostic} check not found at "{skymodel}"'
+            )
+
+    # If `normalization_skymodels` is given, check if it is a list of length >= 2,
+    # and if the files exist; if not, raise an error. Check reference frequencies
+    # are also provided if normalization skymodels are provided, and that they are a list of
+    # the same length as the normalization skymodels; if not, raise an error.
+    if normalization_skymodels := parset_dict["imaging_specific"]["normalization_skymodels"]:
+        if (
+            isinstance(normalization_skymodels, str)
+            or not isinstance(normalization_skymodels, Sequence)
+            or len(normalization_skymodels) < 2
+        ):
+            raise ValueError(
+                "Normalization sky models must be an ordered list of at least two files."
+            )
+        for skymodel in normalization_skymodels:
+            if not os.path.exists(skymodel):
+                raise FileNotFoundError(f'Normalization sky model file not found at "{skymodel}"')
+        normalization_reference_frequencies = parset_dict["imaging_specific"][
+            "normalization_reference_frequencies"
+        ]
+        if not normalization_reference_frequencies:
+            raise ValueError(
+                "Reference frequencies must be provided and ordered for normalization sky models."
+            )
+        if (
+            isinstance(normalization_reference_frequencies, str)
+            or not isinstance(normalization_reference_frequencies, Sequence)
+            or len(normalization_reference_frequencies) != len(normalization_skymodels)
+        ):
+            raise ValueError(
+                "Reference frequencies for normalization sky models must be an ordered list of the"
+                "same length as the list of normalization sky models."
             )
 
     # Check if we need to access the internet to get any skymodels and if we

@@ -58,16 +58,16 @@ class MainLogParser():
             cycle = int(k.split('_')[-1])
             if cycle > ncycles:
                 ncycles += 1
-        cycle_keys = ['cycle_{:d}'.format(i) for i in range(1, ncycles)]
+        cycle_keys = [f'cycle_{i:d}' for i in range(1, ncycles)]
         print(cycle_keys)
         groupcycledict = {}
         # Assume operation names won't change
         # Rapthor does calibrate_N, predict_N, image_N, mosaic_N
         for i, k in enumerate(cycle_keys, start=1):
-            self.add_key(groupcycledict, 'cycle_{:d}'.format(i), 'calibrate_{:d}'.format(i), cycledict['calibrate_{:d}'.format(i)])
-            self.add_key(groupcycledict, 'cycle_{:d}'.format(i), 'predict_{:d}'.format(i), cycledict['predict_{:d}'.format(i)])
-            self.add_key(groupcycledict, 'cycle_{:d}'.format(i), 'image_{:d}'.format(i), cycledict['image_{:d}'.format(i)])
-            self.add_key(groupcycledict, 'cycle_{:d}'.format(i), 'mosaic_{:d}'.format(i), cycledict['mosaic_{:d}'.format(i)])
+            self.add_key(groupcycledict, f'cycle_{i:d}', f'calibrate_{i:d}', cycledict[f'calibrate_{i:d}'])
+            self.add_key(groupcycledict, f'cycle_{i:d}', f'predict_{i:d}', cycledict[f'predict_{i:d}'])
+            self.add_key(groupcycledict, f'cycle_{i:d}', f'image_{i:d}', cycledict[f'image_{i:d}'])
+            self.add_key(groupcycledict, f'cycle_{i:d}', f'mosaic_{i:d}', cycledict[f'mosaic_{i:d}'])
         return groupcycledict
 
     def process(self) -> None:
@@ -109,11 +109,11 @@ class MainLogParser():
         # Some operations are only done once and don't have a cycle count
         # suffix. Just add `_1` in this case to add them to the first cycle.
         cycledict = {
-            key if key[-1].isdigit() else key + '_1': value
+            key if key[-1].isdigit() else f'{key}_1': value
             for key, value in self.operations.items()
         }
         df = pd.DataFrame(cycledict.items(), columns=('Operation', 'Duration'))
-        df['Cycle'] = ['Cycle {:d}'.format(int(x.split('_')[-1])) for x in df['Operation']]
+        df['Cycle'] = [f'Cycle {int(x.split("_")[-1]):d}' for x in df['Operation']]
         df['Operation'] = [x.rsplit('_', 1)[0] for x in df['Operation']]
 
         fig = plt.figure(figsize=FIGSIZE)
@@ -122,11 +122,11 @@ class MainLogParser():
         Nops = len(pd.unique(df['Operation']))
         for i in range(Nops):
             try:
-                labels = ['{:.2f}'.format(t) if t else '' for t in h.containers[i].datavalues]
+                labels = [f'{t:.2f}' if t else '' for t in h.containers[i].datavalues]
                 h.bar_label(h.containers[i], labels=labels, fontsize=8)
             except AttributeError:
                 print('Failed to set bar labels. Try updating matplotlib to 3.4 or newer.')
-        h.set(xlabel='Self calibration cycle', ylabel='Duration [h]', title='Cumulative runtime: {:.2f} hours'.format(df['Duration'].sum()))
+        h.set(xlabel='Self calibration cycle', ylabel='Duration [h]', title=f'Cumulative runtime: {df["Duration"].sum():.2f} hours')
         h.figure.savefig('rapthor_timing.pdf', bbox_inches='tight', dpi=300)
         h.figure.savefig('rapthor_timing.png', bbox_inches='tight', dpi=300)
 
@@ -187,8 +187,8 @@ class SubLogParser():
         else:
             h = sns.histplot(df, y='Subtask', weights='Runtime', discrete=True, figure=fig)
             h.set(xlabel='Duration [s]', ylabel=None, title=self.operation)
-        h.figure.savefig('temp_{:s}.pdf'.format(self.operation), bbox_inches='tight', dpi=300)
-        h.figure.savefig('temp_{:s}.png'.format(self.operation), bbox_inches='tight', dpi=300)
+        h.figure.savefig(f'temp_{self.operation:s}.pdf', bbox_inches='tight', dpi=300)
+        h.figure.savefig(f'temp_{self.operation:s}.png', bbox_inches='tight', dpi=300)
 
 
 def make_cycle_pdfs_sublogs() -> None:
@@ -224,12 +224,12 @@ def main(logdir, detailed: bool = False) -> None:
     if detailed:
         print('Found the following operations:', ', '.join(main_log.operations.keys()))
         for op in main_log.operations.keys():
-            print('Processing logs for operation {:s}'.format(op))
+            print(f'Processing logs for operation {op}')
             try:
                 sub = SubLogParser(os.path.abspath(logdir), op)
                 sub.plot()
             except ValueError:
-                print('No appropriate log files found for {:s}; skipping.'.format(op))
+                print(f'No appropriate log files found for {op}; skipping.')
         make_cycle_pdfs_sublogs()
 
 

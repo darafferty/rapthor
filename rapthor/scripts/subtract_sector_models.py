@@ -146,7 +146,7 @@ def main(msin, model_list, msin_column='DATA', model_column='DATA',
     nsectors = len(model_list)
     if nsectors == 0:
         raise ValueError('No model data found.')
-    print('subtract_sector_models: Found {} model data files'.format(nsectors))
+    print(f'subtract_sector_models: Found {nsectors} model data files')
 
     # Define the template MS file. This file is copied to one or more files
     # to be filled with new data
@@ -175,7 +175,7 @@ def main(msin, model_list, msin_column='DATA', model_column='DATA',
         # Open input and output table
         tin = pt.table(msin, readonly=True, ack=False)
         root_filename = os.path.basename(msin)
-        msout = '{0}{1}_field'.format(root_filename, infix)
+        msout = f'{root_filename}{infix}_field'
 
         # Use subprocess to call 'cp' to ensure that the copied version has the
         # default permissions (e.g., so it's not read only)
@@ -203,7 +203,7 @@ def main(msin, model_list, msin_column='DATA', model_column='DATA',
             nrows.append(nrow)
             startrows_tin.append(startrows_tin[i-1] + nrows[i-1])
             startrows_tmod.append(startrows_tmod[i-1] + nrows[i-1])
-        print('subtract_sector_models: Using {} chunk(s) for peeling of outliers'.format(nchunks))
+        print(f'subtract_sector_models: Using {nchunks} chunk(s) for peeling of outliers')
 
         for c, (startrow_tin, startrow_tmod, nrow) in enumerate(zip(startrows_tin, startrows_tmod, nrows)):
             # For each chunk, load data
@@ -247,7 +247,7 @@ def main(msin, model_list, msin_column='DATA', model_column='DATA',
         # Open input and output table
         tin = pt.table(msin, readonly=True, ack=False)
         root_filename = os.path.basename(msin)
-        msout = '{0}{1}_field_no_bright'.format(root_filename, infix)
+        msout = f'{root_filename}{infix}_field_no_bright'
 
         # Use subprocess to call 'cp' to ensure that the copied version has the
         # default permissions (e.g., so it's not read only)
@@ -275,8 +275,7 @@ def main(msin, model_list, msin_column='DATA', model_column='DATA',
             nrows.append(nrow)
             startrows_tin.append(startrows_tin[i-1] + nrows[i-1])
             startrows_tmod.append(startrows_tmod[i-1] + nrows[i-1])
-        print('subtract_sector_models: Using {} chunk(s) for peeling of bright '
-              'sources'.format(nchunks))
+        print(f'subtract_sector_models: Using {nchunks} chunk(s) for peeling of bright sources')
 
         for c, (startrow_tin, startrow_tmod, nrow) in enumerate(zip(startrows_tin, startrows_tmod, nrows)):
             # For each chunk, load data
@@ -348,7 +347,7 @@ def main(msin, model_list, msin_column='DATA', model_column='DATA',
         nrows.append(nrow)
         startrows_tin.append(startrows_tin[i-1] + nrows[i-1])
         startrows_tmod.append(startrows_tmod[i-1] + nrows[i-1])
-    print('subtract_sector_models: Using {} chunk(s) for peeling of sector sources'.format(nchunks))
+    print(f'subtract_sector_models: Using {nchunks} chunk(s) for peeling of sector sources')
 
     # Open output tables
     tout_list = []
