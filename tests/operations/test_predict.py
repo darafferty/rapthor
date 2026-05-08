@@ -324,3 +324,43 @@ class TestPredict:
 
         # basename should be applied to model filenames
         assert all("/" not in f for f in result["sector_model_filename"])
+
+    @pytest.mark.parametrize(
+        "attr, match, has_second_obs",
+        [
+            ("ms_filename", True, False),
+            ("ms_predict_di_filename", True, False),
+            ("ms_filename", False, False),
+            ("ms_filename", True, True),
+        ],
+    )
+    def test_sync_field_observation(self, predict_field, observation, attr, match, has_second_obs):
+        other_obs = observation.copy()
+        other_obs.name = "other_obs"
+        other_obs.starttime = observation.starttime + 9999.0
+        other_filename = other_obs.ms_filename
+        other_infix = other_obs.infix
+
+        predict_field.observations = [observation] + ([other_obs] if has_second_obs else [])
+
+        sector_obs = observation.copy()
+        if not match:
+            sector_obs.name = "non_matching_obs"
+            sector_obs.starttime = observation.starttime + 9999.0
+
+        original_filename = observation.ms_filename
+        original_infix = observation.infix
+
+        predict = Predict(mode="dd", field=predict_field, index=1)
+        predict._sync_field_observation(sector_obs, "/new/path.ms", attr=attr)
+
+        if match:
+            assert getattr(observation, attr) == "/new/path.ms"
+            assert observation.infix == ""
+        else:
+            assert observation.ms_filename == original_filename
+            assert observation.infix == original_infix
+
+        if has_second_obs:
+            assert other_obs.ms_filename == other_filename
+            assert other_obs.infix == other_infix
