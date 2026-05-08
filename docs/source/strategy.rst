@@ -192,3 +192,5 @@ The following processing parameters can be set for each cycle:
         - "medium_phase": Boolean flag that determines whether the medium-fast (scalarphase) solve should be done for this type of calibration.
         - "slow_gain": Boolean flag that determines whether the slow (diagonal) solve should be done for this type of calibration.
         - "full_jones": Boolean flag that determines whether the full-Jones solve should be done for this type of calibration.
+
+        The order of keys (DI and DD) and values (types of solve) in the calibration strategy determines the order they are executed in by the pipeline. This allows a user to specify a different order for each cycle, if desired. If all solve types are set to False for either DI or DD it will be skipped, allowing DI- or DD-only cycles.
