@@ -252,6 +252,55 @@ class TestPredict:
             assert "obs_solint_sec" not in result
             assert "obs_solint_hz" not in result
 
+    @pytest.mark.parametrize(
+        "n_imaging_sectors, reweight, has_outliers, peel_outliers, has_bright, peel_bright, expect_subtracted",
+        [
+            (1, False, False, False, False, False, False),  # no subtraction
+            (2, False, False, False, False, False, True),   # multiple imaging sectors
+            (1, True,  False, False, False, False, True),   # reweight
+            (1, False, True,  True,  False, False, True),   # outliers peeled
+            (1, False, True,  False, False, False, False),  # outliers present but not peeled
+            (1, False, False, False, True,  True,  True),   # bright sources peeled
+            (1, False, False, False, True,  False, False),  # bright present but not peeled
+        ],
+    )
+    def test_set_imaging_filenames(
+        self,
+        predict_field,
+        sector,
+        n_imaging_sectors,
+        reweight,
+        has_outliers,
+        peel_outliers,
+        has_bright,
+        peel_bright,
+        expect_subtracted,
+    ):
+        field = predict_field
+        field.reweight = reweight
+        field.peel_outliers = peel_outliers
+        field.peel_bright_sources = peel_bright
+        field.imaging_sectors = [sector] * n_imaging_sectors
+        if has_outliers:
+            field.outlier_sectors = [sector]
+        if has_bright:
+            field.bright_source_sectors = [sector]
+        field.sectors = [sector]
+
+        # Set ms_subtracted_filename on the sector's observations so the method can use it
+        subtracted_name = "subtracted.ms"
+        for obs in sector.observations:
+            obs.ms_subtracted_filename = subtracted_name
+
+        predict = Predict(mode="dd", field=field, index=1)
+        predict._set_imaging_filenames()
+
+        for obs in sector.observations:
+            if expect_subtracted:
+                assert obs.ms_imaging_filename.endswith(subtracted_name)
+            else:
+                assert obs.ms_imaging_filename == obs.ms_filename
+
     @pytest.mark.parametrize("n_sectors", [1, 2])
     def test_collect_sector_parameters(
         self, predict_field, sector, n_sectors
