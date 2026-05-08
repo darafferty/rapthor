@@ -115,7 +115,7 @@ def main(
             else:
                 skymodel = lsmtool.load(survey)
                 survey_data = _get_data_from_skymodel(skymodel)
-            if survey_data is None:
+            if survey_data is None or len(survey_data) == 0:
                 continue
             survey_coords = _get_survey_coords(survey_data)
             survey_fluxes = _cross_match_sources(
@@ -130,6 +130,11 @@ def main(
                     "frequency": metadata["frequency"],
                 }
             )
+        if len(survey_catalogs) == 0:
+            log.warning(
+                "No valid sources are available for flux normalization. Flux normalization will be skipped."
+            )
+            do_normalization = False
 
     # Fit the source SEDs to find the corrections. The frequencies for the
     # which the corrections are determined are constructed to match the channels
@@ -645,7 +650,7 @@ def _download_survey_data(survey, phase_center):
             f"Error was: {e}. Flux normalization will be skipped."
         )
         return
-    if not len(skymodel):
+    if len(skymodel) == 0:
         log.warning(
             f"No sources found in the {survey} catalog for this field. "
             "Flux normalization will be skipped."
