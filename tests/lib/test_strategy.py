@@ -13,6 +13,7 @@ from rapthor.lib.strategy import (
     set_strategy,
     set_user_strategy,
     validate_strategy,
+    _validate_calibrate_strategy,
 )
 
 
@@ -272,3 +273,42 @@ def test_validate_strategy_raises_error_for_inconsistent_strategy_and_parset_set
             validate_strategy(strategy_steps, parset)
     else:
         validate_strategy(strategy_steps, parset)
+
+
+@pytest.mark.parametrize(
+    "calibration_strategy, expected_error_message",
+    [
+        (
+            {
+                "di": ["fast_phase", "medium_phase", "slow_gains", "full_jones"],
+                "dd": ["fast_phase", "medium_phase", "slow_gains", "full_jones"],
+            },
+            None,
+        ),
+        ({"di": ["fast_phase"], "dd": []}, None),
+        ({"di": ["fast_phase"]}, None),
+        ({"dd": ["fast_phase"]}, None),
+        ({"di": [], "dd": ["full_jones"]}, None),
+        (
+            {"di": ["unknown", "full_jones"], "dd": ["unknown", "fast_phase"]},
+            'Calibration strategy for mode "di" contains unrecognized solve type "unknown"',
+        ),
+        (
+            {
+                "unknown_mode": ["fast_phase", "full_jones"],
+                "di": ["fast_phase"],
+                "dd": ["full_jones"],
+            },
+            'Calibration strategy contains unrecognized calibration mode "unknown_mode"',
+        ),
+    ],
+)
+def test_validate_calibration_strategy(calibration_strategy, expected_error_message):
+    if expected_error_message:
+        with pytest.raises(
+            ValueError,
+            match=expected_error_message,
+        ):
+            _validate_calibrate_strategy(calibration_strategy)
+    else:
+        _validate_calibrate_strategy(calibration_strategy)

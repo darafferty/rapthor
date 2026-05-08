@@ -186,11 +186,13 @@ The following processing parameters can be set for each cycle:
         Float that sets the minimum ratio of the current image noise to the theoretical image noise above which selfcal is considered to have failed (must be > 1).
 
     calibration_strategy
-        Dictionary that sets the sequence of solves for this cycle. The keys of the dictionary are "di" and "dd", which set the direction-independent and direction-dependent calibration strategies, respectively. The value for each key is itself a dictionary with the following keys:
+        Dictionary that sets the sequence of solves for this cycle. The keys of the dictionary are "di" and "dd", which set the direction-independent and direction-dependent calibration strategies, respectively. The value for each key is a list of solve names to run for that calibration mode.
 
-        - "fast_phase": Boolean flag that determines whether the fast (scalarphase) solve should be done for this type of calibration.
-        - "medium_phase": Boolean flag that determines whether the medium-fast (scalarphase) solve should be done for this type of calibration.
-        - "slow_gain": Boolean flag that determines whether the slow (diagonal) solve should be done for this type of calibration.
-        - "full_jones": Boolean flag that determines whether the full-Jones solve should be done for this type of calibration.
+        Allowed solve names are:
 
-        The order of keys (DI and DD) and values (types of solve) in the calibration strategy determines the order they are executed in by the pipeline. This allows a user to specify a different order for each cycle, if desired. If all solve types are set to False for either DI or DD it will be skipped, allowing DI- or DD-only cycles.
+        - "fast_phase": run the fast (scalarphase) solve.
+        - "medium_phase": run the medium-fast (scalarphase) solve.
+        - "slow_gain": run the slow (diagonal) solve.
+        - "full_jones": run the full-Jones solve.
+
+        The order of the top-level keys (DI and DD) and the order of solve names within each list determine the order requested by the user. An empty list means that calibration mode is skipped, allowing DI-only or DD-only cycles.
