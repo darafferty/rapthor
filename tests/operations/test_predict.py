@@ -116,28 +116,33 @@ class TestPredict:
         )
 
     @pytest.mark.parametrize(
-    "apply_amplitudes, apply_normalizations, expected_steps",
-    [
-        (False, False, "[fastphase]"),
-        (True, False, "[fastphase,slowgain]"),
-        (False, True, "[fastphase,normalization]"),
-        (True, True, "[fastphase,slowgain,normalization]"),
-    ],
-)
-    def test_set_input_parameters_dp3_applycal_steps(
+        "apply_amplitudes, apply_normalizations, expected_steps, expect_normalize_h5parm",
+        [
+            (False, False, ["fastphase"], False),
+            (True, False, ["fastphase", "slowgain"], False),
+            (False, True, ["fastphase", "normalization"], True),
+            (True, True, ["fastphase", "slowgain", "normalization"], True),
+        ],
+    )
+    def test_get_dp3_applycal_steps(
         self,
         predict_field,
         apply_amplitudes,
         apply_normalizations,
         expected_steps,
+        expect_normalize_h5parm,
     ):
         predict_field.apply_amplitudes = apply_amplitudes
         predict_field.apply_normalizations = apply_normalizations
 
         predict = Predict("dd", predict_field, index=1)
-        predict.set_input_parameters()
+        steps, normalize_h5parm = predict._get_dp3_applycal_steps()
 
-        assert predict.input_parms["dp3_applycal_steps"] == expected_steps
+        assert steps == expected_steps
+        if expect_normalize_h5parm:
+            assert normalize_h5parm is not None
+        else:
+            assert normalize_h5parm is None
 
     @pytest.mark.parametrize(
         "mode, peel_outliers, has_outlier_sector, expected_sectors, expect_outlier_removed",
