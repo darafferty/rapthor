@@ -48,7 +48,7 @@ def set_strategy(field):
         # User-defined
         strategy_steps = set_user_strategy(field)
     else:
-        raise ValueError('Strategy "{}" not understood.'.format(field.parset['strategy']))
+        raise ValueError(f"Strategy {field.parset['strategy']!r} not understood.")
 
     log.info('Using %r processing strategy', field.parset['strategy'])
 
@@ -258,8 +258,9 @@ def set_user_strategy(field):
         strategy_steps = runpy.run_path(field.parset['strategy'],
                                         init_globals={'field': field})['strategy_steps']
     except KeyError:
-        raise ValueError('Strategy "{}" does not define '
-                         'strategy_steps.'.format(field.parset['strategy']))
+        raise ValueError(
+            f"Strategy {field.parset['strategy']!r} does not define strategy_steps."
+        )
 
     return strategy_steps
 

@@ -375,7 +375,7 @@ class Calibrate(Operation):
         cs = self._get_core_stations()
         non_core = [a for a in self.field.stations if a not in cs]
 
-        return "[CR]*&&;!{}".format(";!".join(non_core))
+        return f"[CR]*&&;!{';!'.join(non_core)}"
 
     def _get_superterp_stations(self):
         """

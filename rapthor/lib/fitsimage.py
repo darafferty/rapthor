@@ -281,8 +281,10 @@ class FITSCube(object):
         for channel_image in self.channel_images:
             # Check that all channels have the same data shape
             if channel_image.img_data.shape != image_ch0.img_data.shape:
-                raise ValueError('Data shape for channel image {0} differs from that of '
-                                 '{1}'.format(channel_image.imagefile, image_ch0.imagefile))
+                raise ValueError(
+                    f'Data shape for channel image {channel_image.imagefile} differs from that of '
+                    f'{image_ch0.imagefile}'
+                )
 
             # Check that all channels have the same WCS parameters
             channel_wcs = channel_image.get_wcs().wcs
@@ -296,8 +298,10 @@ class FITSCube(object):
                     values_agree = np.all(np.isclose(np.array(getattr(channel_wcs, wcs_attr)),
                                                      np.array(getattr(wcs_ch0, wcs_attr))))
                 if not values_agree:
-                    raise ValueError('WCS {0} value for channel image {1} differs from that of '
-                                     '{2}'.format(wcs_attr, channel_image.imagefile, image_ch0.imagefile))
+                    raise ValueError(
+                        f'WCS {wcs_attr} value for channel image {channel_image.imagefile} differs '
+                        f'from that of {image_ch0.imagefile}'
+                    )
 
     def order_channel_images(self):
         """
