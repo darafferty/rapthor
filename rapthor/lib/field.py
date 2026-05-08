@@ -2044,21 +2044,14 @@ class Field(object):
             self.calibration_strategy = {
                 # DD is always done first in the legacy strategy to support the use case that requires
                 # removing DD effects before doing a DI solve
-                "dd": {
-                    "fast_phase": True,  # Always do a fast DD solve
-                    "medium_phase": True,  # Always do a medium DD solve
-                    "slow_gain": self.do_slowgain_solve,  # Only do a slow DD solve if do_slowgain_solve is True in the strategy file
-                    # Never do a full DD solve, even if do_fulljones_solve is True in the strategy file,
-                    # because the legacy strategy only uses do_fulljones_solve to control whether a full
-                    # DI solve is done, not whether a full DD solve is done.
-                    "full_jones": False,
-                },
-                "di": {
-                    "fast_phase": False,  # Never do a fast DI solve
-                    "medium_phase": False,  # Never do a medium DI solve
-                    "slow_gain": False,  # Never do a slow DI solve
-                    "full_jones": self.do_fulljones_solve,  # Only type of DI solve supported in legacy code
-                },
+                "dd": [
+                    "fast_phase",  # Always do a fast DD solve
+                    "medium_phase",  # Always do a medium DD solve
+                    *(
+                        ["slow_gains"] if self.do_slowgain_solve else []
+                    ),  # Only do a slow DD solve if do_slowgain_solve is True in the strategy file
+                ],
+                "di": [*(["full_jones"] if self.do_fulljones_solve else [])],
             }
 
     def get_matplotlib_patch(self, wcs=None):

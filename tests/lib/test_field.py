@@ -138,21 +138,12 @@ def test_set_calibration_strategy_legacy_default(field, do_slowgain_solve, do_fu
     field.__dict__.update(step_dict)
     field.set_calibration_strategy()
     expected_strategy = {
-        "di": {
-            "fast_phase": False,  # Never do a fast DI solve
-            "medium_phase": False,  # Never do a medium DI solve
-            "slow_gain": False,  # Never do a slow DI solve
-            "full_jones": do_fulljones_solve,  # Only type of DI solve supported in legacy code
-        },
-        "dd": {
-            "fast_phase": True,  # Always do a fast DD solve
-            "medium_phase": True,  # Always do a medium DD solve
-            "slow_gain": do_slowgain_solve,  # Only do a slow DD solve if do_slow_gain_solve is True in the strategy file
-            # Never do a full DD solve, even if do_fulljones_solve is True in the strategy file,
-            # because the legacy strategy only uses do_fulljones_solve to control whether a full
-            # DI solve is done, not whether a full DD solve is done.
-            "full_jones": False,
-        },
+        "dd": [
+            "fast_phase",
+            "medium_phase",
+            *(["slow_gains"] if do_slowgain_solve else []),
+        ],
+        "di": [*(["full_jones"] if do_fulljones_solve else [])],
     }
     assert field.calibration_strategy == expected_strategy
 
@@ -167,8 +158,8 @@ def test_set_calibration_strategy_user_provided(field, do_slowgain_solve, do_ful
     This captures the behaviour of the pipeline using the merged DD/DI classes.
     """
     user_provided_strategy = {
-        "di": {"fast_phase": True, "medium_phase": True, "slow_gain": True, "full_jones": True},
-        "dd": {"fast_phase": True, "medium_phase": True, "slow_gain": True, "full_jones": True},
+        "di": ["fast_phase", "medium_phase", "slow_gain", "full_jones"],
+        "dd": ["fast_phase", "medium_phase", "slow_gain", "full_jones"],
     }
     step_dict = {
         "do_calibrate": True,
@@ -186,12 +177,12 @@ def test_set_calibration_strategy_user_provided(field, do_slowgain_solve, do_ful
     "strategy_items",
     [
         [
-            ("di", dict([("fast_phase", True), ("medium_phase", True)])),
-            ("dd", dict([("fast_phase", True), ("medium_phase", True)])),
+            ("di", ["fast_phase", "medium_phase"]),
+            ("dd", ["fast_phase", "medium_phase"]),
         ],
         [
-            ("dd", dict([("fast_phase", True), ("medium_phase", True)])),
-            ("di", dict([("fast_phase", True), ("medium_phase", True)])),
+            ("dd", ["fast_phase", "medium_phase"]),
+            ("di", ["fast_phase", "medium_phase"]),
         ],
     ],
 )
@@ -213,18 +204,8 @@ def test_strategy_preserves_top_level_order(field, strategy_items):
 def test_set_calibration_strategy_preserves_order_of_di_vs_dd(field, didd_order):
     """Test that the calibration strategy preserves the order of DI vs DD keys."""
     user_provided_strategy = {
-        didd_order[0]: {
-            "fast_phase": True,
-            "medium_phase": True,
-            "slow_gain": True,
-            "full_jones": True,
-        },
-        didd_order[1]: {
-            "fast_phase": True,
-            "medium_phase": True,
-            "slow_gain": True,
-            "full_jones": True,
-        },
+        didd_order[0]: ["fast_phase", "medium_phase", "slow_gain", "full_jones"],
+        didd_order[1]: ["fast_phase", "medium_phase", "slow_gain", "full_jones"],
     }
     step_dict = {"do_calibrate": True, "calibration_strategy": user_provided_strategy}
     field.__dict__.update(step_dict)
@@ -243,15 +224,13 @@ def test_set_calibration_strategy_preserves_order_of_di_vs_dd(field, didd_order)
 def test_set_calibration_strategy_preserves_order_of_solves(field, solve_order):
     """Test that the calibration strategy preserves the order of DI vs DD keys."""
     user_provided_strategy = {
-        "di": {key: True for key in solve_order},
-        "dd": {key: True for key in solve_order},
+        "di": list(solve_order),
+        "dd": list(solve_order),
     }
     step_dict = {"do_calibrate": True, "calibration_strategy": user_provided_strategy}
     field.__dict__.update(step_dict)
     field.set_calibration_strategy()
     assert list(field.calibration_strategy.keys()) == list(user_provided_strategy.keys())
     for key in user_provided_strategy.keys():
-        assert list(field.calibration_strategy[key].keys()) == list(
-            user_provided_strategy[key].keys()
-        )
+        assert list(field.calibration_strategy[key]) == list(user_provided_strategy[key])
     assert field.calibration_strategy == user_provided_strategy
