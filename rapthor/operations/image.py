@@ -132,25 +132,34 @@ class Image(Operation):
             "allow_internet_access": self.allow_internet_access,
         }
 
-    def _build_prepare_data_applycal_steps(self):
+    def _build_applycal_steps(self):
+        """
+        Build the DP3 applycal steps for the prepare-imaging-data stage.
+
+        The steps are determined from the solve-type flags set on the
+        field by the calibration strategy.
+        """
         fulljones_h5parm = None
         input_normalize_h5parm = None
 
-        if self.apply_none or (
-            not self.preapply_dde_solutions
-            and not self.apply_fulljones
-            and not self.apply_normalizations
-        ):
+        strategy = self.field.calibration_strategy or {}
+        solve_types = {
+            key: any(mode.get(key, False) for mode in strategy.values())
+            for key in ("fast_phase", "medium_phase", "slow_gain", "full_jones")
+        }
+
+        if self.apply_none or not self.apply_normalizations:
+            # No solutions need to be preapplied before imaging
             return None, fulljones_h5parm, input_normalize_h5parm
 
         steps = []
-        if self.preapply_dde_solutions:
-            # Fast phases and slow amplitudes (if generated) should be
-            # preapplied, as they are not applied during imaging
+        if solve_types["fast_phase"]:
             steps.append("fastphase")
-            if self.apply_amplitudes:
-                steps.append("slowgain")
-        if self.apply_fulljones:
+        if solve_types["medium_phase"]:
+            steps.append("mediumphase")
+        if solve_types["slow_gain"]:
+            steps.append("slowgain")
+        if solve_types["full_jones"]:
             steps.append("fulljones")
             fulljones_h5parm = CWLFile(self.field.fulljones_h5parm_filename).to_json()
         if self.apply_normalizations:
@@ -289,7 +298,7 @@ class Image(Operation):
         # should be preapplied before imaging and on whether baseline-dependent
         # averaging is activated (and supported) or not
         prepare_data_applycal_steps, fulljones_h5parm, input_normalize_h5parm = (
-            self._build_prepare_data_applycal_steps()
+            self._build_applycal_steps()
         )
         if prepare_data_applycal_steps is None:
             # No solutions need to be preapplied, so omit the applycal step
