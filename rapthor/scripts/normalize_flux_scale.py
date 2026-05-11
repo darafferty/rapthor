@@ -574,19 +574,19 @@ def _get_source_data(source_catalog_data, n_chan, i):
         Array of the frequencies in Hz corresponding to the source flux densities for
         the input catalog
     """
-    return tuple(
-        np.transpose(
-            [
-                (
-                    total_flux_ch,  # Jy
-                    source_catalog_data[f"E_Total_flux_ch{ch_ind}"][i],  # Jy
-                    source_catalog_data[f"Freq_ch{ch_ind}"][i],  # Hz
-                )
-                for ch_ind in range(1, n_chan + 1)
-                if not np.isnan((total_flux_ch := source_catalog_data[f"Total_flux_ch{ch_ind}"][i]))
-            ]
+    source_data = [
+        (
+            total_flux_ch,  # Jy
+            source_catalog_data[f"E_Total_flux_ch{ch_ind}"][i],  # Jy
+            source_catalog_data[f"Freq_ch{ch_ind}"][i],  # Hz
         )
-    )
+        for ch_ind in range(1, n_chan + 1)
+        if not np.isnan((total_flux_ch := source_catalog_data[f"Total_flux_ch{ch_ind}"][i]))
+    ]
+    if len(source_data) == 0:
+        return np.array([]), np.array([]), np.array([])
+
+    return tuple(np.transpose(source_data))
 
 
 def _validate_source_catalog(source_catalog_data, min_sources):
