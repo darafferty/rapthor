@@ -4,7 +4,7 @@ import subprocess
 
 import pytest
 
-from .utils import update_parset_path, find_step_workdir, get_working_dir_from_parset
+from .utils import find_step_workdir, get_working_dir_from_parset, update_parset_path
 
 
 @pytest.mark.integration
@@ -38,7 +38,7 @@ def test_rapthor_generates_diagnostics_per_facets(generated_parset_path, single_
         check=False,
     )
     output = f"{result.stdout}\n{result.stderr}"
-    
+
     assert result.returncode == 0, f"Rapthor failed with output:\n{output}"
     assert "Operation calibrate_1 completed" in output
     assert "Operation image_1 completed" in output
@@ -46,8 +46,7 @@ def test_rapthor_generates_diagnostics_per_facets(generated_parset_path, single_
     assert "Rapthor has finished :)" in output
     print(get_working_dir_from_parset(update_parset_path))
     work_dir = find_step_workdir(update_parset_path, "image_1")
-    
-    
+
     diagnostics_file = work_dir / "sector_diagnostics.json"
     assert diagnostics_file.exists()
     assert False
