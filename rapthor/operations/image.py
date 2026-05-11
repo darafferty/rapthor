@@ -142,29 +142,29 @@ class Image(Operation):
         fulljones_h5parm = None
         input_normalize_h5parm = None
 
-        strategy = self.field.calibration_strategy or {}
-        solve_types = {
-            key: any(key in solves for solves in strategy.values())
-            for key in ("fast_phase", "medium_phase", "slow_gains", "full_jones")
-        }
-
         if self.apply_none or not self.apply_normalizations:
             # No solutions need to be preapplied before imaging
             return None, fulljones_h5parm, input_normalize_h5parm
 
-        steps = []
-        if solve_types["fast_phase"]:
-            steps.append("fastphase")
-        if solve_types["medium_phase"]:
-            steps.append("mediumphase")
-        if solve_types["slow_gains"]:
-            steps.append("slowgain")
-        if solve_types["full_jones"]:
-            steps.append("fulljones")
+        solve_type_to_step = {
+            "fast_phase": "fastphase",
+            "medium_phase": "mediumphase",
+            "slow_gains": "slowgain",
+            "full_jones": "fulljones",
+        }
+
+        strategy = getattr(self.field, "calibration_strategy", None) or {}
+        steps = [
+            solve_type_to_step[solve]
+            for solves in strategy.values()
+                for solve in solves
+                if solve in solve_type_to_step
+        ]
+
+        if "fulljones" in steps:
             fulljones_h5parm = CWLFile(self.field.fulljones_h5parm_filename).to_json()
-        if self.apply_normalizations:
-            steps.append("normalization")
-            input_normalize_h5parm = CWLFile(self.field.normalize_h5parm).to_json()
+        steps.append("normalization")
+        input_normalize_h5parm = CWLFile(self.field.normalize_h5parm).to_json()
 
         formatted = f"[{','.join(steps)}]" if steps else None
         return formatted, fulljones_h5parm, input_normalize_h5parm

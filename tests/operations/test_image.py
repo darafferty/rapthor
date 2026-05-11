@@ -420,6 +420,77 @@ class TestImage:
             f"Expected polarization '{expected_pol}', got '{derived_pol}'"
         )
 
+    @pytest.mark.parametrize(
+        "calibration_strategy, apply_none, apply_normalizations, expected_steps",
+        [
+            (
+                {"dd": ["fast_phase", "medium_phase"], "di": ["full_jones"]},
+                True,
+                True,
+                None,
+            ),
+            (
+                {"dd": ["fast_phase", "medium_phase"], "di": ["full_jones"]},
+                False,
+                False,
+                None,
+            ),
+            (
+                {"dd": ["fast_phase", "medium_phase"]},
+                False,
+                True,
+                "[fastphase,mediumphase,normalization]",
+            ),
+            (
+                {"dd": ["slow_gains"]},
+                False,
+                True,
+                "[slowgain,normalization]",
+            ),
+            (
+                {"dd": ["fast_phase", "medium_phase", "slow_gains"], "di": ["full_jones"]},
+                False,
+                True,
+                "[fastphase,mediumphase,slowgain,fulljones,normalization]",
+            ),
+            (
+                {},
+                False,
+                True,
+                "[normalization]",
+            ),
+            (
+                {"dd": ["fast_phase", "medium_phase"], "di": []},
+                False,
+                True,
+                "[fastphase,mediumphase,normalization]",
+            ),
+        ],
+    )
+    def test_build_applycal_steps(
+        self,
+        field,
+        h5parm_file,
+        calibration_strategy,
+        apply_none,
+        apply_normalizations,
+        expected_steps,
+    ):
+        """Test that _build_applycal_steps returns the correct DP3 step string."""
+        _prepare_field_for_image(field, h5parm_filename=h5parm_file)
+        image = Image(field=field, index=1)
+        image.set_parset_parameters()
+        image.apply_none = apply_none
+        image.apply_normalizations = apply_normalizations
+        field.calibration_strategy = calibration_strategy
+
+        # Create a temporary fake normalize h5parm so CWLFile doesn't fail
+        field.normalize_h5parm = str(h5parm_file)
+        field.fulljones_h5parm_filename = str(h5parm_file)
+
+        steps, _, _ = image._build_applycal_steps()
+        assert steps == expected_steps
+
     def test_image_operation_sets_mask_file(
         self, field, h5parm_file, monkeypatch, expected_image_output
     ):
