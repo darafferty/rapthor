@@ -314,7 +314,7 @@ def check_and_adjust_parameters(field, strategy_steps):
             "fulljones_timestep_sec",
             "scale_normalization_delta",
             "max_directions",
-            "calibration_strategy"
+            "calibration_strategy",
         ],
         "do_normalize": [],
         "do_image": [
@@ -383,6 +383,7 @@ def check_and_adjust_parameters(field, strategy_steps):
 
     return strategy_steps
 
+
 def _validate_calibrate_strategy(calibration_strategy):
     """
     Validates the calibration strategy for internal consistency.
@@ -411,15 +412,15 @@ def _validate_calibrate_strategy(calibration_strategy):
         if mode not in recognized_modes:
             raise ValueError(
                 f'Calibration strategy contains unrecognized calibration mode "{mode}". '
-                f'Recognized modes are {recognized_modes}.'
+                f"Recognized modes are {recognized_modes}."
             )
         for solve in solves:
             if solve not in recognised_solves:
                 raise ValueError(
                     f'Calibration strategy for mode "{mode}" contains unrecognized solve type "{solve}". '
-                    f'Recognized solve types are {recognised_solves}.'
+                    f"Recognized solve types are {recognised_solves}."
                 )
-    
+
 
 def validate_strategy(strategy_steps, parset):
     """
