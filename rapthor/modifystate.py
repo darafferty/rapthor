@@ -132,7 +132,11 @@ def run(parset_file):
                     os.path.join(parset['dir_working'], 'pipelines'),
                     os.path.join(parset['dir_working'], dirname)
                 )
-                for path in (os.path.join(dcmp.right, item) for item in dcmp.right_only):
-                    shutil.rmtree(path, ignore_errors=True)
+                try:
+                    for path in (os.path.join(dcmp.right, item) for item in dcmp.right_only):
+                        shutil.rmtree(path, ignore_errors=True)
+                except FileNotFoundError:
+                    # Directory does not exist
+                    continue
 
             print('Reset complete.')
