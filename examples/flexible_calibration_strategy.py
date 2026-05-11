@@ -18,7 +18,7 @@ max_selfcal_loops = 8
 # `do_slowgain_solve` are ignored. The order of the solves specified is respected.
 default_calibration_strategy = {
     "di": [],  # No direction-independent calibration by default
-    "dd": ["fast_phase", "medium_phase", "slow_gain"],  # Do DD calibration by default
+    "dd": ["fast_phase", "medium_phase", "slow_gains"],  # Do DD calibration by default
 }
 for i in range(max_selfcal_loops):
     strategy_steps.append({})
