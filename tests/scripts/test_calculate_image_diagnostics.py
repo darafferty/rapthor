@@ -184,7 +184,7 @@ def test_check_astrometry_sources_below_minimum_number(
 
     fitsimage.FITSImage = mocker.MagicMock()
     mock_image = fitsimage.FITSImage(image_fits)
-    mock_image.freq.return_value = 150e6  # Mock frequency in Hz
+    mock_image.freq = 150e6  # Mock frequency in Hz
     mocker.patch.object(lsmtool.skymodel.SkyModel, "group")
 
     with caplog.at_level(logging.INFO):
@@ -379,15 +379,20 @@ def test_check_astrometry_with_comparison_skymodel_does_not_access_internet(
     Test that the  check_astrometry function does not access the internet
     when a comparison skymodel is provided.
     """
-    # Mock Table.read for FITS files to return a catalog with length zero
-    monkeypatch.setattr(
-        "astropy.table.Table.read",
-        lambda *args, **kwargs: mock_full_astrometry_table,
-    )
+    # Mock Table.read for FITS files only. LSMTool also uses Table.read when
+    # loading the temporary makesourcedb text file created by fits_to_makesourcedb.
+    original_table_read = Table.read
+
+    def mock_table_read(*args, **kwargs):
+        if kwargs.get("format") == "fits":
+            return mock_full_astrometry_table
+        return original_table_read(*args, **kwargs)
+
+    monkeypatch.setattr("astropy.table.Table.read", mock_table_read)
 
     fitsimage.FITSImage = mocker.MagicMock()
     mock_image = fitsimage.FITSImage(image_fits)
-    mock_image.freq.return_value = 150e6  # Mock frequency in Hz
+    mock_image.freq = 150e6  # Mock frequency in Hz
 
     mocker.patch.object(lsmtool.skymodel.SkyModel, "group")
     mocker.patch.object(
