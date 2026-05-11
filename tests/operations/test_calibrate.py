@@ -121,6 +121,22 @@ def parse_dp3(dp3_string):
 
 class TestCalibrate:
     @pytest.mark.parametrize(
+        "mode, expected_name, index",
+        [
+            ("dd", "calibrate", 1),
+            ("di", "calibrate_di", 2),
+        ],
+    )
+    def test_init_sets_name_and_mode(self, calibrate_field, mode, expected_name, index):
+        calibrate = Calibrate(mode=mode, field=calibrate_field, index=index)
+        assert calibrate.mode == mode
+        assert calibrate.name == f"{expected_name}_{index}"
+
+    def test_init_raises_on_invalid_mode(self, calibrate_field):
+        with pytest.raises(ValueError, match="Only di and dd mode are supported"):
+            Calibrate(mode="invalid", field=calibrate_field, index=1)
+
+    @pytest.mark.parametrize(
         "mode, solve, batch_system, generate_screens, use_image_based_predict",
         [
             ("dd", "fast_only", "slurm", False, False),
