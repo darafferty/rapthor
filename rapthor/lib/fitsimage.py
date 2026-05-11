@@ -246,7 +246,7 @@ class FITSImage(object):
         self.weight_data /= self.noise * self.scale
         self.weight_data = self.weight_data**2.0
 
-    def _get_building_box_from_polygon(self, polygon):
+    def _get_bounding_box_from_polygon(self, polygon):
         image_max_y, image_max_x = self.img_data.shape[-2], \
                                    self.img_data.shape[-1]
         min_x, min_y, max_x, max_y = polygon.bounds
