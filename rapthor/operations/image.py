@@ -144,8 +144,8 @@ class Image(Operation):
 
         strategy = self.field.calibration_strategy or {}
         solve_types = {
-            key: any(mode.get(key, False) for mode in strategy.values())
-            for key in ("fast_phase", "medium_phase", "slow_gain", "full_jones")
+            key: any(key in solves for solves in strategy.values())
+            for key in ("fast_phase", "medium_phase", "slow_gains", "full_jones")
         }
 
         if self.apply_none or not self.apply_normalizations:
@@ -157,7 +157,7 @@ class Image(Operation):
             steps.append("fastphase")
         if solve_types["medium_phase"]:
             steps.append("mediumphase")
-        if solve_types["slow_gain"]:
+        if solve_types["slow_gains"]:
             steps.append("slowgain")
         if solve_types["full_jones"]:
             steps.append("fulljones")
