@@ -506,7 +506,7 @@ class Image(Operation):
         self.field.lofar_to_true_flux_ratio = 1.0  # reset values for this cycle
         self.field.lofar_to_true_flux_std = 0.0
 
-        leave_in_place = set()
+        leave_in_place = set("sector_diagnostics")
         for index, sector in enumerate(self.field.imaging_sectors):
             # Get the list of images for this sector and save their filenames
             # for use in the mosaic operation. These files are left in place
