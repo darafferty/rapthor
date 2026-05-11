@@ -5,8 +5,9 @@ Test cases for the normalize_flux_scale script in the rapthor package.
 import os
 import runpy
 from pathlib import Path
-import losoto
+
 import astropy.units as u
+import losoto
 import numpy as np
 import pytest
 from astropy.coordinates import SkyCoord
@@ -426,6 +427,41 @@ def test_main_handles_source_with_no_valid_channel_fluxes(
     )
 
     create_normalization_h5parm_mock.assert_called_once()
+
+
+def test_normalize_flux_scale_handles_source_with_no_valid_channel_fluxes(
+    test_ms,
+    source_catalog_fits,
+    tmp_path,
+    true_sky_path,
+    apparent_sky_path,
+):
+    """Run normalization when one source has no finite per-channel fluxes."""
+    with fits.open(source_catalog_fits, mode="update") as hdul:
+        source_catalog_data = hdul[1].data
+        n_chan = len(
+            [
+                colname
+                for colname in source_catalog_data.columns.names
+                if colname.startswith("Freq_ch")
+            ]
+        )
+        source_index = 4
+        for ch_ind in range(1, n_chan + 1):
+            source_catalog_data[f"Total_flux_ch{ch_ind}"][source_index] = float("nan")
+
+    output_h5parm = tmp_path / "normalize_flux_scale.h5parm"
+
+    main(
+        source_catalog_fits,
+        test_ms,
+        output_h5parm.as_posix(),
+        min_sources=5,
+        reference_skymodels=[apparent_sky_path.as_posix(), true_sky_path.as_posix()],
+        reference_skymodels_frequencies=[142000000.0, 142100000.0],
+    )
+
+    assert Path(output_h5parm).exists(), f"Expected {output_h5parm} to be created."
 
 
 @pytest.mark.parametrize("use_input_skymodel", [False, True])

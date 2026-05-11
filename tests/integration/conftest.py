@@ -149,6 +149,19 @@ def single_loop_do_normalize_strategy_path(tmp_path):
 
 
 @pytest.fixture
+def no_matching_normalization_inputs(single_loop_do_normalize_strategy_path):
+    """Return parset updates that make do_normalize use non-matching reference models."""
+    return {
+        "allow_internet_access": "False",
+        "strategy": str(single_loop_do_normalize_strategy_path),
+        "photometry_skymodel": "",
+        "astrometry_skymodel": "",
+        "normalization_skymodels": "[tests/resources/test_apparent_sky.txt, tests/resources/test_true_sky.txt]",
+        "normalization_reference_frequencies": "[150000000.0, 150000000.0]",
+    }
+
+
+@pytest.fixture
 def single_loop_strategy_path_fast_medium_slow(tmp_path):
     """Fixture to generate a strategy file for a single self-calibration loop with fast, medium, and slow gains."""
     strategy_steps = [make_strategy_step(do_calibrate=True, do_image=True, do_slowgain_solve=True)]

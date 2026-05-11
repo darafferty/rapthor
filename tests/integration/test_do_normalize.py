@@ -1,10 +1,11 @@
 """Integration tests for the Rapthor pipeline when using the do_normalize step."""
 
 import subprocess
+from pathlib import Path
 
 import pytest
 
-from .utils import update_parset_path
+from .utils import get_working_dir_from_parset, update_parset_path
 
 
 @pytest.mark.internet
@@ -134,3 +135,47 @@ def test_rapthor_run_single_loop_with_do_normalize_no_internet_provided_sky_mode
     assert "Operation image_1 completed" in output
     assert "Operation mosaic_1 completed" in output
     assert "Rapthor has finished :)" in output
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("normalization_skymodel_paths", [None], indirect=True)
+@pytest.mark.parametrize(
+    "generated_parset_path_normalisation",
+    [
+        (
+            "tests/resources/integration_template.parset",
+            "tests/resources/integration_true_sky.txt",
+            "tests/resources/integration_apparent_sky.txt",
+        )
+    ],
+    indirect=True,
+)
+def test_rapthor_run_single_loop_with_do_normalize_no_matching_sources_skips_normalization(
+    generated_parset_path_normalisation,
+    no_matching_normalization_inputs,
+    normalization_skymodel_paths,
+):
+    """Test do_normalize skips normalization when reference sky models do not match."""
+    updated_parset_path = update_parset_path(
+        generated_parset_path_normalisation,
+        no_matching_normalization_inputs,
+    )
+
+    command = ["rapthor", str(updated_parset_path)]
+    result = subprocess.run(
+        command,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    output = f"{result.stdout}\n{result.stderr}"
+    assert result.returncode == 0, f"Rapthor failed with output:\n{output}"
+    assert "Operation normalize_1 completed" in output
+    assert "Rapthor has finished :)" in output
+
+    working_dir = get_working_dir_from_parset(updated_parset_path)
+    normalize_logs_dir = Path(working_dir) / "logs" / "normalize_1"
+    normalize_logs = sorted(normalize_logs_dir.rglob("*normalize_flux_scale*.log"))
+    assert normalize_logs, f"No normalize_flux_scale logs found in {normalize_logs_dir}"
+    normalize_log_text = "\n".join(log_path.read_text() for log_path in normalize_logs)
+    assert "Flux normalization will be skipped" in normalize_log_text
