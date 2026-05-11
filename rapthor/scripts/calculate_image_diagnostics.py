@@ -659,11 +659,11 @@ def filter_skymodel_for_photometry(catalog, obs, freq, max_major_axis=10 / 3600)
 
 def _compute_image_stats(image: np.ndarray):
     return {
-        "mean": np.nanmean(image),
-        "median": np.nanmedian(image),
-        "std": np.nanstd(image),
-        "min": np.nanmin(image),
-        "max": np.nanmax(image),
+        "mean": float(np.nanmean(image)),
+        "median": float(np.nanmedian(image)),
+        "std": float(np.nanstd(image)),
+        "min": float(np.nanmin(image)),
+        "max": float(np.nanmax(image)),
     }
 
 

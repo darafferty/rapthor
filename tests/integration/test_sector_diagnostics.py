@@ -1,10 +1,12 @@
 """Integration tests for the shared_facet_rw feature."""
 
+import json
 import subprocess
+from pathlib import Path
 
 import pytest
 
-from .utils import find_step_workdir, get_working_dir_from_parset, update_parset_path
+from .utils import get_working_dir_from_parset, update_parset_path
 
 
 @pytest.mark.integration
@@ -29,6 +31,12 @@ def test_rapthor_generates_diagnostics_per_facets(generated_parset_path, single_
             "strategy": str(single_loop_strategy_path),
         },
     )
+    print(
+        "-" * 80,
+        "Rapthor will be executed on: ",
+        get_working_dir_from_parset(updated_parset_path),
+        "-" * 80,
+    )
 
     command = ["rapthor", str(updated_parset_path)]
     result = subprocess.run(
@@ -44,9 +52,19 @@ def test_rapthor_generates_diagnostics_per_facets(generated_parset_path, single_
     assert "Operation image_1 completed" in output
     assert "Operation mosaic_1 completed" in output
     assert "Rapthor has finished :)" in output
-    print(get_working_dir_from_parset(update_parset_path))
-    work_dir = find_step_workdir(update_parset_path, "image_1")
+    diagnostics_file = (
+        Path(get_working_dir_from_parset(updated_parset_path))
+        / "plots"
+        / "image_1"
+        / "sector_1.image_diagnostics.json"
+    )
 
-    diagnostics_file = work_dir / "sector_diagnostics.json"
     assert diagnostics_file.exists()
-    assert False
+    with diagnostics_file.open() as f_stream:
+        diagnostics = json.load(f_stream)
+        assert "facets_rms" in diagnostics
+        assert "Patch_0" in diagnostics["facets_rms"]
+        for type in ("flat_noise", "beam_corrected"):
+            assert type in diagnostics["facets_rms"]["Patch_0"]
+            for metric in ("mean", "median", "std", "min", "max"):
+                assert metric in diagnostics["facets_rms"]["Patch_0"][type]

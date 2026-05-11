@@ -15,11 +15,6 @@ def find_step_logs(log_dir, step_name):
     return sorted(Path(log_dir).glob(f"CWLJob_*pipeline_parset.cwl.*{step_name}_*.log"))
 
 
-def find_step_workdir(parset_path, step_name):
-    work_dir = Path(get_working_dir_from_parset(parset_path))
-    return work_dir / "pipelines" / step_name
-
-
 def update_parset_path(parset_path, param_dict):
     """Helper function to update parset parameters and return a new path."""
     parset = configparser.ConfigParser()
