@@ -367,6 +367,67 @@ def test_main(
     assert os.path.exists(output_h5parm), f"Expected {output_h5parm} to be created."
 
 
+@pytest.mark.usefixtures("mock_survey_catalog")
+def test_main_handles_source_with_no_valid_channel_fluxes(
+    source_catalog,
+    source_coords,
+    survey_data,
+    tmp_path,
+    mocker,
+):
+    """
+    Test that a source with no finite per-channel fluxes does not crash normalization.
+    """
+    n_chan = len(
+        [colname for colname in source_catalog.columns.names if colname.startswith("Freq_ch")]
+    )
+    source_catalog_data = source_catalog.copy()
+    for ch_ind in range(1, n_chan + 1):
+        source_catalog_data[f"Total_flux_ch{ch_ind}"][0] = np.nan
+
+    output_frequencies = np.array([100e6, 200e6])
+    create_normalization_h5parm_mock = mocker.patch(
+        "rapthor.scripts.normalize_flux_scale.create_normalization_h5parm"
+    )
+    mocker.patch(
+        "rapthor.scripts.normalize_flux_scale.read_source_catalog",
+        return_value=(source_catalog_data, n_chan),
+    )
+    mocker.patch(
+        "rapthor.scripts.normalize_flux_scale.get_field_phase_center",
+        return_value=(np.deg2rad(24.422081), np.deg2rad(33.159759)),
+    )
+    mocker.patch(
+        "rapthor.scripts.normalize_flux_scale.filter_sources",
+        return_value=(source_coords, source_catalog_data),
+    )
+    mocker.patch(
+        "rapthor.scripts.normalize_flux_scale._download_survey_data",
+        side_effect=[survey_data, None],
+    )
+    mocker.patch(
+        "rapthor.scripts.normalize_flux_scale._cross_match_sources",
+        return_value=np.ones(len(source_catalog_data)),
+    )
+    mocker.patch(
+        "rapthor.scripts.normalize_flux_scale.get_output_frequencies",
+        return_value=output_frequencies,
+    )
+    mocker.patch(
+        "rapthor.scripts.normalize_flux_scale.find_normalizations",
+        return_value=np.ones(len(output_frequencies)),
+    )
+
+    main(
+        "source_catalog.fits",
+        "input.ms",
+        str(tmp_path / "test_output.h5parm"),
+        min_sources=5,
+    )
+
+    create_normalization_h5parm_mock.assert_called_once()
+
+
 @pytest.mark.parametrize("use_input_skymodel", [False, True])
 def test_main_empty_skymodels(
     test_ms,
@@ -989,6 +1050,23 @@ def test_get_source_data(source_catalog):
     assert rapthor_fluxes.shape[0] == n_chan
     assert rapthor_errors.shape[0] == n_chan
     assert rapthor_frequencies.shape[0] == n_chan
+
+
+def test_get_source_data_handles_source_with_no_valid_channel_fluxes(source_catalog):
+    """Test that a source with no finite per-channel fluxes returns empty arrays."""
+    n_chan = 3
+    i = 0
+    source_catalog_data = source_catalog.copy()
+    for ch_ind in range(1, n_chan + 1):
+        source_catalog_data[f"Total_flux_ch{ch_ind}"][i] = np.nan
+
+    rapthor_fluxes, rapthor_errors, rapthor_frequencies = _get_source_data(
+        source_catalog_data, n_chan, i
+    )
+
+    assert rapthor_fluxes.shape[0] == 0
+    assert rapthor_errors.shape[0] == 0
+    assert rapthor_frequencies.shape[0] == 0
 
 
 def test_normalize_flux_scale_cli_entrypoint(
