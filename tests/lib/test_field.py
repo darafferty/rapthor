@@ -141,7 +141,7 @@ def test_set_calibration_strategy_legacy_default(field, do_slowgain_solve, do_fu
         "dd": [
             "fast_phase",
             "medium_phase",
-            *(["slow_gain"] if do_slowgain_solve else []),
+            *(["slow_gains"] if do_slowgain_solve else []),
         ],
         "di": [*(["full_jones"] if do_fulljones_solve else [])],
     }
