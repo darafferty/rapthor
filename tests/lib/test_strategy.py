@@ -7,13 +7,13 @@ from pathlib import Path
 import pytest
 
 from rapthor.lib.strategy import (
+    _validate_calibrate_strategy,
     check_and_adjust_parameters,
     set_image_strategy,
     set_selfcal_strategy,
     set_strategy,
     set_user_strategy,
     validate_strategy,
-    _validate_calibrate_strategy,
 )
 
 
