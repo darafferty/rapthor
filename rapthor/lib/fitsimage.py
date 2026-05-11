@@ -263,7 +263,7 @@ class FITSImage(object):
         ra_dec_vertices = facet.vertices
         pixels_vertices = self.get_wcs().world_to_pixel_values(ra_dec_vertices)
         pixel_polygon = Polygon(pixels_vertices)
-        image_footprint, [yy, xx] = self._get_building_box_from_polygon(pixel_polygon)
+        image_footprint, [yy, xx] = self._get_bounding_box_from_polygon(pixel_polygon)
 
         selected_image_region = \
               np.array(self.img_data[image_footprint])
