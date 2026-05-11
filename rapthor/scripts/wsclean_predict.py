@@ -7,6 +7,13 @@ import os
 import shutil
 import subprocess
 import sys
+from pathlib import Path
+import logging
+import shutil
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logger = logging.getLogger(__name__)
+
 
 import casacore.tables as pt
 import numpy as np
