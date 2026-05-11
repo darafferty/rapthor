@@ -3,10 +3,12 @@ Test suite for rapthor.scripts.calculate_image_diagnostics.
 """
 
 import logging
+from unittest.mock import patch
 from zipfile import Path
 
 import astropy.units as u
 import lsmtool
+import lsmtool.facet
 import lsmtool.skymodel
 import numpy as np
 import pytest
@@ -19,6 +21,7 @@ from rapthor.scripts.calculate_image_diagnostics import (
     check_astrometry,
     check_photometry,
     compare_photometry_survey,
+    compute_facet_rms_noise,
     filter_skymodel_for_photometry,
     fits_to_makesourcedb,
     parse_args,
@@ -182,25 +185,27 @@ def test_check_astrometry_sources_below_minimum_number(
     num_sources = len(mock_minimal_table)
     min_number = num_sources + 1
 
-    fitsimage.FITSImage = mocker.MagicMock()
-    mock_image = fitsimage.FITSImage(image_fits)
-    mock_image.freq = 150e6  # Mock frequency in Hz
-    mocker.patch.object(lsmtool.skymodel.SkyModel, "group")
+    with patch.object(fitsimage, "FITSImage") as mock_fits_image_cls:
+        mock_image = mock_fits_image_cls(image_fits)
+        mock_image.freq = 150e6  # Mock frequency in Hz
+        mocker.patch.object(lsmtool.skymodel.SkyModel, "group")
 
-    with caplog.at_level(logging.INFO):
-        actual_result = check_astrometry(
-            observation,
-            input_catalog_fits,
-            mock_image,
-            facet_region_ds9,
-            min_number=min_number,
-            output_root=tmp_path / "astrometry_check",
-            comparison_skymodel=sky_model_path,
-        )
+        with caplog.at_level(logging.INFO):
+            actual_result = check_astrometry(
+                observation,
+                input_catalog_fits,
+                mock_image,
+                facet_region_ds9,
+                min_number=min_number,
+                output_root=tmp_path / "astrometry_check",
+                comparison_skymodel=sky_model_path,
+            )
 
-        msg = "No sources found" if num_sources == 0 else f"Fewer than {min_number} sources found"
-        assert msg in caplog.text
-        assert "Skipping the astrometry check..." in caplog.text
+            msg = (
+                "No sources found" if num_sources == 0 else f"Fewer than {min_number} sources found"
+            )
+            assert msg in caplog.text
+            assert "Skipping the astrometry check..." in caplog.text
 
     assert actual_result == {}
 
@@ -390,46 +395,46 @@ def test_check_astrometry_with_comparison_skymodel_does_not_access_internet(
 
     monkeypatch.setattr("astropy.table.Table.read", mock_table_read)
 
-    fitsimage.FITSImage = mocker.MagicMock()
-    mock_image = fitsimage.FITSImage(image_fits)
-    mock_image.freq = 150e6  # Mock frequency in Hz
+    with patch.object(fitsimage, "FITSImage") as mock_fits_image_cls:
+        mock_image = mock_fits_image_cls(image_fits)
+        mock_image.freq = 150e6  # Mock frequency in Hz
 
-    mocker.patch.object(lsmtool.skymodel.SkyModel, "group")
-    mocker.patch.object(
-        lsmtool.skymodel.SkyModel,
-        "compare",
-        return_value={
-            "meanRatio": 1,
-            "stdRatio": 1,
-            "meanClippedRatio": 1,
-            "stdClippedRatio": 1,
-            "meanRAOffsetDeg": 1,
-            "stdRAOffsetDeg": 1,
-            "meanClippedRAOffsetDeg": 1,
-            "stdClippedRAOffsetDeg": 1,
-            "meanDecOffsetDeg": 1,
-            "stdDecOffsetDeg": 1,
-            "meanClippedDecOffsetDeg": 1,
-            "stdClippedDecOffsetDeg": 1,
-        },
-    )
-    mocker.patch(
-        "lsmtool.facet.filter_skymodel",
-        side_effect=lambda polygon, sm, wcs: sm,
-    )
-
-    with caplog.at_level(logging.INFO):
-        diagnostics_dict = check_astrometry(
-            observation,
-            input_catalog_fits,
-            mock_image,
-            facet_region_ds9,
-            min_number=1,
-            output_root=str(tmp_path / "astrometry_check"),
-            comparison_skymodel=sky_model_path,
+        mocker.patch.object(lsmtool.skymodel.SkyModel, "group")
+        mocker.patch.object(
+            lsmtool.skymodel.SkyModel,
+            "compare",
+            return_value={
+                "meanRatio": 1,
+                "stdRatio": 1,
+                "meanClippedRatio": 1,
+                "stdClippedRatio": 1,
+                "meanRAOffsetDeg": 1,
+                "stdRAOffsetDeg": 1,
+                "meanClippedRAOffsetDeg": 1,
+                "stdClippedRAOffsetDeg": 1,
+                "meanDecOffsetDeg": 1,
+                "stdDecOffsetDeg": 1,
+                "meanClippedDecOffsetDeg": 1,
+                "stdClippedDecOffsetDeg": 1,
+            },
         )
-        assert "No sources found" not in caplog.text
-        assert "Skipping the astrometry check..." not in caplog.text
+        mocker.patch(
+            "lsmtool.facet.filter_skymodel",
+            side_effect=lambda polygon, sm, wcs: sm,
+        )
+
+        with caplog.at_level(logging.INFO):
+            diagnostics_dict = check_astrometry(
+                observation,
+                input_catalog_fits,
+                mock_image,
+                facet_region_ds9,
+                min_number=1,
+                output_root=str(tmp_path / "astrometry_check"),
+                comparison_skymodel=sky_model_path,
+            )
+            assert "No sources found" not in caplog.text
+            assert "Skipping the astrometry check..." not in caplog.text
 
     assert "meanClippedRAOffsetDeg" in diagnostics_dict
     assert "meanClippedDecOffsetDeg" in diagnostics_dict
@@ -459,47 +464,47 @@ def test_check_astrometry_with_no_internet_access_does_not_access_internet(
         lambda *args, **kwargs: mock_full_astrometry_table,
     )
 
-    fitsimage.FITSImage = mocker.MagicMock()
-    mock_image = fitsimage.FITSImage(image_fits)
-    mock_image.freq.return_value = 150e6  # Mock frequency in Hz
+    with patch.object(fitsimage, "FITSImage") as mock_fits_image_cls:
+        mock_image = mock_fits_image_cls(image_fits)
+        mock_image.freq.return_value = 150e6  # Mock frequency in Hz
 
-    mocker.patch.object(lsmtool.skymodel.SkyModel, "group")
-    mocker.patch.object(
-        lsmtool.skymodel.SkyModel,
-        "compare",
-        return_value={
-            "meanRatio": 1,
-            "stdRatio": 1,
-            "meanClippedRatio": 1,
-            "stdClippedRatio": 1,
-            "meanRAOffsetDeg": 1,
-            "stdRAOffsetDeg": 1,
-            "meanClippedRAOffsetDeg": 1,
-            "stdClippedRAOffsetDeg": 1,
-            "meanDecOffsetDeg": 1,
-            "stdDecOffsetDeg": 1,
-            "meanClippedDecOffsetDeg": 1,
-            "stdClippedDecOffsetDeg": 1,
-        },
-    )
-    mocker.patch(
-        "lsmtool.facet.filter_skymodel",
-        side_effect=lambda polygon, sm, wcs: sm,
-    )
-
-    with caplog.at_level(logging.INFO):
-        diagnostics_dict = check_astrometry(
-            observation,
-            input_catalog_fits,
-            mock_image,
-            facet_region_ds9,
-            min_number=1,
-            output_root=str(tmp_path / "astrometry_check"),
-            comparison_skymodel=None,
-            allow_internet_access=False,
+        mocker.patch.object(lsmtool.skymodel.SkyModel, "group")
+        mocker.patch.object(
+            lsmtool.skymodel.SkyModel,
+            "compare",
+            return_value={
+                "meanRatio": 1,
+                "stdRatio": 1,
+                "meanClippedRatio": 1,
+                "stdClippedRatio": 1,
+                "meanRAOffsetDeg": 1,
+                "stdRAOffsetDeg": 1,
+                "meanClippedRAOffsetDeg": 1,
+                "stdClippedRAOffsetDeg": 1,
+                "meanDecOffsetDeg": 1,
+                "stdDecOffsetDeg": 1,
+                "meanClippedDecOffsetDeg": 1,
+                "stdClippedDecOffsetDeg": 1,
+            },
         )
-        assert "No sources found" not in caplog.text
-        assert "internet access is not permitted" in caplog.text
+        mocker.patch(
+            "lsmtool.facet.filter_skymodel",
+            side_effect=lambda polygon, sm, wcs: sm,
+        )
+
+        with caplog.at_level(logging.INFO):
+            diagnostics_dict = check_astrometry(
+                observation,
+                input_catalog_fits,
+                mock_image,
+                facet_region_ds9,
+                min_number=1,
+                output_root=str(tmp_path / "astrometry_check"),
+                comparison_skymodel=None,
+                allow_internet_access=False,
+            )
+            assert "No sources found" not in caplog.text
+            assert "internet access is not permitted" in caplog.text
 
     assert diagnostics_dict == {}
 
@@ -817,3 +822,25 @@ def test_filter_skymodel_for_photometry_filters_out_sources_major_axis(
     assert len(filtered_catalog) == 0, (
         "Expected all sources to be filtered out since they do not meet the specified criteria"
     )
+
+
+def test_compute_facets_rms_noise(facet_region_ds9, rendered_regions):
+    output = compute_facet_rms_noise(
+        facet_region_ds9,
+        fitsimage.FITSImage(rendered_regions),
+        fitsimage.FITSImage(rendered_regions),
+    )
+    facets = lsmtool.facet.read_ds9_region_file(facet_region_ds9)
+    for facet in facets:
+        assert facet.name in output
+        for image_type in ["flat_noise", "beam_corrected"]:
+            assert image_type in output[facet.name]
+
+            for metric in ["mean", "median", "std", "min", "max"]:
+                assert metric in output[facet.name][image_type]
+
+
+def test_compute_facets_rms_noise_return_empty_if_invalid(tmpdir, rendered_regions):
+    invalid_file = tmpdir / "invalid_regions.ds9"
+    result = compute_facet_rms_noise(invalid_file, rendered_regions, rendered_regions)
+    assert {} == result

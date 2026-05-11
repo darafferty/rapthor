@@ -667,9 +667,7 @@ def _compute_image_stats(image: np.ndarray):
     }
 
 
-def compute_facet_rms_noise(
-    facet_region_file, rms_img_flat_noise, rms_img_true_sky, theoretical_rms
-):
+def compute_facet_rms_noise(facet_region_file, rms_img_flat_noise, rms_img_true_sky):
     """
     Compute facet-based RMS statistics from flat-noise and true-sky RMS maps.
 
@@ -682,9 +680,6 @@ def compute_facet_rms_noise(
         FITSImage object for the non-primary-beam-corrected RMS image.
     rms_img_true_sky : rapthor.lib.fitsimage.FITSImage
         FITSImage object for the primary-beam-corrected RMS image.
-    theoretical_rms : float
-        Theoretical image RMS noise in Jy/beam, used as a reference for
-        comparing measured per-facet RMS levels.
 
     Returns
     -------
@@ -704,7 +699,7 @@ def compute_facet_rms_noise(
             facets_summary[facet.name] = facet_summary
         return facets_summary
     except Exception as e:
-        logger.warning("Couldnt determine per facets metrics")
+        logger.warning("Could not determine per facets metrics")
         logger.exception(e)
         return {}
 
@@ -883,9 +878,8 @@ def main(
     )
     cwl_output.update(result)
 
-    result = compute_facet_rms_noise(
-        facet_region_file, rms_img_flat_noise, rms_img_true_sky, theoretical_rms
-    )
+    result = compute_facet_rms_noise(facet_region_file, rms_img_flat_noise, rms_img_true_sky)
+    cwl_output.update({"facets_rms": result})
 
     # Write out the full diagnostics
     with open(output_root + ".image_diagnostics.json", "w") as fp:

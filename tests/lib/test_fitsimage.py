@@ -3,26 +3,8 @@ Tests for the `rapthor.lib.fitsimage` module.
 """
 
 from rapthor.lib.fitsimage import FITSCube, FITSImage
-from lsmtool.facet import read_ds9_region_file
-import matplotlib.pyplot as plt
 
 import numpy as np
-import pytest
-
-
-@pytest.fixture()
-def region_file(pytestconfig):
-    return pytestconfig.resource_dir / "test.reg"
-
-
-@pytest.fixture()
-def rendered_regions(pytestconfig):
-    return pytestconfig.resource_dir / "test_image_regions_rendered.fits"
-
-
-@pytest.fixture()
-def facets(region_file):
-    return read_ds9_region_file(region_file)
 
 
 class TestFITSCube:
