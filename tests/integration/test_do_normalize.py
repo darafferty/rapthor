@@ -3,7 +3,9 @@
 import subprocess
 from pathlib import Path
 
+import numpy as np
 import pytest
+from losoto.h5parm import h5parm
 
 from .utils import get_working_dir_from_parset, update_parset_path
 
@@ -95,6 +97,16 @@ def test_rapthor_run_single_loop_with_do_normalize_no_internet_raises_error(
 @pytest.mark.internet
 @pytest.mark.integration
 @pytest.mark.parametrize(
+    "normalization_skymodel_paths",
+    [
+        [
+            "tests/resources/integration_apparent_sky.txt",
+            "tests/resources/integration_true_sky.txt",
+        ]
+    ],
+    indirect=True,
+)
+@pytest.mark.parametrize(
     "generated_parset_path_normalisation",
     [
         (
@@ -109,14 +121,11 @@ def test_rapthor_run_single_loop_with_do_normalize_no_internet_provided_sky_mode
     generated_parset_path_normalisation, single_loop_do_normalize_strategy_path
 ):
     """Test that rapthor runs successfully when do_normalize is used without internet access but sky models are provided."""
-
     updated_parset_path = update_parset_path(
         generated_parset_path_normalisation,
         {
             "allow_internet_access": "False",
             "strategy": str(single_loop_do_normalize_strategy_path),
-            "normalization_skymodels": "[tests/resources/integration_apparent_sky.txt, tests/resources/integration_true_sky.txt]",
-            "normalization_reference_frequencies": "[150000000.0, 150000000.0]",
         },
     )
 
@@ -135,6 +144,25 @@ def test_rapthor_run_single_loop_with_do_normalize_no_internet_provided_sky_mode
     assert "Operation image_1 completed" in output
     assert "Operation mosaic_1 completed" in output
     assert "Rapthor has finished :)" in output
+
+    working_dir = get_working_dir_from_parset(updated_parset_path)
+    normalize_logs_dir = Path(working_dir) / "logs" / "normalize_1"
+    normalize_logs = sorted(normalize_logs_dir.rglob("*normalize_flux_scale*.log"))
+    assert normalize_logs, f"No normalize_flux_scale logs found in {normalize_logs_dir}"
+    normalize_log_text = "\n".join(log_path.read_text() for log_path in normalize_logs)
+    assert "--reference_skymodels" in normalize_log_text
+    assert "integration_apparent_sky.txt" in normalize_log_text
+    assert "integration_true_sky.txt" in normalize_log_text
+    assert "Using reference sky models provided as input for normalization" in normalize_log_text
+    assert "Downloading vlssr catalog for this field" not in normalize_log_text
+    assert "Downloading wenss catalog for this field" not in normalize_log_text
+    assert "Flux density scale normalization will be skipped" not in normalize_log_text
+
+    normalize_h5parm = Path(working_dir) / "solutions" / "normalize_1" / "sector_1_normalize.h5parm"
+    assert normalize_h5parm.exists()
+    with h5parm(str(normalize_h5parm), readonly=True) as h5:
+        amplitudes, _ = h5.getSolset("sol000").getSoltab("amplitude000").getValues()
+    assert not np.allclose(amplitudes, 1.0)
 
 
 @pytest.mark.integration

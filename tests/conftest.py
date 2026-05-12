@@ -415,13 +415,15 @@ def generate_parset(
             "["
             + ", ".join(
                 [
-                    str(142000000.0 + i * 1000.0)
+                    str(120000000.0 + i * 60000000.0)
                     for i, _ in enumerate(normalization_skymodel_paths)
                     if _ is not None
                 ]
             )
             + "]"
         )
+    else:
+        parset["imaging"]["normalization_reference_frequencies"] = "None"
     parset["cluster"].update(
         local_scratch_dir=str(scratch_dir),
         global_scratch_dir=str(scratch_dir),

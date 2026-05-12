@@ -113,6 +113,9 @@ def main(
             if not reference_skymodels:
                 survey_data = _download_survey_data(survey, [phase_center_ra, phase_center_dec])
             else:
+                log.info(
+                    f"Loading provided skymodels for flux density scale normalization: {reference_skymodels}"
+                )
                 skymodel = lsmtool.load(survey)
                 survey_data = _get_data_from_skymodel(skymodel)
             if survey_data is None or len(survey_data) == 0:
@@ -174,7 +177,7 @@ def main(
         n_valid = np.where(valid_fits)[0].size
         if n_valid < min_sources:
             log.warning(
-                "Too few sources with successful SED fits. Flux normalization will be skipped."
+                "Too few sources with successful SED fits. Flux density scale normalization will be skipped."
             )
             avg_corrections = np.ones(len(output_frequencies))
         else:
@@ -611,7 +614,7 @@ def _validate_source_catalog(source_catalog_data, min_sources):
     n_sources = len(source_catalog_data)
     log.info(f"Number of sources in source catalog: {n_sources}")
     if n_sources < min_sources:
-        log.info("Too few sources. Flux normalization will be skipped.")
+        log.info("Too few sources. Flux density scale normalization will be skipped.")
         return False
     else:
         return True
@@ -647,13 +650,13 @@ def _download_survey_data(survey, phase_center):
     except (OSError, ConnectionError) as e:
         log.error(
             f"A problem occurred when downloading the {survey} catalog. "
-            f"Error was: {e}. Flux normalization will be skipped."
+            f"Error was: {e}. Flux density scale normalization will be skipped."
         )
         return
     if len(skymodel) == 0:
         log.warning(
             f"No sources found in the {survey} catalog for this field. "
-            "Flux normalization will be skipped."
+            "Flux density scale normalization will be skipped."
         )
         return
     return _get_data_from_skymodel(skymodel)

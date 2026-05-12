@@ -536,6 +536,23 @@ inputs:
       The filename of the output h5parm file with the flux-scale normalizations
       (length = 1).
     type: string
+  - id: normalization_skymodels
+    label: Normalization reference sky models
+    doc: |
+      Reference sky models to use for flux-scale normalization instead of
+      downloaded survey catalogs.
+    type:
+      - "null"
+      - type: array
+        items: File
+  - id: normalization_reference_frequencies
+    label: Normalization reference frequencies
+    doc: |
+      Frequencies in Hz corresponding to the normalization reference sky models.
+    type:
+      - "null"
+      - type: array
+        items: float
 {% endif %}
 
   - id: allow_internet_access
@@ -1254,6 +1271,10 @@ steps:
         source: concat_in_time/msconcat
       - id: normalize_h5parm
         source: output_normalize_h5parm
+      - id: reference_skymodels
+        source: normalization_skymodels
+      - id: reference_skymodels_frequencies
+        source: normalization_reference_frequencies
     out:
       - id: output_h5parm
 

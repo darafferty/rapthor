@@ -47,15 +47,9 @@ def make_strategy_step(**overrides):
 
 
 def _write_normalization_skymodel(output_path):
-    """Write an apparent sky model with one extra bright source for normalization tests."""
+    """Write the apparent sky model used for normalization tests."""
     source_model_path = Path("tests/resources/integration_apparent_sky.txt")
     output_path.write_text(source_model_path.read_text(encoding="utf-8"), encoding="utf-8")
-    with output_path.open("a", encoding="utf-8") as handle:
-        handle.write(" , , Patch_patch_norm_1, 1:37:41.299, 33.09.35.132\n")
-        handle.write(
-            "snorm0, POINT, Patch_patch_norm_1, 1:37:41.299, 33.09.35.132, "
-            "20.0, [-0.8], false, 148240661.621094, 0, 0, 0\n"
-        )
 
 
 def _set_synthetic_uvw_geometry(ms_path):
@@ -151,12 +145,15 @@ def single_loop_do_normalize_strategy_path(tmp_path):
 @pytest.fixture
 def no_matching_normalization_inputs(single_loop_do_normalize_strategy_path):
     """Return parset updates that make do_normalize use non-matching reference models."""
+    resource_dir = Path(__file__).parents[1] / "resources"
+    apparent_skymodel = resource_dir / "test_apparent_sky.txt"
+    true_skymodel = resource_dir / "test_true_sky.txt"
     return {
         "allow_internet_access": "False",
         "strategy": str(single_loop_do_normalize_strategy_path),
         "photometry_skymodel": "",
         "astrometry_skymodel": "",
-        "normalization_skymodels": "[tests/resources/test_apparent_sky.txt, tests/resources/test_true_sky.txt]",
+        "normalization_skymodels": f"[{apparent_skymodel}, {true_skymodel}]",
         "normalization_reference_frequencies": "[150000000.0, 150000000.0]",
     }
 

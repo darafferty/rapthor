@@ -516,8 +516,8 @@ def test_main_empty_skymodels(
             else None,
         )
 
-    assert "Flux normalization will be skipped" in caplog.text, (
-        "Expected log message about skipping flux normalization due to empty skymodels."
+    assert "Flux density scale normalization will be skipped" in caplog.text, (
+        "Expected log message about skipping flux density scale normalization due to empty skymodels."
     )
     assert get_source_data_spy.call_count == 0, (
         "Expected _get_source_data to not be called when skymodels are empty."
@@ -532,11 +532,11 @@ def test_main_empty_skymodels(
     # An h5parm file should be created with all normalizations set to 1.0
     assert os.path.exists(output_h5parm), f"Expected {output_h5parm} to be created."
     with losoto.h5parm.h5parm(output_h5parm, readonly=True) as output_h5:
-        normalizations = (
+        correction_factors = (
             output_h5.getSolset("sol000").getSoltab("amplitude000").getValues(retAxesVals=False)
         )
-    assert normalizations == pytest.approx(1.0), (
-        "Expected all normalizations to be 1.0 when skymodels are empty."
+    assert correction_factors == pytest.approx(1.0), (
+        "Expected all correction factors to be 1.0 when skymodels are empty."
     )
 
 
@@ -582,7 +582,7 @@ def test_main_skips_normalization_if_too_few_sources_before_cuts(
             weight_by_flux_err=False,
             ignore_frequency_dependence=False,
         )
-    assert "Too few sources. Flux normalization will be skipped." in caplog.text, (
+    assert "Too few sources. Flux density scale normalization will be skipped." in caplog.text, (
         "Expected log message about too few sources."
     )
 
@@ -606,7 +606,7 @@ def test_main_skips_normalization_if_too_few_sources_after_cuts(
             weight_by_flux_err=False,
             ignore_frequency_dependence=False,
         )
-    assert "Too few sources. Flux normalization will be skipped." in caplog.text, (
+    assert "Too few sources. Flux density scale normalization will be skipped." in caplog.text, (
         "Expected log message about too few sources after cuts."
     )
 
@@ -696,7 +696,7 @@ def test_main_logs_warning_when_too_few_sources_with_valid_fits(
             ignore_frequency_dependence=False,
         )
     assert (
-        "Too few sources with successful SED fits. Flux normalization will be skipped."
+        "Too few sources with successful SED fits. Flux density scale normalization will be skipped."
         in caplog.text
     ), "Expected log message about too few sources with valid SED fits."
 
