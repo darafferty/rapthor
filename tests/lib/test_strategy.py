@@ -14,7 +14,6 @@ from rapthor.lib.strategy import (
     set_strategy,
     set_user_strategy,
     validate_strategy,
-    _validate_calibrate_strategy,
 )
 
 

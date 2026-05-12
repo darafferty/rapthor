@@ -383,43 +383,6 @@ def check_and_adjust_parameters(field, strategy_steps):
 
     return strategy_steps
 
-def _validate_calibrate_strategy(calibration_strategy):
-    """
-    Validates the calibration strategy for internal consistency.
-
-    Checks that the calibration strategy contains only recognized modes and that
-    the modes are not used in the same cycle.
-
-    Parameters
-    ----------
-    calibration_strategy : dict
-        Dictionary defining the calibration strategy for a given cycle, with keys
-        corresponding to the calibration modes (e.g., "di", "dd") and values being
-        lists of the specific calibration types to be done for each mode (e.g.,
-        ["fast_phase", "full_jones"])
-
-    Raises
-    ------
-    ValueError
-        If any inconsistencies are found in the calibration strategy
-    """
-    if not calibration_strategy:
-        return
-    recognized_modes = ["di", "dd"]
-    recognised_solves = ["fast_phase", "medium_phase", "slow_gains", "full_jones"]
-    for mode, solves in calibration_strategy.items():
-        if mode not in recognized_modes:
-            raise ValueError(
-                f'Calibration strategy contains unrecognized calibration mode "{mode}". '
-                f'Recognized modes are {recognized_modes}.'
-            )
-        for solve in solves:
-            if solve not in recognised_solves:
-                raise ValueError(
-                    f'Calibration strategy for mode "{mode}" contains unrecognized solve type "{solve}". '
-                    f'Recognized solve types are {recognised_solves}.'
-                )
-    
 
 def _validate_calibrate_strategy(calibration_strategy):
     """
