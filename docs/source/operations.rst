@@ -14,10 +14,10 @@ Calibrate
 This operation calibrates the data using the current sky model. It uses a calibration strategy based on that of the `Facet-Selfcal package
 <https://github.com/rvweeren/lofar_facet_selfcal>`_). The exact steps done during calibration depend on the strategy, but essentially there are four main parts:
 
-    # A phase-only (scalar) solve on short timescales (the "fast" solve, which corrects for ionospheric errors on the longer baselines). A core constraint is used to force all the core stations to have the same solutions.
-    # A phase-only (scalar) solve on medium timescales (the first "medium-fast" solve, which corrects mostly for ionospheric errors on the shorter baselines). Each station is solved for independently.
-    # A phase and amplitude (diagonal) solve on long time scales (the "slow" solve, which corrects mostly for beam errors). Each station is solved for independently.
-    # Lastly, a second phase-only (scalar) solve (the second "medium-fast" solve, which corrects mostly for any remaining errors on the longer baselines).
+    1. A phase-only (scalar) solve on short timescales (the "fast" solve, which corrects for ionospheric errors on the longer baselines). A core constraint is used to force all the core stations to have the same solutions.
+    2. A phase-only (scalar) solve on medium timescales (the first "medium-fast" solve, which corrects mostly for ionospheric errors on the shorter baselines). Each station is solved for independently.
+    3. A phase and amplitude (diagonal) solve on long time scales (the "slow" solve, which corrects mostly for beam errors). Each station is solved for independently.
+    4. Lastly, a second phase-only (scalar) solve (the second "medium-fast" solve, which corrects mostly for any remaining errors on the longer baselines).
 
 Lastly, processing of the resulting solutions is done, including smoothing and renormalization.
 

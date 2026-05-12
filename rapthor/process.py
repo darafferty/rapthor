@@ -15,7 +15,7 @@ from rapthor.operations.calibrate import Calibrate
 from rapthor.operations.concatenate import Concatenate
 from rapthor.operations.image import Image, ImageInitial, ImageNormalize
 from rapthor.operations.mosaic import Mosaic
-from rapthor.operations.predict import PredictDD, PredictDI
+from rapthor.operations.predict import Predict
 
 log = logging.getLogger("rapthor")
 
@@ -189,7 +189,7 @@ def run_steps(field, steps, final=False):
 
             # Calibrate (direction-independent)
             if field.do_fulljones_solve:
-                op = PredictDI(field, cycle_number)
+                op = Predict("di", field, cycle_number)
                 op.run()
                 op = Calibrate("di", field, cycle_number)
                 op.run()
@@ -197,7 +197,7 @@ def run_steps(field, steps, final=False):
         # Predict and subtract the sector models
         # Note: DD predict is not yet supported when screens are used
         if field.do_predict and not field.generate_screens:
-            op = PredictDD(field, cycle_number)
+            op = Predict("dd", field, cycle_number)
             op.run()
 
         # Image and mosaic the sectors
