@@ -465,6 +465,24 @@ class TestImage:
                 True,
                 "[fastphase,mediumphase,normalization]",
             ),
+            (
+                {"dd": ["medium_phase", "fast_phase"]},
+                False,
+                True,
+                "[mediumphase,fastphase,normalization]",
+            ),
+            (
+                {"dd": ["slow_gains", "fast_phase"], "di": ["full_jones"]},
+                False,
+                True,
+                "[slowgain,fastphase,fulljones,normalization]",
+            ),
+            (
+                {"di": ["full_jones"], "dd": ["fast_phase", "slow_gains"]},
+                False,
+                True,
+                "[fulljones,fastphase,slowgain,normalization]",
+            ),
         ],
     )
     def test_build_applycal_steps(
