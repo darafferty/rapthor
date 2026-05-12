@@ -157,8 +157,8 @@ class Image(Operation):
         steps = [
             solve_type_to_step[solve]
             for solves in strategy.values()
-                for solve in solves
-                if solve in solve_type_to_step
+            for solve in solves
+            if solve in solve_type_to_step
         ]
 
         if "fulljones" in steps:
