@@ -4,12 +4,11 @@ Script to predict using wsclean
 """
 from argparse import ArgumentParser, RawTextHelpFormatter
 import os
-import shutil
 import subprocess
 import sys
 from pathlib import Path
 import logging
-import shutil
+from lsmtool.facet import read_ds9_region_file
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -17,8 +16,33 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-import casacore.tables as pt
+import casacore.tables as ct
 import numpy as np
+
+
+def add_columns_to_ms(msname, colnames):
+    """
+    Add additional columns to table
+    Do this in one call, rather than using taql and doing it in serial
+    """
+    tt = ct.table(msname, readonly=False)
+    cl = tt.getcol("DATA")
+    (nrows, nchans, npols) = cl.shape
+    vl = np.zeros(shape=cl.shape, dtype=cl.dtype)
+    dmi = tt.getdminfo("DATA")
+    for colname in colnames:
+        dmi["NAME"] = colname
+        mkd = ct.maketabdesc(
+            ct.makearrcoldesc(
+                colname,
+                shape=np.array(np.zeros([nchans, npols])).shape,
+                valuetype="complex",
+                value=0.0,
+            )
+        )
+        tt.addcols(mkd, dmi)
+        tt.putcol(colname, vl)
+    tt.close()
 
 
 def predict(msfile, ds9_region_file, model_image):
@@ -48,12 +72,42 @@ def predict(msfile, ds9_region_file, model_image):
     if not os.path.exists(model_image):
         raise ValueError(f"Model image {model_image!r} does not exist")
 
+    # remove '-model.fits' from image name
+    model = model_image.replace("-model.fits", "")
+    print(model)
+
+    # extract region names
+    facets = read_ds9_region_file(ds9_region_file)
+    facet_names = list()
+    for facet in facets:
+        facet_names.append(facet.name)
+
+    add_columns_to_ms(msfile, facet_names)
+
+    err_code = 0
     # Run the command
-    try:
-        return subprocess.run(cmd, check=True).returncode
-    except subprocess.CalledProcessError as err:
-        print(err, file=sys.stderr)
-        return err.returncode
+    for facet in facet_names:
+        cmd = [
+            "wsclean",
+            "-predict",
+            "-facet-regions",
+            str(ds9_region_file),
+            "-model-column",
+            str(facet),
+            "-select-facets",
+            "{" + str(facet) + "}",
+            "-name",
+            str(model),
+            str(msfile),
+        ]
+        try:
+            subprocess.run(cmd, check=True).returncode
+        except subprocess.CalledProcessError as err:
+            print(err, file=sys.stderr)
+            err_code = err.returncode
+            break
+
+    return err_code
 
 
 def main():
