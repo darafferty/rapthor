@@ -132,7 +132,7 @@ def main(
             )
         if len(survey_catalogs) == 0:
             log.warning(
-                "No valid sources are available for flux normalization. Flux normalization will be skipped."
+                "No valid cross-matches in flux normalization skymodels. Flux density scale normalization will be skipped."
             )
             do_normalization = False
 

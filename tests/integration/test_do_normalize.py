@@ -178,4 +178,4 @@ def test_rapthor_run_single_loop_with_do_normalize_no_matching_sources_skips_nor
     normalize_logs = sorted(normalize_logs_dir.rglob("*normalize_flux_scale*.log"))
     assert normalize_logs, f"No normalize_flux_scale logs found in {normalize_logs_dir}"
     normalize_log_text = "\n".join(log_path.read_text() for log_path in normalize_logs)
-    assert "Flux normalization will be skipped" in normalize_log_text
+    assert "Flux density scale normalization will be skipped" in normalize_log_text
