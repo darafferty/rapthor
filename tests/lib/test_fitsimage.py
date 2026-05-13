@@ -75,7 +75,7 @@ class TestFITSImage:
         image = FITSImage(rendered_regions)
         
         for facet in facets:
-            selected_facet: np.ndarray = image.select_facet(facet)
+            selected_facet = image.select_facet(facet)
             facet_number = _to_facet_number(facet)
             assert facet_number in np.unique(selected_facet)
             difference_in_pixels = abs(
