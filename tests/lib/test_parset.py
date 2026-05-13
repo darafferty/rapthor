@@ -3,185 +3,246 @@ This module contains tests for the module `rapthor.lib.parset`
 """
 
 import ast
+import configparser
+import contextlib
+import logging
 import os
 import string
 import tempfile
 import textwrap
 import unittest
+from pathlib import Path
+from unittest import mock
 
-try:
-    import mock
-except ImportError:
-    from unittest import mock
+import pytest
 
 from rapthor.lib.parset import check_and_adjust_skymodel_settings, parset_read
 
 
-class TestParset(unittest.TestCase):
-    """
-    This class contains tests for the public function `parset_read` in the module
-    `rapthor.lib.parset`, which implicitly tests much of the `Parset` class in the same
-    module.
-    """
+def _generate_parset(template_parset=None, config=None, output_path=None, **kws):
 
-    @classmethod
-    def setUpClass(cls):
-        # Create dummy MS, an empty directory suffices
-        cls.input_ms = tempfile.TemporaryDirectory(suffix=".ms")
-
-        # Create an empty working directory
-        cls.dir_working = tempfile.TemporaryDirectory()
-
-        # Change directory to the tests directory (one level up from this file),
-        # because that's where these tests need to be run from.
-        os.chdir(os.path.join(os.path.dirname(__file__), ".."))
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.input_ms.cleanup()
-        cls.dir_working.cleanup()
-
-    def setUp(self):
-        self.parset = tempfile.NamedTemporaryFile(
-            suffix=".parset",
-            dir=self.dir_working.name,
-            delete=False,
+    parset = configparser.ConfigParser()
+    if isinstance(template_parset, configparser.ConfigParser):
+        parset = template_parset
+    elif isinstance(template_parset, (str, Path)):
+        parset.read(template_parset)
+    elif template_parset is not None:
+        raise TypeError(
+            "Invalid type for template_parset. Expected str, Path, or ConfigParser.",
         )
-        with open(self.parset.name, "w") as f:
-            f.write(
-                textwrap.dedent(
-                    f"""
-                    [global]
-                    input_ms = {self.input_ms.name}
-                    dir_working = {self.dir_working.name}
-                    """
-                )
-            )
+
+    config = config or {}
+    if kws:
+        config["global"].update(kws)
+    for section, options in config.items():
+        if section is not None and section not in parset:
+            parset.add_section(section)
+
+        for option, value in options.items():
+            parset.set(section, str(option), str(value))
+
+    if output_path:
+        with output_path.open("w") as fp:
+            parset.write(fp)
+
+    return parset
+
+
+@contextlib.contextmanager
+def assert_message_logged(caplog, logger, level, expected_message):
+
+    with caplog.at_level(level, logger=logger):
+        yield
+
+        for record in caplog.records:
+            if expected_message in record.message:
+                return
+
+        raise AssertionError(f'Expected message "{expected_message}" not found in logs')
+
+
+def _test_parset_read_logs_warning(caplog, parset, expected_message):
+    with assert_message_logged(
+        caplog,
+        logger="rapthor:parset",
+        level=logging.WARNING,
+        expected_message=expected_message,
+    ):
+        parset_read(parset)
+
+
+class TestParset:
+    """
+    This class contains tests for the public function `parset_read` in the
+    module `rapthor.lib.parset`, which implicitly tests much of the `Parset`
+    class in the same module.
+    """
+
+    @pytest.fixture()
+    def minimal_parset(self, tmp_path):
+
+        # Create an empty file to represent the measurement set
+        mock_input_ms = tmp_path / "test.ms"
+        mock_input_ms.touch()
+
+        return _generate_parset(
+            config={
+                "global": {
+                    "input_ms": mock_input_ms,
+                    "dir_working": tmp_path,
+                }
+            }
+        )
+
+    @pytest.fixture()
+    def parset(self, tmp_path, minimal_parset, request):
+
+        # Create the parset
+        config = {}
+        if getattr(request, "param", None):
+            section, option, value = request.param
+            config = {section: {option: value}}
+
+        parset_path = tmp_path / "test.parset"
+        _generate_parset(minimal_parset, config, parset_path)
+        return parset_path
+
+    # ------------------------------------------------------------------------ #
+    # Tests 
 
     def test_missing_parset_file(self):
-        os.unlink(self.parset.name)
-        with self.assertRaises(FileNotFoundError):
-            parset_read(self.parset.name)
+        """
+        Test that reading a non-existent parset file raises FileNotFoundError.
+        """
+        with pytest.raises(FileNotFoundError):
+            parset_read("non-existent-file")
 
-    def test_empty_parset_file(self):
-        with open(self.parset.name, "w") as f:
-            pass
-        with self.assertRaisesRegex(
-            ValueError, r"Missing required option\(s\) in section \[global\]:"
+    def test_empty_parset_file(self, tmp_path):
+        """
+        Test that reading an empty parset file raises ValueError due to missing
+        required options.
+        """
+        parset = tmp_path / "empty.parset"
+        parset.touch()  # Create an empty file
+
+        with pytest.raises(
+            ValueError, match=r"Missing required option\(s\) in section \[global\]:"
         ):
-            parset_read(self.parset.name)
+            parset_read(parset)
 
-    def test_minimal_parset(self):
-        parset_dict = parset_read(self.parset.name)
-        self.assertEqual(parset_dict["dir_working"], self.dir_working.name)
-        self.assertEqual(parset_dict["input_ms"], self.input_ms.name)
+    def test_minimal_parset(self, tmp_path, parset):
+        """
+        Test that a minimal valid parset is read correctly with expected
+        dir_working and input_ms values.
+        """
+        parset_dict = parset_read(parset)
+        assert parset_dict["dir_working"] == str(tmp_path)
+        assert parset_dict["input_ms"] == str(tmp_path / "test.ms")
 
-    def test_misspelled_section(self):
-        section = "misspelled_section"
-        with open(self.parset.name, "a") as f:
-            f.write(f"[{section}]")
-        with self.assertLogs(logger="rapthor:parset", level="WARN") as cm:
-            parset_read(self.parset.name)
-            self.assertEqual(
-                cm.output,
-                [f"WARNING:rapthor:parset:Section [{section}] is invalid"],
+    @pytest.mark.parametrize(
+        "parset, expected_message",
+        [
+            pytest.param(
+                ("misspelled_section", None, None),
+                "Section [misspelled_section] is invalid",
+                id="misspelled_section",
+            ),
+            pytest.param(
+                ("global", "misspelled_option", "some value"),
+                "Option 'misspelled_option' in section [global] is invalid",
+                id="misspelled_option",
+            ),
+        ],
+        indirect=["parset"],
+    )
+    def test_misconfigured(self, parset, caplog, expected_message):
+        """
+        Test that invalid sections or options in the parset produce appropriate
+        warning log messages.
+        """
+        _test_parset_read_logs_warning(caplog, parset, expected_message)
+
+    @pytest.mark.parametrize(
+        "parset, expected_message",
+        [
+            (
+                (section, option, "some value"),
+                f"Option '{option}' in section [{section}] is deprecated",
             )
+            for section, option in [
+                ("cluster", "dir_local"),
+            ]
+        ],
+        indirect=["parset"],
+    )
+    def test_deprecated_option(self, parset, caplog, expected_message):
+        """
+        Test that using deprecated options logs a deprecation warning.
+        """
+        _test_parset_read_logs_warning(caplog, parset, expected_message)
 
-    def test_misspelled_option(self):
-        option = "misspelled_option"
-        with open(self.parset.name, "a") as f:
-            f.write(f"{option} = some value")
-        with self.assertLogs(logger="rapthor:parset", level="WARN") as cm:
-            parset_read(self.parset.name)
-            self.assertEqual(
-                cm.output,
-                [f"WARNING:rapthor:parset:Option '{option}' in section [global] is invalid"],
+    @pytest.mark.parametrize(
+        "parset, expected_message",
+        [
+            (
+                (section, option, value),
+                message.format(option=option, value=value),
             )
+            for (section, option, value), message in [
+                (
+                    ("global", "selfcal_data_fraction", 1.1),
+                    "The {option} parameter is {value}; it must be > 0 and <= 1",
+                ),
+                (
+                    ("imaging", "idg_mode", "invalid"),
+                    "The option '{option}' must be one of",
+                ),
+                (
+                    ("imaging", "sector_center_ra_list", "[1]"),
+                    "The options .* must all have the same number of entries",
+                ),
+            ]
+        ],
+        indirect=["parset"],
+    )
+    def test_validation(self, parset, expected_message):
+        """
+        Test that invalid parameter values (out-of-range, invalid enum,
+        mismatched list lengths) raise ValueError.
+        """
+        with pytest.raises(ValueError, match=expected_message):
+            parset_read(parset)
 
-    def test_deprecated_option(self):
-        section = "[cluster]"
-        option = "dir_local"
-        with open(self.parset.name, "a") as f:
-            f.write(f"{section}\n")
-            f.write(f"{option} = some value")
-        with self.assertLogs(logger="rapthor:parset", level="WARN") as cm:
-            parset_read(self.parset.name)
-            self.assertIn(
-                f"WARNING:rapthor:parset:Option '{option}' in section {section} is deprecated",
-                cm.output[0],
-            )
+    @pytest.mark.parametrize("template_id", ["minimal", "complete"])
+    def test_default_parset_contents(self, tmp_path, mocker, request, minimal_parset, template_id):
+        """
+        Test that reading a template parset produces a dict matching the
+        expected reference output.
+        """
+        
+        resources = request.config.resource_dir
+        template_path = resources / f"rapthor_{template_id}.parset.template"
+        reference_path = resources / f"rapthor_{template_id}.parset_dict.template"
 
-    def test_fraction_out_of_range(self):
-        option = "selfcal_data_fraction"
-        value = 1.1
-        with open(self.parset.name, "a") as f:
-            f.write(f"{option} = {value}")
-        with self.assertRaisesRegex(
-            ValueError,
-            f"The {option} parameter is {value}; it must be > 0 and <= 1",
-        ):
-            parset_read(self.parset.name)
+        # Fix value of `cpu_count`, because `parset_read` does some smart things with it.
+        mocker.patch("rapthor.lib.parset.misc.nproc", return_value=8)
 
-    def test_invalid_idg_mode(self):
-        option = "idg_mode"
-        value = "invalid"
-        with open(self.parset.name, "a") as f:
-            f.write("[imaging]\n")
-            f.write(f"{option} = {value}")
-        with self.assertRaisesRegex(ValueError, f"The option '{option}' must be one of"):
-            parset_read(self.parset.name)
+        # Read the template
+        template_parset = configparser.ConfigParser()
+        template_parset.read(template_path)
 
-    def test_unequal_sector_list_lengths(self):
-        with open(self.parset.name, "a") as f:
-            f.write("[imaging]\n")
-            f.write("sector_center_ra_list = [1]")
-        with self.assertRaisesRegex(
-            ValueError,
-            "The options .* must all have the same number of entries",
-        ):
-            parset_read(self.parset.name)
+        parset_path = tmp_path / "test.parset"
+        _generate_parset(template_parset, minimal_parset, parset_path)
 
-    # Fix value of `cpu_count`, because `parset_read` does some smart things with it.
-    @mock.patch("rapthor.lib.parset.misc.nproc", return_value=8)
-    def test_default_parset_contents(self, cpu_count):
-        self.maxDiff = None
-        with open(self.parset.name, "w") as f:
-            f.write(
-                string.Template(
-                    open("resources/rapthor_minimal.parset.template").read()
-                ).substitute(
-                    dir_working=self.dir_working.name,
-                    input_ms=self.input_ms.name,
-                )
-            )
-        parset = parset_read(self.parset.name)
-        ref_parset = ast.literal_eval(
-            string.Template(
-                open("resources/rapthor_minimal.parset_dict.template").read()
-            ).substitute(dir_working=self.dir_working.name, input_ms=self.input_ms.name)
+        parset = parset_read(parset_path)
+
+        mock_input_ms = str(tmp_path / "test.ms")
+        reference_dict = ast.literal_eval(reference_path.read_text())
+        reference_dict.update(
+            dir_working=str(tmp_path), input_ms=mock_input_ms, mss=[mock_input_ms]
         )
-        self.assertEqual(parset, ref_parset)
+        assert parset == reference_dict
 
-    # Fix value of `cpu_count`, because `parset_read` does some smart things with it.
-    @mock.patch("rapthor.lib.parset.misc.nproc", return_value=8)
-    def test_complete_parset_contents(self, cpu_count):
-        self.maxDiff = None
-        with open(self.parset.name, "w") as f:
-            f.write(
-                string.Template(
-                    open("resources/rapthor_complete.parset.template").read()
-                ).substitute(
-                    dir_working=self.dir_working.name,
-                    input_ms=self.input_ms.name,
-                )
-            )
-        parset = parset_read(self.parset.name)
-        ref_parset = ast.literal_eval(
-            string.Template(
-                open("resources/rapthor_complete.parset_dict.template").read()
-            ).substitute(dir_working=self.dir_working.name, input_ms=self.input_ms.name)
-        )
-        self.assertEqual(parset, ref_parset)
 
 
 class TestCheckSkymodelSettings(unittest.TestCase):
@@ -215,7 +276,7 @@ class TestCheckSkymodelSettings(unittest.TestCase):
 
     def test_input_skymodel_not_found_raises(self):
         parset_dict = self._make_parset_dict(input_skymodel="/nonexistent/skymodel.txt")
-        with self.assertRaises(FileNotFoundError):
+        with pytest.raises(FileNotFoundError):
             check_and_adjust_skymodel_settings(parset_dict)
 
     def test_input_skymodel_exists(self):
@@ -297,7 +358,7 @@ class TestCheckSkymodelSettings(unittest.TestCase):
             download_initial_skymodel=True,
             cluster_specific={"allow_internet_access": False},
         )
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             check_and_adjust_skymodel_settings(parset_dict)
 
     def test_internet_allowed_download_ok(self):
@@ -322,7 +383,7 @@ class TestCheckSkymodelSettings(unittest.TestCase):
                 "normalization_reference_frequencies": None,
             },
         )
-        with self.assertRaises(FileNotFoundError):
+        with pytest.raises(FileNotFoundError):
             check_and_adjust_skymodel_settings(parset_dict)
 
     def test_photometry_skymodel_missing_no_internet_raises(self):
@@ -336,7 +397,7 @@ class TestCheckSkymodelSettings(unittest.TestCase):
                 "normalization_reference_frequencies": None,
             },
         )
-        with self.assertRaises(FileNotFoundError):
+        with pytest.raises(FileNotFoundError):
             check_and_adjust_skymodel_settings(parset_dict)
 
     def test_normalization_skymodel_missing_no_internet_raises(self):
@@ -353,7 +414,7 @@ class TestCheckSkymodelSettings(unittest.TestCase):
                 "normalization_reference_frequencies": None,
             },
         )
-        with self.assertRaises(FileNotFoundError):
+        with pytest.raises(FileNotFoundError):
             check_and_adjust_skymodel_settings(parset_dict)
 
     def test_astrometry_skymodel_exists_no_internet_ok(self):
@@ -409,7 +470,7 @@ class TestCheckSkymodelSettings(unittest.TestCase):
                 },
             )
             # Should raise ValueError because only one normalization skymodel is provided
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 check_and_adjust_skymodel_settings(parset_dict)
 
     def test_only_one_existing_path_for_normalization_skymodels_raises_error(self):
@@ -421,7 +482,7 @@ class TestCheckSkymodelSettings(unittest.TestCase):
                     "normalization_reference_frequencies": [str(142000000.0), str(142001000.0)],
                 },
             )
-            with self.assertRaises(FileNotFoundError):
+            with pytest.raises(FileNotFoundError):
                 check_and_adjust_skymodel_settings(parset_dict)
 
     def test_normalization_reference_frequencies_missing_raises_error(self):
@@ -433,7 +494,7 @@ class TestCheckSkymodelSettings(unittest.TestCase):
                     "normalization_reference_frequencies": None,
                 },
             )
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 check_and_adjust_skymodel_settings(parset_dict)
 
     def test_normalization_reference_frequencies_wrong_length_raises_error(self):
@@ -445,7 +506,7 @@ class TestCheckSkymodelSettings(unittest.TestCase):
                     "normalization_reference_frequencies": [str(142000000.0)],
                 },
             )
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 check_and_adjust_skymodel_settings(parset_dict)
 
     def test_normalization_parameters_tuple(self):
@@ -468,7 +529,7 @@ class TestCheckSkymodelSettings(unittest.TestCase):
                     "normalization_reference_frequencies": {142000000.0, 142001000.0},
                 },
             )
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 check_and_adjust_skymodel_settings(parset_dict)
 
     def test_diagnostic_skymodel_empty_no_internet_ok(self):
