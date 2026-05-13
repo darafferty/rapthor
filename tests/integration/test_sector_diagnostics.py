@@ -64,7 +64,7 @@ def test_rapthor_generates_diagnostics_per_facets(generated_parset_path, single_
         diagnostics = json.load(f_stream)
         assert "facets_rms" in diagnostics
         assert "Patch_0" in diagnostics["facets_rms"]
-        for type in ("flat_noise", "beam_corrected"):
-            assert type in diagnostics["facets_rms"]["Patch_0"]
+        for type_ in ("flat_noise", "beam_corrected"):
+            assert type_ in diagnostics["facets_rms"]["Patch_0"]
             for metric in ("mean", "median", "std", "min", "max"):
-                assert metric in diagnostics["facets_rms"]["Patch_0"][type]
+                assert metric in diagnostics["facets_rms"]["Patch_0"][type_]

@@ -701,7 +701,7 @@ def compute_facet_rms_noise(facet_region_file, rms_img_flat_noise, rms_img_true_
     except Exception as e:
         logger.warning("Could not determine per facets metrics")
         logger.exception(e)
-        return {}
+        raise e
 
 
 def main(
