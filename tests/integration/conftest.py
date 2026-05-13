@@ -4,7 +4,6 @@ import shlex
 import shutil
 import subprocess
 from pathlib import Path
-from textwrap import dedent
 
 import casacore.tables as pt
 import numpy as np

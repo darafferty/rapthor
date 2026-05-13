@@ -31,8 +31,8 @@ def test_rapthor_run_single_loop_calibrate_di_fast_phase(
     generated_parset_path, single_loop_strategy_with_calibration_strategy
 ):
     """Test a single selfcal loop with DP3 when only fast phase
-       direction-independent calibration is specified in the 
-       strategy.
+    direction-independent calibration is specified in the
+    strategy.
     """
 
     updated_parset_path = update_parset_path(
