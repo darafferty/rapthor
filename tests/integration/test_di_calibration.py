@@ -67,4 +67,4 @@ def test_rapthor_run_single_loop_calibrate_di_fast_phase(
     assert "solve3" not in dp3_arguments["steps"]
     assert "solve4" not in dp3_arguments["steps"]
     assert "avg" not in dp3_arguments["steps"]
-    assert "fulljones" in dp3_arguments["solve1.mode"]
+    assert "scalarphase" in dp3_arguments["solve1.mode"]
