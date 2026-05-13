@@ -4,6 +4,7 @@ import shlex
 import shutil
 import subprocess
 from pathlib import Path
+from textwrap import dedent
 
 import casacore.tables as pt
 import numpy as np
@@ -154,6 +155,16 @@ def single_loop_strategy_path_fast_medium_slow(tmp_path):
     strategy_steps = [make_strategy_step(do_calibrate=True, do_image=True, do_slowgain_solve=True)]
     strategy_content = f"strategy_steps = {strategy_steps}"
     strategy_path = tmp_path / "single_loop_strategy_fast_medium_slow.py"
+    strategy_path.write_text(strategy_content)
+    return strategy_path
+
+
+@pytest.fixture
+def single_loop_strategy_with_calibration_strategy(tmp_path, request):
+    strategy_steps = [make_strategy_step(do_calibrate=True, do_image=True, do_slowgain_solve=True)]
+    strategy_steps[0]["calibration_strategy"] = request.param
+    strategy_content = f"strategy_steps = {strategy_steps}"
+    strategy_path = tmp_path / "single_loop_strategy.py"
     strategy_path.write_text(strategy_content)
     return strategy_path
 
