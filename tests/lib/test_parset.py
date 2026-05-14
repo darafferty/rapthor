@@ -49,26 +49,95 @@ def _generate_parset(template_parset=None, config=None, output_path=None, **kws)
 
 
 @contextlib.contextmanager
-def assert_message_logged(caplog, logger, level, expected_message):
+def assert_logged(caplog, logger, level, expected_messages=(), *, expected_message=None):
+    """
+    Context manager for asserting the presence of specific messages in the
+    captured log records.
 
-    with caplog.at_level(level, logger=logger):
-        yield
+    Since this function is decorated as a context manager, the underlying
+    object created is a ContextDecorator so this function can be used as a
+    as decorators as well as in with statements. It is also re-entrant, so
+    the same context manager
 
-        for record in caplog.records:
-            if expected_message in record.message:
-                return
+    Parameters
+    ----------
+    caplog : pytest.LogCaptureFixture
+        The pytest caplog fixture for capturing log records.
+    logger : str
+        Logger name
+    level : int
+        Logging level
+    expected_messages : str or tuple of str, optional
+        Sequence of expected messages, by default ()
 
-        raise AssertionError(f'Expected message "{expected_message}" not found in logs')
+    Other Parameters
+    ----------------
+    expected_message : str, optional
+        Keyword-only parameter to support user passing a single expected
+        message, by default None
+
+    Examples
+    --------
+    The following example will pass, because the expected message is present in
+    the logs:
+
+    >>> with assert_logged(caplog, "my_logger", logging.INFO, expected_message="Hello World"):
+    ...    logging.getLogger("my_logger").info('Hello World')
+
+    Failure case:
+    >>> with assert_logged(caplog, "my_logger", logging.INFO, expected_message="Hello World"):
+    ...    logging.getLogger("my_logger").info('Nope')
+
+    Checking for multiple messages:
+    >>> with assert_logged(caplog, "my_logger", logging.INFO, expected_messages=["Hello", "World"]):
+    ...    logger = logging.getLogger("my_logger")
+    ...    logger.info('Hello')
+    ...    logger.info('World')
+
+    Raises
+    ------
+    TypeError
+        If the expected_messages parameter is not a string or a sequence of strings.
+    AssertionError
+        If any of the expected messages are not found in the logs.
+    """
+
+    # validate inputs
+    if isinstance(expected_messages, str):
+        expected_messages = [expected_messages]
+
+    if not isinstance(expected_messages, Sequence):
+        raise TypeError("expected_messages parameter should be a string or a sequence of strings")
+
+    if expected_message is not None:
+        expected_messages = [*expected_messages, expected_message]
+
+    if not expected_messages:
+        raise ValueError("expected messages list is empty")
+
+    for msg in expected_messages:
+        if not isinstance(msg, str):
+            raise TypeError(f"expected message must be a str, not {type(msg).__name__}")
+
+    # Capture logs at the level for the given logger
+    with caplog.at_level(level, logger=logger) as context:
+        yield context
+
+        for expected_message in expected_messages:
+            if expected_message not in caplog.text:
+                raise AssertionError(
+                    f"Expected message(s) not found in logs:\n\t{expected_message!r}"
+                )
 
 
-def _test_parset_read_logs_warning(caplog, parset, expected_message):
-    with assert_message_logged(
+def assert_warning_logged(caplog, expected_messages=(), expected_message=None):
+    return assert_logged(
         caplog,
-        logger="rapthor:parset",
-        level=logging.WARNING,
+        "rapthor:parset",
+        logging.WARNING,
+        expected_messages,
         expected_message=expected_message,
-    ):
-        parset_read(parset)
+    )
 
 
 class TestParset:
