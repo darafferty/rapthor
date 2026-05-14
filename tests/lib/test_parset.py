@@ -177,7 +177,7 @@ class TestParset:
         return parset_path
 
     # ------------------------------------------------------------------------ #
-    # Tests 
+    # Tests
 
     def test_missing_parset_file(self):
         """
@@ -194,9 +194,7 @@ class TestParset:
         parset = tmp_path / "empty.parset"
         parset.touch()  # Create an empty file
 
-        with pytest.raises(
-            ValueError, match=r"Missing required option\(s\) in section \[global\]:"
-        ):
+        with pytest.raises(ValueError, match="Missing required option(s) in section [global]:"):
             parset_read(parset)
 
     def test_minimal_parset(self, tmp_path, parset):
@@ -221,6 +219,11 @@ class TestParset:
                 "Option 'misspelled_option' in section [global] is invalid",
                 id="misspelled_option",
             ),
+            pytest.param(
+                ("cluster", "dir_local", "some value"),
+                "Option '{option}' in section [{section}] is deprecated",
+                id="deprecated_option",
+            ),
         ],
         indirect=["parset"],
     )
@@ -229,26 +232,8 @@ class TestParset:
         Test that invalid sections or options in the parset produce appropriate
         warning log messages.
         """
-        _test_parset_read_logs_warning(caplog, parset, expected_message)
-
-    @pytest.mark.parametrize(
-        "parset, expected_message",
-        [
-            (
-                (section, option, "some value"),
-                f"Option '{option}' in section [{section}] is deprecated",
-            )
-            for section, option in [
-                ("cluster", "dir_local"),
-            ]
-        ],
-        indirect=["parset"],
-    )
-    def test_deprecated_option(self, parset, caplog, expected_message):
-        """
-        Test that using deprecated options logs a deprecation warning.
-        """
-        _test_parset_read_logs_warning(caplog, parset, expected_message)
+        with assert_warning_logged(caplog, expected_message):
+            parset_read(parset)
 
     @pytest.mark.parametrize(
         "parset, expected_message",
@@ -288,7 +273,7 @@ class TestParset:
         Test that reading a template parset produces a dict matching the
         expected reference output.
         """
-        
+
         resources = request.config.resource_dir
         template_path = resources / f"rapthor_{template_id}.parset.template"
         reference_path = resources / f"rapthor_{template_id}.parset_dict.template"
