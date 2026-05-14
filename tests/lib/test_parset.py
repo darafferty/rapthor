@@ -349,7 +349,9 @@ class TestCheckSkymodelSettings:
     """
 
     def _make_parset_dict(self, **overrides):
-        """Helper to create a minimal parset_dict with sensible defaults."""
+        """
+        Helper to create a minimal parset_dict with sensible defaults.
+        """
         parset_dict = {
             "input_skymodel": None,
             "generate_initial_skymodel": False,
@@ -407,6 +409,9 @@ class TestCheckSkymodelSettings:
     def test_input_skymodel_disables_download(
         self, caplog, mock_skymodel_path, generate, expected_warning
     ):
+        """
+        Test that download is disabled when an input skymodel is provided.
+        """
         parset_dict = self._make_parset_dict(
             input_skymodel=mock_skymodel_path,
             generate_initial_skymodel=generate,
@@ -450,13 +455,12 @@ class TestCheckSkymodelSettings:
     def test_no_input_skymodel_generate_or_download_requested(
         self, caplog, config, expected_warning
     ):
+        """
+        Test that the correct messages are logged when no input skymodel is
+        given and generate/download is requested.
+        """
         parset_dict = self._make_parset_dict(**config)
-        with assert_logged(
-            caplog,
-            logger="rapthor:parset",
-            level="INFO",
-            expected_message=expected_warning,
-        ):
+        with assert_info_logged(caplog, expected_message=expected_warning):
             check_and_adjust_skymodel_settings(parset_dict)
 
     # ---- internet access checks ----
@@ -469,6 +473,9 @@ class TestCheckSkymodelSettings:
         ],
     )
     def test_download_with_internet_access(self, allow_internet_access, context):
+        """
+        Test that download requires internet access to be allowed.
+        """
         parset_dict = self._make_parset_dict(
             download_initial_skymodel=True,
             cluster_specific={"allow_internet_access": allow_internet_access},
@@ -477,8 +484,9 @@ class TestCheckSkymodelSettings:
             check_and_adjust_skymodel_settings(parset_dict)
 
     # ---- diagnostic and normalization skymodel checks (no internet) ----
+
     @pytest.mark.parametrize(
-        "name, skymodel",
+        "skymodel_name, skymodel_path",
         [
             ("astrometry_skymodel", "/nonexistent/astro.skymodel"),
             ("photometry_skymodel", "/nonexistent/photo.skymodel"),
@@ -488,11 +496,15 @@ class TestCheckSkymodelSettings:
             ),
         ],
     )
-    def test_skymodel_missing_no_internet_raises(self, name, skymodel):
+    def test_skymodel_missing_no_internet_raises(self, skymodel_name, skymodel_path):
+        """
+        Test that missing diagnostic/normalization skymodels raise
+        FileNotFoundError without internet.
+        """
         parset_dict = self._make_parset_dict(
             generate_initial_skymodel=True,
             cluster_specific={"allow_internet_access": False},
-            imaging_specific={name: skymodel},
+            imaging_specific={skymodel_name: skymodel_path},
         )
         with pytest.raises(FileNotFoundError):
             check_and_adjust_skymodel_settings(parset_dict)
@@ -505,6 +517,9 @@ class TestCheckSkymodelSettings:
         ],
     )
     def test_skymodel_exists_no_internet_ok(self, caplog, mock_skymodel_path, diagnostic):
+        """
+        Test that existing diagnostic skymodels are accepted without internet access.
+        """
         parset_dict = self._make_parset_dict(
             cluster_specific={"allow_internet_access": False},
             imaging_specific={f"{diagnostic}_skymodel": mock_skymodel_path},
@@ -518,6 +533,9 @@ class TestCheckSkymodelSettings:
             check_and_adjust_skymodel_settings(parset_dict)
 
     def test_normalization_skymodel_exists_no_internet_ok(self, mock_skymodel_path):
+        """
+        Test that existing normalization skymodels are accepted without internet access.
+        """
         parset_dict = self._make_parset_dict(
             cluster_specific={"allow_internet_access": False},
             imaging_specific={
@@ -529,6 +547,9 @@ class TestCheckSkymodelSettings:
         check_and_adjust_skymodel_settings(parset_dict)
 
     def test_diagnostic_skymodel_empty_no_internet_ok(self, caplog):
+        """
+        Test that unset diagnostic skymodels produce skip warnings without internet.
+        """
         parset_dict = self._make_parset_dict(
             cluster_specific={"allow_internet_access": False},
             imaging_specific={
