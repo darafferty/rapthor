@@ -378,15 +378,24 @@ class TestCheckSkymodelSettings:
 
     # ---- input_skymodel given ----
 
-    def test_input_skymodel_not_found_raises(self):
-        parset_dict = self._make_parset_dict(input_skymodel="/nonexistent/skymodel.txt")
-        with pytest.raises(FileNotFoundError):
+    @pytest.mark.parametrize(
+        "dynamic_fixture_lookup, context",
+        [
+            # Test nominal case where input skymodel is provided and exists.
+            (mock_skymodel_path, contextlib.nullcontext()),
+            # Test that a non-existent input skymodel raises FileNotFoundError.
+            ("/nonexistent/skymodel.txt", pytest.raises(FileNotFoundError)),
+        ],
+        indirect=["dynamic_fixture_lookup"],
+    )
+    def test_input_skymodel_not_found_raises(self, dynamic_fixture_lookup, context):
+        """
+        Test that providing an existing input skymodel works, and that a
+        non-existent input skymodel raises FileNotFoundError.
+        """
+        parset_dict = self._make_parset_dict(input_skymodel=dynamic_fixture_lookup)
+        with context:
             check_and_adjust_skymodel_settings(parset_dict)
-
-    def test_input_skymodel_exists(self, mock_skymodel_path):
-        parset_dict = self._make_parset_dict(input_skymodel=mock_skymodel_path)
-        # Should not raise
-        check_and_adjust_skymodel_settings(parset_dict)
 
     @pytest.mark.parametrize(
         "generate, expected_warning",
