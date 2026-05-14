@@ -298,8 +298,7 @@ class TestParset:
         assert parset == reference_dict
 
 
-
-class TestCheckSkymodelSettings(unittest.TestCase):
+class TestCheckSkymodelSettings:
     """
     Tests for the `check_and_adjust_skymodel_settings` function.
     """
@@ -326,6 +325,12 @@ class TestCheckSkymodelSettings(unittest.TestCase):
                 parset_dict[key] = value
         return parset_dict
 
+    @pytest.fixture
+    def mock_skymodel_path(self, tmp_path):
+        path = tmp_path / "mock.skymodel"
+        path.touch()
+        return path
+
     # ---- input_skymodel given ----
 
     def test_input_skymodel_not_found_raises(self):
@@ -333,260 +338,143 @@ class TestCheckSkymodelSettings(unittest.TestCase):
         with pytest.raises(FileNotFoundError):
             check_and_adjust_skymodel_settings(parset_dict)
 
-    def test_input_skymodel_exists(self):
-        with tempfile.NamedTemporaryFile(suffix=".skymodel") as f:
-            parset_dict = self._make_parset_dict(input_skymodel=f.name)
-            # Should not raise
-            check_and_adjust_skymodel_settings(parset_dict)
+    def test_input_skymodel_exists(self, mock_skymodel_path):
+        parset_dict = self._make_parset_dict(input_skymodel=mock_skymodel_path)
+        # Should not raise
+        check_and_adjust_skymodel_settings(parset_dict)
 
-    def test_input_skymodel_with_generate_disables_download(self):
-        with tempfile.NamedTemporaryFile(suffix=".skymodel") as f:
-            parset_dict = self._make_parset_dict(
-                input_skymodel=f.name,
-                generate_initial_skymodel=True,
-                download_initial_skymodel=True,
-            )
-            with self.assertLogs(logger="rapthor:parset", level="WARN") as cm:
-                check_and_adjust_skymodel_settings(parset_dict)
-            self.assertFalse(parset_dict["download_initial_skymodel"])
-            self.assertTrue(any("Sky model generation requested" in msg for msg in cm.output))
-
-    def test_input_skymodel_with_download_disables_download(self):
-        with tempfile.NamedTemporaryFile(suffix=".skymodel") as f:
-            parset_dict = self._make_parset_dict(
-                input_skymodel=f.name,
-                download_initial_skymodel=True,
-            )
-            with self.assertLogs(logger="rapthor:parset", level="WARN") as cm:
-                check_and_adjust_skymodel_settings(parset_dict)
-            self.assertFalse(parset_dict["download_initial_skymodel"])
-            self.assertTrue(any("Sky model download requested" in msg for msg in cm.output))
-            self.assertTrue(any("Disabling download" in msg for msg in cm.output))
-
-    # ---- no input_skymodel, generate requested ----
-
-    def test_no_input_generate_requested(self):
-        parset_dict = self._make_parset_dict(generate_initial_skymodel=True)
-        with self.assertLogs(logger="rapthor:parset", level="INFO") as cm:
-            check_and_adjust_skymodel_settings(parset_dict)
-        self.assertTrue(any("Will automatically generate sky model" in msg for msg in cm.output))
-
-    def test_no_input_generate_requested_with_apparent_warns(self):
+    @pytest.mark.parametrize(
+        "generate, expected_warning",
+        [
+            (True, "Sky model generation requested"),
+            (False, ["Sky model download requested", "Disabling download"]),
+        ],
+    )
+    def test_input_skymodel_disables_download(
+        self, caplog, mock_skymodel_path, generate, expected_warning
+    ):
         parset_dict = self._make_parset_dict(
-            generate_initial_skymodel=True,
-            apparent_skymodel="some_apparent.skymodel",
-        )
-        with self.assertLogs(logger="rapthor:parset", level="WARN") as cm:
-            check_and_adjust_skymodel_settings(parset_dict)
-        self.assertTrue(any("apparent sky model will not be used" in msg for msg in cm.output))
-
-    # ---- no input_skymodel, download requested ----
-
-    def test_no_input_download_requested(self):
-        parset_dict = self._make_parset_dict(download_initial_skymodel=True)
-        with self.assertLogs(logger="rapthor:parset", level="INFO") as cm:
-            check_and_adjust_skymodel_settings(parset_dict)
-        self.assertTrue(any("Will automatically download sky model" in msg for msg in cm.output))
-
-    def test_no_input_download_requested_with_apparent_warns(self):
-        parset_dict = self._make_parset_dict(
+            input_skymodel=mock_skymodel_path,
+            generate_initial_skymodel=generate,
             download_initial_skymodel=True,
-            apparent_skymodel="some_apparent.skymodel",
         )
-        with self.assertLogs(logger="rapthor:parset", level="WARN") as cm:
+        with assert_warning_logged(caplog, expected_warning):
             check_and_adjust_skymodel_settings(parset_dict)
-        self.assertTrue(any("apparent sky model will not be used" in msg for msg in cm.output))
 
-    # ---- no input_skymodel, neither generate nor download ----
+        assert parset_dict["download_initial_skymodel"] is False
 
-    def test_no_input_no_generate_no_download_warns(self):
-        parset_dict = self._make_parset_dict()
-        with self.assertLogs(logger="rapthor:parset", level="WARN") as cm:
+    # ---- no input_skymodel, generate / requested ----
+
+    @pytest.mark.parametrize(
+        "config, expected_warning",
+        [
+            (
+                {"generate_initial_skymodel": True},
+                "Will automatically generate sky model",
+            ),
+            (
+                {
+                    "generate_initial_skymodel": True,
+                    "apparent_skymodel": "some_apparent.skymodel",
+                },
+                "apparent sky model will not be used",
+            ),
+            (
+                {"download_initial_skymodel": True},
+                "Will automatically download sky model",
+            ),
+            (
+                {
+                    "download_initial_skymodel": True,
+                    "apparent_skymodel": "some_apparent.skymodel",
+                },
+                "apparent sky model will not be used",
+            ),
+            ({}, "neither generation nor download"),
+        ],
+    )
+    def test_no_input_skymodel_generate_or_download_requested(
+        self, caplog, config, expected_warning
+    ):
+        parset_dict = self._make_parset_dict(**config)
+        with assert_logged(
+            caplog,
+            logger="rapthor:parset",
+            level="INFO",
+            expected_message=expected_warning,
+        ):
             check_and_adjust_skymodel_settings(parset_dict)
-        self.assertTrue(any("neither generation nor download" in msg for msg in cm.output))
 
     # ---- internet access checks ----
 
-    def test_download_no_internet_raises(self):
+    @pytest.mark.parametrize(
+        "allow_internet_access, context",
+        [
+            (True, contextlib.nullcontext()),
+            (False, pytest.raises(ValueError)),
+        ],
+    )
+    def test_download_with_internet_access(self, allow_internet_access, context):
         parset_dict = self._make_parset_dict(
             download_initial_skymodel=True,
-            cluster_specific={"allow_internet_access": False},
+            cluster_specific={"allow_internet_access": allow_internet_access},
         )
-        with pytest.raises(ValueError):
-            check_and_adjust_skymodel_settings(parset_dict)
-
-    def test_internet_allowed_download_ok(self):
-        parset_dict = self._make_parset_dict(
-            download_initial_skymodel=True,
-            cluster_specific={"allow_internet_access": True},
-        )
-        # Should not raise
-        with self.assertLogs(logger="rapthor:parset", level="INFO"):
+        with context:
             check_and_adjust_skymodel_settings(parset_dict)
 
     # ---- diagnostic and normalization skymodel checks (no internet) ----
-
-    def test_astrometry_skymodel_missing_no_internet_raises(self):
+    @pytest.mark.parametrize(
+        "name, skymodel",
+        [
+            ("astrometry_skymodel", "/nonexistent/astro.skymodel"),
+            ("photometry_skymodel", "/nonexistent/photo.skymodel"),
+            (
+                "normalization_skymodels",
+                ["/nonexistent/norm1.skymodel", "/nonexistent/norm2.skymodel"],
+            ),
+        ],
+    )
+    def test_skymodel_missing_no_internet_raises(self, name, skymodel):
         parset_dict = self._make_parset_dict(
             generate_initial_skymodel=True,
             cluster_specific={"allow_internet_access": False},
-            imaging_specific={
-                "astrometry_skymodel": "/nonexistent/astro.skymodel",
-                "photometry_skymodel": None,
-                "normalization_skymodels": None,
-                "normalization_reference_frequencies": None,
-            },
+            imaging_specific={name: skymodel},
         )
         with pytest.raises(FileNotFoundError):
             check_and_adjust_skymodel_settings(parset_dict)
 
-    def test_photometry_skymodel_missing_no_internet_raises(self):
+    @pytest.mark.parametrize(
+        "diagnostic",
+        [
+            "astrometry",
+            "photometry",
+        ],
+    )
+    def test_skymodel_exists_no_internet_ok(self, caplog, mock_skymodel_path, diagnostic):
         parset_dict = self._make_parset_dict(
-            generate_initial_skymodel=True,
+            cluster_specific={"allow_internet_access": False},
+            imaging_specific={f"{diagnostic}_skymodel": mock_skymodel_path},
+        )
+        # Should not raise (warning about no skymodel is expected)
+        other = ({"astrometry", "photometry"} - {diagnostic}).pop()
+        with assert_warning_logged(
+            caplog,
+            expected_message=f"The {other} check will be skipped",
+        ):
+            check_and_adjust_skymodel_settings(parset_dict)
+
+    def test_normalization_skymodel_exists_no_internet_ok(self, mock_skymodel_path):
+        parset_dict = self._make_parset_dict(
             cluster_specific={"allow_internet_access": False},
             imaging_specific={
-                "astrometry_skymodel": None,
-                "photometry_skymodel": "/nonexistent/photo.skymodel",
-                "normalization_skymodels": None,
-                "normalization_reference_frequencies": None,
+                "normalization_skymodels": [mock_skymodel_path, mock_skymodel_path],
+                "normalization_reference_frequencies": [str(142000000.0), str(142001000.0)],
             },
         )
-        with pytest.raises(FileNotFoundError):
-            check_and_adjust_skymodel_settings(parset_dict)
+        # Should not raise (warning about no skymodel is expected)
+        check_and_adjust_skymodel_settings(parset_dict)
 
-    def test_normalization_skymodel_missing_no_internet_raises(self):
-        parset_dict = self._make_parset_dict(
-            generate_initial_skymodel=True,
-            cluster_specific={"allow_internet_access": False},
-            imaging_specific={
-                "astrometry_skymodel": None,
-                "photometry_skymodel": None,
-                "normalization_skymodels": [
-                    "/nonexistent/norm.skymodel",
-                    "/nonexistent/norm2.skymodel",
-                ],
-                "normalization_reference_frequencies": None,
-            },
-        )
-        with pytest.raises(FileNotFoundError):
-            check_and_adjust_skymodel_settings(parset_dict)
-
-    def test_astrometry_skymodel_exists_no_internet_ok(self):
-        with tempfile.NamedTemporaryFile(suffix=".skymodel") as f:
-            parset_dict = self._make_parset_dict(
-                cluster_specific={"allow_internet_access": False},
-                imaging_specific={
-                    "astrometry_skymodel": f.name,
-                    "photometry_skymodel": None,
-                },
-            )
-            # Should not raise (warning about no skymodel is expected)
-            with self.assertLogs(logger="rapthor:parset", level="WARN") as cm:
-                check_and_adjust_skymodel_settings(parset_dict)
-
-            self.assertTrue(any("The photometry check will be skipped" in msg for msg in cm.output))
-
-    def test_photometry_skymodel_exists_no_internet_ok(self):
-        with tempfile.NamedTemporaryFile(suffix=".skymodel") as f:
-            parset_dict = self._make_parset_dict(
-                cluster_specific={"allow_internet_access": False},
-                imaging_specific={
-                    "astrometry_skymodel": None,
-                    "photometry_skymodel": f.name,
-                },
-            )
-            # Should not raise (warning about no skymodel is expected)
-            with self.assertLogs(logger="rapthor:parset", level="WARN") as cm:
-                check_and_adjust_skymodel_settings(parset_dict)
-
-            self.assertTrue(any("The astrometry check will be skipped" in msg for msg in cm.output))
-
-    def test_normalization_skymodel_exists_no_internet_ok(self):
-        with tempfile.NamedTemporaryFile(suffix=".skymodel") as f:
-            parset_dict = self._make_parset_dict(
-                cluster_specific={"allow_internet_access": False},
-                imaging_specific={
-                    "normalization_skymodels": [f.name, f.name],
-                    "normalization_reference_frequencies": [str(142000000.0), str(142001000.0)],
-                },
-            )
-            # Should not raise (warning about no skymodel is expected)
-            with self.assertLogs(logger="rapthor:parset", level="WARN") as cm:
-                check_and_adjust_skymodel_settings(parset_dict)
-
-    def test_single_normalization_skymodel_raises_error(self):
-        with tempfile.NamedTemporaryFile(suffix=".skymodel") as f:
-            parset_dict = self._make_parset_dict(
-                cluster_specific={"allow_internet_access": False},
-                imaging_specific={
-                    "normalization_skymodels": f.name,
-                    "normalization_reference_frequencies": [str(142000000.0)],
-                },
-            )
-            # Should raise ValueError because only one normalization skymodel is provided
-            with pytest.raises(ValueError):
-                check_and_adjust_skymodel_settings(parset_dict)
-
-    def test_only_one_existing_path_for_normalization_skymodels_raises_error(self):
-        with tempfile.NamedTemporaryFile(suffix=".skymodel") as f:
-            parset_dict = self._make_parset_dict(
-                cluster_specific={"allow_internet_access": False},
-                imaging_specific={
-                    "normalization_skymodels": [f.name, "/nonexistent/norm.skymodel"],
-                    "normalization_reference_frequencies": [str(142000000.0), str(142001000.0)],
-                },
-            )
-            with pytest.raises(FileNotFoundError):
-                check_and_adjust_skymodel_settings(parset_dict)
-
-    def test_normalization_reference_frequencies_missing_raises_error(self):
-        with tempfile.NamedTemporaryFile(suffix=".skymodel") as f:
-            parset_dict = self._make_parset_dict(
-                cluster_specific={"allow_internet_access": False},
-                imaging_specific={
-                    "normalization_skymodels": [f.name, f.name],
-                    "normalization_reference_frequencies": None,
-                },
-            )
-            with pytest.raises(ValueError):
-                check_and_adjust_skymodel_settings(parset_dict)
-
-    def test_normalization_reference_frequencies_wrong_length_raises_error(self):
-        with tempfile.NamedTemporaryFile(suffix=".skymodel") as f:
-            parset_dict = self._make_parset_dict(
-                cluster_specific={"allow_internet_access": False},
-                imaging_specific={
-                    "normalization_skymodels": [f.name, f.name],
-                    "normalization_reference_frequencies": [str(142000000.0)],
-                },
-            )
-            with pytest.raises(ValueError):
-                check_and_adjust_skymodel_settings(parset_dict)
-
-    def test_normalization_parameters_tuple(self):
-        with tempfile.NamedTemporaryFile(suffix=".skymodel") as f:
-            parset_dict = self._make_parset_dict(
-                cluster_specific={"allow_internet_access": False},
-                imaging_specific={
-                    "normalization_skymodels": (f.name, f.name),
-                    "normalization_reference_frequencies": (142000000.0, 142001000.0),
-                },
-            )
-            check_and_adjust_skymodel_settings(parset_dict)
-
-    def test_normalization_parameters_set_raises_error(self):
-        with tempfile.NamedTemporaryFile(suffix=".skymodel") as f:
-            parset_dict = self._make_parset_dict(
-                cluster_specific={"allow_internet_access": False},
-                imaging_specific={
-                    "normalization_skymodels": {f.name, f.name},
-                    "normalization_reference_frequencies": {142000000.0, 142001000.0},
-                },
-            )
-            with pytest.raises(ValueError):
-                check_and_adjust_skymodel_settings(parset_dict)
-
-    def test_diagnostic_skymodel_empty_no_internet_ok(self):
+    def test_diagnostic_skymodel_empty_no_internet_ok(self, caplog):
         parset_dict = self._make_parset_dict(
             cluster_specific={"allow_internet_access": False},
             imaging_specific={
@@ -597,12 +485,96 @@ class TestCheckSkymodelSettings(unittest.TestCase):
             },
         )
         # Should not raise
-        with self.assertLogs(logger="rapthor:parset", level="WARN") as cm:
+        with assert_warning_logged(
+            caplog,
+            expected_messages=[
+                "The astrometry check will be skipped",
+                "The photometry check will be skipped",
+            ],
+        ):
             check_and_adjust_skymodel_settings(parset_dict)
 
-        self.assertTrue(any("The astrometry check will be skipped" in msg for msg in cm.output))
-        self.assertTrue(any("The photometry check will be skipped" in msg for msg in cm.output))
+    @pytest.mark.parametrize(
+        "fixture_value_lookup, context",
+        [
+            # Nominal case: skymodels and frequencies can be given as tuples
+            pytest.param(
+                {
+                    "normalization_skymodels": (mock_skymodel_path, mock_skymodel_path),
+                    "normalization_reference_frequencies": (142000000.0, 142001000.0),
+                },
+                contextlib.nullcontext(),
+                id="normalization_parameters_tuple",
+            ),
+            # Error cases
+            # ---------------------------------------------------------------- #
+            # Only one normalization skymodel provided, should raise ValueError
+            pytest.param(
+                {
+                    "normalization_skymodels": mock_skymodel_path,
+                    "normalization_reference_frequencies": [str(142000000.0)],
+                },
+                pytest.raises(ValueError),
+                id="single_normalization_skymodel_raises_error",
+            ),
+            # One of the normalization skymodels does not exist, should raise FileNotFoundError
+            pytest.param(
+                {
+                    "normalization_skymodels": [mock_skymodel_path, "/nonexistent/norm.skymodel"],
+                    "normalization_reference_frequencies": [str(142000000.0), str(142001000.0)],
+                },
+                pytest.raises(FileNotFoundError),
+                id="one_normalization_skymodel_missing_raises_error",
+            ),
+            # Normalization reference frequencies missing, should raise ValueError
+            pytest.param(
+                {
+                    "normalization_skymodels": [mock_skymodel_path, mock_skymodel_path],
+                    "normalization_reference_frequencies": None,
+                },
+                pytest.raises(ValueError),
+                id="normalization_reference_frequencies_missing_raises_error",
+            ),
+            # Normalization reference frequencies length mismatch, should raise ValueError
+            pytest.param(
+                {
+                    "normalization_skymodels": [mock_skymodel_path, mock_skymodel_path],
+                    "normalization_reference_frequencies": [str(142000000.0)],
+                },
+                pytest.raises(ValueError),
+                id="normalization_reference_frequencies_wrong_length_raises_error",
+            ),
+            # Invalid case: only one normalization skymodel provided as tuple, should raise ValueError
+            pytest.param(
+                {
+                    "normalization_skymodels": [mock_skymodel_path],
+                    "normalization_reference_frequencies": (142000000.0, 142001000.0),
+                },
+                pytest.raises(ValueError),
+                id="normalization_parameters_set_raises_error",
+            ),
+        ],
+        indirect=["fixture_value_lookup"],
+    )
+    def test_normalization_skymodel_input(self, fixture_value_lookup, context):
+        parset_dict = self._make_parset_dict(
+            cluster_specific={"allow_internet_access": False},
+            imaging_specific=fixture_value_lookup,
+        )
+        with context:
+            check_and_adjust_skymodel_settings(parset_dict)
 
 
-if __name__ == "__main__":
-    unittest.main()
+@pytest.fixture
+def fixture_value_lookup(request):
+    return {key: _get_fixture_value(request, item) for key, item in request.param.items()}
+
+
+def _get_fixture_value(request, item):
+    if callable(item) and hasattr(item, "_pytestfixturefunction"):
+        return request.getfixturevalue(item.__name__)
+
+    if isinstance(item, Sequence) and not isinstance(item, str):
+        return [_get_fixture_value(request, subitem) for subitem in item]
+
+    return item
