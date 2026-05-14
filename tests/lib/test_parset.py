@@ -6,13 +6,8 @@ import ast
 import configparser
 import contextlib
 import logging
-import os
-import string
-import tempfile
-import textwrap
-import unittest
+from collections.abc import MutableMapping, Sequence
 from pathlib import Path
-from unittest import mock
 
 import pytest
 
@@ -138,6 +133,56 @@ def assert_warning_logged(caplog, expected_messages=(), expected_message=None):
         expected_messages,
         expected_message=expected_message,
     )
+
+
+def assert_info_logged(caplog, expected_messages=(), expected_message=None):
+    return assert_logged(
+        caplog,
+        "rapthor:parset",
+        logging.INFO,
+        expected_messages,
+        expected_message=expected_message,
+    )
+
+
+@pytest.fixture
+def dynamic_fixture_lookup(request):
+    """
+    Helper fixture that retrieves fixture values dynamically for test case
+    parameters containing direct fixture function references.
+
+    This enables more flexible parametrization of test cases that require a mix
+    of literal values and fixture values. Fixture functions are resolved to the
+    required fixture values at runtime. The requested parameters may be a
+    single value or a nested structure, in which case the value resolution will
+    be done recursively.
+
+    Examples
+    --------
+    >>> @pytest.fixture
+    ... def my_fixture():
+    ...     'do some setup here'
+    ...     yield "fixture value"
+    ...
+    ... @pytest.mark.parametrize('dynamic_fixture_lookup', [my_fixture], indirect=True)
+    ... def test_something(dynamic_fixture_lookup):
+    ...     assert dynamic_fixture_lookup == "fixture value"
+    """
+    return _get_fixture_value(request, request.param)
+
+
+def _get_fixture_value(request, item):
+    # If the item is a fixture function, resolve it to the fixture value
+    if callable(item) and hasattr(item, "_pytestfixturefunction"):
+        return request.getfixturevalue(item.__name__)
+
+    if isinstance(item, MutableMapping):
+        return {key: _get_fixture_value(request, subitem) for key, subitem in item.items()}
+
+    if isinstance(item, Sequence) and not isinstance(item, (str, bytes)):
+        return [_get_fixture_value(request, subitem) for subitem in item]
+
+    return item
 
 
 class TestParset:
@@ -495,7 +540,7 @@ class TestCheckSkymodelSettings:
             check_and_adjust_skymodel_settings(parset_dict)
 
     @pytest.mark.parametrize(
-        "fixture_value_lookup, context",
+        "dynamic_fixture_lookup, context",
         [
             # Nominal case: skymodels and frequencies can be given as tuples
             pytest.param(
@@ -554,27 +599,15 @@ class TestCheckSkymodelSettings:
                 id="normalization_parameters_set_raises_error",
             ),
         ],
-        indirect=["fixture_value_lookup"],
+        indirect=["dynamic_fixture_lookup"],
     )
-    def test_normalization_skymodel_input(self, fixture_value_lookup, context):
+    def test_normalization_skymodel_input(self, dynamic_fixture_lookup, context):
+        """
+        Test validation of normalization skymodel and reference frequency inputs.
+        """
         parset_dict = self._make_parset_dict(
             cluster_specific={"allow_internet_access": False},
-            imaging_specific=fixture_value_lookup,
+            imaging_specific=dynamic_fixture_lookup,
         )
         with context:
             check_and_adjust_skymodel_settings(parset_dict)
-
-
-@pytest.fixture
-def fixture_value_lookup(request):
-    return {key: _get_fixture_value(request, item) for key, item in request.param.items()}
-
-
-def _get_fixture_value(request, item):
-    if callable(item) and hasattr(item, "_pytestfixturefunction"):
-        return request.getfixturevalue(item.__name__)
-
-    if isinstance(item, Sequence) and not isinstance(item, str):
-        return [_get_fixture_value(request, subitem) for subitem in item]
-
-    return item
