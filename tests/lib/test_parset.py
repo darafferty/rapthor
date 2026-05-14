@@ -12,8 +12,7 @@ from collections.abc import MutableMapping, Sequence
 import pytest
 
 from rapthor.lib.parset import check_and_adjust_skymodel_settings, parset_read
-
-from ..conftest import _generate_parset, assert_logged
+from tests.conftest import _generate_parset, assert_logged
 
 
 def assert_warning_logged(caplog, expected_messages=(), expected_message=None):

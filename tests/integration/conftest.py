@@ -9,7 +9,7 @@ import casacore.tables as pt
 import numpy as np
 import pytest
 
-from ..conftest import REPO_ROOT_DIR, RESOURCE_DIR, generate_parset_path
+from tests.conftest import REPO_ROOT_DIR, RESOURCE_DIR, generate_parset
 
 TEST_INTEGRATION_TRUE_SKYMODEL = (RESOURCE_DIR / "integration_true_sky.txt").as_posix()
 TEST_INTEGRATION_APPARENT_SKYMODEL = (RESOURCE_DIR / "integration_apparent_sky.txt").as_posix()
@@ -233,7 +233,7 @@ def generated_parset_path(request, tmp_path, test_ms):
     parset_path = REPO_ROOT_DIR / parset_path
     output_parset_path = tmp_path / "generated.parset"
 
-    generate_parset_path(
+    generate_parset(
         parset_path,
         output_parset_path,
         test_ms,
@@ -283,10 +283,10 @@ def generated_parset_path_normalisation(
     parset_path = REPO_ROOT_DIR / parset_path
     output_parset_path = tmp_path / "generated.parset"
 
-    generate_parset_path(
+    generate_parset(
         parset_path,
-        output_parset_path,
         ms_for_normalisation,
+        output_parset_path,
         input_skymodel_path,
         apparent_skymodel_path,
         normalization_skymodel_paths=normalization_skymodel_paths,
