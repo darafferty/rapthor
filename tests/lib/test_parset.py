@@ -147,7 +147,7 @@ def assert_info_logged(caplog, expected_messages=(), expected_message=None):
 
 
 @pytest.fixture
-def dynamic_fixture_lookup(request):
+def resolve_fixture_values(request):
     """
     Helper fixture that retrieves fixture values dynamically for test case
     parameters containing direct fixture function references.
@@ -165,9 +165,9 @@ def dynamic_fixture_lookup(request):
     ...     'do some setup here'
     ...     yield "fixture value"
     ...
-    ... @pytest.mark.parametrize('dynamic_fixture_lookup', [my_fixture], indirect=True)
-    ... def test_something(dynamic_fixture_lookup):
-    ...     assert dynamic_fixture_lookup == "fixture value"
+    ... @pytest.mark.parametrize('resolve_fixture_values', [my_fixture], indirect=True)
+    ... def test_something(resolve_fixture_values):
+    ...     assert resolve_fixture_values == "fixture value"
     """
     return _get_fixture_value(request, request.param)
 
@@ -384,21 +384,21 @@ class TestCheckSkymodelSettings:
     # ---- input_skymodel given ----
 
     @pytest.mark.parametrize(
-        "dynamic_fixture_lookup, context",
+        "resolve_fixture_values, context",
         [
             # Test nominal case where input skymodel is provided and exists.
             (mock_skymodel_path, contextlib.nullcontext()),
             # Test that a non-existent input skymodel raises FileNotFoundError.
             ("/nonexistent/skymodel.txt", pytest.raises(FileNotFoundError)),
         ],
-        indirect=["dynamic_fixture_lookup"],
+        indirect=["resolve_fixture_values"],
     )
-    def test_input_skymodel_not_found_raises(self, dynamic_fixture_lookup, context):
+    def test_input_skymodel_not_found_raises(self, resolve_fixture_values, context):
         """
         Test that providing an existing input skymodel works, and that a
         non-existent input skymodel raises FileNotFoundError.
         """
-        parset_dict = self._make_parset_dict(input_skymodel=dynamic_fixture_lookup)
+        parset_dict = self._make_parset_dict(input_skymodel=resolve_fixture_values)
         with context:
             check_and_adjust_skymodel_settings(parset_dict)
 
@@ -573,7 +573,7 @@ class TestCheckSkymodelSettings:
             check_and_adjust_skymodel_settings(parset_dict)
 
     @pytest.mark.parametrize(
-        "dynamic_fixture_lookup, context",
+        "resolve_fixture_values, context",
         [
             # Nominal case: skymodels and frequencies can be given as tuples
             pytest.param(
@@ -632,15 +632,15 @@ class TestCheckSkymodelSettings:
                 id="normalization_parameters_set_raises_error",
             ),
         ],
-        indirect=["dynamic_fixture_lookup"],
+        indirect=["resolve_fixture_values"],
     )
-    def test_normalization_skymodel_input(self, dynamic_fixture_lookup, context):
+    def test_normalization_skymodel_input(self, resolve_fixture_values, context):
         """
         Test validation of normalization skymodel and reference frequency inputs.
         """
         parset_dict = self._make_parset_dict(
             cluster_specific={"allow_internet_access": False},
-            imaging_specific=dynamic_fixture_lookup,
+            imaging_specific=resolve_fixture_values,
         )
         with context:
             check_and_adjust_skymodel_settings(parset_dict)
