@@ -341,8 +341,7 @@ def true_sky_path(tmp_path):
     """
     Fixture to create a true SkyModel for testing.
     """
-    shutil.copy((RESOURCE_DIR / "integration_true_sky.txt"), tmp_path / "integration_true_sky.txt")
-    return Path(tmp_path / "integration_true_sky.txt")
+    return _copy_from_resource_folder_to_test_path("integration_true_sky.txt", tmp_path)
 
 
 @pytest.fixture
@@ -350,10 +349,7 @@ def apparent_sky_path(tmp_path):
     """
     Fixture to create an apparent SkyModel for testing.
     """
-    shutil.copy(
-        (RESOURCE_DIR / "integration_apparent_sky.txt"), tmp_path / "integration_apparent_sky.txt"
-    )
-    return Path(tmp_path / "integration_apparent_sky.txt")
+    return _copy_from_resource_folder_to_test_path("integration_apparent_sky.txt", tmp_path)
 
 
 @pytest.fixture
