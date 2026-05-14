@@ -6,6 +6,7 @@ import ast
 import configparser
 import contextlib
 import logging
+import re
 from collections.abc import MutableMapping, Sequence
 from pathlib import Path
 
@@ -239,7 +240,9 @@ class TestParset:
         parset = tmp_path / "empty.parset"
         parset.touch()  # Create an empty file
 
-        with pytest.raises(ValueError, match="Missing required option(s) in section [global]:"):
+        with pytest.raises(
+            ValueError, match=re.escape("Missing required option(s) in section [global]:")
+        ):
             parset_read(parset)
 
     def test_minimal_parset(self, tmp_path, parset):
@@ -266,7 +269,7 @@ class TestParset:
             ),
             pytest.param(
                 ("cluster", "dir_local", "some value"),
-                "Option '{option}' in section [{section}] is deprecated",
+                "Option 'dir_local' in section [cluster] is deprecated",
                 id="deprecated_option",
             ),
         ],
