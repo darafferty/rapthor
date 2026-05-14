@@ -3,6 +3,7 @@ This files contains the configuration for pytest, including fixtures and hooks
 for this directory.
 """
 
+import configparser
 import contextlib
 import os
 import shutil
@@ -35,8 +36,15 @@ TEST_INTEGRATION_TRUE_SKYMODEL = (RESOURCE_DIR / "integration_true_sky.txt").as_
 TEST_INTEGRATION_APPARENT_SKYMODEL = (RESOURCE_DIR / "integration_apparent_sky.txt").as_posix()
 
 
+# ---------------------------------------------------------------------------- #
+# Config
+
 def pytest_configure(config):
     config.resource_dir = RESOURCE_DIR
+
+
+# ---------------------------------------------------------------------------- #
+# Helper functions
 
 
 @contextlib.contextmanager
@@ -173,6 +181,39 @@ def ensure_test_ms(resource_dir):
 
     _download_test_ms(destination)
     return destination
+
+
+def _generate_parset(template_parset=None, config=None, output_path=None, **kws):
+
+    parset = configparser.ConfigParser()
+    if isinstance(template_parset, configparser.ConfigParser):
+        parset = template_parset
+    elif isinstance(template_parset, (str, Path)):
+        parset.read(template_parset)
+    elif template_parset is not None:
+        raise TypeError(
+            "Invalid type for template_parset. Expected str, Path, or ConfigParser.",
+        )
+
+    config = config or {}
+    if kws:
+        config["global"].update(kws)
+    for section, options in config.items():
+        if section is not None and section not in parset:
+            parset.add_section(section)
+
+        for option, value in options.items():
+            parset.set(section, str(option), str(value))
+
+    if output_path:
+        with output_path.open("w") as fp:
+            parset.write(fp)
+
+    return parset
+
+
+# ---------------------------------------------------------------------------- #
+# Fixtures
 
 
 @pytest.fixture(scope="session")

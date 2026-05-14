@@ -8,12 +8,12 @@ import contextlib
 import logging
 import re
 from collections.abc import MutableMapping, Sequence
-from pathlib import Path
 
 import pytest
 
 from rapthor.lib.parset import check_and_adjust_skymodel_settings, parset_read
-from tests.conftest import assert_logged
+
+from ..conftest import _generate_parset, assert_logged
 
 
 def assert_warning_logged(caplog, expected_messages=(), expected_message=None):
@@ -34,35 +34,6 @@ def assert_info_logged(caplog, expected_messages=(), expected_message=None):
         expected_messages,
         expected_message=expected_message,
     )
-
-
-def _generate_parset(template_parset=None, config=None, output_path=None, **kws):
-
-    parset = configparser.ConfigParser()
-    if isinstance(template_parset, configparser.ConfigParser):
-        parset = template_parset
-    elif isinstance(template_parset, (str, Path)):
-        parset.read(template_parset)
-    elif template_parset is not None:
-        raise TypeError(
-            "Invalid type for template_parset. Expected str, Path, or ConfigParser.",
-        )
-
-    config = config or {}
-    if kws:
-        config["global"].update(kws)
-    for section, options in config.items():
-        if section is not None and section not in parset:
-            parset.add_section(section)
-
-        for option, value in options.items():
-            parset.set(section, str(option), str(value))
-
-    if output_path:
-        with output_path.open("w") as fp:
-            parset.write(fp)
-
-    return parset
 
 
 @pytest.fixture
