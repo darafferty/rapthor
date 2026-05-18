@@ -433,7 +433,7 @@ class TestImage:
                 {"dd": ["fast_phase", "medium_phase"], "di": ["full_jones"]},
                 False,
                 False,
-                None,
+                "[fastphase,mediumphase,fulljones]",
             ),
             (
                 {"dd": ["fast_phase", "medium_phase"]},
@@ -460,6 +460,12 @@ class TestImage:
                 "[normalization]",
             ),
             (
+                {},
+                False,
+                False,
+                None,
+            ),
+            (
                 {"dd": ["fast_phase", "medium_phase"], "di": []},
                 False,
                 True,
@@ -483,6 +489,69 @@ class TestImage:
                 True,
                 "[fulljones,fastphase,slowgain,normalization]",
             ),
+            # Cases with apply_normalizations=False: normalization step should be absent
+            (
+                {"dd": ["fast_phase", "medium_phase"]},
+                False,
+                False,
+                "[fastphase,mediumphase]",
+            ),
+            (
+                {"dd": ["slow_gains"]},
+                False,
+                False,
+                "[slowgain]",
+            ),
+            (
+                {"dd": ["fast_phase", "medium_phase", "slow_gains"], "di": ["full_jones"]},
+                False,
+                False,
+                "[fastphase,mediumphase,slowgain,fulljones]",
+            ),
+            (
+                {"di": ["full_jones"], "dd": ["fast_phase", "slow_gains"]},
+                False,
+                False,
+                "[fulljones,fastphase,slowgain]",
+            ),
+            # DI-only cases (no DD solutions)
+            (
+                {"di": ["full_jones"]},
+                False,
+                True,
+                "[fulljones,normalization]",
+            ),
+            (
+                {"di": ["full_jones"]},
+                False,
+                False,
+                "[fulljones]",
+            ),
+            # DI slow_gains cases
+            (
+                {"di": ["slow_gains"]},
+                False,
+                True,
+                "[slowgain,normalization]",
+            ),
+            (
+                {"di": ["slow_gains"]},
+                False,
+                False,
+                "[slowgain]",
+            ),
+            (
+                {"di": ["slow_gains", "full_jones"]},
+                False,
+                True,
+                "[slowgain,fulljones,normalization]",
+            ),
+            (
+                {"di": ["slow_gains", "full_jones"]},
+                False,
+                False,
+                "[slowgain,fulljones]",
+            ),
         ],
     )
     def test_build_applycal_steps(
@@ -502,9 +571,12 @@ class TestImage:
         image.apply_normalizations = apply_normalizations
         field.calibration_strategy = calibration_strategy
 
-        # Create a temporary fake normalize h5parm so CWLFile doesn't fail
-        field.normalize_h5parm = str(h5parm_file)
-        field.fulljones_h5parm_filename = str(h5parm_file)
+        # Create a temporary fake normalize/fulljones h5parm so CWLFile doesn't fail,
+        # but only when the respective calibration was actually performed.
+        if apply_normalizations:
+            field.normalize_h5parm = str(h5parm_file)
+        if "full_jones" in calibration_strategy.get("di", []):
+            field.fulljones_h5parm_filename = str(h5parm_file)
 
         steps, _, _ = image._build_applycal_steps()
         assert steps == expected_steps
