@@ -70,7 +70,6 @@ def test_rapthor_run_single_loop_calibrate_di_fast_phase(
     assert "avg" not in dp3_arguments["steps"]
     assert "scalarphase" in dp3_arguments["solve1.mode"]
 
-
 @pytest.mark.integration
 @pytest.mark.xfail(reason="calibration_strategy still not implemented fully", strict=True)
 @pytest.mark.parametrize(
@@ -183,3 +182,60 @@ def test_rapthor_run_single_loop_calibrate_di_full_jones(
     assert "solve4" not in dp3_arguments["steps"]
     assert "avg" not in dp3_arguments["steps"]
     assert "fulljones" in dp3_arguments["solve1.mode"]
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    "generated_parset_path",
+    [
+        (
+            "tests/resources/integration_template.parset",
+            "tests/resources/integration_true_sky.txt",
+            "tests/resources/integration_apparent_sky.txt",
+        )
+    ],
+    indirect=True,
+)
+def test_rapthor_run_di_fast_phase_medium_phase(
+    generated_parset_path, single_loop_strategy_path_calibrate_di_fast_medium_phase
+):
+    """
+    Test a single selfcal loop with DP3.
+    DI fast_phase and medium_phase solves are performed
+    """
+
+    updated_parset_path = update_parset_path(
+        generated_parset_path,
+        {
+            "allow_internet_access": "False",
+            "strategy": str(single_loop_strategy_path_calibrate_di_fast_medium_phase),
+        },
+    )
+
+    working_dir = get_working_dir_from_parset(updated_parset_path)
+    print("---Rapthor working dir: ", working_dir)
+
+    command = ["rapthor", str(updated_parset_path)]
+    result = subprocess.run(command, capture_output=True, text=True, check=True)
+    output = f"{result.stdout}\n{result.stderr}"
+    assert result.returncode == 0, f"Rapthor failed with output:\n{output}"
+    assert "Operation calibrate_di_1 completed" in output
+    assert "Operation predict_di_1 completed" in output
+    assert "Operation image_1 completed" in output
+    assert "Operation mosaic_1 completed" in output
+    assert "Rapthor has finished :)" in output
+
+    calibrate_di_logs_dir = Path(working_dir) / "logs" / "calibrate_di_1"
+    calibrate_di_log = find_step_logs(calibrate_di_logs_dir, "ddecal_solve_di.cwl")
+    assert calibrate_di_log, "Expected DI calibration logs to be present"
+    dp3_arguments = parse_dp3_args_from_log(calibrate_di_log[0])
+
+    assert "steps" in dp3_arguments
+    assert "solve1" in dp3_arguments["steps"]
+    assert "solve2" in dp3_arguments["steps"]
+    assert "solve3" not in dp3_arguments["steps"]
+    assert "fast_phase_di_0.h5parm" == dp3_arguments["solve1.h5parm"]
+    assert "medium1_phase_di_0.h5parm" == dp3_arguments["solve2.h5parm"]
+    assert "scalarphase" == dp3_arguments["solve1.mode"]
+    assert "scalarphase" == dp3_arguments["solve2.mode"]
+    assert int(dp3_arguments["solve1.solint"]) < int(dp3_arguments["solve2.solint"])
+
