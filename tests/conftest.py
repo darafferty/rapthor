@@ -16,7 +16,6 @@ import pytest
 import requests
 from astropy.table import Table
 from lsmtool.facet import read_ds9_region_file
-from lsmtool.tableio import makeEmptyTable
 
 from rapthor.lib.field import Field
 from rapthor.lib.observation import Observation
