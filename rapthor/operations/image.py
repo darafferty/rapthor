@@ -142,10 +142,6 @@ class Image(Operation):
         fulljones_h5parm = None
         input_normalize_h5parm = None
 
-        if self.apply_none or not self.apply_normalizations:
-            # No solutions need to be preapplied before imaging
-            return None, fulljones_h5parm, input_normalize_h5parm
-
         solve_type_to_step = {
             "fast_phase": "fastphase",
             "medium_phase": "mediumphase",
@@ -163,8 +159,11 @@ class Image(Operation):
 
         if "fulljones" in steps:
             fulljones_h5parm = CWLFile(self.field.fulljones_h5parm_filename).to_json()
-        steps.append("normalization")
-        input_normalize_h5parm = CWLFile(self.field.normalize_h5parm).to_json()
+        if self.apply_normalizations:
+            steps.append("normalization")
+            input_normalize_h5parm = CWLFile(self.field.normalize_h5parm).to_json()
+        if self.apply_none or len(steps) == 0:
+            return None, None, None
 
         formatted = f"[{','.join(steps)}]" if steps else None
         return formatted, fulljones_h5parm, input_normalize_h5parm
