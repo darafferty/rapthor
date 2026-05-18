@@ -15,7 +15,7 @@ import numpy as np
 import pytest
 import requests
 from astropy.table import Table
-from lsmtool.facet import Facet
+from lsmtool.facet import read_ds9_region_file
 
 from rapthor.lib.field import Field
 from rapthor.lib.observation import Observation
@@ -639,3 +639,13 @@ def source_catalog_with_outliers_fits(tmp_path):
     )  # 10 sources, 4 of which will be outliers
     table.write(catalog_path, format="fits", overwrite=True)
     return catalog_path
+
+
+@pytest.fixture()
+def rendered_regions(pytestconfig):
+    return pytestconfig.resource_dir / "test_image_regions_rendered.fits"
+
+
+@pytest.fixture()
+def facets(facet_region_ds9):
+    return read_ds9_region_file(facet_region_ds9)
