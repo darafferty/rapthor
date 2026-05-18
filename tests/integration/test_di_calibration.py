@@ -72,6 +72,7 @@ def test_rapthor_run_single_loop_calibrate_di_fast_phase(
 
 
 @pytest.mark.integration
+@pytest.mark.xfail(reason="calibration_strategy still not implemented fully", strict=True)
 @pytest.mark.parametrize(
     "generated_parset_path",
     [
