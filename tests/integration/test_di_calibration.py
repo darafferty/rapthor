@@ -72,6 +72,7 @@ def test_rapthor_run_single_loop_calibrate_di_fast_phase(
 
 # fast medium slow for DI
 
+
 @pytest.mark.integration
 @pytest.mark.parametrize(
     "generated_parset_path,single_loop_strategy_with_calibration_strategy",
@@ -130,8 +131,7 @@ def test_rapthor_run_single_loop_calibrate_di_slow_gains(
     assert "avg" not in dp3_arguments["steps"]
     assert "scalarphase" in dp3_arguments["solve1.mode"]
     assert "slow_gains_di_0.h5parm" == dp3_arguments["solve3.h5parm"]
-    assert int(dp3_arguments["solve1.solint"]) == 600.0 # From the strategy (may be adjusted)
-
+    assert int(dp3_arguments["solve1.solint"]) == 600.0  # From the strategy (may be adjusted)
 
 
 @pytest.mark.integration
