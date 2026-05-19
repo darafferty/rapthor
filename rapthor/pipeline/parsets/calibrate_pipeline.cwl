@@ -1441,6 +1441,8 @@ steps:
         source: calibrator_patch_names
       - id: calibrator_fluxes
         source: calibrator_fluxes
+      - id: do_slowgain_solve
+        source: do_slowgain_solve
     when: $(inputs.do_slowgain_solve)
     out:
       - id: combinedh5parm
