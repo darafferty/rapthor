@@ -87,9 +87,9 @@ class Predict(Operation):
             'sector_skymodel': CWLFile(sector_parms['sector_skymodel']).to_json(),
             'sector_patches': sector_parms['sector_patches'],
 
-            'h5parm': CWLFile(field.h5parm_filename).to_json(),
+            'h5parm': CWLFile(field.h5parm_filename).to_json() if field.h5parm_filename else None,
             'normalize_h5parm': normalize_h5parm,
-            'dp3_applycal_steps': f"[{','.join(dp3_applycal_steps)}]",
+            'dp3_applycal_steps': f"[{','.join(dp3_applycal_steps)}]" if dp3_applycal_steps else None,
 
             'onebeamperpatch': field.onebeamperpatch,
             'sagecalpredict': field.sagecalpredict,
@@ -176,9 +176,11 @@ class Predict(Operation):
         Return the DP3 applycal steps and normalize_h5parm based on field settings.
         Returns a tuple of (dp3_applycal_steps, normalize_h5parm).
         """
-        dp3_applycal_steps = ['fastphase']
-        if self.field.apply_amplitudes:
-            dp3_applycal_steps.append('slowgain')
+        dp3_applycal_steps = []
+        if self.field.h5parm_filename is not None:
+            dp3_applycal_steps.append('fastphase')
+            if self.field.apply_amplitudes:
+                dp3_applycal_steps.append('slowgain')
         if self.field.apply_normalizations:
             normalize_h5parm = CWLFile(self.field.normalize_h5parm).to_json()
             dp3_applycal_steps.append('normalization')
