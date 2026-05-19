@@ -1054,7 +1054,7 @@ steps:
       - id: solve2_solint
         source: solint_solve2_timestep
       - id: solve2_mode
-        valueFrom: solve2_mode
+        source: solve2_mode
       - id: solve2_nchan
         source: solint_solve2_freqstep
       - id: solve2_solutions_per_direction
@@ -1116,7 +1116,7 @@ steps:
       - id: solve3_solint
         source: solint_solve3_timestep
       - id: solve3_mode
-        valueFrom: 'diagonal'
+        source: solve3_mode
       - id: solve3_nchan
         source: solint_solve3_freqstep
       - id: solve3_solutions_per_direction
@@ -1170,7 +1170,7 @@ steps:
       - id: solve4_solint
         source: solint_solve4_timestep
       - id: solve4_mode
-        valueFrom: 'scalarphase'
+        source: solve4_mode
       - id: solve4_nchan
         source: solint_solve4_freqstep
       - id: solve4_solutions_per_direction
