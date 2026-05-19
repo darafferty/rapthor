@@ -68,7 +68,6 @@ def predict(msfile, ds9_region_file, model_image):
 
     # remove '-model.fits' from image name
     model = model_image.replace("-model.fits", "")
-    print(model)
 
     # extract region names
     facets = read_ds9_region_file(ds9_region_file)
