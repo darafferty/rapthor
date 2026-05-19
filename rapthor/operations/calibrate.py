@@ -350,6 +350,7 @@ class Calibrate(Operation):
             )
             dp3_steps = preprocessing_steps + common_steps
         elif self.field.use_wsclean_predict:
+            # ToDo: predict should be a separate step (not DP3)
             preprocessing_steps = ["predict"]
             dp3_steps = preprocessing_steps + common_steps
         else:
