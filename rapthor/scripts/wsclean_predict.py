@@ -38,7 +38,7 @@ def remove_columns_from_ms(msfile, ds9_region_file):
     tt.close()
 
 
-def predict(msfile, ds9_region_file, model_image):
+def predict(msfile, ds9_region_file, model_image, storage_manager):
     """
 
     Parameters
@@ -76,6 +76,10 @@ def predict(msfile, ds9_region_file, model_image):
     for facet in facets:
         facet_names.append(facet.name)
 
+    # TODO: If the msfile is read-only, copy the file to a temporary ms
+    # for example : copy xxx.ms to xxx-predict-tmpfile.ms
+    # and predict the data
+
     err_code = 0
     # Run the command
     for facet in facet_names:
@@ -90,6 +94,8 @@ def predict(msfile, ds9_region_file, model_image):
             "{" + str(facet) + "}",
             "-name",
             str(model),
+            "-model-storage-manager",
+            str(storage_manager),
             str(msfile),
         ]
         try:
@@ -120,6 +126,9 @@ def main():
     parser.add_argument("--region", help="DS9 region file", type=str, default="")
     parser.add_argument("--model", help="Model FITS image", type=str, default="")
     parser.add_argument(
+        "--storage_manager", help="Storage manager", type=str, default="default"
+    )
+    parser.add_argument(
         "--cleanup", action=argparse.BooleanOptionalAction, help="Remove exra columns"
     )
     args = parser.parse_args()
@@ -127,7 +136,7 @@ def main():
     if args.cleanup:
         return remove_columns_from_ms(args.msin, args.region)
     else:
-        return predict(args.msin, args.region, args.model)
+        return predict(args.msin, args.region, args.model, args.storage_manager)
 
 
 if __name__ == "__main__":
