@@ -50,12 +50,6 @@ inputs:
       (length = n_obs * n_time_chunks).
     type: int[]
 
-  - id: solint_fast_timestep
-    label: Fast solution interval in time
-    doc: |
-      The solution interval in number of timeslots for the fast phase solve (length =
-      n_obs * n_time_chunks).
-    type: int[]
 
   - id: maxiter
     label: Maximum iterations
@@ -84,6 +78,21 @@ inputs:
   - id: do_slowgain_solve
     label: Perform slow gain solve
     type: boolean
+
+  - id: model_data_column
+    label: Model data column to read the input from
+    doc: |
+      The model data column to use for calibration
+    type: string?
+
+  - id: solve1_mode
+    label: solve1_mode
+    type: string
+
+  - id: solve2_mode
+    label: solve2_mode
+    type: string
+
 {% if use_image_based_predict %}
   - id: num_spectral_terms
     label: Number of spectral terms
@@ -188,22 +197,33 @@ inputs:
 
   - id: solint_fast_freqstep
     label: Fast solution interval in frequency
-    doc: |
-      The solution interval in number of frequency channels for the fast phase solve
-      (length = n_obs * n_time_chunks).
     type: int[]
-
-  - id: fast_solutions_per_direction
+  
+  - id: solint_solve1_freqstep
+    label: Solve1 freqstep
+    type: int[]
+  - id: solint_solve2_freqstep
+    label: Solve2 freqstep
+    type: int[]
+  - id: solint_solve3_freqstep
+    label: Solve3 freqstep
+    type: int[]
+  - id: solint_solve4_freqstep
+    label: Solve4 freqstep
+    type: int[]
+  
+  - id: solve1_solutions_per_direction
     label: Fast number of solutions per direction
     doc: |
       The number of solutions per direction for the fast phase solve (length =
       n_obs * n_calibrators * n_time_chunks).
     type:
-      type: array
-      items:
-        type: array
-        items: int
-
+      - type: array
+        items:
+          type: array
+          items: 
+          - int
+      
   - id: calibrator_patch_names
     label: Names of calibrator patches
     doc: |
@@ -217,96 +237,124 @@ inputs:
       n_calibrators).
     type: float[]
 
-  - id: output_fast_h5parm
+  - id: output_solve1_h5parm
     label: Fast output solution table
     doc: |
       The filename of the output h5parm solution table for the fast phase solve (length
       = n_obs * n_time_chunks).
     type: string[]
 
-  - id: collected_fast_h5parm
+  - id: collected_solve1_h5parm
     label: Collected fast output solution table
     doc: |
       The filename of the output collected h5parm solution table for the fast phase solve
       (length = 1).
     type: string
 
-  - id: fast_smoothness_dd_factors
+  - id: solve1_smoothness_dd_factors
     label: Smoothness factors
     doc: |
       The factor by which to multiply the smoothnesscontraint for the fast phase
       solve, per direction (length = n_obs * n_calibrators * n_time_chunks).
     type:
-      type: array
-      items:
-        type: array
-        items: float
+      - type: array
+        items:
+          type: array
+          items: 
+          - float
 
-  - id: fast_smoothnessconstraint
+  - id: solve1_smoothnessconstraint
     label: Fast smoothnessconstraint
     doc: |
       The smoothnessconstraint kernel size in Hz for the fast phase solve (length = 1).
-    type: float
+    type: float?
 
-  - id: fast_smoothnessreffrequency
+  - id: solve1_smoothnessreffrequency
     label: Fast smoothnessreffrequency
     doc: |
       The smoothnessreffrequency Hz for the fast phase solve (length = n_obs *
       n_time_chunks).
     type: float[]
 
-  - id: fast_smoothnessrefdistance
+  - id: solve1_smoothnessrefdistance
     label: Fast smoothnessrefdistance
     doc: |
       The smoothnessrefdistance in m for the fast phase solve (length = 1).
-    type: float
+    type: float?
 
-  - id: fast_antennaconstraint
+  - id: solve1_antennaconstraint
     label: Fast antenna constraint
     doc: |
       The antenna constraint for the fast phase solve (length = 1).
-    type: string
+    type: string?
 
-  - id: solint_medium_timestep
-    label: Medium solution interval in time
-    doc: |
-      The solution interval in number of timeslots for the medium phase solve (length =
-      n_obs * n_time_chunks).
+  - id: solint_solve1_timestep
+    label: First solution interval in time
     type: int[]
 
-  - id: solint_medium_freqstep
-    label: Medium solution interval in frequency
-    doc: |
-      The solution interval in number of frequency channels for the medium phase solve
-      (length = n_obs * n_time_chunks).
+  - id: solint_solve2_timestep
+    label: Second solution interval in frequency
     type: int[]
 
-  - id: medium_solutions_per_direction
+  - id: solint_solve3_timestep
+    label: Third solution interval in frequency
+    type: int[]
+
+  - id: solint_solve4_timestep
+    label: Forth solution interval in frequency
+    type: int[]
+
+  - id: solve2_solutions_per_direction
     label: Medium number of solutions per direction
     doc: |
       The number of solutions per direction for the medium phase solve (length =
       n_obs * n_calibrators * n_time_chunks).
     type:
-      type: array
-      items:
-        type: array
-        items: int
-
-  - id: output_medium1_h5parm
+      - type: array
+        items:
+          type: array
+          items: 
+          - int
+        
+  - id: solve3_solutions_per_direction
+    label: Medium number of solutions per direction
+    doc: |
+      The number of solutions per direction for the medium phase solve (length =
+      n_obs * n_calibrators * n_time_chunks).
+    type:
+      - type: array
+        items:
+          type: array
+          items: 
+          - int
+  
+  - id: solve4_solutions_per_direction
+    label: Medium number of solutions per direction
+    doc: |
+      The number of solutions per direction for the medium phase solve (length =
+      n_obs * n_calibrators * n_time_chunks).
+    type:
+      - type: array
+        items:
+          type: array
+          items: 
+          - int
+        
+  - id: output_solve2_h5parm
     label: Medium output solution table
     doc: |
       The filename of the output h5parm solution table for the medium1 phase solve (length
       = n_obs * n_time_chunks).
     type: string[]
 
-  - id: collected_medium1_h5parm
+  - id: collected_solve2_h5parm
     label: Collected medium output solution table
     doc: |
       The filename of the output collected h5parm solution table for the medium1 phase solve
       (length = 1).
     type: string
 
-  - id: combined_fast_medium1_h5parm
+  - id: combined_solve1_solve2_h5parm
     label: Combined fast and medium1 output solution table
     doc: |
       The filename of the output combined h5parm solution table for the fast phase solve
@@ -314,41 +362,67 @@ inputs:
       (length = 1).
     type: string
 
-  - id: medium_smoothness_dd_factors
+  - id: solve2_smoothness_dd_factors
     label: Smoothness factors
     doc: |
       The factor by which to multiply the smoothnesscontraint for the medium phase
       solve, per direction (length = n_obs * n_calibrators * n_time_chunks).
     type:
-      type: array
-      items:
-        type: array
-        items: float
+      - type: array
+        items:
+          type: array
+          items: 
+          - float
 
-  - id: medium_smoothnessconstraint
+  - id: solve2_smoothnessconstraint
     label: Fast smoothnessconstraint
     doc: |
       The smoothnessconstraint kernel size in Hz for the medium phase solve (length = 1).
     type: float
 
-  - id: medium_smoothnessreffrequency
+  - id: solve4_smoothnessconstraint
+    label: Fast smoothnessconstraint
+    doc: |
+      The smoothnessconstraint kernel size in Hz for the medium phase solve (length = 1).
+    type: float
+
+  - id: solve2_smoothnessreffrequency
     label: Fast smoothnessreffrequency
     doc: |
       The smoothnessreffrequency Hz for the medium phase solve (length = n_obs *
       n_time_chunks).
     type: float[]
 
-  - id: medium_smoothnessrefdistance
+  - id: solve4_smoothnessreffrequency
+    label: Fast smoothnessreffrequency
+    doc: |
+      The smoothnessreffrequency Hz for the medium phase solve (length = n_obs *
+      n_time_chunks).
+    type: float[]
+
+  - id: solve2_smoothnessrefdistance
     label: Fast smoothnessrefdistance
     doc: |
       The smoothnessrefdistance in m for the medium phase solve (length = 1).
-    type: float
+    type: float?
 
-  - id: medium_antennaconstraint
+  - id: solve4_smoothnessrefdistance
+    label: Fast smoothnessrefdistance
+    doc: |
+      The smoothnessrefdistance in m for the medium phase solve (length = 1).
+    type: float?
+
+  - id: solve2_antennaconstraint
     label: Fast antenna constraint
     doc: |
       The antenna constraint for the medium phase solve (length = 1).
-    type: string
+    type: string?
+
+  - id: solve4_antennaconstraint
+    label: Fast antenna constraint
+    doc: |
+      The antenna constraint for the medium phase solve (length = 1).
+    type: string?
 
   - id: dp3_steps
     label: Steps for DP3
@@ -463,16 +537,20 @@ inputs:
       Flag that enables model computation using SAGECal.
     type: boolean
 
-  - id: fast_datause
+  - id: solve1_datause
     doc: |
       DDECal datause option for the fast-phase calibration (length = 1).
     type: string
 
-  - id: medium_datause
+  - id: solve2_datause
     doc: |
       DDECal datause option for the medium-phase calibration (length = 1).
-    type: string
+    type: string?
 
+  - id: solve3_datause
+    doc: |
+      DDECal datause option for the medium-phase calibration (length = 1).
+    type: string?
   - id: stepsize
     label: Solver step size
     doc: |
@@ -531,7 +609,7 @@ inputs:
     type: int
 
 # start do_slowgain_solve
-  - id: slow_datause
+  - id: solve3_datause
     doc: |
       DDECal datause option for the slow-gain calibration (length = 1).
     type: string?
@@ -550,60 +628,58 @@ inputs:
       slow-gain solve (length = n_obs * n_freq_chunks).
     type: int[]?
 
-  - id: slow_solutions_per_direction
+  - id: solve3_solutions_per_direction
     label: Slow number of solutions per direction
     doc: |
       The number of solutions per direction for the
       slow-gain solve (length = n_obs * n_directions * n_time_chunks).
-    type: 
-      type: array
-      items:
-        type: array
-        items: 
-        - int
-        - 'null'
+    type:
+      - type: array
+        items:
+          type: array
+          items: 
+          - int
 
-  - id: slow_smoothness_dd_factors
+  - id: solve3_smoothness_dd_factors
     label: Smoothness factors
     doc: |
       The factor by which to multiply the smoothnesscontraint for the
       slow-gain solve, per direction (length = n_obs * n_calibrators * n_time_chunks).
-    type: 
-      type: array
-      items:
-        type: array
-        items: 
-        - float
-        - 'null'
+    type:
+      - type: array
+        items:
+          type: array
+          items: 
+          - float
 
-  - id: slow_smoothnessconstraint
+  - id: solve3_smoothnessconstraint
     label: Slow smoothnessconstraint
     doc: |
       The smoothnessconstraint kernel size in Hz for the slow-gain
       solve (length = 1).
     type: float?
 
-  - id: slow_antennaconstraint
+  - id: solve3_antennaconstraint
     label: Slow antenna constraint
     doc: |
       The antenna constraint for the slow-gain solve (length = 1).
     type: string?
 
-  - id: slow_initialsolutions_h5parm
+  - id: solve3_initialsolutions_h5parm
     label: Input solution table
     doc: |
       The filename of the input h5parm solution table to use for the
       slow-gain initial solutions (length = 1).
     type: File?
 
-  - id: medium2_initialsolutions_h5parm
+  - id: solve4_initialsolutions_h5parm
     label: Input solution table
     doc: |
       The filename of the input h5parm solution table to use for the medium2-phase
       initial solutions (length = 1).
     type: File?
 
-  - id: collected_medium2_h5parm
+  - id: collected_solve4_h5parm
     label: Collected medium output solution table
     doc: |
       The filename of the output collected h5parm solution table for the medium2 phase solve
@@ -637,28 +713,28 @@ inputs:
       The Dec in degrees of the phase center (length = 1).
     type: float?
 
-  - id: output_slow_h5parm
+  - id: output_solve3_h5parm
     label: Slow solve output solution table
     doc: |
       The filename of the output h5parm solution table for the slow-
       gain solve (length = n_obs * n_freq_chunks).
     type: string[]?
 
-  - id: collected_slow_h5parm
+  - id: collected_solve3_h5parm
     label: Collected slow output solution table
     doc: |
       The filename of the output collected h5parm solution table for the
       slow-gain solve (length = 1).
     type: string?
 
-  - id: output_medium2_h5parm
+  - id: output_solve4_h5parm
     label: Medium output solution table
     doc: |
       The filename of the output h5parm solution table for the medium2 phase solve (length
       = n_obs * n_time_chunks).
     type: string[]?
 
-  - id: combined_fast_medium1_medium2_h5parm
+  - id: combined_solve1_solve2_solve4_h5parm
     label: Combined fast, medium1, and medium2 output solution table
     doc: |
       The filename of the output combined h5parm solution table for the fast
@@ -679,7 +755,12 @@ inputs:
       The mode used for combining the fast-phase and slow-gain solutions
       (length = 1).
     type: string?
-
+  - id: solve3_mode
+    label: Solve3 mode
+    type: string
+  - id: solve4_mode
+    label: Solve4 mode
+    type: string
 {% endif %}
 # end generate_screens
 
@@ -809,7 +890,7 @@ steps:
       - id: h5parm
         source: output_idgcal_h5parm
       - id: solint
-        source: solint_fast_timestep
+        source: solint_solve1_timestep
       - id: model_image
         source: draw_model/model_images
       - id: maxiter
@@ -848,7 +929,7 @@ steps:
       - id: h5parm
         source: output_idgcal_h5parm
       - id: solint_fast
-        source: solint_fast_timestep
+        source: solint_solve1_timestep
       - id: solint_slow
         source: solint_slow_timestep
       - id: model_image
@@ -956,15 +1037,15 @@ steps:
       - id: numthreads
         source: max_threads
       - id: solve1_h5parm
-        source: output_fast_h5parm
+        source: output_solve1_h5parm
       - id: solve1_solint
-        source: solint_fast_timestep
+        source: solint_solve1_timestep
       - id: solve1_mode
-        valueFrom: 'scalarphase'
+        source: solve1_mode
       - id: solve1_nchan
-        source: solint_fast_freqstep
+        source: solint_solve1_freqstep
       - id: solve1_solutions_per_direction
-        source: fast_solutions_per_direction
+        source: solve1_solutions_per_direction
       - id: solve1_llssolver
         source: llssolver
       - id: solve1_maxiter
@@ -984,7 +1065,7 @@ steps:
       - id: solve1_solverlbfgs_minibatches
         source: solverlbfgs_minibatches
       - id: solve1_datause
-        source: fast_datause
+        source: solve1_datause
       - id: solve1_stepsize
         source: stepsize
       - id: solve1_stepsigma
@@ -994,15 +1075,15 @@ steps:
       - id: solve1_uvlambdamin
         source: uvlambdamin
       - id: solve1_smoothness_dd_factors
-        source: fast_smoothness_dd_factors
+        source: solve1_smoothness_dd_factors
       - id: solve1_smoothnessconstraint
-        source: fast_smoothnessconstraint
+        source: solve1_smoothnessconstraint
       - id: solve1_smoothnessreffrequency
-        source: fast_smoothnessreffrequency
+        source: solve1_smoothnessreffrequency
       - id: solve1_smoothnessrefdistance
-        source: fast_smoothnessrefdistance
+        source: solve1_smoothnessrefdistance
       - id: solve1_antennaconstraint
-        source: fast_antennaconstraint
+        source: solve1_antennaconstraint
       - id: solve1_correctfreqsmearing
         source: correctfreqsmearing
       - id: solve1_correcttimesmearing
@@ -1017,15 +1098,15 @@ steps:
         valueFrom: '[solve1.*]'
 {% endif %}
       - id: solve2_h5parm
-        source: output_medium1_h5parm
+        source: output_solve2_h5parm
       - id: solve2_solint
-        source: solint_medium_timestep
+        source: solint_solve2_timestep
       - id: solve2_mode
-        valueFrom: 'scalarphase'
+        source: solve2_mode
       - id: solve2_nchan
-        source: solint_medium_freqstep
+        source: solint_solve2_freqstep
       - id: solve2_solutions_per_direction
-        source: medium_solutions_per_direction
+        source: solve2_solutions_per_direction
       - id: solve2_llssolver
         source: llssolver
       - id: solve2_maxiter
@@ -1045,7 +1126,7 @@ steps:
       - id: solve2_solverlbfgs_minibatches
         source: solverlbfgs_minibatches
       - id: solve2_datause
-        source: medium_datause
+        source: solve2_datause
       - id: solve2_stepsize
         source: stepsize
       - id: solve2_stepsigma
@@ -1055,13 +1136,13 @@ steps:
       - id: solve2_uvlambdamin
         source: uvlambdamin
       - id: solve2_smoothness_dd_factors
-        source: medium_smoothness_dd_factors
+        source: solve2_smoothness_dd_factors
       - id: solve2_smoothnessconstraint
-        source: medium_smoothnessconstraint
+        source: solve2_smoothnessconstraint
       - id: solve2_smoothnessreffrequency
-        source: medium_smoothnessreffrequency
+        source: solve2_smoothnessreffrequency
       - id: solve2_smoothnessrefdistance
-        source: medium_smoothnessrefdistance
+        source: solve2_smoothnessrefdistance
       - id: solve2_antennaconstraint
         valueFrom: '[]'
       - id: solve2_keepmodel
@@ -1079,15 +1160,15 @@ steps:
       - id: solve3_applycal_steps
         source: ddecal_applycal_steps
       - id: solve3_h5parm
-        source: output_slow_h5parm
+        source: output_solve3_h5parm
       - id: solve3_solint
-        source: solint_slow_timestep
+        source: solint_solve3_timestep
       - id: solve3_mode
-        valueFrom: 'diagonal'
+        source: solve3_mode
       - id: solve3_nchan
-        source: solint_slow_freqstep
+        source: solint_solve3_freqstep
       - id: solve3_solutions_per_direction
-        source: slow_solutions_per_direction
+        source: solve3_solutions_per_direction
       - id: solve3_llssolver
         source: llssolver
       - id: solve3_maxiter
@@ -1095,7 +1176,7 @@ steps:
       - id: solve3_propagatesolutions
         source: propagatesolutions
       - id: solve3_initialsolutions_h5parm
-        source: slow_initialsolutions_h5parm
+        source: solve3_initialsolutions_h5parm
       - id: solve3_initialsolutions_soltab
         valueFrom: '[phase000,amplitude000]'
       - id: solve3_solveralgorithm
@@ -1107,7 +1188,7 @@ steps:
       - id: solve3_solverlbfgs_minibatches
         source: solverlbfgs_minibatches
       - id: solve3_datause
-        source: slow_datause
+        source: solve3_datause
       - id: solve3_stepsize
         source: stepsize
       - id: solve3_stepsigma
@@ -1117,11 +1198,11 @@ steps:
       - id: solve3_uvlambdamin
         source: uvlambdamin
       - id: solve3_smoothness_dd_factors
-        source: slow_smoothness_dd_factors
+        source: solve3_smoothness_dd_factors
       - id: solve3_smoothnessconstraint
-        source: slow_smoothnessconstraint
+        source: solve3_smoothnessconstraint
       - id: solve3_antennaconstraint
-        source: slow_antennaconstraint
+        source: solve3_antennaconstraint
       - id: solve3_keepmodel
         source: do_slowgain_solve
         valueFrom: $(self?"true":null)
@@ -1133,15 +1214,15 @@ steps:
         valueFrom: '[solve1.*]'
 {% endif %}
       - id: solve4_h5parm
-        source: output_medium2_h5parm
+        source: output_solve4_h5parm
       - id: solve4_solint
-        source: solint_medium_timestep
+        source: solint_solve4_timestep
       - id: solve4_mode
-        valueFrom: 'scalarphase'
+        source: solve4_mode
       - id: solve4_nchan
-        source: solint_medium_freqstep
+        source: solint_solve4_freqstep
       - id: solve4_solutions_per_direction
-        source: medium_solutions_per_direction
+        source: solve4_solutions_per_direction
       - id: solve4_llssolver
         source: llssolver
       - id: solve4_maxiter
@@ -1149,7 +1230,7 @@ steps:
       - id: solve4_propagatesolutions
         source: propagatesolutions
       - id: solve4_initialsolutions_h5parm
-        source: medium2_initialsolutions_h5parm
+        source: solve4_initialsolutions_h5parm
       - id: solve4_initialsolutions_soltab
         valueFrom: '[phase000]'
       - id: solve4_solveralgorithm
@@ -1161,7 +1242,7 @@ steps:
       - id: solve4_solverlbfgs_minibatches
         source: solverlbfgs_minibatches
       - id: solve4_datause
-        source: medium_datause
+        source: solve4_datause
       - id: solve4_stepsize
         source: stepsize
       - id: solve4_stepsigma
@@ -1171,20 +1252,23 @@ steps:
       - id: solve4_uvlambdamin
         source: uvlambdamin
       - id: solve4_smoothness_dd_factors
-        source: medium_smoothness_dd_factors
+        source: solve4_smoothness_dd_factors
       - id: solve4_smoothnessconstraint
-        source: medium_smoothnessconstraint
+        source: solve4_smoothnessconstraint
       - id: solve4_smoothnessreffrequency
-        source: medium_smoothnessreffrequency
+        source: solve4_smoothnessreffrequency
       - id: solve4_smoothnessrefdistance
-        source: medium_smoothnessrefdistance
+        source: solve4_smoothnessrefdistance
       - id: solve4_antennaconstraint
-        source: medium_antennaconstraint
+        source: solve4_antennaconstraint
+{% endif %}
     scatter: [msin, starttime, ntimes, maxinterval,
-              solve1_h5parm, solve1_solint, solve1_nchan, solve1_smoothnessreffrequency, solve1_solutions_per_direction, solve1_smoothness_dd_factors,
+              solve1_h5parm, solve1_solint, solve1_nchan, solve1_smoothnessreffrequency, solve1_solutions_per_direction, solve1_smoothness_dd_factors, 
               solve2_h5parm, solve2_solint, solve2_nchan, solve2_smoothnessreffrequency, solve2_solutions_per_direction, solve2_smoothness_dd_factors,
+{% if do_slowgain_solve %}
               solve3_h5parm, solve3_solint, solve3_nchan, solve3_solutions_per_direction, solve3_smoothness_dd_factors,
               solve4_h5parm, solve4_solint, solve4_nchan, solve4_smoothnessreffrequency, solve4_solutions_per_direction, solve4_smoothness_dd_factors,
+{% endif %}
               minchannels]
     scatterMethod: dotproduct
     out:
@@ -1203,7 +1287,7 @@ steps:
       - id: inh5parms
         source: solve/output_h5parm1
       - id: outputh5parm
-        source: collected_fast_h5parm
+        source: collected_solve1_h5parm
     out:
       - id: outh5parm
 
@@ -1232,7 +1316,7 @@ steps:
       - id: inh5parms
         source: solve/output_h5parm2
       - id: outputh5parm
-        source: collected_medium1_h5parm
+        source: collected_solve2_h5parm
     out:
       - id: outh5parm
 
@@ -1263,7 +1347,7 @@ steps:
       - id: inh5parm2
         source: collect_medium1_phases/outh5parm
       - id: outh5parm
-        source: combined_fast_medium1_h5parm
+        source: combined_solve1_solve2_h5parm
       - id: mode
         valueFrom: 'p1p2_scalar'
       - id: reweight
@@ -1290,7 +1374,7 @@ steps:
       - id: inh5parms
         source: solve/output_h5parm3
       - id: outputh5parm
-        source: collected_slow_h5parm
+        source: collected_solve3_h5parm
     out:
       - id: outh5parm
 
@@ -1371,6 +1455,7 @@ steps:
       - id: do_slowgain_solve
         source: do_slowgain_solve
     when: $(inputs.do_slowgain_solve)
+        source: collected_solve4_h5parm
     out:
       - id: outh5parm
 
@@ -1404,7 +1489,7 @@ steps:
       - id: inh5parm2
         source: collect_medium2_phases/outh5parm
       - id: outh5parm
-        source: combined_fast_medium1_medium2_h5parm
+        source: combined_solve1_solve2_solve4_h5parm
       - id: mode
         valueFrom: 'p1p2_scalar'
       - id: reweight
