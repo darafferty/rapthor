@@ -107,9 +107,7 @@ class Parset:
             self.allowed_sections,
         )
         for section in self.required_options:
-            assert (
-                self.required_options[section] <= self.allowed_options[section]
-            ), "%s <= %s" % (
+            assert self.required_options[section] <= self.allowed_options[section], "%s <= %s" % (
                 self.required_options[section],
                 self.allowed_options[section],
             )
@@ -172,8 +170,7 @@ class Parset:
         }
         invalid_sections = given_sections - self.allowed_sections
         invalid_options = {
-            sect: given_options[sect] - self.allowed_options[sect]
-            for sect in self.allowed_sections
+            sect: given_options[sect] - self.allowed_options[sect] for sect in self.allowed_sections
         }
         deprecated_options = {
             sect: set(self.deprecated_options[sect]) & given_options[sect]
@@ -253,10 +250,7 @@ class Parset:
                 f"The final_data_fraction ({final_data_fraction}) "
                 f"is less than selfcal_data_fraction ({selfcal_data_fraction})"
             )
-        if (
-            options["generate_initial_skymodel"]
-            and options["download_initial_skymodel"]
-        ):
+        if options["generate_initial_skymodel"] and options["download_initial_skymodel"]:
             raise ValueError(
                 "Both 'generate_initial_skymodel' and 'download_initial_skymodel' are "
                 "activated. Only one of these options can be active."
@@ -340,9 +334,7 @@ class Parset:
         if options["use_image_based_predict"] and (
             options["bda_timebase"] > 0 or options["bda_frequencybase"] > 0
         ):
-            log.warning(
-                "Switching off BDA during solving, since image-based predict is activated."
-            )
+            log.warning("Switching off BDA during solving, since image-based predict is activated.")
             options["bda_timebase"] = 0
             options["bda_frequencybase"] = 0
 
@@ -372,9 +364,7 @@ class Parset:
             )
 
         if len(options["dd_psf_grid"]) != 2:
-            raise ValueError(
-                "The option 'dd_psf_grid' must be a list of length 2 (e.g. '[3, 3]')"
-            )
+            raise ValueError("The option 'dd_psf_grid' must be a list of length 2 (e.g. '[3, 3]')")
 
         if (
             settings["imaging"]["correct_time_frequency_smearing"]
@@ -479,9 +469,7 @@ class Parset:
             if not self.__parser.read(parset_file):
                 raise FileNotFoundError(f"Missing parset file ({parset_file}).")
         except configparser.ParsingError as err:
-            raise ValueError(
-                f"Parset file '{parset_file}' could not be parsed correctly.\n{err}"
-            )
+            raise ValueError(f"Parset file '{parset_file}' could not be parsed correctly.\n{err}")
 
         self.__sanitize()
         settings = Parset.config_as_dict(self.__parser)
@@ -547,9 +535,7 @@ def parset_read(parset_file, use_log_file=True):
             if not os.path.isdir(subdir_path):
                 os.mkdir(subdir_path)
     except Exception as e:
-        raise RuntimeError(
-            f"Cannot use the working dir {parset_dict['dir_working']}: {e}"
-        )
+        raise RuntimeError(f"Cannot use the working dir {parset_dict['dir_working']}: {e}")
 
     if use_log_file:
         set_log_file(os.path.join(parset_dict["dir_working"], "logs", "rapthor.log"))
@@ -602,15 +588,11 @@ def check_and_adjust_skymodel_settings(parset_dict):
     generate_initial_skymodel = parset_dict["generate_initial_skymodel"]
     download_initial_skymodel = parset_dict["download_initial_skymodel"]
     action = "generation" if generate_initial_skymodel else "download"
-    generate_or_download_skymodel = (
-        generate_initial_skymodel or download_initial_skymodel
-    )
+    generate_or_download_skymodel = generate_initial_skymodel or download_initial_skymodel
 
     if input_skymodel := parset_dict["input_skymodel"]:
         if not os.path.exists(input_skymodel):
-            raise FileNotFoundError(
-                f'Input sky model file "{input_skymodel}" not found.'
-            )
+            raise FileNotFoundError(f'Input sky model file "{input_skymodel}" not found.')
         if generate_or_download_skymodel:
             # If sky model is given but generation/download requested,
             # disable generation/download and use the given skymodel.
@@ -626,9 +608,7 @@ def check_and_adjust_skymodel_settings(parset_dict):
 
     elif generate_or_download_skymodel:
         verb, suffix = (
-            ("generate", " from input data")
-            if generate_initial_skymodel
-            else ("download", "")
+            ("generate", " from input data") if generate_initial_skymodel else ("download", "")
         )
         log.info(
             "No input sky model file given and %s requested. Will automatically %s sky model%s.",
@@ -663,9 +643,7 @@ def check_and_adjust_skymodel_settings(parset_dict):
     # and if the files exist; if not, raise an error. Check reference frequencies
     # are also provided if normalization skymodels are provided, and that they are a list of
     # the same length as the normalization skymodels; if not, raise an error.
-    if normalization_skymodels := parset_dict["imaging_specific"][
-        "normalization_skymodels"
-    ]:
+    if normalization_skymodels := parset_dict["imaging_specific"]["normalization_skymodels"]:
         if (
             isinstance(normalization_skymodels, str)
             or not isinstance(normalization_skymodels, Sequence)
@@ -676,9 +654,7 @@ def check_and_adjust_skymodel_settings(parset_dict):
             )
         for skymodel in normalization_skymodels:
             if not os.path.exists(skymodel):
-                raise FileNotFoundError(
-                    f'Normalization sky model file not found at "{skymodel}"'
-                )
+                raise FileNotFoundError(f'Normalization sky model file not found at "{skymodel}"')
         normalization_reference_frequencies = parset_dict["imaging_specific"][
             "normalization_reference_frequencies"
         ]
