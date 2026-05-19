@@ -153,6 +153,7 @@ def single_loop_strategy_path_calibrate_di_fast_medium_phase(tmp_path):
     strategy_path.write_text(strategy_content)
     return strategy_path
 
+
 @pytest.fixture
 def single_loop_strategy_path_calibrate_di_fast_medium_slow(tmp_path):
     """Fixture to generate a strategy file for a single self-calibration loop with DI fast, medium, and slow gains solves."""
