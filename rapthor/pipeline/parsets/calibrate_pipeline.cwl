@@ -84,6 +84,21 @@ inputs:
   - id: do_slowgain_solve
     label: Perform slow gain solve
     type: boolean
+
+  - id: model_data_column
+    label: Model data column to read the input from
+    doc: |
+      The model data column to use for calibration
+    type: string?
+
+  - id: solve1_mode
+    label: solve1_mode
+    type: string
+
+  - id: solve2_mode
+    label: solve2_mode
+    type: string
+
 {% if use_image_based_predict %}
   - id: num_spectral_terms
     label: Number of spectral terms
@@ -188,11 +203,21 @@ inputs:
 
   - id: solint_fast_freqstep
     label: Fast solution interval in frequency
-    doc: |
-      The solution interval in number of frequency channels for the fast phase solve
-      (length = n_obs * n_time_chunks).
     type: int[]
-
+  
+  - id: solint_solve1_freqstep
+    label: Solve1 freqstep
+    type: int[]
+  - id: solint_solve2_freqstep
+    label: Solve2 freqstep
+    type: int[]
+  - id: solint_solve3_freqstep
+    label: Solve3 freqstep
+    type: int[]
+  - id: solint_solve4_freqstep
+    label: Solve4 freqstep
+    type: int[]
+  
   - id: fast_solutions_per_direction
     label: Fast number of solutions per direction
     doc: |
@@ -267,19 +292,22 @@ inputs:
       The antenna constraint for the fast phase solve (length = 1).
     type: string
 
-  - id: solint_medium_timestep
-    label: Medium solution interval in time
-    doc: |
-      The solution interval in number of timeslots for the medium phase solve (length =
-      n_obs * n_time_chunks).
+  - id: solint_solve1_timestep
+    label: First solution interval in time
     type: int[]
 
-  - id: solint_medium_freqstep
-    label: Medium solution interval in frequency
-    doc: |
-      The solution interval in number of frequency channels for the medium phase solve
-      (length = n_obs * n_time_chunks).
+  - id: solint_solve2_timestep
+    label: Second solution interval in frequency
     type: int[]
+
+  - id: solint_solve3_timestep
+    label: Third solution interval in frequency
+    type: int[]
+
+  - id: solint_solve4_timestep
+    label: Forth solution interval in frequency
+    type: int[]
+
 
   - id: medium_solutions_per_direction
     label: Medium number of solutions per direction
@@ -679,7 +707,12 @@ inputs:
       The mode used for combining the fast-phase and slow-gain solutions
       (length = 1).
     type: string?
-
+  - id: solve3_mode
+    label: Solve3 mode
+    type: string
+  - id: solve4_mode
+    label: Solve4 mode
+    type: string
 {% endif %}
 # end generate_screens
 
@@ -958,11 +991,11 @@ steps:
       - id: solve1_h5parm
         source: output_fast_h5parm
       - id: solve1_solint
-        source: solint_fast_timestep
+        source: solint_solve1_timestep
       - id: solve1_mode
-        valueFrom: 'scalarphase'
+        valueFrom: solve1_mode
       - id: solve1_nchan
-        source: solint_fast_freqstep
+        source: solint_solve1_freqstep
       - id: solve1_solutions_per_direction
         source: fast_solutions_per_direction
       - id: solve1_llssolver
@@ -1019,11 +1052,11 @@ steps:
       - id: solve2_h5parm
         source: output_medium1_h5parm
       - id: solve2_solint
-        source: solint_medium_timestep
+        source: solint_solve2_timestep
       - id: solve2_mode
-        valueFrom: 'scalarphase'
+        valueFrom: solve2_mode
       - id: solve2_nchan
-        source: solint_medium_freqstep
+        source: solint_solve2_freqstep
       - id: solve2_solutions_per_direction
         source: medium_solutions_per_direction
       - id: solve2_llssolver
@@ -1081,11 +1114,11 @@ steps:
       - id: solve3_h5parm
         source: output_slow_h5parm
       - id: solve3_solint
-        source: solint_slow_timestep
+        source: solint_solve3_timestep
       - id: solve3_mode
         valueFrom: 'diagonal'
       - id: solve3_nchan
-        source: solint_slow_freqstep
+        source: solint_solve3_freqstep
       - id: solve3_solutions_per_direction
         source: slow_solutions_per_direction
       - id: solve3_llssolver
@@ -1135,11 +1168,11 @@ steps:
       - id: solve4_h5parm
         source: output_medium2_h5parm
       - id: solve4_solint
-        source: solint_medium_timestep
+        source: solint_solve4_timestep
       - id: solve4_mode
         valueFrom: 'scalarphase'
       - id: solve4_nchan
-        source: solint_medium_freqstep
+        source: solint_solve4_freqstep
       - id: solve4_solutions_per_direction
         source: medium_solutions_per_direction
       - id: solve4_llssolver
@@ -1181,10 +1214,12 @@ steps:
       - id: solve4_antennaconstraint
         source: medium_antennaconstraint
     scatter: [msin, starttime, ntimes, maxinterval,
-              solve1_h5parm, solve1_solint, solve1_nchan, solve1_smoothnessreffrequency, solve1_solutions_per_direction, solve1_smoothness_dd_factors,
-              solve2_h5parm, solve2_solint, solve2_nchan, solve2_smoothnessreffrequency, solve2_solutions_per_direction, solve2_smoothness_dd_factors,
-              solve3_h5parm, solve3_solint, solve3_nchan, solve3_solutions_per_direction, solve3_smoothness_dd_factors,
-              solve4_h5parm, solve4_solint, solve4_nchan, solve4_smoothnessreffrequency, solve4_solutions_per_direction, solve4_smoothness_dd_factors,
+              solve1_h5parm, solve1_solint, solve1_nchan, solve1_smoothnessreffrequency, solve1_solutions_per_direction, solve1_smoothness_dd_factors, solve1_mode, 
+              solve2_h5parm, solve2_solint, solve2_nchan, solve2_smoothnessreffrequency, solve2_solutions_per_direction, solve2_smoothness_dd_factors, solve2_mode,
+{% if do_slowgain_solve %}
+              solve3_h5parm, solve3_solint, solve3_nchan, solve3_solutions_per_direction, solve3_smoothness_dd_factors, solve3_mode,
+              solve4_h5parm, solve4_solint, solve4_nchan, solve4_smoothnessreffrequency, solve4_solutions_per_direction, solve4_smoothness_dd_factors, solve4_mode,
+{% endif %}
               minchannels]
     scatterMethod: dotproduct
     out:

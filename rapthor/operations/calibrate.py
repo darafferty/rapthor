@@ -27,7 +27,7 @@ class Calibrate(Operation):
     def __init__(self, mode, field, index):
         if mode not in ["di", "dd"]:
             raise ValueError(f"Only di and dd mode are supported, chosen: {mode}")
-        super().__init__(field, index=index, name="calibrate_di" if mode == "di" else "calibrate")
+        super().__init__(field, index=index, name="calibrate")
 
         self.mode = mode
 
@@ -245,6 +245,18 @@ class Calibrate(Operation):
                 "solverlbfgs_dof": field.solverlbfgs_dof,
                 "solverlbfgs_iter": field.solverlbfgs_iter,
                 "solverlbfgs_minibatches": field.solverlbfgs_minibatches,
+                "solve1_mode": "scalarphase",
+                "solve2_mode": "scalarphase",
+                "solve3_mode": "diagonal",
+                "solve4_mode": "scalarphase",
+                "solint_solve1_timestep": field.get_obs_parameters("solint_fast_timestep"),
+                "solint_solve2_timestep": field.get_obs_parameters("solint_medium_timestep"),
+                "solint_solve3_timestep": field.get_obs_parameters("solint_slow_timestep"),
+                "solint_solve4_timestep": field.get_obs_parameters("solint_medium_timestep"),
+                "solint_solve1_freqstep": field.get_obs_parameters("solint_fast_freqstep"),
+                "solint_solve2_freqstep": field.get_obs_parameters("solint_medium_freqstep"),
+                "solint_solve3_freqstep": field.get_obs_parameters("solint_slow_freqstep"),
+                "solint_solve4_freqstep": field.get_obs_parameters("solint_medium_freqstep"),
                 # ------------------------------------
                 # Get the size of the imaging area (for use in making the a-term images)
                 "sector_bounds_deg": str(field.sector_bounds_deg),
@@ -269,6 +281,7 @@ class Calibrate(Operation):
             # as attributes since they are needed in finalize()
             self.collected_h5parm_fulljones = "fulljones_gains.h5"
 
+            dp3_steps = ["fulljones"]
             # Set the constraints used in the calibrations
             self.input_parms = {
                 # Get the filenames of the input files for each time chunk. These are the
@@ -280,8 +293,11 @@ class Calibrate(Operation):
                 "starttime_fulljones": starttime,
                 "ntimes_fulljones": ntimes,
                 # Get the solution intervals for the calibrations
-                "solint_fulljones_timestep": field.get_obs_parameters("solint_fulljones_timestep"),
-                "solint_fulljones_freqstep": field.get_obs_parameters("solint_fulljones_freqstep"),
+                "solint_solve1_timestep": field.get_obs_parameters("solint_fulljones_timestep"),
+                "solint_solve1_freqstep": field.get_obs_parameters("solint_fulljones_freqstep"),
+                "solint_solve1_mode": f"[{','.join(dp3_steps)}]",
+                "model_data_column": "[MODEL_DATA]",
+                "dp3_steps": "fulljones",
                 "output_h5parm_fulljones": [
                     f"fulljones_gain_{i}.h5parm" for i in range(field.ntimechunks)
                 ],
