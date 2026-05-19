@@ -993,7 +993,7 @@ steps:
       - id: solve1_solint
         source: solint_solve1_timestep
       - id: solve1_mode
-        valueFrom: solve1_mode
+        source: solve1_mode
       - id: solve1_nchan
         source: solint_solve1_freqstep
       - id: solve1_solutions_per_direction
@@ -1214,11 +1214,11 @@ steps:
       - id: solve4_antennaconstraint
         source: medium_antennaconstraint
     scatter: [msin, starttime, ntimes, maxinterval,
-              solve1_h5parm, solve1_solint, solve1_nchan, solve1_smoothnessreffrequency, solve1_solutions_per_direction, solve1_smoothness_dd_factors, solve1_mode, 
-              solve2_h5parm, solve2_solint, solve2_nchan, solve2_smoothnessreffrequency, solve2_solutions_per_direction, solve2_smoothness_dd_factors, solve2_mode,
+              solve1_h5parm, solve1_solint, solve1_nchan, solve1_smoothnessreffrequency, solve1_solutions_per_direction, solve1_smoothness_dd_factors, 
+              solve2_h5parm, solve2_solint, solve2_nchan, solve2_smoothnessreffrequency, solve2_solutions_per_direction, solve2_smoothness_dd_factors,
 {% if do_slowgain_solve %}
-              solve3_h5parm, solve3_solint, solve3_nchan, solve3_solutions_per_direction, solve3_smoothness_dd_factors, solve3_mode,
-              solve4_h5parm, solve4_solint, solve4_nchan, solve4_smoothnessreffrequency, solve4_solutions_per_direction, solve4_smoothness_dd_factors, solve4_mode,
+              solve3_h5parm, solve3_solint, solve3_nchan, solve3_solutions_per_direction, solve3_smoothness_dd_factors,
+              solve4_h5parm, solve4_solint, solve4_nchan, solve4_smoothnessreffrequency, solve4_solutions_per_direction, solve4_smoothness_dd_factors,
 {% endif %}
               minchannels]
     scatterMethod: dotproduct
