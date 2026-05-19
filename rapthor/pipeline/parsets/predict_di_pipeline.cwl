@@ -82,13 +82,13 @@ inputs:
     doc: |
       The filename of the h5parm solution table from the calibration workflow (length
       = 1).
-    type: File
+    type: File?
 
   - id: dp3_applycal_steps
     label: Applycal steps for fast solve
     doc: |
       The list of DP3 applycal steps to use in the prediction (length = 1).
-    type: string
+    type: string?
 
   - id: normalize_h5parm
     label: The filename of normalization h5parm
