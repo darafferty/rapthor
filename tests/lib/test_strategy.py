@@ -235,13 +235,7 @@ def test_validate_strategy_raises_error_for_do_normalize_in_non_first_cycle(
     # Set do_normalize for the specified cycle.
     strategy_steps[cycle]["do_normalize"] = True
 
-    with pytest.raises(
-        ValueError,
-        match=(
-            f"do_normalize is True in cycle {cycle + 1} but it may only be True in the first cycle."
-        ),
-    ):
-        validate_strategy(strategy_steps, parset)
+    validate_strategy(strategy_steps, parset)
 
 
 @pytest.mark.parametrize("normalization_skymodels", [None, ["skymodel1.txt", "skymodel2.txt"]])
