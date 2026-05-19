@@ -6,18 +6,14 @@ from argparse import ArgumentParser, RawTextHelpFormatter
 import os
 import subprocess
 import sys
-from pathlib import Path
 import logging
+import casacore.tables as ct
 from lsmtool.facet import read_ds9_region_file
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
-
-
-import casacore.tables as ct
-import numpy as np
 
 
 def remove_columns_from_ms(msfile, ds9_region_file):
