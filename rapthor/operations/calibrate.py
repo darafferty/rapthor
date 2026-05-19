@@ -56,9 +56,12 @@ class Calibrate(Operation):
                 self.field.generate_screens or self.field.use_image_based_predict
             )
 
+            self.use_wsclean_predict = self.field.use_wsclean_predict
+
             self.parset_parms.update(
                 {
                     "use_image_based_predict": self.use_image_based_predict,
+                    "use_wsclean_predict": self.use_wsclean_predict,
                     "generate_screens": self.field.generate_screens,
                     "do_slowgain_solve": self.field.do_slowgain_solve,
                 }
@@ -345,6 +348,9 @@ class Calibrate(Operation):
                 if self.field.apply_normalizations
                 else ["predict", "applybeam"]
             )
+            dp3_steps = preprocessing_steps + common_steps
+        elif self.field.use_wsclean_predict:
+            preprocessing_steps = ["predict"]
             dp3_steps = preprocessing_steps + common_steps
         else:
             dp3_steps = common_steps
