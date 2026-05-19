@@ -420,6 +420,201 @@ class TestImage:
             f"Expected polarization '{expected_pol}', got '{derived_pol}'"
         )
 
+    @pytest.mark.parametrize(
+        "calibration_strategy, apply_none, apply_normalizations, apply_amplitudes, expected_steps",
+        [
+            (
+                {"dd": ["fast_phase", "medium_phase"], "di": ["full_jones"]},
+                True,
+                True,
+                False,
+                None,
+            ),
+            (
+                {"dd": ["fast_phase", "medium_phase"], "di": ["full_jones"]},
+                False,
+                False,
+                False,
+                "[fastphase,mediumphase,fulljones]",
+            ),
+            (
+                {"dd": ["fast_phase", "medium_phase"]},
+                False,
+                True,
+                False,
+                "[fastphase,mediumphase,normalization]",
+            ),
+            (
+                {"dd": ["slow_gains"]},
+                False,
+                True,
+                True,
+                "[slowgain,normalization]",
+            ),
+            (
+                {"dd": ["fast_phase", "medium_phase", "slow_gains"], "di": ["full_jones"]},
+                False,
+                True,
+                True,
+                "[fastphase,mediumphase,slowgain,fulljones,normalization]",
+            ),
+            (
+                {},
+                False,
+                True,
+                False,
+                "[normalization]",
+            ),
+            (
+                {},
+                False,
+                False,
+                False,
+                None,
+            ),
+            (
+                {"dd": ["fast_phase", "medium_phase"], "di": []},
+                False,
+                True,
+                False,
+                "[fastphase,mediumphase,normalization]",
+            ),
+            (
+                {"dd": ["medium_phase", "fast_phase"]},
+                False,
+                True,
+                False,
+                "[mediumphase,fastphase,normalization]",
+            ),
+            (
+                {"dd": ["slow_gains", "fast_phase"], "di": ["full_jones"]},
+                False,
+                True,
+                True,
+                "[slowgain,fastphase,fulljones,normalization]",
+            ),
+            (
+                {"di": ["full_jones"], "dd": ["fast_phase", "slow_gains"]},
+                False,
+                True,
+                True,
+                "[fulljones,fastphase,slowgain,normalization]",
+            ),
+            # Cases with apply_normalizations=False: normalization step should be absent
+            (
+                {"dd": ["fast_phase", "medium_phase"]},
+                False,
+                False,
+                False,
+                "[fastphase,mediumphase]",
+            ),
+            (
+                {"dd": ["slow_gains"]},
+                False,
+                False,
+                True,
+                "[slowgain]",
+            ),
+            (
+                {"dd": ["fast_phase", "medium_phase", "slow_gains"], "di": ["full_jones"]},
+                False,
+                False,
+                True,
+                "[fastphase,mediumphase,slowgain,fulljones]",
+            ),
+            (
+                {"di": ["full_jones"], "dd": ["fast_phase", "slow_gains"]},
+                False,
+                False,
+                True,
+                "[fulljones,fastphase,slowgain]",
+            ),
+            # DI-only cases (no DD solutions)
+            (
+                {"di": ["full_jones"]},
+                False,
+                True,
+                False,
+                "[fulljones,normalization]",
+            ),
+            (
+                {"di": ["full_jones"]},
+                False,
+                False,
+                False,
+                "[fulljones]",
+            ),
+            # DI slow_gains cases
+            (
+                {"di": ["slow_gains"]},
+                False,
+                True,
+                True,
+                "[slowgain,normalization]",
+            ),
+            (
+                {"di": ["slow_gains"]},
+                False,
+                False,
+                True,
+                "[slowgain]",
+            ),
+            (
+                {"di": ["slow_gains", "full_jones"]},
+                False,
+                True,
+                True,
+                "[slowgain,fulljones,normalization]",
+            ),
+            (
+                {"di": ["slow_gains", "full_jones"]},
+                False,
+                False,
+                True,
+                "[slowgain,fulljones]",
+            ),
+            # Edge case: slow_gains in strategy but no amplitude solutions present
+            # (e.g. the slow-gain solve failed). slowgain must be omitted to prevent
+            # DP3 from crashing when amplitude000 is absent from the H5parm.
+            (
+                {"dd": ["fast_phase", "medium_phase", "slow_gains"]},
+                False,
+                False,
+                False,
+                "[fastphase,mediumphase]",
+            ),
+        ],
+    )
+    def test_build_applycal_steps(
+        self,
+        field,
+        h5parm_file,
+        calibration_strategy,
+        apply_none,
+        apply_normalizations,
+        apply_amplitudes,
+        expected_steps,
+    ):
+        """Test that _build_applycal_steps returns the correct DP3 step string."""
+        _prepare_field_for_image(field, h5parm_filename=h5parm_file)
+        image = Image(field=field, index=1)
+        image.set_parset_parameters()
+        image.apply_none = apply_none
+        image.apply_normalizations = apply_normalizations
+        field.calibration_strategy = calibration_strategy
+
+        image.apply_amplitudes = apply_amplitudes
+
+        # Create a temporary fake normalize/fulljones h5parm so CWLFile doesn't fail,
+        # but only when the respective calibration was actually performed.
+        if apply_normalizations:
+            field.normalize_h5parm = str(h5parm_file)
+        if "full_jones" in calibration_strategy.get("di", []):
+            field.fulljones_h5parm_filename = str(h5parm_file)
+
+        steps, _, _ = image._build_applycal_steps()
+        assert steps == expected_steps
+
     def test_image_operation_sets_mask_file(
         self, field, h5parm_file, monkeypatch, expected_image_output
     ):
