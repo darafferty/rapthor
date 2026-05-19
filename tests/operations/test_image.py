@@ -421,16 +421,18 @@ class TestImage:
         )
 
     @pytest.mark.parametrize(
-        "calibration_strategy, apply_none, apply_normalizations, expected_steps",
+        "calibration_strategy, apply_none, apply_normalizations, apply_amplitudes, expected_steps",
         [
             (
                 {"dd": ["fast_phase", "medium_phase"], "di": ["full_jones"]},
                 True,
                 True,
+                False,
                 None,
             ),
             (
                 {"dd": ["fast_phase", "medium_phase"], "di": ["full_jones"]},
+                False,
                 False,
                 False,
                 "[fastphase,mediumphase,fulljones]",
@@ -439,11 +441,13 @@ class TestImage:
                 {"dd": ["fast_phase", "medium_phase"]},
                 False,
                 True,
+                False,
                 "[fastphase,mediumphase,normalization]",
             ),
             (
                 {"dd": ["slow_gains"]},
                 False,
+                True,
                 True,
                 "[slowgain,normalization]",
             ),
@@ -451,16 +455,19 @@ class TestImage:
                 {"dd": ["fast_phase", "medium_phase", "slow_gains"], "di": ["full_jones"]},
                 False,
                 True,
+                True,
                 "[fastphase,mediumphase,slowgain,fulljones,normalization]",
             ),
             (
                 {},
                 False,
                 True,
+                False,
                 "[normalization]",
             ),
             (
                 {},
+                False,
                 False,
                 False,
                 None,
@@ -469,23 +476,27 @@ class TestImage:
                 {"dd": ["fast_phase", "medium_phase"], "di": []},
                 False,
                 True,
+                False,
                 "[fastphase,mediumphase,normalization]",
             ),
             (
                 {"dd": ["medium_phase", "fast_phase"]},
                 False,
                 True,
+                False,
                 "[mediumphase,fastphase,normalization]",
             ),
             (
                 {"dd": ["slow_gains", "fast_phase"], "di": ["full_jones"]},
                 False,
                 True,
+                True,
                 "[slowgain,fastphase,fulljones,normalization]",
             ),
             (
                 {"di": ["full_jones"], "dd": ["fast_phase", "slow_gains"]},
                 False,
+                True,
                 True,
                 "[fulljones,fastphase,slowgain,normalization]",
             ),
@@ -494,24 +505,28 @@ class TestImage:
                 {"dd": ["fast_phase", "medium_phase"]},
                 False,
                 False,
+                False,
                 "[fastphase,mediumphase]",
             ),
             (
                 {"dd": ["slow_gains"]},
                 False,
                 False,
+                True,
                 "[slowgain]",
             ),
             (
                 {"dd": ["fast_phase", "medium_phase", "slow_gains"], "di": ["full_jones"]},
                 False,
                 False,
+                True,
                 "[fastphase,mediumphase,slowgain,fulljones]",
             ),
             (
                 {"di": ["full_jones"], "dd": ["fast_phase", "slow_gains"]},
                 False,
                 False,
+                True,
                 "[fulljones,fastphase,slowgain]",
             ),
             # DI-only cases (no DD solutions)
@@ -519,10 +534,12 @@ class TestImage:
                 {"di": ["full_jones"]},
                 False,
                 True,
+                False,
                 "[fulljones,normalization]",
             ),
             (
                 {"di": ["full_jones"]},
+                False,
                 False,
                 False,
                 "[fulljones]",
@@ -532,17 +549,20 @@ class TestImage:
                 {"di": ["slow_gains"]},
                 False,
                 True,
+                True,
                 "[slowgain,normalization]",
             ),
             (
                 {"di": ["slow_gains"]},
                 False,
                 False,
+                True,
                 "[slowgain]",
             ),
             (
                 {"di": ["slow_gains", "full_jones"]},
                 False,
+                True,
                 True,
                 "[slowgain,fulljones,normalization]",
             ),
@@ -550,7 +570,18 @@ class TestImage:
                 {"di": ["slow_gains", "full_jones"]},
                 False,
                 False,
+                True,
                 "[slowgain,fulljones]",
+            ),
+            # Edge case: slow_gains in strategy but no amplitude solutions present
+            # (e.g. the slow-gain solve failed). slowgain must be omitted to prevent
+            # DP3 from crashing when amplitude000 is absent from the H5parm.
+            (
+                {"dd": ["fast_phase", "medium_phase", "slow_gains"]},
+                False,
+                False,
+                False,
+                "[fastphase,mediumphase]",
             ),
         ],
     )
@@ -561,6 +592,7 @@ class TestImage:
         calibration_strategy,
         apply_none,
         apply_normalizations,
+        apply_amplitudes,
         expected_steps,
     ):
         """Test that _build_applycal_steps returns the correct DP3 step string."""
@@ -570,6 +602,8 @@ class TestImage:
         image.apply_none = apply_none
         image.apply_normalizations = apply_normalizations
         field.calibration_strategy = calibration_strategy
+
+        image.apply_amplitudes = apply_amplitudes
 
         # Create a temporary fake normalize/fulljones h5parm so CWLFile doesn't fail,
         # but only when the respective calibration was actually performed.

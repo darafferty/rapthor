@@ -151,10 +151,15 @@ class Image(Operation):
 
         strategy = getattr(self.field, "calibration_strategy", None) or {}
         steps = [
+            # Only include steps for solve types that are present in the strategy and that are
+            # applicable given the settings for this imaging operation (e.g. don't include
+            # slow_gains if amplitudes are not applied)
             solve_type_to_step[solve]
             for solves in strategy.values()
             for solve in solves
             if solve in solve_type_to_step
+            # don't include slow_gains if amplitudes are not applied
+            and not (solve == "slow_gains" and not self.apply_amplitudes)
         ]
 
         if "fulljones" in steps:
