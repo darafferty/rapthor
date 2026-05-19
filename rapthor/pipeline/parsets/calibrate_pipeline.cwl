@@ -50,12 +50,6 @@ inputs:
       (length = n_obs * n_time_chunks).
     type: int[]
 
-  - id: solint_fast_timestep
-    label: Fast solution interval in time
-    doc: |
-      The solution interval in number of timeslots for the fast phase solve (length =
-      n_obs * n_time_chunks).
-    type: int[]
 
   - id: maxiter
     label: Maximum iterations
@@ -74,7 +68,7 @@ inputs:
     doc: |
       The filename of the input sky model text file used for all processing except
       in DDECal solve steps (length = 1).
-    type: File
+    type: File?
 
   - id: solverlbfgs_iter
     label: LBFGS iterations per minibatch
@@ -242,14 +236,14 @@ inputs:
       n_calibrators).
     type: float[]
 
-  - id: output_fast_h5parm
+  - id: output_solve1_h5parm
     label: Fast output solution table
     doc: |
       The filename of the output h5parm solution table for the fast phase solve (length
       = n_obs * n_time_chunks).
     type: string[]
 
-  - id: collected_fast_h5parm
+  - id: collected_solve1_h5parm
     label: Collected fast output solution table
     doc: |
       The filename of the output collected h5parm solution table for the fast phase solve
@@ -320,21 +314,21 @@ inputs:
         type: array
         items: int
 
-  - id: output_medium1_h5parm
+  - id: output_solve2_h5parm
     label: Medium output solution table
     doc: |
       The filename of the output h5parm solution table for the medium1 phase solve (length
       = n_obs * n_time_chunks).
     type: string[]
 
-  - id: collected_medium1_h5parm
+  - id: collected_solve2_h5parm
     label: Collected medium output solution table
     doc: |
       The filename of the output collected h5parm solution table for the medium1 phase solve
       (length = 1).
     type: string
 
-  - id: combined_fast_medium1_h5parm
+  - id: combined_solve1_solve2_h5parm
     label: Combined fast and medium1 output solution table
     doc: |
       The filename of the output combined h5parm solution table for the fast phase solve
@@ -631,7 +625,7 @@ inputs:
       initial solutions (length = 1).
     type: File?
 
-  - id: collected_medium2_h5parm
+  - id: collected_solve4_h5parm
     label: Collected medium output solution table
     doc: |
       The filename of the output collected h5parm solution table for the medium2 phase solve
@@ -665,28 +659,28 @@ inputs:
       The Dec in degrees of the phase center (length = 1).
     type: float?
 
-  - id: output_slow_h5parm
+  - id: output_solve3_h5parm
     label: Slow solve output solution table
     doc: |
       The filename of the output h5parm solution table for the slow-
       gain solve (length = n_obs * n_freq_chunks).
     type: string[]?
 
-  - id: collected_slow_h5parm
+  - id: collected_solve3_h5parm
     label: Collected slow output solution table
     doc: |
       The filename of the output collected h5parm solution table for the
       slow-gain solve (length = 1).
     type: string?
 
-  - id: output_medium2_h5parm
+  - id: output_solve4_h5parm
     label: Medium output solution table
     doc: |
       The filename of the output h5parm solution table for the medium2 phase solve (length
       = n_obs * n_time_chunks).
     type: string[]?
 
-  - id: combined_fast_medium1_medium2_h5parm
+  - id: combined_solve1_solve2_solve4_h5parm
     label: Combined fast, medium1, and medium2 output solution table
     doc: |
       The filename of the output combined h5parm solution table for the fast
@@ -842,7 +836,7 @@ steps:
       - id: h5parm
         source: output_idgcal_h5parm
       - id: solint
-        source: solint_fast_timestep
+        source: solint_solve1_timestep
       - id: model_image
         source: draw_model/model_images
       - id: maxiter
@@ -881,7 +875,7 @@ steps:
       - id: h5parm
         source: output_idgcal_h5parm
       - id: solint_fast
-        source: solint_fast_timestep
+        source: solint_solve1_timestep
       - id: solint_slow
         source: solint_slow_timestep
       - id: model_image
@@ -989,7 +983,7 @@ steps:
       - id: numthreads
         source: max_threads
       - id: solve1_h5parm
-        source: output_fast_h5parm
+        source: output_solve1_h5parm
       - id: solve1_solint
         source: solint_solve1_timestep
       - id: solve1_mode
@@ -1050,7 +1044,7 @@ steps:
         valueFrom: '[solve1.*]'
 {% endif %}
       - id: solve2_h5parm
-        source: output_medium1_h5parm
+        source: output_solve2_h5parm
       - id: solve2_solint
         source: solint_solve2_timestep
       - id: solve2_mode
@@ -1112,7 +1106,7 @@ steps:
       - id: solve3_applycal_steps
         source: ddecal_applycal_steps
       - id: solve3_h5parm
-        source: output_slow_h5parm
+        source: output_solve3_h5parm
       - id: solve3_solint
         source: solint_solve3_timestep
       - id: solve3_mode
@@ -1166,7 +1160,7 @@ steps:
         valueFrom: '[solve1.*]'
 {% endif %}
       - id: solve4_h5parm
-        source: output_medium2_h5parm
+        source: output_solve4_h5parm
       - id: solve4_solint
         source: solint_solve4_timestep
       - id: solve4_mode
@@ -1238,7 +1232,7 @@ steps:
       - id: inh5parms
         source: solve/output_h5parm1
       - id: outputh5parm
-        source: collected_fast_h5parm
+        source: collected_solve1_h5parm
     out:
       - id: outh5parm
 
@@ -1267,7 +1261,7 @@ steps:
       - id: inh5parms
         source: solve/output_h5parm2
       - id: outputh5parm
-        source: collected_medium1_h5parm
+        source: collected_solve2_h5parm
     out:
       - id: outh5parm
 
@@ -1298,7 +1292,7 @@ steps:
       - id: inh5parm2
         source: collect_medium1_phases/outh5parm
       - id: outh5parm
-        source: combined_fast_medium1_h5parm
+        source: combined_solve1_solve2_h5parm
       - id: mode
         valueFrom: 'p1p2_scalar'
       - id: reweight
@@ -1325,7 +1319,7 @@ steps:
       - id: inh5parms
         source: solve/output_h5parm3
       - id: outputh5parm
-        source: collected_slow_h5parm
+        source: collected_solve3_h5parm
     out:
       - id: outh5parm
 
@@ -1406,6 +1400,7 @@ steps:
       - id: do_slowgain_solve
         source: do_slowgain_solve
     when: $(inputs.do_slowgain_solve)
+        source: collected_solve4_h5parm
     out:
       - id: outh5parm
 
@@ -1439,7 +1434,7 @@ steps:
       - id: inh5parm2
         source: collect_medium2_phases/outh5parm
       - id: outh5parm
-        source: combined_fast_medium1_medium2_h5parm
+        source: combined_solve1_solve2_solve4_h5parm
       - id: mode
         valueFrom: 'p1p2_scalar'
       - id: reweight

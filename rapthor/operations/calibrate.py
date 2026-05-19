@@ -151,20 +151,20 @@ class Calibrate(Operation):
                 # Calibration outputs (H5parm products)
                 "calibrator_patch_names": field.calibrator_patch_names,
                 "calibrator_fluxes": field.calibrator_fluxes,
-                "output_fast_h5parm": [f"fast_phase_{i}.h5parm" for i in range(field.ntimechunks)],
-                "collected_fast_h5parm": self.fast_h5parm,
-                "output_medium1_h5parm": [
+                "output_solve1_h5parm": [f"fast_phase_{i}.h5parm" for i in range(field.ntimechunks)],
+                "collected_solve1_h5parm": self.fast_h5parm,
+                "output_solve2_h5parm": [
                     f"medium1_phase_{i}.h5parm" for i in range(field.ntimechunks)
                 ],
-                "output_medium2_h5parm": [
+                "output_solve4_h5parm": [
                     f"medium2_phase_{i}.h5parm" for i in range(field.ntimechunks)
                 ],
-                "collected_medium1_h5parm": self.medium1_h5parm,
-                "collected_medium2_h5parm": self.medium2_h5parm,
-                "combined_fast_medium1_h5parm": "combined_fast_medium1_phases.h5parm",
-                "combined_fast_medium1_medium2_h5parm": "combined_fast_medium1_medium2_phases.h5parm",
-                "output_slow_h5parm": [f"slow_gain_{i}.h5parm" for i in range(field.ntimechunks)],
-                "collected_slow_h5parm": self.slow_h5parm,
+                "collected_solve2_h5parm": self.medium1_h5parm,
+                "collected_solve4_h5parm": self.medium2_h5parm,
+                "combined_solve1_solve2_h5parm": "combined_fast_medium1_phases.h5parm",
+                "combined_solve1_solve2_solve4_h5parm": "combined_fast_medium1_medium2_phases.h5parm",
+                "output_solve3_h5parm": [f"slow_gain_{i}.h5parm" for i in range(field.ntimechunks)],
+                "collected_solve3_h5parm": self.slow_h5parm,
                 # Sky model configuration
                 "calibration_skymodel_file": CWLFile(calibration_skymodel_file).to_json(),
                 "model_image_root": "calibration_model",
@@ -286,22 +286,23 @@ class Calibrate(Operation):
             self.input_parms = {
                 # Get the filenames of the input files for each time chunk. These are the
                 # output of the predict_di pipeline done before this calibration
-                "timechunk_filename_fulljones": CWLDir(
+
+                "timechunk_filename": CWLDir(
                     field.get_obs_parameters("predict_di_output_filename")
                 ).to_json(),
                 "data_colname": "DATA",
-                "starttime_fulljones": starttime,
-                "ntimes_fulljones": ntimes,
+                "starttime": starttime,
+                "ntimes": ntimes,
                 # Get the solution intervals for the calibrations
                 "solint_solve1_timestep": field.get_obs_parameters("solint_fulljones_timestep"),
                 "solint_solve1_freqstep": field.get_obs_parameters("solint_fulljones_freqstep"),
                 "solint_solve1_mode": f"[{','.join(dp3_steps)}]",
                 "model_data_column": "[MODEL_DATA]",
                 "dp3_steps": "fulljones",
-                "output_h5parm_fulljones": [
+                "output_h5parm_solve1": [
                     f"fulljones_gain_{i}.h5parm" for i in range(field.ntimechunks)
                 ],
-                "collected_h5parm_fulljones": self.collected_h5parm_fulljones,
+                "collected_h5parm_solve1": self.collected_h5parm_fulljones,
                 "smoothnessconstraint_fulljones": field.smoothnessconstraint_fulljones,
                 "max_normalization_delta": field.max_normalization_delta,
                 # Get various DDECal solver parameters. Most of these are the same for both fast
