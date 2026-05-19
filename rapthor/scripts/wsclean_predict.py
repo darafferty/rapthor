@@ -110,7 +110,7 @@ def main():
     """
     Script can be used in two ways:
     1) To add columns and predict model
-      wsclean_predict.py --region sector_1_facets_ds9.reg --msin small.ms --model
+      wsclean_predict.py --region sector_1_facets_ds9.reg --msin small.ms --model images/field-MFS-model.fits
     2) To remove extra columns created from step 1
       wsclean_predict.py --region sector_1_facets_ds9.reg --msin small.ms --cleanup
     """
