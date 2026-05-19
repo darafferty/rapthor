@@ -60,7 +60,6 @@ class Calibrate(Operation):
                 {
                     "use_image_based_predict": self.use_image_based_predict,
                     "generate_screens": self.field.generate_screens,
-                    "do_slowgain_solve": self.field.do_slowgain_solve,
                 }
             )
 
@@ -132,6 +131,7 @@ class Calibrate(Operation):
                 "ntimes": ntimes,
                 # Solution interval configuration (time + frequency)
                 # Get the solution intervals for the calibrations
+                "do_slowgain_solve": field.do_slowgain_solve,
                 "solint_fast_timestep": field.get_obs_parameters("solint_fast_timestep"),
                 "solint_medium_timestep": field.get_obs_parameters("solint_medium_timestep"),
                 "solint_slow_timestep": field.get_obs_parameters("solint_slow_timestep"),

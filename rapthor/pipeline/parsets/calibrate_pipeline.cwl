@@ -81,7 +81,9 @@ inputs:
     doc: |
       The number of iterations per minibatch in LBFGS solver (length = 1).
     type: int
-
+  - id: do_slowgain_solve
+    label: Perform slow gain solve
+    type: boolean
 {% if use_image_based_predict %}
   - id: num_spectral_terms
     label: Number of spectral terms
@@ -161,14 +163,12 @@ inputs:
       = n_obs * n_time_chunks).
     type: string[]
 
-{% if do_slowgain_solve %}
   - id: solint_slow_timestep
     label: Slow solution interval in time
     doc: |
       The solution interval in number of timeslots for the slow gain solve (length =
       n_obs * n_time_chunks).
-    type: int[]
-{% endif %}
+    type: int[]?
 
   - id: idgcal_antennaconstraint
     label: Antenna constraint
@@ -530,61 +530,64 @@ inputs:
       The maximum number of threads to use for a job (length = 1).
     type: int
 
-{% if do_slowgain_solve %}
 # start do_slowgain_solve
   - id: slow_datause
     doc: |
       DDECal datause option for the slow-gain calibration (length = 1).
-    type: string
+    type: string?
 
   - id: solint_slow_timestep
     label: Slow solution interval in time
     doc: |
       The solution interval in number of timeslots for the slow-gain
       solve (length = n_obs * n_freq_chunks).
-    type: int[]
+    type: int[]?
 
   - id: solint_slow_freqstep
     label: Slow solution interval in frequency
     doc: |
       The solution interval in number of frequency channels for the
       slow-gain solve (length = n_obs * n_freq_chunks).
-    type: int[]
+    type: int[]?
 
   - id: slow_solutions_per_direction
     label: Slow number of solutions per direction
     doc: |
       The number of solutions per direction for the
       slow-gain solve (length = n_obs * n_directions * n_time_chunks).
-    type:
+    type: 
       type: array
       items:
         type: array
-        items: int
+        items: 
+        - int
+        - 'null'
 
   - id: slow_smoothness_dd_factors
     label: Smoothness factors
     doc: |
       The factor by which to multiply the smoothnesscontraint for the
       slow-gain solve, per direction (length = n_obs * n_calibrators * n_time_chunks).
-    type:
+    type: 
       type: array
       items:
         type: array
-        items: float
+        items: 
+        - float
+        - 'null'
 
   - id: slow_smoothnessconstraint
     label: Slow smoothnessconstraint
     doc: |
       The smoothnessconstraint kernel size in Hz for the slow-gain
       solve (length = 1).
-    type: float
+    type: float?
 
   - id: slow_antennaconstraint
     label: Slow antenna constraint
     doc: |
       The antenna constraint for the slow-gain solve (length = 1).
-    type: string
+    type: string?
 
   - id: slow_initialsolutions_h5parm
     label: Input solution table
@@ -605,14 +608,14 @@ inputs:
     doc: |
       The filename of the output collected h5parm solution table for the medium2 phase solve
       (length = 1).
-    type: string
+    type: string?
 
   - id: max_normalization_delta
     label: Maximum normalization delta
     doc: |
       The maximum allowed difference in the median of the amplitudes from unity, per
       station (length = 1).
-    type: float
+    type: float?
 
   - id: scale_normalization_delta
     label: Scale normalization delta flag
@@ -620,40 +623,40 @@ inputs:
       Flag that enables scaling (with distance from the phase center) of the
       maximum allowed difference in the median of the amplitudes from unity, per
       station (length = 1).
-    type: string
+    type: string?
 
   - id: phase_center_ra
     label: Phase center RA
     doc: |
       The RA in degrees of the phase center (length = 1).
-    type: float
+    type: float?
 
   - id: phase_center_dec
     label: Phase center Dec
     doc: |
       The Dec in degrees of the phase center (length = 1).
-    type: float
+    type: float?
 
   - id: output_slow_h5parm
     label: Slow solve output solution table
     doc: |
       The filename of the output h5parm solution table for the slow-
       gain solve (length = n_obs * n_freq_chunks).
-    type: string[]
+    type: string[]?
 
   - id: collected_slow_h5parm
     label: Collected slow output solution table
     doc: |
       The filename of the output collected h5parm solution table for the
       slow-gain solve (length = 1).
-    type: string
+    type: string?
 
   - id: output_medium2_h5parm
     label: Medium output solution table
     doc: |
       The filename of the output h5parm solution table for the medium2 phase solve (length
       = n_obs * n_time_chunks).
-    type: string[]
+    type: string[]?
 
   - id: combined_fast_medium1_medium2_h5parm
     label: Combined fast, medium1, and medium2 output solution table
@@ -661,14 +664,14 @@ inputs:
       The filename of the output combined h5parm solution table for the fast
       phase solve, medium1 phase solve and medium2 phase solve
       (length = 1).
-    type: string
+    type: string?
 
   - id: combined_h5parms
     label: Combined output solution table
     doc: |
       The filename of the output combined h5parm solution table for the full solve
       (length = 1).
-    type: string
+    type: string?
 
   - id: solution_combine_mode
     label: Mode for combining solutions
@@ -676,9 +679,6 @@ inputs:
       The mode used for combining the fast-phase and slow-gain solutions
       (length = 1).
     type: string?
-
-{% endif %}
-# end do_slowgain_solve
 
 {% endif %}
 # end generate_screens
@@ -713,7 +713,6 @@ outputs:
     outputSource:
       - plot_medium1_phase_solutions/plots
     type: File[]
-{% if do_slowgain_solve %}
   - id: slow_gain_solutions
     outputSource:
       - collect_slow_gains/outh5parm
@@ -734,7 +733,6 @@ outputs:
     outputSource:
       - plot_medium2_phase_solutions/plots
     type: File[]
-{% endif %}
 {% endif %}
 
 
@@ -793,9 +791,7 @@ steps:
 {% if generate_screens %}
 # start generate_screens
 
-{% if not do_slowgain_solve %}
 # start not do_slowgain_solve (i.e., phase-only solve)
-
   - id: solve_fast_phases_only
     label: Solve for fast phases
     doc: |
@@ -822,14 +818,15 @@ steps:
         source: idgcal_antennaconstraint
       - id: numthreads
         source: max_threads
+      - id: do_slowgain_solve
+        source: do_slowgain_solve
     scatter: [msin, starttime, ntimes, h5parm, solint]
+    when: $(!do_slowgain_solve)
     scatterMethod: dotproduct
     out:
       - id: output_h5parm
 
-{% else %}
 # start do_slowgain_solve (i.e., full, fast phase and slow gain solve)
-
   - id: solve_fast_phases_slow_gains
     label: Solve for fast phases and slow gains
     doc: |
@@ -840,6 +837,8 @@ steps:
       and the gain corrections for beam errors.
     run: {{ rapthor_pipeline_dir }}/steps/idgcal_solve_phase_and_gain.cwl
     in:
+      - id: do_slowgain_solve
+        source: do_slowgain_solve
       - id: msin
         source: timechunk_filename
       - id: starttime
@@ -862,11 +861,9 @@ steps:
         source: max_threads
     scatter: [msin, starttime, ntimes, h5parm, solint_fast, solint_slow]
     scatterMethod: dotproduct
+    when: $(do_slowgain_solve)
     out:
       - id: output_h5parm
-
-{% endif %}
-# end do_slowgain_solve
 
   - id: combine_solutions
     label: Combine separate solutions
@@ -876,11 +873,10 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/collect_screen_h5parms.cwl
     in:
       - id: inh5parms
-{% if not do_slowgain_solve %}
-        source: solve_fast_phases_only/output_h5parm
-{% else %}
-        source: solve_fast_phases_slow_gains/output_h5parm
-{% endif %}
+        source: 
+        - solve_fast_phases_only/output_h5parm
+        - solve_fast_phases_slow_gains/output_h5parm
+        pickValue: "the_only_non_null"
       - id: outputh5parm
         source: combined_h5parms
     out:
@@ -1068,9 +1064,9 @@ steps:
         source: medium_smoothnessrefdistance
       - id: solve2_antennaconstraint
         valueFrom: '[]'
-{% if do_slowgain_solve %}
       - id: solve2_keepmodel
-        valueFrom: 'True'
+        source: do_slowgain_solve
+        valueFrom: $(self?"true":null)
       - id: solve3_reusemodel
 {% if use_image_based_predict %}
         valueFrom: '[predict.*]'
@@ -1127,7 +1123,8 @@ steps:
       - id: solve3_antennaconstraint
         source: slow_antennaconstraint
       - id: solve3_keepmodel
-        valueFrom: 'True'
+        source: do_slowgain_solve
+        valueFrom: $(self?"true":null)
       - id: solve4_reusemodel
 {% if use_image_based_predict %}
         valueFrom: '[predict.*]'
@@ -1183,14 +1180,11 @@ steps:
         source: medium_smoothnessrefdistance
       - id: solve4_antennaconstraint
         source: medium_antennaconstraint
-{% endif %}
     scatter: [msin, starttime, ntimes, maxinterval,
               solve1_h5parm, solve1_solint, solve1_nchan, solve1_smoothnessreffrequency, solve1_solutions_per_direction, solve1_smoothness_dd_factors,
               solve2_h5parm, solve2_solint, solve2_nchan, solve2_smoothnessreffrequency, solve2_solutions_per_direction, solve2_smoothness_dd_factors,
-{% if do_slowgain_solve %}
               solve3_h5parm, solve3_solint, solve3_nchan, solve3_solutions_per_direction, solve3_smoothness_dd_factors,
               solve4_h5parm, solve4_solint, solve4_nchan, solve4_smoothnessreffrequency, solve4_solutions_per_direction, solve4_smoothness_dd_factors,
-{% endif %}
               minchannels]
     scatterMethod: dotproduct
     out:
@@ -1281,7 +1275,6 @@ steps:
     out:
       - id: combinedh5parm
 
-{% if do_slowgain_solve %}
 # start do_slowgain_solve
 
   - id: collect_slow_gains
@@ -1290,7 +1283,10 @@ steps:
       This step collects all the gain solutions from the solve
       into a single solution table (h5parm file).
     run: {{ rapthor_pipeline_dir }}/steps/collect_h5parms.cwl
+    when: $(inputs.do_slowgain_solve)
     in:
+      - id: do_slowgain_solve
+        source: do_slowgain_solve
       - id: inh5parms
         source: solve/output_h5parm3
       - id: outputh5parm
@@ -1305,6 +1301,8 @@ steps:
       smoothing and renormalizing them.
     run: {{ rapthor_pipeline_dir }}/steps/process_gains.cwl
     in:
+      - id: do_slowgain_solve
+        source: do_slowgain_solve
       - id: h5parm
         source: collect_slow_gains/outh5parm
       - id: flag
@@ -1319,6 +1317,7 @@ steps:
         source: phase_center_ra
       - id: phase_center_dec
         source: phase_center_dec
+    when: $(inputs.do_slowgain_solve)
     out:
       - id: outh5parm
 
@@ -1328,12 +1327,15 @@ steps:
       This step makes plots of the slow phase solutions.
     run: {{ rapthor_pipeline_dir }}/steps/plot_solutions.cwl
     in:
+      - id: do_slowgain_solve
+        source: do_slowgain_solve
       - id: h5parm
         source: process_slow_gains/outh5parm
       - id: soltype
         valueFrom: 'phase'
       - id: root
         valueFrom: 'slow_phase_'
+    when: $(inputs.do_slowgain_solve)
     out:
       - id: plots
 
@@ -1349,6 +1351,9 @@ steps:
         valueFrom: 'amplitude'
       - id: root
         valueFrom: 'slow_amplitude_'
+      - id: do_slowgain_solve
+        source: do_slowgain_solve
+    when: $(inputs.do_slowgain_solve)
     out:
       - id: plots
 
@@ -1363,6 +1368,9 @@ steps:
         source: solve/output_h5parm4
       - id: outputh5parm
         source: collected_medium2_h5parm
+      - id: do_slowgain_solve
+        source: do_slowgain_solve
+    when: $(inputs.do_slowgain_solve)
     out:
       - id: outh5parm
 
@@ -1378,6 +1386,9 @@ steps:
         valueFrom: 'phase'
       - id: root
         valueFrom: 'medium2_phase_'
+      - id: do_slowgain_solve
+        source: do_slowgain_solve
+    when: $(inputs.do_slowgain_solve)
     out:
       - id: plots
 
@@ -1402,6 +1413,9 @@ steps:
         source: calibrator_patch_names
       - id: calibrator_fluxes
         source: calibrator_fluxes
+      - id: do_slowgain_solve
+        source: do_slowgain_solve
+    when: $(inputs.do_slowgain_solve)
     out:
       - id: combinedh5parm
 
@@ -1427,6 +1441,7 @@ steps:
         source: calibrator_patch_names
       - id: calibrator_fluxes
         source: calibrator_fluxes
+    when: $(inputs.do_slowgain_solve)
     out:
       - id: combinedh5parm
 
@@ -1440,10 +1455,12 @@ steps:
         source: calibration_skymodel_file
       - id: h5parm
         source: combine_fast_and_full_slow_h5parms/combinedh5parm
+      - id: do_slowgain_solve
+        source: do_slowgain_solve 
+    when: $(inputs.do_slowgain_solve)
     out:
       - id: adjustedh5parm
 
-{% else %}
 # start not do_slowgain_solve
 
   - id: adjust_h5parm_sources
@@ -1456,10 +1473,12 @@ steps:
         source: calibration_skymodel_file
       - id: h5parm
         source: combine_fast_medium1_h5parms/combinedh5parm
+      - id: do_slowgain_solve
+        source: do_slowgain_solve
+    when: $(inputs.do_slowgain_solve)
     out:
       - id: adjustedh5parm
 
-{% endif %}
 # end do_slowgain_solve / not do_slowgain_solve
 
 {% endif %}
