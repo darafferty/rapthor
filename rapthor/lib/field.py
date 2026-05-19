@@ -56,7 +56,7 @@ class Field(object):
         self.numMS = len(self.ms_filenames)
         self.data_colname = self.parset['data_colname']
         self.use_image_based_predict = self.parset['calibration_specific']['use_image_based_predict']
-        self.use_wsclean_predict = self.parset['calibration_specific']['use_wsclean_predict']
+        self.use_wsclean_predict = False #self.parset['calibration_specific']['use_wsclean_predict']
         self.calibrate_bda_timebase = self.parset['calibration_specific']['bda_timebase']
         self.calibrate_bda_frequencybase = self.parset['calibration_specific']['bda_frequencybase']
         self.dd_interval_factor = self.parset['calibration_specific']['dd_interval_factor']
