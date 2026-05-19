@@ -183,6 +183,22 @@ def single_loop_strategy_path_calibrate_di(tmp_path):
 
 
 @pytest.fixture
+def single_loop_strategy_path_calibrate_di_fast_medium_phase(tmp_path):
+    """Fixture to generate a strategy file for a single self-calibration loop with DI fast and medium phase solves."""
+    strategy_steps = [
+        make_strategy_step(
+            do_calibrate=True,
+            do_image=True,
+            calibration_strategy={"di": ["fast_phase", "medium_phase"]},
+        )
+    ]
+    strategy_content = f"strategy_steps = {strategy_steps}"
+    strategy_path = tmp_path / "single_loop_strategy_calibrate_di_fast_medium_phase.py"
+    strategy_path.write_text(strategy_content)
+    return strategy_path
+
+
+@pytest.fixture
 def single_loop_do_normalize_strategy_path(tmp_path):
     """Strategy file for a single self-calibration loop with do_normalize."""
     strategy_steps = [make_strategy_step(do_calibrate=True, do_image=True, do_normalize=True)]
