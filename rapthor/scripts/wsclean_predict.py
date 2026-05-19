@@ -2,6 +2,7 @@
 """
 Script to predict using wsclean
 """
+import argparse
 from argparse import ArgumentParser, RawTextHelpFormatter
 import os
 import subprocess
@@ -118,7 +119,9 @@ def main():
     )
     parser.add_argument("--region", help="DS9 region file", type=str, default="")
     parser.add_argument("--model", help="Model FITS image", type=str, default="")
-    parser.add_argument("--cleanup", action="store_true", help="Remove exra columns")
+    parser.add_argument(
+        "--cleanup", action=argparse.BooleanOptionalAction, help="Remove exra columns"
+    )
     args = parser.parse_args()
 
     if args.cleanup:
