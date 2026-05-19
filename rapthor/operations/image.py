@@ -132,6 +132,47 @@ class Image(Operation):
             "allow_internet_access": self.allow_internet_access,
         }
 
+    def _build_applycal_steps(self):
+        """
+        Build the DP3 applycal steps for the prepare-imaging-data stage.
+
+        The steps are determined from the solve-type flags set on the
+        field by the calibration strategy.
+        """
+        fulljones_h5parm = None
+        input_normalize_h5parm = None
+
+        solve_type_to_step = {
+            "fast_phase": "fastphase",
+            "medium_phase": "mediumphase",
+            "slow_gains": "slowgain",
+            "full_jones": "fulljones",
+        }
+
+        strategy = getattr(self.field, "calibration_strategy", None) or {}
+        steps = [
+            # Only include steps for solve types that are present in the strategy and that are
+            # applicable given the settings for this imaging operation (e.g. don't include
+            # slow_gains if amplitudes are not applied)
+            solve_type_to_step[solve]
+            for solves in strategy.values()
+            for solve in solves
+            if solve in solve_type_to_step
+            # don't include slow_gains if amplitudes are not applied
+            and not (solve == "slow_gains" and not self.apply_amplitudes)
+        ]
+
+        if "fulljones" in steps:
+            fulljones_h5parm = CWLFile(self.field.fulljones_h5parm_filename).to_json()
+        if self.apply_normalizations:
+            steps.append("normalization")
+            input_normalize_h5parm = CWLFile(self.field.normalize_h5parm).to_json()
+        if self.apply_none or len(steps) == 0:
+            return None, None, None
+
+        formatted = f"[{','.join(steps)}]" if steps else None
+        return formatted, fulljones_h5parm, input_normalize_h5parm
+
     def set_input_parameters(self):
         """
         Define the CWL workflow inputs
@@ -260,36 +301,14 @@ class Image(Operation):
         # Set the DP3 steps and applycal steps depending on whether solutions
         # should be preapplied before imaging and on whether baseline-dependent
         # averaging is activated (and supported) or not
-        fulljones_h5parm = None
-        input_normalize_h5parm = None
-        prepare_data_applycal_steps = None
-        if self.apply_none or (
-            not self.preapply_dde_solutions
-            and not self.apply_fulljones
-            and not self.apply_normalizations
-        ):
-            # No solutions should be preapplied, so define steps
-            # without an applycal step
+        prepare_data_applycal_steps, fulljones_h5parm, input_normalize_h5parm = (
+            self._build_applycal_steps()
+        )
+        if prepare_data_applycal_steps is None:
+            # No solutions need to be preapplied, so omit the applycal step
             prepare_data_steps = ["applybeam", "shift"]
         else:
-            # Solutions should be applied, so add an applycal step
-            # and set various parameters as needed
             prepare_data_steps = ["applybeam", "shift", "applycal"]
-            prepare_data_applycal_steps = []
-            if self.preapply_dde_solutions:
-                # Fast phases and slow amplitudes (if generated) should be
-                # preapplied, as they are not applied during imaging
-                prepare_data_applycal_steps.append("fastphase")
-                if self.apply_amplitudes:
-                    prepare_data_applycal_steps.append("slowgain")
-            if self.apply_fulljones:
-                prepare_data_applycal_steps.append("fulljones")
-                fulljones_h5parm = CWLFile(self.field.fulljones_h5parm_filename).to_json()
-            if self.apply_normalizations:
-                prepare_data_applycal_steps.append("normalization")
-                input_normalize_h5parm = CWLFile(self.field.normalize_h5parm).to_json()
-            if prepare_data_applycal_steps:
-                prepare_data_applycal_steps = f"[{','.join(prepare_data_applycal_steps)}]"
         all_regular = all(obs.channels_are_regular for obs in self.field.observations)
         # Default is to average visibilities for imaging up to the smearing limit
         if self.field.average_visibilities:
