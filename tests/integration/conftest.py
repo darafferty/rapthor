@@ -132,6 +132,8 @@ def single_loop_strategy_path_peel_bright_sources(request, tmp_path):
 def single_loop_strategy_path_calibrate_di(tmp_path):
     """Fixture to generate a strategy file for a single self-calibration loop with DI calibration."""
     strategy_steps = [make_strategy_step(do_calibrate=True, do_image=True, do_fulljones_solve=True)]
+    strategy_steps[0]["calibration_strategy"] = {"di": ["full_jones"]}
+
     strategy_content = f"strategy_steps = {strategy_steps}"
     strategy_path = tmp_path / "single_loop_strategy_calibrate_di.py"
     strategy_path.write_text(strategy_content)
