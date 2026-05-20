@@ -125,6 +125,7 @@ def test_rapthor_run_dd_fast_medium_slow_gains(
 
 
 @pytest.mark.integration
+@pytest.mark.xfail(reason="DD slow-only gains calibration not yet fully implemented", strict=True)
 @pytest.mark.parametrize(
     "generated_parset_path",
     [

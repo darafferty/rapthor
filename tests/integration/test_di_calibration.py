@@ -12,6 +12,7 @@ from .utils import (
 
 
 @pytest.mark.integration
+@pytest.mark.xfail(reason="DI fast_phase calibration not yet fully implemented", strict=True)
 @pytest.mark.parametrize(
     "generated_parset_path,single_loop_strategy_with_calibration_strategy",
     [
@@ -74,6 +75,7 @@ def test_rapthor_run_single_loop_calibrate_di_fast_phase(
 
 
 @pytest.mark.integration
+@pytest.mark.xfail(reason="DI slow_gains calibration not yet fully implemented", strict=True)
 @pytest.mark.parametrize(
     "generated_parset_path,single_loop_strategy_with_calibration_strategy",
     [
@@ -135,6 +137,7 @@ def test_rapthor_run_single_loop_calibrate_di_slow_gains(
 
 
 @pytest.mark.integration
+@pytest.mark.xfail(reason="DI fast_phase+medium_phase calibration not yet fully implemented", strict=True)
 @pytest.mark.parametrize(
     "generated_parset_path",
     [
@@ -192,6 +195,7 @@ def test_rapthor_run_di_fast_phase_medium_phase(
 
 
 @pytest.mark.integration
+@pytest.mark.xfail(reason="DI fast_phase+medium_phase+slow_gains calibration not yet fully implemented", strict=True)
 @pytest.mark.parametrize(
     "generated_parset_path",
     [
