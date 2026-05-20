@@ -6,6 +6,10 @@ Script to predict using wsclean
 import argparse
 from argparse import ArgumentParser, RawTextHelpFormatter
 import os
+import stat
+import shutil
+import tempfile
+import uuid
 import json
 import subprocess
 import sys
@@ -15,6 +19,23 @@ from lsmtool.facet import read_ds9_region_file
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
+
+
+def make_writable(msfile):
+    """
+    Check if msfile is writable, if not, create a writable copy
+    and return it as output
+    """
+    if os.access(msfile, os.W_OK):
+        return msfile
+    # get temp dir to create MS
+    tmpdir = tempfile.gettempdir()
+    newms = tmpdir + "/" + os.path.basename(msfile) + "_" + str(uuid.uuid4())
+    # copy msfile to newms
+    shutil.copytree(msfile, newms, dirs_exist_ok=True)
+    os.chmod(newms, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR)
+
+    return newms
 
 
 def remove_columns_from_ms(msfile, ds9_region_file):
@@ -131,15 +152,18 @@ def main():
 
     # if msin is read only, create a copy of msin to work with,
     # return this as output
-    out_dict = {"msout": args.msin}
-    out_file = f"{args.msin}.wsclean_predict.json"
-    with open(out_file, "w") as fp:
-        json.dump(out_dict, fp)
+    msname = args.msin
+    if not args.cleanup:
+        msname = make_writable(args.msin)
+        out_dict = {"msout": args.msin}
+        out_file = f"{args.msin}.wsclean_predict.json"
+        with open(out_file, "w") as fp:
+            json.dump(out_dict, fp)
 
     if args.cleanup:
-        return remove_columns_from_ms(args.msin, args.region)
+        return remove_columns_from_ms(msname, args.region)
     else:
-        return predict(args.msin, args.region, args.model, args.storage_manager)
+        return predict(msname, args.region, args.model, args.storage_manager)
 
 
 if __name__ == "__main__":
