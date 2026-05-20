@@ -2,31 +2,30 @@
 """
 Script to predict using wsclean
 """
+
 import argparse
 from argparse import ArgumentParser, RawTextHelpFormatter
 import os
+import json
 import subprocess
 import sys
 import logging
 import casacore.tables as ct
 from lsmtool.facet import read_ds9_region_file
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
 def remove_columns_from_ms(msfile, ds9_region_file):
     """
     Remove extra columns added from prediction
-    """
-    # Check pre-conditions
-    if not os.path.exists(msfile):
-        raise ValueError(f"Input measurement set {msfile!r} does not exist")
-    if not os.path.exists(ds9_region_file):
-        raise ValueError(f"DS9 region file {ds9_region_file!r} does not exist")
 
+    Parameters
+    ----------
+    msfile : MS name, output will be written to separate columns
+    ds9_region_file: DS9 region file, specifying facet regions and names
+    """
     tt = ct.table(msfile, readonly=False)
     colnames = tt.colnames()
 
@@ -40,6 +39,7 @@ def remove_columns_from_ms(msfile, ds9_region_file):
 
 def predict(msfile, ds9_region_file, model_image, storage_manager):
     """
+    Predict model image to msfile
 
     Parameters
     ----------
@@ -48,24 +48,7 @@ def predict(msfile, ds9_region_file, model_image, storage_manager):
     Note: names in region file should be with {}, like {Patch_1}, After
     parsing the {} will be dropped
     model_image: FITS image to use as model
-
-    Returns
-    -------
-    int : 0 if successfull; non-zero otherwise
-
-    Raises
-    ------
-    ValueError
-        If no valid Measurement Set, DS9 region file or model
-        image exists
     """
-    # Check pre-conditions
-    if not os.path.exists(msfile):
-        raise ValueError(f"Input measurement set {msfile!r} does not exist")
-    if not os.path.exists(ds9_region_file):
-        raise ValueError(f"DS9 region file {ds9_region_file!r} does not exist")
-    if not os.path.exists(model_image):
-        raise ValueError(f"Model image {model_image!r} does not exist")
 
     # remove '-model.fits' from image name
     model = model_image.replace("-model.fits", "")
@@ -115,23 +98,43 @@ def main():
       wsclean_predict.py --region sector_1_facets_ds9.reg --msin small.ms --model images/field-MFS-model.fits
     2) To remove extra columns created from step 1
       wsclean_predict.py --region sector_1_facets_ds9.reg --msin small.ms --cleanup
+
+    Returns
+    -------
+    int : 0 if successfull; non-zero otherwise
+
+    Raises
+    ------
+    ValueError
+        If no valid Measurement Set, DS9 region file or model
+        image exists
     """
     descriptiontext = "Predict model data using WSClean.\n"
-    parser = ArgumentParser(
-        description=descriptiontext, formatter_class=RawTextHelpFormatter
-    )
-    parser.add_argument(
-        "--msin", help="Input/Output measurement set", type=str, default=""
-    )
+    parser = ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
+    parser.add_argument("--msin", help="Input/Output measurement set", type=str, default="")
     parser.add_argument("--region", help="DS9 region file", type=str, default="")
     parser.add_argument("--model", help="Model FITS image", type=str, default="")
-    parser.add_argument(
-        "--storage_manager", help="Storage manager", type=str, default="default"
-    )
+    parser.add_argument("--storage_manager", help="Storage manager", type=str, default="default")
     parser.add_argument(
         "--cleanup", action=argparse.BooleanOptionalAction, help="Remove exra columns"
     )
     args = parser.parse_args()
+
+    # Check pre-conditions
+    if not os.path.exists(args.msin):
+        raise ValueError(f"Input measurement set {args.msin!r} does not exist")
+    if not os.path.exists(args.region):
+        raise ValueError(f"DS9 region file {args.region!r} does not exist")
+    if not args.cleanup:
+        if not os.path.exists(args.model):
+            raise ValueError(f"Model image {args.model!r} does not exist")
+
+    # if msin is read only, create a copy of msin to work with,
+    # return this as output
+    out_dict = {"msout": args.msin}
+    out_file = f"{args.msin}.wsclean_predict.json"
+    with open(out_file, "w") as fp:
+        json.dump(out_dict, fp)
 
     if args.cleanup:
         return remove_columns_from_ms(args.msin, args.region)
