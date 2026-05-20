@@ -112,6 +112,7 @@ script-files = [
     "rapthor/scripts/regrid_image.py",
     "rapthor/scripts/restore_skymodel.py",
     "rapthor/scripts/subtract_sector_models.py",
+    "rapthor/scripts/wsclean_predict.py",
 ]
 
 [tool.setuptools.package-data]
