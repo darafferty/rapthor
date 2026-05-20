@@ -287,7 +287,6 @@ class Calibrate(Operation):
             # as attributes since they are needed in finalize()
             self.collected_h5parm_fulljones = "fulljones_gains.h5"
 
-            dp3_steps = ["solve1"]
             # Set the constraints used in the calibrations
             self.input_parms = {
                 # Get the filenames of the input files for each time chunk. These are the
@@ -307,32 +306,32 @@ class Calibrate(Operation):
                 "onebeamperpatch": field.onebeamperpatch,
                 "parallelbaselines": field.parallelbaselines,
                 "sagecalpredict": field.sagecalpredict,
-                "solve1_datause": field.fast_datause,
-                "solve2_datause": field.medium_datause,
-                "solve3_datause": field.slow_datause,
-                "solve4_datause": field.medium_datause,
+                
                 # Get the solution intervals for the calibrations
                 "solint_fast_timestep": field.get_obs_parameters("solint_fulljones_timestep"),
                 "solint_fast_freqstep": field.get_obs_parameters("solint_fulljones_freqstep"),
                 "solint_solve1_timestep": field.get_obs_parameters("solint_fulljones_timestep"),
                 "solint_solve1_freqstep": field.get_obs_parameters("solint_fulljones_freqstep"),
-                "solve1_solutions_per_direction": [] ,
+                "solve1_solutions_per_direction": [None for _ in range(field.ntimechunks)],
                 "calibrator_patch_names": [],
                 "calibrator_fluxes": [],
-                "solve1_smoothness_dd_factors":[],
-                "solve1_smoothnessreffrequency": 0,
-                "solve2_solutions_per_direction": [] ,
-                "solve2_smoothness_dd_factors":[],
-                "solve2_smoothnessreffrequency": 0,
-                "solve3_smoothness_dd_factors":[],
-                "solve3_smoothnessreffrequency": 0,
-                "solve3_solutions_per_direction": [] ,
-                "solve4_smoothness_dd_factors":[],
-                "solve4_smoothnessreffrequency": 0,
-                "solve4_solutions_per_direction": [] ,
-                "output_solve2_h5parm": "unused",
-                "output_solve3_h5parm": "unused",
-                "output_solve4_h5parm": "unused",
+                "solve1_smoothness_dd_factors": [None for _ in range(field.ntimechunks)],
+                "solve1_smoothnessreffrequency": [0] * field.ntimechunks,
+                "solve2_solutions_per_direction": [None for _ in range(field.ntimechunks)],
+                "solve2_smoothness_dd_factors": [None for _ in range(field.ntimechunks)],
+                "solve2_smoothnessreffrequency": [0] * field.ntimechunks,
+                "solve3_smoothness_dd_factors":[None for _ in range(field.ntimechunks)],
+                "solve3_smoothnessreffrequency": [0] * field.ntimechunks,
+                "solve2_smoothnessconstraint": 0,
+                "solve3_solutions_per_direction": [None for _ in range(field.ntimechunks)],
+                "solve3_smoothnessconstraint": 0,
+                "solve4_smoothness_dd_factors":[None for _ in range(field.ntimechunks)],
+                "solve4_smoothnessreffrequency": [0] * field.ntimechunks,
+                "solve4_smoothnessconstraint": 0,
+                "solve4_solutions_per_direction": [None for _ in range(field.ntimechunks)],
+                "output_solve2_h5parm": [f"medium1_phase_{i}.h5parm" for i in range(field.ntimechunks)],
+                "output_solve3_h5parm": [f"slow_gain_{i}.h5parm" for i in range(field.ntimechunks)],
+                "output_solve4_h5parm": [f"medium2_phase_{i}.h5parm" for i in range(field.ntimechunks)],
                 "collected_solve2_h5parm": "unused",
                 "collected_solve3_h5parm": "unused",
                 "collected_solve4_h5parm": "unused",
@@ -353,8 +352,8 @@ class Calibrate(Operation):
                 "solve3_mode": "null",
                 "solve4_mode": "null",
 
-                "model_data_column": "[MODEL_DATA]",
-                "dp3_steps": "fulljones",
+                "modeldatacolumn": "[MODEL_DATA]",
+                "dp3_steps": "[solve1]",
                 "output_solve1_h5parm": [
                     f"fulljones_gain_{i}.h5parm" for i in range(field.ntimechunks)
                 ],
@@ -380,6 +379,12 @@ class Calibrate(Operation):
                 "correcttimesmearing": field.correct_smearing_in_calibration,
                 "max_threads": self.parset["cluster_specific"]["max_threads"],
             }
+
+            # 
+            #    "solve1_datause": field.fast_datause ,
+            #    "solve2_datause": field.medium_datause,
+            #    "solve3_datause": field.slow_datause,
+            #    "solve4_datause": field.medium_datause,
 
     def _build_dp3_steps(self, bda_timebase, bda_frequencybase):
         """
