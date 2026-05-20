@@ -155,7 +155,7 @@ def main():
     msname = args.msin
     if not args.cleanup:
         msname = make_writable(args.msin)
-        out_dict = {"msout": args.msin}
+        out_dict = {"msout": msname}
         out_file = f"{args.msin}.wsclean_predict.json"
         with open(out_file, "w") as fp:
             json.dump(out_dict, fp)
