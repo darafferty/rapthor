@@ -14,6 +14,7 @@ requirements:
   ScatterFeatureRequirement: {}
   StepInputExpressionRequirement: {}
   InlineJavascriptRequirement: {}
+  MultipleInputFeatureRequirement: {}
 
 {% if max_cores is not none %}
 hints:
@@ -35,6 +36,10 @@ inputs:
     doc: |
       The data column to be read from the MS files (length = 1).
     type: string
+  
+  - id: modeldatacolumn
+    type: string?
+
 
   - id: starttime
     label: Start time of each chunk
@@ -220,9 +225,10 @@ inputs:
     type:
       - type: array
         items:
-          type: array
-          items: 
-          - int
+          - type: array
+            items: 
+            - int
+          - "null"
       
   - id: calibrator_patch_names
     label: Names of calibrator patches
@@ -259,10 +265,11 @@ inputs:
     type:
       - type: array
         items:
-          type: array
-          items: 
-          - float
-
+          - "null"
+          - type: array
+            items: 
+            - float
+         
   - id: solve1_smoothnessconstraint
     label: Fast smoothnessconstraint
     doc: |
@@ -312,9 +319,10 @@ inputs:
     type:
       - type: array
         items:
-          type: array
-          items: 
-          - int
+          - "null"
+          - type: array
+            items: 
+            - int
         
   - id: solve3_solutions_per_direction
     label: Medium number of solutions per direction
@@ -324,9 +332,10 @@ inputs:
     type:
       - type: array
         items:
-          type: array
-          items: 
-          - int
+          - "null"
+          - type: array
+            items: 
+            - int
   
   - id: solve4_solutions_per_direction
     label: Medium number of solutions per direction
@@ -336,9 +345,10 @@ inputs:
     type:
       - type: array
         items:
-          type: array
-          items: 
-          - int
+          - "null"
+          - type: array
+            items: 
+            - int
         
   - id: output_solve2_h5parm
     label: Medium output solution table
@@ -370,9 +380,10 @@ inputs:
     type:
       - type: array
         items:
-          type: array
-          items: 
-          - float
+          - "null"
+          - type: array
+            items: 
+            - float
 
   - id: solve2_smoothnessconstraint
     label: Fast smoothnessconstraint
@@ -540,7 +551,7 @@ inputs:
   - id: solve1_datause
     doc: |
       DDECal datause option for the fast-phase calibration (length = 1).
-    type: string
+    type: string?
 
   - id: solve2_datause
     doc: |
@@ -648,9 +659,10 @@ inputs:
     type:
       - type: array
         items:
-          type: array
-          items: 
-          - float
+          - "null"
+          - type: array
+            items: 
+            - float
 
   - id: solve3_smoothnessconstraint
     label: Slow smoothnessconstraint
@@ -671,6 +683,18 @@ inputs:
       The filename of the input h5parm solution table to use for the
       slow-gain initial solutions (length = 1).
     type: File?
+
+  - id: solve3_smoothness_dd_factors
+    label: Smoothness factors
+    doc: |
+      The factor by which to multiply the smoothnesscontraint for the
+      slow-gain solve, per direction (length = n_obs * n_calibrators * n_time_chunks).
+    type:
+      - type: array
+        items:
+          - "null"
+          - type: array
+            items: 
 
   - id: solve4_initialsolutions_h5parm
     label: Input solution table
@@ -1036,6 +1060,8 @@ steps:
 {% endif %}
       - id: numthreads
         source: max_threads
+      - id: modeldatacolumn
+        source: modeldatacolumn
       - id: solve1_h5parm
         source: output_solve1_h5parm
       - id: solve1_solint
@@ -1302,7 +1328,8 @@ steps:
       - id: soltype
         valueFrom: 'phase'
       - id: root
-        valueFrom: 'fast_phase_'
+        valueFrom: |
+          $(((inputs.h5parm.basename.match(/^(.*_)[^_]*_\.h5parm$/) || [])[1]) || null)
     out:
       - id: plots
 
@@ -1317,8 +1344,11 @@ steps:
         source: solve/output_h5parm2
       - id: outputh5parm
         source: collected_solve2_h5parm
+      - id: dp3_steps
+        source: dp3_steps
     out:
       - id: outh5parm
+    when: $(inputs.dp3_steps.indexOf("solve2")!==-1)
 
   - id: plot_medium1_phase_solutions
     label: Plot medium phase solutions
@@ -1332,6 +1362,7 @@ steps:
         valueFrom: 'phase'
       - id: root
         valueFrom: 'medium1_phase_'
+    when: $(inputs.h5parm !== null)
     out:
       - id: plots
 
@@ -1356,8 +1387,11 @@ steps:
         source: calibrator_patch_names
       - id: calibrator_fluxes
         source: calibrator_fluxes
+      - id: dp3_steps
+        source: dp3_steps
     out:
       - id: combinedh5parm
+    when: $(inputs.dp3_steps.indexOf("step2") !== -1)
 
 # start do_slowgain_solve
 
@@ -1541,10 +1575,11 @@ steps:
       - id: skymodel
         source: calibration_skymodel_file
       - id: h5parm
-        source: combine_fast_and_full_slow_h5parms/combinedh5parm
-      - id: do_slowgain_solve
-        source: do_slowgain_solve 
-    when: $(inputs.do_slowgain_solve)
+        source: 
+        - combine_fast_and_full_slow_h5parms/combinedh5parm
+      - id: directions
+        source: calibrator_patch_names
+    when: $(inputs.directions.length > 1)
     out:
       - id: adjustedh5parm
 
@@ -1559,10 +1594,11 @@ steps:
       - id: skymodel
         source: calibration_skymodel_file
       - id: h5parm
-        source: combine_fast_medium1_h5parms/combinedh5parm
-      - id: do_slowgain_solve
-        source: do_slowgain_solve
-    when: $(inputs.do_slowgain_solve)
+        source:
+        - combine_fast_medium1_h5parms/combinedh5parm
+      - id: directions
+        source: calibrator_patch_names
+    when: $(inputs.directions.length > 1)
     out:
       - id: adjustedh5parm
 
