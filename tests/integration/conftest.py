@@ -147,6 +147,7 @@ def single_loop_strategy_path_calibrate_di_fast_medium_phase(tmp_path):
     strategy_path.write_text(strategy_content)
     return strategy_path
 
+
 @pytest.fixture
 def single_loop_strategy_path_calibrate_dd_slow(tmp_path):
     """Fixture to generate a strategy file for a single self-calibration loop with DD slow gains solves."""
@@ -161,6 +162,7 @@ def single_loop_strategy_path_calibrate_dd_slow(tmp_path):
     strategy_path = tmp_path / "single_loop_strategy_calibrate_dd_slow.py"
     strategy_path.write_text(strategy_content)
     return strategy_path
+
 
 @pytest.fixture
 def single_loop_strategy_path_calibrate_di_fast_medium_slow(tmp_path):

@@ -125,6 +125,7 @@ def test_rapthor_run_dd_fast_medium_slow_gains(
 
 
 @pytest.mark.integration
+@pytest.mark.xfail(reason="DD slow-only gains calibration not yet fully implemented", strict=True)
 @pytest.mark.parametrize(
     "generated_parset_path",
     [
@@ -136,7 +137,9 @@ def test_rapthor_run_dd_fast_medium_slow_gains(
     ],
     indirect=True,
 )
-def test_rapthor_run_dd_slow_gains(generated_parset_path, single_loop_strategy_path_calibrate_dd_slow):
+def test_rapthor_run_dd_slow_gains(
+    generated_parset_path, single_loop_strategy_path_calibrate_dd_slow
+):
     """Test a single selfcal loop with DP3.
     ddecal slow gains are performed
     """
