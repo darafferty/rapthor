@@ -151,7 +151,9 @@ class Calibrate(Operation):
                 # Calibration outputs (H5parm products)
                 "calibrator_patch_names": field.calibrator_patch_names,
                 "calibrator_fluxes": field.calibrator_fluxes,
-                "output_solve1_h5parm": [f"fast_phase_{i}.h5parm" for i in range(field.ntimechunks)],
+                "output_solve1_h5parm": [
+                    f"fast_phase_{i}.h5parm" for i in range(field.ntimechunks)
+                ],
                 "collected_solve1_h5parm": self.fast_h5parm,
                 "output_solve2_h5parm": [
                     f"medium1_phase_{i}.h5parm" for i in range(field.ntimechunks)
@@ -286,7 +288,6 @@ class Calibrate(Operation):
             self.input_parms = {
                 # Get the filenames of the input files for each time chunk. These are the
                 # output of the predict_di pipeline done before this calibration
-
                 "timechunk_filename": CWLDir(
                     field.get_obs_parameters("predict_di_output_filename")
                 ).to_json(),
