@@ -73,6 +73,7 @@ class Calibrate(Operation):
         # calibration)
         starttime = field.get_obs_parameters("starttime")
         ntimes = field.get_obs_parameters("ntimes")
+        calibration_skymodel_file = field.calibration_skymodel_file
 
         if self.mode == "dd":
             # --- output h5parm configuration ---
@@ -86,7 +87,6 @@ class Calibrate(Operation):
 
             # --- Sky model configuration ---
             # Define the input sky model
-            calibration_skymodel_file = field.calibration_skymodel_file
             num_spectral_terms = misc.get_max_spectral_terms(calibration_skymodel_file)
             (
                 model_image_frequency_bandwidth,
@@ -303,7 +303,7 @@ class Calibrate(Operation):
                 "bda_minchannels": field.get_obs_parameters("bda_minchannels"),
                 "bda_timebase": field.calibrate_bda_timebase,
                 "bda_frequencybase": field.calibrate_bda_frequencybase,
-                
+                "calibration_skymodel_file": CWLFile(calibration_skymodel_file).to_json(),
                 "onebeamperpatch": field.onebeamperpatch,
                 "parallelbaselines": field.parallelbaselines,
                 "sagecalpredict": field.sagecalpredict,
@@ -316,6 +316,33 @@ class Calibrate(Operation):
                 "solint_fast_freqstep": field.get_obs_parameters("solint_fulljones_freqstep"),
                 "solint_solve1_timestep": field.get_obs_parameters("solint_fulljones_timestep"),
                 "solint_solve1_freqstep": field.get_obs_parameters("solint_fulljones_freqstep"),
+                "solve1_solutions_per_direction": [] ,
+                "calibrator_patch_names": [],
+                "calibrator_fluxes": [],
+                "solve1_smoothness_dd_factors":[],
+                "solve1_smoothnessreffrequency": 0,
+                "solve2_solutions_per_direction": [] ,
+                "solve2_smoothness_dd_factors":[],
+                "solve2_smoothnessreffrequency": 0,
+                "solve3_smoothness_dd_factors":[],
+                "solve3_smoothnessreffrequency": 0,
+                "solve3_solutions_per_direction": [] ,
+                "solve4_smoothness_dd_factors":[],
+                "solve4_smoothnessreffrequency": 0,
+                "solve4_solutions_per_direction": [] ,
+                "output_solve2_h5parm": "unused",
+                "output_solve3_h5parm": "unused",
+                "output_solve4_h5parm": "unused",
+                "collected_solve2_h5parm": "unused",
+                "collected_solve3_h5parm": "unused",
+                "collected_solve4_h5parm": "unused",
+                "combined_solve1_solve2_h5parm": "unused",
+                "solint_solve2_timestep": field.get_obs_parameters("solint_medium_timestep"),
+                "solint_solve3_timestep": field.get_obs_parameters("solint_slow_timestep"),
+                "solint_solve4_timestep": field.get_obs_parameters("solint_medium_timestep"),
+                "solint_solve2_freqstep": field.get_obs_parameters("solint_medium_freqstep"),
+                "solint_solve3_freqstep": field.get_obs_parameters("solint_slow_freqstep"),
+                "solint_solve4_freqstep": field.get_obs_parameters("solint_medium_freqstep"),
                 "solve1_smoothnessconstraint": field.smoothnessconstraint_fulljones,
                 # ------------------------------------
                 # Get the size of the imaging area (for use in making the a-term images)

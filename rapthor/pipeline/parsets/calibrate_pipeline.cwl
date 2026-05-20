@@ -68,7 +68,7 @@ inputs:
     doc: |
       The filename of the input sky model text file used for all processing except
       in DDECal solve steps (length = 1).
-    type: File?
+    type: File
 
   - id: solverlbfgs_iter
     label: LBFGS iterations per minibatch
@@ -212,7 +212,7 @@ inputs:
     label: Solve4 freqstep
     type: int[]
   
-  - id: fast_solutions_per_direction
+  - id: solve1_solutions_per_direction
     label: Fast number of solutions per direction
     doc: |
       The number of solutions per direction for the fast phase solve (length =
@@ -221,21 +221,21 @@ inputs:
       - type: array
         items:
           type: array
-          items: int
-      - "null"
-
+          items: 
+          - int
+      
   - id: calibrator_patch_names
     label: Names of calibrator patches
     doc: |
       The names of the patches used in calibration (length = n_calibrators).
-    type: string[]?
+    type: string[]
 
   - id: calibrator_fluxes
     label: Values of calibrator flux densities
     doc: |
       The total flux densities in Jy of the patches used in calibration (length =
       n_calibrators).
-    type: float[]?
+    type: float[]
 
   - id: output_solve1_h5parm
     label: Fast output solution table
@@ -251,17 +251,17 @@ inputs:
       (length = 1).
     type: string
 
-  - id: fast_smoothness_dd_factors
+  - id: solve1_smoothness_dd_factors
     label: Smoothness factors
     doc: |
       The factor by which to multiply the smoothnesscontraint for the fast phase
       solve, per direction (length = n_obs * n_calibrators * n_time_chunks).
     type:
-      - "null"
       - type: array
         items:
           type: array
-          items: float
+          items: 
+          - float
 
   - id: solve1_smoothnessconstraint
     label: Fast smoothnessconstraint
@@ -274,7 +274,7 @@ inputs:
     doc: |
       The smoothnessreffrequency Hz for the fast phase solve (length = n_obs *
       n_time_chunks).
-    type: float[]?
+    type: float[]
 
   - id: solve1_smoothnessrefdistance
     label: Fast smoothnessrefdistance
@@ -294,15 +294,15 @@ inputs:
 
   - id: solint_solve2_timestep
     label: Second solution interval in frequency
-    type: int[]?
+    type: int[]
 
   - id: solint_solve3_timestep
     label: Third solution interval in frequency
-    type: int[]?
+    type: int[]
 
   - id: solint_solve4_timestep
     label: Forth solution interval in frequency
-    type: int[]?
+    type: int[]
 
   - id: solve2_solutions_per_direction
     label: Medium number of solutions per direction
@@ -310,11 +310,11 @@ inputs:
       The number of solutions per direction for the medium phase solve (length =
       n_obs * n_calibrators * n_time_chunks).
     type:
-      - "null"
       - type: array
         items:
           type: array
-          items: int
+          items: 
+          - int
         
   - id: solve3_solutions_per_direction
     label: Medium number of solutions per direction
@@ -322,11 +322,11 @@ inputs:
       The number of solutions per direction for the medium phase solve (length =
       n_obs * n_calibrators * n_time_chunks).
     type:
-      - "null"
       - type: array
         items:
           type: array
-          items: int
+          items: 
+          - int
   
   - id: solve4_solutions_per_direction
     label: Medium number of solutions per direction
@@ -334,25 +334,25 @@ inputs:
       The number of solutions per direction for the medium phase solve (length =
       n_obs * n_calibrators * n_time_chunks).
     type:
-      - "null"
       - type: array
         items:
           type: array
-          items: int
+          items: 
+          - int
         
   - id: output_solve2_h5parm
     label: Medium output solution table
     doc: |
       The filename of the output h5parm solution table for the medium1 phase solve (length
       = n_obs * n_time_chunks).
-    type: string[]?
+    type: string[]
 
   - id: collected_solve2_h5parm
     label: Collected medium output solution table
     doc: |
       The filename of the output collected h5parm solution table for the medium1 phase solve
       (length = 1).
-    type: string?
+    type: string
 
   - id: combined_solve1_solve2_h5parm
     label: Combined fast and medium1 output solution table
@@ -360,7 +360,7 @@ inputs:
       The filename of the output combined h5parm solution table for the fast phase solve
       and medium1 phase solve
       (length = 1).
-    type: string?
+    type: string
 
   - id: solve2_smoothness_dd_factors
     label: Smoothness factors
@@ -368,37 +368,37 @@ inputs:
       The factor by which to multiply the smoothnesscontraint for the medium phase
       solve, per direction (length = n_obs * n_calibrators * n_time_chunks).
     type:
-      - "null"
       - type: array
         items:
           type: array
-          items: float
+          items: 
+          - float
 
   - id: solve2_smoothnessconstraint
     label: Fast smoothnessconstraint
     doc: |
       The smoothnessconstraint kernel size in Hz for the medium phase solve (length = 1).
-    type: float?
+    type: float
 
   - id: solve4_smoothnessconstraint
     label: Fast smoothnessconstraint
     doc: |
       The smoothnessconstraint kernel size in Hz for the medium phase solve (length = 1).
-    type: float?
+    type: float
 
   - id: solve2_smoothnessreffrequency
     label: Fast smoothnessreffrequency
     doc: |
       The smoothnessreffrequency Hz for the medium phase solve (length = n_obs *
       n_time_chunks).
-    type: float[]?
+    type: float[]
 
   - id: solve4_smoothnessreffrequency
     label: Fast smoothnessreffrequency
     doc: |
       The smoothnessreffrequency Hz for the medium phase solve (length = n_obs *
       n_time_chunks).
-    type: float[]?
+    type: float[]
 
   - id: solve2_smoothnessrefdistance
     label: Fast smoothnessrefdistance
@@ -634,11 +634,11 @@ inputs:
       The number of solutions per direction for the
       slow-gain solve (length = n_obs * n_directions * n_time_chunks).
     type:
-      - "null"
       - type: array
         items:
           type: array
-          items: int
+          items: 
+          - int
 
   - id: solve3_smoothness_dd_factors
     label: Smoothness factors
@@ -646,11 +646,11 @@ inputs:
       The factor by which to multiply the smoothnesscontraint for the
       slow-gain solve, per direction (length = n_obs * n_calibrators * n_time_chunks).
     type:
-      - "null"
       - type: array
         items:
           type: array
-          items: float
+          items: 
+          - float
 
   - id: solve3_smoothnessconstraint
     label: Slow smoothnessconstraint
@@ -1045,7 +1045,7 @@ steps:
       - id: solve1_nchan
         source: solint_solve1_freqstep
       - id: solve1_solutions_per_direction
-        source: fast_solutions_per_direction
+        source: solve1_solutions_per_direction
       - id: solve1_llssolver
         source: llssolver
       - id: solve1_maxiter
@@ -1075,7 +1075,7 @@ steps:
       - id: solve1_uvlambdamin
         source: uvlambdamin
       - id: solve1_smoothness_dd_factors
-        source: fast_smoothness_dd_factors
+        source: solve1_smoothness_dd_factors
       - id: solve1_smoothnessconstraint
         source: solve1_smoothnessconstraint
       - id: solve1_smoothnessreffrequency
@@ -1161,18 +1161,12 @@ steps:
         source: ddecal_applycal_steps
       - id: solve3_h5parm
         source: output_solve3_h5parm
-        valueFrom: $(self !== null ? self : inputs.msin.map(() => null))
-
       - id: solve3_solint
         source: solint_solve3_timestep
-        valueFrom: $(self !== null ? self : inputs.msin.map(() => null))
-
       - id: solve3_mode
         source: solve3_mode
       - id: solve3_nchan
         source: solint_solve3_freqstep
-        valueFrom: $(self !== null ? self : inputs.msin.map(() => null))
-        
       - id: solve3_solutions_per_direction
         source: solve3_solutions_per_direction
       - id: solve3_llssolver
@@ -1221,7 +1215,6 @@ steps:
 {% endif %}
       - id: solve4_h5parm
         source: output_solve4_h5parm
-        valueFrom: $(self !== null ? self : inputs.msin.map(() => null))
       - id: solve4_solint
         source: solint_solve4_timestep
       - id: solve4_mode
@@ -1260,19 +1253,14 @@ steps:
         source: uvlambdamin
       - id: solve4_smoothness_dd_factors
         source: solve4_smoothness_dd_factors
-        valueFrom: $(self !== null ? self : inputs.msin.map(() => null))
       - id: solve4_smoothnessconstraint
         source: solve4_smoothnessconstraint
-        valueFrom: $(self !== null ? self : inputs.msin.map(() => null))
       - id: solve4_smoothnessreffrequency
         source: solve4_smoothnessreffrequency
-        valueFrom: $(self !== null ? self : inputs.msin.map(() => null))
       - id: solve4_smoothnessrefdistance
         source: solve4_smoothnessrefdistance
-        valueFrom: $(self !== null ? self : inputs.msin.map(() => null))
       - id: solve4_antennaconstraint
         source: solve4_antennaconstraint
-        valueFrom: $(self !== null ? self : inputs.msin.map(() => null))
 {% endif %}
     scatter: [msin, starttime, ntimes, maxinterval,
               solve1_h5parm, solve1_solint, solve1_nchan, solve1_smoothnessreffrequency, solve1_solutions_per_direction, solve1_smoothness_dd_factors, 
