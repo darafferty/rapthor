@@ -4,7 +4,7 @@ import subprocess
 
 import pytest
 
-from .utils import update_parset_path
+from .utils import get_working_dir_from_parset, update_parset_path
 
 
 @pytest.mark.integration
@@ -31,6 +31,9 @@ def test_rapthor_run_single_loop_calibrate_di(
             "strategy": str(single_loop_strategy_path_calibrate_di),
         },
     )
+
+    working_dir = get_working_dir_from_parset(updated_parset_path)
+    print("---Rapthor working dir: ", working_dir)
 
     command = ["rapthor", str(updated_parset_path)]
     result = subprocess.run(

@@ -150,13 +150,11 @@ class TestCalibrate:
     def test_set_parset_parameters(
         self, calibrate_field, mode, solve, batch_system, generate_screens, use_image_based_predict
     ):
-        with_slow = solve == "with_slowgain"
         max_cores = 42
 
         # Setup field object
         calibrate_field.generate_screens = generate_screens
         calibrate_field.use_image_based_predict = use_image_based_predict
-        calibrate_field.do_slowgain_solve = with_slow
         calibrate_field.parset["cluster_specific"]["batch_system"] = batch_system
         calibrate_field.parset["cluster_specific"]["max_cores"] = max_cores
 
@@ -180,7 +178,6 @@ class TestCalibrate:
                 is expected_use_image_based_predict
             )
             assert calibrate.parset_parms["generate_screens"] is generate_screens
-            assert calibrate.parset_parms["do_slowgain_solve"] is with_slow
 
     @pytest.mark.parametrize(
         "antenna, stations, expected",
