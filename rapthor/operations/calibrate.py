@@ -27,7 +27,12 @@ class Calibrate(Operation):
     def __init__(self, mode, field, index):
         if mode not in ["di", "dd"]:
             raise ValueError(f"Only di and dd mode are supported, chosen: {mode}")
-        super().__init__(field, index=index, name="calibrate")
+        super().__init__(
+            field,
+            index=index,
+            name="calibrate" if mode == "dd" else "calibrate_di",
+            rootname="calibrate",
+        )
         self.mode = mode
 
     def set_parset_parameters(self):
@@ -99,8 +104,9 @@ class Calibrate(Operation):
             # Smoothness constraints
             smoothness_dd_factors = {}
             smoothness_constraints = {}
-            for factor_key, contraint_key in zip(("fast", "medium", "slow", "medium"),
-                                                 ("solve1", "solve2", "solve3", "solve4")):
+            for factor_key, contraint_key in zip(
+                ("fast", "medium", "slow", "medium"), ("solve1", "solve2", "solve3", "solve4")
+            ):
                 dd_factor_key = f"{factor_key}_smoothness_dd_factors"
                 constraint_key = f"{contraint_key}_smoothnessconstraint"
                 dd_factor = smoothness_dd_factors[dd_factor_key] = field.get_obs_parameters(
@@ -309,7 +315,7 @@ class Calibrate(Operation):
                 "onebeamperpatch": field.onebeamperpatch,
                 "parallelbaselines": field.parallelbaselines,
                 "sagecalpredict": field.sagecalpredict,
-                
+                "do_slowgain_solve": field.do_slowgain_solve,
                 # Get the solution intervals for the calibrations
                 "solint_fast_timestep": field.get_obs_parameters("solint_fulljones_timestep"),
                 "solint_fast_freqstep": field.get_obs_parameters("solint_fulljones_freqstep"),
@@ -321,18 +327,22 @@ class Calibrate(Operation):
                 "solve2_solutions_per_direction": [None for _ in range(field.ntimechunks)],
                 "solve2_smoothness_dd_factors": [None for _ in range(field.ntimechunks)],
                 "solve2_smoothnessreffrequency": [0] * field.ntimechunks,
-                "solve3_smoothness_dd_factors":[None for _ in range(field.ntimechunks)],
+                "solve3_smoothness_dd_factors": [None for _ in range(field.ntimechunks)],
                 "solve3_smoothnessreffrequency": [0] * field.ntimechunks,
                 "solve2_smoothnessconstraint": 0,
                 "solve3_solutions_per_direction": [None for _ in range(field.ntimechunks)],
                 "solve3_smoothnessconstraint": 0,
-                "solve4_smoothness_dd_factors":[None for _ in range(field.ntimechunks)],
+                "solve4_smoothness_dd_factors": [None for _ in range(field.ntimechunks)],
                 "solve4_smoothnessreffrequency": [0] * field.ntimechunks,
                 "solve4_smoothnessconstraint": 0,
                 "solve4_solutions_per_direction": [None for _ in range(field.ntimechunks)],
-                "output_solve2_h5parm": [f"medium1_phase_{i}.h5parm" for i in range(field.ntimechunks)],
+                "output_solve2_h5parm": [
+                    f"medium1_phase_{i}.h5parm" for i in range(field.ntimechunks)
+                ],
                 "output_solve3_h5parm": [f"slow_gain_{i}.h5parm" for i in range(field.ntimechunks)],
-                "output_solve4_h5parm": [f"medium2_phase_{i}.h5parm" for i in range(field.ntimechunks)],
+                "output_solve4_h5parm": [
+                    f"medium2_phase_{i}.h5parm" for i in range(field.ntimechunks)
+                ],
                 "collected_solve2_h5parm": "unused",
                 "collected_solve3_h5parm": "unused",
                 "collected_solve4_h5parm": "unused",
@@ -352,7 +362,6 @@ class Calibrate(Operation):
                 "solve2_mode": "null",
                 "solve3_mode": "null",
                 "solve4_mode": "null",
-
                 "modeldatacolumn": "[MODEL_DATA]",
                 "dp3_steps": "[solve1]",
                 "output_solve1_h5parm": [
@@ -381,7 +390,7 @@ class Calibrate(Operation):
                 "max_threads": self.parset["cluster_specific"]["max_threads"],
             }
 
-            # 
+            #
             #    "solve1_datause": field.fast_datause ,
             #    "solve2_datause": field.medium_datause,
             #    "solve3_datause": field.slow_datause,
