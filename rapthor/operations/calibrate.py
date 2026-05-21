@@ -138,13 +138,16 @@ class Calibrate(Operation):
                 "solint_medium_freqstep": field.get_obs_parameters("solint_medium_freqstep"),
                 "solint_slow_freqstep": field.get_obs_parameters("solint_slow_freqstep"),
                 # Solutions per direction
-                "fast_solutions_per_direction": field.get_obs_parameters(
+                "solve1_solutions_per_direction": field.get_obs_parameters(
                     "fast_solutions_per_direction"
                 ),
-                "medium_solutions_per_direction": field.get_obs_parameters(
+                "solve2_solutions_per_direction": field.get_obs_parameters(
                     "medium_solutions_per_direction"
                 ),
-                "slow_solutions_per_direction": field.get_obs_parameters(
+                "solve4_solutions_per_direction": field.get_obs_parameters(
+                    "medium_solutions_per_direction"
+                ),
+                "solve3_solutions_per_direction": field.get_obs_parameters(
                     "slow_solutions_per_direction"
                 ),
                 # Calibration outputs (H5parm products)
@@ -218,16 +221,16 @@ class Calibrate(Operation):
                 "max_normalization_delta": field.max_normalization_delta,
                 "scale_normalization_delta": str(field.scale_normalization_delta),
                 # Initial solutions (H5parm inputs)
-                "fast_initialsolutions_h5parm": self._to_cwl_json_if_exists(
+                "solve1_initialsolutions_h5parm": self._to_cwl_json_if_exists(
                     field.fast_phases_h5parm_filename
                 ),
-                "medium1_initialsolutions_h5parm": self._to_cwl_json_if_exists(
+                "solve2_initialsolutions_h5parm": self._to_cwl_json_if_exists(
                     field.medium1_phases_h5parm_filename
                 ),
-                "medium2_initialsolutions_h5parm": self._to_cwl_json_if_exists(
+                "solve4_initialsolutions_h5parm": self._to_cwl_json_if_exists(
                     field.medium2_phases_h5parm_filename
                 ),
-                "slow_initialsolutions_h5parm": self._to_cwl_json_if_exists(
+                "solve3_initialsolutions_h5parm": self._to_cwl_json_if_exists(
                     field.slow_gains_h5parm_filename
                 ),
                 # Get various DDECal solver parameters. Most of these are the same for both fast
@@ -268,9 +271,10 @@ class Calibrate(Operation):
                 "sector_bounds_deg": str(field.sector_bounds_deg),
                 "sector_bounds_mid_deg": str(field.sector_bounds_mid_deg),
                 "combined_h5parms": self.combined_h5parms,
-                "fast_antennaconstraint": fast_antennaconstraint,
-                "medium_antennaconstraint": medium_antennaconstraint,
-                "slow_antennaconstraint": "[]",
+                "solve1_antennaconstraint": fast_antennaconstraint,
+                "solve2_antennaconstraint": medium_antennaconstraint,
+                "solve4_antennaconstraint": medium_antennaconstraint,
+                "solve3_antennaconstraint": "[]",
                 "idgcal_antennaconstraint": (
                     "[]"  # TODO: set different constraints for phase and gain solves
                 ),
@@ -285,7 +289,7 @@ class Calibrate(Operation):
         elif self.mode == "di":
             # Define various output filenames for the solution tables. We save some
             # as attributes since they are needed in finalize()
-            self.collected_h5parm_fulljones = "fulljones_gains.h5"
+            self.collected_h5parm_fulljones = "fulljones_solutions.h5"
 
             # Set the constraints used in the calibrations
             self.input_parms = {
@@ -302,7 +306,6 @@ class Calibrate(Operation):
                 "bda_minchannels": field.get_obs_parameters("bda_minchannels"),
                 "bda_timebase": field.calibrate_bda_timebase,
                 "bda_frequencybase": field.calibrate_bda_frequencybase,
-                "calibration_skymodel_file": CWLFile(calibration_skymodel_file).to_json(),
                 "onebeamperpatch": field.onebeamperpatch,
                 "parallelbaselines": field.parallelbaselines,
                 "sagecalpredict": field.sagecalpredict,
@@ -313,8 +316,6 @@ class Calibrate(Operation):
                 "solint_solve1_timestep": field.get_obs_parameters("solint_fulljones_timestep"),
                 "solint_solve1_freqstep": field.get_obs_parameters("solint_fulljones_freqstep"),
                 "solve1_solutions_per_direction": [None for _ in range(field.ntimechunks)],
-                "calibrator_patch_names": [],
-                "calibrator_fluxes": [],
                 "solve1_smoothness_dd_factors": [None for _ in range(field.ntimechunks)],
                 "solve1_smoothnessreffrequency": [0] * field.ntimechunks,
                 "solve2_solutions_per_direction": [None for _ in range(field.ntimechunks)],
