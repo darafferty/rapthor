@@ -1,5 +1,6 @@
 import configparser
 import re
+import shlex
 from pathlib import Path
 
 
@@ -93,15 +94,16 @@ def parse_combine_h5parms_args_from_log(log_path):
     if not match:
         raise ValueError(f"No combine_h5parms.py command found in {log_path}")
 
-    tokens = match.group(1).replace("\\\n", " ").split()
-    if len(tokens) < 4:
+    tokens = shlex.split(match.group(1).replace("\\\n", " "))
+    positional = [token for token in tokens if not token.startswith("--")]
+    if len(positional) < 4:
         raise ValueError(f"Incomplete combine_h5parms.py command found in {log_path}")
 
     args = {
-        "inh5parm1": tokens[0],
-        "inh5parm2": tokens[1],
-        "outh5parm": tokens[2],
-        "mode": tokens[3],
+        "inh5parm1": positional[0],
+        "inh5parm2": positional[1],
+        "outh5parm": positional[2],
+        "mode": positional[3],
     }
     for token in tokens[4:]:
         if token.startswith("--") and "=" in token:
