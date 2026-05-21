@@ -140,6 +140,7 @@ class Field(object):
             "correct_time_frequency_smearing"
         ]
         self.cycle_number = 1
+        self.apply_phases = False
         self.apply_amplitudes = False
         self.generate_screens = False
         self.apply_screens = False
@@ -1696,6 +1697,11 @@ class Field(object):
         The basic structure is checked for correctness and for the presence of
         amplitude solutions (which may require different processing steps).
         """
+        def has_valid_solutions(soltab):
+            return bool(
+                np.any(np.logical_and(np.isfinite(soltab.val[:]), soltab.weight[:] != 0.0))
+            )
+
         if self.h5parm_filename is not None:
             with h5parm(self.h5parm_filename) as solutions:
                 if 'coefficients000' in solutions.getSolsetNames():
@@ -1705,8 +1711,11 @@ class Field(object):
                             f'The screen solutions file {self.h5parm_filename!r} must '
                             'have a phase_coefficients soltab.'
                         )
+                    self.apply_phases = has_valid_solutions(solset.getSoltab('phase_coefficients'))
                     if 'amplitude1_coefficients' in solset.getSoltabNames():
-                        self.apply_amplitudes = True
+                        self.apply_amplitudes = has_valid_solutions(
+                            solset.getSoltab('amplitude1_coefficients')
+                        )
                     else:
                         self.apply_amplitudes = False
                 elif 'sol000' in solutions.getSolsetNames():
@@ -1716,8 +1725,9 @@ class Field(object):
                             f'The direction-dependent solutions file {self.h5parm_filename!r} must '
                             'have a phase000 soltab.'
                         )
+                    self.apply_phases = has_valid_solutions(solset.getSoltab('phase000'))
                     if 'amplitude000' in solset.getSoltabNames():
-                        self.apply_amplitudes = True
+                        self.apply_amplitudes = has_valid_solutions(solset.getSoltab('amplitude000'))
                     else:
                         self.apply_amplitudes = False
                 else:
@@ -1726,6 +1736,7 @@ class Field(object):
                         'have the solutions stored in the sol000 or coefficients000 solset.'
                     )
         else:
+            self.apply_phases = False
             self.apply_amplitudes = False
 
         if self.fulljones_h5parm_filename is not None:

@@ -78,6 +78,8 @@ class Predict(Operation):
 
             }
    
+        h5parm = field.h5parm_filename if getattr(field, 'apply_phases', True) else None
+
         common_params = {
             'sector_filename': CWLDir(sector_parms['sector_filename']).to_json(),
             'data_colname': field.data_colname,
@@ -87,7 +89,7 @@ class Predict(Operation):
             'sector_skymodel': CWLFile(sector_parms['sector_skymodel']).to_json(),
             'sector_patches': sector_parms['sector_patches'],
 
-            'h5parm': CWLFile(field.h5parm_filename).to_json() if field.h5parm_filename else None,
+            'h5parm': CWLFile(h5parm).to_json() if h5parm else None,
             'normalize_h5parm': normalize_h5parm,
             'dp3_applycal_steps': f"[{','.join(dp3_applycal_steps)}]" if dp3_applycal_steps else None,
 
@@ -179,7 +181,8 @@ class Predict(Operation):
         dp3_applycal_steps = []
         strategy = getattr(self.field, "calibration_strategy", None)
         has_dd_solutions = strategy is None or bool(strategy.get("dd", []))
-        if self.field.h5parm_filename is not None and has_dd_solutions:
+        has_phase_solutions = getattr(self.field, 'apply_phases', True)
+        if self.field.h5parm_filename is not None and has_dd_solutions and has_phase_solutions:
             dp3_applycal_steps.append("fastphase")
             if self.field.apply_amplitudes:
                 dp3_applycal_steps.append("slowgain")
