@@ -170,10 +170,6 @@ def test_calibrate_di_workflow(
 
 
 
-@pytest.mark.xfail(
-    reason="DI multi-solve workflow rendering pending calibrate_di_pipeline.cwl rewrite",
-    strict=True,
-)
 @pytest.mark.parametrize(
     "di_solves",
     [

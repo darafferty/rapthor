@@ -358,7 +358,7 @@ class TestCalibrate:
                 calibrate.medium1_h5parm = "medium1.test.h5"
                 calibrate.medium2_h5parm = "medium2.test.h5"
         else:
-            calibrate.collected_h5parm_fulljones = "collected_fulljones.h5"
+            calibrate.collected_h5parm_fulljones = "fulljones_gains.h5"
 
         # Ignore os.makedirs calls from the base Operation class constructor.
         mock_makedirs.reset_mock()
@@ -405,7 +405,7 @@ class TestCalibrate:
             ]
         else:  # di fulljones scenario
             solution_src_dst_list = [
-                ("collected_fulljones.h5", h5parm_filename),
+                ("fulljones_gains.h5", h5parm_filename),
             ]
 
         for src, dst in solution_src_dst_list:
@@ -563,10 +563,6 @@ class TestCalibrate:
 
         assert calibrate_dd.input_parms["solution_combine_mode"] == expected_mode
 
-    @pytest.mark.xfail(
-        reason="DI dynamic solve mapping not implemented yet",
-        strict=True,
-    )
     @pytest.mark.parametrize(
         "di_strategy, expected_steps, expected_modes",
         [
@@ -642,10 +638,6 @@ class TestCalibrate:
             for solve_index in range(2, len(di_strategy) + 1):
                 assert calibrate_di.input_parms[f"solve{solve_index}_reusemodel"] == "[solve1.*]"
 
-    @pytest.mark.xfail(
-        reason="DI solution combine mode mapping not implemented yet",
-        strict=True,
-    )
     @pytest.mark.parametrize(
         "di_strategy, expected_combine_mode",
         [

@@ -349,10 +349,6 @@ def test_rapthor_run_single_loop_without_di_or_dd_calibration(
 
 
 @pytest.mark.integration
-@pytest.mark.xfail(
-    reason="DI medium-phase solve pending DI multi-solve implementation",
-    strict=True,
-)
 @pytest.mark.parametrize(
     "generated_parset_path,single_loop_strategy_with_calibration_strategy",
     [
@@ -444,10 +440,6 @@ def test_rapthor_rejects_unsupported_di_strategy_combinations(
 
 
 @pytest.mark.integration
-@pytest.mark.xfail(
-    reason="DI combine-chain logging assertions pending DI multi-solve implementation",
-    strict=True,
-)
 @pytest.mark.parametrize(
     "generated_parset_path, strategy_fixture_name, expected_mode",
     [
