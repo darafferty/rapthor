@@ -163,11 +163,10 @@ class Image(Operation):
         strategy = getattr(self.field, "calibration_strategy", None) or {}
 
         # Only apply solutions that were requested and are available on disk.
-        has_h5parm = bool(
-            self.field.h5parm_filename and os.path.exists(self.field.h5parm_filename)
-        )
+        has_h5parm = bool(self.field.h5parm_filename and os.path.exists(self.field.h5parm_filename))
         has_fulljones_h5parm = bool(
-            self.field.fulljones_h5parm_filename and os.path.exists(self.field.fulljones_h5parm_filename)
+            self.field.fulljones_h5parm_filename
+            and os.path.exists(self.field.fulljones_h5parm_filename)
         )
 
         requested_solves = []
@@ -346,8 +345,10 @@ class Image(Operation):
         prepare_data_steps = f"[{','.join(prepare_data_steps)}]"
 
         # Set the h5parm to use to apply the DDE solutions as needed
-        if self.apply_none or not self.field.h5parm_filename or not os.path.exists(
-            self.field.h5parm_filename
+        if (
+            self.apply_none
+            or not self.field.h5parm_filename
+            or not os.path.exists(self.field.h5parm_filename)
         ):
             h5parm = None
         else:

@@ -168,8 +168,6 @@ def test_calibrate_di_workflow(
     generate_and_validate(tmp_path, operation, parms, template)
 
 
-
-
 @pytest.mark.parametrize(
     "di_solves",
     [
@@ -191,7 +189,8 @@ def test_calibrate_di_workflow_renders_supported_solve_combinations(tmp_path, di
         "nr_di_solves": len(di_solves),
         "has_slow_gains": "slow_gains" in di_solves,
         "is_full_jones": di_solves == ["full_jones"],
-        "needs_combine_fast_medium": di_solves in (
+        "needs_combine_fast_medium": di_solves
+        in (
             ["fast_phase", "medium_phase"],
             ["fast_phase", "medium_phase", "slow_gains"],
         ),
@@ -206,6 +205,7 @@ def test_calibrate_di_workflow_renders_supported_solve_combinations(tmp_path, di
     assert "id: timechunk_filename" in rendered
     assert "id: solve_di" in rendered
     validate(parms, parset_path)
+
 
 @pytest.mark.parametrize("max_cores", (None, 8))
 def test_predict_workflow(tmp_path, max_cores):
