@@ -172,6 +172,7 @@ inputs:
     label: Model data column
     doc: |
       The name of the model data to use for solve1 (used if no sourcedb is given).
+      ToDo: reconcile with 'directions' above and/or use this instead
     type: string?
     inputBinding:
       prefix: solve1.modeldatacolumns=
