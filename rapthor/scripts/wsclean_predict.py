@@ -80,10 +80,6 @@ def predict(msfile, ds9_region_file, model_image, storage_manager):
     for facet in facets:
         facet_names.append(facet.name)
 
-    # TODO: If the msfile is read-only, copy the file to a temporary ms
-    # for example : copy xxx.ms to xxx-predict-tmpfile.ms
-    # and predict the data
-
     err_code = 0
     # Run the command
     for facet in facet_names:
