@@ -421,6 +421,22 @@ def _validate_calibrate_strategy(calibration_strategy):
                     f"Recognized solve types are {recognised_solves}."
                 )
 
+    di_solves = set(calibration_strategy.get("di", []) or [])
+    dd_solves = set(calibration_strategy.get("dd", []) or [])
+    non_fulljones_di_solves = di_solves - {"full_jones"}
+
+    if "full_jones" in di_solves and non_fulljones_di_solves:
+        raise ValueError(
+            'DI calibration strategy cannot combine "full_jones" with '
+            "non-full-Jones DI solve types."
+        )
+
+    if dd_solves and non_fulljones_di_solves:
+        raise ValueError(
+            "DD calibration cannot be combined with non-full-Jones DI solve types "
+            "in the same cycle."
+        )
+
 
 def validate_strategy(strategy_steps, parset):
     """
