@@ -603,7 +603,16 @@ def check_astrometry(
     astrometry_diagnostics = defaultdict(list)
     for facet in facets:
         facet.set_skymodel(s_pybdsf.copy())
-        facet.find_astrometry_offsets(astrometry_skymodel, min_number=min_number)
+        try:
+            facet.find_astrometry_offsets(astrometry_skymodel, min_number=min_number)
+        except (OSError, ValueError) as error:
+            logger.info(
+                "Astrometry comparison sky model could not be created or used. "
+                "Skipping astrometry check for facet %s. The error was: %s",
+                facet.name,
+                error,
+            )
+            continue
         if facet.astrometry_diagnostics:
             astrometry_diagnostics["facet_name"].append(facet.name)
             for key in astrometry_keys:

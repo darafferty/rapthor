@@ -509,6 +509,53 @@ def test_check_astrometry_with_no_internet_access_does_not_access_internet(
     assert diagnostics_dict == {}
 
 
+def test_check_astrometry_skips_lsmtool_panstarrs_unit_error(
+    observation,
+    input_catalog_fits,
+    tmp_path,
+    mocker,
+    caplog,
+    monkeypatch,
+    mock_full_astrometry_table,
+):
+    """Test astrometry skips when the LSMTool Pan-STARRS fallback fails."""
+    original_table_read = Table.read
+
+    def mock_table_read(*args, **kwargs):
+        if kwargs.get("format") == "fits":
+            return mock_full_astrometry_table
+        return original_table_read(*args, **kwargs)
+
+    monkeypatch.setattr("astropy.table.Table.read", mock_table_read)
+
+    mock_image = mocker.MagicMock()
+    mock_image.freq = 150e6
+    mock_image.img_data = np.zeros((10, 10))
+    mock_image.img_hdr = {"CDELT1": -0.01}
+
+    find_astrometry_offsets = mocker.patch(
+        "rapthor.scripts.calculate_image_diagnostics.SquareFacet.find_astrometry_offsets",
+        side_effect=ValueError("No unit set on column"),
+    )
+
+    with caplog.at_level(logging.INFO):
+        diagnostics_dict = check_astrometry(
+            observation,
+            input_catalog_fits,
+            mock_image,
+            facet_region_file=None,
+            min_number=1,
+            output_root=str(tmp_path / "astrometry_check"),
+            comparison_skymodel=None,
+            allow_internet_access=True,
+        )
+
+    assert diagnostics_dict == {}
+    find_astrometry_offsets.assert_called_once_with(None, min_number=1)
+    assert "Skipping astrometry check" in caplog.text
+    assert "No unit set on column" in caplog.text
+
+
 # ---------------------------------------------------------------------------- #
 # Test: parse_args
 
