@@ -128,11 +128,12 @@ def run(parset_file):
                 "images",
                 "visibilities",
             ):
-                dcmp = filecmp.dircmp(
-                    os.path.join(parset['dir_working'], 'pipelines'),
-                    os.path.join(parset['dir_working'], dirname)
-                )
-                for path in (os.path.join(dcmp.right, item) for item in dcmp.right_only):
-                    shutil.rmtree(path, ignore_errors=True)
+                if os.path.exists(os.path.join(parset['dir_working'], dirname)):
+                    dcmp = filecmp.dircmp(
+                        os.path.join(parset['dir_working'], 'pipelines'),
+                        os.path.join(parset['dir_working'], dirname)
+                    )
+                    for path in (os.path.join(dcmp.right, item) for item in dcmp.right_only):
+                        shutil.rmtree(path, ignore_errors=True)
 
             print('Reset complete.')
