@@ -237,7 +237,7 @@ def test_validate_strategy_logs_warning_for_do_normalize_in_non_first_cycle(
 
     with caplog.at_level("WARNING"):
         validate_strategy(strategy_steps, parset)
-        assert "do_normalize is True in cycle 1 but it is usually True only in the first cycle."
+        assert "do_normalize is True in cycle {cycle+1} but it is usually True only in the first cycle."
 
 
 @pytest.mark.parametrize("normalization_skymodels", [None, ["skymodel1.txt", "skymodel2.txt"]])
