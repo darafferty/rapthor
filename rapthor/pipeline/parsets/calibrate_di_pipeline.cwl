@@ -119,11 +119,15 @@ inputs:
   - id: solve{{ solve_index }}_uvlambdamin
     type: float
 {% if active_nr_di_solves > 1 and solve_index == 1 %}
-  - id: solve1_keepmodel
+  - id: solve{{ solve_index }}_keepmodel
     type: string
 {% endif %}
-{% if solve_index > 1 %}
+{% if solve_index == 2 %}
   - id: solve{{ solve_index }}_reusemodel
+    type: string
+{% endif %}
+{% if solve_index > 2 %}
+  - id: solve{{ solve_index }}_modeldatacolumn
     type: string
 {% endif %}
 {% endfor %}
@@ -234,12 +238,16 @@ steps:
       - id: solve{{ solve_index }}_uvlambdamin
         source: solve{{ solve_index }}_uvlambdamin
 {% if active_nr_di_solves > 1 and solve_index == 1 %}
-      - id: solve1_keepmodel
-        source: solve1_keepmodel
+      - id: solve{{ solve_index }}_keepmodel
+        source: solve{{ solve_index }}_keepmodel
 {% endif %}
-{% if solve_index > 1 %}
+{% if solve_index == 2 %}
       - id: solve{{ solve_index }}_reusemodel
         source: solve{{ solve_index }}_reusemodel
+{% endif %}
+{% if solve_index > 2 %}
+      - id: solve{{ solve_index }}_modeldatacolumn
+        source: solve{{ solve_index }}_modeldatacolumn
 {% endif %}
 {% endfor %}
     scatter: [msin, starttime, ntimes, solve1_h5parm, solve1_solint, solve1_nchan{% if active_nr_di_solves >= 2 %}, solve2_h5parm, solve2_solint, solve2_nchan{% endif %}{% if active_nr_di_solves >= 3 %}, solve3_h5parm, solve3_solint, solve3_nchan{% endif %}]

@@ -13,6 +13,7 @@ import numpy as np
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.cwl import CWLDir, CWLFile
 from rapthor.lib.operation import Operation
+from rapthor.scripts.adjust_h5parm_sources import main as adjust_h5parm_sources
 
 log = logging.getLogger("rapthor:calibrate")
 
@@ -417,8 +418,9 @@ class Calibrate(Operation):
 
             if len(self.di_solves) > 1:
                 self.input_parms["solve1_keepmodel"] = "True"
-                for solve_index in range(2, len(self.di_solves) + 1):
-                    self.input_parms[f"solve{solve_index}_reusemodel"] = "[solve1.*]"
+                self.input_parms["solve2_reusemodel"] = "[solve1.*]"
+                for solve_index in range(3, len(self.di_solves) + 1):
+                    self.input_parms[f"solve{solve_index}_modeldatacolumn"] = "[MODEL_DATA]"
 
             combine_plan = self._get_di_combine_plan()
             if combine_plan:
@@ -904,6 +906,7 @@ class Calibrate(Operation):
 
             field.h5parm_filename = os.path.join(dst_dir, "field-solutions-di.h5")
             copy_solution(self._get_di_final_h5parm(), field.h5parm_filename)
+            adjust_h5parm_sources(field.calibration_skymodel_file, field.h5parm_filename)
 
             for solve_type in di_solves:
                 config = DI_SOLVE_TYPE_CONFIG[solve_type]

@@ -91,7 +91,18 @@ class Image(Operation):
         if self.dde_method is None:
             self.dde_method = self.field.dde_method
         if self.use_facets is None:
-            self.use_facets = self.dde_method == "full" and not self.apply_screens
+            strategy = getattr(self.field, "calibration_strategy", None)
+            has_dd_solutions = strategy is None or bool(strategy.get("dd", []))
+            has_generic_h5parm = bool(
+                self.field.h5parm_filename and os.path.exists(self.field.h5parm_filename)
+            )
+            self.use_facets = (
+                self.dde_method == "full"
+                and not self.apply_screens
+                and not self.apply_none
+                and has_dd_solutions
+                and has_generic_h5parm
+            )
         if self.image_pol is None:
             self.image_pol = self.field.image_pol  # set by process.run_steps()
         if self.save_source_list is None:

@@ -29,36 +29,29 @@ def main(skymodel, h5parm_file, solset_name='sol000'):
     source_dict = skymod.getPatchPositions()
     with h5parm(h5parm_file, readonly=False) as parms:
         solset = parms.getSolset(solset_name)
-        soltab = solset.getSoltabs()[0]  # take the first soltab (all have the same directions)
-        direction_independent = False
-        if not hasattr(soltab, 'dir'):
-            print(f'The solutions in solution set {solset_name} of the input H5pram file are '
-                  'direcion-independent. The solutions will be duplicated for all directions ')
-            direction_independent = True
-        elif not len(source_dict) == len(soltab.dir):
-            sys.exit('ERROR: The patches in the sky model and the directions in the h5parm '
-                     'must have the same length')
         source_names = []
         source_positions = []
-        if direction_independent:
-            # For direction-independent solutions, use all the sources in the sky
-            # model
-            for skymodel_source_name, skymodel_source_position in source_dict.items():
-                source_names.append(f'[{skymodel_source_name}]')
-                ra, dec = normalize_ra_dec(skymodel_source_position[0].value,
-                                           skymodel_source_position[1].value)
-                source_positions.append([ra, dec])
+        for skymodel_source_name, skymodel_source_position in source_dict.items():
+            source_names.append(f'[{skymodel_source_name}]')
+            ra, dec = normalize_ra_dec(skymodel_source_position[0].value,
+                                       skymodel_source_position[1].value)
+            source_positions.append([ra, dec])
+
+        soltab = solset.getSoltabs()[0]  # take the first soltab (all have the same directions)
+        axes_names = soltab.getAxesNames()
+        if 'dir' not in axes_names:
+            print(f'The solutions in solution set {solset_name} of the input H5parm file are '
+                  'direction-independent. The solutions will be duplicated for all directions')
         else:
-            for source in soltab.dir:
-                # For each source in the soltab, find its coordinates in the sky model
-                # (stored in the source_dict dictionary)
-                try:
-                    radecpos = source_dict[source.strip('[]')]  # degrees
-                except KeyError:
-                    sys.exit('ERROR: A direction is present in the h5parm that is not in the sky model')
-                ra, dec = normalize_ra_dec(radecpos[0].value, radecpos[1].value)
-                source_names.append(source)
-                source_positions.append([ra, dec])
+            soltab_sources = [str(source) for source in soltab.getAxisValues('dir')]
+            if soltab_sources != source_names:
+                if len(soltab_sources) == 1:
+                    print(f'The solution directions in solution set {solset_name} do not match '
+                          'the sky model. The single direction will be duplicated for all '
+                          'sky-model directions')
+                elif len(soltab_sources) != len(source_names):
+                    sys.exit('ERROR: The patches in the sky model and the directions in the h5parm '
+                             'must have the same length')
         source_positions = np.array(source_positions)
         ra_deg = source_positions.T[0]
         dec_deg = source_positions.T[1]
@@ -76,30 +69,44 @@ def main(skymodel, h5parm_file, solset_name='sol000'):
         sourceTable = solset.obj._f_get_child('source')
         sourceTable.append(list(zip(*(source_names, vals))))
 
-        # For direction-indepedent case, duplicate solutions
-        # for each new direction
-        if direction_independent:
-            for soltab in solset.getSoltabs():
-                vals, axes = soltab.getValues()
-                weights, _ = soltab.getValues(weight=True)
+        for soltab_name in list(solset.getSoltabNames()):
+            soltab = solset.getSoltab(soltab_name)
+            vals, _ = soltab.getValues()
+            weights, _ = soltab.getValues(weight=True)
+            soltab_type = soltab.getType()
+            axes_names = list(soltab.getAxesNames())
+            axes_vals = [soltab.getAxisValues(axis_name) for axis_name in axes_names]
+
+            if 'dir' in axes_names:
+                dir_ind = axes_names.index('dir')
+                old_dirs = [str(source) for source in axes_vals[dir_ind]]
+                if old_dirs == source_names:
+                    continue
+                if len(old_dirs) != 1 and len(old_dirs) != len(source_names):
+                    sys.exit('ERROR: A direction is present in the h5parm that is not in the sky model')
+                source_vals = np.take(vals, 0, axis=dir_ind) if len(old_dirs) == 1 else vals
+                source_weights = np.take(weights, 0, axis=dir_ind) if len(old_dirs) == 1 else weights
                 new_shape = list(vals.shape)
-                new_shape.append(len(source_names))
-                new_vals = np.zeros(new_shape)
-                new_weights = np.zeros(new_shape)
-                for i in range(len(source_names)):
-                    new_vals[:, i] = vals
-                    new_weights[:, i] = weights
-                soltab_name = soltab.name
-                soltab_type = soltab.getType()
-                axes_names = soltab.getAxesNames()
+                new_shape[dir_ind] = len(source_names)
+                axes_vals[dir_ind] = source_names
+            else:
+                dir_ind = len(axes_names)
+                source_vals = vals
+                source_weights = weights
+                new_shape = list(vals.shape) + [len(source_names)]
                 axes_names.append('dir')
-                axes_vals = []
-                for axis_name in soltab.getAxesNames():
-                    axes_vals.append(soltab.getAxisValues(axis_name))
                 axes_vals.append(source_names)
-                soltab.delete()
-                soltab = solset.makeSoltab(soltab_type, soltab_name, axesNames=axes_names,
-                                           axesVals=axes_vals, vals=new_vals, weights=new_weights)
+
+            new_vals = np.zeros(new_shape, dtype=vals.dtype)
+            new_weights = np.zeros(new_shape, dtype=weights.dtype)
+            for i in range(len(source_names)):
+                slc = [slice(None)] * len(new_shape)
+                slc[dir_ind] = i
+                new_vals[tuple(slc)] = source_vals
+                new_weights[tuple(slc)] = source_weights
+            soltab.delete()
+            solset.makeSoltab(soltab_type, soltab_name, axesNames=axes_names,
+                              axesVals=axes_vals, vals=new_vals, weights=new_weights)
 
 
 if __name__ == '__main__':
