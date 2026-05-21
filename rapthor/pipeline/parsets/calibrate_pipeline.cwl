@@ -73,7 +73,7 @@ inputs:
     doc: |
       The filename of the input sky model text file used for all processing except
       in DDECal solve steps (length = 1).
-    type: File?
+    type: File
 
   - id: solverlbfgs_iter
     label: LBFGS iterations per minibatch
@@ -234,14 +234,14 @@ inputs:
     label: Names of calibrator patches
     doc: |
       The names of the patches used in calibration (length = n_calibrators).
-    type: string[]?
+    type: string[]
 
   - id: calibrator_fluxes
     label: Values of calibrator flux densities
     doc: |
       The total flux densities in Jy of the patches used in calibration (length =
       n_calibrators).
-    type: float[]?
+    type: float[]
 
   - id: output_solve1_h5parm
     label: Fast output solution table
@@ -500,14 +500,14 @@ inputs:
       for the next solution interval (length = 1).
     type: boolean
 
-  - id: solve1_initialsolutions_h5parm
+  - id: fast_initialsolutions_h5parm
     label: Input solution table
     doc: |
       The filename of the input h5parm solution table to use for the fast-phase
       initial solutions (length = 1).
     type: File?
 
-  - id: solve2_initialsolutions_h5parm
+  - id: medium1_initialsolutions_h5parm
     label: Input solution table
     doc: |
       The filename of the input h5parm solution table to use for the medium1-phase
@@ -1079,7 +1079,7 @@ steps:
       - id: solve1_propagatesolutions
         source: propagatesolutions
       - id: solve1_initialsolutions_h5parm
-        source: solve1_initialsolutions_h5parm
+        source: fast_initialsolutions_h5parm
       - id: solve1_initialsolutions_soltab
         valueFrom: '[phase000]'
       - id: solve1_solveralgorithm
@@ -1140,7 +1140,7 @@ steps:
       - id: solve2_propagatesolutions
         source: propagatesolutions
       - id: solve2_initialsolutions_h5parm
-        source: solve2_initialsolutions_h5parm
+        source: medium1_initialsolutions_h5parm
       - id: solve2_initialsolutions_soltab
         valueFrom: '[phase000]'
       - id: solve2_solveralgorithm
@@ -1575,11 +1575,15 @@ steps:
       - id: skymodel
         source: calibration_skymodel_file
       - id: h5parm
+        source: combine_fast_and_full_slow_h5parms/combinedh5parm
+      - id: do_slowgain_solve
+        source: do_slowgain_solve 
+    when: $(inputs.do_slowgain_solve)
         source: 
         - combine_fast_and_full_slow_h5parms/combinedh5parm
       - id: directions
-        source: calibrator_patch_names
-    when: $(inputs.directions !== null)
+        source: calibrator_patch_n
+    when: $(inputs.directions.length > 1)
     out:
       - id: adjustedh5parm
 
@@ -1594,11 +1598,13 @@ steps:
       - id: skymodel
         source: calibration_skymodel_file
       - id: h5parm
-        source:
-        - combine_fast_medium1_h5parms/combinedh5parm
+        source: combine_fast_medium1_h5parms/combinedh5parm
+      - id: do_slowgain_solve
+        source: do_slowgain_solve
+    when: $(inputs.do_slowgain_solve)
       - id: directions
         source: calibrator_patch_names
-    when: $(inputs.directions !== null)
+    when: $(inputs.directions.length > 1)
     out:
       - id: adjustedh5parm
 
