@@ -177,10 +177,12 @@ class Predict(Operation):
         Returns a tuple of (dp3_applycal_steps, normalize_h5parm).
         """
         dp3_applycal_steps = []
-        if self.field.h5parm_filename is not None:
-            dp3_applycal_steps.append('fastphase')
+        strategy = getattr(self.field, "calibration_strategy", None)
+        has_dd_solutions = strategy is None or bool(strategy.get("dd", []))
+        if self.field.h5parm_filename is not None and has_dd_solutions:
+            dp3_applycal_steps.append("fastphase")
             if self.field.apply_amplitudes:
-                dp3_applycal_steps.append('slowgain')
+                dp3_applycal_steps.append("slowgain")
         if self.field.apply_normalizations:
             normalize_h5parm = CWLFile(self.field.normalize_h5parm).to_json()
             dp3_applycal_steps.append('normalization')

@@ -150,17 +150,32 @@ class Image(Operation):
         }
 
         strategy = getattr(self.field, "calibration_strategy", None) or {}
-        steps = [
-            # Only include steps for solve types that are present in the strategy and that are
-            # applicable given the settings for this imaging operation (e.g. don't include
-            # slow_gains if amplitudes are not applied)
-            solve_type_to_step[solve]
-            for solves in strategy.values()
-            for solve in solves
-            if solve in solve_type_to_step
+
+        # Only apply solutions that were requested and are available on disk.
+        has_h5parm = bool(
+            self.field.h5parm_filename and os.path.exists(self.field.h5parm_filename)
+        )
+        has_fulljones_h5parm = bool(
+            self.field.fulljones_h5parm_filename and os.path.exists(self.field.fulljones_h5parm_filename)
+        )
+
+        requested_solves = []
+        for solves in strategy.values():
+            requested_solves.extend(solves or [])
+
+        steps = []
+        for solve in requested_solves:
+            if solve not in solve_type_to_step:
+                continue
+            if solve == "full_jones":
+                if has_fulljones_h5parm:
+                    steps.append(solve_type_to_step[solve])
+                continue
             # don't include slow_gains if amplitudes are not applied
-            and not (solve == "slow_gains" and not self.apply_amplitudes)
-        ]
+            if solve == "slow_gains" and not self.apply_amplitudes:
+                continue
+            if has_h5parm:
+                steps.append(solve_type_to_step[solve])
 
         if "fulljones" in steps:
             fulljones_h5parm = CWLFile(self.field.fulljones_h5parm_filename).to_json()
@@ -320,7 +335,12 @@ class Image(Operation):
         prepare_data_steps = f"[{','.join(prepare_data_steps)}]"
 
         # Set the h5parm to use to apply the DDE solutions as needed
-        h5parm = None if self.apply_none else CWLFile(self.field.h5parm_filename).to_json()
+        if self.apply_none or not self.field.h5parm_filename or not os.path.exists(
+            self.field.h5parm_filename
+        ):
+            h5parm = None
+        else:
+            h5parm = CWLFile(self.field.h5parm_filename).to_json()
         # Set the data interval to use when screens are applied so that final solution
         # interval is removed
         #

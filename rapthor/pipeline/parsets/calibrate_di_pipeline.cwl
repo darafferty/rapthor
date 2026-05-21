@@ -1,17 +1,16 @@
+{% set active_di_solves = di_solves | default(["full_jones"]) %}
+{% set active_nr_di_solves = nr_di_solves | default(active_di_solves|length) %}
+{% set active_has_slow_gains = has_slow_gains | default("slow_gains" in active_di_solves) %}
+{% set active_is_full_jones = is_full_jones | default(active_di_solves == ["full_jones"]) %}
+{% set active_needs_combine_fast_medium = needs_combine_fast_medium | default(active_nr_di_solves >= 2 and active_di_solves[0] == "fast_phase" and active_di_solves[1] == "medium_phase") %}
+{% set active_needs_combine_slow = needs_combine_slow | default(active_nr_di_solves == 3 and active_di_solves[2] == "slow_gains") %}
 cwlVersion: v1.2
 class: Workflow
 label: Rapthor DI calibration workflow
-doc: |
-  This workflow performs direction-independent calibration. A full-Jones solve is
-  done (meaning that solutions for all four polarization are found), with the
-  purpose of improving the calibration done in the LINC pipelines to allow for
-  Stokes IQUV imaging. The solve is done against the model data column produced by
-  the PredictDI operation. The final products of this workflow are solution tables
-  (h5parm files) and plots.
-
 requirements:
   ScatterFeatureRequirement: {}
   StepInputExpressionRequirement: {}
+  InlineJavascriptRequirement: {}
 
 {% if max_cores is not none %}
 hints:
@@ -21,303 +20,357 @@ hints:
 {% endif %}
 
 inputs:
-  - id: timechunk_filename_fulljones
-    label: Filename of input MS for full-Jones solve
-    doc: |
-      The filenames of input MS files for which the full-Jones gain
-      calibration will be done (length = n_obs * n_freq_chunks).
+  - id: timechunk_filename
     type: Directory[]
-    
   - id: data_colname
-    label: Input MS data column
-    doc: |
-      The data column to be read from the MS files (length = 1).
     type: string
-
-  - id: starttime_fulljones
-    label: Start time of each chunk for full-Jones solve
-    doc: |
-      The start time (in casacore MVTime) for each time chunk used in the full-
-      Jones gain calibration (length = n_obs * n_freq_chunks).
+  - id: starttime
     type: string[]
-
-  - id: ntimes_fulljones
-    label: Number of times of each chunk for full-Jones solve
-    doc: |
-      The number of timeslots for each time chunk used in the full-Jones
-      gain calibration (length = n_obs * n_freq_chunks).
+  - id: ntimes
     type: int[]
-
-  - id: solint_fulljones_timestep
-    label: Full-Jones solution interval in time
-    doc: |
-      The solution interval in number of timeslots for the full-jones gain
-      solve (length = n_obs * n_freq_chunks).
-    type: int[]
-
-  - id: solint_fulljones_freqstep
-    label: Full-Jones solution interval in frequency
-    doc: |
-      The solution interval in number of frequency channels for the full-Jones
-      gain solve (length = n_obs * n_freq_chunks).
-    type: int[]
-
-  - id: smoothnessconstraint_fulljones
-    label: Full-jones smoothnessconstraint
-    doc: |
-      The smoothnessconstraint kernel size in Hz for the full-Jones gain
-      solve (length = 1).
-    type: float
-
-  - id: output_h5parm_fulljones
-    label: Full-Jones solve output solution table
-    doc: |
-      The filename of the output h5parm solution table for the full-Jones
-      gain solve (length = n_obs * n_freq_chunks).
-    type: string[]
-
-  - id: collected_h5parm_fulljones
-    label: Collected full-Jones output solution table
-    doc: |
-      The filename of the output collected h5parm solution table for the full-Jones
-      gain solve (length = 1).
+  - id: steps
     type: string
-
-  - id: max_normalization_delta
-    label: Maximum normalization delta
-    doc: |
-      The maximum allowed difference in the median of the amplitudes from unity, per
-      station (length = 1).
-    type: float
-
   - id: maxiter
-    label: Maximum iterations
-    doc: |
-      The maximum number of iterations in the solves (length = 1).
     type: int
-
   - id: llssolver
-    label: Linear least-squares solver
-    doc: |
-      The linear least-squares solver to use (length = 1).
     type: string
-
   - id: propagatesolutions
-    label: Propagate solutions
-    doc: |
-      Flag that determines whether solutions are propagated as initial start values
-      for the next solution interval (length = 1).
     type: boolean
-
   - id: solveralgorithm
-    label: Solver algorithm
-    doc: |
-      The algorithm used for solving (length = 1).
     type: string
-
   - id: solverlbfgs_dof
-    label: LBFGS degrees of freedom
-    doc: |
-      The degrees of freedom in LBFGS solver (length = 1).
     type: float
-
   - id: solverlbfgs_iter
-    label: LBFGS iterations per minibatch
-    doc: |
-      The number of iterations per minibatch in LBFGS solver (length = 1).
     type: int
-
   - id: solverlbfgs_minibatches
-    label: LBFGS minibatches
-    doc: |
-      The number of minibatches in LBFGS solver (length = 1).
     type: int
-
   - id: stepsize
-    label: Solver step size
-    doc: |
-      The solver step size used between iterations (length = 1).
     type: float
-
   - id: stepsigma
-    label: Solver step size reduction factor
-    doc: |
-      If the solver step size mean is lower than its standard deviation by this
-      factor, stop iterations (length = 1).
     type: float
-
   - id: tolerance
-    label: Solver tolerance
-    doc: |
-      The solver tolerance used to define convergence (length = 1).
     type: float
-
   - id: uvlambdamin
-    label: Minimum uv distance
-    doc: |
-      The minimum uv distance in lambda used during the solve (length = 1).
     type: float
-
   - id: correctfreqsmearing
-    label: Correct for frequency smearing
-    doc: |
-      Flag that determines whether the effects of frequency smearing are
-      corrected for during the prediction part of the solve (length = 1).
     type: boolean
-
   - id: correcttimesmearing
-    label: Correct for time smearing
-    doc: |
-      Flag that determines whether the effects of time smearing are
-      corrected for during the prediction part of the solve (length = 1).
     type: boolean
-
   - id: max_threads
-    label: Max number of threads
-    doc: |
-      The maximum number of threads to use for a job (length = 1).
     type: int
-
+  - id: max_normalization_delta
+    type: float
+  - id: scale_normalization_delta
+    type: string
+  - id: phase_center_ra
+    type:
+      - float
+      - string
+  - id: phase_center_dec
+    type:
+      - float
+      - string
+  - id: calibrator_names
+    type: string[]
+  - id: calibrator_fluxes
+    type: float[]
+  - id: final_h5parm
+    type: string?
+{% for solve in active_di_solves %}
+{% set solve_index = loop.index %}
+  - id: solve{{ solve_index }}_mode
+    type: string
+  - id: solve{{ solve_index }}_h5parm
+    type: string[]
+  - id: solve{{ solve_index }}_solint
+    type: int[]
+  - id: solve{{ solve_index }}_nchan
+    type: int[]
+  - id: solve{{ solve_index }}_collected_h5parm
+    type: string
+{% if solve in ["slow_gains", "full_jones"] %}
+  - id: solve{{ solve_index }}_processed_h5parm
+    type: string
+{% endif %}
+  - id: solve{{ solve_index }}_initialsolutions_h5parm
+    type: File?
+  - id: solve{{ solve_index }}_initialsolutions_soltab
+    type: string?
+  - id: solve{{ solve_index }}_llssolver
+    type: string
+  - id: solve{{ solve_index }}_maxiter
+    type: int
+  - id: solve{{ solve_index }}_propagatesolutions
+    type: boolean
+  - id: solve{{ solve_index }}_solveralgorithm
+    type: string
+  - id: solve{{ solve_index }}_solverlbfgs_dof
+    type: float
+  - id: solve{{ solve_index }}_solverlbfgs_iter
+    type: int
+  - id: solve{{ solve_index }}_solverlbfgs_minibatches
+    type: int
+  - id: solve{{ solve_index }}_stepsize
+    type: float
+  - id: solve{{ solve_index }}_stepsigma
+    type: float
+  - id: solve{{ solve_index }}_tolerance
+    type: float
+  - id: solve{{ solve_index }}_uvlambdamin
+    type: float
+{% if active_nr_di_solves > 1 and solve_index == 1 %}
+  - id: solve1_keepmodel
+    type: string
+{% endif %}
+{% if solve_index > 1 %}
+  - id: solve{{ solve_index }}_reusemodel
+    type: string
+{% endif %}
+{% endfor %}
+{% if active_needs_combine_fast_medium %}
+  - id: combined_fast_medium_h5parm
+    type: string
+  - id: solution_combine_mode
+    type: string
+{% endif %}
+{% if active_needs_combine_slow %}
+  - id: combined_slow_h5parm
+    type: string
+{% endif %}
 
 outputs:
   - id: combined_solutions
     outputSource:
-      - process_fulljones_gains/outh5parm
+{% if active_is_full_jones %}
+      - process_solve1_gains/outh5parm
+{% elif active_needs_combine_slow %}
+      - combine_slow/combinedh5parm
+{% elif active_needs_combine_fast_medium %}
+      - combine_fast_medium/combinedh5parm
+{% elif active_has_slow_gains %}
+      - process_solve1_gains/outh5parm
+{% else %}
+      - collect_solve1/outh5parm
+{% endif %}
     type: File
-  - id: fulljones_phase_plots
+{% for solve in active_di_solves %}
+{% set solve_index = loop.index %}
+  - id: solve{{ solve_index }}_solutions
     outputSource:
-      - plot_fulljones_phase_solutions/plots
-    type: File[]
-  - id: fulljones_amp_plots
+{% if solve in ["slow_gains", "full_jones"] %}
+      - process_solve{{ solve_index }}_gains/outh5parm
+{% else %}
+      - collect_solve{{ solve_index }}/outh5parm
+{% endif %}
+    type: File
+  - id: solve{{ solve_index }}_phase_plots
     outputSource:
-      - plot_fulljones_amp_solutions/plots
+      - plot_solve{{ solve_index }}_phase_solutions/plots
     type: File[]
-
+{% if solve in ["slow_gains", "full_jones"] %}
+  - id: solve{{ solve_index }}_amp_plots
+    outputSource:
+      - plot_solve{{ solve_index }}_amp_solutions/plots
+    type: File[]
+{% endif %}
+{% endfor %}
 
 steps:
-  - id: solve_fulljones_gains
-    label: Solve for full-Jones gains
-    doc: |
-      This step uses DDECal (in DP3) to solve for full-Jones, direction-independent gain
-      corrections, using the input MS files and model data. These corrections are used to
-      correct primarily for polarization errors.
+  - id: solve_di
     run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve.cwl
     in:
       - id: msin
-        source: timechunk_filename_fulljones
+        source: timechunk_filename
       - id: data_colname
         source: data_colname
       - id: starttime
-        source: starttime_fulljones
+        source: starttime
       - id: ntimes
-        source: ntimes_fulljones
-      - id: solve1_mode
-        valueFrom: 'fulljones'
+        source: ntimes
       - id: steps
-        valueFrom: '[solve1]'
-      - id: solve1_h5parm
-        source: output_h5parm_fulljones
-      - id: solve1_solint
-        source: solint_fulljones_timestep
-      - id: solve1_nchan
-        source: solint_fulljones_freqstep
+        source: steps
       - id: modeldatacolumn
-        valueFrom: '[MODEL_DATA]'
-      - id: solve1_llssolver
-        source: llssolver
-      - id: solve1_maxiter
-        source: maxiter
-      - id: solve1_propagatesolutions
-        source: propagatesolutions
-      - id: solve1_solveralgorithm
-        source: solveralgorithm
-      - id: solve1_solverlbfgs_dof
-        source: solverlbfgs_dof
-      - id: solve1_solverlbfgs_iter
-        source: solverlbfgs_iter
-      - id: solve1_solverlbfgs_minibatches
-        source: solverlbfgs_minibatches
-      - id: solve1_stepsize
-        source: stepsize
-      - id: solve1_stepsigma
-        source: stepsigma
-      - id: solve1_tolerance
-        source: tolerance
-      - id: solve1_uvlambdamin
-        source: uvlambdamin
-      - id: solve1_smoothnessconstraint
-        source: smoothnessconstraint_fulljones
+        valueFrom: "[MODEL_DATA]"
+      - id: numthreads
+        source: max_threads
       - id: solve1_correctfreqsmearing
         source: correctfreqsmearing
       - id: solve1_correcttimesmearing
         source: correcttimesmearing
-      - id: numthreads
-        source: max_threads
-    scatter: [msin, starttime, ntimes, solve1_h5parm, solve1_solint, solve1_nchan]
+{% for solve in active_di_solves %}
+{% set solve_index = loop.index %}
+      - id: solve{{ solve_index }}_mode
+        source: solve{{ solve_index }}_mode
+      - id: solve{{ solve_index }}_h5parm
+        source: solve{{ solve_index }}_h5parm
+      - id: solve{{ solve_index }}_solint
+        source: solve{{ solve_index }}_solint
+      - id: solve{{ solve_index }}_nchan
+        source: solve{{ solve_index }}_nchan
+      - id: solve{{ solve_index }}_initialsolutions_h5parm
+        source: solve{{ solve_index }}_initialsolutions_h5parm
+      - id: solve{{ solve_index }}_initialsolutions_soltab
+        source: solve{{ solve_index }}_initialsolutions_soltab
+      - id: solve{{ solve_index }}_llssolver
+        source: solve{{ solve_index }}_llssolver
+      - id: solve{{ solve_index }}_maxiter
+        source: solve{{ solve_index }}_maxiter
+      - id: solve{{ solve_index }}_propagatesolutions
+        source: solve{{ solve_index }}_propagatesolutions
+      - id: solve{{ solve_index }}_solveralgorithm
+        source: solve{{ solve_index }}_solveralgorithm
+      - id: solve{{ solve_index }}_solverlbfgs_dof
+        source: solve{{ solve_index }}_solverlbfgs_dof
+      - id: solve{{ solve_index }}_solverlbfgs_iter
+        source: solve{{ solve_index }}_solverlbfgs_iter
+      - id: solve{{ solve_index }}_solverlbfgs_minibatches
+        source: solve{{ solve_index }}_solverlbfgs_minibatches
+      - id: solve{{ solve_index }}_stepsize
+        source: solve{{ solve_index }}_stepsize
+      - id: solve{{ solve_index }}_stepsigma
+        source: solve{{ solve_index }}_stepsigma
+      - id: solve{{ solve_index }}_tolerance
+        source: solve{{ solve_index }}_tolerance
+      - id: solve{{ solve_index }}_uvlambdamin
+        source: solve{{ solve_index }}_uvlambdamin
+{% if active_nr_di_solves > 1 and solve_index == 1 %}
+      - id: solve1_keepmodel
+        source: solve1_keepmodel
+{% endif %}
+{% if solve_index > 1 %}
+      - id: solve{{ solve_index }}_reusemodel
+        source: solve{{ solve_index }}_reusemodel
+{% endif %}
+{% endfor %}
+    scatter: [msin, starttime, ntimes, solve1_h5parm, solve1_solint, solve1_nchan{% if active_nr_di_solves >= 2 %}, solve2_h5parm, solve2_solint, solve2_nchan{% endif %}{% if active_nr_di_solves >= 3 %}, solve3_h5parm, solve3_solint, solve3_nchan{% endif %}]
     scatterMethod: dotproduct
     out:
-      - id: output_h5parm1
+{% for solve in active_di_solves %}
+      - id: output_h5parm{{ loop.index }}
+{% endfor %}
 
-  - id: collect_fulljones_gains
-    label: Collect full-Jones gain solutions
-    doc: |
-      This step collects all the gain solutions from the solve_fulljones_gains step
-      into a single solution table (h5parm file).
+{% for solve in active_di_solves %}
+{% set solve_index = loop.index %}
+  - id: collect_solve{{ solve_index }}
     run: {{ rapthor_pipeline_dir }}/steps/collect_h5parms.cwl
     in:
       - id: inh5parms
-        source: solve_fulljones_gains/output_h5parm1
+        source: solve_di/output_h5parm{{ solve_index }}
       - id: outputh5parm
-        source: collected_h5parm_fulljones
+        source: solve{{ solve_index }}_collected_h5parm
     out:
       - id: outh5parm
 
-  - id: process_fulljones_gains
-    label: Normalize full-Jones amplitudes
-    doc: |
-      This step processes the combined amplitude solutions from
-      combine_fulljones_gains, flagging and renormalizing them.
+{% if solve in ["slow_gains", "full_jones"] %}
+  - id: process_solve{{ solve_index }}_gains
     run: {{ rapthor_pipeline_dir }}/steps/process_gains.cwl
     in:
       - id: h5parm
-        source: collect_fulljones_gains/outh5parm
+        source: collect_solve{{ solve_index }}/outh5parm
       - id: flag
-        valueFrom: 'False'
+{% if solve == "slow_gains" %}
+        valueFrom: "True"
       - id: smooth
-        valueFrom: 'False'
+        valueFrom: "True"
+      - id: scale_station_delta
+        source: scale_normalization_delta
+      - id: phase_center_ra
+        source: phase_center_ra
+      - id: phase_center_dec
+        source: phase_center_dec
+{% else %}
+        valueFrom: "False"
+      - id: smooth
+        valueFrom: "False"
+      - id: scale_station_delta
+        valueFrom: "False"
+      - id: phase_center_ra
+        valueFrom: "0.0"
+      - id: phase_center_dec
+        valueFrom: "0.0"
+{% endif %}
       - id: max_station_delta
         source: max_normalization_delta
-      - id: scale_station_delta
-        valueFrom: 'False'
-      - id: phase_center_ra
-        valueFrom: '0.0'
-      - id: phase_center_dec
-        valueFrom: '0.0'
     out:
       - id: outh5parm
+{% endif %}
 
-  - id: plot_fulljones_amp_solutions
-    label: Plot full-Jones amplitude solutions
-    doc: |
-      This step makes plots of the full-Jones amplitude solutions.
+  - id: plot_solve{{ solve_index }}_phase_solutions
     run: {{ rapthor_pipeline_dir }}/steps/plot_solutions.cwl
     in:
       - id: h5parm
-        source: process_fulljones_gains/outh5parm
+{% if solve in ["slow_gains", "full_jones"] %}
+        source: process_solve{{ solve_index }}_gains/outh5parm
+{% else %}
+        source: collect_solve{{ solve_index }}/outh5parm
+{% endif %}
       - id: soltype
-        valueFrom: 'amplitude'
+        valueFrom: "phase"
+      - id: root
+        valueFrom: "solve{{ solve_index }}_phase_"
     out:
       - id: plots
+{% if solve in ["slow_gains", "full_jones"] %}
 
-  - id: plot_fulljones_phase_solutions
-    label: Plot full-Jones phase solutions
-    doc: |
-      This step makes plots of the full-Jones phase solutions.
+  - id: plot_solve{{ solve_index }}_amp_solutions
     run: {{ rapthor_pipeline_dir }}/steps/plot_solutions.cwl
     in:
       - id: h5parm
-        source: process_fulljones_gains/outh5parm
+        source: process_solve{{ solve_index }}_gains/outh5parm
       - id: soltype
-        valueFrom: 'phase'
+        valueFrom: "amplitude"
+      - id: root
+        valueFrom: "solve{{ solve_index }}_amplitude_"
     out:
       - id: plots
+{% endif %}
+
+{% endfor %}
+{% if active_needs_combine_fast_medium %}
+  - id: combine_fast_medium
+    run: {{ rapthor_pipeline_dir }}/steps/combine_h5parms.cwl
+    in:
+      - id: inh5parm1
+        source: collect_solve1/outh5parm
+      - id: inh5parm2
+        source: collect_solve2/outh5parm
+      - id: outh5parm
+        source: combined_fast_medium_h5parm
+      - id: mode
+{% if active_needs_combine_slow %}
+        valueFrom: "p1p2_scalar"
+{% else %}
+        source: solution_combine_mode
+{% endif %}
+      - id: reweight
+        valueFrom: "False"
+      - id: calibrator_names
+        source: calibrator_names
+      - id: calibrator_fluxes
+        source: calibrator_fluxes
+    out:
+      - id: combinedh5parm
+{% endif %}
+{% if active_needs_combine_slow %}
+
+  - id: combine_slow
+    run: {{ rapthor_pipeline_dir }}/steps/combine_h5parms.cwl
+    in:
+      - id: inh5parm1
+        source: combine_fast_medium/combinedh5parm
+      - id: inh5parm2
+        source: process_solve3_gains/outh5parm
+      - id: outh5parm
+        source: combined_slow_h5parm
+      - id: mode
+        source: solution_combine_mode
+      - id: reweight
+        valueFrom: "False"
+      - id: calibrator_names
+        source: calibrator_names
+      - id: calibrator_fluxes
+        source: calibrator_fluxes
+    out:
+      - id: combinedh5parm
+{% endif %}
+

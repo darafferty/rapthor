@@ -16,6 +16,65 @@ from rapthor.lib.operation import Operation
 
 log = logging.getLogger("rapthor:calibrate")
 
+DI_SOLVE_TYPE_ORDER = ["fast_phase", "medium_phase", "slow_gains", "full_jones"]
+
+DI_SOLVE_TYPE_CONFIG = {
+    "fast_phase": {
+        "mode": "scalarphase",
+        "solint_key": "solint_fast_timestep",
+        "nchan_key": "solint_fast_freqstep",
+        "chunk_output_stem": "fast_phase_di",
+        "collected_h5parm": "fast_phase_di.h5parm",
+        "field_attr": "fast_phases_h5parm_filename",
+        "final_filename": "field-solutions-fast-phase.h5",
+        "initial_h5_key": "fast_phases_h5parm_filename",
+        "initial_soltab": "[phase000]",
+        "plot_soltypes": ["phase"],
+        "needs_process_gains": False,
+    },
+    "medium_phase": {
+        "mode": "scalarphase",
+        "solint_key": "solint_medium_timestep",
+        "nchan_key": "solint_medium_freqstep",
+        "chunk_output_stem": "medium1_phase_di",
+        "collected_h5parm": "medium1_phase_di.h5parm",
+        "field_attr": "medium1_phases_h5parm_filename",
+        "final_filename": "field-solutions-medium1-phase.h5",
+        "initial_h5_key": "medium1_phases_h5parm_filename",
+        "initial_soltab": "[phase000]",
+        "plot_soltypes": ["phase"],
+        "needs_process_gains": False,
+    },
+    "slow_gains": {
+        "mode": "diagonal",
+        "solint_key": "solint_slow_timestep",
+        "nchan_key": "solint_slow_freqstep",
+        "chunk_output_stem": "slow_gains_di",
+        "collected_h5parm": "slow_gains_di.h5parm",
+        "processed_h5parm": "slow_gains_di.h5parm",
+        "field_attr": "slow_gains_h5parm_filename",
+        "final_filename": "field-solutions-slow-gain.h5",
+        "initial_h5_key": "slow_gains_h5parm_filename",
+        "initial_soltab": "[phase000,amplitude000]",
+        "plot_soltypes": ["phase", "amplitude"],
+        "needs_process_gains": True,
+    },
+    "full_jones": {
+        "mode": "fulljones",
+        "solint_key": "solint_fulljones_timestep",
+        "nchan_key": "solint_fulljones_freqstep",
+        "chunk_output_stem": "fulljones_gain",
+        "collected_h5parm": "fulljones_gains.h5",
+        "processed_h5parm": "fulljones_gains.h5",
+        "field_attr": "fulljones_h5parm_filename",
+        "final_filename": "fulljones-solutions.h5",
+        "initial_h5_key": None,
+        "initial_soltab": "[phase000,amplitude000]",
+        "plot_soltypes": ["phase", "amplitude"],
+        "needs_process_gains": True,
+    },
+}
+
 
 class Calibrate(Operation):
     """
@@ -60,6 +119,23 @@ class Calibrate(Operation):
                 {
                     "use_image_based_predict": self.use_image_based_predict,
                     "generate_screens": self.field.generate_screens,
+                }
+            )
+        elif self.mode == "di":
+            self.di_solves = self._get_di_solves()
+            self.parset_parms.update(
+                {
+                    "di_solves": self.di_solves,
+                    "nr_di_solves": len(self.di_solves),
+                    "has_slow_gains": "slow_gains" in self.di_solves,
+                    "is_full_jones": self.di_solves == ["full_jones"],
+                    "needs_combine_fast_medium": self.di_solves
+                    in (
+                        ["fast_phase", "medium_phase"],
+                        ["fast_phase", "medium_phase", "slow_gains"],
+                    ),
+                    "needs_combine_slow": self.di_solves
+                    == ["fast_phase", "medium_phase", "slow_gains"],
                 }
             )
 
@@ -265,34 +341,21 @@ class Calibrate(Operation):
                 "max_threads": self.parset["cluster_specific"]["max_threads"],
             }
         elif self.mode == "di":
-            # Define various output filenames for the solution tables. We save some
-            # as attributes since they are needed in finalize()
-            self.collected_h5parm_fulljones = "fulljones_gains.h5"
+            self.di_solves = self._get_di_solves()
+            if not self.di_solves:
+                self.input_parms = {}
+                return
 
-            # Set the constraints used in the calibrations
             self.input_parms = {
-                # Get the filenames of the input files for each time chunk. These are the
-                # output of the predict_di pipeline done before this calibration
-                "timechunk_filename_fulljones": CWLDir(
+                "timechunk_filename": CWLDir(
                     field.get_obs_parameters("predict_di_output_filename")
                 ).to_json(),
                 "data_colname": "DATA",
-                "starttime_fulljones": starttime,
-                "ntimes_fulljones": ntimes,
-                # Get the solution intervals for the calibrations
-                "solint_fulljones_timestep": field.get_obs_parameters("solint_fulljones_timestep"),
-                "solint_fulljones_freqstep": field.get_obs_parameters("solint_fulljones_freqstep"),
-                "output_h5parm_fulljones": [
-                    f"fulljones_gain_{i}.h5parm" for i in range(field.ntimechunks)
-                ],
-                "collected_h5parm_fulljones": self.collected_h5parm_fulljones,
-                "smoothnessconstraint_fulljones": field.smoothnessconstraint_fulljones,
-                "max_normalization_delta": field.max_normalization_delta,
-                # Get various DDECal solver parameters. Most of these are the same for both fast
-                # and slow solves
-                # ------------------------------------
-                "llssolver": field.llssolver,
+                "starttime": starttime,
+                "ntimes": ntimes,
+                "steps": f"[{','.join(f'solve{i}' for i in range(1, len(self.di_solves) + 1))}]",
                 "maxiter": field.maxiter,
+                "llssolver": field.llssolver,
                 "propagatesolutions": field.propagatesolutions,
                 "solveralgorithm": field.solveralgorithm,
                 "stepsize": field.stepsize,
@@ -302,11 +365,126 @@ class Calibrate(Operation):
                 "solverlbfgs_dof": field.solverlbfgs_dof,
                 "solverlbfgs_iter": field.solverlbfgs_iter,
                 "solverlbfgs_minibatches": field.solverlbfgs_minibatches,
-                # ---------------------------------
                 "correctfreqsmearing": field.correct_smearing_in_calibration,
                 "correcttimesmearing": field.correct_smearing_in_calibration,
                 "max_threads": self.parset["cluster_specific"]["max_threads"],
+                "max_normalization_delta": field.max_normalization_delta,
+                "scale_normalization_delta": str(field.scale_normalization_delta),
+                "phase_center_ra": field.ra,
+                "phase_center_dec": field.dec,
+                "calibrator_names": field.calibrator_patch_names,
+                "calibrator_fluxes": field.calibrator_fluxes,
+                "final_h5parm": self._get_di_final_h5parm(),
             }
+
+            for solve_index, solve_type in enumerate(self.di_solves, start=1):
+                config = DI_SOLVE_TYPE_CONFIG[solve_type]
+                prefix = f"solve{solve_index}"
+                initial_h5_key = config["initial_h5_key"]
+                initial_h5parm = (
+                    None
+                    if initial_h5_key is None
+                    else self._to_cwl_json_if_exists(getattr(field, initial_h5_key, None))
+                )
+
+                self.input_parms.update(
+                    {
+                        f"{prefix}_mode": config["mode"],
+                        f"{prefix}_h5parm": [
+                            f"{config['chunk_output_stem']}_{i}.h5parm"
+                            for i in range(field.ntimechunks)
+                        ],
+                        f"{prefix}_solint": field.get_obs_parameters(config["solint_key"]),
+                        f"{prefix}_nchan": field.get_obs_parameters(config["nchan_key"]),
+                        f"{prefix}_collected_h5parm": config["collected_h5parm"],
+                        f"{prefix}_initialsolutions_h5parm": initial_h5parm,
+                        f"{prefix}_initialsolutions_soltab": config["initial_soltab"],
+                        f"{prefix}_llssolver": field.llssolver,
+                        f"{prefix}_maxiter": field.maxiter,
+                        f"{prefix}_propagatesolutions": field.propagatesolutions,
+                        f"{prefix}_solveralgorithm": field.solveralgorithm,
+                        f"{prefix}_solverlbfgs_dof": field.solverlbfgs_dof,
+                        f"{prefix}_solverlbfgs_iter": field.solverlbfgs_iter,
+                        f"{prefix}_solverlbfgs_minibatches": field.solverlbfgs_minibatches,
+                        f"{prefix}_stepsize": field.stepsize,
+                        f"{prefix}_stepsigma": field.stepsigma,
+                        f"{prefix}_tolerance": field.tolerance,
+                        f"{prefix}_uvlambdamin": field.solve_min_uv_lambda,
+                    }
+                )
+                if config["needs_process_gains"]:
+                    self.input_parms[f"{prefix}_processed_h5parm"] = config["processed_h5parm"]
+
+            if len(self.di_solves) > 1:
+                self.input_parms["solve1_keepmodel"] = "True"
+                for solve_index in range(2, len(self.di_solves) + 1):
+                    self.input_parms[f"solve{solve_index}_reusemodel"] = "[solve1.*]"
+
+            combine_plan = self._get_di_combine_plan()
+            if combine_plan:
+                self.input_parms["combined_fast_medium_h5parm"] = "di_fast_medium.h5parm"
+                self.input_parms["solution_combine_mode"] = combine_plan[-1]["mode"]
+            if len(combine_plan) > 1:
+                self.input_parms["combined_slow_h5parm"] = "di_solutions.h5"
+
+    def _get_di_solves(self):
+        strategy = getattr(self.field, "calibration_strategy", None)
+        if strategy is None:
+            return ["full_jones"]
+
+        requested_solves = strategy.get("di", []) or []
+        return [solve for solve in DI_SOLVE_TYPE_ORDER if solve in requested_solves]
+
+    def _get_di_final_h5parm(self):
+        di_solves = self._get_di_solves()
+        if not di_solves:
+            return None
+        if di_solves == ["full_jones"]:
+            return DI_SOLVE_TYPE_CONFIG["full_jones"]["processed_h5parm"]
+        if len(di_solves) == 1:
+            config = DI_SOLVE_TYPE_CONFIG[di_solves[0]]
+            if config["needs_process_gains"]:
+                return config["processed_h5parm"]
+            return config["collected_h5parm"]
+        if di_solves == ["fast_phase", "medium_phase"]:
+            return "di_fast_medium.h5parm"
+        if di_solves == ["fast_phase", "medium_phase", "slow_gains"]:
+            return "di_solutions.h5"
+        raise ValueError(f"Unsupported DI calibration solve combination: {di_solves}")
+
+    def _get_di_combine_plan(self):
+        di_solves = self._get_di_solves()
+        if di_solves in (
+            [],
+            ["fast_phase"],
+            ["medium_phase"],
+            ["slow_gains"],
+            ["full_jones"],
+        ):
+            return []
+        if di_solves == ["fast_phase", "medium_phase"]:
+            return [
+                {
+                    "mode": "p1p2_scalar",
+                    "output_h5parm": "di_fast_medium.h5parm",
+                }
+            ]
+        if di_solves == ["fast_phase", "medium_phase", "slow_gains"]:
+            return [
+                {
+                    "mode": "p1p2_scalar",
+                    "output_h5parm": "di_fast_medium.h5parm",
+                },
+                {
+                    "mode": (
+                        "p1p2a2_diagonal"
+                        if self.field.apply_diagonal_solutions
+                        else "p1p2a2_scalar"
+                    ),
+                    "output_h5parm": "di_solutions.h5",
+                },
+            ]
+        raise ValueError(f"Unsupported DI calibration solve combination: {di_solves}")
 
     def _build_dp3_steps(self, bda_timebase, bda_frequencybase):
         """
@@ -626,8 +804,12 @@ class Calibrate(Operation):
                     "solution_flagged_fraction": flagged_frac,
                 }
             )
-        else:  # if self.mode == "di" uses fulljones file
-            flagged_frac = misc.get_flagged_solution_fraction(field.fulljones_h5parm_filename)
+        else:
+            if self._get_di_solves() == ["full_jones"]:
+                flagged_h5parm = field.fulljones_h5parm_filename
+            else:
+                flagged_h5parm = field.h5parm_filename
+            flagged_frac = misc.get_flagged_solution_fraction(flagged_h5parm)
         # Log the fraction of flagged solutions.
         self.log.info("Fraction of solutions that are flagged = %.2f", flagged_frac)
 
@@ -704,15 +886,35 @@ class Calibrate(Operation):
                 )
 
         elif mode == "di":
-            # di solutions
-            field = self.field
-            field.fulljones_h5parm_filename = os.path.join(dst_dir, "fulljones-solutions.h5")
-            if os.path.exists(field.fulljones_h5parm_filename):
-                os.remove(field.fulljones_h5parm_filename)
-            shutil.copy(
-                os.path.join(self.pipeline_working_dir, self.collected_h5parm_fulljones),
-                field.fulljones_h5parm_filename,
-            )
+            di_solves = self._get_di_solves()
+            if not di_solves:
+                return
+
+            def copy_solution(src_name, dst_filename):
+                if os.path.exists(dst_filename):
+                    os.remove(dst_filename)
+                shutil.copy(os.path.join(self.pipeline_working_dir, src_name), dst_filename)
+
+            if di_solves == ["full_jones"]:
+                field.fulljones_h5parm_filename = os.path.join(
+                    dst_dir, DI_SOLVE_TYPE_CONFIG["full_jones"]["final_filename"]
+                )
+                copy_solution(self._get_di_final_h5parm(), field.fulljones_h5parm_filename)
+                return
+
+            field.h5parm_filename = os.path.join(dst_dir, "field-solutions-di.h5")
+            copy_solution(self._get_di_final_h5parm(), field.h5parm_filename)
+
+            for solve_type in di_solves:
+                config = DI_SOLVE_TYPE_CONFIG[solve_type]
+                solve_h5parm = (
+                    config["processed_h5parm"]
+                    if config["needs_process_gains"]
+                    else config["collected_h5parm"]
+                )
+                dst_filename = os.path.join(dst_dir, config["final_filename"])
+                setattr(field, config["field_attr"], dst_filename)
+                copy_solution(solve_h5parm, dst_filename)
 
     @staticmethod
     def _copy_plots(plot_filenames, dst_dir):
