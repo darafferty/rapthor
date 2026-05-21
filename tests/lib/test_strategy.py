@@ -228,8 +228,25 @@ def test_check_and_adjust_parameters_warns_for_missing_parameters_without_defaul
         check_and_adjust_parameters(field, strategy_steps)
 
 
-@pytest.mark.parametrize("cycle", [1, 2])
+@pytest.mark.parametrize("cycle", [0, 1, 2])
 def test_validate_strategy_logs_warning_for_do_normalize_in_non_first_cycle(
+    parset, strategy_steps, cycle, caplog
+):
+    # Set do_normalize for the specified cycle.
+    strategy_steps[cycle]["do_normalize"] = True
+    expected_log_string = (
+        f"do_normalize is True in cycle {cycle + 1} but it is usually True only in the first cycle."
+    )
+    with caplog.at_level("WARNING"):
+        validate_strategy(strategy_steps, parset)
+        if cycle:
+            assert expected_log_string in caplog.text
+        else:
+            assert expected_log_string not in caplog.text
+
+
+@pytest.mark.parametrize("cycle", [0])
+def test_validate_strategy_logs_nothing_for_do_normalize_in_first_cycle(
     parset, strategy_steps, cycle, caplog
 ):
     # Set do_normalize for the specified cycle.
@@ -237,7 +254,11 @@ def test_validate_strategy_logs_warning_for_do_normalize_in_non_first_cycle(
 
     with caplog.at_level("WARNING"):
         validate_strategy(strategy_steps, parset)
-        assert "do_normalize is True in cycle {cycle+1} but it is usually True only in the first cycle."
+
+        assert (
+            f"do_normalize is True in cycle {cycle + 1} but it is usually True only in the first cycle."
+            not in caplog.text
+        )
 
 
 @pytest.mark.parametrize("normalization_skymodels", [None, ["skymodel1.txt", "skymodel2.txt"]])
