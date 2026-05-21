@@ -230,12 +230,14 @@ def test_check_and_adjust_parameters_warns_for_missing_parameters_without_defaul
 
 @pytest.mark.parametrize("cycle", [1, 2])
 def test_validate_strategy_raises_error_for_do_normalize_in_non_first_cycle(
-    parset, strategy_steps, cycle
+    parset, strategy_steps, cycle, caplog
 ):
     # Set do_normalize for the specified cycle.
     strategy_steps[cycle]["do_normalize"] = True
 
-    validate_strategy(strategy_steps, parset)
+    with caplog.at_level("WARNING"):
+        validate_strategy(strategy_steps, parset)
+        assert "do_normalize is True in cycle 1 but it is usually True only in the first cycle."
 
 
 @pytest.mark.parametrize("normalization_skymodels", [None, ["skymodel1.txt", "skymodel2.txt"]])
