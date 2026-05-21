@@ -320,8 +320,11 @@ class Image(Operation):
         prepare_data_steps = f"[{','.join(prepare_data_steps)}]"
 
         # Set the h5parm to use to apply the DDE solutions as needed
-        calibration_file = next(item for item in 
-                               (self.field.h5parm_filename, self.field.fulljones_h5parm_filename) if item is not None)
+        calibration_file = next(
+            item
+            for item in (self.field.h5parm_filename, self.field.fulljones_h5parm_filename)
+            if item is not None
+        )
         h5parm = None if self.apply_none else CWLFile(calibration_file).to_json()
         # Set the data interval to use when screens are applied so that final solution
         # interval is removed
