@@ -245,22 +245,6 @@ def test_validate_strategy_logs_warning_for_do_normalize_in_non_first_cycle(
             assert expected_log_string not in caplog.text
 
 
-@pytest.mark.parametrize("cycle", [0])
-def test_validate_strategy_logs_nothing_for_do_normalize_in_first_cycle(
-    parset, strategy_steps, cycle, caplog
-):
-    # Set do_normalize for the specified cycle.
-    strategy_steps[cycle]["do_normalize"] = True
-
-    with caplog.at_level("WARNING"):
-        validate_strategy(strategy_steps, parset)
-
-        assert (
-            f"do_normalize is True in cycle {cycle + 1} but it is usually True only in the first cycle."
-            not in caplog.text
-        )
-
-
 @pytest.mark.parametrize("normalization_skymodels", [None, ["skymodel1.txt", "skymodel2.txt"]])
 @pytest.mark.parametrize("do_normalize", [True, False])
 @pytest.mark.parametrize("allow_internet_access", [True, False])
