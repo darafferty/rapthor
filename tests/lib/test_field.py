@@ -1,8 +1,47 @@
 from pathlib import Path
 
+import numpy as np
 import pytest
+from losoto.h5parm import h5parm
 
 from rapthor.lib.field import Field
+
+
+def _write_gain_h5parm(path, amplitude_values, amplitude_weights=None):
+    amplitude_values = np.asarray(amplitude_values, dtype=float)
+    if amplitude_weights is None:
+        amplitude_weights = np.ones_like(amplitude_values)
+
+    with h5parm(str(path), readonly=False) as solutions:
+        solset = solutions.makeSolset("sol000")
+        solset.makeSoltab(
+            soltype="phase",
+            soltabName="phase000",
+            axesNames=["time", "freq", "ant", "dir", "pol"],
+            axesVals=[
+                np.array([0.0]),
+                np.array([1.0]),
+                np.array(["ANT0"]),
+                np.array(["[Patch_0]"]),
+                np.array(["XX", "YY"]),
+            ],
+            vals=np.zeros((1, 1, 1, 1, 2)),
+            weights=np.ones((1, 1, 1, 1, 2)),
+        )
+        solset.makeSoltab(
+            soltype="amplitude",
+            soltabName="amplitude000",
+            axesNames=["time", "freq", "ant", "dir", "pol"],
+            axesVals=[
+                np.array([0.0]),
+                np.array([1.0]),
+                np.array(["ANT0"]),
+                np.array(["[Patch_0]"]),
+                np.array(["XX", "YY"]),
+            ],
+            vals=amplitude_values,
+            weights=amplitude_weights,
+        )
 
 
 @pytest.fixture
@@ -84,6 +123,63 @@ def test_find_intersecting_sources(field):
 
 def test_check_selfcal_progress(field):
     assert field.check_selfcal_progress() == (False, False, False)
+
+
+def test_scan_h5parms_enables_valid_amplitudes(field, tmp_path):
+    h5parm_file = tmp_path / "solutions.h5"
+    _write_gain_h5parm(h5parm_file, np.ones((1, 1, 1, 1, 2)))
+
+    field.h5parm_filename = str(h5parm_file)
+    field.fulljones_h5parm_filename = None
+
+    field.scan_h5parms()
+
+    assert field.apply_phases is True
+    assert field.apply_amplitudes is True
+
+
+def test_scan_h5parms_ignores_fully_flagged_amplitudes(field, tmp_path):
+    h5parm_file = tmp_path / "solutions.h5"
+    _write_gain_h5parm(h5parm_file, np.full((1, 1, 1, 1, 2), np.nan))
+
+    field.h5parm_filename = str(h5parm_file)
+    field.fulljones_h5parm_filename = None
+
+    field.scan_h5parms()
+
+    assert field.apply_phases is True
+    assert field.apply_amplitudes is False
+
+
+def test_scan_h5parms_marks_fully_flagged_phases_unusable(field, tmp_path):
+    h5parm_file = tmp_path / "solutions.h5"
+
+    with h5parm(str(h5parm_file), readonly=False) as solutions:
+        solset = solutions.makeSolset("sol000")
+        axes_names = ["time", "freq", "ant", "dir", "pol"]
+        axes_vals = [
+            np.array([0.0]),
+            np.array([1.0]),
+            np.array(["ANT0"]),
+            np.array(["[Patch_0]"]),
+            np.array(["XX", "YY"]),
+        ]
+        solset.makeSoltab(
+            soltype="phase",
+            soltabName="phase000",
+            axesNames=axes_names,
+            axesVals=axes_vals,
+            vals=np.full((1, 1, 1, 1, 2), np.nan),
+            weights=np.ones((1, 1, 1, 1, 2)),
+        )
+
+    field.h5parm_filename = str(h5parm_file)
+    field.fulljones_h5parm_filename = None
+
+    field.scan_h5parms()
+
+    assert field.apply_phases is False
+    assert field.apply_amplitudes is False
 
 
 def test_plot_overview_patches(field):

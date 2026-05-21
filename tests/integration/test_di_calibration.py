@@ -132,7 +132,7 @@ def test_rapthor_run_single_loop_calibrate_di_slow_gains(
     assert "avg" not in dp3_arguments["steps"]
     assert "diagonal" in dp3_arguments["solve1.mode"]
     assert "slow_gains_di_0.h5parm" == dp3_arguments["solve1.h5parm"]
-    assert int(dp3_arguments["solve1.solint"]) == 600.0  # From the strategy (may be adjusted)
+    assert int(dp3_arguments["solve1.solint"]) == 60
 
 
 @pytest.mark.integration
@@ -247,7 +247,7 @@ def test_rapthor_run_di_fast_phase_medium_slow(
     assert "slow_gains_di_0.h5parm" == dp3_arguments["solve3.h5parm"]
     assert "scalarphase" == dp3_arguments["solve1.mode"]
     assert "scalarphase" == dp3_arguments["solve2.mode"]
-    assert "solint" in dp3_arguments["solve3"]
+    assert "solve3.solint" in dp3_arguments
     assert int(dp3_arguments["solve1.solint"]) < int(dp3_arguments["solve2.solint"])
     assert int(dp3_arguments["solve2.solint"]) < int(dp3_arguments["solve3.solint"])
 

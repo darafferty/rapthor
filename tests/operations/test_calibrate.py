@@ -635,8 +635,11 @@ class TestCalibrate:
 
         if len(di_strategy) > 1:
             assert calibrate_di.input_parms["solve1_keepmodel"] == "True"
-            for solve_index in range(2, len(di_strategy) + 1):
-                assert calibrate_di.input_parms[f"solve{solve_index}_reusemodel"] == "[solve1.*]"
+            assert calibrate_di.input_parms["solve2_reusemodel"] == "[solve1.*]"
+            for solve_index in range(3, len(di_strategy) + 1):
+                assert calibrate_di.input_parms[f"solve{solve_index}_modeldatacolumn"] == (
+                    "[MODEL_DATA]"
+                )
 
     @pytest.mark.parametrize(
         "di_strategy, expected_combine_mode",
