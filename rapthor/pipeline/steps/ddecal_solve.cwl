@@ -784,6 +784,15 @@ inputs:
       prefix: solve2.reusemodel=
       separate: False
 
+  - id: solve2_modeldatacolumn
+    label: Model data column
+    doc: |
+      The name of the model data to use for solve2.
+    type: string?
+    inputBinding:
+      prefix: solve2.modeldatacolumns=
+      separate: False
+
   - id: solve3_normalize_h5parm
     label: Filename of h5parm
     doc: |
@@ -1051,6 +1060,15 @@ inputs:
       prefix: solve3.reusemodel=
       separate: False
 
+  - id: solve3_modeldatacolumn
+    label: Model data column
+    doc: |
+      The name of the model data to use for solve3.
+    type: string?
+    inputBinding:
+      prefix: solve3.modeldatacolumns=
+      separate: False
+
   - id: solve4_normalize_h5parm
     label: Filename of h5parm
     doc: |
@@ -1316,6 +1334,15 @@ inputs:
     type: string?
     inputBinding:
       prefix: solve4.reusemodel=
+      separate: False
+
+  - id: solve4_modeldatacolumn
+    label: Model data column
+    doc: |
+      The name of the model data to use for solve4.
+    type: string?
+    inputBinding:
+      prefix: solve4.modeldatacolumns=
       separate: False
 
   - id: numthreads
