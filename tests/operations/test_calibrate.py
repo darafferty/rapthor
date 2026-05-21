@@ -562,3 +562,107 @@ class TestCalibrate:
         calibrate_dd.set_input_parameters()
 
         assert calibrate_dd.input_parms["solution_combine_mode"] == expected_mode
+
+    @pytest.mark.xfail(
+        reason="DI dynamic solve mapping not implemented yet",
+        strict=True,
+    )
+    @pytest.mark.parametrize(
+        "di_strategy, expected_steps, expected_modes",
+        [
+            (["fast_phase"], "[solve1]", {"solve1_mode": "scalarphase"}),
+            (["medium_phase"], "[solve1]", {"solve1_mode": "scalarphase"}),
+            (["slow_gains"], "[solve1]", {"solve1_mode": "diagonal"}),
+            (
+                ["fast_phase", "medium_phase"],
+                "[solve1,solve2]",
+                {"solve1_mode": "scalarphase", "solve2_mode": "scalarphase"},
+            ),
+            (
+                ["fast_phase", "medium_phase", "slow_gains"],
+                "[solve1,solve2,solve3]",
+                {
+                    "solve1_mode": "scalarphase",
+                    "solve2_mode": "scalarphase",
+                    "solve3_mode": "diagonal",
+                },
+            ),
+            (["full_jones"], "[solve1]", {"solve1_mode": "fulljones"}),
+        ],
+    )
+    def test_set_input_parameters_di_dynamic_solve_mapping(
+        self, calibrate_field, di_strategy, expected_steps, expected_modes
+    ):
+        """DI mode should generate dynamic solve inputs from calibration_strategy."""
+        field = calibrate_field
+        field.calibration_strategy = {"di": di_strategy, "dd": []}
+
+        calibrate_di = Calibrate("di", field=field, index=2)
+        calibrate_di.set_parset_parameters()
+        calibrate_di.set_input_parameters()
+
+        assert calibrate_di.input_parms["steps"] == expected_steps
+        for key, value in expected_modes.items():
+            assert calibrate_di.input_parms[key] == value
+
+        output_stems = {
+            "fast_phase": "fast_phase_di",
+            "medium_phase": "medium1_phase_di",
+            "slow_gains": "slow_gains_di",
+            "full_jones": "fulljones_gain",
+        }
+        solint_keys = {
+            "fast_phase": "solint_fast_timestep",
+            "medium_phase": "solint_medium_timestep",
+            "slow_gains": "solint_slow_timestep",
+            "full_jones": "solint_fulljones_timestep",
+        }
+        nchan_keys = {
+            "fast_phase": "solint_fast_freqstep",
+            "medium_phase": "solint_medium_freqstep",
+            "slow_gains": "solint_slow_freqstep",
+            "full_jones": "solint_fulljones_freqstep",
+        }
+
+        for solve_index, solve_type in enumerate(di_strategy, start=1):
+            prefix = f"solve{solve_index}"
+            assert calibrate_di.input_parms[f"{prefix}_h5parm"] == [
+                f"{output_stems[solve_type]}_{i}.h5parm" for i in range(field.ntimechunks)
+            ]
+            assert calibrate_di.input_parms[f"{prefix}_solint"] == field.get_obs_parameters(
+                solint_keys[solve_type]
+            )
+            assert calibrate_di.input_parms[f"{prefix}_nchan"] == field.get_obs_parameters(
+                nchan_keys[solve_type]
+            )
+            assert f"{prefix}_initialsolutions_soltab" in calibrate_di.input_parms
+
+        if len(di_strategy) > 1:
+            assert calibrate_di.input_parms["solve1_keepmodel"] == "True"
+            for solve_index in range(2, len(di_strategy) + 1):
+                assert calibrate_di.input_parms[f"solve{solve_index}_reusemodel"] == "[solve1.*]"
+
+    @pytest.mark.xfail(
+        reason="DI solution combine mode mapping not implemented yet",
+        strict=True,
+    )
+    @pytest.mark.parametrize(
+        "di_strategy, expected_combine_mode",
+        [
+            (["fast_phase", "medium_phase"], "p1p2_scalar"),
+            (["fast_phase", "medium_phase", "slow_gains"], "p1p2a2_scalar"),
+        ],
+    )
+    def test_set_input_parameters_di_solution_combine_mode(
+        self, calibrate_field, di_strategy, expected_combine_mode
+    ):
+        """DI mode should map selected solves to valid combine_h5parms mode values."""
+        field = calibrate_field
+        field.calibration_strategy = {"di": di_strategy, "dd": []}
+        field.apply_diagonal_solutions = False
+
+        calibrate_di = Calibrate("di", field=field, index=2)
+        calibrate_di.set_parset_parameters()
+        calibrate_di.set_input_parameters()
+
+        assert calibrate_di.input_parms["solution_combine_mode"] == expected_combine_mode

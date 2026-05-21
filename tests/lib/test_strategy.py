@@ -278,17 +278,32 @@ def test_validate_strategy_raises_error_for_inconsistent_strategy_and_parset_set
 @pytest.mark.parametrize(
     "calibration_strategy, expected_error_message",
     [
-        (
-            {
-                "di": ["fast_phase", "medium_phase", "slow_gains", "full_jones"],
-                "dd": ["fast_phase", "medium_phase", "slow_gains", "full_jones"],
-            },
-            None,
-        ),
         ({"di": ["fast_phase"], "dd": []}, None),
+        ({"di": ["medium_phase"], "dd": []}, None),
+        ({"di": ["slow_gains"], "dd": []}, None),
+        ({"di": ["fast_phase", "medium_phase"], "dd": []}, None),
+        ({"di": ["fast_phase", "medium_phase", "slow_gains"], "dd": []}, None),
+        ({"di": ["full_jones"], "dd": []}, None),
+        ({"di": ["full_jones"], "dd": ["fast_phase", "medium_phase"]}, None),
         ({"di": ["fast_phase"]}, None),
         ({"dd": ["fast_phase"]}, None),
         ({"di": [], "dd": ["full_jones"]}, None),
+        (
+            {"di": ["full_jones", "fast_phase"], "dd": []},
+            'DI calibration strategy cannot combine "full_jones"',
+        ),
+        (
+            {"di": ["slow_gains", "full_jones"], "dd": []},
+            'DI calibration strategy cannot combine "full_jones"',
+        ),
+        (
+            {"di": ["fast_phase"], "dd": ["fast_phase"]},
+            "DD calibration cannot be combined with non-full-Jones DI solve types",
+        ),
+        (
+            {"di": ["fast_phase", "medium_phase", "slow_gains"], "dd": ["slow_gains"]},
+            "DD calibration cannot be combined with non-full-Jones DI solve types",
+        ),
         (
             {"di": ["unknown", "full_jones"], "dd": ["unknown", "fast_phase"]},
             'Calibration strategy for mode "di" contains unrecognized solve type "unknown"',

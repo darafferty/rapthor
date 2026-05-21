@@ -79,3 +79,32 @@ def parse_dp3_args_from_log(log_path):
     tokens = match.group(1).replace("\\\n", " ").split()
 
     return {k: v for k, _, v in (t.partition("=") for t in tokens if "=" in t)}
+
+
+def parse_combine_h5parms_args_from_log(log_path):
+    """Parse the combine_h5parms.py command from a CWL job log.
+
+    Returns a dict with the two input h5parms, output h5parm, combine mode,
+    and any ``--key=value`` options.
+    """
+    text = Path(log_path).read_text()
+
+    match = re.search(r"\$ combine_h5parms\.py\s+((?:.*\\\n)*.*)", text)
+    if not match:
+        raise ValueError(f"No combine_h5parms.py command found in {log_path}")
+
+    tokens = match.group(1).replace("\\\n", " ").split()
+    if len(tokens) < 4:
+        raise ValueError(f"Incomplete combine_h5parms.py command found in {log_path}")
+
+    args = {
+        "inh5parm1": tokens[0],
+        "inh5parm2": tokens[1],
+        "outh5parm": tokens[2],
+        "mode": tokens[3],
+    }
+    for token in tokens[4:]:
+        if token.startswith("--") and "=" in token:
+            key, value = token[2:].split("=", 1)
+            args[key] = value
+    return args

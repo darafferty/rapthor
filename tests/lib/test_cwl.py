@@ -168,6 +168,49 @@ def test_calibrate_di_workflow(
     generate_and_validate(tmp_path, operation, parms, template)
 
 
+
+
+@pytest.mark.xfail(
+    reason="DI multi-solve workflow rendering pending calibrate_di_pipeline.cwl rewrite",
+    strict=True,
+)
+@pytest.mark.parametrize(
+    "di_solves",
+    [
+        ["fast_phase"],
+        ["medium_phase"],
+        ["slow_gains"],
+        ["fast_phase", "medium_phase"],
+        ["fast_phase", "medium_phase", "slow_gains"],
+        ["full_jones"],
+    ],
+)
+def test_calibrate_di_workflow_renders_supported_solve_combinations(tmp_path, di_solves):
+    """DI workflow template should render and validate for every supported solve set."""
+    operation = "calibrate_di"
+    template = env_parset.get_template("calibrate_di_pipeline.cwl")
+    parms = {
+        "max_cores": None,
+        "di_solves": di_solves,
+        "nr_di_solves": len(di_solves),
+        "has_slow_gains": "slow_gains" in di_solves,
+        "is_full_jones": di_solves == ["full_jones"],
+        "needs_combine_fast_medium": di_solves in (
+            ["fast_phase", "medium_phase"],
+            ["fast_phase", "medium_phase", "slow_gains"],
+        ),
+        "needs_combine_slow": di_solves == ["fast_phase", "medium_phase", "slow_gains"],
+    }
+
+    pipeline_working_dir = tmp_path / "pipelines" / operation
+    parset_path = create_parsets(pipeline_working_dir, parms, template, sub_template=None)
+    rendered = parset_path.read_text()
+
+    assert "timechunk_filename_fulljones" not in rendered
+    assert "id: timechunk_filename" in rendered
+    assert "id: solve_di" in rendered
+    validate(parms, parset_path)
+
 @pytest.mark.parametrize("max_cores", (None, 8))
 def test_predict_workflow(tmp_path, max_cores):
     """

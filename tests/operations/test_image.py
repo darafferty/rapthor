@@ -615,6 +615,67 @@ class TestImage:
         steps, _, _ = image._build_applycal_steps()
         assert steps == expected_steps
 
+    def test_build_applycal_steps_omits_missing_solution_files(self, field, tmp_path):
+        """Requested solve types should be omitted when corresponding h5parm files are missing."""
+        missing_h5parm = tmp_path / "missing-dd-di.h5"
+        missing_fulljones = tmp_path / "missing-fulljones.h5"
+        _prepare_field_for_image(field, h5parm_filename=missing_h5parm)
+
+        image = Image(field=field, index=1)
+        image.set_parset_parameters()
+        image.apply_none = False
+        image.apply_normalizations = False
+        image.apply_amplitudes = True
+
+        field.calibration_strategy = {"dd": ["fast_phase"], "di": ["slow_gains", "full_jones"]}
+        field.fulljones_h5parm_filename = str(missing_fulljones)
+
+        steps, fulljones_h5parm, _ = image._build_applycal_steps()
+        assert steps is None
+        assert fulljones_h5parm is None
+
+    def test_build_applycal_steps_keeps_fulljones_when_general_h5parm_missing(
+        self, field, tmp_path
+    ):
+        """Full-Jones should still be applied when available, even if generic h5parm is missing."""
+        missing_h5parm = tmp_path / "missing-general.h5"
+        fulljones_h5parm_file = tmp_path / "fulljones.h5"
+        fulljones_h5parm_file.touch()
+        _prepare_field_for_image(field, h5parm_filename=missing_h5parm)
+
+        image = Image(field=field, index=1)
+        image.set_parset_parameters()
+        image.apply_none = False
+        image.apply_normalizations = False
+        image.apply_amplitudes = True
+
+        field.calibration_strategy = {"dd": ["fast_phase"], "di": ["full_jones"]}
+        field.fulljones_h5parm_filename = str(fulljones_h5parm_file)
+
+        steps, fulljones_h5parm, _ = image._build_applycal_steps()
+        assert steps == "[fulljones]"
+        assert fulljones_h5parm is not None
+
+    def test_build_applycal_steps_uses_generic_h5parm_for_di_non_fulljones(
+        self, field, h5parm_file
+    ):
+        """Non-full-Jones DI solves should use generic h5parm, not fulljones_h5parm."""
+        _prepare_field_for_image(field, h5parm_filename=h5parm_file)
+
+        image = Image(field=field, index=1)
+        image.set_parset_parameters()
+        image.apply_none = False
+        image.apply_normalizations = False
+        image.apply_amplitudes = True
+
+        field.calibration_strategy = {"di": ["fast_phase", "slow_gains"]}
+        field.fulljones_h5parm_filename = None
+
+        steps, fulljones_h5parm, _ = image._build_applycal_steps()
+
+        assert steps == "[fastphase,slowgain]"
+        assert fulljones_h5parm is None
+
     def test_image_operation_sets_mask_file(
         self, field, h5parm_file, monkeypatch, expected_image_output
     ):
