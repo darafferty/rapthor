@@ -484,6 +484,13 @@ inputs:
       Apply corrections for time and frequency smearing (length = 1).
     type: boolean
 
+  - id: no_update_model_required
+    label: Do not update model data
+    doc: |
+      Do not update the model data column of the imaging MS with the clean-
+      component model (length = 1).
+    type: boolean
+
   - id: save_filtered_model_image
     label: Save filtered model image
     doc: |
@@ -911,6 +918,8 @@ steps:
 {% endif %}
       - id: apply_time_frequency_smearing
         source: apply_time_frequency_smearing
+      - id: no_update_model_required
+        source: no_update_model_required
     out:
       - id: image_I_nonpb_name
       - id: image_I_pb_name

@@ -211,6 +211,7 @@ save_filtered_model_image = False
 # will not be applied unless dde_method = "single", in which case the solutions
 # closest to the image centers are used.
 save_visibilities = False
+save_residual_visibilities = False
 
 # Perform averaging of visibilities for imaging, up to that allowed by smearing
 # constraints (default = True).
@@ -267,7 +268,6 @@ make_quv_images = False
 pol_combine_method = link
 disable_iquv_clean = False
 
-
 # Enable the use of a clean mask between imaging runs
 use_clean_mask = False
 
@@ -278,9 +278,10 @@ use_clean_mask = False
 # must not be set unless it is on a shared filesystem
 use_mpi = False
 
-# Enable shared reads and writes for imaging when working with facets. If multiple nodes are used
-# this option can significantly speed up the processing time of wsclean
-# NOTE: it is currently experimental and it should be used with caution.
+# Enable shared reads and writes for imaging when working with facets. If
+# multiple nodes are used this option can significantly speed up the processing
+# time of wsclean. NOTE: it is currently experimental and it should be used
+# with caution.
 shared_facet_rw = False
 
 # Reweight the visibility data before imaging (default = False)

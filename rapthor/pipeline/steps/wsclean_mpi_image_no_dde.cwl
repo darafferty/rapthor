@@ -15,7 +15,6 @@ requirements:
     processes: $(inputs.nnodes)
 
 arguments:
-  - -no-update-model-required
   - -local-rms
   - -join-channels
   - -apply-primary-beam
@@ -177,6 +176,11 @@ inputs:
     type: boolean
     inputBinding:
       prefix: -apply-time-frequency-smearing
+  - id: no_update_model_required
+    type: boolean
+    default: true
+    inputBinding:
+      prefix: -no-update-model-required
 outputs:
   - id: image_I_nonpb_name
     type: File

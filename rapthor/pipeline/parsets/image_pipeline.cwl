@@ -532,6 +532,12 @@ inputs:
       Apply corrections for time and frequency smearing (length = 1).
     type: boolean
 
+  - id: no_update_model_required
+    label: Do not update model data
+    doc: |
+      Do not update the model data column of the imaging MS (length = 1).
+    type: boolean
+
 {% if make_image_cube %}
   - id: image_I_cube_name
     label: Filename of I image cube
