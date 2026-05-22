@@ -124,7 +124,7 @@ class TestCalibrate:
         "mode, expected_name, index",
         [
             ("dd", "calibrate", 1),
-            ("di", "calibrate_di", 2),
+            ("di", "calibrate", 2),
         ],
     )
     def test_init_sets_name_and_mode(self, calibrate_field, mode, expected_name, index):
@@ -477,11 +477,17 @@ class TestCalibrate:
             }
             expected_cwl_ids = get_cwl_input_ids("calibrate_pipeline.cwl", template_parset_parms)
         else:
+            resolved_use_image_based_predict = (
+                field.generate_screens or field.use_image_based_predict
+            )
             template_parset_parms = {
+                "use_image_based_predict": resolved_use_image_based_predict,
+                "generate_screens": field.generate_screens,
+                "do_slowgain_solve": field.do_slowgain_solve,
                 "max_cores": None,
                 "rapthor_pipeline_dir": rapthor_pipeline_dir,
             }
-            expected_cwl_ids = get_cwl_input_ids("calibrate_di_pipeline.cwl", template_parset_parms)
+            expected_cwl_ids = get_cwl_input_ids("calibrate_pipeline.cwl", template_parset_parms)
 
         input_parms_keys = set(calibrate.input_parms.keys())
         assert expected_cwl_ids.issubset(input_parms_keys), (
