@@ -7,60 +7,64 @@ tests green.
 ## Current State
 
 - The scheduler preserves the order of `calibration_strategy` keys and runs DI
-  prediction before DI calibration.
+  prediction before DI calibration. Process-level unit coverage now locks this
+  in for DI-only, DD-only, DI-then-DD, and DD-then-DI strategy orderings.
 - Focused `tests/operations/test_calibrate.py` coverage now passes for DD and DI
   operation initialization, parameter setup, finalization, BDA/IBP cases, and
   solution-combine mode.
 - DI calibration operation naming now has focused unit coverage for
-  `dd -> calibrate` and `di -> calibrate_di`, but process-level and integration
-  coverage still need to prove the directory, log, solution, and `.done` marker
-  contract across mixed DI/DD cycles.
+  `dd -> calibrate` and `di -> calibrate_di`, and process-level ordering tests
+  now use the same DI/DD operation contract. Integration coverage still needs to
+  prove the directory, log, solution, and `.done` marker contract across mixed
+  DI/DD cycles.
 - DD-only calibration is still mostly driven by legacy flags such as
   `do_slowgain_solve`, not directly by the DD solve list.
 - DI calibration is not yet a general solve-list implementation. It is mostly
   hard-coded around full-Jones-style inputs and outputs.
 - DD prediction can apply existing DD solutions when preparing DI inputs, but DD
   calibration cannot yet apply DI solutions before solving.
-- Imaging builds applycal steps from the strategy order, but solution file
-  selection does not cleanly distinguish DD scalar/gain, DI scalar/gain, and
-  DI full-Jones products.
-- CWL template validation is the current focused blocker. The latest completed
-  focused run has all operation tests passing but calibrate CWL generation still
-  failing.
-- An older broader CWL log also shows image workflow validation failures that are
-  not covered by the calibration-focused run and should be fixed before broad
-  test closure.
+- Imaging now builds applycal steps only from solution products that are actually
+  present in field state, so initial imaging and normalization imaging can run
+  without a calibration h5parm. It still does not fully distinguish future DI
+  scalar/gain products from DD scalar/gain products.
+- Calibrate CWL template validation is no longer the focused blocker. The DD and
+  DI calibrate workflow matrix passes locally with `cwltool --validate`.
+- The older broader image-workflow CWL failures have not reproduced locally. The
+  full image-workflow matrix now passes with `cwltool --validate`.
 
 ## Latest Pytest Snapshot
 
-Reviewed `/tmp/rapthor_focused_calibrate.log` from May 22 2026:
+Completed local checks after the CWL and operation fixes:
 
-- `56` tests collected: `38` passed, `18` failed.
-- All `tests/operations/test_calibrate.py` cases passed.
-- The remaining focused failures are in `tests/lib/test_cwl.py`:
-  - all `16` DD `test_calibrate_workflow` parameter combinations;
-  - both DI `test_calibrate_di_workflow` cases for `max_cores=None` and
-    `max_cores=8`.
-- DD calibrate failures split into two patterns:
-  - with `generate_screens=False`, the generated workflow defines
-    `combined_solutions` more than once and emits an output item without a
-    required `type` field;
-  - with `generate_screens=True`, generated steps reference missing IDs such as
-    `solint_solve1_timestep`, `solve/output_h5parm1`,
-    `collected_solve1_h5parm`, `combined_solve1_solve2_h5parm`,
-    `combined_solve1_solve2_solve4_h5parm`, `dp3_steps`,
-    `calibrator_patch_names`, `calibrator_fluxes`,
-    `solution_combine_mode`, `max_normalization_delta`,
-    `scale_normalization_delta`, `phase_center_ra`, and `phase_center_dec`.
-- DI calibrate failures are validation mismatches in `calibrate_di_pipeline.cwl`:
-  unsupported `correctfreqsmearing` and `correcttimesmearing` inputs are passed
-  to `ddecal_solve.cwl`, `solve*_solutions_per_direction` has the wrong nested
-  array shape, and several optional array outputs/inputs are typed too loosely
-  for the downstream sinks.
-- The active VS Code terminal reported another `pytest` still running during this
-  review. Reconcile this snapshot if that run finishes with newer output.
+- `python3 -m pytest tests/operations/test_calibrate.py -q`:
+  `38 passed`.
+- `python3 -m pytest tests/lib/test_cwl.py -k "calibrate" -q`:
+  `18 passed, 431 deselected`.
+- `python3 -m pytest tests/test_process.py -q`:
+  `16 passed`.
+- `python3 -m pytest tests/operations/test_calibrate.py tests/operations/test_predict.py tests/test_process.py -q`:
+  `97 passed`.
+- `python3 -m pytest tests/operations/test_image.py -q`:
+  `78 passed, 1 warning`.
+- `python3 -m pytest tests/lib/test_cwl.py -k "image_workflow" -q`:
+  `385 passed, 64 deselected`.
+- `python3 -m pytest tests/test_process.py tests/lib/test_field.py tests/lib/test_strategy.py -q`:
+  `92 passed, 1 warning`.
 
-Reviewed `ci.log` as broader context:
+Resolved focused failures:
+
+- Added the missing screen workflow `solint_solve1_timestep` input and moved the
+  Jinja branch boundary that created duplicate step keys.
+- Removed the stale `model_data_column` input and aligned `Calibrate` input keys
+  with the shared `calibrate_pipeline.cwl` input IDs.
+- Populated the shared-template DI placeholders needed for validation while DI
+  still uses the shared calibrate workflow.
+- Removed duplicate non-screen `combined_solutions` outputs, fixed the duplicate
+  `adjust_h5parm_sources` step IDs, and corrected the `step2`/`solve2` condition
+  typo.
+
+Reviewed `ci.log` as broader context; the hard image-workflow errors from that
+older log no longer reproduce in the local focused matrix:
 
 - Repeated image workflow validation failures are present in
   `tests/lib/test_cwl.py::TestImageWorkflow`.
@@ -98,12 +102,14 @@ Implement the four branches from `CALIBRATION_STRATEGY.md`:
 
 ## Implementation Tasks
 
-1. Close the operation naming contract.
+1. Close the operation naming contract. **Mostly complete for unit/process scope.**
    - Make DI calibration use a distinct `calibrate_di_<cycle>` operation name,
      working directory, log directory, solutions directory, and `.done` marker.
    - Keep DD calibration as `calibrate_<cycle>`.
-   - Verify process-level scheduling and integration log expectations use the
-     same naming contract that the focused `Calibrate` unit tests now expect.
+   - Process-level scheduling now has focused coverage for DI-only, DD-only,
+     DI-then-DD, and DD-then-DI ordering.
+   - Integration log expectations still need to use the same naming contract that
+     the focused `Calibrate` unit tests now expect.
    - Update tests to use the chosen naming consistently.
 
 2. Add a calibration solve planner.
@@ -130,14 +136,14 @@ Implement the four branches from `CALIBRATION_STRATEGY.md`:
    - Preserve existing legacy behaviour when no explicit `calibration_strategy`
      is provided.
 
-5. Wire solution application between branches.
+5. Wire solution application between branches. **Partially complete.**
    - For DI then DD, pass DI applycal steps and DI solution files into the DD
      calibration workflow before DD solves.
    - For DD then DI, keep applying DD solutions during `Predict("di")`.
-   - For imaging, build applycal steps from actual available solution products,
+   - Imaging now builds applycal steps from actual available solution products,
      not just strategy text.
 
-6. Fix DD calibrate CWL validation failures.
+6. Fix DD calibrate CWL validation failures. **Complete for the focused matrix.**
    - Align Python input keys with `calibrate_pipeline.cwl` input IDs.
    - Ensure every generated workflow output is unique and has a `type`; repair
      the duplicate/dangling `combined_solutions` output produced when
@@ -154,7 +160,8 @@ Implement the four branches from `CALIBRATION_STRATEGY.md`:
    - Keep all combinations of `generate_screens`, `use_image_based_predict`,
      `do_slowgain_solve`, and `max_cores` valid under `cwltool --validate`.
 
-7. Fix DI calibrate CWL validation failures.
+7. Fix DI calibrate CWL validation failures. **Complete for the shared-template
+  validation matrix; solve-list generalization remains in tasks 2 and 3.**
    - Decide whether DI uses a separate `calibrate_di_pipeline.cwl` or the shared
      `calibrate_pipeline.cwl`, then make tests and log expectations match.
    - Stop passing unsupported `correctfreqsmearing` and `correcttimesmearing`
@@ -166,17 +173,19 @@ Implement the four branches from `CALIBRATION_STRATEGY.md`:
      smoothness reference frequencies, and `max_threads` so generated workflows
      validate cleanly for both `max_cores=None` and `max_cores=8`.
 
-8. Fix image workflow CWL validation failures from the broader log.
+8. Fix image workflow CWL validation failures from the broader log. **Verified
+  locally.**
    - Align the image subpipeline with `filter_skymodel.cwl`; either remove the
      generated `save_filtered_model_image` input or add it to the step contract
      and implementation.
    - Repair the `output_image` to `skymodel_image_fits` wiring so the source type,
      `linkMerge`, and `pickValue` match the sink type.
+   - The local `image_workflow` matrix passes with `385 passed, 64 deselected`.
    - Review nearby image workflow warnings for Q/U/V channel arrays, cube output
      names, optional masks, offsets, and diagnostic plots after the hard errors
      are fixed.
 
-9. Update tests.
+9. Update tests. **Partially complete.**
    - Add focused unit tests for the solve planner.
    - Update `test_calibrate.py` for DI/DD operation names and CWL input IDs.
    - Keep the existing `test_calibrate_workflow` matrix as regression coverage
@@ -184,8 +193,8 @@ Implement the four branches from `CALIBRATION_STRATEGY.md`:
    - Keep `test_calibrate_di_workflow` validating both `max_cores` branches.
    - Add or update image workflow CWL regression cases for the
      `filter_skymodel.cwl` input contract and `skymodel_image_fits` wiring.
-   - Add process-level tests for DI-only, DD-only, DI-then-DD, and DD-then-DI
-     operation ordering.
+   - Process-level tests for DI-only, DD-only, DI-then-DD, and DD-then-DI
+     operation ordering are now present.
    - Update integration tests to inspect the correct log directories and CWL
      step names.
    - Add explicit mixed-order integration coverage for:
