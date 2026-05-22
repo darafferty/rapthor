@@ -102,18 +102,20 @@ class Calibrate(Operation):
             # Smoothness constraints
             smoothness_dd_factors = {}
             smoothness_constraints = {}
-            for factor_key, constraint_key in zip(
+            for field_key, input_key in zip(
                 ("fast", "medium", "slow", "medium"), ("solve1", "solve2", "solve3", "solve4")
             ):
-                dd_factor_key = f"{factor_key}_smoothness_dd_factors"
-                constraint_key = f"{constraint_key}_smoothnessconstraint"
-                dd_factor = smoothness_dd_factors[dd_factor_key] = field.get_obs_parameters(
-                    dd_factor_key
+                dd_factor_key_field = f"{field_key}_smoothness_dd_factors"
+                dd_factor_key_inputs = f"{input_key}_smoothness_dd_factors"
+                constraint_key = f"{input_key}_smoothnessconstraint"
+                dd_factor = smoothness_dd_factors[dd_factor_key_inputs] = field.get_obs_parameters(
+                    dd_factor_key_field
                 )
-                factor_constraint_key = f"{factor_key}_smoothnessconstraint"
-                smoothness_constraints[constraint_key] = getattr(field, factor_constraint_key) / np.min(
-                    dd_factor
-                )
+
+                factor_constraint_key = f"{field_key}_smoothnessconstraint"
+                smoothness_constraints[constraint_key] = getattr(
+                    field, factor_constraint_key
+                ) / np.min(dd_factor)
             # Antenna constraints
             core_stations = self._get_core_stations()
             fast_antennaconstraint = f"[[{','.join(core_stations)}]]" if core_stations else "[]"
