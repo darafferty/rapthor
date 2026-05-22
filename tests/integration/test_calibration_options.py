@@ -44,7 +44,6 @@ def test_rapthor_run_single_loop_calibrate_di(
     )
     output = f"{result.stdout}\n{result.stderr}"
     assert result.returncode == 0, f"Rapthor failed with output:\n{output}"
-    assert "Operation calibrate_1 completed" in output
     assert "Operation calibrate_di_1 completed" in output
     assert "Operation predict_1 completed" in output
     assert "Operation predict_di_1 completed" in output

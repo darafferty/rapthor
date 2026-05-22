@@ -39,10 +39,9 @@ class Operation(object):
         self.rootname = rootname.lower() if rootname else name.lower()
         self.index = index
         if self.index is not None:
-            self.name = f'{self.rootname}_{self.index}'
+            self.name = f'{name.lower()}_{self.index}'
         else:
-            self.name = self.rootname
-        self.rootname
+            self.name = name.lower()
         self.parset['op_name'] = name
         self.log = logging.getLogger(f'rapthor:{self.name}')
         self.force_serial_jobs = False  # force jobs to run serially
