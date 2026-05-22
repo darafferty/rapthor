@@ -84,12 +84,6 @@ inputs:
     label: Perform slow gain solve
     type: boolean
 
-  - id: model_data_column
-    label: Model data column to read the input from
-    doc: |
-      The model data column to use for calibration
-    type: string?
-
   - id: solve1_mode
     label: solve1_mode
     type: string
@@ -176,6 +170,13 @@ inputs:
       The filename of the output h5parm solution table for the IDGCal solves (length
       = n_obs * n_time_chunks).
     type: string[]
+
+  - id: solint_solve1_timestep
+    label: Fast solution interval in time
+    doc: |
+      The solution interval in number of timeslots for the fast phase solve (length =
+      n_obs * n_time_chunks).
+    type: int[]
 
   - id: solint_slow_timestep
     label: Slow solution interval in time
@@ -804,7 +805,12 @@ outputs:
       - combine_solutions/outh5parm
     type: File
 {% else %}
-      - adjust_h5parm_sources/adjustedh5parm
+      - adjust_h5parm_sources_full/adjustedh5parm
+      - combine_fast_and_full_slow_h5parms/combinedh5parm
+      - adjust_h5parm_sources_phase/adjustedh5parm
+      - combine_fast_medium1_h5parms/combinedh5parm
+      - collect_fast_phases/outh5parm
+    pickValue: first_non_null
     type: File
   - id: fast_phase_solutions
     outputSource:
@@ -813,11 +819,7 @@ outputs:
   - id: medium1_phase_solutions
     outputSource:
       - collect_medium1_phases/outh5parm
-    type: File
-  - id: combined_solutions
-    outputSource:
-      - adjust_h5parm_sources/adjustedh5parm
-    type: File
+    type: File?
   - id: fast_phase_plots
     outputSource:
       - plot_fast_phase_solutions/plots
@@ -1295,7 +1297,6 @@ steps:
         source: solve4_smoothnessrefdistance
       - id: solve4_antennaconstraint
         source: solve4_antennaconstraint
-{% endif %}
     scatter: [msin, starttime, ntimes, maxinterval,
               solve1_h5parm, solve1_solint, solve1_nchan, solve1_smoothnessreffrequency, solve1_solutions_per_direction, solve1_smoothness_dd_factors, 
               solve2_h5parm, solve2_solint, solve2_nchan, solve2_smoothnessreffrequency, solve2_solutions_per_direction, solve2_smoothness_dd_factors,
@@ -1397,7 +1398,7 @@ steps:
         source: dp3_steps
     out:
       - id: combinedh5parm
-    when: $(inputs.dp3_steps.indexOf("step2") !== -1)
+    when: $(inputs.dp3_steps.indexOf("solve2") !== -1)
 
 # start do_slowgain_solve
 
@@ -1571,7 +1572,7 @@ steps:
     out:
       - id: combinedh5parm
 
-  - id: adjust_h5parm_sources
+  - id: adjust_h5parm_sources_full
     label: Adjust h5parm sources
     doc: |
       This step adjusts the h5parm source coordinates to match those in the sky model.
@@ -1589,7 +1590,7 @@ steps:
     out:
       - id: adjustedh5parm
 
-  - id: adjust_h5parm_sources
+  - id: adjust_h5parm_sources_phase
     label: Adjust h5parm sources
     doc: |
       This step adjusts the h5parm source coordinates to match those in the sky model.
@@ -1603,10 +1604,11 @@ steps:
         source: do_slowgain_solve
       - id: directions
         source: calibrator_patch_names
-    when: $(inputs.do_slowgain_solve && inputs.directions.length > 1)
+    when: $(!inputs.do_slowgain_solve && inputs.directions.length > 1)
     out:
       - id: adjustedh5parm
 
 # end do_slowgain_solve / not do_slowgain_solve
 
+{% endif %}
 # end generate_screens / not generate_screens

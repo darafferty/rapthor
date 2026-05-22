@@ -139,6 +139,9 @@ class Image(Operation):
         The steps are determined from the solve-type flags set on the
         field by the calibration strategy.
         """
+        if self.apply_none:
+            return None, None, None
+
         fulljones_h5parm = None
         input_normalize_h5parm = None
 
@@ -158,6 +161,11 @@ class Image(Operation):
             for solves in strategy.values()
             for solve in solves
             if solve in solve_type_to_step
+            and (
+                self.field.fulljones_h5parm_filename is not None
+                if solve == "full_jones"
+                else self.field.h5parm_filename is not None
+            )
             # don't include slow_gains if amplitudes are not applied
             and not (solve == "slow_gains" and not self.apply_amplitudes)
         ]
@@ -167,7 +175,7 @@ class Image(Operation):
         if self.apply_normalizations:
             steps.append("normalization")
             input_normalize_h5parm = CWLFile(self.field.normalize_h5parm).to_json()
-        if self.apply_none or len(steps) == 0:
+        if len(steps) == 0:
             return None, None, None
 
         formatted = f"[{','.join(steps)}]" if steps else None
@@ -319,13 +327,12 @@ class Image(Operation):
             prepare_data_steps.append("bdaavg")
         prepare_data_steps = f"[{','.join(prepare_data_steps)}]"
 
-        # Set the h5parm to use to apply the DDE solutions as needed
-        calibration_file = next(
-            item
-            for item in (self.field.h5parm_filename, self.field.fulljones_h5parm_filename)
-            if item is not None
+        # Set the h5parm to use to apply the DDE solutions as needed.
+        h5parm = (
+            CWLFile(self.field.h5parm_filename).to_json()
+            if self.field.h5parm_filename is not None
+            else None
         )
-        h5parm = None if self.apply_none else CWLFile(calibration_file).to_json()
         # Set the data interval to use when screens are applied so that final solution
         # interval is removed
         #
