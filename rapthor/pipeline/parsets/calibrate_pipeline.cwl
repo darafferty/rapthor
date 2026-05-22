@@ -73,7 +73,7 @@ inputs:
     doc: |
       The filename of the input sky model text file used for all processing except
       in DDECal solve steps (length = 1).
-    type: File
+    type: File?
 
   - id: solverlbfgs_iter
     label: LBFGS iterations per minibatch
@@ -234,14 +234,14 @@ inputs:
     label: Names of calibrator patches
     doc: |
       The names of the patches used in calibration (length = n_calibrators).
-    type: string[]
+    type: string[]?
 
   - id: calibrator_fluxes
     label: Values of calibrator flux densities
     doc: |
       The total flux densities in Jy of the patches used in calibration (length =
       n_calibrators).
-    type: float[]
+    type: float[]?
 
   - id: output_solve1_h5parm
     label: Fast output solution table
@@ -562,6 +562,12 @@ inputs:
     doc: |
       DDECal datause option for the medium-phase calibration (length = 1).
     type: string?
+
+  - id: solve4_datause
+    doc: |
+      DDECal datause option for the medium-phase calibration (length = 1).
+    type: string?
+
   - id: stepsize
     label: Solver step size
     doc: |
@@ -639,19 +645,20 @@ inputs:
       slow-gain solve (length = n_obs * n_freq_chunks).
     type: int[]?
 
-  - id: solve3_solutions_per_direction
-    label: Slow number of solutions per direction
+  - id: solve3_smoothness_dd_factors
+    label: Smoothness factors
     doc: |
-      The number of solutions per direction for the
-      slow-gain solve (length = n_obs * n_directions * n_time_chunks).
+      The factor by which to multiply the smoothnesscontraint for the
+      slow-gain solve, per direction (length = n_obs * n_calibrators * n_time_chunks).
     type:
       - type: array
         items:
-          type: array
-          items: 
-          - int
+          - "null"
+          - type: array
+            items: 
+            - float
 
-  - id: solve3_smoothness_dd_factors
+  - id: solve4_smoothness_dd_factors
     label: Smoothness factors
     doc: |
       The factor by which to multiply the smoothnesscontraint for the
@@ -695,6 +702,7 @@ inputs:
           - "null"
           - type: array
             items: 
+            - float
 
   - id: solve4_initialsolutions_h5parm
     label: Input solution table
@@ -1291,10 +1299,8 @@ steps:
     scatter: [msin, starttime, ntimes, maxinterval,
               solve1_h5parm, solve1_solint, solve1_nchan, solve1_smoothnessreffrequency, solve1_solutions_per_direction, solve1_smoothness_dd_factors, 
               solve2_h5parm, solve2_solint, solve2_nchan, solve2_smoothnessreffrequency, solve2_solutions_per_direction, solve2_smoothness_dd_factors,
-{% if do_slowgain_solve %}
               solve3_h5parm, solve3_solint, solve3_nchan, solve3_solutions_per_direction, solve3_smoothness_dd_factors,
               solve4_h5parm, solve4_solint, solve4_nchan, solve4_smoothnessreffrequency, solve4_solutions_per_direction, solve4_smoothness_dd_factors,
-{% endif %}
               minchannels]
     scatterMethod: dotproduct
     out:
@@ -1485,11 +1491,10 @@ steps:
       - id: inh5parms
         source: solve/output_h5parm4
       - id: outputh5parm
-        source: collected_medium2_h5parm
+        source: collected_solve4_h5parm
       - id: do_slowgain_solve
         source: do_slowgain_solve
     when: $(inputs.do_slowgain_solve)
-        source: collected_solve4_h5parm
     out:
       - id: outh5parm
 
@@ -1578,16 +1583,11 @@ steps:
         source: combine_fast_and_full_slow_h5parms/combinedh5parm
       - id: do_slowgain_solve
         source: do_slowgain_solve 
-    when: $(inputs.do_slowgain_solve)
-        source: 
-        - combine_fast_and_full_slow_h5parms/combinedh5parm
       - id: directions
-        source: calibrator_patch_n
-    when: $(inputs.directions.length > 1)
+        source: calibrator_patch_names
+    when: $(inputs.do_slowgain_solve && inputs.directions.length > 1)
     out:
       - id: adjustedh5parm
-
-# start not do_slowgain_solve
 
   - id: adjust_h5parm_sources
     label: Adjust h5parm sources
@@ -1601,14 +1601,12 @@ steps:
         source: combine_fast_medium1_h5parms/combinedh5parm
       - id: do_slowgain_solve
         source: do_slowgain_solve
-    when: $(inputs.do_slowgain_solve)
       - id: directions
         source: calibrator_patch_names
-    when: $(inputs.directions.length > 1)
+    when: $(inputs.do_slowgain_solve && inputs.directions.length > 1)
     out:
       - id: adjustedh5parm
 
 # end do_slowgain_solve / not do_slowgain_solve
 
-{% endif %}
 # end generate_screens / not generate_screens
