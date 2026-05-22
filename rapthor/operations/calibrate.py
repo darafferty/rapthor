@@ -27,8 +27,12 @@ class Calibrate(Operation):
     def __init__(self, mode, field, index):
         if mode not in ["di", "dd"]:
             raise ValueError(f"Only di and dd mode are supported, chosen: {mode}")
-        super().__init__(field, index=index, name="calibrate" if mode == "dd" else "calibrate_di",
-                        rootname="calibrate")
+        super().__init__(
+            field,
+            index=index,
+            name="calibrate" if mode == "dd" else "calibrate_di",
+            rootname="calibrate",
+        )
         self.mode = mode
 
     def set_parset_parameters(self):
@@ -311,7 +315,6 @@ class Calibrate(Operation):
                 "onebeamperpatch": field.onebeamperpatch,
                 "parallelbaselines": field.parallelbaselines,
                 "sagecalpredict": field.sagecalpredict,
-
                 "do_slowgain_solve": field.do_slowgain_solve,
                 # Get the solution intervals for the calibrations
                 "solint_fast_timestep": field.get_obs_parameters("solint_fulljones_timestep"),
