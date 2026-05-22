@@ -14,8 +14,6 @@ from rapthor.lib import miscellaneous as misc
 from rapthor.lib.cwl import CWLDir, CWLFile
 from rapthor.lib.operation import Operation
 
-log = logging.getLogger("rapthor:calibrate")
-
 
 class Calibrate(Operation):
     """
