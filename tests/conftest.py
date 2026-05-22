@@ -214,6 +214,18 @@ def single_source_sky_model(tmp_path):
 
 
 @pytest.fixture
+def empty_source_sky_model(tmp_path):
+    """
+    Fixture to create an empty sky model file.
+
+    It returns a dictionary with the path of the file and the source values.
+    """
+    path = tmp_path / "empty_sky.txt"
+    path.write_text("FORMAT = Name, Type, Ra, Dec, I, ReferenceFrequency\n")
+    return path
+
+
+@pytest.fixture
 def true_sky_path(tmp_path):
     """
     Fixture to create a true SkyModel for testing.
@@ -240,6 +252,14 @@ def true_sky_model(sky_model_path):
     This is a placeholder and should be replaced with actual sky model creation logic.
     """
     return lsmtool.load(sky_model_path.as_posix())
+
+
+@pytest.fixture
+def empty_sky_model(empty_source_sky_model):
+    """
+    Fixture to create an empty sky model file for testing.
+    """
+    return lsmtool.load(empty_source_sky_model.as_posix())
 
 
 @pytest.fixture
@@ -394,13 +414,15 @@ def generate_parset(
             "["
             + ", ".join(
                 [
-                    str(142000000.0 + i * 1000.0)
+                    str(120000000.0 + i * 60000000.0)
                     for i, _ in enumerate(normalization_skymodel_paths)
                     if _ is not None
                 ]
             )
             + "]"
         )
+    else:
+        parset["imaging"]["normalization_reference_frequencies"] = "None"
     parset["cluster"].update(
         local_scratch_dir=str(scratch_dir),
         global_scratch_dir=str(scratch_dir),
@@ -623,6 +645,17 @@ def source_catalog_zero_channels_fits(tmp_path):
     """
     catalog_path = str(tmp_path / "test_source_catalog.fits")
     table = _make_source_catalog(n_channels=0)
+    table.write(catalog_path, format="fits", overwrite=True)
+    return catalog_path
+
+
+@pytest.fixture
+def source_catalog_zero_sources_fits(tmp_path):
+    """
+    A synthetic PyBDSF spectral-index-mode source catalog FITS file with zero sources.
+    """
+    catalog_path = str(tmp_path / "test_source_catalog.fits")
+    table = _make_source_catalog(n_sources=0)
     table.write(catalog_path, format="fits", overwrite=True)
     return catalog_path
 
