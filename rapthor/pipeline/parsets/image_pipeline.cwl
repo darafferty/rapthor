@@ -899,6 +899,8 @@ steps:
         source: interval
       - id: apply_time_frequency_smearing
         source: apply_time_frequency_smearing
+      - id: no_update_model_required
+        source: no_update_model_required
 {% if use_facets %}
       - id: parallel_gridding_threads
         source: parallel_gridding_threads
