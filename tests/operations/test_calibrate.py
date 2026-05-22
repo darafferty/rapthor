@@ -124,7 +124,7 @@ class TestCalibrate:
         "mode, expected_name, index",
         [
             ("dd", "calibrate", 1),
-            ("di", "calibrate", 2),
+            ("di", "calibrate_di", 2),
         ],
     )
     def test_init_sets_name_and_mode(self, calibrate_field, mode, expected_name, index):

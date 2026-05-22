@@ -93,3 +93,67 @@ def test_do_calibrate_mode_with_unrecognized_modes_raises_error():
         match=r"Calibration strategy {'unknown_mode': \['fast_phase', 'full_jones'\]} does not contain any of the calibration modes \['di', 'dd'\]",
     ):
         _do_calibrate_mode({"unknown_mode": ["fast_phase", "full_jones"]})
+
+
+@pytest.mark.parametrize(
+    "calibration_strategy, expected_calls",
+    [
+        ({"di": ["full_jones"]}, [("predict", "di", 1), ("calibrate", "di", 1)]),
+        ({"dd": ["fast_phase"]}, [("calibrate", "dd", 1)]),
+        (
+            {"di": ["full_jones"], "dd": ["fast_phase"]},
+            [("predict", "di", 1), ("calibrate", "di", 1), ("calibrate", "dd", 1)],
+        ),
+        (
+            {"dd": ["fast_phase"], "di": ["full_jones"]},
+            [("calibrate", "dd", 1), ("predict", "di", 1), ("calibrate", "di", 1)],
+        ),
+    ],
+)
+def test_run_steps_preserves_calibration_strategy_order(
+    monkeypatch, calibration_strategy, expected_calls
+):
+    """Test that run_steps preserves the DI/DD ordering from calibration_strategy."""
+
+    calls = []
+
+    class RecordingOperation:
+        operation_name = None
+
+        def __init__(self, mode, field, index):
+            self.mode = mode
+            self.index = index
+
+        def run(self):
+            calls.append((self.operation_name, self.mode, self.index))
+
+    class RecordingPredict(RecordingOperation):
+        operation_name = "predict"
+
+    class RecordingCalibrate(RecordingOperation):
+        operation_name = "calibrate"
+
+    class Field:
+        cycle_number = 1
+        dde_mode = "single"
+        do_predict = False
+        do_image = False
+        do_check = False
+
+        def update(self, step, index, final=False):
+            self.__dict__.update(step)
+
+    monkeypatch.setattr("rapthor.process.Predict", RecordingPredict)
+    monkeypatch.setattr("rapthor.process.Calibrate", RecordingCalibrate)
+
+    run_steps(
+        Field(),
+        [
+            {
+                "do_calibrate": True,
+                "calibration_strategy": calibration_strategy,
+            }
+        ],
+    )
+
+    assert calls == expected_calls

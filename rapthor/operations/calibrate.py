@@ -133,6 +133,7 @@ class Calibrate(Operation):
                     field.get_obs_parameters("timechunk_filename")
                 ).to_json(),
                 "data_colname": field.data_colname,
+                "modeldatacolumn": None,
                 "starttime": starttime,
                 "ntimes": ntimes,
                 # Solution interval configuration (time + frequency)
@@ -228,10 +229,10 @@ class Calibrate(Operation):
                 "max_normalization_delta": field.max_normalization_delta,
                 "scale_normalization_delta": str(field.scale_normalization_delta),
                 # Initial solutions (H5parm inputs)
-                "solve1_initialsolutions_h5parm": self._to_cwl_json_if_exists(
+                "fast_initialsolutions_h5parm": self._to_cwl_json_if_exists(
                     field.fast_phases_h5parm_filename
                 ),
-                "solve2_initialsolutions_h5parm": self._to_cwl_json_if_exists(
+                "medium1_initialsolutions_h5parm": self._to_cwl_json_if_exists(
                     field.medium1_phases_h5parm_filename
                 ),
                 "solve4_initialsolutions_h5parm": self._to_cwl_json_if_exists(
@@ -306,6 +307,7 @@ class Calibrate(Operation):
                     field.get_obs_parameters("predict_di_output_filename")
                 ).to_json(),
                 "data_colname": "DATA",
+                "calibration_skymodel_file": None,
                 "starttime": starttime,
                 "ntimes": ntimes,
                 # Get the BDA (baseline-dependent averaging) parameters
@@ -317,17 +319,28 @@ class Calibrate(Operation):
                 "parallelbaselines": field.parallelbaselines,
                 "sagecalpredict": field.sagecalpredict,
                 "do_slowgain_solve": field.do_slowgain_solve,
+                "normalize_h5parm": None,
+                "ddecal_applycal_steps": None,
+                "applycal_steps": None,
                 # Get the solution intervals for the calibrations
                 "solint_fast_timestep": field.get_obs_parameters("solint_fulljones_timestep"),
                 "solint_fast_freqstep": field.get_obs_parameters("solint_fulljones_freqstep"),
+                "solint_slow_timestep": field.get_obs_parameters("solint_slow_timestep"),
+                "solint_slow_freqstep": field.get_obs_parameters("solint_slow_freqstep"),
                 "solint_solve1_timestep": field.get_obs_parameters("solint_fulljones_timestep"),
                 "solint_solve1_freqstep": field.get_obs_parameters("solint_fulljones_freqstep"),
+                "fast_initialsolutions_h5parm": None,
+                "medium1_initialsolutions_h5parm": None,
+                "solve3_initialsolutions_h5parm": None,
+                "solve4_initialsolutions_h5parm": None,
                 "solve1_solutions_per_direction": [None for _ in range(field.ntimechunks)],
                 "solve1_smoothness_dd_factors": [None for _ in range(field.ntimechunks)],
                 "solve1_smoothnessreffrequency": [0] * field.ntimechunks,
+                "solve1_smoothnessrefdistance": None,
                 "solve2_solutions_per_direction": [None for _ in range(field.ntimechunks)],
                 "solve2_smoothness_dd_factors": [None for _ in range(field.ntimechunks)],
                 "solve2_smoothnessreffrequency": [0] * field.ntimechunks,
+                "solve2_smoothnessrefdistance": None,
                 "solve3_smoothness_dd_factors": [None for _ in range(field.ntimechunks)],
                 "solve3_smoothnessreffrequency": [0] * field.ntimechunks,
                 "solve2_smoothnessconstraint": 0,
@@ -335,6 +348,7 @@ class Calibrate(Operation):
                 "solve3_smoothnessconstraint": 0,
                 "solve4_smoothness_dd_factors": [None for _ in range(field.ntimechunks)],
                 "solve4_smoothnessreffrequency": [0] * field.ntimechunks,
+                "solve4_smoothnessrefdistance": None,
                 "solve4_smoothnessconstraint": 0,
                 "solve4_solutions_per_direction": [None for _ in range(field.ntimechunks)],
                 "output_solve2_h5parm": [
@@ -348,6 +362,8 @@ class Calibrate(Operation):
                 "collected_solve3_h5parm": "unused",
                 "collected_solve4_h5parm": "unused",
                 "combined_solve1_solve2_h5parm": "unused",
+                "combined_solve1_solve2_solve4_h5parm": "unused",
+                "combined_h5parms": "unused",
                 "solint_solve2_timestep": field.get_obs_parameters("solint_medium_timestep"),
                 "solint_solve3_timestep": field.get_obs_parameters("solint_slow_timestep"),
                 "solint_solve4_timestep": field.get_obs_parameters("solint_medium_timestep"),
@@ -364,6 +380,8 @@ class Calibrate(Operation):
                 "solve3_mode": "null",
                 "solve4_mode": "null",
                 "modeldatacolumn": "[MODEL_DATA]",
+                "calibrator_patch_names": [],
+                "calibrator_fluxes": [],
                 "dp3_steps": "[solve1]",
                 "output_solve1_h5parm": [
                     f"fulljones_gain_{i}.h5parm" for i in range(field.ntimechunks)
@@ -371,6 +389,9 @@ class Calibrate(Operation):
                 "collected_solve1_h5parm": self.collected_h5parm_fulljones,
                 "smoothnessconstraint_fulljones": field.smoothnessconstraint_fulljones,
                 "max_normalization_delta": field.max_normalization_delta,
+                "scale_normalization_delta": str(field.scale_normalization_delta),
+                "phase_center_ra": field.ra,
+                "phase_center_dec": field.dec,
                 # Get various DDECal solver parameters. Most of these are the same for both fast
                 # and slow solves
                 # ------------------------------------
@@ -385,6 +406,15 @@ class Calibrate(Operation):
                 "solverlbfgs_dof": field.solverlbfgs_dof,
                 "solverlbfgs_iter": field.solverlbfgs_iter,
                 "solverlbfgs_minibatches": field.solverlbfgs_minibatches,
+                "solve1_datause": None,
+                "solve2_datause": None,
+                "solve3_datause": None,
+                "solve4_datause": None,
+                "solve1_antennaconstraint": "[]",
+                "solve2_antennaconstraint": "[]",
+                "solve3_antennaconstraint": "[]",
+                "solve4_antennaconstraint": "[]",
+                "solution_combine_mode": "p1p2a2_scalar",
                 # ---------------------------------
                 "correctfreqsmearing": field.correct_smearing_in_calibration,
                 "correcttimesmearing": field.correct_smearing_in_calibration,
