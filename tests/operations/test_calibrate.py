@@ -812,6 +812,7 @@ class TestCalibrate:
             "slow_gain_0.h5parm",
             "slow_gain_1.h5parm",
         ]
+        assert calibrate.input_parms["solve1_smoothnessreffrequency"] == [0, 0]
         assert calibrate.input_parms["do_slowgain_solve"] is False
 
     def test_set_input_parameters_di_uses_explicit_solve_strategy(self, calibrate_field):

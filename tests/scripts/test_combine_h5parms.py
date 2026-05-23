@@ -27,6 +27,20 @@ def test_expand_array():
     )
 
 
+def test_expand_array_with_new_trailing_axis():
+    array = np.array([[1, 2], [3, 4]])
+    expanded_array = expand_array(array, (2, 2, 2), 2)
+    expected_values = np.array([[[1, 1], [2, 2]], [[3, 3], [4, 4]]])
+    assert np.array_equal(expanded_array, expected_values)
+
+
+def test_expand_array_with_existing_singleton_axis():
+    array = np.array([[[1, 2]], [[3, 4]]])
+    expanded_array = expand_array(array, (2, 3, 2), 1)
+    expected_values = np.array([[[1, 2], [1, 2], [1, 2]], [[3, 4], [3, 4], [3, 4]]])
+    assert np.array_equal(expanded_array, expected_values)
+
+
 def test_average_polarizations(soltab):
     # average_polarizations(soltab)
     pass
