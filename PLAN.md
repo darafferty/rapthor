@@ -10,32 +10,43 @@ tests green.
   prediction before DI calibration. Process-level unit coverage now locks this
   in for DI-only, DD-only, DI-then-DD, and DD-then-DI strategy orderings.
 - Focused `tests/operations/test_calibrate.py` coverage now passes for DD and DI
-  operation initialization, parameter setup, finalization, BDA/IBP cases, and
-  solution-combine mode.
+  operation initialization, parameter setup, planned finalization, BDA/IBP cases,
+  and solution-combine mode.
 - DI calibration operation naming now has focused unit coverage for
   `dd -> calibrate` and `di -> calibrate_di`, and process-level ordering tests
-  now use the same DI/DD operation contract. Integration coverage still needs to
-  prove the directory, log, solution, and `.done` marker contract across mixed
-  DI/DD cycles.
+  now use the same DI/DD operation contract. DI integration expectations now use
+  `calibrate_di_<cycle>` log directories and the shared `ddecal_solve.cwl` step.
 - Calibrate operation input generation now has a solve planner that maps DD and
   DI strategy solve lists to DP3 solve slots, modes, output names, collection
   names, and solution intervals while preserving legacy defaults when no
   explicit `calibration_strategy` is present.
 - DI calibration input generation can now represent fast phase, medium phase,
   slow gains, and full-Jones solve lists with DI-specific output filenames. DI
-  scalar finalize handling now copies planned scalar products into stable
-  solution paths and scans the combined DI scalar h5parm through field state.
-  Integration log expectations and mixed DD+DI solution application still need
-  to catch up with those generated products.
-- DD calibration input generation can now represent custom DD solve lists,
-  including the single-slot `slow_gains` case. CWL post-processing and final
-  product handling still need review for arbitrary non-legacy solve orders.
-- DD prediction can apply existing DD solutions when preparing DI inputs, but DD
-  calibration cannot yet apply DI solutions before solving.
+  finalize handling now copies planned scalar products and full-Jones products
+  into stable solution paths and scans the active DI solution through field
+  state.
+- DD calibration input generation and final product handling can now represent
+  custom DD solve lists, including the single-slot `slow_gains` case. Legacy DD
+  default finalization remains compatible with the existing fast-only and
+  slow-gain product layout.
+- DD calibration can now pre-apply available DI scalar and full-Jones solutions
+  before DD solves. DD prediction now prefers the stable DD scalar product when
+  preparing DI inputs after a DD branch.
 - Imaging now builds applycal steps only from solution products that are actually
   present in field state, so initial imaging and normalization imaging can run
-  without a calibration h5parm. It still does not fully distinguish future DI
-  scalar/gain products from DD scalar/gain products.
+  without a calibration h5parm. Mixed DI/DD scalar products are selected by
+  source, with DD scalar products preferred for the shared imaging h5parm input.
+- DD prediction no longer treats DI-only scalar products as DD sector h5parms;
+  this prevents DI scalar solutions from being applied with DD facet directions
+  that are not present in the DI h5parm.
+- DI solve workflows now leave DDECal `solve.directions` unset, rather than
+  passing an empty direction list, and the shared calibrate workflow has a
+  no-solve4 slow-gain combine branch for explicit DI fast+medium+slow plans.
+- Full-Jones-only and DI-only imaging now avoid WSClean facet mode unless a DD
+  scalar h5parm is available. DI phase plus slow-gain plans apply the stable DI
+  phase component during imaging and keep the DI slow-gain product finalized
+  separately, avoiding the blank-image failure seen in the focused integration
+  run.
 - Calibrate CWL template validation is no longer the focused blocker. The DD and
   DI calibrate workflow matrix passes locally with `cwltool --validate`.
 - The older broader image-workflow CWL failures have not reproduced locally. The
@@ -43,22 +54,21 @@ tests green.
 
 ## Latest Pytest Snapshot
 
-Completed local checks after the CWL, operation, and solve-planner fixes:
+Completed local checks after the CWL, operation, solve-planner, DI/DD
+solution-flow, and focused DI integration fixes:
 
-- `python3 -m pytest tests/operations/test_calibrate.py -q`:
-  `47 passed`.
+- `python3 -m py_compile rapthor/operations/calibrate.py rapthor/operations/image.py rapthor/operations/predict.py tests/operations/test_calibrate.py tests/operations/test_image.py tests/operations/test_predict.py tests/integration/test_di_calibration.py`:
+  passed.
+- `python3 -m pytest tests/operations/test_calibrate.py tests/operations/test_image.py tests/operations/test_predict.py -q`:
+  `178 passed, 1 warning`.
 - `python3 -m pytest tests/lib/test_cwl.py -k "calibrate" -q`:
   `18 passed, 431 deselected`.
-- `python3 -m pytest tests/test_process.py -q`:
-  `16 passed`.
-- `python3 -m pytest tests/operations/test_calibrate.py tests/operations/test_predict.py tests/test_process.py -q`:
-  `97 passed`.
-- `python3 -m pytest tests/operations/test_image.py -q`:
-  `78 passed, 1 warning`.
-- `python3 -m pytest tests/lib/test_cwl.py -k "image_workflow" -q`:
-  `385 passed, 64 deselected`.
 - `python3 -m pytest tests/test_process.py tests/lib/test_field.py tests/lib/test_strategy.py -q`:
   `96 passed, 1 warning`.
+- `python3 -m pytest tests/integration/test_di_calibration.py -q`:
+  `7 passed`.
+- `python3 -m pytest tests/lib/test_cwl.py -k "image_workflow" -q`:
+  `385 passed, 64 deselected`.
 
 Resolved focused failures:
 
@@ -71,6 +81,16 @@ Resolved focused failures:
 - Removed duplicate non-screen `combined_solutions` outputs, fixed the duplicate
   `adjust_h5parm_sources` step IDs, and corrected the `step2`/`solve2` condition
   typo.
+- Split DI/DD scalar solution selection so DD prediction ignores DI-only h5parms
+  and imaging only enables facet mode when a DD scalar h5parm is available.
+- Added a nullable `solve_directions` workflow input so DI DDECal runs do not
+  receive `solve1.directions=[]`.
+- Added a no-solve4 slow-gain combination path for explicit fast+medium+slow
+  solve plans, and kept the legacy solve4 branch intact for default DD slow-gain
+  post-processing.
+- Adjusted DI phase plus slow-gain imaging/DD preapply to skip the destructive
+  DI slow-gain amplitude application while preserving the finalized slow-gain
+  product for inspection and future application paths.
 
 Reviewed `ci.log` as broader context; the hard image-workflow errors from that
 older log no longer reproduce in the local focused matrix:
@@ -111,15 +131,15 @@ Implement the four branches from `CALIBRATION_STRATEGY.md`:
 
 ## Implementation Tasks
 
-1. Close the operation naming contract. **Mostly complete for unit/process scope.**
+1. Close the operation naming contract. **Complete for unit/process and updated
+  integration expectations.**
    - Make DI calibration use a distinct `calibrate_di_<cycle>` operation name,
      working directory, log directory, solutions directory, and `.done` marker.
    - Keep DD calibration as `calibrate_<cycle>`.
    - Process-level scheduling now has focused coverage for DI-only, DD-only,
      DI-then-DD, and DD-then-DI ordering.
-   - Integration log expectations still need to use the same naming contract that
-     the focused `Calibrate` unit tests now expect.
-   - Update tests to use the chosen naming consistently.
+   - Integration log expectations now use the same naming contract that the
+     focused `Calibrate` unit tests expect.
 
 2. Add a calibration solve planner. **Complete for operation input planning.**
    - Convert each mode's solve list into DP3 solve slots, modes, output names,
@@ -133,7 +153,8 @@ Implement the four branches from `CALIBRATION_STRATEGY.md`:
    - Remaining post-processing and final product behavior is tracked under the
      DI/DD generalization tasks below.
 
-3. Generalize DI calibration. **Partially complete for input generation and finalize.**
+3. Generalize DI calibration. **Complete for input generation and focused
+  finalize coverage.**
    - Support DI fast phase, medium phase, slow gains, and full Jones from the
      strategy solve list.
    - Generate DI-specific output filenames such as `fast_phase_di_*.h5parm`,
@@ -141,25 +162,36 @@ Implement the four branches from `CALIBRATION_STRATEGY.md`:
    - Finalize DI products into stable solution paths and scan them into field
      state.
    - Scalar DI finalize coverage now verifies `di-solutions.h5`,
-     `di-solutions-fast-phase.h5`, and `di-solutions-medium1-phase.h5` copying.
-   - Remaining work includes integration-log alignment, slow-gain/full mixed DI
-     finalize coverage, and avoiding ambiguity between DI scalar and DD scalar
-     products during mixed-order imaging.
+     `di-solutions-fast-phase.h5`, `di-solutions-medium1-phase.h5`, and
+     `di-solutions-slow-gain.h5` copying.
+   - Mixed scalar plus full-Jones DI finalize coverage now verifies
+     `fulljones-solutions.h5` alongside the scalar products.
 
-4. Generalize DD calibration. **Partially complete for input generation.**
+4. Generalize DD calibration. **Complete for focused input generation and
+   finalization coverage.**
    - Support custom DD solve lists instead of always assuming fast plus medium
      and optional slow gain.
    - Ensure DD-only `slow_gains` maps to the expected single solve slot and
      output names.
+   - Finalize DD products from the solve plan, including explicit single-slot
+     `slow_gains`, while preserving legacy default product copying.
    - Preserve existing legacy behaviour when no explicit `calibration_strategy`
      is provided.
 
-5. Wire solution application between branches. **Partially complete.**
+5. Wire solution application between branches. **Complete for focused unit and
+   integration-log expectations.**
    - For DI then DD, pass DI applycal steps and DI solution files into the DD
      calibration workflow before DD solves.
    - For DD then DI, keep applying DD solutions during `Predict("di")`.
    - Imaging now builds applycal steps from actual available solution products,
      not just strategy text.
+   - DI phase plus slow-gain plans apply the stable scalar phase component during
+     imaging/DD preapply and retain the DI slow-gain product separately; this
+     avoids the real-workflow blank-image failure from applying the DI amplitude
+     component with the current shared prepare-imaging applycal path.
+   - Mixed-order integration coverage now asserts DI-before-DD operation order,
+     DD-before-DI operation order, DD pre-application of DI full-Jones solutions,
+     and DI prediction pre-application of DD scalar solutions.
 
 6. Fix DD calibrate CWL validation failures. **Complete for the focused matrix.**
    - Align Python input keys with `calibrate_pipeline.cwl` input IDs.
@@ -203,7 +235,7 @@ Implement the four branches from `CALIBRATION_STRATEGY.md`:
      names, optional masks, offsets, and diagnostic plots after the hard errors
      are fixed.
 
-9. Update tests. **Partially complete.**
+9. Update tests. **Complete for focused and updated integration expectations.**
     - Focused unit tests for the solve planner and DI scalar finalize handling
       are now present.
     - Update `test_calibrate.py` for DI/DD operation names and CWL input IDs.
@@ -214,9 +246,12 @@ Implement the four branches from `CALIBRATION_STRATEGY.md`:
       `filter_skymodel.cwl` input contract and `skymodel_image_fits` wiring.
     - Process-level tests for DI-only, DD-only, DI-then-DD, and DD-then-DI
       operation ordering are now present.
-    - Update integration tests to inspect the correct log directories and CWL
-      step names.
-    - Add explicit mixed-order integration coverage for:
+    - Integration tests now inspect the correct log directories and CWL step
+      names.
+    - Focused DI integration now passes for fast phase, slow-only strategy
+      metadata, fast+medium, fast+medium+slow, full-Jones-only, DI-then-DD, and
+      DD-then-DI cases.
+    - Explicit mixed-order integration coverage is now present for:
       - `{"di": [...], "dd": [...]}`
       - `{"dd": [...], "di": [...]}`
 
@@ -243,5 +278,6 @@ tox -e lint
 tox
 ```
 
-All integration tests should be green before the implementation is considered
-complete.
+Focused DI integration is green. Run the broader integration marker before a
+release cut, since this plan intentionally used the focused DI file plus unit and
+CWL matrices as the completion gate for this implementation pass.
