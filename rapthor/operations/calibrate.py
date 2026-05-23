@@ -144,6 +144,7 @@ class Calibrate(Operation):
             medium_antennaconstraint = fast_antennaconstraint  # ???
 
             solve_plan = self._build_solve_plan()
+            self.solve_plan = solve_plan
 
             # --- DP3 pipeline steps ---
             dp3_steps = self._build_dp3_steps(
@@ -323,6 +324,7 @@ class Calibrate(Operation):
             self._apply_solve_plan_inputs(solve_plan, dp3_steps=dp3_steps)
         elif self.mode == "di":
             solve_plan = self._build_solve_plan()
+            self.solve_plan = solve_plan
 
             # Define various output filenames for the solution tables. We save some
             # as attributes since they are needed in finalize()
@@ -582,6 +584,15 @@ class Calibrate(Operation):
             self.input_parms[timestep_key] = field.get_obs_parameters(solve.timestep_key)
             self.input_parms[freqstep_key] = field.get_obs_parameters(solve.freqstep_key)
             self._apply_solve_slot_inputs(solve)
+
+        if self.mode == "di":
+            self.input_parms["combined_solve1_solve2_h5parm"] = (
+                "combined_solve1_solve2_di.h5parm"
+            )
+            self.input_parms["combined_solve1_solve2_solve4_h5parm"] = (
+                "combined_solve1_solve2_solve4_di.h5parm"
+            )
+            self.input_parms["combined_h5parms"] = "combined_di_solutions.h5parm"
 
     def _clear_solve_slot_inputs(self, slot):
         ntimechunks = self.field.ntimechunks
@@ -951,8 +962,10 @@ class Calibrate(Operation):
                     "solution_flagged_fraction": flagged_frac,
                 }
             )
-        else:  # if self.mode == "di" uses fulljones file
+        elif getattr(field, "fulljones_h5parm_filename", None) is not None:
             flagged_frac = misc.get_flagged_solution_fraction(field.fulljones_h5parm_filename)
+        else:
+            flagged_frac = misc.get_flagged_solution_fraction(field.h5parm_filename)
         # Log the fraction of flagged solutions.
         self.log.info("Fraction of solutions that are flagged = %.2f", flagged_frac)
 
@@ -1029,15 +1042,80 @@ class Calibrate(Operation):
                 )
 
         elif mode == "di":
-            # di solutions
-            field = self.field
-            field.fulljones_h5parm_filename = os.path.join(dst_dir, "fulljones-solutions.h5")
-            if os.path.exists(field.fulljones_h5parm_filename):
-                os.remove(field.fulljones_h5parm_filename)
-            shutil.copy(
-                os.path.join(self.pipeline_working_dir, self.collected_h5parm_fulljones),
-                field.fulljones_h5parm_filename,
+            solve_plan = getattr(self, "solve_plan", None) or self._build_solve_plan()
+            fulljones_solve = next(
+                (solve for solve in solve_plan if solve.solve_type == "full_jones"), None
             )
+            scalar_solves = [solve for solve in solve_plan if solve.solve_type != "full_jones"]
+
+            if fulljones_solve is not None:
+                field.fulljones_h5parm_filename = os.path.join(dst_dir, "fulljones-solutions.h5")
+                if os.path.exists(field.fulljones_h5parm_filename):
+                    os.remove(field.fulljones_h5parm_filename)
+                collected_fulljones = getattr(
+                    self, "collected_h5parm_fulljones", fulljones_solve.collected_h5parm
+                )
+                shutil.copy(
+                    os.path.join(self.pipeline_working_dir, collected_fulljones),
+                    field.fulljones_h5parm_filename,
+                )
+
+            if scalar_solves:
+                field.di_h5parm_filename = os.path.join(dst_dir, "di-solutions.h5")
+                field.h5parm_filename = field.di_h5parm_filename
+                if os.path.exists(field.di_h5parm_filename):
+                    os.remove(field.di_h5parm_filename)
+                shutil.copy(
+                    os.path.join(
+                        self.pipeline_working_dir,
+                        self._di_combined_solution(scalar_solves),
+                    ),
+                    field.di_h5parm_filename,
+                )
+
+                for solve in scalar_solves:
+                    dst_filename = self._di_solution_destination(field, dst_dir, solve)
+                    if os.path.exists(dst_filename):
+                        os.remove(dst_filename)
+                    shutil.copy(
+                        os.path.join(self.pipeline_working_dir, solve.collected_h5parm),
+                        dst_filename,
+                    )
+
+    def _di_combined_solution(self, scalar_solves):
+        if any(solve.solve_type == "slow_gains" and solve.slot == 3 for solve in scalar_solves):
+            return "combined_di_solutions.h5parm"
+        if len(scalar_solves) > 1:
+            return "combined_solve1_solve2_di.h5parm"
+        return scalar_solves[0].collected_h5parm
+
+    @staticmethod
+    def _di_solution_destination(field, dst_dir, solve):
+        if solve.solve_type == "fast_phase":
+            field.di_fast_phases_h5parm_filename = os.path.join(
+                dst_dir, "di-solutions-fast-phase.h5"
+            )
+            return field.di_fast_phases_h5parm_filename
+        if solve.solve_type == "medium_phase":
+            attr_name = (
+                "di_medium2_phases_h5parm_filename"
+                if solve.output_prefix.startswith("medium2")
+                else "di_medium1_phases_h5parm_filename"
+            )
+            filename = (
+                "di-solutions-medium2-phase.h5"
+                if solve.output_prefix.startswith("medium2")
+                else "di-solutions-medium1-phase.h5"
+            )
+            setattr(field, attr_name, os.path.join(dst_dir, filename))
+            return getattr(field, attr_name)
+        if solve.solve_type == "slow_gains":
+            field.di_slow_gains_h5parm_filename = os.path.join(
+                dst_dir, "di-solutions-slow-gain.h5"
+            )
+            return field.di_slow_gains_h5parm_filename
+
+        raise ValueError(f"Unsupported DI scalar solve type: {solve.solve_type}")
 
     @staticmethod
     def _copy_plots(plot_filenames, dst_dir):

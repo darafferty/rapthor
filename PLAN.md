@@ -23,8 +23,10 @@ tests green.
   explicit `calibration_strategy` is present.
 - DI calibration input generation can now represent fast phase, medium phase,
   slow gains, and full-Jones solve lists with DI-specific output filenames. DI
-  finalize/product scanning and integration log expectations still need to catch
-  up with those generated products.
+  scalar finalize handling now copies planned scalar products into stable
+  solution paths and scans the combined DI scalar h5parm through field state.
+  Integration log expectations and mixed DD+DI solution application still need
+  to catch up with those generated products.
 - DD calibration input generation can now represent custom DD solve lists,
   including the single-slot `slow_gains` case. CWL post-processing and final
   product handling still need review for arbitrary non-legacy solve orders.
@@ -44,7 +46,7 @@ tests green.
 Completed local checks after the CWL, operation, and solve-planner fixes:
 
 - `python3 -m pytest tests/operations/test_calibrate.py -q`:
-  `46 passed`.
+  `47 passed`.
 - `python3 -m pytest tests/lib/test_cwl.py -k "calibrate" -q`:
   `18 passed, 431 deselected`.
 - `python3 -m pytest tests/test_process.py -q`:
@@ -131,13 +133,18 @@ Implement the four branches from `CALIBRATION_STRATEGY.md`:
    - Remaining post-processing and final product behavior is tracked under the
      DI/DD generalization tasks below.
 
-3. Generalize DI calibration. **Partially complete for input generation.**
+3. Generalize DI calibration. **Partially complete for input generation and finalize.**
    - Support DI fast phase, medium phase, slow gains, and full Jones from the
      strategy solve list.
    - Generate DI-specific output filenames such as `fast_phase_di_*.h5parm`,
      `medium1_phase_di_*.h5parm`, and `slow_gains_di_*.h5parm`.
    - Finalize DI products into stable solution paths and scan them into field
      state.
+   - Scalar DI finalize coverage now verifies `di-solutions.h5`,
+     `di-solutions-fast-phase.h5`, and `di-solutions-medium1-phase.h5` copying.
+   - Remaining work includes integration-log alignment, slow-gain/full mixed DI
+     finalize coverage, and avoiding ambiguity between DI scalar and DD scalar
+     products during mixed-order imaging.
 
 4. Generalize DD calibration. **Partially complete for input generation.**
    - Support custom DD solve lists instead of always assuming fast plus medium
@@ -197,7 +204,8 @@ Implement the four branches from `CALIBRATION_STRATEGY.md`:
      are fixed.
 
 9. Update tests. **Partially complete.**
-    - Focused unit tests for the solve planner are now present.
+    - Focused unit tests for the solve planner and DI scalar finalize handling
+      are now present.
     - Update `test_calibrate.py` for DI/DD operation names and CWL input IDs.
     - Keep the existing `test_calibrate_workflow` matrix as regression coverage
       for both screen and non-screen DD workflow generation.
