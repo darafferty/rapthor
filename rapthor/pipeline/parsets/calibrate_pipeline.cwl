@@ -237,6 +237,13 @@ inputs:
       The names of the patches used in calibration (length = n_calibrators).
     type: string[]?
 
+  - id: solve_directions
+    label: Direction names passed to DDECal
+    doc: |
+      The names of the directions passed to DDECal. Direction-independent solves
+      leave this unset so DP3 does not receive a solve.directions argument.
+    type: string[]?
+
   - id: calibrator_fluxes
     label: Values of calibrator flux densities
     doc: |
@@ -458,6 +465,18 @@ inputs:
     label: The filename of normalization h5parm
     doc: |
       The filename of the input flux-scale normalization h5parm (length = 1).
+    type: File?
+
+  - id: applycal_h5parm
+    label: The filename of scalar pre-apply h5parm
+    doc: |
+      The filename of the input scalar phase/gain h5parm to apply before calibration.
+    type: File?
+
+  - id: fulljones_h5parm
+    label: The filename of full-Jones pre-apply h5parm
+    doc: |
+      The filename of the input full-Jones h5parm to apply before calibration.
     type: File?
 
   - id: bda_timebase
@@ -807,6 +826,8 @@ outputs:
 {% else %}
       - adjust_h5parm_sources_full/adjustedh5parm
       - combine_fast_and_full_slow_h5parms/combinedh5parm
+      - adjust_h5parm_sources_slow_without_medium2/adjustedh5parm
+      - combine_fast_medium1_slow_h5parms/combinedh5parm
       - adjust_h5parm_sources_phase/adjustedh5parm
       - combine_fast_medium1_h5parms/combinedh5parm
       - collect_fast_phases/outh5parm
@@ -843,11 +864,11 @@ outputs:
   - id: medium2_phase_solutions
     outputSource:
       - collect_medium2_phases/outh5parm
-    type: File
+    type: File?
   - id: medium2_phase_plots
     outputSource:
       - plot_medium2_phase_solutions/plots
-    type: File[]
+    type: File[]?
 {% endif %}
 
 
@@ -1034,6 +1055,10 @@ steps:
         source: dp3_steps
       - id: applycal_steps
         source: applycal_steps
+      - id: applycal_h5parm
+        source: applycal_h5parm
+      - id: fulljones_h5parm
+        source: fulljones_h5parm
 {% if use_image_based_predict %}
       - id: normalize_h5parm
         source: adjust_normalize_sources/adjustedh5parm
@@ -1066,7 +1091,7 @@ steps:
       - id: sourcedb
         source: calibration_skymodel_file
       - id: directions
-        source: calibrator_patch_names
+        source: solve_directions
 {% endif %}
       - id: numthreads
         source: max_threads
@@ -1495,7 +1520,9 @@ steps:
         source: collected_solve4_h5parm
       - id: do_slowgain_solve
         source: do_slowgain_solve
-    when: $(inputs.do_slowgain_solve)
+      - id: dp3_steps
+        source: dp3_steps
+    when: $(inputs.do_slowgain_solve && inputs.dp3_steps.indexOf("solve4") !== -1)
     out:
       - id: outh5parm
 
@@ -1513,7 +1540,9 @@ steps:
         valueFrom: 'medium2_phase_'
       - id: do_slowgain_solve
         source: do_slowgain_solve
-    when: $(inputs.do_slowgain_solve)
+      - id: dp3_steps
+        source: dp3_steps
+    when: $(inputs.do_slowgain_solve && inputs.dp3_steps.indexOf("solve4") !== -1)
     out:
       - id: plots
 
@@ -1540,7 +1569,9 @@ steps:
         source: calibrator_fluxes
       - id: do_slowgain_solve
         source: do_slowgain_solve
-    when: $(inputs.do_slowgain_solve)
+      - id: dp3_steps
+        source: dp3_steps
+    when: $(inputs.do_slowgain_solve && inputs.dp3_steps.indexOf("solve4") !== -1)
     out:
       - id: combinedh5parm
 
@@ -1568,7 +1599,38 @@ steps:
         source: calibrator_fluxes
       - id: do_slowgain_solve
         source: do_slowgain_solve
-    when: $(inputs.do_slowgain_solve)
+      - id: dp3_steps
+        source: dp3_steps
+    when: $(inputs.do_slowgain_solve && inputs.dp3_steps.indexOf("solve4") !== -1)
+    out:
+      - id: combinedh5parm
+
+  - id: combine_fast_medium1_slow_h5parms
+    label: Combine fast/medium phase and slow-gain solutions
+    doc: |
+      This step combines the phase solutions with the combined and renormalized
+      slow gains when there is no second medium-phase solve.
+    run: {{ rapthor_pipeline_dir }}/steps/combine_h5parms.cwl
+    in:
+      - id: inh5parm1
+        source: combine_fast_medium1_h5parms/combinedh5parm
+      - id: inh5parm2
+        source: collect_slow_gains/outh5parm
+      - id: outh5parm
+        source: combined_h5parms
+      - id: mode
+        valueFrom: 'p1a2'
+      - id: reweight
+        valueFrom: 'False'
+      - id: calibrator_names
+        source: calibrator_patch_names
+      - id: calibrator_fluxes
+        source: calibrator_fluxes
+      - id: do_slowgain_solve
+        source: do_slowgain_solve
+      - id: dp3_steps
+        source: dp3_steps
+    when: $(inputs.do_slowgain_solve && inputs.dp3_steps.indexOf("solve4") === -1)
     out:
       - id: combinedh5parm
 
@@ -1584,9 +1646,31 @@ steps:
         source: combine_fast_and_full_slow_h5parms/combinedh5parm
       - id: do_slowgain_solve
         source: do_slowgain_solve 
+      - id: dp3_steps
+        source: dp3_steps
       - id: directions
         source: calibrator_patch_names
-    when: $(inputs.do_slowgain_solve && inputs.directions.length > 1)
+    when: $(inputs.do_slowgain_solve && inputs.dp3_steps.indexOf("solve4") !== -1 && inputs.directions.length > 1)
+    out:
+      - id: adjustedh5parm
+
+  - id: adjust_h5parm_sources_slow_without_medium2
+    label: Adjust h5parm sources
+    doc: |
+      This step adjusts the h5parm source coordinates to match those in the sky model.
+    run: {{ rapthor_pipeline_dir }}/steps/adjust_h5parm_sources.cwl
+    in:
+      - id: skymodel
+        source: calibration_skymodel_file
+      - id: h5parm
+        source: combine_fast_medium1_slow_h5parms/combinedh5parm
+      - id: do_slowgain_solve
+        source: do_slowgain_solve
+      - id: dp3_steps
+        source: dp3_steps
+      - id: directions
+        source: calibrator_patch_names
+    when: $(inputs.do_slowgain_solve && inputs.dp3_steps.indexOf("solve4") === -1 && inputs.directions.length > 1)
     out:
       - id: adjustedh5parm
 

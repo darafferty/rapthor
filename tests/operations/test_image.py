@@ -204,6 +204,22 @@ class TestImage:
         assert image_step_inputs.get("shared_facet_reads") == "shared_facet_rw"
         assert image_step_inputs.get("shared_facet_writes") == "shared_facet_rw"
 
+    @pytest.mark.parametrize("solution_attr", ["di_h5parm_filename", "fulljones_h5parm_filename"])
+    def test_set_parset_parameters_disables_facets_without_dd_scalar_h5parm(
+        self, field, h5parm_file, solution_attr
+    ):
+        _prepare_field_for_image(field, h5parm_filename=h5parm_file)
+        setattr(field, solution_attr, str(h5parm_file))
+        if solution_attr == "di_h5parm_filename":
+            field.h5parm_filename = str(h5parm_file)
+        else:
+            field.h5parm_filename = None
+
+        image = Image(field, index=1)
+        image.set_parset_parameters()
+
+        assert image.use_facets is False
+
     @pytest.mark.parametrize(
         "cwl_workflow",
         [
@@ -560,6 +576,13 @@ class TestImage:
                 "[slowgain]",
             ),
             (
+                {"di": ["fast_phase", "medium_phase", "slow_gains"]},
+                False,
+                False,
+                True,
+                "[fastphase]",
+            ),
+            (
                 {"di": ["slow_gains", "full_jones"]},
                 False,
                 True,
@@ -614,6 +637,29 @@ class TestImage:
 
         steps, _, _ = image._build_applycal_steps()
         assert steps == expected_steps
+
+    def test_build_applycal_steps_prefers_dd_scalar_h5parm_when_mixed(
+        self, field, h5parm_file, tmp_path
+    ):
+        """DD scalar products are selected over DI scalar products when both exist."""
+        di_h5parm = tmp_path / "di-solutions.h5"
+        di_h5parm.touch()
+        _prepare_field_for_image(field, h5parm_filename=h5parm_file)
+        field.dd_h5parm_filename = str(h5parm_file)
+        field.di_h5parm_filename = str(di_h5parm)
+        field.calibration_strategy = {
+            "di": ["fast_phase"],
+            "dd": ["fast_phase", "slow_gains"],
+        }
+
+        image = Image(field=field, index=1)
+        image.set_parset_parameters()
+        image.apply_amplitudes = True
+
+        steps, _, _ = image._build_applycal_steps()
+
+        assert steps == "[fastphase,slowgain]"
+        assert image._selected_applycal_h5parm == str(h5parm_file)
 
     def test_image_operation_sets_mask_file(
         self, field, h5parm_file, monkeypatch, expected_image_output

@@ -21,6 +21,7 @@ def predict_field(operation_parset):
             self.observations = []
             self.data_colname = "DATA"
             self.h5parm_filename = "h5.parm"
+            self.dd_h5parm_filename = None
             self.normalize_h5parm = "norm.h5"
             self.reweight = False
             self.apply_amplitudes = False
@@ -136,13 +137,36 @@ class TestPredict:
         predict_field.apply_normalizations = apply_normalizations
 
         predict = Predict("dd", predict_field, index=1)
-        steps, normalize_h5parm = predict._get_dp3_applycal_steps()
+        steps, normalize_h5parm, h5parm_filename = predict._get_dp3_applycal_steps()
 
         assert steps == expected_steps
+        assert h5parm_filename == "h5.parm"
         if expect_normalize_h5parm:
             assert normalize_h5parm is not None
         else:
             assert normalize_h5parm is None
+
+    def test_get_dp3_applycal_steps_prefers_dd_h5parm_for_di_predict(self, predict_field):
+        predict_field.h5parm_filename = "generic.h5"
+        predict_field.dd_h5parm_filename = "dd-solutions.h5"
+
+        predict = Predict("di", predict_field, index=1)
+        steps, normalize_h5parm, h5parm_filename = predict._get_dp3_applycal_steps()
+
+        assert steps == ["fastphase"]
+        assert normalize_h5parm is None
+        assert h5parm_filename == "dd-solutions.h5"
+
+    def test_get_dp3_applycal_steps_ignores_di_h5parm_for_dd_predict(self, predict_field):
+        predict_field.h5parm_filename = "di-solutions.h5"
+        predict_field.di_h5parm_filename = "di-solutions.h5"
+
+        predict = Predict("dd", predict_field, index=1)
+        steps, normalize_h5parm, h5parm_filename = predict._get_dp3_applycal_steps()
+
+        assert steps == []
+        assert normalize_h5parm is None
+        assert h5parm_filename is None
 
     @pytest.mark.parametrize(
         "mode, peel_outliers, has_outlier_sector, expected_sectors, expect_outlier_removed",

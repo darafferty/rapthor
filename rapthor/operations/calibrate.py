@@ -145,12 +145,14 @@ class Calibrate(Operation):
 
             solve_plan = self._build_solve_plan()
             self.solve_plan = solve_plan
+            applycal_inputs = self._build_applycal(field)
 
             # --- DP3 pipeline steps ---
             dp3_steps = self._build_dp3_steps(
                 field.calibrate_bda_timebase,
                 field.calibrate_bda_frequencybase,
                 solve_steps=[solve.step for solve in solve_plan],
+                preapply_solutions=applycal_inputs["applycal_steps"] is not None,
             )
             # --- Build final CWL input dict ---
             self.input_parms = {
@@ -187,6 +189,7 @@ class Calibrate(Operation):
                 ),
                 # Calibration outputs (H5parm products)
                 "calibrator_patch_names": field.calibrator_patch_names,
+                "solve_directions": field.calibrator_patch_names,
                 "calibrator_fluxes": field.calibrator_fluxes,
                 "output_solve1_h5parm": [
                     f"fast_phase_{i}.h5parm" for i in range(field.ntimechunks)
@@ -246,7 +249,7 @@ class Calibrate(Operation):
                 # both the case in which applycal is part of the DDECal solve step and
                 # the case in which it is a separate step that preceeds the DDECal step.
                 # The latter is used when image-based predict is done
-                **self._build_applycal(field),
+                **applycal_inputs,
                 # Get the BDA (baseline-dependent averaging) parameters
                 "bda_maxinterval": field.get_obs_parameters("bda_maxinterval"),
                 "bda_minchannels": field.get_obs_parameters("bda_minchannels"),
@@ -353,6 +356,8 @@ class Calibrate(Operation):
                 "normalize_h5parm": None,
                 "ddecal_applycal_steps": None,
                 "applycal_steps": None,
+                "applycal_h5parm": None,
+                "fulljones_h5parm": None,
                 # Get the solution intervals for the calibrations
                 "solint_fast_timestep": field.get_obs_parameters("solint_fulljones_timestep"),
                 "solint_fast_freqstep": field.get_obs_parameters("solint_fulljones_freqstep"),
@@ -412,6 +417,7 @@ class Calibrate(Operation):
                 "solve4_mode": "null",
                 "modeldatacolumn": "[MODEL_DATA]",
                 "calibrator_patch_names": [],
+                "solve_directions": None,
                 "calibrator_fluxes": [],
                 "dp3_steps": "[solve1]",
                 "output_solve1_h5parm": [
@@ -644,7 +650,13 @@ class Calibrate(Operation):
                 self.field, f"{field_prefix}_smoothnessrefdistance", None
             )
 
-    def _build_dp3_steps(self, bda_timebase, bda_frequencybase, solve_steps=None):
+    def _build_dp3_steps(
+        self,
+        bda_timebase,
+        bda_frequencybase,
+        solve_steps=None,
+        preapply_solutions=False,
+    ):
         """
         Set the DDECal steps depending on whether baseline-dependent averaging is
         activated (and supported) or not. If BDA is used, a "null" step is also added to
@@ -673,12 +685,15 @@ class Calibrate(Operation):
         ):
             common_steps = ["avg", *common_steps, "null"]
 
+        if preapply_solutions and not self.field.use_image_based_predict:
+            common_steps = ["applycal", *common_steps]
+
         # Optional image-based predict prefix
         if self.field.use_image_based_predict:
             # Add a predict, applybeam, and applycal steps to the beginning
             preprocessing_steps = (
                 ["predict", "applybeam", "applycal"]
-                if self.field.apply_normalizations
+                if preapply_solutions
                 else ["predict", "applybeam"]
             )
             dp3_steps = preprocessing_steps + common_steps
@@ -691,13 +706,36 @@ class Calibrate(Operation):
         """
         Prepare DP3 applycal steps and normalization H5parm.
         """
+        steps = []
+        applycal_h5parm = None
+        fulljones_h5parm = None
+
+        di_h5parm = getattr(field, "di_h5parm_filename", None)
+        applycal_h5parm = self._to_cwl_json_if_exists(di_h5parm)
+        if self.mode == "dd" and applycal_h5parm is not None:
+            steps.append("fastphase")
+            di_strategy = (getattr(field, "calibration_strategy", None) or {}).get("di", [])
+            di_has_phase_solves = any(
+                solve in {"fast_phase", "medium_phase"} for solve in di_strategy
+            )
+            if field.apply_amplitudes and not di_has_phase_solves:
+                steps.append("slowgain")
+
+        fulljones_h5parm = self._to_cwl_json_if_exists(field.fulljones_h5parm_filename)
+        if self.mode == "dd" and fulljones_h5parm is not None:
+            steps.append("fulljones")
+
         if field.apply_normalizations:
-            return {
-                "normalize_h5parm": self._to_cwl_json_if_exists(field.normalize_h5parm),
-                "ddecal_applycal_steps": "[normalization]",
-                "applycal_steps": "[normalization]",
-            }
-        return dict.fromkeys(["ddecal_applycal_steps", "normalize_h5parm", "applycal_steps"], None)
+            steps.append("normalization")
+
+        applycal_steps = f"[{','.join(steps)}]" if steps else None
+        return {
+            "normalize_h5parm": self._to_cwl_json_if_exists(field.normalize_h5parm),
+            "ddecal_applycal_steps": applycal_steps,
+            "applycal_steps": applycal_steps,
+            "applycal_h5parm": applycal_h5parm,
+            "fulljones_h5parm": fulljones_h5parm,
+        }
 
     def _get_baselines_core(self):
         """
@@ -983,63 +1021,7 @@ class Calibrate(Operation):
         """
         field = self.field
         if mode == "dd":
-            # dd solutions
-            field.h5parm_filename = os.path.join(dst_dir, "field-solutions.h5")
-            field.fast_phases_h5parm_filename = os.path.join(
-                dst_dir, "field-solutions-fast-phase.h5"
-            )
-            field.medium1_phases_h5parm_filename = os.path.join(
-                dst_dir, "field-solutions-medium1-phase.h5"
-            )
-            field.medium2_phases_h5parm_filename = os.path.join(
-                dst_dir, "field-solutions-medium2-phase.h5"
-            )
-            field.slow_gains_h5parm_filename = os.path.join(dst_dir, "field-solutions-slow-gain.h5")
-
-            if os.path.exists(field.h5parm_filename):
-                os.remove(field.h5parm_filename)
-
-            if field.generate_screens:
-                shutil.copy(
-                    os.path.join(self.pipeline_working_dir, self.combined_h5parms),
-                    field.h5parm_filename,
-                )
-
-            elif field.do_slowgain_solve:
-                shutil.copy(
-                    os.path.join(self.pipeline_working_dir, self.combined_h5parms),
-                    field.h5parm_filename,
-                )
-
-                shutil.copy(
-                    os.path.join(self.pipeline_working_dir, self.slow_h5parm),
-                    field.slow_gains_h5parm_filename,
-                )
-
-                shutil.copy(
-                    os.path.join(self.pipeline_working_dir, self.medium1_h5parm),
-                    field.medium1_phases_h5parm_filename,
-                )
-
-                shutil.copy(
-                    os.path.join(self.pipeline_working_dir, self.medium2_h5parm),
-                    field.medium2_phases_h5parm_filename,
-                )
-
-                shutil.copy(
-                    os.path.join(self.pipeline_working_dir, self.fast_h5parm),
-                    field.fast_phases_h5parm_filename,
-                )
-
-            else:
-                shutil.copy(
-                    os.path.join(self.pipeline_working_dir, self.fast_h5parm), field.h5parm_filename
-                )
-
-                shutil.copy(
-                    os.path.join(self.pipeline_working_dir, self.fast_h5parm),
-                    field.fast_phases_h5parm_filename,
-                )
+            self._copy_dd_solutions(dst_dir)
 
         elif mode == "di":
             solve_plan = getattr(self, "solve_plan", None) or self._build_solve_plan()
@@ -1081,6 +1063,86 @@ class Calibrate(Operation):
                         os.path.join(self.pipeline_working_dir, solve.collected_h5parm),
                         dst_filename,
                     )
+
+    def _copy_dd_solutions(self, dst_dir):
+        field = self.field
+        solve_plan = getattr(self, "solve_plan", None) or self._build_solve_plan()
+        _, defaulted_strategy = self._requested_calibration_solves()
+
+        field.h5parm_filename = os.path.join(dst_dir, "field-solutions.h5")
+        field.dd_h5parm_filename = field.h5parm_filename
+        field.fast_phases_h5parm_filename = os.path.join(
+            dst_dir, "field-solutions-fast-phase.h5"
+        )
+        field.medium1_phases_h5parm_filename = os.path.join(
+            dst_dir, "field-solutions-medium1-phase.h5"
+        )
+        field.medium2_phases_h5parm_filename = os.path.join(
+            dst_dir, "field-solutions-medium2-phase.h5"
+        )
+        field.slow_gains_h5parm_filename = os.path.join(dst_dir, "field-solutions-slow-gain.h5")
+
+        if os.path.exists(field.h5parm_filename):
+            os.remove(field.h5parm_filename)
+
+        active_solution = self._dd_active_solution(solve_plan)
+        shutil.copy(
+            os.path.join(self.pipeline_working_dir, active_solution),
+            field.h5parm_filename,
+        )
+
+        if field.generate_screens:
+            return
+
+        if defaulted_strategy and not any(solve.solve_type == "slow_gains" for solve in solve_plan):
+            solves_to_copy = solve_plan[:1]
+        else:
+            solves_to_copy = solve_plan
+
+        for solve in solves_to_copy:
+            dst_filename = self._dd_solution_destination(field, solve)
+            if dst_filename is None:
+                continue
+            if os.path.exists(dst_filename):
+                os.remove(dst_filename)
+            shutil.copy(
+                os.path.join(self.pipeline_working_dir, self._dd_collected_h5parm(solve)),
+                dst_filename,
+            )
+
+    def _dd_active_solution(self, solve_plan):
+        if self.field.generate_screens:
+            return self.combined_h5parms
+        if any(solve.solve_type == "slow_gains" and solve.slot == 3 for solve in solve_plan):
+            return self.combined_h5parms
+        return self._dd_collected_h5parm(solve_plan[0])
+
+    def _dd_collected_h5parm(self, solve):
+        if solve.solve_type == "fast_phase":
+            return getattr(self, "fast_h5parm", solve.collected_h5parm)
+        if solve.solve_type == "medium_phase":
+            if solve.output_prefix.startswith("medium2"):
+                return getattr(self, "medium2_h5parm", solve.collected_h5parm)
+            return getattr(self, "medium1_h5parm", solve.collected_h5parm)
+        if solve.solve_type == "slow_gains":
+            return getattr(self, "slow_h5parm", solve.collected_h5parm)
+        if solve.solve_type == "full_jones":
+            return getattr(self, "collected_h5parm_fulljones", solve.collected_h5parm)
+        raise ValueError(f"Unsupported DD solve type: {solve.solve_type}")
+
+    @staticmethod
+    def _dd_solution_destination(field, solve):
+        if solve.solve_type == "fast_phase":
+            return field.fast_phases_h5parm_filename
+        if solve.solve_type == "medium_phase":
+            if solve.output_prefix.startswith("medium2"):
+                return field.medium2_phases_h5parm_filename
+            return field.medium1_phases_h5parm_filename
+        if solve.solve_type == "slow_gains":
+            return field.slow_gains_h5parm_filename
+        if solve.solve_type == "full_jones":
+            return None
+        raise ValueError(f"Unsupported DD solve type: {solve.solve_type}")
 
     def _di_combined_solution(self, scalar_solves):
         if any(solve.solve_type == "slow_gains" and solve.slot == 3 for solve in scalar_solves):
