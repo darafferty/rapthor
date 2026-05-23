@@ -150,6 +150,11 @@ class Field(object):
         self.medium1_phases_h5parm_filename = None
         self.medium2_phases_h5parm_filename = None
         self.slow_gains_h5parm_filename = None
+        self.di_h5parm_filename = None
+        self.di_fast_phases_h5parm_filename = None
+        self.di_medium1_phases_h5parm_filename = None
+        self.di_medium2_phases_h5parm_filename = None
+        self.di_slow_gains_h5parm_filename = None
         self.calibration_diagnostics = []
         self.selfcal_state = None
 
