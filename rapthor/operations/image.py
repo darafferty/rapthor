@@ -91,7 +91,11 @@ class Image(Operation):
         if self.dde_method is None:
             self.dde_method = self.field.dde_method
         if self.use_facets is None:
-            self.use_facets = self.dde_method == "full" and not self.apply_screens
+            self.use_facets = (
+                self.dde_method == "full"
+                and not self.apply_screens
+                and self._has_dd_scalar_h5parm()
+            )
         if self.image_pol is None:
             self.image_pol = self.field.image_pol  # set by process.run_steps()
         if self.save_source_list is None:
@@ -132,6 +136,13 @@ class Image(Operation):
             "allow_internet_access": self.allow_internet_access,
         }
 
+    def _has_dd_scalar_h5parm(self):
+        if getattr(self.field, "dd_h5parm_filename", None) is not None:
+            return True
+        if getattr(self.field, "di_h5parm_filename", None) is not None:
+            return False
+        return self.field.h5parm_filename is not None
+
     def _build_applycal_steps(self):
         """
         Build the DP3 applycal steps for the prepare-imaging-data stage.
@@ -144,6 +155,7 @@ class Image(Operation):
 
         fulljones_h5parm = None
         input_normalize_h5parm = None
+        self._selected_applycal_h5parm = None
 
         solve_type_to_step = {
             "fast_phase": "fastphase",
@@ -153,22 +165,48 @@ class Image(Operation):
         }
 
         strategy = getattr(self.field, "calibration_strategy", None) or {}
-        steps = [
-            # Only include steps for solve types that are present in the strategy and that are
-            # applicable given the settings for this imaging operation (e.g. don't include
-            # slow_gains if amplitudes are not applied)
-            solve_type_to_step[solve]
-            for solves in strategy.values()
-            for solve in solves
-            if solve in solve_type_to_step
-            and (
-                self.field.fulljones_h5parm_filename is not None
-                if solve == "full_jones"
-                else self.field.h5parm_filename is not None
-            )
-            # don't include slow_gains if amplitudes are not applied
-            and not (solve == "slow_gains" and not self.apply_amplitudes)
-        ]
+        di_phase_solves = {
+            solve for solve in strategy.get("di", []) if solve in {"fast_phase", "medium_phase"}
+        }
+        dd_h5parm = getattr(self.field, "dd_h5parm_filename", None)
+        di_h5parm = getattr(self.field, "di_h5parm_filename", None)
+        if dd_h5parm is None and di_h5parm is None:
+            dd_h5parm = self.field.h5parm_filename
+            di_h5parm = self.field.h5parm_filename
+        elif di_h5parm is None and self.field.h5parm_filename != dd_h5parm:
+            di_h5parm = self.field.h5parm_filename
+
+        prefer_dd_scalar = dd_h5parm is not None and any(
+            solve != "full_jones" for solve in strategy.get("dd", [])
+        )
+
+        steps = []
+        for mode, solves in strategy.items():
+            for solve in solves:
+                if solve not in solve_type_to_step:
+                    continue
+                if solve == "full_jones":
+                    if self.field.fulljones_h5parm_filename is not None:
+                        steps.append(solve_type_to_step[solve])
+                    continue
+                if solve == "slow_gains" and not self.apply_amplitudes:
+                    continue
+                if mode == "di" and solve == "slow_gains" and di_phase_solves:
+                    continue
+
+                scalar_h5parm = dd_h5parm if mode == "dd" else di_h5parm
+                if prefer_dd_scalar and mode != "dd":
+                    continue
+                if scalar_h5parm is None:
+                    continue
+                if self._selected_applycal_h5parm is None:
+                    self._selected_applycal_h5parm = scalar_h5parm
+                if scalar_h5parm == self._selected_applycal_h5parm:
+                    step = solve_type_to_step[solve]
+                    if mode == "di" and solve in {"fast_phase", "medium_phase"}:
+                        step = "fastphase"
+                    if step not in steps:
+                        steps.append(step)
 
         if "fulljones" in steps:
             fulljones_h5parm = CWLFile(self.field.fulljones_h5parm_filename).to_json()
@@ -329,8 +367,8 @@ class Image(Operation):
 
         # Set the h5parm to use to apply the DDE solutions as needed.
         h5parm = (
-            CWLFile(self.field.h5parm_filename).to_json()
-            if self.field.h5parm_filename is not None
+            CWLFile(self._selected_applycal_h5parm).to_json()
+            if getattr(self, "_selected_applycal_h5parm", None) is not None
             else None
         )
         # Set the data interval to use when screens are applied so that final solution

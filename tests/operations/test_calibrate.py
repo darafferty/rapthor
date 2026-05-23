@@ -88,6 +88,7 @@ def calibrate_field(operation_parset, mocker, single_source_sky_model):
             self.medium1_phases_h5parm_filename = None
             self.medium2_phases_h5parm_filename = None
             self.slow_gains_h5parm_filename = None
+            self.dd_h5parm_filename = None
             self.di_h5parm_filename = None
             self.di_fast_phases_h5parm_filename = None
             self.di_medium1_phases_h5parm_filename = None
@@ -501,6 +502,138 @@ class TestCalibrate:
         # finalize() should create a .done file (via the base Operation class).
         assert (pipelines_path / ".done").exists()
 
+    def test_finalize_di_scalar_and_fulljones_solutions(self, mocker, calibrate_field, tmp_path):
+        field = calibrate_field
+        field.calibration_strategy = {
+            "di": ["fast_phase", "medium_phase", "slow_gains", "full_jones"]
+        }
+        field._calibration_strategy_defaulted = False
+
+        flagged_fraction = 0.042
+        mock_flagged_fraction = mocker.patch(
+            "rapthor.lib.miscellaneous.get_flagged_solution_fraction",
+            return_value=flagged_fraction,
+        )
+        mock_makedirs = mocker.patch("os.makedirs")
+        mock_remove = mocker.patch("os.remove")
+        mock_copy = mocker.patch("shutil.copy")
+
+        workdir_path = tmp_path / "working"
+        solutions_path = workdir_path / "solutions" / "calibrate_di_1"
+        solutions_path.mkdir(parents=True)
+        (solutions_path / "di-solutions.h5").touch()
+        (solutions_path / "fulljones-solutions.h5").touch()
+
+        pipelines_path = workdir_path / "pipelines" / "calibrate_di_1"
+        plots_path = workdir_path / "plots" / "calibrate_di_1"
+        finalize_prepare_plots(pipelines_path, plots_path)
+
+        calibrate = Calibrate(mode="di", field=field, index=1)
+        mock_makedirs.reset_mock()
+
+        calibrate.finalize()
+
+        assert field.h5parm_filename == str(solutions_path / "di-solutions.h5")
+        assert field.di_h5parm_filename == str(solutions_path / "di-solutions.h5")
+        assert field.di_fast_phases_h5parm_filename == str(
+            solutions_path / "di-solutions-fast-phase.h5"
+        )
+        assert field.di_medium1_phases_h5parm_filename == str(
+            solutions_path / "di-solutions-medium1-phase.h5"
+        )
+        assert field.di_slow_gains_h5parm_filename == str(
+            solutions_path / "di-solutions-slow-gain.h5"
+        )
+        assert field.fulljones_h5parm_filename == str(solutions_path / "fulljones-solutions.h5")
+
+        check_makedirs(mock_makedirs, solutions_path, plots_path)
+        mock_remove.assert_any_call(str(solutions_path / "di-solutions.h5"))
+        mock_remove.assert_any_call(str(solutions_path / "fulljones-solutions.h5"))
+
+        solution_src_dst_list = [
+            ("fulljones_solutions.h5", "fulljones-solutions.h5"),
+            ("combined_di_solutions.h5parm", "di-solutions.h5"),
+            ("fast_phases_di.h5parm", "di-solutions-fast-phase.h5"),
+            ("medium1_phases_di.h5parm", "di-solutions-medium1-phase.h5"),
+            ("slow_gains_di.h5parm", "di-solutions-slow-gain.h5"),
+        ]
+        for src, dst in solution_src_dst_list:
+            mock_copy.assert_any_call(str(pipelines_path / src), str(solutions_path / dst))
+
+        field.scan_h5parms.assert_called_once()
+        mock_flagged_fraction.assert_called_once_with(str(solutions_path / "fulljones-solutions.h5"))
+
+        mock_remove.assert_any_call(str(plots_path / "plot2.png"))
+        mock_copy.assert_any_call(str(pipelines_path / "plot1.png"), str(plots_path / "plot1.png"))
+        mock_copy.assert_any_call(str(pipelines_path / "plot2.png"), str(plots_path / "plot2.png"))
+
+        assert mock_remove.call_count == 3
+        assert mock_copy.call_count == len(solution_src_dst_list) + 2
+
+        # finalize() should create a .done file (via the base Operation class).
+        assert (pipelines_path / ".done").exists()
+
+    def test_finalize_dd_explicit_single_slow_gains_solution(
+        self, mocker, calibrate_field, tmp_path
+    ):
+        field = calibrate_field
+        field.calibration_strategy = {"dd": ["slow_gains"]}
+        field._calibration_strategy_defaulted = False
+
+        flagged_fraction = 0.042
+        mocker.patch(
+            "rapthor.lib.miscellaneous.get_flagged_solution_fraction",
+            return_value=flagged_fraction,
+        )
+        mock_makedirs = mocker.patch("os.makedirs")
+        mock_remove = mocker.patch("os.remove")
+        mock_copy = mocker.patch("shutil.copy")
+
+        workdir_path = tmp_path / "working"
+        solutions_path = workdir_path / "solutions" / "calibrate_1"
+        solutions_path.mkdir(parents=True)
+        (solutions_path / "field-solutions.h5").touch()
+
+        pipelines_path = workdir_path / "pipelines" / "calibrate_1"
+        plots_path = workdir_path / "plots" / "calibrate_1"
+        finalize_prepare_plots(pipelines_path, plots_path)
+
+        calibrate = Calibrate(mode="dd", field=field, index=1)
+        mock_makedirs.reset_mock()
+
+        calibrate.finalize()
+
+        assert field.h5parm_filename == str(solutions_path / "field-solutions.h5")
+        assert field.dd_h5parm_filename == str(solutions_path / "field-solutions.h5")
+        assert field.slow_gains_h5parm_filename == str(
+            solutions_path / "field-solutions-slow-gain.h5"
+        )
+
+        check_makedirs(mock_makedirs, solutions_path, plots_path)
+        mock_remove.assert_any_call(str(solutions_path / "field-solutions.h5"))
+        mock_copy.assert_any_call(
+            str(pipelines_path / "slow_gains.h5parm"),
+            str(solutions_path / "field-solutions.h5"),
+        )
+        mock_copy.assert_any_call(
+            str(pipelines_path / "slow_gains.h5parm"),
+            str(solutions_path / "field-solutions-slow-gain.h5"),
+        )
+
+        field.scan_h5parms.assert_called_once()
+        assert field.calibration_diagnostics == [
+            {
+                "cycle_number": 1,
+                "solution_flagged_fraction": flagged_fraction,
+            }
+        ]
+
+        assert mock_remove.call_count == 2
+        assert mock_copy.call_count == 4
+
+        # finalize() should create a .done file (via the base Operation class).
+        assert (pipelines_path / ".done").exists()
+
     @pytest.mark.parametrize(
         "mode, generate_screens, use_image_based_predict, do_slowgain_solve",
         [
@@ -699,6 +832,42 @@ class TestCalibrate:
             "medium1_phase_di_0.h5parm",
             "medium1_phase_di_1.h5parm",
         ]
+
+    def test_set_input_parameters_dd_preapplies_di_solutions(self, calibrate_field, tmp_path):
+        di_h5parm = tmp_path / "di-solutions.h5"
+        fulljones_h5parm = tmp_path / "fulljones-solutions.h5"
+        di_h5parm.touch()
+        fulljones_h5parm.touch()
+        calibrate_field.di_h5parm_filename = str(di_h5parm)
+        calibrate_field.fulljones_h5parm_filename = str(fulljones_h5parm)
+        calibrate_field.apply_amplitudes = True
+
+        calibrate = Calibrate("dd", field=calibrate_field, index=1)
+        calibrate.set_input_parameters()
+
+        assert parse_dp3(calibrate.input_parms["dp3_steps"])[0] == "applycal"
+        assert calibrate.input_parms["applycal_steps"] == "[fastphase,slowgain,fulljones]"
+        assert calibrate.input_parms["ddecal_applycal_steps"] == "[fastphase,slowgain,fulljones]"
+        assert calibrate.input_parms["applycal_h5parm"]["path"] == str(di_h5parm)
+        assert calibrate.input_parms["fulljones_h5parm"]["path"] == str(fulljones_h5parm)
+
+    def test_set_input_parameters_dd_preapply_skips_di_slowgain_with_phase_solves(
+        self, calibrate_field, tmp_path
+    ):
+        di_h5parm = tmp_path / "di-solutions.h5"
+        di_h5parm.touch()
+        calibrate_field.di_h5parm_filename = str(di_h5parm)
+        calibrate_field.apply_amplitudes = True
+        calibrate_field.calibration_strategy = {
+            "di": ["fast_phase", "medium_phase", "slow_gains"],
+            "dd": ["fast_phase"],
+        }
+
+        calibrate = Calibrate("dd", field=calibrate_field, index=1)
+        calibrate.set_input_parameters()
+
+        assert calibrate.input_parms["applycal_steps"] == "[fastphase]"
+        assert calibrate.input_parms["ddecal_applycal_steps"] == "[fastphase]"
 
     @pytest.mark.parametrize(
         "normalize, expected_prefix, expect_applycal",

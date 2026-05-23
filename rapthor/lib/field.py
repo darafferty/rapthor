@@ -150,6 +150,7 @@ class Field(object):
         self.medium1_phases_h5parm_filename = None
         self.medium2_phases_h5parm_filename = None
         self.slow_gains_h5parm_filename = None
+        self.dd_h5parm_filename = None
         self.di_h5parm_filename = None
         self.di_fast_phases_h5parm_filename = None
         self.di_medium1_phases_h5parm_filename = None
