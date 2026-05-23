@@ -2038,6 +2038,7 @@ class Field(object):
            - `do_fulljones_solve` set to True triggers DI calibration after DD
            - `do_slowgain_solve` set to True triggers a slow gain solve after the main solve
         """
+        self._calibration_strategy_defaulted = not bool(self.calibration_strategy)
         if not self.calibration_strategy:
             # Use legacy strategy based on the `do_fulljones_solve` and `do_slowgain_solve` parameters
             self.calibration_strategy = {

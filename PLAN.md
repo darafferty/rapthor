@@ -17,10 +17,17 @@ tests green.
   now use the same DI/DD operation contract. Integration coverage still needs to
   prove the directory, log, solution, and `.done` marker contract across mixed
   DI/DD cycles.
-- DD-only calibration is still mostly driven by legacy flags such as
-  `do_slowgain_solve`, not directly by the DD solve list.
-- DI calibration is not yet a general solve-list implementation. It is mostly
-  hard-coded around full-Jones-style inputs and outputs.
+- Calibrate operation input generation now has a solve planner that maps DD and
+  DI strategy solve lists to DP3 solve slots, modes, output names, collection
+  names, and solution intervals while preserving legacy defaults when no
+  explicit `calibration_strategy` is present.
+- DI calibration input generation can now represent fast phase, medium phase,
+  slow gains, and full-Jones solve lists with DI-specific output filenames. DI
+  finalize/product scanning and integration log expectations still need to catch
+  up with those generated products.
+- DD calibration input generation can now represent custom DD solve lists,
+  including the single-slot `slow_gains` case. CWL post-processing and final
+  product handling still need review for arbitrary non-legacy solve orders.
 - DD prediction can apply existing DD solutions when preparing DI inputs, but DD
   calibration cannot yet apply DI solutions before solving.
 - Imaging now builds applycal steps only from solution products that are actually
@@ -34,10 +41,10 @@ tests green.
 
 ## Latest Pytest Snapshot
 
-Completed local checks after the CWL and operation fixes:
+Completed local checks after the CWL, operation, and solve-planner fixes:
 
 - `python3 -m pytest tests/operations/test_calibrate.py -q`:
-  `38 passed`.
+  `46 passed`.
 - `python3 -m pytest tests/lib/test_cwl.py -k "calibrate" -q`:
   `18 passed, 431 deselected`.
 - `python3 -m pytest tests/test_process.py -q`:
@@ -49,7 +56,7 @@ Completed local checks after the CWL and operation fixes:
 - `python3 -m pytest tests/lib/test_cwl.py -k "image_workflow" -q`:
   `385 passed, 64 deselected`.
 - `python3 -m pytest tests/test_process.py tests/lib/test_field.py tests/lib/test_strategy.py -q`:
-  `92 passed, 1 warning`.
+  `96 passed, 1 warning`.
 
 Resolved focused failures:
 
@@ -112,15 +119,19 @@ Implement the four branches from `CALIBRATION_STRATEGY.md`:
      the focused `Calibrate` unit tests now expect.
    - Update tests to use the chosen naming consistently.
 
-2. Add a calibration solve planner.
+2. Add a calibration solve planner. **Complete for operation input planning.**
    - Convert each mode's solve list into DP3 solve slots, modes, output names,
      collection names, solution intervals, and post-processing steps.
    - Support `fast_phase`, `medium_phase`, `slow_gains`, and `full_jones`.
    - Remove behavioural dependence on `do_slowgain_solve` where an explicit
      `calibration_strategy` is present.
    - Preserve user-specified mode order and solve order.
+   - Planner coverage now locks legacy DD defaults, explicit DD ordering, DI
+     output suffixes, and explicit DD/DI input parameter generation.
+   - Remaining post-processing and final product behavior is tracked under the
+     DI/DD generalization tasks below.
 
-3. Generalize DI calibration.
+3. Generalize DI calibration. **Partially complete for input generation.**
    - Support DI fast phase, medium phase, slow gains, and full Jones from the
      strategy solve list.
    - Generate DI-specific output filenames such as `fast_phase_di_*.h5parm`,
@@ -128,7 +139,7 @@ Implement the four branches from `CALIBRATION_STRATEGY.md`:
    - Finalize DI products into stable solution paths and scan them into field
      state.
 
-4. Generalize DD calibration.
+4. Generalize DD calibration. **Partially complete for input generation.**
    - Support custom DD solve lists instead of always assuming fast plus medium
      and optional slow gain.
    - Ensure DD-only `slow_gains` maps to the expected single solve slot and
@@ -186,20 +197,20 @@ Implement the four branches from `CALIBRATION_STRATEGY.md`:
      are fixed.
 
 9. Update tests. **Partially complete.**
-   - Add focused unit tests for the solve planner.
-   - Update `test_calibrate.py` for DI/DD operation names and CWL input IDs.
-   - Keep the existing `test_calibrate_workflow` matrix as regression coverage
-     for both screen and non-screen DD workflow generation.
-   - Keep `test_calibrate_di_workflow` validating both `max_cores` branches.
-   - Add or update image workflow CWL regression cases for the
-     `filter_skymodel.cwl` input contract and `skymodel_image_fits` wiring.
-   - Process-level tests for DI-only, DD-only, DI-then-DD, and DD-then-DI
-     operation ordering are now present.
-   - Update integration tests to inspect the correct log directories and CWL
-     step names.
-   - Add explicit mixed-order integration coverage for:
-     - `{"di": [...], "dd": [...]}`
-     - `{"dd": [...], "di": [...]}`
+    - Focused unit tests for the solve planner are now present.
+    - Update `test_calibrate.py` for DI/DD operation names and CWL input IDs.
+    - Keep the existing `test_calibrate_workflow` matrix as regression coverage
+      for both screen and non-screen DD workflow generation.
+    - Keep `test_calibrate_di_workflow` validating both `max_cores` branches.
+    - Add or update image workflow CWL regression cases for the
+      `filter_skymodel.cwl` input contract and `skymodel_image_fits` wiring.
+    - Process-level tests for DI-only, DD-only, DI-then-DD, and DD-then-DI
+      operation ordering are now present.
+    - Update integration tests to inspect the correct log directories and CWL
+      step names.
+    - Add explicit mixed-order integration coverage for:
+      - `{"di": [...], "dd": [...]}`
+      - `{"dd": [...], "di": [...]}`
 
 10. Keep the test environment reproducible.
    - Local `pytest` is now available and produced the focused results above.
@@ -214,12 +225,12 @@ Implement the four branches from `CALIBRATION_STRATEGY.md`:
 Run the checks in increasing scope:
 
 ```bash
-python -m pytest tests/operations/test_calibrate.py tests/lib/test_cwl.py -k "calibrate"
-python -m pytest tests/lib/test_cwl.py -k "image_workflow"
-python -m pytest tests/test_process.py tests/lib/test_field.py tests/lib/test_strategy.py
-python -m pytest tests/operations/test_calibrate.py tests/operations/test_predict.py tests/operations/test_image.py
-python -m pytest tests/lib/test_cwl.py
-python -m pytest -m "integration" tests/integration
+python3 -m pytest tests/operations/test_calibrate.py tests/lib/test_cwl.py -k "calibrate"
+python3 -m pytest tests/lib/test_cwl.py -k "image_workflow"
+python3 -m pytest tests/test_process.py tests/lib/test_field.py tests/lib/test_strategy.py
+python3 -m pytest tests/operations/test_calibrate.py tests/operations/test_predict.py tests/operations/test_image.py
+python3 -m pytest tests/lib/test_cwl.py
+python3 -m pytest -m "integration" tests/integration
 tox -e lint
 tox
 ```

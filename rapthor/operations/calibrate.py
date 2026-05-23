@@ -6,6 +6,7 @@ import glob
 import logging
 import os
 import shutil
+from dataclasses import dataclass
 
 import lsmtool
 import numpy as np
@@ -13,6 +14,27 @@ import numpy as np
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.cwl import CWLDir, CWLFile
 from rapthor.lib.operation import Operation
+
+
+@dataclass(frozen=True)
+class CalibrationSolve:
+    """Resolved mapping from a strategy solve to a DP3 solve slot."""
+
+    solve_type: str
+    slot: int
+    mode: str
+    output_prefix: str
+    collected_h5parm: str
+    timestep_key: str
+    freqstep_key: str
+    field_prefix: str
+
+    @property
+    def step(self):
+        return f"solve{self.slot}"
+
+    def output_h5parms(self, ntimechunks):
+        return [f"{self.output_prefix}_{index}.h5parm" for index in range(ntimechunks)]
 
 
 class Calibrate(Operation):
@@ -121,9 +143,13 @@ class Calibrate(Operation):
             fast_antennaconstraint = f"[[{','.join(core_stations)}]]" if core_stations else "[]"
             medium_antennaconstraint = fast_antennaconstraint  # ???
 
+            solve_plan = self._build_solve_plan()
+
             # --- DP3 pipeline steps ---
             dp3_steps = self._build_dp3_steps(
-                field.calibrate_bda_timebase, field.calibrate_bda_frequencybase
+                field.calibrate_bda_timebase,
+                field.calibrate_bda_frequencybase,
+                solve_steps=[solve.step for solve in solve_plan],
             )
             # --- Build final CWL input dict ---
             self.input_parms = {
@@ -294,7 +320,10 @@ class Calibrate(Operation):
                 "correcttimesmearing": field.correct_smearing_in_calibration,
                 "max_threads": self.parset["cluster_specific"]["max_threads"],
             }
+            self._apply_solve_plan_inputs(solve_plan, dp3_steps=dp3_steps)
         elif self.mode == "di":
+            solve_plan = self._build_solve_plan()
+
             # Define various output filenames for the solution tables. We save some
             # as attributes since they are needed in finalize()
             self.collected_h5parm_fulljones = "fulljones_solutions.h5"
@@ -420,6 +449,7 @@ class Calibrate(Operation):
                 "correcttimesmearing": field.correct_smearing_in_calibration,
                 "max_threads": self.parset["cluster_specific"]["max_threads"],
             }
+            self._apply_solve_plan_inputs(solve_plan)
 
             #
             #    "solve1_datause": field.fast_datause ,
@@ -427,7 +457,183 @@ class Calibrate(Operation):
             #    "solve3_datause": field.slow_datause,
             #    "solve4_datause": field.medium_datause,
 
-    def _build_dp3_steps(self, bda_timebase, bda_frequencybase):
+    def _requested_calibration_solves(self):
+        strategy = getattr(self.field, "calibration_strategy", None)
+        if strategy is not None and self.mode in strategy:
+            return list(strategy.get(self.mode) or []), getattr(
+                self.field, "_calibration_strategy_defaulted", False
+            )
+
+        if self.mode == "dd":
+            solves = ["fast_phase", "medium_phase"]
+            if self.field.do_slowgain_solve:
+                solves.append("slow_gains")
+            return solves, True
+
+        return ["full_jones"], True
+
+    def _build_solve_plan(self):
+        requested_solves, defaulted_strategy = self._requested_calibration_solves()
+        expanded_solves = list(requested_solves)
+
+        if (
+            self.mode == "dd"
+            and defaulted_strategy
+            and expanded_solves == ["fast_phase", "medium_phase", "slow_gains"]
+        ):
+            expanded_solves.append("medium_phase")
+
+        if len(expanded_solves) > 4:
+            raise ValueError("A calibration cycle can contain at most four solve slots")
+
+        medium_count = 0
+        solve_plan = []
+        for slot, solve_type in enumerate(expanded_solves, start=1):
+            if solve_type == "medium_phase":
+                medium_count += 1
+            solve_plan.append(self._build_solve_slot(solve_type, slot, medium_count))
+
+        return solve_plan
+
+    def _build_solve_slot(self, solve_type, slot, medium_count):
+        field_prefix_by_solve = {
+            "fast_phase": "fast",
+            "medium_phase": "medium",
+            "slow_gains": "slow",
+            "full_jones": "fulljones",
+        }
+        mode_by_solve = {
+            "fast_phase": "scalarphase",
+            "medium_phase": "scalarphase",
+            "slow_gains": "diagonal",
+            "full_jones": "fulljones",
+        }
+        interval_keys = {
+            "fast_phase": ("solint_fast_timestep", "solint_fast_freqstep"),
+            "medium_phase": ("solint_medium_timestep", "solint_medium_freqstep"),
+            "slow_gains": ("solint_slow_timestep", "solint_slow_freqstep"),
+            "full_jones": ("solint_fulljones_timestep", "solint_fulljones_freqstep"),
+        }
+
+        output_prefix, collected_h5parm = self._solve_output_names(solve_type, medium_count)
+
+        return CalibrationSolve(
+            solve_type=solve_type,
+            slot=slot,
+            mode=(
+                "scalarphase"
+                if solve_type == "slow_gains" and slot == 1
+                else mode_by_solve[solve_type]
+            ),
+            output_prefix=output_prefix,
+            collected_h5parm=collected_h5parm,
+            timestep_key=interval_keys[solve_type][0],
+            freqstep_key=interval_keys[solve_type][1],
+            field_prefix=field_prefix_by_solve[solve_type],
+        )
+
+    def _solve_output_names(self, solve_type, medium_count):
+        if solve_type == "fast_phase":
+            suffix = "_di" if self.mode == "di" else ""
+            return f"fast_phase{suffix}", f"fast_phases{suffix}.h5parm"
+        if solve_type == "medium_phase":
+            medium_name = "medium2" if medium_count > 1 else "medium1"
+            suffix = "_di" if self.mode == "di" else ""
+            return f"{medium_name}_phase{suffix}", f"{medium_name}_phases{suffix}.h5parm"
+        if solve_type == "slow_gains":
+            if self.mode == "di":
+                return "slow_gains_di", "slow_gains_di.h5parm"
+            return "slow_gain", "slow_gains.h5parm"
+        if solve_type == "full_jones":
+            return "fulljones_gain", "fulljones_solutions.h5"
+
+        raise ValueError(f"Unsupported solve type: {solve_type}")
+
+    def _apply_solve_plan_inputs(self, solve_plan, dp3_steps=None):
+        field = self.field
+        if dp3_steps is None:
+            dp3_steps = [solve.step for solve in solve_plan]
+        self.input_parms["dp3_steps"] = f"[{','.join(dp3_steps)}]"
+        self.input_parms["do_slowgain_solve"] = any(
+            solve.solve_type == "slow_gains" and solve.slot == 3 for solve in solve_plan
+        )
+
+        slot_map = {solve.slot: solve for solve in solve_plan}
+        for slot in range(1, 5):
+            solve = slot_map.get(slot)
+            output_key = f"output_solve{slot}_h5parm"
+            collected_key = f"collected_solve{slot}_h5parm"
+            mode_key = f"solve{slot}_mode"
+            timestep_key = f"solint_solve{slot}_timestep"
+            freqstep_key = f"solint_solve{slot}_freqstep"
+
+            if solve is None:
+                self.input_parms[output_key] = [
+                    f"unused_solve{slot}_{index}.h5parm" for index in range(field.ntimechunks)
+                ]
+                self.input_parms[collected_key] = "unused"
+                self.input_parms[mode_key] = "null"
+                self._clear_solve_slot_inputs(slot)
+                continue
+
+            self.input_parms[output_key] = solve.output_h5parms(field.ntimechunks)
+            self.input_parms[collected_key] = solve.collected_h5parm
+            self.input_parms[mode_key] = solve.mode
+            self.input_parms[timestep_key] = field.get_obs_parameters(solve.timestep_key)
+            self.input_parms[freqstep_key] = field.get_obs_parameters(solve.freqstep_key)
+            self._apply_solve_slot_inputs(solve)
+
+    def _clear_solve_slot_inputs(self, slot):
+        ntimechunks = self.field.ntimechunks
+        default_values = {
+            f"solve{slot}_datause": None,
+            f"solve{slot}_solutions_per_direction": [None] * ntimechunks,
+            f"solve{slot}_smoothness_dd_factors": [None] * ntimechunks,
+            f"solve{slot}_smoothnessreffrequency": [0] * ntimechunks,
+            f"solve{slot}_smoothnessconstraint": 0,
+            f"solve{slot}_antennaconstraint": "[]",
+            f"solve{slot}_smoothnessrefdistance": None,
+        }
+        for key, value in default_values.items():
+            if key in self.input_parms:
+                self.input_parms[key] = value
+
+    def _apply_solve_slot_inputs(self, solve):
+        slot = solve.slot
+        if self.mode == "di" or solve.solve_type == "full_jones":
+            self._clear_solve_slot_inputs(slot)
+            self.input_parms[f"solve{slot}_mode"] = solve.mode
+            if solve.solve_type == "full_jones":
+                self.input_parms[f"solve{slot}_smoothnessconstraint"] = (
+                    self.field.smoothnessconstraint_fulljones
+                )
+            return
+
+        field_prefix = solve.field_prefix
+        dd_factors = self.field.get_obs_parameters(f"{field_prefix}_smoothness_dd_factors")
+        self.input_parms[f"solve{slot}_datause"] = getattr(self.field, f"{field_prefix}_datause")
+        self.input_parms[f"solve{slot}_solutions_per_direction"] = self.field.get_obs_parameters(
+            f"{field_prefix}_solutions_per_direction"
+        )
+        self.input_parms[f"solve{slot}_smoothness_dd_factors"] = dd_factors
+        if f"solve{slot}_smoothnessreffrequency" in self.input_parms:
+            self.input_parms[f"solve{slot}_smoothnessreffrequency"] = (
+                self.field.get_obs_parameters(f"{field_prefix}_smoothnessreffrequency")
+            )
+        self.input_parms[f"solve{slot}_smoothnessconstraint"] = getattr(
+            self.field, f"{field_prefix}_smoothnessconstraint"
+        ) / np.min(dd_factors)
+        self.input_parms[f"solve{slot}_antennaconstraint"] = (
+            self.input_parms.get("solve1_antennaconstraint", "[]")
+            if field_prefix in {"fast", "medium"}
+            else "[]"
+        )
+        if f"solve{slot}_smoothnessrefdistance" in self.input_parms:
+            self.input_parms[f"solve{slot}_smoothnessrefdistance"] = getattr(
+                self.field, f"{field_prefix}_smoothnessrefdistance", None
+            )
+
+    def _build_dp3_steps(self, bda_timebase, bda_frequencybase, solve_steps=None):
         """
         Set the DDECal steps depending on whether baseline-dependent averaging is
         activated (and supported) or not. If BDA is used, a "null" step is also added to
@@ -441,20 +647,20 @@ class Calibrate(Operation):
         all_regular = all([obs.channels_are_regular for obs in self.field.observations])
 
         # Base solve chain depending on BDA + solver configuration
+        if solve_steps is None:
+            if self.field.do_slowgain_solve:
+                common_steps = ["solve1", "solve2", "solve3", "solve4"]
+            else:
+                common_steps = ["solve1", "solve2"]
+        else:
+            common_steps = list(solve_steps)
+
         if (
             (bda_timebase > 0 or bda_frequencybase > 0)
             and all_regular
             and not self.field.use_image_based_predict
         ):
-            if self.field.do_slowgain_solve:
-                common_steps = ["avg", "solve1", "solve2", "solve3", "solve4", "null"]
-            else:
-                common_steps = ["avg", "solve1", "solve2", "null"]
-        else:
-            if self.field.do_slowgain_solve:
-                common_steps = ["solve1", "solve2", "solve3", "solve4"]
-            else:
-                common_steps = ["solve1", "solve2"]
+            common_steps = ["avg", *common_steps, "null"]
 
         # Optional image-based predict prefix
         if self.field.use_image_based_predict:

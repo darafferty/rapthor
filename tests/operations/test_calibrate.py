@@ -520,6 +520,118 @@ class TestCalibrate:
         assert dp3_steps == expected_dp3_steps
 
     @pytest.mark.parametrize(
+        "mode, strategy, defaulted, slowgain, expected_plan",
+        [
+            (
+                "dd",
+                None,
+                False,
+                False,
+                [
+                    ("fast_phase", "solve1", "scalarphase", "fast_phase"),
+                    ("medium_phase", "solve2", "scalarphase", "medium1_phase"),
+                ],
+            ),
+            (
+                "dd",
+                None,
+                False,
+                True,
+                [
+                    ("fast_phase", "solve1", "scalarphase", "fast_phase"),
+                    ("medium_phase", "solve2", "scalarphase", "medium1_phase"),
+                    ("slow_gains", "solve3", "diagonal", "slow_gain"),
+                    ("medium_phase", "solve4", "scalarphase", "medium2_phase"),
+                ],
+            ),
+            (
+                "dd",
+                {"dd": ["slow_gains"]},
+                False,
+                False,
+                [("slow_gains", "solve1", "scalarphase", "slow_gain")],
+            ),
+            (
+                "dd",
+                {"dd": ["medium_phase", "fast_phase"]},
+                False,
+                False,
+                [
+                    ("medium_phase", "solve1", "scalarphase", "medium1_phase"),
+                    ("fast_phase", "solve2", "scalarphase", "fast_phase"),
+                ],
+            ),
+            (
+                "di",
+                {"di": ["fast_phase", "medium_phase", "slow_gains", "full_jones"]},
+                False,
+                False,
+                [
+                    ("fast_phase", "solve1", "scalarphase", "fast_phase_di"),
+                    ("medium_phase", "solve2", "scalarphase", "medium1_phase_di"),
+                    ("slow_gains", "solve3", "diagonal", "slow_gains_di"),
+                    ("full_jones", "solve4", "fulljones", "fulljones_gain"),
+                ],
+            ),
+            (
+                "di",
+                None,
+                False,
+                False,
+                [("full_jones", "solve1", "fulljones", "fulljones_gain")],
+            ),
+        ],
+    )
+    def test_build_solve_plan(
+        self, calibrate_field, mode, strategy, defaulted, slowgain, expected_plan
+    ):
+        calibrate_field.do_slowgain_solve = slowgain
+        if strategy is not None:
+            calibrate_field.calibration_strategy = strategy
+            calibrate_field._calibration_strategy_defaulted = defaulted
+
+        calibrate = Calibrate(mode, field=calibrate_field, index=1)
+        plan = calibrate._build_solve_plan()
+
+        assert [
+            (solve.solve_type, solve.step, solve.mode, solve.output_prefix) for solve in plan
+        ] == expected_plan
+
+    def test_set_input_parameters_dd_uses_explicit_solve_strategy(self, calibrate_field):
+        calibrate_field.calibration_strategy = {"dd": ["slow_gains"]}
+        calibrate_field._calibration_strategy_defaulted = False
+
+        calibrate = Calibrate("dd", field=calibrate_field, index=1)
+        calibrate.set_input_parameters()
+
+        assert parse_dp3(calibrate.input_parms["dp3_steps"]) == ["solve1"]
+        assert calibrate.input_parms["solve1_mode"] == "scalarphase"
+        assert calibrate.input_parms["output_solve1_h5parm"] == [
+            "slow_gain_0.h5parm",
+            "slow_gain_1.h5parm",
+        ]
+        assert calibrate.input_parms["do_slowgain_solve"] is False
+
+    def test_set_input_parameters_di_uses_explicit_solve_strategy(self, calibrate_field):
+        calibrate_field.calibration_strategy = {"di": ["fast_phase", "medium_phase"]}
+        calibrate_field._calibration_strategy_defaulted = False
+
+        calibrate = Calibrate("di", field=calibrate_field, index=1)
+        calibrate.set_input_parameters()
+
+        assert parse_dp3(calibrate.input_parms["dp3_steps"]) == ["solve1", "solve2"]
+        assert calibrate.input_parms["solve1_mode"] == "scalarphase"
+        assert calibrate.input_parms["solve2_mode"] == "scalarphase"
+        assert calibrate.input_parms["output_solve1_h5parm"] == [
+            "fast_phase_di_0.h5parm",
+            "fast_phase_di_1.h5parm",
+        ]
+        assert calibrate.input_parms["output_solve2_h5parm"] == [
+            "medium1_phase_di_0.h5parm",
+            "medium1_phase_di_1.h5parm",
+        ]
+
+    @pytest.mark.parametrize(
         "normalize, expected_prefix, expect_applycal",
         [
             (False, ["predict", "applybeam"], False),
