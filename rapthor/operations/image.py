@@ -189,12 +189,16 @@ class Image(Operation):
                     if self.field.fulljones_h5parm_filename is not None:
                         steps.append(solve_type_to_step[solve])
                     continue
+                scalar_h5parm = dd_h5parm if mode == "dd" else di_h5parm
+                if mode == "dd" and self.use_facets:
+                    if scalar_h5parm is not None and self._selected_applycal_h5parm is None:
+                        self._selected_applycal_h5parm = scalar_h5parm
+                    continue
                 if solve == "slow_gains" and not self.apply_amplitudes:
                     continue
                 if mode == "di" and solve == "slow_gains" and di_phase_solves:
                     continue
 
-                scalar_h5parm = dd_h5parm if mode == "dd" else di_h5parm
                 if prefer_dd_scalar and mode != "dd":
                     continue
                 if scalar_h5parm is None:

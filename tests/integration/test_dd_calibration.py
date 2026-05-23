@@ -114,12 +114,15 @@ def test_rapthor_run_dd_fast_medium_slow_gains(
     assert "solve1" in dp3_arguments["steps"]
     assert "solve2" in dp3_arguments["steps"]
     assert "solve3" in dp3_arguments["steps"]
+    assert "solve4" in dp3_arguments["steps"]
     assert "fast_phase_0.h5parm" == dp3_arguments["solve1.h5parm"]
     assert "medium1_phase_0.h5parm" == dp3_arguments["solve2.h5parm"]
     assert "slow_gain_0.h5parm" == dp3_arguments["solve3.h5parm"]
+    assert "medium2_phase_0.h5parm" == dp3_arguments["solve4.h5parm"]
     assert "scalarphase" == dp3_arguments["solve1.mode"]
     assert "scalarphase" == dp3_arguments["solve2.mode"]
     assert "diagonal" == dp3_arguments["solve3.mode"]
+    assert "scalarphase" == dp3_arguments["solve4.mode"]
     assert int(dp3_arguments["solve1.solint"]) < int(dp3_arguments["solve2.solint"])
     assert int(dp3_arguments["solve2.solint"]) < int(dp3_arguments["solve3.solint"])
 
@@ -175,4 +178,4 @@ def test_rapthor_run_dd_slow_gains(
     assert "solve3" not in dp3_arguments["steps"]
     assert "slow_gain_0.h5parm" == dp3_arguments["solve1.h5parm"]
     assert "scalarphase" == dp3_arguments["solve1.mode"]
-    assert int(dp3_arguments["solve1.solint"]) == 600.0
+    assert int(dp3_arguments["solve1.solint"]) == 60  # 600 s strategy interval / 10 s samples

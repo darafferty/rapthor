@@ -634,9 +634,12 @@ class Calibrate(Operation):
         )
         self.input_parms[f"solve{slot}_smoothness_dd_factors"] = dd_factors
         if f"solve{slot}_smoothnessreffrequency" in self.input_parms:
-            self.input_parms[f"solve{slot}_smoothnessreffrequency"] = (
-                self.field.get_obs_parameters(f"{field_prefix}_smoothnessreffrequency")
-            )
+            if field_prefix in {"fast", "medium"}:
+                self.input_parms[f"solve{slot}_smoothnessreffrequency"] = (
+                    self.field.get_obs_parameters(f"{field_prefix}_smoothnessreffrequency")
+                )
+            else:
+                self.input_parms[f"solve{slot}_smoothnessreffrequency"] = [0] * self.field.ntimechunks
         self.input_parms[f"solve{slot}_smoothnessconstraint"] = getattr(
             self.field, f"{field_prefix}_smoothnessconstraint"
         ) / np.min(dd_factors)

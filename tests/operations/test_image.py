@@ -622,6 +622,7 @@ class TestImage:
         _prepare_field_for_image(field, h5parm_filename=h5parm_file)
         image = Image(field=field, index=1)
         image.set_parset_parameters()
+        image.use_facets = False
         image.apply_none = apply_none
         image.apply_normalizations = apply_normalizations
         field.calibration_strategy = calibration_strategy
@@ -653,6 +654,7 @@ class TestImage:
         }
 
         image = Image(field=field, index=1)
+        image.use_facets = False
         image.set_parset_parameters()
         image.apply_amplitudes = True
 
@@ -660,6 +662,41 @@ class TestImage:
 
         assert steps == "[fastphase,slowgain]"
         assert image._selected_applycal_h5parm == str(h5parm_file)
+
+    def test_build_applycal_steps_uses_dd_h5parm_for_facets_without_preapply(
+        self, field, h5parm_file
+    ):
+        """Facet imaging receives the DD h5parm but does not preapply DD solves."""
+        _prepare_field_for_image(field, h5parm_filename=h5parm_file)
+        field.dd_h5parm_filename = str(h5parm_file)
+        field.calibration_strategy = {"dd": ["fast_phase", "medium_phase", "slow_gains"]}
+
+        image = Image(field=field, index=1)
+        image.set_parset_parameters()
+        image.use_facets = True
+        image.apply_amplitudes = True
+        image.apply_normalizations = False
+
+        steps, _, _ = image._build_applycal_steps()
+
+        assert steps is None
+        assert image._selected_applycal_h5parm == str(h5parm_file)
+
+    def test_set_input_parameters_dd_slow_only_facets_get_h5parm(self, field, h5parm_file):
+        """Single DD slow-gain phase solves still provide an h5parm to WSClean facets."""
+        _prepare_field_for_image(field, h5parm_filename=h5parm_file)
+        field.dd_h5parm_filename = str(h5parm_file)
+        field.calibration_strategy = {"dd": ["slow_gains"]}
+        field.apply_amplitudes = False
+
+        image = Image(field=field, index=1)
+        image.use_facets = True
+        image.apply_normalizations = False
+        image.set_parset_parameters()
+        image.set_input_parameters()
+
+        assert image.input_parms["prepare_data_applycal_steps"] is None
+        assert image.input_parms["h5parm"]["path"] == str(h5parm_file)
 
     def test_image_operation_sets_mask_file(
         self, field, h5parm_file, monkeypatch, expected_image_output
