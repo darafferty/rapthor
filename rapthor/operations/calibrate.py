@@ -596,9 +596,7 @@ class Calibrate(Operation):
             self._apply_solve_slot_inputs(solve)
 
         if self.mode == "di":
-            self.input_parms["combined_solve1_solve2_h5parm"] = (
-                "combined_solve1_solve2_di.h5parm"
-            )
+            self.input_parms["combined_solve1_solve2_h5parm"] = "combined_solve1_solve2_di.h5parm"
             self.input_parms["combined_solve1_solve2_solve4_h5parm"] = (
                 "combined_solve1_solve2_solve4_di.h5parm"
             )
@@ -643,7 +641,9 @@ class Calibrate(Operation):
                     self.field.get_obs_parameters(f"{field_prefix}_smoothnessreffrequency")
                 )
             else:
-                self.input_parms[f"solve{slot}_smoothnessreffrequency"] = [0] * self.field.ntimechunks
+                self.input_parms[f"solve{slot}_smoothnessreffrequency"] = [
+                    0
+                ] * self.field.ntimechunks
         self.input_parms[f"solve{slot}_smoothnessconstraint"] = getattr(
             self.field, f"{field_prefix}_smoothnessconstraint"
         ) / np.min(dd_factors)
@@ -1078,9 +1078,7 @@ class Calibrate(Operation):
 
         field.h5parm_filename = os.path.join(dst_dir, "field-solutions.h5")
         field.dd_h5parm_filename = field.h5parm_filename
-        field.fast_phases_h5parm_filename = os.path.join(
-            dst_dir, "field-solutions-fast-phase.h5"
-        )
+        field.fast_phases_h5parm_filename = os.path.join(dst_dir, "field-solutions-fast-phase.h5")
         field.medium1_phases_h5parm_filename = os.path.join(
             dst_dir, "field-solutions-medium1-phase.h5"
         )
@@ -1179,9 +1177,7 @@ class Calibrate(Operation):
             setattr(field, attr_name, os.path.join(dst_dir, filename))
             return getattr(field, attr_name)
         if solve.solve_type == "slow_gains":
-            field.di_slow_gains_h5parm_filename = os.path.join(
-                dst_dir, "di-solutions-slow-gain.h5"
-            )
+            field.di_slow_gains_h5parm_filename = os.path.join(dst_dir, "di-solutions-slow-gain.h5")
             return field.di_slow_gains_h5parm_filename
 
         raise ValueError(f"Unsupported DI scalar solve type: {solve.solve_type}")
