@@ -3,7 +3,6 @@ Module that holds the Calibrate classes
 """
 
 import glob
-import logging
 import os
 import shutil
 from dataclasses import dataclass
