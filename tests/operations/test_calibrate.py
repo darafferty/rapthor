@@ -561,7 +561,9 @@ class TestCalibrate:
             mock_copy.assert_any_call(str(pipelines_path / src), str(solutions_path / dst))
 
         field.scan_h5parms.assert_called_once()
-        mock_flagged_fraction.assert_called_once_with(str(solutions_path / "fulljones-solutions.h5"))
+        mock_flagged_fraction.assert_called_once_with(
+            str(solutions_path / "fulljones-solutions.h5")
+        )
 
         mock_remove.assert_any_call(str(plots_path / "plot2.png"))
         mock_copy.assert_any_call(str(pipelines_path / "plot1.png"), str(plots_path / "plot1.png"))
