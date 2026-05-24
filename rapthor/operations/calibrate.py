@@ -14,7 +14,6 @@ from rapthor.lib import miscellaneous as misc
 from rapthor.lib.cwl import CWLDir, CWLFile
 from rapthor.lib.operation import Operation
 
-
 FIELD_PREFIX_BY_SOLVE = {
     "fast_phase": "fast",
     "medium_phase": "medium",
