@@ -167,6 +167,7 @@ class TestImage:
         self, field, h5parm_file, shared_facet_rw, use_facets, use_mpi
     ):
         field.parset["imaging_specific"]["use_mpi"] = use_mpi
+        field.use_mpi = use_mpi
         field.parset["imaging_specific"]["shared_facet_rw"] = shared_facet_rw
         _prepare_field_for_image(field, h5parm_filename=h5parm_file)
         image = _initialize_operation(
@@ -174,10 +175,7 @@ class TestImage:
             do_predict=False,
             use_facets=use_facets,
         )
-        if use_facets:
-            assert image.input_parms["shared_facet_rw"] == shared_facet_rw
-        else:
-            assert not image.input_parms["shared_facet_rw"]
+        assert image.input_parms["shared_facet_rw"] is (shared_facet_rw and use_facets)
 
     @pytest.mark.parametrize("use_mpi", [True, False])
     @pytest.mark.parametrize("shared_facet_rw", [True, False])
@@ -189,6 +187,7 @@ class TestImage:
         rendered CWL workflow for the image step.
         """
         field.parset["imaging_specific"]["use_mpi"] = use_mpi
+        field.use_mpi = use_mpi
         field.parset["imaging_specific"]["shared_facet_rw"] = shared_facet_rw
         _prepare_field_for_image(field, h5parm_filename=h5parm_file)
         image = _initialize_operation(Image(field, index=1), do_predict=False, use_facets=True)
@@ -203,6 +202,7 @@ class TestImage:
         assert image_step_inputs.get("name") == "image_name"
         assert image_step_inputs.get("shared_facet_reads") == "shared_facet_rw"
         assert image_step_inputs.get("shared_facet_writes") == "shared_facet_rw"
+        assert image.input_parms["shared_facet_rw"] is shared_facet_rw
 
     @pytest.mark.parametrize("solution_attr", ["di_h5parm_filename", "fulljones_h5parm_filename"])
     def test_set_parset_parameters_disables_facets_without_dd_scalar_h5parm(
