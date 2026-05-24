@@ -143,6 +143,20 @@ class Image(Operation):
             return False
         return self.field.h5parm_filename is not None
 
+    def _resolve_scalar_applycal_h5parms(self):
+        dd_h5parm = getattr(self.field, "dd_h5parm_filename", None)
+        di_h5parm = getattr(self.field, "di_h5parm_filename", None)
+        fallback_h5parm = self.field.h5parm_filename
+
+        if dd_h5parm is None and di_h5parm is None:
+            return fallback_h5parm, fallback_h5parm
+        if di_h5parm is None and fallback_h5parm != dd_h5parm:
+            di_h5parm = fallback_h5parm
+        return dd_h5parm, di_h5parm
+
+    def _shared_facet_rw_enabled(self):
+        return bool(self.use_facets and self.parset["imaging_specific"]["shared_facet_rw"])
+
     def _build_applycal_steps(self):
         """
         Build the DP3 applycal steps for the prepare-imaging-data stage.
@@ -168,13 +182,7 @@ class Image(Operation):
         di_phase_solves = {
             solve for solve in strategy.get("di", []) if solve in {"fast_phase", "medium_phase"}
         }
-        dd_h5parm = getattr(self.field, "dd_h5parm_filename", None)
-        di_h5parm = getattr(self.field, "di_h5parm_filename", None)
-        if dd_h5parm is None and di_h5parm is None:
-            dd_h5parm = self.field.h5parm_filename
-            di_h5parm = self.field.h5parm_filename
-        elif di_h5parm is None and self.field.h5parm_filename != dd_h5parm:
-            di_h5parm = self.field.h5parm_filename
+        dd_h5parm, di_h5parm = self._resolve_scalar_applycal_h5parms()
 
         prefer_dd_scalar = dd_h5parm is not None and any(
             solve != "full_jones" for solve in strategy.get("dd", [])
@@ -490,10 +498,7 @@ class Image(Operation):
             self.input_parms.update(
                 {"mpi_cpus_per_task": [self.parset["cluster_specific"]["cpus_per_task"]] * nsectors}
             )
-        if self.use_facets:
-            self.input_parms["shared_facet_rw"] = self.parset["imaging_specific"]["shared_facet_rw"]
-        else:
-            self.input_parms["shared_facet_rw"] = False
+        self.input_parms["shared_facet_rw"] = self._shared_facet_rw_enabled()
         if not self.apply_none and self.use_facets:
             # For faceting, we need inputs for making the ds9 facet region files
             self.input_parms.update(

@@ -192,12 +192,11 @@ class Predict(Operation):
     def _get_applycal_h5parm_filename(self):
         dd_h5parm = getattr(self.field, "dd_h5parm_filename", None)
         di_h5parm = getattr(self.field, "di_h5parm_filename", None)
-        h5parm_filename = self.field.h5parm_filename
-
-        if self.mode == "di":
-            return dd_h5parm or (h5parm_filename if di_h5parm is None else None)
-
-        return dd_h5parm or (h5parm_filename if di_h5parm is None else None)
+        if dd_h5parm is not None:
+            return dd_h5parm
+        if di_h5parm is not None:
+            return None
+        return self.field.h5parm_filename
 
     def finalize(self):
         """

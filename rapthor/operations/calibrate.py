@@ -16,6 +16,28 @@ from rapthor.lib.cwl import CWLDir, CWLFile
 from rapthor.lib.operation import Operation
 
 
+FIELD_PREFIX_BY_SOLVE = {
+    "fast_phase": "fast",
+    "medium_phase": "medium",
+    "slow_gains": "slow",
+    "full_jones": "fulljones",
+}
+
+MODE_BY_SOLVE = {
+    "fast_phase": "scalarphase",
+    "medium_phase": "scalarphase",
+    "slow_gains": "diagonal",
+    "full_jones": "fulljones",
+}
+
+INTERVAL_KEYS_BY_SOLVE = {
+    "fast_phase": ("solint_fast_timestep", "solint_fast_freqstep"),
+    "medium_phase": ("solint_medium_timestep", "solint_medium_freqstep"),
+    "slow_gains": ("solint_slow_timestep", "solint_slow_freqstep"),
+    "full_jones": ("solint_fulljones_timestep", "solint_fulljones_freqstep"),
+}
+
+
 @dataclass(frozen=True)
 class CalibrationSolve:
     """Resolved mapping from a strategy solve to a DP3 solve slot."""
@@ -504,26 +526,8 @@ class Calibrate(Operation):
         return solve_plan
 
     def _build_solve_slot(self, solve_type, slot, medium_count):
-        field_prefix_by_solve = {
-            "fast_phase": "fast",
-            "medium_phase": "medium",
-            "slow_gains": "slow",
-            "full_jones": "fulljones",
-        }
-        mode_by_solve = {
-            "fast_phase": "scalarphase",
-            "medium_phase": "scalarphase",
-            "slow_gains": "diagonal",
-            "full_jones": "fulljones",
-        }
-        interval_keys = {
-            "fast_phase": ("solint_fast_timestep", "solint_fast_freqstep"),
-            "medium_phase": ("solint_medium_timestep", "solint_medium_freqstep"),
-            "slow_gains": ("solint_slow_timestep", "solint_slow_freqstep"),
-            "full_jones": ("solint_fulljones_timestep", "solint_fulljones_freqstep"),
-        }
-
         output_prefix, collected_h5parm = self._solve_output_names(solve_type, medium_count)
+        timestep_key, freqstep_key = INTERVAL_KEYS_BY_SOLVE[solve_type]
 
         return CalibrationSolve(
             solve_type=solve_type,
@@ -531,13 +535,13 @@ class Calibrate(Operation):
             mode=(
                 "scalarphase"
                 if solve_type == "slow_gains" and slot == 1
-                else mode_by_solve[solve_type]
+                else MODE_BY_SOLVE[solve_type]
             ),
             output_prefix=output_prefix,
             collected_h5parm=collected_h5parm,
-            timestep_key=interval_keys[solve_type][0],
-            freqstep_key=interval_keys[solve_type][1],
-            field_prefix=field_prefix_by_solve[solve_type],
+            timestep_key=timestep_key,
+            freqstep_key=freqstep_key,
+            field_prefix=FIELD_PREFIX_BY_SOLVE[solve_type],
         )
 
     def _solve_output_names(self, solve_type, medium_count):
