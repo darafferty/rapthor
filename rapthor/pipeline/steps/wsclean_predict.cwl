@@ -34,17 +34,24 @@ inputs:
     inputBinding:
       prefix: --model
 
+stdout: raw_output.log
+
 outputs:
   - id: msout
     label: Output MS
     doc: |
       The directory name of the output MS. The input msin is returned if it
       is writable, otherwise a copy with temp name is made.
-    type: Directory
+    type: Directory[]
     outputBinding:
       loadContents: true
-      glob: '$(inputs.msin[0]).wsclean_predict.json'
-      outputEval: '$(JSON.parse(self[0].contents).msout)'
+      glob: raw_output.log
+      outputEval: |
+        ${
+        var match = self.contents.match(/^CWL_JSON:(.*)/m);
+        var data = JSON.parse(match[1]);
+        return data.msout;
+        }
 
 hints:
   - class: DockerRequirement

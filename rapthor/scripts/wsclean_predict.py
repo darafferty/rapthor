@@ -58,21 +58,23 @@ def remove_columns_from_ms(msfile, ds9_region_file):
     tt.close()
 
 
-def predict(msfile, ds9_region_file, model_image, storage_manager):
+def predict(msfile, ds9_region_file, model_images, storage_manager):
     """
     Predict model image to msfile
 
     Parameters
     ----------
-    msfile : MS name, output will be written to separate columns
+    msfile : List: MS names, output will be written to separate columns
     ds9_region_file: DS9 region file, specifying facet regions and names
     Note: names in region file should be with {}, like {Patch_1}, After
     parsing the {} will be dropped
-    model_image: FITS image to use as model
+    model_images: List: FITS images to use as model
     """
 
     # remove '-model.fits' from image name
-    model = model_image.replace("-model.fits", "")
+    model = []
+    for model_image in model_images:
+        model.append(model_image.replace("-model.fits", ""))
 
     # extract region names
     facets = read_ds9_region_file(ds9_region_file)
@@ -93,10 +95,10 @@ def predict(msfile, ds9_region_file, model_image, storage_manager):
             "-select-facets",
             "{" + str(facet) + "}",
             "-name",
-            str(model),
+            str(**model),
             "-model-storage-manager",
             str(storage_manager),
-            str(msfile),
+            str(**msfile),
         ]
         try:
             subprocess.run(cmd, check=True).returncode
@@ -128,7 +130,9 @@ def main():
     """
     descriptiontext = "Predict model data using WSClean.\n"
     parser = ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
-    parser.add_argument("--msin", help="Input/Output measurement set", nargs="+", type=str, default=[])
+    parser.add_argument(
+        "--msin", help="Input/Output measurement set", nargs="+", type=str, default=[]
+    )
     parser.add_argument("--region", help="DS9 region file", type=str, default="")
     parser.add_argument("--model", help="Model FITS image", nargs="+", type=str, default=[])
     parser.add_argument("--storage_manager", help="Storage manager", type=str, default="default")
@@ -136,12 +140,13 @@ def main():
         "--cleanup", action=argparse.BooleanOptionalAction, help="Remove exra columns"
     )
     import sys
+
     print(sys.argv)
     args = parser.parse_args()
-    print(f'Args ')
-    print(f'{args.msin}')
-    print(f'{args.region}')
-    print(f'{args.model}')
+    print(f"Args ")
+    print(f"{args.msin}")
+    print(f"{args.region}")
+    print(f"{args.model}")
 
     # Check pre-conditions
     if not (len(args.msin) > 0 and os.path.exists(args.msin[0])):
@@ -154,19 +159,15 @@ def main():
 
     # if msin is read only, create a copy of msin to work with,
     # return this as output
-    msname = args.msin[0]
-    if not args.cleanup:
-        msname = make_writable(args.msin[0])
-        out_dict = {"msout": msname}
-        out_file = f"{args.msin[0]}.wsclean_predict.json"
-        print(f'Saving JSON {out_file}')
-        with open(out_file, "w") as fp:
-            json.dump(out_dict, fp)
+    msnames = args.msin
+    out_dict = {"msout": msnames}
+    print(f"Saving JSON")
+    print(f"CWL_JSON:{json.dumps(out_dict)}")
 
     if args.cleanup:
-        return remove_columns_from_ms(msname, args.region)
+        return remove_columns_from_ms(msnames, args.region)
     else:
-        return predict(msname, args.region, args.model, args.storage_manager)
+        return predict(msnames, args.region, args.model, args.storage_manager)
 
 
 if __name__ == "__main__":
