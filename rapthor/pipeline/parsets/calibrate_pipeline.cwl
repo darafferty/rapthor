@@ -82,7 +82,7 @@ inputs:
       The number of iterations per minibatch in LBFGS solver (length = 1).
     type: int
 
-{% if use_image_based_predict %}
+{% if use_image_based_predict  or use_wsclean_predict %}
   - id: num_spectral_terms
     label: Number of spectral terms
     doc: |
@@ -805,6 +805,24 @@ steps:
       - id: region_file
 {% endif %}
 # end use_image_based_predict or use_wsclean_predict or generate_screens
+
+{% if use_wsclean_predict %}
+  - id: wsclean_predict 
+    label: Predict using WSClean
+    doc: |
+      This step predicts model data using WSClean (not DP3)
+    run: {{ rapthor_pipeline_dir }}/steps/wsclean_predict.cwl
+    in:
+      - id: region_file
+        source: make_region_file/region_file
+      - id: msin
+        source: timechunk_filename
+      - id: model
+        source: draw_model/model_images
+    out:
+      - id: msout
+{% endif %}
+# end use_wsclean_predict 
 
 {% if generate_screens %}
 # start generate_screens

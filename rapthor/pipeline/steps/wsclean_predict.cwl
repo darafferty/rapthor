@@ -22,7 +22,7 @@ inputs:
     label: Input MS directory name
     doc: |
       The name of the input MS directory.
-    type: Directory
+    type: Directory[]
     inputBinding:
       prefix: --msin
 
@@ -30,7 +30,7 @@ inputs:
     label: Filename of model FITS image
     doc: |
       The filename of the input model FITS image.
-    type: File
+    type: File[]
     inputBinding:
       prefix: --model
 
@@ -43,7 +43,7 @@ outputs:
     type: Directory
     outputBinding:
       loadContents: true
-      glob: '$(inputs.msin).wsclean_predict.json'
+      glob: '$(inputs.msin[0]).wsclean_predict.json'
       outputEval: '$(JSON.parse(self[0].contents).msout)'
 
 hints:

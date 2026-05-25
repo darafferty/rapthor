@@ -128,31 +128,38 @@ def main():
     """
     descriptiontext = "Predict model data using WSClean.\n"
     parser = ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
-    parser.add_argument("--msin", help="Input/Output measurement set", type=str, default="")
+    parser.add_argument("--msin", help="Input/Output measurement set", nargs="+", type=str, default=[])
     parser.add_argument("--region", help="DS9 region file", type=str, default="")
-    parser.add_argument("--model", help="Model FITS image", type=str, default="")
+    parser.add_argument("--model", help="Model FITS image", nargs="+", type=str, default=[])
     parser.add_argument("--storage_manager", help="Storage manager", type=str, default="default")
     parser.add_argument(
         "--cleanup", action=argparse.BooleanOptionalAction, help="Remove exra columns"
     )
+    import sys
+    print(sys.argv)
     args = parser.parse_args()
+    print(f'Args ')
+    print(f'{args.msin}')
+    print(f'{args.region}')
+    print(f'{args.model}')
 
     # Check pre-conditions
-    if not os.path.exists(args.msin):
+    if not (len(args.msin) > 0 and os.path.exists(args.msin[0])):
         raise ValueError(f"Input measurement set {args.msin!r} does not exist")
     if not os.path.exists(args.region):
         raise ValueError(f"DS9 region file {args.region!r} does not exist")
     if not args.cleanup:
-        if not os.path.exists(args.model):
+        if not (len(args.model) > 0 and os.path.exists(args.model[0])):
             raise ValueError(f"Model image {args.model!r} does not exist")
 
     # if msin is read only, create a copy of msin to work with,
     # return this as output
-    msname = args.msin
+    msname = args.msin[0]
     if not args.cleanup:
-        msname = make_writable(args.msin)
+        msname = make_writable(args.msin[0])
         out_dict = {"msout": msname}
-        out_file = f"{args.msin}.wsclean_predict.json"
+        out_file = f"{args.msin[0]}.wsclean_predict.json"
+        print(f'Saving JSON {out_file}')
         with open(out_file, "w") as fp:
             json.dump(out_dict, fp)
 
