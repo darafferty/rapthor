@@ -143,10 +143,6 @@ def main():
 
     print(sys.argv)
     args = parser.parse_args()
-    print(f"Args ")
-    print(f"{args.msin}")
-    print(f"{args.region}")
-    print(f"{args.model}")
 
     # Check pre-conditions
     if not (len(args.msin) > 0 and os.path.exists(args.msin[0])):
@@ -161,7 +157,6 @@ def main():
     # return this as output
     msnames = args.msin
     out_dict = {"msout": msnames}
-    print(f"Saving JSON")
     print(f"CWL_JSON:{json.dumps(out_dict)}")
 
     if args.cleanup:
