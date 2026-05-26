@@ -10,7 +10,6 @@ requirements:
   InlineJavascriptRequirement: {}
 
 arguments:
-  - -no-update-model-required
   - -local-rms
   - -join-channels
   - -apply-facet-beam

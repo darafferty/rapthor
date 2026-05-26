@@ -32,7 +32,6 @@ requirements:
     processes: $(inputs.nnodes)
 
 arguments:
-  - -no-update-model-required
   - -local-rms
   - -join-channels
   - valueFrom: 'idg'
