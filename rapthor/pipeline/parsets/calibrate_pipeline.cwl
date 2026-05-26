@@ -780,7 +780,11 @@ steps:
         source: max_threads
     out:
       - id: model_images
+{% endif %}
+# end use_image_based_predict or use_wsclean_predict or generate_screens
 
+
+{% if use_image_based_predict or generate_screens %}
   - id: make_region_file
     label: Make a ds9 region file
     doc: |
@@ -804,9 +808,32 @@ steps:
     out:
       - id: region_file
 {% endif %}
-# end use_image_based_predict or use_wsclean_predict or generate_screens
+# end use_image_based_predict or generate_screens
 
 {% if use_wsclean_predict %}
+  - id: make_region_file
+    label: Make a ds9 region file
+    doc: |
+      This step makes a ds9 region file for image-based predict.
+    run: {{ rapthor_pipeline_dir }}/steps/make_region_file.cwl
+    in:
+      - id: skymodel
+        source: calibration_skymodel_file
+      - id: ra_mid
+        source: ra_mid
+      - id: dec_mid
+        source: dec_mid
+      - id: width_ra
+        source: facet_region_width_ra
+      - id: width_dec
+        source: facet_region_width_dec
+      - id: outfile
+        source: facet_region_file
+      - id: enclose_names
+        valueFrom: 'True'
+    out:
+      - id: region_file
+
   - id: wsclean_predict 
     label: Predict using WSClean
     doc: |
