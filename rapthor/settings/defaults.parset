@@ -205,11 +205,12 @@ filter_skymodel = True
 source_finder = bdsf
 save_filtered_model_image = False
 
-# Save visibilities used for imaging (default = False). If True, the imaging MS
-# files will be saved, with the the direction-independent full-Jones solutions,
-# if available, applied. Note, however, that the direction-dependent solutions
-# will not be applied unless dde_method = "single", in which case the solutions
-# closest to the image centers are used.
+# Save visibilities used for imaging (default = False). If True, the imaging MS files will be saved
+# for the final imaging step, with the the direction-independent full-Jones solutions, if
+# available, applied. Note, however, that the direction-dependent solutions will not be applied
+# unless dde_method = "single", in which case the solutions closest to the image centers are used.
+# The residual visibilities, in the sense data - corrupted model, can also be saved for the final
+# imaging step.
 save_visibilities = False
 save_residual_visibilities = False
 

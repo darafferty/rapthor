@@ -498,6 +498,13 @@ The available options are described below under their respective sections.
         not be applied unless :term:`dde_method` = ``single``, in which case the solutions
         closest to the image centers are used.
 
+    save_residual_visibilities
+        Save the residual visibilities used for the final imaging step (default = ``False``). If
+        ``True``, MS files with the residual visibilities, calculated as data - corrupted model,
+        will be saved in the final cycle. Direction-indepedent effects, if any, are applied to
+        the data (direction-dependent effects are not, but they are used to corrupt the model
+        data).
+
     save_image_cube
         Save frequency cube(s) for the given Stokes parameters (default = ``False``).
         If ``True``, a cube is constructed from the channel images made during the
