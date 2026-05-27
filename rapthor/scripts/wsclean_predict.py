@@ -8,7 +8,6 @@ from argparse import ArgumentParser, RawTextHelpFormatter
 import os
 import stat
 import shutil
-import tempfile
 import uuid
 import json
 import subprocess
