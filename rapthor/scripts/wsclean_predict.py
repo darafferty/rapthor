@@ -78,23 +78,27 @@ def remove_columns_from_ms(msfile, ds9_region_file):
     tt.close()
 
 
-def predict(msfile, ds9_region_file, model_images, storage_manager):
+def predict(msfiles, ds9_region_file, model_images, storage_manager):
     """
     Predict model image to msfile
 
     Parameters
     ----------
-    msfile : List: MS names, output will be written to separate columns
+    msfiles : List: MS names, output will be written to separate columns
     ds9_region_file: DS9 region file, specifying facet regions and names
     Note: names in region file should be with {}, like {Patch_1}, After
     parsing the {} will be dropped
     model_images: List: FITS images to use as model
     """
-
+    # work with only first model image (for now)
+    # model images can have arbitrary names,
+    # make a symlink in same dir with workable name
+    model_image = model_images[0]
+    tmpdir = os.path.dirname(model_image)
+    model_image = tmpdir + "/predict-model.fits"
+    os.symlink(model_images[0], model_image)
     # remove '-model.fits' from image name
-    model = []
-    for model_image in model_images:
-        model.append(model_image.replace("term-0.fits", ""))
+    model = model_image.replace("-model.fits", "")
 
     # extract region names
     facets = read_ds9_region_file(ds9_region_file)
@@ -115,10 +119,10 @@ def predict(msfile, ds9_region_file, model_images, storage_manager):
             "-select-facets",
             str(facet),
             "-name",
-            str(model[0]),
+            str(model),
             "-model-storage-manager",
             str(storage_manager),
-            str(msfile[0]),
+            *[str(msfilename) for msfilename in msfiles],
         ]
         try:
             subprocess.run(cmd, check=True).returncode
@@ -180,7 +184,7 @@ def main():
         msnames.append(make_writable(msname))
 
     out_dict = {"msout": msnames}
-    print(f"CWL_JSON:{json.dumps(out_dict)}")
+    print(f"\nCWL_JSON:{json.dumps(out_dict)}\n")
 
     if args.cleanup:
         return remove_columns_from_ms(msnames, args.region)
