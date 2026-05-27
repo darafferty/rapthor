@@ -1,394 +1,559 @@
-# Calibration Strategy Implementation Plan
+# Rapthor Prefect and Dask Migration Plan
 
-This plan tracks the remaining work needed to make the calibration strategy in
-`CALIBRATION_STRATEGY.md` match the code and keep the unit, CWL, and integration
-tests green.
+This document outlines a staged plan for migrating Rapthor from Toil/CWL-based
+operation execution to pure Python orchestration using Prefect and Dask. It is
+based on a review of this repository, the prototype in
+`../ska-sdp-rapthor-prefect-prototype`, and the Prefect-based pipeline in
+`../ska-sdp-cimg`.
 
-## Current State
+## Goals
 
-- The scheduler preserves the order of `calibration_strategy` keys and runs DI
-  prediction before DI calibration. Process-level unit coverage now locks this
-  in for DI-only, DD-only, DI-then-DD, and DD-then-DI strategy orderings.
-- Focused `tests/operations/test_calibrate.py` coverage now passes for DD and DI
-  operation initialization, parameter setup, planned finalization, BDA/IBP cases,
-  and solution-combine mode.
-- DI calibration operation naming now has focused unit coverage for
-  `dd -> calibrate` and `di -> calibrate_di`, and process-level ordering tests
-  now use the same DI/DD operation contract. DI integration expectations now use
-  `calibrate_di_<cycle>` log directories and the shared `ddecal_solve.cwl` step.
-- Calibrate operation input generation now has a solve planner that maps DD and
-  DI strategy solve lists to DP3 solve slots, modes, output names, collection
-  names, and solution intervals while preserving legacy defaults when no
-  explicit `calibration_strategy` is present.
-- DI calibration input generation can now represent fast phase, medium phase,
-  slow gains, and full-Jones solve lists with DI-specific output filenames. DI
-  finalize handling now copies planned scalar products and full-Jones products
-  into stable solution paths and scans the active DI solution through field
-  state.
-- DD calibration input generation and final product handling can now represent
-  custom DD solve lists, including the single-slot `slow_gains` case. Legacy DD
-  default finalization remains compatible with the existing fast-only and
-  slow-gain product layout.
-- Explicit DD `slow_gains` input generation no longer requests a nonexistent
-  `slow_smoothnessreffrequency`; slow solve slots use a neutral per-timechunk
-  reference list while fast and medium solves keep their configured smoothness
-  reference frequencies.
-- DD calibration can now pre-apply available DI scalar and full-Jones solutions
-  before DD solves. DD prediction now prefers the stable DD scalar product when
-  preparing DI inputs after a DD branch.
-- Imaging now builds applycal steps only from solution products that are actually
-  present in field state, so initial imaging and normalization imaging can run
-  without a calibration h5parm. Mixed DI/DD scalar products are selected by
-  source, with DD scalar products preferred for the shared imaging h5parm input.
-- DD facet imaging now passes the DD h5parm to WSClean facet correction without
-  also pre-applying DD scalar solutions in the DP3 prepare-imaging step.
-- H5parm combination now handles singleton and added axes without dropping dtype
-  or indexing beyond the input shape, fixing the scalar phase plus diagonal slow
-  gain combination used by legacy DD slow-gain calibration.
-- `filter_skymodel.py` now catches the PyBDSF all-blank-image RuntimeError and
-  writes valid empty sky-model, catalog, RMS, and diagnostics outputs, matching
-  the wrapper's intended no-detections behavior.
-- The flexible solve planner now keeps solve-type metadata in one place instead
-  of rebuilding field-prefix, mode, and interval-key maps for every solve slot.
-- Imaging scalar h5parm selection and shared-facet input selection are now
-  factored into helpers, making the DD-facet/no-preapply path easier to follow
-  without changing the existing `shared_facet_rw` user-facing behavior.
-- Predict h5parm selection now uses a single branch that prefers DD solutions,
-  ignores DI-only h5parms for prediction preapply, and falls back to the legacy
-  generic h5parm when no split DI/DD state exists.
-- DD prediction no longer treats DI-only scalar products as DD sector h5parms;
-  this prevents DI scalar solutions from being applied with DD facet directions
-  that are not present in the DI h5parm.
-- DI solve workflows now leave DDECal `solve.directions` unset, rather than
-  passing an empty direction list, and the shared calibrate workflow has a
-  no-solve4 slow-gain combine branch for explicit DI fast+medium+slow plans.
-- Full-Jones-only and DI-only imaging now avoid WSClean facet mode unless a DD
-  scalar h5parm is available. DI phase plus slow-gain plans apply the stable DI
-  phase component during imaging and keep the DI slow-gain product finalized
-  separately, avoiding the blank-image failure seen in the focused integration
-  run.
-- DD integration is now green for the focused file, including explicit fast plus
-  medium phase, explicit slow-only gains, and legacy fast plus medium plus slow
-  gains.
-- Serial WSClean 3.7 aborts when `shared_facet_rw=True` enables
-  `-shared-facet-reads` or `-shared-facet-writes` in
-  `tests/integration/test_shared_facet_rw.py`. The same preserved WSClean inputs
-  complete when those shared-facet flags are absent. This is being treated as an
-  external WSClean issue, so the serial `shared_facet_rw=True` integration case
-  is marked expected-failing while Rapthor keeps its existing shared-facet
-  behavior.
-- Calibrate CWL template validation is no longer the focused blocker. The DD and
-  DI calibrate workflow matrix passes locally with `cwltool --validate`.
-- The older broader image-workflow CWL failures have not reproduced locally. The
-  full image-workflow matrix now passes with `cwltool --validate`.
+- Replace CWL workflow templates and Toil/CWL runner execution with Python
+  flows and tasks.
+- Preserve Rapthor's science-facing behaviour, parset contract, output
+  locations, restart semantics, and operation ordering during the migration.
+- Use Prefect for workflow orchestration, observability, retries, and failure
+  reporting.
+- Use Dask for local and multi-node task execution, especially operation-level
+  scatter over observations, sectors, image types, and calibration chunks.
+- Keep migration incremental so each operation can be ported, tested, and
+  compared against the current CWL backend before removing CWL.
 
-## Latest Pytest Snapshot
+## Non-Goals For The First Migration
 
-Completed local checks after the CWL, operation, solve-planner, DI/DD
-solution-flow, DD integration, and all-integration review fixes:
+- Rewriting the scientific algorithms implemented by DP3, WSClean, EveryBeam,
+  IDG, LoSoTo, PyBDSF, or Rapthor scripts.
+- Replacing external command-line tools with native Python implementations.
+- Changing user-facing strategy semantics or parset parameter names unless
+  required for the execution backend and documented with compatibility handling.
+- Removing CWL immediately. CWL should remain as the reference backend until the
+  Prefect backend has parity for the supported operation set.
 
-- `python3 -m py_compile rapthor/operations/calibrate.py rapthor/operations/image.py rapthor/operations/predict.py tests/operations/test_calibrate.py tests/operations/test_image.py tests/operations/test_predict.py tests/integration/test_di_calibration.py`:
-  passed.
-- `python3 -m pytest tests/operations/test_calibrate.py tests/operations/test_image.py tests/operations/test_predict.py -q`:
-  `178 passed, 1 warning`.
-- `python3 -m pytest tests/lib/test_cwl.py -k "calibrate" -q`:
-  `18 passed, 431 deselected`.
-- `python3 -m pytest tests/test_process.py tests/lib/test_field.py tests/lib/test_strategy.py -q`:
-  `96 passed, 1 warning`.
-- `python3 -m pytest tests/integration/test_di_calibration.py -q`:
-  `7 passed`.
-- `python3 -m py_compile rapthor/scripts/filter_skymodel.py tests/scripts/test_filter_skymodel.py`:
-  passed.
-- `python3 -m pytest tests/scripts/test_filter_skymodel.py tests/scripts/test_combine_h5parms.py tests/operations/test_calibrate.py tests/operations/test_image.py -q`:
-  `149 passed, 1 warning`.
-- `python3 -m py_compile rapthor/operations/image.py rapthor/operations/predict.py rapthor/operations/calibrate.py tests/operations/test_image.py tests/operations/test_predict.py tests/operations/test_calibrate.py tests/integration/test_shared_facet_rw.py`:
-  passed.
-- `python3 -m pytest tests/operations/test_image.py tests/operations/test_predict.py tests/operations/test_calibrate.py -q`:
-  `180 passed, 1 warning`.
-- `python3 -m pytest tests/integration/test_shared_facet_rw.py -q`:
-  `1 passed, 1 xfailed` for the serial WSClean shared-facet crash.
-- `python3 -m pytest tests/lib/test_cwl.py -k "calibrate" -q`:
-  `18 passed, 431 deselected`.
-- `python3 -m pytest tests/integration/test_dd_calibration.py -q`:
-  `3 passed`.
-- `python3 -m pytest tests/integration -q`:
-  `25 passed, 1 xfailed`.
-- `python3 -m pytest tests/lib/test_cwl.py -k "image_workflow" -q`:
-  `385 passed, 64 deselected`.
-- `python3 -m pytest -m "not integration" tests -q`:
-  `1351 passed, 1 skipped, 25 deselected, 2 xfailed, 26 warnings`.
+## Current Architecture Summary
 
-Resolved focused failures:
+Rapthor already has Python orchestration at the top level:
 
-- Added the missing screen workflow `solint_solve1_timestep` input and moved the
-  Jinja branch boundary that created duplicate step keys.
-- Removed the stale `model_data_column` input and aligned `Calibrate` input keys
-  with the shared `calibrate_pipeline.cwl` input IDs.
-- Populated the shared-template DI placeholders needed for validation while DI
-  still uses the shared calibrate workflow.
-- Removed duplicate non-screen `combined_solutions` outputs, fixed the duplicate
-  `adjust_h5parm_sources` step IDs, and corrected the `step2`/`solve2` condition
-  typo.
-- Split DI/DD scalar solution selection so DD prediction ignores DI-only h5parms
-  and imaging only enables facet mode when a DD scalar h5parm is available.
-- Added a nullable `solve_directions` workflow input so DI DDECal runs do not
-  receive `solve1.directions=[]`.
-- Added a no-solve4 slow-gain combination path for explicit fast+medium+slow
-  solve plans, and kept the legacy solve4 branch intact for default DD slow-gain
-  post-processing.
-- Adjusted DI phase plus slow-gain imaging/DD preapply to skip the destructive
-  DI slow-gain amplitude application while preserving the finalized slow-gain
-  product for inspection and future application paths.
-- Avoided the explicit DD slow-only `slow_smoothnessreffrequency` lookup while
-  keeping fast and medium smoothness reference behavior unchanged.
-- Corrected DD integration expectations to the intended behavior: DP3 solve
-  intervals are timesteps, so the 600 s slow-gain strategy interval with 10 s
-  samples expects `solint=60`, and legacy `do_slowgain_solve=True` still includes
-  the second medium phase solve4 branch.
-- Fixed scalar-phase plus diagonal-slow-gain h5parm combination for singleton
-  axes.
-- Kept DD facet corrections in WSClean facet imaging while avoiding duplicate DD
-  scalar preapply in DP3 prepare-imaging.
-- Added the all-blank-image `filter_skymodel.py` fallback so required CWL outputs
-  are still produced when PyBDSF reports no usable pixels.
-- Extracted solve metadata constants from `Calibrate._build_solve_slot()` so the
-  strategy-to-DP3-slot mapping has one source of truth for field prefixes,
-  DDECal modes, and solution interval keys.
-- Extracted image scalar h5parm and shared-facet selection helpers while keeping
-  the existing `shared_facet_rw=True` behavior intact.
-- Removed the unsupported `save_filtered_model_image` input from the
-  `filter_skymodel.cwl` step wiring in `image_sector_pipeline.cwl`; the option is
-  still used by the separate `make_skymodel_image` step.
-- Marked the serial `shared_facet_rw=True` integration parameter as xfail because
-  the failure is reproduced inside WSClean 3.7 with either shared-facet flag.
+- `rapthor/process.py` reads the parset, creates a `Field`, chooses the
+  strategy, chunks observations, and runs operation objects in science order.
+- Operation classes under `rapthor/operations/` collect parameters from
+  `Field`, `Sector`, and `Observation`, render Jinja CWL workflow templates,
+  execute the selected CWL runner, parse CWL-shaped outputs, then mutate the
+  shared `Field` in `finalize()`.
+- CWL-specific code is concentrated in:
+  - `rapthor/lib/operation.py`
+  - `rapthor/lib/cwl.py`
+  - `rapthor/lib/cwlrunner.py`
+  - `rapthor/pipeline/parsets/**`
+  - `rapthor/pipeline/steps/**`
+- The strongest migration seam is the operation contract:
+  `set_input_parameters() -> execute backend -> outputs -> finalize()`.
 
-External integration issue from the latest full run:
+The initial migration should keep `process.py` and the operation finalizers
+mostly stable while swapping the execution engine under each operation.
 
-- `shared_facet_rw=True` in serial facet imaging passes `-shared-facet-reads` and
-  `-shared-facet-writes` to WSClean 3.7. WSClean aborts with
-  `Invalid task order encountered in ThreadedScheduler::TryStealTask` in the
-  integration workflow. Manual reproduction with the preserved inputs showed
-  that either shared-facet flag can abort serial WSClean, while the same command
-  without those flags exits successfully. The serial `shared_facet_rw=True`
-  parameter is therefore marked xfail until WSClean is fixed.
+## Lessons From The Prefect Prototype
 
-Reviewed `ci.log` as broader context; the hard image-workflow errors from that
-older log no longer reproduce in the local focused matrix:
+The prototype demonstrates several useful patterns:
 
-- Repeated image workflow validation failures are present in
-  `tests/lib/test_cwl.py::TestImageWorkflow`.
-- The recurring image workflow causes are an unsupported
-  `save_filtered_model_image` input passed to `filter_skymodel.cwl` and an
-  incompatible `output_image` source wired into the `skymodel_image_fits` sink
-  through `merge_nested` plus `pickValue: all_non_null`.
+- Use `@flow` for top-level and major-cycle orchestration.
+- Use `@task` for command-line work such as DP3 and WSClean.
+- Use `prefect_shell.ShellOperation` for streamed command execution.
+- Use `prefect_dask.DaskTaskRunner` locally or connect to an externally started
+  Dask scheduler for Slurm runs.
+- For multi-node Slurm, allocate nodes once, start a Dask scheduler and workers
+  inside the allocation, export `DASK_SCHEDULER`, and let Prefect submit tasks
+  to that cluster.
 
-## Target Behaviour
+The prototype is intentionally small and should not be copied verbatim for
+Rapthor's command construction. Rapthor should build commands from existing
+operation inputs and CWL step definitions, then test those builders directly.
 
-Implement the four branches from `CALIBRATION_STRATEGY.md`:
+## Lessons From ska-sdp-cimg
 
-1. DI only:
-   - `Predict("di")`
-   - `Calibrate("di")`
-   - apply DI solutions during imaging
+The CIMG repository provides the cleaner production pattern:
 
-2. DD only:
-   - `Calibrate("dd")`
-   - pass DD solutions and facet regions to imaging
+- Use Pydantic models to make runtime configuration explicit.
+- Keep command builders as ordinary pure Python functions.
+- Wrap command builders in small Prefect tasks.
+- Mock `prefect_shell.ShellOperation.run` in unit tests.
+- Use `prefect.testing.utilities.prefect_test_harness` for flow tests.
+- Keep integration tests separate and marked.
+- Provide Slurm scripts for both simple production execution and development
+  runs with a Prefect UI.
 
-3. DI then DD:
-   - `Predict("di")`
-   - `Calibrate("di")`
-   - apply DI solutions before DD calibration
-   - `Calibrate("dd")`
-   - apply DD plus DI solutions during imaging
+Rapthor should borrow this structure, but retain its existing parset and domain
+model rather than replacing them up front.
 
-4. DD then DI:
-   - `Calibrate("dd")`
-   - use DD solutions and facet regions during DI prediction
-   - `Predict("di")`
-   - `Calibrate("di")`
-   - apply DD plus DI solutions during imaging
+## Target Architecture
 
-## Implementation Tasks
+Introduce a new execution layer, for example:
 
-1. Close the operation naming contract. **Complete for unit/process and updated
-  integration expectations.**
-   - Make DI calibration use a distinct `calibrate_di_<cycle>` operation name,
-     working directory, log directory, solutions directory, and `.done` marker.
-   - Keep DD calibration as `calibrate_<cycle>`.
-   - Process-level scheduling now has focused coverage for DI-only, DD-only,
-     DI-then-DD, and DD-then-DI ordering.
-   - Integration log expectations now use the same naming contract that the
-     focused `Calibrate` unit tests expect.
-
-2. Add a calibration solve planner. **Complete for operation input planning.**
-   - Convert each mode's solve list into DP3 solve slots, modes, output names,
-     collection names, solution intervals, and post-processing steps.
-   - Support `fast_phase`, `medium_phase`, `slow_gains`, and `full_jones`.
-   - Remove behavioural dependence on `do_slowgain_solve` where an explicit
-     `calibration_strategy` is present.
-   - Preserve user-specified mode order and solve order.
-   - Planner coverage now locks legacy DD defaults, explicit DD ordering, DI
-     output suffixes, and explicit DD/DI input parameter generation.
-   - Remaining post-processing and final product behavior is tracked under the
-     DI/DD generalization tasks below.
-
-3. Generalize DI calibration. **Complete for input generation and focused
-  finalize coverage.**
-   - Support DI fast phase, medium phase, slow gains, and full Jones from the
-     strategy solve list.
-   - Generate DI-specific output filenames such as `fast_phase_di_*.h5parm`,
-     `medium1_phase_di_*.h5parm`, and `slow_gains_di_*.h5parm`.
-   - Finalize DI products into stable solution paths and scan them into field
-     state.
-   - Scalar DI finalize coverage now verifies `di-solutions.h5`,
-     `di-solutions-fast-phase.h5`, `di-solutions-medium1-phase.h5`, and
-     `di-solutions-slow-gain.h5` copying.
-   - Mixed scalar plus full-Jones DI finalize coverage now verifies
-     `fulljones-solutions.h5` alongside the scalar products.
-
-4. Generalize DD calibration. **Complete for focused input generation and
-  finalization coverage and focused DD integration.**
-   - Support custom DD solve lists instead of always assuming fast plus medium
-     and optional slow gain.
-   - Ensure DD-only `slow_gains` maps to the expected single solve slot and
-     output names.
-   - Finalize DD products from the solve plan, including explicit single-slot
-     `slow_gains`, while preserving legacy default product copying.
-   - Preserve existing legacy behaviour when no explicit `calibration_strategy`
-     is provided.
-   - Do not request `slow_smoothnessreffrequency`; only fast and medium solve
-     slots have configured smoothness reference frequencies.
-   - Keep legacy slow-gain expansion with solve4 intact for default
-     `do_slowgain_solve=True`, while explicit solve lists avoid legacy solve4
-     unless requested by the planner.
-
-5. Wire solution application between branches. **Complete for focused unit and
-   integration-log expectations.**
-   - For DI then DD, pass DI applycal steps and DI solution files into the DD
-     calibration workflow before DD solves.
-   - For DD then DI, keep applying DD solutions during `Predict("di")`.
-   - Imaging now builds applycal steps from actual available solution products,
-     not just strategy text.
-   - DI phase plus slow-gain plans apply the stable scalar phase component during
-     imaging/DD preapply and retain the DI slow-gain product separately; this
-     avoids the real-workflow blank-image failure from applying the DI amplitude
-     component with the current shared prepare-imaging applycal path.
-   - DD facet imaging passes DD scalar h5parms to WSClean facet correction but
-     does not preapply those same DD scalar solutions in DP3 prepare-imaging.
-   - Mixed-order integration coverage now asserts DI-before-DD operation order,
-     DD-before-DI operation order, DD pre-application of DI full-Jones solutions,
-     and DI prediction pre-application of DD scalar solutions.
-
-6. Fix DD calibrate CWL validation failures. **Complete for the focused matrix.**
-   - Align Python input keys with `calibrate_pipeline.cwl` input IDs.
-   - Ensure every generated workflow output is unique and has a `type`; repair
-     the duplicate/dangling `combined_solutions` output produced when
-     `generate_screens=False`.
-   - For `generate_screens=True`, make all screen-generation solve, collect,
-     combine, process, and adjust-source steps reference declared inputs or real
-     step outputs. In particular, repair references to solve-slot solints,
-     collected and combined h5parm names, `dp3_steps`, calibrator names/fluxes,
-     normalization limits, phase center coordinates, and `solution_combine_mode`.
-   - Reconcile shared `solve/output_h5parm*` references with the split solve step
-     IDs such as `solve_fast_phases_only` and `solve_fast_phases_slow_gains`.
-   - Fix duplicate `adjust_h5parm_sources` step IDs.
-   - Fix the `step2`/`solve2` typo in the medium-phase combine condition.
-   - Keep all combinations of `generate_screens`, `use_image_based_predict`,
-     `do_slowgain_solve`, and `max_cores` valid under `cwltool --validate`.
-
-7. Fix DI calibrate CWL validation failures. **Complete for the shared-template
-  validation matrix; solve-list generalization remains in tasks 2 and 3.**
-   - Decide whether DI uses a separate `calibrate_di_pipeline.cwl` or the shared
-     `calibrate_pipeline.cwl`, then make tests and log expectations match.
-   - Stop passing unsupported `correctfreqsmearing` and `correcttimesmearing`
-     inputs to `ddecal_solve.cwl`, or add those inputs to the step definition if
-     they are truly required.
-   - Match `solve*_solutions_per_direction` to the nested array shape expected by
-     `ddecal_solve.cwl`.
-   - Tighten optional array and nullable types for DI solve outputs, BDA inputs,
-     smoothness reference frequencies, and `max_threads` so generated workflows
-     validate cleanly for both `max_cores=None` and `max_cores=8`.
-
-8. Fix image workflow CWL validation failures from the broader log. **Verified
-  locally.**
-   - Align the image subpipeline with `filter_skymodel.cwl`; the generated
-     `save_filtered_model_image` input is no longer passed to that step.
-   - Repair the `output_image` to `skymodel_image_fits` wiring so the source type,
-     `linkMerge`, and `pickValue` match the sink type.
-   - The local `image_workflow` matrix passes with `385 passed, 64 deselected`.
-   - Review nearby image workflow warnings for Q/U/V channel arrays, cube output
-     names, optional masks, offsets, and diagnostic plots after the hard errors
-     are fixed.
-   - The stale `save_filtered_model_image` input has been removed from the
-     `filter_skymodel.cwl` step wiring. The setting remains wired to
-     `make_skymodel_image.cwl`, where it is part of the declared contract.
-   - `filter_skymodel.py` now writes valid empty outputs for all-blank images, so
-     no-detection image-filtering runs satisfy the CWL output contract.
-
-9. Update tests. **Complete for focused and updated integration expectations.**
-    - Focused unit tests for the solve planner and DI scalar finalize handling
-      are now present.
-    - Update `test_calibrate.py` for DI/DD operation names and CWL input IDs.
-    - Keep the existing `test_calibrate_workflow` matrix as regression coverage
-      for both screen and non-screen DD workflow generation.
-    - Keep `test_calibrate_di_workflow` validating both `max_cores` branches.
-    - Add or update image workflow CWL regression cases for the
-      `filter_skymodel.cwl` input contract and `skymodel_image_fits` wiring.
-    - Process-level tests for DI-only, DD-only, DI-then-DD, and DD-then-DI
-      operation ordering are now present.
-    - Integration tests now inspect the correct log directories and CWL step
-      names.
-    - Focused DI integration now passes for fast phase, slow-only strategy
-      metadata, fast+medium, fast+medium+slow, full-Jones-only, DI-then-DD, and
-      DD-then-DI cases.
-    - Focused DD integration now passes for fast+medium, slow-only, and legacy
-      fast+medium+slow-gain cases.
-    - DD tests now assert intended behavior for slow-gain solints in timesteps
-      and for the legacy solve4 branch.
-    - Explicit mixed-order integration coverage is now present for:
-      - `{"di": [...], "dd": [...]}`
-      - `{"dd": [...], "di": [...]}`
-
-10. Track the shared-facet WSClean issue. **External xfail.**
-   - Keep Rapthor's existing `shared_facet_rw=True` behavior: facet workflows
-     still pass `-shared-facet-reads` and `-shared-facet-writes` through to
-     WSClean when the user enables the option.
-   - The serial integration case is marked xfail because WSClean 3.7 aborts when
-     either shared-facet flag is present. This is not treated as a Rapthor
-     calibration-strategy blocker.
-   - If WSClean fixes the serial shared-facet crash, remove the xfail marker and
-     restore the end-to-end integration assertion for `shared_facet_rw=True`.
-
-11. Keep the test environment reproducible.
-   - Local `pytest` is now available and produced the focused results above.
-   - Existing `.tox` environments may still contain stale absolute paths; recreate
-     tox before relying on full-suite or lint results.
-   - Editable installs must be refreshed after changing console scripts such as
-     `combine_h5parms.py` or `filter_skymodel.py`, since integration workflows
-     execute the installed scripts from `/usr/local/bin`.
-   - Note the local focused log used `cwltool 3.1.20260108082145`, while the
-     broader CI-style log used `cwltool 3.2.20260413085819`; validate with the CI
-     version if validator behavior differs.
-
-## Verification Sequence
-
-Run the checks in increasing scope:
-
-```bash
-python3 -m pytest tests/operations/test_calibrate.py tests/lib/test_cwl.py -k "calibrate"
-python3 -m pytest tests/lib/test_cwl.py -k "image_workflow"
-python3 -m pytest tests/test_process.py tests/lib/test_field.py tests/lib/test_strategy.py
-python3 -m pytest tests/operations/test_calibrate.py tests/operations/test_predict.py tests/operations/test_image.py
-python3 -m pytest tests/scripts/test_filter_skymodel.py tests/scripts/test_combine_h5parms.py
-python3 -m pytest tests/integration/test_dd_calibration.py
-python3 -m pytest tests/integration/test_shared_facet_rw.py
-python3 -m pytest tests/lib/test_cwl.py
-python3 -m pytest -m "integration" tests/integration
-tox -e lint
-tox
+```text
+rapthor/execution/
+  __init__.py
+  backend.py
+  config.py
+  outputs.py
+  shell.py
+  task_runner.py
+  tasks/
+    dp3.py
+    wsclean.py
+    scripts.py
+    filesystem.py
+  flows/
+    concatenate.py
+    predict.py
+    calibrate.py
+    image.py
+    mosaic.py
 ```
 
-Focused DI and DD integration are green. The broad integration suite passes with
-one expected xfail for the serial `shared_facet_rw=True` WSClean issue, and the
-non-integration suite is green with existing skips/xfails and warnings.
+Recommended responsibilities:
+
+- `backend.py`: common `OperationBackend` interface plus `CWLBackend` and
+  `PrefectBackend`.
+- `config.py`: runtime execution settings derived from the existing parset.
+- `outputs.py`: helpers for file and directory output records. Initially these
+  can preserve the current CWL-shaped `{"class": "File", "path": ...}` and
+  `{"class": "Directory", "path": ...}` structures.
+- `shell.py`: safe command execution helpers, logging, environment handling,
+  and optional dry-run support for tests.
+- `task_runner.py`: Dask task runner construction for local and externally
+  managed Slurm clusters.
+- `tasks/`: Prefect task wrappers around command builders and file operations.
+- `flows/`: Python equivalents of current operation-level CWL DAGs.
+
+The operation classes should call a backend object rather than directly calling
+`create_cwl_runner()`. The current CWL backend can use existing code; the new
+Prefect backend can dispatch to operation-specific Python flows.
+
+## Execution Backend Configuration
+
+Add a new parset option under `[cluster]`, for example:
+
+```ini
+execution_backend = cwl
+```
+
+Allowed values during migration:
+
+- `cwl`: current behaviour using `cwl_runner = toil|cwltool|streamflow`.
+- `prefect`: new Python execution backend.
+
+Keep `cwl_runner` valid only for the `cwl` backend. This avoids overloading the
+existing option and lets users opt in operation by operation while the migration
+is in progress.
+
+Additional optional settings may be needed later:
+
+- `prefect_task_runner = local_dask|external_dask|sync`
+- `dask_scheduler = None`
+- `prefect_stream_output = True`
+- `prefect_retries = 0`
+- `prefect_log_commands = True`
+
+Prefer conservative defaults that preserve single-machine behaviour.
+
+## Restart And Output Semantics
+
+Preserve the existing operation-level restart contract:
+
+- Each operation keeps a working directory under `dir_working/pipelines/<op>`.
+- Each operation writes `.done` when completed.
+- Each operation writes `.outputs.json`.
+- On restart, a completed operation loads `.outputs.json` and skips execution.
+- Finalizers continue to copy or move products into `images`, `solutions`,
+  `skymodels`, `plots`, `regions`, and `visibilities`.
+
+Within a Prefect operation flow, retries and partial task caching can be added
+later. The first implementation should keep operation-level restart behaviour
+simple and compatible with current `modifystate` expectations.
+
+## Staged Implementation
+
+### Stage 0: Baseline And Design Guardrails
+
+- Record current non-integration and focused integration test results.
+- Identify the supported operation and feature matrix for the first Prefect
+  backend release.
+- Add a short developer document describing the backend interface and output
+  object contract.
+- Keep CWL as the reference path.
+
+Deliverables:
+
+- Baseline test snapshot.
+- Backend design notes.
+- Initial issue list for feature gaps.
+
+### Stage 1: Add Backend Abstraction
+
+- Add `execution_backend` to defaults, parset validation, docs, and example
+  parsets.
+- Introduce an `OperationBackend` interface with methods equivalent to:
+  - `setup(operation)`
+  - `run(operation) -> dict`
+  - `teardown(operation)`
+- Move current CWL execution into `CWLBackend` without changing behaviour.
+- Add a stub `PrefectBackend` that raises a clear unsupported-operation error.
+- Update `Operation.run()` to use the backend interface.
+
+Tests:
+
+- Unit tests for parset validation and default value.
+- Operation tests proving `execution_backend = cwl` still calls the existing
+  CWL runner path.
+- Tests that `execution_backend = prefect` fails clearly for unported
+  operations.
+
+### Stage 2: Shared Command And Output Primitives
+
+- Add command-builder functions for common tool classes:
+  - DP3
+  - WSClean serial
+  - WSClean MPI
+  - Rapthor Python scripts
+  - `taql`
+  - `fpack`
+- Add Prefect shell task wrappers for those builders.
+- Add output helpers that create and validate CWL-compatible output records.
+- Add task runner creation based on local Dask or external scheduler address.
+
+Tests:
+
+- Pure unit tests for command builders.
+- Shell task tests that mock `ShellOperation.run`.
+- Output helper tests for files, directories, nested lists, missing outputs, and
+  JSON serialization.
+- Flow tests using `prefect_test_harness` and mocked shell execution.
+
+### Stage 3: Port Concatenate
+
+This is the smallest operation and should be the first real backend parity
+target.
+
+- Translate `concatenate_pipeline.cwl` into a Python flow that scatters
+  `concat_ms.py` or equivalent `taql` calls over epochs.
+- Reuse `Concatenate.set_input_parameters()` and `Concatenate.finalize()`.
+- Return `concatenated_filenames` using the same output shape as CWL.
+
+Tests:
+
+- Existing `tests/operations/test_concatenate.py` should run for both backends.
+- Add command-builder tests for frequency concatenation.
+- Add a backend parity test comparing input/output shapes from CWL mock and
+  Prefect mock.
+
+### Stage 4: Port Mosaic
+
+Mosaic has manageable scatter and mostly calls Rapthor scripts.
+
+- Translate `mosaic_pipeline.cwl` and `mosaic_type_pipeline.cwl`.
+- Preserve `skip_processing` behaviour for single-sector imaging.
+- Preserve optional compression.
+- Keep output filenames identical.
+
+Tests:
+
+- Existing mosaic unit tests parameterized over backend where practical.
+- Mocked flow tests for image type scatter.
+- Integration test from image output into mosaic output using mocked imaging
+  products.
+
+### Stage 5: Port Predict
+
+Predict introduces DP3 scatter and model subtraction.
+
+- Translate `predict_di_pipeline.cwl`, `predict_pipeline.cwl`, and any
+  non-calibrating predict variant that is still active.
+- Split command construction from task submission:
+  - predict model data per sector/observation
+  - add sector models for DI prediction
+  - subtract sector models for DD prediction
+- Preserve handling of DD, DI, peeling, reweighting, and h5parm selection.
+
+Tests:
+
+- Unit tests for DI and DD command construction.
+- Tests for scatter length and output shape.
+- Field mutation tests around `Predict.finalize()`.
+- Focused integration tests with mocked DP3 and real lightweight script
+  execution where possible.
+
+### Stage 6: Port Imaging Incrementally
+
+Image is the largest migration target. Do it by feature slice rather than all
+at once.
+
+Suggested slices:
+
+1. Initial image and no-DDE Stokes I imaging.
+2. Prepare imaging data with DP3 and time concatenation.
+3. WSClean serial no-DDE imaging.
+4. Mask generation and source filtering.
+5. Facet imaging with h5parm and region file generation.
+6. Normalization imaging.
+7. Image cubes.
+8. Full-Stokes imaging.
+9. Screen/hybrid imaging.
+10. MPI WSClean.
+
+Keep `Image.set_input_parameters()` as the source of truth initially. The Python
+flow should consume `input_parms` and emit the same output keys currently parsed
+from CWL.
+
+Tests:
+
+- Command-builder tests for each WSClean mode.
+- Flow tests for each imaging slice with mocked shell commands.
+- Tests for `Image.finalize()` against Prefect output structures.
+- Existing `tests/operations/test_image.py` gradually parameterized over both
+  backends.
+- Replace CWL-specific rendered-template assertions with command-builder and
+  flow-structure assertions for the Prefect backend.
+
+### Stage 7: Port Calibration Incrementally
+
+Calibration is the other high-risk area because it includes solve planning,
+conditional branches, h5parm collection, plotting, combination, and source
+adjustment.
+
+Suggested slices:
+
+1. DI full-Jones calibration.
+2. DI scalar phase calibration.
+3. DD fast phase calibration without image-based prediction.
+4. DD medium phase and slow gains.
+5. Pre-application of DI solutions before DD solves.
+6. Image-based prediction.
+7. IDG/screen generation.
+8. Plotting and h5parm post-processing.
+
+Reuse the existing solve planner in `rapthor/operations/calibrate.py`.
+
+Tests:
+
+- Unit tests for every calibration command-builder branch.
+- Existing solve-planner tests remain backend-independent.
+- Mocked flow tests for all solve lists supported by `CALIBRATION_STRATEGY.md`.
+- Integration tests for DI-only, DD-only, DI-then-DD, and DD-then-DI using the
+  Prefect backend once command execution is available.
+
+### Stage 8: Add A Prefect Top-Level Flow
+
+After operation-level Prefect flows are working, wrap the existing process
+scheduler in a Prefect top-level flow.
+
+- Keep `process.run()` as the CLI entry point.
+- Add `rapthor/flows/process.py` or similar with a Prefect flow that mirrors
+  current `process.run()` sequencing.
+- Decide whether operation flows are subflows or tasks from the top-level flow.
+- Continue to respect selfcal convergence checks between cycles.
+
+Tests:
+
+- Mock operation classes and verify ordering through the Prefect top-level flow.
+- Use `prefect_test_harness`.
+- Keep current `tests/test_process.py` coverage backend-independent.
+
+### Stage 9: Slurm And Multi-Node Execution
+
+Start with the prototype's safer Slurm model:
+
+- Slurm allocation starts one Dask scheduler and one worker per node.
+- `DASK_SCHEDULER` is exported.
+- Rapthor uses `DaskTaskRunner(address=...)`.
+- MPI WSClean remains an explicitly controlled task so it can reserve/process
+  nodes without Dask oversubscription.
+
+Add scripts modelled after the prototype and CIMG:
+
+- Simple production Slurm script with an ephemeral Prefect server.
+- Development script that reports to a persistent Prefect server.
+- Optional benchmark monitor integration if required by the deployment
+  environment.
+
+Tests:
+
+- Unit tests for task runner selection.
+- Script lint/smoke checks where possible.
+- Manual or CI-marked integration tests on the target Slurm environment.
+
+### Stage 10: Deprecate And Remove CWL
+
+Only after Prefect backend parity is demonstrated:
+
+- Mark CWL backend deprecated for one release.
+- Stop adding new functionality to CWL templates.
+- Remove Toil, StreamFlow, and cwltool dependencies.
+- Remove `rapthor/pipeline/parsets/**` and `rapthor/pipeline/steps/**` once no
+  tests or docs depend on them.
+- Remove CWL test utilities and replace them with execution-flow tests.
+
+## Operation Migration Matrix
+
+| Operation | First target | Complexity | Notes |
+| --- | --- | --- | --- |
+| Concatenate | Stage 3 | Low | Simple scatter over epochs. Good first parity test. |
+| Mosaic | Stage 4 | Low-medium | Mostly Python scripts and file handling. |
+| Predict | Stage 5 | Medium | DP3 scatter plus DI/DD branch differences. |
+| ImageInitial | Stage 6.1 | Medium | Useful first imaging slice. |
+| ImageNormalize | Stage 6.6 | Medium-high | Depends on imaging plus normalization outputs. |
+| Image | Stage 6 | High | Largest DAG and broadest feature matrix. |
+| Calibrate DI | Stage 7.1-7.2 | High | Start with full-Jones, then scalar solves. |
+| Calibrate DD | Stage 7.3-7.8 | Very high | Most conditional solve and h5parm logic. |
+
+## Testing Migration Plan
+
+### Keep Existing Tests That Are Still Valuable
+
+- `tests/lib/test_field.py`, `tests/lib/test_strategy.py`, and most parset tests
+  should remain mostly unchanged.
+- Script tests under `tests/scripts/` should remain valuable because the same
+  scripts will be called by Prefect tasks.
+- Operation finalizer tests should remain valuable if output shapes are
+  preserved.
+
+### Add Backend-Aware Tests
+
+Where tests currently call `operation.run()`, parameterize over:
+
+- `execution_backend = cwl` for existing behaviour.
+- `execution_backend = prefect` once the operation is ported.
+
+For unported operations, assert the Prefect backend raises a clear unsupported
+error rather than silently falling back.
+
+### Replace CWL-Specific Assertions Gradually
+
+Current tests under `tests/cwl/` and CWL-rendering assertions should be replaced
+by:
+
+- Command-builder tests.
+- Flow topology tests where useful.
+- Output shape tests.
+- Scatter length tests.
+- Restart tests.
+- End-to-end operation tests with mocked shell execution.
+
+Do not delete CWL tests until the matching operation has Prefect parity.
+
+### Mocking Strategy
+
+Follow CIMG's pattern:
+
+- Mock `prefect_shell.ShellOperation.run` for most unit tests.
+- Use `prefect_test_harness` for flow tests.
+- Materialize expected output files and directories in temporary directories so
+  existing finalizers can run.
+- Keep real external command execution in integration tests only.
+
+### Integration Strategy
+
+Use markers to keep expensive or environment-sensitive tests explicit:
+
+- `integration`: real DP3/WSClean/EveryBeam/IDG/Casacore execution.
+- `internet`: tests that require downloads or catalog access.
+- Add a backend parameter only after the operation supports Prefect.
+
+Recommended focused integration sequence:
+
+1. Concatenate with small Measurement Sets.
+2. Mosaic from small mocked or prebuilt FITS products.
+3. Predict DI/DD with small test Measurement Sets.
+4. Initial image.
+5. DI calibration.
+6. DD calibration.
+7. Full selfcal process.
+8. Restart after injected failure.
+
+## Documentation Updates
+
+Update docs as each stage lands:
+
+- `README.md`: high-level statement that Prefect backend is available or
+  experimental.
+- `docs/source/running.rst`: how to run with `execution_backend = prefect`.
+- `docs/source/parset.rst`: new cluster/execution options.
+- `docs/source/structure.rst`: replace CWL architecture details with Python
+  execution layer details when ready.
+- `docs/source/operations.rst`: note backend support per operation during the
+  migration.
+- Add Slurm/Prefect UI instructions based on the prototype and CIMG scripts.
+
+## Risks And Mitigations
+
+- Risk: output naming drift breaks finalizers and downstream operations.
+  Mitigation: preserve CWL-shaped output JSON initially and add parity tests.
+
+- Risk: Prefect task retries rerun non-idempotent external commands.
+  Mitigation: default retries to zero; add idempotency checks before enabling
+  retries for specific tasks.
+
+- Risk: Dask oversubscribes nodes when DP3/WSClean also use many threads.
+  Mitigation: centralize thread and worker configuration; keep MPI WSClean as a
+  controlled special case.
+
+- Risk: Slurm behaviour differs from current Toil dynamic scheduling.
+  Mitigation: start with static allocations and an external Dask scheduler,
+  matching the prototype's tested approach.
+
+- Risk: removing CWL tests too early hides behavioural drift.
+  Mitigation: keep CWL backend as the reference until each operation has
+  backend parity tests and focused integration coverage.
+
+- Risk: command strings become hard to maintain.
+  Mitigation: use structured command builders and test them directly, following
+  the CIMG pattern.
+
+## Open Decisions
+
+- Whether Prefect operation flows should return CWL-shaped dictionaries forever
+  or only during the transition.
+- Whether to introduce Pydantic models for operation inputs immediately or after
+  the first operations are ported.
+- Whether `execution_backend = prefect` should be allowed per operation for
+  mixed-backend runs during migration.
+- How to represent task-level restart/caching without conflicting with the
+  current operation-level `.done` semantics.
+- How much of the existing CWL step metadata should be converted mechanically
+  versus re-expressed manually as Python command builders.
+
+## First Three Pull Requests
+
+### PR 1: Backend Skeleton
+
+- Add `execution_backend` parset option.
+- Add backend interface.
+- Move current CWL execution behind `CWLBackend`.
+- Add unsupported `PrefectBackend`.
+- Add tests and docs for the new option.
+
+### PR 2: Prefect Task Primitives
+
+- Add task runner construction.
+- Add shell task wrapper.
+- Add output object helpers.
+- Add basic command-builder tests.
+- Add Prefect test harness setup.
+
+### PR 3: Concatenate Prefect Backend
+
+- Implement the Concatenate Prefect flow.
+- Wire `PrefectBackend` for `Concatenate`.
+- Add parity tests against the current mocked CWL output shape.
+- Add focused operation tests and a small integration test if the environment
+  supports `taql` or `concat_ms.py`.
+
+## Success Criteria
+
+The migration is complete when:
+
+- All supported Rapthor operations run through the Prefect backend.
+- Existing non-integration tests pass without requiring CWL.
+- Focused integration tests pass for DI-only, DD-only, DI-then-DD, DD-then-DI,
+  initial sky model generation, normalization, imaging, mosaicking, and restart.
+- Slurm execution is documented and tested on the target environment.
+- Toil, StreamFlow, cwltool, and CWL package data can be removed without losing
+  supported functionality.
