@@ -159,7 +159,7 @@ inputs:
       (length = 1).
     type: string
 
-  - id: facet_region_file
+  - id: predict_facet_region_file
     label: Filename of output region file
     doc: |
       The filename of the output ds9 facet region file (length = 1).
@@ -780,11 +780,7 @@ steps:
         source: max_threads
     out:
       - id: model_images
-{% endif %}
-# end use_image_based_predict or use_wsclean_predict or generate_screens
 
-
-{% if use_image_based_predict or generate_screens %}
   - id: make_region_file
     label: Make a ds9 region file
     doc: |
@@ -805,14 +801,16 @@ steps:
         source: facet_region_file
       - id: enclose_names
         valueFrom: 'False'
+      - id: names_with_polygons
+        valueFrom: 'False'
     out:
       - id: region_file
 {% endif %}
-# end use_image_based_predict or generate_screens
+# end use_image_based_predict or use_wsclean_predict or generate_screens
 
 {% if use_wsclean_predict %}
-  - id: make_region_file
-    label: Make a ds9 region file
+  - id: make_predict_region_file
+    label: Make a ds9 region file for prediction
     doc: |
       This step makes a ds9 region file for image-based predict.
     run: {{ rapthor_pipeline_dir }}/steps/make_region_file.cwl
@@ -828,8 +826,10 @@ steps:
       - id: width_dec
         source: facet_region_width_dec
       - id: outfile
-        source: facet_region_file
+        source: predict_facet_region_file
       - id: enclose_names
+        valueFrom: 'False'
+      - id: names_with_polygons
         valueFrom: 'True'
     out:
       - id: region_file
@@ -841,7 +841,7 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_predict.cwl
     in:
       - id: region_file
-        source: make_region_file/region_file
+        source: make_predict_region_file/region_file
       - id: msin
         source: timechunk_filename
       - id: model

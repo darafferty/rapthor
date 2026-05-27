@@ -187,6 +187,8 @@ class Calibrate(Operation):
                 ),
                 "facet_region_width_dec": facet_region_width,
                 "facet_region_file": "field_facets_ds9.reg",
+                # Separate region file for wsclean_predict.cwl step
+                "predict_facet_region_file": "predict_field_facets_ds9.reg",
                 # Smoothness / regularisation constraints
                 **smoothness_dd_factors,
                 **smoothness_constraints,
@@ -350,8 +352,8 @@ class Calibrate(Operation):
             )
             dp3_steps = preprocessing_steps + common_steps
         elif self.field.use_wsclean_predict:
-            # ToDo: predict should be a separate step (not DP3)
-            preprocessing_steps = ["predict"]
+            # No predict, should be a separate step (not DP3)
+            preprocessing_steps = []
             dp3_steps = preprocessing_steps + common_steps
         else:
             dp3_steps = common_steps
