@@ -26,14 +26,35 @@ def make_writable(msfile):
     Check if msfile is writable, if not, create a writable copy
     and return it as output
     """
+
     if os.access(msfile, os.W_OK):
         return msfile
-    # get temp dir to create MS
-    tmpdir = tempfile.gettempdir()
+    # get base dir of existing MS
+    tmpdir = os.path.dirname(msfile)
     newms = tmpdir + "/" + os.path.basename(msfile) + "_" + str(uuid.uuid4())
     # copy msfile to newms
     shutil.copytree(msfile, newms, dirs_exist_ok=True)
-    os.chmod(newms, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR)
+    # change root dir +rwx
+    current_mode = os.stat(newms).st_mode
+    os.chmod(
+        newms,
+        current_mode | stat.S_IWUSR | stat.S_IWGRP | stat.S_IXUSR | stat.S_IWOTH | stat.S_IXOTH,
+    )
+
+    # Walk through the directory tree
+    for root, dirs, files in os.walk(newms):
+        # Update permissions for subdirectories
+        for d in dirs:
+            dir_p = os.path.join(root, d)
+            current_mode = os.stat(dir_p).st_mode
+            # +rwx
+            os.chmod(dir_p, current_mode | stat.S_IWUSR | stat.S_IWGRP | stat.S_IXUSR)
+        # Update permissions for files
+        for f in files:
+            file_p = os.path.join(root, f)
+            current_mode = os.stat(file_p).st_mode
+            # +rw
+            os.chmod(file_p, current_mode | stat.S_IWUSR | stat.S_IWGRP)
 
     return newms
 
@@ -74,7 +95,7 @@ def predict(msfile, ds9_region_file, model_images, storage_manager):
     # remove '-model.fits' from image name
     model = []
     for model_image in model_images:
-        model.append(model_image.replace("-model.fits", ""))
+        model.append(model_image.replace("term-0.fits", ""))
 
     # extract region names
     facets = read_ds9_region_file(ds9_region_file)
@@ -93,12 +114,12 @@ def predict(msfile, ds9_region_file, model_images, storage_manager):
             "-model-column",
             str(facet),
             "-select-facets",
-            "{" + str(facet) + "}",
+            str(facet),
             "-name",
-            str(**model),
+            str(model[0]),
             "-model-storage-manager",
             str(storage_manager),
-            str(**msfile),
+            str(msfile[0]),
         ]
         try:
             subprocess.run(cmd, check=True).returncode
@@ -155,7 +176,10 @@ def main():
 
     # if msin is read only, create a copy of msin to work with,
     # return this as output
-    msnames = args.msin
+    msnames = list()
+    for msname in args.msin:
+        msnames.append(make_writable(msname))
+
     out_dict = {"msout": msnames}
     print(f"CWL_JSON:{json.dumps(out_dict)}")
 
