@@ -61,7 +61,7 @@ outputs:
     label: Model data patch names
     doc: |
       The list of patch names for a model data column is created.
-    type: string[]
+    type: string
     outputBinding:
       loadContents: true
       glob: "msout_names.json"

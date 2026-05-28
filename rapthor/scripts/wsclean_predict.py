@@ -30,7 +30,7 @@ def make_writable(msfile):
         return msfile
     # get base dir to create files
     tmpdir = "$(runtime.tmpdir)"
-    newms = os.path.join(tmpdir , os.path.basename(msfile) + "_" + str(uuid.uuid4()))
+    newms = os.path.join(tmpdir, os.path.basename(msfile) + "_" + str(uuid.uuid4()))
     # copy msfile to newms
     shutil.copytree(msfile, newms, dirs_exist_ok=True)
     # change root dir +rwx
@@ -165,7 +165,7 @@ def main():
     )
     args = parser.parse_args()
     # Note: the output file name should match file read in CWL step
-    output_info="msout_names.json"
+    output_info = "msout_names.json"
     # Check pre-conditions
     if not (len(args.msin) > 0 and os.path.exists(args.msin[0])):
         raise ValueError(f"Input measurement set {args.msin!r} does not exist")
@@ -181,8 +181,21 @@ def main():
     for msname in args.msin:
         msnames.append(make_writable(msname))
 
-    with open(output_info,"w") as f:
-        json.dump(msnames,f)
+    facets = read_ds9_region_file(args.region)
+    facet_names = "["
+    start_facet = True
+    for facet in facets:
+        if start_facet:
+            facet_names += facet.name
+            start_facet = False
+        else:
+            facet_names += "," + facet.name
+    facet_names += "]"
+
+    out_dict = {"msout": msnames, "patches": facet_names}
+
+    with open(output_info, "w") as f:
+        json.dump(out_dict, f)
 
     if args.cleanup:
         return remove_columns_from_ms(msnames, args.region)

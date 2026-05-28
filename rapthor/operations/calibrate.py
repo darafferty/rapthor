@@ -330,7 +330,7 @@ class Calibrate(Operation):
         if (
             (bda_timebase > 0 or bda_frequencybase > 0)
             and all_regular
-            and not self.field.use_image_based_predict
+            and not (self.field.use_image_based_predict or self.field.use_wsclean_predict)
         ):
             if self.field.do_slowgain_solve:
                 common_steps = ["avg", "solve1", "solve2", "solve3", "solve4", "null"]
@@ -354,6 +354,8 @@ class Calibrate(Operation):
         elif self.field.use_wsclean_predict:
             # No predict, should be a separate step (not DP3)
             preprocessing_steps = []
+            # Averaging does not work because model data columns
+            # also need to be averaged, so remove this step
             dp3_steps = preprocessing_steps + common_steps
         else:
             dp3_steps = common_steps
