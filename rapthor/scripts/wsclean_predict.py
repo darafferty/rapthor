@@ -28,9 +28,9 @@ def make_writable(msfile):
 
     if os.access(msfile, os.W_OK):
         return msfile
-    # get base dir of existing MS
-    tmpdir = os.path.dirname(msfile)
-    newms = tmpdir + "/" + os.path.basename(msfile) + "_" + str(uuid.uuid4())
+    # get base dir to create files
+    tmpdir = "$(runtime.tmpdir)"
+    newms = os.path.join(tmpdir , os.path.basename(msfile) + "_" + str(uuid.uuid4()))
     # copy msfile to newms
     shutil.copytree(msfile, newms, dirs_exist_ok=True)
     # change root dir +rwx
@@ -163,11 +163,9 @@ def main():
     parser.add_argument(
         "--cleanup", action=argparse.BooleanOptionalAction, help="Remove exra columns"
     )
-    import sys
-
-    print(sys.argv)
     args = parser.parse_args()
-
+    # Note: the output file name should match file read in CWL step
+    output_info="msout_names.json"
     # Check pre-conditions
     if not (len(args.msin) > 0 and os.path.exists(args.msin[0])):
         raise ValueError(f"Input measurement set {args.msin!r} does not exist")
@@ -183,8 +181,8 @@ def main():
     for msname in args.msin:
         msnames.append(make_writable(msname))
 
-    out_dict = {"msout": msnames}
-    print(f"\nCWL_JSON:{json.dumps(out_dict)}\n")
+    with open(output_info,"w") as f:
+        json.dump(msnames,f)
 
     if args.cleanup:
         return remove_columns_from_ms(msnames, args.region)

@@ -34,23 +34,42 @@ inputs:
     inputBinding:
       prefix: --model
 
-stdout: raw_output.log
-
 outputs:
   - id: msout
     label: Output MS
     doc: |
-      The directory name of the output MS. The input msin is returned if it
+      The directory list of the output MS. The input msin list is returned if it
       is writable, otherwise a copy with temp name is made.
     type: Directory[]
     outputBinding:
       loadContents: true
-      glob: raw_output.log
+      glob: "msout_names.json"
       outputEval: |
-        ${
-        var match = self.contents.match(/^CWL_JSON:(.*)/m);
-        var data = JSON.parse(match[1]);
-        return data.msout;
+        ${ 
+           var name_list=JSON.parse(self[0].contents).msout;
+           var dir_list = name_list.map(function(dir_path) {
+             return {
+               "class": "Directory",
+               "location" : dir_path
+               };
+               });
+
+           return dir_list;
+        }
+
+  - id: patches
+    label: Model data patch names
+    doc: |
+      The list of patch names for a model data column is created.
+    type: string[]
+    outputBinding:
+      loadContents: true
+      glob: "msout_names.json"
+      outputEval: |
+        ${ 
+           var patch_list=JSON.parse(self[0].contents).patches;
+
+           return patch_list;
         }
 
 hints:
