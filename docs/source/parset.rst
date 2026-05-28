@@ -501,7 +501,7 @@ The available options are described below under their respective sections.
     save_residual_visibilities
         Save the residual visibilities used for the final imaging step (default = ``False``). If
         ``True``, MS files with the residual visibilities, calculated as data - corrupted model,
-        will be saved in the final cycle. Direction-indepedent effects, if any, are applied to
+        will be saved in the final cycle. Direction-independent effects, if any, are applied to
         the data (direction-dependent effects are not, but they are used to corrupt the model
         data).
 
