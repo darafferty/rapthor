@@ -2,6 +2,7 @@
 Test suite for rapthor.scripts.calculate_image_diagnostics.
 """
 
+import json
 import logging
 from unittest.mock import patch
 from zipfile import Path
@@ -24,6 +25,7 @@ from rapthor.scripts.calculate_image_diagnostics import (
     compute_facet_rms_noise,
     filter_skymodel_for_photometry,
     fits_to_makesourcedb,
+    main,
     parse_args,
 )
 
@@ -601,6 +603,96 @@ def test_calculate_image_diagnostics_parse_args(monkeypatch, allow_internet_acce
     assert args.min_number == 5
 
     assert args.allow_internet_access is allow_internet_access
+
+
+@pytest.mark.parametrize("region_file", [None, "none"])
+def test_calculate_image_diagnostics_main_writes_merged_diagnostics(
+    monkeypatch,
+    mocker,
+    tmp_path,
+    region_file,
+):
+    """Test that main() merges diagnostics and writes the output file."""
+
+    class FakeObservation:
+        timepersample = 2.0
+
+        def __init__(self, ms, starttime_mjd=None, endtime_mjd=None):
+            self.ms = ms
+            self.starttime_mjd = starttime_mjd
+            self.endtime_mjd = endtime_mjd
+
+    class FakeFITSImage:
+        def __init__(self, filename):
+            self.filename = filename
+            self.max_value = 20.0 if "true_sky" in filename else 10.0
+            self.min_value = 4.0 if "true_sky" in filename else 2.0
+            self.mean_value = 6.0 if "true_sky" in filename else 3.0
+            self.median_value = 5.5 if "true_sky" in filename else 2.5
+            self.freq = 150e6
+            self.beam = "10 arcsec"
+            self.img_data = np.full((2, 2), 8.0 if "true_sky" in filename else 4.0)
+
+    diagnostics_file = tmp_path / "input_diagnostics.json"
+    diagnostics_file.write_text('{"existing": 1}')
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("rapthor.scripts.calculate_image_diagnostics.FITSImage", FakeFITSImage)
+    monkeypatch.setattr("rapthor.scripts.calculate_image_diagnostics.Observation", FakeObservation)
+    monkeypatch.setattr(
+        "rapthor.scripts.calculate_image_diagnostics.misc.convert_mvt2mjd",
+        lambda value: 100.0,
+    )
+    monkeypatch.setattr(
+        "rapthor.scripts.calculate_image_diagnostics.misc.calc_theoretical_noise",
+        lambda obs_list, use_lotss_estimate=True: (0.123, 0.456),
+    )
+
+    photometry_result = {"photometry_metric": 1.0}
+    astrometry_result = {"astrometry_metric": 2.0}
+    photometry_mock = mocker.patch(
+        "rapthor.scripts.calculate_image_diagnostics.check_photometry",
+        return_value=photometry_result,
+    )
+    astrometry_mock = mocker.patch(
+        "rapthor.scripts.calculate_image_diagnostics.check_astrometry",
+        return_value=astrometry_result,
+    )
+
+    main(
+        "flat_noise_image.fits",
+        "flat_noise_rms_image.fits",
+        "true_sky_image.fits",
+        "true_sky_rms_image.fits",
+        "input_catalog.fits",
+        "obs.ms",
+        "2024-01-01T00:00:00",
+        "1",
+        str(diagnostics_file),
+        str(tmp_path / "output_root"),
+        facet_region_file=region_file,
+        allow_internet_access=False,
+        photometry_comparison_skymodel="photometry.sky",
+        photometry_comparison_surveys=["SURVEY"],
+        photometry_backup_survey="BACKUP",
+        astrometry_comparison_skymodel="astrometry.sky",
+        min_number=3,
+    )
+
+    photometry_mock.assert_called_once()
+    astrometry_mock.assert_called_once()
+
+    output_file = tmp_path / "output_root.image_diagnostics.json"
+    assert output_file.exists()
+
+    output_data = json.loads(output_file.read_text())
+    assert output_data["existing"] == 1
+    assert output_data["photometry_metric"] == photometry_result["photometry_metric"]
+    assert output_data["astrometry_metric"] == astrometry_result["astrometry_metric"]
+    assert output_data["theoretical_rms"] == 0.123
+    assert output_data["unflagged_data_fraction"] == 0.456
+    assert output_data["freq"] == 150e6
+    assert output_data["beam_fwhm"] == "10 arcsec"
 
 
 # ---------------------------------------------------------------------------- #
