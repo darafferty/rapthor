@@ -9,6 +9,7 @@ import os
 import shutil
 import tarfile
 import tempfile
+from collections.abc import Sequence
 from pathlib import Path
 
 import lsmtool
@@ -213,7 +214,7 @@ def parset(tmp_path, test_ms):
     output_path = tmp_path / "test.parset"
     _generate_parset(
         RESOURCE_DIR / "test.parset",
-        output_path,
+        output_path=output_path,
         dir_working=tmp_path.as_posix(),
         input_ms=test_ms,
         input_skymodel=TEST_TRUE_SKYMODEL,
@@ -419,6 +420,8 @@ def _get_test_run_root():
 
 
 def _generate_parset(template_parset=None, config=None, output_path=None, **kws):
+    if isinstance(config, Path):
+        raise TypeError()
 
     parset = configparser.ConfigParser()
     if isinstance(template_parset, configparser.ConfigParser):
@@ -432,7 +435,7 @@ def _generate_parset(template_parset=None, config=None, output_path=None, **kws)
 
     config = config or {}
     if kws:
-        config["global"].update(kws)
+        config["global"] = config.get("global", {}) | kws
 
     for section, options in config.items():
         if section is not None and section not in parset:
@@ -540,10 +543,9 @@ def generate_parset(
             f"[{', '.join(ref_freq.astype(str))}]"
         )
     else:
-        parset["imaging"]["normalization_reference_frequencies"] = "None"
+        config["imaging"]["normalization_reference_frequencies"] = "None"
 
-    parset = _generate_parset(parset_path, config, output_path)
-    return parset
+    return _generate_parset(parset_path, config, output_path)
 
 
 @pytest.fixture
