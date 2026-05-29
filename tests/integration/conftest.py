@@ -235,10 +235,10 @@ def generated_parset_path(request, tmp_path, test_ms):
 
     generate_parset(
         parset_path,
-        output_parset_path,
-        test_ms,
-        input_skymodel_path,
-        apparent_skymodel_path,
+        output_path=output_parset_path,
+        input_ms=test_ms,
+        input_skymodel_path=input_skymodel_path,
+        apparent_skymodel_path=apparent_skymodel_path,
         normalization_skymodel_paths=None,
     )
 
@@ -285,10 +285,10 @@ def generated_parset_path_normalisation(
 
     generate_parset(
         parset_path,
-        ms_for_normalisation,
-        output_parset_path,
-        input_skymodel_path,
-        apparent_skymodel_path,
+        output_path=output_parset_path,
+        input_ms=ms_for_normalisation,
+        input_skymodel_path=input_skymodel_path,
+        apparent_skymodel_path=apparent_skymodel_path,
         normalization_skymodel_paths=normalization_skymodel_paths,
     )
     return output_parset_path

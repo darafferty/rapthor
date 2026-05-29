@@ -550,15 +550,15 @@ def generate_parset(
 
 @pytest.fixture
 def parset_for_field_test(tmp_path_factory, test_ms):
-    target_path = tmp_path_factory.mktemp("test_field") / "generated.parset"
+    parset_path = tmp_path_factory.mktemp("test_field") / "generated.parset"
     generate_parset(
         RESOURCE_DIR / "test.parset",
-        test_ms,
-        target_path,
-        RESOURCE_DIR / "test_true_sky.txt",
-        RESOURCE_DIR / "test_apparent_sky.txt",
+        input_ms=test_ms,
+        output_path=parset_path,
+        input_skymodel_path=RESOURCE_DIR / "test_true_sky.txt",
+        apparent_skymodel_path=RESOURCE_DIR / "test_apparent_sky.txt",
     )
-    return parset_read(target_path)
+    return parset_read(parset_path)
 
 
 def _make_source_catalog(n_channels=8, n_sources=8, alpha=-0.7, ref_flux=1.0, outliers=False):
