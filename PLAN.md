@@ -590,6 +590,9 @@ Remaining Stage 5 work before final cutover:
 Image is the largest migration target. Do it by feature slice rather than all
 at once.
 
+Status: first no-DDE Stokes-I slice complete for direct flow parity on the
+migration branch.
+
 Suggested slices:
 
 1. Initial image and no-DDE Stokes I imaging.
@@ -609,18 +612,29 @@ from CWL.
 
 Tests:
 
-- Command-builder tests for each WSClean mode.
-- Golden command parity tests for no-DDE, facet, screen, MPI, normalization,
+- Added command-builder tests for the no-DDE Stokes-I slice:
+  `prepare_imaging_data`, time concatenation, mask creation, serial WSClean,
+  beam checking, filtering, and diagnostics.
+- Added golden command parity tests for no-DDE prepare, concatenate, blank mask,
+  and WSClean commands.
+- Added a mocked no-DDE flow test covering DP3 prepare, time concatenation,
+  `blank_image.py`, WSClean, beam checks, `filter_skymodel.py`, and
+  `calculate_image_diagnostics.py`.
+- Added `ImageInitial.finalize()` coverage against Prefect-produced no-DDE
+  output records.
+- Added output-contract fixtures for no-DDE Stokes-I images, skymodels,
+  visibilities, masks, diagnostics, offsets, and plots.
+- Still needed: command-builder tests for facet, screen, MPI, normalization,
   image-cube, full-Stokes, shared-facet, and clean-disabled modes.
-- Flow tests for each imaging slice with mocked shell commands.
-- Tests for `Image.finalize()` against Prefect output structures.
+- Still needed: flow tests for the remaining imaging slices.
+- Still needed: tests for regular `Image.finalize()` and `ImageNormalize.finalize()`
+  against Prefect output structures.
 - Rework relevant `tests/operations/test_image.py` cases around command builders,
   flow structure, and finalizer-compatible output records.
 - Replace CWL-specific rendered-template assertions with command-builder and
   flow-structure assertions for the Prefect/Dask path.
-- Output-contract fixtures for all image output keys consumed by finalizers,
-  including optional masks, diagnostic plots, cubes, filtered model images,
-  compressed FITS files, visibilities, and region files.
+- Add output-contract fixtures for optional masks, cubes, filtered model images,
+  compressed FITS files, and region files.
 - Restart/failure tests for failed WSClean, missing diagnostics JSON, corrupt
   diagnostics JSON, failed finalizer copy, and rerun after deleting `.done`.
 - Filesystem isolation tests for scattered sector imaging, temporary WSClean
@@ -1254,6 +1268,49 @@ Deferred to the cutover PR:
 - Add real external-tool coverage for `DP3`, `add_sector_models.py`, and
   `subtract_sector_models.py` when lightweight Measurement Set fixtures are
   available.
+
+### PR 6: Initial No-DDE Stokes-I Image Flow
+
+Status: complete for the first direct-flow imaging slice on the migration
+branch.
+
+- Implement a no-DDE Stokes-I Prefect image flow.
+- Add command builders for DP3 imaging preparation, time concatenation, blank
+  mask creation, serial no-DDE WSClean, image beam checks, source filtering, and
+  image diagnostics.
+- Convert `Image.set_input_parameters()` output into serializable sector and
+  observation payloads without passing live domain objects to tasks.
+- Preserve the initial-image output contract consumed by `ImageInitial.finalize()`.
+- Explicitly reject unsupported imaging branches in this slice: screens, facets,
+  compression, bright-source restoration, filtered model images, and non-Stokes-I
+  imaging.
+
+Implemented files:
+
+- `rapthor/execution/flows/image.py`
+- `tests/execution/test_image_flow.py`
+- Updates to `rapthor/execution/flows/__init__.py`
+- Updates to `rapthor/execution/__init__.py`
+- Updates to `tests/execution/fixtures/cwl_reference_commands.json`
+- Updates to `tests/execution/fixtures/cwl_reference_outputs.json`
+
+Verified in the rebuilt devcontainer:
+
+- `python3 -m pytest tests/execution/test_image_flow.py`: 10 passed.
+- `python3 -m pytest tests/execution tests/lib/test_parset.py`: 132 passed.
+- `python3 -m ruff check rapthor/execution tests/execution pyproject.toml`:
+  passed.
+- `python3 -m ruff format --check rapthor/execution tests/execution`: passed.
+
+Deferred to later imaging PRs:
+
+- Add task-local WSClean temporary directory cleanup/isolation tests.
+- Add compression and filtered-model-image handling.
+- Add regular selfcal `Image` and `ImageNormalize` finalizer coverage.
+- Add facet, screen, MPI, image-cube, full-Stokes, clean-disabled, and
+  shared-facet WSClean modes.
+- Add real external-tool coverage once lightweight Measurement Set and FITS
+  fixtures are available.
 
 ## Success Criteria
 

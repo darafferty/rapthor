@@ -1,0 +1,963 @@
+"""Prefect flows for no-DDE Stokes-I imaging."""
+
+import glob
+import os
+from typing import Mapping, Optional
+
+from prefect import flow, task
+
+from rapthor.execution.commands import normalize_command
+from rapthor.execution.config import ExecutionConfig
+from rapthor.execution.outputs import directory_record, file_record, validate_output_record
+from rapthor.execution.payloads import assert_serializable_payload
+from rapthor.execution.shell import ShellCommand, run_shell_command
+
+
+def _bool_token(value: bool) -> str:
+    return "True" if value else "False"
+
+
+def _path_record_path(record: object, path_class: str) -> str:
+    if isinstance(record, Mapping) and record.get("class") == path_class:
+        path = record.get("path")
+        if isinstance(path, str) and path:
+            return path
+    raise ValueError(f"Expected a {path_class} output record, got {record!r}")
+
+
+def _optional_path_record_path(record: object, path_class: str) -> Optional[str]:
+    if record is None:
+        return None
+    return _path_record_path(record, path_class)
+
+
+def _optional_file_record_path(record: object) -> Optional[str]:
+    return _optional_path_record_path(record, "File")
+
+
+def _directory_record_path(record: object) -> str:
+    return _path_record_path(record, "Directory")
+
+
+def _file_record_path(record: object) -> str:
+    return _path_record_path(record, "File")
+
+
+def _validate_basename(filename: object, name: str) -> str:
+    if not isinstance(filename, str) or not filename:
+        raise ValueError(f"{name} must be a non-empty string")
+    if os.path.isabs(filename) or os.path.basename(filename) != filename:
+        raise ValueError(f"{name} must be a basename")
+    return filename
+
+
+def _join_comma(values: list[object]) -> str:
+    return ",".join(str(value) for value in values)
+
+
+def _pol_token(pol: object) -> str:
+    if isinstance(pol, str):
+        return pol
+    if isinstance(pol, list):
+        return "".join(str(value) for value in pol)
+    raise ValueError("pol must be a string or list")
+
+
+def _append_optional_prefixed(command: list[str], prefix: str, value: Optional[object]) -> None:
+    if value is not None:
+        command.append(f"{prefix}{value}")
+
+
+def _append_option(command: list[str], option: str, value: object) -> None:
+    command.extend([option, str(value)])
+
+
+def _append_flag(command: list[str], option: str, enabled: bool) -> None:
+    if enabled:
+        command.append(option)
+
+
+def build_prepare_imaging_data_command(
+    msin: str,
+    data_colname: str,
+    msout: str,
+    starttime: str,
+    ntimes: int,
+    phasecenter: str,
+    freqstep: int,
+    timestep: int,
+    beamdir: str,
+    numthreads: int,
+    steps: str,
+    maxinterval: Optional[int] = None,
+    timebase: Optional[float] = None,
+    h5parm: Optional[str] = None,
+    fulljones_h5parm: Optional[str] = None,
+    normalize_h5parm: Optional[str] = None,
+    central_patch_name: Optional[str] = None,
+    applycal_steps: Optional[str] = None,
+) -> list[str]:
+    """Build the DP3 command that prepares one observation for imaging."""
+    command = [
+        "DP3",
+        "msout.overwrite=True",
+        "shift.type=phaseshifter",
+        "avg.type=squash",
+        "bdaavg.type=bdaaverager",
+        "bdaavg.minchannels=1",
+        "bdaavg.frequencybase=0.0",
+        "applycal.type=applycal",
+        "applycal.correction=phase000",
+        "applycal.slowgain.correction=amplitude000",
+        "applycal.slowgain.solset=sol000",
+        "applycal.fastphase.correction=phase000",
+        "applycal.fastphase.solset=sol000",
+        "applycal.fulljones.correction=fulljones",
+        "applycal.fulljones.solset=sol000",
+        "applycal.fulljones.soltab=[amplitude000,phase000]",
+        "applycal.normalization.correction=amplitude000",
+        "applycal.normalization.solset=sol000",
+        "msout.storagemanager=Dysco",
+        f"msin={msin}",
+        f"msin.datacolumn={data_colname}",
+        f"msout={msout}",
+        f"msin.starttime={starttime}",
+        f"msin.ntimes={ntimes}",
+        f"shift.phasecenter={phasecenter}",
+        f"avg.freqstep={freqstep}",
+        f"avg.timestep={timestep}",
+    ]
+    _append_optional_prefixed(command, "bdaavg.timebase=", timebase)
+    _append_optional_prefixed(command, "bdaavg.maxinterval=", maxinterval)
+    command.append(f"applybeam.direction={beamdir}")
+    _append_optional_prefixed(command, "applycal.parmdb=", h5parm)
+    _append_optional_prefixed(command, "applycal.fulljones.parmdb=", fulljones_h5parm)
+    _append_optional_prefixed(command, "applycal.normalization.parmdb=", normalize_h5parm)
+    if central_patch_name is not None:
+        command.append(f"applycal.direction=[{central_patch_name}]")
+    command.extend([f"numthreads={numthreads}", f"steps={steps}"])
+    _append_optional_prefixed(command, "applycal.steps=", applycal_steps)
+    return command
+
+
+def build_concat_time_command(
+    input_filenames: list[str],
+    output_filename: str,
+    data_colname: str,
+) -> list[str]:
+    """Build the `concat_ms.py` command for one imaging sector."""
+    return [
+        "concat_ms.py",
+        *input_filenames,
+        f"--msout={output_filename}",
+        "--concat_property=time",
+        f"--data_colname={data_colname}",
+    ]
+
+
+def build_blank_image_command(
+    mask_filename: str,
+    wsclean_imsize: list[int],
+    vertices_file: str,
+    ra: float,
+    dec: float,
+    cellsize_deg: float,
+    image_filename: Optional[str] = None,
+    region_file: Optional[str] = None,
+) -> list[str]:
+    """Build the `blank_image.py` command for one imaging sector."""
+    command = ["blank_image.py", mask_filename]
+    if image_filename is not None:
+        command.append(image_filename)
+    command.extend(
+        [
+            f"--imsize={wsclean_imsize[0]},{wsclean_imsize[1]}",
+            f"--vertices_file={vertices_file}",
+            f"--reference_ra_deg={ra}",
+            f"--reference_dec_deg={dec}",
+            f"--cellsize_deg={cellsize_deg}",
+        ]
+    )
+    _append_optional_prefixed(command, "--region_file=", region_file)
+    return command
+
+
+def build_wsclean_no_dde_command(
+    msin: str,
+    name: str,
+    mask: str,
+    wsclean_imsize: list[int],
+    wsclean_niter: int,
+    wsclean_nmiter: int,
+    robust: float,
+    min_uv_lambda: float,
+    max_uv_lambda: float,
+    mgain: float,
+    multiscale: bool,
+    save_source_list: bool,
+    pol: str,
+    link_polarizations: object,
+    join_polarizations: bool,
+    skip_final_iteration: bool,
+    cellsize_deg: float,
+    channels_out: int,
+    deconvolution_channels: int,
+    fit_spectral_pol: int,
+    taper_arcsec: float,
+    local_rms_strength: float,
+    local_rms_window: float,
+    local_rms_method: str,
+    wsclean_mem: float,
+    auto_mask: float,
+    auto_mask_nmiter: int,
+    idg_mode: str,
+    num_threads: int,
+    num_deconvolution_threads: int,
+    dd_psf_grid: list[int],
+    apply_time_frequency_smearing: bool,
+    temp_dir: str,
+) -> list[str]:
+    """Build the serial no-DDE WSClean command for one imaging sector."""
+    command = [
+        "wsclean",
+        "-no-update-model-required",
+        "-local-rms",
+        "-join-channels",
+        "-apply-primary-beam",
+        "-log-time",
+        "-gridder",
+        "wgridder",
+        "-temp-dir",
+        temp_dir,
+        "-parallel-deconvolution",
+        "2048",
+        "-multiscale-scale-bias",
+        "0.8",
+        "-auto-threshold",
+        "1.0",
+        "-mgain-boosting",
+        "1.3",
+        "-weight",
+        "briggs",
+        str(robust),
+    ]
+    options = [
+        ("-name", name),
+        ("-fits-mask", mask),
+        ("-size", wsclean_imsize),
+        ("-niter", wsclean_niter),
+        ("-nmiter", wsclean_nmiter),
+        ("-minuv-l", min_uv_lambda),
+        ("-maxuv-l", max_uv_lambda),
+        ("-mgain", mgain),
+        ("-pol", pol),
+        ("-scale", cellsize_deg),
+        ("-channels-out", channels_out),
+        ("-deconvolution-channels", deconvolution_channels),
+        ("-fit-spectral-pol", fit_spectral_pol),
+        ("-taper-gaussian", taper_arcsec),
+        ("-local-rms-strength", local_rms_strength),
+        ("-local-rms-window", local_rms_window),
+        ("-local-rms-method", local_rms_method),
+        ("-abs-mem", wsclean_mem),
+        ("-auto-mask", auto_mask),
+        ("-auto-mask-nmiter", auto_mask_nmiter),
+        ("-idg-mode", idg_mode),
+        ("-j", num_threads),
+        ("-deconvolution-threads", num_deconvolution_threads),
+        ("-dd-psf-grid", dd_psf_grid),
+    ]
+    for option, value in options:
+        if isinstance(value, list):
+            command.append(option)
+            command.extend(str(item) for item in value)
+        else:
+            _append_option(command, option, value)
+    _append_flag(command, "-multiscale", multiscale)
+    _append_flag(command, "-save-source-list", save_source_list)
+    if link_polarizations:
+        _append_option(command, "-link-polarizations", link_polarizations)
+    _append_flag(command, "-join-polarizations", join_polarizations)
+    _append_flag(command, "-skip-final-iteration", skip_final_iteration)
+    _append_flag(command, "-apply-time-frequency-smearing", apply_time_frequency_smearing)
+    command.append(msin)
+    return command
+
+
+def build_check_image_beam_command(input_image: str, beam_size_arcsec: float) -> list[str]:
+    """Build the `check_image_beam.py` command for one image."""
+    return ["check_image_beam.py", input_image, str(beam_size_arcsec)]
+
+
+def build_filter_skymodel_command(
+    flat_noise_image: str,
+    true_sky_image: str,
+    true_sky_skymodel: str,
+    apparent_sky_skymodel: str,
+    output_root: str,
+    vertices_file: str,
+    beam_ms: list[str],
+    threshisl: float,
+    threshpix: float,
+    filter_by_mask: bool,
+    source_finder: str,
+    ncores: int,
+    bright_true_sky_skymodel: Optional[str] = None,
+) -> list[str]:
+    """Build the `filter_skymodel.py` command for one imaging sector."""
+    command = [
+        "filter_skymodel.py",
+        flat_noise_image,
+        true_sky_image,
+        true_sky_skymodel,
+        apparent_sky_skymodel,
+        output_root,
+        vertices_file,
+        _join_comma(beam_ms),
+    ]
+    _append_optional_prefixed(command, "--bright_true_sky_skymodel=", bright_true_sky_skymodel)
+    command.extend(
+        [
+            f"--threshisl={threshisl}",
+            f"--threshpix={threshpix}",
+            f"--filter_by_mask={_bool_token(filter_by_mask)}",
+            f"--source_finder={source_finder}",
+            f"--ncores={ncores}",
+        ]
+    )
+    return command
+
+
+def build_calculate_image_diagnostics_command(
+    flat_noise_image: str,
+    flat_noise_rms_image: str,
+    true_sky_image: str,
+    true_sky_rms_image: str,
+    input_catalog: str,
+    obs_ms: list[str],
+    obs_starttime: list[str],
+    obs_ntimes: list[int],
+    diagnostics_file: str,
+    output_root: str,
+    allow_internet_access: bool,
+    facet_region_file: Optional[str] = None,
+    photometry_skymodel: Optional[str] = None,
+    astrometry_skymodel: Optional[str] = None,
+) -> list[str]:
+    """Build the `calculate_image_diagnostics.py` command for one sector."""
+    command = [
+        "calculate_image_diagnostics.py",
+        flat_noise_image,
+        flat_noise_rms_image,
+        true_sky_image,
+        true_sky_rms_image,
+        input_catalog,
+        _join_comma(obs_ms),
+        _join_comma(obs_starttime),
+        _join_comma(obs_ntimes),
+        diagnostics_file,
+        output_root,
+    ]
+    _append_optional_prefixed(command, "--facet_region_file=", facet_region_file or "none")
+    _append_optional_prefixed(command, "--photometry_comparison_skymodel=", photometry_skymodel)
+    _append_optional_prefixed(command, "--astrometry_comparison_skymodel=", astrometry_skymodel)
+    _append_flag(command, "--allow_internet_access", allow_internet_access)
+    return command
+
+
+def image_payload_from_inputs(
+    input_parms: Mapping[str, object],
+    pipeline_working_dir: object,
+    *,
+    apply_screens: bool = False,
+    use_facets: bool = False,
+    compress_images: bool = False,
+) -> dict:
+    """Create a serializable no-DDE Stokes-I Image flow payload."""
+    if apply_screens:
+        raise NotImplementedError("Image screens are not part of the PR6 no-DDE slice")
+    if use_facets:
+        raise NotImplementedError("Facet imaging is not part of the PR6 no-DDE slice")
+    if compress_images:
+        raise NotImplementedError("Image compression is not part of the PR6 no-DDE slice")
+    if input_parms.get("peel_bright_sources"):
+        raise NotImplementedError("Bright-source restoration is not part of the PR6 no-DDE slice")
+    if input_parms.get("save_filtered_model_image"):
+        raise NotImplementedError("Filtered model images are not part of the PR6 no-DDE slice")
+
+    pol = _pol_token(input_parms["pol"])
+    if pol.upper() != "I":
+        raise NotImplementedError("PR6 image flow only supports Stokes-I imaging")
+
+    pipeline_dir = str(pipeline_working_dir)
+    image_names = input_parms.get("image_name", [])
+    if not isinstance(image_names, list):
+        raise ValueError("image_name must be a list")
+    sector_count = len(image_names)
+    per_sector_keys = [
+        "obs_filename",
+        "prepare_filename",
+        "concat_filename",
+        "previous_mask_filename",
+        "mask_filename",
+        "starttime",
+        "ntimes",
+        "image_freqstep",
+        "image_timestep",
+        "image_maxinterval",
+        "image_timebase",
+        "phasecenter",
+        "channels_out",
+        "deconvolution_channels",
+        "fit_spectral_pol",
+        "ra",
+        "dec",
+        "wsclean_imsize",
+        "vertices_file",
+        "region_file",
+        "wsclean_niter",
+        "wsclean_nmiter",
+        "robust",
+        "cellsize_deg",
+        "min_uv_lambda",
+        "max_uv_lambda",
+        "mgain",
+        "taper_arcsec",
+        "local_rms_strength",
+        "local_rms_window",
+        "local_rms_method",
+        "auto_mask",
+        "auto_mask_nmiter",
+        "idg_mode",
+        "wsclean_mem",
+        "threshisl",
+        "threshpix",
+        "do_multiscale",
+        "dd_psf_grid",
+    ]
+    for key in per_sector_keys:
+        value = input_parms.get(key, [])
+        if not isinstance(value, list) or len(value) != sector_count:
+            raise ValueError(f"{key} must be a list with one value per sector")
+
+    h5parm = _optional_file_record_path(input_parms.get("h5parm"))
+    fulljones_h5parm = _optional_file_record_path(input_parms.get("fulljones_h5parm"))
+    input_normalize_h5parm = _optional_file_record_path(input_parms.get("input_normalize_h5parm"))
+    photometry_skymodel = _optional_file_record_path(input_parms.get("photometry_skymodel"))
+    astrometry_skymodel = _optional_file_record_path(input_parms.get("astrometry_skymodel"))
+
+    sectors = []
+    for sector_index in range(sector_count):
+        obs_records = input_parms["obs_filename"][sector_index]
+        prepare_filenames = input_parms["prepare_filename"][sector_index]
+        starttimes = input_parms["starttime"][sector_index]
+        ntimes = input_parms["ntimes"][sector_index]
+        freqsteps = input_parms["image_freqstep"][sector_index]
+        timesteps = input_parms["image_timestep"][sector_index]
+        maxintervals = input_parms["image_maxinterval"][sector_index]
+        obs_inputs = [
+            obs_records,
+            prepare_filenames,
+            starttimes,
+            ntimes,
+            freqsteps,
+            timesteps,
+            maxintervals,
+        ]
+        if not all(isinstance(value, list) for value in obs_inputs):
+            raise ValueError(f"sector {sector_index} observation inputs must be lists")
+        obs_count = len(obs_records)
+        if any(len(value) != obs_count for value in obs_inputs):
+            raise ValueError(f"sector {sector_index} observation inputs must have the same length")
+
+        prepare_tasks = []
+        for obs_index in range(obs_count):
+            msout = _validate_basename(
+                prepare_filenames[obs_index], f"prepare_filename[{sector_index}][{obs_index}]"
+            )
+            prepare_tasks.append(
+                {
+                    "msin": _directory_record_path(obs_records[obs_index]),
+                    "msout": msout,
+                    "msout_path": os.path.join(pipeline_dir, msout),
+                    "starttime": str(starttimes[obs_index]),
+                    "ntimes": int(ntimes[obs_index]),
+                    "freqstep": int(freqsteps[obs_index]),
+                    "timestep": int(timesteps[obs_index]),
+                    "maxinterval": (
+                        None if maxintervals[obs_index] is None else int(maxintervals[obs_index])
+                    ),
+                }
+            )
+
+        image_name = _validate_basename(image_names[sector_index], f"image_name[{sector_index}]")
+        concat_filename = _validate_basename(
+            input_parms["concat_filename"][sector_index], f"concat_filename[{sector_index}]"
+        )
+        mask_filename = _validate_basename(
+            input_parms["mask_filename"][sector_index], f"mask_filename[{sector_index}]"
+        )
+        sectors.append(
+            {
+                "image_name": image_name,
+                "data_colname": str(input_parms["data_colname"]),
+                "prepare_tasks": prepare_tasks,
+                "concat_filename": concat_filename,
+                "concat_path": os.path.join(pipeline_dir, concat_filename),
+                "previous_mask_filename": _optional_file_record_path(
+                    input_parms["previous_mask_filename"][sector_index]
+                ),
+                "mask_filename": mask_filename,
+                "mask_path": os.path.join(pipeline_dir, mask_filename),
+                "timebase": input_parms["image_timebase"][sector_index],
+                "phasecenter": str(input_parms["phasecenter"][sector_index]),
+                "h5parm": h5parm,
+                "fulljones_h5parm": fulljones_h5parm,
+                "input_normalize_h5parm": input_normalize_h5parm,
+                "prepare_data_steps": str(input_parms["prepare_data_steps"]),
+                "prepare_data_applycal_steps": input_parms.get("prepare_data_applycal_steps"),
+                "central_patch_name": (
+                    input_parms.get("central_patch_name", [None] * sector_count)[sector_index]
+                    if isinstance(input_parms.get("central_patch_name", []), list)
+                    else None
+                ),
+                "channels_out": int(input_parms["channels_out"][sector_index]),
+                "deconvolution_channels": int(input_parms["deconvolution_channels"][sector_index]),
+                "fit_spectral_pol": int(input_parms["fit_spectral_pol"][sector_index]),
+                "ra": float(input_parms["ra"][sector_index]),
+                "dec": float(input_parms["dec"][sector_index]),
+                "wsclean_imsize": [
+                    int(value) for value in input_parms["wsclean_imsize"][sector_index]
+                ],
+                "vertices_file": _file_record_path(input_parms["vertices_file"][sector_index]),
+                "region_file": _optional_file_record_path(input_parms["region_file"][sector_index]),
+                "wsclean_niter": int(input_parms["wsclean_niter"][sector_index]),
+                "wsclean_nmiter": int(input_parms["wsclean_nmiter"][sector_index]),
+                "skip_final_iteration": bool(input_parms["skip_final_iteration"]),
+                "robust": float(input_parms["robust"][sector_index]),
+                "cellsize_deg": float(input_parms["cellsize_deg"][sector_index]),
+                "min_uv_lambda": float(input_parms["min_uv_lambda"][sector_index]),
+                "max_uv_lambda": float(input_parms["max_uv_lambda"][sector_index]),
+                "mgain": float(input_parms["mgain"][sector_index]),
+                "taper_arcsec": float(input_parms["taper_arcsec"][sector_index]),
+                "local_rms_strength": float(input_parms["local_rms_strength"][sector_index]),
+                "local_rms_window": float(input_parms["local_rms_window"][sector_index]),
+                "local_rms_method": str(input_parms["local_rms_method"][sector_index]),
+                "auto_mask": float(input_parms["auto_mask"][sector_index]),
+                "auto_mask_nmiter": int(input_parms["auto_mask_nmiter"][sector_index]),
+                "idg_mode": str(input_parms["idg_mode"][sector_index]),
+                "wsclean_mem": float(input_parms["wsclean_mem"][sector_index]),
+                "threshisl": float(input_parms["threshisl"][sector_index]),
+                "threshpix": float(input_parms["threshpix"][sector_index]),
+                "do_multiscale": bool(input_parms["do_multiscale"][sector_index]),
+                "dd_psf_grid": [int(value) for value in input_parms["dd_psf_grid"][sector_index]],
+                "pol": pol,
+                "save_source_list": bool(input_parms["save_source_list"]),
+                "link_polarizations": input_parms["link_polarizations"],
+                "join_polarizations": bool(input_parms["join_polarizations"]),
+                "filter_by_mask": bool(input_parms["filter_by_mask"]),
+                "source_finder": str(input_parms["source_finder"]),
+                "apply_time_frequency_smearing": bool(input_parms["apply_time_frequency_smearing"]),
+                "max_threads": int(input_parms["max_threads"]),
+                "deconvolution_threads": int(input_parms["deconvolution_threads"]),
+                "allow_internet_access": bool(input_parms["allow_internet_access"]),
+                "photometry_skymodel": photometry_skymodel,
+                "astrometry_skymodel": astrometry_skymodel,
+                "obs_original_paths": [_directory_record_path(record) for record in obs_records],
+                "obs_starttime": [str(value) for value in starttimes],
+                "obs_ntimes": [int(value) for value in ntimes],
+            }
+        )
+
+    payload = {
+        "mode": "no_dde_stokes_i",
+        "pipeline_working_dir": pipeline_dir,
+        "sectors": sectors,
+    }
+    return assert_serializable_payload(payload)
+
+
+def _require_file(path: str, description: str) -> dict:
+    if not os.path.isfile(path):
+        raise FileNotFoundError(f"{description} was not created: {path}")
+    return file_record(path)
+
+
+def _require_directory(path: str, description: str) -> dict:
+    if not os.path.isdir(path):
+        raise FileNotFoundError(f"{description} was not created: {path}")
+    return directory_record(path)
+
+
+def _first_existing_file(patterns: list[str], description: str) -> dict:
+    for pattern in patterns:
+        for path in sorted(glob.glob(pattern)):
+            if os.path.isfile(path):
+                return file_record(path)
+    raise FileNotFoundError(f"{description} was not created: {', '.join(patterns)}")
+
+
+def _file_records_for_patterns(patterns: list[str]) -> list[dict]:
+    records = []
+    for pattern in patterns:
+        for path in sorted(glob.glob(pattern)):
+            if os.path.isfile(path):
+                records.append(file_record(path))
+    return records
+
+
+def _run_shell(
+    command: list[str],
+    pipeline_working_dir: str,
+    execution_config: ExecutionConfig,
+    shell_operation_cls=None,
+) -> None:
+    run_shell_command(
+        ShellCommand(command=command, working_directory=pipeline_working_dir),
+        execution_config,
+        shell_operation_cls=shell_operation_cls,
+    )
+
+
+def run_image_sector(
+    sector: Mapping[str, object],
+    pipeline_working_dir: str,
+    execution_config: Optional[ExecutionConfig] = None,
+    shell_operation_cls=None,
+) -> dict:
+    """Run one no-DDE Stokes-I imaging sector."""
+    config = execution_config or ExecutionConfig(task_runner="sync")
+    prepared_records = []
+    for prepare_task in sector["prepare_tasks"]:
+        command = build_prepare_imaging_data_command(
+            str(prepare_task["msin"]),
+            str(sector["data_colname"]),
+            str(prepare_task["msout"]),
+            str(prepare_task["starttime"]),
+            int(prepare_task["ntimes"]),
+            str(sector["phasecenter"]),
+            int(prepare_task["freqstep"]),
+            int(prepare_task["timestep"]),
+            str(sector["phasecenter"]),
+            int(sector["max_threads"]),
+            str(sector["prepare_data_steps"]),
+            maxinterval=prepare_task.get("maxinterval"),
+            timebase=sector.get("timebase"),
+            h5parm=sector.get("h5parm"),
+            fulljones_h5parm=sector.get("fulljones_h5parm"),
+            normalize_h5parm=sector.get("input_normalize_h5parm"),
+            central_patch_name=sector.get("central_patch_name"),
+            applycal_steps=sector.get("prepare_data_applycal_steps"),
+        )
+        _run_shell(command, pipeline_working_dir, config, shell_operation_cls=shell_operation_cls)
+        prepared_records.append(
+            _require_directory(str(prepare_task["msout_path"]), "Prepared imaging MS")
+        )
+
+    prepared_paths = [record["path"] for record in prepared_records]
+    concat_command = build_concat_time_command(
+        prepared_paths, str(sector["concat_filename"]), str(sector["data_colname"])
+    )
+    _run_shell(
+        concat_command, pipeline_working_dir, config, shell_operation_cls=shell_operation_cls
+    )
+    concat_record = _require_directory(str(sector["concat_path"]), "Concatenated imaging MS")
+
+    mask_command = build_blank_image_command(
+        str(sector["mask_filename"]),
+        list(sector["wsclean_imsize"]),
+        str(sector["vertices_file"]),
+        float(sector["ra"]),
+        float(sector["dec"]),
+        float(sector["cellsize_deg"]),
+        image_filename=sector.get("previous_mask_filename"),
+        region_file=sector.get("region_file"),
+    )
+    _run_shell(mask_command, pipeline_working_dir, config, shell_operation_cls=shell_operation_cls)
+    mask_record = _require_file(str(sector["mask_path"]), "Imaging mask")
+
+    temp_dir = os.path.join(pipeline_working_dir, f"{sector['image_name']}_wsclean_tmp")
+    wsclean_command = build_wsclean_no_dde_command(
+        concat_record["path"],
+        str(sector["image_name"]),
+        mask_record["path"],
+        list(sector["wsclean_imsize"]),
+        int(sector["wsclean_niter"]),
+        int(sector["wsclean_nmiter"]),
+        float(sector["robust"]),
+        float(sector["min_uv_lambda"]),
+        float(sector["max_uv_lambda"]),
+        float(sector["mgain"]),
+        bool(sector["do_multiscale"]),
+        bool(sector["save_source_list"]),
+        str(sector["pol"]),
+        sector["link_polarizations"],
+        bool(sector["join_polarizations"]),
+        bool(sector["skip_final_iteration"]),
+        float(sector["cellsize_deg"]),
+        int(sector["channels_out"]),
+        int(sector["deconvolution_channels"]),
+        int(sector["fit_spectral_pol"]),
+        float(sector["taper_arcsec"]),
+        float(sector["local_rms_strength"]),
+        float(sector["local_rms_window"]),
+        str(sector["local_rms_method"]),
+        float(sector["wsclean_mem"]),
+        float(sector["auto_mask"]),
+        int(sector["auto_mask_nmiter"]),
+        str(sector["idg_mode"]),
+        int(sector["max_threads"]),
+        int(sector["deconvolution_threads"]),
+        list(sector["dd_psf_grid"]),
+        bool(sector["apply_time_frequency_smearing"]),
+        temp_dir,
+    )
+    _run_shell(
+        wsclean_command, pipeline_working_dir, config, shell_operation_cls=shell_operation_cls
+    )
+
+    image_name = str(sector["image_name"])
+    nonpb_image = _first_existing_file(
+        [
+            os.path.join(pipeline_working_dir, f"{image_name}-MFS-image.fits"),
+            os.path.join(pipeline_working_dir, f"{image_name}-MFS-I-image.fits"),
+        ],
+        "WSClean non-PB image",
+    )
+    pb_image = _first_existing_file(
+        [
+            os.path.join(pipeline_working_dir, f"{image_name}-MFS-image-pb.fits"),
+            os.path.join(pipeline_working_dir, f"{image_name}-MFS-I-image-pb.fits"),
+        ],
+        "WSClean PB image",
+    )
+    extra_images = _file_records_for_patterns(
+        [
+            os.path.join(pipeline_working_dir, f"{image_name}-MFS-[QUV]-image.fits"),
+            os.path.join(pipeline_working_dir, f"{image_name}-MFS-[QUV]-image-pb.fits"),
+            os.path.join(pipeline_working_dir, f"{image_name}-MFS-*residual.fits"),
+            os.path.join(pipeline_working_dir, f"{image_name}-MFS-*model-pb.fits"),
+            os.path.join(pipeline_working_dir, f"{image_name}-MFS-*dirty.fits"),
+        ]
+    )
+    skymodel_nonpb = _require_file(
+        os.path.join(pipeline_working_dir, f"{image_name}-sources.txt"),
+        "WSClean apparent-sky source list",
+    )
+    skymodel_pb = _require_file(
+        os.path.join(pipeline_working_dir, f"{image_name}-sources-pb.txt"),
+        "WSClean true-sky source list",
+    )
+
+    for image_record in (pb_image, nonpb_image):
+        command = build_check_image_beam_command(
+            image_record["path"], float(sector["taper_arcsec"])
+        )
+        _run_shell(command, pipeline_working_dir, config, shell_operation_cls=shell_operation_cls)
+        _require_file(image_record["path"], "Beam-checked image")
+
+    filter_command = build_filter_skymodel_command(
+        nonpb_image["path"],
+        pb_image["path"],
+        skymodel_pb["path"] if sector["save_source_list"] else "none",
+        skymodel_nonpb["path"] if sector["save_source_list"] else "none",
+        image_name,
+        str(sector["vertices_file"]),
+        list(sector["obs_original_paths"]),
+        float(sector["threshisl"]),
+        float(sector["threshpix"]),
+        bool(sector["filter_by_mask"]),
+        str(sector["source_finder"]),
+        int(sector["max_threads"]),
+    )
+    _run_shell(
+        filter_command, pipeline_working_dir, config, shell_operation_cls=shell_operation_cls
+    )
+
+    filtered_true_sky = _require_file(
+        os.path.join(pipeline_working_dir, f"{image_name}.true_sky.txt"),
+        "Filtered true-sky skymodel",
+    )
+    filtered_apparent_sky = _require_file(
+        os.path.join(pipeline_working_dir, f"{image_name}.apparent_sky.txt"),
+        "Filtered apparent-sky skymodel",
+    )
+    diagnostics = _require_file(
+        os.path.join(pipeline_working_dir, f"{image_name}.image_diagnostics.json"),
+        "Image diagnostics",
+    )
+    flat_noise_rms = _require_file(
+        os.path.join(pipeline_working_dir, f"{image_name}.flat_noise_rms.fits"),
+        "Flat-noise RMS image",
+    )
+    true_sky_rms = _require_file(
+        os.path.join(pipeline_working_dir, f"{image_name}.true_sky_rms.fits"),
+        "True-sky RMS image",
+    )
+    source_catalog = _require_file(
+        os.path.join(pipeline_working_dir, f"{image_name}.source_catalog.fits"),
+        "Source catalog",
+    )
+    source_filtering_mask = _require_file(
+        os.path.join(pipeline_working_dir, f"{os.path.basename(pb_image['path'])}.mask.fits"),
+        "Source filtering mask",
+    )
+
+    diagnostics_command = build_calculate_image_diagnostics_command(
+        nonpb_image["path"],
+        flat_noise_rms["path"],
+        pb_image["path"],
+        true_sky_rms["path"],
+        source_catalog["path"],
+        list(sector["obs_original_paths"]),
+        list(sector["obs_starttime"]),
+        list(sector["obs_ntimes"]),
+        diagnostics["path"],
+        image_name,
+        bool(sector["allow_internet_access"]),
+        photometry_skymodel=sector.get("photometry_skymodel"),
+        astrometry_skymodel=sector.get("astrometry_skymodel"),
+    )
+    _run_shell(
+        diagnostics_command, pipeline_working_dir, config, shell_operation_cls=shell_operation_cls
+    )
+    diagnostics = _require_file(
+        os.path.join(pipeline_working_dir, f"{image_name}.image_diagnostics.json"),
+        "Image diagnostics",
+    )
+    offsets_path = os.path.join(pipeline_working_dir, f"{image_name}.astrometry_offsets.json")
+    offsets = file_record(offsets_path) if os.path.isfile(offsets_path) else None
+    diagnostic_plots = _file_records_for_patterns(
+        [os.path.join(pipeline_working_dir, f"{image_name}*.pdf")]
+    )
+
+    return {
+        "filtered_skymodel_true_sky": filtered_true_sky,
+        "filtered_skymodel_apparent_sky": filtered_apparent_sky,
+        "pybdsf_catalog": source_catalog,
+        "sector_diagnostics": diagnostics,
+        "sector_offsets": offsets,
+        "sector_diagnostic_plots": diagnostic_plots,
+        "visibilities": prepared_records,
+        "sector_I_images": [nonpb_image, pb_image],
+        "sector_extra_images": extra_images,
+        "source_filtering_mask": source_filtering_mask,
+        "sector_skymodels": [skymodel_nonpb, skymodel_pb] if sector["save_source_list"] else None,
+    }
+
+
+@task(name="image_sector_no_dde")
+def image_sector_task(
+    sector: Mapping[str, object],
+    pipeline_working_dir: str,
+    execution_config: Optional[ExecutionConfig] = None,
+    shell_operation_cls=None,
+) -> dict:
+    """Prefect task wrapper for one no-DDE imaging sector."""
+    return run_image_sector(
+        sector,
+        pipeline_working_dir,
+        execution_config=execution_config,
+        shell_operation_cls=shell_operation_cls,
+    )
+
+
+def _result_from_sector_records(sector_outputs: list[dict]) -> dict:
+    result = {
+        "filtered_skymodel_true_sky": [
+            sector["filtered_skymodel_true_sky"] for sector in sector_outputs
+        ],
+        "filtered_skymodel_apparent_sky": [
+            sector["filtered_skymodel_apparent_sky"] for sector in sector_outputs
+        ],
+        "pybdsf_catalog": [sector["pybdsf_catalog"] for sector in sector_outputs],
+        "sector_diagnostics": [sector["sector_diagnostics"] for sector in sector_outputs],
+        "sector_offsets": [sector["sector_offsets"] for sector in sector_outputs],
+        "sector_diagnostic_plots": [sector["sector_diagnostic_plots"] for sector in sector_outputs],
+        "visibilities": [sector["visibilities"] for sector in sector_outputs],
+        "sector_I_images": [sector["sector_I_images"] for sector in sector_outputs],
+        "sector_extra_images": [sector["sector_extra_images"] for sector in sector_outputs],
+        "source_filtering_mask": [sector["source_filtering_mask"] for sector in sector_outputs],
+    }
+    if any(sector["sector_skymodels"] is not None for sector in sector_outputs):
+        result["sector_skymodels"] = [sector["sector_skymodels"] for sector in sector_outputs]
+    for value in result.values():
+        validate_output_record(value, allow_none=True)
+    return result
+
+
+def _validate_image_payload(payload: Mapping[str, object]) -> tuple[str, list[Mapping]]:
+    if payload.get("mode") != "no_dde_stokes_i":
+        raise ValueError("Only no_dde_stokes_i image payloads are supported in PR6")
+    pipeline_working_dir = str(payload["pipeline_working_dir"])
+    sectors = payload.get("sectors", [])
+    if not isinstance(sectors, list):
+        raise ValueError("sectors must be a list")
+    return pipeline_working_dir, sectors
+
+
+def run_image_flow(
+    payload: Mapping[str, object],
+    execution_config: Optional[ExecutionConfig] = None,
+    shell_operation_cls=None,
+) -> dict:
+    """Run no-DDE Stokes-I imaging commands and return finalizer-compatible outputs."""
+    assert_serializable_payload(payload)
+    config = execution_config or ExecutionConfig(task_runner="sync")
+    pipeline_working_dir, sectors = _validate_image_payload(payload)
+    sector_outputs = [
+        run_image_sector(
+            sector,
+            pipeline_working_dir,
+            execution_config=config,
+            shell_operation_cls=shell_operation_cls,
+        )
+        for sector in sectors
+    ]
+    return _result_from_sector_records(sector_outputs)
+
+
+def _run_image_prefect_tasks(
+    payload: Mapping[str, object],
+    execution_config: Optional[ExecutionConfig] = None,
+) -> dict:
+    config = execution_config or ExecutionConfig(task_runner="sync")
+    pipeline_working_dir, sectors = _validate_image_payload(payload)
+    sector_outputs = [
+        image_sector_task(
+            sector,
+            pipeline_working_dir,
+            execution_config=config,
+        )
+        for sector in sectors
+    ]
+    return _result_from_sector_records(sector_outputs)
+
+
+@flow(name="image-no-dde")
+def image_flow(
+    payload: Mapping[str, object],
+    execution_config: Optional[ExecutionConfig] = None,
+):
+    """Prefect entry point for no-DDE Stokes-I imaging."""
+    return _run_image_prefect_tasks(payload, execution_config=execution_config)
+
+
+def normalized_prepare_imaging_data_command(**kwargs) -> list[str]:
+    """Return normalized DP3 prepare-imaging command tokens for fixture comparisons."""
+    return normalize_command(build_prepare_imaging_data_command(**kwargs))
+
+
+def normalized_concat_time_command(**kwargs) -> list[str]:
+    """Return normalized concat-time command tokens for fixture comparisons."""
+    return normalize_command(build_concat_time_command(**kwargs))
+
+
+def normalized_blank_image_command(**kwargs) -> list[str]:
+    """Return normalized blank-image command tokens for fixture comparisons."""
+    return normalize_command(build_blank_image_command(**kwargs))
+
+
+def normalized_wsclean_no_dde_command(**kwargs) -> list[str]:
+    """Return normalized no-DDE WSClean command tokens for fixture comparisons."""
+    return normalize_command(build_wsclean_no_dde_command(**kwargs))
