@@ -10,12 +10,15 @@ from rapthor.execution.flows.image import (
     build_calculate_image_diagnostics_command,
     build_check_image_beam_command,
     build_filter_skymodel_command,
+    build_make_region_file_command,
     image_flow,
     image_payload_from_inputs,
     image_sector_task,
     normalized_blank_image_command,
     normalized_concat_time_command,
+    normalized_make_region_file_command,
     normalized_prepare_imaging_data_command,
+    normalized_wsclean_facets_command,
     normalized_wsclean_no_dde_command,
     run_image_flow,
 )
@@ -49,6 +52,8 @@ def fake_image_shell_operation_cls():
                 (cwd / output_name).mkdir(parents=True, exist_ok=True)
             elif tokens[0] == "blank_image.py":
                 (cwd / tokens[1]).write_text("mask")
+            elif tokens[0] == "make_region_file.py":
+                (cwd / tokens[6]).write_text("region")
             elif tokens[0] == "wsclean":
                 image_name = tokens[tokens.index("-name") + 1]
                 for suffix in [
@@ -213,6 +218,27 @@ def _image_input_parms():
     }
 
 
+def _facet_image_input_parms():
+    input_parms = _image_input_parms()
+    input_parms.update(
+        {
+            "h5parm": file_record("/data/facet-solutions.h5"),
+            "skymodel": file_record("/data/calibration.skymodel"),
+            "ra_mid": [123.0],
+            "dec_mid": [45.0],
+            "width_ra": [2.0],
+            "width_dec": [2.5],
+            "facet_region_file": ["sector_1_facets_ds9.reg"],
+            "soltabs": "phase000",
+            "parallel_gridding_threads": 3,
+            "scalar_visibilities": True,
+            "diagonal_visibilities": False,
+            "shared_facet_rw": True,
+        }
+    )
+    return input_parms
+
+
 def test_image_command_builders_match_reference_fixtures():
     commands = json.loads((FIXTURE_DIR / "cwl_reference_commands.json").read_text())
 
@@ -291,9 +317,83 @@ def test_image_command_builders_match_reference_fixtures():
         )
         == commands["image"]["wsclean_no_dde"]
     )
+    assert (
+        normalized_make_region_file_command(
+            skymodel="calibration.skymodel",
+            ra_mid=123.0,
+            dec_mid=45.0,
+            width_ra=2.0,
+            width_dec=2.5,
+            outfile="sector_1_facets_ds9.reg",
+        )
+        == commands["image"]["make_region_file"]
+    )
+    assert (
+        normalized_wsclean_facets_command(
+            msin="sector_1_concat.ms",
+            name="sector_1",
+            mask="sector_1_mask.fits",
+            wsclean_imsize=[1024, 1024],
+            wsclean_niter=1000,
+            wsclean_nmiter=5,
+            robust=-0.5,
+            min_uv_lambda=80.0,
+            max_uv_lambda=1000000.0,
+            mgain=0.85,
+            multiscale=True,
+            scalar_visibilities=True,
+            diagonal_visibilities=False,
+            save_source_list=True,
+            pol="I",
+            link_polarizations=False,
+            join_polarizations=False,
+            skip_final_iteration=True,
+            cellsize_deg=0.001,
+            channels_out=4,
+            deconvolution_channels=2,
+            fit_spectral_pol=2,
+            taper_arcsec=0.0,
+            local_rms_strength=0.0,
+            local_rms_window=25.0,
+            local_rms_method="rms-with-min",
+            wsclean_mem=8.0,
+            auto_mask=5.0,
+            auto_mask_nmiter=1,
+            idg_mode="cpu",
+            num_threads=4,
+            num_deconvolution_threads=2,
+            dd_psf_grid=[1, 1],
+            h5parm="facet-solutions.h5",
+            soltabs="phase000",
+            region_file="sector_1_facets_ds9.reg",
+            num_gridding_threads=3,
+            apply_time_frequency_smearing=False,
+            shared_facet_reads=True,
+            shared_facet_writes=True,
+            temp_dir="sector_1_wsclean_tmp",
+        )
+        == commands["image"]["wsclean_facets"]
+    )
 
 
 def test_image_support_command_builders_create_expected_tokens():
+    assert build_make_region_file_command(
+        "calibration.skymodel",
+        123.0,
+        45.0,
+        2.0,
+        2.5,
+        "sector_1_facets_ds9.reg",
+    ) == [
+        "make_region_file.py",
+        "calibration.skymodel",
+        "123.0",
+        "45.0",
+        "2.0",
+        "2.5",
+        "sector_1_facets_ds9.reg",
+        "--enclose_names=True",
+    ]
     assert build_check_image_beam_command("sector_1-MFS-I-image.fits", 0.0) == [
         "check_image_beam.py",
         "sector_1-MFS-I-image.fits",
@@ -377,6 +477,28 @@ def test_image_payload_from_inputs_builds_serializable_no_dde_payload(tmp_path):
     }
 
 
+def test_image_payload_from_inputs_builds_serializable_facet_payload(tmp_path):
+    payload = image_payload_from_inputs(_facet_image_input_parms(), tmp_path, use_facets=True)
+
+    assert payload["mode"] == "facet_stokes_i"
+    sector = payload["sectors"][0]
+    assert sector["use_facets"] is True
+    assert sector["h5parm"] == "/data/facet-solutions.h5"
+    assert sector["facet_skymodel"] == "/data/calibration.skymodel"
+    assert sector["facet_region_filename"] == "sector_1_facets_ds9.reg"
+    assert sector["facet_region_path"] == str(tmp_path / "sector_1_facets_ds9.reg")
+    assert sector["ra_mid"] == 123.0
+    assert sector["dec_mid"] == 45.0
+    assert sector["width_ra"] == 2.0
+    assert sector["width_dec"] == 2.5
+    assert sector["soltabs"] == "phase000"
+    assert sector["parallel_gridding_threads"] == 3
+    assert sector["scalar_visibilities"] is True
+    assert sector["diagonal_visibilities"] is False
+    assert sector["shared_facet_reads"] is True
+    assert sector["shared_facet_writes"] is True
+
+
 def test_image_payload_from_inputs_rejects_unsupported_modes(tmp_path):
     with pytest.raises(NotImplementedError, match="screens"):
         image_payload_from_inputs(_image_input_parms(), tmp_path, apply_screens=True)
@@ -385,6 +507,18 @@ def test_image_payload_from_inputs_rejects_unsupported_modes(tmp_path):
     input_parms["pol"] = "IQUV"
     with pytest.raises(NotImplementedError, match="Stokes-I"):
         image_payload_from_inputs(input_parms, tmp_path)
+
+
+def test_image_payload_from_inputs_requires_facet_inputs(tmp_path):
+    input_parms = _facet_image_input_parms()
+    input_parms["h5parm"] = None
+    with pytest.raises(ValueError, match="h5parm"):
+        image_payload_from_inputs(input_parms, tmp_path, use_facets=True)
+
+    input_parms = _facet_image_input_parms()
+    del input_parms["soltabs"]
+    with pytest.raises(ValueError, match="soltabs"):
+        image_payload_from_inputs(input_parms, tmp_path, use_facets=True)
 
 
 def test_run_image_flow_executes_no_dde_commands_and_returns_records(
@@ -436,6 +570,51 @@ def test_run_image_flow_executes_no_dde_commands_and_returns_records(
     ]
 
 
+def test_run_image_flow_executes_facet_commands_and_returns_region_file(
+    tmp_path, fake_image_shell_operation_cls
+):
+    outputs = run_image_flow(
+        image_payload_from_inputs(_facet_image_input_parms(), tmp_path, use_facets=True),
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_image_shell_operation_cls,
+    )
+
+    assert outputs["sector_region_file"] == [file_record(tmp_path / "sector_1_facets_ds9.reg")]
+    assert outputs["sector_I_images"] == [
+        [
+            file_record(tmp_path / "sector_1-MFS-I-image.fits"),
+            file_record(tmp_path / "sector_1-MFS-I-image-pb.fits"),
+        ]
+    ]
+    command_names = [
+        shlex.split(instance.kwargs["commands"][0])[0]
+        for instance in fake_image_shell_operation_cls.instances
+    ]
+    assert command_names == [
+        "DP3",
+        "DP3",
+        "concat_ms.py",
+        "blank_image.py",
+        "make_region_file.py",
+        "wsclean",
+        "check_image_beam.py",
+        "check_image_beam.py",
+        "filter_skymodel.py",
+        "calculate_image_diagnostics.py",
+    ]
+    facet_command = next(
+        shlex.split(instance.kwargs["commands"][0])
+        for instance in fake_image_shell_operation_cls.instances
+        if shlex.split(instance.kwargs["commands"][0])[0] == "wsclean"
+    )
+    assert "-apply-facet-beam" in facet_command
+    assert "-apply-facet-solutions" in facet_command
+    assert "-scalar-visibilities" in facet_command
+    assert "-shared-facet-reads" in facet_command
+    assert "-shared-facet-writes" in facet_command
+    assert "-diagonal-visibilities" not in facet_command
+
+
 def test_image_sector_task_wraps_runner(tmp_path, fake_image_shell_operation_cls):
     payload = image_payload_from_inputs(_image_input_parms(), tmp_path)
 
@@ -484,6 +663,8 @@ def test_image_reference_output_fixture_matches_output_contract():
     outputs = json.loads((FIXTURE_DIR / "cwl_reference_outputs.json").read_text())
 
     for value in outputs["image_no_dde"].values():
+        validate_output_record(value, allow_none=True)
+    for value in outputs["image_facets"].values():
         validate_output_record(value, allow_none=True)
 
 

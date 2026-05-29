@@ -1,4 +1,4 @@
-"""Prefect flows for no-DDE Stokes-I imaging."""
+"""Prefect flows for Stokes-I imaging."""
 
 import glob
 import os
@@ -182,6 +182,28 @@ def build_blank_image_command(
     return command
 
 
+def build_make_region_file_command(
+    skymodel: str,
+    ra_mid: float,
+    dec_mid: float,
+    width_ra: float,
+    width_dec: float,
+    outfile: str,
+    enclose_names: bool = True,
+) -> list[str]:
+    """Build the `make_region_file.py` command for facet imaging."""
+    return [
+        "make_region_file.py",
+        skymodel,
+        str(ra_mid),
+        str(dec_mid),
+        str(width_ra),
+        str(width_dec),
+        outfile,
+        f"--enclose_names={_bool_token(enclose_names)}",
+    ]
+
+
 def build_wsclean_no_dde_command(
     msin: str,
     name: str,
@@ -284,6 +306,129 @@ def build_wsclean_no_dde_command(
     return command
 
 
+def build_wsclean_facets_command(
+    msin: str,
+    name: str,
+    mask: str,
+    wsclean_imsize: list[int],
+    wsclean_niter: int,
+    wsclean_nmiter: int,
+    robust: float,
+    min_uv_lambda: float,
+    max_uv_lambda: float,
+    mgain: float,
+    multiscale: bool,
+    scalar_visibilities: bool,
+    diagonal_visibilities: bool,
+    save_source_list: bool,
+    pol: str,
+    link_polarizations: object,
+    join_polarizations: bool,
+    skip_final_iteration: bool,
+    cellsize_deg: float,
+    channels_out: int,
+    deconvolution_channels: int,
+    fit_spectral_pol: int,
+    taper_arcsec: float,
+    local_rms_strength: float,
+    local_rms_window: float,
+    local_rms_method: str,
+    wsclean_mem: float,
+    auto_mask: float,
+    auto_mask_nmiter: int,
+    idg_mode: str,
+    num_threads: int,
+    num_deconvolution_threads: int,
+    dd_psf_grid: list[int],
+    h5parm: str,
+    soltabs: str,
+    region_file: str,
+    num_gridding_threads: int,
+    apply_time_frequency_smearing: bool,
+    shared_facet_reads: bool,
+    shared_facet_writes: bool,
+    temp_dir: str,
+) -> list[str]:
+    """Build the serial facet-corrected WSClean command for one imaging sector."""
+    command = [
+        "wsclean",
+        "-no-update-model-required",
+        "-local-rms",
+        "-join-channels",
+        "-apply-facet-beam",
+        "-log-time",
+        "-gridder",
+        "wgridder",
+        "-major-iteration-mode",
+        "single",
+        "-temp-dir",
+        temp_dir,
+        "-parallel-deconvolution",
+        "2048",
+        "-multiscale-scale-bias",
+        "0.8",
+        "-auto-threshold",
+        "1.0",
+        "-mgain-boosting",
+        "1.3",
+        "-facet-beam-update",
+        "120",
+        "-weight",
+        "briggs",
+        str(robust),
+        "-apply-facet-solutions",
+        h5parm,
+        soltabs,
+    ]
+    options = [
+        ("-name", name),
+        ("-fits-mask", mask),
+        ("-size", wsclean_imsize),
+        ("-niter", wsclean_niter),
+        ("-nmiter", wsclean_nmiter),
+        ("-minuv-l", min_uv_lambda),
+        ("-maxuv-l", max_uv_lambda),
+        ("-mgain", mgain),
+        ("-pol", pol),
+        ("-scale", cellsize_deg),
+        ("-channels-out", channels_out),
+        ("-deconvolution-channels", deconvolution_channels),
+        ("-fit-spectral-pol", fit_spectral_pol),
+        ("-taper-gaussian", taper_arcsec),
+        ("-local-rms-strength", local_rms_strength),
+        ("-local-rms-window", local_rms_window),
+        ("-local-rms-method", local_rms_method),
+        ("-abs-mem", wsclean_mem),
+        ("-auto-mask", auto_mask),
+        ("-auto-mask-nmiter", auto_mask_nmiter),
+        ("-idg-mode", idg_mode),
+        ("-j", num_threads),
+        ("-deconvolution-threads", num_deconvolution_threads),
+        ("-dd-psf-grid", dd_psf_grid),
+        ("-parallel-gridding", num_gridding_threads),
+        ("-facet-regions", region_file),
+    ]
+    for option, value in options:
+        if isinstance(value, list):
+            command.append(option)
+            command.extend(str(item) for item in value)
+        else:
+            _append_option(command, option, value)
+    _append_flag(command, "-multiscale", multiscale)
+    _append_flag(command, "-scalar-visibilities", scalar_visibilities)
+    _append_flag(command, "-diagonal-visibilities", diagonal_visibilities)
+    _append_flag(command, "-save-source-list", save_source_list)
+    if link_polarizations:
+        _append_option(command, "-link-polarizations", link_polarizations)
+    _append_flag(command, "-join-polarizations", join_polarizations)
+    _append_flag(command, "-skip-final-iteration", skip_final_iteration)
+    _append_flag(command, "-apply-time-frequency-smearing", apply_time_frequency_smearing)
+    _append_flag(command, "-shared-facet-reads", shared_facet_reads)
+    _append_flag(command, "-shared-facet-writes", shared_facet_writes)
+    command.append(msin)
+    return command
+
+
 def build_check_image_beam_command(input_image: str, beam_size_arcsec: float) -> list[str]:
     """Build the `check_image_beam.py` command for one image."""
     return ["check_image_beam.py", input_image, str(beam_size_arcsec)]
@@ -373,21 +518,23 @@ def image_payload_from_inputs(
     use_facets: bool = False,
     compress_images: bool = False,
 ) -> dict:
-    """Create a serializable no-DDE Stokes-I Image flow payload."""
+    """Create a serializable Stokes-I Image flow payload."""
     if apply_screens:
-        raise NotImplementedError("Image screens are not part of the PR6 no-DDE slice")
-    if use_facets:
-        raise NotImplementedError("Facet imaging is not part of the PR6 no-DDE slice")
+        raise NotImplementedError("Image screens are not part of the current image slice")
     if compress_images:
-        raise NotImplementedError("Image compression is not part of the PR6 no-DDE slice")
+        raise NotImplementedError("Image compression is not part of the current image slice")
     if input_parms.get("peel_bright_sources"):
-        raise NotImplementedError("Bright-source restoration is not part of the PR6 no-DDE slice")
+        raise NotImplementedError(
+            "Bright-source restoration is not part of the current image slice"
+        )
     if input_parms.get("save_filtered_model_image"):
-        raise NotImplementedError("Filtered model images are not part of the PR6 no-DDE slice")
+        raise NotImplementedError(
+            "Filtered model images are not part of the current image slice"
+        )
 
     pol = _pol_token(input_parms["pol"])
     if pol.upper() != "I":
-        raise NotImplementedError("PR6 image flow only supports Stokes-I imaging")
+        raise NotImplementedError("The image flow currently only supports Stokes-I imaging")
 
     pipeline_dir = str(pipeline_working_dir)
     image_names = input_parms.get("image_name", [])
@@ -435,12 +582,36 @@ def image_payload_from_inputs(
         "do_multiscale",
         "dd_psf_grid",
     ]
+    if use_facets:
+        per_sector_keys.extend(
+            [
+                "ra_mid",
+                "dec_mid",
+                "width_ra",
+                "width_dec",
+                "facet_region_file",
+            ]
+        )
     for key in per_sector_keys:
         value = input_parms.get(key, [])
         if not isinstance(value, list) or len(value) != sector_count:
             raise ValueError(f"{key} must be a list with one value per sector")
 
     h5parm = _optional_file_record_path(input_parms.get("h5parm"))
+    if use_facets and h5parm is None:
+        raise ValueError("h5parm must be a File record when use_facets=True")
+    facet_skymodel = None
+    if use_facets:
+        facet_skymodel = _file_record_path(input_parms.get("skymodel"))
+        for key in [
+            "soltabs",
+            "parallel_gridding_threads",
+            "scalar_visibilities",
+            "diagonal_visibilities",
+            "shared_facet_rw",
+        ]:
+            if key not in input_parms:
+                raise ValueError(f"{key} is required when use_facets=True")
     fulljones_h5parm = _optional_file_record_path(input_parms.get("fulljones_h5parm"))
     input_normalize_h5parm = _optional_file_record_path(input_parms.get("input_normalize_h5parm"))
     photometry_skymodel = _optional_file_record_path(input_parms.get("photometry_skymodel"))
@@ -497,9 +668,16 @@ def image_payload_from_inputs(
         mask_filename = _validate_basename(
             input_parms["mask_filename"][sector_index], f"mask_filename[{sector_index}]"
         )
+        facet_region_filename = None
+        if use_facets:
+            facet_region_filename = _validate_basename(
+                input_parms["facet_region_file"][sector_index],
+                f"facet_region_file[{sector_index}]",
+            )
         sectors.append(
             {
                 "image_name": image_name,
+                "use_facets": use_facets,
                 "data_colname": str(input_parms["data_colname"]),
                 "prepare_tasks": prepare_tasks,
                 "concat_filename": concat_filename,
@@ -531,6 +709,23 @@ def image_payload_from_inputs(
                 ],
                 "vertices_file": _file_record_path(input_parms["vertices_file"][sector_index]),
                 "region_file": _optional_file_record_path(input_parms["region_file"][sector_index]),
+                "facet_skymodel": facet_skymodel,
+                "facet_region_filename": facet_region_filename,
+                "facet_region_path": (
+                    None
+                    if facet_region_filename is None
+                    else os.path.join(pipeline_dir, facet_region_filename)
+                ),
+                "ra_mid": (None if not use_facets else float(input_parms["ra_mid"][sector_index])),
+                "dec_mid": (
+                    None if not use_facets else float(input_parms["dec_mid"][sector_index])
+                ),
+                "width_ra": (
+                    None if not use_facets else float(input_parms["width_ra"][sector_index])
+                ),
+                "width_dec": (
+                    None if not use_facets else float(input_parms["width_dec"][sector_index])
+                ),
                 "wsclean_niter": int(input_parms["wsclean_niter"][sector_index]),
                 "wsclean_nmiter": int(input_parms["wsclean_nmiter"][sector_index]),
                 "skip_final_iteration": bool(input_parms["skip_final_iteration"]),
@@ -551,6 +746,22 @@ def image_payload_from_inputs(
                 "threshpix": float(input_parms["threshpix"][sector_index]),
                 "do_multiscale": bool(input_parms["do_multiscale"][sector_index]),
                 "dd_psf_grid": [int(value) for value in input_parms["dd_psf_grid"][sector_index]],
+                "soltabs": None if not use_facets else str(input_parms["soltabs"]),
+                "parallel_gridding_threads": (
+                    None if not use_facets else int(input_parms["parallel_gridding_threads"])
+                ),
+                "scalar_visibilities": (
+                    None if not use_facets else bool(input_parms["scalar_visibilities"])
+                ),
+                "diagonal_visibilities": (
+                    None if not use_facets else bool(input_parms["diagonal_visibilities"])
+                ),
+                "shared_facet_reads": (
+                    None if not use_facets else bool(input_parms["shared_facet_rw"])
+                ),
+                "shared_facet_writes": (
+                    None if not use_facets else bool(input_parms["shared_facet_rw"])
+                ),
                 "pol": pol,
                 "save_source_list": bool(input_parms["save_source_list"]),
                 "link_polarizations": input_parms["link_polarizations"],
@@ -570,7 +781,7 @@ def image_payload_from_inputs(
         )
 
     payload = {
-        "mode": "no_dde_stokes_i",
+        "mode": "facet_stokes_i" if use_facets else "no_dde_stokes_i",
         "pipeline_working_dir": pipeline_dir,
         "sectors": sectors,
     }
@@ -625,7 +836,7 @@ def run_image_sector(
     execution_config: Optional[ExecutionConfig] = None,
     shell_operation_cls=None,
 ) -> dict:
-    """Run one no-DDE Stokes-I imaging sector."""
+    """Run one Stokes-I imaging sector."""
     config = execution_config or ExecutionConfig(task_runner="sync")
     prepared_records = []
     for prepare_task in sector["prepare_tasks"]:
@@ -676,42 +887,102 @@ def run_image_sector(
     _run_shell(mask_command, pipeline_working_dir, config, shell_operation_cls=shell_operation_cls)
     mask_record = _require_file(str(sector["mask_path"]), "Imaging mask")
 
+    region_record = None
+    if sector["use_facets"]:
+        region_command = build_make_region_file_command(
+            str(sector["facet_skymodel"]),
+            float(sector["ra_mid"]),
+            float(sector["dec_mid"]),
+            float(sector["width_ra"]),
+            float(sector["width_dec"]),
+            str(sector["facet_region_filename"]),
+        )
+        _run_shell(
+            region_command, pipeline_working_dir, config, shell_operation_cls=shell_operation_cls
+        )
+        region_record = _require_file(str(sector["facet_region_path"]), "Facet region file")
+
     temp_dir = os.path.join(pipeline_working_dir, f"{sector['image_name']}_wsclean_tmp")
-    wsclean_command = build_wsclean_no_dde_command(
-        concat_record["path"],
-        str(sector["image_name"]),
-        mask_record["path"],
-        list(sector["wsclean_imsize"]),
-        int(sector["wsclean_niter"]),
-        int(sector["wsclean_nmiter"]),
-        float(sector["robust"]),
-        float(sector["min_uv_lambda"]),
-        float(sector["max_uv_lambda"]),
-        float(sector["mgain"]),
-        bool(sector["do_multiscale"]),
-        bool(sector["save_source_list"]),
-        str(sector["pol"]),
-        sector["link_polarizations"],
-        bool(sector["join_polarizations"]),
-        bool(sector["skip_final_iteration"]),
-        float(sector["cellsize_deg"]),
-        int(sector["channels_out"]),
-        int(sector["deconvolution_channels"]),
-        int(sector["fit_spectral_pol"]),
-        float(sector["taper_arcsec"]),
-        float(sector["local_rms_strength"]),
-        float(sector["local_rms_window"]),
-        str(sector["local_rms_method"]),
-        float(sector["wsclean_mem"]),
-        float(sector["auto_mask"]),
-        int(sector["auto_mask_nmiter"]),
-        str(sector["idg_mode"]),
-        int(sector["max_threads"]),
-        int(sector["deconvolution_threads"]),
-        list(sector["dd_psf_grid"]),
-        bool(sector["apply_time_frequency_smearing"]),
-        temp_dir,
-    )
+    if sector["use_facets"]:
+        wsclean_command = build_wsclean_facets_command(
+            concat_record["path"],
+            str(sector["image_name"]),
+            mask_record["path"],
+            list(sector["wsclean_imsize"]),
+            int(sector["wsclean_niter"]),
+            int(sector["wsclean_nmiter"]),
+            float(sector["robust"]),
+            float(sector["min_uv_lambda"]),
+            float(sector["max_uv_lambda"]),
+            float(sector["mgain"]),
+            bool(sector["do_multiscale"]),
+            bool(sector["scalar_visibilities"]),
+            bool(sector["diagonal_visibilities"]),
+            bool(sector["save_source_list"]),
+            str(sector["pol"]),
+            sector["link_polarizations"],
+            bool(sector["join_polarizations"]),
+            bool(sector["skip_final_iteration"]),
+            float(sector["cellsize_deg"]),
+            int(sector["channels_out"]),
+            int(sector["deconvolution_channels"]),
+            int(sector["fit_spectral_pol"]),
+            float(sector["taper_arcsec"]),
+            float(sector["local_rms_strength"]),
+            float(sector["local_rms_window"]),
+            str(sector["local_rms_method"]),
+            float(sector["wsclean_mem"]),
+            float(sector["auto_mask"]),
+            int(sector["auto_mask_nmiter"]),
+            str(sector["idg_mode"]),
+            int(sector["max_threads"]),
+            int(sector["deconvolution_threads"]),
+            list(sector["dd_psf_grid"]),
+            str(sector["h5parm"]),
+            str(sector["soltabs"]),
+            region_record["path"],
+            int(sector["parallel_gridding_threads"]),
+            bool(sector["apply_time_frequency_smearing"]),
+            bool(sector["shared_facet_reads"]),
+            bool(sector["shared_facet_writes"]),
+            temp_dir,
+        )
+    else:
+        wsclean_command = build_wsclean_no_dde_command(
+            concat_record["path"],
+            str(sector["image_name"]),
+            mask_record["path"],
+            list(sector["wsclean_imsize"]),
+            int(sector["wsclean_niter"]),
+            int(sector["wsclean_nmiter"]),
+            float(sector["robust"]),
+            float(sector["min_uv_lambda"]),
+            float(sector["max_uv_lambda"]),
+            float(sector["mgain"]),
+            bool(sector["do_multiscale"]),
+            bool(sector["save_source_list"]),
+            str(sector["pol"]),
+            sector["link_polarizations"],
+            bool(sector["join_polarizations"]),
+            bool(sector["skip_final_iteration"]),
+            float(sector["cellsize_deg"]),
+            int(sector["channels_out"]),
+            int(sector["deconvolution_channels"]),
+            int(sector["fit_spectral_pol"]),
+            float(sector["taper_arcsec"]),
+            float(sector["local_rms_strength"]),
+            float(sector["local_rms_window"]),
+            str(sector["local_rms_method"]),
+            float(sector["wsclean_mem"]),
+            float(sector["auto_mask"]),
+            int(sector["auto_mask_nmiter"]),
+            str(sector["idg_mode"]),
+            int(sector["max_threads"]),
+            int(sector["deconvolution_threads"]),
+            list(sector["dd_psf_grid"]),
+            bool(sector["apply_time_frequency_smearing"]),
+            temp_dir,
+        )
     _run_shell(
         wsclean_command, pipeline_working_dir, config, shell_operation_cls=shell_operation_cls
     )
@@ -815,6 +1086,7 @@ def run_image_sector(
         diagnostics["path"],
         image_name,
         bool(sector["allow_internet_access"]),
+        facet_region_file=None if region_record is None else region_record["path"],
         photometry_skymodel=sector.get("photometry_skymodel"),
         astrometry_skymodel=sector.get("astrometry_skymodel"),
     )
@@ -831,7 +1103,7 @@ def run_image_sector(
         [os.path.join(pipeline_working_dir, f"{image_name}*.pdf")]
     )
 
-    return {
+    result = {
         "filtered_skymodel_true_sky": filtered_true_sky,
         "filtered_skymodel_apparent_sky": filtered_apparent_sky,
         "pybdsf_catalog": source_catalog,
@@ -844,16 +1116,19 @@ def run_image_sector(
         "source_filtering_mask": source_filtering_mask,
         "sector_skymodels": [skymodel_nonpb, skymodel_pb] if sector["save_source_list"] else None,
     }
+    if region_record is not None:
+        result["sector_region_file"] = region_record
+    return result
 
 
-@task(name="image_sector_no_dde")
+@task(name="image_sector")
 def image_sector_task(
     sector: Mapping[str, object],
     pipeline_working_dir: str,
     execution_config: Optional[ExecutionConfig] = None,
     shell_operation_cls=None,
 ) -> dict:
-    """Prefect task wrapper for one no-DDE imaging sector."""
+    """Prefect task wrapper for one imaging sector."""
     return run_image_sector(
         sector,
         pipeline_working_dir,
@@ -881,14 +1156,19 @@ def _result_from_sector_records(sector_outputs: list[dict]) -> dict:
     }
     if any(sector["sector_skymodels"] is not None for sector in sector_outputs):
         result["sector_skymodels"] = [sector["sector_skymodels"] for sector in sector_outputs]
+    if any("sector_region_file" in sector for sector in sector_outputs):
+        result["sector_region_file"] = [
+            sector.get("sector_region_file") for sector in sector_outputs
+        ]
     for value in result.values():
         validate_output_record(value, allow_none=True)
     return result
 
 
 def _validate_image_payload(payload: Mapping[str, object]) -> tuple[str, list[Mapping]]:
-    if payload.get("mode") != "no_dde_stokes_i":
-        raise ValueError("Only no_dde_stokes_i image payloads are supported in PR6")
+    supported_modes = {"facet_stokes_i", "no_dde_stokes_i"}
+    if payload.get("mode") not in supported_modes:
+        raise ValueError("Only Stokes-I no-DDE and facet image payloads are supported")
     pipeline_working_dir = str(payload["pipeline_working_dir"])
     sectors = payload.get("sectors", [])
     if not isinstance(sectors, list):
@@ -901,7 +1181,7 @@ def run_image_flow(
     execution_config: Optional[ExecutionConfig] = None,
     shell_operation_cls=None,
 ) -> dict:
-    """Run no-DDE Stokes-I imaging commands and return finalizer-compatible outputs."""
+    """Run Stokes-I imaging commands and return finalizer-compatible outputs."""
     assert_serializable_payload(payload)
     config = execution_config or ExecutionConfig(task_runner="sync")
     pipeline_working_dir, sectors = _validate_image_payload(payload)
@@ -934,12 +1214,12 @@ def _run_image_prefect_tasks(
     return _result_from_sector_records(sector_outputs)
 
 
-@flow(name="image-no-dde")
+@flow(name="image")
 def image_flow(
     payload: Mapping[str, object],
     execution_config: Optional[ExecutionConfig] = None,
 ):
-    """Prefect entry point for no-DDE Stokes-I imaging."""
+    """Prefect entry point for Stokes-I imaging."""
     return _run_image_prefect_tasks(payload, execution_config=execution_config)
 
 
@@ -958,6 +1238,16 @@ def normalized_blank_image_command(**kwargs) -> list[str]:
     return normalize_command(build_blank_image_command(**kwargs))
 
 
+def normalized_make_region_file_command(**kwargs) -> list[str]:
+    """Return normalized make-region-file command tokens for fixture comparisons."""
+    return normalize_command(build_make_region_file_command(**kwargs))
+
+
 def normalized_wsclean_no_dde_command(**kwargs) -> list[str]:
     """Return normalized no-DDE WSClean command tokens for fixture comparisons."""
     return normalize_command(build_wsclean_no_dde_command(**kwargs))
+
+
+def normalized_wsclean_facets_command(**kwargs) -> list[str]:
+    """Return normalized facet WSClean command tokens for fixture comparisons."""
+    return normalize_command(build_wsclean_facets_command(**kwargs))

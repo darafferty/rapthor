@@ -1307,8 +1307,60 @@ Deferred to later imaging PRs:
 - Add task-local WSClean temporary directory cleanup/isolation tests.
 - Add compression and filtered-model-image handling.
 - Add regular selfcal `Image` and `ImageNormalize` finalizer coverage.
-- Add facet, screen, MPI, image-cube, full-Stokes, clean-disabled, and
-  shared-facet WSClean modes.
+- Add screen, MPI, image-cube, full-Stokes, and clean-disabled WSClean modes.
+- Add real external-tool coverage once lightweight Measurement Set and FITS
+  fixtures are available.
+
+### PR 7: Facet Stokes-I Image Flow
+
+Status: complete for the next direct-flow imaging slice on the migration branch.
+
+- Extend the Image Prefect flow from no-DDE-only to no-DDE or serial
+  facet-corrected Stokes-I imaging.
+- Add `make_region_file.py` command construction and execution for per-sector
+  DS9 facet regions.
+- Add the serial facet WSClean command builder, including
+  `-apply-facet-solutions`, `soltabs`, scalar/diagonal visibility flags,
+  `-parallel-gridding`, and `shared_facet_rw` split into
+  `-shared-facet-reads` and `-shared-facet-writes`.
+- Preserve the finalizer-compatible image output contract and add the CWL
+  `sector_region_file` output for facet runs.
+- Keep unsupported branches explicit: screens, compression, bright-source
+  restoration, filtered model images, and non-Stokes-I imaging remain deferred.
+
+Implemented files:
+
+- `rapthor/execution/flows/image.py`
+- `tests/execution/test_image_flow.py`
+- Updates to `rapthor/execution/flows/__init__.py`
+- Updates to `rapthor/execution/__init__.py`
+- Updates to `tests/execution/fixtures/cwl_reference_commands.json`
+- Updates to `tests/execution/fixtures/cwl_reference_outputs.json`
+
+Verified in the rebuilt devcontainer:
+
+- `python3 -m pytest tests/execution/test_image_flow.py`: 13 passed.
+- `python3 -m pytest tests/execution tests/lib/test_parset.py`: 135 passed.
+- `python3 -m ruff check rapthor/execution tests/execution pyproject.toml`:
+  passed.
+- `python3 -m ruff format --check rapthor/execution tests/execution`: passed.
+- `python -m py_compile rapthor/execution/__init__.py
+  rapthor/execution/flows/__init__.py rapthor/execution/flows/image.py
+  tests/execution/test_image_flow.py`: passed.
+- `python -m json.tool tests/execution/fixtures/cwl_reference_commands.json`:
+  passed.
+- `python -m json.tool tests/execution/fixtures/cwl_reference_outputs.json`:
+  passed.
+- `git diff --check`: passed.
+
+Deferred to later imaging PRs:
+
+- Add apply-screen imaging.
+- Add image compression and filtered-model-image handling.
+- Add regular selfcal `Image` and `ImageNormalize` finalizer coverage.
+- Add MPI WSClean variants, image-cube outputs, full-Stokes imaging,
+  clean-disabled branches, and task-local WSClean temporary directory
+  cleanup/isolation tests.
 - Add real external-tool coverage once lightweight Measurement Set and FITS
   fixtures are available.
 
