@@ -2,10 +2,26 @@
 Tests for the `rapthor.lib.miscellaneous` module.
 """
 
-import pytest
-from rapthor.lib.miscellaneous import *
-from astropy.wcs import WCS
+import subprocess
 
+import pytest
+
+from rapthor.lib.miscellaneous import (
+    angular_separation,
+    approx_equal,
+    calc_theoretical_noise,
+    convert_mjd2mvt,
+    convert_mvt2mjd,
+    dec2ddmmss,
+    get_max_spectral_terms,
+    get_reference_station,
+    make_template_image,
+    nproc,
+    ra2hhmmss,
+    remove_soltabs,
+    string2bool,
+    string2list,
+)
 
 
 @pytest.mark.parametrize("image_name", (None,))

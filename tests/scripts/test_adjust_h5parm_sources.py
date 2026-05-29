@@ -9,10 +9,11 @@ from pathlib import Path
 import losoto.h5parm
 import numpy
 import pytest
+
 from rapthor.scripts.adjust_h5parm_sources import main
 
 
-def test_main(): #skymodel, h5parm, solset):
+def test_main():  # skymodel, h5parm, solset):
     # # We would normally check the output or state after running main.
     # # Here we just ensure it runs without error.
     # with open("test.sky", "w") as f:
@@ -35,7 +36,7 @@ def test_main(): #skymodel, h5parm, solset):
     #         vals=amplitudes,
     #         weights=numpy.ones(len(directions))
     #     )
-        
+
     # # print("\n===>", dir(solset.getSoltabs()[0]))
     # main(skymodel="test.sky", h5parm_file="test.h5") #, solset.name)
     pass

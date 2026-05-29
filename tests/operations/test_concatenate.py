@@ -3,6 +3,7 @@ Test cases for the `rapthor.operations.concatenate` module.
 """
 
 import pytest
+
 from rapthor.operations.concatenate import Concatenate
 
 
