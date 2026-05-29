@@ -411,8 +411,9 @@ PR 1 verification:
 Status: partially complete. PR 2 added import-safe task primitives for command
 normalization, shell execution, task-runner construction, runtime environment,
 work directories, resource requests, and serializable payload validation. The
-helpers can be tested without Prefect installed by injecting small fakes; real
-Prefect/Prefect-Dask imports are deferred until execution time.
+helpers can still be tested with injected fakes for shell execution and Dask task
+runner construction, but Prefect/Dask are now core dependencies and operation
+flows can use Prefect decorators directly.
 
 - Add command-builder functions for common tool classes:
   - DP3
@@ -475,6 +476,12 @@ PR 2 verification:
 
 This is the smallest operation and should be the first real flow parity target.
 
+Status: complete for direct flow parity in PR 3. The production `Operation.run()`
+path is still unchanged, but the Concatenate operation now has a
+finalizer-compatible Python flow, a Prefect task entry point, command parity
+coverage, output-shape validation, missing-output failure coverage, and a
+mocked Prefect flow test.
+
 - Translate `concatenate_pipeline.cwl` into a Python flow that scatters
   `concat_ms.py` or equivalent `taql` calls over epochs.
 - Reuse `Concatenate.set_input_parameters()` and `Concatenate.finalize()`.
@@ -483,14 +490,23 @@ This is the smallest operation and should be the first real flow parity target.
 
 Tests:
 
-- Rework relevant `tests/operations/test_concatenate.py` cases to exercise the
-  Python flow and finalizer-compatible outputs.
-- Add command-builder tests for frequency concatenation.
-- Add a parity test comparing Python output shapes against CWL-derived fixtures.
-- Add restart/failure tests for failed concatenation, partial outputs, deleted
-  `.done`, and reloading `.outputs.json`.
-- Add a concurrency test proving scattered epoch outputs are written to unique
-  paths and cannot collide.
+- Added direct flow and task-wrapper tests for command execution with mocked
+  `ShellOperation`.
+- Added command parity coverage for frequency concatenation against the
+  CWL-derived fixture.
+- Added output-contract and finalizer-state coverage proving
+  `Concatenate.finalize()` accepts Prefect-produced records.
+- Added payload validation for mismatched inputs, non-basename outputs, and
+  duplicate output paths.
+- Added failure coverage for shell failures and missing expected output
+  directories.
+
+Remaining Stage 3 work before final cutover:
+
+- Add operation-level restart tests once `Operation.run()` is switched from CWL
+  to the Python flow path.
+- Add a real lightweight concatenate integration test if suitable Measurement
+  Set fixtures and `concat_ms.py` dependencies are available in CI.
 
 ### Stage 4: Port Mosaic
 
@@ -1083,6 +1099,8 @@ Verified in the devcontainer with focused pytest and ruff checks.
 
 ### PR 3: Concatenate Prefect Flow
 
+Status: complete for direct flow parity on the migration branch.
+
 - Implement the Concatenate Prefect flow.
 - Exercise the flow directly without changing the production runner yet.
 - Add parity tests against the current mocked CWL-derived output shape.
@@ -1090,6 +1108,33 @@ Verified in the devcontainer with focused pytest and ruff checks.
   mocked-flow tests.
 - Add a small integration test if the environment supports `taql` or
   `concat_ms.py`.
+
+Implemented files:
+
+- `rapthor/execution/flows/__init__.py`
+- `rapthor/execution/flows/concatenate.py`
+- `tests/execution/test_concatenate_flow.py`
+- Updates to `rapthor/execution/__init__.py`
+- Updates to `tests/execution/test_reference_fixtures.py`
+- Updates to `pyproject.toml` packaging and tox configuration so Prefect can
+  import cleanly from the repository on Python 3.10.
+
+Verified in the rebuilt devcontainer:
+
+- `python3 -m pytest tests/execution tests/lib/test_parset.py`: 95 passed.
+- `python3 -m ruff check rapthor/execution tests/execution pyproject.toml`:
+  passed.
+- `python3 -m ruff format --check rapthor/execution tests/execution`: passed.
+- `python3 -c "import toml; toml.load('pyproject.toml')"`: passed, covering the
+  Prefect Python 3.10 TOML parser compatibility issue.
+
+Deferred to the cutover PR:
+
+- Switch `Operation.run()` from CWL execution to the Python flow path.
+- Add operation-level restart tests for `.done` and `.outputs.json` on the
+  final Prefect/Dask execution path.
+- Add real external-tool integration coverage for concatenate if lightweight
+  Measurement Set fixtures are available.
 
 ## Success Criteria
 
