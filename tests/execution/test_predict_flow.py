@@ -1,0 +1,606 @@
+import json
+import shlex
+from pathlib import Path
+
+import pytest
+from prefect.testing.utilities import prefect_test_harness
+
+from rapthor.execution.config import ExecutionConfig
+from rapthor.execution.flows.predict import (
+    build_add_sector_models_command,
+    build_predict_model_data_command,
+    build_subtract_sector_models_command,
+    normalized_add_sector_models_command,
+    normalized_predict_model_data_command,
+    normalized_subtract_sector_models_command,
+    predict_flow,
+    predict_model_data_task,
+    predict_payload_from_inputs,
+    run_predict_flow,
+)
+from rapthor.execution.outputs import directory_record, file_record, validate_output_record
+from rapthor.operations.predict import Predict
+
+FIXTURE_DIR = Path(__file__).parent / "fixtures"
+
+
+@pytest.fixture
+def fake_predict_shell_operation_cls():
+    class FakePredictShellOperation:
+        instances = []
+
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+            self.instances.append(self)
+
+        def run(self):
+            tokens = shlex.split(self.kwargs["commands"][0])
+            cwd = Path(self.kwargs["cwd"])
+            output_paths = self._output_paths(tokens, cwd)
+            for output_path in output_paths:
+                output_path.mkdir(parents=True, exist_ok=True)
+            return "OK"
+
+        @staticmethod
+        def _matching_model(msobs, msmods):
+            msobs_basename = Path(msobs).name
+            for model in msmods:
+                if Path(model).name.startswith(msobs_basename):
+                    return model
+            return msmods[0]
+
+        @classmethod
+        def _output_paths(cls, tokens, cwd):
+            if tokens[0] == "DP3":
+                output_name = next(
+                    token.split("=", 1)[1] for token in tokens if token.startswith("msout=")
+                )
+                return [cwd / output_name]
+            if tokens[0] == "add_sector_models.py":
+                model = cls._matching_model(tokens[1], tokens[2].split(","))
+                output_name = Path(model).name.removesuffix("_modeldata") + "_di.ms"
+                return [cwd / output_name]
+            if tokens[0] == "subtract_sector_models.py":
+                msobs = tokens[3]
+                model = cls._matching_model(msobs, tokens[4].split(","))
+                output_paths = [cwd / Path(model).name.removesuffix("_modeldata")]
+                if "--peel_outliers=True" in tokens or "--peel_bright=True" in tokens:
+                    infix = next(
+                        token.split("=", 1)[1] for token in tokens if token.startswith("--infix=")
+                    )
+                    output_paths.insert(0, cwd / f"{Path(msobs).name}{infix}_field")
+                return output_paths
+            raise AssertionError(f"Unexpected command: {tokens[0]}")
+
+    return FakePredictShellOperation
+
+
+class FailingShellOperation:
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+
+    def run(self):
+        raise RuntimeError("predict failed")
+
+
+class NoOutputShellOperation:
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+
+    def run(self):
+        return "OK"
+
+
+class PostprocessNoOutputShellOperation:
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+
+    def run(self):
+        tokens = shlex.split(self.kwargs["commands"][0])
+        if tokens[0] == "DP3":
+            output_name = next(
+                token.split("=", 1)[1] for token in tokens if token.startswith("msout=")
+            )
+            (Path(self.kwargs["cwd"]) / output_name).mkdir(parents=True, exist_ok=True)
+        return "OK"
+
+
+class ObservationStub:
+    def __init__(self, name, starttime, ms_filename):
+        self.name = name
+        self.starttime = starttime
+        self.ms_filename = ms_filename
+        self.infix = ".selfcal"
+        self.ms_predict_di_filename = None
+
+
+class SectorStub:
+    def __init__(self, observations):
+        self.observations = observations
+
+
+class FieldStub:
+    def __init__(self, tmp_path, field_observation, sector_observation):
+        self.parset = _operation_parset(tmp_path)
+        self.observations = [field_observation]
+        self.predict_sectors = [SectorStub([sector_observation])]
+
+
+def _operation_parset(tmp_path):
+    return {
+        "dir_working": str(tmp_path / "working"),
+        "cluster_specific": {
+            "cwl_runner": "toil",
+            "debug_workflow": False,
+            "keep_temporary_files": False,
+            "max_nodes": 1,
+            "batch_system": "single_machine",
+            "cpus_per_task": 1,
+            "mem_per_node_gb": 0,
+            "dir_local": None,
+            "local_scratch_dir": None,
+            "global_scratch_dir": None,
+            "use_container": False,
+            "container_type": "docker",
+            "max_cores": 1,
+            "max_threads": 1,
+        },
+    }
+
+
+def _predict_input_parms():
+    return {
+        "sector_filename": [
+            directory_record("/data/obs_0.ms"),
+            directory_record("/data/obs_1.ms"),
+        ],
+        "data_colname": "DATA",
+        "sector_starttime": ["50000.0", "50010.0"],
+        "sector_ntimes": [10, 12],
+        "sector_model_filename": [
+            "obs_0.ms.sector_1_modeldata",
+            "obs_1.ms.sector_1_modeldata",
+        ],
+        "sector_skymodel": [
+            file_record("/data/sector_1.skymodel"),
+            file_record("/data/sector_1.skymodel"),
+        ],
+        "sector_patches": [["patch1", "patch2"], ["patch1", "patch2"]],
+        "h5parm": None,
+        "normalize_h5parm": None,
+        "dp3_applycal_steps": None,
+        "onebeamperpatch": True,
+        "sagecalpredict": False,
+        "obs_filename": [
+            directory_record("/data/obs_0.ms"),
+            directory_record("/data/obs_1.ms"),
+        ],
+        "obs_starttime": ["50000.0", "50010.0"],
+        "obs_infix": [".selfcal", ".selfcal"],
+        "correctfreqsmearing": False,
+        "correcttimesmearing": False,
+        "max_threads": 4,
+    }
+
+
+def _single_observation_input_parms():
+    input_parms = _predict_input_parms()
+    for key in [
+        "sector_filename",
+        "sector_starttime",
+        "sector_ntimes",
+        "sector_model_filename",
+        "sector_skymodel",
+        "sector_patches",
+        "obs_filename",
+        "obs_starttime",
+        "obs_infix",
+    ]:
+        input_parms[key] = input_parms[key][:1]
+    return input_parms
+
+
+def _dd_predict_input_parms():
+    input_parms = _predict_input_parms()
+    input_parms.update(
+        {
+            "obs_solint_sec": [20.0, 30.0],
+            "obs_solint_hz": [1000.0, 2000.0],
+            "min_uv_lambda": 80.0,
+            "max_uv_lambda": 1000000.0,
+            "nr_outliers": 1,
+            "peel_outliers": True,
+            "nr_bright": 0,
+            "peel_bright": False,
+            "reweight": True,
+        }
+    )
+    return input_parms
+
+
+def test_predict_command_builders_match_reference_fixtures():
+    commands = json.loads((FIXTURE_DIR / "cwl_reference_commands.json").read_text())
+
+    assert (
+        normalized_predict_model_data_command(
+            msin="obs_0.ms",
+            data_colname="DATA",
+            msout="obs_0.ms.sector_1_modeldata",
+            starttime="50000.0",
+            ntimes=10,
+            onebeamperpatch=True,
+            correctfreqsmearing=False,
+            correcttimesmearing=False,
+            sagecalpredict=False,
+            sourcedb="sector_1.skymodel",
+            directions=["patch1", "patch2"],
+            numthreads=4,
+        )
+        == commands["predict"]["predict_model_data"]
+    )
+    assert (
+        normalized_add_sector_models_command(
+            msobs="obs_0.ms",
+            msmods=["obs_0.ms.sector_1_modeldata", "obs_0.ms.sector_2_modeldata"],
+            data_colname="DATA",
+            obs_starttime="50000.0",
+            infix=".selfcal",
+        )
+        == commands["predict"]["add_sector_models"]
+    )
+    assert (
+        normalized_subtract_sector_models_command(
+            msobs="obs_0.ms",
+            msmods=["obs_0.ms.sector_1_modeldata", "obs_0.ms.sector_2_modeldata"],
+            data_colname="DATA",
+            obs_starttime="50000.0",
+            solint_sec=20.0,
+            solint_hz=1000.0,
+            infix=".selfcal",
+            min_uv_lambda=80.0,
+            max_uv_lambda=1000000.0,
+            nr_outliers=1,
+            peel_outliers=True,
+            nr_bright=0,
+            peel_bright=False,
+            reweight=True,
+        )
+        == commands["predict"]["subtract_sector_models"]
+    )
+
+
+def test_build_predict_model_data_command_adds_h5parm_applycal_options():
+    command = build_predict_model_data_command(
+        "obs_0.ms",
+        "CORRECTED_DATA",
+        "obs_0.ms.sector_1_modeldata",
+        "50000.0",
+        10,
+        onebeamperpatch=False,
+        correctfreqsmearing=True,
+        correcttimesmearing=True,
+        sagecalpredict=False,
+        sourcedb="sector_1.skymodel",
+        directions=["patch1"],
+        numthreads=8,
+        h5parm="solutions.h5",
+        applycal_steps="[fastphase,normalization]",
+        normalize_h5parm="norm.h5",
+    )
+
+    assert "predict.applycal.correction=phase000" in command
+    assert "predict.applycal.normalization.solset=sol000" in command
+    assert "predict.type=h5parmpredict" in command
+    assert "predict.applycal.steps=[fastphase,normalization]" in command
+    assert "predict.applycal.parmdb=solutions.h5" in command
+    assert "predict.applycal.normalization.parmdb=norm.h5" in command
+    assert "predict.correctfreqsmearing=True" in command
+    assert "predict.correcttimesmearing=True" in command
+
+
+def test_build_predict_model_data_command_uses_sagecalpredict_when_requested():
+    command = build_predict_model_data_command(
+        "obs_0.ms",
+        "DATA",
+        "obs_0.ms.sector_1_modeldata",
+        "50000.0",
+        10,
+        onebeamperpatch=True,
+        correctfreqsmearing=False,
+        correcttimesmearing=False,
+        sagecalpredict=True,
+        sourcedb="sector_1.skymodel",
+        directions=["patch1"],
+        numthreads=4,
+        h5parm="solutions.h5",
+    )
+
+    assert "predict.type=sagecalpredict" in command
+    assert "predict.applycal.parmdb=solutions.h5" in command
+
+
+def test_add_and_subtract_command_builders_create_cwl_equivalent_tokens():
+    assert build_add_sector_models_command(
+        "obs_0.ms",
+        ["obs_0.ms.sector_1_modeldata", "obs_0.ms.sector_2_modeldata"],
+        "DATA",
+        "50000.0",
+        ".selfcal",
+    ) == [
+        "add_sector_models.py",
+        "obs_0.ms",
+        "obs_0.ms.sector_1_modeldata,obs_0.ms.sector_2_modeldata",
+        "--msin_column=DATA",
+        "--starttime=50000.0",
+        "--infix=.selfcal",
+    ]
+    assert build_subtract_sector_models_command(
+        "obs_0.ms",
+        ["obs_0.ms.sector_1_modeldata", "obs_0.ms.sector_2_modeldata"],
+        "DATA",
+        "50000.0",
+        20.0,
+        1000.0,
+        ".selfcal",
+        80.0,
+        1000000.0,
+        1,
+        True,
+        0,
+        False,
+        True,
+    ) == [
+        "subtract_sector_models.py",
+        "--weights_colname=WEIGHT_SPECTRUM",
+        "--phaseonly=True",
+        "obs_0.ms",
+        "obs_0.ms.sector_1_modeldata,obs_0.ms.sector_2_modeldata",
+        "--msin_column=DATA",
+        "--starttime=50000.0",
+        "--solint_sec=20.0",
+        "--solint_hz=1000.0",
+        "--infix=.selfcal",
+        "--uvcut_min=80.0",
+        "--uvcut_max=1000000.0",
+        "--nr_outliers=1",
+        "--peel_outliers=True",
+        "--nr_bright=0",
+        "--peel_bright=False",
+        "--reweight=True",
+    ]
+
+
+def test_predict_payload_from_inputs_builds_di_scatter_payload(tmp_path):
+    payload = predict_payload_from_inputs("di", _predict_input_parms(), tmp_path)
+
+    assert payload["mode"] == "di"
+    assert payload["pipeline_working_dir"] == str(tmp_path)
+    assert len(payload["predict_tasks"]) == 2
+    assert len(payload["postprocess_tasks"]) == 2
+    assert payload["predict_tasks"][0] == {
+        "msin": "/data/obs_0.ms",
+        "data_colname": "DATA",
+        "msout": "obs_0.ms.sector_1_modeldata",
+        "msout_path": str(tmp_path / "obs_0.ms.sector_1_modeldata"),
+        "starttime": "50000.0",
+        "ntimes": 10,
+        "onebeamperpatch": True,
+        "correctfreqsmearing": False,
+        "correcttimesmearing": False,
+        "sagecalpredict": False,
+        "sourcedb": "/data/sector_1.skymodel",
+        "directions": ["patch1", "patch2"],
+        "numthreads": 4,
+        "h5parm": None,
+        "applycal_steps": None,
+        "normalize_h5parm": None,
+    }
+    assert payload["postprocess_tasks"][0] == {
+        "msobs": "/data/obs_0.ms",
+        "data_colname": "DATA",
+        "obs_starttime": "50000.0",
+        "infix": ".selfcal",
+    }
+
+
+def test_predict_payload_from_inputs_builds_dd_specific_postprocess_payload(tmp_path):
+    payload = predict_payload_from_inputs("dd", _dd_predict_input_parms(), tmp_path)
+
+    assert payload["mode"] == "dd"
+    assert payload["postprocess_tasks"][0] == {
+        "msobs": "/data/obs_0.ms",
+        "data_colname": "DATA",
+        "obs_starttime": "50000.0",
+        "infix": ".selfcal",
+        "solint_sec": 20.0,
+        "solint_hz": 1000.0,
+        "min_uv_lambda": 80.0,
+        "max_uv_lambda": 1000000.0,
+        "nr_outliers": 1,
+        "peel_outliers": True,
+        "nr_bright": 0,
+        "peel_bright": False,
+        "reweight": True,
+    }
+
+
+def test_predict_payload_from_inputs_rejects_mismatched_scatter_inputs(tmp_path):
+    input_parms = _predict_input_parms()
+    input_parms["sector_ntimes"] = [10]
+
+    with pytest.raises(ValueError, match="same length"):
+        predict_payload_from_inputs("di", input_parms, tmp_path)
+
+
+def test_predict_payload_from_inputs_rejects_non_basename_model_outputs(tmp_path):
+    input_parms = _predict_input_parms()
+    input_parms["sector_model_filename"][0] = "nested/modeldata.ms"
+
+    with pytest.raises(ValueError, match="basename"):
+        predict_payload_from_inputs("di", input_parms, tmp_path)
+
+
+def test_run_predict_flow_executes_di_commands_and_returns_nested_records(
+    tmp_path, fake_predict_shell_operation_cls
+):
+    payload = predict_payload_from_inputs("di", _predict_input_parms(), tmp_path)
+
+    outputs = run_predict_flow(
+        payload,
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_predict_shell_operation_cls,
+    )
+
+    assert outputs == {
+        "msfiles_di_cal": [
+            [directory_record(tmp_path / "obs_0.ms.sector_1_di.ms")],
+            [directory_record(tmp_path / "obs_1.ms.sector_1_di.ms")],
+        ]
+    }
+    validate_output_record(outputs["msfiles_di_cal"])
+    command_tokens = [
+        shlex.split(instance.kwargs["commands"][0])
+        for instance in fake_predict_shell_operation_cls.instances
+    ]
+    assert [tokens[0] for tokens in command_tokens] == [
+        "DP3",
+        "DP3",
+        "add_sector_models.py",
+        "add_sector_models.py",
+    ]
+    assert str(tmp_path / "obs_0.ms.sector_1_modeldata") in command_tokens[2][2]
+    assert str(tmp_path / "obs_1.ms.sector_1_modeldata") in command_tokens[2][2]
+
+
+def test_run_predict_flow_executes_dd_commands_and_returns_peeling_records(
+    tmp_path, fake_predict_shell_operation_cls
+):
+    payload = predict_payload_from_inputs("dd", _dd_predict_input_parms(), tmp_path)
+
+    outputs = run_predict_flow(
+        payload,
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_predict_shell_operation_cls,
+    )
+
+    assert outputs == {
+        "subtract_models": [
+            [
+                directory_record(tmp_path / "obs_0.ms.selfcal_field"),
+                directory_record(tmp_path / "obs_0.ms.sector_1"),
+            ],
+            [
+                directory_record(tmp_path / "obs_1.ms.selfcal_field"),
+                directory_record(tmp_path / "obs_1.ms.sector_1"),
+            ],
+        ]
+    }
+    validate_output_record(outputs["subtract_models"])
+    command_tokens = [
+        shlex.split(instance.kwargs["commands"][0])
+        for instance in fake_predict_shell_operation_cls.instances
+    ]
+    assert command_tokens[-1][0] == "subtract_sector_models.py"
+    assert "--peel_outliers=True" in command_tokens[-1]
+    assert "--reweight=True" in command_tokens[-1]
+
+
+def test_predict_model_data_task_wraps_runner(tmp_path, fake_predict_shell_operation_cls):
+    payload = predict_payload_from_inputs("di", _single_observation_input_parms(), tmp_path)
+
+    task_fn = getattr(predict_model_data_task, "fn", predict_model_data_task)
+    output = task_fn(
+        payload["predict_tasks"][0],
+        str(tmp_path),
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_predict_shell_operation_cls,
+    )
+
+    assert output == directory_record(tmp_path / "obs_0.ms.sector_1_modeldata")
+    assert fake_predict_shell_operation_cls.instances[0].kwargs["cwd"] == str(tmp_path)
+
+
+def test_predict_prefect_flow_entrypoint_runs_with_mocked_shell(
+    tmp_path, monkeypatch, fake_predict_shell_operation_cls
+):
+    monkeypatch.setattr(
+        "rapthor.execution.shell._load_shell_operation_cls",
+        lambda: fake_predict_shell_operation_cls,
+    )
+    payload = predict_payload_from_inputs("di", _single_observation_input_parms(), tmp_path)
+
+    with prefect_test_harness(server_startup_timeout=None):
+        outputs = predict_flow(
+            payload,
+            execution_config=ExecutionConfig(task_runner="sync"),
+        )
+
+    assert outputs == {"msfiles_di_cal": [[directory_record(tmp_path / "obs_0.ms.sector_1_di.ms")]]}
+    assert len(fake_predict_shell_operation_cls.instances) == 2
+
+
+def test_run_predict_flow_propagates_shell_failures(tmp_path):
+    payload = predict_payload_from_inputs("di", _single_observation_input_parms(), tmp_path)
+
+    with pytest.raises(RuntimeError, match="predict failed"):
+        run_predict_flow(
+            payload,
+            execution_config=ExecutionConfig(task_runner="sync"),
+            shell_operation_cls=FailingShellOperation,
+        )
+
+
+def test_run_predict_flow_fails_when_predicted_model_is_missing(tmp_path):
+    payload = predict_payload_from_inputs("di", _single_observation_input_parms(), tmp_path)
+
+    with pytest.raises(FileNotFoundError, match="Predict output was not created"):
+        run_predict_flow(
+            payload,
+            execution_config=ExecutionConfig(task_runner="sync"),
+            shell_operation_cls=NoOutputShellOperation,
+        )
+
+
+def test_run_predict_flow_fails_when_postprocess_output_is_missing(tmp_path):
+    payload = predict_payload_from_inputs("di", _single_observation_input_parms(), tmp_path)
+
+    with pytest.raises(FileNotFoundError, match="post-processing outputs"):
+        run_predict_flow(
+            payload,
+            execution_config=ExecutionConfig(task_runner="sync"),
+            shell_operation_cls=PostprocessNoOutputShellOperation,
+        )
+
+
+def test_predict_reference_output_fixtures_match_output_contract():
+    outputs = json.loads((FIXTURE_DIR / "cwl_reference_outputs.json").read_text())
+
+    validate_output_record(outputs["predict_di"]["msfiles_di_cal"])
+    validate_output_record(outputs["predict"]["subtract_models"])
+
+
+def test_predict_finalizer_accepts_prefect_outputs(tmp_path, fake_predict_shell_operation_cls):
+    field_observation = ObservationStub("obs_0", 59000.0, "obs_0.ms")
+    sector_observation = ObservationStub("obs_0", 59000.0, "obs_0.ms")
+    field = FieldStub(tmp_path, field_observation, sector_observation)
+    operation = Predict("di", field, index=1)
+    payload = predict_payload_from_inputs(
+        "di",
+        _single_observation_input_parms(),
+        operation.pipeline_working_dir,
+    )
+    outputs = run_predict_flow(
+        payload,
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_predict_shell_operation_cls,
+    )
+    sector_observation.ms_predict_di = Path(outputs["msfiles_di_cal"][0][0]["path"]).name
+
+    operation.outputs = outputs
+    operation.finalize()
+
+    assert field_observation.ms_predict_di_filename == str(
+        Path(operation.pipeline_working_dir) / "obs_0.ms.sector_1_di.ms"
+    )
+    assert field_observation.infix == ""
+    assert Path(operation.done_file).is_file()

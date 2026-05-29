@@ -549,6 +549,8 @@ Remaining Stage 4 work before final cutover:
 
 Predict introduces DP3 scatter and model subtraction.
 
+Status: complete for direct flow parity on the migration branch.
+
 - Translate `predict_di_pipeline.cwl`, `predict_pipeline.cwl`, and any
   non-calibrating predict variant that is still active.
 - Split command construction from task submission:
@@ -559,16 +561,29 @@ Predict introduces DP3 scatter and model subtraction.
 
 Tests:
 
-- Unit tests for DI and DD command construction.
-- Golden command parity tests for `predict_model_data`, `add_sector_models`,
+- Added unit tests for DI and DD command construction.
+- Added golden command parity tests for `predict_model_data`, `add_sector_models`,
   and `subtract_sector_models`.
-- Tests for scatter length and output shape.
-- Field mutation tests around `Predict.finalize()`.
-- Focused integration tests with mocked DP3 and real lightweight script
-  execution where possible.
-- Failure tests for missing predicted model data, failed subtraction, peeling
-  outputs, and reweighting outputs.
-- Concurrency tests for sector/observation scatter paths and output basenames.
+- Added tests for scatter length, output shape, DI nested outputs, DD peeling
+  outputs, and reweighting command flags.
+- Added field mutation coverage around `Predict.finalize()`.
+- Added mocked DP3/add/subtract execution tests using the Prefect test harness.
+- Added failure tests for missing predicted model data, missing post-processing
+  outputs, and shell failures.
+- Added output filtering so DD collection does not accidentally treat
+  intermediate `_modeldata` directories as final subtraction outputs when the
+  Python flow uses a shared operation working directory.
+
+Remaining Stage 5 work before final cutover:
+
+- Add operation-level restart tests once `Operation.run()` is switched from CWL
+  to the Python flow path.
+- Add real lightweight script or Measurement Set coverage for
+  `add_sector_models.py` and `subtract_sector_models.py` if suitable fixtures are
+  available in CI.
+- Revisit task-local working directories when the final Dask execution layout is
+  introduced; the current direct-flow parity path preserves output contracts by
+  filtering intermediates.
 
 ### Stage 6: Port Imaging Incrementally
 
@@ -1193,6 +1208,52 @@ Deferred to the cutover PR:
   Prefect/Dask execution path.
 - Add real image-to-mosaic integration coverage once the Image flow is ported or
   suitable lightweight FITS fixtures are available.
+
+### PR 5: Predict Prefect Flow
+
+Status: complete for direct flow parity on the migration branch.
+
+- Implement the Predict Prefect flow for DI and DD prediction.
+- Add command builders for `DP3` prediction, `add_sector_models.py`, and
+  `subtract_sector_models.py`.
+- Convert `Predict.set_input_parameters()` output into serializable task payloads
+  without passing live `Field`, `Sector`, or `Observation` objects to tasks.
+- Preserve h5parm, normalization, SAGECal predict, smearing, peeling,
+  reweighting, and per-observation solution interval parameters.
+- Return finalizer-compatible `msfiles_di_cal` and `subtract_models` output
+  records.
+- Filter intermediate `_modeldata` directories from DD output collection because
+  the direct Python runner currently executes the predict and post-processing
+  commands in the same operation working directory.
+
+Implemented files:
+
+- `rapthor/execution/flows/predict.py`
+- `tests/execution/test_predict_flow.py`
+- Updates to `rapthor/execution/flows/__init__.py`
+- Updates to `rapthor/execution/__init__.py`
+- Updates to `tests/execution/fixtures/cwl_reference_commands.json`
+- Updates to `tests/execution/fixtures/cwl_reference_outputs.json`
+
+Verified in the rebuilt devcontainer:
+
+- `python3 -m pytest tests/execution/test_predict_flow.py`: 17 passed.
+- `python3 -m pytest tests/execution tests/lib/test_parset.py`: 122 passed.
+- `python3 -m ruff check rapthor/execution tests/execution pyproject.toml`:
+  passed.
+- `python3 -m ruff format --check rapthor/execution tests/execution`: passed.
+- `git diff --check`: passed.
+
+Deferred to the cutover PR:
+
+- Switch `Operation.run()` from CWL execution to the Python flow path.
+- Add operation-level restart tests for `.done` and `.outputs.json` on the final
+  Prefect/Dask execution path.
+- Decide whether Predict should use task-local Dask work directories or keep the
+  shared operation directory with explicit intermediate filtering.
+- Add real external-tool coverage for `DP3`, `add_sector_models.py`, and
+  `subtract_sector_models.py` when lightweight Measurement Set fixtures are
+  available.
 
 ## Success Criteria
 

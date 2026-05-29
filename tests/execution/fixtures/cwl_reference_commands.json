@@ -33,5 +33,58 @@
             "--skip=False"
         ],
         "compress_mosaic_image": ["fpack", "mosaic_1-I-image.fits"]
+    },
+    "predict": {
+        "predict_model_data": [
+            "DP3",
+            "msout.overwrite=True",
+            "steps=[predict]",
+            "predict.operation=replace",
+            "predict.usebeammodel=True",
+            "predict.beam_interval=120",
+            "predict.beammode=array_factor",
+            "msout.storagemanager=Dysco",
+            "msout.storagemanager.databitrate=0",
+            "msout.antennacompression=False",
+            "msin=obs_0.ms",
+            "msin.datacolumn=DATA",
+            "msout=obs_0.ms.sector_1_modeldata",
+            "msin.starttime=50000.0",
+            "msin.ntimes=10",
+            "predict.onebeamperpatch=True",
+            "predict.correctfreqsmearing=False",
+            "predict.correcttimesmearing=False",
+            "predict.type=predict",
+            "predict.sourcedb=sector_1.skymodel",
+            "predict.directions=[patch1,patch2]",
+            "numthreads=4"
+        ],
+        "add_sector_models": [
+            "add_sector_models.py",
+            "obs_0.ms",
+            "obs_0.ms.sector_1_modeldata,obs_0.ms.sector_2_modeldata",
+            "--msin_column=DATA",
+            "--starttime=50000.0",
+            "--infix=.selfcal"
+        ],
+        "subtract_sector_models": [
+            "subtract_sector_models.py",
+            "--weights_colname=WEIGHT_SPECTRUM",
+            "--phaseonly=True",
+            "obs_0.ms",
+            "obs_0.ms.sector_1_modeldata,obs_0.ms.sector_2_modeldata",
+            "--msin_column=DATA",
+            "--starttime=50000.0",
+            "--solint_sec=20.0",
+            "--solint_hz=1000.0",
+            "--infix=.selfcal",
+            "--uvcut_min=80.0",
+            "--uvcut_max=1000000.0",
+            "--nr_outliers=1",
+            "--peel_outliers=True",
+            "--nr_bright=0",
+            "--peel_bright=False",
+            "--reweight=True"
+        ]
     }
 }

@@ -11,5 +11,29 @@
         "mosaic_image": [
             {"class": "File", "path": "${PIPELINE_WORKING_DIR}/mosaic_1-I-image.fits.fz"}
         ]
+    },
+    "predict_di": {
+        "msfiles_di_cal": [
+            [
+                {
+                    "class": "Directory",
+                    "path": "${PIPELINE_WORKING_DIR}/obs_0.ms.sector_1_di.ms"
+                }
+            ]
+        ]
+    },
+    "predict": {
+        "subtract_models": [
+            [
+                {
+                    "class": "Directory",
+                    "path": "${PIPELINE_WORKING_DIR}/obs_0.ms.selfcal_field"
+                },
+                {
+                    "class": "Directory",
+                    "path": "${PIPELINE_WORKING_DIR}/obs_0.ms.sector_1"
+                }
+            ]
+        ]
     }
 }
