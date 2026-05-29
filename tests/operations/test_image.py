@@ -2,15 +2,15 @@
 Test cases for the `rapthor.operations.image` module.
 """
 
-import pytest
-
 from pathlib import Path
-from tests.cwl.cwl_mock import mocked_cwl_execution
-from rapthor.lib.strategy import set_selfcal_strategy
 
-from tests.cwl.cwl_cmdline import generate_command_line
+import pytest
 import yaml
+
+from rapthor.lib.strategy import set_selfcal_strategy
 from rapthor.operations.image import Image, ImageInitial, ImageNormalize
+from tests.cwl.cwl_cmdline import generate_command_line
+from tests.cwl.cwl_mock import mocked_cwl_execution
 
 PATH_TO_OPERATION_STEPS = Path(__file__).parents[2] / "rapthor" / "pipeline" / "steps"
 
