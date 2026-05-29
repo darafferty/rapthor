@@ -8,6 +8,15 @@ from rapthor.execution.capabilities import (
 )
 from rapthor.execution.commands import command_matches_fixture, command_to_string, normalize_command
 from rapthor.execution.config import ExecutionConfig
+from rapthor.execution.flows.concatenate import (
+    build_concatenate_command,
+    concatenate_epoch_task,
+    concatenate_flow,
+    concatenate_payload_from_inputs,
+    normalized_concatenate_command,
+    run_concatenate_epoch,
+    run_concatenate_flow,
+)
 from rapthor.execution.outputs import (
     OutputRecordError,
     directory_record,
@@ -36,16 +45,23 @@ __all__ = [
     "UnsupportedRuntimeError",
     "WorkDirectoryLayout",
     "assert_serializable_payload",
+    "build_concatenate_command",
     "build_runtime_spec",
     "build_task_runner",
+    "concatenate_epoch_task",
     "collect_preflight_issues",
     "command_matches_fixture",
     "command_to_string",
+    "concatenate_flow",
+    "concatenate_payload_from_inputs",
     "directory_record",
     "file_record",
     "is_output_record",
+    "normalized_concatenate_command",
     "normalize_command",
     "preflight_execution",
+    "run_concatenate_epoch",
+    "run_concatenate_flow",
     "run_shell_command",
     "validate_output_record",
 ]

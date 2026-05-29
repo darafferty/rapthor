@@ -69,7 +69,16 @@ test =  [
     "pytest-mock",
     "pytest-socket"
 ]
-dev = ["ruff", {include-group = "test"} ]
+dev =  [
+    "ruff",
+    "tox",
+    "mock",
+    "pytest",
+    "pytest-cov",
+    "pytest-xdist",
+    "pytest-mock",
+    "pytest-socket"
+]
 
 
 [tool.pytest.ini_options]
@@ -86,6 +95,7 @@ include-package-data = false
 packages = [
     "rapthor",
     "rapthor.execution",
+    "rapthor.execution.flows",
     "rapthor.lib",
     "rapthor.lib.toil_batch_systems",
     "rapthor.operations",
@@ -160,7 +170,15 @@ envlist = ["lint", "format", "py3{9,10,11,12,13}", "test_integration"]
 
 [tool.tox.env_run_base]
 description = "Run all tests"
-deps = [{ replace = "ref", of = ["dependency-groups", "test"], extend = true }]
+deps = [
+    "tox",
+    "mock",
+    "pytest",
+    "pytest-cov",
+    "pytest-xdist",
+    "pytest-mock",
+    "pytest-socket"
+]
 commands = [
     # test_field.py does not support parallel runs, so run sequentially.
     [
@@ -188,7 +206,15 @@ commands = [
 
 [tool.tox.env.test_integration]
 description = "Run integration tests"
-deps = [{ replace = "ref", of = ["dependency-groups", "test"], extend = true }]
+deps = [
+    "tox",
+    "mock",
+    "pytest",
+    "pytest-cov",
+    "pytest-xdist",
+    "pytest-mock",
+    "pytest-socket"
+]
 pass_env = ["CI_PROJECT_DIR", "NUMEXPR_MAX_THREADS"]
 commands = [
     [
@@ -202,6 +228,9 @@ commands = [
 [tool.tox.env.lint]
 skip_install = true
 deps = "ruff"
+# Keep the command targets explicit instead of using tox TOML ref inline tables
+# because Prefect reads pyproject.toml at import time on Python 3.10 with a
+# TOML parser that cannot handle those nested inline tables.
 commands = [
     [
         # check all files for selected rules (configured in [tool.ruff.lint])
@@ -211,12 +240,68 @@ commands = [
     [
         # Check imports sorted
         "python", "-m", "ruff", "check", "--select", "I",
-        { replace = "ref", of = ["tool", "tox", "env", "format", "format_targets"], extend=true },
+        "rapthor/execution",
+        "rapthor/lib/cwl.py",
+        "rapthor/lib/cwlrunner.py",
+        "rapthor/lib/parset.py",
+        "rapthor/lib/strategy.py",
+        "rapthor/operations/calibrate.py",
+        "rapthor/operations/image.py",
+        "rapthor/process.py",
+        "rapthor/scripts/calculate_image_diagnostics.py",
+        "rapthor/scripts/normalize_flux_scale.py",
+        "tests/__init__.py",
+        "tests/conftest.py",
+        "tests/cwl/__init__.py",
+        "tests/cwl/cwl_cmdline.py",
+        "tests/cwl/cwl_mock.py",
+        "tests/cwl/tests/test_cwl_cmdline.py",
+        "tests/cwl/tests/test_cwl_mock.py",
+        "tests/cwl/tests/test_cwl_real_execution.py",
+        "tests/cwl/tests/test_cwl_scatter.py",
+        "tests/execution",
+        "tests/integration",
+        "tests/lib/test_cwl.py",
+        "tests/lib/test_cwlrunner.py",
+        "tests/lib/test_field.py",
+        "tests/lib/test_parset.py",
+        "tests/lib/test_strategy.py",
+        "tests/operations/test_calibrate.py",
+        "tests/scripts/test_calculate_image_diagnostics.py",
+        "tests/scripts/test_normalize_flux_scale.py",
     ],
     [
         # Check general formatting
         "python", "-m", "ruff", "format", "--check", "-v",
-        { replace = "ref", of = ["tool", "tox", "env", "format", "format_targets"], extend=true },
+        "rapthor/execution",
+        "rapthor/lib/cwl.py",
+        "rapthor/lib/cwlrunner.py",
+        "rapthor/lib/parset.py",
+        "rapthor/lib/strategy.py",
+        "rapthor/operations/calibrate.py",
+        "rapthor/operations/image.py",
+        "rapthor/process.py",
+        "rapthor/scripts/calculate_image_diagnostics.py",
+        "rapthor/scripts/normalize_flux_scale.py",
+        "tests/__init__.py",
+        "tests/conftest.py",
+        "tests/cwl/__init__.py",
+        "tests/cwl/cwl_cmdline.py",
+        "tests/cwl/cwl_mock.py",
+        "tests/cwl/tests/test_cwl_cmdline.py",
+        "tests/cwl/tests/test_cwl_mock.py",
+        "tests/cwl/tests/test_cwl_real_execution.py",
+        "tests/cwl/tests/test_cwl_scatter.py",
+        "tests/execution",
+        "tests/integration",
+        "tests/lib/test_cwl.py",
+        "tests/lib/test_cwlrunner.py",
+        "tests/lib/test_field.py",
+        "tests/lib/test_parset.py",
+        "tests/lib/test_strategy.py",
+        "tests/operations/test_calibrate.py",
+        "tests/scripts/test_calculate_image_diagnostics.py",
+        "tests/scripts/test_normalize_flux_scale.py",
     ]
 ]
 
@@ -258,12 +343,68 @@ commands = [
     [
         # sort imports
         "python", "-m", "ruff", "check", "--select", "I", "--fix",
-        { replace = "ref", of = ["tool", "tox", "env", "format", "format_targets"], extend=true },
+        "rapthor/execution",
+        "rapthor/lib/cwl.py",
+        "rapthor/lib/cwlrunner.py",
+        "rapthor/lib/parset.py",
+        "rapthor/lib/strategy.py",
+        "rapthor/operations/calibrate.py",
+        "rapthor/operations/image.py",
+        "rapthor/process.py",
+        "rapthor/scripts/calculate_image_diagnostics.py",
+        "rapthor/scripts/normalize_flux_scale.py",
+        "tests/__init__.py",
+        "tests/conftest.py",
+        "tests/cwl/__init__.py",
+        "tests/cwl/cwl_cmdline.py",
+        "tests/cwl/cwl_mock.py",
+        "tests/cwl/tests/test_cwl_cmdline.py",
+        "tests/cwl/tests/test_cwl_mock.py",
+        "tests/cwl/tests/test_cwl_real_execution.py",
+        "tests/cwl/tests/test_cwl_scatter.py",
+        "tests/execution",
+        "tests/integration",
+        "tests/lib/test_cwl.py",
+        "tests/lib/test_cwlrunner.py",
+        "tests/lib/test_field.py",
+        "tests/lib/test_parset.py",
+        "tests/lib/test_strategy.py",
+        "tests/operations/test_calibrate.py",
+        "tests/scripts/test_calculate_image_diagnostics.py",
+        "tests/scripts/test_normalize_flux_scale.py",
     ],
     [
         # format code
         "python", "-m", "ruff", "format",
-        { replace = "ref", of = ["tool", "tox", "env", "format", "format_targets"], extend=true },
+        "rapthor/execution",
+        "rapthor/lib/cwl.py",
+        "rapthor/lib/cwlrunner.py",
+        "rapthor/lib/parset.py",
+        "rapthor/lib/strategy.py",
+        "rapthor/operations/calibrate.py",
+        "rapthor/operations/image.py",
+        "rapthor/process.py",
+        "rapthor/scripts/calculate_image_diagnostics.py",
+        "rapthor/scripts/normalize_flux_scale.py",
+        "tests/__init__.py",
+        "tests/conftest.py",
+        "tests/cwl/__init__.py",
+        "tests/cwl/cwl_cmdline.py",
+        "tests/cwl/cwl_mock.py",
+        "tests/cwl/tests/test_cwl_cmdline.py",
+        "tests/cwl/tests/test_cwl_mock.py",
+        "tests/cwl/tests/test_cwl_real_execution.py",
+        "tests/cwl/tests/test_cwl_scatter.py",
+        "tests/execution",
+        "tests/integration",
+        "tests/lib/test_cwl.py",
+        "tests/lib/test_cwlrunner.py",
+        "tests/lib/test_field.py",
+        "tests/lib/test_parset.py",
+        "tests/lib/test_strategy.py",
+        "tests/operations/test_calibrate.py",
+        "tests/scripts/test_calculate_image_diagnostics.py",
+        "tests/scripts/test_normalize_flux_scale.py",
     ],
 
 ]
