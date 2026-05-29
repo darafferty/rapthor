@@ -77,10 +77,9 @@ flowchart LR
   subgraph After["After: Python execution with Prefect and Dask"]
     A1["bin/rapthor CLI"] --> A2["process.run() or Prefect top-level flow"]
     A2 --> A3["Field, Strategy, Observation, Sector"]
-    A3 --> A4["Operation.run()"]
-    A4 --> A5{"OperationBackend"}
-    A5 -->|"transition path"| A6["CWLBackend: existing runner"]
-    A5 -->|"new path"| A7["PrefectBackend"]
+    A3 --> A4["Global backend selection"]
+    A4 --> A5["Prefect capability preflight"]
+    A5 --> A7["PrefectBackend"]
     A7 --> A8["Prefect operation flows: concatenate / predict / calibrate / image / mosaic"]
     A8 --> A9["Prefect tasks: command builders + ShellOperation"]
     A9 --> A10["DaskTaskRunner: local cluster or external Slurm scheduler"]
@@ -90,6 +89,7 @@ flowchart LR
     A8 -.-> A14["Prefect UI, logs, retries"]
   end
 
+  A4 -.-> A6["CWLBackend: reference runner during migration"]
   B11 -.-> A13
   B5 -.-> A8
   B8 -.-> A8
@@ -148,10 +148,14 @@ Introduce a new execution layer, for example:
 rapthor/execution/
   __init__.py
   backend.py
+  capabilities.py
   config.py
   outputs.py
+  resources.py
+  runtime.py
   shell.py
   task_runner.py
+  workdirs.py
   tasks/
     dp3.py
     wsclean.py
@@ -169,14 +173,21 @@ Recommended responsibilities:
 
 - `backend.py`: common `OperationBackend` interface plus `CWLBackend` and
   `PrefectBackend`.
+- `capabilities.py`: feature support declarations and preflight checks for
+  operations, strategy slices, and cluster/runtime features.
 - `config.py`: runtime execution settings derived from the existing parset.
 - `outputs.py`: helpers for file and directory output records. Initially these
   can preserve the current CWL-shaped `{"class": "File", "path": ...}` and
   `{"class": "Directory", "path": ...}` structures.
+- `resources.py`: per-task CPU, memory, thread, MPI, and concurrency settings.
+- `runtime.py`: command environment construction, container wrapping, module or
+  spack assumptions, and scratch-directory mapping.
 - `shell.py`: safe command execution helpers, logging, environment handling,
   and optional dry-run support for tests.
 - `task_runner.py`: Dask task runner construction for local and externally
   managed Slurm clusters.
+- `workdirs.py`: deterministic task-local working directories, temp paths,
+  atomic output helpers, and cleanup policy.
 - `tasks/`: Prefect task wrappers around command builders and file operations.
 - `flows/`: Python equivalents of current operation-level CWL DAGs.
 
@@ -229,6 +240,72 @@ Rapthor should fail early with a clear unsupported-feature error.
 CWL remains useful as a reference implementation while building parity tests,
 but it should not become a long-term compatibility path once Prefect has parity.
 
+## Capability Preflight
+
+The Prefect backend needs an explicit capability registry so unsupported feature
+slices fail before any external command starts. The registry should answer
+questions such as:
+
+- Is this operation implemented by the Prefect backend?
+- Is this operation implemented for this mode, for example DI calibration,
+  DD calibration, screen generation, normalization imaging, or MPI imaging?
+- Is the requested runtime available, for example local Dask, external Dask,
+  Slurm, MPI WSClean, container execution, or no-container execution?
+- Are required external tools and scripts discoverable before the run starts?
+
+The backend should expose an interface equivalent to:
+
+```text
+PrefectBackend.supports(operation, field, step) -> CapabilityResult
+PrefectBackend.preflight(field, strategy_steps) -> None
+```
+
+`CapabilityResult` should include the unsupported feature name and a short
+message that tells the user which parset option, strategy feature, or operation
+caused the failure. Full pipeline runs with `execution_backend = prefect` must
+run this preflight before the first operation.
+
+## Task Payload And State Boundary
+
+Prefect and Dask tasks should not receive or mutate live `Field`, `Sector`, or
+`Observation` objects. Those objects remain part of the driver-side Rapthor
+domain model.
+
+The boundary should be:
+
+- Operation classes collect Python-native input dictionaries from the domain
+  model.
+- Prefect flows and tasks receive only serializable payloads: paths, strings,
+  numbers, booleans, lists, dicts, and output specifications.
+- External tasks produce output records and files, not mutated domain objects.
+- Existing operation finalizers remain responsible for applying output records
+  back to `Field`, `Sector`, and `Observation` state.
+
+This keeps distributed workers from accidentally mutating state in another
+process and makes task inputs easier to test, serialize, log, and cache.
+
+## Runtime, Resources, And Filesystem Safety
+
+The Prefect backend must preserve the important runtime behaviour currently
+handled by CWL runners:
+
+- Container settings: `use_container`, `container_type`, and no-container
+  execution must have an explicit Prefect runtime mapping before the backend is
+  advertised for those configurations.
+- Environment settings: command environments, module or spack assumptions,
+  thread variables such as `OPENBLAS_NUM_THREADS`, and preserved environment
+  variables must be centralized and testable.
+- Scratch settings: `dir_local`, `local_scratch_dir`, and `global_scratch_dir`
+  must map to deterministic task-local temporary directories.
+- Task isolation: scattered tasks must write into unique working directories or
+  unique output names so concurrent Dask execution cannot collide.
+- Atomicity: tasks should write to temporary paths and move into final output
+  paths where practical, especially for JSON outputs and small generated files.
+- Resource control: DP3, WSClean, scripts, and MPI jobs need declared CPU,
+  memory, thread, and concurrency limits. Dask worker count alone is not enough.
+- MPI exclusivity: MPI WSClean should remain a controlled special case so it
+  does not run concurrently with tasks that consume the same node allocation.
+
 ## Restart And Output Semantics
 
 Preserve the existing operation-level restart contract:
@@ -255,6 +332,13 @@ simple and compatible with current `modifystate` expectations.
   object contract.
 - Define the global backend selection policy: no mixed-backend production runs
   and no silent fallback from Prefect to CWL.
+- Define the serializable task-payload contract and the rule that Prefect/Dask
+  tasks do not mutate live Rapthor domain objects.
+- Inventory current CWL runner runtime behaviour: containers, scratch paths,
+  preserved environment, MPI configuration, temporary output directories, and
+  logging.
+- Define a resource model for external commands: per-task threads, memory,
+  process count, MPI exclusivity, and maximum concurrent external jobs.
 - Capture representative CWL-generated command lines and output contracts that
   will become golden parity fixtures for the Python backend.
 - Keep CWL as the reference path.
@@ -264,6 +348,10 @@ Deliverables:
 - Baseline test snapshot.
 - Backend design notes.
 - Initial issue list for feature gaps.
+- Capability registry design and initial feature matrix.
+- Runtime parity inventory for container, scratch, environment, and MPI
+  behaviour.
+- Resource model notes and first-pass concurrency defaults.
 - Golden command fixtures for common DP3, WSClean, script, `taql`, `fpack`, and
   MPI WSClean cases.
 - Golden output-contract fixtures for each operation's expected output keys,
@@ -277,6 +365,7 @@ Deliverables:
   - `setup(operation)`
   - `run(operation) -> dict`
   - `teardown(operation)`
+- Add a capability/preflight interface to the backend contract.
 - Move current CWL execution into `CWLBackend` without changing behaviour.
 - Add a stub `PrefectBackend` that raises a clear unsupported-operation error.
 - Update `Operation.run()` to use the backend interface.
@@ -290,6 +379,9 @@ Tests:
   operations.
 - Tests that a Prefect run never falls back to CWL for an unsupported operation
   or unsupported feature slice.
+- Preflight tests for unsupported operations, unsupported feature slices,
+  missing external tools, unsupported container settings, and unsupported
+  runtime modes.
 
 ### Stage 2: Shared Command And Output Primitives
 
@@ -305,6 +397,13 @@ Tests:
 - Add task runner creation based on local Dask or external scheduler address.
 - Add an early, mocked top-level Prefect flow skeleton that mirrors
   `process.run()` ordering without yet replacing operation-level execution.
+- Add serializable task-payload models or validators for operation inputs.
+- Add runtime environment builders for no-container execution first, with
+  explicit unsupported errors for unimplemented container modes.
+- Add workdir helpers for per-task directories, temp files, atomic moves, and
+  cleanup.
+- Add resource-setting helpers for command threads, memory, MPI exclusivity, and
+  maximum external-job concurrency.
 
 Tests:
 
@@ -318,6 +417,12 @@ Tests:
 - Top-level flow skeleton tests for strategy ordering, cycle numbering,
   final-pass decisions, and selfcal convergence branching with mocked
   operations.
+- Serialization tests proving task payloads contain only serializable values and
+  do not carry live `Field`, `Sector`, or `Observation` instances.
+- Runtime tests for environment construction, scratch directory selection,
+  unsupported container settings, and atomic output writes.
+- Resource tests for command thread counts, memory settings, MPI exclusivity,
+  and external-job concurrency limits.
 
 ### Stage 3: Port Concatenate
 
@@ -337,6 +442,8 @@ Tests:
   Prefect mock.
 - Add restart/failure tests for failed concatenation, partial outputs, deleted
   `.done`, and reloading `.outputs.json`.
+- Add a concurrency test proving scattered epoch outputs are written to unique
+  paths and cannot collide.
 
 ### Stage 4: Port Mosaic
 
@@ -379,6 +486,7 @@ Tests:
   execution where possible.
 - Failure tests for missing predicted model data, failed subtraction, peeling
   outputs, and reweighting outputs.
+- Concurrency tests for sector/observation scatter paths and output basenames.
 
 ### Stage 6: Port Imaging Incrementally
 
@@ -418,6 +526,8 @@ Tests:
   compressed FITS files, visibilities, and region files.
 - Restart/failure tests for failed WSClean, missing diagnostics JSON, corrupt
   diagnostics JSON, failed finalizer copy, and rerun after deleting `.done`.
+- Filesystem isolation tests for scattered sector imaging, temporary WSClean
+  directories, image cubes, and compressed outputs.
 
 ### Stage 7: Port Calibration Incrementally
 
@@ -452,6 +562,8 @@ Tests:
   diagnostic product, and plotted product.
 - Failure tests for missing h5parm outputs, failed h5parm combination, invalid
   solution tables, failed plotting, and restart after partial calibration output.
+- Resource and isolation tests for scattered solve chunks, h5parm collection,
+  plotting outputs, and screen-generation outputs.
 
 ### Stage 8: Add A Prefect Top-Level Flow
 
@@ -472,6 +584,8 @@ Tests:
 - Add full mocked-process tests for initial sky model generation, no-selfcal
   image-only strategy, selfcal convergence, selfcal divergence/failure,
   repeated final cycles, and unsupported Prefect feature detection.
+- Add preflight tests that inspect the chosen strategy and fail before execution
+  when any required operation or feature slice is unsupported.
 
 ### Stage 9: Slurm And Multi-Node Execution
 
@@ -498,6 +612,7 @@ Tests:
   mapping.
 - Command tests for MPI WSClean launch arguments and checks that Dask worker
   counts do not oversubscribe DP3/WSClean thread settings.
+- Tests for maximum concurrent external jobs and MPI exclusivity controls.
 - Script lint/smoke checks where possible.
 - Manual or CI-marked integration tests on the target Slurm environment.
 
@@ -613,8 +728,7 @@ Add small, explicit golden fixtures rather than relying on broad integration
 tests to detect drift:
 
 - Command fixtures should store the normalized command generated from the CWL
-  path and compare it to the Python command builder. Normalize paths,
-  whitespace, and environment-specific values before comparison.
+  path and compare it to the Python command builder.
 - Output fixtures should store expected output keys, path basenames, object
   classes, nested list depth, optional outputs, and compressed/uncompressed
   variants.
@@ -627,6 +741,66 @@ Fixtures should be intentionally representative rather than exhaustive. The
 high-risk branches need coverage: DI-only, DD-only, DI-then-DD, DD-then-DI,
 facets, screens, normalization, full-Stokes, image cubes, peeling, reweighting,
 shared-facet options, and MPI imaging.
+
+Command comparison should be normalized to avoid brittle noise:
+
+- Compare tokenized commands rather than raw strings where possible.
+- Normalize absolute working directories, temporary directories, and generated
+  filenames that include run-specific paths.
+- Normalize harmless whitespace differences.
+- Keep argument order significant unless the tool explicitly treats the order as
+  irrelevant.
+- Compare command environment separately from command tokens.
+- Document every intentional Python-vs-CWL command delta in the fixture.
+
+### Serialization Boundary Tests
+
+Every Prefect task should have tests proving its input payload is safe for
+distributed execution:
+
+- No live `Field`, `Sector`, or `Observation` instances are passed to tasks.
+- Task payloads are JSON-serializable or pickle-safe, depending on the chosen
+  task-runner requirement.
+- Task functions do not mutate driver-side domain objects.
+- Flow inputs can be logged without leaking huge arrays or entire domain object
+  graphs.
+
+### Runtime Environment Tests
+
+Runtime tests should cover behaviour that was previously handled by CWL runners:
+
+- No-container command execution.
+- Unsupported container settings fail during preflight until implemented.
+- Singularity/udocker wrapping once container support is added.
+- Preserved environment variables and thread variables.
+- `local_scratch_dir`, `global_scratch_dir`, and deprecated `dir_local`
+  selection.
+- Missing external tools fail early with clear messages.
+- Module or spack assumptions are documented and testable.
+
+### Filesystem Isolation Tests
+
+Scattered tasks must not collide when Dask runs them concurrently. Add tests for:
+
+- Unique task-local working directories.
+- Unique temporary directories for WSClean and DP3.
+- Unique output basenames for sector, observation, image-type, and solve-chunk
+  scatter.
+- Atomic writing or replacement of `.outputs.json` and small generated files.
+- Cleanup behaviour for temporary task directories on success and failure.
+
+### Resource-Control Tests
+
+External tools can consume many cores and large memory allocations. Tests should
+cover:
+
+- Per-command thread counts from parset values.
+- Memory settings passed to WSClean and Dask workers.
+- Maximum concurrent external commands.
+- MPI WSClean exclusivity.
+- Dask worker count versus external command thread count.
+- Behaviour when resource settings are invalid or oversubscribe the selected
+  local/Slurm allocation.
 
 ### Mocking Strategy
 
@@ -656,6 +830,19 @@ Every ported operation should have focused tests for:
 - Finalizer failure does not create `.done`.
 - Partial output files from a failed attempt are either cleaned up or safely
   overwritten on rerun.
+
+### modifystate Compatibility Tests
+
+The `bin/rapthor -r` reset path should keep working with the Prefect backend.
+Add tests that:
+
+- Reset one operation and rerun it with Prefect outputs.
+- Reset downstream operations without corrupting upstream `.outputs.json` files.
+- Delete `.done` markers while preserving reusable products where current
+  behaviour expects that.
+- Reload Prefect-produced output records after reset.
+- Preserve compatibility with existing operation names and working directory
+  layout.
 
 ### Logging And Observability Tests
 
@@ -712,6 +899,23 @@ Update docs as each stage lands:
   migration.
 - Add Slurm/Prefect UI instructions based on the prototype and CIMG scripts.
 
+## Dependency And Packaging Plan
+
+During the transition:
+
+- Add Prefect/Dask dependencies deliberately, either as core dependencies once
+  the Prefect backend is user-facing or as an optional extra while it is
+  experimental.
+- Candidate dependencies include `prefect`, `prefect-shell`, `prefect-dask`,
+  `dask`, and `distributed`.
+- Consider moving `cwltool`, `toil[cwl]`, and `streamflow` to a `cwl` optional
+  extra once the Prefect backend is mature enough that new installations do not
+  need CWL by default.
+- Update tox, CI, docs, and installation instructions so test environments cover
+  both the transition backend set and the final Prefect-only backend set.
+- Keep package-data cleanup explicit when removing CWL so
+  `rapthor/pipeline/**` is not shipped after it is no longer used.
+
 ## Risks And Mitigations
 
 - Risk: output naming drift breaks finalizers and downstream operations.
@@ -737,6 +941,19 @@ Update docs as each stage lands:
   Mitigation: use structured command builders and test them directly, following
   the CIMG pattern.
 
+- Risk: live domain objects are accidentally passed into Dask workers and
+  mutated out of process.
+  Mitigation: enforce serializable task payloads and keep all `Field`, `Sector`,
+  and `Observation` mutation in operation finalizers.
+
+- Risk: scattered tasks overwrite each other's files.
+  Mitigation: use deterministic task-local working directories, unique output
+  basenames, and atomic writes for small generated outputs.
+
+- Risk: container and environment behaviour drifts from current CWL execution.
+  Mitigation: centralize runtime construction and add preflight/runtime parity
+  tests before advertising container-backed Prefect runs.
+
 ## Open Decisions
 
 - Whether Prefect operation flows should return CWL-shaped dictionaries forever
@@ -747,6 +964,9 @@ Update docs as each stage lands:
   current operation-level `.done` semantics.
 - How much of the existing CWL step metadata should be converted mechanically
   versus re-expressed manually as Python command builders.
+- Whether Prefect/Dask dependencies are initially a development extra or become
+  core dependencies as soon as the backend skeleton lands.
+- Which container modes are in scope for the first user-facing Prefect release.
 
 Resolved decision:
 
@@ -760,6 +980,7 @@ Resolved decision:
 
 - Add `execution_backend` parset option.
 - Add backend interface.
+- Add capability/preflight interface and no-fallback policy.
 - Move current CWL execution behind `CWLBackend`.
 - Add unsupported `PrefectBackend`.
 - Add no-fallback tests and docs for the new option.
@@ -769,6 +990,8 @@ Resolved decision:
 - Add task runner construction.
 - Add shell task wrapper.
 - Add output object helpers.
+- Add runtime environment, workdir, and resource helper skeletons.
+- Add serializable payload validators or models.
 - Add golden command parity fixtures and command-builder tests.
 - Add Prefect test harness setup.
 
@@ -790,6 +1013,13 @@ The migration is complete when:
 - Every supported operation satisfies the per-operation parity gates.
 - Golden command, output-contract, finalizer-state, restart/failure, logging, and
   mocked-flow tests pass for the Prefect backend.
+- Prefect preflight detects unsupported operations, unsupported feature slices,
+  missing tools, and unsupported runtime/container modes before execution.
+- Prefect task payloads are serializable and do not carry live Rapthor domain
+  objects into Dask workers.
+- Runtime, scratch, environment, resource, and filesystem-isolation tests pass
+  for the supported local and Slurm modes.
+- `modifystate` reset behaviour works with Prefect-produced operation state.
 - Existing non-integration tests pass without requiring CWL.
 - Focused integration tests pass for DI-only, DD-only, DI-then-DD, DD-then-DI,
   initial sky model generation, normalization, imaging, mosaicking, and restart.
