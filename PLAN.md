@@ -439,11 +439,8 @@ Remaining Stage 2 work:
 
 - Add real DP3, WSClean, script, `taql`, `fpack`, and MPI WSClean command
   builders.
-- Add actual Prefect `@task` wrappers once the dependency decision is made and
-  the devcontainer installs Prefect.
+- Add actual Prefect `@task` wrappers now that Prefect/Dask dependencies are core.
 - Expand golden command fixtures beyond the initial concatenate reference case.
-- Decide whether Prefect/Dask dependencies are added as core dependencies in the
-  next PR or kept optional until the first operation flow lands.
 
 Tests:
 
@@ -964,9 +961,9 @@ Update docs as each stage lands:
 During branch development, Prefect/Dask and CWL dependencies may coexist so
 reference comparisons can run. Before merging to `master`:
 
-- Add Prefect/Dask dependencies as the production execution dependencies.
-- Candidate dependencies include `prefect`, `prefect-shell`, `prefect-dask`,
-  `dask`, and `distributed`.
+- Keep Prefect/Dask dependencies as production execution dependencies. The core
+  dependency uses `prefect[dask,shell]` so the Dask task runner and shell
+  operation integrations are installed with Prefect.
 - Remove `cwltool`, `toil[cwl]`, and `streamflow` unless they are still needed
   for unrelated tooling.
 - Update tox, CI, docs, and installation instructions so normal test and runtime
@@ -1033,6 +1030,8 @@ Resolved decision:
   `execution_backend` selector.
 - The final merged pipeline should use Prefect/Dask as the only supported
   execution path.
+- Prefect/Dask dependencies are core dependencies, using the Prefect `dask` and
+  `shell` extras.
 
 ## First Three Pull Requests
 
