@@ -62,7 +62,7 @@ dev =  ["ruff", "rapthor[test]" ]
 test =  [
     "tox",
     "mock",
-    "pytest",
+    "pytest>=9.0",
     "pytest-cov",
     "pytest-xdist",
     "pytest-mock",

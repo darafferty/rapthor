@@ -10,6 +10,7 @@ import re
 from collections.abc import MutableMapping, Sequence
 
 import pytest
+from _pytest.fixtures import FixtureFunctionDefinition
 
 from rapthor.lib.parset import check_and_adjust_skymodel_settings, parset_read
 from tests.conftest import _generate_parset, assert_logged
@@ -63,7 +64,7 @@ def resolve_fixture_values(request):
 
 def _get_fixture_value(request, item):
     # If the item is a fixture function, resolve it to the fixture value
-    if callable(item) and hasattr(item, "_pytestfixturefunction"):
+    if isinstance(item, FixtureFunctionDefinition):
         return request.getfixturevalue(item.__name__)
 
     if isinstance(item, MutableMapping):
