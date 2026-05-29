@@ -1,0 +1,10 @@
+{
+  "concatenate": {
+    "concatenated_filenames": [
+      {
+        "class": "Directory",
+        "path": "${PIPELINE_WORKING_DIR}/epoch_0_concatenated.ms"
+      }
+    ]
+  }
+}

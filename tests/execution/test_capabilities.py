@@ -1,0 +1,58 @@
+import pytest
+
+from rapthor.execution.capabilities import (
+    PreflightError,
+    collect_preflight_issues,
+    preflight_execution,
+)
+from rapthor.execution.config import ExecutionConfig
+
+
+def test_preflight_passes_for_default_local_config():
+    preflight_execution(ExecutionConfig())
+
+
+def test_preflight_reports_missing_external_dask_scheduler():
+    config = ExecutionConfig(task_runner="external_dask")
+
+    issues = collect_preflight_issues(config)
+
+    assert [issue.code for issue in issues] == ["missing_dask_scheduler"]
+    assert issues[0].option == "dask_scheduler"
+
+
+def test_preflight_reports_unsupported_container_mode():
+    config = ExecutionConfig(use_container=True, container_type="singularity")
+
+    with pytest.raises(PreflightError) as exc:
+        preflight_execution(config)
+
+    assert exc.value.issues[0].code == "unsupported_container"
+
+
+def test_preflight_reports_unsupported_features():
+    config = ExecutionConfig()
+
+    with pytest.raises(PreflightError) as exc:
+        preflight_execution(
+            config,
+            requested_features={"concatenate", "mpi_wsclean"},
+            supported_features={"concatenate"},
+        )
+
+    assert exc.value.issues[0].code == "unsupported_feature"
+    assert "mpi_wsclean" in exc.value.issues[0].message
+
+
+def test_preflight_reports_missing_tools():
+    config = ExecutionConfig()
+
+    with pytest.raises(PreflightError) as exc:
+        preflight_execution(
+            config,
+            required_tools=["DP3", "wsclean"],
+            tool_resolver=lambda tool: "/usr/bin/DP3" if tool == "DP3" else None,
+        )
+
+    assert [issue.code for issue in exc.value.issues] == ["missing_tool"]
+    assert "wsclean" in exc.value.issues[0].message

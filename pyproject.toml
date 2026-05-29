@@ -84,6 +84,7 @@ markers = [
 include-package-data = false
 packages = [
     "rapthor",
+    "rapthor.execution",
     "rapthor.lib",
     "rapthor.lib.toil_batch_systems",
     "rapthor.operations",
@@ -222,6 +223,7 @@ commands = [
 skip_install = true
 deps = "ruff"
 format_targets = [
+    "rapthor/execution",
     "rapthor/lib/cwl.py",
     "rapthor/lib/cwlrunner.py",
     "rapthor/lib/parset.py",
@@ -240,6 +242,7 @@ format_targets = [
     "tests/cwl/tests/test_cwl_mock.py",
     "tests/cwl/tests/test_cwl_real_execution.py",
     "tests/cwl/tests/test_cwl_scatter.py",
+    "tests/execution",
     "tests/integration",
     "tests/lib/test_cwl.py",
     "tests/lib/test_cwlrunner.py",
