@@ -5,10 +5,10 @@ Test cases for the `rapthor.operations.image` module.
 import pytest
 
 from pathlib import Path
-from cwl.cwl_mock import mocked_cwl_execution
+from tests.cwl.cwl_mock import mocked_cwl_execution
 from rapthor.lib.strategy import set_selfcal_strategy
 
-from cwl.cwl_cmdline import generate_command_line
+from tests.cwl.cwl_cmdline import generate_command_line
 import yaml
 from rapthor.operations.image import Image, ImageInitial, ImageNormalize
 
@@ -536,17 +536,42 @@ class TestImageInitial:
 
 
 class TestImageNormalize:
-    def test_set_parset_parameters(self, image_normalize):
-        # image_normalize.set_parset_parameters()
-        pass
+    def test_set_parset_parameters(self, field):
+        _prepare_field_for_normalize_image(field)
+        image_normalize = ImageNormalize(field=field, index=1)
+        image_normalize.set_parset_parameters()
+        assert (
+            image_normalize.parset_parms["use_mpi"] == field.parset["imaging_specific"]["use_mpi"]
+        )
+        assert image_normalize.parset_parms["rapthor_pipeline_dir"] is not None
+        assert image_normalize.parset_parms["pipeline_working_dir"] is not None
+        assert image_normalize.parset_parms["normalize_flux_scale"] is True
+        assert image_normalize.parset_parms["image_cube_stokes_list"] == ["I"]
 
-    def test_set_input_parameters(self, image_normalize):
-        # image_normalize.set_input_parameters()
-        pass
+    def test_set_input_parameters(self, field):
+        _prepare_field_for_normalize_image(field)
+        image_normalize = ImageNormalize(field=field, index=1)
+        image_normalize.set_parset_parameters()
+        image_normalize.set_input_parameters()
+        assert image_normalize.field.normalize_sector.auto_mask == 5.0
+        assert image_normalize.field.normalize_sector.auto_mask_nmiter == 2.0
+        assert image_normalize.field.normalize_sector.threshisl == 4.0
+        assert image_normalize.field.normalize_sector.threshpix == 5.0
+        assert image_normalize.field.normalize_sector.max_nmiter == 8
+        assert image_normalize.field.normalize_sector.max_wsclean_nchannels == 8
+        assert image_normalize.field.normalize_sector.channel_width_hz == 4e6
+        assert image_normalize.field.normalize_sector.channel_width_hz == 4e6
+
+        assert image_normalize.apply_normalizations is False
+        assert image_normalize.do_predict is False
+        assert image_normalize.do_multiscale_clean is False
+        assert image_normalize.imaging_parameters["cellsize_arcsec"] == 6.0
+        assert image_normalize.imaging_parameters["robust"] == -0.5
+        assert image_normalize.imaging_parameters["taper_arcsec"] == 24.0
 
     def test_finalize(self, image_normalize):
-        # image_normalize.finalize()
-        pass
+        image_normalize.run()
+        image_normalize.finalize()
 
     def test_run(self, image_normalize):
         image_normalize.run()
@@ -561,6 +586,124 @@ class TestImageNormalize:
     def test_run_with_execute_mock(self, field):
         field.parset["imaging_specific"]["save_filtered_model_image"] = True
         _prepare_field_for_normalize_image(field)
+
+    def test_normalization_skymodel(self, field):
+        """Test to check that the paths to the normalization sky models are set"""
+        field.normalization_skymodels = [
+            "path/to/normalization_skymodel_1.txt",
+            "path/to/normalization_skymodel_2.txt",
+        ]
+        field.normalization_reference_frequencies = [142000000.0, 142001000.0]
+        _prepare_field_for_normalize_image(field)
+        image_norm = _initialize_operation(ImageNormalize(field, index=1))
+        assert (
+            image_norm.input_parms["normalization_skymodels"][0]["path"]
+            == "path/to/normalization_skymodel_1.txt"
+        )
+        assert (
+            image_norm.input_parms["normalization_skymodels"][1]["path"]
+            == "path/to/normalization_skymodel_2.txt"
+        )
+        assert image_norm.input_parms["normalization_reference_frequencies"] == [
+            142000000.0,
+            142001000.0,
+        ]
+
+    def test_normalization_skymodels_in_rendered_workflows(self, field, tmp_path):
+        """Test normalization sky models are wired through both image CWL workflows."""
+        skymodel_1 = tmp_path / "normalization_skymodel_1.txt"
+        skymodel_2 = tmp_path / "normalization_skymodel_2.txt"
+        skymodel_1.touch()
+        skymodel_2.touch()
+        field.normalization_skymodels = [str(skymodel_1), str(skymodel_2)]
+        field.normalization_reference_frequencies = [142000000.0, 142001000.0]
+        _prepare_field_for_normalize_image(field)
+
+        image_norm = ImageNormalize(field, index=1)
+        image_norm.setup()
+
+        with open(image_norm.pipeline_parset_file) as f:
+            workflow = yaml.safe_load(f)
+        workflow_inputs = {entry["id"] for entry in workflow["inputs"]}
+        image_sector_step = next(step for step in workflow["steps"] if step["id"] == "image_sector")
+        image_sector_inputs = {
+            entry["id"]: entry.get("source") for entry in image_sector_step["in"]
+        }
+
+        assert "normalization_skymodels" in workflow_inputs
+        assert "normalization_reference_frequencies" in workflow_inputs
+        assert image_sector_inputs["normalization_skymodels"] == "normalization_skymodels"
+        assert (
+            image_sector_inputs["normalization_reference_frequencies"]
+            == "normalization_reference_frequencies"
+        )
+
+        with open(image_norm.subpipeline_parset_file) as f:
+            sector_workflow = yaml.safe_load(f)
+        sector_inputs = {entry["id"] for entry in sector_workflow["inputs"]}
+        normalize_step = next(
+            step for step in sector_workflow["steps"] if step["id"] == "normalize_flux_scale"
+        )
+        normalize_inputs = {entry["id"]: entry.get("source") for entry in normalize_step["in"]}
+
+        assert "normalization_skymodels" in sector_inputs
+        assert "normalization_reference_frequencies" in sector_inputs
+        assert normalize_inputs["reference_skymodels"] == "normalization_skymodels"
+        assert (
+            normalize_inputs["reference_skymodels_frequencies"]
+            == "normalization_reference_frequencies"
+        )
+
+    def test_normalization_skymodels_in_normalize_flux_scale_cli(self, tmp_path):
+        """Test normalization sky models are passed to normalize_flux_scale.py."""
+        source_catalog = tmp_path / "source_catalog.fits"
+        source_catalog.touch()
+        ms_file = tmp_path / "image.ms"
+        ms_file.mkdir()
+        skymodel_1 = tmp_path / "normalization_skymodel_1.txt"
+        skymodel_2 = tmp_path / "normalization_skymodel_2.txt"
+        skymodel_1.touch()
+        skymodel_2.touch()
+
+        cwl_workflow_path = PATH_TO_OPERATION_STEPS / "normalize_flux_scale.cwl"
+        cmd = generate_command_line(
+            cwl_workflow_path,
+            {
+                "source_catalog": {"class": "File", "location": str(source_catalog)},
+                "ms_file": {"class": "Directory", "location": str(ms_file)},
+                "normalize_h5parm": "normalize.h5parm",
+                "reference_skymodels": [
+                    {"class": "File", "location": str(skymodel_1)},
+                    {"class": "File", "location": str(skymodel_2)},
+                ],
+                "reference_skymodels_frequencies": [142000000.0, 142001000.0],
+            },
+        )
+
+        assert cmd is not None
+        assert "--reference_skymodels" in cmd
+        assert "--reference_skymodels_frequencies" in cmd
+        assert any(arg.endswith("normalization_skymodel_1.txt") for arg in cmd)
+        assert any(arg.endswith("normalization_skymodel_2.txt") for arg in cmd)
+        assert "142000000.0" in cmd
+        assert "142001000.0" in cmd
+
+    @pytest.mark.parametrize("allow_internet_access", [True, False])
+    def test_allow_internet_access(
+        self, field, allow_internet_access, monkeypatch, expected_image_output
+    ):
+        """Test to check that the allow_internet_access flag is set for ImageNormalize"""
+        field.parset["cluster_specific"]["allow_internet_access"] = allow_internet_access
+        _prepare_field_for_normalize_image(field)
+        image_norm = _initialize_operation(ImageNormalize(field, index=1))
+
+        assert image_norm.input_parms["allow_internet_access"] is allow_internet_access
+        assert image_norm.parset_parms["allow_internet_access"] is allow_internet_access
+        assert image_norm.allow_internet_access is allow_internet_access
+
+        _mock_cwl_execute(monkeypatch, expected_image_output)
+        image_norm.run()
+        assert image_norm.is_done()
 
 
 def test_report_sector_diagnostics(sector_name=None, diagnostics_dict=None, log=None):

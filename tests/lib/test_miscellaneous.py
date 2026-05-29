@@ -6,17 +6,6 @@ import pytest
 from rapthor.lib.miscellaneous import *
 from astropy.wcs import WCS
 
-@pytest.mark.parametrize("ra", (10.75,))
-@pytest.mark.parametrize("dec", (5.34,))
-@pytest.mark.parametrize("skymodel_path", ("/tmp/sky.model",))
-@pytest.mark.parametrize("radius", (5.0,))
-@pytest.mark.parametrize("overwrite", (False,))
-@pytest.mark.parametrize("source", ("TGSS",))
-@pytest.mark.parametrize("targetname", ("Patch",))
-def test_download_skymodel(
-    ra, dec, skymodel_path, radius, overwrite, source, targetname
-):
-    download_skymodel(ra, dec, skymodel_path, radius, overwrite, source, targetname)
 
 
 @pytest.mark.parametrize("image_name", (None,))
@@ -88,14 +77,20 @@ def test_dec2ddmmss(deg, as_string):
     dec2ddmmss(deg, as_string)
 
 
-@pytest.mark.parametrize("mjd_sec", (4567890123,))
-def test_convert_mjd2mvt(mjd_sec):
-    assert convert_mvt2mjd(convert_mjd2mvt(mjd_sec)) == mjd_sec
+# Normal conversions shouldn't raise any warnings.
+@pytest.mark.filterwarnings("error")
+@pytest.mark.parametrize("mjd_sec, mvt_str", [(4567890123.125, "18Aug2003/02:22:03.125")])
+def test_convert_mjd_mvt(mjd_sec, mvt_str):
+    assert convert_mjd2mvt(mjd_sec) == mvt_str
+    assert convert_mvt2mjd(mvt_str) == mjd_sec
 
 
-@pytest.mark.parametrize("mvt_str", ("18Aug2003/02:22:03.000",))
-def test_convert_mvt2mjd(mvt_str):
-    assert convert_mjd2mvt(convert_mvt2mjd(mvt_str)) == mvt_str
+# Test the corner case of using MJD 0. It triggers an ERFA warning.
+@pytest.mark.filterwarnings("ignore:ERFA.*dubious year")
+@pytest.mark.parametrize("mjd_sec, mvt_str", [(0, "17Nov1858/00:00:00.000")])
+def test_convert_mjd_mvt_zero(mjd_sec, mvt_str):
+    assert convert_mjd2mvt(mjd_sec) == mvt_str
+    assert convert_mvt2mjd(mvt_str) == mjd_sec
 
 
 @pytest.mark.parametrize(

@@ -36,7 +36,7 @@ dependencies = [
     "bdsf",
     "jinja2",
     "losoto>=2.4.3",
-    "lsmtool>=1.8.0",
+    "lsmtool @ git+https://git.astron.nl/RD/LSMTool.git@master",
     "matplotlib",
     "mocpy",
     "numpy",
@@ -48,6 +48,7 @@ dependencies = [
     "Rtree",
     "scipy",
     "shapely",
+    "cwltool==3.1.20260108082145", # Latest version breaks CWL validation checks in tests.
     "toil[cwl]>=9.0",
     "streamflow>=0.2.0.dev13"
 ]
@@ -73,7 +74,8 @@ dev = ["ruff", {include-group = "test"} ]
 [tool.pytest.ini_options]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
-    "integration: marks test as integration tests"
+    "integration: marks test as integration tests",
+    "internet: marks tests that require internet access"
 ]
 
 
@@ -152,7 +154,7 @@ ignore = ["E501"]  # line-too-long
 
 [tool.tox]
 requires = ["tox>4"]
-envlist = ["lint", "format", "py3{9,10,11,12,13}"]
+envlist = ["lint", "format", "py3{9,10,11,12,13}", "test_integration"]
 
 [tool.tox.env_run_base]
 description = "Run all tests"
@@ -161,7 +163,7 @@ commands = [
     # test_field.py does not support parallel runs, so run sequentially.
     [
         "python", "-m", "pytest",
-        # "-m", "not slow",
+        "-m", "not integration",
         "-k", "test_field.py",
         "--cov=rapthor",
         "tests/{posargs}",
@@ -170,8 +172,8 @@ commands = [
     # Add to the existing coverage report from the run above.
     [
         "python", "-m", "pytest",
-        # "-m", "not slow",
-        "-n", "4",
+        "-m", "not integration",
+        "-n", "auto",
         "-k", "not test_field.py",
         "--cov-report", "term-missing",
         "--cov-report", "xml",
@@ -182,31 +184,59 @@ commands = [
     ],
 ]
 
+[tool.tox.env.test_integration]
+description = "Run integration tests"
+deps = [{ replace = "ref", of = ["dependency-groups", "test"], extend = true }]
+pass_env = ["CI_PROJECT_DIR", "NUMEXPR_MAX_THREADS"]
+commands = [
+    [
+        "python", "-m", "pytest",
+        "-m", "integration",
+        "-vv", "-ra",
+        "tests/{posargs}",
+    ]
+]
+
 [tool.tox.env.lint]
+skip_install = true
 deps = "ruff"
 commands = [
     [
+        # check all files for selected rules (configured in [tool.ruff.lint])
         "python", "-m", "ruff", "check",
     ],
+    # check formatting on specific files: format_targets in [tool.tox.env.format]
     [
+        # Check imports sorted
+        "python", "-m", "ruff", "check", "--select", "I",
+        { replace = "ref", of = ["tool", "tox", "env", "format", "format_targets"], extend=true },
+    ],
+    [
+        # Check general formatting
         "python", "-m", "ruff", "format", "--check", "-v",
         { replace = "ref", of = ["tool", "tox", "env", "format", "format_targets"], extend=true },
     ]
 ]
 
 [tool.tox.env.format]
+skip_install = true
 deps = "ruff"
 format_targets = [
-    "rapthor/process.py",
-    "rapthor/lib/parset.py",
-    "rapthor/operations/image.py",
-    "rapthor/scripts/calculate_image_diagnostics.py",
-    "tests/lib/test_parset.py",
-    "tests/scripts/test_calculate_image_diagnostics.py",
+    "rapthor/lib/__init__.py",
+    "rapthor/lib/cluster.py",
     "rapthor/lib/cwl.py",
     "rapthor/lib/cwlrunner.py",
-    "tests/lib/test_cwl.py",
-    "tests/lib/test_cwlrunner.py",
+    "rapthor/lib/operation.py",
+    "rapthor/lib/observation.py",
+    "rapthor/lib/parset.py",
+    "rapthor/lib/strategy.py",
+    "rapthor/operations/calibrate.py",
+    "rapthor/operations/image.py",
+    "rapthor/process.py",
+    "rapthor/scripts/calculate_image_diagnostics.py",
+    "rapthor/scripts/normalize_flux_scale.py",
+    "tests/__init__.py",
+    "tests/conftest.py",
     "tests/cwl/__init__.py",
     "tests/cwl/cwl_cmdline.py",
     "tests/cwl/cwl_mock.py",
@@ -214,6 +244,15 @@ format_targets = [
     "tests/cwl/tests/test_cwl_mock.py",
     "tests/cwl/tests/test_cwl_real_execution.py",
     "tests/cwl/tests/test_cwl_scatter.py",
+    "tests/integration",
+    "tests/lib/test_cwl.py",
+    "tests/lib/test_cwlrunner.py",
+    "tests/lib/test_field.py",
+    "tests/lib/test_parset.py",
+    "tests/lib/test_strategy.py",
+    "tests/operations/test_calibrate.py",
+    "tests/scripts/test_calculate_image_diagnostics.py",
+    "tests/scripts/test_normalize_flux_scale.py"
 ]
 commands = [
     [

@@ -48,7 +48,7 @@ class Image(Operation):
         super().__init__(field, index=index, name=name)
 
         # For imaging we use a subworkflow, so we set the template filename for that here
-        self.subpipeline_parset_template = "{0}_sector_pipeline.cwl".format(self.rootname)
+        self.subpipeline_parset_template = f"{self.rootname}_sector_pipeline.cwl"
 
         # Initialize various parameters
         # Note:
@@ -96,8 +96,6 @@ class Image(Operation):
             self.image_pol = self.field.image_pol  # set by process.run_steps()
         if self.save_source_list is None:
             self.save_source_list = is_only_pol_I(self.image_pol)
-        if self.peel_bright_sources is None:
-            self.peel_bright_sources = self.field.peel_bright_sources
         if self.preapply_dde_solutions is None:
             self.preapply_dde_solutions = self.dde_method == "single" and not self.apply_none
         if self.compress_images is None:
@@ -124,7 +122,6 @@ class Image(Operation):
             "normalize_flux_scale": self.normalize_flux_scale,
             "use_facets": self.use_facets,
             "save_source_list": self.save_source_list,
-            "peel_bright_sources": self.peel_bright_sources,
             "preapply_dde_solutions": self.preapply_dde_solutions,
             "max_cores": max_cores,
             "use_mpi": self.field.use_mpi,
@@ -161,7 +158,8 @@ class Image(Operation):
                 self.apply_normalizations = (
                     self.field.apply_normalizations
                 )  # set by ImageNormalize.finalize()
-
+        if self.peel_bright_sources is None:
+            self.peel_bright_sources = self.field.peel_bright_sources
         nsectors = len(self.imaging_sectors)
         obs_filename = []
         prepare_filename = []
@@ -233,17 +231,17 @@ class Image(Operation):
                 sector_ntimes.append(obs.numsamples)
             starttime.append(sector_starttime)
             ntimes.append(sector_ntimes)
-            phasecenter.append("'[{0}deg, {1}deg]'".format(sector.ra, sector.dec))
+            phasecenter.append(f"'[{sector.ra}deg, {sector.dec}deg]'")
             if self.preapply_dde_solutions:
                 central_patch_name.append(sector.central_patch)
             if self.make_image_cube:
-                image_I_cube_name.append(sector.name + "_I_freq_cube.fits")
-                image_Q_cube_name.append(sector.name + "_Q_freq_cube.fits")
-                image_U_cube_name.append(sector.name + "_U_freq_cube.fits")
-                image_V_cube_name.append(sector.name + "_V_freq_cube.fits")
+                image_I_cube_name.append(f"{sector.name}_I_freq_cube.fits")
+                image_Q_cube_name.append(f"{sector.name}_Q_freq_cube.fits")
+                image_U_cube_name.append(f"{sector.name}_U_freq_cube.fits")
+                image_V_cube_name.append(f"{sector.name}_V_freq_cube.fits")
             if self.normalize_flux_scale:
-                output_source_catalog.append(sector.name + "_source_catalog.fits")
-                normalize_h5parm.append(sector.name + "_normalize.h5parm")
+                output_source_catalog.append(f"{sector.name}_source_catalog.fits")
+                normalize_h5parm.append(f"{sector.name}_normalize.h5parm")
 
         # Handle the polarization-related options
         link_polarizations = False
@@ -400,6 +398,7 @@ class Image(Operation):
             "astrometry_skymodel": (
                 CWLFile(self.astrometry_skymodel).to_json() if self.astrometry_skymodel else None
             ),
+            "peel_bright_sources": self.peel_bright_sources,
         }
         # Add parameters that depend on the set_parset parameters (set in set_parset_parameters())
         if self.peel_bright_sources:
@@ -445,7 +444,7 @@ class Image(Operation):
                 dec_mid.append(self.field.dec)
                 width_ra.append(max(min_width, sector.width_ra * 1.2))
                 width_dec.append(max(min_width, sector.width_dec * 1.2))
-                facet_region_file.append("{}_facets_ds9.reg".format(sector.name))
+                facet_region_file.append(f"{sector.name}_facets_ds9.reg")
             self.input_parms.update({"ra_mid": ra_mid})
             self.input_parms.update({"dec_mid": dec_mid})
             self.input_parms.update({"width_ra": width_ra})
@@ -583,7 +582,7 @@ class Image(Operation):
             # Note: these are not generated when QUV images are made (WSClean does not
             # currently support writing a source list in this mode)
             skymodel_dest_dir = os.path.join(
-                self.parset["dir_working"], "skymodels", "image_{}".format(self.index)
+                self.parset["dir_working"], "skymodels", f"image_{self.index}"
             )
             if self.field.image_pol.lower() == "i":
                 for skymodel_type in ["true_sky", "apparent_sky"]:
@@ -612,7 +611,7 @@ class Image(Operation):
                     os.path.join(
                         self.parset["dir_working"],
                         "regions",
-                        "image_{}".format(self.index),
+                        f"image_{self.index}",
                     ),
                     index=index,
                     include={"sector_region_file"},
@@ -625,7 +624,7 @@ class Image(Operation):
                     os.path.join(
                         self.parset["dir_working"],
                         "visibilities",
-                        "image_{}".format(self.index),
+                        f"image_{self.index}",
                         sector.name,
                     ),
                     index=index,
@@ -635,7 +634,7 @@ class Image(Operation):
 
             # The astrometry and photometry plots and diagnostics file
             diagnostics_dest_dir = os.path.join(
-                self.parset["dir_working"], "plots", "image_{}".format(self.index)
+                self.parset["dir_working"], "plots", f"image_{self.index}"
             )
             diagnotics = {"sector_diagnostics"}
             if self.outputs["sector_diagnostic_plots"][index]:
@@ -826,6 +825,8 @@ class ImageNormalize(Image):
         # Set the template filenames
         self.pipeline_parset_template = "image_pipeline.cwl"
         self.subpipeline_parset_template = "image_sector_pipeline.cwl"
+        self.normalization_skymodels = None
+        self.normalization_reference_frequencies = None
 
     def set_parset_parameters(self):
         """
@@ -842,7 +843,18 @@ class ImageNormalize(Image):
             # No calibration has yet been done, so set various flags as needed
             self.use_facets = False
             self.apply_screens = False
+        if self.normalization_skymodels is None:
+            self.normalization_skymodels = self.field.normalization_skymodels
+            self.normalization_reference_frequencies = (
+                self.field.normalization_reference_frequencies
+            )
         super().set_parset_parameters()
+        self.parset_parms.update(
+            {
+                "normalization_skymodels": self.normalization_skymodels,
+                "normalization_reference_frequencies": self.normalization_reference_frequencies,
+            }
+        )
 
     def set_input_parameters(self):
         """
@@ -869,6 +881,15 @@ class ImageNormalize(Image):
         self.field.disable_clean = False
         self.field.skip_final_major_iteration = False
         super().set_input_parameters()
+        self.input_parms.update(
+            {
+                "normalization_skymodels": [
+                    CWLFile(filename).to_json() for filename in self.normalization_skymodels or ()
+                ]
+                or None,
+                "normalization_reference_frequencies": self.normalization_reference_frequencies,
+            }
+        )
 
     def finalize(self):
         """

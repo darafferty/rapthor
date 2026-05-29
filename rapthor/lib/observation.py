@@ -1,14 +1,17 @@
 """
 Definition of the Observation class that holds parameters for each measurement set
 """
-import os
+
+import copy
 import logging
+import os
+
 import casacore.tables as pt
 import numpy as np
-from scipy.special import erf
-from rapthor.lib import miscellaneous as misc
-import copy
 from lsmtool.operations_lib import normalize_ra_dec
+from scipy.special import erf
+
+from rapthor.lib import miscellaneous as misc
 
 
 class Observation(object):
@@ -28,12 +31,13 @@ class Observation(object):
     name : str, optional
         The observation's name. If None, the basename of ms_filename is used
     """
+
     def __init__(self, ms_filename, starttime=None, endtime=None, name=None):
         self.ms_filename = str(ms_filename)
         self.ms_predict_di_filename = None
         self.ms_predict_nc_filename = None
         self.name = name or os.path.basename(self.ms_filename)
-        self.log = logging.getLogger("rapthor:{}".format(self.name))
+        self.log = logging.getLogger(f"rapthor:{self.name}")
         self.starttime = starttime
         self.endtime = endtime
         self.data_fraction = 1.0
@@ -43,10 +47,10 @@ class Observation(object):
         # Define the infix for filenames
         if self.startsat_startofms and self.goesto_endofms:
             # Don't include starttime if observation covers full MS
-            self.infix = ''
+            self.infix = ""
         else:
             # Include starttime to avoid naming conflicts
-            self.infix = '.mjd{}'.format(int(self.starttime))
+            self.infix = f".mjd{int(self.starttime)}"
 
     def copy(self):
         """
@@ -56,7 +60,7 @@ class Observation(object):
         # them by hand:
         self.log, obs_log = None, self.log
         obs_copy = copy.deepcopy(self)
-        obs_copy.log = logging.getLogger('rapthor:{}'.format(self.name))
+        obs_copy.log = logging.getLogger(f"rapthor:{self.name}")
         self.log = obs_log
 
         return obs_copy
@@ -68,23 +72,21 @@ class Observation(object):
         # Get time info
         with pt.table(self.ms_filename, ack=False) as tab:
             if self.starttime is None:
-                self.starttime = np.min(tab.getcol('TIME'))
+                self.starttime = np.min(tab.getcol("TIME"))
             else:
-                valid_times = np.where(tab.getcol('TIME') >= self.starttime)[0]
+                valid_times = np.where(tab.getcol("TIME") >= self.starttime)[0]
                 if len(valid_times) == 0:
                     raise ValueError(
-                        f"Start time of {self.starttime} is greater than the "
-                        "last time in the MS"
+                        f"Start time of {self.starttime} is greater than the last time in the MS"
                     )
                 self.starttime = tab.getcol("TIME")[valid_times[0]]
             if self.endtime is None:
-                self.endtime = np.max(tab.getcol('TIME'))
+                self.endtime = np.max(tab.getcol("TIME"))
             else:
-                valid_times = np.where(tab.getcol('TIME') <= self.endtime)[0]
+                valid_times = np.where(tab.getcol("TIME") <= self.endtime)[0]
                 if len(valid_times) == 0:
                     raise ValueError(
-                        f"End time of {self.endtime} is less than the first "
-                        "time in the MS"
+                        f"End time of {self.endtime} is less than the first time in the MS"
                     )
                 self.endtime = tab.getcol("TIME")[valid_times[-1]]
 
@@ -92,24 +94,22 @@ class Observation(object):
             # rounding issues. For example, DPPP takes ceil(startTimeParset -
             # startTimeMS) when determining which timeslot to start with, so we need to
             # ensure that our start time is slightly less than the true one
-            self.timepersample = tab.getcell('EXPOSURE', 0)
+            self.timepersample = tab.getcell("EXPOSURE", 0)
             self.starttime -= self.timepersample / 100
             self.endtime += self.timepersample / 100
-            self.startsat_startofms = (self.starttime <= np.min(tab.getcol('TIME')))
-            self.goesto_endofms = (self.endtime >= np.max(tab.getcol('TIME')))
-            self.numsamples = int(
-                np.ceil((self.endtime - self.starttime) / self.timepersample)
-            )
+            self.startsat_startofms = self.starttime <= np.min(tab.getcol("TIME"))
+            self.goesto_endofms = self.endtime >= np.max(tab.getcol("TIME"))
+            self.numsamples = int(np.ceil((self.endtime - self.starttime) / self.timepersample))
 
         # Get frequency info
         with pt.table(f"{self.ms_filename}::SPECTRAL_WINDOW", ack=False) as sw:
-            self.referencefreq = sw.col('REF_FREQUENCY')[0]
-            self.channelfreqs = sw.col('CHAN_FREQ')[0]
-            self.startfreq = np.min(sw.col('CHAN_FREQ')[0])
-            self.endfreq = np.max(sw.col('CHAN_FREQ')[0])
-            self.numchannels = sw.col('NUM_CHAN')[0]
-            self.channelwidths = sw.col('CHAN_WIDTH')[0]
-            self.channelwidth = sw.col('CHAN_WIDTH')[0][0]
+            self.referencefreq = sw.col("REF_FREQUENCY")[0]
+            self.channelfreqs = sw.col("CHAN_FREQ")[0]
+            self.startfreq = np.min(sw.col("CHAN_FREQ")[0])
+            self.endfreq = np.max(sw.col("CHAN_FREQ")[0])
+            self.numchannels = sw.col("NUM_CHAN")[0]
+            self.channelwidths = sw.col("CHAN_WIDTH")[0]
+            self.channelwidth = sw.col("CHAN_WIDTH")[0][0]
 
         # Check that the channels are evenly spaced, as the use of baseline-dependent
         # averaging (BDA) during calibration requires it. If the channels are not
@@ -123,9 +123,9 @@ class Observation(object):
             freqstep0 = self.channelfreqs[1] - self.channelfreqs[0]
             atol = 1e3  # use an absolute tolerance of 1 kHz
             for i in range(1, self.numchannels):
-                if (
-                    self.channelfreqs[i] - self.channelfreqs[i - 1] - freqstep0 >= atol
-                ) or (self.channelwidths[i] - self.channelwidths[0] >= atol):
+                if (self.channelfreqs[i] - self.channelfreqs[i - 1] - freqstep0 >= atol) or (
+                    self.channelwidths[i] - self.channelwidths[0] >= atol
+                ):
                     self.channels_are_regular = False
         if not self.channels_are_regular:
             self.log.warning(
@@ -134,7 +134,7 @@ class Observation(object):
             )
 
         # Get pointing info
-        with pt.table(self.ms_filename+'::FIELD', ack=False) as obs:
+        with pt.table(self.ms_filename + "::FIELD", ack=False) as obs:
             self.ra, self.dec = normalize_ra_dec(
                 np.degrees(float(obs.col("REFERENCE_DIR")[0][0][0])),
                 np.degrees(float(obs.col("REFERENCE_DIR")[0][0][1])),
@@ -142,18 +142,17 @@ class Observation(object):
 
         # Get station names and diameter
         with pt.table(f"{self.ms_filename}::ANTENNA", ack=False) as ant:
-            self.stations = ant.col('NAME')[:]
-            self.diam = float(ant.col('DISH_DIAMETER')[0])
-            if 'HBA' in self.stations[0]:
-                self.antenna = 'HBA'
-            elif 'LBA' in self.stations[0]:
-                self.antenna = 'LBA'
+            self.stations = ant.col("NAME")[:]
+            self.diam = float(ant.col("DISH_DIAMETER")[0])
+            if "HBA" in self.stations[0]:
+                self.antenna = "HBA"
+            elif "LBA" in self.stations[0]:
+                self.antenna = "LBA"
             else:
                 # Set antenna to HBA to at least let Rapthor proceed.
                 self.antenna = "HBA"
                 self.log.warning(
-                    "Antenna type not recognized (only LBA and HBA data "
-                    "are supported at this time)"
+                    "Antenna type not recognized (only LBA and HBA data are supported at this time)"
                 )
 
         # Find mean elevation and time range for periods where the elevation
@@ -165,12 +164,8 @@ class Observation(object):
             f"SELECT mscal.azel1()[1] AS el from {self.ms_filename} limit ::10000"
         ).getcol("el")
         self.mean_el_rad = np.mean(el_values)
-        times = pt.taql(
-            f"select TIME from {self.ms_filename} limit ::10000"
-        ).getcol("TIME")
-        low_indices = np.sort(
-            el_values.argpartition(len(el_values) // 5)[: len(el_values) // 5]
-        )
+        times = pt.taql(f"select TIME from {self.ms_filename} limit ::10000").getcol("TIME")
+        low_indices = np.sort(el_values.argpartition(len(el_values) // 5)[: len(el_values) // 5])
         if len(low_indices):
             # At least one element is needed for the start and end time check. The check
             # assumes that the elevation either increases smoothly to a maximum and then
@@ -249,10 +244,10 @@ class Observation(object):
         """
         # Get the target solution intervals and maximum factor by which they can
         # be increased when using direction-dependent solution intervals
-        target_fast_freqstep = parset['calibration_specific']['fast_freqstep_hz']
-        target_medium_freqstep = parset['calibration_specific']['medium_freqstep_hz']
-        target_slow_freqstep = parset['calibration_specific']['slow_freqstep_hz']
-        target_fulljones_freqstep = parset['calibration_specific']['fulljones_freqstep_hz']
+        target_fast_freqstep = parset["calibration_specific"]["fast_freqstep_hz"]
+        target_medium_freqstep = parset["calibration_specific"]["medium_freqstep_hz"]
+        target_slow_freqstep = parset["calibration_specific"]["slow_freqstep_hz"]
+        target_fulljones_freqstep = parset["calibration_specific"]["fulljones_freqstep_hz"]
 
         if generate_screens:
             # Screens do not support the direction-dependent smoothness contraint or
@@ -260,8 +255,8 @@ class Observation(object):
             solve_max_factor = 1
             smoothness_max_factor = 1
         else:
-            solve_max_factor = parset['calibration_specific']['dd_interval_factor']
-            smoothness_max_factor = parset['calibration_specific']['dd_smoothness_factor']
+            solve_max_factor = parset["calibration_specific"]["dd_interval_factor"]
+            smoothness_max_factor = parset["calibration_specific"]["dd_smoothness_factor"]
 
         # Find the frequency chunk size in number of channels. We use the target
         # frequency step size for the slow solve, as this is the solve that determines
@@ -394,6 +389,18 @@ class Observation(object):
         self.parameters["idgcal_nr_channels_per_block"] = [
             nchannels_per_chunk
         ] * self.nfreqchunks
+        self.set_solution_interval(
+            "fast", target_fast_timestep, target_fast_freqstep, solve_max_factor
+        )
+        self.set_solution_interval(
+            "medium", target_medium_timestep, target_medium_freqstep, solve_max_factor
+        )
+        self.set_solution_interval(
+            "slow", target_slow_timestep, target_slow_freqstep, solve_max_factor
+        )
+        self.set_solution_interval(
+            "fulljones", target_fulljones_timestep, target_fulljones_freqstep, 1
+        )
 
         # Define the BDA (baseline-dependent averaging) max interval constraints. They
         # are set to the solution intervals *before* adjusting for the DD intervals
@@ -417,18 +424,22 @@ class Observation(object):
         # slow solves (the full-Jones solve is direction-independent so is not included).
         # The list values are defined as the number of solutions that will be obtained for
         # each base solution interval, with one entry per direction
-        input_solint_keys = {'slow': 'solint_slow_timestep',
-                             'medium': 'solint_medium_timestep',
-                             'fast': 'solint_fast_timestep'}
+        input_solint_keys = {
+            "slow": "solint_slow_timestep",
+            "medium": "solint_medium_timestep",
+            "fast": "solint_fast_timestep",
+        }
         if target_flux is None:
             target_flux = min(calibrator_fluxes)
         if smoothness_max_factor > 1:
             smoothness_dd_factors = target_flux / np.array(calibrator_fluxes)
             smoothness_dd_factors /= max(smoothness_dd_factors)
-            smoothness_dd_factors[smoothness_dd_factors < 1 / smoothness_max_factor] = 1 / smoothness_max_factor
+            smoothness_dd_factors[smoothness_dd_factors < 1 / smoothness_max_factor] = (
+                1 / smoothness_max_factor
+            )
         else:
             smoothness_dd_factors = [1] * len(calibrator_fluxes)
-        for solve_type in ['fast', 'medium', 'slow']:
+        for solve_type in ["fast", "medium", "slow"]:
             solint = self.parameters[input_solint_keys[solve_type]][0]  # number of time slots
 
             if solve_max_factor > 1:
@@ -438,8 +449,9 @@ class Observation(object):
                 # and the fainter ones a smaller number (smaller numbers give longer
                 # solution intervals)
                 interval_factors = np.round(np.array(calibrator_fluxes) / target_flux)
-                n_solutions = [min(solve_max_factor, max(1, int(factor))) for
-                               factor in interval_factors]
+                n_solutions = [
+                    min(solve_max_factor, max(1, int(factor))) for factor in interval_factors
+                ]
 
                 # Calculate the final number per direction, making sure each is a divisor
                 # of the solution interval. We choose the lower number that satisfies this
@@ -467,9 +479,9 @@ class Observation(object):
         # user
         fast_smoothnessreffrequency = parset['calibration_specific']['fast_smoothnessreffrequency']
         if fast_smoothnessreffrequency is None:
-            if self.antenna == 'HBA':
+            if self.antenna == "HBA":
                 fast_smoothnessreffrequency = 144e6
-            elif self.antenna == 'LBA':
+            elif self.antenna == "LBA":
                 # Select a frequency at the midpoint of the frequency coverage of this observation
                 fast_smoothnessreffrequency = (self.startfreq + self.endfreq) / 2.0
         self.parameters["fast_smoothnessreffrequency"] = [
@@ -494,41 +506,48 @@ class Observation(object):
         patch_names : list
             List of patch names to predict
         """
-        self.parameters['ms_filename'] = self.ms_filename
+        self.parameters["ms_filename"] = self.ms_filename
 
         # The filename of the sector's model data (from predict)
         root_filename = os.path.basename(self.ms_filename)
-        ms_model_filename = '{0}{1}.{2}_modeldata'.format(root_filename, self.infix,
-                                                          sector_name)
-        self.parameters['ms_model_filename'] = ms_model_filename
+        ms_model_filename = f"{root_filename}{self.infix}.{sector_name}_modeldata"
+        self.parameters["ms_model_filename"] = ms_model_filename
 
         # The filename of the sector's data with all non-sector sources peeled off
         # and/or with the weights adjusted (i.e., the data used as input for the
         # imaging operation)
-        self.ms_subtracted_filename = '{0}{1}.{2}'.format(root_filename, self.infix,
-                                                          sector_name)
-        self.parameters['ms_subtracted_filename'] = self.ms_subtracted_filename
+        self.ms_subtracted_filename = f"{root_filename}{self.infix}.{sector_name}"
+        self.parameters["ms_subtracted_filename"] = self.ms_subtracted_filename
 
         # The filename of the field data (after subtraction of outlier sources)
-        self.ms_field = '{0}{1}_field'.format(root_filename, self.infix)
+        self.ms_field = f"{root_filename}{self.infix}_field"
 
         # The filename of the model data for direction-independent calibration
-        self.ms_predict_di = self.ms_subtracted_filename + '_di.ms'
+        self.ms_predict_di = self.ms_subtracted_filename + "_di.ms"
 
         # The sky model patch names
-        self.parameters['patch_names'] = patch_names
+        self.parameters["patch_names"] = patch_names
 
         # The start time and number of times (since an observation can be a part of its
         # associated MS file)
-        self.parameters['predict_starttime'] = misc.convert_mjd2mvt(self.starttime)
+        self.parameters["predict_starttime"] = misc.convert_mjd2mvt(self.starttime)
         if self.goesto_endofms:
-            self.parameters['predict_ntimes'] = 0
+            self.parameters["predict_ntimes"] = 0
         else:
-            self.parameters['predict_ntimes'] = self.numsamples
+            self.parameters["predict_ntimes"] = self.numsamples
 
-    def set_imaging_parameters(self, sector_name, cellsize_arcsec, max_peak_smearing, width_ra,
-                               width_dec, solve_fast_timestep, solve_slow_timestep,
-                               solve_slow_freqstep, preapply_dde_solutions):
+    def set_imaging_parameters(
+        self,
+        sector_name,
+        cellsize_arcsec,
+        max_peak_smearing,
+        width_ra,
+        width_dec,
+        solve_fast_timestep,
+        solve_slow_timestep,
+        solve_slow_freqstep,
+        preapply_dde_solutions,
+    ):
         """
         Sets the imaging parameters
 
@@ -559,12 +578,11 @@ class Observation(object):
         timestep_sec = self.timepersample
 
         # Set MS filenames for step that prepares the data for imaging
-        if 'ms_filename' not in self.parameters:
-            self.parameters['ms_filename'] = self.ms_filename
+        if "ms_filename" not in self.parameters:
+            self.parameters["ms_filename"] = self.ms_filename
         root_filename = os.path.basename(self.ms_filename)
-        ms_prep_filename = '{0}{1}.{2}.prep'.format(root_filename, self.infix,
-                                                    sector_name)
-        self.parameters['ms_prep_filename'] = ms_prep_filename
+        ms_prep_filename = f"{root_filename}{self.infix}.{sector_name}.prep"
+        self.parameters["ms_prep_filename"] = ms_prep_filename
 
         # Get target time and frequency averaging steps.
         #
@@ -573,15 +591,19 @@ class Observation(object):
         # to a limitation in Dysco, we make sure to have at least 2 time slots after
         # averaging, otherwise the output MS cannot be written with compression
         if self.numsamples == 1:
-            raise RuntimeError('Only one time slot is availble for imaging, but at least '
-                               'two are required. Please increase the fraction of data '
-                               'processed with the selfcal_data_fraction parameter or supply a '
-                               'measurement set with more time slots.')
+            raise RuntimeError(
+                "Only one time slot is availble for imaging, but at least "
+                "two are required. Please increase the fraction of data "
+                "processed with the selfcal_data_fraction parameter or supply a "
+                "measurement set with more time slots."
+            )
         max_timewidth_sec = min(120, int(self.numsamples / 2) * timestep_sec)
         delta_theta_deg = max(width_ra, width_dec) / 2.0
         resolution_deg = 3.0 * cellsize_arcsec / 3600.0  # assume normal sampling of restoring beam
-        target_timewidth_sec = min(max_timewidth_sec, self.get_target_timewidth(delta_theta_deg,
-                                   resolution_deg, peak_smearing_rapthor))
+        target_timewidth_sec = min(
+            max_timewidth_sec,
+            self.get_target_timewidth(delta_theta_deg, resolution_deg, peak_smearing_rapthor),
+        )
 
         if not preapply_dde_solutions:
             # Ensure we don't average more than the solve time step, as we want to
@@ -589,30 +611,40 @@ class Observation(object):
             # properly during imaging
             target_timewidth_sec = min(target_timewidth_sec, solve_fast_timestep)
 
-        target_bandwidth_mhz = min(2.0, self.get_target_bandwidth(mean_freq_mhz,
-                                   delta_theta_deg, resolution_deg, peak_smearing_rapthor))
-        target_bandwidth_mhz = min(target_bandwidth_mhz, solve_slow_freqstep/1e6)
-        self.log.debug('Target averaging timewidth for imaging is %.1f s', target_timewidth_sec)
-        self.log.debug('Target averaging bandwidth for imaging is %.1f MHz', target_bandwidth_mhz)
+        target_bandwidth_mhz = min(
+            2.0,
+            self.get_target_bandwidth(
+                mean_freq_mhz, delta_theta_deg, resolution_deg, peak_smearing_rapthor
+            ),
+        )
+        target_bandwidth_mhz = min(target_bandwidth_mhz, solve_slow_freqstep / 1e6)
+        self.log.debug("Target averaging timewidth for imaging is %.1f s", target_timewidth_sec)
+        self.log.debug("Target averaging bandwidth for imaging is %.1f MHz", target_bandwidth_mhz)
 
         # Find averaging steps for above target values
         image_freqstep = max(1, min(int(round(target_bandwidth_mhz * 1e6 / chan_width_hz)), nchan))
-        self.parameters['image_freqstep'] = self.get_nearest_freqstep(image_freqstep)
-        self.parameters['image_timestep'] = max(1, int(round(target_timewidth_sec / timestep_sec)))
-        self.log.debug('Using averaging steps of %s channel%s and %s time slot%s '
-                       'for imaging if averaging visibilities is enabled.',
-                       self.parameters['image_freqstep'],
-                        "s" if self.parameters['image_freqstep'] > 1 else "",
-                        self.parameters['image_timestep'],
-                        "s" if self.parameters['image_timestep'] > 1 else "")
+        self.parameters["image_freqstep"] = self.get_nearest_freqstep(image_freqstep)
+        self.parameters["image_timestep"] = max(1, int(round(target_timewidth_sec / timestep_sec)))
+        self.log.debug(
+            "Using averaging steps of %s channel%s and %s time slot%s "
+            "for imaging if averaging visibilities is enabled.",
+            self.parameters["image_freqstep"],
+            "s" if self.parameters["image_freqstep"] > 1 else "",
+            self.parameters["image_timestep"],
+            "s" if self.parameters["image_timestep"] > 1 else "",
+        )
 
         # Find BDA maxinterval: the max time interval in time slots over which to average
         # (for the shortest baselines). We set this to be the slow solve time step to ensure
         # we don't average more than the timescale of the slow corrections
-        target_maxinterval = min(self.numsamples, int(round(solve_slow_timestep / timestep_sec)))  # time slots
-        self.parameters['image_bda_maxinterval'] = max(1, target_maxinterval)
-        self.log.debug('If BDA is enabled, maxinterval = %.1f s will be used for imaging', 
-                       self.parameters['image_bda_maxinterval'] * timestep_sec)
+        target_maxinterval = min(
+            self.numsamples, int(round(solve_slow_timestep / timestep_sec))
+        )  # time slots
+        self.parameters["image_bda_maxinterval"] = max(1, target_maxinterval)
+        self.log.debug(
+            "If BDA is enabled, maxinterval = %.1f s will be used for imaging",
+            self.parameters["image_bda_maxinterval"] * timestep_sec,
+        )
 
     def get_nearest_freqstep(self, freqstep):
         """
@@ -629,7 +661,7 @@ class Observation(object):
             Optimum frequency step nearest to target step
         """
         # Generate a list of possible values for freqstep
-        if not hasattr(self, 'freq_divisors'):
+        if not hasattr(self, "freq_divisors"):
             tmp_divisors = []
             for step in range(self.numchannels, 0, -1):
                 if (self.numchannels % step) == 0:
@@ -657,11 +689,13 @@ class Observation(object):
             Maximum factor by which the solution interval can be increased when using
             direction-dependent solution intervals
         """
-        timestep = max(1, int(round(target_timestep / round(self.timepersample)) * solve_max_factor))
+        timestep = max(
+            1, int(round(target_timestep / round(self.timepersample)) * solve_max_factor)
+        )
         freqstep = max(1, self.get_nearest_freqstep(target_freqstep / self.channelwidth))
 
-        self.parameters[f'solint_{solve_type}_timestep'] = [timestep] * self.ntimechunks
-        self.parameters[f'solint_{solve_type}_freqstep'] = [freqstep] * self.ntimechunks
+        self.parameters[f"solint_{solve_type}_timestep"] = [timestep] * self.ntimechunks
+        self.parameters[f"solint_{solve_type}_freqstep"] = [freqstep] * self.ntimechunks
 
     def get_target_timewidth(self, delta_theta, resolution, reduction_factor):
         """
@@ -682,8 +716,9 @@ class Observation(object):
             Time width in seconds for target reduction_factor
 
         """
-        delta_time = np.sqrt((1.0 - reduction_factor) /
-                             (1.22E-9 * (delta_theta / resolution)**2.0))
+        delta_time = np.sqrt(
+            (1.0 - reduction_factor) / (1.22e-9 * (delta_theta / resolution) ** 2.0)
+        )
 
         return delta_time
 
@@ -708,9 +743,9 @@ class Observation(object):
             Ratio of pre-to-post averaging peak flux density
 
         """
-        beta = (delta_freq/freq) * (delta_theta/resolution)
-        gamma = 2*(np.log(2)**0.5)
-        reduction_factor = ((np.pi**0.5)/(gamma * beta)) * (erf(beta*gamma/2.0))
+        beta = (delta_freq / freq) * (delta_theta / resolution)
+        gamma = 2 * (np.log(2) ** 0.5)
+        reduction_factor = ((np.pi**0.5) / (gamma * beta)) * (erf(beta * gamma / 2.0))
 
         return reduction_factor
 
@@ -736,8 +771,10 @@ class Observation(object):
         """
         # Increase delta_freq until we drop below target reduction_factor
         delta_freq = 1e-3 * freq
-        while self.get_bandwidth_smearing_factor(freq, delta_freq, delta_theta,
-                                                 resolution) > reduction_factor:
+        while (
+            self.get_bandwidth_smearing_factor(freq, delta_freq, delta_theta, resolution)
+            > reduction_factor
+        ):
             delta_freq *= 1.1
 
         return delta_freq

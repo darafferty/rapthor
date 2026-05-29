@@ -5,9 +5,10 @@
     "dockerfile": "Dockerfile",
     "target": "dev"
   },
-  "workspaceFolder": "/src",
-  "workspaceMount": "source=${localWorkspaceFolder},target=/src,type=bind,consistency=cached",
-  "postCreateCommand": "pip install -e .[test]",
+  "runArgs": ["--shm-size=4g"],
+  "workspaceFolder": "/app",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/app,type=bind,consistency=cached",
+  "postCreateCommand": "pip install --upgrade pip && pip install --no-binary=bdsf bdsf && pip install -e . && pip install --group=dev",
   "customizations": {
     "vscode": {
       "extensions": [
@@ -17,6 +18,6 @@
     }
   },
   "remoteEnv": {
-    "PYTHONPATH": "/src:${PYTHONPATH}"
+    "PYTHONPATH": "/app:${PYTHONPATH}"
   }
 }

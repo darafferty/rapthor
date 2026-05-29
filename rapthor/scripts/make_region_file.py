@@ -4,7 +4,8 @@ Script to make a ds9 region file for use with WSClean and faceting
 """
 from argparse import ArgumentParser, RawTextHelpFormatter
 import ast
-from rapthor.lib.facet import make_ds9_region_file, read_skymodel
+from lsmtool.facet import make_ds9_region_file, read_skymodel
+from rapthor.lib import miscellaneous as misc
 
 
 def main(skymodel, ra_mid, dec_mid, width_ra, width_dec, region_file, enclose_names=True):
@@ -27,7 +28,8 @@ def main(skymodel, ra_mid, dec_mid, width_ra, width_dec, region_file, enclose_na
         Filename of output ds9 region file
     """
     # Read the facets from the input sky model
-    facets = read_skymodel(skymodel, ra_mid, dec_mid, width_ra, width_dec)
+    facets = read_skymodel(skymodel, ra_mid, dec_mid, width_ra, width_dec,
+                           wcs_pixel_scale=misc.WCS_PIXEL_SCALE)
 
     # Make the ds9 region file
     make_ds9_region_file(facets, region_file, enclose_names=enclose_names)

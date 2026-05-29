@@ -1,18 +1,14 @@
 """
 Module that holds miscellaneous functions and classes
 """
-import logging
 import multiprocessing
 import os
 import subprocess
-import time
 from math import modf
 
 import astropy.units as u
 import lsmtool
-import mocpy
 import numpy as np
-import requests
 from astropy.coordinates import SkyCoord
 from astropy.io import fits as pyfits
 from astropy.time import Time
@@ -22,163 +18,8 @@ from scipy.interpolate import interp1d
 
 # Always use a 0-based origin in wcs_pix2world and wcs_world2pix calls.
 WCS_ORIGIN = 0
-# Default WCS pixel scale within Rapthor, which differs from LSMTool (20"/pixel).
+# Default WCS pixel scale within Rapthor
 WCS_PIXEL_SCALE = 10.0 / 3600.0  # degrees/pixel (= 10"/pixel)
-
-
-def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, source='TGSS',
-                      targetname='Patch'):
-    """
-    Downloads a skymodel for the given position and radius
-
-    Parameters
-    ----------
-    ra : float
-        Right ascension in degrees of the skymodel centre
-    dec : float
-        Declination in degrees of the skymodel centre
-    skymodel_path : str
-        Full name (with path) to the output skymodel
-    radius : float, optional
-        Radius for the cone search in degrees. For Pan-STARRS, the radius must be
-        <= 0.5 degrees
-    source : str, optional
-        Source where to obtain a skymodel from. Can be one of: TGSS, GSM, LOTSS, or
-        PANSTARRS. Note: the PANSTARRS sky model is only suitable for use in
-        astrometry checks and should not be used for calibration
-    overwrite : bool, optional
-        Overwrite the existing skymodel pointed to by skymodel_path
-    target_name : str, optional
-        Give the patch a certain name
-    """
-    logger = logging.getLogger('rapthor:skymodel')
-
-    file_exists = os.path.isfile(skymodel_path)
-    if file_exists and not overwrite:
-        logger.warning('Sky model %r exists and overwrite is set to False! Not '
-                       'downloading sky model. If this is a restart this may be '
-                       'intentional.', skymodel_path)
-        return
-
-    if not file_exists and os.path.exists(skymodel_path):
-        raise ValueError('Path "%s" exists but is not a file!' % skymodel_path)
-
-    # Empty strings are False. Only attempt directory creation if there is a
-    # directory path involved.
-    if (
-        not file_exists and
-        os.path.dirname(skymodel_path) and
-        not os.path.exists(os.path.dirname(skymodel_path))
-    ):
-        os.makedirs(os.path.dirname(skymodel_path))
-
-    if file_exists and overwrite:
-        logger.warning('Found existing sky model %r and overwrite is True. Deleting '
-                       'existing sky model!', skymodel_path)
-        os.remove(skymodel_path)
-
-    # Check the radius for Pan-STARRS (it must be <= 0.5 degrees)
-    source = source.upper().strip()
-    if source == 'PANSTARRS' and radius > 0.5:
-        raise ValueError('The radius for Pan-STARRS must be <= 0.5 deg')
-
-    # Check if LoTSS has coverage
-    if source == 'LOTSS':
-        logger.info('Checking LoTSS coverage for the requested centre and radius.')
-        mocpath = os.path.join(os.path.dirname(skymodel_path), 'dr2-moc.moc')
-        subprocess.run(['wget', 'https://lofar-surveys.org/public/DR2/catalogues/dr2-moc.moc',
-                        '-O', mocpath], capture_output=True, check=True)
-        moc = mocpy.MOC.from_fits(mocpath)
-        covers_centre = moc.contains(ra * u.deg, dec * u.deg)
-
-        # Checking single coordinates, so get rid of the array
-        covers_left = moc.contains(ra * u.deg - radius * u.deg, dec * u.deg)[0]
-        covers_right = moc.contains(ra * u.deg + radius * u.deg, dec * u.deg)[0]
-        covers_bottom = moc.contains(ra * u.deg, dec * u.deg - radius * u.deg)[0]
-        covers_top = moc.contains(ra * u.deg, dec * u.deg + radius * u.deg)[0]
-        if covers_centre and not (covers_left and covers_right and covers_bottom and covers_top):
-            logger.warning('Incomplete LoTSS coverage for the requested centre and radius! '
-                           'Please check the field coverage in plots/field_coverage.png!')
-        elif not covers_centre and (covers_left or covers_right or covers_bottom or covers_top):
-            logger.warning('Incomplete LoTSS coverage for the requested centre and radius! '
-                           'Please check the field coverage in plots/field_coverage.png!')
-        elif not covers_centre and not (covers_left and covers_right and covers_bottom and covers_top):
-            raise ValueError('No LoTSS coverage for the requested centre and radius!')
-        else:
-            logger.info('Complete LoTSS coverage for the requested centre and radius.')
-
-    logger.info('Downloading skymodel for the target into ' + skymodel_path)
-    max_tries = 5
-    for tries in range(1, 1 + max_tries):
-        retry = False
-        if source == 'LOTSS' or source == 'TGSS' or source == 'GSM':
-            try:
-                skymodel = lsmtool.skymodel.SkyModel(source, VOPosition=[ra, dec], VORadius=radius)
-                skymodel.write(skymodel_path)
-                if len(skymodel) > 0:
-                    break
-            except ConnectionError:
-                retry = True
-        elif source == 'PANSTARRS':
-            baseurl = 'https://catalogs.mast.stsci.edu/api/v0.1/panstarrs'
-            release = 'dr1'  # the release with the mean data
-            table = 'mean'  # the main catalog, with the mean data
-            cat_format = 'csv'  # use csv format for the intermediate file
-            url = f'{baseurl}/{release}/{table}.{cat_format}'
-            search_params = {'ra': ra,
-                             'dec': dec,
-                             'radius': radius,
-                             'nDetections.min': '5',  # require detection in at least 5 epochs
-                             'columns': ['objID', 'ramean', 'decmean']  # get only the info we need
-                             }
-            try:
-                result = requests.get(url, params=search_params, timeout=300)
-                if result.ok:
-                    # Convert the result to makesourcedb format and write to the output file
-                    lines = result.text.split('\n')[1:]  # split and remove header line
-                    out_lines = ['FORMAT = Name, Ra, Dec, Type, I, ReferenceFrequency=1e6\n']
-                    for line in lines:
-                        # Add entries for type and Stokes I flux density
-                        if line.strip():
-                            out_lines.append(line.strip() + ',POINT,0.0,\n')
-                    with open(skymodel_path, 'w') as f:
-                        f.writelines(out_lines)
-                    break
-                else:
-                    retry = True
-            except requests.exceptions.Timeout:
-                retry = True
-        else:
-            raise ValueError('Unsupported sky model source specified! Please use LOTSS, TGSS, '
-                             'GSM, or PANSTARRS.')
-
-        if retry:
-            if tries == max_tries:
-                logger.error(
-                    'Attempt #%i to download %r sky model failed.',
-                    tries, source
-                )
-                raise IOError('Download of {0} sky model failed after {1} attempts.'.format(source, max_tries))
-            else:
-                
-                logger.error(
-                    'Attempt #%i to download %r sky model failed. Attempting '
-                    '%i more time%s.',
-                    tries,
-                    source,
-                    (remaining := max_tries - tries), 
-                    's' if remaining > 1 else ''
-                )
-                time.sleep(5)
-
-    if not os.path.isfile(skymodel_path):
-        raise IOError('Sky model file %r does not exist after trying to download the '
-                      'sky model.', skymodel_path)
-
-    # Treat all sources as one group (direction)
-    skymodel = lsmtool.load(skymodel_path)
-    skymodel.group('single', root=targetname)
-    skymodel.write(clobber=True)
 
 
 def make_template_image(image_name, reference_ra_deg, reference_dec_deg,
@@ -235,44 +76,44 @@ def make_template_image(image_name, reference_ra_deg, reference_dec_deg,
 
     # Add RA, Dec info
     i = 1
-    header['CRVAL{}'.format(i)] = reference_ra_deg
-    header['CDELT{}'.format(i)] = -cellsize_deg
-    header['CRPIX{}'.format(i)] = ximsize / 2.0
-    header['CUNIT{}'.format(i)] = 'deg'
-    header['CTYPE{}'.format(i)] = 'RA---SIN'
+    header[f'CRVAL{i}'] = reference_ra_deg
+    header[f'CDELT{i}'] = -cellsize_deg
+    header[f'CRPIX{i}'] = ximsize / 2.0
+    header[f'CUNIT{i}'] = 'deg'
+    header[f'CTYPE{i}'] = 'RA---SIN'
     i += 1
-    header['CRVAL{}'.format(i)] = reference_dec_deg
-    header['CDELT{}'.format(i)] = cellsize_deg
-    header['CRPIX{}'.format(i)] = yimsize / 2.0
-    header['CUNIT{}'.format(i)] = 'deg'
-    header['CTYPE{}'.format(i)] = 'DEC--SIN'
+    header[f'CRVAL{i}'] = reference_dec_deg
+    header[f'CDELT{i}'] = cellsize_deg
+    header[f'CRPIX{i}'] = yimsize / 2.0
+    header[f'CUNIT{i}'] = 'deg'
+    header[f'CTYPE{i}'] = 'DEC--SIN'
     i += 1
 
     # Add STOKES info or ANTENNA (+MATRIX) info
     if antennas is None:
         # basic image
-        header['CRVAL{}'.format(i)] = 1.0
-        header['CDELT{}'.format(i)] = 1.0
-        header['CRPIX{}'.format(i)] = 1.0
-        header['CUNIT{}'.format(i)] = ''
-        header['CTYPE{}'.format(i)] = 'STOKES'
+        header[f'CRVAL{i}'] = 1.0
+        header[f'CDELT{i}'] = 1.0
+        header[f'CRPIX{i}'] = 1.0
+        header[f'CUNIT{i}'] = ''
+        header[f'CTYPE{i}'] = 'STOKES'
         i += 1
     else:
         if aterm_type == 'gain':
             # gain aterm images: add MATRIX info
-            header['CRVAL{}'.format(i)] = 0.0
-            header['CDELT{}'.format(i)] = 1.0
-            header['CRPIX{}'.format(i)] = 1.0
-            header['CUNIT{}'.format(i)] = ''
-            header['CTYPE{}'.format(i)] = 'MATRIX'
+            header[f'CRVAL{i}'] = 0.0
+            header[f'CDELT{i}'] = 1.0
+            header[f'CRPIX{i}'] = 1.0
+            header[f'CUNIT{i}'] = ''
+            header[f'CTYPE{i}'] = 'MATRIX'
             i += 1
 
         # dTEC or gain: add ANTENNA info
-        header['CRVAL{}'.format(i)] = 0.0
-        header['CDELT{}'.format(i)] = 1.0
-        header['CRPIX{}'.format(i)] = 1.0
-        header['CUNIT{}'.format(i)] = ''
-        header['CTYPE{}'.format(i)] = 'ANTENNA'
+        header[f'CRVAL{i}'] = 0.0
+        header[f'CDELT{i}'] = 1.0
+        header[f'CRPIX{i}'] = 1.0
+        header[f'CUNIT{i}'] = ''
+        header[f'CTYPE{i}'] = 'ANTENNA'
         i += 1
 
     # Add frequency info
@@ -283,11 +124,11 @@ def make_template_image(image_name, reference_ra_deg, reference_dec_deg,
     else:
         del_freq = 1e8
     header['RESTFRQ'] = ref_freq
-    header['CRVAL{}'.format(i)] = ref_freq
-    header['CDELT{}'.format(i)] = del_freq
-    header['CRPIX{}'.format(i)] = 1.0
-    header['CUNIT{}'.format(i)] = 'Hz'
-    header['CTYPE{}'.format(i)] = 'FREQ'
+    header[f'CRVAL{i}'] = ref_freq
+    header[f'CDELT{i}'] = del_freq
+    header[f'CRPIX{i}'] = 1.0
+    header[f'CUNIT{i}'] = 'Hz'
+    header[f'CTYPE{i}'] = 'FREQ'
     i += 1
 
     # Add time info
@@ -304,11 +145,11 @@ def make_template_image(image_name, reference_ra_deg, reference_dec_deg,
                 del_time = deltas[0]
         else:
             del_time = 1.0
-        header['CRVAL{}'.format(i)] = ref_time
-        header['CDELT{}'.format(i)] = del_time
-        header['CRPIX{}'.format(i)] = 1.0
-        header['CUNIT{}'.format(i)] = 's'
-        header['CTYPE{}'.format(i)] = 'TIME'
+        header[f'CRVAL{i}'] = ref_time
+        header[f'CDELT{i}'] = del_time
+        header[f'CRPIX{i}'] = 1.0
+        header[f'CUNIT{i}'] = 's'
+        header[f'CTYPE{i}'] = 'TIME'
         i += 1
 
     # Add equinox
@@ -605,7 +446,7 @@ def remove_soltabs(solset, soltabnames):
             soltab = solset.getSoltab(soltabname)
             soltab.delete()
         except Exception:
-            print('Error: soltab "{}" could not be removed'.format(soltabname))
+            print(f'Error: soltab {soltabname!r} could not be removed')
 
 
 def calc_theoretical_noise(obs_list, w_factor=1.5, use_lotss_estimate=False):
@@ -756,8 +597,10 @@ def get_flagged_solution_fraction(h5file, solsetname='sol000'):
                                                           soltab.weight == 0.0))
             num_all += soltab.val.size
     if num_all == 0:
-        raise ValueError('Cannot calculate flagged fraction: no solutions found in '
-                         'solset {0} of h5parm file {1}'.format(solsetname, h5file))
+        raise ValueError(
+            'Cannot calculate flagged fraction: no solutions found in '
+            f'solset {solsetname} of h5parm file {h5file}'
+        )
 
     return num_flagged / num_all
 

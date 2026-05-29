@@ -135,7 +135,9 @@ of some unforeseen failure occurring, Rapthor has been designed to allow easy
 resumption of a reduction from a saved state and will skip over any steps that
 were successfully completed previously. In this way, one can quickly resume a
 reduction that was halted (either by the user or due to some problem) by simply
-re-running Rapthor with the same parset.
+re-running Rapthor with the same parset. If a step within an operation has failed,
+the output of the previous steps are cached and the execution will resume from
+that point going forward.
 
 
 .. _resetting_rapthor:

@@ -10,12 +10,12 @@ import numpy as np
 from rapthor import _logging
 from rapthor.lib.field import Field
 from rapthor.lib.parset import parset_read
-from rapthor.lib.strategy import set_strategy
-from rapthor.operations.calibrate import CalibrateDD, CalibrateDI
+from rapthor.lib.strategy import set_strategy, validate_strategy
+from rapthor.operations.calibrate import Calibrate
 from rapthor.operations.concatenate import Concatenate
 from rapthor.operations.image import Image, ImageInitial, ImageNormalize
 from rapthor.operations.mosaic import Mosaic
-from rapthor.operations.predict import PredictDD, PredictDI
+from rapthor.operations.predict import Predict
 
 log = logging.getLogger("rapthor")
 
@@ -59,6 +59,8 @@ def run(parset_file, logging_level="info"):
             parset["strategy"],
         )
         return
+    # Cross-check strategy with parset for compatibility.
+    validate_strategy(strategy_steps, parset)
 
     # Generate an initial sky model from the input data if needed
     if parset["generate_initial_skymodel"]:
@@ -182,20 +184,20 @@ def run_steps(field, steps, final=False):
             field.generate_screens = (field.dde_mode == "hybrid") and final
 
             # Calibrate (direction-dependent)
-            op = CalibrateDD(field, cycle_number)
+            op = Calibrate("dd", field, cycle_number)
             op.run()
 
             # Calibrate (direction-independent)
             if field.do_fulljones_solve:
-                op = PredictDI(field, cycle_number)
+                op = Predict("di", field, cycle_number)
                 op.run()
-                op = CalibrateDI(field, cycle_number)
+                op = Calibrate("di", field, cycle_number)
                 op.run()
 
         # Predict and subtract the sector models
         # Note: DD predict is not yet supported when screens are used
         if field.do_predict and not field.generate_screens:
-            op = PredictDD(field, cycle_number)
+            op = Predict("dd", field, cycle_number)
             op.run()
 
         # Image and mosaic the sectors

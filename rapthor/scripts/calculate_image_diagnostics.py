@@ -22,10 +22,10 @@ from astropy.coordinates import SkyCoord
 from astropy.table import Table
 from astropy.utils import iers
 from astropy.visualization.wcsaxes import WCSAxes
+from lsmtool.facet import SquareFacet, read_ds9_region_file
 from lsmtool.operations_lib import make_wcs
 
 from rapthor.lib import miscellaneous as misc
-from rapthor.lib.facet import SquareFacet, read_ds9_region_file
 from rapthor.lib.fitsimage import FITSImage
 from rapthor.lib.observation import Observation
 
@@ -569,7 +569,9 @@ def check_astrometry(
         image_width = max(image.img_data.shape[-2:]) * abs(image.img_hdr["CDELT1"])
         max_search_cone_radius = 0.5  # deg; Pan-STARRS search limit
         width = min(max_search_cone_radius * 2, image_width)
-        facets = [SquareFacet("field", obs.ra, obs.dec, width)]
+        facets = [
+            SquareFacet("field", obs.ra, obs.dec, width, wcs_pixel_scale=misc.WCS_PIXEL_SCALE)
+        ]
 
     # Convert the filtered catalog into a minimal sky model for use with LSMTool
     s_pybdsf = fits_to_makesourcedb(catalog, image.freq)
@@ -601,7 +603,16 @@ def check_astrometry(
     astrometry_diagnostics = defaultdict(list)
     for facet in facets:
         facet.set_skymodel(s_pybdsf.copy())
-        facet.find_astrometry_offsets(astrometry_skymodel, min_number=min_number)
+        try:
+            facet.find_astrometry_offsets(astrometry_skymodel, min_number=min_number)
+        except (OSError, ValueError) as error:
+            logger.info(
+                "Astrometry comparison sky model could not be created or used. "
+                "Skipping astrometry check for facet %s. The error was: %s",
+                facet.name,
+                error,
+            )
+            continue
         if facet.astrometry_diagnostics:
             astrometry_diagnostics["facet_name"].append(facet.name)
             for key in astrometry_keys:
@@ -653,6 +664,53 @@ def filter_skymodel_for_photometry(catalog, obs, freq, max_major_axis=10 / 3600)
     catalog = catalog[separation < fwhm_deg / 2 * u.degree]
     major_axis = catalog["DC_Maj"]  # degrees
     return catalog[major_axis < max_major_axis]
+
+
+def _compute_image_stats(image: np.ndarray):
+    return {
+        "mean": float(np.nanmean(image)),
+        "median": float(np.nanmedian(image)),
+        "std": float(np.nanstd(image)),
+        "min": float(np.nanmin(image)),
+        "max": float(np.nanmax(image)),
+    }
+
+
+def compute_facet_rms_noise(facet_region_file, rms_img_flat_noise, rms_img_true_sky):
+    """
+    Compute facet-based RMS statistics from flat-noise and true-sky RMS maps.
+
+    Parameters
+    ----------
+    facet_region_file : str or None
+        Path to a DS9 region file describing imaging facets. If None or missing,
+        facet-based diagnostics cannot be derived.
+    rms_img_flat_noise : rapthor.lib.fitsimage.FITSImage
+        FITSImage object for the non-primary-beam-corrected RMS image.
+    rms_img_true_sky : rapthor.lib.fitsimage.FITSImage
+        FITSImage object for the primary-beam-corrected RMS image.
+
+    Returns
+    -------
+    dict
+        Dictionary of facet-level RMS diagnostics.
+    """
+    try:
+        facets = read_ds9_region_file(facet_region_file)
+        facets_summary = {}
+        for facet in facets:
+            selected_flat_noise = rms_img_flat_noise.select_facet(facet)
+            selected_beam_corrected = rms_img_true_sky.select_facet(facet)
+            facet_summary = {
+                "flat_noise": _compute_image_stats(selected_flat_noise),
+                "beam_corrected": _compute_image_stats(selected_beam_corrected),
+            }
+            facets_summary[facet.name] = facet_summary
+        return facets_summary
+    except Exception as e:
+        logger.warning("Could not determine per facets metrics")
+        logger.exception(e)
+        raise e
 
 
 def main(
@@ -828,6 +886,9 @@ def main(
         allow_internet_access=allow_internet_access,
     )
     cwl_output.update(result)
+
+    result = compute_facet_rms_noise(facet_region_file, rms_img_flat_noise, rms_img_true_sky)
+    cwl_output.update({"facets_rms": result})
 
     # Write out the full diagnostics
     with open(output_root + ".image_diagnostics.json", "w") as fp:

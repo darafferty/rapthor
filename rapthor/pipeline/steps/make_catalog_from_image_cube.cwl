@@ -73,3 +73,6 @@ outputs:
 hints:
   - class: DockerRequirement
     dockerPull: astronrd/rapthor
+  - class: EnvVarRequirement
+    envDef:
+      TMPDIR: /tmp 

@@ -1,6 +1,6 @@
 import pytest
 
-from cwl.cwl_mock import mocked_cwl_execution
+from tests.cwl.cwl_mock import mocked_cwl_execution
 from rapthor.lib.strategy import set_selfcal_strategy
 
 from rapthor.operations.image import Image
@@ -10,14 +10,14 @@ from rapthor.operations.mosaic import Mosaic
 Integration tests from the Image operation to the Mosaic operation.
 
 Currently the execution in process of a step has the following 3 stages:
-1. set_input_parameters: where the input parameters are set based on the 
+1. set_input_parameters: where the input parameters are set based on the
    field and the index
-2. set_parset_parameters: where the parset parameters are set based on 
+2. set_parset_parameters: where the parset parameters are set based on
    the field and the index
-3. run: where the actual execution of the operation happens, which 
-   includes the execution of the CWL workflow.  
+3. run: where the actual execution of the operation happens, which
+   includes the execution of the CWL workflow.
 During the run stage, the CWL execution is mocked to return the expected
-output for the Image operation. Upon successful completion, the Image 
+output for the Image operation. Upon successful completion, the Image
 operation sets various attributes in the field using the mocked CWL output.
 The Mosaic operation uses the updated field to set its input parameters
 and parset parameters.

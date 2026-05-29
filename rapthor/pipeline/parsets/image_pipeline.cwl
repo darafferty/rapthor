@@ -491,13 +491,11 @@ inputs:
       The filename of the output filtered sky model image (length = n_sectors).
     type: string[]
 
-{% if peel_bright_sources %}
   - id: bright_skymodel_pb
     label: Bright-source sky model
     doc: |
       The primary-beam-corrected bright-source sky model (length = 1).
-    type: File
-{% endif %}
+    type: File?
 
   - id: max_threads
     label: Max number of threads
@@ -573,6 +571,23 @@ inputs:
       The filename of the output h5parm file with the flux-scale normalizations
       (length = n_sectors).
     type: string[]
+  - id: normalization_skymodels
+    label: Normalization reference sky models
+    doc: |
+      Reference sky models to use for flux-scale normalization instead of
+      downloaded survey catalogs.
+    type:
+      - "null"
+      - type: array
+        items: File
+  - id: normalization_reference_frequencies
+    label: Normalization reference frequencies
+    doc: |
+      Frequencies in Hz corresponding to the normalization reference sky models.
+    type:
+      - "null"
+      - type: array
+        items: float
 {% endif %}
 
   - id: allow_internet_access
@@ -594,6 +609,11 @@ inputs:
       Comparison sky model for astrometry diagnostics.
     type: File?
 
+  - id: peel_bright_sources
+    type: boolean
+    label: Peel bright sources
+    doc: |
+      Peel bright sources
 outputs:
   - id: filtered_skymodel_true_sky
     outputSource:
@@ -877,10 +897,8 @@ steps:
       - id: parallel_gridding_threads
         source: parallel_gridding_threads
 {% endif %}
-{% if peel_bright_sources %}
       - id: bright_skymodel_pb
         source: bright_skymodel_pb
-{% endif %}
 {% if make_image_cube %}
       - id: image_I_cube_name
         source: image_I_cube_name
@@ -896,6 +914,10 @@ steps:
         source: output_source_catalog
       - id: output_normalize_h5parm
         source: output_normalize_h5parm
+      - id: normalization_skymodels
+        source: normalization_skymodels
+      - id: normalization_reference_frequencies
+        source: normalization_reference_frequencies
 {% endif %}
       - id: allow_internet_access
         source: allow_internet_access
@@ -903,7 +925,8 @@ steps:
         source: photometry_skymodel
       - id: astrometry_skymodel
         source: astrometry_skymodel
-
+      - id: peel_bright_sources
+        source: peel_bright_sources
     scatter: [obs_filename, prepare_filename, concat_filename, starttime, ntimes,
               image_freqstep, image_timestep, image_maxinterval, image_timebase,
               previous_mask_filename, mask_filename, phasecenter, ra, dec,
