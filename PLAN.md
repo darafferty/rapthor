@@ -16,8 +16,9 @@ based on a review of this repository, the prototype in
   reporting.
 - Use Dask for local and multi-node task execution, especially operation-level
   scatter over observations, sectors, image types, and calibration chunks.
-- Keep migration incremental so each operation can be ported, tested, and
-  compared against the current CWL backend before removing CWL.
+- Keep migration incremental on the migration branch so each operation can be
+  ported and tested against CWL-derived reference fixtures before the final
+  cutover.
 
 ## Non-Goals For The First Migration
 
@@ -25,9 +26,28 @@ based on a review of this repository, the prototype in
   IDG, LoSoTo, PyBDSF, or Rapthor scripts.
 - Replacing external command-line tools with native Python implementations.
 - Changing user-facing strategy semantics or parset parameter names unless
-  required for the execution backend and documented with compatibility handling.
-- Removing CWL immediately. CWL should remain as the reference backend until the
-  Prefect backend has parity for the supported operation set.
+  required by the Prefect/Dask implementation and documented with compatibility
+  handling.
+- Shipping a user-visible mixed-backend transition. The migration branch will not
+  be merged to `master` until the Prefect/Dask implementation is complete.
+
+## Branch Strategy
+
+This migration will happen on a branch that remains separate from `master` until
+it is complete. That simplifies the plan:
+
+- `master` can continue to provide the current Toil/CWL implementation while the
+  branch is in progress.
+- The migration branch does not need to expose a public `cwl` versus `prefect`
+  backend selector.
+- The branch does not need to support mixed-backend production runs.
+- CWL can remain on the branch only as an internal reference for generating
+  parity fixtures and diagnosing regressions.
+- Before the branch is merged, CWL runner code, CWL package data, Toil,
+  StreamFlow, and cwltool should be removed from the production path.
+
+The final merge should therefore present a single supported execution path:
+Python orchestration with Prefect and Dask.
 
 ## Current Architecture Summary
 
@@ -46,7 +66,7 @@ Rapthor already has Python orchestration at the top level:
   - `rapthor/pipeline/parsets/**`
   - `rapthor/pipeline/steps/**`
 - The strongest migration seam is the operation contract:
-  `set_input_parameters() -> execute backend -> outputs -> finalize()`.
+  `set_input_parameters() -> execute workflow -> outputs -> finalize()`.
 
 The initial migration should keep `process.py` and the operation finalizers
 mostly stable while swapping the execution engine under each operation.
@@ -77,33 +97,31 @@ flowchart LR
   subgraph After["After: Python execution with Prefect and Dask"]
     A1["bin/rapthor CLI"] --> A2["process.run() or Prefect top-level flow"]
     A2 --> A3["Field, Strategy, Observation, Sector"]
-    A3 --> A4["Global backend selection"]
-    A4 --> A5["Prefect capability preflight"]
-    A5 --> A7["PrefectBackend"]
-    A7 --> A8["Prefect operation flows: concatenate / predict / calibrate / image / mosaic"]
+    A3 --> A4["Runtime preflight"]
+    A4 --> A8["Prefect operation flows: concatenate / predict / calibrate / image / mosaic"]
     A8 --> A9["Prefect tasks: command builders + ShellOperation"]
     A9 --> A10["DaskTaskRunner: local cluster or external Slurm scheduler"]
     A10 --> A11["External tools: DP3 / WSClean / scripts"]
-    A11 --> A12["Output helpers: CWL-compatible records initially"]
+    A11 --> A12["Output helpers: finalizer-compatible records"]
     A12 --> A13["Operation.finalize(): mutate Field + copy products"]
     A8 -.-> A14["Prefect UI, logs, retries"]
   end
 
-  A4 -.-> A6["CWLBackend: reference runner during migration"]
+  B6 -.-> A15["Golden reference fixtures"]
+  B8 -.-> A8
   B11 -.-> A13
   B5 -.-> A8
-  B8 -.-> A8
 
   L1["Unchanged domain orchestration"]:::kept
   L2["Changed seam"]:::changed
   L3["New Prefect/Dask layer"]:::added
-  L4["Legacy CWL layer during transition"]:::legacy
+  L4["Legacy CWL reference only on migration branch"]:::legacy
   L5["External science tools"]:::external
 
   class B1,B2,B3,B5,B10,B11,A1,A2,A3,A12,A13 kept;
-  class B4,A4,A5 changed;
-  class A7,A8,A9,A10,A14 added;
-  class B6,B7,B8,A6 legacy;
+  class B4,A4 changed;
+  class A8,A9,A10,A14 added;
+  class B6,B7,B8,A15 legacy;
   class B9,A11 external;
 ```
 
@@ -147,7 +165,6 @@ Introduce a new execution layer, for example:
 ```text
 rapthor/execution/
   __init__.py
-  backend.py
   capabilities.py
   config.py
   outputs.py
@@ -171,14 +188,12 @@ rapthor/execution/
 
 Recommended responsibilities:
 
-- `backend.py`: common `OperationBackend` interface plus `CWLBackend` and
-  `PrefectBackend`.
-- `capabilities.py`: feature support declarations and preflight checks for
-  operations, strategy slices, and cluster/runtime features.
+- `capabilities.py`: runtime and feature preflight checks for strategy,
+  cluster/runtime, container, and external-tool availability.
 - `config.py`: runtime execution settings derived from the existing parset.
 - `outputs.py`: helpers for file and directory output records. Initially these
-  can preserve the current CWL-shaped `{"class": "File", "path": ...}` and
-  `{"class": "Directory", "path": ...}` structures.
+  can preserve the current finalizer-compatible `{"class": "File", "path": ...}`
+  and `{"class": "Directory", "path": ...}` structures.
 - `resources.py`: per-task CPU, memory, thread, MPI, and concurrency settings.
 - `runtime.py`: command environment construction, container wrapping, module or
   spack assumptions, and scratch-directory mapping.
@@ -191,28 +206,18 @@ Recommended responsibilities:
 - `tasks/`: Prefect task wrappers around command builders and file operations.
 - `flows/`: Python equivalents of current operation-level CWL DAGs.
 
-The operation classes should call a backend object rather than directly calling
-`create_cwl_runner()`. The current CWL backend can use existing code; the new
-Prefect backend can dispatch to operation-specific Python flows.
+The operation classes should stop calling `create_cwl_runner()` and instead
+invoke the relevant Python flow, either directly or through a small flow
+dispatcher. A generic dual-backend abstraction is not needed because the branch
+will merge only after the Prefect/Dask path is complete.
 
-## Execution Backend Configuration
+## Execution Configuration
 
-Add a new parset option under `[cluster]`, for example:
+Do not add a user-facing `execution_backend` option. Before this branch merges,
+Rapthor should have one production execution path: Prefect/Dask.
 
-```ini
-execution_backend = cwl
-```
-
-Allowed values during migration:
-
-- `cwl`: current behaviour using `cwl_runner = toil|cwltool|streamflow`.
-- `prefect`: new Python execution backend.
-
-Keep `cwl_runner` valid only for the `cwl` backend. This avoids overloading the
-existing option and lets users opt into Prefect only when their selected
-strategy is supported by the Prefect backend.
-
-Additional optional settings may be needed later:
+New optional settings may be needed under `[cluster]` or a dedicated execution
+section:
 
 - `prefect_task_runner = local_dask|external_dask|sync`
 - `dask_scheduler = None`
@@ -220,50 +225,47 @@ Additional optional settings may be needed later:
 - `prefect_retries = 0`
 - `prefect_log_commands = True`
 
-Prefer conservative defaults that preserve single-machine behaviour.
+Prefer conservative defaults that preserve single-machine behaviour. Existing
+`cwl_runner` and CWL-specific container options can stay on the branch while they
+are still useful for reference runs, but they should be removed or replaced
+before the final merge.
 
-## Backend Selection Policy
+## Replacement Policy
 
-Rapthor should not support mixed-backend production runs. A run should select
-one execution backend globally through the parset:
+Because the migration branch is not merged until complete, Rapthor does not need
+to carry production compatibility code for partially ported operations:
 
-- `execution_backend = cwl`: every operation uses the current CWL backend.
-- `execution_backend = prefect`: every operation required by the selected
-  strategy must be supported by the Prefect backend.
-
-During the migration, operation-level tests may instantiate a single operation
-with the Prefect backend, but full pipeline runs should not silently fall back
-from Prefect to CWL for unported operations. If the selected strategy requires
-an operation or feature slice that the Prefect backend does not yet support,
-Rapthor should fail early with a clear unsupported-feature error.
-
-CWL remains useful as a reference implementation while building parity tests,
-but it should not become a long-term compatibility path once Prefect has parity.
+- Implement operation flows incrementally on the branch.
+- Test each flow directly before it is wired into the main pipeline.
+- Keep CWL only as a reference source for fixtures and comparison while parity is
+  being established.
+- Make one final cutover that replaces the CWL runner path with Prefect/Dask for
+  the whole supported pipeline.
+- Delete the CWL production path before merge, rather than deprecating it after
+  merge.
 
 ## Capability Preflight
 
-The Prefect backend needs an explicit capability registry so unsupported feature
-slices fail before any external command starts. The registry should answer
-questions such as:
+The final Prefect/Dask pipeline still needs an explicit preflight step, but it no
+longer needs to model "ported" versus "unported" operations for users. The
+preflight should answer questions such as:
 
-- Is this operation implemented by the Prefect backend?
-- Is this operation implemented for this mode, for example DI calibration,
-  DD calibration, screen generation, normalization imaging, or MPI imaging?
+- Is this strategy within the feature set supported by the completed migration?
 - Is the requested runtime available, for example local Dask, external Dask,
   Slurm, MPI WSClean, container execution, or no-container execution?
 - Are required external tools and scripts discoverable before the run starts?
+- Are resource settings valid for the selected local or Slurm allocation?
 
-The backend should expose an interface equivalent to:
+The execution layer should expose an interface equivalent to:
 
 ```text
-PrefectBackend.supports(operation, field, step) -> CapabilityResult
-PrefectBackend.preflight(field, strategy_steps) -> None
+preflight_execution(field, strategy_steps, execution_config) -> None
 ```
 
-`CapabilityResult` should include the unsupported feature name and a short
-message that tells the user which parset option, strategy feature, or operation
-caused the failure. Full pipeline runs with `execution_backend = prefect` must
-run this preflight before the first operation.
+Failures should include the unsupported feature name and a short message that
+tells the user which parset option, strategy feature, runtime setting, or missing
+tool caused the failure. Full pipeline runs must run this preflight before the
+first operation.
 
 ## Task Payload And State Boundary
 
@@ -286,12 +288,12 @@ process and makes task inputs easier to test, serialize, log, and cache.
 
 ## Runtime, Resources, And Filesystem Safety
 
-The Prefect backend must preserve the important runtime behaviour currently
-handled by CWL runners:
+The Prefect/Dask execution layer must preserve the important runtime behaviour
+currently handled by CWL runners:
 
 - Container settings: `use_container`, `container_type`, and no-container
-  execution must have an explicit Prefect runtime mapping before the backend is
-  advertised for those configurations.
+  execution must have an explicit Prefect runtime mapping before those
+  configurations are supported.
 - Environment settings: command environments, module or spack assumptions,
   thread variables such as `OPENBLAS_NUM_THREADS`, and preserved environment
   variables must be centralized and testable.
@@ -326,12 +328,12 @@ simple and compatible with current `modifystate` expectations.
 ### Stage 0: Baseline And Design Guardrails
 
 - Record current non-integration and focused integration test results.
-- Identify the supported operation and feature matrix for the first Prefect
-  backend release.
-- Add a short developer document describing the backend interface and output
+- Identify the operation and feature matrix that must be complete before the
+  migration branch can merge.
+- Add a short developer document describing the execution-layer shape and output
   object contract.
-- Define the global backend selection policy: no mixed-backend production runs
-  and no silent fallback from Prefect to CWL.
+- Record the branch policy: no public mixed-backend transition and no merge to
+  `master` until the Prefect/Dask path is complete.
 - Define the serializable task-payload contract and the rule that Prefect/Dask
   tasks do not mutate live Rapthor domain objects.
 - Inventory current CWL runner runtime behaviour: containers, scratch paths,
@@ -340,15 +342,15 @@ simple and compatible with current `modifystate` expectations.
 - Define a resource model for external commands: per-task threads, memory,
   process count, MPI exclusivity, and maximum concurrent external jobs.
 - Capture representative CWL-generated command lines and output contracts that
-  will become golden parity fixtures for the Python backend.
-- Keep CWL as the reference path.
+  will become golden parity fixtures for the Python path.
+- Keep CWL available on the branch only as a reference source.
 
 Deliverables:
 
 - Baseline test snapshot.
-- Backend design notes.
+- Execution-layer design notes.
 - Initial issue list for feature gaps.
-- Capability registry design and initial feature matrix.
+- Preflight design and required feature matrix.
 - Runtime parity inventory for container, scratch, environment, and MPI
   behaviour.
 - Resource model notes and first-pass concurrency defaults.
@@ -357,31 +359,28 @@ Deliverables:
 - Golden output-contract fixtures for each operation's expected output keys,
   nested shapes, filenames, optional outputs, and finalizer state changes.
 
-### Stage 1: Add Backend Abstraction
+### Stage 1: Add Execution Layer Skeleton
 
-- Add `execution_backend` to defaults, parset validation, docs, and example
-  parsets.
-- Introduce an `OperationBackend` interface with methods equivalent to:
-  - `setup(operation)`
-  - `run(operation) -> dict`
-  - `teardown(operation)`
-- Add a capability/preflight interface to the backend contract.
-- Move current CWL execution into `CWLBackend` without changing behaviour.
-- Add a stub `PrefectBackend` that raises a clear unsupported-operation error.
-- Update `Operation.run()` to use the backend interface.
+- Add the `rapthor/execution/` package without changing the production runner
+  yet.
+- Add execution config models or helpers for Prefect, Dask, Slurm, resources,
+  runtime environment, and logging.
+- Add the preflight interface for runtime, feature, tool, and resource checks.
+- Add output-record helpers that match the current finalizer contract.
+- Add a flow dispatcher or naming convention that maps operation classes to
+  operation flows.
+- Keep `Operation.run()` on the CWL path until all required operation flows have
+  been ported and tested directly.
 
 Tests:
 
-- Unit tests for parset validation and default value.
-- Operation tests proving `execution_backend = cwl` still calls the existing
-  CWL runner path.
-- Tests that `execution_backend = prefect` fails clearly for unported
-  operations.
-- Tests that a Prefect run never falls back to CWL for an unsupported operation
-  or unsupported feature slice.
-- Preflight tests for unsupported operations, unsupported feature slices,
-  missing external tools, unsupported container settings, and unsupported
-  runtime modes.
+- Unit tests for execution config parsing and conservative defaults.
+- Unit tests for output-record helpers.
+- Preflight tests for unsupported strategy features, missing external tools,
+  unsupported container settings, invalid resources, and unsupported runtime
+  modes.
+- Tests that the operation-flow dispatcher can find implemented flows and fails
+  clearly for branch-internal missing flows.
 
 ### Stage 2: Shared Command And Output Primitives
 
@@ -393,10 +392,11 @@ Tests:
   - `taql`
   - `fpack`
 - Add Prefect shell task wrappers for those builders.
-- Add output helpers that create and validate CWL-compatible output records.
+- Add output helpers that create and validate finalizer-compatible output
+  records.
 - Add task runner creation based on local Dask or external scheduler address.
 - Add an early, mocked top-level Prefect flow skeleton that mirrors
-  `process.run()` ordering without yet replacing operation-level execution.
+  `process.run()` ordering without yet replacing the production operation runner.
 - Add serializable task-payload models or validators for operation inputs.
 - Add runtime environment builders for no-container execution first, with
   explicit unsupported errors for unimplemented container modes.
@@ -426,20 +426,20 @@ Tests:
 
 ### Stage 3: Port Concatenate
 
-This is the smallest operation and should be the first real backend parity
-target.
+This is the smallest operation and should be the first real flow parity target.
 
 - Translate `concatenate_pipeline.cwl` into a Python flow that scatters
   `concat_ms.py` or equivalent `taql` calls over epochs.
 - Reuse `Concatenate.set_input_parameters()` and `Concatenate.finalize()`.
-- Return `concatenated_filenames` using the same output shape as CWL.
+- Return `concatenated_filenames` using the same output shape consumed by the
+  current finalizer.
 
 Tests:
 
-- Existing `tests/operations/test_concatenate.py` should run for both backends.
+- Rework relevant `tests/operations/test_concatenate.py` cases to exercise the
+  Python flow and finalizer-compatible outputs.
 - Add command-builder tests for frequency concatenation.
-- Add a backend parity test comparing input/output shapes from CWL mock and
-  Prefect mock.
+- Add a parity test comparing Python output shapes against CWL-derived fixtures.
 - Add restart/failure tests for failed concatenation, partial outputs, deleted
   `.done`, and reloading `.outputs.json`.
 - Add a concurrency test proving scattered epoch outputs are written to unique
@@ -456,7 +456,7 @@ Mosaic has manageable scatter and mostly calls Rapthor scripts.
 
 Tests:
 
-- Existing mosaic unit tests parameterized over backend where practical.
+- Rework existing mosaic unit tests to exercise the Python flow where practical.
 - Mocked flow tests for image type scatter.
 - Integration test from image output into mosaic output using mocked imaging
   products.
@@ -517,10 +517,10 @@ Tests:
   image-cube, full-Stokes, shared-facet, and clean-disabled modes.
 - Flow tests for each imaging slice with mocked shell commands.
 - Tests for `Image.finalize()` against Prefect output structures.
-- Existing `tests/operations/test_image.py` gradually parameterized over both
-  backends.
+- Rework relevant `tests/operations/test_image.py` cases around command builders,
+  flow structure, and finalizer-compatible output records.
 - Replace CWL-specific rendered-template assertions with command-builder and
-  flow-structure assertions for the Prefect backend.
+  flow-structure assertions for the Prefect/Dask path.
 - Output-contract fixtures for all image output keys consumed by finalizers,
   including optional masks, diagnostic plots, cubes, filtered model images,
   compressed FITS files, visibilities, and region files.
@@ -557,7 +557,7 @@ Tests:
 - Existing solve-planner tests remain backend-independent.
 - Mocked flow tests for all solve lists supported by `CALIBRATION_STRATEGY.md`.
 - Integration tests for DI-only, DD-only, DI-then-DD, and DD-then-DI using the
-  Prefect backend once command execution is available.
+  Prefect/Dask flow once command execution is available.
 - Output-contract and finalizer-state tests for every stable solution product,
   diagnostic product, and plotted product.
 - Failure tests for missing h5parm outputs, failed h5parm combination, invalid
@@ -565,16 +565,19 @@ Tests:
 - Resource and isolation tests for scattered solve chunks, h5parm collection,
   plotting outputs, and screen-generation outputs.
 
-### Stage 8: Add A Prefect Top-Level Flow
+### Stage 8: Cut Over To The Prefect Top-Level Flow
 
-After the early mocked skeleton is in place and operation-level Prefect flows
-are working, make the top-level Prefect flow executable for real runs.
+After the early mocked skeleton is in place and all required operation-level
+Prefect flows are working, make the top-level Prefect flow executable for real
+runs and route the CLI through it.
 
 - Keep `process.run()` as the CLI entry point.
 - Add `rapthor/flows/process.py` or similar with a Prefect flow that mirrors
   current `process.run()` sequencing.
 - Decide whether operation flows are subflows or tasks from the top-level flow.
 - Continue to respect selfcal convergence checks between cycles.
+- Replace the CWL runner call in `Operation.run()` with the Python flow path.
+- Remove branch-only CWL references from production execution code.
 
 Tests:
 
@@ -583,7 +586,7 @@ Tests:
 - Keep current `tests/test_process.py` coverage backend-independent.
 - Add full mocked-process tests for initial sky model generation, no-selfcal
   image-only strategy, selfcal convergence, selfcal divergence/failure,
-  repeated final cycles, and unsupported Prefect feature detection.
+  repeated final cycles, and preflight failure detection.
 - Add preflight tests that inspect the chosen strategy and fail before execution
   when any required operation or feature slice is unsupported.
 
@@ -616,17 +619,20 @@ Tests:
 - Script lint/smoke checks where possible.
 - Manual or CI-marked integration tests on the target Slurm environment.
 
-### Stage 10: Deprecate And Remove CWL
+### Stage 10: Final Cleanup And Merge Readiness
 
-Only after Prefect backend parity is demonstrated:
+Only after Prefect/Dask parity is demonstrated on the migration branch:
 
-- Mark CWL backend deprecated for one release.
-- Stop adding new functionality to CWL templates.
-- Freeze CWL as a reference backend while parity failures are still being fixed.
 - Remove Toil, StreamFlow, and cwltool dependencies.
 - Remove `rapthor/pipeline/parsets/**` and `rapthor/pipeline/steps/**` once no
   tests or docs depend on them.
-- Remove CWL test utilities and replace them with execution-flow tests.
+- Remove `rapthor/lib/cwl.py`, `rapthor/lib/cwlrunner.py`, and any CWL-only
+  operation plumbing that is no longer used.
+- Remove CWL test utilities or move any useful reference fixtures into
+  Prefect/Dask test fixtures.
+- Update package data so CWL files are not shipped.
+- Run the final non-integration and focused integration suites before merging to
+  `master`.
 
 ## Operation Migration Matrix
 
@@ -658,7 +664,7 @@ these gates:
 
 3. Field-state parity:
    Running `finalize()` after Prefect execution mutates `Field`, `Observation`,
-   and `Sector` state in the same way as the CWL backend.
+   and `Sector` state in the same way as the CWL-derived reference fixtures.
 
 4. Restart parity:
    `.done`, `.outputs.json`, skip-on-restart, rerun after deleting `.done`, and
@@ -677,10 +683,10 @@ these gates:
    external tools, unless the operation is explicitly marked as mocked-only for
    the current milestone.
 
-Once an operation satisfies these gates, its CWL implementation should be frozen
-for new feature development. CWL should remain available only to diagnose
-regressions until all operations needed by supported strategies satisfy the
-same gates.
+Once an operation satisfies these gates, its CWL templates should stop being the
+source of truth on the migration branch. Keep only the reference fixtures needed
+to diagnose regressions until all operations needed by supported strategies
+satisfy the same gates.
 
 ## Testing Migration Plan
 
@@ -693,15 +699,16 @@ same gates.
 - Operation finalizer tests should remain valuable if output shapes are
   preserved.
 
-### Add Backend-Aware Tests
+### Replace Operation-Run Tests At Cutover
 
-Where tests currently call `operation.run()`, parameterize over:
+Because the migration branch will not ship a dual-backend transition, tests do
+not need to be parameterized over `cwl` and `prefect`. Instead:
 
-- `execution_backend = cwl` for existing behaviour.
-- `execution_backend = prefect` once the operation is ported.
-
-For unported operations, assert the Prefect backend raises a clear unsupported
-error rather than silently falling back.
+- Keep existing operation tests useful while their operation is being ported.
+- Add direct tests for each new Python operation flow as it is implemented.
+- At the cutover stage, update `operation.run()` tests to expect the Prefect/Dask
+  path only.
+- Remove tests whose only purpose is proving the old CWL runner path still works.
 
 ### Replace CWL-Specific Assertions Gradually
 
@@ -720,7 +727,8 @@ by:
 - Logging and diagnostics tests.
 - End-to-end operation tests with mocked shell execution.
 
-Do not delete CWL tests until the matching operation has Prefect parity.
+Do not delete CWL tests or reference helpers until the matching operation has
+Prefect/Dask parity fixtures and flow tests.
 
 ### Golden Fixture Strategy
 
@@ -833,7 +841,7 @@ Every ported operation should have focused tests for:
 
 ### modifystate Compatibility Tests
 
-The `bin/rapthor -r` reset path should keep working with the Prefect backend.
+The `bin/rapthor -r` reset path should keep working with the Prefect/Dask path.
 Add tests that:
 
 - Reset one operation and rerun it with Prefect outputs.
@@ -846,11 +854,11 @@ Add tests that:
 
 ### Logging And Observability Tests
 
-The Prefect backend should preserve Rapthor's practical debuggability:
+The Prefect/Dask path should preserve Rapthor's practical debuggability:
 
 - Operation log directories are created in the expected locations.
 - Command strings and relevant environment settings are logged.
-- Shell stdout/stderr are streamed or captured according to backend settings.
+- Shell stdout/stderr are streamed or captured according to execution settings.
 - Prefect task and flow names include operation names and cycle numbers.
 - Failure messages identify the operation, task, command, and missing or invalid
   output.
@@ -861,7 +869,8 @@ Use markers to keep expensive or environment-sensitive tests explicit:
 
 - `integration`: real DP3/WSClean/EveryBeam/IDG/Casacore execution.
 - `internet`: tests that require downloads or catalog access.
-- Add a backend parameter only after the operation supports Prefect.
+- Do not add backend parameters; integration tests should target the final
+  Prefect/Dask path once the relevant operation is ported.
 
 Recommended focused integration sequence:
 
@@ -889,37 +898,37 @@ High-risk integration combinations:
 
 Update docs as each stage lands:
 
-- `README.md`: high-level statement that Prefect backend is available or
-  experimental.
-- `docs/source/running.rst`: how to run with `execution_backend = prefect`.
-- `docs/source/parset.rst`: new cluster/execution options.
+- `README.md`: high-level statement that Rapthor now runs through Prefect/Dask.
+- `docs/source/running.rst`: how to run the Prefect/Dask pipeline locally and on
+  Slurm.
+- `docs/source/parset.rst`: new cluster/execution options and removed CWL runner
+  options.
 - `docs/source/structure.rst`: replace CWL architecture details with Python
-  execution layer details when ready.
-- `docs/source/operations.rst`: note backend support per operation during the
-  migration.
+  execution layer details.
+- `docs/source/operations.rst`: update operation descriptions to describe the
+  Python flow structure where useful.
 - Add Slurm/Prefect UI instructions based on the prototype and CIMG scripts.
 
 ## Dependency And Packaging Plan
 
-During the transition:
+During branch development, Prefect/Dask and CWL dependencies may coexist so
+reference comparisons can run. Before merging to `master`:
 
-- Add Prefect/Dask dependencies deliberately, either as core dependencies once
-  the Prefect backend is user-facing or as an optional extra while it is
-  experimental.
+- Add Prefect/Dask dependencies as the production execution dependencies.
 - Candidate dependencies include `prefect`, `prefect-shell`, `prefect-dask`,
   `dask`, and `distributed`.
-- Consider moving `cwltool`, `toil[cwl]`, and `streamflow` to a `cwl` optional
-  extra once the Prefect backend is mature enough that new installations do not
-  need CWL by default.
-- Update tox, CI, docs, and installation instructions so test environments cover
-  both the transition backend set and the final Prefect-only backend set.
+- Remove `cwltool`, `toil[cwl]`, and `streamflow` unless they are still needed
+  for unrelated tooling.
+- Update tox, CI, docs, and installation instructions so normal test and runtime
+  environments cover the Prefect/Dask path.
 - Keep package-data cleanup explicit when removing CWL so
   `rapthor/pipeline/**` is not shipped after it is no longer used.
 
 ## Risks And Mitigations
 
 - Risk: output naming drift breaks finalizers and downstream operations.
-  Mitigation: preserve CWL-shaped output JSON initially and add parity tests.
+  Mitigation: preserve finalizer-compatible output records initially and add
+  parity tests.
 
 - Risk: Prefect task retries rerun non-idempotent external commands.
   Mitigation: default retries to zero; add idempotency checks before enabling
@@ -934,8 +943,8 @@ During the transition:
   matching the prototype's tested approach.
 
 - Risk: removing CWL tests too early hides behavioural drift.
-  Mitigation: keep CWL backend as the reference until each operation has
-  backend parity tests and focused integration coverage.
+  Mitigation: keep CWL-derived fixtures and any needed reference helpers until
+  each operation has parity tests and focused integration coverage.
 
 - Risk: command strings become hard to maintain.
   Mitigation: use structured command builders and test them directly, following
@@ -952,38 +961,37 @@ During the transition:
 
 - Risk: container and environment behaviour drifts from current CWL execution.
   Mitigation: centralize runtime construction and add preflight/runtime parity
-  tests before advertising container-backed Prefect runs.
+  tests before merging the branch.
 
 ## Open Decisions
 
-- Whether Prefect operation flows should return CWL-shaped dictionaries forever
-  or only during the transition.
+- Whether Prefect operation flows should keep `{"class": "File", "path": ...}`
+  style records long term or replace them with typed records before merge.
 - Whether to introduce Pydantic models for operation inputs immediately or after
   the first operations are ported.
 - How to represent task-level restart/caching without conflicting with the
   current operation-level `.done` semantics.
 - How much of the existing CWL step metadata should be converted mechanically
   versus re-expressed manually as Python command builders.
-- Whether Prefect/Dask dependencies are initially a development extra or become
-  core dependencies as soon as the backend skeleton lands.
 - Which container modes are in scope for the first user-facing Prefect release.
 
 Resolved decision:
 
-- Mixed-backend production runs are out of scope. A full Rapthor run uses one
-  globally selected backend and fails early if that backend cannot support the
-  requested strategy.
+- The migration happens on a branch that will not be merged to `master` until it
+  is complete.
+- There will be no user-facing mixed-backend transition and no production
+  `execution_backend` selector.
+- The final merged pipeline should use Prefect/Dask as the only supported
+  execution path.
 
 ## First Three Pull Requests
 
-### PR 1: Backend Skeleton
+### PR 1: Execution Skeleton And Reference Fixtures
 
-- Add `execution_backend` parset option.
-- Add backend interface.
-- Add capability/preflight interface and no-fallback policy.
-- Move current CWL execution behind `CWLBackend`.
-- Add unsupported `PrefectBackend`.
-- Add no-fallback tests and docs for the new option.
+- Add `rapthor/execution/` skeleton.
+- Add execution config, preflight, and output-record helper skeletons.
+- Capture initial CWL-derived command and output fixtures.
+- Add tests for preflight, config defaults, and output records.
 
 ### PR 2: Prefect Task Primitives
 
@@ -995,11 +1003,11 @@ Resolved decision:
 - Add golden command parity fixtures and command-builder tests.
 - Add Prefect test harness setup.
 
-### PR 3: Concatenate Prefect Backend
+### PR 3: Concatenate Prefect Flow
 
 - Implement the Concatenate Prefect flow.
-- Wire `PrefectBackend` for `Concatenate`.
-- Add parity tests against the current mocked CWL output shape.
+- Exercise the flow directly without changing the production runner yet.
+- Add parity tests against the current mocked CWL-derived output shape.
 - Add command parity, output contract, finalizer-state, restart/failure, and
   mocked-flow tests.
 - Add a small integration test if the environment supports `taql` or
@@ -1009,12 +1017,12 @@ Resolved decision:
 
 The migration is complete when:
 
-- All supported Rapthor operations run through the Prefect backend.
+- All supported Rapthor operations run through the Prefect/Dask path.
 - Every supported operation satisfies the per-operation parity gates.
 - Golden command, output-contract, finalizer-state, restart/failure, logging, and
-  mocked-flow tests pass for the Prefect backend.
-- Prefect preflight detects unsupported operations, unsupported feature slices,
-  missing tools, and unsupported runtime/container modes before execution.
+  mocked-flow tests pass for the Prefect/Dask path.
+- Prefect preflight detects unsupported feature slices, missing tools, invalid
+  resource requests, and unsupported runtime/container modes before execution.
 - Prefect task payloads are serializable and do not carry live Rapthor domain
   objects into Dask workers.
 - Runtime, scratch, environment, resource, and filesystem-isolation tests pass
@@ -1024,7 +1032,7 @@ The migration is complete when:
 - Focused integration tests pass for DI-only, DD-only, DI-then-DD, DD-then-DI,
   initial sky model generation, normalization, imaging, mosaicking, and restart.
 - Slurm execution is documented and tested on the target environment.
-- A full `execution_backend = prefect` run fails early for unsupported feature
-  slices instead of silently falling back to CWL.
+- The branch has no production `execution_backend` selector and no mixed-backend
+  production path.
 - Toil, StreamFlow, cwltool, and CWL package data can be removed without losing
   supported functionality.
