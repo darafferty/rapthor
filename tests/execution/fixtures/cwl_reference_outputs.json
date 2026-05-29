@@ -1,10 +1,15 @@
 {
-  "concatenate": {
-    "concatenated_filenames": [
-      {
-        "class": "Directory",
-        "path": "${PIPELINE_WORKING_DIR}/epoch_0_concatenated.ms"
-      }
-    ]
-  }
+    "concatenate": {
+        "concatenated_filenames": [
+            {"class": "Directory", "path": "${PIPELINE_WORKING_DIR}/epoch_0_concatenated.ms"}
+        ]
+    },
+    "mosaic": {
+        "mosaic_image": [{"class": "File", "path": "${PIPELINE_WORKING_DIR}/mosaic_1-I-image.fits"}]
+    },
+    "mosaic_compressed": {
+        "mosaic_image": [
+            {"class": "File", "path": "${PIPELINE_WORKING_DIR}/mosaic_1-I-image.fits.fz"}
+        ]
+    }
 }

@@ -512,6 +512,13 @@ Remaining Stage 3 work before final cutover:
 
 Mosaic has manageable scatter and mostly calls Rapthor scripts.
 
+Status: complete for direct flow parity in PR 4. The production `Operation.run()`
+path is still unchanged, but the Mosaic operation now has a
+finalizer-compatible Python flow, command builders for the script steps and
+optional compression, payload validation, mocked Prefect flow coverage,
+skip-processing coverage, compressed-output coverage, and finalizer-state
+coverage.
+
 - Translate `mosaic_pipeline.cwl` and `mosaic_type_pipeline.cwl`.
 - Preserve `skip_processing` behaviour for single-sector imaging.
 - Preserve optional compression.
@@ -519,12 +526,24 @@ Mosaic has manageable scatter and mostly calls Rapthor scripts.
 
 Tests:
 
-- Rework existing mosaic unit tests to exercise the Python flow where practical.
-- Mocked flow tests for image type scatter.
-- Integration test from image output into mosaic output using mocked imaging
-  products.
-- Golden output-contract tests for single-sector skip, multi-sector mosaic,
-  optional compression, and missing optional images.
+- Added command-builder and golden command parity tests for
+  `make_mosaic_template.py`, `regrid_image.py`, `make_mosaic.py`, and `fpack`.
+- Added payload serialization and validation tests for multi-sector mosaic
+  inputs and single-sector skip processing.
+- Added direct runner and Prefect harness tests with mocked shell execution.
+- Added output-contract coverage for normal and compressed mosaic outputs.
+- Added finalizer-state coverage proving `Mosaic.finalize()` accepts
+  Prefect-produced records and copies field images into the expected location.
+- Added failure coverage for missing expected mosaic outputs.
+
+Remaining Stage 4 work before final cutover:
+
+- Add operation-level restart tests once `Operation.run()` is switched from CWL
+  to the Python flow path.
+- Replace or rework the currently placeholder `tests/operations/test_mosaic.py`
+  cases when the production runner is cut over.
+- Add a real image-to-mosaic integration test on the Prefect path once the Image
+  flow is ported or suitable lightweight FITS fixtures are available.
 
 ### Stage 5: Port Predict
 
@@ -1049,7 +1068,7 @@ Resolved decision:
 - Prefect/Dask dependencies are core dependencies, using the Prefect `dask` and
   `shell` extras.
 
-## First Three Pull Requests
+## Initial Pull Requests
 
 ### PR 1: Execution Skeleton And Reference Fixtures
 
@@ -1135,6 +1154,45 @@ Deferred to the cutover PR:
   final Prefect/Dask execution path.
 - Add real external-tool integration coverage for concatenate if lightweight
   Measurement Set fixtures are available.
+
+### PR 4: Mosaic Prefect Flow
+
+Status: complete for direct flow parity on the migration branch.
+
+- Implement the Mosaic Prefect flow.
+- Exercise the flow directly without changing the production runner yet.
+- Add command builders for `make_mosaic_template.py`, `regrid_image.py`,
+  `make_mosaic.py`, and `fpack`.
+- Add parity tests against CWL-derived command and output fixtures.
+- Add payload, skip-processing, compression, missing-output, mocked-flow, and
+  finalizer-state tests.
+
+Implemented files:
+
+- `rapthor/execution/flows/mosaic.py`
+- `tests/execution/test_mosaic_flow.py`
+- Updates to `rapthor/execution/flows/__init__.py`
+- Updates to `rapthor/execution/__init__.py`
+- Updates to `tests/execution/fixtures/cwl_reference_commands.json`
+- Updates to `tests/execution/fixtures/cwl_reference_outputs.json`
+
+Verified in the rebuilt devcontainer:
+
+- `python3 -m pytest tests/execution tests/lib/test_parset.py`: 105 passed.
+- `python3 -m pytest tests/execution/test_mosaic_flow.py
+  tests/execution/test_reference_fixtures.py`: 12 passed.
+- `python3 -m ruff check rapthor/execution tests/execution pyproject.toml`:
+  passed.
+- `python3 -m ruff format --check rapthor/execution tests/execution`: passed.
+- `git diff --check`: passed.
+
+Deferred to the cutover PR:
+
+- Switch `Operation.run()` from CWL execution to the Python flow path.
+- Add operation-level restart tests for `.done` and `.outputs.json` on the final
+  Prefect/Dask execution path.
+- Add real image-to-mosaic integration coverage once the Image flow is ported or
+  suitable lightweight FITS fixtures are available.
 
 ## Success Criteria
 

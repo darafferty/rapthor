@@ -1,12 +1,37 @@
 {
-  "concatenate": {
-    "concat_ms_files": [
-      "concat_ms.py",
-      "epoch_0_input_0.ms",
-      "epoch_0_input_1.ms",
-      "--msout=epoch_0_concatenated.ms",
-      "--concat_property=frequency",
-      "--data_colname=DATA"
-    ]
-  }
+    "concatenate": {
+        "concat_ms_files": [
+            "concat_ms.py",
+            "epoch_0_input_0.ms",
+            "epoch_0_input_1.ms",
+            "--msout=epoch_0_concatenated.ms",
+            "--concat_property=frequency",
+            "--data_colname=DATA"
+        ]
+    },
+    "mosaic": {
+        "make_mosaic_template": [
+            "make_mosaic_template.py",
+            "sector_1-I-image.fits,sector_2-I-image.fits",
+            "sector_1.vertices,sector_2.vertices",
+            "mosaic_1_template.fits",
+            "--skip=False"
+        ],
+        "regrid_image": [
+            "regrid_image.py",
+            "sector_1-I-image.fits",
+            "mosaic_1_template.fits",
+            "sector_1.vertices",
+            "sector_1-I-image.fits.regridded",
+            "--skip=False"
+        ],
+        "make_mosaic": [
+            "make_mosaic.py",
+            "sector_1-I-image.fits.regridded,sector_2-I-image.fits.regridded",
+            "mosaic_1_template.fits",
+            "mosaic_1-I-image.fits",
+            "--skip=False"
+        ],
+        "compress_mosaic_image": ["fpack", "mosaic_1-I-image.fits"]
+    }
 }
