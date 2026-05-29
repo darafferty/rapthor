@@ -361,6 +361,11 @@ Deliverables:
 
 ### Stage 1: Add Execution Layer Skeleton
 
+Status: partially complete. PR 1 added the dependency-free execution skeleton,
+preflight checks, finalizer-compatible output records, initial concatenate
+reference fixtures, package metadata, and focused tests. The production runner is
+unchanged.
+
 - Add the `rapthor/execution/` package without changing the production runner
   yet.
 - Add execution config models or helpers for Prefect, Dask, Slurm, resources,
@@ -372,6 +377,15 @@ Deliverables:
 - Keep `Operation.run()` on the CWL path until all required operation flows have
   been ported and tested directly.
 
+Remaining Stage 1 work:
+
+- Add the operation-flow dispatcher or naming convention once the first concrete
+  operation flow exists.
+- Expand preflight inputs from simple feature/tool lists to strategy-derived
+  feature checks.
+- Decide whether execution config should be backed by Pydantic before command
+  builders and task payload models are added.
+
 Tests:
 
 - Unit tests for execution config parsing and conservative defaults.
@@ -381,6 +395,16 @@ Tests:
   modes.
 - Tests that the operation-flow dispatcher can find implemented flows and fails
   clearly for branch-internal missing flows.
+
+PR 1 verification:
+
+- `python3 -m pytest tests/execution tests/lib/test_parset.py` in the
+  devcontainer: 52 passed.
+- `python3 -m ruff check rapthor/execution tests/execution pyproject.toml` in the
+  devcontainer: passed.
+- `python3 -m ruff format --check rapthor/execution tests/execution` in the
+  devcontainer: passed.
+- `git diff --check`: passed.
 
 ### Stage 2: Shared Command And Output Primitives
 
@@ -988,10 +1012,23 @@ Resolved decision:
 
 ### PR 1: Execution Skeleton And Reference Fixtures
 
+Status: complete on the migration branch.
+
 - Add `rapthor/execution/` skeleton.
 - Add execution config, preflight, and output-record helper skeletons.
 - Capture initial CWL-derived command and output fixtures.
 - Add tests for preflight, config defaults, and output records.
+
+Implemented files:
+
+- `rapthor/execution/__init__.py`
+- `rapthor/execution/config.py`
+- `rapthor/execution/capabilities.py`
+- `rapthor/execution/outputs.py`
+- `tests/execution/**`
+- `pyproject.toml` package and lint-target updates.
+
+Verified in the devcontainer with focused pytest and ruff checks.
 
 ### PR 2: Prefect Task Primitives
 
