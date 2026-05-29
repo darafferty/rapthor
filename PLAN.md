@@ -408,6 +408,12 @@ PR 1 verification:
 
 ### Stage 2: Shared Command And Output Primitives
 
+Status: partially complete. PR 2 added import-safe task primitives for command
+normalization, shell execution, task-runner construction, runtime environment,
+work directories, resource requests, and serializable payload validation. The
+helpers can be tested without Prefect installed by injecting small fakes; real
+Prefect/Prefect-Dask imports are deferred until execution time.
+
 - Add command-builder functions for common tool classes:
   - DP3
   - WSClean serial
@@ -429,6 +435,16 @@ PR 1 verification:
 - Add resource-setting helpers for command threads, memory, MPI exclusivity, and
   maximum external-job concurrency.
 
+Remaining Stage 2 work:
+
+- Add real DP3, WSClean, script, `taql`, `fpack`, and MPI WSClean command
+  builders.
+- Add actual Prefect `@task` wrappers once the dependency decision is made and
+  the devcontainer installs Prefect.
+- Expand golden command fixtures beyond the initial concatenate reference case.
+- Decide whether Prefect/Dask dependencies are added as core dependencies in the
+  next PR or kept optional until the first operation flow lands.
+
 Tests:
 
 - Pure unit tests for command builders.
@@ -447,6 +463,16 @@ Tests:
   unsupported container settings, and atomic output writes.
 - Resource tests for command thread counts, memory settings, MPI exclusivity,
   and external-job concurrency limits.
+
+PR 2 verification:
+
+- `python3 -m pytest tests/execution tests/lib/test_parset.py` in the
+  devcontainer: 81 passed.
+- `python3 -m ruff check rapthor/execution tests/execution pyproject.toml` in the
+  devcontainer: passed.
+- `python3 -m ruff format --check rapthor/execution tests/execution` in the
+  devcontainer: passed.
+- `git diff --check`: passed.
 
 ### Stage 3: Port Concatenate
 
@@ -1032,6 +1058,8 @@ Verified in the devcontainer with focused pytest and ruff checks.
 
 ### PR 2: Prefect Task Primitives
 
+Status: complete on the migration branch for dependency-free primitives.
+
 - Add task runner construction.
 - Add shell task wrapper.
 - Add output object helpers.
@@ -1039,6 +1067,20 @@ Verified in the devcontainer with focused pytest and ruff checks.
 - Add serializable payload validators or models.
 - Add golden command parity fixtures and command-builder tests.
 - Add Prefect test harness setup.
+
+Implemented files:
+
+- `rapthor/execution/commands.py`
+- `rapthor/execution/payloads.py`
+- `rapthor/execution/resources.py`
+- `rapthor/execution/runtime.py`
+- `rapthor/execution/shell.py`
+- `rapthor/execution/task_runner.py`
+- `rapthor/execution/workdirs.py`
+- `tests/execution/conftest.py`
+- Additional `tests/execution/test_*.py` coverage for each primitive.
+
+Verified in the devcontainer with focused pytest and ruff checks.
 
 ### PR 3: Concatenate Prefect Flow
 
