@@ -1,5 +1,6 @@
 import json
 import shlex
+from copy import deepcopy
 from pathlib import Path
 
 import pytest
@@ -69,6 +70,11 @@ def fake_image_shell_operation_cls():
                 (cwd / tokens[6]).write_text("region")
             elif tokens[0] == "wsclean":
                 image_name = tokens[tokens.index("-name") + 1]
+                temp_dir = Path(tokens[tokens.index("-temp-dir") + 1])
+                if not temp_dir.is_absolute():
+                    temp_dir = cwd / temp_dir
+                temp_dir.mkdir(parents=True, exist_ok=True)
+                (temp_dir / "wsclean.tmp").write_text("temporary")
                 for suffix in [
                     "-MFS-I-image.fits",
                     "-MFS-I-image-pb.fits",
@@ -305,6 +311,68 @@ def _normalize_image_input_parms():
     input_parms["save_source_list"] = False
     input_parms["output_source_catalog"] = ["sector_1_source_catalog.fits"]
     input_parms["output_normalize_h5parm"] = ["sector_1_normalize.h5parm"]
+    return input_parms
+
+
+def _clean_disabled_image_input_parms():
+    input_parms = _image_input_parms()
+    input_parms["wsclean_niter"] = [0]
+    return input_parms
+
+
+def _two_sector_image_input_parms():
+    input_parms = deepcopy(_image_input_parms())
+    per_sector_keys = [
+        "obs_filename",
+        "prepare_filename",
+        "concat_filename",
+        "previous_mask_filename",
+        "mask_filename",
+        "starttime",
+        "ntimes",
+        "image_freqstep",
+        "image_timestep",
+        "image_maxinterval",
+        "image_timebase",
+        "phasecenter",
+        "image_name",
+        "channels_out",
+        "deconvolution_channels",
+        "fit_spectral_pol",
+        "ra",
+        "dec",
+        "wsclean_imsize",
+        "vertices_file",
+        "region_file",
+        "wsclean_niter",
+        "wsclean_nmiter",
+        "robust",
+        "cellsize_deg",
+        "min_uv_lambda",
+        "max_uv_lambda",
+        "mgain",
+        "taper_arcsec",
+        "local_rms_strength",
+        "local_rms_window",
+        "local_rms_method",
+        "auto_mask",
+        "auto_mask_nmiter",
+        "idg_mode",
+        "wsclean_mem",
+        "threshisl",
+        "threshpix",
+        "do_multiscale",
+        "dd_psf_grid",
+        "filtered_model_image_name",
+    ]
+    for key in per_sector_keys:
+        input_parms[key].append(deepcopy(input_parms[key][0]))
+    input_parms["prepare_filename"][1] = ["sector_2_obs_0_prep.ms", "sector_2_obs_1_prep.ms"]
+    input_parms["concat_filename"][1] = "sector_2_concat.ms"
+    input_parms["mask_filename"][1] = "sector_2_mask.fits"
+    input_parms["image_name"][1] = "sector_2"
+    input_parms["vertices_file"][1] = file_record("/data/sector_2.vertices")
+    input_parms["filtered_model_image_name"][1] = "sector_2-MFS-filtered-model.fits.fz"
     return input_parms
 
 
@@ -1031,6 +1099,76 @@ def test_run_image_flow_returns_filtered_model_image(tmp_path, fake_image_shell_
     ]
 
 
+def test_run_image_flow_supports_clean_disabled_stokes_i(tmp_path, fake_image_shell_operation_cls):
+    outputs = run_image_flow(
+        image_payload_from_inputs(_clean_disabled_image_input_parms(), tmp_path),
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_image_shell_operation_cls,
+    )
+
+    assert outputs["sector_I_images"] == [
+        [
+            file_record(tmp_path / "sector_1-MFS-I-image.fits"),
+            file_record(tmp_path / "sector_1-MFS-I-image-pb.fits"),
+        ]
+    ]
+    wsclean_command = next(
+        shlex.split(instance.kwargs["commands"][0])
+        for instance in fake_image_shell_operation_cls.instances
+        if shlex.split(instance.kwargs["commands"][0])[0] == "wsclean"
+    )
+    assert wsclean_command[wsclean_command.index("-niter") + 1] == "0"
+
+
+def test_run_image_flow_cleans_isolated_wsclean_temp_dirs(tmp_path, fake_image_shell_operation_cls):
+    outputs = run_image_flow(
+        image_payload_from_inputs(_two_sector_image_input_parms(), tmp_path),
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_image_shell_operation_cls,
+    )
+
+    assert len(outputs["sector_I_images"]) == 2
+    temp_dirs = [
+        Path(command[command.index("-temp-dir") + 1])
+        for command in [
+            shlex.split(instance.kwargs["commands"][0])
+            for instance in fake_image_shell_operation_cls.instances
+            if shlex.split(instance.kwargs["commands"][0])[0] == "wsclean"
+        ]
+    ]
+    assert temp_dirs == [
+        tmp_path / "sector_1_wsclean_tmp",
+        tmp_path / "sector_2_wsclean_tmp",
+    ]
+    assert len(set(temp_dirs)) == 2
+    assert all(not temp_dir.exists() for temp_dir in temp_dirs)
+
+
+def test_run_image_flow_cleans_wsclean_temp_dir_on_failure(
+    tmp_path, fake_image_shell_operation_cls
+):
+    class FailingWscleanShellOperation(fake_image_shell_operation_cls):
+        instances = []
+
+        def run(self):
+            tokens = shlex.split(self.kwargs["commands"][0])
+            if tokens[0] == "wsclean":
+                temp_dir = Path(tokens[tokens.index("-temp-dir") + 1])
+                temp_dir.mkdir(parents=True, exist_ok=True)
+                (temp_dir / "wsclean.tmp").write_text("temporary")
+                raise RuntimeError("wsclean failed")
+            return super().run()
+
+    with pytest.raises(RuntimeError, match="wsclean failed"):
+        run_image_flow(
+            image_payload_from_inputs(_image_input_parms(), tmp_path),
+            execution_config=ExecutionConfig(task_runner="sync"),
+            shell_operation_cls=FailingWscleanShellOperation,
+        )
+
+    assert not (tmp_path / "sector_1_wsclean_tmp").exists()
+
+
 def test_run_image_flow_returns_image_cube_outputs(tmp_path, fake_image_shell_operation_cls):
     outputs = run_image_flow(
         image_payload_from_inputs(_image_cube_input_parms(), tmp_path, make_image_cube=True),
@@ -1038,9 +1176,7 @@ def test_run_image_flow_returns_image_cube_outputs(tmp_path, fake_image_shell_op
         shell_operation_cls=fake_image_shell_operation_cls,
     )
 
-    assert outputs["sector_image_cubes"] == [
-        [file_record(tmp_path / "sector_1_I_freq_cube.fits")]
-    ]
+    assert outputs["sector_image_cubes"] == [[file_record(tmp_path / "sector_1_I_freq_cube.fits")]]
     assert outputs["sector_image_cube_beams"] == [
         [file_record(tmp_path / "sector_1_I_freq_cube.fits_beams.txt")]
     ]

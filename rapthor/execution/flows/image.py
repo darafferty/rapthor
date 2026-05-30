@@ -2,6 +2,7 @@
 
 import glob
 import os
+import shutil
 from typing import Mapping, Optional
 
 from prefect import flow, task
@@ -1078,6 +1079,11 @@ def _compressed_file_record(record: dict, description: str) -> dict:
     return _require_file(f"{record['path']}.fz", description)
 
 
+def _cleanup_directory(path: str) -> None:
+    if os.path.isdir(path):
+        shutil.rmtree(path)
+
+
 def _compress_image_records(
     image_name: str,
     sector_images: list[dict],
@@ -1132,9 +1138,7 @@ def _make_image_cube_records(
     return (
         _require_file(image_i_cube_path, "Stokes-I image cube"),
         _require_file(f"{image_i_cube_path}_beams.txt", "Stokes-I image cube beams"),
-        _require_file(
-            f"{image_i_cube_path}_frequencies.txt", "Stokes-I image cube frequencies"
-        ),
+        _require_file(f"{image_i_cube_path}_frequencies.txt", "Stokes-I image cube frequencies"),
     )
 
 
@@ -1396,9 +1400,12 @@ def run_image_sector(
             bool(sector["apply_time_frequency_smearing"]),
             temp_dir,
         )
-    _run_shell(
-        wsclean_command, pipeline_working_dir, config, shell_operation_cls=shell_operation_cls
-    )
+    try:
+        _run_shell(
+            wsclean_command, pipeline_working_dir, config, shell_operation_cls=shell_operation_cls
+        )
+    finally:
+        _cleanup_directory(temp_dir)
 
     image_name = str(sector["image_name"])
     nonpb_image = _first_existing_file(

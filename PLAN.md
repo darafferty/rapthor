@@ -624,8 +624,7 @@ Tests:
   output records.
 - Added output-contract fixtures for no-DDE Stokes-I images, skymodels,
   visibilities, masks, diagnostics, offsets, and plots.
-- Still needed: command-builder tests for MPI, full-Stokes, and
-  clean-disabled modes.
+- Still needed: command-builder tests for MPI and full-Stokes modes.
 - Still needed: flow tests for the remaining imaging slices.
 - Rework relevant `tests/operations/test_image.py` cases around command builders,
   flow structure, and finalizer-compatible output records.
@@ -635,8 +634,8 @@ Tests:
   compressed FITS files, and region files.
 - Restart/failure tests for failed WSClean, missing diagnostics JSON, corrupt
   diagnostics JSON, failed finalizer copy, and rerun after deleting `.done`.
-- Filesystem isolation tests for scattered sector imaging, temporary WSClean
-  directories, image cubes, and compressed outputs.
+- Filesystem isolation tests for image cubes, compressed outputs, and later
+  multi-process/MPI imaging paths.
 
 ### Stage 7: Port Calibration Incrementally
 
@@ -1302,8 +1301,7 @@ Verified in the rebuilt devcontainer:
 
 Deferred to later imaging PRs:
 
-- Add MPI WSClean variants, full-Stokes imaging, clean-disabled branches, and
-  task-local WSClean temporary directory cleanup/isolation tests.
+- Add MPI WSClean variants and full-Stokes imaging.
 - Add real external-tool coverage once lightweight Measurement Set and FITS
   fixtures are available.
 
@@ -1351,8 +1349,7 @@ Verified in the rebuilt devcontainer:
 
 Deferred to later imaging PRs:
 
-- Add MPI WSClean variants, full-Stokes imaging, clean-disabled branches, and
-  task-local WSClean temporary directory cleanup/isolation tests.
+- Add MPI WSClean variants and full-Stokes imaging.
 - Add real external-tool coverage once lightweight Measurement Set and FITS
   fixtures are available.
 
@@ -1391,8 +1388,7 @@ Verified in the rebuilt devcontainer:
 
 Deferred to later imaging PRs:
 
-- Add MPI WSClean variants, full-Stokes imaging, clean-disabled branches, and
-  task-local WSClean temporary directory cleanup/isolation tests.
+- Add MPI WSClean variants and full-Stokes imaging.
 - Add real external-tool coverage once lightweight Measurement Set and FITS
   fixtures are available.
 
@@ -1432,8 +1428,7 @@ Verified in the rebuilt devcontainer:
 
 Deferred to later imaging PRs:
 
-- Add MPI WSClean variants, full-Stokes imaging, clean-disabled branches, and
-  task-local WSClean temporary directory cleanup/isolation tests.
+- Add MPI WSClean variants and full-Stokes imaging.
 - Add real external-tool coverage once lightweight Measurement Set and FITS
   fixtures are available.
 
@@ -1469,16 +1464,14 @@ Verified in the rebuilt devcontainer:
 
 Deferred to later imaging PRs:
 
-- Add MPI WSClean variants, full-Stokes imaging, clean-disabled branches, and
-  task-local WSClean temporary directory cleanup/isolation tests.
+- Add MPI WSClean variants and full-Stokes imaging.
 - Add real external-tool coverage once lightweight Measurement Set and FITS
   fixtures are available.
 
 ### PR 11: Image Cube And Normalization Flow Outputs
 
-Status: implemented for the next direct-flow imaging slice on the migration
-branch. Devcontainer verification is pending because the `podman exec` approval
-quota was unavailable during this turn.
+Status: complete for the next direct-flow imaging slice on the migration
+branch.
 
 - Add Python command builders for `make_image_cube.py`,
   `make_catalog_from_image_cube.py`, and `normalize_flux_scale.py`.
@@ -1506,30 +1499,51 @@ Implemented files:
 - Updates to `tests/execution/fixtures/cwl_reference_outputs.json`
 - Updates to `PLAN.md`
 
-Verified locally:
+Verified in the rebuilt devcontainer:
 
-- `python -m py_compile rapthor/execution/__init__.py
-  rapthor/execution/flows/__init__.py rapthor/execution/flows/image.py
-  tests/execution/test_image_flow.py`: passed.
-- `python -m json.tool tests/execution/fixtures/cwl_reference_commands.json`:
+- `python3 -m pytest tests/execution/test_image_flow.py`: 27 passed.
+- `python3 -m pytest tests/execution tests/lib/test_parset.py`: 149 passed.
+- `python3 -m ruff check rapthor/execution tests/execution pyproject.toml`:
   passed.
-- `python -m json.tool tests/execution/fixtures/cwl_reference_outputs.json`:
-  passed.
-- `git diff --check`: passed.
-
-Could not verify in this turn:
-
-- `python3 -m pytest tests/execution/test_image_flow.py`: local Python does not
-  have pytest installed, and the devcontainer `podman exec` command was blocked
-  by the escalation quota.
-- `python3 -m pytest tests/execution tests/lib/test_parset.py`: same blocker.
-- `python3 -m ruff check ...` and `python3 -m ruff format --check ...`: local
-  Python does not have ruff installed, and the devcontainer was unavailable.
+- `python3 -m ruff format --check rapthor/execution tests/execution`: passed.
 
 Deferred to later imaging PRs:
 
-- Add MPI WSClean variants, full-Stokes imaging, clean-disabled branches, and
-  task-local WSClean temporary directory cleanup/isolation tests.
+- Add MPI WSClean variants and full-Stokes imaging.
+- Add real external-tool coverage once lightweight Measurement Set and FITS
+  fixtures are available.
+
+### PR 12: Clean-Disabled Stokes-I And WSClean Temp Cleanup
+
+Status: complete for the next direct-flow imaging hygiene slice on the migration
+branch.
+
+- Preserve clean-disabled Stokes-I behavior by covering `wsclean_niter=0`
+  through the direct image flow.
+- Make WSClean temporary directories deterministic per sector and remove them
+  after WSClean exits.
+- Cover both successful cleanup for multiple sectors and cleanup when the
+  WSClean command fails.
+- Keep this slice scoped to existing Stokes-I WSClean modes; full-Stokes and
+  MPI remain deferred.
+
+Implemented files:
+
+- `rapthor/execution/flows/image.py`
+- `tests/execution/test_image_flow.py`
+- Updates to `PLAN.md`
+
+Verified in the rebuilt devcontainer:
+
+- `python3 -m pytest tests/execution/test_image_flow.py`: 30 passed.
+- `python3 -m pytest tests/execution tests/lib/test_parset.py`: 152 passed.
+- `python3 -m ruff check rapthor/execution tests/execution pyproject.toml`:
+  passed.
+- `python3 -m ruff format --check rapthor/execution tests/execution`: passed.
+
+Deferred to later imaging PRs:
+
+- Add MPI WSClean variants and full-Stokes imaging.
 - Add real external-tool coverage once lightweight Measurement Set and FITS
   fixtures are available.
 
