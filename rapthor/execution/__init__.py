@@ -18,6 +18,7 @@ from rapthor.execution.flows.concatenate import (
     run_concatenate_flow,
 )
 from rapthor.execution.flows.image import (
+    build_aterm_config_content,
     build_blank_image_command,
     build_calculate_image_diagnostics_command,
     build_check_image_beam_command,
@@ -27,6 +28,7 @@ from rapthor.execution.flows.image import (
     build_prepare_imaging_data_command,
     build_wsclean_facets_command,
     build_wsclean_no_dde_command,
+    build_wsclean_screens_command,
     image_flow,
     image_payload_from_inputs,
     image_sector_task,
@@ -36,6 +38,7 @@ from rapthor.execution.flows.image import (
     normalized_prepare_imaging_data_command,
     normalized_wsclean_facets_command,
     normalized_wsclean_no_dde_command,
+    normalized_wsclean_screens_command,
     run_image_flow,
     run_image_sector,
 )
@@ -97,6 +100,7 @@ __all__ = [
     "WorkDirectoryLayout",
     "assert_serializable_payload",
     "build_add_sector_models_command",
+    "build_aterm_config_content",
     "build_blank_image_command",
     "build_calculate_image_diagnostics_command",
     "build_check_image_beam_command",
@@ -114,6 +118,7 @@ __all__ = [
     "build_subtract_sector_models_command",
     "build_wsclean_facets_command",
     "build_wsclean_no_dde_command",
+    "build_wsclean_screens_command",
     "build_task_runner",
     "concatenate_epoch_task",
     "collect_preflight_issues",
@@ -143,6 +148,7 @@ __all__ = [
     "normalized_subtract_sector_models_command",
     "normalized_wsclean_facets_command",
     "normalized_wsclean_no_dde_command",
+    "normalized_wsclean_screens_command",
     "normalize_command",
     "predict_flow",
     "predict_model_data_task",

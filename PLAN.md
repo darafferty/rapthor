@@ -1355,7 +1355,49 @@ Verified in the rebuilt devcontainer:
 
 Deferred to later imaging PRs:
 
-- Add apply-screen imaging.
+- Add image compression and filtered-model-image handling.
+- Add regular selfcal `Image` and `ImageNormalize` finalizer coverage.
+- Add MPI WSClean variants, image-cube outputs, full-Stokes imaging,
+  clean-disabled branches, and task-local WSClean temporary directory
+  cleanup/isolation tests.
+- Add real external-tool coverage once lightweight Measurement Set and FITS
+  fixtures are available.
+
+### PR 8: Screen Stokes-I Image Flow
+
+Status: complete for the next direct-flow imaging slice on the migration branch.
+
+- Extend the Image Prefect flow to support serial screen-corrected Stokes-I
+  imaging in addition to no-DDE and facet imaging.
+- Add the screen WSClean command builder for the `wsclean_image_screens.cwl`
+  parity path, including IDG gridder mode, `-major-iteration-mode single`,
+  `-aterm-kernel-size 32`, `-aterm-config`, and the screen `-interval`.
+- Add an a-term config helper that reproduces the CWL
+  `InitialWorkDirRequirement` content for `aterm_plus_beam.cfg`.
+- Validate that screen and facet modes are mutually exclusive, that screen mode
+  has an h5parm, and that the screen interval is a two-element integer list.
+- Preserve the existing finalizer-compatible image output contract for screen
+  runs.
+
+Implemented files:
+
+- `rapthor/execution/flows/image.py`
+- `tests/execution/test_image_flow.py`
+- Updates to `rapthor/execution/flows/__init__.py`
+- Updates to `rapthor/execution/__init__.py`
+- Updates to `tests/execution/fixtures/cwl_reference_commands.json`
+- Updates to `tests/execution/fixtures/cwl_reference_outputs.json`
+
+Verified in the rebuilt devcontainer:
+
+- `python3 -m pytest tests/execution/test_image_flow.py`: 16 passed.
+- `python3 -m pytest tests/execution tests/lib/test_parset.py`: 138 passed.
+- `python3 -m ruff check rapthor/execution tests/execution pyproject.toml`:
+  passed.
+- `python3 -m ruff format --check rapthor/execution tests/execution`: passed.
+
+Deferred to later imaging PRs:
+
 - Add image compression and filtered-model-image handling.
 - Add regular selfcal `Image` and `ImageNormalize` finalizer coverage.
 - Add MPI WSClean variants, image-cube outputs, full-Stokes imaging,

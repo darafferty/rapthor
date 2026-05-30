@@ -12,6 +12,8 @@ from rapthor.execution.outputs import directory_record, file_record, validate_ou
 from rapthor.execution.payloads import assert_serializable_payload
 from rapthor.execution.shell import ShellCommand, run_shell_command
 
+ATERM_CONFIG_FILENAME = "aterm_plus_beam.cfg"
+
 
 def _bool_token(value: bool) -> str:
     return "True" if value else "False"
@@ -75,6 +77,19 @@ def _append_option(command: list[str], option: str, value: object) -> None:
 def _append_flag(command: list[str], option: str, enabled: bool) -> None:
     if enabled:
         command.append(option)
+
+
+def build_aterm_config_content(h5parm: str) -> str:
+    """Build the a-term configuration file content used by screen imaging."""
+    return (
+        "aterms = [idgcalsolutions, beam]\n"
+        "idgcalsolutions.type = h5parm\n"
+        f"idgcalsolutions.files = [{h5parm}]\n"
+        "idgcalsolutions.update_interval = 8\n"
+        "beam.differential = true\n"
+        "beam.update_interval = 120\n"
+        "beam.usechannelfreq = true\n"
+    )
 
 
 def build_prepare_imaging_data_command(
@@ -429,6 +444,116 @@ def build_wsclean_facets_command(
     return command
 
 
+def build_wsclean_screens_command(
+    msin: str,
+    name: str,
+    mask: str,
+    wsclean_imsize: list[int],
+    wsclean_niter: int,
+    wsclean_nmiter: int,
+    robust: float,
+    min_uv_lambda: float,
+    max_uv_lambda: float,
+    mgain: float,
+    multiscale: bool,
+    save_source_list: bool,
+    pol: str,
+    link_polarizations: object,
+    join_polarizations: bool,
+    skip_final_iteration: bool,
+    cellsize_deg: float,
+    channels_out: int,
+    deconvolution_channels: int,
+    fit_spectral_pol: int,
+    taper_arcsec: float,
+    local_rms_strength: float,
+    local_rms_window: float,
+    local_rms_method: str,
+    wsclean_mem: float,
+    auto_mask: float,
+    auto_mask_nmiter: int,
+    idg_mode: str,
+    num_threads: int,
+    num_deconvolution_threads: int,
+    dd_psf_grid: list[int],
+    interval: list[int],
+    apply_time_frequency_smearing: bool,
+    temp_dir: str,
+    aterm_config: str = ATERM_CONFIG_FILENAME,
+) -> list[str]:
+    """Build the serial screen-corrected WSClean command for one imaging sector."""
+    command = [
+        "wsclean",
+        "-no-update-model-required",
+        "-local-rms",
+        "-join-channels",
+        "-gridder",
+        "idg",
+        "-major-iteration-mode",
+        "single",
+        "-log-time",
+        "-temp-dir",
+        temp_dir,
+        "-multiscale-scale-bias",
+        "0.8",
+        "-parallel-deconvolution",
+        "2048",
+        "-auto-threshold",
+        "1.0",
+        "-mgain-boosting",
+        "1.3",
+        "-aterm-kernel-size",
+        "32",
+        "-aterm-config",
+        aterm_config,
+        "-weight",
+        "briggs",
+        str(robust),
+    ]
+    options = [
+        ("-name", name),
+        ("-fits-mask", mask),
+        ("-size", wsclean_imsize),
+        ("-niter", wsclean_niter),
+        ("-nmiter", wsclean_nmiter),
+        ("-minuv-l", min_uv_lambda),
+        ("-maxuv-l", max_uv_lambda),
+        ("-mgain", mgain),
+        ("-pol", pol),
+        ("-scale", cellsize_deg),
+        ("-channels-out", channels_out),
+        ("-deconvolution-channels", deconvolution_channels),
+        ("-fit-spectral-pol", fit_spectral_pol),
+        ("-taper-gaussian", taper_arcsec),
+        ("-local-rms-strength", local_rms_strength),
+        ("-local-rms-window", local_rms_window),
+        ("-local-rms-method", local_rms_method),
+        ("-abs-mem", wsclean_mem),
+        ("-auto-mask", auto_mask),
+        ("-auto-mask-nmiter", auto_mask_nmiter),
+        ("-idg-mode", idg_mode),
+        ("-j", num_threads),
+        ("-deconvolution-threads", num_deconvolution_threads),
+        ("-dd-psf-grid", dd_psf_grid),
+        ("-interval", interval),
+    ]
+    for option, value in options:
+        if isinstance(value, list):
+            command.append(option)
+            command.extend(str(item) for item in value)
+        else:
+            _append_option(command, option, value)
+    _append_flag(command, "-multiscale", multiscale)
+    _append_flag(command, "-save-source-list", save_source_list)
+    if link_polarizations:
+        _append_option(command, "-link-polarizations", link_polarizations)
+    _append_flag(command, "-join-polarizations", join_polarizations)
+    _append_flag(command, "-skip-final-iteration", skip_final_iteration)
+    _append_flag(command, "-apply-time-frequency-smearing", apply_time_frequency_smearing)
+    command.append(msin)
+    return command
+
+
 def build_check_image_beam_command(input_image: str, beam_size_arcsec: float) -> list[str]:
     """Build the `check_image_beam.py` command for one image."""
     return ["check_image_beam.py", input_image, str(beam_size_arcsec)]
@@ -519,8 +644,8 @@ def image_payload_from_inputs(
     compress_images: bool = False,
 ) -> dict:
     """Create a serializable Stokes-I Image flow payload."""
-    if apply_screens:
-        raise NotImplementedError("Image screens are not part of the current image slice")
+    if apply_screens and use_facets:
+        raise ValueError("apply_screens and use_facets cannot both be enabled")
     if compress_images:
         raise NotImplementedError("Image compression is not part of the current image slice")
     if input_parms.get("peel_bright_sources"):
@@ -528,9 +653,7 @@ def image_payload_from_inputs(
             "Bright-source restoration is not part of the current image slice"
         )
     if input_parms.get("save_filtered_model_image"):
-        raise NotImplementedError(
-            "Filtered model images are not part of the current image slice"
-        )
+        raise NotImplementedError("Filtered model images are not part of the current image slice")
 
     pol = _pol_token(input_parms["pol"])
     if pol.upper() != "I":
@@ -598,8 +721,18 @@ def image_payload_from_inputs(
             raise ValueError(f"{key} must be a list with one value per sector")
 
     h5parm = _optional_file_record_path(input_parms.get("h5parm"))
-    if use_facets and h5parm is None:
-        raise ValueError("h5parm must be a File record when use_facets=True")
+    if (apply_screens or use_facets) and h5parm is None:
+        raise ValueError("h5parm must be a File record for screen or facet imaging")
+    interval = None
+    if apply_screens:
+        interval_value = input_parms.get("interval")
+        if (
+            not isinstance(interval_value, list)
+            or len(interval_value) != 2
+            or not all(isinstance(value, int) for value in interval_value)
+        ):
+            raise ValueError("interval must be a two-element integer list when apply_screens=True")
+        interval = [int(value) for value in interval_value]
     facet_skymodel = None
     if use_facets:
         facet_skymodel = _file_record_path(input_parms.get("skymodel"))
@@ -677,6 +810,7 @@ def image_payload_from_inputs(
         sectors.append(
             {
                 "image_name": image_name,
+                "apply_screens": apply_screens,
                 "use_facets": use_facets,
                 "data_colname": str(input_parms["data_colname"]),
                 "prepare_tasks": prepare_tasks,
@@ -746,6 +880,7 @@ def image_payload_from_inputs(
                 "threshpix": float(input_parms["threshpix"][sector_index]),
                 "do_multiscale": bool(input_parms["do_multiscale"][sector_index]),
                 "dd_psf_grid": [int(value) for value in input_parms["dd_psf_grid"][sector_index]],
+                "interval": interval,
                 "soltabs": None if not use_facets else str(input_parms["soltabs"]),
                 "parallel_gridding_threads": (
                     None if not use_facets else int(input_parms["parallel_gridding_threads"])
@@ -780,8 +915,15 @@ def image_payload_from_inputs(
             }
         )
 
+    if apply_screens:
+        mode = "screens_stokes_i"
+    elif use_facets:
+        mode = "facet_stokes_i"
+    else:
+        mode = "no_dde_stokes_i"
+
     payload = {
-        "mode": "facet_stokes_i" if use_facets else "no_dde_stokes_i",
+        "mode": mode,
         "pipeline_working_dir": pipeline_dir,
         "sectors": sectors,
     }
@@ -815,6 +957,14 @@ def _file_records_for_patterns(patterns: list[str]) -> list[dict]:
             if os.path.isfile(path):
                 records.append(file_record(path))
     return records
+
+
+def _write_aterm_config(pipeline_working_dir: str, h5parm: str) -> str:
+    config_path = os.path.join(pipeline_working_dir, ATERM_CONFIG_FILENAME)
+    os.makedirs(pipeline_working_dir, exist_ok=True)
+    with open(config_path, "w", encoding="utf-8") as handle:
+        handle.write(build_aterm_config_content(h5parm))
+    return config_path
 
 
 def _run_shell(
@@ -945,6 +1095,44 @@ def run_image_sector(
             bool(sector["apply_time_frequency_smearing"]),
             bool(sector["shared_facet_reads"]),
             bool(sector["shared_facet_writes"]),
+            temp_dir,
+        )
+    elif sector["apply_screens"]:
+        _write_aterm_config(pipeline_working_dir, str(sector["h5parm"]))
+        wsclean_command = build_wsclean_screens_command(
+            concat_record["path"],
+            str(sector["image_name"]),
+            mask_record["path"],
+            list(sector["wsclean_imsize"]),
+            int(sector["wsclean_niter"]),
+            int(sector["wsclean_nmiter"]),
+            float(sector["robust"]),
+            float(sector["min_uv_lambda"]),
+            float(sector["max_uv_lambda"]),
+            float(sector["mgain"]),
+            bool(sector["do_multiscale"]),
+            bool(sector["save_source_list"]),
+            str(sector["pol"]),
+            sector["link_polarizations"],
+            bool(sector["join_polarizations"]),
+            bool(sector["skip_final_iteration"]),
+            float(sector["cellsize_deg"]),
+            int(sector["channels_out"]),
+            int(sector["deconvolution_channels"]),
+            int(sector["fit_spectral_pol"]),
+            float(sector["taper_arcsec"]),
+            float(sector["local_rms_strength"]),
+            float(sector["local_rms_window"]),
+            str(sector["local_rms_method"]),
+            float(sector["wsclean_mem"]),
+            float(sector["auto_mask"]),
+            int(sector["auto_mask_nmiter"]),
+            str(sector["idg_mode"]),
+            int(sector["max_threads"]),
+            int(sector["deconvolution_threads"]),
+            list(sector["dd_psf_grid"]),
+            list(sector["interval"]),
+            bool(sector["apply_time_frequency_smearing"]),
             temp_dir,
         )
     else:
@@ -1166,9 +1354,9 @@ def _result_from_sector_records(sector_outputs: list[dict]) -> dict:
 
 
 def _validate_image_payload(payload: Mapping[str, object]) -> tuple[str, list[Mapping]]:
-    supported_modes = {"facet_stokes_i", "no_dde_stokes_i"}
+    supported_modes = {"facet_stokes_i", "no_dde_stokes_i", "screens_stokes_i"}
     if payload.get("mode") not in supported_modes:
-        raise ValueError("Only Stokes-I no-DDE and facet image payloads are supported")
+        raise ValueError("Only Stokes-I no-DDE, facet, and screen image payloads are supported")
     pipeline_working_dir = str(payload["pipeline_working_dir"])
     sectors = payload.get("sectors", [])
     if not isinstance(sectors, list):
@@ -1251,3 +1439,8 @@ def normalized_wsclean_no_dde_command(**kwargs) -> list[str]:
 def normalized_wsclean_facets_command(**kwargs) -> list[str]:
     """Return normalized facet WSClean command tokens for fixture comparisons."""
     return normalize_command(build_wsclean_facets_command(**kwargs))
+
+
+def normalized_wsclean_screens_command(**kwargs) -> list[str]:
+    """Return normalized screen WSClean command tokens for fixture comparisons."""
+    return normalize_command(build_wsclean_screens_command(**kwargs))

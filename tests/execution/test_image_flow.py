@@ -7,6 +7,8 @@ from prefect.testing.utilities import prefect_test_harness
 
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.image import (
+    ATERM_CONFIG_FILENAME,
+    build_aterm_config_content,
     build_calculate_image_diagnostics_command,
     build_check_image_beam_command,
     build_filter_skymodel_command,
@@ -20,6 +22,7 @@ from rapthor.execution.flows.image import (
     normalized_prepare_imaging_data_command,
     normalized_wsclean_facets_command,
     normalized_wsclean_no_dde_command,
+    normalized_wsclean_screens_command,
     run_image_flow,
 )
 from rapthor.execution.outputs import directory_record, file_record, validate_output_record
@@ -239,6 +242,19 @@ def _facet_image_input_parms():
     return input_parms
 
 
+def _screens_image_input_parms():
+    input_parms = _image_input_parms()
+    input_parms.update(
+        {
+            "h5parm": file_record("/data/screen-solutions.h5"),
+            "prepare_data_steps": "[applybeam,shift,avg]",
+            "image_maxinterval": [[None, None]],
+            "interval": [0, 9],
+        }
+    )
+    return input_parms
+
+
 def test_image_command_builders_match_reference_fixtures():
     commands = json.loads((FIXTURE_DIR / "cwl_reference_commands.json").read_text())
 
@@ -374,9 +390,57 @@ def test_image_command_builders_match_reference_fixtures():
         )
         == commands["image"]["wsclean_facets"]
     )
+    assert (
+        normalized_wsclean_screens_command(
+            msin="sector_1_concat.ms",
+            name="sector_1",
+            mask="sector_1_mask.fits",
+            wsclean_imsize=[1024, 1024],
+            wsclean_niter=1000,
+            wsclean_nmiter=5,
+            robust=-0.5,
+            min_uv_lambda=80.0,
+            max_uv_lambda=1000000.0,
+            mgain=0.85,
+            multiscale=True,
+            save_source_list=True,
+            pol="I",
+            link_polarizations=False,
+            join_polarizations=False,
+            skip_final_iteration=True,
+            cellsize_deg=0.001,
+            channels_out=4,
+            deconvolution_channels=2,
+            fit_spectral_pol=2,
+            taper_arcsec=0.0,
+            local_rms_strength=0.0,
+            local_rms_window=25.0,
+            local_rms_method="rms-with-min",
+            wsclean_mem=8.0,
+            auto_mask=5.0,
+            auto_mask_nmiter=1,
+            idg_mode="cpu",
+            num_threads=4,
+            num_deconvolution_threads=2,
+            dd_psf_grid=[1, 1],
+            interval=[0, 9],
+            apply_time_frequency_smearing=False,
+            temp_dir="sector_1_wsclean_tmp",
+        )
+        == commands["image"]["wsclean_screens"]
+    )
 
 
 def test_image_support_command_builders_create_expected_tokens():
+    assert build_aterm_config_content("/data/screen-solutions.h5") == (
+        "aterms = [idgcalsolutions, beam]\n"
+        "idgcalsolutions.type = h5parm\n"
+        "idgcalsolutions.files = [/data/screen-solutions.h5]\n"
+        "idgcalsolutions.update_interval = 8\n"
+        "beam.differential = true\n"
+        "beam.update_interval = 120\n"
+        "beam.usechannelfreq = true\n"
+    )
     assert build_make_region_file_command(
         "calibration.skymodel",
         123.0,
@@ -499,9 +563,23 @@ def test_image_payload_from_inputs_builds_serializable_facet_payload(tmp_path):
     assert sector["shared_facet_writes"] is True
 
 
+def test_image_payload_from_inputs_builds_serializable_screen_payload(tmp_path):
+    payload = image_payload_from_inputs(_screens_image_input_parms(), tmp_path, apply_screens=True)
+
+    assert payload["mode"] == "screens_stokes_i"
+    sector = payload["sectors"][0]
+    assert sector["apply_screens"] is True
+    assert sector["use_facets"] is False
+    assert sector["h5parm"] == "/data/screen-solutions.h5"
+    assert sector["interval"] == [0, 9]
+    assert sector["prepare_tasks"][0]["maxinterval"] is None
+
+
 def test_image_payload_from_inputs_rejects_unsupported_modes(tmp_path):
-    with pytest.raises(NotImplementedError, match="screens"):
-        image_payload_from_inputs(_image_input_parms(), tmp_path, apply_screens=True)
+    with pytest.raises(ValueError, match="cannot both"):
+        image_payload_from_inputs(
+            _facet_image_input_parms(), tmp_path, apply_screens=True, use_facets=True
+        )
 
     input_parms = _image_input_parms()
     input_parms["pol"] = "IQUV"
@@ -519,6 +597,18 @@ def test_image_payload_from_inputs_requires_facet_inputs(tmp_path):
     del input_parms["soltabs"]
     with pytest.raises(ValueError, match="soltabs"):
         image_payload_from_inputs(input_parms, tmp_path, use_facets=True)
+
+
+def test_image_payload_from_inputs_requires_screen_inputs(tmp_path):
+    input_parms = _screens_image_input_parms()
+    input_parms["h5parm"] = None
+    with pytest.raises(ValueError, match="h5parm"):
+        image_payload_from_inputs(input_parms, tmp_path, apply_screens=True)
+
+    input_parms = _screens_image_input_parms()
+    input_parms["interval"] = [0]
+    with pytest.raises(ValueError, match="interval"):
+        image_payload_from_inputs(input_parms, tmp_path, apply_screens=True)
 
 
 def test_run_image_flow_executes_no_dde_commands_and_returns_records(
@@ -615,6 +705,50 @@ def test_run_image_flow_executes_facet_commands_and_returns_region_file(
     assert "-diagonal-visibilities" not in facet_command
 
 
+def test_run_image_flow_executes_screen_commands_and_writes_aterm_config(
+    tmp_path, fake_image_shell_operation_cls
+):
+    outputs = run_image_flow(
+        image_payload_from_inputs(_screens_image_input_parms(), tmp_path, apply_screens=True),
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_image_shell_operation_cls,
+    )
+
+    assert outputs["sector_I_images"] == [
+        [
+            file_record(tmp_path / "sector_1-MFS-I-image.fits"),
+            file_record(tmp_path / "sector_1-MFS-I-image-pb.fits"),
+        ]
+    ]
+    aterm_config = tmp_path / ATERM_CONFIG_FILENAME
+    assert aterm_config.read_text() == build_aterm_config_content("/data/screen-solutions.h5")
+    command_names = [
+        shlex.split(instance.kwargs["commands"][0])[0]
+        for instance in fake_image_shell_operation_cls.instances
+    ]
+    assert command_names == [
+        "DP3",
+        "DP3",
+        "concat_ms.py",
+        "blank_image.py",
+        "wsclean",
+        "check_image_beam.py",
+        "check_image_beam.py",
+        "filter_skymodel.py",
+        "calculate_image_diagnostics.py",
+    ]
+    screen_command = next(
+        shlex.split(instance.kwargs["commands"][0])
+        for instance in fake_image_shell_operation_cls.instances
+        if shlex.split(instance.kwargs["commands"][0])[0] == "wsclean"
+    )
+    assert screen_command[screen_command.index("-gridder") + 1] == "idg"
+    assert screen_command[screen_command.index("-aterm-config") + 1] == ATERM_CONFIG_FILENAME
+    assert screen_command[screen_command.index("-interval") + 1 :][0:2] == ["0", "9"]
+    assert "-apply-primary-beam" not in screen_command
+    assert "-apply-facet-beam" not in screen_command
+
+
 def test_image_sector_task_wraps_runner(tmp_path, fake_image_shell_operation_cls):
     payload = image_payload_from_inputs(_image_input_parms(), tmp_path)
 
@@ -665,6 +799,8 @@ def test_image_reference_output_fixture_matches_output_contract():
     for value in outputs["image_no_dde"].values():
         validate_output_record(value, allow_none=True)
     for value in outputs["image_facets"].values():
+        validate_output_record(value, allow_none=True)
+    for value in outputs["image_screens"].values():
         validate_output_record(value, allow_none=True)
 
 
