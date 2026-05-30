@@ -233,6 +233,42 @@ def build_make_skymodel_image_command(
     return ["restore_skymodel.py", source_catalog, reference_image, output_image_name]
 
 
+def build_make_image_cube_command(input_image_list: list[str], output_image: str) -> list[str]:
+    """Build the `make_image_cube.py` command for one Stokes image cube."""
+    return ["make_image_cube.py", _join_comma(input_image_list), output_image]
+
+
+def build_make_catalog_from_image_cube_command(
+    cube: str,
+    cube_beams: str,
+    cube_frequencies: str,
+    output_catalog: str,
+    threshisl: float,
+    threshpix: float,
+    ncores: int,
+) -> list[str]:
+    """Build the source-catalog command for a Stokes-I image cube."""
+    return [
+        "make_catalog_from_image_cube.py",
+        cube,
+        cube_beams,
+        cube_frequencies,
+        output_catalog,
+        f"--threshisl={threshisl}",
+        f"--threshpix={threshpix}",
+        f"--ncores={ncores}",
+    ]
+
+
+def build_normalize_flux_scale_command(
+    source_catalog: str,
+    ms_file: str,
+    normalize_h5parm: str,
+) -> list[str]:
+    """Build the flux-scale normalization command."""
+    return ["normalize_flux_scale.py", source_catalog, ms_file, normalize_h5parm]
+
+
 def build_wsclean_no_dde_command(
     msin: str,
     name: str,
@@ -656,10 +692,14 @@ def image_payload_from_inputs(
     apply_screens: bool = False,
     use_facets: bool = False,
     compress_images: bool = False,
+    make_image_cube: bool = False,
+    normalize_flux_scale: bool = False,
 ) -> dict:
     """Create a serializable Stokes-I Image flow payload."""
     if apply_screens and use_facets:
         raise ValueError("apply_screens and use_facets cannot both be enabled")
+    if normalize_flux_scale and not make_image_cube:
+        raise ValueError("normalize_flux_scale requires make_image_cube=True")
     if input_parms.get("peel_bright_sources"):
         raise NotImplementedError(
             "Bright-source restoration is not part of the current image slice"
@@ -728,6 +768,10 @@ def image_payload_from_inputs(
         )
     if save_filtered_model_image:
         per_sector_keys.append("filtered_model_image_name")
+    if make_image_cube:
+        per_sector_keys.append("image_I_cube_name")
+    if normalize_flux_scale:
+        per_sector_keys.extend(["output_source_catalog", "output_normalize_h5parm"])
     for key in per_sector_keys:
         value = input_parms.get(key, [])
         if not isinstance(value, list) or len(value) != sector_count:
@@ -826,12 +870,31 @@ def image_payload_from_inputs(
                 input_parms["filtered_model_image_name"][sector_index],
                 f"filtered_model_image_name[{sector_index}]",
             )
+        image_i_cube_filename = None
+        if make_image_cube:
+            image_i_cube_filename = _validate_basename(
+                input_parms["image_I_cube_name"][sector_index],
+                f"image_I_cube_name[{sector_index}]",
+            )
+        output_source_catalog_filename = None
+        output_normalize_h5parm_filename = None
+        if normalize_flux_scale:
+            output_source_catalog_filename = _validate_basename(
+                input_parms["output_source_catalog"][sector_index],
+                f"output_source_catalog[{sector_index}]",
+            )
+            output_normalize_h5parm_filename = _validate_basename(
+                input_parms["output_normalize_h5parm"][sector_index],
+                f"output_normalize_h5parm[{sector_index}]",
+            )
         sectors.append(
             {
                 "image_name": image_name,
                 "apply_screens": apply_screens,
                 "use_facets": use_facets,
                 "compress_images": bool(compress_images),
+                "make_image_cube": bool(make_image_cube),
+                "normalize_flux_scale": bool(normalize_flux_scale),
                 "save_filtered_model_image": save_filtered_model_image,
                 "data_colname": str(input_parms["data_colname"]),
                 "prepare_tasks": prepare_tasks,
@@ -876,6 +939,24 @@ def image_payload_from_inputs(
                     None
                     if filtered_model_image_filename is None
                     else os.path.join(pipeline_dir, filtered_model_image_filename)
+                ),
+                "image_I_cube_filename": image_i_cube_filename,
+                "image_I_cube_path": (
+                    None
+                    if image_i_cube_filename is None
+                    else os.path.join(pipeline_dir, image_i_cube_filename)
+                ),
+                "output_source_catalog_filename": output_source_catalog_filename,
+                "output_source_catalog_path": (
+                    None
+                    if output_source_catalog_filename is None
+                    else os.path.join(pipeline_dir, output_source_catalog_filename)
+                ),
+                "output_normalize_h5parm_filename": output_normalize_h5parm_filename,
+                "output_normalize_h5parm_path": (
+                    None
+                    if output_normalize_h5parm_filename is None
+                    else os.path.join(pipeline_dir, output_normalize_h5parm_filename)
                 ),
                 "ra_mid": (None if not use_facets else float(input_parms["ra_mid"][sector_index])),
                 "dec_mid": (
@@ -977,6 +1058,13 @@ def _first_existing_file(patterns: list[str], description: str) -> dict:
     raise FileNotFoundError(f"{description} was not created: {', '.join(patterns)}")
 
 
+def _file_records_for_required_patterns(patterns: list[str], description: str) -> list[dict]:
+    records = _file_records_for_patterns(patterns)
+    if not records:
+        raise FileNotFoundError(f"{description} was not created: {', '.join(patterns)}")
+    return records
+
+
 def _file_records_for_patterns(patterns: list[str]) -> list[dict]:
     records = []
     for pattern in patterns:
@@ -1018,6 +1106,82 @@ def _compress_image_records(
         ]
     )
     return compressed_sector_images, compressed_extra_images
+
+
+def _make_image_cube_records(
+    image_name: str,
+    image_i_cube_filename: str,
+    pipeline_working_dir: str,
+    execution_config: ExecutionConfig,
+    shell_operation_cls=None,
+) -> tuple[dict, dict, dict]:
+    channel_images = _file_records_for_required_patterns(
+        [
+            os.path.join(pipeline_working_dir, f"{image_name}-0???-image-pb.fits"),
+            os.path.join(pipeline_working_dir, f"{image_name}-0???-I-image-pb.fits"),
+        ],
+        "WSClean Stokes-I channel images",
+    )
+    command = build_make_image_cube_command(
+        [record["path"] for record in channel_images], image_i_cube_filename
+    )
+    _run_shell(
+        command, pipeline_working_dir, execution_config, shell_operation_cls=shell_operation_cls
+    )
+    image_i_cube_path = os.path.join(pipeline_working_dir, image_i_cube_filename)
+    return (
+        _require_file(image_i_cube_path, "Stokes-I image cube"),
+        _require_file(f"{image_i_cube_path}_beams.txt", "Stokes-I image cube beams"),
+        _require_file(
+            f"{image_i_cube_path}_frequencies.txt", "Stokes-I image cube frequencies"
+        ),
+    )
+
+
+def _make_normalization_records(
+    image_cube: dict,
+    image_cube_beams: dict,
+    image_cube_frequencies: dict,
+    concat_record: dict,
+    sector: Mapping[str, object],
+    pipeline_working_dir: str,
+    execution_config: ExecutionConfig,
+    shell_operation_cls=None,
+) -> tuple[dict, dict]:
+    catalog_command = build_make_catalog_from_image_cube_command(
+        image_cube["path"],
+        image_cube_beams["path"],
+        image_cube_frequencies["path"],
+        str(sector["output_source_catalog_filename"]),
+        float(sector["threshisl"]),
+        float(sector["threshpix"]),
+        int(sector["max_threads"]),
+    )
+    _run_shell(
+        catalog_command,
+        pipeline_working_dir,
+        execution_config,
+        shell_operation_cls=shell_operation_cls,
+    )
+    source_catalog = _require_file(
+        str(sector["output_source_catalog_path"]), "Normalization source catalog"
+    )
+
+    normalize_command = build_normalize_flux_scale_command(
+        source_catalog["path"],
+        concat_record["path"],
+        str(sector["output_normalize_h5parm_filename"]),
+    )
+    _run_shell(
+        normalize_command,
+        pipeline_working_dir,
+        execution_config,
+        shell_operation_cls=shell_operation_cls,
+    )
+    normalize_h5parm = _require_file(
+        str(sector["output_normalize_h5parm_path"]), "Flux-scale normalization h5parm"
+    )
+    return source_catalog, normalize_h5parm
 
 
 def _write_aterm_config(pipeline_working_dir: str, h5parm: str) -> str:
@@ -1261,14 +1425,29 @@ def run_image_sector(
         ]
     )
     sector_images = [nonpb_image, pb_image]
-    skymodel_nonpb = _require_file(
-        os.path.join(pipeline_working_dir, f"{image_name}-sources.txt"),
-        "WSClean apparent-sky source list",
-    )
-    skymodel_pb = _require_file(
-        os.path.join(pipeline_working_dir, f"{image_name}-sources-pb.txt"),
-        "WSClean true-sky source list",
-    )
+    image_cube = None
+    image_cube_beams = None
+    image_cube_frequencies = None
+    if sector["make_image_cube"]:
+        image_cube, image_cube_beams, image_cube_frequencies = _make_image_cube_records(
+            image_name,
+            str(sector["image_I_cube_filename"]),
+            pipeline_working_dir,
+            config,
+            shell_operation_cls=shell_operation_cls,
+        )
+
+    skymodel_nonpb = None
+    skymodel_pb = None
+    if sector["save_source_list"]:
+        skymodel_nonpb = _require_file(
+            os.path.join(pipeline_working_dir, f"{image_name}-sources.txt"),
+            "WSClean apparent-sky source list",
+        )
+        skymodel_pb = _require_file(
+            os.path.join(pipeline_working_dir, f"{image_name}-sources-pb.txt"),
+            "WSClean true-sky source list",
+        )
 
     for image_record in (pb_image, nonpb_image):
         command = build_check_image_beam_command(
@@ -1382,6 +1561,20 @@ def run_image_sector(
             shell_operation_cls=shell_operation_cls,
         )
 
+    normalization_source_catalog = None
+    normalize_h5parm = None
+    if sector["normalize_flux_scale"]:
+        normalization_source_catalog, normalize_h5parm = _make_normalization_records(
+            image_cube,
+            image_cube_beams,
+            image_cube_frequencies,
+            concat_record,
+            sector,
+            pipeline_working_dir,
+            config,
+            shell_operation_cls=shell_operation_cls,
+        )
+
     result = {
         "filtered_skymodel_true_sky": filtered_true_sky,
         "filtered_skymodel_apparent_sky": filtered_apparent_sky,
@@ -1399,6 +1592,13 @@ def run_image_sector(
         result["sector_region_file"] = region_record
     if skymodel_image is not None:
         result["sector_skymodel_image_fits"] = skymodel_image
+    if image_cube is not None:
+        result["sector_image_cubes"] = [image_cube]
+        result["sector_image_cube_beams"] = [image_cube_beams]
+        result["sector_image_cube_frequencies"] = [image_cube_frequencies]
+    if normalize_h5parm is not None:
+        result["sector_source_catalog"] = normalization_source_catalog
+        result["sector_normalize_h5parm"] = normalize_h5parm
     return result
 
 
@@ -1444,6 +1644,23 @@ def _result_from_sector_records(sector_outputs: list[dict]) -> dict:
     if any("sector_skymodel_image_fits" in sector for sector in sector_outputs):
         result["sector_skymodel_image_fits"] = [
             sector.get("sector_skymodel_image_fits") for sector in sector_outputs
+        ]
+    if any("sector_image_cubes" in sector for sector in sector_outputs):
+        result["sector_image_cubes"] = [
+            sector.get("sector_image_cubes") for sector in sector_outputs
+        ]
+        result["sector_image_cube_beams"] = [
+            sector.get("sector_image_cube_beams") for sector in sector_outputs
+        ]
+        result["sector_image_cube_frequencies"] = [
+            sector.get("sector_image_cube_frequencies") for sector in sector_outputs
+        ]
+    if any("sector_normalize_h5parm" in sector for sector in sector_outputs):
+        result["sector_source_catalog"] = [
+            sector.get("sector_source_catalog") for sector in sector_outputs
+        ]
+        result["sector_normalize_h5parm"] = [
+            sector.get("sector_normalize_h5parm") for sector in sector_outputs
         ]
     for value in result.values():
         validate_output_record(value, allow_none=True)
@@ -1531,6 +1748,21 @@ def normalized_compress_sector_images_command(**kwargs) -> list[str]:
 def normalized_make_skymodel_image_command(**kwargs) -> list[str]:
     """Return normalized make-skymodel-image command tokens for fixture comparisons."""
     return normalize_command(build_make_skymodel_image_command(**kwargs))
+
+
+def normalized_make_image_cube_command(**kwargs) -> list[str]:
+    """Return normalized make-image-cube command tokens for fixture comparisons."""
+    return normalize_command(build_make_image_cube_command(**kwargs))
+
+
+def normalized_make_catalog_from_image_cube_command(**kwargs) -> list[str]:
+    """Return normalized image-cube catalog command tokens for fixture comparisons."""
+    return normalize_command(build_make_catalog_from_image_cube_command(**kwargs))
+
+
+def normalized_normalize_flux_scale_command(**kwargs) -> list[str]:
+    """Return normalized flux-scale normalization command tokens for fixture comparisons."""
+    return normalize_command(build_normalize_flux_scale_command(**kwargs))
 
 
 def normalized_make_region_file_command(**kwargs) -> list[str]:

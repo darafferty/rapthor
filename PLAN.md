@@ -624,11 +624,9 @@ Tests:
   output records.
 - Added output-contract fixtures for no-DDE Stokes-I images, skymodels,
   visibilities, masks, diagnostics, offsets, and plots.
-- Still needed: command-builder tests for facet, screen, MPI, normalization,
-  image-cube, full-Stokes, shared-facet, and clean-disabled modes.
+- Still needed: command-builder tests for MPI, full-Stokes, and
+  clean-disabled modes.
 - Still needed: flow tests for the remaining imaging slices.
-- Still needed: tests for regular `Image.finalize()` and `ImageNormalize.finalize()`
-  against Prefect output structures.
 - Rework relevant `tests/operations/test_image.py` cases around command builders,
   flow structure, and finalizer-compatible output records.
 - Replace CWL-specific rendered-template assertions with command-builder and
@@ -1304,10 +1302,8 @@ Verified in the rebuilt devcontainer:
 
 Deferred to later imaging PRs:
 
-- Add task-local WSClean temporary directory cleanup/isolation tests.
-- Add MPI WSClean variants, image-cube outputs, full-Stokes imaging,
-  clean-disabled branches, and task-local WSClean temporary directory
-  cleanup/isolation tests.
+- Add MPI WSClean variants, full-Stokes imaging, clean-disabled branches, and
+  task-local WSClean temporary directory cleanup/isolation tests.
 - Add real external-tool coverage once lightweight Measurement Set and FITS
   fixtures are available.
 
@@ -1355,9 +1351,8 @@ Verified in the rebuilt devcontainer:
 
 Deferred to later imaging PRs:
 
-- Add MPI WSClean variants, image-cube outputs, full-Stokes imaging,
-  clean-disabled branches, and task-local WSClean temporary directory
-  cleanup/isolation tests.
+- Add MPI WSClean variants, full-Stokes imaging, clean-disabled branches, and
+  task-local WSClean temporary directory cleanup/isolation tests.
 - Add real external-tool coverage once lightweight Measurement Set and FITS
   fixtures are available.
 
@@ -1396,9 +1391,8 @@ Verified in the rebuilt devcontainer:
 
 Deferred to later imaging PRs:
 
-- Add MPI WSClean variants, image-cube outputs, full-Stokes imaging,
-  clean-disabled branches, and task-local WSClean temporary directory
-  cleanup/isolation tests.
+- Add MPI WSClean variants, full-Stokes imaging, clean-disabled branches, and
+  task-local WSClean temporary directory cleanup/isolation tests.
 - Add real external-tool coverage once lightweight Measurement Set and FITS
   fixtures are available.
 
@@ -1438,9 +1432,8 @@ Verified in the rebuilt devcontainer:
 
 Deferred to later imaging PRs:
 
-- Add MPI WSClean variants, image-cube outputs, full-Stokes imaging,
-  clean-disabled branches, and task-local WSClean temporary directory
-  cleanup/isolation tests.
+- Add MPI WSClean variants, full-Stokes imaging, clean-disabled branches, and
+  task-local WSClean temporary directory cleanup/isolation tests.
 - Add real external-tool coverage once lightweight Measurement Set and FITS
   fixtures are available.
 
@@ -1455,9 +1448,9 @@ branch.
 - Verify that finalizer-compatible image records populate sector image,
   skymodel, mask, filtered-model, visibility, diagnostics, flux-ratio, and done
   state as expected.
-- Add `ImageNormalize.finalize()` coverage using synthetic CWL-compatible
-  normalization h5parm and image-cube records. The cube-generation flow remains
-  deferred, but the finalizer contract is now pinned before that porting work.
+- Add `ImageNormalize.finalize()` coverage using CWL-compatible normalization
+  h5parm and image-cube records. PR 11 replaces the synthetic records from this
+  first acceptance slice with Prefect-produced normalization flow outputs.
 - Keep the tests scoped to finalizer acceptance; no new runtime image flow mode
   is introduced in this PR.
 
@@ -1476,9 +1469,67 @@ Verified in the rebuilt devcontainer:
 
 Deferred to later imaging PRs:
 
-- Add MPI WSClean variants, image-cube outputs, full-Stokes imaging,
-  clean-disabled branches, and task-local WSClean temporary directory
-  cleanup/isolation tests.
+- Add MPI WSClean variants, full-Stokes imaging, clean-disabled branches, and
+  task-local WSClean temporary directory cleanup/isolation tests.
+- Add real external-tool coverage once lightweight Measurement Set and FITS
+  fixtures are available.
+
+### PR 11: Image Cube And Normalization Flow Outputs
+
+Status: implemented for the next direct-flow imaging slice on the migration
+branch. Devcontainer verification is pending because the `podman exec` approval
+quota was unavailable during this turn.
+
+- Add Python command builders for `make_image_cube.py`,
+  `make_catalog_from_image_cube.py`, and `normalize_flux_scale.py`.
+- Extend `image_payload_from_inputs()` with explicit `make_image_cube` and
+  `normalize_flux_scale` flags and validate Stokes-I cube, source-catalog, and
+  normalization h5parm output names.
+- Collect WSClean Stokes-I PB channel images, build the Stokes-I image cube, and
+  return `sector_image_cubes`, `sector_image_cube_beams`, and
+  `sector_image_cube_frequencies` in the CWL-compatible nested output shape.
+- Add the ImageNormalize path that builds a source catalog from the Stokes-I
+  cube, runs flux-scale normalization, and returns `sector_source_catalog` plus
+  `sector_normalize_h5parm`.
+- Update the `ImageNormalize.finalize()` acceptance test to consume
+  Prefect-produced normalization outputs rather than synthetic cube records.
+- Allow `save_source_list=False` image runs to skip WSClean source-list records
+  while still running source filtering with the CWL-compatible `none` sentinel.
+
+Implemented files:
+
+- `rapthor/execution/flows/image.py`
+- Updates to `rapthor/execution/flows/__init__.py`
+- Updates to `rapthor/execution/__init__.py`
+- `tests/execution/test_image_flow.py`
+- Updates to `tests/execution/fixtures/cwl_reference_commands.json`
+- Updates to `tests/execution/fixtures/cwl_reference_outputs.json`
+- Updates to `PLAN.md`
+
+Verified locally:
+
+- `python -m py_compile rapthor/execution/__init__.py
+  rapthor/execution/flows/__init__.py rapthor/execution/flows/image.py
+  tests/execution/test_image_flow.py`: passed.
+- `python -m json.tool tests/execution/fixtures/cwl_reference_commands.json`:
+  passed.
+- `python -m json.tool tests/execution/fixtures/cwl_reference_outputs.json`:
+  passed.
+- `git diff --check`: passed.
+
+Could not verify in this turn:
+
+- `python3 -m pytest tests/execution/test_image_flow.py`: local Python does not
+  have pytest installed, and the devcontainer `podman exec` command was blocked
+  by the escalation quota.
+- `python3 -m pytest tests/execution tests/lib/test_parset.py`: same blocker.
+- `python3 -m ruff check ...` and `python3 -m ruff format --check ...`: local
+  Python does not have ruff installed, and the devcontainer was unavailable.
+
+Deferred to later imaging PRs:
+
+- Add MPI WSClean variants, full-Stokes imaging, clean-disabled branches, and
+  task-local WSClean temporary directory cleanup/isolation tests.
 - Add real external-tool coverage once lightweight Measurement Set and FITS
   fixtures are available.
 

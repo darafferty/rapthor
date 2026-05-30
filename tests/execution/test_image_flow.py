@@ -13,16 +13,22 @@ from rapthor.execution.flows.image import (
     build_check_image_beam_command,
     build_compress_sector_images_command,
     build_filter_skymodel_command,
+    build_make_catalog_from_image_cube_command,
+    build_make_image_cube_command,
     build_make_region_file_command,
     build_make_skymodel_image_command,
+    build_normalize_flux_scale_command,
     image_flow,
     image_payload_from_inputs,
     image_sector_task,
     normalized_blank_image_command,
     normalized_compress_sector_images_command,
     normalized_concat_time_command,
+    normalized_make_catalog_from_image_cube_command,
+    normalized_make_image_cube_command,
     normalized_make_region_file_command,
     normalized_make_skymodel_image_command,
+    normalized_normalize_flux_scale_command,
     normalized_prepare_imaging_data_command,
     normalized_wsclean_facets_command,
     normalized_wsclean_no_dde_command,
@@ -73,6 +79,18 @@ def fake_image_shell_operation_cls():
                     "-sources-pb.txt",
                 ]:
                     (cwd / f"{image_name}{suffix}").write_text("image")
+                channels_out = int(tokens[tokens.index("-channels-out") + 1])
+                for channel in range(channels_out):
+                    (cwd / f"{image_name}-{channel:04d}-I-image-pb.fits").write_text("channel")
+            elif tokens[0] == "make_image_cube.py":
+                output_image = tokens[2]
+                (cwd / output_image).write_text("cube")
+                (cwd / f"{output_image}_beams.txt").write_text("beams")
+                (cwd / f"{output_image}_frequencies.txt").write_text("frequencies")
+            elif tokens[0] == "make_catalog_from_image_cube.py":
+                (cwd / tokens[4]).write_text("catalog")
+            elif tokens[0] == "normalize_flux_scale.py":
+                (cwd / tokens[3]).write_text("h5parm")
             elif tokens[0] == "fpack":
                 for image in tokens[1:]:
                     Path(f"{image}.fz").write_text("compressed")
@@ -276,6 +294,20 @@ def _filtered_model_image_input_parms():
     return input_parms
 
 
+def _image_cube_input_parms():
+    input_parms = _image_input_parms()
+    input_parms["image_I_cube_name"] = ["sector_1_I_freq_cube.fits"]
+    return input_parms
+
+
+def _normalize_image_input_parms():
+    input_parms = _image_cube_input_parms()
+    input_parms["save_source_list"] = False
+    input_parms["output_source_catalog"] = ["sector_1_source_catalog.fits"]
+    input_parms["output_normalize_h5parm"] = ["sector_1_normalize.h5parm"]
+    return input_parms
+
+
 def test_image_command_builders_match_reference_fixtures():
     commands = json.loads((FIXTURE_DIR / "cwl_reference_commands.json").read_text())
 
@@ -335,6 +367,36 @@ def test_image_command_builders_match_reference_fixtures():
             output_image_name="sector_1-MFS-filtered-model.fits.fz",
         )
         == commands["image"]["make_skymodel_image"]
+    )
+    assert (
+        normalized_make_image_cube_command(
+            input_image_list=[
+                "sector_1-0000-I-image-pb.fits",
+                "sector_1-0001-I-image-pb.fits",
+            ],
+            output_image="sector_1_I_freq_cube.fits",
+        )
+        == commands["image"]["make_image_cube"]
+    )
+    assert (
+        normalized_make_catalog_from_image_cube_command(
+            cube="sector_1_I_freq_cube.fits",
+            cube_beams="sector_1_I_freq_cube.fits_beams.txt",
+            cube_frequencies="sector_1_I_freq_cube.fits_frequencies.txt",
+            output_catalog="sector_1_source_catalog.fits",
+            threshisl=4.0,
+            threshpix=5.0,
+            ncores=4,
+        )
+        == commands["image"]["make_catalog_from_image_cube"]
+    )
+    assert (
+        normalized_normalize_flux_scale_command(
+            source_catalog="sector_1_source_catalog.fits",
+            ms_file="sector_1_concat.ms",
+            normalize_h5parm="sector_1_normalize.h5parm",
+        )
+        == commands["image"]["normalize_flux_scale"]
     )
     assert (
         normalized_wsclean_no_dde_command(
@@ -516,6 +578,42 @@ def test_image_support_command_builders_create_expected_tokens():
         "sector_1-MFS-I-image-pb.fits",
         "sector_1-MFS-filtered-model.fits.fz",
     ]
+    assert build_make_image_cube_command(
+        ["sector_1-0000-I-image-pb.fits", "sector_1-0001-I-image-pb.fits"],
+        "sector_1_I_freq_cube.fits",
+    ) == [
+        "make_image_cube.py",
+        "sector_1-0000-I-image-pb.fits,sector_1-0001-I-image-pb.fits",
+        "sector_1_I_freq_cube.fits",
+    ]
+    assert build_make_catalog_from_image_cube_command(
+        "sector_1_I_freq_cube.fits",
+        "sector_1_I_freq_cube.fits_beams.txt",
+        "sector_1_I_freq_cube.fits_frequencies.txt",
+        "sector_1_source_catalog.fits",
+        4.0,
+        5.0,
+        4,
+    ) == [
+        "make_catalog_from_image_cube.py",
+        "sector_1_I_freq_cube.fits",
+        "sector_1_I_freq_cube.fits_beams.txt",
+        "sector_1_I_freq_cube.fits_frequencies.txt",
+        "sector_1_source_catalog.fits",
+        "--threshisl=4.0",
+        "--threshpix=5.0",
+        "--ncores=4",
+    ]
+    assert build_normalize_flux_scale_command(
+        "sector_1_source_catalog.fits",
+        "sector_1_concat.ms",
+        "sector_1_normalize.h5parm",
+    ) == [
+        "normalize_flux_scale.py",
+        "sector_1_source_catalog.fits",
+        "sector_1_concat.ms",
+        "sector_1_normalize.h5parm",
+    ]
     assert build_check_image_beam_command("sector_1-MFS-I-image.fits", 0.0) == [
         "check_image_beam.py",
         "sector_1-MFS-I-image.fits",
@@ -653,6 +751,34 @@ def test_image_payload_from_inputs_builds_filtered_model_payload(tmp_path):
     )
 
 
+def test_image_payload_from_inputs_builds_image_cube_payload(tmp_path):
+    payload = image_payload_from_inputs(_image_cube_input_parms(), tmp_path, make_image_cube=True)
+
+    sector = payload["sectors"][0]
+    assert sector["make_image_cube"] is True
+    assert sector["normalize_flux_scale"] is False
+    assert sector["image_I_cube_filename"] == "sector_1_I_freq_cube.fits"
+    assert sector["image_I_cube_path"] == str(tmp_path / "sector_1_I_freq_cube.fits")
+
+
+def test_image_payload_from_inputs_builds_normalization_payload(tmp_path):
+    payload = image_payload_from_inputs(
+        _normalize_image_input_parms(),
+        tmp_path,
+        make_image_cube=True,
+        normalize_flux_scale=True,
+    )
+
+    sector = payload["sectors"][0]
+    assert sector["make_image_cube"] is True
+    assert sector["normalize_flux_scale"] is True
+    assert sector["save_source_list"] is False
+    assert sector["output_source_catalog_filename"] == "sector_1_source_catalog.fits"
+    assert sector["output_source_catalog_path"] == str(tmp_path / "sector_1_source_catalog.fits")
+    assert sector["output_normalize_h5parm_filename"] == "sector_1_normalize.h5parm"
+    assert sector["output_normalize_h5parm_path"] == str(tmp_path / "sector_1_normalize.h5parm")
+
+
 def test_image_payload_from_inputs_rejects_unsupported_modes(tmp_path):
     with pytest.raises(ValueError, match="cannot both"):
         image_payload_from_inputs(
@@ -663,6 +789,11 @@ def test_image_payload_from_inputs_rejects_unsupported_modes(tmp_path):
     input_parms["pol"] = "IQUV"
     with pytest.raises(NotImplementedError, match="Stokes-I"):
         image_payload_from_inputs(input_parms, tmp_path)
+
+    with pytest.raises(ValueError, match="requires make_image_cube"):
+        image_payload_from_inputs(
+            _normalize_image_input_parms(), tmp_path, normalize_flux_scale=True
+        )
 
 
 def test_image_payload_from_inputs_requires_facet_inputs(tmp_path):
@@ -900,6 +1031,79 @@ def test_run_image_flow_returns_filtered_model_image(tmp_path, fake_image_shell_
     ]
 
 
+def test_run_image_flow_returns_image_cube_outputs(tmp_path, fake_image_shell_operation_cls):
+    outputs = run_image_flow(
+        image_payload_from_inputs(_image_cube_input_parms(), tmp_path, make_image_cube=True),
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_image_shell_operation_cls,
+    )
+
+    assert outputs["sector_image_cubes"] == [
+        [file_record(tmp_path / "sector_1_I_freq_cube.fits")]
+    ]
+    assert outputs["sector_image_cube_beams"] == [
+        [file_record(tmp_path / "sector_1_I_freq_cube.fits_beams.txt")]
+    ]
+    assert outputs["sector_image_cube_frequencies"] == [
+        [file_record(tmp_path / "sector_1_I_freq_cube.fits_frequencies.txt")]
+    ]
+    command_names = [
+        shlex.split(instance.kwargs["commands"][0])[0]
+        for instance in fake_image_shell_operation_cls.instances
+    ]
+    assert command_names == [
+        "DP3",
+        "DP3",
+        "concat_ms.py",
+        "blank_image.py",
+        "wsclean",
+        "make_image_cube.py",
+        "check_image_beam.py",
+        "check_image_beam.py",
+        "filter_skymodel.py",
+        "calculate_image_diagnostics.py",
+    ]
+
+
+def test_run_image_flow_returns_normalization_outputs(tmp_path, fake_image_shell_operation_cls):
+    outputs = run_image_flow(
+        image_payload_from_inputs(
+            _normalize_image_input_parms(),
+            tmp_path,
+            make_image_cube=True,
+            normalize_flux_scale=True,
+        ),
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_image_shell_operation_cls,
+    )
+
+    assert outputs["sector_source_catalog"] == [
+        file_record(tmp_path / "sector_1_source_catalog.fits")
+    ]
+    assert outputs["sector_normalize_h5parm"] == [
+        file_record(tmp_path / "sector_1_normalize.h5parm")
+    ]
+    assert "sector_skymodels" not in outputs
+    command_names = [
+        shlex.split(instance.kwargs["commands"][0])[0]
+        for instance in fake_image_shell_operation_cls.instances
+    ]
+    assert command_names == [
+        "DP3",
+        "DP3",
+        "concat_ms.py",
+        "blank_image.py",
+        "wsclean",
+        "make_image_cube.py",
+        "check_image_beam.py",
+        "check_image_beam.py",
+        "filter_skymodel.py",
+        "calculate_image_diagnostics.py",
+        "make_catalog_from_image_cube.py",
+        "normalize_flux_scale.py",
+    ]
+
+
 def test_image_sector_task_wraps_runner(tmp_path, fake_image_shell_operation_cls):
     payload = image_payload_from_inputs(_image_input_parms(), tmp_path)
 
@@ -956,6 +1160,10 @@ def test_image_reference_output_fixture_matches_output_contract():
     for value in outputs["image_compressed"].values():
         validate_output_record(value, allow_none=True)
     for value in outputs["image_filtered_model"].values():
+        validate_output_record(value, allow_none=True)
+    for value in outputs["image_cube"].values():
+        validate_output_record(value, allow_none=True)
+    for value in outputs["image_normalize"].values():
         validate_output_record(value, allow_none=True)
 
 
@@ -1040,22 +1248,21 @@ def test_image_finalizer_accepts_prefect_outputs_for_selfcal(
     assert Path(operation.done_file).is_file()
 
 
-def test_image_normalize_finalizer_accepts_cwl_compatible_outputs(tmp_path):
+def test_image_normalize_finalizer_accepts_prefect_outputs(
+    tmp_path, fake_image_shell_operation_cls
+):
     field = FieldStub(tmp_path)
     operation = ImageNormalize(field, index=1)
-    pipeline_dir = Path(operation.pipeline_working_dir)
-    normalize_h5parm = pipeline_dir / "sector_1_normalize.h5parm"
-    image_cube = pipeline_dir / "sector_1_I_freq_cube.fits"
-    image_cube_beam = pipeline_dir / "sector_1_I_freq_cube-beam.txt"
-    image_cube_frequencies = pipeline_dir / "sector_1_I_freq_cube-frequencies.txt"
-    for path in [normalize_h5parm, image_cube, image_cube_beam, image_cube_frequencies]:
-        path.write_text("output")
-    operation.outputs = {
-        "sector_normalize_h5parm": [file_record(normalize_h5parm)],
-        "sector_image_cubes": [[file_record(image_cube)]],
-        "sector_image_cube_beams": [[file_record(image_cube_beam)]],
-        "sector_image_cube_frequencies": [[file_record(image_cube_frequencies)]],
-    }
+    operation.outputs = run_image_flow(
+        image_payload_from_inputs(
+            _normalize_image_input_parms(),
+            operation.pipeline_working_dir,
+            make_image_cube=True,
+            normalize_flux_scale=True,
+        ),
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_image_shell_operation_cls,
+    )
 
     operation.finalize()
 
@@ -1064,8 +1271,8 @@ def test_image_normalize_finalizer_accepts_cwl_compatible_outputs(tmp_path):
     assert field.normalize_h5parm == str(solutions_dir / "sector_1_normalize.h5parm")
     assert (solutions_dir / "sector_1_normalize.h5parm").is_file()
     assert (image_dir / "sector_1_I_freq_cube.fits").is_file()
-    assert (image_dir / "sector_1_I_freq_cube-beam.txt").is_file()
-    assert (image_dir / "sector_1_I_freq_cube-frequencies.txt").is_file()
+    assert (image_dir / "sector_1_I_freq_cube.fits_beams.txt").is_file()
+    assert (image_dir / "sector_1_I_freq_cube.fits_frequencies.txt").is_file()
     assert field.normalize_flux_scale is False
     assert field.apply_normalizations is True
     assert Path(operation.done_file).is_file()

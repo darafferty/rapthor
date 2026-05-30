@@ -100,6 +100,27 @@
             "sector_1-MFS-I-image-pb.fits",
             "sector_1-MFS-filtered-model.fits.fz"
         ],
+        "make_image_cube": [
+            "make_image_cube.py",
+            "sector_1-0000-I-image-pb.fits,sector_1-0001-I-image-pb.fits",
+            "sector_1_I_freq_cube.fits"
+        ],
+        "make_catalog_from_image_cube": [
+            "make_catalog_from_image_cube.py",
+            "sector_1_I_freq_cube.fits",
+            "sector_1_I_freq_cube.fits_beams.txt",
+            "sector_1_I_freq_cube.fits_frequencies.txt",
+            "sector_1_source_catalog.fits",
+            "--threshisl=4.0",
+            "--threshpix=5.0",
+            "--ncores=4"
+        ],
+        "normalize_flux_scale": [
+            "normalize_flux_scale.py",
+            "sector_1_source_catalog.fits",
+            "sector_1_concat.ms",
+            "sector_1_normalize.h5parm"
+        ],
         "wsclean_no_dde": [
             "wsclean",
             "-no-update-model-required",
