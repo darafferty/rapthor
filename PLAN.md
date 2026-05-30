@@ -1305,9 +1305,9 @@ Verified in the rebuilt devcontainer:
 Deferred to later imaging PRs:
 
 - Add task-local WSClean temporary directory cleanup/isolation tests.
-- Add compression and filtered-model-image handling.
-- Add regular selfcal `Image` and `ImageNormalize` finalizer coverage.
-- Add screen, MPI, image-cube, full-Stokes, and clean-disabled WSClean modes.
+- Add MPI WSClean variants, image-cube outputs, full-Stokes imaging,
+  clean-disabled branches, and task-local WSClean temporary directory
+  cleanup/isolation tests.
 - Add real external-tool coverage once lightweight Measurement Set and FITS
   fixtures are available.
 
@@ -1355,8 +1355,6 @@ Verified in the rebuilt devcontainer:
 
 Deferred to later imaging PRs:
 
-- Add image compression and filtered-model-image handling.
-- Add regular selfcal `Image` and `ImageNormalize` finalizer coverage.
 - Add MPI WSClean variants, image-cube outputs, full-Stokes imaging,
   clean-disabled branches, and task-local WSClean temporary directory
   cleanup/isolation tests.
@@ -1398,7 +1396,6 @@ Verified in the rebuilt devcontainer:
 
 Deferred to later imaging PRs:
 
-- Add regular selfcal `Image` and `ImageNormalize` finalizer coverage.
 - Add MPI WSClean variants, image-cube outputs, full-Stokes imaging,
   clean-disabled branches, and task-local WSClean temporary directory
   cleanup/isolation tests.
@@ -1441,7 +1438,44 @@ Verified in the rebuilt devcontainer:
 
 Deferred to later imaging PRs:
 
-- Add regular selfcal `Image` and `ImageNormalize` finalizer coverage.
+- Add MPI WSClean variants, image-cube outputs, full-Stokes imaging,
+  clean-disabled branches, and task-local WSClean temporary directory
+  cleanup/isolation tests.
+- Add real external-tool coverage once lightweight Measurement Set and FITS
+  fixtures are available.
+
+### PR 10: Image Finalizer Acceptance Coverage
+
+Status: complete for the next direct-flow imaging test slice on the migration
+branch.
+
+- Add execution-layer finalizer acceptance coverage for regular selfcal
+  `Image.finalize()` using Prefect-produced compressed and filtered-model image
+  outputs.
+- Verify that finalizer-compatible image records populate sector image,
+  skymodel, mask, filtered-model, visibility, diagnostics, flux-ratio, and done
+  state as expected.
+- Add `ImageNormalize.finalize()` coverage using synthetic CWL-compatible
+  normalization h5parm and image-cube records. The cube-generation flow remains
+  deferred, but the finalizer contract is now pinned before that porting work.
+- Keep the tests scoped to finalizer acceptance; no new runtime image flow mode
+  is introduced in this PR.
+
+Implemented files:
+
+- `tests/execution/test_image_flow.py`
+- Updates to `PLAN.md`
+
+Verified in the rebuilt devcontainer:
+
+- `python3 -m pytest tests/execution/test_image_flow.py`: 23 passed.
+- `python3 -m pytest tests/execution tests/lib/test_parset.py`: 145 passed.
+- `python3 -m ruff check rapthor/execution tests/execution pyproject.toml`:
+  passed.
+- `python3 -m ruff format --check rapthor/execution tests/execution`: passed.
+
+Deferred to later imaging PRs:
+
 - Add MPI WSClean variants, image-cube outputs, full-Stokes imaging,
   clean-disabled branches, and task-local WSClean temporary directory
   cleanup/isolation tests.

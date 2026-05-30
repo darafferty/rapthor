@@ -30,7 +30,7 @@ from rapthor.execution.flows.image import (
     run_image_flow,
 )
 from rapthor.execution.outputs import directory_record, file_record, validate_output_record
-from rapthor.operations.image import ImageInitial
+from rapthor.operations.image import Image, ImageInitial, ImageNormalize
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
 
@@ -124,9 +124,15 @@ class FieldStub:
         self.parset = _operation_parset(tmp_path)
         self.make_image_cube = False
         self.full_field_sector = SectorStub()
+        self.imaging_sectors = [SectorStub()]
+        self.normalize_sector = SectorStub()
         self.save_supplementary_images = False
+        self.save_visibilities = False
+        self.image_pol = "I"
         self.lofar_to_true_flux_ratio = None
         self.lofar_to_true_flux_std = None
+        self.normalize_flux_scale = True
+        self.apply_normalizations = False
 
 
 def _operation_parset(tmp_path):
@@ -975,4 +981,91 @@ def test_image_initial_finalizer_accepts_prefect_outputs(tmp_path, fake_image_sh
     assert field.full_field_sector.diagnostics == [{}]
     assert field.lofar_to_true_flux_ratio == 1.0
     assert field.lofar_to_true_flux_std == 0.0
+    assert Path(operation.done_file).is_file()
+
+
+def test_image_finalizer_accepts_prefect_outputs_for_selfcal(
+    tmp_path, fake_image_shell_operation_cls
+):
+    field = FieldStub(tmp_path)
+    field.parset["imaging_specific"]["save_filtered_model_image"] = True
+    field.save_supplementary_images = True
+    field.save_visibilities = True
+    operation = Image(field, index=1)
+    outputs = run_image_flow(
+        image_payload_from_inputs(
+            _filtered_model_image_input_parms(),
+            operation.pipeline_working_dir,
+            compress_images=True,
+        ),
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_image_shell_operation_cls,
+    )
+
+    operation.outputs = outputs
+    operation.finalize()
+
+    sector = field.imaging_sectors[0]
+    pipeline_dir = Path(operation.pipeline_working_dir)
+    skymodel_dir = Path(field.parset["dir_working"]) / "skymodels" / "image_1"
+    visibility_dir = Path(field.parset["dir_working"]) / "visibilities" / "image_1" / sector.name
+    diagnostics_dir = Path(field.parset["dir_working"]) / "plots" / "image_1"
+
+    assert sector.I_image_file_apparent_sky == str(pipeline_dir / "sector_1-MFS-I-image.fits.fz")
+    assert sector.I_image_file_true_sky == str(pipeline_dir / "sector_1-MFS-I-image-pb.fits.fz")
+    assert sector.I_model_file_true_sky == str(pipeline_dir / "sector_1-MFS-I-model-pb.fits.fz")
+    assert sector.I_residual_file_apparent_sky == str(
+        pipeline_dir / "sector_1-MFS-I-residual.fits.fz"
+    )
+    assert sector.I_dirty_file_apparent_sky == str(pipeline_dir / "sector_1-MFS-I-dirty.fits.fz")
+    assert sector.filtering_mask_file == str(
+        pipeline_dir / "sector_1-MFS-I-image-pb.fits.mask.fits"
+    )
+    assert sector.filtered_model_file_apparent_sky == str(
+        pipeline_dir / "sector_1-MFS-filtered-model.fits.fz"
+    )
+    assert sector.image_skymodel_file_true_sky == str(skymodel_dir / "sector_1.true_sky.txt")
+    assert sector.image_skymodel_file_apparent_sky == str(
+        skymodel_dir / "sector_1.apparent_sky.txt"
+    )
+    assert (skymodel_dir / "sector_1.true_sky.txt").is_file()
+    assert (skymodel_dir / "sector_1.apparent_sky.txt").is_file()
+    assert (skymodel_dir / "sector_1.source_catalog.fits").is_file()
+    assert (visibility_dir / "sector_1_obs_0_prep.ms").is_dir()
+    assert (visibility_dir / "sector_1_obs_1_prep.ms").is_dir()
+    assert (diagnostics_dir / "sector_1.image_diagnostics.json").is_file()
+    assert sector.diagnostics == [{"cycle_number": 1}]
+    assert field.lofar_to_true_flux_ratio == 1.0
+    assert field.lofar_to_true_flux_std == 0.0
+    assert Path(operation.done_file).is_file()
+
+
+def test_image_normalize_finalizer_accepts_cwl_compatible_outputs(tmp_path):
+    field = FieldStub(tmp_path)
+    operation = ImageNormalize(field, index=1)
+    pipeline_dir = Path(operation.pipeline_working_dir)
+    normalize_h5parm = pipeline_dir / "sector_1_normalize.h5parm"
+    image_cube = pipeline_dir / "sector_1_I_freq_cube.fits"
+    image_cube_beam = pipeline_dir / "sector_1_I_freq_cube-beam.txt"
+    image_cube_frequencies = pipeline_dir / "sector_1_I_freq_cube-frequencies.txt"
+    for path in [normalize_h5parm, image_cube, image_cube_beam, image_cube_frequencies]:
+        path.write_text("output")
+    operation.outputs = {
+        "sector_normalize_h5parm": [file_record(normalize_h5parm)],
+        "sector_image_cubes": [[file_record(image_cube)]],
+        "sector_image_cube_beams": [[file_record(image_cube_beam)]],
+        "sector_image_cube_frequencies": [[file_record(image_cube_frequencies)]],
+    }
+
+    operation.finalize()
+
+    solutions_dir = Path(field.parset["dir_working"]) / "solutions" / "normalize_1"
+    image_dir = Path(field.parset["dir_working"]) / "images" / "normalize_1"
+    assert field.normalize_h5parm == str(solutions_dir / "sector_1_normalize.h5parm")
+    assert (solutions_dir / "sector_1_normalize.h5parm").is_file()
+    assert (image_dir / "sector_1_I_freq_cube.fits").is_file()
+    assert (image_dir / "sector_1_I_freq_cube-beam.txt").is_file()
+    assert (image_dir / "sector_1_I_freq_cube-frequencies.txt").is_file()
+    assert field.normalize_flux_scale is False
+    assert field.apply_normalizations is True
     assert Path(operation.done_file).is_file()
