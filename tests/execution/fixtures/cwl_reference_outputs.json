@@ -168,6 +168,111 @@
             ]
         ]
     },
+    "image_compressed": {
+        "filtered_skymodel_true_sky": [
+            {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1.true_sky.txt"}
+        ],
+        "filtered_skymodel_apparent_sky": [
+            {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1.apparent_sky.txt"}
+        ],
+        "pybdsf_catalog": [
+            {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1.source_catalog.fits"}
+        ],
+        "sector_diagnostics": [
+            {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1.image_diagnostics.json"}
+        ],
+        "sector_offsets": [
+            {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1.astrometry_offsets.json"}
+        ],
+        "sector_diagnostic_plots": [
+            [{"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1.photometry.pdf"}]
+        ],
+        "visibilities": [
+            [
+                {"class": "Directory", "path": "${PIPELINE_WORKING_DIR}/sector_1_obs_0_prep.ms"},
+                {"class": "Directory", "path": "${PIPELINE_WORKING_DIR}/sector_1_obs_1_prep.ms"}
+            ]
+        ],
+        "sector_I_images": [
+            [
+                {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-image.fits.fz"},
+                {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-image-pb.fits.fz"}
+            ]
+        ],
+        "sector_extra_images": [
+            [
+                {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-residual.fits.fz"},
+                {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-model-pb.fits.fz"},
+                {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-dirty.fits.fz"}
+            ]
+        ],
+        "source_filtering_mask": [
+            {
+                "class": "File",
+                "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-image-pb.fits.mask.fits"
+            }
+        ],
+        "sector_skymodels": [
+            [
+                {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-sources.txt"},
+                {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-sources-pb.txt"}
+            ]
+        ]
+    },
+    "image_filtered_model": {
+        "filtered_skymodel_true_sky": [
+            {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1.true_sky.txt"}
+        ],
+        "filtered_skymodel_apparent_sky": [
+            {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1.apparent_sky.txt"}
+        ],
+        "pybdsf_catalog": [
+            {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1.source_catalog.fits"}
+        ],
+        "sector_diagnostics": [
+            {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1.image_diagnostics.json"}
+        ],
+        "sector_offsets": [
+            {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1.astrometry_offsets.json"}
+        ],
+        "sector_diagnostic_plots": [
+            [{"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1.photometry.pdf"}]
+        ],
+        "visibilities": [
+            [
+                {"class": "Directory", "path": "${PIPELINE_WORKING_DIR}/sector_1_obs_0_prep.ms"},
+                {"class": "Directory", "path": "${PIPELINE_WORKING_DIR}/sector_1_obs_1_prep.ms"}
+            ]
+        ],
+        "sector_I_images": [
+            [
+                {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-image.fits"},
+                {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-image-pb.fits"}
+            ]
+        ],
+        "sector_extra_images": [
+            [
+                {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-dirty.fits"},
+                {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-model-pb.fits"},
+                {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-residual.fits"}
+            ]
+        ],
+        "source_filtering_mask": [
+            {
+                "class": "File",
+                "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-image-pb.fits.mask.fits"
+            }
+        ],
+        "sector_skymodels": [
+            [
+                {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-sources.txt"},
+                {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-sources-pb.txt"}
+            ]
+        ],
+        "sector_skymodel_image_fits": [
+            {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-filtered-model.fits.fz"}
+        ]
+    },
     "predict_di": {
         "msfiles_di_cal": [
             [

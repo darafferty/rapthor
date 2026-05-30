@@ -11,14 +11,18 @@ from rapthor.execution.flows.image import (
     build_aterm_config_content,
     build_calculate_image_diagnostics_command,
     build_check_image_beam_command,
+    build_compress_sector_images_command,
     build_filter_skymodel_command,
     build_make_region_file_command,
+    build_make_skymodel_image_command,
     image_flow,
     image_payload_from_inputs,
     image_sector_task,
     normalized_blank_image_command,
+    normalized_compress_sector_images_command,
     normalized_concat_time_command,
     normalized_make_region_file_command,
+    normalized_make_skymodel_image_command,
     normalized_prepare_imaging_data_command,
     normalized_wsclean_facets_command,
     normalized_wsclean_no_dde_command,
@@ -69,6 +73,9 @@ def fake_image_shell_operation_cls():
                     "-sources-pb.txt",
                 ]:
                     (cwd / f"{image_name}{suffix}").write_text("image")
+            elif tokens[0] == "fpack":
+                for image in tokens[1:]:
+                    Path(f"{image}.fz").write_text("compressed")
             elif tokens[0] == "check_image_beam.py":
                 Path(tokens[1]).touch(exist_ok=True)
             elif tokens[0] == "filter_skymodel.py":
@@ -84,6 +91,8 @@ def fake_image_shell_operation_cls():
                     (cwd / f"{output_root}{suffix}").write_text("filter")
                 (cwd / f"{true_sky_image}.mask.fits").write_text("mask")
                 (cwd / f"{output_root}.image_diagnostics.json").write_text("{}")
+            elif tokens[0] == "restore_skymodel.py":
+                (cwd / tokens[3]).write_text("model image")
             elif tokens[0] == "calculate_image_diagnostics.py":
                 output_root = tokens[10]
                 (cwd / f"{output_root}.image_diagnostics.json").write_text("{}")
@@ -255,6 +264,12 @@ def _screens_image_input_parms():
     return input_parms
 
 
+def _filtered_model_image_input_parms():
+    input_parms = _image_input_parms()
+    input_parms["save_filtered_model_image"] = True
+    return input_parms
+
+
 def test_image_command_builders_match_reference_fixtures():
     commands = json.loads((FIXTURE_DIR / "cwl_reference_commands.json").read_text())
 
@@ -294,6 +309,26 @@ def test_image_command_builders_match_reference_fixtures():
             cellsize_deg=0.001,
         )
         == commands["image"]["blank_image"]
+    )
+    assert (
+        normalized_compress_sector_images_command(
+            images=[
+                "sector_1-MFS-I-image.fits",
+                "sector_1-MFS-I-image-pb.fits",
+                "sector_1-MFS-I-residual.fits",
+                "sector_1-MFS-I-model-pb.fits",
+                "sector_1-MFS-I-dirty.fits",
+            ]
+        )
+        == commands["image"]["compress_sector_images"]
+    )
+    assert (
+        normalized_make_skymodel_image_command(
+            source_catalog="sector_1.apparent_sky.txt",
+            reference_image="sector_1-MFS-I-image-pb.fits",
+            output_image_name="sector_1-MFS-filtered-model.fits.fz",
+        )
+        == commands["image"]["make_skymodel_image"]
     )
     assert (
         normalized_wsclean_no_dde_command(
@@ -458,6 +493,23 @@ def test_image_support_command_builders_create_expected_tokens():
         "sector_1_facets_ds9.reg",
         "--enclose_names=True",
     ]
+    assert build_compress_sector_images_command(
+        ["sector_1-MFS-I-image.fits", "sector_1-MFS-I-image-pb.fits"]
+    ) == [
+        "fpack",
+        "sector_1-MFS-I-image.fits",
+        "sector_1-MFS-I-image-pb.fits",
+    ]
+    assert build_make_skymodel_image_command(
+        "sector_1.apparent_sky.txt",
+        "sector_1-MFS-I-image-pb.fits",
+        "sector_1-MFS-filtered-model.fits.fz",
+    ) == [
+        "restore_skymodel.py",
+        "sector_1.apparent_sky.txt",
+        "sector_1-MFS-I-image-pb.fits",
+        "sector_1-MFS-filtered-model.fits.fz",
+    ]
     assert build_check_image_beam_command("sector_1-MFS-I-image.fits", 0.0) == [
         "check_image_beam.py",
         "sector_1-MFS-I-image.fits",
@@ -575,6 +627,26 @@ def test_image_payload_from_inputs_builds_serializable_screen_payload(tmp_path):
     assert sector["prepare_tasks"][0]["maxinterval"] is None
 
 
+def test_image_payload_from_inputs_builds_compressed_payload(tmp_path):
+    payload = image_payload_from_inputs(_image_input_parms(), tmp_path, compress_images=True)
+
+    sector = payload["sectors"][0]
+    assert payload["mode"] == "no_dde_stokes_i"
+    assert sector["compress_images"] is True
+    assert sector["save_filtered_model_image"] is False
+
+
+def test_image_payload_from_inputs_builds_filtered_model_payload(tmp_path):
+    payload = image_payload_from_inputs(_filtered_model_image_input_parms(), tmp_path)
+
+    sector = payload["sectors"][0]
+    assert sector["save_filtered_model_image"] is True
+    assert sector["filtered_model_image_filename"] == "sector_1-MFS-filtered-model.fits.fz"
+    assert sector["filtered_model_image_path"] == str(
+        tmp_path / "sector_1-MFS-filtered-model.fits.fz"
+    )
+
+
 def test_image_payload_from_inputs_rejects_unsupported_modes(tmp_path):
     with pytest.raises(ValueError, match="cannot both"):
         image_payload_from_inputs(
@@ -609,6 +681,13 @@ def test_image_payload_from_inputs_requires_screen_inputs(tmp_path):
     input_parms["interval"] = [0]
     with pytest.raises(ValueError, match="interval"):
         image_payload_from_inputs(input_parms, tmp_path, apply_screens=True)
+
+
+def test_image_payload_from_inputs_requires_filtered_model_filename(tmp_path):
+    input_parms = _filtered_model_image_input_parms()
+    input_parms["filtered_model_image_name"] = ["nested/sector_1-filtered.fits.fz"]
+    with pytest.raises(ValueError, match="filtered_model_image_name"):
+        image_payload_from_inputs(input_parms, tmp_path)
 
 
 def test_run_image_flow_executes_no_dde_commands_and_returns_records(
@@ -749,6 +828,72 @@ def test_run_image_flow_executes_screen_commands_and_writes_aterm_config(
     assert "-apply-facet-beam" not in screen_command
 
 
+def test_run_image_flow_returns_compressed_image_outputs(tmp_path, fake_image_shell_operation_cls):
+    outputs = run_image_flow(
+        image_payload_from_inputs(_image_input_parms(), tmp_path, compress_images=True),
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_image_shell_operation_cls,
+    )
+
+    assert outputs["sector_I_images"] == [
+        [
+            file_record(tmp_path / "sector_1-MFS-I-image.fits.fz"),
+            file_record(tmp_path / "sector_1-MFS-I-image-pb.fits.fz"),
+        ]
+    ]
+    assert outputs["sector_extra_images"] == [
+        [
+            file_record(tmp_path / "sector_1-MFS-I-residual.fits.fz"),
+            file_record(tmp_path / "sector_1-MFS-I-model-pb.fits.fz"),
+            file_record(tmp_path / "sector_1-MFS-I-dirty.fits.fz"),
+        ]
+    ]
+    command_names = [
+        shlex.split(instance.kwargs["commands"][0])[0]
+        for instance in fake_image_shell_operation_cls.instances
+    ]
+    assert command_names == [
+        "DP3",
+        "DP3",
+        "concat_ms.py",
+        "blank_image.py",
+        "wsclean",
+        "check_image_beam.py",
+        "check_image_beam.py",
+        "filter_skymodel.py",
+        "calculate_image_diagnostics.py",
+        "fpack",
+    ]
+
+
+def test_run_image_flow_returns_filtered_model_image(tmp_path, fake_image_shell_operation_cls):
+    outputs = run_image_flow(
+        image_payload_from_inputs(_filtered_model_image_input_parms(), tmp_path),
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_image_shell_operation_cls,
+    )
+
+    assert outputs["sector_skymodel_image_fits"] == [
+        file_record(tmp_path / "sector_1-MFS-filtered-model.fits.fz")
+    ]
+    command_names = [
+        shlex.split(instance.kwargs["commands"][0])[0]
+        for instance in fake_image_shell_operation_cls.instances
+    ]
+    assert command_names == [
+        "DP3",
+        "DP3",
+        "concat_ms.py",
+        "blank_image.py",
+        "wsclean",
+        "check_image_beam.py",
+        "check_image_beam.py",
+        "filter_skymodel.py",
+        "restore_skymodel.py",
+        "calculate_image_diagnostics.py",
+    ]
+
+
 def test_image_sector_task_wraps_runner(tmp_path, fake_image_shell_operation_cls):
     payload = image_payload_from_inputs(_image_input_parms(), tmp_path)
 
@@ -801,6 +946,10 @@ def test_image_reference_output_fixture_matches_output_contract():
     for value in outputs["image_facets"].values():
         validate_output_record(value, allow_none=True)
     for value in outputs["image_screens"].values():
+        validate_output_record(value, allow_none=True)
+    for value in outputs["image_compressed"].values():
+        validate_output_record(value, allow_none=True)
+    for value in outputs["image_filtered_model"].values():
         validate_output_record(value, allow_none=True)
 
 

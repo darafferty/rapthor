@@ -86,6 +86,20 @@
             "--reference_dec_deg=45.0",
             "--cellsize_deg=0.001"
         ],
+        "compress_sector_images": [
+            "fpack",
+            "sector_1-MFS-I-image.fits",
+            "sector_1-MFS-I-image-pb.fits",
+            "sector_1-MFS-I-residual.fits",
+            "sector_1-MFS-I-model-pb.fits",
+            "sector_1-MFS-I-dirty.fits"
+        ],
+        "make_skymodel_image": [
+            "restore_skymodel.py",
+            "sector_1.apparent_sky.txt",
+            "sector_1-MFS-I-image-pb.fits",
+            "sector_1-MFS-filtered-model.fits.fz"
+        ],
         "wsclean_no_dde": [
             "wsclean",
             "-no-update-model-required",

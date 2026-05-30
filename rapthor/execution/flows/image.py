@@ -219,6 +219,20 @@ def build_make_region_file_command(
     ]
 
 
+def build_compress_sector_images_command(images: list[str]) -> list[str]:
+    """Build the `fpack` command for sector image compression."""
+    return ["fpack", *images]
+
+
+def build_make_skymodel_image_command(
+    source_catalog: str,
+    reference_image: str,
+    output_image_name: str,
+) -> list[str]:
+    """Build the `restore_skymodel.py` command for filtered-model images."""
+    return ["restore_skymodel.py", source_catalog, reference_image, output_image_name]
+
+
 def build_wsclean_no_dde_command(
     msin: str,
     name: str,
@@ -646,14 +660,10 @@ def image_payload_from_inputs(
     """Create a serializable Stokes-I Image flow payload."""
     if apply_screens and use_facets:
         raise ValueError("apply_screens and use_facets cannot both be enabled")
-    if compress_images:
-        raise NotImplementedError("Image compression is not part of the current image slice")
     if input_parms.get("peel_bright_sources"):
         raise NotImplementedError(
             "Bright-source restoration is not part of the current image slice"
         )
-    if input_parms.get("save_filtered_model_image"):
-        raise NotImplementedError("Filtered model images are not part of the current image slice")
 
     pol = _pol_token(input_parms["pol"])
     if pol.upper() != "I":
@@ -664,6 +674,7 @@ def image_payload_from_inputs(
     if not isinstance(image_names, list):
         raise ValueError("image_name must be a list")
     sector_count = len(image_names)
+    save_filtered_model_image = bool(input_parms.get("save_filtered_model_image"))
     per_sector_keys = [
         "obs_filename",
         "prepare_filename",
@@ -715,6 +726,8 @@ def image_payload_from_inputs(
                 "facet_region_file",
             ]
         )
+    if save_filtered_model_image:
+        per_sector_keys.append("filtered_model_image_name")
     for key in per_sector_keys:
         value = input_parms.get(key, [])
         if not isinstance(value, list) or len(value) != sector_count:
@@ -807,11 +820,19 @@ def image_payload_from_inputs(
                 input_parms["facet_region_file"][sector_index],
                 f"facet_region_file[{sector_index}]",
             )
+        filtered_model_image_filename = None
+        if save_filtered_model_image:
+            filtered_model_image_filename = _validate_basename(
+                input_parms["filtered_model_image_name"][sector_index],
+                f"filtered_model_image_name[{sector_index}]",
+            )
         sectors.append(
             {
                 "image_name": image_name,
                 "apply_screens": apply_screens,
                 "use_facets": use_facets,
+                "compress_images": bool(compress_images),
+                "save_filtered_model_image": save_filtered_model_image,
                 "data_colname": str(input_parms["data_colname"]),
                 "prepare_tasks": prepare_tasks,
                 "concat_filename": concat_filename,
@@ -849,6 +870,12 @@ def image_payload_from_inputs(
                     None
                     if facet_region_filename is None
                     else os.path.join(pipeline_dir, facet_region_filename)
+                ),
+                "filtered_model_image_filename": filtered_model_image_filename,
+                "filtered_model_image_path": (
+                    None
+                    if filtered_model_image_filename is None
+                    else os.path.join(pipeline_dir, filtered_model_image_filename)
                 ),
                 "ra_mid": (None if not use_facets else float(input_parms["ra_mid"][sector_index])),
                 "dec_mid": (
@@ -957,6 +984,40 @@ def _file_records_for_patterns(patterns: list[str]) -> list[dict]:
             if os.path.isfile(path):
                 records.append(file_record(path))
     return records
+
+
+def _compressed_file_record(record: dict, description: str) -> dict:
+    return _require_file(f"{record['path']}.fz", description)
+
+
+def _compress_image_records(
+    image_name: str,
+    sector_images: list[dict],
+    extra_images: list[dict],
+    pipeline_working_dir: str,
+    execution_config: ExecutionConfig,
+    shell_operation_cls=None,
+) -> tuple[list[dict], list[dict]]:
+    command = build_compress_sector_images_command(
+        [record["path"] for record in sector_images + extra_images]
+    )
+    _run_shell(
+        command, pipeline_working_dir, execution_config, shell_operation_cls=shell_operation_cls
+    )
+    compressed_sector_images = [
+        _compressed_file_record(sector_images[0], "Compressed WSClean non-PB image"),
+        _compressed_file_record(sector_images[1], "Compressed WSClean PB image"),
+    ]
+    compressed_extra_images = _file_records_for_patterns(
+        [
+            os.path.join(pipeline_working_dir, f"{image_name}-MFS-[QUV]-image.fits.fz"),
+            os.path.join(pipeline_working_dir, f"{image_name}-MFS-[QUV]-image-pb.fits.fz"),
+            os.path.join(pipeline_working_dir, f"{image_name}-MFS-*residual.fits.fz"),
+            os.path.join(pipeline_working_dir, f"{image_name}-MFS-*model-pb.fits.fz"),
+            os.path.join(pipeline_working_dir, f"{image_name}-MFS-*dirty.fits.fz"),
+        ]
+    )
+    return compressed_sector_images, compressed_extra_images
 
 
 def _write_aterm_config(pipeline_working_dir: str, h5parm: str) -> str:
@@ -1199,6 +1260,7 @@ def run_image_sector(
             os.path.join(pipeline_working_dir, f"{image_name}-MFS-*dirty.fits"),
         ]
     )
+    sector_images = [nonpb_image, pb_image]
     skymodel_nonpb = _require_file(
         os.path.join(pipeline_working_dir, f"{image_name}-sources.txt"),
         "WSClean apparent-sky source list",
@@ -1262,6 +1324,23 @@ def run_image_sector(
         "Source filtering mask",
     )
 
+    skymodel_image = None
+    if sector["save_filtered_model_image"]:
+        skymodel_image_command = build_make_skymodel_image_command(
+            filtered_apparent_sky["path"],
+            pb_image["path"],
+            str(sector["filtered_model_image_filename"]),
+        )
+        _run_shell(
+            skymodel_image_command,
+            pipeline_working_dir,
+            config,
+            shell_operation_cls=shell_operation_cls,
+        )
+        skymodel_image = _require_file(
+            str(sector["filtered_model_image_path"]), "Filtered skymodel image"
+        )
+
     diagnostics_command = build_calculate_image_diagnostics_command(
         nonpb_image["path"],
         flat_noise_rms["path"],
@@ -1291,6 +1370,18 @@ def run_image_sector(
         [os.path.join(pipeline_working_dir, f"{image_name}*.pdf")]
     )
 
+    output_sector_images = sector_images
+    output_extra_images = extra_images
+    if sector["compress_images"]:
+        output_sector_images, output_extra_images = _compress_image_records(
+            image_name,
+            sector_images,
+            extra_images,
+            pipeline_working_dir,
+            config,
+            shell_operation_cls=shell_operation_cls,
+        )
+
     result = {
         "filtered_skymodel_true_sky": filtered_true_sky,
         "filtered_skymodel_apparent_sky": filtered_apparent_sky,
@@ -1299,13 +1390,15 @@ def run_image_sector(
         "sector_offsets": offsets,
         "sector_diagnostic_plots": diagnostic_plots,
         "visibilities": prepared_records,
-        "sector_I_images": [nonpb_image, pb_image],
-        "sector_extra_images": extra_images,
+        "sector_I_images": output_sector_images,
+        "sector_extra_images": output_extra_images,
         "source_filtering_mask": source_filtering_mask,
         "sector_skymodels": [skymodel_nonpb, skymodel_pb] if sector["save_source_list"] else None,
     }
     if region_record is not None:
         result["sector_region_file"] = region_record
+    if skymodel_image is not None:
+        result["sector_skymodel_image_fits"] = skymodel_image
     return result
 
 
@@ -1347,6 +1440,10 @@ def _result_from_sector_records(sector_outputs: list[dict]) -> dict:
     if any("sector_region_file" in sector for sector in sector_outputs):
         result["sector_region_file"] = [
             sector.get("sector_region_file") for sector in sector_outputs
+        ]
+    if any("sector_skymodel_image_fits" in sector for sector in sector_outputs):
+        result["sector_skymodel_image_fits"] = [
+            sector.get("sector_skymodel_image_fits") for sector in sector_outputs
         ]
     for value in result.values():
         validate_output_record(value, allow_none=True)
@@ -1424,6 +1521,16 @@ def normalized_concat_time_command(**kwargs) -> list[str]:
 def normalized_blank_image_command(**kwargs) -> list[str]:
     """Return normalized blank-image command tokens for fixture comparisons."""
     return normalize_command(build_blank_image_command(**kwargs))
+
+
+def normalized_compress_sector_images_command(**kwargs) -> list[str]:
+    """Return normalized sector-image compression command tokens for fixture comparisons."""
+    return normalize_command(build_compress_sector_images_command(**kwargs))
+
+
+def normalized_make_skymodel_image_command(**kwargs) -> list[str]:
+    """Return normalized make-skymodel-image command tokens for fixture comparisons."""
+    return normalize_command(build_make_skymodel_image_command(**kwargs))
 
 
 def normalized_make_region_file_command(**kwargs) -> list[str]:

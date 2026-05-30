@@ -1398,7 +1398,49 @@ Verified in the rebuilt devcontainer:
 
 Deferred to later imaging PRs:
 
-- Add image compression and filtered-model-image handling.
+- Add regular selfcal `Image` and `ImageNormalize` finalizer coverage.
+- Add MPI WSClean variants, image-cube outputs, full-Stokes imaging,
+  clean-disabled branches, and task-local WSClean temporary directory
+  cleanup/isolation tests.
+- Add real external-tool coverage once lightweight Measurement Set and FITS
+  fixtures are available.
+
+### PR 9: Compressed And Filtered-Model Image Outputs
+
+Status: complete for the next direct-flow imaging slice on the migration branch.
+
+- Add sector image compression support matching `compress_sector_images.cwl`.
+- Keep uncompressed WSClean images as the inputs to beam checks, source
+  filtering, and diagnostics while returning compressed `sector_I_images` and
+  `sector_extra_images` when compression is enabled. In the direct Python flow,
+  run compression after diagnostics so `fpack` cannot remove images that later
+  steps still need in the shared operation work directory.
+- Add filtered-model image support matching `make_skymodel_image.cwl`, using
+  `restore_skymodel.py` after source filtering and returning
+  `sector_skymodel_image_fits` only when requested.
+- Validate filtered-model output filenames as per-sector basenames.
+- Preserve no-DDE, facet, and screen Stokes-I output contracts while adding
+  compressed and filtered-model command/output parity fixtures.
+
+Implemented files:
+
+- `rapthor/execution/flows/image.py`
+- `tests/execution/test_image_flow.py`
+- Updates to `rapthor/execution/flows/__init__.py`
+- Updates to `rapthor/execution/__init__.py`
+- Updates to `tests/execution/fixtures/cwl_reference_commands.json`
+- Updates to `tests/execution/fixtures/cwl_reference_outputs.json`
+
+Verified in the rebuilt devcontainer:
+
+- `python3 -m pytest tests/execution/test_image_flow.py`: 21 passed.
+- `python3 -m pytest tests/execution tests/lib/test_parset.py`: 143 passed.
+- `python3 -m ruff check rapthor/execution tests/execution pyproject.toml`:
+  passed.
+- `python3 -m ruff format --check rapthor/execution tests/execution`: passed.
+
+Deferred to later imaging PRs:
+
 - Add regular selfcal `Image` and `ImageNormalize` finalizer coverage.
 - Add MPI WSClean variants, image-cube outputs, full-Stokes imaging,
   clean-disabled branches, and task-local WSClean temporary directory
