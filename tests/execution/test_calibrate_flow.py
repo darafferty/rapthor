@@ -8,12 +8,14 @@ from prefect.testing.utilities import prefect_test_harness
 import rapthor.execution.flows.calibrate as calibrate_module
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.calibrate import (
+    build_combine_h5parms_command,
     build_collect_h5parms_command,
     build_ddecal_solve_command,
     build_plot_solutions_command,
     calibrate_chunk_task,
     calibrate_flow,
     calibrate_payload_from_inputs,
+    normalized_combine_h5parms_command,
     normalized_collect_h5parms_command,
     normalized_ddecal_solve_command,
     normalized_plot_solutions_command,
@@ -37,11 +39,10 @@ def fake_calibrate_shell_operation_cls():
             tokens = shlex.split(self.kwargs["commands"][0])
             cwd = Path(self.kwargs["cwd"])
             if tokens[0] == "DP3":
-                output_name = next(
-                    token.split("=", 1)[1] for token in tokens if token.startswith("solve1.h5parm=")
-                )
-                output_path = cwd / output_name
-                output_path.write_text("h5parm")
+                for token in tokens:
+                    if token.startswith("solve") and ".h5parm=" in token:
+                        output_path = cwd / token.split("=", 1)[1]
+                        output_path.write_text("h5parm")
                 return "OK"
             if tokens[:2] == ["H5parm_collector.py", "-c"]:
                 output_name = next(
@@ -50,8 +51,16 @@ def fake_calibrate_shell_operation_cls():
                 output_path = cwd / output_name
                 output_path.write_text("collected")
                 return "OK"
+            if tokens[0] == "combine_h5parms.py":
+                output_path = cwd / tokens[3]
+                output_path.write_text("combined")
+                return "OK"
             if tokens[0] == "plotrapthor":
-                output_path = cwd / f"{tokens[2]}_solutions.png"
+                root = next(
+                    (token.split("=", 1)[1] for token in tokens if token.startswith("--root=")),
+                    f"{tokens[2]}_",
+                )
+                output_path = cwd / f"{root}solutions.png"
                 output_path.write_text("plot")
                 return "OK"
             raise AssertionError(f"Unexpected command: {tokens[0]}")
@@ -104,6 +113,47 @@ def _di_fulljones_input_parms():
     }
 
 
+def _di_scalar_phase_input_parms():
+    input_parms = _di_fulljones_input_parms()
+    input_parms.update(
+        {
+            "dp3_steps": "[solve1,solve2]",
+            "output_solve1_h5parm": [
+                "fast_phase_di_0.h5parm",
+                "fast_phase_di_1.h5parm",
+            ],
+            "output_solve2_h5parm": [
+                "medium1_phase_di_0.h5parm",
+                "medium1_phase_di_1.h5parm",
+            ],
+            "collected_solve1_h5parm": "fast_phases_di.h5parm",
+            "collected_solve2_h5parm": "medium1_phases_di.h5parm",
+            "combined_solve1_solve2_h5parm": "combined_solve1_solve2_di.h5parm",
+            "solint_solve1_timestep": [5, 6],
+            "solint_solve2_timestep": [7, 8],
+            "solint_solve1_freqstep": [2, 3],
+            "solint_solve2_freqstep": [4, 5],
+            "solve1_mode": "scalarphase",
+            "solve2_mode": "scalarphase",
+            "solve1_solutions_per_direction": [None, None],
+            "solve2_solutions_per_direction": [None, None],
+            "solve1_smoothness_dd_factors": [None, None],
+            "solve2_smoothness_dd_factors": [None, None],
+            "solve1_smoothnessconstraint": 0,
+            "solve2_smoothnessconstraint": 0,
+            "solve1_smoothnessreffrequency": [0, 0],
+            "solve2_smoothnessreffrequency": [0, 0],
+            "solve1_smoothnessrefdistance": None,
+            "solve2_smoothnessrefdistance": None,
+            "solve1_antennaconstraint": "[]",
+            "solve2_antennaconstraint": "[]",
+            "calibrator_patch_names": [],
+            "calibrator_fluxes": [],
+        }
+    )
+    return input_parms
+
+
 def _di_fulljones_solve_slots():
     return [
         {
@@ -130,6 +180,65 @@ def _di_fulljones_solve_slots():
             "correcttimesmearing": True,
             "keepmodel": "True",
         }
+    ]
+
+
+def _di_scalar_phase_solve_slots():
+    return [
+        {
+            "slot": 1,
+            "h5parm": "fast_phase_di_0.h5parm",
+            "solint": 5,
+            "mode": "scalarphase",
+            "nchan": 2,
+            "solutions_per_direction": None,
+            "llssolver": "qr",
+            "maxiter": 50,
+            "propagatesolutions": True,
+            "initialsolutions_soltab": "[phase000]",
+            "solveralgorithm": "directionsolve",
+            "solverlbfgs_dof": 200.0,
+            "solverlbfgs_iter": 4,
+            "solverlbfgs_minibatches": 1,
+            "stepsize": 0.2,
+            "stepsigma": 0.0,
+            "tolerance": 0.0001,
+            "uvlambdamin": 80.0,
+            "smoothness_dd_factors": None,
+            "smoothnessconstraint": 0,
+            "smoothnessreffrequency": 0,
+            "smoothnessrefdistance": None,
+            "antennaconstraint": "[]",
+            "correctfreqsmearing": False,
+            "correcttimesmearing": True,
+            "keepmodel": "True",
+        },
+        {
+            "slot": 2,
+            "h5parm": "medium1_phase_di_0.h5parm",
+            "solint": 7,
+            "mode": "scalarphase",
+            "nchan": 4,
+            "solutions_per_direction": None,
+            "llssolver": "qr",
+            "maxiter": 50,
+            "propagatesolutions": True,
+            "initialsolutions_soltab": "[phase000]",
+            "solveralgorithm": "directionsolve",
+            "solverlbfgs_dof": 200.0,
+            "solverlbfgs_iter": 4,
+            "solverlbfgs_minibatches": 1,
+            "stepsize": 0.2,
+            "stepsigma": 0.0,
+            "tolerance": 0.0001,
+            "uvlambdamin": 80.0,
+            "smoothness_dd_factors": None,
+            "smoothnessconstraint": 0,
+            "smoothnessreffrequency": 0,
+            "smoothnessrefdistance": None,
+            "antennaconstraint": "[]",
+            "reusemodel": "[solve1.*]",
+        },
     ]
 
 
@@ -160,6 +269,31 @@ def test_calibrate_command_builders_match_reference_fixtures():
         normalized_plot_solutions_command("fulljones_solutions.h5", "phase")
         == commands["calibrate"]["plot_fulljones_phase"]
     )
+    assert (
+        normalized_ddecal_solve_command(
+            msin="obs_0.ms",
+            data_colname="DATA",
+            starttime="50000.0",
+            ntimes=10,
+            steps="[solve1,solve2]",
+            solve_slots=_di_scalar_phase_solve_slots(),
+            numthreads=4,
+            modeldatacolumn="[MODEL_DATA]",
+        )
+        == commands["calibrate"]["ddecal_di_scalar_phase"]
+    )
+    assert (
+        normalized_combine_h5parms_command(
+            "fast_phases_di.h5parm",
+            "medium1_phases_di.h5parm",
+            "combined_solve1_solve2_di.h5parm",
+            "p1p2_scalar",
+            reweight=False,
+            calibrator_names=[],
+            calibrator_fluxes=[],
+        )
+        == commands["calibrate"]["combine_fast_medium_di"]
+    )
 
 
 def test_calibrate_command_builders_create_cwl_equivalent_tokens():
@@ -176,6 +310,24 @@ def test_calibrate_command_builders_create_cwl_equivalent_tokens():
         "plotrapthor",
         "fulljones_solutions.h5",
         "phase",
+    ]
+    assert build_combine_h5parms_command(
+        "fast_phases_di.h5parm",
+        "medium1_phases_di.h5parm",
+        "combined_solve1_solve2_di.h5parm",
+        "p1p2_scalar",
+        reweight=False,
+        calibrator_names=[],
+        calibrator_fluxes=[],
+    ) == [
+        "combine_h5parms.py",
+        "fast_phases_di.h5parm",
+        "medium1_phases_di.h5parm",
+        "combined_solve1_solve2_di.h5parm",
+        "p1p2_scalar",
+        "--reweight=False",
+        "--cal_names=",
+        "--cal_fluxes=",
     ]
     assert (
         build_ddecal_solve_command(
@@ -196,6 +348,7 @@ def test_calibrate_payload_from_inputs_builds_di_fulljones_payload(tmp_path):
     payload = calibrate_payload_from_inputs("di", _di_fulljones_input_parms(), tmp_path)
 
     assert payload["mode"] == "di"
+    assert payload["calibration_kind"] == "di_fulljones"
     assert payload["pipeline_working_dir"] == str(tmp_path)
     assert payload["collected_h5parm"] == "fulljones_solutions.h5"
     assert payload["collected_h5parm_path"] == str(tmp_path / "fulljones_solutions.h5")
@@ -208,6 +361,24 @@ def test_calibrate_payload_from_inputs_builds_di_fulljones_payload(tmp_path):
             "output_h5parm_path": str(tmp_path / "fulljones_gain_0.h5parm"),
             "solve1_solint": 5,
             "solve1_nchan": 2,
+            "solve_slots": [
+                {
+                    "slot": 1,
+                    "h5parm": "fulljones_gain_0.h5parm",
+                    "h5parm_path": str(tmp_path / "fulljones_gain_0.h5parm"),
+                    "solint": 5,
+                    "mode": "fulljones",
+                    "nchan": 2,
+                    "solutions_per_direction": None,
+                    "smoothness_dd_factors": None,
+                    "smoothnessconstraint": None,
+                    "smoothnessreffrequency": None,
+                    "smoothnessrefdistance": None,
+                    "antennaconstraint": None,
+                    "keepmodel": "True",
+                    "reusemodel": None,
+                }
+            ],
         },
         {
             "msin": "/data/obs_1.ms",
@@ -217,6 +388,78 @@ def test_calibrate_payload_from_inputs_builds_di_fulljones_payload(tmp_path):
             "output_h5parm_path": str(tmp_path / "fulljones_gain_1.h5parm"),
             "solve1_solint": 6,
             "solve1_nchan": 3,
+            "solve_slots": [
+                {
+                    "slot": 1,
+                    "h5parm": "fulljones_gain_1.h5parm",
+                    "h5parm_path": str(tmp_path / "fulljones_gain_1.h5parm"),
+                    "solint": 6,
+                    "mode": "fulljones",
+                    "nchan": 3,
+                    "solutions_per_direction": None,
+                    "smoothness_dd_factors": None,
+                    "smoothnessconstraint": None,
+                    "smoothnessreffrequency": None,
+                    "smoothnessrefdistance": None,
+                    "antennaconstraint": None,
+                    "keepmodel": "True",
+                    "reusemodel": None,
+                }
+            ],
+        },
+    ]
+
+
+def test_calibrate_payload_from_inputs_builds_di_scalar_phase_payload(tmp_path):
+    payload = calibrate_payload_from_inputs("di", _di_scalar_phase_input_parms(), tmp_path)
+
+    assert payload["calibration_kind"] == "di_scalar_phase"
+    assert payload["collected_h5parms"] == {
+        "solve1": {
+            "filename": "fast_phases_di.h5parm",
+            "path": str(tmp_path / "fast_phases_di.h5parm"),
+        },
+        "solve2": {
+            "filename": "medium1_phases_di.h5parm",
+            "path": str(tmp_path / "medium1_phases_di.h5parm"),
+        },
+    }
+    assert payload["combined_h5parm"] == {
+        "filename": "combined_solve1_solve2_di.h5parm",
+        "path": str(tmp_path / "combined_solve1_solve2_di.h5parm"),
+    }
+    assert payload["chunks"][0]["solve_slots"] == [
+        {
+            "slot": 1,
+            "h5parm": "fast_phase_di_0.h5parm",
+            "h5parm_path": str(tmp_path / "fast_phase_di_0.h5parm"),
+            "solint": 5,
+            "mode": "scalarphase",
+            "nchan": 2,
+            "solutions_per_direction": None,
+            "smoothness_dd_factors": None,
+            "smoothnessconstraint": 0,
+            "smoothnessreffrequency": 0,
+            "smoothnessrefdistance": None,
+            "antennaconstraint": "[]",
+            "keepmodel": "True",
+            "reusemodel": None,
+        },
+        {
+            "slot": 2,
+            "h5parm": "medium1_phase_di_0.h5parm",
+            "h5parm_path": str(tmp_path / "medium1_phase_di_0.h5parm"),
+            "solint": 7,
+            "mode": "scalarphase",
+            "nchan": 4,
+            "solutions_per_direction": None,
+            "smoothness_dd_factors": None,
+            "smoothnessconstraint": 0,
+            "smoothnessreffrequency": 0,
+            "smoothnessrefdistance": None,
+            "antennaconstraint": "[]",
+            "keepmodel": None,
+            "reusemodel": "[solve1.*]",
         },
     ]
 
@@ -225,8 +468,8 @@ def test_calibrate_payload_from_inputs_builds_di_fulljones_payload(tmp_path):
     "mode, updates, match",
     [
         ("dd", {}, "Only DI calibration payloads"),
-        ("di", {"solve1_mode": "scalarphase"}, "Only DI full-Jones"),
-        ("di", {"dp3_steps": "[solve1,solve2]"}, "Only single-solve"),
+        ("di", {"solve1_mode": "slow"}, "Only DI full-Jones and DI scalar phase"),
+        ("di", {"dp3_steps": "[solve1,solve2]"}, "Only DI full-Jones and DI scalar phase"),
     ],
 )
 def test_calibrate_payload_from_inputs_rejects_unsupported_slice(tmp_path, mode, updates, match):
@@ -289,6 +532,50 @@ def test_run_calibrate_flow_supports_di_fulljones(tmp_path, fake_calibrate_shell
     )
 
 
+def test_run_calibrate_flow_supports_di_scalar_phase(tmp_path, fake_calibrate_shell_operation_cls):
+    payload = calibrate_payload_from_inputs("di", _di_scalar_phase_input_parms(), tmp_path)
+
+    outputs = run_calibrate_flow(
+        payload,
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_calibrate_shell_operation_cls,
+    )
+
+    assert outputs == {
+        "combined_solutions": file_record(tmp_path / "combined_solve1_solve2_di.h5parm"),
+        "fast_phase_solutions": file_record(tmp_path / "fast_phases_di.h5parm"),
+        "medium1_phase_solutions": file_record(tmp_path / "medium1_phases_di.h5parm"),
+        "fast_phase_plots": [file_record(tmp_path / "phase_solutions.png")],
+        "medium1_phase_plots": [file_record(tmp_path / "medium1_phase_solutions.png")],
+    }
+    for value in outputs.values():
+        validate_output_record(value)
+
+    commands = [
+        shlex.split(instance.kwargs["commands"][0])
+        for instance in fake_calibrate_shell_operation_cls.instances
+    ]
+    assert [command[0] for command in commands] == [
+        "DP3",
+        "DP3",
+        "H5parm_collector.py",
+        "plotrapthor",
+        "H5parm_collector.py",
+        "plotrapthor",
+        "combine_h5parms.py",
+    ]
+    assert "steps=[solve1,solve2]" in commands[0]
+    assert "solve1.mode=scalarphase" in commands[0]
+    assert "solve2.mode=scalarphase" in commands[0]
+    assert "solve2.reusemodel=[solve1.*]" in commands[0]
+    assert commands[-1][1:5] == [
+        str(tmp_path / "fast_phases_di.h5parm"),
+        str(tmp_path / "medium1_phases_di.h5parm"),
+        "combined_solve1_solve2_di.h5parm",
+        "p1p2_scalar",
+    ]
+
+
 def test_calibrate_prefect_flow_entrypoint_runs_with_mocked_shell(
     tmp_path, monkeypatch, fake_calibrate_shell_operation_cls
 ):
@@ -337,7 +624,7 @@ def test_calibrate_prefect_tasks_submit_all_chunks_before_collect(monkeypatch, t
         return {"combined_solutions": file_record(tmp_path / "fulljones_solutions.h5")}
 
     monkeypatch.setattr(calibrate_module.calibrate_chunk_task, "submit", fake_submit)
-    monkeypatch.setattr(calibrate_module, "_collect_and_plot_fulljones", fake_collect)
+    monkeypatch.setattr(calibrate_module, "_collect_plot_and_combine", fake_collect)
 
     outputs = calibrate_module._run_calibrate_prefect_tasks(
         payload,
@@ -367,4 +654,6 @@ def test_calibrate_reference_output_fixture_matches_output_contract():
     outputs = json.loads((FIXTURE_DIR / "cwl_reference_outputs.json").read_text())
 
     for value in outputs["calibrate_di_fulljones"].values():
+        validate_output_record(value)
+    for value in outputs["calibrate_di_scalar_phase"].values():
         validate_output_record(value)

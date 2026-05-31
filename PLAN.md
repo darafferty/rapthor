@@ -662,16 +662,17 @@ Calibration is the other high-risk area because it includes solve planning,
 conditional branches, h5parm collection, plotting, combination, and source
 adjustment.
 
-Status: the first DI full-Jones direct-flow slice is complete for mocked
-execution. DI scalar solves, DD solves, h5parm combination/source adjustment,
-pre-application, image-based prediction, IDG/screen generation, explicit Dask
-parallelism for solve chunks, restart/failure coverage, and real external-tool
-calibration coverage remain outstanding.
+Status: DI full-Jones and DI scalar-phase direct-flow slices are complete for
+mocked execution, and solve chunks are submitted as explicit Prefect futures so
+Dask can parallelise them. DD solves, source adjustment, pre-application,
+image-based prediction, IDG/screen generation, later h5parm post-processing,
+restart/failure coverage, and real external-tool calibration coverage remain
+outstanding.
 
 Suggested slices:
 
-1. DI full-Jones calibration.
-2. DI scalar phase calibration.
+1. DI full-Jones calibration. Complete.
+2. DI scalar phase calibration. Complete.
 3. DD fast phase calibration without image-based prediction.
 4. DD medium phase and slow gains.
 5. Pre-application of DI solutions before DD solves.
@@ -681,10 +682,10 @@ Suggested slices:
 
 Reuse the existing solve planner in `rapthor/operations/calibrate.py`.
 
-Before adding more calibration solve branches, wire operation flows to the
-configured Prefect task runner and change calibration solve scatter to explicit
-Prefect futures. The collection step must depend on all solve futures and should
-not start until every chunk has produced its h5parm output.
+Before adding DD calibration solve branches, keep using the configured Prefect
+task runner and explicit Prefect futures for calibration solve scatter. The
+collection step must depend on all solve futures and should not start until
+every chunk has produced its h5parm output.
 
 Tests:
 
@@ -694,13 +695,19 @@ Tests:
 - Added mocked direct-flow and Prefect harness tests for DI full-Jones solve
   scatter, h5parm collection, phase plotting, output records, and missing solve
   output failure.
-- Add task-runner wiring tests proving `local_dask` and `external_dask`
+- Added DI scalar-phase DDECal and h5parm combination command-builder tests.
+- Added DI scalar-phase golden command and output-contract fixtures.
+- Added serializable payload tests for the two-solve DI scalar-phase shape,
+  including per-chunk solve1/solve2 metadata.
+- Added mocked direct-flow tests for DI scalar-phase solve scatter, fast/medium
+  h5parm collection, phase plotting, combination, and final output records.
+- Added task-runner wiring tests proving `local_dask` and `external_dask`
   configuration is passed to Prefect operation flows.
-- Add calibration concurrency-order tests proving all solve chunks are submitted
+- Added calibration concurrency-order tests proving all solve chunks are submitted
   before h5parm collection starts, and that collection receives resolved output
   records from every chunk.
-- Unit tests for every calibration command-builder branch.
-- Golden command parity tests for DDECal, IDGCal, image-based predict,
+- Continue adding unit tests for every calibration command-builder branch.
+- Continue adding golden command parity tests for DDECal, IDGCal, image-based predict,
   h5parm collection, h5parm combination, plotting, source adjustment, and
   solution processing.
 - Existing solve-planner tests remain backend-independent.
@@ -1680,8 +1687,8 @@ migration branch.
   solutions.
 - Emit finalizer-compatible `combined_solutions`, `fast_phase_solutions`, and
   `fast_phase_plots` records for the current unified calibration workflow.
-- Keep unsupported calibration slices explicit until the scalar DI and DD solve
-  branches are added.
+- Keep unsupported calibration slices explicit until later solve branches are
+  added.
 
 Implemented files:
 
@@ -1703,11 +1710,8 @@ Verified in the devcontainer:
 
 Deferred to later calibration PRs:
 
-- Wire operation flows to `build_task_runner()` and make scattered calibration
-  solve chunks use explicit Prefect task futures so Dask can parallelise them.
-- DI scalar solve branches.
 - DD calibration solve branches.
-- h5parm combination and source-adjustment branches.
+- DD h5parm combination and source-adjustment branches.
 - Calibration finalizer-state tests against Prefect-produced records.
 - Restart/failure coverage beyond missing solve output.
 - Real external-tool coverage once lightweight calibration fixtures are
@@ -1763,6 +1767,52 @@ Verified in the devcontainer:
 - `python3 -m pytest tests/execution/test_task_runner.py
   tests/execution/test_calibrate_flow.py`: 19 passed.
 - `python3 -m pytest tests/execution tests/lib/test_parset.py`: 177 passed.
+- `python3 -m ruff check rapthor/execution tests/execution pyproject.toml`:
+  passed.
+- `python3 -m ruff format --check rapthor/execution tests/execution`: passed.
+
+### PR 17: DI Scalar-Phase Calibration Flow
+
+Status: complete on the migration branch.
+
+- Extend the calibration payload builder to recognise the existing DI scalar
+  two-solve shape: `solve1` fast phase followed by `solve2` medium phase.
+- Preserve the full-Jones output contract while carrying explicit per-chunk
+  solve-slot metadata for scalar phase.
+- Build one DP3 DDECal command per chunk with both scalar-phase solve slots, the
+  expected `solve2.reusemodel=[solve1.*]` dependency, and per-slot solint,
+  channel, smoothness, and antenna-constraint options.
+- Collect solve1 outputs into the fast-phase h5parm, collect solve2 outputs into
+  the medium-phase h5parm, plot both, then combine them with
+  `combine_h5parms.py` in `p1p2_scalar` mode.
+- Export the h5parm combination command builder and normalized fixture helper
+  from the execution package.
+
+Tests:
+
+- Golden command parity for DI scalar-phase DDECal and h5parm combination.
+- Unit coverage for `build_combine_h5parms_command`.
+- Serializable payload coverage for the scalar two-solve chunk shape.
+- Mocked direct-flow coverage for scalar chunk execution, fast/medium
+  collection, plotting, h5parm combination, and final output records.
+- Output-contract fixture coverage for `combined_solutions`,
+  `fast_phase_solutions`, `medium1_phase_solutions`, `fast_phase_plots`, and
+  `medium1_phase_plots`.
+
+Implemented files:
+
+- `rapthor/execution/flows/calibrate.py`
+- `rapthor/execution/flows/__init__.py`
+- `rapthor/execution/__init__.py`
+- `tests/execution/test_calibrate_flow.py`
+- Updates to `tests/execution/fixtures/cwl_reference_commands.json`
+- Updates to `tests/execution/fixtures/cwl_reference_outputs.json`
+- Updates to `PLAN.md`
+
+Verified in the devcontainer:
+
+- `python3 -m pytest tests/execution/test_calibrate_flow.py`: 14 passed.
+- `python3 -m pytest tests/execution tests/lib/test_parset.py`: 179 passed.
 - `python3 -m ruff check rapthor/execution tests/execution pyproject.toml`:
   passed.
 - `python3 -m ruff format --check rapthor/execution tests/execution`: passed.

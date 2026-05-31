@@ -9,12 +9,14 @@ from rapthor.execution.capabilities import (
 from rapthor.execution.commands import command_matches_fixture, command_to_string, normalize_command
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.calibrate import (
+    build_combine_h5parms_command,
     build_collect_h5parms_command,
     build_ddecal_solve_command,
     build_plot_solutions_command,
     calibrate_chunk_task,
     calibrate_flow,
     calibrate_payload_from_inputs,
+    normalized_combine_h5parms_command,
     normalized_collect_h5parms_command,
     normalized_ddecal_solve_command,
     normalized_plot_solutions_command,
@@ -134,6 +136,7 @@ __all__ = [
     "build_blank_image_command",
     "build_calculate_image_diagnostics_command",
     "build_check_image_beam_command",
+    "build_combine_h5parms_command",
     "build_collect_h5parms_command",
     "build_compress_sector_images_command",
     "build_concat_time_command",
@@ -182,6 +185,7 @@ __all__ = [
     "mosaic_payload_from_inputs",
     "normalized_add_sector_models_command",
     "normalized_blank_image_command",
+    "normalized_combine_h5parms_command",
     "normalized_collect_h5parms_command",
     "normalized_compress_sector_images_command",
     "normalized_concat_time_command",
