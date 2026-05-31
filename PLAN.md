@@ -662,18 +662,18 @@ Calibration is the other high-risk area because it includes solve planning,
 conditional branches, h5parm collection, plotting, combination, and source
 adjustment.
 
-Status: DI full-Jones and DI scalar-phase direct-flow slices are complete for
-mocked execution, and solve chunks are submitted as explicit Prefect futures so
-Dask can parallelise them. DD solves, source adjustment, pre-application,
-image-based prediction, IDG/screen generation, later h5parm post-processing,
-restart/failure coverage, and real external-tool calibration coverage remain
-outstanding.
+Status: DI full-Jones, DI scalar-phase, and DD fast-phase direct-flow slices are
+complete for mocked execution, and solve chunks are submitted as explicit
+Prefect futures so Dask can parallelise them. DD medium/slow solves, source
+adjustment, pre-application, image-based prediction, IDG/screen generation,
+later h5parm post-processing, restart/failure coverage, and real external-tool
+calibration coverage remain outstanding.
 
 Suggested slices:
 
 1. DI full-Jones calibration. Complete.
 2. DI scalar phase calibration. Complete.
-3. DD fast phase calibration without image-based prediction.
+3. DD fast phase calibration without image-based prediction. Complete.
 4. DD medium phase and slow gains.
 5. Pre-application of DI solutions before DD solves.
 6. Image-based prediction.
@@ -701,6 +701,8 @@ Tests:
   including per-chunk solve1/solve2 metadata.
 - Added mocked direct-flow tests for DI scalar-phase solve scatter, fast/medium
   h5parm collection, phase plotting, combination, and final output records.
+- Added DD fast-phase DDECal command-builder parity, output-contract,
+  serializable payload, mocked flow, and unsupported-slice tests.
 - Added task-runner wiring tests proving `local_dask` and `external_dask`
   configuration is passed to Prefect operation flows.
 - Added calibration concurrency-order tests proving all solve chunks are submitted
@@ -1813,6 +1815,52 @@ Verified in the devcontainer:
 
 - `python3 -m pytest tests/execution/test_calibrate_flow.py`: 14 passed.
 - `python3 -m pytest tests/execution tests/lib/test_parset.py`: 179 passed.
+- `python3 -m ruff check rapthor/execution tests/execution pyproject.toml`:
+  passed.
+- `python3 -m ruff format --check rapthor/execution tests/execution`: passed.
+
+### PR 18: DD Fast-Phase Calibration Flow
+
+Status: complete on the migration branch.
+
+- Extend calibration payload support to a narrow DD fast-phase slice:
+  `mode="dd"` with a single active `solve1` scalar-phase solve.
+- Keep this slice explicit: image-based prediction and pre-application are still
+  rejected and remain planned later.
+- Carry DD-specific DDECal inputs through the serializable payload:
+  calibration sky model, solve directions, BDA scatter values, beam/predict
+  toggles, smoothness factors, antenna constraints, and `datause`.
+- Run one DP3 DDECal command per chunk, collect `solve1` outputs into
+  `fast_phases.h5parm`, plot phase solutions, and emit the fast h5parm as both
+  `combined_solutions` and `fast_phase_solutions`, matching the CWL fast-only
+  output contract.
+- Preserve DI payload compatibility by keeping DD-only solve-slot fields
+  optional when they are absent from DI inputs.
+
+Tests:
+
+- Golden command parity for DD fast-phase DDECal.
+- Serializable payload coverage for DD fast-phase chunk metadata and common
+  DDECal options.
+- Mocked direct-flow coverage for DD fast solve scatter, collection, plotting,
+  and final output records.
+- Unsupported-slice coverage for DD image-based prediction and non-fast
+  single-solve shapes.
+- Output-contract fixture coverage for `combined_solutions`,
+  `fast_phase_solutions`, and `fast_phase_plots`.
+
+Implemented files:
+
+- `rapthor/execution/flows/calibrate.py`
+- `tests/execution/test_calibrate_flow.py`
+- Updates to `tests/execution/fixtures/cwl_reference_commands.json`
+- Updates to `tests/execution/fixtures/cwl_reference_outputs.json`
+- Updates to `PLAN.md`
+
+Verified in the devcontainer:
+
+- `python3 -m pytest tests/execution/test_calibrate_flow.py`: 17 passed.
+- `python3 -m pytest tests/execution tests/lib/test_parset.py`: 182 passed.
 - `python3 -m ruff check rapthor/execution tests/execution pyproject.toml`:
   passed.
 - `python3 -m ruff format --check rapthor/execution tests/execution`: passed.

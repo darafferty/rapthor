@@ -154,6 +154,52 @@ def _di_scalar_phase_input_parms():
     return input_parms
 
 
+def _dd_fast_phase_input_parms():
+    input_parms = _di_fulljones_input_parms()
+    input_parms.update(
+        {
+            "timechunk_filename": [
+                directory_record("/data/dd_obs_0.ms"),
+                directory_record("/data/dd_obs_1.ms"),
+            ],
+            "modeldatacolumn": None,
+            "calibration_skymodel_file": file_record("/data/calibration.skymodel"),
+            "solve_directions": ["patch1", "patch2"],
+            "dp3_steps": "[solve1]",
+            "output_solve1_h5parm": [
+                "fast_phase_0.h5parm",
+                "fast_phase_1.h5parm",
+            ],
+            "collected_solve1_h5parm": "fast_phases.h5parm",
+            "solint_solve1_timestep": [3, 4],
+            "solint_solve1_freqstep": [1, 2],
+            "solve1_mode": "scalarphase",
+            "solve1_solutions_per_direction": [[1, 1], [1, 1]],
+            "solve1_smoothness_dd_factors": [[1.0, 2.0], [1.5, 2.5]],
+            "solve1_smoothnessconstraint": 1200000.0,
+            "solve1_smoothnessreffrequency": [150000000.0, 151000000.0],
+            "solve1_smoothnessrefdistance": 2500.0,
+            "solve1_antennaconstraint": "[[CS001HBA0,CS002HBA0]]",
+            "solve1_datause": "full",
+            "fast_initialsolutions_h5parm": None,
+            "applycal_steps": None,
+            "applycal_h5parm": None,
+            "fulljones_h5parm": None,
+            "normalize_h5parm": None,
+            "bda_timebase": 0.0,
+            "bda_frequencybase": 0.0,
+            "bda_maxinterval": [8.0, 9.0],
+            "bda_minchannels": [1, 1],
+            "onebeamperpatch": True,
+            "parallelbaselines": False,
+            "sagecalpredict": False,
+            "calibrator_patch_names": ["patch1", "patch2"],
+            "calibrator_fluxes": [10.0, 5.0],
+        }
+    )
+    return input_parms
+
+
 def _di_fulljones_solve_slots():
     return [
         {
@@ -242,6 +288,40 @@ def _di_scalar_phase_solve_slots():
     ]
 
 
+def _dd_fast_phase_solve_slots():
+    return [
+        {
+            "slot": 1,
+            "h5parm": "fast_phase_0.h5parm",
+            "solint": 3,
+            "mode": "scalarphase",
+            "nchan": 1,
+            "solutions_per_direction": [1, 1],
+            "llssolver": "qr",
+            "maxiter": 50,
+            "propagatesolutions": True,
+            "initialsolutions_soltab": "[phase000]",
+            "solveralgorithm": "directionsolve",
+            "solverlbfgs_dof": 200.0,
+            "solverlbfgs_iter": 4,
+            "solverlbfgs_minibatches": 1,
+            "datause": "full",
+            "stepsize": 0.2,
+            "stepsigma": 0.0,
+            "tolerance": 0.0001,
+            "uvlambdamin": 80.0,
+            "smoothness_dd_factors": [1.0, 2.0],
+            "smoothnessconstraint": 1200000.0,
+            "smoothnessreffrequency": 150000000.0,
+            "smoothnessrefdistance": 2500.0,
+            "antennaconstraint": "[[CS001HBA0,CS002HBA0]]",
+            "correctfreqsmearing": False,
+            "correcttimesmearing": True,
+            "keepmodel": "True",
+        }
+    ]
+
+
 def test_calibrate_command_builders_match_reference_fixtures():
     commands = json.loads((FIXTURE_DIR / "cwl_reference_commands.json").read_text())
 
@@ -293,6 +373,27 @@ def test_calibrate_command_builders_match_reference_fixtures():
             calibrator_fluxes=[],
         )
         == commands["calibrate"]["combine_fast_medium_di"]
+    )
+    assert (
+        normalized_ddecal_solve_command(
+            msin="dd_obs_0.ms",
+            data_colname="DATA",
+            starttime="50000.0",
+            ntimes=10,
+            steps="[solve1]",
+            solve_slots=_dd_fast_phase_solve_slots(),
+            numthreads=4,
+            timebase=0.0,
+            maxinterval=8.0,
+            frequencybase=0.0,
+            minchannels=1,
+            onebeamperpatch=True,
+            parallelbaselines=False,
+            sagecalpredict=False,
+            sourcedb="calibration.skymodel",
+            directions=["patch1", "patch2"],
+        )
+        == commands["calibrate"]["ddecal_dd_fast_phase"]
     )
 
 
@@ -464,16 +565,91 @@ def test_calibrate_payload_from_inputs_builds_di_scalar_phase_payload(tmp_path):
     ]
 
 
+def test_calibrate_payload_from_inputs_builds_dd_fast_phase_payload(tmp_path):
+    payload = calibrate_payload_from_inputs("dd", _dd_fast_phase_input_parms(), tmp_path)
+
+    assert payload["mode"] == "dd"
+    assert payload["calibration_kind"] == "dd_fast_phase"
+    assert payload["modeldatacolumn"] is None
+    assert payload["sourcedb"] == "/data/calibration.skymodel"
+    assert payload["directions"] == ["patch1", "patch2"]
+    assert payload["bda_timebase"] == 0.0
+    assert payload["bda_frequencybase"] == 0.0
+    assert payload["onebeamperpatch"] is True
+    assert payload["parallelbaselines"] is False
+    assert payload["sagecalpredict"] is False
+    assert payload["collected_h5parms"] == {
+        "solve1": {
+            "filename": "fast_phases.h5parm",
+            "path": str(tmp_path / "fast_phases.h5parm"),
+        }
+    }
+    assert payload["chunks"][0] == {
+        "msin": "/data/dd_obs_0.ms",
+        "starttime": "50000.0",
+        "ntimes": 10,
+        "output_h5parm": "fast_phase_0.h5parm",
+        "output_h5parm_path": str(tmp_path / "fast_phase_0.h5parm"),
+        "solve1_solint": 3,
+        "solve1_nchan": 1,
+        "solve_slots": [
+            {
+                "slot": 1,
+                "h5parm": "fast_phase_0.h5parm",
+                "h5parm_path": str(tmp_path / "fast_phase_0.h5parm"),
+                "solint": 3,
+                "mode": "scalarphase",
+                "nchan": 1,
+                "solutions_per_direction": [1, 1],
+                "datause": "full",
+                "smoothness_dd_factors": [1.0, 2.0],
+                "smoothnessconstraint": 1200000.0,
+                "smoothnessreffrequency": 150000000.0,
+                "smoothnessrefdistance": 2500.0,
+                "antennaconstraint": "[[CS001HBA0,CS002HBA0]]",
+                "keepmodel": "True",
+                "reusemodel": None,
+                "initialsolutions_h5parm": None,
+            }
+        ],
+        "bda_maxinterval": 8.0,
+        "bda_minchannels": 1,
+    }
+
+
 @pytest.mark.parametrize(
-    "mode, updates, match",
+    "mode, input_factory, updates, match",
     [
-        ("dd", {}, "Only DI calibration payloads"),
-        ("di", {"solve1_mode": "slow"}, "Only DI full-Jones and DI scalar phase"),
-        ("di", {"dp3_steps": "[solve1,solve2]"}, "Only DI full-Jones and DI scalar phase"),
+        (
+            "dd",
+            _dd_fast_phase_input_parms,
+            {"dp3_steps": "[predict,applybeam,solve1]"},
+            "Only DD fast-phase calibration",
+        ),
+        (
+            "dd",
+            _dd_fast_phase_input_parms,
+            {"output_solve1_h5parm": ["slow_gain_0.h5parm", "slow_gain_1.h5parm"]},
+            "Only DD fast-phase calibration",
+        ),
+        (
+            "di",
+            _di_fulljones_input_parms,
+            {"solve1_mode": "slow"},
+            "Only DI full-Jones and DI scalar phase",
+        ),
+        (
+            "di",
+            _di_fulljones_input_parms,
+            {"dp3_steps": "[solve1,solve2]"},
+            "Only DI full-Jones and DI scalar phase",
+        ),
     ],
 )
-def test_calibrate_payload_from_inputs_rejects_unsupported_slice(tmp_path, mode, updates, match):
-    input_parms = _di_fulljones_input_parms()
+def test_calibrate_payload_from_inputs_rejects_unsupported_slice(
+    tmp_path, mode, input_factory, updates, match
+):
+    input_parms = input_factory()
     input_parms.update(updates)
 
     with pytest.raises(ValueError, match=match):
@@ -576,6 +752,45 @@ def test_run_calibrate_flow_supports_di_scalar_phase(tmp_path, fake_calibrate_sh
     ]
 
 
+def test_run_calibrate_flow_supports_dd_fast_phase(tmp_path, fake_calibrate_shell_operation_cls):
+    payload = calibrate_payload_from_inputs("dd", _dd_fast_phase_input_parms(), tmp_path)
+
+    outputs = run_calibrate_flow(
+        payload,
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_calibrate_shell_operation_cls,
+    )
+
+    expected_solution = file_record(tmp_path / "fast_phases.h5parm")
+    assert outputs == {
+        "combined_solutions": expected_solution,
+        "fast_phase_solutions": expected_solution,
+        "fast_phase_plots": [file_record(tmp_path / "phase_solutions.png")],
+    }
+    for value in outputs.values():
+        validate_output_record(value)
+
+    commands = [
+        shlex.split(instance.kwargs["commands"][0])
+        for instance in fake_calibrate_shell_operation_cls.instances
+    ]
+    assert [command[0] for command in commands] == [
+        "DP3",
+        "DP3",
+        "H5parm_collector.py",
+        "plotrapthor",
+    ]
+    assert "solve1.mode=scalarphase" in commands[0]
+    assert "solve1.h5parm=fast_phase_0.h5parm" in commands[0]
+    assert "solve1.sourcedb=/data/calibration.skymodel" in commands[0]
+    assert "solve1.directions=[patch1,patch2]" in commands[0]
+    assert "solve1.smoothness_dd_factors=[1.0,2.0]" in commands[0]
+    assert "avg.maxinterval=8.0" in commands[0]
+    assert (
+        commands[2][2] == f"{tmp_path / 'fast_phase_0.h5parm'},{tmp_path / 'fast_phase_1.h5parm'}"
+    )
+
+
 def test_calibrate_prefect_flow_entrypoint_runs_with_mocked_shell(
     tmp_path, monkeypatch, fake_calibrate_shell_operation_cls
 ):
@@ -656,4 +871,6 @@ def test_calibrate_reference_output_fixture_matches_output_contract():
     for value in outputs["calibrate_di_fulljones"].values():
         validate_output_record(value)
     for value in outputs["calibrate_di_scalar_phase"].values():
+        validate_output_record(value)
+    for value in outputs["calibrate_dd_fast_phase"].values():
         validate_output_record(value)

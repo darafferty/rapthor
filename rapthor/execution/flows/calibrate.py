@@ -109,6 +109,16 @@ def _path_record_path(record: object) -> str:
     return _record_path(record, "Directory")
 
 
+def _optional_file_path(record: object, name: str) -> Optional[str]:
+    if record is None:
+        return None
+    if isinstance(record, str):
+        return record
+    if isinstance(record, Mapping) and record.get("class") == "File":
+        return _record_path(record, "File")
+    raise ValueError(f"{name} must be a File record, path string, or None")
+
+
 def _validate_basename(filename: object, name: str) -> str:
     if not isinstance(filename, str) or not filename:
         raise ValueError(f"{name} must be a non-empty string")
@@ -267,15 +277,47 @@ def _parse_steps(steps: object) -> list[str]:
     return [step.strip() for step in str(steps).strip("[]").split(",") if step.strip()]
 
 
-def _supported_di_kind(input_parms: Mapping[str, object]) -> str:
+def _active_solve_steps(input_parms: Mapping[str, object]) -> list[str]:
+    return [step for step in _parse_steps(input_parms.get("dp3_steps")) if step.startswith("solve")]
+
+
+def _supported_calibration_kind(mode: str, input_parms: Mapping[str, object]) -> str:
     steps = _parse_steps(input_parms.get("dp3_steps"))
+    active_solves = [step for step in steps if step.startswith("solve")]
     solve1_mode = str(input_parms.get("solve1_mode"))
     solve2_mode = str(input_parms.get("solve2_mode"))
-    if steps == ["solve1"] and solve1_mode == "fulljones":
-        return "di_fulljones"
-    if steps == ["solve1", "solve2"] and solve1_mode == solve2_mode == "scalarphase":
-        return "di_scalar_phase"
-    raise ValueError("Only DI full-Jones and DI scalar phase calibration are supported")
+    if mode == "di":
+        if active_solves == ["solve1"] and solve1_mode == "fulljones":
+            return "di_fulljones"
+        if active_solves == ["solve1", "solve2"] and solve1_mode == solve2_mode == "scalarphase":
+            return "di_scalar_phase"
+        raise ValueError("Only DI full-Jones and DI scalar phase calibration are supported")
+
+    if mode == "dd":
+        output_solve1 = input_parms.get("output_solve1_h5parm", [])
+        first_solve1_output = output_solve1[0] if isinstance(output_solve1, list) else ""
+        if (
+            active_solves == ["solve1"]
+            and solve1_mode == "scalarphase"
+            and "predict" not in steps
+            and "applycal" not in steps
+            and str(first_solve1_output).startswith("fast_phase_")
+        ):
+            return "dd_fast_phase"
+        raise ValueError(
+            "Only DD fast-phase calibration without pre-application or image-based prediction "
+            "is supported in this slice"
+        )
+
+    raise ValueError("Only DI and DD calibration payloads are supported")
+
+
+def _solve_slots_for_kind(calibration_kind: str) -> list[int]:
+    if calibration_kind in {"di_fulljones", "dd_fast_phase"}:
+        return [1]
+    if calibration_kind == "di_scalar_phase":
+        return [1, 2]
+    raise ValueError(f"Unsupported calibration kind: {calibration_kind}")
 
 
 def _solver_payload_from_inputs(input_parms: Mapping[str, object]) -> dict:
@@ -311,7 +353,13 @@ def _solve_slot_from_inputs(
         ),
         f"output_solve{slot}_h5parm[{index}]",
     )
-    return {
+    initial_h5parm_keys = {
+        1: "fast_initialsolutions_h5parm",
+        2: "medium1_initialsolutions_h5parm",
+        3: "solve3_initialsolutions_h5parm",
+        4: "solve4_initialsolutions_h5parm",
+    }
+    slot_record = {
         "slot": slot,
         "h5parm": h5parm,
         "h5parm_path": os.path.join(pipeline_dir, h5parm),
@@ -341,6 +389,15 @@ def _solve_slot_from_inputs(
         "keepmodel": keepmodel,
         "reusemodel": reusemodel,
     }
+    datause_key = f"solve{slot}_datause"
+    if datause_key in input_parms:
+        slot_record["datause"] = input_parms.get(datause_key)
+    initial_h5parm_key = initial_h5parm_keys[slot]
+    if initial_h5parm_key in input_parms:
+        slot_record["initialsolutions_h5parm"] = _optional_file_path(
+            input_parms.get(initial_h5parm_key), initial_h5parm_key
+        )
+    return slot_record
 
 
 def calibrate_payload_from_inputs(
@@ -349,15 +406,13 @@ def calibrate_payload_from_inputs(
     pipeline_working_dir: object,
 ) -> dict:
     """Create a serializable Calibrate flow payload from operation inputs."""
-    if mode != "di":
-        raise ValueError("Only DI calibration payloads are supported in this slice")
-    calibration_kind = _supported_di_kind(input_parms)
+    calibration_kind = _supported_calibration_kind(mode, input_parms)
 
     pipeline_dir = str(pipeline_working_dir)
     filenames = input_parms.get("timechunk_filename", [])
     starttimes = input_parms.get("starttime", [])
     ntimes = input_parms.get("ntimes", [])
-    solve_slots = [1] if calibration_kind == "di_fulljones" else [1, 2]
+    solve_slots = _solve_slots_for_kind(calibration_kind)
     output_solve1_h5parms = input_parms.get("output_solve1_h5parm", [])
     scatter_inputs = [filenames, starttimes, ntimes, output_solve1_h5parms]
     if 2 in solve_slots:
@@ -387,8 +442,10 @@ def calibrate_payload_from_inputs(
         combined_h5parm = {"filename": combined, "path": os.path.join(pipeline_dir, combined)}
 
     modeldatacolumn = input_parms.get("modeldatacolumn")
-    if not isinstance(modeldatacolumn, str) or not modeldatacolumn:
-        raise ValueError("modeldatacolumn must be a non-empty string")
+    if modeldatacolumn is not None and (
+        not isinstance(modeldatacolumn, str) or not modeldatacolumn
+    ):
+        raise ValueError("modeldatacolumn must be a non-empty string or None")
 
     chunks = []
     for index in range(chunk_count):
@@ -411,18 +468,25 @@ def calibrate_payload_from_inputs(
                     reusemodel="[solve1.*]",
                 )
             )
-        chunks.append(
-            {
-                "msin": _path_record_path(filenames[index]),
-                "starttime": str(starttimes[index]),
-                "ntimes": int(ntimes[index]),
-                "output_h5parm": chunk_solve_slots[0]["h5parm"],
-                "output_h5parm_path": chunk_solve_slots[0]["h5parm_path"],
-                "solve1_solint": chunk_solve_slots[0]["solint"],
-                "solve1_nchan": chunk_solve_slots[0]["nchan"],
-                "solve_slots": chunk_solve_slots,
-            }
-        )
+        chunk = {
+            "msin": _path_record_path(filenames[index]),
+            "starttime": str(starttimes[index]),
+            "ntimes": int(ntimes[index]),
+            "output_h5parm": chunk_solve_slots[0]["h5parm"],
+            "output_h5parm_path": chunk_solve_slots[0]["h5parm_path"],
+            "solve1_solint": chunk_solve_slots[0]["solint"],
+            "solve1_nchan": chunk_solve_slots[0]["nchan"],
+            "solve_slots": chunk_solve_slots,
+        }
+        if "bda_maxinterval" in input_parms:
+            chunk["bda_maxinterval"] = _scatter_value(
+                input_parms["bda_maxinterval"], index, "bda_maxinterval"
+            )
+        if "bda_minchannels" in input_parms:
+            chunk["bda_minchannels"] = _scatter_value(
+                input_parms["bda_minchannels"], index, "bda_minchannels"
+            )
+        chunks.append(chunk)
 
     payload = {
         "mode": mode,
@@ -432,7 +496,6 @@ def calibrate_payload_from_inputs(
         "modeldatacolumn": modeldatacolumn,
         "dp3_steps": str(input_parms["dp3_steps"]),
         **_solver_payload_from_inputs(input_parms),
-        "smoothnessconstraint_fulljones": float(input_parms["smoothnessconstraint_fulljones"]),
         "collected_h5parm": collected_h5parms["solve1"]["filename"],
         "collected_h5parm_path": collected_h5parms["solve1"]["path"],
         "collected_h5parms": collected_h5parms,
@@ -443,6 +506,35 @@ def calibrate_payload_from_inputs(
         "calibrator_fluxes": [float(flux) for flux in input_parms.get("calibrator_fluxes", [])],
         "chunks": chunks,
     }
+    if "smoothnessconstraint_fulljones" in input_parms:
+        payload["smoothnessconstraint_fulljones"] = float(
+            input_parms["smoothnessconstraint_fulljones"]
+        )
+    payload.update(
+        {
+            "applycal_steps": input_parms.get("applycal_steps"),
+            "applycal_h5parm": _optional_file_path(
+                input_parms.get("applycal_h5parm"), "applycal_h5parm"
+            ),
+            "fulljones_h5parm": _optional_file_path(
+                input_parms.get("fulljones_h5parm"), "fulljones_h5parm"
+            ),
+            "normalize_h5parm": _optional_file_path(
+                input_parms.get("normalize_h5parm"), "normalize_h5parm"
+            ),
+            "bda_timebase": input_parms.get("bda_timebase"),
+            "bda_frequencybase": input_parms.get("bda_frequencybase"),
+            "onebeamperpatch": input_parms.get("onebeamperpatch"),
+            "parallelbaselines": input_parms.get("parallelbaselines"),
+            "sagecalpredict": input_parms.get("sagecalpredict"),
+            "sourcedb": _optional_file_path(
+                input_parms.get("calibration_skymodel_file"), "calibration_skymodel_file"
+            ),
+            "directions": None
+            if input_parms.get("solve_directions") is None
+            else [str(direction) for direction in input_parms["solve_directions"]],
+        }
+    )
     return assert_serializable_payload(payload)
 
 
@@ -503,10 +595,12 @@ def _solve_slots_for_chunk(
                 "solverlbfgs_dof": payload["solverlbfgs_dof"],
                 "solverlbfgs_iter": payload["solverlbfgs_iter"],
                 "solverlbfgs_minibatches": payload["solverlbfgs_minibatches"],
+                "initialsolutions_h5parm": slot.get("initialsolutions_h5parm"),
                 "stepsize": payload["stepsize"],
                 "stepsigma": payload["stepsigma"],
                 "tolerance": payload["tolerance"],
                 "uvlambdamin": payload["uvlambdamin"],
+                "datause": slot.get("datause"),
                 "smoothness_dd_factors": slot["smoothness_dd_factors"],
                 "smoothnessconstraint": slot["smoothnessconstraint"],
                 "smoothnessreffrequency": slot["smoothnessreffrequency"],
@@ -551,7 +645,22 @@ def run_calibrate_chunk(
         steps=str(payload["dp3_steps"]),
         solve_slots=_solve_slots_for_chunk(payload, chunk),
         numthreads=int(payload["max_threads"]),
-        modeldatacolumn=str(payload["modeldatacolumn"]),
+        modeldatacolumn=None
+        if payload.get("modeldatacolumn") is None
+        else str(payload["modeldatacolumn"]),
+        applycal_steps=payload.get("applycal_steps"),
+        applycal_h5parm=payload.get("applycal_h5parm"),
+        fulljones_h5parm=payload.get("fulljones_h5parm"),
+        normalize_h5parm=payload.get("normalize_h5parm"),
+        timebase=payload.get("bda_timebase"),
+        maxinterval=chunk.get("bda_maxinterval"),
+        frequencybase=payload.get("bda_frequencybase"),
+        minchannels=chunk.get("bda_minchannels"),
+        onebeamperpatch=payload.get("onebeamperpatch"),
+        parallelbaselines=payload.get("parallelbaselines"),
+        sagecalpredict=payload.get("sagecalpredict"),
+        sourcedb=payload.get("sourcedb"),
+        directions=payload.get("directions"),
     )
     _run_shell(command, pipeline_working_dir, config, shell_operation_cls=shell_operation_cls)
     output_records = {}
@@ -622,6 +731,39 @@ def _collect_and_plot_fulljones(
         "combined_solutions": collected_record,
         "fast_phase_solutions": collected_record,
         "fast_phase_plots": plot_records,
+    }
+    for value in result.values():
+        validate_output_record(value)
+    return result
+
+
+def _collect_and_plot_fast_phase(
+    payload: Mapping[str, object],
+    solve_records: list[dict],
+    execution_config: ExecutionConfig,
+    shell_operation_cls=None,
+) -> dict:
+    pipeline_working_dir = str(payload["pipeline_working_dir"])
+    fast_record = _run_collect_h5parm(
+        [record["solve1"] for record in solve_records],
+        payload["collected_h5parms"]["solve1"],
+        pipeline_working_dir,
+        execution_config,
+        "Collected DD fast phase h5parm",
+        shell_operation_cls=shell_operation_cls,
+    )
+    fast_plots = _run_plot_solutions(
+        fast_record,
+        "phase",
+        pipeline_working_dir,
+        execution_config,
+        shell_operation_cls=shell_operation_cls,
+    )
+
+    result = {
+        "combined_solutions": fast_record,
+        "fast_phase_solutions": fast_record,
+        "fast_phase_plots": fast_plots,
     }
     for value in result.values():
         validate_output_record(value)
@@ -751,6 +893,13 @@ def _collect_plot_and_combine(
 ) -> dict:
     if payload["calibration_kind"] == "di_fulljones":
         return _collect_and_plot_fulljones(
+            payload,
+            solve_records,
+            execution_config,
+            shell_operation_cls=shell_operation_cls,
+        )
+    if payload["calibration_kind"] == "dd_fast_phase":
+        return _collect_and_plot_fast_phase(
             payload,
             solve_records,
             execution_config,

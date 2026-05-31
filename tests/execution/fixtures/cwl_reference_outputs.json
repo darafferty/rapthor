@@ -45,6 +45,19 @@
             {"class": "File", "path": "${PIPELINE_WORKING_DIR}/medium1_phase_solutions.png"}
         ]
     },
+    "calibrate_dd_fast_phase": {
+        "combined_solutions": {
+            "class": "File",
+            "path": "${PIPELINE_WORKING_DIR}/fast_phases.h5parm"
+        },
+        "fast_phase_solutions": {
+            "class": "File",
+            "path": "${PIPELINE_WORKING_DIR}/fast_phases.h5parm"
+        },
+        "fast_phase_plots": [
+            {"class": "File", "path": "${PIPELINE_WORKING_DIR}/phase_solutions.png"}
+        ]
+    },
     "image_no_dde": {
         "filtered_skymodel_true_sky": [
             {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1.true_sky.txt"}
