@@ -1715,7 +1715,7 @@ Deferred to later calibration PRs:
 
 ### PR 16: Task Runner Wiring And Scatter Parallelism
 
-Status: planned next infrastructure slice.
+Status: implemented in the migration branch, pending devcontainer verification.
 
 - Make every operation-level Prefect entry point execute with the configured
   task runner from `build_task_runner(execution_config)`.
@@ -1741,6 +1741,35 @@ Tests:
   collection and plotting starts.
 - Regression tests proving direct `run_*_flow()` helpers remain deterministic
   and sequential for focused mocked tests.
+
+Implemented files:
+
+- `rapthor/execution/task_runner.py`
+- `rapthor/execution/flows/runtime.py`
+- `rapthor/execution/flows/concatenate.py`
+- `rapthor/execution/flows/predict.py`
+- `rapthor/execution/flows/mosaic.py`
+- `rapthor/execution/flows/image.py`
+- `rapthor/execution/flows/calibrate.py`
+- `tests/execution/test_task_runner.py`
+- `tests/execution/test_calibrate_flow.py`
+- Updates to `PLAN.md`
+
+Local verification:
+
+- `python -m py_compile ...`: passed for the touched execution modules and
+  focused test files.
+- `git diff --check`: passed.
+
+Pending verification:
+
+- Run `python3 -m pytest tests/execution/test_task_runner.py
+  tests/execution/test_calibrate_flow.py` in the devcontainer.
+- Run `python3 -m pytest tests/execution tests/lib/test_parset.py` in the
+  devcontainer.
+- Run `python3 -m ruff check rapthor/execution tests/execution pyproject.toml`
+  and `python3 -m ruff format --check rapthor/execution tests/execution` in the
+  devcontainer.
 
 ## Success Criteria
 

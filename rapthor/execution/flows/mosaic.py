@@ -7,6 +7,7 @@ from prefect import flow, task
 
 from rapthor.execution.commands import normalize_command
 from rapthor.execution.config import ExecutionConfig
+from rapthor.execution.flows.runtime import run_flow_with_task_runner
 from rapthor.execution.outputs import file_record, validate_output_record
 from rapthor.execution.payloads import assert_serializable_payload
 from rapthor.execution.shell import ShellCommand, run_shell_command
@@ -359,7 +360,7 @@ def _run_mosaic_prefect_tasks(
     pipeline_working_dir, compress_images, image_types = _validate_image_type_payloads(payload)
     _validate_unique_mosaic_paths(image_types)
     outputs = [
-        mosaic_image_type_task(
+        mosaic_image_type_task.submit(
             image_type,
             compress_images,
             pipeline_working_dir,
@@ -367,16 +368,29 @@ def _run_mosaic_prefect_tasks(
         )
         for image_type in image_types
     ]
+    outputs = [output.result() for output in outputs]
     return _result_from_mosaic_records(outputs)
 
 
 @flow(name="mosaic")
+def _mosaic_flow(
+    payload: Mapping[str, object],
+    execution_config: Optional[ExecutionConfig] = None,
+):
+    """Prefect implementation for Mosaic."""
+    return _run_mosaic_prefect_tasks(payload, execution_config=execution_config)
+
+
 def mosaic_flow(
     payload: Mapping[str, object],
     execution_config: Optional[ExecutionConfig] = None,
 ):
     """Prefect entry point for Mosaic."""
-    return _run_mosaic_prefect_tasks(payload, execution_config=execution_config)
+    return run_flow_with_task_runner(
+        _mosaic_flow,
+        payload,
+        execution_config=execution_config,
+    )
 
 
 def normalized_make_mosaic_template_command(

@@ -1,6 +1,7 @@
 import pytest
 
 from rapthor.execution.config import ExecutionConfig
+from rapthor.execution.flows.runtime import run_flow_with_task_runner
 from rapthor.execution.task_runner import (
     MissingPrefectDaskError,
     build_task_runner,
@@ -13,8 +14,38 @@ class FakeDaskTaskRunner:
         self.kwargs = kwargs
 
 
-def test_sync_task_runner_does_not_require_prefect_dask():
-    assert build_task_runner(ExecutionConfig(task_runner="sync")) is None
+class FakeThreadPoolTaskRunner:
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+
+
+class FakeConfiguredFlow:
+    def __init__(self, parent):
+        self.parent = parent
+        self.calls = []
+
+    def __call__(self, *args, **kwargs):
+        self.calls.append((args, kwargs))
+        return {"args": args, "kwargs": kwargs}
+
+
+class FakeFlow:
+    def __init__(self):
+        self.options = None
+        self.configured_flow = FakeConfiguredFlow(self)
+
+    def with_options(self, **kwargs):
+        self.options = kwargs
+        return self.configured_flow
+
+
+def test_sync_task_runner_uses_single_worker_thread_pool():
+    runner = build_task_runner(
+        ExecutionConfig(task_runner="sync"),
+        thread_pool_task_runner_cls=FakeThreadPoolTaskRunner,
+    )
+
+    assert runner.kwargs == {"max_workers": 1}
 
 
 def test_local_cluster_kwargs_are_conservative():
@@ -63,3 +94,22 @@ def test_build_task_runner_requires_prefect_dask_without_injection(monkeypatch):
 
     with pytest.raises(MissingPrefectDaskError, match="prefect-dask"):
         build_task_runner(ExecutionConfig(task_runner="local_dask"))
+
+
+def test_run_flow_with_task_runner_applies_configured_runner(monkeypatch):
+    runner = object()
+    config = ExecutionConfig(task_runner="external_dask", dask_scheduler="tcp://scheduler:8786")
+    flow = FakeFlow()
+
+    monkeypatch.setattr(
+        "rapthor.execution.flows.runtime.build_task_runner",
+        lambda execution_config: runner,
+    )
+
+    result = run_flow_with_task_runner(flow, "payload", execution_config=config)
+
+    assert flow.options == {"task_runner": runner}
+    assert result == {
+        "args": ("payload",),
+        "kwargs": {"execution_config": config},
+    }

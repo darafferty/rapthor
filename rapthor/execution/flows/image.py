@@ -9,6 +9,7 @@ from prefect import flow, task
 
 from rapthor.execution.commands import normalize_command
 from rapthor.execution.config import ExecutionConfig
+from rapthor.execution.flows.runtime import run_flow_with_task_runner
 from rapthor.execution.outputs import directory_record, file_record, validate_output_record
 from rapthor.execution.payloads import assert_serializable_payload
 from rapthor.execution.resources import ResourceRequest, thread_environment
@@ -1815,23 +1816,36 @@ def _run_image_prefect_tasks(
     config = execution_config or ExecutionConfig(task_runner="sync")
     pipeline_working_dir, sectors = _validate_image_payload(payload)
     sector_outputs = [
-        image_sector_task(
+        image_sector_task.submit(
             sector,
             pipeline_working_dir,
             execution_config=config,
         )
         for sector in sectors
     ]
+    sector_outputs = [output.result() for output in sector_outputs]
     return _result_from_sector_records(sector_outputs)
 
 
 @flow(name="image")
+def _image_flow(
+    payload: Mapping[str, object],
+    execution_config: Optional[ExecutionConfig] = None,
+):
+    """Prefect implementation for imaging."""
+    return _run_image_prefect_tasks(payload, execution_config=execution_config)
+
+
 def image_flow(
     payload: Mapping[str, object],
     execution_config: Optional[ExecutionConfig] = None,
 ):
     """Prefect entry point for imaging."""
-    return _run_image_prefect_tasks(payload, execution_config=execution_config)
+    return run_flow_with_task_runner(
+        _image_flow,
+        payload,
+        execution_config=execution_config,
+    )
 
 
 def normalized_prepare_imaging_data_command(**kwargs) -> list[str]:

@@ -8,6 +8,7 @@ from prefect import flow, task
 
 from rapthor.execution.commands import normalize_command
 from rapthor.execution.config import ExecutionConfig
+from rapthor.execution.flows.runtime import run_flow_with_task_runner
 from rapthor.execution.outputs import file_record, validate_output_record
 from rapthor.execution.payloads import assert_serializable_payload
 from rapthor.execution.shell import ShellCommand, run_shell_command
@@ -477,18 +478,32 @@ def _run_calibrate_prefect_tasks(
 ) -> dict:
     config = execution_config or ExecutionConfig(task_runner="sync")
     solve_records = [
-        calibrate_chunk_task(payload, chunk, execution_config=config) for chunk in payload["chunks"]
+        calibrate_chunk_task.submit(payload, chunk, execution_config=config)
+        for chunk in payload["chunks"]
     ]
+    solve_records = [record.result() for record in solve_records]
     return _collect_and_plot_fulljones(payload, solve_records, config)
 
 
 @flow(name="calibrate")
+def _calibrate_flow(
+    payload: Mapping[str, object],
+    execution_config: Optional[ExecutionConfig] = None,
+):
+    """Prefect implementation for Calibrate."""
+    return _run_calibrate_prefect_tasks(
+        payload,
+        execution_config=execution_config,
+    )
+
+
 def calibrate_flow(
     payload: Mapping[str, object],
     execution_config: Optional[ExecutionConfig] = None,
 ):
     """Prefect entry point for Calibrate."""
-    return _run_calibrate_prefect_tasks(
+    return run_flow_with_task_runner(
+        _calibrate_flow,
         payload,
         execution_config=execution_config,
     )

@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 from prefect.testing.utilities import prefect_test_harness
 
+import rapthor.execution.flows.calibrate as calibrate_module
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.calibrate import (
     build_collect_h5parms_command,
@@ -304,6 +305,53 @@ def test_calibrate_prefect_flow_entrypoint_runs_with_mocked_shell(
 
     assert outputs["combined_solutions"] == file_record(tmp_path / "fulljones_solutions.h5")
     assert len(fake_calibrate_shell_operation_cls.instances) == 4
+
+
+def test_calibrate_prefect_tasks_submit_all_chunks_before_collect(monkeypatch, tmp_path):
+    payload = calibrate_payload_from_inputs("di", _di_fulljones_input_parms(), tmp_path)
+    events = []
+
+    class FakeFuture:
+        def __init__(self, index):
+            self.index = index
+
+        def result(self):
+            events.append(f"result-{self.index}")
+            return file_record(tmp_path / f"fulljones_gain_{self.index}.h5parm")
+
+    def fake_submit(payload_arg, chunk, execution_config=None):
+        assert payload_arg is payload
+        assert execution_config == ExecutionConfig(task_runner="sync")
+        events.append(f"submit-{chunk['output_h5parm']}")
+        return FakeFuture(len(events) - 1)
+
+    def fake_collect(payload_arg, solve_records, execution_config, shell_operation_cls=None):
+        _ = shell_operation_cls
+        events.append("collect")
+        assert payload_arg is payload
+        assert execution_config == ExecutionConfig(task_runner="sync")
+        assert solve_records == [
+            file_record(tmp_path / "fulljones_gain_0.h5parm"),
+            file_record(tmp_path / "fulljones_gain_1.h5parm"),
+        ]
+        return {"combined_solutions": file_record(tmp_path / "fulljones_solutions.h5")}
+
+    monkeypatch.setattr(calibrate_module.calibrate_chunk_task, "submit", fake_submit)
+    monkeypatch.setattr(calibrate_module, "_collect_and_plot_fulljones", fake_collect)
+
+    outputs = calibrate_module._run_calibrate_prefect_tasks(
+        payload,
+        execution_config=ExecutionConfig(task_runner="sync"),
+    )
+
+    assert outputs == {"combined_solutions": file_record(tmp_path / "fulljones_solutions.h5")}
+    assert events == [
+        "submit-fulljones_gain_0.h5parm",
+        "submit-fulljones_gain_1.h5parm",
+        "result-0",
+        "result-1",
+        "collect",
+    ]
 
 
 def test_run_calibrate_flow_fails_when_expected_output_is_missing(tmp_path):

@@ -8,6 +8,7 @@ from prefect import flow, task
 
 from rapthor.execution.commands import normalize_command
 from rapthor.execution.config import ExecutionConfig
+from rapthor.execution.flows.runtime import run_flow_with_task_runner
 from rapthor.execution.outputs import directory_record, validate_output_record
 from rapthor.execution.payloads import assert_serializable_payload
 from rapthor.execution.shell import ShellCommand, run_shell_command
@@ -524,15 +525,16 @@ def _run_predict_prefect_tasks(
         payload
     )
     model_outputs = [
-        predict_model_data_task(
+        predict_model_data_task.submit(
             predict_task,
             pipeline_working_dir,
             execution_config=config,
         )
         for predict_task in predict_tasks
     ]
+    model_outputs = [output.result() for output in model_outputs]
     postprocess_outputs = [
-        predict_postprocess_task(
+        predict_postprocess_task.submit(
             mode,
             postprocess_task,
             model_outputs,
@@ -541,16 +543,29 @@ def _run_predict_prefect_tasks(
         )
         for postprocess_task in postprocess_tasks
     ]
+    postprocess_outputs = [output.result() for output in postprocess_outputs]
     return _result_from_postprocess_records(mode, postprocess_outputs)
 
 
 @flow(name="predict")
+def _predict_flow(
+    payload: Mapping[str, object],
+    execution_config: Optional[ExecutionConfig] = None,
+):
+    """Prefect implementation for Predict."""
+    return _run_predict_prefect_tasks(payload, execution_config=execution_config)
+
+
 def predict_flow(
     payload: Mapping[str, object],
     execution_config: Optional[ExecutionConfig] = None,
 ):
     """Prefect entry point for Predict."""
-    return _run_predict_prefect_tasks(payload, execution_config=execution_config)
+    return run_flow_with_task_runner(
+        _predict_flow,
+        payload,
+        execution_config=execution_config,
+    )
 
 
 def normalized_predict_model_data_command(**kwargs) -> list[str]:

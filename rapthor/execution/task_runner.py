@@ -17,6 +17,12 @@ def _load_dask_task_runner_cls():
     return DaskTaskRunner
 
 
+def _load_thread_pool_task_runner_cls():
+    from prefect.task_runners import ThreadPoolTaskRunner
+
+    return ThreadPoolTaskRunner
+
+
 def local_cluster_kwargs(execution_config: ExecutionConfig) -> dict:
     """Build conservative kwargs for a local Dask cluster."""
     return {
@@ -25,14 +31,19 @@ def local_cluster_kwargs(execution_config: ExecutionConfig) -> dict:
     }
 
 
-def build_task_runner(execution_config: ExecutionConfig, dask_task_runner_cls=None):
+def build_task_runner(
+    execution_config: ExecutionConfig,
+    dask_task_runner_cls=None,
+    thread_pool_task_runner_cls=None,
+):
     """Build the configured Prefect task runner.
 
-    Returns None for `sync`, allowing callers to use Prefect's default sync
-    execution path without importing prefect-dask.
+    The `sync` runner uses Prefect's thread-pool runner with one worker so tests
+    keep deterministic task ordering without importing prefect-dask.
     """
     if execution_config.task_runner == "sync":
-        return None
+        runner_cls = thread_pool_task_runner_cls or _load_thread_pool_task_runner_cls()
+        return runner_cls(max_workers=1)
 
     runner_cls = dask_task_runner_cls or _load_dask_task_runner_cls()
     if execution_config.task_runner == "external_dask":

@@ -7,6 +7,7 @@ from prefect import flow, task
 
 from rapthor.execution.commands import normalize_command
 from rapthor.execution.config import ExecutionConfig
+from rapthor.execution.flows.runtime import run_flow_with_task_runner
 from rapthor.execution.outputs import directory_record, validate_output_record
 from rapthor.execution.payloads import assert_serializable_payload
 from rapthor.execution.shell import ShellCommand, run_shell_command
@@ -196,7 +197,7 @@ def _run_concatenate_prefect_tasks(
     pipeline_working_dir, data_colname, epochs = _validate_epoch_payloads(payload)
     _validate_unique_output_paths(epochs)
     outputs = [
-        concatenate_epoch_task(
+        concatenate_epoch_task.submit(
             epoch,
             data_colname,
             pipeline_working_dir,
@@ -204,16 +205,29 @@ def _run_concatenate_prefect_tasks(
         )
         for epoch in epochs
     ]
+    outputs = [output.result() for output in outputs]
     return _result_from_epoch_records(outputs)
 
 
 @flow(name="concatenate")
+def _concatenate_flow(
+    payload: Mapping[str, object],
+    execution_config: Optional[ExecutionConfig] = None,
+):
+    """Prefect implementation for Concatenate."""
+    return _run_concatenate_prefect_tasks(
+        payload,
+        execution_config=execution_config,
+    )
+
+
 def concatenate_flow(
     payload: Mapping[str, object],
     execution_config: Optional[ExecutionConfig] = None,
 ):
     """Prefect entry point for Concatenate."""
-    return _run_concatenate_prefect_tasks(
+    return run_flow_with_task_runner(
+        _concatenate_flow,
         payload,
         execution_config=execution_config,
     )
