@@ -1,4 +1,4 @@
-"""Prefect flows for Stokes-I imaging."""
+"""Prefect flows for imaging."""
 
 import glob
 import os
@@ -64,6 +64,10 @@ def _pol_token(pol: object) -> str:
     if isinstance(pol, list):
         return "".join(str(value) for value in pol)
     raise ValueError("pol must be a string or list")
+
+
+def _is_stokes_i(pol: str) -> bool:
+    return pol.upper() == "I"
 
 
 def _append_optional_prefixed(command: list[str], prefix: str, value: Optional[object]) -> None:
@@ -696,7 +700,7 @@ def image_payload_from_inputs(
     make_image_cube: bool = False,
     normalize_flux_scale: bool = False,
 ) -> dict:
-    """Create a serializable Stokes-I Image flow payload."""
+    """Create a serializable Image flow payload."""
     if apply_screens and use_facets:
         raise ValueError("apply_screens and use_facets cannot both be enabled")
     if normalize_flux_scale and not make_image_cube:
@@ -707,8 +711,6 @@ def image_payload_from_inputs(
         )
 
     pol = _pol_token(input_parms["pol"])
-    if pol.upper() != "I":
-        raise NotImplementedError("The image flow currently only supports Stokes-I imaging")
 
     pipeline_dir = str(pipeline_working_dir)
     image_names = input_parms.get("image_name", [])
@@ -872,11 +874,35 @@ def image_payload_from_inputs(
                 f"filtered_model_image_name[{sector_index}]",
             )
         image_i_cube_filename = None
+        image_cube_specs = []
         if make_image_cube:
             image_i_cube_filename = _validate_basename(
                 input_parms["image_I_cube_name"][sector_index],
                 f"image_I_cube_name[{sector_index}]",
             )
+            for stokes in pol.upper():
+                key = f"image_{stokes}_cube_name"
+                if key not in input_parms:
+                    continue
+                image_cube_filename = _validate_basename(
+                    input_parms[key][sector_index],
+                    f"{key}[{sector_index}]",
+                )
+                image_cube_specs.append(
+                    {
+                        "pol": stokes,
+                        "filename": image_cube_filename,
+                        "path": os.path.join(pipeline_dir, image_cube_filename),
+                    }
+                )
+            if not image_cube_specs:
+                image_cube_specs.append(
+                    {
+                        "pol": "I",
+                        "filename": image_i_cube_filename,
+                        "path": os.path.join(pipeline_dir, image_i_cube_filename),
+                    }
+                )
         output_source_catalog_filename = None
         output_normalize_h5parm_filename = None
         if normalize_flux_scale:
@@ -947,6 +973,7 @@ def image_payload_from_inputs(
                     if image_i_cube_filename is None
                     else os.path.join(pipeline_dir, image_i_cube_filename)
                 ),
+                "image_cube_specs": image_cube_specs,
                 "output_source_catalog_filename": output_source_catalog_filename,
                 "output_source_catalog_path": (
                     None
@@ -1024,12 +1051,13 @@ def image_payload_from_inputs(
             }
         )
 
+    stokes_mode = "stokes_i" if _is_stokes_i(pol) else "full_stokes"
     if apply_screens:
-        mode = "screens_stokes_i"
+        mode = f"screens_{stokes_mode}"
     elif use_facets:
-        mode = "facet_stokes_i"
+        mode = f"facet_{stokes_mode}"
     else:
-        mode = "no_dde_stokes_i"
+        mode = f"no_dde_{stokes_mode}"
 
     payload = {
         "mode": mode,
@@ -1114,32 +1142,50 @@ def _compress_image_records(
     return compressed_sector_images, compressed_extra_images
 
 
+def _channel_image_patterns(image_name: str, stokes: str, pipeline_working_dir: str) -> list[str]:
+    if stokes == "I":
+        return [
+            os.path.join(pipeline_working_dir, f"{image_name}-0???-image-pb.fits"),
+            os.path.join(pipeline_working_dir, f"{image_name}-0???-I-image-pb.fits"),
+        ]
+    return [os.path.join(pipeline_working_dir, f"{image_name}-0???-{stokes}-image-pb.fits")]
+
+
 def _make_image_cube_records(
     image_name: str,
-    image_i_cube_filename: str,
+    image_cube_specs: list[Mapping[str, object]],
     pipeline_working_dir: str,
     execution_config: ExecutionConfig,
     shell_operation_cls=None,
-) -> tuple[dict, dict, dict]:
-    channel_images = _file_records_for_required_patterns(
-        [
-            os.path.join(pipeline_working_dir, f"{image_name}-0???-image-pb.fits"),
-            os.path.join(pipeline_working_dir, f"{image_name}-0???-I-image-pb.fits"),
-        ],
-        "WSClean Stokes-I channel images",
-    )
-    command = build_make_image_cube_command(
-        [record["path"] for record in channel_images], image_i_cube_filename
-    )
-    _run_shell(
-        command, pipeline_working_dir, execution_config, shell_operation_cls=shell_operation_cls
-    )
-    image_i_cube_path = os.path.join(pipeline_working_dir, image_i_cube_filename)
-    return (
-        _require_file(image_i_cube_path, "Stokes-I image cube"),
-        _require_file(f"{image_i_cube_path}_beams.txt", "Stokes-I image cube beams"),
-        _require_file(f"{image_i_cube_path}_frequencies.txt", "Stokes-I image cube frequencies"),
-    )
+) -> tuple[list[dict], list[dict], list[dict]]:
+    image_cubes = []
+    image_cube_beams = []
+    image_cube_frequencies = []
+    for spec in image_cube_specs:
+        stokes = str(spec["pol"])
+        image_cube_filename = str(spec["filename"])
+        channel_images = _file_records_for_required_patterns(
+            _channel_image_patterns(image_name, stokes, pipeline_working_dir),
+            f"WSClean Stokes-{stokes} channel images",
+        )
+        command = build_make_image_cube_command(
+            [record["path"] for record in channel_images], image_cube_filename
+        )
+        _run_shell(
+            command, pipeline_working_dir, execution_config, shell_operation_cls=shell_operation_cls
+        )
+        image_cube_path = os.path.join(pipeline_working_dir, image_cube_filename)
+        image_cubes.append(_require_file(image_cube_path, f"Stokes-{stokes} image cube"))
+        image_cube_beams.append(
+            _require_file(f"{image_cube_path}_beams.txt", f"Stokes-{stokes} image cube beams")
+        )
+        image_cube_frequencies.append(
+            _require_file(
+                f"{image_cube_path}_frequencies.txt",
+                f"Stokes-{stokes} image cube frequencies",
+            )
+        )
+    return image_cubes, image_cube_beams, image_cube_frequencies
 
 
 def _make_normalization_records(
@@ -1215,7 +1261,7 @@ def run_image_sector(
     execution_config: Optional[ExecutionConfig] = None,
     shell_operation_cls=None,
 ) -> dict:
-    """Run one Stokes-I imaging sector."""
+    """Run one imaging sector."""
     config = execution_config or ExecutionConfig(task_runner="sync")
     prepared_records = []
     for prepare_task in sector["prepare_tasks"]:
@@ -1432,13 +1478,13 @@ def run_image_sector(
         ]
     )
     sector_images = [nonpb_image, pb_image]
-    image_cube = None
-    image_cube_beams = None
-    image_cube_frequencies = None
+    image_cubes = []
+    image_cube_beams = []
+    image_cube_frequencies = []
     if sector["make_image_cube"]:
-        image_cube, image_cube_beams, image_cube_frequencies = _make_image_cube_records(
+        image_cubes, image_cube_beams, image_cube_frequencies = _make_image_cube_records(
             image_name,
-            str(sector["image_I_cube_filename"]),
+            list(sector["image_cube_specs"]),
             pipeline_working_dir,
             config,
             shell_operation_cls=shell_operation_cls,
@@ -1572,9 +1618,9 @@ def run_image_sector(
     normalize_h5parm = None
     if sector["normalize_flux_scale"]:
         normalization_source_catalog, normalize_h5parm = _make_normalization_records(
-            image_cube,
-            image_cube_beams,
-            image_cube_frequencies,
+            image_cubes[0],
+            image_cube_beams[0],
+            image_cube_frequencies[0],
             concat_record,
             sector,
             pipeline_working_dir,
@@ -1599,10 +1645,10 @@ def run_image_sector(
         result["sector_region_file"] = region_record
     if skymodel_image is not None:
         result["sector_skymodel_image_fits"] = skymodel_image
-    if image_cube is not None:
-        result["sector_image_cubes"] = [image_cube]
-        result["sector_image_cube_beams"] = [image_cube_beams]
-        result["sector_image_cube_frequencies"] = [image_cube_frequencies]
+    if image_cubes:
+        result["sector_image_cubes"] = image_cubes
+        result["sector_image_cube_beams"] = image_cube_beams
+        result["sector_image_cube_frequencies"] = image_cube_frequencies
     if normalize_h5parm is not None:
         result["sector_source_catalog"] = normalization_source_catalog
         result["sector_normalize_h5parm"] = normalize_h5parm
@@ -1675,9 +1721,16 @@ def _result_from_sector_records(sector_outputs: list[dict]) -> dict:
 
 
 def _validate_image_payload(payload: Mapping[str, object]) -> tuple[str, list[Mapping]]:
-    supported_modes = {"facet_stokes_i", "no_dde_stokes_i", "screens_stokes_i"}
+    supported_modes = {
+        "facet_full_stokes",
+        "facet_stokes_i",
+        "no_dde_full_stokes",
+        "no_dde_stokes_i",
+        "screens_full_stokes",
+        "screens_stokes_i",
+    }
     if payload.get("mode") not in supported_modes:
-        raise ValueError("Only Stokes-I no-DDE, facet, and screen image payloads are supported")
+        raise ValueError("Only no-DDE, facet, and screen image payloads are supported")
     pipeline_working_dir = str(payload["pipeline_working_dir"])
     sectors = payload.get("sectors", [])
     if not isinstance(sectors, list):
@@ -1690,7 +1743,7 @@ def run_image_flow(
     execution_config: Optional[ExecutionConfig] = None,
     shell_operation_cls=None,
 ) -> dict:
-    """Run Stokes-I imaging commands and return finalizer-compatible outputs."""
+    """Run imaging commands and return finalizer-compatible outputs."""
     assert_serializable_payload(payload)
     config = execution_config or ExecutionConfig(task_runner="sync")
     pipeline_working_dir, sectors = _validate_image_payload(payload)
@@ -1728,7 +1781,7 @@ def image_flow(
     payload: Mapping[str, object],
     execution_config: Optional[ExecutionConfig] = None,
 ):
-    """Prefect entry point for Stokes-I imaging."""
+    """Prefect entry point for imaging."""
     return _run_image_prefect_tasks(payload, execution_config=execution_config)
 
 

@@ -70,24 +70,42 @@ def fake_image_shell_operation_cls():
                 (cwd / tokens[6]).write_text("region")
             elif tokens[0] == "wsclean":
                 image_name = tokens[tokens.index("-name") + 1]
+                pol = tokens[tokens.index("-pol") + 1].upper()
                 temp_dir = Path(tokens[tokens.index("-temp-dir") + 1])
                 if not temp_dir.is_absolute():
                     temp_dir = cwd / temp_dir
                 temp_dir.mkdir(parents=True, exist_ok=True)
                 (temp_dir / "wsclean.tmp").write_text("temporary")
-                for suffix in [
-                    "-MFS-I-image.fits",
-                    "-MFS-I-image-pb.fits",
-                    "-MFS-I-residual.fits",
-                    "-MFS-I-model-pb.fits",
-                    "-MFS-I-dirty.fits",
-                    "-sources.txt",
-                    "-sources-pb.txt",
-                ]:
-                    (cwd / f"{image_name}{suffix}").write_text("image")
                 channels_out = int(tokens[tokens.index("-channels-out") + 1])
-                for channel in range(channels_out):
-                    (cwd / f"{image_name}-{channel:04d}-I-image-pb.fits").write_text("channel")
+                if pol == "I":
+                    for suffix in [
+                        "-MFS-I-image.fits",
+                        "-MFS-I-image-pb.fits",
+                        "-MFS-I-residual.fits",
+                        "-MFS-I-model-pb.fits",
+                        "-MFS-I-dirty.fits",
+                    ]:
+                        (cwd / f"{image_name}{suffix}").write_text("image")
+                    for channel in range(channels_out):
+                        (cwd / f"{image_name}-{channel:04d}-I-image-pb.fits").write_text("channel")
+                else:
+                    for suffix in ["-MFS-image.fits", "-MFS-image-pb.fits"]:
+                        (cwd / f"{image_name}{suffix}").write_text("image")
+                    for stokes in "QUV":
+                        for suffix in ["image.fits", "image-pb.fits"]:
+                            (cwd / f"{image_name}-MFS-{stokes}-{suffix}").write_text("image")
+                    for stokes in "IQUV":
+                        for suffix in ["residual.fits", "model-pb.fits", "dirty.fits"]:
+                            (cwd / f"{image_name}-MFS-{stokes}-{suffix}").write_text("image")
+                    for channel in range(channels_out):
+                        (cwd / f"{image_name}-{channel:04d}-image-pb.fits").write_text("channel")
+                        for stokes in "QUV":
+                            (cwd / f"{image_name}-{channel:04d}-{stokes}-image-pb.fits").write_text(
+                                "channel"
+                            )
+                if "-save-source-list" in tokens:
+                    for suffix in ["-sources.txt", "-sources-pb.txt"]:
+                        (cwd / f"{image_name}{suffix}").write_text("skymodel")
             elif tokens[0] == "make_image_cube.py":
                 output_image = tokens[2]
                 (cwd / output_image).write_text("cube")
@@ -303,6 +321,30 @@ def _filtered_model_image_input_parms():
 def _image_cube_input_parms():
     input_parms = _image_input_parms()
     input_parms["image_I_cube_name"] = ["sector_1_I_freq_cube.fits"]
+    return input_parms
+
+
+def _full_stokes_image_input_parms():
+    input_parms = _image_input_parms()
+    input_parms["pol"] = "IQUV"
+    input_parms["save_source_list"] = False
+    input_parms["join_polarizations"] = True
+    return input_parms
+
+
+def _linked_full_stokes_image_input_parms():
+    input_parms = _full_stokes_image_input_parms()
+    input_parms["join_polarizations"] = False
+    input_parms["link_polarizations"] = "I"
+    return input_parms
+
+
+def _full_stokes_image_cube_input_parms():
+    input_parms = _full_stokes_image_input_parms()
+    input_parms["image_I_cube_name"] = ["sector_1_I_freq_cube.fits"]
+    input_parms["image_Q_cube_name"] = ["sector_1_Q_freq_cube.fits"]
+    input_parms["image_U_cube_name"] = ["sector_1_U_freq_cube.fits"]
+    input_parms["image_V_cube_name"] = ["sector_1_V_freq_cube.fits"]
     return input_parms
 
 
@@ -602,6 +644,88 @@ def test_image_command_builders_match_reference_fixtures():
     )
 
 
+def test_wsclean_command_builders_preserve_full_stokes_options():
+    command = normalized_wsclean_no_dde_command(
+        msin="sector_1_concat.ms",
+        name="sector_1",
+        mask="sector_1_mask.fits",
+        wsclean_imsize=[1024, 1024],
+        wsclean_niter=1000,
+        wsclean_nmiter=5,
+        robust=-0.5,
+        min_uv_lambda=80.0,
+        max_uv_lambda=1000000.0,
+        mgain=0.85,
+        multiscale=True,
+        save_source_list=False,
+        pol="IQUV",
+        link_polarizations=False,
+        join_polarizations=True,
+        skip_final_iteration=True,
+        cellsize_deg=0.001,
+        channels_out=4,
+        deconvolution_channels=2,
+        fit_spectral_pol=2,
+        taper_arcsec=0.0,
+        local_rms_strength=0.0,
+        local_rms_window=25.0,
+        local_rms_method="rms-with-min",
+        wsclean_mem=8.0,
+        auto_mask=5.0,
+        auto_mask_nmiter=1,
+        idg_mode="cpu",
+        num_threads=4,
+        num_deconvolution_threads=2,
+        dd_psf_grid=[1, 1],
+        apply_time_frequency_smearing=False,
+        temp_dir="sector_1_wsclean_tmp",
+    )
+
+    assert command[command.index("-pol") + 1] == "IQUV"
+    assert "-join-polarizations" in command
+    assert "-link-polarizations" not in command
+    assert "-save-source-list" not in command
+
+    linked_command = normalized_wsclean_no_dde_command(
+        msin="sector_1_concat.ms",
+        name="sector_1",
+        mask="sector_1_mask.fits",
+        wsclean_imsize=[1024, 1024],
+        wsclean_niter=1000,
+        wsclean_nmiter=5,
+        robust=-0.5,
+        min_uv_lambda=80.0,
+        max_uv_lambda=1000000.0,
+        mgain=0.85,
+        multiscale=True,
+        save_source_list=False,
+        pol="IQUV",
+        link_polarizations="I",
+        join_polarizations=False,
+        skip_final_iteration=True,
+        cellsize_deg=0.001,
+        channels_out=4,
+        deconvolution_channels=2,
+        fit_spectral_pol=2,
+        taper_arcsec=0.0,
+        local_rms_strength=0.0,
+        local_rms_window=25.0,
+        local_rms_method="rms-with-min",
+        wsclean_mem=8.0,
+        auto_mask=5.0,
+        auto_mask_nmiter=1,
+        idg_mode="cpu",
+        num_threads=4,
+        num_deconvolution_threads=2,
+        dd_psf_grid=[1, 1],
+        apply_time_frequency_smearing=False,
+        temp_dir="sector_1_wsclean_tmp",
+    )
+
+    assert linked_command[linked_command.index("-link-polarizations") + 1] == "I"
+    assert "-join-polarizations" not in linked_command
+
+
 def test_image_support_command_builders_create_expected_tokens():
     assert build_aterm_config_content("/data/screen-solutions.h5") == (
         "aterms = [idgcalsolutions, beam]\n"
@@ -799,6 +923,17 @@ def test_image_payload_from_inputs_builds_serializable_screen_payload(tmp_path):
     assert sector["prepare_tasks"][0]["maxinterval"] is None
 
 
+def test_image_payload_from_inputs_builds_full_stokes_payload(tmp_path):
+    payload = image_payload_from_inputs(_full_stokes_image_input_parms(), tmp_path)
+
+    assert payload["mode"] == "no_dde_full_stokes"
+    sector = payload["sectors"][0]
+    assert sector["pol"] == "IQUV"
+    assert sector["save_source_list"] is False
+    assert sector["join_polarizations"] is True
+    assert sector["link_polarizations"] is False
+
+
 def test_image_payload_from_inputs_builds_compressed_payload(tmp_path):
     payload = image_payload_from_inputs(_image_input_parms(), tmp_path, compress_images=True)
 
@@ -827,6 +962,43 @@ def test_image_payload_from_inputs_builds_image_cube_payload(tmp_path):
     assert sector["normalize_flux_scale"] is False
     assert sector["image_I_cube_filename"] == "sector_1_I_freq_cube.fits"
     assert sector["image_I_cube_path"] == str(tmp_path / "sector_1_I_freq_cube.fits")
+    assert sector["image_cube_specs"] == [
+        {
+            "pol": "I",
+            "filename": "sector_1_I_freq_cube.fits",
+            "path": str(tmp_path / "sector_1_I_freq_cube.fits"),
+        }
+    ]
+
+
+def test_image_payload_from_inputs_builds_full_stokes_image_cube_payload(tmp_path):
+    payload = image_payload_from_inputs(
+        _full_stokes_image_cube_input_parms(), tmp_path, make_image_cube=True
+    )
+
+    assert payload["mode"] == "no_dde_full_stokes"
+    assert payload["sectors"][0]["image_cube_specs"] == [
+        {
+            "pol": "I",
+            "filename": "sector_1_I_freq_cube.fits",
+            "path": str(tmp_path / "sector_1_I_freq_cube.fits"),
+        },
+        {
+            "pol": "Q",
+            "filename": "sector_1_Q_freq_cube.fits",
+            "path": str(tmp_path / "sector_1_Q_freq_cube.fits"),
+        },
+        {
+            "pol": "U",
+            "filename": "sector_1_U_freq_cube.fits",
+            "path": str(tmp_path / "sector_1_U_freq_cube.fits"),
+        },
+        {
+            "pol": "V",
+            "filename": "sector_1_V_freq_cube.fits",
+            "path": str(tmp_path / "sector_1_V_freq_cube.fits"),
+        },
+    ]
 
 
 def test_image_payload_from_inputs_builds_normalization_payload(tmp_path):
@@ -854,8 +1026,8 @@ def test_image_payload_from_inputs_rejects_unsupported_modes(tmp_path):
         )
 
     input_parms = _image_input_parms()
-    input_parms["pol"] = "IQUV"
-    with pytest.raises(NotImplementedError, match="Stokes-I"):
+    input_parms["pol"] = {"invalid": "pol"}
+    with pytest.raises(ValueError, match="pol must be"):
         image_payload_from_inputs(input_parms, tmp_path)
 
     with pytest.raises(ValueError, match="requires make_image_cube"):
@@ -1033,6 +1205,53 @@ def test_run_image_flow_executes_screen_commands_and_writes_aterm_config(
     assert "-apply-facet-beam" not in screen_command
 
 
+def test_run_image_flow_supports_full_stokes_no_dde(tmp_path, fake_image_shell_operation_cls):
+    outputs = run_image_flow(
+        image_payload_from_inputs(_full_stokes_image_input_parms(), tmp_path),
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_image_shell_operation_cls,
+    )
+
+    assert outputs["sector_I_images"] == [
+        [
+            file_record(tmp_path / "sector_1-MFS-image.fits"),
+            file_record(tmp_path / "sector_1-MFS-image-pb.fits"),
+        ]
+    ]
+    extra_images = outputs["sector_extra_images"][0]
+    assert file_record(tmp_path / "sector_1-MFS-Q-image.fits") in extra_images
+    assert file_record(tmp_path / "sector_1-MFS-U-image-pb.fits") in extra_images
+    assert file_record(tmp_path / "sector_1-MFS-V-dirty.fits") in extra_images
+    assert outputs["source_filtering_mask"] == [
+        file_record(tmp_path / "sector_1-MFS-image-pb.fits.mask.fits")
+    ]
+    assert "sector_skymodels" not in outputs
+    wsclean_command = next(
+        shlex.split(instance.kwargs["commands"][0])
+        for instance in fake_image_shell_operation_cls.instances
+        if shlex.split(instance.kwargs["commands"][0])[0] == "wsclean"
+    )
+    assert wsclean_command[wsclean_command.index("-pol") + 1] == "IQUV"
+    assert "-join-polarizations" in wsclean_command
+    assert "-save-source-list" not in wsclean_command
+
+
+def test_run_image_flow_supports_linked_full_stokes(tmp_path, fake_image_shell_operation_cls):
+    run_image_flow(
+        image_payload_from_inputs(_linked_full_stokes_image_input_parms(), tmp_path),
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_image_shell_operation_cls,
+    )
+
+    wsclean_command = next(
+        shlex.split(instance.kwargs["commands"][0])
+        for instance in fake_image_shell_operation_cls.instances
+        if shlex.split(instance.kwargs["commands"][0])[0] == "wsclean"
+    )
+    assert wsclean_command[wsclean_command.index("-link-polarizations") + 1] == "I"
+    assert "-join-polarizations" not in wsclean_command
+
+
 def test_run_image_flow_returns_compressed_image_outputs(tmp_path, fake_image_shell_operation_cls):
     outputs = run_image_flow(
         image_payload_from_inputs(_image_input_parms(), tmp_path, compress_images=True),
@@ -1201,6 +1420,50 @@ def test_run_image_flow_returns_image_cube_outputs(tmp_path, fake_image_shell_op
     ]
 
 
+def test_run_image_flow_returns_full_stokes_image_cube_outputs(
+    tmp_path, fake_image_shell_operation_cls
+):
+    outputs = run_image_flow(
+        image_payload_from_inputs(
+            _full_stokes_image_cube_input_parms(), tmp_path, make_image_cube=True
+        ),
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_image_shell_operation_cls,
+    )
+
+    assert outputs["sector_image_cubes"] == [
+        [
+            file_record(tmp_path / "sector_1_I_freq_cube.fits"),
+            file_record(tmp_path / "sector_1_Q_freq_cube.fits"),
+            file_record(tmp_path / "sector_1_U_freq_cube.fits"),
+            file_record(tmp_path / "sector_1_V_freq_cube.fits"),
+        ]
+    ]
+    make_cube_commands = [
+        shlex.split(instance.kwargs["commands"][0])
+        for instance in fake_image_shell_operation_cls.instances
+        if shlex.split(instance.kwargs["commands"][0])[0] == "make_image_cube.py"
+    ]
+    assert [command[2] for command in make_cube_commands] == [
+        "sector_1_I_freq_cube.fits",
+        "sector_1_Q_freq_cube.fits",
+        "sector_1_U_freq_cube.fits",
+        "sector_1_V_freq_cube.fits",
+    ]
+    assert make_cube_commands[0][1].split(",") == [
+        str(tmp_path / "sector_1-0000-image-pb.fits"),
+        str(tmp_path / "sector_1-0001-image-pb.fits"),
+        str(tmp_path / "sector_1-0002-image-pb.fits"),
+        str(tmp_path / "sector_1-0003-image-pb.fits"),
+    ]
+    assert make_cube_commands[1][1].split(",") == [
+        str(tmp_path / "sector_1-0000-Q-image-pb.fits"),
+        str(tmp_path / "sector_1-0001-Q-image-pb.fits"),
+        str(tmp_path / "sector_1-0002-Q-image-pb.fits"),
+        str(tmp_path / "sector_1-0003-Q-image-pb.fits"),
+    ]
+
+
 def test_run_image_flow_returns_normalization_outputs(tmp_path, fake_image_shell_operation_cls):
     outputs = run_image_flow(
         image_payload_from_inputs(
@@ -1297,6 +1560,8 @@ def test_image_reference_output_fixture_matches_output_contract():
         validate_output_record(value, allow_none=True)
     for value in outputs["image_filtered_model"].values():
         validate_output_record(value, allow_none=True)
+    for value in outputs["image_full_stokes"].values():
+        validate_output_record(value, allow_none=True)
     for value in outputs["image_cube"].values():
         validate_output_record(value, allow_none=True)
     for value in outputs["image_normalize"].values():
@@ -1381,6 +1646,39 @@ def test_image_finalizer_accepts_prefect_outputs_for_selfcal(
     assert sector.diagnostics == [{"cycle_number": 1}]
     assert field.lofar_to_true_flux_ratio == 1.0
     assert field.lofar_to_true_flux_std == 0.0
+    assert Path(operation.done_file).is_file()
+
+
+def test_image_finalizer_accepts_prefect_outputs_for_full_stokes(
+    tmp_path, fake_image_shell_operation_cls
+):
+    field = FieldStub(tmp_path)
+    field.image_pol = "IQUV"
+    operation = Image(field, index=1)
+    outputs = run_image_flow(
+        image_payload_from_inputs(
+            _full_stokes_image_input_parms(),
+            operation.pipeline_working_dir,
+        ),
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_image_shell_operation_cls,
+    )
+
+    operation.outputs = outputs
+    operation.finalize()
+
+    sector = field.imaging_sectors[0]
+    pipeline_dir = Path(operation.pipeline_working_dir)
+    skymodel_dir = Path(field.parset["dir_working"]) / "skymodels" / "image_1"
+    assert sector.I_image_file_apparent_sky == str(pipeline_dir / "sector_1-MFS-image.fits")
+    assert sector.I_image_file_true_sky == str(pipeline_dir / "sector_1-MFS-image-pb.fits")
+    assert sector.Q_image_file_apparent_sky == str(pipeline_dir / "sector_1-MFS-Q-image.fits")
+    assert sector.Q_image_file_true_sky == str(pipeline_dir / "sector_1-MFS-Q-image-pb.fits")
+    assert sector.U_model_file_true_sky == str(pipeline_dir / "sector_1-MFS-U-model-pb.fits")
+    assert sector.V_dirty_file_apparent_sky == str(pipeline_dir / "sector_1-MFS-V-dirty.fits")
+    assert not hasattr(sector, "image_skymodel_file_true_sky")
+    assert not hasattr(sector, "image_skymodel_file_apparent_sky")
+    assert (skymodel_dir / "sector_1.source_catalog.fits").is_file()
     assert Path(operation.done_file).is_file()
 
 

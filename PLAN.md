@@ -590,8 +590,9 @@ Remaining Stage 5 work before final cutover:
 Image is the largest migration target. Do it by feature slice rather than all
 at once.
 
-Status: first no-DDE Stokes-I slice complete for direct flow parity on the
-migration branch.
+Status: serial no-DDE, facet, screen, cube, normalization, clean-disabled, and
+full-Stokes image-flow slices are complete for direct flow parity on the
+migration branch. MPI WSClean remains outstanding.
 
 Suggested slices:
 
@@ -624,14 +625,18 @@ Tests:
   output records.
 - Added output-contract fixtures for no-DDE Stokes-I images, skymodels,
   visibilities, masks, diagnostics, offsets, and plots.
-- Still needed: command-builder tests for MPI and full-Stokes modes.
-- Still needed: flow tests for the remaining imaging slices.
+- Added serial full-Stokes WSClean command-builder coverage for joined and
+  linked polarization modes.
+- Added direct-flow tests for full-Stokes no-DDE imaging, Q/U/V output discovery,
+  full-Stokes image cubes, and finalizer-compatible full-Stokes outputs.
+- Still needed: command-builder tests for MPI WSClean.
+- Still needed: flow tests for the MPI imaging slice.
 - Rework relevant `tests/operations/test_image.py` cases around command builders,
   flow structure, and finalizer-compatible output records.
 - Replace CWL-specific rendered-template assertions with command-builder and
   flow-structure assertions for the Prefect/Dask path.
-- Add output-contract fixtures for optional masks, cubes, filtered model images,
-  compressed FITS files, and region files.
+- Added output-contract fixtures for optional masks, cubes, filtered model
+  images, compressed FITS files, region files, and full-Stokes products.
 - Restart/failure tests for failed WSClean, missing diagnostics JSON, corrupt
   diagnostics JSON, failed finalizer copy, and rerun after deleting `.done`.
 - Filesystem isolation tests for image cubes, compressed outputs, and later
@@ -1301,7 +1306,7 @@ Verified in the rebuilt devcontainer:
 
 Deferred to later imaging PRs:
 
-- Add MPI WSClean variants and full-Stokes imaging.
+- Add MPI WSClean variants.
 - Add real external-tool coverage once lightweight Measurement Set and FITS
   fixtures are available.
 
@@ -1349,7 +1354,7 @@ Verified in the rebuilt devcontainer:
 
 Deferred to later imaging PRs:
 
-- Add MPI WSClean variants and full-Stokes imaging.
+- Add MPI WSClean variants.
 - Add real external-tool coverage once lightweight Measurement Set and FITS
   fixtures are available.
 
@@ -1388,7 +1393,7 @@ Verified in the rebuilt devcontainer:
 
 Deferred to later imaging PRs:
 
-- Add MPI WSClean variants and full-Stokes imaging.
+- Add MPI WSClean variants.
 - Add real external-tool coverage once lightweight Measurement Set and FITS
   fixtures are available.
 
@@ -1428,7 +1433,7 @@ Verified in the rebuilt devcontainer:
 
 Deferred to later imaging PRs:
 
-- Add MPI WSClean variants and full-Stokes imaging.
+- Add MPI WSClean variants.
 - Add real external-tool coverage once lightweight Measurement Set and FITS
   fixtures are available.
 
@@ -1464,7 +1469,7 @@ Verified in the rebuilt devcontainer:
 
 Deferred to later imaging PRs:
 
-- Add MPI WSClean variants and full-Stokes imaging.
+- Add MPI WSClean variants.
 - Add real external-tool coverage once lightweight Measurement Set and FITS
   fixtures are available.
 
@@ -1509,7 +1514,7 @@ Verified in the rebuilt devcontainer:
 
 Deferred to later imaging PRs:
 
-- Add MPI WSClean variants and full-Stokes imaging.
+- Add MPI WSClean variants.
 - Add real external-tool coverage once lightweight Measurement Set and FITS
   fixtures are available.
 
@@ -1525,7 +1530,7 @@ branch.
 - Cover both successful cleanup for multiple sectors and cleanup when the
   WSClean command fails.
 - Keep this slice scoped to existing Stokes-I WSClean modes; full-Stokes and
-  MPI remain deferred.
+  MPI were deferred to follow-up slices.
 
 Implemented files:
 
@@ -1543,7 +1548,48 @@ Verified in the rebuilt devcontainer:
 
 Deferred to later imaging PRs:
 
-- Add MPI WSClean variants and full-Stokes imaging.
+- Add MPI WSClean variants.
+- Add real external-tool coverage once lightweight Measurement Set and FITS
+  fixtures are available.
+
+### PR 13: Full-Stokes Serial Image Flow
+
+Status: complete for the next direct-flow imaging slice on the migration branch.
+
+- Remove the direct-flow Stokes-I-only payload guard and classify payloads as
+  Stokes-I or full-Stokes for no-DDE, facet, and screen imaging modes.
+- Preserve the WSClean full-Stokes filename contract by accepting generic
+  Stokes-I products such as `sector_1-MFS-image.fits` and collecting Q/U/V
+  MFS, PB, residual, model, and dirty images as `sector_extra_images`.
+- Keep source-list handling aligned with the operation layer: full-Stokes tests
+  use `save_source_list=False`, while PyBDSF-derived skymodel/catalog outputs
+  are still produced by the filter step.
+- Extend image-cube handling from one Stokes-I cube to one cube per requested
+  Stokes product when Q/U/V channel images are present.
+- Cover both WSClean polarization-combine modes: `-join-polarizations` and
+  `-link-polarizations I`.
+- Add finalizer coverage proving full-Stokes Prefect outputs populate the
+  sector image/model/residual/dirty attributes without creating Stokes-I
+  source-list attributes.
+
+Implemented files:
+
+- `rapthor/execution/flows/image.py`
+- `tests/execution/test_image_flow.py`
+- Updates to `tests/execution/fixtures/cwl_reference_outputs.json`
+- Updates to `PLAN.md`
+
+Verified in the rebuilt devcontainer:
+
+- `python3 -m pytest tests/execution/test_image_flow.py`: 37 passed.
+- `python3 -m pytest tests/execution tests/lib/test_parset.py`: 159 passed.
+- `python3 -m ruff check rapthor/execution tests/execution pyproject.toml`:
+  passed.
+- `python3 -m ruff format --check rapthor/execution tests/execution`: passed.
+
+Deferred to later imaging PRs:
+
+- Add MPI WSClean variants.
 - Add real external-tool coverage once lightweight Measurement Set and FITS
   fixtures are available.
 
