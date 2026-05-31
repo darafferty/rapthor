@@ -1715,7 +1715,7 @@ Deferred to later calibration PRs:
 
 ### PR 16: Task Runner Wiring And Scatter Parallelism
 
-Status: implemented in the migration branch, pending devcontainer verification.
+Status: complete on the migration branch.
 
 - Make every operation-level Prefect entry point execute with the configured
   task runner from `build_task_runner(execution_config)`.
@@ -1755,21 +1755,17 @@ Implemented files:
 - `tests/execution/test_calibrate_flow.py`
 - Updates to `PLAN.md`
 
-Local verification:
+Verified in the devcontainer:
 
 - `python -m py_compile ...`: passed for the touched execution modules and
   focused test files.
 - `git diff --check`: passed.
-
-Pending verification:
-
-- Run `python3 -m pytest tests/execution/test_task_runner.py
-  tests/execution/test_calibrate_flow.py` in the devcontainer.
-- Run `python3 -m pytest tests/execution tests/lib/test_parset.py` in the
-  devcontainer.
-- Run `python3 -m ruff check rapthor/execution tests/execution pyproject.toml`
-  and `python3 -m ruff format --check rapthor/execution tests/execution` in the
-  devcontainer.
+- `python3 -m pytest tests/execution/test_task_runner.py
+  tests/execution/test_calibrate_flow.py`: 19 passed.
+- `python3 -m pytest tests/execution tests/lib/test_parset.py`: 177 passed.
+- `python3 -m ruff check rapthor/execution tests/execution pyproject.toml`:
+  passed.
+- `python3 -m ruff format --check rapthor/execution tests/execution`: passed.
 
 ## Success Criteria
 
