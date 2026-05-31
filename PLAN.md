@@ -590,9 +590,10 @@ Remaining Stage 5 work before final cutover:
 Image is the largest migration target. Do it by feature slice rather than all
 at once.
 
-Status: serial no-DDE, facet, screen, cube, normalization, clean-disabled, and
-full-Stokes image-flow slices are complete for direct flow parity on the
-migration branch. MPI WSClean remains outstanding.
+Status: serial no-DDE, facet, screen, cube, normalization, clean-disabled,
+full-Stokes, and MPI WSClean image-flow slices are complete for direct-flow
+parity on the migration branch. Real external-tool imaging coverage remains
+outstanding.
 
 Suggested slices:
 
@@ -629,8 +630,11 @@ Tests:
   linked polarization modes.
 - Added direct-flow tests for full-Stokes no-DDE imaging, Q/U/V output discovery,
   full-Stokes image cubes, and finalizer-compatible full-Stokes outputs.
-- Still needed: command-builder tests for MPI WSClean.
-- Still needed: flow tests for the MPI imaging slice.
+- Added MPI WSClean command-builder coverage for no-DDE, facet, and screen
+  imaging.
+- Added mocked direct-flow tests for MPI no-DDE, facet, and screen imaging,
+  including launcher arguments, per-task thread environment, and the MPI facet
+  argument differences from serial WSClean.
 - Rework relevant `tests/operations/test_image.py` cases around command builders,
   flow structure, and finalizer-compatible output records.
 - Replace CWL-specific rendered-template assertions with command-builder and
@@ -1306,7 +1310,7 @@ Verified in the rebuilt devcontainer:
 
 Deferred to later imaging PRs:
 
-- Add MPI WSClean variants.
+- Completed later in PR 14: MPI WSClean variants.
 - Add real external-tool coverage once lightweight Measurement Set and FITS
   fixtures are available.
 
@@ -1354,7 +1358,7 @@ Verified in the rebuilt devcontainer:
 
 Deferred to later imaging PRs:
 
-- Add MPI WSClean variants.
+- Completed later in PR 14: MPI WSClean variants.
 - Add real external-tool coverage once lightweight Measurement Set and FITS
   fixtures are available.
 
@@ -1393,7 +1397,7 @@ Verified in the rebuilt devcontainer:
 
 Deferred to later imaging PRs:
 
-- Add MPI WSClean variants.
+- Completed later in PR 14: MPI WSClean variants.
 - Add real external-tool coverage once lightweight Measurement Set and FITS
   fixtures are available.
 
@@ -1433,7 +1437,7 @@ Verified in the rebuilt devcontainer:
 
 Deferred to later imaging PRs:
 
-- Add MPI WSClean variants.
+- Completed later in PR 14: MPI WSClean variants.
 - Add real external-tool coverage once lightweight Measurement Set and FITS
   fixtures are available.
 
@@ -1469,7 +1473,7 @@ Verified in the rebuilt devcontainer:
 
 Deferred to later imaging PRs:
 
-- Add MPI WSClean variants.
+- Completed later in PR 14: MPI WSClean variants.
 - Add real external-tool coverage once lightweight Measurement Set and FITS
   fixtures are available.
 
@@ -1514,7 +1518,7 @@ Verified in the rebuilt devcontainer:
 
 Deferred to later imaging PRs:
 
-- Add MPI WSClean variants.
+- Completed later in PR 14: MPI WSClean variants.
 - Add real external-tool coverage once lightweight Measurement Set and FITS
   fixtures are available.
 
@@ -1548,7 +1552,7 @@ Verified in the rebuilt devcontainer:
 
 Deferred to later imaging PRs:
 
-- Add MPI WSClean variants.
+- Completed later in PR 14: MPI WSClean variants.
 - Add real external-tool coverage once lightweight Measurement Set and FITS
   fixtures are available.
 
@@ -1589,7 +1593,44 @@ Verified in the rebuilt devcontainer:
 
 Deferred to later imaging PRs:
 
-- Add MPI WSClean variants.
+- Add real external-tool coverage once lightweight Measurement Set and FITS
+  fixtures are available.
+
+### PR 14: MPI WSClean Image Flow
+
+Status: complete for the direct-flow MPI WSClean slice on the migration branch.
+
+- Add MPI WSClean command builders for no-DDE, facet, and screen imaging.
+- Use a CIMG/prototype-style launcher for direct execution:
+  `mpirun --bind-to none -x OPENBLAS_NUM_THREADS -npernode 1 -np <nodes>
+  wsclean-mp`.
+- Add `use_mpi`, `mpi_nnodes`, and `mpi_cpus_per_task` payload support while
+  keeping the science mode names as `no_dde_*`, `facet_*`, or `screens_*`.
+- Run WSClean with `mpi_cpus_per_task` as the WSClean `-j` value and set
+  `OMP_NUM_THREADS`/`OPENBLAS_NUM_THREADS` for the shell task.
+- Preserve the existing serial command arguments where applicable, while
+  matching the CWL MPI facet wrapper by omitting serial-only
+  `-parallel-gridding`.
+- Keep WSClean temporary-directory cleanup on both serial and MPI paths.
+
+Implemented files:
+
+- `rapthor/execution/flows/image.py`
+- `rapthor/execution/flows/__init__.py`
+- `rapthor/execution/__init__.py`
+- `tests/execution/test_image_flow.py`
+- Updates to `PLAN.md`
+
+Verified in the rebuilt devcontainer:
+
+- `python3 -m pytest tests/execution/test_image_flow.py`: 42 passed.
+- `python3 -m pytest tests/execution tests/lib/test_parset.py`: 164 passed.
+- `python3 -m ruff check rapthor/execution tests/execution pyproject.toml`:
+  passed.
+- `python3 -m ruff format --check rapthor/execution tests/execution`: passed.
+
+Deferred to later imaging PRs:
+
 - Add real external-tool coverage once lightweight Measurement Set and FITS
   fixtures are available.
 

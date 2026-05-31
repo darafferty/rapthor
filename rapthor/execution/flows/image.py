@@ -11,6 +11,7 @@ from rapthor.execution.commands import normalize_command
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.outputs import directory_record, file_record, validate_output_record
 from rapthor.execution.payloads import assert_serializable_payload
+from rapthor.execution.resources import ResourceRequest, thread_environment
 from rapthor.execution.shell import ShellCommand, run_shell_command
 
 ATERM_CONFIG_FILENAME = "aterm_plus_beam.cfg"
@@ -82,6 +83,17 @@ def _append_option(command: list[str], option: str, value: object) -> None:
 def _append_flag(command: list[str], option: str, enabled: bool) -> None:
     if enabled:
         command.append(option)
+
+
+def _append_options(command: list[str], options: list[tuple[str, object]]) -> None:
+    for option, value in options:
+        if value is None:
+            continue
+        if isinstance(value, list):
+            command.append(option)
+            command.extend(str(item) for item in value)
+        else:
+            _append_option(command, option, value)
 
 
 def build_aterm_config_content(h5parm: str) -> str:
@@ -359,12 +371,7 @@ def build_wsclean_no_dde_command(
         ("-deconvolution-threads", num_deconvolution_threads),
         ("-dd-psf-grid", dd_psf_grid),
     ]
-    for option, value in options:
-        if isinstance(value, list):
-            command.append(option)
-            command.extend(str(item) for item in value)
-        else:
-            _append_option(command, option, value)
+    _append_options(command, options)
     _append_flag(command, "-multiscale", multiscale)
     _append_flag(command, "-save-source-list", save_source_list)
     if link_polarizations:
@@ -478,12 +485,7 @@ def build_wsclean_facets_command(
         ("-parallel-gridding", num_gridding_threads),
         ("-facet-regions", region_file),
     ]
-    for option, value in options:
-        if isinstance(value, list):
-            command.append(option)
-            command.extend(str(item) for item in value)
-        else:
-            _append_option(command, option, value)
+    _append_options(command, options)
     _append_flag(command, "-multiscale", multiscale)
     _append_flag(command, "-scalar-visibilities", scalar_visibilities)
     _append_flag(command, "-diagonal-visibilities", diagonal_visibilities)
@@ -592,12 +594,7 @@ def build_wsclean_screens_command(
         ("-dd-psf-grid", dd_psf_grid),
         ("-interval", interval),
     ]
-    for option, value in options:
-        if isinstance(value, list):
-            command.append(option)
-            command.extend(str(item) for item in value)
-        else:
-            _append_option(command, option, value)
+    _append_options(command, options)
     _append_flag(command, "-multiscale", multiscale)
     _append_flag(command, "-save-source-list", save_source_list)
     if link_polarizations:
@@ -607,6 +604,47 @@ def build_wsclean_screens_command(
     _append_flag(command, "-apply-time-frequency-smearing", apply_time_frequency_smearing)
     command.append(msin)
     return command
+
+
+def build_mpi_wsclean_launch_command(mpi_nnodes: int) -> list[str]:
+    """Build the MPI launcher prefix used for WSClean-MP."""
+    if mpi_nnodes < 1:
+        raise ValueError("mpi_nnodes must be >= 1")
+    return [
+        "mpirun",
+        "--bind-to",
+        "none",
+        "-x",
+        "OPENBLAS_NUM_THREADS",
+        "-npernode",
+        "1",
+        "-np",
+        str(mpi_nnodes),
+        "wsclean-mp",
+    ]
+
+
+def _mpi_wsclean_command(wsclean_command: list[str], mpi_nnodes: int) -> list[str]:
+    if not wsclean_command or wsclean_command[0] != "wsclean":
+        raise ValueError("MPI WSClean wrapping requires a serial wsclean command")
+    return build_mpi_wsclean_launch_command(mpi_nnodes) + wsclean_command[1:]
+
+
+def build_wsclean_mpi_no_dde_command(mpi_nnodes: int, **kwargs) -> list[str]:
+    """Build the MPI no-DDE WSClean command for one imaging sector."""
+    return _mpi_wsclean_command(build_wsclean_no_dde_command(**kwargs), mpi_nnodes)
+
+
+def build_wsclean_mpi_facets_command(mpi_nnodes: int, **kwargs) -> list[str]:
+    """Build the MPI facet-corrected WSClean command for one imaging sector."""
+    kwargs = dict(kwargs)
+    kwargs["num_gridding_threads"] = None
+    return _mpi_wsclean_command(build_wsclean_facets_command(**kwargs), mpi_nnodes)
+
+
+def build_wsclean_mpi_screens_command(mpi_nnodes: int, **kwargs) -> list[str]:
+    """Build the MPI screen-corrected WSClean command for one imaging sector."""
+    return _mpi_wsclean_command(build_wsclean_screens_command(**kwargs), mpi_nnodes)
 
 
 def build_check_image_beam_command(input_image: str, beam_size_arcsec: float) -> list[str]:
@@ -699,6 +737,7 @@ def image_payload_from_inputs(
     compress_images: bool = False,
     make_image_cube: bool = False,
     normalize_flux_scale: bool = False,
+    use_mpi: bool = False,
 ) -> dict:
     """Create a serializable Image flow payload."""
     if apply_screens and use_facets:
@@ -775,6 +814,8 @@ def image_payload_from_inputs(
         per_sector_keys.append("image_I_cube_name")
     if normalize_flux_scale:
         per_sector_keys.extend(["output_source_catalog", "output_normalize_h5parm"])
+    if use_mpi:
+        per_sector_keys.extend(["mpi_nnodes", "mpi_cpus_per_task"])
     for key in per_sector_keys:
         value = input_parms.get(key, [])
         if not isinstance(value, list) or len(value) != sector_count:
@@ -919,6 +960,7 @@ def image_payload_from_inputs(
                 "image_name": image_name,
                 "apply_screens": apply_screens,
                 "use_facets": use_facets,
+                "use_mpi": bool(use_mpi),
                 "compress_images": bool(compress_images),
                 "make_image_cube": bool(make_image_cube),
                 "normalize_flux_scale": bool(normalize_flux_scale),
@@ -1042,6 +1084,12 @@ def image_payload_from_inputs(
                 "apply_time_frequency_smearing": bool(input_parms["apply_time_frequency_smearing"]),
                 "max_threads": int(input_parms["max_threads"]),
                 "deconvolution_threads": int(input_parms["deconvolution_threads"]),
+                "mpi_nnodes": (
+                    None if not use_mpi else int(input_parms["mpi_nnodes"][sector_index])
+                ),
+                "mpi_cpus_per_task": (
+                    None if not use_mpi else int(input_parms["mpi_cpus_per_task"][sector_index])
+                ),
                 "allow_internet_access": bool(input_parms["allow_internet_access"]),
                 "photometry_skymodel": photometry_skymodel,
                 "astrometry_skymodel": astrometry_skymodel,
@@ -1061,6 +1109,7 @@ def image_payload_from_inputs(
 
     payload = {
         "mode": mode,
+        "use_mpi": bool(use_mpi),
         "pipeline_working_dir": pipeline_dir,
         "sectors": sectors,
     }
@@ -1247,12 +1296,120 @@ def _run_shell(
     pipeline_working_dir: str,
     execution_config: ExecutionConfig,
     shell_operation_cls=None,
+    environment: Optional[Mapping[str, str]] = None,
 ) -> None:
     run_shell_command(
-        ShellCommand(command=command, working_directory=pipeline_working_dir),
+        ShellCommand(
+            command=command,
+            environment={} if environment is None else dict(environment),
+            working_directory=pipeline_working_dir,
+        ),
         execution_config,
         shell_operation_cls=shell_operation_cls,
     )
+
+
+def _mpi_environment(threads: int, processes: int) -> Mapping[str, str]:
+    return thread_environment(
+        ResourceRequest(
+            name="wsclean-mpi",
+            threads=threads,
+            processes=processes,
+            use_mpi=True,
+            exclusive=True,
+        )
+    )
+
+
+def _wsclean_threads_for_sector(sector: Mapping[str, object]) -> int:
+    if sector["use_mpi"]:
+        return int(sector["mpi_cpus_per_task"])
+    return int(sector["max_threads"])
+
+
+def _wsclean_environment_for_sector(sector: Mapping[str, object]) -> Optional[Mapping[str, str]]:
+    if not sector["use_mpi"]:
+        return None
+    return _mpi_environment(
+        _wsclean_threads_for_sector(sector),
+        int(sector["mpi_nnodes"]),
+    )
+
+
+def _build_wsclean_command_for_sector(
+    sector: Mapping[str, object],
+    concat_record: Mapping[str, str],
+    mask_record: Mapping[str, str],
+    region_record: Optional[Mapping[str, str]],
+    temp_dir: str,
+) -> list[str]:
+    common_kwargs = {
+        "msin": concat_record["path"],
+        "name": str(sector["image_name"]),
+        "mask": mask_record["path"],
+        "wsclean_imsize": list(sector["wsclean_imsize"]),
+        "wsclean_niter": int(sector["wsclean_niter"]),
+        "wsclean_nmiter": int(sector["wsclean_nmiter"]),
+        "robust": float(sector["robust"]),
+        "min_uv_lambda": float(sector["min_uv_lambda"]),
+        "max_uv_lambda": float(sector["max_uv_lambda"]),
+        "mgain": float(sector["mgain"]),
+        "multiscale": bool(sector["do_multiscale"]),
+        "save_source_list": bool(sector["save_source_list"]),
+        "pol": str(sector["pol"]),
+        "link_polarizations": sector["link_polarizations"],
+        "join_polarizations": bool(sector["join_polarizations"]),
+        "skip_final_iteration": bool(sector["skip_final_iteration"]),
+        "cellsize_deg": float(sector["cellsize_deg"]),
+        "channels_out": int(sector["channels_out"]),
+        "deconvolution_channels": int(sector["deconvolution_channels"]),
+        "fit_spectral_pol": int(sector["fit_spectral_pol"]),
+        "taper_arcsec": float(sector["taper_arcsec"]),
+        "local_rms_strength": float(sector["local_rms_strength"]),
+        "local_rms_window": float(sector["local_rms_window"]),
+        "local_rms_method": str(sector["local_rms_method"]),
+        "wsclean_mem": float(sector["wsclean_mem"]),
+        "auto_mask": float(sector["auto_mask"]),
+        "auto_mask_nmiter": int(sector["auto_mask_nmiter"]),
+        "idg_mode": str(sector["idg_mode"]),
+        "num_threads": _wsclean_threads_for_sector(sector),
+        "num_deconvolution_threads": int(sector["deconvolution_threads"]),
+        "dd_psf_grid": list(sector["dd_psf_grid"]),
+        "apply_time_frequency_smearing": bool(sector["apply_time_frequency_smearing"]),
+        "temp_dir": temp_dir,
+    }
+    if sector["use_facets"]:
+        facet_kwargs = {
+            **common_kwargs,
+            "scalar_visibilities": bool(sector["scalar_visibilities"]),
+            "diagonal_visibilities": bool(sector["diagonal_visibilities"]),
+            "h5parm": str(sector["h5parm"]),
+            "soltabs": str(sector["soltabs"]),
+            "region_file": region_record["path"],
+            "num_gridding_threads": int(sector["parallel_gridding_threads"]),
+            "shared_facet_reads": bool(sector["shared_facet_reads"]),
+            "shared_facet_writes": bool(sector["shared_facet_writes"]),
+        }
+        if sector["use_mpi"]:
+            return build_wsclean_mpi_facets_command(
+                mpi_nnodes=int(sector["mpi_nnodes"]), **facet_kwargs
+            )
+        return build_wsclean_facets_command(**facet_kwargs)
+    if sector["apply_screens"]:
+        screen_kwargs = {
+            **common_kwargs,
+            "interval": list(sector["interval"]),
+        }
+        if sector["use_mpi"]:
+            return build_wsclean_mpi_screens_command(
+                mpi_nnodes=int(sector["mpi_nnodes"]), **screen_kwargs
+            )
+        return build_wsclean_screens_command(**screen_kwargs)
+    if sector["use_mpi"]:
+        return build_wsclean_mpi_no_dde_command(
+            mpi_nnodes=int(sector["mpi_nnodes"]), **common_kwargs
+        )
+    return build_wsclean_no_dde_command(**common_kwargs)
 
 
 def run_image_sector(
@@ -1328,127 +1485,19 @@ def run_image_sector(
         region_record = _require_file(str(sector["facet_region_path"]), "Facet region file")
 
     temp_dir = os.path.join(pipeline_working_dir, f"{sector['image_name']}_wsclean_tmp")
-    if sector["use_facets"]:
-        wsclean_command = build_wsclean_facets_command(
-            concat_record["path"],
-            str(sector["image_name"]),
-            mask_record["path"],
-            list(sector["wsclean_imsize"]),
-            int(sector["wsclean_niter"]),
-            int(sector["wsclean_nmiter"]),
-            float(sector["robust"]),
-            float(sector["min_uv_lambda"]),
-            float(sector["max_uv_lambda"]),
-            float(sector["mgain"]),
-            bool(sector["do_multiscale"]),
-            bool(sector["scalar_visibilities"]),
-            bool(sector["diagonal_visibilities"]),
-            bool(sector["save_source_list"]),
-            str(sector["pol"]),
-            sector["link_polarizations"],
-            bool(sector["join_polarizations"]),
-            bool(sector["skip_final_iteration"]),
-            float(sector["cellsize_deg"]),
-            int(sector["channels_out"]),
-            int(sector["deconvolution_channels"]),
-            int(sector["fit_spectral_pol"]),
-            float(sector["taper_arcsec"]),
-            float(sector["local_rms_strength"]),
-            float(sector["local_rms_window"]),
-            str(sector["local_rms_method"]),
-            float(sector["wsclean_mem"]),
-            float(sector["auto_mask"]),
-            int(sector["auto_mask_nmiter"]),
-            str(sector["idg_mode"]),
-            int(sector["max_threads"]),
-            int(sector["deconvolution_threads"]),
-            list(sector["dd_psf_grid"]),
-            str(sector["h5parm"]),
-            str(sector["soltabs"]),
-            region_record["path"],
-            int(sector["parallel_gridding_threads"]),
-            bool(sector["apply_time_frequency_smearing"]),
-            bool(sector["shared_facet_reads"]),
-            bool(sector["shared_facet_writes"]),
-            temp_dir,
-        )
-    elif sector["apply_screens"]:
+    if sector["apply_screens"]:
         _write_aterm_config(pipeline_working_dir, str(sector["h5parm"]))
-        wsclean_command = build_wsclean_screens_command(
-            concat_record["path"],
-            str(sector["image_name"]),
-            mask_record["path"],
-            list(sector["wsclean_imsize"]),
-            int(sector["wsclean_niter"]),
-            int(sector["wsclean_nmiter"]),
-            float(sector["robust"]),
-            float(sector["min_uv_lambda"]),
-            float(sector["max_uv_lambda"]),
-            float(sector["mgain"]),
-            bool(sector["do_multiscale"]),
-            bool(sector["save_source_list"]),
-            str(sector["pol"]),
-            sector["link_polarizations"],
-            bool(sector["join_polarizations"]),
-            bool(sector["skip_final_iteration"]),
-            float(sector["cellsize_deg"]),
-            int(sector["channels_out"]),
-            int(sector["deconvolution_channels"]),
-            int(sector["fit_spectral_pol"]),
-            float(sector["taper_arcsec"]),
-            float(sector["local_rms_strength"]),
-            float(sector["local_rms_window"]),
-            str(sector["local_rms_method"]),
-            float(sector["wsclean_mem"]),
-            float(sector["auto_mask"]),
-            int(sector["auto_mask_nmiter"]),
-            str(sector["idg_mode"]),
-            int(sector["max_threads"]),
-            int(sector["deconvolution_threads"]),
-            list(sector["dd_psf_grid"]),
-            list(sector["interval"]),
-            bool(sector["apply_time_frequency_smearing"]),
-            temp_dir,
-        )
-    else:
-        wsclean_command = build_wsclean_no_dde_command(
-            concat_record["path"],
-            str(sector["image_name"]),
-            mask_record["path"],
-            list(sector["wsclean_imsize"]),
-            int(sector["wsclean_niter"]),
-            int(sector["wsclean_nmiter"]),
-            float(sector["robust"]),
-            float(sector["min_uv_lambda"]),
-            float(sector["max_uv_lambda"]),
-            float(sector["mgain"]),
-            bool(sector["do_multiscale"]),
-            bool(sector["save_source_list"]),
-            str(sector["pol"]),
-            sector["link_polarizations"],
-            bool(sector["join_polarizations"]),
-            bool(sector["skip_final_iteration"]),
-            float(sector["cellsize_deg"]),
-            int(sector["channels_out"]),
-            int(sector["deconvolution_channels"]),
-            int(sector["fit_spectral_pol"]),
-            float(sector["taper_arcsec"]),
-            float(sector["local_rms_strength"]),
-            float(sector["local_rms_window"]),
-            str(sector["local_rms_method"]),
-            float(sector["wsclean_mem"]),
-            float(sector["auto_mask"]),
-            int(sector["auto_mask_nmiter"]),
-            str(sector["idg_mode"]),
-            int(sector["max_threads"]),
-            int(sector["deconvolution_threads"]),
-            list(sector["dd_psf_grid"]),
-            bool(sector["apply_time_frequency_smearing"]),
-            temp_dir,
-        )
+    wsclean_command = _build_wsclean_command_for_sector(
+        sector, concat_record, mask_record, region_record, temp_dir
+    )
+    wsclean_environment = _wsclean_environment_for_sector(sector)
     try:
         _run_shell(
-            wsclean_command, pipeline_working_dir, config, shell_operation_cls=shell_operation_cls
+            wsclean_command,
+            pipeline_working_dir,
+            config,
+            shell_operation_cls=shell_operation_cls,
+            environment=wsclean_environment,
         )
     finally:
         _cleanup_directory(temp_dir)
@@ -1835,11 +1884,26 @@ def normalized_wsclean_no_dde_command(**kwargs) -> list[str]:
     return normalize_command(build_wsclean_no_dde_command(**kwargs))
 
 
+def normalized_wsclean_mpi_no_dde_command(**kwargs) -> list[str]:
+    """Return normalized MPI no-DDE WSClean command tokens for fixture comparisons."""
+    return normalize_command(build_wsclean_mpi_no_dde_command(**kwargs))
+
+
 def normalized_wsclean_facets_command(**kwargs) -> list[str]:
     """Return normalized facet WSClean command tokens for fixture comparisons."""
     return normalize_command(build_wsclean_facets_command(**kwargs))
 
 
+def normalized_wsclean_mpi_facets_command(**kwargs) -> list[str]:
+    """Return normalized MPI facet WSClean command tokens for fixture comparisons."""
+    return normalize_command(build_wsclean_mpi_facets_command(**kwargs))
+
+
 def normalized_wsclean_screens_command(**kwargs) -> list[str]:
     """Return normalized screen WSClean command tokens for fixture comparisons."""
     return normalize_command(build_wsclean_screens_command(**kwargs))
+
+
+def normalized_wsclean_mpi_screens_command(**kwargs) -> list[str]:
+    """Return normalized MPI screen WSClean command tokens for fixture comparisons."""
+    return normalize_command(build_wsclean_mpi_screens_command(**kwargs))

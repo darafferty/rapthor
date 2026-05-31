@@ -32,6 +32,9 @@ from rapthor.execution.flows.image import (
     normalized_normalize_flux_scale_command,
     normalized_prepare_imaging_data_command,
     normalized_wsclean_facets_command,
+    normalized_wsclean_mpi_facets_command,
+    normalized_wsclean_mpi_no_dde_command,
+    normalized_wsclean_mpi_screens_command,
     normalized_wsclean_no_dde_command,
     normalized_wsclean_screens_command,
     run_image_flow,
@@ -68,7 +71,9 @@ def fake_image_shell_operation_cls():
                 (cwd / tokens[1]).write_text("mask")
             elif tokens[0] == "make_region_file.py":
                 (cwd / tokens[6]).write_text("region")
-            elif tokens[0] == "wsclean":
+            elif tokens[0] in {"wsclean", "mpirun"}:
+                if tokens[0] == "mpirun":
+                    tokens = ["wsclean"] + tokens[tokens.index("wsclean-mp") + 1 :]
                 image_name = tokens[tokens.index("-name") + 1]
                 pol = tokens[tokens.index("-pol") + 1].upper()
                 temp_dir = Path(tokens[tokens.index("-temp-dir") + 1])
@@ -359,6 +364,27 @@ def _normalize_image_input_parms():
 def _clean_disabled_image_input_parms():
     input_parms = _image_input_parms()
     input_parms["wsclean_niter"] = [0]
+    return input_parms
+
+
+def _mpi_image_input_parms():
+    input_parms = _image_input_parms()
+    input_parms["mpi_nnodes"] = [2]
+    input_parms["mpi_cpus_per_task"] = [3]
+    return input_parms
+
+
+def _mpi_facet_image_input_parms():
+    input_parms = _facet_image_input_parms()
+    input_parms["mpi_nnodes"] = [2]
+    input_parms["mpi_cpus_per_task"] = [3]
+    return input_parms
+
+
+def _mpi_screens_image_input_parms():
+    input_parms = _screens_image_input_parms()
+    input_parms["mpi_nnodes"] = [2]
+    input_parms["mpi_cpus_per_task"] = [3]
     return input_parms
 
 
@@ -726,6 +752,94 @@ def test_wsclean_command_builders_preserve_full_stokes_options():
     assert "-join-polarizations" not in linked_command
 
 
+def test_wsclean_mpi_command_builders_use_mpirun_launcher():
+    common_kwargs = {
+        "msin": "sector_1_concat.ms",
+        "name": "sector_1",
+        "mask": "sector_1_mask.fits",
+        "wsclean_imsize": [1024, 1024],
+        "wsclean_niter": 1000,
+        "wsclean_nmiter": 5,
+        "robust": -0.5,
+        "min_uv_lambda": 80.0,
+        "max_uv_lambda": 1000000.0,
+        "mgain": 0.85,
+        "multiscale": True,
+        "save_source_list": True,
+        "pol": "I",
+        "link_polarizations": False,
+        "join_polarizations": False,
+        "skip_final_iteration": True,
+        "cellsize_deg": 0.001,
+        "channels_out": 4,
+        "deconvolution_channels": 2,
+        "fit_spectral_pol": 2,
+        "taper_arcsec": 0.0,
+        "local_rms_strength": 0.0,
+        "local_rms_window": 25.0,
+        "local_rms_method": "rms-with-min",
+        "wsclean_mem": 8.0,
+        "auto_mask": 5.0,
+        "auto_mask_nmiter": 1,
+        "idg_mode": "cpu",
+        "num_threads": 3,
+        "num_deconvolution_threads": 2,
+        "dd_psf_grid": [1, 1],
+        "apply_time_frequency_smearing": False,
+        "temp_dir": "sector_1_wsclean_tmp",
+    }
+
+    command = normalized_wsclean_mpi_no_dde_command(mpi_nnodes=2, **common_kwargs)
+    assert command[:10] == [
+        "mpirun",
+        "--bind-to",
+        "none",
+        "-x",
+        "OPENBLAS_NUM_THREADS",
+        "-npernode",
+        "1",
+        "-np",
+        "2",
+        "wsclean-mp",
+    ]
+    assert command[command.index("-j") + 1] == "3"
+    assert "-apply-primary-beam" in command
+
+    facet_command = normalized_wsclean_mpi_facets_command(
+        mpi_nnodes=2,
+        **{
+            **common_kwargs,
+            "scalar_visibilities": True,
+            "diagonal_visibilities": False,
+            "h5parm": "facet-solutions.h5",
+            "soltabs": "phase000",
+            "region_file": "sector_1_facets_ds9.reg",
+            "num_gridding_threads": 7,
+            "shared_facet_reads": True,
+            "shared_facet_writes": True,
+        },
+    )
+    assert facet_command[:10] == command[:10]
+    assert "-apply-facet-solutions" in facet_command
+    assert "-facet-regions" in facet_command
+    assert "-parallel-gridding" not in facet_command
+    assert "-shared-facet-reads" in facet_command
+    assert "-shared-facet-writes" in facet_command
+
+    screen_command = normalized_wsclean_mpi_screens_command(
+        mpi_nnodes=2,
+        **{
+            **common_kwargs,
+            "interval": [0, 9],
+        },
+    )
+    assert screen_command[:10] == command[:10]
+    assert screen_command[screen_command.index("-gridder") + 1] == "idg"
+    assert screen_command[screen_command.index("-aterm-config") + 1] == ATERM_CONFIG_FILENAME
+    assert "-apply-primary-beam" not in screen_command
+    assert "-apply-facet-beam" not in screen_command
+
+
 def test_image_support_command_builders_create_expected_tokens():
     assert build_aterm_config_content("/data/screen-solutions.h5") == (
         "aterms = [idgcalsolutions, beam]\n"
@@ -934,6 +1048,17 @@ def test_image_payload_from_inputs_builds_full_stokes_payload(tmp_path):
     assert sector["link_polarizations"] is False
 
 
+def test_image_payload_from_inputs_builds_mpi_payload(tmp_path):
+    payload = image_payload_from_inputs(_mpi_image_input_parms(), tmp_path, use_mpi=True)
+
+    assert payload["mode"] == "no_dde_stokes_i"
+    assert payload["use_mpi"] is True
+    sector = payload["sectors"][0]
+    assert sector["use_mpi"] is True
+    assert sector["mpi_nnodes"] == 2
+    assert sector["mpi_cpus_per_task"] == 3
+
+
 def test_image_payload_from_inputs_builds_compressed_payload(tmp_path):
     payload = image_payload_from_inputs(_image_input_parms(), tmp_path, compress_images=True)
 
@@ -1029,6 +1154,9 @@ def test_image_payload_from_inputs_rejects_unsupported_modes(tmp_path):
     input_parms["pol"] = {"invalid": "pol"}
     with pytest.raises(ValueError, match="pol must be"):
         image_payload_from_inputs(input_parms, tmp_path)
+
+    with pytest.raises(ValueError, match="mpi_nnodes"):
+        image_payload_from_inputs(_image_input_parms(), tmp_path, use_mpi=True)
 
     with pytest.raises(ValueError, match="requires make_image_cube"):
         image_payload_from_inputs(
@@ -1250,6 +1378,92 @@ def test_run_image_flow_supports_linked_full_stokes(tmp_path, fake_image_shell_o
     )
     assert wsclean_command[wsclean_command.index("-link-polarizations") + 1] == "I"
     assert "-join-polarizations" not in wsclean_command
+
+
+def test_run_image_flow_supports_mpi_no_dde(tmp_path, fake_image_shell_operation_cls):
+    outputs = run_image_flow(
+        image_payload_from_inputs(_mpi_image_input_parms(), tmp_path, use_mpi=True),
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_image_shell_operation_cls,
+    )
+
+    assert outputs["sector_I_images"] == [
+        [
+            file_record(tmp_path / "sector_1-MFS-I-image.fits"),
+            file_record(tmp_path / "sector_1-MFS-I-image-pb.fits"),
+        ]
+    ]
+    mpi_instance = next(
+        instance
+        for instance in fake_image_shell_operation_cls.instances
+        if shlex.split(instance.kwargs["commands"][0])[0] == "mpirun"
+    )
+    mpi_command = shlex.split(mpi_instance.kwargs["commands"][0])
+    assert mpi_command[:10] == [
+        "mpirun",
+        "--bind-to",
+        "none",
+        "-x",
+        "OPENBLAS_NUM_THREADS",
+        "-npernode",
+        "1",
+        "-np",
+        "2",
+        "wsclean-mp",
+    ]
+    assert mpi_command[mpi_command.index("-j") + 1] == "3"
+    assert mpi_instance.kwargs["env"] == {
+        "OMP_NUM_THREADS": "3",
+        "OPENBLAS_NUM_THREADS": "3",
+    }
+
+
+def test_run_image_flow_supports_mpi_facets(tmp_path, fake_image_shell_operation_cls):
+    outputs = run_image_flow(
+        image_payload_from_inputs(
+            _mpi_facet_image_input_parms(), tmp_path, use_facets=True, use_mpi=True
+        ),
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_image_shell_operation_cls,
+    )
+
+    assert outputs["sector_region_file"] == [file_record(tmp_path / "sector_1_facets_ds9.reg")]
+    mpi_command = next(
+        shlex.split(instance.kwargs["commands"][0])
+        for instance in fake_image_shell_operation_cls.instances
+        if shlex.split(instance.kwargs["commands"][0])[0] == "mpirun"
+    )
+    assert "wsclean-mp" in mpi_command
+    assert "-apply-facet-solutions" in mpi_command
+    assert "-facet-regions" in mpi_command
+    assert "-parallel-gridding" not in mpi_command
+    assert "-shared-facet-reads" in mpi_command
+    assert "-shared-facet-writes" in mpi_command
+
+
+def test_run_image_flow_supports_mpi_screens(tmp_path, fake_image_shell_operation_cls):
+    outputs = run_image_flow(
+        image_payload_from_inputs(
+            _mpi_screens_image_input_parms(), tmp_path, apply_screens=True, use_mpi=True
+        ),
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_image_shell_operation_cls,
+    )
+
+    assert outputs["sector_I_images"] == [
+        [
+            file_record(tmp_path / "sector_1-MFS-I-image.fits"),
+            file_record(tmp_path / "sector_1-MFS-I-image-pb.fits"),
+        ]
+    ]
+    mpi_command = next(
+        shlex.split(instance.kwargs["commands"][0])
+        for instance in fake_image_shell_operation_cls.instances
+        if shlex.split(instance.kwargs["commands"][0])[0] == "mpirun"
+    )
+    assert "wsclean-mp" in mpi_command
+    assert mpi_command[mpi_command.index("-gridder") + 1] == "idg"
+    assert mpi_command[mpi_command.index("-aterm-config") + 1] == ATERM_CONFIG_FILENAME
 
 
 def test_run_image_flow_returns_compressed_image_outputs(tmp_path, fake_image_shell_operation_cls):
