@@ -230,6 +230,16 @@ Prefer conservative defaults that preserve single-machine behaviour. Existing
 are still useful for reference runs, but they should be removed or replaced
 before the final merge.
 
+Every operation-level Prefect flow must actually consume this configuration.
+Do not treat `ExecutionConfig.task_runner` as metadata only: flow entry points
+should construct the configured runner with `build_task_runner()` and execute
+with that runner. Scattered independent work, for example calibration solve
+chunks, prediction sectors, imaging sectors, mosaic image types, and
+concatenation epochs, should be submitted as Prefect task futures so Dask can
+run them concurrently. Downstream collection, combination, plotting, and
+finalizer-compatible result assembly must wait on the required futures before
+starting.
+
 ## Replacement Policy
 
 Because the migration branch is not merged until complete, Rapthor does not need
@@ -654,8 +664,9 @@ adjustment.
 
 Status: the first DI full-Jones direct-flow slice is complete for mocked
 execution. DI scalar solves, DD solves, h5parm combination/source adjustment,
-pre-application, image-based prediction, IDG/screen generation, restart/failure
-coverage, and real external-tool calibration coverage remain outstanding.
+pre-application, image-based prediction, IDG/screen generation, explicit Dask
+parallelism for solve chunks, restart/failure coverage, and real external-tool
+calibration coverage remain outstanding.
 
 Suggested slices:
 
@@ -670,6 +681,11 @@ Suggested slices:
 
 Reuse the existing solve planner in `rapthor/operations/calibrate.py`.
 
+Before adding more calibration solve branches, wire operation flows to the
+configured Prefect task runner and change calibration solve scatter to explicit
+Prefect futures. The collection step must depend on all solve futures and should
+not start until every chunk has produced its h5parm output.
+
 Tests:
 
 - Added DI full-Jones DDECal, h5parm collection, and plot command-builder tests.
@@ -678,6 +694,11 @@ Tests:
 - Added mocked direct-flow and Prefect harness tests for DI full-Jones solve
   scatter, h5parm collection, phase plotting, output records, and missing solve
   output failure.
+- Add task-runner wiring tests proving `local_dask` and `external_dask`
+  configuration is passed to Prefect operation flows.
+- Add calibration concurrency-order tests proving all solve chunks are submitted
+  before h5parm collection starts, and that collection receives resolved output
+  records from every chunk.
 - Unit tests for every calibration command-builder branch.
 - Golden command parity tests for DDECal, IDGCal, image-based predict,
   h5parm collection, h5parm combination, plotting, source adjustment, and
@@ -1682,6 +1703,8 @@ Verified in the devcontainer:
 
 Deferred to later calibration PRs:
 
+- Wire operation flows to `build_task_runner()` and make scattered calibration
+  solve chunks use explicit Prefect task futures so Dask can parallelise them.
 - DI scalar solve branches.
 - DD calibration solve branches.
 - h5parm combination and source-adjustment branches.
@@ -1689,6 +1712,35 @@ Deferred to later calibration PRs:
 - Restart/failure coverage beyond missing solve output.
 - Real external-tool coverage once lightweight calibration fixtures are
   available.
+
+### PR 16: Task Runner Wiring And Scatter Parallelism
+
+Status: planned next infrastructure slice.
+
+- Make every operation-level Prefect entry point execute with the configured
+  task runner from `build_task_runner(execution_config)`.
+- Keep direct `run_*_flow()` helpers available for deterministic unit tests, but
+  make Prefect flow entry points use explicit task submission for independent
+  scatter work.
+- Change calibration solve scatter from direct task calls to submitted futures,
+  then resolve those futures before h5parm collection starts.
+- Apply the same pattern to previously ported operation flows where their
+  scatter work should be concurrent: concatenate epochs, predict model-data
+  tasks, mosaic image types, and image sectors.
+- Preserve sequential dependencies inside each unit of work, for example
+  per-sector imaging preparation before WSClean and calibration collection after
+  all solve chunks.
+
+Tests:
+
+- Unit tests for a small helper that applies `build_task_runner()` to a Prefect
+  flow while preserving `sync` behaviour for tests.
+- Prefect harness tests proving `local_dask` and `external_dask` configurations
+  are passed through to operation flow execution.
+- Calibration ordering tests proving all solve chunks are submitted before
+  collection and plotting starts.
+- Regression tests proving direct `run_*_flow()` helpers remain deterministic
+  and sequential for focused mocked tests.
 
 ## Success Criteria
 
