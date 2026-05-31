@@ -652,6 +652,11 @@ Calibration is the other high-risk area because it includes solve planning,
 conditional branches, h5parm collection, plotting, combination, and source
 adjustment.
 
+Status: the first DI full-Jones direct-flow slice is complete for mocked
+execution. DI scalar solves, DD solves, h5parm combination/source adjustment,
+pre-application, image-based prediction, IDG/screen generation, restart/failure
+coverage, and real external-tool calibration coverage remain outstanding.
+
 Suggested slices:
 
 1. DI full-Jones calibration.
@@ -667,6 +672,12 @@ Reuse the existing solve planner in `rapthor/operations/calibrate.py`.
 
 Tests:
 
+- Added DI full-Jones DDECal, h5parm collection, and plot command-builder tests.
+- Added a DI full-Jones golden command fixture and output-contract fixture.
+- Added serializable payload tests for DI full-Jones operation inputs.
+- Added mocked direct-flow and Prefect harness tests for DI full-Jones solve
+  scatter, h5parm collection, phase plotting, output records, and missing solve
+  output failure.
 - Unit tests for every calibration command-builder branch.
 - Golden command parity tests for DDECal, IDGCal, image-based predict,
   h5parm collection, h5parm combination, plotting, source adjustment, and
@@ -1633,6 +1644,51 @@ Deferred to later imaging PRs:
 
 - Add real external-tool coverage once lightweight Measurement Set and FITS
   fixtures are available.
+
+### PR 15: DI Full-Jones Calibration Flow
+
+Status: complete for the first mocked direct-flow calibration slice on the
+migration branch.
+
+- Add a calibration execution module with command builders for DDECal,
+  `H5parm_collector.py`, and `plotrapthor`.
+- Add DI full-Jones payload construction from `Calibrate.set_input_parameters()`
+  style inputs.
+- Support the initial Stage 7 flow shape: scatter DDECal over time chunks,
+  collect solve1 h5parms into `fulljones_solutions.h5`, and plot phase
+  solutions.
+- Emit finalizer-compatible `combined_solutions`, `fast_phase_solutions`, and
+  `fast_phase_plots` records for the current unified calibration workflow.
+- Keep unsupported calibration slices explicit until the scalar DI and DD solve
+  branches are added.
+
+Implemented files:
+
+- `rapthor/execution/flows/calibrate.py`
+- `rapthor/execution/flows/__init__.py`
+- `rapthor/execution/__init__.py`
+- `tests/execution/test_calibrate_flow.py`
+- Updates to `tests/execution/fixtures/cwl_reference_commands.json`
+- Updates to `tests/execution/fixtures/cwl_reference_outputs.json`
+- Updates to `PLAN.md`
+
+Verified in the devcontainer:
+
+- `python3 -m pytest tests/execution/test_calibrate_flow.py`: 11 passed.
+- `python3 -m pytest tests/execution tests/lib/test_parset.py`: 175 passed.
+- `python3 -m ruff check rapthor/execution tests/execution pyproject.toml`:
+  passed.
+- `python3 -m ruff format --check rapthor/execution tests/execution`: passed.
+
+Deferred to later calibration PRs:
+
+- DI scalar solve branches.
+- DD calibration solve branches.
+- h5parm combination and source-adjustment branches.
+- Calibration finalizer-state tests against Prefect-produced records.
+- Restart/failure coverage beyond missing solve output.
+- Real external-tool coverage once lightweight calibration fixtures are
+  available.
 
 ## Success Criteria
 

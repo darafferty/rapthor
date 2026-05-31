@@ -12,6 +12,19 @@
             {"class": "File", "path": "${PIPELINE_WORKING_DIR}/mosaic_1-I-image.fits.fz"}
         ]
     },
+    "calibrate_di_fulljones": {
+        "combined_solutions": {
+            "class": "File",
+            "path": "${PIPELINE_WORKING_DIR}/fulljones_solutions.h5"
+        },
+        "fast_phase_solutions": {
+            "class": "File",
+            "path": "${PIPELINE_WORKING_DIR}/fulljones_solutions.h5"
+        },
+        "fast_phase_plots": [
+            {"class": "File", "path": "${PIPELINE_WORKING_DIR}/phase_solutions.png"}
+        ]
+    },
     "image_no_dde": {
         "filtered_skymodel_true_sky": [
             {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1.true_sky.txt"}
