@@ -254,6 +254,37 @@ to carry production compatibility code for partially ported operations:
 - Delete the CWL production path before merge, rather than deprecating it after
   merge.
 
+## Cutover Decisions
+
+The following decisions are accepted for the final migration shape:
+
+- Keep `process.run()` as the CLI-compatible entry point. At cutover it should
+  become a thin wrapper around the Prefect top-level flow rather than a parallel
+  orchestration implementation.
+- Keep operation classes through the cutover as adapters that gather operation
+  inputs, call the matching Prefect flow, persist finalizer-compatible output
+  records, and run existing `finalize()` logic. Replace operation classes only
+  later if there is a clear reason.
+- Do not pass live `Field`, `Sector`, or `Observation` instances into
+  Prefect/Dask tasks. Operation flows may be called from driver-side operation
+  objects, but worker tasks must receive serializable payloads before real
+  distributed execution is enabled.
+- Make preflight strict before the final merge. The first supported feature
+  matrix must explicitly cover or reject DI/DD strategy combinations,
+  image-based predict, full Jones, hybrid screens, normalization, QUV, image
+  cubes, compression, MPI WSClean, restart, and the supported runtime/container
+  modes.
+- Define task granularity and resource ownership before Slurm work: calibration
+  solve chunks, prediction sectors, imaging sectors, mosaic image types, and
+  h5parm collection/plotting can run through Dask futures, while MPI WSClean
+  remains an exclusive task that cannot oversubscribe the same node allocation.
+- Keep CWL on the branch as a reference implementation until the explicit
+  CWL-to-Prefect equivalence suite passes. Remove CWL production code and
+  dependencies in one cleanup phase after that gate.
+- Treat the CWL removal gate as: golden command parity, output-contract parity,
+  finalizer-state parity, mocked process-flow tests, and focused real
+  integration parity all pass for the supported feature matrix.
+
 ## Capability Preflight
 
 The final Prefect/Dask pipeline still needs an explicit preflight step, but it no
@@ -842,13 +873,15 @@ Tests:
 
 Only after Prefect/Dask parity is demonstrated on the migration branch:
 
+- Run the dedicated CWL-to-Prefect equivalence suite and record the passing
+  baseline before deleting CWL code or dependencies.
 - Remove Toil, StreamFlow, and cwltool dependencies.
 - Remove `rapthor/pipeline/parsets/**` and `rapthor/pipeline/steps/**` once no
   tests or docs depend on them.
 - Remove `rapthor/lib/cwl.py`, `rapthor/lib/cwlrunner.py`, and any CWL-only
   operation plumbing that is no longer used.
-- Remove CWL test utilities or move any useful reference fixtures into
-  Prefect/Dask test fixtures.
+- Remove CWL test utilities only after useful reference fixtures and parity
+  expected artifacts have been moved into Prefect/Dask test fixtures.
 - Update package data so CWL files are not shipped.
 - Run the final non-integration and focused integration suites before merging to
   `master`.
@@ -1113,6 +1146,57 @@ High-risk integration combinations:
 - MPI WSClean on the target Slurm environment.
 - Restart after failure in `Predict`, `Image`, and `Calibrate`.
 
+Current integration test review:
+
+- Existing `tests/integration` coverage is valuable and should be retained as
+  the starting end-to-end suite: CLI smoke tests, DI calibration variants, DD
+  calibration variants, mixed DI/DD ordering, normalization, shared facet
+  read/write, bright-source peeling, and restart after an injected image-stage
+  failure are already represented.
+- Many integration tests currently assert CWL implementation details:
+  `CWLJob_*pipeline_parset.cwl.*` log names, `.cwl` step names, and Toil skip
+  behaviour. Before CWL removal, replace `find_step_logs()` and
+  `parse_dp3_args_from_log()` with backend-neutral command-log helpers that can
+  inspect Prefect task logs or the execution-layer command log format.
+- Keep user-facing completion assertions such as successful CLI exit, expected
+  operation ordering, final products, and `Rapthor has finished :)`, but avoid
+  depending on exact CWL runner log text unless the Prefect path intentionally
+  preserves it.
+- Rewrite the bright-source peeling test so it verifies whether restore commands
+  ran and whether expected products exist, rather than relying on Toil's skipped
+  `when:` log artifacts.
+- Keep the restart test concept, but extend it beyond image-stage failure. Add
+  focused restart integrations for injected failure in `Predict` and
+  `Calibrate`, and verify `.done` and `.outputs.json` reuse with
+  Prefect-produced output records.
+- Split normalization coverage so the provided-sky-model case can run without
+  the `internet` marker. Keep downloaded-catalog normalization as a separate
+  `internet` test.
+- Resolve the `shared_facet_rw=True` xfail before merge: either support it in
+  the Prefect path with the target WSClean version, or make preflight reject the
+  unsupported configuration with a clear error.
+- Add missing focused integration coverage for concatenation over multiple
+  Measurement Sets, image-only runs with supplied h5parm/skymodel inputs, QUV
+  or clean-disabled imaging, image cube generation, and the selected Slurm/MPI
+  execution mode.
+
+CWL-to-Prefect equivalence suite before CWL removal:
+
+- Add a dedicated parity suite that runs the same small parsets through the CWL
+  reference path and the Prefect/Dask path in isolated working directories while
+  CWL is still present on the migration branch.
+- Cover at minimum DI-only, DD-only, DI-then-DD, DD-then-DI, normalization,
+  peeling, restart, and a representative imaging/mosaic case.
+- Compare operation completion order, `.outputs.json` keys and shapes, product
+  basenames, h5parm solset/soltab names and axes, FITS dimensions and basic
+  statistics within tolerances, sky-model source counts, region files, summary
+  report contents, and final field/finalizer-visible state.
+- Use tolerances for numeric products affected by external-tool nondeterminism,
+  but require exact matches for product naming, output-record structure,
+  operation ordering, and restart semantics.
+- Do not delete CWL runner code, CWL package data, Toil, StreamFlow, or cwltool
+  until this equivalence suite passes for the supported merge feature matrix.
+
 ## Documentation Updates
 
 Update docs as each stage lands:
@@ -1163,7 +1247,8 @@ reference comparisons can run. Before merging to `master`:
 
 - Risk: removing CWL tests too early hides behavioural drift.
   Mitigation: keep CWL-derived fixtures and any needed reference helpers until
-  each operation has parity tests and focused integration coverage.
+  each operation has parity tests, focused integration coverage, and the
+  dedicated CWL-to-Prefect equivalence suite has passed.
 
 - Risk: command strings become hard to maintain.
   Mitigation: use structured command builders and test them directly, following
@@ -1204,6 +1289,14 @@ Resolved decision:
   execution path.
 - Prefect/Dask dependencies are core dependencies, using the Prefect `dask` and
   `shell` extras.
+- `process.run()` remains the CLI-compatible entry point and should delegate to
+  the Prefect top-level flow at cutover.
+- Operation classes remain as adapters through cutover so existing finalizers
+  and field-state contracts are preserved.
+- Serializable payloads are required before real Dask-distributed execution;
+  worker tasks must not mutate live domain objects.
+- CWL is retained only as a branch-local reference until the CWL-to-Prefect
+  equivalence suite passes, then removed from production code and packaging.
 
 ## Initial Pull Requests
 
@@ -2296,6 +2389,8 @@ The migration is complete when:
 
 - All supported Rapthor operations run through the Prefect/Dask path.
 - Every supported operation satisfies the per-operation parity gates.
+- The dedicated CWL-to-Prefect equivalence suite has passed for the supported
+  merge feature matrix before CWL code and dependencies are removed.
 - Golden command, output-contract, finalizer-state, restart/failure, logging, and
   mocked-flow tests pass for the Prefect/Dask path.
 - Prefect preflight detects unsupported feature slices, missing tools, invalid
