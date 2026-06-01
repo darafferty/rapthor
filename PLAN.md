@@ -675,17 +675,23 @@ Suggested slices:
 2. DI scalar phase calibration. Complete.
 3. DD fast phase calibration without image-based prediction. Complete.
 4. DD medium phase and slow gains. Complete.
-5. Pre-application of DI solutions before DD solves.
-6. Image-based prediction.
-7. IDG/screen generation.
-8. Plotting and h5parm post-processing.
+5. DD source adjustment and facet-region contract.
+6. Pre-application of DI solutions before DD solves.
+7. DD image-based prediction.
+8. IDG/screen generation.
+9. Plotting and h5parm post-processing.
 
 Reuse the existing solve planner in `rapthor/operations/calibrate.py`.
 
-Before adding DD calibration solve branches, keep using the configured Prefect
-task runner and explicit Prefect futures for calibration solve scatter. The
-collection step must depend on all solve futures and should not start until
-every chunk has produced its h5parm output.
+Map `CALIBRATION_STRATEGY.md` to explicit acceptance paths before calibration
+cutover: DI-only, DD-only, DI-then-DD, and DD-then-DI. Preserve the hand-offs
+shown in that strategy: DI solutions can be applied before DD calibration, DD
+solutions can be reused by later prediction or imaging, and DD facet-region
+artifacts have an explicit owner and consumer.
+
+Continue using the configured Prefect task runner and explicit Prefect futures
+for calibration solve scatter. The collection step must depend on all solve
+futures and should not start until every chunk has produced its h5parm output.
 
 Tests:
 
@@ -720,8 +726,25 @@ Tests:
 - Continue adding golden command parity tests for DDECal, IDGCal, image-based predict,
   h5parm collection, h5parm combination, plotting, source adjustment, and
   solution processing.
+- Add command parity and mocked-flow coverage for `adjust_h5parm_sources.py`
+  on all DD multi-direction output paths: phase-only, slow-with-medium2, and
+  slow-without-medium2.
+- Add command parity and mocked-flow coverage for DI pre-application before DD
+  calibration, including `applycal` in `dp3_steps`, `applycal_h5parm`,
+  `fulljones_h5parm`, `normalize_h5parm`, and `applycal.steps`.
+- Add command parity and mocked-flow coverage for DD image-based prediction,
+  including `draw_model`, `make_region_file`, `predict.regions`,
+  `predict.images`, and the `predict,applybeam` or
+  `predict,applybeam,applycal` DP3 prefixes.
+- Resolve and test the facet-region ownership contract. Either calibration
+  emits the field-level region file needed by DD prediction/imaging, or the
+  plan and strategy documentation explicitly state that the image flow owns
+  region generation and consumes calibration h5parms.
 - Existing solve-planner tests remain backend-independent.
 - Mocked flow tests for all solve lists supported by `CALIBRATION_STRATEGY.md`.
+- Mocked strategy-level tests for DI-only, DD-only, DI-then-DD, and DD-then-DI
+  proving the correct solution and region artifacts move between operation
+  flows.
 - Integration tests for DI-only, DD-only, DI-then-DD, and DD-then-DI using the
   Prefect/Dask flow once command execution is available.
 - Output-contract and finalizer-state tests for every stable solution product,
@@ -742,6 +765,11 @@ runs and route the CLI through it.
   current `process.run()` sequencing.
 - Decide whether operation flows are subflows or tasks from the top-level flow.
 - Continue to respect selfcal convergence checks between cycles.
+- Encode the four calibration strategy paths from `CALIBRATION_STRATEGY.md` in
+  top-level orchestration tests: DI-only, DD-only, DI-then-DD, and DD-then-DI.
+- Verify top-level data hand-offs explicitly: DI calibration products feed DD
+  pre-apply, DD calibration products feed later prediction or imaging, and the
+  agreed facet-region artifact is available to its consumer.
 - Replace the CWL runner call in `Operation.run()` with the Python flow path.
 - Remove branch-only CWL references from production execution code.
 
@@ -753,6 +781,8 @@ Tests:
 - Add full mocked-process tests for initial sky model generation, no-selfcal
   image-only strategy, selfcal convergence, selfcal divergence/failure,
   repeated final cycles, and preflight failure detection.
+- Add full mocked-process tests for DI-only, DD-only, DI-then-DD, and
+  DD-then-DI ordering and artifact hand-offs.
 - Add preflight tests that inspect the chosen strategy and fail before execution
   when any required operation or feature slice is unsupported.
 
@@ -1942,6 +1972,121 @@ Deferred to later calibration PRs:
 - Restart/failure coverage beyond the mocked missing-output paths.
 - Real external-tool coverage once lightweight calibration fixtures are
   available.
+
+### PR 20: DD Source Adjustment And Facet-Region Contract
+
+Status: planned.
+
+- Add `adjust_h5parm_sources.py` command construction and execution for
+  multi-direction DD calibration outputs.
+- Match the CWL output precedence for `combined_solutions`: adjusted slow
+  full-solution h5parm, unadjusted slow full-solution h5parm, adjusted
+  slow-without-medium2 h5parm, unadjusted slow-without-medium2 h5parm, adjusted
+  phase-only h5parm, unadjusted phase-only h5parm, then fast-only h5parm.
+- Preserve the existing single-direction behaviour by skipping source adjustment
+  when there is only one calibrator direction.
+- Resolve facet-region ownership for the Prefect path. If calibration owns the
+  field-level region file, add it to the calibration payload, flow, output
+  contract, and finalizer-state tests. If imaging owns region generation, update
+  `CALIBRATION_STRATEGY.md` and add tests proving prediction/imaging receives
+  the expected region artifact from the image-side contract.
+- Keep the output records finalizer-compatible and ensure copied solution
+  products match `Calibrate.finalize()` expectations.
+
+Tests:
+
+- Command-builder and golden command parity for `adjust_h5parm_sources.py`.
+- Mocked direct-flow tests for phase-only, slow-with-medium2, and
+  slow-without-medium2 DD source-adjustment branches.
+- Output-contract fixture coverage proving `combined_solutions` selects the
+  adjusted h5parm when source adjustment runs and the unadjusted h5parm when it
+  does not.
+- Finalizer-state tests proving DD fast, medium, slow, and combined solution
+  products are copied to the same field attributes as the CWL path.
+- Facet-region contract tests proving the agreed owner emits the region record
+  and the agreed consumer receives it.
+
+### PR 21: DI Pre-Apply Before DD Calibration
+
+Status: planned.
+
+- Support DD calibration payloads whose `dp3_steps` include `applycal` before
+  the DD solve steps.
+- Carry `applycal_h5parm`, `fulljones_h5parm`, `normalize_h5parm`, and
+  `applycal.steps` from operation inputs into the DD DDECal command builder.
+- Preserve both pre-application cases used by the current operation layer:
+  pre-apply inside the DD DDECal run when image-based prediction is not active,
+  and the `predict,applybeam,applycal` prefix when image-based prediction is
+  active.
+- Ensure DI solutions produced by a previous DI calibration step are the inputs
+  used by the DD pre-application path in the DI-then-DD strategy.
+
+Tests:
+
+- Command-builder and golden command parity for DD DDECal with pre-applied DI
+  fast-phase, slow-gain, full-Jones, and normalization solutions.
+- Serializable payload tests for all applycal-related h5parm records and step
+  lists.
+- Mocked direct-flow tests proving DD solve chunks receive the pre-apply command
+  arguments and still collect/combine/plot the expected DD outputs.
+- Strategy-level mocked tests for DI-then-DD proving DI products flow into DD
+  pre-apply before DD solve submission starts.
+- Negative tests for missing DI h5parm records, invalid applycal step lists, and
+  unsupported applycal combinations.
+
+### PR 22: DD Image-Based Prediction
+
+Status: planned.
+
+- Support DD calibration payloads whose DP3 prefix includes `predict` and
+  `applybeam`, optionally followed by `applycal`.
+- Add command builders and flow tasks for the calibration-side image-based
+  prediction prerequisites: WSClean model drawing and field region generation.
+- Pass `predict.regions` and `predict.images` into the DD DDECal command for
+  image-based prediction runs.
+- Preserve `sagecalpredict`, `onebeamperpatch`, beam settings, model image
+  metadata, and BDA settings from `Calibrate.set_input_parameters()`.
+- Ensure DD-only and DD-then-DI strategy paths can use DD prediction products
+  without requiring a DI calibration product first.
+
+Tests:
+
+- Command-builder and golden command parity for `draw_model`,
+  `make_region_file`, and DD DDECal with `predict,applybeam` and
+  `predict,applybeam,applycal` prefixes.
+- Serializable payload tests for model image metadata, region-file metadata,
+  prediction images, and optional pre-apply inputs.
+- Mocked direct-flow tests proving model drawing and region generation happen
+  before DD solve chunks are submitted.
+- Output-contract tests for model-image and region artifacts needed by
+  downstream prediction or imaging.
+- Failure tests for missing model images, missing region files, and failed
+  prediction prerequisites.
+
+### PR 23: Calibration Strategy Orchestration Coverage
+
+Status: planned.
+
+- Add a strategy-level test matrix that exercises the four paths described in
+  `CALIBRATION_STRATEGY.md`: DI-only, DD-only, DI-then-DD, and DD-then-DI.
+- Verify operation ordering, not just individual operation behavior.
+- Verify artifact hand-offs for each path:
+  DI products feed imaging for DI-only, DD products feed imaging for DD-only,
+  DI products feed DD pre-apply for DI-then-DD, and DD products plus the agreed
+  facet-region artifact feed later DI prediction/imaging for DD-then-DI.
+- Keep these as mocked-flow tests initially, then add focused integration
+  coverage once lightweight external-command fixtures are available.
+
+Tests:
+
+- Mocked top-level Prefect flow tests with fake operation flows and
+  finalizer-compatible output records.
+- Field-state assertions after each mocked strategy path proving the same field
+  attributes are populated as the CWL path.
+- Preflight tests that reject a strategy path when any required feature slice is
+  still unsupported.
+- Integration test placeholders or markers for real DI-only, DD-only,
+  DI-then-DD, and DD-then-DI runs.
 
 ## Success Criteria
 
