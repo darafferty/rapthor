@@ -112,11 +112,47 @@ class ObservationStub:
         self.ms_filename = ms_filename
         self.infix = ".selfcal"
         self.ms_predict_di_filename = None
+        self.parameters = {}
+        self.timepersample = 5
+        self.channelwidth = 7
+        self.numsamples = 10
+        self.goesto_endofms = False
 
 
 class SectorStub:
-    def __init__(self, observations):
+    def __init__(
+        self,
+        observations,
+        name="sector_1",
+        patches=None,
+        predict_skymodel_file="sector_1.skymodel",
+        is_outlier=False,
+    ):
         self.observations = observations
+        self.name = name
+        self.patches = patches or ["patch1", "patch2"]
+        self.predict_skymodel_file = predict_skymodel_file
+        self.is_outlier = is_outlier
+
+    def set_prediction_parameters(self):
+        for obs in self.observations:
+            root_filename = Path(obs.ms_filename).name
+            obs.parameters["ms_filename"] = obs.ms_filename
+            obs.parameters["ms_model_filename"] = (
+                f"{root_filename}{obs.infix}.{self.name}_modeldata"
+            )
+            obs.ms_subtracted_filename = f"{root_filename}{obs.infix}.{self.name}"
+            obs.parameters["ms_subtracted_filename"] = obs.ms_subtracted_filename
+            obs.ms_field = f"{root_filename}{obs.infix}_field"
+            obs.ms_predict_di = f"{obs.ms_subtracted_filename}_di.ms"
+            obs.parameters["patch_names"] = self.patches
+            obs.parameters["predict_starttime"] = str(obs.starttime)
+            obs.parameters["predict_ntimes"] = obs.numsamples
+
+    def get_obs_parameters(self, name):
+        if name == "ms_filename":
+            return [obs.ms_filename for obs in self.observations]
+        return [obs.parameters[name] for obs in self.observations]
 
 
 class FieldStub:
@@ -124,6 +160,24 @@ class FieldStub:
         self.parset = _operation_parset(tmp_path)
         self.observations = [field_observation]
         self.predict_sectors = [SectorStub([sector_observation])]
+        self.sectors = self.predict_sectors
+        self.imaging_sectors = []
+        self.bright_source_sectors = []
+        self.outlier_sectors = []
+        self.data_colname = "DATA"
+        self.h5parm_filename = None
+        self.dd_h5parm_filename = None
+        self.di_h5parm_filename = None
+        self.normalize_h5parm = None
+        self.apply_amplitudes = False
+        self.apply_normalizations = False
+        self.onebeamperpatch = True
+        self.sagecalpredict = False
+        self.correct_smearing_in_calibration = False
+        self.reweight = False
+        self.peel_outliers = False
+        self.peel_bright_sources = False
+        self.imaged_sources_only = False
 
 
 def _operation_parset(tmp_path):
@@ -144,6 +198,11 @@ def _operation_parset(tmp_path):
             "container_type": "docker",
             "max_cores": 1,
             "max_threads": 1,
+            "prefect_task_runner": "sync",
+        },
+        "imaging_specific": {
+            "min_uv_lambda": 80.0,
+            "max_uv_lambda": 1000000.0,
         },
     }
 
@@ -604,3 +663,125 @@ def test_predict_finalizer_accepts_prefect_outputs(tmp_path, fake_predict_shell_
     )
     assert field_observation.infix == ""
     assert Path(operation.done_file).is_file()
+
+
+def test_predict_di_operation_run_uses_prefect_flow(
+    tmp_path, monkeypatch, fake_predict_shell_operation_cls
+):
+    monkeypatch.setattr(
+        "rapthor.execution.shell._load_shell_operation_cls",
+        lambda: fake_predict_shell_operation_cls,
+    )
+    field_observation = ObservationStub("obs_0", 59000.0, "obs_0.ms")
+    sector_observation = ObservationStub("obs_0", 59000.0, "obs_0.ms")
+    field = FieldStub(tmp_path, field_observation, sector_observation)
+    operation = Predict("di", field, index=1)
+
+    with prefect_test_harness(server_startup_timeout=None):
+        operation.run()
+
+    expected_outputs = {
+        "msfiles_di_cal": [
+            [
+                directory_record(
+                    Path(operation.pipeline_working_dir) / "obs_0.ms.selfcal.sector_1_di.ms"
+                )
+            ]
+        ]
+    }
+    assert operation.outputs == expected_outputs
+    assert json.loads(Path(operation.outputs_file).read_text()) == expected_outputs
+    assert Path(operation.done_file).is_file()
+    assert Path(operation.pipeline_inputs_file).is_file()
+    assert not Path(operation.pipeline_parset_file).exists()
+    assert field_observation.ms_predict_di_filename == str(
+        Path(operation.pipeline_working_dir) / "obs_0.ms.selfcal.sector_1_di.ms"
+    )
+    assert field_observation.infix == ""
+    assert len(fake_predict_shell_operation_cls.instances) == 2
+
+
+def test_predict_di_operation_run_reuses_prefect_outputs_when_done(
+    tmp_path, monkeypatch, fake_predict_shell_operation_cls
+):
+    monkeypatch.setattr(
+        "rapthor.execution.shell._load_shell_operation_cls",
+        lambda: fake_predict_shell_operation_cls,
+    )
+    field_observation = ObservationStub("obs_0", 59000.0, "obs_0.ms")
+    sector_observation = ObservationStub("obs_0", 59000.0, "obs_0.ms")
+    field = FieldStub(tmp_path, field_observation, sector_observation)
+    operation = Predict("di", field, index=1)
+    expected_outputs = {
+        "msfiles_di_cal": [
+            [
+                directory_record(
+                    Path(operation.pipeline_working_dir) / "obs_0.ms.selfcal.sector_1_di.ms"
+                )
+            ]
+        ]
+    }
+    Path(operation.done_file).touch()
+    Path(operation.outputs_file).write_text(json.dumps(expected_outputs))
+
+    operation.run()
+
+    assert operation.outputs == expected_outputs
+    assert Path(operation.done_file).is_file()
+    assert field_observation.ms_predict_di_filename == str(
+        Path(operation.pipeline_working_dir) / "obs_0.ms.selfcal.sector_1_di.ms"
+    )
+    assert field_observation.infix == ""
+    assert fake_predict_shell_operation_cls.instances == []
+
+
+def test_predict_dd_operation_run_uses_prefect_flow(
+    tmp_path, monkeypatch, fake_predict_shell_operation_cls
+):
+    monkeypatch.setattr(
+        "rapthor.execution.shell._load_shell_operation_cls",
+        lambda: fake_predict_shell_operation_cls,
+    )
+    field_observation = ObservationStub("obs_0", 59000.0, "obs_0.ms")
+    sector_1_observation = ObservationStub("obs_0", 59000.0, "obs_0.ms")
+    sector_2_observation = ObservationStub("obs_0", 59000.0, "obs_0.ms")
+    field = FieldStub(tmp_path, field_observation, sector_1_observation)
+    field.imaging_sectors = [
+        SectorStub(
+            [sector_1_observation],
+            name="sector_1",
+            patches=["patch1"],
+            predict_skymodel_file="sector_1.skymodel",
+        ),
+        SectorStub(
+            [sector_2_observation],
+            name="sector_2",
+            patches=["patch2"],
+            predict_skymodel_file="sector_2.skymodel",
+        ),
+    ]
+    field.sectors = field.imaging_sectors
+    field.predict_sectors = []
+    operation = Predict("dd", field, index=1)
+
+    with prefect_test_harness(server_startup_timeout=None):
+        operation.run()
+
+    expected_outputs = {
+        "subtract_models": [
+            [directory_record(Path(operation.pipeline_working_dir) / "obs_0.ms.selfcal.sector_1")]
+        ]
+    }
+    assert operation.outputs == expected_outputs
+    assert json.loads(Path(operation.outputs_file).read_text()) == expected_outputs
+    assert Path(operation.done_file).is_file()
+    assert Path(operation.pipeline_inputs_file).is_file()
+    assert not Path(operation.pipeline_parset_file).exists()
+    assert field.data_colname == "DATA"
+    assert sector_1_observation.ms_imaging_filename == str(
+        Path(operation.pipeline_working_dir) / "obs_0.ms.selfcal.sector_1"
+    )
+    assert sector_2_observation.ms_imaging_filename == str(
+        Path(operation.pipeline_working_dir) / "obs_0.ms.selfcal.sector_2"
+    )
+    assert len(fake_predict_shell_operation_cls.instances) == 3

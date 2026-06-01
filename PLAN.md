@@ -628,7 +628,8 @@ Remaining Stage 4 work before final cutover:
 
 Predict introduces DP3 scatter and model subtraction.
 
-Status: complete for direct flow parity on the migration branch.
+Status: complete for direct flow parity on the migration branch, and
+operation-run cutover is complete for Predict in PR 29.
 
 - Translate `predict_di_pipeline.cwl`, `predict_pipeline.cwl`, and any
   non-calibrating predict variant that is still active.
@@ -652,11 +653,11 @@ Tests:
 - Added output filtering so DD collection does not accidentally treat
   intermediate `_modeldata` directories as final subtraction outputs when the
   Python flow uses a shared operation working directory.
+- Added operation-run coverage for DI prediction, DI restart reuse, and DD
+  subtract-model prediction through the Prefect path.
 
 Remaining Stage 5 work before final cutover:
 
-- Add operation-level restart tests once `Operation.run()` is switched from CWL
-  to the Python flow path.
 - Add real lightweight script or Measurement Set coverage for
   `add_sector_models.py` and `subtract_sector_models.py` if suitable fixtures are
   available in CI.
@@ -840,10 +841,10 @@ Status: started. `rapthor.execution.flows.process` now mirrors both
 with injectable operation constructors, lifecycle hooks, and process-level
 preflight. The CLI still uses `process.run()`; cutover waits until the operation
 flows are complete enough for real pipeline runs. The branch-internal
-operation-adapter path has started with Concatenate: `Operation.run()` now has an
-overridable workflow execution hook, and Concatenate uses it to invoke the
-Prefect flow while preserving `.done`, `.outputs.json`, input JSON, and
-finalizer semantics.
+operation-adapter path is now active for Concatenate, Mosaic, and Predict:
+`Operation.run()` has an overridable workflow execution hook, and ported
+operations use it to invoke Prefect flows while preserving `.done`,
+`.outputs.json`, input JSON, and finalizer semantics.
 
 - Keep `process.run()` as the CLI entry point.
 - Add `rapthor.execution.flows.process` with a Prefect flow that mirrors current
@@ -2489,8 +2490,8 @@ Completed in this slice:
 
 Remaining follow-up:
 
-- Apply the same operation-run cutover pattern to Predict, Image, and Calibrate
-  once their direct flow parity slices are ready for production adapter coverage.
+- Apply the same operation-run cutover pattern to Image and Calibrate once their
+  direct flow parity slices are ready for production adapter coverage.
 - Add a lightweight real Concatenate integration parity test if CI has suitable
   Measurement Set fixtures and `concat_ms.py` dependencies.
 
@@ -2548,6 +2549,51 @@ Verified:
   tests/execution/test_mosaic_flow.py`: passed.
 - `python3 -m py_compile rapthor/operations/mosaic.py
   tests/execution/test_mosaic_flow.py`: passed locally.
+- `git diff --check`: passed.
+
+### PR 29: Predict Operation-Run Cutover
+
+Completed in this slice:
+
+- Wired `Predict.execute_workflow()` to `predict_flow()` using
+  `ExecutionConfig.from_parset()`.
+- Kept Predict on the operation-adapter contract: the existing operation gathers
+  DI/DD inputs, the Prefect flow receives a serializable payload and returns
+  finalizer-compatible output records, and `Predict.finalize()` remains
+  responsible for updating DI prediction filenames, DD imaging filenames, and
+  peeling-related field state.
+- Extended Predict flow-test stubs so operation-level tests exercise the real
+  `Predict.set_input_parameters()` path rather than hand-built payloads.
+- Added DI operation-run coverage proving the adapter executes through Prefect,
+  writes operation state, skips CWL template generation, and syncs
+  `ms_predict_di_filename` back to the field observation.
+- Added DI restart coverage proving `.done` skips shell execution and persisted
+  Prefect output records are reused.
+- Added DD operation-run coverage proving subtract-model prediction executes
+  through Prefect and updates sector `ms_imaging_filename` state for downstream
+  imaging.
+
+Remaining follow-up:
+
+- Add real lightweight script or Measurement Set coverage for
+  `add_sector_models.py` and `subtract_sector_models.py` if suitable fixtures are
+  available in CI.
+- Revisit task-local working directories when the final Dask execution layout is
+  introduced; the current flow preserves output contracts by filtering
+  intermediate `_modeldata` directories.
+
+Verified:
+
+- `python3 -m pytest tests/execution/test_predict_flow.py`: 20 passed.
+- `python3 -m pytest tests/execution/test_predict_flow.py
+  tests/operations/test_predict.py tests/execution/test_process_flow.py
+  tests/test_process.py`: 101 passed.
+- `python3 -m ruff check rapthor/operations/predict.py
+  tests/execution/test_predict_flow.py`: passed.
+- `python3 -m ruff format --check rapthor/operations/predict.py
+  tests/execution/test_predict_flow.py`: passed.
+- `python3 -m py_compile rapthor/operations/predict.py
+  tests/execution/test_predict_flow.py`: passed locally.
 - `git diff --check`: passed.
 
 ## Success Criteria
