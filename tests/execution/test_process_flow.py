@@ -5,8 +5,11 @@ from prefect.testing.utilities import prefect_test_harness
 
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.process import (
+    ProcessLifecycleHooks,
     ProcessOperationFactories,
+    process_flow,
     process_steps_flow,
+    run_process,
     run_process_steps,
 )
 
@@ -25,6 +28,7 @@ class SelfcalState:
 class RecordingField:
     cycle_number: int = 1
     dde_mode: str = "single"
+    epoch_observations: list[list[object]] = field(default_factory=lambda: [[object()]])
     do_check: bool = False
     do_normalize: bool = False
     make_quv_images: bool = False
@@ -50,6 +54,10 @@ class RecordingField:
 
     def define_normalize_sector(self):
         self.normalization_sector_defined = True
+
+    def define_full_field_sector(self, radius):
+        self.full_field_radius = radius
+        self.events.append({"operation": "define_full_field_sector", "radius": radius})
 
 
 def _record(field, operation, mode, index):
@@ -125,12 +133,31 @@ class RecordingImageNormalize:
         _record(self.field, "image_normalize", None, self.index)
 
 
+class RecordingConcatenate:
+    def __init__(self, field, index):
+        self.field = field
+        self.index = index
+
+    def run(self):
+        _record(self.field, "concatenate", None, self.index)
+
+
+class RecordingImageInitial:
+    def __init__(self, field):
+        self.field = field
+
+    def run(self):
+        _record(self.field, "image_initial", None, None)
+
+
 RECORDING_FACTORIES = ProcessOperationFactories(
     predict=RecordingPredict,
     calibrate=RecordingCalibrate,
     image=RecordingImage,
     mosaic=RecordingMosaic,
     image_normalize=RecordingImageNormalize,
+    concatenate=RecordingConcatenate,
+    image_initial=RecordingImageInitial,
 )
 
 
@@ -211,6 +238,102 @@ def _single_step(calibration_strategy, **updates):
     return step
 
 
+def _image_step(**updates):
+    step = {
+        "do_calibrate": False,
+        "do_predict": False,
+        "do_image": True,
+        "do_check": False,
+        "peel_outliers": False,
+        "peel_bright_sources": False,
+    }
+    step.update(updates)
+    return step
+
+
+def _process_parset(**updates):
+    parset = {
+        "strategy": "test-strategy",
+        "generate_initial_skymodel": False,
+        "download_initial_skymodel": False,
+        "generate_initial_skymodel_radius": 3.0,
+        "generate_initial_skymodel_data_fraction": 0.25,
+        "selfcal_data_fraction": 0.5,
+        "final_data_fraction": 1.0,
+        "ntimes_to_repeat_final_cycle": 0,
+        "input_h5parm": "input-solutions.h5",
+        "input_skymodel": None,
+        "imaging_specific": {"skip_final_major_iteration": True},
+    }
+    parset.update(updates)
+    return parset
+
+
+@dataclass
+class RecordingProcessLifecycle:
+    parset: dict
+    strategy_steps: list[dict]
+    final_pass: bool = True
+    epoch_observations: list[list[object]] = field(default_factory=lambda: [[object()]])
+    read_files: list[object] = field(default_factory=list)
+    logging_levels: list[str] = field(default_factory=list)
+    field: object = None
+
+    def hooks(self):
+        return ProcessLifecycleHooks(
+            read_parset=self.read_parset,
+            set_logging_level=self.set_logging_level,
+            build_field=self.build_field,
+            set_strategy=self.set_strategy,
+            validate_strategy=self.validate_strategy,
+            chunk_observations=self.chunk_observations,
+            do_final_pass=self.do_final_pass,
+            make_report=self.make_report,
+        )
+
+    def read_parset(self, parset_file):
+        self.read_files.append(parset_file)
+        return self.parset
+
+    def set_logging_level(self, logging_level):
+        self.logging_levels.append(logging_level)
+
+    def build_field(self, parset):
+        self.field = RecordingField(parset=parset, epoch_observations=self.epoch_observations)
+        return self.field
+
+    def set_strategy(self, field):
+        field.events.append({"operation": "set_strategy"})
+        return self.strategy_steps
+
+    def validate_strategy(self, strategy_steps, parset):
+        self.field.events.append(
+            {"operation": "validate_strategy", "step_count": len(strategy_steps)}
+        )
+
+    def chunk_observations(self, field, steps, data_fraction):
+        field.events.append(
+            {
+                "operation": "chunk",
+                "step_count": len(steps),
+                "data_fraction": data_fraction,
+            }
+        )
+
+    def do_final_pass(self, field, selfcal_steps, final_step):
+        field.events.append(
+            {
+                "operation": "do_final_pass",
+                "selfcal_step_count": len(selfcal_steps),
+                "final_do_image": final_step["do_image"],
+            }
+        )
+        return self.final_pass
+
+    def make_report(self, field):
+        field.events.append({"operation": "report"})
+
+
 def _assert_strategy_handoffs(field, expected_order, expected_handoffs):
     assert [(event["operation"], event["mode"]) for event in field.events] == expected_order
 
@@ -283,3 +406,118 @@ def test_run_process_steps_stops_after_selfcal_converges():
     ]
     assert field.selfcal_state.converged is True
     assert field.cycle_number == 1
+
+
+def test_run_process_lifecycle_runs_initial_selfcal_and_repeated_final_cycles():
+    parset = _process_parset(
+        generate_initial_skymodel=True,
+        ntimes_to_repeat_final_cycle=1,
+    )
+    strategy_steps = [
+        _single_step(
+            {"di": ["fast_phase"]},
+            peel_outliers=True,
+            peel_bright_sources=False,
+        ),
+        _image_step(),
+    ]
+    lifecycle = RecordingProcessLifecycle(
+        parset=parset,
+        strategy_steps=strategy_steps,
+        epoch_observations=[["obs-a", "obs-b"]],
+    )
+
+    field = run_process(
+        "input.parset",
+        logging_level="debug",
+        operation_factories=RECORDING_FACTORIES,
+        lifecycle_hooks=lifecycle.hooks(),
+    )
+
+    assert field is lifecycle.field
+    assert lifecycle.read_files == ["input.parset"]
+    assert lifecycle.logging_levels == ["debug"]
+    assert field.full_field_radius == parset["generate_initial_skymodel_radius"]
+    assert field.do_final is True
+    assert field.cycle_number == 3
+
+    operation_events = [
+        event
+        for event in field.events
+        if event["operation"]
+        in {
+            "concatenate",
+            "image_initial",
+            "predict",
+            "calibrate",
+            "image",
+            "mosaic",
+        }
+    ]
+    assert [
+        (event["operation"], event.get("mode"), event.get("index")) for event in operation_events
+    ] == [
+        ("concatenate", None, 1),
+        ("image_initial", None, None),
+        ("predict", "di", 1),
+        ("calibrate", "di", 1),
+        ("image", None, 1),
+        ("mosaic", None, 1),
+        ("image", None, 2),
+        ("mosaic", None, 2),
+        ("image", None, 3),
+        ("mosaic", None, 3),
+    ]
+
+    chunk_events = [event for event in field.events if event["operation"] == "chunk"]
+    assert [(event["step_count"], event["data_fraction"]) for event in chunk_events] == [
+        (0, parset["generate_initial_skymodel_data_fraction"]),
+        (1, parset["selfcal_data_fraction"]),
+        (1, parset["final_data_fraction"]),
+    ]
+    assert field.events[-1]["operation"] == "report"
+
+
+def test_process_flow_runs_no_selfcal_image_only_strategy():
+    parset = _process_parset(input_h5parm="input-solutions.h5")
+    lifecycle = RecordingProcessLifecycle(
+        parset=parset,
+        strategy_steps=[_image_step()],
+    )
+
+    with prefect_test_harness():
+        field = process_flow(
+            "input.parset",
+            operation_factories=RECORDING_FACTORIES,
+            lifecycle_hooks=lifecycle.hooks(),
+            execution_config=ExecutionConfig(task_runner="sync"),
+        )
+
+    assert field is lifecycle.field
+    assert field.final_seen is True
+    assert field.cycle_number == 1
+    assert parset["generate_initial_skymodel"] is False
+    assert parset["download_initial_skymodel"] is False
+    assert [
+        (event["operation"], event.get("mode"), event.get("index"))
+        for event in field.events
+        if event["operation"] in {"predict", "calibrate", "image", "mosaic"}
+    ] == [
+        ("image", None, 1),
+        ("mosaic", None, 1),
+    ]
+
+
+def test_run_process_rejects_image_only_final_without_input_h5parm():
+    parset = _process_parset(input_h5parm=None)
+    lifecycle = RecordingProcessLifecycle(
+        parset=parset,
+        strategy_steps=[_image_step()],
+    )
+
+    with pytest.raises(ValueError, match="no calibration solutions were provided"):
+        run_process(
+            "input.parset",
+            operation_factories=RECORDING_FACTORIES,
+            lifecycle_hooks=lifecycle.hooks(),
+        )

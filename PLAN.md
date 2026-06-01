@@ -766,18 +766,20 @@ After the early mocked skeleton is in place and all required operation-level
 Prefect flows are working, make the top-level Prefect flow executable for real
 runs and route the CLI through it.
 
-Status: started. A first `rapthor.execution.flows.process` skeleton now mirrors
-the current `process.run_steps()` operation ordering with injectable operation
-constructors and a Prefect entry point. The CLI still uses `process.run()`;
-cutover waits until the operation flows are complete enough for real pipeline
-runs.
+Status: started. `rapthor.execution.flows.process` now mirrors both
+`process.run_steps()` operation ordering and the mocked `process.run()` lifecycle
+with injectable operation constructors and lifecycle hooks. The CLI still uses
+`process.run()`; cutover waits until the operation flows are complete enough for
+real pipeline runs.
 
 - Keep `process.run()` as the CLI entry point.
 - Add `rapthor.execution.flows.process` with a Prefect flow that mirrors current
-  `process.run_steps()` sequencing. Initial skeleton complete; remaining work is
-  the full `process.run()` wrapper around parset loading, concatenation, strategy
-  setup, initial sky-model generation, chunking, final-cycle repetition, and
-  report generation.
+  `process.run_steps()` sequencing and the mocked `process.run()` lifecycle.
+  Initial skeleton complete for parset loading, logging setup, concatenation,
+  strategy setup, validation, initial sky-model generation, chunking,
+  selfcal/final cycle orchestration, repeated final cycles, and report
+  generation. Remaining work is real operation-flow cutover and production
+  preflight.
 - Decide whether operation flows are subflows or tasks from the top-level flow.
 - Continue to respect selfcal convergence checks between cycles.
 - Encode the four calibration strategy paths from `CALIBRATION_STRATEGY.md` in
@@ -798,8 +800,9 @@ Tests:
 - Keep current `tests/test_process.py` coverage backend-independent.
 - Add full mocked-process tests for initial sky model generation, no-selfcal
   image-only strategy, selfcal convergence, selfcal divergence/failure,
-  repeated final cycles, and preflight failure detection. Initial selfcal
-  convergence stop coverage complete for the shared process-step runner.
+  repeated final cycles, and preflight failure detection. Initial sky model
+  generation, no-selfcal image-only execution, repeated final cycles, missing
+  input-solution failure, and selfcal convergence stop coverage are complete.
 - Add full mocked-process tests for DI-only, DD-only, DI-then-DD, and
   DD-then-DI ordering and artifact hand-offs. Initial step-level Prefect coverage
   complete.
@@ -2255,6 +2258,37 @@ Verified:
   tests/execution/test_process_flow.py tests/test_process.py`: passed.
 - `python3 -m py_compile rapthor/execution/flows/process.py
   tests/execution/test_process_flow.py`: passed locally.
+
+### PR 25: Prefect Process Lifecycle Skeleton
+
+Status: complete.
+
+- Extended `rapthor.execution.flows.process` with `run_process()` and
+  `process_flow()` for the mocked top-level lifecycle.
+- Added `ProcessLifecycleHooks` so parset loading, logging setup, field
+  creation, strategy setup, strategy validation, chunking, final-pass decisions,
+  and reporting can be injected in tests.
+- Moved production operation and lifecycle imports behind default factory
+  functions, reducing import-cycle risk before the eventual CLI cutover.
+- Extended `ProcessOperationFactories` with optional concatenation and initial
+  imaging constructors for full-process orchestration.
+- Preserved calibration strategy insertion order in the execution-layer helper
+  so DD-then-DI remains valid.
+- Added mocked lifecycle coverage for concatenation, initial sky-model imaging,
+  selfcal chunking, repeated final cycles, no-selfcal image-only execution, and
+  missing input-solution validation.
+
+Verified:
+
+- `python3 -m pytest tests/execution/test_process_flow.py`: 12 passed.
+- `python3 -m pytest tests/execution/test_process_flow.py
+  tests/test_process.py`: 32 passed.
+- `python3 -m ruff check rapthor/execution/flows/process.py
+  rapthor/execution/flows/__init__.py rapthor/execution/__init__.py
+  tests/execution/test_process_flow.py tests/test_process.py`: passed.
+- `python3 -m ruff format --check rapthor/execution/flows/process.py
+  rapthor/execution/flows/__init__.py rapthor/execution/__init__.py
+  tests/execution/test_process_flow.py`: passed.
 
 ## Success Criteria
 

@@ -100,9 +100,13 @@ from rapthor.execution.flows.predict import (
     run_predict_postprocess,
 )
 from rapthor.execution.flows.process import (
+    ProcessLifecycleHooks,
     ProcessOperationFactories,
     default_process_operation_factories,
+    default_process_lifecycle_hooks,
+    process_flow,
     process_steps_flow,
+    run_process,
     run_process_steps,
 )
 
@@ -186,8 +190,11 @@ __all__ = [
     "predict_model_data_task",
     "predict_payload_from_inputs",
     "predict_postprocess_task",
+    "process_flow",
     "process_steps_flow",
+    "ProcessLifecycleHooks",
     "ProcessOperationFactories",
+    "run_process",
     "run_calibrate_chunk",
     "run_calibrate_flow",
     "run_concatenate_epoch",
@@ -200,4 +207,5 @@ __all__ = [
     "run_predict_model_data",
     "run_predict_postprocess",
     "run_process_steps",
+    "default_process_lifecycle_hooks",
 ]
