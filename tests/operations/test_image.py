@@ -639,6 +639,22 @@ class TestImage:
         steps, _, _ = image._build_applycal_steps()
         assert steps == expected_steps
 
+    def test_build_applycal_steps_keeps_mediumphase_for_imaging_prepare_data(
+        self, field, h5parm_file
+    ):
+        """Medium phase is an imaging applycal step, not a DD calibration pre-apply step."""
+        _prepare_field_for_image(field, h5parm_filename=h5parm_file)
+        field.dd_h5parm_filename = str(h5parm_file)
+        field.calibration_strategy = {"dd": ["fast_phase", "medium_phase"]}
+
+        image = Image(field=field, index=1)
+        image.use_facets = False
+        image.set_parset_parameters()
+
+        steps, _, _ = image._build_applycal_steps()
+
+        assert steps == "[fastphase,mediumphase]"
+
     def test_build_applycal_steps_prefers_dd_scalar_h5parm_when_mixed(
         self, field, h5parm_file, tmp_path
     ):

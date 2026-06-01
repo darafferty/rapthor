@@ -88,7 +88,10 @@ SOLVE_SLOT_ARGUMENTS = [
     ("applycal_steps", "applycal.steps"),
 ]
 
-SUPPORTED_DD_APPLYCAL_STEPS = {"fastphase", "slowgain", "fulljones", "normalization"}
+# These are the DP3 step names supported for the standalone applycal that runs
+# before DD solves. `fastphase` applies the phase000 soltab from the selected
+# scalar h5parm; for DI fast+medium this is already the combined scalar product.
+SUPPORTED_DD_PREAPPLY_STEPS = {"fastphase", "slowgain", "fulljones", "normalization"}
 
 
 def _bool_token(value: bool) -> str:
@@ -329,9 +332,9 @@ def _validate_applycal_inputs(
     if not applycal_steps:
         raise ValueError("DD pre-application requires applycal_steps")
 
-    unsupported_steps = [step for step in applycal_steps if step not in SUPPORTED_DD_APPLYCAL_STEPS]
+    unsupported_steps = [step for step in applycal_steps if step not in SUPPORTED_DD_PREAPPLY_STEPS]
     if unsupported_steps:
-        raise ValueError("Unsupported DD applycal step(s): " + ",".join(sorted(unsupported_steps)))
+        raise ValueError("Unsupported DD pre-apply step(s): " + ",".join(sorted(unsupported_steps)))
 
     missing_inputs = []
     if (

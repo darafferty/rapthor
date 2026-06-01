@@ -871,6 +871,8 @@ class TestCalibrate:
 
         assert calibrate.input_parms["applycal_steps"] == "[fastphase]"
         assert calibrate.input_parms["ddecal_applycal_steps"] == "[fastphase]"
+        assert calibrate.input_parms["applycal_h5parm"]["path"] == str(di_h5parm)
+        assert "mediumphase" not in parse_dp3(calibrate.input_parms["applycal_steps"])
 
     @pytest.mark.parametrize(
         "normalize, expected_prefix, expect_applycal",

@@ -958,7 +958,13 @@ def test_calibrate_payload_from_inputs_builds_dd_with_slow_payload(tmp_path):
             "dd",
             _dd_fast_medium_input_parms,
             {"dp3_steps": "[applycal,solve1,solve2]", "applycal_steps": "[unknown]"},
-            "Unsupported DD applycal step",
+            "Unsupported DD pre-apply step",
+        ),
+        (
+            "dd",
+            _dd_fast_medium_input_parms,
+            {"dp3_steps": "[applycal,solve1,solve2]", "applycal_steps": "[mediumphase]"},
+            "Unsupported DD pre-apply step",
         ),
         (
             "dd",

@@ -709,7 +709,15 @@ class Calibrate(Operation):
 
     def _build_applycal(self, field):
         """
-        Prepare DP3 applycal steps and normalization H5parm.
+        Prepare DP3 pre-apply steps used before DD calibration solves.
+
+        The scalar DI h5parm is applied as DP3's ``fastphase`` step because it
+        contains a single ``phase000`` soltab. When DI fast and medium phase
+        solves were both run, ``di_h5parm_filename`` points at their combined
+        scalar product, so there is no separate ``mediumphase`` pre-apply step
+        here. Explicit ``mediumphase`` application belongs to the imaging
+        prepare-data stage, where separate final calibration products may be
+        applied to imaging visibilities.
         """
         steps = []
         applycal_h5parm = None

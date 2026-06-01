@@ -162,7 +162,10 @@ class Image(Operation):
         Build the DP3 applycal steps for the prepare-imaging-data stage.
 
         The steps are determined from the solve-type flags set on the
-        field by the calibration strategy.
+        field by the calibration strategy. Unlike DD calibration pre-apply,
+        imaging preparation may apply separate final scalar products, so an
+        explicit ``mediumphase`` step is valid here when a DD medium-phase
+        solution is selected.
         """
         if self.apply_none:
             return None, None, None
