@@ -242,6 +242,20 @@ def _dd_fast_medium_input_parms():
     return input_parms
 
 
+def _dd_preapply_input_parms():
+    input_parms = _dd_fast_medium_input_parms()
+    input_parms.update(
+        {
+            "dp3_steps": "[applycal,solve1,solve2]",
+            "applycal_steps": "[fastphase,slowgain,fulljones,normalization]",
+            "applycal_h5parm": file_record("/solutions/di_solutions.h5"),
+            "fulljones_h5parm": file_record("/solutions/fulljones_solutions.h5"),
+            "normalize_h5parm": file_record("/solutions/normalize_solutions.h5"),
+        }
+    )
+    return input_parms
+
+
 def _dd_with_slow_input_parms():
     input_parms = _dd_fast_medium_input_parms()
     input_parms.update(
@@ -540,6 +554,31 @@ def test_calibrate_command_builders_match_reference_fixtures():
             directions=["patch1", "patch2"],
         )
         == commands["calibrate"]["ddecal_dd_fast_medium"]
+    )
+    assert (
+        normalized_ddecal_solve_command(
+            msin="dd_obs_0.ms",
+            data_colname="DATA",
+            starttime="50000.0",
+            ntimes=10,
+            steps="[applycal,solve1,solve2]",
+            solve_slots=_dd_fast_medium_solve_slots(),
+            numthreads=4,
+            applycal_steps="[fastphase,slowgain,fulljones,normalization]",
+            applycal_h5parm="di_solutions.h5",
+            fulljones_h5parm="fulljones_solutions.h5",
+            normalize_h5parm="normalize_solutions.h5",
+            timebase=0.0,
+            maxinterval=8.0,
+            frequencybase=0.0,
+            minchannels=1,
+            onebeamperpatch=True,
+            parallelbaselines=False,
+            sagecalpredict=False,
+            sourcedb="calibration.skymodel",
+            directions=["patch1", "patch2"],
+        )
+        == commands["calibrate"]["ddecal_dd_fast_medium_preapply"]
     )
     assert (
         normalized_process_gains_command(
@@ -843,6 +882,17 @@ def test_calibrate_payload_from_inputs_builds_dd_fast_medium_payload(tmp_path):
     }
 
 
+def test_calibrate_payload_from_inputs_builds_dd_preapply_payload(tmp_path):
+    payload = calibrate_payload_from_inputs("dd", _dd_preapply_input_parms(), tmp_path)
+
+    assert payload["calibration_kind"] == "dd_phase"
+    assert payload["dp3_steps"] == "[applycal,solve1,solve2]"
+    assert payload["applycal_steps"] == "[fastphase,slowgain,fulljones,normalization]"
+    assert payload["applycal_h5parm"] == "/solutions/di_solutions.h5"
+    assert payload["fulljones_h5parm"] == "/solutions/fulljones_solutions.h5"
+    assert payload["normalize_h5parm"] == "/solutions/normalize_solutions.h5"
+
+
 def test_calibrate_payload_from_inputs_builds_dd_with_slow_payload(tmp_path):
     payload = calibrate_payload_from_inputs("dd", _dd_with_slow_input_parms(), tmp_path)
 
@@ -897,6 +947,27 @@ def test_calibrate_payload_from_inputs_builds_dd_with_slow_payload(tmp_path):
             _dd_fast_phase_input_parms,
             {"output_solve1_h5parm": ["slow_gain_0.h5parm", "slow_gain_1.h5parm"]},
             "Only DD fast/medium phase",
+        ),
+        (
+            "dd",
+            _dd_fast_medium_input_parms,
+            {"dp3_steps": "[applycal,solve1,solve2]", "applycal_steps": None},
+            "DD pre-application requires applycal_steps",
+        ),
+        (
+            "dd",
+            _dd_fast_medium_input_parms,
+            {"dp3_steps": "[applycal,solve1,solve2]", "applycal_steps": "[unknown]"},
+            "Unsupported DD applycal step",
+        ),
+        (
+            "dd",
+            _dd_fast_medium_input_parms,
+            {
+                "dp3_steps": "[applycal,solve1,solve2]",
+                "applycal_steps": "[fulljones]",
+            },
+            "DD pre-application requires fulljones_h5parm",
         ),
         (
             "di",
@@ -1104,6 +1175,41 @@ def test_run_calibrate_flow_supports_dd_fast_medium(tmp_path, fake_calibrate_she
         "/data/calibration.skymodel",
         str(tmp_path / "combined_fast_medium1_phases.h5parm"),
     ]
+
+
+def test_run_calibrate_flow_supports_dd_preapply(tmp_path, fake_calibrate_shell_operation_cls):
+    payload = calibrate_payload_from_inputs("dd", _dd_preapply_input_parms(), tmp_path)
+
+    outputs = run_calibrate_flow(
+        payload,
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_calibrate_shell_operation_cls,
+    )
+
+    assert outputs["combined_solutions"] == file_record(
+        tmp_path / "combined_fast_medium1_phases.h5parm"
+    )
+
+    commands = [
+        shlex.split(instance.kwargs["commands"][0])
+        for instance in fake_calibrate_shell_operation_cls.instances
+    ]
+    assert [command[0] for command in commands] == [
+        "DP3",
+        "DP3",
+        "H5parm_collector.py",
+        "plotrapthor",
+        "H5parm_collector.py",
+        "plotrapthor",
+        "combine_h5parms.py",
+        "adjust_h5parm_sources.py",
+    ]
+    assert "steps=[applycal,solve1,solve2]" in commands[0]
+    assert "applycal.steps=[fastphase,slowgain,fulljones,normalization]" in commands[0]
+    assert "applycal.parmdb=/solutions/di_solutions.h5" in commands[0]
+    assert "applycal.fulljones.parmdb=/solutions/fulljones_solutions.h5" in commands[0]
+    assert "applycal.normalization.parmdb=/solutions/normalize_solutions.h5" in commands[0]
+    assert "solve2.reusemodel=[solve1.*]" in commands[0]
 
 
 def test_run_calibrate_flow_skips_dd_source_adjustment_for_single_direction(

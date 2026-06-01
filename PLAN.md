@@ -2045,31 +2045,48 @@ Deferred to PR 22:
 
 ### PR 21: DI Pre-Apply Before DD Calibration
 
-Status: planned.
+Status: complete for non-image-based DD pre-application.
 
 - Support DD calibration payloads whose `dp3_steps` include `applycal` before
   the DD solve steps.
 - Carry `applycal_h5parm`, `fulljones_h5parm`, `normalize_h5parm`, and
   `applycal.steps` from operation inputs into the DD DDECal command builder.
-- Preserve both pre-application cases used by the current operation layer:
-  pre-apply inside the DD DDECal run when image-based prediction is not active,
-  and the `predict,applybeam,applycal` prefix when image-based prediction is
+- Preserve pre-apply inside the DD DDECal run when image-based prediction is not
   active.
-- Ensure DI solutions produced by a previous DI calibration step are the inputs
-  used by the DD pre-application path in the DI-then-DD strategy.
+- Validate DD pre-apply payloads before execution: `applycal` now requires a
+  non-empty supported `applycal.steps` list and the matching DI, full-Jones, or
+  normalization h5parm records.
+- Continue to reject calibration-side image-based prediction in this slice;
+  `predict,applybeam,applycal` remains part of PR 22.
+- Existing operation-layer tests continue to cover DI products being converted
+  into DD pre-apply operation inputs. The direct Prefect flow now consumes those
+  finalizer-compatible records.
 
 Tests:
 
-- Command-builder and golden command parity for DD DDECal with pre-applied DI
-  fast-phase, slow-gain, full-Jones, and normalization solutions.
-- Serializable payload tests for all applycal-related h5parm records and step
-  lists.
-- Mocked direct-flow tests proving DD solve chunks receive the pre-apply command
-  arguments and still collect/combine/plot the expected DD outputs.
-- Strategy-level mocked tests for DI-then-DD proving DI products flow into DD
-  pre-apply before DD solve submission starts.
-- Negative tests for missing DI h5parm records, invalid applycal step lists, and
-  unsupported applycal combinations.
+- Added command-builder and golden command parity for DD DDECal with pre-applied
+  DI fast-phase, slow-gain, full-Jones, and normalization solutions.
+- Added serializable payload tests for all applycal-related h5parm records and
+  step lists.
+- Added mocked direct-flow tests proving DD solve chunks receive the pre-apply
+  command arguments and still collect/combine/plot the expected DD outputs.
+- Added negative tests for missing h5parm records, invalid applycal step lists,
+  and unsupported applycal combinations.
+- Existing `tests/operations/test_calibrate.py` coverage proves
+  `Calibrate.set_input_parameters()` derives `applycal.steps`,
+  `applycal_h5parm`, and `fulljones_h5parm` from DI/full-Jones products.
+
+Verified:
+
+- `python3 -m pytest tests/execution/test_calibrate_flow.py`: 28 passed.
+- `python3 -m pytest tests/execution tests/operations/test_calibrate.py
+  tests/lib/test_parset.py`: 244 passed.
+- `python3 -m ruff check rapthor/execution tests/execution
+  tests/operations/test_calibrate.py`: passed.
+- `python3 -m ruff format --check rapthor/execution tests/execution
+  tests/operations/test_calibrate.py`: passed.
+- Python JSON parsing for `cwl_reference_commands.json` and
+  `cwl_reference_outputs.json`: passed.
 
 ### PR 22: DD Image-Based Prediction
 

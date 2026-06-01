@@ -88,6 +88,8 @@ SOLVE_SLOT_ARGUMENTS = [
     ("applycal_steps", "applycal.steps"),
 ]
 
+SUPPORTED_DD_APPLYCAL_STEPS = {"fastphase", "slowgain", "fulljones", "normalization"}
+
 
 def _bool_token(value: bool) -> str:
     return "True" if value else "False"
@@ -309,8 +311,47 @@ def _active_solve_steps(input_parms: Mapping[str, object]) -> list[str]:
     return [step for step in _parse_steps(input_parms.get("dp3_steps")) if step.startswith("solve")]
 
 
+def _validate_applycal_inputs(
+    mode: str,
+    steps: list[str],
+    input_parms: Mapping[str, object],
+) -> None:
+    if "applycal" not in steps:
+        return
+    if mode != "dd":
+        raise ValueError("Pre-application is only supported for DD calibration")
+
+    applycal_steps_record = input_parms.get("applycal_steps")
+    if applycal_steps_record is None:
+        raise ValueError("DD pre-application requires applycal_steps")
+
+    applycal_steps = _parse_steps(applycal_steps_record)
+    if not applycal_steps:
+        raise ValueError("DD pre-application requires applycal_steps")
+
+    unsupported_steps = [step for step in applycal_steps if step not in SUPPORTED_DD_APPLYCAL_STEPS]
+    if unsupported_steps:
+        raise ValueError("Unsupported DD applycal step(s): " + ",".join(sorted(unsupported_steps)))
+
+    missing_inputs = []
+    if (
+        any(step in {"fastphase", "slowgain"} for step in applycal_steps)
+        and input_parms.get("applycal_h5parm") is None
+    ):
+        missing_inputs.append("applycal_h5parm")
+    if "fulljones" in applycal_steps and input_parms.get("fulljones_h5parm") is None:
+        missing_inputs.append("fulljones_h5parm")
+    if "normalization" in applycal_steps and input_parms.get("normalize_h5parm") is None:
+        missing_inputs.append("normalize_h5parm")
+
+    if missing_inputs:
+        raise ValueError("DD pre-application requires " + ", ".join(missing_inputs))
+
+
 def _supported_calibration_kind(mode: str, input_parms: Mapping[str, object]) -> str:
     steps = _parse_steps(input_parms.get("dp3_steps"))
+    _validate_applycal_inputs(mode, steps, input_parms)
+
     active_solves = [step for step in steps if step.startswith("solve")]
     solve1_mode = str(input_parms.get("solve1_mode"))
     solve2_mode = str(input_parms.get("solve2_mode"))
@@ -324,21 +365,20 @@ def _supported_calibration_kind(mode: str, input_parms: Mapping[str, object]) ->
         raise ValueError("Only DI full-Jones and DI scalar phase calibration are supported")
 
     if mode == "dd":
+        image_based_predict = "predict" in steps or "applybeam" in steps
         output_solve1 = input_parms.get("output_solve1_h5parm", [])
         first_solve1_output = output_solve1[0] if isinstance(output_solve1, list) else ""
         if (
             active_solves == ["solve1"]
             and solve1_mode == "scalarphase"
-            and "predict" not in steps
-            and "applycal" not in steps
+            and not image_based_predict
             and str(first_solve1_output).startswith("fast_phase_")
         ):
             return "dd_fast_phase"
         if (
             active_solves == ["solve1", "solve2"]
             and solve1_mode == solve2_mode == "scalarphase"
-            and "predict" not in steps
-            and "applycal" not in steps
+            and not image_based_predict
             and str(first_solve1_output).startswith("fast_phase_")
         ):
             return "dd_phase"
@@ -348,14 +388,13 @@ def _supported_calibration_kind(mode: str, input_parms: Mapping[str, object]) ->
             and solve1_mode == solve2_mode == "scalarphase"
             and solve3_mode == "diagonal"
             and ("solve4" not in active_solves or solve4_mode == "scalarphase")
-            and "predict" not in steps
-            and "applycal" not in steps
+            and not image_based_predict
             and str(first_solve1_output).startswith("fast_phase_")
         ):
             return "dd_phase_slow"
         raise ValueError(
-            "Only DD fast/medium phase and slow-gain calibration without pre-application "
-            "or image-based prediction is supported in this slice"
+            "Only DD fast/medium phase and slow-gain calibration without image-based "
+            "prediction is supported in this slice"
         )
 
     raise ValueError("Only DI and DD calibration payloads are supported")
