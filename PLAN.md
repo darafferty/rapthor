@@ -559,11 +559,11 @@ PR 2 verification:
 
 This is the smallest operation and should be the first real flow parity target.
 
-Status: complete for direct flow parity in PR 3. The production `Operation.run()`
-path is still unchanged, but the Concatenate operation now has a
+Status: complete for direct flow parity in PR 3, and operation-run cutover is
+complete for Concatenate in PR 27. The Concatenate operation now has a
 finalizer-compatible Python flow, a Prefect task entry point, command parity
-coverage, output-shape validation, missing-output failure coverage, and a
-mocked Prefect flow test.
+coverage, output-shape validation, missing-output failure coverage, mocked
+Prefect flow tests, and operation-level restart coverage.
 
 - Translate `concatenate_pipeline.cwl` into a Python flow that scatters
   `concat_ms.py` or equivalent `taql` calls over epochs.
@@ -586,8 +586,6 @@ Tests:
 
 Remaining Stage 3 work before final cutover:
 
-- Add operation-level restart tests once `Operation.run()` is switched from CWL
-  to the Python flow path.
 - Add a real lightweight concatenate integration test if suitable Measurement
   Set fixtures and `concat_ms.py` dependencies are available in CI.
 
@@ -843,7 +841,11 @@ Status: started. `rapthor.execution.flows.process` now mirrors both
 `process.run_steps()` operation ordering and the mocked `process.run()` lifecycle
 with injectable operation constructors, lifecycle hooks, and process-level
 preflight. The CLI still uses `process.run()`; cutover waits until the operation
-flows are complete enough for real pipeline runs.
+flows are complete enough for real pipeline runs. The branch-internal
+operation-adapter path has started with Concatenate: `Operation.run()` now has an
+overridable workflow execution hook, and Concatenate uses it to invoke the
+Prefect flow while preserving `.done`, `.outputs.json`, input JSON, and
+finalizer semantics.
 
 - Keep `process.run()` as the CLI entry point.
 - Add `rapthor.execution.flows.process` with a Prefect flow that mirrors current
@@ -865,7 +867,8 @@ flows are complete enough for real pipeline runs.
   pre-apply, DD calibration products feed later prediction or imaging, and the
   agreed facet-region artifact is available to its consumer. Initial mocked
   hand-off coverage complete for the four strategy paths.
-- Replace the CWL runner call in `Operation.run()` with the Python flow path.
+- Continue replacing operation execution with Python flows one operation at a
+  time by overriding the workflow execution hook in each operation adapter.
 - Remove branch-only CWL references from production execution code.
 
 Tests:
@@ -2467,6 +2470,50 @@ Verified:
 - `python3 -m ruff format --check rapthor/execution/flows/process.py
   rapthor/execution/flows/__init__.py rapthor/execution/__init__.py
   tests/execution/test_process_flow.py`: passed.
+
+### PR 27: Concatenate Operation-Run Cutover
+
+Completed in this slice:
+
+- Added an overridable workflow execution hook to `Operation.run()` so ported
+  operations can execute Python flows while unported operations continue to use
+  the existing CWL runner during branch development.
+- Updated `Operation.setup()` so Python-flow operations still write
+  `pipeline_inputs.json` but do not render CWL templates.
+- Wired `Concatenate.execute_workflow()` to `concatenate_flow()` using
+  `ExecutionConfig.from_parset()`.
+- Preserved the existing operation-level restart contract: `.done` skips
+  execution, `.outputs.json` is loaded, and `Concatenate.finalize()` applies the
+  finalizer-compatible output records to the `Field`.
+- Added operation-run tests proving Concatenate executes through the Prefect
+  path, skips CWL template generation, writes output state, updates field state,
+  and reuses persisted Prefect outputs on restart without invoking shell work.
+
+Remaining follow-up:
+
+- Apply the same operation-run cutover pattern to Mosaic, Predict, Image, and
+  Calibrate once their direct flow parity slices are ready for production
+  adapter coverage.
+- Add a lightweight real Concatenate integration parity test if CI has suitable
+  Measurement Set fixtures and `concat_ms.py` dependencies.
+
+Verified:
+
+- `python3 -m pytest tests/execution/test_concatenate_flow.py`: 16 passed.
+- `python3 -m pytest tests/execution/test_process_flow.py
+  tests/test_process.py`: 36 passed.
+- `python3 -m pytest tests/lib/test_operation.py
+  tests/operations/test_concatenate.py`: 9 passed.
+- `python3 -m ruff check rapthor/lib/operation.py
+  rapthor/operations/concatenate.py tests/execution/test_concatenate_flow.py`:
+  passed.
+- `python3 -m ruff format --check rapthor/lib/operation.py
+  rapthor/operations/concatenate.py tests/execution/test_concatenate_flow.py`:
+  passed.
+- `python3 -m py_compile rapthor/lib/operation.py
+  rapthor/operations/concatenate.py tests/execution/test_concatenate_flow.py`:
+  passed locally.
+- `git diff --check`: passed.
 
 ## Success Criteria
 

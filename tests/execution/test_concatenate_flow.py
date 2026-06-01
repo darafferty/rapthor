@@ -93,6 +93,7 @@ def _operation_parset(tmp_path):
             "use_container": False,
             "container_type": "docker",
             "max_cores": 1,
+            "prefect_task_runner": "sync",
         },
     }
 
@@ -374,3 +375,75 @@ def test_concatenate_finalizer_accepts_prefect_outputs(tmp_path, fake_shell_oper
     assert field.data_colname == "DATA"
     assert field.scan_count == 1
     assert Path(operation.done_file).is_file()
+
+
+def test_concatenate_operation_run_uses_prefect_flow(
+    tmp_path, monkeypatch, fake_shell_operation_cls
+):
+    monkeypatch.setattr(
+        "rapthor.execution.shell._load_shell_operation_cls",
+        lambda: fake_shell_operation_cls,
+    )
+    field = FieldStub(
+        _operation_parset(tmp_path),
+        epoch_observations=[
+            [ObservationStub("epoch_0_input_0.ms"), ObservationStub("epoch_0_input_1.ms")],
+            [ObservationStub("epoch_1_single.ms")],
+        ],
+    )
+    operation = Concatenate(field, index=0)
+
+    with prefect_test_harness(server_startup_timeout=None):
+        operation.run()
+
+    expected_output = directory_record(
+        Path(operation.pipeline_working_dir) / "epoch_0_concatenated.ms"
+    )
+    assert operation.outputs == {"concatenated_filenames": [expected_output]}
+    assert json.loads(Path(operation.outputs_file).read_text()) == {
+        "concatenated_filenames": [expected_output]
+    }
+    assert Path(operation.done_file).is_file()
+    assert Path(operation.pipeline_inputs_file).is_file()
+    assert not Path(operation.pipeline_parset_file).exists()
+    assert field.ms_filenames == [
+        str(Path(operation.pipeline_working_dir) / "epoch_0_concatenated.ms"),
+        "epoch_1_single.ms",
+    ]
+    assert field.scan_count == 1
+    assert len(fake_shell_operation_cls.instances) == 1
+
+
+def test_concatenate_operation_run_reuses_prefect_outputs_when_done(
+    tmp_path, monkeypatch, fake_shell_operation_cls
+):
+    monkeypatch.setattr(
+        "rapthor.execution.shell._load_shell_operation_cls",
+        lambda: fake_shell_operation_cls,
+    )
+    field = FieldStub(
+        _operation_parset(tmp_path),
+        epoch_observations=[
+            [ObservationStub("epoch_0_input_0.ms"), ObservationStub("epoch_0_input_1.ms")],
+            [ObservationStub("epoch_1_single.ms")],
+        ],
+    )
+    operation = Concatenate(field, index=0)
+    expected_output = directory_record(
+        Path(operation.pipeline_working_dir) / "epoch_0_concatenated.ms"
+    )
+    Path(operation.done_file).touch()
+    Path(operation.outputs_file).write_text(
+        json.dumps({"concatenated_filenames": [expected_output]})
+    )
+
+    operation.run()
+
+    assert operation.outputs == {"concatenated_filenames": [expected_output]}
+    assert Path(operation.done_file).is_file()
+    assert field.ms_filenames == [
+        str(Path(operation.pipeline_working_dir) / "epoch_0_concatenated.ms"),
+        "epoch_1_single.ms",
+    ]
+    assert field.scan_count == 1
+    assert fake_shell_operation_cls.instances == []

@@ -1,6 +1,7 @@
 """
 Definition of the master Operation class
 """
+
 import os
 import logging
 import json
@@ -11,7 +12,7 @@ from rapthor.lib.cwl import NpEncoder, copy_cwl_recursive, clean_if_cwl_file_or_
 from rapthor.lib.cwlrunner import create_cwl_runner
 
 DIR = os.path.dirname(os.path.abspath(__file__))
-env_parset = Environment(loader=FileSystemLoader(os.path.join(DIR, '..', 'pipeline', 'parsets')))
+env_parset = Environment(loader=FileSystemLoader(os.path.join(DIR, "..", "pipeline", "parsets")))
 
 
 class Operation(object):
@@ -33,17 +34,18 @@ class Operation(object):
     name : str, optional
         Name of the operation
     """
-    def __init__(self, field, index=None, name: str = "", rootname: str =""):
+
+    def __init__(self, field, index=None, name: str = "", rootname: str = ""):
         self.parset = field.parset.copy()
         self.field = field
         self.rootname = rootname.lower() if rootname else name.lower()
         self.index = index
         if self.index is not None:
-            self.name = f'{name.lower()}_{self.index}'
+            self.name = f"{name.lower()}_{self.index}"
         else:
             self.name = name.lower()
-        self.parset['op_name'] = name
-        self.log = logging.getLogger(f'rapthor:{self.name}')
+        self.parset["op_name"] = name
+        self.log = logging.getLogger(f"rapthor:{self.name}")
         self.force_serial_jobs = False  # force jobs to run serially
         self.use_mpi = False
 
@@ -51,90 +53,97 @@ class Operation(object):
         self.toil_env_variables = {}
 
         # Rapthor working directory
-        self.rapthor_working_dir = self.parset['dir_working']
+        self.rapthor_working_dir = self.parset["dir_working"]
 
         # Workflow working dir
-        self.pipeline_working_dir = os.path.join(self.rapthor_working_dir,
-                                                 'pipelines', self.name)
+        self.pipeline_working_dir = os.path.join(self.rapthor_working_dir, "pipelines", self.name)
         os.makedirs(self.pipeline_working_dir, exist_ok=True)
 
         # CWL runner settings
-        self.cwl_runner = self.parset['cluster_specific']['cwl_runner']
-        self.debug_workflow = self.parset['cluster_specific']['debug_workflow']
+        self.cwl_runner = self.parset["cluster_specific"]["cwl_runner"]
+        self.debug_workflow = self.parset["cluster_specific"]["debug_workflow"]
         self.keep_temporary_files = (
-            self.parset['cluster_specific']['keep_temporary_files'] or
-            self.debug_workflow
+            self.parset["cluster_specific"]["keep_temporary_files"] or self.debug_workflow
         )
 
         # Maximum number of nodes to use
-        self.max_nodes = self.parset['cluster_specific']['max_nodes']
+        self.max_nodes = self.parset["cluster_specific"]["max_nodes"]
 
         # Directory that holds the workflow logs in a convenient place
-        self.log_dir = os.path.join(self.rapthor_working_dir, 'logs', self.name)
+        self.log_dir = os.path.join(self.rapthor_working_dir, "logs", self.name)
         os.makedirs(self.log_dir, exist_ok=True)
 
         # Paths for scripts, etc. in the rapthor install directory
         self.rapthor_root_dir = os.path.split(DIR)[0]
-        self.rapthor_pipeline_dir = os.path.join(self.rapthor_root_dir, 'pipeline')
-        self.rapthor_script_dir = os.path.join(self.rapthor_root_dir, 'scripts')
+        self.rapthor_pipeline_dir = os.path.join(self.rapthor_root_dir, "pipeline")
+        self.rapthor_script_dir = os.path.join(self.rapthor_root_dir, "scripts")
 
         # Input template name and output parset and inputs filenames for the CWL workflow.
         # If the workflow uses a subworkflow, its template filename must be defined in the
         # subclass by self.subpipeline_parset_template to the right path
-        self.pipeline_parset_template = f'{self.rootname}_pipeline.cwl'
+        self.pipeline_parset_template = f"{self.rootname}_pipeline.cwl"
         self.subpipeline_parset_template = None
-        self.pipeline_parset_file = os.path.join(self.pipeline_working_dir,
-                                                 'pipeline_parset.cwl')
-        self.subpipeline_parset_file = os.path.join(self.pipeline_working_dir,
-                                                    'subpipeline_parset.cwl')
-        self.pipeline_inputs_file = os.path.join(self.pipeline_working_dir,
-                                                 'pipeline_inputs.json')
-        self.pipeline_outputs_file = os.path.join(self.pipeline_working_dir,
-                                                  'pipeline_outputs.json')
-        self.pipeline_log_file = os.path.join(self.log_dir, 'pipeline.log')
+        self.pipeline_parset_file = os.path.join(self.pipeline_working_dir, "pipeline_parset.cwl")
+        self.subpipeline_parset_file = os.path.join(
+            self.pipeline_working_dir, "subpipeline_parset.cwl"
+        )
+        self.pipeline_inputs_file = os.path.join(self.pipeline_working_dir, "pipeline_inputs.json")
+        self.pipeline_outputs_file = os.path.join(
+            self.pipeline_working_dir, "pipeline_outputs.json"
+        )
+        self.pipeline_log_file = os.path.join(self.log_dir, "pipeline.log")
 
         # MPI configuration file
-        self.mpi_config_file = os.path.join(self.pipeline_working_dir,
-                                            'mpi_config.yml')
+        self.mpi_config_file = os.path.join(self.pipeline_working_dir, "mpi_config.yml")
 
         # Toil's jobstore path
-        self.jobstore = os.path.join(self.pipeline_working_dir, 'jobstore')
+        self.jobstore = os.path.join(self.pipeline_working_dir, "jobstore")
 
         # File indicating whether a step was completely done.
-        self.done_file = os.path.join(self.pipeline_working_dir, '.done')
-        self.outputs_file = os.path.join(self.pipeline_working_dir, '.outputs.json')
+        self.done_file = os.path.join(self.pipeline_working_dir, ".done")
+        self.outputs_file = os.path.join(self.pipeline_working_dir, ".outputs.json")
 
         # Get the batch system to use
-        self.batch_system = self.parset['cluster_specific']['batch_system']
+        self.batch_system = self.parset["cluster_specific"]["batch_system"]
 
         # Get the maximum number of nodes to use
-        if self.force_serial_jobs or self.batch_system == 'single_machine':
+        if self.force_serial_jobs or self.batch_system == "single_machine":
             self.max_nodes = 1
         else:
-            self.max_nodes = self.parset['cluster_specific']['max_nodes']
+            self.max_nodes = self.parset["cluster_specific"]["max_nodes"]
 
         # Get the number of processors per task (SLRUM only). This is passed to sbatch's
         # --cpus-per-task option (see https://slurm.schedmd.com/sbatch.html). By setting
         # this value to the number of processors per node, one can ensure that each
         # task gets the entire node to itself
-        self.cpus_per_task = self.parset['cluster_specific']['cpus_per_task']
+        self.cpus_per_task = self.parset["cluster_specific"]["cpus_per_task"]
 
         # Get the amount of memory in GB per node (SLRUM only).
-        self.mem_per_node_gb = self.parset['cluster_specific']['mem_per_node_gb']
+        self.mem_per_node_gb = self.parset["cluster_specific"]["mem_per_node_gb"]
 
         # Set the temp directory local to each node (DEPRECATED)
-        self.scratch_dir = self.parset['cluster_specific']['dir_local']
+        self.scratch_dir = self.parset["cluster_specific"]["dir_local"]
 
         # Set the local and global scratch directories
-        self.local_scratch_dir = self.parset['cluster_specific']['local_scratch_dir']
-        self.global_scratch_dir = self.parset['cluster_specific']['global_scratch_dir']
+        self.local_scratch_dir = self.parset["cluster_specific"]["local_scratch_dir"]
+        self.global_scratch_dir = self.parset["cluster_specific"]["global_scratch_dir"]
 
         # Get the container type
-        if self.parset['cluster_specific']['use_container']:
-            self.container = self.parset['cluster_specific']['container_type']
+        if self.parset["cluster_specific"]["use_container"]:
+            self.container = self.parset["cluster_specific"]["container_type"]
         else:
             self.container = None
         self.outputs = {}
+
+    def uses_python_flow(self):
+        """
+        Return True when this operation executes through a Python flow instead of CWL.
+
+        Operation subclasses can override this during the Prefect/Dask migration.
+        The choice is intentionally owned by the operation class, not exposed as
+        a user-facing mixed-backend selector.
+        """
+        return False
 
     def set_parset_parameters(self):
         """
@@ -162,23 +171,27 @@ class Operation(object):
         """
         Set up this operation
 
-        This involves filling the workflow template and writing the inputs file
+        This involves filling the workflow template when CWL is used and writing
+        the inputs file.
         """
-        # Fill the parset template and save to a file
         self.set_parset_parameters()
-        self.pipeline_parset_template = env_parset.get_template(self.pipeline_parset_template)
-        tmp = self.pipeline_parset_template.render(self.parset_parms)
-        with open(self.pipeline_parset_file, 'w') as f:
-            f.write(tmp)
-        if self.subpipeline_parset_template is not None:
-            self.subpipeline_parset_template = env_parset.get_template(self.subpipeline_parset_template)
-            tmp = self.subpipeline_parset_template.render(self.parset_parms)
-            with open(self.subpipeline_parset_file, 'w') as f:
+        if not self.uses_python_flow():
+            # Fill the parset template and save to a file
+            self.pipeline_parset_template = env_parset.get_template(self.pipeline_parset_template)
+            tmp = self.pipeline_parset_template.render(self.parset_parms)
+            with open(self.pipeline_parset_file, "w") as f:
                 f.write(tmp)
+            if self.subpipeline_parset_template is not None:
+                self.subpipeline_parset_template = env_parset.get_template(
+                    self.subpipeline_parset_template
+                )
+                tmp = self.subpipeline_parset_template.render(self.parset_parms)
+                with open(self.subpipeline_parset_file, "w") as f:
+                    f.write(tmp)
 
         # Save the workflow inputs to a file
         self.set_input_parameters()
-        with open(self.pipeline_inputs_file, 'w') as f:
+        with open(self.pipeline_inputs_file, "w") as f:
             f.write(json.dumps(self.input_parms, cls=NpEncoder, indent=4, sort_keys=True))
 
     def finalize(self):
@@ -214,9 +227,7 @@ class Operation(object):
         """
         for output_key, output_value in self.outputs.items():
             if include is None or output_key in include:
-                copy_cwl_recursive(
-                    output_value, dest_dir, index=index, move=move
-                )
+                copy_cwl_recursive(output_value, dest_dir, index=index, move=move)
 
     def clean_outputs(self, exclude=None):
         """
@@ -242,41 +253,49 @@ class Operation(object):
         """
         Store outputs to a JSON file.
         """
-        with open(self.outputs_file, 'w') as f:
+        with open(self.outputs_file, "w") as f:
             f.write(json.dumps(self.outputs, cls=NpEncoder, indent=4, sort_keys=True))
 
     def load_outputs(self):
         """
         Load outputs from a JSON file.
         """
-        with open(self.outputs_file, 'r') as f:
+        with open(self.outputs_file, "r") as f:
             self.outputs = json.load(f)
+
+    def execute_workflow(self):
+        """
+        Execute this operation's workflow and return ``(success, outputs)``.
+        """
+        with create_cwl_runner(self.cwl_runner, self) as runner:
+            success = runner.run()
+            outputs = runner.parse_outputs() if success else {}
+        return success, outputs
 
     def run(self):
         """
         Runs the operation
         """
-        # Set up CWL workflow and call CWL runner
+        # Set up workflow inputs and call the selected operation implementation
         self.setup()
-        self.log.info('<-- Operation %s started', self.name)
+        self.log.info("<-- Operation %s started", self.name)
 
         # Run current operation only if it hasn't run already.
         success = self.is_done()
         if not success:
             with Timer(self.log):
-                with create_cwl_runner(self.cwl_runner, self) as runner:
-                    success = runner.run()
-                    if success:
-                        self.outputs = runner.parse_outputs()
+                success, outputs = self.execute_workflow()
+                if success:
+                    self.outputs = outputs
         else:
-            self.log.info('Operation %s already done, skipping.', self.name)
+            self.log.info("Operation %s already done, skipping.", self.name)
             # Reloads outputs
             self.load_outputs()
 
         # Finalize
         if success:
-            self.log.info('--> Operation %s completed', self.name)
+            self.log.info("--> Operation %s completed", self.name)
             self.finalize()
             self.store_outputs()
         else:
-            raise RuntimeError(f'Operation {self.name} failed due to an error')
+            raise RuntimeError(f"Operation {self.name} failed due to an error")
