@@ -799,9 +799,9 @@ runs and route the CLI through it.
 
 Status: started. `rapthor.execution.flows.process` now mirrors both
 `process.run_steps()` operation ordering and the mocked `process.run()` lifecycle
-with injectable operation constructors and lifecycle hooks. The CLI still uses
-`process.run()`; cutover waits until the operation flows are complete enough for
-real pipeline runs.
+with injectable operation constructors, lifecycle hooks, and process-level
+preflight. The CLI still uses `process.run()`; cutover waits until the operation
+flows are complete enough for real pipeline runs.
 
 - Keep `process.run()` as the CLI entry point.
 - Add `rapthor.execution.flows.process` with a Prefect flow that mirrors current
@@ -809,8 +809,9 @@ real pipeline runs.
   Initial skeleton complete for parset loading, logging setup, concatenation,
   strategy setup, validation, initial sky-model generation, chunking,
   selfcal/final cycle orchestration, repeated final cycles, and report
-  generation. Remaining work is real operation-flow cutover and production
-  preflight.
+  generation. Initial process-level preflight is wired before the first
+  operation runs. Remaining work is real operation-flow cutover and the final
+  supported feature matrix.
 - Decide whether operation flows are subflows or tasks from the top-level flow.
 - Continue to respect selfcal convergence checks between cycles.
 - Encode the four calibration strategy paths from `CALIBRATION_STRATEGY.md` in
@@ -838,7 +839,8 @@ Tests:
   DD-then-DI ordering and artifact hand-offs. Initial step-level Prefect coverage
   complete.
 - Add preflight tests that inspect the chosen strategy and fail before execution
-  when any required operation or feature slice is unsupported.
+  when any required operation or feature slice is unsupported. Initial mocked
+  preflight coverage is complete.
 
 ### Stage 9: Slurm And Multi-Node Execution
 
@@ -1172,9 +1174,11 @@ Current integration test review:
 - Split normalization coverage so the provided-sky-model case can run without
   the `internet` marker. Keep downloaded-catalog normalization as a separate
   `internet` test.
-- Resolve the `shared_facet_rw=True` xfail before merge: either support it in
-  the Prefect path with the target WSClean version, or make preflight reject the
-  unsupported configuration with a clear error.
+- Keep `shared_facet_rw=True` supported in the Prefect path. The current xfail
+  reflects macOS and intermittent CI/CD instability, not an unsupported science
+  feature; staging coverage should remain the source of truth for this option.
+  Gate local/CI integration runs with environment-aware skips or xfails rather
+  than rejecting the parset in preflight.
 - Add missing focused integration coverage for concatenation over multiple
   Measurement Sets, image-only runs with supplied h5parm/skymodel inputs, QUV
   or clean-disabled imaging, image cube generation, and the selected Slurm/MPI
@@ -2305,8 +2309,6 @@ Tests:
 
 Deferred to the remaining Stage 8 top-level Prefect flow work:
 
-- Preflight tests that reject a strategy path when any required feature slice is
-  still unsupported.
 - Integration test placeholders or markers for real DI-only, DD-only,
   DI-then-DD, and DD-then-DI runs.
 
@@ -2379,6 +2381,42 @@ Verified:
 - `python3 -m ruff check rapthor/execution/flows/process.py
   rapthor/execution/flows/__init__.py rapthor/execution/__init__.py
   tests/execution/test_process_flow.py tests/test_process.py`: passed.
+- `python3 -m ruff format --check rapthor/execution/flows/process.py
+  rapthor/execution/flows/__init__.py rapthor/execution/__init__.py
+  tests/execution/test_process_flow.py`: passed.
+
+### PR 26: Process-Level Preflight
+
+Status: complete.
+
+- Added process feature collection for top-level strategy/runtime requests such
+  as concatenation, initial sky-model generation, DI/DD calibration order,
+  solve types, prediction, imaging, normalization, peeling, QUV imaging, image
+  cubes, hybrid screens, selfcal checks, and repeated final cycles.
+- Added `run_process_preflight()` and wired it into `run_process()` after
+  strategy validation and before the first operation, including concatenation.
+- Added a `preflight_execution` lifecycle hook so process tests can inject
+  supported feature sets and assert early failure without running operations.
+- Exposed `SUPPORTED_PROCESS_FEATURES`, `collect_process_features()`, and
+  `run_process_preflight()` through the execution package.
+- Kept `shared_facet_rw` in the supported process feature set; its integration
+  test remains environment-sensitive because it is known to fail on macOS and
+  can be intermittent in CI/CD, while staging has validated the feature.
+- Added mocked process preflight coverage proving `shared_facet_rw=True` is
+  accepted and operation execution proceeds.
+- Made unknown calibration modes become unsupported preflight features rather
+  than falling through to operation execution.
+
+Verified:
+
+- `python3 -m pytest tests/execution/test_process_flow.py
+  tests/execution/test_capabilities.py`: 21 passed.
+- `python3 -m pytest tests/execution/test_process_flow.py
+  tests/execution/test_capabilities.py tests/test_process.py`: 40 passed.
+- `python3 -m ruff check rapthor/execution/flows/process.py
+  rapthor/execution/flows/__init__.py rapthor/execution/__init__.py
+  tests/execution/test_process_flow.py tests/execution/test_capabilities.py
+  tests/test_process.py`: passed.
 - `python3 -m ruff format --check rapthor/execution/flows/process.py
   rapthor/execution/flows/__init__.py rapthor/execution/__init__.py
   tests/execution/test_process_flow.py`: passed.

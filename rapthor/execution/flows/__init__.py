@@ -102,11 +102,14 @@ from rapthor.execution.flows.predict import (
 from rapthor.execution.flows.process import (
     ProcessLifecycleHooks,
     ProcessOperationFactories,
+    SUPPORTED_PROCESS_FEATURES,
+    collect_process_features,
     default_process_operation_factories,
     default_process_lifecycle_hooks,
     process_flow,
     process_steps_flow,
     run_process,
+    run_process_preflight,
     run_process_steps,
 )
 
@@ -194,7 +197,10 @@ __all__ = [
     "process_steps_flow",
     "ProcessLifecycleHooks",
     "ProcessOperationFactories",
+    "SUPPORTED_PROCESS_FEATURES",
+    "collect_process_features",
     "run_process",
+    "run_process_preflight",
     "run_calibrate_chunk",
     "run_calibrate_flow",
     "run_concatenate_epoch",

@@ -3,10 +3,12 @@ from dataclasses import dataclass, field
 import pytest
 from prefect.testing.utilities import prefect_test_harness
 
+from rapthor.execution.capabilities import PreflightError, preflight_execution
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.process import (
     ProcessLifecycleHooks,
     ProcessOperationFactories,
+    collect_process_features,
     process_flow,
     process_steps_flow,
     run_process,
@@ -274,9 +276,11 @@ class RecordingProcessLifecycle:
     parset: dict
     strategy_steps: list[dict]
     final_pass: bool = True
+    supported_features: set[str] | None = None
     epoch_observations: list[list[object]] = field(default_factory=lambda: [[object()]])
     read_files: list[object] = field(default_factory=list)
     logging_levels: list[str] = field(default_factory=list)
+    preflight_features: set[str] = field(default_factory=set)
     field: object = None
 
     def hooks(self):
@@ -286,6 +290,7 @@ class RecordingProcessLifecycle:
             build_field=self.build_field,
             set_strategy=self.set_strategy,
             validate_strategy=self.validate_strategy,
+            preflight_execution=self.preflight_execution,
             chunk_observations=self.chunk_observations,
             do_final_pass=self.do_final_pass,
             make_report=self.make_report,
@@ -309,6 +314,21 @@ class RecordingProcessLifecycle:
     def validate_strategy(self, strategy_steps, parset):
         self.field.events.append(
             {"operation": "validate_strategy", "step_count": len(strategy_steps)}
+        )
+
+    def preflight_execution(self, field, strategy_steps, execution_config, requested_features):
+        self.preflight_features = set(requested_features)
+        field.events.append(
+            {
+                "operation": "preflight",
+                "feature_count": len(requested_features),
+                "task_runner": execution_config.task_runner,
+            }
+        )
+        preflight_execution(
+            execution_config,
+            requested_features=requested_features,
+            supported_features=self.supported_features,
         )
 
     def chunk_observations(self, field, steps, data_fraction):
@@ -406,6 +426,132 @@ def test_run_process_steps_stops_after_selfcal_converges():
     ]
     assert field.selfcal_state.converged is True
     assert field.cycle_number == 1
+
+
+def test_collect_process_features_describes_strategy_and_runtime_options():
+    parset = _process_parset(
+        generate_initial_skymodel=True,
+        ntimes_to_repeat_final_cycle=1,
+        imaging_specific={"skip_final_major_iteration": True, "shared_facet_rw": "True"},
+    )
+    field = RecordingField(
+        dde_mode="hybrid",
+        epoch_observations=[["obs-a", "obs-b"]],
+        make_quv_images=True,
+        disable_iquv_clean=True,
+        save_image_cube=True,
+        parset=parset,
+    )
+    steps = [
+        _single_step(
+            {"dd": ["fast_phase"], "di": ["full_jones"]},
+            do_predict=True,
+            do_normalize=True,
+            do_check=True,
+            peel_outliers=True,
+            peel_bright_sources=True,
+        ),
+        _image_step(),
+    ]
+
+    features = collect_process_features(field, steps, parset)
+
+    assert {
+        "calibration",
+        "calibration_dd",
+        "calibration_di",
+        "calibration_dd_then_di",
+        "clean_disabled_full_stokes",
+        "concatenate",
+        "final_cycle",
+        "full_stokes_imaging",
+        "hybrid_screens",
+        "image",
+        "image_cube",
+        "initial_skymodel",
+        "normalize",
+        "peel_bright_sources",
+        "peel_outliers",
+        "predict_dd",
+        "repeat_final_cycle",
+        "selfcal",
+        "selfcal_check",
+        "shared_facet_rw",
+        "solve_dd_fast_phase",
+        "solve_di_full_jones",
+    } <= features
+
+
+def test_run_process_preflight_rejects_unsupported_feature_before_operations():
+    parset = _process_parset()
+    lifecycle = RecordingProcessLifecycle(
+        parset=parset,
+        strategy_steps=[_image_step(do_normalize=True)],
+        supported_features={"final_cycle", "image"},
+    )
+
+    with pytest.raises(PreflightError) as exc:
+        run_process(
+            "input.parset",
+            operation_factories=RECORDING_FACTORIES,
+            lifecycle_hooks=lifecycle.hooks(),
+            execution_config=ExecutionConfig(task_runner="sync"),
+        )
+
+    assert exc.value.issues[0].code == "unsupported_feature"
+    assert "normalize" in exc.value.issues[0].message
+    assert "normalize" in lifecycle.preflight_features
+    assert [
+        event["operation"]
+        for event in lifecycle.field.events
+        if event["operation"] in {"image_normalize", "image", "mosaic"}
+    ] == []
+
+
+def test_run_process_preflight_rejects_runtime_before_operations():
+    parset = _process_parset()
+    lifecycle = RecordingProcessLifecycle(
+        parset=parset,
+        strategy_steps=[_image_step()],
+    )
+
+    with pytest.raises(PreflightError) as exc:
+        run_process(
+            "input.parset",
+            operation_factories=RECORDING_FACTORIES,
+            lifecycle_hooks=lifecycle.hooks(),
+            execution_config=ExecutionConfig(task_runner="sync", use_container=True),
+        )
+
+    assert exc.value.issues[0].code == "unsupported_container"
+    assert [
+        event["operation"]
+        for event in lifecycle.field.events
+        if event["operation"] in {"image", "mosaic"}
+    ] == []
+
+
+def test_run_process_preflight_supports_shared_facet_rw():
+    parset = _process_parset(
+        imaging_specific={"skip_final_major_iteration": True, "shared_facet_rw": "True"}
+    )
+    lifecycle = RecordingProcessLifecycle(
+        parset=parset,
+        strategy_steps=[_image_step()],
+    )
+
+    field = run_process(
+        "input.parset",
+        operation_factories=RECORDING_FACTORIES,
+        lifecycle_hooks=lifecycle.hooks(),
+        execution_config=ExecutionConfig(task_runner="sync"),
+    )
+
+    assert field is lifecycle.field
+    assert "shared_facet_rw" in lifecycle.preflight_features
+    assert [
+        event["operation"] for event in field.events if event["operation"] in {"image", "mosaic"}
+    ] == ["image", "mosaic"]
 
 
 def test_run_process_lifecycle_runs_initial_selfcal_and_repeated_final_cycles():

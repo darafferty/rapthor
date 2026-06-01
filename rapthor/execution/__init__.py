@@ -110,11 +110,14 @@ from rapthor.execution.flows.predict import (
 from rapthor.execution.flows.process import (
     ProcessLifecycleHooks,
     ProcessOperationFactories,
+    SUPPORTED_PROCESS_FEATURES,
+    collect_process_features,
     default_process_operation_factories,
     default_process_lifecycle_hooks,
     process_flow,
     process_steps_flow,
     run_process,
+    run_process_preflight,
     run_process_steps,
 )
 from rapthor.execution.outputs import (
@@ -144,6 +147,7 @@ __all__ = [
     "ResourceRequest",
     "RuntimeSpec",
     "ShellCommand",
+    "SUPPORTED_PROCESS_FEATURES",
     "UnsupportedRuntimeError",
     "WorkDirectoryLayout",
     "assert_serializable_payload",
@@ -192,6 +196,7 @@ __all__ = [
     "command_to_string",
     "concatenate_flow",
     "concatenate_payload_from_inputs",
+    "collect_process_features",
     "default_process_lifecycle_hooks",
     "default_process_operation_factories",
     "directory_record",
@@ -251,6 +256,7 @@ __all__ = [
     "run_predict_model_data",
     "run_predict_postprocess",
     "run_process",
+    "run_process_preflight",
     "run_process_steps",
     "run_shell_command",
     "validate_output_record",
