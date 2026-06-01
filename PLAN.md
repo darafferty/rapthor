@@ -766,29 +766,43 @@ After the early mocked skeleton is in place and all required operation-level
 Prefect flows are working, make the top-level Prefect flow executable for real
 runs and route the CLI through it.
 
+Status: started. A first `rapthor.execution.flows.process` skeleton now mirrors
+the current `process.run_steps()` operation ordering with injectable operation
+constructors and a Prefect entry point. The CLI still uses `process.run()`;
+cutover waits until the operation flows are complete enough for real pipeline
+runs.
+
 - Keep `process.run()` as the CLI entry point.
-- Add `rapthor/flows/process.py` or similar with a Prefect flow that mirrors
-  current `process.run()` sequencing.
+- Add `rapthor.execution.flows.process` with a Prefect flow that mirrors current
+  `process.run_steps()` sequencing. Initial skeleton complete; remaining work is
+  the full `process.run()` wrapper around parset loading, concatenation, strategy
+  setup, initial sky-model generation, chunking, final-cycle repetition, and
+  report generation.
 - Decide whether operation flows are subflows or tasks from the top-level flow.
 - Continue to respect selfcal convergence checks between cycles.
 - Encode the four calibration strategy paths from `CALIBRATION_STRATEGY.md` in
   top-level orchestration tests: DI-only, DD-only, DI-then-DD, and DD-then-DI.
+  Initial `run_process_steps()` and Prefect-harness coverage complete.
 - Verify top-level data hand-offs explicitly: DI calibration products feed DD
   pre-apply, DD calibration products feed later prediction or imaging, and the
-  agreed facet-region artifact is available to its consumer.
+  agreed facet-region artifact is available to its consumer. Initial mocked
+  hand-off coverage complete for the four strategy paths.
 - Replace the CWL runner call in `Operation.run()` with the Python flow path.
 - Remove branch-only CWL references from production execution code.
 
 Tests:
 
 - Mock operation classes and verify ordering through the Prefect top-level flow.
+  Initial strategy-ordering matrix complete.
 - Use `prefect_test_harness`.
 - Keep current `tests/test_process.py` coverage backend-independent.
 - Add full mocked-process tests for initial sky model generation, no-selfcal
   image-only strategy, selfcal convergence, selfcal divergence/failure,
-  repeated final cycles, and preflight failure detection.
+  repeated final cycles, and preflight failure detection. Initial selfcal
+  convergence stop coverage complete for the shared process-step runner.
 - Add full mocked-process tests for DI-only, DD-only, DI-then-DD, and
-  DD-then-DI ordering and artifact hand-offs.
+  DD-then-DI ordering and artifact hand-offs. Initial step-level Prefect coverage
+  complete.
 - Add preflight tests that inspect the chosen strategy and fail before execution
   when any required operation or feature slice is unsupported.
 
@@ -2174,7 +2188,7 @@ Verified:
 
 ### PR 23: Calibration Strategy Orchestration Coverage
 
-Status: in progress.
+Status: complete.
 
 - Added a strategy-level `run_steps` test matrix that exercises the four paths described in
   `CALIBRATION_STRATEGY.md`: DI-only, DD-only, DI-then-DD, and DD-then-DI.
@@ -2184,7 +2198,7 @@ Status: in progress.
   DI products feed DD pre-apply for DI-then-DD, and DD products plus the agreed
   facet-region artifact feed later DI prediction/imaging for DD-then-DI.
 - Kept this coverage at the current `process.run_steps` layer because the
-  top-level Prefect process flow is introduced later in Stage 8.
+  top-level Prefect process flow was introduced separately in Stage 8.
 
 Tests:
 
@@ -2193,10 +2207,8 @@ Tests:
 - Added field-state assertions after each mocked strategy path proving the same
   field attributes are available to downstream operations as in the CWL path.
 
-Deferred to the Stage 8 top-level Prefect flow:
+Deferred to the remaining Stage 8 top-level Prefect flow work:
 
-- Mocked top-level Prefect flow tests with fake operation flows and
-  finalizer-compatible output records.
 - Preflight tests that reject a strategy path when any required feature slice is
   still unsupported.
 - Integration test placeholders or markers for real DI-only, DD-only,
@@ -2208,6 +2220,41 @@ Verified:
 - `python3 -m pytest tests/test_process.py tests/lib/test_field.py
   tests/lib/test_strategy.py`: 100 passed.
 - `python3 -m ruff check tests/test_process.py`: passed.
+
+### PR 24: Prefect Process-Step Flow Skeleton
+
+Status: complete.
+
+- Added `rapthor.execution.flows.process` as the first Stage 8 top-level flow
+  slice.
+- Added `ProcessOperationFactories` so tests can inject fake operation classes
+  while production defaults still point at the existing operation constructors.
+- Added `run_process_steps()` to mirror the current `process.run_steps()`
+  operation ordering and field-state mutations without routing the CLI through
+  it yet.
+- Added `process_steps_flow()` as a Prefect entry point using the configured task
+  runner helper.
+- Exported the process-flow helpers from `rapthor.execution.flows` and
+  `rapthor.execution`.
+- Added Prefect-harness tests for the four calibration strategy paths:
+  DI-only, DD-only, DI-then-DD, and DD-then-DI.
+- Added mocked hand-off assertions proving DI solutions, DD solutions, and facet
+  region state are visible to downstream operations in the same cycle.
+- Added selfcal convergence-stop coverage for the process-step runner.
+
+Verified:
+
+- `python3 -m pytest tests/execution/test_process_flow.py`: 9 passed.
+- `python3 -m pytest tests/execution/test_process_flow.py
+  tests/test_process.py`: 29 passed.
+- `python3 -m ruff format --check rapthor/execution/flows/process.py
+  rapthor/execution/flows/__init__.py rapthor/execution/__init__.py
+  tests/execution/test_process_flow.py`: passed.
+- `python3 -m ruff check rapthor/execution/flows/process.py
+  rapthor/execution/flows/__init__.py rapthor/execution/__init__.py
+  tests/execution/test_process_flow.py tests/test_process.py`: passed.
+- `python3 -m py_compile rapthor/execution/flows/process.py
+  tests/execution/test_process_flow.py`: passed locally.
 
 ## Success Criteria
 

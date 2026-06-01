@@ -107,6 +107,12 @@ from rapthor.execution.flows.predict import (
     run_predict_model_data,
     run_predict_postprocess,
 )
+from rapthor.execution.flows.process import (
+    ProcessOperationFactories,
+    default_process_operation_factories,
+    process_steps_flow,
+    run_process_steps,
+)
 from rapthor.execution.outputs import (
     OutputRecordError,
     directory_record,
@@ -129,6 +135,7 @@ __all__ = [
     "PayloadSerializationError",
     "PreflightError",
     "PreflightIssue",
+    "ProcessOperationFactories",
     "ResourceRequest",
     "RuntimeSpec",
     "ShellCommand",
@@ -180,6 +187,7 @@ __all__ = [
     "command_to_string",
     "concatenate_flow",
     "concatenate_payload_from_inputs",
+    "default_process_operation_factories",
     "directory_record",
     "file_record",
     "image_flow",
@@ -223,6 +231,7 @@ __all__ = [
     "predict_payload_from_inputs",
     "predict_postprocess_task",
     "preflight_execution",
+    "process_steps_flow",
     "run_calibrate_chunk",
     "run_calibrate_flow",
     "run_concatenate_epoch",
@@ -234,6 +243,7 @@ __all__ = [
     "run_predict_flow",
     "run_predict_model_data",
     "run_predict_postprocess",
+    "run_process_steps",
     "run_shell_command",
     "validate_output_record",
 ]

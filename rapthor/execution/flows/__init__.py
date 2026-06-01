@@ -99,6 +99,12 @@ from rapthor.execution.flows.predict import (
     run_predict_model_data,
     run_predict_postprocess,
 )
+from rapthor.execution.flows.process import (
+    ProcessOperationFactories,
+    default_process_operation_factories,
+    process_steps_flow,
+    run_process_steps,
+)
 
 __all__ = [
     "build_add_sector_models_command",
@@ -141,6 +147,7 @@ __all__ = [
     "concatenate_epoch_task",
     "concatenate_flow",
     "concatenate_payload_from_inputs",
+    "default_process_operation_factories",
     "image_flow",
     "image_payload_from_inputs",
     "image_sector_task",
@@ -179,6 +186,8 @@ __all__ = [
     "predict_model_data_task",
     "predict_payload_from_inputs",
     "predict_postprocess_task",
+    "process_steps_flow",
+    "ProcessOperationFactories",
     "run_calibrate_chunk",
     "run_calibrate_flow",
     "run_concatenate_epoch",
@@ -190,4 +199,5 @@ __all__ = [
     "run_predict_flow",
     "run_predict_model_data",
     "run_predict_postprocess",
+    "run_process_steps",
 ]
