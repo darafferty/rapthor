@@ -1,21 +1,25 @@
 """
 Module that holds the Mosaic class
 """
+
 import os
 import logging
 import shutil
+from rapthor.execution.config import ExecutionConfig
+from rapthor.execution.flows.mosaic import mosaic_flow, mosaic_payload_from_inputs
 from rapthor.lib.operation import Operation
 from rapthor.lib.cwl import CWLFile
 
-log = logging.getLogger('rapthor:mosaic')
+log = logging.getLogger("rapthor:mosaic")
 
 
 class Mosaic(Operation):
     """
     Operation to mosaic sector images
     """
+
     def __init__(self, field, index):
-        super().__init__(field, index=index, name='mosaic')
+        super().__init__(field, index=index, name="mosaic")
 
         # For each image type we use a subworkflow, so we set the template filename
         # for that here
@@ -24,21 +28,29 @@ class Mosaic(Operation):
         # Determine whether processing is needed
         self.skip_processing = len(self.field.imaging_sectors) < 2
 
+    def uses_python_flow(self):
+        """
+        Mosaic is executed through the Prefect/Dask Python flow.
+        """
+        return True
+
     def set_parset_parameters(self):
         """
         Define parameters needed for the CWL workflow template
         """
-        if self.batch_system.startswith('slurm'):
+        if self.batch_system.startswith("slurm"):
             # For some reason, setting coresMax ResourceRequirement hints does
             # not work with SLURM
             max_cores = None
         else:
-            max_cores = self.field.parset['cluster_specific']['max_cores']
-        self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
-                             'pipeline_working_dir': self.pipeline_working_dir,
-                             'max_cores': max_cores,
-                             'skip_processing': self.skip_processing,
-                             'compress_images': self.field.compress_images}
+            max_cores = self.field.parset["cluster_specific"]["max_cores"]
+        self.parset_parms = {
+            "rapthor_pipeline_dir": self.rapthor_pipeline_dir,
+            "pipeline_working_dir": self.pipeline_working_dir,
+            "max_cores": max_cores,
+            "skip_processing": self.skip_processing,
+            "compress_images": self.field.compress_images,
+        }
 
     def set_input_parameters(self):
         """
@@ -60,7 +72,7 @@ class Mosaic(Operation):
                     [
                         f"{polup}_model_file_true_sky",
                         f"{polup}_residual_file_apparent_sky",
-                        f"{polup}_dirty_file_apparent_sky"
+                        f"{polup}_dirty_file_apparent_sky",
                     ]
                 )
         if self.field.save_supplementary_images:
@@ -75,13 +87,11 @@ class Mosaic(Operation):
             for sector in self.field.imaging_sectors:
                 image_list.append(getattr(sector, image_name))
                 vertices_list.append(sector.vertices_file)
-                regridded_list.append(
-                    f'{os.path.basename(getattr(sector, image_name))}.regridded'
-                )
+                regridded_list.append(f"{os.path.basename(getattr(sector, image_name))}.regridded")
             sector_image_filename.append(CWLFile(image_list).to_json())
             sector_vertices_filename.append(CWLFile(vertices_list).to_json())
             regridded_image_filename.append(regridded_list)
-            template_image_filename.append(f'{self.name}_template.fits')
+            template_image_filename.append(f"{self.name}_template.fits")
 
         self.mosaic_filename = []
         if self.skip_processing:
@@ -94,19 +104,36 @@ class Mosaic(Operation):
         else:
             for image_name in self.image_names:
                 # Define output filenames for each mosaic image
-                suffix = getattr(self.field.imaging_sectors[0], image_name).split('sector_1')[-1]
+                suffix = getattr(self.field.imaging_sectors[0], image_name).split("sector_1")[-1]
                 if suffix.endswith(".fz"):
                     # Remove the compressed extension, as the output mosaic files are not
                     # compressed until a later step in the pipeline
                     suffix = os.path.splitext(suffix)[0]
                 self.mosaic_filename.append(f"{self.name}{suffix}")
 
-        self.input_parms = {'skip_processing': self.skip_processing,
-                            'sector_image_filename': sector_image_filename,
-                            'sector_vertices_filename': sector_vertices_filename,
-                            'template_image_filename': template_image_filename,
-                            'regridded_image_filename': regridded_image_filename,
-                            'mosaic_filename': self.mosaic_filename}
+        self.input_parms = {
+            "skip_processing": self.skip_processing,
+            "sector_image_filename": sector_image_filename,
+            "sector_vertices_filename": sector_vertices_filename,
+            "template_image_filename": template_image_filename,
+            "regridded_image_filename": regridded_image_filename,
+            "mosaic_filename": self.mosaic_filename,
+        }
+
+    def execute_workflow(self):
+        """
+        Execute mosaicking through the Prefect flow and return operation outputs.
+        """
+        payload = mosaic_payload_from_inputs(
+            self.input_parms,
+            self.pipeline_working_dir,
+            compress_images=self.field.compress_images,
+        )
+        outputs = mosaic_flow(
+            payload,
+            execution_config=ExecutionConfig.from_parset(self.parset),
+        )
+        return True, outputs
 
     def finalize(self):
         """
@@ -123,17 +150,18 @@ class Mosaic(Operation):
             # Copy the image to the images directory. Note: the individual sector images that were
             # used to make the mosaic are left in place, as they will be needed if the mosaic
             # operation is reset without reseting the preceding image operation as well
-            dst_dir = os.path.join(self.field.parset['dir_working'], 'images',
-                                   f'image_{self.index}')
+            dst_dir = os.path.join(
+                self.field.parset["dir_working"], "images", f"image_{self.index}"
+            )
             os.makedirs(dst_dir, exist_ok=True)
             if self.skip_processing:
                 # Single imaging sector: split on the sector name
-                suffix = self.mosaic_filename[i].split('sector_1')[-1]
+                suffix = self.mosaic_filename[i].split("sector_1")[-1]
             else:
                 # Mosacking done: split on the mosaic name
                 suffix = self.mosaic_filename[i].split(self.name)[-1]
-            field_image_filename = os.path.join(dst_dir, f'field{suffix}')
-            if image_name == 'I_image_file_true_sky':
+            field_image_filename = os.path.join(dst_dir, f"field{suffix}")
+            if image_name == "I_image_file_true_sky":
                 # Save the Stokes I true-sky image filename as an attribute of the field
                 # object for later use
                 self.field.field_image_filename_prev = self.field.field_image_filename

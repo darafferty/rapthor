@@ -91,6 +91,7 @@ class FieldStub:
                 "use_container": False,
                 "container_type": "docker",
                 "max_cores": 1,
+                "prefect_task_runner": "sync",
             },
             "imaging_specific": {"save_filtered_model_image": False},
         }
@@ -373,3 +374,74 @@ def test_mosaic_finalizer_accepts_prefect_outputs(tmp_path, fake_mosaic_shell_op
     assert field.field_image_filename_prev is None
     assert expected_field_image.is_file()
     assert Path(operation.done_file).is_file()
+
+
+def test_mosaic_operation_run_uses_prefect_flow(
+    tmp_path, monkeypatch, fake_mosaic_shell_operation_cls
+):
+    monkeypatch.setattr(
+        "rapthor.execution.shell._load_shell_operation_cls",
+        lambda: fake_mosaic_shell_operation_cls,
+    )
+    field = FieldStub(
+        tmp_path,
+        [SectorStub(tmp_path / "inputs", 1), SectorStub(tmp_path / "inputs", 2)],
+    )
+    operation = Mosaic(field, index=1)
+
+    with prefect_test_harness(server_startup_timeout=None):
+        operation.run()
+
+    expected_outputs = {
+        "mosaic_image": [
+            file_record(Path(operation.pipeline_working_dir) / "mosaic_1-I-image.fits"),
+            file_record(Path(operation.pipeline_working_dir) / "mosaic_1-I-apparent.fits"),
+        ]
+    }
+    expected_field_image = (
+        Path(field.parset["dir_working"]) / "images" / "image_1" / "field-I-image.fits"
+    )
+    assert operation.outputs == expected_outputs
+    assert json.loads(Path(operation.outputs_file).read_text()) == expected_outputs
+    assert Path(operation.done_file).is_file()
+    assert Path(operation.pipeline_inputs_file).is_file()
+    assert not Path(operation.pipeline_parset_file).exists()
+    assert field.field_image_filename == str(expected_field_image)
+    assert field.field_image_filename_prev is None
+    assert expected_field_image.is_file()
+    assert len(fake_mosaic_shell_operation_cls.instances) == 8
+
+
+def test_mosaic_operation_run_reuses_prefect_outputs_when_done(
+    tmp_path, monkeypatch, fake_mosaic_shell_operation_cls
+):
+    monkeypatch.setattr(
+        "rapthor.execution.shell._load_shell_operation_cls",
+        lambda: fake_mosaic_shell_operation_cls,
+    )
+    field = FieldStub(
+        tmp_path,
+        [SectorStub(tmp_path / "inputs", 1), SectorStub(tmp_path / "inputs", 2)],
+    )
+    operation = Mosaic(field, index=1)
+    expected_outputs = {
+        "mosaic_image": [
+            file_record(Path(operation.pipeline_working_dir) / "mosaic_1-I-image.fits"),
+            file_record(Path(operation.pipeline_working_dir) / "mosaic_1-I-apparent.fits"),
+        ]
+    }
+    for output in expected_outputs["mosaic_image"]:
+        Path(output["path"]).write_text("mosaic")
+    Path(operation.done_file).touch()
+    Path(operation.outputs_file).write_text(json.dumps(expected_outputs))
+
+    operation.run()
+
+    expected_field_image = (
+        Path(field.parset["dir_working"]) / "images" / "image_1" / "field-I-image.fits"
+    )
+    assert operation.outputs == expected_outputs
+    assert Path(operation.done_file).is_file()
+    assert field.field_image_filename == str(expected_field_image)
+    assert expected_field_image.is_file()
+    assert fake_mosaic_shell_operation_cls.instances == []

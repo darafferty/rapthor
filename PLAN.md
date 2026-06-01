@@ -593,12 +593,12 @@ Remaining Stage 3 work before final cutover:
 
 Mosaic has manageable scatter and mostly calls Rapthor scripts.
 
-Status: complete for direct flow parity in PR 4. The production `Operation.run()`
-path is still unchanged, but the Mosaic operation now has a
+Status: complete for direct flow parity in PR 4, and operation-run cutover is
+complete for Mosaic in PR 28. The Mosaic operation now has a
 finalizer-compatible Python flow, command builders for the script steps and
 optional compression, payload validation, mocked Prefect flow coverage,
-skip-processing coverage, compressed-output coverage, and finalizer-state
-coverage.
+skip-processing coverage, compressed-output coverage, finalizer-state coverage,
+and operation-level restart coverage.
 
 - Translate `mosaic_pipeline.cwl` and `mosaic_type_pipeline.cwl`.
 - Preserve `skip_processing` behaviour for single-sector imaging.
@@ -619,8 +619,6 @@ Tests:
 
 Remaining Stage 4 work before final cutover:
 
-- Add operation-level restart tests once `Operation.run()` is switched from CWL
-  to the Python flow path.
 - Replace or rework the currently placeholder `tests/operations/test_mosaic.py`
   cases when the production runner is cut over.
 - Add a real image-to-mosaic integration test on the Prefect path once the Image
@@ -2491,9 +2489,8 @@ Completed in this slice:
 
 Remaining follow-up:
 
-- Apply the same operation-run cutover pattern to Mosaic, Predict, Image, and
-  Calibrate once their direct flow parity slices are ready for production
-  adapter coverage.
+- Apply the same operation-run cutover pattern to Predict, Image, and Calibrate
+  once their direct flow parity slices are ready for production adapter coverage.
 - Add a lightweight real Concatenate integration parity test if CI has suitable
   Measurement Set fixtures and `concat_ms.py` dependencies.
 
@@ -2513,6 +2510,44 @@ Verified:
 - `python3 -m py_compile rapthor/lib/operation.py
   rapthor/operations/concatenate.py tests/execution/test_concatenate_flow.py`:
   passed locally.
+- `git diff --check`: passed.
+
+### PR 28: Mosaic Operation-Run Cutover
+
+Completed in this slice:
+
+- Wired `Mosaic.execute_workflow()` to `mosaic_flow()` using
+  `ExecutionConfig.from_parset()`.
+- Kept Mosaic on the same operation-adapter contract as Concatenate:
+  `set_input_parameters()` builds the serializable payload, the Prefect flow
+  returns finalizer-compatible records, and `Mosaic.finalize()` remains
+  responsible for copying field images and updating `field_image_filename`.
+- Preserved operation-level restart behaviour for Mosaic: `.done` skips shell
+  execution, `.outputs.json` is loaded, finalization still runs, and persisted
+  Prefect output records are reused.
+- Added operation-run coverage proving the Mosaic adapter executes through
+  Prefect, writes operation state, skips CWL template generation, copies field
+  images, and reuses persisted outputs without invoking shell work.
+
+Remaining follow-up:
+
+- Replace or rework the placeholder `tests/operations/test_mosaic.py` cases with
+  real operation tests if that module remains after the final test-suite cleanup.
+- Add a lightweight image-to-mosaic integration parity test once suitable FITS
+  or image-flow fixtures are available in CI.
+
+Verified:
+
+- `python3 -m pytest tests/execution/test_mosaic_flow.py`: 12 passed.
+- `python3 -m pytest tests/execution/test_mosaic_flow.py
+  tests/execution/test_concatenate_flow.py tests/operations/test_mosaic.py
+  tests/execution/test_process_flow.py tests/test_process.py`: 67 passed.
+- `python3 -m ruff check rapthor/operations/mosaic.py
+  tests/execution/test_mosaic_flow.py`: passed.
+- `python3 -m ruff format --check rapthor/operations/mosaic.py
+  tests/execution/test_mosaic_flow.py`: passed.
+- `python3 -m py_compile rapthor/operations/mosaic.py
+  tests/execution/test_mosaic_flow.py`: passed locally.
 - `git diff --check`: passed.
 
 ## Success Criteria
