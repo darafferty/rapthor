@@ -2088,6 +2088,42 @@ Verified:
 - Python JSON parsing for `cwl_reference_commands.json` and
   `cwl_reference_outputs.json`: passed.
 
+### PR 21 Follow-Up: Clarify Solution-Application Semantics
+
+Status: planned.
+
+- Document the distinction between calibration pre-application and imaging
+  applycal:
+  - DD calibration pre-apply receives the combined DI scalar h5parm
+    (`di-solutions.h5`) and applies its `phase000` soltab through DP3's
+    `fastphase` applycal step. In the DI fast+medium case, medium phase has
+    already been interpolated and summed into that combined scalar h5parm by
+    `combine_h5parms.py` in `p1p2_scalar` mode.
+  - Imaging preparation applies final calibration products to imaging
+    visibilities and can use explicit `mediumphase` applycal steps when a
+    separate medium-phase product is selected.
+- Update `CALIBRATION_STRATEGY.md` with a short "which solutions are applied
+  when" section covering DI-only, DI-then-DD, DD-only, and imaging preparation.
+- Add code comments or docstrings near `Calibrate._build_applycal()`,
+  `SUPPORTED_DD_APPLYCAL_STEPS`, and the image applycal builder explaining why
+  calibration pre-apply supports `fastphase`, `slowgain`, `fulljones`, and
+  `normalization`, but not `mediumphase`.
+- Consider renaming Python-only concepts to make the distinction clearer without
+  changing DP3 command tokens, for example:
+  `SUPPORTED_DD_APPLYCAL_STEPS` -> `SUPPORTED_DD_PREAPPLY_STEPS`,
+  `applycal_h5parm` -> `scalar_applycal_h5parm` internally, and helper names
+  that distinguish "combined scalar DI h5parm" from individual fast/medium
+  diagnostic products.
+
+Tests:
+
+- Add or extend operation/execution tests that assert DI fast+medium calibration
+  produces a combined scalar `di_h5parm_filename`, and DD pre-apply consumes that
+  combined h5parm through `applycal.steps=[fastphase]`.
+- Add a regression test or explicit assertion showing that `mediumphase` remains
+  valid in the imaging prepare-data path, but is not a DD calibration pre-apply
+  step.
+
 ### PR 22: DD Image-Based Prediction
 
 Status: planned.
