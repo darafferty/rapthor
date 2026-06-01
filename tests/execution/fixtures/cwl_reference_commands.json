@@ -417,6 +417,11 @@
             "--scale_delta_with_dist=False",
             "--phase_center_ra=123.0",
             "--phase_center_dec=45.0"
+        ],
+        "adjust_h5parm_sources": [
+            "adjust_h5parm_sources.py",
+            "calibration.skymodel",
+            "combined_solutions.h5"
         ]
     },
     "image": {

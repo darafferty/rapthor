@@ -9,6 +9,7 @@ from rapthor.execution.capabilities import (
 from rapthor.execution.commands import command_matches_fixture, command_to_string, normalize_command
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.calibrate import (
+    build_adjust_h5parm_sources_command,
     build_combine_h5parms_command,
     build_collect_h5parms_command,
     build_ddecal_solve_command,
@@ -17,6 +18,7 @@ from rapthor.execution.flows.calibrate import (
     calibrate_chunk_task,
     calibrate_flow,
     calibrate_payload_from_inputs,
+    normalized_adjust_h5parm_sources_command,
     normalized_combine_h5parms_command,
     normalized_collect_h5parms_command,
     normalized_ddecal_solve_command,
@@ -134,6 +136,7 @@ __all__ = [
     "WorkDirectoryLayout",
     "assert_serializable_payload",
     "build_add_sector_models_command",
+    "build_adjust_h5parm_sources_command",
     "build_aterm_config_content",
     "build_blank_image_command",
     "build_calculate_image_diagnostics_command",
@@ -187,6 +190,7 @@ __all__ = [
     "mosaic_image_type_task",
     "mosaic_payload_from_inputs",
     "normalized_add_sector_models_command",
+    "normalized_adjust_h5parm_sources_command",
     "normalized_blank_image_command",
     "normalized_combine_h5parms_command",
     "normalized_collect_h5parms_command",

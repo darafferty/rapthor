@@ -662,12 +662,12 @@ Calibration is the other high-risk area because it includes solve planning,
 conditional branches, h5parm collection, plotting, combination, and source
 adjustment.
 
-Status: DI full-Jones, DI scalar-phase, DD fast-phase, DD medium-phase, and DD
-slow-gain direct-flow slices are complete for mocked execution, and solve chunks
-are submitted as explicit Prefect futures so Dask can parallelise them. Source
-adjustment, pre-application, image-based prediction, IDG/screen generation,
-later h5parm post-processing, restart/failure coverage, and real external-tool
-calibration coverage remain outstanding.
+Status: DI full-Jones, DI scalar-phase, DD fast-phase, DD medium-phase, DD
+slow-gain, and DD source-adjustment direct-flow slices are complete for mocked
+execution, and solve chunks are submitted as explicit Prefect futures so Dask
+can parallelise them. Pre-application, image-based prediction, IDG/screen
+generation, later h5parm post-processing, restart/failure coverage, and real
+external-tool calibration coverage remain outstanding.
 
 Suggested slices:
 
@@ -675,7 +675,7 @@ Suggested slices:
 2. DI scalar phase calibration. Complete.
 3. DD fast phase calibration without image-based prediction. Complete.
 4. DD medium phase and slow gains. Complete.
-5. DD source adjustment and facet-region contract.
+5. DD source adjustment and facet-region contract. Complete.
 6. Pre-application of DI solutions before DD solves.
 7. DD image-based prediction.
 8. IDG/screen generation.
@@ -717,6 +717,12 @@ Tests:
 - Added `process_gains.py` command-builder coverage and fixture parity for
   slow-gain normalization, smoothing, flagging, maximum station delta, scaled
   deltas, and phase-centre options.
+- Added `adjust_h5parm_sources.py` command-builder coverage, fixture parity,
+  multi-direction DD flow coverage, and single-direction skip coverage.
+- Clarified the facet-region ownership contract: image owns per-sector WSClean
+  facet-region generation, while calibration-side image-based prediction or
+  screen generation owns its field-level region file when those branches are
+  ported.
 - Added task-runner wiring tests proving `local_dask` and `external_dask`
   configuration is passed to Prefect operation flows.
 - Added calibration concurrency-order tests proving all solve chunks are submitted
@@ -1975,7 +1981,9 @@ Deferred to later calibration PRs:
 
 ### PR 20: DD Source Adjustment And Facet-Region Contract
 
-Status: planned.
+Status: complete for direct-flow DD source adjustment and documented
+facet-region ownership on the migration branch. Field-level region generation
+for calibration-side image-based prediction remains part of PR 22.
 
 - Add `adjust_h5parm_sources.py` command construction and execution for
   multi-direction DD calibration outputs.
@@ -2001,10 +2009,39 @@ Tests:
 - Output-contract fixture coverage proving `combined_solutions` selects the
   adjusted h5parm when source adjustment runs and the unadjusted h5parm when it
   does not.
-- Finalizer-state tests proving DD fast, medium, slow, and combined solution
-  products are copied to the same field attributes as the CWL path.
-- Facet-region contract tests proving the agreed owner emits the region record
-  and the agreed consumer receives it.
+- Single-direction skip coverage proving source adjustment is not run when there
+  is only one calibrator direction.
+- Existing `Calibrate.finalize()` tests remain applicable because source
+  adjustment mutates the selected h5parm in place and preserves the output
+  filename consumed by finalization.
+- Documentation coverage for the facet-region ownership decision in
+  `CALIBRATION_STRATEGY.md`; executable field-level region tests are deferred
+  to the image-based prediction slice.
+
+Implemented files:
+
+- `rapthor/execution/flows/calibrate.py`
+- `rapthor/execution/flows/__init__.py`
+- `rapthor/execution/__init__.py`
+- `tests/execution/test_calibrate_flow.py`
+- Updates to `tests/execution/fixtures/cwl_reference_commands.json`
+- Updates to `CALIBRATION_STRATEGY.md`
+- Updates to `PLAN.md`
+
+Verified in the devcontainer:
+
+- `python3 -m pytest tests/execution/test_calibrate_flow.py`: 23 passed.
+- `python3 -m pytest tests/execution tests/lib/test_parset.py`: 188 passed.
+- `python3 -m ruff check rapthor/execution tests/execution pyproject.toml`:
+  passed.
+- `python3 -m ruff format --check rapthor/execution tests/execution`: passed.
+- Python JSON parsing for `cwl_reference_commands.json` and
+  `cwl_reference_outputs.json`: passed.
+
+Deferred to PR 22:
+
+- Field-level region-file command execution for calibration-side image-based
+  prediction and screen-generation prerequisites.
 
 ### PR 21: DI Pre-Apply Before DD Calibration
 

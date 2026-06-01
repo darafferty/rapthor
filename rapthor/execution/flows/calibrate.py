@@ -284,6 +284,11 @@ def build_process_gains_command(
     ]
 
 
+def build_adjust_h5parm_sources_command(skymodel: str, h5parm: str) -> list[str]:
+    """Build the h5parm source-adjustment command."""
+    return ["adjust_h5parm_sources.py", skymodel, h5parm]
+
+
 def build_plot_solutions_command(
     h5parm: str,
     soltype: str,
@@ -954,6 +959,31 @@ def _run_process_gains(
     return _require_file(h5parm_record["path"], "Processed DD slow gains h5parm")
 
 
+def _should_adjust_dd_sources(payload: Mapping[str, object]) -> bool:
+    return len(payload.get("calibrator_patch_names", [])) > 1
+
+
+def _run_adjust_h5parm_sources(
+    h5parm_record: Mapping[str, str],
+    payload: Mapping[str, object],
+    pipeline_working_dir: str,
+    execution_config: ExecutionConfig,
+    label: str,
+    shell_operation_cls=None,
+) -> dict:
+    skymodel = payload.get("sourcedb")
+    if not skymodel:
+        raise ValueError("DD source adjustment requires calibration_skymodel_file")
+    adjust_command = build_adjust_h5parm_sources_command(str(skymodel), h5parm_record["path"])
+    _run_shell(
+        adjust_command,
+        pipeline_working_dir,
+        execution_config,
+        shell_operation_cls=shell_operation_cls,
+    )
+    return _require_file(h5parm_record["path"], label)
+
+
 def _collect_plot_and_combine_scalar_phase(
     payload: Mapping[str, object],
     solve_records: list[dict],
@@ -1173,7 +1203,26 @@ def _collect_plot_and_combine_dd_phase(
             "Combined DD phase and slow gain h5parm",
             shell_operation_cls=shell_operation_cls,
         )
+        if _should_adjust_dd_sources(payload):
+            final_record = _run_adjust_h5parm_sources(
+                final_record,
+                payload,
+                pipeline_working_dir,
+                execution_config,
+                "Adjusted DD combined h5parm",
+                shell_operation_cls=shell_operation_cls,
+            )
         result["combined_solutions"] = final_record
+
+    elif _should_adjust_dd_sources(payload):
+        result["combined_solutions"] = _run_adjust_h5parm_sources(
+            combined_phase_record,
+            payload,
+            pipeline_working_dir,
+            execution_config,
+            "Adjusted DD phase h5parm",
+            shell_operation_cls=shell_operation_cls,
+        )
 
     for value in result.values():
         validate_output_record(value)
@@ -1335,6 +1384,11 @@ def normalized_process_gains_command(
             phase_center_dec,
         )
     )
+
+
+def normalized_adjust_h5parm_sources_command(skymodel: str, h5parm: str) -> list[str]:
+    """Return normalized h5parm source-adjustment command tokens."""
+    return normalize_command(build_adjust_h5parm_sources_command(skymodel, h5parm))
 
 
 def normalized_plot_solutions_command(

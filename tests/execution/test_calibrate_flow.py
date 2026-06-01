@@ -8,6 +8,7 @@ from prefect.testing.utilities import prefect_test_harness
 import rapthor.execution.flows.calibrate as calibrate_module
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.calibrate import (
+    build_adjust_h5parm_sources_command,
     build_combine_h5parms_command,
     build_collect_h5parms_command,
     build_ddecal_solve_command,
@@ -16,6 +17,7 @@ from rapthor.execution.flows.calibrate import (
     calibrate_chunk_task,
     calibrate_flow,
     calibrate_payload_from_inputs,
+    normalized_adjust_h5parm_sources_command,
     normalized_combine_h5parms_command,
     normalized_collect_h5parms_command,
     normalized_ddecal_solve_command,
@@ -61,6 +63,11 @@ def fake_calibrate_shell_operation_cls():
                 h5parm = Path(tokens[2])
                 output_path = h5parm if h5parm.is_absolute() else cwd / h5parm
                 output_path.write_text("processed")
+                return "OK"
+            if tokens[0] == "adjust_h5parm_sources.py":
+                h5parm = Path(tokens[2])
+                output_path = h5parm if h5parm.is_absolute() else cwd / h5parm
+                output_path.write_text("adjusted")
                 return "OK"
             if tokens[0] == "plotrapthor":
                 root = next(
@@ -546,6 +553,13 @@ def test_calibrate_command_builders_match_reference_fixtures():
         )
         == commands["calibrate"]["process_slow_gains"]
     )
+    assert (
+        normalized_adjust_h5parm_sources_command(
+            "calibration.skymodel",
+            "combined_solutions.h5",
+        )
+        == commands["calibrate"]["adjust_h5parm_sources"]
+    )
 
 
 def test_calibrate_command_builders_create_cwl_equivalent_tokens():
@@ -599,6 +613,14 @@ def test_calibrate_command_builders_create_cwl_equivalent_tokens():
         "--scale_delta_with_dist=False",
         "--phase_center_ra=123.0",
         "--phase_center_dec=45.0",
+    ]
+    assert build_adjust_h5parm_sources_command(
+        "calibration.skymodel",
+        "combined_solutions.h5",
+    ) == [
+        "adjust_h5parm_sources.py",
+        "calibration.skymodel",
+        "combined_solutions.h5",
     ]
     assert (
         build_ddecal_solve_command(
@@ -1066,16 +1088,47 @@ def test_run_calibrate_flow_supports_dd_fast_medium(tmp_path, fake_calibrate_she
         "H5parm_collector.py",
         "plotrapthor",
         "combine_h5parms.py",
+        "adjust_h5parm_sources.py",
     ]
     assert "steps=[solve1,solve2]" in commands[0]
     assert "solve2.h5parm=medium1_phase_0.h5parm" in commands[0]
     assert "solve2.reusemodel=[solve1.*]" in commands[0]
-    assert commands[-1][1:5] == [
+    assert commands[-2][1:5] == [
         str(tmp_path / "fast_phases.h5parm"),
         str(tmp_path / "medium1_phases.h5parm"),
         "combined_fast_medium1_phases.h5parm",
         "p1p2_scalar",
     ]
+    assert commands[-1] == [
+        "adjust_h5parm_sources.py",
+        "/data/calibration.skymodel",
+        str(tmp_path / "combined_fast_medium1_phases.h5parm"),
+    ]
+
+
+def test_run_calibrate_flow_skips_dd_source_adjustment_for_single_direction(
+    tmp_path, fake_calibrate_shell_operation_cls
+):
+    input_parms = _dd_fast_medium_input_parms()
+    input_parms["calibrator_patch_names"] = ["patch1"]
+    input_parms["calibrator_fluxes"] = [10.0]
+    input_parms["solve_directions"] = ["patch1"]
+    payload = calibrate_payload_from_inputs("dd", input_parms, tmp_path)
+
+    outputs = run_calibrate_flow(
+        payload,
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_calibrate_shell_operation_cls,
+    )
+
+    assert outputs["combined_solutions"] == file_record(
+        tmp_path / "combined_fast_medium1_phases.h5parm"
+    )
+    commands = [
+        shlex.split(instance.kwargs["commands"][0])
+        for instance in fake_calibrate_shell_operation_cls.instances
+    ]
+    assert "adjust_h5parm_sources.py" not in [command[0] for command in commands]
 
 
 def test_run_calibrate_flow_supports_dd_with_slow(tmp_path, fake_calibrate_shell_operation_cls):
@@ -1122,16 +1175,22 @@ def test_run_calibrate_flow_supports_dd_with_slow(tmp_path, fake_calibrate_shell
         "plotrapthor",
         "combine_h5parms.py",
         "combine_h5parms.py",
+        "adjust_h5parm_sources.py",
     ]
     assert "steps=[solve1,solve2,solve3,solve4]" in commands[0]
     assert "solve3.initialsolutions.soltab=[phase000,amplitude000]" in commands[0]
     assert "solve3.keepmodel=true" in commands[0]
     assert commands[8][1:3] == ["--normalize=True", str(tmp_path / "slow_gains.h5parm")]
-    assert commands[-1][1:5] == [
+    assert commands[-2][1:5] == [
         str(tmp_path / "combined_fast_medium1_medium2_phases.h5parm"),
         str(tmp_path / "slow_gains.h5parm"),
         "combined_solutions.h5",
         "p1p2a2_scalar",
+    ]
+    assert commands[-1] == [
+        "adjust_h5parm_sources.py",
+        "/data/calibration.skymodel",
+        str(tmp_path / "combined_solutions.h5"),
     ]
 
 
@@ -1176,14 +1235,20 @@ def test_run_calibrate_flow_supports_dd_with_slow_without_medium2(
         "plotrapthor",
         "plotrapthor",
         "combine_h5parms.py",
+        "adjust_h5parm_sources.py",
     ]
     assert "steps=[solve1,solve2,solve3]" in commands[0]
     assert all("solve4.h5parm" not in token for token in commands[0])
-    assert commands[-1][1:5] == [
+    assert commands[-2][1:5] == [
         str(tmp_path / "combined_fast_medium1_phases.h5parm"),
         str(tmp_path / "slow_gains.h5parm"),
         "combined_solutions.h5",
         "p1a2",
+    ]
+    assert commands[-1] == [
+        "adjust_h5parm_sources.py",
+        "/data/calibration.skymodel",
+        str(tmp_path / "combined_solutions.h5"),
     ]
 
 
