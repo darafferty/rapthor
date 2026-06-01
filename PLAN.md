@@ -265,6 +265,11 @@ The following decisions are accepted for the final migration shape:
   inputs, call the matching Prefect flow, persist finalizer-compatible output
   records, and run existing `finalize()` logic. Replace operation classes only
   later if there is a clear reason.
+- Treat each operation as a Prefect subflow from the top-level process flow.
+  Use Dask-distributed Prefect tasks inside those subflows for the smallest
+  scientifically safe work units, such as calibration chunks, prediction
+  sectors, imaging sectors, mosaic image types, and independent h5parm
+  collection or plotting work.
 - Do not pass live `Field`, `Sector`, or `Observation` instances into
   Prefect/Dask tasks. Operation flows may be called from driver-side operation
   objects, but worker tasks must receive serializable payloads before real
@@ -307,6 +312,43 @@ Failures should include the unsupported feature name and a short message that
 tells the user which parset option, strategy feature, runtime setting, or missing
 tool caused the failure. Full pipeline runs must run this preflight before the
 first operation.
+
+## Flow And Task Boundary
+
+Rapthor should use Prefect subflows at operation boundaries and Prefect tasks
+inside those operation subflows for distributed work:
+
+```text
+process_flow
+  -> calibrate_flow(...)      # operation subflow
+       -> ddecal_chunk_task.map(...)
+       -> collect_h5parms_task(...)
+       -> plot_solutions_task.map(...)
+  -> image_flow(...)          # operation subflow
+       -> image_sector_task.map(...)
+       -> diagnostics_task.map(...)
+  -> mosaic_flow(...)         # operation subflow
+       -> mosaic_image_type_task.map(...)
+```
+
+Do not make a whole operation a single Prefect task. That would hide the
+operation's internal DAG from Prefect, weaken failure attribution and logging,
+and make it easier to serialize live domain objects into Dask workers. Operation
+subflows should organize, name, observe, and assemble the work; tasks should be
+the actual distributable units.
+
+Parallelism should live at the smallest scientifically safe work unit:
+
+- calibration solve chunks
+- observations or epochs for concatenation
+- sectors for prediction and imaging
+- image products and image types for mosaicking
+- h5parm collection, plotting, and post-processing steps where independent
+- compression, catalog, diagnostic, and filesystem materialization tasks where
+  independent
+
+MPI WSClean remains a controlled special case with exclusive resource ownership
+inside the relevant operation subflow.
 
 ## Task Payload And State Boundary
 
@@ -812,7 +854,9 @@ flows are complete enough for real pipeline runs.
   generation. Initial process-level preflight is wired before the first
   operation runs. Remaining work is real operation-flow cutover and the final
   supported feature matrix.
-- Decide whether operation flows are subflows or tasks from the top-level flow.
+- Run operation flows as subflows from the top-level process flow. Use
+  Dask-distributed tasks inside each operation subflow for the smallest safe
+  parallel work units.
 - Continue to respect selfcal convergence checks between cycles.
 - Encode the four calibration strategy paths from `CALIBRATION_STRATEGY.md` in
   top-level orchestration tests: DI-only, DD-only, DI-then-DD, and DD-then-DI.
@@ -1297,6 +1341,9 @@ Resolved decision:
   the Prefect top-level flow at cutover.
 - Operation classes remain as adapters through cutover so existing finalizers
   and field-state contracts are preserved.
+- Operation-level execution units are Prefect subflows. Fine-grained,
+  Dask-distributed work happens as Prefect task futures inside those subflows,
+  not by wrapping each entire operation as one task.
 - Serializable payloads are required before real Dask-distributed execution;
   worker tasks must not mutate live domain objects.
 - CWL is retained only as a branch-local reference until the CWL-to-Prefect
