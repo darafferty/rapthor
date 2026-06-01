@@ -2174,28 +2174,40 @@ Verified:
 
 ### PR 23: Calibration Strategy Orchestration Coverage
 
-Status: planned.
+Status: in progress.
 
-- Add a strategy-level test matrix that exercises the four paths described in
+- Added a strategy-level `run_steps` test matrix that exercises the four paths described in
   `CALIBRATION_STRATEGY.md`: DI-only, DD-only, DI-then-DD, and DD-then-DI.
-- Verify operation ordering, not just individual operation behavior.
-- Verify artifact hand-offs for each path:
+- Verified operation ordering, not just individual operation behavior.
+- Verified mocked finalizer-state hand-offs for each path:
   DI products feed imaging for DI-only, DD products feed imaging for DD-only,
   DI products feed DD pre-apply for DI-then-DD, and DD products plus the agreed
   facet-region artifact feed later DI prediction/imaging for DD-then-DI.
-- Keep these as mocked-flow tests initially, then add focused integration
-  coverage once lightweight external-command fixtures are available.
+- Kept this coverage at the current `process.run_steps` layer because the
+  top-level Prefect process flow is introduced later in Stage 8.
 
 Tests:
 
+- Added mocked `run_steps` orchestration tests with fake operation flows and
+  finalizer-compatible field mutations.
+- Added field-state assertions after each mocked strategy path proving the same
+  field attributes are available to downstream operations as in the CWL path.
+
+Deferred to the Stage 8 top-level Prefect flow:
+
 - Mocked top-level Prefect flow tests with fake operation flows and
   finalizer-compatible output records.
-- Field-state assertions after each mocked strategy path proving the same field
-  attributes are populated as the CWL path.
 - Preflight tests that reject a strategy path when any required feature slice is
   still unsupported.
 - Integration test placeholders or markers for real DI-only, DD-only,
   DI-then-DD, and DD-then-DI runs.
+
+Verified:
+
+- `python3 -m pytest tests/test_process.py`: 20 passed.
+- `python3 -m pytest tests/test_process.py tests/lib/test_field.py
+  tests/lib/test_strategy.py`: 100 passed.
+- `python3 -m ruff check tests/test_process.py`: passed.
 
 ## Success Criteria
 
