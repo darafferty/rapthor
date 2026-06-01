@@ -662,9 +662,9 @@ Calibration is the other high-risk area because it includes solve planning,
 conditional branches, h5parm collection, plotting, combination, and source
 adjustment.
 
-Status: DI full-Jones, DI scalar-phase, and DD fast-phase direct-flow slices are
-complete for mocked execution, and solve chunks are submitted as explicit
-Prefect futures so Dask can parallelise them. DD medium/slow solves, source
+Status: DI full-Jones, DI scalar-phase, DD fast-phase, DD medium-phase, and DD
+slow-gain direct-flow slices are complete for mocked execution, and solve chunks
+are submitted as explicit Prefect futures so Dask can parallelise them. Source
 adjustment, pre-application, image-based prediction, IDG/screen generation,
 later h5parm post-processing, restart/failure coverage, and real external-tool
 calibration coverage remain outstanding.
@@ -674,7 +674,7 @@ Suggested slices:
 1. DI full-Jones calibration. Complete.
 2. DI scalar phase calibration. Complete.
 3. DD fast phase calibration without image-based prediction. Complete.
-4. DD medium phase and slow gains.
+4. DD medium phase and slow gains. Complete.
 5. Pre-application of DI solutions before DD solves.
 6. Image-based prediction.
 7. IDG/screen generation.
@@ -703,6 +703,14 @@ Tests:
   h5parm collection, phase plotting, combination, and final output records.
 - Added DD fast-phase DDECal command-builder parity, output-contract,
   serializable payload, mocked flow, and unsupported-slice tests.
+- Added DD fast+medium DDECal command-builder parity, output-contract,
+  serializable payload, mocked flow, and h5parm combination tests.
+- Added DD slow-gain flow coverage for solve3/solve4 sequencing, slow-gain
+  processing, slow phase/amplitude plotting, medium2 collection/plotting, and
+  final h5parm combination, including the solve3-only `p1a2` combination path.
+- Added `process_gains.py` command-builder coverage and fixture parity for
+  slow-gain normalization, smoothing, flagging, maximum station delta, scaled
+  deltas, and phase-centre options.
 - Added task-runner wiring tests proving `local_dask` and `external_dask`
   configuration is passed to Prefect operation flows.
 - Added calibration concurrency-order tests proving all solve chunks are submitted
@@ -1864,6 +1872,76 @@ Verified in the devcontainer:
 - `python3 -m ruff check rapthor/execution tests/execution pyproject.toml`:
   passed.
 - `python3 -m ruff format --check rapthor/execution tests/execution`: passed.
+
+### PR 19: DD Medium-Phase And Slow-Gain Calibration Flow
+
+Status: complete on the migration branch.
+
+- Extend calibration payload support from DD fast-only solves to DD fast+medium
+  phase solves and DD fast+medium+slow-gain solves, including the optional
+  second medium-phase solve.
+- Keep the supported slice explicit: pre-application, image-based prediction,
+  IDG/screen generation, and source adjustment remain planned later.
+- Build DDECal chunk commands for active solve slots 1-4, including
+  `reusemodel`, `keepmodel`, scalar-phase soltab selection, slow-gain
+  phase/amplitude soltab selection, DD smoothness metadata, BDA metadata, and
+  per-slot output h5parms.
+- Collect and plot fast, medium1, slow, and medium2 products as applicable.
+  Slow gains are processed with `process_gains.py` before plotting and before
+  final h5parm combination.
+- Combine DD fast+medium solutions with `combine_h5parms.py` and combine
+  fast+medium+slow(+medium2) products into the final `combined_solutions`
+  h5parm for the slow-gain branch.
+- Export the `process_gains.py` command builder and normalized fixture helper
+  from the execution package.
+
+Tests:
+
+- Golden command parity for DD fast+medium DDECal and slow-gain
+  `process_gains.py`.
+- Unit coverage for `build_process_gains_command`.
+- Serializable payload coverage for DD fast+medium and DD slow-gain solve-slot
+  metadata, combined h5parm names, normalization controls, and phase-centre
+  options.
+- Mocked direct-flow coverage for DD fast+medium collection, plotting,
+  combination, and final output records.
+- Mocked direct-flow coverage for DD slow-gain solve3/solve4 sequencing,
+  slow-gain processing, slow phase/amplitude plotting, medium2 plotting, and
+  final h5parm combination.
+- Regression coverage for the slow-gain branch without a second medium-phase
+  solve, including the CWL-compatible `p1a2` final combination mode.
+- Output-contract fixture coverage for `combined_solutions`,
+  `fast_phase_solutions`, `medium1_phase_solutions`, `slow_gain_solutions`,
+  `medium2_phase_solutions`, and all related plot records.
+
+Implemented files:
+
+- `rapthor/execution/flows/calibrate.py`
+- `rapthor/execution/flows/__init__.py`
+- `rapthor/execution/__init__.py`
+- `tests/execution/test_calibrate_flow.py`
+- Updates to `tests/execution/fixtures/cwl_reference_commands.json`
+- Updates to `tests/execution/fixtures/cwl_reference_outputs.json`
+- Updates to `PLAN.md`
+
+Verified in the devcontainer:
+
+- `python3 -m pytest tests/execution/test_calibrate_flow.py`: 22 passed.
+- `python3 -m pytest tests/execution tests/lib/test_parset.py`: 187 passed.
+- `python3 -m ruff check rapthor/execution tests/execution pyproject.toml`:
+  passed.
+- `python3 -m ruff format --check rapthor/execution tests/execution`: passed.
+- Python JSON parsing for `cwl_reference_commands.json` and
+  `cwl_reference_outputs.json`: passed.
+
+Deferred to later calibration PRs:
+
+- Pre-application of DI solutions before DD solves.
+- Image-based prediction.
+- IDG/screen generation and source adjustment.
+- Restart/failure coverage beyond the mocked missing-output paths.
+- Real external-tool coverage once lightweight calibration fixtures are
+  available.
 
 ## Success Criteria
 

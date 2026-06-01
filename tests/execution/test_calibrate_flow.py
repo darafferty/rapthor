@@ -12,6 +12,7 @@ from rapthor.execution.flows.calibrate import (
     build_collect_h5parms_command,
     build_ddecal_solve_command,
     build_plot_solutions_command,
+    build_process_gains_command,
     calibrate_chunk_task,
     calibrate_flow,
     calibrate_payload_from_inputs,
@@ -19,6 +20,7 @@ from rapthor.execution.flows.calibrate import (
     normalized_collect_h5parms_command,
     normalized_ddecal_solve_command,
     normalized_plot_solutions_command,
+    normalized_process_gains_command,
     run_calibrate_flow,
 )
 from rapthor.execution.outputs import directory_record, file_record, validate_output_record
@@ -54,6 +56,11 @@ def fake_calibrate_shell_operation_cls():
             if tokens[0] == "combine_h5parms.py":
                 output_path = cwd / tokens[3]
                 output_path.write_text("combined")
+                return "OK"
+            if tokens[0] == "process_gains.py":
+                h5parm = Path(tokens[2])
+                output_path = h5parm if h5parm.is_absolute() else cwd / h5parm
+                output_path.write_text("processed")
                 return "OK"
             if tokens[0] == "plotrapthor":
                 root = next(
@@ -200,6 +207,84 @@ def _dd_fast_phase_input_parms():
     return input_parms
 
 
+def _dd_fast_medium_input_parms():
+    input_parms = _dd_fast_phase_input_parms()
+    input_parms.update(
+        {
+            "dp3_steps": "[solve1,solve2]",
+            "output_solve2_h5parm": [
+                "medium1_phase_0.h5parm",
+                "medium1_phase_1.h5parm",
+            ],
+            "collected_solve2_h5parm": "medium1_phases.h5parm",
+            "combined_solve1_solve2_h5parm": "combined_fast_medium1_phases.h5parm",
+            "solint_solve2_timestep": [9, 10],
+            "solint_solve2_freqstep": [5, 6],
+            "solve2_mode": "scalarphase",
+            "solve2_solutions_per_direction": [[1, 1], [1, 1]],
+            "solve2_smoothness_dd_factors": [[2.0, 3.0], [2.5, 3.5]],
+            "solve2_smoothnessconstraint": 2400000.0,
+            "solve2_smoothnessreffrequency": [152000000.0, 153000000.0],
+            "solve2_smoothnessrefdistance": 3500.0,
+            "solve2_antennaconstraint": "[]",
+            "solve2_datause": "full",
+            "medium1_initialsolutions_h5parm": None,
+            "do_slowgain_solve": False,
+        }
+    )
+    return input_parms
+
+
+def _dd_with_slow_input_parms():
+    input_parms = _dd_fast_medium_input_parms()
+    input_parms.update(
+        {
+            "dp3_steps": "[solve1,solve2,solve3,solve4]",
+            "output_solve3_h5parm": [
+                "slow_gain_0.h5parm",
+                "slow_gain_1.h5parm",
+            ],
+            "output_solve4_h5parm": [
+                "medium2_phase_0.h5parm",
+                "medium2_phase_1.h5parm",
+            ],
+            "collected_solve3_h5parm": "slow_gains.h5parm",
+            "collected_solve4_h5parm": "medium2_phases.h5parm",
+            "combined_solve1_solve2_solve4_h5parm": ("combined_fast_medium1_medium2_phases.h5parm"),
+            "combined_h5parms": "combined_solutions.h5",
+            "solution_combine_mode": "p1p2a2_scalar",
+            "solint_solve3_timestep": [11, 12],
+            "solint_solve3_freqstep": [7, 8],
+            "solint_solve4_timestep": [13, 14],
+            "solint_solve4_freqstep": [9, 10],
+            "solve3_mode": "diagonal",
+            "solve4_mode": "scalarphase",
+            "solve3_solutions_per_direction": [[1, 1], [1, 1]],
+            "solve4_solutions_per_direction": [[1, 1], [1, 1]],
+            "solve3_smoothness_dd_factors": [[3.0, 4.0], [3.5, 4.5]],
+            "solve4_smoothness_dd_factors": [[4.0, 5.0], [4.5, 5.5]],
+            "solve3_smoothnessconstraint": 3600000.0,
+            "solve4_smoothnessconstraint": 4800000.0,
+            "solve3_smoothnessreffrequency": [0, 0],
+            "solve4_smoothnessreffrequency": [154000000.0, 155000000.0],
+            "solve3_smoothnessrefdistance": None,
+            "solve4_smoothnessrefdistance": 4500.0,
+            "solve3_antennaconstraint": "[]",
+            "solve4_antennaconstraint": "[[CS001HBA0,CS002HBA0]]",
+            "solve3_datause": "full",
+            "solve4_datause": "full",
+            "solve3_initialsolutions_h5parm": None,
+            "solve4_initialsolutions_h5parm": None,
+            "do_slowgain_solve": True,
+            "max_normalization_delta": 0.25,
+            "scale_normalization_delta": "False",
+            "phase_center_ra": 123.0,
+            "phase_center_dec": 45.0,
+        }
+    )
+    return input_parms
+
+
 def _di_fulljones_solve_slots():
     return [
         {
@@ -322,6 +407,39 @@ def _dd_fast_phase_solve_slots():
     ]
 
 
+def _dd_fast_medium_solve_slots():
+    return [
+        *_dd_fast_phase_solve_slots(),
+        {
+            "slot": 2,
+            "h5parm": "medium1_phase_0.h5parm",
+            "solint": 9,
+            "mode": "scalarphase",
+            "nchan": 5,
+            "solutions_per_direction": [1, 1],
+            "llssolver": "qr",
+            "maxiter": 50,
+            "propagatesolutions": True,
+            "initialsolutions_soltab": "[phase000]",
+            "solveralgorithm": "directionsolve",
+            "solverlbfgs_dof": 200.0,
+            "solverlbfgs_iter": 4,
+            "solverlbfgs_minibatches": 1,
+            "datause": "full",
+            "stepsize": 0.2,
+            "stepsigma": 0.0,
+            "tolerance": 0.0001,
+            "uvlambdamin": 80.0,
+            "smoothness_dd_factors": [2.0, 3.0],
+            "smoothnessconstraint": 2400000.0,
+            "smoothnessreffrequency": 152000000.0,
+            "smoothnessrefdistance": 3500.0,
+            "antennaconstraint": "[]",
+            "reusemodel": "[solve1.*]",
+        },
+    ]
+
+
 def test_calibrate_command_builders_match_reference_fixtures():
     commands = json.loads((FIXTURE_DIR / "cwl_reference_commands.json").read_text())
 
@@ -395,6 +513,39 @@ def test_calibrate_command_builders_match_reference_fixtures():
         )
         == commands["calibrate"]["ddecal_dd_fast_phase"]
     )
+    assert (
+        normalized_ddecal_solve_command(
+            msin="dd_obs_0.ms",
+            data_colname="DATA",
+            starttime="50000.0",
+            ntimes=10,
+            steps="[solve1,solve2]",
+            solve_slots=_dd_fast_medium_solve_slots(),
+            numthreads=4,
+            timebase=0.0,
+            maxinterval=8.0,
+            frequencybase=0.0,
+            minchannels=1,
+            onebeamperpatch=True,
+            parallelbaselines=False,
+            sagecalpredict=False,
+            sourcedb="calibration.skymodel",
+            directions=["patch1", "patch2"],
+        )
+        == commands["calibrate"]["ddecal_dd_fast_medium"]
+    )
+    assert (
+        normalized_process_gains_command(
+            "slow_gains.h5parm",
+            flag=True,
+            smooth=True,
+            max_station_delta=0.25,
+            scale_station_delta="False",
+            phase_center_ra=123.0,
+            phase_center_dec=45.0,
+        )
+        == commands["calibrate"]["process_slow_gains"]
+    )
 
 
 def test_calibrate_command_builders_create_cwl_equivalent_tokens():
@@ -429,6 +580,25 @@ def test_calibrate_command_builders_create_cwl_equivalent_tokens():
         "--reweight=False",
         "--cal_names=",
         "--cal_fluxes=",
+    ]
+    assert build_process_gains_command(
+        "slow_gains.h5parm",
+        flag=True,
+        smooth=True,
+        max_station_delta=0.25,
+        scale_station_delta="False",
+        phase_center_ra=123.0,
+        phase_center_dec=45.0,
+    ) == [
+        "process_gains.py",
+        "--normalize=True",
+        "slow_gains.h5parm",
+        "--smooth=True",
+        "--flag=True",
+        "--max_station_delta=0.25",
+        "--scale_delta_with_dist=False",
+        "--phase_center_ra=123.0",
+        "--phase_center_dec=45.0",
     ]
     assert (
         build_ddecal_solve_command(
@@ -617,6 +787,80 @@ def test_calibrate_payload_from_inputs_builds_dd_fast_phase_payload(tmp_path):
     }
 
 
+def test_calibrate_payload_from_inputs_builds_dd_fast_medium_payload(tmp_path):
+    payload = calibrate_payload_from_inputs("dd", _dd_fast_medium_input_parms(), tmp_path)
+
+    assert payload["calibration_kind"] == "dd_phase"
+    assert payload["collected_h5parms"]["solve2"] == {
+        "filename": "medium1_phases.h5parm",
+        "path": str(tmp_path / "medium1_phases.h5parm"),
+    }
+    assert payload["combined_h5parms"] == {
+        "solve1_solve2": {
+            "filename": "combined_fast_medium1_phases.h5parm",
+            "path": str(tmp_path / "combined_fast_medium1_phases.h5parm"),
+        }
+    }
+    assert payload["chunks"][0]["solve_slots"][1] == {
+        "slot": 2,
+        "h5parm": "medium1_phase_0.h5parm",
+        "h5parm_path": str(tmp_path / "medium1_phase_0.h5parm"),
+        "solint": 9,
+        "mode": "scalarphase",
+        "nchan": 5,
+        "solutions_per_direction": [1, 1],
+        "smoothness_dd_factors": [2.0, 3.0],
+        "smoothnessconstraint": 2400000.0,
+        "smoothnessreffrequency": 152000000.0,
+        "smoothnessrefdistance": 3500.0,
+        "antennaconstraint": "[]",
+        "keepmodel": None,
+        "reusemodel": "[solve1.*]",
+        "datause": "full",
+        "initialsolutions_h5parm": None,
+    }
+
+
+def test_calibrate_payload_from_inputs_builds_dd_with_slow_payload(tmp_path):
+    payload = calibrate_payload_from_inputs("dd", _dd_with_slow_input_parms(), tmp_path)
+
+    assert payload["calibration_kind"] == "dd_phase_slow"
+    assert payload["do_slowgain_solve"] is True
+    assert payload["combined_h5parms"] == {
+        "solve1_solve2": {
+            "filename": "combined_fast_medium1_phases.h5parm",
+            "path": str(tmp_path / "combined_fast_medium1_phases.h5parm"),
+        },
+        "solve1_solve2_solve4": {
+            "filename": "combined_fast_medium1_medium2_phases.h5parm",
+            "path": str(tmp_path / "combined_fast_medium1_medium2_phases.h5parm"),
+        },
+        "final": {
+            "filename": "combined_solutions.h5",
+            "path": str(tmp_path / "combined_solutions.h5"),
+        },
+    }
+    assert [slot["slot"] for slot in payload["chunks"][0]["solve_slots"]] == [1, 2, 3, 4]
+    assert payload["chunks"][0]["solve_slots"][2] == {
+        "slot": 3,
+        "h5parm": "slow_gain_0.h5parm",
+        "h5parm_path": str(tmp_path / "slow_gain_0.h5parm"),
+        "solint": 11,
+        "mode": "diagonal",
+        "nchan": 7,
+        "solutions_per_direction": [1, 1],
+        "smoothness_dd_factors": [3.0, 4.0],
+        "smoothnessconstraint": 3600000.0,
+        "smoothnessreffrequency": 0,
+        "smoothnessrefdistance": None,
+        "antennaconstraint": "[]",
+        "keepmodel": "true",
+        "reusemodel": "[solve1.*]",
+        "datause": "full",
+        "initialsolutions_h5parm": None,
+    }
+
+
 @pytest.mark.parametrize(
     "mode, input_factory, updates, match",
     [
@@ -624,13 +868,13 @@ def test_calibrate_payload_from_inputs_builds_dd_fast_phase_payload(tmp_path):
             "dd",
             _dd_fast_phase_input_parms,
             {"dp3_steps": "[predict,applybeam,solve1]"},
-            "Only DD fast-phase calibration",
+            "Only DD fast/medium phase",
         ),
         (
             "dd",
             _dd_fast_phase_input_parms,
             {"output_solve1_h5parm": ["slow_gain_0.h5parm", "slow_gain_1.h5parm"]},
-            "Only DD fast-phase calibration",
+            "Only DD fast/medium phase",
         ),
         (
             "di",
@@ -791,6 +1035,158 @@ def test_run_calibrate_flow_supports_dd_fast_phase(tmp_path, fake_calibrate_shel
     )
 
 
+def test_run_calibrate_flow_supports_dd_fast_medium(tmp_path, fake_calibrate_shell_operation_cls):
+    payload = calibrate_payload_from_inputs("dd", _dd_fast_medium_input_parms(), tmp_path)
+
+    outputs = run_calibrate_flow(
+        payload,
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_calibrate_shell_operation_cls,
+    )
+
+    assert outputs == {
+        "combined_solutions": file_record(tmp_path / "combined_fast_medium1_phases.h5parm"),
+        "fast_phase_solutions": file_record(tmp_path / "fast_phases.h5parm"),
+        "medium1_phase_solutions": file_record(tmp_path / "medium1_phases.h5parm"),
+        "fast_phase_plots": [file_record(tmp_path / "phase_solutions.png")],
+        "medium1_phase_plots": [file_record(tmp_path / "medium1_phase_solutions.png")],
+    }
+    for value in outputs.values():
+        validate_output_record(value)
+
+    commands = [
+        shlex.split(instance.kwargs["commands"][0])
+        for instance in fake_calibrate_shell_operation_cls.instances
+    ]
+    assert [command[0] for command in commands] == [
+        "DP3",
+        "DP3",
+        "H5parm_collector.py",
+        "plotrapthor",
+        "H5parm_collector.py",
+        "plotrapthor",
+        "combine_h5parms.py",
+    ]
+    assert "steps=[solve1,solve2]" in commands[0]
+    assert "solve2.h5parm=medium1_phase_0.h5parm" in commands[0]
+    assert "solve2.reusemodel=[solve1.*]" in commands[0]
+    assert commands[-1][1:5] == [
+        str(tmp_path / "fast_phases.h5parm"),
+        str(tmp_path / "medium1_phases.h5parm"),
+        "combined_fast_medium1_phases.h5parm",
+        "p1p2_scalar",
+    ]
+
+
+def test_run_calibrate_flow_supports_dd_with_slow(tmp_path, fake_calibrate_shell_operation_cls):
+    payload = calibrate_payload_from_inputs("dd", _dd_with_slow_input_parms(), tmp_path)
+
+    outputs = run_calibrate_flow(
+        payload,
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_calibrate_shell_operation_cls,
+    )
+
+    assert outputs == {
+        "combined_solutions": file_record(tmp_path / "combined_solutions.h5"),
+        "fast_phase_solutions": file_record(tmp_path / "fast_phases.h5parm"),
+        "medium1_phase_solutions": file_record(tmp_path / "medium1_phases.h5parm"),
+        "slow_gain_solutions": file_record(tmp_path / "slow_gains.h5parm"),
+        "medium2_phase_solutions": file_record(tmp_path / "medium2_phases.h5parm"),
+        "fast_phase_plots": [file_record(tmp_path / "phase_solutions.png")],
+        "medium1_phase_plots": [file_record(tmp_path / "medium1_phase_solutions.png")],
+        "slow_phase_plots": [file_record(tmp_path / "slow_phase_solutions.png")],
+        "slow_amp_plots": [file_record(tmp_path / "slow_amplitude_solutions.png")],
+        "medium2_phase_plots": [file_record(tmp_path / "medium2_phase_solutions.png")],
+    }
+    for value in outputs.values():
+        validate_output_record(value)
+
+    commands = [
+        shlex.split(instance.kwargs["commands"][0])
+        for instance in fake_calibrate_shell_operation_cls.instances
+    ]
+    assert [command[0] for command in commands] == [
+        "DP3",
+        "DP3",
+        "H5parm_collector.py",
+        "plotrapthor",
+        "H5parm_collector.py",
+        "plotrapthor",
+        "combine_h5parms.py",
+        "H5parm_collector.py",
+        "process_gains.py",
+        "plotrapthor",
+        "plotrapthor",
+        "H5parm_collector.py",
+        "plotrapthor",
+        "combine_h5parms.py",
+        "combine_h5parms.py",
+    ]
+    assert "steps=[solve1,solve2,solve3,solve4]" in commands[0]
+    assert "solve3.initialsolutions.soltab=[phase000,amplitude000]" in commands[0]
+    assert "solve3.keepmodel=true" in commands[0]
+    assert commands[8][1:3] == ["--normalize=True", str(tmp_path / "slow_gains.h5parm")]
+    assert commands[-1][1:5] == [
+        str(tmp_path / "combined_fast_medium1_medium2_phases.h5parm"),
+        str(tmp_path / "slow_gains.h5parm"),
+        "combined_solutions.h5",
+        "p1p2a2_scalar",
+    ]
+
+
+def test_run_calibrate_flow_supports_dd_with_slow_without_medium2(
+    tmp_path, fake_calibrate_shell_operation_cls
+):
+    input_parms = _dd_with_slow_input_parms()
+    input_parms["dp3_steps"] = "[solve1,solve2,solve3]"
+    payload = calibrate_payload_from_inputs("dd", input_parms, tmp_path)
+
+    outputs = run_calibrate_flow(
+        payload,
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_calibrate_shell_operation_cls,
+    )
+
+    assert outputs == {
+        "combined_solutions": file_record(tmp_path / "combined_solutions.h5"),
+        "fast_phase_solutions": file_record(tmp_path / "fast_phases.h5parm"),
+        "medium1_phase_solutions": file_record(tmp_path / "medium1_phases.h5parm"),
+        "slow_gain_solutions": file_record(tmp_path / "slow_gains.h5parm"),
+        "fast_phase_plots": [file_record(tmp_path / "phase_solutions.png")],
+        "medium1_phase_plots": [file_record(tmp_path / "medium1_phase_solutions.png")],
+        "slow_phase_plots": [file_record(tmp_path / "slow_phase_solutions.png")],
+        "slow_amp_plots": [file_record(tmp_path / "slow_amplitude_solutions.png")],
+    }
+
+    commands = [
+        shlex.split(instance.kwargs["commands"][0])
+        for instance in fake_calibrate_shell_operation_cls.instances
+    ]
+    assert [command[0] for command in commands] == [
+        "DP3",
+        "DP3",
+        "H5parm_collector.py",
+        "plotrapthor",
+        "H5parm_collector.py",
+        "plotrapthor",
+        "combine_h5parms.py",
+        "H5parm_collector.py",
+        "process_gains.py",
+        "plotrapthor",
+        "plotrapthor",
+        "combine_h5parms.py",
+    ]
+    assert "steps=[solve1,solve2,solve3]" in commands[0]
+    assert all("solve4.h5parm" not in token for token in commands[0])
+    assert commands[-1][1:5] == [
+        str(tmp_path / "combined_fast_medium1_phases.h5parm"),
+        str(tmp_path / "slow_gains.h5parm"),
+        "combined_solutions.h5",
+        "p1a2",
+    ]
+
+
 def test_calibrate_prefect_flow_entrypoint_runs_with_mocked_shell(
     tmp_path, monkeypatch, fake_calibrate_shell_operation_cls
 ):
@@ -873,4 +1269,8 @@ def test_calibrate_reference_output_fixture_matches_output_contract():
     for value in outputs["calibrate_di_scalar_phase"].values():
         validate_output_record(value)
     for value in outputs["calibrate_dd_fast_phase"].values():
+        validate_output_record(value)
+    for value in outputs["calibrate_dd_fast_medium"].values():
+        validate_output_record(value)
+    for value in outputs["calibrate_dd_with_slow"].values():
         validate_output_record(value)

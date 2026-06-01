@@ -261,6 +261,29 @@ def build_combine_h5parms_command(
     return command
 
 
+def build_process_gains_command(
+    h5parm: str,
+    flag: bool,
+    smooth: bool,
+    max_station_delta: float,
+    scale_station_delta: str,
+    phase_center_ra: object,
+    phase_center_dec: object,
+) -> list[str]:
+    """Build the gain processing command."""
+    return [
+        "process_gains.py",
+        "--normalize=True",
+        h5parm,
+        f"--smooth={_bool_token(smooth)}",
+        f"--flag={_bool_token(flag)}",
+        f"--max_station_delta={max_station_delta}",
+        f"--scale_delta_with_dist={scale_station_delta}",
+        f"--phase_center_ra={phase_center_ra}",
+        f"--phase_center_dec={phase_center_dec}",
+    ]
+
+
 def build_plot_solutions_command(
     h5parm: str,
     soltype: str,
@@ -286,6 +309,8 @@ def _supported_calibration_kind(mode: str, input_parms: Mapping[str, object]) ->
     active_solves = [step for step in steps if step.startswith("solve")]
     solve1_mode = str(input_parms.get("solve1_mode"))
     solve2_mode = str(input_parms.get("solve2_mode"))
+    solve3_mode = str(input_parms.get("solve3_mode"))
+    solve4_mode = str(input_parms.get("solve4_mode"))
     if mode == "di":
         if active_solves == ["solve1"] and solve1_mode == "fulljones":
             return "di_fulljones"
@@ -304,19 +329,40 @@ def _supported_calibration_kind(mode: str, input_parms: Mapping[str, object]) ->
             and str(first_solve1_output).startswith("fast_phase_")
         ):
             return "dd_fast_phase"
+        if (
+            active_solves == ["solve1", "solve2"]
+            and solve1_mode == solve2_mode == "scalarphase"
+            and "predict" not in steps
+            and "applycal" not in steps
+            and str(first_solve1_output).startswith("fast_phase_")
+        ):
+            return "dd_phase"
+        if (
+            active_solves
+            in (["solve1", "solve2", "solve3"], ["solve1", "solve2", "solve3", "solve4"])
+            and solve1_mode == solve2_mode == "scalarphase"
+            and solve3_mode == "diagonal"
+            and ("solve4" not in active_solves or solve4_mode == "scalarphase")
+            and "predict" not in steps
+            and "applycal" not in steps
+            and str(first_solve1_output).startswith("fast_phase_")
+        ):
+            return "dd_phase_slow"
         raise ValueError(
-            "Only DD fast-phase calibration without pre-application or image-based prediction "
-            "is supported in this slice"
+            "Only DD fast/medium phase and slow-gain calibration without pre-application "
+            "or image-based prediction is supported in this slice"
         )
 
     raise ValueError("Only DI and DD calibration payloads are supported")
 
 
-def _solve_slots_for_kind(calibration_kind: str) -> list[int]:
+def _solve_slots_for_kind(calibration_kind: str, input_parms: Mapping[str, object]) -> list[int]:
     if calibration_kind in {"di_fulljones", "dd_fast_phase"}:
         return [1]
     if calibration_kind == "di_scalar_phase":
         return [1, 2]
+    if calibration_kind in {"dd_phase", "dd_phase_slow"}:
+        return [int(step.removeprefix("solve")) for step in _active_solve_steps(input_parms)]
     raise ValueError(f"Unsupported calibration kind: {calibration_kind}")
 
 
@@ -412,11 +458,12 @@ def calibrate_payload_from_inputs(
     filenames = input_parms.get("timechunk_filename", [])
     starttimes = input_parms.get("starttime", [])
     ntimes = input_parms.get("ntimes", [])
-    solve_slots = _solve_slots_for_kind(calibration_kind)
+    solve_slots = _solve_slots_for_kind(calibration_kind, input_parms)
     output_solve1_h5parms = input_parms.get("output_solve1_h5parm", [])
     scatter_inputs = [filenames, starttimes, ntimes, output_solve1_h5parms]
-    if 2 in solve_slots:
-        scatter_inputs.append(input_parms.get("output_solve2_h5parm", []))
+    for slot in solve_slots:
+        if slot != 1:
+            scatter_inputs.append(input_parms.get(f"output_solve{slot}_h5parm", []))
     if not all(isinstance(value, list) for value in scatter_inputs):
         raise ValueError("Calibration scatter inputs must be lists")
     chunk_count = len(output_solve1_h5parms)
@@ -441,6 +488,35 @@ def calibrate_payload_from_inputs(
         )
         combined_h5parm = {"filename": combined, "path": os.path.join(pipeline_dir, combined)}
 
+    combined_h5parms = {}
+    if calibration_kind in {"dd_phase", "dd_phase_slow"}:
+        combined = _validate_basename(
+            input_parms.get("combined_solve1_solve2_h5parm"),
+            "combined_solve1_solve2_h5parm",
+        )
+        combined_h5parms["solve1_solve2"] = {
+            "filename": combined,
+            "path": os.path.join(pipeline_dir, combined),
+        }
+    if calibration_kind == "dd_phase_slow" and 4 in solve_slots:
+        combined = _validate_basename(
+            input_parms.get("combined_solve1_solve2_solve4_h5parm"),
+            "combined_solve1_solve2_solve4_h5parm",
+        )
+        combined_h5parms["solve1_solve2_solve4"] = {
+            "filename": combined,
+            "path": os.path.join(pipeline_dir, combined),
+        }
+    if calibration_kind == "dd_phase_slow":
+        combined = _validate_basename(
+            input_parms.get("combined_h5parms"),
+            "combined_h5parms",
+        )
+        combined_h5parms["final"] = {
+            "filename": combined,
+            "path": os.path.join(pipeline_dir, combined),
+        }
+
     modeldatacolumn = input_parms.get("modeldatacolumn")
     if modeldatacolumn is not None and (
         not isinstance(modeldatacolumn, str) or not modeldatacolumn
@@ -449,23 +525,24 @@ def calibrate_payload_from_inputs(
 
     chunks = []
     for index in range(chunk_count):
-        chunk_solve_slots = [
-            _solve_slot_from_inputs(
-                input_parms,
-                pipeline_dir,
-                slot=1,
-                index=index,
-                keepmodel="True",
-            )
-        ]
-        if 2 in solve_slots:
+        chunk_solve_slots = []
+        for slot in solve_slots:
+            keepmodel = None
+            reusemodel = None
+            if slot == 1:
+                keepmodel = "True"
+            elif calibration_kind in {"di_scalar_phase", "dd_phase", "dd_phase_slow"}:
+                reusemodel = "[solve1.*]"
+            if calibration_kind == "dd_phase_slow" and slot in {2, 3}:
+                keepmodel = "true"
             chunk_solve_slots.append(
                 _solve_slot_from_inputs(
                     input_parms,
                     pipeline_dir,
-                    slot=2,
+                    slot=slot,
                     index=index,
-                    reusemodel="[solve1.*]",
+                    keepmodel=keepmodel,
+                    reusemodel=reusemodel,
                 )
             )
         chunk = {
@@ -500,6 +577,7 @@ def calibrate_payload_from_inputs(
         "collected_h5parm_path": collected_h5parms["solve1"]["path"],
         "collected_h5parms": collected_h5parms,
         "combined_h5parm": combined_h5parm,
+        "combined_h5parms": combined_h5parms,
         "calibrator_patch_names": [
             str(name) for name in input_parms.get("calibrator_patch_names", [])
         ],
@@ -533,6 +611,12 @@ def calibrate_payload_from_inputs(
             "directions": None
             if input_parms.get("solve_directions") is None
             else [str(direction) for direction in input_parms["solve_directions"]],
+            "do_slowgain_solve": bool(input_parms.get("do_slowgain_solve", False)),
+            "solution_combine_mode": input_parms.get("solution_combine_mode"),
+            "max_normalization_delta": input_parms.get("max_normalization_delta"),
+            "scale_normalization_delta": input_parms.get("scale_normalization_delta"),
+            "phase_center_ra": input_parms.get("phase_center_ra"),
+            "phase_center_dec": input_parms.get("phase_center_dec"),
         }
     )
     return assert_serializable_payload(payload)
@@ -590,7 +674,9 @@ def _solve_slots_for_chunk(
                 "llssolver": payload["llssolver"],
                 "maxiter": payload["maxiter"],
                 "propagatesolutions": payload["propagatesolutions"],
-                "initialsolutions_soltab": "[phase000]",
+                "initialsolutions_soltab": (
+                    "[phase000,amplitude000]" if int(slot["slot"]) == 3 else "[phase000]"
+                ),
                 "solveralgorithm": payload["solveralgorithm"],
                 "solverlbfgs_dof": payload["solverlbfgs_dof"],
                 "solverlbfgs_iter": payload["solverlbfgs_iter"],
@@ -668,7 +754,7 @@ def run_calibrate_chunk(
         label = (
             "DI full-Jones h5parm"
             if payload["calibration_kind"] == "di_fulljones"
-            else f"DI solve{slot['slot']} h5parm"
+            else f"{str(payload['mode']).upper()} solve{slot['slot']} h5parm"
         )
         output_records[f"solve{slot['slot']}"] = _require_file(str(slot["h5parm_path"]), label)
     if payload["calibration_kind"] == "di_fulljones":
@@ -814,6 +900,60 @@ def _run_plot_solutions(
     return plot_records
 
 
+def _run_combine_h5parms(
+    input_record1: Mapping[str, str],
+    input_record2: Mapping[str, str],
+    output: Mapping[str, object],
+    mode: str,
+    payload: Mapping[str, object],
+    pipeline_working_dir: str,
+    execution_config: ExecutionConfig,
+    label: str,
+    shell_operation_cls=None,
+) -> dict:
+    combine_command = build_combine_h5parms_command(
+        input_record1["path"],
+        input_record2["path"],
+        str(output["filename"]),
+        mode,
+        reweight=False,
+        calibrator_names=list(payload["calibrator_patch_names"]),
+        calibrator_fluxes=list(payload["calibrator_fluxes"]),
+    )
+    _run_shell(
+        combine_command,
+        pipeline_working_dir,
+        execution_config,
+        shell_operation_cls=shell_operation_cls,
+    )
+    return _require_file(str(output["path"]), label)
+
+
+def _run_process_gains(
+    h5parm_record: Mapping[str, str],
+    payload: Mapping[str, object],
+    pipeline_working_dir: str,
+    execution_config: ExecutionConfig,
+    shell_operation_cls=None,
+) -> dict:
+    process_command = build_process_gains_command(
+        h5parm_record["path"],
+        flag=True,
+        smooth=True,
+        max_station_delta=float(payload["max_normalization_delta"]),
+        scale_station_delta=str(payload["scale_normalization_delta"]),
+        phase_center_ra=payload["phase_center_ra"],
+        phase_center_dec=payload["phase_center_dec"],
+    )
+    _run_shell(
+        process_command,
+        pipeline_working_dir,
+        execution_config,
+        shell_operation_cls=shell_operation_cls,
+    )
+    return _require_file(h5parm_record["path"], "Processed DD slow gains h5parm")
+
+
 def _collect_plot_and_combine_scalar_phase(
     payload: Mapping[str, object],
     solve_records: list[dict],
@@ -856,22 +996,17 @@ def _collect_plot_and_combine_scalar_phase(
     )
 
     combined_h5parm = payload["combined_h5parm"]
-    combine_command = build_combine_h5parms_command(
-        fast_record["path"],
-        medium_record["path"],
-        str(combined_h5parm["filename"]),
+    combined_record = _run_combine_h5parms(
+        fast_record,
+        medium_record,
+        combined_h5parm,
         "p1p2_scalar",
-        reweight=False,
-        calibrator_names=list(payload["calibrator_patch_names"]),
-        calibrator_fluxes=list(payload["calibrator_fluxes"]),
-    )
-    _run_shell(
-        combine_command,
+        payload,
         pipeline_working_dir,
         execution_config,
+        "Combined DI scalar h5parm",
         shell_operation_cls=shell_operation_cls,
     )
-    combined_record = _require_file(str(combined_h5parm["path"]), "Combined DI scalar h5parm")
 
     result = {
         "combined_solutions": combined_record,
@@ -880,6 +1015,166 @@ def _collect_plot_and_combine_scalar_phase(
         "fast_phase_plots": fast_plots,
         "medium1_phase_plots": medium_plots,
     }
+    for value in result.values():
+        validate_output_record(value)
+    return result
+
+
+def _collect_plot_and_combine_dd_phase(
+    payload: Mapping[str, object],
+    solve_records: list[dict],
+    execution_config: ExecutionConfig,
+    shell_operation_cls=None,
+) -> dict:
+    pipeline_working_dir = str(payload["pipeline_working_dir"])
+    collected_h5parms = payload["collected_h5parms"]
+    combined_h5parms = payload["combined_h5parms"]
+
+    fast_record = _run_collect_h5parm(
+        [record["solve1"] for record in solve_records],
+        collected_h5parms["solve1"],
+        pipeline_working_dir,
+        execution_config,
+        "Collected DD fast phase h5parm",
+        shell_operation_cls=shell_operation_cls,
+    )
+    fast_plots = _run_plot_solutions(
+        fast_record,
+        "phase",
+        pipeline_working_dir,
+        execution_config,
+        shell_operation_cls=shell_operation_cls,
+    )
+
+    medium1_record = _run_collect_h5parm(
+        [record["solve2"] for record in solve_records],
+        collected_h5parms["solve2"],
+        pipeline_working_dir,
+        execution_config,
+        "Collected DD medium1 phase h5parm",
+        shell_operation_cls=shell_operation_cls,
+    )
+    medium1_plots = _run_plot_solutions(
+        medium1_record,
+        "phase",
+        pipeline_working_dir,
+        execution_config,
+        root="medium1_phase_",
+        shell_operation_cls=shell_operation_cls,
+    )
+    combined_phase_record = _run_combine_h5parms(
+        fast_record,
+        medium1_record,
+        combined_h5parms["solve1_solve2"],
+        "p1p2_scalar",
+        payload,
+        pipeline_working_dir,
+        execution_config,
+        "Combined DD fast and medium1 phase h5parm",
+        shell_operation_cls=shell_operation_cls,
+    )
+
+    result = {
+        "combined_solutions": combined_phase_record,
+        "fast_phase_solutions": fast_record,
+        "medium1_phase_solutions": medium1_record,
+        "fast_phase_plots": fast_plots,
+        "medium1_phase_plots": medium1_plots,
+    }
+
+    if "solve3" in collected_h5parms:
+        slow_record = _run_collect_h5parm(
+            [record["solve3"] for record in solve_records],
+            collected_h5parms["solve3"],
+            pipeline_working_dir,
+            execution_config,
+            "Collected DD slow gains h5parm",
+            shell_operation_cls=shell_operation_cls,
+        )
+        processed_slow_record = _run_process_gains(
+            slow_record,
+            payload,
+            pipeline_working_dir,
+            execution_config,
+            shell_operation_cls=shell_operation_cls,
+        )
+        slow_phase_plots = _run_plot_solutions(
+            processed_slow_record,
+            "phase",
+            pipeline_working_dir,
+            execution_config,
+            root="slow_phase_",
+            shell_operation_cls=shell_operation_cls,
+        )
+        slow_amp_plots = _run_plot_solutions(
+            processed_slow_record,
+            "amplitude",
+            pipeline_working_dir,
+            execution_config,
+            root="slow_amplitude_",
+            shell_operation_cls=shell_operation_cls,
+        )
+        result.update(
+            {
+                "slow_gain_solutions": slow_record,
+                "slow_phase_plots": slow_phase_plots,
+                "slow_amp_plots": slow_amp_plots,
+            }
+        )
+
+        phase_record = combined_phase_record
+        has_medium2 = "solve4" in collected_h5parms
+        if has_medium2:
+            medium2_record = _run_collect_h5parm(
+                [record["solve4"] for record in solve_records],
+                collected_h5parms["solve4"],
+                pipeline_working_dir,
+                execution_config,
+                "Collected DD medium2 phase h5parm",
+                shell_operation_cls=shell_operation_cls,
+            )
+            medium2_plots = _run_plot_solutions(
+                medium2_record,
+                "phase",
+                pipeline_working_dir,
+                execution_config,
+                root="medium2_phase_",
+                shell_operation_cls=shell_operation_cls,
+            )
+            phase_record = _run_combine_h5parms(
+                combined_phase_record,
+                medium2_record,
+                combined_h5parms["solve1_solve2_solve4"],
+                "p1p2_scalar",
+                payload,
+                pipeline_working_dir,
+                execution_config,
+                "Combined DD fast, medium1, and medium2 phase h5parm",
+                shell_operation_cls=shell_operation_cls,
+            )
+            result.update(
+                {
+                    "medium2_phase_solutions": medium2_record,
+                    "medium2_phase_plots": medium2_plots,
+                }
+            )
+
+        final_mode = str(payload.get("solution_combine_mode") or "p1p2a2_scalar")
+        if not has_medium2:
+            final_mode = "p1a2"
+        final_record = _run_combine_h5parms(
+            phase_record,
+            processed_slow_record,
+            combined_h5parms["final"],
+            final_mode,
+            payload,
+            pipeline_working_dir,
+            execution_config,
+            "Combined DD phase and slow gain h5parm",
+            shell_operation_cls=shell_operation_cls,
+        )
+        result["combined_solutions"] = final_record
+
     for value in result.values():
         validate_output_record(value)
     return result
@@ -900,6 +1195,13 @@ def _collect_plot_and_combine(
         )
     if payload["calibration_kind"] == "dd_fast_phase":
         return _collect_and_plot_fast_phase(
+            payload,
+            solve_records,
+            execution_config,
+            shell_operation_cls=shell_operation_cls,
+        )
+    if payload["calibration_kind"] in {"dd_phase", "dd_phase_slow"}:
+        return _collect_plot_and_combine_dd_phase(
             payload,
             solve_records,
             execution_config,
@@ -1008,6 +1310,29 @@ def normalized_combine_h5parms_command(
             reweight,
             calibrator_names=calibrator_names,
             calibrator_fluxes=calibrator_fluxes,
+        )
+    )
+
+
+def normalized_process_gains_command(
+    h5parm: str,
+    flag: bool,
+    smooth: bool,
+    max_station_delta: float,
+    scale_station_delta: str,
+    phase_center_ra: object,
+    phase_center_dec: object,
+) -> list[str]:
+    """Return normalized gain processing command tokens."""
+    return normalize_command(
+        build_process_gains_command(
+            h5parm,
+            flag,
+            smooth,
+            max_station_delta,
+            scale_station_delta,
+            phase_center_ra,
+            phase_center_dec,
         )
     )
 

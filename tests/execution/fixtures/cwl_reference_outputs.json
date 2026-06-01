@@ -58,6 +58,63 @@
             {"class": "File", "path": "${PIPELINE_WORKING_DIR}/phase_solutions.png"}
         ]
     },
+    "calibrate_dd_fast_medium": {
+        "combined_solutions": {
+            "class": "File",
+            "path": "${PIPELINE_WORKING_DIR}/combined_fast_medium1_phases.h5parm"
+        },
+        "fast_phase_solutions": {
+            "class": "File",
+            "path": "${PIPELINE_WORKING_DIR}/fast_phases.h5parm"
+        },
+        "medium1_phase_solutions": {
+            "class": "File",
+            "path": "${PIPELINE_WORKING_DIR}/medium1_phases.h5parm"
+        },
+        "fast_phase_plots": [
+            {"class": "File", "path": "${PIPELINE_WORKING_DIR}/phase_solutions.png"}
+        ],
+        "medium1_phase_plots": [
+            {"class": "File", "path": "${PIPELINE_WORKING_DIR}/medium1_phase_solutions.png"}
+        ]
+    },
+    "calibrate_dd_with_slow": {
+        "combined_solutions": {
+            "class": "File",
+            "path": "${PIPELINE_WORKING_DIR}/combined_solutions.h5"
+        },
+        "fast_phase_solutions": {
+            "class": "File",
+            "path": "${PIPELINE_WORKING_DIR}/fast_phases.h5parm"
+        },
+        "medium1_phase_solutions": {
+            "class": "File",
+            "path": "${PIPELINE_WORKING_DIR}/medium1_phases.h5parm"
+        },
+        "slow_gain_solutions": {
+            "class": "File",
+            "path": "${PIPELINE_WORKING_DIR}/slow_gains.h5parm"
+        },
+        "medium2_phase_solutions": {
+            "class": "File",
+            "path": "${PIPELINE_WORKING_DIR}/medium2_phases.h5parm"
+        },
+        "fast_phase_plots": [
+            {"class": "File", "path": "${PIPELINE_WORKING_DIR}/phase_solutions.png"}
+        ],
+        "medium1_phase_plots": [
+            {"class": "File", "path": "${PIPELINE_WORKING_DIR}/medium1_phase_solutions.png"}
+        ],
+        "slow_phase_plots": [
+            {"class": "File", "path": "${PIPELINE_WORKING_DIR}/slow_phase_solutions.png"}
+        ],
+        "slow_amp_plots": [
+            {"class": "File", "path": "${PIPELINE_WORKING_DIR}/slow_amplitude_solutions.png"}
+        ],
+        "medium2_phase_plots": [
+            {"class": "File", "path": "${PIPELINE_WORKING_DIR}/medium2_phase_solutions.png"}
+        ]
+    },
     "image_no_dde": {
         "filtered_skymodel_true_sky": [
             {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1.true_sky.txt"}
