@@ -1983,7 +1983,7 @@ Deferred to later calibration PRs:
 
 Status: complete for direct-flow DD source adjustment and documented
 facet-region ownership on the migration branch. Field-level region generation
-for calibration-side image-based prediction remains part of PR 22.
+for calibration-side image-based prediction was completed in PR 22.
 
 - Add `adjust_h5parm_sources.py` command construction and execution for
   multi-direction DD calibration outputs.
@@ -2038,10 +2038,14 @@ Verified in the devcontainer:
 - Python JSON parsing for `cwl_reference_commands.json` and
   `cwl_reference_outputs.json`: passed.
 
-Deferred to PR 22:
+Completed in PR 22:
 
 - Field-level region-file command execution for calibration-side image-based
-  prediction and screen-generation prerequisites.
+  prediction prerequisites.
+
+Still deferred:
+
+- Screen-generation prerequisites.
 
 ### PR 21: DI Pre-Apply Before DD Calibration
 
@@ -2056,8 +2060,8 @@ Status: complete for non-image-based DD pre-application.
 - Validate DD pre-apply payloads before execution: `applycal` now requires a
   non-empty supported `applycal.steps` list and the matching DI, full-Jones, or
   normalization h5parm records.
-- Continue to reject calibration-side image-based prediction in this slice;
-  `predict,applybeam,applycal` remains part of PR 22.
+- Keep this slice scoped to non-image-based DD pre-application;
+  `predict,applybeam,applycal` support was completed in PR 22.
 - Existing operation-layer tests continue to cover DI products being converted
   into DD pre-apply operation inputs. The direct Prefect flow now consumes those
   finalizer-compatible records.
@@ -2129,32 +2133,44 @@ Verified:
 
 ### PR 22: DD Image-Based Prediction
 
-Status: planned.
+Status: complete.
 
-- Support DD calibration payloads whose DP3 prefix includes `predict` and
-  `applybeam`, optionally followed by `applycal`.
-- Add command builders and flow tasks for the calibration-side image-based
-  prediction prerequisites: WSClean model drawing and field region generation.
-- Pass `predict.regions` and `predict.images` into the DD DDECal command for
+- Added support for DD calibration payloads whose DP3 prefix includes
+  `predict` and `applybeam`, optionally followed by `applycal`.
+- Added command builders and flow helpers for the calibration-side
+  image-based prediction prerequisites: WSClean model drawing and field region
+  generation.
+- Passed `predict.regions` and `predict.images` into the DD DDECal command for
   image-based prediction runs.
-- Preserve `sagecalpredict`, `onebeamperpatch`, beam settings, model image
-  metadata, and BDA settings from `Calibrate.set_input_parameters()`.
-- Ensure DD-only and DD-then-DI strategy paths can use DD prediction products
-  without requiring a DI calibration product first.
+- Switched image-predict solve slots to reuse `[predict.*]` instead of source
+  database directions or `[solve1.*]`.
+- Preserved `sagecalpredict`, `onebeamperpatch`, beam settings, model image
+  metadata, BDA settings, and optional DD pre-apply normalization adjustment
+  from `Calibrate.set_input_parameters()`.
 
 Tests:
 
-- Command-builder and golden command parity for `draw_model`,
+- Added command-builder and golden command parity for `draw_model`,
   `make_region_file`, and DD DDECal with `predict,applybeam` and
   `predict,applybeam,applycal` prefixes.
-- Serializable payload tests for model image metadata, region-file metadata,
-  prediction images, and optional pre-apply inputs.
-- Mocked direct-flow tests proving model drawing and region generation happen
-  before DD solve chunks are submitted.
-- Output-contract tests for model-image and region artifacts needed by
-  downstream prediction or imaging.
-- Failure tests for missing model images, missing region files, and failed
-  prediction prerequisites.
+- Added serializable payload tests for model image metadata, region-file
+  metadata, prediction image paths, and predict-based solve-slot reuse.
+- Added mocked direct-flow tests proving model drawing, field-region
+  generation, and optional normalization h5parm source adjustment happen before
+  DD solve chunks are submitted.
+- Added artifact checks for the generated model images and field-level region
+  file.
+- Added failure tests for missing model images and missing region files.
+
+Verified:
+
+- `python3 -m pytest tests/execution/test_calibrate_flow.py`: 36 passed.
+- `python3 -m pytest tests/execution`: 166 passed.
+- `python3 -m pytest tests/operations/test_calibrate.py`: 51 passed.
+- `python3 -m ruff check rapthor/execution/flows/calibrate.py
+  tests/execution/test_calibrate_flow.py`: passed.
+- `python3 -m json.tool tests/execution/fixtures/cwl_reference_commands.json`:
+  passed.
 
 ### PR 23: Calibration Strategy Orchestration Coverage
 

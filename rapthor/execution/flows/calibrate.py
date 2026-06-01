@@ -132,6 +132,14 @@ def _validate_basename(filename: object, name: str) -> str:
     return filename
 
 
+def _require_sequence(value: object, name: str, length: Optional[int] = None) -> list[object]:
+    if not isinstance(value, list) or not value:
+        raise ValueError(f"{name} must be a non-empty list")
+    if length is not None and len(value) != length:
+        raise ValueError(f"{name} must contain exactly {length} entries")
+    return value
+
+
 def _require_file(path: str, label: str) -> dict:
     if not os.path.isfile(path):
         raise FileNotFoundError(f"{label} was not created: {path}")
@@ -231,6 +239,60 @@ def build_ddecal_solve_command(
     return command
 
 
+def build_draw_model_command(
+    skymodel: str,
+    numterms: int,
+    name: str,
+    ra_dec: list[str],
+    frequency_bandwidth: list[object],
+    cellsize_deg: object,
+    imsize: list[int],
+    numthreads: int,
+) -> list[str]:
+    """Build the WSClean command that draws calibration model images."""
+    return [
+        "wsclean",
+        "-j",
+        str(numthreads),
+        "-draw-model",
+        skymodel,
+        "-draw-spectral-terms",
+        str(numterms),
+        "-name",
+        name,
+        "-draw-centre",
+        *[str(value) for value in ra_dec],
+        "-draw-frequencies",
+        *[str(value) for value in frequency_bandwidth],
+        "-size",
+        *[str(value) for value in imsize],
+        "-scale",
+        str(cellsize_deg),
+    ]
+
+
+def build_make_region_file_command(
+    skymodel: str,
+    ra_mid: object,
+    dec_mid: object,
+    width_ra: object,
+    width_dec: object,
+    outfile: str,
+    enclose_names: bool = False,
+) -> list[str]:
+    """Build the field-level region-file command for calibration image predict."""
+    return [
+        "make_region_file.py",
+        skymodel,
+        str(ra_mid),
+        str(dec_mid),
+        str(width_ra),
+        str(width_dec),
+        outfile,
+        f"--enclose_names={_bool_token(enclose_names)}",
+    ]
+
+
 def build_collect_h5parms_command(inh5parms: list[str], outputh5parm: str) -> list[str]:
     """Build the h5parm collection command."""
     return [
@@ -314,6 +376,10 @@ def _active_solve_steps(input_parms: Mapping[str, object]) -> list[str]:
     return [step for step in _parse_steps(input_parms.get("dp3_steps")) if step.startswith("solve")]
 
 
+def _uses_image_based_predict(steps: list[str]) -> bool:
+    return "predict" in steps or "applybeam" in steps
+
+
 def _validate_applycal_inputs(
     mode: str,
     steps: list[str],
@@ -351,9 +417,41 @@ def _validate_applycal_inputs(
         raise ValueError("DD pre-application requires " + ", ".join(missing_inputs))
 
 
+def _validate_image_predict_inputs(
+    mode: str,
+    steps: list[str],
+    input_parms: Mapping[str, object],
+) -> None:
+    if not _uses_image_based_predict(steps):
+        return
+    if mode != "dd":
+        raise ValueError("Image-based prediction is only supported for DD calibration")
+    if "predict" not in steps or "applybeam" not in steps:
+        raise ValueError("DD image-based prediction requires predict and applybeam steps")
+
+    required = [
+        "calibration_skymodel_file",
+        "model_image_root",
+        "model_image_ra_dec",
+        "model_image_imsize",
+        "model_image_cellsize",
+        "model_image_frequency_bandwidth",
+        "num_spectral_terms",
+        "ra_mid",
+        "dec_mid",
+        "facet_region_width_ra",
+        "facet_region_width_dec",
+        "facet_region_file",
+    ]
+    missing = [name for name in required if input_parms.get(name) is None]
+    if missing:
+        raise ValueError("DD image-based prediction requires " + ", ".join(missing))
+
+
 def _supported_calibration_kind(mode: str, input_parms: Mapping[str, object]) -> str:
     steps = _parse_steps(input_parms.get("dp3_steps"))
     _validate_applycal_inputs(mode, steps, input_parms)
+    _validate_image_predict_inputs(mode, steps, input_parms)
 
     active_solves = [step for step in steps if step.startswith("solve")]
     solve1_mode = str(input_parms.get("solve1_mode"))
@@ -368,20 +466,17 @@ def _supported_calibration_kind(mode: str, input_parms: Mapping[str, object]) ->
         raise ValueError("Only DI full-Jones and DI scalar phase calibration are supported")
 
     if mode == "dd":
-        image_based_predict = "predict" in steps or "applybeam" in steps
         output_solve1 = input_parms.get("output_solve1_h5parm", [])
         first_solve1_output = output_solve1[0] if isinstance(output_solve1, list) else ""
         if (
             active_solves == ["solve1"]
             and solve1_mode == "scalarphase"
-            and not image_based_predict
             and str(first_solve1_output).startswith("fast_phase_")
         ):
             return "dd_fast_phase"
         if (
             active_solves == ["solve1", "solve2"]
             and solve1_mode == solve2_mode == "scalarphase"
-            and not image_based_predict
             and str(first_solve1_output).startswith("fast_phase_")
         ):
             return "dd_phase"
@@ -391,13 +486,11 @@ def _supported_calibration_kind(mode: str, input_parms: Mapping[str, object]) ->
             and solve1_mode == solve2_mode == "scalarphase"
             and solve3_mode == "diagonal"
             and ("solve4" not in active_solves or solve4_mode == "scalarphase")
-            and not image_based_predict
             and str(first_solve1_output).startswith("fast_phase_")
         ):
             return "dd_phase_slow"
         raise ValueError(
-            "Only DD fast/medium phase and slow-gain calibration without image-based "
-            "prediction is supported in this slice"
+            "Only DD fast/medium phase and slow-gain calibration is supported in this slice"
         )
 
     raise ValueError("Only DI and DD calibration payloads are supported")
@@ -493,6 +586,59 @@ def _solve_slot_from_inputs(
     return slot_record
 
 
+def _image_predict_payload_from_inputs(
+    input_parms: Mapping[str, object],
+    pipeline_dir: str,
+) -> Optional[dict]:
+    steps = _parse_steps(input_parms.get("dp3_steps"))
+    if not _uses_image_based_predict(steps):
+        return None
+
+    model_root = _validate_basename(input_parms.get("model_image_root"), "model_image_root")
+    numterms = int(input_parms["num_spectral_terms"])
+    if numterms < 1:
+        raise ValueError("num_spectral_terms must be at least 1")
+
+    region_filename = _validate_basename(input_parms.get("facet_region_file"), "facet_region_file")
+    return {
+        "skymodel": _optional_file_path(
+            input_parms.get("calibration_skymodel_file"), "calibration_skymodel_file"
+        ),
+        "model_image_root": model_root,
+        "model_image_ra_dec": [
+            str(value)
+            for value in _require_sequence(
+                input_parms.get("model_image_ra_dec"), "model_image_ra_dec", length=2
+            )
+        ],
+        "model_image_imsize": [
+            int(value)
+            for value in _require_sequence(
+                input_parms.get("model_image_imsize"), "model_image_imsize", length=2
+            )
+        ],
+        "model_image_cellsize": input_parms["model_image_cellsize"],
+        "model_image_frequency_bandwidth": list(
+            _require_sequence(
+                input_parms.get("model_image_frequency_bandwidth"),
+                "model_image_frequency_bandwidth",
+                length=2,
+            )
+        ),
+        "num_spectral_terms": numterms,
+        "model_images": [
+            os.path.join(pipeline_dir, f"{model_root}-term-{index}.fits")
+            for index in range(numterms)
+        ],
+        "ra_mid": input_parms["ra_mid"],
+        "dec_mid": input_parms["dec_mid"],
+        "facet_region_width_ra": input_parms["facet_region_width_ra"],
+        "facet_region_width_dec": input_parms["facet_region_width_dec"],
+        "facet_region_file": region_filename,
+        "facet_region_path": os.path.join(pipeline_dir, region_filename),
+    }
+
+
 def calibrate_payload_from_inputs(
     mode: str,
     input_parms: Mapping[str, object],
@@ -500,6 +646,8 @@ def calibrate_payload_from_inputs(
 ) -> dict:
     """Create a serializable Calibrate flow payload from operation inputs."""
     calibration_kind = _supported_calibration_kind(mode, input_parms)
+    dp3_steps = _parse_steps(input_parms.get("dp3_steps"))
+    image_based_predict = _uses_image_based_predict(dp3_steps)
 
     pipeline_dir = str(pipeline_working_dir)
     filenames = input_parms.get("timechunk_filename", [])
@@ -578,8 +726,10 @@ def calibrate_payload_from_inputs(
             reusemodel = None
             if slot == 1:
                 keepmodel = "True"
+                if image_based_predict:
+                    reusemodel = "[predict.*]"
             elif calibration_kind in {"di_scalar_phase", "dd_phase", "dd_phase_slow"}:
-                reusemodel = "[solve1.*]"
+                reusemodel = "[predict.*]" if image_based_predict else "[solve1.*]"
             if calibration_kind == "dd_phase_slow" and slot in {2, 3}:
                 keepmodel = "true"
             chunk_solve_slots.append(
@@ -619,6 +769,8 @@ def calibrate_payload_from_inputs(
         "data_colname": str(input_parms["data_colname"]),
         "modeldatacolumn": modeldatacolumn,
         "dp3_steps": str(input_parms["dp3_steps"]),
+        "image_based_predict": image_based_predict,
+        "image_predict": _image_predict_payload_from_inputs(input_parms, pipeline_dir),
         **_solver_payload_from_inputs(input_parms),
         "collected_h5parm": collected_h5parms["solve1"]["filename"],
         "collected_h5parm_path": collected_h5parms["solve1"]["path"],
@@ -761,6 +913,99 @@ def _run_shell(
     )
 
 
+def _run_draw_model(
+    payload: Mapping[str, object],
+    image_predict: Mapping[str, object],
+    execution_config: ExecutionConfig,
+    shell_operation_cls=None,
+) -> list[dict]:
+    pipeline_working_dir = str(payload["pipeline_working_dir"])
+    command = build_draw_model_command(
+        skymodel=str(image_predict["skymodel"]),
+        numterms=int(image_predict["num_spectral_terms"]),
+        name=str(image_predict["model_image_root"]),
+        ra_dec=list(image_predict["model_image_ra_dec"]),
+        frequency_bandwidth=list(image_predict["model_image_frequency_bandwidth"]),
+        cellsize_deg=image_predict["model_image_cellsize"],
+        imsize=list(image_predict["model_image_imsize"]),
+        numthreads=int(payload["max_threads"]),
+    )
+    _run_shell(
+        command,
+        pipeline_working_dir,
+        execution_config,
+        shell_operation_cls=shell_operation_cls,
+    )
+    return [
+        _require_file(path, "Calibration model image") for path in image_predict["model_images"]
+    ]
+
+
+def _run_make_region_file(
+    image_predict: Mapping[str, object],
+    payload: Mapping[str, object],
+    execution_config: ExecutionConfig,
+    shell_operation_cls=None,
+) -> dict:
+    pipeline_working_dir = str(payload["pipeline_working_dir"])
+    command = build_make_region_file_command(
+        skymodel=str(image_predict["skymodel"]),
+        ra_mid=image_predict["ra_mid"],
+        dec_mid=image_predict["dec_mid"],
+        width_ra=image_predict["facet_region_width_ra"],
+        width_dec=image_predict["facet_region_width_dec"],
+        outfile=str(image_predict["facet_region_file"]),
+        enclose_names=False,
+    )
+    _run_shell(
+        command,
+        pipeline_working_dir,
+        execution_config,
+        shell_operation_cls=shell_operation_cls,
+    )
+    return _require_file(str(image_predict["facet_region_path"]), "Calibration region file")
+
+
+def _prepare_image_based_predict(
+    payload: Mapping[str, object],
+    execution_config: ExecutionConfig,
+    shell_operation_cls=None,
+) -> Mapping[str, object]:
+    if not payload.get("image_based_predict"):
+        return payload
+
+    image_predict = payload.get("image_predict")
+    if not isinstance(image_predict, Mapping):
+        raise ValueError("Image-based prediction payload is missing")
+
+    model_images = _run_draw_model(
+        payload,
+        image_predict,
+        execution_config,
+        shell_operation_cls=shell_operation_cls,
+    )
+    region_file = _run_make_region_file(
+        image_predict,
+        payload,
+        execution_config,
+        shell_operation_cls=shell_operation_cls,
+    )
+    prepared_payload = dict(payload)
+    prepared_payload["predict_images"] = [record["path"] for record in model_images]
+    prepared_payload["predict_regions"] = region_file["path"]
+    if payload.get("normalize_h5parm"):
+        normalize_record = _run_adjust_h5parm_sources(
+            file_record(str(payload["normalize_h5parm"])),
+            payload,
+            str(payload["pipeline_working_dir"]),
+            execution_config,
+            "Adjusted normalization h5parm",
+            shell_operation_cls=shell_operation_cls,
+        )
+        prepared_payload["normalize_h5parm"] = normalize_record["path"]
+    return prepared_payload
+
+
 def run_calibrate_chunk(
     payload: Mapping[str, object],
     chunk: Mapping[str, object],
@@ -792,8 +1037,10 @@ def run_calibrate_chunk(
         onebeamperpatch=payload.get("onebeamperpatch"),
         parallelbaselines=payload.get("parallelbaselines"),
         sagecalpredict=payload.get("sagecalpredict"),
-        sourcedb=payload.get("sourcedb"),
-        directions=payload.get("directions"),
+        sourcedb=None if payload.get("image_based_predict") else payload.get("sourcedb"),
+        directions=None if payload.get("image_based_predict") else payload.get("directions"),
+        predict_regions=payload.get("predict_regions"),
+        predict_images=payload.get("predict_images"),
     )
     _run_shell(command, pipeline_working_dir, config, shell_operation_cls=shell_operation_cls)
     output_records = {}
@@ -1314,6 +1561,11 @@ def run_calibrate_flow(
     """Run calibration commands and return finalizer-compatible outputs."""
     assert_serializable_payload(payload)
     config = execution_config or ExecutionConfig(task_runner="sync")
+    payload = _prepare_image_based_predict(
+        payload,
+        config,
+        shell_operation_cls=shell_operation_cls,
+    )
     solve_records = []
     for chunk in payload["chunks"]:
         solve_records.append(
@@ -1337,6 +1589,7 @@ def _run_calibrate_prefect_tasks(
     execution_config: Optional[ExecutionConfig] = None,
 ) -> dict:
     config = execution_config or ExecutionConfig(task_runner="sync")
+    payload = _prepare_image_based_predict(payload, config)
     solve_records = [
         calibrate_chunk_task.submit(payload, chunk, execution_config=config)
         for chunk in payload["chunks"]
@@ -1372,6 +1625,16 @@ def calibrate_flow(
 def normalized_ddecal_solve_command(**kwargs) -> list[str]:
     """Return normalized DDECal command tokens for fixture comparisons."""
     return normalize_command(build_ddecal_solve_command(**kwargs))
+
+
+def normalized_draw_model_command(**kwargs) -> list[str]:
+    """Return normalized WSClean draw-model command tokens."""
+    return normalize_command(build_draw_model_command(**kwargs))
+
+
+def normalized_make_region_file_command(**kwargs) -> list[str]:
+    """Return normalized region-file command tokens."""
+    return normalize_command(build_make_region_file_command(**kwargs))
 
 
 def normalized_collect_h5parms_command(

@@ -21,6 +21,8 @@ from rapthor.execution.flows.calibrate import (
     normalized_combine_h5parms_command,
     normalized_collect_h5parms_command,
     normalized_ddecal_solve_command,
+    normalized_draw_model_command,
+    normalized_make_region_file_command,
     normalized_plot_solutions_command,
     normalized_process_gains_command,
     run_calibrate_flow,
@@ -42,6 +44,15 @@ def fake_calibrate_shell_operation_cls():
         def run(self):
             tokens = shlex.split(self.kwargs["commands"][0])
             cwd = Path(self.kwargs["cwd"])
+            if tokens[0] == "wsclean":
+                root = tokens[tokens.index("-name") + 1]
+                numterms = int(tokens[tokens.index("-draw-spectral-terms") + 1])
+                for index in range(numterms):
+                    (cwd / f"{root}-term-{index}.fits").write_text("model")
+                return "OK"
+            if tokens[0] == "make_region_file.py":
+                (cwd / tokens[6]).write_text("region")
+                return "OK"
             if tokens[0] == "DP3":
                 for token in tokens:
                     if token.startswith("solve") and ".h5parm=" in token:
@@ -256,6 +267,40 @@ def _dd_preapply_input_parms():
     return input_parms
 
 
+def _dd_image_predict_input_parms():
+    input_parms = _dd_fast_medium_input_parms()
+    input_parms.update(
+        {
+            "dp3_steps": "[predict,applybeam,solve1,solve2]",
+            "model_image_root": "calibration_model",
+            "model_image_ra_dec": ["12:00:00.0", "+45.00.00.0"],
+            "model_image_imsize": [1024, 1024],
+            "model_image_cellsize": 0.001,
+            "model_image_frequency_bandwidth": [150000000.0, 1000000.0],
+            "num_spectral_terms": 2,
+            "ra_mid": 123.0,
+            "dec_mid": 45.0,
+            "facet_region_width_ra": 2.0,
+            "facet_region_width_dec": 2.5,
+            "facet_region_file": "field_facets_ds9.reg",
+        }
+    )
+    return input_parms
+
+
+def _dd_image_predict_preapply_input_parms(normalize_h5parm="/solutions/normalize_solutions.h5"):
+    input_parms = _dd_image_predict_input_parms()
+    input_parms.update(
+        {
+            "dp3_steps": "[predict,applybeam,applycal,solve1,solve2]",
+            "applycal_steps": "[fastphase,normalization]",
+            "applycal_h5parm": file_record("/solutions/di_solutions.h5"),
+            "normalize_h5parm": file_record(normalize_h5parm),
+        }
+    )
+    return input_parms
+
+
 def _dd_with_slow_input_parms():
     input_parms = _dd_fast_medium_input_parms()
     input_parms.update(
@@ -461,6 +506,13 @@ def _dd_fast_medium_solve_slots():
     ]
 
 
+def _dd_fast_medium_image_predict_solve_slots():
+    slots = _dd_fast_medium_solve_slots()
+    slots[0]["reusemodel"] = "[predict.*]"
+    slots[1]["reusemodel"] = "[predict.*]"
+    return slots
+
+
 def test_calibrate_command_builders_match_reference_fixtures():
     commands = json.loads((FIXTURE_DIR / "cwl_reference_commands.json").read_text())
 
@@ -512,6 +564,31 @@ def test_calibrate_command_builders_match_reference_fixtures():
             calibrator_fluxes=[],
         )
         == commands["calibrate"]["combine_fast_medium_di"]
+    )
+    assert (
+        normalized_draw_model_command(
+            skymodel="calibration.skymodel",
+            numterms=2,
+            name="calibration_model",
+            ra_dec=["12:00:00.0", "+45.00.00.0"],
+            frequency_bandwidth=[150000000.0, 1000000.0],
+            cellsize_deg=0.001,
+            imsize=[1024, 1024],
+            numthreads=4,
+        )
+        == commands["calibrate"]["draw_model"]
+    )
+    assert (
+        normalized_make_region_file_command(
+            skymodel="calibration.skymodel",
+            ra_mid=123.0,
+            dec_mid=45.0,
+            width_ra=2.0,
+            width_dec=2.5,
+            outfile="field_facets_ds9.reg",
+            enclose_names=False,
+        )
+        == commands["calibrate"]["make_field_region_file"]
     )
     assert (
         normalized_ddecal_solve_command(
@@ -579,6 +656,57 @@ def test_calibrate_command_builders_match_reference_fixtures():
             directions=["patch1", "patch2"],
         )
         == commands["calibrate"]["ddecal_dd_fast_medium_preapply"]
+    )
+    assert (
+        normalized_ddecal_solve_command(
+            msin="dd_obs_0.ms",
+            data_colname="DATA",
+            starttime="50000.0",
+            ntimes=10,
+            steps="[predict,applybeam,solve1,solve2]",
+            solve_slots=_dd_fast_medium_image_predict_solve_slots(),
+            numthreads=4,
+            timebase=0.0,
+            maxinterval=8.0,
+            frequencybase=0.0,
+            minchannels=1,
+            onebeamperpatch=True,
+            parallelbaselines=False,
+            sagecalpredict=False,
+            predict_regions="field_facets_ds9.reg",
+            predict_images=[
+                "calibration_model-term-0.fits",
+                "calibration_model-term-1.fits",
+            ],
+        )
+        == commands["calibrate"]["ddecal_dd_fast_medium_image_predict"]
+    )
+    assert (
+        normalized_ddecal_solve_command(
+            msin="dd_obs_0.ms",
+            data_colname="DATA",
+            starttime="50000.0",
+            ntimes=10,
+            steps="[predict,applybeam,applycal,solve1,solve2]",
+            solve_slots=_dd_fast_medium_image_predict_solve_slots(),
+            numthreads=4,
+            applycal_steps="[fastphase,normalization]",
+            applycal_h5parm="di_solutions.h5",
+            normalize_h5parm="normalize_solutions.h5",
+            timebase=0.0,
+            maxinterval=8.0,
+            frequencybase=0.0,
+            minchannels=1,
+            onebeamperpatch=True,
+            parallelbaselines=False,
+            sagecalpredict=False,
+            predict_regions="field_facets_ds9.reg",
+            predict_images=[
+                "calibration_model-term-0.fits",
+                "calibration_model-term-1.fits",
+            ],
+        )
+        == commands["calibrate"]["ddecal_dd_fast_medium_image_predict_preapply"]
     )
     assert (
         normalized_process_gains_command(
@@ -893,6 +1021,36 @@ def test_calibrate_payload_from_inputs_builds_dd_preapply_payload(tmp_path):
     assert payload["normalize_h5parm"] == "/solutions/normalize_solutions.h5"
 
 
+def test_calibrate_payload_from_inputs_builds_dd_image_predict_payload(tmp_path):
+    payload = calibrate_payload_from_inputs("dd", _dd_image_predict_input_parms(), tmp_path)
+
+    assert payload["calibration_kind"] == "dd_phase"
+    assert payload["image_based_predict"] is True
+    assert payload["sourcedb"] == "/data/calibration.skymodel"
+    assert payload["directions"] == ["patch1", "patch2"]
+    assert payload["image_predict"] == {
+        "skymodel": "/data/calibration.skymodel",
+        "model_image_root": "calibration_model",
+        "model_image_ra_dec": ["12:00:00.0", "+45.00.00.0"],
+        "model_image_imsize": [1024, 1024],
+        "model_image_cellsize": 0.001,
+        "model_image_frequency_bandwidth": [150000000.0, 1000000.0],
+        "num_spectral_terms": 2,
+        "model_images": [
+            str(tmp_path / "calibration_model-term-0.fits"),
+            str(tmp_path / "calibration_model-term-1.fits"),
+        ],
+        "ra_mid": 123.0,
+        "dec_mid": 45.0,
+        "facet_region_width_ra": 2.0,
+        "facet_region_width_dec": 2.5,
+        "facet_region_file": "field_facets_ds9.reg",
+        "facet_region_path": str(tmp_path / "field_facets_ds9.reg"),
+    }
+    assert payload["chunks"][0]["solve_slots"][0]["reusemodel"] == "[predict.*]"
+    assert payload["chunks"][0]["solve_slots"][1]["reusemodel"] == "[predict.*]"
+
+
 def test_calibrate_payload_from_inputs_builds_dd_with_slow_payload(tmp_path):
     payload = calibrate_payload_from_inputs("dd", _dd_with_slow_input_parms(), tmp_path)
 
@@ -940,7 +1098,19 @@ def test_calibrate_payload_from_inputs_builds_dd_with_slow_payload(tmp_path):
             "dd",
             _dd_fast_phase_input_parms,
             {"dp3_steps": "[predict,applybeam,solve1]"},
-            "Only DD fast/medium phase",
+            "DD image-based prediction requires model_image_root",
+        ),
+        (
+            "dd",
+            _dd_image_predict_input_parms,
+            {"dp3_steps": "[predict,solve1,solve2]"},
+            "DD image-based prediction requires predict and applybeam steps",
+        ),
+        (
+            "dd",
+            _dd_image_predict_input_parms,
+            {"model_image_imsize": [1024]},
+            "model_image_imsize must contain exactly 2 entries",
         ),
         (
             "dd",
@@ -1216,6 +1386,166 @@ def test_run_calibrate_flow_supports_dd_preapply(tmp_path, fake_calibrate_shell_
     assert "applycal.fulljones.parmdb=/solutions/fulljones_solutions.h5" in commands[0]
     assert "applycal.normalization.parmdb=/solutions/normalize_solutions.h5" in commands[0]
     assert "solve2.reusemodel=[solve1.*]" in commands[0]
+
+
+def test_run_calibrate_flow_supports_dd_image_predict(tmp_path, fake_calibrate_shell_operation_cls):
+    payload = calibrate_payload_from_inputs("dd", _dd_image_predict_input_parms(), tmp_path)
+
+    outputs = run_calibrate_flow(
+        payload,
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_calibrate_shell_operation_cls,
+    )
+
+    assert outputs["combined_solutions"] == file_record(
+        tmp_path / "combined_fast_medium1_phases.h5parm"
+    )
+    assert (tmp_path / "calibration_model-term-0.fits").is_file()
+    assert (tmp_path / "calibration_model-term-1.fits").is_file()
+    assert (tmp_path / "field_facets_ds9.reg").is_file()
+
+    commands = [
+        shlex.split(instance.kwargs["commands"][0])
+        for instance in fake_calibrate_shell_operation_cls.instances
+    ]
+    assert [command[0] for command in commands] == [
+        "wsclean",
+        "make_region_file.py",
+        "DP3",
+        "DP3",
+        "H5parm_collector.py",
+        "plotrapthor",
+        "H5parm_collector.py",
+        "plotrapthor",
+        "combine_h5parms.py",
+        "adjust_h5parm_sources.py",
+    ]
+    assert commands[0][1:] == [
+        "-j",
+        "4",
+        "-draw-model",
+        "/data/calibration.skymodel",
+        "-draw-spectral-terms",
+        "2",
+        "-name",
+        "calibration_model",
+        "-draw-centre",
+        "12:00:00.0",
+        "+45.00.00.0",
+        "-draw-frequencies",
+        "150000000.0",
+        "1000000.0",
+        "-size",
+        "1024",
+        "1024",
+        "-scale",
+        "0.001",
+    ]
+    assert commands[1] == [
+        "make_region_file.py",
+        "/data/calibration.skymodel",
+        "123.0",
+        "45.0",
+        "2.0",
+        "2.5",
+        "field_facets_ds9.reg",
+        "--enclose_names=False",
+    ]
+    assert "steps=[predict,applybeam,solve1,solve2]" in commands[2]
+    assert f"predict.regions={tmp_path / 'field_facets_ds9.reg'}" in commands[2]
+    assert (
+        f"predict.images=[{tmp_path / 'calibration_model-term-0.fits'},"
+        f"{tmp_path / 'calibration_model-term-1.fits'}]" in commands[2]
+    )
+    assert "solve1.reusemodel=[predict.*]" in commands[2]
+    assert "solve2.reusemodel=[predict.*]" in commands[2]
+    assert not any(token.startswith("solve1.sourcedb=") for token in commands[2])
+    assert not any(token.startswith("solve1.directions=") for token in commands[2])
+
+
+def test_run_calibrate_flow_fails_when_image_predict_model_is_missing(
+    tmp_path, fake_calibrate_shell_operation_cls
+):
+    class MissingModelShellOperation(fake_calibrate_shell_operation_cls):
+        instances = []
+
+        def run(self):
+            tokens = shlex.split(self.kwargs["commands"][0])
+            if tokens[0] == "wsclean":
+                return "OK"
+            return super().run()
+
+    payload = calibrate_payload_from_inputs("dd", _dd_image_predict_input_parms(), tmp_path)
+
+    with pytest.raises(FileNotFoundError, match="Calibration model image was not created"):
+        run_calibrate_flow(
+            payload,
+            execution_config=ExecutionConfig(task_runner="sync"),
+            shell_operation_cls=MissingModelShellOperation,
+        )
+
+
+def test_run_calibrate_flow_fails_when_image_predict_region_is_missing(
+    tmp_path, fake_calibrate_shell_operation_cls
+):
+    class MissingRegionShellOperation(fake_calibrate_shell_operation_cls):
+        instances = []
+
+        def run(self):
+            tokens = shlex.split(self.kwargs["commands"][0])
+            if tokens[0] == "make_region_file.py":
+                return "OK"
+            return super().run()
+
+    payload = calibrate_payload_from_inputs("dd", _dd_image_predict_input_parms(), tmp_path)
+
+    with pytest.raises(FileNotFoundError, match="Calibration region file was not created"):
+        run_calibrate_flow(
+            payload,
+            execution_config=ExecutionConfig(task_runner="sync"),
+            shell_operation_cls=MissingRegionShellOperation,
+        )
+
+
+def test_run_calibrate_flow_supports_dd_image_predict_preapply(
+    tmp_path, fake_calibrate_shell_operation_cls
+):
+    payload = calibrate_payload_from_inputs(
+        "dd",
+        _dd_image_predict_preapply_input_parms(tmp_path / "normalize_solutions.h5"),
+        tmp_path,
+    )
+
+    outputs = run_calibrate_flow(
+        payload,
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_calibrate_shell_operation_cls,
+    )
+
+    assert outputs["combined_solutions"] == file_record(
+        tmp_path / "combined_fast_medium1_phases.h5parm"
+    )
+    commands = [
+        shlex.split(instance.kwargs["commands"][0])
+        for instance in fake_calibrate_shell_operation_cls.instances
+    ]
+    assert [command[0] for command in commands][:4] == [
+        "wsclean",
+        "make_region_file.py",
+        "adjust_h5parm_sources.py",
+        "DP3",
+    ]
+    assert commands[2] == [
+        "adjust_h5parm_sources.py",
+        "/data/calibration.skymodel",
+        str(tmp_path / "normalize_solutions.h5"),
+    ]
+    assert "steps=[predict,applybeam,applycal,solve1,solve2]" in commands[3]
+    assert "applycal.steps=[fastphase,normalization]" in commands[3]
+    assert "applycal.parmdb=/solutions/di_solutions.h5" in commands[3]
+    assert f"applycal.normalization.parmdb={tmp_path / 'normalize_solutions.h5'}" in commands[3]
+    assert "solve1.reusemodel=[predict.*]" in commands[3]
+    assert "solve2.reusemodel=[predict.*]" in commands[3]
 
 
 def test_run_calibrate_flow_skips_dd_source_adjustment_for_single_direction(
