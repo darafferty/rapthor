@@ -631,6 +631,49 @@ def _expected_full_stokes_image_operation_outputs(operation):
     }
 
 
+def _expected_compressed_image_operation_outputs(operation):
+    pipeline_dir = Path(operation.pipeline_working_dir)
+    return {
+        "filtered_skymodel_true_sky": [file_record(pipeline_dir / "sector_1.true_sky.txt")],
+        "filtered_skymodel_apparent_sky": [file_record(pipeline_dir / "sector_1.apparent_sky.txt")],
+        "pybdsf_catalog": [file_record(pipeline_dir / "sector_1.source_catalog.fits")],
+        "sector_diagnostics": [file_record(pipeline_dir / "sector_1.image_diagnostics.json")],
+        "sector_offsets": [file_record(pipeline_dir / "sector_1.astrometry_offsets.json")],
+        "sector_diagnostic_plots": [[file_record(pipeline_dir / "sector_1.photometry.pdf")]],
+        "visibilities": [
+            [
+                directory_record(pipeline_dir / "sector_1_obs_0_prep.ms"),
+                directory_record(pipeline_dir / "sector_1_obs_1_prep.ms"),
+            ]
+        ],
+        "sector_I_images": [
+            [
+                file_record(pipeline_dir / "sector_1-MFS-I-image.fits.fz"),
+                file_record(pipeline_dir / "sector_1-MFS-I-image-pb.fits.fz"),
+            ]
+        ],
+        "sector_extra_images": [
+            [
+                file_record(pipeline_dir / "sector_1-MFS-I-residual.fits.fz"),
+                file_record(pipeline_dir / "sector_1-MFS-I-model-pb.fits.fz"),
+                file_record(pipeline_dir / "sector_1-MFS-I-dirty.fits.fz"),
+            ]
+        ],
+        "source_filtering_mask": [
+            file_record(pipeline_dir / "sector_1-MFS-I-image-pb.fits.mask.fits")
+        ],
+        "sector_skymodels": [
+            [
+                file_record(pipeline_dir / "sector_1-sources.txt"),
+                file_record(pipeline_dir / "sector_1-sources-pb.txt"),
+            ]
+        ],
+        "sector_skymodel_image_fits": [
+            file_record(pipeline_dir / "sector_1-MFS-filtered-model.fits.fz")
+        ],
+    }
+
+
 def _materialize_image_operation_outputs(value):
     if isinstance(value, dict) and "class" not in value:
         for item in value.values():
@@ -2179,6 +2222,69 @@ def test_full_stokes_image_operation_run_uses_prefect_flow(
     assert field.lofar_to_true_flux_ratio == 1.0
     assert field.lofar_to_true_flux_std == 0.0
     assert len(fake_image_shell_operation_cls.instances) == 9
+
+
+def test_compressed_image_operation_run_uses_prefect_flow(
+    tmp_path, monkeypatch, fake_image_shell_operation_cls
+):
+    monkeypatch.setattr(
+        "rapthor.execution.shell._load_shell_operation_cls",
+        lambda: fake_image_shell_operation_cls,
+    )
+    field = FieldStub(tmp_path)
+    field.compress_images = True
+    field.parset["imaging_specific"]["save_filtered_model_image"] = True
+    field.save_supplementary_images = True
+    field.save_visibilities = True
+    operation = Image(field, index=1)
+
+    with prefect_test_harness(server_startup_timeout=None):
+        operation.run()
+
+    expected_outputs = _expected_compressed_image_operation_outputs(operation)
+    sector = field.imaging_sectors[0]
+    pipeline_dir = Path(operation.pipeline_working_dir)
+    skymodel_dir = Path(field.parset["dir_working"]) / "skymodels" / "image_1"
+    visibility_dir = Path(field.parset["dir_working"]) / "visibilities" / "image_1" / sector.name
+    diagnostics_dir = Path(field.parset["dir_working"]) / "plots" / "image_1"
+    command_names = [
+        shlex.split(instance.kwargs["commands"][0])[0]
+        for instance in fake_image_shell_operation_cls.instances
+    ]
+
+    assert operation.outputs == expected_outputs
+    assert json.loads(Path(operation.outputs_file).read_text()) == expected_outputs
+    assert Path(operation.done_file).is_file()
+    assert Path(operation.pipeline_inputs_file).is_file()
+    assert not Path(operation.pipeline_parset_file).exists()
+    assert sector.I_image_file_apparent_sky == str(pipeline_dir / "sector_1-MFS-I-image.fits.fz")
+    assert sector.I_image_file_true_sky == str(pipeline_dir / "sector_1-MFS-I-image-pb.fits.fz")
+    assert sector.I_model_file_true_sky == str(pipeline_dir / "sector_1-MFS-I-model-pb.fits.fz")
+    assert sector.I_residual_file_apparent_sky == str(
+        pipeline_dir / "sector_1-MFS-I-residual.fits.fz"
+    )
+    assert sector.I_dirty_file_apparent_sky == str(pipeline_dir / "sector_1-MFS-I-dirty.fits.fz")
+    assert sector.filtering_mask_file == str(
+        pipeline_dir / "sector_1-MFS-I-image-pb.fits.mask.fits"
+    )
+    assert sector.filtered_model_file_apparent_sky == str(
+        pipeline_dir / "sector_1-MFS-filtered-model.fits.fz"
+    )
+    assert sector.image_skymodel_file_true_sky == str(skymodel_dir / "sector_1.true_sky.txt")
+    assert sector.image_skymodel_file_apparent_sky == str(
+        skymodel_dir / "sector_1.apparent_sky.txt"
+    )
+    assert (skymodel_dir / "sector_1.true_sky.txt").is_file()
+    assert (skymodel_dir / "sector_1.apparent_sky.txt").is_file()
+    assert (skymodel_dir / "sector_1.source_catalog.fits").is_file()
+    assert (visibility_dir / "sector_1_obs_0_prep.ms").is_dir()
+    assert (visibility_dir / "sector_1_obs_1_prep.ms").is_dir()
+    assert (diagnostics_dir / "sector_1.image_diagnostics.json").is_file()
+    assert sector.diagnostics == [{"cycle_number": 1}]
+    assert field.lofar_to_true_flux_ratio == 1.0
+    assert field.lofar_to_true_flux_std == 0.0
+    assert "restore_skymodel.py" in command_names
+    assert "fpack" in command_names
 
 
 def test_image_finalizer_accepts_prefect_outputs_for_full_stokes(
