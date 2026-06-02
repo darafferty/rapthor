@@ -580,6 +580,57 @@ def _expected_image_operation_outputs(operation):
     }
 
 
+def _expected_full_stokes_image_operation_outputs(operation):
+    pipeline_dir = Path(operation.pipeline_working_dir)
+    extra_images = []
+    for suffix in [
+        "Q-image.fits",
+        "U-image.fits",
+        "V-image.fits",
+        "Q-image-pb.fits",
+        "U-image-pb.fits",
+        "V-image-pb.fits",
+        "I-residual.fits",
+        "Q-residual.fits",
+        "U-residual.fits",
+        "V-residual.fits",
+        "I-model-pb.fits",
+        "Q-model-pb.fits",
+        "U-model-pb.fits",
+        "V-model-pb.fits",
+        "I-dirty.fits",
+        "Q-dirty.fits",
+        "U-dirty.fits",
+        "V-dirty.fits",
+    ]:
+        extra_images.append(file_record(pipeline_dir / f"sector_1-MFS-{suffix}"))
+
+    return {
+        "filtered_skymodel_true_sky": [file_record(pipeline_dir / "sector_1.true_sky.txt")],
+        "filtered_skymodel_apparent_sky": [file_record(pipeline_dir / "sector_1.apparent_sky.txt")],
+        "pybdsf_catalog": [file_record(pipeline_dir / "sector_1.source_catalog.fits")],
+        "sector_diagnostics": [file_record(pipeline_dir / "sector_1.image_diagnostics.json")],
+        "sector_offsets": [file_record(pipeline_dir / "sector_1.astrometry_offsets.json")],
+        "sector_diagnostic_plots": [[file_record(pipeline_dir / "sector_1.photometry.pdf")]],
+        "visibilities": [
+            [
+                directory_record(pipeline_dir / "sector_1_obs_0_prep.ms"),
+                directory_record(pipeline_dir / "sector_1_obs_1_prep.ms"),
+            ]
+        ],
+        "sector_I_images": [
+            [
+                file_record(pipeline_dir / "sector_1-MFS-image.fits"),
+                file_record(pipeline_dir / "sector_1-MFS-image-pb.fits"),
+            ]
+        ],
+        "sector_extra_images": [extra_images],
+        "source_filtering_mask": [
+            file_record(pipeline_dir / "sector_1-MFS-image-pb.fits.mask.fits")
+        ],
+    }
+
+
 def _materialize_image_operation_outputs(value):
     if isinstance(value, dict) and "class" not in value:
         for item in value.values():
@@ -2083,6 +2134,51 @@ def test_image_operation_run_reuses_prefect_outputs_when_done(
     assert (skymodel_dir / "sector_1.true_sky.txt").is_file()
     assert sector.diagnostics == [{"cycle_number": 1}]
     assert fake_image_shell_operation_cls.instances == []
+
+
+def test_full_stokes_image_operation_run_uses_prefect_flow(
+    tmp_path, monkeypatch, fake_image_shell_operation_cls
+):
+    monkeypatch.setattr(
+        "rapthor.execution.shell._load_shell_operation_cls",
+        lambda: fake_image_shell_operation_cls,
+    )
+    field = FieldStub(tmp_path)
+    field.image_pol = "IQUV"
+    operation = Image(field, index=1)
+
+    with prefect_test_harness(server_startup_timeout=None):
+        operation.run()
+
+    expected_outputs = _expected_full_stokes_image_operation_outputs(operation)
+    sector = field.imaging_sectors[0]
+
+    assert operation.outputs == expected_outputs
+    assert json.loads(Path(operation.outputs_file).read_text()) == expected_outputs
+    assert Path(operation.done_file).is_file()
+    assert Path(operation.pipeline_inputs_file).is_file()
+    assert not Path(operation.pipeline_parset_file).exists()
+    assert sector.I_image_file_apparent_sky == str(
+        Path(operation.pipeline_working_dir) / "sector_1-MFS-image.fits"
+    )
+    assert sector.I_image_file_true_sky == str(
+        Path(operation.pipeline_working_dir) / "sector_1-MFS-image-pb.fits"
+    )
+    assert sector.Q_image_file_apparent_sky == str(
+        Path(operation.pipeline_working_dir) / "sector_1-MFS-Q-image.fits"
+    )
+    assert sector.U_model_file_true_sky == str(
+        Path(operation.pipeline_working_dir) / "sector_1-MFS-U-model-pb.fits"
+    )
+    assert sector.V_dirty_file_apparent_sky == str(
+        Path(operation.pipeline_working_dir) / "sector_1-MFS-V-dirty.fits"
+    )
+    assert not hasattr(sector, "image_skymodel_file_true_sky")
+    assert not hasattr(sector, "image_skymodel_file_apparent_sky")
+    assert sector.diagnostics == [{"cycle_number": 1}]
+    assert field.lofar_to_true_flux_ratio == 1.0
+    assert field.lofar_to_true_flux_std == 0.0
+    assert len(fake_image_shell_operation_cls.instances) == 9
 
 
 def test_image_finalizer_accepts_prefect_outputs_for_full_stokes(

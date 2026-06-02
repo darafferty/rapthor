@@ -2617,6 +2617,9 @@ Completed in this slice:
 - Added no-DDE Stokes-I operation-run coverage proving Image executes through
   Prefect, writes operation state, skips CWL template generation, updates sector
   image/skymodel state, and produces finalizer-compatible output records.
+- Added full-Stokes Image operation-run coverage proving the adapter preserves
+  Q/U/V image products, extra image products, finalizer-visible sector state, and
+  the no-source-list contract for QUV imaging.
 - Added restart coverage proving `.done` skips shell execution and persisted
   Prefect output records are reused.
 - Preserved `tests/operations/test_image.py` as CWL-reference coverage until the
@@ -2626,20 +2629,22 @@ Remaining follow-up:
 
 - Extend operation-run cutover coverage for the remaining Image variants:
   facets, screen application, compression, clean-disabled mode, image cubes,
-  normalization, full Stokes, MPI WSClean, previous-mask reuse, and
-  supplementary products.
+  normalization, MPI WSClean, previous-mask reuse, and supplementary products.
 - Add image parity cases to the dedicated CWL-to-Prefect equivalence suite
   before retiring any CWL image workflow code.
 
 Verified:
 
-- `python3 -m pytest tests/execution/test_image_flow.py`: 44 passed, 3 warnings
-  before the CWL-reference fallback patch.
+- `python3 -m pytest tests/execution/test_image_flow.py`: 45 passed, 4 warnings.
 - `python3 -m pytest tests/operations/test_image.py -q --tb=short
   --disable-warnings`: 85 passed, 2 warnings.
+- `python3 -m ruff check tests/execution/test_image_flow.py`: passed.
+- `python3 -m ruff format tests/execution/test_image_flow.py`: 1 file left
+  unchanged.
 - `python3 -m py_compile rapthor/operations/image.py
   tests/execution/test_image_flow.py tests/operations/test_image.py`: passed
   locally.
+- `git diff --check`: passed.
 
 ## Success Criteria
 
