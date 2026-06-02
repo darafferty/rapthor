@@ -28,6 +28,8 @@ arguments:
     prefix: -temp-dir
   - valueFrom: '2048'
     prefix: -parallel-deconvolution
+  - valueFrom: $(runtime.cores>1)
+    prefix: -parallel-gridding
   - valueFrom: '0.8'
     prefix: -multiscale-scale-bias
   - valueFrom: '1.0'
