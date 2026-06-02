@@ -436,6 +436,7 @@ class Observation(object):
             smoothness_dd_factors /= max(smoothness_dd_factors)
             smoothness_dd_factors[smoothness_dd_factors < 1 / smoothness_max_factor] = (
                 1 / smoothness_max_factor
+            smoothness_dd_factors = smoothness_dd_factors.tolist()
             )
         else:
             smoothness_dd_factors = [1] * len(calibrator_fluxes)
@@ -694,8 +695,8 @@ class Observation(object):
         )
         freqstep = max(1, self.get_nearest_freqstep(target_freqstep / self.channelwidth))
 
-        self.parameters[f"solint_{solve_type}_timestep"] = [timestep] * self.ntimechunks
-        self.parameters[f"solint_{solve_type}_freqstep"] = [freqstep] * self.ntimechunks
+        self.parameters[f"solint_{solve_type}_timestep"] = [timestep] * self.nfreqchunks
+        self.parameters[f"solint_{solve_type}_freqstep"] = [freqstep] * self.nfreqchunks
 
     def get_target_timewidth(self, delta_theta, resolution, reduction_factor):
         """

@@ -71,10 +71,12 @@ class Calibrate(Operation):
         # First set the calibration parameters for each observation
         field = self.field
         field.set_obs_parameters()
-        # Get the start times and number of times for the time chunks (fast and slow
-        # calibration)
+        # Get the start times and number of times for the observations
         starttime = field.get_obs_parameters("starttime")
         ntimes = field.get_obs_parameters("ntimes")
+        # Get the start channels and number of channles for the frequency blocks
+        startchan = field.get_obs_parameters("startchan")
+        nchans = field.get_obs_parameters("nchans")
 
         if self.mode == "dd":
             # --- Set the output h5parm configuration ---
@@ -144,6 +146,8 @@ class Calibrate(Operation):
                 "data_colname": field.data_colname,
                 "starttime": starttime,
                 "ntimes": ntimes,
+                "starttime": startchan,
+                "ntimes": nchans,
                 # Solution interval configuration (time + frequency)
                 # Get the solution intervals for the calibrations
                 "solint_fast_timestep": field.get_obs_parameters("solint_fast_timestep"),
