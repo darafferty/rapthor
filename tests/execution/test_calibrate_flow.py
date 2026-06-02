@@ -28,6 +28,7 @@ from rapthor.execution.flows.calibrate import (
     run_calibrate_flow,
 )
 from rapthor.execution.outputs import directory_record, file_record, validate_output_record
+from rapthor.operations.calibrate import Calibrate
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
 
@@ -99,6 +100,126 @@ class NoOutputShellOperation:
 
     def run(self):
         return "OK"
+
+
+class CalibrateObservationStub:
+    channels_are_regular = True
+
+
+class CalibrateFieldStub:
+    def __init__(self, tmp_path):
+        self.parset = {
+            "dir_working": str(tmp_path / "working"),
+            "cluster_specific": {
+                "cwl_runner": "toil",
+                "debug_workflow": False,
+                "keep_temporary_files": False,
+                "max_nodes": 1,
+                "batch_system": "single_machine",
+                "cpus_per_task": 1,
+                "mem_per_node_gb": 0,
+                "dir_local": None,
+                "local_scratch_dir": None,
+                "global_scratch_dir": None,
+                "use_container": False,
+                "container_type": "docker",
+                "max_cores": 1,
+                "max_threads": 4,
+                "prefect_task_runner": "sync",
+            },
+        }
+        self.observations = [CalibrateObservationStub(), CalibrateObservationStub()]
+        self.ntimechunks = 2
+        self.calibration_diagnostics = []
+        self.calibration_skymodel_file = str(tmp_path / "calibration.skymodel")
+        self.ra = 123.0
+        self.dec = 45.0
+        self.sector_bounds_deg = "[0,0,1,1]"
+        self.sector_bounds_mid_deg = "[0.5,0.5]"
+        self.smoothnessconstraint_fulljones = 1.5
+        self.max_normalization_delta = 0.3
+        self.scale_normalization_delta = True
+        self.llssolver = "qr"
+        self.maxiter = 50
+        self.propagatesolutions = True
+        self.solveralgorithm = "directionsolve"
+        self.onebeamperpatch = False
+        self.stepsize = 0.2
+        self.stepsigma = 0.0
+        self.tolerance = 0.0001
+        self.solve_min_uv_lambda = 80.0
+        self.parallelbaselines = False
+        self.sagecalpredict = False
+        self.solverlbfgs_dof = 200.0
+        self.solverlbfgs_iter = 4
+        self.solverlbfgs_minibatches = 1
+        self.correct_smearing_in_calibration = True
+        self.calibrate_bda_timebase = 0
+        self.calibrate_bda_frequencybase = 0
+        self.do_slowgain_solve = False
+        self.calibration_strategy = {"di": ["full_jones"]}
+        self.generate_screens = False
+        self.use_image_based_predict = False
+        self.apply_normalizations = False
+        self.normalize_h5parm = None
+        self.fulljones_h5parm_filename = None
+        self.h5parm_filename = None
+        self.di_h5parm_filename = None
+        self.fast_phases_h5parm_filename = None
+        self.medium1_phases_h5parm_filename = None
+        self.medium2_phases_h5parm_filename = None
+        self.slow_gains_h5parm_filename = None
+        self.di_fast_phases_h5parm_filename = None
+        self.di_medium1_phases_h5parm_filename = None
+        self.di_medium2_phases_h5parm_filename = None
+        self.di_slow_gains_h5parm_filename = None
+        self.scan_h5parms_calls = 0
+        self._obs_parameters = {
+            "predict_di_output_filename": ["obs_0_predict.ms", "obs_1_predict.ms"],
+            "starttime": ["50000.0", "50010.0"],
+            "ntimes": [10, 12],
+            "bda_maxinterval": [8.0, 9.0],
+            "bda_minchannels": [1, 1],
+            "solint_fulljones_timestep": [5, 6],
+            "solint_fulljones_freqstep": [2, 3],
+            "solint_slow_timestep": [11, 12],
+            "solint_slow_freqstep": [7, 8],
+            "solint_medium_timestep": [9, 10],
+            "solint_medium_freqstep": [5, 6],
+        }
+
+    def set_obs_parameters(self):
+        return None
+
+    def get_obs_parameters(self, name):
+        return self._obs_parameters[name]
+
+    def scan_h5parms(self):
+        self.scan_h5parms_calls += 1
+
+
+def _expected_di_fulljones_operation_outputs(operation):
+    pipeline_dir = Path(operation.pipeline_working_dir)
+    solution = file_record(pipeline_dir / "fulljones_solutions.h5")
+    return {
+        "combined_solutions": solution,
+        "fast_phase_solutions": solution,
+        "fast_phase_plots": [file_record(pipeline_dir / "phase_solutions.png")],
+    }
+
+
+def _materialize_calibrate_operation_outputs(value):
+    if isinstance(value, dict) and "class" not in value:
+        for item in value.values():
+            _materialize_calibrate_operation_outputs(item)
+        return
+    if isinstance(value, list):
+        for item in value:
+            _materialize_calibrate_operation_outputs(item)
+        return
+    path = Path(value["path"])
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("calibrate")
 
 
 def _di_fulljones_input_parms():
@@ -1710,6 +1831,72 @@ def test_calibrate_prefect_flow_entrypoint_runs_with_mocked_shell(
 
     assert outputs["combined_solutions"] == file_record(tmp_path / "fulljones_solutions.h5")
     assert len(fake_calibrate_shell_operation_cls.instances) == 4
+
+
+def test_calibrate_di_operation_run_uses_prefect_flow(
+    tmp_path, monkeypatch, fake_calibrate_shell_operation_cls
+):
+    monkeypatch.setattr(
+        "rapthor.execution.shell._load_shell_operation_cls",
+        lambda: fake_calibrate_shell_operation_cls,
+    )
+    monkeypatch.setattr(
+        "rapthor.lib.miscellaneous.get_flagged_solution_fraction",
+        lambda *args, **kwargs: 0.0,
+    )
+
+    field = CalibrateFieldStub(tmp_path)
+    operation = Calibrate("di", field, index=1)
+
+    with prefect_test_harness(server_startup_timeout=None):
+        operation.run()
+
+    expected_outputs = _expected_di_fulljones_operation_outputs(operation)
+    solutions_dir = Path(field.parset["dir_working"]) / "solutions" / "calibrate_di_1"
+    plots_dir = Path(field.parset["dir_working"]) / "plots" / "calibrate_di_1"
+
+    assert operation.outputs == expected_outputs
+    assert json.loads(Path(operation.outputs_file).read_text()) == expected_outputs
+    assert Path(operation.done_file).is_file()
+    assert Path(operation.pipeline_inputs_file).is_file()
+    assert not Path(operation.pipeline_parset_file).exists()
+    assert field.fulljones_h5parm_filename == str(solutions_dir / "fulljones-solutions.h5")
+    assert (solutions_dir / "fulljones-solutions.h5").is_file()
+    assert (plots_dir / "phase_solutions.png").is_file()
+    assert field.scan_h5parms_calls == 1
+    assert len(fake_calibrate_shell_operation_cls.instances) == 4
+
+
+def test_calibrate_di_operation_run_reuses_prefect_outputs_when_done(
+    tmp_path, monkeypatch, fake_calibrate_shell_operation_cls
+):
+    monkeypatch.setattr(
+        "rapthor.execution.shell._load_shell_operation_cls",
+        lambda: fake_calibrate_shell_operation_cls,
+    )
+    monkeypatch.setattr(
+        "rapthor.lib.miscellaneous.get_flagged_solution_fraction",
+        lambda *args, **kwargs: 0.0,
+    )
+
+    field = CalibrateFieldStub(tmp_path)
+    operation = Calibrate("di", field, index=1)
+    expected_outputs = _expected_di_fulljones_operation_outputs(operation)
+    _materialize_calibrate_operation_outputs(expected_outputs)
+    Path(operation.done_file).touch()
+    Path(operation.outputs_file).write_text(json.dumps(expected_outputs))
+
+    operation.run()
+
+    solutions_dir = Path(field.parset["dir_working"]) / "solutions" / "calibrate_di_1"
+    plots_dir = Path(field.parset["dir_working"]) / "plots" / "calibrate_di_1"
+
+    assert operation.outputs == expected_outputs
+    assert fake_calibrate_shell_operation_cls.instances == []
+    assert field.fulljones_h5parm_filename == str(solutions_dir / "fulljones-solutions.h5")
+    assert (solutions_dir / "fulljones-solutions.h5").is_file()
+    assert (plots_dir / "phase_solutions.png").is_file()
+    assert field.scan_h5parms_calls == 1
 
 
 def test_calibrate_prefect_tasks_submit_all_chunks_before_collect(monkeypatch, tmp_path):

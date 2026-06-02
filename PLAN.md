@@ -2669,6 +2669,56 @@ Verified:
   locally.
 - `git diff --check`: passed.
 
+### PR 31: Calibrate Operation-Run Cutover, First Slice
+
+Status: first DI full-Jones slice complete.
+
+Completed in this PR:
+
+- Wired `Calibrate.execute_workflow()` to `calibrate_flow()` using
+  `calibrate_payload_from_inputs()` and `ExecutionConfig.from_parset()`.
+- Kept Calibrate on the operation-adapter contract: the existing operation still
+  gathers calibration inputs, the Prefect flow receives a serializable payload,
+  and `Calibrate.finalize()` remains responsible for copying h5parm and plot
+  products into the field-facing solution directories.
+- Preserved the CWL-reference escape hatch used by tests that explicitly force
+  `uses_python_flow()` false; production Calibrate now chooses the Python flow.
+- Added DI full-Jones operation-run coverage proving Calibrate executes through
+  Prefect, writes operation state, skips CWL parset generation, persists
+  finalizer-compatible outputs, copies `fulljones-solutions.h5`, copies solution
+  plots, and calls `field.scan_h5parms()`.
+- Added DI full-Jones restart coverage proving `.done` skips shell execution and
+  persisted Prefect output records are reused while the finalizer still restores
+  field-visible solution and plot products.
+
+Remaining follow-up:
+
+- Expand operation-run cutover coverage to DI scalar phase, DD fast/medium
+  phase, DD pre-apply, DD image-based predict, DD slow-gain cycles,
+  source-adjusted DD products, and screen-generation slices where supported.
+- Add Calibrate cases to the dedicated CWL-to-Prefect equivalence suite before
+  retiring any CWL calibration workflow code.
+- Add real external-tool Calibrate integration coverage for a small fixture run
+  if CI/staging resources can provide suitable Measurement Set, sky model, and
+  h5parm inputs.
+
+Verified:
+
+- `python3 -m pytest tests/execution/test_calibrate_flow.py -k
+  calibrate_di_operation -q`: 2 passed, 36 deselected, 1 warning.
+- `python3 -m pytest tests/execution/test_calibrate_flow.py`: 38 passed, 1
+  warning.
+- `python3 -m pytest tests/operations/test_calibrate.py -q --tb=short
+  --disable-warnings`: 51 passed, 1 warning.
+- `python3 -m ruff format rapthor/operations/calibrate.py
+  tests/execution/test_calibrate_flow.py`: 2 files left unchanged.
+- `python3 -m py_compile rapthor/operations/calibrate.py
+  tests/execution/test_calibrate_flow.py`: passed locally.
+- `git diff --check`: passed.
+- `python3 -m ruff check rapthor/operations/calibrate.py
+  tests/execution/test_calibrate_flow.py`: not rerun in the devcontainer because
+  the escalation request hit the session usage limit.
+
 ## Success Criteria
 
 The migration is complete when:

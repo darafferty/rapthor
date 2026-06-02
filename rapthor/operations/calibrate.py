@@ -10,6 +10,8 @@ from dataclasses import dataclass
 import lsmtool
 import numpy as np
 
+from rapthor.execution.config import ExecutionConfig
+from rapthor.execution.flows.calibrate import calibrate_flow, calibrate_payload_from_inputs
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.cwl import CWLDir, CWLFile
 from rapthor.lib.operation import Operation
@@ -74,6 +76,12 @@ class Calibrate(Operation):
             rootname="calibrate",
         )
         self.mode = mode
+
+    def uses_python_flow(self):
+        """
+        Calibrate operations are executed through the Prefect/Dask Python flow.
+        """
+        return True
 
     def set_parset_parameters(self):
         """
@@ -982,6 +990,24 @@ class Calibrate(Operation):
         if filepath is not None and os.path.exists(filepath):
             return CWLFile(filepath).to_json()
         return None
+
+    def execute_workflow(self):
+        """
+        Execute calibration through the Prefect flow and return operation outputs.
+        """
+        if not self.uses_python_flow():
+            return super().execute_workflow()
+
+        payload = calibrate_payload_from_inputs(
+            self.mode,
+            self.input_parms,
+            self.pipeline_working_dir,
+        )
+        outputs = calibrate_flow(
+            payload,
+            execution_config=ExecutionConfig.from_parset(self.parset),
+        )
+        return True, outputs
 
     def finalize(self):
         """
