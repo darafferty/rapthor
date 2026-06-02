@@ -182,6 +182,8 @@ class SectorStub:
         self.wsclean_deconvolution_channels = 2
         self.wsclean_spectral_poly_order = 2
         self.imsize = [1024, 1024]
+        self.width_ra = 2.0
+        self.width_dec = 2.5
         self.vertices_file = "/data/sector_1.vertices"
         self.region_file = None
         self.wsclean_niter = 1000
@@ -262,6 +264,7 @@ class FieldStub:
         self.pol_combine_method = "join"
         self.apply_amplitudes = False
         self.apply_fulljones = False
+        self.apply_diagonal_solutions = False
         self.peel_bright_sources = False
         self.average_visibilities = True
         self.image_bda_timebase = 10.0
@@ -270,6 +273,14 @@ class FieldStub:
         self.skip_final_major_iteration = True
         self.correct_smearing_in_imaging = False
         self.disable_clean = False
+        self.ra = 123.0
+        self.dec = 45.0
+        self.calibration_skymodel_file = "/data/calibration.skymodel"
+        self.normalization_skymodels = None
+        self.normalization_reference_frequencies = None
+
+    def get_calibration_radius(self):
+        return 1.0
 
 
 def _operation_parset(tmp_path):
@@ -672,6 +683,36 @@ def _expected_compressed_image_operation_outputs(operation):
             file_record(pipeline_dir / "sector_1-MFS-filtered-model.fits.fz")
         ],
     }
+
+
+def _expected_facet_image_operation_outputs(operation):
+    outputs = _expected_image_operation_outputs(operation)
+    outputs["sector_region_file"] = [
+        file_record(Path(operation.pipeline_working_dir) / "sector_1_facets_ds9.reg")
+    ]
+    return outputs
+
+
+def _expected_image_cube_operation_outputs(operation):
+    pipeline_dir = Path(operation.pipeline_working_dir)
+    outputs = _expected_image_operation_outputs(operation)
+    outputs["sector_image_cubes"] = [[file_record(pipeline_dir / "sector_1_I_freq_cube.fits")]]
+    outputs["sector_image_cube_beams"] = [
+        [file_record(pipeline_dir / "sector_1_I_freq_cube.fits_beams.txt")]
+    ]
+    outputs["sector_image_cube_frequencies"] = [
+        [file_record(pipeline_dir / "sector_1_I_freq_cube.fits_frequencies.txt")]
+    ]
+    return outputs
+
+
+def _expected_normalize_image_operation_outputs(operation):
+    pipeline_dir = Path(operation.pipeline_working_dir)
+    outputs = _expected_image_cube_operation_outputs(operation)
+    outputs.pop("sector_skymodels")
+    outputs["sector_source_catalog"] = [file_record(pipeline_dir / "sector_1_source_catalog.fits")]
+    outputs["sector_normalize_h5parm"] = [file_record(pipeline_dir / "sector_1_normalize.h5parm")]
+    return outputs
 
 
 def _materialize_image_operation_outputs(value):
@@ -2324,6 +2365,216 @@ def test_clean_disabled_image_operation_run_uses_prefect_flow(
     assert sector.diagnostics == [{"cycle_number": 1}]
     assert field.lofar_to_true_flux_ratio == 1.0
     assert field.lofar_to_true_flux_std == 0.0
+
+
+def test_facet_image_operation_run_uses_prefect_flow(
+    tmp_path, monkeypatch, fake_image_shell_operation_cls
+):
+    monkeypatch.setattr(
+        "rapthor.execution.shell._load_shell_operation_cls",
+        lambda: fake_image_shell_operation_cls,
+    )
+    field = FieldStub(tmp_path)
+    field.dde_method = "full"
+    field.dd_h5parm_filename = "/data/facet-solutions.h5"
+    field.calibration_strategy = {"dd": ["fast_phase"]}
+    field.parset["imaging_specific"]["shared_facet_rw"] = True
+    operation = Image(field, index=1)
+
+    with prefect_test_harness(server_startup_timeout=None):
+        operation.run()
+
+    expected_outputs = _expected_facet_image_operation_outputs(operation)
+    region_dir = Path(field.parset["dir_working"]) / "regions" / "image_1"
+    make_region_command = next(
+        shlex.split(instance.kwargs["commands"][0])
+        for instance in fake_image_shell_operation_cls.instances
+        if shlex.split(instance.kwargs["commands"][0])[0] == "make_region_file.py"
+    )
+    wsclean_command = next(
+        shlex.split(instance.kwargs["commands"][0])
+        for instance in fake_image_shell_operation_cls.instances
+        if shlex.split(instance.kwargs["commands"][0])[0] == "wsclean"
+    )
+
+    assert operation.outputs == expected_outputs
+    assert Path(operation.done_file).is_file()
+    assert not Path(operation.pipeline_parset_file).exists()
+    assert make_region_command[1] == "/data/calibration.skymodel"
+    assert "-apply-facet-beam" in wsclean_command
+    assert "-apply-facet-solutions" in wsclean_command
+    assert "/data/facet-solutions.h5" in wsclean_command
+    assert "-facet-regions" in wsclean_command
+    assert "-shared-facet-reads" in wsclean_command
+    assert "-shared-facet-writes" in wsclean_command
+    assert (region_dir / "sector_1_facets_ds9.reg").is_file()
+
+
+def test_screen_image_operation_run_uses_prefect_flow(
+    tmp_path, monkeypatch, fake_image_shell_operation_cls
+):
+    monkeypatch.setattr(
+        "rapthor.execution.shell._load_shell_operation_cls",
+        lambda: fake_image_shell_operation_cls,
+    )
+    field = FieldStub(tmp_path)
+    field.apply_screens = True
+    field.dd_h5parm_filename = "/data/screen-solutions.h5"
+    field.calibration_strategy = {"dd": ["fast_phase"]}
+    operation = Image(field, index=1)
+
+    with prefect_test_harness(server_startup_timeout=None):
+        operation.run()
+
+    expected_outputs = _expected_image_operation_outputs(operation)
+    wsclean_command = next(
+        shlex.split(instance.kwargs["commands"][0])
+        for instance in fake_image_shell_operation_cls.instances
+        if shlex.split(instance.kwargs["commands"][0])[0] == "wsclean"
+    )
+    prepare_commands = [
+        shlex.split(instance.kwargs["commands"][0])
+        for instance in fake_image_shell_operation_cls.instances
+        if shlex.split(instance.kwargs["commands"][0])[0] == "DP3"
+    ]
+
+    assert operation.outputs == expected_outputs
+    assert Path(operation.done_file).is_file()
+    assert not Path(operation.pipeline_parset_file).exists()
+    assert "-aterm-config" in wsclean_command
+    assert wsclean_command[wsclean_command.index("-aterm-config") + 1] == ATERM_CONFIG_FILENAME
+    assert (Path(operation.pipeline_working_dir) / ATERM_CONFIG_FILENAME).is_file()
+    assert any("steps=[applybeam,shift,applycal,avg]" in command for command in prepare_commands)
+
+
+def test_image_cube_operation_run_uses_prefect_flow(
+    tmp_path, monkeypatch, fake_image_shell_operation_cls
+):
+    monkeypatch.setattr(
+        "rapthor.execution.shell._load_shell_operation_cls",
+        lambda: fake_image_shell_operation_cls,
+    )
+    field = FieldStub(tmp_path)
+    field.make_image_cube = True
+    operation = Image(field, index=1)
+
+    with prefect_test_harness(server_startup_timeout=None):
+        operation.run()
+
+    expected_outputs = _expected_image_cube_operation_outputs(operation)
+    image_dir = Path(field.parset["dir_working"]) / "images" / "image_1"
+    make_cube_command = next(
+        shlex.split(instance.kwargs["commands"][0])
+        for instance in fake_image_shell_operation_cls.instances
+        if shlex.split(instance.kwargs["commands"][0])[0] == "make_image_cube.py"
+    )
+
+    assert operation.outputs == expected_outputs
+    assert Path(operation.done_file).is_file()
+    assert not Path(operation.pipeline_parset_file).exists()
+    assert make_cube_command[2] == "sector_1_I_freq_cube.fits"
+    assert (image_dir / "sector_1_I_freq_cube.fits").is_file()
+    assert (image_dir / "sector_1_I_freq_cube.fits_beams.txt").is_file()
+    assert (image_dir / "sector_1_I_freq_cube.fits_frequencies.txt").is_file()
+
+
+def test_normalize_image_operation_run_uses_prefect_flow(
+    tmp_path, monkeypatch, fake_image_shell_operation_cls
+):
+    monkeypatch.setattr(
+        "rapthor.execution.shell._load_shell_operation_cls",
+        lambda: fake_image_shell_operation_cls,
+    )
+    field = FieldStub(tmp_path)
+    operation = ImageNormalize(field, index=1)
+
+    with prefect_test_harness(server_startup_timeout=None):
+        operation.run()
+
+    expected_outputs = _expected_normalize_image_operation_outputs(operation)
+    solutions_dir = Path(field.parset["dir_working"]) / "solutions" / "normalize_1"
+    image_dir = Path(field.parset["dir_working"]) / "images" / "normalize_1"
+    command_names = [
+        shlex.split(instance.kwargs["commands"][0])[0]
+        for instance in fake_image_shell_operation_cls.instances
+    ]
+
+    assert operation.outputs == expected_outputs
+    assert json.loads(Path(operation.outputs_file).read_text()) == expected_outputs
+    assert Path(operation.done_file).is_file()
+    assert not Path(operation.pipeline_parset_file).exists()
+    assert "make_image_cube.py" in command_names
+    assert "make_catalog_from_image_cube.py" in command_names
+    assert "normalize_flux_scale.py" in command_names
+    assert field.normalize_h5parm == str(solutions_dir / "sector_1_normalize.h5parm")
+    assert (solutions_dir / "sector_1_normalize.h5parm").is_file()
+    assert (image_dir / "sector_1_I_freq_cube.fits").is_file()
+    assert field.normalize_flux_scale is False
+    assert field.apply_normalizations is True
+
+
+def test_mpi_image_operation_run_uses_prefect_flow(
+    tmp_path, monkeypatch, fake_image_shell_operation_cls
+):
+    monkeypatch.setattr(
+        "rapthor.execution.shell._load_shell_operation_cls",
+        lambda: fake_image_shell_operation_cls,
+    )
+    field = FieldStub(tmp_path)
+    field.use_mpi = True
+    field.parset["cluster_specific"]["max_nodes"] = 3
+    field.parset["cluster_specific"]["cpus_per_task"] = 2
+    operation = Image(field, index=1)
+
+    with prefect_test_harness(server_startup_timeout=None):
+        operation.run()
+
+    expected_outputs = _expected_image_operation_outputs(operation)
+    mpi_command = next(
+        shlex.split(instance.kwargs["commands"][0])
+        for instance in fake_image_shell_operation_cls.instances
+        if shlex.split(instance.kwargs["commands"][0])[0] == "mpirun"
+    )
+
+    assert operation.outputs == expected_outputs
+    assert Path(operation.done_file).is_file()
+    assert not Path(operation.pipeline_parset_file).exists()
+    assert "wsclean-mp" in mpi_command
+    assert mpi_command[mpi_command.index("-np") + 1] == "2"
+
+
+def test_previous_mask_image_operation_run_uses_prefect_flow(
+    tmp_path, monkeypatch, fake_image_shell_operation_cls
+):
+    monkeypatch.setattr(
+        "rapthor.execution.shell._load_shell_operation_cls",
+        lambda: fake_image_shell_operation_cls,
+    )
+    previous_mask = tmp_path / "previous-mask.fits"
+    previous_mask.write_text("previous mask")
+    field = FieldStub(tmp_path)
+    field.parset["imaging_specific"]["use_clean_mask"] = True
+    field.imaging_sectors[0].I_mask_file = str(previous_mask)
+    operation = Image(field, index=1)
+
+    with prefect_test_harness(server_startup_timeout=None):
+        operation.run()
+
+    expected_outputs = _expected_image_operation_outputs(operation)
+    sector = field.imaging_sectors[0]
+    blank_command = next(
+        shlex.split(instance.kwargs["commands"][0])
+        for instance in fake_image_shell_operation_cls.instances
+        if shlex.split(instance.kwargs["commands"][0])[0] == "blank_image.py"
+    )
+    mask_dir = Path(field.parset["dir_working"]) / "images" / "image_1" / "sector_1"
+
+    assert operation.outputs == expected_outputs
+    assert Path(operation.done_file).is_file()
+    assert not Path(operation.pipeline_parset_file).exists()
+    assert blank_command[2] == str(previous_mask)
+    assert sector.I_mask_file == str(mask_dir / "sector_1-MFS-I-image-pb.fits.mask.fits")
+    assert (mask_dir / "sector_1-MFS-I-image-pb.fits.mask.fits").is_file()
 
 
 def test_image_finalizer_accepts_prefect_outputs_for_full_stokes(

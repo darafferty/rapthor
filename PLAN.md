@@ -2605,9 +2605,11 @@ Verified:
   tests/execution/test_predict_flow.py`: passed locally.
 - `git diff --check`: passed.
 
-### PR 30: Image Operation-Run Cutover, First Slice
+### PR 30: Image Operation-Run Cutover
 
-Completed in this slice:
+Status: complete.
+
+Completed in this PR:
 
 - Wired the base `Image.execute_workflow()` adapter to `image_flow()` using
   `image_payload_from_inputs()` and `ExecutionConfig.from_parset()`.
@@ -2626,6 +2628,22 @@ Completed in this slice:
 - Added clean-disabled Stokes-I operation-run coverage proving the adapter
   carries `field.disable_clean` through to WSClean `-niter 0` while preserving
   finalizer-compatible outputs and sector diagnostics.
+- Added facet operation-run coverage proving facet region generation,
+  shared-facet read/write flags, facet h5parm wiring, copied region files, and
+  finalizer-compatible outputs.
+- Added screen operation-run coverage proving scalar h5parm application, screen
+  aterm config generation, screen WSClean command wiring, and
+  finalizer-compatible outputs.
+- Added image-cube operation-run coverage proving cube, beam, and frequency
+  products are produced and copied through the finalizer.
+- Added `ImageNormalize` operation-run coverage proving cube generation,
+  catalog generation, flux-scale normalization h5parm output, normalization
+  finalizer state, and Prefect output persistence.
+- Added MPI WSClean operation-run coverage proving operation-derived MPI node
+  and CPU settings reach the Prefect WSClean launcher path.
+- Added previous-mask operation-run coverage proving a saved sector clean mask
+  is passed to `blank_image.py` and replaced with the newly produced mask after
+  finalization.
 - Added restart coverage proving `.done` skips shell execution and persisted
   Prefect output records are reused.
 - Preserved `tests/operations/test_image.py` as CWL-reference coverage until the
@@ -2633,20 +2651,19 @@ Completed in this slice:
 
 Remaining follow-up:
 
-- Extend operation-run cutover coverage for the remaining Image variants:
-  facets, screen application, image cubes, normalization, MPI WSClean, and
-  previous-mask reuse.
 - Add image parity cases to the dedicated CWL-to-Prefect equivalence suite
   before retiring any CWL image workflow code.
+- Add real external-tool Image integration coverage for a small fixture run if
+  CI/staging resources can provide suitable Measurement Set and h5parm inputs.
 
 Verified:
 
-- `python3 -m pytest tests/execution/test_image_flow.py`: 47 passed, 6 warnings.
+- `python3 -m pytest tests/execution/test_image_flow.py`: 53 passed, 12 warnings.
 - `python3 -m pytest tests/operations/test_image.py -q --tb=short
   --disable-warnings`: 85 passed, 2 warnings.
 - `python3 -m ruff check tests/execution/test_image_flow.py`: passed.
-- `python3 -m ruff format tests/execution/test_image_flow.py`: 1 file left
-  unchanged.
+- `python3 -m ruff format tests/execution/test_image_flow.py`: 1 file
+  reformatted.
 - `python3 -m py_compile rapthor/operations/image.py
   tests/execution/test_image_flow.py tests/operations/test_image.py`: passed
   locally.
