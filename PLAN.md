@@ -2693,9 +2693,8 @@ Completed in this PR:
 
 Remaining follow-up:
 
-- Expand operation-run cutover coverage to DD pre-apply, DD image-based predict,
-  DD slow-gain cycles, source-adjusted DD products, and screen-generation slices
-  where supported.
+- Add operation-run cutover coverage for screen generation once IDG/screen
+  generation is implemented in the Prefect calibration flow.
 - Add Calibrate cases to the dedicated CWL-to-Prefect equivalence suite before
   retiring any CWL calibration workflow code.
 - Add real external-tool Calibrate integration coverage for a small fixture run
@@ -2799,6 +2798,55 @@ Verified in the running dev container:
   reformatted.
 - `python3 -m pytest tests/execution/test_calibrate_flow.py -q --tb=short`: 42
   passed, 1 warning.
+- `python3 -m ruff check tests/execution/test_calibrate_flow.py`: passed.
+- `python3 -m ruff format --check tests/execution/test_calibrate_flow.py`:
+  passed.
+- `git diff --check`: passed.
+
+### PR 34: Calibrate Operation-Run Cutover, DD Follow-Up Branches
+
+Status: complete for supported DD follow-up adapter branches.
+
+Completed in this PR:
+
+- Added DD pre-apply operation-run coverage proving operation-derived DI,
+  full-Jones, and normalization h5parm products reach the Prefect DDECal command
+  through `applycal.steps`, `applycal.parmdb`, `applycal.fulljones.parmdb`, and
+  `applycal.normalization.parmdb`.
+- Added DD image-based prediction operation-run coverage proving the adapter
+  runs model-image drawing and field-level region generation before DDECal, then
+  passes `predict.regions`, `predict.images`, and predict-based solve reuse to
+  the Prefect path.
+- Added DD slow-gain multi-direction operation-run coverage proving slow-gain
+  collection, gain processing, medium2 handling, final h5parm combination,
+  source adjustment, plot copying, solution copying, diagnostics, and field
+  h5parm state all survive the operation adapter/finalizer boundary.
+- Kept screen-generation operation-run coverage deferred because IDG/screen
+  generation remains unimplemented in the Prefect calibration flow.
+
+Remaining follow-up:
+
+- Add operation-run cutover coverage for screen generation once IDG/screen
+  generation is implemented in the Prefect calibration flow.
+- Add Calibrate cases to the dedicated CWL-to-Prefect equivalence suite before
+  retiring any CWL calibration workflow code.
+- Add real external-tool Calibrate integration coverage for a small fixture run
+  if CI/staging resources can provide suitable Measurement Set, sky model, and
+  h5parm inputs.
+
+Verified in the running dev container:
+
+- `python3 -m pytest tests/execution/test_calibrate_flow.py -k
+  'calibrate_dd_preapply_operation_run or
+  calibrate_dd_image_predict_operation_run or
+  calibrate_dd_slow_source_adjusted_operation_run' -q --tb=short`: 3 passed,
+  42 deselected, 1 warning.
+- `python3 -m ruff format tests/execution/test_calibrate_flow.py`: 1 file
+  reformatted.
+- `python3 -m pytest tests/execution/test_calibrate_flow.py -q --tb=short`: 45
+  passed, 1 warning.
+- `python3 -m pytest tests/operations/test_calibrate.py -q --tb=short
+  --disable-warnings`: 51 passed, 1 warning.
 - `python3 -m ruff check tests/execution/test_calibrate_flow.py`: passed.
 - `python3 -m ruff format --check tests/execution/test_calibrate_flow.py`:
   passed.

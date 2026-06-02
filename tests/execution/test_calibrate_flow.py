@@ -258,6 +258,22 @@ def _expected_dd_fast_medium_operation_outputs(operation):
     }
 
 
+def _expected_dd_slow_operation_outputs(operation):
+    pipeline_dir = Path(operation.pipeline_working_dir)
+    return {
+        "combined_solutions": file_record(pipeline_dir / "combined_solutions.h5"),
+        "fast_phase_solutions": file_record(pipeline_dir / "fast_phases.h5parm"),
+        "medium1_phase_solutions": file_record(pipeline_dir / "medium1_phases.h5parm"),
+        "slow_gain_solutions": file_record(pipeline_dir / "slow_gains.h5parm"),
+        "medium2_phase_solutions": file_record(pipeline_dir / "medium2_phases.h5parm"),
+        "fast_phase_plots": [file_record(pipeline_dir / "phase_solutions.png")],
+        "medium1_phase_plots": [file_record(pipeline_dir / "medium1_phase_solutions.png")],
+        "slow_phase_plots": [file_record(pipeline_dir / "slow_phase_solutions.png")],
+        "slow_amp_plots": [file_record(pipeline_dir / "slow_amplitude_solutions.png")],
+        "medium2_phase_plots": [file_record(pipeline_dir / "medium2_phase_solutions.png")],
+    }
+
+
 def _patch_dd_model_metadata(monkeypatch):
     monkeypatch.setattr(
         "rapthor.operations.calibrate.misc.get_max_spectral_terms",
@@ -268,6 +284,43 @@ def _patch_dd_model_metadata(monkeypatch):
         "_get_model_image_parameters",
         lambda self: ([150000000.0, 1000000.0], ["12:00:00.0", "+45.00.00.0"], [1024, 1024], 0.001),
     )
+
+
+def _configure_dd_preapply_products(field, tmp_path):
+    solutions_dir = tmp_path / "input_solutions"
+    solutions_dir.mkdir()
+    di_h5parm = solutions_dir / "di-solutions.h5"
+    fulljones_h5parm = solutions_dir / "fulljones-solutions.h5"
+    normalize_h5parm = solutions_dir / "normalize-solutions.h5"
+    for path in (di_h5parm, fulljones_h5parm, normalize_h5parm):
+        path.write_text("input")
+    field.di_h5parm_filename = str(di_h5parm)
+    field.fulljones_h5parm_filename = str(fulljones_h5parm)
+    field.normalize_h5parm = str(normalize_h5parm)
+    field.apply_amplitudes = True
+    field.apply_normalizations = True
+    return di_h5parm, fulljones_h5parm, normalize_h5parm
+
+
+def _configure_dd_multidirection(field):
+    field.calibrator_patch_names = ["patch1", "patch2"]
+    field.calibrator_fluxes = [10.0, 5.0]
+    field._obs_parameters.update(
+        {
+            "fast_solutions_per_direction": [[1, 1], [1, 1]],
+            "medium_solutions_per_direction": [[1, 1], [1, 1]],
+            "slow_solutions_per_direction": [[1, 1], [1, 1]],
+            "fast_smoothness_dd_factors": [[1.0, 2.0], [1.5, 2.5]],
+            "medium_smoothness_dd_factors": [[2.0, 3.0], [2.5, 3.5]],
+            "slow_smoothness_dd_factors": [[3.0, 4.0], [3.5, 4.5]],
+        }
+    )
+
+
+def _command_tokens(shell_operation_cls):
+    return [
+        shlex.split(instance.kwargs["commands"][0]) for instance in shell_operation_cls.instances
+    ]
 
 
 def _materialize_calibrate_operation_outputs(value):
@@ -2123,6 +2176,196 @@ def test_calibrate_dd_fast_medium_operation_run_reuses_prefect_outputs_when_done
     assert (plots_dir / "phase_solutions.png").is_file()
     assert (plots_dir / "medium1_phase_solutions.png").is_file()
     assert field.calibration_diagnostics == [{"cycle_number": 1, "solution_flagged_fraction": 0.0}]
+    assert field.scan_h5parms_calls == 1
+
+
+def test_calibrate_dd_preapply_operation_run_uses_prefect_flow(
+    tmp_path, monkeypatch, fake_calibrate_shell_operation_cls
+):
+    monkeypatch.setattr(
+        "rapthor.execution.shell._load_shell_operation_cls",
+        lambda: fake_calibrate_shell_operation_cls,
+    )
+    monkeypatch.setattr(
+        "rapthor.lib.miscellaneous.get_flagged_solution_fraction",
+        lambda *args, **kwargs: 0.0,
+    )
+    _patch_dd_model_metadata(monkeypatch)
+
+    field = CalibrateFieldStub(tmp_path)
+    di_h5parm, fulljones_h5parm, normalize_h5parm = _configure_dd_preapply_products(field, tmp_path)
+    operation = Calibrate("dd", field, index=1)
+
+    with prefect_test_harness(server_startup_timeout=None):
+        operation.run()
+
+    expected_outputs = _expected_dd_fast_medium_operation_outputs(operation)
+    solutions_dir = Path(field.parset["dir_working"]) / "solutions" / "calibrate_1"
+
+    assert operation.outputs == expected_outputs
+    assert json.loads(Path(operation.outputs_file).read_text()) == expected_outputs
+    assert Path(operation.done_file).is_file()
+    assert field.h5parm_filename == str(solutions_dir / "field-solutions.h5")
+    assert field.fast_phases_h5parm_filename == str(solutions_dir / "field-solutions-fast-phase.h5")
+    commands = _command_tokens(fake_calibrate_shell_operation_cls)
+    assert [command[0] for command in commands] == [
+        "DP3",
+        "DP3",
+        "H5parm_collector.py",
+        "plotrapthor",
+        "H5parm_collector.py",
+        "plotrapthor",
+        "combine_h5parms.py",
+    ]
+    assert "steps=[applycal,solve1,solve2]" in commands[0]
+    assert "applycal.steps=[fastphase,slowgain,fulljones,normalization]" in commands[0]
+    assert f"applycal.parmdb={di_h5parm}" in commands[0]
+    assert f"applycal.fulljones.parmdb={fulljones_h5parm}" in commands[0]
+    assert f"applycal.normalization.parmdb={normalize_h5parm}" in commands[0]
+    assert "solve2.reusemodel=[solve1.*]" in commands[0]
+
+
+def test_calibrate_dd_image_predict_operation_run_uses_prefect_flow(
+    tmp_path, monkeypatch, fake_calibrate_shell_operation_cls
+):
+    monkeypatch.setattr(
+        "rapthor.execution.shell._load_shell_operation_cls",
+        lambda: fake_calibrate_shell_operation_cls,
+    )
+    monkeypatch.setattr(
+        "rapthor.lib.miscellaneous.get_flagged_solution_fraction",
+        lambda *args, **kwargs: 0.0,
+    )
+    _patch_dd_model_metadata(monkeypatch)
+
+    field = CalibrateFieldStub(tmp_path)
+    field.use_image_based_predict = True
+    operation = Calibrate("dd", field, index=1)
+
+    with prefect_test_harness(server_startup_timeout=None):
+        operation.run()
+
+    expected_outputs = _expected_dd_fast_medium_operation_outputs(operation)
+    pipeline_dir = Path(operation.pipeline_working_dir)
+
+    assert operation.outputs == expected_outputs
+    assert (pipeline_dir / "calibration_model-term-0.fits").is_file()
+    assert (pipeline_dir / "field_facets_ds9.reg").is_file()
+    commands = _command_tokens(fake_calibrate_shell_operation_cls)
+    assert [command[0] for command in commands][:3] == ["wsclean", "make_region_file.py", "DP3"]
+    assert commands[0][1:] == [
+        "-j",
+        "4",
+        "-draw-model",
+        field.calibration_skymodel_file,
+        "-draw-spectral-terms",
+        "1",
+        "-name",
+        "calibration_model",
+        "-draw-centre",
+        "12:00:00.0",
+        "+45.00.00.0",
+        "-draw-frequencies",
+        "150000000.0",
+        "1000000.0",
+        "-size",
+        "1024",
+        "1024",
+        "-scale",
+        "0.001",
+    ]
+    assert commands[1] == [
+        "make_region_file.py",
+        field.calibration_skymodel_file,
+        "123.0",
+        "45.0",
+        "1.2288",
+        "1.2288",
+        "field_facets_ds9.reg",
+        "--enclose_names=False",
+    ]
+    assert "steps=[predict,applybeam,solve1,solve2]" in commands[2]
+    assert f"predict.regions={pipeline_dir / 'field_facets_ds9.reg'}" in commands[2]
+    assert f"predict.images=[{pipeline_dir / 'calibration_model-term-0.fits'}]" in commands[2]
+    assert "solve1.reusemodel=[predict.*]" in commands[2]
+    assert "solve2.reusemodel=[predict.*]" in commands[2]
+    assert not any(token.startswith("solve1.sourcedb=") for token in commands[2])
+
+
+def test_calibrate_dd_slow_source_adjusted_operation_run_uses_prefect_flow(
+    tmp_path, monkeypatch, fake_calibrate_shell_operation_cls
+):
+    monkeypatch.setattr(
+        "rapthor.execution.shell._load_shell_operation_cls",
+        lambda: fake_calibrate_shell_operation_cls,
+    )
+    monkeypatch.setattr(
+        "rapthor.lib.miscellaneous.get_flagged_solution_fraction",
+        lambda *args, **kwargs: 0.0,
+    )
+    _patch_dd_model_metadata(monkeypatch)
+
+    field = CalibrateFieldStub(tmp_path)
+    field.do_slowgain_solve = True
+    _configure_dd_multidirection(field)
+    operation = Calibrate("dd", field, index=1)
+
+    with prefect_test_harness(server_startup_timeout=None):
+        operation.run()
+
+    expected_outputs = _expected_dd_slow_operation_outputs(operation)
+    solutions_dir = Path(field.parset["dir_working"]) / "solutions" / "calibrate_1"
+    plots_dir = Path(field.parset["dir_working"]) / "plots" / "calibrate_1"
+
+    assert operation.outputs == expected_outputs
+    assert json.loads(Path(operation.outputs_file).read_text()) == expected_outputs
+    assert field.h5parm_filename == str(solutions_dir / "field-solutions.h5")
+    assert field.dd_h5parm_filename == str(solutions_dir / "field-solutions.h5")
+    assert field.fast_phases_h5parm_filename == str(solutions_dir / "field-solutions-fast-phase.h5")
+    assert field.medium1_phases_h5parm_filename == str(
+        solutions_dir / "field-solutions-medium1-phase.h5"
+    )
+    assert field.medium2_phases_h5parm_filename == str(
+        solutions_dir / "field-solutions-medium2-phase.h5"
+    )
+    assert field.slow_gains_h5parm_filename == str(solutions_dir / "field-solutions-slow-gain.h5")
+    assert (solutions_dir / "field-solutions.h5").read_text() == "adjusted"
+    assert (solutions_dir / "field-solutions-fast-phase.h5").read_text() == "collected"
+    assert (solutions_dir / "field-solutions-medium1-phase.h5").read_text() == "collected"
+    assert (solutions_dir / "field-solutions-medium2-phase.h5").read_text() == "collected"
+    assert (solutions_dir / "field-solutions-slow-gain.h5").read_text() == "processed"
+    assert (plots_dir / "phase_solutions.png").is_file()
+    assert (plots_dir / "medium1_phase_solutions.png").is_file()
+    assert (plots_dir / "medium2_phase_solutions.png").is_file()
+    assert (plots_dir / "slow_phase_solutions.png").is_file()
+    assert (plots_dir / "slow_amplitude_solutions.png").is_file()
+    assert field.calibration_diagnostics == [{"cycle_number": 1, "solution_flagged_fraction": 0.0}]
+    commands = _command_tokens(fake_calibrate_shell_operation_cls)
+    assert [command[0] for command in commands] == [
+        "DP3",
+        "DP3",
+        "H5parm_collector.py",
+        "plotrapthor",
+        "H5parm_collector.py",
+        "plotrapthor",
+        "combine_h5parms.py",
+        "H5parm_collector.py",
+        "process_gains.py",
+        "plotrapthor",
+        "plotrapthor",
+        "H5parm_collector.py",
+        "plotrapthor",
+        "combine_h5parms.py",
+        "combine_h5parms.py",
+        "adjust_h5parm_sources.py",
+    ]
+    assert "steps=[solve1,solve2,solve3,solve4]" in commands[0]
+    assert "solve3.h5parm=slow_gain_0.h5parm" in commands[0]
+    assert commands[-1] == [
+        "adjust_h5parm_sources.py",
+        field.calibration_skymodel_file,
+        str(Path(operation.pipeline_working_dir) / "combined_solutions.h5"),
+    ]
     assert field.scan_h5parms_calls == 1
 
 
