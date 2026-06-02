@@ -182,6 +182,8 @@ class CalibrateFieldStub:
             "bda_minchannels": [1, 1],
             "solint_fulljones_timestep": [5, 6],
             "solint_fulljones_freqstep": [2, 3],
+            "solint_fast_timestep": [5, 6],
+            "solint_fast_freqstep": [2, 3],
             "solint_slow_timestep": [11, 12],
             "solint_slow_freqstep": [7, 8],
             "solint_medium_timestep": [9, 10],
@@ -205,6 +207,17 @@ def _expected_di_fulljones_operation_outputs(operation):
         "combined_solutions": solution,
         "fast_phase_solutions": solution,
         "fast_phase_plots": [file_record(pipeline_dir / "phase_solutions.png")],
+    }
+
+
+def _expected_di_scalar_phase_operation_outputs(operation):
+    pipeline_dir = Path(operation.pipeline_working_dir)
+    return {
+        "combined_solutions": file_record(pipeline_dir / "combined_solve1_solve2_di.h5parm"),
+        "fast_phase_solutions": file_record(pipeline_dir / "fast_phases_di.h5parm"),
+        "medium1_phase_solutions": file_record(pipeline_dir / "medium1_phases_di.h5parm"),
+        "fast_phase_plots": [file_record(pipeline_dir / "phase_solutions.png")],
+        "medium1_phase_plots": [file_record(pipeline_dir / "medium1_phase_solutions.png")],
     }
 
 
@@ -1867,6 +1880,50 @@ def test_calibrate_di_operation_run_uses_prefect_flow(
     assert len(fake_calibrate_shell_operation_cls.instances) == 4
 
 
+def test_calibrate_di_scalar_operation_run_uses_prefect_flow(
+    tmp_path, monkeypatch, fake_calibrate_shell_operation_cls
+):
+    monkeypatch.setattr(
+        "rapthor.execution.shell._load_shell_operation_cls",
+        lambda: fake_calibrate_shell_operation_cls,
+    )
+    monkeypatch.setattr(
+        "rapthor.lib.miscellaneous.get_flagged_solution_fraction",
+        lambda *args, **kwargs: 0.0,
+    )
+
+    field = CalibrateFieldStub(tmp_path)
+    field.calibration_strategy = {"di": ["fast_phase", "medium_phase"]}
+    operation = Calibrate("di", field, index=1)
+
+    with prefect_test_harness(server_startup_timeout=None):
+        operation.run()
+
+    expected_outputs = _expected_di_scalar_phase_operation_outputs(operation)
+    solutions_dir = Path(field.parset["dir_working"]) / "solutions" / "calibrate_di_1"
+    plots_dir = Path(field.parset["dir_working"]) / "plots" / "calibrate_di_1"
+
+    assert operation.outputs == expected_outputs
+    assert json.loads(Path(operation.outputs_file).read_text()) == expected_outputs
+    assert Path(operation.done_file).is_file()
+    assert Path(operation.pipeline_inputs_file).is_file()
+    assert not Path(operation.pipeline_parset_file).exists()
+    assert field.h5parm_filename == str(solutions_dir / "di-solutions.h5")
+    assert field.di_h5parm_filename == str(solutions_dir / "di-solutions.h5")
+    assert field.di_fast_phases_h5parm_filename == str(solutions_dir / "di-solutions-fast-phase.h5")
+    assert field.di_medium1_phases_h5parm_filename == str(
+        solutions_dir / "di-solutions-medium1-phase.h5"
+    )
+    assert field.fulljones_h5parm_filename is None
+    assert (solutions_dir / "di-solutions.h5").is_file()
+    assert (solutions_dir / "di-solutions-fast-phase.h5").is_file()
+    assert (solutions_dir / "di-solutions-medium1-phase.h5").is_file()
+    assert (plots_dir / "phase_solutions.png").is_file()
+    assert (plots_dir / "medium1_phase_solutions.png").is_file()
+    assert field.scan_h5parms_calls == 1
+    assert len(fake_calibrate_shell_operation_cls.instances) == 7
+
+
 def test_calibrate_di_operation_run_reuses_prefect_outputs_when_done(
     tmp_path, monkeypatch, fake_calibrate_shell_operation_cls
 ):
@@ -1896,6 +1953,47 @@ def test_calibrate_di_operation_run_reuses_prefect_outputs_when_done(
     assert field.fulljones_h5parm_filename == str(solutions_dir / "fulljones-solutions.h5")
     assert (solutions_dir / "fulljones-solutions.h5").is_file()
     assert (plots_dir / "phase_solutions.png").is_file()
+    assert field.scan_h5parms_calls == 1
+
+
+def test_calibrate_di_scalar_operation_run_reuses_prefect_outputs_when_done(
+    tmp_path, monkeypatch, fake_calibrate_shell_operation_cls
+):
+    monkeypatch.setattr(
+        "rapthor.execution.shell._load_shell_operation_cls",
+        lambda: fake_calibrate_shell_operation_cls,
+    )
+    monkeypatch.setattr(
+        "rapthor.lib.miscellaneous.get_flagged_solution_fraction",
+        lambda *args, **kwargs: 0.0,
+    )
+
+    field = CalibrateFieldStub(tmp_path)
+    field.calibration_strategy = {"di": ["fast_phase", "medium_phase"]}
+    operation = Calibrate("di", field, index=1)
+    expected_outputs = _expected_di_scalar_phase_operation_outputs(operation)
+    _materialize_calibrate_operation_outputs(expected_outputs)
+    Path(operation.done_file).touch()
+    Path(operation.outputs_file).write_text(json.dumps(expected_outputs))
+
+    operation.run()
+
+    solutions_dir = Path(field.parset["dir_working"]) / "solutions" / "calibrate_di_1"
+    plots_dir = Path(field.parset["dir_working"]) / "plots" / "calibrate_di_1"
+
+    assert operation.outputs == expected_outputs
+    assert fake_calibrate_shell_operation_cls.instances == []
+    assert field.h5parm_filename == str(solutions_dir / "di-solutions.h5")
+    assert field.di_h5parm_filename == str(solutions_dir / "di-solutions.h5")
+    assert field.di_fast_phases_h5parm_filename == str(solutions_dir / "di-solutions-fast-phase.h5")
+    assert field.di_medium1_phases_h5parm_filename == str(
+        solutions_dir / "di-solutions-medium1-phase.h5"
+    )
+    assert (solutions_dir / "di-solutions.h5").is_file()
+    assert (solutions_dir / "di-solutions-fast-phase.h5").is_file()
+    assert (solutions_dir / "di-solutions-medium1-phase.h5").is_file()
+    assert (plots_dir / "phase_solutions.png").is_file()
+    assert (plots_dir / "medium1_phase_solutions.png").is_file()
     assert field.scan_h5parms_calls == 1
 
 

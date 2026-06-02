@@ -2693,9 +2693,9 @@ Completed in this PR:
 
 Remaining follow-up:
 
-- Expand operation-run cutover coverage to DI scalar phase, DD fast/medium
-  phase, DD pre-apply, DD image-based predict, DD slow-gain cycles,
-  source-adjusted DD products, and screen-generation slices where supported.
+- Expand operation-run cutover coverage to DD fast/medium phase, DD pre-apply,
+  DD image-based predict, DD slow-gain cycles, source-adjusted DD products, and
+  screen-generation slices where supported.
 - Add Calibrate cases to the dedicated CWL-to-Prefect equivalence suite before
   retiring any CWL calibration workflow code.
 - Add real external-tool Calibrate integration coverage for a small fixture run
@@ -2718,6 +2718,47 @@ Verified:
 - `python3 -m ruff check rapthor/operations/calibrate.py
   tests/execution/test_calibrate_flow.py`: not rerun in the devcontainer because
   the escalation request hit the session usage limit.
+
+### PR 32: Calibrate Operation-Run Cutover, DI Scalar Phase
+
+Status: complete for the DI scalar-phase adapter slice.
+
+Completed in this PR:
+
+- Added DI scalar-phase operation-run coverage proving Calibrate executes
+  through the Prefect path, persists finalizer-compatible scalar-phase output
+  records, skips CWL parset generation, and copies the combined DI h5parm plus
+  fast and medium phase products into the field-facing solution directory.
+- Added DI scalar-phase restart coverage proving `.done` reloads persisted
+  Prefect outputs without shell execution while finalization restores
+  `di-solutions.h5`, per-solve phase products, plots, and field h5parm state.
+- Extended the Calibrate operation field stub with fast-phase solution interval
+  inputs so it can exercise the operation-derived DI scalar solve plan.
+
+Remaining follow-up:
+
+- Expand operation-run cutover coverage to DD fast/medium phase, DD pre-apply,
+  DD image-based predict, DD slow-gain cycles, source-adjusted DD products, and
+  screen-generation slices where supported.
+- Add Calibrate cases to the dedicated CWL-to-Prefect equivalence suite before
+  retiring any CWL calibration workflow code.
+- Add real external-tool Calibrate integration coverage for a small fixture run
+  if CI/staging resources can provide suitable Measurement Set, sky model, and
+  h5parm inputs.
+
+Verified in the running dev container:
+
+- `python3 -m pytest tests/execution/test_calibrate_flow.py -k
+  'calibrate_di_operation_run or calibrate_di_scalar_operation_run' -q
+  --tb=short`: 4 passed, 36 deselected, 1 warning.
+- `python3 -m ruff format tests/execution/test_calibrate_flow.py`: 1 file
+  reformatted.
+- `python3 -m pytest tests/execution/test_calibrate_flow.py -q --tb=short`: 40
+  passed, 1 warning.
+- `python3 -m ruff check tests/execution/test_calibrate_flow.py`: passed.
+- `python3 -m ruff format --check tests/execution/test_calibrate_flow.py`:
+  passed.
+- `git diff --check`: passed.
 
 ## Success Criteria
 
