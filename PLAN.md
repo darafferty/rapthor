@@ -2693,9 +2693,9 @@ Completed in this PR:
 
 Remaining follow-up:
 
-- Expand operation-run cutover coverage to DD fast/medium phase, DD pre-apply,
-  DD image-based predict, DD slow-gain cycles, source-adjusted DD products, and
-  screen-generation slices where supported.
+- Expand operation-run cutover coverage to DD pre-apply, DD image-based predict,
+  DD slow-gain cycles, source-adjusted DD products, and screen-generation slices
+  where supported.
 - Add Calibrate cases to the dedicated CWL-to-Prefect equivalence suite before
   retiring any CWL calibration workflow code.
 - Add real external-tool Calibrate integration coverage for a small fixture run
@@ -2754,6 +2754,50 @@ Verified in the running dev container:
 - `python3 -m ruff format tests/execution/test_calibrate_flow.py`: 1 file
   reformatted.
 - `python3 -m pytest tests/execution/test_calibrate_flow.py -q --tb=short`: 40
+  passed, 1 warning.
+- `python3 -m ruff check tests/execution/test_calibrate_flow.py`: passed.
+- `python3 -m ruff format --check tests/execution/test_calibrate_flow.py`:
+  passed.
+- `git diff --check`: passed.
+
+### PR 33: Calibrate Operation-Run Cutover, DD Fast And Medium Phase
+
+Status: complete for the non-image-based DD fast+medium adapter slice.
+
+Completed in this PR:
+
+- Added DD fast+medium operation-run coverage proving Calibrate executes through
+  the Prefect path, persists finalizer-compatible DD phase output records, skips
+  CWL parset generation, writes operation state, copies the field-visible fast
+  phase solution products, plots solution diagnostics, and records calibration
+  diagnostics.
+- Added DD fast+medium restart coverage proving `.done` reloads persisted
+  Prefect outputs without shell execution while finalization restores field
+  solution state, plots, and diagnostics.
+- Extended the Calibrate operation field stub with DD solve metadata, sky-model
+  path, smoothness constraints, calibrator metadata, and data-column/runtime
+  inputs needed by `Calibrate.set_input_parameters()`.
+
+Remaining follow-up:
+
+- Expand operation-run cutover coverage to DD pre-apply, DD image-based predict,
+  DD slow-gain cycles, source-adjusted DD products, and screen-generation slices
+  where supported.
+- Add Calibrate cases to the dedicated CWL-to-Prefect equivalence suite before
+  retiring any CWL calibration workflow code.
+- Add real external-tool Calibrate integration coverage for a small fixture run
+  if CI/staging resources can provide suitable Measurement Set, sky model, and
+  h5parm inputs.
+
+Verified in the running dev container:
+
+- `python3 -m pytest tests/execution/test_calibrate_flow.py -k
+  'calibrate_dd_fast_medium_operation_run or calibrate_di_operation_run or
+  calibrate_di_scalar_operation_run' -q --tb=short`: 6 passed, 36 deselected, 1
+  warning.
+- `python3 -m ruff format tests/execution/test_calibrate_flow.py`: 1 file
+  reformatted.
+- `python3 -m pytest tests/execution/test_calibrate_flow.py -q --tb=short`: 42
   passed, 1 warning.
 - `python3 -m ruff check tests/execution/test_calibrate_flow.py`: passed.
 - `python3 -m ruff format --check tests/execution/test_calibrate_flow.py`:

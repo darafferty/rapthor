@@ -132,11 +132,17 @@ class CalibrateFieldStub:
         self.ntimechunks = 2
         self.calibration_diagnostics = []
         self.calibration_skymodel_file = str(tmp_path / "calibration.skymodel")
+        Path(self.calibration_skymodel_file).write_text("skymodel")
         self.ra = 123.0
         self.dec = 45.0
         self.sector_bounds_deg = "[0,0,1,1]"
         self.sector_bounds_mid_deg = "[0.5,0.5]"
         self.smoothnessconstraint_fulljones = 1.5
+        self.fast_smoothnessconstraint = 1200000.0
+        self.medium_smoothnessconstraint = 2400000.0
+        self.slow_smoothnessconstraint = 3600000.0
+        self.fast_smoothnessrefdistance = 2500.0
+        self.medium_smoothnessrefdistance = 3500.0
         self.max_normalization_delta = 0.3
         self.scale_normalization_delta = True
         self.llssolver = "qr"
@@ -154,16 +160,27 @@ class CalibrateFieldStub:
         self.solverlbfgs_iter = 4
         self.solverlbfgs_minibatches = 1
         self.correct_smearing_in_calibration = True
+        self.fast_datause = "full"
+        self.medium_datause = "full"
+        self.slow_datause = "full"
+        self.data_colname = "DATA"
+        self.calibrator_patch_names = ["patch1"]
+        self.calibrator_fluxes = [10.0]
+        self.antenna = "HBA"
+        self.stations = []
         self.calibrate_bda_timebase = 0
         self.calibrate_bda_frequencybase = 0
         self.do_slowgain_solve = False
         self.calibration_strategy = {"di": ["full_jones"]}
+        self.apply_diagonal_solutions = False
+        self.apply_amplitudes = False
         self.generate_screens = False
         self.use_image_based_predict = False
         self.apply_normalizations = False
         self.normalize_h5parm = None
         self.fulljones_h5parm_filename = None
         self.h5parm_filename = None
+        self.dd_h5parm_filename = None
         self.di_h5parm_filename = None
         self.fast_phases_h5parm_filename = None
         self.medium1_phases_h5parm_filename = None
@@ -176,6 +193,7 @@ class CalibrateFieldStub:
         self.scan_h5parms_calls = 0
         self._obs_parameters = {
             "predict_di_output_filename": ["obs_0_predict.ms", "obs_1_predict.ms"],
+            "timechunk_filename": ["dd_obs_0.ms", "dd_obs_1.ms"],
             "starttime": ["50000.0", "50010.0"],
             "ntimes": [10, 12],
             "bda_maxinterval": [8.0, 9.0],
@@ -188,6 +206,14 @@ class CalibrateFieldStub:
             "solint_slow_freqstep": [7, 8],
             "solint_medium_timestep": [9, 10],
             "solint_medium_freqstep": [5, 6],
+            "fast_solutions_per_direction": [[1], [1]],
+            "medium_solutions_per_direction": [[1], [1]],
+            "slow_solutions_per_direction": [[1], [1]],
+            "fast_smoothness_dd_factors": [[1.0], [1.0]],
+            "medium_smoothness_dd_factors": [[1.0], [1.0]],
+            "slow_smoothness_dd_factors": [[1.0], [1.0]],
+            "fast_smoothnessreffrequency": [150000000.0, 151000000.0],
+            "medium_smoothnessreffrequency": [152000000.0, 153000000.0],
         }
 
     def set_obs_parameters(self):
@@ -219,6 +245,29 @@ def _expected_di_scalar_phase_operation_outputs(operation):
         "fast_phase_plots": [file_record(pipeline_dir / "phase_solutions.png")],
         "medium1_phase_plots": [file_record(pipeline_dir / "medium1_phase_solutions.png")],
     }
+
+
+def _expected_dd_fast_medium_operation_outputs(operation):
+    pipeline_dir = Path(operation.pipeline_working_dir)
+    return {
+        "combined_solutions": file_record(pipeline_dir / "combined_fast_medium1_phases.h5parm"),
+        "fast_phase_solutions": file_record(pipeline_dir / "fast_phases.h5parm"),
+        "medium1_phase_solutions": file_record(pipeline_dir / "medium1_phases.h5parm"),
+        "fast_phase_plots": [file_record(pipeline_dir / "phase_solutions.png")],
+        "medium1_phase_plots": [file_record(pipeline_dir / "medium1_phase_solutions.png")],
+    }
+
+
+def _patch_dd_model_metadata(monkeypatch):
+    monkeypatch.setattr(
+        "rapthor.operations.calibrate.misc.get_max_spectral_terms",
+        lambda *args, **kwargs: 1,
+    )
+    monkeypatch.setattr(
+        Calibrate,
+        "_get_model_image_parameters",
+        lambda self: ([150000000.0, 1000000.0], ["12:00:00.0", "+45.00.00.0"], [1024, 1024], 0.001),
+    )
 
 
 def _materialize_calibrate_operation_outputs(value):
@@ -1994,6 +2043,86 @@ def test_calibrate_di_scalar_operation_run_reuses_prefect_outputs_when_done(
     assert (solutions_dir / "di-solutions-medium1-phase.h5").is_file()
     assert (plots_dir / "phase_solutions.png").is_file()
     assert (plots_dir / "medium1_phase_solutions.png").is_file()
+    assert field.scan_h5parms_calls == 1
+
+
+def test_calibrate_dd_fast_medium_operation_run_uses_prefect_flow(
+    tmp_path, monkeypatch, fake_calibrate_shell_operation_cls
+):
+    monkeypatch.setattr(
+        "rapthor.execution.shell._load_shell_operation_cls",
+        lambda: fake_calibrate_shell_operation_cls,
+    )
+    monkeypatch.setattr(
+        "rapthor.lib.miscellaneous.get_flagged_solution_fraction",
+        lambda *args, **kwargs: 0.0,
+    )
+    _patch_dd_model_metadata(monkeypatch)
+
+    field = CalibrateFieldStub(tmp_path)
+    operation = Calibrate("dd", field, index=1)
+
+    with prefect_test_harness(server_startup_timeout=None):
+        operation.run()
+
+    expected_outputs = _expected_dd_fast_medium_operation_outputs(operation)
+    solutions_dir = Path(field.parset["dir_working"]) / "solutions" / "calibrate_1"
+    plots_dir = Path(field.parset["dir_working"]) / "plots" / "calibrate_1"
+
+    assert operation.outputs == expected_outputs
+    assert json.loads(Path(operation.outputs_file).read_text()) == expected_outputs
+    assert Path(operation.done_file).is_file()
+    assert Path(operation.pipeline_inputs_file).is_file()
+    assert not Path(operation.pipeline_parset_file).exists()
+    assert field.h5parm_filename == str(solutions_dir / "field-solutions.h5")
+    assert field.dd_h5parm_filename == str(solutions_dir / "field-solutions.h5")
+    assert field.fast_phases_h5parm_filename == str(solutions_dir / "field-solutions-fast-phase.h5")
+    assert (solutions_dir / "field-solutions.h5").read_text() == "collected"
+    assert (solutions_dir / "field-solutions-fast-phase.h5").read_text() == "collected"
+    assert not (solutions_dir / "field-solutions-medium1-phase.h5").exists()
+    assert (plots_dir / "phase_solutions.png").is_file()
+    assert (plots_dir / "medium1_phase_solutions.png").is_file()
+    assert field.calibration_diagnostics == [{"cycle_number": 1, "solution_flagged_fraction": 0.0}]
+    assert field.scan_h5parms_calls == 1
+    assert len(fake_calibrate_shell_operation_cls.instances) == 7
+
+
+def test_calibrate_dd_fast_medium_operation_run_reuses_prefect_outputs_when_done(
+    tmp_path, monkeypatch, fake_calibrate_shell_operation_cls
+):
+    monkeypatch.setattr(
+        "rapthor.execution.shell._load_shell_operation_cls",
+        lambda: fake_calibrate_shell_operation_cls,
+    )
+    monkeypatch.setattr(
+        "rapthor.lib.miscellaneous.get_flagged_solution_fraction",
+        lambda *args, **kwargs: 0.0,
+    )
+    _patch_dd_model_metadata(monkeypatch)
+
+    field = CalibrateFieldStub(tmp_path)
+    operation = Calibrate("dd", field, index=1)
+    expected_outputs = _expected_dd_fast_medium_operation_outputs(operation)
+    _materialize_calibrate_operation_outputs(expected_outputs)
+    Path(operation.done_file).touch()
+    Path(operation.outputs_file).write_text(json.dumps(expected_outputs))
+
+    operation.run()
+
+    solutions_dir = Path(field.parset["dir_working"]) / "solutions" / "calibrate_1"
+    plots_dir = Path(field.parset["dir_working"]) / "plots" / "calibrate_1"
+
+    assert operation.outputs == expected_outputs
+    assert fake_calibrate_shell_operation_cls.instances == []
+    assert field.h5parm_filename == str(solutions_dir / "field-solutions.h5")
+    assert field.dd_h5parm_filename == str(solutions_dir / "field-solutions.h5")
+    assert field.fast_phases_h5parm_filename == str(solutions_dir / "field-solutions-fast-phase.h5")
+    assert (solutions_dir / "field-solutions.h5").is_file()
+    assert (solutions_dir / "field-solutions-fast-phase.h5").is_file()
+    assert not (solutions_dir / "field-solutions-medium1-phase.h5").exists()
+    assert (plots_dir / "phase_solutions.png").is_file()
+    assert (plots_dir / "medium1_phase_solutions.png").is_file()
+    assert field.calibration_diagnostics == [{"cycle_number": 1, "solution_flagged_fraction": 0.0}]
     assert field.scan_h5parms_calls == 1
 
 
