@@ -9,6 +9,8 @@ from typing import List, Union
 
 import numpy as np
 
+from rapthor.execution.config import ExecutionConfig
+from rapthor.execution.flows.image import image_flow, image_payload_from_inputs
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.cwl import CWLDir, CWLFile
 from rapthor.lib.operation import Operation
@@ -80,6 +82,12 @@ class Image(Operation):
         self.allow_internet_access = True
         self.photometry_skymodel = None
         self.astrometry_skymodel = None
+
+    def uses_python_flow(self):
+        """
+        Image operations are executed through the Prefect/Dask Python flow.
+        """
+        return True
 
     def set_parset_parameters(self):
         """
@@ -574,6 +582,29 @@ class Image(Operation):
         if self.normalize_flux_scale:
             self.input_parms.update({"output_source_catalog": output_source_catalog})
             self.input_parms.update({"output_normalize_h5parm": normalize_h5parm})
+
+    def execute_workflow(self):
+        """
+        Execute imaging through the Prefect flow and return operation outputs.
+        """
+        if not self.uses_python_flow():
+            return super().execute_workflow()
+
+        payload = image_payload_from_inputs(
+            self.input_parms,
+            self.pipeline_working_dir,
+            apply_screens=self.apply_screens,
+            use_facets=self.use_facets,
+            compress_images=self.compress_images,
+            make_image_cube=self.make_image_cube,
+            normalize_flux_scale=self.normalize_flux_scale,
+            use_mpi=self.field.use_mpi,
+        )
+        outputs = image_flow(
+            payload,
+            execution_config=ExecutionConfig.from_parset(self.parset),
+        )
+        return True, outputs
 
     def finalize(self):
         """

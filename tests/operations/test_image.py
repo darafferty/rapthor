@@ -74,6 +74,9 @@ def _initialize_operation(operation, do_predict=None, apply_none=None, use_facet
     Set parameters for the given operation based on the provided arguments.
     This allows us to customize the operation setup for different test cases.
     """
+    # These operation tests remain CWL-reference coverage until the explicit
+    # CWL-vs-Prefect equivalence suite is in place.
+    operation.uses_python_flow = lambda: False
     if do_predict is not None:
         operation.do_predict = do_predict
     if apply_none is not None:

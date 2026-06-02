@@ -1235,6 +1235,15 @@ CWL-to-Prefect equivalence suite before CWL removal:
 - Add a dedicated parity suite that runs the same small parsets through the CWL
   reference path and the Prefect/Dask path in isolated working directories while
   CWL is still present on the migration branch.
+- Treat CWL as the reference implementation until that suite passes, not as
+  already-retired code. Operation tests that mock CWL execution, inspect
+  rendered CWL, or assert CWL output-record shapes should remain enabled and
+  should be kept passing during each operation adapter cutover.
+- Treat Prefect operation-run tests as additive coverage during the migration.
+  They should prove the new orchestration path, but they should not replace the
+  CWL-reference tests until the equivalence suite has demonstrated parity.
+- For each operation adapter PR, run both the new Prefect flow/operation tests
+  and the existing CWL-reference operation tests for the touched operation.
 - Cover at minimum DI-only, DD-only, DI-then-DD, DD-then-DI, normalization,
   peeling, restart, and a representative imaging/mosaic case.
 - Compare operation completion order, `.outputs.json` keys and shapes, product
@@ -2595,6 +2604,42 @@ Verified:
 - `python3 -m py_compile rapthor/operations/predict.py
   tests/execution/test_predict_flow.py`: passed locally.
 - `git diff --check`: passed.
+
+### PR 30: Image Operation-Run Cutover, First Slice
+
+Completed in this slice:
+
+- Wired the base `Image.execute_workflow()` adapter to `image_flow()` using
+  `image_payload_from_inputs()` and `ExecutionConfig.from_parset()`.
+- Kept the adapter compatible with CWL-reference tests: production
+  `Image.uses_python_flow()` returns true, but tests that explicitly force
+  `uses_python_flow()` false now fall back to the base CWL executor.
+- Added no-DDE Stokes-I operation-run coverage proving Image executes through
+  Prefect, writes operation state, skips CWL template generation, updates sector
+  image/skymodel state, and produces finalizer-compatible output records.
+- Added restart coverage proving `.done` skips shell execution and persisted
+  Prefect output records are reused.
+- Preserved `tests/operations/test_image.py` as CWL-reference coverage until the
+  dedicated CWL-to-Prefect equivalence suite passes.
+
+Remaining follow-up:
+
+- Extend operation-run cutover coverage for the remaining Image variants:
+  facets, screen application, compression, clean-disabled mode, image cubes,
+  normalization, full Stokes, MPI WSClean, previous-mask reuse, and
+  supplementary products.
+- Add image parity cases to the dedicated CWL-to-Prefect equivalence suite
+  before retiring any CWL image workflow code.
+
+Verified:
+
+- `python3 -m pytest tests/execution/test_image_flow.py`: 44 passed, 3 warnings
+  before the CWL-reference fallback patch.
+- `python3 -m pytest tests/operations/test_image.py -q --tb=short
+  --disable-warnings`: 85 passed, 2 warnings.
+- `python3 -m py_compile rapthor/operations/image.py
+  tests/execution/test_image_flow.py tests/operations/test_image.py`: passed
+  locally.
 
 ## Success Criteria
 

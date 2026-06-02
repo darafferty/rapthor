@@ -160,19 +160,82 @@ class NoOutputShellOperation:
         return "OK"
 
 
+class ObservationStub:
+    def __init__(self, ms_filename: str, starttime: float, numsamples: int):
+        self.ms_filename = ms_filename
+        self.starttime = starttime
+        self.numsamples = numsamples
+        self.timepersample = 1.0
+        self.channels_are_regular = True
+        self.parameters = {}
+
+
 class SectorStub:
-    def __init__(self):
+    def __init__(self, observations=None):
         self.name = "sector_1"
         self.diagnostics = []
+        self.observations = observations or []
+        self.I_mask_file = None
+        self.ra = 123.0
+        self.dec = 45.0
+        self.wsclean_nchannels = 4
+        self.wsclean_deconvolution_channels = 2
+        self.wsclean_spectral_poly_order = 2
+        self.imsize = [1024, 1024]
+        self.vertices_file = "/data/sector_1.vertices"
+        self.region_file = None
+        self.wsclean_niter = 1000
+        self.wsclean_nmiter = 5
+        self.robust = -0.5
+        self.cellsize_deg = 0.001
+        self.min_uv_lambda = 80.0
+        self.max_uv_lambda = 1000000.0
+        self.mgain = 0.85
+        self.taper_arcsec = 0.0
+        self.local_rms_strength = 0.0
+        self.local_rms_window = 25.0
+        self.local_rms_method = "rms-with-min"
+        self.auto_mask = 5.0
+        self.auto_mask_nmiter = 1
+        self.idg_mode = "cpu"
+        self.mem_limit_gb = 8.0
+        self.threshisl = 4.0
+        self.threshpix = 5.0
+        self.multiscale = True
+        self.dd_psf_grid = [1, 1]
+
+    def set_imaging_parameters(
+        self,
+        do_multiscale=False,
+        recalculate_imsize=False,
+        imaging_parameters=None,
+        preapply_dde_solutions=False,
+    ):
+        self.multiscale = bool(do_multiscale)
+        for index, obs in enumerate(self.observations):
+            obs.parameters["ms_filename"] = obs.ms_filename
+            obs.parameters["ms_prep_filename"] = f"{self.name}_obs_{index}_prep.ms"
+            obs.parameters["image_freqstep"] = 4
+            obs.parameters["image_timestep"] = 2
+            obs.parameters["image_bda_maxinterval"] = 8
+
+    def get_obs_parameters(self, name):
+        if name == "ms_filename":
+            return [obs.ms_filename for obs in self.observations]
+        return [obs.parameters[name] for obs in self.observations]
 
 
 class FieldStub:
     def __init__(self, tmp_path):
         self.parset = _operation_parset(tmp_path)
+        self.observations = [
+            ObservationStub("obs_0.ms", 59000.0, 10),
+            ObservationStub("obs_1.ms", 59001.0, 12),
+        ]
         self.make_image_cube = False
-        self.full_field_sector = SectorStub()
-        self.imaging_sectors = [SectorStub()]
-        self.normalize_sector = SectorStub()
+        self.full_field_sector = SectorStub(self.observations)
+        self.imaging_sectors = [SectorStub(self.observations)]
+        self.normalize_sector = SectorStub(self.observations)
         self.save_supplementary_images = False
         self.save_visibilities = False
         self.image_pol = "I"
@@ -180,6 +243,33 @@ class FieldStub:
         self.lofar_to_true_flux_std = None
         self.normalize_flux_scale = True
         self.apply_normalizations = False
+        self.image_cube_stokes_list = ["I"]
+        self.compress_images = False
+        self.compress_selfcal_images = False
+        self.apply_screens = False
+        self.dde_method = "none"
+        self.h5parm_filename = None
+        self.dd_h5parm_filename = None
+        self.di_h5parm_filename = None
+        self.fulljones_h5parm_filename = None
+        self.calibration_strategy = {}
+        self.normalize_h5parm = None
+        self.photometry_skymodel = None
+        self.astrometry_skymodel = None
+        self.use_mpi = False
+        self.do_predict = False
+        self.do_multiscale_clean = True
+        self.pol_combine_method = "join"
+        self.apply_amplitudes = False
+        self.apply_fulljones = False
+        self.peel_bright_sources = False
+        self.average_visibilities = True
+        self.image_bda_timebase = 10.0
+        self.slow_timestep_sec = 0.0
+        self.data_colname = "DATA"
+        self.skip_final_major_iteration = True
+        self.correct_smearing_in_imaging = False
+        self.disable_clean = False
 
 
 def _operation_parset(tmp_path):
@@ -201,10 +291,16 @@ def _operation_parset(tmp_path):
             "max_cores": 1,
             "max_threads": 4,
             "deconvolution_threads": 2,
+            "parallel_gridding_threads": 3,
+            "allow_internet_access": False,
+            "prefect_task_runner": "sync",
         },
         "imaging_specific": {
             "use_clean_mask": False,
             "save_filtered_model_image": False,
+            "filter_skymodel": False,
+            "source_finder": "bdsf",
+            "shared_facet_rw": False,
         },
     }
 
@@ -442,6 +538,65 @@ def _two_sector_image_input_parms():
     input_parms["vertices_file"][1] = file_record("/data/sector_2.vertices")
     input_parms["filtered_model_image_name"][1] = "sector_2-MFS-filtered-model.fits.fz"
     return input_parms
+
+
+def _expected_image_operation_outputs(operation):
+    pipeline_dir = Path(operation.pipeline_working_dir)
+    return {
+        "filtered_skymodel_true_sky": [file_record(pipeline_dir / "sector_1.true_sky.txt")],
+        "filtered_skymodel_apparent_sky": [file_record(pipeline_dir / "sector_1.apparent_sky.txt")],
+        "pybdsf_catalog": [file_record(pipeline_dir / "sector_1.source_catalog.fits")],
+        "sector_diagnostics": [file_record(pipeline_dir / "sector_1.image_diagnostics.json")],
+        "sector_offsets": [file_record(pipeline_dir / "sector_1.astrometry_offsets.json")],
+        "sector_diagnostic_plots": [[file_record(pipeline_dir / "sector_1.photometry.pdf")]],
+        "visibilities": [
+            [
+                directory_record(pipeline_dir / "sector_1_obs_0_prep.ms"),
+                directory_record(pipeline_dir / "sector_1_obs_1_prep.ms"),
+            ]
+        ],
+        "sector_I_images": [
+            [
+                file_record(pipeline_dir / "sector_1-MFS-I-image.fits"),
+                file_record(pipeline_dir / "sector_1-MFS-I-image-pb.fits"),
+            ]
+        ],
+        "sector_extra_images": [
+            [
+                file_record(pipeline_dir / "sector_1-MFS-I-residual.fits"),
+                file_record(pipeline_dir / "sector_1-MFS-I-model-pb.fits"),
+                file_record(pipeline_dir / "sector_1-MFS-I-dirty.fits"),
+            ]
+        ],
+        "source_filtering_mask": [
+            file_record(pipeline_dir / "sector_1-MFS-I-image-pb.fits.mask.fits")
+        ],
+        "sector_skymodels": [
+            [
+                file_record(pipeline_dir / "sector_1-sources.txt"),
+                file_record(pipeline_dir / "sector_1-sources-pb.txt"),
+            ]
+        ],
+    }
+
+
+def _materialize_image_operation_outputs(value):
+    if isinstance(value, dict) and "class" not in value:
+        for item in value.values():
+            _materialize_image_operation_outputs(item)
+        return
+    if isinstance(value, list):
+        for item in value:
+            _materialize_image_operation_outputs(item)
+        return
+    if value is None:
+        return
+    if value["class"] == "Directory":
+        Path(value["path"]).mkdir(parents=True, exist_ok=True)
+        return
+    path = Path(value["path"])
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("{}" if path.suffix == ".json" else "image")
 
 
 def test_image_command_builders_match_reference_fixtures():
@@ -1861,6 +2016,73 @@ def test_image_finalizer_accepts_prefect_outputs_for_selfcal(
     assert field.lofar_to_true_flux_ratio == 1.0
     assert field.lofar_to_true_flux_std == 0.0
     assert Path(operation.done_file).is_file()
+
+
+def test_image_operation_run_uses_prefect_flow(
+    tmp_path, monkeypatch, fake_image_shell_operation_cls
+):
+    monkeypatch.setattr(
+        "rapthor.execution.shell._load_shell_operation_cls",
+        lambda: fake_image_shell_operation_cls,
+    )
+    field = FieldStub(tmp_path)
+    operation = Image(field, index=1)
+
+    with prefect_test_harness(server_startup_timeout=None):
+        operation.run()
+
+    expected_outputs = _expected_image_operation_outputs(operation)
+    sector = field.imaging_sectors[0]
+    skymodel_dir = Path(field.parset["dir_working"]) / "skymodels" / "image_1"
+    diagnostics_dir = Path(field.parset["dir_working"]) / "plots" / "image_1"
+
+    assert operation.outputs == expected_outputs
+    assert json.loads(Path(operation.outputs_file).read_text()) == expected_outputs
+    assert Path(operation.done_file).is_file()
+    assert Path(operation.pipeline_inputs_file).is_file()
+    assert not Path(operation.pipeline_parset_file).exists()
+    assert sector.I_image_file_apparent_sky == str(
+        Path(operation.pipeline_working_dir) / "sector_1-MFS-I-image.fits"
+    )
+    assert sector.I_image_file_true_sky == str(
+        Path(operation.pipeline_working_dir) / "sector_1-MFS-I-image-pb.fits"
+    )
+    assert sector.image_skymodel_file_true_sky == str(skymodel_dir / "sector_1.true_sky.txt")
+    assert (skymodel_dir / "sector_1.true_sky.txt").is_file()
+    assert (diagnostics_dir / "sector_1.image_diagnostics.json").is_file()
+    assert sector.diagnostics == [{"cycle_number": 1}]
+    assert field.lofar_to_true_flux_ratio == 1.0
+    assert field.lofar_to_true_flux_std == 0.0
+    assert len(fake_image_shell_operation_cls.instances) == 9
+
+
+def test_image_operation_run_reuses_prefect_outputs_when_done(
+    tmp_path, monkeypatch, fake_image_shell_operation_cls
+):
+    monkeypatch.setattr(
+        "rapthor.execution.shell._load_shell_operation_cls",
+        lambda: fake_image_shell_operation_cls,
+    )
+    field = FieldStub(tmp_path)
+    operation = Image(field, index=1)
+    expected_outputs = _expected_image_operation_outputs(operation)
+    _materialize_image_operation_outputs(expected_outputs)
+    Path(operation.done_file).touch()
+    Path(operation.outputs_file).write_text(json.dumps(expected_outputs))
+
+    operation.run()
+
+    sector = field.imaging_sectors[0]
+    skymodel_dir = Path(field.parset["dir_working"]) / "skymodels" / "image_1"
+    assert operation.outputs == expected_outputs
+    assert Path(operation.done_file).is_file()
+    assert sector.I_image_file_apparent_sky == str(
+        Path(operation.pipeline_working_dir) / "sector_1-MFS-I-image.fits"
+    )
+    assert sector.image_skymodel_file_true_sky == str(skymodel_dir / "sector_1.true_sky.txt")
+    assert (skymodel_dir / "sector_1.true_sky.txt").is_file()
+    assert sector.diagnostics == [{"cycle_number": 1}]
+    assert fake_image_shell_operation_cls.instances == []
 
 
 def test_image_finalizer_accepts_prefect_outputs_for_full_stokes(
