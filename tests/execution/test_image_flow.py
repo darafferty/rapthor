@@ -2287,6 +2287,45 @@ def test_compressed_image_operation_run_uses_prefect_flow(
     assert "fpack" in command_names
 
 
+def test_clean_disabled_image_operation_run_uses_prefect_flow(
+    tmp_path, monkeypatch, fake_image_shell_operation_cls
+):
+    monkeypatch.setattr(
+        "rapthor.execution.shell._load_shell_operation_cls",
+        lambda: fake_image_shell_operation_cls,
+    )
+    field = FieldStub(tmp_path)
+    field.disable_clean = True
+    operation = Image(field, index=1)
+
+    with prefect_test_harness(server_startup_timeout=None):
+        operation.run()
+
+    expected_outputs = _expected_image_operation_outputs(operation)
+    sector = field.imaging_sectors[0]
+    wsclean_command = next(
+        shlex.split(instance.kwargs["commands"][0])
+        for instance in fake_image_shell_operation_cls.instances
+        if shlex.split(instance.kwargs["commands"][0])[0] == "wsclean"
+    )
+
+    assert operation.outputs == expected_outputs
+    assert json.loads(Path(operation.outputs_file).read_text()) == expected_outputs
+    assert Path(operation.done_file).is_file()
+    assert Path(operation.pipeline_inputs_file).is_file()
+    assert not Path(operation.pipeline_parset_file).exists()
+    assert wsclean_command[wsclean_command.index("-niter") + 1] == "0"
+    assert sector.I_image_file_apparent_sky == str(
+        Path(operation.pipeline_working_dir) / "sector_1-MFS-I-image.fits"
+    )
+    assert sector.I_image_file_true_sky == str(
+        Path(operation.pipeline_working_dir) / "sector_1-MFS-I-image-pb.fits"
+    )
+    assert sector.diagnostics == [{"cycle_number": 1}]
+    assert field.lofar_to_true_flux_ratio == 1.0
+    assert field.lofar_to_true_flux_std == 0.0
+
+
 def test_image_finalizer_accepts_prefect_outputs_for_full_stokes(
     tmp_path, fake_image_shell_operation_cls
 ):

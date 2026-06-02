@@ -2623,6 +2623,9 @@ Completed in this slice:
 - Added compressed Stokes-I operation-run coverage proving the adapter preserves
   compressed FITS records, filtered-model images, supplementary masks,
   visibility copying, copied skymodel/catalog products, and diagnostics state.
+- Added clean-disabled Stokes-I operation-run coverage proving the adapter
+  carries `field.disable_clean` through to WSClean `-niter 0` while preserving
+  finalizer-compatible outputs and sector diagnostics.
 - Added restart coverage proving `.done` skips shell execution and persisted
   Prefect output records are reused.
 - Preserved `tests/operations/test_image.py` as CWL-reference coverage until the
@@ -2631,14 +2634,14 @@ Completed in this slice:
 Remaining follow-up:
 
 - Extend operation-run cutover coverage for the remaining Image variants:
-  facets, screen application, clean-disabled mode, image cubes, normalization,
-  MPI WSClean, and previous-mask reuse.
+  facets, screen application, image cubes, normalization, MPI WSClean, and
+  previous-mask reuse.
 - Add image parity cases to the dedicated CWL-to-Prefect equivalence suite
   before retiring any CWL image workflow code.
 
 Verified:
 
-- `python3 -m pytest tests/execution/test_image_flow.py`: 46 passed, 5 warnings.
+- `python3 -m pytest tests/execution/test_image_flow.py`: 47 passed, 6 warnings.
 - `python3 -m pytest tests/operations/test_image.py -q --tb=short
   --disable-warnings`: 85 passed, 2 warnings.
 - `python3 -m ruff check tests/execution/test_image_flow.py`: passed.
