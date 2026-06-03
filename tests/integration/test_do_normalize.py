@@ -118,9 +118,14 @@ def test_rapthor_run_single_loop_with_do_normalize_no_internet_raises_error(
     indirect=True,
 )
 def test_rapthor_run_single_loop_with_do_normalize_no_internet_provided_sky_models_ok(
-    generated_parset_path_normalisation, single_loop_do_normalize_strategy_path
+    generated_parset_path_normalisation,
+    single_loop_do_normalize_strategy_path,
+    normalization_skymodel_paths,
 ):
-    """Test that rapthor runs successfully when do_normalize is used without internet access but sky models are provided."""
+    """
+    Test that rapthor runs successfully when do_normalize is used without
+    internet access but sky models are provided.
+    """
     updated_parset_path = update_parset_path(
         generated_parset_path_normalisation,
         {
