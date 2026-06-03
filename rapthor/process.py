@@ -29,7 +29,7 @@ def run(parset_file, logging_level="info"):
     parset_file : str
         Filename of parset containing processing parameters
     logging_level : str, optional
-        One of 'degug', 'info', 'warning' in decreasing order of verbosity
+        One of 'debug', 'info', 'warning' in decreasing order of verbosity
     """
     # Read parset
     parset = parset_read(parset_file)

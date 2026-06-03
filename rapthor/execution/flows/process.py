@@ -237,8 +237,8 @@ def run_process(
 ) -> Optional[object]:
     """Run the top-level Rapthor process lifecycle with injectable hooks.
 
-    This mirrors ``rapthor.process.run`` for mocked orchestration tests. The CLI
-    keeps calling ``rapthor.process.run`` until the final migration cut-over.
+    This mirrors ``rapthor.process.run`` for side-by-side Prefect/CWL
+    equivalence tests while the CLI keeps the legacy route.
     """
     factories = operation_factories or default_process_operation_factories()
     hooks = lifecycle_hooks or default_process_lifecycle_hooks()
@@ -360,9 +360,8 @@ def run_process_steps(
 ) -> object:
     """Run one group of process steps using injectable operation factories.
 
-    This mirrors ``rapthor.process.run_steps`` while the migration branch builds
-    the Prefect top-level flow. Production CLI routing remains with
-    ``process.run()`` until the final cut-over.
+    This mirrors the legacy ``rapthor.process.run_steps`` operation ordering for
+    backend-independent orchestration and equivalence tests.
     """
     factories = operation_factories or default_process_operation_factories()
     selfcal_state = None

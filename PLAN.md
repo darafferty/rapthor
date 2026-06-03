@@ -828,14 +828,16 @@ runs and route the CLI through it.
 Status: started. `rapthor.execution.flows.process` now mirrors both
 `process.run_steps()` operation ordering and the mocked `process.run()` lifecycle
 with injectable operation constructors, lifecycle hooks, and process-level
-preflight. The CLI still uses `process.run()`; cutover waits until the operation
-flows are complete enough for real pipeline runs. The branch-internal
-operation-adapter path is now active for Concatenate, Mosaic, and Predict:
+preflight. `process.run()` remains the CLI-compatible legacy entry point while
+the Prefect top-level flow stays available side-by-side for equivalence checks
+against the CWL-era orchestration baseline. The branch-internal operation-adapter
+path is active for Concatenate, Mosaic, Predict, Image, and Calibrate:
 `Operation.run()` has an overridable workflow execution hook, and ported
 operations use it to invoke Prefect flows while preserving `.done`,
 `.outputs.json`, input JSON, and finalizer semantics.
 
-- Keep `process.run()` as the CLI entry point.
+- Keep `process.run()` as the legacy CLI entry point until the Prefect top-level
+  flow has passed equivalence checks against the CWL baseline.
 - Add `rapthor.execution.flows.process` with a Prefect flow that mirrors current
   `process.run_steps()` sequencing and the mocked `process.run()` lifecycle.
   Initial skeleton complete for parset loading, logging setup, concatenation,
@@ -855,8 +857,8 @@ operations use it to invoke Prefect flows while preserving `.done`,
   pre-apply, DD calibration products feed later prediction or imaging, and the
   agreed facet-region artifact is available to its consumer. Initial mocked
   hand-off coverage complete for the four strategy paths.
-- Continue replacing operation execution with Python flows one operation at a
-  time by overriding the workflow execution hook in each operation adapter.
+- Continue replacing any remaining operation execution branches with Python
+  flows by overriding the workflow execution hook in each operation adapter.
 - Remove branch-only CWL references from production execution code.
 
 Tests:
@@ -2885,6 +2887,42 @@ Verified in the running dev container:
 - `python3 -m ruff format --check rapthor/execution/flows/calibrate.py
   rapthor/operations/calibrate.py tests/execution/test_calibrate_flow.py`: 3
   files already formatted.
+- `git diff --check`: passed.
+
+### PR 36: Preserve Legacy Process Baseline During Top-Level Prefect Work
+
+Status: complete for keeping `process.run()` as the legacy comparison baseline
+while the Prefect top-level flow matures side-by-side.
+
+Completed in this PR:
+
+- Kept the existing `rapthor.process.run()` orchestration path in place as the
+  legacy baseline used to compare Prefect process-flow results.
+- Kept `process_flow()` and `run_process()` available as side-by-side Prefect
+  entry points with injectable hooks for mocked orchestration and equivalence
+  tests.
+- Refreshed process-flow docstrings so they describe the pre-cutover routing.
+- Added a regression test proving `process.run()` still uses the legacy process
+  lifecycle collaborators instead of delegating to the Prefect top-level flow.
+
+Remaining follow-up:
+
+- Add real end-to-end process-flow integration coverage that compares Prefect
+  outputs with the retained CWL-era baseline before switching the CLI route.
+- Continue tightening process-level preflight and equivalence coverage for
+  runtime/container modes, restart behaviour, and external-tool failures.
+
+Verified in the running dev container:
+
+- `python3 -m pytest tests/test_process.py tests/execution/test_process_flow.py
+  -q --tb=short`: 37 passed, 1 warning.
+- `python3 -m ruff format rapthor/process.py rapthor/execution/flows/process.py
+  tests/test_process.py`: 3 files left unchanged.
+- `python3 -m ruff check rapthor/process.py rapthor/execution/flows/process.py
+  tests/test_process.py`: passed.
+- `python3 -m ruff format --check rapthor/process.py
+  rapthor/execution/flows/process.py tests/test_process.py`: 3 files already
+  formatted.
 - `git diff --check`: passed.
 
 ## Success Criteria
