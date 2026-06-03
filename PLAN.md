@@ -1023,6 +1023,49 @@ Done when:
   ordering, and restart semantics.
 - Numeric comparisons are tolerance-based and documented.
 
+Status: complete for the initial harness slice.
+
+Completed:
+
+- Added `rapthor/execution/equivalence.py` with isolated CWL and Prefect run
+  directories, per-backend parset copies, injectable backend runners, and
+  default runner adapters for the retained legacy `process.run()` path and the
+  side-by-side `process_flow()` path. This does not change the public CLI route.
+- Added backend-neutral summary collection for operation ordering, `.done`,
+  `.outputs.json` and temporary `pipeline_outputs.json` output records, product
+  basenames, diagnostics reports, and finalizer-visible field state snapshots.
+- Added structured diff helpers plus `assert_backend_equivalent()` so future
+  integration tests can fail with path-specific CWL-vs-Prefect differences.
+- Added FITS and h5parm numeric comparison helpers with explicit `rtol`/`atol`
+  tolerances. The h5parm helper imports `h5py` lazily so the harness can still
+  run in minimal environments.
+- Added `tests/execution/test_equivalence.py` with a cheap smoke comparison
+  using injectable fake runners, output-record path normalization, structured
+  diff checks, missing `.done` detection, temporary CWL `pipeline_outputs.json`
+  compatibility, and FITS tolerance coverage. h5parm tolerance coverage is
+  present but skips when `h5py` is not installed in the current environment.
+
+Remaining follow-up:
+
+- Wire the harness into the first real CWL and Prefect smoke parset once the
+  top-level Prefect process flow has enough operation coverage to produce a
+  comparable end-to-end working directory.
+- Expand the harness across every supported feature-matrix entry in Issue 9.
+
+Verified in the running dev container:
+
+- `python3 -m pytest tests/execution/test_equivalence.py -q --tb=short`: 6
+  passed, 1 skipped (`h5py` not installed), 1 warning.
+- `python3 -m pytest tests/execution/test_equivalence.py
+  tests/execution/test_process_flow.py -q --tb=short`: 24 passed, 1 skipped,
+  1 warning.
+- `python3 -m ruff check rapthor/execution/equivalence.py
+  tests/execution/test_equivalence.py`: passed.
+- `python3 -m ruff format --check rapthor/execution/equivalence.py
+  tests/execution/test_equivalence.py`: 2 files already formatted.
+- `python3 -m json.tool tests/execution/fixtures/supported_merge_feature_matrix.json`:
+  passed.
+
 ### Issue 3: Finish Operation Parity Gates
 
 Goal: make every ported operation satisfy the full parity gate list before it is
