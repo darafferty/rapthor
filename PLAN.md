@@ -925,6 +925,310 @@ Only after Prefect/Dask parity is demonstrated on the migration branch:
 - Run the final non-integration and focused integration suites before merging to
   `master`.
 
+## Migration Completion Issue Backlog
+
+Use these issues in order to finish the CWL-to-Prefect migration. CWL remains
+the branch-local reference implementation until the equivalence gate below is
+closed. Do not delete CWL runner code, CWL package data, Toil, StreamFlow,
+cwltool, CWL-rendering tests, or CWL-derived fixtures before Issue 9 has passed
+for the supported merge feature matrix.
+
+For every issue that changes operation execution, run both the new Prefect tests
+and the existing CWL-reference tests for the touched operation. Prefect tests are
+additive until the equivalence suite proves that the Prefect path produces the
+same user-visible results.
+
+### Issue 1: Freeze The Supported Merge Feature Matrix
+
+Goal: define exactly what must be equivalent before the branch can merge.
+
+Tasks:
+
+- List the supported strategy and feature combinations that must pass before
+  cutover: DI-only, DD-only, DI-then-DD, DD-then-DI, normalization, peeling,
+  facets, screens, QUV or clean-disabled imaging, image cubes, restart, and the
+  selected Slurm/MPI mode.
+- Mark explicitly unsupported or deferred combinations and ensure process-level
+  preflight rejects them before any external command runs.
+- Map each supported combination to one or more small parsets or fixtures that
+  can be used by the equivalence suite.
+- Record which tests are unit, mocked-flow, focused integration, internet, or
+  target-environment Slurm tests.
+
+Done when:
+
+- The feature matrix is documented in the plan or test fixtures.
+- Preflight tests cover both supported and unsupported entries.
+- Every later equivalence or integration issue can point to a concrete matrix
+  entry.
+
+### Issue 2: Build The CWL-to-Prefect Equivalence Harness
+
+Goal: run the same small parset through the CWL reference path and the
+Prefect/Dask path in isolated working directories, then compare the results.
+
+Tasks:
+
+- Add test helpers that create separate CWL and Prefect run directories from the
+  same parset and normalize run-specific paths.
+- Add a runner API that can invoke the retained CWL path and the side-by-side
+  Prefect path without changing the public CLI route.
+- Add backend-neutral comparison helpers for operation ordering, `.done`,
+  `.outputs.json`, output-record keys and shapes, product basenames, reports,
+  logs, and finalizer-visible field state.
+- Add numerical comparison helpers for FITS and h5parm products, using
+  tolerances only where external-tool nondeterminism requires them.
+- Start with one cheap smoke parset before expanding to the full feature matrix.
+
+Done when:
+
+- A first equivalence test can run both backends and report a structured diff.
+- Exact comparisons are enforced for naming, output-record shape, operation
+  ordering, and restart semantics.
+- Numeric comparisons are tolerance-based and documented.
+
+### Issue 3: Finish Operation Parity Gates
+
+Goal: make every ported operation satisfy the full parity gate list before it is
+treated as migrated.
+
+Tasks:
+
+- Concatenate: add lightweight real integration coverage if suitable Measurement
+  Set fixtures and dependencies are available.
+- Mosaic: replace or rework placeholder operation tests and add a real
+  image-to-mosaic integration path once suitable FITS or Image-flow products are
+  available.
+- Predict: add real lightweight script or Measurement Set coverage for
+  `add_sector_models.py` and `subtract_sector_models.py`, and revisit
+  task-local working directories for the final Dask layout.
+- Image: add real external-tool coverage for no-DDE, facet, screen, full-Stokes,
+  cube, normalization, and MPI WSClean branches selected by the feature matrix.
+- Calibrate: complete plotting and h5parm post-processing, restart and failure
+  branches, and real external-tool coverage for DI-only, DD-only, DI-then-DD,
+  DD-then-DI, and screen generation.
+- For each operation, keep command parity, output-contract parity, field-state
+  parity, restart parity, failure parity, mocked-flow parity, and focused
+  integration parity visible in the tests.
+
+Done when:
+
+- Each supported operation has evidence for every parity gate.
+- Existing CWL-reference tests for the operation still pass.
+- Prefect operation-run tests are additive and do not replace CWL-reference
+  coverage until Issue 9 is complete.
+
+### Issue 4: Complete Top-Level Prefect Process Equivalence
+
+Goal: prove the side-by-side Prefect top-level process flow preserves the legacy
+process lifecycle before routing the CLI through it.
+
+Tasks:
+
+- Keep `process.run()` on the legacy route while `process_flow()` is exercised
+  directly by tests.
+- Add top-level tests for initial sky-model generation, selfcal convergence,
+  selfcal divergence/failure, repeated final cycles, final-only image runs,
+  missing input-solution failures, and process-level preflight failures.
+- Compare DI-to-DD, DD-to-predict, DD-to-image, and facet-region hand-offs across
+  the CWL and Prefect paths.
+- Verify cycle numbering, final-cycle flags, screen generation/application,
+  peeling restrictions, QUV flags, image-cube flags, and report generation.
+
+Done when:
+
+- The Prefect process flow passes mocked lifecycle tests for the supported
+  matrix.
+- Equivalence tests show the same operation sequence and finalizer-visible state
+  as the retained legacy process route.
+
+### Issue 5: Complete Restart, Failure, And `modifystate` Coverage
+
+Goal: preserve Rapthor's restart semantics with Prefect-produced operation
+state.
+
+Tasks:
+
+- For every supported operation, test first successful run, skip on `.done`,
+  rerun after deleting `.done`, missing `.outputs.json`, corrupt
+  `.outputs.json`, shell failure, missing expected output, and finalizer failure.
+- Add focused restart integrations for injected failures in `Predict`, `Image`,
+  and `Calibrate`.
+- Extend `bin/rapthor -r` tests so reset works with Prefect-produced
+  `.outputs.json` files and preserves reusable upstream products.
+- Verify partial outputs from failed attempts are either cleaned safely or
+  overwritten on rerun.
+
+Done when:
+
+- Restart and reset behaviour matches the CWL reference path for supported
+  operations.
+- Failed Prefect tasks never mark an operation as done.
+
+### Issue 6: Finish Runtime, Resource, And Filesystem Safety
+
+Goal: make the Dask-distributed execution path safe for concurrent external
+commands.
+
+Tasks:
+
+- Enforce serializable task payloads and keep live `Field`, `Sector`, and
+  `Observation` objects out of worker tasks.
+- Add tests for unique task-local working directories, temporary directories,
+  output basenames, and atomic small-file writes.
+- Add cleanup tests for temporary task directories on success and failure.
+- Centralize per-command threads, memory, maximum concurrent external jobs, MPI
+  exclusivity, and Dask worker count validation.
+- Add preflight failures for unsupported container modes, invalid resource
+  requests, missing external tools, and oversubscribed local or Slurm
+  allocations.
+
+Done when:
+
+- Local Dask execution cannot collide on files or oversubscribe external tools
+  for the supported matrix.
+- Unsupported runtime/container/resource combinations fail before execution.
+
+### Issue 7: Add Slurm And Multi-Node Execution
+
+Goal: support the selected production Slurm model using Prefect with an external
+Dask scheduler.
+
+Tasks:
+
+- Add production and development Slurm scripts modelled after the prototype and
+  CIMG.
+- Support `DASK_SCHEDULER`, failed scheduler connection errors, local-cluster
+  defaults, thread counts, memory settings, and Slurm node/task mapping.
+- Keep MPI WSClean as an explicitly controlled task that does not oversubscribe
+  Dask workers.
+- Add script lint or smoke tests where possible.
+- Add target-environment manual or CI-marked integration tests.
+
+Done when:
+
+- The selected Slurm mode is documented, smoke-tested, and covered by unit tests
+  for scheduler/resource behaviour.
+- MPI WSClean and Dask worker scheduling are proven not to oversubscribe nodes.
+
+### Issue 8: Modernize Integration Tests And Logs
+
+Goal: keep valuable end-to-end assertions while removing dependencies on CWL log
+implementation details.
+
+Tasks:
+
+- Replace CWL-specific helpers such as `find_step_logs()` and
+  `parse_dp3_args_from_log()` with backend-neutral command-log helpers.
+- Keep user-facing assertions: successful CLI exit, expected operation ordering,
+  final products, reports, and `Rapthor has finished :)`.
+- Rewrite bright-source peeling coverage to inspect restore commands and
+  products rather than Toil `when:` skip artifacts.
+- Split normalization coverage so provided-sky-model coverage does not require
+  the `internet` marker, while downloaded-catalog coverage stays marked
+  `internet`.
+- Add missing focused integration coverage for concatenation over multiple
+  Measurement Sets, image-only runs with supplied h5parm/skymodel inputs, QUV or
+  clean-disabled imaging, image cubes, and selected Slurm/MPI execution.
+
+Done when:
+
+- Integration tests can validate either backend through the same command-log and
+  product assertions while CWL is retained for reference runs.
+- No supported science assertion depends on exact Toil/CWL log text.
+
+### Issue 9: Pass The Full CWL-to-Prefect Equivalence Gate
+
+Goal: prove that the Prefect path can replace CWL for the supported merge
+feature matrix.
+
+Tasks:
+
+- Run the equivalence harness for every supported matrix entry from Issue 1.
+- Compare operation completion order, `.outputs.json` keys and shapes, product
+  basenames, h5parm solset/soltab names and axes, FITS dimensions and basic
+  statistics, sky-model source counts, region files, summary reports, and
+  finalizer-visible state.
+- Verify restart equivalence with Prefect-produced output records.
+- Record the passing baseline in the plan or test documentation.
+
+Done when:
+
+- The dedicated equivalence suite passes for the supported merge feature matrix.
+- Remaining differences are either fixed or documented as intentional,
+  user-invisible differences with tests.
+- This is the first point where CWL-reference tests may be replaced instead of
+  only supplemented.
+
+### Issue 10: Cut Over The Public Execution Route To Prefect
+
+Goal: make Prefect/Dask the only production execution path on the migration
+branch after equivalence is proven.
+
+Tasks:
+
+- Route the CLI-compatible `process.run()` entry point through the Prefect
+  top-level process flow.
+- Update operation-run tests so `Operation.run()` expects Prefect/Dask execution
+  only.
+- Remove branch-internal mixed execution paths and ensure there is no production
+  `execution_backend` selector.
+- Keep useful CWL-derived fixtures as static reference data, but stop invoking
+  CWL runners in production tests.
+
+Done when:
+
+- The normal CLI path uses Prefect/Dask.
+- Existing non-integration tests pass without requiring CWL execution.
+- The equivalence suite from Issue 9 remains available as the justification for
+  the route switch.
+
+### Issue 11: Remove CWL Production Code, Dependencies, And Package Data
+
+Goal: delete CWL implementation code only after the Prefect path has become the
+validated production route.
+
+Tasks:
+
+- Remove Toil, StreamFlow, and cwltool dependencies if they are not needed for
+  unrelated tooling.
+- Remove `rapthor/pipeline/parsets/**`, `rapthor/pipeline/steps/**`,
+  `rapthor/lib/cwl.py`, `rapthor/lib/cwlrunner.py`, and CWL-only operation
+  plumbing that is no longer used.
+- Move any useful reference artifacts into Prefect/Dask fixtures before deleting
+  CWL test utilities.
+- Update package data so CWL files are not shipped.
+- Remove tests whose only purpose was proving the old CWL runner path still
+  works.
+
+Done when:
+
+- Toil, StreamFlow, cwltool, and CWL package data can be removed without losing
+  supported functionality.
+- The branch has one production execution path: Prefect/Dask.
+
+### Issue 12: Final Documentation, CI, And Merge Readiness
+
+Goal: make the migration branch ready to merge to `master`.
+
+Tasks:
+
+- Update README, Sphinx docs, parset documentation, architecture docs, operation
+  docs, and Slurm/Prefect UI instructions.
+- Update tox, CI, installation instructions, and packaging metadata for the
+  Prefect/Dask path.
+- Run the final non-integration suite and the focused integration suite for the
+  supported matrix.
+- Record any environment-specific integration skips or xfails, especially for
+  Slurm and shared facet read/write behaviour.
+
+Done when:
+
+- Docs describe Prefect/Dask as the supported execution path.
+- CI validates the supported non-integration test suite without CWL.
+- Focused integration tests cover the supported merge matrix or have explicit,
+  documented target-environment gates.
+
 ## Operation Migration Matrix
 
 | Operation | First target | Complexity | Notes |
@@ -974,10 +1278,12 @@ these gates:
    external tools, unless the operation is explicitly marked as mocked-only for
    the current milestone.
 
-Once an operation satisfies these gates, its CWL templates should stop being the
-source of truth on the migration branch. Keep only the reference fixtures needed
-to diagnose regressions until all operations needed by supported strategies
-satisfy the same gates.
+Once an operation satisfies these gates, the Prefect implementation can become
+the candidate source of truth for that operation. The CWL implementation must
+still remain runnable as the branch-local reference until the full
+CWL-to-Prefect equivalence suite passes for the supported merge feature matrix.
+After that gate, keep only the static reference fixtures needed to diagnose
+regressions.
 
 ## Testing Migration Plan
 
