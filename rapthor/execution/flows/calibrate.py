@@ -55,6 +55,36 @@ DDECAL_SOLVE_ARGUMENTS = [
     "solve4.applycal.normalization.solset=sol000",
 ]
 
+IDGCAL_PHASE_ARGUMENTS = [
+    "msin.datacolumn=DATA",
+    "msout=",
+    "steps=[solve]",
+    "solve.type=python",
+    "solve.python.module=idg.idgcaldpstep_phase_only_dirac",
+    "solve.python.class=IDGCalDPStepPhaseOnlyDirac",
+    "solve.nrcorrelations=4",
+    "solve.subgridsize=32",
+    "solve.tapersupport=7",
+    "solve.wtermsupport=5",
+    "solve.atermsupport=5",
+    "solve.solverupdategain=0.5",
+    "solve.tolerancepinv=1e-9",
+    "solve.polynomialdegphase=2",
+    "solve.nr_channels_per_block=30",
+    "solve.lbfgshistory=10",
+    "solve.lbfgsminibatches=3",
+    "solve.lbfgsepochs=3",
+]
+
+IDGCAL_PHASE_AND_GAIN_ARGUMENTS = [
+    *IDGCAL_PHASE_ARGUMENTS[:4],
+    "solve.python.module=idg.idgcaldpstep_rapthor_dirac",
+    "solve.python.class=IDGCalDPStepRapthorDirac",
+    *IDGCAL_PHASE_ARGUMENTS[6:14],
+    "solve.polynomialdegamplitude=2",
+    *IDGCAL_PHASE_ARGUMENTS[14:],
+]
+
 SOLVE_SLOT_ARGUMENTS = [
     ("h5parm", "h5parm"),
     ("solint", "solint"),
@@ -293,10 +323,80 @@ def build_make_region_file_command(
     ]
 
 
+def _first_model_image(model_images: list[str]) -> str:
+    return str(_require_sequence(model_images, "model_images")[0])
+
+
+def build_idgcal_solve_phase_command(
+    msin: str,
+    starttime: str,
+    ntimes: int,
+    h5parm: str,
+    solint: int,
+    model_images: list[str],
+    maxiter: int,
+    antennaconstraint: str,
+    numthreads: int,
+) -> list[str]:
+    """Build the DP3/IDGCal phase-screen solve command for one chunk."""
+    return [
+        "DP3",
+        *IDGCAL_PHASE_ARGUMENTS,
+        f"msin={msin}",
+        f"msin.starttime={starttime}",
+        f"msin.ntimes={ntimes}",
+        f"solve.h5parm={h5parm}",
+        f"solve.solintphase={solint}",
+        f"solve.modelimage={_first_model_image(model_images)}",
+        f"solve.maxiter={maxiter}",
+        f"solve.antennaconstraint={antennaconstraint}",
+        f"numthreads={numthreads}",
+    ]
+
+
+def build_idgcal_solve_phase_and_gain_command(
+    msin: str,
+    starttime: str,
+    ntimes: int,
+    h5parm: str,
+    solint_fast: int,
+    solint_slow: int,
+    model_images: list[str],
+    maxiter: int,
+    antennaconstraint: str,
+    numthreads: int,
+) -> list[str]:
+    """Build the DP3/IDGCal phase-and-gain screen solve command for one chunk."""
+    return [
+        "DP3",
+        *IDGCAL_PHASE_AND_GAIN_ARGUMENTS,
+        f"msin={msin}",
+        f"msin.starttime={starttime}",
+        f"msin.ntimes={ntimes}",
+        f"solve.h5parm={h5parm}",
+        f"solve.solintphase={solint_fast}",
+        f"solve.solintamplitude={solint_slow}",
+        f"solve.modelimage={_first_model_image(model_images)}",
+        f"solve.maxiter={maxiter}",
+        f"solve.antennaconstraint={antennaconstraint}",
+        f"numthreads={numthreads}",
+    ]
+
+
 def build_collect_h5parms_command(inh5parms: list[str], outputh5parm: str) -> list[str]:
     """Build the h5parm collection command."""
     return [
         "H5parm_collector.py",
+        "-c",
+        ",".join(inh5parms),
+        f"--outh5parm={outputh5parm}",
+    ]
+
+
+def build_collect_screen_h5parms_command(inh5parms: list[str], outputh5parm: str) -> list[str]:
+    """Build the screen h5parm collection command."""
+    return [
+        "collect_screen_h5parms.py",
         "-c",
         ",".join(inh5parms),
         f"--outh5parm={outputh5parm}",
@@ -448,8 +548,42 @@ def _validate_image_predict_inputs(
         raise ValueError("DD image-based prediction requires " + ", ".join(missing))
 
 
+def _validate_screen_inputs(mode: str, input_parms: Mapping[str, object]) -> None:
+    if not input_parms.get("generate_screens"):
+        return
+    if mode != "dd":
+        raise ValueError("Screen generation is only supported for DD calibration")
+
+    required = [
+        "calibration_skymodel_file",
+        "model_image_root",
+        "model_image_ra_dec",
+        "model_image_imsize",
+        "model_image_cellsize",
+        "model_image_frequency_bandwidth",
+        "num_spectral_terms",
+        "ra_mid",
+        "dec_mid",
+        "facet_region_width_ra",
+        "facet_region_width_dec",
+        "facet_region_file",
+        "output_idgcal_h5parm",
+        "solint_solve1_timestep",
+        "idgcal_antennaconstraint",
+        "combined_h5parms",
+    ]
+    if input_parms.get("do_slowgain_solve"):
+        required.append("solint_slow_timestep")
+    missing = [name for name in required if input_parms.get(name) is None]
+    if missing:
+        raise ValueError("Screen generation requires " + ", ".join(missing))
+
+
 def _supported_calibration_kind(mode: str, input_parms: Mapping[str, object]) -> str:
     steps = _parse_steps(input_parms.get("dp3_steps"))
+    _validate_screen_inputs(mode, input_parms)
+    if input_parms.get("generate_screens"):
+        return "dd_screen"
     _validate_applycal_inputs(mode, steps, input_parms)
     _validate_image_predict_inputs(mode, steps, input_parms)
 
@@ -497,6 +631,8 @@ def _supported_calibration_kind(mode: str, input_parms: Mapping[str, object]) ->
 
 
 def _solve_slots_for_kind(calibration_kind: str, input_parms: Mapping[str, object]) -> list[int]:
+    if calibration_kind == "dd_screen":
+        return []
     if calibration_kind in {"di_fulljones", "dd_fast_phase"}:
         return [1]
     if calibration_kind == "di_scalar_phase":
@@ -591,7 +727,7 @@ def _image_predict_payload_from_inputs(
     pipeline_dir: str,
 ) -> Optional[dict]:
     steps = _parse_steps(input_parms.get("dp3_steps"))
-    if not _uses_image_based_predict(steps):
+    if not input_parms.get("generate_screens") and not _uses_image_based_predict(steps):
         return None
 
     model_root = _validate_basename(input_parms.get("model_image_root"), "model_image_root")
@@ -647,12 +783,69 @@ def calibrate_payload_from_inputs(
     """Create a serializable Calibrate flow payload from operation inputs."""
     calibration_kind = _supported_calibration_kind(mode, input_parms)
     dp3_steps = _parse_steps(input_parms.get("dp3_steps"))
-    image_based_predict = _uses_image_based_predict(dp3_steps)
+    image_based_predict = bool(input_parms.get("generate_screens")) or _uses_image_based_predict(
+        dp3_steps
+    )
 
     pipeline_dir = str(pipeline_working_dir)
     filenames = input_parms.get("timechunk_filename", [])
     starttimes = input_parms.get("starttime", [])
     ntimes = input_parms.get("ntimes", [])
+
+    if calibration_kind == "dd_screen":
+        output_h5parms = input_parms.get("output_idgcal_h5parm", [])
+        solint_fast = input_parms.get("solint_solve1_timestep", [])
+        scatter_inputs = [filenames, starttimes, ntimes, output_h5parms, solint_fast]
+        do_slowgain_solve = bool(input_parms.get("do_slowgain_solve", False))
+        solint_slow = input_parms.get("solint_slow_timestep", [])
+        if do_slowgain_solve:
+            scatter_inputs.append(solint_slow)
+        if not all(isinstance(value, list) for value in scatter_inputs):
+            raise ValueError("Screen-generation scatter inputs must be lists")
+        chunk_count = len(output_h5parms)
+        if any(len(value) != chunk_count for value in scatter_inputs):
+            raise ValueError("Screen-generation scatter inputs must have the same length")
+
+        combined = _validate_basename(input_parms.get("combined_h5parms"), "combined_h5parms")
+        chunks = []
+        for index in range(chunk_count):
+            h5parm = _validate_basename(
+                _scatter_value(output_h5parms, index, "output_idgcal_h5parm"),
+                f"output_idgcal_h5parm[{index}]",
+            )
+            chunk = {
+                "msin": _path_record_path(filenames[index]),
+                "starttime": str(starttimes[index]),
+                "ntimes": int(ntimes[index]),
+                "output_h5parm": h5parm,
+                "output_h5parm_path": os.path.join(pipeline_dir, h5parm),
+                "solint_fast": int(_scatter_value(solint_fast, index, "solint_solve1_timestep")),
+            }
+            if do_slowgain_solve:
+                chunk["solint_slow"] = int(
+                    _scatter_value(solint_slow, index, "solint_slow_timestep")
+                )
+            chunks.append(chunk)
+
+        return assert_serializable_payload(
+            {
+                "mode": mode,
+                "calibration_kind": calibration_kind,
+                "pipeline_working_dir": pipeline_dir,
+                "image_based_predict": True,
+                "image_predict": _image_predict_payload_from_inputs(input_parms, pipeline_dir),
+                "max_threads": int(input_parms["max_threads"]),
+                "solverlbfgs_iter": int(input_parms["solverlbfgs_iter"]),
+                "idgcal_antennaconstraint": str(input_parms["idgcal_antennaconstraint"]),
+                "do_slowgain_solve": do_slowgain_solve,
+                "combined_h5parm": {
+                    "filename": combined,
+                    "path": os.path.join(pipeline_dir, combined),
+                },
+                "chunks": chunks,
+            }
+        )
+
     solve_slots = _solve_slots_for_kind(calibration_kind, input_parms)
     output_solve1_h5parms = input_parms.get("output_solve1_h5parm", [])
     scatter_inputs = [filenames, starttimes, ntimes, output_solve1_h5parms]
@@ -1056,6 +1249,45 @@ def run_calibrate_chunk(
     return output_records
 
 
+def run_calibrate_screen_chunk(
+    payload: Mapping[str, object],
+    chunk: Mapping[str, object],
+    execution_config: Optional[ExecutionConfig] = None,
+    shell_operation_cls=None,
+) -> dict:
+    """Run one IDGCal screen-generation chunk."""
+    config = execution_config or ExecutionConfig(task_runner="sync")
+    pipeline_working_dir = str(payload["pipeline_working_dir"])
+    model_images = list(_require_sequence(payload.get("predict_images"), "predict_images"))
+    if payload.get("do_slowgain_solve"):
+        command = build_idgcal_solve_phase_and_gain_command(
+            msin=str(chunk["msin"]),
+            starttime=str(chunk["starttime"]),
+            ntimes=int(chunk["ntimes"]),
+            h5parm=str(chunk["output_h5parm"]),
+            solint_fast=int(chunk["solint_fast"]),
+            solint_slow=int(chunk["solint_slow"]),
+            model_images=[str(path) for path in model_images],
+            maxiter=int(payload["solverlbfgs_iter"]),
+            antennaconstraint=str(payload["idgcal_antennaconstraint"]),
+            numthreads=int(payload["max_threads"]),
+        )
+    else:
+        command = build_idgcal_solve_phase_command(
+            msin=str(chunk["msin"]),
+            starttime=str(chunk["starttime"]),
+            ntimes=int(chunk["ntimes"]),
+            h5parm=str(chunk["output_h5parm"]),
+            solint=int(chunk["solint_fast"]),
+            model_images=[str(path) for path in model_images],
+            maxiter=int(payload["solverlbfgs_iter"]),
+            antennaconstraint=str(payload["idgcal_antennaconstraint"]),
+            numthreads=int(payload["max_threads"]),
+        )
+    _run_shell(command, pipeline_working_dir, config, shell_operation_cls=shell_operation_cls)
+    return _require_file(str(chunk["output_h5parm_path"]), "IDGCal screen h5parm")
+
+
 @task(name="calibrate_chunk")
 def calibrate_chunk_task(
     payload: Mapping[str, object],
@@ -1065,6 +1297,22 @@ def calibrate_chunk_task(
 ) -> dict:
     """Prefect task wrapper for one calibration chunk."""
     return run_calibrate_chunk(
+        payload,
+        chunk,
+        execution_config=execution_config,
+        shell_operation_cls=shell_operation_cls,
+    )
+
+
+@task(name="calibrate_screen_chunk")
+def calibrate_screen_chunk_task(
+    payload: Mapping[str, object],
+    chunk: Mapping[str, object],
+    execution_config: Optional[ExecutionConfig] = None,
+    shell_operation_cls=None,
+) -> dict:
+    """Prefect task wrapper for one screen-generation chunk."""
+    return run_calibrate_screen_chunk(
         payload,
         chunk,
         execution_config=execution_config,
@@ -1169,6 +1417,45 @@ def _run_collect_h5parm(
         shell_operation_cls=shell_operation_cls,
     )
     return _require_file(str(output["path"]), label)
+
+
+def _run_collect_screen_h5parms(
+    input_records: list[dict],
+    output: Mapping[str, object],
+    pipeline_working_dir: str,
+    execution_config: ExecutionConfig,
+    shell_operation_cls=None,
+) -> dict:
+    collect_command = build_collect_screen_h5parms_command(
+        [record["path"] for record in input_records],
+        str(output["filename"]),
+    )
+    _run_shell(
+        collect_command,
+        pipeline_working_dir,
+        execution_config,
+        shell_operation_cls=shell_operation_cls,
+    )
+    return _require_file(str(output["path"]), "Combined screen h5parm")
+
+
+def _collect_screen_solutions(
+    payload: Mapping[str, object],
+    screen_records: list[dict],
+    execution_config: ExecutionConfig,
+    shell_operation_cls=None,
+) -> dict:
+    pipeline_working_dir = str(payload["pipeline_working_dir"])
+    combined_record = _run_collect_screen_h5parms(
+        screen_records,
+        payload["combined_h5parm"],
+        pipeline_working_dir,
+        execution_config,
+        shell_operation_cls=shell_operation_cls,
+    )
+    result = {"combined_solutions": combined_record}
+    validate_output_record(result["combined_solutions"])
+    return result
 
 
 def _run_plot_solutions(
@@ -1566,6 +1853,24 @@ def run_calibrate_flow(
         config,
         shell_operation_cls=shell_operation_cls,
     )
+    if payload["calibration_kind"] == "dd_screen":
+        screen_records = []
+        for chunk in payload["chunks"]:
+            screen_records.append(
+                run_calibrate_screen_chunk(
+                    payload,
+                    chunk,
+                    execution_config=config,
+                    shell_operation_cls=shell_operation_cls,
+                )
+            )
+        return _collect_screen_solutions(
+            payload,
+            screen_records,
+            config,
+            shell_operation_cls=shell_operation_cls,
+        )
+
     solve_records = []
     for chunk in payload["chunks"]:
         solve_records.append(
@@ -1590,6 +1895,14 @@ def _run_calibrate_prefect_tasks(
 ) -> dict:
     config = execution_config or ExecutionConfig(task_runner="sync")
     payload = _prepare_image_based_predict(payload, config)
+    if payload["calibration_kind"] == "dd_screen":
+        screen_records = [
+            calibrate_screen_chunk_task.submit(payload, chunk, execution_config=config)
+            for chunk in payload["chunks"]
+        ]
+        screen_records = [record.result() for record in screen_records]
+        return _collect_screen_solutions(payload, screen_records, config)
+
     solve_records = [
         calibrate_chunk_task.submit(payload, chunk, execution_config=config)
         for chunk in payload["chunks"]
@@ -1637,12 +1950,30 @@ def normalized_make_region_file_command(**kwargs) -> list[str]:
     return normalize_command(build_make_region_file_command(**kwargs))
 
 
+def normalized_idgcal_solve_phase_command(**kwargs) -> list[str]:
+    """Return normalized IDGCal phase-screen solve command tokens."""
+    return normalize_command(build_idgcal_solve_phase_command(**kwargs))
+
+
+def normalized_idgcal_solve_phase_and_gain_command(**kwargs) -> list[str]:
+    """Return normalized IDGCal phase-and-gain solve command tokens."""
+    return normalize_command(build_idgcal_solve_phase_and_gain_command(**kwargs))
+
+
 def normalized_collect_h5parms_command(
     inh5parms: list[str],
     outputh5parm: str,
 ) -> list[str]:
     """Return normalized h5parm collection command tokens."""
     return normalize_command(build_collect_h5parms_command(inh5parms, outputh5parm))
+
+
+def normalized_collect_screen_h5parms_command(
+    inh5parms: list[str],
+    outputh5parm: str,
+) -> list[str]:
+    """Return normalized screen h5parm collection command tokens."""
+    return normalize_command(build_collect_screen_h5parms_command(inh5parms, outputh5parm))
 
 
 def normalized_combine_h5parms_command(

@@ -11,7 +11,10 @@ from rapthor.execution.flows.calibrate import (
     build_adjust_h5parm_sources_command,
     build_combine_h5parms_command,
     build_collect_h5parms_command,
+    build_collect_screen_h5parms_command,
     build_ddecal_solve_command,
+    build_idgcal_solve_phase_and_gain_command,
+    build_idgcal_solve_phase_command,
     build_plot_solutions_command,
     build_process_gains_command,
     calibrate_chunk_task,
@@ -20,8 +23,11 @@ from rapthor.execution.flows.calibrate import (
     normalized_adjust_h5parm_sources_command,
     normalized_combine_h5parms_command,
     normalized_collect_h5parms_command,
+    normalized_collect_screen_h5parms_command,
     normalized_ddecal_solve_command,
     normalized_draw_model_command,
+    normalized_idgcal_solve_phase_and_gain_command,
+    normalized_idgcal_solve_phase_command,
     normalized_make_region_file_command,
     normalized_plot_solutions_command,
     normalized_process_gains_command,
@@ -66,6 +72,13 @@ def fake_calibrate_shell_operation_cls():
                 )
                 output_path = cwd / output_name
                 output_path.write_text("collected")
+                return "OK"
+            if tokens[:2] == ["collect_screen_h5parms.py", "-c"]:
+                output_name = next(
+                    token.split("=", 1)[1] for token in tokens if token.startswith("--outh5parm=")
+                )
+                output_path = cwd / output_name
+                output_path.write_text("screens")
                 return "OK"
             if tokens[0] == "combine_h5parms.py":
                 output_path = cwd / tokens[3]
@@ -272,6 +285,11 @@ def _expected_dd_slow_operation_outputs(operation):
         "slow_amp_plots": [file_record(pipeline_dir / "slow_amplitude_solutions.png")],
         "medium2_phase_plots": [file_record(pipeline_dir / "medium2_phase_solutions.png")],
     }
+
+
+def _expected_dd_screen_operation_outputs(operation):
+    pipeline_dir = Path(operation.pipeline_working_dir)
+    return {"combined_solutions": file_record(pipeline_dir / "combined_solutions.h5")}
 
 
 def _patch_dd_model_metadata(monkeypatch):
@@ -534,6 +552,22 @@ def _dd_image_predict_preapply_input_parms(normalize_h5parm="/solutions/normaliz
             "normalize_h5parm": file_record(normalize_h5parm),
         }
     )
+    return input_parms
+
+
+def _dd_screen_input_parms(do_slowgain_solve=False):
+    input_parms = _dd_image_predict_input_parms()
+    input_parms.update(
+        {
+            "generate_screens": True,
+            "output_idgcal_h5parm": ["idgcal_0", "idgcal_1"],
+            "combined_h5parms": "combined_solutions.h5",
+            "idgcal_antennaconstraint": "[]",
+            "do_slowgain_solve": do_slowgain_solve,
+        }
+    )
+    if do_slowgain_solve:
+        input_parms["solint_slow_timestep"] = [11, 12]
     return input_parms
 
 
@@ -963,6 +997,48 @@ def test_calibrate_command_builders_match_reference_fixtures():
         )
         == commands["calibrate"]["adjust_h5parm_sources"]
     )
+    assert (
+        normalized_idgcal_solve_phase_command(
+            msin="dd_obs_0.ms",
+            starttime="50000.0",
+            ntimes=10,
+            h5parm="idgcal_0",
+            solint=3,
+            model_images=[
+                "calibration_model-term-0.fits",
+                "calibration_model-term-1.fits",
+            ],
+            maxiter=4,
+            antennaconstraint="[]",
+            numthreads=4,
+        )
+        == commands["calibrate"]["idgcal_solve_phase"]
+    )
+    assert (
+        normalized_idgcal_solve_phase_and_gain_command(
+            msin="dd_obs_0.ms",
+            starttime="50000.0",
+            ntimes=10,
+            h5parm="idgcal_0",
+            solint_fast=3,
+            solint_slow=11,
+            model_images=[
+                "calibration_model-term-0.fits",
+                "calibration_model-term-1.fits",
+            ],
+            maxiter=4,
+            antennaconstraint="[]",
+            numthreads=4,
+        )
+        == commands["calibrate"]["idgcal_solve_phase_and_gain"]
+    )
+    assert (
+        normalized_collect_screen_h5parms_command(
+            ["idgcal_0", "idgcal_1"],
+            "combined_solutions.h5",
+        )
+        == commands["calibrate"]["collect_screen_h5parms"]
+    )
 
 
 def test_calibrate_command_builders_create_cwl_equivalent_tokens():
@@ -1024,6 +1100,48 @@ def test_calibrate_command_builders_create_cwl_equivalent_tokens():
         "adjust_h5parm_sources.py",
         "calibration.skymodel",
         "combined_solutions.h5",
+    ]
+    assert build_idgcal_solve_phase_command(
+        msin="dd_obs_0.ms",
+        starttime="50000.0",
+        ntimes=10,
+        h5parm="idgcal_0",
+        solint=3,
+        model_images=["calibration_model-term-0.fits"],
+        maxiter=4,
+        antennaconstraint="[]",
+        numthreads=4,
+    )[:6] == [
+        "DP3",
+        "msin.datacolumn=DATA",
+        "msout=",
+        "steps=[solve]",
+        "solve.type=python",
+        "solve.python.module=idg.idgcaldpstep_phase_only_dirac",
+    ]
+    assert build_idgcal_solve_phase_and_gain_command(
+        msin="dd_obs_0.ms",
+        starttime="50000.0",
+        ntimes=10,
+        h5parm="idgcal_0",
+        solint_fast=3,
+        solint_slow=11,
+        model_images=["calibration_model-term-0.fits"],
+        maxiter=4,
+        antennaconstraint="[]",
+        numthreads=4,
+    )[5:7] == [
+        "solve.python.module=idg.idgcaldpstep_rapthor_dirac",
+        "solve.python.class=IDGCalDPStepRapthorDirac",
+    ]
+    assert build_collect_screen_h5parms_command(
+        ["idgcal_0", "idgcal_1"],
+        "combined_solutions.h5",
+    ) == [
+        "collect_screen_h5parms.py",
+        "-c",
+        "idgcal_0,idgcal_1",
+        "--outh5parm=combined_solutions.h5",
     ]
     assert (
         build_ddecal_solve_command(
@@ -1325,6 +1443,50 @@ def test_calibrate_payload_from_inputs_builds_dd_with_slow_payload(tmp_path):
         "datause": "full",
         "initialsolutions_h5parm": None,
     }
+
+
+def test_calibrate_payload_from_inputs_builds_dd_screen_payload(tmp_path):
+    payload = calibrate_payload_from_inputs("dd", _dd_screen_input_parms(), tmp_path)
+
+    assert payload["calibration_kind"] == "dd_screen"
+    assert payload["image_based_predict"] is True
+    assert payload["do_slowgain_solve"] is False
+    assert payload["idgcal_antennaconstraint"] == "[]"
+    assert payload["combined_h5parm"] == {
+        "filename": "combined_solutions.h5",
+        "path": str(tmp_path / "combined_solutions.h5"),
+    }
+    assert payload["chunks"] == [
+        {
+            "msin": "/data/dd_obs_0.ms",
+            "starttime": "50000.0",
+            "ntimes": 10,
+            "output_h5parm": "idgcal_0",
+            "output_h5parm_path": str(tmp_path / "idgcal_0"),
+            "solint_fast": 3,
+        },
+        {
+            "msin": "/data/dd_obs_1.ms",
+            "starttime": "50010.0",
+            "ntimes": 12,
+            "output_h5parm": "idgcal_1",
+            "output_h5parm_path": str(tmp_path / "idgcal_1"),
+            "solint_fast": 4,
+        },
+    ]
+
+
+def test_calibrate_payload_from_inputs_builds_dd_screen_slow_payload(tmp_path):
+    payload = calibrate_payload_from_inputs(
+        "dd",
+        _dd_screen_input_parms(do_slowgain_solve=True),
+        tmp_path,
+    )
+
+    assert payload["calibration_kind"] == "dd_screen"
+    assert payload["do_slowgain_solve"] is True
+    assert payload["chunks"][0]["solint_fast"] == 3
+    assert payload["chunks"][0]["solint_slow"] == 11
 
 
 @pytest.mark.parametrize(
@@ -1699,6 +1861,77 @@ def test_run_calibrate_flow_supports_dd_image_predict(tmp_path, fake_calibrate_s
     assert not any(token.startswith("solve1.directions=") for token in commands[2])
 
 
+def test_run_calibrate_flow_supports_dd_screen_generation(
+    tmp_path, fake_calibrate_shell_operation_cls
+):
+    payload = calibrate_payload_from_inputs("dd", _dd_screen_input_parms(), tmp_path)
+
+    outputs = run_calibrate_flow(
+        payload,
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_calibrate_shell_operation_cls,
+    )
+
+    assert outputs == {"combined_solutions": file_record(tmp_path / "combined_solutions.h5")}
+    validate_output_record(outputs["combined_solutions"])
+    assert (tmp_path / "calibration_model-term-0.fits").is_file()
+    assert (tmp_path / "calibration_model-term-1.fits").is_file()
+    assert (tmp_path / "field_facets_ds9.reg").is_file()
+
+    commands = _command_tokens(fake_calibrate_shell_operation_cls)
+    assert [command[0] for command in commands] == [
+        "wsclean",
+        "make_region_file.py",
+        "DP3",
+        "DP3",
+        "collect_screen_h5parms.py",
+    ]
+    assert "solve.python.module=idg.idgcaldpstep_phase_only_dirac" in commands[2]
+    assert "solve.python.class=IDGCalDPStepPhaseOnlyDirac" in commands[2]
+    assert "solve.h5parm=idgcal_0" in commands[2]
+    assert "solve.solintphase=3" in commands[2]
+    assert f"solve.modelimage={tmp_path / 'calibration_model-term-0.fits'}" in commands[2]
+    assert "solve.maxiter=4" in commands[2]
+    assert "solve.antennaconstraint=[]" in commands[2]
+    assert commands[-1] == [
+        "collect_screen_h5parms.py",
+        "-c",
+        f"{tmp_path / 'idgcal_0'},{tmp_path / 'idgcal_1'}",
+        "--outh5parm=combined_solutions.h5",
+    ]
+
+
+def test_run_calibrate_flow_supports_dd_screen_generation_with_slow_gain(
+    tmp_path, fake_calibrate_shell_operation_cls
+):
+    payload = calibrate_payload_from_inputs(
+        "dd",
+        _dd_screen_input_parms(do_slowgain_solve=True),
+        tmp_path,
+    )
+
+    outputs = run_calibrate_flow(
+        payload,
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_calibrate_shell_operation_cls,
+    )
+
+    assert outputs == {"combined_solutions": file_record(tmp_path / "combined_solutions.h5")}
+    commands = _command_tokens(fake_calibrate_shell_operation_cls)
+    assert [command[0] for command in commands] == [
+        "wsclean",
+        "make_region_file.py",
+        "DP3",
+        "DP3",
+        "collect_screen_h5parms.py",
+    ]
+    assert "solve.python.module=idg.idgcaldpstep_rapthor_dirac" in commands[2]
+    assert "solve.python.class=IDGCalDPStepRapthorDirac" in commands[2]
+    assert "solve.polynomialdegamplitude=2" in commands[2]
+    assert "solve.solintphase=3" in commands[2]
+    assert "solve.solintamplitude=11" in commands[2]
+
+
 def test_run_calibrate_flow_fails_when_image_predict_model_is_missing(
     tmp_path, fake_calibrate_shell_operation_cls
 ):
@@ -1946,6 +2179,30 @@ def test_calibrate_prefect_flow_entrypoint_runs_with_mocked_shell(
 
     assert outputs["combined_solutions"] == file_record(tmp_path / "fulljones_solutions.h5")
     assert len(fake_calibrate_shell_operation_cls.instances) == 4
+
+
+def test_calibrate_prefect_flow_entrypoint_runs_screen_generation(
+    tmp_path, monkeypatch, fake_calibrate_shell_operation_cls
+):
+    monkeypatch.setattr(
+        "rapthor.execution.shell._load_shell_operation_cls",
+        lambda: fake_calibrate_shell_operation_cls,
+    )
+
+    with prefect_test_harness(server_startup_timeout=None):
+        outputs = calibrate_flow(
+            calibrate_payload_from_inputs("dd", _dd_screen_input_parms(), tmp_path),
+            execution_config=ExecutionConfig(task_runner="sync"),
+        )
+
+    assert outputs["combined_solutions"] == file_record(tmp_path / "combined_solutions.h5")
+    assert [command[0] for command in _command_tokens(fake_calibrate_shell_operation_cls)] == [
+        "wsclean",
+        "make_region_file.py",
+        "DP3",
+        "DP3",
+        "collect_screen_h5parms.py",
+    ]
 
 
 def test_calibrate_di_operation_run_uses_prefect_flow(
@@ -2290,6 +2547,70 @@ def test_calibrate_dd_image_predict_operation_run_uses_prefect_flow(
     assert "solve1.reusemodel=[predict.*]" in commands[2]
     assert "solve2.reusemodel=[predict.*]" in commands[2]
     assert not any(token.startswith("solve1.sourcedb=") for token in commands[2])
+
+
+def test_calibrate_dd_screen_operation_run_uses_prefect_flow(
+    tmp_path, monkeypatch, fake_calibrate_shell_operation_cls
+):
+    monkeypatch.setattr(
+        "rapthor.execution.shell._load_shell_operation_cls",
+        lambda: fake_calibrate_shell_operation_cls,
+    )
+    flagged_calls = []
+
+    def fake_flagged_fraction(path, **kwargs):
+        flagged_calls.append((path, kwargs))
+        return 0.0
+
+    monkeypatch.setattr(
+        "rapthor.lib.miscellaneous.get_flagged_solution_fraction",
+        fake_flagged_fraction,
+    )
+    _patch_dd_model_metadata(monkeypatch)
+
+    field = CalibrateFieldStub(tmp_path)
+    field.generate_screens = True
+    operation = Calibrate("dd", field, index=1)
+
+    with prefect_test_harness(server_startup_timeout=None):
+        operation.run()
+
+    expected_outputs = _expected_dd_screen_operation_outputs(operation)
+    solutions_dir = Path(field.parset["dir_working"]) / "solutions" / "calibrate_1"
+    pipeline_dir = Path(operation.pipeline_working_dir)
+
+    assert operation.outputs == expected_outputs
+    assert json.loads(Path(operation.outputs_file).read_text()) == expected_outputs
+    assert Path(operation.done_file).is_file()
+    assert Path(operation.pipeline_inputs_file).is_file()
+    assert field.h5parm_filename == str(solutions_dir / "field-solutions.h5")
+    assert field.dd_h5parm_filename == str(solutions_dir / "field-solutions.h5")
+    assert (solutions_dir / "field-solutions.h5").read_text() == "screens"
+    assert not (solutions_dir / "field-solutions-fast-phase.h5").exists()
+    assert (pipeline_dir / "calibration_model-term-0.fits").is_file()
+    assert (pipeline_dir / "field_facets_ds9.reg").is_file()
+    assert flagged_calls == [(field.h5parm_filename, {"solsetname": "coefficients000"})]
+    assert field.calibration_diagnostics == [{"cycle_number": 1, "solution_flagged_fraction": 0.0}]
+    assert field.scan_h5parms_calls == 1
+
+    commands = _command_tokens(fake_calibrate_shell_operation_cls)
+    assert [command[0] for command in commands] == [
+        "wsclean",
+        "make_region_file.py",
+        "DP3",
+        "DP3",
+        "collect_screen_h5parms.py",
+    ]
+    assert "solve.python.module=idg.idgcaldpstep_phase_only_dirac" in commands[2]
+    assert "solve.h5parm=idgcal_0" in commands[2]
+    assert "solve.solintphase=5" in commands[2]
+    assert f"solve.modelimage={pipeline_dir / 'calibration_model-term-0.fits'}" in commands[2]
+    assert commands[-1] == [
+        "collect_screen_h5parms.py",
+        "-c",
+        f"{pipeline_dir / 'idgcal_0'},{pipeline_dir / 'idgcal_1'}",
+        "--outh5parm=combined_solutions.h5",
+    ]
 
 
 def test_calibrate_dd_slow_source_adjusted_operation_run_uses_prefect_flow(

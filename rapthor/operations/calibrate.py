@@ -191,6 +191,7 @@ class Calibrate(Operation):
                 ).to_json(),
                 "data_colname": field.data_colname,
                 "modeldatacolumn": None,
+                "generate_screens": field.generate_screens,
                 "starttime": starttime,
                 "ntimes": ntimes,
                 # Solution interval configuration (time + frequency)

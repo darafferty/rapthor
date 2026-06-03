@@ -733,11 +733,11 @@ conditional branches, h5parm collection, plotting, combination, and source
 adjustment.
 
 Status: DI full-Jones, DI scalar-phase, DD fast-phase, DD medium-phase, DD
-slow-gain, and DD source-adjustment direct-flow slices are complete for mocked
-execution, and solve chunks are submitted as explicit Prefect futures so Dask
-can parallelise them. Pre-application, image-based prediction, IDG/screen
-generation, later h5parm post-processing, restart/failure coverage, and real
-external-tool calibration coverage remain outstanding.
+slow-gain, DD source-adjustment, pre-application, image-based prediction, and
+IDG/screen-generation slices are complete for mocked execution, and solve chunks
+are submitted as explicit Prefect futures so Dask can parallelise them. Later
+h5parm post-processing, restart/failure coverage, CWL-to-Prefect equivalence,
+and real external-tool calibration coverage remain outstanding.
 
 Suggested slices:
 
@@ -746,9 +746,9 @@ Suggested slices:
 3. DD fast phase calibration without image-based prediction. Complete.
 4. DD medium phase and slow gains. Complete.
 5. DD source adjustment and facet-region contract. Complete.
-6. Pre-application of DI solutions before DD solves.
-7. DD image-based prediction.
-8. IDG/screen generation.
+6. Pre-application of DI solutions before DD solves. Complete.
+7. DD image-based prediction. Complete.
+8. IDG/screen generation. Complete for mocked execution.
 9. Plotting and h5parm post-processing.
 
 Reuse the existing solve planner in `rapthor/operations/calibrate.py`.
@@ -789,6 +789,11 @@ Tests:
   deltas, and phase-centre options.
 - Added `adjust_h5parm_sources.py` command-builder coverage, fixture parity,
   multi-direction DD flow coverage, and single-direction skip coverage.
+- Added `idgcal_solve_phase`, `idgcal_solve_phase_and_gain`, and
+  `collect_screen_h5parms.py` command-builder coverage and fixture parity.
+- Added serializable payload, mocked direct-flow, Prefect harness, and
+  operation-run coverage for DD screen generation, including phase-only and
+  phase-plus-slow-gain IDGCal branches.
 - Clarified the facet-region ownership contract: image owns per-sector WSClean
   facet-region generation, while calibration-side image-based prediction or
   screen generation owns its field-level region file when those branches are
@@ -798,31 +803,15 @@ Tests:
 - Added calibration concurrency-order tests proving all solve chunks are submitted
   before h5parm collection starts, and that collection receives resolved output
   records from every chunk.
-- Continue adding unit tests for every calibration command-builder branch.
-- Continue adding golden command parity tests for DDECal, IDGCal, image-based predict,
-  h5parm collection, h5parm combination, plotting, source adjustment, and
-  solution processing.
-- Add command parity and mocked-flow coverage for `adjust_h5parm_sources.py`
-  on all DD multi-direction output paths: phase-only, slow-with-medium2, and
-  slow-without-medium2.
-- Add command parity and mocked-flow coverage for DI pre-application before DD
-  calibration, including `applycal` in `dp3_steps`, `applycal_h5parm`,
-  `fulljones_h5parm`, `normalize_h5parm`, and `applycal.steps`.
-- Add command parity and mocked-flow coverage for DD image-based prediction,
-  including `draw_model`, `make_region_file`, `predict.regions`,
-  `predict.images`, and the `predict,applybeam` or
-  `predict,applybeam,applycal` DP3 prefixes.
-- Resolve and test the facet-region ownership contract. Either calibration
-  emits the field-level region file needed by DD prediction/imaging, or the
-  plan and strategy documentation explicitly state that the image flow owns
-  region generation and consumes calibration h5parms.
+- Continue adding command parity and mocked-flow tests for any remaining
+  calibration post-processing, restart, and failure branches.
 - Existing solve-planner tests remain backend-independent.
 - Mocked flow tests for all solve lists supported by `CALIBRATION_STRATEGY.md`.
 - Mocked strategy-level tests for DI-only, DD-only, DI-then-DD, and DD-then-DI
   proving the correct solution and region artifacts move between operation
   flows.
-- Integration tests for DI-only, DD-only, DI-then-DD, and DD-then-DI using the
-  Prefect/Dask flow once command execution is available.
+- Integration tests for DI-only, DD-only, DI-then-DD, DD-then-DI, and screen
+  generation using the Prefect/Dask flow once command execution is available.
 - Output-contract and finalizer-state tests for every stable solution product,
   diagnostic product, and plotted product.
 - Failure tests for missing h5parm outputs, failed h5parm combination, invalid
@@ -2693,8 +2682,8 @@ Completed in this PR:
 
 Remaining follow-up:
 
-- Add operation-run cutover coverage for screen generation once IDG/screen
-  generation is implemented in the Prefect calibration flow.
+- Screen-generation operation-run coverage moved to PR 35 with the IDG/screen
+  Prefect calibration flow slice.
 - Add Calibrate cases to the dedicated CWL-to-Prefect equivalence suite before
   retiring any CWL calibration workflow code.
 - Add real external-tool Calibrate integration coverage for a small fixture run
@@ -2850,6 +2839,52 @@ Verified in the running dev container:
 - `python3 -m ruff check tests/execution/test_calibrate_flow.py`: passed.
 - `python3 -m ruff format --check tests/execution/test_calibrate_flow.py`:
   passed.
+- `git diff --check`: passed.
+
+### PR 35: Calibrate IDG/Screen Generation
+
+Status: complete for mocked IDG/screen generation and operation-run cutover.
+
+Completed in this PR:
+
+- Added Prefect command builders for CWL-equivalent IDGCal phase-only,
+  phase-plus-gain, and `collect_screen_h5parms.py` commands.
+- Added a serializable `generate_screens` Calibrate payload branch that draws
+  calibration model images, owns the field-level region file, scatters IDGCal
+  screen solves over time chunks, and collects the chunk h5parms into
+  `combined_solutions.h5`.
+- Added mocked direct-flow and Prefect harness coverage for both screen solve
+  variants.
+- Passed `generate_screens` through DD operation inputs and added operation-run
+  coverage proving finalizer state, `coefficients000` diagnostics, and screen
+  solution copying survive the Prefect adapter boundary.
+
+Remaining follow-up:
+
+- Add Calibrate screen-generation cases to the dedicated CWL-to-Prefect
+  equivalence suite before retiring any CWL calibration workflow code.
+- Add real external-tool screen-generation integration coverage when CI/staging
+  resources can provide suitable Measurement Set, sky model, IDGCal, and h5parm
+  inputs.
+
+Verified in the running dev container:
+
+- `python3 -m pytest tests/execution/test_calibrate_flow.py -k
+  'screen or idgcal or command_builders' -q --tb=short`: 8 passed, 43
+  deselected, 1 warning.
+- `python3 -m ruff format rapthor/execution/flows/calibrate.py
+  rapthor/operations/calibrate.py tests/execution/test_calibrate_flow.py`: 1
+  file reformatted, 2 files left unchanged.
+- `python3 -m pytest tests/execution/test_calibrate_flow.py -q --tb=short`: 51
+  passed, 1 warning.
+- `python3 -m pytest tests/operations/test_calibrate.py -q --tb=short
+  --disable-warnings`: 51 passed, 1 warning.
+- `python3 -m ruff check rapthor/execution/flows/calibrate.py
+  rapthor/operations/calibrate.py tests/execution/test_calibrate_flow.py`:
+  passed.
+- `python3 -m ruff format --check rapthor/execution/flows/calibrate.py
+  rapthor/operations/calibrate.py tests/execution/test_calibrate_flow.py`: 3
+  files already formatted.
 - `git diff --check`: passed.
 
 ## Success Criteria
