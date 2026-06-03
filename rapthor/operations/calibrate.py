@@ -146,8 +146,8 @@ class Calibrate(Operation):
                 "data_colname": field.data_colname,
                 "starttime": starttime,
                 "ntimes": ntimes,
-                "starttime": startchan,
-                "ntimes": nchans,
+                "startchan": startchan,
+                "nchans": nchans,
                 # Solution interval configuration (time + frequency)
                 # Get the solution intervals for the calibrations
                 "solint_fast_timestep": field.get_obs_parameters("solint_fast_timestep"),

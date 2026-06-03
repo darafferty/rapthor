@@ -977,6 +977,10 @@ steps:
         source: starttime
       - id: ntimes
         source: ntimes
+      - id: startchan
+        source: startchan
+      - id: nchans
+        source: nchans
       - id: steps
         source: dp3_steps
       - id: applycal_steps
