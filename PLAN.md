@@ -940,6 +940,9 @@ same user-visible results.
 
 ### Issue 1: Freeze The Supported Merge Feature Matrix
 
+Status: complete for the initial branch-local supported/deferred matrix and
+process-preflight coverage.
+
 Goal: define exactly what must be equivalent before the branch can merge.
 
 Tasks:
@@ -961,6 +964,39 @@ Done when:
 - Preflight tests cover both supported and unsupported entries.
 - Every later equivalence or integration issue can point to a concrete matrix
   entry.
+
+Completed in this issue:
+
+- Added `tests/execution/fixtures/supported_merge_feature_matrix.json` as the
+  initial machine-readable merge matrix.
+- Recorded supported entries for DI-only, DD-only, DI-then-DD, DD-then-DI,
+  DI full-Jones, DD slow-gain, hybrid screens, normalization, peeling,
+  full-Stokes clean-disabled imaging, image cubes, shared facet read/write, MPI
+  WSClean, and restart.
+- Recorded deferred entries for container execution, Slurm external-Dask setup,
+  and unknown calibration modes.
+- Added process-preflight tests proving supported entries are accepted and
+  deferred entries fail with the expected preflight issue codes.
+- Added `mpi_wsclean` to process-level feature collection so the supported Image
+  MPI slice is visible to the matrix and future equivalence harness.
+
+Remaining follow-up:
+
+- Extend the matrix as Issue 2 introduces concrete equivalence parsets and as
+  Issue 7 finalizes the selected Slurm execution mode.
+- Keep CWL runnable as the reference path until Issue 9 passes for every
+  supported matrix entry.
+
+Verified in the running dev container:
+
+- `python3 -m json.tool tests/execution/fixtures/supported_merge_feature_matrix.json`:
+  passed.
+- `python3 -m pytest tests/execution/test_process_flow.py -q --tb=short`: 18
+  passed, 1 warning.
+- `python3 -m ruff check rapthor/execution/flows/process.py
+  tests/execution/test_process_flow.py`: passed.
+- `python3 -m ruff format --check rapthor/execution/flows/process.py
+  tests/execution/test_process_flow.py`: 2 files already formatted.
 
 ### Issue 2: Build The CWL-to-Prefect Equivalence Harness
 

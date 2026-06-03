@@ -1,4 +1,6 @@
+import json
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import pytest
 from prefect.testing.utilities import prefect_test_harness
@@ -8,12 +10,16 @@ from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.process import (
     ProcessLifecycleHooks,
     ProcessOperationFactories,
+    SUPPORTED_PROCESS_FEATURES,
     collect_process_features,
     process_flow,
     process_steps_flow,
     run_process,
     run_process_steps,
 )
+
+FIXTURE_DIR = Path(__file__).parent / "fixtures"
+REPO_ROOT = Path(__file__).parents[2]
 
 
 @dataclass
@@ -36,6 +42,7 @@ class RecordingField:
     make_quv_images: bool = False
     disable_iquv_clean: bool = False
     save_image_cube: bool = False
+    use_mpi: bool = False
     image_cube_stokes_list: list[str] = field(default_factory=lambda: ["I"])
     parset: dict = field(
         default_factory=lambda: {"imaging_specific": {"skip_final_major_iteration": True}}
@@ -271,6 +278,14 @@ def _process_parset(**updates):
     return parset
 
 
+def _merge_feature_matrix():
+    return json.loads((FIXTURE_DIR / "supported_merge_feature_matrix.json").read_text())
+
+
+def _execution_config_from_matrix(entry):
+    return ExecutionConfig(**entry.get("execution_config", {"task_runner": "sync"}))
+
+
 @dataclass
 class RecordingProcessLifecycle:
     parset: dict
@@ -432,7 +447,11 @@ def test_collect_process_features_describes_strategy_and_runtime_options():
     parset = _process_parset(
         generate_initial_skymodel=True,
         ntimes_to_repeat_final_cycle=1,
-        imaging_specific={"skip_final_major_iteration": True, "shared_facet_rw": "True"},
+        imaging_specific={
+            "skip_final_major_iteration": True,
+            "shared_facet_rw": "True",
+            "use_mpi": "True",
+        },
     )
     field = RecordingField(
         dde_mode="hybrid",
@@ -440,6 +459,7 @@ def test_collect_process_features_describes_strategy_and_runtime_options():
         make_quv_images=True,
         disable_iquv_clean=True,
         save_image_cube=True,
+        use_mpi=True,
         parset=parset,
     )
     steps = [
@@ -469,6 +489,7 @@ def test_collect_process_features_describes_strategy_and_runtime_options():
         "image",
         "image_cube",
         "initial_skymodel",
+        "mpi_wsclean",
         "normalize",
         "peel_bright_sources",
         "peel_outliers",
@@ -480,6 +501,48 @@ def test_collect_process_features_describes_strategy_and_runtime_options():
         "solve_dd_fast_phase",
         "solve_di_full_jones",
     } <= features
+
+
+def test_supported_merge_feature_matrix_entries_pass_process_preflight():
+    matrix = _merge_feature_matrix()
+
+    assert matrix["supported"], "The supported merge matrix must not be empty"
+    for entry in matrix["supported"]:
+        features = set(entry["features"])
+        fixture_paths = [REPO_ROOT / fixture_ref for fixture_ref in entry["fixture_refs"]]
+
+        assert features <= SUPPORTED_PROCESS_FEATURES, entry["id"]
+        assert fixture_paths, entry["id"]
+        assert all(path.exists() for path in fixture_paths), entry["id"]
+        assert entry["test_types"], entry["id"]
+
+        preflight_execution(
+            _execution_config_from_matrix(entry),
+            requested_features=features,
+            supported_features=SUPPORTED_PROCESS_FEATURES,
+        )
+
+
+def test_deferred_merge_feature_matrix_entries_fail_process_preflight():
+    matrix = _merge_feature_matrix()
+
+    assert matrix["deferred"], "The deferred merge matrix must not be empty"
+    for entry in matrix["deferred"]:
+        fixture_paths = [REPO_ROOT / fixture_ref for fixture_ref in entry["fixture_refs"]]
+
+        assert fixture_paths, entry["id"]
+        assert all(path.exists() for path in fixture_paths), entry["id"]
+        assert entry["expected_issue_codes"], entry["id"]
+        assert entry["test_types"], entry["id"]
+
+        with pytest.raises(PreflightError) as exc:
+            preflight_execution(
+                _execution_config_from_matrix(entry),
+                requested_features=entry["features"],
+                supported_features=SUPPORTED_PROCESS_FEATURES,
+            )
+
+        assert [issue.code for issue in exc.value.issues] == entry["expected_issue_codes"]
 
 
 def test_run_process_preflight_rejects_unsupported_feature_before_operations():

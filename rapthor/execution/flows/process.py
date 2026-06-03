@@ -27,6 +27,7 @@ SUPPORTED_PROCESS_FEATURES = frozenset(
         "image",
         "image_cube",
         "initial_skymodel",
+        "mpi_wsclean",
         "normalize",
         "peel_bright_sources",
         "peel_outliers",
@@ -151,6 +152,10 @@ def collect_process_features(field: object, strategy_steps: list[dict], parset: 
             features.add("clean_disabled_full_stokes")
     if getattr(field, "save_image_cube", False):
         features.add("image_cube")
+    if getattr(field, "use_mpi", False) or _truthy(
+        _parset_get(parset, "imaging_specific", "use_mpi", False)
+    ):
+        features.add("mpi_wsclean")
     if getattr(field, "dde_mode", None) == "hybrid":
         features.add("hybrid_screens")
     if _truthy(_parset_get(parset, "imaging_specific", "shared_facet_rw", False)):

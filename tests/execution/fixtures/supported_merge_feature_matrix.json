@@ -1,0 +1,198 @@
+{
+    "schema_version": 1,
+    "supported": [
+        {
+            "id": "di_only_calibration",
+            "description": "DI calibration followed by imaging and mosaicking.",
+            "features": [
+                "calibration",
+                "calibration_di",
+                "final_cycle",
+                "image",
+                "solve_di_fast_phase",
+                "solve_di_medium_phase"
+            ],
+            "fixture_refs": ["tests/resources/integration_template.parset"],
+            "test_types": ["mocked-flow", "focused-integration", "equivalence"]
+        },
+        {
+            "id": "dd_only_calibration",
+            "description": "DD calibration followed by imaging and mosaicking.",
+            "features": [
+                "calibration",
+                "calibration_dd",
+                "final_cycle",
+                "image",
+                "solve_dd_fast_phase",
+                "solve_dd_medium_phase"
+            ],
+            "fixture_refs": ["tests/resources/integration_template.parset"],
+            "test_types": ["mocked-flow", "focused-integration", "equivalence"]
+        },
+        {
+            "id": "di_then_dd_calibration",
+            "description": "DI solutions feed DD pre-application before final imaging.",
+            "features": [
+                "calibration",
+                "calibration_dd",
+                "calibration_di",
+                "calibration_di_then_dd",
+                "final_cycle",
+                "image",
+                "solve_dd_fast_phase",
+                "solve_dd_medium_phase",
+                "solve_di_fast_phase",
+                "solve_di_medium_phase"
+            ],
+            "fixture_refs": ["tests/resources/integration_template.parset"],
+            "test_types": ["mocked-flow", "focused-integration", "equivalence"]
+        },
+        {
+            "id": "dd_then_di_calibration",
+            "description": "DD products remain visible to later DI prediction and final imaging.",
+            "features": [
+                "calibration",
+                "calibration_dd",
+                "calibration_dd_then_di",
+                "calibration_di",
+                "final_cycle",
+                "image",
+                "solve_dd_fast_phase",
+                "solve_dd_medium_phase",
+                "solve_di_fast_phase",
+                "solve_di_medium_phase"
+            ],
+            "fixture_refs": ["tests/resources/integration_template.parset"],
+            "test_types": ["mocked-flow", "focused-integration", "equivalence"]
+        },
+        {
+            "id": "di_full_jones_calibration",
+            "description": "DI full-Jones calibration branch.",
+            "features": [
+                "calibration",
+                "calibration_di",
+                "final_cycle",
+                "image",
+                "solve_di_full_jones"
+            ],
+            "fixture_refs": ["tests/resources/integration_template.parset"],
+            "test_types": ["mocked-flow", "focused-integration", "equivalence"]
+        },
+        {
+            "id": "dd_slow_gain_calibration",
+            "description": "DD fast, medium, and slow-gain calibration branch.",
+            "features": [
+                "calibration",
+                "calibration_dd",
+                "final_cycle",
+                "image",
+                "solve_dd_fast_phase",
+                "solve_dd_medium_phase",
+                "solve_dd_slow_gains"
+            ],
+            "fixture_refs": ["tests/resources/integration_template.parset"],
+            "test_types": ["mocked-flow", "focused-integration", "equivalence"]
+        },
+        {
+            "id": "hybrid_screens",
+            "description": "Hybrid screen generation and screen-corrected final imaging.",
+            "features": [
+                "calibration",
+                "calibration_dd",
+                "final_cycle",
+                "hybrid_screens",
+                "image",
+                "solve_dd_fast_phase"
+            ],
+            "fixture_refs": ["tests/resources/integration_template.parset"],
+            "test_types": ["mocked-flow", "focused-integration", "equivalence"]
+        },
+        {
+            "id": "normalization",
+            "description": "Flux-scale normalization followed by final imaging.",
+            "features": ["final_cycle", "image", "normalize"],
+            "fixture_refs": ["tests/resources/integration_template.parset"],
+            "test_types": ["mocked-flow", "focused-integration", "equivalence"]
+        },
+        {
+            "id": "peeling",
+            "description": "Outlier and bright-source peeling coverage.",
+            "features": ["final_cycle", "image", "peel_bright_sources", "peel_outliers"],
+            "fixture_refs": ["tests/resources/integration_template.parset"],
+            "test_types": ["mocked-flow", "focused-integration", "equivalence"]
+        },
+        {
+            "id": "full_stokes_clean_disabled",
+            "description": "Full-Stokes final imaging with clean disabled for IQUV.",
+            "features": [
+                "clean_disabled_full_stokes",
+                "final_cycle",
+                "full_stokes_imaging",
+                "image"
+            ],
+            "fixture_refs": ["tests/resources/integration_template.parset"],
+            "test_types": ["mocked-flow", "focused-integration", "equivalence"]
+        },
+        {
+            "id": "image_cube",
+            "description": "Image cube generation and related cube metadata.",
+            "features": ["final_cycle", "image", "image_cube"],
+            "fixture_refs": ["tests/resources/integration_template.parset"],
+            "test_types": ["mocked-flow", "focused-integration", "equivalence"]
+        },
+        {
+            "id": "shared_facet_rw",
+            "description": "Shared facet read/write mode remains supported with environment-aware integration gates.",
+            "features": ["final_cycle", "image", "shared_facet_rw"],
+            "fixture_refs": ["tests/resources/integration_template.parset"],
+            "test_types": ["mocked-flow", "focused-integration", "equivalence"]
+        },
+        {
+            "id": "mpi_wsclean",
+            "description": "MPI WSClean imaging path without Slurm-specific scheduler setup.",
+            "features": ["final_cycle", "image", "mpi_wsclean"],
+            "fixture_refs": ["tests/resources/test.parset"],
+            "test_types": ["mocked-flow", "target-environment", "equivalence"]
+        },
+        {
+            "id": "restart",
+            "description": "Restart and persisted output-record reuse for supported operations.",
+            "features": ["final_cycle", "image"],
+            "fixture_refs": ["tests/resources/integration_template.parset"],
+            "test_types": ["unit", "focused-integration", "equivalence"]
+        }
+    ],
+    "deferred": [
+        {
+            "id": "container_execution",
+            "description": "Container wrapping is not implemented in the Prefect runtime yet.",
+            "features": [],
+            "execution_config": {"task_runner": "sync", "use_container": true},
+            "expected_issue_codes": ["unsupported_container"],
+            "fixture_refs": ["examples/rapthor.parset"],
+            "test_types": ["unit", "preflight"]
+        },
+        {
+            "id": "slurm_external_dask",
+            "description": "Slurm allocation and external Dask scheduler scripts are Stage 9 work.",
+            "features": ["slurm_external_dask"],
+            "execution_config": {
+                "task_runner": "external_dask",
+                "dask_scheduler": "tcp://scheduler.example:8786",
+                "batch_system": "slurm"
+            },
+            "expected_issue_codes": ["unsupported_feature"],
+            "fixture_refs": ["examples/rapthor.parset"],
+            "test_types": ["unit", "target-environment"]
+        },
+        {
+            "id": "unknown_calibration_mode",
+            "description": "Unknown strategy calibration modes must fail preflight before operation execution.",
+            "features": ["calibration", "calibration_mode_sagecal"],
+            "execution_config": {"task_runner": "sync"},
+            "expected_issue_codes": ["unsupported_feature"],
+            "fixture_refs": ["tests/resources/integration_template.parset"],
+            "test_types": ["unit", "preflight"]
+        }
+    ]
+}
