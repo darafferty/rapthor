@@ -1,7 +1,7 @@
 # This Dockerfile builds the base image for the Rapthor pipeline,
 # containing all its dependencies.
 
-FROM ubuntu:24.04 AS builder
+FROM ubuntu:26.04 AS builder
 
 # Set default versions. Can be overridden from the command-line
 ARG AOFLAGGER_COMMIT=master
@@ -188,7 +188,7 @@ RUN pip install ./rapthor --break-system-packages
 # The image will now be rebuilt without adding the sources, in order to
 # reduce the size of the image.
 #---------------------------------------------------------------------------
-FROM ubuntu:24.04 AS runner
+FROM ubuntu:26.04 AS runner
 
 COPY --from=builder /usr/local /usr/local
 
