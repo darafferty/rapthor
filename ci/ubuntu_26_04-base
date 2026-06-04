@@ -8,7 +8,7 @@ ARG AOFLAGGER_COMMIT=master
 ARG CASACORE_COMMIT=master
 ARG DP3_COMMIT=master
 ARG EVERYBEAM_COMMIT=master
-ARG IDG_COMMIT=master
+ARG IDG_COMMIT=main
 ARG PYTHONCASACORE_COMMIT=master
 ARG SAGECAL_COMMIT=master
 ARG WSCLEAN_COMMIT=master
@@ -43,6 +43,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         libboost-filesystem-dev \
         libboost-program-options-dev \
         libboost-python-dev \
+        libboost-numpy-dev \
         libcfitsio-dev \
         libfftw3-dev \
         libgsl-dev \
@@ -197,7 +198,7 @@ ARG AOFLAGGER_COMMIT=master
 ARG CASACORE_COMMIT=master
 ARG DP3_COMMIT=master
 ARG EVERYBEAM_COMMIT=master
-ARG IDG_COMMIT=master
+ARG IDG_COMMIT=main
 ARG PYTHONCASACORE_COMMIT=master
 ARG SAGECAL_COMMIT=master
 ARG WSCLEAN_COMMIT=master
