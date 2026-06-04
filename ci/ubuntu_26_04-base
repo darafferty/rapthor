@@ -224,6 +224,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         libboost-filesystem1.74.0 \
         libboost-program-options1.74.0 \
         libboost-python1.74.0 \
+        libboost-numpy-dev \
         libcfitsio-bin \
         libfftw3-double3 \
         libfftw3-single3 \
