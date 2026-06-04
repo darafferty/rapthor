@@ -1246,7 +1246,7 @@ steps:
       - id: solve4_antennaconstraint
         source: medium_antennaconstraint
 {% endif %}
-    scatter: [msin, starttime, ntimes, maxinterval,
+    scatter: [msin, starttime, ntimes, startchan, nchans, maxinterval,
               solve1_h5parm, solve1_solint, solve1_nchan, solve1_smoothnessreffrequency, solve1_solutions_per_direction, solve1_smoothness_dd_factors,
               solve2_h5parm, solve2_solint, solve2_nchan, solve2_smoothnessreffrequency, solve2_solutions_per_direction, solve2_smoothness_dd_factors,
 {% if do_slowgain_solve %}
