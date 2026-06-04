@@ -32,6 +32,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get update && \
     apt-get install -y \
         bison \
+        cmake \
         flex \
         g++ \
         gfortran \
@@ -57,17 +58,6 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         wcslib-dev \
         wget
 
-# Do not use `pip` from the Debian repository, but fetch it from PyPA.
-# This way, we are sure that the latest versions of `pip`, `setuptools`, and
-# `wheel` are installed in /usr/local, the only directory we're going to copy
-# over to the next build stage.
-RUN wget -q https://bootstrap.pypa.io/get-pip.py && \
-    python3 get-pip.py
-
-# Install required python packages
-RUN python3 -m pip install \
-    'cmake<4' \
-    'numpy<2'
 
 # Install the casacore measures data. We purposely do not install these from
 # the Ubuntu repository, but download the latest version from the ASTRON site.
@@ -175,11 +165,11 @@ RUN ninja -C /src/DP3/build install
 RUN git clone --no-checkout https://github.com/casacore/python-casacore.git
 RUN git -C python-casacore checkout ${PYTHONCASACORE_COMMIT}
 RUN CASACORE_DATA=/usr/local/share/casacore/data \
-    pip install -v /src/python-casacore
+    pip install -v /src/python-casacore --break-system-packages
 
 # We need to `pip install` EveryBeam from source as well, because the C++
 # build does not produce a proper Python package.
-RUN pip install -v /src/EveryBeam
+RUN pip install -v /src/EveryBeam --break-system-packages
 
 # Generate file with one-liner package version descriptions
 RUN mkdir -p /usr/local/share/rapthor; \
@@ -192,7 +182,7 @@ done \
 
 # Install current version of Rapthor from source.
 COPY . rapthor
-RUN pip install ./rapthor
+RUN pip install ./rapthor --break-system-packages
 
 #---------------------------------------------------------------------------
 # The image will now be rebuilt without adding the sources, in order to
@@ -250,7 +240,6 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         libwcs7 \
         nodejs \
         python3 \
-        python3-distutils \
         wget
 RUN rm -rf /var/lib/apt/lists/*
 
