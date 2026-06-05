@@ -1111,11 +1111,26 @@ Completed in the first Issue 3 slice:
   branch for the real filesystem integration, while still preserving command
   parity checks for the multi-input DP3 path.
 
+Completed in the second Issue 3 slice:
+
+- Replaced the placeholder `tests/operations/test_mosaic.py` tests with real
+  Mosaic operation coverage.
+- Added operation-level assertions for `uses_python_flow()`,
+  `set_parset_parameters()`, slurm `max_cores` handling, operation-derived
+  image-name selection, two-sector CWL-compatible input records, supplementary
+  and filtered image products, single-sector skip-processing inputs, finalizer
+  field-state updates, and compressed processed mosaic products.
+- Kept the coverage paired with the existing Prefect Mosaic flow tests so
+  operation-generated inputs, finalizer expectations, and flow output records
+  stay aligned.
+
 Remaining follow-up:
 
 - Add Concatenate multi-input DP3/TAQL integration only in an environment that
   provides those tools.
-- Continue the parity-gate work for Mosaic, Predict, Image, and Calibrate.
+- Add real image-to-mosaic integration coverage once suitable FITS or Image-flow
+  products are available in CI/staging.
+- Continue the parity-gate work for Predict, Image, and Calibrate.
 
 Verified in the running dev container:
 
@@ -1128,6 +1143,14 @@ Verified in the running dev container:
 - `python3 -m ruff check tests/scripts/test_concat_ms.py`: passed.
 - `python3 -m ruff format --check tests/scripts/test_concat_ms.py`: 1 file
   already formatted.
+- `python3 -m pytest tests/operations/test_mosaic.py -q --tb=short`: 8
+  passed, 1 warning.
+- `python3 -m pytest tests/operations/test_mosaic.py
+  tests/execution/test_mosaic_flow.py -q --tb=short`: 20 passed, 1 warning.
+- `python3 -m ruff check tests/operations/test_mosaic.py`: passed.
+- `python3 -m ruff format --check tests/operations/test_mosaic.py`: 1 file
+  already formatted.
+- `git diff --check`: passed.
 
 ### Issue 4: Complete Top-Level Prefect Process Equivalence
 
