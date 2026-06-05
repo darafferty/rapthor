@@ -1157,12 +1157,29 @@ Completed in the fourth Issue 3 slice:
 - Kept this slice free of WSClean/PyBDSF execution while exercising real FITS
   cube products and the catalog-script contract used by Image cube runs.
 
+Completed in the fifth Issue 3 slice:
+
+- Replaced placeholder Mosaic helper script tests for `make_mosaic.py`,
+  `make_mosaic_template.py`, and `regrid_image.py` with real tiny-FITS
+  coverage.
+- Added `make_mosaic.py` tests proving finite regridded images are averaged
+  correctly, `NaN` pixels are ignored, and skip mode copies the first input
+  image.
+- Added `make_mosaic_template.py` tests proving a zero-valued template with
+  mosaic metadata is created from sector images and vertices files, and skip
+  mode avoids creating output.
+- Added `regrid_image.py` tests proving same-WCS reprojection produces an output
+  with the template header and finite data, and skip mode copies the input image.
+- Paired the helper-script coverage with the existing Mosaic Prefect flow and
+  operation tests so script behaviour, command builders, flow output records,
+  and finalizer expectations stay aligned.
+
 Remaining follow-up:
 
 - Add Concatenate multi-input DP3/TAQL integration only in an environment that
   provides those tools.
-- Add real image-to-mosaic integration coverage once suitable FITS or Image-flow
-  products are available in CI/staging.
+- Add real image-to-mosaic integration coverage from Image-flow products once
+  suitable FITS fixtures are available in CI/staging.
 - Continue the parity-gate work for Image and Calibrate, plus any target
   environment Predict integration that requires external DP3 products.
 
@@ -1204,6 +1221,20 @@ Verified in the running dev container:
 - `python3 -m ruff format --check tests/scripts/test_make_image_cube.py
   tests/scripts/test_make_catalog_from_image_cube.py`: 2 files already
   formatted.
+- `python3 -m pytest tests/scripts/test_make_mosaic.py
+  tests/scripts/test_make_mosaic_template.py tests/scripts/test_regrid_image.py
+  -q --tb=short`: 6 passed.
+- `python3 -m pytest tests/scripts/test_make_mosaic.py
+  tests/scripts/test_make_mosaic_template.py tests/scripts/test_regrid_image.py
+  tests/execution/test_mosaic_flow.py tests/operations/test_mosaic.py -q
+  --tb=short`: 26 passed, 1 warning.
+- `python3 -m ruff check tests/scripts/test_make_mosaic.py
+  tests/scripts/test_make_mosaic_template.py tests/scripts/test_regrid_image.py`:
+  passed.
+- `python3 -m ruff format --check tests/scripts/test_make_mosaic.py
+  tests/scripts/test_make_mosaic_template.py tests/scripts/test_regrid_image.py`:
+  not rerun because the devcontainer escalation request was rejected by the
+  workspace credit limit.
 - `git diff --check`: passed.
 
 ### Issue 4: Complete Top-Level Prefect Process Equivalence
