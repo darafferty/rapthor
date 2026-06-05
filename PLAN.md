@@ -1124,13 +1124,31 @@ Completed in the second Issue 3 slice:
   operation-generated inputs, finalizer expectations, and flow output records
   stay aligned.
 
+Completed in the third Issue 3 slice:
+
+- Strengthened Predict script parity coverage for `add_sector_models.py` and
+  `subtract_sector_models.py` using real copied Measurement Sets from the
+  existing `test_ms` fixture.
+- Added an `add_sector_models.py` test proving the script copies the input
+  `DATA` column and writes `MODEL_DATA` as the sum of multiple sector model
+  Measurement Sets.
+- Replaced placeholder `subtract_sector_models.py` tests with a real
+  two-sector subtraction case proving each output Measurement Set contains the
+  input data minus the other sector model.
+- Added lightweight unit assertions for `CovWeights.get_nearest_frequstep()` and
+  phase-only `readGainFile()` unity-gain behaviour without requiring an h5parm
+  amplitude-gain file.
+- Kept the tests free of DP3 execution by using pre-existing Measurement Set
+  copies and forcing a single script chunk.
+
 Remaining follow-up:
 
 - Add Concatenate multi-input DP3/TAQL integration only in an environment that
   provides those tools.
 - Add real image-to-mosaic integration coverage once suitable FITS or Image-flow
   products are available in CI/staging.
-- Continue the parity-gate work for Predict, Image, and Calibrate.
+- Continue the parity-gate work for Image and Calibrate, plus any target
+  environment Predict integration that requires external DP3 products.
 
 Verified in the running dev container:
 
@@ -1150,6 +1168,15 @@ Verified in the running dev container:
 - `python3 -m ruff check tests/operations/test_mosaic.py`: passed.
 - `python3 -m ruff format --check tests/operations/test_mosaic.py`: 1 file
   already formatted.
+- `python3 -m pytest tests/scripts/test_add_sector_models.py
+  tests/scripts/test_subtract_sector_models.py -q --tb=short`: 6 passed.
+- `python3 -m pytest tests/scripts/test_add_sector_models.py
+  tests/scripts/test_subtract_sector_models.py tests/execution/test_predict_flow.py
+  tests/operations/test_predict.py -q --tb=short`: 71 passed, 4 warnings.
+- `python3 -m ruff check tests/scripts/test_add_sector_models.py
+  tests/scripts/test_subtract_sector_models.py`: passed.
+- `python3 -m ruff format --check tests/scripts/test_add_sector_models.py
+  tests/scripts/test_subtract_sector_models.py`: 2 files already formatted.
 - `git diff --check`: passed.
 
 ### Issue 4: Complete Top-Level Prefect Process Equivalence

@@ -2,24 +2,33 @@
 Tests for the subtract_sector_models script.
 """
 
-import pytest
-from rapthor.scripts.subtract_sector_models import (CovWeights, get_nchunks,
-                                                    main, readGainFile)
+import shutil
+from unittest.mock import patch
+
+import casacore.tables as pt
+import numpy as np
+
+from rapthor.scripts import subtract_sector_models
+from rapthor.scripts.subtract_sector_models import CovWeights, get_nchunks, main, readGainFile
+
+
+def _copy_ms(source, destination):
+    shutil.copytree(source, destination)
+    return destination
+
+
+def _write_data_column(ms_path, value):
+    with pt.table(str(ms_path), readonly=False, ack=False) as table:
+        data = table.getcol("DATA")
+        table.putcol("DATA", np.full_like(data, value))
+
+
+def _read_data_column(ms_path):
+    with pt.table(str(ms_path), readonly=True, ack=False) as table:
+        return table.getcol("DATA")
 
 
 def test_get_nchunks(test_ms):
-    # Test with a dummy MS file and parameters
-    msin = test_ms
-    nsectors = 4
-    fraction = 1.0
-    reweight = False
-    compressed = False
-
-    # Mock the subprocess and os.popen calls
-    import os
-    import subprocess
-    from unittest.mock import patch
-
     with (
         patch("os.popen") as mock_free,
         patch("subprocess.check_output") as mock_du,
@@ -32,140 +41,84 @@ def test_get_nchunks(test_ms):
         ]
         mock_du.return_value = b"36039\tdummy.ms\n"
 
-        nchunks = get_nchunks(msin, nsectors, fraction, reweight, compressed)
-        assert nchunks == 32, f"Expected 32 chunks, got {nchunks}"
+        nchunks = get_nchunks(test_ms, nsectors=4, fraction=1.0, reweight=False, compressed=False)
+
+    assert nchunks == 32
 
 
-def test_main(test_ms):
-    # # Define test parameters
-    # msin = test_ms
-    # model_list = ["model1.ms", "model2.ms"]
-    # msin_column = "DATA"
-    # model_column = "MODEL_DATA"
-    # out_column = "SUBTRACTED_DATA"
-    # nr_outliers = 5
-    # nr_bright = 3
-    # use_compression = False
-    # peel_outliers = True
-    # peel_bright = True
-    # reweight = False
-    # starttime = None
-    # solint_sec = 60
-    # solint_hz = 0.0
-    # weights_colname = "WEIGHT"
-    # gainfile = "gainfile.gain"
-    # uvcut_min = 0.0
-    # uvcut_max = 1000.0
-    # phaseonly = False
-    # dirname = "output_dir"
-    # quiet = True
-    # infix = "test_infix"
-    # # Call the main function with test parameters
-    # main(
-    #     msin,
-    #     model_list,
-    #     msin_column,
-    #     model_column,
-    #     out_column,
-    #     nr_outliers,
-    #     nr_bright,
-    #     use_compression,
-    #     peel_outliers,
-    #     peel_bright,
-    #     reweight,
-    #     starttime,
-    #     solint_sec,
-    #     solint_hz,
-    #     weights_colname,
-    #     gainfile,
-    #     uvcut_min,
-    #     uvcut_max,
-    #     phaseonly,
-    #     dirname,
-    #     quiet,
-    #     infix,
-    # )
-    pass
+def test_main_subtracts_other_sector_models(test_ms, tmp_path, monkeypatch):
+    msin = _copy_ms(test_ms, tmp_path / "input.ms")
+    model_a = _copy_ms(test_ms, tmp_path / "input.ms.sector_1_modeldata")
+    model_b = _copy_ms(test_ms, tmp_path / "input.ms.sector_2_modeldata")
+    _write_data_column(msin, 10.0 + 0.0j)
+    _write_data_column(model_a, 2.0 + 0.0j)
+    _write_data_column(model_b, 3.0 + 0.0j)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(subtract_sector_models, "get_nchunks", lambda *args, **kwargs: 1)
 
-
-@pytest.fixture
-def cov_weights(test_ms):
-    # Create an instance of CovWeights for testing
-    MSName = test_ms
-    solint_sec = 60  # Example value for solution interval in seconds
-    solint_hz = 0.0  # Example value for solution interval in Hz
-    startrow = 0  # Starting row for the weights calculation
-    nrow = 100  # Number of rows to process
-    uvcut = [0, 2000]  # UV cut range
-    gainfile = None  # No gain file for this test
-    phaseonly = False  # Not using phase-only for this test
-    dirname = None  # No specific directory for this test
-    quiet = True  # Suppress output for this test
-    weights = CovWeights(
-        MSName,
-        solint_sec,
-        solint_hz,
-        startrow,
-        nrow,
-        uvcut,
-        gainfile,
-        phaseonly,
-        dirname,
-        quiet,
+    main(
+        str(msin),
+        [str(model_a), str(model_b)],
+        msin_column="DATA",
+        model_column="DATA",
+        out_column="DATA",
+        nr_outliers=0,
+        nr_bright=0,
+        use_compression=False,
+        peel_outliers=False,
+        peel_bright=False,
+        reweight=False,
+        starttime=None,
+        solint_sec=60.0,
+        solint_hz=0.0,
+        weights_colname="CAL_WEIGHT",
+        gainfile="",
+        uvcut_min=80.0,
+        uvcut_max=1e6,
+        phaseonly=True,
+        dirname=None,
+        quiet=True,
+        infix=".selfcal",
     )
-    yield weights
+
+    sector_1_output = tmp_path / "input.ms.sector_1"
+    sector_2_output = tmp_path / "input.ms.sector_2"
+    assert sector_1_output.is_dir()
+    assert sector_2_output.is_dir()
+    assert np.allclose(_read_data_column(sector_1_output), 7.0 + 0.0j)
+    assert np.allclose(_read_data_column(sector_2_output), 8.0 + 0.0j)
 
 
-class TestCovWeights:
-    def test_find_weights(self, cov_weights):
-        # # Test the FindWeights method with dummy data
-        # residualdata = None  # Replace with actual residual data
-        # flags = None  # Replace with actual flags
-        # weights = cov_weights.FindWeights(residualdata, flags)
-        # # Check if weights are calculated correctly
-        pass
+def test_cov_weights_get_nearest_frequstep_uses_channel_divisors():
+    cov_weights = CovWeights.__new__(CovWeights)
+    cov_weights.numchannels = 12
 
-    def test_calc_weights(self, cov_weights):
-        # # Test the calcWeights method with dummy data
-        # CoeffArray = None  # Replace with actual coefficient array
-        # max_radius = 5000  # Example value
-        # weights = cov_weights.calcWeights(CoeffArray, max_radius)
-        # # Check if weights are calculated correctly
-        pass
+    assert cov_weights.get_nearest_frequstep(5.1) == 6
+    assert cov_weights.get_nearest_frequstep(3.2) == 3
+    assert cov_weights.freq_divisors.tolist() == [12, 6, 4, 3, 2, 1]
 
 
-    def test_get_nearest_frequstep(self, cov_weights):
-        # # Test the get_nearest_frequstep method with a dummy frequency step
-        # freqstep = 100.0
-        # nearest_freqstep = cov_weights.get_nearest_frequstep(freqstep)
-        # # Check if the nearest frequency step is calculated correctly
-        pass
-
-def test_read_gain_file(test_ms):
-    # Test the readGainFile function with dummy parameters
-    gainfile = "test_gain.gain"
-    ms = test_ms
+def test_read_gain_file_returns_unity_gains_for_phaseonly():
     nt = 10
     nchan = 1
     nbl = 1
-    tarray = [0.0] * nt
-    nAnt = 1
-    msname = "test_msname"
-    phaseonly = False
-    dirname = "output_dir"
-    startrow = 0
-    nrow = 100
-    readGainFile(
-        gainfile,
-        ms,
+
+    ant1gainarray, ant2gainarray = readGainFile(
+        "unused.h5",
+        None,
         nt,
         nchan,
         nbl,
-        tarray,
-        nAnt,
-        msname,
-        phaseonly,
-        dirname,
-        startrow,
-        nrow,
+        [0.0] * nt,
+        1,
+        "unused.ms",
+        True,
+        "direction",
+        0,
+        100,
     )
+
+    assert np.all(ant1gainarray == 1.0)
+    assert np.all(ant2gainarray == 1.0)
+    assert ant1gainarray.shape == (nt * nbl, nchan)
+    assert ant2gainarray.shape == (nt * nbl, nchan)
