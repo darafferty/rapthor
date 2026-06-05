@@ -886,9 +886,9 @@ def main(
         allow_internet_access=allow_internet_access,
     )
     cwl_output.update(result)
-
-    result = compute_facet_rms_noise(facet_region_file, rms_img_flat_noise, rms_img_true_sky)
-    cwl_output.update({"facets_rms": result})
+    if facet_region_file and Path(facet_region_file).exists():
+        result = compute_facet_rms_noise(facet_region_file, rms_img_flat_noise, rms_img_true_sky)
+        cwl_output.update({"facets_rms": result})
 
     # Write out the full diagnostics
     with open(output_root + ".image_diagnostics.json", "w") as fp:

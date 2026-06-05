@@ -1,11 +1,13 @@
 """
 Module that holds all compute-cluster-related functions
 """
-import subprocess
+
 import logging
+import subprocess
+
 import numpy as np
 
-log = logging.getLogger('rapthor:cluster')
+log = logging.getLogger("rapthor:cluster")
 
 
 def get_available_memory():
@@ -20,7 +22,7 @@ def get_available_memory():
     available_gb : int
         Available memory in GB
     """
-    memstr = subprocess.getoutput('free -t -g').split('\n')[1]  # second line
+    memstr = subprocess.getoutput("free -t -g").split("\n")[1]  # second line
     available_gb = list(map(int, memstr.split()[1:]))[-1]  # last entry
 
     return available_gb
@@ -52,7 +54,7 @@ def get_chunk_size(cluster_parset, numsamples, numobs, solint):
     # Try to make at least as many chunks (over all observations) as there are
     # nodes and ensure that the solint is a divisor of samples_per_chunk
     # (otherwise we could get a lot of solutions with less than the target size)
-    target_numchunks = np.ceil(cluster_parset['max_nodes'] / numobs)
+    target_numchunks = np.ceil(cluster_parset["max_nodes"] / numobs)
     samples_per_chunk = int(np.ceil(numsamples / target_numchunks))
     samples_per_chunk -= samples_per_chunk % solint
     if samples_per_chunk < solint:
