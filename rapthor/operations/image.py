@@ -381,7 +381,7 @@ class Image(Operation):
             "do_multiscale": [sector.multiscale for sector in self.imaging_sectors],
             "dd_psf_grid": [sector.dd_psf_grid for sector in self.imaging_sectors],
             "apply_time_frequency_smearing": self.field.correct_smearing_in_imaging,
-            "no_update_model_required": not self.field.make_residual_visibilities,
+            "update_model_required": self.field.make_residual_visibilities,
             "interval": interval,
             "max_threads": self.field.parset["cluster_specific"]["max_threads"],
             "deconvolution_threads": self.field.parset["cluster_specific"]["deconvolution_threads"],
