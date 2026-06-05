@@ -1097,6 +1097,38 @@ Done when:
 - Prefect operation-run tests are additive and do not replace CWL-reference
   coverage until Issue 9 is complete.
 
+Status: in progress.
+
+Completed in the first Issue 3 slice:
+
+- Replaced the placeholder `tests/scripts/test_concat_ms.py` coverage with a
+  lightweight real Measurement Set script path for Concatenate. The tests now
+  copy the `test_ms` fixture through the single-input `concat_ms()` branch,
+  exercise the CLI entry point, reject an existing output without overwrite,
+  build the DP3 frequency-concat command from real Measurement Set metadata,
+  and check the TAQL time-concat command shape.
+- Kept this slice free of DP3 execution by using the existing single-input copy
+  branch for the real filesystem integration, while still preserving command
+  parity checks for the multi-input DP3 path.
+
+Remaining follow-up:
+
+- Add Concatenate multi-input DP3/TAQL integration only in an environment that
+  provides those tools.
+- Continue the parity-gate work for Mosaic, Predict, Image, and Calibrate.
+
+Verified in the running dev container:
+
+- `python3 -m pytest tests/scripts/test_concat_ms.py -q --tb=short`: 5 passed.
+- `python3 -m pytest tests/scripts/test_concat_ms.py
+  tests/execution/test_concatenate_flow.py
+  tests/lib/test_cwl.py::test_concatenate_workflow
+  tests/execution/test_reference_fixtures.py -q --tb=short`: 25 passed,
+  1 warning.
+- `python3 -m ruff check tests/scripts/test_concat_ms.py`: passed.
+- `python3 -m ruff format --check tests/scripts/test_concat_ms.py`: 1 file
+  already formatted.
+
 ### Issue 4: Complete Top-Level Prefect Process Equivalence
 
 Goal: prove the side-by-side Prefect top-level process flow preserves the legacy
