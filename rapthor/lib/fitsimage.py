@@ -324,7 +324,10 @@ class FITSCube(object):
         self.header['NAXIS'] = 3
         self.header['NAXIS3'] = len(self.channel_frequencies)
         self.header['CRPIX3'] = 1
-        self.header['CDELT3'] = np.diff(self.channel_frequencies).mean()
+        if len(self.channel_frequencies) > 1:
+            self.header['CDELT3'] = np.diff(self.channel_frequencies).mean()
+        else:
+            self.header['CDELT3'] = 1.0
         self.header['CTYPE3'] = 'FREQ'
         self.header['CRVAL3'] = self.channel_frequencies[0]
         self.header["CUNIT3"] = "Hz"

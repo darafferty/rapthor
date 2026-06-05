@@ -1141,6 +1141,22 @@ Completed in the third Issue 3 slice:
 - Kept the tests free of DP3 execution by using pre-existing Measurement Set
   copies and forcing a single script chunk.
 
+Completed in the fourth Issue 3 slice:
+
+- Replaced placeholder image-cube script tests with real FITS coverage for
+  `make_image_cube.py`.
+- Added tests proving channel images are ordered by frequency in the output
+  cube, beam/frequency metadata files are written in that same order, and
+  default metadata filenames are created.
+- Fixed `FITSCube.make_header()` for the single-channel cube case so `CDELT3`
+  remains finite instead of writing `NaN` into the FITS header.
+- Replaced placeholder `make_catalog_from_image_cube.py` coverage with mocked
+  PyBDSF-boundary tests that still exercise cube beam/frequency parsing,
+  rms-box string parsing, PyBDSF argument forwarding, catalog writing, and
+  missing metadata-file failures.
+- Kept this slice free of WSClean/PyBDSF execution while exercising real FITS
+  cube products and the catalog-script contract used by Image cube runs.
+
 Remaining follow-up:
 
 - Add Concatenate multi-input DP3/TAQL integration only in an environment that
@@ -1177,6 +1193,17 @@ Verified in the running dev container:
   tests/scripts/test_subtract_sector_models.py`: passed.
 - `python3 -m ruff format --check tests/scripts/test_add_sector_models.py
   tests/scripts/test_subtract_sector_models.py`: 2 files already formatted.
+- `python3 -m pytest tests/scripts/test_make_image_cube.py
+  tests/scripts/test_make_catalog_from_image_cube.py -q --tb=short`: 5 passed.
+- `python3 -m pytest tests/scripts/test_make_image_cube.py
+  tests/scripts/test_make_catalog_from_image_cube.py tests/execution/test_image_flow.py
+  tests/operations/test_image.py -q --tb=short`: 143 passed, 13 warnings.
+- `python3 -m ruff check rapthor/lib/fitsimage.py
+  tests/scripts/test_make_image_cube.py
+  tests/scripts/test_make_catalog_from_image_cube.py`: passed.
+- `python3 -m ruff format --check tests/scripts/test_make_image_cube.py
+  tests/scripts/test_make_catalog_from_image_cube.py`: 2 files already
+  formatted.
 - `git diff --check`: passed.
 
 ### Issue 4: Complete Top-Level Prefect Process Equivalence
