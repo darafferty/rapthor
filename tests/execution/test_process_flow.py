@@ -8,9 +8,9 @@ from prefect.testing.utilities import prefect_test_harness
 from rapthor.execution.capabilities import PreflightError, preflight_execution
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.process import (
+    SUPPORTED_PROCESS_FEATURES,
     ProcessLifecycleHooks,
     ProcessOperationFactories,
-    SUPPORTED_PROCESS_FEATURES,
     collect_process_features,
     process_flow,
     process_steps_flow,

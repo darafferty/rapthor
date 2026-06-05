@@ -10,8 +10,8 @@ from rapthor.execution.commands import command_matches_fixture, command_to_strin
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.calibrate import (
     build_adjust_h5parm_sources_command,
-    build_combine_h5parms_command,
     build_collect_h5parms_command,
+    build_combine_h5parms_command,
     build_ddecal_solve_command,
     build_plot_solutions_command,
     build_process_gains_command,
@@ -19,8 +19,8 @@ from rapthor.execution.flows.calibrate import (
     calibrate_flow,
     calibrate_payload_from_inputs,
     normalized_adjust_h5parm_sources_command,
-    normalized_combine_h5parms_command,
     normalized_collect_h5parms_command,
+    normalized_combine_h5parms_command,
     normalized_ddecal_solve_command,
     normalized_plot_solutions_command,
     normalized_process_gains_command,
@@ -108,12 +108,12 @@ from rapthor.execution.flows.predict import (
     run_predict_postprocess,
 )
 from rapthor.execution.flows.process import (
+    SUPPORTED_PROCESS_FEATURES,
     ProcessLifecycleHooks,
     ProcessOperationFactories,
-    SUPPORTED_PROCESS_FEATURES,
     collect_process_features,
-    default_process_operation_factories,
     default_process_lifecycle_hooks,
+    default_process_operation_factories,
     process_flow,
     process_steps_flow,
     run_process,

@@ -9,9 +9,9 @@ import rapthor.execution.flows.calibrate as calibrate_module
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.calibrate import (
     build_adjust_h5parm_sources_command,
-    build_combine_h5parms_command,
     build_collect_h5parms_command,
     build_collect_screen_h5parms_command,
+    build_combine_h5parms_command,
     build_ddecal_solve_command,
     build_idgcal_solve_phase_and_gain_command,
     build_idgcal_solve_phase_command,
@@ -21,9 +21,9 @@ from rapthor.execution.flows.calibrate import (
     calibrate_flow,
     calibrate_payload_from_inputs,
     normalized_adjust_h5parm_sources_command,
-    normalized_combine_h5parms_command,
     normalized_collect_h5parms_command,
     normalized_collect_screen_h5parms_command,
+    normalized_combine_h5parms_command,
     normalized_ddecal_solve_command,
     normalized_draw_model_command,
     normalized_idgcal_solve_phase_and_gain_command,
