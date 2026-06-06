@@ -187,6 +187,8 @@ def _patch_legacy_step_operations(monkeypatch):
     monkeypatch.setattr(legacy_process, "Image", RecordingImage)
     monkeypatch.setattr(legacy_process, "Mosaic", RecordingMosaic)
     monkeypatch.setattr(legacy_process, "ImageNormalize", RecordingImageNormalize)
+    monkeypatch.setattr(legacy_process, "Concatenate", RecordingConcatenate)
+    monkeypatch.setattr(legacy_process, "ImageInitial", RecordingImageInitial)
 
 
 def _process_step_summary(field):
@@ -230,6 +232,115 @@ def _run_legacy_process_steps(monkeypatch, field, steps, final=False):
     _patch_legacy_step_operations(monkeypatch)
     legacy_process.run_steps(field, steps, final=final)
     return field
+
+
+def _run_legacy_process(monkeypatch, parset, strategy_steps, field_updates=None):
+    _patch_legacy_step_operations(monkeypatch)
+    created_fields = []
+    logging_levels = []
+    read_files = []
+
+    class LegacyRecordingField(RecordingField):
+        def __init__(self, input_parset):
+            super().__init__(parset=input_parset)
+            for name, value in (field_updates or {}).items():
+                setattr(self, name, value)
+            created_fields.append(self)
+
+    def read_parset(parset_file):
+        read_files.append(parset_file)
+        return parset
+
+    def set_logging_level(logging_level):
+        logging_levels.append(logging_level)
+
+    def set_strategy(field):
+        field.events.append({"operation": "set_strategy"})
+        return strategy_steps
+
+    def validate_strategy(strategy_steps, input_parset):
+        created_fields[0].events.append(
+            {"operation": "validate_strategy", "step_count": len(strategy_steps)}
+        )
+
+    def chunk_observations(field, steps, data_fraction):
+        field.events.append(
+            {
+                "operation": "chunk",
+                "step_count": len(steps),
+                "data_fraction": data_fraction,
+            }
+        )
+
+    def do_final_pass(field, selfcal_steps, final_step):
+        field.events.append(
+            {
+                "operation": "do_final_pass",
+                "selfcal_step_count": len(selfcal_steps),
+                "final_do_image": final_step["do_image"],
+            }
+        )
+        return True
+
+    def make_report(field):
+        field.events.append({"operation": "report"})
+
+    monkeypatch.setattr(legacy_process, "parset_read", read_parset)
+    monkeypatch.setattr(legacy_process._logging, "set_level", set_logging_level)
+    monkeypatch.setattr(legacy_process, "Field", LegacyRecordingField)
+    monkeypatch.setattr(legacy_process, "set_strategy", set_strategy)
+    monkeypatch.setattr(legacy_process, "validate_strategy", validate_strategy)
+    monkeypatch.setattr(legacy_process, "chunk_observations", chunk_observations)
+    monkeypatch.setattr(legacy_process, "do_final_pass", do_final_pass)
+    monkeypatch.setattr(legacy_process, "make_report", make_report)
+
+    legacy_process.run("input.parset", logging_level="debug")
+    return {
+        "field": created_fields[0],
+        "read_files": read_files,
+        "logging_levels": logging_levels,
+    }
+
+
+def _run_prefect_process(parset, strategy_steps, field_updates=None):
+    lifecycle = RecordingProcessLifecycle(
+        parset=parset,
+        strategy_steps=strategy_steps,
+        supported_features=SUPPORTED_PROCESS_FEATURES,
+        field_updates=field_updates or {},
+    )
+    field = run_process(
+        "input.parset",
+        logging_level="debug",
+        operation_factories=RECORDING_FACTORIES,
+        lifecycle_hooks=lifecycle.hooks(),
+        execution_config=ExecutionConfig(task_runner="sync"),
+    )
+    return {
+        "field": field,
+        "read_files": lifecycle.read_files,
+        "logging_levels": lifecycle.logging_levels,
+    }
+
+
+def _top_level_summary(result):
+    field = result["field"]
+    return {
+        "events": [event for event in field.events if event["operation"] != "preflight"],
+        "read_files": result["read_files"],
+        "logging_levels": result["logging_levels"],
+        "cycle_number": field.cycle_number,
+        "do_final": getattr(field, "do_final", None),
+        "generate_initial_skymodel": field.parset.get("generate_initial_skymodel"),
+        "download_initial_skymodel": field.parset.get("download_initial_skymodel"),
+        "image_pol": getattr(field, "image_pol", None),
+        "disable_clean": getattr(field, "disable_clean", None),
+        "make_image_cube": getattr(field, "make_image_cube", None),
+        "image_cube_stokes_list": list(getattr(field, "image_cube_stokes_list", [])),
+        "generate_screens": getattr(field, "generate_screens", None),
+        "apply_screens": getattr(field, "apply_screens", None),
+        "skip_final_major_iteration": getattr(field, "skip_final_major_iteration", None),
+    }
 
 
 STRATEGY_CASES = [
@@ -859,6 +970,78 @@ def test_run_process_lifecycle_runs_initial_selfcal_and_repeated_final_cycles():
         (1, parset["final_data_fraction"]),
     ]
     assert field.events[-1]["operation"] == "report"
+
+
+def test_legacy_and_prefect_process_match_final_only_image_lifecycle(monkeypatch):
+    parset = _process_parset(input_h5parm="input-solutions.h5", input_skymodel="input.sky")
+    strategy_steps = [_image_step()]
+
+    legacy_result = _run_legacy_process(
+        monkeypatch,
+        copy.deepcopy(parset),
+        copy.deepcopy(strategy_steps),
+    )
+    prefect_result = _run_prefect_process(
+        copy.deepcopy(parset),
+        copy.deepcopy(strategy_steps),
+    )
+
+    assert _top_level_summary(prefect_result) == _top_level_summary(legacy_result)
+
+
+def test_legacy_and_prefect_process_match_selfcal_and_repeated_final_lifecycle(monkeypatch):
+    parset = _process_parset(
+        generate_initial_skymodel=True,
+        ntimes_to_repeat_final_cycle=1,
+    )
+    strategy_steps = [
+        _single_step({"di": ["fast_phase"]}, peel_outliers=True),
+        _image_step(),
+    ]
+    field_updates = {"epoch_observations": [["obs-a", "obs-b"]]}
+
+    legacy_result = _run_legacy_process(
+        monkeypatch,
+        copy.deepcopy(parset),
+        copy.deepcopy(strategy_steps),
+        field_updates=copy.deepcopy(field_updates),
+    )
+    prefect_result = _run_prefect_process(
+        copy.deepcopy(parset),
+        copy.deepcopy(strategy_steps),
+        field_updates=copy.deepcopy(field_updates),
+    )
+
+    assert _top_level_summary(prefect_result) == _top_level_summary(legacy_result)
+
+
+def test_legacy_and_prefect_process_match_final_hybrid_screen_lifecycle(monkeypatch):
+    parset = _process_parset(
+        input_h5parm="input-solutions.h5",
+        input_skymodel="input.sky",
+    )
+    strategy_steps = [_image_step(do_predict=True, peel_outliers=True)]
+    field_updates = {
+        "dde_mode": "hybrid",
+        "make_quv_images": True,
+        "disable_iquv_clean": True,
+        "save_image_cube": True,
+        "image_cube_stokes_list": ["I", "Q", "U", "V", "XX"],
+    }
+
+    legacy_result = _run_legacy_process(
+        monkeypatch,
+        copy.deepcopy(parset),
+        copy.deepcopy(strategy_steps),
+        field_updates=copy.deepcopy(field_updates),
+    )
+    prefect_result = _run_prefect_process(
+        copy.deepcopy(parset),
+        copy.deepcopy(strategy_steps),
+        field_updates=copy.deepcopy(field_updates),
+    )
+
+    assert _top_level_summary(prefect_result) == _top_level_summary(legacy_result)
 
 
 def test_run_process_skips_initial_skymodel_generation_without_calibration_step():

@@ -1371,10 +1371,26 @@ Completed in the second Issue 4 slice:
   flags so DD prediction without calibration follows the same assumptions as
   production.
 
+Completed in the third Issue 4 slice:
+
+- Added top-level equivalence helpers that run legacy `rapthor.process.run()`
+  and Prefect-side `run_process()` against shared parset, strategy, field, and
+  operation fixtures, then compare lifecycle events and final field-visible
+  state while ignoring Prefect's additional preflight event.
+- Added top-level equivalence coverage for final-only imaging, selfcal with
+  initial skymodel generation and repeated final cycles, concatenation before
+  strategy selection, and final hybrid-screen QUV image-cube runs.
+- Fixed the Prefect process skeleton to match legacy lifecycle ordering by
+  running frequency concatenation before strategy selection. A targeted
+  `concatenate` preflight now runs before that external operation, and the full
+  strategy-derived preflight still runs afterward.
+- Kept the `concatenate` feature in the full requested-feature set even if
+  concatenation mutates the field before full feature collection.
+
 Remaining follow-up:
 
-- Add top-level equivalence for final-only image, selfcal repeat/final-cycle,
-  hybrid-screen, QUV, cube, and peeling-validation paths using shared fixtures.
+- Add top-level equivalence for peeling-validation failure paths using shared
+  fixtures.
 - Decide whether to replace the placeholder functions at the top of
   `tests/test_process.py` or remove them once their behaviour is covered by the
   explicit legacy and Prefect process tests.
@@ -1389,6 +1405,14 @@ Verified in the running dev container:
   passed, 1 warning.
 - `python3 -m pytest tests/execution/test_process_flow.py tests/test_process.py
   -q --tb=short`: 50 passed, 1 warning.
+- `python3 -m pytest tests/execution/test_process_flow.py -q --tb=short`: 32
+  passed, 1 warning.
+- `python3 -m pytest tests/execution/test_process_flow.py tests/test_process.py
+  -q --tb=short`: 53 passed, 1 warning.
+- `python3 -m ruff check rapthor/execution/flows/process.py
+  tests/execution/test_process_flow.py`: passed.
+- `python3 -m ruff format --check rapthor/execution/flows/process.py
+  tests/execution/test_process_flow.py`: 2 files already formatted.
 - `python3 -m ruff check tests/execution/test_process_flow.py`: passed.
 - `python3 -m ruff format --check tests/execution/test_process_flow.py`: 1 file
   already formatted.

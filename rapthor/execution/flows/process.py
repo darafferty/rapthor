@@ -255,6 +255,15 @@ def run_process(
     hooks.set_logging_level(logging_level)
 
     field = hooks.build_field(parset)
+    needs_concatenation = any(len(obs) > 1 for obs in field.epoch_observations)
+    if needs_concatenation:
+        hooks.preflight_execution(field, [], config, {"concatenate"})
+        log.info(
+            "MS files with different frequencies found for one or more epochs. "
+            "Concatenation over frequency will be done."
+        )
+        _run_required_operation(factories.concatenate, "concatenate", field, 1)
+
     strategy_steps = hooks.set_strategy(field)
     if strategy_steps:
         selfcal_steps = strategy_steps[:-1]
@@ -268,14 +277,9 @@ def run_process(
 
     hooks.validate_strategy(strategy_steps, parset)
     requested_features = collect_process_features(field, strategy_steps, parset)
+    if needs_concatenation:
+        requested_features.add("concatenate")
     hooks.preflight_execution(field, strategy_steps, config, requested_features)
-
-    if any(len(obs) > 1 for obs in field.epoch_observations):
-        log.info(
-            "MS files with different frequencies found for one or more epochs. "
-            "Concatenation over frequency will be done."
-        )
-        _run_required_operation(factories.concatenate, "concatenate", field, 1)
 
     if parset["generate_initial_skymodel"]:
         if not any(step["do_calibrate"] for step in strategy_steps):
