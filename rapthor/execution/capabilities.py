@@ -6,6 +6,7 @@ from typing import Callable, Iterable, List, Optional, Sequence, Set
 
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.resources import ResourceRequest, collect_resource_request_issues
+from rapthor.execution.slurm import collect_slurm_config_issues
 
 
 @dataclass(frozen=True)
@@ -27,6 +28,7 @@ class PreflightError(RuntimeError):
 
 
 ToolResolver = Callable[[str], Optional[str]]
+SchedulerChecker = Callable[[str], object]
 
 
 def _as_set(values: Optional[Iterable[str]]) -> Set[str]:
@@ -40,6 +42,7 @@ def collect_preflight_issues(
     required_tools: Optional[Iterable[str]] = None,
     resource_requests: Optional[Iterable[ResourceRequest]] = None,
     tool_resolver: ToolResolver = shutil.which,
+    scheduler_checker: Optional[SchedulerChecker] = None,
 ) -> List[PreflightIssue]:
     """Collect preflight issues without raising.
 
@@ -50,14 +53,27 @@ def collect_preflight_issues(
     """
     issues = []
 
-    if execution_config.task_runner == "external_dask" and not execution_config.dask_scheduler:
-        issues.append(
-            PreflightIssue(
-                code="missing_dask_scheduler",
-                option="dask_scheduler",
-                message="external_dask requires a dask_scheduler value",
+    scheduler = execution_config.resolved_dask_scheduler()
+    if execution_config.task_runner == "external_dask":
+        if not scheduler:
+            issues.append(
+                PreflightIssue(
+                    code="missing_dask_scheduler",
+                    option="dask_scheduler",
+                    message="external_dask requires a dask_scheduler value or DASK_SCHEDULER",
+                )
             )
-        )
+        elif scheduler_checker is not None:
+            try:
+                scheduler_checker(scheduler)
+            except Exception as err:
+                issues.append(
+                    PreflightIssue(
+                        code="dask_scheduler_unreachable",
+                        option="dask_scheduler",
+                        message=str(err) or f"could not connect to Dask scheduler {scheduler!r}",
+                    )
+                )
 
     if execution_config.use_container:
         issues.append(
@@ -90,6 +106,9 @@ def collect_preflight_issues(
     for code, message in collect_resource_request_issues(resource_requests or (), execution_config):
         issues.append(PreflightIssue(code=code, message=message, option="resources"))
 
+    for code, message in collect_slurm_config_issues(execution_config):
+        issues.append(PreflightIssue(code=code, message=message, option="slurm"))
+
     return issues
 
 
@@ -100,6 +119,7 @@ def preflight_execution(
     required_tools: Optional[Iterable[str]] = None,
     resource_requests: Optional[Iterable[ResourceRequest]] = None,
     tool_resolver: ToolResolver = shutil.which,
+    scheduler_checker: Optional[SchedulerChecker] = None,
 ) -> None:
     """Run execution preflight checks and raise if any fail."""
     issues = collect_preflight_issues(
@@ -109,6 +129,7 @@ def preflight_execution(
         required_tools=required_tools,
         resource_requests=resource_requests,
         tool_resolver=tool_resolver,
+        scheduler_checker=scheduler_checker,
     )
     if issues:
         raise PreflightError(issues)

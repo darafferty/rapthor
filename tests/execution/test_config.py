@@ -1,9 +1,15 @@
 import pytest
 
-from rapthor.execution.config import ExecutionConfig
+from rapthor.execution.config import (
+    DASK_SCHEDULER_ENV,
+    ExecutionConfig,
+    dask_scheduler_from_environment,
+)
 
 
-def test_execution_config_defaults_from_empty_parset():
+def test_execution_config_defaults_from_empty_parset(monkeypatch):
+    monkeypatch.delenv(DASK_SCHEDULER_ENV, raising=False)
+
     config = ExecutionConfig.from_parset({})
 
     assert config.task_runner == "local_dask"
@@ -58,6 +64,31 @@ def test_execution_config_infers_external_dask_from_scheduler():
     )
 
     assert config.task_runner == "external_dask"
+
+
+def test_dask_scheduler_from_environment():
+    scheduler = dask_scheduler_from_environment({DASK_SCHEDULER_ENV: "tcp://env:8786"})
+
+    assert scheduler == "tcp://env:8786"
+
+
+def test_execution_config_infers_external_dask_from_environment(monkeypatch):
+    monkeypatch.setenv(DASK_SCHEDULER_ENV, "tcp://env:8786")
+
+    config = ExecutionConfig.from_parset({})
+
+    assert config.task_runner == "external_dask"
+    assert config.dask_scheduler == "tcp://env:8786"
+
+
+def test_execution_config_prefers_parset_scheduler_over_environment(monkeypatch):
+    monkeypatch.setenv(DASK_SCHEDULER_ENV, "tcp://env:8786")
+
+    config = ExecutionConfig.from_parset(
+        {"cluster_specific": {"dask_scheduler": "tcp://parset:8786"}}
+    )
+
+    assert config.dask_scheduler == "tcp://parset:8786"
 
 
 def test_execution_config_uses_deprecated_dir_local_as_scratch_fallback():

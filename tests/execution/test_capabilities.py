@@ -5,7 +5,7 @@ from rapthor.execution.capabilities import (
     collect_preflight_issues,
     preflight_execution,
 )
-from rapthor.execution.config import ExecutionConfig
+from rapthor.execution.config import DASK_SCHEDULER_ENV, ExecutionConfig
 from rapthor.execution.resources import ResourceRequest
 
 
@@ -13,13 +13,55 @@ def test_preflight_passes_for_default_local_config():
     preflight_execution(ExecutionConfig())
 
 
-def test_preflight_reports_missing_external_dask_scheduler():
+def test_preflight_reports_missing_external_dask_scheduler(monkeypatch):
+    monkeypatch.delenv(DASK_SCHEDULER_ENV, raising=False)
     config = ExecutionConfig(task_runner="external_dask")
 
     issues = collect_preflight_issues(config)
 
     assert [issue.code for issue in issues] == ["missing_dask_scheduler"]
     assert issues[0].option == "dask_scheduler"
+
+
+def test_preflight_accepts_environment_external_dask_scheduler(monkeypatch):
+    monkeypatch.setenv(DASK_SCHEDULER_ENV, "tcp://scheduler:8786")
+    config = ExecutionConfig(task_runner="external_dask")
+
+    issues = collect_preflight_issues(config)
+
+    assert issues == []
+
+
+def test_preflight_can_check_external_dask_scheduler():
+    config = ExecutionConfig(task_runner="external_dask", dask_scheduler="tcp://scheduler:8786")
+    checked = []
+
+    issues = collect_preflight_issues(config, scheduler_checker=checked.append)
+
+    assert issues == []
+    assert checked == ["tcp://scheduler:8786"]
+
+
+def test_preflight_reports_failed_external_dask_scheduler_check():
+    config = ExecutionConfig(task_runner="external_dask", dask_scheduler="tcp://scheduler:8786")
+
+    def fail(address):
+        raise RuntimeError(f"{address} is down")
+
+    issues = collect_preflight_issues(config, scheduler_checker=fail)
+
+    assert [issue.code for issue in issues] == ["dask_scheduler_unreachable"]
+    assert issues[0].option == "dask_scheduler"
+    assert "is down" in issues[0].message
+
+
+def test_preflight_reports_slurm_requires_external_dask():
+    config = ExecutionConfig(task_runner="local_dask", batch_system="slurm")
+
+    issues = collect_preflight_issues(config)
+
+    assert [issue.code for issue in issues] == ["slurm_requires_external_dask"]
+    assert issues[0].option == "slurm"
 
 
 def test_preflight_reports_unsupported_container_mode():

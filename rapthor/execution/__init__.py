@@ -7,7 +7,7 @@ from rapthor.execution.capabilities import (
     preflight_execution,
 )
 from rapthor.execution.commands import command_matches_fixture, command_to_string, normalize_command
-from rapthor.execution.config import ExecutionConfig
+from rapthor.execution.config import DASK_SCHEDULER_ENV, ExecutionConfig, dask_scheduler_from_environment
 from rapthor.execution.flows.calibrate import (
     build_adjust_h5parm_sources_command,
     build_collect_h5parms_command,
@@ -136,10 +136,25 @@ from rapthor.execution.resources import (
 )
 from rapthor.execution.runtime import RuntimeSpec, UnsupportedRuntimeError, build_runtime_spec
 from rapthor.execution.shell import MissingPrefectShellError, ShellCommand, run_shell_command
-from rapthor.execution.task_runner import MissingPrefectDaskError, build_task_runner
+from rapthor.execution.slurm import (
+    SLURM_CPUS_PER_TASK_ENV,
+    SLURM_NODE_COUNT_ENV,
+    SLURM_TASK_COUNT_ENV,
+    SlurmClusterSpec,
+    collect_slurm_config_issues,
+    slurm_cluster_spec,
+)
+from rapthor.execution.task_runner import (
+    DaskSchedulerConnectionError,
+    MissingPrefectDaskError,
+    build_task_runner,
+    check_dask_scheduler,
+)
 from rapthor.execution.workdirs import WorkDirectoryLayout
 
 __all__ = [
+    "DASK_SCHEDULER_ENV",
+    "DaskSchedulerConnectionError",
     "ExecutionConfig",
     "MissingPrefectDaskError",
     "MissingPrefectShellError",
@@ -152,7 +167,11 @@ __all__ = [
     "ResourceRequest",
     "RuntimeSpec",
     "ShellCommand",
+    "SLURM_CPUS_PER_TASK_ENV",
+    "SLURM_NODE_COUNT_ENV",
+    "SLURM_TASK_COUNT_ENV",
     "SUPPORTED_PROCESS_FEATURES",
+    "SlurmClusterSpec",
     "UnsupportedRuntimeError",
     "WorkDirectoryLayout",
     "assert_serializable_payload",
@@ -192,6 +211,7 @@ __all__ = [
     "build_wsclean_no_dde_command",
     "build_wsclean_screens_command",
     "build_task_runner",
+    "check_dask_scheduler",
     "calibrate_chunk_task",
     "calibrate_flow",
     "calibrate_payload_from_inputs",
@@ -204,8 +224,10 @@ __all__ = [
     "collect_process_features",
     "collect_resource_issues",
     "collect_resource_request_issues",
+    "collect_slurm_config_issues",
     "default_process_lifecycle_hooks",
     "default_process_operation_factories",
+    "dask_scheduler_from_environment",
     "directory_record",
     "file_record",
     "image_flow",
@@ -266,6 +288,7 @@ __all__ = [
     "run_process_preflight",
     "run_process_steps",
     "run_shell_command",
+    "slurm_cluster_spec",
     "validate_output_record",
     "validate_resource_request",
 ]

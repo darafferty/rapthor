@@ -44,6 +44,48 @@ operations that Rapthor performs and their relation to one another, and see
 :ref:`operations` for details of each operation and their primary data products.
 
 
+Running with Slurm and external Dask
+------------------------------------
+
+The Prefect/Dask execution path supports Slurm by starting one Dask scheduler
+and one Dask worker per allocated node inside a single Slurm allocation. The
+launch scripts export ``DASK_SCHEDULER`` before running ``rapthor`` so the
+parset does not need to contain a fixed scheduler address.
+
+The parset should select the Slurm/external-Dask mode:
+
+.. code-block:: ini
+
+    [cluster_specific]
+    batch_system = slurm
+    prefect_task_runner = external_dask
+    max_nodes = 4
+    cpus_per_task = 32
+    mem_per_node_gb = 256
+
+Use the production template when the allocation should start a temporary
+Prefect server:
+
+.. code-block:: console
+
+    $ RAPTHOR_PARSET=/path/to/rapthor.parset sbatch scripts/prod/run-rapthor-slurm.sbatch
+
+Use the development template when a persistent Prefect API is already running:
+
+.. code-block:: console
+
+    $ PREFECT_API_URL=http://prefect.example:4200/api RAPTHOR_PARSET=/path/to/rapthor.parset sbatch scripts/dev/run-rapthor-slurm-dev.sbatch
+
+Both templates can source site-specific environment setup by setting
+``RAPTHOR_ENV_SCRIPT``. They reserve one CPU per node for scheduler and wrapper
+processes by default; set ``RAPTHOR_DASK_WORKER_THREADS`` to override the Dask
+worker thread count for a specific cluster.
+
+The Slurm integration check is skipped by default. To validate a staging
+allocation, run the integration suite from inside the Slurm job with
+``RAPTHOR_RUN_SLURM_INTEGRATION=1``.
+
+
 .. _using_containers:
 
 Using a (u)Docker/Singularity image

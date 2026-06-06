@@ -1,9 +1,11 @@
 """Configuration objects for Rapthor's Python execution layer."""
 
+import os
 from dataclasses import dataclass
 from typing import Any, Mapping, Optional
 
 TASK_RUNNERS = ("local_dask", "external_dask", "sync")
+DASK_SCHEDULER_ENV = "DASK_SCHEDULER"
 
 
 def _optional_str(value: Any) -> Optional[str]:
@@ -38,6 +40,14 @@ def _cluster_settings(parset: Mapping[str, Any]) -> Mapping[str, Any]:
     return parset.get("cluster_specific", parset.get("cluster", {}))
 
 
+def dask_scheduler_from_environment(
+    environ: Optional[Mapping[str, str]] = None,
+) -> Optional[str]:
+    """Return the scheduler address exported by Slurm launch scripts, if any."""
+    environment = os.environ if environ is None else environ
+    return _optional_str(environment.get(DASK_SCHEDULER_ENV))
+
+
 @dataclass(frozen=True)
 class ExecutionConfig:
     """Runtime settings for the Prefect/Dask execution path."""
@@ -65,7 +75,7 @@ class ExecutionConfig:
         settings describe how the single Python execution path should run.
         """
         cluster = _cluster_settings(parset)
-        scheduler = _optional_str(cluster.get("dask_scheduler"))
+        scheduler = _optional_str(cluster.get("dask_scheduler")) or dask_scheduler_from_environment()
         task_runner = cluster.get("prefect_task_runner")
         if task_runner is None:
             task_runner = "external_dask" if scheduler else "local_dask"
@@ -101,6 +111,10 @@ class ExecutionConfig:
     def effective_local_scratch_dir(self) -> Optional[str]:
         """Return the preferred local scratch directory, including legacy fallback."""
         return self.local_scratch_dir or self.deprecated_dir_local
+
+    def resolved_dask_scheduler(self, environ: Optional[Mapping[str, str]] = None) -> Optional[str]:
+        """Return the configured Dask scheduler, including environment fallback."""
+        return self.dask_scheduler or dask_scheduler_from_environment(environ)
 
     @property
     def local_dask_worker_count(self) -> int:

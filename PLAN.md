@@ -1711,8 +1711,9 @@ Completed in this audit:
 
 Outstanding follow-up ledger:
 
-- Issue 7 owns the selected Slurm/external-Dask execution mode, `DASK_SCHEDULER`
-  handling, Slurm script smoke tests, and target-environment Slurm notes.
+- Issue 7 completed the selected Slurm/external-Dask execution mode,
+  `DASK_SCHEDULER` handling, Slurm script smoke tests, and the
+  target-environment Slurm integration hook.
 - Issue 8 owns backend-neutral integration logging, refreshes to existing
   integration tests, shared-facet read/write environment gating, and new focused
   integration coverage.
@@ -1722,6 +1723,8 @@ Outstanding follow-up ledger:
   documentation, packaging, CI, and merge-readiness cleanup.
 
 ### Issue 7: Add Slurm And Multi-Node Execution
+
+Status: complete.
 
 Goal: support the selected production Slurm model using Prefect with an external
 Dask scheduler.
@@ -1742,6 +1745,48 @@ Done when:
 - The selected Slurm mode is documented, smoke-tested, and covered by unit tests
   for scheduler/resource behaviour.
 - MPI WSClean and Dask worker scheduling are proven not to oversubscribe nodes.
+
+Completed in this issue:
+
+- Added production and development Slurm launch templates:
+  `scripts/prod/run-rapthor-slurm.sbatch` starts an ephemeral Prefect server,
+  and `scripts/dev/run-rapthor-slurm-dev.sbatch` targets an existing Prefect
+  API.
+- Both scripts allocate one Dask worker per Slurm node, export
+  `DASK_SCHEDULER`, wait for the expected worker count, set conservative thread
+  environment defaults, and leave per-command resource control to the execution
+  layer.
+- Added execution config support for scheduler discovery from `DASK_SCHEDULER`,
+  while preserving parset `dask_scheduler` precedence.
+- Added external scheduler validation helpers with clear failed-connection and
+  no-worker errors, plus optional preflight scheduler checking.
+- Added Slurm allocation helpers that resolve node count, task count,
+  CPUs-per-task, worker count, threads-per-worker, and memory-per-node from the
+  Slurm environment or parset fallback values.
+- Added script smoke tests, Slurm mapping tests, local-cluster memory-limit
+  tests, scheduler-error tests, and a skipped-by-default target-environment
+  integration test.
+- Documented the selected Slurm/external-Dask mode in
+  `docs/source/running.rst`.
+
+Target-environment validation:
+
+- `tests/integration/test_slurm_execution.py` is marked `integration` and is
+  skipped unless `RAPTHOR_RUN_SLURM_INTEGRATION=1` is set inside a Slurm
+  allocation. Use this from the staging Slurm environment to verify the live
+  scheduler address and expected worker count before merge.
+
+Verification:
+
+- `podman exec 03a672e0cfa7 python3 -m pytest tests/execution/test_config.py
+  tests/execution/test_task_runner.py tests/execution/test_capabilities.py
+  tests/execution/test_slurm.py`: 42 passed.
+- `podman exec 03a672e0cfa7 python3 -m pytest tests/execution`: 291 passed, 1
+  skipped.
+- `podman exec 03a672e0cfa7 python3 -m pytest
+  tests/integration/test_slurm_execution.py`: 1 skipped outside Slurm.
+- `podman exec 03a672e0cfa7 python3 -m ruff check` on touched execution files
+  and the Slurm integration test: all checks passed.
 
 ### Issue 8: Modernize Integration Tests And Logs
 

@@ -104,6 +104,8 @@ script-files = [
     "bin/concat_linc_files",
     "bin/plotrapthor",
     "bin/rapthor",
+    "scripts/dev/run-rapthor-slurm-dev.sbatch",
+    "scripts/prod/run-rapthor-slurm.sbatch",
     "rapthor/scripts/add_sector_models.py",
     "rapthor/scripts/adjust_h5parm_sources.py",
     "rapthor/scripts/blank_image.py",
