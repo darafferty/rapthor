@@ -1465,12 +1465,28 @@ Completed in the first Issue 5 slice:
 - Updated base operation output loading so a stale `.done` marker with missing
   or invalid `.outputs.json` raises an operation-specific error message.
 
+Completed in the second Issue 5 slice:
+
+- Replaced the placeholder `tests/test_modifystate.py` coverage with mocked
+  `modifystate.run()` reset tests.
+- Added reset coverage for Prefect-produced operation state: selecting
+  `image_1` deletes that operation and downstream `mosaic_1` state while
+  preserving upstream `calibrate_1` and `predict_1` `.done` markers,
+  `.outputs.json` files, and reusable product directories.
+- Added no-state coverage proving the reset command exits cleanly when no
+  pipeline operation directories exist.
+
 Verified in the running dev container:
 
 - `python3 -m pytest tests/lib/test_operation.py -q --tb=short`: 9 passed.
 - `ruff check rapthor/lib/operation.py tests/lib/test_operation.py`: passed.
 - `ruff format --check rapthor/lib/operation.py tests/lib/test_operation.py`: 2
   files already formatted.
+- `python3 -m pytest tests/test_modifystate.py -q --tb=short`: 2 passed.
+- `python3 -m pytest tests/lib/test_operation.py tests/test_modifystate.py -q
+  --tb=short`: 11 passed.
+- `ruff check tests/test_modifystate.py`: passed.
+- `ruff format --check tests/test_modifystate.py`: 1 file already formatted.
 
 ### Issue 6: Finish Runtime, Resource, And Filesystem Safety
 
