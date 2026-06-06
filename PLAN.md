@@ -1190,6 +1190,23 @@ Completed in the sixth Issue 3 slice:
   mocked flow command path and the script's array-level behaviour are both under
   regression.
 
+Completed in the seventh Issue 3 slice:
+
+- Replaced placeholder `combine_h5parms.py` tests with deterministic in-memory
+  LoSoTo-like solset and soltab fakes.
+- Added value-level coverage for polarization averaging, single-solution
+  interpolation, flagged-solution interpolation, solset copying, invalid mode
+  rejection, and each supported combine mode used by the calibration flow:
+  `p1a2`, `p1p2_scalar`, `p1a1a2`, `p1p2a2`, `p1p2a2_diagonal`, and
+  `p1p2a2_scalar`.
+- Covered the important calibration combination semantics explicitly: keep
+  phase1 plus amp2, multiply amplitude1 and amplitude2, sum interpolated phase
+  products, preserve diagonal polarizations when requested, and scalar-average
+  phase/amplitude polarizations when requested.
+- Paired this script-level coverage with the calibration Prefect flow tests so
+  command construction and h5parm-combination semantics are both under
+  regression before the CWL reference path is retired.
+
 Remaining follow-up:
 
 - Add Concatenate multi-input DP3/TAQL integration only in an environment that
@@ -1197,9 +1214,9 @@ Remaining follow-up:
 - Add real image-to-mosaic integration coverage from Image-flow products once
   suitable FITS fixtures are available in CI/staging.
 - Continue the parity-gate work for Image and Calibrate, including real h5parm
-  integration coverage for `combine_h5parms.py` and `adjust_h5parm_sources.py`,
-  plus any target-environment Predict integration that requires external DP3
-  products.
+  integration coverage for `combine_h5parms.py` and source-coordinate coverage
+  for `adjust_h5parm_sources.py`, plus any target-environment Predict
+  integration that requires external DP3 products.
 
 Verified in the running dev container:
 
@@ -1259,6 +1276,13 @@ Verified in the running dev container:
 - `python3 -m ruff check tests/scripts/test_process_gains.py`: passed.
 - `python3 -m ruff format --check tests/scripts/test_process_gains.py`: 1 file
   already formatted.
+- `python3 -m pytest tests/scripts/test_combine_h5parms.py -q --tb=short`: 15
+  passed.
+- `python3 -m pytest tests/scripts/test_combine_h5parms.py
+  tests/execution/test_calibrate_flow.py -q --tb=short`: 66 passed, 1 warning.
+- `python3 -m ruff check tests/scripts/test_combine_h5parms.py`: passed.
+- `python3 -m ruff format --check tests/scripts/test_combine_h5parms.py`: 1
+  file already formatted.
 - `git diff --check`: passed.
 
 ### Issue 4: Complete Top-Level Prefect Process Equivalence
