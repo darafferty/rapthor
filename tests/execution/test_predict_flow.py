@@ -735,6 +735,43 @@ def test_predict_di_operation_run_reuses_prefect_outputs_when_done(
     assert fake_predict_shell_operation_cls.instances == []
 
 
+@pytest.mark.parametrize(
+    "shell_operation_cls, expected_message",
+    [
+        pytest.param(FailingShellOperation, "predict failed", id="shell-failure"),
+        pytest.param(
+            NoOutputShellOperation,
+            "Predict output was not created",
+            id="missing-predicted-output",
+        ),
+    ],
+)
+def test_predict_di_operation_run_failure_does_not_mark_done(
+    tmp_path, monkeypatch, shell_operation_cls, expected_message
+):
+    monkeypatch.setattr(
+        "rapthor.execution.shell._load_shell_operation_cls",
+        lambda: shell_operation_cls,
+    )
+    field_observation = ObservationStub("obs_0", 59000.0, "obs_0.ms")
+    sector_observation = ObservationStub("obs_0", 59000.0, "obs_0.ms")
+    field = FieldStub(tmp_path, field_observation, sector_observation)
+    operation = Predict("di", field, index=1)
+
+    with (
+        prefect_test_harness(server_startup_timeout=None),
+        pytest.raises((FileNotFoundError, RuntimeError), match=expected_message),
+    ):
+        operation.run()
+
+    assert Path(operation.pipeline_inputs_file).is_file()
+    assert not Path(operation.done_file).exists()
+    assert not Path(operation.outputs_file).exists()
+    assert operation.outputs == {}
+    assert field_observation.ms_predict_di_filename is None
+    assert field_observation.infix == ".selfcal"
+
+
 def test_predict_dd_operation_run_uses_prefect_flow(
     tmp_path, monkeypatch, fake_predict_shell_operation_cls
 ):

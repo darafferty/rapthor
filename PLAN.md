@@ -1476,6 +1476,15 @@ Completed in the second Issue 5 slice:
 - Added no-state coverage proving the reset command exits cleanly when no
   pipeline operation directories exist.
 
+Completed in the third Issue 5 slice:
+
+- Added Predict operation-level injected-failure coverage for Prefect execution.
+- Verified `Predict.run()` does not create `.done` or `.outputs.json` when the
+  underlying shell operation fails or when expected predicted Measurement Set
+  outputs are missing.
+- Verified failed DI prediction leaves the field observation unfinalized, keeping
+  `ms_predict_di_filename` unset and the original observation infix unchanged.
+
 Verified in the running dev container:
 
 - `python3 -m pytest tests/lib/test_operation.py -q --tb=short`: 9 passed.
@@ -1487,6 +1496,11 @@ Verified in the running dev container:
   --tb=short`: 11 passed.
 - `ruff check tests/test_modifystate.py`: passed.
 - `ruff format --check tests/test_modifystate.py`: 1 file already formatted.
+- `python3 -m pytest tests/execution/test_predict_flow.py -q --tb=short`: 22
+  passed, 6 warnings.
+- `ruff check tests/execution/test_predict_flow.py`: passed.
+- `ruff format --check tests/execution/test_predict_flow.py`: 1 file already
+  formatted.
 
 ### Issue 6: Finish Runtime, Resource, And Filesystem Safety
 
