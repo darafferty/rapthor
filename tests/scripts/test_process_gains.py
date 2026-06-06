@@ -3,11 +3,64 @@ Tests for the process_gains.py script.
 """
 
 import numpy as np
-from rapthor.scripts.process_gains import (flag_amps, get_angular_distance,
-                                           get_ant_dist, get_median_amp,
-                                           get_smooth_box_size, main,
-                                           normalize_direction,
-                                           smooth_solutions, transfer_flags)
+import pytest
+
+import rapthor.scripts.process_gains as process_gains
+from rapthor.scripts.process_gains import (
+    flag_amps,
+    get_angular_distance,
+    get_ant_dist,
+    get_median_amp,
+    get_smooth_box_size,
+    normalize_direction,
+    smooth_solutions,
+    transfer_flags,
+)
+
+
+class FakeSolset:
+    def __init__(self, soltabs=None, sources=None):
+        self.soltabs = soltabs or {}
+        self.sources = sources or {}
+
+    def getSoltab(self, name):
+        return self.soltabs[name]
+
+    def getSou(self):
+        return self.sources
+
+
+class FakeSoltab:
+    def __init__(
+        self,
+        vals,
+        weights=None,
+        ants=None,
+        dirs=None,
+        times=None,
+        freqs=None,
+        solset=None,
+    ):
+        self.val = np.array(vals, dtype=float)
+        self.weight = (
+            np.ones_like(self.val, dtype=float)
+            if weights is None
+            else np.array(weights, dtype=float)
+        )
+        self.ant = list(ants or ["CS001"])
+        self.dir = list(dirs or ["[Patch_0]"])
+        self.time = np.array(times if times is not None else range(self.val.shape[0]), dtype=float)
+        self.freq = np.array(freqs if freqs is not None else range(self.val.shape[1]), dtype=float)
+        self._solset = solset or FakeSolset()
+
+    def getSolset(self):
+        return self._solset
+
+    def setValues(self, values, weight=False):
+        if weight:
+            self.weight = np.array(values, dtype=float)
+        else:
+            self.val = np.array(values, dtype=float)
 
 
 def test_get_ant_dist():
@@ -24,88 +77,172 @@ def test_get_angular_distance():
     assert np.isclose(dist, 60), f"Expected angular distance 60 degrees, got {dist}"
 
 
-def test_normalize_direction(soltab):
-    # max_station_delta = 0.0
-    # scale_delta_with_dist = False
-    # phase_center = None
-    # normalize_direction(soltab, max_station_delta, scale_delta_with_dist, phase_center)
-    # result = soltab.getValues()
-    # # Check result
-    pass
+def test_normalize_direction_sets_station_medians_to_unity():
+    vals = np.ones((2, 1, 2, 1, 2), dtype=float)
+    vals[:, :, 0, :, :] = 2.0
+    vals[:, :, 1, :, :] = 4.0
+    soltab = FakeSoltab(vals, ants=["CS001", "RS001"])
+
+    normalize_direction(soltab)
+
+    assert np.allclose(soltab.val, 1.0)
 
 
-def test_smooth_solutions():
-    # ampsoltab = None  # Replace with actual amplitude solution table
-    # phasesoltab = None  # Replace with actual phase solution table if available
-    # ref_id = 0  # Replace with actual reference ID if needed
-    # result = smooth_solutions(ampsoltab, phasesoltab=None, ref_id=0)
-    # # Check result
-    pass
+def test_normalize_direction_requires_phase_center_when_scaling():
+    vals = np.ones((2, 1, 1, 2, 2), dtype=float)
+    soltab = FakeSoltab(vals, dirs=["[Patch_0]", "[Patch_1]"])
+
+    with pytest.raises(ValueError, match="phase_center"):
+        normalize_direction(soltab, scale_delta_with_dist=True)
 
 
-def test_get_smooth_box_size():
-    # ampsoltab = None  # Replace with actual amplitude solution table
-    # direction = None  # Replace with actual direction if needed
-    # result = get_smooth_box_size(ampsoltab, direction)
-    # # Check result
-    pass
+def test_smooth_solutions_smooths_core_station_only(monkeypatch):
+    vals = np.ones((3, 3, 2, 1, 1), dtype=float)
+    vals[1, 1, 0, 0, 0] = 10.0
+    vals[1, 1, 1, 0, 0] = 10.0
+    soltab = FakeSoltab(vals, ants=["CS001", "RS001"])
+
+    monkeypatch.setattr(process_gains, "get_smooth_box_size", lambda *args, **kwargs: 3)
+
+    smooth_solutions(soltab)
+
+    assert soltab.val[1, 1, 0, 0, 0] == pytest.approx(1.0)
+    assert soltab.val[1, 1, 1, 0, 0] == pytest.approx(10.0)
+
+
+def test_get_smooth_box_size_uses_minimum_for_low_noise_solutions():
+    vals = np.ones((4, 3, 2, 1, 2), dtype=float)
+    soltab = FakeSoltab(vals, ants=["CS001", "RS001"])
+
+    assert get_smooth_box_size(soltab, direction=0, min_box_size=3) == 3
+    assert get_smooth_box_size(soltab, direction=0, ant_list=["MISSING"]) is None
 
 
 def test_get_median_amp():
-    # amps = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
-    # weights = np.array([1, 1, 1, 1, 1])
-    # median_amp = 3.0  # Expected median value
-    # result = get_median_amp(amps, weights)
-    # # Check result
-    pass
+    amps = np.array([[[1.0, 4.0], [9.0, 16.0]]])
+    weights = np.ones_like(amps)
+
+    assert get_median_amp(amps, weights) == pytest.approx(5.5)
 
 
-def test_flag_amps(soltab):
-    # lowampval = None  # Replace with actual low amplitude value if needed
-    # highampval = None  # Replace with actual high amplitude value if needed
-    # threshold_factor = 0.2  # Example threshold factor, adjust as needed
-    # result = flag_amps(soltab, lowampval, highampval, threshold_factor)
-    # # Check result
-    pass
+def test_flag_amps_flags_values_outside_thresholds():
+    vals = np.array([[[[[0.4, 1.0]]]], [[[[6.0, np.nan]]]]])
+    weights = np.array([[[[[1.0, 1.0]]]], [[[[1.0, 0.0]]]]])
+    soltab = FakeSoltab(vals, weights=weights)
+
+    flag_amps(soltab, lowampval=0.5, highampval=5.0)
+
+    assert np.isnan(soltab.val[0, 0, 0, 0, 0])
+    assert soltab.weight[0, 0, 0, 0, 0] == 0.0
+    assert soltab.val[0, 0, 0, 0, 1] == pytest.approx(1.0)
+    assert soltab.weight[0, 0, 0, 0, 1] == 1.0
+    assert np.isnan(soltab.val[1, 0, 0, 0, 0])
+    assert soltab.weight[1, 0, 0, 0, 0] == 0.0
+    assert np.isnan(soltab.val[1, 0, 0, 0, 1])
+    assert soltab.weight[1, 0, 0, 0, 1] == 0.0
 
 
-def test_transfer_flags():
-    # soltab1 = None  # Replace with actual source solution table
-    # soltab2 = None  # Replace with actual target solution table
-    # transfer_flags(soltab1, soltab2)
-    # result = soltab2.getValues()
-    # # Check result
-    pass
+def test_flag_amps_rejects_invalid_threshold_factor():
+    soltab = FakeSoltab(np.ones((1, 1, 1, 1, 2), dtype=float))
+
+    with pytest.raises(SystemExit, match="threshold_factor"):
+        flag_amps(soltab, threshold_factor=1.0)
 
 
-def test_main():
-    # h5parmfile = "test.h5"  # Replace with actual H5parm file path
-    # solsetname = "sol000"  # Replace with actual solution set name if needed
-    # ampsoltabname = "amplitude000"  # Replace with actual amplitude solution table name if needed
-    # phasesoltabname = "phase000"  # Replace with actual phase solution table name if needed
-    # ref_id = None  # Replace with actual reference ID if needed
-    # smooth = False  # Set to True if smoothing is required
-    # normalize = False  # Set to True if normalization is required
-    # flag = False  # Set to True if flagging is required
-    # lowampval = None  # Replace with actual low amplitude value if needed
-    # highampval = None  # Replace with actual high amplitude value if needed
-    # max_station_delta = 0.0  # Set to a value if station delta is required
-    # scale_delta_with_dist = False  # Set to True if scaling delta with distance is required
-    # phase_center = None  # Replace with actual phase center if needed
-    # main(
-    #     h5parmfile,
-    #     solsetname,
-    #     ampsoltabname,
-    #     phasesoltabname,
-    #     ref_id,
-    #     smooth,
-    #     normalize,
-    #     flag,
-    #     lowampval,
-    #     highampval,
-    #     max_station_delta,
-    #     scale_delta_with_dist,
-    #     phase_center,
-    # )
-    # # Check contents of the H5parm file or solution set after running main
-    pass
+def test_transfer_flags_copies_nan_and_zero_weight_flags():
+    source_vals = np.ones((2, 1, 1, 1, 2), dtype=float)
+    source_weights = np.ones_like(source_vals)
+    source_vals[0, 0, 0, 0, 0] = np.nan
+    source_weights[1, 0, 0, 0, 1] = 0.0
+    source = FakeSoltab(source_vals, weights=source_weights)
+    target = FakeSoltab(np.full_like(source_vals, 2.0), weights=np.ones_like(source_vals))
+
+    transfer_flags(source, target)
+
+    assert np.isnan(target.val[0, 0, 0, 0, 0])
+    assert target.weight[0, 0, 0, 0, 0] == 0.0
+    assert np.isnan(target.val[1, 0, 0, 0, 1])
+    assert target.weight[1, 0, 0, 0, 1] == 0.0
+    assert target.val[0, 0, 0, 0, 1] == pytest.approx(2.0)
+    assert target.weight[0, 0, 0, 0, 1] == 1.0
+
+
+def test_main_dispatches_requested_processing_steps(monkeypatch):
+    ampsoltab = FakeSoltab(np.ones((1, 1, 1, 1, 2), dtype=float))
+    phasesoltab = FakeSoltab(np.ones((1, 1, 1, 1, 2), dtype=float))
+    solset = FakeSolset({"amplitude000": ampsoltab, "phase000": phasesoltab})
+    calls = []
+
+    class FakeH5parm:
+        def __init__(self, filename, readonly=False):
+            calls.append(("open", filename, readonly))
+
+        def getSolset(self, name):
+            calls.append(("getSolset", name))
+            return solset
+
+        def close(self):
+            calls.append(("close",))
+
+    monkeypatch.setattr(process_gains, "h5parm", FakeH5parm)
+    monkeypatch.setattr(
+        process_gains.misc,
+        "get_reference_station",
+        lambda soltab, max_ind: calls.append(("reference", soltab, max_ind)) or 1,
+    )
+    monkeypatch.setattr(
+        process_gains,
+        "flag_amps",
+        lambda soltab, lowampval=None, highampval=None: calls.append(
+            ("flag", soltab, lowampval, highampval)
+        ),
+    )
+    monkeypatch.setattr(
+        process_gains,
+        "transfer_flags",
+        lambda soltab1, soltab2: calls.append(("transfer", soltab1, soltab2)),
+    )
+    monkeypatch.setattr(
+        process_gains,
+        "smooth_solutions",
+        lambda amps, phasesoltab=None, ref_id=0: calls.append(
+            ("smooth", amps, phasesoltab, ref_id)
+        ),
+    )
+    monkeypatch.setattr(
+        process_gains,
+        "normalize_direction",
+        lambda soltab, **kwargs: calls.append(("normalize", soltab, kwargs)),
+    )
+
+    process_gains.main(
+        "solutions.h5",
+        ref_id=None,
+        smooth="True",
+        normalize="True",
+        flag="True",
+        lowampval=0.5,
+        highampval=2.0,
+        max_station_delta=0.25,
+        scale_delta_with_dist="True",
+        phase_center=(12.0, -30.0),
+    )
+
+    assert calls == [
+        ("open", "solutions.h5", False),
+        ("getSolset", "sol000"),
+        ("reference", phasesoltab, 10),
+        ("flag", ampsoltab, 0.5, 2.0),
+        ("transfer", ampsoltab, phasesoltab),
+        ("smooth", ampsoltab, phasesoltab, 1),
+        (
+            "normalize",
+            ampsoltab,
+            {
+                "max_station_delta": 0.25,
+                "scale_delta_with_dist": True,
+                "phase_center": (12.0, -30.0),
+            },
+        ),
+        ("close",),
+    ]

@@ -1174,14 +1174,32 @@ Completed in the fifth Issue 3 slice:
   operation tests so script behaviour, command builders, flow output records,
   and finalizer expectations stay aligned.
 
+Completed in the sixth Issue 3 slice:
+
+- Replaced placeholder `process_gains.py` tests with deterministic in-memory
+  soltab coverage for the calibration h5parm post-processing helper.
+- Added tests for station/direction amplitude normalization, the
+  `scale_delta_with_dist` phase-center validation, core-station smoothing,
+  smoothing-box selection, log-space median amplitude calculation, amplitude
+  flagging thresholds, invalid flagging thresholds, and phase/amplitude flag
+  transfer.
+- Added a `main()` dispatch test with a fake h5parm object so string booleans,
+  automatic reference-station selection, flagging, smoothing, normalization, and
+  close handling stay covered without requiring a real h5parm file.
+- Paired the helper coverage with the calibration Prefect flow tests so the
+  mocked flow command path and the script's array-level behaviour are both under
+  regression.
+
 Remaining follow-up:
 
 - Add Concatenate multi-input DP3/TAQL integration only in an environment that
   provides those tools.
 - Add real image-to-mosaic integration coverage from Image-flow products once
   suitable FITS fixtures are available in CI/staging.
-- Continue the parity-gate work for Image and Calibrate, plus any target
-  environment Predict integration that requires external DP3 products.
+- Continue the parity-gate work for Image and Calibrate, including real h5parm
+  integration coverage for `combine_h5parms.py` and `adjust_h5parm_sources.py`,
+  plus any target-environment Predict integration that requires external DP3
+  products.
 
 Verified in the running dev container:
 
@@ -1232,9 +1250,15 @@ Verified in the running dev container:
   tests/scripts/test_make_mosaic_template.py tests/scripts/test_regrid_image.py`:
   passed.
 - `python3 -m ruff format --check tests/scripts/test_make_mosaic.py
-  tests/scripts/test_make_mosaic_template.py tests/scripts/test_regrid_image.py`:
-  not rerun because the devcontainer escalation request was rejected by the
-  workspace credit limit.
+  tests/scripts/test_make_mosaic_template.py tests/scripts/test_regrid_image.py
+  tests/scripts/test_process_gains.py`: 4 files already formatted.
+- `python3 -m pytest tests/scripts/test_process_gains.py -q --tb=short`: 11
+  passed.
+- `python3 -m pytest tests/scripts/test_process_gains.py
+  tests/execution/test_calibrate_flow.py -q --tb=short`: 62 passed, 1 warning.
+- `python3 -m ruff check tests/scripts/test_process_gains.py`: passed.
+- `python3 -m ruff format --check tests/scripts/test_process_gains.py`: 1 file
+  already formatted.
 - `git diff --check`: passed.
 
 ### Issue 4: Complete Top-Level Prefect Process Equivalence
