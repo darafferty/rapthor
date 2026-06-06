@@ -82,3 +82,16 @@ def test_preflight_reports_invalid_resource_requests():
         "mpi_processes_oversubscribed",
     ]
     assert all(issue.option == "resources" for issue in exc.value.issues)
+
+
+def test_preflight_reports_local_dask_process_oversubscription():
+    config = ExecutionConfig(task_runner="local_dask", max_nodes=1)
+
+    with pytest.raises(PreflightError) as exc:
+        preflight_execution(
+            config,
+            resource_requests=[ResourceRequest(name="dp3", processes=2)],
+        )
+
+    assert [issue.code for issue in exc.value.issues] == ["resource_processes_oversubscribed"]
+    assert exc.value.issues[0].option == "resources"

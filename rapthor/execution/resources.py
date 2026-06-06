@@ -73,6 +73,20 @@ def collect_resource_issues(
             )
         )
 
+    if (
+        execution_config.task_runner == "local_dask"
+        and not resource_request.use_mpi
+        and resource_request.processes > execution_config.local_dask_worker_count
+    ):
+        issues.append(
+            (
+                "resource_processes_oversubscribed",
+                f"{resource_request.name} requests {resource_request.processes} concurrent "
+                f"processes, but local_dask provides "
+                f"{execution_config.local_dask_worker_count} workers",
+            )
+        )
+
     if resource_request.use_mpi and not resource_request.exclusive:
         issues.append(
             (

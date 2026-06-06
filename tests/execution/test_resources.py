@@ -47,6 +47,28 @@ def test_validate_resource_request_rejects_memory_oversubscription():
         validate_resource_request(request, ExecutionConfig(mem_per_node_gb=64))
 
 
+def test_validate_resource_request_rejects_local_dask_process_oversubscription():
+    request = ResourceRequest(name="dp3", processes=3)
+
+    with pytest.raises(ValueError, match="requests 3 concurrent processes"):
+        validate_resource_request(
+            request,
+            ExecutionConfig(task_runner="local_dask", max_nodes=2),
+        )
+
+
+def test_validate_resource_request_allows_external_dask_processes():
+    request = ResourceRequest(name="dp3", processes=3)
+
+    assert (
+        validate_resource_request(
+            request,
+            ExecutionConfig(task_runner="external_dask", max_nodes=1),
+        )
+        == request
+    )
+
+
 def test_validate_resource_request_rejects_nonexclusive_mpi_request():
     request = ResourceRequest(name="wsclean-mpi", use_mpi=True, exclusive=False)
 

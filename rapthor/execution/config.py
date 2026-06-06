@@ -101,3 +101,13 @@ class ExecutionConfig:
     def effective_local_scratch_dir(self) -> Optional[str]:
         """Return the preferred local scratch directory, including legacy fallback."""
         return self.local_scratch_dir or self.deprecated_dir_local
+
+    @property
+    def local_dask_worker_count(self) -> int:
+        """Return the worker count used for a local Dask cluster."""
+        return max(1, self.max_nodes)
+
+    @property
+    def local_dask_threads_per_worker(self) -> int:
+        """Return the thread count used for each local Dask worker."""
+        return max(1, self.cpus_per_task or 1)

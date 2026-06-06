@@ -66,6 +66,18 @@ def test_execution_config_uses_deprecated_dir_local_as_scratch_fallback():
     assert config.effective_local_scratch_dir == "/tmp/rapthor"
 
 
+def test_execution_config_exposes_effective_local_dask_capacity():
+    config = ExecutionConfig(max_nodes=0, cpus_per_task=0)
+
+    assert config.local_dask_worker_count == 1
+    assert config.local_dask_threads_per_worker == 1
+
+    config = ExecutionConfig(max_nodes=4, cpus_per_task=8)
+
+    assert config.local_dask_worker_count == 4
+    assert config.local_dask_threads_per_worker == 8
+
+
 def test_execution_config_rejects_invalid_task_runner():
     with pytest.raises(ValueError, match="prefect_task_runner"):
         ExecutionConfig.from_parset({"cluster_specific": {"prefect_task_runner": "toil"}})

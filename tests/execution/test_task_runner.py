@@ -54,6 +54,12 @@ def test_local_cluster_kwargs_are_conservative():
     assert kwargs == {"n_workers": 2, "threads_per_worker": 4}
 
 
+def test_local_cluster_kwargs_default_to_single_worker_capacity():
+    kwargs = local_cluster_kwargs(ExecutionConfig(max_nodes=0, cpus_per_task=0))
+
+    assert kwargs == {"n_workers": 1, "threads_per_worker": 1}
+
+
 def test_build_local_dask_task_runner_with_injected_class():
     runner = build_task_runner(
         ExecutionConfig(task_runner="local_dask", max_nodes=2, cpus_per_task=4),

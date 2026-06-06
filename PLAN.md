@@ -1609,6 +1609,38 @@ Verified in the running dev container:
   tests/execution/test_workdirs.py tests/execution/test_resources.py
   tests/execution/test_capabilities.py`: 7 files already formatted.
 
+Completed in the second Issue 6 slice:
+
+- Added explicit `ExecutionConfig` properties for effective local Dask worker
+  count and threads per worker, and reused them when constructing local Dask
+  cluster kwargs.
+- Extended centralized resource validation so non-MPI command requests that ask
+  for more concurrent processes than the configured local Dask workers are
+  rejected before execution.
+- Added preflight coverage proving local Dask process oversubscription is
+  reported as a structured `resource_processes_oversubscribed` issue.
+- Added config, task-runner, resource, and preflight tests for local Dask
+  capacity defaults and oversubscription handling.
+
+Verified in the running dev container:
+
+- `python3 -m pytest tests/execution/test_config.py
+  tests/execution/test_task_runner.py tests/execution/test_resources.py
+  tests/execution/test_capabilities.py -q --tb=short`: 33 passed, 1 warning.
+- `python3 -m pytest tests/execution/test_workdirs.py
+  tests/execution/test_config.py tests/execution/test_task_runner.py
+  tests/execution/test_resources.py tests/execution/test_capabilities.py -q
+  --tb=short`: 42 passed, 1 warning.
+- `ruff check rapthor/execution/config.py rapthor/execution/task_runner.py
+  rapthor/execution/resources.py tests/execution/test_config.py
+  tests/execution/test_task_runner.py tests/execution/test_resources.py
+  tests/execution/test_capabilities.py`: passed.
+- `ruff format --check rapthor/execution/config.py
+  rapthor/execution/task_runner.py rapthor/execution/resources.py
+  tests/execution/test_config.py tests/execution/test_task_runner.py
+  tests/execution/test_resources.py tests/execution/test_capabilities.py`: 7
+  files already formatted.
+
 ### Issue 7: Add Slurm And Multi-Node Execution
 
 Goal: support the selected production Slurm model using Prefect with an external

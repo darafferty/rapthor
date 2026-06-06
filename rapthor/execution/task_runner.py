@@ -26,8 +26,8 @@ def _load_thread_pool_task_runner_cls():
 def local_cluster_kwargs(execution_config: ExecutionConfig) -> dict:
     """Build conservative kwargs for a local Dask cluster."""
     return {
-        "n_workers": max(1, execution_config.max_nodes),
-        "threads_per_worker": max(1, execution_config.cpus_per_task or 1),
+        "n_workers": execution_config.local_dask_worker_count,
+        "threads_per_worker": execution_config.local_dask_threads_per_worker,
     }
 
 
