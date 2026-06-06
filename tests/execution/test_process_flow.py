@@ -1,3 +1,4 @@
+import copy
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -5,6 +6,7 @@ from pathlib import Path
 import pytest
 from prefect.testing.utilities import prefect_test_harness
 
+import rapthor.process as legacy_process
 from rapthor.execution.capabilities import PreflightError, preflight_execution
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.process import (
@@ -43,6 +45,8 @@ class RecordingField:
     disable_iquv_clean: bool = False
     save_image_cube: bool = False
     use_mpi: bool = False
+    generate_screens: bool = False
+    apply_screens: bool = False
     image_cube_stokes_list: list[str] = field(default_factory=lambda: ["I"])
     parset: dict = field(
         default_factory=lambda: {"imaging_specific": {"skip_final_major_iteration": True}}
@@ -175,6 +179,57 @@ RECORDING_FACTORIES = ProcessOperationFactories(
     concatenate=RecordingConcatenate,
     image_initial=RecordingImageInitial,
 )
+
+
+def _patch_legacy_step_operations(monkeypatch):
+    monkeypatch.setattr(legacy_process, "Predict", RecordingPredict)
+    monkeypatch.setattr(legacy_process, "Calibrate", RecordingCalibrate)
+    monkeypatch.setattr(legacy_process, "Image", RecordingImage)
+    monkeypatch.setattr(legacy_process, "Mosaic", RecordingMosaic)
+    monkeypatch.setattr(legacy_process, "ImageNormalize", RecordingImageNormalize)
+
+
+def _process_step_summary(field):
+    return {
+        "events": [
+            {
+                key: event.get(key)
+                for key in (
+                    "operation",
+                    "mode",
+                    "index",
+                    "di_h5parm",
+                    "dd_h5parm",
+                    "predict_di_output",
+                    "field_region_file",
+                    "image_pol",
+                    "disable_clean",
+                    "make_image_cube",
+                    "image_cube_stokes_list",
+                    "generate_screens",
+                    "apply_screens",
+                    "skip_final_major_iteration",
+                )
+            }
+            for event in field.events
+        ],
+        "cycle_number": field.cycle_number,
+        "selfcal_state": field.selfcal_state,
+        "image_pol": getattr(field, "image_pol", None),
+        "disable_clean": getattr(field, "disable_clean", None),
+        "make_image_cube": getattr(field, "make_image_cube", None),
+        "image_cube_stokes_list": list(getattr(field, "image_cube_stokes_list", [])),
+        "generate_screens": getattr(field, "generate_screens", None),
+        "apply_screens": getattr(field, "apply_screens", None),
+        "skip_final_major_iteration": getattr(field, "skip_final_major_iteration", None),
+        "normalization_sector_defined": getattr(field, "normalization_sector_defined", False),
+    }
+
+
+def _run_legacy_process_steps(monkeypatch, field, steps, final=False):
+    _patch_legacy_step_operations(monkeypatch)
+    legacy_process.run_steps(field, steps, final=final)
+    return field
 
 
 STRATEGY_CASES = [
@@ -401,6 +456,90 @@ def _assert_strategy_handoffs(field, expected_order, expected_handoffs):
     ]
     if "calibrate_dd_di_h5parm" in expected_handoffs:
         assert calibrate_dd_events[0]["di_h5parm"] == expected_handoffs["calibrate_dd_di_h5parm"]
+
+
+@pytest.mark.parametrize("calibration_strategy, expected_order, expected_handoffs", STRATEGY_CASES)
+def test_legacy_and_prefect_process_steps_match_calibration_strategy_handoffs(
+    monkeypatch, calibration_strategy, expected_order, expected_handoffs
+):
+    legacy_field = RecordingField()
+    prefect_field = RecordingField()
+    steps = [_single_step(calibration_strategy)]
+
+    _run_legacy_process_steps(monkeypatch, legacy_field, copy.deepcopy(steps))
+    run_process_steps(
+        prefect_field,
+        copy.deepcopy(steps),
+        operation_factories=RECORDING_FACTORIES,
+    )
+
+    assert _process_step_summary(prefect_field) == _process_step_summary(legacy_field)
+    _assert_strategy_handoffs(prefect_field, expected_order, expected_handoffs)
+
+
+def test_legacy_and_prefect_process_steps_match_nonfinal_image_normalization(monkeypatch):
+    legacy_field = RecordingField()
+    prefect_field = RecordingField()
+    steps = [
+        _image_step(
+            do_predict=True,
+            do_normalize=True,
+        )
+    ]
+
+    _run_legacy_process_steps(monkeypatch, legacy_field, copy.deepcopy(steps))
+    run_process_steps(
+        prefect_field,
+        copy.deepcopy(steps),
+        operation_factories=RECORDING_FACTORIES,
+    )
+
+    assert _process_step_summary(prefect_field) == _process_step_summary(legacy_field)
+    assert [
+        (event["operation"], event["mode"])
+        for event in prefect_field.events
+        if event["operation"] in {"predict", "image_normalize", "image", "mosaic"}
+    ] == [
+        ("predict", "dd"),
+        ("image_normalize", None),
+        ("image", None),
+        ("mosaic", None),
+    ]
+    assert prefect_field.image_pol == "I"
+    assert prefect_field.make_image_cube is False
+    assert prefect_field.skip_final_major_iteration is True
+    assert prefect_field.normalization_sector_defined is True
+
+
+def test_legacy_and_prefect_process_steps_match_final_full_stokes_cube_flags(monkeypatch):
+    legacy_field = RecordingField(
+        make_quv_images=True,
+        disable_iquv_clean=True,
+        save_image_cube=True,
+        image_cube_stokes_list=["I", "Q", "U", "V", "XX"],
+    )
+    prefect_field = RecordingField(
+        make_quv_images=True,
+        disable_iquv_clean=True,
+        save_image_cube=True,
+        image_cube_stokes_list=["I", "Q", "U", "V", "XX"],
+    )
+    steps = [_image_step()]
+
+    _run_legacy_process_steps(monkeypatch, legacy_field, copy.deepcopy(steps), final=True)
+    run_process_steps(
+        prefect_field,
+        copy.deepcopy(steps),
+        final=True,
+        operation_factories=RECORDING_FACTORIES,
+    )
+
+    assert _process_step_summary(prefect_field) == _process_step_summary(legacy_field)
+    assert prefect_field.image_pol == "IQUV"
+    assert prefect_field.disable_clean is True
+    assert prefect_field.make_image_cube is True
+    assert prefect_field.image_cube_stokes_list == ["I", "Q", "U", "V"]
+    assert prefect_field.skip_final_major_iteration is False
 
 
 @pytest.mark.parametrize("calibration_strategy, expected_order, expected_handoffs", STRATEGY_CASES)

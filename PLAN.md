@@ -1353,11 +1353,26 @@ Completed in the first Issue 4 slice:
   flags are set for the final image, screens are applied, and the final major
   iteration is not skipped.
 
+Completed in the second Issue 4 slice:
+
+- Added direct equivalence tests between legacy `rapthor.process.run_steps()`
+  and Prefect-side `run_process_steps()` using the same recording operation
+  classes and independent `RecordingField` instances.
+- Covered the supported calibration strategy matrix directly across both
+  implementations, including DI-only, DD-only, DI-then-DD, and DD-then-DI
+  hand-offs.
+- Added direct equivalence coverage for non-final DD prediction with flux-scale
+  normalization, proving DD predict, `ImageNormalize`, `Image`, and `Mosaic`
+  ordering and field flags match the legacy route.
+- Added direct equivalence coverage for final full-Stokes image-cube flags,
+  proving QUV polarization selection, clean disabling, cube enablement, Stokes
+  filtering, and final-major-iteration handling match the legacy route.
+- Updated the recording field fixture with the real field's default screen
+  flags so DD prediction without calibration follows the same assumptions as
+  production.
+
 Remaining follow-up:
 
-- Add direct equivalence assertions between legacy `rapthor.process.run_steps()`
-  and Prefect `run_process_steps()` for the supported strategy matrix, not just
-  parallel mocked coverage in separate test files.
 - Add top-level equivalence for final-only image, selfcal repeat/final-cycle,
   hybrid-screen, QUV, cube, and peeling-validation paths using shared fixtures.
 - Decide whether to replace the placeholder functions at the top of
@@ -1370,6 +1385,10 @@ Verified in the running dev container:
   passed, 1 warning.
 - `python3 -m pytest tests/execution/test_process_flow.py tests/test_process.py
   -q --tb=short`: 44 passed, 1 warning.
+- `python3 -m pytest tests/execution/test_process_flow.py -q --tb=short`: 29
+  passed, 1 warning.
+- `python3 -m pytest tests/execution/test_process_flow.py tests/test_process.py
+  -q --tb=short`: 50 passed, 1 warning.
 - `python3 -m ruff check tests/execution/test_process_flow.py`: passed.
 - `python3 -m ruff format --check tests/execution/test_process_flow.py`: 1 file
   already formatted.
