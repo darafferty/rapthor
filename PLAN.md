@@ -1207,6 +1207,23 @@ Completed in the seventh Issue 3 slice:
   command construction and h5parm-combination semantics are both under
   regression before the CWL reference path is retired.
 
+Completed in the eighth Issue 3 slice:
+
+- Replaced placeholder `adjust_h5parm_sources.py` tests with deterministic
+  sky-model and h5parm fakes.
+- Added source-table rewrite coverage proving h5parm directions are matched to
+  sky-model patch coordinates, the old `source` table is removed, a new table is
+  created with the expected descriptor, and coordinates are written in radians.
+- Added failure coverage for sky-model/h5parm direction-count mismatch and for
+  an h5parm direction that is absent from the sky model.
+- Added direction-independent solution coverage proving the script uses all
+  sky-model patches, appends a `dir` axis, duplicates values and weights across
+  directions, deletes the original soltab, and recreates it with the expected
+  axes and patch names.
+- Paired this script-level coverage with the calibration Prefect flow tests so
+  the command path and source-coordinate adjustment semantics are both under
+  regression.
+
 Remaining follow-up:
 
 - Add Concatenate multi-input DP3/TAQL integration only in an environment that
@@ -1214,9 +1231,9 @@ Remaining follow-up:
 - Add real image-to-mosaic integration coverage from Image-flow products once
   suitable FITS fixtures are available in CI/staging.
 - Continue the parity-gate work for Image and Calibrate, including real h5parm
-  integration coverage for `combine_h5parms.py` and source-coordinate coverage
-  for `adjust_h5parm_sources.py`, plus any target-environment Predict
-  integration that requires external DP3 products.
+  integration coverage for `combine_h5parms.py` and `adjust_h5parm_sources.py`,
+  plus any target-environment Predict integration that requires external DP3
+  products.
 
 Verified in the running dev container:
 
@@ -1283,6 +1300,14 @@ Verified in the running dev container:
 - `python3 -m ruff check tests/scripts/test_combine_h5parms.py`: passed.
 - `python3 -m ruff format --check tests/scripts/test_combine_h5parms.py`: 1
   file already formatted.
+- `python3 -m pytest tests/scripts/test_adjust_h5parm_sources.py -q
+  --tb=short`: 4 passed.
+- `python3 -m pytest tests/scripts/test_adjust_h5parm_sources.py
+  tests/execution/test_calibrate_flow.py -q --tb=short`: 55 passed,
+  1 warning.
+- `python3 -m ruff check tests/scripts/test_adjust_h5parm_sources.py`: passed.
+- `python3 -m ruff format --check tests/scripts/test_adjust_h5parm_sources.py`:
+  1 file already formatted.
 - `git diff --check`: passed.
 
 ### Issue 4: Complete Top-Level Prefect Process Equivalence
