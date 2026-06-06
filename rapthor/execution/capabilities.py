@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Callable, Iterable, List, Optional, Sequence, Set
 
 from rapthor.execution.config import ExecutionConfig
+from rapthor.execution.resources import ResourceRequest, collect_resource_request_issues
 
 
 @dataclass(frozen=True)
@@ -37,6 +38,7 @@ def collect_preflight_issues(
     requested_features: Optional[Iterable[str]] = None,
     supported_features: Optional[Iterable[str]] = None,
     required_tools: Optional[Iterable[str]] = None,
+    resource_requests: Optional[Iterable[ResourceRequest]] = None,
     tool_resolver: ToolResolver = shutil.which,
 ) -> List[PreflightIssue]:
     """Collect preflight issues without raising.
@@ -85,6 +87,9 @@ def collect_preflight_issues(
                 )
             )
 
+    for code, message in collect_resource_request_issues(resource_requests or (), execution_config):
+        issues.append(PreflightIssue(code=code, message=message, option="resources"))
+
     return issues
 
 
@@ -93,6 +98,7 @@ def preflight_execution(
     requested_features: Optional[Iterable[str]] = None,
     supported_features: Optional[Iterable[str]] = None,
     required_tools: Optional[Iterable[str]] = None,
+    resource_requests: Optional[Iterable[ResourceRequest]] = None,
     tool_resolver: ToolResolver = shutil.which,
 ) -> None:
     """Run execution preflight checks and raise if any fail."""
@@ -101,6 +107,7 @@ def preflight_execution(
         requested_features=requested_features,
         supported_features=supported_features,
         required_tools=required_tools,
+        resource_requests=resource_requests,
         tool_resolver=tool_resolver,
     )
     if issues:

@@ -128,7 +128,12 @@ from rapthor.execution.outputs import (
     validate_output_record,
 )
 from rapthor.execution.payloads import PayloadSerializationError, assert_serializable_payload
-from rapthor.execution.resources import ResourceRequest
+from rapthor.execution.resources import (
+    ResourceRequest,
+    collect_resource_issues,
+    collect_resource_request_issues,
+    validate_resource_request,
+)
 from rapthor.execution.runtime import RuntimeSpec, UnsupportedRuntimeError, build_runtime_spec
 from rapthor.execution.shell import MissingPrefectShellError, ShellCommand, run_shell_command
 from rapthor.execution.task_runner import MissingPrefectDaskError, build_task_runner
@@ -197,6 +202,8 @@ __all__ = [
     "concatenate_flow",
     "concatenate_payload_from_inputs",
     "collect_process_features",
+    "collect_resource_issues",
+    "collect_resource_request_issues",
     "default_process_lifecycle_hooks",
     "default_process_operation_factories",
     "directory_record",
@@ -260,4 +267,5 @@ __all__ = [
     "run_process_steps",
     "run_shell_command",
     "validate_output_record",
+    "validate_resource_request",
 ]

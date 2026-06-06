@@ -1,7 +1,9 @@
 """Working-directory helpers for command tasks."""
 
+import contextlib
 import json
 import os
+import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -37,6 +39,30 @@ class WorkDirectoryLayout:
         path = self.task_dir(task_name, *parts)
         path.mkdir(parents=True, exist_ok=True)
         return path
+
+    def cleanup_task_dir(self, task_name: str, *parts: object) -> None:
+        path = self.task_dir(task_name, *parts)
+        if path.is_dir():
+            shutil.rmtree(path)
+
+    @contextlib.contextmanager
+    def task_scope(
+        self,
+        task_name: str,
+        *parts: object,
+        cleanup: bool = True,
+        cleanup_on_failure: bool = False,
+    ):
+        path = self.ensure_task_dir(task_name, *parts)
+        try:
+            yield path
+        except Exception:
+            if cleanup and cleanup_on_failure:
+                self.cleanup_task_dir(task_name, *parts)
+            raise
+        else:
+            if cleanup:
+                self.cleanup_task_dir(task_name, *parts)
 
     def temp_path(self, final_path: object) -> Path:
         final = Path(final_path)

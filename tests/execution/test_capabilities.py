@@ -6,6 +6,7 @@ from rapthor.execution.capabilities import (
     preflight_execution,
 )
 from rapthor.execution.config import ExecutionConfig
+from rapthor.execution.resources import ResourceRequest
 
 
 def test_preflight_passes_for_default_local_config():
@@ -56,3 +57,28 @@ def test_preflight_reports_missing_tools():
 
     assert [issue.code for issue in exc.value.issues] == ["missing_tool"]
     assert "wsclean" in exc.value.issues[0].message
+
+
+def test_preflight_reports_invalid_resource_requests():
+    config = ExecutionConfig(cpus_per_task=4, max_nodes=1)
+
+    with pytest.raises(PreflightError) as exc:
+        preflight_execution(
+            config,
+            resource_requests=[
+                ResourceRequest(name="dp3", threads=8),
+                ResourceRequest(
+                    name="wsclean-mpi",
+                    processes=2,
+                    use_mpi=True,
+                    exclusive=False,
+                ),
+            ],
+        )
+
+    assert [issue.code for issue in exc.value.issues] == [
+        "resource_threads_oversubscribed",
+        "mpi_not_exclusive",
+        "mpi_processes_oversubscribed",
+    ]
+    assert all(issue.option == "resources" for issue in exc.value.issues)

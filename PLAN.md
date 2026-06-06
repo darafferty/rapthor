@@ -1577,6 +1577,38 @@ Done when:
   for the supported matrix.
 - Unsupported runtime/container/resource combinations fail before execution.
 
+Status: in progress.
+
+Completed in the first Issue 6 slice:
+
+- Extended `WorkDirectoryLayout` with scoped task directories and explicit
+  cleanup helpers.
+- Added tests proving scattered task directories are unique, cleanup is
+  idempotent, task scopes clean on success, preserve temporary files on failure
+  by default for debugging, and can opt into cleanup-on-failure for disposable
+  temporary products.
+- Added centralized resource validation for command requests, including thread
+  oversubscription, memory oversubscription, non-exclusive MPI requests, and MPI
+  process counts that exceed configured node counts.
+- Wired resource validation into execution preflight so invalid resource
+  requests produce structured `PreflightIssue` codes before external commands
+  run.
+
+Verified in the running dev container:
+
+- `python3 -m pytest tests/execution/test_workdirs.py
+  tests/execution/test_resources.py tests/execution/test_capabilities.py -q
+  --tb=short`: 24 passed, 1 warning.
+- `ruff check rapthor/execution/__init__.py rapthor/execution/workdirs.py
+  rapthor/execution/resources.py rapthor/execution/capabilities.py
+  tests/execution/test_workdirs.py tests/execution/test_resources.py
+  tests/execution/test_capabilities.py`: passed.
+- `ruff format --check rapthor/execution/__init__.py
+  rapthor/execution/workdirs.py
+  rapthor/execution/resources.py rapthor/execution/capabilities.py
+  tests/execution/test_workdirs.py tests/execution/test_resources.py
+  tests/execution/test_capabilities.py`: 7 files already formatted.
+
 ### Issue 7: Add Slurm And Multi-Node Execution
 
 Goal: support the selected production Slurm model using Prefect with an external
