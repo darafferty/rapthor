@@ -160,6 +160,14 @@ class NoOutputShellOperation:
         return "OK"
 
 
+class FailingShellOperation:
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+
+    def run(self):
+        raise RuntimeError("image failed")
+
+
 class ObservationStub:
     def __init__(self, ms_filename: str, starttime: float, numsamples: int):
         self.ms_filename = ms_filename
@@ -2218,6 +2226,45 @@ def test_image_operation_run_reuses_prefect_outputs_when_done(
     assert (skymodel_dir / "sector_1.true_sky.txt").is_file()
     assert sector.diagnostics == [{"cycle_number": 1}]
     assert fake_image_shell_operation_cls.instances == []
+
+
+@pytest.mark.parametrize(
+    "shell_operation_cls, expected_message",
+    [
+        pytest.param(FailingShellOperation, "image failed", id="shell-failure"),
+        pytest.param(
+            NoOutputShellOperation,
+            "Prepared imaging MS",
+            id="missing-prepared-ms-output",
+        ),
+    ],
+)
+def test_image_operation_run_failure_does_not_mark_done(
+    tmp_path, monkeypatch, shell_operation_cls, expected_message
+):
+    monkeypatch.setattr(
+        "rapthor.execution.shell._load_shell_operation_cls",
+        lambda: shell_operation_cls,
+    )
+    field = FieldStub(tmp_path)
+    operation = Image(field, index=1)
+    sector = field.imaging_sectors[0]
+
+    with (
+        prefect_test_harness(server_startup_timeout=None),
+        pytest.raises((FileNotFoundError, RuntimeError), match=expected_message),
+    ):
+        operation.run()
+
+    assert Path(operation.pipeline_inputs_file).is_file()
+    assert not Path(operation.done_file).exists()
+    assert not Path(operation.outputs_file).exists()
+    assert operation.outputs == {}
+    assert not hasattr(sector, "I_image_file_apparent_sky")
+    assert not hasattr(sector, "image_skymodel_file_true_sky")
+    assert sector.diagnostics == []
+    assert field.lofar_to_true_flux_ratio is None
+    assert field.lofar_to_true_flux_std is None
 
 
 def test_full_stokes_image_operation_run_uses_prefect_flow(

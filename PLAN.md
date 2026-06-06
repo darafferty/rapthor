@@ -1485,6 +1485,16 @@ Completed in the third Issue 5 slice:
 - Verified failed DI prediction leaves the field observation unfinalized, keeping
   `ms_predict_di_filename` unset and the original observation infix unchanged.
 
+Completed in the fourth Issue 5 slice:
+
+- Added Image operation-level injected-failure coverage for Prefect execution.
+- Verified `Image.run()` does not create `.done` or `.outputs.json` when the
+  underlying shell operation fails or when the expected prepared imaging
+  Measurement Set is missing.
+- Verified failed imaging leaves finalizer-visible field state unchanged:
+  no image/skymodel filenames are assigned, sector diagnostics remain empty,
+  and flux-ratio fields remain unset.
+
 Verified in the running dev container:
 
 - `python3 -m pytest tests/lib/test_operation.py -q --tb=short`: 9 passed.
@@ -1500,6 +1510,14 @@ Verified in the running dev container:
   passed, 6 warnings.
 - `ruff check tests/execution/test_predict_flow.py`: passed.
 - `ruff format --check tests/execution/test_predict_flow.py`: 1 file already
+  formatted.
+- `python3 -m pytest tests/execution/test_image_flow.py -q --tb=short -k
+  "image_operation_run_uses_prefect_flow or image_operation_run_reuses or
+  image_operation_run_failure"`: 12 passed, 43 deselected, 13 warnings.
+- `python3 -m pytest tests/execution/test_image_flow.py -q --tb=short`: 55
+  passed, 14 warnings.
+- `ruff check tests/execution/test_image_flow.py`: passed.
+- `ruff format --check tests/execution/test_image_flow.py`: 1 file already
   formatted.
 
 ### Issue 6: Finish Runtime, Resource, And Filesystem Safety
