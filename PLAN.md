@@ -619,10 +619,14 @@ Tests:
 
 Remaining Stage 4 work before final cutover:
 
-- Replace or rework the currently placeholder `tests/operations/test_mosaic.py`
-  cases when the production runner is cut over.
 - Add a real image-to-mosaic integration test on the Prefect path once the Image
   flow is ported or suitable lightweight FITS fixtures are available.
+
+Completed later:
+
+- Replaced placeholder `tests/operations/test_mosaic.py` coverage with real
+  operation tests in Issue 3.
+- Completed Mosaic operation-run cutover in PR 28.
 
 ### Stage 5: Port Predict
 
@@ -658,12 +662,17 @@ Tests:
 
 Remaining Stage 5 work before final cutover:
 
-- Add real lightweight script or Measurement Set coverage for
-  `add_sector_models.py` and `subtract_sector_models.py` if suitable fixtures are
-  available in CI.
-- Revisit task-local working directories when the final Dask execution layout is
-  introduced; the current direct-flow parity path preserves output contracts by
-  filtering intermediates.
+- Add target-environment Predict integration for DP3-produced products if CI or
+  staging provides suitable external-tool fixtures.
+
+Completed later:
+
+- Added lightweight Measurement Set coverage for `add_sector_models.py` and
+  `subtract_sector_models.py` in Issue 3.
+- Reviewed task-local working-directory and resource safety in Issue 6. The
+  current direct-flow parity path preserves output contracts by filtering
+  intermediates until real distributed Predict integration proves a different
+  layout is needed.
 
 ### Stage 6: Port Imaging Incrementally
 
@@ -1073,19 +1082,19 @@ treated as migrated.
 
 Tasks:
 
-- Concatenate: add lightweight real integration coverage if suitable Measurement
-  Set fixtures and dependencies are available.
-- Mosaic: replace or rework placeholder operation tests and add a real
-  image-to-mosaic integration path once suitable FITS or Image-flow products are
-  available.
-- Predict: add real lightweight script or Measurement Set coverage for
-  `add_sector_models.py` and `subtract_sector_models.py`, and revisit
-  task-local working directories for the final Dask layout.
+- Concatenate: add multi-input DP3/TAQL integration coverage if suitable
+  Measurement Set fixtures and external command dependencies are available.
+- Mosaic: real operation tests are complete; add a real image-to-mosaic
+  integration path once suitable FITS or Image-flow products are available.
+- Predict: helper-script Measurement Set coverage and task-local layout review
+  are complete; add target-environment DP3 integration coverage if suitable
+  external-tool products are available.
 - Image: add real external-tool coverage for no-DDE, facet, screen, full-Stokes,
   cube, normalization, and MPI WSClean branches selected by the feature matrix.
-- Calibrate: complete plotting and h5parm post-processing, restart and failure
-  branches, and real external-tool coverage for DI-only, DD-only, DI-then-DD,
-  DD-then-DI, and screen generation.
+- Calibrate: mocked plotting, h5parm post-processing, restart, and failure
+  branches are covered; add real external-tool coverage for DI-only, DD-only,
+  DI-then-DD, DD-then-DI, and screen generation when CI/staging fixtures are
+  available.
 - For each operation, keep command parity, output-contract parity, field-state
   parity, restart parity, failure parity, mocked-flow parity, and focused
   integration parity visible in the tests.
@@ -1677,6 +1686,41 @@ Verified in the running dev container:
   tests/execution/test_capabilities.py tests/execution/test_image_flow.py`: 7
   files already formatted.
 
+### Pre-Issue 7 Plan Audit
+
+Status: complete.
+
+Purpose: close planning drift before moving from local runtime safety into
+Slurm and multi-node execution.
+
+Completed in this audit:
+
+- Reviewed Issues 1-6, the PR history notes, the open-decision list, and the
+  integration/equivalence sections for stale or ambiguous follow-up work.
+- Confirmed there are no branch-blocking code tasks left in Issues 1-6 before
+  starting Issue 7. The remaining work is intentionally assigned to later
+  migration gates rather than accidentally unfinished local-runtime work.
+- Resolved the remaining architecture decisions needed before Slurm work:
+  finalizer-compatible output records stay through merge, Pydantic input models
+  are deferred, task-level caching/restart is deferred, command builders remain
+  manually expressed with golden parity fixtures, and the first merge remains
+  no-container unless container support is explicitly implemented and tested.
+- Cleaned up stale PR follow-up notes whose work has since landed, especially
+  Mosaic placeholder tests, Predict helper-script coverage, Predict task-local
+  layout review, and Calibrate screen-generation operation-run coverage.
+
+Outstanding follow-up ledger:
+
+- Issue 7 owns the selected Slurm/external-Dask execution mode, `DASK_SCHEDULER`
+  handling, Slurm script smoke tests, and target-environment Slurm notes.
+- Issue 8 owns backend-neutral integration logging, refreshes to existing
+  integration tests, shared-facet read/write environment gating, and new focused
+  integration coverage.
+- Issue 9 owns the full CWL-to-Prefect equivalence gate and the expansion of
+  the supported feature matrix into real comparison parsets.
+- Issues 10-12 own the public route cutover, CWL production-code removal, final
+  documentation, packaging, CI, and merge-readiness cleanup.
+
 ### Issue 7: Add Slurm And Multi-Node Execution
 
 Goal: support the selected production Slurm model using Prefect with an external
@@ -2213,17 +2257,30 @@ reference comparisons can run. Before merging to `master`:
 
 ## Open Decisions
 
-- Whether Prefect operation flows should keep `{"class": "File", "path": ...}`
-  style records long term or replace them with typed records before merge.
-- Whether to introduce Pydantic models for operation inputs immediately or after
-  the first operations are ported.
-- How to represent task-level restart/caching without conflicting with the
-  current operation-level `.done` semantics.
-- How much of the existing CWL step metadata should be converted mechanically
-  versus re-expressed manually as Python command builders.
-- Which container modes are in scope for the first user-facing Prefect release.
+No blocking open decisions remain before Issue 7. The remaining design choices
+are resolved for this migration branch as follows:
 
-Resolved decision:
+- Keep finalizer-compatible `{"class": "File", "path": ...}` and
+  `{"class": "Directory", "path": ...}` records through merge. Typed output
+  records can be revisited after the CWL removal gate if they simplify the
+  public execution layer without changing finalizer contracts.
+- Do not introduce Pydantic operation-input models before Slurm work. The
+  current dataclasses, serializable payload validators, and focused payload
+  tests are sufficient for the migration branch; typed models remain a possible
+  post-cutover cleanup.
+- Keep restart semantics operation-level through merge: `.done` plus
+  `.outputs.json` remain the source of truth. Do not add task-level caching or
+  partial task restart until the operation-level Prefect path and equivalence
+  suite are stable.
+- Re-express CWL step metadata manually as structured Python command builders
+  with golden command/output fixtures. Do not mechanically convert CWL steps
+  unless a specific repetitive section proves too risky to maintain by hand.
+- Treat the first merge as no-container execution unless container wrapping is
+  explicitly implemented, preflighted, documented, and covered by equivalence
+  tests. Existing container settings should continue to fail early in the
+  Prefect/Dask path until that support exists.
+
+Resolved decisions:
 
 - The migration happens on a branch that will not be merged to `master` until it
   is complete.
@@ -2324,13 +2381,16 @@ Verified in the rebuilt devcontainer:
 - `python3 -c "import toml; toml.load('pyproject.toml')"`: passed, covering the
   Prefect Python 3.10 TOML parser compatibility issue.
 
-Deferred to the cutover PR:
+Remaining follow-up:
 
-- Switch `Operation.run()` from CWL execution to the Python flow path.
-- Add operation-level restart tests for `.done` and `.outputs.json` on the
-  final Prefect/Dask execution path.
 - Add real external-tool integration coverage for concatenate if lightweight
-  Measurement Set fixtures are available.
+  Measurement Set fixtures and external command dependencies are available.
+
+Completed later:
+
+- Switched `Concatenate.run()` to the Python flow path in PR 27.
+- Added operation-level restart tests for `.done` and `.outputs.json` in PR 27
+  and Issue 5.
 
 ### PR 4: Mosaic Prefect Flow
 
@@ -2363,13 +2423,16 @@ Verified in the rebuilt devcontainer:
 - `python3 -m ruff format --check rapthor/execution tests/execution`: passed.
 - `git diff --check`: passed.
 
-Deferred to the cutover PR:
+Remaining follow-up:
 
-- Switch `Operation.run()` from CWL execution to the Python flow path.
-- Add operation-level restart tests for `.done` and `.outputs.json` on the final
-  Prefect/Dask execution path.
-- Add real image-to-mosaic integration coverage once the Image flow is ported or
-  suitable lightweight FITS fixtures are available.
+- Add real image-to-mosaic integration coverage once suitable lightweight FITS
+  or image-flow fixtures are available.
+
+Completed later:
+
+- Switched `Mosaic.run()` to the Python flow path in PR 28.
+- Added operation-level restart tests for `.done` and `.outputs.json` in PR 28
+  and Issue 5.
 
 ### PR 5: Predict Prefect Flow
 
@@ -2406,16 +2469,21 @@ Verified in the rebuilt devcontainer:
 - `python3 -m ruff format --check rapthor/execution tests/execution`: passed.
 - `git diff --check`: passed.
 
-Deferred to the cutover PR:
+Remaining follow-up:
 
-- Switch `Operation.run()` from CWL execution to the Python flow path.
-- Add operation-level restart tests for `.done` and `.outputs.json` on the final
-  Prefect/Dask execution path.
-- Decide whether Predict should use task-local Dask work directories or keep the
-  shared operation directory with explicit intermediate filtering.
-- Add real external-tool coverage for `DP3`, `add_sector_models.py`, and
-  `subtract_sector_models.py` when lightweight Measurement Set fixtures are
-  available.
+- Add target-environment Predict integration for DP3-produced products if CI or
+  staging provides suitable external-tool fixtures.
+
+Completed later:
+
+- Switched `Predict.run()` to the Python flow path in PR 29.
+- Added operation-level restart tests for `.done` and `.outputs.json` in PR 29
+  and Issue 5.
+- Added lightweight Measurement Set coverage for `add_sector_models.py` and
+  `subtract_sector_models.py` in Issue 3.
+- Reviewed the task-local Dask work-directory question in Issue 6; the current
+  flow keeps explicit intermediate filtering until real distributed Predict
+  integration proves a different layout is needed.
 
 ### PR 6: Initial No-DDE Stokes-I Image Flow
 
@@ -3384,10 +3452,13 @@ Completed in this slice:
 
 Remaining follow-up:
 
-- Apply the same operation-run cutover pattern to Image and Calibrate once their
-  direct flow parity slices are ready for production adapter coverage.
 - Add a lightweight real Concatenate integration parity test if CI has suitable
   Measurement Set fixtures and `concat_ms.py` dependencies.
+
+Completed later:
+
+- Applied the operation-run cutover pattern to Image in PR 30 and Calibrate in
+  PRs 31-35.
 
 Verified:
 
@@ -3426,10 +3497,13 @@ Completed in this slice:
 
 Remaining follow-up:
 
-- Replace or rework the placeholder `tests/operations/test_mosaic.py` cases with
-  real operation tests if that module remains after the final test-suite cleanup.
 - Add a lightweight image-to-mosaic integration parity test once suitable FITS
   or image-flow fixtures are available in CI.
+
+Completed later:
+
+- Replaced the placeholder `tests/operations/test_mosaic.py` coverage with real
+  Mosaic operation tests in Issue 3.
 
 Verified:
 
@@ -3469,12 +3543,17 @@ Completed in this slice:
 
 Remaining follow-up:
 
-- Add real lightweight script or Measurement Set coverage for
-  `add_sector_models.py` and `subtract_sector_models.py` if suitable fixtures are
-  available in CI.
-- Revisit task-local working directories when the final Dask execution layout is
-  introduced; the current flow preserves output contracts by filtering
-  intermediate `_modeldata` directories.
+- Add target-environment Predict integration for DP3-produced products if CI or
+  staging provides suitable external-tool fixtures.
+
+Completed later:
+
+- Added lightweight Measurement Set coverage for `add_sector_models.py` and
+  `subtract_sector_models.py` in Issue 3.
+- Reviewed task-local working-directory and resource safety in Issue 6. The
+  current Predict flow still preserves output contracts by filtering
+  intermediate `_modeldata` directories; any further change belongs with
+  real distributed Predict integration in Issues 8 or 9.
 
 Verified:
 
@@ -3578,13 +3657,16 @@ Completed in this PR:
 
 Remaining follow-up:
 
-- Screen-generation operation-run coverage moved to PR 35 with the IDG/screen
-  Prefect calibration flow slice.
 - Add Calibrate cases to the dedicated CWL-to-Prefect equivalence suite before
   retiring any CWL calibration workflow code.
 - Add real external-tool Calibrate integration coverage for a small fixture run
   if CI/staging resources can provide suitable Measurement Set, sky model, and
   h5parm inputs.
+
+Completed later:
+
+- Added screen-generation operation-run coverage in PR 35 with the IDG/screen
+  Prefect calibration flow slice.
 
 Verified:
 
@@ -3621,14 +3703,17 @@ Completed in this PR:
 
 Remaining follow-up:
 
-- Expand operation-run cutover coverage to DD fast/medium phase, DD pre-apply,
-  DD image-based predict, DD slow-gain cycles, source-adjusted DD products, and
-  screen-generation slices where supported.
 - Add Calibrate cases to the dedicated CWL-to-Prefect equivalence suite before
   retiring any CWL calibration workflow code.
 - Add real external-tool Calibrate integration coverage for a small fixture run
   if CI/staging resources can provide suitable Measurement Set, sky model, and
   h5parm inputs.
+
+Completed later:
+
+- Added DD fast/medium phase, DD pre-apply, DD image-based predict,
+  DD slow-gain/source-adjusted products, and screen-generation operation-run
+  coverage in PRs 33-35.
 
 Verified in the running dev container:
 
@@ -3664,14 +3749,16 @@ Completed in this PR:
 
 Remaining follow-up:
 
-- Expand operation-run cutover coverage to DD pre-apply, DD image-based predict,
-  DD slow-gain cycles, source-adjusted DD products, and screen-generation slices
-  where supported.
 - Add Calibrate cases to the dedicated CWL-to-Prefect equivalence suite before
   retiring any CWL calibration workflow code.
 - Add real external-tool Calibrate integration coverage for a small fixture run
   if CI/staging resources can provide suitable Measurement Set, sky model, and
   h5parm inputs.
+
+Completed later:
+
+- Added DD pre-apply, DD image-based predict, DD slow-gain/source-adjusted
+  products, and screen-generation operation-run coverage in PRs 34 and 35.
 
 Verified in the running dev container:
 
@@ -3706,18 +3793,21 @@ Completed in this PR:
   collection, gain processing, medium2 handling, final h5parm combination,
   source adjustment, plot copying, solution copying, diagnostics, and field
   h5parm state all survive the operation adapter/finalizer boundary.
-- Kept screen-generation operation-run coverage deferred because IDG/screen
-  generation remains unimplemented in the Prefect calibration flow.
+- Kept screen-generation operation-run coverage deferred in this PR because
+  IDG/screen generation remained unimplemented in the Prefect calibration flow
+  at the time.
 
 Remaining follow-up:
 
-- Add operation-run cutover coverage for screen generation once IDG/screen
-  generation is implemented in the Prefect calibration flow.
 - Add Calibrate cases to the dedicated CWL-to-Prefect equivalence suite before
   retiring any CWL calibration workflow code.
 - Add real external-tool Calibrate integration coverage for a small fixture run
   if CI/staging resources can provide suitable Measurement Set, sky model, and
   h5parm inputs.
+
+Completed later:
+
+- Added screen-generation operation-run coverage in PR 35.
 
 Verified in the running dev container:
 
