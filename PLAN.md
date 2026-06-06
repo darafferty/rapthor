@@ -1334,7 +1334,7 @@ Done when:
 - Equivalence tests show the same operation sequence and finalizer-visible state
   as the retained legacy process route.
 
-Status: in progress.
+Status: complete.
 
 Completed in the first Issue 4 slice:
 
@@ -1449,7 +1449,9 @@ Done when:
   operations.
 - Failed Prefect tasks never mark an operation as done.
 
-Status: in progress.
+Status: complete for operation/base-state restart semantics and mocked
+operation-adapter failure coverage. Real external-tool integration refreshes
+remain tracked under Issues 8 and 9.
 
 Completed in the first Issue 5 slice:
 
@@ -1495,6 +1497,24 @@ Completed in the fourth Issue 5 slice:
   no image/skymodel filenames are assigned, sector diagnostics remain empty,
   and flux-ratio fields remain unset.
 
+Completed in the fifth Issue 5 slice:
+
+- Added Calibrate operation-level injected-failure coverage for Prefect
+  execution, covering both shell failure and missing DI full-Jones h5parm
+  output.
+- Verified failed Calibrate runs do not create `.done` or `.outputs.json`, do
+  not persist operation outputs, do not set h5parm field attributes, do not scan
+  h5parms, and do not append calibration diagnostics.
+- Added Concatenate and Mosaic operation-level failure coverage so all currently
+  supported Prefect operation adapters assert that shell failures and missing
+  expected outputs leave no restart markers and no finalizer-visible field
+  mutation.
+- Closed Issue 5 at the unit/adapter level: common `.done`/`.outputs.json`
+  semantics are covered in base `Operation` tests, reset compatibility is
+  covered in `modifystate` tests, and each supported operation adapter now has
+  no-marker failure coverage. Remaining real external-tool restart integration
+  work is part of Issues 8 and 9.
+
 Verified in the running dev container:
 
 - `python3 -m pytest tests/lib/test_operation.py -q --tb=short`: 9 passed.
@@ -1519,6 +1539,19 @@ Verified in the running dev container:
 - `ruff check tests/execution/test_image_flow.py`: passed.
 - `ruff format --check tests/execution/test_image_flow.py`: 1 file already
   formatted.
+- `python3 -m pytest tests/execution/test_concatenate_flow.py
+  tests/execution/test_mosaic_flow.py tests/execution/test_calibrate_flow.py -q
+  --tb=short -k "operation_run_failure or operation_run_uses_prefect_flow or
+  operation_run_reuses"`: 20 passed, 65 deselected, 1 warning.
+- `python3 -m pytest tests/execution/test_concatenate_flow.py
+  tests/execution/test_mosaic_flow.py tests/execution/test_calibrate_flow.py -q
+  --tb=short`: 85 passed, 1 warning.
+- `ruff check tests/execution/test_concatenate_flow.py
+  tests/execution/test_mosaic_flow.py tests/execution/test_calibrate_flow.py`:
+  passed.
+- `ruff format --check tests/execution/test_concatenate_flow.py
+  tests/execution/test_mosaic_flow.py tests/execution/test_calibrate_flow.py`:
+  3 files already formatted.
 
 ### Issue 6: Finish Runtime, Resource, And Filesystem Safety
 

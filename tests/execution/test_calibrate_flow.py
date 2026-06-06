@@ -115,6 +115,14 @@ class NoOutputShellOperation:
         return "OK"
 
 
+class FailingShellOperation:
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+
+    def run(self):
+        raise RuntimeError("calibrate failed")
+
+
 class CalibrateObservationStub:
     channels_are_regular = True
 
@@ -2313,6 +2321,49 @@ def test_calibrate_di_operation_run_reuses_prefect_outputs_when_done(
     assert (solutions_dir / "fulljones-solutions.h5").is_file()
     assert (plots_dir / "phase_solutions.png").is_file()
     assert field.scan_h5parms_calls == 1
+
+
+@pytest.mark.parametrize(
+    "shell_operation_cls, expected_message",
+    [
+        pytest.param(FailingShellOperation, "calibrate failed", id="shell-failure"),
+        pytest.param(
+            NoOutputShellOperation,
+            "DI full-Jones h5parm",
+            id="missing-fulljones-output",
+        ),
+    ],
+)
+def test_calibrate_di_operation_run_failure_does_not_mark_done(
+    tmp_path, monkeypatch, shell_operation_cls, expected_message
+):
+    monkeypatch.setattr(
+        "rapthor.execution.shell._load_shell_operation_cls",
+        lambda: shell_operation_cls,
+    )
+    monkeypatch.setattr(
+        "rapthor.lib.miscellaneous.get_flagged_solution_fraction",
+        lambda *args, **kwargs: 0.0,
+    )
+
+    field = CalibrateFieldStub(tmp_path)
+    operation = Calibrate("di", field, index=1)
+
+    with (
+        prefect_test_harness(server_startup_timeout=None),
+        pytest.raises((FileNotFoundError, RuntimeError), match=expected_message),
+    ):
+        operation.run()
+
+    assert Path(operation.pipeline_inputs_file).is_file()
+    assert not Path(operation.done_file).exists()
+    assert not Path(operation.outputs_file).exists()
+    assert operation.outputs == {}
+    assert field.fulljones_h5parm_filename is None
+    assert field.h5parm_filename is None
+    assert field.di_h5parm_filename is None
+    assert field.scan_h5parms_calls == 0
+    assert field.calibration_diagnostics == []
 
 
 def test_calibrate_di_scalar_operation_run_reuses_prefect_outputs_when_done(

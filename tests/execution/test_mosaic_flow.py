@@ -61,6 +61,14 @@ class NoOutputShellOperation:
         return "OK"
 
 
+class FailingShellOperation:
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+
+    def run(self):
+        raise RuntimeError("mosaic failed")
+
+
 class SectorStub:
     def __init__(self, root: Path, index: int):
         root.mkdir(parents=True, exist_ok=True)
@@ -445,3 +453,41 @@ def test_mosaic_operation_run_reuses_prefect_outputs_when_done(
     assert field.field_image_filename == str(expected_field_image)
     assert expected_field_image.is_file()
     assert fake_mosaic_shell_operation_cls.instances == []
+
+
+@pytest.mark.parametrize(
+    "shell_operation_cls, expected_message",
+    [
+        pytest.param(FailingShellOperation, "mosaic failed", id="shell-failure"),
+        pytest.param(
+            NoOutputShellOperation,
+            "Mosaic output was not created",
+            id="missing-mosaic-output",
+        ),
+    ],
+)
+def test_mosaic_operation_run_failure_does_not_mark_done(
+    tmp_path, monkeypatch, shell_operation_cls, expected_message
+):
+    monkeypatch.setattr(
+        "rapthor.execution.shell._load_shell_operation_cls",
+        lambda: shell_operation_cls,
+    )
+    field = FieldStub(
+        tmp_path,
+        [SectorStub(tmp_path / "inputs", 1), SectorStub(tmp_path / "inputs", 2)],
+    )
+    operation = Mosaic(field, index=1)
+
+    with (
+        prefect_test_harness(server_startup_timeout=None),
+        pytest.raises((FileNotFoundError, RuntimeError), match=expected_message),
+    ):
+        operation.run()
+
+    assert Path(operation.pipeline_inputs_file).is_file()
+    assert not Path(operation.done_file).exists()
+    assert not Path(operation.outputs_file).exists()
+    assert operation.outputs == {}
+    assert field.field_image_filename is None
+    assert field.field_image_filename_prev is None

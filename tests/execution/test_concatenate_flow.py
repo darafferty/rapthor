@@ -447,3 +447,45 @@ def test_concatenate_operation_run_reuses_prefect_outputs_when_done(
     ]
     assert field.scan_count == 1
     assert fake_shell_operation_cls.instances == []
+
+
+@pytest.mark.parametrize(
+    "shell_operation_cls, expected_message",
+    [
+        pytest.param(FailingShellOperation, "concat failed", id="shell-failure"),
+        pytest.param(
+            NoOutputShellOperation,
+            "Concatenate output was not created",
+            id="missing-concatenated-output",
+        ),
+    ],
+)
+def test_concatenate_operation_run_failure_does_not_mark_done(
+    tmp_path, monkeypatch, shell_operation_cls, expected_message
+):
+    monkeypatch.setattr(
+        "rapthor.execution.shell._load_shell_operation_cls",
+        lambda: shell_operation_cls,
+    )
+    field = FieldStub(
+        _operation_parset(tmp_path),
+        epoch_observations=[
+            [ObservationStub("epoch_0_input_0.ms"), ObservationStub("epoch_0_input_1.ms")],
+            [ObservationStub("epoch_1_single.ms")],
+        ],
+    )
+    operation = Concatenate(field, index=0)
+
+    with (
+        prefect_test_harness(server_startup_timeout=None),
+        pytest.raises((FileNotFoundError, RuntimeError), match=expected_message),
+    ):
+        operation.run()
+
+    assert Path(operation.pipeline_inputs_file).is_file()
+    assert not Path(operation.done_file).exists()
+    assert not Path(operation.outputs_file).exists()
+    assert operation.outputs == {}
+    assert field.ms_filenames == []
+    assert field.data_colname == "CORRECTED_DATA"
+    assert field.scan_count == 0
