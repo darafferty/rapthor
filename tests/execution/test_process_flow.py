@@ -1044,6 +1044,50 @@ def test_legacy_and_prefect_process_match_final_hybrid_screen_lifecycle(monkeypa
     assert _top_level_summary(prefect_result) == _top_level_summary(legacy_result)
 
 
+@pytest.mark.parametrize(
+    "parset_updates, final_step_updates, expected_message",
+    [
+        pytest.param(
+            {"input_h5parm": None},
+            {},
+            "no calibration solutions were provided",
+            id="missing-input-h5parm",
+        ),
+        pytest.param(
+            {"input_h5parm": "input-solutions.h5", "input_skymodel": None},
+            {"peel_outliers": True},
+            "sky model was provided",
+            id="peel-outliers-without-input-skymodel",
+        ),
+        pytest.param(
+            {"input_h5parm": "input-solutions.h5", "input_skymodel": None},
+            {"peel_bright_sources": True},
+            "sky model was provided",
+            id="peel-bright-sources-without-input-skymodel",
+        ),
+    ],
+)
+def test_legacy_and_prefect_process_match_final_only_validation_failures(
+    monkeypatch, parset_updates, final_step_updates, expected_message
+):
+    parset = _process_parset(**parset_updates)
+    strategy_steps = [_image_step(**final_step_updates)]
+
+    with pytest.raises(ValueError, match=expected_message) as legacy_exc:
+        _run_legacy_process(
+            monkeypatch,
+            copy.deepcopy(parset),
+            copy.deepcopy(strategy_steps),
+        )
+    with pytest.raises(ValueError, match=expected_message) as prefect_exc:
+        _run_prefect_process(
+            copy.deepcopy(parset),
+            copy.deepcopy(strategy_steps),
+        )
+
+    assert str(prefect_exc.value) == str(legacy_exc.value)
+
+
 def test_run_process_skips_initial_skymodel_generation_without_calibration_step():
     parset = _process_parset(generate_initial_skymodel=True)
     lifecycle = RecordingProcessLifecycle(

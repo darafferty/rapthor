@@ -1387,10 +1387,16 @@ Completed in the third Issue 4 slice:
 - Kept the `concatenate` feature in the full requested-feature set even if
   concatenation mutates the field before full feature collection.
 
+Completed in the fourth Issue 4 slice:
+
+- Added shared top-level validation-failure equivalence tests for final-only
+  runs, proving legacy `process.run()` and Prefect-side `run_process()` raise
+  the same errors when input calibration solutions are missing.
+- Added equivalent shared failure coverage for outlier and bright-source
+  peeling requests when no input sky model is supplied.
+
 Remaining follow-up:
 
-- Add top-level equivalence for peeling-validation failure paths using shared
-  fixtures.
 - Decide whether to replace the placeholder functions at the top of
   `tests/test_process.py` or remove them once their behaviour is covered by the
   explicit legacy and Prefect process tests.
@@ -1416,6 +1422,13 @@ Verified in the running dev container:
 - `python3 -m ruff check tests/execution/test_process_flow.py`: passed.
 - `python3 -m ruff format --check tests/execution/test_process_flow.py`: 1 file
   already formatted.
+- `python3 -m pytest tests/execution/test_process_flow.py -q --tb=short`: 35
+  passed, 1 warning.
+- `python3 -m pytest tests/execution/test_process_flow.py tests/test_process.py
+  -q --tb=short`: 56 passed, 1 warning.
+- `ruff check tests/execution/test_process_flow.py`: passed.
+- `ruff format --check tests/execution/test_process_flow.py`: 1 file already
+  formatted.
 - `git diff --check`: passed.
 
 ### Issue 5: Complete Restart, Failure, And `modifystate` Coverage
