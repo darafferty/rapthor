@@ -260,8 +260,18 @@ class Operation(object):
         """
         Load outputs from a JSON file.
         """
-        with open(self.outputs_file, "r") as f:
-            self.outputs = json.load(f)
+        try:
+            with open(self.outputs_file, "r") as f:
+                self.outputs = json.load(f)
+        except FileNotFoundError as exc:
+            raise RuntimeError(
+                f"Operation {self.name} is marked done but outputs file "
+                f"{self.outputs_file} is missing"
+            ) from exc
+        except json.JSONDecodeError as exc:
+            raise RuntimeError(
+                f"Operation {self.name} outputs file {self.outputs_file} is not valid JSON"
+            ) from exc
 
     def execute_workflow(self):
         """

@@ -1449,6 +1449,29 @@ Done when:
   operations.
 - Failed Prefect tasks never mark an operation as done.
 
+Status: in progress.
+
+Completed in the first Issue 5 slice:
+
+- Replaced the placeholder `tests/lib/test_operation.py` coverage with focused
+  base `Operation` contract tests.
+- Covered Python-flow setup without CWL template rendering, successful
+  execution, `.outputs.json` persistence, `.done` creation, restart reuse from
+  persisted outputs, and rerun after deleting `.done`.
+- Added failure-path coverage proving a `.done` marker with missing or corrupt
+  `.outputs.json` fails before workflow execution, failed workflow execution
+  does not create `.done` or `.outputs.json`, and finalizer failure also leaves
+  the operation unmarked as done.
+- Updated base operation output loading so a stale `.done` marker with missing
+  or invalid `.outputs.json` raises an operation-specific error message.
+
+Verified in the running dev container:
+
+- `python3 -m pytest tests/lib/test_operation.py -q --tb=short`: 9 passed.
+- `ruff check rapthor/lib/operation.py tests/lib/test_operation.py`: passed.
+- `ruff format --check rapthor/lib/operation.py tests/lib/test_operation.py`: 2
+  files already formatted.
+
 ### Issue 6: Finish Runtime, Resource, And Filesystem Safety
 
 Goal: make the Dask-distributed execution path safe for concurrent external
