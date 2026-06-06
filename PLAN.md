@@ -1395,11 +1395,6 @@ Completed in the fourth Issue 4 slice:
 - Added equivalent shared failure coverage for outlier and bright-source
   peeling requests when no input sky model is supplied.
 
-Remaining follow-up:
-
-- Decide whether to replace the placeholder functions at the top of
-  `tests/test_process.py` or remove them once their behaviour is covered by the
-  explicit legacy and Prefect process tests.
 
 Verified in the running dev container:
 
