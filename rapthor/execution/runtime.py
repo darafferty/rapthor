@@ -4,7 +4,11 @@ from dataclasses import dataclass, field
 from typing import Mapping, Optional
 
 from rapthor.execution.config import ExecutionConfig
-from rapthor.execution.resources import ResourceRequest, thread_environment
+from rapthor.execution.resources import (
+    ResourceRequest,
+    thread_environment,
+    validate_resource_request,
+)
 
 
 class UnsupportedRuntimeError(RuntimeError):
@@ -25,9 +29,9 @@ def build_command_environment(
     extra_environment: Optional[Mapping[str, object]] = None,
 ) -> dict[str, str]:
     """Build a command environment from execution and resource settings."""
-    _ = execution_config
     environment = {}
     if resource_request is not None:
+        validate_resource_request(resource_request, execution_config)
         environment.update(thread_environment(resource_request))
     for key, value in (extra_environment or {}).items():
         environment[str(key)] = str(value)

@@ -12,7 +12,11 @@ from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.runtime import run_flow_with_task_runner
 from rapthor.execution.outputs import directory_record, file_record, validate_output_record
 from rapthor.execution.payloads import assert_serializable_payload
-from rapthor.execution.resources import ResourceRequest, thread_environment
+from rapthor.execution.resources import (
+    ResourceRequest,
+    thread_environment,
+    validate_resource_request,
+)
 from rapthor.execution.shell import ShellCommand, run_shell_command
 
 ATERM_CONFIG_FILENAME = "aterm_plus_beam.cfg"
@@ -1310,16 +1314,22 @@ def _run_shell(
     )
 
 
-def _mpi_environment(threads: int, processes: int) -> Mapping[str, str]:
-    return thread_environment(
+def _mpi_environment(
+    threads: int,
+    processes: int,
+    execution_config: ExecutionConfig,
+) -> Mapping[str, str]:
+    resource_request = validate_resource_request(
         ResourceRequest(
             name="wsclean-mpi",
             threads=threads,
             processes=processes,
             use_mpi=True,
             exclusive=True,
-        )
+        ),
+        execution_config,
     )
+    return thread_environment(resource_request)
 
 
 def _wsclean_threads_for_sector(sector: Mapping[str, object]) -> int:
@@ -1328,12 +1338,16 @@ def _wsclean_threads_for_sector(sector: Mapping[str, object]) -> int:
     return int(sector["max_threads"])
 
 
-def _wsclean_environment_for_sector(sector: Mapping[str, object]) -> Optional[Mapping[str, str]]:
+def _wsclean_environment_for_sector(
+    sector: Mapping[str, object],
+    execution_config: ExecutionConfig,
+) -> Optional[Mapping[str, str]]:
     if not sector["use_mpi"]:
         return None
     return _mpi_environment(
         _wsclean_threads_for_sector(sector),
         int(sector["mpi_nnodes"]),
+        execution_config,
     )
 
 
@@ -1491,7 +1505,7 @@ def run_image_sector(
     wsclean_command = _build_wsclean_command_for_sector(
         sector, concat_record, mask_record, region_record, temp_dir
     )
-    wsclean_environment = _wsclean_environment_for_sector(sector)
+    wsclean_environment = _wsclean_environment_for_sector(sector, config)
     try:
         _run_shell(
             wsclean_command,

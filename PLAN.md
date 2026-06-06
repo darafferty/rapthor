@@ -1577,7 +1577,7 @@ Done when:
   for the supported matrix.
 - Unsupported runtime/container/resource combinations fail before execution.
 
-Status: in progress.
+Status: complete.
 
 Completed in the first Issue 6 slice:
 
@@ -1639,6 +1639,42 @@ Verified in the running dev container:
   rapthor/execution/task_runner.py rapthor/execution/resources.py
   tests/execution/test_config.py tests/execution/test_task_runner.py
   tests/execution/test_resources.py tests/execution/test_capabilities.py`: 7
+  files already formatted.
+
+Completed in the final Issue 6 slice:
+
+- Made command runtime construction validate `ResourceRequest` values before
+  building thread environment variables, so direct runtime helpers use the same
+  guardrails as preflight.
+- Added explicit Slurm allocation validation for non-MPI command requests when
+  `batch_system` is `slurm` or `slurm_static` and `max_nodes` is positive.
+- Preserved the legacy `max_nodes = 0` meaning of "unlimited/all available" for
+  Slurm and MPI validation, while still enforcing explicit positive limits.
+- Wired MPI WSClean image execution through centralized resource validation so
+  oversubscribed `mpirun` requests fail before the shell command is launched.
+- Added runtime, resource, preflight, and MPI image tests for these final safety
+  checks.
+
+Verified in the running dev container:
+
+- `python3 -m pytest tests/execution/test_payloads.py
+  tests/execution/test_workdirs.py tests/execution/test_config.py
+  tests/execution/test_task_runner.py tests/execution/test_resources.py
+  tests/execution/test_capabilities.py tests/execution/test_runtime.py
+  tests/execution/test_image_flow.py -q --tb=short -k "payload or
+  work_directory or task_scope or atomic or resource or preflight or runtime or
+  mpi"`: 56 passed, 54 deselected, 2 warnings.
+- `python3 -m pytest tests/execution/test_resources.py
+  tests/execution/test_capabilities.py tests/execution/test_runtime.py
+  tests/execution/test_image_flow.py -q --tb=short`: 82 passed, 14 warnings.
+- `ruff check rapthor/execution/runtime.py rapthor/execution/resources.py
+  rapthor/execution/flows/image.py tests/execution/test_runtime.py
+  tests/execution/test_resources.py tests/execution/test_capabilities.py
+  tests/execution/test_image_flow.py`: passed.
+- `ruff format --check rapthor/execution/runtime.py
+  rapthor/execution/resources.py rapthor/execution/flows/image.py
+  tests/execution/test_runtime.py tests/execution/test_resources.py
+  tests/execution/test_capabilities.py tests/execution/test_image_flow.py`: 7
   files already formatted.
 
 ### Issue 7: Add Slurm And Multi-Node Execution

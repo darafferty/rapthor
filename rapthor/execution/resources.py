@@ -5,6 +5,8 @@ from typing import Iterable, Mapping, Optional
 
 from rapthor.execution.config import ExecutionConfig
 
+SLURM_BATCH_SYSTEMS = {"slurm", "slurm_static"}
+
 
 @dataclass(frozen=True)
 class ResourceRequest:
@@ -87,6 +89,27 @@ def collect_resource_issues(
             )
         )
 
+    slurm_node_limit = (
+        execution_config.max_nodes
+        if str(execution_config.batch_system).lower() in SLURM_BATCH_SYSTEMS
+        and execution_config.max_nodes > 0
+        else None
+    )
+    if (
+        slurm_node_limit is not None
+        and execution_config.task_runner != "local_dask"
+        and not resource_request.use_mpi
+        and resource_request.processes > slurm_node_limit
+    ):
+        issues.append(
+            (
+                "slurm_processes_oversubscribed",
+                f"{resource_request.name} requests {resource_request.processes} concurrent "
+                f"processes, but the Slurm allocation is limited to "
+                f"{slurm_node_limit} nodes",
+            )
+        )
+
     if resource_request.use_mpi and not resource_request.exclusive:
         issues.append(
             (
@@ -95,8 +118,11 @@ def collect_resource_issues(
             )
         )
 
-    available_nodes = max(1, execution_config.max_nodes)
-    if resource_request.use_mpi and resource_request.processes > available_nodes:
+    if (
+        resource_request.use_mpi
+        and execution_config.max_nodes > 0
+        and resource_request.processes > execution_config.max_nodes
+    ):
         issues.append(
             (
                 "mpi_processes_oversubscribed",

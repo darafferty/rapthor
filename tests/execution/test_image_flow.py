@@ -1681,7 +1681,7 @@ def test_run_image_flow_supports_linked_full_stokes(tmp_path, fake_image_shell_o
 def test_run_image_flow_supports_mpi_no_dde(tmp_path, fake_image_shell_operation_cls):
     outputs = run_image_flow(
         image_payload_from_inputs(_mpi_image_input_parms(), tmp_path, use_mpi=True),
-        execution_config=ExecutionConfig(task_runner="sync"),
+        execution_config=ExecutionConfig(task_runner="sync", max_nodes=2, cpus_per_task=3),
         shell_operation_cls=fake_image_shell_operation_cls,
     )
 
@@ -1716,12 +1716,29 @@ def test_run_image_flow_supports_mpi_no_dde(tmp_path, fake_image_shell_operation
     }
 
 
+def test_run_image_flow_rejects_oversubscribed_mpi_wsclean(
+    tmp_path, fake_image_shell_operation_cls
+):
+    with pytest.raises(ValueError, match="requests 2 MPI processes"):
+        run_image_flow(
+            image_payload_from_inputs(_mpi_image_input_parms(), tmp_path, use_mpi=True),
+            execution_config=ExecutionConfig(task_runner="sync", max_nodes=1, cpus_per_task=3),
+            shell_operation_cls=fake_image_shell_operation_cls,
+        )
+
+    command_names = [
+        shlex.split(instance.kwargs["commands"][0])[0]
+        for instance in fake_image_shell_operation_cls.instances
+    ]
+    assert "mpirun" not in command_names
+
+
 def test_run_image_flow_supports_mpi_facets(tmp_path, fake_image_shell_operation_cls):
     outputs = run_image_flow(
         image_payload_from_inputs(
             _mpi_facet_image_input_parms(), tmp_path, use_facets=True, use_mpi=True
         ),
-        execution_config=ExecutionConfig(task_runner="sync"),
+        execution_config=ExecutionConfig(task_runner="sync", max_nodes=2, cpus_per_task=3),
         shell_operation_cls=fake_image_shell_operation_cls,
     )
 
@@ -1744,7 +1761,7 @@ def test_run_image_flow_supports_mpi_screens(tmp_path, fake_image_shell_operatio
         image_payload_from_inputs(
             _mpi_screens_image_input_parms(), tmp_path, apply_screens=True, use_mpi=True
         ),
-        execution_config=ExecutionConfig(task_runner="sync"),
+        execution_config=ExecutionConfig(task_runner="sync", max_nodes=2, cpus_per_task=3),
         shell_operation_cls=fake_image_shell_operation_cls,
     )
 

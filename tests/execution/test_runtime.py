@@ -34,6 +34,14 @@ def test_build_runtime_spec_records_working_directory():
     assert runtime.environment["OPENBLAS_NUM_THREADS"] == "2"
 
 
+def test_build_runtime_spec_rejects_invalid_resource_request():
+    with pytest.raises(ValueError, match="requests 5 threads"):
+        build_runtime_spec(
+            ExecutionConfig(cpus_per_task=4),
+            resource_request=ResourceRequest(name="wsclean", threads=5),
+        )
+
+
 def test_container_runtime_is_explicitly_unsupported_for_now():
     with pytest.raises(UnsupportedRuntimeError, match="container execution"):
         build_runtime_spec(ExecutionConfig(use_container=True))

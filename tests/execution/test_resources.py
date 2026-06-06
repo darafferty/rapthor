@@ -69,6 +69,36 @@ def test_validate_resource_request_allows_external_dask_processes():
     )
 
 
+def test_validate_resource_request_rejects_slurm_process_oversubscription():
+    request = ResourceRequest(name="dp3", processes=3)
+
+    with pytest.raises(ValueError, match="Slurm allocation is limited to 2 nodes"):
+        validate_resource_request(
+            request,
+            ExecutionConfig(
+                task_runner="external_dask",
+                batch_system="slurm",
+                max_nodes=2,
+            ),
+        )
+
+
+def test_validate_resource_request_allows_unlimited_slurm_nodes():
+    request = ResourceRequest(name="dp3", processes=3)
+
+    assert (
+        validate_resource_request(
+            request,
+            ExecutionConfig(
+                task_runner="external_dask",
+                batch_system="slurm",
+                max_nodes=0,
+            ),
+        )
+        == request
+    )
+
+
 def test_validate_resource_request_rejects_nonexclusive_mpi_request():
     request = ResourceRequest(name="wsclean-mpi", use_mpi=True, exclusive=False)
 
@@ -86,6 +116,17 @@ def test_validate_resource_request_rejects_mpi_process_oversubscription():
 
     with pytest.raises(ValueError, match="requests 3 MPI processes"):
         validate_resource_request(request, ExecutionConfig(max_nodes=2))
+
+
+def test_validate_resource_request_allows_mpi_when_node_count_is_unlimited():
+    request = ResourceRequest(
+        name="wsclean-mpi",
+        processes=3,
+        use_mpi=True,
+        exclusive=True,
+    )
+
+    assert validate_resource_request(request, ExecutionConfig(max_nodes=0)) == request
 
 
 def test_collect_resource_request_issues_preserves_issue_codes():
