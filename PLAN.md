@@ -1334,6 +1334,47 @@ Done when:
 - Equivalence tests show the same operation sequence and finalizer-visible state
   as the retained legacy process route.
 
+Status: in progress.
+
+Completed in the first Issue 4 slice:
+
+- Extended the top-level Prefect process-flow recorder so image-time flags are
+  captured for lifecycle assertions.
+- Added selfcal divergence and failure tests proving `run_process_steps()` stops
+  after the current cycle, preserves the reported selfcal state, and does not
+  execute subsequent strategy steps.
+- Added initial-sky-model skip coverage proving a requested initial sky model is
+  disabled when the strategy has no calibration step, without running
+  `ImageInitial`.
+- Added Prefect `process_flow()` coverage for the final-only image path that
+  rejects peeling when no input sky model is supplied.
+- Added final hybrid-screen coverage proving DD prediction is skipped when
+  screens are generated, outlier peeling is disabled, QUV/clean/image-cube
+  flags are set for the final image, screens are applied, and the final major
+  iteration is not skipped.
+
+Remaining follow-up:
+
+- Add direct equivalence assertions between legacy `rapthor.process.run_steps()`
+  and Prefect `run_process_steps()` for the supported strategy matrix, not just
+  parallel mocked coverage in separate test files.
+- Add top-level equivalence for final-only image, selfcal repeat/final-cycle,
+  hybrid-screen, QUV, cube, and peeling-validation paths using shared fixtures.
+- Decide whether to replace the placeholder functions at the top of
+  `tests/test_process.py` or remove them once their behaviour is covered by the
+  explicit legacy and Prefect process tests.
+
+Verified in the running dev container:
+
+- `python3 -m pytest tests/execution/test_process_flow.py -q --tb=short`: 23
+  passed, 1 warning.
+- `python3 -m pytest tests/execution/test_process_flow.py tests/test_process.py
+  -q --tb=short`: 44 passed, 1 warning.
+- `python3 -m ruff check tests/execution/test_process_flow.py`: passed.
+- `python3 -m ruff format --check tests/execution/test_process_flow.py`: 1 file
+  already formatted.
+- `git diff --check`: passed.
+
 ### Issue 5: Complete Restart, Failure, And `modifystate` Coverage
 
 Goal: preserve Rapthor's restart semantics with Prefect-produced operation

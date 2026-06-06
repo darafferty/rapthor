@@ -78,6 +78,13 @@ def _record(field, operation, mode, index):
         "dd_h5parm": getattr(field, "dd_h5parm_filename", None),
         "predict_di_output": getattr(field, "predict_di_output_filename", None),
         "field_region_file": getattr(field, "field_region_file", None),
+        "image_pol": getattr(field, "image_pol", None),
+        "disable_clean": getattr(field, "disable_clean", None),
+        "make_image_cube": getattr(field, "make_image_cube", None),
+        "image_cube_stokes_list": list(getattr(field, "image_cube_stokes_list", [])),
+        "generate_screens": getattr(field, "generate_screens", None),
+        "apply_screens": getattr(field, "apply_screens", None),
+        "skip_final_major_iteration": getattr(field, "skip_final_major_iteration", None),
     }
     field.events.append(event)
     return event
@@ -296,6 +303,7 @@ class RecordingProcessLifecycle:
     read_files: list[object] = field(default_factory=list)
     logging_levels: list[str] = field(default_factory=list)
     preflight_features: set[str] = field(default_factory=set)
+    field_updates: dict = field(default_factory=dict)
     field: object = None
 
     def hooks(self):
@@ -320,6 +328,8 @@ class RecordingProcessLifecycle:
 
     def build_field(self, parset):
         self.field = RecordingField(parset=parset, epoch_observations=self.epoch_observations)
+        for name, value in self.field_updates.items():
+            setattr(self.field, name, value)
         return self.field
 
     def set_strategy(self, field):
@@ -440,6 +450,31 @@ def test_run_process_steps_stops_after_selfcal_converges():
         ("mosaic", None),
     ]
     assert field.selfcal_state.converged is True
+    assert field.cycle_number == 1
+
+
+@pytest.mark.parametrize(
+    "selfcal_state, expected_flag",
+    [
+        pytest.param(SelfcalState(diverged=True), "diverged", id="diverged"),
+        pytest.param(SelfcalState(failed=True), "failed", id="failed"),
+    ],
+)
+def test_run_process_steps_stops_after_selfcal_diverges_or_fails(selfcal_state, expected_flag):
+    field = RecordingField(selfcal_result=selfcal_state)
+    steps = [
+        _single_step({"dd": ["fast_phase"]}, do_check=True),
+        _single_step({"di": ["fast_phase"]}, do_check=True),
+    ]
+
+    run_process_steps(field, steps, operation_factories=RECORDING_FACTORIES)
+
+    assert [(event["operation"], event["mode"]) for event in field.events] == [
+        ("calibrate", "dd"),
+        ("image", None),
+        ("mosaic", None),
+    ]
+    assert getattr(field.selfcal_state, expected_flag) is True
     assert field.cycle_number == 1
 
 
@@ -687,6 +722,32 @@ def test_run_process_lifecycle_runs_initial_selfcal_and_repeated_final_cycles():
     assert field.events[-1]["operation"] == "report"
 
 
+def test_run_process_skips_initial_skymodel_generation_without_calibration_step():
+    parset = _process_parset(generate_initial_skymodel=True)
+    lifecycle = RecordingProcessLifecycle(
+        parset=parset,
+        strategy_steps=[_image_step()],
+    )
+
+    field = run_process(
+        "input.parset",
+        operation_factories=RECORDING_FACTORIES,
+        lifecycle_hooks=lifecycle.hooks(),
+    )
+
+    assert field is lifecycle.field
+    assert field.parset["generate_initial_skymodel"] is False
+    assert not hasattr(field, "full_field_radius")
+    assert [
+        event["operation"]
+        for event in field.events
+        if event["operation"] in {"define_full_field_sector", "image_initial"}
+    ] == []
+    assert [
+        event["operation"] for event in field.events if event["operation"] in {"image", "mosaic"}
+    ] == ["image", "mosaic"]
+
+
 def test_process_flow_runs_no_selfcal_image_only_strategy():
     parset = _process_parset(input_h5parm="input-solutions.h5")
     lifecycle = RecordingProcessLifecycle(
@@ -730,3 +791,63 @@ def test_run_process_rejects_image_only_final_without_input_h5parm():
             operation_factories=RECORDING_FACTORIES,
             lifecycle_hooks=lifecycle.hooks(),
         )
+
+
+def test_process_flow_rejects_image_only_peeling_without_input_skymodel():
+    parset = _process_parset(input_h5parm="input-solutions.h5", input_skymodel=None)
+    lifecycle = RecordingProcessLifecycle(
+        parset=parset,
+        strategy_steps=[_image_step(peel_outliers=True)],
+    )
+
+    with prefect_test_harness(), pytest.raises(ValueError, match="sky model was provided"):
+        process_flow(
+            "input.parset",
+            operation_factories=RECORDING_FACTORIES,
+            lifecycle_hooks=lifecycle.hooks(),
+            execution_config=ExecutionConfig(task_runner="sync"),
+        )
+
+
+def test_run_process_final_hybrid_screens_skip_dd_predict_and_set_image_flags():
+    parset = _process_parset(
+        input_h5parm="input-solutions.h5",
+        input_skymodel="input.sky",
+    )
+    final_step = _image_step(do_predict=True, peel_outliers=True)
+    lifecycle = RecordingProcessLifecycle(
+        parset=parset,
+        strategy_steps=[final_step],
+        field_updates={
+            "dde_mode": "hybrid",
+            "make_quv_images": True,
+            "disable_iquv_clean": True,
+            "save_image_cube": True,
+            "image_cube_stokes_list": ["I", "Q", "U", "V", "XX"],
+        },
+    )
+
+    field = run_process(
+        "input.parset",
+        operation_factories=RECORDING_FACTORIES,
+        lifecycle_hooks=lifecycle.hooks(),
+        execution_config=ExecutionConfig(task_runner="sync"),
+    )
+
+    operation_events = [
+        event for event in field.events if event["operation"] in {"predict", "image", "mosaic"}
+    ]
+    assert [(event["operation"], event["mode"]) for event in operation_events] == [
+        ("image", None),
+        ("mosaic", None),
+    ]
+    assert final_step["peel_outliers"] is False
+
+    image_event = next(event for event in operation_events if event["operation"] == "image")
+    assert image_event["image_pol"] == "IQUV"
+    assert image_event["disable_clean"] is True
+    assert image_event["make_image_cube"] is True
+    assert image_event["image_cube_stokes_list"] == ["I", "Q", "U", "V"]
+    assert image_event["generate_screens"] is True
+    assert image_event["apply_screens"] is True
+    assert image_event["skip_final_major_iteration"] is False
