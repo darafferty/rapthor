@@ -1,12 +1,10 @@
 import subprocess
-from pathlib import Path
 
 import pytest
 
 from .utils import (
-    find_step_logs,
+    first_command_arguments,
     get_working_dir_from_parset,
-    parse_dp3_args_from_log,
     update_parset_path,
 )
 
@@ -49,10 +47,11 @@ def test_rapthor_run_dd_fast_phase_medium_phase(generated_parset_path, single_lo
     assert "Operation mosaic_1 completed" in output
     assert "Rapthor has finished :)" in output
 
-    calibrate_logs_dir = Path(working_dir) / "logs" / "calibrate_1"
-    calibrate_log = find_step_logs(calibrate_logs_dir, "ddecal_solve.cwl")
-    assert calibrate_log, "Expected calibration logs to be present"
-    dp3_arguments = parse_dp3_args_from_log(calibrate_log[0])
+    dp3_arguments = first_command_arguments(
+        working_dir,
+        operation="calibrate_1",
+        executable="DP3",
+    )
 
     assert "steps" in dp3_arguments
     assert "solve1" in dp3_arguments["steps"]
@@ -105,10 +104,11 @@ def test_rapthor_run_dd_fast_medium_slow_gains(
     assert "Operation mosaic_1 completed" in output
     assert "Rapthor has finished :)" in output
 
-    calibrate_logs_dir = Path(working_dir) / "logs" / "calibrate_1"
-    calibrate_log = find_step_logs(calibrate_logs_dir, "ddecal_solve.cwl")
-    assert calibrate_log, "Expected calibration logs to be present"
-    dp3_arguments = parse_dp3_args_from_log(calibrate_log[0])
+    dp3_arguments = first_command_arguments(
+        working_dir,
+        operation="calibrate_1",
+        executable="DP3",
+    )
 
     assert "steps" in dp3_arguments
     assert "solve1" in dp3_arguments["steps"]
@@ -167,10 +167,11 @@ def test_rapthor_run_dd_slow_gains(
     assert "Operation mosaic_1 completed" in output
     assert "Rapthor has finished :)" in output
 
-    calibrate_logs_dir = Path(working_dir) / "logs" / "calibrate_1"
-    calibrate_log = find_step_logs(calibrate_logs_dir, "ddecal_solve.cwl")
-    assert calibrate_log, "Expected calibration logs to be present"
-    dp3_arguments = parse_dp3_args_from_log(calibrate_log[0])
+    dp3_arguments = first_command_arguments(
+        working_dir,
+        operation="calibrate_1",
+        executable="DP3",
+    )
 
     assert "steps" in dp3_arguments
     assert "solve1" in dp3_arguments["steps"]

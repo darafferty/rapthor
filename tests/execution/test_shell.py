@@ -1,12 +1,16 @@
+import json
+
 import pytest
 
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.shell import (
     MissingPrefectShellError,
     ShellCommand,
+    command_log_path,
     run_shell_command,
     run_shell_commands,
     shell_operation_kwargs,
+    write_command_log_record,
 )
 
 
@@ -56,6 +60,47 @@ def test_run_shell_command_uses_injected_operation_class():
 
     assert result == "OK"
     assert FakeShellOperation.instances[0].kwargs["commands"] == ["echo hello"]
+
+
+def test_write_command_log_record_appends_backend_neutral_jsonl(tmp_path):
+    pipeline_working_dir = tmp_path / "work" / "pipelines" / "image_1"
+    pipeline_working_dir.mkdir(parents=True)
+
+    log_path = write_command_log_record(
+        ShellCommand(
+            ["DP3", "msin=input.ms", "steps=[solve]"],
+            environment={"OMP_NUM_THREADS": "4"},
+            working_directory=str(pipeline_working_dir),
+            name="solve",
+        ),
+        ExecutionConfig(),
+    )
+
+    assert log_path == tmp_path / "work" / "logs" / "commands.jsonl"
+    record = json.loads(log_path.read_text().strip())
+    assert record["backend"] == "prefect"
+    assert record["operation"] == "image_1"
+    assert record["name"] == "solve"
+    assert record["command"] == ["DP3", "msin=input.ms", "steps=[solve]"]
+    assert record["command_string"] == "DP3 msin=input.ms 'steps=[solve]'"
+    assert record["environment"] == {"OMP_NUM_THREADS": "4"}
+
+
+def test_write_command_log_record_honors_log_commands_false(tmp_path):
+    pipeline_working_dir = tmp_path / "work" / "pipelines" / "image_1"
+    pipeline_working_dir.mkdir(parents=True)
+
+    log_path = write_command_log_record(
+        ShellCommand(["echo", "quiet"], working_directory=str(pipeline_working_dir)),
+        ExecutionConfig(log_commands=False),
+    )
+
+    assert log_path is None
+    assert not (tmp_path / "work" / "logs" / "commands.jsonl").exists()
+
+
+def test_command_log_path_ignores_non_operation_workdir(tmp_path):
+    assert command_log_path(str(tmp_path / "not-an-operation")) is None
 
 
 def test_run_shell_commands_runs_sequentially():

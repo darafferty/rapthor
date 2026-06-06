@@ -1,9 +1,12 @@
 """Shell command wrappers used by Prefect tasks."""
 
+import json
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Mapping, Optional, Sequence
 
-from rapthor.execution.commands import CommandInput, command_to_string
+from rapthor.execution.commands import CommandInput, command_to_string, normalize_command
 from rapthor.execution.config import ExecutionConfig
 
 
@@ -49,12 +52,52 @@ def shell_operation_kwargs(
     return kwargs
 
 
+def command_log_path(working_directory: Optional[str]) -> Optional[Path]:
+    """Return the backend-neutral command log path for an operation workdir."""
+    if working_directory is None:
+        return None
+    workdir = Path(working_directory)
+    if workdir.parent.name != "pipelines":
+        return None
+    return workdir.parent.parent / "logs" / "commands.jsonl"
+
+
+def write_command_log_record(
+    shell_command: ShellCommand,
+    execution_config: ExecutionConfig,
+) -> Optional[Path]:
+    """Append a structured command record for integration/equivalence assertions."""
+    if not execution_config.log_commands:
+        return None
+
+    log_path = command_log_path(shell_command.working_directory)
+    if log_path is None:
+        return None
+
+    cwd = None if shell_command.working_directory is None else str(shell_command.working_directory)
+    record = {
+        "backend": "prefect",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "operation": Path(cwd).name if cwd is not None else None,
+        "name": shell_command.name,
+        "cwd": cwd,
+        "command": normalize_command(shell_command.command),
+        "command_string": shell_command.command_string,
+        "environment": dict(shell_command.environment),
+    }
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    with log_path.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(record, sort_keys=True) + "\n")
+    return log_path
+
+
 def run_shell_command(
     shell_command: ShellCommand,
     execution_config: ExecutionConfig,
     shell_operation_cls=None,
 ):
     """Execute one command using `prefect_shell.ShellOperation`."""
+    write_command_log_record(shell_command, execution_config)
     operation_cls = shell_operation_cls or _load_shell_operation_cls()
     operation = operation_cls(**shell_operation_kwargs(shell_command, execution_config))
     return operation.run()

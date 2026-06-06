@@ -1,12 +1,10 @@
 import subprocess
-from pathlib import Path
 
 import pytest
 
 from .utils import (
-    find_step_logs,
+    first_command_arguments,
     get_working_dir_from_parset,
-    parse_dp3_args_from_log,
     update_parset_path,
 )
 
@@ -55,10 +53,11 @@ def test_rapthor_run_single_loop_calibrate_di_fast_phase(
     assert "Operation mosaic_1 completed" in output
     assert "Rapthor has finished :)" in output
 
-    calibrate_logs_dir = Path(working_dir) / "logs" / "calibrate_di_1"
-    calibrate_log = find_step_logs(calibrate_logs_dir, "ddecal_solve.cwl")
-    assert calibrate_log, "Expected calibration logs to be present"
-    dp3_arguments = parse_dp3_args_from_log(calibrate_log[0])
+    dp3_arguments = first_command_arguments(
+        working_dir,
+        operation="calibrate_di_1",
+        executable="DP3",
+    )
 
     assert "steps" in dp3_arguments
     assert "solve1.directions" not in dp3_arguments, "Expected only direction independent run"
@@ -117,10 +116,11 @@ def test_rapthor_run_single_loop_calibrate_di_slow_gains(
     assert "Operation mosaic_1 completed" in output
     assert "Rapthor has finished :)" in output
 
-    calibrate_logs_dir = Path(working_dir) / "logs" / "calibrate_di_1"
-    calibrate_log = find_step_logs(calibrate_logs_dir, "ddecal_solve.cwl")
-    assert calibrate_log, "Expected calibration logs to be present"
-    dp3_arguments = parse_dp3_args_from_log(calibrate_log[0])
+    dp3_arguments = first_command_arguments(
+        working_dir,
+        operation="calibrate_di_1",
+        executable="DP3",
+    )
 
     assert "steps" in dp3_arguments
     assert "solve1.directions" not in dp3_arguments, "Expected only direction independent run"
@@ -175,10 +175,11 @@ def test_rapthor_run_di_fast_phase_medium_phase(
     assert "Operation mosaic_1 completed" in output
     assert "Rapthor has finished :)" in output
 
-    calibrate_di_logs_dir = Path(working_dir) / "logs" / "calibrate_di_1"
-    calibrate_di_log = find_step_logs(calibrate_di_logs_dir, "ddecal_solve.cwl")
-    assert calibrate_di_log, "Expected DI calibration logs to be present"
-    dp3_arguments = parse_dp3_args_from_log(calibrate_di_log[0])
+    dp3_arguments = first_command_arguments(
+        working_dir,
+        operation="calibrate_di_1",
+        executable="DP3",
+    )
 
     assert "steps" in dp3_arguments
     assert "solve1" in dp3_arguments["steps"]
@@ -232,10 +233,11 @@ def test_rapthor_run_di_fast_phase_medium_slow(
     assert "Operation mosaic_1 completed" in output
     assert "Rapthor has finished :)" in output
 
-    calibrate_di_logs_dir = Path(working_dir) / "logs" / "calibrate_di_1"
-    calibrate_di_log = find_step_logs(calibrate_di_logs_dir, "ddecal_solve.cwl")
-    assert calibrate_di_log, "Expected DI calibration logs to be present"
-    dp3_arguments = parse_dp3_args_from_log(calibrate_di_log[0])
+    dp3_arguments = first_command_arguments(
+        working_dir,
+        operation="calibrate_di_1",
+        executable="DP3",
+    )
 
     assert "steps" in dp3_arguments
     assert "solve1" in dp3_arguments["steps"]
@@ -291,10 +293,11 @@ def test_rapthor_run_single_loop_calibrate_di_full_jones(
     assert result.returncode == 0, f"Rapthor failed with output:\n{output}"
     assert "Operation calibrate_di_1 completed" in output
 
-    calibrate_logs_dir = Path(working_dir) / "logs" / "calibrate_di_1"
-    calibrate_log = find_step_logs(calibrate_logs_dir, "ddecal_solve.cwl")
-    assert calibrate_log, "Expected calibration logs to be present"
-    dp3_arguments = parse_dp3_args_from_log(calibrate_log[0])
+    dp3_arguments = first_command_arguments(
+        working_dir,
+        operation="calibrate_di_1",
+        executable="DP3",
+    )
 
     assert "steps" in dp3_arguments
     assert "solve1.directions" not in dp3_arguments, "Expected only direction independent run"
@@ -364,15 +367,17 @@ def test_rapthor_run_mixed_di_dd_order(
     assert "Rapthor has finished :)" in output
 
     if expected_order[0] == "predict_di_1":
-        calibrate_logs_dir = Path(working_dir) / "logs" / "calibrate_1"
-        calibrate_log = find_step_logs(calibrate_logs_dir, "ddecal_solve.cwl")
-        assert calibrate_log, "Expected DD calibration logs to be present"
-        dp3_arguments = parse_dp3_args_from_log(calibrate_log[0])
+        dp3_arguments = first_command_arguments(
+            working_dir,
+            operation="calibrate_1",
+            executable="DP3",
+        )
         assert "applycal" in dp3_arguments["steps"]
         assert "fulljones" in dp3_arguments["applycal.steps"]
     else:
-        predict_logs_dir = Path(working_dir) / "logs" / "predict_di_1"
-        predict_log = find_step_logs(predict_logs_dir, "predict_model_data.cwl")
-        assert predict_log, "Expected DI prediction logs to be present"
-        dp3_arguments = parse_dp3_args_from_log(predict_log[0])
+        dp3_arguments = first_command_arguments(
+            working_dir,
+            operation="predict_di_1",
+            executable="DP3",
+        )
         assert "fastphase" in dp3_arguments["predict.applycal.steps"]

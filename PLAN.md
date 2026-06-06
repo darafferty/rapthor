@@ -1790,6 +1790,8 @@ Verification:
 
 ### Issue 8: Modernize Integration Tests And Logs
 
+Status: complete.
+
 Goal: keep valuable end-to-end assertions while removing dependencies on CWL log
 implementation details.
 
@@ -1813,6 +1815,40 @@ Done when:
 - Integration tests can validate either backend through the same command-log and
   product assertions while CWL is retained for reference runs.
 - No supported science assertion depends on exact Toil/CWL log text.
+
+Completed in this issue:
+
+- Added a backend-neutral command log for Prefect shell execution at
+  `logs/commands.jsonl`. The log records operation name, command tokens,
+  command string, working directory, command name, and explicit command
+  environment.
+- Replaced integration helpers `find_step_logs()` and
+  `parse_dp3_args_from_log()` with command-record helpers that read the Prefect
+  JSONL log and, while CWL is retained, extract executed shell commands from
+  legacy logs.
+- Migrated DI and DD calibration integration tests to parse DP3 arguments from
+  backend-neutral command records.
+- Rewrote bright-source peeling coverage to inspect executed WSClean restore
+  commands instead of Toil `when:` skip artifacts or CWL stdout-log filenames.
+- Split normalization coverage so downloaded-catalog normalization remains
+  marked `internet`, while provided-skymodel normalization runs without the
+  `internet` marker.
+- Added focused integration scenarios for multiple-Measurement-Set
+  concatenation, image-only execution with a real supplied h5parm/skymodel, and
+  final QUV clean-disabled image-cube imaging.
+- Retained the Issue 7 Slurm integration hook as the selected Slurm execution
+  target-environment test.
+
+Verification:
+
+- `podman exec 03a672e0cfa7 python3 -m pytest tests/execution/test_shell.py
+  tests/integration/test_utils.py`: 14 passed.
+- `podman exec 03a672e0cfa7 python3 -m pytest --collect-only
+  tests/integration`: 32 integration tests collected.
+- `podman exec 03a672e0cfa7 python3 -m pytest tests/execution
+  tests/integration/test_utils.py`: 300 passed, 1 skipped.
+- `podman exec 03a672e0cfa7 python3 -m ruff check` on touched Issue 8 files:
+  all checks passed.
 
 ### Issue 9: Pass The Full CWL-to-Prefect Equivalence Gate
 

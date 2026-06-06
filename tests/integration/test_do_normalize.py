@@ -9,6 +9,7 @@ from .utils import update_parset_path
 
 @pytest.mark.internet
 @pytest.mark.integration
+@pytest.mark.parametrize("normalization_skymodel_paths", [None], indirect=True)
 @pytest.mark.parametrize(
     "generated_parset_path_normalisation",
     [
@@ -91,8 +92,18 @@ def test_rapthor_run_single_loop_with_do_normalize_no_internet_raises_error(
     )
 
 
-@pytest.mark.internet
 @pytest.mark.integration
+@pytest.mark.parametrize(
+    "normalization_skymodel_paths",
+    [
+        [
+            "tests/resources/integration_apparent_sky.txt",
+            "tests/resources/integration_true_sky.txt",
+        ]
+    ],
+    indirect=True,
+    ids=["provided_skymodels"],
+)
 @pytest.mark.parametrize(
     "generated_parset_path_normalisation",
     [

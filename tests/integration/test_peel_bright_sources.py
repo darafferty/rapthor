@@ -1,11 +1,10 @@
 """Integration tests for the Rapthor pipeline when using the peel_bright_sources option."""
 
 import subprocess
-from pathlib import Path
 
 import pytest
 
-from .utils import find_step_logs, get_working_dir_from_parset, update_parset_path
+from .utils import find_command_records, get_working_dir_from_parset, update_parset_path
 
 
 @pytest.mark.integration
@@ -42,48 +41,26 @@ def test_rapthor_run_single_loop_peel_bright_sources(
         check=False,
     )
     output = f"{result.stdout}\n{result.stderr}"
-    assert result.returncode == 0
+    assert result.returncode == 0, f"Rapthor failed with output:\n{output}"
     assert "Operation calibrate_1 completed" in output
     assert "Operation image_1 completed" in output
     assert "Operation mosaic_1 completed" in output
 
-    # Verify bright-source peeling actually ran by checking wsclean_restore step logs.
     working_dir = get_working_dir_from_parset(updated_parset_path)
-    image_logs_dir = Path(working_dir) / "logs" / "image_1"
-    restore_pb_logs = find_step_logs(image_logs_dir, "restore_pb.wsclean_restore.cwl")
-    restore_nonpb_logs = find_step_logs(image_logs_dir, "restore_nonpb.wsclean_restore.cwl")
-    restore_pb_stdout_logs = sorted(
-        image_logs_dir.glob("subpipeline_parset.cwl.restore_pb.wsclean_restore.cwl.stdout_*.log")
-    )
-    restore_nonpb_stdout_logs = sorted(
-        image_logs_dir.glob("subpipeline_parset.cwl.restore_nonpb.wsclean_restore.cwl.stdout_*.log")
+    restore_commands = find_command_records(
+        working_dir,
+        operation="image_1",
+        executable="wsclean",
+        contains="-restore-list",
     )
 
     if peel_bright_sources:
-        assert restore_pb_logs, f"No restore_pb wsclean_restore logs found in {image_logs_dir}"
-        assert restore_nonpb_logs, (
-            f"No restore_nonpb wsclean_restore logs found in {image_logs_dir}"
+        assert len(restore_commands) >= 2, (
+            "Expected PB and non-PB WSClean restore commands when peeling is enabled"
         )
-        assert restore_pb_stdout_logs, f"No restore_pb stdout logs found in {image_logs_dir}"
-        assert restore_nonpb_stdout_logs, f"No restore_nonpb stdout logs found in {image_logs_dir}"
-        assert "completed success" in restore_pb_logs[-1].read_text()
-        assert "completed success" in restore_nonpb_logs[-1].read_text()
-        assert "wsclean" in restore_pb_logs[-1].read_text()
-        assert "wsclean" in restore_nonpb_logs[-1].read_text()
     else:
-        # With when: $(inputs.peel_bright_sources), Toil still emits CWLJob logs,
-        # but command stdout logs are not created and there is no "completed success".
-        assert not restore_pb_stdout_logs, (
-            "restore_pb stdout log should not exist when peeling is disabled"
-        )
-        assert not restore_nonpb_stdout_logs, (
-            "restore_nonpb stdout log should not exist when peeling is disabled"
-        )
-        assert "completed success" not in restore_pb_logs[-1].read_text(), (
-            "restore_pb wsclean_restore should have been skipped when peeling is disabled"
-        )
-        assert "completed success" not in restore_nonpb_logs[-1].read_text(), (
-            "restore_nonpb wsclean_restore should have been skipped when peeling is disabled"
+        assert restore_commands == [], (
+            "WSClean restore commands should not run when bright-source peeling is disabled"
         )
 
     assert "Rapthor has finished :)" in output

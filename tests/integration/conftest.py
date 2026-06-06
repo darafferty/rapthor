@@ -106,6 +106,26 @@ def single_loop_strategy_path(tmp_path):
     return strategy_path
 
 
+@pytest.fixture
+def calibrate_only_strategy_path(tmp_path):
+    """Strategy file that produces calibration solutions without final imaging."""
+    strategy_steps = [make_strategy_step(do_calibrate=True, do_image=False)]
+    strategy_content = f"strategy_steps = {strategy_steps}"
+    strategy_path = tmp_path / "calibrate_only_strategy.py"
+    strategy_path.write_text(strategy_content)
+    return strategy_path
+
+
+@pytest.fixture
+def image_only_strategy_path(tmp_path):
+    """Strategy file that images with provided calibration solutions."""
+    strategy_steps = [make_strategy_step(do_calibrate=False, do_image=True)]
+    strategy_content = f"strategy_steps = {strategy_steps}"
+    strategy_path = tmp_path / "image_only_strategy.py"
+    strategy_path.write_text(strategy_content)
+    return strategy_path
+
+
 @pytest.fixture(
     params=[True, False],
     ids=["peel_bright_sources_enabled", "peel_bright_sources_disabled"],
