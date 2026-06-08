@@ -16,11 +16,13 @@ from rapthor.execution.equivalence import (
     compare_saved_reference_equivalence_manifest,
     compare_saved_reference_equivalence_scenario,
     format_differences,
+    materialize_scenario_parset,
     reference_artifact_dir,
     reference_artifact_root_from_environment,
     required_reference_artifact_items,
     run_equivalence_pair,
     scenario_parset_file,
+    scenario_parset_materializer,
 )
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
@@ -113,6 +115,90 @@ def test_scenario_parset_file_rejects_missing_or_absent_parset(tmp_path):
         )
 
 
+def test_materialize_scenario_parset_fills_template_values_and_overrides(tmp_path):
+    source_parset = tmp_path / "template.parset"
+    source_parset.write_text(
+        "[global]\n"
+        "dir_working = \n"
+        "input_ms = \n"
+        "input_skymodel = \n"
+        "apparent_skymodel = \n"
+        "strategy = \n"
+        "\n"
+        "[imaging]\n"
+        "photometry_skymodel = \n"
+        "astrometry_skymodel = None\n"
+        "shared_facet_rw = False\n"
+        "\n"
+        "[cluster]\n"
+        "local_scratch_dir = \n"
+        "global_scratch_dir = \n"
+    )
+    strategy = tmp_path / "strategy.py"
+    strategy.write_text("strategy_steps = []\n")
+    scenario = {
+        "id": "smoke",
+        "parset_overrides": {
+            "global": {"strategy": "${STRATEGY_PATH}"},
+            "imaging.shared_facet_rw": "True",
+            "calibration.maxiter": 5,
+        },
+    }
+
+    materialized = materialize_scenario_parset(
+        scenario,
+        source_parset,
+        tmp_path / "candidate",
+        environ={
+            "RAPTHOR_EQUIVALENCE_INPUT_MS": "/data/input.ms",
+            "RAPTHOR_EQUIVALENCE_INPUT_SKYMODEL": "/data/true.txt",
+            "RAPTHOR_EQUIVALENCE_APPARENT_SKYMODEL": "/data/apparent.txt",
+            "STRATEGY_PATH": str(strategy),
+        },
+    )
+
+    text = materialized.read_text()
+    assert "dir_working = " + str(tmp_path / "candidate") in text
+    assert "input_ms = /data/input.ms" in text
+    assert "input_skymodel = /data/true.txt" in text
+    assert "apparent_skymodel = /data/apparent.txt" in text
+    assert f"strategy = {strategy}" in text
+    assert "photometry_skymodel = /data/true.txt" in text
+    assert "astrometry_skymodel = /data/true.txt" in text
+    assert "shared_facet_rw = True" in text
+    assert "maxiter = 5" in text
+    assert f"local_scratch_dir = {tmp_path / 'candidate' / 'scratch'}" in text
+
+
+def test_materialize_scenario_parset_rejects_unresolved_override(tmp_path):
+    source_parset = tmp_path / "template.parset"
+    source_parset.write_text("[global]\ndir_working = \ninput_ms = input.ms\n")
+
+    with pytest.raises(ValueError, match="unresolved environment reference"):
+        materialize_scenario_parset(
+            {
+                "id": "smoke",
+                "parset_overrides": {"global.strategy": "${MISSING_STRATEGY}"},
+            },
+            source_parset,
+            tmp_path / "candidate",
+            environ={},
+        )
+
+
+def test_scenario_parset_materializer_binds_scenario(tmp_path):
+    source_parset = tmp_path / "template.parset"
+    source_parset.write_text("[global]\ndir_working = \nstrategy = \n")
+    materializer = scenario_parset_materializer(
+        {"id": "smoke", "parset_overrides": {"global.strategy": "bound.py"}},
+        environ={},
+    )
+
+    materialized = materializer(source_parset, tmp_path / "candidate")
+
+    assert "strategy = bound.py" in materialized.read_text()
+
+
 def test_compare_saved_reference_equivalence_scenario_runs_prefect_candidate(tmp_path):
     repo_root = tmp_path / "repo"
     repo_root.mkdir()
@@ -191,6 +277,34 @@ def test_compare_saved_reference_equivalence_scenario_reports_differences(tmp_pa
 
     assert not result.ok
     assert result.differences[0].path == "$.operations.image_1.outputs.image.basename"
+
+
+def test_compare_saved_reference_equivalence_scenario_uses_default_materializer(tmp_path):
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    parset = repo_root / "scenario.parset"
+    parset.write_text("[global]\ndir_working = old\ninput_ms = input.ms\n")
+    scenario = {
+        "id": "smoke",
+        "fixture_refs": ["scenario.parset"],
+        "comparison_scopes": ["operations", "products"],
+    }
+    reference_root = tmp_path / "references"
+    _write_backend_state(reference_artifact_dir(reference_root, scenario))
+
+    def fake_prefect_runner(parset_file, working_dir, logging_level):
+        assert f"dir_working = {working_dir}" in parset_file.read_text()
+        _write_backend_state(working_dir)
+
+    result = compare_saved_reference_equivalence_scenario(
+        scenario,
+        reference_root,
+        tmp_path / "runs",
+        repo_root=repo_root,
+        prefect_runner=fake_prefect_runner,
+    )
+
+    assert result.ok
 
 
 def test_compare_saved_reference_equivalence_manifest_runs_all_scenarios(tmp_path):

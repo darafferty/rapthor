@@ -1,5 +1,6 @@
 """Helpers for CWL-to-Prefect equivalence tests."""
 
+import configparser
 import json
 import math
 import os
@@ -7,6 +8,7 @@ import shutil
 from dataclasses import dataclass
 from importlib import import_module
 from pathlib import Path
+from string import Template
 from typing import Any, Callable, Mapping, Optional, Sequence
 
 BackendRunner = Callable[[Path, Path, str], Any]
@@ -14,6 +16,10 @@ ParsetMaterializer = Callable[[Path, Path], Path]
 PRODUCT_ROOTS = ("images", "h5parms", "skymodels", "regions")
 FITS_SUFFIXES = (".fits", ".fits.fz")
 REFERENCE_ARTIFACT_ROOT_ENV = "RAPTHOR_CWL_REFERENCE_ROOT"
+EQUIVALENCE_INPUT_MS_ENV = "RAPTHOR_EQUIVALENCE_INPUT_MS"
+EQUIVALENCE_INPUT_SKYMODEL_ENV = "RAPTHOR_EQUIVALENCE_INPUT_SKYMODEL"
+EQUIVALENCE_APPARENT_SKYMODEL_ENV = "RAPTHOR_EQUIVALENCE_APPARENT_SKYMODEL"
+EQUIVALENCE_STRATEGY_ENV = "RAPTHOR_EQUIVALENCE_STRATEGY"
 
 REFERENCE_ARTIFACT_ITEM_ORDER = (
     "artifact_dir",
@@ -25,6 +31,15 @@ REFERENCE_ARTIFACT_ITEM_ORDER = (
     "skymodel_products",
     "region_products",
     "restart_state",
+)
+
+DEFAULT_PARSET_ENV_OVERRIDES = (
+    ("global", "input_ms", EQUIVALENCE_INPUT_MS_ENV),
+    ("global", "input_skymodel", EQUIVALENCE_INPUT_SKYMODEL_ENV),
+    ("global", "apparent_skymodel", EQUIVALENCE_APPARENT_SKYMODEL_ENV),
+    ("global", "strategy", EQUIVALENCE_STRATEGY_ENV),
+    ("imaging", "photometry_skymodel", EQUIVALENCE_INPUT_SKYMODEL_ENV),
+    ("imaging", "astrometry_skymodel", EQUIVALENCE_INPUT_SKYMODEL_ENV),
 )
 
 
@@ -238,6 +253,118 @@ def copy_parset_for_backend(parset_file: Any, working_dir: Any) -> Path:
     return destination
 
 
+def _is_blank_parset_value(value: str) -> bool:
+    return value.strip() in {"", "None"}
+
+
+def _iter_parset_overrides(overrides: Optional[Mapping[str, Any]]):
+    if not overrides:
+        return
+    for key, value in overrides.items():
+        if isinstance(value, Mapping):
+            for option, option_value in value.items():
+                yield str(key), str(option), option_value
+        elif "." in str(key):
+            section, option = str(key).split(".", 1)
+            yield section, option, value
+        else:
+            raise ValueError(
+                "Parset overrides must use nested section mappings or dotted section.option keys"
+            )
+
+
+def _resolve_parset_override_value(value: Any, repo_root: Any, environ: Mapping[str, str]) -> str:
+    if value is None:
+        return "None"
+    resolved = str(value)
+    if resolved.startswith("repo:"):
+        resolved = str(Path(repo_root) / resolved.removeprefix("repo:"))
+    resolved = Template(resolved).safe_substitute(environ)
+    if "${" in resolved:
+        raise ValueError(f"Parset override has unresolved environment reference: {value!r}")
+    return resolved
+
+
+def materialize_scenario_parset(
+    scenario: Mapping[str, Any],
+    source_parset: Any,
+    working_dir: Any,
+    repo_root: Any = ".",
+    environ: Optional[Mapping[str, str]] = None,
+) -> Path:
+    """Create a candidate parset for one saved-reference equivalence scenario.
+
+    The materialized parset always points ``dir_working`` at ``working_dir``.
+    Blank common template fields can be filled with
+    ``RAPTHOR_EQUIVALENCE_INPUT_MS``, ``RAPTHOR_EQUIVALENCE_INPUT_SKYMODEL``,
+    ``RAPTHOR_EQUIVALENCE_APPARENT_SKYMODEL``, and
+    ``RAPTHOR_EQUIVALENCE_STRATEGY``. Scenarios may also provide
+    ``parset_overrides`` either as nested section mappings or dotted
+    ``section.option`` keys.
+    """
+    source = Path(source_parset)
+    destination_dir = Path(working_dir)
+    destination_dir.mkdir(parents=True, exist_ok=True)
+    scratch_dir = destination_dir / "scratch"
+    scratch_dir.mkdir(exist_ok=True)
+
+    environment = os.environ if environ is None else environ
+    parser = configparser.ConfigParser(interpolation=None)
+    parser.read(source)
+
+    if not parser.has_section("global"):
+        parser.add_section("global")
+    parser.set("global", "dir_working", str(destination_dir))
+
+    if parser.has_section("cluster"):
+        if parser.has_option("cluster", "local_scratch_dir"):
+            parser.set("cluster", "local_scratch_dir", str(scratch_dir))
+        if parser.has_option("cluster", "global_scratch_dir"):
+            parser.set("cluster", "global_scratch_dir", str(scratch_dir))
+
+    for section, option, variable in DEFAULT_PARSET_ENV_OVERRIDES:
+        if not parser.has_section(section) or not parser.has_option(section, option):
+            continue
+        if not _is_blank_parset_value(parser.get(section, option)):
+            continue
+        value = environment.get(variable)
+        if value not in (None, ""):
+            parser.set(section, option, value)
+
+    for section, option, value in _iter_parset_overrides(scenario.get("parset_overrides")) or ():
+        if not parser.has_section(section):
+            parser.add_section(section)
+        parser.set(
+            section,
+            option,
+            _resolve_parset_override_value(value, repo_root=repo_root, environ=environment),
+        )
+
+    destination = destination_dir / source.name
+    with destination.open("w") as handle:
+        parser.write(handle)
+    return destination
+
+
+def scenario_parset_materializer(
+    scenario: Mapping[str, Any],
+    repo_root: Any = ".",
+    environ: Optional[Mapping[str, str]] = None,
+) -> ParsetMaterializer:
+    """Return a materializer bound to one equivalence scenario."""
+
+    def materializer(source_parset: Path, working_dir: Path) -> Path:
+        return materialize_scenario_parset(
+            scenario,
+            source_parset,
+            working_dir,
+            repo_root=repo_root,
+            environ=environ,
+        )
+
+    return materializer
+
+
 def run_legacy_cwl_process(
     parset_file: Path,
     working_dir: Path,
@@ -303,7 +430,7 @@ def run_saved_reference_equivalence_scenario(
     repo_root: Any = ".",
     prefect_runner: BackendRunner = run_prefect_process,
     logging_level: str = "info",
-    parset_materializer: ParsetMaterializer = copy_parset_for_backend,
+    parset_materializer: Optional[ParsetMaterializer] = None,
 ) -> tuple[EquivalenceRun, EquivalenceRun]:
     """Run the Prefect side of one scenario and pair it with saved CWL artifacts.
 
@@ -319,6 +446,8 @@ def run_saved_reference_equivalence_scenario(
     candidate_dir.mkdir(parents=True, exist_ok=True)
 
     source_parset = scenario_parset_file(scenario, repo_root=repo_root)
+    if parset_materializer is None:
+        parset_materializer = scenario_parset_materializer(scenario, repo_root=repo_root)
     candidate_parset = parset_materializer(source_parset, candidate_dir)
     candidate_result = prefect_runner(candidate_parset, candidate_dir, logging_level)
 
@@ -603,7 +732,7 @@ def compare_saved_reference_equivalence_scenario(
     repo_root: Any = ".",
     prefect_runner: BackendRunner = run_prefect_process,
     logging_level: str = "info",
-    parset_materializer: ParsetMaterializer = copy_parset_for_backend,
+    parset_materializer: Optional[ParsetMaterializer] = None,
 ) -> EquivalenceScenarioResult:
     """Compare one saved-CWL scenario against a freshly run Prefect candidate."""
     reference_run, candidate_run = run_saved_reference_equivalence_scenario(
@@ -631,7 +760,7 @@ def compare_saved_reference_equivalence_manifest(
     repo_root: Any = ".",
     prefect_runner: BackendRunner = run_prefect_process,
     logging_level: str = "info",
-    parset_materializer: ParsetMaterializer = copy_parset_for_backend,
+    parset_materializer: Optional[ParsetMaterializer] = None,
 ) -> list[EquivalenceScenarioResult]:
     """Compare every scenario in an equivalence manifest against saved CWL artifacts."""
     return [
