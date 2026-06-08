@@ -20,6 +20,8 @@ ARG TARGET_CPU=x86-64-v3
 
 # Suppress warning from pip when installing packages as root
 ENV PIP_ROOT_USER_ACTION=ignore
+# Allow pip to break system packages; we know what we're doing
+ENV PIP_BREAK_SYSTEM_PACKAGES=1
 
 # Set our working directory
 WORKDIR /src
@@ -165,11 +167,11 @@ RUN ninja -C /src/DP3/build install
 RUN git clone --no-checkout https://github.com/casacore/python-casacore.git
 RUN git -C python-casacore checkout ${PYTHONCASACORE_COMMIT}
 RUN CASACORE_DATA=/usr/local/share/casacore/data \
-    pip install -v /src/python-casacore --break-system-packages
+    pip install -v /src/python-casacore
 
 # We need to `pip install` EveryBeam from source as well, because the C++
 # build does not produce a proper Python package.
-RUN pip install -v /src/EveryBeam --break-system-packages
+RUN pip install -v /src/EveryBeam
 
 # Generate file with one-liner package version descriptions
 RUN mkdir -p /usr/local/share/rapthor; \
@@ -182,7 +184,7 @@ done \
 
 # Install current version of Rapthor from source.
 COPY . rapthor
-RUN pip install ./rapthor --break-system-packages
+RUN pip install ./rapthor
 
 #---------------------------------------------------------------------------
 # The image will now be rebuilt without adding the sources, in order to
