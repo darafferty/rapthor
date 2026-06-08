@@ -1,9 +1,11 @@
 """Focused integration scenarios that protect migration-sensitive workflows."""
 
 import configparser
+import shutil
 import subprocess
 from pathlib import Path
 
+import casacore.tables as pt
 import pytest
 
 from .utils import find_command_records, get_working_dir_from_parset, update_parset_path
@@ -28,6 +30,17 @@ def _read_parset(parset_path):
     return parset
 
 
+def _copy_ms_with_shifted_frequency(source_ms, target_ms):
+    shutil.copytree(source_ms, target_ms)
+    with pt.table(f"{target_ms}::SPECTRAL_WINDOW", readonly=False, ack=False) as table:
+        channel_freq = table.getcol("CHAN_FREQ")
+        channel_width = table.getcol("CHAN_WIDTH")
+        offset_hz = float(channel_freq.max() - channel_freq.min() + 2 * abs(channel_width).max())
+        table.putcol("CHAN_FREQ", channel_freq + offset_hz)
+        table.putcol("REF_FREQUENCY", table.getcol("REF_FREQUENCY") + offset_hz)
+    return target_ms
+
+
 @pytest.mark.integration
 @pytest.mark.parametrize(
     "generated_parset_path",
@@ -43,16 +56,20 @@ def _read_parset(parset_path):
 def test_rapthor_run_concatenates_multiple_measurement_sets(
     generated_parset_path,
     single_loop_strategy_path,
+    tmp_path,
 ):
     """Run a small reduction where an epoch contains multiple Measurement Sets."""
     generated_parset = _read_parset(generated_parset_path)
-    input_ms = generated_parset["global"]["input_ms"]
+    input_ms = Path(generated_parset["global"]["input_ms"])
+    shifted_input_ms = _copy_ms_with_shifted_frequency(
+        input_ms, tmp_path / "test_shifted_frequency.ms"
+    )
     updated_parset_path = update_parset_path(
         generated_parset_path,
         {
             "allow_internet_access": "False",
             "strategy": str(single_loop_strategy_path),
-            "input_ms": f"[{input_ms}, {input_ms}]",
+            "input_ms": f"[{input_ms}, {shifted_input_ms}]",
         },
     )
 

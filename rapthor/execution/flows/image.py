@@ -101,6 +101,13 @@ def _append_options(command: list[str], options: list[tuple[str, object]]) -> No
             _append_option(command, option, value)
 
 
+def _strip_wrapping_shell_quotes(value: str) -> str:
+    """Remove CWL-era grouping quotes before `shlex.join` applies shell quoting."""
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+        return value[1:-1]
+    return value
+
+
 def build_aterm_config_content(h5parm: str) -> str:
     """Build the a-term configuration file content used by screen imaging."""
     return (
@@ -160,13 +167,13 @@ def build_prepare_imaging_data_command(
         f"msout={msout}",
         f"msin.starttime={starttime}",
         f"msin.ntimes={ntimes}",
-        f"shift.phasecenter={phasecenter}",
+        f"shift.phasecenter={_strip_wrapping_shell_quotes(phasecenter)}",
         f"avg.freqstep={freqstep}",
         f"avg.timestep={timestep}",
     ]
     _append_optional_prefixed(command, "bdaavg.timebase=", timebase)
     _append_optional_prefixed(command, "bdaavg.maxinterval=", maxinterval)
-    command.append(f"applybeam.direction={beamdir}")
+    command.append(f"applybeam.direction={_strip_wrapping_shell_quotes(beamdir)}")
     _append_optional_prefixed(command, "applycal.parmdb=", h5parm)
     _append_optional_prefixed(command, "applycal.fulljones.parmdb=", fulljones_h5parm)
     _append_optional_prefixed(command, "applycal.normalization.parmdb=", normalize_h5parm)
@@ -1161,6 +1168,14 @@ def _first_existing_file(patterns: list[str], description: str) -> dict:
     raise FileNotFoundError(f"{description} was not created: {', '.join(patterns)}")
 
 
+def _optional_first_existing_file(patterns: list[str]) -> Optional[dict]:
+    for pattern in patterns:
+        for path in sorted(glob.glob(pattern)):
+            if os.path.isfile(path):
+                return file_record(path)
+    return None
+
+
 def _file_records_for_required_patterns(patterns: list[str], description: str) -> list[dict]:
     records = _file_records_for_patterns(patterns)
     if not records:
@@ -1476,101 +1491,113 @@ def run_image_sector(
     config = execution_config or ExecutionConfig(task_runner="sync")
     prepared_records = []
     for prepare_task in sector["prepare_tasks"]:
-        command = build_prepare_imaging_data_command(
-            str(prepare_task["msin"]),
-            str(sector["data_colname"]),
-            str(prepare_task["msout"]),
-            str(prepare_task["starttime"]),
-            int(prepare_task["ntimes"]),
-            str(sector["phasecenter"]),
-            int(prepare_task["freqstep"]),
-            int(prepare_task["timestep"]),
-            str(sector["phasecenter"]),
-            int(sector["max_threads"]),
-            str(sector["prepare_data_steps"]),
-            maxinterval=prepare_task.get("maxinterval"),
-            timebase=sector.get("timebase"),
-            h5parm=sector.get("h5parm"),
-            fulljones_h5parm=sector.get("fulljones_h5parm"),
-            normalize_h5parm=sector.get("input_normalize_h5parm"),
-            central_patch_name=sector.get("central_patch_name"),
-            applycal_steps=sector.get("prepare_data_applycal_steps"),
-        )
-        _run_shell(command, pipeline_working_dir, config, shell_operation_cls=shell_operation_cls)
+        if not os.path.isdir(str(prepare_task["msout_path"])):
+            command = build_prepare_imaging_data_command(
+                str(prepare_task["msin"]),
+                str(sector["data_colname"]),
+                str(prepare_task["msout"]),
+                str(prepare_task["starttime"]),
+                int(prepare_task["ntimes"]),
+                str(sector["phasecenter"]),
+                int(prepare_task["freqstep"]),
+                int(prepare_task["timestep"]),
+                str(sector["phasecenter"]),
+                int(sector["max_threads"]),
+                str(sector["prepare_data_steps"]),
+                maxinterval=prepare_task.get("maxinterval"),
+                timebase=sector.get("timebase"),
+                h5parm=sector.get("h5parm"),
+                fulljones_h5parm=sector.get("fulljones_h5parm"),
+                normalize_h5parm=sector.get("input_normalize_h5parm"),
+                central_patch_name=sector.get("central_patch_name"),
+                applycal_steps=sector.get("prepare_data_applycal_steps"),
+            )
+            _run_shell(
+                command, pipeline_working_dir, config, shell_operation_cls=shell_operation_cls
+            )
         prepared_records.append(
             _require_directory(str(prepare_task["msout_path"]), "Prepared imaging MS")
         )
 
     prepared_paths = [record["path"] for record in prepared_records]
-    concat_command = build_concat_time_command(
-        prepared_paths, str(sector["concat_filename"]), str(sector["data_colname"])
-    )
-    _run_shell(
-        concat_command, pipeline_working_dir, config, shell_operation_cls=shell_operation_cls
-    )
+    if not os.path.isdir(str(sector["concat_path"])):
+        concat_command = build_concat_time_command(
+            prepared_paths, str(sector["concat_filename"]), str(sector["data_colname"])
+        )
+        _run_shell(
+            concat_command, pipeline_working_dir, config, shell_operation_cls=shell_operation_cls
+        )
     concat_record = _require_directory(str(sector["concat_path"]), "Concatenated imaging MS")
 
-    mask_command = build_blank_image_command(
-        str(sector["mask_filename"]),
-        list(sector["wsclean_imsize"]),
-        str(sector["vertices_file"]),
-        float(sector["ra"]),
-        float(sector["dec"]),
-        float(sector["cellsize_deg"]),
-        image_filename=sector.get("previous_mask_filename"),
-        region_file=sector.get("region_file"),
-    )
-    _run_shell(mask_command, pipeline_working_dir, config, shell_operation_cls=shell_operation_cls)
+    if not os.path.isfile(str(sector["mask_path"])):
+        mask_command = build_blank_image_command(
+            str(sector["mask_filename"]),
+            list(sector["wsclean_imsize"]),
+            str(sector["vertices_file"]),
+            float(sector["ra"]),
+            float(sector["dec"]),
+            float(sector["cellsize_deg"]),
+            image_filename=sector.get("previous_mask_filename"),
+            region_file=sector.get("region_file"),
+        )
+        _run_shell(
+            mask_command, pipeline_working_dir, config, shell_operation_cls=shell_operation_cls
+        )
     mask_record = _require_file(str(sector["mask_path"]), "Imaging mask")
 
     region_record = None
     if sector["use_facets"]:
-        region_command = build_make_region_file_command(
-            str(sector["facet_skymodel"]),
-            float(sector["ra_mid"]),
-            float(sector["dec_mid"]),
-            float(sector["width_ra"]),
-            float(sector["width_dec"]),
-            str(sector["facet_region_filename"]),
-        )
-        _run_shell(
-            region_command, pipeline_working_dir, config, shell_operation_cls=shell_operation_cls
-        )
+        if not os.path.isfile(str(sector["facet_region_path"])):
+            region_command = build_make_region_file_command(
+                str(sector["facet_skymodel"]),
+                float(sector["ra_mid"]),
+                float(sector["dec_mid"]),
+                float(sector["width_ra"]),
+                float(sector["width_dec"]),
+                str(sector["facet_region_filename"]),
+            )
+            _run_shell(
+                region_command,
+                pipeline_working_dir,
+                config,
+                shell_operation_cls=shell_operation_cls,
+            )
         region_record = _require_file(str(sector["facet_region_path"]), "Facet region file")
 
     temp_dir = os.path.join(pipeline_working_dir, f"{sector['image_name']}_wsclean_tmp")
-    if sector["apply_screens"]:
-        _write_aterm_config(pipeline_working_dir, str(sector["h5parm"]))
-    wsclean_command = _build_wsclean_command_for_sector(
-        sector, concat_record, mask_record, region_record, temp_dir
-    )
-    wsclean_environment = _wsclean_environment_for_sector(sector, config)
-    try:
-        _run_shell(
-            wsclean_command,
-            pipeline_working_dir,
-            config,
-            shell_operation_cls=shell_operation_cls,
-            environment=wsclean_environment,
-        )
-    finally:
-        _cleanup_directory(temp_dir)
-
     image_name = str(sector["image_name"])
-    nonpb_image = _first_existing_file(
-        [
-            os.path.join(pipeline_working_dir, f"{image_name}-MFS-image.fits"),
-            os.path.join(pipeline_working_dir, f"{image_name}-MFS-I-image.fits"),
-        ],
-        "WSClean non-PB image",
-    )
-    pb_image = _first_existing_file(
-        [
-            os.path.join(pipeline_working_dir, f"{image_name}-MFS-image-pb.fits"),
-            os.path.join(pipeline_working_dir, f"{image_name}-MFS-I-image-pb.fits"),
-        ],
-        "WSClean PB image",
-    )
+    nonpb_image_patterns = [
+        os.path.join(pipeline_working_dir, f"{image_name}-MFS-image.fits"),
+        os.path.join(pipeline_working_dir, f"{image_name}-MFS-I-image.fits"),
+    ]
+    pb_image_patterns = [
+        os.path.join(pipeline_working_dir, f"{image_name}-MFS-image-pb.fits"),
+        os.path.join(pipeline_working_dir, f"{image_name}-MFS-I-image-pb.fits"),
+    ]
+    nonpb_image = _optional_first_existing_file(nonpb_image_patterns)
+    pb_image = _optional_first_existing_file(pb_image_patterns)
+    wsclean_ran = False
+    if nonpb_image is None or pb_image is None:
+        if sector["apply_screens"]:
+            _write_aterm_config(pipeline_working_dir, str(sector["h5parm"]))
+        wsclean_command = _build_wsclean_command_for_sector(
+            sector, concat_record, mask_record, region_record, temp_dir
+        )
+        wsclean_environment = _wsclean_environment_for_sector(sector, config)
+        try:
+            os.makedirs(temp_dir, exist_ok=True)
+            _run_shell(
+                wsclean_command,
+                pipeline_working_dir,
+                config,
+                shell_operation_cls=shell_operation_cls,
+                environment=wsclean_environment,
+            )
+            wsclean_ran = True
+        finally:
+            _cleanup_directory(temp_dir)
+        nonpb_image = _first_existing_file(nonpb_image_patterns, "WSClean non-PB image")
+        pb_image = _first_existing_file(pb_image_patterns, "WSClean PB image")
     extra_images = _file_records_for_patterns(
         [
             os.path.join(pipeline_working_dir, f"{image_name}-MFS-[QUV]-image.fits"),
@@ -1625,12 +1652,15 @@ def run_image_sector(
             "WSClean true-sky source list",
         )
 
-    for image_record in (pb_image, nonpb_image):
-        command = build_check_image_beam_command(
-            image_record["path"], float(sector["taper_arcsec"])
-        )
-        _run_shell(command, pipeline_working_dir, config, shell_operation_cls=shell_operation_cls)
-        _require_file(image_record["path"], "Beam-checked image")
+    if wsclean_ran:
+        for image_record in (pb_image, nonpb_image):
+            command = build_check_image_beam_command(
+                image_record["path"], float(sector["taper_arcsec"])
+            )
+            _run_shell(
+                command, pipeline_working_dir, config, shell_operation_cls=shell_operation_cls
+            )
+            _require_file(image_record["path"], "Beam-checked image")
 
     filter_command = build_filter_skymodel_command(
         nonpb_image["path"],
@@ -1675,9 +1705,13 @@ def run_image_sector(
         os.path.join(pipeline_working_dir, f"{image_name}.source_catalog.fits"),
         "Source catalog",
     )
-    source_filtering_mask = _require_file(
-        os.path.join(pipeline_working_dir, f"{os.path.basename(pb_image['path'])}.mask.fits"),
-        "Source filtering mask",
+    source_filtering_mask_path = os.path.join(
+        pipeline_working_dir, f"{os.path.basename(pb_image['path'])}.mask.fits"
+    )
+    source_filtering_mask = (
+        file_record(source_filtering_mask_path)
+        if os.path.isfile(source_filtering_mask_path)
+        else None
     )
 
     skymodel_image = None

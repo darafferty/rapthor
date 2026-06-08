@@ -35,7 +35,7 @@ def fake_mosaic_shell_operation_cls():
 
         def run(self):
             tokens = shlex.split(self.kwargs["commands"][0])
-            cwd = Path(self.kwargs["cwd"])
+            cwd = Path(self.kwargs["working_dir"])
             if tokens[0] == "make_mosaic_template.py":
                 output_path = cwd / tokens[3]
             elif tokens[0] == "regrid_image.py":

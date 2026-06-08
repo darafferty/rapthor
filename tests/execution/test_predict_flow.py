@@ -35,7 +35,7 @@ def fake_predict_shell_operation_cls():
 
         def run(self):
             tokens = shlex.split(self.kwargs["commands"][0])
-            cwd = Path(self.kwargs["cwd"])
+            cwd = Path(self.kwargs["working_dir"])
             output_paths = self._output_paths(tokens, cwd)
             for output_path in output_paths:
                 output_path.mkdir(parents=True, exist_ok=True)
@@ -101,7 +101,7 @@ class PostprocessNoOutputShellOperation:
             output_name = next(
                 token.split("=", 1)[1] for token in tokens if token.startswith("msout=")
             )
-            (Path(self.kwargs["cwd"]) / output_name).mkdir(parents=True, exist_ok=True)
+            (Path(self.kwargs["working_dir"]) / output_name).mkdir(parents=True, exist_ok=True)
         return "OK"
 
 
@@ -357,6 +357,26 @@ def test_build_predict_model_data_command_adds_h5parm_applycal_options():
     assert "predict.correcttimesmearing=True" in command
 
 
+def test_build_predict_model_data_command_omits_zero_ntimes():
+    command = build_predict_model_data_command(
+        "obs_0.ms",
+        "DATA",
+        "obs_0.ms.sector_1_modeldata",
+        "50000.0",
+        0,
+        onebeamperpatch=True,
+        correctfreqsmearing=False,
+        correcttimesmearing=False,
+        sagecalpredict=False,
+        sourcedb="sector_1.skymodel",
+        directions=["patch1"],
+        numthreads=4,
+    )
+
+    assert "msin.ntimes=0" not in command
+    assert command[command.index("msin.starttime=50000.0") + 1] == "predict.onebeamperpatch=True"
+
+
 def test_build_predict_model_data_command_uses_sagecalpredict_when_requested():
     command = build_predict_model_data_command(
         "obs_0.ms",
@@ -576,7 +596,7 @@ def test_predict_model_data_task_wraps_runner(tmp_path, fake_predict_shell_opera
     )
 
     assert output == directory_record(tmp_path / "obs_0.ms.sector_1_modeldata")
-    assert fake_predict_shell_operation_cls.instances[0].kwargs["cwd"] == str(tmp_path)
+    assert fake_predict_shell_operation_cls.instances[0].kwargs["working_dir"] == str(tmp_path)
 
 
 def test_predict_prefect_flow_entrypoint_runs_with_mocked_shell(

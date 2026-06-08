@@ -31,7 +31,7 @@ def test_shell_command_formats_tokens():
     assert command.command_string == "echo 'hello world'"
 
 
-def test_shell_operation_kwargs_include_env_and_cwd():
+def test_shell_operation_kwargs_include_env_and_working_dir():
     kwargs = shell_operation_kwargs(
         ShellCommand(
             "echo hello",
@@ -45,7 +45,7 @@ def test_shell_operation_kwargs_include_env_and_cwd():
         "commands": ["echo hello"],
         "stream_output": False,
         "env": {"OPENBLAS_NUM_THREADS": "1"},
-        "cwd": "/tmp/task",
+        "working_dir": "/tmp/task",
     }
 
 

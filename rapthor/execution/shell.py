@@ -48,7 +48,7 @@ def shell_operation_kwargs(
     if shell_command.environment:
         kwargs["env"] = dict(shell_command.environment)
     if shell_command.working_directory is not None:
-        kwargs["cwd"] = shell_command.working_directory
+        kwargs["working_dir"] = shell_command.working_directory
     return kwargs
 
 

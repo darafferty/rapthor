@@ -58,7 +58,7 @@ def fake_image_shell_operation_cls():
 
         def run(self):
             tokens = shlex.split(self.kwargs["commands"][0])
-            cwd = Path(self.kwargs["cwd"])
+            cwd = Path(self.kwargs["working_dir"])
             if tokens[0] == "DP3":
                 output_name = next(
                     token.split("=", 1)[1] for token in tokens if token.startswith("msout=")
@@ -84,7 +84,7 @@ def fake_image_shell_operation_cls():
                 temp_dir = Path(tokens[tokens.index("-temp-dir") + 1])
                 if not temp_dir.is_absolute():
                     temp_dir = cwd / temp_dir
-                temp_dir.mkdir(parents=True, exist_ok=True)
+                assert temp_dir.is_dir()
                 (temp_dir / "wsclean.tmp").write_text("temporary")
                 channels_out = int(tokens[tokens.index("-channels-out") + 1])
                 if pol == "I":
@@ -990,6 +990,25 @@ def test_image_command_builders_match_reference_fixtures():
     )
 
 
+def test_prepare_imaging_data_command_strips_cwl_shell_quotes_from_directions():
+    command = normalized_prepare_imaging_data_command(
+        msin="obs_0.ms",
+        data_colname="DATA",
+        msout="sector_1_obs_0_prep.ms",
+        starttime="50000.0",
+        ntimes=10,
+        phasecenter="'[123.0deg, 45.0deg]'",
+        freqstep=4,
+        timestep=2,
+        beamdir='"[123.0deg, 45.0deg]"',
+        numthreads=4,
+        steps="[applybeam,shift,avg,bdaavg]",
+    )
+
+    assert "shift.phasecenter=[123.0deg, 45.0deg]" in command
+    assert "applybeam.direction=[123.0deg, 45.0deg]" in command
+
+
 def test_wsclean_command_builders_preserve_full_stokes_options():
     command = normalized_wsclean_no_dde_command(
         msin="sector_1_concat.ms",
@@ -1601,6 +1620,75 @@ def test_run_image_flow_executes_no_dde_commands_and_returns_records(
         "wsclean",
         "check_image_beam.py",
         "check_image_beam.py",
+        "filter_skymodel.py",
+        "calculate_image_diagnostics.py",
+    ]
+
+
+def test_run_image_flow_allows_missing_source_filtering_mask(
+    tmp_path, fake_image_shell_operation_cls
+):
+    class NoFilterMaskShellOperation(fake_image_shell_operation_cls):
+        instances = []
+
+        def run(self):
+            tokens = shlex.split(self.kwargs["commands"][0])
+            cwd = Path(self.kwargs["working_dir"])
+            if tokens[0] == "filter_skymodel.py":
+                output_root = tokens[5]
+                for suffix in [
+                    ".true_sky.txt",
+                    ".apparent_sky.txt",
+                    ".flat_noise_rms.fits",
+                    ".true_sky_rms.fits",
+                    ".source_catalog.fits",
+                ]:
+                    (cwd / f"{output_root}{suffix}").write_text("filter")
+                (cwd / f"{output_root}.image_diagnostics.json").write_text("{}")
+                return "OK"
+            return super().run()
+
+    outputs = run_image_flow(
+        image_payload_from_inputs(_image_input_parms(), tmp_path),
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=NoFilterMaskShellOperation,
+    )
+
+    assert outputs["source_filtering_mask"] == [None]
+    validate_output_record(outputs["source_filtering_mask"], allow_none=True)
+
+
+def test_run_image_flow_reuses_existing_wsclean_products_on_restart(
+    tmp_path, fake_image_shell_operation_cls
+):
+    for ms_name in ["sector_1_obs_0_prep.ms", "sector_1_obs_1_prep.ms", "sector_1_concat.ms"]:
+        (tmp_path / ms_name).mkdir()
+    for filename in [
+        "sector_1_mask.fits",
+        "sector_1-MFS-I-image.fits",
+        "sector_1-MFS-I-image-pb.fits",
+        "sector_1-sources.txt",
+        "sector_1-sources-pb.txt",
+    ]:
+        (tmp_path / filename).write_text("existing")
+
+    outputs = run_image_flow(
+        image_payload_from_inputs(_image_input_parms(), tmp_path),
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_image_shell_operation_cls,
+    )
+
+    assert outputs["sector_I_images"] == [
+        [
+            file_record(tmp_path / "sector_1-MFS-I-image.fits"),
+            file_record(tmp_path / "sector_1-MFS-I-image-pb.fits"),
+        ]
+    ]
+    command_names = [
+        shlex.split(instance.kwargs["commands"][0])[0]
+        for instance in fake_image_shell_operation_cls.instances
+    ]
+    assert command_names == [
         "filter_skymodel.py",
         "calculate_image_diagnostics.py",
     ]

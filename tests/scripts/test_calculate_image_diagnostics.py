@@ -182,8 +182,9 @@ def test_check_astrometry_sources_below_minimum_number(
     num_sources = len(mock_minimal_table)
     min_number = num_sources + 1
 
-    fitsimage.FITSImage = mocker.MagicMock()
-    mock_image = fitsimage.FITSImage(image_fits)
+    mock_fits_image_cls = mocker.MagicMock()
+    monkeypatch.setattr(fitsimage, "FITSImage", mock_fits_image_cls)
+    mock_image = mock_fits_image_cls(image_fits)
     mock_image.freq = 150e6  # Mock frequency in Hz
     mocker.patch.object(lsmtool.skymodel.SkyModel, "group")
 
@@ -390,8 +391,9 @@ def test_check_astrometry_with_comparison_skymodel_does_not_access_internet(
 
     monkeypatch.setattr("astropy.table.Table.read", mock_table_read)
 
-    fitsimage.FITSImage = mocker.MagicMock()
-    mock_image = fitsimage.FITSImage(image_fits)
+    mock_fits_image_cls = mocker.MagicMock()
+    monkeypatch.setattr(fitsimage, "FITSImage", mock_fits_image_cls)
+    mock_image = mock_fits_image_cls(image_fits)
     mock_image.freq = 150e6  # Mock frequency in Hz
 
     mocker.patch.object(lsmtool.skymodel.SkyModel, "group")
@@ -459,8 +461,9 @@ def test_check_astrometry_with_no_internet_access_does_not_access_internet(
         lambda *args, **kwargs: mock_full_astrometry_table,
     )
 
-    fitsimage.FITSImage = mocker.MagicMock()
-    mock_image = fitsimage.FITSImage(image_fits)
+    mock_fits_image_cls = mocker.MagicMock()
+    monkeypatch.setattr(fitsimage, "FITSImage", mock_fits_image_cls)
+    mock_image = mock_fits_image_cls(image_fits)
     mock_image.freq.return_value = 150e6  # Mock frequency in Hz
 
     mocker.patch.object(lsmtool.skymodel.SkyModel, "group")

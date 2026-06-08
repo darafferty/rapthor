@@ -110,7 +110,12 @@ def build_predict_model_data_command(
             f"msin.datacolumn={data_colname}",
             f"msout={msout}",
             f"msin.starttime={starttime}",
-            f"msin.ntimes={ntimes}",
+        ]
+    )
+    if ntimes > 0:
+        command.append(f"msin.ntimes={ntimes}")
+    command.extend(
+        [
             f"predict.onebeamperpatch={_bool_token(onebeamperpatch)}",
             f"predict.correctfreqsmearing={_bool_token(correctfreqsmearing)}",
             f"predict.correcttimesmearing={_bool_token(correcttimesmearing)}",

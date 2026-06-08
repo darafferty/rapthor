@@ -35,7 +35,7 @@ def fake_shell_operation_cls():
             output_name = next(
                 token.split("=", 1)[1] for token in tokens if token.startswith("--msout=")
             )
-            cwd = Path(self.kwargs["cwd"])
+            cwd = Path(self.kwargs["working_dir"])
             (cwd / output_name).mkdir(parents=True, exist_ok=True)
             return "OK"
 
@@ -230,7 +230,7 @@ def test_run_concatenate_flow_executes_commands_and_returns_records(
     }
     validate_output_record(outputs["concatenated_filenames"])
     assert (tmp_path / "epoch_0_concatenated.ms").is_dir()
-    assert fake_shell_operation_cls.instances[0].kwargs["cwd"] == str(tmp_path)
+    assert fake_shell_operation_cls.instances[0].kwargs["working_dir"] == str(tmp_path)
 
 
 def test_concatenate_epoch_task_wraps_epoch_runner(tmp_path, fake_shell_operation_cls):
@@ -250,7 +250,7 @@ def test_concatenate_epoch_task_wraps_epoch_runner(tmp_path, fake_shell_operatio
     )
 
     assert output == directory_record(tmp_path / "epoch_0_concatenated.ms")
-    assert fake_shell_operation_cls.instances[0].kwargs["cwd"] == str(tmp_path)
+    assert fake_shell_operation_cls.instances[0].kwargs["working_dir"] == str(tmp_path)
 
 
 def test_concatenate_prefect_flow_entrypoint_runs_with_mocked_shell(
@@ -288,7 +288,7 @@ def test_concatenate_prefect_flow_entrypoint_runs_with_mocked_shell(
             "--msout=epoch_0_concatenated.ms --concat_property=frequency "
             "--data_colname=DATA"
         ],
-        "cwd": str(tmp_path),
+        "working_dir": str(tmp_path),
         "stream_output": True,
     }
 
