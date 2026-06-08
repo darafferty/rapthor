@@ -4,78 +4,91 @@
         {
             "id": "di_only_calibration",
             "matrix_id": "di_only_calibration",
+            "cwl_reference_artifact_dir": "di_only_calibration",
             "fixture_refs": ["tests/resources/integration_template.parset"],
             "comparison_scopes": ["operations", "products", "h5parm", "fits", "skymodel", "regions"]
         },
         {
             "id": "dd_only_calibration",
             "matrix_id": "dd_only_calibration",
+            "cwl_reference_artifact_dir": "dd_only_calibration",
             "fixture_refs": ["tests/resources/integration_template.parset"],
             "comparison_scopes": ["operations", "products", "h5parm", "fits", "skymodel", "regions"]
         },
         {
             "id": "di_then_dd_calibration",
             "matrix_id": "di_then_dd_calibration",
+            "cwl_reference_artifact_dir": "di_then_dd_calibration",
             "fixture_refs": ["tests/resources/integration_template.parset"],
             "comparison_scopes": ["operations", "products", "h5parm", "fits", "skymodel", "regions"]
         },
         {
             "id": "dd_then_di_calibration",
             "matrix_id": "dd_then_di_calibration",
+            "cwl_reference_artifact_dir": "dd_then_di_calibration",
             "fixture_refs": ["tests/resources/integration_template.parset"],
             "comparison_scopes": ["operations", "products", "h5parm", "fits", "skymodel", "regions"]
         },
         {
             "id": "di_full_jones_calibration",
             "matrix_id": "di_full_jones_calibration",
+            "cwl_reference_artifact_dir": "di_full_jones_calibration",
             "fixture_refs": ["tests/resources/integration_template.parset"],
             "comparison_scopes": ["operations", "products", "h5parm", "fits", "skymodel", "regions"]
         },
         {
             "id": "dd_slow_gain_calibration",
             "matrix_id": "dd_slow_gain_calibration",
+            "cwl_reference_artifact_dir": "dd_slow_gain_calibration",
             "fixture_refs": ["tests/resources/integration_template.parset"],
             "comparison_scopes": ["operations", "products", "h5parm", "fits", "skymodel", "regions"]
         },
         {
             "id": "hybrid_screens",
             "matrix_id": "hybrid_screens",
+            "cwl_reference_artifact_dir": "hybrid_screens",
             "fixture_refs": ["tests/resources/integration_template.parset"],
             "comparison_scopes": ["operations", "products", "h5parm", "fits", "skymodel", "regions"]
         },
         {
             "id": "normalization",
             "matrix_id": "normalization",
+            "cwl_reference_artifact_dir": "normalization",
             "fixture_refs": ["tests/resources/integration_template.parset"],
             "comparison_scopes": ["operations", "products", "h5parm", "fits", "skymodel"]
         },
         {
             "id": "peeling",
             "matrix_id": "peeling",
+            "cwl_reference_artifact_dir": "peeling",
             "fixture_refs": ["tests/resources/integration_template.parset"],
             "comparison_scopes": ["operations", "products", "fits", "skymodel", "regions"]
         },
         {
             "id": "full_stokes_clean_disabled",
             "matrix_id": "full_stokes_clean_disabled",
+            "cwl_reference_artifact_dir": "full_stokes_clean_disabled",
             "fixture_refs": ["tests/resources/integration_template.parset"],
             "comparison_scopes": ["operations", "products", "fits"]
         },
         {
             "id": "image_cube",
             "matrix_id": "image_cube",
+            "cwl_reference_artifact_dir": "image_cube",
             "fixture_refs": ["tests/resources/integration_template.parset"],
             "comparison_scopes": ["operations", "products", "fits"]
         },
         {
             "id": "shared_facet_rw",
             "matrix_id": "shared_facet_rw",
+            "cwl_reference_artifact_dir": "shared_facet_rw",
             "fixture_refs": ["tests/resources/integration_template.parset"],
             "comparison_scopes": ["operations", "products", "fits", "regions"]
         },
         {
             "id": "mpi_wsclean",
             "matrix_id": "mpi_wsclean",
+            "cwl_reference_artifact_dir": "mpi_wsclean",
             "fixture_refs": ["tests/resources/test.parset"],
             "comparison_scopes": ["operations", "products", "fits"],
             "target_environment": true
@@ -83,6 +96,7 @@
         {
             "id": "restart",
             "matrix_id": "restart",
+            "cwl_reference_artifact_dir": "restart",
             "fixture_refs": ["tests/resources/integration_template.parset"],
             "comparison_scopes": ["operations", "products", "restart"]
         }

@@ -106,6 +106,9 @@ Most of the migration implementation is already in place.
 - Added a CWL-to-Prefect equivalence harness in `rapthor/execution/equivalence.py`.
 - Added an equivalence-gate scenario manifest at
   `tests/execution/fixtures/equivalence_gate_scenarios.json`.
+- Added a saved-CWL reference artifact contract: each equivalence scenario now
+  declares `cwl_reference_artifact_dir`, and staging can validate
+  `$RAPTHOR_CWL_REFERENCE_ROOT/<scenario-id>/` before running comparisons.
 - Modernized integration command-log helpers so assertions do not depend on Toil
   log filenames.
 - Replaced several placeholder script tests with small real Measurement Set or
@@ -187,14 +190,17 @@ than a CWL runtime dependency.
 
 ## Immediate Next Actions
 
-1. Capture or locate the final CWL reference artifacts needed for the equivalence
-   gate.
-2. Run the full equivalence manifest in the dev container or staging
+1. Capture or locate the final CWL reference artifacts under
+   `$RAPTHOR_CWL_REFERENCE_ROOT/<scenario-id>/`, matching the scenario IDs in
+   `tests/execution/fixtures/equivalence_gate_scenarios.json`.
+2. Validate those saved artifacts with `check_reference_artifacts()` from
+   `rapthor.execution.equivalence`.
+3. Run the full equivalence manifest in the dev container or staging
    environment with external tools available.
-3. Run the Slurm hook inside a real Slurm allocation:
+4. Run the Slurm hook inside a real Slurm allocation:
    `RAPTHOR_RUN_SLURM_INTEGRATION=1 python3 -m pytest tests/integration/test_slurm_execution.py`.
-4. If equivalence passes, switch `rapthor.process.run()` to `process_flow()`.
-5. Remove CWL production code and dependencies, then update docs, packaging, and
+5. If equivalence passes, switch `rapthor.process.run()` to `process_flow()`.
+6. Remove CWL production code and dependencies, then update docs, packaging, and
    CI.
 
 ## Suggested Verification Commands

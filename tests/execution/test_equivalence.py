@@ -7,12 +7,16 @@ from astropy.io import fits
 
 from rapthor.execution.equivalence import (
     assert_backend_equivalent,
+    check_reference_artifacts,
     collect_backend_summary,
     collect_product_summaries,
     compare_backend_runs,
     compare_fits_product,
     compare_h5parm_product,
     format_differences,
+    reference_artifact_dir,
+    reference_artifact_root_from_environment,
+    required_reference_artifact_items,
     run_equivalence_pair,
 )
 
@@ -141,7 +145,9 @@ def test_collect_operation_state_accepts_cwl_pipeline_outputs_until_cutover(tmp_
 def test_restart_equivalence_accepts_prefect_produced_output_records(tmp_path):
     cwl_dir = tmp_path / "cwl"
     prefect_dir = tmp_path / "prefect"
-    _write_operation_state(cwl_dir, operation_name="image_1", outputs_filename="pipeline_outputs.json")
+    _write_operation_state(
+        cwl_dir, operation_name="image_1", outputs_filename="pipeline_outputs.json"
+    )
     _write_operation_state(prefect_dir, operation_name="image_1", outputs_filename=".outputs.json")
     (cwl_dir / "operation_order.json").write_text(json.dumps(["image_1"]))
     (prefect_dir / "operation_order.json").write_text(json.dumps(["image_1"]))
@@ -159,9 +165,7 @@ def test_collect_backend_summary_includes_product_metadata(tmp_path):
 
     fits.writeto(image_dir / "sector_1-MFS-I-image.fits", np.array([[1.0, 2.0], [3.0, np.nan]]))
     (skymodel_dir / "sector_1.true_sky.txt").write_text(
-        "FORMAT = Name, Type, Patch\n"
-        " , , Patch_1\n"
-        "source_1, POINT, Patch_1\n",
+        "FORMAT = Name, Type, Patch\n , , Patch_1\nsource_1, POINT, Patch_1\n",
         encoding="utf-8",
     )
     (region_dir / "sector_1.reg").write_text("fk5\ncircle(1,2,3)\n", encoding="utf-8")
@@ -249,10 +253,123 @@ def test_equivalence_gate_scenarios_cover_supported_merge_matrix():
     for scenario in scenarios["scenarios"]:
         assert "operations" in scenario["comparison_scopes"], scenario["id"]
         assert "products" in scenario["comparison_scopes"], scenario["id"]
+        assert scenario["cwl_reference_artifact_dir"] == scenario["id"]
         assert scenario["fixture_refs"], scenario["id"]
         assert all((REPO_ROOT / fixture_ref).exists() for fixture_ref in scenario["fixture_refs"])
         if scenario["matrix_id"] == "mpi_wsclean":
             assert scenario.get("target_environment") is True
+
+
+def test_reference_artifact_root_uses_environment_when_set(tmp_path):
+    assert reference_artifact_root_from_environment({}) is None
+    assert reference_artifact_root_from_environment({"RAPTHOR_CWL_REFERENCE_ROOT": ""}) is None
+    assert (
+        reference_artifact_root_from_environment({"RAPTHOR_CWL_REFERENCE_ROOT": str(tmp_path)})
+        == tmp_path
+    )
+
+
+def test_required_reference_artifact_items_follow_comparison_scopes():
+    assert required_reference_artifact_items(
+        {
+            "id": "full",
+            "comparison_scopes": [
+                "operations",
+                "products",
+                "h5parm",
+                "fits",
+                "skymodel",
+                "regions",
+            ],
+        }
+    ) == (
+        "pipelines",
+        "operation_order",
+        "product_roots",
+        "fits_products",
+        "h5parm_products",
+        "skymodel_products",
+        "region_products",
+    )
+    assert required_reference_artifact_items(
+        {"id": "restart", "comparison_scopes": ["operations", "products", "restart"]}
+    ) == ("pipelines", "operation_order", "product_roots", "restart_state")
+
+
+def test_check_reference_artifacts_reports_missing_saved_cwl_items(tmp_path):
+    scenario = {
+        "id": "smoke",
+        "cwl_reference_artifact_dir": "smoke",
+        "comparison_scopes": ["operations", "products", "fits", "restart"],
+    }
+
+    checks = check_reference_artifacts([scenario], root_dir=tmp_path)
+
+    assert len(checks) == 1
+    assert checks[0].scenario_id == "smoke"
+    assert checks[0].artifact_dir == tmp_path / "smoke"
+    assert checks[0].missing_items == (
+        "artifact_dir",
+        "pipelines",
+        "operation_order",
+        "product_roots",
+        "fits_products",
+        "restart_state",
+    )
+    assert not checks[0].ok
+
+
+def test_check_reference_artifacts_accepts_minimal_saved_cwl_reference(tmp_path):
+    scenario = {
+        "id": "smoke",
+        "cwl_reference_artifact_dir": "saved-smoke",
+        "comparison_scopes": ["operations", "products", "fits", "restart"],
+    }
+    artifact_dir = reference_artifact_dir(tmp_path, scenario)
+    operation_dir = artifact_dir / "pipelines" / "image_1"
+    image_dir = artifact_dir / "images" / "image_1"
+    operation_dir.mkdir(parents=True)
+    image_dir.mkdir(parents=True)
+    (operation_dir / ".done").touch()
+    (operation_dir / ".outputs.json").write_text("{}")
+    (artifact_dir / "operation_order.json").write_text(json.dumps(["image_1"]))
+    fits.writeto(image_dir / "sector_1-MFS-I-image.fits", np.array([[1.0]]))
+
+    checks = check_reference_artifacts([scenario], root_dir=tmp_path)
+
+    assert checks == [
+        checks[0].__class__(
+            scenario_id="smoke",
+            artifact_dir=artifact_dir,
+            missing_items=(),
+        )
+    ]
+    assert checks[0].ok
+
+
+def test_check_reference_artifacts_is_disabled_without_root():
+    assert (
+        check_reference_artifacts(
+            [{"id": "smoke", "comparison_scopes": ["operations"]}], environ={}
+        )
+        == []
+    )
+
+
+def test_saved_cwl_reference_artifacts_are_complete_when_configured():
+    scenarios = json.loads((FIXTURE_DIR / "equivalence_gate_scenarios.json").read_text())[
+        "scenarios"
+    ]
+    checks = check_reference_artifacts(scenarios)
+    if not checks:
+        pytest.skip("RAPTHOR_CWL_REFERENCE_ROOT is not set")
+
+    missing = [check for check in checks if not check.ok]
+
+    assert not missing, "\n".join(
+        f"{check.scenario_id}: {check.artifact_dir} missing {', '.join(check.missing_items)}"
+        for check in missing
+    )
 
 
 def test_compare_fits_product_uses_numeric_tolerances(tmp_path):

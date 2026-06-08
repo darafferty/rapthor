@@ -2,16 +2,30 @@
 
 import json
 import math
+import os
 import shutil
 from dataclasses import dataclass
 from importlib import import_module
 from pathlib import Path
-from typing import Any, Callable, Mapping, Optional
+from typing import Any, Callable, Mapping, Optional, Sequence
 
 BackendRunner = Callable[[Path, Path, str], Any]
 ParsetMaterializer = Callable[[Path, Path], Path]
 PRODUCT_ROOTS = ("images", "h5parms", "skymodels", "regions")
 FITS_SUFFIXES = (".fits", ".fits.fz")
+REFERENCE_ARTIFACT_ROOT_ENV = "RAPTHOR_CWL_REFERENCE_ROOT"
+
+REFERENCE_ARTIFACT_ITEM_ORDER = (
+    "artifact_dir",
+    "pipelines",
+    "operation_order",
+    "product_roots",
+    "fits_products",
+    "h5parm_products",
+    "skymodel_products",
+    "region_products",
+    "restart_state",
+)
 
 
 @dataclass(frozen=True)
@@ -40,6 +54,152 @@ class EquivalenceDifference:
     path: str
     reference: Any
     candidate: Any
+
+
+@dataclass(frozen=True)
+class ReferenceArtifactCheck:
+    """Availability check for one saved CWL reference artifact directory."""
+
+    scenario_id: str
+    artifact_dir: Path
+    missing_items: tuple[str, ...]
+
+    @property
+    def ok(self) -> bool:
+        """Return True when all required artifacts are present."""
+        return not self.missing_items
+
+
+def reference_artifact_root_from_environment(
+    environ: Optional[Mapping[str, str]] = None,
+) -> Optional[Path]:
+    """Return the configured saved-CWL reference root, if one was provided."""
+    environment = os.environ if environ is None else environ
+    root = environment.get(REFERENCE_ARTIFACT_ROOT_ENV)
+    if root in (None, ""):
+        return None
+    return Path(root)
+
+
+def reference_artifact_dir(root_dir: Any, scenario: Mapping[str, Any]) -> Path:
+    """Return the saved-CWL artifact directory for one equivalence scenario."""
+    artifact_name = scenario.get("cwl_reference_artifact_dir") or scenario["id"]
+    return Path(root_dir) / str(artifact_name)
+
+
+def required_reference_artifact_items(scenario: Mapping[str, Any]) -> tuple[str, ...]:
+    """Return the saved-CWL artifact categories required by a scenario."""
+    scopes = set(scenario.get("comparison_scopes", []))
+    required = set()
+
+    if "operations" in scopes:
+        required.update({"pipelines", "operation_order"})
+    if "products" in scopes:
+        required.add("product_roots")
+    if "fits" in scopes:
+        required.add("fits_products")
+    if "h5parm" in scopes:
+        required.add("h5parm_products")
+    if "skymodel" in scopes:
+        required.add("skymodel_products")
+    if "regions" in scopes:
+        required.add("region_products")
+    if "restart" in scopes:
+        required.update({"pipelines", "operation_order", "restart_state"})
+
+    return tuple(item for item in REFERENCE_ARTIFACT_ITEM_ORDER if item in required)
+
+
+def _has_file(root: Path, predicate: Callable[[Path], bool]) -> bool:
+    return root.exists() and any(predicate(path) for path in root.rglob("*") if path.is_file())
+
+
+def _has_operation_order(artifact_dir: Path) -> bool:
+    return any(
+        path.is_file()
+        for path in (
+            artifact_dir / "operation_order.json",
+            artifact_dir / "logs" / "operation_order.json",
+        )
+    )
+
+
+def _has_restart_state(artifact_dir: Path) -> bool:
+    pipelines_dir = artifact_dir / "pipelines"
+    if not pipelines_dir.exists():
+        return False
+    for operation_dir in (path for path in pipelines_dir.rglob("*") if path.is_dir()):
+        has_done = (operation_dir / ".done").is_file()
+        has_outputs = any(
+            (operation_dir / filename).is_file()
+            for filename in (".outputs.json", "pipeline_outputs.json")
+        )
+        if has_done and has_outputs:
+            return True
+    return False
+
+
+def _artifact_item_present(artifact_dir: Path, item: str) -> bool:
+    if item == "artifact_dir":
+        return artifact_dir.is_dir()
+    if item == "pipelines":
+        return (artifact_dir / "pipelines").is_dir()
+    if item == "operation_order":
+        return _has_operation_order(artifact_dir)
+    if item == "product_roots":
+        return any((artifact_dir / root_name).is_dir() for root_name in PRODUCT_ROOTS)
+    if item == "fits_products":
+        return any(
+            _has_file(artifact_dir / root_name, lambda path: path.name.endswith(FITS_SUFFIXES))
+            for root_name in PRODUCT_ROOTS
+        )
+    if item == "h5parm_products":
+        return _has_file(artifact_dir / "h5parms", lambda path: path.suffix in {".h5", ".h5parm"})
+    if item == "skymodel_products":
+        return _has_file(
+            artifact_dir / "skymodels", lambda path: path.suffix in {".txt", ".skymodel"}
+        )
+    if item == "region_products":
+        return _has_file(artifact_dir / "regions", lambda path: True)
+    if item == "restart_state":
+        return _has_restart_state(artifact_dir)
+    raise ValueError(f"Unknown reference artifact item: {item}")
+
+
+def check_reference_artifacts(
+    scenarios: Sequence[Mapping[str, Any]],
+    root_dir: Optional[Any] = None,
+    environ: Optional[Mapping[str, str]] = None,
+) -> list[ReferenceArtifactCheck]:
+    """Validate saved-CWL artifacts for the equivalence scenario manifest.
+
+    If no root is passed and ``RAPTHOR_CWL_REFERENCE_ROOT`` is unset, no checks
+    are returned. This lets ordinary unit tests run without staging artifacts
+    while still providing a concrete validation hook for target environments.
+    """
+    root = (
+        Path(root_dir)
+        if root_dir is not None
+        else reference_artifact_root_from_environment(environ)
+    )
+    if root is None:
+        return []
+
+    checks = []
+    for scenario in scenarios:
+        artifact_dir = reference_artifact_dir(root, scenario)
+        required_items = ("artifact_dir", *required_reference_artifact_items(scenario))
+        missing_items = tuple(
+            item for item in required_items if not _artifact_item_present(artifact_dir, item)
+        )
+        checks.append(
+            ReferenceArtifactCheck(
+                scenario_id=str(scenario["id"]),
+                artifact_dir=artifact_dir,
+                missing_items=missing_items,
+            )
+        )
+    return checks
 
 
 def prepare_equivalence_run_dirs(root_dir: Any) -> EquivalenceRunDirs:
