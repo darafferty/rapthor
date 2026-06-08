@@ -114,6 +114,7 @@ SOLVE_SLOT_ARGUMENTS = [
     ("correcttimesmearing", "correcttimesmearing"),
     ("keepmodel", "keepmodel"),
     ("reusemodel", "reusemodel"),
+    ("modeldatacolumns", "modeldatacolumns"),
     ("normalize_h5parm", "applycal.normalization.parmdb"),
     ("applycal_steps", "applycal.steps"),
 ]
@@ -722,6 +723,7 @@ def _solve_slot_from_inputs(
     index: int,
     keepmodel: Optional[str] = None,
     reusemodel: Optional[str] = None,
+    modeldatacolumns: Optional[str] = None,
 ) -> dict:
     h5parm = _validate_basename(
         _scatter_value(
@@ -765,6 +767,8 @@ def _solve_slot_from_inputs(
         "keepmodel": keepmodel,
         "reusemodel": reusemodel,
     }
+    if modeldatacolumns is not None:
+        slot_record["modeldatacolumns"] = modeldatacolumns
     datause_key = f"solve{slot}_datause"
     if datause_key in input_parms:
         slot_record["datause"] = input_parms.get(datause_key)
@@ -966,11 +970,13 @@ def calibrate_payload_from_inputs(
         raise ValueError("modeldatacolumn must be a non-empty string or None")
 
     chunks = []
+    uses_modeldatacolumn = modeldatacolumn is not None and not image_based_predict
     for index in range(chunk_count):
         chunk_solve_slots = []
         for slot in solve_slots:
             keepmodel = None
             reusemodel = None
+            slot_modeldatacolumns = None
             if slot == 1:
                 keepmodel = "True"
                 if image_based_predict:
@@ -981,7 +987,12 @@ def calibrate_payload_from_inputs(
                 "dd_phase",
                 "dd_phase_slow",
             }:
-                reusemodel = "[predict.*]" if image_based_predict else "[solve1.*]"
+                if image_based_predict:
+                    reusemodel = "[predict.*]"
+                elif uses_modeldatacolumn:
+                    slot_modeldatacolumns = modeldatacolumn
+                else:
+                    reusemodel = "[solve1.*]"
             if calibration_kind == "dd_phase_slow" and slot in {2, 3}:
                 keepmodel = "true"
             chunk_solve_slots.append(
@@ -992,6 +1003,7 @@ def calibrate_payload_from_inputs(
                     index=index,
                     keepmodel=keepmodel,
                     reusemodel=reusemodel,
+                    modeldatacolumns=slot_modeldatacolumns,
                 )
             )
         chunk = {
@@ -1145,6 +1157,7 @@ def _solve_slots_for_chunk(
                 "antennaconstraint": slot["antennaconstraint"],
                 "keepmodel": slot["keepmodel"],
                 "reusemodel": slot["reusemodel"],
+                "modeldatacolumns": slot.get("modeldatacolumns"),
             }
         )
     solve_slots[0]["correctfreqsmearing"] = payload["correctfreqsmearing"]

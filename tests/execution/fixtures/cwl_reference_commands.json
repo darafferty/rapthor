@@ -204,7 +204,7 @@
             "solve2.smoothnessconstraint=0",
             "solve2.smoothnessreffrequency=0",
             "solve2.antennaconstraint=[]",
-            "solve2.reusemodel=[solve1.*]",
+            "solve2.modeldatacolumns=[MODEL_DATA]",
             "numthreads=4"
         ],
         "combine_fast_medium_di": [

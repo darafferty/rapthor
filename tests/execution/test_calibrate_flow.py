@@ -800,7 +800,7 @@ def _di_scalar_phase_solve_slots():
             "smoothnessreffrequency": 0,
             "smoothnessrefdistance": None,
             "antennaconstraint": "[]",
-            "reusemodel": "[solve1.*]",
+            "modeldatacolumns": "[MODEL_DATA]",
         },
     ]
 
@@ -1369,7 +1369,8 @@ def test_calibrate_payload_from_inputs_builds_di_scalar_phase_payload(tmp_path):
             "smoothnessrefdistance": None,
             "antennaconstraint": "[]",
             "keepmodel": None,
-            "reusemodel": "[solve1.*]",
+            "reusemodel": None,
+            "modeldatacolumns": "[MODEL_DATA]",
         },
     ]
 
@@ -1445,7 +1446,8 @@ def test_calibrate_payload_from_inputs_builds_di_phase_slow_payload(tmp_path):
         "smoothnessrefdistance": None,
         "antennaconstraint": "[]",
         "keepmodel": None,
-        "reusemodel": "[solve1.*]",
+        "reusemodel": None,
+        "modeldatacolumns": "[MODEL_DATA]",
     }
 
 
@@ -1864,7 +1866,8 @@ def test_run_calibrate_flow_supports_di_scalar_phase(tmp_path, fake_calibrate_sh
     assert "steps=[solve1,solve2]" in commands[0]
     assert "solve1.mode=scalarphase" in commands[0]
     assert "solve2.mode=scalarphase" in commands[0]
-    assert "solve2.reusemodel=[solve1.*]" in commands[0]
+    assert "solve2.modeldatacolumns=[MODEL_DATA]" in commands[0]
+    assert "solve2.reusemodel=[solve1.*]" not in commands[0]
     assert commands[-1][1:5] == [
         str(tmp_path / "fast_phases_di.h5parm"),
         str(tmp_path / "medium1_phases_di.h5parm"),
@@ -1958,6 +1961,10 @@ def test_run_calibrate_flow_supports_di_phase_slow(tmp_path, fake_calibrate_shel
     ]
     assert "steps=[solve1,solve2,solve3]" in commands[0]
     assert "solve3.h5parm=slow_gains_di_0.h5parm" in commands[0]
+    assert "solve2.modeldatacolumns=[MODEL_DATA]" in commands[0]
+    assert "solve3.modeldatacolumns=[MODEL_DATA]" in commands[0]
+    assert "solve2.reusemodel=[solve1.*]" not in commands[0]
+    assert "solve3.reusemodel=[solve1.*]" not in commands[0]
     assert commands[-1][1:5] == [
         str(tmp_path / "combined_solve1_solve2_di.h5parm"),
         str(tmp_path / "slow_gains_di.h5parm"),
