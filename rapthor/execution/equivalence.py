@@ -57,6 +57,21 @@ class EquivalenceDifference:
 
 
 @dataclass(frozen=True)
+class EquivalenceScenarioResult:
+    """Result of comparing one saved-CWL scenario with a Prefect candidate run."""
+
+    scenario_id: str
+    reference_run: EquivalenceRun
+    candidate_run: EquivalenceRun
+    differences: tuple[EquivalenceDifference, ...]
+
+    @property
+    def ok(self) -> bool:
+        """Return True when the candidate matches the saved reference."""
+        return not self.differences
+
+
+@dataclass(frozen=True)
 class ReferenceArtifactCheck:
     """Availability check for one saved CWL reference artifact directory."""
 
@@ -265,6 +280,51 @@ def run_equivalence_pair(
     return (
         EquivalenceRun("cwl", cwl_parset, run_dirs.cwl, cwl_result),
         EquivalenceRun("prefect", prefect_parset, run_dirs.prefect, prefect_result),
+    )
+
+
+def scenario_parset_file(scenario: Mapping[str, Any], repo_root: Any = ".") -> Path:
+    """Return the parset fixture used to run one equivalence scenario."""
+    for fixture_ref in scenario.get("fixture_refs", []):
+        path = Path(str(fixture_ref))
+        if path.suffix != ".parset":
+            continue
+        parset_path = path if path.is_absolute() else Path(repo_root) / path
+        if not parset_path.is_file():
+            raise FileNotFoundError(f"Scenario {scenario['id']} parset fixture not found: {path}")
+        return parset_path
+    raise ValueError(f"Scenario {scenario['id']} does not define a parset fixture")
+
+
+def run_saved_reference_equivalence_scenario(
+    scenario: Mapping[str, Any],
+    reference_root: Any,
+    run_root: Any,
+    repo_root: Any = ".",
+    prefect_runner: BackendRunner = run_prefect_process,
+    logging_level: str = "info",
+    parset_materializer: ParsetMaterializer = copy_parset_for_backend,
+) -> tuple[EquivalenceRun, EquivalenceRun]:
+    """Run the Prefect side of one scenario and pair it with saved CWL artifacts.
+
+    The saved reference is expected at
+    ``reference_root / scenario["cwl_reference_artifact_dir"]``. The
+    materializer is responsible for producing a candidate parset whose
+    ``dir_working`` points at the candidate working directory when real runs are
+    executed.
+    """
+    scenario_id = str(scenario["id"])
+    reference_dir = reference_artifact_dir(reference_root, scenario)
+    candidate_dir = Path(run_root) / scenario_id / "prefect"
+    candidate_dir.mkdir(parents=True, exist_ok=True)
+
+    source_parset = scenario_parset_file(scenario, repo_root=repo_root)
+    candidate_parset = parset_materializer(source_parset, candidate_dir)
+    candidate_result = prefect_runner(candidate_parset, candidate_dir, logging_level)
+
+    return (
+        EquivalenceRun("cwl", source_parset, reference_dir),
+        EquivalenceRun("prefect", candidate_parset, candidate_dir, candidate_result),
     )
 
 
@@ -534,6 +594,58 @@ def compare_backend_runs(
         collect_backend_summary(reference_working_dir),
         collect_backend_summary(candidate_working_dir),
     )
+
+
+def compare_saved_reference_equivalence_scenario(
+    scenario: Mapping[str, Any],
+    reference_root: Any,
+    run_root: Any,
+    repo_root: Any = ".",
+    prefect_runner: BackendRunner = run_prefect_process,
+    logging_level: str = "info",
+    parset_materializer: ParsetMaterializer = copy_parset_for_backend,
+) -> EquivalenceScenarioResult:
+    """Compare one saved-CWL scenario against a freshly run Prefect candidate."""
+    reference_run, candidate_run = run_saved_reference_equivalence_scenario(
+        scenario,
+        reference_root,
+        run_root,
+        repo_root=repo_root,
+        prefect_runner=prefect_runner,
+        logging_level=logging_level,
+        parset_materializer=parset_materializer,
+    )
+    differences = tuple(compare_backend_runs(reference_run.working_dir, candidate_run.working_dir))
+    return EquivalenceScenarioResult(
+        scenario_id=str(scenario["id"]),
+        reference_run=reference_run,
+        candidate_run=candidate_run,
+        differences=differences,
+    )
+
+
+def compare_saved_reference_equivalence_manifest(
+    scenarios: Sequence[Mapping[str, Any]],
+    reference_root: Any,
+    run_root: Any,
+    repo_root: Any = ".",
+    prefect_runner: BackendRunner = run_prefect_process,
+    logging_level: str = "info",
+    parset_materializer: ParsetMaterializer = copy_parset_for_backend,
+) -> list[EquivalenceScenarioResult]:
+    """Compare every scenario in an equivalence manifest against saved CWL artifacts."""
+    return [
+        compare_saved_reference_equivalence_scenario(
+            scenario,
+            reference_root,
+            run_root,
+            repo_root=repo_root,
+            prefect_runner=prefect_runner,
+            logging_level=logging_level,
+            parset_materializer=parset_materializer,
+        )
+        for scenario in scenarios
+    ]
 
 
 def _numeric_array_differences(

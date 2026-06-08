@@ -109,6 +109,9 @@ Most of the migration implementation is already in place.
 - Added a saved-CWL reference artifact contract: each equivalence scenario now
   declares `cwl_reference_artifact_dir`, and staging can validate
   `$RAPTHOR_CWL_REFERENCE_ROOT/<scenario-id>/` before running comparisons.
+- Added saved-reference equivalence runner helpers so staging can compare the
+  full scenario manifest against fresh Prefect candidate runs with
+  `compare_saved_reference_equivalence_manifest()`.
 - Modernized integration command-log helpers so assertions do not depend on Toil
   log filenames.
 - Replaced several placeholder script tests with small real Measurement Set or
@@ -195,8 +198,9 @@ than a CWL runtime dependency.
    `tests/execution/fixtures/equivalence_gate_scenarios.json`.
 2. Validate those saved artifacts with `check_reference_artifacts()` from
    `rapthor.execution.equivalence`.
-3. Run the full equivalence manifest in the dev container or staging
-   environment with external tools available.
+3. Run the full equivalence manifest with
+   `compare_saved_reference_equivalence_manifest()`, using a scenario parset
+   materializer in staging if the manifest still points at template parsets.
 4. Run the Slurm hook inside a real Slurm allocation:
    `RAPTHOR_RUN_SLURM_INTEGRATION=1 python3 -m pytest tests/integration/test_slurm_execution.py`.
 5. If equivalence passes, switch `rapthor.process.run()` to `process_flow()`.

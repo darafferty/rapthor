@@ -13,11 +13,14 @@ from rapthor.execution.equivalence import (
     compare_backend_runs,
     compare_fits_product,
     compare_h5parm_product,
+    compare_saved_reference_equivalence_manifest,
+    compare_saved_reference_equivalence_scenario,
     format_differences,
     reference_artifact_dir,
     reference_artifact_root_from_environment,
     required_reference_artifact_items,
     run_equivalence_pair,
+    scenario_parset_file,
 )
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
@@ -82,6 +85,141 @@ def test_run_equivalence_pair_invokes_isolated_backend_runners(tmp_path):
     assert cwl_run.parset_file.read_text() == source_parset.read_text()
     assert prefect_run.parset_file.read_text() == source_parset.read_text()
     assert compare_backend_runs(cwl_run.working_dir, prefect_run.working_dir) == []
+
+
+def test_scenario_parset_file_resolves_first_parset_fixture(tmp_path):
+    parset = tmp_path / "scenario.parset"
+    parset.write_text("[global]\ndir_working = .\n")
+
+    assert (
+        scenario_parset_file(
+            {
+                "id": "smoke",
+                "fixture_refs": ["notes.txt", "scenario.parset"],
+            },
+            repo_root=tmp_path,
+        )
+        == parset
+    )
+
+
+def test_scenario_parset_file_rejects_missing_or_absent_parset(tmp_path):
+    with pytest.raises(ValueError, match="does not define a parset fixture"):
+        scenario_parset_file({"id": "smoke", "fixture_refs": ["notes.txt"]}, repo_root=tmp_path)
+
+    with pytest.raises(FileNotFoundError, match="parset fixture not found"):
+        scenario_parset_file(
+            {"id": "smoke", "fixture_refs": ["missing.parset"]}, repo_root=tmp_path
+        )
+
+
+def test_compare_saved_reference_equivalence_scenario_runs_prefect_candidate(tmp_path):
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    parset = repo_root / "scenario.parset"
+    parset.write_text("[global]\ndir_working = .\n")
+    scenario = {
+        "id": "smoke",
+        "cwl_reference_artifact_dir": "saved-smoke",
+        "fixture_refs": ["scenario.parset"],
+        "comparison_scopes": ["operations", "products"],
+    }
+    reference_root = tmp_path / "references"
+    reference_dir = reference_artifact_dir(reference_root, scenario)
+    _write_backend_state(reference_dir)
+    calls = []
+
+    def materialize(source_parset, working_dir):
+        assert source_parset == parset
+        candidate_parset = working_dir / "candidate.parset"
+        candidate_parset.write_text(source_parset.read_text())
+        return candidate_parset
+
+    def fake_prefect_runner(parset_file, working_dir, logging_level):
+        calls.append((parset_file, working_dir, logging_level))
+        _write_backend_state(working_dir)
+        return {"ran": True}
+
+    result = compare_saved_reference_equivalence_scenario(
+        scenario,
+        reference_root,
+        tmp_path / "runs",
+        repo_root=repo_root,
+        prefect_runner=fake_prefect_runner,
+        logging_level="debug",
+        parset_materializer=materialize,
+    )
+
+    assert result.ok
+    assert result.differences == ()
+    assert result.reference_run.backend == "cwl"
+    assert result.reference_run.working_dir == reference_dir
+    assert result.candidate_run.backend == "prefect"
+    assert result.candidate_run.working_dir == tmp_path / "runs" / "smoke" / "prefect"
+    assert result.candidate_run.result == {"ran": True}
+    assert calls == [
+        (
+            tmp_path / "runs" / "smoke" / "prefect" / "candidate.parset",
+            tmp_path / "runs" / "smoke" / "prefect",
+            "debug",
+        )
+    ]
+
+
+def test_compare_saved_reference_equivalence_scenario_reports_differences(tmp_path):
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    (repo_root / "scenario.parset").write_text("[global]\ndir_working = .\n")
+    scenario = {
+        "id": "smoke",
+        "fixture_refs": ["scenario.parset"],
+        "comparison_scopes": ["operations", "products"],
+    }
+    reference_root = tmp_path / "references"
+    _write_backend_state(reference_artifact_dir(reference_root, scenario), "reference.fits")
+
+    def fake_prefect_runner(parset_file, working_dir, logging_level):
+        _write_backend_state(working_dir, "candidate.fits")
+
+    result = compare_saved_reference_equivalence_scenario(
+        scenario,
+        reference_root,
+        tmp_path / "runs",
+        repo_root=repo_root,
+        prefect_runner=fake_prefect_runner,
+    )
+
+    assert not result.ok
+    assert result.differences[0].path == "$.operations.image_1.outputs.image.basename"
+
+
+def test_compare_saved_reference_equivalence_manifest_runs_all_scenarios(tmp_path):
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    (repo_root / "first.parset").write_text("[global]\ndir_working = .\n")
+    (repo_root / "second.parset").write_text("[global]\ndir_working = .\n")
+    scenarios = [
+        {"id": "first", "fixture_refs": ["first.parset"], "comparison_scopes": ["operations"]},
+        {"id": "second", "fixture_refs": ["second.parset"], "comparison_scopes": ["operations"]},
+    ]
+    reference_root = tmp_path / "references"
+    for scenario in scenarios:
+        _write_backend_state(reference_artifact_dir(reference_root, scenario))
+
+    def fake_prefect_runner(parset_file, working_dir, logging_level):
+        _write_backend_state(working_dir)
+
+    results = compare_saved_reference_equivalence_manifest(
+        scenarios,
+        reference_root,
+        tmp_path / "runs",
+        repo_root=repo_root,
+        prefect_runner=fake_prefect_runner,
+    )
+
+    assert [result.scenario_id for result in results] == ["first", "second"]
+    assert all(result.ok for result in results)
+    assert [result.candidate_run.working_dir.name for result in results] == ["prefect", "prefect"]
 
 
 def test_collect_backend_summary_normalizes_product_paths(tmp_path):
