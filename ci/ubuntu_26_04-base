@@ -36,7 +36,6 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get update && \
     apt-get install -y \
         bison \
-        cmake \
         flex \
         g++ \
         gfortran \
@@ -58,9 +57,21 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         ninja-build \
         pkgconf \
         pybind11-dev \
-        python3 \
+        python3-dev \
         wcslib-dev \
         wget
+
+# Do not use `pip` from the Debian repository, but fetch it from PyPA.
+# This way, we are sure that the latest versions of `pip`, `setuptools`, and
+# `wheel` are installed in /usr/local, the only directory we're going to copy
+# over to the next build stage.
+RUN wget -q https://bootstrap.pypa.io/get-pip.py && \
+    python3 get-pip.py
+
+# Install required python packages
+RUN python3 -m pip install \
+    'cmake<4' \
+    'numpy<2'
 
 # Install the casacore measures data. We purposely do not install these from
 # the Ubuntu repository, but download the latest version from the ASTRON site.
