@@ -33,20 +33,44 @@ TEST_TRUE_SKYMODEL = (RESOURCE_DIR / "test_true_sky.txt").as_posix()
 TEST_APPARENT_SKYMODEL = (RESOURCE_DIR / "test_apparent_sky.txt").as_posix()
 TEST_INTEGRATION_TRUE_SKYMODEL = (RESOURCE_DIR / "integration_true_sky.txt").as_posix()
 TEST_INTEGRATION_APPARENT_SKYMODEL = (RESOURCE_DIR / "integration_apparent_sky.txt").as_posix()
+TEST_RUN_ROOT_ENV = "RAPTHOR_TEST_RUN_ROOT"
+
+
+def _local_test_run_root():
+    return REPO_ROOT_DIR / ".pytest_cache" / "rapthor-runs"
+
+
+def _prepare_local_test_run_root(config):
+    if getattr(config, "workerinput", None):
+        return
+    if os.environ.get("CI_PROJECT_DIR") or os.environ.get(TEST_RUN_ROOT_ENV):
+        return
+
+    run_root = _local_test_run_root()
+    if run_root.exists():
+        shutil.rmtree(run_root)
+    run_root.mkdir(parents=True, exist_ok=True)
 
 
 def _get_test_run_root():
     """Keep CI integration runs inside the project so GitLab can upload logs."""
+    if run_root := os.environ.get(TEST_RUN_ROOT_ENV):
+        run_root = Path(run_root)
+        run_root.mkdir(parents=True, exist_ok=True)
+        return run_root
     if ci_project_dir := os.environ.get("CI_PROJECT_DIR"):
         # Keep the path short enough for multiprocessing AF_UNIX socket names.
         run_root = Path(ci_project_dir) / "ci" / "i"
         run_root.mkdir(parents=True, exist_ok=True)
         return run_root
-    return Path("/tmp")
+    run_root = _local_test_run_root()
+    run_root.mkdir(parents=True, exist_ok=True)
+    return run_root
 
 
 def pytest_configure(config):
     config.resource_dir = RESOURCE_DIR
+    _prepare_local_test_run_root(config)
 
 
 def _download_test_ms(destination):

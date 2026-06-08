@@ -115,10 +115,12 @@ def test_rapthor_run_image_only_with_supplied_h5parm_and_skymodel(
     _run_rapthor(producer_parset_path)
 
     producer_working_dir = Path(get_working_dir_from_parset(producer_parset_path))
-    h5parms = sorted((producer_working_dir / "h5parms").glob("**/field-solutions.h5"))
-    assert h5parms, f"No calibration h5parm was produced in {producer_working_dir}"
+    h5parm = producer_working_dir / "solutions" / "calibrate_1" / "field-solutions.h5"
+    assert h5parm.is_file(), f"No calibration h5parm was produced in {producer_working_dir}"
+    skymodel = producer_working_dir / "skymodels" / "predict_1" / "predict_1_predict_skymodel.txt"
+    assert skymodel.is_file(), f"No matching sky model was produced in {producer_working_dir}"
 
-    image_only_working_dir = tmp_path / "image-only-work"
+    image_only_working_dir = producer_working_dir.parent / "image-only-work"
     image_only_working_dir.mkdir()
     image_only_parset_path = update_parset_path(
         generated_parset_path,
@@ -126,7 +128,10 @@ def test_rapthor_run_image_only_with_supplied_h5parm_and_skymodel(
             "dir_working": str(image_only_working_dir),
             "allow_internet_access": "False",
             "strategy": str(image_only_strategy_path),
-            "input_h5parm": str(h5parms[0]),
+            "input_h5parm": str(h5parm),
+            "input_skymodel": str(skymodel),
+            "apparent_skymodel": "None",
+            "regroup_input_skymodel": "False",
         },
     )
 
