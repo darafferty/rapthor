@@ -28,8 +28,7 @@ def main(skymodel, ra_mid, dec_mid, width_ra, width_dec, region_file, enclose_na
         Filename of output ds9 region file
     """
     # Read the facets from the input sky model
-    facets = read_skymodel(skymodel, ra_mid, dec_mid, width_ra, width_dec,
-                           wcs_pixel_scale=misc.WCS_PIXEL_SCALE)
+    facets = read_skymodel(skymodel, ra_mid, dec_mid, width_ra, width_dec)
 
     # Make the ds9 region file
     make_ds9_region_file(facets, region_file, enclose_names=enclose_names)

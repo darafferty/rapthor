@@ -574,7 +574,7 @@ def check_astrometry(
         max_search_cone_radius = 0.5  # deg; Pan-STARRS search limit
         width = min(max_search_cone_radius * 2, image_width)
         facets = [
-            SquareFacet("field", obs.ra, obs.dec, width, wcs_pixel_scale=misc.WCS_PIXEL_SCALE)
+            SquareFacet("field", obs.ra, obs.dec, width)
         ]
 
     # Convert the filtered catalog into a minimal sky model for use with LSMTool
