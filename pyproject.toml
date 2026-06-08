@@ -217,7 +217,17 @@ deps = [
     "pytest-mock",
     "pytest-socket"
 ]
-pass_env = ["CI_PROJECT_DIR", "NUMEXPR_MAX_THREADS"]
+pass_env = [
+    "CI_PROJECT_DIR",
+    "NUMEXPR_MAX_THREADS",
+    "RAPTHOR_CWL_REFERENCE_ROOT",
+    "RAPTHOR_EQUIVALENCE_APPARENT_SKYMODEL",
+    "RAPTHOR_EQUIVALENCE_INPUT_MS",
+    "RAPTHOR_EQUIVALENCE_INPUT_SKYMODEL",
+    "RAPTHOR_EQUIVALENCE_SCENARIOS",
+    "RAPTHOR_EQUIVALENCE_STRATEGY",
+    "RAPTHOR_RUN_SAVED_CWL_EQUIVALENCE",
+]
 commands = [
     [
         "python", "-m", "pytest",
@@ -252,6 +262,7 @@ commands = [
         "rapthor/process.py",
         "rapthor/scripts/calculate_image_diagnostics.py",
         "rapthor/scripts/normalize_flux_scale.py",
+        "scripts/capture_cwl_reference_artifacts.py",
         "tests/__init__.py",
         "tests/conftest.py",
         "tests/cwl/__init__.py",
@@ -285,6 +296,7 @@ commands = [
         "rapthor/process.py",
         "rapthor/scripts/calculate_image_diagnostics.py",
         "rapthor/scripts/normalize_flux_scale.py",
+        "scripts/capture_cwl_reference_artifacts.py",
         "tests/__init__.py",
         "tests/conftest.py",
         "tests/cwl/__init__.py",
@@ -321,6 +333,7 @@ format_targets = [
     "rapthor/process.py",
     "rapthor/scripts/calculate_image_diagnostics.py",
     "rapthor/scripts/normalize_flux_scale.py",
+    "scripts/capture_cwl_reference_artifacts.py",
     "tests/__init__.py",
     "tests/conftest.py",
     "tests/cwl/__init__.py",
@@ -355,6 +368,7 @@ commands = [
         "rapthor/process.py",
         "rapthor/scripts/calculate_image_diagnostics.py",
         "rapthor/scripts/normalize_flux_scale.py",
+        "scripts/capture_cwl_reference_artifacts.py",
         "tests/__init__.py",
         "tests/conftest.py",
         "tests/cwl/__init__.py",
@@ -388,6 +402,7 @@ commands = [
         "rapthor/process.py",
         "rapthor/scripts/calculate_image_diagnostics.py",
         "rapthor/scripts/normalize_flux_scale.py",
+        "scripts/capture_cwl_reference_artifacts.py",
         "tests/__init__.py",
         "tests/conftest.py",
         "tests/cwl/__init__.py",

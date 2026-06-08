@@ -117,6 +117,11 @@ Most of the migration implementation is already in place.
   `RAPTHOR_EQUIVALENCE_INPUT_MS`, `RAPTHOR_EQUIVALENCE_INPUT_SKYMODEL`,
   `RAPTHOR_EQUIVALENCE_APPARENT_SKYMODEL`, and `RAPTHOR_EQUIVALENCE_STRATEGY`,
   and optional per-scenario `parset_overrides`.
+- Added an opt-in saved-CWL regression integration test at
+  `tests/integration/test_saved_cwl_equivalence.py`. It validates saved CWL
+  artifacts, runs the current Prefect candidate, and compares normalized outputs.
+- Added `scripts/capture_cwl_reference_artifacts.py` to populate saved CWL
+  artifacts by running scenarios through a separate pre-cutover checkout.
 - Modernized integration command-log helpers so assertions do not depend on Toil
   log filenames.
 - Replaced several placeholder script tests with small real Measurement Set or
@@ -139,8 +144,8 @@ This is the main blocker before public cutover.
 - Record the passing staging baseline before starting the route cutover.
 
 Important caveat: because operation adapters on this branch already execute
-Prefect flows, the CWL side of the final proof must come from the preserved
-pre-cutover CWL baseline or saved CWL artifacts.
+Prefect flows, the CWL side of the final proof must come from a preserved
+pre-cutover CWL checkout and then be saved as reference artifacts.
 
 ### 2. Refresh Real External-Tool Integration Coverage
 
@@ -198,16 +203,14 @@ than a CWL runtime dependency.
 
 ## Immediate Next Actions
 
-1. Capture or locate the final CWL reference artifacts under
-   `$RAPTHOR_CWL_REFERENCE_ROOT/<scenario-id>/`, matching the scenario IDs in
-   `tests/execution/fixtures/equivalence_gate_scenarios.json`.
-2. Validate those saved artifacts with `check_reference_artifacts()` from
-   `rapthor.execution.equivalence`.
-3. Run the full equivalence manifest with
-   `compare_saved_reference_equivalence_manifest()`. Use the default scenario
-   materializer when the manifest points at template parsets, and supply
-   per-scenario `parset_overrides` where a scenario needs a specific strategy or
-   feature toggle.
+1. Create a clean pre-cutover checkout that still runs the legacy CWL route and
+   set `RAPTHOR_LEGACY_CWL_REPO` to that path.
+2. Populate saved CWL references with real input data:
+   `RAPTHOR_CWL_REFERENCE_ROOT=/path/to/references RAPTHOR_EQUIVALENCE_INPUT_MS=/path/to/input.ms RAPTHOR_EQUIVALENCE_INPUT_SKYMODEL=/path/to/true.txt RAPTHOR_EQUIVALENCE_APPARENT_SKYMODEL=/path/to/apparent.txt RAPTHOR_EQUIVALENCE_STRATEGY=/path/to/strategy.py python3 scripts/capture_cwl_reference_artifacts.py`.
+   Use `--scenario <id>` for a subset and add manifest `parset_overrides` where a
+   scenario needs a specific strategy or feature toggle.
+3. Run the saved-reference regression:
+   `RAPTHOR_RUN_SAVED_CWL_EQUIVALENCE=1 RAPTHOR_CWL_REFERENCE_ROOT=/path/to/references python3 -m pytest tests/integration/test_saved_cwl_equivalence.py -q --tb=short`.
 4. Run the Slurm hook inside a real Slurm allocation:
    `RAPTHOR_RUN_SLURM_INTEGRATION=1 python3 -m pytest tests/integration/test_slurm_execution.py`.
 5. If equivalence passes, switch `rapthor.process.run()` to `process_flow()`.
