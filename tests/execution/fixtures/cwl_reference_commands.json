@@ -920,6 +920,15 @@
             "sector_1-MFS-I-image-pb.fits",
             "sector_1-MFS-filtered-model.fits.fz"
         ],
+        "wsclean_restore": [
+            "wsclean",
+            "-j",
+            "4",
+            "-restore-list",
+            "sector_1-MFS-I-image-pb.fits",
+            "bright_sources_pb.txt",
+            "sector_1-MFS-I-image-pb.fits"
+        ],
         "make_image_cube": [
             "make_image_cube.py",
             "sector_1-0000-I-image-pb.fits,sector_1-0001-I-image-pb.fits",

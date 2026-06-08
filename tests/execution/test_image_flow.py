@@ -19,6 +19,7 @@ from rapthor.execution.flows.image import (
     build_make_region_file_command,
     build_make_skymodel_image_command,
     build_normalize_flux_scale_command,
+    build_wsclean_restore_command,
     image_flow,
     image_payload_from_inputs,
     image_sector_task,
@@ -36,6 +37,7 @@ from rapthor.execution.flows.image import (
     normalized_wsclean_mpi_no_dde_command,
     normalized_wsclean_mpi_screens_command,
     normalized_wsclean_no_dde_command,
+    normalized_wsclean_restore_command,
     normalized_wsclean_screens_command,
     run_image_flow,
 )
@@ -72,6 +74,9 @@ def fake_image_shell_operation_cls():
             elif tokens[0] == "make_region_file.py":
                 (cwd / tokens[6]).write_text("region")
             elif tokens[0] in {"wsclean", "mpirun"}:
+                if tokens[0] == "wsclean" and "-restore-list" in tokens:
+                    (cwd / tokens[-1]).write_text("restored image")
+                    return "OK"
                 if tokens[0] == "mpirun":
                     tokens = ["wsclean"] + tokens[tokens.index("wsclean-mp") + 1 :]
                 image_name = tokens[tokens.index("-name") + 1]
@@ -284,6 +289,7 @@ class FieldStub:
         self.ra = 123.0
         self.dec = 45.0
         self.calibration_skymodel_file = "/data/calibration.skymodel"
+        self.bright_source_skymodel_file = "/data/bright_sources_pb.txt"
         self.normalization_skymodels = None
         self.normalization_reference_frequencies = None
 
@@ -435,6 +441,13 @@ def _screens_image_input_parms():
 def _filtered_model_image_input_parms():
     input_parms = _image_input_parms()
     input_parms["save_filtered_model_image"] = True
+    return input_parms
+
+
+def _bright_peeling_image_input_parms():
+    input_parms = _image_input_parms()
+    input_parms["peel_bright_sources"] = True
+    input_parms["bright_skymodel_pb"] = file_record("/data/bright_sources_pb.txt")
     return input_parms
 
 
@@ -801,6 +814,15 @@ def test_image_command_builders_match_reference_fixtures():
             output_image_name="sector_1-MFS-filtered-model.fits.fz",
         )
         == commands["image"]["make_skymodel_image"]
+    )
+    assert (
+        normalized_wsclean_restore_command(
+            residual_image="sector_1-MFS-I-image-pb.fits",
+            source_list="bright_sources_pb.txt",
+            output_image="sector_1-MFS-I-image-pb.fits",
+            numthreads=4,
+        )
+        == commands["image"]["wsclean_restore"]
     )
     assert (
         normalized_make_image_cube_command(
@@ -1182,6 +1204,20 @@ def test_image_support_command_builders_create_expected_tokens():
         "sector_1-MFS-I-image-pb.fits",
         "sector_1-MFS-filtered-model.fits.fz",
     ]
+    assert build_wsclean_restore_command(
+        "sector_1-MFS-I-image-pb.fits",
+        "bright_sources_pb.txt",
+        "sector_1-MFS-I-image-pb.fits",
+        4,
+    ) == [
+        "wsclean",
+        "-j",
+        "4",
+        "-restore-list",
+        "sector_1-MFS-I-image-pb.fits",
+        "bright_sources_pb.txt",
+        "sector_1-MFS-I-image-pb.fits",
+    ]
     assert build_make_image_cube_command(
         ["sector_1-0000-I-image-pb.fits", "sector_1-0001-I-image-pb.fits"],
         "sector_1_I_freq_cube.fits",
@@ -1251,6 +1287,21 @@ def test_image_support_command_builders_create_expected_tokens():
         "--source_finder=bdsf",
         "--ncores=4",
     ]
+    assert "--bright_true_sky_skymodel=bright_sources_pb.txt" in build_filter_skymodel_command(
+        "sector_1-MFS-I-image.fits",
+        "sector_1-MFS-I-image-pb.fits",
+        "sector_1-sources-pb.txt",
+        "sector_1-sources.txt",
+        "sector_1",
+        "sector_1.vertices",
+        ["obs_0.ms", "obs_1.ms"],
+        4.0,
+        5.0,
+        False,
+        "bdsf",
+        4,
+        bright_true_sky_skymodel="bright_sources_pb.txt",
+    )
     assert build_calculate_image_diagnostics_command(
         "sector_1-MFS-I-image.fits",
         "sector_1.flat_noise_rms.fits",
@@ -1377,6 +1428,14 @@ def test_image_payload_from_inputs_builds_filtered_model_payload(tmp_path):
     )
 
 
+def test_image_payload_from_inputs_builds_bright_peeling_payload(tmp_path):
+    payload = image_payload_from_inputs(_bright_peeling_image_input_parms(), tmp_path)
+
+    sector = payload["sectors"][0]
+    assert sector["peel_bright_sources"] is True
+    assert sector["bright_skymodel_pb"] == "/data/bright_sources_pb.txt"
+
+
 def test_image_payload_from_inputs_builds_image_cube_payload(tmp_path):
     payload = image_payload_from_inputs(_image_cube_input_parms(), tmp_path, make_image_cube=True)
 
@@ -1461,6 +1520,11 @@ def test_image_payload_from_inputs_rejects_unsupported_modes(tmp_path):
             _normalize_image_input_parms(), tmp_path, normalize_flux_scale=True
         )
 
+    input_parms = _image_input_parms()
+    input_parms["peel_bright_sources"] = True
+    with pytest.raises(ValueError, match="bright_skymodel_pb"):
+        image_payload_from_inputs(input_parms, tmp_path)
+
 
 def test_image_payload_from_inputs_requires_facet_inputs(tmp_path):
     input_parms = _facet_image_input_parms()
@@ -1540,6 +1604,66 @@ def test_run_image_flow_executes_no_dde_commands_and_returns_records(
         "filter_skymodel.py",
         "calculate_image_diagnostics.py",
     ]
+
+
+def test_run_image_flow_restores_bright_sources_before_filtering(
+    tmp_path, fake_image_shell_operation_cls
+):
+    outputs = run_image_flow(
+        image_payload_from_inputs(_bright_peeling_image_input_parms(), tmp_path),
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_image_shell_operation_cls,
+    )
+
+    assert outputs["sector_I_images"] == [
+        [
+            file_record(tmp_path / "sector_1-MFS-I-image.fits"),
+            file_record(tmp_path / "sector_1-MFS-I-image-pb.fits"),
+        ]
+    ]
+    commands = [
+        shlex.split(instance.kwargs["commands"][0])
+        for instance in fake_image_shell_operation_cls.instances
+    ]
+    command_names = [command[0] for command in commands]
+    assert command_names == [
+        "DP3",
+        "DP3",
+        "concat_ms.py",
+        "blank_image.py",
+        "wsclean",
+        "wsclean",
+        "wsclean",
+        "check_image_beam.py",
+        "check_image_beam.py",
+        "filter_skymodel.py",
+        "calculate_image_diagnostics.py",
+    ]
+    restore_commands = [
+        command for command in commands if command[0] == "wsclean" and "-restore-list" in command
+    ]
+    assert restore_commands == [
+        [
+            "wsclean",
+            "-j",
+            "4",
+            "-restore-list",
+            str(tmp_path / "sector_1-MFS-I-image-pb.fits"),
+            "/data/bright_sources_pb.txt",
+            "sector_1-MFS-I-image-pb.fits",
+        ],
+        [
+            "wsclean",
+            "-j",
+            "4",
+            "-restore-list",
+            str(tmp_path / "sector_1-MFS-I-image.fits"),
+            "/data/bright_sources_pb.txt",
+            "sector_1-MFS-I-image.fits",
+        ],
+    ]
+    filter_command = next(command for command in commands if command[0] == "filter_skymodel.py")
+    assert "--bright_true_sky_skymodel=/data/bright_sources_pb.txt" in filter_command
 
 
 def test_run_image_flow_executes_facet_commands_and_returns_region_file(
@@ -2214,6 +2338,38 @@ def test_image_operation_run_uses_prefect_flow(
     assert field.lofar_to_true_flux_ratio == 1.0
     assert field.lofar_to_true_flux_std == 0.0
     assert len(fake_image_shell_operation_cls.instances) == 9
+
+
+def test_bright_peeling_image_operation_run_uses_prefect_flow(
+    tmp_path, monkeypatch, fake_image_shell_operation_cls
+):
+    monkeypatch.setattr(
+        "rapthor.execution.shell._load_shell_operation_cls",
+        lambda: fake_image_shell_operation_cls,
+    )
+    field = FieldStub(tmp_path)
+    field.peel_bright_sources = True
+    operation = Image(field, index=1)
+
+    with prefect_test_harness(server_startup_timeout=None):
+        operation.run()
+
+    expected_outputs = _expected_image_operation_outputs(operation)
+    commands = [
+        shlex.split(instance.kwargs["commands"][0])
+        for instance in fake_image_shell_operation_cls.instances
+    ]
+    restore_commands = [
+        command for command in commands if command[0] == "wsclean" and "-restore-list" in command
+    ]
+    filter_command = next(command for command in commands if command[0] == "filter_skymodel.py")
+
+    assert operation.outputs == expected_outputs
+    assert Path(operation.done_file).is_file()
+    assert not Path(operation.pipeline_parset_file).exists()
+    assert len(restore_commands) == 2
+    assert all("/data/bright_sources_pb.txt" in command for command in restore_commands)
+    assert "--bright_true_sky_skymodel=/data/bright_sources_pb.txt" in filter_command
 
 
 def test_image_operation_run_reuses_prefect_outputs_when_done(

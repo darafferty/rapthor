@@ -1,6 +1,7 @@
 """Helpers for CWL-to-Prefect equivalence tests."""
 
 import json
+import math
 import shutil
 from dataclasses import dataclass
 from importlib import import_module
@@ -9,6 +10,8 @@ from typing import Any, Callable, Mapping, Optional
 
 BackendRunner = Callable[[Path, Path, str], Any]
 ParsetMaterializer = Callable[[Path, Path], Path]
+PRODUCT_ROOTS = ("images", "h5parms", "skymodels", "regions")
+FITS_SUFFIXES = (".fits", ".fits.fz")
 
 
 @dataclass(frozen=True)
@@ -125,6 +128,158 @@ def _normalize_output_value(value: Any) -> Any:
     return value
 
 
+def _jsonable(value: Any) -> Any:
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    if hasattr(value, "tolist"):
+        return _jsonable(value.tolist())
+    if isinstance(value, Mapping):
+        return {str(key): _jsonable(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_jsonable(item) for item in value]
+    if isinstance(value, float):
+        if math.isnan(value):
+            return "nan"
+        if math.isinf(value):
+            return "inf" if value > 0 else "-inf"
+        return round(value, 12)
+    return value
+
+
+def _numeric_stats(array: Any) -> dict[str, Any]:
+    np = import_module("numpy")
+
+    data = np.asarray(array)
+    summary = {
+        "shape": list(data.shape),
+        "dtype": str(data.dtype),
+    }
+    if not np.issubdtype(data.dtype, np.number):
+        return summary
+
+    finite = data[np.isfinite(data)]
+    summary["finite_count"] = int(finite.size)
+    summary["nan_count"] = int(np.isnan(data).sum())
+    if finite.size:
+        summary.update(
+            {
+                "min": _jsonable(float(np.min(finite))),
+                "max": _jsonable(float(np.max(finite))),
+                "mean": _jsonable(float(np.mean(finite))),
+                "std": _jsonable(float(np.std(finite))),
+            }
+        )
+    return summary
+
+
+def _fits_product_summary(path: Path) -> dict[str, Any]:
+    fits = import_module("astropy.io.fits")
+
+    hdus = []
+    with fits.open(path) as hdul:
+        for index, hdu in enumerate(hdul):
+            data = getattr(hdu, "data", None)
+            if data is None:
+                continue
+            hdu_summary = {"index": index}
+            hdu_summary.update(_numeric_stats(data))
+            hdus.append(hdu_summary)
+    return {"type": "fits", "hdus": hdus}
+
+
+def _h5parm_product_summary(path: Path) -> dict[str, Any]:
+    h5py = import_module("h5py")
+
+    solsets = []
+    soltabs: dict[str, list[str]] = {}
+    datasets = {}
+    axes = {}
+    with h5py.File(path, "r") as h5_file:
+
+        def collect_item(name, node):
+            parts = name.split("/")
+            if isinstance(node, h5py.Group):
+                if len(parts) == 1:
+                    solsets.append(name)
+                elif len(parts) == 2 and "val" in node:
+                    soltabs.setdefault(parts[0], []).append(parts[1])
+            elif isinstance(node, h5py.Dataset):
+                datasets[name] = {
+                    "shape": list(node.shape),
+                    "dtype": str(node.dtype),
+                }
+                if "AXES" in node.attrs:
+                    axes[name] = _jsonable(node.attrs["AXES"])
+
+        h5_file.visititems(collect_item)
+
+    return {
+        "type": "h5parm",
+        "solsets": sorted(solsets),
+        "soltabs": {key: sorted(value) for key, value in sorted(soltabs.items())},
+        "datasets": {key: datasets[key] for key in sorted(datasets)},
+        "axes": {key: axes[key] for key in sorted(axes)},
+    }
+
+
+def _skymodel_product_summary(path: Path) -> dict[str, Any]:
+    source_count = 0
+    patch_count = 0
+    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or stripped.startswith("FORMAT"):
+            continue
+        first_column = stripped.split(",", 1)[0].strip()
+        if first_column:
+            source_count += 1
+        else:
+            patch_count += 1
+    return {
+        "type": "skymodel",
+        "source_count": source_count,
+        "patch_count": patch_count,
+    }
+
+
+def _region_product_summary(path: Path) -> dict[str, Any]:
+    lines = [
+        line.strip()
+        for line in path.read_text(encoding="utf-8", errors="replace").splitlines()
+        if line.strip()
+    ]
+    return {"type": "region", "lines": lines}
+
+
+def _generic_product_summary(path: Path) -> dict[str, Any]:
+    return {"type": "file", "basename": path.name}
+
+
+def _product_summary(path: Path) -> dict[str, Any]:
+    if path.name.endswith(FITS_SUFFIXES):
+        return _fits_product_summary(path)
+    if path.suffix in {".h5", ".h5parm"}:
+        return _h5parm_product_summary(path)
+    if path.parent.parts and "skymodels" in path.parts and path.suffix in {".txt", ".skymodel"}:
+        return _skymodel_product_summary(path)
+    if path.parent.parts and "regions" in path.parts:
+        return _region_product_summary(path)
+    return _generic_product_summary(path)
+
+
+def collect_product_summaries(working_dir: Any) -> dict[str, Any]:
+    """Collect backend-neutral summaries for final products."""
+    root = Path(working_dir)
+    products = {}
+    for product_root_name in PRODUCT_ROOTS:
+        product_root = root / product_root_name
+        if not product_root.exists():
+            continue
+        for path in sorted(item for item in product_root.rglob("*") if item.is_file()):
+            relative_path = path.relative_to(root).as_posix()
+            products[relative_path] = _product_summary(path)
+    return products
+
+
 def _operation_outputs(operation_dir: Path) -> Any:
     outputs_path = operation_dir / ".outputs.json"
     if outputs_path.exists():
@@ -169,6 +324,7 @@ def collect_backend_summary(working_dir: Any) -> dict[str, Any]:
     return {
         "operation_order": _operation_order(root, operation_states),
         "operations": operation_states,
+        "products": collect_product_summaries(root),
         "report": _optional_text(root / "logs" / "diagnostics.txt"),
         "field_state": _load_json(field_state_path) if field_state_path.exists() else None,
     }

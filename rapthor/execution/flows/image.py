@@ -255,6 +255,24 @@ def build_make_skymodel_image_command(
     return ["restore_skymodel.py", source_catalog, reference_image, output_image_name]
 
 
+def build_wsclean_restore_command(
+    residual_image: str,
+    source_list: str,
+    output_image: str,
+    numthreads: int,
+) -> list[str]:
+    """Build the WSClean command that restores a source list into an image."""
+    return [
+        "wsclean",
+        "-j",
+        str(numthreads),
+        "-restore-list",
+        residual_image,
+        source_list,
+        output_image,
+    ]
+
+
 def build_make_image_cube_command(input_image_list: list[str], output_image: str) -> list[str]:
     """Build the `make_image_cube.py` command for one Stokes image cube."""
     return ["make_image_cube.py", _join_comma(input_image_list), output_image]
@@ -749,12 +767,12 @@ def image_payload_from_inputs(
         raise ValueError("apply_screens and use_facets cannot both be enabled")
     if normalize_flux_scale and not make_image_cube:
         raise ValueError("normalize_flux_scale requires make_image_cube=True")
-    if input_parms.get("peel_bright_sources"):
-        raise NotImplementedError(
-            "Bright-source restoration is not part of the current image slice"
-        )
 
     pol = _pol_token(input_parms["pol"])
+    peel_bright_sources = bool(input_parms.get("peel_bright_sources", False))
+    bright_skymodel_pb = _optional_file_record_path(input_parms.get("bright_skymodel_pb"))
+    if peel_bright_sources and bright_skymodel_pb is None:
+        raise ValueError("bright_skymodel_pb must be a File record when peel_bright_sources=True")
 
     pipeline_dir = str(pipeline_working_dir)
     image_names = input_parms.get("image_name", [])
@@ -969,7 +987,9 @@ def image_payload_from_inputs(
                 "compress_images": bool(compress_images),
                 "make_image_cube": bool(make_image_cube),
                 "normalize_flux_scale": bool(normalize_flux_scale),
+                "peel_bright_sources": peel_bright_sources,
                 "save_filtered_model_image": save_filtered_model_image,
+                "bright_skymodel_pb": bright_skymodel_pb,
                 "data_colname": str(input_parms["data_colname"]),
                 "prepare_tasks": prepare_tasks,
                 "concat_filename": concat_filename,
@@ -1288,6 +1308,25 @@ def _make_normalization_records(
     return source_catalog, normalize_h5parm
 
 
+def _restore_bright_source_image(
+    image_record: Mapping[str, str],
+    bright_skymodel_pb: str,
+    pipeline_working_dir: str,
+    execution_config: ExecutionConfig,
+    numthreads: int,
+    description: str,
+    shell_operation_cls=None,
+) -> dict:
+    output_image = os.path.basename(image_record["path"])
+    command = build_wsclean_restore_command(
+        image_record["path"], bright_skymodel_pb, output_image, numthreads
+    )
+    _run_shell(
+        command, pipeline_working_dir, execution_config, shell_operation_cls=shell_operation_cls
+    )
+    return _require_file(os.path.join(pipeline_working_dir, output_image), description)
+
+
 def _write_aterm_config(pipeline_working_dir: str, h5parm: str) -> str:
     config_path = os.path.join(pipeline_working_dir, ATERM_CONFIG_FILENAME)
     os.makedirs(pipeline_working_dir, exist_ok=True)
@@ -1542,6 +1581,26 @@ def run_image_sector(
         ]
     )
     sector_images = [nonpb_image, pb_image]
+    if sector["peel_bright_sources"]:
+        pb_image = _restore_bright_source_image(
+            pb_image,
+            str(sector["bright_skymodel_pb"]),
+            pipeline_working_dir,
+            config,
+            int(sector["max_threads"]),
+            "Bright-source restored PB image",
+            shell_operation_cls=shell_operation_cls,
+        )
+        nonpb_image = _restore_bright_source_image(
+            nonpb_image,
+            str(sector["bright_skymodel_pb"]),
+            pipeline_working_dir,
+            config,
+            int(sector["max_threads"]),
+            "Bright-source restored non-PB image",
+            shell_operation_cls=shell_operation_cls,
+        )
+        sector_images = [nonpb_image, pb_image]
     image_cubes = []
     image_cube_beams = []
     image_cube_frequencies = []
@@ -1586,6 +1645,7 @@ def run_image_sector(
         bool(sector["filter_by_mask"]),
         str(sector["source_finder"]),
         int(sector["max_threads"]),
+        bright_true_sky_skymodel=sector.get("bright_skymodel_pb"),
     )
     _run_shell(
         filter_command, pipeline_working_dir, config, shell_operation_cls=shell_operation_cls
@@ -1885,6 +1945,11 @@ def normalized_compress_sector_images_command(**kwargs) -> list[str]:
 def normalized_make_skymodel_image_command(**kwargs) -> list[str]:
     """Return normalized make-skymodel-image command tokens for fixture comparisons."""
     return normalize_command(build_make_skymodel_image_command(**kwargs))
+
+
+def normalized_wsclean_restore_command(**kwargs) -> list[str]:
+    """Return normalized WSClean restore command tokens for fixture comparisons."""
+    return normalize_command(build_wsclean_restore_command(**kwargs))
 
 
 def normalized_make_image_cube_command(**kwargs) -> list[str]:

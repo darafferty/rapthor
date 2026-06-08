@@ -8,12 +8,16 @@ from astropy.io import fits
 from rapthor.execution.equivalence import (
     assert_backend_equivalent,
     collect_backend_summary,
+    collect_product_summaries,
     compare_backend_runs,
     compare_fits_product,
     compare_h5parm_product,
     format_differences,
     run_equivalence_pair,
 )
+
+FIXTURE_DIR = Path(__file__).parent / "fixtures"
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _write_operation_state(
@@ -132,6 +136,123 @@ def test_collect_operation_state_accepts_cwl_pipeline_outputs_until_cutover(tmp_
     _write_operation_state(prefect_dir, outputs_filename=".outputs.json")
 
     assert compare_backend_runs(cwl_dir, prefect_dir) == []
+
+
+def test_restart_equivalence_accepts_prefect_produced_output_records(tmp_path):
+    cwl_dir = tmp_path / "cwl"
+    prefect_dir = tmp_path / "prefect"
+    _write_operation_state(cwl_dir, operation_name="image_1", outputs_filename="pipeline_outputs.json")
+    _write_operation_state(prefect_dir, operation_name="image_1", outputs_filename=".outputs.json")
+    (cwl_dir / "operation_order.json").write_text(json.dumps(["image_1"]))
+    (prefect_dir / "operation_order.json").write_text(json.dumps(["image_1"]))
+
+    assert compare_backend_runs(cwl_dir, prefect_dir) == []
+
+
+def test_collect_backend_summary_includes_product_metadata(tmp_path):
+    working_dir = tmp_path / "run"
+    image_dir = working_dir / "images" / "image_1"
+    skymodel_dir = working_dir / "skymodels" / "image_1"
+    region_dir = working_dir / "regions" / "image_1"
+    for directory in (image_dir, skymodel_dir, region_dir):
+        directory.mkdir(parents=True)
+
+    fits.writeto(image_dir / "sector_1-MFS-I-image.fits", np.array([[1.0, 2.0], [3.0, np.nan]]))
+    (skymodel_dir / "sector_1.true_sky.txt").write_text(
+        "FORMAT = Name, Type, Patch\n"
+        " , , Patch_1\n"
+        "source_1, POINT, Patch_1\n",
+        encoding="utf-8",
+    )
+    (region_dir / "sector_1.reg").write_text("fk5\ncircle(1,2,3)\n", encoding="utf-8")
+
+    products = collect_product_summaries(working_dir)
+
+    assert products["images/image_1/sector_1-MFS-I-image.fits"] == {
+        "type": "fits",
+        "hdus": [
+            {
+                "index": 0,
+                "shape": [2, 2],
+                "dtype": ">f8",
+                "finite_count": 3,
+                "nan_count": 1,
+                "min": 1.0,
+                "max": 3.0,
+                "mean": 2.0,
+                "std": pytest.approx(0.816496580928),
+            }
+        ],
+    }
+    assert products["skymodels/image_1/sector_1.true_sky.txt"] == {
+        "type": "skymodel",
+        "source_count": 1,
+        "patch_count": 1,
+    }
+    assert products["regions/image_1/sector_1.reg"] == {
+        "type": "region",
+        "lines": ["fk5", "circle(1,2,3)"],
+    }
+
+
+def test_collect_product_summaries_includes_h5parm_metadata(tmp_path):
+    h5py = pytest.importorskip("h5py")
+
+    working_dir = tmp_path / "run"
+    h5parm_dir = working_dir / "h5parms" / "calibrate_1"
+    h5parm_dir.mkdir(parents=True)
+    with h5py.File(h5parm_dir / "field-solutions.h5", "w") as h5_file:
+        solset = h5_file.create_group("sol000")
+        phase = solset.create_group("phase000")
+        values = phase.create_dataset("val", data=np.ones((2, 3)))
+        values.attrs["AXES"] = b"time,ant"
+        solset.create_group("antenna")
+
+    products = collect_product_summaries(working_dir)
+
+    assert products["h5parms/calibrate_1/field-solutions.h5"] == {
+        "type": "h5parm",
+        "solsets": ["sol000"],
+        "soltabs": {"sol000": ["phase000"]},
+        "datasets": {"sol000/phase000/val": {"shape": [2, 3], "dtype": "float64"}},
+        "axes": {"sol000/phase000/val": "time,ant"},
+    }
+
+
+def test_compare_backend_runs_reports_product_metadata_differences(tmp_path):
+    cwl_dir = tmp_path / "cwl"
+    prefect_dir = tmp_path / "prefect"
+    cwl_image_dir = cwl_dir / "images" / "image_1"
+    prefect_image_dir = prefect_dir / "images" / "image_1"
+    cwl_image_dir.mkdir(parents=True)
+    prefect_image_dir.mkdir(parents=True)
+    fits.writeto(cwl_image_dir / "sector_1-MFS-I-image.fits", np.array([[1.0, 2.0]]))
+    fits.writeto(prefect_image_dir / "sector_1-MFS-I-image.fits", np.array([[1.0, 3.0]]))
+
+    differences = compare_backend_runs(cwl_dir, prefect_dir)
+
+    paths = [difference.path for difference in differences]
+    assert "$.products.images/image_1/sector_1-MFS-I-image.fits.hdus[0].max" in paths
+    assert "$.products.images/image_1/sector_1-MFS-I-image.fits.hdus[0].mean" in paths
+
+
+def test_equivalence_gate_scenarios_cover_supported_merge_matrix():
+    matrix = json.loads((FIXTURE_DIR / "supported_merge_feature_matrix.json").read_text())
+    scenarios = json.loads((FIXTURE_DIR / "equivalence_gate_scenarios.json").read_text())
+
+    supported_equivalence_ids = {
+        entry["id"] for entry in matrix["supported"] if "equivalence" in entry["test_types"]
+    }
+    scenario_ids = {scenario["matrix_id"] for scenario in scenarios["scenarios"]}
+
+    assert scenario_ids == supported_equivalence_ids
+    for scenario in scenarios["scenarios"]:
+        assert "operations" in scenario["comparison_scopes"], scenario["id"]
+        assert "products" in scenario["comparison_scopes"], scenario["id"]
+        assert scenario["fixture_refs"], scenario["id"]
+        assert all((REPO_ROOT / fixture_ref).exists() for fixture_ref in scenario["fixture_refs"])
+        if scenario["matrix_id"] == "mpi_wsclean":
+            assert scenario.get("target_environment") is True
 
 
 def test_compare_fits_product_uses_numeric_tolerances(tmp_path):

@@ -1852,6 +1852,10 @@ Verification:
 
 ### Issue 9: Pass The Full CWL-to-Prefect Equivalence Gate
 
+Status: implementation and devcontainer verification complete for the in-repo
+equivalence gate; final target-environment execution is still required before
+Issue 10 cutover.
+
 Goal: prove that the Prefect path can replace CWL for the supported merge
 feature matrix.
 
@@ -1872,6 +1876,53 @@ Done when:
   user-invisible differences with tests.
 - This is the first point where CWL-reference tests may be replaced instead of
   only supplemented.
+
+Completed in this issue:
+
+- Expanded `rapthor.execution.equivalence` so backend comparisons include final
+  product metadata, not only operation output records. The product summaries now
+  cover FITS dimensions and basic statistics, H5Parm solset/soltab/dataset axes,
+  sky-model source and patch counts, and region-file content.
+- Added an equivalence-gate scenario manifest covering every supported
+  equivalence entry from the Issue 1 merge feature matrix, including the
+  target-environment MPI/WSClean case.
+- Added tests that ensure the scenario manifest stays aligned with the supported
+  matrix and that restart comparisons accept Prefect-produced `.outputs.json`
+  records.
+- Closed the remaining supported-feature gap found during this issue:
+  bright-source peeling now runs WSClean `-restore-list` for the PB and non-PB
+  Stokes-I images, passes the bright true-sky model into `filter_skymodel.py`,
+  and preserves the existing finalizer-visible image output names.
+- Added command-builder, payload, direct-flow, and operation-run tests for
+  bright-source peeling so the `peel_bright_sources` matrix entry is represented
+  in the Python image path.
+
+Target validation still required before Issue 10:
+
+- Run the full equivalence manifest in the staging environment with real
+  external tools and data. Because the operation classes on this migration branch
+  already execute Prefect flows, the CWL reference side for this proof should be
+  produced from the preserved pre-cutover CWL baseline or saved CWL artifacts
+  before CWL production code is removed.
+- Record the staging baseline result here before starting Issue 10.
+
+Verification:
+
+- `python3 -m json.tool tests/execution/fixtures/cwl_reference_commands.json`:
+  passed.
+- `python3 -m json.tool
+  tests/execution/fixtures/equivalence_gate_scenarios.json`: passed.
+- `python3 -m compileall rapthor/execution/equivalence.py
+  rapthor/execution/flows/image.py rapthor/execution/__init__.py
+  tests/execution/test_equivalence.py tests/execution/test_image_flow.py`: passed.
+- `git diff --check`: passed.
+- `podman exec 03a672e0cfa7 python3 -m pytest
+  tests/execution/test_equivalence.py tests/execution/test_image_flow.py`: 69
+  passed, 2 skipped, 15 warnings.
+- `podman exec 03a672e0cfa7 python3 -m ruff check PLAN.md
+  rapthor/execution/equivalence.py rapthor/execution/flows/image.py
+  rapthor/execution/__init__.py tests/execution/test_equivalence.py
+  tests/execution/test_image_flow.py`: all checks passed.
 
 ### Issue 10: Cut Over The Public Execution Route To Prefect
 
