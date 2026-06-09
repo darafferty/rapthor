@@ -252,8 +252,7 @@ format_targets = [
     "rapthor/process.py",
     "rapthor/scripts/calculate_image_diagnostics.py",
     "rapthor/scripts/normalize_flux_scale.py",
-    "pyproject.toml",
-	"tests"
+    "tests"
 ]
 
 commands = [
