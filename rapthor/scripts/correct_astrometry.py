@@ -251,6 +251,6 @@ if __name__ == "__main__":
             args.output_image,
             args.overwrite,
         )
-    except ValueError as e:
-        log = logging.getLogger("rapthor:correct_astrometry")
-        log.critical(e)
+    except ValueError as err:
+        logger.critical(err)
+        sys.exit(1)
