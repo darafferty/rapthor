@@ -573,9 +573,7 @@ def check_astrometry(
         image_width = max(image.img_data.shape[-2:]) * abs(image.img_hdr["CDELT1"])
         max_search_cone_radius = 0.5  # deg; Pan-STARRS search limit
         width = min(max_search_cone_radius * 2, image_width)
-        facets = [
-            SquareFacet("field", obs.ra, obs.dec, width)
-        ]
+        facets = [SquareFacet("field", obs.ra, obs.dec, width)]
 
     # Convert the filtered catalog into a minimal sky model for use with LSMTool
     s_pybdsf = fits_to_makesourcedb(catalog, image.freq)
