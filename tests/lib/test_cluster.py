@@ -33,12 +33,12 @@ def test_get_available_memory(monkeypatch):
         (4, 1000, 3, 15, 495),
         (8, 1500, 4, 27, 729),
         (12, 4000, 6, 35, 1995),
-        (8, 0, 5, 10, 10),  # Edge case: zero samples (should return solint)
+        (8, 0, 5, 10, 10),       # Edge case: zero samples (should return solint)
         (8, 1000, 0, 10, None),  # Edge case: zero observations (raises ArithmeticError)
-        (4, 1000, 5, 0, None),  # Edge case: zero solution interval (raises ArithmeticError)
+        (4, 1000, 5, 0, None),   # Edge case: zero solution interval (raises ArithmeticError)
         (0, 1000, 5, 10, None),  # Edge case: zero nodes (raises ArithmeticError)
-    ],
-)
+    ], 
+)  # fmt: skip
 def test_get_chunk_size(max_nodes, numsamples, numobs, solint, expected_chunk_size):
     """
     Test the get_chunk_size function with various parameters to ensure it calculates

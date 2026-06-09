@@ -153,12 +153,12 @@ class TestPredict:
     @pytest.mark.parametrize(
         "mode, peel_outliers, has_outlier_sector, expected_sectors, expect_outlier_removed",
         [
-            ("dd", True, True, 1, True),  # outlier removed when peel_outliers=True
-            ("dd", True, False, 1, False),  # no outlier to remove
-            ("dd", False, True, 2, False),  # outlier kept when peel_outliers=False
+            ("dd", True,  True,  1, True),   # outlier removed when peel_outliers=True
+            ("dd", True,  False, 1, False),  # no outlier to remove
+            ("dd", False, True,  2, False),  # outlier kept when peel_outliers=False
             ("di", False, False, 1, False),  # DI: only checks ms_predict_di_filename
         ],
-    )
+    )  # fmt: skip
     def test_finalize(
         self,
         predict_field,
@@ -267,14 +267,14 @@ class TestPredict:
         "n_imaging_sectors, reweight, has_outliers, peel_outliers, has_bright, peel_bright, expect_subtracted",
         [
             (1, False, False, False, False, False, False),  # no subtraction
-            (2, False, False, False, False, False, True),  # multiple imaging sectors
-            (1, True, False, False, False, False, True),  # reweight
-            (1, False, True, True, False, False, True),  # outliers peeled
-            (1, False, True, False, False, False, False),  # outliers present but not peeled
-            (1, False, False, False, True, True, True),  # bright sources peeled
-            (1, False, False, False, True, False, False),  # bright present but not peeled
+            (2, False, False, False, False, False, True),   # multiple imaging sectors
+            (1, True,  False, False, False, False, True),   # reweight
+            (1, False, True,  True,  False, False, True),   # outliers peeled
+            (1, False, True,  False, False, False, False),  # outliers present but not peeled
+            (1, False, False, False, True,  True,  True),   # bright sources peeled
+            (1, False, False, False, True,  False, False),  # bright present but not peeled
         ],
-    )
+    )  # fmt: skip
     def test_set_imaging_filenames(
         self,
         predict_field,
