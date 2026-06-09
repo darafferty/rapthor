@@ -28,6 +28,7 @@ bda_frequencybase = 0.0
 bda_timebase = 0.0
 use_included_skymodels = True
 use_image_based_predict = True
+use_wsclean_predict = False
 dd_interval_factor = 1
 dd_smoothness_factor = 3
 llssolver = qr

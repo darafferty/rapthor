@@ -203,6 +203,9 @@ The available options are described below under their respective sections.
             of view of interest, then the use of image-based prediction is not
             recommended.
 
+    use_wsclean_predict
+        Use image-based prediction using WSClean (default = ``False``)? Usage similar to ``use_image_based_predict`` above (but mutually exclusive).
+
     llssolver
         The linear least-squares solver to use (one of ``qr``, ``svd``, or ``lsmr``;
         default = ``qr``).
