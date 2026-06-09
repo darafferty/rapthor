@@ -6,7 +6,6 @@ Script to make a ds9 region file for use with WSClean and faceting
 from argparse import ArgumentParser, RawTextHelpFormatter
 import ast
 from lsmtool.facet import make_ds9_region_file, read_skymodel
-from rapthor.lib import miscellaneous as misc
 
 
 def main(
