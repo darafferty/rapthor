@@ -325,6 +325,12 @@ class Parset:
             )
             options["solveralgorithm"] = "directioniterative"
 
+        if options["use_image_based_predict"] and options["use_wsclean_predict"]:
+            log.warning(
+                "Options use_image_based_predict and use_wsclean_predict are mutually exclusive. Turning off image_based_predict"
+            )
+            options["use_image_based_predict"] = False
+
         if options["use_image_based_predict"] and (
             options["bda_timebase"] > 0 or options["bda_frequencybase"] > 0
         ):

@@ -31,6 +31,32 @@ inputs:
     type: string
     inputBinding:
       position: 3
+  - id: reference_skymodels
+    label: Reference sky models
+    doc: |
+      Reference sky models to use for normalization instead of external survey catalogs.
+    type:
+      - "null"
+      - type: array
+        items: File
+        inputBinding:
+          position: 5
+    inputBinding:
+      prefix: --reference_skymodels
+      position: 4
+  - id: reference_skymodels_frequencies
+    label: Reference sky model frequencies
+    doc: |
+      Frequencies in Hz corresponding to the reference sky models.
+    type:
+      - "null"
+      - type: array
+        items: float
+        inputBinding:
+          position: 7
+    inputBinding:
+      prefix: --reference_skymodels_frequencies
+      position: 6
 
 outputs:
   - id: output_h5parm

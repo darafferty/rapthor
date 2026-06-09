@@ -111,6 +111,7 @@ class Field:
         self.dec = 0
         self.do_predict = False
         self.use_image_based_predict = False
+        self.use_wsclean_predict = False
         self.fulljones_h5parm_filename = parset["input_fulljones_h5parm"]
         self.h5parm_filename = parset["input_h5parm"]
         self.image_pol = "I"

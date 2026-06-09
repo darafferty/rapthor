@@ -113,6 +113,7 @@ script-files = [
     "rapthor/scripts/regrid_image.py",
     "rapthor/scripts/restore_skymodel.py",
     "rapthor/scripts/subtract_sector_models.py",
+    "rapthor/scripts/wsclean_predict.py",
 ]
 
 [tool.setuptools.package-data]
@@ -223,8 +224,12 @@ commands = [
 skip_install = true
 deps = "ruff"
 format_targets = [
+    "rapthor/lib/__init__.py",
+    "rapthor/lib/cluster.py",
     "rapthor/lib/cwl.py",
     "rapthor/lib/cwlrunner.py",
+    "rapthor/lib/operation.py",
+    "rapthor/lib/observation.py",
     "rapthor/lib/parset.py",
     "rapthor/lib/strategy.py",
     "rapthor/operations/calibrate.py",

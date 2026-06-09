@@ -609,6 +609,85 @@ class TestImageNormalize:
             142001000.0,
         ]
 
+    def test_normalization_skymodels_in_rendered_workflows(self, field, tmp_path):
+        """Test normalization sky models are wired through both image CWL workflows."""
+        skymodel_1 = tmp_path / "normalization_skymodel_1.txt"
+        skymodel_2 = tmp_path / "normalization_skymodel_2.txt"
+        skymodel_1.touch()
+        skymodel_2.touch()
+        field.normalization_skymodels = [str(skymodel_1), str(skymodel_2)]
+        field.normalization_reference_frequencies = [142000000.0, 142001000.0]
+        _prepare_field_for_normalize_image(field)
+
+        image_norm = ImageNormalize(field, index=1)
+        image_norm.setup()
+
+        with open(image_norm.pipeline_parset_file) as f:
+            workflow = yaml.safe_load(f)
+        workflow_inputs = {entry["id"] for entry in workflow["inputs"]}
+        image_sector_step = next(step for step in workflow["steps"] if step["id"] == "image_sector")
+        image_sector_inputs = {
+            entry["id"]: entry.get("source") for entry in image_sector_step["in"]
+        }
+
+        assert "normalization_skymodels" in workflow_inputs
+        assert "normalization_reference_frequencies" in workflow_inputs
+        assert image_sector_inputs["normalization_skymodels"] == "normalization_skymodels"
+        assert (
+            image_sector_inputs["normalization_reference_frequencies"]
+            == "normalization_reference_frequencies"
+        )
+
+        with open(image_norm.subpipeline_parset_file) as f:
+            sector_workflow = yaml.safe_load(f)
+        sector_inputs = {entry["id"] for entry in sector_workflow["inputs"]}
+        normalize_step = next(
+            step for step in sector_workflow["steps"] if step["id"] == "normalize_flux_scale"
+        )
+        normalize_inputs = {entry["id"]: entry.get("source") for entry in normalize_step["in"]}
+
+        assert "normalization_skymodels" in sector_inputs
+        assert "normalization_reference_frequencies" in sector_inputs
+        assert normalize_inputs["reference_skymodels"] == "normalization_skymodels"
+        assert (
+            normalize_inputs["reference_skymodels_frequencies"]
+            == "normalization_reference_frequencies"
+        )
+
+    def test_normalization_skymodels_in_normalize_flux_scale_cli(self, tmp_path):
+        """Test normalization sky models are passed to normalize_flux_scale.py."""
+        source_catalog = tmp_path / "source_catalog.fits"
+        source_catalog.touch()
+        ms_file = tmp_path / "image.ms"
+        ms_file.mkdir()
+        skymodel_1 = tmp_path / "normalization_skymodel_1.txt"
+        skymodel_2 = tmp_path / "normalization_skymodel_2.txt"
+        skymodel_1.touch()
+        skymodel_2.touch()
+
+        cwl_workflow_path = PATH_TO_OPERATION_STEPS / "normalize_flux_scale.cwl"
+        cmd = generate_command_line(
+            cwl_workflow_path,
+            {
+                "source_catalog": {"class": "File", "location": str(source_catalog)},
+                "ms_file": {"class": "Directory", "location": str(ms_file)},
+                "normalize_h5parm": "normalize.h5parm",
+                "reference_skymodels": [
+                    {"class": "File", "location": str(skymodel_1)},
+                    {"class": "File", "location": str(skymodel_2)},
+                ],
+                "reference_skymodels_frequencies": [142000000.0, 142001000.0],
+            },
+        )
+
+        assert cmd is not None
+        assert "--reference_skymodels" in cmd
+        assert "--reference_skymodels_frequencies" in cmd
+        assert any(arg.endswith("normalization_skymodel_1.txt") for arg in cmd)
+        assert any(arg.endswith("normalization_skymodel_2.txt") for arg in cmd)
+        assert "142000000.0" in cmd
+        assert "142001000.0" in cmd
+
     @pytest.mark.parametrize("allow_internet_access", [True, False])
     def test_allow_internet_access(
         self, field, allow_internet_access, monkeypatch, expected_image_output

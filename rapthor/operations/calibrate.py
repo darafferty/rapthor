@@ -56,9 +56,12 @@ class Calibrate(Operation):
                 self.field.generate_screens or self.field.use_image_based_predict
             )
 
+            self.use_wsclean_predict = self.field.use_wsclean_predict
+
             self.parset_parms.update(
                 {
                     "use_image_based_predict": self.use_image_based_predict,
+                    "use_wsclean_predict": self.use_wsclean_predict,
                     "generate_screens": self.field.generate_screens,
                     "do_slowgain_solve": self.field.do_slowgain_solve,
                 }
@@ -184,6 +187,8 @@ class Calibrate(Operation):
                 ),
                 "facet_region_width_dec": facet_region_width,
                 "facet_region_file": "field_facets_ds9.reg",
+                # Separate region file for wsclean_predict.cwl step
+                "predict_facet_region_file": "predict_field_facets_ds9.reg",
                 # Smoothness / regularisation constraints
                 **smoothness_dd_factors,
                 **smoothness_constraints,
@@ -325,7 +330,7 @@ class Calibrate(Operation):
         if (
             (bda_timebase > 0 or bda_frequencybase > 0)
             and all_regular
-            and not self.field.use_image_based_predict
+            and not (self.field.use_image_based_predict or self.field.use_wsclean_predict)
         ):
             if self.field.do_slowgain_solve:
                 common_steps = ["avg", "solve1", "solve2", "solve3", "solve4", "null"]
@@ -345,6 +350,12 @@ class Calibrate(Operation):
                 if self.field.apply_normalizations
                 else ["predict", "applybeam"]
             )
+            dp3_steps = preprocessing_steps + common_steps
+        elif self.field.use_wsclean_predict:
+            # No predict, should be a separate step (not DP3)
+            preprocessing_steps = []
+            # Averaging does not work because model data columns
+            # also need to be averaged, so remove this step
             dp3_steps = preprocessing_steps + common_steps
         else:
             dp3_steps = common_steps

@@ -60,6 +60,14 @@ inputs:
     inputBinding:
       prefix: --enclose_names=
       separate: False
+  - id: names_with_polygons
+    label: Put name on the polygon line
+    doc: |
+      Put the label on the polygon line, instead of point line
+    type: string
+    inputBinding:
+      prefix: --names_with_polygons=
+      separate: False
 
 outputs:
   - id: region_file

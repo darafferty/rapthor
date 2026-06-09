@@ -7,6 +7,7 @@ import runpy
 from pathlib import Path
 
 import astropy.units as u
+import losoto
 import numpy as np
 import pytest
 from astropy.coordinates import SkyCoord
@@ -43,11 +44,11 @@ def mock_survey_catalog(mocker, true_sky_model):
 
 
 @pytest.fixture
-def mock_survey_catalog_with_no_sources(mocker):
+def mock_survey_catalog_with_no_sources(mocker, empty_sky_model):
     """Mock lsmtool.load to return an empty survey sky model."""
     return mocker.patch(
         "rapthor.scripts.normalize_flux_scale.lsmtool.load",
-        return_value=[],
+        return_value=empty_sky_model,
     )
 
 
@@ -323,6 +324,7 @@ def test_main(
     mocker.patch("rapthor.scripts.normalize_flux_scale.fit_sed", return_value=lambda x: 1.0)
 
     output_h5parm = str(tmp_path / "test_output.h5parm")
+
     with caplog.at_level("INFO"):
         main(
             source_catalog_fits,
@@ -342,8 +344,7 @@ def test_main(
             if use_input_skymodel
             else None,
         )
-    # Check if the file is created
-    assert os.path.exists(output_h5parm), f"Expected {output_h5parm} to be created."
+
     assert "Number of sources in source catalog: 8" in caplog.text, (
         "Expected log message about number of sources before cuts."
     )
@@ -362,6 +363,180 @@ def test_main(
     )
     assert normalize_ra_dec_spy.call_count > 0, (
         "Expected normalize_ra_dec to be called at least once."
+    )
+    # An h5parm file should be created regardless of whether normalization is performed
+    assert os.path.exists(output_h5parm), f"Expected {output_h5parm} to be created."
+
+
+@pytest.mark.usefixtures("mock_survey_catalog")
+def test_main_handles_source_with_no_valid_channel_fluxes(
+    source_catalog,
+    source_coords,
+    survey_data,
+    tmp_path,
+    mocker,
+):
+    """
+    Test that a source with no finite per-channel fluxes does not crash normalization.
+    """
+    n_chan = len(
+        [colname for colname in source_catalog.columns.names if colname.startswith("Freq_ch")]
+    )
+    source_catalog_data = source_catalog.copy()
+    for ch_ind in range(1, n_chan + 1):
+        source_catalog_data[f"Total_flux_ch{ch_ind}"][0] = np.nan
+
+    output_frequencies = np.array([100e6, 200e6])
+    create_normalization_h5parm_mock = mocker.patch(
+        "rapthor.scripts.normalize_flux_scale.create_normalization_h5parm"
+    )
+    mocker.patch(
+        "rapthor.scripts.normalize_flux_scale.read_source_catalog",
+        return_value=(source_catalog_data, n_chan),
+    )
+    mocker.patch(
+        "rapthor.scripts.normalize_flux_scale.get_field_phase_center",
+        return_value=(np.deg2rad(24.422081), np.deg2rad(33.159759)),
+    )
+    mocker.patch(
+        "rapthor.scripts.normalize_flux_scale.filter_sources",
+        return_value=(source_coords, source_catalog_data),
+    )
+    mocker.patch(
+        "rapthor.scripts.normalize_flux_scale._download_survey_data",
+        side_effect=[survey_data, None],
+    )
+    mocker.patch(
+        "rapthor.scripts.normalize_flux_scale._cross_match_sources",
+        return_value=np.ones(len(source_catalog_data)),
+    )
+    mocker.patch(
+        "rapthor.scripts.normalize_flux_scale.get_output_frequencies",
+        return_value=output_frequencies,
+    )
+    mocker.patch(
+        "rapthor.scripts.normalize_flux_scale.find_normalizations",
+        return_value=np.ones(len(output_frequencies)),
+    )
+
+    main(
+        "source_catalog.fits",
+        "input.ms",
+        str(tmp_path / "test_output.h5parm"),
+        min_sources=5,
+    )
+
+    create_normalization_h5parm_mock.assert_called_once()
+
+
+def test_normalize_flux_scale_handles_source_with_no_valid_channel_fluxes(
+    test_ms,
+    source_catalog_fits,
+    tmp_path,
+    true_sky_path,
+    apparent_sky_path,
+):
+    """Run normalization when one source has no finite per-channel fluxes."""
+    with fits.open(source_catalog_fits, mode="update") as hdul:
+        source_catalog_data = hdul[1].data
+        n_chan = len(
+            [
+                colname
+                for colname in source_catalog_data.columns.names
+                if colname.startswith("Freq_ch")
+            ]
+        )
+        source_index = 4
+        for ch_ind in range(1, n_chan + 1):
+            source_catalog_data[f"Total_flux_ch{ch_ind}"][source_index] = float("nan")
+
+    output_h5parm = tmp_path / "normalize_flux_scale.h5parm"
+
+    main(
+        source_catalog_fits,
+        test_ms,
+        output_h5parm.as_posix(),
+        min_sources=5,
+        reference_skymodels=[apparent_sky_path.as_posix(), true_sky_path.as_posix()],
+        reference_skymodels_frequencies=[142000000.0, 142100000.0],
+    )
+
+    assert Path(output_h5parm).exists(), f"Expected {output_h5parm} to be created."
+
+
+@pytest.mark.parametrize("use_input_skymodel", [False, True])
+def test_main_empty_skymodels(
+    test_ms,
+    source_catalog_fits,
+    tmp_path,
+    use_input_skymodel,
+    true_sky_path,
+    apparent_sky_path,
+    caplog,
+    mocker,
+    mock_survey_catalog_with_no_sources,
+):
+    """
+    Test the main function of the normalize_flux_scale script when sky models are empty.
+    """
+    # Spy on match_coordinates_sky to ensure it is called
+    match_coordinates_sky_spy = mocker.spy(
+        rapthor.scripts.normalize_flux_scale, "match_coordinates_sky"
+    )
+    normalize_ra_dec_spy = mocker.spy(rapthor.scripts.normalize_flux_scale, "normalize_ra_dec")
+    # Mock the fit_sed function to return a function that always returns 1.0
+    mocker.patch("rapthor.scripts.normalize_flux_scale.fit_sed", return_value=lambda x: 1.0)
+
+    output_h5parm = str(tmp_path / "test_output.h5parm")
+
+    # Spy on functions that should not be called when skymodels are empty
+    get_output_frequencies_spy = mocker.spy(
+        rapthor.scripts.normalize_flux_scale, "get_output_frequencies"
+    )
+    get_source_data_spy = mocker.spy(rapthor.scripts.normalize_flux_scale, "_get_source_data")
+    find_normalization_spy = mocker.spy(rapthor.scripts.normalize_flux_scale, "find_normalizations")
+
+    with caplog.at_level("INFO"):
+        main(
+            source_catalog_fits,
+            test_ms,
+            output_h5parm,
+            radius_cut=3.0,  # in arcseconds
+            major_axis_cut=30 / 3600,  # in degrees
+            neighbor_cut=30 / 3600,  # in degrees
+            spurious_match_cut=30 / 3600,  # in degrees
+            min_sources=5,
+            weight_by_flux_err=False,  # Whether to weight by flux error
+            ignore_frequency_dependence=False,  # Whether to ignore frequency dependence,
+            reference_skymodels=[str(true_sky_path), str(apparent_sky_path)]
+            if use_input_skymodel
+            else None,
+            reference_skymodels_frequencies=[142000000.0, 142100000.0]
+            if use_input_skymodel
+            else None,
+        )
+
+    assert "Flux density scale normalization will be skipped" in caplog.text, (
+        "Expected log message about skipping flux density scale normalization due to empty skymodels."
+    )
+    assert get_source_data_spy.call_count == 0, (
+        "Expected _get_source_data to not be called when skymodels are empty."
+    )
+    assert find_normalization_spy.call_count == 0, (
+        "Expected find_normalizations to not be called when skymodels are empty."
+    )
+    assert get_output_frequencies_spy.call_count == 1, (
+        "Expected get_output_frequencies to be called once."
+    )
+
+    # An h5parm file should be created with all normalizations set to 1.0
+    assert os.path.exists(output_h5parm), f"Expected {output_h5parm} to be created."
+    with losoto.h5parm.h5parm(output_h5parm, readonly=True) as output_h5:
+        correction_factors = (
+            output_h5.getSolset("sol000").getSoltab("amplitude000").getValues(retAxesVals=False)
+        )
+    assert correction_factors == pytest.approx(1.0), (
+        "Expected all correction factors to be 1.0 when skymodels are empty."
     )
 
 
@@ -407,7 +582,7 @@ def test_main_skips_normalization_if_too_few_sources_before_cuts(
             weight_by_flux_err=False,
             ignore_frequency_dependence=False,
         )
-    assert "Too few sources. Flux normalization will be skipped." in caplog.text, (
+    assert "Too few sources. Flux density scale normalization will be skipped." in caplog.text, (
         "Expected log message about too few sources."
     )
 
@@ -431,7 +606,7 @@ def test_main_skips_normalization_if_too_few_sources_after_cuts(
             weight_by_flux_err=False,
             ignore_frequency_dependence=False,
         )
-    assert "Too few sources. Flux normalization will be skipped." in caplog.text, (
+    assert "Too few sources. Flux density scale normalization will be skipped." in caplog.text, (
         "Expected log message about too few sources after cuts."
     )
 
@@ -521,7 +696,7 @@ def test_main_logs_warning_when_too_few_sources_with_valid_fits(
             ignore_frequency_dependence=False,
         )
     assert (
-        "Too few sources with successful SED fits. Flux normalization will be skipped."
+        "Too few sources with successful SED fits. Flux density scale normalization will be skipped."
         in caplog.text
     ), "Expected log message about too few sources with valid SED fits."
 
@@ -911,6 +1086,23 @@ def test_get_source_data(source_catalog):
     assert rapthor_fluxes.shape[0] == n_chan
     assert rapthor_errors.shape[0] == n_chan
     assert rapthor_frequencies.shape[0] == n_chan
+
+
+def test_get_source_data_handles_source_with_no_valid_channel_fluxes(source_catalog):
+    """Test that a source with no finite per-channel fluxes returns empty arrays."""
+    n_chan = 3
+    i = 0
+    source_catalog_data = source_catalog.copy()
+    for ch_ind in range(1, n_chan + 1):
+        source_catalog_data[f"Total_flux_ch{ch_ind}"][i] = np.nan
+
+    rapthor_fluxes, rapthor_errors, rapthor_frequencies = _get_source_data(
+        source_catalog_data, n_chan, i
+    )
+
+    assert rapthor_fluxes.shape[0] == 0
+    assert rapthor_errors.shape[0] == 0
+    assert rapthor_frequencies.shape[0] == 0
 
 
 def test_normalize_flux_scale_cli_entrypoint(
