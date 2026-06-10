@@ -120,6 +120,10 @@ Most of the migration implementation is already in place.
 - Added an opt-in saved-CWL regression integration test at
   `tests/integration/test_saved_cwl_equivalence.py`. It validates saved CWL
   artifacts, runs the current Prefect candidate, and compares normalized outputs.
+- Added an opt-in live CWL-vs-Prefect integration test at
+  `tests/integration/test_live_cwl_equivalence.py` that reuses the existing DI
+  fast-phase integration fixture, runs a legacy checkout and the current Prefect
+  flow, and compares their working-directory outputs.
 - Added `scripts/capture_cwl_reference_artifacts.py` to populate saved CWL
   artifacts by running scenarios through a separate pre-cutover checkout.
 - Modernized integration command-log helpers so assertions do not depend on Toil
@@ -205,16 +209,18 @@ than a CWL runtime dependency.
 
 1. Create a clean pre-cutover checkout that still runs the legacy CWL route and
    set `RAPTHOR_LEGACY_CWL_REPO` to that path.
-2. Populate saved CWL references with real input data:
+2. Run the live side-by-side smoke check using an existing integration scenario:
+   `RAPTHOR_RUN_LIVE_CWL_EQUIVALENCE=1 RAPTHOR_LEGACY_CWL_REPO=/path/to/pre-cutover python3 -m pytest tests/integration/test_live_cwl_equivalence.py -q --tb=short`.
+3. Populate saved CWL references with real input data:
    `RAPTHOR_CWL_REFERENCE_ROOT=/path/to/references RAPTHOR_EQUIVALENCE_INPUT_MS=/path/to/input.ms RAPTHOR_EQUIVALENCE_INPUT_SKYMODEL=/path/to/true.txt RAPTHOR_EQUIVALENCE_APPARENT_SKYMODEL=/path/to/apparent.txt RAPTHOR_EQUIVALENCE_STRATEGY=/path/to/strategy.py python3 scripts/capture_cwl_reference_artifacts.py`.
    Use `--scenario <id>` for a subset and add manifest `parset_overrides` where a
    scenario needs a specific strategy or feature toggle.
-3. Run the saved-reference regression:
+4. Run the saved-reference regression:
    `RAPTHOR_RUN_SAVED_CWL_EQUIVALENCE=1 RAPTHOR_CWL_REFERENCE_ROOT=/path/to/references python3 -m pytest tests/integration/test_saved_cwl_equivalence.py -q --tb=short`.
-4. Run the Slurm hook inside a real Slurm allocation:
+5. Run the Slurm hook inside a real Slurm allocation:
    `RAPTHOR_RUN_SLURM_INTEGRATION=1 python3 -m pytest tests/integration/test_slurm_execution.py`.
-5. If equivalence passes, switch `rapthor.process.run()` to `process_flow()`.
-6. Remove CWL production code and dependencies, then update docs, packaging, and
+6. If equivalence passes, switch `rapthor.process.run()` to `process_flow()`.
+7. Remove CWL production code and dependencies, then update docs, packaging, and
    CI.
 
 ## Suggested Verification Commands
