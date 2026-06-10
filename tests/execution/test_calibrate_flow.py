@@ -1794,6 +1794,22 @@ def test_calibrate_chunk_task_runs_with_mocked_shell(tmp_path, fake_calibrate_sh
     assert fake_calibrate_shell_operation_cls.instances[0].kwargs["working_dir"] == str(tmp_path)
 
 
+def test_run_plot_solutions_returns_only_new_plots(tmp_path, fake_calibrate_shell_operation_cls):
+    h5parm = tmp_path / "solutions.h5parm"
+    h5parm.write_text("h5parm")
+    (tmp_path / "phase_solutions.png").write_text("existing")
+
+    plots = calibrate_module._run_plot_solutions(
+        file_record(h5parm),
+        "phase",
+        str(tmp_path),
+        ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_calibrate_shell_operation_cls,
+    )
+
+    assert plots == []
+
+
 def test_run_calibrate_flow_supports_di_fulljones(tmp_path, fake_calibrate_shell_operation_cls):
     payload = calibrate_payload_from_inputs("di", _di_fulljones_input_parms(), tmp_path)
 
@@ -1914,7 +1930,7 @@ def test_run_calibrate_flow_supports_di_slow(tmp_path, fake_calibrate_shell_oper
     expected_solution = file_record(tmp_path / "slow_gains_di.h5parm")
     assert outputs == {
         "combined_solutions": expected_solution,
-        "slow_gain_solutions": expected_solution,
+        "fast_phase_solutions": expected_solution,
         "slow_phase_plots": [file_record(tmp_path / "slow_phase_solutions.png")],
     }
     commands = _command_tokens(fake_calibrate_shell_operation_cls)
@@ -2024,7 +2040,7 @@ def test_run_calibrate_flow_supports_dd_slow(tmp_path, fake_calibrate_shell_oper
     expected_solution = file_record(tmp_path / "slow_gains.h5parm")
     assert outputs == {
         "combined_solutions": expected_solution,
-        "slow_gain_solutions": expected_solution,
+        "fast_phase_solutions": expected_solution,
         "slow_phase_plots": [file_record(tmp_path / "slow_phase_solutions.png")],
     }
     for value in outputs.values():

@@ -501,8 +501,7 @@ def _di_solve_type(input_parms: Mapping[str, object], slot: int) -> str:
     if output_name.startswith("fast_phase_di_") and solve_mode == "scalarphase":
         return "fast_phase"
     if (
-        output_name.startswith("medium1_phase_di_")
-        or output_name.startswith("medium2_phase_di_")
+        output_name.startswith("medium1_phase_di_") or output_name.startswith("medium2_phase_di_")
     ) and solve_mode == "scalarphase":
         return "medium_phase"
     if output_name.startswith("slow_gains_di_") and solve_mode in {"scalarphase", "diagonal"}:
@@ -628,8 +627,7 @@ def _supported_calibration_kind(mode: str, input_parms: Mapping[str, object]) ->
     solve4_mode = str(input_parms.get("solve4_mode"))
     if mode == "di":
         solve_types = [
-            _di_solve_type(input_parms, int(step.removeprefix("solve")))
-            for step in active_solves
+            _di_solve_type(input_parms, int(step.removeprefix("solve"))) for step in active_solves
         ]
         if solve_types == ["full_jones"]:
             return "di_fulljones"
@@ -1424,8 +1422,6 @@ def _collect_and_plot_fulljones(
     )
     after_plots = set(glob.glob(os.path.join(pipeline_working_dir, "*.png")))
     plot_records = [file_record(path) for path in sorted(after_plots - before_plots)]
-    if not plot_records:
-        plot_records = [file_record(path) for path in sorted(after_plots)]
 
     result = {
         "combined_solutions": collected_record,
@@ -1496,7 +1492,7 @@ def _collect_process_and_plot_slow_gain(
 
     result = {
         "combined_solutions": slow_record,
-        "slow_gain_solutions": slow_record,
+        "fast_phase_solutions": slow_record,
         "slow_phase_plots": slow_phase_plots,
     }
     for value in result.values():
@@ -1530,7 +1526,7 @@ def _collect_and_plot_di_slow(
 
     result = {
         "combined_solutions": slow_record,
-        "slow_gain_solutions": slow_record,
+        "fast_phase_solutions": slow_record,
         "slow_phase_plots": slow_phase_plots,
     }
     for value in result.values():
@@ -1615,10 +1611,7 @@ def _run_plot_solutions(
         shell_operation_cls=shell_operation_cls,
     )
     after_plots = set(glob.glob(os.path.join(pipeline_working_dir, "*.png")))
-    plot_records = [file_record(path) for path in sorted(after_plots - before_plots)]
-    if not plot_records:
-        plot_records = [file_record(path) for path in sorted(after_plots)]
-    return plot_records
+    return [file_record(path) for path in sorted(after_plots - before_plots)]
 
 
 def _run_combine_h5parms(

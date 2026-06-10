@@ -1,6 +1,6 @@
 # Rapthor CWL-to-Prefect Equivalence Report
 
-Generated: 2026-06-09
+Generated: 2026-06-10
 
 ## Executive Summary
 
@@ -11,11 +11,12 @@ products, reports, and finalizer-visible field state as the CWL reference for
 the supported scenario matrix.
 
 Current status: the equivalence harness and opt-in integration gates are in
-place. A first saved CWL reference has been captured for
-`di_only_calibration` and the current Prefect candidate matches it. Full
-production equivalence is not yet recorded because the remaining
-target-environment CWL reference scenarios still need to be captured or supplied
-as saved artifacts.
+place. Six local saved CWL references have been captured from legacy commit
+`4cfd2abe2fe815724e3f1c390d789eea249becef`; four of the newly checked
+scenarios pass strict saved-reference comparison, one shows FITS summary drift,
+and one shows a report-only rounded diagnostics difference. Full production
+equivalence is not yet recorded because the rest of the scenario matrix still
+needs references and target-environment execution.
 
 ## Scope Of Equivalence
 
@@ -178,31 +179,48 @@ Result: 24 passed, 5 skipped, 1 warning. The live and saved-reference tests
 skip by default unless their required environment variables and artifacts are
 supplied.
 
-Saved-reference verification in the development container on 2026-06-10:
+Saved-reference verification in the development container on 2026-06-10 used
+real CWL artifacts under `.pytest_cache/cwl-reference-artifacts`:
 
 ```bash
 RAPTHOR_RUN_SAVED_CWL_EQUIVALENCE=1 \
-RAPTHOR_CWL_REFERENCE_ROOT=/app/.pytest_cache/cwl-reference-di-fast-phase \
-RAPTHOR_EQUIVALENCE_SCENARIOS=di_only_calibration \
+RAPTHOR_CWL_REFERENCE_ROOT=/app/.pytest_cache/cwl-reference-artifacts \
+RAPTHOR_EQUIVALENCE_SCENARIOS=<scenario-id> \
 RAPTHOR_EQUIVALENCE_INPUT_MS=/app/tests/resources/test.ms \
 RAPTHOR_EQUIVALENCE_INPUT_SKYMODEL=/app/tests/resources/integration_true_sky.txt \
 RAPTHOR_EQUIVALENCE_APPARENT_SKYMODEL=/app/tests/resources/integration_apparent_sky.txt \
-RAPTHOR_EQUIVALENCE_STRATEGY=/app/.pytest_cache/equivalence-inputs/di_fast_phase_strategy.py \
+RAPTHOR_EQUIVALENCE_STRATEGY=/app/.pytest_cache/equivalence-inputs/<strategy>.py \
 python3 -m pytest tests/integration/test_saved_cwl_equivalence.py -q --tb=short
 ```
 
-Result: 1 passed, 3 warnings.
-
 Reference details:
 
-- legacy checkout: `4cfd2abe2fe815724e3f1c390d789eea249becef`
-- scenario: `di_only_calibration`
-- reference artifact root: `.pytest_cache/cwl-reference-di-fast-phase`
-- artifact directory:
-  `.pytest_cache/cwl-reference-di-fast-phase/di_only_calibration`
-- reference size: approximately 387 MB
-- generated operation order: `predict_di_1`, `calibrate_di_1`, `predict_1`,
-  `image_1`, `mosaic_1`
+- legacy checkout: `.pytest_cache/legacy-cwl-4cfd2abe`
+- legacy commit: `4cfd2abe2fe815724e3f1c390d789eea249becef`
+- reference artifact root: `.pytest_cache/cwl-reference-artifacts`
+- reference size after these captures: approximately 2.3 GB
+
+Strict saved-reference results:
+
+| Scenario | CWL reference | Prefect comparison | Notes |
+| --- | --- | --- | --- |
+| `di_only_calibration` | captured | pass | Existing DI fast-phase reference |
+| `dd_only_calibration` | captured | pass | Exposed and fixed diagnostic plot-output bookkeeping |
+| `di_then_dd_calibration` | captured | fail | Operation order matched; FITS summary stats differed by small but non-tolerated amounts, and diagnostics text reflected the noise difference |
+| `dd_then_di_calibration` | captured | pass | Reverse DI/DD handoff matched |
+| `di_full_jones_calibration` | captured | fail | Products matched; strict comparison failed only on rounded diagnostics text (`483363.5` vs `483363.6`) |
+| `dd_slow_gain_calibration` | captured | pass | Exposed and fixed slow-only legacy output aliasing |
+
+Captured operation orders:
+
+| Scenario | Operation order |
+| --- | --- |
+| `di_only_calibration` | `predict_di_1`, `calibrate_di_1`, `predict_1`, `image_1`, `mosaic_1` |
+| `dd_only_calibration` | `calibrate_1`, `predict_1`, `image_1`, `mosaic_1` |
+| `di_then_dd_calibration` | `predict_di_1`, `calibrate_di_1`, `calibrate_1`, `predict_1`, `image_1`, `mosaic_1` |
+| `dd_then_di_calibration` | `calibrate_1`, `predict_di_1`, `calibrate_di_1`, `predict_1`, `image_1`, `mosaic_1` |
+| `di_full_jones_calibration` | `predict_di_1`, `calibrate_di_1`, `predict_1`, `image_1`, `mosaic_1` |
+| `dd_slow_gain_calibration` | `calibrate_1`, `predict_1`, `image_1`, `mosaic_1` |
 
 ## Production Equivalence Criteria
 
@@ -228,12 +246,17 @@ following are true:
 - Numeric product comparison is summary-based for broad backend equivalence.
   Targeted FITS and h5parm numeric tolerance helpers are available for deeper
   product comparisons where required.
+- Scenario-specific strategies are currently generated under
+  `.pytest_cache/equivalence-inputs`; they should be promoted to stable fixtures
+  or encoded as manifest overrides before the full saved-reference suite is run
+  in one command.
 - The report documents the equivalence method and current evidence; it is not a
   substitute for recording a passing target-environment equivalence run.
 
 ## Recommended Next Action
 
-Run the live side-by-side smoke gate first. If it passes, capture saved CWL
-references scenario by scenario, then run the full saved-reference regression.
-Record the legacy checkout SHA, current Prefect checkout SHA, input data paths,
-strategy paths, environment, and pytest output alongside the saved artifacts.
+Resolve the two non-green captured scenarios next: investigate the FITS summary
+drift in `di_then_dd_calibration`, and decide whether `logs/diagnostics.txt`
+should be compared with numeric tolerances or excluded unless a scenario requests
+report comparison. Then promote the generated strategy inputs into stable
+fixtures or manifest overrides and continue capturing the remaining scenarios.
