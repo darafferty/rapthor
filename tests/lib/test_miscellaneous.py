@@ -7,7 +7,6 @@ from rapthor.lib.miscellaneous import *
 from astropy.wcs import WCS
 
 
-
 @pytest.mark.parametrize("image_name", (None,))
 @pytest.mark.parametrize("reference_ra_deg", (None,))
 @pytest.mark.parametrize("reference_dec_deg", (None,))

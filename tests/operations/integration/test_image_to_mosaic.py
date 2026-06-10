@@ -57,7 +57,7 @@ def field_I_no_predict(field):
     field.update(steps[0], index=1, final=False)
     # The field update will set the predict flag to True, override it here
     field.do_predict = False
-    field.image_pol = 'I'
+    field.image_pol = "I"
     field.skip_final_major_iteration = True
     return field
 
@@ -73,13 +73,15 @@ def test_image_I_to_mosaic(field_I_no_predict, expected_image_output, monkeypatc
     image_outputs = _mock_image_flow_outputs(
         Path(image.pipeline_working_dir), expected_image_output
     )
-    monkeypatch.setattr("rapthor.operations.image.image_flow", lambda *args, **kwargs: image_outputs)
+    monkeypatch.setattr(
+        "rapthor.operations.image.image_flow", lambda *args, **kwargs: image_outputs
+    )
     image.run()
     # Now create and run the Mosaic operation (after sector image attributes are set)
     monkeypatch.setattr(
         "rapthor.lib.cwlrunner.BaseCWLRunner.execute",
         lambda self, args, env: mocked_cwl_execution(self, args, env),
-        raising=False
+        raising=False,
     )
 
     mosaic = Mosaic(field=image.field, index=1)

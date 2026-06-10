@@ -13,16 +13,16 @@ def test_get_available_memory(monkeypatch):
     """
     # Mock the subprocess.getoutput to return a fixed string
     monkeypatch.setattr(
-        "subprocess.getoutput", lambda _:
-        "               total        used        free      shared  buff/cache   available\n"
-        "Mem:              15           9           3           2           5           6\n"
-        "Swap:             19           3          16\n"
-        "Total:            35          12          20\n",
+        "subprocess.getoutput",
+        lambda _: (
+            "               total        used        free      shared  buff/cache   available\n"
+            "Mem:              15           9           3           2           5           6\n"
+            "Swap:             19           3          16\n"
+            "Total:            35          12          20\n"
+        ),
     )
     available_memory = get_available_memory()
-    assert available_memory == 6, (
-        f"Expected 6 GB of available memory, got {available_memory} GB"
-    )
+    assert available_memory == 6, f"Expected 6 GB of available memory, got {available_memory} GB"
 
 
 @pytest.mark.parametrize(
@@ -32,9 +32,9 @@ def test_get_available_memory(monkeypatch):
         (4, 1000, 3, 15, 495),
         (8, 1500, 4, 27, 729),
         (12, 4000, 6, 35, 1995),
-        (8, 0, 5, 10, 10),       # Edge case: zero samples (should return solint)
+        (8, 0, 5, 10, 10),  # Edge case: zero samples (should return solint)
         (8, 1000, 0, 10, None),  # Edge case: zero observations (raises ArithmeticError)
-        (4, 1000, 5, 0, None),   # Edge case: zero solution interval (raises ArithmeticError)
+        (4, 1000, 5, 0, None),  # Edge case: zero solution interval (raises ArithmeticError)
         (0, 1000, 5, 10, None),  # Edge case: zero nodes (raises ArithmeticError)
     ],
 )

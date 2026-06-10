@@ -143,9 +143,8 @@ def first_command_arguments(
         executable=executable,
         contains=contains,
     )
-    assert records, (
-        f"Expected command {executable!r} for operation {operation!r}"
-        + ("" if contains is None else f" containing {contains!r}")
+    assert records, f"Expected command {executable!r} for operation {operation!r}" + (
+        "" if contains is None else f" containing {contains!r}"
     )
     return records[0].arguments
 
@@ -198,6 +197,5 @@ def parse_command_arguments(command):
     """Parse key-value arguments from a command token list or shell string."""
     tokens = normalize_command(command)
     return {
-        key: value
-        for key, _, value in (token.partition("=") for token in tokens if "=" in token)
+        key: value for key, _, value in (token.partition("=") for token in tokens if "=" in token)
     }

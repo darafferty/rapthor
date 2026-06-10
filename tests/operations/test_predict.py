@@ -1,6 +1,7 @@
 """
 Test cases for the `rapthor.operations.predict` module.
 """
+
 from pathlib import Path
 import pytest
 import rapthor
@@ -48,7 +49,10 @@ class TestPredict:
         assert predict.mode == mode
         assert predict.name == f"{expected_name}_{index}"
 
-    def test_init_raises_on_invalid_mode(self, predict_field,):
+    def test_init_raises_on_invalid_mode(
+        self,
+        predict_field,
+    ):
         with pytest.raises(ValueError, match="Only di and dd mode are supported"):
             Predict(mode="invalid", field=predict_field, index=1)
 
@@ -171,10 +175,10 @@ class TestPredict:
     @pytest.mark.parametrize(
         "mode, peel_outliers, has_outlier_sector, expected_sectors, expect_outlier_removed",
         [
-            ("dd", True, True, 1, True),    # outlier removed when peel_outliers=True
+            ("dd", True, True, 1, True),  # outlier removed when peel_outliers=True
             ("dd", True, False, 1, False),  # no outlier to remove
             ("dd", False, True, 2, False),  # outlier kept when peel_outliers=False
-            ("di", False, False, 1, False), # DI: only checks ms_predict_di_filename
+            ("di", False, False, 1, False),  # DI: only checks ms_predict_di_filename
         ],
     )
     def test_finalize(
@@ -228,13 +232,13 @@ class TestPredict:
         assert Path(predict.done_file).exists()
 
     @pytest.mark.parametrize(
-    "mode, with_params",
-    [
-        ("dd", True),
-        ("dd", False),
-        ("di", False),
-    ],
-)
+        "mode, with_params",
+        [
+            ("dd", True),
+            ("dd", False),
+            ("di", False),
+        ],
+    )
     def test_collect_obs_parameters(
         self,
         predict_field,
@@ -265,8 +269,13 @@ class TestPredict:
 
         if mode == "dd":
             if with_params:
-                expected_sec = [observation.parameters["solint_fast_timestep"][0] * observation.timepersample]
-                expected_hz = [observation.parameters["solint_slow_freqstep_separate"][0] * observation.channelwidth]
+                expected_sec = [
+                    observation.parameters["solint_fast_timestep"][0] * observation.timepersample
+                ]
+                expected_hz = [
+                    observation.parameters["solint_slow_freqstep_separate"][0]
+                    * observation.channelwidth
+                ]
             else:
                 expected_sec = [0]
                 expected_hz = [0]
@@ -280,12 +289,12 @@ class TestPredict:
         "n_imaging_sectors, reweight, has_outliers, peel_outliers, has_bright, peel_bright, expect_subtracted",
         [
             (1, False, False, False, False, False, False),  # no subtraction
-            (2, False, False, False, False, False, True),   # multiple imaging sectors
-            (1, True,  False, False, False, False, True),   # reweight
-            (1, False, True,  True,  False, False, True),   # outliers peeled
-            (1, False, True,  False, False, False, False),  # outliers present but not peeled
-            (1, False, False, False, True,  True,  True),   # bright sources peeled
-            (1, False, False, False, True,  False, False),  # bright present but not peeled
+            (2, False, False, False, False, False, True),  # multiple imaging sectors
+            (1, True, False, False, False, False, True),  # reweight
+            (1, False, True, True, False, False, True),  # outliers peeled
+            (1, False, True, False, False, False, False),  # outliers present but not peeled
+            (1, False, False, False, True, True, True),  # bright sources peeled
+            (1, False, False, False, True, False, False),  # bright present but not peeled
         ],
     )
     def test_set_imaging_filenames(
@@ -326,9 +335,7 @@ class TestPredict:
                 assert obs.ms_imaging_filename == obs.ms_filename
 
     @pytest.mark.parametrize("n_sectors", [1, 2])
-    def test_collect_sector_parameters(
-        self, predict_field, sector, n_sectors
-    ):
+    def test_collect_sector_parameters(self, predict_field, sector, n_sectors):
         sector.patches = ["[patch1]"]
         sector.predict_skymodel_file = "skymodel.ms"
         predict_field.observations = sector.observations

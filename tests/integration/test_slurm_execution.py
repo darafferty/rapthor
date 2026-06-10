@@ -29,4 +29,6 @@ def test_slurm_external_dask_environment_is_usable():
     spec = slurm_cluster_spec(config, environ=os.environ)
 
     assert spec.node_count >= 1
-    assert check_dask_scheduler(config.resolved_dask_scheduler(), timeout="30s") >= spec.worker_count
+    assert (
+        check_dask_scheduler(config.resolved_dask_scheduler(), timeout="30s") >= spec.worker_count
+    )

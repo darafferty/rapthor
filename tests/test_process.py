@@ -15,7 +15,6 @@ from rapthor.process import (
 )
 
 
-
 def test_run_uses_legacy_process_lifecycle(monkeypatch):
     calls = []
     created_fields = []
