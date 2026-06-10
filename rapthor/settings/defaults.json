@@ -132,6 +132,11 @@
         "use_container": false,
         "container_type": "docker",
         "cwl_runner": "toil",
+        "prefect_task_runner": null,
+        "dask_scheduler": null,
+        "prefect_stream_output": true,
+        "prefect_retries": 0,
+        "prefect_log_commands": true,
         "debug_workflow": false,
         "keep_temporary_files": false,
         "allow_internet_access": true

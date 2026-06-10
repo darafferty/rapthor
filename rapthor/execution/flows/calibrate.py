@@ -6,6 +6,7 @@ from typing import Mapping, Optional
 
 from prefect import flow, task
 
+from rapthor.execution.artifacts import publish_plot_file_records
 from rapthor.execution.commands import normalize_command
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.runtime import run_flow_with_task_runner
@@ -241,6 +242,8 @@ def build_ddecal_solve_command(
 ) -> list[str]:
     """Build the DP3 DDECal solve command for one calibration chunk."""
     command = ["DP3", *DDECAL_SOLVE_ARGUMENTS]
+    if "null" in _parse_steps(steps):
+        command.append("null.type=null")
     common_options = [
         ("msin", msin),
         ("msin.datacolumn", data_colname),
@@ -1422,6 +1425,7 @@ def _collect_and_plot_fulljones(
     )
     after_plots = set(glob.glob(os.path.join(pipeline_working_dir, "*.png")))
     plot_records = [file_record(path) for path in sorted(after_plots - before_plots)]
+    publish_plot_file_records(plot_records, pipeline_working_dir)
 
     result = {
         "combined_solutions": collected_record,
@@ -1611,7 +1615,9 @@ def _run_plot_solutions(
         shell_operation_cls=shell_operation_cls,
     )
     after_plots = set(glob.glob(os.path.join(pipeline_working_dir, "*.png")))
-    return [file_record(path) for path in sorted(after_plots - before_plots)]
+    plot_records = [file_record(path) for path in sorted(after_plots - before_plots)]
+    publish_plot_file_records(plot_records, pipeline_working_dir)
+    return plot_records
 
 
 def _run_combine_h5parms(

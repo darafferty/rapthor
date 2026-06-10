@@ -423,6 +423,15 @@ container_type = docker
 # and toil (default)
 cwl_runner = toil
 
+# Prefect task runner to use for the Python execution path. Supported values
+# are local_dask, external_dask, and sync. If unset, Rapthor uses external_dask
+# when a Dask scheduler is configured and local_dask otherwise.
+prefect_task_runner = None
+dask_scheduler = None
+prefect_stream_output = True
+prefect_retries = 0
+prefect_log_commands = True
+
 # Debug workflow related issues (default = False). Enabling this option
 # implies that temporary files, produced during the workflow run, will be kept
 # (i.e. the option keep_temporary_files is implicitly set to True). This will

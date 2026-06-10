@@ -294,6 +294,15 @@ container_type = docker
 # CWL runner to use. Currently supported runners are: cwltool and toil (default)
 cwl_runner = toil
 
+# Prefect task runner to use for the Python execution path. Supported values
+# are local_dask, external_dask, and sync. If unset, Rapthor uses external_dask
+# when a Dask scheduler is configured and local_dask otherwise.
+prefect_task_runner = None
+dask_scheduler = None
+prefect_stream_output = True
+prefect_retries = 0
+prefect_log_commands = True
+
 # Debug workflow related issues. Enabling this will require significantly more
 # disk space. Additionally, when Toil is the CWL runner, some tasks will run on
 # a single thread to make debugging easier. The working directory will never be

@@ -1,0 +1,78 @@
+# Demo parset for manually running the new Prefect process flow.
+#
+# Run from the repository root so the relative input paths resolve:
+#
+#   scripts/dev/run-rapthor-prefect-demo.py examples/prefect_demo.parset
+#
+# The tiny Measurement Set at tests/resources/test.ms is part of the local test
+# fixture bundle used in the development container. Replace input_ms with a real
+# Measurement Set path if that fixture is not present in your checkout.
+
+[global]
+dir_working = prefect-demo-work-1
+input_ms = tests/resources/test.ms
+data_colname = DATA
+generate_initial_skymodel = False
+download_initial_skymodel = False
+download_overwrite_skymodel = True
+input_skymodel = tests/resources/integration_true_sky.txt
+apparent_skymodel = tests/resources/integration_apparent_sky.txt
+regroup_input_skymodel = True
+strategy = examples/prefect_demo_strategy.py
+selfcal_data_fraction = 1.0
+final_data_fraction = 1.0
+input_h5parm = None
+input_fulljones_h5parm = None
+facet_layout = None
+dde_mode = faceting
+
+[calibration]
+fast_freqstep_hz = 1e6
+slow_freqstep_hz = 1e6
+fast_smoothnessconstraint = 6.0e6
+slow_smoothnessconstraint = 4.0e6
+propagatesolutions = True
+maxiter = 50
+stepsize = 0.2
+tolerance = 0.001
+
+[imaging]
+grid_width_ra_deg = 1.0
+grid_width_dec_deg = 1.0
+grid_center_ra = 1h37m41.299s
+grid_center_dec = +33d09m35.132s
+grid_nsectors_ra = 1
+idg_mode = cpu
+reweight = True
+average_visibilities = False
+save_image_cube = False
+image_cube_stokes_list = [I]
+make_quv_images = False
+disable_iquv_clean = False
+photometry_skymodel =
+astrometry_skymodel =
+shared_facet_rw = False
+normalization_skymodels =
+normalization_reference_frequencies =
+
+[cluster]
+batch_system = single_machine
+max_nodes = 1
+cpus_per_task = 4
+mem_per_node_gb = 0
+max_cores = 4
+max_threads = 4
+deconvolution_threads = 2
+parallel_gridding_threads = 1
+local_scratch_dir =
+global_scratch_dir =
+use_container = False
+container_type = docker
+cwl_runner = toil
+prefect_task_runner = local_dask
+prefect_stream_output = True
+prefect_retries = 0
+prefect_log_commands = True
+debug_workflow = False
+keep_temporary_files = False
+allow_internet_access = False

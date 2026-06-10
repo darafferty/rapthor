@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 from prefect.testing.utilities import prefect_test_harness
 
+import rapthor.execution.flows.image as image_module
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.image import (
     ATERM_CONFIG_FILENAME,
@@ -1577,8 +1578,20 @@ def test_image_payload_from_inputs_requires_filtered_model_filename(tmp_path):
 
 
 def test_run_image_flow_executes_no_dde_commands_and_returns_records(
-    tmp_path, fake_image_shell_operation_cls
+    tmp_path, monkeypatch, fake_image_shell_operation_cls
 ):
+    published = []
+
+    def fake_publish_plot_file_records(records, root_dir):
+        published.append(([Path(record["path"]).name for record in records], root_dir))
+        return []
+
+    monkeypatch.setattr(
+        image_module,
+        "publish_plot_file_records",
+        fake_publish_plot_file_records,
+    )
+
     outputs = run_image_flow(
         image_payload_from_inputs(_image_input_parms(), tmp_path),
         execution_config=ExecutionConfig(task_runner="sync"),
@@ -1607,6 +1620,11 @@ def test_run_image_flow_executes_no_dde_commands_and_returns_records(
     assert outputs["sector_diagnostics"] == [
         file_record(tmp_path / "sector_1.image_diagnostics.json")
     ]
+    assert (
+        ["sector_1.image_diagnostics.json"],
+        str(tmp_path),
+    ) in published
+    assert (["sector_1.photometry.pdf"], str(tmp_path)) in published
     validate_output_record(outputs["sector_I_images"])
     command_names = [
         shlex.split(instance.kwargs["commands"][0])[0]

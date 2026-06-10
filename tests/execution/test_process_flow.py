@@ -972,6 +972,47 @@ def test_run_process_lifecycle_runs_initial_selfcal_and_repeated_final_cycles():
     assert field.events[-1]["operation"] == "report"
 
 
+def test_run_process_publishes_plot_artifacts_after_operations_and_report(monkeypatch):
+    parset = _process_parset(input_h5parm="input-solutions.h5")
+    lifecycle = RecordingProcessLifecycle(
+        parset=parset,
+        strategy_steps=[_image_step()],
+    )
+
+    def fake_publish_plot_artifacts(field, publish_index=True):
+        field.events.append(
+            {
+                "operation": "publish_plot_artifacts",
+                "publish_index": publish_index,
+            }
+        )
+        return []
+
+    monkeypatch.setattr(
+        "rapthor.execution.flows.process.publish_plot_artifacts_for_field",
+        fake_publish_plot_artifacts,
+    )
+
+    field = run_process(
+        "input.parset",
+        operation_factories=RECORDING_FACTORIES,
+        lifecycle_hooks=lifecycle.hooks(),
+    )
+
+    assert [
+        (event["operation"], event.get("publish_index"))
+        for event in field.events
+        if event["operation"] in {"image", "mosaic", "report", "publish_plot_artifacts"}
+    ] == [
+        ("image", None),
+        ("publish_plot_artifacts", False),
+        ("mosaic", None),
+        ("publish_plot_artifacts", False),
+        ("report", None),
+        ("publish_plot_artifacts", True),
+    ]
+
+
 def test_legacy_and_prefect_process_match_final_only_image_lifecycle(monkeypatch):
     parset = _process_parset(input_h5parm="input-solutions.h5", input_skymodel="input.sky")
     strategy_steps = [_image_step()]

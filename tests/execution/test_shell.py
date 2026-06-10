@@ -1,4 +1,6 @@
 import json
+import logging
+import sys
 
 import pytest
 
@@ -60,6 +62,63 @@ def test_run_shell_command_uses_injected_operation_class():
 
     assert result == "OK"
     assert FakeShellOperation.instances[0].kwargs["commands"] == ["echo hello"]
+
+
+def test_run_shell_command_streams_clean_output_to_logger(tmp_path, caplog):
+    caplog.set_level(logging.INFO, logger="rapthor:shell")
+
+    result = run_shell_command(
+        ShellCommand(
+            [sys.executable, "-c", "print('clean line')"],
+            working_directory=str(tmp_path),
+        ),
+        ExecutionConfig(stream_output=True),
+    )
+
+    assert result == ["clean line"]
+    assert "clean line" in caplog.text
+    assert "PID" not in caplog.text
+    assert "stream output" not in caplog.text
+
+
+def test_run_shell_command_batches_nearby_output_lines(tmp_path, caplog):
+    caplog.set_level(logging.INFO, logger="rapthor:shell")
+
+    result = run_shell_command(
+        ShellCommand(
+            [sys.executable, "-c", "print('first'); print('second'); print('third')"],
+            working_directory=str(tmp_path),
+        ),
+        ExecutionConfig(stream_output=True),
+    )
+
+    messages = [record.getMessage() for record in caplog.records if record.name == "rapthor:shell"]
+    assert result == ["first", "second", "third"]
+    assert len(messages) == 1
+    assert "first\nsecond\nthird" in messages[0]
+    assert "first" not in messages
+    assert "second" not in messages
+    assert "third" not in messages
+
+
+def test_run_shell_command_streaming_raises_on_failure(tmp_path, caplog):
+    caplog.set_level(logging.INFO, logger="rapthor:shell")
+
+    with pytest.raises(RuntimeError, match="return code 7"):
+        run_shell_command(
+            ShellCommand(
+                [
+                    sys.executable,
+                    "-c",
+                    "import sys; print('failure line', file=sys.stderr); sys.exit(7)",
+                ],
+                working_directory=str(tmp_path),
+            ),
+            ExecutionConfig(stream_output=True),
+        )
+
+    assert "failure line" in caplog.text
+    assert "PID" not in caplog.text
 
 
 def test_write_command_log_record_appends_backend_neutral_jsonl(tmp_path):

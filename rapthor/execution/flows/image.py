@@ -7,6 +7,7 @@ from typing import Mapping, Optional
 
 from prefect import flow, task
 
+from rapthor.execution.artifacts import publish_plot_file_records
 from rapthor.execution.commands import normalize_command
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.runtime import run_flow_with_task_runner
@@ -1759,6 +1760,8 @@ def run_image_sector(
     diagnostic_plots = _file_records_for_patterns(
         [os.path.join(pipeline_working_dir, f"{image_name}*.pdf")]
     )
+    publish_plot_file_records([diagnostics], pipeline_working_dir)
+    publish_plot_file_records(diagnostic_plots, pipeline_working_dir)
 
     output_sector_images = sector_images
     output_extra_images = extra_images

@@ -2,6 +2,8 @@
 
 # Project specific
 rapthor/_version.py
+prefect-demo-work*/
+runs/
 test/resources/
 tests/resources/test.ms
 tests/test.ms_di.ms

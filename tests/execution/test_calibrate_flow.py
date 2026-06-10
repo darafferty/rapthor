@@ -998,6 +998,28 @@ def test_calibrate_command_builders_match_reference_fixtures():
         )
         == commands["calibrate"]["ddecal_dd_fast_medium"]
     )
+
+    bda_command = normalized_ddecal_solve_command(
+        msin="dd_obs_0.ms",
+        data_colname="DATA",
+        starttime="50000.0",
+        ntimes=10,
+        steps="[avg,solve1,solve2,null]",
+        solve_slots=_dd_fast_medium_solve_slots(),
+        numthreads=4,
+        timebase=20000.0,
+        maxinterval=8.0,
+        frequencybase=20000.0,
+        minchannels=1,
+        onebeamperpatch=True,
+        parallelbaselines=False,
+        sagecalpredict=False,
+        sourcedb="calibration.skymodel",
+        directions=["patch1", "patch2"],
+    )
+    assert "steps=[avg,solve1,solve2,null]" in bda_command
+    assert "null.type=null" in bda_command
+
     assert (
         normalized_ddecal_solve_command(
             msin="dd_obs_0.ms",
@@ -1807,6 +1829,31 @@ def test_run_plot_solutions_returns_only_new_plots(tmp_path, fake_calibrate_shel
     )
 
     assert plots == []
+
+
+def test_run_plot_solutions_publishes_new_plot_artifacts(
+    tmp_path, monkeypatch, fake_calibrate_shell_operation_cls
+):
+    h5parm = tmp_path / "solutions.h5parm"
+    h5parm.write_text("h5parm")
+    published = []
+
+    def fake_publish(records, root_dir):
+        published.append((records, root_dir))
+        return []
+
+    monkeypatch.setattr(calibrate_module, "publish_plot_file_records", fake_publish)
+
+    plots = calibrate_module._run_plot_solutions(
+        file_record(h5parm),
+        "phase",
+        str(tmp_path),
+        ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_calibrate_shell_operation_cls,
+    )
+
+    assert plots == [file_record(tmp_path / "phase_solutions.png")]
+    assert published == [(plots, str(tmp_path))]
 
 
 def test_run_calibrate_flow_supports_di_fulljones(tmp_path, fake_calibrate_shell_operation_cls):

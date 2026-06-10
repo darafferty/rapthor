@@ -44,6 +44,45 @@ operations that Rapthor performs and their relation to one another, and see
 :ref:`operations` for details of each operation and their primary data products.
 
 
+Manual Prefect flow demo
+------------------------
+
+During the Prefect/Dask migration, the public ``rapthor`` command remains on
+the legacy baseline while the new top-level flow is available through
+``rapthor.execution.flows.process.process_flow``. To manually run that path and
+watch it in the Prefect dashboard, use the local demo helper:
+
+.. code-block:: console
+
+    $ scripts/dev/run-rapthor-prefect-demo.py examples/prefect_demo.parset
+
+The helper starts a temporary Prefect server when one is not already available,
+prints the dashboard URL, materializes relative parset paths to absolute paths,
+runs the parset through the Prefect process flow, and leaves the temporary
+server running when the run finishes so previous runs remain visible in the
+dashboard. Use ``--no-keep-server`` for a one-shot run that stops its temporary
+server before exiting. The demo parset uses the small local test Measurement
+Set and ``examples/prefect_demo_strategy.py``. To attach to an existing server
+instead:
+
+.. code-block:: console
+
+    $ PREFECT_API_URL=http://127.0.0.1:4200/api \
+      scripts/dev/run-rapthor-prefect-demo.py --no-start-server /path/to/rapthor.parset
+
+Use ``--task-runner local_dask``, ``--task-runner sync``, or
+``--task-runner external_dask`` to override the parset for a demo run. The demo
+parset streams external command output to Prefect task logs by default without
+the repeated Prefect Shell ``PID ... stream output`` prefixes. Pass
+``--no-stream-output`` or set ``prefect_stream_output = False`` to suppress
+external command output in the dashboard. Plot files are also published as
+Prefect artifacts as plotting tasks and operation finalizers create them, so
+calibration PNGs and image diagnostic PDFs can be inspected from the dashboard
+during the run. Image diagnostic JSON files are rendered as Markdown artifacts
+with formatted JSON content. At the end of the process flow, Rapthor publishes
+an index artifact for everything found under ``dir_working/plots``.
+
+
 Running with Slurm and external Dask
 ------------------------------------
 
