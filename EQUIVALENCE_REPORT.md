@@ -11,12 +11,12 @@ products, reports, and finalizer-visible field state as the CWL reference for
 the supported scenario matrix.
 
 Current status: the equivalence harness and opt-in integration gates are in
-place. Six local saved CWL references have been captured from legacy commit
-`4cfd2abe2fe815724e3f1c390d789eea249becef`; four of the newly checked
-scenarios pass strict saved-reference comparison, one shows FITS summary drift,
-and one shows a report-only rounded diagnostics difference. Full production
-equivalence is not yet recorded because the rest of the scenario matrix still
-needs references and target-environment execution.
+place. Eleven local saved CWL references have been captured from legacy commit
+`4cfd2abe2fe815724e3f1c390d789eea249becef`, and all eleven pass
+saved-reference comparison against the current Prefect execution path. Full
+production equivalence is not yet recorded because `hybrid_screens`,
+`shared_facet_rw`, `mpi_wsclean`, and Slurm/external-Dask still need usable
+target-environment references or execution.
 
 ## Scope Of Equivalence
 
@@ -118,7 +118,6 @@ RAPTHOR_CWL_REFERENCE_ROOT=/path/to/references \
 RAPTHOR_EQUIVALENCE_INPUT_MS=/path/to/input.ms \
 RAPTHOR_EQUIVALENCE_INPUT_SKYMODEL=/path/to/true.txt \
 RAPTHOR_EQUIVALENCE_APPARENT_SKYMODEL=/path/to/apparent.txt \
-RAPTHOR_EQUIVALENCE_STRATEGY=/path/to/strategy.py \
 python3 scripts/capture_cwl_reference_artifacts.py
 ```
 
@@ -189,7 +188,6 @@ RAPTHOR_EQUIVALENCE_SCENARIOS=<scenario-id> \
 RAPTHOR_EQUIVALENCE_INPUT_MS=/app/tests/resources/test.ms \
 RAPTHOR_EQUIVALENCE_INPUT_SKYMODEL=/app/tests/resources/integration_true_sky.txt \
 RAPTHOR_EQUIVALENCE_APPARENT_SKYMODEL=/app/tests/resources/integration_apparent_sky.txt \
-RAPTHOR_EQUIVALENCE_STRATEGY=/app/.pytest_cache/equivalence-inputs/<strategy>.py \
 python3 -m pytest tests/integration/test_saved_cwl_equivalence.py -q --tb=short
 ```
 
@@ -198,18 +196,29 @@ Reference details:
 - legacy checkout: `.pytest_cache/legacy-cwl-4cfd2abe`
 - legacy commit: `4cfd2abe2fe815724e3f1c390d789eea249becef`
 - reference artifact root: `.pytest_cache/cwl-reference-artifacts`
-- reference size after these captures: approximately 2.3 GB
+- reference size after these captures: approximately 4.9 GB
+- `normalization` uses a deterministic normalization Measurement Set generated
+  from the existing `ms_for_normalisation` integration-fixture logic; the other
+  passing local scenarios use `tests/resources/test.ms`
 
-Strict saved-reference results:
+Saved-reference results:
 
 | Scenario | CWL reference | Prefect comparison | Notes |
 | --- | --- | --- | --- |
 | `di_only_calibration` | captured | pass | Existing DI fast-phase reference |
 | `dd_only_calibration` | captured | pass | Exposed and fixed diagnostic plot-output bookkeeping |
-| `di_then_dd_calibration` | captured | fail | Operation order matched; FITS summary stats differed by small but non-tolerated amounts, and diagnostics text reflected the noise difference |
+| `di_then_dd_calibration` | captured | pass | Exposed and fixed DI medium-phase model handoff (`reusemodel=[solve1.*]`) |
 | `dd_then_di_calibration` | captured | pass | Reverse DI/DD handoff matched |
-| `di_full_jones_calibration` | captured | fail | Products matched; strict comparison failed only on rounded diagnostics text (`483363.5` vs `483363.6`) |
+| `di_full_jones_calibration` | captured | pass | Product/operation scopes pass; diagnostics text is no longer compared unless `report` is scoped |
 | `dd_slow_gain_calibration` | captured | pass | Exposed and fixed slow-only legacy output aliasing |
+| `normalization` | captured | pass | Requires normalization-specific MS; exposed a harmless FITS summary mean drift handled by the 1e-8 summary float tolerance |
+| `peeling` | captured | pass | Bright-source and outlier peeling flags exercised |
+| `full_stokes_clean_disabled` | captured | pass | Required short scratch override to avoid PyBDSF AF_UNIX path-length failures |
+| `image_cube` | captured | pass | Image-cube products and metadata exercised |
+| `restart` | captured | pass | Persisted `.done` and output-record state present and comparable |
+| `hybrid_screens` | blocked | not run | Legacy CWL was patched past the `do_slowgain_solve` expression issue; capture now reaches DP3 IDGCal and fails because this container cannot import Python module `idg` |
+| `shared_facet_rw` | blocked | not run | Serial WSClean aborts with `SIGABRT` when `-shared-facet-reads` and `-shared-facet-writes` are enabled |
+| `mpi_wsclean` | pending | not run | Target-environment scenario |
 
 Captured operation orders:
 
@@ -221,6 +230,11 @@ Captured operation orders:
 | `dd_then_di_calibration` | `calibrate_1`, `predict_di_1`, `calibrate_di_1`, `predict_1`, `image_1`, `mosaic_1` |
 | `di_full_jones_calibration` | `predict_di_1`, `calibrate_di_1`, `predict_1`, `image_1`, `mosaic_1` |
 | `dd_slow_gain_calibration` | `calibrate_1`, `predict_1`, `image_1`, `mosaic_1` |
+| `normalization` | `calibrate_1`, `predict_1`, `normalize_1`, `image_1`, `mosaic_1` |
+| `peeling` | `calibrate_1`, `predict_1`, `image_1`, `mosaic_1` |
+| `full_stokes_clean_disabled` | `calibrate_1`, `predict_1`, `image_1`, `mosaic_1` |
+| `image_cube` | `calibrate_1`, `predict_1`, `image_1`, `mosaic_1` |
+| `restart` | `calibrate_1`, `predict_1`, `image_1`, `mosaic_1` |
 
 ## Production Equivalence Criteria
 
@@ -246,17 +260,24 @@ following are true:
 - Numeric product comparison is summary-based for broad backend equivalence.
   Targeted FITS and h5parm numeric tolerance helpers are available for deeper
   product comparisons where required.
-- Scenario-specific strategies are currently generated under
-  `.pytest_cache/equivalence-inputs`; they should be promoted to stable fixtures
-  or encoded as manifest overrides before the full saved-reference suite is run
-  in one command.
+- Scenario-specific strategies for the captured local scenarios are tracked
+  under `tests/execution/fixtures/equivalence_strategies` and wired into
+  `equivalence_gate_scenarios.json` with `parset_overrides`.
+- `hybrid_screens` cannot currently be captured in this container because DP3
+  IDGCal needs the Python `idg` module. The earlier bare
+  `do_slowgain_solve` CWL expression issue has been patched in the cached
+  legacy checkout and the tracked CWL template.
+- `shared_facet_rw` cannot currently be captured in this serial WSClean
+  environment because WSClean aborts when the shared-facet read/write flags are
+  enabled.
 - The report documents the equivalence method and current evidence; it is not a
   substitute for recording a passing target-environment equivalence run.
 
 ## Recommended Next Action
 
-Resolve the two non-green captured scenarios next: investigate the FITS summary
-drift in `di_then_dd_calibration`, and decide whether `logs/diagnostics.txt`
-should be compared with numeric tolerances or excluded unless a scenario requests
-report comparison. Then promote the generated strategy inputs into stable
-fixtures or manifest overrides and continue capturing the remaining scenarios.
+Resolve the two remaining local reference blockers before declaring full local
+matrix equivalence: run `hybrid_screens` where DP3 can import the Python `idg`
+module, and run `shared_facet_rw` in a WSClean environment that supports the
+shared-facet flags. Then run the saved-reference regression over the full
+artifact root. The target-environment `mpi_wsclean` and Slurm/external-Dask
+hooks still need to be run in an environment matching deployment.

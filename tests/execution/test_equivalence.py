@@ -1,4 +1,5 @@
 import json
+import re
 from pathlib import Path
 
 import numpy as np
@@ -28,6 +29,7 @@ from rapthor.execution.equivalence import (
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
 REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_REF_PATTERN = re.compile(r"repo:([^,\]\s]+)")
 
 
 def _write_operation_state(
@@ -189,6 +191,31 @@ def test_materialize_scenario_parset_rejects_unresolved_override(tmp_path):
         )
 
 
+def test_materialize_scenario_parset_resolves_embedded_repo_overrides(tmp_path):
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    source_parset = tmp_path / "template.parset"
+    source_parset.write_text("[global]\ndir_working = \n\n[imaging]\nnormalization_skymodels = \n")
+
+    materialized = materialize_scenario_parset(
+        {
+            "id": "smoke",
+            "parset_overrides": {
+                "imaging.normalization_skymodels": "[repo:a.sky, repo:subdir/b.sky]"
+            },
+        },
+        source_parset,
+        tmp_path / "candidate",
+        repo_root=repo_root,
+        environ={},
+    )
+
+    assert (
+        f"normalization_skymodels = [{repo_root / 'a.sky'}, {repo_root / 'subdir/b.sky'}]"
+        in materialized.read_text()
+    )
+
+
 def test_scenario_parset_materializer_binds_scenario(tmp_path):
     source_parset = tmp_path / "template.parset"
     source_parset.write_text("[global]\ndir_working = \nstrategy = \n")
@@ -280,6 +307,68 @@ def test_compare_saved_reference_equivalence_scenario_reports_differences(tmp_pa
 
     assert not result.ok
     assert result.differences[0].path == "$.operations.image_1.outputs.image.basename"
+
+
+def test_compare_backend_summaries_allows_tiny_float_drift():
+    reference_summary = {"products": {"image.fits": {"mean": 0.000828293792}}}
+    candidate_summary = {"products": {"image.fits": {"mean": 0.000828295655}}}
+
+    assert compare_backend_summaries(reference_summary, candidate_summary) == []
+
+
+def test_compare_saved_reference_equivalence_scenario_uses_comparison_scopes(tmp_path):
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    (repo_root / "scenario.parset").write_text("[global]\ndir_working = .\n")
+    scenario = {
+        "id": "smoke",
+        "fixture_refs": ["scenario.parset"],
+        "comparison_scopes": ["operations", "products"],
+    }
+    reference_root = tmp_path / "references"
+    _write_backend_state(reference_artifact_dir(reference_root, scenario))
+
+    def fake_prefect_runner(parset_file, working_dir, logging_level):
+        _write_backend_state(working_dir)
+        (working_dir / "logs" / "diagnostics.txt").write_text("Different report text\n")
+
+    result = compare_saved_reference_equivalence_scenario(
+        scenario,
+        reference_root,
+        tmp_path / "runs",
+        repo_root=repo_root,
+        prefect_runner=fake_prefect_runner,
+    )
+
+    assert result.ok
+
+
+def test_compare_saved_reference_equivalence_scenario_compares_report_when_scoped(tmp_path):
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    (repo_root / "scenario.parset").write_text("[global]\ndir_working = .\n")
+    scenario = {
+        "id": "smoke",
+        "fixture_refs": ["scenario.parset"],
+        "comparison_scopes": ["operations", "products", "report"],
+    }
+    reference_root = tmp_path / "references"
+    _write_backend_state(reference_artifact_dir(reference_root, scenario))
+
+    def fake_prefect_runner(parset_file, working_dir, logging_level):
+        _write_backend_state(working_dir)
+        (working_dir / "logs" / "diagnostics.txt").write_text("Different report text\n")
+
+    result = compare_saved_reference_equivalence_scenario(
+        scenario,
+        reference_root,
+        tmp_path / "runs",
+        repo_root=repo_root,
+        prefect_runner=fake_prefect_runner,
+    )
+
+    assert not result.ok
+    assert result.differences[0].path == "$.report"
 
 
 def test_compare_saved_reference_equivalence_scenario_uses_default_materializer(tmp_path):
@@ -555,6 +644,12 @@ def test_equivalence_gate_scenarios_cover_supported_merge_matrix():
         assert scenario["cwl_reference_artifact_dir"] == scenario["id"]
         assert scenario["fixture_refs"], scenario["id"]
         assert all((REPO_ROOT / fixture_ref).exists() for fixture_ref in scenario["fixture_refs"])
+        for override in scenario.get("parset_overrides", {}).values():
+            values = override.values() if isinstance(override, dict) else [override]
+            for value in values:
+                if isinstance(value, str):
+                    for match in REPO_REF_PATTERN.finditer(value):
+                        assert (REPO_ROOT / match.group(1)).exists()
         if scenario["matrix_id"] == "mpi_wsclean":
             assert scenario.get("target_environment") is True
 

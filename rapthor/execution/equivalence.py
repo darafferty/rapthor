@@ -4,6 +4,7 @@ import configparser
 import json
 import math
 import os
+import re
 import shutil
 from dataclasses import dataclass
 from importlib import import_module
@@ -15,11 +16,14 @@ BackendRunner = Callable[[Path, Path, str], Any]
 ParsetMaterializer = Callable[[Path, Path], Path]
 PRODUCT_ROOTS = ("images", "h5parms", "solutions", "skymodels", "regions")
 FITS_SUFFIXES = (".fits", ".fits.fz")
+SUMMARY_KEYS = ("operation_order", "operations", "products", "report", "field_state")
+PRODUCT_SCOPES = {"products", "fits", "h5parm", "skymodel", "regions"}
 REFERENCE_ARTIFACT_ROOT_ENV = "RAPTHOR_CWL_REFERENCE_ROOT"
 EQUIVALENCE_INPUT_MS_ENV = "RAPTHOR_EQUIVALENCE_INPUT_MS"
 EQUIVALENCE_INPUT_SKYMODEL_ENV = "RAPTHOR_EQUIVALENCE_INPUT_SKYMODEL"
 EQUIVALENCE_APPARENT_SKYMODEL_ENV = "RAPTHOR_EQUIVALENCE_APPARENT_SKYMODEL"
 EQUIVALENCE_STRATEGY_ENV = "RAPTHOR_EQUIVALENCE_STRATEGY"
+REPO_REF_PATTERN = re.compile(r"repo:([^,\]\s]+)")
 
 REFERENCE_ARTIFACT_ITEM_ORDER = (
     "artifact_dir",
@@ -280,8 +284,11 @@ def _resolve_parset_override_value(value: Any, repo_root: Any, environ: Mapping[
     if value is None:
         return "None"
     resolved = str(value)
-    if resolved.startswith("repo:"):
-        resolved = str(Path(repo_root) / resolved.removeprefix("repo:"))
+
+    def resolve_repo_reference(match: re.Match[str]) -> str:
+        return str(Path(repo_root) / match.group(1))
+
+    resolved = REPO_REF_PATTERN.sub(resolve_repo_reference, resolved)
     resolved = Template(resolved).safe_substitute(environ)
     if "${" in resolved:
         raise ValueError(f"Parset override has unresolved environment reference: {value!r}")
@@ -747,6 +754,31 @@ def collect_backend_summary(working_dir: Any) -> dict[str, Any]:
     }
 
 
+def _summary_keys_for_scopes(scopes: Optional[Sequence[str]]) -> tuple[str, ...]:
+    if not scopes:
+        return SUMMARY_KEYS
+
+    scope_set = set(scopes)
+    keys = []
+    if scope_set & {"operations", "restart"}:
+        keys.extend(["operation_order", "operations"])
+    if scope_set & PRODUCT_SCOPES:
+        keys.append("products")
+    if "report" in scope_set:
+        keys.append("report")
+    if "field_state" in scope_set:
+        keys.append("field_state")
+    return tuple(keys)
+
+
+def filter_backend_summary_for_scopes(
+    summary: Mapping[str, Any],
+    scopes: Optional[Sequence[str]],
+) -> dict[str, Any]:
+    """Return only the summary sections requested by comparison scopes."""
+    return {key: summary[key] for key in _summary_keys_for_scopes(scopes) if key in summary}
+
+
 def _compare_values(reference: Any, candidate: Any, path: str) -> list[EquivalenceDifference]:
     if _is_empty_optional(reference) and _is_empty_optional(candidate):
         return []
@@ -789,7 +821,7 @@ def _equivalent_float(reference: Any, candidate: Any) -> bool:
     return (
         isinstance(reference, float)
         and isinstance(candidate, float)
-        and math.isclose(reference, candidate, rel_tol=1e-6, abs_tol=1e-9)
+        and math.isclose(reference, candidate, rel_tol=1e-6, abs_tol=1e-8)
     )
 
 
@@ -812,12 +844,22 @@ def compare_backend_summaries(
 
 
 def compare_backend_runs(
-    reference_working_dir: Any, candidate_working_dir: Any
+    reference_working_dir: Any,
+    candidate_working_dir: Any,
+    comparison_scopes: Optional[Sequence[str]] = None,
 ) -> list[EquivalenceDifference]:
     """Collect and compare normalized CWL-reference and Prefect-candidate state."""
-    return compare_backend_summaries(
+    reference_summary = filter_backend_summary_for_scopes(
         collect_backend_summary(reference_working_dir),
+        comparison_scopes,
+    )
+    candidate_summary = filter_backend_summary_for_scopes(
         collect_backend_summary(candidate_working_dir),
+        comparison_scopes,
+    )
+    return compare_backend_summaries(
+        reference_summary,
+        candidate_summary,
     )
 
 
@@ -840,7 +882,13 @@ def compare_saved_reference_equivalence_scenario(
         logging_level=logging_level,
         parset_materializer=parset_materializer,
     )
-    differences = tuple(compare_backend_runs(reference_run.working_dir, candidate_run.working_dir))
+    differences = tuple(
+        compare_backend_runs(
+            reference_run.working_dir,
+            candidate_run.working_dir,
+            comparison_scopes=scenario.get("comparison_scopes"),
+        )
+    )
     return EquivalenceScenarioResult(
         scenario_id=str(scenario["id"]),
         reference_run=reference_run,

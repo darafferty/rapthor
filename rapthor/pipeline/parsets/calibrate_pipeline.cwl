@@ -957,7 +957,7 @@ steps:
       - id: do_slowgain_solve
         source: do_slowgain_solve
     scatter: [msin, starttime, ntimes, h5parm, solint]
-    when: $(!do_slowgain_solve)
+    when: $(!inputs.do_slowgain_solve)
     scatterMethod: dotproduct
     out:
       - id: output_h5parm
@@ -997,7 +997,7 @@ steps:
         source: max_threads
     scatter: [msin, starttime, ntimes, h5parm, solint_fast, solint_slow]
     scatterMethod: dotproduct
-    when: $(do_slowgain_solve)
+    when: $(inputs.do_slowgain_solve)
     out:
       - id: output_h5parm
 

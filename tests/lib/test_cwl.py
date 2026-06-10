@@ -150,6 +150,31 @@ def test_calibrate_workflow(
     generate_and_validate(tmp_path, operation, parms, templ)
 
 
+@pytest.mark.parametrize("do_slowgain_solve", (False, True))
+def test_calibrate_workflow_uses_inputs_slowgain_in_when_clauses(
+    tmp_path,
+    do_slowgain_solve,
+):
+    templ = env_parset.get_template("calibrate_pipeline.cwl")
+    parset_path = create_parsets(
+        tmp_path / "pipelines" / "calibrate",
+        {
+            "use_image_based_predict": True,
+            "do_slowgain_solve": do_slowgain_solve,
+            "generate_screens": True,
+            "max_cores": None,
+        },
+        templ,
+        sub_template=None,
+    )
+    text = parset_path.read_text()
+
+    assert "when: $(!do_slowgain_solve)" not in text
+    assert "when: $(do_slowgain_solve)" not in text
+    assert "when: $(!inputs.do_slowgain_solve)" in text
+    assert "when: $(inputs.do_slowgain_solve)" in text
+
+
 @pytest.mark.parametrize("max_cores", (None, 8))
 def test_calibrate_di_workflow(
     tmp_path,

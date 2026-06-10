@@ -987,7 +987,7 @@ def calibrate_payload_from_inputs(
             }:
                 if image_based_predict:
                     reusemodel = "[predict.*]"
-                elif uses_modeldatacolumn:
+                elif uses_modeldatacolumn and calibration_kind not in {"di_scalar_phase"}:
                     slot_modeldatacolumns = modeldatacolumn
                 else:
                     reusemodel = "[solve1.*]"
