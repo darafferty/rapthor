@@ -258,9 +258,8 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         nodejs \
         python3 \
         wget \
-        zlib1g \
-        && \
-    rm -rf /var/lib/apt/lists/*
+        zlib1g
+RUN rm -rf /var/lib/apt/lists/*
 
 # Try to run the compiled tools and binaries that Rapthor needs, to make
 # sure the software runs without problems (e.g. no missing libraries).
