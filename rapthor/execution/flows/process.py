@@ -13,6 +13,7 @@ from rapthor.execution.artifacts import (
 from rapthor.execution.capabilities import preflight_execution
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.runtime import run_flow_with_task_runner
+from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
 
 log = logging.getLogger("rapthor")
 
@@ -469,12 +470,13 @@ def _process_steps_flow(
     execution_config: Optional[ExecutionConfig] = None,
 ):
     """Prefect implementation for top-level process-step orchestration."""
-    return run_process_steps(
-        field,
-        steps,
-        final=final,
-        operation_factories=operation_factories,
-    )
+    with publish_python_logs_to_prefect():
+        return run_process_steps(
+            field,
+            steps,
+            final=final,
+            operation_factories=operation_factories,
+        )
 
 
 def process_steps_flow(
@@ -504,13 +506,14 @@ def _process_flow(
     execution_config: Optional[ExecutionConfig] = None,
 ):
     """Prefect implementation for top-level process orchestration."""
-    return run_process(
-        parset_file,
-        logging_level=logging_level,
-        operation_factories=operation_factories,
-        lifecycle_hooks=lifecycle_hooks,
-        execution_config=execution_config,
-    )
+    with publish_python_logs_to_prefect(logging_level):
+        return run_process(
+            parset_file,
+            logging_level=logging_level,
+            operation_factories=operation_factories,
+            lifecycle_hooks=lifecycle_hooks,
+            execution_config=execution_config,
+        )
 
 
 def process_flow(

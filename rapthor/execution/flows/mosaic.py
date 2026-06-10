@@ -5,12 +5,13 @@ from typing import Mapping, Optional
 
 from prefect import flow, task
 
-from rapthor.execution.commands import normalize_command
 from rapthor.execution.artifacts import publish_fits_image_artifacts
+from rapthor.execution.commands import normalize_command
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.runtime import run_flow_with_task_runner
 from rapthor.execution.outputs import file_record, validate_output_record
 from rapthor.execution.payloads import assert_serializable_payload
+from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
 from rapthor.execution.shell import ShellCommand, run_shell_command
 
 
@@ -314,12 +315,13 @@ def mosaic_image_type_task(
     execution_config: Optional[ExecutionConfig] = None,
 ) -> dict:
     """Prefect task wrapper for one image type."""
-    return run_mosaic_image_type(
-        image_type,
-        compress_images,
-        pipeline_working_dir,
-        execution_config=execution_config,
-    )
+    with publish_python_logs_to_prefect():
+        return run_mosaic_image_type(
+            image_type,
+            compress_images,
+            pipeline_working_dir,
+            execution_config=execution_config,
+        )
 
 
 def _result_from_mosaic_records(outputs: list[dict]) -> dict:
@@ -383,7 +385,8 @@ def _mosaic_flow(
     execution_config: Optional[ExecutionConfig] = None,
 ):
     """Prefect implementation for Mosaic."""
-    return _run_mosaic_prefect_tasks(payload, execution_config=execution_config)
+    with publish_python_logs_to_prefect():
+        return _run_mosaic_prefect_tasks(payload, execution_config=execution_config)
 
 
 def mosaic_flow(

@@ -12,6 +12,7 @@ from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.runtime import run_flow_with_task_runner
 from rapthor.execution.outputs import file_record, validate_output_record
 from rapthor.execution.payloads import assert_serializable_payload
+from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
 from rapthor.execution.shell import ShellCommand, run_shell_command
 
 DDECAL_SOLVE_ARGUMENTS = [
@@ -1369,12 +1370,13 @@ def calibrate_chunk_task(
     shell_operation_cls=None,
 ) -> dict:
     """Prefect task wrapper for one calibration chunk."""
-    return run_calibrate_chunk(
-        payload,
-        chunk,
-        execution_config=execution_config,
-        shell_operation_cls=shell_operation_cls,
-    )
+    with publish_python_logs_to_prefect():
+        return run_calibrate_chunk(
+            payload,
+            chunk,
+            execution_config=execution_config,
+            shell_operation_cls=shell_operation_cls,
+        )
 
 
 @task(name="calibrate_screen_chunk")
@@ -1385,12 +1387,13 @@ def calibrate_screen_chunk_task(
     shell_operation_cls=None,
 ) -> dict:
     """Prefect task wrapper for one screen-generation chunk."""
-    return run_calibrate_screen_chunk(
-        payload,
-        chunk,
-        execution_config=execution_config,
-        shell_operation_cls=shell_operation_cls,
-    )
+    with publish_python_logs_to_prefect():
+        return run_calibrate_screen_chunk(
+            payload,
+            chunk,
+            execution_config=execution_config,
+            shell_operation_cls=shell_operation_cls,
+        )
 
 
 def _collect_and_plot_fulljones(
@@ -2070,10 +2073,11 @@ def _calibrate_flow(
     execution_config: Optional[ExecutionConfig] = None,
 ):
     """Prefect implementation for Calibrate."""
-    return _run_calibrate_prefect_tasks(
-        payload,
-        execution_config=execution_config,
-    )
+    with publish_python_logs_to_prefect():
+        return _run_calibrate_prefect_tasks(
+            payload,
+            execution_config=execution_config,
+        )
 
 
 def calibrate_flow(

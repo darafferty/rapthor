@@ -75,7 +75,8 @@ Use ``--task-runner local_dask``, ``--task-runner sync``, or
 parset streams external command output to Prefect task logs by default without
 the repeated Prefect Shell ``PID ... stream output`` prefixes. Pass
 ``--no-stream-output`` or set ``prefect_stream_output = False`` to suppress
-external command output in the dashboard. Plot files are also published as
+external command output in the dashboard. Rapthor's Python logging is also
+forwarded to the active Prefect flow or task run. Plot files are also published as
 Prefect artifacts as plotting tasks and operation finalizers create them, so
 calibration PNGs and image diagnostic PDFs can be inspected from the dashboard
 during the run. Image diagnostic JSON files are rendered as Markdown artifacts

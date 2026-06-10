@@ -11,6 +11,7 @@ from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.runtime import run_flow_with_task_runner
 from rapthor.execution.outputs import directory_record, validate_output_record
 from rapthor.execution.payloads import assert_serializable_payload
+from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
 from rapthor.execution.shell import ShellCommand, run_shell_command
 
 
@@ -452,12 +453,13 @@ def predict_model_data_task(
     shell_operation_cls=None,
 ) -> dict:
     """Prefect task wrapper for one DP3 prediction."""
-    return run_predict_model_data(
-        predict_task,
-        pipeline_working_dir,
-        execution_config=execution_config,
-        shell_operation_cls=shell_operation_cls,
-    )
+    with publish_python_logs_to_prefect():
+        return run_predict_model_data(
+            predict_task,
+            pipeline_working_dir,
+            execution_config=execution_config,
+            shell_operation_cls=shell_operation_cls,
+        )
 
 
 @task(name="predict_postprocess")
@@ -470,14 +472,15 @@ def predict_postprocess_task(
     shell_operation_cls=None,
 ) -> list[dict]:
     """Prefect task wrapper for DI add or DD subtract post-processing."""
-    return run_predict_postprocess(
-        mode,
-        postprocess_task,
-        model_outputs,
-        pipeline_working_dir,
-        execution_config=execution_config,
-        shell_operation_cls=shell_operation_cls,
-    )
+    with publish_python_logs_to_prefect():
+        return run_predict_postprocess(
+            mode,
+            postprocess_task,
+            model_outputs,
+            pipeline_working_dir,
+            execution_config=execution_config,
+            shell_operation_cls=shell_operation_cls,
+        )
 
 
 def _result_from_postprocess_records(mode: str, outputs: list[list[dict]]) -> dict:
@@ -558,7 +561,8 @@ def _predict_flow(
     execution_config: Optional[ExecutionConfig] = None,
 ):
     """Prefect implementation for Predict."""
-    return _run_predict_prefect_tasks(payload, execution_config=execution_config)
+    with publish_python_logs_to_prefect():
+        return _run_predict_prefect_tasks(payload, execution_config=execution_config)
 
 
 def predict_flow(

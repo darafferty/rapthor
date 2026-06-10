@@ -13,6 +13,7 @@ from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.runtime import run_flow_with_task_runner
 from rapthor.execution.outputs import directory_record, file_record, validate_output_record
 from rapthor.execution.payloads import assert_serializable_payload
+from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
 from rapthor.execution.resources import (
     ResourceRequest,
     thread_environment,
@@ -1833,12 +1834,13 @@ def image_sector_task(
     shell_operation_cls=None,
 ) -> dict:
     """Prefect task wrapper for one imaging sector."""
-    return run_image_sector(
-        sector,
-        pipeline_working_dir,
-        execution_config=execution_config,
-        shell_operation_cls=shell_operation_cls,
-    )
+    with publish_python_logs_to_prefect():
+        return run_image_sector(
+            sector,
+            pipeline_working_dir,
+            execution_config=execution_config,
+            shell_operation_cls=shell_operation_cls,
+        )
 
 
 def _result_from_sector_records(sector_outputs: list[dict]) -> dict:
@@ -1953,7 +1955,8 @@ def _image_flow(
     execution_config: Optional[ExecutionConfig] = None,
 ):
     """Prefect implementation for imaging."""
-    return _run_image_prefect_tasks(payload, execution_config=execution_config)
+    with publish_python_logs_to_prefect():
+        return _run_image_prefect_tasks(payload, execution_config=execution_config)
 
 
 def image_flow(
