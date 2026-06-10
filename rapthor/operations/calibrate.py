@@ -98,6 +98,7 @@ class Calibrate(Operation):
         self.parset_parms = {
             "rapthor_pipeline_dir": self.rapthor_pipeline_dir,
             "max_cores": max_cores,
+            "mode": self.mode,
         }
 
         # Add DD-specific parameters only when needed

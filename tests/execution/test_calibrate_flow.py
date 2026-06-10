@@ -2511,11 +2511,13 @@ def test_run_calibrate_flow_supports_dd_with_slow(tmp_path, fake_calibrate_shell
     ]
 
 
+@pytest.mark.parametrize("solution_combine_mode", ["p1p2a2_scalar", "p1p2a2_diagonal"])
 def test_run_calibrate_flow_supports_dd_with_slow_without_medium2(
-    tmp_path, fake_calibrate_shell_operation_cls
+    tmp_path, fake_calibrate_shell_operation_cls, solution_combine_mode
 ):
     input_parms = _dd_with_slow_input_parms()
     input_parms["dp3_steps"] = "[solve1,solve2,solve3]"
+    input_parms["solution_combine_mode"] = solution_combine_mode
     payload = calibrate_payload_from_inputs("dd", input_parms, tmp_path)
 
     outputs = run_calibrate_flow(
@@ -2560,7 +2562,7 @@ def test_run_calibrate_flow_supports_dd_with_slow_without_medium2(
         str(tmp_path / "combined_fast_medium1_phases.h5parm"),
         str(tmp_path / "slow_gains.h5parm"),
         "combined_solutions.h5",
-        "p1a2",
+        solution_combine_mode,
     ]
     assert commands[-1] == [
         "adjust_h5parm_sources.py",

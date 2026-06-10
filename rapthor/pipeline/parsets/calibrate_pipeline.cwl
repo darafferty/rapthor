@@ -1590,7 +1590,11 @@ steps:
       - id: outh5parm
         source: combined_h5parms
       - id: mode
+{% if mode == "dd" %}
         source: solution_combine_mode
+{% else %}
+        valueFrom: 'p1a2'
+{% endif %}
       - id: reweight
         valueFrom: 'False'
       - id: calibrator_names
@@ -1615,11 +1619,15 @@ steps:
       - id: inh5parm1
         source: combine_fast_medium1_h5parms/combinedh5parm
       - id: inh5parm2
-        source: collect_slow_gains/outh5parm
+        source: process_slow_gains/outh5parm
       - id: outh5parm
         source: combined_h5parms
       - id: mode
+{% if mode == "dd" %}
+        source: solution_combine_mode
+{% else %}
         valueFrom: 'p1a2'
+{% endif %}
       - id: reweight
         valueFrom: 'False'
       - id: calibrator_names

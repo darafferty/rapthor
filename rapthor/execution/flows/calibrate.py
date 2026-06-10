@@ -1907,8 +1907,9 @@ def _collect_plot_and_combine_dd_phase(
                 }
             )
 
-        final_mode = str(payload.get("solution_combine_mode") or "p1p2a2_scalar")
-        if not has_medium2:
+        if str(payload.get("mode")) == "dd":
+            final_mode = str(payload.get("solution_combine_mode") or "p1p2a2_scalar")
+        else:
             final_mode = "p1a2"
         final_record = _run_combine_h5parms(
             phase_record,
