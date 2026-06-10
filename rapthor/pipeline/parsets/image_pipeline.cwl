@@ -49,6 +49,13 @@ inputs:
       files and used for imaging (length = n_sectors).
     type: string[]
 
+  - id: residual_filename
+    label: Filenames of residual MSs
+    doc: |
+      The filenames of the MS files with the residual visibilities
+      (length = n_obs).
+    type: string[]
+
   - id: starttime
     label: Start time of each obs
     doc: |
@@ -620,6 +627,7 @@ inputs:
     label: Peel bright sources
     doc: |
       Peel bright sources
+
 outputs:
   - id: filtered_skymodel_true_sky
     outputSource:
@@ -657,6 +665,15 @@ outputs:
       items:
         type: array
         items: Directory
+  - id: residual_visibilities
+    outputSource:
+      - image_sector/residual_visibilities
+    type:
+      type: array
+      items:
+        - type: array
+          items: Directory
+        - "null"
   - id: sector_I_images
     outputSource:
       - image_sector/sector_I_images

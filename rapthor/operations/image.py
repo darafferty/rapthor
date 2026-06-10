@@ -164,6 +164,7 @@ class Image(Operation):
         obs_filename = []
         prepare_filename = []
         concat_filename = []
+        residual_filename = []
         previous_mask_filename = []
         mask_filename = []
         filtered_model_image_name = []
@@ -210,6 +211,7 @@ class Image(Operation):
             # Set output MS filenames for step that prepares the data for WSClean
             prepare_filename.append(sector.get_obs_parameters("ms_prep_filename"))
             concat_filename.append(image_root[-1] + "_concat.ms")
+            residual_filename.append(sector.get_obs_parameters("ms_resid_filename"))
 
             # Set other parameters
             if self.field.parset["imaging_specific"]["use_clean_mask"] and sector.I_mask_file:
@@ -320,6 +322,7 @@ class Image(Operation):
             "data_colname": self.field.data_colname,
             "prepare_filename": prepare_filename,
             "concat_filename": concat_filename,
+            "residual_filename": residual_filename,
             "previous_mask_filename": [
                 None if name is None else CWLFile(name).to_json() for name in previous_mask_filename
             ],
