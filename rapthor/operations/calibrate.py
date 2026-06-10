@@ -1073,6 +1073,7 @@ class Calibrate(Operation):
 
             if fulljones_solve is not None:
                 field.fulljones_h5parm_filename = os.path.join(dst_dir, "fulljones-solutions.h5")
+                field.fulljones_h5parm_cycle_number = self.index
                 if os.path.exists(field.fulljones_h5parm_filename):
                     os.remove(field.fulljones_h5parm_filename)
                 collected_fulljones = getattr(
@@ -1086,6 +1087,8 @@ class Calibrate(Operation):
             if scalar_solves:
                 field.di_h5parm_filename = os.path.join(dst_dir, "di-solutions.h5")
                 field.h5parm_filename = field.di_h5parm_filename
+                field.di_h5parm_cycle_number = self.index
+                field.h5parm_cycle_number = self.index
                 if os.path.exists(field.di_h5parm_filename):
                     os.remove(field.di_h5parm_filename)
                 shutil.copy(
@@ -1112,6 +1115,8 @@ class Calibrate(Operation):
 
         field.h5parm_filename = os.path.join(dst_dir, "field-solutions.h5")
         field.dd_h5parm_filename = field.h5parm_filename
+        field.h5parm_cycle_number = self.index
+        field.dd_h5parm_cycle_number = self.index
         field.fast_phases_h5parm_filename = os.path.join(dst_dir, "field-solutions-fast-phase.h5")
         field.medium1_phases_h5parm_filename = os.path.join(
             dst_dir, "field-solutions-medium1-phase.h5"

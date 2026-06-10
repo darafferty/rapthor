@@ -223,6 +223,17 @@ class TestImage:
 
         assert image.use_facets is False
 
+    def test_set_parset_parameters_disables_facets_for_previous_cycle_dd_h5parm(self, field):
+        _prepare_field_for_image(field)
+        field.h5parm_filename = "/work/solutions/calibrate_2/field-solutions.h5"
+        field.dd_h5parm_filename = "/work/solutions/calibrate_2/field-solutions.h5"
+        field.dd_h5parm_cycle_number = 2
+
+        image = Image(field, index=3)
+        image.set_parset_parameters()
+
+        assert image.use_facets is False
+
     @pytest.mark.parametrize(
         "cwl_workflow",
         [
@@ -700,6 +711,24 @@ class TestImage:
 
         assert steps is None
         assert image._selected_applycal_h5parm == str(h5parm_file)
+
+    def test_build_applycal_steps_ignores_previous_cycle_dd_h5parm(self, field):
+        _prepare_field_for_image(field)
+        field.h5parm_filename = "/work/solutions/calibrate_2/field-solutions.h5"
+        field.dd_h5parm_filename = "/work/solutions/calibrate_2/field-solutions.h5"
+        field.dd_h5parm_cycle_number = 2
+        field.calibration_strategy = {"dd": ["fast_phase", "medium_phase", "slow_gains"]}
+
+        image = Image(field=field, index=3)
+        image.use_facets = False
+        image.set_parset_parameters()
+        image.apply_amplitudes = True
+        image.apply_normalizations = False
+
+        steps, _, _ = image._build_applycal_steps()
+
+        assert steps is None
+        assert image._selected_applycal_h5parm is None
 
     def test_set_input_parameters_dd_slow_only_facets_get_h5parm(self, field, h5parm_file):
         """Single DD slow-gain phase solves still provide an h5parm to WSClean facets."""

@@ -150,9 +150,12 @@ class TestPredict:
         else:
             assert normalize_h5parm is None
 
-    def test_get_dp3_applycal_steps_prefers_dd_h5parm_for_di_predict(self, predict_field):
+    def test_get_dp3_applycal_steps_prefers_current_cycle_dd_h5parm_for_di_predict(
+        self, predict_field
+    ):
         predict_field.h5parm_filename = "generic.h5"
         predict_field.dd_h5parm_filename = "dd-solutions.h5"
+        predict_field.dd_h5parm_cycle_number = 1
 
         predict = Predict("di", predict_field, index=1)
         steps, normalize_h5parm, h5parm_filename = predict._get_dp3_applycal_steps()
@@ -160,6 +163,117 @@ class TestPredict:
         assert steps == ["fastphase"]
         assert normalize_h5parm is None
         assert h5parm_filename == "dd-solutions.h5"
+
+    def test_get_dp3_applycal_steps_keeps_matching_dd_h5parm_for_di_predict(
+        self, predict_field, tmp_path, monkeypatch
+    ):
+        h5parm_file = tmp_path / "dd-solutions.h5"
+        h5parm_file.touch()
+        predict_field.dd_h5parm_filename = str(h5parm_file)
+        predict_field.dd_h5parm_cycle_number = 1
+        predict_field.apply_amplitudes = True
+
+        predict = Predict("di", predict_field, index=1)
+        monkeypatch.setattr(
+            predict,
+            "_read_h5parm_directions",
+            lambda filename: {"[Patch_1]", "[Patch_2]"},
+        )
+
+        steps, normalize_h5parm, h5parm_filename = predict._get_dp3_applycal_steps(
+            [["[Patch_1]"], ["[Patch_2]"]]
+        )
+
+        assert steps == ["fastphase", "slowgain"]
+        assert normalize_h5parm is None
+        assert h5parm_filename == str(h5parm_file)
+
+    def test_get_dp3_applycal_steps_skips_mismatched_dd_h5parm_for_di_predict(
+        self, predict_field, tmp_path, monkeypatch, caplog
+    ):
+        h5parm_file = tmp_path / "dd-solutions.h5"
+        h5parm_file.touch()
+        predict_field.dd_h5parm_filename = str(h5parm_file)
+        predict_field.dd_h5parm_cycle_number = 1
+        predict_field.apply_amplitudes = True
+
+        predict = Predict("di", predict_field, index=1)
+        monkeypatch.setattr(
+            predict,
+            "_read_h5parm_directions",
+            lambda filename: {"[Patch_0]", "[Patch_1]"},
+        )
+        caplog.set_level("WARNING", logger="rapthor:predict")
+
+        steps, normalize_h5parm, h5parm_filename = predict._get_dp3_applycal_steps(
+            [["[Patch_patch_10_sector_1]"]]
+        )
+
+        assert steps == []
+        assert normalize_h5parm is None
+        assert h5parm_filename is None
+        assert "Skipping DD h5parm" in caplog.text
+        assert "[Patch_patch_10_sector_1]" in caplog.text
+
+    def test_get_dp3_applycal_steps_skips_previous_cycle_dd_h5parm_for_di_predict(
+        self, predict_field, caplog
+    ):
+        predict_field.h5parm_filename = "generic.h5"
+        predict_field.dd_h5parm_filename = "/work/solutions/calibrate_2/field-solutions.h5"
+
+        predict = Predict("di", predict_field, index=3)
+        caplog.set_level("WARNING", logger="rapthor:predict")
+
+        steps, normalize_h5parm, h5parm_filename = predict._get_dp3_applycal_steps([["[Patch_0]"]])
+
+        assert steps == []
+        assert normalize_h5parm is None
+        assert h5parm_filename is None
+        assert "produced in cycle 2" in caplog.text
+
+    def test_get_dp3_applycal_steps_skips_mismatched_dd_h5parm_for_dd_predict(
+        self, predict_field, tmp_path, monkeypatch, caplog
+    ):
+        h5parm_file = tmp_path / "dd-solutions.h5"
+        h5parm_file.touch()
+        predict_field.dd_h5parm_filename = str(h5parm_file)
+        predict_field.dd_h5parm_cycle_number = 1
+        predict_field.apply_amplitudes = True
+
+        predict = Predict("dd", predict_field, index=1)
+        monkeypatch.setattr(
+            predict,
+            "_read_h5parm_directions",
+            lambda filename: {"[Patch_0]", "[Patch_1]"},
+        )
+        caplog.set_level("WARNING", logger="rapthor:predict")
+
+        steps, normalize_h5parm, h5parm_filename = predict._get_dp3_applycal_steps(
+            [["[Patch_patch_10_sector_1]"]]
+        )
+
+        assert steps == []
+        assert normalize_h5parm is None
+        assert h5parm_filename is None
+        assert "Skipping DD h5parm" in caplog.text
+        assert "[Patch_patch_10_sector_1]" in caplog.text
+
+    def test_get_dp3_applycal_steps_skips_previous_cycle_dd_h5parm_for_dd_predict(
+        self, predict_field, caplog
+    ):
+        predict_field.h5parm_filename = "/work/solutions/calibrate_2/field-solutions.h5"
+        predict_field.dd_h5parm_filename = "/work/solutions/calibrate_2/field-solutions.h5"
+        predict_field.dd_h5parm_cycle_number = 2
+
+        predict = Predict("dd", predict_field, index=3)
+        caplog.set_level("WARNING", logger="rapthor:predict")
+
+        steps, normalize_h5parm, h5parm_filename = predict._get_dp3_applycal_steps([["[Patch_0]"]])
+
+        assert steps == []
+        assert normalize_h5parm is None
+        assert h5parm_filename is None
+        assert "produced in cycle 2" in caplog.text
 
     def test_get_dp3_applycal_steps_ignores_di_h5parm_for_dd_predict(self, predict_field):
         predict_field.h5parm_filename = "di-solutions.h5"

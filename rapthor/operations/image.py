@@ -5,6 +5,7 @@ Module that holds the Image classes
 import json
 import logging
 import os
+import re
 from typing import List, Union
 
 import numpy as np
@@ -145,22 +146,63 @@ class Image(Operation):
         }
 
     def _has_dd_scalar_h5parm(self):
-        if getattr(self.field, "dd_h5parm_filename", None) is not None:
+        if self._is_current_cycle_solution(
+            getattr(self.field, "dd_h5parm_filename", None),
+            cycle_attr="dd_h5parm_cycle_number",
+        ):
             return True
         if getattr(self.field, "di_h5parm_filename", None) is not None:
             return False
-        return self.field.h5parm_filename is not None
+        return self._is_current_cycle_solution(
+            self.field.h5parm_filename,
+            cycle_attr="h5parm_cycle_number",
+        )
 
     def _resolve_scalar_applycal_h5parms(self):
         dd_h5parm = getattr(self.field, "dd_h5parm_filename", None)
         di_h5parm = getattr(self.field, "di_h5parm_filename", None)
         fallback_h5parm = self.field.h5parm_filename
+        if not self._is_current_cycle_solution(dd_h5parm, cycle_attr="dd_h5parm_cycle_number"):
+            dd_h5parm = None
+        if not self._is_current_cycle_solution(di_h5parm, cycle_attr="di_h5parm_cycle_number"):
+            di_h5parm = None
+        if not self._is_current_cycle_solution(
+            fallback_h5parm,
+            cycle_attr="h5parm_cycle_number",
+        ):
+            fallback_h5parm = None
 
         if dd_h5parm is None and di_h5parm is None:
             return fallback_h5parm, fallback_h5parm
         if di_h5parm is None and fallback_h5parm != dd_h5parm:
             di_h5parm = fallback_h5parm
         return dd_h5parm, di_h5parm
+
+    def _is_current_cycle_solution(self, h5parm_filename, cycle_attr):
+        if h5parm_filename is None:
+            return False
+
+        cycle_number = self._solution_cycle_number(h5parm_filename, cycle_attr)
+        if cycle_number is None or cycle_number == self.index:
+            return True
+
+        log.warning(
+            "Ignoring h5parm %r for image cycle %i because it was produced in cycle %i",
+            h5parm_filename,
+            self.index,
+            cycle_number,
+        )
+        return False
+
+    def _solution_cycle_number(self, h5parm_filename, cycle_attr):
+        cycle_number = getattr(self.field, cycle_attr, None)
+        if cycle_number is not None:
+            return int(cycle_number)
+
+        match = re.search(r"(?:^|[/\\])calibrate_(\d+)(?:[/\\]|$)", h5parm_filename)
+        if match:
+            return int(match.group(1))
+        return None
 
     def _shared_facet_rw_enabled(self):
         return bool(self.use_facets and self.parset["imaging_specific"]["shared_facet_rw"])

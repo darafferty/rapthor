@@ -4,6 +4,8 @@ Module that holds the Predict classes
 
 import os
 import logging
+import re
+from losoto.h5parm import h5parm
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.predict import predict_flow, predict_payload_from_inputs
 from rapthor.lib.operation import Operation
@@ -74,7 +76,9 @@ class Predict(Operation):
 
         # Set the DP3 applycal steps depending on what solutions need to be
         # applied
-        dp3_applycal_steps, normalize_h5parm, h5parm_filename = self._get_dp3_applycal_steps()
+        dp3_applycal_steps, normalize_h5parm, h5parm_filename = self._get_dp3_applycal_steps(
+            sector_parms["sector_patches"]
+        )
 
         dd_params = {}
         if self.mode == "dd":
@@ -202,13 +206,13 @@ class Predict(Operation):
             result["obs_solint_hz"] = obs_solint_hz
         return result
 
-    def _get_dp3_applycal_steps(self):
+    def _get_dp3_applycal_steps(self, sector_patches=None):
         """
         Return the DP3 applycal steps and normalize_h5parm based on field settings.
         Returns a tuple of (dp3_applycal_steps, normalize_h5parm, h5parm_filename).
         """
         dp3_applycal_steps = []
-        h5parm_filename = self._get_applycal_h5parm_filename()
+        h5parm_filename = self._get_applycal_h5parm_filename(sector_patches)
         if h5parm_filename is not None:
             dp3_applycal_steps.append("fastphase")
             if self.field.apply_amplitudes:
@@ -220,14 +224,100 @@ class Predict(Operation):
             normalize_h5parm = None
         return dp3_applycal_steps, normalize_h5parm, h5parm_filename
 
-    def _get_applycal_h5parm_filename(self):
+    def _get_applycal_h5parm_filename(self, sector_patches=None):
         dd_h5parm = getattr(self.field, "dd_h5parm_filename", None)
         di_h5parm = getattr(self.field, "di_h5parm_filename", None)
         if dd_h5parm is not None:
+            if not self._is_current_cycle_solution(dd_h5parm, cycle_attr="dd_h5parm_cycle_number"):
+                return None
+            if not self._dd_h5parm_matches_sector_patches(dd_h5parm, sector_patches):
+                return None
             return dd_h5parm
         if di_h5parm is not None:
             return None
-        return self.field.h5parm_filename
+        h5parm_filename = self.field.h5parm_filename
+        if h5parm_filename is not None and not self._is_current_cycle_solution(
+            h5parm_filename, cycle_attr="h5parm_cycle_number"
+        ):
+            return None
+        return h5parm_filename
+
+    def _is_current_cycle_solution(self, h5parm_filename, cycle_attr):
+        cycle_number = self._solution_cycle_number(h5parm_filename, cycle_attr)
+        if cycle_number is None or cycle_number == self.index:
+            return True
+
+        log.warning(
+            "Skipping h5parm %r for predict cycle %i because it was produced in cycle %i",
+            h5parm_filename,
+            self.index,
+            cycle_number,
+        )
+        return False
+
+    def _solution_cycle_number(self, h5parm_filename, cycle_attr):
+        cycle_number = getattr(self.field, cycle_attr, None)
+        if cycle_number is not None:
+            return int(cycle_number)
+
+        match = re.search(r"(?:^|[/\\])calibrate_(\d+)(?:[/\\]|$)", h5parm_filename)
+        if match:
+            return int(match.group(1))
+        return None
+
+    def _dd_h5parm_matches_sector_patches(self, dd_h5parm, sector_patches):
+        requested_directions = self._requested_directions(sector_patches)
+        if not requested_directions or not os.path.exists(dd_h5parm):
+            return True
+
+        h5parm_directions = self._read_h5parm_directions(dd_h5parm)
+        if h5parm_directions is None:
+            return True
+
+        missing_directions = sorted(requested_directions - h5parm_directions)
+        if not missing_directions:
+            return True
+
+        log.warning(
+            "Skipping DD h5parm %r for predict because %i requested direction(s) are "
+            "not present in the solution file. Example missing directions: %s",
+            dd_h5parm,
+            len(missing_directions),
+            ", ".join(missing_directions[:5]),
+        )
+        return False
+
+    @staticmethod
+    def _requested_directions(sector_patches):
+        directions = set()
+        for patches in sector_patches or []:
+            if isinstance(patches, str):
+                patches = [patches]
+            for patch in patches:
+                directions.add(Predict._normalize_direction_name(patch))
+        return directions
+
+    @staticmethod
+    def _read_h5parm_directions(h5parm_filename):
+        with h5parm(h5parm_filename) as solutions:
+            if "sol000" not in solutions.getSolsetNames():
+                return None
+            solset = solutions.getSolset("sol000")
+            for soltab in solset.getSoltabs():
+                if hasattr(soltab, "dir"):
+                    return {
+                        Predict._normalize_direction_name(direction) for direction in soltab.dir
+                    }
+        return None
+
+    @staticmethod
+    def _normalize_direction_name(direction):
+        if isinstance(direction, bytes):
+            direction = direction.decode()
+        direction = str(direction).strip()
+        return (
+            direction if direction.startswith("[") and direction.endswith("]") else f"[{direction}]"
+        )
 
     def finalize(self):
         """
