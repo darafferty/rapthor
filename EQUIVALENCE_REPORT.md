@@ -11,9 +11,11 @@ products, reports, and finalizer-visible field state as the CWL reference for
 the supported scenario matrix.
 
 Current status: the equivalence harness and opt-in integration gates are in
-place. Final production equivalence is not yet recorded in this checkout because
-the target-environment CWL reference runs still need to be executed from a
-pre-cutover checkout, or supplied as saved CWL reference artifacts.
+place. A first saved CWL reference has been captured for
+`di_only_calibration` and the current Prefect candidate matches it. Full
+production equivalence is not yet recorded because the remaining
+target-environment CWL reference scenarios still need to be captured or supplied
+as saved artifacts.
 
 ## Scope Of Equivalence
 
@@ -175,6 +177,32 @@ python3 -m pytest tests/execution/test_equivalence.py \
 Result: 24 passed, 5 skipped, 1 warning. The live and saved-reference tests
 skip by default unless their required environment variables and artifacts are
 supplied.
+
+Saved-reference verification in the development container on 2026-06-10:
+
+```bash
+RAPTHOR_RUN_SAVED_CWL_EQUIVALENCE=1 \
+RAPTHOR_CWL_REFERENCE_ROOT=/app/.pytest_cache/cwl-reference-di-fast-phase \
+RAPTHOR_EQUIVALENCE_SCENARIOS=di_only_calibration \
+RAPTHOR_EQUIVALENCE_INPUT_MS=/app/tests/resources/test.ms \
+RAPTHOR_EQUIVALENCE_INPUT_SKYMODEL=/app/tests/resources/integration_true_sky.txt \
+RAPTHOR_EQUIVALENCE_APPARENT_SKYMODEL=/app/tests/resources/integration_apparent_sky.txt \
+RAPTHOR_EQUIVALENCE_STRATEGY=/app/.pytest_cache/equivalence-inputs/di_fast_phase_strategy.py \
+python3 -m pytest tests/integration/test_saved_cwl_equivalence.py -q --tb=short
+```
+
+Result: 1 passed, 3 warnings.
+
+Reference details:
+
+- legacy checkout: `4cfd2abe2fe815724e3f1c390d789eea249becef`
+- scenario: `di_only_calibration`
+- reference artifact root: `.pytest_cache/cwl-reference-di-fast-phase`
+- artifact directory:
+  `.pytest_cache/cwl-reference-di-fast-phase/di_only_calibration`
+- reference size: approximately 387 MB
+- generated operation order: `predict_di_1`, `calibrate_di_1`, `predict_1`,
+  `image_1`, `mosaic_1`
 
 ## Production Equivalence Criteria
 

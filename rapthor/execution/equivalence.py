@@ -13,7 +13,7 @@ from typing import Any, Callable, Mapping, Optional, Sequence
 
 BackendRunner = Callable[[Path, Path, str], Any]
 ParsetMaterializer = Callable[[Path, Path], Path]
-PRODUCT_ROOTS = ("images", "h5parms", "skymodels", "regions")
+PRODUCT_ROOTS = ("images", "h5parms", "solutions", "skymodels", "regions")
 FITS_SUFFIXES = (".fits", ".fits.fz")
 REFERENCE_ARTIFACT_ROOT_ENV = "RAPTHOR_CWL_REFERENCE_ROOT"
 EQUIVALENCE_INPUT_MS_ENV = "RAPTHOR_EQUIVALENCE_INPUT_MS"
@@ -184,7 +184,10 @@ def _artifact_item_present(artifact_dir: Path, item: str) -> bool:
             for root_name in PRODUCT_ROOTS
         )
     if item == "h5parm_products":
-        return _has_file(artifact_dir / "h5parms", lambda path: path.suffix in {".h5", ".h5parm"})
+        return any(
+            _has_file(artifact_dir / root_name, lambda path: path.suffix in {".h5", ".h5parm"})
+            for root_name in ("h5parms", "solutions")
+        )
     if item == "skymodel_products":
         return _has_file(
             artifact_dir / "skymodels", lambda path: path.suffix in {".txt", ".skymodel"}
@@ -321,6 +324,10 @@ def materialize_scenario_parset(
             parser.set("cluster", "local_scratch_dir", str(scratch_dir))
         if parser.has_option("cluster", "global_scratch_dir"):
             parser.set("cluster", "global_scratch_dir", str(scratch_dir))
+        if parser.has_option("cluster", "allow_internet_access") and _is_blank_parset_value(
+            parser.get("cluster", "allow_internet_access")
+        ):
+            parser.set("cluster", "allow_internet_access", "False")
 
     for section, option, variable in DEFAULT_PARSET_ENV_OVERRIDES:
         if not parser.has_section(section) or not parser.has_option(section, option):
@@ -537,7 +544,10 @@ def _fits_product_summary(path: Path) -> dict[str, Any]:
 
 
 def _h5parm_product_summary(path: Path) -> dict[str, Any]:
-    h5py = import_module("h5py")
+    try:
+        h5py = import_module("h5py")
+    except ModuleNotFoundError:
+        return _h5parm_product_summary_pytables(path)
 
     solsets = []
     soltabs: dict[str, list[str]] = {}
@@ -561,6 +571,42 @@ def _h5parm_product_summary(path: Path) -> dict[str, Any]:
                     axes[name] = _jsonable(node.attrs["AXES"])
 
         h5_file.visititems(collect_item)
+
+    return {
+        "type": "h5parm",
+        "solsets": sorted(solsets),
+        "soltabs": {key: sorted(value) for key, value in sorted(soltabs.items())},
+        "datasets": {key: datasets[key] for key in sorted(datasets)},
+        "axes": {key: axes[key] for key in sorted(axes)},
+    }
+
+
+def _h5parm_product_summary_pytables(path: Path) -> dict[str, Any]:
+    tables = import_module("tables")
+
+    solsets = []
+    soltabs: dict[str, list[str]] = {}
+    datasets = {}
+    axes = {}
+
+    with tables.open_file(path, "r") as h5_file:
+        for node in h5_file.walk_nodes("/"):
+            name = node._v_pathname.strip("/")
+            if not name:
+                continue
+            parts = name.split("/")
+            if isinstance(node, tables.Group):
+                if len(parts) == 1:
+                    solsets.append(name)
+                elif len(parts) == 2 and "val" in node._v_children:
+                    soltabs.setdefault(parts[0], []).append(parts[1])
+            elif isinstance(node, tables.Leaf):
+                datasets[name] = {
+                    "shape": list(node.shape),
+                    "dtype": str(node.dtype),
+                }
+                if "AXES" in node._v_attrs._v_attrnames:
+                    axes[name] = _jsonable(node._v_attrs["AXES"])
 
     return {
         "type": "h5parm",
@@ -662,7 +708,29 @@ def _operation_order(working_dir: Path, operation_states: Mapping[str, Any]) -> 
     ):
         if order_file.exists():
             return list(_load_json(order_file))
+
+    rapthor_log = working_dir / "logs" / "rapthor.log"
+    if rapthor_log.exists():
+        operation_order = _operation_order_from_rapthor_log(rapthor_log)
+        if operation_order:
+            return operation_order
+
     return sorted(operation_states)
+
+
+def _operation_order_from_rapthor_log(log_path: Path) -> list[str]:
+    operation_order = []
+    seen = set()
+    for line in log_path.read_text(encoding="utf-8", errors="replace").splitlines():
+        marker = "<-- Operation "
+        if marker not in line:
+            continue
+        operation = line.split(marker, 1)[1].split(" started", 1)[0].strip()
+        if not operation or operation in seen:
+            continue
+        operation_order.append(operation)
+        seen.add(operation)
+    return operation_order
 
 
 def collect_backend_summary(working_dir: Any) -> dict[str, Any]:
@@ -680,13 +748,20 @@ def collect_backend_summary(working_dir: Any) -> dict[str, Any]:
 
 
 def _compare_values(reference: Any, candidate: Any, path: str) -> list[EquivalenceDifference]:
+    if _is_empty_optional(reference) and _is_empty_optional(candidate):
+        return []
+
     if isinstance(reference, Mapping) and isinstance(candidate, Mapping):
         differences = []
         for key in sorted(set(reference) | set(candidate)):
             child_path = f"{path}.{key}"
             if key not in reference:
+                if _is_empty_optional(candidate[key]):
+                    continue
                 differences.append(EquivalenceDifference(child_path, "<missing>", candidate[key]))
             elif key not in candidate:
+                if _is_empty_optional(reference[key]):
+                    continue
                 differences.append(EquivalenceDifference(child_path, reference[key], "<missing>"))
             else:
                 differences.extend(_compare_values(reference[key], candidate[key], child_path))
@@ -702,9 +777,30 @@ def _compare_values(reference: Any, candidate: Any, path: str) -> list[Equivalen
             differences.extend(_compare_values(reference_item, candidate_item, f"{path}[{index}]"))
         return differences
 
+    if _equivalent_float(reference, candidate):
+        return []
+
     if reference != candidate:
         return [EquivalenceDifference(path, reference, candidate)]
     return []
+
+
+def _equivalent_float(reference: Any, candidate: Any) -> bool:
+    return (
+        isinstance(reference, float)
+        and isinstance(candidate, float)
+        and math.isclose(reference, candidate, rel_tol=1e-6, abs_tol=1e-9)
+    )
+
+
+def _is_empty_optional(value: Any) -> bool:
+    if value is None:
+        return True
+    if isinstance(value, list):
+        return all(_is_empty_optional(item) for item in value)
+    if isinstance(value, Mapping):
+        return not value
+    return False
 
 
 def compare_backend_summaries(

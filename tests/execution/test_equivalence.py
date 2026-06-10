@@ -10,6 +10,7 @@ from rapthor.execution.equivalence import (
     check_reference_artifacts,
     collect_backend_summary,
     collect_product_summaries,
+    compare_backend_summaries,
     compare_backend_runs,
     compare_fits_product,
     compare_h5parm_product,
@@ -133,6 +134,7 @@ def test_materialize_scenario_parset_fills_template_values_and_overrides(tmp_pat
         "[cluster]\n"
         "local_scratch_dir = \n"
         "global_scratch_dir = \n"
+        "allow_internet_access = \n"
     )
     strategy = tmp_path / "strategy.py"
     strategy.write_text("strategy_steps = []\n")
@@ -168,6 +170,7 @@ def test_materialize_scenario_parset_fills_template_values_and_overrides(tmp_pat
     assert "shared_facet_rw = True" in text
     assert "maxiter = 5" in text
     assert f"local_scratch_dir = {tmp_path / 'candidate' / 'scratch'}" in text
+    assert "allow_internet_access = False" in text
 
 
 def test_materialize_scenario_parset_rejects_unresolved_override(tmp_path):
@@ -352,6 +355,22 @@ def test_collect_backend_summary_normalizes_product_paths(tmp_path):
     }
 
 
+def test_collect_backend_summary_reads_operation_order_from_rapthor_log(tmp_path):
+    working_dir = tmp_path / "run"
+    _write_operation_state(working_dir, "predict_1")
+    _write_operation_state(working_dir, "image_1")
+    log_dir = working_dir / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    (log_dir / "rapthor.log").write_text(
+        "INFO - rapthor:predict_1 - <-- Operation predict_1 started\n"
+        "INFO - rapthor:image_1 - <-- Operation image_1 started\n"
+    )
+
+    summary = collect_backend_summary(working_dir)
+
+    assert summary["operation_order"] == ["predict_1", "image_1"]
+
+
 def test_compare_backend_runs_reports_output_differences(tmp_path):
     cwl_dir = tmp_path / "cwl"
     prefect_dir = tmp_path / "prefect"
@@ -370,6 +389,34 @@ def test_compare_backend_runs_reports_output_differences(tmp_path):
         )
     ]
     assert "renamed-image.fits" in format_differences(differences)
+
+
+def test_compare_backend_runs_treats_disabled_optional_outputs_as_equivalent(tmp_path):
+    cwl_dir = tmp_path / "cwl"
+    prefect_dir = tmp_path / "prefect"
+    _write_operation_state(cwl_dir)
+    _write_operation_state(prefect_dir)
+
+    cwl_outputs_path = cwl_dir / "pipelines" / "image_1" / ".outputs.json"
+    prefect_outputs_path = prefect_dir / "pipelines" / "image_1" / ".outputs.json"
+    cwl_outputs = json.loads(cwl_outputs_path.read_text())
+    prefect_outputs = json.loads(prefect_outputs_path.read_text())
+    cwl_outputs["unused_file"] = None
+    cwl_outputs["unused_scatter"] = [None]
+    prefect_outputs["unused_scatter"] = []
+    cwl_outputs_path.write_text(json.dumps(cwl_outputs))
+    prefect_outputs_path.write_text(json.dumps(prefect_outputs))
+
+    assert compare_backend_runs(cwl_dir, prefect_dir) == []
+
+
+def test_compare_backend_summaries_uses_float_tolerance():
+    differences = compare_backend_summaries(
+        {"products": {"image.fits": {"mean": 1.0}}},
+        {"products": {"image.fits": {"mean": 1.0000005}}},
+    )
+
+    assert differences == []
 
 
 def test_assert_backend_equivalent_reports_missing_done_marker(tmp_path):
@@ -596,6 +643,26 @@ def test_check_reference_artifacts_accepts_minimal_saved_cwl_reference(tmp_path)
             missing_items=(),
         )
     ]
+    assert checks[0].ok
+
+
+def test_check_reference_artifacts_accepts_legacy_solution_h5parms(tmp_path):
+    scenario = {
+        "id": "smoke",
+        "comparison_scopes": ["operations", "products", "h5parm"],
+    }
+    artifact_dir = reference_artifact_dir(tmp_path, scenario)
+    operation_dir = artifact_dir / "pipelines" / "calibrate_di_1"
+    solution_dir = artifact_dir / "solutions" / "calibrate_di_1"
+    operation_dir.mkdir(parents=True)
+    solution_dir.mkdir(parents=True)
+    (operation_dir / ".done").touch()
+    (operation_dir / ".outputs.json").write_text("{}")
+    (artifact_dir / "operation_order.json").write_text(json.dumps(["calibrate_di_1"]))
+    (solution_dir / "di-solutions.h5").touch()
+
+    checks = check_reference_artifacts([scenario], root_dir=tmp_path)
+
     assert checks[0].ok
 
 

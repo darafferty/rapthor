@@ -4,6 +4,7 @@
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -154,6 +155,32 @@ def _format_missing_artifacts(checks):
     )
 
 
+def _write_operation_order_from_legacy_log(artifact_dir):
+    operation_order_path = artifact_dir / "operation_order.json"
+    if operation_order_path.exists():
+        return
+
+    log_path = artifact_dir / "logs" / "rapthor.log"
+    if not log_path.exists():
+        return
+
+    operation_order = []
+    seen = set()
+    pattern = re.compile(r"<-- Operation (?P<operation>\S+) started")
+    for line in log_path.read_text(encoding="utf-8", errors="replace").splitlines():
+        match = pattern.search(line)
+        if not match:
+            continue
+        operation = match.group("operation")
+        if operation in seen:
+            continue
+        operation_order.append(operation)
+        seen.add(operation)
+
+    if operation_order:
+        operation_order_path.write_text(json.dumps(operation_order, indent=2))
+
+
 def _capture_scenario(scenario, reference_root, legacy_repo, repo_root, logging_level, overwrite):
     artifact_dir = reference_artifact_dir(reference_root, scenario)
     _prepare_artifact_dir(artifact_dir, overwrite)
@@ -164,6 +191,7 @@ def _capture_scenario(scenario, reference_root, legacy_repo, repo_root, logging_
 
     print(f"Capturing {scenario['id']} into {artifact_dir}")
     _run_legacy_cwl(legacy_repo, captured_parset, logging_level)
+    _write_operation_order_from_legacy_log(artifact_dir)
 
     checks = check_reference_artifacts([scenario], root_dir=reference_root)
     if not all(check.ok for check in checks):
