@@ -58,10 +58,13 @@ def slurm_cluster_spec(
     external tools do not all assume they own the full node simultaneously.
     """
     environment = {} if environ is None else environ
-    node_count = _first_positive_int(
-        environment,
-        SLURM_NODE_COUNT_ENV,
-    ) or execution_config.max_nodes
+    node_count = (
+        _first_positive_int(
+            environment,
+            SLURM_NODE_COUNT_ENV,
+        )
+        or execution_config.max_nodes
+    )
     if not node_count:
         node_count = 1
 

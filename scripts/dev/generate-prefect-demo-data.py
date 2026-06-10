@@ -16,7 +16,6 @@ import casacore.tables as pt
 import numpy as np
 from astropy.coordinates import SkyCoord
 
-
 DEFAULT_OUTPUT_DIR = Path("examples/generated/prefect_demo_rich")
 DEFAULT_TEMPLATE_MS = Path("tests/resources/test.ms")
 PHASE_CENTRE = SkyCoord("1h37m41.299s", "+33d09m35.132s", frame="icrs")

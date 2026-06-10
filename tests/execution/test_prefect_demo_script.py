@@ -1,10 +1,9 @@
-import importlib.util
 import configparser
+import importlib.util
 import sys
 from pathlib import Path
 
 from rapthor.execution.config import ExecutionConfig
-
 
 SCRIPT_PATH = Path(__file__).parents[2] / "scripts" / "dev" / "run-rapthor-prefect-demo.py"
 

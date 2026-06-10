@@ -7,7 +7,11 @@ from rapthor.execution.capabilities import (
     preflight_execution,
 )
 from rapthor.execution.commands import command_matches_fixture, command_to_string, normalize_command
-from rapthor.execution.config import DASK_SCHEDULER_ENV, ExecutionConfig, dask_scheduler_from_environment
+from rapthor.execution.config import (
+    DASK_SCHEDULER_ENV,
+    ExecutionConfig,
+    dask_scheduler_from_environment,
+)
 from rapthor.execution.flows.calibrate import (
     build_adjust_h5parm_sources_command,
     build_collect_h5parms_command,
