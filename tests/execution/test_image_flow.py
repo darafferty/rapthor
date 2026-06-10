@@ -1581,15 +1581,25 @@ def test_run_image_flow_executes_no_dde_commands_and_returns_records(
     tmp_path, monkeypatch, fake_image_shell_operation_cls
 ):
     published = []
+    fits_published = []
 
     def fake_publish_plot_file_records(records, root_dir):
         published.append(([Path(record["path"]).name for record in records], root_dir))
+        return []
+
+    def fake_publish_fits_image_artifacts(records, root_dir):
+        fits_published.append(([Path(record["path"]).name for record in records], root_dir))
         return []
 
     monkeypatch.setattr(
         image_module,
         "publish_plot_file_records",
         fake_publish_plot_file_records,
+    )
+    monkeypatch.setattr(
+        image_module,
+        "publish_fits_image_artifacts",
+        fake_publish_fits_image_artifacts,
     )
 
     outputs = run_image_flow(
@@ -1625,6 +1635,12 @@ def test_run_image_flow_executes_no_dde_commands_and_returns_records(
         str(tmp_path),
     ) in published
     assert (["sector_1.photometry.pdf"], str(tmp_path)) in published
+    assert len(fits_published) == 1
+    assert fits_published[0][1] == str(tmp_path)
+    assert "sector_1-MFS-I-image.fits" in fits_published[0][0]
+    assert "sector_1-MFS-I-image-pb.fits" in fits_published[0][0]
+    assert "sector_1.flat_noise_rms.fits" in fits_published[0][0]
+    assert "sector_1.true_sky_rms.fits" in fits_published[0][0]
     validate_output_record(outputs["sector_I_images"])
     command_names = [
         shlex.split(instance.kwargs["commands"][0])[0]

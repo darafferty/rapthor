@@ -7,7 +7,7 @@ from typing import Mapping, Optional
 
 from prefect import flow, task
 
-from rapthor.execution.artifacts import publish_plot_file_records
+from rapthor.execution.artifacts import publish_fits_image_artifacts, publish_plot_file_records
 from rapthor.execution.commands import normalize_command
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.runtime import run_flow_with_task_runner
@@ -1813,6 +1813,15 @@ def run_image_sector(
     if normalize_h5parm is not None:
         result["sector_source_catalog"] = normalization_source_catalog
         result["sector_normalize_h5parm"] = normalize_h5parm
+    fits_records = (
+        output_sector_images
+        + output_extra_images
+        + [flat_noise_rms, true_sky_rms, source_catalog]
+        + ([source_filtering_mask] if source_filtering_mask is not None else [])
+        + ([skymodel_image] if skymodel_image is not None else [])
+        + image_cubes
+    )
+    publish_fits_image_artifacts(fits_records, pipeline_working_dir)
     return result
 
 

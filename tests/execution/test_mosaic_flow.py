@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 from prefect.testing.utilities import prefect_test_harness
 
+import rapthor.execution.flows.mosaic as mosaic_module
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.mosaic import (
     build_compress_mosaic_command,
@@ -272,8 +273,20 @@ def test_mosaic_payload_handles_skip_processing(tmp_path):
 
 
 def test_run_mosaic_flow_executes_commands_and_returns_records(
-    tmp_path, fake_mosaic_shell_operation_cls
+    tmp_path, monkeypatch, fake_mosaic_shell_operation_cls
 ):
+    published = []
+
+    def fake_publish_fits_image_artifacts(records, root_dir):
+        published.append(([Path(record["path"]).name for record in records], root_dir))
+        return []
+
+    monkeypatch.setattr(
+        mosaic_module,
+        "publish_fits_image_artifacts",
+        fake_publish_fits_image_artifacts,
+    )
+
     outputs = run_mosaic_flow(
         _mosaic_payload(tmp_path),
         execution_config=ExecutionConfig(task_runner="sync"),
@@ -281,6 +294,7 @@ def test_run_mosaic_flow_executes_commands_and_returns_records(
     )
 
     assert outputs == {"mosaic_image": [file_record(tmp_path / "mosaic_1-I-image.fits")]}
+    assert published == [(["mosaic_1-I-image.fits"], str(tmp_path))]
     validate_output_record(outputs["mosaic_image"])
     assert [
         instance.kwargs["commands"][0] for instance in fake_mosaic_shell_operation_cls.instances

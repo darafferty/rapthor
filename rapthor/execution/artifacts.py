@@ -13,6 +13,8 @@ from typing import Callable, Mapping, Optional
 log = logging.getLogger("rapthor")
 
 IMAGE_ARTIFACT_SUFFIXES = {".gif", ".jpeg", ".jpg", ".png", ".svg", ".webp"}
+FITS_ARTIFACT_SUFFIXES = (".fit", ".fits", ".fit.fz", ".fits.fz")
+FITS_PREVIEW_ARTIFACT_KEY_PREFIX = "rapthor-fits-preview"
 JSON_ARTIFACT_SUFFIXES = {".json"}
 PLOT_ARTIFACT_KEY_PREFIX = "rapthor-plot"
 
@@ -64,8 +66,16 @@ def _slug(value: str, max_length: int = 80) -> str:
 
 
 def _plot_artifact_key(relative_path: str) -> str:
+    return _artifact_key(PLOT_ARTIFACT_KEY_PREFIX, relative_path)
+
+
+def _fits_preview_artifact_key(relative_path: str) -> str:
+    return _artifact_key(FITS_PREVIEW_ARTIFACT_KEY_PREFIX, relative_path)
+
+
+def _artifact_key(prefix: str, relative_path: str) -> str:
     digest = hashlib.sha1(relative_path.encode("utf-8")).hexdigest()[:8]
-    return f"{PLOT_ARTIFACT_KEY_PREFIX}-{_slug(relative_path)}-{digest}"
+    return f"{prefix}-{_slug(relative_path)}-{digest}"
 
 
 def _data_url(path: Path) -> str:
@@ -78,8 +88,92 @@ def _is_image_artifact(path: Path) -> bool:
     return path.suffix.lower() in IMAGE_ARTIFACT_SUFFIXES
 
 
+def _is_fits_artifact(path: Path) -> bool:
+    return path.name.lower().endswith(FITS_ARTIFACT_SUFFIXES)
+
+
 def _is_json_artifact(path: Path) -> bool:
     return path.suffix.lower() in JSON_ARTIFACT_SUFFIXES
+
+
+def _fits_preview_path(fits_path: Path, root_dir: Path, preview_dir: Path) -> Path:
+    relative_path = _relative_artifact_path(fits_path, root_dir, include_root_name=False)
+    return preview_dir / f"{_slug(relative_path, max_length=120)}.png"
+
+
+def _load_fits_image_data(fits_path: Path):
+    import numpy as np
+    from astropy.io import fits
+
+    with fits.open(fits_path, memmap=False) as hdulist:
+        for hdu in hdulist:
+            data = hdu.data
+            if data is None:
+                continue
+            data = np.asarray(data)
+            if data.ndim < 2 or not np.issubdtype(data.dtype, np.number):
+                continue
+            data = np.squeeze(data)
+            while data.ndim > 2:
+                data = data[0]
+            if data.ndim == 2:
+                return data.astype(float, copy=False)
+    return None
+
+
+def _image_limits(data) -> tuple[float, float]:
+    import numpy as np
+
+    finite = data[np.isfinite(data)]
+    if finite.size == 0:
+        raise ValueError("FITS image has no finite pixels")
+
+    vmin, vmax = np.nanpercentile(finite, [1.0, 99.5])
+    if not np.isfinite(vmin) or not np.isfinite(vmax) or vmin == vmax:
+        vmin = float(np.nanmin(finite))
+        vmax = float(np.nanmax(finite))
+    if vmin == vmax:
+        delta = abs(vmin) * 0.01 or 1.0
+        vmin -= delta
+        vmax += delta
+    return float(vmin), float(vmax)
+
+
+def render_fits_png(
+    fits_path: Path,
+    output_dir: Path,
+    *,
+    root_dir: Optional[Path] = None,
+) -> Optional[Path]:
+    """Render a FITS image to a PNG preview and return the PNG path."""
+    fits_path = Path(fits_path)
+    if not _is_fits_artifact(fits_path) or not fits_path.is_file():
+        return None
+
+    data = _load_fits_image_data(fits_path)
+    if data is None:
+        return None
+
+    import matplotlib
+
+    if matplotlib.get_backend().lower() != "agg":
+        matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    root_dir = Path(root_dir or fits_path.parent)
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    png_path = _fits_preview_path(fits_path, root_dir, output_dir)
+
+    vmin, vmax = _image_limits(data)
+    fig, ax = plt.subplots(figsize=(6, 6), dpi=150)
+    image = ax.imshow(data, origin="lower", cmap="inferno", vmin=vmin, vmax=vmax)
+    ax.set_title(fits_path.name, fontsize=8)
+    ax.set_axis_off()
+    fig.colorbar(image, ax=ax, fraction=0.046, pad=0.04)
+    fig.savefig(png_path, bbox_inches="tight", pad_inches=0.04)
+    plt.close(fig)
+    return png_path
 
 
 def _json_markdown(path: Path, relative_path: str) -> str:
@@ -187,6 +281,63 @@ def publish_file_artifacts(
     return records
 
 
+def _file_record_paths(file_records: list[Mapping[str, object]]) -> list[Path]:
+    return [
+        Path(str(record["path"]))
+        for record in file_records
+        if record.get("class") == "File" and record.get("path")
+    ]
+
+
+def publish_fits_image_artifacts(
+    file_records: list[Mapping[str, object]],
+    root_dir: Path,
+    *,
+    artifact_writers: Optional[ArtifactWriters] = None,
+    in_run_context: Callable[[], bool] = _in_prefect_run_context,
+    preview_dir: Optional[Path] = None,
+) -> list[dict]:
+    """Render FITS image records to PNG previews and publish them as image artifacts."""
+    fits_paths = [path for path in _file_record_paths(file_records) if _is_fits_artifact(path)]
+    if not fits_paths or not in_run_context():
+        return []
+
+    root_dir = Path(root_dir)
+    preview_dir = Path(preview_dir or root_dir / ".rapthor-artifacts" / "fits-previews")
+    writers = artifact_writers or _prefect_artifact_writers()
+    records = []
+    for fits_path in sorted(fits_paths):
+        relative_path = _relative_artifact_path(fits_path, root_dir, include_root_name=True)
+        try:
+            png_path = render_fits_png(fits_path, preview_dir, root_dir=root_dir)
+        except Exception as err:
+            log.warning("Failed to render FITS preview for %s: %s", fits_path, err)
+            continue
+        if png_path is None:
+            continue
+
+        artifact_key = _fits_preview_artifact_key(relative_path)
+        artifact_id = writers.image(
+            image_url=_data_url(png_path),
+            key=artifact_key,
+            description=f"Rapthor FITS preview: {relative_path}",
+        )
+        records.append(
+            {
+                "artifact_id": artifact_id,
+                "artifact_key": artifact_key,
+                "artifact_type": "fits-preview",
+                "fits_path": str(fits_path),
+                "path": str(png_path),
+                "relative_path": relative_path,
+            }
+        )
+
+    if records:
+        log.info("Published %d Rapthor FITS preview artifacts from %s", len(records), root_dir)
+    return records
+
+
 def publish_plot_artifacts(
     plots_dir: Path,
     artifact_writers: Optional[ArtifactWriters] = None,
@@ -211,11 +362,7 @@ def publish_plot_file_records(
     in_run_context: Callable[[], bool] = _in_prefect_run_context,
 ) -> list[dict]:
     """Publish newly produced plot file records immediately."""
-    paths = [
-        Path(str(record["path"]))
-        for record in file_records
-        if record.get("class") == "File" and record.get("path")
-    ]
+    paths = _file_record_paths(file_records)
     return publish_file_artifacts(
         paths,
         Path(root_dir),
@@ -236,3 +383,25 @@ def publish_plot_artifacts_for_field(field: object, publish_index: bool = True) 
         return []
 
     return publish_plot_artifacts(Path(working_dir) / "plots", publish_index=publish_index)
+
+
+def publish_fits_image_artifacts_for_field(field: object) -> list[dict]:
+    """Publish FITS preview artifacts for finalized image products, if possible."""
+    parset = getattr(field, "parset", {})
+    if not isinstance(parset, dict):
+        return []
+
+    working_dir = parset.get("dir_working")
+    if not working_dir:
+        return []
+
+    images_dir = Path(working_dir) / "images"
+    if not images_dir.is_dir():
+        return []
+
+    records = [
+        {"class": "File", "path": str(path)}
+        for path in sorted(images_dir.rglob("*"))
+        if path.is_file() and _is_fits_artifact(path)
+    ]
+    return publish_fits_image_artifacts(records, images_dir)

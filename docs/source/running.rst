@@ -79,8 +79,9 @@ external command output in the dashboard. Plot files are also published as
 Prefect artifacts as plotting tasks and operation finalizers create them, so
 calibration PNGs and image diagnostic PDFs can be inspected from the dashboard
 during the run. Image diagnostic JSON files are rendered as Markdown artifacts
-with formatted JSON content. At the end of the process flow, Rapthor publishes
-an index artifact for everything found under ``dir_working/plots``.
+with formatted JSON content. FITS image products are rendered to PNG previews
+and published as image artifacts. At the end of the process flow, Rapthor
+publishes an index artifact for everything found under ``dir_working/plots``.
 
 
 Running with Slurm and external Dask

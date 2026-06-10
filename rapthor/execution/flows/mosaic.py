@@ -6,6 +6,7 @@ from typing import Mapping, Optional
 from prefect import flow, task
 
 from rapthor.execution.commands import normalize_command
+from rapthor.execution.artifacts import publish_fits_image_artifacts
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.runtime import run_flow_with_task_runner
 from rapthor.execution.outputs import file_record, validate_output_record
@@ -297,8 +298,12 @@ def run_mosaic_image_type(
             config,
             shell_operation_cls=shell_operation_cls,
         )
-        return file_record(compressed_path)
-    return file_record(mosaic_path)
+        output_record = file_record(compressed_path)
+        publish_fits_image_artifacts([output_record], pipeline_working_dir)
+        return output_record
+    output_record = file_record(mosaic_path)
+    publish_fits_image_artifacts([output_record], pipeline_working_dir)
+    return output_record
 
 
 @task(name="mosaic_image_type")
