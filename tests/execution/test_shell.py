@@ -64,6 +64,33 @@ def test_run_shell_command_uses_injected_operation_class():
     assert FakeShellOperation.instances[0].kwargs["commands"] == ["echo hello"]
 
 
+def test_run_shell_command_records_duration_metadata(tmp_path):
+    FakeShellOperation.instances = []
+    pipeline_working_dir = tmp_path / "work" / "pipelines" / "calibrate_1"
+    pipeline_working_dir.mkdir(parents=True)
+
+    result = run_shell_command(
+        ShellCommand(
+            ["DP3", "msin=input.ms"],
+            working_directory=str(pipeline_working_dir),
+            name="solve",
+        ),
+        ExecutionConfig(),
+        shell_operation_cls=FakeShellOperation,
+    )
+
+    assert result == "OK"
+    log_path = tmp_path / "work" / "logs" / "commands.jsonl"
+    record = json.loads(log_path.read_text())
+    assert record["operation"] == "calibrate_1"
+    assert record["name"] == "solve"
+    assert record["status"] == "completed"
+    assert record["returncode"] == 0
+    assert record["duration_seconds"] >= 0
+    assert record["started_at"]
+    assert record["finished_at"]
+
+
 def test_run_shell_command_streams_clean_output_to_logger(tmp_path, caplog):
     caplog.set_level(logging.INFO, logger="rapthor:shell")
 
@@ -103,6 +130,8 @@ def test_run_shell_command_batches_nearby_output_lines(tmp_path, caplog):
 
 def test_run_shell_command_streaming_raises_on_failure(tmp_path, caplog):
     caplog.set_level(logging.INFO, logger="rapthor:shell")
+    pipeline_working_dir = tmp_path / "work" / "pipelines" / "calibrate_1"
+    pipeline_working_dir.mkdir(parents=True)
 
     with pytest.raises(RuntimeError, match="return code 7"):
         run_shell_command(
@@ -112,13 +141,21 @@ def test_run_shell_command_streaming_raises_on_failure(tmp_path, caplog):
                     "-c",
                     "import sys; print('failure line', file=sys.stderr); sys.exit(7)",
                 ],
-                working_directory=str(tmp_path),
+                working_directory=str(pipeline_working_dir),
+                name="failing-step",
             ),
             ExecutionConfig(stream_output=True),
         )
 
     assert "failure line" in caplog.text
     assert "PID" not in caplog.text
+    log_path = tmp_path / "work" / "logs" / "commands.jsonl"
+    record = json.loads(log_path.read_text())
+    assert record["operation"] == "calibrate_1"
+    assert record["name"] == "failing-step"
+    assert record["status"] == "failed"
+    assert record["returncode"] == 7
+    assert "return code 7" in record["error"]
 
 
 def test_write_command_log_record_appends_backend_neutral_jsonl(tmp_path):

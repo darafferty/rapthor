@@ -9,6 +9,8 @@ import os
 import subprocess
 import sys
 import time
+import uuid
+from contextlib import contextmanager
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Optional
@@ -58,7 +60,23 @@ class LocalDaskDemoCluster:
 
 
 def _default_run_dir() -> Path:
-    return Path.cwd() / "runs" / f"prefect-demo-{time.strftime('%Y%m%d-%H%M%S')}"
+    suffix = uuid.uuid4().hex[:8]
+    return Path.cwd() / "runs" / f"prefect-demo-{time.strftime('%Y%m%d-%H%M%S')}-{suffix}"
+
+
+def _resolve_demo_path(path: Path) -> Path:
+    path = path.expanduser()
+    if path.is_absolute():
+        return path.resolve(strict=False)
+    return (Path.cwd() / path).resolve(strict=False)
+
+
+def _working_dir_override_from_args(args: argparse.Namespace, run_dir: Path) -> Optional[Path]:
+    if args.working_dir is not None:
+        return _resolve_demo_path(args.working_dir)
+    if args.unique_working_dir:
+        return run_dir / "rapthor-work"
+    return None
 
 
 def _dashboard_url_from_api(api_url: str) -> str:
@@ -91,6 +109,63 @@ def _dask_dashboard_url(execution_config: ExecutionConfig) -> Optional[str]:
     if execution_config.task_runner != "local_dask":
         return None
     return _dask_dashboard_url_from_address(execution_config.dask_dashboard_address or ":8787")
+
+
+def _dask_performance_report_path(
+    enabled: bool,
+    value: Optional[str],
+    run_dir: Path,
+) -> Optional[Path]:
+    if not enabled:
+        return None
+    if value is None:
+        return run_dir / "dask-performance-report.html"
+    path = Path(value).expanduser()
+    if path.is_absolute():
+        return path
+    return Path.cwd() / path
+
+
+@contextmanager
+def _dask_performance_report(
+    report_path: Optional[Path],
+    execution_config: ExecutionConfig,
+    *,
+    dask_client=None,
+    performance_report_factory=None,
+    client_cls=None,
+):
+    if report_path is None:
+        yield None
+        return
+
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    opened_client = None
+    if performance_report_factory is None or client_cls is None:
+        try:
+            from dask.distributed import Client, performance_report
+        except ImportError as err:
+            raise RuntimeError(
+                "Writing a Dask performance report requires dask.distributed."
+            ) from err
+        performance_report_factory = performance_report_factory or performance_report
+        client_cls = client_cls or Client
+
+    if dask_client is None:
+        scheduler = execution_config.resolved_dask_scheduler()
+        if not scheduler:
+            raise RuntimeError(
+                "--dask-performance-report requires a persistent local or external "
+                "Dask scheduler. Keep --start-dask enabled or pass --dask-scheduler."
+            )
+        opened_client = client_cls(scheduler)
+
+    try:
+        with performance_report_factory(filename=str(report_path)):
+            yield report_path
+    finally:
+        if opened_client is not None:
+            opened_client.close()
 
 
 def _api_url_for_local_server(port: int) -> str:
@@ -188,7 +263,11 @@ def _resolve_path_value(value: str, base_dir: Path) -> str:
     return _resolve_path_token(value, base_dir)
 
 
-def _materialize_parset_paths(parset_file: Path, run_dir: Path) -> Path:
+def _materialize_parset_paths(
+    parset_file: Path,
+    run_dir: Path,
+    working_dir_override: Optional[Path] = None,
+) -> Path:
     parser = configparser.ConfigParser(interpolation=None)
     with parset_file.open() as handle:
         parser.read_file(handle)
@@ -202,6 +281,11 @@ def _materialize_parset_paths(parset_file: Path, run_dir: Path) -> Path:
                 parser.set(
                     section, option, _resolve_path_value(parser.get(section, option), base_dir)
                 )
+
+    if working_dir_override is not None:
+        if not parser.has_section("global"):
+            parser.add_section("global")
+        parser.set("global", "dir_working", str(working_dir_override))
 
     materialized = run_dir / f"{parset_file.stem}.materialized.parset"
     with materialized.open("w") as handle:
@@ -280,7 +364,7 @@ def _start_local_dask_cluster(execution_config: ExecutionConfig) -> LocalDaskDem
     )
 
 
-def _parse_args() -> argparse.Namespace:
+def _parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
             "Start or attach to a Prefect server and run Rapthor through "
@@ -295,6 +379,23 @@ def _parse_args() -> argparse.Namespace:
         if "RAPTHOR_PREFECT_DEMO_DIR" in os.environ
         else None,
         help="Directory for demo logs. Defaults to ./runs/prefect-demo-<timestamp>.",
+    )
+    parser.add_argument(
+        "--unique-working-dir",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "Override global.dir_working to a directory inside this demo run. "
+            "Defaults to true so repeated demo runs do not reuse pipeline state."
+        ),
+    )
+    parser.add_argument(
+        "--working-dir",
+        type=Path,
+        help=(
+            "Explicit Rapthor global.dir_working override. Defaults to "
+            "<run-dir>/rapthor-work when --unique-working-dir is enabled."
+        ),
     )
     parser.add_argument(
         "--host",
@@ -350,6 +451,19 @@ def _parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--dask-performance-report",
+        action="store_true",
+        help=(
+            "Write a Dask performance report HTML file in the demo run directory. "
+            "Use --dask-performance-report-path to choose a different path."
+        ),
+    )
+    parser.add_argument(
+        "--dask-performance-report-path",
+        metavar="PATH",
+        help="Path for --dask-performance-report output.",
+    )
+    parser.add_argument(
         "--start-dask",
         action=argparse.BooleanOptionalAction,
         default=True,
@@ -393,7 +507,7 @@ def _parse_args() -> argparse.Namespace:
             "Defaults to true so completed runs remain visible in the dashboard."
         ),
     )
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
 def main() -> int:
@@ -403,10 +517,17 @@ def main() -> int:
         sys.stderr.write(f"Parset does not exist: {parset_file}\n")
         return 2
 
-    run_dir = (args.run_dir or _default_run_dir()).resolve()
+    run_dir = _resolve_demo_path(args.run_dir) if args.run_dir is not None else _default_run_dir()
     run_dir.mkdir(parents=True, exist_ok=True)
+    working_dir_override = _working_dir_override_from_args(args, run_dir)
     run_parset_file = (
-        _materialize_parset_paths(parset_file, run_dir) if args.materialize_paths else parset_file
+        _materialize_parset_paths(
+            parset_file,
+            run_dir,
+            working_dir_override=working_dir_override,
+        )
+        if args.materialize_paths or working_dir_override is not None
+        else parset_file
     )
 
     api_url = args.api_url or _api_url_for_local_server(args.port)
@@ -433,6 +554,8 @@ def main() -> int:
         if run_parset_file != parset_file:
             print(f"Materialized parset: {run_parset_file}")
         print(f"Demo run directory: {run_dir}")
+        if working_dir_override is not None:
+            print(f"Rapthor working directory: {working_dir_override}")
 
         execution_config = _execution_config_from_args(run_parset_file, args)
         if args.start_dask and execution_config.task_runner == "local_dask":
@@ -480,11 +603,26 @@ def main() -> int:
         elif execution_config.task_runner == "external_dask":
             print("Dask dashboard: use the dashboard for the external Dask scheduler.")
 
-        process_flow(
-            run_parset_file,
-            logging_level=args.logging_level,
-            execution_config=execution_config,
+        performance_report_path = _dask_performance_report_path(
+            args.dask_performance_report,
+            args.dask_performance_report_path,
+            run_dir,
         )
+        if performance_report_path is not None:
+            print(f"Dask performance report: {performance_report_path}")
+
+        with _dask_performance_report(
+            performance_report_path,
+            execution_config,
+            dask_client=None if dask_cluster is None else dask_cluster.client,
+        ):
+            process_flow(
+                run_parset_file,
+                logging_level=args.logging_level,
+                execution_config=execution_config,
+            )
+        if performance_report_path is not None:
+            print(f"Wrote Dask performance report: {performance_report_path}")
         print("Rapthor Prefect demo run finished.")
         return 0
     except Exception:

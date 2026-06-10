@@ -7,6 +7,7 @@ from typing import Callable, Optional
 from prefect import flow
 
 from rapthor.execution.artifacts import (
+    publish_command_metrics_artifact_for_field,
     publish_fits_image_artifacts_for_field,
     publish_plot_artifacts_for_field,
 )
@@ -231,6 +232,7 @@ def _run_operation(factory: Callable, *args) -> object:
     operation.run()
     publish_plot_artifacts_for_field(getattr(operation, "field", None), publish_index=False)
     publish_fits_image_artifacts_for_field(getattr(operation, "field", None))
+    publish_command_metrics_artifact_for_field(getattr(operation, "field", None))
     return operation
 
 
@@ -366,6 +368,7 @@ def run_process(
     hooks.make_report(field)
     publish_plot_artifacts_for_field(field)
     publish_fits_image_artifacts_for_field(field)
+    publish_command_metrics_artifact_for_field(field)
     log.info("Rapthor has finished :)")
     return field
 

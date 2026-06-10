@@ -3,6 +3,7 @@
 # Project specific
 rapthor/_version.py
 prefect-demo-work*/
+examples/generated/
 runs/
 test/resources/
 tests/resources/test.ms

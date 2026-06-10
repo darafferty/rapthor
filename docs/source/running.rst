@@ -60,9 +60,13 @@ The helper starts a temporary Prefect server when one is not already available,
 prints the dashboard URL, materializes relative parset paths to absolute paths,
 runs the parset through the Prefect process flow, and leaves the temporary
 server running when the run finishes so previous runs remain visible in the
-dashboard. Use ``--no-keep-server`` for a one-shot run that stops its temporary
-server before exiting. The demo parset uses the small local test Measurement
-Set and ``examples/prefect_demo_strategy.py``. To attach to an existing server
+dashboard. By default, the helper also overrides ``global.dir_working`` to a
+fresh ``rapthor-work`` directory inside the demo run directory, so repeated runs
+do not reuse pipeline state. Pass ``--no-unique-working-dir`` to use the working
+directory from the parset, or ``--working-dir /path/to/work`` to choose one
+explicitly. Use ``--no-keep-server`` for a one-shot run that stops its temporary
+server before exiting. The demo parset uses the small local test Measurement Set
+and ``examples/prefect_demo_strategy.py``. To attach to an existing server
 instead:
 
 .. code-block:: console
@@ -93,6 +97,18 @@ before opening the URL in your browser. Pass ``--no-start-dask`` to use
 Prefect's temporary ``local_dask`` clusters directly; those can be harder to
 monitor because they are created lazily by each flow. With
 ``--task-runner external_dask``, use the dashboard for the external scheduler.
+To save the Dask scheduler, task stream, and profiling information as a
+standalone HTML file, pass ``--dask-performance-report``. The report is written
+to the demo run directory by default:
+
+.. code-block:: console
+
+    $ scripts/dev/run-rapthor-prefect-demo.py \
+      --dask-performance-report \
+      examples/prefect_demo.parset
+
+Use ``--dask-performance-report-path /path/to/report.html`` to choose the
+output path.
 
 The demo parset streams external command output to Prefect task logs by default without
 the repeated Prefect Shell ``PID ... stream output`` prefixes. Pass
@@ -105,6 +121,24 @@ during the run. Image diagnostic JSON files are rendered as Markdown artifacts
 with formatted JSON content. FITS image products are rendered to PNG previews
 and published as image artifacts. At the end of the process flow, Rapthor
 publishes an index artifact for everything found under ``dir_working/plots``.
+Rapthor also records external command timings in
+``dir_working/logs/commands.jsonl`` and publishes a command timing summary as a
+Prefect Markdown artifact.
+
+The checked-in demo parset uses a very small test Measurement Set so it starts
+quickly. To generate a richer local demo with five bright point-source groups,
+48 time slots, multiple frequency bins, and two calibration chunks, run:
+
+.. code-block:: console
+
+    $ scripts/dev/generate-prefect-demo-data.py --force
+    $ scripts/dev/run-rapthor-prefect-demo.py \
+      examples/generated/prefect_demo_rich/prefect_demo_rich.parset
+
+The generated files are written under ``examples/generated/`` and are ignored by
+git. The generator uses DP3 prediction to populate the visibilities, then adds
+synthetic time/frequency antenna phases and thermal noise so calibration
+solution plots have visible structure.
 
 
 Running with Slurm and external Dask

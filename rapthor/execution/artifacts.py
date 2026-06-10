@@ -17,6 +17,8 @@ FITS_ARTIFACT_SUFFIXES = (".fit", ".fits", ".fit.fz", ".fits.fz")
 FITS_PREVIEW_ARTIFACT_KEY_PREFIX = "rapthor-fits-preview"
 JSON_ARTIFACT_SUFFIXES = {".json"}
 PLOT_ARTIFACT_KEY_PREFIX = "rapthor-plot"
+COMMAND_METRICS_ARTIFACT_KEY = "rapthor-command-metrics"
+COMMAND_LOG_FILENAME = "commands.jsonl"
 
 
 @dataclass(frozen=True)
@@ -207,6 +209,87 @@ def _plot_index_markdown(plots_dir: Path, records: list[dict]) -> str:
         lines.append(
             f"- `{record['relative_path']}` ({record['artifact_type']} artifact): "
             f"[local file]({record['file_url']})"
+        )
+    return "\n".join(lines)
+
+
+def _command_log_path(working_dir: Path) -> Path:
+    return working_dir / "logs" / COMMAND_LOG_FILENAME
+
+
+def _command_metric_records(working_dir: Path) -> list[dict]:
+    log_path = _command_log_path(working_dir)
+    if not log_path.exists():
+        return []
+
+    records = []
+    for line in log_path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            records.append(json.loads(line))
+        except json.JSONDecodeError:
+            log.warning("Skipping malformed command metric line in %s", log_path)
+    return records
+
+
+def _markdown_cell(value: object, *, max_length: int = 120) -> str:
+    text = "" if value is None else str(value)
+    text = text.replace("\n", " ").replace("|", "\\|")
+    if len(text) > max_length:
+        text = f"{text[: max_length - 3]}..."
+    return text
+
+
+def _duration_text(value: object) -> str:
+    try:
+        duration = float(value)
+    except (TypeError, ValueError):
+        return ""
+    if duration < 1.0:
+        return f"{duration * 1000:.0f} ms"
+    if duration < 60.0:
+        return f"{duration:.2f} s"
+    return f"{duration / 60.0:.2f} min"
+
+
+def _command_metrics_markdown(working_dir: Path, records: list[dict]) -> str:
+    log_path = _command_log_path(working_dir)
+    durations = [
+        float(record["duration_seconds"])
+        for record in records
+        if isinstance(record.get("duration_seconds"), (int, float))
+    ]
+    lines = [
+        "# Rapthor command timings",
+        "",
+        f"Source: `{log_path}`",
+        "",
+    ]
+    if durations:
+        lines.extend(
+            [
+                f"Total recorded external-command time: `{_duration_text(sum(durations))}`",
+                "",
+            ]
+        )
+    lines.extend(
+        [
+            "| Operation | Name | Status | Duration | Command |",
+            "| --- | --- | --- | ---: | --- |",
+        ]
+    )
+    for record in records:
+        command = record.get("command_string")
+        if command is None and isinstance(record.get("command"), list):
+            command = " ".join(str(token) for token in record["command"])
+        lines.append(
+            "| "
+            f"{_markdown_cell(record.get('operation'))} | "
+            f"{_markdown_cell(record.get('name'))} | "
+            f"{_markdown_cell(record.get('status'))} | "
+            f"{_markdown_cell(_duration_text(record.get('duration_seconds')))} | "
+            f"`{_markdown_cell(command)}` |"
         )
     return "\n".join(lines)
 
@@ -405,3 +488,39 @@ def publish_fits_image_artifacts_for_field(field: object) -> list[dict]:
         if path.is_file() and _is_fits_artifact(path)
     ]
     return publish_fits_image_artifacts(records, images_dir)
+
+
+def publish_command_metrics_artifact(
+    working_dir: Path,
+    *,
+    artifact_writers: Optional[ArtifactWriters] = None,
+    in_run_context: Callable[[], bool] = _in_prefect_run_context,
+) -> Optional[object]:
+    """Publish a Markdown summary of external-command timings, if available."""
+    working_dir = Path(working_dir)
+    records = _command_metric_records(working_dir)
+    if not records:
+        return None
+    if not in_run_context():
+        return None
+
+    writers = artifact_writers or _prefect_artifact_writers()
+    artifact_id = writers.markdown(
+        markdown=_command_metrics_markdown(working_dir, records),
+        key=COMMAND_METRICS_ARTIFACT_KEY,
+        description="Rapthor external-command timing summary.",
+    )
+    log.info("Published Rapthor command timing artifact from %s", _command_log_path(working_dir))
+    return artifact_id
+
+
+def publish_command_metrics_artifact_for_field(field: object) -> Optional[object]:
+    """Publish command timing metrics for a completed Rapthor field, if possible."""
+    parset = getattr(field, "parset", {})
+    if not isinstance(parset, dict):
+        return None
+
+    working_dir = parset.get("dir_working")
+    if not working_dir:
+        return None
+    return publish_command_metrics_artifact(Path(working_dir))

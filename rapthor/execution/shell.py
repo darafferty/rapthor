@@ -7,6 +7,7 @@ import queue
 import subprocess
 import tempfile
 import threading
+import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -18,6 +19,14 @@ from rapthor.execution.config import ExecutionConfig
 
 class MissingPrefectShellError(RuntimeError):
     """Raised when prefect-shell is required but not installed."""
+
+
+class ShellCommandError(RuntimeError):
+    """Raised when an external command exits unsuccessfully."""
+
+    def __init__(self, message: str, returncode: int):
+        super().__init__(message)
+        self.returncode = returncode
 
 
 log = logging.getLogger("rapthor:shell")
@@ -115,6 +124,13 @@ def command_log_path(working_directory: Optional[str]) -> Optional[Path]:
 def write_command_log_record(
     shell_command: ShellCommand,
     execution_config: ExecutionConfig,
+    *,
+    started_at: Optional[datetime] = None,
+    finished_at: Optional[datetime] = None,
+    duration_seconds: Optional[float] = None,
+    status: Optional[str] = None,
+    returncode: Optional[int] = None,
+    error: Optional[str] = None,
 ) -> Optional[Path]:
     """Append a structured command record for integration/equivalence assertions."""
     if not execution_config.log_commands:
@@ -135,6 +151,19 @@ def write_command_log_record(
         "command_string": shell_command.command_string,
         "environment": dict(shell_command.environment),
     }
+    if started_at is not None:
+        record["started_at"] = started_at.isoformat()
+    if finished_at is not None:
+        record["finished_at"] = finished_at.isoformat()
+    if duration_seconds is not None:
+        record["duration_seconds"] = round(duration_seconds, 6)
+    if status is not None:
+        record["status"] = status
+    if returncode is not None:
+        record["returncode"] = returncode
+    if error is not None:
+        record["error"] = error
+
     log_path.parent.mkdir(parents=True, exist_ok=True)
     with log_path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(record, sort_keys=True) + "\n")
@@ -197,9 +226,10 @@ def _run_streaming_shell_command(shell_command: ShellCommand) -> list[str]:
 
         process.wait()
         if process.returncode != 0:
-            raise RuntimeError(
+            raise ShellCommandError(
                 "Command failed with return code "
-                f"{process.returncode}: {shell_command.command_string}"
+                f"{process.returncode}: {shell_command.command_string}",
+                process.returncode,
             )
     finally:
         if process is not None and process.poll() is None:
@@ -219,17 +249,44 @@ def run_shell_command(
     shell_operation_cls=None,
 ):
     """Execute one command using the configured Prefect shell runner."""
-    write_command_log_record(shell_command, execution_config)
-    operation_cls = shell_operation_cls or _load_shell_operation_cls()
-    if (
-        shell_operation_cls is None
-        and execution_config.stream_output
-        and _is_prefect_shell_operation_cls(operation_cls)
-    ):
-        return _run_streaming_shell_command(shell_command)
+    started_at = datetime.now(timezone.utc)
+    start_time = time.monotonic()
+    status = "completed"
+    returncode = 0
+    error = None
+    try:
+        operation_cls = shell_operation_cls or _load_shell_operation_cls()
+        if (
+            shell_operation_cls is None
+            and execution_config.stream_output
+            and _is_prefect_shell_operation_cls(operation_cls)
+        ):
+            return _run_streaming_shell_command(shell_command)
 
-    operation = operation_cls(**shell_operation_kwargs(shell_command, execution_config))
-    return operation.run()
+        operation = operation_cls(**shell_operation_kwargs(shell_command, execution_config))
+        return operation.run()
+    except ShellCommandError as err:
+        status = "failed"
+        returncode = err.returncode
+        error = str(err)
+        raise
+    except Exception as err:
+        status = "failed"
+        returncode = None
+        error = str(err)
+        raise
+    finally:
+        finished_at = datetime.now(timezone.utc)
+        write_command_log_record(
+            shell_command,
+            execution_config,
+            started_at=started_at,
+            finished_at=finished_at,
+            duration_seconds=time.monotonic() - start_time,
+            status=status,
+            returncode=returncode,
+            error=error,
+        )
 
 
 def run_shell_commands(

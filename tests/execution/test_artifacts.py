@@ -2,6 +2,7 @@ from pathlib import Path
 
 from rapthor.execution.artifacts import (
     ArtifactWriters,
+    publish_command_metrics_artifact,
     publish_fits_image_artifacts,
     publish_plot_artifacts,
     publish_plot_file_records,
@@ -228,3 +229,49 @@ def test_publish_plot_artifacts_is_noop_without_plots_directory(tmp_path):
 
     assert records == []
     assert recorder.calls == []
+
+
+def test_publish_command_metrics_artifact_renders_timing_table(tmp_path):
+    working_dir = tmp_path / "work"
+    log_dir = working_dir / "logs"
+    log_dir.mkdir(parents=True)
+    (log_dir / "commands.jsonl").write_text(
+        "\n".join(
+            [
+                (
+                    '{"operation": "calibrate_1", "name": "solve", '
+                    '"status": "completed", "duration_seconds": 12.5, '
+                    '"command_string": "DP3 msin=input.ms"}'
+                ),
+                (
+                    '{"operation": "image_1", "name": "clean", '
+                    '"status": "failed", "duration_seconds": 61.0, '
+                    '"command": ["wsclean", "-name", "sector"]}'
+                ),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    recorder = RecordingArtifactWriters()
+
+    artifact_id = publish_command_metrics_artifact(
+        working_dir,
+        artifact_writers=recorder.writers,
+        in_run_context=lambda: True,
+    )
+
+    assert artifact_id == "markdown-1"
+    assert [call[0] for call in recorder.calls] == ["markdown"]
+    markdown_call = recorder.calls[0][1]
+    assert markdown_call["key"] == "rapthor-command-metrics"
+    assert "# Rapthor command timings" in markdown_call["markdown"]
+    assert "Total recorded external-command time: `1.23 min`" in markdown_call["markdown"]
+    assert (
+        "| calibrate_1 | solve | completed | 12.50 s | `DP3 msin=input.ms` |"
+        in markdown_call["markdown"]
+    )
+    assert (
+        "| image_1 | clean | failed | 1.02 min | `wsclean -name sector` |"
+        in markdown_call["markdown"]
+    )
