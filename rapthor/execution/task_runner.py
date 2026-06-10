@@ -45,6 +45,8 @@ def local_cluster_kwargs(execution_config: ExecutionConfig) -> dict:
     }
     if execution_config.mem_per_node_gb:
         kwargs["memory_limit"] = f"{execution_config.mem_per_node_gb}GB"
+    if execution_config.dask_dashboard_address:
+        kwargs["dashboard_address"] = execution_config.dask_dashboard_address
     return kwargs
 
 

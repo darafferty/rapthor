@@ -9,7 +9,7 @@ import os
 import subprocess
 import sys
 import time
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Optional
 from urllib.error import URLError
@@ -17,6 +17,7 @@ from urllib.request import urlopen
 
 from rapthor.execution.config import TASK_RUNNERS, ExecutionConfig
 from rapthor.execution.flows.process import process_flow
+from rapthor.execution.task_runner import local_cluster_kwargs
 from rapthor.lib.parset import parset_read
 
 PATH_OPTIONS = {
@@ -39,12 +40,57 @@ PATH_OPTIONS = {
 }
 
 
+@dataclass
+class LocalDaskDemoCluster:
+    cluster: object
+    client: object
+    scheduler_address: str
+    dashboard_url: Optional[str]
+    worker_count: int
+
+    def close(self) -> None:
+        close_client = getattr(self.client, "close", None)
+        if close_client is not None:
+            close_client()
+        close_cluster = getattr(self.cluster, "close", None)
+        if close_cluster is not None:
+            close_cluster()
+
+
 def _default_run_dir() -> Path:
     return Path.cwd() / "runs" / f"prefect-demo-{time.strftime('%Y%m%d-%H%M%S')}"
 
 
 def _dashboard_url_from_api(api_url: str) -> str:
     return api_url.removesuffix("/api").rstrip("/")
+
+
+def _dask_dashboard_url_from_address(address: Optional[str]) -> Optional[str]:
+    if address is None:
+        return None
+    address = address.strip()
+    if address in {"", "None", "none", "null", "Null"}:
+        return None
+    if "://" in address:
+        url = address
+    else:
+        if address.startswith(":"):
+            host = "127.0.0.1"
+            port = address[1:]
+        else:
+            host, _, port = address.rpartition(":")
+            if not host:
+                host = "127.0.0.1"
+            if host in {"0.0.0.0", "::", "[::]"}:
+                host = "127.0.0.1"
+        url = f"http://{host}:{port}" if port else f"http://{host}"
+    return url.rstrip("/") if url.rstrip("/").endswith("/status") else f"{url.rstrip('/')}/status"
+
+
+def _dask_dashboard_url(execution_config: ExecutionConfig) -> Optional[str]:
+    if execution_config.task_runner != "local_dask":
+        return None
+    return _dask_dashboard_url_from_address(execution_config.dask_dashboard_address or ":8787")
 
 
 def _api_url_for_local_server(port: int) -> str:
@@ -163,6 +209,28 @@ def _materialize_parset_paths(parset_file: Path, run_dir: Path) -> Path:
     return materialized
 
 
+def _write_runtime_cluster_overrides(
+    parset_file: Path,
+    run_dir: Path,
+    overrides: dict[str, object],
+) -> Path:
+    parser = configparser.ConfigParser(interpolation=None)
+    with parset_file.open() as handle:
+        parser.read_file(handle)
+
+    section = "cluster" if parser.has_section("cluster") else "cluster_specific"
+    if not parser.has_section(section):
+        parser.add_section(section)
+
+    for key, value in overrides.items():
+        parser.set(section, key, "" if value is None else str(value))
+
+    runtime_parset = run_dir / f"{parset_file.stem}.runtime.parset"
+    with runtime_parset.open("w") as handle:
+        parser.write(handle)
+    return runtime_parset
+
+
 def _execution_config_from_args(parset_file: Path, args: argparse.Namespace) -> ExecutionConfig:
     config = ExecutionConfig.from_parset(parset_read(parset_file))
     overrides = {}
@@ -171,6 +239,8 @@ def _execution_config_from_args(parset_file: Path, args: argparse.Namespace) -> 
         overrides["task_runner"] = args.task_runner
     if args.dask_scheduler is not None:
         overrides["dask_scheduler"] = args.dask_scheduler
+    if args.dask_dashboard_address is not None:
+        overrides["dask_dashboard_address"] = args.dask_dashboard_address
     if args.stream_output is not None:
         overrides["stream_output"] = args.stream_output
     if args.max_nodes is not None:
@@ -179,6 +249,35 @@ def _execution_config_from_args(parset_file: Path, args: argparse.Namespace) -> 
         overrides["cpus_per_task"] = args.cpus_per_task
 
     return replace(config, **overrides) if overrides else config
+
+
+def _start_local_dask_cluster(execution_config: ExecutionConfig) -> LocalDaskDemoCluster:
+    try:
+        from dask.distributed import Client, LocalCluster
+    except ImportError as err:
+        raise RuntimeError(
+            "Starting the local Dask dashboard requires dask.distributed. "
+            "Install the Prefect/Dask runtime dependencies first."
+        ) from err
+
+    cluster_kwargs = local_cluster_kwargs(execution_config)
+    cluster_kwargs.setdefault("dashboard_address", ":8787")
+    cluster = LocalCluster(**cluster_kwargs)
+    try:
+        client = Client(cluster)
+        worker_count = execution_config.local_dask_worker_count
+        client.wait_for_workers(worker_count, timeout="60s")
+    except Exception:
+        cluster.close()
+        raise
+
+    return LocalDaskDemoCluster(
+        cluster=cluster,
+        client=client,
+        scheduler_address=cluster.scheduler_address,
+        dashboard_url=cluster.dashboard_link,
+        worker_count=worker_count,
+    )
 
 
 def _parse_args() -> argparse.Namespace:
@@ -243,6 +342,24 @@ def _parse_args() -> argparse.Namespace:
         help="Override the Dask scheduler address, e.g. tcp://scheduler:8786.",
     )
     parser.add_argument(
+        "--dask-dashboard-address",
+        default=os.environ.get("DASK_DASHBOARD_ADDRESS"),
+        help=(
+            "Dashboard address for the local Dask cluster, e.g. :8787 or "
+            "127.0.0.1:8787. Applies only with --task-runner local_dask."
+        ),
+    )
+    parser.add_argument(
+        "--start-dask",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "Start a persistent local Dask cluster when the effective task runner "
+            "is local_dask. Defaults to true so the dashboard shows workers and "
+            "task stream activity for the whole run."
+        ),
+    )
+    parser.add_argument(
         "--stream-output",
         action=argparse.BooleanOptionalAction,
         default=None,
@@ -296,6 +413,7 @@ def main() -> int:
     os.environ["PREFECT_API_URL"] = api_url
 
     server = None
+    dask_cluster = None
     failed = False
     try:
         if args.no_start_server:
@@ -317,13 +435,50 @@ def main() -> int:
         print(f"Demo run directory: {run_dir}")
 
         execution_config = _execution_config_from_args(run_parset_file, args)
+        if args.start_dask and execution_config.task_runner == "local_dask":
+            print("Starting local Dask cluster for dashboard monitoring.")
+            cluster_config = execution_config
+            if cluster_config.dask_dashboard_address is None:
+                cluster_config = replace(cluster_config, dask_dashboard_address=":8787")
+            dask_cluster = _start_local_dask_cluster(cluster_config)
+            execution_config = replace(
+                cluster_config,
+                task_runner="external_dask",
+                dask_scheduler=dask_cluster.scheduler_address,
+            )
+            run_parset_file = _write_runtime_cluster_overrides(
+                run_parset_file,
+                run_dir,
+                {
+                    "prefect_task_runner": execution_config.task_runner,
+                    "dask_scheduler": execution_config.dask_scheduler,
+                    "dask_dashboard_address": execution_config.dask_dashboard_address,
+                },
+            )
+            print(f"Runtime parset: {run_parset_file}")
+
         print(
             "Execution config: "
             f"task_runner={execution_config.task_runner}, "
             f"dask_scheduler={execution_config.resolved_dask_scheduler()}, "
+            f"dask_dashboard_address={execution_config.dask_dashboard_address}, "
             f"max_nodes={execution_config.max_nodes}, "
             f"cpus_per_task={execution_config.cpus_per_task}"
         )
+        dask_dashboard_url = (
+            dask_cluster.dashboard_url
+            if dask_cluster is not None
+            else _dask_dashboard_url(execution_config)
+        )
+        if dask_dashboard_url is not None:
+            print(f"Dask dashboard: {dask_dashboard_url}")
+            if dask_cluster is not None:
+                print(
+                    "Dask workers: "
+                    f"{dask_cluster.worker_count} connected to {dask_cluster.scheduler_address}"
+                )
+        elif execution_config.task_runner == "external_dask":
+            print("Dask dashboard: use the dashboard for the external Dask scheduler.")
 
         process_flow(
             run_parset_file,
@@ -336,6 +491,9 @@ def main() -> int:
         failed = True
         raise
     finally:
+        if dask_cluster is not None:
+            print("Stopping local Dask cluster.")
+            dask_cluster.close()
         if server is not None:
             keep_server = args.keep_server or (failed and args.keep_server_on_failure)
             if keep_server:

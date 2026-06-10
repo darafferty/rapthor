@@ -14,6 +14,7 @@ def test_execution_config_defaults_from_empty_parset(monkeypatch):
 
     assert config.task_runner == "local_dask"
     assert config.dask_scheduler is None
+    assert config.dask_dashboard_address is None
     assert config.stream_output is True
     assert config.retries == 0
     assert config.log_commands is True
@@ -27,6 +28,7 @@ def test_execution_config_reads_cluster_specific_values():
             "cluster_specific": {
                 "prefect_task_runner": "sync",
                 "dask_scheduler": "tcp://scheduler:8786",
+                "dask_dashboard_address": ":8787",
                 "prefect_stream_output": False,
                 "prefect_retries": 2,
                 "prefect_log_commands": False,
@@ -45,6 +47,7 @@ def test_execution_config_reads_cluster_specific_values():
 
     assert config.task_runner == "sync"
     assert config.dask_scheduler == "tcp://scheduler:8786"
+    assert config.dask_dashboard_address == ":8787"
     assert config.stream_output is False
     assert config.retries == 2
     assert config.log_commands is False

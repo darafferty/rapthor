@@ -39,6 +39,7 @@
                       'cpus_per_task': 40,
                       'cwl_runner': 'cwltool',
                       'dask_scheduler': None,
+                      'dask_dashboard_address': None,
                       'debug_workflow': True,
                       'deconvolution_threads': 16,
                       'dir_local': '/tmp',

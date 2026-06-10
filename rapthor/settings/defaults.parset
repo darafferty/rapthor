@@ -428,6 +428,7 @@ cwl_runner = toil
 # when a Dask scheduler is configured and local_dask otherwise.
 prefect_task_runner = None
 dask_scheduler = None
+dask_dashboard_address = None
 prefect_stream_output = True
 prefect_retries = 0
 prefect_log_commands = True

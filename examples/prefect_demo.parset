@@ -70,6 +70,7 @@ use_container = False
 container_type = docker
 cwl_runner = toil
 prefect_task_runner = local_dask
+dask_dashboard_address = :8787
 prefect_stream_output = True
 prefect_retries = 0
 prefect_log_commands = True

@@ -72,7 +72,29 @@ instead:
 
 Use ``--task-runner local_dask``, ``--task-runner sync``, or
 ``--task-runner external_dask`` to override the parset for a demo run. The demo
-parset streams external command output to Prefect task logs by default without
+parset uses ``local_dask`` by default. For demo runs, the helper starts a
+persistent local Dask cluster, rewrites the runtime parset to use that scheduler,
+and serves the Dask dashboard on port ``8787``:
+
+.. code-block:: console
+
+    $ scripts/dev/run-rapthor-prefect-demo.py \
+      --task-runner local_dask \
+      --dask-dashboard-address :8787 \
+      examples/prefect_demo.parset
+
+The helper prints the Dask dashboard URL, usually
+``http://127.0.0.1:8787/status``. The Dask dashboard is available only while the
+local Dask cluster is running, so keep it open during the Rapthor run. The
+Workers tab should show the configured local workers, and Task Stream should
+show operation-level Prefect tasks as they are submitted. If the demo runs
+inside a dev container, forward port ``8787`` from the container to the host
+before opening the URL in your browser. Pass ``--no-start-dask`` to use
+Prefect's temporary ``local_dask`` clusters directly; those can be harder to
+monitor because they are created lazily by each flow. With
+``--task-runner external_dask``, use the dashboard for the external scheduler.
+
+The demo parset streams external command output to Prefect task logs by default without
 the repeated Prefect Shell ``PID ... stream output`` prefixes. Pass
 ``--no-stream-output`` or set ``prefect_stream_output = False`` to suppress
 external command output in the dashboard. Rapthor's Python logging is also

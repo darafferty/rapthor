@@ -34,6 +34,7 @@ classifiers=[
 dependencies = [
     "astropy",
     "bdsf",
+    "bokeh>=3.1.0",
     "jinja2",
     "losoto>=2.4.3",
     "lsmtool @ git+https://git.astron.nl/RD/LSMTool.git@master",

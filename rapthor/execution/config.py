@@ -54,6 +54,7 @@ class ExecutionConfig:
 
     task_runner: str = "local_dask"
     dask_scheduler: Optional[str] = None
+    dask_dashboard_address: Optional[str] = None
     stream_output: bool = True
     retries: int = 0
     log_commands: bool = True
@@ -75,7 +76,9 @@ class ExecutionConfig:
         settings describe how the single Python execution path should run.
         """
         cluster = _cluster_settings(parset)
-        scheduler = _optional_str(cluster.get("dask_scheduler")) or dask_scheduler_from_environment()
+        scheduler = (
+            _optional_str(cluster.get("dask_scheduler")) or dask_scheduler_from_environment()
+        )
         task_runner = cluster.get("prefect_task_runner")
         if task_runner is None:
             task_runner = "external_dask" if scheduler else "local_dask"
@@ -87,6 +90,7 @@ class ExecutionConfig:
         return cls(
             task_runner=task_runner,
             dask_scheduler=scheduler,
+            dask_dashboard_address=_optional_str(cluster.get("dask_dashboard_address")),
             stream_output=_as_bool(
                 cluster.get("prefect_stream_output", True), "prefect_stream_output"
             ),
