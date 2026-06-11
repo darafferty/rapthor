@@ -7,8 +7,10 @@ Status snapshot: 2026-06-11.
 Make Prefect/Dask the production execution path for Rapthor while preserving
 the existing parset/strategy contract, operation ordering, restart state,
 output records, product filenames/locations, finalizer-visible field state, and
-Slurm/MPI safety. CWL should remain only as a reference mechanism until
-equivalence is proven, then as static fixtures or compatibility helpers.
+the local execution contract. CWL should remain only as a reference mechanism
+until equivalence is proven, then as static fixtures or compatibility helpers.
+Slurm/external-Dask and MPI WSClean validation are deferred until after the
+migration cutover.
 
 ## Current Position
 
@@ -30,6 +32,8 @@ Most implementation work is complete.
   eleven CWL reference scenarios from legacy commit
   `4cfd2abe2fe815724e3f1c390d789eea249becef` and passes comparison against the
   current Prefect path.
+- The live CWL-vs-Prefect smoke gate also passes for the existing DI fast-phase
+  integration scenario against the preserved legacy checkout.
 - Demo and observability support is in place: persistent Prefect dashboard
   support, unique run directories, local/external Dask dashboard support, Dask
   performance reports, streamed external-command logs, Python logs in Prefect,
@@ -62,7 +66,8 @@ Most implementation work is complete.
 - `tests/integration/test_saved_cwl_equivalence.py` compares fresh Prefect runs
   against saved CWL artifacts when explicitly enabled.
 - `tests/integration/test_live_cwl_equivalence.py` can run a live CWL checkout
-  and the current Prefect flow side by side for a smoke scenario.
+  and the current Prefect flow side by side for a smoke scenario; this gate now
+  passes in the dev container.
 - `EQUIVALENCE_REPORT.md` records the current equivalence method, passing
   scenarios, known blockers, and commands.
 
@@ -80,11 +85,12 @@ Passing saved-reference scenarios:
 - `image_cube`
 - `restart`
 
-Still missing target-environment proof:
+Deferred post-migration target-environment proof:
 
 - `mpi_wsclean`: should run in the intended MPI/WSClean deployment
-  environment.
-- Slurm/external-Dask: should run inside a representative Slurm allocation.
+  environment after the migration cutover.
+- Slurm/external-Dask: should run inside a representative Slurm allocation
+  after the migration cutover.
 
 Deferred optional tasks:
 
@@ -98,16 +104,16 @@ Deferred optional tasks:
 
 ## Remaining Work
 
-### 1. Finish Target-Environment Equivalence
+### 1. Keep Local Equivalence Evidence Green
 
-This is the main blocker before public cutover.
+Local equivalence is the cutover gate. Slurm/external-Dask and MPI WSClean are
+deferred until after the migration is complete.
 
 - Keep the saved-CWL local gate as the release regression for local scenarios.
   Rerun it whenever references, product publishing, or equivalence helpers
   change.
-- Run the live CWL-vs-Prefect smoke gate against the preserved legacy checkout.
-- Run `mpi_wsclean` with the intended MPI/WSClean stack.
-- Run the Slurm/external-Dask hook inside a real Slurm allocation.
+- Keep the live CWL-vs-Prefect smoke gate as a regression for the preserved
+  legacy checkout.
 - Record the passing source data, artifact root, strategy files, commit SHAs,
   tool versions, commands, and test output.
 - Fix real differences. Document only intentional, user-invisible differences.
@@ -123,8 +129,6 @@ depends on real radio-astronomy tools and representative data.
   a supported target path again.
 
 ### 3. Cut Over The Public Route
-
-Only start this once target-environment equivalence has passed.
 
 - Route the CLI-compatible `rapthor.process.run()` path through
   `process_flow()`.
@@ -159,8 +163,20 @@ Only after public route cutover.
 - Record the equivalence evidence and known limitations in release notes.
 - Ensure generated demo data and large reference artifacts stay out of version
   control.
+- State clearly that Slurm/external-Dask and MPI WSClean validation are
+  deferred post-migration checks.
 
-### 6. Post-Cutover Refactor And Deduplication
+### 6. Post-Migration Target-Environment Validation
+
+Deferred by project decision until after the migration cutover.
+
+- Run `mpi_wsclean` with the intended MPI/WSClean stack.
+- Run the Slurm/external-Dask hook inside a representative Slurm allocation.
+- Fix any target-environment issues that appear there.
+- Record the commands, environment, tool versions, and outcomes in the
+  equivalence report or release follow-up notes.
+
+### 7. Post-Cutover Refactor And Deduplication
 
 Only after equivalence, public route cutover, and CWL runtime removal.
 
@@ -184,12 +200,11 @@ unless a performance issue prevents production use.
 
 ## Immediate Next Actions
 
-1. Run the live CWL-vs-Prefect smoke gate.
-2. Run `mpi_wsclean` and Slurm/external-Dask hooks in the deployment-like
-   environment.
-3. If all gates pass, switch `rapthor.process.run()` to `process_flow()`.
-4. Remove CWL production runtime and update docs, packaging, and CI.
-5. Do a post-cutover refactor pass to clean up migration scaffolding and reduce
+1. Switch `rapthor.process.run()` to `process_flow()`.
+2. Remove CWL production runtime and update docs, packaging, and CI.
+3. Run deferred Slurm/external-Dask and MPI WSClean validation after the
+   migration cutover.
+4. Do a post-cutover refactor pass to clean up migration scaffolding and reduce
    duplication.
 
 ## Useful Commands
@@ -245,12 +260,14 @@ scripts/dev/run-rapthor-prefect-demo.py \
 The migration is ready to merge when:
 
 - all supported public operation and process paths run through Prefect/Dask
-- the target-environment equivalence gate passes for the supported scenario
-  matrix
+- the local saved-reference and live smoke equivalence gates pass for the
+  supported non-deferred scenario matrix
 - restart/reset behaviour works with Prefect-produced operation state
-- runtime, resource, filesystem, command-log, artifact, Dask, MPI, and Slurm
-  checks pass
+- runtime, resource, filesystem, command-log, artifact, and local Dask checks
+  pass
 - CI is stable with Prefect tests isolated from high xdist fan-out
 - docs describe Prefect/Dask as the supported production execution path
+- docs record Slurm/external-Dask and MPI WSClean checks as deferred
+  post-migration validation
 - CWL artifacts that remain in the tree are static reference fixtures or
   compatibility helpers, not production execution machinery

@@ -2,8 +2,10 @@
 
 import configparser
 import os
+import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -61,7 +63,7 @@ def _copy_parset_for_backend(source_parset, target_parset, working_dir):
     parser.set("global", "dir_working", str(working_dir))
 
     if parser.has_section("cluster"):
-        scratch_dir = working_dir / "scratch"
+        scratch_dir = working_dir / "s"
         scratch_dir.mkdir(parents=True, exist_ok=True)
         if parser.has_option("cluster", "local_scratch_dir"):
             parser.set("cluster", "local_scratch_dir", str(scratch_dir))
@@ -93,7 +95,6 @@ def _copy_parset_for_backend(source_parset, target_parset, working_dir):
 def test_existing_di_fast_phase_integration_scenario_matches_cwl_and_prefect(
     generated_parset_path,
     single_loop_strategy_with_calibration_strategy,
-    tmp_path,
 ):
     """Reuse the DI fast-phase integration scenario as a live equivalence check."""
     legacy_repo = _require_legacy_cwl_repo()
@@ -105,16 +106,17 @@ def test_existing_di_fast_phase_integration_scenario_matches_cwl_and_prefect(
         },
     )
 
-    cwl_working_dir = tmp_path / "cwl" / "work"
-    prefect_working_dir = tmp_path / "prefect" / "work"
+    run_root = Path(tempfile.mkdtemp(prefix="rl-", dir="/tmp"))
+    cwl_working_dir = run_root / "c" / "w"
+    prefect_working_dir = run_root / "p" / "w"
     cwl_parset = _copy_parset_for_backend(
         source_parset,
-        tmp_path / "cwl" / "rapthor.parset",
+        run_root / "c.parset",
         cwl_working_dir,
     )
     prefect_parset = _copy_parset_for_backend(
         source_parset,
-        tmp_path / "prefect" / "rapthor.parset",
+        run_root / "p.parset",
         prefect_working_dir,
     )
 
@@ -137,3 +139,4 @@ def test_existing_di_fast_phase_integration_scenario_matches_cwl_and_prefect(
 
     differences = compare_backend_runs(cwl_working_dir, prefect_working_dir)
     assert not differences, format_differences(differences)
+    shutil.rmtree(run_root)

@@ -13,13 +13,15 @@ the supported scenario matrix.
 Current status: the equivalence harness and opt-in integration gates are in
 place. Eleven local saved CWL references have been captured from legacy commit
 `4cfd2abe2fe815724e3f1c390d789eea249becef`, and all eleven pass
-saved-reference comparison against the current Prefect execution path. Full
-required production equivalence is not yet recorded because `mpi_wsclean` and
-Slurm/external-Dask still need usable target-environment references or
-execution. `hybrid_screens` and `shared_facet_rw` are deferred from the required
-gate: the former is not used by the current target workflow and would require
-IDG Python bindings for DP3 IDGCal, while the latter has been too flaky in
-available WSClean environments.
+saved-reference comparison against the current Prefect execution path. The live
+CWL-vs-Prefect smoke gate also passes for the existing DI fast-phase
+integration scenario. Slurm/external-Dask and MPI WSClean validation are
+deferred until after the migration cutover by project decision; any issues found
+there will be handled as post-migration target-environment fixes.
+`hybrid_screens` and `shared_facet_rw` are deferred from the required gate: the
+former is not used by the current target workflow and would require IDG Python
+bindings for DP3 IDGCal, while the latter has been too flaky in available
+WSClean environments.
 
 ## Scope Of Equivalence
 
@@ -30,7 +32,8 @@ The migration must preserve:
 - finalizer-visible `Field`, `Observation`, and `Sector` state
 - output filenames, output-record shapes, and product locations
 - restart/reset behaviour through `.done` and `.outputs.json`
-- local execution, Slurm/external-Dask execution, and MPI WSClean safety
+- local execution behaviour; Slurm/external-Dask and MPI WSClean validation are
+  deferred post-migration
 
 The comparison is backend-neutral: it ignores absolute run-directory paths and
 compares observable products and operation records.
@@ -84,6 +87,9 @@ Current live scenario:
 - DI fast-phase calibration using `tests/resources/integration_template.parset`
   plus the existing `generated_parset_path` and
   `single_loop_strategy_with_calibration_strategy` integration fixtures
+- The test uses a short `/tmp/rl-*` run root and short `s` scratch directories
+  so PyBDSF/LSMTool multiprocessing does not hit AF_UNIX socket path-length
+  limits during legacy CWL `filter_skymodel` steps.
 
 ### Saved-Reference Gate
 
@@ -149,8 +155,9 @@ The saved-reference gate is driven by
 | `mpi_wsclean` | operations, products, fits |
 | `restart` | operations, products, restart |
 
-`mpi_wsclean` is a target-environment scenario and should be run where the MPI
-and WSClean environment matches the intended deployment target.
+`mpi_wsclean` is a target-environment scenario and is deferred until after the
+migration cutover, when it should be run where the MPI and WSClean environment
+matches the intended deployment target.
 
 The default saved-reference gate excludes scenarios with
 `deferred_from_required_gate=true` and scenarios marked `target_environment=true`
@@ -250,6 +257,21 @@ captured scenario parset when one is present, ignores dashboard-only
 `.rapthor-artifacts` derivatives, and filters log-derived operation order to
 operations that produced state in the run under comparison.
 
+Live CWL-vs-Prefect smoke verification in the development container on
+2026-06-11:
+
+```bash
+RAPTHOR_RUN_LIVE_CWL_EQUIVALENCE=1 \
+RAPTHOR_LEGACY_CWL_REPO=/app/.pytest_cache/legacy-cwl-4cfd2abe \
+python3 -m pytest tests/integration/test_live_cwl_equivalence.py -q --tb=short
+```
+
+Result: 1 passed, 1 warning in 503.84s (0:08:23). An earlier attempt using the
+default long pytest temporary directory failed in the legacy CWL
+`filter_skymodel` step because PyBDSF/LSMTool hit `OSError: AF_UNIX path too
+long`; the live gate now creates short run and scratch paths before executing
+either backend.
+
 Captured operation orders:
 
 | Scenario | Operation order |
@@ -268,15 +290,17 @@ Captured operation orders:
 
 ## Production Equivalence Criteria
 
-The migration should be treated as production-equivalent only after all of the
-following are true:
+The migration should be treated as locally production-equivalent for cutover
+after all of the following are true:
 
 - live CWL-vs-Prefect smoke equivalence passes against a pre-cutover checkout
+  (satisfied in the dev container on 2026-06-11)
 - saved CWL artifacts exist for every required local, non-deferred scenario in
   the manifest
 - saved-reference equivalence passes for the required local, non-deferred
   scenario set
-- Slurm/external-Dask and MPI WSClean target-environment hooks pass
+- Slurm/external-Dask and MPI WSClean target-environment checks are explicitly
+  recorded as deferred post-migration validation
 - any differences are either fixed or documented as intentional and
   user-invisible
 - the passing artifact root, source data, strategy files, commit SHAs, and test
@@ -302,12 +326,14 @@ following are true:
 - `shared_facet_rw` is deferred from the required gate because WSClean aborts
   when the shared-facet read/write flags are enabled in available serial
   environments.
-- The report documents the equivalence method and current evidence; it is not a
-  substitute for recording a passing target-environment equivalence run.
+- Slurm/external-Dask and MPI WSClean validation are deferred until after the
+  migration cutover; the report documents this as an accepted remaining
+  target-environment risk rather than a cutover blocker.
 
 ## Recommended Next Action
 
-Run the live CWL-vs-Prefect smoke gate, then run `mpi_wsclean` and the
-Slurm/external-Dask hook in environments matching deployment. Keep the saved-CWL
-local gate as a regression check if references, product publishing, or
-equivalence helpers change.
+Proceed with the public route cutover by routing `rapthor.process.run()` through
+the Prefect process flow. Keep the saved-CWL local gate and live smoke gate as
+regression checks if references, product publishing, equivalence helpers, or
+legacy-CWL compatibility change. Run Slurm/external-Dask and MPI WSClean
+validation after the migration cutover.
