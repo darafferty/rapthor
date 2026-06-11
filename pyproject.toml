@@ -86,7 +86,8 @@ dev =  [
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks test as integration tests",
-    "internet: marks tests that require internet access"
+    "internet: marks tests that require internet access",
+    "prefect: marks tests that start a Prefect test server and must run serially"
 ]
 
 
@@ -191,11 +192,21 @@ commands = [
         "--cov=rapthor",
         "tests/{posargs}",
     ],
-    # Run all other tests with 4 parallel processes.
+    # Tests that start a Prefect test server are sensitive to high process fan-out,
+    # so run them serially before the rest of the suite.
+    [
+        "python", "-m", "pytest",
+        "-m", "not integration and prefect",
+        "-k", "not test_field.py",
+        "--cov=rapthor",
+        "--cov-append",
+        "tests/{posargs}",
+    ],
+    # Run all other tests with the worker count selected by pytest-xdist.
     # Add to the existing coverage report from the run above.
     [
         "python", "-m", "pytest",
-        "-m", "not integration",
+        "-m", "not integration and not prefect",
         "-n", "auto",
         "-k", "not test_field.py",
         "--cov-report", "term-missing",

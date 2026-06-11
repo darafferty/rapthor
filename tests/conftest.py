@@ -4,6 +4,7 @@ for this directory.
 """
 
 import configparser
+import inspect
 import os
 import shutil
 import tarfile
@@ -71,6 +72,18 @@ def _get_test_run_root():
 def pytest_configure(config):
     config.resource_dir = RESOURCE_DIR
     _prepare_local_test_run_root(config)
+
+
+@pytest.hookimpl(tryfirst=True)
+def pytest_collection_modifyitems(items):
+    for item in items:
+        try:
+            source = inspect.getsource(item.obj)
+        except (OSError, TypeError):
+            continue
+
+        if "prefect_test_harness" in source:
+            item.add_marker(pytest.mark.prefect)
 
 
 def _download_test_ms(destination):
