@@ -34,6 +34,22 @@ def test_default_run_dir_is_unique():
     assert module._default_run_dir() != module._default_run_dir()
 
 
+def test_repo_bin_is_prepended_to_path(monkeypatch):
+    module = load_demo_script()
+    repo_root = Path(__file__).parents[2]
+    original_path = f"/usr/local/bin{module.os.pathsep}{repo_root / 'bin'}{module.os.pathsep}/bin"
+    monkeypatch.setenv("PATH", original_path)
+
+    bin_dir = module._prepend_repo_bin_to_path(repo_root)
+
+    assert bin_dir == repo_root / "bin"
+    assert module.os.environ["PATH"].split(module.os.pathsep) == [
+        str(repo_root / "bin"),
+        "/usr/local/bin",
+        "/bin",
+    ]
+
+
 def test_working_dir_override_defaults_to_run_dir(tmp_path):
     module = load_demo_script()
     args = module._parse_args(["examples/prefect_demo.parset"])
