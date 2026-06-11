@@ -62,7 +62,7 @@ class CalibrationSolve:
 
 class Calibrate(Operation):
     """
-    Class for performing the calibration operation, which runs the CWL workflow template for calibration.
+    Class for performing the calibration operation through the Prefect/Dask flow.
     This class is used for both direction-dependent (DD) and direction-independent (DI) calibration, with
     the mode specified by the "mode" parameter in the constructor.
     """
@@ -86,14 +86,9 @@ class Calibrate(Operation):
 
     def set_parset_parameters(self):
         """
-        Define parameters needed for the CWL workflow template
+        Define parameters needed by the calibration flow.
         """
-        if self.batch_system.startswith("slurm"):
-            # For some reason, setting coresMax ResourceRequirement hints does
-            # not work with SLURM
-            max_cores = None
-        else:
-            max_cores = self.parset["cluster_specific"]["max_cores"]
+        max_cores = self.flow_max_cores()
 
         # Base parameters (shared by both DD and DI)
         self.parset_parms = {
@@ -119,7 +114,7 @@ class Calibrate(Operation):
 
     def set_input_parameters(self):
         """
-        Define the CWL workflow inputs
+        Define inputs passed to the calibration flow.
         """
         # First set the calibration parameters for each observation
         field = self.field

@@ -17,10 +17,10 @@ Currently the execution in process of a step has the following 3 stages:
 2. set_parset_parameters: where the parset parameters are set based on
    the field and the index
 3. run: where the actual execution of the operation happens, which
-   includes the execution of the CWL workflow.
-During the run stage, the CWL execution is mocked to return the expected
+   includes the execution of the Prefect/Dask flow.
+During the run stage, the image flow is mocked to return the expected
 output for the Image operation. Upon successful completion, the Image
-operation sets various attributes in the field using the mocked CWL output.
+operation sets various attributes in the field using the mocked flow output.
 The Mosaic operation uses the updated field to set its input parameters
 and parset parameters.
 """

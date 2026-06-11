@@ -1,4 +1,4 @@
-"""Execution-layer helpers for the Prefect/Dask migration."""
+"""Execution-layer helpers for Rapthor's Prefect/Dask runtime."""
 
 from rapthor.execution.capabilities import (
     PreflightError,

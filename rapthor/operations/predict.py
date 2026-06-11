@@ -35,14 +35,9 @@ class Predict(Operation):
 
     def set_parset_parameters(self):
         """
-        Define parameters needed for the CWL workflow template
+        Define parameters needed by the predict flow.
         """
-        if self.batch_system.startswith("slurm"):
-            # For some reason, setting coresMax ResourceRequirement hints does
-            # not work with SLURM
-            max_cores = None
-        else:
-            max_cores = self.field.parset["cluster_specific"]["max_cores"]
+        max_cores = self.flow_max_cores()
         self.parset_parms = {
             "rapthor_pipeline_dir": self.rapthor_pipeline_dir,
             "max_cores": max_cores,
@@ -50,7 +45,7 @@ class Predict(Operation):
 
     def set_input_parameters(self):
         """
-        Define the CWL workflow inputs
+        Define inputs passed to the predict flow.
         """
         # Make list of sectors for which prediction needs to be done. Any imaging
         # sectors should come first, followed by bright-source, then outlier sectors

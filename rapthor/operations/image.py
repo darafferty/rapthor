@@ -92,7 +92,7 @@ class Image(Operation):
 
     def set_parset_parameters(self):
         """
-        Define parameters needed for the CWL workflow template
+        Define parameters needed by the image flow.
         """
         # Set parameters as needed
         if self.apply_screens is None:
@@ -119,12 +119,7 @@ class Image(Operation):
             self.photometry_skymodel = self.field.photometry_skymodel
         if self.astrometry_skymodel is None:
             self.astrometry_skymodel = self.field.astrometry_skymodel
-        if self.batch_system.startswith("slurm"):
-            # For some reason, setting coresMax ResourceRequirement hints does
-            # not work with SLURM
-            max_cores = None
-        else:
-            max_cores = self.field.parset["cluster_specific"]["max_cores"]
+        max_cores = self.flow_max_cores()
 
         self.allow_internet_access = self.field.parset["cluster_specific"]["allow_internet_access"]
         self.parset_parms = {
@@ -286,7 +281,7 @@ class Image(Operation):
 
     def set_input_parameters(self):
         """
-        Define the CWL workflow inputs
+        Define inputs passed to the image flow.
         """
         # Set parameters as needed
         if self.imaging_sectors is None:
@@ -544,8 +539,8 @@ class Image(Operation):
             if self.batch_system == "slurm_static":
                 nnodes_per_subpipeline = max(1, int(nnodes / nsubpipes))
             else:
-                # We subtract one node because Toil must use one node for its job,
-                # which in turn calls salloc to reserve the nodes for the MPI job
+                # Reserve one node for the outer batch launcher before assigning
+                # nodes to the MPI imaging job.
                 nnodes_per_subpipeline = max(1, int(nnodes / nsubpipes) - 1)
             self.input_parms.update({"mpi_nnodes": [nnodes_per_subpipeline] * nsectors})
             self.input_parms.update(
@@ -859,7 +854,7 @@ class ImageInitial(Image):
 
     def set_parset_parameters(self):
         """
-        Define parameters needed for the CWL workflow template
+        Define parameters needed by the initial image flow.
         """
         # Set parameters as needed
         self.apply_screens = False
@@ -873,7 +868,7 @@ class ImageInitial(Image):
 
     def set_input_parameters(self):
         """
-        Define the CWL workflow inputs
+        Define inputs passed to the initial image flow.
         """
         # Set the imaging parameters that are optimal for the initial sky
         # model generation
@@ -978,7 +973,7 @@ class ImageNormalize(Image):
 
     def set_parset_parameters(self):
         """
-        Define parameters needed for the CWL workflow template
+        Define parameters needed by the normalization image flow.
         """
         # Set parameters as needed
         self.save_source_list = False
@@ -1006,7 +1001,7 @@ class ImageNormalize(Image):
 
     def set_input_parameters(self):
         """
-        Define the CWL workflow inputs
+        Define inputs passed to the normalization image flow.
         """
         # Set the imaging parameters that are optimal for the flux-scale
         # normalization

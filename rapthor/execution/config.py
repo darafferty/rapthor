@@ -72,8 +72,8 @@ class ExecutionConfig:
     def from_parset(cls, parset: Mapping[str, Any]) -> "ExecutionConfig":
         """Build execution settings from a Rapthor parset dictionary.
 
-        The migration branch does not expose a public backend selector. These
-        settings describe how the single Python execution path should run.
+        Rapthor does not expose a public backend selector. These settings
+        describe how the Prefect/Dask execution path should run.
         """
         cluster = _cluster_settings(parset)
         scheduler = (

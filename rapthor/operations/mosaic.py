@@ -36,14 +36,9 @@ class Mosaic(Operation):
 
     def set_parset_parameters(self):
         """
-        Define parameters needed for the CWL workflow template
+        Define parameters needed by the mosaic flow.
         """
-        if self.batch_system.startswith("slurm"):
-            # For some reason, setting coresMax ResourceRequirement hints does
-            # not work with SLURM
-            max_cores = None
-        else:
-            max_cores = self.field.parset["cluster_specific"]["max_cores"]
+        max_cores = self.flow_max_cores()
         self.parset_parms = {
             "rapthor_pipeline_dir": self.rapthor_pipeline_dir,
             "pipeline_working_dir": self.pipeline_working_dir,
@@ -54,7 +49,7 @@ class Mosaic(Operation):
 
     def set_input_parameters(self):
         """
-        Define the CWL workflow inputs
+        Define inputs passed to the mosaic flow.
         """
         # Define various input and output filenames
         sector_image_filename = []

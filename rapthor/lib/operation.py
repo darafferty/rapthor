@@ -48,7 +48,7 @@ class Operation(object):
         self.force_serial_jobs = False  # force jobs to run serially
         self.use_mpi = False
 
-        # Extra Toil env variables and Toil version
+        # Legacy runtime metadata retained for older parsets and saved debug files.
         self.toil_env_variables = {}
 
         # Rapthor working directory
@@ -79,7 +79,7 @@ class Operation(object):
 
         # Preserved CWL reference template names and generated input filenames.
         # Production execution now uses Prefect/Dask, but static CWL fixtures still
-        # render these templates for parity checks during the migration.
+        # render these templates for parity checks.
         self.pipeline_parset_template = f"{self.rootname}_pipeline.cwl"
         self.subpipeline_parset_template = None
         self.pipeline_parset_file = os.path.join(self.pipeline_working_dir, "pipeline_parset.cwl")
@@ -95,7 +95,7 @@ class Operation(object):
         # MPI configuration file
         self.mpi_config_file = os.path.join(self.pipeline_working_dir, "mpi_config.yml")
 
-        # Toil's jobstore path
+        # Legacy jobstore path kept for older debug/restart metadata.
         self.jobstore = os.path.join(self.pipeline_working_dir, "jobstore")
 
         # File indicating whether a step was completely done.
@@ -138,11 +138,21 @@ class Operation(object):
         """
         Return True when this operation executes through a Python flow.
 
-        Operation subclasses can override this during the Prefect/Dask migration.
-        The choice is intentionally owned by the operation class, not exposed as
-        a user-facing mixed-backend selector.
+        The choice is intentionally owned by the operation class, not exposed as a
+        user-facing mixed-backend selector.
         """
         return True
+
+    def flow_max_cores(self):
+        """
+        Return the max_cores hint used by flow-backed operation payloads.
+
+        Slurm-style execution manages cores via allocation settings, so the
+        operation payload should not add a separate max_cores hint there.
+        """
+        if self.batch_system.startswith("slurm"):
+            return None
+        return self.parset["cluster_specific"]["max_cores"]
 
     def set_parset_parameters(self):
         """
