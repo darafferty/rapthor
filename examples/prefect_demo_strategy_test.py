@@ -40,17 +40,12 @@ def _step(calibration_strategy, **overrides):
 
 strategy_steps = [
     _step(
-        {"di": ["fast_phase"]},
+        {"di": [], "dd": ["fast_phase", "medium_phase"]},
         target_flux=0.45,
         max_nmiter=8,
     ),
     _step(
-        {"di": [], "dd": ["fast_phase", "medium_phase"]},
-        target_flux=0.35,
-        max_nmiter=10,
-    ),
-    _step(
-        {"di": ["fast_phase", "medium_phase"], "dd": []},
+        {"di": [], "dd": ["fast_phase", "medium_phase", "slow_gains"]},
         target_flux=0.35,
         max_nmiter=10,
     ),
@@ -60,11 +55,6 @@ strategy_steps = [
         max_nmiter=12,
         regroup_model=False,
     ),
-    _step(
-        {"di": [], "dd": ["fast_phase", "medium_phase", "slow_gains"]},
-        target_flux=0.3,
-        max_nmiter=12,
-    ),
 ]
 
 # Duplicate the final self-cal settings as the final-pass definition. With the
@@ -73,7 +63,7 @@ strategy_steps = [
 # strategy shape.
 strategy_steps.append(
     _step(
-        {"di": [], "dd": ["fast_phase", "medium_phase", "slow_gains"]},
+        {"di": ["full_jones"], "dd": []},
         target_flux=0.3,
         max_nmiter=12,
         regroup_model=False,
