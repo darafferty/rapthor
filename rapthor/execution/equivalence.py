@@ -125,7 +125,12 @@ def required_gate_scenarios(
     scenarios: Sequence[Mapping[str, Any]],
 ) -> list[Mapping[str, Any]]:
     """Return scenarios included in the default saved-reference equivalence gate."""
-    return [scenario for scenario in scenarios if not scenario.get("deferred_from_required_gate")]
+    return [
+        scenario
+        for scenario in scenarios
+        if not scenario.get("deferred_from_required_gate")
+        and not scenario.get("target_environment")
+    ]
 
 
 def required_reference_artifact_items(scenario: Mapping[str, Any]) -> tuple[str, ...]:
@@ -466,7 +471,9 @@ def run_saved_reference_equivalence_scenario(
     candidate_dir = Path(run_root) / scenario_id / "prefect"
     candidate_dir.mkdir(parents=True, exist_ok=True)
 
-    source_parset = scenario_parset_file(scenario, repo_root=repo_root)
+    fixture_parset = scenario_parset_file(scenario, repo_root=repo_root)
+    saved_reference_parset = reference_dir / fixture_parset.name
+    source_parset = saved_reference_parset if saved_reference_parset.is_file() else fixture_parset
     if parset_materializer is None:
         parset_materializer = scenario_parset_materializer(scenario, repo_root=repo_root)
     candidate_parset = parset_materializer(source_parset, candidate_dir)
@@ -675,6 +682,10 @@ def _product_summary(path: Path) -> dict[str, Any]:
     return _generic_product_summary(path)
 
 
+def _is_equivalence_product(path: Path) -> bool:
+    return ".rapthor-artifacts" not in path.parts
+
+
 def collect_product_summaries(working_dir: Any) -> dict[str, Any]:
     """Collect backend-neutral summaries for final products."""
     root = Path(working_dir)
@@ -683,7 +694,12 @@ def collect_product_summaries(working_dir: Any) -> dict[str, Any]:
         product_root = root / product_root_name
         if not product_root.exists():
             continue
-        for path in sorted(item for item in product_root.rglob("*") if item.is_file()):
+        product_paths = (
+            item
+            for item in product_root.rglob("*")
+            if item.is_file() and _is_equivalence_product(item)
+        )
+        for path in sorted(product_paths):
             relative_path = path.relative_to(root).as_posix()
             products[relative_path] = _product_summary(path)
     return products
@@ -726,6 +742,10 @@ def _operation_order(working_dir: Path, operation_states: Mapping[str, Any]) -> 
     rapthor_log = working_dir / "logs" / "rapthor.log"
     if rapthor_log.exists():
         operation_order = _operation_order_from_rapthor_log(rapthor_log)
+        if operation_states:
+            operation_order = [
+                operation for operation in operation_order if operation in operation_states
+            ]
         if operation_order:
             return operation_order
 

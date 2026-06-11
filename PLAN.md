@@ -26,9 +26,10 @@ Most implementation work is complete.
 - `rapthor.process.run()` is still the legacy CWL baseline. The current
   side-by-side Prefect entry point is
   `rapthor.execution.flows.process.process_flow()`.
-- Saved-reference equivalence is in place. Eleven CWL reference scenarios from
-  legacy commit `4cfd2abe2fe815724e3f1c390d789eea249becef` pass comparison
-  against the current Prefect path.
+- Saved-reference equivalence is in place. The local saved-reference gate runs
+  eleven CWL reference scenarios from legacy commit
+  `4cfd2abe2fe815724e3f1c390d789eea249becef` and passes comparison against the
+  current Prefect path.
 - Demo and observability support is in place: persistent Prefect dashboard
   support, unique run directories, local/external Dask dashboard support, Dask
   performance reports, streamed external-command logs, Python logs in Prefect,
@@ -85,14 +86,15 @@ Still missing target-environment proof:
   environment.
 - Slurm/external-Dask: should run inside a representative Slurm allocation.
 
-Deferred optional scenarios:
+Deferred optional tasks:
 
-- `hybrid_screens` is excluded from the required gate for now because it is not
-  used by the current target workflow. Capturing it would require IDG Python
-  bindings for DP3 IDGCal, so leave the known-good DP3-pinned image alone unless
-  this path becomes relevant again.
-- `shared_facet_rw` is excluded from the required gate for now because WSClean's
-  shared-facet read/write flags have been too flaky in available environments.
+- Revisit `hybrid_screens` only if it becomes a supported target workflow. At
+  that point, use an image where DP3's IDGCal can import Python `idg`, capture
+  CWL references, and add the scenario back to the required gate. Do not install
+  or pin to a newer DP3 for this without separate validation.
+- Revisit `shared_facet_rw` after WSClean shared-facet read/write behaviour is
+  reliable in the intended environment, then capture references and add it back
+  to the required gate.
 
 ## Remaining Work
 
@@ -100,11 +102,9 @@ Deferred optional scenarios:
 
 This is the main blocker before public cutover.
 
-- Run `tests/integration/test_saved_cwl_equivalence.py` with
-  `RAPTHOR_RUN_SAVED_CWL_EQUIVALENCE=1` and `RAPTHOR_CWL_REFERENCE_ROOT`
-  pointing at the directory that contains the saved CWL output subdirectories
-  for every required, non-deferred scenario. This reruns the current Prefect
-  candidates and compares them against those saved CWL references.
+- Keep the saved-CWL local gate as the release regression for local scenarios.
+  Rerun it whenever references, product publishing, or equivalence helpers
+  change.
 - Run the live CWL-vs-Prefect smoke gate against the preserved legacy checkout.
 - Run `mpi_wsclean` with the intended MPI/WSClean stack.
 - Run the Slurm/external-Dask hook inside a real Slurm allocation.
@@ -184,15 +184,12 @@ unless a performance issue prevents production use.
 
 ## Immediate Next Actions
 
-1. Run the saved-CWL equivalence test with `RAPTHOR_CWL_REFERENCE_ROOT` pointing
-   at the populated reference directory for the required, non-deferred
-   scenarios.
-2. Run the live CWL-vs-Prefect smoke gate.
-3. Run `mpi_wsclean` and Slurm/external-Dask hooks in the deployment-like
+1. Run the live CWL-vs-Prefect smoke gate.
+2. Run `mpi_wsclean` and Slurm/external-Dask hooks in the deployment-like
    environment.
-4. If all gates pass, switch `rapthor.process.run()` to `process_flow()`.
-5. Remove CWL production runtime and update docs, packaging, and CI.
-6. Do a post-cutover refactor pass to clean up migration scaffolding and reduce
+3. If all gates pass, switch `rapthor.process.run()` to `process_flow()`.
+4. Remove CWL production runtime and update docs, packaging, and CI.
+5. Do a post-cutover refactor pass to clean up migration scaffolding and reduce
    duplication.
 
 ## Useful Commands

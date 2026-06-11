@@ -400,6 +400,40 @@ def test_compare_saved_reference_equivalence_scenario_uses_default_materializer(
     assert result.ok
 
 
+def test_compare_saved_reference_equivalence_scenario_prefers_captured_parset(tmp_path):
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    fixture_parset = repo_root / "scenario.parset"
+    fixture_parset.write_text("[global]\ndir_working = old\ninput_ms = generic.ms\n")
+    scenario = {
+        "id": "smoke",
+        "fixture_refs": ["scenario.parset"],
+        "comparison_scopes": ["operations", "products"],
+    }
+    reference_root = tmp_path / "references"
+    reference_dir = reference_artifact_dir(reference_root, scenario)
+    _write_backend_state(reference_dir)
+    captured_parset = reference_dir / "scenario.parset"
+    captured_parset.write_text("[global]\ndir_working = reference\ninput_ms = captured.ms\n")
+
+    def fake_prefect_runner(parset_file, working_dir, logging_level):
+        text = parset_file.read_text()
+        assert f"dir_working = {working_dir}" in text
+        assert "input_ms = captured.ms" in text
+        _write_backend_state(working_dir)
+
+    result = compare_saved_reference_equivalence_scenario(
+        scenario,
+        reference_root,
+        tmp_path / "runs",
+        repo_root=repo_root,
+        prefect_runner=fake_prefect_runner,
+    )
+
+    assert result.ok
+    assert result.reference_run.parset_file == captured_parset
+
+
 def test_compare_saved_reference_equivalence_manifest_runs_all_scenarios(tmp_path):
     repo_root = tmp_path / "repo"
     repo_root.mkdir()
@@ -454,6 +488,7 @@ def test_collect_backend_summary_reads_operation_order_from_rapthor_log(tmp_path
     (log_dir / "rapthor.log").write_text(
         "INFO - rapthor:predict_1 - <-- Operation predict_1 started\n"
         "INFO - rapthor:image_1 - <-- Operation image_1 started\n"
+        "INFO - rapthor:calibrate_1 - <-- Operation calibrate_1 started\n"
     )
 
     summary = collect_backend_summary(working_dir)
@@ -588,6 +623,21 @@ def test_collect_backend_summary_includes_product_metadata(tmp_path):
     }
 
 
+def test_collect_product_summaries_ignores_dashboard_artifact_derivatives(tmp_path):
+    working_dir = tmp_path / "run"
+    image_dir = working_dir / "images" / "image_1"
+    artifact_dir = working_dir / "images" / ".rapthor-artifacts" / "fits-previews"
+    image_dir.mkdir(parents=True)
+    artifact_dir.mkdir(parents=True)
+    fits.writeto(image_dir / "sector_1-MFS-I-image.fits", np.array([[1.0]]))
+    (artifact_dir / "image-1-sector-1-fits.png").write_text("preview")
+
+    products = collect_product_summaries(working_dir)
+
+    assert "images/image_1/sector_1-MFS-I-image.fits" in products
+    assert "images/.rapthor-artifacts/fits-previews/image-1-sector-1-fits.png" not in products
+
+
 def test_collect_product_summaries_includes_h5parm_metadata(tmp_path):
     h5py = pytest.importorskip("h5py")
 
@@ -659,6 +709,7 @@ def test_required_gate_scenarios_exclude_deferred_entries_by_default():
     scenarios = [
         {"id": "required"},
         {"id": "deferred", "deferred_from_required_gate": True},
+        {"id": "target", "target_environment": True},
     ]
 
     assert required_gate_scenarios(scenarios) == [{"id": "required"}]

@@ -1,6 +1,6 @@
 # Rapthor CWL-to-Prefect Equivalence Report
 
-Generated: 2026-06-10
+Generated: 2026-06-11
 
 ## Executive Summary
 
@@ -152,9 +152,10 @@ The saved-reference gate is driven by
 `mpi_wsclean` is a target-environment scenario and should be run where the MPI
 and WSClean environment matches the intended deployment target.
 
-The required cutover gate currently excludes scenarios with
-`deferred_from_required_gate=true` in the manifest. Deferred scenarios remain
-explicitly selectable for future investigation.
+The default saved-reference gate excludes scenarios with
+`deferred_from_required_gate=true` and scenarios marked `target_environment=true`
+in the manifest. Deferred and target-environment scenarios remain explicitly
+selectable for future investigation or deployment-like validation.
 
 ## Current Evidence
 
@@ -228,6 +229,27 @@ Saved-reference results:
 | `shared_facet_rw` | deferred | not run | Excluded from the required gate for now; serial WSClean aborts with `SIGABRT` when `-shared-facet-reads` and `-shared-facet-writes` are enabled |
 | `mpi_wsclean` | pending | not run | Target-environment scenario |
 
+Full local saved-reference gate verification in the development container on
+2026-06-11:
+
+```bash
+RAPTHOR_RUN_SAVED_CWL_EQUIVALENCE=1 \
+RAPTHOR_CWL_REFERENCE_ROOT=/app/.pytest_cache/cwl-reference-artifacts \
+RAPTHOR_EQUIVALENCE_INPUT_MS=/app/tests/resources/test.ms \
+RAPTHOR_EQUIVALENCE_INPUT_SKYMODEL=/app/tests/resources/integration_true_sky.txt \
+RAPTHOR_EQUIVALENCE_APPARENT_SKYMODEL=/app/tests/resources/integration_apparent_sky.txt \
+python3 -m pytest tests/integration/test_saved_cwl_equivalence.py -q --tb=short
+```
+
+Result: 1 passed, 40 warnings in 1716.00s (0:28:35). A Prefect logging thread
+printed shutdown-time logging errors after pytest had already exited with code
+0; these did not affect the test result.
+
+The 2026-06-11 comparator updates ensure that the saved-reference gate uses the
+captured scenario parset when one is present, ignores dashboard-only
+`.rapthor-artifacts` derivatives, and filters log-derived operation order to
+operations that produced state in the run under comparison.
+
 Captured operation orders:
 
 | Scenario | Operation order |
@@ -250,9 +272,10 @@ The migration should be treated as production-equivalent only after all of the
 following are true:
 
 - live CWL-vs-Prefect smoke equivalence passes against a pre-cutover checkout
-- saved CWL artifacts exist for every required, non-deferred scenario in the
-  manifest
-- saved-reference equivalence passes for the required, non-deferred scenario set
+- saved CWL artifacts exist for every required local, non-deferred scenario in
+  the manifest
+- saved-reference equivalence passes for the required local, non-deferred
+  scenario set
 - Slurm/external-Dask and MPI WSClean target-environment hooks pass
 - any differences are either fixed or documented as intentional and
   user-invisible
@@ -284,6 +307,7 @@ following are true:
 
 ## Recommended Next Action
 
-Run the saved-reference regression over the required, non-deferred artifact
-root. The target-environment `mpi_wsclean` and Slurm/external-Dask hooks still
-need to be run in an environment matching deployment.
+Run the live CWL-vs-Prefect smoke gate, then run `mpi_wsclean` and the
+Slurm/external-Dask hook in environments matching deployment. Keep the saved-CWL
+local gate as a regression check if references, product publishing, or
+equivalence helpers change.
