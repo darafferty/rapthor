@@ -19,6 +19,9 @@ integration scenario. The public `rapthor.process.run()` route now executes the
 Prefect process flow. The in-tree CWL runner has been removed from the
 production runtime; live CWL comparisons now require a preserved legacy
 checkout, and in-tree CWL material is kept as static reference/parity evidence.
+Focused real external-tool coverage has also been refreshed in the dev
+container for DI/DD calibration paths, including DI full-Jones plotting and
+downstream imaging/mosaic hand-off.
 Slurm/external-Dask and MPI WSClean validation are deferred until after the
 migration cutover by project decision; any issues found there will be handled
 as post-migration target-environment fixes.
@@ -279,6 +282,26 @@ default long pytest temporary directory failed in the legacy CWL
 long`; the live gate now creates short run and scratch paths before executing
 either backend.
 
+Focused real external-tool verification in the development container on
+2026-06-11:
+
+```bash
+python3 -m pytest \
+  tests/integration/test_di_calibration.py::test_rapthor_run_di_fast_phase_medium_slow \
+  tests/integration/test_di_calibration.py::test_rapthor_run_single_loop_calibrate_di_full_jones \
+  tests/integration/test_dd_calibration.py::test_rapthor_run_dd_fast_medium_slow_gains \
+  tests/integration/test_calibration_options.py::test_rapthor_run_single_loop_calibrate_di \
+  -q --tb=short
+```
+
+Result: 4 passed, 1 warning in 1708.48s (0:28:28). Before rerunning this
+subset, the dev-container `/usr/local/bin/plotrapthor` script was refreshed from
+the current checkout so it supported the `--first-dir` option used by the
+Prefect calibration flow. The rerun exercised DP3 prediction/DDECal, DI
+fast/medium/slow solves, DI full-Jones solves, DD fast/medium/slow solves,
+WSClean imaging, EveryBeam beam application, PyBDSF source extraction, image
+diagnostics, and mosaic hand-off through the public `rapthor` route.
+
 Captured operation orders:
 
 | Scenario | Operation order |
@@ -340,9 +363,9 @@ after all of the following are true:
 
 ## Recommended Next Action
 
-Remove the CWL production runtime and update docs, packaging, and CI so CWL
-artifacts remain only as static reference fixtures or compatibility helpers.
-Keep the saved-CWL local gate and live smoke gate as regression checks if
-references, product publishing, equivalence helpers, or legacy-CWL compatibility
-change. Run Slurm/external-Dask and MPI WSClean validation after the migration
-cutover.
+Complete the final user-facing documentation and release notes for
+Prefect/Dask execution, dashboards, artifacts, restart behaviour, equivalence
+evidence, and deferred target-environment checks. Keep the saved-CWL local gate
+and live smoke gate as regression checks if references, product publishing,
+equivalence helpers, or legacy-CWL compatibility change. Run Slurm/external-Dask
+and MPI WSClean validation after the migration cutover.

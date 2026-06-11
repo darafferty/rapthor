@@ -42,6 +42,11 @@ Most implementation work is complete.
   the current migration stage.
 - Recent correctness fixes include cycle-aware h5parm provenance/filtering so
   stale solutions from previous cycles are not applied accidentally.
+- Real external-tool coverage has been refreshed in the dev container for
+  selected DI/DD calibration scenarios. The refreshed subset exercises DP3
+  prediction/DDECal, DI full-Jones plotting, WSClean imaging, EveryBeam beam
+  application, PyBDSF source extraction, diagnostics, and mosaic hand-off
+  through the public `rapthor` route.
 - CI has been adjusted and verified passing: tests that start a Prefect test
   server are marked and run serially, while the remaining non-integration tests
   still use `pytest-xdist -n auto`.
@@ -125,8 +130,14 @@ deferred until after the migration is complete.
 The unit and mocked flow tests are broad, but the production confidence still
 depends on real radio-astronomy tools and representative data.
 
-- Exercise real DP3 prediction, DDECal, LoSoTo, WSClean, EveryBeam, PyBDSF,
-  cfitsio/fpack, and mosaic paths in the dev container or staging environment.
+- Done for the current local migration stage: a focused dev-container subset
+  passed on 2026-06-11 after refreshing the installed `plotrapthor` script from
+  the checkout.
+- Covered paths include DP3 prediction/DDECal, DI fast/medium/slow solves, DI
+  full-Jones solves, DD fast/medium/slow solves, WSClean imaging, EveryBeam beam
+  application, PyBDSF source extraction, image diagnostics, and mosaic hand-off.
+- Broader staging or release-candidate runs can still be done if desired, but
+  they are not a separate cutover blocker unless they expose a real regression.
 - Leave IDG/screen-generation coverage deferred unless `hybrid_screens` becomes
   a supported target path again.
 
@@ -205,12 +216,10 @@ unless a performance issue prevents production use.
 
 ## Immediate Next Actions
 
-1. Refresh real external-tool coverage in the dev container or staging
-   environment, focusing on DP3 prediction/DDECal, LoSoTo, WSClean, EveryBeam,
-   PyBDSF, cfitsio/fpack, and mosaic paths.
-2. Complete final documentation and release notes for Prefect/Dask execution,
+1. Complete final documentation and release notes for Prefect/Dask execution,
    dashboards, artifacts, restart behaviour, equivalence evidence, and known
    deferred target-environment checks.
+2. Keep the saved-reference and live-smoke equivalence gates green until merge.
 3. Do a post-cutover refactor pass to clean up migration scaffolding and reduce
    duplication.
 
