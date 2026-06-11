@@ -1178,6 +1178,14 @@ def test_calibrate_command_builders_create_cwl_equivalent_tokens():
         "fulljones_solutions.h5",
         "phase",
     ]
+    assert build_plot_solutions_command(
+        "fulljones_solutions.h5", "phase", first_dir=True
+    ) == [
+        "plotrapthor",
+        "fulljones_solutions.h5",
+        "phase",
+        "--first-dir",
+    ]
     assert build_combine_h5parms_command(
         "fast_phases_di.h5parm",
         "medium1_phases_di.h5parm",
@@ -1853,11 +1861,14 @@ def test_run_plot_solutions_publishes_new_plot_artifacts(
         "phase",
         str(tmp_path),
         ExecutionConfig(task_runner="sync"),
+        first_dir=True,
         shell_operation_cls=fake_calibrate_shell_operation_cls,
     )
 
     assert plots == [file_record(tmp_path / "phase_solutions.png")]
     assert published == [(plots, str(tmp_path))]
+    command = shlex.split(fake_calibrate_shell_operation_cls.instances[0].kwargs["commands"][0])
+    assert "--first-dir" in command
 
 
 def test_run_calibrate_flow_supports_di_fulljones(tmp_path, fake_calibrate_shell_operation_cls):
@@ -1891,6 +1902,7 @@ def test_run_calibrate_flow_supports_di_fulljones(tmp_path, fake_calibrate_shell
     assert "solve1.mode=fulljones" in commands[0]
     assert "solve1.h5parm=fulljones_gain_0.h5parm" in commands[0]
     assert "numthreads=4" in commands[0]
+    assert "--first-dir" in commands[3]
     assert (
         commands[2][2]
         == f"{tmp_path / 'fulljones_gain_0.h5parm'},{tmp_path / 'fulljones_gain_1.h5parm'}"
@@ -1934,6 +1946,8 @@ def test_run_calibrate_flow_supports_di_scalar_phase(tmp_path, fake_calibrate_sh
     assert "solve2.mode=scalarphase" in commands[0]
     assert "solve2.modeldatacolumns=[MODEL_DATA]" not in commands[0]
     assert "solve2.reusemodel=[solve1.*]" in commands[0]
+    assert "--first-dir" in commands[3]
+    assert "--first-dir" in commands[5]
     assert commands[-1][1:5] == [
         str(tmp_path / "fast_phases_di.h5parm"),
         str(tmp_path / "medium1_phases_di.h5parm"),
@@ -1966,6 +1980,7 @@ def test_run_calibrate_flow_supports_di_fast_phase(tmp_path, fake_calibrate_shel
     ]
     assert "steps=[solve1]" in commands[0]
     assert "solve1.h5parm=fast_phase_di_0.h5parm" in commands[0]
+    assert "--first-dir" in commands[3]
 
 
 def test_run_calibrate_flow_supports_di_slow(tmp_path, fake_calibrate_shell_operation_cls):
@@ -1997,6 +2012,8 @@ def test_run_calibrate_flow_supports_di_slow(tmp_path, fake_calibrate_shell_oper
     assert "solve1.h5parm=slow_gains_di_0.h5parm" in commands[0]
     assert "solve1.mode=diagonal" in commands[0]
     assert "solve1.solint=11" in commands[0]
+    assert "--first-dir" in commands[4]
+    assert "--first-dir" in commands[5]
 
 
 def test_run_calibrate_flow_supports_di_phase_slow(tmp_path, fake_calibrate_shell_operation_cls):
@@ -2035,6 +2052,10 @@ def test_run_calibrate_flow_supports_di_phase_slow(tmp_path, fake_calibrate_shel
     assert "solve3.modeldatacolumns=[MODEL_DATA]" in commands[0]
     assert "solve2.reusemodel=[solve1.*]" not in commands[0]
     assert "solve3.reusemodel=[solve1.*]" not in commands[0]
+    assert "--first-dir" in commands[3]
+    assert "--first-dir" in commands[5]
+    assert "--first-dir" in commands[9]
+    assert "--first-dir" in commands[10]
     assert commands[-1][1:5] == [
         str(tmp_path / "combined_solve1_solve2_di.h5parm"),
         str(tmp_path / "slow_gains_di.h5parm"),
@@ -2077,6 +2098,7 @@ def test_run_calibrate_flow_supports_dd_fast_phase(tmp_path, fake_calibrate_shel
     assert "solve1.directions=[patch1,patch2]" in commands[0]
     assert "solve1.smoothness_dd_factors=[1.0,2.0]" in commands[0]
     assert "avg.maxinterval=8.0" in commands[0]
+    assert "--first-dir" not in commands[3]
     assert (
         commands[2][2] == f"{tmp_path / 'fast_phase_0.h5parm'},{tmp_path / 'fast_phase_1.h5parm'}"
     )
@@ -2116,6 +2138,8 @@ def test_run_calibrate_flow_supports_dd_slow(tmp_path, fake_calibrate_shell_oper
     assert "solve1.mode=diagonal" in commands[0]
     assert "solve1.h5parm=slow_gain_0.h5parm" in commands[0]
     assert "solve1.solint=11" in commands[0]
+    assert "--first-dir" not in commands[4]
+    assert "--first-dir" not in commands[5]
     assert commands[2][2] == f"{tmp_path / 'slow_gain_0.h5parm'},{tmp_path / 'slow_gain_1.h5parm'}"
 
 

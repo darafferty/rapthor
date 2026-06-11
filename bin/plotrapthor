@@ -9,16 +9,11 @@ from losoto.h5parm import h5parm
 from losoto.operations import plot
 import matplotlib as mpl
 mpl.use("Agg")
-import matplotlib.pyplot as plt  # after setting "Agg" to speed up
-from matplotlib.colors import ListedColormap
-import numpy as np
-import os
-from rapthor.lib import miscellaneous as misc
 
 log = logging.getLogger('plotrapthor')
 
 
-def main(h5file, soltype, root=None, refstat=None, soltab=None, dir=None):
+def main(h5file, soltype, root=None, refstat=None, soltab=None, dir=None, first_dir=False):
     """
     Plot solutions
 
@@ -36,6 +31,10 @@ def main(h5file, soltype, root=None, refstat=None, soltab=None, dir=None):
         Name of soltab to use. If None, the default for the given soltype is used
     dir : str, optional
         Name of direction to use. If None, all directions are used
+    first_dir : bool, optional
+        If True and no explicit direction is given, plot only the first direction
+        present in the solution table. Has no effect for direction-independent
+        solution tables without a dir axis.
     """
     with h5parm(h5file) as h:
         ss = h.getSolset('sol000')
@@ -75,6 +74,8 @@ def main(h5file, soltype, root=None, refstat=None, soltab=None, dir=None):
         if refstat is not None:
             ref = refstat
         log.info('Plotting {} solutions...'.format(soltype))
+        if dir is None and first_dir and hasattr(st, 'dir') and len(st.dir) > 0:
+            dir = st.dir[0]
         if dir is not None:
             st.setSelection(dir=dir)
         if len(st.time) > 1 and len(st.freq) > 1:
@@ -99,9 +100,14 @@ if __name__ == "__main__":
     parser.add_argument('--refstat', help="Name of referance station (default: first)", type=str, default=None)
     parser.add_argument('--soltab', help="Name of solution table (default: default for soltype)", type=str, default=None)
     parser.add_argument('--dir', help="Name of direction (default: all)", type=str, default=None)
+    parser.add_argument(
+        '--first-dir',
+        help="Plot only the first direction if the solution table has direction labels",
+        action='store_true',
+    )
 
     args = parser.parse_args()
     try:
-        main(args.h5file, args.soltype, args.root, args.refstat, args.soltab, args.dir)
+        main(args.h5file, args.soltype, args.root, args.refstat, args.soltab, args.dir, args.first_dir)
     except Exception as e:
         log.error('{0}.'.format(e))

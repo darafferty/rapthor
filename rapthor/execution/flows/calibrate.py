@@ -476,11 +476,14 @@ def build_plot_solutions_command(
     h5parm: str,
     soltype: str,
     root: Optional[str] = None,
+    first_dir: bool = False,
 ) -> list[str]:
     """Build the solution plotting command."""
     command = ["plotrapthor", h5parm, soltype]
     if root is not None:
         command.append(f"--root={root}")
+    if first_dir:
+        command.append("--first-dir")
     return command
 
 
@@ -1434,17 +1437,14 @@ def _collect_and_plot_fulljones(
         str(payload["collected_h5parm_path"]), "Collected DI full-Jones h5parm"
     )
 
-    before_plots = set(glob.glob(os.path.join(pipeline_working_dir, "*.png")))
-    plot_command = build_plot_solutions_command(collected_record["path"], "phase")
-    _run_shell(
-        plot_command,
+    plot_records = _run_plot_solutions(
+        collected_record,
+        "phase",
         pipeline_working_dir,
         execution_config,
+        first_dir=_plot_first_direction(payload),
         shell_operation_cls=shell_operation_cls,
     )
-    after_plots = set(glob.glob(os.path.join(pipeline_working_dir, "*.png")))
-    plot_records = [file_record(path) for path in sorted(after_plots - before_plots)]
-    publish_plot_file_records(plot_records, pipeline_working_dir)
 
     result = {
         "combined_solutions": collected_record,
@@ -1476,6 +1476,7 @@ def _collect_and_plot_fast_phase(
         "phase",
         pipeline_working_dir,
         execution_config,
+        first_dir=_plot_first_direction(payload),
         shell_operation_cls=shell_operation_cls,
     )
 
@@ -1517,6 +1518,7 @@ def _collect_process_and_plot_slow_gain(
         pipeline_working_dir,
         execution_config,
         root="slow_phase_",
+        first_dir=_plot_first_direction(payload),
         shell_operation_cls=shell_operation_cls,
     )
     slow_amp_plots = _run_plot_solutions(
@@ -1525,6 +1527,7 @@ def _collect_process_and_plot_slow_gain(
         pipeline_working_dir,
         execution_config,
         root="slow_amplitude_",
+        first_dir=_plot_first_direction(payload),
         shell_operation_cls=shell_operation_cls,
     )
 
@@ -1605,10 +1608,13 @@ def _run_plot_solutions(
     pipeline_working_dir: str,
     execution_config: ExecutionConfig,
     root: Optional[str] = None,
+    first_dir: bool = False,
     shell_operation_cls=None,
 ) -> list[dict]:
     before_plots = set(glob.glob(os.path.join(pipeline_working_dir, "*.png")))
-    plot_command = build_plot_solutions_command(h5parm_record["path"], soltype, root=root)
+    plot_command = build_plot_solutions_command(
+        h5parm_record["path"], soltype, root=root, first_dir=first_dir
+    )
     _run_shell(
         plot_command,
         pipeline_working_dir,
@@ -1619,6 +1625,10 @@ def _run_plot_solutions(
     plot_records = [file_record(path) for path in sorted(after_plots - before_plots)]
     publish_plot_file_records(plot_records, pipeline_working_dir)
     return plot_records
+
+
+def _plot_first_direction(payload: Mapping[str, object]) -> bool:
+    return str(payload.get("mode")) == "di"
 
 
 def _run_combine_h5parms(
@@ -1721,6 +1731,7 @@ def _collect_plot_and_combine_scalar_phase(
         "phase",
         pipeline_working_dir,
         execution_config,
+        first_dir=_plot_first_direction(payload),
         shell_operation_cls=shell_operation_cls,
     )
 
@@ -1738,6 +1749,7 @@ def _collect_plot_and_combine_scalar_phase(
         pipeline_working_dir,
         execution_config,
         root="medium1_phase_",
+        first_dir=_plot_first_direction(payload),
         shell_operation_cls=shell_operation_cls,
     )
 
@@ -1775,6 +1787,7 @@ def _collect_plot_and_combine_dd_phase(
     pipeline_working_dir = str(payload["pipeline_working_dir"])
     collected_h5parms = payload["collected_h5parms"]
     combined_h5parms = payload["combined_h5parms"]
+    plot_first_dir = _plot_first_direction(payload)
 
     fast_record = _run_collect_h5parm(
         [record["solve1"] for record in solve_records],
@@ -1789,6 +1802,7 @@ def _collect_plot_and_combine_dd_phase(
         "phase",
         pipeline_working_dir,
         execution_config,
+        first_dir=plot_first_dir,
         shell_operation_cls=shell_operation_cls,
     )
 
@@ -1806,6 +1820,7 @@ def _collect_plot_and_combine_dd_phase(
         pipeline_working_dir,
         execution_config,
         root="medium1_phase_",
+        first_dir=plot_first_dir,
         shell_operation_cls=shell_operation_cls,
     )
     combined_phase_record = _run_combine_h5parms(
@@ -1850,6 +1865,7 @@ def _collect_plot_and_combine_dd_phase(
             pipeline_working_dir,
             execution_config,
             root="slow_phase_",
+            first_dir=plot_first_dir,
             shell_operation_cls=shell_operation_cls,
         )
         slow_amp_plots = _run_plot_solutions(
@@ -1858,6 +1874,7 @@ def _collect_plot_and_combine_dd_phase(
             pipeline_working_dir,
             execution_config,
             root="slow_amplitude_",
+            first_dir=plot_first_dir,
             shell_operation_cls=shell_operation_cls,
         )
         result.update(
@@ -1885,6 +1902,7 @@ def _collect_plot_and_combine_dd_phase(
                 pipeline_working_dir,
                 execution_config,
                 root="medium2_phase_",
+                first_dir=plot_first_dir,
                 shell_operation_cls=shell_operation_cls,
             )
             phase_record = _run_combine_h5parms(
@@ -2187,6 +2205,9 @@ def normalized_plot_solutions_command(
     h5parm: str,
     soltype: str,
     root: Optional[str] = None,
+    first_dir: bool = False,
 ) -> list[str]:
     """Return normalized solution plotting command tokens."""
-    return normalize_command(build_plot_solutions_command(h5parm, soltype, root=root))
+    return normalize_command(
+        build_plot_solutions_command(h5parm, soltype, root=root, first_dir=first_dir)
+    )
