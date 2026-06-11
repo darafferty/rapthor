@@ -28,7 +28,8 @@ ENV PIP_ROOT_USER_ACTION=ignore
 WORKDIR /src
 
 # Use "nl.archive.ubuntu.com", instead of "archive.ubuntu.com".
-RUN sed -ri "s/(archive\.ubuntu\.com)/nl.\1/" /etc/apt/sources.list
+RUN sed -ri "s/(archive\.ubuntu\.com)/nl.\1/" \
+    /etc/apt/sources.list.d/ubuntu.sources
 
 # Install all build-time dependencies
 RUN export DEBIAN_FRONTEND=noninteractive && \
