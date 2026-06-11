@@ -16,9 +16,12 @@ place. Eleven local saved CWL references have been captured from legacy commit
 saved-reference comparison against the current Prefect execution path. The live
 CWL-vs-Prefect smoke gate also passes for the existing DI fast-phase
 integration scenario. The public `rapthor.process.run()` route now executes the
-Prefect process flow. Slurm/external-Dask and MPI WSClean validation are
-deferred until after the migration cutover by project decision; any issues
-found there will be handled as post-migration target-environment fixes.
+Prefect process flow. The in-tree CWL runner has been removed from the
+production runtime; live CWL comparisons now require a preserved legacy
+checkout, and in-tree CWL material is kept as static reference/parity evidence.
+Slurm/external-Dask and MPI WSClean validation are deferred until after the
+migration cutover by project decision; any issues found there will be handled
+as post-migration target-environment fixes.
 `hybrid_screens` and `shared_facet_rw` are deferred from the required gate: the
 former is not used by the current target workflow and would require IDG Python
 bindings for DP3 IDGCal, while the latter has been too flaky in available
@@ -178,6 +181,8 @@ Implemented evidence:
   retained legacy log files
 - unit tests for reference artifact validation, scenario parset materialization,
   saved-reference comparison, FITS tolerances, and h5parm tolerances
+- production-runtime cleanup tests showing the removed in-tree CWL runner still
+  leaves static CWL reference helpers green
 - opt-in live CWL-vs-Prefect integration test using an existing integration
   fixture
 - opt-in saved-CWL regression integration test for the required, non-deferred

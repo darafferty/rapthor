@@ -535,7 +535,7 @@ def parset_read(parset_file, use_log_file=True):
         set_log_file(os.path.join(parset_dict["dir_working"], "logs", "rapthor.log"))
     log.info("=========================================================")
     log.info("Rapthor version %s", __version__)
-    log.info("CWLRunner is %s", parset_dict["cluster_specific"]["cwl_runner"])
+    log.info("Execution backend is Prefect/Dask")
     log.info("Working directory is %s", parset_dict["dir_working"])
 
     # Get the input MS files; it can either be a string, or a list of strings

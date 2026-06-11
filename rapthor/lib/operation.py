@@ -9,7 +9,6 @@ from jinja2 import Environment, FileSystemLoader
 
 from rapthor.lib.context import Timer
 from rapthor.lib.cwl import NpEncoder, copy_cwl_recursive, clean_if_cwl_file_or_directory
-from rapthor.lib.cwlrunner import create_cwl_runner
 
 DIR = os.path.dirname(os.path.abspath(__file__))
 env_parset = Environment(loader=FileSystemLoader(os.path.join(DIR, "..", "pipeline", "parsets")))
@@ -19,9 +18,9 @@ class Operation(object):
     """
     Generic operation class
 
-    An operation is simply a CWL workflow that performs a part of the
-    processing. It holds the workflow settings, populates the workflow input and
-    parset templates, and runs the workflow. The field object is passed between
+    An operation performs one part of the processing. It holds the operation
+    settings, populates the workflow input records, and delegates execution to
+    the concrete operation implementation. The field object is passed between
     operations, each of which updates it with variables needed by other, subsequent,
     operations.
 
@@ -59,8 +58,8 @@ class Operation(object):
         self.pipeline_working_dir = os.path.join(self.rapthor_working_dir, "pipelines", self.name)
         os.makedirs(self.pipeline_working_dir, exist_ok=True)
 
-        # CWL runner settings
-        self.cwl_runner = self.parset["cluster_specific"]["cwl_runner"]
+        # Legacy runtime settings retained for compatibility with older parsets.
+        self.cwl_runner = self.parset["cluster_specific"].get("cwl_runner")
         self.debug_workflow = self.parset["cluster_specific"]["debug_workflow"]
         self.keep_temporary_files = (
             self.parset["cluster_specific"]["keep_temporary_files"] or self.debug_workflow
@@ -78,9 +77,9 @@ class Operation(object):
         self.rapthor_pipeline_dir = os.path.join(self.rapthor_root_dir, "pipeline")
         self.rapthor_script_dir = os.path.join(self.rapthor_root_dir, "scripts")
 
-        # Input template name and output parset and inputs filenames for the CWL workflow.
-        # If the workflow uses a subworkflow, its template filename must be defined in the
-        # subclass by self.subpipeline_parset_template to the right path
+        # Preserved CWL reference template names and generated input filenames.
+        # Production execution now uses Prefect/Dask, but static CWL fixtures still
+        # render these templates for parity checks during the migration.
         self.pipeline_parset_template = f"{self.rootname}_pipeline.cwl"
         self.subpipeline_parset_template = None
         self.pipeline_parset_file = os.path.join(self.pipeline_working_dir, "pipeline_parset.cwl")
@@ -137,17 +136,17 @@ class Operation(object):
 
     def uses_python_flow(self):
         """
-        Return True when this operation executes through a Python flow instead of CWL.
+        Return True when this operation executes through a Python flow.
 
         Operation subclasses can override this during the Prefect/Dask migration.
         The choice is intentionally owned by the operation class, not exposed as
         a user-facing mixed-backend selector.
         """
-        return False
+        return True
 
     def set_parset_parameters(self):
         """
-        Define parameters needed for the CWL workflow template
+        Define parameters needed for the operation.
 
         The dictionary keys must match the jinja template variables used in the
         corresponding workflow parset.
@@ -158,7 +157,7 @@ class Operation(object):
 
     def set_input_parameters(self):
         """
-        Define parameters needed for the CWL workflow inputs
+        Define parameters needed for the operation inputs.
 
         The dictionary keys must match the workflow inputs defined in the corresponding
         workflow parset.
@@ -171,8 +170,8 @@ class Operation(object):
         """
         Set up this operation
 
-        This involves filling the workflow template when CWL is used and writing
-        the inputs file.
+        This writes the finalizer/debug input file and, for static reference
+        tests only, can still render a preserved CWL template.
         """
         self.set_parset_parameters()
         if not self.uses_python_flow():
@@ -277,10 +276,11 @@ class Operation(object):
         """
         Execute this operation's workflow and return ``(success, outputs)``.
         """
-        with create_cwl_runner(self.cwl_runner, self) as runner:
-            success = runner.run()
-            outputs = runner.parse_outputs() if success else {}
-        return success, outputs
+        raise NotImplementedError(
+            "CWL execution has been retired from the production runtime; "
+            "operation subclasses must implement execute_workflow() with the "
+            "Prefect/Dask execution path."
+        )
 
     def run(self):
         """

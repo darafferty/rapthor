@@ -50,14 +50,14 @@ dependencies = [
     "Rtree",
     "scipy",
     "shapely",
-    "cwltool==3.1.20260108082145", # Latest version breaks CWL validation checks in tests.
-    "toil[cwl]>=9.0",
-    "streamflow>=0.2.0.dev13"
 ]
 dynamic = ["version"]
 
 [project.optional-dependencies]
-test = ["tox"]
+test = [
+    "tox",
+    "cwltool==3.1.20260108082145", # Latest version breaks CWL validation checks in tests.
+]
 dev =  ["ruff", "rapthor[test]" ]
 
 [dependency-groups]
@@ -68,7 +68,8 @@ test =  [
     "pytest-cov",
     "pytest-xdist",
     "pytest-mock",
-    "pytest-socket"
+    "pytest-socket",
+    "cwltool==3.1.20260108082145", # Static CWL reference tests only.
 ]
 dev =  [
     "ruff",
@@ -78,7 +79,8 @@ dev =  [
     "pytest-cov",
     "pytest-xdist",
     "pytest-mock",
-    "pytest-socket"
+    "pytest-socket",
+    "cwltool==3.1.20260108082145", # Static CWL reference tests only.
 ]
 
 
@@ -99,7 +101,6 @@ packages = [
     "rapthor.execution",
     "rapthor.execution.flows",
     "rapthor.lib",
-    "rapthor.lib.toil_batch_systems",
     "rapthor.operations",
 ]
 script-files = [
@@ -181,7 +182,8 @@ deps = [
     "pytest-cov",
     "pytest-xdist",
     "pytest-mock",
-    "pytest-socket"
+    "pytest-socket",
+    "cwltool==3.1.20260108082145", # Static CWL reference tests only.
 ]
 commands = [
     # test_field.py does not support parallel runs, so run sequentially.
@@ -227,7 +229,8 @@ deps = [
     "pytest-cov",
     "pytest-xdist",
     "pytest-mock",
-    "pytest-socket"
+    "pytest-socket",
+    "cwltool==3.1.20260108082145", # Static CWL reference tests only.
 ]
 pass_env = [
     "CI_PROJECT_DIR",
@@ -268,7 +271,6 @@ commands = [
         "python", "-m", "ruff", "check", "--select", "I",
         "rapthor/execution",
         "rapthor/lib/cwl.py",
-        "rapthor/lib/cwlrunner.py",
         "rapthor/lib/parset.py",
         "rapthor/lib/strategy.py",
         "rapthor/operations/calibrate.py",
@@ -289,7 +291,6 @@ commands = [
         "tests/execution",
         "tests/integration",
         "tests/lib/test_cwl.py",
-        "tests/lib/test_cwlrunner.py",
         "tests/lib/test_field.py",
         "tests/lib/test_parset.py",
         "tests/lib/test_strategy.py",
@@ -302,7 +303,6 @@ commands = [
         "python", "-m", "ruff", "format", "--check", "-v",
         "rapthor/execution",
         "rapthor/lib/cwl.py",
-        "rapthor/lib/cwlrunner.py",
         "rapthor/lib/parset.py",
         "rapthor/lib/strategy.py",
         "rapthor/operations/calibrate.py",
@@ -323,7 +323,6 @@ commands = [
         "tests/execution",
         "tests/integration",
         "tests/lib/test_cwl.py",
-        "tests/lib/test_cwlrunner.py",
         "tests/lib/test_field.py",
         "tests/lib/test_parset.py",
         "tests/lib/test_strategy.py",
@@ -339,7 +338,6 @@ deps = "ruff"
 format_targets = [
     "rapthor/execution",
     "rapthor/lib/cwl.py",
-    "rapthor/lib/cwlrunner.py",
     "rapthor/lib/parset.py",
     "rapthor/lib/strategy.py",
     "rapthor/operations/calibrate.py",
@@ -360,7 +358,6 @@ format_targets = [
     "tests/execution",
     "tests/integration",
     "tests/lib/test_cwl.py",
-    "tests/lib/test_cwlrunner.py",
     "tests/lib/test_field.py",
     "tests/lib/test_parset.py",
     "tests/lib/test_strategy.py",
@@ -374,7 +371,6 @@ commands = [
         "python", "-m", "ruff", "check", "--select", "I", "--fix",
         "rapthor/execution",
         "rapthor/lib/cwl.py",
-        "rapthor/lib/cwlrunner.py",
         "rapthor/lib/parset.py",
         "rapthor/lib/strategy.py",
         "rapthor/operations/calibrate.py",
@@ -395,7 +391,6 @@ commands = [
         "tests/execution",
         "tests/integration",
         "tests/lib/test_cwl.py",
-        "tests/lib/test_cwlrunner.py",
         "tests/lib/test_field.py",
         "tests/lib/test_parset.py",
         "tests/lib/test_strategy.py",
@@ -408,7 +403,6 @@ commands = [
         "python", "-m", "ruff", "format",
         "rapthor/execution",
         "rapthor/lib/cwl.py",
-        "rapthor/lib/cwlrunner.py",
         "rapthor/lib/parset.py",
         "rapthor/lib/strategy.py",
         "rapthor/operations/calibrate.py",
@@ -429,7 +423,6 @@ commands = [
         "tests/execution",
         "tests/integration",
         "tests/lib/test_cwl.py",
-        "tests/lib/test_cwlrunner.py",
         "tests/lib/test_field.py",
         "tests/lib/test_parset.py",
         "tests/lib/test_strategy.py",

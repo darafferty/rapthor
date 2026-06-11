@@ -29,7 +29,7 @@ Try if mirroring works by clicking the `Update now` button (the two curved arrow
 
 ## Creating a release
 
-Creating a Rapthor release is a bit more involved than simply pressing a button in the GitLab GUI. The main reason is that all the CWL files that contain a `dockerPull` line need to be updated on-the-fly to contain the proper reference to the release. This is taken care of by the CI/CD pipeline, but it is good to understand how this pipeline works under the hood. First, let's properly configure the GitLab project.
+Creating a Rapthor release is handled by the GitLab CI/CD pipeline. First, configure the GitLab project so the pipeline can tag the release and publish the Docker image.
 
 ### Configure the project in the GitLab GUI
 
@@ -53,11 +53,9 @@ https://peps.python.org/pep-0440/#version-scheme). For example, `v5.0rc1` is a v
 
 When the CI/CD pipeline is run on a release branch, it will, in addition to a normal CI/CD pipeline run, do the following:
 
-- update all the CWL files containing a `dockerPull` line with the correct image tag, and commit the changes
 - tag the release using `<my-release>` as tag
 - deploy the docker image to [Docker Hub](https://hub.docker.com/repository/docker/astronrd/rapthor)
 - if `<my-release>` is a versioned release:[^1]
-  - undo the changes to the CWL files, and commit
   - merge the changes into the default branch
 
 [^1]: A versioned release is a release whose name starts with a `V` or `v`.

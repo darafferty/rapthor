@@ -63,9 +63,13 @@ The Rapthor operations call a number of Python scripts to process the solutions,
 CWL workflows
 -------------
 
-The CWL workflow parsets and step definition files are located in the ``rapthor/pipeline/`` directory of the code tree. Each operation in Rapthor has a corresponding workflow parset. An overview of each operation is given in :ref:`operations`. For details of each step of the workflows, see the inline documentation in the workflow parset files (in ``rapthor/pipeline/parsets``) and step files (in ``rapthor/pipeline/steps``).
+Preserved CWL workflow parsets and step definition files are located in the
+``rapthor/pipeline/`` directory of the code tree. These files are retained as
+static reference material for migration equivalence checks. Production execution
+uses the Prefect/Dask flows under ``rapthor/execution``.
 
 .. note::
 
-   The CWL workflow files in ``rapthor/pipeline/parsets`` are jinja2 templates, and so are not directly parsable by CWL tools. Rapthor uses the templates to generate the actual CWL workflows that are passed to the CWL runner. These generated files are created in the Rapthor working directory in ``workdir/pipelines/operation_name`` at runtime with the following names: the CWL workflow file is named ``pipeline_parset.cwl`` (and ``subpipeline_parset.cwl`` when there is a subworkflow) and the workflow inputs JSON file is named ``pipeline_inputs.json``.
-
+   The CWL workflow files in ``rapthor/pipeline/parsets`` are jinja2 templates
+   and are not directly parsable by CWL tools until rendered by static reference
+   tests.

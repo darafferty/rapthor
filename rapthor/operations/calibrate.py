@@ -997,9 +997,6 @@ class Calibrate(Operation):
         """
         Execute calibration through the Prefect flow and return operation outputs.
         """
-        if not self.uses_python_flow():
-            return super().execute_workflow()
-
         payload = calibrate_payload_from_inputs(
             self.mode,
             self.input_parms,

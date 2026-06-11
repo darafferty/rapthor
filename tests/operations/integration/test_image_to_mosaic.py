@@ -3,7 +3,6 @@ from pathlib import Path
 import pytest
 
 from rapthor.execution.outputs import file_record
-from tests.cwl.cwl_mock import mocked_cwl_execution
 from rapthor.lib.strategy import set_selfcal_strategy
 
 from rapthor.operations.image import Image
@@ -78,12 +77,6 @@ def test_image_I_to_mosaic(field_I_no_predict, expected_image_output, monkeypatc
     )
     image.run()
     # Now create and run the Mosaic operation (after sector image attributes are set)
-    monkeypatch.setattr(
-        "rapthor.lib.cwlrunner.BaseCWLRunner.execute",
-        lambda self, args, env: mocked_cwl_execution(self, args, env),
-        raising=False,
-    )
-
     mosaic = Mosaic(field=image.field, index=1)
     mosaic.set_input_parameters()
     mosaic.set_parset_parameters()

@@ -5,11 +5,11 @@ Test cases for the `rapthor.operations.image` module.
 import pytest
 
 from pathlib import Path
-from tests.cwl.cwl_mock import mocked_cwl_execution
 from rapthor.lib.strategy import set_selfcal_strategy
 
 from tests.cwl.cwl_cmdline import generate_command_line
 import yaml
+from rapthor.execution.outputs import file_record
 from rapthor.operations.image import Image, ImageInitial, ImageNormalize
 
 PATH_TO_OPERATION_STEPS = Path(__file__).parents[2] / "rapthor" / "pipeline" / "steps"
@@ -17,19 +17,79 @@ PATH_TO_OPERATION_STEPS = Path(__file__).parents[2] / "rapthor" / "pipeline" / "
 
 def _mock_cwl_execute(monkeypatch, expected_outputs):
     """
-    Monkeypatch the CWL runner's execute method to return expected outputs.
-    This allows us to test the image operations without actually running CWL workflows.
+    Monkeypatch the image Prefect flow to return expected output records.
+    This allows operation finalizer tests to run without external imaging tools.
     """
-    monkeypatch.setattr(
-        "rapthor.lib.cwlrunner.BaseCWLRunner.execute",
-        lambda self, args, env: mocked_cwl_execution(
-            self,
-            args,
-            env,
-            expected_outputs=expected_outputs,
-        ),
-        raising=False,
-    )
+
+    def materialize(pipeline_dir, value):
+        if isinstance(value, list):
+            return [materialize(pipeline_dir, item) for item in value]
+        path = pipeline_dir / value
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("{}" if path.suffix == ".json" else "image")
+        return file_record(path)
+
+    def materialize_file(path):
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("{}" if path.suffix == ".json" else "image")
+        return file_record(path)
+
+    def fake_image_flow(payload, **kwargs):
+        pipeline_dir = Path(payload["pipeline_working_dir"])
+        sectors = payload["sectors"]
+        outputs = {key: materialize(pipeline_dir, value) for key, value in expected_outputs.items()}
+        outputs.setdefault("sector_diagnostic_plots", [[] for _ in sectors])
+        outputs.setdefault("visibilities", [[] for _ in sectors])
+
+        if any(sector["save_source_list"] for sector in sectors):
+            outputs.setdefault(
+                "sector_skymodels",
+                [
+                    [
+                        materialize_file(pipeline_dir / f"{sector['image_name']}-sources.txt"),
+                        materialize_file(pipeline_dir / f"{sector['image_name']}-sources-pb.txt"),
+                    ]
+                    for sector in sectors
+                ],
+            )
+        if any(sector["save_filtered_model_image"] for sector in sectors):
+            outputs["sector_skymodel_image_fits"] = [
+                materialize_file(sector["filtered_model_image_path"]) for sector in sectors
+            ]
+        if any(sector["use_facets"] for sector in sectors):
+            outputs["sector_region_file"] = [
+                materialize_file(sector["facet_region_path"]) for sector in sectors
+            ]
+        if any(sector["make_image_cube"] for sector in sectors):
+            outputs["sector_image_cubes"] = [
+                [materialize_file(cube_spec["path"]) for cube_spec in sector["image_cube_specs"]]
+                for sector in sectors
+            ]
+            outputs["sector_image_cube_beams"] = [
+                [
+                    materialize_file(f"{cube_spec['path']}_beams.txt")
+                    for cube_spec in sector["image_cube_specs"]
+                ]
+                for sector in sectors
+            ]
+            outputs["sector_image_cube_frequencies"] = [
+                [
+                    materialize_file(f"{cube_spec['path']}_frequencies.txt")
+                    for cube_spec in sector["image_cube_specs"]
+                ]
+                for sector in sectors
+            ]
+        if any(sector["normalize_flux_scale"] for sector in sectors):
+            outputs["sector_source_catalog"] = [
+                materialize_file(sector["output_source_catalog_path"]) for sector in sectors
+            ]
+            outputs["sector_normalize_h5parm"] = [
+                materialize_file(sector["output_normalize_h5parm_path"]) for sector in sectors
+            ]
+        return outputs
+
+    monkeypatch.setattr("rapthor.operations.image.image_flow", fake_image_flow)
 
 
 def _prepare_field_for_image(field, h5parm_filename="nonexisting_h5parm_file.h5"):
@@ -69,14 +129,21 @@ def _prepare_field_for_normalize_image(field):
     field.skip_final_major_iteration = False
 
 
-def _initialize_operation(operation, do_predict=None, apply_none=None, use_facets=None):
+def _initialize_operation(
+    operation,
+    do_predict=None,
+    apply_none=None,
+    use_facets=None,
+    render_static_cwl=False,
+):
     """
     Set parameters for the given operation based on the provided arguments.
     This allows us to customize the operation setup for different test cases.
     """
-    # These operation tests remain CWL-reference coverage until the explicit
-    # CWL-vs-Prefect equivalence suite is in place.
-    operation.uses_python_flow = lambda: False
+    # A small number of tests still render preserved CWL templates as static
+    # parity fixtures. Production execution remains Prefect/Dask.
+    if render_static_cwl:
+        operation.uses_python_flow = lambda: False
     if do_predict is not None:
         operation.do_predict = do_predict
     if apply_none is not None:
@@ -193,7 +260,12 @@ class TestImage:
         field.use_mpi = use_mpi
         field.parset["imaging_specific"]["shared_facet_rw"] = shared_facet_rw
         _prepare_field_for_image(field, h5parm_filename=h5parm_file)
-        image = _initialize_operation(Image(field, index=1), do_predict=False, use_facets=True)
+        image = _initialize_operation(
+            Image(field, index=1),
+            do_predict=False,
+            use_facets=True,
+            render_static_cwl=True,
+        )
         image.setup()  # renders subpipeline_parset.cwl
 
         with open(image.subpipeline_parset_file) as f:
@@ -330,7 +402,12 @@ class TestImage:
         # refactoring of the fild and image classes seems advisable here
         field.parset["imaging_specific"]["save_filtered_model_image"] = True
         _prepare_field_for_image(field)
-        image = _initialize_operation(Image(field, index=1), do_predict=False, apply_none=True)
+        image = _initialize_operation(
+            Image(field, index=1),
+            do_predict=False,
+            apply_none=True,
+            use_facets=False,
+        )
 
         assert image.input_parms["save_filtered_model_image"]
 
@@ -339,7 +416,12 @@ class TestImage:
         field.photometry_skymodel = "path/to/photometry_skymodel.txt"
         field.astrometry_skymodel = "path/to/astrometry_skymodel.txt"
         _prepare_field_for_image(field)
-        image = _initialize_operation(Image(field, index=1), do_predict=False, apply_none=True)
+        image = _initialize_operation(
+            Image(field, index=1),
+            do_predict=False,
+            apply_none=True,
+            use_facets=False,
+        )
 
         assert image.input_parms["photometry_skymodel"]["path"] == "path/to/photometry_skymodel.txt"
         assert image.input_parms["astrometry_skymodel"]["path"] == "path/to/astrometry_skymodel.txt"
@@ -351,7 +433,12 @@ class TestImage:
         """Test to check that the allow_internet_access flag is set"""
         field.parset["cluster_specific"]["allow_internet_access"] = allow_internet_access
         _prepare_field_for_image(field)
-        image = _initialize_operation(Image(field, index=1), do_predict=False, apply_none=True)
+        image = _initialize_operation(
+            Image(field, index=1),
+            do_predict=False,
+            apply_none=True,
+            use_facets=False,
+        )
 
         assert image.input_parms["allow_internet_access"] is allow_internet_access
         assert image.parset_parms["allow_internet_access"] is allow_internet_access

@@ -46,9 +46,11 @@ Most implementation work is complete.
   server are marked and run serially, while the remaining non-integration tests
   still use `pytest-xdist -n auto`.
 - CI now pins DP3 to the dev-container-tested commit `18e793a4`.
-- CWL runtime code, package data, Toil, StreamFlow, and cwltool are still
-  present and can now be removed or preserved only as static reference fixtures
-  and compatibility helpers.
+- CWL production runtime has been removed. Toil and StreamFlow are no longer
+  production dependencies, `cwltool` is test/reference-only, the in-tree CWL
+  runner and Toil batch-system helper have been deleted, and the base
+  `Operation` no longer falls back to CWL execution. Preserved CWL templates
+  and CWL-shaped record helpers remain as static parity/reference material.
 
 ## Evidence Already Available
 
@@ -142,17 +144,20 @@ Done for the current migration stage.
 
 ### 4. Remove CWL Production Runtime
 
-Only after public route cutover.
+Done for the production runtime.
 
-- Remove Toil, StreamFlow, and cwltool dependencies if no longer needed.
-- Remove `rapthor/lib/cwlrunner.py`, CWL-only operation plumbing, and obsolete
+- Removed Toil and StreamFlow from production dependencies.
+- Moved pinned `cwltool` to test/reference-only dependency sets for static CWL
+  fixture checks.
+- Removed `rapthor/lib/cwlrunner.py`, the Toil batch-system helper, and obsolete
   CWL runner tests.
-- Remove CWL workflow templates from production package data once needed static
-  fixtures are preserved elsewhere.
-- Update package-data, lint, format, tox, CI, and release jobs that currently
-  know about CWL files.
-- Keep or rename CWL-shaped output helpers only if finalizers still depend on
-  those record shapes during the first Prefect/Dask release.
+- Removed CWL execution fallbacks from operation adapters; the base `Operation`
+  now raises if a subclass does not provide a Prefect/Dask implementation.
+- Updated lint/format targets, CI release jobs, defaults, README, and key Sphinx
+  pages so Toil/CWL is no longer documented as the production route.
+- Kept preserved CWL templates and CWL-shaped output helpers as static
+  parity/reference material for now. Moving or renaming those can be handled in
+  the post-cutover cleanup pass once no tests/docs need their current location.
 
 ### 5. Final Documentation And Release Notes
 
@@ -200,9 +205,12 @@ unless a performance issue prevents production use.
 
 ## Immediate Next Actions
 
-1. Remove CWL production runtime and update docs, packaging, and CI.
-2. Run deferred Slurm/external-Dask and MPI WSClean validation after the
-   migration cutover.
+1. Refresh real external-tool coverage in the dev container or staging
+   environment, focusing on DP3 prediction/DDECal, LoSoTo, WSClean, EveryBeam,
+   PyBDSF, cfitsio/fpack, and mosaic paths.
+2. Complete final documentation and release notes for Prefect/Dask execution,
+   dashboards, artifacts, restart behaviour, equivalence evidence, and known
+   deferred target-environment checks.
 3. Do a post-cutover refactor pass to clean up migration scaffolding and reduce
    duplication.
 

@@ -284,14 +284,12 @@ local_scratch_dir = /path/to/tmp/
 # directory in dir_working.
 global_scratch_dir = /path/to/tmp/
 
-# Run the workflows inside a container (default = False)? If True, the CWL
-# workflow for each operation (such as calibrate or image) will be run inside a
-# container. The type of container can also be specified (one of docker,
-# udocker, or singularity; default = docker)
+# Legacy container settings retained for compatibility with older parsets.
 use_container = False
 container_type = docker
 
-# CWL runner to use. Currently supported runners are: cwltool and toil (default)
+# Legacy CWL runner setting retained for compatibility with older parsets.
+# Prefect/Dask is the production execution backend and ignores this value.
 cwl_runner = toil
 
 # Prefect task runner to use for the Python execution path. Supported values
@@ -304,9 +302,6 @@ prefect_stream_output = True
 prefect_retries = 0
 prefect_log_commands = True
 
-# Debug workflow related issues. Enabling this will require significantly more
-# disk space. Additionally, when Toil is the CWL runner, some tasks will run on
-# a single thread to make debugging easier. The working directory will never be
-# cleaned up, stdout and stderr will not be redirectied, and log level of the
-# CWL runner will be set to DEBUG.
+# Debug workflow related issues. Enabling this keeps temporary workflow files
+# and will require significantly more disk space.
 debug_workflow = False

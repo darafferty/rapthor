@@ -629,9 +629,6 @@ class Image(Operation):
         """
         Execute imaging through the Prefect flow and return operation outputs.
         """
-        if not self.uses_python_flow():
-            return super().execute_workflow()
-
         payload = image_payload_from_inputs(
             self.input_parms,
             self.pipeline_working_dir,

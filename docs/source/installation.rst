@@ -43,18 +43,13 @@ How can I troubleshoot a Rapthor problem?
 
         CRITICAL - rapthor - Operation image_1 failed due to an error
 
-    then an error was encountered during the running of the CWL workflow of the
-    ``image_1`` operation. In this situation, it usually helpful to check the
-    log files for the failed operation, which, in the case above, should be
-    located in ``dir_working/logs/image_1``. When Toil is used for the CWL
-    runner (the default; see :term:`cwl_runner`), filenames beginning with the
-    word "failed" indicate the logs of the steps, if any, that failed. A search
-    in these logs will often reveal the reason for the failure.
+    then an error was encountered during the running of the ``image_1``
+    operation. In this situation, it usually helpful to check the log files for
+    the failed operation, which, in the case above, should be located in
+    ``dir_working/logs/image_1``. The Prefect dashboard can also be used to
+    inspect the flow run, task logs, and published artifacts.
 
     If the error or its cause is not clear from the log files, it may be useful
     to run with the :term:`keep_temporary_files` option enabled. When this option
-    is enabled, the working directory will not be cleaned up. In addition, most
-    CWL runners also provide extra debugging options. These can be enabled with
-    :term:`debug_workflow`. In that case, ``stdout`` and ``stderr``
-    will not be redirected, and the log level of the CWL runner will be set to
-    ``DEBUG``.
+    is enabled, the working directory will not be cleaned up. Additional runtime
+    debugging can be enabled with :term:`debug_workflow`.

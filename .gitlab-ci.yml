@@ -154,16 +154,6 @@ prepare_release:
   script:
     # Use .versioning:script to get RAPTHOR_TAG
     - !reference [.versioning, script]
-    - echo "Updating dockerPull URI to use image tag '$RAPTHOR_TAG'"
-    - CWL_FILES=$(git ls-files | grep '\.cwl$')
-    - sed -ri "/dockerPull/s,['\"]?(astronrd/rapthor).*,\1:$RAPTHOR_TAG," $CWL_FILES
-    - git add -u $CWL_FILES
-    # Only commit if there are changes
-    - |
-      if test -n "$(git status -uno --porcelain)"
-      then
-        git commit -m "Tag $RELEASE added to dockerPull URI in CWL steps (by GitLab CI)"
-      fi
     # Tag current revision
     - git tag -a $RELEASE -m "Git tag $RELEASE created (by GitLab CI)"
     # Skip CI on this push
@@ -337,18 +327,6 @@ finalize_release:
       when: on_success
   script:
     - echo "Finalizing release $RELEASE"
-    # Update dockerPull image URI in CWL steps by removing version tag
-    - CWL_FILES=$(git ls-files | grep '\.cwl$')
-    - sed -ri "/dockerPull/s,(astronrd/rapthor).*,\1," $CWL_FILES
-    - git add -u $CWL_FILES
-    # Only commit if there are changes
-    - |
-      if test -n "$(git status -uno --porcelain)"
-      then
-        git commit -m "Tag removed from dockerPull URI in CWL steps (by GitLab CI)"
-      fi
-    # Skip CI on this push
-    - git push -o ci.skip
     # Next switch to the default branch and make sure it's up to date
     - git checkout $CI_DEFAULT_BRANCH
     - git pull

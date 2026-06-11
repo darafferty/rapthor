@@ -702,9 +702,9 @@ The available options are described below under their respective sections.
 .. glossary::
 
     batch_system
-        Cluster batch system (only used when either StreamFlow or Toil is the CWL runner;
-        default = ``single_machine``). Use ``single_machine`` when running on a single
-        machine and ``slurm`` to use multiple nodes of a Slurm-based cluster.
+        Cluster batch system (default = ``single_machine``). Use
+        ``single_machine`` when running on a single machine and ``slurm`` to use
+        multiple nodes of a Slurm-based cluster.
 
         .. note::
 
@@ -803,10 +803,9 @@ The available options are described below under their respective sections.
             potentially clobber files/directories created by another instance.
 
     use_container
-        Run the workflows inside a container (default = ``False``)? If ``True``, the CWL
-        workflow for each operation (such as calibrate or image) will be run inside a
-        container. The type of container can be specified with the :term:`container_type`
-        parameter.
+        Legacy container setting retained for compatibility with older parsets.
+        Prefect/Dask is the production runtime and does not use this option to
+        launch operation-level CWL containers.
 
         .. note::
 
@@ -818,29 +817,14 @@ The available options are described below under their respective sections.
         types are: ``docker`` (the default), ``udocker``, or ``singularity``.
 
     cwl_runner
-        CWL runner to use. Currently supported runners are: ``cwltool``, ``streamflow``,
-        and ``toil`` (default). Toil is the recommended runner, since it provides much
-        more fine-grained control over the execution of a workflow. For example, Toil and
-        StreamFlow can use Slurm to automatically distribute workflow steps over different
-        compute nodes, whereas CWLTool can only execute workflows on a single node. With
-        CWLTool you also run the risk of overloading your machine when too many jobs are
-        run in parallel. For debugging purposes CWLTool outshines Toil, because its logs
-        are easier to understand.
+        Legacy CWL runner setting retained for compatibility with older parsets.
+        Prefect/Dask is the production runtime and ignores this value.
 
     debug_workflow
         Debug workflow related issues (default = ``False``). Enabling this option
         implies that temporary files, produced during the workflow run, will be kept
         (i.e. the option ``keep_temporary_files`` is implicitly set to ``True``). This
-        will require significantly more disk space.  The working directory will never be
-        cleaned up, ``stdout`` and ``stderr`` will not be redirectied, and log level of
-        the CWL runner will be set to ``DEBUG``.  Additionally, when using Toil as the
-        CWL runner, some tasks will run using only a single thread (to make debugging
-        easier). Use this option with care!
-
-        .. note::
-
-            If Toil is the CWL runner, this option will only work when
-            :term:`batch_system` = ``single_machine`` (the default).
+        will require significantly more disk space. Use this option with care!
 
     keep_temporary_files
         Keep temporary files created during the workflow execution (default =

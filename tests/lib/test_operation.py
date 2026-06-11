@@ -88,6 +88,16 @@ def test_setup_writes_python_flow_inputs_without_rendering_cwl(tmp_path):
     assert not Path(operation.pipeline_parset_file).exists()
 
 
+def test_base_operation_requires_prefect_execute_workflow(tmp_path):
+    operation = Operation(FieldStub(_operation_parset(tmp_path)), name="Base")
+
+    with pytest.raises(NotImplementedError, match="CWL execution has been retired"):
+        operation.run()
+
+    assert json.loads(Path(operation.pipeline_inputs_file).read_text()) == {}
+    assert not Path(operation.pipeline_parset_file).exists()
+
+
 def test_finalize_marks_operation_done(tmp_path):
     operation = _operation(tmp_path)
 

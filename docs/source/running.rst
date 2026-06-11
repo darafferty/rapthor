@@ -37,20 +37,19 @@ number of options are available and are described below:
 
 Rapthor begins a run by checking the input measurement sets. Next, Rapthor
 will determine the DDE calibrators from the input sky model and begin self
-calibration and imaging. Rapthor uses Toil+CWL to handle the distribution of
-jobs and to keep track of the state of a reduction. Each Rapthor operation is
-done in a separate workflow. See :ref:`structure` for an overview of the various
+calibration and imaging. Rapthor uses Prefect/Dask to handle operation
+execution, task orchestration, logging, artifacts, and restart state. Each
+Rapthor operation is done in a separate flow. See :ref:`structure` for an overview of the various
 operations that Rapthor performs and their relation to one another, and see
 :ref:`operations` for details of each operation and their primary data products.
 
 
-Manual Prefect flow demo
-------------------------
+Prefect dashboard demo
+----------------------
 
-During the Prefect/Dask migration, the public ``rapthor`` command remains on
-the legacy baseline while the new top-level flow is available through
-``rapthor.execution.flows.process.process_flow``. To manually run that path and
-watch it in the Prefect dashboard, use the local demo helper:
+The public ``rapthor`` command uses the Prefect/Dask process flow. To run a
+small demo parset and watch it in the Prefect dashboard, use the local demo
+helper:
 
 .. code-block:: console
 
@@ -245,16 +244,11 @@ Running only the operations in a container (multinode mode)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 For runs that use multiple nodes of a compute cluster (i.e., when
-:term:`batch_system` = ``slurm``), the recommended method of running Rapthor is
-to run the operations (CWL workflows) inside containers, with the parent Rapthor process,
-which controls the submission of Slurm jobs, running outside of a container.
-Therefore, the use of this mode requires a minimal local installation of Rapthor
-on the cluster head node (for details, see the installation instructions on the
-`Rapthor GitLab page <https://git.astron.nl/RD/rapthor>`_). Other, non-Python
-dependencies (such as DP3 and WSClean) do not need to be installed locally. To
-use this mode, activate the :term:`use_container` parameter in the parset. No
-further configuration should be necessary, as the CWL runner will handle the
-pulling and running of the containers.
+:term:`batch_system` = ``slurm``), run Rapthor in an environment that already
+contains the required Python and external radio-astronomy tools. The legacy
+mode that launched operation-level CWL containers is no longer the production
+runtime. Slurm/external-Dask validation is deferred until after the Prefect/Dask
+migration cutover.
 
 
 .. _troubleshooting:
