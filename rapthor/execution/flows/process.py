@@ -251,8 +251,8 @@ def run_process(
 ) -> Optional[object]:
     """Run the top-level Rapthor process lifecycle with injectable hooks.
 
-    This mirrors ``rapthor.process.run`` for side-by-side Prefect/CWL
-    equivalence tests while the CLI keeps the legacy route.
+    This implements the public ``rapthor.process.run`` lifecycle while keeping
+    collaborators injectable for equivalence tests.
     """
     factories = operation_factories or default_process_operation_factories()
     hooks = lifecycle_hooks or default_process_lifecycle_hooks()

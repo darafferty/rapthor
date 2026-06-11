@@ -25,9 +25,9 @@ Most implementation work is complete.
 - Operation adapters for concatenate, mosaic, predict, image, image-initial,
   image-normalize, and calibration execute Prefect flows and produce
   finalizer-compatible output records.
-- `rapthor.process.run()` is still the legacy CWL baseline. The current
-  side-by-side Prefect entry point is
-  `rapthor.execution.flows.process.process_flow()`.
+- `rapthor.process.run()` now routes through
+  `rapthor.execution.flows.process.process_flow()`, making Prefect/Dask the
+  public processing path.
 - Saved-reference equivalence is in place. The local saved-reference gate runs
   eleven CWL reference scenarios from legacy commit
   `4cfd2abe2fe815724e3f1c390d789eea249becef` and passes comparison against the
@@ -47,18 +47,18 @@ Most implementation work is complete.
   still use `pytest-xdist -n auto`.
 - CI now pins DP3 to the dev-container-tested commit `18e793a4`.
 - CWL runtime code, package data, Toil, StreamFlow, and cwltool are still
-  present and must stay until the final equivalence gate and public route
-  cutover are complete.
+  present and can now be removed or preserved only as static reference fixtures
+  and compatibility helpers.
 
 ## Evidence Already Available
 
 - Execution-layer unit and flow tests cover command construction, payloads,
   output records, restart/reuse, failure handling, artifacts, logging, resource
   validation, task-runner selection, work directories, and equivalence helpers.
-- Mocked process-flow tests compare the Prefect lifecycle with the legacy
-  process lifecycle for final-only, selfcal, convergence/divergence/failure,
-  repeated final cycles, normalization, full-Stokes/cube flags, concatenation,
-  calibration strategy hand-offs, validation failures, and artifact publication.
+- Mocked process-flow tests cover final-only, selfcal,
+  convergence/divergence/failure, repeated final cycles, normalization,
+  full-Stokes/cube flags, concatenation, calibration strategy hand-offs,
+  validation failures, public route delegation, and artifact publication.
 - `tests/execution/fixtures/equivalence_gate_scenarios.json` defines the
   saved-reference scenario matrix.
 - `scripts/capture_cwl_reference_artifacts.py` can populate CWL reference
@@ -130,11 +130,11 @@ depends on real radio-astronomy tools and representative data.
 
 ### 3. Cut Over The Public Route
 
-- Route the CLI-compatible `rapthor.process.run()` path through
-  `process_flow()`.
+Done for the current migration stage.
+
+- `rapthor.process.run()` routes through `process_flow()`.
 - Keep no public `execution_backend` selector.
-- Update operation/process tests so Prefect/Dask is the expected production
-  route.
+- Operation/process tests treat Prefect/Dask as the expected production route.
 - Keep saved CWL artifacts and CWL-derived command/output fixtures only as
   parity evidence.
 - Update user-facing docs that still describe Toil/CWL as the normal execution
@@ -200,11 +200,10 @@ unless a performance issue prevents production use.
 
 ## Immediate Next Actions
 
-1. Switch `rapthor.process.run()` to `process_flow()`.
-2. Remove CWL production runtime and update docs, packaging, and CI.
-3. Run deferred Slurm/external-Dask and MPI WSClean validation after the
+1. Remove CWL production runtime and update docs, packaging, and CI.
+2. Run deferred Slurm/external-Dask and MPI WSClean validation after the
    migration cutover.
-4. Do a post-cutover refactor pass to clean up migration scaffolding and reduce
+3. Do a post-cutover refactor pass to clean up migration scaffolding and reduce
    duplication.
 
 ## Useful Commands

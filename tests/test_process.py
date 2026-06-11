@@ -15,80 +15,20 @@ from rapthor.process import (
 )
 
 
-def test_run_uses_legacy_process_lifecycle(monkeypatch):
+def test_run_routes_to_prefect_process_flow(monkeypatch):
     calls = []
-    created_fields = []
-    parset = {
-        "strategy": "mock_strategy",
-        "generate_initial_skymodel": False,
-        "selfcal_data_fraction": 0.5,
-        "final_data_fraction": 1.0,
-        "ntimes_to_repeat_final_cycle": 0,
-        "input_h5parm": "solutions.h5",
-        "input_skymodel": "model.sky",
-    }
-    final_step = {
-        "do_calibrate": True,
-        "peel_outliers": False,
-        "peel_bright_sources": False,
-    }
 
-    class FakeField:
-        def __init__(self, input_parset):
-            calls.append(("field", input_parset))
-            created_fields.append(self)
-            self.parset = input_parset
-            self.epoch_observations = [["observation.ms"]]
-            self.make_quv_images = False
-            self.dde_mode = "direction_dependent"
-            self.cycle_number = 0
+    def fake_process_flow(parset_file, logging_level="info"):
+        calls.append((parset_file, logging_level))
+        return "prefect-result"
 
-    def fake_parset_read(parset_file):
-        calls.append(("parset_read", parset_file))
-        return parset
+    monkeypatch.setattr(
+        "rapthor.execution.flows.process.process_flow",
+        fake_process_flow,
+    )
 
-    def fake_set_logging_level(logging_level):
-        calls.append(("set_level", logging_level))
-
-    def fake_set_strategy(field):
-        calls.append(("set_strategy", field))
-        return [final_step]
-
-    def fake_validate_strategy(strategy_steps, input_parset):
-        calls.append(("validate_strategy", strategy_steps, input_parset))
-
-    def fake_do_final_pass(field, selfcal_steps, step):
-        calls.append(("do_final_pass", field, selfcal_steps, step))
-        return False
-
-    def fake_make_report(field):
-        calls.append(("make_report", field))
-
-    def unexpected_run_steps(*args, **kwargs):
-        raise AssertionError("run_steps should not run without selfcal or final pass")
-
-    monkeypatch.setattr(process, "parset_read", fake_parset_read)
-    monkeypatch.setattr(process._logging, "set_level", fake_set_logging_level)
-    monkeypatch.setattr(process, "Field", FakeField)
-    monkeypatch.setattr(process, "set_strategy", fake_set_strategy)
-    monkeypatch.setattr(process, "validate_strategy", fake_validate_strategy)
-    monkeypatch.setattr(process, "do_final_pass", fake_do_final_pass)
-    monkeypatch.setattr(process, "make_report", fake_make_report)
-    monkeypatch.setattr(process, "run_steps", unexpected_run_steps)
-
-    assert run("input.parset", logging_level="debug") is None
-
-    field = created_fields[0]
-    assert field.do_final is False
-    assert calls == [
-        ("parset_read", "input.parset"),
-        ("set_level", "debug"),
-        ("field", parset),
-        ("set_strategy", field),
-        ("validate_strategy", [final_step], parset),
-        ("do_final_pass", field, [], final_step),
-        ("make_report", field),
-    ]
+    assert run("input.parset", logging_level="debug") == "prefect-result"
+    assert calls == [("input.parset", "debug")]
 
 
 @pytest.mark.parametrize(

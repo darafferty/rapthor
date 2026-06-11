@@ -24,6 +24,7 @@ from rapthor.execution.equivalence import (
     required_gate_scenarios,
     required_reference_artifact_items,
     run_equivalence_pair,
+    run_legacy_cwl_process,
     scenario_parset_file,
     scenario_parset_materializer,
 )
@@ -91,6 +92,11 @@ def test_run_equivalence_pair_invokes_isolated_backend_runners(tmp_path):
     assert cwl_run.parset_file.read_text() == source_parset.read_text()
     assert prefect_run.parset_file.read_text() == source_parset.read_text()
     assert compare_backend_runs(cwl_run.working_dir, prefect_run.working_dir) == []
+
+
+def test_in_tree_legacy_cwl_runner_requires_preserved_checkout(tmp_path):
+    with pytest.raises(RuntimeError, match="pre-cutover checkout"):
+        run_legacy_cwl_process(tmp_path / "input.parset", tmp_path / "work")
 
 
 def test_scenario_parset_file_resolves_first_parset_fixture(tmp_path):

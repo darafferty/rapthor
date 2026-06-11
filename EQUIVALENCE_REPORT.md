@@ -15,9 +15,10 @@ place. Eleven local saved CWL references have been captured from legacy commit
 `4cfd2abe2fe815724e3f1c390d789eea249becef`, and all eleven pass
 saved-reference comparison against the current Prefect execution path. The live
 CWL-vs-Prefect smoke gate also passes for the existing DI fast-phase
-integration scenario. Slurm/external-Dask and MPI WSClean validation are
-deferred until after the migration cutover by project decision; any issues found
-there will be handled as post-migration target-environment fixes.
+integration scenario. The public `rapthor.process.run()` route now executes the
+Prefect process flow. Slurm/external-Dask and MPI WSClean validation are
+deferred until after the migration cutover by project decision; any issues
+found there will be handled as post-migration target-environment fixes.
 `hybrid_screens` and `shared_facet_rw` are deferred from the required gate: the
 former is not used by the current target workflow and would require IDG Python
 bindings for DP3 IDGCal, while the latter has been too flaky in available
@@ -181,6 +182,7 @@ Implemented evidence:
   fixture
 - opt-in saved-CWL regression integration test for the required, non-deferred
   scenario set
+- public `rapthor.process.run()` delegation to the Prefect process flow
 
 Local verification in the development container on 2026-06-09:
 
@@ -301,6 +303,7 @@ after all of the following are true:
   scenario set
 - Slurm/external-Dask and MPI WSClean target-environment checks are explicitly
   recorded as deferred post-migration validation
+- `rapthor.process.run()` routes through the Prefect process flow
 - any differences are either fixed or documented as intentional and
   user-invisible
 - the passing artifact root, source data, strategy files, commit SHAs, and test
@@ -308,9 +311,9 @@ after all of the following are true:
 
 ## Known Caveats
 
-- The current migration branch operation adapters already execute Prefect flows,
-  so the CWL reference must come from a separate pre-cutover checkout or saved
-  CWL artifacts.
+- The current migration branch operation adapters and public process route
+  execute Prefect flows, so the CWL reference must come from a separate
+  pre-cutover checkout or saved CWL artifacts.
 - The saved-reference gate depends on representative input data and external
   radio astronomy tools that are not exercised by normal unit tests.
 - Numeric product comparison is summary-based for broad backend equivalence.
@@ -332,8 +335,9 @@ after all of the following are true:
 
 ## Recommended Next Action
 
-Proceed with the public route cutover by routing `rapthor.process.run()` through
-the Prefect process flow. Keep the saved-CWL local gate and live smoke gate as
-regression checks if references, product publishing, equivalence helpers, or
-legacy-CWL compatibility change. Run Slurm/external-Dask and MPI WSClean
-validation after the migration cutover.
+Remove the CWL production runtime and update docs, packaging, and CI so CWL
+artifacts remain only as static reference fixtures or compatibility helpers.
+Keep the saved-CWL local gate and live smoke gate as regression checks if
+references, product publishing, equivalence helpers, or legacy-CWL compatibility
+change. Run Slurm/external-Dask and MPI WSClean validation after the migration
+cutover.

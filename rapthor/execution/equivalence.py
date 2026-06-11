@@ -396,10 +396,12 @@ def run_legacy_cwl_process(
     working_dir: Path,
     logging_level: str = "info",
 ) -> Any:
-    """Invoke the retained legacy process route used as the CWL reference."""
-    from rapthor import process
-
-    return process.run(parset_file, logging_level=logging_level)
+    """Fail when an in-tree caller tries to use the retired CWL route."""
+    raise RuntimeError(
+        "The in-tree rapthor.process.run route now uses Prefect/Dask. "
+        "Use saved CWL artifacts or provide a cwl_runner that invokes a preserved "
+        "pre-cutover checkout."
+    )
 
 
 def run_prefect_process(

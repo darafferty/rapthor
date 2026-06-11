@@ -7,13 +7,8 @@ import os
 
 import numpy as np
 
-from rapthor import _logging
-from rapthor.lib.field import Field
-from rapthor.lib.parset import parset_read
-from rapthor.lib.strategy import set_strategy, validate_strategy
 from rapthor.operations.calibrate import Calibrate
-from rapthor.operations.concatenate import Concatenate
-from rapthor.operations.image import Image, ImageInitial, ImageNormalize
+from rapthor.operations.image import Image, ImageNormalize
 from rapthor.operations.mosaic import Mosaic
 from rapthor.operations.predict import Predict
 
@@ -22,7 +17,7 @@ log = logging.getLogger("rapthor")
 
 def run(parset_file, logging_level="info"):
     """
-    Processes a dataset using direction-dependent calibration and imaging
+    Process a dataset using the Prefect/Dask execution path.
 
     Parameters
     ----------
@@ -31,129 +26,9 @@ def run(parset_file, logging_level="info"):
     logging_level : str, optional
         One of 'debug', 'info', 'warning' in decreasing order of verbosity
     """
-    # Read parset
-    parset = parset_read(parset_file)
+    from rapthor.execution.flows.process import process_flow
 
-    # Set up logger
-    log.info("Setting log level to %s", logging_level.upper())
-    _logging.set_level(logging_level)
-
-    # Initialize field object and do concatenation if needed
-    field = Field(parset)
-    if any(len(obs) > 1 for obs in field.epoch_observations):
-        log.info(
-            "MS files with different frequencies found for one or more epochs. "
-            "Concatenation over frequency will be done."
-        )
-        op = Concatenate(field, 1)
-        op.run()
-
-    # Set the processing strategy
-    strategy_steps = set_strategy(field)
-    if strategy_steps:
-        selfcal_steps = strategy_steps[:-1]  # can be an empty list (when no selfcal needed)
-        final_step = strategy_steps[-1]
-    else:
-        log.warning(
-            "The strategy %r does not define any processing steps. No processing can be done.",
-            parset["strategy"],
-        )
-        return
-    # Cross-check strategy with parset for compatibility.
-    validate_strategy(strategy_steps, parset)
-
-    # Generate an initial sky model from the input data if needed
-    if parset["generate_initial_skymodel"]:
-        if not any(step["do_calibrate"] for step in strategy_steps):
-            log.warning(
-                "Generation of an initial sky model has been activated but "
-                "the strategy %r does not contain any calibration steps. "
-                "Skipping the initial skymodel generation...",
-                parset["strategy"],
-            )
-            field.parset["generate_initial_skymodel"] = False
-        else:
-            field.define_full_field_sector(radius=parset["generate_initial_skymodel_radius"])
-            log.info("Imaging full field to generate an initial sky model...")
-            chunk_observations(field, [], parset["generate_initial_skymodel_data_fraction"])
-            op = ImageInitial(field)
-            op.run()
-
-    # Run the self calibration
-    if selfcal_steps:
-        log.info(
-            "Starting self calibration with a data fraction of %.2f",
-            parset["selfcal_data_fraction"],
-        )
-
-        # Set the data chunking to match the longest solution interval set in
-        # the strategy
-        chunk_observations(field, selfcal_steps, parset["selfcal_data_fraction"])
-        run_steps(field, selfcal_steps)
-
-    # Run a final pass if needed
-    field.do_final = do_final_pass(field, selfcal_steps, final_step)
-    if field.do_final:
-        for i in range(parset["ntimes_to_repeat_final_cycle"] + 1):
-            if selfcal_steps:
-                # If selfcal was done, set peel_outliers to that of the initial cycle, since the
-                # observations will be regenerated and outliers (if any) need to be peeled again
-                final_step["peel_outliers"] = selfcal_steps[0]["peel_outliers"]
-                log.info(
-                    "Starting final cycle with a data fraction of %.2f",
-                    parset["final_data_fraction"],
-                )
-                field.cycle_number += 1  # continue counting from the last selfcal cycle
-            else:
-                if not final_step["do_calibrate"]:
-                    if not parset["input_h5parm"]:
-                        raise ValueError(
-                            "The strategy indicates that no calibration is to be done "
-                            "but no calibration solutions were provided. Please provide "
-                            "the solutions with the input_h5parm parameter"
-                        )
-                    elif (
-                        final_step["peel_outliers"] or final_step["peel_bright_sources"]
-                    ) and not parset["input_skymodel"]:
-                        raise ValueError(
-                            "Peeling of outliers or bright sources was activated but no "
-                            "sky model was provided. Please provide a sky model with the "
-                            "input_skymodel parameter"
-                        )
-                    else:
-                        # Turn off conflicting flags
-                        field.parset["generate_initial_skymodel"] = False
-                        field.parset["download_initial_skymodel"] = False
-                log.info("Using a data fraction of %.2f", parset["final_data_fraction"])
-                field.cycle_number = i + 1  # start counting from 1
-
-            if field.make_quv_images:
-                log.info("Stokes I, Q, U, and V images will be made")
-            if field.dde_mode == "hybrid":
-                log.info(
-                    "Screens will be used for calibration and imaging (since dde_mode = "
-                    "'hybrid' and this is the final iteration)"
-                )
-                field.generate_screens = True
-                field.apply_screens = True
-                if final_step["peel_outliers"]:
-                    # Currently, when screens are used peeling cannot be done
-                    log.warning(
-                        "Peeling of outliers is currently not supported when using "
-                        "screens. Peeling will be skipped."
-                    )
-                    final_step["peel_outliers"] = False
-
-            # Set the data chunking to match the longest solution interval set in
-            # the strategy
-            if i == 0:
-                chunk_observations(field, [final_step], parset["final_data_fraction"])
-
-            run_steps(field, [final_step], final=True)
-
-    # Make a summary report for the run and finish
-    make_report(field)
-    log.info("Rapthor has finished :)")
+    return process_flow(parset_file, logging_level=logging_level)
 
 
 def run_steps(field, steps, final=False):
