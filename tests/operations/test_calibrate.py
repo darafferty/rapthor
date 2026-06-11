@@ -861,6 +861,28 @@ class TestCalibrate:
         assert calibrate.input_parms["applycal_h5parm"]["path"] == str(di_h5parm)
         assert calibrate.input_parms["fulljones_h5parm"]["path"] == str(fulljones_h5parm)
 
+    def test_set_input_parameters_dd_skips_previous_cycle_preapply_solutions(
+        self, calibrate_field, tmp_path
+    ):
+        di_h5parm = tmp_path / "di-solutions.h5"
+        fulljones_h5parm = tmp_path / "fulljones-solutions.h5"
+        di_h5parm.touch()
+        fulljones_h5parm.touch()
+        calibrate_field.di_h5parm_filename = str(di_h5parm)
+        calibrate_field.di_h5parm_cycle_number = 1
+        calibrate_field.fulljones_h5parm_filename = str(fulljones_h5parm)
+        calibrate_field.fulljones_h5parm_cycle_number = 1
+        calibrate_field.apply_amplitudes = True
+
+        calibrate = Calibrate("dd", field=calibrate_field, index=2)
+        calibrate.set_input_parameters()
+
+        assert parse_dp3(calibrate.input_parms["dp3_steps"]) == ["solve1", "solve2"]
+        assert calibrate.input_parms["applycal_steps"] is None
+        assert calibrate.input_parms["ddecal_applycal_steps"] is None
+        assert calibrate.input_parms["applycal_h5parm"] is None
+        assert calibrate.input_parms["fulljones_h5parm"] is None
+
     def test_set_input_parameters_dd_preapply_skips_di_slowgain_with_phase_solves(
         self, calibrate_field, tmp_path
     ):

@@ -4,6 +4,7 @@ Module that holds the Calibrate classes
 
 import glob
 import os
+import re
 import shutil
 from dataclasses import dataclass
 
@@ -729,7 +730,11 @@ class Calibrate(Operation):
         applycal_h5parm = None
         fulljones_h5parm = None
 
-        di_h5parm = getattr(field, "di_h5parm_filename", None)
+        di_h5parm = self._current_cycle_solution_path(
+            getattr(field, "di_h5parm_filename", None),
+            "di_h5parm_cycle_number",
+            "DI scalar",
+        )
         applycal_h5parm = self._to_cwl_json_if_exists(di_h5parm)
         if self.mode == "dd" and applycal_h5parm is not None:
             steps.append("fastphase")
@@ -740,7 +745,13 @@ class Calibrate(Operation):
             if field.apply_amplitudes and not di_has_phase_solves:
                 steps.append("slowgain")
 
-        fulljones_h5parm = self._to_cwl_json_if_exists(field.fulljones_h5parm_filename)
+        fulljones_h5parm = self._to_cwl_json_if_exists(
+            self._current_cycle_solution_path(
+                field.fulljones_h5parm_filename,
+                "fulljones_h5parm_cycle_number",
+                "DI full-Jones",
+            )
+        )
         if self.mode == "dd" and fulljones_h5parm is not None:
             steps.append("fulljones")
 
@@ -755,6 +766,33 @@ class Calibrate(Operation):
             "applycal_h5parm": applycal_h5parm,
             "fulljones_h5parm": fulljones_h5parm,
         }
+
+    def _current_cycle_solution_path(self, filepath, cycle_attr, label):
+        if filepath is None:
+            return None
+
+        cycle_number = self._solution_cycle_number(filepath, cycle_attr)
+        if cycle_number is None or cycle_number == self.index:
+            return filepath
+
+        self.log.warning(
+            "Ignoring %s h5parm %r for calibration cycle %i because it was produced in cycle %i",
+            label,
+            filepath,
+            self.index,
+            cycle_number,
+        )
+        return None
+
+    def _solution_cycle_number(self, filepath, cycle_attr):
+        cycle_number = getattr(self.field, cycle_attr, None)
+        if cycle_number is not None:
+            return int(cycle_number)
+
+        match = re.search(r"(?:^|[/\\])calibrate(?:_di)?_(\d+)(?:[/\\]|$)", filepath)
+        if match:
+            return int(match.group(1))
+        return None
 
     def _get_baselines_core(self):
         """

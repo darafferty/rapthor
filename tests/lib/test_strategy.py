@@ -283,12 +283,21 @@ def test_validate_strategy_raises_error_for_inconsistent_strategy_and_parset_set
                 "di": ["fast_phase", "medium_phase", "slow_gains", "full_jones"],
                 "dd": ["fast_phase", "medium_phase", "slow_gains", "full_jones"],
             },
-            None,
+            'Calibration strategy for mode "di" contains unsupported solve combination',
         ),
         ({"di": ["fast_phase"], "dd": []}, None),
         ({"di": ["fast_phase"]}, None),
         ({"dd": ["fast_phase"]}, None),
-        ({"di": [], "dd": ["full_jones"]}, None),
+        ({"di": ["fast_phase", "medium_phase", "slow_gains"]}, None),
+        ({"dd": ["fast_phase", "medium_phase", "slow_gains"]}, None),
+        (
+            {"di": [], "dd": ["full_jones"]},
+            'Calibration strategy for mode "dd" contains unsupported solve combination',
+        ),
+        (
+            {"dd": ["medium_phase", "fast_phase"]},
+            'Calibration strategy for mode "dd" contains unsupported solve combination',
+        ),
         (
             {"di": ["unknown", "full_jones"], "dd": ["unknown", "fast_phase"]},
             'Calibration strategy for mode "di" contains unrecognized solve type "unknown"',

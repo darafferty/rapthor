@@ -2,15 +2,18 @@
 Test cases for the `rapthor.operations.image` module.
 """
 
-import pytest
-
+import json
+from copy import deepcopy
 from pathlib import Path
+
+import pytest
+import yaml
+
+from rapthor.execution.outputs import file_record
 from rapthor.lib.strategy import set_selfcal_strategy
+from rapthor.operations.image import Image, ImageInitial, ImageNormalize
 
 from tests.cwl.cwl_cmdline import generate_command_line
-import yaml
-from rapthor.execution.outputs import file_record
-from rapthor.operations.image import Image, ImageInitial, ImageNormalize
 
 PATH_TO_OPERATION_STEPS = Path(__file__).parents[2] / "rapthor" / "pipeline" / "steps"
 
@@ -225,6 +228,53 @@ class TestImage:
     def test_finalize(self, image):
         image.run()
         image.finalize()
+
+    def test_finalize_uses_matching_diagnostics_for_each_sector(self, field, monkeypatch):
+        _prepare_field_for_image(field)
+        first_sector = field.imaging_sectors[0]
+        second_sector = deepcopy(first_sector)
+        second_sector.name = "sector_2"
+        second_sector.diagnostics = []
+        field.imaging_sectors = [first_sector, second_sector]
+        expected_outputs = {
+            "sector_I_images": [
+                ["sector_1-MFS-I-image-pb.fits", "sector_1-MFS-I-image.fits"],
+                ["sector_2-MFS-I-image-pb.fits", "sector_2-MFS-I-image.fits"],
+            ],
+            "sector_extra_images": [
+                [
+                    "sector_1-MFS-I-residual.fits",
+                    "sector_1-MFS-I-model-pb.fits",
+                    "sector_1-MFS-I-dirty.fits",
+                ],
+                [
+                    "sector_2-MFS-I-residual.fits",
+                    "sector_2-MFS-I-model-pb.fits",
+                    "sector_2-MFS-I-dirty.fits",
+                ],
+            ],
+            "filtered_skymodel_true_sky": ["sector_1.true_sky.txt", "sector_2.true_sky.txt"],
+            "filtered_skymodel_apparent_sky": [
+                "sector_1.apparent_sky.txt",
+                "sector_2.apparent_sky.txt",
+            ],
+            "pybdsf_catalog": ["sector_1.source_catalog.fits", "sector_2.source_catalog.fits"],
+            "sector_diagnostics": ["sector_1_diagnostics.json", "sector_2_diagnostics.json"],
+            "source_filtering_mask": ["sector_1_mask.fits", "sector_2_mask.fits"],
+        }
+        _mock_cwl_execute(monkeypatch, expected_outputs)
+        image = _initialize_operation(Image(field=field, index=1), do_predict=False)
+
+        success, outputs = image.execute_workflow()
+        assert success
+        Path(outputs["sector_diagnostics"][0]["path"]).write_text(json.dumps({"sector": 1}))
+        Path(outputs["sector_diagnostics"][1]["path"]).write_text(json.dumps({"sector": 2}))
+        image.outputs = outputs
+
+        image.finalize()
+
+        assert first_sector.diagnostics == [{"sector": 1, "cycle_number": 1}]
+        assert second_sector.diagnostics == [{"sector": 2, "cycle_number": 1}]
 
     def test_run(self, image):
         image.run()

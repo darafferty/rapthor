@@ -797,7 +797,7 @@ class Image(Operation):
             # Read in the image diagnostics and log a summary of them
             diagnostics_file = os.path.join(
                 diagnostics_dest_dir,
-                os.path.basename(self.outputs["sector_diagnostics"][0]["path"]),
+                os.path.basename(self.outputs["sector_diagnostics"][index]["path"]),
             )
             with open(diagnostics_file, "r") as f:
                 diagnostics_dict = json.load(f)
