@@ -388,8 +388,8 @@ def _validate_calibrate_strategy(calibration_strategy):
     """
     Validates the calibration strategy for internal consistency.
 
-    Checks that the calibration strategy contains only recognized modes and that
-    the modes are not used in the same cycle.
+    Checks that the calibration strategy contains only recognized modes, solve
+    names, and solve combinations supported by the Python execution path.
 
     Parameters
     ----------
@@ -408,6 +408,22 @@ def _validate_calibrate_strategy(calibration_strategy):
         return
     recognized_modes = ["di", "dd"]
     recognised_solves = ["fast_phase", "medium_phase", "slow_gains", "full_jones"]
+    supported_combinations = {
+        "di": {
+            ("fast_phase",),
+            ("slow_gains",),
+            ("full_jones",),
+            ("fast_phase", "medium_phase"),
+            ("fast_phase", "medium_phase", "slow_gains"),
+        },
+        "dd": {
+            ("fast_phase",),
+            ("slow_gains",),
+            ("fast_phase", "medium_phase"),
+            ("fast_phase", "medium_phase", "slow_gains"),
+            ("fast_phase", "medium_phase", "slow_gains", "medium_phase"),
+        },
+    }
     for mode, solves in calibration_strategy.items():
         if mode not in recognized_modes:
             raise ValueError(
@@ -420,6 +436,15 @@ def _validate_calibrate_strategy(calibration_strategy):
                     f'Calibration strategy for mode "{mode}" contains unrecognized solve type "{solve}". '
                     f"Recognized solve types are {recognised_solves}."
                 )
+        if solves and tuple(solves) not in supported_combinations[mode]:
+            supported = ", ".join(
+                "[" + ", ".join(repr(solve) for solve in combination) + "]"
+                for combination in sorted(supported_combinations[mode])
+            )
+            raise ValueError(
+                f'Calibration strategy for mode "{mode}" contains unsupported solve combination '
+                f"{solves!r}. Supported combinations are: {supported}."
+            )
 
 
 def validate_strategy(strategy_steps, parset):
