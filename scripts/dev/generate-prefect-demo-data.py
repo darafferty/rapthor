@@ -18,6 +18,7 @@ from astropy.coordinates import SkyCoord
 
 DEFAULT_OUTPUT_DIR = Path("examples/generated/prefect_demo_rich")
 DEFAULT_TEMPLATE_MS = Path("tests/resources/test.ms")
+DEFAULT_STRATEGY = Path("examples/prefect_demo_strategy.py")
 PHASE_CENTRE = SkyCoord("1h37m41.299s", "+33d09m35.132s", frame="icrs")
 REFERENCE_FREQUENCY_HZ = 134375000.0
 CHANNEL_WIDTH_HZ = 24414.0625
@@ -81,6 +82,15 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=DEFAULT_OUTPUT_DIR,
         help="Directory to create or replace with generated demo inputs.",
+    )
+    parser.add_argument(
+        "--strategy",
+        type=Path,
+        default=DEFAULT_STRATEGY,
+        help=(
+            "Strategy file to reference from the generated parset. Defaults to "
+            "examples/prefect_demo_strategy.py."
+        ),
     )
     parser.add_argument(
         "--n-time-slots",
@@ -323,88 +333,10 @@ def corrupt_data(ms_path: Path, seed: int, noise_jy: float) -> None:
         table.putcol("DATA", data + noise)
 
 
-def write_strategy(path: Path) -> None:
-    path.write_text(
-        textwrap.dedent(
-            '''\
-            """Richer multi-cycle strategy for the local Prefect demo dataset."""
-
-            COMMON_SETTINGS = {
-                "do_calibrate": True,
-                "do_image": True,
-                "do_normalize": False,
-                "do_check": False,
-                "peel_outliers": False,
-                "peel_bright_sources": False,
-                "fast_timestep_sec": 20.0,
-                "medium_timestep_sec": 40.0,
-                "slow_timestep_sec": 80.0,
-                "fulljones_timestep_sec": 80.0,
-                "max_normalization_delta": 0.3,
-                "scale_normalization_delta": True,
-                "solve_min_uv_lambda": 80,
-                "target_flux": 0.9,
-                "max_directions": 5,
-                "max_distance": None,
-                "regroup_model": True,
-                "auto_mask": 5.0,
-                "auto_mask_nmiter": 2,
-                "channel_width_hz": 48828.125,
-                "threshisl": 3.0,
-                "threshpix": 5.0,
-                "max_nmiter": 12,
-            }
-
-
-            def _step(calibration_strategy, **overrides):
-                step = {
-                    **COMMON_SETTINGS,
-                    "do_slowgain_solve": "slow_gains" in calibration_strategy.get("dd", []),
-                    "do_fulljones_solve": "full_jones" in calibration_strategy.get("di", []),
-                    "calibration_strategy": calibration_strategy,
-                }
-                step.update(overrides)
-                return step
-
-
-            strategy_steps = [
-                _step(
-                    {"di": [], "dd": ["fast_phase", "medium_phase"]},
-                    target_flux=1.2,
-                    max_nmiter=8,
-                ),
-                _step(
-                    {"di": [], "dd": ["fast_phase", "medium_phase", "slow_gains"]},
-                    target_flux=0.9,
-                    max_nmiter=10,
-                ),
-                _step(
-                    {"di": ["full_jones"], "dd": []},
-                    target_flux=0.9,
-                    max_nmiter=12,
-                    regroup_model=False,
-                ),
-            ]
-
-            strategy_steps.append(
-                _step(
-                    {"di": ["full_jones"], "dd": []},
-                    target_flux=0.9,
-                    max_nmiter=12,
-                    regroup_model=False,
-                )
-            )
-            '''
-        ),
-        encoding="utf-8",
-    )
-
-
-def write_parset(output_dir: Path, path: Path, repo_root: Path) -> None:
+def write_parset(output_dir: Path, path: Path, repo_root: Path, strategy_path: Path) -> None:
     ms_path = output_dir / "prefect_demo_rich.ms"
     true_sky_path = output_dir / "prefect_demo_rich_true_sky.txt"
     apparent_sky_path = output_dir / "prefect_demo_rich_apparent_sky.txt"
-    strategy_path = output_dir / "prefect_demo_rich_strategy.py"
     work_dir = output_dir / "work"
 
     path.write_text(
@@ -511,11 +443,12 @@ def main() -> None:
 
     if not args.template_ms.exists():
         raise SystemExit(f"Template Measurement Set does not exist: {args.template_ms}")
+    if not args.strategy.exists():
+        raise SystemExit(f"Strategy file does not exist: {args.strategy}")
 
     ms_path = output_dir / "prefect_demo_rich.ms"
     true_sky_path = output_dir / "prefect_demo_rich_true_sky.txt"
     apparent_sky_path = output_dir / "prefect_demo_rich_apparent_sky.txt"
-    strategy_path = output_dir / "prefect_demo_rich_strategy.py"
     parset_path = output_dir / "prefect_demo_rich.parset"
 
     print(f"Copying template MS to {ms_path}")
@@ -535,12 +468,12 @@ def main() -> None:
 
     print("Adding synthetic time/frequency antenna phases and thermal noise")
     corrupt_data(ms_path, seed=args.seed, noise_jy=args.noise_jy)
-    write_strategy(strategy_path)
-    write_parset(output_dir, parset_path, repo_root)
+    write_parset(output_dir, parset_path, repo_root, args.strategy)
 
     print()
     print(f"Generated {n_time_slots} time slots in {ms_path}")
     print(f"Demo parset: {parset_path}")
+    print(f"Demo strategy: {args.strategy}")
     print("Run with:")
     print(f"  scripts/dev/run-rapthor-prefect-demo.py {path_for_parset(parset_path, repo_root)}")
 

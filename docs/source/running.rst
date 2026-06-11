@@ -137,7 +137,9 @@ quickly. To generate a richer local demo with five bright point-source groups,
 The generated files are written under ``examples/generated/`` and are ignored by
 git. The generator uses DP3 prediction to populate the visibilities, then adds
 synthetic time/frequency antenna phases and thermal noise so calibration
-solution plots have visible structure.
+solution plots have visible structure. By default the generated parset uses the
+checked-in ``examples/prefect_demo_strategy.py`` strategy; pass
+``--strategy /path/to/strategy.py`` to reference a different strategy.
 
 
 Running with Slurm and external Dask
