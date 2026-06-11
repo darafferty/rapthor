@@ -391,7 +391,7 @@ def write_parset(output_dir: Path, path: Path, repo_root: Path, strategy_path: P
             grid_center_dec = +33d09m35.132s
             grid_nsectors_ra = 1
             idg_mode = cpu
-            reweight = True
+            reweight = False
             average_visibilities = False
             save_image_cube = False
             image_cube_stokes_list = [I]
