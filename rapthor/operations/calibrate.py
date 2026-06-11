@@ -540,11 +540,7 @@ class Calibrate(Operation):
         return CalibrationSolve(
             solve_type=solve_type,
             slot=slot,
-            mode=(
-                "scalarphase"
-                if solve_type == "slow_gains" and slot == 1
-                else MODE_BY_SOLVE[solve_type]
-            ),
+            mode=MODE_BY_SOLVE[solve_type],
             output_prefix=output_prefix,
             collected_h5parm=collected_h5parm,
             timestep_key=timestep_key,
@@ -575,7 +571,7 @@ class Calibrate(Operation):
             dp3_steps = [solve.step for solve in solve_plan]
         self.input_parms["dp3_steps"] = f"[{','.join(dp3_steps)}]"
         self.input_parms["do_slowgain_solve"] = any(
-            solve.solve_type == "slow_gains" and solve.slot == 3 for solve in solve_plan
+            solve.solve_type == "slow_gains" for solve in solve_plan
         )
 
         slot_map = {solve.slot: solve for solve in solve_plan}

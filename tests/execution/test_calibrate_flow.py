@@ -469,7 +469,11 @@ def _di_slow_input_parms():
             "collected_solve1_h5parm": "slow_gains_di.h5parm",
             "solint_solve1_timestep": [11, 12],
             "solint_solve1_freqstep": [7, 8],
-            "solve1_mode": "scalarphase",
+            "solve1_mode": "diagonal",
+            "max_normalization_delta": 0.25,
+            "scale_normalization_delta": "False",
+            "phase_center_ra": 123.0,
+            "phase_center_dec": 45.0,
         }
     )
     return input_parms
@@ -562,7 +566,7 @@ def _dd_slow_input_parms():
             "collected_solve1_h5parm": "slow_gains.h5parm",
             "solint_solve1_timestep": [11, 12],
             "solint_solve1_freqstep": [7, 8],
-            "solve1_mode": "scalarphase",
+            "solve1_mode": "diagonal",
             "solve1_smoothnessconstraint": 3600000.0,
             "solve1_smoothnessreffrequency": [0, 0],
             "solve1_smoothnessrefdistance": None,
@@ -1425,7 +1429,7 @@ def test_calibrate_payload_from_inputs_builds_di_slow_payload(tmp_path):
         "h5parm": "slow_gains_di_0.h5parm",
         "h5parm_path": str(tmp_path / "slow_gains_di_0.h5parm"),
         "solint": 11,
-        "mode": "scalarphase",
+        "mode": "diagonal",
         "nchan": 7,
         "solutions_per_direction": None,
         "smoothness_dd_factors": None,
@@ -1539,7 +1543,7 @@ def test_calibrate_payload_from_inputs_builds_dd_slow_payload(tmp_path):
         "h5parm": "slow_gain_0.h5parm",
         "h5parm_path": str(tmp_path / "slow_gain_0.h5parm"),
         "solint": 11,
-        "mode": "scalarphase",
+        "mode": "diagonal",
         "nchan": 7,
         "solutions_per_direction": [1, 1],
         "datause": "full",
@@ -1976,18 +1980,22 @@ def test_run_calibrate_flow_supports_di_slow(tmp_path, fake_calibrate_shell_oper
     expected_solution = file_record(tmp_path / "slow_gains_di.h5parm")
     assert outputs == {
         "combined_solutions": expected_solution,
-        "fast_phase_solutions": expected_solution,
+        "slow_gain_solutions": expected_solution,
         "slow_phase_plots": [file_record(tmp_path / "slow_phase_solutions.png")],
+        "slow_amp_plots": [file_record(tmp_path / "slow_amplitude_solutions.png")],
     }
     commands = _command_tokens(fake_calibrate_shell_operation_cls)
     assert [command[0] for command in commands] == [
         "DP3",
         "DP3",
         "H5parm_collector.py",
+        "process_gains.py",
+        "plotrapthor",
         "plotrapthor",
     ]
     assert "steps=[solve1]" in commands[0]
     assert "solve1.h5parm=slow_gains_di_0.h5parm" in commands[0]
+    assert "solve1.mode=diagonal" in commands[0]
     assert "solve1.solint=11" in commands[0]
 
 
@@ -2086,8 +2094,9 @@ def test_run_calibrate_flow_supports_dd_slow(tmp_path, fake_calibrate_shell_oper
     expected_solution = file_record(tmp_path / "slow_gains.h5parm")
     assert outputs == {
         "combined_solutions": expected_solution,
-        "fast_phase_solutions": expected_solution,
+        "slow_gain_solutions": expected_solution,
         "slow_phase_plots": [file_record(tmp_path / "slow_phase_solutions.png")],
+        "slow_amp_plots": [file_record(tmp_path / "slow_amplitude_solutions.png")],
     }
     for value in outputs.values():
         validate_output_record(value)
@@ -2100,9 +2109,11 @@ def test_run_calibrate_flow_supports_dd_slow(tmp_path, fake_calibrate_shell_oper
         "DP3",
         "DP3",
         "H5parm_collector.py",
+        "process_gains.py",
+        "plotrapthor",
         "plotrapthor",
     ]
-    assert "solve1.mode=scalarphase" in commands[0]
+    assert "solve1.mode=diagonal" in commands[0]
     assert "solve1.h5parm=slow_gain_0.h5parm" in commands[0]
     assert "solve1.solint=11" in commands[0]
     assert commands[2][2] == f"{tmp_path / 'slow_gain_0.h5parm'},{tmp_path / 'slow_gain_1.h5parm'}"

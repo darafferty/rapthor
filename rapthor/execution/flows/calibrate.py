@@ -508,7 +508,7 @@ def _di_solve_type(input_parms: Mapping[str, object], slot: int) -> str:
         output_name.startswith("medium1_phase_di_") or output_name.startswith("medium2_phase_di_")
     ) and solve_mode == "scalarphase":
         return "medium_phase"
-    if output_name.startswith("slow_gains_di_") and solve_mode in {"scalarphase", "diagonal"}:
+    if output_name.startswith("slow_gains_di_") and solve_mode == "diagonal":
         return "slow_gains"
     return "unsupported"
 
@@ -616,6 +616,18 @@ def _validate_screen_inputs(mode: str, input_parms: Mapping[str, object]) -> Non
         raise ValueError("Screen generation requires " + ", ".join(missing))
 
 
+def _validate_slow_gain_processing_inputs(input_parms: Mapping[str, object]) -> None:
+    required = [
+        "max_normalization_delta",
+        "scale_normalization_delta",
+        "phase_center_ra",
+        "phase_center_dec",
+    ]
+    missing = [name for name in required if input_parms.get(name) is None]
+    if missing:
+        raise ValueError("Slow-gain processing requires " + ", ".join(missing))
+
+
 def _supported_calibration_kind(mode: str, input_parms: Mapping[str, object]) -> str:
     steps = _parse_steps(input_parms.get("dp3_steps"))
     _validate_screen_inputs(mode, input_parms)
@@ -638,13 +650,15 @@ def _supported_calibration_kind(mode: str, input_parms: Mapping[str, object]) ->
         if solve_types == ["fast_phase"]:
             return "di_fast_phase"
         if solve_types == ["slow_gains"]:
+            _validate_slow_gain_processing_inputs(input_parms)
             return "di_slow"
         if solve_types == ["fast_phase", "medium_phase"]:
             return "di_scalar_phase"
         if solve_types == ["fast_phase", "medium_phase", "slow_gains"]:
+            _validate_slow_gain_processing_inputs(input_parms)
             return "di_phase_slow"
         raise ValueError(
-            "Only DI full-Jones, fast phase, slow phase, fast/medium phase, "
+            "Only DI full-Jones, fast phase, slow gain, fast/medium phase, "
             "and fast/medium/slow calibration are supported"
         )
 
@@ -659,9 +673,10 @@ def _supported_calibration_kind(mode: str, input_parms: Mapping[str, object]) ->
             return "dd_fast_phase"
         if (
             active_solves == ["solve1"]
-            and solve1_mode == "scalarphase"
+            and solve1_mode == "diagonal"
             and str(first_solve1_output).startswith("slow_gain_")
         ):
+            _validate_slow_gain_processing_inputs(input_parms)
             return "dd_slow"
         if (
             active_solves == ["solve1", "solve2"]
@@ -677,6 +692,7 @@ def _supported_calibration_kind(mode: str, input_parms: Mapping[str, object]) ->
             and ("solve4" not in active_solves or solve4_mode == "scalarphase")
             and str(first_solve1_output).startswith("fast_phase_")
         ):
+            _validate_slow_gain_processing_inputs(input_parms)
             return "dd_phase_slow"
         raise ValueError(
             "Only DD fast/medium phase and slow-gain calibration is supported in this slice"
@@ -1485,56 +1501,38 @@ def _collect_process_and_plot_slow_gain(
         payload["collected_h5parms"]["solve1"],
         pipeline_working_dir,
         execution_config,
-        "Collected DD slow gains h5parm",
+        "Collected slow gains h5parm",
+        shell_operation_cls=shell_operation_cls,
+    )
+    processed_slow_record = _run_process_gains(
+        slow_record,
+        payload,
+        pipeline_working_dir,
+        execution_config,
         shell_operation_cls=shell_operation_cls,
     )
     slow_phase_plots = _run_plot_solutions(
-        slow_record,
+        processed_slow_record,
         "phase",
         pipeline_working_dir,
         execution_config,
         root="slow_phase_",
         shell_operation_cls=shell_operation_cls,
     )
-
-    result = {
-        "combined_solutions": slow_record,
-        "fast_phase_solutions": slow_record,
-        "slow_phase_plots": slow_phase_plots,
-    }
-    for value in result.values():
-        validate_output_record(value)
-    return result
-
-
-def _collect_and_plot_di_slow(
-    payload: Mapping[str, object],
-    solve_records: list[dict],
-    execution_config: ExecutionConfig,
-    shell_operation_cls=None,
-) -> dict:
-    pipeline_working_dir = str(payload["pipeline_working_dir"])
-    slow_record = _run_collect_h5parm(
-        [record["solve1"] for record in solve_records],
-        payload["collected_h5parms"]["solve1"],
+    slow_amp_plots = _run_plot_solutions(
+        processed_slow_record,
+        "amplitude",
         pipeline_working_dir,
         execution_config,
-        "Collected DI slow scalar h5parm",
-        shell_operation_cls=shell_operation_cls,
-    )
-    slow_phase_plots = _run_plot_solutions(
-        slow_record,
-        "phase",
-        pipeline_working_dir,
-        execution_config,
-        root="slow_phase_",
+        root="slow_amplitude_",
         shell_operation_cls=shell_operation_cls,
     )
 
     result = {
-        "combined_solutions": slow_record,
-        "fast_phase_solutions": slow_record,
+        "combined_solutions": processed_slow_record,
+        "slow_gain_solutions": slow_record,
         "slow_phase_plots": slow_phase_plots,
+        "slow_amp_plots": slow_amp_plots,
     }
     for value in result.values():
         validate_output_record(value)
@@ -1969,7 +1967,7 @@ def _collect_plot_and_combine(
             shell_operation_cls=shell_operation_cls,
         )
     if payload["calibration_kind"] == "di_slow":
-        return _collect_and_plot_di_slow(
+        return _collect_process_and_plot_slow_gain(
             payload,
             solve_records,
             execution_config,

@@ -753,7 +753,7 @@ class TestCalibrate:
                 {"dd": ["slow_gains"]},
                 False,
                 False,
-                [("slow_gains", "solve1", "scalarphase", "slow_gain")],
+                [("slow_gains", "solve1", "diagonal", "slow_gain")],
             ),
             (
                 "dd",
@@ -776,6 +776,13 @@ class TestCalibrate:
                     ("slow_gains", "solve3", "diagonal", "slow_gains_di"),
                     ("full_jones", "solve4", "fulljones", "fulljones_gain"),
                 ],
+            ),
+            (
+                "di",
+                {"di": ["slow_gains"]},
+                False,
+                False,
+                [("slow_gains", "solve1", "diagonal", "slow_gains_di")],
             ),
             (
                 "di",
@@ -809,13 +816,13 @@ class TestCalibrate:
         calibrate.set_input_parameters()
 
         assert parse_dp3(calibrate.input_parms["dp3_steps"]) == ["solve1"]
-        assert calibrate.input_parms["solve1_mode"] == "scalarphase"
+        assert calibrate.input_parms["solve1_mode"] == "diagonal"
         assert calibrate.input_parms["output_solve1_h5parm"] == [
             "slow_gain_0.h5parm",
             "slow_gain_1.h5parm",
         ]
         assert calibrate.input_parms["solve1_smoothnessreffrequency"] == [0, 0]
-        assert calibrate.input_parms["do_slowgain_solve"] is False
+        assert calibrate.input_parms["do_slowgain_solve"] is True
 
     def test_set_input_parameters_di_uses_explicit_solve_strategy(self, calibrate_field):
         calibrate_field.calibration_strategy = {"di": ["fast_phase", "medium_phase"]}
