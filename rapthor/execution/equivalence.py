@@ -121,6 +121,13 @@ def reference_artifact_dir(root_dir: Any, scenario: Mapping[str, Any]) -> Path:
     return Path(root_dir) / str(artifact_name)
 
 
+def required_gate_scenarios(
+    scenarios: Sequence[Mapping[str, Any]],
+) -> list[Mapping[str, Any]]:
+    """Return scenarios included in the default saved-reference equivalence gate."""
+    return [scenario for scenario in scenarios if not scenario.get("deferred_from_required_gate")]
+
+
 def required_reference_artifact_items(scenario: Mapping[str, Any]) -> tuple[str, ...]:
     """Return the saved-CWL artifact categories required by a scenario."""
     scopes = set(scenario.get("comparison_scopes", []))

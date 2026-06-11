@@ -14,11 +14,12 @@ Current status: the equivalence harness and opt-in integration gates are in
 place. Eleven local saved CWL references have been captured from legacy commit
 `4cfd2abe2fe815724e3f1c390d789eea249becef`, and all eleven pass
 saved-reference comparison against the current Prefect execution path. Full
-required production equivalence is not yet recorded because `hybrid_screens`,
-`mpi_wsclean`, and Slurm/external-Dask still need usable target-environment
-references or execution. `shared_facet_rw` is deferred from the required gate
-because the WSClean shared-facet flags have been too flaky in available
-environments.
+required production equivalence is not yet recorded because `mpi_wsclean` and
+Slurm/external-Dask still need usable target-environment references or
+execution. `hybrid_screens` and `shared_facet_rw` are deferred from the required
+gate: the former is not used by the current target workflow and would require
+IDG Python bindings for DP3 IDGCal, while the latter has been too flaky in
+available WSClean environments.
 
 ## Scope Of Equivalence
 
@@ -151,6 +152,10 @@ The saved-reference gate is driven by
 `mpi_wsclean` is a target-environment scenario and should be run where the MPI
 and WSClean environment matches the intended deployment target.
 
+The required cutover gate currently excludes scenarios with
+`deferred_from_required_gate=true` in the manifest. Deferred scenarios remain
+explicitly selectable for future investigation.
+
 ## Current Evidence
 
 Implemented evidence:
@@ -166,7 +171,8 @@ Implemented evidence:
   saved-reference comparison, FITS tolerances, and h5parm tolerances
 - opt-in live CWL-vs-Prefect integration test using an existing integration
   fixture
-- opt-in saved-CWL regression integration test for the full scenario manifest
+- opt-in saved-CWL regression integration test for the required, non-deferred
+  scenario set
 
 Local verification in the development container on 2026-06-09:
 
@@ -218,7 +224,7 @@ Saved-reference results:
 | `full_stokes_clean_disabled` | captured | pass | Required short scratch override to avoid PyBDSF AF_UNIX path-length failures |
 | `image_cube` | captured | pass | Image-cube products and metadata exercised |
 | `restart` | captured | pass | Persisted `.done` and output-record state present and comparable |
-| `hybrid_screens` | blocked | not run | Legacy CWL was patched past the `do_slowgain_solve` expression issue; capture now reaches DP3 IDGCal. IDG native libraries are installed, but this image builds IDG with Python bindings disabled, so DP3 cannot import Python module `idg` |
+| `hybrid_screens` | deferred | not run | Excluded from the required gate for now because it is not used by the current target workflow. Capturing it would require IDG Python bindings for DP3 IDGCal, so the known-good DP3-pinned image is left unchanged |
 | `shared_facet_rw` | deferred | not run | Excluded from the required gate for now; serial WSClean aborts with `SIGABRT` when `-shared-facet-reads` and `-shared-facet-writes` are enabled |
 | `mpi_wsclean` | pending | not run | Target-environment scenario |
 
@@ -244,8 +250,9 @@ The migration should be treated as production-equivalent only after all of the
 following are true:
 
 - live CWL-vs-Prefect smoke equivalence passes against a pre-cutover checkout
-- saved CWL artifacts exist for every required scenario in the manifest
-- saved-reference equivalence passes for the full scenario manifest
+- saved CWL artifacts exist for every required, non-deferred scenario in the
+  manifest
+- saved-reference equivalence passes for the required, non-deferred scenario set
 - Slurm/external-Dask and MPI WSClean target-environment hooks pass
 - any differences are either fixed or documented as intentional and
   user-invisible
@@ -265,11 +272,10 @@ following are true:
 - Scenario-specific strategies for the captured local scenarios are tracked
   under `tests/execution/fixtures/equivalence_strategies` and wired into
   `equivalence_gate_scenarios.json` with `parset_overrides`.
-- `hybrid_screens` cannot currently be captured in this container because DP3
-  IDGCal needs the Python `idg` module. IDG native libraries are installed, but
-  the image builds IDG with Python bindings disabled. The earlier bare
-  `do_slowgain_solve` CWL expression issue has been patched in the cached
-  legacy checkout and the tracked CWL template.
+- `hybrid_screens` is deferred from the required gate because it is not used by
+  the current target workflow. If this path becomes relevant again, capture it
+  in an image where DP3 IDGCal can import Python `idg`, while keeping DP3 pinned
+  to the known-good commit.
 - `shared_facet_rw` is deferred from the required gate because WSClean aborts
   when the shared-facet read/write flags are enabled in available serial
   environments.
@@ -278,8 +284,6 @@ following are true:
 
 ## Recommended Next Action
 
-Resolve the remaining required local reference blocker before declaring full
-required local matrix equivalence: enable or install the Python `idg` module for
-`hybrid_screens`. Then run the saved-reference regression over the required
-artifact root. The target-environment `mpi_wsclean` and Slurm/external-Dask
-hooks still need to be run in an environment matching deployment.
+Run the saved-reference regression over the required, non-deferred artifact
+root. The target-environment `mpi_wsclean` and Slurm/external-Dask hooks still
+need to be run in an environment matching deployment.

@@ -12,6 +12,7 @@ from rapthor.execution.equivalence import (
     compare_saved_reference_equivalence_manifest,
     format_differences,
     reference_artifact_root_from_environment,
+    required_gate_scenarios,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -27,7 +28,7 @@ def _load_manifest_scenarios():
 def _selected_scenarios(scenarios):
     selected = os.environ.get(SCENARIO_FILTER_ENV)
     if selected in (None, ""):
-        return scenarios
+        return required_gate_scenarios(scenarios)
 
     requested_ids = {scenario_id.strip() for scenario_id in selected.split(",")}
     requested_ids.discard("")

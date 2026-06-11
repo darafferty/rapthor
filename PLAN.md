@@ -81,15 +81,16 @@ Passing saved-reference scenarios:
 
 Still missing target-environment proof:
 
-- `hybrid_screens`: IDG native libraries are installed, but the dev/CI images
-  currently build IDG with Python bindings disabled, so DP3's IDGCal Python step
-  cannot import the Python `idg` module.
 - `mpi_wsclean`: should run in the intended MPI/WSClean deployment
   environment.
 - Slurm/external-Dask: should run inside a representative Slurm allocation.
 
-Deferred optional scenario:
+Deferred optional scenarios:
 
+- `hybrid_screens` is excluded from the required gate for now because it is not
+  used by the current target workflow. Capturing it would require IDG Python
+  bindings for DP3 IDGCal, so leave the known-good DP3-pinned image alone unless
+  this path becomes relevant again.
 - `shared_facet_rw` is excluded from the required gate for now because WSClean's
   shared-facet read/write flags have been too flaky in available environments.
 
@@ -99,14 +100,11 @@ Deferred optional scenario:
 
 This is the main blocker before public cutover.
 
-- Enable/install the Python `idg` module for the dev/CI image, or use another
-  image where DP3's IDGCal Python step can import it, then capture CWL
-  references for `hybrid_screens`.
 - Run `tests/integration/test_saved_cwl_equivalence.py` with
   `RAPTHOR_RUN_SAVED_CWL_EQUIVALENCE=1` and `RAPTHOR_CWL_REFERENCE_ROOT`
   pointing at the directory that contains the saved CWL output subdirectories
-  for every required scenario. This reruns the current Prefect candidates and
-  compares them against those saved CWL references.
+  for every required, non-deferred scenario. This reruns the current Prefect
+  candidates and compares them against those saved CWL references.
 - Run the live CWL-vs-Prefect smoke gate against the preserved legacy checkout.
 - Run `mpi_wsclean` with the intended MPI/WSClean stack.
 - Run the Slurm/external-Dask hook inside a real Slurm allocation.
@@ -119,9 +117,10 @@ This is the main blocker before public cutover.
 The unit and mocked flow tests are broad, but the production confidence still
 depends on real radio-astronomy tools and representative data.
 
-- Exercise real DP3 prediction, DDECal, LoSoTo, IDG/screen generation, WSClean,
-  EveryBeam, PyBDSF, cfitsio/fpack, and mosaic paths in the dev container or
-  staging environment.
+- Exercise real DP3 prediction, DDECal, LoSoTo, WSClean, EveryBeam, PyBDSF,
+  cfitsio/fpack, and mosaic paths in the dev container or staging environment.
+- Leave IDG/screen-generation coverage deferred unless `hybrid_screens` becomes
+  a supported target path again.
 
 ### 3. Cut Over The Public Route
 
@@ -185,15 +184,15 @@ unless a performance issue prevents production use.
 
 ## Immediate Next Actions
 
-1. Enable or install the Python `idg` module, then capture `hybrid_screens`.
-2. Run the saved-CWL equivalence test with `RAPTHOR_CWL_REFERENCE_ROOT` pointing
-   at the populated reference directory for the required scenarios.
-3. Run the live CWL-vs-Prefect smoke gate.
-4. Run `mpi_wsclean` and Slurm/external-Dask hooks in the deployment-like
+1. Run the saved-CWL equivalence test with `RAPTHOR_CWL_REFERENCE_ROOT` pointing
+   at the populated reference directory for the required, non-deferred
+   scenarios.
+2. Run the live CWL-vs-Prefect smoke gate.
+3. Run `mpi_wsclean` and Slurm/external-Dask hooks in the deployment-like
    environment.
-5. If all gates pass, switch `rapthor.process.run()` to `process_flow()`.
-6. Remove CWL production runtime and update docs, packaging, and CI.
-7. Do a post-cutover refactor pass to clean up migration scaffolding and reduce
+4. If all gates pass, switch `rapthor.process.run()` to `process_flow()`.
+5. Remove CWL production runtime and update docs, packaging, and CI.
+6. Do a post-cutover refactor pass to clean up migration scaffolding and reduce
    duplication.
 
 ## Useful Commands

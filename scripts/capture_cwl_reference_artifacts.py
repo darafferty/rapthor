@@ -18,6 +18,7 @@ from rapthor.execution.equivalence import (
     REFERENCE_ARTIFACT_ROOT_ENV,
     check_reference_artifacts,
     reference_artifact_dir,
+    required_gate_scenarios,
     scenario_parset_file,
     scenario_parset_materializer,
 )
@@ -65,7 +66,10 @@ def _parser():
         "--scenario",
         action="append",
         default=[],
-        help="Scenario id to capture. May be passed multiple times; defaults to all scenarios.",
+        help=(
+            "Scenario id to capture. May be passed multiple times; defaults to required, "
+            "non-deferred scenarios."
+        ),
     )
     parser.add_argument(
         "--logging-level",
@@ -87,7 +91,7 @@ def _load_scenarios(manifest_path):
 
 def _select_scenarios(scenarios, selected_ids):
     if not selected_ids:
-        return scenarios
+        return required_gate_scenarios(scenarios)
     scenarios_by_id = {str(scenario["id"]): scenario for scenario in scenarios}
     missing_ids = sorted(set(selected_ids) - set(scenarios_by_id))
     if missing_ids:

@@ -21,6 +21,7 @@ from rapthor.execution.equivalence import (
     materialize_scenario_parset,
     reference_artifact_dir,
     reference_artifact_root_from_environment,
+    required_gate_scenarios,
     required_reference_artifact_items,
     run_equivalence_pair,
     scenario_parset_file,
@@ -654,6 +655,15 @@ def test_equivalence_gate_scenarios_cover_supported_merge_matrix():
             assert scenario.get("target_environment") is True
 
 
+def test_required_gate_scenarios_exclude_deferred_entries_by_default():
+    scenarios = [
+        {"id": "required"},
+        {"id": "deferred", "deferred_from_required_gate": True},
+    ]
+
+    assert required_gate_scenarios(scenarios) == [{"id": "required"}]
+
+
 def test_reference_artifact_root_uses_environment_when_set(tmp_path):
     assert reference_artifact_root_from_environment({}) is None
     assert reference_artifact_root_from_environment({"RAPTHOR_CWL_REFERENCE_ROOT": ""}) is None
@@ -774,6 +784,7 @@ def test_saved_cwl_reference_artifacts_are_complete_when_configured():
     scenarios = json.loads((FIXTURE_DIR / "equivalence_gate_scenarios.json").read_text())[
         "scenarios"
     ]
+    scenarios = required_gate_scenarios(scenarios)
     checks = check_reference_artifacts(scenarios)
     if not checks:
         pytest.skip("RAPTHOR_CWL_REFERENCE_ROOT is not set")
