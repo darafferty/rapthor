@@ -401,10 +401,11 @@ class Predict(Operation):
 
         Matches on (name, starttime) and updates the specified attribute.
         """
-        # Update MS filename and infix of the field's observations to match
-        # those of the sector's observations. This is required because the
-        # sector's observations are distinct copies of the field ones
+        # Update field observations to match sector copies. Replacing the input
+        # MS consumes the chunk infix into the new filename; recording auxiliary
+        # products such as DI-predict outputs must preserve it for later cycles.
         for field_obs in self.field.observations:
             if field_obs.name == obs.name and field_obs.starttime == obs.starttime:
-                field_obs.infix = ""
+                if attr == "ms_filename":
+                    field_obs.infix = ""
                 setattr(field_obs, attr, new_path)

@@ -321,6 +321,7 @@ class TestPredict:
         sector_obs.ms_field = "sector_field1"
         sector_obs.ms_predict_di = "predict_di.ms"
         observation.ms_field = "field1"
+        original_infix = observation.infix
 
         if has_outlier_sector:
             field.sectors.append(outlier_sector)
@@ -342,6 +343,7 @@ class TestPredict:
 
         if mode == "di":
             assert observation.ms_predict_di_filename.endswith("predict_di.ms")
+            assert observation.infix == original_infix
 
         assert Path(predict.done_file).exists()
 
@@ -501,7 +503,8 @@ class TestPredict:
 
         if match:
             assert getattr(observation, attr) == "/new/path.ms"
-            assert observation.infix == ""
+            expected_infix = "" if attr == "ms_filename" else original_infix
+            assert observation.infix == expected_infix
         else:
             assert observation.ms_filename == original_filename
             assert observation.infix == original_infix

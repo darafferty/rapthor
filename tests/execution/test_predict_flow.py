@@ -681,8 +681,41 @@ def test_predict_finalizer_accepts_prefect_outputs(tmp_path, fake_predict_shell_
     assert field_observation.ms_predict_di_filename == str(
         Path(operation.pipeline_working_dir) / "obs_0.ms.sector_1_di.ms"
     )
-    assert field_observation.infix == ""
+    assert field_observation.infix == ".selfcal"
     assert Path(operation.done_file).is_file()
+
+
+def test_predict_di_finalize_preserves_chunk_infixes_for_later_predict(tmp_path):
+    field_observations = [
+        ObservationStub("obs_0", 59000.0, "obs_0.ms"),
+        ObservationStub("obs_0", 59010.0, "obs_0.ms"),
+    ]
+    field_observations[0].infix = ".mjd59000"
+    field_observations[1].infix = ".mjd59010"
+    sector_observations = [
+        ObservationStub("obs_0", 59000.0, "obs_0.ms"),
+        ObservationStub("obs_0", 59010.0, "obs_0.ms"),
+    ]
+    sector_observations[0].infix = ".mjd59000"
+    sector_observations[1].infix = ".mjd59010"
+    field = FieldStub(tmp_path, field_observations[0], sector_observations[0])
+    field.observations = field_observations
+    field.predict_sectors = [SectorStub(sector_observations, name="predict_1")]
+    field.sectors = field.predict_sectors
+
+    first_predict = Predict("di", field, index=1)
+    field.predict_sectors[0].set_prediction_parameters()
+    first_predict.finalize()
+
+    assert [obs.infix for obs in field.observations] == [".mjd59000", ".mjd59010"]
+
+    next_predict = Predict("di", field, index=3)
+    next_predict.set_input_parameters()
+
+    assert next_predict.input_parms["sector_model_filename"] == [
+        "obs_0.ms.mjd59000.predict_1_modeldata",
+        "obs_0.ms.mjd59010.predict_1_modeldata",
+    ]
 
 
 def test_predict_di_operation_run_uses_prefect_flow(
@@ -717,7 +750,7 @@ def test_predict_di_operation_run_uses_prefect_flow(
     assert field_observation.ms_predict_di_filename == str(
         Path(operation.pipeline_working_dir) / "obs_0.ms.selfcal.sector_1_di.ms"
     )
-    assert field_observation.infix == ""
+    assert field_observation.infix == ".selfcal"
     assert len(fake_predict_shell_operation_cls.instances) == 2
 
 
@@ -751,7 +784,7 @@ def test_predict_di_operation_run_reuses_prefect_outputs_when_done(
     assert field_observation.ms_predict_di_filename == str(
         Path(operation.pipeline_working_dir) / "obs_0.ms.selfcal.sector_1_di.ms"
     )
-    assert field_observation.infix == ""
+    assert field_observation.infix == ".selfcal"
     assert fake_predict_shell_operation_cls.instances == []
 
 
