@@ -51,6 +51,11 @@ Most implementation work is complete.
   server are marked and run serially, while the remaining non-integration tests
   still use `pytest-xdist -n auto`.
 - CI now pins DP3 to the dev-container-tested commit `18e793a4`.
+- User-facing docs and release notes have been refreshed for the current
+  migration stage: Prefect/Dask is documented as the production path,
+  obsolete Toil/CWL production wording has been removed from the main Sphinx
+  pages, dashboard/artifact/restart behaviour is documented, and deferred
+  Slurm/external-Dask plus MPI WSClean validation is called out.
 - CWL production runtime has been removed. Toil and StreamFlow are no longer
   production dependencies, `cwltool` is test/reference-only, the in-tree CWL
   runner and Toil batch-system helper have been deleted, and the base
@@ -150,7 +155,7 @@ Done for the current migration stage.
 - Operation/process tests treat Prefect/Dask as the expected production route.
 - Keep saved CWL artifacts and CWL-derived command/output fixtures only as
   parity evidence.
-- Update user-facing docs that still describe Toil/CWL as the normal execution
+- User-facing docs no longer describe Toil/CWL as the normal execution
   mechanism.
 
 ### 4. Remove CWL Production Runtime
@@ -172,15 +177,17 @@ Done for the production runtime.
 
 ### 5. Final Documentation And Release Notes
 
-- Update README and Sphinx docs so Prefect/Dask is documented as the supported
-  execution path.
-- Document local, external-Dask, Slurm, MPI WSClean, dashboard, artifact, and
-  restart behaviour.
-- Record the equivalence evidence and known limitations in release notes.
-- Ensure generated demo data and large reference artifacts stay out of version
-  control.
-- State clearly that Slurm/external-Dask and MPI WSClean validation are
-  deferred post-migration checks.
+Done for the current migration stage.
+
+- README and Sphinx docs document Prefect/Dask as the supported execution path.
+- Running docs cover the local demo helper, Prefect dashboard, Dask dashboard,
+  streamed logs, command timing artifacts, plot/FITS artifacts, generated demo
+  data, unique working directories, and restart/debug state.
+- The changelog records the Prefect/Dask cutover, equivalence evidence, demo
+  and observability support, and deferred target-environment checks.
+- Generated demo data and large reference artifacts remain ignored by VCS.
+- Slurm/external-Dask and MPI WSClean validation are documented as deferred
+  post-migration checks.
 
 ### 6. Post-Migration Target-Environment Validation
 
@@ -216,12 +223,11 @@ unless a performance issue prevents production use.
 
 ## Immediate Next Actions
 
-1. Complete final documentation and release notes for Prefect/Dask execution,
-   dashboards, artifacts, restart behaviour, equivalence evidence, and known
-   deferred target-environment checks.
-2. Keep the saved-reference and live-smoke equivalence gates green until merge.
-3. Do a post-cutover refactor pass to clean up migration scaffolding and reduce
+1. Keep the saved-reference and live-smoke equivalence gates green until merge.
+2. Do a post-cutover refactor pass to clean up migration scaffolding and reduce
    duplication.
+3. Run Slurm/external-Dask and MPI WSClean target-environment checks after the
+   migration cutover.
 
 ## Useful Commands
 

@@ -1,9 +1,12 @@
 .. _code:
 
-Python and CWL code
-===================
+Python and execution code
+=========================
 
-Rapthor is mainly written in Python and CWL. The Rapthor code tree is organized as follows::
+Rapthor is mainly written in Python. The production execution path uses
+Prefect/Dask flows, with preserved CWL files kept as static reference material
+for migration equivalence checks. The Rapthor code tree is organized as
+follows::
 
    rapthor-master
    ├── bin
@@ -22,10 +25,11 @@ In the folder structure above:
 - ``rapthor-master/bin`` contains the ``rapthor`` executable used to run Rapthor (see :ref:`running`).
 - ``rapthor-master/docs`` contains this Sphinx documentation.
 - ``rapthor-master/examples`` contains an example parset and strategy file.
-- ``rapthor-master/rapthor`` contains the main Rapthor Python package and CWL files.
+- ``rapthor-master/rapthor`` contains the main Rapthor Python package.
 - ``rapthor-master/rapthor/lib`` contains the main Rapthor classes and modules (see :ref:`classes_modules`).
 - ``rapthor-master/rapthor/operations`` contains the operation subclasses (see :ref:`operation_subclasses`).
-- ``rapthor-master/rapthor/pipelines`` contains the CWL workflow templates (see :ref:`cwl`).
+- ``rapthor-master/rapthor/execution`` contains the Prefect/Dask execution flows and helpers.
+- ``rapthor-master/rapthor/pipeline`` contains preserved CWL reference material (see :ref:`cwl`).
 - ``rapthor-master/rapthor/scripts`` contains the processing scripts (see :ref:`scripts`).
 - ``rapthor-master/test`` contains files used for testing.
 

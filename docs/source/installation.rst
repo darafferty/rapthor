@@ -28,9 +28,10 @@ How can I use containers (Docker or Singularity) with Rapthor?
         * by running it completely within the container (only for use on a
           single machine, no local installation of Rapthor or its dependencies is
           necessary)
-        * by installing Rapthor locally and running only the operations (CWL workflows)
-          within the container (for use on a single machine or on multiple nodes of a
-          compute cluster).
+        * by running Rapthor in a prepared cluster environment that already
+          contains the required Python package and external radio-astronomy
+          tools. The old mode that launched operation-level CWL containers is
+          no longer the production runtime.
 
     A Docker image with the latest release of Rapthor and all its dependencies
     is available on `Docker Hub <https://hub.docker.com/r/astronrd/rapthor>`_.

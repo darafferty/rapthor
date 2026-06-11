@@ -12,7 +12,7 @@ Rapthor produces the following output inside the working directory:
     Directory containing the log files. The main log file for the run is called ``rapthor.log``. The detailed logs of each step of the processing can be found in the subdirectories.
 
 ``pipelines/``
-    Directory containing intermediate files of each operation's CWL workflow. Once a run has finished successfully, this directory can be removed.
+    Directory containing intermediate files for each operation flow. Once a run has finished successfully, this directory can be removed if restart/debug state is no longer needed.
 
 ``plots/``
     Directory containing the PNG plots of the calibration solutions and images. See :ref:`calibrate` and :ref:`image` for a detailed description of the plots.
@@ -28,4 +28,3 @@ Rapthor produces the following output inside the working directory:
 
 ``visibilities/``
     Directory containing the MS files with the visibilities used in imaging. See :ref:`image` for a detailed description of the MS files.
-

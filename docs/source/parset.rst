@@ -596,8 +596,9 @@ The available options are described below under their respective sections.
 
         .. note::
 
-            Currently, Toil does not fully support ``openmpi``. Because of this, imaging
-            can only use the worker nodes, and the master node will be idle.
+            MPI WSClean validation is deferred until after the Prefect/Dask
+            migration cutover. Validate this mode in the intended deployment
+            environment before using it for production reductions.
 
     shared_facet_rw
         When using facet-based imaging runs WSClean with the options
@@ -708,11 +709,11 @@ The available options are described below under their respective sections.
 
         .. note::
 
-            When using the ``slurm`` batch system, additional Slurm arguments can be
-            passed to Toil by setting the ``TOIL_SLURM_ARGS`` environment variable in
-            your environment before running Rapthor. See the Toil
-            `environment variables <https://toil.readthedocs.io/en/latest/appendices/environment_vars.html>`_
-            page for details.
+            The Prefect/Dask Slurm path uses the launch scripts in
+            ``scripts/prod`` and ``scripts/dev`` to start a Dask scheduler and
+            workers inside one Slurm allocation. Slurm/external-Dask validation
+            is deferred until after the migration cutover; see :ref:`running`
+            for the current launch pattern.
 
     max_nodes
         When :term:`batch_system` = ``slurm``, the maximum number of nodes of the cluster
@@ -773,16 +774,10 @@ The available options are described below under their respective sections.
         IO-intensive processing (e.g., WSClean) will use a default path in
         :term:`dir_working` instead.
 
-        When :term:`cwl_runner` = ``toil`` and :term:`batch_system` = ``single_machine``,
-        it is recommended to set this parameter, so that Rapthor can clean up any
-        temporary files and directories that Toil left behind.
-
-        .. warning::
-
-            If you want to run multiple instances of Rapthor concurrently using Toil,
-            make sure that you specify different directories as
-            :term:`local_scratch_dir`. Otherwise, one Rapthor instance will
-            potentially clobber files/directories created by another instance.
+        This parameter is used by the Prefect/Dask execution path for
+        IO-intensive intermediate products. If you run multiple Rapthor
+        instances concurrently, use separate working and scratch directories for
+        each run.
 
     global_scratch_dir
         Full path to a directory on a shared disk that is readable and writable by all
@@ -791,16 +786,9 @@ The available options are described below under their respective sections.
         workflow. If this parameter is not set and :term:`batch_system` = ``slurm``,
         then Rapthor will create a temporary directory in :term:`dir_working`.
 
-        When :term:`cwl_runner` = ``toil``, it is recommended to set this parameter, so
-        that Rapthor can clean up any temporary files and directories that Toil left
-        behind.
-
-        .. warning::
-
-            If you want to run multiple instances of Rapthor concurrently using Toil,
-            make sure that you specify different directories as
-            :term:`global_scratch_dir`. Otherwise, one Rapthor instance will
-            potentially clobber files/directories created by another instance.
+        This parameter is used by the Prefect/Dask execution path for shared
+        intermediate products. If you run multiple Rapthor instances
+        concurrently, use separate working and scratch directories for each run.
 
     use_container
         Legacy container setting retained for compatibility with older parsets.

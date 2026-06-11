@@ -363,9 +363,8 @@ after all of the following are true:
 
 ## Recommended Next Action
 
-Complete the final user-facing documentation and release notes for
-Prefect/Dask execution, dashboards, artifacts, restart behaviour, equivalence
-evidence, and deferred target-environment checks. Keep the saved-CWL local gate
-and live smoke gate as regression checks if references, product publishing,
-equivalence helpers, or legacy-CWL compatibility change. Run Slurm/external-Dask
-and MPI WSClean validation after the migration cutover.
+Keep the saved-CWL local gate and live smoke gate as regression checks until
+merge, especially if references, product publishing, equivalence helpers, or
+legacy-CWL compatibility change. After cutover, do the cleanup/refactor pass and
+run Slurm/external-Dask plus MPI WSClean validation in the intended
+target environment.
