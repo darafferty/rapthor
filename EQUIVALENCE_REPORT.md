@@ -14,9 +14,11 @@ Current status: the equivalence harness and opt-in integration gates are in
 place. Eleven local saved CWL references have been captured from legacy commit
 `4cfd2abe2fe815724e3f1c390d789eea249becef`, and all eleven pass
 saved-reference comparison against the current Prefect execution path. Full
-production equivalence is not yet recorded because `hybrid_screens`,
-`shared_facet_rw`, `mpi_wsclean`, and Slurm/external-Dask still need usable
-target-environment references or execution.
+required production equivalence is not yet recorded because `hybrid_screens`,
+`mpi_wsclean`, and Slurm/external-Dask still need usable target-environment
+references or execution. `shared_facet_rw` is deferred from the required gate
+because the WSClean shared-facet flags have been too flaky in available
+environments.
 
 ## Scope Of Equivalence
 
@@ -216,8 +218,8 @@ Saved-reference results:
 | `full_stokes_clean_disabled` | captured | pass | Required short scratch override to avoid PyBDSF AF_UNIX path-length failures |
 | `image_cube` | captured | pass | Image-cube products and metadata exercised |
 | `restart` | captured | pass | Persisted `.done` and output-record state present and comparable |
-| `hybrid_screens` | blocked | not run | Legacy CWL was patched past the `do_slowgain_solve` expression issue; capture now reaches DP3 IDGCal and fails because this container cannot import Python module `idg` |
-| `shared_facet_rw` | blocked | not run | Serial WSClean aborts with `SIGABRT` when `-shared-facet-reads` and `-shared-facet-writes` are enabled |
+| `hybrid_screens` | blocked | not run | Legacy CWL was patched past the `do_slowgain_solve` expression issue; capture now reaches DP3 IDGCal. IDG native libraries are installed, but this image builds IDG with Python bindings disabled, so DP3 cannot import Python module `idg` |
+| `shared_facet_rw` | deferred | not run | Excluded from the required gate for now; serial WSClean aborts with `SIGABRT` when `-shared-facet-reads` and `-shared-facet-writes` are enabled |
 | `mpi_wsclean` | pending | not run | Target-environment scenario |
 
 Captured operation orders:
@@ -264,20 +266,20 @@ following are true:
   under `tests/execution/fixtures/equivalence_strategies` and wired into
   `equivalence_gate_scenarios.json` with `parset_overrides`.
 - `hybrid_screens` cannot currently be captured in this container because DP3
-  IDGCal needs the Python `idg` module. The earlier bare
+  IDGCal needs the Python `idg` module. IDG native libraries are installed, but
+  the image builds IDG with Python bindings disabled. The earlier bare
   `do_slowgain_solve` CWL expression issue has been patched in the cached
   legacy checkout and the tracked CWL template.
-- `shared_facet_rw` cannot currently be captured in this serial WSClean
-  environment because WSClean aborts when the shared-facet read/write flags are
-  enabled.
+- `shared_facet_rw` is deferred from the required gate because WSClean aborts
+  when the shared-facet read/write flags are enabled in available serial
+  environments.
 - The report documents the equivalence method and current evidence; it is not a
   substitute for recording a passing target-environment equivalence run.
 
 ## Recommended Next Action
 
-Resolve the two remaining local reference blockers before declaring full local
-matrix equivalence: run `hybrid_screens` where DP3 can import the Python `idg`
-module, and run `shared_facet_rw` in a WSClean environment that supports the
-shared-facet flags. Then run the saved-reference regression over the full
+Resolve the remaining required local reference blocker before declaring full
+required local matrix equivalence: enable or install the Python `idg` module for
+`hybrid_screens`. Then run the saved-reference regression over the required
 artifact root. The target-environment `mpi_wsclean` and Slurm/external-Dask
 hooks still need to be run in an environment matching deployment.

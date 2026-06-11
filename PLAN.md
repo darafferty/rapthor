@@ -1,271 +1,260 @@
-# Rapthor Prefect and Dask Migration Plan
+# Rapthor Prefect/Dask Migration Plan
 
-This is the active status snapshot for migrating Rapthor from Toil/CWL
-execution to Python orchestration with Prefect and Dask.
+Status snapshot: 2026-06-11.
 
 ## Goal
 
-Replace the CWL workflow runner path with Prefect/Dask while preserving:
+Make Prefect/Dask the production execution path for Rapthor while preserving
+the existing parset/strategy contract, operation ordering, restart state,
+output records, product filenames/locations, finalizer-visible field state, and
+Slurm/MPI safety. CWL should remain only as a reference mechanism until
+equivalence is proven, then as static fixtures or compatibility helpers.
 
-- the existing parset and strategy contract
-- operation ordering and top-level process semantics
-- finalizer-visible `Field`, `Observation`, and `Sector` state
-- output filenames, output-record shapes, and product locations
-- restart/reset behaviour through `.done` and `.outputs.json`
-- local execution, Slurm/external-Dask execution, and MPI WSClean safety
+## Current Position
 
-The migration branch should merge with one production execution path:
-Prefect/Dask. CWL remains only as a branch-local reference until equivalence is
-proven.
+Most implementation work is complete.
 
-## Current State
+- `rapthor/execution/` contains the new execution layer: config, Dask task
+  runner construction, resource/capability checks, command builders, shell
+  execution, command logs, output records, artifacts, work-directory helpers,
+  Slurm helpers, and equivalence utilities.
+- Prefect flows exist for concatenate, mosaic, predict, image, calibration, and
+  top-level process orchestration.
+- Operation adapters for concatenate, mosaic, predict, image, image-initial,
+  image-normalize, and calibration execute Prefect flows and produce
+  finalizer-compatible output records.
+- `rapthor.process.run()` is still the legacy CWL baseline. The current
+  side-by-side Prefect entry point is
+  `rapthor.execution.flows.process.process_flow()`.
+- Saved-reference equivalence is in place. Eleven CWL reference scenarios from
+  legacy commit `4cfd2abe2fe815724e3f1c390d789eea249becef` pass comparison
+  against the current Prefect path.
+- Demo and observability support is in place: persistent Prefect dashboard
+  support, unique run directories, local/external Dask dashboard support, Dask
+  performance reports, streamed external-command logs, Python logs in Prefect,
+  plot/FITS artifacts, command timing artifacts, and richer synthetic demo data.
+  Several manual demo runs have been completed successfully and look good for
+  the current migration stage.
+- Recent correctness fixes include cycle-aware h5parm provenance/filtering so
+  stale solutions from previous cycles are not applied accidentally.
+- CI has been adjusted and verified passing: tests that start a Prefect test
+  server are marked and run serially, while the remaining non-integration tests
+  still use `pytest-xdist -n auto`.
+- CI now pins DP3 to the dev-container-tested commit `18e793a4`.
+- CWL runtime code, package data, Toil, StreamFlow, and cwltool are still
+  present and must stay until the final equivalence gate and public route
+  cutover are complete.
 
-Most of the migration implementation is already in place.
+## Evidence Already Available
 
-- `rapthor/execution/` now contains the execution layer: configuration,
-  capability preflight, command builders, serializable payload checks, output
-  helpers, runtime environment handling, shell execution, command logging,
-  resource validation, task-runner construction, task-local work directories,
-  Slurm helpers, and CWL-to-Prefect equivalence helpers.
-- Operation-level Prefect flows exist for concatenate, mosaic, predict, image,
-  calibration, and process orchestration under `rapthor/execution/flows/`.
-- The operation adapters for `Concatenate`, `Mosaic`, `Predict`, `Image`,
-  `ImageInitial`, `ImageNormalize`, and `Calibrate` now execute Prefect flows and
-  return finalizer-compatible output records.
-- `rapthor.process.run()` is intentionally still the legacy top-level baseline.
-  The side-by-side Prefect entry point is `rapthor.execution.flows.process.process_flow()`.
-  This keeps a comparison route available until the final equivalence gate has
-  passed in the target environment.
-- Eleven local saved CWL references have been captured from legacy commit
-  `4cfd2abe2fe815724e3f1c390d789eea249becef` and pass saved-reference
-  comparison against the current Prefect execution path.
-- CWL runner code, CWL package data, Toil, StreamFlow, and cwltool dependencies
-  are still present. Do not remove them until the equivalence gate and public
-  route cutover are complete.
+- Execution-layer unit and flow tests cover command construction, payloads,
+  output records, restart/reuse, failure handling, artifacts, logging, resource
+  validation, task-runner selection, work directories, and equivalence helpers.
+- Mocked process-flow tests compare the Prefect lifecycle with the legacy
+  process lifecycle for final-only, selfcal, convergence/divergence/failure,
+  repeated final cycles, normalization, full-Stokes/cube flags, concatenation,
+  calibration strategy hand-offs, validation failures, and artifact publication.
+- `tests/execution/fixtures/equivalence_gate_scenarios.json` defines the
+  saved-reference scenario matrix.
+- `scripts/capture_cwl_reference_artifacts.py` can populate CWL reference
+  artifacts from a preserved pre-cutover checkout.
+- `tests/integration/test_saved_cwl_equivalence.py` compares fresh Prefect runs
+  against saved CWL artifacts when explicitly enabled.
+- `tests/integration/test_live_cwl_equivalence.py` can run a live CWL checkout
+  and the current Prefect flow side by side for a smoke scenario.
+- `EQUIVALENCE_REPORT.md` records the current equivalence method, passing
+  scenarios, known blockers, and commands.
 
-## Already Done
+Passing saved-reference scenarios:
 
-### Execution Foundation
+- `di_only_calibration`
+- `dd_only_calibration`
+- `di_then_dd_calibration`
+- `dd_then_di_calibration`
+- `di_full_jones_calibration`
+- `dd_slow_gain_calibration`
+- `normalization`
+- `peeling`
+- `full_stokes_clean_disabled`
+- `image_cube`
+- `restart`
 
-- Added `ExecutionConfig` with `local_dask`, `external_dask`, and `sync` task
-  runner modes.
-- Added Dask scheduler discovery from parset settings and `DASK_SCHEDULER`.
-- Added Prefect task-runner wiring so flows actually use the configured runner.
-- Added shell execution helpers with streamed output and backend-neutral command
-  logs at `logs/commands.jsonl`.
-- Added finalizer-compatible file and directory output helpers.
-- Added serializable payload boundaries so worker tasks do not receive live
-  Rapthor domain objects.
-- Added task-local working-directory helpers and cleanup semantics.
-- Added centralized resource validation for threads, memory, local Dask worker
-  capacity, Slurm allocation limits, and MPI exclusivity.
-- Added preflight checks for unsupported runtime, container, feature, and
-  resource combinations.
+Still missing target-environment proof:
 
-### Operation Migration
+- `hybrid_screens`: IDG native libraries are installed, but the dev/CI images
+  currently build IDG with Python bindings disabled, so DP3's IDGCal Python step
+  cannot import the Python `idg` module.
+- `mpi_wsclean`: should run in the intended MPI/WSClean deployment
+  environment.
+- Slurm/external-Dask: should run inside a representative Slurm allocation.
 
-- Concatenate now runs through the Prefect flow and has command, output,
-  restart, failure, and operation-adapter coverage.
-- Mosaic now runs through the Prefect flow and has operation coverage for
-  output selection, finalizer state, compressed outputs, skip-processing, and
-  helper scripts using small FITS fixtures.
-- Predict now runs DI and DD paths through the Prefect flow, including sector
-  model add/subtract scripts, operation restart, failure handling, and
-  finalizer-visible field updates.
-- Image now covers no-DDE, facet, screen, compressed, filtered-model,
-  clean-disabled, full-Stokes, image-cube, normalization, bright-source peeling,
-  MPI WSClean, previous-mask, restart, failure, and operation-adapter paths.
-- Calibration now covers DI full-Jones, DI scalar phase, DD fast/medium phase,
-  DD slow/source-adjusted products, DI pre-apply before DD, image-based
-  prediction, IDG/screen generation, restart, failure, and operation-adapter
-  paths.
+Deferred optional scenario:
 
-### Top-Level Process Work
-
-- Added side-by-side Prefect process orchestration with `process_flow()`.
-- Added mocked equivalence coverage against the legacy process lifecycle for
-  final-only imaging, selfcal convergence/divergence/failure, repeated final
-  cycles, concatenation before strategy selection, calibration strategy
-  hand-offs, normalization, final full-Stokes image-cube flags, and validation
-  failures.
-- Kept `process.run()` on the legacy route as the current comparison baseline.
-
-### Runtime And Slurm
-
-- Added production and development Slurm launch templates under `scripts/`.
-- Added external-Dask scheduler validation and Slurm environment mapping.
-- Added local-Dask capacity checks and MPI WSClean resource validation.
-- Added a target-environment Slurm integration hook in
-  `tests/integration/test_slurm_execution.py`, skipped unless
-  `RAPTHOR_RUN_SLURM_INTEGRATION=1` is set inside a Slurm allocation.
-- Documented the selected Slurm/external-Dask mode in `docs/source/running.rst`.
-
-### Tests And Fixtures
-
-- Added execution-layer unit and flow tests under `tests/execution/`.
-- Added CWL-derived command and output fixtures for parity checks.
-- Added a machine-readable supported merge feature matrix at
-  `tests/execution/fixtures/supported_merge_feature_matrix.json`.
-- Added a CWL-to-Prefect equivalence harness in `rapthor/execution/equivalence.py`.
-- Added an equivalence-gate scenario manifest at
-  `tests/execution/fixtures/equivalence_gate_scenarios.json`.
-- Added a saved-CWL reference artifact contract: each equivalence scenario now
-  declares `cwl_reference_artifact_dir`, and staging can validate
-  `$RAPTHOR_CWL_REFERENCE_ROOT/<scenario-id>/` before running comparisons.
-- Added saved-reference equivalence runner helpers so staging can compare the
-  full scenario manifest against fresh Prefect candidate runs with
-  `compare_saved_reference_equivalence_manifest()`.
-- Added a scenario parset materializer for the saved-reference gate. It sets the
-  candidate `dir_working`, scratch directories, common template inputs from
-  `RAPTHOR_EQUIVALENCE_INPUT_MS`, `RAPTHOR_EQUIVALENCE_INPUT_SKYMODEL`,
-  `RAPTHOR_EQUIVALENCE_APPARENT_SKYMODEL`, and optional per-scenario
-  `parset_overrides`.
-- Added scenario-specific strategy fixtures under
-  `tests/execution/fixtures/equivalence_strategies/` and wired them into the
-  equivalence scenario manifest.
-- Added an opt-in saved-CWL regression integration test at
-  `tests/integration/test_saved_cwl_equivalence.py`. It validates saved CWL
-  artifacts, runs the current Prefect candidate, and compares normalized outputs.
-- Added an opt-in live CWL-vs-Prefect integration test at
-  `tests/integration/test_live_cwl_equivalence.py` that reuses the existing DI
-  fast-phase integration fixture, runs a legacy checkout and the current Prefect
-  flow, and compares their working-directory outputs.
-- Added `scripts/capture_cwl_reference_artifacts.py` to populate saved CWL
-  artifacts by running scenarios through a separate pre-cutover checkout.
-- Captured and verified local saved references for `di_only_calibration`,
-  `dd_only_calibration`, `di_then_dd_calibration`, `dd_then_di_calibration`,
-  `di_full_jones_calibration`, `dd_slow_gain_calibration`, `normalization`,
-  `peeling`, `full_stokes_clean_disabled`, `image_cube`, and `restart`.
-- Fixed the bare `do_slowgain_solve` CWL `when:` expressions in
-  `calibrate_pipeline.cwl`; the cached legacy reference checkout was patched the
-  same way for `hybrid_screens` capture attempts.
-- Modernized integration command-log helpers so assertions do not depend on Toil
-  log filenames.
-- Replaced several placeholder script tests with small real Measurement Set or
-  FITS-backed coverage.
+- `shared_facet_rw` is excluded from the required gate for now because WSClean's
+  shared-facet read/write flags have been too flaky in available environments.
 
 ## Remaining Work
 
-### 1. Finish The Target-Environment Equivalence Gate
+### 1. Finish Target-Environment Equivalence
 
-This is the main blocker before public cutover. Local saved-reference coverage
-now proves eleven scenarios; the remaining work is to close the blocked local
-cases and run the deployment-specific cases.
+This is the main blocker before public cutover.
 
-- Resolve the `hybrid_screens` reference blocker in an environment where DP3 can
-  import the Python `idg` module. The earlier CWL `do_slowgain_solve`
-  expression issue is fixed.
-- Resolve the `shared_facet_rw` reference blocker in a WSClean environment that
-  supports `-shared-facet-reads` and `-shared-facet-writes`.
-- Run the full available saved-reference scenario manifest after those
-  references are captured.
-- Run `mpi_wsclean` and the selected Slurm/external-Dask cases in the target
-  environment with representative data.
-- Compare operation order, `.done` markers, `.outputs.json` shape, product
-  basenames, FITS dimensions/statistics, h5parm solset/soltab structure, sky
-  model counts, region files, reports, logs, and finalizer-visible state.
-- Fix real differences or document intentional user-invisible differences with
-  tests.
-- Record the passing local and staging baselines before starting the route
-  cutover.
+- Enable/install the Python `idg` module for the dev/CI image, or use another
+  image where DP3's IDGCal Python step can import it, then capture CWL
+  references for `hybrid_screens`.
+- Run `tests/integration/test_saved_cwl_equivalence.py` with
+  `RAPTHOR_RUN_SAVED_CWL_EQUIVALENCE=1` and `RAPTHOR_CWL_REFERENCE_ROOT`
+  pointing at the directory that contains the saved CWL output subdirectories
+  for every required scenario. This reruns the current Prefect candidates and
+  compares them against those saved CWL references.
+- Run the live CWL-vs-Prefect smoke gate against the preserved legacy checkout.
+- Run `mpi_wsclean` with the intended MPI/WSClean stack.
+- Run the Slurm/external-Dask hook inside a real Slurm allocation.
+- Record the passing source data, artifact root, strategy files, commit SHAs,
+  tool versions, commands, and test output.
+- Fix real differences. Document only intentional, user-invisible differences.
 
-Important caveat: because operation adapters on this branch already execute
-Prefect flows, the CWL side of the final proof must come from a preserved
-pre-cutover CWL checkout and then be saved as reference artifacts.
+### 2. Refresh Real External-Tool Coverage
 
-### 2. Refresh Real External-Tool Integration Coverage
+The unit and mocked flow tests are broad, but the production confidence still
+depends on real radio-astronomy tools and representative data.
 
-Some gaps are intentionally waiting for a container or staging environment with
-the radio astronomy toolchain available.
-
-- Concatenate: multi-input DP3/TAQL integration.
-- Predict: DP3-produced DI/DD model-data products.
-- Image: small real runs through WSClean, EveryBeam/IDG where applicable,
-  PyBDSF, full-Stokes, cubes, normalization, facets, screens, and MPI.
-- Calibrate: real DP3/LoSoTo/IDG/h5parm paths for DI, DD, image-based
-  prediction, source adjustment, and screen generation.
-- Mosaic: a real image-to-mosaic path from Image-flow products.
-- Restart/failure: at least one injected external-tool failure path for the
-  supported matrix, if practical in staging.
+- Exercise real DP3 prediction, DDECal, LoSoTo, IDG/screen generation, WSClean,
+  EveryBeam, PyBDSF, cfitsio/fpack, and mosaic paths in the dev container or
+  staging environment.
 
 ### 3. Cut Over The Public Route
 
-After the equivalence gate passes:
+Only start this once target-environment equivalence has passed.
 
-- Route the CLI-compatible `rapthor.process.run()` path through the Prefect
-  top-level process flow.
-- Remove branch-internal mixed-backend production paths.
+- Route the CLI-compatible `rapthor.process.run()` path through
+  `process_flow()`.
 - Keep no public `execution_backend` selector.
-- Update operation and process tests so Prefect/Dask is the expected production
+- Update operation/process tests so Prefect/Dask is the expected production
   route.
-- Keep useful CWL-derived artifacts only as static fixtures.
+- Keep saved CWL artifacts and CWL-derived command/output fixtures only as
+  parity evidence.
+- Update user-facing docs that still describe Toil/CWL as the normal execution
+  mechanism.
 
-### 4. Remove CWL Production Code
+### 4. Remove CWL Production Runtime
 
-Only after public cutover:
+Only after public route cutover.
 
 - Remove Toil, StreamFlow, and cwltool dependencies if no longer needed.
-- Remove `rapthor/lib/cwlrunner.py`, CWL-only operation plumbing, and unused CWL
-  runner tests.
-- Remove `rapthor/pipeline/parsets/**` and `rapthor/pipeline/steps/**` from
-  packaged production data once static parity fixtures are preserved elsewhere.
-- Update package data and lint/test target lists.
+- Remove `rapthor/lib/cwlrunner.py`, CWL-only operation plumbing, and obsolete
+  CWL runner tests.
+- Remove CWL workflow templates from production package data once needed static
+  fixtures are preserved elsewhere.
+- Update package-data, lint, format, tox, CI, and release jobs that currently
+  know about CWL files.
+- Keep or rename CWL-shaped output helpers only if finalizers still depend on
+  those record shapes during the first Prefect/Dask release.
 
-Keep `rapthor/lib/cwl.py` or specific CWL-shaped record helpers only if
-finalizers still need those structures during the first Prefect/Dask release.
-If retained, rename or document them as generic output-record helpers rather
-than a CWL runtime dependency.
+### 5. Final Documentation And Release Notes
 
-### 5. Final Documentation, Packaging, And CI
+- Update README and Sphinx docs so Prefect/Dask is documented as the supported
+  execution path.
+- Document local, external-Dask, Slurm, MPI WSClean, dashboard, artifact, and
+  restart behaviour.
+- Record the equivalence evidence and known limitations in release notes.
+- Ensure generated demo data and large reference artifacts stay out of version
+  control.
 
-- Update README, Sphinx docs, parset documentation, operation docs, and runtime
-  instructions so Prefect/Dask is described as the supported execution path.
-- Update installation, tox, CI, and packaging metadata after removing CWL
-  dependencies and package data.
-- Document the target-environment Slurm validation process and expected skips or
-  xfails.
-- Run the final non-integration suite, focused integration suite, equivalence
-  gate, lint checks, and packaging checks before merging.
+### 6. Post-Cutover Refactor And Deduplication
+
+Only after equivalence, public route cutover, and CWL runtime removal.
+
+- Review the execution flows, operation adapters, command builders, output
+  handling, artifact publication, and tests for duplication introduced during
+  the side-by-side migration.
+- Consolidate repeated patterns where a small shared helper improves clarity
+  without hiding operation-specific behaviour.
+- Remove temporary migration scaffolding that is no longer needed once CWL is no
+  longer a production backend.
+- Keep this as a cleanup pass, not a behaviour-changing prerequisite for the
+  equivalence gate.
+
+## Deferred Performance Follow-Up
+
+Dask optimization is explicitly deferred until after equivalence and public
+route cutover. Later work can use the Dask dashboard and performance reports to
+review task granularity, chunk sizing, worker/resource tuning, and whether any
+operation should expose finer-grained parallelism. These are not merge blockers
+unless a performance issue prevents production use.
 
 ## Immediate Next Actions
 
-1. Capture `hybrid_screens` in an IDG-capable DP3 environment.
-2. Capture `shared_facet_rw` in an environment where WSClean supports the
-   shared-facet read/write flags.
-3. Run the saved-reference regression over the full artifact root:
-   `RAPTHOR_RUN_SAVED_CWL_EQUIVALENCE=1 RAPTHOR_CWL_REFERENCE_ROOT=/path/to/references python3 -m pytest tests/integration/test_saved_cwl_equivalence.py -q --tb=short`.
-4. Run `mpi_wsclean` in the intended MPI/WSClean deployment environment.
-5. Run the Slurm hook inside a real Slurm allocation:
-   `RAPTHOR_RUN_SLURM_INTEGRATION=1 python3 -m pytest tests/integration/test_slurm_execution.py`.
-6. If equivalence passes, switch `rapthor.process.run()` to `process_flow()`.
-7. Remove CWL production code and dependencies, then update docs, packaging, and
-   CI.
+1. Enable or install the Python `idg` module, then capture `hybrid_screens`.
+2. Run the saved-CWL equivalence test with `RAPTHOR_CWL_REFERENCE_ROOT` pointing
+   at the populated reference directory for the required scenarios.
+3. Run the live CWL-vs-Prefect smoke gate.
+4. Run `mpi_wsclean` and Slurm/external-Dask hooks in the deployment-like
+   environment.
+5. If all gates pass, switch `rapthor.process.run()` to `process_flow()`.
+6. Remove CWL production runtime and update docs, packaging, and CI.
+7. Do a post-cutover refactor pass to clean up migration scaffolding and reduce
+   duplication.
 
-## Suggested Verification Commands
+## Useful Commands
 
-Use focused commands while iterating, then broaden before cutover:
+Serial Prefect-server lane:
 
 ```bash
-python3 -m pytest tests/execution -q --tb=short
-python3 -m pytest -m "not integration" tests -q --tb=short
-python3 -m pytest tests/integration -q --tb=short
-python3 -m ruff check
-python3 -m ruff format --check .
+python3 -m pytest -m "not integration and prefect" -k "not test_field.py" tests -q --tb=short
 ```
 
-The integration suite depends on external tools and data. The Slurm test is
-skipped unless explicitly enabled inside a Slurm allocation.
+Parallel non-Prefect lane:
+
+```bash
+python3 -m pytest -m "not integration and not prefect" -n auto -k "not test_field.py" tests -q --tb=short
+```
+
+Saved-reference gate:
+
+```bash
+RAPTHOR_RUN_SAVED_CWL_EQUIVALENCE=1 \
+RAPTHOR_CWL_REFERENCE_ROOT=/path/to/references \
+python3 -m pytest tests/integration/test_saved_cwl_equivalence.py -q --tb=short
+```
+
+Live CWL-vs-Prefect smoke gate:
+
+```bash
+RAPTHOR_RUN_LIVE_CWL_EQUIVALENCE=1 \
+RAPTHOR_LEGACY_CWL_REPO=/path/to/pre-cutover-checkout \
+python3 -m pytest tests/integration/test_live_cwl_equivalence.py -q --tb=short
+```
+
+Slurm hook:
+
+```bash
+RAPTHOR_RUN_SLURM_INTEGRATION=1 \
+python3 -m pytest tests/integration/test_slurm_execution.py -q --tb=short
+```
+
+Rich local demo:
+
+```bash
+scripts/dev/generate-prefect-demo-data.py --force
+scripts/dev/run-rapthor-prefect-demo.py \
+  --task-runner local_dask \
+  --dask-dashboard-address :8787 \
+  --dask-performance-report \
+  examples/generated/prefect_demo_rich/prefect_demo_rich.parset
+```
 
 ## Merge Criteria
 
 The migration is ready to merge when:
 
-- all supported operation and process paths run through Prefect/Dask
-- the target-environment equivalence gate passes for the supported feature
+- all supported public operation and process paths run through Prefect/Dask
+- the target-environment equivalence gate passes for the supported scenario
   matrix
 - restart/reset behaviour works with Prefect-produced operation state
-- runtime, resource, filesystem, command-log, and Slurm checks pass
-- CI and packaging no longer require CWL runtime dependencies
-- docs describe Prefect/Dask as the only supported production execution path
+- runtime, resource, filesystem, command-log, artifact, Dask, MPI, and Slurm
+  checks pass
+- CI is stable with Prefect tests isolated from high xdist fan-out
+- docs describe Prefect/Dask as the supported production execution path
 - CWL artifacts that remain in the tree are static reference fixtures or
   compatibility helpers, not production execution machinery
