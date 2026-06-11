@@ -1,7 +1,7 @@
 # This Dockerfile builds the base image for the Rapthor pipeline,
 # containing all its dependencies.
 
-FROM ubuntu:24.04 AS builder
+FROM ubuntu:26.04 AS builder
 
 # Set default versions. Can be overridden from the command-line
 ARG AOFLAGGER_COMMIT=master
@@ -35,6 +35,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get update && \
     apt-get install -y \
         bison \
+        cmake \
         flex \
         g++ \
         gfortran \
@@ -68,9 +69,7 @@ RUN wget -q https://bootstrap.pypa.io/get-pip.py && \
     python3 get-pip.py
 
 # Install required python packages
-RUN python3 -m pip install \
-    'cmake<4' \
-    'numpy<2'
+RUN python3 -m pip install numpy
 
 # Install the casacore measures data. We purposely do not install these from
 # the Ubuntu repository, but download the latest version from the ASTRON site.
@@ -201,7 +200,7 @@ RUN pip install ./rapthor
 # The image will now be rebuilt without adding the sources, in order to
 # reduce the size of the image.
 #---------------------------------------------------------------------------
-FROM ubuntu:24.04 AS runner
+FROM ubuntu:26.04 AS runner
 
 COPY --from=builder /usr/local /usr/local
 
@@ -233,9 +232,9 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         ca-certificates \
         git \
         libblas3 \
-        libboost-filesystem1.83.0 \
-        libboost-program-options1.83.0 \
-        libboost-python1.83.0 \
+        libboost-filesystem1.90.0 \
+        libboost-program-options1.90.0 \
+        libboost-python1.90.0 \
         libc6 \
         libcfitsio-bin \
         libfftw3-double3 \
@@ -243,13 +242,13 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         libgcc-s1 \
         libgfortran5 \
         libgomp1 \
-        libgsl27 \
-        libhdf5-103-1t64 \
-        libhdf5-cpp-103-1t64 \
+        libgsl28 \
+        libhdf5-310 \
+        libhdf5-cpp-310 \
         liblapack3 \
         liblua5.4-0 \
         libpng16-16t64 \
-        libpython3.12t64 \
+        libpython3.14 \
         libreadline8t64 \
         libstdc++6 \
         libwcs8 \
