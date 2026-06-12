@@ -73,6 +73,19 @@ instead:
     $ PREFECT_API_URL=http://127.0.0.1:4200/api \
       scripts/dev/run-rapthor-prefect-demo.py --no-start-server /path/to/rapthor.parset
 
+If you are already inside the dev container and want to restart the persistent
+Prefect server manually, stop any existing local server process and start a new
+one bound to all interfaces:
+
+.. code-block:: console
+
+    $ pkill -f "prefect.server" || true
+    $ prefect server start --host 0.0.0.0 --port 4200
+
+This keeps the server in the foreground so its logs remain visible. The
+dashboard is then available from the host at ``http://localhost:4200`` when the
+container forwards port ``4200``.
+
 Use ``--task-runner local_dask``, ``--task-runner sync``, or
 ``--task-runner external_dask`` to override the parset for a demo run. The demo
 parset uses ``local_dask`` by default. For demo runs, the helper starts a
