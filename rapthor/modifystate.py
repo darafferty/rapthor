@@ -110,10 +110,8 @@ def run(parset_file):
             print('Reseting state...')
             for pipeline in pipelines[int(p_number_raw)-1:]:
                 # Remove the operation working directory to ensure files from previous
-                # runs are not kept and used in subsequent ones (e.g., Toil does not
-                # seem to always overwrite existing files from previous runs). This
-                # also removes Toil's jobstore when present (where the state is tracked).
-                # Other associated files are removed as well
+                # runs are not kept and used in subsequent ones. Other associated
+                # files are removed as well.
                 path = os.path.join(parset['dir_working'], 'pipelines', pipeline)
                 shutil.rmtree(path, ignore_errors=True)
 

@@ -14,7 +14,6 @@ def _operation_parset(tmp_path):
     return {
         "dir_working": str(tmp_path / "working"),
         "cluster_specific": {
-            "cwl_runner": "mock_cwl_runner",
             "debug_workflow": False,
             "keep_temporary_files": False,
             "max_nodes": 1,

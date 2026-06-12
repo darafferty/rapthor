@@ -48,9 +48,6 @@ class Operation(object):
         self.force_serial_jobs = False  # force jobs to run serially
         self.use_mpi = False
 
-        # Legacy runtime metadata retained for older parsets and saved debug files.
-        self.toil_env_variables = {}
-
         # Rapthor working directory
         self.rapthor_working_dir = self.parset["dir_working"]
 
@@ -58,8 +55,6 @@ class Operation(object):
         self.pipeline_working_dir = os.path.join(self.rapthor_working_dir, "pipelines", self.name)
         os.makedirs(self.pipeline_working_dir, exist_ok=True)
 
-        # Legacy runtime settings retained for compatibility with older parsets.
-        self.cwl_runner = self.parset["cluster_specific"].get("cwl_runner")
         self.debug_workflow = self.parset["cluster_specific"]["debug_workflow"]
         self.keep_temporary_files = (
             self.parset["cluster_specific"]["keep_temporary_files"] or self.debug_workflow
@@ -88,16 +83,9 @@ class Operation(object):
         )
         self.render_static_cwl_templates = False
         self.pipeline_inputs_file = os.path.join(self.pipeline_working_dir, "pipeline_inputs.json")
-        self.pipeline_outputs_file = os.path.join(
-            self.pipeline_working_dir, "pipeline_outputs.json"
-        )
-        self.pipeline_log_file = os.path.join(self.log_dir, "pipeline.log")
 
         # MPI configuration file
         self.mpi_config_file = os.path.join(self.pipeline_working_dir, "mpi_config.yml")
-
-        # Legacy jobstore path kept for older debug/restart metadata.
-        self.jobstore = os.path.join(self.pipeline_working_dir, "jobstore")
 
         # File indicating whether a step was completely done.
         self.done_file = os.path.join(self.pipeline_working_dir, ".done")

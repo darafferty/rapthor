@@ -215,6 +215,9 @@ Only after equivalence, public route cutover, and CWL runtime removal.
   module loggers.
 - Replaced the remaining backend-style `uses_python_flow()` test hook with an
   explicit `render_static_cwl_templates` flag for preserved CWL parity fixtures.
+- Removed unused legacy runtime attributes from the base `Operation`
+  constructor and cleaned the reset-state comment that still referenced Toil
+  jobstores.
 - Review the execution flows, operation adapters, command builders, output
   handling, artifact publication, and tests for duplication introduced during
   the side-by-side migration.
