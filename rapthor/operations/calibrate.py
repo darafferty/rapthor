@@ -11,7 +11,6 @@ from dataclasses import dataclass
 import lsmtool
 import numpy as np
 
-from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.calibrate import calibrate_flow, calibrate_payload_from_inputs
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.cwl import CWLDir, CWLFile
@@ -1031,10 +1030,7 @@ class Calibrate(Operation):
             self.input_parms,
             self.pipeline_working_dir,
         )
-        outputs = calibrate_flow(
-            payload,
-            execution_config=ExecutionConfig.from_parset(self.parset),
-        )
+        outputs = self.run_prefect_flow(calibrate_flow, payload)
         return True, outputs
 
     def finalize(self):

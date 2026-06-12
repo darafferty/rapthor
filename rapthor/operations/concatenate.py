@@ -4,7 +4,6 @@ Module that holds the Concatenate class
 
 import os
 import logging
-from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.concatenate import concatenate_flow, concatenate_payload_from_inputs
 from rapthor.lib.operation import Operation
 from rapthor.lib.cwl import CWLDir
@@ -68,10 +67,7 @@ class Concatenate(Operation):
         Execute concatenation through the Prefect flow and return operation outputs.
         """
         payload = concatenate_payload_from_inputs(self.input_parms, self.pipeline_working_dir)
-        outputs = concatenate_flow(
-            payload,
-            execution_config=ExecutionConfig.from_parset(self.parset),
-        )
+        outputs = self.run_prefect_flow(concatenate_flow, payload)
         return True, outputs
 
     def finalize(self):

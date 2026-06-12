@@ -154,6 +154,14 @@ class Operation(object):
             return None
         return self.parset["cluster_specific"]["max_cores"]
 
+    def run_prefect_flow(self, flow, payload):
+        """
+        Execute a Prefect flow with the operation's parset-derived runtime config.
+        """
+        from rapthor.execution.config import ExecutionConfig
+
+        return flow(payload, execution_config=ExecutionConfig.from_parset(self.parset))
+
     def set_parset_parameters(self):
         """
         Define parameters needed for the operation.

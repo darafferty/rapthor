@@ -206,6 +206,8 @@ Only after equivalence, public route cutover, and CWL runtime removal.
 - Started with a low-risk cleanup of operation-adapter and mocked integration
   test docstrings so they describe the Prefect/Dask runtime rather than the
   removed CWL production runtime.
+- Continued by consolidating repeated operation-adapter flow execution through
+  the base `Operation.run_prefect_flow()` helper.
 - Review the execution flows, operation adapters, command builders, output
   handling, artifact publication, and tests for duplication introduced during
   the side-by-side migration.

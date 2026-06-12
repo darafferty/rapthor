@@ -5,7 +5,6 @@ Module that holds the Mosaic class
 import os
 import logging
 import shutil
-from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.mosaic import mosaic_flow, mosaic_payload_from_inputs
 from rapthor.lib.operation import Operation
 from rapthor.lib.cwl import CWLFile
@@ -124,10 +123,7 @@ class Mosaic(Operation):
             self.pipeline_working_dir,
             compress_images=self.field.compress_images,
         )
-        outputs = mosaic_flow(
-            payload,
-            execution_config=ExecutionConfig.from_parset(self.parset),
-        )
+        outputs = self.run_prefect_flow(mosaic_flow, payload)
         return True, outputs
 
     def finalize(self):

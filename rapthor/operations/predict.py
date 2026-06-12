@@ -6,7 +6,6 @@ import os
 import logging
 import re
 from losoto.h5parm import h5parm
-from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.predict import predict_flow, predict_payload_from_inputs
 from rapthor.lib.operation import Operation
 from rapthor.lib.cwl import CWLFile, CWLDir
@@ -123,10 +122,7 @@ class Predict(Operation):
             self.input_parms,
             self.pipeline_working_dir,
         )
-        outputs = predict_flow(
-            payload,
-            execution_config=ExecutionConfig.from_parset(self.parset),
-        )
+        outputs = self.run_prefect_flow(predict_flow, payload)
         return True, outputs
 
     def _collect_sector_parameters(self, sectors):

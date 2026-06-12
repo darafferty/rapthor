@@ -18,6 +18,7 @@ def _operation_parset(tmp_path):
             "debug_workflow": False,
             "keep_temporary_files": False,
             "max_nodes": 1,
+            "max_cores": 4,
             "batch_system": "single_machine",
             "cpus_per_task": 1,
             "mem_per_node_gb": 1,
@@ -96,6 +97,33 @@ def test_base_operation_requires_prefect_execute_workflow(tmp_path):
 
     assert json.loads(Path(operation.pipeline_inputs_file).read_text()) == {}
     assert not Path(operation.pipeline_parset_file).exists()
+
+
+def test_flow_max_cores_uses_cluster_hint_for_non_slurm(tmp_path):
+    operation = Operation(FieldStub(_operation_parset(tmp_path)), name="Base")
+
+    assert operation.flow_max_cores() == 4
+
+
+def test_flow_max_cores_omits_hint_for_slurm(tmp_path):
+    parset = _operation_parset(tmp_path)
+    parset["cluster_specific"]["batch_system"] = "slurm"
+    operation = Operation(FieldStub(parset), name="Base")
+
+    assert operation.flow_max_cores() is None
+
+
+def test_run_prefect_flow_passes_parset_execution_config(tmp_path):
+    parset = _operation_parset(tmp_path)
+    parset["cluster_specific"]["prefect_task_runner"] = "sync"
+    operation = Operation(FieldStub(parset), name="Base")
+    payload = {"input": "value"}
+
+    def fake_flow(payload_arg, *, execution_config):
+        assert payload_arg is payload
+        return {"task_runner": execution_config.task_runner}
+
+    assert operation.run_prefect_flow(fake_flow, payload) == {"task_runner": "sync"}
 
 
 def test_finalize_marks_operation_done(tmp_path):

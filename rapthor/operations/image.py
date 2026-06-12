@@ -10,7 +10,6 @@ from typing import List, Union
 
 import numpy as np
 
-from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.image import image_flow, image_payload_from_inputs
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.cwl import CWLDir, CWLFile
@@ -634,10 +633,7 @@ class Image(Operation):
             normalize_flux_scale=self.normalize_flux_scale,
             use_mpi=self.field.use_mpi,
         )
-        outputs = image_flow(
-            payload,
-            execution_config=ExecutionConfig.from_parset(self.parset),
-        )
+        outputs = self.run_prefect_flow(image_flow, payload)
         return True, outputs
 
     def finalize(self):
