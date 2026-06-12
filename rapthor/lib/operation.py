@@ -86,6 +86,7 @@ class Operation(object):
         self.subpipeline_parset_file = os.path.join(
             self.pipeline_working_dir, "subpipeline_parset.cwl"
         )
+        self.render_static_cwl_templates = False
         self.pipeline_inputs_file = os.path.join(self.pipeline_working_dir, "pipeline_inputs.json")
         self.pipeline_outputs_file = os.path.join(
             self.pipeline_working_dir, "pipeline_outputs.json"
@@ -134,15 +135,6 @@ class Operation(object):
             self.container = None
         self.outputs = {}
 
-    def uses_python_flow(self):
-        """
-        Return True when this operation executes through a Python flow.
-
-        The choice is intentionally owned by the operation class, not exposed as a
-        user-facing mixed-backend selector.
-        """
-        return True
-
     def flow_max_cores(self):
         """
         Return the max_cores hint used by flow-backed operation payloads.
@@ -175,6 +167,20 @@ class Operation(object):
 
         return flow(payload, execution_config=ExecutionConfig.from_parset(self.parset))
 
+    def render_static_cwl_template_files(self):
+        """
+        Render preserved CWL templates for static parity tests.
+        """
+        pipeline_parset_template = env_parset.get_template(self.pipeline_parset_template)
+        tmp = pipeline_parset_template.render(self.parset_parms)
+        with open(self.pipeline_parset_file, "w") as f:
+            f.write(tmp)
+        if self.subpipeline_parset_template is not None:
+            subpipeline_parset_template = env_parset.get_template(self.subpipeline_parset_template)
+            tmp = subpipeline_parset_template.render(self.parset_parms)
+            with open(self.subpipeline_parset_file, "w") as f:
+                f.write(tmp)
+
     def set_parset_parameters(self):
         """
         Define parameters needed for the operation.
@@ -205,19 +211,8 @@ class Operation(object):
         tests only, can still render a preserved CWL template.
         """
         self.set_parset_parameters()
-        if not self.uses_python_flow():
-            # Fill the parset template and save to a file
-            self.pipeline_parset_template = env_parset.get_template(self.pipeline_parset_template)
-            tmp = self.pipeline_parset_template.render(self.parset_parms)
-            with open(self.pipeline_parset_file, "w") as f:
-                f.write(tmp)
-            if self.subpipeline_parset_template is not None:
-                self.subpipeline_parset_template = env_parset.get_template(
-                    self.subpipeline_parset_template
-                )
-                tmp = self.subpipeline_parset_template.render(self.parset_parms)
-                with open(self.subpipeline_parset_file, "w") as f:
-                    f.write(tmp)
+        if self.render_static_cwl_templates:
+            self.render_static_cwl_template_files()
 
         # Save the workflow inputs to a file
         self.set_input_parameters()

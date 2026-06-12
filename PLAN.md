@@ -213,6 +213,8 @@ Only after equivalence, public route cutover, and CWL runtime removal.
 - Consolidated repeated base flow parset keys through
   `Operation.flow_parset_parameters()` and removed unused concatenate/mosaic
   module loggers.
+- Replaced the remaining backend-style `uses_python_flow()` test hook with an
+  explicit `render_static_cwl_templates` flag for preserved CWL parity fixtures.
 - Review the execution flows, operation adapters, command builders, output
   handling, artifact publication, and tests for duplication introduced during
   the side-by-side migration.

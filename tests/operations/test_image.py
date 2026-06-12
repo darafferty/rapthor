@@ -146,7 +146,7 @@ def _initialize_operation(
     # A small number of tests still render preserved CWL templates as static
     # parity fixtures. Production execution remains Prefect/Dask.
     if render_static_cwl:
-        operation.uses_python_flow = lambda: False
+        operation.render_static_cwl_templates = True
     if do_predict is not None:
         operation.do_predict = do_predict
     if apply_none is not None:
