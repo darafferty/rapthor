@@ -1178,9 +1178,7 @@ def test_calibrate_command_builders_create_cwl_equivalent_tokens():
         "fulljones_solutions.h5",
         "phase",
     ]
-    assert build_plot_solutions_command(
-        "fulljones_solutions.h5", "phase", first_dir=True
-    ) == [
+    assert build_plot_solutions_command("fulljones_solutions.h5", "phase", first_dir=True) == [
         "plotrapthor",
         "fulljones_solutions.h5",
         "phase",
