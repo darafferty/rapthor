@@ -1,8 +1,4 @@
-from pathlib import Path
-import rapthor
 import pytest
-import yaml
-from jinja2 import Environment, FileSystemLoader
 
 
 @pytest.fixture
@@ -39,7 +35,7 @@ def operation_parset(tmp_path):
 @pytest.fixture
 def expected_image_output():
     """
-    Fixture which provides the expected output structure for CWL execution
+    Fixture which provides the expected output structure for the mocked image flow
     of an image step in the non-last cycle.
     """
     return {
@@ -63,7 +59,7 @@ def expected_image_output():
 @pytest.fixture
 def expected_image_output_last_cycle():
     """
-    Fixture which provides the expected output structure for CWL execution
+    Fixture which provides the expected output structure for the mocked image flow
     of the image step in the last cycle.
     """
     return {
@@ -100,19 +96,3 @@ def expected_image_output_last_cycle():
             ]
         ],
     }
-
-
-def get_cwl_input_ids(template_name: str, parset_parms: dict) -> set:
-    """
-    Helper function to render a CWL pipeline template with given parset_parms and return
-    the set of input IDs declared in the rendered workflow.
-    """
-    pipeline_parsets_dir = Path(rapthor.__file__).parent / "pipeline" / "parsets"
-    env = Environment(loader=FileSystemLoader(str(pipeline_parsets_dir)))
-    template = env.get_template(template_name)
-    rendered = template.render(parset_parms)
-    cwl = yaml.safe_load(rendered)
-    inputs = cwl.get("inputs", [])
-    if isinstance(inputs, list):
-        return {inp["id"] for inp in inputs}
-    return set(inputs.keys())

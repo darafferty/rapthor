@@ -232,6 +232,8 @@ Only after equivalence, public route cutover, and CWL runtime removal.
   static template names are now derived locally or set explicitly.
 - Removed the remaining operation-level CWL template names and moved the CWL
   template environment into the static CWL tests that still need it.
+- Replaced operation-level input coverage tests that rendered CWL templates with
+  explicit Prefect flow payload contracts for calibration and prediction.
 - Review the execution flows, operation adapters, command builders, output
   handling, artifact publication, and tests for duplication introduced during
   the side-by-side migration.

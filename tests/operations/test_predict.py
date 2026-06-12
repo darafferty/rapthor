@@ -6,7 +6,39 @@ from pathlib import Path
 import pytest
 import rapthor
 from rapthor.operations.predict import Predict
-from tests.operations.conftest import get_cwl_input_ids
+
+PREDICT_COMMON_INPUT_KEYS = {
+    "sector_filename",
+    "data_colname",
+    "sector_starttime",
+    "sector_ntimes",
+    "sector_model_filename",
+    "sector_skymodel",
+    "sector_patches",
+    "h5parm",
+    "normalize_h5parm",
+    "dp3_applycal_steps",
+    "onebeamperpatch",
+    "sagecalpredict",
+    "obs_filename",
+    "obs_starttime",
+    "obs_infix",
+    "correctfreqsmearing",
+    "correcttimesmearing",
+    "max_threads",
+}
+
+PREDICT_DD_INPUT_KEYS = {
+    "obs_solint_sec",
+    "obs_solint_hz",
+    "min_uv_lambda",
+    "max_uv_lambda",
+    "nr_outliers",
+    "peel_outliers",
+    "nr_bright",
+    "peel_bright",
+    "reweight",
+}
 
 
 @pytest.fixture
@@ -105,20 +137,18 @@ class TestPredict:
         predict = Predict(mode=mode, field=predict_field, index=1)
         predict.set_input_parameters()
 
-        rapthor_pipeline_dir = str(Path(rapthor.__file__).parent / "pipeline")
-        template_parset_parms = {
-            "reweight": reweight,
-            "peel_outliers": peel_outliers,
-            "peel_bright_sources": peel_bright_sources,
-            "max_cores": None,
-            "rapthor_pipeline_dir": rapthor_pipeline_dir,
-        }
-        cwl_file = "predict_pipeline.cwl" if mode == "dd" else "predict_di_pipeline.cwl"
-        expected_cwl_ids = get_cwl_input_ids(cwl_file, template_parset_parms)
         input_parms_keys = set(predict.input_parms.keys())
-        assert expected_cwl_ids.issubset(input_parms_keys), (
-            f"input_parms is missing CWL inputs: {expected_cwl_ids - input_parms_keys}"
-        )
+        expected_keys = set(PREDICT_COMMON_INPUT_KEYS)
+        if mode == "dd":
+            expected_keys.update(PREDICT_DD_INPUT_KEYS)
+        assert input_parms_keys == expected_keys
+
+        if mode == "dd":
+            assert predict.input_parms["reweight"] is reweight
+            assert predict.input_parms["peel_outliers"] is peel_outliers
+            assert predict.input_parms["peel_bright"] is peel_bright_sources
+        else:
+            assert PREDICT_DD_INPUT_KEYS.isdisjoint(input_parms_keys)
 
     @pytest.mark.parametrize(
         "apply_amplitudes, apply_normalizations, expected_steps, expect_normalize_h5parm",

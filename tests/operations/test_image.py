@@ -849,7 +849,7 @@ class TestImage:
         self, field, h5parm_file, monkeypatch, expected_image_output
     ):
         """
-        Test that running an image operation with mocked CWL execution
+        Test that running an image operation with a mocked image flow
         sets sector.I_mask_file to the correct value when use_clean_mask
         is set to True in the parset.
         """
@@ -871,7 +871,7 @@ class TestImage:
     ):
         """
         Test that a second image operation uses the mask from the first one.
-        The first image operation mocks CWL execution, and the second one checks
+        The first image operation mocks the image flow, and the second one checks
         that previous_mask_filename is set correctly in input_parms.
         """
         field.parset["imaging_specific"]["use_clean_mask"] = use_clean_mask

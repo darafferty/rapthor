@@ -9,7 +9,128 @@ import pytest
 import rapthor
 from rapthor.lib.operation import DIR as OPERATION_DIR
 from rapthor.operations.calibrate import Calibrate
-from tests.operations.conftest import get_cwl_input_ids
+
+CALIBRATE_COMMON_INPUT_KEYS = {
+    "timechunk_filename",
+    "data_colname",
+    "modeldatacolumn",
+    "calibration_skymodel_file",
+    "starttime",
+    "ntimes",
+    "do_slowgain_solve",
+    "bda_maxinterval",
+    "bda_minchannels",
+    "bda_timebase",
+    "bda_frequencybase",
+    "onebeamperpatch",
+    "parallelbaselines",
+    "sagecalpredict",
+    "normalize_h5parm",
+    "ddecal_applycal_steps",
+    "applycal_steps",
+    "applycal_h5parm",
+    "fulljones_h5parm",
+    "fast_initialsolutions_h5parm",
+    "medium1_initialsolutions_h5parm",
+    "solve3_initialsolutions_h5parm",
+    "solve4_initialsolutions_h5parm",
+    "combined_solve1_solve2_h5parm",
+    "combined_solve1_solve2_solve4_h5parm",
+    "combined_h5parms",
+    "sector_bounds_deg",
+    "sector_bounds_mid_deg",
+    "calibrator_patch_names",
+    "solve_directions",
+    "calibrator_fluxes",
+    "dp3_steps",
+    "max_normalization_delta",
+    "scale_normalization_delta",
+    "phase_center_ra",
+    "phase_center_dec",
+    "llssolver",
+    "maxiter",
+    "propagatesolutions",
+    "solveralgorithm",
+    "stepsize",
+    "stepsigma",
+    "tolerance",
+    "uvlambdamin",
+    "solverlbfgs_dof",
+    "solverlbfgs_iter",
+    "solverlbfgs_minibatches",
+    "solve1_antennaconstraint",
+    "solve2_antennaconstraint",
+    "solve3_antennaconstraint",
+    "solve4_antennaconstraint",
+    "solve1_smoothnessreffrequency",
+    "solve2_smoothnessreffrequency",
+    "solve4_smoothnessreffrequency",
+    "solution_combine_mode",
+    "correctfreqsmearing",
+    "correcttimesmearing",
+    "max_threads",
+}
+
+CALIBRATE_DD_INPUT_KEYS = {
+    "generate_screens",
+    "solint_fast_timestep",
+    "solint_medium_timestep",
+    "solint_slow_timestep",
+    "solint_fast_freqstep",
+    "solint_medium_freqstep",
+    "solint_slow_freqstep",
+    "model_image_root",
+    "model_image_ra_dec",
+    "model_image_imsize",
+    "model_image_cellsize",
+    "model_image_frequency_bandwidth",
+    "num_spectral_terms",
+    "ra_mid",
+    "dec_mid",
+    "facet_region_width_ra",
+    "facet_region_width_dec",
+    "facet_region_file",
+    "solve1_smoothnessrefdistance",
+    "solve2_smoothnessrefdistance",
+    "solve4_smoothnessrefdistance",
+    "bda_maxinterval",
+    "bda_minchannels",
+    "bda_timebase",
+    "bda_frequencybase",
+    "output_idgcal_h5parm",
+    "idgcal_antennaconstraint",
+}
+
+CALIBRATE_DI_INPUT_KEYS = {
+    "solint_fast_timestep",
+    "solint_fast_freqstep",
+    "solint_slow_timestep",
+    "solint_slow_freqstep",
+    "smoothnessconstraint_fulljones",
+    "solve3_smoothnessreffrequency",
+    "solve1_smoothnessrefdistance",
+    "solve2_smoothnessrefdistance",
+    "solve4_smoothnessrefdistance",
+}
+
+
+def _calibrate_solve_input_keys():
+    keys = set()
+    for slot in range(1, 5):
+        keys.update(
+            {
+                f"output_solve{slot}_h5parm",
+                f"collected_solve{slot}_h5parm",
+                f"solve{slot}_mode",
+                f"solint_solve{slot}_timestep",
+                f"solint_solve{slot}_freqstep",
+                f"solve{slot}_datause",
+                f"solve{slot}_solutions_per_direction",
+                f"solve{slot}_smoothness_dd_factors",
+                f"solve{slot}_smoothnessconstraint",
+            }
+        )
+    return keys
 
 
 @pytest.fixture
@@ -656,8 +777,8 @@ class TestCalibrate:
         do_slowgain_solve,
     ):
         """
-        Test that set_input_parameters() provides exactly the inputs declared in the CWL
-        template, for all flag combinations of Calibrate(mode="dd") and for Calibrate(mode="di").
+        Test that set_input_parameters() provides the inputs needed by the
+        calibration flow for representative DD flag combinations and DI mode.
         """
         field = calibrate_field
         field.generate_screens = generate_screens
@@ -667,36 +788,21 @@ class TestCalibrate:
         calibrate = Calibrate(mode=mode, field=calibrate_field, index=1 if mode == "dd" else 2)
         calibrate.set_input_parameters()
 
-        rapthor_pipeline_dir = str(Path(rapthor.__file__).parent / "pipeline")
+        expected_input_keys = CALIBRATE_COMMON_INPUT_KEYS | _calibrate_solve_input_keys()
         if mode == "dd":
-            resolved_use_image_based_predict = (
-                field.generate_screens or field.use_image_based_predict
-            )
-            template_parset_parms = {
-                "use_image_based_predict": resolved_use_image_based_predict,
-                "generate_screens": field.generate_screens,
-                "do_slowgain_solve": field.do_slowgain_solve,
-                "max_cores": None,
-                "rapthor_pipeline_dir": rapthor_pipeline_dir,
-            }
-            expected_cwl_ids = get_cwl_input_ids("calibrate_pipeline.cwl", template_parset_parms)
+            expected_input_keys |= CALIBRATE_DD_INPUT_KEYS
         else:
-            resolved_use_image_based_predict = (
-                field.generate_screens or field.use_image_based_predict
-            )
-            template_parset_parms = {
-                "use_image_based_predict": resolved_use_image_based_predict,
-                "generate_screens": field.generate_screens,
-                "do_slowgain_solve": field.do_slowgain_solve,
-                "max_cores": None,
-                "rapthor_pipeline_dir": rapthor_pipeline_dir,
-            }
-            expected_cwl_ids = get_cwl_input_ids("calibrate_pipeline.cwl", template_parset_parms)
+            expected_input_keys |= CALIBRATE_DI_INPUT_KEYS
 
         input_parms_keys = set(calibrate.input_parms.keys())
-        assert expected_cwl_ids.issubset(input_parms_keys), (
-            f"input_parms is missing CWL inputs: {expected_cwl_ids - input_parms_keys}"
+        assert expected_input_keys.issubset(input_parms_keys), (
+            f"input_parms is missing flow inputs: {expected_input_keys - input_parms_keys}"
         )
+        assert calibrate.input_parms["do_slowgain_solve"] is do_slowgain_solve
+        if mode == "dd":
+            assert calibrate.input_parms["generate_screens"] is generate_screens
+        else:
+            assert "generate_screens" not in input_parms_keys
 
     # special cases for dd
     @pytest.mark.parametrize(
