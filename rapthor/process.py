@@ -33,10 +33,11 @@ def run(parset_file, logging_level="info"):
 
 def run_steps(field, steps, final=False):
     """
-    Runs the steps in a reduction
+    Run one group of processing steps through the Prefect process-step scheduler.
 
-    This function runs the operations in the correct order and handles all the
-    bookkeeping for the processing
+    The public helper remains here for compatibility with older callers and
+    tests, but operation ordering now lives in
+    ``rapthor.execution.flows.process.run_process_steps``.
 
     Parameters
     ----------
@@ -47,114 +48,16 @@ def run_steps(field, steps, final=False):
     final : bool, optional
         If True, process as the final pass
     """
-    # Run the self calibration part of the strategy (if any)
-    for index, step in enumerate(steps):
-        # Update the field object for the current step
-        cycle_number = index + field.cycle_number
-        field.update(step, cycle_number, final=final)
+    from rapthor.execution.flows.process import ProcessOperationFactories, run_process_steps
 
-        # Calibrate
-        if field.do_calibrate:
-            # Set whether screens should be generated
-            field.generate_screens = (field.dde_mode == "hybrid") and final
-            for mode, enabled in _do_calibrate_mode(field.calibration_strategy).items():
-                if not enabled:
-                    continue
-                if mode == "di":
-                    Predict("di", field, cycle_number).run()
-                Calibrate(mode, field, cycle_number).run()
-
-        # Predict and subtract the sector models
-        # Note: DD predict is not yet supported when screens are used
-        if field.do_predict and not field.generate_screens:
-            op = Predict("dd", field, cycle_number)
-            op.run()
-
-        # Image and mosaic the sectors
-        if field.do_image:
-            # Normalize the flux scale
-            if field.do_normalize:
-                # Define sector and set the Stokes polarization to I
-                field.define_normalize_sector()
-                field.image_pol = "I"
-
-                op = ImageNormalize(field, cycle_number)
-                op.run()
-
-            # Set the Stokes polarizations for imaging
-            field.image_pol = "IQUV" if (field.make_quv_images and final) else "I"
-
-            # Set whether clean should be disabled. For now, it can only be disabled
-            # when full-Stokes imaging is done
-            field.disable_clean = field.image_pol == "IQUV" and field.disable_iquv_clean
-
-            # Set whether an image-frequency cube should be made
-            field.make_image_cube = field.save_image_cube and final
-            field.image_cube_stokes_list = [
-                pol for pol in field.image_cube_stokes_list if pol.upper() in field.image_pol
-            ]
-
-            # Set whether screens should be applied
-            field.apply_screens = (field.dde_mode == "hybrid") and final
-
-            # Set whether the final major iteration is skipped (note: it is
-            # never skipped for the final iteration)
-            field.skip_final_major_iteration = (
-                False if final else field.parset["imaging_specific"]["skip_final_major_iteration"]
-            )
-
-            op = Image(field, cycle_number)
-            op.run()
-
-            op = Mosaic(field, cycle_number)
-            op.run()
-
-        # Check for selfcal convergence/divergence
-        if field.do_check and not final:
-            log.info("Checking selfcal convergence...")
-            selfcal_state = field.check_selfcal_progress()
-            if not any(selfcal_state):
-                # Continue selfcal
-                log.info(
-                    "Improvement in image noise, dynamic range, and/or number "
-                    "of sources exceeds that set by the convergence ratio of "
-                    "%.2f.",
-                    field.convergence_ratio,
-                )
-                log.info("Continuing selfcal...")
-            else:
-                # Stop selfcal
-                if selfcal_state.converged:
-                    log.info(
-                        "Selfcal has converged (improvement in image noise, "
-                        "dynamic range, and number of sources does not exceed "
-                        "that set by the convergence ratio of %.2f)",
-                        field.convergence_ratio,
-                    )
-                if selfcal_state.diverged:
-                    log.warning(
-                        "Selfcal has diverged (ratio of current image noise "
-                        "to previous value is > %.2f)",
-                        field.divergence_ratio,
-                    )
-
-                if selfcal_state.failed:
-                    log.warning(
-                        "Selfcal has failed due to high noise (ratio of current"
-                        " image noise to theoretical value is > %.2f)",
-                        field.failure_ratio,
-                    )
-                log.info(
-                    "Stopping selfcal at cycle %i of %i",
-                    cycle_number,
-                    len(steps),
-                )
-                break
-        else:
-            selfcal_state = None
-
-    field.selfcal_state = selfcal_state
-    field.cycle_number = cycle_number
+    factories = ProcessOperationFactories(
+        predict=Predict,
+        calibrate=Calibrate,
+        image=Image,
+        mosaic=Mosaic,
+        image_normalize=ImageNormalize,
+    )
+    return run_process_steps(field, steps, final=final, operation_factories=factories)
 
 
 def do_final_pass(field, selfcal_steps, final_step):
@@ -402,17 +305,13 @@ def make_report(field, outfile=None):
 
 def _do_calibrate_mode(calibration_strategy):
     """
-    Helper function determine whether or not to do DI and/or DD calibration
+    Determine whether DI and/or DD calibration is enabled.
 
     Parameters
     ----------
     calibration_strategy : dict
         The calibration strategy for this run
     """
-    supported_calibration_modes = ["di", "dd"]
-    if not any(mode in calibration_strategy for mode in supported_calibration_modes):
-        raise ValueError(
-            f"Calibration strategy {calibration_strategy} does not contain any of the "
-            f"calibration modes {supported_calibration_modes}"
-        )
-    return {mode: bool(calibration_strategy.get(mode, [])) for mode in calibration_strategy.keys()}
+    from rapthor.execution.flows.process import _do_calibrate_mode as process_do_calibrate_mode
+
+    return process_do_calibrate_mode(calibration_strategy)

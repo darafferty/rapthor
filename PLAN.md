@@ -237,6 +237,9 @@ Only after equivalence, public route cutover, and CWL runtime removal.
 - Cleaned operation tests by renaming image-flow mocks, removing retired cluster
   settings from local fixtures, and replacing placeholder concatenate/initial
   image tests with real adapter assertions.
+- Deduplicated the public `rapthor.process.run_steps()` compatibility helper by
+  delegating to the Prefect process-step scheduler while preserving the
+  monkeypatchable operation constructors used by tests.
 - Review the execution flows, operation adapters, command builders, output
   handling, artifact publication, and tests for duplication introduced during
   the side-by-side migration.
