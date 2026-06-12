@@ -68,14 +68,13 @@ def _operation(tmp_path, **kwargs):
     return RecordingOperation(FieldStub(_operation_parset(tmp_path)), **kwargs)
 
 
-def test_setup_writes_python_flow_inputs_without_rendering_cwl(tmp_path):
+def test_setup_writes_python_flow_inputs(tmp_path):
     operation = _operation(tmp_path)
 
     operation.setup()
 
     assert operation.calls == ["set_parset_parameters", "set_input_parameters"]
     assert json.loads(Path(operation.pipeline_inputs_file).read_text()) == {"input": "value"}
-    assert not Path(operation.pipeline_parset_file).exists()
 
 
 def test_base_operation_requires_prefect_execute_workflow(tmp_path):
@@ -85,7 +84,6 @@ def test_base_operation_requires_prefect_execute_workflow(tmp_path):
         operation.run()
 
     assert json.loads(Path(operation.pipeline_inputs_file).read_text()) == {}
-    assert not Path(operation.pipeline_parset_file).exists()
 
 
 def test_flow_max_cores_uses_cluster_hint_for_non_slurm(tmp_path):

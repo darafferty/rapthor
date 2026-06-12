@@ -110,10 +110,6 @@ def _field(tmp_path, sector_count=2, **kwargs):
     return FieldStub(tmp_path, sectors, **kwargs)
 
 
-def test_mosaic_does_not_render_static_cwl_by_default(tmp_path):
-    assert Mosaic(_field(tmp_path), index=1).render_static_cwl_templates is False
-
-
 @pytest.mark.parametrize(
     "batch_system, expected_max_cores",
     [

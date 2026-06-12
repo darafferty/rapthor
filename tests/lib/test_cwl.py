@@ -7,6 +7,7 @@ import subprocess
 from pathlib import Path
 
 import pytest
+from jinja2 import Environment, FileSystemLoader
 
 from rapthor.lib.cwl import (
     clean_if_cwl_file_or_directory,
@@ -16,9 +17,10 @@ from rapthor.lib.cwl import (
     is_cwl_file,
     is_cwl_file_or_directory,
 )
-from rapthor.lib.operation import DIR, env_parset
+from rapthor.lib.operation import DIR
 
 PIPELINE_PATH = Path(DIR, "..", "pipeline").resolve()
+PARSET_TEMPLATE_ENV = Environment(loader=FileSystemLoader(PIPELINE_PATH / "parsets"))
 
 
 def generate_keyword_combinations(params_pool):
@@ -116,7 +118,7 @@ def test_concatenate_workflow(
     template. Parameters were taken from `Concatenate.set_parset_parameters()`.
     """
     operation = "concatenate"
-    templ = env_parset.get_template("concatenate_pipeline.cwl")
+    templ = PARSET_TEMPLATE_ENV.get_template("concatenate_pipeline.cwl")
     parms = {
         "max_cores": max_cores,
     }
@@ -140,7 +142,7 @@ def test_calibrate_workflow(
     Parameters were taken from `CalibrateDD.set_parset_parameters()`.
     """
     operation = "calibrate"
-    templ = env_parset.get_template("calibrate_pipeline.cwl")
+    templ = PARSET_TEMPLATE_ENV.get_template("calibrate_pipeline.cwl")
     parms = {
         "use_image_based_predict": use_image_based_predict or generate_screens,
         "do_slowgain_solve": do_slowgain_solve,
@@ -155,7 +157,7 @@ def test_calibrate_workflow_uses_inputs_slowgain_in_when_clauses(
     tmp_path,
     do_slowgain_solve,
 ):
-    templ = env_parset.get_template("calibrate_pipeline.cwl")
+    templ = PARSET_TEMPLATE_ENV.get_template("calibrate_pipeline.cwl")
     parset_path = create_parsets(
         tmp_path / "pipelines" / "calibrate",
         {
@@ -186,7 +188,7 @@ def test_calibrate_di_workflow(
     template. Parameters were taken from `CalibrateDI.set_parset_parameters()`.
     """
     operation = "calibrate_di"
-    template = env_parset.get_template("calibrate_di_pipeline.cwl")
+    template = PARSET_TEMPLATE_ENV.get_template("calibrate_di_pipeline.cwl")
     parms = {
         "max_cores": max_cores,
     }
@@ -201,7 +203,7 @@ def test_predict_workflow(tmp_path, max_cores):
     Parameters were taken from `PredictDD.set_parset_parameters()`.
     """
     operation = "predict"
-    template = env_parset.get_template("predict_pipeline.cwl")
+    template = PARSET_TEMPLATE_ENV.get_template("predict_pipeline.cwl")
     parms = {
         "max_cores": max_cores,
     }
@@ -216,7 +218,7 @@ def test_predict_di_workflow(tmp_path, max_cores):
     Parameters were taken from `PredictDI.set_parset_parameters()`.
     """
     operation = "predict_di"
-    template = env_parset.get_template("predict_di_pipeline.cwl")
+    template = PARSET_TEMPLATE_ENV.get_template("predict_di_pipeline.cwl")
     parms = {
         "max_cores": max_cores,
     }
@@ -225,8 +227,8 @@ def test_predict_di_workflow(tmp_path, max_cores):
 
 class TestImageWorkflow:
     operation = "image"
-    template = env_parset.get_template("image_pipeline.cwl")
-    sub_template = env_parset.get_template("image_sector_pipeline.cwl")
+    template = PARSET_TEMPLATE_ENV.get_template("image_pipeline.cwl")
+    sub_template = PARSET_TEMPLATE_ENV.get_template("image_sector_pipeline.cwl")
 
     @pytest.fixture(
         params=generate_keyword_combinations(
@@ -277,8 +279,8 @@ def test_mosaic_workflow(tmp_path, max_cores, skip_processing, compress_images):
     Parameters were taken from `Mosaic.set_parset_parameters()`.
     """
     operation = "mosaic"
-    template = env_parset.get_template("mosaic_pipeline.cwl")
-    sub_template = env_parset.get_template("mosaic_type_pipeline.cwl")
+    template = PARSET_TEMPLATE_ENV.get_template("mosaic_pipeline.cwl")
+    sub_template = PARSET_TEMPLATE_ENV.get_template("mosaic_type_pipeline.cwl")
     parms = {
         "max_cores": max_cores,
         "skip_processing": skip_processing,

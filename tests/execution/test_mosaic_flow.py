@@ -427,7 +427,6 @@ def test_mosaic_operation_run_uses_prefect_flow(
     assert json.loads(Path(operation.outputs_file).read_text()) == expected_outputs
     assert Path(operation.done_file).is_file()
     assert Path(operation.pipeline_inputs_file).is_file()
-    assert not Path(operation.pipeline_parset_file).exists()
     assert field.field_image_filename == str(expected_field_image)
     assert field.field_image_filename_prev is None
     assert expected_field_image.is_file()

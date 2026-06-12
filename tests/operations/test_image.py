@@ -7,7 +7,6 @@ from copy import deepcopy
 from pathlib import Path
 
 import pytest
-import yaml
 
 from rapthor.execution.outputs import file_record
 from rapthor.lib.strategy import set_selfcal_strategy
@@ -137,16 +136,11 @@ def _initialize_operation(
     do_predict=None,
     apply_none=None,
     use_facets=None,
-    render_static_cwl=False,
 ):
     """
     Set parameters for the given operation based on the provided arguments.
     This allows us to customize the operation setup for different test cases.
     """
-    # A small number of tests still render preserved CWL templates as static
-    # parity fixtures. Production execution remains Prefect/Dask.
-    if render_static_cwl:
-        operation.render_static_cwl_templates = True
     if do_predict is not None:
         operation.do_predict = do_predict
     if apply_none is not None:
@@ -296,38 +290,6 @@ class TestImage:
             use_facets=use_facets,
         )
         assert image.input_parms["shared_facet_rw"] is (shared_facet_rw and use_facets)
-
-    @pytest.mark.parametrize("use_mpi", [True, False])
-    @pytest.mark.parametrize("shared_facet_rw", [True, False])
-    def test_shared_facet_rw_in_rendered_workflow(
-        self, field, h5parm_file, use_mpi, shared_facet_rw
-    ):
-        """
-        Test that the shared_facet_rw parameter is correctly included in the
-        rendered CWL workflow for the image step.
-        """
-        field.parset["imaging_specific"]["use_mpi"] = use_mpi
-        field.use_mpi = use_mpi
-        field.parset["imaging_specific"]["shared_facet_rw"] = shared_facet_rw
-        _prepare_field_for_image(field, h5parm_filename=h5parm_file)
-        image = _initialize_operation(
-            Image(field, index=1),
-            do_predict=False,
-            use_facets=True,
-            render_static_cwl=True,
-        )
-        image.setup()  # renders subpipeline_parset.cwl
-
-        with open(image.subpipeline_parset_file) as f:
-            wf = yaml.safe_load(f)
-
-        image_step = next(s for s in wf["steps"] if s["id"] == "image")
-        image_step_inputs = {entry["id"]: entry.get("source") for entry in image_step["in"]}
-
-        assert image_step_inputs.get("name") == "image_name"
-        assert image_step_inputs.get("shared_facet_reads") == "shared_facet_rw"
-        assert image_step_inputs.get("shared_facet_writes") == "shared_facet_rw"
-        assert image.input_parms["shared_facet_rw"] is shared_facet_rw
 
     @pytest.mark.parametrize("solution_attr", ["di_h5parm_filename", "fulljones_h5parm_filename"])
     def test_set_parset_parameters_disables_facets_without_dd_scalar_h5parm(

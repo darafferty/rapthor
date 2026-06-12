@@ -2446,7 +2446,6 @@ def test_image_operation_run_uses_prefect_flow(
     assert json.loads(Path(operation.outputs_file).read_text()) == expected_outputs
     assert Path(operation.done_file).is_file()
     assert Path(operation.pipeline_inputs_file).is_file()
-    assert not Path(operation.pipeline_parset_file).exists()
     assert sector.I_image_file_apparent_sky == str(
         Path(operation.pipeline_working_dir) / "sector_1-MFS-I-image.fits"
     )
@@ -2488,7 +2487,6 @@ def test_bright_peeling_image_operation_run_uses_prefect_flow(
 
     assert operation.outputs == expected_outputs
     assert Path(operation.done_file).is_file()
-    assert not Path(operation.pipeline_parset_file).exists()
     assert len(restore_commands) == 2
     assert all("/data/bright_sources_pb.txt" in command for command in restore_commands)
     assert "--bright_true_sky_skymodel=/data/bright_sources_pb.txt" in filter_command
@@ -2583,7 +2581,6 @@ def test_full_stokes_image_operation_run_uses_prefect_flow(
     assert json.loads(Path(operation.outputs_file).read_text()) == expected_outputs
     assert Path(operation.done_file).is_file()
     assert Path(operation.pipeline_inputs_file).is_file()
-    assert not Path(operation.pipeline_parset_file).exists()
     assert sector.I_image_file_apparent_sky == str(
         Path(operation.pipeline_working_dir) / "sector_1-MFS-image.fits"
     )
@@ -2639,7 +2636,6 @@ def test_compressed_image_operation_run_uses_prefect_flow(
     assert json.loads(Path(operation.outputs_file).read_text()) == expected_outputs
     assert Path(operation.done_file).is_file()
     assert Path(operation.pipeline_inputs_file).is_file()
-    assert not Path(operation.pipeline_parset_file).exists()
     assert sector.I_image_file_apparent_sky == str(pipeline_dir / "sector_1-MFS-I-image.fits.fz")
     assert sector.I_image_file_true_sky == str(pipeline_dir / "sector_1-MFS-I-image-pb.fits.fz")
     assert sector.I_model_file_true_sky == str(pipeline_dir / "sector_1-MFS-I-model-pb.fits.fz")
@@ -2696,7 +2692,6 @@ def test_clean_disabled_image_operation_run_uses_prefect_flow(
     assert json.loads(Path(operation.outputs_file).read_text()) == expected_outputs
     assert Path(operation.done_file).is_file()
     assert Path(operation.pipeline_inputs_file).is_file()
-    assert not Path(operation.pipeline_parset_file).exists()
     assert wsclean_command[wsclean_command.index("-niter") + 1] == "0"
     assert sector.I_image_file_apparent_sky == str(
         Path(operation.pipeline_working_dir) / "sector_1-MFS-I-image.fits"
@@ -2741,7 +2736,6 @@ def test_facet_image_operation_run_uses_prefect_flow(
 
     assert operation.outputs == expected_outputs
     assert Path(operation.done_file).is_file()
-    assert not Path(operation.pipeline_parset_file).exists()
     assert make_region_command[1] == "/data/calibration.skymodel"
     assert "-apply-facet-beam" in wsclean_command
     assert "-apply-facet-solutions" in wsclean_command
@@ -2782,7 +2776,6 @@ def test_screen_image_operation_run_uses_prefect_flow(
 
     assert operation.outputs == expected_outputs
     assert Path(operation.done_file).is_file()
-    assert not Path(operation.pipeline_parset_file).exists()
     assert "-aterm-config" in wsclean_command
     assert wsclean_command[wsclean_command.index("-aterm-config") + 1] == ATERM_CONFIG_FILENAME
     assert (Path(operation.pipeline_working_dir) / ATERM_CONFIG_FILENAME).is_file()
@@ -2813,7 +2806,6 @@ def test_image_cube_operation_run_uses_prefect_flow(
 
     assert operation.outputs == expected_outputs
     assert Path(operation.done_file).is_file()
-    assert not Path(operation.pipeline_parset_file).exists()
     assert make_cube_command[2] == "sector_1_I_freq_cube.fits"
     assert (image_dir / "sector_1_I_freq_cube.fits").is_file()
     assert (image_dir / "sector_1_I_freq_cube.fits_beams.txt").is_file()
@@ -2844,7 +2836,6 @@ def test_normalize_image_operation_run_uses_prefect_flow(
     assert operation.outputs == expected_outputs
     assert json.loads(Path(operation.outputs_file).read_text()) == expected_outputs
     assert Path(operation.done_file).is_file()
-    assert not Path(operation.pipeline_parset_file).exists()
     assert "make_image_cube.py" in command_names
     assert "make_catalog_from_image_cube.py" in command_names
     assert "normalize_flux_scale.py" in command_names
@@ -2880,7 +2871,6 @@ def test_mpi_image_operation_run_uses_prefect_flow(
 
     assert operation.outputs == expected_outputs
     assert Path(operation.done_file).is_file()
-    assert not Path(operation.pipeline_parset_file).exists()
     assert "wsclean-mp" in mpi_command
     assert mpi_command[mpi_command.index("-np") + 1] == "2"
 
@@ -2913,7 +2903,6 @@ def test_previous_mask_image_operation_run_uses_prefect_flow(
 
     assert operation.outputs == expected_outputs
     assert Path(operation.done_file).is_file()
-    assert not Path(operation.pipeline_parset_file).exists()
     assert blank_command[2] == str(previous_mask)
     assert sector.I_mask_file == str(mask_dir / "sector_1-MFS-I-image-pb.fits.mask.fits")
     assert (mask_dir / "sector_1-MFS-I-image-pb.fits.mask.fits").is_file()

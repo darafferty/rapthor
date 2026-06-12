@@ -49,9 +49,6 @@ class Image(Operation):
     def __init__(self, field, index, name="image"):
         super().__init__(field, index=index, name=name)
 
-        # For imaging we use a subworkflow, so we set the template filename for that here
-        self.subpipeline_parset_template = f"{self.rootname}_sector_pipeline.cwl"
-
         # Initialize various parameters
         # Note:
         #   Parameters set to None will be set in the set_parset_parameters()
@@ -832,9 +829,6 @@ class ImageInitial(Image):
     def __init__(self, field):
         super().__init__(field, index=None, name="initial_image")
 
-        # Set the template filenames
-        self.pipeline_parset_template = "image_pipeline.cwl"
-        self.subpipeline_parset_template = "image_sector_pipeline.cwl"
         self.apply_none = True
 
     def set_parset_parameters(self):
@@ -950,9 +944,6 @@ class ImageNormalize(Image):
     def __init__(self, field, index):
         super().__init__(field, index=index, name="normalize")
 
-        # Set the template filenames
-        self.pipeline_parset_template = "image_pipeline.cwl"
-        self.subpipeline_parset_template = "image_sector_pipeline.cwl"
         self.normalization_skymodels = None
         self.normalization_reference_frequencies = None
 

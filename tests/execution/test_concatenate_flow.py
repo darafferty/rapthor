@@ -405,7 +405,6 @@ def test_concatenate_operation_run_uses_prefect_flow(
     }
     assert Path(operation.done_file).is_file()
     assert Path(operation.pipeline_inputs_file).is_file()
-    assert not Path(operation.pipeline_parset_file).exists()
     assert field.ms_filenames == [
         str(Path(operation.pipeline_working_dir) / "epoch_0_concatenated.ms"),
         "epoch_1_single.ms",

@@ -17,10 +17,6 @@ class Mosaic(Operation):
     def __init__(self, field, index):
         super().__init__(field, index=index, name="mosaic")
 
-        # For each image type we use a subworkflow, so we set the template filename
-        # for that here
-        self.subpipeline_parset_template = f"{self.rootname}_type_pipeline.cwl"
-
         # Determine whether processing is needed
         self.skip_processing = len(self.field.imaging_sectors) < 2
 

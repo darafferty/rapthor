@@ -2674,7 +2674,6 @@ def test_calibrate_di_operation_run_uses_prefect_flow(
     assert json.loads(Path(operation.outputs_file).read_text()) == expected_outputs
     assert Path(operation.done_file).is_file()
     assert Path(operation.pipeline_inputs_file).is_file()
-    assert not Path(operation.pipeline_parset_file).exists()
     assert field.fulljones_h5parm_filename == str(solutions_dir / "fulljones-solutions.h5")
     assert (solutions_dir / "fulljones-solutions.h5").is_file()
     assert (plots_dir / "phase_solutions.png").is_file()
@@ -2709,7 +2708,6 @@ def test_calibrate_di_scalar_operation_run_uses_prefect_flow(
     assert json.loads(Path(operation.outputs_file).read_text()) == expected_outputs
     assert Path(operation.done_file).is_file()
     assert Path(operation.pipeline_inputs_file).is_file()
-    assert not Path(operation.pipeline_parset_file).exists()
     assert field.h5parm_filename == str(solutions_dir / "di-solutions.h5")
     assert field.di_h5parm_filename == str(solutions_dir / "di-solutions.h5")
     assert field.di_fast_phases_h5parm_filename == str(solutions_dir / "di-solutions-fast-phase.h5")
@@ -2869,7 +2867,6 @@ def test_calibrate_dd_fast_medium_operation_run_uses_prefect_flow(
     assert json.loads(Path(operation.outputs_file).read_text()) == expected_outputs
     assert Path(operation.done_file).is_file()
     assert Path(operation.pipeline_inputs_file).is_file()
-    assert not Path(operation.pipeline_parset_file).exists()
     assert field.h5parm_filename == str(solutions_dir / "field-solutions.h5")
     assert field.dd_h5parm_filename == str(solutions_dir / "field-solutions.h5")
     assert field.fast_phases_h5parm_filename == str(solutions_dir / "field-solutions-fast-phase.h5")

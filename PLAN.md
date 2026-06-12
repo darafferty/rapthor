@@ -213,8 +213,9 @@ Only after equivalence, public route cutover, and CWL runtime removal.
 - Consolidated repeated base flow parset keys through
   `Operation.flow_parset_parameters()` and removed unused concatenate/mosaic
   module loggers.
-- Replaced the remaining backend-style `uses_python_flow()` test hook with an
-  explicit `render_static_cwl_templates` flag for preserved CWL parity fixtures.
+- Replaced the remaining backend-style `uses_python_flow()` test hook with a
+  short-lived explicit static-CWL render flag, then removed that flag and the
+  static template rendering path from the base `Operation`.
 - Removed unused legacy runtime attributes from the base `Operation`
   constructor and cleaned the reset-state comment that still referenced Toil
   jobstores.
@@ -223,6 +224,14 @@ Only after equivalence, public route cutover, and CWL runtime removal.
   `ExecutionConfig`.
 - Removed unused operation-level script/MPI path attributes while keeping the
   shared `rapthor_pipeline_dir` used by static fixtures and flow adapters.
+- Inlined the base operation's `debug_workflow` state into
+  `keep_temporary_files`; the parset option remains supported.
+- Localized operation working/log directory variables that are only needed
+  during base `Operation` construction.
+- Removed the stored operation `rootname` and unused `op_name` parset mutation;
+  static template names are now derived locally or set explicitly.
+- Removed the remaining operation-level CWL template names and moved the CWL
+  template environment into the static CWL tests that still need it.
 - Review the execution flows, operation adapters, command builders, output
   handling, artifact publication, and tests for duplication introduced during
   the side-by-side migration.

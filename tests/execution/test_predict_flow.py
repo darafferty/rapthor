@@ -746,7 +746,6 @@ def test_predict_di_operation_run_uses_prefect_flow(
     assert json.loads(Path(operation.outputs_file).read_text()) == expected_outputs
     assert Path(operation.done_file).is_file()
     assert Path(operation.pipeline_inputs_file).is_file()
-    assert not Path(operation.pipeline_parset_file).exists()
     assert field_observation.ms_predict_di_filename == str(
         Path(operation.pipeline_working_dir) / "obs_0.ms.selfcal.sector_1_di.ms"
     )
@@ -866,7 +865,6 @@ def test_predict_dd_operation_run_uses_prefect_flow(
     assert json.loads(Path(operation.outputs_file).read_text()) == expected_outputs
     assert Path(operation.done_file).is_file()
     assert Path(operation.pipeline_inputs_file).is_file()
-    assert not Path(operation.pipeline_parset_file).exists()
     assert field.data_colname == "DATA"
     assert sector_1_observation.ms_imaging_filename == str(
         Path(operation.pipeline_working_dir) / "obs_0.ms.selfcal.sector_1"

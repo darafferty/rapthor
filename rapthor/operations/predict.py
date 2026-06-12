@@ -117,7 +117,7 @@ class Predict(Operation):
 
     def _collect_sector_parameters(self, sectors):
         """
-        Collect sector-dependent CWL input parameters for a list of sectors.
+        Collect sector-dependent prediction parameters for a list of sectors.
 
         Returns a dict with keys: sector_skymodel, sector_filename,
         sector_model_filename, sector_patches, sector_starttime, sector_ntimes.
@@ -149,7 +149,7 @@ class Predict(Operation):
 
     def _collect_obs_parameters(self):
         """
-        Collect observation-specific CWL input parameters.
+        Collect observation-specific prediction parameters.
 
         Returns a dict with keys: obs_filename, obs_starttime, obs_infix, and
         optionally obs_solint_sec, obs_solint_hz (when mode is "dd").

@@ -5,13 +5,11 @@ Definition of the master Operation class
 import os
 import logging
 import json
-from jinja2 import Environment, FileSystemLoader
 
 from rapthor.lib.context import Timer
 from rapthor.lib.cwl import NpEncoder, copy_cwl_recursive, clean_if_cwl_file_or_directory
 
 DIR = os.path.dirname(os.path.abspath(__file__))
-env_parset = Environment(loader=FileSystemLoader(os.path.join(DIR, "..", "pipeline", "parsets")))
 
 
 class Operation(object):
@@ -34,48 +32,35 @@ class Operation(object):
         Name of the operation
     """
 
-    def __init__(self, field, index=None, name: str = "", rootname: str = ""):
+    def __init__(self, field, index=None, name: str = ""):
         self.parset = field.parset.copy()
         self.field = field
-        self.rootname = rootname.lower() if rootname else name.lower()
         self.index = index
         if self.index is not None:
             self.name = f"{name.lower()}_{self.index}"
         else:
             self.name = name.lower()
-        self.parset["op_name"] = name
         self.log = logging.getLogger(f"rapthor:{self.name}")
 
-        # Rapthor working directory
-        self.rapthor_working_dir = self.parset["dir_working"]
+        working_dir = self.parset["dir_working"]
 
         # Workflow working dir
-        self.pipeline_working_dir = os.path.join(self.rapthor_working_dir, "pipelines", self.name)
+        self.pipeline_working_dir = os.path.join(working_dir, "pipelines", self.name)
         os.makedirs(self.pipeline_working_dir, exist_ok=True)
 
-        self.debug_workflow = self.parset["cluster_specific"]["debug_workflow"]
         self.keep_temporary_files = (
-            self.parset["cluster_specific"]["keep_temporary_files"] or self.debug_workflow
+            self.parset["cluster_specific"]["keep_temporary_files"]
+            or self.parset["cluster_specific"]["debug_workflow"]
         )
 
         # Directory that holds the workflow logs in a convenient place
-        self.log_dir = os.path.join(self.rapthor_working_dir, "logs", self.name)
-        os.makedirs(self.log_dir, exist_ok=True)
+        log_dir = os.path.join(working_dir, "logs", self.name)
+        os.makedirs(log_dir, exist_ok=True)
 
         # Path to preserved pipeline templates and static reference material.
         rapthor_root_dir = os.path.split(DIR)[0]
         self.rapthor_pipeline_dir = os.path.join(rapthor_root_dir, "pipeline")
 
-        # Preserved CWL reference template names and generated input filenames.
-        # Production execution now uses Prefect/Dask, but static CWL fixtures still
-        # render these templates for parity checks.
-        self.pipeline_parset_template = f"{self.rootname}_pipeline.cwl"
-        self.subpipeline_parset_template = None
-        self.pipeline_parset_file = os.path.join(self.pipeline_working_dir, "pipeline_parset.cwl")
-        self.subpipeline_parset_file = os.path.join(
-            self.pipeline_working_dir, "subpipeline_parset.cwl"
-        )
-        self.render_static_cwl_templates = False
         self.pipeline_inputs_file = os.path.join(self.pipeline_working_dir, "pipeline_inputs.json")
 
         # File indicating whether a step was completely done.
@@ -119,26 +104,12 @@ class Operation(object):
 
         return flow(payload, execution_config=ExecutionConfig.from_parset(self.parset))
 
-    def render_static_cwl_template_files(self):
-        """
-        Render preserved CWL templates for static parity tests.
-        """
-        pipeline_parset_template = env_parset.get_template(self.pipeline_parset_template)
-        tmp = pipeline_parset_template.render(self.parset_parms)
-        with open(self.pipeline_parset_file, "w") as f:
-            f.write(tmp)
-        if self.subpipeline_parset_template is not None:
-            subpipeline_parset_template = env_parset.get_template(self.subpipeline_parset_template)
-            tmp = subpipeline_parset_template.render(self.parset_parms)
-            with open(self.subpipeline_parset_file, "w") as f:
-                f.write(tmp)
-
     def set_parset_parameters(self):
         """
         Define parameters needed for the operation.
 
-        The dictionary keys must match the jinja template variables used in the
-        corresponding workflow parset.
+        The dictionary keys must match the parset parameters expected by the
+        corresponding flow payload builder.
 
         The entries are defined in the subclasses as needed
         """
@@ -148,8 +119,8 @@ class Operation(object):
         """
         Define parameters needed for the operation inputs.
 
-        The dictionary keys must match the workflow inputs defined in the corresponding
-        workflow parset.
+        The dictionary keys must match the inputs expected by the corresponding
+        flow payload builder.
 
         The entries are defined in the subclasses as needed
         """
@@ -159,12 +130,9 @@ class Operation(object):
         """
         Set up this operation
 
-        This writes the finalizer/debug input file and, for static reference
-        tests only, can still render a preserved CWL template.
+        This writes the finalizer/debug input file used by the operation flow.
         """
         self.set_parset_parameters()
-        if self.render_static_cwl_templates:
-            self.render_static_cwl_template_files()
 
         # Save the workflow inputs to a file
         self.set_input_parameters()
