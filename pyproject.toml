@@ -48,7 +48,17 @@ dependencies = [
     "Rtree",
     "scipy",
     "shapely",
-    "cwltool==3.1.20260108082145", # Latest version breaks CWL validation checks in tests.
+    # - The latest CWLTool version breaks CWL validation checks in tests.
+    # - CWLTool 3.1.20250715140722 and later contains a bug which may trigger an
+    #   "OSError: AF_UNIX path too long" error in PyBDSF.
+    # - Using CWLTool 3.1.20250110105449, which is the version before 3.1.20250715140722
+    #   does not work with Python 3.10. Two tests fail with a "context has already been set"
+    #   error in the Python multiprocessing module.
+    # - With Python >= 3.11, the failing tests pass. CI currently uses Python 3.12.
+    # - Since Toil uses a specific CWLTool version, restricting the CWLTool version also
+    #   restricts the Toil versions Rapthor can use. The latest Toil version that requires
+    #   CWLTool 3.1.20250110105449 is 9.0.0.
+    "cwltool==3.1.20250110105449",
     "toil[cwl]>=9.0",
     "streamflow>=0.2.0.dev13"
 ]
