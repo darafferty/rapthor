@@ -416,7 +416,6 @@ def write_parset(output_dir: Path, path: Path, repo_root: Path, strategy_path: P
             global_scratch_dir =
             use_container = False
             container_type = docker
-            cwl_runner = toil
             prefect_task_runner = local_dask
             dask_dashboard_address = :8787
             prefect_stream_output = True

@@ -240,6 +240,8 @@ Only after equivalence, public route cutover, and CWL runtime removal.
 - Deduplicated the public `rapthor.process.run_steps()` compatibility helper by
   delegating to the Prefect process-step scheduler while preserving the
   monkeypatchable operation constructors used by tests.
+- Removed the legacy `cwl_runner` setting from the Prefect demo parset and demo
+  data generator so the examples no longer carry unused CWL runtime settings.
 - Review the execution flows, operation adapters, command builders, output
   handling, artifact publication, and tests for duplication introduced during
   the side-by-side migration.
