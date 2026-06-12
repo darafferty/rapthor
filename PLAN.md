@@ -221,6 +221,8 @@ Only after equivalence, public route cutover, and CWL runtime removal.
 - Removed remaining unused resource/container attributes from the base
   `Operation`; Prefect/Dask runtime resource settings now live in
   `ExecutionConfig`.
+- Removed unused operation-level script/MPI path attributes while keeping the
+  shared `rapthor_pipeline_dir` used by static fixtures and flow adapters.
 - Review the execution flows, operation adapters, command builders, output
   handling, artifact publication, and tests for duplication introduced during
   the side-by-side migration.

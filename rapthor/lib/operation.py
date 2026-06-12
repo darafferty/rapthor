@@ -62,10 +62,9 @@ class Operation(object):
         self.log_dir = os.path.join(self.rapthor_working_dir, "logs", self.name)
         os.makedirs(self.log_dir, exist_ok=True)
 
-        # Paths for scripts, etc. in the rapthor install directory
-        self.rapthor_root_dir = os.path.split(DIR)[0]
-        self.rapthor_pipeline_dir = os.path.join(self.rapthor_root_dir, "pipeline")
-        self.rapthor_script_dir = os.path.join(self.rapthor_root_dir, "scripts")
+        # Path to preserved pipeline templates and static reference material.
+        rapthor_root_dir = os.path.split(DIR)[0]
+        self.rapthor_pipeline_dir = os.path.join(rapthor_root_dir, "pipeline")
 
         # Preserved CWL reference template names and generated input filenames.
         # Production execution now uses Prefect/Dask, but static CWL fixtures still
@@ -78,9 +77,6 @@ class Operation(object):
         )
         self.render_static_cwl_templates = False
         self.pipeline_inputs_file = os.path.join(self.pipeline_working_dir, "pipeline_inputs.json")
-
-        # MPI configuration file
-        self.mpi_config_file = os.path.join(self.pipeline_working_dir, "mpi_config.yml")
 
         # File indicating whether a step was completely done.
         self.done_file = os.path.join(self.pipeline_working_dir, ".done")
