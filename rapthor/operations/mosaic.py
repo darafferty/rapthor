@@ -27,12 +27,6 @@ class Mosaic(Operation):
         # Determine whether processing is needed
         self.skip_processing = len(self.field.imaging_sectors) < 2
 
-    def uses_python_flow(self):
-        """
-        Mosaic is executed through the Prefect/Dask Python flow.
-        """
-        return True
-
     def set_parset_parameters(self):
         """
         Define parameters needed by the mosaic flow.

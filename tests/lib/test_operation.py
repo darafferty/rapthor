@@ -53,9 +53,6 @@ class RecordingOperation(Operation):
         self.fail_finalize = fail_finalize
         self.calls = []
 
-    def uses_python_flow(self):
-        return True
-
     def set_parset_parameters(self):
         self.calls.append("set_parset_parameters")
         self.parset_parms = {"unused": "value"}

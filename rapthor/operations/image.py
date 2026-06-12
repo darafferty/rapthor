@@ -83,12 +83,6 @@ class Image(Operation):
         self.photometry_skymodel = None
         self.astrometry_skymodel = None
 
-    def uses_python_flow(self):
-        """
-        Image operations are executed through the Prefect/Dask Python flow.
-        """
-        return True
-
     def set_parset_parameters(self):
         """
         Define parameters needed by the image flow.

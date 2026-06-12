@@ -19,12 +19,6 @@ class Concatenate(Operation):
     def __init__(self, field, index):
         super().__init__(field, index=index, name="concatenate")
 
-    def uses_python_flow(self):
-        """
-        Concatenate is executed through the Prefect/Dask Python flow.
-        """
-        return True
-
     def set_parset_parameters(self):
         """
         Define parameters needed by the concatenate flow.

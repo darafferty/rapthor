@@ -26,12 +26,6 @@ class Predict(Operation):
         super().__init__(field, index=index, name="predict_di" if mode == "di" else "predict")
         self.mode = mode
 
-    def uses_python_flow(self):
-        """
-        Predict is executed through the Prefect/Dask Python flow.
-        """
-        return True
-
     def set_parset_parameters(self):
         """
         Define parameters needed by the predict flow.

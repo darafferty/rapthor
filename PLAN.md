@@ -208,6 +208,8 @@ Only after equivalence, public route cutover, and CWL runtime removal.
   removed CWL production runtime.
 - Continued by consolidating repeated operation-adapter flow execution through
   the base `Operation.run_prefect_flow()` helper.
+- Removed redundant `uses_python_flow()` overrides from Prefect-backed operation
+  adapters now that the base operation defaults to the production Python flow.
 - Review the execution flows, operation adapters, command builders, output
   handling, artifact publication, and tests for duplication introduced during
   the side-by-side migration.

@@ -77,12 +77,6 @@ class Calibrate(Operation):
         )
         self.mode = mode
 
-    def uses_python_flow(self):
-        """
-        Calibrate operations are executed through the Prefect/Dask Python flow.
-        """
-        return True
-
     def set_parset_parameters(self):
         """
         Define parameters needed by the calibration flow.
