@@ -30,11 +30,7 @@ class Predict(Operation):
         """
         Define parameters needed by the predict flow.
         """
-        max_cores = self.flow_max_cores()
-        self.parset_parms = {
-            "rapthor_pipeline_dir": self.rapthor_pipeline_dir,
-            "max_cores": max_cores,
-        }
+        self.parset_parms = self.flow_parset_parameters()
 
     def set_input_parameters(self):
         """

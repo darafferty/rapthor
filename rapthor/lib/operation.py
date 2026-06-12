@@ -154,6 +154,19 @@ class Operation(object):
             return None
         return self.parset["cluster_specific"]["max_cores"]
 
+    def flow_parset_parameters(self, include_pipeline_working_dir=False, **extra):
+        """
+        Return common parset parameters used by flow-backed operation adapters.
+        """
+        parameters = {
+            "rapthor_pipeline_dir": self.rapthor_pipeline_dir,
+        }
+        if include_pipeline_working_dir:
+            parameters["pipeline_working_dir"] = self.pipeline_working_dir
+        parameters["max_cores"] = self.flow_max_cores()
+        parameters.update(extra)
+        return parameters
+
     def run_prefect_flow(self, flow, payload):
         """
         Execute a Prefect flow with the operation's parset-derived runtime config.

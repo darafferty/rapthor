@@ -81,14 +81,8 @@ class Calibrate(Operation):
         """
         Define parameters needed by the calibration flow.
         """
-        max_cores = self.flow_max_cores()
-
         # Base parameters (shared by both DD and DI)
-        self.parset_parms = {
-            "rapthor_pipeline_dir": self.rapthor_pipeline_dir,
-            "max_cores": max_cores,
-            "mode": self.mode,
-        }
+        self.parset_parms = self.flow_parset_parameters(mode=self.mode)
 
         # Add DD-specific parameters only when needed
         if self.mode == "dd":

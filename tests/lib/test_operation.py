@@ -110,6 +110,20 @@ def test_flow_max_cores_omits_hint_for_slurm(tmp_path):
     assert operation.flow_max_cores() is None
 
 
+def test_flow_parset_parameters_can_include_working_dir_and_extra_values(tmp_path):
+    operation = Operation(FieldStub(_operation_parset(tmp_path)), name="Base")
+
+    assert operation.flow_parset_parameters(
+        include_pipeline_working_dir=True,
+        mode="dd",
+    ) == {
+        "rapthor_pipeline_dir": operation.rapthor_pipeline_dir,
+        "pipeline_working_dir": operation.pipeline_working_dir,
+        "max_cores": 4,
+        "mode": "dd",
+    }
+
+
 def test_run_prefect_flow_passes_parset_execution_config(tmp_path):
     parset = _operation_parset(tmp_path)
     parset["cluster_specific"]["prefect_task_runner"] = "sync"

@@ -112,26 +112,22 @@ class Image(Operation):
             self.photometry_skymodel = self.field.photometry_skymodel
         if self.astrometry_skymodel is None:
             self.astrometry_skymodel = self.field.astrometry_skymodel
-        max_cores = self.flow_max_cores()
-
         self.allow_internet_access = self.field.parset["cluster_specific"]["allow_internet_access"]
-        self.parset_parms = {
-            "rapthor_pipeline_dir": self.rapthor_pipeline_dir,
-            "pipeline_working_dir": self.pipeline_working_dir,
-            "apply_screens": self.apply_screens,
-            "make_image_cube": self.make_image_cube,
-            "normalize_flux_scale": self.normalize_flux_scale,
-            "use_facets": self.use_facets,
-            "save_source_list": self.save_source_list,
-            "preapply_dde_solutions": self.preapply_dde_solutions,
-            "max_cores": max_cores,
-            "use_mpi": self.field.use_mpi,
-            "compress_images": self.compress_images,
-            "image_cube_stokes_list": self.image_cube_stokes_list,
-            "photometry_skymodel": self.photometry_skymodel,
-            "astrometry_skymodel": self.astrometry_skymodel,
-            "allow_internet_access": self.allow_internet_access,
-        }
+        self.parset_parms = self.flow_parset_parameters(
+            include_pipeline_working_dir=True,
+            apply_screens=self.apply_screens,
+            make_image_cube=self.make_image_cube,
+            normalize_flux_scale=self.normalize_flux_scale,
+            use_facets=self.use_facets,
+            save_source_list=self.save_source_list,
+            preapply_dde_solutions=self.preapply_dde_solutions,
+            use_mpi=self.field.use_mpi,
+            compress_images=self.compress_images,
+            image_cube_stokes_list=self.image_cube_stokes_list,
+            photometry_skymodel=self.photometry_skymodel,
+            astrometry_skymodel=self.astrometry_skymodel,
+            allow_internet_access=self.allow_internet_access,
+        )
 
     def _has_dd_scalar_h5parm(self):
         if self._is_current_cycle_solution(

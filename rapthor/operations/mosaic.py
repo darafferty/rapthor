@@ -3,13 +3,10 @@ Module that holds the Mosaic class
 """
 
 import os
-import logging
 import shutil
 from rapthor.execution.flows.mosaic import mosaic_flow, mosaic_payload_from_inputs
 from rapthor.lib.operation import Operation
 from rapthor.lib.cwl import CWLFile
-
-log = logging.getLogger("rapthor:mosaic")
 
 
 class Mosaic(Operation):
@@ -31,14 +28,11 @@ class Mosaic(Operation):
         """
         Define parameters needed by the mosaic flow.
         """
-        max_cores = self.flow_max_cores()
-        self.parset_parms = {
-            "rapthor_pipeline_dir": self.rapthor_pipeline_dir,
-            "pipeline_working_dir": self.pipeline_working_dir,
-            "max_cores": max_cores,
-            "skip_processing": self.skip_processing,
-            "compress_images": self.field.compress_images,
-        }
+        self.parset_parms = self.flow_parset_parameters(
+            include_pipeline_working_dir=True,
+            skip_processing=self.skip_processing,
+            compress_images=self.field.compress_images,
+        )
 
     def set_input_parameters(self):
         """

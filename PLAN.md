@@ -210,6 +210,9 @@ Only after equivalence, public route cutover, and CWL runtime removal.
   the base `Operation.run_prefect_flow()` helper.
 - Removed redundant `uses_python_flow()` overrides from Prefect-backed operation
   adapters now that the base operation defaults to the production Python flow.
+- Consolidated repeated base flow parset keys through
+  `Operation.flow_parset_parameters()` and removed unused concatenate/mosaic
+  module loggers.
 - Review the execution flows, operation adapters, command builders, output
   handling, artifact publication, and tests for duplication introduced during
   the side-by-side migration.

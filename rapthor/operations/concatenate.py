@@ -3,12 +3,9 @@ Module that holds the Concatenate class
 """
 
 import os
-import logging
 from rapthor.execution.flows.concatenate import concatenate_flow, concatenate_payload_from_inputs
 from rapthor.lib.operation import Operation
 from rapthor.lib.cwl import CWLDir
-
-log = logging.getLogger("rapthor:concatenate")
 
 
 class Concatenate(Operation):
@@ -23,12 +20,7 @@ class Concatenate(Operation):
         """
         Define parameters needed by the concatenate flow.
         """
-        max_cores = self.flow_max_cores()
-        self.parset_parms = {
-            "rapthor_pipeline_dir": self.rapthor_pipeline_dir,
-            "pipeline_working_dir": self.pipeline_working_dir,
-            "max_cores": max_cores,
-        }
+        self.parset_parms = self.flow_parset_parameters(include_pipeline_working_dir=True)
 
     def set_input_parameters(self):
         """
