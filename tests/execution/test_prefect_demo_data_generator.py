@@ -3,7 +3,6 @@ import importlib.util
 import sys
 from pathlib import Path
 
-
 SCRIPT_PATH = Path(__file__).parents[2] / "scripts" / "dev" / "generate-prefect-demo-data.py"
 
 
