@@ -234,6 +234,9 @@ Only after equivalence, public route cutover, and CWL runtime removal.
   template environment into the static CWL tests that still need it.
 - Replaced operation-level input coverage tests that rendered CWL templates with
   explicit Prefect flow payload contracts for calibration and prediction.
+- Cleaned operation tests by renaming image-flow mocks, removing retired cluster
+  settings from local fixtures, and replacing placeholder concatenate/initial
+  image tests with real adapter assertions.
 - Review the execution flows, operation adapters, command builders, output
   handling, artifact publication, and tests for duplication introduced during
   the side-by-side migration.

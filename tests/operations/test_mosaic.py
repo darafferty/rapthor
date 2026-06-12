@@ -77,18 +77,9 @@ class FieldStub:
         self.parset = {
             "dir_working": str(tmp_path / "working"),
             "cluster_specific": {
-                "cwl_runner": "toil",
                 "debug_workflow": False,
                 "keep_temporary_files": False,
-                "max_nodes": 1,
                 "batch_system": batch_system,
-                "cpus_per_task": 1,
-                "mem_per_node_gb": 0,
-                "dir_local": None,
-                "local_scratch_dir": None,
-                "global_scratch_dir": None,
-                "use_container": False,
-                "container_type": "docker",
                 "max_cores": 7,
                 "prefect_task_runner": "sync",
             },

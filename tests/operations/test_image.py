@@ -10,14 +10,19 @@ import pytest
 
 from rapthor.execution.outputs import file_record
 from rapthor.lib.strategy import set_selfcal_strategy
-from rapthor.operations.image import Image, ImageInitial, ImageNormalize
+from rapthor.operations.image import (
+    Image,
+    ImageInitial,
+    ImageNormalize,
+    report_sector_diagnostics,
+)
 
 from tests.cwl.cwl_cmdline import generate_command_line
 
 PATH_TO_OPERATION_STEPS = Path(__file__).parents[2] / "rapthor" / "pipeline" / "steps"
 
 
-def _mock_cwl_execute(monkeypatch, expected_outputs):
+def _mock_image_flow(monkeypatch, expected_outputs):
     """
     Monkeypatch the image Prefect flow to return expected output records.
     This allows operation finalizer tests to run without external imaging tools.
@@ -168,7 +173,7 @@ def image(field, monkeypatch, expected_image_output):
     Create an instance of the Image operation.
     """
     _prepare_field_for_image(field)
-    _mock_cwl_execute(monkeypatch, expected_image_output)
+    _mock_image_flow(monkeypatch, expected_image_output)
     return _initialize_operation(Image(field=field, index=1), do_predict=False)
 
 
@@ -178,7 +183,7 @@ def image_last_cycle(field, monkeypatch, expected_image_output_last_cycle):
     Create an instance of the Image operation for the last cycle.
     """
     _prepare_field_for_image(field)
-    _mock_cwl_execute(monkeypatch, expected_image_output_last_cycle)
+    _mock_image_flow(monkeypatch, expected_image_output_last_cycle)
     return _initialize_operation(Image(field=field, index=1), do_predict=False)
 
 
@@ -187,7 +192,7 @@ def image_initial(field, monkeypatch, expected_image_output):
     """
     Create an instance of the ImageInitial operation.
     """
-    _mock_cwl_execute(monkeypatch, expected_image_output)
+    _mock_image_flow(monkeypatch, expected_image_output)
     _prepare_field_for_initial_image(field)
     return _initialize_operation(ImageInitial(field))
 
@@ -197,7 +202,7 @@ def image_normalize(field, monkeypatch, expected_image_output):
     """
     Create an instance of the ImageNormalize operation.
     """
-    _mock_cwl_execute(monkeypatch, expected_image_output)
+    _mock_image_flow(monkeypatch, expected_image_output)
     _prepare_field_for_normalize_image(field)
     return _initialize_operation(ImageNormalize(field, index=1), do_predict=False)
 
@@ -256,7 +261,7 @@ class TestImage:
             "sector_diagnostics": ["sector_1_diagnostics.json", "sector_2_diagnostics.json"],
             "source_filtering_mask": ["sector_1_mask.fits", "sector_2_mask.fits"],
         }
-        _mock_cwl_execute(monkeypatch, expected_outputs)
+        _mock_image_flow(monkeypatch, expected_outputs)
         image = _initialize_operation(Image(field=field, index=1), do_predict=False)
 
         success, outputs = image.execute_workflow()
@@ -456,7 +461,7 @@ class TestImage:
         assert image.parset_parms["allow_internet_access"] is allow_internet_access
         assert image.allow_internet_access is allow_internet_access
 
-        _mock_cwl_execute(monkeypatch, expected_image_output)
+        _mock_image_flow(monkeypatch, expected_image_output)
         image.run()
         assert image.is_done()
 
@@ -855,7 +860,7 @@ class TestImage:
         """
         field.parset["imaging_specific"]["use_clean_mask"] = True
         _prepare_field_for_image(field, h5parm_filename=h5parm_file)
-        _mock_cwl_execute(monkeypatch, expected_image_output)
+        _mock_image_flow(monkeypatch, expected_image_output)
         image = _initialize_operation(Image(field=field, index=1), do_predict=False)
         image.run()
 
@@ -876,7 +881,7 @@ class TestImage:
         """
         field.parset["imaging_specific"]["use_clean_mask"] = use_clean_mask
         _prepare_field_for_image(field, h5parm_filename=h5parm_file)
-        _mock_cwl_execute(monkeypatch, expected_image_output)
+        _mock_image_flow(monkeypatch, expected_image_output)
 
         # First image operation
         image1 = _initialize_operation(Image(field=field, index=1), do_predict=False)
@@ -903,7 +908,7 @@ class TestImage:
         previous_masks = image2.input_parms["previous_mask_filename"]
         assert isinstance(previous_masks, list)
         assert len(previous_masks) == 1
-        # The first mask should be set to the CWL file format of the first operation's mask
+        # The first mask should be set to the File record from the first operation's mask
         if use_clean_mask:
             assert previous_masks[0] is not None
         else:
@@ -912,12 +917,27 @@ class TestImage:
 
 class TestImageInitial:
     def test_set_parset_parameters(self, image_initial):
-        # image_initial.set_parset_parameters()
-        pass
+        assert image_initial.parset_parms["apply_screens"] is False
+        assert image_initial.parset_parms["use_facets"] is False
+        assert image_initial.parset_parms["save_source_list"] is True
+        assert image_initial.parset_parms["preapply_dde_solutions"] is False
+        assert image_initial.parset_parms["make_image_cube"] is False
+        assert image_initial.parset_parms["compress_images"] is (
+            image_initial.field.compress_selfcal_images
+        )
 
     def test_set_input_parameters(self, image_initial):
-        # image_initial.set_input_parameters()
-        pass
+        assert image_initial.input_parms["image_name"] == [
+            image_initial.field.full_field_sector.name
+        ]
+        assert image_initial.input_parms["pol"] == "I"
+        assert image_initial.input_parms["save_source_list"] is True
+        assert image_initial.input_parms["skip_final_iteration"] is True
+        assert image_initial.do_predict is False
+        assert image_initial.do_multiscale_clean is True
+        assert image_initial.apply_amplitudes is False
+        assert image_initial.apply_fulljones is False
+        assert image_initial.apply_normalizations is False
 
     def test_run(self, image_initial):
         image_initial.run()
@@ -1047,11 +1067,39 @@ class TestImageNormalize:
         assert image_norm.parset_parms["allow_internet_access"] is allow_internet_access
         assert image_norm.allow_internet_access is allow_internet_access
 
-        _mock_cwl_execute(monkeypatch, expected_image_output)
+        _mock_image_flow(monkeypatch, expected_image_output)
         image_norm.run()
         assert image_norm.is_done()
 
 
-def test_report_sector_diagnostics(sector_name=None, diagnostics_dict=None, log=None):
-    # report_sector_diagnostics(sector_name, diagnostics_dict, log)
-    pass
+def test_report_sector_diagnostics_returns_best_non_nvss_flux_ratio(mocker):
+    diagnostics = {
+        "theoretical_rms": 1.0e-5,
+        "min_rms_flat_noise": 2.0e-5,
+        "median_rms_flat_noise": 3.0e-5,
+        "dynamic_range_global_flat_noise": 10.0,
+        "min_rms_true_sky": 2.5e-5,
+        "median_rms_true_sky": 3.5e-5,
+        "dynamic_range_global_true_sky": 12.0,
+        "nsources": 10,
+        "freq": 150.0e6,
+        "beam_fwhm": [0.001, 0.002, 45.0],
+        "unflagged_data_fraction": 0.9,
+        "meanClippedRatio_TGSS": 1.2,
+        "stdClippedRatio_TGSS": 0.2,
+        "meanClippedRatio_LOTSS": 0.95,
+        "stdClippedRatio_LOTSS": 0.05,
+        "meanClippedRatio_NVSS": 0.8,
+        "stdClippedRatio_NVSS": 0.01,
+        "meanClippedRAOffsetDeg": 1.0 / 3600.0,
+        "stdClippedRAOffsetDeg": 0.1 / 3600.0,
+        "meanClippedDecOffsetDeg": -2.0 / 3600.0,
+        "stdClippedDecOffsetDeg": 0.2 / 3600.0,
+    }
+    log = mocker.Mock()
+
+    ratio, std = report_sector_diagnostics("sector_1", diagnostics, log)
+
+    assert ratio == 0.95
+    assert std == 0.1
+    log.warning.assert_not_called()

@@ -10,17 +10,9 @@ def operation_parset(tmp_path):
     return {
         "dir_working": str(tmp_path / "working"),
         "cluster_specific": {
-            "cwl_runner": "mock_cwl_runner",
             "debug_workflow": False,
             "keep_temporary_files": False,
-            "max_nodes": 1,
             "batch_system": "mock_batch_system",
-            "cpus_per_task": 1,
-            "mem_per_node_gb": 1,
-            "dir_local": str(tmp_path / "scratch"),
-            "local_scratch_dir": str(tmp_path / "local_scratch"),
-            "global_scratch_dir": str(tmp_path / "global_scratch"),
-            "use_container": False,
             "max_threads": 4,
             "max_cores": 4,
         },
