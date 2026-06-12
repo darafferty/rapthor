@@ -16,15 +16,8 @@ def _operation_parset(tmp_path):
         "cluster_specific": {
             "debug_workflow": False,
             "keep_temporary_files": False,
-            "max_nodes": 1,
             "max_cores": 4,
             "batch_system": "single_machine",
-            "cpus_per_task": 1,
-            "mem_per_node_gb": 1,
-            "dir_local": str(tmp_path / "scratch"),
-            "local_scratch_dir": str(tmp_path / "local_scratch"),
-            "global_scratch_dir": str(tmp_path / "global_scratch"),
-            "use_container": False,
         },
     }
 

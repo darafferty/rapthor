@@ -522,7 +522,6 @@ class Image(Operation):
             )
         if self.field.use_mpi:
             # Set number of nodes to allocate to each imaging subworkflow.
-            self.use_mpi = True
             nnodes = self.parset["cluster_specific"]["max_nodes"]
             nsubpipes = min(nsectors, nnodes)
             if self.batch_system == "slurm_static":

@@ -218,6 +218,9 @@ Only after equivalence, public route cutover, and CWL runtime removal.
 - Removed unused legacy runtime attributes from the base `Operation`
   constructor and cleaned the reset-state comment that still referenced Toil
   jobstores.
+- Removed remaining unused resource/container attributes from the base
+  `Operation`; Prefect/Dask runtime resource settings now live in
+  `ExecutionConfig`.
 - Review the execution flows, operation adapters, command builders, output
   handling, artifact publication, and tests for duplication introduced during
   the side-by-side migration.

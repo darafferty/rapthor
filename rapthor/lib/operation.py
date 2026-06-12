@@ -45,8 +45,6 @@ class Operation(object):
             self.name = name.lower()
         self.parset["op_name"] = name
         self.log = logging.getLogger(f"rapthor:{self.name}")
-        self.force_serial_jobs = False  # force jobs to run serially
-        self.use_mpi = False
 
         # Rapthor working directory
         self.rapthor_working_dir = self.parset["dir_working"]
@@ -59,9 +57,6 @@ class Operation(object):
         self.keep_temporary_files = (
             self.parset["cluster_specific"]["keep_temporary_files"] or self.debug_workflow
         )
-
-        # Maximum number of nodes to use
-        self.max_nodes = self.parset["cluster_specific"]["max_nodes"]
 
         # Directory that holds the workflow logs in a convenient place
         self.log_dir = os.path.join(self.rapthor_working_dir, "logs", self.name)
@@ -94,33 +89,6 @@ class Operation(object):
         # Get the batch system to use
         self.batch_system = self.parset["cluster_specific"]["batch_system"]
 
-        # Get the maximum number of nodes to use
-        if self.force_serial_jobs or self.batch_system == "single_machine":
-            self.max_nodes = 1
-        else:
-            self.max_nodes = self.parset["cluster_specific"]["max_nodes"]
-
-        # Get the number of processors per task (SLRUM only). This is passed to sbatch's
-        # --cpus-per-task option (see https://slurm.schedmd.com/sbatch.html). By setting
-        # this value to the number of processors per node, one can ensure that each
-        # task gets the entire node to itself
-        self.cpus_per_task = self.parset["cluster_specific"]["cpus_per_task"]
-
-        # Get the amount of memory in GB per node (SLRUM only).
-        self.mem_per_node_gb = self.parset["cluster_specific"]["mem_per_node_gb"]
-
-        # Set the temp directory local to each node (DEPRECATED)
-        self.scratch_dir = self.parset["cluster_specific"]["dir_local"]
-
-        # Set the local and global scratch directories
-        self.local_scratch_dir = self.parset["cluster_specific"]["local_scratch_dir"]
-        self.global_scratch_dir = self.parset["cluster_specific"]["global_scratch_dir"]
-
-        # Get the container type
-        if self.parset["cluster_specific"]["use_container"]:
-            self.container = self.parset["cluster_specific"]["container_type"]
-        else:
-            self.container = None
         self.outputs = {}
 
     def flow_max_cores(self):
