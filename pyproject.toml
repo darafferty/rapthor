@@ -35,6 +35,8 @@ dependencies = [
     "astropy",
     "bdsf",
     "bokeh>=3.1.0",
+    "dask[distributed]",
+    "h5py",
     "jinja2",
     "losoto>=2.4.3",
     "lsmtool @ git+https://git.astron.nl/RD/LSMTool.git@612927b6e7ad49101ca706e50f5945797b046cd8",
@@ -42,6 +44,8 @@ dependencies = [
     "mocpy",
     "numpy",
     "prefect[dask,shell]>=3.4.11,<4.0.0",
+    "prefect-dask",
+    "prefect-shell",
     "python-casacore",
     "python-dateutil",
     "pyyaml",
@@ -70,6 +74,7 @@ test =  [
     "pytest-socket",
 ]
 dev =  [
+    "coloredlogs",
     "ruff",
     "tox",
     "mock",

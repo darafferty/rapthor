@@ -142,17 +142,21 @@ as a portable fallback. The command log and Prefect artifact then include CPU
 percentage, user/system time, peak resident memory, filesystem input/output
 counts, page faults, and context switches for tools such as DP3 and WSClean.
 Rapthor also publishes a compact PNG summary chart showing the slowest commands
-and their CPU, memory, and I/O profile. Set
-``prefect_command_profile = off`` to disable resource profiling, or
-``prefect_command_profile = perf`` to also attempt native Linux ``perf``
-sampling. The ``perf`` mode writes ``perf.data``, ``perf.script``, collapsed
-``perf.folded`` stacks, and ``perf.flamegraph.svg`` files under
-``dir_working/logs/profiles/`` when the host kernel and container permissions
-allow it. Generated flamegraph SVGs are also published as Prefect image artifacts
-and linked from the command timing Markdown artifact.
-The quick and rich demo parsets set ``prefect_command_profile = perf`` so they
-exercise this path automatically, falling back to lower-level resource metrics
-when ``perf`` sampling is not permitted.
+and their CPU, memory, and I/O profile. The quick and rich demo parsets set
+``prefect_command_profile = time`` because it works in the standard rootless
+development container and avoids requiring elevated profiling permissions. Set
+``prefect_command_profile = off`` to disable resource profiling.
+
+For deeper native CPU profiling, ``prefect_command_profile = perf`` attempts to
+run Linux ``perf record``. Treat this as an advanced, opt-in mode for a
+disposable or rootful profiling container rather than the normal development
+container. It requires host support, suitable ``perf_event`` permissions, and
+container permissions that allow ``perf_event_open``. When successful, Rapthor
+writes ``perf.data``, ``perf.script``, collapsed ``perf.folded`` stacks, and
+``perf.flamegraph.svg`` files under ``dir_working/logs/profiles/``. Generated
+flamegraph SVGs are also published as Prefect image artifacts and linked from
+the command timing Markdown artifact. If ``perf`` is blocked, Rapthor falls back
+to lower-level resource metrics.
 
 The checked-in demo parset uses a very small test Measurement Set so it starts
 quickly. To generate a richer local demo with five bright point-source groups,

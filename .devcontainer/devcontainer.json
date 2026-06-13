@@ -5,7 +5,9 @@
     "dockerfile": "Dockerfile",
     "target": "dev"
   },
-  "runArgs": ["--shm-size=4g"],
+  "runArgs": [
+    "--shm-size=4g"
+  ],
   "workspaceFolder": "/app",
   "workspaceMount": "source=${localWorkspaceFolder},target=/app,type=bind,consistency=cached",
   "postCreateCommand": "pip install --upgrade pip && pip install --no-binary=bdsf bdsf && pip install -e . && pip install --group=dev",

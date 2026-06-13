@@ -33,6 +33,7 @@ RUN apt-get update && \
 		libpython3.10 \
 		libstdc++6 \
 		libwcs7 \
+		linux-tools-generic \
 		ninja-build \
 		nodejs \
 		python3 \
@@ -40,23 +41,35 @@ RUN apt-get update && \
 		python3-distutils \
 		python3-pip \
 		python3-pytest \
-		&& rm -rf /var/lib/apt/lists/*
+		time && \
+	PERF_BIN="$(find /usr/lib -path '*linux-tools*' -name perf -type f | sort -V | tail -n 1)" && \
+	ln -sf "${PERF_BIN}" /usr/local/bin/perf && \
+	rm -rf /var/lib/apt/lists/*
 
 ENV LD_LIBRARY_PATH=/usr/local/lib
 
 FROM ubuntu:22.04 AS build
 
 # Build arguments
-ARG CASACORE_COMMIT=master
-ARG EVERYBEAM_COMMIT=master
-ARG WSCLEAN_COMMIT=master
-ARG AOFLAGGER_COMMIT=master
-ARG IDG_COMMIT=main
-ARG SAGECAL_COMMIT=master
-ARG DP3_COMMIT=master
-ARG PYTHONCASACORE_COMMIT=master
+ARG CASACORE_COMMIT=5b671c5ae03747b586a1baac9505bf15dd6cd1a8
+ARG EVERYBEAM_COMMIT=92976a2475f1ffef1c7535bf7d7536958ace10a4
+ARG WSCLEAN_COMMIT=79de0e8c
+ARG AOFLAGGER_COMMIT=72af21873f657427c99493a56742074be70d5d11
+ARG IDG_COMMIT=afeeadae064fd237ba64b8b16992a9cc5dbbf4d7
+ARG SAGECAL_COMMIT=33d21c45000bf13e5e29077ba3413405c42c503f
+ARG DP3_COMMIT=18e793a4
+ARG PYTHONCASACORE_COMMIT=294fae11abda2641c9d75b68acbb9a3b36bb7484
 ARG PORTABLE=FALSE
 ARG TARGET_CPU=native
+
+LABEL nl.astron.rapthor.aoflagger.version=${AOFLAGGER_COMMIT} \
+    nl.astron.rapthor.casacore.version=${CASACORE_COMMIT} \
+    nl.astron.rapthor.dp3.version=${DP3_COMMIT} \
+    nl.astron.rapthor.everybeam.version=${EVERYBEAM_COMMIT} \
+    nl.astron.rapthor.idg.version=${IDG_COMMIT} \
+    nl.astron.rapthor.python-casacore.version=${PYTHONCASACORE_COMMIT} \
+    nl.astron.rapthor.sagecal.version=${SAGECAL_COMMIT} \
+    nl.astron.rapthor.wsclean.version=${WSCLEAN_COMMIT}
 
 WORKDIR /build
 
@@ -243,7 +256,25 @@ RUN CASACORE_DATA=/usr/local/share/casacore/data \
 # build does not produce a proper Python package.
 RUN pip install -v /build/EveryBeam
 
-FROM base AS dev 
+FROM base AS dev
+
+ARG CASACORE_COMMIT=5b671c5ae03747b586a1baac9505bf15dd6cd1a8
+ARG EVERYBEAM_COMMIT=92976a2475f1ffef1c7535bf7d7536958ace10a4
+ARG WSCLEAN_COMMIT=79de0e8c
+ARG AOFLAGGER_COMMIT=72af21873f657427c99493a56742074be70d5d11
+ARG IDG_COMMIT=afeeadae064fd237ba64b8b16992a9cc5dbbf4d7
+ARG SAGECAL_COMMIT=33d21c45000bf13e5e29077ba3413405c42c503f
+ARG DP3_COMMIT=18e793a4
+ARG PYTHONCASACORE_COMMIT=294fae11abda2641c9d75b68acbb9a3b36bb7484
+
+LABEL nl.astron.rapthor.aoflagger.version=${AOFLAGGER_COMMIT} \
+    nl.astron.rapthor.casacore.version=${CASACORE_COMMIT} \
+    nl.astron.rapthor.dp3.version=${DP3_COMMIT} \
+    nl.astron.rapthor.everybeam.version=${EVERYBEAM_COMMIT} \
+    nl.astron.rapthor.idg.version=${IDG_COMMIT} \
+    nl.astron.rapthor.python-casacore.version=${PYTHONCASACORE_COMMIT} \
+    nl.astron.rapthor.sagecal.version=${SAGECAL_COMMIT} \
+    nl.astron.rapthor.wsclean.version=${WSCLEAN_COMMIT}
 
 WORKDIR /app
 # Copy files compiled in /build

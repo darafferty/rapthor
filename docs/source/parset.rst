@@ -835,10 +835,13 @@ The available options are described below under their respective sections.
         lightweight CPU, memory, and filesystem I/O metrics with GNU
         ``/usr/bin/time -v`` when available and otherwise falls back to Python's
         process resource counters. ``time`` requests GNU time profiling
-        explicitly, with the same fallback if GNU time is unavailable. ``perf``
+        explicitly, with the same fallback if GNU time is unavailable. Use this
+        mode for the standard rootless development container. ``perf``
         additionally attempts to run Linux ``perf record`` for native profiling
-        data, but this requires host support and suitable ``perf_event``
-        permissions. When successful, Rapthor converts the resulting
+        data, but this is an advanced opt-in mode intended for a disposable or
+        rootful profiling container. It requires host support, suitable
+        ``perf_event`` settings, and container permissions that allow
+        ``perf_event_open``. When successful, Rapthor converts the resulting
         ``perf.script`` files into collapsed stacks and SVG flamegraphs under
         ``dir_working/logs/profiles/`` and publishes the flamegraphs as Prefect
         image artifacts. ``off`` disables command resource profiling while
