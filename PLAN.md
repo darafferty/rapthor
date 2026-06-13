@@ -73,7 +73,45 @@ The migration is in the post-cutover cleanup stage.
 
 ## Remaining Work
 
-### 1. Keep Focused Runtime Coverage Green
+### 1. Maintainability Follow-Up
+
+These are recommended cleanup tasks, not blockers for the Prefect/Dask cutover.
+Keep each slice behaviour-preserving and covered by the existing focused tests.
+
+- Consolidate output-record helpers. There is still overlap between
+  `rapthor.execution.outputs` and `rapthor.lib.records`, plus repeated local
+  helpers in the flow modules for extracting `File`/`Directory` paths. Pick one
+  finalizer-compatible record API and move required/optional path extraction,
+  basename validation, and nested-record validation into it.
+- Split the largest flow modules by responsibility:
+  - `rapthor.execution.flows.image`: separate command builders, payload/sector
+    mapping, sector execution, and output discovery/artifact publishing.
+  - `rapthor.execution.flows.calibrate`: separate solve-slot/payload mapping,
+    chunk execution, screen execution, and collect/plot/combine logic.
+- Introduce typed payload contracts for the main flows. Use `TypedDict` or
+  small dataclasses with explicit `to_payload()` conversion so payload builders,
+  Prefect tasks, and tests no longer rely on large untyped dictionaries.
+- Consolidate command-builder utilities. The flow modules repeat helpers for
+  boolean tokens, list tokens, option appending, path-list joins, and normalized
+  command wrappers. Move the common pieces into `rapthor.execution.commands`
+  while keeping operation-specific command builders close to their flow.
+- Thin the operation adapters. `Calibrate` and `Image` still mix parset/field
+  extraction, payload construction, execution, restart state, and finalization.
+  Move parset-to-payload mapping into pure helper modules/functions and keep the
+  adapter classes focused on operation lifecycle and finalizer side effects.
+- Split the largest execution tests along the same boundaries as the code:
+  command builders, payload mapping, flow execution, output contracts, and
+  finalizers. Keep the command/output reference fixtures as regression anchors,
+  but avoid adding more cases to already-large files.
+- Audit the broad `rapthor.execution.__init__` export surface. Either document
+  it as the stable public execution API or shrink it to a smaller facade and
+  have tests import directly from the implementation modules.
+- Modernize the remaining script-style helpers only where they are touched for
+  behaviour changes. `filter_skymodel.py` and `calculate_image_diagnostics.py`
+  can be incrementally moved toward the current formatting/type style without a
+  dedicated broad rewrite.
+
+### 2. Keep Focused Runtime Coverage Green
 
 - Continue using operation and execution-flow tests as the main regression
   suite for command construction, payloads, output records, restart/reuse,
@@ -83,7 +121,7 @@ The migration is in the post-cutover cleanup stage.
   EveryBeam, PyBDSF, diagnostics, and mosaic hand-off.
 - Fix real differences found by tests or demo runs.
 
-### 2. Final Polish
+### 3. Final Polish
 
 - Run the formatter/linter after the refactor settles.
 - Run the narrowest meaningful tests after each cleanup slice, then the broader
