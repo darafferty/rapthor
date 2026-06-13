@@ -37,7 +37,7 @@ dependencies = [
     "bokeh>=3.1.0",
     "jinja2",
     "losoto>=2.4.3",
-    "lsmtool @ git+https://git.astron.nl/RD/LSMTool.git@master",
+    "lsmtool @ git+https://git.astron.nl/RD/LSMTool.git@612927b6e7ad49101ca706e50f5945797b046cd8",
     "matplotlib",
     "mocpy",
     "numpy",
