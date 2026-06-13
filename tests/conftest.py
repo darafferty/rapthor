@@ -35,10 +35,15 @@ TEST_APPARENT_SKYMODEL = (RESOURCE_DIR / "test_apparent_sky.txt").as_posix()
 TEST_INTEGRATION_TRUE_SKYMODEL = (RESOURCE_DIR / "integration_true_sky.txt").as_posix()
 TEST_INTEGRATION_APPARENT_SKYMODEL = (RESOURCE_DIR / "integration_apparent_sky.txt").as_posix()
 TEST_RUN_ROOT_ENV = "RAPTHOR_TEST_RUN_ROOT"
+PREFECT_HOME_ENV = "PREFECT_HOME"
 
 
 def _local_test_run_root():
     return REPO_ROOT_DIR / ".pytest_cache" / "rapthor-runs"
+
+
+def _local_prefect_home_root():
+    return REPO_ROOT_DIR / ".pytest_cache" / "rapthor-prefect-home"
 
 
 def _prepare_local_test_run_root(config):
@@ -69,9 +74,58 @@ def _get_test_run_root():
     return run_root
 
 
+def _get_prefect_home_root():
+    """Keep Prefect's state separate from test products that local runs clean up."""
+    if run_root := os.environ.get(TEST_RUN_ROOT_ENV):
+        prefect_home_root = Path(run_root) / "prefect-home"
+    elif ci_project_dir := os.environ.get("CI_PROJECT_DIR"):
+        prefect_home_root = Path(ci_project_dir) / "ci" / "prefect-home"
+    else:
+        prefect_home_root = _local_prefect_home_root()
+
+    prefect_home_root.mkdir(parents=True, exist_ok=True)
+    return prefect_home_root
+
+
+def _set_prefect_home(worker_id, force=False):
+    if not force and os.environ.get(PREFECT_HOME_ENV):
+        return
+
+    prefect_home = _get_prefect_home_root() / worker_id
+    prefect_home.mkdir(parents=True, exist_ok=True)
+    os.environ[PREFECT_HOME_ENV] = prefect_home.as_posix()
+
+
+_set_prefect_home("main")
+
+
+def _xdist_worker_id(config):
+    worker_input = getattr(config, "workerinput", None)
+    if worker_input:
+        return worker_input.get("workerid", "worker")
+    return "main"
+
+
+def _is_xdist_controller(config):
+    if getattr(config, "workerinput", None):
+        return False
+    numprocesses = getattr(config.option, "numprocesses", None)
+    return numprocesses not in (None, 0, "0")
+
+
+def _prepare_prefect_home(config):
+    """Keep Prefect's local state isolated when integration tests use xdist."""
+    if _is_xdist_controller(config):
+        return
+
+    worker_id = _xdist_worker_id(config)
+    _set_prefect_home(worker_id, force=worker_id != "main")
+
+
 def pytest_configure(config):
     config.resource_dir = RESOURCE_DIR
     _prepare_local_test_run_root(config)
+    _prepare_prefect_home(config)
 
 
 @pytest.hookimpl(tryfirst=True)

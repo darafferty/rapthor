@@ -72,3 +72,4 @@ container_type = docker
 debug_workflow = False
 keep_temporary_files = False
 allow_internet_access = 
+prefect_task_runner = sync
