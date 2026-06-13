@@ -125,7 +125,44 @@ Keep each slice behaviour-preserving and covered by the existing focused tests.
   EveryBeam, PyBDSF, diagnostics, and mosaic hand-off.
 - Fix real differences found by tests or demo runs.
 
-### 3. Runtime Profiling Follow-Up
+### 3. Test Coverage Improvement Plan
+
+The current non-integration coverage baseline is about 80% line coverage
+(`7,690 / 9,658` statements covered). Improve coverage in small, low-risk slices
+and avoid adding slow external-tool dependencies to the default test suite.
+
+- Target the next practical milestone at 85% non-integration coverage. Do not
+  add a hard coverage gate until the suite is stable at or above the chosen
+  threshold for several CI runs; then consider ratcheting from 80% upward.
+- Add focused tests for the remaining Prefect execution observability branches:
+  command-log malformed records, missing/non-Prefect artifact contexts,
+  `perf` success/failure/no-sample flamegraph paths, FITS preview edge cases,
+  and Dask/task-runner fallback behaviour.
+- Raise script-helper coverage where pure fixtures are enough. Highest-value
+  candidates from the current report are `subtract_sector_models.py`,
+  `collect_screen_h5parms.py`, `check_image_beam.py`, `blank_image.py`,
+  `combine_h5parms.py`, `process_gains.py`, `make_region_file.py`, and the
+  image-cube/catalog helpers. Prefer small FITS, H5Parm, region, and sky-model
+  fixtures over invoking DP3/WSClean.
+- Improve `rapthor.process` and compatibility-helper coverage with monkeypatched
+  operation factories and Prefect flow entry points. Cover operation ordering,
+  skip conditions, error propagation, restart/reset behaviour, and legacy public
+  helper contracts without running real external commands.
+- Add targeted `Field` tests for high-risk branches that can be isolated with
+  fake or tiny sky models: regrouping validation, calibrator distance limits,
+  target-flux/target-number selection, normalization-scaling branches, and
+  missing/empty model handling. Close matplotlib figures in these tests to avoid
+  the current open-figure warnings.
+- Use coverage changes to guide refactors, not just to chase percentages. When a
+  module is hard to test directly, extract pure helpers first, then test the
+  helper contract and keep the integration path covered by existing operation
+  tests.
+- Keep integration coverage separate from the default metric. External-tool
+  integration tests should remain representative smoke/regression coverage for
+  DP3, WSClean, EveryBeam, PyBDSF, diagnostics, and mosaic hand-off, but should
+  not be required to hit the non-integration coverage target.
+
+### 4. Runtime Profiling Follow-Up
 
 - Validate `prefect_command_profile = perf` in the intended development and CI
   container runtimes. The implementation writes `perf.data`, `perf.script`,
@@ -135,7 +172,7 @@ Keep each slice behaviour-preserving and covered by the existing focused tests.
   flamegraphs, then adjust labels or pruning if the artifacts become too noisy
   for DP3/WSClean bottleneck analysis.
 
-### 4. Final Polish
+### 5. Final Polish
 
 - Run the formatter/linter after the refactor settles.
 - Run the narrowest meaningful tests after each cleanup slice, then the broader
@@ -174,6 +211,12 @@ Focused process-flow checks:
 
 ```bash
 python3 -m pytest tests/execution/test_process_flow.py tests/test_process.py -q --tb=short
+```
+
+Non-integration coverage check:
+
+```bash
+python3 -m pytest -m "not integration" --cov=rapthor --cov-report=term-missing tests
 ```
 
 Rich local demo:
