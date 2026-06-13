@@ -35,6 +35,23 @@ def test_generated_demo_parset_uses_prefect_settings_only(tmp_path):
     assert "cwl_runner" not in parser["cluster"]
 
 
+def test_generated_rich_strategy_exercises_amplitude_solves_with_flux_threshold(tmp_path):
+    module = load_generator_script()
+    strategy_path = tmp_path / "prefect_demo_rich_strategy.py"
+
+    module.write_rich_strategy(strategy_path)
+
+    spec = importlib.util.spec_from_file_location("prefect_demo_rich_strategy", strategy_path)
+    strategy = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = strategy
+    spec.loader.exec_module(strategy)
+
+    assert any(step["do_slowgain_solve"] for step in strategy.strategy_steps)
+    assert any(step["do_fulljones_solve"] for step in strategy.strategy_steps)
+    assert all(step["target_flux"] is not None for step in strategy.strategy_steps)
+    assert all(step["target_flux"] > 0.1 for step in strategy.strategy_steps)
+
+
 def test_checked_in_demo_parset_uses_prefect_settings_only():
     parser = configparser.ConfigParser(interpolation=None)
     parser.read(REPO_ROOT / "examples" / "prefect_demo.parset")

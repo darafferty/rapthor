@@ -15,7 +15,8 @@ COMMON_SETTINGS = {
     "scale_normalization_delta": True,
     "solve_min_uv_lambda": 80,
     # Select demo calibrators by count rather than a fixed flux threshold. The
-    # tiny fixture data can produce a low-flux placeholder source between cycles.
+    # tiny fixture data can produce a low-flux placeholder source between cycles,
+    # so this quick strategy avoids slow-gain amplitude calibration.
     "target_flux": None,
     "max_directions": 4,
     "max_distance": None,
@@ -46,7 +47,7 @@ strategy_steps = [
         max_nmiter=8,
     ),
     _step(
-        {"di": [], "dd": ["fast_phase", "medium_phase", "slow_gains"]},
+        {"di": [], "dd": ["fast_phase", "medium_phase"]},
         max_nmiter=10,
     ),
     _step(

@@ -1053,30 +1053,38 @@ class Field(object):
                 skymodel_true_sky.setPatchPositions(method="wmean")
 
             if sector_skymodels_apparent_sky is not None:
-                for i, (sm, sn) in enumerate(zip(sector_skymodels_apparent_sky, sector_names)):
-                    if i == 0:
-                        skymodel_apparent_sky = lsmtool.load(str(sm))
-                        patchNames = skymodel_apparent_sky.getColValues('Patch')
-                        new_patchNames = np.array([f'{p}_{sn}' for p in patchNames], dtype='U100')
-                        skymodel_apparent_sky.setColValues('Patch', new_patchNames)
-                        sourceNames = skymodel_apparent_sky.getColValues('Name')
-                        new_sourceNames = np.array([f'{s}_{sn}' for s in sourceNames], dtype='U100')
-                        skymodel_apparent_sky.setColValues('Name', new_sourceNames)
-                    else:
-                        skymodel2 = lsmtool.load(str(sm))
+                skymodel_apparent_sky = None
+                for sm, sn in zip(sector_skymodels_apparent_sky, sector_names):
+                    if sm is None:
+                        continue
+                    skymodel2 = lsmtool.load(str(sm))
+                    if len(skymodel2) == 0:
+                        continue
+                    if skymodel2.hasPatches:
                         patchNames = skymodel2.getColValues('Patch')
                         new_patchNames = np.array([f'{p}_{sn}' for p in patchNames], dtype='U100')
                         skymodel2.setColValues('Patch', new_patchNames)
-                        sourceNames = skymodel2.getColValues('Name')
-                        new_sourceNames = np.array([f'{s}_{sn}' for s in sourceNames], dtype='U100')
-                        skymodel2.setColValues('Name', new_sourceNames)
+                    sourceNames = skymodel2.getColValues('Name')
+                    new_sourceNames = np.array([f'{s}_{sn}' for s in sourceNames], dtype='U100')
+                    skymodel2.setColValues('Name', new_sourceNames)
+
+                    if skymodel_apparent_sky is None:
+                        skymodel_apparent_sky = skymodel2
+                    else:
                         table1 = skymodel_apparent_sky.table.filled()
                         table2 = skymodel2.table.filled()
                         skymodel_apparent_sky.table = vstack(
                             [table1, table2], metadata_conflicts="silent"
                         )
-                skymodel_apparent_sky._updateGroups()
-                skymodel_apparent_sky.setPatchPositions(method="wmean")
+                if skymodel_apparent_sky is not None and skymodel_apparent_sky.hasPatches:
+                    skymodel_apparent_sky._updateGroups()
+                    skymodel_apparent_sky.setPatchPositions(method="wmean")
+                elif skymodel_apparent_sky is not None:
+                    self.log.warning(
+                        "Ignoring apparent sky model for cycle %s because it has no patches.",
+                        index,
+                    )
+                    skymodel_apparent_sky = None
             else:
                 skymodel_apparent_sky = None
 

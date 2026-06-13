@@ -25,12 +25,17 @@ def load_demo_strategy():
     return module
 
 
-def test_quick_demo_strategy_selects_calibrators_by_count():
+def test_quick_demo_strategy_avoids_slow_gain_on_fixture_data():
     strategy = load_demo_strategy()
 
     assert strategy.strategy_steps
     assert all(step["target_flux"] is None for step in strategy.strategy_steps)
     assert all(step["max_directions"] >= 1 for step in strategy.strategy_steps)
+    assert all(
+        "slow_gains" not in step["calibration_strategy"].get("dd", [])
+        for step in strategy.strategy_steps
+    )
+    assert all(not step["do_slowgain_solve"] for step in strategy.strategy_steps)
 
 
 def test_dask_performance_report_path_defaults_to_run_dir(tmp_path):

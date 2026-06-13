@@ -121,6 +121,39 @@ def test_update_skymodels_allows_target_number_without_target_flux(parset_for_fi
     assert len(field.calibrator_patch_names) == 1
 
 
+def test_update_skymodels_ignores_empty_apparent_sky_without_patches(
+    field, tmp_path, monkeypatch
+):
+    empty_skymodel = "FORMAT = Name, Type, Ra, Dec, I\n"
+    true_sky = tmp_path / "sector_1.true_sky.txt"
+    apparent_sky = tmp_path / "sector_1.apparent_sky.txt"
+    true_sky.write_text(empty_skymodel, encoding="utf-8")
+    apparent_sky.write_text(empty_skymodel, encoding="utf-8")
+
+    class Sector:
+        name = "sector_1"
+        image_skymodel_file_true_sky = true_sky
+        image_skymodel_file_apparent_sky = apparent_sky
+
+    class StopAfterSkyModelUpdate(Exception):
+        pass
+
+    captured = {}
+
+    def fake_make_skymodels(skymodel_true_sky, **kwargs):
+        captured.update(kwargs)
+        raise StopAfterSkyModelUpdate
+
+    field.imaging_sectors = [Sector()]
+    field.imaged_sources_only = True
+    monkeypatch.setattr(field, "make_skymodels", fake_make_skymodels)
+
+    with pytest.raises(StopAfterSkyModelUpdate):
+        field.update_skymodels(6, False)
+
+    assert captured["skymodel_apparent_sky"] is None
+
+
 def test_find_intersecting_sources(field):
     iss = field.find_intersecting_sources()
     assert iss[0].area == pytest.approx(18.37996802132365)

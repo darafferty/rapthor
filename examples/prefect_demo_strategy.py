@@ -15,8 +15,8 @@ COMMON_SETTINGS = {
     "scale_normalization_delta": True,
     "solve_min_uv_lambda": 80,
     # The quick demo uses a tiny fixture MS, so later source lists can contain
-    # only a very faint placeholder source. Select calibrators by count rather
-    # than by a fixed flux threshold to keep the dashboard demo robust.
+    # only a very faint placeholder source. Avoid DD slow-gain calibration here;
+    # use the generated rich demo for slow-gain amplitude calibration.
     "target_flux": None,
     "max_directions": 4,
     "max_distance": None,
@@ -44,24 +44,14 @@ def _step(calibration_strategy, **overrides):
 strategy_steps = [
     _step(
         {"di": ["fast_phase"]},
-        max_nmiter=8,
-    ),
-    _step(
-        {"di": [], "dd": ["fast_phase", "medium_phase"]},
-        max_nmiter=10,
-    ),
-    _step(
-        {"di": ["fast_phase", "medium_phase"], "dd": []},
-        max_nmiter=10,
-    ),
-    _step(
-        {"di": ["full_jones"], "dd": []},
-        max_nmiter=12,
         regroup_model=False,
     ),
     _step(
-        {"di": [], "dd": ["fast_phase", "medium_phase", "slow_gains"]},
-        max_nmiter=12,
+        {"di": ["full_jones"], "dd": []},
+        regroup_model=False,
+    ),
+    _step(
+        {"di": [], "dd": ["fast_phase", "medium_phase"]},
     ),
 ]
 
@@ -71,7 +61,7 @@ strategy_steps = [
 # strategy shape.
 strategy_steps.append(
     _step(
-        {"di": [], "dd": ["fast_phase", "medium_phase", "slow_gains"]},
+        {"di": [], "dd": ["fast_phase", "medium_phase"]},
         max_nmiter=12,
         regroup_model=False,
     )
