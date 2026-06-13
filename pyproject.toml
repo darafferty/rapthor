@@ -56,7 +56,6 @@ dynamic = ["version"]
 [project.optional-dependencies]
 test = [
     "tox",
-    "cwltool==3.1.20260108082145", # Latest version breaks CWL validation checks in tests.
 ]
 dev =  ["ruff", "rapthor[test]" ]
 
@@ -69,7 +68,6 @@ test =  [
     "pytest-xdist",
     "pytest-mock",
     "pytest-socket",
-    "cwltool==3.1.20260108082145", # Static CWL reference tests only.
 ]
 dev =  [
     "ruff",
@@ -80,7 +78,6 @@ dev =  [
     "pytest-xdist",
     "pytest-mock",
     "pytest-socket",
-    "cwltool==3.1.20260108082145", # Static CWL reference tests only.
 ]
 
 
@@ -133,7 +130,6 @@ script-files = [
 
 [tool.setuptools.package-data]
 rapthor = [
-    "pipeline/**",
     "scripts/*",
     "settings/*",
     "skymodels/*"
@@ -183,7 +179,6 @@ deps = [
     "pytest-xdist",
     "pytest-mock",
     "pytest-socket",
-    "cwltool==3.1.20260108082145", # Static CWL reference tests only.
 ]
 commands = [
     # test_field.py does not support parallel runs, so run sequentially.
@@ -230,20 +225,10 @@ deps = [
     "pytest-xdist",
     "pytest-mock",
     "pytest-socket",
-    "cwltool==3.1.20260108082145", # Static CWL reference tests only.
 ]
 pass_env = [
     "CI_PROJECT_DIR",
     "NUMEXPR_MAX_THREADS",
-    "RAPTHOR_CWL_REFERENCE_ROOT",
-    "RAPTHOR_EQUIVALENCE_APPARENT_SKYMODEL",
-    "RAPTHOR_EQUIVALENCE_INPUT_MS",
-    "RAPTHOR_EQUIVALENCE_INPUT_SKYMODEL",
-    "RAPTHOR_EQUIVALENCE_SCENARIOS",
-    "RAPTHOR_EQUIVALENCE_STRATEGY",
-    "RAPTHOR_LEGACY_CWL_REPO",
-    "RAPTHOR_RUN_LIVE_CWL_EQUIVALENCE",
-    "RAPTHOR_RUN_SAVED_CWL_EQUIVALENCE",
 ]
 commands = [
     [
@@ -270,7 +255,7 @@ commands = [
         # Check imports sorted
         "python", "-m", "ruff", "check", "--select", "I",
         "rapthor/execution",
-        "rapthor/lib/cwl.py",
+        "rapthor/lib/records.py",
         "rapthor/lib/parset.py",
         "rapthor/lib/strategy.py",
         "rapthor/operations/calibrate.py",
@@ -278,19 +263,10 @@ commands = [
         "rapthor/process.py",
         "rapthor/scripts/calculate_image_diagnostics.py",
         "rapthor/scripts/normalize_flux_scale.py",
-        "scripts/capture_cwl_reference_artifacts.py",
         "tests/__init__.py",
         "tests/conftest.py",
-        "tests/cwl/__init__.py",
-        "tests/cwl/cwl_cmdline.py",
-        "tests/cwl/cwl_mock.py",
-        "tests/cwl/tests/test_cwl_cmdline.py",
-        "tests/cwl/tests/test_cwl_mock.py",
-        "tests/cwl/tests/test_cwl_real_execution.py",
-        "tests/cwl/tests/test_cwl_scatter.py",
         "tests/execution",
         "tests/integration",
-        "tests/lib/test_cwl.py",
         "tests/lib/test_field.py",
         "tests/lib/test_parset.py",
         "tests/lib/test_strategy.py",
@@ -302,7 +278,7 @@ commands = [
         # Check general formatting
         "python", "-m", "ruff", "format", "--check", "-v",
         "rapthor/execution",
-        "rapthor/lib/cwl.py",
+        "rapthor/lib/records.py",
         "rapthor/lib/parset.py",
         "rapthor/lib/strategy.py",
         "rapthor/operations/calibrate.py",
@@ -310,19 +286,10 @@ commands = [
         "rapthor/process.py",
         "rapthor/scripts/calculate_image_diagnostics.py",
         "rapthor/scripts/normalize_flux_scale.py",
-        "scripts/capture_cwl_reference_artifacts.py",
         "tests/__init__.py",
         "tests/conftest.py",
-        "tests/cwl/__init__.py",
-        "tests/cwl/cwl_cmdline.py",
-        "tests/cwl/cwl_mock.py",
-        "tests/cwl/tests/test_cwl_cmdline.py",
-        "tests/cwl/tests/test_cwl_mock.py",
-        "tests/cwl/tests/test_cwl_real_execution.py",
-        "tests/cwl/tests/test_cwl_scatter.py",
         "tests/execution",
         "tests/integration",
-        "tests/lib/test_cwl.py",
         "tests/lib/test_field.py",
         "tests/lib/test_parset.py",
         "tests/lib/test_strategy.py",
@@ -337,7 +304,7 @@ skip_install = true
 deps = "ruff"
 format_targets = [
     "rapthor/execution",
-    "rapthor/lib/cwl.py",
+    "rapthor/lib/records.py",
     "rapthor/lib/parset.py",
     "rapthor/lib/strategy.py",
     "rapthor/operations/calibrate.py",
@@ -345,19 +312,10 @@ format_targets = [
     "rapthor/process.py",
     "rapthor/scripts/calculate_image_diagnostics.py",
     "rapthor/scripts/normalize_flux_scale.py",
-    "scripts/capture_cwl_reference_artifacts.py",
     "tests/__init__.py",
     "tests/conftest.py",
-    "tests/cwl/__init__.py",
-    "tests/cwl/cwl_cmdline.py",
-    "tests/cwl/cwl_mock.py",
-    "tests/cwl/tests/test_cwl_cmdline.py",
-    "tests/cwl/tests/test_cwl_mock.py",
-    "tests/cwl/tests/test_cwl_real_execution.py",
-    "tests/cwl/tests/test_cwl_scatter.py",
     "tests/execution",
     "tests/integration",
-    "tests/lib/test_cwl.py",
     "tests/lib/test_field.py",
     "tests/lib/test_parset.py",
     "tests/lib/test_strategy.py",
@@ -370,7 +328,7 @@ commands = [
         # sort imports
         "python", "-m", "ruff", "check", "--select", "I", "--fix",
         "rapthor/execution",
-        "rapthor/lib/cwl.py",
+        "rapthor/lib/records.py",
         "rapthor/lib/parset.py",
         "rapthor/lib/strategy.py",
         "rapthor/operations/calibrate.py",
@@ -378,19 +336,10 @@ commands = [
         "rapthor/process.py",
         "rapthor/scripts/calculate_image_diagnostics.py",
         "rapthor/scripts/normalize_flux_scale.py",
-        "scripts/capture_cwl_reference_artifacts.py",
         "tests/__init__.py",
         "tests/conftest.py",
-        "tests/cwl/__init__.py",
-        "tests/cwl/cwl_cmdline.py",
-        "tests/cwl/cwl_mock.py",
-        "tests/cwl/tests/test_cwl_cmdline.py",
-        "tests/cwl/tests/test_cwl_mock.py",
-        "tests/cwl/tests/test_cwl_real_execution.py",
-        "tests/cwl/tests/test_cwl_scatter.py",
         "tests/execution",
         "tests/integration",
-        "tests/lib/test_cwl.py",
         "tests/lib/test_field.py",
         "tests/lib/test_parset.py",
         "tests/lib/test_strategy.py",
@@ -402,7 +351,7 @@ commands = [
         # format code
         "python", "-m", "ruff", "format",
         "rapthor/execution",
-        "rapthor/lib/cwl.py",
+        "rapthor/lib/records.py",
         "rapthor/lib/parset.py",
         "rapthor/lib/strategy.py",
         "rapthor/operations/calibrate.py",
@@ -410,19 +359,10 @@ commands = [
         "rapthor/process.py",
         "rapthor/scripts/calculate_image_diagnostics.py",
         "rapthor/scripts/normalize_flux_scale.py",
-        "scripts/capture_cwl_reference_artifacts.py",
         "tests/__init__.py",
         "tests/conftest.py",
-        "tests/cwl/__init__.py",
-        "tests/cwl/cwl_cmdline.py",
-        "tests/cwl/cwl_mock.py",
-        "tests/cwl/tests/test_cwl_cmdline.py",
-        "tests/cwl/tests/test_cwl_mock.py",
-        "tests/cwl/tests/test_cwl_real_execution.py",
-        "tests/cwl/tests/test_cwl_scatter.py",
         "tests/execution",
         "tests/integration",
-        "tests/lib/test_cwl.py",
         "tests/lib/test_field.py",
         "tests/lib/test_parset.py",
         "tests/lib/test_strategy.py",

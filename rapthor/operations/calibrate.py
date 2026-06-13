@@ -13,8 +13,8 @@ import numpy as np
 
 from rapthor.execution.flows.calibrate import calibrate_flow, calibrate_payload_from_inputs
 from rapthor.lib import miscellaneous as misc
-from rapthor.lib.cwl import CWLDir, CWLFile
 from rapthor.lib.operation import Operation
+from rapthor.lib.records import DirectoryRecord, FileRecord
 
 FIELD_PREFIX_BY_SOLVE = {
     "fast_phase": "fast",
@@ -161,11 +161,11 @@ class Calibrate(Operation):
                 solve_steps=[solve.step for solve in solve_plan],
                 preapply_solutions=applycal_inputs["applycal_steps"] is not None,
             )
-            # --- Build final CWL input dict ---
+            # --- Build final flow input dict ---
             self.input_parms = {
                 # File inputs / basic run configuration
                 # Get the filenames of the input files for each time chunk
-                "timechunk_filename": CWLDir(
+                "timechunk_filename": DirectoryRecord(
                     field.get_obs_parameters("timechunk_filename")
                 ).to_json(),
                 "data_colname": field.data_colname,
@@ -216,7 +216,7 @@ class Calibrate(Operation):
                 "output_solve3_h5parm": [f"slow_gain_{i}.h5parm" for i in range(field.ntimechunks)],
                 "collected_solve3_h5parm": self.slow_h5parm,
                 # Sky model configuration
-                "calibration_skymodel_file": CWLFile(calibration_skymodel_file).to_json(),
+                "calibration_skymodel_file": FileRecord(calibration_skymodel_file).to_json(),
                 "model_image_root": "calibration_model",
                 "model_image_ra_dec": model_image_ra_dec,
                 "model_image_imsize": model_image_imsize,
@@ -267,16 +267,16 @@ class Calibrate(Operation):
                 "max_normalization_delta": field.max_normalization_delta,
                 "scale_normalization_delta": str(field.scale_normalization_delta),
                 # Initial solutions (H5parm inputs)
-                "fast_initialsolutions_h5parm": self._to_cwl_json_if_exists(
+                "fast_initialsolutions_h5parm": self._to_file_record_if_exists(
                     field.fast_phases_h5parm_filename
                 ),
-                "medium1_initialsolutions_h5parm": self._to_cwl_json_if_exists(
+                "medium1_initialsolutions_h5parm": self._to_file_record_if_exists(
                     field.medium1_phases_h5parm_filename
                 ),
-                "solve4_initialsolutions_h5parm": self._to_cwl_json_if_exists(
+                "solve4_initialsolutions_h5parm": self._to_file_record_if_exists(
                     field.medium2_phases_h5parm_filename
                 ),
-                "solve3_initialsolutions_h5parm": self._to_cwl_json_if_exists(
+                "solve3_initialsolutions_h5parm": self._to_file_record_if_exists(
                     field.slow_gains_h5parm_filename
                 ),
                 # Get various DDECal solver parameters. Most of these are the same for both fast
@@ -345,7 +345,7 @@ class Calibrate(Operation):
             self.input_parms = {
                 # Get the filenames of the input files for each time chunk. These are the
                 # output of the predict_di pipeline done before this calibration
-                "timechunk_filename": CWLDir(
+                "timechunk_filename": DirectoryRecord(
                     field.get_obs_parameters("predict_di_output_filename")
                 ).to_json(),
                 "data_colname": "DATA",
@@ -712,7 +712,7 @@ class Calibrate(Operation):
             "di_h5parm_cycle_number",
             "DI scalar",
         )
-        applycal_h5parm = self._to_cwl_json_if_exists(di_h5parm)
+        applycal_h5parm = self._to_file_record_if_exists(di_h5parm)
         if self.mode == "dd" and applycal_h5parm is not None:
             steps.append("fastphase")
             di_strategy = (getattr(field, "calibration_strategy", None) or {}).get("di", [])
@@ -722,7 +722,7 @@ class Calibrate(Operation):
             if field.apply_amplitudes and not di_has_phase_solves:
                 steps.append("slowgain")
 
-        fulljones_h5parm = self._to_cwl_json_if_exists(
+        fulljones_h5parm = self._to_file_record_if_exists(
             self._current_cycle_solution_path(
                 field.fulljones_h5parm_filename,
                 "fulljones_h5parm_cycle_number",
@@ -737,7 +737,7 @@ class Calibrate(Operation):
 
         applycal_steps = f"[{','.join(steps)}]" if steps else None
         return {
-            "normalize_h5parm": self._to_cwl_json_if_exists(field.normalize_h5parm),
+            "normalize_h5parm": self._to_file_record_if_exists(field.normalize_h5parm),
             "ddecal_applycal_steps": applycal_steps,
             "applycal_steps": applycal_steps,
             "applycal_h5parm": applycal_h5parm,
@@ -999,9 +999,9 @@ class Calibrate(Operation):
         return frequency_bandwidth, center_coords, size, cellsize
 
     @staticmethod
-    def _to_cwl_json_if_exists(filepath):
+    def _to_file_record_if_exists(filepath):
         if filepath is not None and os.path.exists(filepath):
-            return CWLFile(filepath).to_json()
+            return FileRecord(filepath).to_json()
         return None
 
     def execute_workflow(self):

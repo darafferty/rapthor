@@ -13,7 +13,7 @@
                 "solve_di_medium_phase"
             ],
             "fixture_refs": ["tests/resources/integration_template.parset"],
-            "test_types": ["mocked-flow", "focused-integration", "equivalence"]
+            "test_types": ["mocked-flow", "focused-integration"]
         },
         {
             "id": "dd_only_calibration",
@@ -27,7 +27,7 @@
                 "solve_dd_medium_phase"
             ],
             "fixture_refs": ["tests/resources/integration_template.parset"],
-            "test_types": ["mocked-flow", "focused-integration", "equivalence"]
+            "test_types": ["mocked-flow", "focused-integration"]
         },
         {
             "id": "di_then_dd_calibration",
@@ -45,7 +45,7 @@
                 "solve_di_medium_phase"
             ],
             "fixture_refs": ["tests/resources/integration_template.parset"],
-            "test_types": ["mocked-flow", "focused-integration", "equivalence"]
+            "test_types": ["mocked-flow", "focused-integration"]
         },
         {
             "id": "dd_then_di_calibration",
@@ -63,7 +63,7 @@
                 "solve_di_medium_phase"
             ],
             "fixture_refs": ["tests/resources/integration_template.parset"],
-            "test_types": ["mocked-flow", "focused-integration", "equivalence"]
+            "test_types": ["mocked-flow", "focused-integration"]
         },
         {
             "id": "di_full_jones_calibration",
@@ -76,7 +76,7 @@
                 "solve_di_full_jones"
             ],
             "fixture_refs": ["tests/resources/integration_template.parset"],
-            "test_types": ["mocked-flow", "focused-integration", "equivalence"]
+            "test_types": ["mocked-flow", "focused-integration"]
         },
         {
             "id": "dd_slow_gain_calibration",
@@ -91,7 +91,7 @@
                 "solve_dd_slow_gains"
             ],
             "fixture_refs": ["tests/resources/integration_template.parset"],
-            "test_types": ["mocked-flow", "focused-integration", "equivalence"]
+            "test_types": ["mocked-flow", "focused-integration"]
         },
         {
             "id": "hybrid_screens",
@@ -105,21 +105,21 @@
                 "solve_dd_fast_phase"
             ],
             "fixture_refs": ["tests/resources/integration_template.parset"],
-            "test_types": ["mocked-flow", "focused-integration", "equivalence"]
+            "test_types": ["mocked-flow", "focused-integration"]
         },
         {
             "id": "normalization",
             "description": "Flux-scale normalization followed by final imaging.",
             "features": ["final_cycle", "image", "normalize"],
             "fixture_refs": ["tests/resources/integration_template.parset"],
-            "test_types": ["mocked-flow", "focused-integration", "equivalence"]
+            "test_types": ["mocked-flow", "focused-integration"]
         },
         {
             "id": "peeling",
             "description": "Outlier and bright-source peeling coverage.",
             "features": ["final_cycle", "image", "peel_bright_sources", "peel_outliers"],
             "fixture_refs": ["tests/resources/integration_template.parset"],
-            "test_types": ["mocked-flow", "focused-integration", "equivalence"]
+            "test_types": ["mocked-flow", "focused-integration"]
         },
         {
             "id": "full_stokes_clean_disabled",
@@ -131,35 +131,35 @@
                 "image"
             ],
             "fixture_refs": ["tests/resources/integration_template.parset"],
-            "test_types": ["mocked-flow", "focused-integration", "equivalence"]
+            "test_types": ["mocked-flow", "focused-integration"]
         },
         {
             "id": "image_cube",
             "description": "Image cube generation and related cube metadata.",
             "features": ["final_cycle", "image", "image_cube"],
             "fixture_refs": ["tests/resources/integration_template.parset"],
-            "test_types": ["mocked-flow", "focused-integration", "equivalence"]
+            "test_types": ["mocked-flow", "focused-integration"]
         },
         {
             "id": "shared_facet_rw",
             "description": "Shared facet read/write mode remains supported with environment-aware integration gates.",
             "features": ["final_cycle", "image", "shared_facet_rw"],
             "fixture_refs": ["tests/resources/integration_template.parset"],
-            "test_types": ["mocked-flow", "focused-integration", "equivalence"]
+            "test_types": ["mocked-flow", "focused-integration"]
         },
         {
             "id": "mpi_wsclean",
             "description": "MPI WSClean imaging path without Slurm-specific scheduler setup.",
             "features": ["final_cycle", "image", "mpi_wsclean"],
             "fixture_refs": ["tests/resources/test.parset"],
-            "test_types": ["mocked-flow", "target-environment", "equivalence"]
+            "test_types": ["mocked-flow", "target-environment"]
         },
         {
             "id": "restart",
             "description": "Restart and persisted output-record reuse for supported operations.",
             "features": ["final_cycle", "image"],
             "fixture_refs": ["tests/resources/integration_template.parset"],
-            "test_types": ["unit", "focused-integration", "equivalence"]
+            "test_types": ["unit", "focused-integration"]
         }
     ],
     "deferred": [

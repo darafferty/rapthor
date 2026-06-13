@@ -3,7 +3,9 @@ Test cases for the `rapthor.operations.predict` module.
 """
 
 from pathlib import Path
+
 import pytest
+
 import rapthor
 from rapthor.operations.predict import Predict
 

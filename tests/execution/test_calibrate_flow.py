@@ -133,7 +133,6 @@ class CalibrateFieldStub:
         self.parset = {
             "dir_working": str(tmp_path / "working"),
             "cluster_specific": {
-                "cwl_runner": "toil",
                 "debug_workflow": False,
                 "keep_temporary_files": False,
                 "max_nodes": 1,
@@ -884,7 +883,7 @@ def _dd_fast_medium_image_predict_solve_slots():
 
 
 def test_calibrate_command_builders_match_reference_fixtures():
-    commands = json.loads((FIXTURE_DIR / "cwl_reference_commands.json").read_text())
+    commands = json.loads((FIXTURE_DIR / "legacy_command_reference.json").read_text())
 
     assert (
         normalized_ddecal_solve_command(
@@ -3228,7 +3227,7 @@ def test_run_calibrate_flow_fails_when_expected_output_is_missing(tmp_path):
 
 
 def test_calibrate_reference_output_fixture_matches_output_contract():
-    outputs = json.loads((FIXTURE_DIR / "cwl_reference_outputs.json").read_text())
+    outputs = json.loads((FIXTURE_DIR / "legacy_output_reference.json").read_text())
 
     for value in outputs["calibrate_di_fulljones"].values():
         validate_output_record(value)

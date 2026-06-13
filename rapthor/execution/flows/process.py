@@ -252,7 +252,7 @@ def run_process(
     """Run the top-level Rapthor process lifecycle with injectable hooks.
 
     This implements the public ``rapthor.process.run`` lifecycle while keeping
-    collaborators injectable for equivalence tests.
+    collaborators injectable for process-flow tests.
     """
     factories = operation_factories or default_process_operation_factories()
     hooks = lifecycle_hooks or default_process_lifecycle_hooks()
@@ -382,7 +382,7 @@ def run_process_steps(
     """Run one group of process steps using injectable operation factories.
 
     This mirrors the legacy ``rapthor.process.run_steps`` operation ordering for
-    backend-independent orchestration and equivalence tests.
+    process-flow and compatibility tests.
     """
     factories = operation_factories or default_process_operation_factories()
     selfcal_state = None

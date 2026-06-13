@@ -127,9 +127,9 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, apparent_sky_skymo
     source_finder : str, optional
         The source finder to use, either "sofia" or "bdsf"
     """
-    # Check that the true- and apparent-sky models exist (they may have been
-    # set in the CWL workflow to dummy names; the bright-sky model will never
-    # have a dummy name). If not, set to None as expected by filter_skymodel()
+    # Check that the true- and apparent-sky models exist. Optional sky-model
+    # inputs may be represented by dummy paths; if so, pass None as expected by
+    # filter_skymodel().
     true_sky_skymodel = true_sky_skymodel if os.path.exists(true_sky_skymodel) else None
     apparent_sky_skymodel = apparent_sky_skymodel if os.path.exists(apparent_sky_skymodel) else None
 

@@ -19,7 +19,7 @@ def test_command_to_string_quotes_tokens_when_needed():
 
 
 def test_concatenate_command_matches_initial_reference_fixture():
-    commands = json.loads((FIXTURE_DIR / "cwl_reference_commands.json").read_text())
+    commands = json.loads((FIXTURE_DIR / "legacy_command_reference.json").read_text())
     expected = commands["concatenate"]["concat_ms_files"]
 
     assert command_matches_fixture(

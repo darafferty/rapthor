@@ -5,7 +5,7 @@ Test cases for the `rapthor.operations.concatenate` module.
 import json
 from pathlib import Path
 
-from rapthor.lib.cwl import CWLDir
+from rapthor.lib.records import DirectoryRecord
 from rapthor.operations.concatenate import Concatenate
 
 
@@ -78,7 +78,7 @@ def test_set_input_parameters_builds_multi_epoch_inputs(tmp_path):
     expected_output = Path(operation.pipeline_working_dir) / "epoch_0_concatenated.ms"
     assert operation.input_parms == {
         "input_filenames": [
-            CWLDir(["epoch_0_input_0.ms", "epoch_0_input_1.ms"]).to_json(),
+            DirectoryRecord(["epoch_0_input_0.ms", "epoch_0_input_1.ms"]).to_json(),
         ],
         "data_colname": "CORRECTED_DATA",
         "output_filenames": ["epoch_0_concatenated.ms"],

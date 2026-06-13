@@ -122,7 +122,6 @@ local_scratch_dir = /local
 global_scratch_dir = /shared/scratch
 use_container = True
 container_type = singularity
-cwl_runner = cwltool
 debug_workflow = True
 keep_temporary_files = True
 allow_internet_access = True

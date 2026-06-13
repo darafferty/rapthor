@@ -80,7 +80,6 @@ def _operation_parset(tmp_path):
     return {
         "dir_working": str(tmp_path / "working"),
         "cluster_specific": {
-            "cwl_runner": "toil",
             "debug_workflow": False,
             "keep_temporary_files": False,
             "max_nodes": 1,
@@ -99,7 +98,7 @@ def _operation_parset(tmp_path):
 
 
 def test_build_concatenate_command_matches_reference_fixture():
-    commands = json.loads((FIXTURE_DIR / "cwl_reference_commands.json").read_text())
+    commands = json.loads((FIXTURE_DIR / "legacy_command_reference.json").read_text())
 
     assert (
         normalized_concatenate_command(

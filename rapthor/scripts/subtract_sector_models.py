@@ -179,9 +179,6 @@ def main(msin, model_list, msin_column='DATA', model_column='DATA',
 
         # Use subprocess to call 'cp' to ensure that the copied version has the
         # default permissions (e.g., so it's not read only)
-        # TODO: Check for existence of `msout` could be removed. It should always
-        # be created in a different temporary directory by the CWL runner. If we
-        # don't trust the CWL runner, we might bail out if `msout` exists.
         if os.path.exists(msout):
             # File may exist from a previous processing cycle; delete it if so
             shutil.rmtree(msout, ignore_errors=True)
@@ -251,9 +248,6 @@ def main(msin, model_list, msin_column='DATA', model_column='DATA',
 
         # Use subprocess to call 'cp' to ensure that the copied version has the
         # default permissions (e.g., so it's not read only)
-        # TODO: Check for existence of `msout` could be removed. It should always
-        # be created in a different temporary directory by the CWL runner. If we
-        # don't trust the CWL runner, we might bail out if `msout` exists.
         if os.path.exists(msout):
             # File may exist from a previous processing cycle; delete it if so
             shutil.rmtree(msout, ignore_errors=True)
@@ -365,9 +359,6 @@ def main(msin, model_list, msin_column='DATA', model_column='DATA',
 
         # Use subprocess to call 'cp' to ensure that the copied version has the
         # default permissions (e.g., so it's not read only)
-        # TODO: Check for existence of `msout` could be removed. It should always
-        # be created in a different temporary directory by the CWL runner. If we
-        # don't trust the CWL runner, we might bail out if `msout` exists.
         if os.path.exists(msout):
             # File may exist from a previous processing cycle; delete it if so
             shutil.rmtree(msout, ignore_errors=True)

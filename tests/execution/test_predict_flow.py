@@ -184,7 +184,6 @@ def _operation_parset(tmp_path):
     return {
         "dir_working": str(tmp_path / "working"),
         "cluster_specific": {
-            "cwl_runner": "toil",
             "debug_workflow": False,
             "keep_temporary_files": False,
             "max_nodes": 1,
@@ -278,7 +277,7 @@ def _dd_predict_input_parms():
 
 
 def test_predict_command_builders_match_reference_fixtures():
-    commands = json.loads((FIXTURE_DIR / "cwl_reference_commands.json").read_text())
+    commands = json.loads((FIXTURE_DIR / "legacy_command_reference.json").read_text())
 
     assert (
         normalized_predict_model_data_command(
@@ -652,7 +651,7 @@ def test_run_predict_flow_fails_when_postprocess_output_is_missing(tmp_path):
 
 
 def test_predict_reference_output_fixtures_match_output_contract():
-    outputs = json.loads((FIXTURE_DIR / "cwl_reference_outputs.json").read_text())
+    outputs = json.loads((FIXTURE_DIR / "legacy_output_reference.json").read_text())
 
     validate_output_record(outputs["predict_di"]["msfiles_di_cal"])
     validate_output_record(outputs["predict"]["subtract_models"])

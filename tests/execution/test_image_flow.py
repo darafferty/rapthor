@@ -302,7 +302,6 @@ def _operation_parset(tmp_path):
     return {
         "dir_working": str(tmp_path / "working"),
         "cluster_specific": {
-            "cwl_runner": "toil",
             "debug_workflow": False,
             "keep_temporary_files": False,
             "max_nodes": 1,
@@ -757,7 +756,7 @@ def _materialize_image_operation_outputs(value):
 
 
 def test_image_command_builders_match_reference_fixtures():
-    commands = json.loads((FIXTURE_DIR / "cwl_reference_commands.json").read_text())
+    commands = json.loads((FIXTURE_DIR / "legacy_command_reference.json").read_text())
 
     assert (
         normalized_prepare_imaging_data_command(
@@ -2323,7 +2322,7 @@ def test_run_image_flow_fails_when_expected_output_is_missing(tmp_path):
 
 
 def test_image_reference_output_fixture_matches_output_contract():
-    outputs = json.loads((FIXTURE_DIR / "cwl_reference_outputs.json").read_text())
+    outputs = json.loads((FIXTURE_DIR / "legacy_output_reference.json").read_text())
 
     for value in outputs["image_no_dde"].values():
         validate_output_record(value, allow_none=True)

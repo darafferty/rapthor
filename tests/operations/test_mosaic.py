@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from rapthor.lib.cwl import CWLFile
+from rapthor.lib.records import FileRecord
 from rapthor.operations.mosaic import Mosaic
 
 
@@ -149,12 +149,12 @@ def test_set_input_parameters_builds_two_sector_mosaic_inputs(tmp_path):
     assert operation.input_parms == {
         "skip_processing": False,
         "sector_image_filename": [
-            CWLFile(true_sky_files).to_json(),
-            CWLFile(apparent_sky_files).to_json(),
+            FileRecord(true_sky_files).to_json(),
+            FileRecord(apparent_sky_files).to_json(),
         ],
         "sector_vertices_filename": [
-            CWLFile(vertices_files).to_json(),
-            CWLFile(vertices_files).to_json(),
+            FileRecord(vertices_files).to_json(),
+            FileRecord(vertices_files).to_json(),
         ],
         "template_image_filename": ["mosaic_1_template.fits", "mosaic_1_template.fits"],
         "regridded_image_filename": [

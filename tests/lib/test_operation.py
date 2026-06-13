@@ -80,7 +80,7 @@ def test_setup_writes_python_flow_inputs(tmp_path):
 def test_base_operation_requires_prefect_execute_workflow(tmp_path):
     operation = Operation(FieldStub(_operation_parset(tmp_path)), name="Base")
 
-    with pytest.raises(NotImplementedError, match="CWL execution has been retired"):
+    with pytest.raises(NotImplementedError, match="Legacy workflow execution has been retired"):
         operation.run()
 
     assert json.loads(Path(operation.pipeline_inputs_file).read_text()) == {}

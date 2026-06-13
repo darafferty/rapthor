@@ -5,33 +5,31 @@ Guidance for AI coding agents working in this repository.
 ## Project Overview
 
 Rapthor is a Python package and command-line pipeline for LOFAR direction-dependent
-effect correction, with ongoing SKA-Low support. The code builds CWL workflows that
-run radio astronomy tools such as DP3, WSClean, EveryBeam, IDG, and related
-utilities through Toil or StreamFlow.
+effect correction, with ongoing SKA-Low support. The production execution path
+uses Prefect/Dask flows to run radio astronomy tools such as DP3, WSClean,
+EveryBeam, IDG, and related utilities.
 
 Most changes affect one or more of these layers:
 
 - Python domain model and orchestration code under `rapthor/lib/`
+- Prefect/Dask execution code under `rapthor/execution/`
 - Pipeline operations under `rapthor/operations/`
 - Script entry points under `rapthor/scripts/` and `bin/`
-- CWL workflow templates under `rapthor/pipeline/`
 - Parset defaults under `rapthor/settings/`
-- Unit, CWL, script, operation, and integration tests under `tests/`
+- Unit, script, operation, execution, and integration tests under `tests/`
 
 ## Repository Layout
 
 - `rapthor/process.py`: top-level processing flow and operation scheduling.
 - `rapthor/lib/`: core objects such as `Field`, `Observation`, `Sector`, `Cluster`,
-  `Operation`, strategy handling, parset handling, and CWL runner helpers.
+  `Operation`, strategy handling, and parset handling.
+- `rapthor/execution/`: Prefect/Dask flows, command builders, shell execution,
+  artifacts, resource checks, and task-runner helpers.
 - `rapthor/operations/`: high-level operation classes for calibration, imaging,
   prediction, concatenation, and mosaics.
-- `rapthor/scripts/`: standalone helper scripts invoked by CWL steps and tests.
-- `rapthor/pipeline/steps/`: individual CWL tools and steps.
-- `rapthor/pipeline/parsets/`: CWL workflow templates generated from operation
-  parameters.
-- `rapthor/pipeline/execution/`: execution wrappers and example inputs.
-- `tests/lib/`, `tests/operations/`, `tests/scripts/`, `tests/cwl/`: focused test
-  suites for the corresponding code.
+- `rapthor/scripts/`: standalone helper scripts invoked by execution flows and tests.
+- `tests/lib/`, `tests/execution/`, `tests/operations/`, `tests/scripts/`: focused
+  test suites for the corresponding code.
 - `tests/integration/`: broader pipeline behavior tests. Treat these as heavier
   and more environment-sensitive.
 - `tests/resources/`: small test parsets, sky models, FITS files, and templates.
@@ -106,16 +104,16 @@ keep that special case in mind.
   condition over restating what the next line does.
 - Preserve the existing logging style, typically module-level loggers named like
   `rapthor:image` or `rapthor:calibrate`.
-- Avoid broad refactors when making behavioral fixes. Many modules coordinate with
-  CWL templates and tests through naming conventions.
+- Avoid broad refactors when making behavioral fixes. Many modules coordinate
+  through operation output names, command builders, and test fixtures.
 
 ## Testing Guidance
 
 - Add or update the narrowest relevant tests for the changed behavior.
 - For `rapthor/lib/` changes, look first under `tests/lib/`.
 - For operation changes, look under `tests/operations/`.
+- For Prefect/Dask flow changes, look under `tests/execution/`.
 - For script changes, look under `tests/scripts/`.
-- For CWL helper behavior, look under `tests/cwl/`.
 - For end-to-end behavior, use `tests/integration/`, but expect external
   dependencies, longer runtimes, and possible downloaded test Measurement Sets.
 - Tests marked `integration` are excluded from the default non-integration pytest
@@ -124,23 +122,6 @@ keep that special case in mind.
 
 Prefer focused commands during development, then run the smallest broader suite
 that gives confidence before handing work back.
-
-## CWL And Pipeline Changes
-
-CWL files are part of the packaged project data, so changes under
-`rapthor/pipeline/**` are user-facing.
-
-When changing operation parameters:
-
-- Check the matching operation class in `rapthor/operations/`.
-- Check the generated or templated CWL under `rapthor/pipeline/parsets/`.
-- Check individual CWL steps under `rapthor/pipeline/steps/`.
-- Update tests that assert generated inputs, command lines, or workflow structure.
-- Keep parameter names stable unless you also migrate every caller, parset, test,
-  and documentation reference.
-
-Be careful with filenames and output names. Several workflows pass files between
-steps by convention, and tests may assert those names directly.
 
 ## Parsets, Strategies, And Defaults
 
@@ -151,8 +132,9 @@ steps by convention, and tests may assert those names directly.
   consumed by operation classes.
 - Test parset templates live in `tests/resources/`.
 
-When adding a new option, update the defaults, relevant docs/examples, and tests
-together so command-line behavior and generated workflows stay aligned.
+When adding a new option, update the defaults, relevant docs/examples, operation
+payloads, command builders, and tests together so command-line behavior and flow
+payloads stay aligned.
 
 ## Data And External Resources
 
@@ -175,5 +157,3 @@ documentation source is under `docs/source/`, with README-level overview in
 - Do not overwrite unrelated local changes.
 - Keep patches scoped to the requested behavior.
 - Do not commit unless explicitly asked.
-- If a change touches both Python and CWL, make sure both sides are included in
-  the same logical patch.

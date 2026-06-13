@@ -4,9 +4,7 @@ Python and execution code
 =========================
 
 Rapthor is mainly written in Python. The production execution path uses
-Prefect/Dask flows, with preserved CWL files kept as static reference material
-for migration equivalence checks. The Rapthor code tree is organized as
-follows::
+Prefect/Dask flows. The Rapthor code tree is organized as follows::
 
    rapthor-master
    ├── bin
@@ -16,7 +14,7 @@ follows::
    ├── rapthor
    │   ├── lib
    │   ├── operations
-   │   ├── pipeline
+   │   ├── execution
    │   └── scripts
    └── test
 
@@ -29,7 +27,6 @@ In the folder structure above:
 - ``rapthor-master/rapthor/lib`` contains the main Rapthor classes and modules (see :ref:`classes_modules`).
 - ``rapthor-master/rapthor/operations`` contains the operation subclasses (see :ref:`operation_subclasses`).
 - ``rapthor-master/rapthor/execution`` contains the Prefect/Dask execution flows and helpers.
-- ``rapthor-master/rapthor/pipeline`` contains preserved CWL reference material (see :ref:`cwl`).
 - ``rapthor-master/rapthor/scripts`` contains the processing scripts (see :ref:`scripts`).
 - ``rapthor-master/test`` contains files used for testing.
 
@@ -60,20 +57,3 @@ Python processing scripts
 -------------------------
 
 The Rapthor operations call a number of Python scripts to process the solutions, images, etc. The scripts are located in the ``rapthor/scripts/`` directory of the code tree. For details of each script's function, see the inline documentation in the script's code. A description of the inputs can also be obtained by running the script with the ``-h`` flag.
-
-
-.. _cwl:
-
-CWL workflows
--------------
-
-Preserved CWL workflow parsets and step definition files are located in the
-``rapthor/pipeline/`` directory of the code tree. These files are retained as
-static reference material for migration equivalence checks. Production execution
-uses the Prefect/Dask flows under ``rapthor/execution``.
-
-.. note::
-
-   The CWL workflow files in ``rapthor/pipeline/parsets`` are jinja2 templates
-   and are not directly parsable by CWL tools until rendered by static reference
-   tests.

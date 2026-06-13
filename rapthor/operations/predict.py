@@ -2,14 +2,16 @@
 Module that holds the Predict classes
 """
 
-import os
 import logging
+import os
 import re
+
 from losoto.h5parm import h5parm
+
 from rapthor.execution.flows.predict import predict_flow, predict_payload_from_inputs
-from rapthor.lib.operation import Operation
-from rapthor.lib.cwl import CWLFile, CWLDir
 from rapthor.lib import miscellaneous as misc
+from rapthor.lib.operation import Operation
+from rapthor.lib.records import DirectoryRecord, FileRecord
 
 log = logging.getLogger("rapthor:predict")
 
@@ -79,21 +81,21 @@ class Predict(Operation):
             }
 
         common_params = {
-            "sector_filename": CWLDir(sector_parms["sector_filename"]).to_json(),
+            "sector_filename": DirectoryRecord(sector_parms["sector_filename"]).to_json(),
             "data_colname": field.data_colname,
             "sector_starttime": sector_parms["sector_starttime"],
             "sector_ntimes": sector_parms["sector_ntimes"],
             "sector_model_filename": sector_parms["sector_model_filename"],
-            "sector_skymodel": CWLFile(sector_parms["sector_skymodel"]).to_json(),
+            "sector_skymodel": FileRecord(sector_parms["sector_skymodel"]).to_json(),
             "sector_patches": sector_parms["sector_patches"],
-            "h5parm": CWLFile(h5parm_filename).to_json() if h5parm_filename else None,
+            "h5parm": FileRecord(h5parm_filename).to_json() if h5parm_filename else None,
             "normalize_h5parm": normalize_h5parm,
             "dp3_applycal_steps": f"[{','.join(dp3_applycal_steps)}]"
             if dp3_applycal_steps
             else None,
             "onebeamperpatch": field.onebeamperpatch,
             "sagecalpredict": field.sagecalpredict,
-            "obs_filename": CWLDir(obs_parms["obs_filename"]).to_json(),
+            "obs_filename": DirectoryRecord(obs_parms["obs_filename"]).to_json(),
             "obs_starttime": obs_parms["obs_starttime"],
             "obs_infix": obs_parms["obs_infix"],
             "correctfreqsmearing": field.correct_smearing_in_calibration,
@@ -199,7 +201,7 @@ class Predict(Operation):
             if self.field.apply_amplitudes:
                 dp3_applycal_steps.append("slowgain")
         if self.field.apply_normalizations:
-            normalize_h5parm = CWLFile(self.field.normalize_h5parm).to_json()
+            normalize_h5parm = FileRecord(self.field.normalize_h5parm).to_json()
             dp3_applycal_steps.append("normalization")
         else:
             normalize_h5parm = None

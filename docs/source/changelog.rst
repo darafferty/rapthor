@@ -12,8 +12,8 @@ Prefect/Dask.
     - The public ``rapthor`` command now runs the Prefect/Dask process flow.
       Operation-level CWL execution has been removed from the production
       runtime.
-    - Preserved CWL files and saved CWL artifacts remain as static reference
-      material for migration equivalence checks.
+    - The legacy CWL workflow files, CWL validation tests, and ``cwltool`` test
+      dependency have been removed after the equivalence evidence was recorded.
     - Prefect logs now include Rapthor Python logging and streamed external-tool
       output without the noisy Prefect Shell ``PID ... stream output`` prefixes.
     - The Prefect dashboard can show run logs, command timing summaries,
@@ -21,16 +21,14 @@ Prefect/Dask.
     - The demo helper can start or reuse a Prefect server, keep it running after
       a demo, create a unique working directory for each run, expose a local
       Dask dashboard, and write a Dask performance report.
-    - Local saved-CWL equivalence and live CWL-vs-Prefect smoke gates are in
-      place for the supported non-deferred scenario matrix. Focused
-      dev-container integration coverage has also been refreshed for DI/DD
-      calibration, DI full-Jones, WSClean imaging, PyBDSF diagnostics, and
-      mosaic hand-off.
+    - CWL-to-Prefect parity is documented in ``EQUIVALENCE_REPORT.md`` for the
+      supported non-deferred scenario matrix. Focused dev-container integration
+      coverage has also been refreshed for DI/DD calibration, DI full-Jones,
+      WSClean imaging, PyBDSF diagnostics, and mosaic hand-off.
     - Slurm/external-Dask and MPI WSClean validation are deferred
       post-migration target-environment checks.
-    - ``hybrid_screens`` and ``shared_facet_rw`` are deferred from the required
-      local equivalence gate until they are needed and reliable in the intended
-      tool environment.
+    - ``hybrid_screens`` and ``shared_facet_rw`` remain deferred until they are
+      needed and reliable in the intended tool environment.
 
 
 Version 2.1 (2025/12/04)

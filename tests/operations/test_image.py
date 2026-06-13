@@ -17,10 +17,6 @@ from rapthor.operations.image import (
     report_sector_diagnostics,
 )
 
-from tests.cwl.cwl_cmdline import generate_command_line
-
-PATH_TO_OPERATION_STEPS = Path(__file__).parents[2] / "rapthor" / "pipeline" / "steps"
-
 
 def _mock_image_flow(monkeypatch, expected_outputs):
     """
@@ -322,96 +318,6 @@ class TestImage:
         image.set_parset_parameters()
 
         assert image.use_facets is False
-
-    @pytest.mark.parametrize(
-        "cwl_workflow",
-        [
-            "wsclean_image_facets.cwl",
-            "wsclean_mpi_image_facets.cwl",
-        ],
-    )
-    @pytest.mark.parametrize("shared_facet_rw", [True, False])
-    def test_wsclean_image_facets_shared_facet_rw_in_final_cli(
-        self, tmp_path, cwl_workflow, shared_facet_rw
-    ):
-        """Verify shared facet read/write options are present in the final WSClean command.
-
-        This test directly passes the correct input names (shared-facet-reads, shared-facet-writes)
-        to the CWL step. The bug is upstream in the workflow template that needs to map
-        shared_facet_rw to these two separate inputs.
-        """
-
-        msdir = tmp_path / "input.ms"
-        msdir.mkdir()
-        mask = tmp_path / "mask.fits"
-        mask.touch()
-        h5parm = tmp_path / "solutions.h5"
-        h5parm.touch()
-        region_file = tmp_path / "facets.reg"
-        region_file.touch()
-
-        inputs = {
-            "msin": {"class": "Directory", "location": str(msdir)},
-            "name": "test-image",
-            "mask": {"class": "File", "location": str(mask)},
-            "wsclean_imsize": [1024, 1024],
-            "wsclean_niter": 1000,
-            "wsclean_nmiter": 5,
-            "robust": -0.5,
-            "min_uv_lambda": 100.0,
-            "max_uv_lambda": 100000.0,
-            "mgain": 0.8,
-            "multiscale": True,
-            "scalar_visibilities": False,
-            "diagonal_visibilities": True,
-            "save_source_list": False,
-            "pol": "I",
-            "join_polarizations": False,
-            "skip_final_iteration": False,
-            "cellsize_deg": 0.001,
-            "channels_out": 4,
-            "deconvolution_channels": 2,
-            "fit_spectral_pol": 2,
-            "taper_arcsec": 0.0,
-            "local_rms_strength": 0.0,
-            "local_rms_window": 25.0,
-            "local_rms_method": "rms-with-min",
-            "wsclean_mem": 8.0,
-            "auto_mask": 3.0,
-            "auto_mask_nmiter": 2,
-            "idg_mode": "cpu",
-            "num_threads": 4,
-            "num_deconvolution_threads": 2,
-            "dd_psf_grid": [2, 2],
-            "h5parm": {"class": "File", "location": str(h5parm)},
-            "soltabs": "phase000",
-            "region_file": {"class": "File", "location": str(region_file)},
-            "nnodes": 2,
-            "num_gridding_threads": 4,
-            "apply_time_frequency_smearing": False,
-            # shared_facet_rw is propagated at workflow level to these two CWL inputs.
-            "shared_facet_reads": shared_facet_rw,
-            "shared_facet_writes": shared_facet_rw,
-        }
-
-        cwl_workflow_path = PATH_TO_OPERATION_STEPS / cwl_workflow
-        cmd = generate_command_line(
-            cwl_workflow_path,
-            inputs,
-            enable_ext=("mpi" in cwl_workflow_path.name),
-        )
-
-        assert cmd is not None
-        assert cmd[0] == ("wsclean-mp" if "mpi" in cwl_workflow_path.name else "wsclean")
-        assert "-name" in cmd
-        assert "test-image" in cmd
-
-        # When shared_facet_rw is True, these flags should appear
-        has_reads = "-shared-facet-reads" in cmd
-        has_writes = "-shared-facet-writes" in cmd
-
-        assert has_writes is shared_facet_rw
-        assert has_reads is shared_facet_rw
 
     def test_save_model_image(self, field):
         # This is the required setup to configure an Image operation
@@ -747,7 +653,7 @@ class TestImage:
 
         image.apply_amplitudes = apply_amplitudes
 
-        # Create a temporary fake normalize/fulljones h5parm so CWLFile doesn't fail,
+        # Create a temporary fake normalize/fulljones h5parm so FileRecord can resolve it,
         # but only when the respective calibration was actually performed.
         if apply_normalizations:
             field.normalize_h5parm = str(h5parm_file)

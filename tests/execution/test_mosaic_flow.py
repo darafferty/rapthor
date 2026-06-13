@@ -87,7 +87,6 @@ class FieldStub:
         self.parset = {
             "dir_working": str(tmp_path / "working"),
             "cluster_specific": {
-                "cwl_runner": "toil",
                 "debug_workflow": False,
                 "keep_temporary_files": False,
                 "max_nodes": 1,
@@ -136,7 +135,7 @@ def _mosaic_payload(tmp_path, compress_images=False):
 
 
 def test_mosaic_command_builders_match_reference_fixtures():
-    commands = json.loads((FIXTURE_DIR / "cwl_reference_commands.json").read_text())
+    commands = json.loads((FIXTURE_DIR / "legacy_command_reference.json").read_text())
 
     assert (
         normalized_make_mosaic_template_command(

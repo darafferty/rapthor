@@ -1,6 +1,4 @@
-"""
-Definition of CWL-related classes
-"""
+"""Helpers for Rapthor file and directory output records."""
 
 import json
 import logging
@@ -10,19 +8,19 @@ from pathlib import Path
 
 import numpy as np
 
-logger = logging.getLogger("rapthor:cwl")
+logger = logging.getLogger("rapthor:records")
 
 
-class CWLPath(object):
+class PathRecord(object):
     """
-    CWL path class
+    File or directory path record.
 
     Parameters
     ----------
     path : str or list of str
         Path or list of paths
     path_type : str
-        Type of path: 'file' or 'directory'
+        Type of path: 'file' or 'directory'.
     """
 
     def __init__(self, path, path_type):
@@ -43,20 +41,18 @@ class CWLPath(object):
         Returns a dict suitable for use with json.dumps()
         """
         if type(self.path) is str:
-            # File type
-            cwl_value = {"class": self.path_type, "path": self.path}
+            record_value = {"class": self.path_type, "path": self.path}
         else:
-            # File[] type
-            cwl_value = []
+            record_value = []
             for p in self.path:
-                cwl_value.append({"class": self.path_type, "path": p})
+                record_value.append({"class": self.path_type, "path": p})
 
-        return cwl_value
+        return record_value
 
 
-class CWLFile(CWLPath):
+class FileRecord(PathRecord):
     """
-    CWL File class
+    File record class.
 
     Parameters
     ----------
@@ -65,12 +61,12 @@ class CWLFile(CWLPath):
     """
 
     def __init__(self, filename):
-        super(CWLFile, self).__init__(filename, "file")
+        super(FileRecord, self).__init__(filename, "file")
 
 
-class CWLDir(CWLPath):
+class DirectoryRecord(PathRecord):
     """
-    CWL Directory class
+    Directory record class.
 
     Parameters
     ----------
@@ -79,7 +75,7 @@ class CWLDir(CWLPath):
     """
 
     def __init__(self, dirname):
-        super(CWLDir, self).__init__(dirname, "directory")
+        super(DirectoryRecord, self).__init__(dirname, "directory")
 
 
 class NpEncoder(json.JSONEncoder):
@@ -101,34 +97,34 @@ class NpEncoder(json.JSONEncoder):
         return super(NpEncoder, self).default(obj)
 
 
-def is_cwl_file(cwl_obj):
+def is_file_record(record):
     """
-    Check if the given object is a CWL file representation.
+    Check if the given object is a file record.
 
-    A CWL file representation is a dictionary with 'class' key set to 'File'.
+    A file record is a dictionary with the 'class' key set to 'File'.
     """
-    return isinstance(cwl_obj, dict) and cwl_obj.get("class") == "File"
+    return isinstance(record, dict) and record.get("class") == "File"
 
 
-def is_cwl_directory(cwl_obj):
+def is_directory_record(record):
     """
-    Check if the given object is a CWL directory representation.
+    Check if the given object is a directory record.
 
-    A CWL directory representation is a dictionary with 'class' key set to 'Directory'.
+    A directory record is a dictionary with the 'class' key set to 'Directory'.
     """
-    return isinstance(cwl_obj, dict) and cwl_obj.get("class") == "Directory"
+    return isinstance(record, dict) and record.get("class") == "Directory"
 
 
-def is_cwl_file_or_directory(cwl_obj):
+def is_file_or_directory_record(record):
     """
-    Check if the given object is a CWL file or directory representation.
+    Check if the given object is a file or directory record.
     """
-    return is_cwl_file(cwl_obj) or is_cwl_directory(cwl_obj)
+    return is_file_record(record) or is_directory_record(record)
 
 
-def copy_cwl_object(src_obj, dest_dir, move=False):
+def copy_record_object(src_obj, dest_dir, move=False):
     """
-    Copy a CWL file or directory object to the specified destination directory.
+    Copy a file or directory record to the specified destination directory.
 
     Parameters
     ----------
@@ -139,23 +135,23 @@ def copy_cwl_object(src_obj, dest_dir, move=False):
     move : bool, optional
         If True, move files instead of copying them
     """
-    if is_cwl_file_or_directory(src_obj) and os.path.exists(src_obj["path"]):
+    if is_file_or_directory_record(src_obj) and os.path.exists(src_obj["path"]):
         os.makedirs(dest_dir, exist_ok=True)
         src = Path(src_obj["path"])
         dest = Path(dest_dir) / src.name
         if move:
             shutil.move(src, dest)
         else:
-            if is_cwl_file(src_obj):
+            if is_file_record(src_obj):
                 shutil.copy(src, dest)
-            elif is_cwl_directory(src_obj):
+            elif is_directory_record(src_obj):
                 shutil.copytree(src, dest, dirs_exist_ok=True)
     # Otherwise, do nothing
 
 
-def copy_cwl_recursive(src_obj, dest_dir, index=None, move=False):
+def copy_record_recursive(src_obj, dest_dir, index=None, move=False):
     """
-    Recursively copy CWL file or directory objects to the specified destination
+    Recursively copy file or directory records to the specified destination
     directory.
 
     Parameters
@@ -173,9 +169,9 @@ def copy_cwl_recursive(src_obj, dest_dir, index=None, move=False):
     if isinstance(src_obj, list):
         for i, item in enumerate(src_obj):
             if index is None or i == index:
-                copy_cwl_recursive(item, dest_dir, None, move)
-    elif is_cwl_file_or_directory(src_obj):
-        copy_cwl_object(src_obj, dest_dir, move)
+                copy_record_recursive(item, dest_dir, None, move)
+    elif is_file_or_directory_record(src_obj):
+        copy_record_object(src_obj, dest_dir, move)
     # Otherwise, do nothing
 
 
@@ -198,9 +194,9 @@ def remove_or_log_error(path: Path):
         logger.warning("Cannot remove non-existing path: %s", path)
 
 
-def clean_if_cwl_file_or_directory(src_obj):
+def clean_if_file_or_directory_record(src_obj):
     """
-    Remove CWL file or directory objects from the filesystem.
+    Remove file or directory records from the filesystem.
 
     Parameters
     ----------
@@ -209,7 +205,7 @@ def clean_if_cwl_file_or_directory(src_obj):
     """
     if isinstance(src_obj, list):
         for item in src_obj:
-            clean_if_cwl_file_or_directory(item)
-    elif is_cwl_file_or_directory(src_obj):
+            clean_if_file_or_directory_record(item)
+    elif is_file_or_directory_record(src_obj):
         remove_or_log_error(Path(src_obj["path"]))
     # Otherwise, do nothing

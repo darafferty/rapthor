@@ -37,7 +37,6 @@
  'cluster_specific': {'batch_system': 'slurm',
                       'container_type': 'singularity',
                       'cpus_per_task': 40,
-                      'cwl_runner': 'cwltool',
                       'dask_scheduler': None,
                       'dask_dashboard_address': None,
                       'debug_workflow': True,

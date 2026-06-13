@@ -19,5 +19,4 @@ into a number of operations, each of which can be run (or not) as needed.
    Rapthor flowchart
 
 The operations are described in detail in :ref:`operations`. Details of the
-Python execution code and preserved CWL reference material are given in
-:ref:`code`.
+Python execution code are given in :ref:`code`.

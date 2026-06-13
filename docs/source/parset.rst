@@ -804,10 +804,6 @@ The available options are described below under their respective sections.
         The type of container to use when :term:`use_container` = ``True``. The supported
         types are: ``docker`` (the default), ``udocker``, or ``singularity``.
 
-    cwl_runner
-        Legacy CWL runner setting retained for compatibility with older parsets.
-        Prefect/Dask is the production runtime and ignores this value.
-
     debug_workflow
         Debug workflow related issues (default = ``False``). Enabling this option
         implies that temporary files, produced during the workflow run, will be kept

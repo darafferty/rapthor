@@ -4,9 +4,10 @@ Module that holds the Mosaic class
 
 import os
 import shutil
+
 from rapthor.execution.flows.mosaic import mosaic_flow, mosaic_payload_from_inputs
 from rapthor.lib.operation import Operation
-from rapthor.lib.cwl import CWLFile
+from rapthor.lib.records import FileRecord
 
 
 class Mosaic(Operation):
@@ -66,8 +67,8 @@ class Mosaic(Operation):
                 image_list.append(getattr(sector, image_name))
                 vertices_list.append(sector.vertices_file)
                 regridded_list.append(f"{os.path.basename(getattr(sector, image_name))}.regridded")
-            sector_image_filename.append(CWLFile(image_list).to_json())
-            sector_vertices_filename.append(CWLFile(vertices_list).to_json())
+            sector_image_filename.append(FileRecord(image_list).to_json())
+            sector_vertices_filename.append(FileRecord(vertices_list).to_json())
             regridded_image_filename.append(regridded_list)
             template_image_filename.append(f"{self.name}_template.fits")
 

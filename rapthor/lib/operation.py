@@ -2,12 +2,12 @@
 Definition of the master Operation class
 """
 
-import os
-import logging
 import json
+import logging
+import os
 
 from rapthor.lib.context import Timer
-from rapthor.lib.cwl import NpEncoder, copy_cwl_recursive, clean_if_cwl_file_or_directory
+from rapthor.lib.records import NpEncoder, clean_if_file_or_directory_record, copy_record_recursive
 
 DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -172,7 +172,7 @@ class Operation(object):
         """
         for output_key, output_value in self.outputs.items():
             if include is None or output_key in include:
-                copy_cwl_recursive(output_value, dest_dir, index=index, move=move)
+                copy_record_recursive(output_value, dest_dir, index=index, move=move)
 
     def clean_outputs(self, exclude=None):
         """
@@ -186,7 +186,7 @@ class Operation(object):
         if not self.keep_temporary_files:
             for output_key, output_value in self.outputs.items():
                 if exclude is None or output_key not in exclude:
-                    clean_if_cwl_file_or_directory(output_value)
+                    clean_if_file_or_directory_record(output_value)
 
     def is_done(self):
         """
@@ -223,7 +223,7 @@ class Operation(object):
         Execute this operation's workflow and return ``(success, outputs)``.
         """
         raise NotImplementedError(
-            "CWL execution has been retired from the production runtime; "
+            "Legacy workflow execution has been retired from the production runtime; "
             "operation subclasses must implement execute_workflow() with the "
             "Prefect/Dask execution path."
         )

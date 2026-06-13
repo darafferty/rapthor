@@ -3,9 +3,10 @@ Module that holds the Concatenate class
 """
 
 import os
+
 from rapthor.execution.flows.concatenate import concatenate_flow, concatenate_payload_from_inputs
 from rapthor.lib.operation import Operation
-from rapthor.lib.cwl import CWLDir
+from rapthor.lib.records import DirectoryRecord
 
 
 class Concatenate(Operation):
@@ -33,7 +34,9 @@ class Concatenate(Operation):
         self.final_filenames = []  # used to store the full paths for later
         for starttime, obs_list in zip(self.field.epoch_starttimes, self.field.epoch_observations):
             if len(obs_list) > 1:
-                input_filenames.append(CWLDir([obs.ms_filename for obs in obs_list]).to_json())
+                input_filenames.append(
+                    DirectoryRecord([obs.ms_filename for obs in obs_list]).to_json()
+                )
                 output_filename = f"epoch_{starttime}_concatenated.ms"
                 output_filenames.append(output_filename)
                 self.final_filenames.append(

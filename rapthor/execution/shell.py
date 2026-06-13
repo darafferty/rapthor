@@ -132,7 +132,7 @@ def write_command_log_record(
     returncode: Optional[int] = None,
     error: Optional[str] = None,
 ) -> Optional[Path]:
-    """Append a structured command record for integration/equivalence assertions."""
+    """Append a structured command record for integration assertions."""
     if not execution_config.log_commands:
         return None
 

@@ -37,7 +37,6 @@
  'cluster_specific': {'batch_system': 'single_machine',
                       'container_type': 'docker',
                       'cpus_per_task': 8,
-                      'cwl_runner': 'toil',
                       'dask_scheduler': None,
                       'dask_dashboard_address': None,
                       'debug_workflow': False,

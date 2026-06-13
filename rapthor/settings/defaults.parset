@@ -416,10 +416,6 @@ global_scratch_dir = None
 use_container = False
 container_type = docker
 
-# Legacy CWL runner setting retained for compatibility with older parsets.
-# Prefect/Dask is the production execution backend and ignores this value.
-cwl_runner = toil
-
 # Prefect task runner to use for the Python execution path. Supported values
 # are local_dask, external_dask, and sync. If unset, Rapthor uses external_dask
 # when a Dask scheduler is configured and local_dask otherwise.

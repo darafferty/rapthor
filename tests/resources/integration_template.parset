@@ -69,7 +69,6 @@ local_scratch_dir =
 global_scratch_dir = 
 use_container = False
 container_type = docker
-cwl_runner = toil
 debug_workflow = False
 keep_temporary_files = False
 allow_internet_access = 

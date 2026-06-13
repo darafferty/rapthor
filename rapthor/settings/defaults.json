@@ -131,7 +131,6 @@
         "global_scratch_dir": null,
         "use_container": false,
         "container_type": "docker",
-        "cwl_runner": "toil",
         "prefect_task_runner": null,
         "dask_scheduler": null,
         "dask_dashboard_address": null,

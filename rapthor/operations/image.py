@@ -12,8 +12,8 @@ import numpy as np
 
 from rapthor.execution.flows.image import image_flow, image_payload_from_inputs
 from rapthor.lib import miscellaneous as misc
-from rapthor.lib.cwl import CWLDir, CWLFile
 from rapthor.lib.operation import Operation
+from rapthor.lib.records import DirectoryRecord, FileRecord
 
 log = logging.getLogger("rapthor:image")
 
@@ -255,10 +255,10 @@ class Image(Operation):
                         steps.append(step)
 
         if "fulljones" in steps:
-            fulljones_h5parm = CWLFile(self.field.fulljones_h5parm_filename).to_json()
+            fulljones_h5parm = FileRecord(self.field.fulljones_h5parm_filename).to_json()
         if self.apply_normalizations:
             steps.append("normalization")
-            input_normalize_h5parm = CWLFile(self.field.normalize_h5parm).to_json()
+            input_normalize_h5parm = FileRecord(self.field.normalize_h5parm).to_json()
         if len(steps) == 0:
             return None, None, None
 
@@ -382,7 +382,7 @@ class Image(Operation):
         wsclean_niter = [sector.wsclean_niter for sector in self.imaging_sectors]
         if not is_only_pol_I(self.image_pol):
             if self.pol_combine_method == "link":
-                # Note: link_polarizations can be of CWL type boolean or string
+                # Note: link_polarizations can be a boolean or string
                 link_polarizations = "I"
             else:
                 join_polarizations = True
@@ -413,7 +413,7 @@ class Image(Operation):
 
         # Set the h5parm to use to apply the DDE solutions as needed.
         h5parm = (
-            CWLFile(self._selected_applycal_h5parm).to_json()
+            FileRecord(self._selected_applycal_h5parm).to_json()
             if getattr(self, "_selected_applycal_h5parm", None) is not None
             else None
         )
@@ -431,12 +431,13 @@ class Image(Operation):
         ]
         # Set the parameters common to all modes
         self.input_parms = {
-            "obs_filename": [CWLDir(name).to_json() for name in obs_filename],
+            "obs_filename": [DirectoryRecord(name).to_json() for name in obs_filename],
             "data_colname": self.field.data_colname,
             "prepare_filename": prepare_filename,
             "concat_filename": concat_filename,
             "previous_mask_filename": [
-                None if name is None else CWLFile(name).to_json() for name in previous_mask_filename
+                None if name is None else FileRecord(name).to_json()
+                for name in previous_mask_filename
             ],
             "mask_filename": mask_filename,
             "starttime": starttime,
@@ -467,10 +468,10 @@ class Image(Operation):
             "dec": [sector.dec for sector in self.imaging_sectors],
             "wsclean_imsize": [sector.imsize for sector in self.imaging_sectors],
             "vertices_file": [
-                CWLFile(sector.vertices_file).to_json() for sector in self.imaging_sectors
+                FileRecord(sector.vertices_file).to_json() for sector in self.imaging_sectors
             ],
             "region_file": [
-                None if sector.region_file is None else CWLFile(sector.region_file).to_json()
+                None if sector.region_file is None else FileRecord(sector.region_file).to_json()
                 for sector in self.imaging_sectors
             ],
             "wsclean_niter": wsclean_niter,
@@ -505,17 +506,17 @@ class Image(Operation):
             "filtered_model_image_name": filtered_model_image_name,
             "allow_internet_access": self.allow_internet_access,
             "photometry_skymodel": (
-                CWLFile(self.photometry_skymodel).to_json() if self.photometry_skymodel else None
+                FileRecord(self.photometry_skymodel).to_json() if self.photometry_skymodel else None
             ),
             "astrometry_skymodel": (
-                CWLFile(self.astrometry_skymodel).to_json() if self.astrometry_skymodel else None
+                FileRecord(self.astrometry_skymodel).to_json() if self.astrometry_skymodel else None
             ),
             "peel_bright_sources": self.peel_bright_sources,
         }
         # Add parameters that depend on the set_parset parameters (set in set_parset_parameters())
         if self.peel_bright_sources:
             self.input_parms.update(
-                {"bright_skymodel_pb": CWLFile(self.field.bright_source_skymodel_file).to_json()}
+                {"bright_skymodel_pb": FileRecord(self.field.bright_source_skymodel_file).to_json()}
             )
         if self.field.use_mpi:
             # Set number of nodes to allocate to each imaging subworkflow.
@@ -535,7 +536,7 @@ class Image(Operation):
         if not self.apply_none and self.use_facets:
             # For faceting, we need inputs for making the ds9 facet region files
             self.input_parms.update(
-                {"skymodel": CWLFile(self.field.calibration_skymodel_file).to_json()}
+                {"skymodel": FileRecord(self.field.calibration_skymodel_file).to_json()}
             )
             ra_mid = []
             dec_mid = []
@@ -1003,7 +1004,8 @@ class ImageNormalize(Image):
         self.input_parms.update(
             {
                 "normalization_skymodels": [
-                    CWLFile(filename).to_json() for filename in self.normalization_skymodels or ()
+                    FileRecord(filename).to_json()
+                    for filename in self.normalization_skymodels or ()
                 ]
                 or None,
                 "normalization_reference_frequencies": self.normalization_reference_frequencies,
