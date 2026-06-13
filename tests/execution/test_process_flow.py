@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from prefect.testing.utilities import prefect_test_harness
 
-import rapthor.process as legacy_process
+import rapthor.process as public_process
 from rapthor.execution.capabilities import PreflightError, preflight_execution
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.process import (
@@ -181,12 +181,12 @@ RECORDING_FACTORIES = ProcessOperationFactories(
 )
 
 
-def _patch_legacy_step_operations(monkeypatch):
-    monkeypatch.setattr(legacy_process, "Predict", RecordingPredict)
-    monkeypatch.setattr(legacy_process, "Calibrate", RecordingCalibrate)
-    monkeypatch.setattr(legacy_process, "Image", RecordingImage)
-    monkeypatch.setattr(legacy_process, "Mosaic", RecordingMosaic)
-    monkeypatch.setattr(legacy_process, "ImageNormalize", RecordingImageNormalize)
+def _patch_public_step_operations(monkeypatch):
+    monkeypatch.setattr(public_process, "Predict", RecordingPredict)
+    monkeypatch.setattr(public_process, "Calibrate", RecordingCalibrate)
+    monkeypatch.setattr(public_process, "Image", RecordingImage)
+    monkeypatch.setattr(public_process, "Mosaic", RecordingMosaic)
+    monkeypatch.setattr(public_process, "ImageNormalize", RecordingImageNormalize)
 
 
 def _process_step_summary(field):
@@ -226,9 +226,9 @@ def _process_step_summary(field):
     }
 
 
-def _run_legacy_process_steps(monkeypatch, field, steps, final=False):
-    _patch_legacy_step_operations(monkeypatch)
-    legacy_process.run_steps(field, steps, final=final)
+def _run_public_process_steps(monkeypatch, field, steps, final=False):
+    _patch_public_step_operations(monkeypatch)
+    public_process.run_steps(field, steps, final=final)
     return field
 
 
@@ -480,26 +480,26 @@ def _assert_strategy_handoffs(field, expected_order, expected_handoffs):
 
 
 @pytest.mark.parametrize("calibration_strategy, expected_order, expected_handoffs", STRATEGY_CASES)
-def test_legacy_and_prefect_process_steps_match_calibration_strategy_handoffs(
+def test_public_and_prefect_process_steps_match_calibration_strategy_handoffs(
     monkeypatch, calibration_strategy, expected_order, expected_handoffs
 ):
-    legacy_field = RecordingField()
+    public_field = RecordingField()
     prefect_field = RecordingField()
     steps = [_single_step(calibration_strategy)]
 
-    _run_legacy_process_steps(monkeypatch, legacy_field, copy.deepcopy(steps))
+    _run_public_process_steps(monkeypatch, public_field, copy.deepcopy(steps))
     run_process_steps(
         prefect_field,
         copy.deepcopy(steps),
         operation_factories=RECORDING_FACTORIES,
     )
 
-    assert _process_step_summary(prefect_field) == _process_step_summary(legacy_field)
+    assert _process_step_summary(prefect_field) == _process_step_summary(public_field)
     _assert_strategy_handoffs(prefect_field, expected_order, expected_handoffs)
 
 
-def test_legacy_and_prefect_process_steps_match_nonfinal_image_normalization(monkeypatch):
-    legacy_field = RecordingField()
+def test_public_and_prefect_process_steps_match_nonfinal_image_normalization(monkeypatch):
+    public_field = RecordingField()
     prefect_field = RecordingField()
     steps = [
         _image_step(
@@ -508,14 +508,14 @@ def test_legacy_and_prefect_process_steps_match_nonfinal_image_normalization(mon
         )
     ]
 
-    _run_legacy_process_steps(monkeypatch, legacy_field, copy.deepcopy(steps))
+    _run_public_process_steps(monkeypatch, public_field, copy.deepcopy(steps))
     run_process_steps(
         prefect_field,
         copy.deepcopy(steps),
         operation_factories=RECORDING_FACTORIES,
     )
 
-    assert _process_step_summary(prefect_field) == _process_step_summary(legacy_field)
+    assert _process_step_summary(prefect_field) == _process_step_summary(public_field)
     assert [
         (event["operation"], event["mode"])
         for event in prefect_field.events
@@ -532,8 +532,8 @@ def test_legacy_and_prefect_process_steps_match_nonfinal_image_normalization(mon
     assert prefect_field.normalization_sector_defined is True
 
 
-def test_legacy_and_prefect_process_steps_match_final_full_stokes_cube_flags(monkeypatch):
-    legacy_field = RecordingField(
+def test_public_and_prefect_process_steps_match_final_full_stokes_cube_flags(monkeypatch):
+    public_field = RecordingField(
         make_quv_images=True,
         disable_iquv_clean=True,
         save_image_cube=True,
@@ -547,7 +547,7 @@ def test_legacy_and_prefect_process_steps_match_final_full_stokes_cube_flags(mon
     )
     steps = [_image_step()]
 
-    _run_legacy_process_steps(monkeypatch, legacy_field, copy.deepcopy(steps), final=True)
+    _run_public_process_steps(monkeypatch, public_field, copy.deepcopy(steps), final=True)
     run_process_steps(
         prefect_field,
         copy.deepcopy(steps),
@@ -555,7 +555,7 @@ def test_legacy_and_prefect_process_steps_match_final_full_stokes_cube_flags(mon
         operation_factories=RECORDING_FACTORIES,
     )
 
-    assert _process_step_summary(prefect_field) == _process_step_summary(legacy_field)
+    assert _process_step_summary(prefect_field) == _process_step_summary(public_field)
     assert prefect_field.image_pol == "IQUV"
     assert prefect_field.disable_clean is True
     assert prefect_field.make_image_cube is True

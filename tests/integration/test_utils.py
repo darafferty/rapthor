@@ -75,7 +75,7 @@ def test_collect_command_records_reads_prefect_jsonl(tmp_path):
     assert records[0].arguments["steps"] == "[solve1]"
 
 
-def test_collect_command_records_extracts_legacy_shell_commands(tmp_path):
+def test_collect_command_records_extracts_retained_shell_commands(tmp_path):
     log_dir = tmp_path / "logs" / "calibrate_1"
     log_dir.mkdir(parents=True)
     (log_dir / "pipeline.log").write_text(
@@ -90,7 +90,7 @@ def test_collect_command_records_extracts_legacy_shell_commands(tmp_path):
     records = find_command_records(tmp_path, operation="calibrate_1", executable="DP3")
 
     assert len(records) == 1
-    assert records[0].backend == "legacy-log"
+    assert records[0].backend == "retained-log"
     assert records[0].arguments["solve1.mode"] == "scalarphase"
 
 

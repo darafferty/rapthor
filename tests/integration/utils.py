@@ -78,7 +78,7 @@ def _extract_shell_commands(text):
     return commands
 
 
-def _command_records_from_legacy_logs(log_root):
+def _command_records_from_retained_logs(log_root):
     records = []
     if not log_root.exists():
         return records
@@ -92,18 +92,18 @@ def _command_records_from_legacy_logs(log_root):
                     command=command,
                     command_string=shlex.join(command),
                     source=log_path,
-                    backend="legacy-log",
+                    backend="retained-log",
                 )
             )
     return records
 
 
 def collect_command_records(working_dir):
-    """Return external command records from Prefect JSONL and retained legacy logs."""
+    """Return external command records from Prefect JSONL and retained shell logs."""
     working_dir = Path(working_dir)
     log_root = working_dir / "logs"
     records = _command_records_from_jsonl(log_root / COMMAND_LOG_FILENAME)
-    records.extend(_command_records_from_legacy_logs(log_root))
+    records.extend(_command_records_from_retained_logs(log_root))
     return records
 
 
