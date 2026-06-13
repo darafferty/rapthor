@@ -20,6 +20,7 @@ JSON_ARTIFACT_SUFFIXES = {".json"}
 PLOT_ARTIFACT_KEY_PREFIX = "rapthor-plot"
 COMMAND_METRICS_ARTIFACT_KEY = "rapthor-command-metrics"
 COMMAND_PROFILE_SUMMARY_ARTIFACT_KEY = "rapthor-command-profile-summary"
+COMMAND_FLAMEGRAPH_ARTIFACT_KEY_PREFIX = "rapthor-command-flamegraph"
 COMMAND_LOG_FILENAME = "commands.jsonl"
 
 
@@ -390,6 +391,37 @@ def _command_bottleneck_lines(records: list[dict]) -> list[str]:
     return lines
 
 
+def _command_flamegraph_records(records: list[dict]) -> list[dict]:
+    flamegraphs = []
+    for record in records:
+        profile = record.get("profile")
+        if not isinstance(profile, Mapping):
+            continue
+        artifacts = profile.get("artifacts")
+        if not isinstance(artifacts, Mapping):
+            continue
+        flamegraph_path = artifacts.get("perf_flamegraph")
+        if not flamegraph_path:
+            continue
+        path = Path(str(flamegraph_path))
+        if not path.is_file():
+            continue
+
+        label = _record_label(record)
+        flamegraphs.append(
+            {
+                "artifact_key": _artifact_key(
+                    COMMAND_FLAMEGRAPH_ARTIFACT_KEY_PREFIX,
+                    f"{label}/{path.name}",
+                ),
+                "description": f"Rapthor perf flamegraph for {label}.",
+                "label": label,
+                "path": path,
+            }
+        )
+    return flamegraphs
+
+
 def _command_profile_chart_path(working_dir: Path) -> Path:
     return working_dir / "logs" / "command-profile-summary.png"
 
@@ -490,6 +522,22 @@ def _command_metrics_markdown(working_dir: Path, records: list[dict]) -> str:
     bottleneck_lines = _command_bottleneck_lines(records)
     if bottleneck_lines:
         lines.extend(["## Bottleneck summary", "", *bottleneck_lines, ""])
+
+    flamegraph_records = _command_flamegraph_records(records)
+    if flamegraph_records:
+        lines.extend(
+            [
+                "## Perf flamegraphs",
+                "",
+                "Generated from Linux `perf record` samples for commands run with "
+                "`prefect_command_profile = perf`.",
+                "",
+            ]
+        )
+        for record in flamegraph_records:
+            lines.append(f"- `{record['label']}`: [local SVG]({record['path'].resolve().as_uri()})")
+        lines.append("")
+
     lines.extend(
         [
             "| Operation | Name | Status | Duration | CPU | Max RSS | FS In | FS Out | Command |",
@@ -743,6 +791,12 @@ def publish_command_metrics_artifact(
                 key=COMMAND_PROFILE_SUMMARY_ARTIFACT_KEY,
                 description="Rapthor external-command CPU, memory, I/O, and timing summary.",
             )
+    for flamegraph in _command_flamegraph_records(records):
+        writers.image(
+            image_url=_data_url(flamegraph["path"]),
+            key=flamegraph["artifact_key"],
+            description=flamegraph["description"],
+        )
     log.info("Published Rapthor command timing artifact from %s", _command_log_path(working_dir))
     return artifact_id
 

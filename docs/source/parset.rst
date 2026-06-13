@@ -838,8 +838,11 @@ The available options are described below under their respective sections.
         explicitly, with the same fallback if GNU time is unavailable. ``perf``
         additionally attempts to run Linux ``perf record`` for native profiling
         data, but this requires host support and suitable ``perf_event``
-        permissions. ``off`` disables command resource profiling while leaving
-        normal command timing controlled by :term:`prefect_log_commands`.
+        permissions. When successful, Rapthor converts the resulting
+        ``perf.script`` files into collapsed stacks and SVG flamegraphs under
+        ``dir_working/logs/profiles/`` and publishes the flamegraphs as Prefect
+        image artifacts. ``off`` disables command resource profiling while
+        leaving normal command timing controlled by :term:`prefect_log_commands`.
 
     debug_workflow
         Debug workflow related issues (default = ``False``). Enabling this option

@@ -421,7 +421,7 @@ def write_parset(output_dir: Path, path: Path, repo_root: Path, strategy_path: P
             prefect_stream_output = True
             prefect_retries = 0
             prefect_log_commands = True
-            prefect_command_profile = auto
+            prefect_command_profile = perf
             debug_workflow = False
             keep_temporary_files = False
             allow_internet_access = False

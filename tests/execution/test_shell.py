@@ -1,6 +1,7 @@
 import json
 import logging
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -9,11 +10,15 @@ from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.shell import (
     MissingPrefectShellError,
     ShellCommand,
+    _profiled_process_args,
+    collapse_perf_script,
     command_log_path,
     parse_gnu_time_metrics,
+    render_perf_flamegraph_svg,
     run_shell_command,
     run_shell_commands,
     shell_operation_kwargs,
+    write_perf_flamegraph_files,
     write_command_log_record,
 )
 
@@ -134,6 +139,68 @@ def test_parse_gnu_time_metrics_handles_resource_fields(tmp_path):
     }
 
 
+def test_collapse_perf_script_builds_folded_stacks():
+    perf_script = """
+wsclean 123 [000] 10.000000: cycles:
+        111111 leaf_function+0x1 (/usr/bin/wsclean)
+        222222 parent_function (/usr/bin/wsclean)
+        333333 main (/usr/bin/wsclean)
+
+wsclean 123 [000] 10.010000: cycles:
+        444444 leaf_function+0x2 (/usr/bin/wsclean)
+        222222 parent_function (/usr/bin/wsclean)
+        333333 main (/usr/bin/wsclean)
+"""
+
+    assert collapse_perf_script(perf_script) == {
+        ("main", "parent_function", "leaf_function"): 2
+    }
+
+
+def test_render_perf_flamegraph_svg_contains_sampled_frames():
+    svg = render_perf_flamegraph_svg(
+        {
+            ("main", "gridder"): 3,
+            ("main", "writer"): 1,
+        },
+        title="WSClean profile",
+    )
+
+    assert svg.startswith('<svg xmlns="http://www.w3.org/2000/svg"')
+    assert "WSClean profile" in svg
+    assert "gridder" in svg
+    assert "writer" in svg
+    assert "4 perf samples" in svg
+
+
+def test_write_perf_flamegraph_files_writes_folded_and_svg(tmp_path):
+    perf_script_path = tmp_path / "perf.script"
+    perf_script_path.write_text(
+        """
+DP3 456 [001] 20.000000: cycles:
+        111111 solve_one+0x1 (/usr/bin/DP3)
+        222222 solve_all (/usr/bin/DP3)
+
+DP3 456 [001] 20.010000: cycles:
+        111111 solve_one+0x2 (/usr/bin/DP3)
+        222222 solve_all (/usr/bin/DP3)
+""",
+        encoding="utf-8",
+    )
+
+    result = write_perf_flamegraph_files(perf_script_path, title="DP3 profile")
+
+    assert result["status"] == "created"
+    assert result["samples"] == 2
+    assert result["stacks"] == 1
+    folded_path = Path(result["perf_folded"])
+    flamegraph_path = Path(result["perf_flamegraph"])
+    assert folded_path.read_text(encoding="utf-8") == "solve_all;solve_one 2\n"
+    assert flamegraph_path.read_text(encoding="utf-8").startswith(
+        '<svg xmlns="http://www.w3.org/2000/svg"'
+    )
+
+
 def test_run_shell_command_records_resource_profile_for_streamed_command(tmp_path):
     pipeline_working_dir = tmp_path / "work" / "pipelines" / "profile_1"
     pipeline_working_dir.mkdir(parents=True)
@@ -157,6 +224,34 @@ def test_run_shell_command_records_resource_profile_for_streamed_command(tmp_pat
         assert Path(profile["artifacts"]["gnu_time"]).is_file()
     assert profile["resource_metrics"]["max_rss_kb"] > 0
     assert profile["resource_metrics"]["elapsed_seconds"] >= 0
+
+
+def test_profiled_process_args_falls_back_when_perf_record_is_unavailable(tmp_path, monkeypatch):
+    pipeline_working_dir = tmp_path / "work" / "pipelines" / "profile_1"
+    pipeline_working_dir.mkdir(parents=True)
+    monkeypatch.setattr("rapthor.execution.shell._gnu_time_path", lambda: "/usr/bin/time")
+    monkeypatch.setattr("rapthor.execution.shell._perf_record_support", lambda: (False, "blocked"))
+    profile = {}
+
+    process_args = _profiled_process_args(
+        ["bash", "script.sh"],
+        ShellCommand(
+            ["echo", "hello"],
+            working_directory=str(pipeline_working_dir),
+            name="profiled-step",
+        ),
+        ExecutionConfig(stream_output=True, command_profile="perf"),
+        datetime.now(timezone.utc),
+        profile,
+    )
+
+    assert process_args[:3] == ["/usr/bin/time", "-v", "-o"]
+    assert process_args[-2:] == ["bash", "script.sh"]
+    assert profile["mode"] == "perf"
+    assert profile["status"] == "time"
+    assert profile["perf_status"] == "unavailable"
+    assert profile["perf_reason"] == "blocked"
+    assert "perf_flamegraph" not in profile.get("artifacts", {})
 
 
 def test_run_shell_command_streams_clean_output_to_logger(tmp_path, caplog):

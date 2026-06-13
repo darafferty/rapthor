@@ -289,6 +289,45 @@ def test_publish_command_metrics_artifact_renders_timing_table(tmp_path):
     assert image_call["image_url"].startswith("data:image/png;base64,")
 
 
+def test_publish_command_metrics_artifact_publishes_perf_flamegraphs(tmp_path):
+    working_dir = tmp_path / "work"
+    log_dir = working_dir / "logs"
+    profile_dir = log_dir / "profiles" / "calibrate-1-solve"
+    profile_dir.mkdir(parents=True)
+    flamegraph_path = profile_dir / "perf.flamegraph.svg"
+    flamegraph_path.write_text(
+        '<svg xmlns="http://www.w3.org/2000/svg"><text>solve</text></svg>',
+        encoding="utf-8",
+    )
+    (log_dir / "commands.jsonl").write_text(
+        (
+            '{"operation": "calibrate_1", "name": "solve", '
+            '"status": "completed", "duration_seconds": 12.5, '
+            '"profile": {"resource_metrics": {"cpu_percent": 150.0}, '
+            f'"artifacts": {{"perf_flamegraph": "{flamegraph_path}"}}}}, '
+            '"command_string": "DP3 msin=input.ms"}\n'
+        ),
+        encoding="utf-8",
+    )
+    recorder = RecordingArtifactWriters()
+
+    publish_command_metrics_artifact(
+        working_dir,
+        artifact_writers=recorder.writers,
+        in_run_context=lambda: True,
+    )
+
+    assert [call[0] for call in recorder.calls] == ["markdown", "image", "image"]
+    markdown_call = recorder.calls[0][1]
+    assert "## Perf flamegraphs" in markdown_call["markdown"]
+    assert "`calibrate_1/solve`" in markdown_call["markdown"]
+
+    flamegraph_call = recorder.calls[2][1]
+    assert flamegraph_call["key"].startswith("rapthor-command-flamegraph-calibrate-1-solve-")
+    assert flamegraph_call["image_url"].startswith("data:image/svg+xml;base64,")
+    assert flamegraph_call["description"] == "Rapthor perf flamegraph for calibrate_1/solve."
+
+
 def test_render_command_profile_chart_writes_png(tmp_path):
     chart = render_command_profile_chart(
         tmp_path / "work",

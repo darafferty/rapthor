@@ -145,9 +145,14 @@ Rapthor also publishes a compact PNG summary chart showing the slowest commands
 and their CPU, memory, and I/O profile. Set
 ``prefect_command_profile = off`` to disable resource profiling, or
 ``prefect_command_profile = perf`` to also attempt native Linux ``perf``
-sampling. The ``perf`` mode writes ``perf.data`` and ``perf.script`` files under
+sampling. The ``perf`` mode writes ``perf.data``, ``perf.script``, collapsed
+``perf.folded`` stacks, and ``perf.flamegraph.svg`` files under
 ``dir_working/logs/profiles/`` when the host kernel and container permissions
-allow it; this is the starting point for native flamegraph generation.
+allow it. Generated flamegraph SVGs are also published as Prefect image artifacts
+and linked from the command timing Markdown artifact.
+The quick and rich demo parsets set ``prefect_command_profile = perf`` so they
+exercise this path automatically, falling back to lower-level resource metrics
+when ``perf`` sampling is not permitted.
 
 The checked-in demo parset uses a very small test Measurement Set so it starts
 quickly. To generate a richer local demo with five bright point-source groups,

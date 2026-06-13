@@ -1,6 +1,7 @@
 """Shell command wrappers used by Prefect tasks."""
 
 import hashlib
+import html
 import json
 import logging
 import os
@@ -40,6 +41,10 @@ STREAM_LOG_MAX_LINES_PER_RECORD = 40
 PERF_PROFILE_MODE = "perf"
 TIME_PROFILE_MODES = {"auto", "time", PERF_PROFILE_MODE}
 _STREAM_DONE = object()
+_FLAMEGRAPH_WIDTH = 1200
+_FLAMEGRAPH_FRAME_HEIGHT = 18
+_FLAMEGRAPH_HEADER_HEIGHT = 48
+_FLAMEGRAPH_MARGIN = 8
 
 _TIME_METRIC_FIELDS = {
     "User time (seconds)": ("user_seconds", float),
@@ -126,6 +131,30 @@ def _perf_path() -> Optional[str]:
     return shutil.which("perf")
 
 
+@lru_cache
+def _perf_record_support() -> tuple[bool, str]:
+    perf_path = _perf_path()
+    if perf_path is None:
+        return False, "perf is not available"
+
+    try:
+        with tempfile.TemporaryDirectory(prefix="rapthor-perf-check-") as temp_dir:
+            result = subprocess.run(
+                [perf_path, "record", "-o", str(Path(temp_dir) / "perf.data"), "--", "true"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                text=True,
+                check=False,
+            )
+    except OSError as err:
+        return False, str(err)
+
+    if result.returncode != 0:
+        reason = result.stderr.strip() or f"perf record exited with {result.returncode}"
+        return False, reason
+    return True, ""
+
+
 def _parse_elapsed_seconds(value: str) -> float:
     parts = value.strip().split(":")
     if len(parts) == 3:
@@ -161,6 +190,200 @@ def parse_gnu_time_metrics(path: Path) -> dict:
         except ValueError:
             log.debug("Could not parse GNU time metric %s=%r from %s", key, value, path)
     return metrics
+
+
+def _perf_frame_name(line: str) -> Optional[str]:
+    stripped = line.strip()
+    if not stripped or stripped.startswith("#"):
+        return None
+
+    parts = stripped.split(None, 1)
+    if len(parts) == 2 and re.fullmatch(r"(?:0x)?[0-9a-fA-F]+|\?+", parts[0]):
+        frame = parts[1]
+    else:
+        frame = stripped
+
+    frame = re.sub(r"\s+\([^)]*\)\s*$", "", frame).strip()
+    frame = re.sub(r"\+0x[0-9a-fA-F]+(?:/[0-9a-fA-F]+)?$", "", frame).strip()
+    return frame.replace(";", ":") or None
+
+
+def collapse_perf_script(script_text: str) -> dict[tuple[str, ...], int]:
+    """Collapse ``perf script`` call stacks into flamegraph-style stack counts."""
+    collapsed: dict[tuple[str, ...], int] = {}
+    sample_frames: list[str] = []
+
+    def flush_sample() -> None:
+        if not sample_frames:
+            return
+        stack = tuple(reversed(sample_frames))
+        collapsed[stack] = collapsed.get(stack, 0) + 1
+        sample_frames.clear()
+
+    for line in script_text.splitlines():
+        if not line.strip():
+            flush_sample()
+            continue
+        if not line.startswith((" ", "\t")):
+            flush_sample()
+            continue
+
+        frame = _perf_frame_name(line)
+        if frame:
+            sample_frames.append(frame)
+
+    flush_sample()
+    return collapsed
+
+
+def _flamegraph_color(name: str) -> str:
+    digest = hashlib.sha1(name.encode("utf-8")).digest()
+    red = 200 + digest[0] % 46
+    green = 80 + digest[1] % 120
+    blue = 35 + digest[2] % 45
+    return f"rgb({red},{green},{blue})"
+
+
+def _flamegraph_depth(node: dict) -> int:
+    children = node["children"]
+    if not children:
+        return 0
+    return 1 + max(_flamegraph_depth(child) for child in children.values())
+
+
+def _shorten_svg_label(label: str, width: float) -> str:
+    max_chars = max(0, int((width - 6) / 7))
+    if max_chars <= 2:
+        return ""
+    if len(label) <= max_chars:
+        return label
+    return f"{label[: max_chars - 1]}..."
+
+
+def render_perf_flamegraph_svg(
+    collapsed_stacks: Mapping[tuple[str, ...], int],
+    *,
+    title: str = "Rapthor perf flamegraph",
+) -> str:
+    """Render collapsed perf stacks as a self-contained SVG flamegraph."""
+    root = {"name": "all", "count": 0, "children": {}}
+    for stack, count in collapsed_stacks.items():
+        if not stack or count <= 0:
+            continue
+        root["count"] += count
+        node = root
+        for frame in stack:
+            children = node["children"]
+            if frame not in children:
+                children[frame] = {"name": frame, "count": 0, "children": {}}
+            node = children[frame]
+            node["count"] += count
+
+    total_samples = root["count"]
+    if total_samples <= 0:
+        return ""
+
+    max_depth = _flamegraph_depth(root)
+    height = (
+        _FLAMEGRAPH_HEADER_HEIGHT
+        + (max_depth + 1) * _FLAMEGRAPH_FRAME_HEIGHT
+        + _FLAMEGRAPH_MARGIN * 2
+    )
+    inner_width = _FLAMEGRAPH_WIDTH - _FLAMEGRAPH_MARGIN * 2
+    elements = [
+        (
+            f'<svg xmlns="http://www.w3.org/2000/svg" width="{_FLAMEGRAPH_WIDTH}" '
+            f'height="{height}" viewBox="0 0 {_FLAMEGRAPH_WIDTH} {height}">'
+        ),
+        "<style>"
+        "text{font-family:Arial,sans-serif;font-size:12px;fill:#111}"
+        ".frame rect{stroke:#fff;stroke-width:.5;rx:2;ry:2}"
+        ".subtitle{font-size:11px;fill:#555}"
+        "</style>",
+        f"<title>{html.escape(title)}</title>",
+        f'<text x="{_FLAMEGRAPH_MARGIN}" y="20">{html.escape(title)}</text>',
+        (
+            f'<text class="subtitle" x="{_FLAMEGRAPH_MARGIN}" y="38">'
+            f"{total_samples:,} perf samples; wider frames consumed more sampled CPU time"
+            "</text>"
+        ),
+    ]
+
+    def render_node(node: dict, x: float, width: float, depth: int) -> None:
+        if width < 0.25:
+            return
+        y = _FLAMEGRAPH_HEADER_HEIGHT + (max_depth - depth) * _FLAMEGRAPH_FRAME_HEIGHT
+        escaped_name = html.escape(str(node["name"]))
+        sample_count = int(node["count"])
+        percent = sample_count / total_samples * 100.0
+        color = _flamegraph_color(str(node["name"]))
+        label = html.escape(_shorten_svg_label(str(node["name"]), width))
+        elements.extend(
+            [
+                '<g class="frame">',
+                (
+                    f"<title>{escaped_name} - {sample_count:,} samples "
+                    f"({percent:.1f}%)</title>"
+                ),
+                (
+                    f'<rect x="{x:.3f}" y="{y:.3f}" width="{width:.3f}" '
+                    f'height="{_FLAMEGRAPH_FRAME_HEIGHT - 1}" fill="{color}" />'
+                ),
+            ]
+        )
+        if label:
+            elements.append(f'<text x="{x + 3:.3f}" y="{y + 12.5:.3f}">{label}</text>')
+        elements.append("</g>")
+
+        child_x = x
+        children = sorted(
+            node["children"].values(),
+            key=lambda child: (-int(child["count"]), str(child["name"])),
+        )
+        for child in children:
+            child_width = width * int(child["count"]) / max(1, int(node["count"]))
+            render_node(child, child_x, child_width, depth + 1)
+            child_x += child_width
+
+    render_node(root, _FLAMEGRAPH_MARGIN, inner_width, 0)
+    elements.append("</svg>")
+    return "\n".join(elements)
+
+
+def write_perf_flamegraph_files(
+    perf_script_path: Path,
+    *,
+    title: Optional[str] = None,
+) -> dict[str, object]:
+    """Write folded stacks and an SVG flamegraph beside a ``perf.script`` file."""
+    perf_script_path = Path(perf_script_path)
+    collapsed_stacks = collapse_perf_script(
+        perf_script_path.read_text(encoding="utf-8", errors="replace")
+    )
+    if not collapsed_stacks:
+        return {"status": "no_samples"}
+
+    folded_path = perf_script_path.with_suffix(".folded")
+    flamegraph_path = perf_script_path.with_suffix(".flamegraph.svg")
+    folded_lines = [
+        f"{';'.join(stack)} {count}"
+        for stack, count in sorted(collapsed_stacks.items(), key=lambda item: item[0])
+    ]
+    folded_path.write_text("\n".join(folded_lines) + "\n", encoding="utf-8")
+    flamegraph_path.write_text(
+        render_perf_flamegraph_svg(
+            collapsed_stacks,
+            title=title or f"Rapthor perf flamegraph: {perf_script_path.parent.name}",
+        ),
+        encoding="utf-8",
+    )
+    return {
+        "status": "created",
+        "perf_folded": str(folded_path),
+        "perf_flamegraph": str(flamegraph_path),
+        "samples": sum(collapsed_stacks.values()),
+        "stacks": len(collapsed_stacks),
+    }
 
 
 def _profile_directory(shell_command: ShellCommand, started_at: datetime) -> Optional[Path]:
@@ -222,17 +445,17 @@ def _profiled_process_args(
     profiled_args = [time_path, "-v", "-o", str(time_output_path), *base_args]
 
     if execution_config.command_profile == PERF_PROFILE_MODE:
-        perf_path = _perf_path()
-        if perf_path is None:
+        perf_supported, perf_reason = _perf_record_support()
+        if not perf_supported:
             profile["perf_status"] = "unavailable"
-            profile["perf_reason"] = "perf is not available"
+            profile["perf_reason"] = perf_reason
             return profiled_args
 
         perf_data_path = profile_dir / "perf.data"
         profile["status"] = "perf"
         profile["artifacts"]["perf_data"] = str(perf_data_path)
         return [
-            perf_path,
+            str(_perf_path()),
             "record",
             "-F",
             "99",
@@ -307,6 +530,31 @@ def _write_perf_script(profile: dict) -> None:
     profile["perf_script_status"] = "created"
 
 
+def _write_perf_flamegraph(profile: dict) -> None:
+    artifacts = profile.get("artifacts")
+    if not isinstance(artifacts, dict):
+        return
+    perf_script_path = artifacts.get("perf_script")
+    if not perf_script_path or not Path(perf_script_path).exists():
+        return
+
+    try:
+        result = write_perf_flamegraph_files(Path(perf_script_path))
+    except OSError as err:
+        profile["flamegraph_status"] = "failed"
+        profile["flamegraph_error"] = str(err)
+        return
+
+    profile["flamegraph_status"] = result["status"]
+    if result["status"] != "created":
+        return
+
+    artifacts["perf_folded"] = result["perf_folded"]
+    artifacts["perf_flamegraph"] = result["perf_flamegraph"]
+    profile["flamegraph_samples"] = result["samples"]
+    profile["flamegraph_stacks"] = result["stacks"]
+
+
 def _finish_command_profile(
     profile: dict,
     resource_before=None,
@@ -325,6 +573,7 @@ def _finish_command_profile(
             profile["resource_source"] = "python_resource"
     if profile.get("status") == "perf":
         _write_perf_script(profile)
+        _write_perf_flamegraph(profile)
 
 
 def _queue_process_output(output, output_queue) -> None:

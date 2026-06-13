@@ -31,6 +31,7 @@ def test_generated_demo_parset_uses_prefect_settings_only(tmp_path):
     parser = configparser.ConfigParser(interpolation=None)
     parser.read(parset_path)
     assert parser["cluster"]["prefect_task_runner"] == "local_dask"
+    assert parser["cluster"]["prefect_command_profile"] == "perf"
     assert "cwl_runner" not in parser["cluster"]
 
 
@@ -39,4 +40,5 @@ def test_checked_in_demo_parset_uses_prefect_settings_only():
     parser.read(REPO_ROOT / "examples" / "prefect_demo.parset")
 
     assert parser["cluster"]["prefect_task_runner"] == "local_dask"
+    assert parser["cluster"]["prefect_command_profile"] == "perf"
     assert "cwl_runner" not in parser["cluster"]

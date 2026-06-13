@@ -23,8 +23,8 @@ The migration is in the post-cutover cleanup stage.
 - Demo and observability support is in place: persistent Prefect dashboard
   support, unique run directories, local/external Dask dashboard support, Dask
   performance reports, streamed external-command logs, Python logs in Prefect,
-  plot/FITS artifacts, command timing/resource artifacts, and richer synthetic
-  demo data.
+  plot/FITS artifacts, command timing/resource artifacts, `perf` flamegraph
+  artifacts, and richer synthetic demo data.
 - CI has been adjusted and verified passing: tests that start a Prefect test
   server are marked and run serially, while the remaining non-integration tests
   use all available xdist workers.
@@ -71,6 +71,9 @@ The migration is in the post-cutover cleanup stage.
 - Renamed migration-era execution golden fixtures from `legacy_*_reference.json`
   to neutral command/output reference fixtures and removed stale
   CWL-equivalence wording from active execution-flow tests.
+- Added external-command profiling artifacts for the Prefect path, including
+  resource metrics, bottleneck Markdown, summary charts, and optional Linux
+  `perf` SVG flamegraphs when host permissions allow sampling.
 
 ## Remaining Work
 
@@ -122,21 +125,15 @@ Keep each slice behaviour-preserving and covered by the existing focused tests.
   EveryBeam, PyBDSF, diagnostics, and mosaic hand-off.
 - Fix real differences found by tests or demo runs.
 
-### 3. Runtime Profiling And Bottleneck Visibility
+### 3. Runtime Profiling Follow-Up
 
-- Add lightweight external-command profiling to the Prefect path so DP3,
-  WSClean, LoSoTo, and helper scripts record CPU, wall time, peak memory,
-  filesystem I/O counts, page faults, and context switches in
-  `dir_working/logs/commands.jsonl`.
-- Publish the profiling data as Prefect artifacts: a markdown bottleneck
-  summary plus a compact chart for command duration, CPU, memory, and I/O.
-- Document the parset controls for command profiling. Keep the default mode
-  `auto` so runs collect the available low-overhead metrics without requiring
-  extra environment variables.
-- Evaluate native flamegraph generation as a follow-up. Linux `perf` can be
-  requested through the profiling mode, but full flamegraph rendering depends on
-  host kernel permissions and flamegraph tooling being available in the target
-  runtime environment.
+- Validate `prefect_command_profile = perf` in the intended development and CI
+  container runtimes. The implementation writes `perf.data`, `perf.script`,
+  collapsed stacks, and SVG flamegraphs, but successful sampling still depends
+  on host kernel `perf_event` permissions.
+- Use a representative rich demo run to review the command summary chart and
+  flamegraphs, then adjust labels or pruning if the artifacts become too noisy
+  for DP3/WSClean bottleneck analysis.
 
 ### 4. Final Polish
 
