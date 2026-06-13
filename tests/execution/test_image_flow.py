@@ -756,7 +756,7 @@ def _materialize_image_operation_outputs(value):
 
 
 def test_image_command_builders_match_reference_fixtures():
-    commands = json.loads((FIXTURE_DIR / "legacy_command_reference.json").read_text())
+    commands = json.loads((FIXTURE_DIR / "command_reference.json").read_text())
 
     assert (
         normalized_prepare_imaging_data_command(
@@ -990,7 +990,7 @@ def test_image_command_builders_match_reference_fixtures():
     )
 
 
-def test_prepare_imaging_data_command_strips_cwl_shell_quotes_from_directions():
+def test_prepare_imaging_data_command_strips_wrapping_shell_quotes_from_directions():
     command = normalized_prepare_imaging_data_command(
         msin="obs_0.ms",
         data_colname="DATA",
@@ -2322,7 +2322,7 @@ def test_run_image_flow_fails_when_expected_output_is_missing(tmp_path):
 
 
 def test_image_reference_output_fixture_matches_output_contract():
-    outputs = json.loads((FIXTURE_DIR / "legacy_output_reference.json").read_text())
+    outputs = json.loads((FIXTURE_DIR / "output_reference.json").read_text())
 
     for value in outputs["image_no_dde"].values():
         validate_output_record(value, allow_none=True)

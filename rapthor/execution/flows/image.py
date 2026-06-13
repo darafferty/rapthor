@@ -104,7 +104,7 @@ def _append_options(command: list[str], options: list[tuple[str, object]]) -> No
 
 
 def _strip_wrapping_shell_quotes(value: str) -> str:
-    """Remove legacy grouping quotes before `shlex.join` applies shell quoting."""
+    """Remove caller-supplied grouping quotes before `shlex.join` applies shell quoting."""
     if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
         return value[1:-1]
     return value

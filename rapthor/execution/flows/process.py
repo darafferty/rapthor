@@ -381,8 +381,8 @@ def run_process_steps(
 ) -> object:
     """Run one group of process steps using injectable operation factories.
 
-    This mirrors the legacy ``rapthor.process.run_steps`` operation ordering for
-    process-flow and compatibility tests.
+    This preserves the public ``rapthor.process.run_steps`` operation ordering
+    for process-flow and compatibility tests.
     """
     factories = operation_factories or default_process_operation_factories()
     selfcal_state = None

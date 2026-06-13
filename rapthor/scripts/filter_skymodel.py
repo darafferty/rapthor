@@ -11,8 +11,9 @@ from argparse import ArgumentParser, RawTextHelpFormatter
 import numpy as np
 from astropy.table import Table
 from astropy.utils import iers
-from rapthor.lib import miscellaneous as misc
 from lsmtool.filter_skymodel import filter_skymodel
+
+from rapthor.lib import miscellaneous as misc
 
 # Turn off astropy's IERS downloads to fix problems in cases where compute
 # node does not have internet access
@@ -170,9 +171,9 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, apparent_sky_skymo
 
     # Write out number of sources found by PyBDSF for later use
     output_diagnostics = f'{output_root}.image_diagnostics.json'
-    cwl_output = {'nsources': nsources}
+    diagnostics_output = {'nsources': nsources}
     with open(output_diagnostics, 'w') as fp:
-        json.dump(cwl_output, fp)
+        json.dump(diagnostics_output, fp)
 
 
 if __name__ == '__main__':

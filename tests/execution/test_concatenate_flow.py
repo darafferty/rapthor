@@ -98,7 +98,7 @@ def _operation_parset(tmp_path):
 
 
 def test_build_concatenate_command_matches_reference_fixture():
-    commands = json.loads((FIXTURE_DIR / "legacy_command_reference.json").read_text())
+    commands = json.loads((FIXTURE_DIR / "command_reference.json").read_text())
 
     assert (
         normalized_concatenate_command(

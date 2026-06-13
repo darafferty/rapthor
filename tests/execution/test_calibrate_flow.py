@@ -883,7 +883,7 @@ def _dd_fast_medium_image_predict_solve_slots():
 
 
 def test_calibrate_command_builders_match_reference_fixtures():
-    commands = json.loads((FIXTURE_DIR / "legacy_command_reference.json").read_text())
+    commands = json.loads((FIXTURE_DIR / "command_reference.json").read_text())
 
     assert (
         normalized_ddecal_solve_command(
@@ -1162,7 +1162,7 @@ def test_calibrate_command_builders_match_reference_fixtures():
     )
 
 
-def test_calibrate_command_builders_create_cwl_equivalent_tokens():
+def test_calibrate_command_builders_create_reference_tokens():
     assert build_collect_h5parms_command(
         ["fulljones_gain_0.h5parm", "fulljones_gain_1.h5parm"],
         "fulljones_solutions.h5",
@@ -3227,7 +3227,7 @@ def test_run_calibrate_flow_fails_when_expected_output_is_missing(tmp_path):
 
 
 def test_calibrate_reference_output_fixture_matches_output_contract():
-    outputs = json.loads((FIXTURE_DIR / "legacy_output_reference.json").read_text())
+    outputs = json.loads((FIXTURE_DIR / "output_reference.json").read_text())
 
     for value in outputs["calibrate_di_fulljones"].values():
         validate_output_record(value)

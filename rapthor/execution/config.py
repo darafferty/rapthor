@@ -113,7 +113,7 @@ class ExecutionConfig:
 
     @property
     def effective_local_scratch_dir(self) -> Optional[str]:
-        """Return the preferred local scratch directory, including legacy fallback."""
+        """Return the preferred local scratch directory, including deprecated fallback."""
         return self.local_scratch_dir or self.deprecated_dir_local
 
     def resolved_dask_scheduler(self, environ: Optional[Mapping[str, str]] = None) -> Optional[str]:

@@ -1,6 +1,6 @@
 # Rapthor Prefect/Dask Cutover Plan
 
-Status snapshot: 2026-06-12.
+Status snapshot: 2026-06-13.
 
 ## Goal
 
@@ -67,6 +67,9 @@ The migration is in the post-cutover cleanup stage.
 - Renamed the remaining generic file/directory record helper from
   `rapthor.lib.cwl` to `rapthor.lib.records` and replaced `CWLFile`/`CWLDir`
   with neutral `FileRecord`/`DirectoryRecord` helpers.
+- Renamed migration-era execution golden fixtures from `legacy_*_reference.json`
+  to neutral command/output reference fixtures and removed stale
+  CWL-equivalence wording from active execution-flow tests.
 
 ## Remaining Work
 

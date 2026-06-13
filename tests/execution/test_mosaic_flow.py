@@ -135,7 +135,7 @@ def _mosaic_payload(tmp_path, compress_images=False):
 
 
 def test_mosaic_command_builders_match_reference_fixtures():
-    commands = json.loads((FIXTURE_DIR / "legacy_command_reference.json").read_text())
+    commands = json.loads((FIXTURE_DIR / "command_reference.json").read_text())
 
     assert (
         normalized_make_mosaic_template_command(
@@ -168,7 +168,7 @@ def test_mosaic_command_builders_match_reference_fixtures():
     )
 
 
-def test_mosaic_command_builders_create_cwl_equivalent_tokens():
+def test_mosaic_command_builders_create_reference_tokens():
     assert build_make_mosaic_template_command(
         ["sector_1-I-image.fits", "sector_2-I-image.fits"],
         ["sector_1.vertices", "sector_2.vertices"],

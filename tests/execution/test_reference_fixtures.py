@@ -8,8 +8,8 @@ from rapthor.execution.outputs import validate_output_record
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
 
 
-def test_legacy_command_reference_fixture_is_tokenized():
-    commands = json.loads((FIXTURE_DIR / "legacy_command_reference.json").read_text())
+def test_command_reference_fixture_is_tokenized():
+    commands = json.loads((FIXTURE_DIR / "command_reference.json").read_text())
 
     command = commands["concatenate"]["concat_ms_files"]
 
@@ -26,7 +26,7 @@ def test_legacy_command_reference_fixture_is_tokenized():
     )
 
 
-def test_legacy_output_reference_fixture_matches_output_contract():
-    outputs = json.loads((FIXTURE_DIR / "legacy_output_reference.json").read_text())
+def test_output_reference_fixture_matches_output_contract():
+    outputs = json.loads((FIXTURE_DIR / "output_reference.json").read_text())
 
     validate_output_record(outputs["concatenate"]["concatenated_filenames"])

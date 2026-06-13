@@ -277,7 +277,7 @@ def _dd_predict_input_parms():
 
 
 def test_predict_command_builders_match_reference_fixtures():
-    commands = json.loads((FIXTURE_DIR / "legacy_command_reference.json").read_text())
+    commands = json.loads((FIXTURE_DIR / "command_reference.json").read_text())
 
     assert (
         normalized_predict_model_data_command(
@@ -397,7 +397,7 @@ def test_build_predict_model_data_command_uses_sagecalpredict_when_requested():
     assert "predict.applycal.parmdb=solutions.h5" in command
 
 
-def test_add_and_subtract_command_builders_create_cwl_equivalent_tokens():
+def test_add_and_subtract_command_builders_create_reference_tokens():
     assert build_add_sector_models_command(
         "obs_0.ms",
         ["obs_0.ms.sector_1_modeldata", "obs_0.ms.sector_2_modeldata"],
@@ -651,7 +651,7 @@ def test_run_predict_flow_fails_when_postprocess_output_is_missing(tmp_path):
 
 
 def test_predict_reference_output_fixtures_match_output_contract():
-    outputs = json.loads((FIXTURE_DIR / "legacy_output_reference.json").read_text())
+    outputs = json.loads((FIXTURE_DIR / "output_reference.json").read_text())
 
     validate_output_record(outputs["predict_di"]["msfiles_di_cal"])
     validate_output_record(outputs["predict"]["subtract_models"])
