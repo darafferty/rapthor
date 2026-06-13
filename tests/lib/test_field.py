@@ -77,6 +77,50 @@ def test_define_bright_source_sectors(field):
     assert field.bright_source_sectors == []
 
 
+def test_update_allows_target_number_without_target_flux(field, monkeypatch):
+    captured = {}
+
+    def fake_update_skymodels(index, regroup_model, **kwargs):
+        captured.update(kwargs)
+
+    monkeypatch.setattr(field, "update_skymodels", fake_update_skymodels)
+    monkeypatch.setattr(field, "remove_skymodels", lambda: None)
+    field.lofar_to_true_flux_ratio = 2.0
+    field.lofar_to_true_flux_std = 0.1
+    field.apply_normalizations = False
+
+    field.update(
+        {
+            "do_calibrate": True,
+            "do_slowgain_solve": False,
+            "do_fulljones_solve": False,
+            "calibration_strategy": {"di": ["fast_phase"]},
+            "regroup_model": True,
+            "target_flux": None,
+            "max_directions": 1,
+            "max_distance": None,
+            "peel_bright_sources": False,
+            "peel_outliers": False,
+            "reweight": False,
+            "compress_selfcal_images": False,
+            "compress_final_images": False,
+        },
+        index=2,
+    )
+
+    assert captured["target_flux"] is None
+    assert captured["target_number"] == 1
+
+
+def test_update_skymodels_allows_target_number_without_target_flux(parset_for_field_test):
+    field = Field(parset_for_field_test)
+
+    field.update_skymodels(1, True, target_flux=None, target_number=1)
+
+    assert field.target_flux is not None
+    assert len(field.calibrator_patch_names) == 1
+
+
 def test_find_intersecting_sources(field):
     iss = field.find_intersecting_sources()
     assert iss[0].area == pytest.approx(18.37996802132365)

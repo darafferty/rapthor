@@ -425,6 +425,7 @@ dask_dashboard_address = None
 prefect_stream_output = True
 prefect_retries = 0
 prefect_log_commands = True
+prefect_command_profile = auto
 
 # Debug workflow related issues (default = False). Enabling this option implies
 # that temporary files produced during the workflow run will be kept (i.e. the

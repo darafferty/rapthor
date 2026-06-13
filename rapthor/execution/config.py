@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Any, Mapping, Optional
 
 TASK_RUNNERS = ("local_dask", "external_dask", "sync")
+COMMAND_PROFILE_MODES = ("auto", "time", "perf", "off")
 DASK_SCHEDULER_ENV = "DASK_SCHEDULER"
 
 
@@ -36,6 +37,16 @@ def _as_non_negative_int(value: Any, name: str) -> int:
     return parsed
 
 
+def _as_choice(value: Any, name: str, choices: tuple[str, ...]) -> str:
+    if value is None:
+        return choices[0]
+    parsed = str(value).strip().lower()
+    if parsed not in choices:
+        allowed = ", ".join(map(repr, choices))
+        raise ValueError(f"{name} must be one of {allowed}")
+    return parsed
+
+
 def _cluster_settings(parset: Mapping[str, Any]) -> Mapping[str, Any]:
     return parset.get("cluster_specific", parset.get("cluster", {}))
 
@@ -58,6 +69,7 @@ class ExecutionConfig:
     stream_output: bool = True
     retries: int = 0
     log_commands: bool = True
+    command_profile: str = "auto"
     batch_system: str = "single_machine"
     max_nodes: int = 1
     cpus_per_task: int = 0
@@ -97,6 +109,11 @@ class ExecutionConfig:
             retries=_as_non_negative_int(cluster.get("prefect_retries", 0), "prefect_retries"),
             log_commands=_as_bool(
                 cluster.get("prefect_log_commands", True), "prefect_log_commands"
+            ),
+            command_profile=_as_choice(
+                cluster.get("prefect_command_profile", "auto"),
+                "prefect_command_profile",
+                COMMAND_PROFILE_MODES,
             ),
             batch_system=str(cluster.get("batch_system", "single_machine")),
             max_nodes=_as_non_negative_int(cluster.get("max_nodes", 1), "max_nodes"),

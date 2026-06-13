@@ -804,6 +804,43 @@ The available options are described below under their respective sections.
         The type of container to use when :term:`use_container` = ``True``. The supported
         types are: ``docker`` (the default), ``udocker``, or ``singularity``.
 
+    prefect_task_runner
+        Prefect task runner to use for the production Python execution path.
+        Supported values are ``local_dask``, ``external_dask``, and ``sync``.
+        If unset, Rapthor uses ``external_dask`` when a Dask scheduler is
+        configured and ``local_dask`` otherwise.
+
+    dask_scheduler
+        Address of an existing Dask scheduler to use with
+        ``prefect_task_runner = external_dask``.
+
+    dask_dashboard_address
+        Dashboard bind address for a local Dask cluster, for example ``:8787``.
+
+    prefect_stream_output
+        Stream external command output, such as DP3 and WSClean logs, into the
+        Prefect task logs (default = ``True``).
+
+    prefect_retries
+        Number of Prefect task retries for operation tasks (default = ``0``).
+
+    prefect_log_commands
+        Record external command metadata in
+        ``dir_working/logs/commands.jsonl`` and publish a Prefect command
+        metrics artifact (default = ``True``).
+
+    prefect_command_profile
+        External command profiling mode (default = ``auto``). Supported values
+        are ``auto``, ``time``, ``perf``, and ``off``. ``auto`` records
+        lightweight CPU, memory, and filesystem I/O metrics with GNU
+        ``/usr/bin/time -v`` when available and otherwise falls back to Python's
+        process resource counters. ``time`` requests GNU time profiling
+        explicitly, with the same fallback if GNU time is unavailable. ``perf``
+        additionally attempts to run Linux ``perf record`` for native profiling
+        data, but this requires host support and suitable ``perf_event``
+        permissions. ``off`` disables command resource profiling while leaving
+        normal command timing controlled by :term:`prefect_log_commands`.
+
     debug_workflow
         Debug workflow related issues (default = ``False``). Enabling this option
         implies that temporary files, produced during the workflow run, will be kept

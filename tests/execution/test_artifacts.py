@@ -6,6 +6,7 @@ from rapthor.execution.artifacts import (
     publish_fits_image_artifacts,
     publish_plot_artifacts,
     publish_plot_file_records,
+    render_command_profile_chart,
     render_fits_png,
 )
 
@@ -241,11 +242,17 @@ def test_publish_command_metrics_artifact_renders_timing_table(tmp_path):
                 (
                     '{"operation": "calibrate_1", "name": "solve", '
                     '"status": "completed", "duration_seconds": 12.5, '
+                    '"profile": {"resource_metrics": {"cpu_percent": 150.0, '
+                    '"max_rss_kb": 1048576, "file_system_inputs": 8, '
+                    '"file_system_outputs": 16}}, '
                     '"command_string": "DP3 msin=input.ms"}'
                 ),
                 (
-                    '{"operation": "image_1", "name": "clean", '
+                    '{"operation": "image_1", '
                     '"status": "failed", "duration_seconds": 61.0, '
+                    '"profile": {"resource_metrics": {"cpu_percent": 95.0, '
+                    '"max_rss_kb": 2097152, "file_system_inputs": 128, '
+                    '"file_system_outputs": 256}}, '
                     '"command": ["wsclean", "-name", "sector"]}'
                 ),
             ]
@@ -262,16 +269,45 @@ def test_publish_command_metrics_artifact_renders_timing_table(tmp_path):
     )
 
     assert artifact_id == "markdown-1"
-    assert [call[0] for call in recorder.calls] == ["markdown"]
+    assert [call[0] for call in recorder.calls] == ["markdown", "image"]
     markdown_call = recorder.calls[0][1]
     assert markdown_call["key"] == "rapthor-command-metrics"
     assert "# Rapthor command timings" in markdown_call["markdown"]
     assert "Total recorded external-command time: `1.23 min`" in markdown_call["markdown"]
+    assert "## Bottleneck summary" in markdown_call["markdown"]
+    assert "- Highest peak memory: `image_1/wsclean` at `2.00 GB`" in markdown_call["markdown"]
     assert (
-        "| calibrate_1 | solve | completed | 12.50 s | `DP3 msin=input.ms` |"
-        in markdown_call["markdown"]
+        "| calibrate_1 | solve | completed | 12.50 s | 150% | 1.00 GB | 8 | 16 | "
+        "`DP3 msin=input.ms` |" in markdown_call["markdown"]
     )
     assert (
-        "| image_1 | clean | failed | 1.02 min | `wsclean -name sector` |"
-        in markdown_call["markdown"]
+        "| image_1 | wsclean | failed | 1.02 min | 95% | 2.00 GB | 128 | 256 | "
+        "`wsclean -name sector` |" in markdown_call["markdown"]
     )
+    image_call = recorder.calls[1][1]
+    assert image_call["key"] == "rapthor-command-profile-summary"
+    assert image_call["image_url"].startswith("data:image/png;base64,")
+
+
+def test_render_command_profile_chart_writes_png(tmp_path):
+    chart = render_command_profile_chart(
+        tmp_path / "work",
+        [
+            {
+                "operation": "calibrate_1",
+                "name": "solve",
+                "duration_seconds": 3.0,
+                "profile": {
+                    "resource_metrics": {
+                        "cpu_percent": 125.0,
+                        "max_rss_kb": 1024,
+                        "file_system_inputs": 4,
+                        "file_system_outputs": 8,
+                    }
+                },
+            }
+        ],
+    )
+
+    assert chart == tmp_path / "work" / "logs" / "command-profile-summary.png"
+    assert chart.read_bytes().startswith(b"\x89PNG")

@@ -759,7 +759,7 @@ class Field(object):
 
                 # Check if target flux can be met in at least one direction
                 total_flux = np.sum(fluxes)
-                if total_flux < target_flux:
+                if target_flux is not None and total_flux < target_flux:
                     raise RuntimeError(
                         'There is insufficient flux density in the model to meet '
                         'the target flux density. Please check the sky model '
@@ -1978,7 +1978,11 @@ class Field(object):
                 fractional_change = 1 / self.lofar_to_true_flux_ratio - 1
             else:
                 fractional_change = self.lofar_to_true_flux_ratio - 1
-            if fractional_change > self.lofar_to_true_flux_std and not self.apply_normalizations:
+            if (
+                target_flux is not None
+                and fractional_change > self.lofar_to_true_flux_std
+                and not self.apply_normalizations
+            ):
                 target_flux *= self.lofar_to_true_flux_ratio
                 self.log.info(
                     "Adjusting the target flux for calibrator selection "

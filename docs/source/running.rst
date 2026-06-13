@@ -135,7 +135,19 @@ and published as image artifacts. At the end of the process flow, Rapthor
 publishes an index artifact for everything found under ``dir_working/plots``.
 Rapthor also records external command timings in
 ``dir_working/logs/commands.jsonl`` and publishes a command timing summary as a
-Prefect Markdown artifact.
+Prefect Markdown artifact. With ``prefect_command_profile = auto`` (the
+default), streamed external commands are also profiled with GNU
+``/usr/bin/time -v`` when available, or with Python's process resource counters
+as a portable fallback. The command log and Prefect artifact then include CPU
+percentage, user/system time, peak resident memory, filesystem input/output
+counts, page faults, and context switches for tools such as DP3 and WSClean.
+Rapthor also publishes a compact PNG summary chart showing the slowest commands
+and their CPU, memory, and I/O profile. Set
+``prefect_command_profile = off`` to disable resource profiling, or
+``prefect_command_profile = perf`` to also attempt native Linux ``perf``
+sampling. The ``perf`` mode writes ``perf.data`` and ``perf.script`` files under
+``dir_working/logs/profiles/`` when the host kernel and container permissions
+allow it; this is the starting point for native flamegraph generation.
 
 The checked-in demo parset uses a very small test Measurement Set so it starts
 quickly. To generate a richer local demo with five bright point-source groups,

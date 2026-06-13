@@ -14,7 +14,9 @@ COMMON_SETTINGS = {
     "max_normalization_delta": 0.3,
     "scale_normalization_delta": True,
     "solve_min_uv_lambda": 80,
-    "target_flux": 0.3,
+    # Select demo calibrators by count rather than a fixed flux threshold. The
+    # tiny fixture data can produce a low-flux placeholder source between cycles.
+    "target_flux": None,
     "max_directions": 4,
     "max_distance": None,
     "regroup_model": True,
@@ -41,17 +43,14 @@ def _step(calibration_strategy, **overrides):
 strategy_steps = [
     _step(
         {"di": [], "dd": ["fast_phase", "medium_phase"]},
-        target_flux=0.45,
         max_nmiter=8,
     ),
     _step(
         {"di": [], "dd": ["fast_phase", "medium_phase", "slow_gains"]},
-        target_flux=0.35,
         max_nmiter=10,
     ),
     _step(
         {"di": ["full_jones"], "dd": []},
-        target_flux=0.3,
         max_nmiter=12,
         regroup_model=False,
     ),
@@ -64,7 +63,6 @@ strategy_steps = [
 strategy_steps.append(
     _step(
         {"di": ["full_jones"], "dd": []},
-        target_flux=0.3,
         max_nmiter=12,
         regroup_model=False,
     )

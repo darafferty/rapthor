@@ -1,6 +1,7 @@
 import json
 import logging
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -9,6 +10,7 @@ from rapthor.execution.shell import (
     MissingPrefectShellError,
     ShellCommand,
     command_log_path,
+    parse_gnu_time_metrics,
     run_shell_command,
     run_shell_commands,
     shell_operation_kwargs,
@@ -89,6 +91,72 @@ def test_run_shell_command_records_duration_metadata(tmp_path):
     assert record["duration_seconds"] >= 0
     assert record["started_at"]
     assert record["finished_at"]
+
+
+def test_parse_gnu_time_metrics_handles_resource_fields(tmp_path):
+    time_output = tmp_path / "time.txt"
+    time_output.write_text(
+        "\n".join(
+            [
+                'Command being timed: "bash script.sh"',
+                "User time (seconds): 1.25",
+                "System time (seconds): 0.50",
+                "Percent of CPU this job got: 175%",
+                "Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.00",
+                "Maximum resident set size (kbytes): 204800",
+                "Major (requiring I/O) page faults: 2",
+                "Minor (reclaiming a frame) page faults: 100",
+                "File system inputs: 16",
+                "File system outputs: 32",
+                "Voluntary context switches: 4",
+                "Involuntary context switches: 5",
+                "Exit status: 0",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    metrics = parse_gnu_time_metrics(time_output)
+
+    assert metrics == {
+        "user_seconds": 1.25,
+        "system_seconds": 0.5,
+        "cpu_percent": 175.0,
+        "elapsed_seconds": 1.0,
+        "max_rss_kb": 204800,
+        "major_page_faults": 2,
+        "minor_page_faults": 100,
+        "file_system_inputs": 16,
+        "file_system_outputs": 32,
+        "voluntary_context_switches": 4,
+        "involuntary_context_switches": 5,
+        "exit_status": 0,
+    }
+
+
+def test_run_shell_command_records_resource_profile_for_streamed_command(tmp_path):
+    pipeline_working_dir = tmp_path / "work" / "pipelines" / "profile_1"
+    pipeline_working_dir.mkdir(parents=True)
+
+    result = run_shell_command(
+        ShellCommand(
+            [sys.executable, "-c", "print('profiled')"],
+            working_directory=str(pipeline_working_dir),
+            name="profiled-step",
+        ),
+        ExecutionConfig(stream_output=True, command_profile="auto"),
+    )
+
+    assert result == ["profiled"]
+    record = json.loads((tmp_path / "work" / "logs" / "commands.jsonl").read_text())
+    profile = record["profile"]
+    assert profile["mode"] == "auto"
+    assert profile["status"] in {"resource", "time"}
+    assert profile["resource_source"] in {"python_resource", "gnu_time"}
+    if "artifacts" in profile:
+        assert Path(profile["artifacts"]["gnu_time"]).is_file()
+    assert profile["resource_metrics"]["max_rss_kb"] > 0
+    assert profile["resource_metrics"]["elapsed_seconds"] >= 0
 
 
 def test_run_shell_command_streams_clean_output_to_logger(tmp_path, caplog):

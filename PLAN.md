@@ -23,7 +23,8 @@ The migration is in the post-cutover cleanup stage.
 - Demo and observability support is in place: persistent Prefect dashboard
   support, unique run directories, local/external Dask dashboard support, Dask
   performance reports, streamed external-command logs, Python logs in Prefect,
-  plot/FITS artifacts, command timing artifacts, and richer synthetic demo data.
+  plot/FITS artifacts, command timing/resource artifacts, and richer synthetic
+  demo data.
 - CI has been adjusted and verified passing: tests that start a Prefect test
   server are marked and run serially, while the remaining non-integration tests
   use all available xdist workers.
@@ -121,7 +122,23 @@ Keep each slice behaviour-preserving and covered by the existing focused tests.
   EveryBeam, PyBDSF, diagnostics, and mosaic hand-off.
 - Fix real differences found by tests or demo runs.
 
-### 3. Final Polish
+### 3. Runtime Profiling And Bottleneck Visibility
+
+- Add lightweight external-command profiling to the Prefect path so DP3,
+  WSClean, LoSoTo, and helper scripts record CPU, wall time, peak memory,
+  filesystem I/O counts, page faults, and context switches in
+  `dir_working/logs/commands.jsonl`.
+- Publish the profiling data as Prefect artifacts: a markdown bottleneck
+  summary plus a compact chart for command duration, CPU, memory, and I/O.
+- Document the parset controls for command profiling. Keep the default mode
+  `auto` so runs collect the available low-overhead metrics without requiring
+  extra environment variables.
+- Evaluate native flamegraph generation as a follow-up. Linux `perf` can be
+  requested through the profiling mode, but full flamegraph rendering depends on
+  host kernel permissions and flamegraph tooling being available in the target
+  runtime environment.
+
+### 4. Final Polish
 
 - Run the formatter/linter after the refactor settles.
 - Run the narrowest meaningful tests after each cleanup slice, then the broader

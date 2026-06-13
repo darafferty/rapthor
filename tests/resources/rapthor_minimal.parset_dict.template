@@ -51,6 +51,7 @@
                       'max_threads': 8,
                       'mem_per_node_gb': 0,
                       'parallel_gridding_threads': 3,
+                      'prefect_command_profile': 'auto',
                       'prefect_log_commands': True,
                       'prefect_retries': 0,
                       'prefect_stream_output': True,

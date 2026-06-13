@@ -14,7 +14,10 @@ COMMON_SETTINGS = {
     "max_normalization_delta": 0.3,
     "scale_normalization_delta": True,
     "solve_min_uv_lambda": 80,
-    "target_flux": 0.3,
+    # The quick demo uses a tiny fixture MS, so later source lists can contain
+    # only a very faint placeholder source. Select calibrators by count rather
+    # than by a fixed flux threshold to keep the dashboard demo robust.
+    "target_flux": None,
     "max_directions": 4,
     "max_distance": None,
     "regroup_model": True,
@@ -41,28 +44,23 @@ def _step(calibration_strategy, **overrides):
 strategy_steps = [
     _step(
         {"di": ["fast_phase"]},
-        target_flux=0.45,
         max_nmiter=8,
     ),
     _step(
         {"di": [], "dd": ["fast_phase", "medium_phase"]},
-        target_flux=0.35,
         max_nmiter=10,
     ),
     _step(
         {"di": ["fast_phase", "medium_phase"], "dd": []},
-        target_flux=0.35,
         max_nmiter=10,
     ),
     _step(
         {"di": ["full_jones"], "dd": []},
-        target_flux=0.3,
         max_nmiter=12,
         regroup_model=False,
     ),
     _step(
         {"di": [], "dd": ["fast_phase", "medium_phase", "slow_gains"]},
-        target_flux=0.3,
         max_nmiter=12,
     ),
 ]
@@ -74,7 +72,6 @@ strategy_steps = [
 strategy_steps.append(
     _step(
         {"di": [], "dd": ["fast_phase", "medium_phase", "slow_gains"]},
-        target_flux=0.3,
         max_nmiter=12,
         regroup_model=False,
     )

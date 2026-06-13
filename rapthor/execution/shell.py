@@ -1,15 +1,20 @@
 """Shell command wrappers used by Prefect tasks."""
 
+import hashlib
 import json
 import logging
 import os
 import queue
+import re
+import resource
+import shutil
 import subprocess
 import tempfile
 import threading
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from functools import lru_cache
 from pathlib import Path
 from typing import Mapping, Optional, Sequence
 
@@ -32,7 +37,25 @@ class ShellCommandError(RuntimeError):
 log = logging.getLogger("rapthor:shell")
 STREAM_LOG_FLUSH_INTERVAL_SECONDS = 1.0
 STREAM_LOG_MAX_LINES_PER_RECORD = 40
+PERF_PROFILE_MODE = "perf"
+TIME_PROFILE_MODES = {"auto", "time", PERF_PROFILE_MODE}
 _STREAM_DONE = object()
+
+_TIME_METRIC_FIELDS = {
+    "User time (seconds)": ("user_seconds", float),
+    "System time (seconds)": ("system_seconds", float),
+    "Percent of CPU this job got": ("cpu_percent", lambda value: float(value.rstrip("%"))),
+    "Elapsed (wall clock) time (h:mm:ss or m:ss)": ("elapsed_seconds", "elapsed"),
+    "Maximum resident set size (kbytes)": ("max_rss_kb", int),
+    "Average resident set size (kbytes)": ("average_rss_kb", int),
+    "Major (requiring I/O) page faults": ("major_page_faults", int),
+    "Minor (reclaiming a frame) page faults": ("minor_page_faults", int),
+    "File system inputs": ("file_system_inputs", int),
+    "File system outputs": ("file_system_outputs", int),
+    "Voluntary context switches": ("voluntary_context_switches", int),
+    "Involuntary context switches": ("involuntary_context_switches", int),
+    "Exit status": ("exit_status", int),
+}
 
 
 @dataclass(frozen=True)
@@ -71,6 +94,237 @@ def _get_command_logger():
         return get_run_logger()
     except Exception:
         return log
+
+
+def _slug(value: str, max_length: int = 80) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
+    if not slug:
+        return "command"
+    return slug[:max_length].strip("-") or "command"
+
+
+@lru_cache
+def _gnu_time_path() -> Optional[str]:
+    candidates = ["/usr/bin/time", shutil.which("time")]
+    for candidate in dict.fromkeys(path for path in candidates if path):
+        try:
+            result = subprocess.run(
+                [candidate, "-v", "true"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=False,
+            )
+        except OSError:
+            continue
+        if result.returncode == 0:
+            return candidate
+    return None
+
+
+@lru_cache
+def _perf_path() -> Optional[str]:
+    return shutil.which("perf")
+
+
+def _parse_elapsed_seconds(value: str) -> float:
+    parts = value.strip().split(":")
+    if len(parts) == 3:
+        hours, minutes, seconds = parts
+        return int(hours) * 3600 + int(minutes) * 60 + float(seconds)
+    if len(parts) == 2:
+        minutes, seconds = parts
+        return int(minutes) * 60 + float(seconds)
+    return float(value)
+
+
+def parse_gnu_time_metrics(path: Path) -> dict:
+    """Parse selected metrics from GNU ``time -v`` output."""
+    metrics = {}
+    if not path.exists():
+        return metrics
+
+    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        match = re.match(r"\s*(?P<key>.*?):\s+(?P<value>.*)$", line)
+        if match is None:
+            continue
+        key = match.group("key").strip()
+        value = match.group("value").strip()
+        if key not in _TIME_METRIC_FIELDS:
+            continue
+
+        metric_name, parser = _TIME_METRIC_FIELDS[key]
+        try:
+            if parser == "elapsed":
+                metrics[metric_name] = _parse_elapsed_seconds(value)
+            else:
+                metrics[metric_name] = parser(value)
+        except ValueError:
+            log.debug("Could not parse GNU time metric %s=%r from %s", key, value, path)
+    return metrics
+
+
+def _profile_directory(shell_command: ShellCommand, started_at: datetime) -> Optional[Path]:
+    log_path = command_log_path(shell_command.working_directory)
+    if log_path is None:
+        return None
+
+    operation = Path(str(shell_command.working_directory)).name
+    name = shell_command.name or normalize_command(shell_command.command)[0]
+    timestamp = started_at.strftime("%Y%m%dT%H%M%S%fZ")
+    digest = hashlib.sha1(shell_command.command_string.encode("utf-8")).hexdigest()[:8]
+    return (
+        log_path.parent
+        / "profiles"
+        / (f"{_slug(operation)}-{_slug(str(name))}-{timestamp}-{digest}")
+    )
+
+
+def _profiled_process_args(
+    base_args: list[str],
+    shell_command: ShellCommand,
+    execution_config: ExecutionConfig,
+    started_at: datetime,
+    profile: dict,
+) -> list[str]:
+    if not execution_config.log_commands or execution_config.command_profile == "off":
+        return base_args
+    if execution_config.command_profile not in TIME_PROFILE_MODES:
+        return base_args
+
+    profile_dir = _profile_directory(shell_command, started_at)
+    if profile_dir is None:
+        return base_args
+
+    profile_dir.mkdir(parents=True, exist_ok=True)
+    profile.update(
+        {
+            "mode": execution_config.command_profile,
+            "status": "resource",
+            "resource_source": "python_resource",
+        }
+    )
+
+    time_path = _gnu_time_path()
+    if time_path is None:
+        if execution_config.command_profile != "auto":
+            profile["reason"] = "GNU time -v is not available"
+        return base_args
+
+    time_output_path = profile_dir / "time.txt"
+    profile.update(
+        {
+            "mode": execution_config.command_profile,
+            "status": "time",
+            "resource_source": "gnu_time",
+            "artifacts": {"gnu_time": str(time_output_path)},
+        }
+    )
+    profiled_args = [time_path, "-v", "-o", str(time_output_path), *base_args]
+
+    if execution_config.command_profile == PERF_PROFILE_MODE:
+        perf_path = _perf_path()
+        if perf_path is None:
+            profile["perf_status"] = "unavailable"
+            profile["perf_reason"] = "perf is not available"
+            return profiled_args
+
+        perf_data_path = profile_dir / "perf.data"
+        profile["status"] = "perf"
+        profile["artifacts"]["perf_data"] = str(perf_data_path)
+        return [
+            perf_path,
+            "record",
+            "-F",
+            "99",
+            "-g",
+            "-o",
+            str(perf_data_path),
+            "--",
+            *profiled_args,
+        ]
+
+    return profiled_args
+
+
+def _resource_usage_snapshot():
+    return resource.getrusage(resource.RUSAGE_CHILDREN)
+
+
+def _resource_usage_metrics(before, after, elapsed_seconds: float) -> dict:
+    if before is None or after is None:
+        return {}
+
+    user_seconds = max(0.0, after.ru_utime - before.ru_utime)
+    system_seconds = max(0.0, after.ru_stime - before.ru_stime)
+    cpu_seconds = user_seconds + system_seconds
+    metrics = {
+        "user_seconds": user_seconds,
+        "system_seconds": system_seconds,
+        "elapsed_seconds": max(0.0, elapsed_seconds),
+        "max_rss_kb": max(0, after.ru_maxrss),
+        "major_page_faults": max(0, after.ru_majflt - before.ru_majflt),
+        "minor_page_faults": max(0, after.ru_minflt - before.ru_minflt),
+        "file_system_inputs": max(0, after.ru_inblock - before.ru_inblock),
+        "file_system_outputs": max(0, after.ru_oublock - before.ru_oublock),
+        "voluntary_context_switches": max(0, after.ru_nvcsw - before.ru_nvcsw),
+        "involuntary_context_switches": max(0, after.ru_nivcsw - before.ru_nivcsw),
+    }
+    if elapsed_seconds > 0:
+        metrics["cpu_percent"] = cpu_seconds / elapsed_seconds * 100.0
+    return metrics
+
+
+def _write_perf_script(profile: dict) -> None:
+    artifacts = profile.get("artifacts")
+    if not isinstance(artifacts, dict):
+        return
+    perf_data = artifacts.get("perf_data")
+    perf_path = _perf_path()
+    if not perf_data or perf_path is None or not Path(perf_data).exists():
+        return
+
+    perf_script_path = Path(perf_data).with_suffix(".script")
+    try:
+        result = subprocess.run(
+            [perf_path, "script", "-i", perf_data],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=False,
+        )
+    except OSError as err:
+        profile["perf_script_status"] = "failed"
+        profile["perf_script_error"] = str(err)
+        return
+
+    if result.returncode != 0:
+        profile["perf_script_status"] = "failed"
+        profile["perf_script_error"] = result.stderr.strip()
+        return
+
+    perf_script_path.write_text(result.stdout, encoding="utf-8")
+    artifacts["perf_script"] = str(perf_script_path)
+    profile["perf_script_status"] = "created"
+
+
+def _finish_command_profile(
+    profile: dict,
+    resource_before=None,
+    resource_after=None,
+    elapsed_seconds: float = 0.0,
+) -> None:
+    artifacts = profile.get("artifacts")
+    if isinstance(artifacts, dict) and artifacts.get("gnu_time"):
+        metrics = parse_gnu_time_metrics(Path(artifacts["gnu_time"]))
+        if metrics:
+            profile["resource_metrics"] = metrics
+    if "resource_metrics" not in profile:
+        metrics = _resource_usage_metrics(resource_before, resource_after, elapsed_seconds)
+        if metrics:
+            profile["resource_metrics"] = metrics
+            profile["resource_source"] = "python_resource"
+    if profile.get("status") == "perf":
+        _write_perf_script(profile)
 
 
 def _queue_process_output(output, output_queue) -> None:
@@ -131,6 +385,7 @@ def write_command_log_record(
     status: Optional[str] = None,
     returncode: Optional[int] = None,
     error: Optional[str] = None,
+    profile: Optional[Mapping[str, object]] = None,
 ) -> Optional[Path]:
     """Append a structured command record for integration assertions."""
     if not execution_config.log_commands:
@@ -163,6 +418,8 @@ def write_command_log_record(
         record["returncode"] = returncode
     if error is not None:
         record["error"] = error
+    if profile:
+        record["profile"] = dict(profile)
 
     log_path.parent.mkdir(parents=True, exist_ok=True)
     with log_path.open("a", encoding="utf-8") as handle:
@@ -170,13 +427,20 @@ def write_command_log_record(
     return log_path
 
 
-def _run_streaming_shell_command(shell_command: ShellCommand) -> list[str]:
+def _run_streaming_shell_command(
+    shell_command: ShellCommand,
+    execution_config: ExecutionConfig,
+    started_at: datetime,
+    profile: dict,
+) -> list[str]:
     command_logger = _get_command_logger()
     buffered_log_lines = []
     output_lines = []
     process = None
     reader_thread = None
     temp_file = None
+    resource_before = None
+    process_start_time = None
     try:
         temp_file = tempfile.NamedTemporaryFile(
             prefix="rapthor-prefect-",
@@ -188,8 +452,18 @@ def _run_streaming_shell_command(shell_command: ShellCommand) -> list[str]:
 
         env = os.environ.copy()
         env.update(shell_command.environment)
-        process = subprocess.Popen(
+        process_args = _profiled_process_args(
             ["bash", temp_file.name],
+            shell_command,
+            execution_config,
+            started_at,
+            profile,
+        )
+        if profile:
+            resource_before = _resource_usage_snapshot()
+            process_start_time = time.monotonic()
+        process = subprocess.Popen(
+            process_args,
             cwd=shell_command.working_directory,
             env=env,
             stdout=subprocess.PIPE,
@@ -225,6 +499,16 @@ def _run_streaming_shell_command(shell_command: ShellCommand) -> list[str]:
         _flush_stream_log(command_logger, buffered_log_lines)
 
         process.wait()
+        resource_after = _resource_usage_snapshot() if resource_before is not None else None
+        profile_elapsed_seconds = (
+            time.monotonic() - process_start_time if process_start_time is not None else 0.0
+        )
+        _finish_command_profile(
+            profile,
+            resource_before=resource_before,
+            resource_after=resource_after,
+            elapsed_seconds=profile_elapsed_seconds,
+        )
         if process.returncode != 0:
             raise ShellCommandError(
                 "Command failed with return code "
@@ -254,6 +538,7 @@ def run_shell_command(
     status = "completed"
     returncode = 0
     error = None
+    profile = {}
     try:
         operation_cls = shell_operation_cls or _load_shell_operation_cls()
         if (
@@ -261,7 +546,12 @@ def run_shell_command(
             and execution_config.stream_output
             and _is_prefect_shell_operation_cls(operation_cls)
         ):
-            return _run_streaming_shell_command(shell_command)
+            return _run_streaming_shell_command(
+                shell_command,
+                execution_config,
+                started_at,
+                profile,
+            )
 
         operation = operation_cls(**shell_operation_kwargs(shell_command, execution_config))
         return operation.run()
@@ -286,6 +576,7 @@ def run_shell_command(
             status=status,
             returncode=returncode,
             error=error,
+            profile=profile,
         )
 
 

@@ -6,6 +6,7 @@ from pathlib import Path
 from rapthor.execution.config import ExecutionConfig
 
 SCRIPT_PATH = Path(__file__).parents[2] / "scripts" / "dev" / "run-rapthor-prefect-demo.py"
+DEMO_STRATEGY_PATH = Path(__file__).parents[2] / "examples" / "prefect_demo_strategy.py"
 
 
 def load_demo_script():
@@ -14,6 +15,22 @@ def load_demo_script():
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
+
+
+def load_demo_strategy():
+    spec = importlib.util.spec_from_file_location("prefect_demo_strategy", DEMO_STRATEGY_PATH)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_quick_demo_strategy_selects_calibrators_by_count():
+    strategy = load_demo_strategy()
+
+    assert strategy.strategy_steps
+    assert all(step["target_flux"] is None for step in strategy.strategy_steps)
+    assert all(step["max_directions"] >= 1 for step in strategy.strategy_steps)
 
 
 def test_dask_performance_report_path_defaults_to_run_dir(tmp_path):

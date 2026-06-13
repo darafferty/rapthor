@@ -297,6 +297,7 @@ dask_dashboard_address = None
 prefect_stream_output = True
 prefect_retries = 0
 prefect_log_commands = True
+prefect_command_profile = auto
 
 # Debug workflow related issues. Enabling this keeps temporary workflow files
 # and will require significantly more disk space.

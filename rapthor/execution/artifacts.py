@@ -6,6 +6,7 @@ import json
 import logging
 import mimetypes
 import re
+import shlex
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Mapping, Optional
@@ -18,6 +19,7 @@ FITS_PREVIEW_ARTIFACT_KEY_PREFIX = "rapthor-fits-preview"
 JSON_ARTIFACT_SUFFIXES = {".json"}
 PLOT_ARTIFACT_KEY_PREFIX = "rapthor-plot"
 COMMAND_METRICS_ARTIFACT_KEY = "rapthor-command-metrics"
+COMMAND_PROFILE_SUMMARY_ARTIFACT_KEY = "rapthor-command-profile-summary"
 COMMAND_LOG_FILENAME = "commands.jsonl"
 
 
@@ -253,6 +255,218 @@ def _duration_text(value: object) -> str:
     return f"{duration / 60.0:.2f} min"
 
 
+def _resource_metrics(record: Mapping[str, object]) -> Mapping[str, object]:
+    profile = record.get("profile")
+    if not isinstance(profile, Mapping):
+        return {}
+    resource_metrics = profile.get("resource_metrics")
+    if not isinstance(resource_metrics, Mapping):
+        return {}
+    return resource_metrics
+
+
+def _numeric_metric(record: Mapping[str, object], key: str, default: float = 0.0) -> float:
+    value = _resource_metrics(record).get(key)
+    if not isinstance(value, (int, float)):
+        return default
+    return float(value)
+
+
+def _memory_text(value: object) -> str:
+    try:
+        kb = float(value)
+    except (TypeError, ValueError):
+        return ""
+    if kb < 1024:
+        return f"{kb:.0f} KB"
+    mb = kb / 1024.0
+    if mb < 1024:
+        return f"{mb:.1f} MB"
+    return f"{mb / 1024.0:.2f} GB"
+
+
+def _count_text(value: object) -> str:
+    if not isinstance(value, (int, float)):
+        return ""
+    return f"{value:,.0f}"
+
+
+def _cpu_text(value: object) -> str:
+    if not isinstance(value, (int, float)):
+        return ""
+    return f"{value:.0f}%"
+
+
+def _command_tokens(record: Mapping[str, object]) -> list[str]:
+    command = record.get("command")
+    if isinstance(command, list):
+        return [str(token) for token in command if str(token)]
+
+    command_string = record.get("command_string")
+    if not isinstance(command_string, str) or not command_string.strip():
+        return []
+
+    try:
+        return shlex.split(command_string)
+    except ValueError:
+        return command_string.split()
+
+
+def _command_name(record: Mapping[str, object]) -> str:
+    explicit_name = record.get("name")
+    if explicit_name:
+        return str(explicit_name)
+
+    tokens = _command_tokens(record)
+    if not tokens:
+        return "command"
+
+    command_name = Path(tokens[0]).name
+    if command_name.startswith("python") and len(tokens) > 1:
+        if tokens[1] == "-m" and len(tokens) > 2:
+            return tokens[2]
+        if not tokens[1].startswith("-"):
+            return Path(tokens[1]).name
+
+    return command_name
+
+
+def _record_label(record: Mapping[str, object]) -> str:
+    operation = str(record.get("operation") or "operation")
+    name = _command_name(record)
+    return f"{operation}/{name}"
+
+
+def _top_metric_line(
+    label: str,
+    records: list[dict],
+    value_fn: Callable[[dict], float],
+    format_fn: Callable[[object], str],
+) -> Optional[str]:
+    candidates = [(record, value_fn(record)) for record in records]
+    candidates = [(record, value) for record, value in candidates if value > 0]
+    if not candidates:
+        return None
+    record, value = max(candidates, key=lambda item: item[1])
+    return f"- {label}: `{_record_label(record)}` at `{format_fn(value)}`"
+
+
+def _command_bottleneck_lines(records: list[dict]) -> list[str]:
+    lines = []
+    for line in [
+        _top_metric_line(
+            "Slowest command",
+            records,
+            lambda record: float(record.get("duration_seconds") or 0.0),
+            _duration_text,
+        ),
+        _top_metric_line(
+            "Highest peak memory",
+            records,
+            lambda record: _numeric_metric(record, "max_rss_kb"),
+            _memory_text,
+        ),
+        _top_metric_line(
+            "Highest CPU utilisation",
+            records,
+            lambda record: _numeric_metric(record, "cpu_percent"),
+            _cpu_text,
+        ),
+        _top_metric_line(
+            "Largest filesystem input count",
+            records,
+            lambda record: _numeric_metric(record, "file_system_inputs"),
+            _count_text,
+        ),
+        _top_metric_line(
+            "Largest filesystem output count",
+            records,
+            lambda record: _numeric_metric(record, "file_system_outputs"),
+            _count_text,
+        ),
+    ]:
+        if line is not None:
+            lines.append(line)
+    return lines
+
+
+def _command_profile_chart_path(working_dir: Path) -> Path:
+    return working_dir / "logs" / "command-profile-summary.png"
+
+
+def render_command_profile_chart(working_dir: Path, records: list[dict]) -> Optional[Path]:
+    """Render CPU, memory, I/O, and duration summaries for external commands."""
+    records = [
+        record
+        for record in records
+        if isinstance(record.get("duration_seconds"), (int, float)) or _resource_metrics(record)
+    ]
+    if not records:
+        return None
+
+    top_records = sorted(
+        records,
+        key=lambda record: float(record.get("duration_seconds") or 0.0),
+        reverse=True,
+    )[:20]
+    top_records.reverse()
+    labels = [_record_label(record) for record in top_records]
+    y_positions = list(range(len(top_records)))
+
+    import matplotlib
+
+    if matplotlib.get_backend().lower() != "agg":
+        matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    fig, axes = plt.subplots(2, 2, figsize=(14, max(7, len(top_records) * 0.36)), dpi=120)
+    plots = [
+        (
+            axes[0][0],
+            [float(record.get("duration_seconds") or 0.0) for record in top_records],
+            "Duration (s)",
+            "#4c78a8",
+        ),
+        (
+            axes[0][1],
+            [_numeric_metric(record, "cpu_percent") for record in top_records],
+            "CPU (%)",
+            "#f58518",
+        ),
+        (
+            axes[1][0],
+            [_numeric_metric(record, "max_rss_kb") / (1024.0 * 1024.0) for record in top_records],
+            "Peak RSS (GB)",
+            "#54a24b",
+        ),
+        (
+            axes[1][1],
+            [
+                _numeric_metric(record, "file_system_inputs")
+                + _numeric_metric(record, "file_system_outputs")
+                for record in top_records
+            ],
+            "Filesystem I/O count",
+            "#e45756",
+        ),
+    ]
+
+    for ax, values, title, color in plots:
+        ax.barh(y_positions, values, color=color)
+        ax.set_title(title, fontsize=10)
+        ax.set_yticks(y_positions)
+        ax.set_yticklabels(labels, fontsize=7)
+        ax.grid(axis="x", alpha=0.25)
+
+    fig.suptitle("Rapthor external command profile summary", fontsize=12)
+    fig.tight_layout(rect=(0, 0, 1, 0.96))
+    chart_path = _command_profile_chart_path(Path(working_dir))
+    chart_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(chart_path, bbox_inches="tight")
+    plt.close(fig)
+    return chart_path
+
+
 def _command_metrics_markdown(working_dir: Path, records: list[dict]) -> str:
     log_path = _command_log_path(working_dir)
     durations = [
@@ -273,22 +487,30 @@ def _command_metrics_markdown(working_dir: Path, records: list[dict]) -> str:
                 "",
             ]
         )
+    bottleneck_lines = _command_bottleneck_lines(records)
+    if bottleneck_lines:
+        lines.extend(["## Bottleneck summary", "", *bottleneck_lines, ""])
     lines.extend(
         [
-            "| Operation | Name | Status | Duration | Command |",
-            "| --- | --- | --- | ---: | --- |",
+            "| Operation | Name | Status | Duration | CPU | Max RSS | FS In | FS Out | Command |",
+            "| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |",
         ]
     )
     for record in records:
         command = record.get("command_string")
         if command is None and isinstance(record.get("command"), list):
             command = " ".join(str(token) for token in record["command"])
+        metrics = _resource_metrics(record)
         lines.append(
             "| "
             f"{_markdown_cell(record.get('operation'))} | "
-            f"{_markdown_cell(record.get('name'))} | "
+            f"{_markdown_cell(_command_name(record))} | "
             f"{_markdown_cell(record.get('status'))} | "
             f"{_markdown_cell(_duration_text(record.get('duration_seconds')))} | "
+            f"{_markdown_cell(_cpu_text(metrics.get('cpu_percent')))} | "
+            f"{_markdown_cell(_memory_text(metrics.get('max_rss_kb')))} | "
+            f"{_markdown_cell(_count_text(metrics.get('file_system_inputs')))} | "
+            f"{_markdown_cell(_count_text(metrics.get('file_system_outputs')))} | "
             f"`{_markdown_cell(command)}` |"
         )
     return "\n".join(lines)
@@ -510,6 +732,17 @@ def publish_command_metrics_artifact(
         key=COMMAND_METRICS_ARTIFACT_KEY,
         description="Rapthor external-command timing summary.",
     )
+    try:
+        chart_path = render_command_profile_chart(working_dir, records)
+    except Exception as err:
+        log.warning("Failed to render command profile chart for %s: %s", working_dir, err)
+    else:
+        if chart_path is not None:
+            writers.image(
+                image_url=_data_url(chart_path),
+                key=COMMAND_PROFILE_SUMMARY_ARTIFACT_KEY,
+                description="Rapthor external-command CPU, memory, I/O, and timing summary.",
+            )
     log.info("Published Rapthor command timing artifact from %s", _command_log_path(working_dir))
     return artifact_id
 
