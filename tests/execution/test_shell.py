@@ -18,8 +18,8 @@ from rapthor.execution.shell import (
     run_shell_command,
     run_shell_commands,
     shell_operation_kwargs,
-    write_perf_flamegraph_files,
     write_command_log_record,
+    write_perf_flamegraph_files,
 )
 
 
