@@ -88,8 +88,12 @@ def test_publish_plot_artifacts_embeds_images_and_links_other_files(tmp_path):
     assert "image_1/sector_1.photometry.pdf" in markdown_call["markdown"]
 
 
-def test_publish_plot_index_keeps_square_brackets_in_file_urls(tmp_path):
-    plots_dir = tmp_path / "plots"
+def test_publish_plot_index_keeps_square_brackets_in_file_urls(tmp_path, monkeypatch):
+    container_workspace = tmp_path / "container" / "app"
+    host_workspace = tmp_path / "host" / "rapthor"
+    monkeypatch.setenv("RAPTHOR_CONTAINER_WORKSPACE", str(container_workspace))
+    monkeypatch.setenv("RAPTHOR_HOST_WORKSPACE", str(host_workspace))
+    plots_dir = container_workspace / "runs" / "demo" / "rapthor-work" / "plots"
     calibrate_dir = plots_dir / "calibrate_4"
     calibrate_dir.mkdir(parents=True)
     plot_file = calibrate_dir / "medium1_phase_dir[Patch_0].png"
@@ -102,7 +106,10 @@ def test_publish_plot_index_keeps_square_brackets_in_file_urls(tmp_path):
         in_run_context=lambda: True,
     )
 
-    assert records[0]["file_url"].endswith("/calibrate_4/medium1_phase_dir[Patch_0].png")
+    expected_url = (
+        host_workspace / "runs/demo/rapthor-work/plots/calibrate_4/medium1_phase_dir[Patch_0].png"
+    ).resolve().as_uri()
+    assert records[0]["file_url"] == expected_url.replace("%5B", "[").replace("%5D", "]")
     markdown_call = recorder.calls[-1][1]
     assert "medium1_phase_dir[Patch_0].png" in markdown_call["markdown"]
     assert "%5BPatch_0%5D" not in markdown_call["markdown"]

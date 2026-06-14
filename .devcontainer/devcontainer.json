@@ -20,6 +20,8 @@
     }
   },
   "remoteEnv": {
-    "PYTHONPATH": "/app:${PYTHONPATH}"
+    "PYTHONPATH": "/app:${PYTHONPATH}",
+    "RAPTHOR_CONTAINER_WORKSPACE": "/app",
+    "RAPTHOR_HOST_WORKSPACE": "${localWorkspaceFolder}"
   }
 }

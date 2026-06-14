@@ -133,6 +133,9 @@ during the run. Image diagnostic JSON files are rendered as Markdown artifacts
 with formatted JSON content. FITS image products are rendered to PNG previews
 and published as image artifacts. At the end of the process flow, Rapthor
 publishes an index artifact for everything found under ``dir_working/plots``.
+When running in the VS Code development container, the plot index rewrites
+``/app`` paths to the host workspace path using ``RAPTHOR_HOST_WORKSPACE`` so
+the local file links can be opened from the browser.
 Rapthor also records external command timings in
 ``dir_working/logs/commands.jsonl`` and publishes a command timing summary as a
 Prefect Markdown artifact. With ``prefect_command_profile = auto`` (the

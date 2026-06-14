@@ -5,6 +5,7 @@ import hashlib
 import json
 import logging
 import mimetypes
+import os
 import re
 import shlex
 from dataclasses import dataclass
@@ -89,9 +90,23 @@ def _data_url(path: Path) -> str:
     return f"data:{media_type};base64,{encoded}"
 
 
+def _local_file_path(path: Path) -> Path:
+    resolved_path = path.resolve()
+    container_workspace = os.environ.get("RAPTHOR_CONTAINER_WORKSPACE")
+    host_workspace = os.environ.get("RAPTHOR_HOST_WORKSPACE")
+    if not container_workspace or not host_workspace:
+        return resolved_path
+
+    try:
+        relative_path = resolved_path.relative_to(Path(container_workspace).resolve())
+    except ValueError:
+        return resolved_path
+    return Path(host_workspace).expanduser().resolve() / relative_path
+
+
 def _local_file_url(path: Path) -> str:
     """Return a local file URL that Prefect Markdown handles for plot filenames."""
-    return path.resolve().as_uri().replace("%5B", "[").replace("%5D", "]")
+    return _local_file_path(path).as_uri().replace("%5B", "[").replace("%5D", "]")
 
 
 def _is_image_artifact(path: Path) -> bool:
