@@ -244,6 +244,10 @@ commands = [
         "python", "-m", "pytest",
         "-m", "integration and not internet",
         "-n", "auto",
+        # Integration tests start Rapthor subprocesses, which each bring up a
+        # temporary Prefect API server. Very high fan-out can starve those
+        # servers before they pass their health checks on large CI runners.
+        "--maxprocesses", "8",
         "--dist", "worksteal",
         "-vv", "-ra",
         "tests/{posargs}",
