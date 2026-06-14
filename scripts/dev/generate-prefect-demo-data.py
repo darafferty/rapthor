@@ -42,7 +42,7 @@ COMMON_SETTINGS = {
     "target_flux": 0.9,
     "max_directions": 5,
     "max_distance": None,
-    "regroup_model": True,
+    "regroup_model": False,
     "auto_mask": 5.0,
     "auto_mask_nmiter": 2,
     "channel_width_hz": 48828.125,
@@ -65,21 +65,28 @@ def _step(calibration_strategy, **overrides):
 
 strategy_steps = [
     _step(
-        {"di": [], "dd": ["fast_phase", "medium_phase"]},
-        target_flux=1.2,
+        {"di": ["fast_phase"]},
         max_nmiter=8,
     ),
     _step(
-        {"di": [], "dd": ["fast_phase", "medium_phase", "slow_gains"]},
-        target_flux=0.9,
-        max_nmiter=10,
+        {"di": ["fast_phase", "medium_phase"]},
+        max_nmiter=8,
     ),
     _step(
         {"di": ["full_jones"], "dd": []},
-        target_flux=0.9,
         max_nmiter=12,
-        regroup_model=False,
     ),
+    _step(
+        {"di": [], "dd": ["fast_phase", "medium_phase"]},
+        max_nmiter=10,
+        regroup_model=True,
+    ),
+
+    _step(
+        {"di": [], "dd": ["slow_gains"]},
+        max_nmiter=12,
+        regroup_model=True,
+    )
 ]
 
 strategy_steps.append(
@@ -434,7 +441,7 @@ def write_parset(output_dir: Path, path: Path, repo_root: Path, strategy_path: P
             download_overwrite_skymodel = True
             input_skymodel = {path_for_parset(true_sky_path, repo_root)}
             apparent_skymodel = {path_for_parset(apparent_sky_path, repo_root)}
-            regroup_input_skymodel = True
+            regroup_input_skymodel = False
             strategy = {path_for_parset(strategy_path, repo_root)}
             selfcal_data_fraction = 1.0
             final_data_fraction = 1.0
