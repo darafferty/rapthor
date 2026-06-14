@@ -152,9 +152,7 @@ wsclean 123 [000] 10.010000: cycles:
         333333 main (/usr/bin/wsclean)
 """
 
-    assert collapse_perf_script(perf_script) == {
-        ("main", "parent_function", "leaf_function"): 2
-    }
+    assert collapse_perf_script(perf_script) == {("main", "parent_function", "leaf_function"): 2}
 
 
 def test_render_perf_flamegraph_svg_contains_sampled_frames():

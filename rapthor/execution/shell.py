@@ -321,10 +321,7 @@ def render_perf_flamegraph_svg(
         elements.extend(
             [
                 '<g class="frame">',
-                (
-                    f"<title>{escaped_name} - {sample_count:,} samples "
-                    f"({percent:.1f}%)</title>"
-                ),
+                (f"<title>{escaped_name} - {sample_count:,} samples ({percent:.1f}%)</title>"),
                 (
                     f'<rect x="{x:.3f}" y="{y:.3f}" width="{width:.3f}" '
                     f'height="{_FLAMEGRAPH_FRAME_HEIGHT - 1}" fill="{color}" />'

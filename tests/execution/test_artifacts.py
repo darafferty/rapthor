@@ -107,8 +107,10 @@ def test_publish_plot_index_keeps_square_brackets_in_file_urls(tmp_path, monkeyp
     )
 
     expected_url = (
-        host_workspace / "runs/demo/rapthor-work/plots/calibrate_4/medium1_phase_dir[Patch_0].png"
-    ).resolve().as_uri()
+        (host_workspace / "runs/demo/rapthor-work/plots/calibrate_4/medium1_phase_dir[Patch_0].png")
+        .resolve()
+        .as_uri()
+    )
     assert records[0]["file_url"] == expected_url.replace("%5B", "[").replace("%5D", "]")
     markdown_call = recorder.calls[-1][1]
     assert "medium1_phase_dir[Patch_0].png" in markdown_call["markdown"]

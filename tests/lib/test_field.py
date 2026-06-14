@@ -121,9 +121,7 @@ def test_update_skymodels_allows_target_number_without_target_flux(parset_for_fi
     assert len(field.calibrator_patch_names) == 1
 
 
-def test_update_skymodels_ignores_empty_apparent_sky_without_patches(
-    field, tmp_path, monkeypatch
-):
+def test_update_skymodels_ignores_empty_apparent_sky_without_patches(field, tmp_path, monkeypatch):
     empty_skymodel = "FORMAT = Name, Type, Ra, Dec, I\n"
     true_sky = tmp_path / "sector_1.true_sky.txt"
     apparent_sky = tmp_path / "sector_1.apparent_sky.txt"
