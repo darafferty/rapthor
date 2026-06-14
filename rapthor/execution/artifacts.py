@@ -89,6 +89,11 @@ def _data_url(path: Path) -> str:
     return f"data:{media_type};base64,{encoded}"
 
 
+def _local_file_url(path: Path) -> str:
+    """Return a local file URL that Prefect Markdown handles for plot filenames."""
+    return path.resolve().as_uri().replace("%5B", "[").replace("%5D", "]")
+
+
 def _is_image_artifact(path: Path) -> bool:
     return path.suffix.lower() in IMAGE_ARTIFACT_SUFFIXES
 
@@ -535,7 +540,7 @@ def _command_metrics_markdown(working_dir: Path, records: list[dict]) -> str:
             ]
         )
         for record in flamegraph_records:
-            lines.append(f"- `{record['label']}`: [local SVG]({record['path'].resolve().as_uri()})")
+            lines.append(f"- `{record['label']}`: [local SVG]({_local_file_url(record['path'])})")
         lines.append("")
 
     lines.extend(
@@ -588,7 +593,7 @@ def publish_file_artifacts(
         artifact_key = _plot_artifact_key(relative_path)
         description = f"Rapthor plot output: {relative_path}"
         artifact_url = _data_url(plot_file)
-        file_url = plot_file.resolve().as_uri()
+        file_url = _local_file_url(plot_file)
 
         if _is_image_artifact(plot_file):
             artifact_id = writers.image(

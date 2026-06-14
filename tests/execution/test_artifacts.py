@@ -88,6 +88,26 @@ def test_publish_plot_artifacts_embeds_images_and_links_other_files(tmp_path):
     assert "image_1/sector_1.photometry.pdf" in markdown_call["markdown"]
 
 
+def test_publish_plot_index_keeps_square_brackets_in_file_urls(tmp_path):
+    plots_dir = tmp_path / "plots"
+    calibrate_dir = plots_dir / "calibrate_4"
+    calibrate_dir.mkdir(parents=True)
+    plot_file = calibrate_dir / "medium1_phase_dir[Patch_0].png"
+    plot_file.write_bytes(b"png-data")
+    recorder = RecordingArtifactWriters()
+
+    records = publish_plot_artifacts(
+        plots_dir,
+        artifact_writers=recorder.writers,
+        in_run_context=lambda: True,
+    )
+
+    assert records[0]["file_url"].endswith("/calibrate_4/medium1_phase_dir[Patch_0].png")
+    markdown_call = recorder.calls[-1][1]
+    assert "medium1_phase_dir[Patch_0].png" in markdown_call["markdown"]
+    assert "%5BPatch_0%5D" not in markdown_call["markdown"]
+
+
 def test_publish_plot_artifacts_is_noop_without_prefect_context(tmp_path):
     plots_dir = tmp_path / "plots"
     plots_dir.mkdir()
