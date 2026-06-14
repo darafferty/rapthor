@@ -36,6 +36,7 @@ dependencies = [
     "bdsf",
     "bokeh>=3.1.0",
     "dask[distributed]",
+    "fastapi<0.137",
     "h5py",
     "jinja2",
     "losoto>=2.4.3",
