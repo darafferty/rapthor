@@ -168,7 +168,6 @@ def test_rapthor_run_single_loop_with_do_normalize_no_internet_provided_sky_mode
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("normalization_skymodel_paths", [None], indirect=True)
 @pytest.mark.parametrize(
     "generated_parset_path_normalisation",
     [

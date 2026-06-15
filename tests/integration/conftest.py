@@ -218,7 +218,7 @@ def single_loop_strategy_path_fast_medium_slow(tmp_path):
 
 
 @pytest.fixture
-def ms_for_normalisation(tmp_path, test_ms):
+def ms_for_normalisation(tmp_path, test_ms, resource_dir):
     """Provide a synthetic MS with denser UV coverage for normalization tests."""
     ms_path = tmp_path / "test_ms_for_normalization.ms"
     shutil.copytree(test_ms, ms_path)
@@ -229,7 +229,7 @@ def ms_for_normalisation(tmp_path, test_ms):
         table.putcol("DATA", data)
 
     skymodel_path = tmp_path / "integration_apparent_sky_normalization.txt"
-    _write_normalization_skymodel(skymodel_path)
+    _write_normalization_skymodel(resource_dir, skymodel_path)
 
     predicted_ms = tmp_path / "test_ms_for_normalization_predicted.ms"
 
