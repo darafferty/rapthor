@@ -133,7 +133,7 @@ def ensure_test_ms(resource_dir):
 
 
 @pytest.fixture(scope="session")
-def test_ms(tmp_path_factory):
+def test_ms(pytestconfig, tmp_path_factory):
     """
     Fixture to provide a copy of the test MS in the resources directory.
     Yield the POSIX path to the copy of the MS.
@@ -145,23 +145,24 @@ def test_ms(tmp_path_factory):
         - Channel width = 24414.0625 Hz
         - Phase center at RA = 0.4262457236387493 radians, Dec = 0.5787469737178225 radians
     """
-    source = ensure_test_ms(RESOURCE_DIR)
+    source = ensure_test_ms(pytestconfig.resource_dir)
     target = (tmp_path_factory.mktemp("test_ms") / TEST_MS_DIRNAME).as_posix()
     shutil.copytree(source, target)
     yield target
 
 
 @pytest.fixture
-def parset(test_ms, tmp_path):
+def parset(pytestconfig, test_ms, tmp_path):
     """
     Fixture to create a parset dictionary for testing.
     """
+    resource_dir = pytestconfig.resource_dir
     cfg = configparser.ConfigParser(interpolation=None)
-    cfg.read(RESOURCE_DIR / "test.parset")
+    cfg.read(resource_dir / "test.parset")
     cfg.set("global", "dir_working", tmp_path.as_posix())
     cfg.set("global", "input_ms", test_ms)
-    cfg.set("global", "input_skymodel", TEST_TRUE_SKYMODEL)
-    cfg.set("global", "apparent_skymodel", TEST_APPARENT_SKYMODEL)
+    cfg.set("global", "input_skymodel", (resource_dir / "test_true_sky.txt").as_posix())
+    cfg.set("global", "apparent_skymodel", (resource_dir / "test_apparent_sky.txt").as_posix())
 
     parset_file = tmp_path / "test.parset"
     with parset_file.open("w") as fh:
@@ -255,21 +256,21 @@ def empty_source_sky_model(tmp_path):
 
 
 @pytest.fixture
-def true_sky_path(tmp_path):
+def true_sky_path(pytestconfig, tmp_path):
     """
     Fixture to create a true SkyModel for testing.
     """
-    shutil.copy((RESOURCE_DIR / "integration_true_sky.txt"), tmp_path / "integration_true_sky.txt")
+    shutil.copy((pytestconfig.resource_dir / "integration_true_sky.txt"), tmp_path / "integration_true_sky.txt")
     return Path(tmp_path / "integration_true_sky.txt")
 
 
 @pytest.fixture
-def apparent_sky_path(tmp_path):
+def apparent_sky_path(pytestconfig, tmp_path):
     """
     Fixture to create an apparent SkyModel for testing.
     """
     shutil.copy(
-        (RESOURCE_DIR / "integration_apparent_sky.txt"), tmp_path / "integration_apparent_sky.txt"
+        (pytestconfig.resource_dir / "integration_apparent_sky.txt"), tmp_path / "integration_apparent_sky.txt"
     )
     return Path(tmp_path / "integration_apparent_sky.txt")
 
@@ -378,7 +379,7 @@ def generated_parset_path(request, tmp_path, test_ms):
     For further details see `generate_parset` function.
     """
     parset_path, input_skymodel_path, apparent_skymodel_path = request.param
-    parset_path = REPO_ROOT_DIR / parset_path
+    parset_path = request.config.repo_root_dir / parset_path
     output_parset_path = tmp_path / "generated.parset"
 
     generate_parset_path(
@@ -394,14 +395,14 @@ def generated_parset_path(request, tmp_path, test_ms):
 
 
 @pytest.fixture
-def parset_for_field_test(tmp_path_factory, test_ms):
+def parset_for_field_test(pytestconfig, tmp_path_factory, test_ms):
     target = tmp_path_factory.mktemp("test_field") / "generated.parset"
     generate_parset_path(
-        RESOURCE_DIR / "test.parset",
+        pytestconfig.resource_dir / "test.parset",
         target,
         test_ms,
-        RESOURCE_DIR / "test_true_sky.txt",
-        RESOURCE_DIR / "test_apparent_sky.txt",
+        pytestconfig.resource_dir / "test_true_sky.txt",
+        pytestconfig.resource_dir / "test_apparent_sky.txt",
     )
     return parset_read(target)
 
