@@ -1006,6 +1006,8 @@ steps:
         source: ntimes
       - id: numthreads
         source: max_threads
+      - id: update_model_required
+        source: update_model_required
     scatter: [msin, msout, starttime, ntimes]
     scatterMethod: dotproduct
     out:
@@ -1034,6 +1036,7 @@ steps:
     out:
       - id: restored_image
     when: $(inputs.peel_bright_sources)
+
   - id: restore_nonpb
     label: Restore sources to non-PB image
     doc: |
