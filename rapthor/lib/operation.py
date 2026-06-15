@@ -35,7 +35,8 @@ class Operation(object):
     name : str, optional
         Name of the operation
     """
-    def __init__(self, field, index=None, name: str = "", rootname: str =""):
+
+    def __init__(self, field, index=None, name: str = "", rootname: str = ""):
         self.parset = field.parset.copy()
         self.field = field
         self.rootname = rootname.lower() if rootname else name.lower()
