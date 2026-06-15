@@ -1,6 +1,7 @@
 """Integration tests for wsclean parallel gridding feature."""
 
 import os
+import re
 import stat
 import subprocess
 import textwrap
@@ -8,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from .utils import get_working_dir_from_parset, update_parset_path
+from .utils import get_working_dir_from_parset, parse_cmd_args_from_logs, update_parset_path
 
 
 @pytest.fixture
@@ -43,10 +44,16 @@ def mock_mpi_run(tmp_path, monkeypatch):
     ],
     indirect=True,
 )
+@pytest.mark.parametrize("parallel_gridding_tasks", ["1", "2"])
 @pytest.mark.parametrize("dde_method", ["full", "single"])
 @pytest.mark.parametrize("use_mpi", ["True", "False"])
 def test_rapthor_parallel_gridding(
-    use_mpi, dde_method, generated_parset_path, single_loop_strategy_path, mock_mpi_run
+    use_mpi,
+    dde_method,
+    parallel_gridding_tasks,
+    generated_parset_path,
+    single_loop_strategy_path,
+    mock_mpi_run,
 ):
     """
     Test a single self-calibration loop end to end.
@@ -59,6 +66,7 @@ def test_rapthor_parallel_gridding(
             "allow_internet_access": "False",
             "use_mpi": use_mpi,
             "dde_method": dde_method,
+            "parallel_gridding_tasks": parallel_gridding_tasks,
             "strategy": str(single_loop_strategy_path),
         },
     )
@@ -91,5 +99,8 @@ def test_rapthor_parallel_gridding(
     expected_log_file = (
         f"CWLJob_subpipeline_parset.cwl.image.wsclean{mpi_tag}image_{dde_tag}.cwl_000.log"
     )
-    wsclean_cmd_output = (image_logs_dir / expected_log_file).read_text()
-    assert "-parallel-gridding" in wsclean_cmd_output
+    wsclean_log_file = image_logs_dir / expected_log_file
+
+    wsclean_cmd = "wsclean-mp" if use_mpi else "wsclean"
+    parsed_cmd = parse_cmd_args_from_logs(wsclean_log_file, wsclean_cmd)
+    assert re.search(rf"-parallel-gridding\s+{parallel_gridding_tasks}\b", parsed_cmd)
