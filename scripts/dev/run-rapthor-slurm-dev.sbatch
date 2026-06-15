@@ -12,7 +12,7 @@ set -euo pipefail
 
 REPO_DIR="${REPO_DIR:-$PWD}"
 RAPTHOR_PARSET="${RAPTHOR_PARSET:-$REPO_DIR/rapthor.parset}"
-RAPTHOR_ENV_SCRIPT="${RAPTHOR_ENV_SCRIPT:-}"
+RAPTHOR_ENV_SCRIPT="${RAPTHOR_ENV_SCRIPT:-$REPO_DIR/scripts/dev/aws-setup-env.sh}"
 OUTPUT_DIR="${OUTPUT_DIR:-$PWD/runs/${SLURM_JOB_NAME:-rapthor-dev}-${SLURM_JOB_ID:-manual}-$(date +%Y%m%d-%H%M%S)}"
 
 PREFECT_HOST="${PREFECT_HOST:-${SLURM_SUBMIT_HOST:-127.0.0.1}}"
