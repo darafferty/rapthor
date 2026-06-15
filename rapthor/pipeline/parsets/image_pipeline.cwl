@@ -54,7 +54,11 @@ inputs:
     doc: |
       The filenames of the MS files with the residual visibilities
       (length = n_obs * n_sectors).
-    type: string[]
+    type:
+      type: array
+      items:
+        type: array
+        items: string
 
   - id: starttime
     label: Start time of each obs
