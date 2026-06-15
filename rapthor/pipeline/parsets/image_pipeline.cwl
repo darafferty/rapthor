@@ -53,7 +53,7 @@ inputs:
     label: Filenames of residual MSs
     doc: |
       The filenames of the MS files with the residual visibilities
-      (length = n_obs).
+      (length = n_obs * n_sectors).
     type: string[]
 
   - id: starttime
@@ -771,6 +771,8 @@ steps:
         source: prepare_filename
       - id: concat_filename
         source: concat_filename
+      - id: residual_filename
+        source: residual_filename
       - id: starttime
         source: starttime
       - id: ntimes
@@ -953,7 +955,7 @@ steps:
         source: astrometry_skymodel
       - id: peel_bright_sources
         source: peel_bright_sources
-    scatter: [obs_filename, prepare_filename, concat_filename, starttime, ntimes,
+    scatter: [obs_filename, prepare_filename, concat_filename, residual_filename, starttime, ntimes,
               image_freqstep, image_timestep, image_maxinterval, image_timebase,
               previous_mask_filename, mask_filename, phasecenter, ra, dec,
               image_name, cellsize_deg, wsclean_imsize, vertices_file, region_file,
