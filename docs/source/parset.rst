@@ -742,7 +742,7 @@ The available options are described below under their respective sections.
         ``max_threads``, but not more than 14).
 
     parallel_gridding_tasks
-        Number of threads to use by WSClean for parallel gridding (default = 0 = 2/5 of
+        Number of tasks to use by WSClean for parallel gridding (default = 0 = 2/5 of
         ``max_threads``, but not more than 6).
 
     dir_local
