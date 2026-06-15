@@ -532,10 +532,11 @@ inputs:
       Apply corrections for time and frequency smearing (length = 1).
     type: boolean
 
-  - id: no_update_model_required
-    label: Do not update model data
+  - id: update_model_required
+    label: Update model data
     doc: |
-      Do not update the model data column of the imaging MS (length = 1).
+      Update the model data column of the imaging MS with the clean-
+      component model (length = 1).
     type: boolean
 
 {% if make_image_cube %}
@@ -899,8 +900,8 @@ steps:
         source: interval
       - id: apply_time_frequency_smearing
         source: apply_time_frequency_smearing
-      - id: no_update_model_required
-        source: no_update_model_required
+      - id: update_model_required
+        source: update_model_required
 {% if use_facets %}
       - id: parallel_gridding_threads
         source: parallel_gridding_threads
