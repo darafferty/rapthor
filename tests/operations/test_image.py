@@ -268,7 +268,7 @@ class TestImage:
             "soltabs": "phase000",
             "region_file": {"class": "File", "location": str(region_file)},
             "nnodes": 2,
-            "num_gridding_threads": 4,
+            "num_gridding_tasks": 4,
             "apply_time_frequency_smearing": False,
             # shared_facet_rw is propagated at workflow level to these two CWL inputs.
             "shared_facet_reads": shared_facet_rw,

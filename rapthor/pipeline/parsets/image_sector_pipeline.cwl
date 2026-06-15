@@ -197,10 +197,10 @@ inputs:
       (length = 1).
     type: File?
 
-  - id: parallel_gridding_threads
-    label: Max number of gridding threads
+  - id: parallel_gridding_tasks
+    label: Max number of gridding tasks
     doc: |
-      The maximum number of threads to use during parallel gridding (length = 1).
+      The maximum number of tasks to use during parallel gridding (length = 1).
     type: int
     
 {% if use_facets %}
@@ -871,8 +871,8 @@ steps:
       - id: shared_facet_writes
         source: shared_facet_rw
 {% endif %}
-      - id: num_gridding_threads
-        source: parallel_gridding_threads
+      - id: num_gridding_tasks
+        source: parallel_gridding_tasks
       - id: wsclean_imsize
         source: wsclean_imsize
       - id: wsclean_niter

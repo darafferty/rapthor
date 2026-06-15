@@ -159,10 +159,10 @@ inputs:
     type: int
     inputBinding:
       prefix: -deconvolution-threads
-  - id: num_gridding_threads
-    label: Number of gridding threads
+  - id: num_gridding_tasks
+    label: Number of gridding tasks
     doc: |
-      The number of threads to use during gridding.
+      The number of tasks to use during gridding.
     type: int
     inputBinding:
       prefix: -parallel-gridding

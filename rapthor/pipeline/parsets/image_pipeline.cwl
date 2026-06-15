@@ -228,10 +228,10 @@ inputs:
       (length = n_sectors).
     type: File?
   
-  - id: parallel_gridding_threads
-    label: Max number of gridding threads
+  - id: parallel_gridding_tasks
+    label: Max number of gridding tasks
     doc: |
-      The maximum number of threads to use during parallel gridding (length = 1).
+      The maximum number of tasks to use during parallel gridding (length = 1).
     type: int
 
 
@@ -894,8 +894,8 @@ steps:
         source: interval
       - id: apply_time_frequency_smearing
         source: apply_time_frequency_smearing
-      - id: parallel_gridding_threads
-        source: parallel_gridding_threads
+      - id: parallel_gridding_tasks
+        source: parallel_gridding_tasks
       - id: bright_skymodel_pb
         source: bright_skymodel_pb
 {% if make_image_cube %}

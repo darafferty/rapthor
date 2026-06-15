@@ -384,8 +384,8 @@ class Image(Operation):
             "interval": interval,
             "max_threads": self.field.parset["cluster_specific"]["max_threads"],
             "deconvolution_threads": self.field.parset["cluster_specific"]["deconvolution_threads"],
-            "parallel_gridding_threads": self.field.parset["cluster_specific"][
-                "parallel_gridding_threads"
+            "parallel_gridding_tasks": self.field.parset["cluster_specific"][
+                "parallel_gridding_tasks"
             ],
             "save_filtered_model_image": self.field.parset["imaging_specific"][
                 "save_filtered_model_image"
