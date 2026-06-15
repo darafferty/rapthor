@@ -384,6 +384,9 @@ class Image(Operation):
             "interval": interval,
             "max_threads": self.field.parset["cluster_specific"]["max_threads"],
             "deconvolution_threads": self.field.parset["cluster_specific"]["deconvolution_threads"],
+            "parallel_gridding_threads": self.field.parset["cluster_specific"][
+                "parallel_gridding_threads"
+            ],
             "save_filtered_model_image": self.field.parset["imaging_specific"][
                 "save_filtered_model_image"
             ],
@@ -451,13 +454,7 @@ class Image(Operation):
                 self.input_parms.update({"soltabs": "amplitude000,phase000"})
             else:
                 self.input_parms.update({"soltabs": "phase000"})
-            self.input_parms.update(
-                {
-                    "parallel_gridding_threads": self.field.parset["cluster_specific"][
-                        "parallel_gridding_threads"
-                    ]
-                }
-            )
+
             if is_only_pol_I(self.image_pol):
                 # For Stokes-I-only imaging, we can take advantage of the scalar or
                 # diagonal visibilities options in WSClean (saving I/O)
