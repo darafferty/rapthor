@@ -101,26 +101,34 @@ def _download_test_ms(destination):
                 raise
 
 
-def _copy_from_resource_folder_to_test_path(filename, tmp_path):
+@pytest.fixture
+def copy_from_resource_folder_to_test_path(pytestconfig, tmp_path):
     """
-    Copy test resource file to temporary test folder.
-
-    Parameters
-    ----------
-    filename : str
-        Name of the file in the resources folder to copy.
-    tmp_path : pathlib.Path
-        Path to the temporary directory where the file will be copied.
-
-    Returns
-    -------
-    pathlib.Path
-        Path to the copied file.
+    Fixture that returns a function which copies a test resource file to
+    temporary test folder.
     """
-    source = RESOURCE_DIR / filename
-    target = tmp_path / filename
-    shutil.copy(source, target)
-    return target
+
+    def _copy_helper(filename):
+        """
+        Copy helper function that copies a test resource file to temporary test
+        folder.
+
+        Parameters
+        ----------
+        filename : str
+            Name of the file in the resources folder to copy.
+
+        Returns
+        -------
+        pathlib.Path
+            Path to the copied file.
+        """
+        source = pytestconfig.resource_dir / filename
+        target = tmp_path / filename
+        shutil.copy(source, target)
+        return target
+
+    return _copy_helper
 
 
 def ensure_test_ms(resource_dir):
@@ -203,19 +211,19 @@ def outlier_sector(field):
 
 
 @pytest.fixture
-def sky_model_path(tmp_path):
+def sky_model_path(copy_from_resource_folder_to_test_path):
     """
     Fixture to create an apparent SkyModel for testing.
     """
-    return _copy_from_resource_folder_to_test_path("test_apparent_sky.txt", tmp_path)
+    return copy_from_resource_folder_to_test_path("test_apparent_sky.txt")
 
 
 @pytest.fixture
-def selected_sky_model_path(tmp_path):
+def selected_sky_model_path(copy_from_resource_folder_to_test_path):
     """
     Fixture to create a selected apparent SkyModel for testing.
     """
-    return _copy_from_resource_folder_to_test_path("test_apparent_sky_selected.txt", tmp_path)
+    return copy_from_resource_folder_to_test_path("test_apparent_sky_selected.txt")
 
 
 @pytest.fixture
@@ -256,23 +264,19 @@ def empty_source_sky_model(tmp_path):
 
 
 @pytest.fixture
-def true_sky_path(pytestconfig, tmp_path):
+def true_sky_path(copy_from_resource_folder_to_test_path):
     """
     Fixture to create a true SkyModel for testing.
     """
-    shutil.copy((pytestconfig.resource_dir / "integration_true_sky.txt"), tmp_path / "integration_true_sky.txt")
-    return Path(tmp_path / "integration_true_sky.txt")
+    return copy_from_resource_folder_to_test_path("integration_true_sky.txt")
 
 
 @pytest.fixture
-def apparent_sky_path(pytestconfig, tmp_path):
+def apparent_sky_path(copy_from_resource_folder_to_test_path):
     """
     Fixture to create an apparent SkyModel for testing.
     """
-    shutil.copy(
-        (pytestconfig.resource_dir / "integration_apparent_sky.txt"), tmp_path / "integration_apparent_sky.txt"
-    )
-    return Path(tmp_path / "integration_apparent_sky.txt")
+    return copy_from_resource_folder_to_test_path("integration_apparent_sky.txt")
 
 
 @pytest.fixture
@@ -322,7 +326,7 @@ def input_catalog_fits(tmp_path):
 
 
 @pytest.fixture
-def image_fits(tmp_path):
+def image_fits(copy_from_resource_folder_to_test_path):
     """
     Fixture to provide a path for a mock image FITS file.
 
@@ -342,23 +346,23 @@ def image_fits(tmp_path):
             hdul.writeto(tmp_path / "test_image.fits")
 
     """
-    return _copy_from_resource_folder_to_test_path("test_image.fits", tmp_path)
+    return copy_from_resource_folder_to_test_path("test_image.fits")
 
 
 @pytest.fixture
-def facet_region_ds9(tmp_path):
+def facet_region_ds9(copy_from_resource_folder_to_test_path):
     """
     Fixture to create a region file for testing.
     """
-    return _copy_from_resource_folder_to_test_path("test.reg", tmp_path)
+    return copy_from_resource_folder_to_test_path("test.reg")
 
 
 @pytest.fixture
-def custom_strategy(tmp_path):
+def custom_strategy(copy_from_resource_folder_to_test_path):
     """
     Fixture to create a custom strategy file for testing.
     """
-    return _copy_from_resource_folder_to_test_path("custom_strategy.py", tmp_path)
+    return copy_from_resource_folder_to_test_path("custom_strategy.py")
 
 
 @pytest.fixture
