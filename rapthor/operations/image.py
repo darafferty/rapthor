@@ -752,6 +752,7 @@ class ImageInitial(Image):
         self.do_multiscale_clean = True
         self.field.disable_clean = False
         self.field.skip_final_major_iteration = True
+        self.field.make_residual_visibilities = False
         super().set_input_parameters()
 
     def finalize(self):
@@ -881,6 +882,7 @@ class ImageNormalize(Image):
         self.do_multiscale_clean = False
         self.field.disable_clean = False
         self.field.skip_final_major_iteration = False
+        self.field.make_residual_visibilities = False
         super().set_input_parameters()
         self.input_parms.update(
             {

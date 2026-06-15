@@ -992,6 +992,7 @@ steps:
       - id: sector_I_images
       - id: sector_extra_images
       - id: visibilities
+      - id: residual_visibilities
       - id: source_filtering_mask
 {% if save_source_list %}
       - id: sector_skymodels
