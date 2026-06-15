@@ -227,6 +227,13 @@ inputs:
       The filename of the input h5parm file with the flux-scale normalizations
       (length = n_sectors).
     type: File?
+  
+  - id: parallel_gridding_threads
+    label: Max number of gridding threads
+    doc: |
+      The maximum number of threads to use during parallel gridding (length = 1).
+    type: int
+
 
 {% if use_facets %}
 # start use_facets
@@ -288,12 +295,6 @@ inputs:
     doc: |
       Use only diagonal (XX and YY) visibilities (length = 1).
     type: boolean
-
-  - id: parallel_gridding_threads
-    label: Max number of gridding threads
-    doc: |
-      The maximum number of threads to use during parallel gridding (length = 1).
-    type: int
 
   - id: shared_facet_rw
     label: Shared facet reads and writes
@@ -893,10 +894,8 @@ steps:
         source: interval
       - id: apply_time_frequency_smearing
         source: apply_time_frequency_smearing
-{% if use_facets %}
       - id: parallel_gridding_threads
         source: parallel_gridding_threads
-{% endif %}
       - id: bright_skymodel_pb
         source: bright_skymodel_pb
 {% if make_image_cube %}

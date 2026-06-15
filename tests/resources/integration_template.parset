@@ -37,6 +37,7 @@ stepsize = 0.2
 tolerance = 0.001
 
 [imaging]
+use_mpi = False
 grid_width_ra_deg = 1.0
 grid_width_dec_deg = 1.0
 grid_center_ra = 1h37m41.299s
@@ -50,7 +51,7 @@ astrometry_skymodel =
 shared_facet_rw = False
 normalization_skymodels =
 normalization_reference_frequencies =
-
+dde_method = full
   
 [cluster]
 batch_system = single_machine

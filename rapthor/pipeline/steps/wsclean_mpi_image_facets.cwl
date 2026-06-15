@@ -28,8 +28,6 @@ arguments:
     prefix: -temp-dir
   - valueFrom: '2048'
     prefix: -parallel-deconvolution
-  - valueFrom: $(runtime.cores>1)
-    prefix: -parallel-gridding
   - valueFrom: '0.8'
     prefix: -multiscale-scale-bias
   - valueFrom: '1.0'
@@ -184,6 +182,13 @@ inputs:
     type: int
     inputBinding:
       prefix: -deconvolution-threads
+  - id: num_gridding_threads
+    label: Number of gridding threads
+    doc: |
+      The number of threads to use during gridding.
+    type: int
+    inputBinding:
+      prefix: -parallel-gridding
   - id: dd_psf_grid
     type: int[]
     inputBinding:
