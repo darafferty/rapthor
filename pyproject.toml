@@ -187,13 +187,22 @@ commands = [
 [tool.tox.env.test_integration]
 description = "Run integration tests"
 deps = [{ replace = "ref", of = ["dependency-groups", "test"], extend = true }]
-pass_env = ["CI_PROJECT_DIR", "NUMEXPR_MAX_THREADS"]
+pass_env = [
+    "CI_PROJECT_DIR",
+    "BLIS_NUM_THREADS",
+    "MKL_NUM_THREADS",
+    "NUMEXPR_MAX_THREADS",
+    "OMP_NUM_THREADS",
+    "OPENBLAS_NUM_THREADS",
+    "VECLIB_MAXIMUM_THREADS",
+]
 commands = [
     [
         "python", "-m", "pytest",
         "-m", "integration",
         "-vv", "-ra",
-        "tests/{posargs}",
+        "--durations=0",
+        "{posargs:tests}",
     ]
 ]
 
