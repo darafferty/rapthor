@@ -38,6 +38,7 @@ def test_rapthor_run_single_loop_calibrate_di_fast_phase(
         generated_parset_path,
         {
             "allow_internet_access": "False",
+            "reweight": "False",
             "strategy": str(single_loop_strategy_with_calibration_strategy),
         },
     )
@@ -51,6 +52,7 @@ def test_rapthor_run_single_loop_calibrate_di_fast_phase(
     assert result.returncode == 0, f"Rapthor failed with output:\n{output}"
     assert "Operation calibrate_di_1 completed" in output
     assert "Operation predict_di_1 completed" in output
+    assert "Operation predict_1 completed" not in output
     assert "Operation image_1 completed" in output
     assert "Operation mosaic_1 completed" in output
     assert "Rapthor has finished :)" in output
@@ -100,6 +102,7 @@ def test_rapthor_run_single_loop_calibrate_di_slow_gains(
         generated_parset_path,
         {
             "allow_internet_access": "False",
+            "reweight": "False",
             "strategy": str(single_loop_strategy_with_calibration_strategy),
         },
     )
@@ -113,6 +116,7 @@ def test_rapthor_run_single_loop_calibrate_di_slow_gains(
     assert result.returncode == 0, f"Rapthor failed with output:\n{output}"
     assert "Operation calibrate_di_1 completed" in output
     assert "Operation predict_di_1 completed" in output
+    assert "Operation predict_1 completed" not in output
     assert "Operation image_1 completed" in output
     assert "Operation mosaic_1 completed" in output
     assert "Rapthor has finished :)" in output
@@ -158,6 +162,7 @@ def test_rapthor_run_di_fast_phase_medium_phase(
         generated_parset_path,
         {
             "allow_internet_access": "False",
+            "reweight": "False",
             "strategy": str(single_loop_strategy_path_calibrate_di_fast_medium_phase),
         },
     )
@@ -171,6 +176,7 @@ def test_rapthor_run_di_fast_phase_medium_phase(
     assert result.returncode == 0, f"Rapthor failed with output:\n{output}"
     assert "Operation calibrate_di_1 completed" in output
     assert "Operation predict_di_1 completed" in output
+    assert "Operation predict_1 completed" not in output
     assert "Operation image_1 completed" in output
     assert "Operation mosaic_1 completed" in output
     assert "Rapthor has finished :)" in output
@@ -215,6 +221,7 @@ def test_rapthor_run_di_fast_phase_medium_slow(
         generated_parset_path,
         {
             "allow_internet_access": "False",
+            "reweight": "False",
             "strategy": str(single_loop_strategy_path_calibrate_di_fast_medium_slow),
         },
     )
@@ -228,6 +235,7 @@ def test_rapthor_run_di_fast_phase_medium_slow(
     assert result.returncode == 0, f"Rapthor failed with output:\n{output}"
     assert "Operation calibrate_di_1 completed" in output
     assert "Operation predict_di_1 completed" in output
+    assert "Operation predict_1 completed" not in output
     assert "Operation image_1 completed" in output
     assert "Operation mosaic_1 completed" in output
     assert "Rapthor has finished :)" in output
@@ -278,6 +286,7 @@ def test_rapthor_run_single_loop_calibrate_di_full_jones(
         generated_parset_path,
         {
             "allow_internet_access": "False",
+            "reweight": "False",
             "strategy": str(single_loop_strategy_with_calibration_strategy),
         },
     )
@@ -290,6 +299,8 @@ def test_rapthor_run_single_loop_calibrate_di_full_jones(
     output = f"{result.stdout}\n{result.stderr}"
     assert result.returncode == 0, f"Rapthor failed with output:\n{output}"
     assert "Operation calibrate_di_1 completed" in output
+    assert "Operation predict_di_1 completed" in output
+    assert "Operation predict_1 completed" not in output
 
     calibrate_logs_dir = Path(working_dir) / "logs" / "calibrate_di_1"
     calibrate_log = find_step_logs(calibrate_logs_dir, "ddecal_solve.cwl")
