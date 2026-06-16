@@ -67,10 +67,11 @@ class Calibrate(Operation):
     def __init__(self, mode, field, index):
         if mode not in ["di", "dd"]:
             raise ValueError(f"Only di and dd mode are supported, chosen: {mode}")
+        name = "calibrate" if mode == "dd" else "calibrate_di"
         super().__init__(
             field,
             index=index,
-            name="calibrate" if mode == "dd" else "calibrate_di",
+            name=name,
             rootname="calibrate",
         )
         self.mode = mode

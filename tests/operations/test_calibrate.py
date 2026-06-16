@@ -139,6 +139,8 @@ class TestCalibrate:
         calibrate = Calibrate(mode=mode, field=calibrate_field, index=index)
         assert calibrate.mode == mode
         assert calibrate.name == f"{expected_name}_{index}"
+        assert calibrate.rootname == "calibrate"
+        assert calibrate.pipeline_parset_template == "calibrate_pipeline.cwl"
 
     def test_init_raises_on_invalid_mode(self, calibrate_field):
         with pytest.raises(ValueError, match="Only di and dd mode are supported"):

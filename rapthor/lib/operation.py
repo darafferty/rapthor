@@ -39,13 +39,13 @@ class Operation(object):
     def __init__(self, field, index=None, name: str = "", rootname: str = ""):
         self.parset = field.parset.copy()
         self.field = field
-        self.rootname = rootname.lower() if rootname else name.lower()
+        operation_name = name.lower()
+        self.rootname = rootname.lower() if rootname else operation_name
         self.index = index
         if self.index is not None:
-            self.name = f"{self.rootname}_{self.index}"
+            self.name = f"{operation_name}_{self.index}"
         else:
-            self.name = self.rootname
-        self.rootname
+            self.name = operation_name
         self.parset["op_name"] = name
         self.log = logging.getLogger(f"rapthor:{self.name}")
         self.force_serial_jobs = False  # force jobs to run serially
