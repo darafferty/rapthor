@@ -839,6 +839,8 @@ steps:
         source: timechunk_filename
       - id: model
         source: draw_model/model_images
+      - id: skymodel
+        source: calibration_skymodel_file
     out:
       - id: msout
       - id: patches
