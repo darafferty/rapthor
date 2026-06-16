@@ -120,12 +120,13 @@ def test_rapthor_run_single_loop_with_do_normalize_no_internet_raises_error(
     indirect=True,
 )
 def test_rapthor_run_single_loop_with_do_normalize_no_internet_provided_sky_models_ok(
-    generated_parset_path_normalisation, single_loop_do_normalize_strategy_path,
-    normalization_skymodel_paths
+    generated_parset_path_normalisation,
+    single_loop_do_normalize_strategy_path,
+    normalization_skymodel_paths,
 ):
     """Test that rapthor runs successfully when do_normalize
-       is used without internet access but sky models are provided.
-       And returns value error if the skymodels are not provided."""
+    is used without internet access but sky models are provided.
+    And returns value error if the skymodels are not provided."""
     updated_parset_path = update_parset_path(
         generated_parset_path_normalisation,
         {
@@ -162,12 +163,16 @@ def test_rapthor_run_single_loop_with_do_normalize_no_internet_provided_sky_mode
         assert "--reference_skymodels" in normalize_log_text
         assert "integration_apparent_sky.txt" in normalize_log_text
         assert "integration_true_sky.txt" in normalize_log_text
-        assert "Using reference sky models provided as input for normalization" in normalize_log_text
+        assert (
+            "Using reference sky models provided as input for normalization" in normalize_log_text
+        )
         assert "Downloading vlssr catalog for this field" not in normalize_log_text
         assert "Downloading wenss catalog for this field" not in normalize_log_text
         assert "Flux density scale normalization will be skipped" not in normalize_log_text
 
-        normalize_h5parm = Path(working_dir) / "solutions" / "normalize_1" / "sector_1_normalize.h5parm"
+        normalize_h5parm = (
+            Path(working_dir) / "solutions" / "normalize_1" / "sector_1_normalize.h5parm"
+        )
         assert normalize_h5parm.exists()
         with h5parm(str(normalize_h5parm), readonly=True) as h5:
             amplitudes, _ = h5.getSolset("sol000").getSoltab("amplitude000").getValues()
