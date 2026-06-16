@@ -1683,7 +1683,10 @@ steps:
       - id: skymodel
         source: calibration_skymodel_file
       - id: h5parm
-        source: combine_fast_medium1_h5parms/combinedh5parm
+        source:
+          - combine_fast_medium1_h5parms/combinedh5parm
+          - collect_fast_phases/outh5parm
+        pickValue: first_non_null
       - id: do_slowgain_solve
         source: do_slowgain_solve
       - id: directions

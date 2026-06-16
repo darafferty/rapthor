@@ -5,9 +5,10 @@ Test cases for the `rapthor.operations.calibrate` module.
 from pathlib import Path
 
 import pytest
+import yaml
 
 import rapthor
-from rapthor.lib.operation import DIR as OPERATION_DIR
+from rapthor.lib.operation import DIR as OPERATION_DIR, env_parset
 from rapthor.operations.calibrate import Calibrate
 from tests.operations.conftest import get_cwl_input_ids
 
@@ -125,6 +126,10 @@ def parse_dp3(dp3_string):
         ["solve1", "solve2"]
     """
     return [x.strip() for x in dp3_string.strip("[]").split(",") if x.strip()]
+
+
+def workflow_step(workflow, step_id):
+    return next(step for step in workflow["steps"] if step["id"] == step_id)
 
 
 class TestCalibrate:
@@ -923,3 +928,24 @@ class TestCalibrate:
         calibrate_dd.set_input_parameters()
 
         assert calibrate_dd.input_parms["solution_combine_mode"] == expected_mode
+
+    def test_adjust_phase_sources_falls_back_to_single_solve_h5parm(self):
+        template = env_parset.get_template("calibrate_pipeline.cwl")
+        workflow = yaml.safe_load(
+            template.render(
+                {
+                    "use_image_based_predict": False,
+                    "generate_screens": False,
+                    "max_cores": None,
+                }
+            )
+        )
+
+        step = workflow_step(workflow, "adjust_h5parm_sources_phase")
+        h5parm_input = next(input_ for input_ in step["in"] if input_["id"] == "h5parm")
+
+        assert h5parm_input["source"] == [
+            "combine_fast_medium1_h5parms/combinedh5parm",
+            "collect_fast_phases/outh5parm",
+        ]
+        assert h5parm_input["pickValue"] == "first_non_null"
