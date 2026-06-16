@@ -120,9 +120,12 @@ def test_rapthor_run_single_loop_with_do_normalize_no_internet_raises_error(
     indirect=True,
 )
 def test_rapthor_run_single_loop_with_do_normalize_no_internet_provided_sky_models_ok(
-    generated_parset_path_normalisation, single_loop_do_normalize_strategy_path
+    generated_parset_path_normalisation, single_loop_do_normalize_strategy_path,
+    normalization_skymodel_paths
 ):
-    """Test that rapthor runs successfully when do_normalize is used without internet access but sky models are provided."""
+    """Test that rapthor runs successfully when do_normalize
+       is used without internet access but sky models are provided.
+       And returns value error if the skymodels are not provided."""
     updated_parset_path = update_parset_path(
         generated_parset_path_normalisation,
         {
@@ -139,32 +142,36 @@ def test_rapthor_run_single_loop_with_do_normalize_no_internet_provided_sky_mode
         check=False,
     )
     output = f"{result.stdout}\n{result.stderr}"
-    assert result.returncode == 0, f"Rapthor failed with output:\n{output}"
-    assert "Operation calibrate_1 completed" in output
-    assert "Operation predict_1 completed" in output
-    assert "Operation normalize_1 completed" in output
-    assert "Operation image_1 completed" in output
-    assert "Operation mosaic_1 completed" in output
-    assert "Rapthor has finished :)" in output
+    if normalization_skymodel_paths is None:
+        assert result.returncode == 1, f"Rapthor succeeded with output:\n{output}"
+        assert "ValueError: " in output
+    else:
+        assert result.returncode == 0, f"Rapthor failed with output:\n{output}"
+        assert "Operation calibrate_1 completed" in output
+        assert "Operation predict_1 completed" in output
+        assert "Operation normalize_1 completed" in output
+        assert "Operation image_1 completed" in output
+        assert "Operation mosaic_1 completed" in output
+        assert "Rapthor has finished :)" in output
 
-    working_dir = get_working_dir_from_parset(updated_parset_path)
-    normalize_logs_dir = Path(working_dir) / "logs" / "normalize_1"
-    normalize_logs = sorted(normalize_logs_dir.rglob("*normalize_flux_scale*.log"))
-    assert normalize_logs, f"No normalize_flux_scale logs found in {normalize_logs_dir}"
-    normalize_log_text = "\n".join(log_path.read_text() for log_path in normalize_logs)
-    assert "--reference_skymodels" in normalize_log_text
-    assert "integration_apparent_sky.txt" in normalize_log_text
-    assert "integration_true_sky.txt" in normalize_log_text
-    assert "Using reference sky models provided as input for normalization" in normalize_log_text
-    assert "Downloading vlssr catalog for this field" not in normalize_log_text
-    assert "Downloading wenss catalog for this field" not in normalize_log_text
-    assert "Flux density scale normalization will be skipped" not in normalize_log_text
+        working_dir = get_working_dir_from_parset(updated_parset_path)
+        normalize_logs_dir = Path(working_dir) / "logs" / "normalize_1"
+        normalize_logs = sorted(normalize_logs_dir.rglob("*normalize_flux_scale*.log"))
+        assert normalize_logs, f"No normalize_flux_scale logs found in {normalize_logs_dir}"
+        normalize_log_text = "\n".join(log_path.read_text() for log_path in normalize_logs)
+        assert "--reference_skymodels" in normalize_log_text
+        assert "integration_apparent_sky.txt" in normalize_log_text
+        assert "integration_true_sky.txt" in normalize_log_text
+        assert "Using reference sky models provided as input for normalization" in normalize_log_text
+        assert "Downloading vlssr catalog for this field" not in normalize_log_text
+        assert "Downloading wenss catalog for this field" not in normalize_log_text
+        assert "Flux density scale normalization will be skipped" not in normalize_log_text
 
-    normalize_h5parm = Path(working_dir) / "solutions" / "normalize_1" / "sector_1_normalize.h5parm"
-    assert normalize_h5parm.exists()
-    with h5parm(str(normalize_h5parm), readonly=True) as h5:
-        amplitudes, _ = h5.getSolset("sol000").getSoltab("amplitude000").getValues()
-    assert not np.allclose(amplitudes, 1.0)
+        normalize_h5parm = Path(working_dir) / "solutions" / "normalize_1" / "sector_1_normalize.h5parm"
+        assert normalize_h5parm.exists()
+        with h5parm(str(normalize_h5parm), readonly=True) as h5:
+            amplitudes, _ = h5.getSolset("sol000").getSoltab("amplitude000").getValues()
+        assert not np.allclose(amplitudes, 1.0)
 
 
 @pytest.mark.integration
@@ -182,7 +189,6 @@ def test_rapthor_run_single_loop_with_do_normalize_no_internet_provided_sky_mode
 def test_rapthor_run_single_loop_with_do_normalize_no_matching_sources_skips_normalization(
     generated_parset_path_normalisation,
     no_matching_normalization_inputs,
-    normalization_skymodel_paths,
 ):
     """Test do_normalize skips normalization when reference sky models do not match."""
     updated_parset_path = update_parset_path(
