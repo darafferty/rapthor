@@ -186,9 +186,14 @@ commands = [
 
 [tool.tox.env.test_integration]
 description = "Run integration tests"
-deps = [{ replace = "ref", of = ["dependency-groups", "test"], extend = true }]
+deps = [
+    { replace = "ref", of = ["dependency-groups", "test"], extend = true },
+    "pytest-split<0.11",
+]
 pass_env = [
     "CI_PROJECT_DIR",
+    "CI_NODE_INDEX",
+    "CI_NODE_TOTAL",
     "BLIS_NUM_THREADS",
     "MKL_NUM_THREADS",
     "NUMEXPR_MAX_THREADS",
@@ -202,7 +207,9 @@ commands = [
         "-m", "integration",
         "-vv", "-ra",
         "--durations=0",
-        "{posargs:tests}",
+        "--splits", "{env:CI_NODE_TOTAL:1}",
+        "--group", "{env:CI_NODE_INDEX:1}",
+        "tests",
     ]
 ]
 

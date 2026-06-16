@@ -266,20 +266,11 @@ run_tests:
     paths:
       - ci/i/**/work/logs/**/*
 
-run_integration_tests_calibration:
+run_integration_tests:
   extends: .run_integration_tests
+  parallel: 3
   script:
-    - tox -e test_integration -- tests/integration/test_calibration_options.py tests/integration/test_cli.py tests/integration/test_dd_calibration.py
-
-run_integration_tests_di_calibration:
-  extends: .run_integration_tests
-  script:
-    - tox -e test_integration -- tests/integration/test_di_calibration.py
-
-run_integration_tests_workflows:
-  extends: .run_integration_tests
-  script:
-    - tox -e test_integration -- tests/integration/test_do_normalize.py tests/integration/test_peel_bright_sources.py tests/integration/test_rapthor_restart.py tests/integration/test_sector_diagnostics.py tests/integration/test_shared_facet_rw.py tests/operations/integration/test_image_to_mosaic.py
+    - tox -e test_integration
 
 
 ### Stage: docs
