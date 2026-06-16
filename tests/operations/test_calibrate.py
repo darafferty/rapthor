@@ -8,7 +8,8 @@ import pytest
 import yaml
 
 import rapthor
-from rapthor.lib.operation import DIR as OPERATION_DIR, env_parset
+from rapthor.lib.operation import DIR as OPERATION_DIR
+from rapthor.lib.operation import env_parset
 from rapthor.operations.calibrate import Calibrate
 from tests.operations.conftest import get_cwl_input_ids
 
