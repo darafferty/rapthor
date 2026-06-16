@@ -46,7 +46,7 @@ def mock_mpi_run(tmp_path, monkeypatch):
 )
 @pytest.mark.parametrize("parallel_gridding_tasks", ["1", "2"])
 @pytest.mark.parametrize("dde_method", ["full", "single"])
-@pytest.mark.parametrize("use_mpi", ["True", "False"])
+@pytest.mark.parametrize("use_mpi", [True, False])
 def test_rapthor_parallel_gridding(
     use_mpi,
     dde_method,
@@ -64,7 +64,7 @@ def test_rapthor_parallel_gridding(
         generated_parset_path,
         {
             "allow_internet_access": "False",
-            "use_mpi": use_mpi,
+            "use_mpi": "True" if use_mpi else "False",
             "dde_method": dde_method,
             "parallel_gridding_tasks": parallel_gridding_tasks,
             "strategy": str(single_loop_strategy_path),
@@ -94,7 +94,8 @@ def test_rapthor_parallel_gridding(
 
     working_dir = get_working_dir_from_parset(updated_parset_path)
     image_logs_dir = Path(working_dir) / "logs" / "image_1"
-    mpi_tag = "_mpi_" if use_mpi else ""
+
+    mpi_tag = "_mpi_" if use_mpi else "_"
     dde_tag = "no_dde" if dde_method == "single" else "facets"
     expected_log_file = (
         f"CWLJob_subpipeline_parset.cwl.image.wsclean{mpi_tag}image_{dde_tag}.cwl_000.log"
