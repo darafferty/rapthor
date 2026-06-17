@@ -531,11 +531,7 @@ class Calibrate(Operation):
         return CalibrationSolve(
             solve_type=solve_type,
             slot=slot,
-            mode=(
-                "scalarphase"
-                if solve_type == "slow_gains" and slot == 1
-                else MODE_BY_SOLVE[solve_type]
-            ),
+            mode=MODE_BY_SOLVE[solve_type],
             output_prefix=output_prefix,
             collected_h5parm=collected_h5parm,
             timestep_key=timestep_key,
