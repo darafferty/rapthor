@@ -76,6 +76,14 @@ inputs:
       prefix: --threads
       valueFrom: $(runtime.cores)
 
+  - id: time_freq_smearing
+    label: Enable time frequency smearing
+    doc: |
+      If true, enable time frequency smearing in prediction.
+    type: boolean
+    inputBinding:
+      prefix: --time_freq_smearing
+
 outputs:
   - id: msout
     label: Output MS

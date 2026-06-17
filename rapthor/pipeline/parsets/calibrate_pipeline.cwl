@@ -852,6 +852,9 @@ steps:
         source: model_image_imsize
       - id: numthreads
         source: max_threads
+      - id: time_freq_smearing
+        source: [correctfreqsmearing, correcttimesmearing]
+        valueFrom: $(self[0] || self[1])
     out:
       - id: msout
       - id: patches

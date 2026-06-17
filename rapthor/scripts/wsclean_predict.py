@@ -178,6 +178,11 @@ def main():
         "--imsize", help="Model image size n_x x n_y (pixels)", type=int, nargs=2, default=[]
     )
     parser.add_argument("--threads", help="Max threads to use", type=int, default=1)
+    parser.add_argument(
+        "--time_freq_smearing",
+        help="Enable time frequency smearing",
+        action=argparse.BooleanOptionalAction,
+    )
     parser.add_argument("--storage_manager", help="Storage manager", type=str, default="default")
     args = parser.parse_args()
     # Note: the output file name should match file read in CWL step
