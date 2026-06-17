@@ -11,6 +11,9 @@ from rapthor.lib.strategy import set_selfcal_strategy
 from rapthor.operations.image import Image, ImageInitial, ImageNormalize
 from tests.cwl.cwl_cmdline import generate_command_line
 from tests.cwl.cwl_mock import mocked_cwl_execution
+from rapthor.operations.image import Image, ImageInitial, ImageNormalize, \
+    get_max_smaller_power_of_2, \
+    adjust_parallel_gridding_tasks
 
 PATH_TO_OPERATION_STEPS = Path(__file__).parents[2] / "rapthor" / "pipeline" / "steps"
 
@@ -159,22 +162,26 @@ class TestImage:
     def test_run(self, image):
         image.run()
         assert image.is_done()
-
+    @pytest.mark.parametrize("num_facets", [1, 50])
     @pytest.mark.parametrize("shared_facet_rw", [True, False])
     @pytest.mark.parametrize("use_facets", [True, False])
     @pytest.mark.parametrize("use_mpi", [True, False])
     def test_setting_shared_facet_rw(
-        self, field, h5parm_file, shared_facet_rw, use_facets, use_mpi
+        self, field, h5parm_file, shared_facet_rw, num_facets, use_facets, use_mpi
     ):
         field.parset["imaging_specific"]["use_mpi"] = use_mpi
         field.parset["imaging_specific"]["shared_facet_rw"] = shared_facet_rw
+        # Mock read facets to return a number of facets > 1
+        field.read_facets = lambda : [None] * num_facets
+
         _prepare_field_for_image(field, h5parm_filename=h5parm_file)
+
         image = _initialize_operation(
             Image(field, index=1),
             do_predict=False,
             use_facets=use_facets,
         )
-        if use_facets:
+        if use_facets and num_facets > 1:
             assert image.input_parms["shared_facet_rw"] == shared_facet_rw
         else:
             assert not image.input_parms["shared_facet_rw"]
@@ -709,3 +716,37 @@ class TestImageNormalize:
 def test_report_sector_diagnostics(sector_name=None, diagnostics_dict=None, log=None):
     # report_sector_diagnostics(sector_name, diagnostics_dict, log)
     pass
+
+
+@pytest.mark.parametrize(
+        "input,expected",
+        [
+            [1, 1],
+            [2, 2],
+            [3, 2],
+            [8, 8],
+            [16, 16],
+            [15, 8],
+            [18, 16],
+            [24, 16],
+            [33, 32]
+        ]
+)
+def test_get_max_smaller_power_of_2(input, expected):
+    assert get_max_smaller_power_of_2(input) == expected
+
+
+@pytest.mark.parametrize(
+        "parallel_gridding_tasks,n_facets,expected",
+        [
+            [1, 1, 1],
+            [2, 2, 2],
+            [3, 2, 2],
+            [15, 8, 8],
+            [18, 15, 8],
+            [24, 17, 16],
+            [33, 30, 16]
+        ]
+)
+def test_adjust_parallel_gridding_tasks(parallel_gridding_tasks, n_facets, expected):
+    assert adjust_parallel_gridding_tasks(parallel_gridding_tasks, n_facets) == expected

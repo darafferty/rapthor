@@ -16,6 +16,28 @@ from rapthor.lib.operation import Operation
 log = logging.getLogger("rapthor:image")
 
 
+def get_max_smaller_power_of_2(a):
+    """
+    Given a number a finds the biggest power of 2
+    which is smaller then a
+    """
+    state = 2
+    if a == 1:
+        return 1
+    while 2 * state <= a:
+        state *= 2
+    return state
+
+
+def adjust_parallel_gridding_tasks(parallel_gridding_tasks, n_facets):
+    """
+    Adjust parallel gridding tasks to avoid resource misuse
+    """
+    parallel_gridding_tasks = min(n_facets, parallel_gridding_tasks)
+    parallel_gridding_tasks = get_max_smaller_power_of_2(parallel_gridding_tasks)
+    return parallel_gridding_tasks
+
+
 def merge_list_flatten(input_list: List[List]) -> List:
     """
     Merge a list of lists into a single flattened list
@@ -420,10 +442,18 @@ class Image(Operation):
             self.input_parms.update(
                 {"mpi_cpus_per_task": [self.parset["cluster_specific"]["cpus_per_task"]] * nsectors}
             )
+
+        self.input_parms["shared_facet_rw"] = False
         if self.use_facets:
-            self.input_parms["shared_facet_rw"] = self.parset["imaging_specific"]["shared_facet_rw"]
-        else:
-            self.input_parms["shared_facet_rw"] = False
+            facets = self.field.read_facets()
+            if facets and (n_facets := len(facets)) > 1:
+                self.input_parms["shared_facet_rw"] = self.parset["imaging_specific"][
+                    "shared_facet_rw"
+                ]
+                self.input_parms["parallel_gridding_tasks"] = adjust_parallel_gridding_tasks(
+                    self.input_parms["parallel_gridding_tasks"], n_facets
+                )
+
         if not self.apply_none and self.use_facets:
             # For faceting, we need inputs for making the ds9 facet region files
             self.input_parms.update(
