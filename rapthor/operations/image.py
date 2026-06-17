@@ -27,11 +27,12 @@ def get_max_divisor_less_than_or_equal(n, p):
         return 1
 
 
-def adjust_parallel_gridding_tasks(parallel_gridding_tasks, n_facets):
+def adjust_parallel_gridding_tasks(max_cores, parallel_gridding_tasks, n_facets):
     """
     Adjust parallel gridding tasks to avoid resource misuse
     """
-    parallel_gridding_tasks = get_max_divisor_less_than_or_equal(parallel_gridding_tasks, n_facets)
+    parallel_gridding_tasks = min(parallel_gridding_tasks, n_facets)
+    parallel_gridding_tasks = get_max_divisor_less_than_or_equal(max_cores, parallel_gridding_tasks)
     return parallel_gridding_tasks
 
 
@@ -447,8 +448,11 @@ class Image(Operation):
                 self.input_parms["shared_facet_rw"] = self.parset["imaging_specific"][
                     "shared_facet_rw"
                 ]
+
                 self.input_parms["parallel_gridding_tasks"] = adjust_parallel_gridding_tasks(
-                    self.input_parms["parallel_gridding_tasks"], n_facets
+                    self.field.parset["cluster_specific"]["max_cores"],
+                    self.input_parms["parallel_gridding_tasks"],
+                    n_facets,
                 )
 
         if not self.apply_none and self.use_facets:

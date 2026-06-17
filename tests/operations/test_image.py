@@ -738,16 +738,17 @@ def test_get_max_divisor_less_than_or_equal(n_cores, n_facets, expected):
 
 
 @pytest.mark.parametrize(
-        "parallel_gridding_tasks,n_facets,expected",
+        "max_cores, parallel_gridding_tasks,n_facets,expected",
         [
-            [1, 1, 1],
-            [2, 2, 2],
-            [3, 2, 1],
-            [15, 8, 5],
-            [18, 16, 9],
-            [24, 16, 12],
-            [33, 32, 11]
+            [192, 1, 1, 1],
+            [160, 2, 2, 2],
+            [56, 3, 2, 2],
+            [192, 15, 8, 8],
+            [192, 18, 16, 16],
+            [192, 24, 16, 16],
+            [192, 33, 32, 32],
+            [192, 24, 9, 8]
         ]
 )
-def test_adjust_parallel_gridding_tasks(parallel_gridding_tasks, n_facets, expected):
-    assert adjust_parallel_gridding_tasks(parallel_gridding_tasks, n_facets) == expected
+def test_adjust_parallel_gridding_tasks(max_cores, parallel_gridding_tasks, n_facets, expected):
+    assert adjust_parallel_gridding_tasks(max_cores, parallel_gridding_tasks, n_facets) == expected

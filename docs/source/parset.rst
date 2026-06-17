@@ -609,6 +609,9 @@ The available options are described below under their respective sections.
         
         .. warning:: 
             This option is currently experimental and should be used with caution.
+        
+        .. notes::
+            If the number of facets is only one the option will be disabled 
 
     reweight
         Reweight the visibility data before imaging (default = ``False``). If ``True``,
