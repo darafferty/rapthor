@@ -177,5 +177,5 @@ def test_rapthor_run_dd_slow_gains(
     assert "solve2" not in dp3_arguments["steps"]
     assert "solve3" not in dp3_arguments["steps"]
     assert "slow_gain_0.h5parm" == dp3_arguments["solve1.h5parm"]
-    assert "scalarphase" == dp3_arguments["solve1.mode"]
+    assert "diagonal" == dp3_arguments["solve1.mode"]
     assert int(dp3_arguments["solve1.solint"]) == 60  # 600 s strategy interval / 10 s samples
