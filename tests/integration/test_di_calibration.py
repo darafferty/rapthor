@@ -387,14 +387,14 @@ def test_rapthor_run_mixed_di_dd_order(
 @pytest.mark.parametrize(
     "generated_parset_path",
     [
-            (
-                "tests/resources/integration_template.parset",
-                "tests/resources/integration_true_sky.txt",
-                "tests/resources/integration_apparent_sky.txt",
-            ),
+        (
+            "tests/resources/integration_template.parset",
+            "tests/resources/integration_true_sky.txt",
+            "tests/resources/integration_apparent_sky.txt",
+        ),
     ],
     indirect=["generated_parset_path"],
-) 
+)
 def test_rapthor_run_multi_cycles(
     generated_parset_path,
     two_loop_strategy_with_calibration_strategy,
@@ -406,9 +406,9 @@ def test_rapthor_run_multi_cycles(
         {
             "allow_internet_access": "False",
             "strategy": str(two_loop_strategy_with_calibration_strategy),
-        }
+        },
     )
-    
+
     working_dir = get_working_dir_from_parset(updated_parset_path)
     print("---Rapthor working dir: ", working_dir)
 
