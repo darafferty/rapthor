@@ -16,9 +16,9 @@ from rapthor.lib.operation import Operation
 log = logging.getLogger("rapthor:image")
 
 
-def get_max_smaller_divisor(n, p):
+def get_max_divisor_less_than_or_equal(n, p):
     """
-    Get the biggest divisor of n which is smaller then p
+    Get the biggest divisor of n which is <= p
     """
     for k in range(p, 0, -1):
         if n % k == 0:
