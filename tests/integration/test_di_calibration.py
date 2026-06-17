@@ -69,10 +69,7 @@ def test_rapthor_run_single_loop_calibrate_di_fast_phase(
     assert "solve4" not in dp3_arguments["steps"]
     assert "avg" not in dp3_arguments["steps"]
     assert "scalarphase" in dp3_arguments["solve1.mode"]
-
-
-# fast medium slow for DI
-
+    
 
 @pytest.mark.integration
 @pytest.mark.parametrize(
