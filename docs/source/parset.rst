@@ -742,8 +742,7 @@ The available options are described below under their respective sections.
         ``max_threads``, but not more than 14).
 
     parallel_gridding_tasks
-        Number of tasks to use by WSClean for parallel gridding (default = 0 = 
-        ``max_threads`` // 8).
+        Number of tasks WSClean can use for parallel gridding. If this is set to 0 (default) the number of tasks will be set to ``max_threads // 8`` (most hardware has a multiple of 8 cores per CCD so this is usually a good choice for optimal performance). NB: setting this too high may lead to major thread contention overheads.
 
     dir_local
         Full path to a local disk on the nodes for IO-intensive processing (default = not
