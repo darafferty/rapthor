@@ -795,6 +795,8 @@ steps:
         source: facet_region_file
       - id: enclose_names
         valueFrom: 'True'
+      - id: names_with_polygons
+        valueFrom: 'False'
     out:
       - id: region_file
 {% endif %}

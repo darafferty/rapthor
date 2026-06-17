@@ -1,10 +1,9 @@
 import pytest
 
-from tests.cwl.cwl_mock import mocked_cwl_execution
 from rapthor.lib.strategy import set_selfcal_strategy
-
 from rapthor.operations.image import Image
 from rapthor.operations.mosaic import Mosaic
+from tests.cwl.cwl_mock import mocked_cwl_execution
 
 """
 Integration tests from the Image operation to the Mosaic operation.
@@ -23,6 +22,7 @@ The Mosaic operation uses the updated field to set its input parameters
 and parset parameters.
 """
 
+
 @pytest.fixture
 def field_I_no_predict(field):
     """
@@ -39,7 +39,7 @@ def field_I_no_predict(field):
     field.update(steps[0], index=1, final=False)
     # The field update will set the predict flag to True, override it here
     field.do_predict = False
-    field.image_pol = 'I'
+    field.image_pol = "I"
     field.skip_final_major_iteration = True
     return field
 
@@ -55,7 +55,7 @@ def test_image_I_to_mosaic(field_I_no_predict, expected_image_output, monkeypatc
     monkeypatch.setattr(
         "rapthor.lib.cwlrunner.BaseCWLRunner.execute",
         lambda self, args, env: mocked_cwl_execution(self, args, env, expected_image_output),
-        raising=False
+        raising=False,
     )
     image = Image(field=field_I_no_predict, index=1)
     image.set_input_parameters()
@@ -65,7 +65,7 @@ def test_image_I_to_mosaic(field_I_no_predict, expected_image_output, monkeypatc
     monkeypatch.setattr(
         "rapthor.lib.cwlrunner.BaseCWLRunner.execute",
         lambda self, args, env: mocked_cwl_execution(self, args, env),
-        raising=False
+        raising=False,
     )
 
     mosaic = Mosaic(field=image.field, index=1)

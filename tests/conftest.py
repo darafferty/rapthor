@@ -499,19 +499,10 @@ def generated_parset_path(request, tmp_path, test_ms):
     return output_parset_path
 
 
-@pytest.fixture(
-    params=[
-        None,
-        [
-            TEST_INTEGRATION_APPARENT_SKYMODEL,
-            TEST_INTEGRATION_TRUE_SKYMODEL,
-        ],
-    ],
-    ids=["downloaded_surveys", "reference_skymodels"],
-)
+@pytest.fixture
 def normalization_skymodel_paths(request):
     """Return optional normalization sky model paths for integration tests."""
-    return request.param
+    return getattr(request, "param", None)
 
 
 @pytest.fixture

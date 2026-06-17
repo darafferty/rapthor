@@ -107,6 +107,9 @@ use_included_skymodels = False
 # not used)
 use_image_based_predict = False
 
+# Use image-based prediction using WSClean, can be faster for a large sky model. Extra model data columns will be created.
+use_wsclean_predict = False
+
 # Maximum factor by which the direction-dependent solution intervals can be
 # increased, so that fainter calibrators get longer intervals (default = 1).
 # The maximum factor by which the smoothnessconstraints are increased, such
