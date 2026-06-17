@@ -232,7 +232,8 @@ inputs:
     label: Max number of gridding tasks
     doc: |
       The maximum number of tasks to use during parallel gridding (length = 1).
-    type: int
+    type: 
+    - int[]
 
 
 {% if use_facets %}
@@ -930,7 +931,7 @@ steps:
               image_freqstep, image_timestep, image_maxinterval, image_timebase,
               previous_mask_filename, mask_filename, phasecenter, ra, dec,
               image_name, cellsize_deg, wsclean_imsize, vertices_file, region_file,
-              filtered_model_image_name,
+              filtered_model_image_name, parallel_gridding_tasks,
 {% if use_mpi %}
               mpi_cpus_per_task, mpi_nnodes,
 {% endif %}

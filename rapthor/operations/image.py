@@ -16,13 +16,13 @@ from rapthor.lib.operation import Operation
 log = logging.getLogger("rapthor:image")
 
 
-def get_max_divisor_less_than_or_equal(n, p):
+def get_max_divisor_less_than_or_equal(number: int, limit: int) -> int:
     """
-    Get the biggest divisor of n which is <= p
+    Get the biggest divisor of number which is <= limit
     """
-    for k in range(p, 0, -1):
-        if n % k == 0:
-            return k
+    for divisor in range(limit, 0, -1):
+        if number % divisor == 0:
+            return divisor
     else:
         return 1
 
@@ -403,8 +403,9 @@ class Image(Operation):
             "interval": interval,
             "max_threads": self.field.parset["cluster_specific"]["max_threads"],
             "deconvolution_threads": self.field.parset["cluster_specific"]["deconvolution_threads"],
-            "parallel_gridding_tasks": self.field.parset["cluster_specific"][
-                "parallel_gridding_tasks"
+            "parallel_gridding_tasks": [
+                self.field.parset["cluster_specific"]["parallel_gridding_tasks"]
+                * len(self.imaging_sectors)
             ],
             "save_filtered_model_image": self.field.parset["imaging_specific"][
                 "save_filtered_model_image"
@@ -441,17 +442,33 @@ class Image(Operation):
             )
 
         self.input_parms["shared_facet_rw"] = False
-        if self.use_facets:
-            facets = self.field.read_facets()
-            if facets and (n_facets := len(facets)) > 1:
+
+        facets = self.field.read_facets() if self.use_facets else None
+        n_facets = len(facets) if facets else 0
+
+        for sector_id, (parallel_gridding_tasks, channels_out) in enumerate(
+            zip(self.input_parms["parallel_gridding_tasks"], self.input_parms["channels_out"])
+        ):
+            if n_facets > 1:
                 self.input_parms["shared_facet_rw"] = self.parset["imaging_specific"][
                     "shared_facet_rw"
                 ]
 
-                self.input_parms["parallel_gridding_tasks"] = adjust_parallel_gridding_tasks(
-                    self.field.parset["cluster_specific"]["max_cores"],
-                    self.input_parms["parallel_gridding_tasks"],
-                    n_facets,
+                self.input_parms["parallel_gridding_tasks"][sector_id] = (
+                    adjust_parallel_gridding_tasks(
+                        self.field.parset["cluster_specific"]["max_cores"],
+                        parallel_gridding_tasks,
+                        n_facets,
+                    )
+                )
+            elif n_facets or channels_out < parallel_gridding_tasks:
+                # Further reduce in case of n_channels_out less then parallel_gridding_tasks
+                self.input_parms["parallel_gridding_tasks"][sector_id] = (
+                    adjust_parallel_gridding_tasks(
+                        self.field.parset["cluster_specific"]["max_cores"],
+                        parallel_gridding_tasks,
+                        channels_out,
+                    )
                 )
 
         if not self.apply_none and self.use_facets:
