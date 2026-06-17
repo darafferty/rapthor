@@ -12,7 +12,7 @@ from rapthor.operations.image import Image, ImageInitial, ImageNormalize
 from tests.cwl.cwl_cmdline import generate_command_line
 from tests.cwl.cwl_mock import mocked_cwl_execution
 from rapthor.operations.image import Image, ImageInitial, ImageNormalize, \
-    get_max_smaller_divisor, \
+    get_max_divisor_less_than_or_equal, \
     adjust_parallel_gridding_tasks
 
 
@@ -733,8 +733,8 @@ def test_report_sector_diagnostics(sector_name=None, diagnostics_dict=None, log=
             [33, 32, 11]
         ]
 )
-def test_get_max_smaller_divisor(n_cores, n_facets, expected):
-    assert get_max_smaller_divisor(n_cores,n_facets) == expected
+def test_get_max_divisor_less_than_or_equal(n_cores, n_facets, expected):
+    assert get_max_divisor_less_than_or_equal(n_cores,n_facets) == expected
 
 
 @pytest.mark.parametrize(

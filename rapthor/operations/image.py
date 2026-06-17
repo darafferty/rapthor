@@ -31,7 +31,7 @@ def adjust_parallel_gridding_tasks(parallel_gridding_tasks, n_facets):
     """
     Adjust parallel gridding tasks to avoid resource misuse
     """
-    parallel_gridding_tasks = get_max_smaller_divisor(parallel_gridding_tasks, n_facets)
+    parallel_gridding_tasks = get_max_divisor_less_than_or_equal(parallel_gridding_tasks, n_facets)
     return parallel_gridding_tasks
 
 
