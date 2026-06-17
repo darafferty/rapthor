@@ -3,6 +3,7 @@ Test cases for the `rapthor.operations.mosaic` module.
 """
 
 import pytest
+
 from rapthor.operations.mosaic import Mosaic
 
 
