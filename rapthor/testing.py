@@ -3,11 +3,95 @@ This module contains helper code for testing rapthor.
 """
 
 import configparser
+import contextlib
 import os
 import tempfile
+from collections.abc import Sequence
 from pathlib import Path
 
 REPO_ROOT_DIR = Path(__file__).parent.parent
+
+
+@contextlib.contextmanager
+def assert_logged(caplog, logger, level, expected_messages=(), *, expected_message=None):
+    """
+    Context manager for asserting the presence of specific messages in the
+    captured log records.
+
+    Since this function is decorated as a context manager, the underlying
+    object created is a ContextDecorator so this function can be used as a
+    as decorators as well as in with statements. It is also re-entrant, so
+    the same context manager
+
+    Parameters
+    ----------
+    caplog : pytest.LogCaptureFixture
+        The pytest caplog fixture for capturing log records.
+    logger : str
+        Logger name
+    level : int
+        Logging level
+    expected_messages : str or tuple of str, optional
+        Sequence of expected messages, by default ()
+
+    Other Parameters
+    ----------------
+    expected_message : str, optional
+        Keyword-only parameter to support user passing a single expected
+        message, by default None
+
+    Examples
+    --------
+    The following example will pass, because the expected message is present in
+    the logs:
+
+    >>> with assert_logged(caplog, "my_logger", logging.INFO, expected_message="Hello World"):
+    ...    logging.getLogger("my_logger").info('Hello World')
+
+    Failure case:
+    >>> with assert_logged(caplog, "my_logger", logging.INFO, expected_message="Hello World"):
+    ...    logging.getLogger("my_logger").info('Nope')
+
+    Checking for multiple messages:
+    >>> with assert_logged(caplog, "my_logger", logging.INFO, expected_messages=["Hello", "World"]):
+    ...    logger = logging.getLogger("my_logger")
+    ...    logger.info('Hello')
+    ...    logger.info('World')
+
+    Raises
+    ------
+    TypeError
+        If the expected_messages parameter is not a string or a sequence of strings.
+    AssertionError
+        If any of the expected messages are not found in the logs.
+    """
+
+    # validate inputs
+    if isinstance(expected_messages, str):
+        expected_messages = [expected_messages]
+
+    if not isinstance(expected_messages, Sequence):
+        raise TypeError("expected_messages parameter should be a string or a sequence of strings")
+
+    if expected_message is not None:
+        expected_messages = [*expected_messages, expected_message]
+
+    if not expected_messages:
+        raise ValueError("expected messages list is empty")
+
+    for msg in expected_messages:
+        if not isinstance(msg, str):
+            raise TypeError(f"expected message must be a str, not {type(msg).__name__}")
+
+    # Capture logs at the level for the given logger
+    with caplog.at_level(level, logger=logger) as context:
+        yield context
+
+        for expected_message in expected_messages:
+            if expected_message not in caplog.text:
+                raise AssertionError(
+                    f"Expected message(s) not found in logs:\n\t{expected_message!r}"
+                )
 
 
 def _get_test_run_root():
