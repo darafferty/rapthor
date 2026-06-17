@@ -8,13 +8,15 @@ import pytest
 import yaml
 
 from rapthor.lib.strategy import set_selfcal_strategy
-from rapthor.operations.image import Image, ImageInitial, ImageNormalize
+from rapthor.operations.image import (
+    Image,
+    ImageInitial,
+    ImageNormalize,
+    adjust_parallel_gridding_tasks,
+    get_max_divisor_less_than_or_equal,
+)
 from tests.cwl.cwl_cmdline import generate_command_line
 from tests.cwl.cwl_mock import mocked_cwl_execution
-from rapthor.operations.image import Image, ImageInitial, ImageNormalize, \
-    get_max_divisor_less_than_or_equal, \
-    adjust_parallel_gridding_tasks
-
 
 PATH_TO_OPERATION_STEPS = Path(__file__).parents[2] / "rapthor" / "pipeline" / "steps"
 
@@ -163,7 +165,7 @@ class TestImage:
     def test_run(self, image):
         image.run()
         assert image.is_done()
-    
+
     @pytest.mark.parametrize("parallel_gridding_tasks", [10, 15, 24])
     @pytest.mark.parametrize("max_cores", [1, 12, 48])
     @pytest.mark.parametrize("num_facets", [1, 50])
@@ -171,19 +173,26 @@ class TestImage:
     @pytest.mark.parametrize("use_facets", [True, False])
     @pytest.mark.parametrize("use_mpi", [True, False])
     def test_setting_shared_facet_rw(
-        self, field, h5parm_file, parallel_gridding_tasks, max_cores,
-              num_facets, shared_facet_rw, use_facets, use_mpi,
-              caplog
+        self,
+        field,
+        h5parm_file,
+        parallel_gridding_tasks,
+        max_cores,
+        num_facets,
+        shared_facet_rw,
+        use_facets,
+        use_mpi,
+        caplog,
     ):
         field.parset["imaging_specific"]["use_mpi"] = use_mpi
         field.parset["imaging_specific"]["shared_facet_rw"] = shared_facet_rw
         field.parset["cluster_specific"]["parallel_gridding_tasks"] = parallel_gridding_tasks
         field.parset["cluster_specific"]["max_cores"] = max_cores
         # Mock read facets to return a number of facets > 1
-        field.read_facets = lambda : [None] * num_facets
-        
+        field.read_facets = lambda: [None] * num_facets
+
         _prepare_field_for_image(field, h5parm_filename=h5parm_file)
-        
+
         image = _initialize_operation(
             Image(field, index=1),
             do_predict=False,
@@ -191,14 +200,16 @@ class TestImage:
         )
         if use_facets and num_facets > 1:
             assert image.input_parms["shared_facet_rw"] == shared_facet_rw
-            assert image.input_parms["parallel_gridding_tasks"] ==  \
-                   [adjust_parallel_gridding_tasks(max_cores, parallel_gridding_tasks, 
-                                                  num_facets)]
+            assert image.input_parms["parallel_gridding_tasks"] == [
+                adjust_parallel_gridding_tasks(max_cores, parallel_gridding_tasks, num_facets)
+            ]
         else:
             assert not image.input_parms["shared_facet_rw"]
-            assert image.input_parms["parallel_gridding_tasks"] == \
-                   [adjust_parallel_gridding_tasks(max_cores, parallel_gridding_tasks, 
-                                                   image.input_parms["channels_out"][0])]
+            assert image.input_parms["parallel_gridding_tasks"] == [
+                adjust_parallel_gridding_tasks(
+                    max_cores, parallel_gridding_tasks, image.input_parms["channels_out"][0]
+                )
+            ]
 
     @pytest.mark.parametrize("use_mpi", [True, False])
     @pytest.mark.parametrize("shared_facet_rw", [True, False])
@@ -733,35 +744,35 @@ def test_report_sector_diagnostics(sector_name=None, diagnostics_dict=None, log=
 
 
 @pytest.mark.parametrize(
-        "n_cores, n_facets,expected",
-        [
-            [1, 1, 1],
-            [2, 1, 1],
-            [3, 2, 1],
-            [8, 8, 8],
-            [16, 16, 16],
-            [15, 8, 5],
-            [18, 16, 9],
-            [24, 16, 12],
-            [33, 32, 11]
-        ]
+    "n_cores, n_facets,expected",
+    [
+        [1, 1, 1],
+        [2, 1, 1],
+        [3, 2, 1],
+        [8, 8, 8],
+        [16, 16, 16],
+        [15, 8, 5],
+        [18, 16, 9],
+        [24, 16, 12],
+        [33, 32, 11],
+    ],
 )
 def test_get_max_divisor_less_than_or_equal(n_cores, n_facets, expected):
-    assert get_max_divisor_less_than_or_equal(n_cores,n_facets) == expected
+    assert get_max_divisor_less_than_or_equal(n_cores, n_facets) == expected
 
 
 @pytest.mark.parametrize(
-        "max_cores, parallel_gridding_tasks,n_facets,expected",
-        [
-            [192, 1, 1, 1],
-            [160, 2, 2, 2],
-            [56, 3, 2, 2],
-            [192, 15, 8, 8],
-            [192, 18, 16, 16],
-            [192, 24, 16, 16],
-            [192, 33, 32, 32],
-            [192, 24, 9, 8]
-        ]
+    "max_cores, parallel_gridding_tasks,n_facets,expected",
+    [
+        [192, 1, 1, 1],
+        [160, 2, 2, 2],
+        [56, 3, 2, 2],
+        [192, 15, 8, 8],
+        [192, 18, 16, 16],
+        [192, 24, 16, 16],
+        [192, 33, 32, 32],
+        [192, 24, 9, 8],
+    ],
 )
 def test_adjust_parallel_gridding_tasks(max_cores, parallel_gridding_tasks, n_facets, expected):
     assert adjust_parallel_gridding_tasks(max_cores, parallel_gridding_tasks, n_facets) == expected
