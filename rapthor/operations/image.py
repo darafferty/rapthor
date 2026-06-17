@@ -32,8 +32,7 @@ def adjust_parallel_gridding_tasks(max_cores, parallel_gridding_tasks, n_facets)
     Adjust parallel gridding tasks to avoid resource misuse
     """
     parallel_gridding_tasks = min(parallel_gridding_tasks, n_facets)
-    parallel_gridding_tasks = get_max_divisor_less_than_or_equal(max_cores, parallel_gridding_tasks)
-    return parallel_gridding_tasks
+    return get_max_divisor_less_than_or_equal(max_cores, parallel_gridding_tasks)
 
 
 def merge_list_flatten(input_list: List[List]) -> List:
