@@ -51,8 +51,8 @@ inputs:
     label: Filenames of residual MSs
     doc: |
       The filenames of the MS files resulting from making the residual visibilities
-      (length = n_obs).
-    type: string[]
+      (length = 1).
+    type: string
 
   - id: starttime
     label: Start times of each obs
@@ -627,7 +627,7 @@ outputs:
       - make_residual_data/msresid
     type:
       - "null"
-      - Directory[]
+      - Directory
   - id: source_filtering_mask
     outputSource:
       - filter/source_filtering_mask
@@ -997,19 +997,13 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/make_residual_data.cwl
     in:
       - id: msin
-        source: obs_filename
+        source: concat_in_time/msconcat
       - id: msout
         source: residual_filename
-      - id: starttime
-        source: starttime
-      - id: ntimes
-        source: ntimes
       - id: numthreads
         source: max_threads
       - id: update_model_required
         source: update_model_required
-    scatter: [msin, msout, starttime, ntimes]
-    scatterMethod: dotproduct
     out:
       - id: msresid
     when: $(inputs.update_model_required)

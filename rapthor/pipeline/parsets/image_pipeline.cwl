@@ -53,12 +53,9 @@ inputs:
     label: Filenames of residual MSs
     doc: |
       The filenames of the MS files with the residual visibilities
-      (length = n_obs * n_sectors).
+      (length = n_sectors).
     type:
-      type: array
-      items:
-        type: array
-        items: string
+      type:string[]
 
   - id: starttime
     label: Start time of each obs
@@ -676,8 +673,7 @@ outputs:
     type:
       type: array
       items:
-        - type: array
-          items: Directory
+        - Directory
         - "null"
   - id: sector_I_images
     outputSource:

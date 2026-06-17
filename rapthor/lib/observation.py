@@ -544,7 +544,6 @@ class Observation(object):
             self.parameters["ms_filename"] = self.ms_filename
         root_filename = os.path.basename(self.ms_filename)
         self.parameters["ms_prep_filename"] = f"{root_filename}{self.infix}.{sector_name}.prep"
-        self.parameters["ms_resid_filename"] = f"{root_filename}{self.infix}.{sector_name}.resid"
 
         # Get target time and frequency averaging steps.
         #

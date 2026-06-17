@@ -8,10 +8,14 @@ doc: |
   containing the residual visibilities in the DATA column.
 
 requirements:
-  InlineJavascriptRequirement: {}
-  ShellCommandRequirement: {}
+  - class: InlineJavascriptRequirement
+  - class: ShellCommandRequirement
+  - class: InitialWorkDirRequirement
+    listing:
+      - $(inputs.msin)
 
 arguments:
+  - msin.extradatacolumns=[MODEL_DATA]
   - msout.overwrite=True
   - msout.storagemanager=Dysco
   - steps=[combine]
@@ -36,24 +40,6 @@ inputs:
     type: string
     inputBinding:
       prefix: msout=
-      separate: False
-
-  - id: starttime
-    label: Start time
-    doc: |
-      The start time (in casacore MVTime) of the chunk of the MS to be processed.
-    type: string
-    inputBinding:
-      prefix: msin.starttime=
-      separate: False
-
-  - id: ntimes
-    label: Number of times
-    doc: |
-      The number of timeslots of the chunk of the MS to be processed.
-    type: int
-    inputBinding:
-      prefix: msin.ntimes=
       separate: False
 
   - id: numthreads

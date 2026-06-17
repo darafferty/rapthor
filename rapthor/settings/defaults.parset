@@ -175,7 +175,7 @@ correct_time_frequency_smearing = False
 # (default = none), local rms parameters (defaults = 0.8, 50, and "rms"
 # for the strength, window, and method, respectively), whether multiscale
 # clean should be used (default = True), and the baseline-dependent averaging
-# (BDA) timebase value in m (default = 0)
+# (BDA) timebase value in m (default = 20000)
 cellsize_arcsec = 1.5
 robust = -0.65
 min_uv_lambda = 80.0
