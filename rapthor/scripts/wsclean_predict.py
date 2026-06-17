@@ -140,7 +140,7 @@ def main():
     1) To add columns and predict model
       wsclean_predict.py --region sector_1_facets_ds9.reg --msin small.ms --model images/field-MFS-model.fits
     2) To remove extra columns created from step 1
-      wsclean_predict.py --region sector_1_facets_ds9.reg --msin small.ms --cleanup
+      wsclean_predict.py --region sector_1_facets_ds9.reg --msin small.ms
 
     Returns
     -------
@@ -158,11 +158,27 @@ def main():
         "--msin", help="Input/Output measurement set", nargs="+", type=str, default=[]
     )
     parser.add_argument("--region", help="DS9 region file", type=str, default="")
-    parser.add_argument("--model", help="Model FITS image", nargs="+", type=str, default=[])
-    parser.add_argument("--storage_manager", help="Storage manager", type=str, default="default")
+    parser.add_argument("--skymodel", help="Sky model", type=str, default="")
     parser.add_argument(
-        "--cleanup", action=argparse.BooleanOptionalAction, help="Remove exra columns"
+        "--ra_dec",
+        help="RA and Dec coordinates of model image center",
+        type=str,
+        nargs=2,
+        default=[],
     )
+    parser.add_argument(
+        "--frequency_bandwidth",
+        help="Center frequency and full bandwdith",
+        type=str,
+        nargs=2,
+        default=[],
+    )
+    parser.add_argument("--cellsize", help="Model image cell size (deg)", type=float, default=1)
+    parser.add_argument(
+        "--imsize", help="Model image size n_x x n_y (pixels)", type=int, nargs=2, default=[]
+    )
+    parser.add_argument("--threads", help="Max threads to use", type=int, default=1)
+    parser.add_argument("--storage_manager", help="Storage manager", type=str, default="default")
     args = parser.parse_args()
     # Note: the output file name should match file read in CWL step
     output_info = "msout_names.json"
@@ -171,9 +187,14 @@ def main():
         raise ValueError(f"Input measurement set {args.msin!r} does not exist")
     if not os.path.exists(args.region):
         raise ValueError(f"DS9 region file {args.region!r} does not exist")
-    if not args.cleanup:
-        if not (len(args.model) > 0 and os.path.exists(args.model[0])):
-            raise ValueError(f"Model image {args.model!r} does not exist")
+    if not os.path.exists(args.skymodel):
+        raise ValueError(f"Sky model file {args.skymodel!r} does not exist")
+    if len(args.ra_dec) != 2:
+        raise ValueError(f"Invalid RA Dec {args.ra_dec!r}")
+    if len(args.frequency_bandwidth) != 2:
+        raise ValueError(f"Invalid frequency and bandwidth {args.frequency_bandwidth!r}")
+    if len(args.imsize) != 2:
+        raise ValueError(f"Invalid image size {args.imsize!r}")
 
     # if msin is read only, create a copy of msin to work with,
     # return this as output
@@ -197,10 +218,8 @@ def main():
     with open(output_info, "w") as f:
         json.dump(out_dict, f)
 
-    if args.cleanup:
-        return remove_columns_from_ms(msnames, args.region)
-    else:
-        return predict(msnames, args.region, args.model, args.storage_manager)
+    # draw model and predict
+    return predict(msnames, args.region, args.skymodel, args.storage_manager)
 
 
 if __name__ == "__main__":

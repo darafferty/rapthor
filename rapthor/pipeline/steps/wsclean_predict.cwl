@@ -26,13 +26,55 @@ inputs:
     inputBinding:
       prefix: --msin
 
-  - id: model
-    label: Filename of model FITS image
+  - id: skymodel
+    label: Filename of input sky model
     doc: |
-      The filename of the input model FITS image.
-    type: File[]
+      The filename of the input sky model in makesourcedb format used to
+      generate the output model images.
+    type: File
     inputBinding:
-      prefix: --model
+      prefix: --skymodel
+
+  - id: ra_dec
+    label: RA and Dec of center
+    doc: |
+      The RA and Dec in hmsdms of the center of the output images.
+    type: string[]
+    inputBinding:
+      prefix: --ra_dec
+
+  - id: frequency_bandwidth
+    label: Frequency and bandwidth of image
+    doc: |
+      The central frequency and bandwidth in Hz of the output images.
+    type: float[]
+    inputBinding:
+      prefix: --frequency_bandwidth
+
+  - id: cellsize_deg
+    label: Pixel size
+    doc: |
+      The size of one pixel of the image in deg.
+    type: float
+    inputBinding:
+      prefix: --cellsize
+
+  - id: imsize
+    label: Image size
+    doc: |
+      The size of the image in pixels.
+    type: int[]
+    inputBinding:
+      prefix: --imsize
+
+  - id: numthreads
+    label: Number of threads
+    doc: |
+      The number of threads to use.
+    type: int
+    inputBinding:
+      prefix: --threads
+      valueFrom: $(runtime.cores)
 
 outputs:
   - id: msout

@@ -749,7 +749,7 @@ outputs:
 
 steps:
 
-{% if use_image_based_predict or use_wsclean_predict or generate_screens %}
+{% if use_image_based_predict or generate_screens %}
   - id: draw_model
     doc: |
       This step uses WSClean to draw model images using image-based predict.
@@ -773,7 +773,10 @@ steps:
         source: max_threads
     out:
       - id: model_images
+{% endif %}
+# end use_image_based_predict or generate_screens
 
+{% if use_image_based_predict or use_wsclean_predict or generate_screens %}
   - id: make_region_file
     label: Make a ds9 region file
     doc: |
@@ -833,14 +836,22 @@ steps:
       This step predicts model data using WSClean (not DP3)
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_predict.cwl
     in:
-      - id: region_file
-        source: make_predict_region_file/region_file
       - id: msin
         source: timechunk_filename
-      - id: model
-        source: draw_model/model_images
+      - id: region_file
+        source: make_predict_region_file/region_file
       - id: skymodel
         source: calibration_skymodel_file
+      - id: ra_dec
+        source: model_image_ra_dec
+      - id: frequency_bandwidth
+        source: model_image_frequency_bandwidth
+      - id: cellsize_deg
+        source: model_image_cellsize
+      - id: imsize
+        source: model_image_imsize
+      - id: numthreads
+        source: max_threads
     out:
       - id: msout
       - id: patches
@@ -1012,9 +1023,9 @@ steps:
 {% if use_image_based_predict or use_wsclean_predict %}
       - id: predict_regions
         source: make_region_file/region_file
+{% if use_image_based_predict %}
       - id: predict_images
         source: draw_model/model_images
-{% if use_image_based_predict %}
       - id: solve1_reusemodel
         valueFrom: '[predict.*]'
 {% endif %}
