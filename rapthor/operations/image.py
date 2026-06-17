@@ -16,25 +16,22 @@ from rapthor.lib.operation import Operation
 log = logging.getLogger("rapthor:image")
 
 
-def get_max_smaller_power_of_2(a):
+def get_max_smaller_divisor(n, p):
     """
-    Given a number a finds the biggest power of 2
-    which is smaller then a
+    Get the biggest divisor of n which is smaller then p
     """
-    state = 2
-    if a == 1:
+    for k in range(p, 0, -1):
+        if n % k == 0:
+            return k
+    else:
         return 1
-    while 2 * state <= a:
-        state *= 2
-    return state
 
 
 def adjust_parallel_gridding_tasks(parallel_gridding_tasks, n_facets):
     """
     Adjust parallel gridding tasks to avoid resource misuse
     """
-    parallel_gridding_tasks = min(n_facets, parallel_gridding_tasks)
-    parallel_gridding_tasks = get_max_smaller_power_of_2(parallel_gridding_tasks)
+    parallel_gridding_tasks = get_max_smaller_divisor(parallel_gridding_tasks, n_facets)
     return parallel_gridding_tasks
 
 

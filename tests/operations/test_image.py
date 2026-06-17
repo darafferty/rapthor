@@ -12,8 +12,9 @@ from rapthor.operations.image import Image, ImageInitial, ImageNormalize
 from tests.cwl.cwl_cmdline import generate_command_line
 from tests.cwl.cwl_mock import mocked_cwl_execution
 from rapthor.operations.image import Image, ImageInitial, ImageNormalize, \
-    get_max_smaller_power_of_2, \
+    get_max_smaller_divisor, \
     adjust_parallel_gridding_tasks
+
 
 PATH_TO_OPERATION_STEPS = Path(__file__).parents[2] / "rapthor" / "pipeline" / "steps"
 
@@ -719,21 +720,21 @@ def test_report_sector_diagnostics(sector_name=None, diagnostics_dict=None, log=
 
 
 @pytest.mark.parametrize(
-        "input,expected",
+        "n_cores, n_facets,expected",
         [
-            [1, 1],
-            [2, 2],
-            [3, 2],
-            [8, 8],
-            [16, 16],
-            [15, 8],
-            [18, 16],
-            [24, 16],
-            [33, 32]
+            [1, 1, 1],
+            [2, 1, 1],
+            [3, 2, 1],
+            [8, 8, 8],
+            [16, 16, 16],
+            [15, 8, 5],
+            [18, 16, 9],
+            [24, 16, 12],
+            [33, 32, 11]
         ]
 )
-def test_get_max_smaller_power_of_2(input, expected):
-    assert get_max_smaller_power_of_2(input) == expected
+def test_get_max_smaller_divisor(n_cores, n_facets, expected):
+    assert get_max_smaller_divisor(n_cores,n_facets) == expected
 
 
 @pytest.mark.parametrize(
@@ -741,11 +742,11 @@ def test_get_max_smaller_power_of_2(input, expected):
         [
             [1, 1, 1],
             [2, 2, 2],
-            [3, 2, 2],
-            [15, 8, 8],
-            [18, 15, 8],
-            [24, 17, 16],
-            [33, 30, 16]
+            [3, 2, 1],
+            [15, 8, 5],
+            [18, 16, 9],
+            [24, 16, 12],
+            [33, 32, 11]
         ]
 )
 def test_adjust_parallel_gridding_tasks(parallel_gridding_tasks, n_facets, expected):
