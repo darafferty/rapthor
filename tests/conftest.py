@@ -10,17 +10,15 @@ import tempfile
 from pathlib import Path
 
 import lsmtool
-import numpy as np
 import pytest
 import requests
-from astropy.table import Table
 from lsmtool.facet import read_ds9_region_file
 
 from rapthor.lib.field import Field
 from rapthor.lib.observation import Observation
 from rapthor.lib.parset import parset_read
 from rapthor.lib.sector import Sector
-from rapthor.testing import generate_parset_path
+from rapthor.testing import generate_parset_path, make_source_catalog
 
 TEST_ROOT_DIR = Path(__file__).parent
 REPO_ROOT_DIR = TEST_ROOT_DIR.parent
@@ -407,70 +405,6 @@ def parset_for_field_test(tmp_path_factory, test_ms):
     return parset_read(target)
 
 
-def _make_source_catalog(n_channels=8, n_sources=8, alpha=-0.7, ref_flux=1.0, outliers=False):
-    """
-    Build a minimal synthetic PyBDSF spectral-index-mode source catalog.
-
-    Sources are placed on a small grid around the MS phase center so that
-    they pass the radius, major-axis, and neighbor-distance cuts used by
-    ``main()``.
-    """
-    # Frequencies of the test MS (tests/resources/test.ms), 8 channels ~134 MHz
-    ms_channel_frequencies = (
-        np.arange(1.34288025e08, 1.34458923e08, (1.34458923e08 - 1.34288025e08) / n_channels)
-        if n_channels > 0
-        else np.array([])
-    )
-
-    # Phase center of the test MS in degrees (RA, Dec)
-    ra0, dec0 = (24.422081, 33.159759)
-
-    # Number of channels
-    n_chan = len(ms_channel_frequencies)
-
-    ref_freq = (
-        ms_channel_frequencies[n_chan // 2] if n_chan > 0 else 1.0
-    )  # Use middle channel as reference frequency, or 1.0 if no channels
-
-    # Place sources on a regular grid with ~0.3 deg spacing (well within
-    # radius_cut=3 deg and well above neighbor_cut=30/3600 deg)
-    step = 0.3  # degrees
-    offsets = np.arange(-(n_sources // 2), n_sources - (n_sources // 2)) * step
-    source_ra = ra0 + offsets
-    source_dec = np.full(n_sources, dec0)
-
-    # Add source outside the radius cut for testing
-    source_ra[0] = ra0 + 4.0  # 4 degrees, which is outside the radius_cut of 3 degrees
-
-    # Assign power-law SEDs with slight per-source flux variation
-    base_fluxes = ref_flux * (1.0 + 0.1 * np.arange(n_sources))
-
-    # Build the column data
-    columns = {
-        "RA": source_ra.astype(np.float32),
-        "DEC": source_dec.astype(np.float32),
-        "Total_flux": base_fluxes.astype(np.float32),
-        "E_Total_flux": (base_fluxes * 0.05).astype(np.float32),
-        # Small deconvolved major axis — well below major_axis_cut=30/3600 deg
-        "DC_Maj": np.full(n_sources, 5.0 / 3600.0, dtype=np.float32),
-    }
-
-    # Per-channel fluxes and errors
-    for ch, freq in enumerate(ms_channel_frequencies, start=1):
-        ch_flux = base_fluxes * (freq / ref_freq) ** alpha
-        columns[f"Total_flux_ch{ch}"] = ch_flux.astype(np.float32)
-        columns[f"E_Total_flux_ch{ch}"] = (ch_flux * 0.05).astype(np.float32)
-        columns[f"Freq_ch{ch}"] = np.full(n_sources, freq, dtype=np.float64)
-
-    # Add some outliers that fail the major axis and radius cuts for testing
-    if n_sources >= 10 and outliers:
-        columns["DC_Maj"][2] = 0.02  # Source 2: above the major_axis_cut of 0.01 degrees
-        columns["RA"][3] = columns["RA"][4] + 0.005  # Sources 3 and 4: inside neighbor_cut distance
-        columns["DEC"][3] = columns["DEC"][4]
-    table = Table(columns)
-    return table
-
-
 @pytest.fixture
 def source_catalog_fits(tmp_path):
     """
@@ -478,7 +412,7 @@ def source_catalog_fits(tmp_path):
     sources are centered on the test MS phase center. Contains 8 channels.
     """
     catalog_path = str(tmp_path / "test_source_catalog.fits")
-    table = _make_source_catalog()
+    table = make_source_catalog()
     table.write(catalog_path, format="fits", overwrite=True)
     return catalog_path
 
@@ -490,7 +424,7 @@ def source_catalog_zero_channels_fits(tmp_path):
     sources are centered on the test MS phase center but with zero channels.
     """
     catalog_path = str(tmp_path / "test_source_catalog.fits")
-    table = _make_source_catalog(n_channels=0)
+    table = make_source_catalog(n_channels=0)
     table.write(catalog_path, format="fits", overwrite=True)
     return catalog_path
 
@@ -501,7 +435,7 @@ def source_catalog_zero_sources_fits(tmp_path):
     A synthetic PyBDSF spectral-index-mode source catalog FITS file with zero sources.
     """
     catalog_path = str(tmp_path / "test_source_catalog.fits")
-    table = _make_source_catalog(n_sources=0)
+    table = make_source_catalog(n_sources=0)
     table.write(catalog_path, format="fits", overwrite=True)
     return catalog_path
 
@@ -513,7 +447,7 @@ def source_catalog_with_outliers_fits(tmp_path):
     sources include some that fail the radius and major axis cuts.
     """
     catalog_path = str(tmp_path / "test_source_catalog_with_outliers.fits")
-    table = _make_source_catalog(
+    table = make_source_catalog(
         n_sources=10, outliers=True
     )  # 10 sources, 4 of which will be outliers
     table.write(catalog_path, format="fits", overwrite=True)
