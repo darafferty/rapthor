@@ -76,6 +76,7 @@ def calibrate_field(operation_parset, mocker, single_source_sky_model):
             # Feature flags (defaults off; individual tests override as needed)
             self.apply_diagonal_solutions = False
             self.use_image_based_predict = False
+            self.use_wsclean_predict = False
             self.do_slowgain_solve = False
             self.apply_normalizations = False
             self.generate_screens = False

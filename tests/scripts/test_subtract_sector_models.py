@@ -3,8 +3,8 @@ Tests for the subtract_sector_models script.
 """
 
 import pytest
-from rapthor.scripts.subtract_sector_models import (CovWeights, get_nchunks,
-                                                    main, readGainFile)
+
+from rapthor.scripts.subtract_sector_models import CovWeights, get_nchunks, main, readGainFile
 
 
 def test_get_nchunks(test_ms):
@@ -133,13 +133,13 @@ class TestCovWeights:
         # # Check if weights are calculated correctly
         pass
 
-
     def test_get_nearest_frequstep(self, cov_weights):
         # # Test the get_nearest_frequstep method with a dummy frequency step
         # freqstep = 100.0
         # nearest_freqstep = cov_weights.get_nearest_frequstep(freqstep)
         # # Check if the nearest frequency step is calculated correctly
         pass
+
 
 def test_read_gain_file(test_ms):
     # Test the readGainFile function with dummy parameters
