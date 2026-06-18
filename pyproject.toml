@@ -36,7 +36,7 @@ dependencies = [
     "bdsf",
     "jinja2",
     "losoto>=2.4.3",
-    "lsmtool",
+    "lsmtool@master",
     "matplotlib",
     "mocpy",
     "numpy",
