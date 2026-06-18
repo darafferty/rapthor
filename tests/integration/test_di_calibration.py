@@ -385,7 +385,7 @@ def test_rapthor_run_mixed_di_dd_order(
 
 @pytest.mark.integration
 @pytest.mark.parametrize(
-    "generated_parset_path",
+    "generated_parset_path_with_predicted_sources",
     [
         (
             "tests/resources/integration_template.parset",
@@ -393,16 +393,16 @@ def test_rapthor_run_mixed_di_dd_order(
             "tests/resources/integration_apparent_sky.txt",
         ),
     ],
-    indirect=["generated_parset_path"],
+    indirect=["generated_parset_path_with_predicted_sources"],
 )
 def test_rapthor_run_multi_cycles(
-    generated_parset_path,
+    generated_parset_path_with_predicted_sources,
     two_loop_strategy_with_calibration_strategy,
 ):
     """Test two cycle DI/DD calibration order and branch-to-branch solution application."""
 
     updated_parset_path = update_parset_path(
-        generated_parset_path,
+        generated_parset_path_with_predicted_sources,
         {
             "allow_internet_access": "False",
             "strategy": str(two_loop_strategy_with_calibration_strategy),
@@ -410,6 +410,7 @@ def test_rapthor_run_multi_cycles(
             # cycle-1 imaging has enough data to detect sources for cycle 2's
             # calibrator model.
             "selfcal_data_fraction": "1.0",
+            "reweight": "False",
         },
     )
 
@@ -426,7 +427,7 @@ def test_rapthor_run_multi_cycles(
     assert "Operation image_1 completed" in output
     assert "Operation mosaic_1 completed" in output
     assert "Operation calibrate_2 completed" in output
-    assert "Operation predict_2 completed" in output
+    assert "Operation predict_2 completed" not in output
     assert "Operation image_2 completed" in output
     assert "Operation mosaic_2 completed" in output
     assert "Rapthor has finished :)" in output

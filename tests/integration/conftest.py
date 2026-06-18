@@ -9,6 +9,8 @@ import casacore.tables as pt
 import numpy as np
 import pytest
 
+from tests.conftest import generate_parset_path
+
 COMMON_STRATEGY_SETTINGS = {
     "channel_width_hz": 195312.5,
     # Set slow-gain and fulljones solves to False except when required
@@ -88,6 +90,43 @@ def _set_synthetic_uvw_geometry(ms_path):
             uvw[row_index] = second_position - first_position
 
         table.putcol("UVW", uvw)
+
+
+def _make_predicted_test_ms(tmp_path, test_ms, output_name):
+    """Return a small MS whose DATA column contains the integration sky model."""
+    ms_path = tmp_path / f"{output_name}.ms"
+    shutil.copytree(test_ms, ms_path)
+    _set_synthetic_uvw_geometry(ms_path)
+    with pt.table(str(ms_path), readonly=False, ack=False) as table:
+        data = table.getcol("DATA")
+        data[...] = 0.0j
+        table.putcol("DATA", data)
+
+    skymodel_path = tmp_path / f"{output_name}_apparent_sky.txt"
+    _write_normalization_skymodel(skymodel_path)
+
+    predicted_ms = tmp_path / f"{output_name}_predicted.ms"
+    dp3_command = (
+        f"DP3 msin={ms_path} steps=[predict] "
+        f"predict.usebeammodel=True "
+        f"predict.beam_interval=120 "
+        f"predict.beammode=array_factor "
+        f"predict.sourcedb={skymodel_path} "
+        f"msout={predicted_ms}"
+    )
+
+    subprocess.run(shlex.split(dp3_command), check=True)
+    rng = np.random.default_rng(0)
+    with pt.table(str(predicted_ms), readonly=False, ack=False) as table:
+        data = table.getcol("DATA")
+        noise = (
+            rng.normal(scale=0.05, size=data.shape) + 1j * rng.normal(scale=0.05, size=data.shape)
+        ).astype(data.dtype)
+        table.putcol("DATA", data + noise)
+
+    shutil.rmtree(ms_path)
+    predicted_ms.rename(ms_path)
+    return ms_path
 
 
 @pytest.fixture
@@ -245,7 +284,8 @@ def two_loop_strategy_with_calibration_strategy(tmp_path):
         "auto_mask": 3.0,
         "threshisl": 2.0,
         "threshpix": 3.0,
-        "target_flux": 0.05,
+        "max_nmiter": 1,
+        "target_flux": 0.1,
     }
     strategy_steps = [
         make_strategy_step(
@@ -268,38 +308,28 @@ def two_loop_strategy_with_calibration_strategy(tmp_path):
 
 
 @pytest.fixture
+def ms_with_predicted_sources(tmp_path, test_ms):
+    """Provide a synthetic MS with enough source signal for image-based model updates."""
+    return _make_predicted_test_ms(tmp_path, test_ms, "test_ms_with_predicted_sources")
+
+
+@pytest.fixture
+def generated_parset_path_with_predicted_sources(request, tmp_path, ms_with_predicted_sources):
+    """Generate an integration parset using an MS with detectable predicted sources."""
+    parset_path, input_skymodel_path, apparent_skymodel_path = request.param
+    output_parset_path = tmp_path / "generated.parset"
+
+    generate_parset_path(
+        parset_path,
+        output_parset_path,
+        ms_with_predicted_sources,
+        input_skymodel_path,
+        apparent_skymodel_path,
+    )
+    return output_parset_path
+
+
+@pytest.fixture
 def ms_for_normalisation(tmp_path, test_ms):
     """Provide a synthetic MS with denser UV coverage for normalization tests."""
-    ms_path = tmp_path / "test_ms_for_normalization.ms"
-    shutil.copytree(test_ms, ms_path)
-    _set_synthetic_uvw_geometry(ms_path)
-    with pt.table(str(ms_path), readonly=False, ack=False) as table:
-        data = table.getcol("DATA")
-        data[...] = 0.0j
-        table.putcol("DATA", data)
-
-    skymodel_path = tmp_path / "integration_apparent_sky_normalization.txt"
-    _write_normalization_skymodel(skymodel_path)
-
-    predicted_ms = tmp_path / "test_ms_for_normalization_predicted.ms"
-
-    dp3_command = (
-        f"DP3 msin={ms_path} steps=[predict] "
-        f"predict.usebeammodel=True "
-        f"predict.beam_interval=120 "
-        f"predict.beammode=array_factor "
-        f"predict.sourcedb={skymodel_path} "
-        f"msout={predicted_ms}"
-    )
-
-    subprocess.run(shlex.split(dp3_command), check=True)
-    rng = np.random.default_rng(0)
-    with pt.table(str(predicted_ms), readonly=False, ack=False) as table:
-        data = table.getcol("DATA")
-        noise = (
-            rng.normal(scale=0.05, size=data.shape) + 1j * rng.normal(scale=0.05, size=data.shape)
-        ).astype(data.dtype)
-        table.putcol("DATA", data + noise)
-    shutil.rmtree(ms_path)
-    predicted_ms.rename(ms_path)
-    return ms_path
+    return _make_predicted_test_ms(tmp_path, test_ms, "test_ms_for_normalization")
