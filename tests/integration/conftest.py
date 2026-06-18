@@ -234,28 +234,31 @@ def single_loop_strategy_with_calibration_strategy(tmp_path, request):
 def two_loop_strategy_with_calibration_strategy(tmp_path):
     """Strategy file for two self-calibration loops: DI in cycle 1, DD in cycle 2.
 
-    Cycle 2 builds its calibrator model from cycle-1 imaging output, so cycle-1
-    imaging must detect sources. The shared imaging thresholds are lowered here
-    (scoped to this fixture only) so PyBDSF finds the field sources on the small
-    integration dataset; otherwise cycle 2 has no calibrators and fails.
+    Cycle 2 builds its calibrator model from cycle-1 imaging output. On the small
+    integration dataset there is little flux left in the model after the first
+    cycle, so (scoped to this fixture only) we lower the imaging thresholds to
+    keep more flux in the clean model and drop ``target_flux`` well below the
+    default so the cycle-2 calibrator-flux check is met; otherwise cycle 2 has no
+    calibrators and fails.
     """
-    lower_imaging_thresholds = {
+    multi_cycle_overrides = {
         "auto_mask": 3.0,
         "threshisl": 2.0,
         "threshpix": 3.0,
+        "target_flux": 0.05,
     }
     strategy_steps = [
         make_strategy_step(
             do_calibrate=True,
             do_image=True,
             calibration_strategy={"di": ["full_jones"], "dd": []},
-            **lower_imaging_thresholds,
+            **multi_cycle_overrides,
         ),
         make_strategy_step(
             do_calibrate=True,
             do_image=True,
             calibration_strategy={"di": [], "dd": ["fast_phase"]},
-            **lower_imaging_thresholds,
+            **multi_cycle_overrides,
         ),
     ]
     strategy_content = f"strategy_steps = {strategy_steps}"
