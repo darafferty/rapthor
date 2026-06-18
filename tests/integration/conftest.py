@@ -229,6 +229,27 @@ def single_loop_strategy_with_calibration_strategy(tmp_path, request):
 
 
 @pytest.fixture
+def two_loop_strategy_with_calibration_strategy(tmp_path):
+    """Strategy file for two self-calibration loops: DI in cycle 1, DD in cycle 2."""
+    strategy_steps = [
+        make_strategy_step(
+            do_calibrate=True,
+            do_image=True,
+            calibration_strategy={"di": ["full_jones"], "dd": []},
+        ),
+        make_strategy_step(
+            do_calibrate=True,
+            do_image=True,
+            calibration_strategy={"di": [], "dd": ["fast_phase"]},
+        ),
+    ]
+    strategy_content = f"strategy_steps = {strategy_steps}"
+    strategy_path = tmp_path / "two_loop_strategy.py"
+    strategy_path.write_text(strategy_content)
+    return strategy_path
+
+
+@pytest.fixture
 def ms_for_normalisation(tmp_path, test_ms):
     """Provide a synthetic MS with denser UV coverage for normalization tests."""
     ms_path = tmp_path / "test_ms_for_normalization.ms"
