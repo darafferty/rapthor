@@ -3,10 +3,11 @@ Tests for the script that corrects the astrometry of an image.
 """
 
 import json
-import pytest
 
 import astropy.io.fits as fits
 import numpy as np
+import pytest
+
 from rapthor.lib.miscellaneous import make_template_image
 from rapthor.scripts.correct_astrometry import main, validate_corrections
 
