@@ -27,11 +27,14 @@ def get_max_divisor_less_than_or_equal(number: int, limit: int) -> int:
         return 1
 
 
-def adjust_parallel_gridding_tasks(max_cores, parallel_gridding_tasks, n_facets):
+def adjust_parallel_gridding_tasks(max_cores, parallel_gridding_tasks, max_work_units):
     """
-    Adjust parallel gridding tasks to avoid resource misuse
+    Adjust parallel gridding tasks to match available work units and core constraints.
+    
+    Caps the task count to prevent over-partitioning the thread pool, ensuring 
+    allocated threads are not left unassigned.
     """
-    parallel_gridding_tasks = min(parallel_gridding_tasks, n_facets)
+    parallel_gridding_tasks = min(parallel_gridding_tasks, max_work_units)
     return get_max_divisor_less_than_or_equal(max_cores, parallel_gridding_tasks)
 
 
