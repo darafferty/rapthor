@@ -245,7 +245,7 @@ install_rapthor:
 run_tests:
   extends: .run_tests
   script:
-    - tox -e py310
+    - tox -e py
   coverage: '/TOTAL.*\s+(\d+%)$/'
 
 ### Stage: run_integration_tests
