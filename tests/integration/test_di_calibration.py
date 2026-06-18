@@ -39,6 +39,9 @@ def test_rapthor_run_single_loop_calibrate_di_fast_phase(
         {
             "allow_internet_access": "False",
             "strategy": str(single_loop_strategy_with_calibration_strategy),
+            # Disable reweighting so the DD predict-and-subtract operation
+            # (predict_1) is not triggered, letting us assert it does not run.
+            "reweight": "False",
         },
     )
 
