@@ -192,7 +192,6 @@ class TestParset:
         assert parset == reference_dict
 
 
-
 class TestCheckSkymodelSettings:
     """Tests for the `check_and_adjust_skymodel_settings` function."""
 

@@ -109,7 +109,7 @@ def generate_parset(
      - `dir_working` to a temporary directory
      - `local_scratch_dir` to a temporary directory
      - `global_scratch_dir` to a temporary directory
-    These temporary direcories are created if they do not exist. 
+    These temporary direcories are created if they do not exist.
 
     If either skymodel is provided, the following keys in the parset will be
     updated:
