@@ -99,77 +99,92 @@ def predict(
     Note: names in region file should be with {}, like {Patch_1}, After
     parsing the {} will be dropped
     sky_model: input sky model
+    ra_dec, frequency_bandwidth, imsize, cellsize_deg:
+    parameters used for drawing the model image
     """
     # get channel frequencies
     freq_list = list()
     for ms in msfiles:
         chan_freqs = ct.table(ms + "::SPECTRAL_WINDOW").getcol("CHAN_FREQ")
         freq_list.append(chan_freqs[0])
-    freq_list = np.concat(freq_list)
-    print(freq_list)
-    # model images can have arbitrary names,
-    # make a symlink in same dir with workable name
-    tmpdir = os.path.dirname(sky_model)
-    model_name = os.path.join(tmpdir, "predict")
-    err_code = 0
-    # Run the command
-    # output will be $(model_name)-term-0.fits
-    cmd = [
-        "wsclean",
-        "-draw-model",
-        str(sky_model),
-        "-draw-spectral-terms",
-        str(1),
-        "-name",
-        str(model_name),
-        "-draw-centre",
-        str(ra_dec[0]),
-        str(ra_dec[1]),
-        "-draw-frequencies",
-        str(frequency_bandwidth[0]),
-        str(frequency_bandwidth[1]),
-        "-channels-out",
-        str(3),
-        "-size",
-        str(imsize[0]),
-        str(imsize[1]),
-        "-scale",
-        str(cellsize_deg),
-    ]
-    try:
-        subprocess.run(cmd, check=True).returncode
-    except subprocess.CalledProcessError as err:
-        print(err, file=sys.stderr)
-        err_code = err.returncode
+    # get sorted, unique frequencies
+    freq_list = np.sort(np.unique(np.concat(freq_list)))
+    n_chan = freq_list.size
+    if n_chan > 1:
+        bandwidth = freq_list[-1] - freq_list[0] + (freq_list[1] - freq_list[0])
+    else:
+        bandwidth = frequency_bandwidth[1]
+    # split channels into chunks of 2 MHz bandwidth
+    predict_bandwidth = 2.0e6
+    n_chunks = int(bandwidth / predict_bandwidth)
+    chan_list = np.arange(n_chan)
+    freq_chunks = np.array_split(freq_list, n_chunks)
+    chan_chunks = np.array_split(chan_list, n_chunks)
 
-    model = model_name + "-model.fits"
-    os.symlink(model_name + "-term-0.fits", model)
     # extract region names
     facets = read_ds9_region_file(ds9_region_file)
     facet_names = list()
     for facet in facets:
         facet_names.append(facet.name)
 
-    # -draw-frequencies central bw
-    # -channel-range
-    err_code = 0
-    # Run the command
-    for facet in facet_names:
+    # model images can have arbitrary names,
+    tmpdir = os.path.dirname(sky_model)
+    model_name = os.path.join(tmpdir, "predict")
+    model = model_name + "-model.fits"
+    # make a symlink in same dir with workable name
+    os.symlink(model_name + "-term-0.fits", model)
+
+    for freqs, chans in zip(freq_chunks, chan_chunks):
+        chunk_bandwidth = freqs[-1] - freqs[0] + (freq_list[1] - freq_list[0])
+        chunk_freq = np.mean(freqs)
+        err_code = 0
+        # output will be $(model_name)-term-0.fits
         cmd = [
             "wsclean",
-            "-predict",
-            "-facet-regions",
-            str(ds9_region_file),
-            "-model-column",
-            str(facet),
-            "-select-facets",
-            str(facet),
+            "-draw-model",
+            str(sky_model),
+            "-draw-spectral-terms",
+            str(1),
             "-name",
             str(model_name),
-            "-model-storage-manager",
-            str(storage_manager),
-            *[str(msfilename) for msfilename in msfiles],
+            "-draw-centre",
+            str(ra_dec[0]),
+            str(ra_dec[1]),
+            "-draw-frequencies",
+            str(chunk_freq),
+            str(chunk_bandwidth),
+            "-size",
+            str(imsize[0]),
+            str(imsize[1]),
+            "-scale",
+            str(cellsize_deg),
         ]
+        try:
+            subprocess.run(cmd, check=True).returncode
+        except subprocess.CalledProcessError as err:
+            print(err, file=sys.stderr)
+            err_code = err.returncode
+
+        err_code = 0
+        for facet in facet_names:
+            cmd = [
+                "wsclean",
+                "-predict",
+                "-facet-regions",
+                str(ds9_region_file),
+                "-model-column",
+                str(facet),
+                "-select-facets",
+                str(facet),
+                "-name",
+                str(model_name),
+                "-channel-range",
+                str(chans[0]),
+                str(chans[-1]),
+                "-model-storage-manager",
+                str(storage_manager),
+                *[str(msfilename) for msfilename in msfiles],
+            ]
         try:
             subprocess.run(cmd, check=True).returncode
         except subprocess.CalledProcessError as err:
