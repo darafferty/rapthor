@@ -3,6 +3,7 @@ This module contains tests for the module `rapthor.lib.parset`
 """
 
 import ast
+import logging
 import os
 import string
 import tempfile
@@ -15,6 +16,27 @@ except ImportError:
     from unittest import mock
 
 from rapthor.lib.parset import check_and_adjust_skymodel_settings, parset_read
+from rapthor.testing import assert_logged
+
+
+def assert_warning_logged(caplog, expected_messages=(), expected_message=None):
+    return assert_logged(
+        caplog,
+        "rapthor:parset",
+        logging.WARNING,
+        expected_messages,
+        expected_message=expected_message,
+    )
+
+
+def assert_info_logged(caplog, expected_messages=(), expected_message=None):
+    return assert_logged(
+        caplog,
+        "rapthor:parset",
+        logging.INFO,
+        expected_messages,
+        expected_message=expected_message,
+    )
 
 
 class TestParset(unittest.TestCase):
