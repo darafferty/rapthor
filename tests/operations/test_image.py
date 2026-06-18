@@ -182,9 +182,9 @@ class TestImage:
         shared_facet_rw,
         use_facets,
         use_mpi,
-        caplog,
     ):
         field.parset["imaging_specific"]["use_mpi"] = use_mpi
+        field.use_mpi = use_mpi
         field.parset["imaging_specific"]["shared_facet_rw"] = shared_facet_rw
         field.parset["cluster_specific"]["parallel_gridding_tasks"] = parallel_gridding_tasks
         field.parset["cluster_specific"]["max_cores"] = max_cores
@@ -205,10 +205,12 @@ class TestImage:
             ]
         else:
             assert not image.input_parms["shared_facet_rw"]
+            channels_out = image.input_parms["channels_out"][0]
+            print(use_mpi)
+            if use_mpi:
+                channels_out = channels_out // image.input_parms["mpi_nnodes"][0]
             assert image.input_parms["parallel_gridding_tasks"] == [
-                adjust_parallel_gridding_tasks(
-                    max_cores, parallel_gridding_tasks, image.input_parms["channels_out"][0]
-                )
+                adjust_parallel_gridding_tasks(max_cores, parallel_gridding_tasks, channels_out)
             ]
 
     @pytest.mark.parametrize("use_mpi", [True, False])

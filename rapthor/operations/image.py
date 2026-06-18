@@ -30,8 +30,8 @@ def get_max_divisor_less_than_or_equal(number: int, limit: int) -> int:
 def adjust_parallel_gridding_tasks(max_cores, parallel_gridding_tasks, max_work_units):
     """
     Adjust parallel gridding tasks to match available work units and core constraints.
-    
-    Caps the task count to prevent over-partitioning the thread pool, ensuring 
+
+    Caps the task count to prevent over-partitioning the thread pool, ensuring
     allocated threads are not left unassigned.
     """
     parallel_gridding_tasks = min(parallel_gridding_tasks, max_work_units)
@@ -449,9 +449,15 @@ class Image(Operation):
         facets = self.field.read_facets() if self.use_facets else None
         n_facets = len(facets) if facets else 0
 
-        for sector_id, (parallel_gridding_tasks, channels_out) in enumerate(
+        for sector_id, (parallel_gridding_tasks, channels_out_per_node) in enumerate(
             zip(self.input_parms["parallel_gridding_tasks"], self.input_parms["channels_out"])
         ):
+            if self.use_mpi:
+                channels_out_per_node = channels_out_per_node // self.input_parms["mpi_nnodes"][0]
+
+            # Case 1: Facets are available.
+            # Distribute over channels_out, parallelise over facets.
+            # Match parallel tasks to n_facets so available threads aren't left
             if n_facets > 1:
                 self.input_parms["shared_facet_rw"] = self.parset["imaging_specific"][
                     "shared_facet_rw"
@@ -464,13 +470,16 @@ class Image(Operation):
                         n_facets,
                     )
                 )
-            elif n_facets or channels_out < parallel_gridding_tasks:
+            # Case 2: Only one facet or none is available.
+            # Both distribute and parallelise over channels_out.
+            # Match parallel tasks to channels per node so available threads
+            elif n_facets or channels_out_per_node < parallel_gridding_tasks:
                 # Further reduce in case of n_channels_out less then parallel_gridding_tasks
                 self.input_parms["parallel_gridding_tasks"][sector_id] = (
                     adjust_parallel_gridding_tasks(
                         self.field.parset["cluster_specific"]["max_cores"],
                         parallel_gridding_tasks,
-                        channels_out,
+                        channels_out_per_node,
                     )
                 )
 

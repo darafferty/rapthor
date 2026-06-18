@@ -146,7 +146,7 @@ class Field:
 
     def get_calibration_radius(self):
         return 5.0
-    
+
     def read_facets(self):
         return []
 
