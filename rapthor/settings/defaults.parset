@@ -384,8 +384,7 @@ max_threads = 0
 # the expense of higher memory usage
 deconvolution_threads = 0
 
-# Number of tasks to use by WSClean for parallel gridding (default = 0 = 
-        ``max_threads`` // 8
+# Number of tasks to use by WSClean for parallel gridding (default = 0 = ``max_threads`` // 8
 # of max_threads, but not more than 6)
 parallel_gridding_tasks = 0
 
