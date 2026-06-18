@@ -31,8 +31,6 @@ def make_writable(msfile):
         return msfile
     # get base dir to create files
     tmpdir = "$(runtime.tmpdir)"
-    if not os.path.isdir(tmpdir):
-        tmpdir = "/tmp"
     newms = os.path.join(tmpdir, os.path.basename(msfile) + "_" + str(uuid.uuid4()))
     # copy msfile to newms
     shutil.copytree(msfile, newms, dirs_exist_ok=True)
