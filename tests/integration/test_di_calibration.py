@@ -406,6 +406,10 @@ def test_rapthor_run_multi_cycles(
         {
             "allow_internet_access": "False",
             "strategy": str(two_loop_strategy_with_calibration_strategy),
+            # Cycle 1 runs at the selfcal data fraction; use the full dataset so
+            # cycle-1 imaging has enough data to detect sources for cycle 2's
+            # calibrator model.
+            "selfcal_data_fraction": "1.0",
         },
     )
 

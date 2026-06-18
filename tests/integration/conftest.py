@@ -157,7 +157,9 @@ def single_loop_strategy_path_calibrate_di_fast_medium_slow(tmp_path):
         make_strategy_step(
             do_calibrate=True,
             do_image=True,
-            calibration_strategy={"di": ["fast_phase", "medium_phase", "slow_gains"]},
+            calibration_strategy={
+                "di": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"]
+            },
         )
     ]
     strategy_content = f"strategy_steps = {strategy_steps}"
@@ -230,17 +232,30 @@ def single_loop_strategy_with_calibration_strategy(tmp_path, request):
 
 @pytest.fixture
 def two_loop_strategy_with_calibration_strategy(tmp_path):
-    """Strategy file for two self-calibration loops: DI in cycle 1, DD in cycle 2."""
+    """Strategy file for two self-calibration loops: DI in cycle 1, DD in cycle 2.
+
+    Cycle 2 builds its calibrator model from cycle-1 imaging output, so cycle-1
+    imaging must detect sources. The shared imaging thresholds are lowered here
+    (scoped to this fixture only) so PyBDSF finds the field sources on the small
+    integration dataset; otherwise cycle 2 has no calibrators and fails.
+    """
+    lower_imaging_thresholds = {
+        "auto_mask": 3.0,
+        "threshisl": 2.0,
+        "threshpix": 3.0,
+    }
     strategy_steps = [
         make_strategy_step(
             do_calibrate=True,
             do_image=True,
             calibration_strategy={"di": ["full_jones"], "dd": []},
+            **lower_imaging_thresholds,
         ),
         make_strategy_step(
             do_calibrate=True,
             do_image=True,
             calibration_strategy={"di": [], "dd": ["fast_phase"]},
+            **lower_imaging_thresholds,
         ),
     ]
     strategy_content = f"strategy_steps = {strategy_steps}"
