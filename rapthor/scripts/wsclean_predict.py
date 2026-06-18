@@ -13,6 +13,7 @@ import json
 import subprocess
 import sys
 import logging
+import numpy as np
 import casacore.tables as ct
 from lsmtool.facet import read_ds9_region_file
 
@@ -30,6 +31,8 @@ def make_writable(msfile):
         return msfile
     # get base dir to create files
     tmpdir = "$(runtime.tmpdir)"
+    if not os.path.isdir(tmpdir):
+        tmpdir = "/tmp"
     newms = os.path.join(tmpdir, os.path.basename(msfile) + "_" + str(uuid.uuid4()))
     # copy msfile to newms
     shutil.copytree(msfile, newms, dirs_exist_ok=True)
@@ -78,7 +81,16 @@ def remove_columns_from_ms(msfile, ds9_region_file):
     tt.close()
 
 
-def predict(msfiles, ds9_region_file, model_images, storage_manager):
+def predict(
+    msfiles,
+    ds9_region_file,
+    sky_model,
+    ra_dec,
+    frequency_bandwidth,
+    imsize,
+    cellsize_deg,
+    storage_manager,
+):
     """
     Predict model image to msfile
 
@@ -88,24 +100,60 @@ def predict(msfiles, ds9_region_file, model_images, storage_manager):
     ds9_region_file: DS9 region file, specifying facet regions and names
     Note: names in region file should be with {}, like {Patch_1}, After
     parsing the {} will be dropped
-    model_images: List: FITS images to use as model
+    sky_model: input sky model
     """
-    # work with only first model image (for now)
+    # get channel frequencies
+    freq_list = list()
+    for ms in msfiles:
+        chan_freqs = ct.table(ms + "::SPECTRAL_WINDOW").getcol("CHAN_FREQ")
+        freq_list.append(chan_freqs[0])
+    freq_list = np.concat(freq_list)
+    print(freq_list)
     # model images can have arbitrary names,
     # make a symlink in same dir with workable name
-    model_image = model_images[0]
-    tmpdir = os.path.dirname(model_image)
-    model_image = tmpdir + "/predict-model.fits"
-    os.symlink(model_images[0], model_image)
-    # remove '-model.fits' from image name
-    model = model_image.replace("-model.fits", "")
+    tmpdir = os.path.dirname(sky_model)
+    model_name = os.path.join(tmpdir, "predict")
+    err_code = 0
+    # Run the command
+    # output will be $(model_name)-term-0.fits
+    cmd = [
+        "wsclean",
+        "-draw-model",
+        str(sky_model),
+        "-draw-spectral-terms",
+        str(1),
+        "-name",
+        str(model_name),
+        "-draw-centre",
+        str(ra_dec[0]),
+        str(ra_dec[1]),
+        "-draw-frequencies",
+        str(frequency_bandwidth[0]),
+        str(frequency_bandwidth[1]),
+        "-channels-out",
+        str(3),
+        "-size",
+        str(imsize[0]),
+        str(imsize[1]),
+        "-scale",
+        str(cellsize_deg),
+    ]
+    try:
+        subprocess.run(cmd, check=True).returncode
+    except subprocess.CalledProcessError as err:
+        print(err, file=sys.stderr)
+        err_code = err.returncode
 
+    model = model_name + "-model.fits"
+    os.symlink(model_name + "-term-0.fits", model)
     # extract region names
     facets = read_ds9_region_file(ds9_region_file)
     facet_names = list()
     for facet in facets:
         facet_names.append(facet.name)
 
+    # -draw-frequencies central bw
+    # -channel-range
     err_code = 0
     # Run the command
     for facet in facet_names:
@@ -119,7 +167,7 @@ def predict(msfiles, ds9_region_file, model_images, storage_manager):
             "-select-facets",
             str(facet),
             "-name",
-            str(model),
+            str(model_name),
             "-model-storage-manager",
             str(storage_manager),
             *[str(msfilename) for msfilename in msfiles],
@@ -224,7 +272,16 @@ def main():
         json.dump(out_dict, f)
 
     # draw model and predict
-    return predict(msnames, args.region, args.skymodel, args.storage_manager)
+    return predict(
+        msnames,
+        args.region,
+        args.skymodel,
+        args.ra_dec,
+        args.frequency_bandwidth,
+        args.imsize,
+        args.cellsize,
+        args.storage_manager,
+    )
 
 
 if __name__ == "__main__":
