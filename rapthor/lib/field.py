@@ -430,7 +430,6 @@ class Field(object):
     def read_facets(self):
         """Read facets from file"""
         if self.parset['facet_layout'] is not None:
-            # Read facets
             return read_ds9_region_file(self.parset['facet_layout'])
         else:
             return None
