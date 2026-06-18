@@ -761,7 +761,7 @@ class TestCalibrate:
                 {"dd": ["slow_gains"]},
                 False,
                 False,
-                [("slow_gains", "solve1", "scalarphase", "slow_gain")],
+                [("slow_gains", "solve1", "diagonal", "slow_gain")],
             ),
             (
                 "dd",
@@ -817,7 +817,7 @@ class TestCalibrate:
         calibrate.set_input_parameters()
 
         assert parse_dp3(calibrate.input_parms["dp3_steps"]) == ["solve1"]
-        assert calibrate.input_parms["solve1_mode"] == "scalarphase"
+        assert calibrate.input_parms["solve1_mode"] == "diagonal"
         assert calibrate.input_parms["output_solve1_h5parm"] == [
             "slow_gain_0.h5parm",
             "slow_gain_1.h5parm",
