@@ -473,7 +473,7 @@ class Image(Operation):
             # Case 2: Only one facet or none is available.
             # Both distribute and parallelise over channels_out.
             # Match parallel tasks to channels per node so available threads
-            elif n_facets or channels_out_per_node < parallel_gridding_tasks:
+            elif channels_out_per_node < parallel_gridding_tasks:
                 # Further reduce in case of n_channels_out less then parallel_gridding_tasks
                 self.input_parms["parallel_gridding_tasks"][sector_id] = (
                     adjust_parallel_gridding_tasks(
