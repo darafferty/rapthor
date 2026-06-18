@@ -3,6 +3,7 @@ This module contains tests for the module `rapthor.lib.parset`
 """
 
 import ast
+import configparser
 import contextlib
 import logging
 import re
@@ -10,7 +11,7 @@ import re
 import pytest
 
 from rapthor.lib.parset import check_and_adjust_skymodel_settings, parset_read
-from rapthor.testing import assert_logged, _generate_parset
+from rapthor.testing import _generate_parset, assert_logged
 
 
 def assert_warning_logged(caplog, *expected_messages):
@@ -29,6 +30,7 @@ def assert_info_logged(caplog, *expected_messages):
         logging.INFO,
         *expected_messages,
     )
+
 
 class TestParset:
     """

@@ -19,7 +19,7 @@ from rapthor.lib.field import Field
 from rapthor.lib.observation import Observation
 from rapthor.lib.parset import parset_read
 from rapthor.lib.sector import Sector
-from rapthor.testing import _generate_parset, generate_parset_path, make_source_catalog
+from rapthor.testing import _generate_parset, generate_parset, make_source_catalog
 
 TEST_ROOT_DIR = Path(__file__).parent
 REPO_ROOT_DIR = TEST_ROOT_DIR.parent
@@ -164,7 +164,7 @@ def parset(pytestconfig, tmp_path, test_ms):
     output_path = tmp_path / "test.parset"
     _generate_parset(
         pytestconfig.resource_dir / "test.parset",
-        output_path,
+        output_path=output_path,
         dir_working=tmp_path.as_posix(),
         input_ms=test_ms,
         input_skymodel=(pytestconfig.resource_dir / "test_true_sky.txt").as_posix(),
@@ -380,10 +380,10 @@ def generated_parset_path(request, tmp_path, test_ms):
     parset_path = request.config.repo_root_dir / parset_path
     output_parset_path = tmp_path / "generated.parset"
 
-    generate_parset_path(
+    generate_parset(
         parset_path,
-        output_parset_path,
         test_ms,
+        output_parset_path,
         input_skymodel_path,
         apparent_skymodel_path,
         normalization_skymodel_paths=None,
@@ -395,10 +395,10 @@ def generated_parset_path(request, tmp_path, test_ms):
 @pytest.fixture
 def parset_for_field_test(pytestconfig, tmp_path_factory, test_ms):
     target = tmp_path_factory.mktemp("test_field") / "generated.parset"
-    generate_parset_path(
+    generate_parset(
         pytestconfig.resource_dir / "test.parset",
-        target,
         test_ms,
+        target,
         pytestconfig.resource_dir / "test_true_sky.txt",
         pytestconfig.resource_dir / "test_apparent_sky.txt",
     )

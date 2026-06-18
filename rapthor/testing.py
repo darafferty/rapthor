@@ -95,6 +95,7 @@ def _get_test_run_root():
 def generate_parset(
     template_parset_path,
     input_ms,
+    output_path=None,
     input_skymodel_path=None,
     apparent_skymodel_path=None,
     normalization_skymodel_paths=None,
@@ -108,6 +109,7 @@ def generate_parset(
      - `dir_working` to a temporary directory
      - `local_scratch_dir` to a temporary directory
      - `global_scratch_dir` to a temporary directory
+    These temporary direcories are created if they do not exist. 
 
     If either skymodel is provided, the following keys in the parset will be
     updated:
@@ -137,11 +139,13 @@ def generate_parset(
     parset_path = REPO_ROOT_DIR / template_parset_path
     if input_skymodel_path:
         input_skymodel_path = REPO_ROOT_DIR / input_skymodel_path
+
     if apparent_skymodel_path:
         apparent_skymodel_path = REPO_ROOT_DIR / apparent_skymodel_path
+
     if normalization_skymodel_paths:
         normalization_skymodel_paths = [
-            REPO_ROOT_DIR / path for path in normalization_skymodel_paths
+            str(REPO_ROOT_DIR / path) for path in normalization_skymodel_paths if path
         ]
 
     # Keep runtime paths short to avoid AF_UNIX socket path length limits
@@ -153,47 +157,42 @@ def generate_parset(
     work_dir.mkdir()
     scratch_dir.mkdir()
 
-    parset = configparser.ConfigParser()
-    parset.read(parset_path)
-    parset["global"].update(
-        dir_working=str(work_dir),
-        input_ms=str(input_ms),
-    )
+    config = {
+        "global": {
+            "dir_working": work_dir,
+            "input_ms": input_ms,
+        },
+        "cluster": {
+            "local_scratch_dir": scratch_dir,
+            "global_scratch_dir": scratch_dir,
+        },
+        "imaging": {},
+    }
     if input_skymodel_path:
-        parset["global"]["input_skymodel"] = str(input_skymodel_path)
-        parset["imaging"]["photometry_skymodel"] = str(input_skymodel_path)
-        parset["imaging"]["astrometry_skymodel"] = str(input_skymodel_path)
+        config["global"]["input_skymodel"] = input_skymodel_path
+        config["imaging"]["photometry_skymodel"] = input_skymodel_path
+        config["imaging"]["astrometry_skymodel"] = input_skymodel_path
+
     if apparent_skymodel_path:
-        parset["global"]["apparent_skymodel"] = str(apparent_skymodel_path)
+        config["global"]["apparent_skymodel"] = apparent_skymodel_path
+
     if normalization_skymodel_paths:
-        parset["imaging"]["normalization_skymodels"] = (
-            "["
-            + ", ".join([str(path) for path in normalization_skymodel_paths if path is not None])
-            + "]"
+        config["imaging"]["normalization_skymodels"] = (
+            f"[{', '.join(normalization_skymodel_paths)}]"
         )
-        parset["imaging"]["normalization_reference_frequencies"] = (
-            "["
-            + ", ".join(
-                [
-                    str(120000000.0 + i * 60000000.0)
-                    for i, _ in enumerate(normalization_skymodel_paths)
-                    if _ is not None
-                ]
-            )
-            + "]"
+        ref_freq = 1.42e8 + np.arange(len(normalization_skymodel_paths)) * 1e3
+        config["imaging"]["normalization_reference_frequencies"] = (
+            f"[{', '.join(ref_freq.astype(str))}]"
         )
     else:
-        parset["imaging"]["normalization_reference_frequencies"] = "None"
-    parset["cluster"].update(
-        local_scratch_dir=str(scratch_dir),
-        global_scratch_dir=str(scratch_dir),
-    )
-    return parset
+        config["imaging"]["normalization_reference_frequencies"] = "None"
+
+    return _generate_parset(parset_path, config, output_path)
 
 
 def _generate_parset(template_parset=None, config=None, output_path=None, **kws):
     """
-    Base function to generate a parset from a template and a config dictionary, 
+    Base function to generate a parset from a template and a config dictionary,
     optionally writing the result to an output path.
 
     Parameters
@@ -253,42 +252,6 @@ def _generate_parset(template_parset=None, config=None, output_path=None, **kws)
             parset.write(fp)
 
     return parset
-
-
-def generate_parset_path(
-    template_path,
-    output_path,
-    test_ms,
-    input_skymodel_path,
-    apparent_skymodel_path,
-    normalization_skymodel_paths=None,
-):
-    """
-    Fixture to generate a complete parset from a template and return the path.
-
-    This fixture is used to read in and update a template parset file. It is
-    parametrised using the pytest request fixture and expects a tuple
-    containing three paths to the following files:
-
-    1. Template parset (e.g. in tests/resources/parsets/)
-    2. True sky model (e.g. in tests/resources/)
-    3. Apparent sky model (e.g. in tests/resources/)
-
-    This fixture can be used to test rapthor runs end to end on a small input
-    measurement set with different strategies and sky models.
-    For further details see `generate_parset` function.
-    """
-    parset_path = REPO_ROOT_DIR / template_path
-    parset = generate_parset(
-        parset_path,
-        test_ms,
-        input_skymodel_path,
-        apparent_skymodel_path,
-        normalization_skymodel_paths,
-    )
-
-    with output_path.open("w") as fp:
-        parset.write(fp)
 
 
 def make_source_catalog(n_channels=8, n_sources=8, alpha=-0.7, ref_flux=1.0, outliers=False):
