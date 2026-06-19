@@ -430,7 +430,16 @@ class TestCheckSkymodelSettings:
     @pytest.mark.parametrize(
         "resolve_fixture_values, context",
         [
-            # Nominal case: skymodels and frequencies can be given as tuples
+            # Nominal case: skymodels and frequencies are given as lists
+            pytest.param(
+                {
+                    "normalization_skymodels": [mock_skymodel_path, mock_skymodel_path],
+                    "normalization_reference_frequencies": [142000000.0, 142001000.0],
+                },
+                contextlib.nullcontext(),
+                id="normalization_parameters_list",
+            ),
+            # Tuple case: skymodels and frequencies can be tuples as well.
             pytest.param(
                 {
                     "normalization_skymodels": (mock_skymodel_path, mock_skymodel_path),
