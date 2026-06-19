@@ -204,9 +204,7 @@ class TestParset(unittest.TestCase):
 
 
 class TestCheckSkymodelSettings:
-    """
-    Tests for the `check_and_adjust_skymodel_settings` function.
-    """
+    """Tests for the `check_and_adjust_skymodel_settings` function."""
 
     def _make_parset_dict(self, **overrides):
         """
@@ -371,10 +369,7 @@ class TestCheckSkymodelSettings:
 
     @pytest.mark.parametrize(
         "diagnostic",
-        [
-            "astrometry",
-            "photometry",
-        ],
+        ["astrometry", "photometry"],
     )
     def test_skymodel_exists_no_internet_ok(self, caplog, mock_skymodel_path, diagnostic):
         """
