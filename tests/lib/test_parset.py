@@ -250,7 +250,7 @@ class TestCheckSkymodelSettings:
         ],
         indirect=["resolve_fixture_values"],
     )
-    def test_input_skymodel_not_found_raises(self, resolve_fixture_values, context):
+    def test_input_skymodel_existence(self, resolve_fixture_values, context):
         """
         Test that providing an existing input skymodel works, and that a
         non-existent input skymodel raises FileNotFoundError.
