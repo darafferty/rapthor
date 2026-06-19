@@ -88,6 +88,4 @@ def test_filter_skymodel_writes_empty_outputs_for_all_blank_image(tmp_path, monk
     assert fits.getdata(tmp_path / "sector_1.flat_noise_rms.fits").shape == (2, 2)
     assert fits.getdata(tmp_path / "sector_1.true_sky_rms.fits").shape == (2, 2)
     assert len(Table.read(tmp_path / "sector_1.source_catalog.fits", format="fits")) == 0
-    assert json.loads((tmp_path / "sector_1.image_diagnostics.json").read_text()) == {
-        "nsources": 0
-    }
+    assert json.loads((tmp_path / "sector_1.image_diagnostics.json").read_text()) == {"nsources": 0}
