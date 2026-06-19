@@ -151,6 +151,12 @@ class Field(object):
         self.medium1_phases_h5parm_filename = None
         self.medium2_phases_h5parm_filename = None
         self.slow_gains_h5parm_filename = None
+        self.dd_h5parm_filename = None
+        self.di_h5parm_filename = None
+        self.di_fast_phases_h5parm_filename = None
+        self.di_medium1_phases_h5parm_filename = None
+        self.di_medium2_phases_h5parm_filename = None
+        self.di_slow_gains_h5parm_filename = None
         self.calibration_diagnostics = []
         self.selfcal_state = None
 
@@ -2039,6 +2045,7 @@ class Field(object):
            - `do_fulljones_solve` set to True triggers DI calibration after DD
            - `do_slowgain_solve` set to True triggers a slow gain solve after the main solve
         """
+        self._calibration_strategy_defaulted = not bool(self.calibration_strategy)
         if not self.calibration_strategy:
             # Use legacy strategy based on the `do_fulljones_solve` and `do_slowgain_solve` parameters
             self.calibration_strategy = {
