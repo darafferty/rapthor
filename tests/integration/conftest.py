@@ -279,12 +279,18 @@ def two_loop_strategy_with_calibration_strategy(tmp_path):
     keep more flux in the clean model and drop ``target_flux`` well below the
     default so the cycle-2 calibrator-flux check is met; otherwise cycle 2 has no
     calibrators and fails.
+
+    Note: we deliberately do not restrict ``max_nmiter`` here. Limiting cleaning
+    to a single major iteration leaves WSClean fitting a spectral index to
+    barely-cleaned, noise-dominated components, which produces an out-of-range
+    spectral index in the cycle-1 image model. That value propagates into the
+    cycle-2 calibration sky model and makes DP3 abort with "SpectralIndex ... is
+    out of bound" when it reads the sourcedb.
     """
     multi_cycle_overrides = {
         "auto_mask": 3.0,
         "threshisl": 2.0,
         "threshpix": 3.0,
-        "max_nmiter": 1,
         "target_flux": 0.1,
     }
     strategy_steps = [
