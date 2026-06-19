@@ -18,23 +18,21 @@ from rapthor.lib.parset import check_and_adjust_skymodel_settings, parset_read
 from rapthor.testing import assert_logged
 
 
-def assert_warning_logged(caplog, expected_messages=(), expected_message=None):
+def assert_warning_logged(caplog, *expected_messages):
     return assert_logged(
         caplog,
         "rapthor:parset",
         logging.WARNING,
-        expected_messages,
-        expected_message=expected_message,
+        *expected_messages,
     )
 
 
-def assert_info_logged(caplog, expected_messages=(), expected_message=None):
+def assert_info_logged(caplog, *expected_messages):
     return assert_logged(
         caplog,
         "rapthor:parset",
         logging.INFO,
-        expected_messages,
-        expected_message=expected_message,
+        *expected_messages,
     )
 
 
@@ -262,14 +260,14 @@ class TestCheckSkymodelSettings:
             check_and_adjust_skymodel_settings(parset_dict)
 
     @pytest.mark.parametrize(
-        "generate, expected_warning",
+        "generate, expected_warnings",
         [
-            (True, "Sky model generation requested"),
+            (True, ["Sky model generation requested"]),
             (False, ["Sky model download requested", "Disabling download"]),
         ],
     )
     def test_input_skymodel_disables_download(
-        self, caplog, mock_skymodel_path, generate, expected_warning
+        self, caplog, mock_skymodel_path, generate, expected_warnings
     ):
         """
         Test that download is disabled when an input skymodel is provided.
@@ -279,7 +277,7 @@ class TestCheckSkymodelSettings:
             generate_initial_skymodel=generate,
             download_initial_skymodel=True,
         )
-        with assert_warning_logged(caplog, expected_warning):
+        with assert_warning_logged(caplog, *expected_warnings):
             check_and_adjust_skymodel_settings(parset_dict)
 
         assert parset_dict["download_initial_skymodel"] is False
@@ -322,7 +320,7 @@ class TestCheckSkymodelSettings:
         given and generate/download is requested.
         """
         parset_dict = self._make_parset_dict(**config)
-        with assert_info_logged(caplog, expected_message=expected_warning):
+        with assert_info_logged(caplog, expected_warning):
             check_and_adjust_skymodel_settings(parset_dict)
 
     # ---- internet access checks ----
@@ -390,7 +388,7 @@ class TestCheckSkymodelSettings:
         other = ({"astrometry", "photometry"} - {diagnostic}).pop()
         with assert_warning_logged(
             caplog,
-            expected_message=f"The {other} check will be skipped",
+            f"The {other} check will be skipped",
         ):
             check_and_adjust_skymodel_settings(parset_dict)
 
@@ -424,10 +422,8 @@ class TestCheckSkymodelSettings:
         # Should not raise
         with assert_warning_logged(
             caplog,
-            expected_messages=[
-                "The astrometry check will be skipped",
-                "The photometry check will be skipped",
-            ],
+            "The astrometry check will be skipped",
+            "The photometry check will be skipped",
         ):
             check_and_adjust_skymodel_settings(parset_dict)
 

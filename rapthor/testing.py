@@ -16,7 +16,7 @@ REPO_ROOT_DIR = Path(__file__).parent.parent
 
 
 @contextlib.contextmanager
-def assert_logged(caplog, logger, level, expected_messages=(), *, expected_message=None):
+def assert_logged(caplog, logger, level, *expected_messages):
     """
     Context manager for asserting the presence of specific messages in the
     captured log records.
@@ -34,29 +34,24 @@ def assert_logged(caplog, logger, level, expected_messages=(), *, expected_messa
         Logger name
     level : int
         Logging level
-    expected_messages : str or tuple of str, optional
-        Sequence of expected messages, by default ()
+    *expected_messages
+        One or more expected messages to scan the logs for.
 
-    Other Parameters
-    ----------------
-    expected_message : str, optional
-        Keyword-only parameter to support user passing a single expected
-        message, by default None
 
     Examples
     --------
     The following example will pass, because the expected message is present in
     the logs:
 
-    >>> with assert_logged(caplog, "my_logger", logging.INFO, expected_message="Hello World"):
+    >>> with assert_logged(caplog, "my_logger", logging.INFO, "Hello World"):
     ...    logging.getLogger("my_logger").info('Hello World')
 
     Failure case:
-    >>> with assert_logged(caplog, "my_logger", logging.INFO, expected_message="Hello World"):
+    >>> with assert_logged(caplog, "my_logger", logging.INFO, "Hello World"):
     ...    logging.getLogger("my_logger").info('Nope')
 
     Checking for multiple messages:
-    >>> with assert_logged(caplog, "my_logger", logging.INFO, expected_messages=["Hello", "World"]):
+    >>> with assert_logged(caplog, "my_logger", logging.INFO, "Hello", "World"):
     ...    logger = logging.getLogger("my_logger")
     ...    logger.info('Hello')
     ...    logger.info('World')
@@ -64,23 +59,14 @@ def assert_logged(caplog, logger, level, expected_messages=(), *, expected_messa
     Raises
     ------
     TypeError
-        If the expected_messages parameter is not a string or a sequence of strings.
+        If any of the expected_messages are not strings.
     AssertionError
         If any of the expected messages are not found in the logs.
     """
 
     # validate inputs
-    if isinstance(expected_messages, str):
-        expected_messages = [expected_messages]
-
-    if not isinstance(expected_messages, Sequence):
-        raise TypeError("expected_messages parameter should be a string or a sequence of strings")
-
-    if expected_message is not None:
-        expected_messages = [*expected_messages, expected_message]
-
     if not expected_messages:
-        raise ValueError("expected messages list is empty")
+        raise ValueError("At least one expected message must be provided")
 
     for msg in expected_messages:
         if not isinstance(msg, str):
