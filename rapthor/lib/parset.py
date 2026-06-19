@@ -405,10 +405,10 @@ class Parset:
                 "Please enable 'make_quv_images' or set 'image_cube_stokes_list' to "
                 "'[I]'."
             )
-        if options["save_residual_visibilities"] and (
-            options["bda_timebase"] > 0
-        ):
-            log.warning("Switching off BDA during imaging, since residual visibilites are to be generated.")
+        if options["save_residual_visibilities"] and (options["bda_timebase"] > 0):
+            log.warning(
+                "Switching off BDA during imaging, since residual visibilites are to be generated."
+            )
             options["bda_timebase"] = 0
 
         # Cluster options
