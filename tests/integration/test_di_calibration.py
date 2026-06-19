@@ -430,7 +430,7 @@ def test_rapthor_run_multi_cycles(
     assert "Operation mosaic_1 completed" in output
     assert "Operation calibrate_2 completed" in output
     assert "Operation calibrate_di_2 completed" not in output
-    assert "Operation predict_2 completed" in output
+    assert "Operation predict_2 completed" not in output
     assert "Operation predict_di_2 completed" not in output
     assert "Operation image_2 completed" in output
     assert "Operation mosaic_2 completed" in output
