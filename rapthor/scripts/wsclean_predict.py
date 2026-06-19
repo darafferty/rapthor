@@ -138,6 +138,7 @@ def predict(
         chunk_bandwidth = freqs[-1] - freqs[0] + (freq_list[1] - freq_list[0])
         chunk_freq = np.mean(freqs)
         err_code = 0
+        # only one spectral term is created
         # output will be $(model_name)-term-0.fits
         cmd = [
             "wsclean",
@@ -185,12 +186,12 @@ def predict(
                 str(storage_manager),
                 *[str(msfilename) for msfilename in msfiles],
             ]
-        try:
-            subprocess.run(cmd, check=True).returncode
-        except subprocess.CalledProcessError as err:
-            print(err, file=sys.stderr)
-            err_code = err.returncode
-            break
+            try:
+                subprocess.run(cmd, check=True).returncode
+            except subprocess.CalledProcessError as err:
+                print(err, file=sys.stderr)
+                err_code = err.returncode
+                break
 
     return err_code
 
