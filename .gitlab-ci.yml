@@ -179,7 +179,7 @@ versioning:
     - !reference [.versioning, script]
     - ./Docker/fetch_commit_hashes.sh | tee commits.txt >> versions.env
     # Use hash of commits and CI/CD build files to determine tag of base image
-    - SHA_FILES=".gitlab-ci.yml ci/ubuntu_22_04-* commits.txt"
+    - SHA_FILES=".gitlab-ci.yml ci/ubuntu_24_04-* commits.txt"
     - BASE_NAME=$CI_REGISTRY_IMAGE/base
     - BASE_TAG=$(shasum ${SHA_FILES} | shasum | cut -d" " -f1)
     - FULL_NAME=$CI_REGISTRY_IMAGE/full
@@ -217,7 +217,7 @@ build_base:
           --build-arg PYTHONCASACORE_COMMIT \
           --build-arg SAGECAL_COMMIT \
           --build-arg WSCLEAN_COMMIT \
-          --file ci/ubuntu_22_04-base \
+          --file ci/ubuntu_24_04-base \
           --tag $BASE_IMAGE \
           .
         docker push $BASE_IMAGE
@@ -235,7 +235,7 @@ install_rapthor:
         $DOCKER_BUILD_OPTIONS \
         --build-arg BASE_IMAGE \
         --build-arg RAPTHOR_VERSION \
-        --file ci/ubuntu_22_04-rapthor \
+        --file ci/ubuntu_24_04-rapthor \
         --tag $FULL_IMAGE \
         .
     - docker push $FULL_IMAGE
@@ -245,7 +245,7 @@ install_rapthor:
 run_tests:
   extends: .run_tests
   script:
-    - tox -e py310
+    - tox -e py
   coverage: '/TOTAL.*\s+(\d+%)$/'
 
 ### Stage: run_integration_tests
