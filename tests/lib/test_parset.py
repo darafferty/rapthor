@@ -387,7 +387,7 @@ class TestCheckSkymodelSettings:
         ):
             check_and_adjust_skymodel_settings(parset_dict)
 
-    def test_normalization_skymodel_exists_no_internet_ok(self, mock_skymodel_path):
+    def test_normalization_skymodel_exists_no_internet_ok(self, caplog, mock_skymodel_path):
         """
         Test that existing normalization skymodels are accepted without internet access.
         """
@@ -399,7 +399,14 @@ class TestCheckSkymodelSettings:
             },
         )
         # Should not raise (warning about no skymodel is expected)
-        check_and_adjust_skymodel_settings(parset_dict)
+        with assert_warning_logged(
+            caplog,
+            "Comparison sky model for astrometry check not provided while "
+            "`allow_internet_access` is False. The astrometry check will be skipped.",
+            "Comparison sky model for photometry check not provided while "
+            "`allow_internet_access` is False. The photometry check will be skipped.",
+        ):
+            check_and_adjust_skymodel_settings(parset_dict)
 
     def test_diagnostic_skymodel_empty_no_internet_ok(self, caplog):
         """
