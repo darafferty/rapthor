@@ -480,7 +480,7 @@ class TestCheckSkymodelSettings:
             # Invalid case: only one normalization skymodel provided as tuple, should raise ValueError
             pytest.param(
                 {
-                    "normalization_skymodels": [mock_skymodel_path],
+                    "normalization_skymodels": (mock_skymodel_path),
                     "normalization_reference_frequencies": (142000000.0, 142001000.0),
                 },
                 pytest.raises(ValueError),
