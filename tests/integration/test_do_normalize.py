@@ -13,6 +13,18 @@ from .utils import get_working_dir_from_parset, update_parset_path
 @pytest.mark.internet
 @pytest.mark.integration
 @pytest.mark.parametrize(
+    "normalization_skymodel_paths",
+    [
+        None,
+        [
+            "tests/resources/integration_apparent_sky.txt",
+            "tests/resources/integration_true_sky.txt",
+        ],
+    ],
+    ids=["downloaded_surveys", "reference_skymodels"],
+    indirect=True,
+)
+@pytest.mark.parametrize(
     "generated_parset_path_normalisation",
     [
         (

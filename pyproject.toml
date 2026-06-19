@@ -36,7 +36,7 @@ dependencies = [
     "bdsf",
     "jinja2",
     "losoto>=2.4.3",
-    "lsmtool @ git+https://git.astron.nl/RD/LSMTool.git@master",
+    "lsmtool @ git+https://git.astron.nl/RD/LSMTool.git@c099308552fa481f5699d4592d462aadc7c92458",
     "matplotlib",
     "mocpy",
     "numpy",
@@ -187,14 +187,30 @@ commands = [
 
 [tool.tox.env.test_integration]
 description = "Run integration tests"
-deps = [{ replace = "ref", of = ["dependency-groups", "test"], extend = true }]
-pass_env = ["CI_PROJECT_DIR", "NUMEXPR_MAX_THREADS"]
+deps = [
+    { replace = "ref", of = ["dependency-groups", "test"], extend = true },
+    "pytest-split<0.11",
+]
+pass_env = [
+    "CI_PROJECT_DIR",
+    "CI_NODE_INDEX",
+    "CI_NODE_TOTAL",
+    "BLIS_NUM_THREADS",
+    "MKL_NUM_THREADS",
+    "NUMEXPR_MAX_THREADS",
+    "OMP_NUM_THREADS",
+    "OPENBLAS_NUM_THREADS",
+    "VECLIB_MAXIMUM_THREADS",
+]
 commands = [
     [
         "python", "-m", "pytest",
         "-m", "integration",
         "-vv", "-ra",
-        "tests/{posargs}",
+        "--durations=0",
+        "--splits", "{env:CI_NODE_TOTAL:1}",
+        "--group", "{env:CI_NODE_INDEX:1}",
+        "tests",
     ]
 ]
 
@@ -236,25 +252,10 @@ format_targets = [
     "rapthor/process.py",
     "rapthor/scripts/calculate_image_diagnostics.py",
     "rapthor/scripts/normalize_flux_scale.py",
-    "tests/__init__.py",
-    "tests/conftest.py",
-    "tests/cwl/__init__.py",
-    "tests/cwl/cwl_cmdline.py",
-    "tests/cwl/cwl_mock.py",
-    "tests/cwl/tests/test_cwl_cmdline.py",
-    "tests/cwl/tests/test_cwl_mock.py",
-    "tests/cwl/tests/test_cwl_real_execution.py",
-    "tests/cwl/tests/test_cwl_scatter.py",
-    "tests/integration",
-    "tests/lib/test_cwl.py",
-    "tests/lib/test_cwlrunner.py",
-    "tests/lib/test_field.py",
-    "tests/lib/test_parset.py",
-    "tests/lib/test_strategy.py",
-    "tests/operations/test_calibrate.py",
-    "tests/scripts/test_calculate_image_diagnostics.py",
-    "tests/scripts/test_normalize_flux_scale.py"
+    "rapthor/testing.py",
+    "tests"
 ]
+
 commands = [
     [
         # sort imports

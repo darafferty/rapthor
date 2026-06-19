@@ -43,8 +43,8 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         git \
         libboost-date-time-dev \
         libboost-filesystem-dev \
-        libboost-program-options-dev \
         libboost-numpy-dev \
+        libboost-program-options-dev \
         libboost-python-dev \
         libcfitsio-dev \
         libfftw3-dev \
@@ -225,6 +225,10 @@ LABEL \
     nl.astron.rapthor.python-casacore.version=${PYTHONCASACORE_COMMIT} \
     nl.astron.rapthor.sagecal.version=${SAGECAL_COMMIT} \
     nl.astron.rapthor.wsclean.version=${WSCLEAN_COMMIT}
+
+# Use "nl.archive.ubuntu.com", instead of "archive.ubuntu.com".
+RUN sed -ri "s/(archive\.ubuntu\.com)/nl.\1/" \
+    /etc/apt/sources.list.d/ubuntu.sources
 
 # Only install run-time required packages
 RUN export DEBIAN_FRONTEND=noninteractive && \
