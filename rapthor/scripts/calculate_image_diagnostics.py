@@ -493,7 +493,12 @@ def check_astrometry(
     allow_internet_access=True,
 ):
     """
-    Calculate and plot various astrometry diagnostics
+    Calculate and plot various astrometry diagnostics.
+
+    Note: the diagnostics are always calculated as LOFAR value - comparison value; e.g., a
+    positive Dec offset indicates that the LOFAR sources are on average North of the comparison
+    source positions. When the check is successful, a JSON file with the per-facet diagnostics is
+    saved (with the name "{output_root}.astrometry_offsets.json")
 
     Parameters
     ----------
@@ -511,9 +516,8 @@ def check_astrometry(
     output_root : str
         Root of the filename for the output files
     comparison_skymodel : str, optional
-        Filename of the sky model to use for the photometry (flux scale)
-        comparison (in makesourcedb format). If not given, a Pan-STARRS model
-        is downloaded
+        Filename of the sky model to use for the astromety comparison (in
+        makesourcedb format). If not given, a Pan-STARRS model is downloaded
     allow_internet_access : bool, optional
         Whether to allow internet access for downloading sky models when they
         are not available locally. If False, the diagnostics relying on
@@ -569,9 +573,7 @@ def check_astrometry(
         image_width = max(image.img_data.shape[-2:]) * abs(image.img_hdr["CDELT1"])
         max_search_cone_radius = 0.5  # deg; Pan-STARRS search limit
         width = min(max_search_cone_radius * 2, image_width)
-        facets = [
-            SquareFacet("field", obs.ra, obs.dec, width, wcs_pixel_scale=misc.WCS_PIXEL_SCALE)
-        ]
+        facets = [SquareFacet("field", obs.ra, obs.dec, width)]
 
     # Convert the filtered catalog into a minimal sky model for use with LSMTool
     s_pybdsf = fits_to_makesourcedb(catalog, image.freq)

@@ -629,13 +629,16 @@ class Image(Operation):
                     move=True,
                 )
 
-            # The astrometry and photometry plots and diagnostics file
+            # The astrometry and photometry plots, image diagnostics file, and astrometry offsets
+            # file
             diagnostics_dest_dir = os.path.join(
                 self.parset["dir_working"], "plots", f"image_{self.index}"
             )
             diagnotics = {"sector_diagnostics"}
             if self.outputs["sector_diagnostic_plots"][index]:
                 diagnotics.update({"sector_diagnostic_plots"})
+            if self.outputs["sector_offsets"][index]:
+                diagnotics.update({"sector_offsets"})
             self.copy_outputs_to(
                 diagnostics_dest_dir,
                 index=index,
@@ -668,6 +671,7 @@ class Image(Operation):
     def find_in_file_list(file_list):
         ext_mapping = {
             "image_file_true_sky": "image-pb.fits",
+            "image_file_true_sky_astcorr": "image-pb-ast.fits",
             "image_file_apparent_sky": "image.fits",
             "model_file_true_sky": "model-pb.fits",
             "filtered_model_file_apparent_sky": "filtered-model.fits",
