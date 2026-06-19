@@ -59,7 +59,7 @@ def resolve_fixture_values(request):
     ...
     ... @pytest.mark.parametrize('resolve_fixture_values', [my_fixture], indirect=True)
     ... def test_something(resolve_fixture_values):
-    ...     assert resolve_fixture_values == "fixture value"
+    ...     assert resolve_fixture_values == ["fixture value"]
     """
     return _get_fixture_value(request, request.param)
 
