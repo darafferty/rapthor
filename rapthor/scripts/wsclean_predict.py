@@ -87,6 +87,7 @@ def predict(
     frequency_bandwidth,
     imsize,
     cellsize_deg,
+    time_freq_smearing,
     storage_manager,
 ):
     """
@@ -101,6 +102,7 @@ def predict(
     sky_model: input sky model
     ra_dec, frequency_bandwidth, imsize, cellsize_deg:
     parameters used for drawing the model image
+    time_freq_smearing: if true, enable smearing in predict
     """
     # get channel frequencies
     freq_list = list()
@@ -294,6 +296,7 @@ def main():
         args.frequency_bandwidth,
         args.imsize,
         args.cellsize,
+        args.time_freq_smearing,
         args.storage_manager,
     )
 
