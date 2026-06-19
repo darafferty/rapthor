@@ -24,7 +24,7 @@ def assert_logged(caplog, logger, level, expected_messages=(), *, expected_messa
     Since this function is decorated as a context manager, the underlying
     object created is a ContextDecorator so this function can be used as a
     as decorators as well as in with statements. It is also re-entrant, so
-    the same context manager
+    the same context manager can be reused multiple times.
 
     Parameters
     ----------
