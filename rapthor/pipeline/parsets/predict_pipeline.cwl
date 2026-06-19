@@ -82,7 +82,7 @@ inputs:
     doc: |
       The filename of the h5parm solution table from the calibration workflow (length
       = 1).
-    type: File
+    type: File?
 
   - id: dp3_applycal_steps
     label: Applycal steps for fast solve

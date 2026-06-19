@@ -97,6 +97,43 @@ def _set_synthetic_uvw_geometry(ms_path):
         table.putcol("UVW", uvw)
 
 
+def _make_predicted_test_ms(tmp_path, test_ms, output_name):
+    """Return a small MS whose DATA column contains the integration sky model."""
+    ms_path = tmp_path / f"{output_name}.ms"
+    shutil.copytree(test_ms, ms_path)
+    _set_synthetic_uvw_geometry(ms_path)
+    with pt.table(str(ms_path), readonly=False, ack=False) as table:
+        data = table.getcol("DATA")
+        data[...] = 0.0j
+        table.putcol("DATA", data)
+
+    skymodel_path = tmp_path / f"{output_name}_apparent_sky.txt"
+    _write_normalization_skymodel(skymodel_path)
+
+    predicted_ms = tmp_path / f"{output_name}_predicted.ms"
+    dp3_command = (
+        f"DP3 msin={ms_path} steps=[predict] "
+        f"predict.usebeammodel=True "
+        f"predict.beam_interval=120 "
+        f"predict.beammode=array_factor "
+        f"predict.sourcedb={skymodel_path} "
+        f"msout={predicted_ms}"
+    )
+
+    subprocess.run(shlex.split(dp3_command), check=True)
+    rng = np.random.default_rng(0)
+    with pt.table(str(predicted_ms), readonly=False, ack=False) as table:
+        data = table.getcol("DATA")
+        noise = (
+            rng.normal(scale=0.05, size=data.shape) + 1j * rng.normal(scale=0.05, size=data.shape)
+        ).astype(data.dtype)
+        table.putcol("DATA", data + noise)
+
+    shutil.rmtree(ms_path)
+    predicted_ms.rename(ms_path)
+    return ms_path
+
+
 @pytest.fixture
 def normalization_skymodel_paths(request):
     """Return optional normalization sky model paths for integration tests."""
@@ -176,6 +213,8 @@ def single_loop_strategy_path_peel_bright_sources(request, tmp_path):
 def single_loop_strategy_path_calibrate_di(tmp_path):
     """Fixture to generate a strategy file for a single self-calibration loop with DI calibration."""
     strategy_steps = [make_strategy_step(do_calibrate=True, do_image=True, do_fulljones_solve=True)]
+    strategy_steps[0]["calibration_strategy"] = {"di": ["full_jones"]}
+
     strategy_content = f"strategy_steps = {strategy_steps}"
     strategy_path = tmp_path / "single_loop_strategy_calibrate_di.py"
     strategy_path.write_text(strategy_content)
@@ -194,6 +233,40 @@ def single_loop_strategy_path_calibrate_di_fast_medium_phase(tmp_path):
     ]
     strategy_content = f"strategy_steps = {strategy_steps}"
     strategy_path = tmp_path / "single_loop_strategy_calibrate_di_fast_medium_phase.py"
+    strategy_path.write_text(strategy_content)
+    return strategy_path
+
+
+@pytest.fixture
+def single_loop_strategy_path_calibrate_di_fast_medium_slow(tmp_path):
+    """Fixture to generate a strategy file for a single self-calibration loop with DI fast, medium, and slow gains solves."""
+    strategy_steps = [
+        make_strategy_step(
+            do_calibrate=True,
+            do_image=True,
+            calibration_strategy={
+                "di": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"]
+            },
+        )
+    ]
+    strategy_content = f"strategy_steps = {strategy_steps}"
+    strategy_path = tmp_path / "single_loop_strategy_calibrate_di_fast_medium_slow.py"
+    strategy_path.write_text(strategy_content)
+    return strategy_path
+
+
+@pytest.fixture
+def single_loop_strategy_path_calibrate_dd_slow(tmp_path):
+    """Fixture to generate a strategy file for a single self-calibration loop with DD slow gains solves."""
+    strategy_steps = [
+        make_strategy_step(
+            do_calibrate=True,
+            do_image=True,
+            calibration_strategy={"dd": ["slow_gains"]},
+        )
+    ]
+    strategy_content = f"strategy_steps = {strategy_steps}"
+    strategy_path = tmp_path / "single_loop_strategy_calibrate_dd_slow.py"
     strategy_path.write_text(strategy_content)
     return strategy_path
 
@@ -244,38 +317,136 @@ def single_loop_strategy_with_calibration_strategy(tmp_path, request):
 
 
 @pytest.fixture
+def two_loop_strategy_with_calibration_strategy(tmp_path):
+    """Strategy file for two self-calibration loops: DI in cycle 1, DD in cycle 2.
+
+    Cycle 2 builds its calibrator model from cycle-1 imaging output. On the small
+    integration dataset there is little flux left in the model after the first
+    cycle, so (scoped to this fixture only) we lower the imaging thresholds to
+    keep more flux in the clean model and drop ``target_flux`` well below the
+    default so the cycle-2 calibrator-flux check is met; otherwise cycle 2 has no
+    calibrators and fails.
+
+
+    We do cap the WSClean channel count for this test data. The integration MS
+    is tiny, and fitting a high-order spectral polynomial across four channels
+    makes the image-derived sky model sensitive to CI noise differences.
+    """
+    multi_cycle_overrides = {
+        "auto_mask": 3.0,
+        "threshisl": 2.0,
+        "threshpix": 3.0,
+        "max_wsclean_nchannels": 2,
+        "target_flux": 0.1,
+    }
+    strategy_steps = [
+        make_strategy_step(
+            do_calibrate=True,
+            do_image=True,
+            calibration_strategy={"di": ["full_jones"], "dd": []},
+            **multi_cycle_overrides,
+        ),
+        make_strategy_step(
+            do_calibrate=True,
+            do_image=True,
+            calibration_strategy={"di": [], "dd": ["fast_phase"]},
+            **multi_cycle_overrides,
+        ),
+    ]
+    strategy_content = f"strategy_steps = {strategy_steps}"
+    strategy_path = tmp_path / "two_loop_strategy.py"
+    strategy_path.write_text(strategy_content)
+    return strategy_path
+
+
+@pytest.fixture
+def ms_with_predicted_sources(tmp_path, test_ms):
+    """Provide a synthetic MS with enough source signal for image-based model updates."""
+    return _make_predicted_test_ms(tmp_path, test_ms, "test_ms_with_predicted_sources")
+
+
+@pytest.fixture
+def generated_parset_path_with_predicted_sources(request, tmp_path, ms_with_predicted_sources):
+    """Generate an integration parset using an MS with detectable predicted sources."""
+    parset_path, input_skymodel_path, apparent_skymodel_path = request.param
+    output_parset_path = tmp_path / "generated.parset"
+
+    generate_parset_from_template(
+        parset_path,
+        output_parset_path,
+        ms_with_predicted_sources,
+        input_skymodel_path,
+        apparent_skymodel_path,
+    )
+    return output_parset_path
+
+
+@pytest.fixture
+def two_loop_strategy_with_calibration_strategy(tmp_path):
+    """Strategy file for two self-calibration loops: DI in cycle 1, DD in cycle 2.
+
+    Cycle 2 builds its calibrator model from cycle-1 imaging output. On the small
+    integration dataset there is little flux left in the model after the first
+    cycle, so (scoped to this fixture only) we lower the imaging thresholds to
+    keep more flux in the clean model and drop ``target_flux`` well below the
+    default so the cycle-2 calibrator-flux check is met; otherwise cycle 2 has no
+    calibrators and fails.
+
+
+    We do cap the WSClean channel count for this test data. The integration MS
+    is tiny, and fitting a high-order spectral polynomial across four channels
+    makes the image-derived sky model sensitive to CI noise differences.
+    """
+    multi_cycle_overrides = {
+        "auto_mask": 3.0,
+        "threshisl": 2.0,
+        "threshpix": 3.0,
+        "max_wsclean_nchannels": 2,
+        "target_flux": 0.1,
+    }
+    strategy_steps = [
+        make_strategy_step(
+            do_calibrate=True,
+            do_image=True,
+            calibration_strategy={"di": ["full_jones"], "dd": []},
+            **multi_cycle_overrides,
+        ),
+        make_strategy_step(
+            do_calibrate=True,
+            do_image=True,
+            calibration_strategy={"di": [], "dd": ["fast_phase"]},
+            **multi_cycle_overrides,
+        ),
+    ]
+    strategy_content = f"strategy_steps = {strategy_steps}"
+    strategy_path = tmp_path / "two_loop_strategy.py"
+    strategy_path.write_text(strategy_content)
+    return strategy_path
+
+
+@pytest.fixture
+def ms_with_predicted_sources(tmp_path, test_ms):
+    """Provide a synthetic MS with enough source signal for image-based model updates."""
+    return _make_predicted_test_ms(tmp_path, test_ms, "test_ms_with_predicted_sources")
+
+
+@pytest.fixture
+def generated_parset_path_with_predicted_sources(request, tmp_path, ms_with_predicted_sources):
+    """Generate an integration parset using an MS with detectable predicted sources."""
+    parset_path, input_skymodel_path, apparent_skymodel_path = request.param
+    output_parset_path = tmp_path / "generated.parset"
+
+    generate_parset_path(
+        parset_path,
+        output_parset_path,
+        ms_with_predicted_sources,
+        input_skymodel_path,
+        apparent_skymodel_path,
+    )
+    return output_parset_path
+
+
+@pytest.fixture
 def ms_for_normalisation(tmp_path, test_ms, resource_dir):
     """Provide a synthetic MS with denser UV coverage for normalization tests."""
-    ms_path = tmp_path / "test_ms_for_normalization.ms"
-    shutil.copytree(test_ms, ms_path)
-    _set_synthetic_uvw_geometry(ms_path)
-    with pt.table(str(ms_path), readonly=False, ack=False) as table:
-        data = table.getcol("DATA")
-        data[...] = 0.0j
-        table.putcol("DATA", data)
-
-    skymodel_path = tmp_path / "integration_apparent_sky_normalization.txt"
-    _write_normalization_skymodel(resource_dir, skymodel_path)
-
-    predicted_ms = tmp_path / "test_ms_for_normalization_predicted.ms"
-
-    dp3_command = (
-        f"DP3 msin={ms_path} steps=[predict] "
-        f"predict.usebeammodel=True "
-        f"predict.beam_interval=120 "
-        f"predict.beammode=array_factor "
-        f"predict.sourcedb={skymodel_path} "
-        f"msout={predicted_ms}"
-    )
-
-    subprocess.run(shlex.split(dp3_command), check=True)
-    rng = np.random.default_rng(0)
-    with pt.table(str(predicted_ms), readonly=False, ack=False) as table:
-        data = table.getcol("DATA")
-        noise = (
-            rng.normal(scale=0.05, size=data.shape) + 1j * rng.normal(scale=0.05, size=data.shape)
-        ).astype(data.dtype)
-        table.putcol("DATA", data + noise)
-    shutil.rmtree(ms_path)
-    predicted_ms.rename(ms_path)
-    return ms_path
+    return _make_predicted_test_ms(tmp_path, test_ms, "test_ms_for_normalization")

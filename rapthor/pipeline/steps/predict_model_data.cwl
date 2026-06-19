@@ -16,13 +16,13 @@ arguments:
   - msout.overwrite=True
   - steps=[predict]
   - predict.operation=replace
-  - predict.applycal.correction=phase000
-  - predict.applycal.fastphase.correction=phase000
-  - predict.applycal.fastphase.solset=sol000
-  - predict.applycal.slowgain.correction=amplitude000
-  - predict.applycal.slowgain.solset=sol000
-  - predict.applycal.normalization.correction=amplitude000
-  - predict.applycal.normalization.solset=sol000
+  - valueFrom: "$(inputs.h5parm != null ? 'predict.applycal.correction=phase000' : null)"
+  - valueFrom: "$(inputs.h5parm != null ? 'predict.applycal.fastphase.correction=phase000' : null)"
+  - valueFrom: "$(inputs.h5parm != null ? 'predict.applycal.fastphase.solset=sol000' : null)"
+  - valueFrom: "$(inputs.h5parm != null ? 'predict.applycal.slowgain.correction=amplitude000' : null)"
+  - valueFrom: "$(inputs.h5parm != null ? 'predict.applycal.slowgain.solset=sol000' : null)"
+  - valueFrom: "$(inputs.h5parm != null ? 'predict.applycal.normalization.correction=amplitude000' : null)"
+  - valueFrom: "$(inputs.h5parm != null ? 'predict.applycal.normalization.solset=sol000' : null)"
   - predict.usebeammodel=True
   - predict.beam_interval=120
   - predict.beammode=array_factor
@@ -113,7 +113,12 @@ inputs:
     type: boolean
     inputBinding:
       prefix: predict.type=
-      valueFrom: "$(self ? 'sagecalpredict': 'h5parmpredict')"
+      valueFrom: |
+        ${
+          if (self) { return 'sagecalpredict'; }
+          if (inputs.h5parm == null) { return 'predict'; }
+          return 'h5parmpredict';
+        }
       separate: False
 
   - id: applycal_steps
