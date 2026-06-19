@@ -9,6 +9,8 @@ import casacore.tables as pt
 import numpy as np
 import pytest
 
+from rapthor.testing import generate_parset_path
+
 COMMON_STRATEGY_SETTINGS = {
     "channel_width_hz": 195312.5,
     # Set slow-gain and fulljones solves to False except when required
@@ -88,6 +90,49 @@ def _set_synthetic_uvw_geometry(ms_path):
             uvw[row_index] = second_position - first_position
 
         table.putcol("UVW", uvw)
+
+
+@pytest.fixture
+def normalization_skymodel_paths(request):
+    """Return optional normalization sky model paths for integration tests."""
+    return getattr(request, "param", None)
+
+
+@pytest.fixture
+def generated_parset_path_normalisation(
+    request,
+    tmp_path,
+    ms_for_normalisation,
+    normalization_skymodel_paths,
+):
+    """
+    Fixture to generate a complete parset from a template and return the path.
+
+    This fixture is used to read in and update a template parset file. It is
+    parametrised using the pytest request fixture and expects a tuple
+    containing three paths to the following files:
+
+    1. Template parset (e.g. in tests/resources/parsets/)
+    2. True sky model (e.g. in tests/resources/)
+    3. Apparent sky model (e.g. in tests/resources/)
+
+    This fixture can be used to test rapthor runs end to end on a small input
+    measurement set with different strategies and sky models.
+    For further details see `generate_parset` function.
+    """
+    parset_path, input_skymodel_path, apparent_skymodel_path = request.param
+    parset_path = request.config.repo_root_dir / parset_path
+    output_parset_path = tmp_path / "generated.parset"
+
+    generate_parset_path(
+        parset_path,
+        output_parset_path,
+        ms_for_normalisation,
+        input_skymodel_path,
+        apparent_skymodel_path,
+        normalization_skymodel_paths=normalization_skymodel_paths,
+    )
+    return output_parset_path
 
 
 @pytest.fixture
