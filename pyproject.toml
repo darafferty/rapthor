@@ -36,7 +36,7 @@ dependencies = [
     "bdsf",
     "jinja2",
     "losoto>=2.4.3",
-    "lsmtool @ git+https://git.astron.nl/RD/LSMTool.git@c099308552fa481f5699d4592d462aadc7c92458",
+    "lsmtool @ git+https://git.astron.nl/RD/LSMTool.git@master",
     "matplotlib",
     "mocpy",
     "numpy",
@@ -100,6 +100,7 @@ script-files = [
     "rapthor/scripts/collect_screen_h5parms.py",
     "rapthor/scripts/combine_h5parms.py",
     "rapthor/scripts/concat_ms.py",
+    "rapthor/scripts/correct_astrometry.py",
     "rapthor/scripts/filter_skymodel.py",
     "rapthor/scripts/make_catalog_from_image_cube.py",
     "rapthor/scripts/make_image_cube.py",
@@ -252,6 +253,7 @@ format_targets = [
     "rapthor/process.py",
     "rapthor/scripts/calculate_image_diagnostics.py",
     "rapthor/scripts/normalize_flux_scale.py",
+    "rapthor/testing.py",
     "tests"
 ]
 
