@@ -23,12 +23,10 @@ logger = logging.getLogger(__name__)
 
 def make_writable(msfile):
     """
-    Check if msfile is writable, if not, create a writable copy
+    Always create a writable copy
     and return it as output
     """
 
-    if os.access(msfile, os.W_OK):
-        return msfile
     # get base dir to create files
     tmpdir = "$(runtime.tmpdir)"
     newms = os.path.join(tmpdir, os.path.basename(msfile) + "_" + str(uuid.uuid4()))
