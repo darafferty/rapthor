@@ -9,6 +9,8 @@ import casacore.tables as pt
 import numpy as np
 import pytest
 
+from rapthor.testing import generate_parset_path
+
 COMMON_STRATEGY_SETTINGS = {
     "channel_width_hz": 195312.5,
     # Set slow-gain and fulljones solves to False except when required
@@ -41,14 +43,19 @@ COMMON_STRATEGY_SETTINGS = {
 }
 
 
+@pytest.fixture
+def resource_dir():
+    return Path(__file__).parents[1] / "resources"
+
+
 def make_strategy_step(**overrides):
     """Helper to create a strategy step with settings and overrides."""
     return {**COMMON_STRATEGY_SETTINGS, **overrides}
 
 
-def _write_normalization_skymodel(output_path):
+def _write_normalization_skymodel(resource_dir, output_path):
     """Write the apparent sky model used for normalization tests."""
-    source_model_path = Path("tests/resources/integration_apparent_sky.txt")
+    source_model_path = resource_dir / "integration_apparent_sky.txt"
     output_path.write_text(source_model_path.read_text(encoding="utf-8"), encoding="utf-8")
 
 
@@ -88,6 +95,49 @@ def _set_synthetic_uvw_geometry(ms_path):
             uvw[row_index] = second_position - first_position
 
         table.putcol("UVW", uvw)
+
+
+@pytest.fixture
+def normalization_skymodel_paths(request):
+    """Return optional normalization sky model paths for integration tests."""
+    return getattr(request, "param", None)
+
+
+@pytest.fixture
+def generated_parset_path_normalisation(
+    request,
+    tmp_path,
+    ms_for_normalisation,
+    normalization_skymodel_paths,
+):
+    """
+    Fixture to generate a complete parset from a template and return the path.
+
+    This fixture is used to read in and update a template parset file. It is
+    parametrised using the pytest request fixture and expects a tuple
+    containing three paths to the following files:
+
+    1. Template parset (e.g. in tests/resources/parsets/)
+    2. True sky model (e.g. in tests/resources/)
+    3. Apparent sky model (e.g. in tests/resources/)
+
+    This fixture can be used to test rapthor runs end to end on a small input
+    measurement set with different strategies and sky models.
+    For further details see `generate_parset` function.
+    """
+    parset_path, input_skymodel_path, apparent_skymodel_path = request.param
+    parset_path = request.config.repo_root_dir / parset_path
+    output_parset_path = tmp_path / "generated.parset"
+
+    generate_parset_path(
+        parset_path,
+        output_parset_path,
+        ms_for_normalisation,
+        input_skymodel_path,
+        apparent_skymodel_path,
+        normalization_skymodel_paths=normalization_skymodel_paths,
+    )
+    return output_parset_path
 
 
 @pytest.fixture
@@ -143,9 +193,8 @@ def single_loop_do_normalize_strategy_path(tmp_path):
 
 
 @pytest.fixture
-def no_matching_normalization_inputs(single_loop_do_normalize_strategy_path):
+def no_matching_normalization_inputs(resource_dir, single_loop_do_normalize_strategy_path):
     """Return parset updates that make do_normalize use non-matching reference models."""
-    resource_dir = Path(__file__).parents[1] / "resources"
     apparent_skymodel = resource_dir / "test_apparent_sky.txt"
     true_skymodel = resource_dir / "test_true_sky.txt"
     return {
@@ -169,7 +218,7 @@ def single_loop_strategy_path_fast_medium_slow(tmp_path):
 
 
 @pytest.fixture
-def ms_for_normalisation(tmp_path, test_ms):
+def ms_for_normalisation(tmp_path, test_ms, resource_dir):
     """Provide a synthetic MS with denser UV coverage for normalization tests."""
     ms_path = tmp_path / "test_ms_for_normalization.ms"
     shutil.copytree(test_ms, ms_path)
@@ -180,7 +229,7 @@ def ms_for_normalisation(tmp_path, test_ms):
         table.putcol("DATA", data)
 
     skymodel_path = tmp_path / "integration_apparent_sky_normalization.txt"
-    _write_normalization_skymodel(skymodel_path)
+    _write_normalization_skymodel(resource_dir, skymodel_path)
 
     predicted_ms = tmp_path / "test_ms_for_normalization_predicted.ms"
 

@@ -386,9 +386,9 @@ max_threads = 0
 # the expense of higher memory usage
 deconvolution_threads = 0
 
-# Number of threads to use by WSClean for parallel gridding (default = 0 = 2/5
+# Number of tasks to use by WSClean for parallel gridding (default = 0 = ``max_threads`` // 8
 # of max_threads, but not more than 6)
-parallel_gridding_threads = 0
+parallel_gridding_tasks = 0
 
 # Full path to a local disk on the nodes for IO-intensive processing (default =
 # not used). The path must exist on all nodes (but does not have to be on a
