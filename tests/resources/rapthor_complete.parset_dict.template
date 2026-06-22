@@ -50,7 +50,7 @@
                       'max_nodes': 8,
                       'max_threads': 64,
                       'mem_per_node_gb': 256,
-                      'parallel_gridding_threads': 16,
+                      'parallel_gridding_tasks': 16,
                       'use_container': True},
  'dir_working': '${dir_working}',
  'generate_initial_skymodel': True,

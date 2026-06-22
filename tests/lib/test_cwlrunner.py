@@ -40,7 +40,7 @@ class Sector:
         self.threshpix = None
         self.vertices_file = "vertices.npy"
         self.wsclean_deconvolution_channels = None
-        self.wsclean_nchannels = None
+        self.wsclean_nchannels = 8
         self.wsclean_niter = None
         self.wsclean_nmiter = None
         self.wsclean_spectral_poly_order = None
@@ -146,6 +146,9 @@ class Field:
 
     def get_calibration_radius(self):
         return 5.0
+
+    def read_facets(self):
+        return []
 
 
 @pytest.fixture(params=("single_machine", "slurm", "slurm_static"))

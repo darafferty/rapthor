@@ -1,5 +1,6 @@
 import configparser
 import re
+import shlex
 from pathlib import Path
 
 
@@ -59,6 +60,31 @@ def make_failing_filter_skymodel(fake_bin_dir):
     return fake_script
 
 
+def parse_cmd_args_from_logs(log_path, cmd):
+    """Parse the command arguments from a CWL job log file.
+
+    Returns a dict of ``{key: value}`` strings for every ``key=value`` argument
+    passed to the command.  Arguments without a value (e.g. ``msout=``) are stored with
+    an empty string.
+
+    Raises ``ValueError`` if no DP3 command is found in the log.
+    """
+    text = Path(log_path).read_text()
+
+    # Extract everything after "$ DP3 " up to the first non-continuation line
+    match = re.search(rf"{cmd}\s+((?:.*\\\n)*.*)", text)
+    if not match:
+        raise ValueError(f"No {cmd} command found in {log_path}")
+
+    # Join continuation lines, drop backslashes, split into tokens
+    tokens = match.group(1).replace("\\\n", " ")
+    if "=" in tokens:
+        return {k: v for k, _, v in (t.partition("=") for t in tokens.split() if "=" in t)}
+    else:
+        # Avoid parsing and return the full string
+        return tokens
+
+
 def parse_dp3_args_from_log(log_path):
     """Parse the DP3 command arguments from a CWL job log file.
 
@@ -68,14 +94,4 @@ def parse_dp3_args_from_log(log_path):
 
     Raises ``ValueError`` if no DP3 command is found in the log.
     """
-    text = Path(log_path).read_text()
-
-    # Extract everything after "$ DP3 " up to the first non-continuation line
-    match = re.search(r"\$ DP3\s+((?:.*\\\n)*.*)", text)
-    if not match:
-        raise ValueError(f"No DP3 command found in {log_path}")
-
-    # Join continuation lines, drop backslashes, split into tokens
-    tokens = match.group(1).replace("\\\n", " ").split()
-
-    return {k: v for k, _, v in (t.partition("=") for t in tokens if "=" in t)}
+    return parse_cmd_args_from_logs(log_path, "DP3")
