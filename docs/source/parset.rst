@@ -623,6 +623,9 @@ The available options are described below under their respective sections.
         
         .. warning:: 
             This option is currently experimental and should be used with caution.
+        
+        .. notes::
+            If the number of facets is only one the option will be disabled 
 
     reweight
         Reweight the visibility data before imaging (default = ``False``). If ``True``,
@@ -755,9 +758,11 @@ The available options are described below under their respective sections.
         Number of threads to use by WSClean during deconvolution (default = 0 = 2/5 of
         ``max_threads``, but not more than 14).
 
-    parallel_gridding_threads
-        Number of threads to use by WSClean for parallel gridding (default = 0 = 2/5 of
-        ``max_threads``, but not more than 6).
+    parallel_gridding_tasks
+        Number of tasks WSClean can use for parallel gridding. If this is set to 0 (default) 
+        the number of tasks will be set to ``max_threads // 8`` (most hardware has a multiple
+        of 8 cores per 'chiplet' so this is usually a good choice for optimal performance).
+        NB: setting this too low may lead to major thread contention overheads.
 
     dir_local
         Full path to a local disk on the nodes for IO-intensive processing (default = not

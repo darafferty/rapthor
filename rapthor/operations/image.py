@@ -16,6 +16,28 @@ from rapthor.lib.operation import Operation
 log = logging.getLogger("rapthor:image")
 
 
+def get_max_divisor_less_than_or_equal(number: int, limit: int) -> int:
+    """
+    Get the biggest divisor of number which is <= limit
+    """
+    for divisor in range(limit, 0, -1):
+        if number % divisor == 0:
+            return divisor
+    else:
+        return 1
+
+
+def adjust_parallel_gridding_tasks(max_cores, parallel_gridding_tasks, max_work_units):
+    """
+    Adjust parallel gridding tasks to match available work units and core constraints.
+
+    Caps the task count to prevent over-partitioning the thread pool, ensuring
+    allocated threads are not left unassigned.
+    """
+    parallel_gridding_tasks = min(parallel_gridding_tasks, max_work_units)
+    return get_max_divisor_less_than_or_equal(max_cores, parallel_gridding_tasks)
+
+
 def merge_list_flatten(input_list: List[List]) -> List:
     """
     Merge a list of lists into a single flattened list
@@ -388,6 +410,10 @@ class Image(Operation):
             "interval": interval,
             "max_threads": self.field.parset["cluster_specific"]["max_threads"],
             "deconvolution_threads": self.field.parset["cluster_specific"]["deconvolution_threads"],
+            "parallel_gridding_tasks": [
+                self.field.parset["cluster_specific"]["parallel_gridding_tasks"]
+                * len(self.imaging_sectors)
+            ],
             "save_filtered_model_image": self.field.parset["imaging_specific"][
                 "save_filtered_model_image"
             ],
@@ -421,10 +447,46 @@ class Image(Operation):
             self.input_parms.update(
                 {"mpi_cpus_per_task": [self.parset["cluster_specific"]["cpus_per_task"]] * nsectors}
             )
-        if self.use_facets:
-            self.input_parms["shared_facet_rw"] = self.parset["imaging_specific"]["shared_facet_rw"]
-        else:
-            self.input_parms["shared_facet_rw"] = False
+
+        self.input_parms["shared_facet_rw"] = False
+
+        facets = self.field.read_facets() if self.use_facets else None
+        n_facets = len(facets) if facets else 0
+
+        for sector_id, (parallel_gridding_tasks, channels_out_per_node) in enumerate(
+            zip(self.input_parms["parallel_gridding_tasks"], self.input_parms["channels_out"])
+        ):
+            if self.use_mpi:
+                channels_out_per_node = channels_out_per_node // self.input_parms["mpi_nnodes"][0]
+
+            # Case 1: Facets are available.
+            # Distribute over channels_out, parallelise over facets.
+            # Match parallel tasks to n_facets so available threads aren't left
+            if n_facets > 1:
+                self.input_parms["shared_facet_rw"] = self.parset["imaging_specific"][
+                    "shared_facet_rw"
+                ]
+
+                self.input_parms["parallel_gridding_tasks"][sector_id] = (
+                    adjust_parallel_gridding_tasks(
+                        self.field.parset["cluster_specific"]["max_cores"],
+                        parallel_gridding_tasks,
+                        n_facets,
+                    )
+                )
+            # Case 2: Only one facet or none is available.
+            # Both distribute and parallelise over channels_out.
+            # Match parallel tasks to channels per node so available threads
+            elif channels_out_per_node < parallel_gridding_tasks:
+                # Further reduce in case of n_channels_out less then parallel_gridding_tasks
+                self.input_parms["parallel_gridding_tasks"][sector_id] = (
+                    adjust_parallel_gridding_tasks(
+                        self.field.parset["cluster_specific"]["max_cores"],
+                        parallel_gridding_tasks,
+                        channels_out_per_node,
+                    )
+                )
+
         if not self.apply_none and self.use_facets:
             # For faceting, we need inputs for making the ds9 facet region files
             self.input_parms.update(
@@ -455,13 +517,7 @@ class Image(Operation):
                 self.input_parms.update({"soltabs": "amplitude000,phase000"})
             else:
                 self.input_parms.update({"soltabs": "phase000"})
-            self.input_parms.update(
-                {
-                    "parallel_gridding_threads": self.field.parset["cluster_specific"][
-                        "parallel_gridding_threads"
-                    ]
-                }
-            )
+
             if is_only_pol_I(self.image_pol):
                 # For Stokes-I-only imaging, we can take advantage of the scalar or
                 # diagonal visibilities options in WSClean (saving I/O)

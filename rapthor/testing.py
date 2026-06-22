@@ -3,6 +3,7 @@ This module contains helper code for testing rapthor.
 """
 
 import configparser
+import contextlib
 import os
 import tempfile
 from pathlib import Path
@@ -11,6 +12,74 @@ import numpy as np
 from astropy.table import Table
 
 REPO_ROOT_DIR = Path(__file__).parent.parent
+
+
+@contextlib.contextmanager
+def assert_logged(caplog, logger, level, *expected_messages):
+    """
+    Context manager for asserting the presence of specific messages in the
+    captured log records.
+
+    Since this function is decorated as a context manager, the underlying
+    object created is a ContextDecorator so this function can be used as a
+    decorator as well as in with statements. It is also re-entrant, so the
+    same context manager can be reused multiple times.
+
+    Parameters
+    ----------
+    caplog : pytest.LogCaptureFixture
+        The pytest caplog fixture for capturing log records.
+    logger : str
+        Logger name
+    level : int
+        Logging level
+    *expected_messages
+        One or more expected messages to scan the logs for.
+
+
+    Examples
+    --------
+    The following example will pass, because the expected message is present in
+    the logs:
+
+    >>> with assert_logged(caplog, "my_logger", logging.INFO, "Hello World"):
+    ...    logging.getLogger("my_logger").info('Hello World')
+
+    Failure case:
+    >>> with assert_logged(caplog, "my_logger", logging.INFO, "Hello World"):
+    ...    logging.getLogger("my_logger").info('Nope')
+
+    Checking for multiple messages:
+    >>> with assert_logged(caplog, "my_logger", logging.INFO, "Hello", "World"):
+    ...    logger = logging.getLogger("my_logger")
+    ...    logger.info('Hello')
+    ...    logger.info('World')
+
+    Raises
+    ------
+    TypeError
+        If any of the expected_messages are not strings.
+    AssertionError
+        If any of the expected messages are not found in the logs.
+    """
+
+    # validate inputs
+    if not expected_messages:
+        raise ValueError("At least one expected message must be provided")
+
+    for msg in expected_messages:
+        if not isinstance(msg, str):
+            raise TypeError(f"expected message must be a str, not {type(msg).__name__}")
+
+    # Capture logs at the level for the given logger
+    with caplog.at_level(level, logger=logger) as context:
+        yield context
+
+        for expected_message in expected_messages:
+            if expected_message not in caplog.text:
+                raise AssertionError(
+                    f"Expected message(s) not found in logs:\n\t{expected_message!r}"
+                )
 
 
 def _get_test_run_root():
