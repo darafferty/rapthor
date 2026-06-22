@@ -118,7 +118,10 @@ def predict(
         bandwidth = frequency_bandwidth[1]
     # split channels into chunks of 2 MHz bandwidth
     predict_bandwidth = 2.0e6
-    n_chunks = int(bandwidth / predict_bandwidth)
+    if bandwidth > predict_bandwidth:
+        n_chunks = int(bandwidth / predict_bandwidth)
+    else:
+        n_chunks = 1
     chan_list = np.arange(n_chan)
     freq_chunks = np.array_split(freq_list, n_chunks)
     chan_chunks = np.array_split(chan_list, n_chunks)
