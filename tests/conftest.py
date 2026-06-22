@@ -29,11 +29,10 @@ TEST_MS_ARCHIVE_DIRNAME = "tDDECal.MS"
 TEST_MS_DIRNAME = "test.ms"
 TEST_TRUE_SKYMODEL = (RESOURCE_DIR / "test_true_sky.txt").as_posix()
 TEST_APPARENT_SKYMODEL = (RESOURCE_DIR / "test_apparent_sky.txt").as_posix()
-TEST_INTEGRATION_TRUE_SKYMODEL = (RESOURCE_DIR / "integration_true_sky.txt").as_posix()
-TEST_INTEGRATION_APPARENT_SKYMODEL = (RESOURCE_DIR / "integration_apparent_sky.txt").as_posix()
 
 
 def pytest_configure(config):
+    config.repo_root_dir = REPO_ROOT_DIR
     config.resource_dir = RESOURCE_DIR
 
 
@@ -349,46 +348,6 @@ def generated_parset_path(request, tmp_path, test_ms):
         normalization_skymodel_paths=None,
     )
 
-    return output_parset_path
-
-
-@pytest.fixture
-def normalization_skymodel_paths(request):
-    """Return optional normalization sky model paths for integration tests."""
-    return getattr(request, "param", None)
-
-
-@pytest.fixture
-def generated_parset_path_normalisation(
-    request, tmp_path, ms_for_normalisation, normalization_skymodel_paths
-):
-    """
-    Fixture to generate a complete parset from a template and return the path.
-
-    This fixture is used to read in and update a template parset file. It is
-    parametrised using the pytest request fixture and expects a tuple
-    containing three paths to the following files:
-
-    1. Template parset (e.g. in tests/resources/parsets/)
-    2. True sky model (e.g. in tests/resources/)
-    3. Apparent sky model (e.g. in tests/resources/)
-
-    This fixture can be used to test rapthor runs end to end on a small input
-    measurement set with different strategies and sky models.
-    For further details see `generate_parset` function.
-    """
-    parset_path, input_skymodel_path, apparent_skymodel_path = request.param
-    parset_path = REPO_ROOT_DIR / parset_path
-    output_parset_path = tmp_path / "generated.parset"
-
-    generate_parset_path(
-        parset_path,
-        output_parset_path,
-        ms_for_normalisation,
-        input_skymodel_path,
-        apparent_skymodel_path,
-        normalization_skymodel_paths=normalization_skymodel_paths,
-    )
     return output_parset_path
 
 
