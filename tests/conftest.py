@@ -7,11 +7,13 @@ import configparser
 import shutil
 import tarfile
 import tempfile
+from collections.abc import MutableMapping, Sequence
 from pathlib import Path
 
 import lsmtool
 import pytest
 import requests
+from _pytest.fixtures import FixtureFunctionDefinition
 from lsmtool.facet import read_ds9_region_file
 
 from rapthor.lib.field import Field
@@ -34,6 +36,46 @@ TEST_APPARENT_SKYMODEL = (RESOURCE_DIR / "test_apparent_sky.txt").as_posix()
 def pytest_configure(config):
     config.repo_root_dir = REPO_ROOT_DIR
     config.resource_dir = RESOURCE_DIR
+
+
+@pytest.fixture
+def resolve_fixture_values(request):
+    """
+    Helper fixture that retrieves fixture values dynamically for test case
+    parameters containing direct fixture function references.
+
+    This enables more flexible parametrization of test cases that require a mix
+    of literal values and fixture values. Fixture functions are resolved to the
+    required fixture values at runtime. The requested parameters may be a
+    single value or a nested structure, in which case the value resolution will
+    be done recursively.
+
+    Examples
+    --------
+    >>> @pytest.fixture
+    ... def my_fixture():
+    ...     'do some setup here'
+    ...     yield "fixture value"
+    ...
+    ... @pytest.mark.parametrize('resolve_fixture_values', [my_fixture], indirect=True)
+    ... def test_something(resolve_fixture_values):
+    ...     assert resolve_fixture_values == ["fixture value"]
+    """
+    return _get_fixture_value(request, request.param)
+
+
+def _get_fixture_value(request, item):
+    # If the item is a fixture function, resolve it to the fixture value
+    if isinstance(item, FixtureFunctionDefinition):
+        return request.getfixturevalue(item.__name__)
+
+    if isinstance(item, MutableMapping):
+        return {key: _get_fixture_value(request, subitem) for key, subitem in item.items()}
+
+    if isinstance(item, Sequence) and not isinstance(item, (str, bytes)):
+        return [_get_fixture_value(request, subitem) for subitem in item]
+
+    return item
 
 
 def _download_test_ms(destination):
