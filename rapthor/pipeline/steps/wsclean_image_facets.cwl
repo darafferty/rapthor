@@ -10,7 +10,6 @@ requirements:
   InlineJavascriptRequirement: {}
 
 arguments:
-  - -no-update-model-required
   - -local-rms
   - -join-channels
   - -apply-facet-beam
@@ -224,6 +223,12 @@ inputs:
     default: false
     inputBinding:
       prefix: -shared-facet-writes
+  - id: no_update_model_required
+    type: boolean
+    default: true
+    inputBinding:
+      prefix: -no-update-model-required
+
 outputs:
   - id: image_I_nonpb_name
     type: File

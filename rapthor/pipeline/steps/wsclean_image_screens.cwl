@@ -26,7 +26,6 @@ requirements:
   - class: InlineJavascriptRequirement
 
 arguments:
-  - -no-update-model-required
   - -local-rms
   - -join-channels
   - valueFrom: 'idg'
@@ -333,6 +332,16 @@ inputs:
     type: boolean
     inputBinding:
       prefix: -apply-time-frequency-smearing
+
+  - id: no_update_model_required
+    label: Do not update model data
+    doc: |
+      Do not update the model data column of the input MS with the clean-
+      component model.
+    type: boolean
+    default: true
+    inputBinding:
+      prefix: -no-update-model-required
 
 outputs:
   - id: image_I_nonpb_name

@@ -91,6 +91,7 @@
                       'robust': -0.65,
                       'save_filtered_model_image': False,
                       'save_visibilities': False,
+                      'save_residual_visibilities': False,
                       'average_visibilities': True,
                       'save_image_cube': False,
                       'save_supplementary_images': False,
@@ -112,8 +113,7 @@
                       'photometry_skymodel': None,
                       'astrometry_skymodel': None,
                       'normalization_skymodels': None,
-                      'normalization_reference_frequencies': None
-                      },
+                      'normalization_reference_frequencies': None},
  'input_h5parm': None,
  'input_fulljones_h5parm': None,
  'input_normalization_h5parm': None,

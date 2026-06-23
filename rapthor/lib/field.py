@@ -82,6 +82,7 @@ class Field(object):
         self.tolerance = self.parset['calibration_specific']['tolerance']
         self.dde_method = self.parset['imaging_specific']['dde_method']
         self.save_visibilities = self.parset['imaging_specific']['save_visibilities']
+        self.save_residual_visibilities = self.parset['imaging_specific']['save_residual_visibilities']
         self.average_visibilities = self.parset['imaging_specific']['average_visibilities']
         self.save_image_cube = self.parset['imaging_specific']['save_image_cube']
         self.save_supplementary_images = self.parset['imaging_specific']['save_supplementary_images']
@@ -123,6 +124,7 @@ class Field(object):
         self.slow_gains_h5parm_filename = None
         self.calibration_diagnostics = []
         self.selfcal_state = None
+        self.make_residual_visibilities = False
 
         # Set strategy parameter defaults
         self.fast_timestep_sec = 32.0

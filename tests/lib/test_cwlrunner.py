@@ -138,6 +138,8 @@ class Field:
         self.disable_clean = False
         self.image_cube_stokes_list = ["I"]
         self.save_visibilities = False
+        self.save_residual_visibilities = False
+        self.make_residual_visibilities = False
         self.average_visibilities = True
         self.photometry_skymodel = None
         self.astrometry_skymodel = None

@@ -534,6 +534,13 @@ inputs:
       Apply corrections for time and frequency smearing (length = 1).
     type: boolean
 
+  - id: update_model_required
+    label: Update model data
+    doc: |
+      Update the model data column of the imaging MS with the clean-
+      component model (length = 1).
+    type: boolean
+
 {% if make_image_cube %}
   - id: image_I_cube_name
     label: Filename of I image cube
@@ -895,6 +902,8 @@ steps:
         source: interval
       - id: apply_time_frequency_smearing
         source: apply_time_frequency_smearing
+      - id: update_model_required
+        source: update_model_required
       - id: parallel_gridding_tasks
         source: parallel_gridding_tasks
       - id: bright_skymodel_pb

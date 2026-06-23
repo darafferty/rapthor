@@ -15,7 +15,6 @@ requirements:
     processes: $(inputs.nnodes)
 
 arguments:
-  - -no-update-model-required
   - -local-rms
   - -join-channels
   - -apply-facet-beam
@@ -224,6 +223,11 @@ inputs:
     type: boolean
     inputBinding:
       prefix: -apply-time-frequency-smearing
+  - id: no_update_model_required
+    type: boolean
+    default: true
+    inputBinding:
+      prefix: -no-update-model-required
   - id: shared_facet_reads
     type: boolean
     default: false

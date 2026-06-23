@@ -77,6 +77,7 @@ dde_method = single
 filter_skymodel = False
 source_finder = bdsf
 save_visibilities = True
+save_residual_visibilities = True
 average_visibilities = True
 save_image_cube = True
 save_supplementary_images = True
