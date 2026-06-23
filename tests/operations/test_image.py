@@ -378,6 +378,12 @@ class TestImage:
         image.run()
         assert image.is_done()
 
+    @pytest.mark.parametrize("make_residual_visibilities", [True, False])
+    def test_finalize_make_residual_visibilities(self, image, make_residual_visibilities):
+        image.field.make_residual_visibilities = make_residual_visibilities
+        image.run()
+        assert image.is_done()
+
     def test_sector_extra_images_on_last_cycle(self, image_last_cycle):
         image_last_cycle.run()
         assert image_last_cycle.is_done()

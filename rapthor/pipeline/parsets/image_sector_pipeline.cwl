@@ -999,8 +999,8 @@ steps:
     label: Make residual visibility data
     doc: |
       This step uses DP3 to generate the residual visibility data by
-      subtracting the DATA column from the MODEL_DATA column made
-      by WSClean in the imaging step above.
+      subtracting the MODEL_DATA column, made by WSClean in the imaging step
+      above, from the DATA column.
     run: {{ rapthor_pipeline_dir }}/steps/make_residual_data.cwl
     in:
       - id: msin
