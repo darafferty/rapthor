@@ -45,6 +45,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         libboost-numpy-dev \
         libboost-python-dev \
         libcfitsio-dev \
+        libdeflate-dev \
         libfftw3-dev \
         libgsl-dev \
         libhdf5-dev \
@@ -238,6 +239,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         libboost-python1.83.0 \
         libc6 \
         libcfitsio-bin \
+        libdeflate0 \
         libfftw3-double3 \
         libfftw3-single3 \
         libgcc-s1 \
