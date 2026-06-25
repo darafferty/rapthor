@@ -543,7 +543,10 @@ class Observation(object):
         if "ms_filename" not in self.parameters:
             self.parameters["ms_filename"] = self.ms_filename
         root_filename = os.path.basename(self.ms_filename)
-        self.parameters["ms_prep_filename"] = f"{root_filename}{self.infix}.{sector_name}.prep"
+        for suffix in [".ms", ".MS"]:
+            # Remove common suffixes
+            root_filename = root_filename.removesuffix(suffix)
+        self.parameters["ms_prep_filename"] = f"{root_filename}{self.infix}.{sector_name}_prep.ms"
 
         # Get target time and frequency averaging steps.
         #

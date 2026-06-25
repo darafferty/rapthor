@@ -48,9 +48,9 @@ inputs:
     type: string
 
   - id: residual_filename
-    label: Filenames of residual MSs
+    label: Filename of residual MS
     doc: |
-      The filenames of the MS files resulting from making the residual visibilities
+      The filename of the MS file resulting from making the residual visibilities
       (length = 1).
     type: string
 
