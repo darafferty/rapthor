@@ -447,7 +447,7 @@ class Image(Operation):
 
         self.input_parms["shared_facet_rw"] = False
 
-        num_facets = self.field.num_patches if self.use_facets else 1
+        num_facets = getattr(self.field, "num_patches", 0) if self.use_facets else 1
 
         for sector_id, (parallel_gridding_tasks, channels_out_per_node) in enumerate(
             zip(self.input_parms["parallel_gridding_tasks"], self.input_parms["channels_out"])
