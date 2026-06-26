@@ -51,7 +51,9 @@ def _prepare_field_for_image(field, h5parm_filename="nonexisting_h5parm_file.h5"
     field.do_predict = False
     field.image_pol = "I"
     field.skip_final_major_iteration = True
-    field.num_patches = num_patches 
+    field.num_patches = num_patches
+
+
 def _prepare_field_for_initial_image(field):
     """
     Prepare the field object for an initial image operation.
