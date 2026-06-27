@@ -232,6 +232,42 @@ def test_run_concatenate_flow_executes_commands_and_returns_records(
     assert fake_shell_operation_cls.instances[0].kwargs["working_dir"] == str(tmp_path)
 
 
+@pytest.mark.parametrize(
+    "epoch_input, expected_message",
+    [
+        pytest.param({}, "input_filenames", id="missing-inputs"),
+        pytest.param(
+            {"input_filenames": ["epoch_0_input_0.ms", 7]},
+            "non-empty list of strings",
+            id="malformed-inputs",
+        ),
+    ],
+)
+def test_run_concatenate_flow_rejects_invalid_epoch_input_filenames(
+    tmp_path, fake_shell_operation_cls, epoch_input, expected_message
+):
+    payload = {
+        "pipeline_working_dir": str(tmp_path),
+        "data_colname": "DATA",
+        "epochs": [
+            {
+                **epoch_input,
+                "output_filename": "epoch_0_concatenated.ms",
+                "output_path": str(tmp_path / "epoch_0_concatenated.ms"),
+            }
+        ],
+    }
+
+    with pytest.raises(ValueError, match=expected_message):
+        run_concatenate_flow(
+            payload,
+            execution_config=ExecutionConfig(task_runner="sync"),
+            shell_operation_cls=fake_shell_operation_cls,
+        )
+
+    assert fake_shell_operation_cls.instances == []
+
+
 def test_concatenate_epoch_task_wraps_epoch_runner(tmp_path, fake_shell_operation_cls):
     epoch = {
         "input_filenames": ["epoch_0_input_0.ms", "epoch_0_input_1.ms"],

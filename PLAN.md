@@ -41,15 +41,25 @@ Completed:
   - replaced duplicated flow-local file/directory record path helpers in
     concatenate, mosaic, predict, image, and calibration flows
   - added focused tests for required and optional record path extraction
+- Typed payload contract proving ground:
+  - added `ConcatenatePayload` and `ConcatenateEpochPayload` in
+    `rapthor.execution.payloads`
+  - validated incoming concatenate payloads into the typed shape before command
+    execution or Prefect task submission
+  - added focused tests for missing and malformed epoch input filenames so
+    structurally invalid but serializable payloads fail before reaching workers
 - Verified in the dev container:
   - `python3 -m pytest tests/architecture -q --tb=short`
   - `python3 -m pytest tests/execution/test_outputs.py tests/execution/test_payloads.py tests/execution/test_commands.py -q --tb=short`
   - `python3 -m pytest tests/execution/test_concatenate_flow.py tests/execution/test_mosaic_flow.py tests/execution/test_predict_flow.py -q --tb=short`
   - `python3 -m pytest tests/execution/test_image_flow.py tests/execution/test_calibrate_flow.py -q --tb=short`
   - `python3 -m pytest tests/execution/test_reference_fixtures.py tests/lib/test_operation.py -q --tb=short`
+  - `python3 -m pytest tests/execution/test_concatenate_flow.py tests/execution/test_payloads.py -q --tb=short`
   - targeted Ruff format, lint, and import-sort checks for the new architecture
     tests, touched execution facade modules, output record helpers, and touched
     flow modules
+  - targeted Ruff format, lint, and import-sort checks for the concatenate
+    typed-payload slice
 
 Known follow-up from the completed slice:
 
@@ -71,13 +81,13 @@ Known follow-up from the completed slice:
 
 Next slice:
 
-- Introduce typed payload contracts, starting with smaller flows before image and
-  calibration.
+- Extend typed payload contracts to the remaining small flows, starting with
+  mosaic and predict before image and calibration.
 
 Remaining major stages:
 
-- Introduce typed payload contracts, starting with smaller flows before image and
-  calibration.
+- Extend typed payload contracts beyond concatenate, starting with mosaic and
+  predict before image and calibration.
 - Extract shared command-builder utilities.
 - Split image flow responsibilities.
 - Split calibration flow responsibilities.
@@ -283,7 +293,9 @@ Completion criteria:
 Outcome: payload builders, Prefect tasks, and tests stop depending on large
 untyped dictionaries whose shape is hard to discover.
 
-- Start with the highest-risk flows: image and calibrate.
+- Start with smaller flows such as concatenate, mosaic, and predict as proving
+  grounds, then apply the same pattern to the highest-risk flows: image and
+  calibrate.
 - Add small `TypedDict` or dataclass contracts in `rapthor.execution.payloads`
   or operation-specific payload modules; move them toward a scheduler-independent
   application/use-case package if the dependency boundary becomes clearer that

@@ -1,6 +1,22 @@
 """Serializable task-payload validation helpers."""
 
-from typing import Any, Mapping
+from typing import Any, Mapping, TypedDict
+
+
+class ConcatenateEpochPayload(TypedDict):
+    """Serializable inputs and expected output for one concatenate epoch."""
+
+    input_filenames: list[str]
+    output_filename: str
+    output_path: str
+
+
+class ConcatenatePayload(TypedDict):
+    """Serializable payload submitted to the concatenate flow."""
+
+    pipeline_working_dir: str
+    data_colname: str
+    epochs: list[ConcatenateEpochPayload]
 
 
 class PayloadSerializationError(TypeError):
