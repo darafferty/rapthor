@@ -135,6 +135,17 @@ Completed:
     payload builder directly from the calibration package
   - pruned broad facade re-exports for `calibrate_payload_from_inputs` now that
     this branch has no released public API to preserve
+- Calibration runner split:
+  - added `rapthor.execution.calibrate.runner` for scheduler-independent
+    calibration task bodies, image-predict preparation, plotting, collection,
+    combination, source adjustment, and gain processing
+  - kept simple required-file checks private to the runner until calibration has
+    output-discovery contracts large enough to justify a dedicated module
+  - slimmed `rapthor.execution.flows.calibrate` to Prefect task wrappers,
+    payload validation, sync execution entry points, and orchestration
+  - updated focused calibration tests to exercise plotting and collection
+    helpers through the runner owner module
+  - pruned broad facade re-exports for `run_calibrate_chunk`
 - Verified in the dev container:
   - `python3 -m pytest tests/architecture -q --tb=short`
   - `python3 -m pytest tests/execution/test_outputs.py tests/execution/test_payloads.py tests/execution/test_commands.py -q --tb=short`
@@ -165,6 +176,7 @@ Completed:
   - `python3 -c "from rapthor.execution.image.payloads import ImagePayload, ImageSectorPayload, image_payload_from_inputs; import rapthor.execution.payloads as shared_payloads; assert ImagePayload; assert ImageSectorPayload; assert image_payload_from_inputs; assert not hasattr(shared_payloads, 'ImagePayload'); assert not hasattr(shared_payloads, 'ImageSectorPayload')"`
   - `python3 -c "import rapthor.execution as execution; import rapthor.execution.flows as flows; import rapthor.execution.calibrate.commands as commands; assert commands.normalized_ddecal_solve_command; assert not hasattr(execution, 'build_ddecal_solve_command'); assert not hasattr(flows, 'build_ddecal_solve_command')"`
   - `python3 -c "from rapthor.execution.calibrate.payloads import CalibratePayload, calibrate_payload_from_inputs, validate_calibrate_payload; import rapthor.execution as execution; import rapthor.execution.flows as flows; import rapthor.execution.payloads as shared_payloads; assert CalibratePayload; assert calibrate_payload_from_inputs; assert validate_calibrate_payload; assert not hasattr(shared_payloads, 'CalibratePayload'); assert not hasattr(execution, 'calibrate_payload_from_inputs'); assert not hasattr(flows, 'calibrate_payload_from_inputs')"`
+  - `python3 -c "import rapthor.execution as execution; import rapthor.execution.flows as flows; import rapthor.execution.calibrate.runner as runner; import rapthor.execution.flows.calibrate as flow; assert runner.run_calibrate_chunk; assert runner.collect_plot_and_combine; assert flow.calibrate_chunk_task; assert not hasattr(execution, 'run_calibrate_chunk'); assert not hasattr(flows, 'run_calibrate_chunk')"`
   - targeted Ruff format, lint, and import-sort checks for the new architecture
     tests, touched execution facade modules, output record helpers, and touched
     flow modules
@@ -190,6 +202,8 @@ Completed:
     command extraction slice
   - targeted Ruff format, lint, and import-sort checks for the calibration
     payload extraction slice
+  - targeted Ruff format, lint, and import-sort checks for the calibration
+    runner split
 
 Known follow-up from the completed slice:
 
@@ -211,15 +225,12 @@ Known follow-up from the completed slice:
 
 Next slice:
 
-- Continue splitting calibration flow responsibilities using the
-  `rapthor.execution.<operation>` package pattern proved by image. The next
-  calibration slice should move chunk execution, screen execution, and output
-  collection helpers out of `rapthor.execution.flows.calibrate` into focused
-  calibration runner/output modules.
+- Begin thinning the `Image` and `Calibrate` operation adapters by identifying
+  field/parset-to-payload mapping that can move into pure helper modules without
+  changing CLI behaviour.
 
 Remaining major stages:
 
-- Split calibration flow responsibilities.
 - Thin operation adapters.
 - Improve process orchestration, dry-run/preflight, and debugging surfaces.
 - Manage code quantity and remove duplicated/dead compatibility code, including
@@ -973,7 +984,7 @@ Outcome: the refactor lands as a sequence of small, reviewable improvements.
 5. Completed image payload mapping extraction.
 6. Move image sector execution and output discovery into focused helpers.
 7. Completed calibration command builders and payload mapping extraction.
-8. Move calibration chunk/screen/collect/combine helpers into focused modules.
+8. Completed calibration runner split.
 9. Thin `Image` and `Calibrate` operation adapters.
 10. Split tests to match the new modules.
 11. Add dry-run/preflight and developer-experience improvements where they

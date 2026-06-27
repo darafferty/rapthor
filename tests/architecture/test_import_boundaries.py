@@ -28,6 +28,7 @@ PURE_EXECUTION_MODULES = (
     RAPTHOR_ROOT / "execution" / "commands.py",
     RAPTHOR_ROOT / "execution" / "calibrate" / "commands.py",
     RAPTHOR_ROOT / "execution" / "calibrate" / "payloads.py",
+    RAPTHOR_ROOT / "execution" / "calibrate" / "runner.py",
     RAPTHOR_ROOT / "execution" / "image" / "commands.py",
     RAPTHOR_ROOT / "execution" / "image" / "outputs.py",
     RAPTHOR_ROOT / "execution" / "image" / "payloads.py",

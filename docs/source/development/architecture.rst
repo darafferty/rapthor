@@ -65,7 +65,8 @@ Layer Ownership
        introduced, move operation-specific contracts into the package that owns
        them.
      - ``tests/execution/test_payloads.py`` and operation flow tests.
-   * - Operation runner modules such as ``rapthor.execution.image.sector``
+   * - Operation runner modules such as ``rapthor.execution.image.sector`` and
+       ``rapthor.execution.calibrate.runner``
      - Scheduler-independent task bodies that run shell commands, discover
        outputs, publish task-local artifacts, and return serializable records.
      - Operation flow tests with shell execution mocked.
@@ -105,7 +106,8 @@ New code should import from the module that owns the behaviour, for example:
 * output discovery helpers from operation-specific modules such as
   ``rapthor.execution.image.outputs``
 * task bodies from operation runner modules such as
-  ``rapthor.execution.image.sector``
+  ``rapthor.execution.image.sector`` or
+  ``rapthor.execution.calibrate.runner``
 * Prefect flows from the concrete ``rapthor.execution.flows.<operation>`` module
 * runtime helpers from their concrete runtime module
 

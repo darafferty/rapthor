@@ -19,7 +19,6 @@ from rapthor.execution.config import (
 from rapthor.execution.flows.calibrate import (
     calibrate_chunk_task,
     calibrate_flow,
-    run_calibrate_chunk,
     run_calibrate_flow,
 )
 from rapthor.execution.flows.concatenate import (
@@ -182,7 +181,6 @@ __all__ = [
     "preflight_execution",
     "process_flow",
     "process_steps_flow",
-    "run_calibrate_chunk",
     "run_calibrate_flow",
     "run_concatenate_epoch",
     "run_concatenate_flow",

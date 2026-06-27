@@ -7,7 +7,6 @@ prefer imports from the concrete flow module that owns the behaviour.
 from rapthor.execution.flows.calibrate import (
     calibrate_chunk_task,
     calibrate_flow,
-    run_calibrate_chunk,
     run_calibrate_flow,
 )
 from rapthor.execution.flows.concatenate import (
@@ -106,7 +105,6 @@ __all__ = [
     "collect_process_features",
     "run_process",
     "run_process_preflight",
-    "run_calibrate_chunk",
     "run_calibrate_flow",
     "run_concatenate_epoch",
     "run_concatenate_flow",
