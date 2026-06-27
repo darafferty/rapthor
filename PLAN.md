@@ -238,6 +238,16 @@ Completed:
   - treated predict, mosaic, and concatenate as already thin enough for this
     stage; extract more only when a future change reveals duplication or a
     specific testability problem
+- Process dry-run plan foundation:
+  - added `rapthor.execution.process_plan` as a Prefect-free owner for
+    process-level feature detection and serializable operation-plan summaries
+  - moved process feature detection and supported-feature declarations out of
+    `rapthor.execution.flows.process` while preserving facade imports
+  - added a dry-run/debug helper that reports expected operation order, cycle
+    number, calibration mode, final/selfcal context, and selfcal-check markers
+    without mutating a `Field` or starting Prefect/Dask work
+  - added architecture coverage so the process-plan helper stays free of
+    Prefect, Dask, flow, and operation imports
 - Verified in the dev container:
   - `python3 -m pytest tests/architecture -q --tb=short`
   - `python3 -m pytest tests/execution/test_outputs.py tests/execution/test_payloads.py tests/execution/test_commands.py -q --tb=short`
@@ -265,6 +275,7 @@ Completed:
   - `python3 -m pytest tests/operations/test_calibrate.py -q --tb=short`
   - `python3 -m pytest tests/architecture -q --tb=short`
   - `python3 -m pytest tests/operations/test_concatenate.py tests/operations/test_mosaic.py tests/operations/test_predict.py -q --tb=short`
+  - `python3 -m pytest tests/execution/test_process_flow.py -q --tb=short`
   - `python3 -c "import rapthor.execution as execution; import rapthor.execution.flows as flows; import rapthor.execution.image.commands as image_commands; import rapthor.execution.image.payloads as image_payloads; import rapthor.execution.image.sector as image_sector; import rapthor.execution.flows.image as image_flow; assert image_commands.normalized_wsclean_no_dde_command; assert image_payloads.image_payload_from_inputs; assert image_flow.validate_image_payload is image_payloads.validate_image_payload; assert image_sector.run_image_sector; assert not hasattr(execution, 'run_image_sector'); assert not hasattr(flows, 'run_image_sector'); assert not hasattr(execution, 'image_payload_from_inputs'); assert not hasattr(flows, 'build_wsclean_no_dde_command')"`
   - `python3 -c "from rapthor.execution.image.payloads import ImagePayload, ImageSectorPayload, image_payload_from_inputs; import rapthor.execution.payloads as shared_payloads; assert ImagePayload; assert ImageSectorPayload; assert image_payload_from_inputs; assert not hasattr(shared_payloads, 'ImagePayload'); assert not hasattr(shared_payloads, 'ImageSectorPayload')"`
   - `python3 -c "import rapthor.execution as execution; import rapthor.execution.flows as flows; import rapthor.execution.calibrate.commands as commands; assert commands.normalized_ddecal_solve_command; assert not hasattr(execution, 'build_ddecal_solve_command'); assert not hasattr(flows, 'build_ddecal_solve_command')"`
@@ -281,6 +292,7 @@ Completed:
   - `python3 -c "from rapthor.operations.image_plan import build_image_screen_interval; assert build_image_screen_interval(slow_timestep_sec=10.0, timepersample=2.0, numsamples=20) == [0, 15]"`
   - `python3 -c "from rapthor.operations.image_plan import build_image_mpi_resource_controls; assert build_image_mpi_resource_controls(nsectors=2, max_nodes=8, cpus_per_task=12, batch_system='slurm') == {'mpi_nnodes': [3, 3], 'mpi_cpus_per_task': [12, 12]}"`
   - `python3 -c "from rapthor.operations.calibrate_plan import build_calibration_core_baseline_selection; assert build_calibration_core_baseline_selection('HBA', ['CS003HBA0', 'RS106HBA0', 'DE601HBA']) == '[CR]*&&;!DE601HBA'"`
+  - `python3 -c "from rapthor.execution.process_plan import build_process_step_plan; assert [item['operation'] for item in build_process_step_plan([{'do_calibrate': False, 'do_predict': False, 'do_image': True, 'do_check': True}])] == ['image', 'mosaic', 'check_selfcal']"`
   - targeted Ruff format, lint, and import-sort checks for the new architecture
     tests, touched execution facade modules, output record helpers, and touched
     flow modules
@@ -330,6 +342,8 @@ Completed:
     resource-control helper extraction
   - targeted Ruff format, lint, and import-sort checks for the Calibrate
     station-selection helper extraction
+  - targeted Ruff format, lint, and import-sort checks for the process dry-run
+    plan foundation
 
 Known follow-up from the completed slice:
 
@@ -351,12 +365,11 @@ Known follow-up from the completed slice:
 
 Next slice:
 
-- Improve process orchestration, dry-run/preflight, and debugging surfaces now
-  that the main operation planning rules have clearer owners and focused tests.
+- Manage code quantity and remove duplicated/dead compatibility code now that
+  process and operation planning have clearer owners and focused tests.
 
 Remaining major stages:
 
-- Improve process orchestration, dry-run/preflight, and debugging surfaces.
 - Manage code quantity and remove duplicated/dead compatibility code, including
   temporary shims, as slices land.
 - Convert scripts to importable modules only when touched, while preserving CLI
