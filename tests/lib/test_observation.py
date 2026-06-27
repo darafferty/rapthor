@@ -8,7 +8,7 @@ from unittest import mock
 import numpy as np
 import pytest
 
-from rapthor.execution.process_lifecycle import chunk_observations
+from rapthor.execution.pipeline.lifecycle import chunk_observations
 
 
 @pytest.fixture

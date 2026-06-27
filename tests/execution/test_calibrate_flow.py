@@ -6,8 +6,8 @@ import numpy as np
 import pytest
 from prefect.testing.utilities import prefect_test_harness
 
+import rapthor.execution.calibrate.flow as calibrate_module
 import rapthor.execution.calibrate.runner as calibrate_runner
-import rapthor.execution.flows.calibrate as calibrate_module
 from rapthor.execution.calibrate.commands import (
     build_adjust_h5parm_sources_command,
     build_collect_h5parms_command,
@@ -21,14 +21,14 @@ from rapthor.execution.calibrate.commands import (
     build_plot_solutions_command,
     build_process_gains_command,
 )
-from rapthor.execution.calibrate.payloads import calibrate_payload_from_inputs
-from rapthor.execution.commands import normalize_command
-from rapthor.execution.config import ExecutionConfig
-from rapthor.execution.flows.calibrate import (
+from rapthor.execution.calibrate.flow import (
     calibrate_chunk_task,
     calibrate_flow,
     run_calibrate_flow,
 )
+from rapthor.execution.calibrate.payloads import calibrate_payload_from_inputs
+from rapthor.execution.commands import normalize_command
+from rapthor.execution.config import ExecutionConfig
 from rapthor.lib.records import directory_record, file_record, validate_output_record
 from rapthor.operations.calibrate import Calibrate
 

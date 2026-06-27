@@ -8,7 +8,7 @@ import os
 import re
 from typing import List, Union
 
-from rapthor.execution.flows.image import image_flow
+from rapthor.execution.image.flow import image_flow
 from rapthor.execution.image.payloads import image_payload_from_inputs
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.operation import Operation

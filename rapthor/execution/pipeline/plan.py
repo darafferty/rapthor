@@ -1,8 +1,8 @@
-"""Pure process-planning helpers for top-level Rapthor orchestration."""
+"""Pure pipeline-planning helpers for top-level Rapthor orchestration."""
 
 from typing import Optional
 
-SUPPORTED_PROCESS_FEATURES = frozenset(
+SUPPORTED_PIPELINE_FEATURES = frozenset(
     {
         "calibration",
         "calibration_dd",
@@ -66,8 +66,8 @@ def calibration_mode_flags(strategy: dict) -> dict[str, bool]:
     return {mode: bool(strategy.get(mode, [])) for mode in strategy.keys()}
 
 
-def collect_process_features(field: object, strategy_steps: list[dict], parset: dict) -> set[str]:
-    """Return feature names requested by a process run."""
+def collect_pipeline_features(field: object, strategy_steps: list[dict], parset: dict) -> set[str]:
+    """Return feature names requested by a pipeline run."""
     features = set()
 
     if any(len(obs) > 1 for obs in getattr(field, "epoch_observations", [])):
@@ -130,7 +130,7 @@ def collect_process_features(field: object, strategy_steps: list[dict], parset: 
     return features
 
 
-def build_process_step_plan(
+def build_pipeline_step_plan(
     strategy_steps: list[dict],
     *,
     final: bool = False,
@@ -138,10 +138,10 @@ def build_process_step_plan(
     dde_mode: str = "single",
 ) -> list[dict[str, object]]:
     """
-    Build a serializable operation plan for one process-step group.
+    Build a serializable operation plan for one pipeline-step group.
 
     The result is intended for dry-run/debug output and tests. It mirrors the
-    operation order used by ``run_process_steps`` but does not mutate a Field,
+    operation order used by ``run_pipeline_steps`` but does not mutate a Field,
     instantiate operations, or start Prefect/Dask work.
     """
     plan = []
@@ -156,25 +156,25 @@ def build_process_step_plan(
                 if not enabled:
                     continue
                 if mode == "di":
-                    plan.append(_process_plan_item(cycle, step_index, "predict", "di", final))
-                plan.append(_process_plan_item(cycle, step_index, "calibrate", mode, final))
+                    plan.append(_pipeline_plan_item(cycle, step_index, "predict", "di", final))
+                plan.append(_pipeline_plan_item(cycle, step_index, "calibrate", mode, final))
 
         if step.get("do_predict") and not generate_screens:
-            plan.append(_process_plan_item(cycle, step_index, "predict", "dd", final))
+            plan.append(_pipeline_plan_item(cycle, step_index, "predict", "dd", final))
 
         if step.get("do_image"):
             if step.get("do_normalize"):
-                plan.append(_process_plan_item(cycle, step_index, "image_normalize", None, final))
-            plan.append(_process_plan_item(cycle, step_index, "image", None, final))
-            plan.append(_process_plan_item(cycle, step_index, "mosaic", None, final))
+                plan.append(_pipeline_plan_item(cycle, step_index, "image_normalize", None, final))
+            plan.append(_pipeline_plan_item(cycle, step_index, "image", None, final))
+            plan.append(_pipeline_plan_item(cycle, step_index, "mosaic", None, final))
 
         if step.get("do_check") and not final:
-            plan.append(_process_plan_item(cycle, step_index, "check_selfcal", None, final))
+            plan.append(_pipeline_plan_item(cycle, step_index, "check_selfcal", None, final))
 
     return plan
 
 
-def _process_plan_item(
+def _pipeline_plan_item(
     cycle: int,
     step_index: int,
     operation: str,

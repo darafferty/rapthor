@@ -6,14 +6,14 @@ import pytest
 from prefect.testing.utilities import prefect_test_harness
 
 from rapthor.execution.commands import normalize_command
-from rapthor.execution.config import ExecutionConfig
-from rapthor.execution.flows.concatenate import (
-    build_concatenate_command,
+from rapthor.execution.concatenate.commands import build_concatenate_command
+from rapthor.execution.concatenate.flow import (
     concatenate_epoch_task,
     concatenate_flow,
-    concatenate_payload_from_inputs,
     run_concatenate_flow,
 )
+from rapthor.execution.concatenate.payloads import concatenate_payload_from_inputs
+from rapthor.execution.config import ExecutionConfig
 from rapthor.lib.records import directory_record, validate_output_record
 from rapthor.operations.concatenate import Concatenate
 

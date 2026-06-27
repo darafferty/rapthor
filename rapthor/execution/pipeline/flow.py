@@ -1,4 +1,4 @@
-"""Top-level Prefect flow skeleton for Rapthor process orchestration."""
+"""Top-level Prefect flow for Rapthor pipeline orchestration."""
 
 import logging
 from dataclasses import dataclass
@@ -13,20 +13,20 @@ from rapthor.execution.artifacts import (
 )
 from rapthor.execution.capabilities import preflight_execution
 from rapthor.execution.config import ExecutionConfig
-from rapthor.execution.flows.runtime import run_flow_with_task_runner
-from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
-from rapthor.execution.process_plan import (
-    SUPPORTED_PROCESS_FEATURES,
+from rapthor.execution.pipeline.plan import (
+    SUPPORTED_PIPELINE_FEATURES,
     calibration_mode_flags,
-    collect_process_features,
+    collect_pipeline_features,
 )
+from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
+from rapthor.execution.runtime import run_flow_with_task_runner
 
 log = logging.getLogger("rapthor")
 
 
 @dataclass(frozen=True)
-class ProcessOperationFactories:
-    """Operation constructors used by the top-level process flow."""
+class PipelineOperationFactories:
+    """Operation constructors used by the top-level pipeline flow."""
 
     predict: Callable[[str, object, int], object]
     calibrate: Callable[[str, object, int], object]
@@ -38,8 +38,8 @@ class ProcessOperationFactories:
 
 
 @dataclass(frozen=True)
-class ProcessLifecycleHooks:
-    """Top-level process collaborators outside operation execution."""
+class PipelineLifecycleHooks:
+    """Top-level pipeline collaborators outside operation execution."""
 
     read_parset: Callable[[object], dict]
     set_logging_level: Callable[[str], None]
@@ -52,7 +52,7 @@ class ProcessLifecycleHooks:
     make_report: Callable[[object], None]
 
 
-def default_process_operation_factories() -> ProcessOperationFactories:
+def default_pipeline_operation_factories() -> PipelineOperationFactories:
     """Return the production operation constructors."""
     from rapthor.operations.calibrate import Calibrate
     from rapthor.operations.concatenate import Concatenate
@@ -60,7 +60,7 @@ def default_process_operation_factories() -> ProcessOperationFactories:
     from rapthor.operations.mosaic import Mosaic
     from rapthor.operations.predict import Predict
 
-    return ProcessOperationFactories(
+    return PipelineOperationFactories(
         predict=Predict,
         calibrate=Calibrate,
         image=Image,
@@ -71,38 +71,38 @@ def default_process_operation_factories() -> ProcessOperationFactories:
     )
 
 
-def default_process_lifecycle_hooks() -> ProcessLifecycleHooks:
-    """Return the production process collaborators."""
+def default_pipeline_lifecycle_hooks() -> PipelineLifecycleHooks:
+    """Return the production pipeline collaborators."""
     from rapthor import _logging
-    from rapthor.execution.process_lifecycle import chunk_observations, do_final_pass, make_report
+    from rapthor.execution.pipeline.lifecycle import chunk_observations, do_final_pass, make_report
     from rapthor.lib.field import Field
     from rapthor.lib.parset import parset_read
     from rapthor.lib.strategy import set_strategy, validate_strategy
 
-    return ProcessLifecycleHooks(
+    return PipelineLifecycleHooks(
         read_parset=parset_read,
         set_logging_level=_logging.set_level,
         build_field=Field,
         set_strategy=set_strategy,
         validate_strategy=validate_strategy,
-        preflight_execution=run_process_preflight,
+        preflight_execution=run_pipeline_preflight,
         chunk_observations=chunk_observations,
         do_final_pass=do_final_pass,
         make_report=make_report,
     )
 
 
-def run_process_preflight(
+def run_pipeline_preflight(
     field: object,
     strategy_steps: list[dict],
     execution_config: ExecutionConfig,
     requested_features: set[str],
 ) -> None:
-    """Run the default process-level preflight."""
+    """Run the default pipeline-level preflight."""
     preflight_execution(
         execution_config,
         requested_features=requested_features,
-        supported_features=SUPPORTED_PROCESS_FEATURES,
+        supported_features=SUPPORTED_PIPELINE_FEATURES,
     )
 
 
@@ -125,20 +125,20 @@ def _run_required_operation(factory: Optional[Callable], name: str, *args) -> ob
     return _run_operation(factory, *args)
 
 
-def run_process(
+def run_pipeline(
     parset_file: object,
     logging_level: str = "info",
-    operation_factories: Optional[ProcessOperationFactories] = None,
-    lifecycle_hooks: Optional[ProcessLifecycleHooks] = None,
+    operation_factories: Optional[PipelineOperationFactories] = None,
+    lifecycle_hooks: Optional[PipelineLifecycleHooks] = None,
     execution_config: Optional[ExecutionConfig] = None,
 ) -> Optional[object]:
-    """Run the top-level Rapthor process lifecycle with injectable hooks.
+    """Run the top-level Rapthor pipeline lifecycle with injectable hooks.
 
-    This implements the CLI process lifecycle while keeping
-    collaborators injectable for process-flow tests.
+    This implements the CLI pipeline lifecycle while keeping collaborators
+    injectable for pipeline-flow tests.
     """
-    factories = operation_factories or default_process_operation_factories()
-    hooks = lifecycle_hooks or default_process_lifecycle_hooks()
+    factories = operation_factories or default_pipeline_operation_factories()
+    hooks = lifecycle_hooks or default_pipeline_lifecycle_hooks()
 
     parset = hooks.read_parset(parset_file)
     config = execution_config or ExecutionConfig.from_parset(parset)
@@ -168,7 +168,7 @@ def run_process(
         return None
 
     hooks.validate_strategy(strategy_steps, parset)
-    requested_features = collect_process_features(field, strategy_steps, parset)
+    requested_features = collect_pipeline_features(field, strategy_steps, parset)
     if needs_concatenation:
         requested_features.add("concatenate")
     hooks.preflight_execution(field, strategy_steps, config, requested_features)
@@ -194,7 +194,7 @@ def run_process(
             parset["selfcal_data_fraction"],
         )
         hooks.chunk_observations(field, selfcal_steps, parset["selfcal_data_fraction"])
-        run_process_steps(field, selfcal_steps, operation_factories=factories)
+        run_pipeline_steps(field, selfcal_steps, operation_factories=factories)
 
     field.do_final = hooks.do_final_pass(field, selfcal_steps, final_step)
     if field.do_final:
@@ -246,7 +246,7 @@ def run_process(
             if index == 0:
                 hooks.chunk_observations(field, [final_step], parset["final_data_fraction"])
 
-            run_process_steps(field, [final_step], final=True, operation_factories=factories)
+            run_pipeline_steps(field, [final_step], final=True, operation_factories=factories)
 
     hooks.make_report(field)
     publish_plot_artifacts_for_field(field)
@@ -256,17 +256,17 @@ def run_process(
     return field
 
 
-def run_process_steps(
+def run_pipeline_steps(
     field: object,
     steps: list[dict],
     final: bool = False,
-    operation_factories: Optional[ProcessOperationFactories] = None,
+    operation_factories: Optional[PipelineOperationFactories] = None,
 ) -> object:
-    """Run one group of process steps using injectable operation factories.
+    """Run one group of pipeline steps using injectable operation factories.
 
-    This preserves process-step operation ordering for process-flow tests.
+    This preserves pipeline-step operation ordering for pipeline-flow tests.
     """
-    factories = operation_factories or default_process_operation_factories()
+    factories = operation_factories or default_pipeline_operation_factories()
     selfcal_state = None
     cycle_number = getattr(field, "cycle_number")
 
@@ -346,17 +346,17 @@ def run_process_steps(
     return field
 
 
-@flow(name="process_steps")
-def _process_steps_flow(
+@flow(name="pipeline_steps")
+def _pipeline_steps_flow(
     field: object,
     steps: list[dict],
     final: bool = False,
-    operation_factories: Optional[ProcessOperationFactories] = None,
+    operation_factories: Optional[PipelineOperationFactories] = None,
     execution_config: Optional[ExecutionConfig] = None,
 ):
-    """Prefect implementation for top-level process-step orchestration."""
+    """Prefect implementation for top-level pipeline-step orchestration."""
     with publish_python_logs_to_prefect():
-        return run_process_steps(
+        return run_pipeline_steps(
             field,
             steps,
             final=final,
@@ -364,16 +364,16 @@ def _process_steps_flow(
         )
 
 
-def process_steps_flow(
+def pipeline_steps_flow(
     field: object,
     steps: list[dict],
     final: bool = False,
-    operation_factories: Optional[ProcessOperationFactories] = None,
+    operation_factories: Optional[PipelineOperationFactories] = None,
     execution_config: Optional[ExecutionConfig] = None,
 ):
-    """Prefect entry point for top-level process-step orchestration."""
+    """Prefect entry point for top-level pipeline-step orchestration."""
     return run_flow_with_task_runner(
-        _process_steps_flow,
+        _pipeline_steps_flow,
         field,
         steps,
         final=final,
@@ -382,17 +382,17 @@ def process_steps_flow(
     )
 
 
-@flow(name="process")
-def _process_flow(
+@flow(name="pipeline")
+def _pipeline_flow(
     parset_file: object,
     logging_level: str = "info",
-    operation_factories: Optional[ProcessOperationFactories] = None,
-    lifecycle_hooks: Optional[ProcessLifecycleHooks] = None,
+    operation_factories: Optional[PipelineOperationFactories] = None,
+    lifecycle_hooks: Optional[PipelineLifecycleHooks] = None,
     execution_config: Optional[ExecutionConfig] = None,
 ):
-    """Prefect implementation for top-level process orchestration."""
+    """Prefect implementation for top-level pipeline orchestration."""
     with publish_python_logs_to_prefect(logging_level):
-        return run_process(
+        return run_pipeline(
             parset_file,
             logging_level=logging_level,
             operation_factories=operation_factories,
@@ -401,16 +401,16 @@ def _process_flow(
         )
 
 
-def process_flow(
+def pipeline_flow(
     parset_file: object,
     logging_level: str = "info",
-    operation_factories: Optional[ProcessOperationFactories] = None,
-    lifecycle_hooks: Optional[ProcessLifecycleHooks] = None,
+    operation_factories: Optional[PipelineOperationFactories] = None,
+    lifecycle_hooks: Optional[PipelineLifecycleHooks] = None,
     execution_config: Optional[ExecutionConfig] = None,
 ):
-    """Prefect entry point for top-level process orchestration."""
+    """Prefect entry point for top-level pipeline orchestration."""
     return run_flow_with_task_runner(
-        _process_flow,
+        _pipeline_flow,
         parset_file,
         logging_level=logging_level,
         operation_factories=operation_factories,

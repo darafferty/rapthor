@@ -7,15 +7,17 @@ from prefect.testing.utilities import prefect_test_harness
 
 from rapthor.execution.commands import normalize_command
 from rapthor.execution.config import ExecutionConfig
-from rapthor.execution.flows.predict import (
+from rapthor.execution.predict.commands import (
     build_add_sector_models_command,
     build_predict_model_data_command,
     build_subtract_sector_models_command,
+)
+from rapthor.execution.predict.flow import (
     predict_flow,
     predict_model_data_task,
-    predict_payload_from_inputs,
     run_predict_flow,
 )
+from rapthor.execution.predict.payloads import predict_payload_from_inputs
 from rapthor.lib.records import directory_record, file_record, validate_output_record
 from rapthor.operations.predict import Predict
 

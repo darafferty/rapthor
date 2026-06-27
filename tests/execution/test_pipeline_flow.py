@@ -8,18 +8,18 @@ from prefect.testing.utilities import prefect_test_harness
 
 from rapthor.execution.capabilities import PreflightError, preflight_execution
 from rapthor.execution.config import ExecutionConfig
-from rapthor.execution.flows.process import (
-    ProcessLifecycleHooks,
-    ProcessOperationFactories,
-    process_flow,
-    process_steps_flow,
-    run_process,
-    run_process_steps,
+from rapthor.execution.pipeline.flow import (
+    PipelineLifecycleHooks,
+    PipelineOperationFactories,
+    pipeline_flow,
+    pipeline_steps_flow,
+    run_pipeline,
+    run_pipeline_steps,
 )
-from rapthor.execution.process_plan import (
-    SUPPORTED_PROCESS_FEATURES,
-    build_process_step_plan,
-    collect_process_features,
+from rapthor.execution.pipeline.plan import (
+    SUPPORTED_PIPELINE_FEATURES,
+    build_pipeline_step_plan,
+    collect_pipeline_features,
 )
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
@@ -172,7 +172,7 @@ class RecordingImageInitial:
         _record(self.field, "image_initial", None, None)
 
 
-RECORDING_FACTORIES = ProcessOperationFactories(
+RECORDING_FACTORIES = PipelineOperationFactories(
     predict=RecordingPredict,
     calibrate=RecordingCalibrate,
     image=RecordingImage,
@@ -183,14 +183,14 @@ RECORDING_FACTORIES = ProcessOperationFactories(
 )
 
 
-def _run_prefect_process(parset, strategy_steps, field_updates=None):
-    lifecycle = RecordingProcessLifecycle(
+def _run_prefect_pipeline(parset, strategy_steps, field_updates=None):
+    lifecycle = RecordingPipelineLifecycle(
         parset=parset,
         strategy_steps=strategy_steps,
-        supported_features=SUPPORTED_PROCESS_FEATURES,
+        supported_features=SUPPORTED_PIPELINE_FEATURES,
         field_updates=field_updates or {},
     )
-    field = run_process(
+    field = run_pipeline(
         "input.parset",
         logging_level="debug",
         operation_factories=RECORDING_FACTORIES,
@@ -294,7 +294,7 @@ def _image_step(**updates):
     return step
 
 
-def _process_parset(**updates):
+def _pipeline_parset(**updates):
     parset = {
         "strategy": "test-strategy",
         "generate_initial_skymodel": False,
@@ -321,7 +321,7 @@ def _execution_config_from_matrix(entry):
 
 
 @dataclass
-class RecordingProcessLifecycle:
+class RecordingPipelineLifecycle:
     parset: dict
     strategy_steps: list[dict]
     final_pass: bool = True
@@ -334,7 +334,7 @@ class RecordingProcessLifecycle:
     field: object = None
 
     def hooks(self):
-        return ProcessLifecycleHooks(
+        return PipelineLifecycleHooks(
             read_parset=self.read_parset,
             set_logging_level=self.set_logging_level,
             build_field=self.build_field,
@@ -431,12 +431,12 @@ def _assert_strategy_handoffs(field, expected_order, expected_handoffs):
 
 
 @pytest.mark.parametrize("calibration_strategy, expected_order, expected_handoffs", STRATEGY_CASES)
-def test_run_process_steps_calibration_strategy_handoffs(
+def test_run_pipeline_steps_calibration_strategy_handoffs(
     calibration_strategy, expected_order, expected_handoffs
 ):
     field = RecordingField()
 
-    run_process_steps(
+    run_pipeline_steps(
         field,
         [_single_step(calibration_strategy)],
         operation_factories=RECORDING_FACTORIES,
@@ -446,13 +446,13 @@ def test_run_process_steps_calibration_strategy_handoffs(
 
 
 @pytest.mark.parametrize("calibration_strategy, expected_order, expected_handoffs", STRATEGY_CASES)
-def test_process_steps_flow_calibration_strategy_handoffs(
+def test_pipeline_steps_flow_calibration_strategy_handoffs(
     calibration_strategy, expected_order, expected_handoffs
 ):
     field = RecordingField()
 
     with prefect_test_harness():
-        process_steps_flow(
+        pipeline_steps_flow(
             field,
             [_single_step(calibration_strategy)],
             operation_factories=RECORDING_FACTORIES,
@@ -462,14 +462,14 @@ def test_process_steps_flow_calibration_strategy_handoffs(
     _assert_strategy_handoffs(field, expected_order, expected_handoffs)
 
 
-def test_run_process_steps_stops_after_selfcal_converges():
+def test_run_pipeline_steps_stops_after_selfcal_converges():
     field = RecordingField(selfcal_result=SelfcalState(converged=True))
     steps = [
         _single_step({"dd": ["fast_phase"]}, do_check=True),
         _single_step({"di": ["fast_phase"]}, do_check=True),
     ]
 
-    run_process_steps(field, steps, operation_factories=RECORDING_FACTORIES)
+    run_pipeline_steps(field, steps, operation_factories=RECORDING_FACTORIES)
 
     assert [(event["operation"], event["mode"]) for event in field.events] == [
         ("calibrate", "dd"),
@@ -487,14 +487,14 @@ def test_run_process_steps_stops_after_selfcal_converges():
         pytest.param(SelfcalState(failed=True), "failed", id="failed"),
     ],
 )
-def test_run_process_steps_stops_after_selfcal_diverges_or_fails(selfcal_state, expected_flag):
+def test_run_pipeline_steps_stops_after_selfcal_diverges_or_fails(selfcal_state, expected_flag):
     field = RecordingField(selfcal_result=selfcal_state)
     steps = [
         _single_step({"dd": ["fast_phase"]}, do_check=True),
         _single_step({"di": ["fast_phase"]}, do_check=True),
     ]
 
-    run_process_steps(field, steps, operation_factories=RECORDING_FACTORIES)
+    run_pipeline_steps(field, steps, operation_factories=RECORDING_FACTORIES)
 
     assert [(event["operation"], event["mode"]) for event in field.events] == [
         ("calibrate", "dd"),
@@ -505,8 +505,8 @@ def test_run_process_steps_stops_after_selfcal_diverges_or_fails(selfcal_state, 
     assert field.cycle_number == 1
 
 
-def test_collect_process_features_describes_strategy_and_runtime_options():
-    parset = _process_parset(
+def test_collect_pipeline_features_describes_strategy_and_runtime_options():
+    parset = _pipeline_parset(
         generate_initial_skymodel=True,
         ntimes_to_repeat_final_cycle=1,
         imaging_specific={
@@ -536,7 +536,7 @@ def test_collect_process_features_describes_strategy_and_runtime_options():
         _image_step(),
     ]
 
-    features = collect_process_features(field, steps, parset)
+    features = collect_pipeline_features(field, steps, parset)
 
     assert {
         "calibration",
@@ -565,7 +565,7 @@ def test_collect_process_features_describes_strategy_and_runtime_options():
     } <= features
 
 
-def test_build_process_step_plan_describes_operation_order_for_debug_output():
+def test_build_pipeline_step_plan_describes_operation_order_for_debug_output():
     steps = [
         _single_step(
             {"dd": ["fast_phase"], "di": ["full_jones"]},
@@ -574,7 +574,7 @@ def test_build_process_step_plan_describes_operation_order_for_debug_output():
         )
     ]
 
-    plan = build_process_step_plan(steps, start_cycle=3)
+    plan = build_pipeline_step_plan(steps, start_cycle=3)
 
     assert [
         (item["operation"], item["mode"], item["cycle"], item["step_index"], item["final"])
@@ -590,7 +590,7 @@ def test_build_process_step_plan_describes_operation_order_for_debug_output():
     ]
 
 
-def test_process_step_plan_matches_recorded_operation_order():
+def test_pipeline_step_plan_matches_recorded_operation_order():
     steps = [
         _single_step(
             {"dd": ["fast_phase"], "di": ["full_jones"]},
@@ -600,7 +600,7 @@ def test_process_step_plan_matches_recorded_operation_order():
     ]
     field = RecordingField()
 
-    run_process_steps(field, copy.deepcopy(steps), operation_factories=RECORDING_FACTORIES)
+    run_pipeline_steps(field, copy.deepcopy(steps), operation_factories=RECORDING_FACTORIES)
 
     actual = [
         (event["operation"], event["mode"], event["index"])
@@ -608,13 +608,13 @@ def test_process_step_plan_matches_recorded_operation_order():
         if event["operation"] in {"predict", "calibrate", "image_normalize", "image", "mosaic"}
     ]
     expected = [
-        (item["operation"], item["mode"], item["cycle"]) for item in build_process_step_plan(steps)
+        (item["operation"], item["mode"], item["cycle"]) for item in build_pipeline_step_plan(steps)
     ]
     assert actual == expected
 
 
-def test_build_process_step_plan_skips_dd_predict_for_final_hybrid_screens():
-    plan = build_process_step_plan(
+def test_build_pipeline_step_plan_skips_dd_predict_for_final_hybrid_screens():
+    plan = build_pipeline_step_plan(
         [_single_step({"dd": ["fast_phase"]}, do_predict=True)],
         final=True,
         dde_mode="hybrid",
@@ -627,8 +627,8 @@ def test_build_process_step_plan_skips_dd_predict_for_final_hybrid_screens():
     ]
 
 
-def test_build_process_step_plan_marks_nonfinal_selfcal_checks():
-    assert build_process_step_plan([_image_step(do_check=True)])[-1] == {
+def test_build_pipeline_step_plan_marks_nonfinal_selfcal_checks():
+    assert build_pipeline_step_plan([_image_step(do_check=True)])[-1] == {
         "cycle": 1,
         "step_index": 0,
         "operation": "check_selfcal",
@@ -637,7 +637,7 @@ def test_build_process_step_plan_marks_nonfinal_selfcal_checks():
     }
     assert all(
         item["operation"] != "check_selfcal"
-        for item in build_process_step_plan([_image_step(do_check=True)], final=True)
+        for item in build_pipeline_step_plan([_image_step(do_check=True)], final=True)
     )
 
 
@@ -649,7 +649,7 @@ def test_supported_merge_feature_matrix_entries_pass_process_preflight():
         features = set(entry["features"])
         fixture_paths = [REPO_ROOT / fixture_ref for fixture_ref in entry["fixture_refs"]]
 
-        assert features <= SUPPORTED_PROCESS_FEATURES, entry["id"]
+        assert features <= SUPPORTED_PIPELINE_FEATURES, entry["id"]
         assert fixture_paths, entry["id"]
         assert all(path.exists() for path in fixture_paths), entry["id"]
         assert entry["test_types"], entry["id"]
@@ -657,7 +657,7 @@ def test_supported_merge_feature_matrix_entries_pass_process_preflight():
         preflight_execution(
             _execution_config_from_matrix(entry),
             requested_features=features,
-            supported_features=SUPPORTED_PROCESS_FEATURES,
+            supported_features=SUPPORTED_PIPELINE_FEATURES,
         )
 
 
@@ -677,22 +677,22 @@ def test_deferred_merge_feature_matrix_entries_fail_process_preflight():
             preflight_execution(
                 _execution_config_from_matrix(entry),
                 requested_features=entry["features"],
-                supported_features=SUPPORTED_PROCESS_FEATURES,
+                supported_features=SUPPORTED_PIPELINE_FEATURES,
             )
 
         assert [issue.code for issue in exc.value.issues] == entry["expected_issue_codes"]
 
 
-def test_run_process_preflight_rejects_unsupported_feature_before_operations():
-    parset = _process_parset()
-    lifecycle = RecordingProcessLifecycle(
+def test_run_pipeline_preflight_rejects_unsupported_feature_before_operations():
+    parset = _pipeline_parset()
+    lifecycle = RecordingPipelineLifecycle(
         parset=parset,
         strategy_steps=[_image_step(do_normalize=True)],
         supported_features={"final_cycle", "image"},
     )
 
     with pytest.raises(PreflightError) as exc:
-        run_process(
+        run_pipeline(
             "input.parset",
             operation_factories=RECORDING_FACTORIES,
             lifecycle_hooks=lifecycle.hooks(),
@@ -709,15 +709,15 @@ def test_run_process_preflight_rejects_unsupported_feature_before_operations():
     ] == []
 
 
-def test_run_process_preflight_rejects_runtime_before_operations():
-    parset = _process_parset()
-    lifecycle = RecordingProcessLifecycle(
+def test_run_pipeline_preflight_rejects_runtime_before_operations():
+    parset = _pipeline_parset()
+    lifecycle = RecordingPipelineLifecycle(
         parset=parset,
         strategy_steps=[_image_step()],
     )
 
     with pytest.raises(PreflightError) as exc:
-        run_process(
+        run_pipeline(
             "input.parset",
             operation_factories=RECORDING_FACTORIES,
             lifecycle_hooks=lifecycle.hooks(),
@@ -732,16 +732,16 @@ def test_run_process_preflight_rejects_runtime_before_operations():
     ] == []
 
 
-def test_run_process_preflight_supports_shared_facet_rw():
-    parset = _process_parset(
+def test_run_pipeline_preflight_supports_shared_facet_rw():
+    parset = _pipeline_parset(
         imaging_specific={"skip_final_major_iteration": True, "shared_facet_rw": "True"}
     )
-    lifecycle = RecordingProcessLifecycle(
+    lifecycle = RecordingPipelineLifecycle(
         parset=parset,
         strategy_steps=[_image_step()],
     )
 
-    field = run_process(
+    field = run_pipeline(
         "input.parset",
         operation_factories=RECORDING_FACTORIES,
         lifecycle_hooks=lifecycle.hooks(),
@@ -755,8 +755,8 @@ def test_run_process_preflight_supports_shared_facet_rw():
     ] == ["image", "mosaic"]
 
 
-def test_run_process_lifecycle_runs_initial_selfcal_and_repeated_final_cycles():
-    parset = _process_parset(
+def test_run_pipeline_lifecycle_runs_initial_selfcal_and_repeated_final_cycles():
+    parset = _pipeline_parset(
         generate_initial_skymodel=True,
         ntimes_to_repeat_final_cycle=1,
     )
@@ -768,13 +768,13 @@ def test_run_process_lifecycle_runs_initial_selfcal_and_repeated_final_cycles():
         ),
         _image_step(),
     ]
-    lifecycle = RecordingProcessLifecycle(
+    lifecycle = RecordingPipelineLifecycle(
         parset=parset,
         strategy_steps=strategy_steps,
         epoch_observations=[["obs-a", "obs-b"]],
     )
 
-    field = run_process(
+    field = run_pipeline(
         "input.parset",
         logging_level="debug",
         operation_factories=RECORDING_FACTORIES,
@@ -825,9 +825,9 @@ def test_run_process_lifecycle_runs_initial_selfcal_and_repeated_final_cycles():
     assert field.events[-1]["operation"] == "report"
 
 
-def test_run_process_publishes_plot_artifacts_after_operations_and_report(monkeypatch):
-    parset = _process_parset(input_h5parm="input-solutions.h5")
-    lifecycle = RecordingProcessLifecycle(
+def test_run_pipeline_publishes_plot_artifacts_after_operations_and_report(monkeypatch):
+    parset = _pipeline_parset(input_h5parm="input-solutions.h5")
+    lifecycle = RecordingPipelineLifecycle(
         parset=parset,
         strategy_steps=[_image_step()],
     )
@@ -842,11 +842,11 @@ def test_run_process_publishes_plot_artifacts_after_operations_and_report(monkey
         return []
 
     monkeypatch.setattr(
-        "rapthor.execution.flows.process.publish_plot_artifacts_for_field",
+        "rapthor.execution.pipeline.flow.publish_plot_artifacts_for_field",
         fake_publish_plot_artifacts,
     )
 
-    field = run_process(
+    field = run_pipeline(
         "input.parset",
         operation_factories=RECORDING_FACTORIES,
         lifecycle_hooks=lifecycle.hooks(),
@@ -889,14 +889,14 @@ def test_run_process_publishes_plot_artifacts_after_operations_and_report(monkey
         ),
     ],
 )
-def test_run_process_final_only_validation_failures(
+def test_run_pipeline_final_only_validation_failures(
     parset_updates, final_step_updates, expected_message
 ):
-    parset = _process_parset(**parset_updates)
+    parset = _pipeline_parset(**parset_updates)
     strategy_steps = [_image_step(**final_step_updates)]
 
     with pytest.raises(ValueError, match=expected_message) as prefect_exc:
-        _run_prefect_process(
+        _run_prefect_pipeline(
             copy.deepcopy(parset),
             copy.deepcopy(strategy_steps),
         )
@@ -904,14 +904,14 @@ def test_run_process_final_only_validation_failures(
     assert expected_message in str(prefect_exc.value)
 
 
-def test_run_process_skips_initial_skymodel_generation_without_calibration_step():
-    parset = _process_parset(generate_initial_skymodel=True)
-    lifecycle = RecordingProcessLifecycle(
+def test_run_pipeline_skips_initial_skymodel_generation_without_calibration_step():
+    parset = _pipeline_parset(generate_initial_skymodel=True)
+    lifecycle = RecordingPipelineLifecycle(
         parset=parset,
         strategy_steps=[_image_step()],
     )
 
-    field = run_process(
+    field = run_pipeline(
         "input.parset",
         operation_factories=RECORDING_FACTORIES,
         lifecycle_hooks=lifecycle.hooks(),
@@ -930,15 +930,15 @@ def test_run_process_skips_initial_skymodel_generation_without_calibration_step(
     ] == ["image", "mosaic"]
 
 
-def test_process_flow_runs_no_selfcal_image_only_strategy():
-    parset = _process_parset(input_h5parm="input-solutions.h5")
-    lifecycle = RecordingProcessLifecycle(
+def test_pipeline_flow_runs_no_selfcal_image_only_strategy():
+    parset = _pipeline_parset(input_h5parm="input-solutions.h5")
+    lifecycle = RecordingPipelineLifecycle(
         parset=parset,
         strategy_steps=[_image_step()],
     )
 
     with prefect_test_harness():
-        field = process_flow(
+        field = pipeline_flow(
             "input.parset",
             operation_factories=RECORDING_FACTORIES,
             lifecycle_hooks=lifecycle.hooks(),
@@ -960,30 +960,30 @@ def test_process_flow_runs_no_selfcal_image_only_strategy():
     ]
 
 
-def test_run_process_rejects_image_only_final_without_input_h5parm():
-    parset = _process_parset(input_h5parm=None)
-    lifecycle = RecordingProcessLifecycle(
+def test_run_pipeline_rejects_image_only_final_without_input_h5parm():
+    parset = _pipeline_parset(input_h5parm=None)
+    lifecycle = RecordingPipelineLifecycle(
         parset=parset,
         strategy_steps=[_image_step()],
     )
 
     with pytest.raises(ValueError, match="no calibration solutions were provided"):
-        run_process(
+        run_pipeline(
             "input.parset",
             operation_factories=RECORDING_FACTORIES,
             lifecycle_hooks=lifecycle.hooks(),
         )
 
 
-def test_process_flow_rejects_image_only_peeling_without_input_skymodel():
-    parset = _process_parset(input_h5parm="input-solutions.h5", input_skymodel=None)
-    lifecycle = RecordingProcessLifecycle(
+def test_pipeline_flow_rejects_image_only_peeling_without_input_skymodel():
+    parset = _pipeline_parset(input_h5parm="input-solutions.h5", input_skymodel=None)
+    lifecycle = RecordingPipelineLifecycle(
         parset=parset,
         strategy_steps=[_image_step(peel_outliers=True)],
     )
 
     with prefect_test_harness(), pytest.raises(ValueError, match="sky model was provided"):
-        process_flow(
+        pipeline_flow(
             "input.parset",
             operation_factories=RECORDING_FACTORIES,
             lifecycle_hooks=lifecycle.hooks(),
@@ -991,13 +991,13 @@ def test_process_flow_rejects_image_only_peeling_without_input_skymodel():
         )
 
 
-def test_run_process_final_hybrid_screens_skip_dd_predict_and_set_image_flags():
-    parset = _process_parset(
+def test_run_pipeline_final_hybrid_screens_skip_dd_predict_and_set_image_flags():
+    parset = _pipeline_parset(
         input_h5parm="input-solutions.h5",
         input_skymodel="input.sky",
     )
     final_step = _image_step(do_predict=True, peel_outliers=True)
-    lifecycle = RecordingProcessLifecycle(
+    lifecycle = RecordingPipelineLifecycle(
         parset=parset,
         strategy_steps=[final_step],
         field_updates={
@@ -1009,7 +1009,7 @@ def test_run_process_final_hybrid_screens_skip_dd_predict_and_set_image_flags():
         },
     )
 
-    field = run_process(
+    field = run_pipeline(
         "input.parset",
         operation_factories=RECORDING_FACTORIES,
         lifecycle_hooks=lifecycle.hooks(),

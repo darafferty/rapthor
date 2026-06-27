@@ -5,18 +5,20 @@ from pathlib import Path
 import pytest
 from prefect.testing.utilities import prefect_test_harness
 
-import rapthor.execution.flows.mosaic as mosaic_module
+import rapthor.execution.mosaic.flow as mosaic_module
 from rapthor.execution.commands import normalize_command
 from rapthor.execution.config import ExecutionConfig
-from rapthor.execution.flows.mosaic import (
+from rapthor.execution.mosaic.commands import (
     build_compress_mosaic_command,
     build_make_mosaic_command,
     build_make_mosaic_template_command,
     build_regrid_image_command,
+)
+from rapthor.execution.mosaic.flow import (
     mosaic_flow,
-    mosaic_payload_from_inputs,
     run_mosaic_flow,
 )
+from rapthor.execution.mosaic.payloads import mosaic_payload_from_inputs
 from rapthor.lib.records import file_record, validate_output_record
 from rapthor.operations.mosaic import Mosaic
 

@@ -11,9 +11,9 @@ from rapthor.execution.calibrate.payloads import (
     validate_calibrate_payload,
 )
 from rapthor.execution.config import ExecutionConfig
-from rapthor.execution.flows.runtime import run_flow_with_task_runner
 from rapthor.execution.payloads import assert_serializable_payload
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
+from rapthor.execution.runtime import run_flow_with_task_runner
 
 
 @task(name="calibrate_chunk")

@@ -72,10 +72,15 @@ Layer Ownership
      - Scheduler-independent task bodies that run shell commands, discover
        outputs, publish task-local artifacts, and return serializable records.
      - Operation flow tests with shell execution mocked.
-   * - ``rapthor.execution.flows``
-     - Prefect orchestration: task boundaries, scheduling, retries, artifacts,
-       flow-level validation, and runtime integration.
+   * - Operation flow modules such as ``rapthor.execution.image.flow`` and
+       ``rapthor.execution.calibrate.flow``
+     - Prefect orchestration for one operation: task boundaries, scheduling,
+       retries, artifacts, flow-level validation, and runtime integration.
      - ``tests/execution/test_*_flow.py``
+   * - ``rapthor.execution.pipeline``
+     - Top-level pipeline orchestration, lifecycle hooks, preflight feature
+       detection, and dry-run/debug planning.
+     - ``tests/execution/test_pipeline_flow.py``
    * - ``rapthor.execution.runtime``, ``task_runner``, ``resources``,
        ``slurm``, ``workdirs``, ``artifacts``, and ``shell``
      - Runtime infrastructure and adapters for local, Dask, Slurm, shell, and
@@ -89,9 +94,9 @@ Layer Ownership
 Public Export Guidance
 ----------------------
 
-``rapthor.execution`` and ``rapthor.execution.flows`` are intentionally light
-package initializers. They should not re-export flow functions, command
-builders, payload builders, task bodies, or runtime helpers.
+``rapthor.execution`` and operation package initializers are intentionally
+light. They should not re-export flow functions, command builders, payload
+builders, task bodies, or runtime helpers.
 
 New code should import from the module that owns the behaviour, for example:
 
@@ -108,7 +113,8 @@ New code should import from the module that owns the behaviour, for example:
 * task bodies from operation runner modules such as
   ``rapthor.execution.image.sector`` or
   ``rapthor.execution.calibrate.runner``
-* Prefect flows from the concrete ``rapthor.execution.flows.<operation>`` module
+* Prefect flows from the concrete ``rapthor.execution.<operation>.flow`` module
+  or ``rapthor.execution.pipeline.flow`` for the top-level pipeline
 * runtime helpers from their concrete runtime module
 
 Do not add new package-level facade exports unless there is a documented

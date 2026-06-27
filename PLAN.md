@@ -31,7 +31,7 @@ Completed:
   - added `docs/source/development/architecture.rst`
   - linked the development architecture page from `docs/source/index.rst`
   - added `tests/architecture/test_import_boundaries.py`
-  - documented `rapthor.execution` and `rapthor.execution.flows` as broad
+  - documented `rapthor.execution` and the previous flow package as broad
     migration-era compatibility facades
   - added `tests/architecture` to the explicit Ruff format/check target lists
 - Output record consolidation:
@@ -87,7 +87,7 @@ Completed:
   - added `rapthor.execution.image.commands` as the first operation-specific
     command module
   - moved image DP3, WSClean, MPI WSClean, helper-script, a-term config, and
-    normalized fixture command builders out of `rapthor.execution.flows.image`
+    normalized fixture command builders out of `rapthor.execution.image.flow`
   - pruned broad facade re-exports for image command helpers after package
     consolidation
   - moved focused image command-builder tests to import directly from
@@ -96,7 +96,7 @@ Completed:
   - added `rapthor.execution.image.payloads` for image payload construction and
     incoming payload validation
   - moved image payload mapping and validation out of
-    `rapthor.execution.flows.image`
+    `rapthor.execution.image.flow`
   - moved image-specific `TypedDict` payload contracts out of the shared
     `rapthor.execution.payloads` module and into
     `rapthor.execution.image.payloads`
@@ -109,7 +109,7 @@ Completed:
     directory discovery contracts
   - moved non-Prefect image sector execution into
     `rapthor.execution.image.sector`
-  - slimmed `rapthor.execution.flows.image` to Prefect task wiring, payload
+  - slimmed `rapthor.execution.image.flow` to Prefect task wiring, payload
     validation, sync execution entry points, and final result aggregation
   - consolidated image command, payload, output, and sector modules under the
     `rapthor.execution.image` package instead of keeping temporary flat modules
@@ -121,7 +121,7 @@ Completed:
     package module
   - moved DDECal, IDGCal, model drawing, region-file, h5parm collection,
     h5parm combination, gain processing, source adjustment, plotting, and
-    normalized fixture command builders out of `rapthor.execution.flows.calibrate`
+    normalized fixture command builders out of `rapthor.execution.calibrate.flow`
   - updated focused calibration command-builder tests to import directly from
     `rapthor.execution.calibrate.commands`
   - pruned broad facade re-exports for calibration command helpers; internal
@@ -133,7 +133,7 @@ Completed:
     `rapthor.execution.payloads` module and into
     `rapthor.execution.calibrate.payloads`
   - moved `calibrate_payload_from_inputs` and calibration payload validators out
-    of `rapthor.execution.flows.calibrate`
+    of `rapthor.execution.calibrate.flow`
   - updated the Calibrate operation adapter and focused tests to import the
     payload builder directly from the calibration package
   - pruned broad facade re-exports for `calibrate_payload_from_inputs` now that
@@ -144,7 +144,7 @@ Completed:
     combination, source adjustment, and gain processing
   - kept simple required-file checks private to the runner until calibration has
     output-discovery contracts large enough to justify a dedicated module
-  - slimmed `rapthor.execution.flows.calibrate` to Prefect task wrappers,
+  - slimmed `rapthor.execution.calibrate.flow` to Prefect task wrappers,
     payload validation, sync execution entry points, and orchestration
   - updated focused calibration tests to exercise plotting and collection
     helpers through the runner owner module
@@ -241,31 +241,31 @@ Completed:
   - treated predict, mosaic, and concatenate as already thin enough for this
     stage; extract more only when a future change reveals duplication or a
     specific testability problem
-- Process dry-run plan foundation:
-  - added `rapthor.execution.process_plan` as a Prefect-free owner for
-    process-level feature detection and serializable operation-plan summaries
-  - moved process feature detection and supported-feature declarations out of
-    `rapthor.execution.flows.process` while preserving facade imports
+- Pipeline dry-run plan foundation:
+  - added `rapthor.execution.pipeline.plan` as a Prefect-free owner for
+    pipeline-level feature detection and serializable operation-plan summaries
+  - moved pipeline feature detection and supported-feature declarations out of
+    `rapthor.execution.pipeline.flow`
   - added a dry-run/debug helper that reports expected operation order, cycle
     number, calibration mode, final/selfcal context, and selfcal-check markers
     without mutating a `Field` or starting Prefect/Dask work
-  - added architecture coverage so the process-plan helper stays free of
+  - added architecture coverage so the pipeline-plan helper stays free of
     Prefect, Dask, flow, and operation imports
-- Process facade cleanup:
+- Pipeline facade cleanup:
   - removed `rapthor.process` as an internal/public Python compatibility facade;
     the user-facing CLI remains `rapthor input.parset`
-  - changed `bin/rapthor` to call `rapthor.execution.flows.process.process_flow`
+  - changed `bin/rapthor` to call `rapthor.execution.pipeline.flow.pipeline_flow`
     directly
   - moved scheduler-independent lifecycle helpers for final-pass decisions,
     observation chunking, and diagnostics report writing into
-    `rapthor.execution.process_lifecycle`
+    `rapthor.execution.pipeline.lifecycle`
   - removed legacy process-facade tests that patched operation globals on
-    `rapthor.process`; process-step orchestration is now tested through
-    `rapthor.execution.flows.process`
+    `rapthor.process`; pipeline-step orchestration is now tested through
+    `rapthor.execution.pipeline.flow`
 - Execution package facade cleanup:
   - removed broad package-level re-exports from `rapthor.execution` and
-    `rapthor.execution.flows`
-  - kept both package initializers lightweight so importing one execution
+    the previous flow package
+  - kept execution package initializers lightweight so importing one execution
     submodule does not import every Prefect flow, command builder, and runtime
     helper
   - added architecture coverage to prevent the broad facades from being rebuilt
@@ -284,7 +284,31 @@ Completed:
     directly in golden-fixture tests
   - reduced command modules and flow modules to the command builders used by
     execution code
+- Operation package and pipeline module consolidation:
+  - moved operation Prefect adapters into operation-owned `flow.py` modules:
+    `rapthor.execution.image.flow`, `rapthor.execution.calibrate.flow`,
+    `rapthor.execution.concatenate.flow`, `rapthor.execution.predict.flow`, and
+    `rapthor.execution.mosaic.flow`
+  - added `rapthor.execution.concatenate`, `rapthor.execution.predict`, and
+    `rapthor.execution.mosaic` packages with `commands.py`, `payloads.py`, and
+    `flow.py` modules instead of keeping small-flow commands and payloads in a
+    shared flow bucket
+  - moved the top-level orchestration modules under
+    `rapthor.execution.pipeline` and renamed the internal API to
+    `pipeline_flow`, `run_pipeline`, `run_pipeline_steps`,
+    `collect_pipeline_features`, and `build_pipeline_step_plan`
+  - removed the previous flow package from active imports because
+    this unreleased branch does not need compatibility shims
+  - moved `run_flow_with_task_runner` into `rapthor.execution.runtime` so
+    runtime/task-runner selection has one owner
 - Verified in the dev container:
+  - `python3 -m pytest tests/architecture tests/execution/test_task_runner.py tests/execution/test_payloads.py -q --tb=short`
+  - `python3 -m pytest tests/execution/test_concatenate_flow.py tests/execution/test_mosaic_flow.py tests/execution/test_predict_flow.py tests/execution/test_reference_fixtures.py -q --tb=short`
+  - `python3 -m pytest tests/execution/test_image_flow.py tests/execution/test_calibrate_flow.py -q --tb=short`
+  - `python3 -m pytest tests/execution/test_pipeline_flow.py tests/lib/test_observation.py -q --tb=short`
+  - `python3 -m pytest tests/operations/test_concatenate.py tests/operations/test_mosaic.py tests/operations/test_predict.py tests/operations/test_image.py tests/operations/test_calibrate.py -q --tb=short`
+  - `python3 -m py_compile bin/rapthor`
+  - import smoke checks for operation package owners, `rapthor.execution.runtime.run_flow_with_task_runner`, and removed old `rapthor.execution.flows`/`flow_runtime` paths
   - `python3 -m pytest tests/architecture -q --tb=short`
   - `python3 -m pytest tests/lib/test_records.py tests/execution/test_payloads.py tests/execution/test_commands.py -q --tb=short`
   - `python3 -m pytest tests/execution/test_concatenate_flow.py tests/execution/test_mosaic_flow.py tests/execution/test_predict_flow.py -q --tb=short`
@@ -311,7 +335,7 @@ Completed:
   - `python3 -m pytest tests/operations/test_calibrate.py -q --tb=short`
   - `python3 -m pytest tests/architecture -q --tb=short`
   - `python3 -m pytest tests/operations/test_concatenate.py tests/operations/test_mosaic.py tests/operations/test_predict.py -q --tb=short`
-  - `python3 -m pytest tests/execution/test_process_flow.py -q --tb=short`
+  - `python3 -m pytest tests/execution/test_pipeline_flow.py -q --tb=short`
   - `python3 -m pytest tests/lib/test_observation.py -q --tb=short`
   - `python3 -m pytest tests/integration/test_cli.py -q --tb=short`
   - `python3 -m pytest tests/lib/test_records.py tests/architecture tests/execution/test_reference_fixtures.py -q --tb=short`
@@ -324,11 +348,11 @@ Completed:
   - `python3 -m pytest tests/operations/test_image.py tests/operations/test_calibrate.py -q --tb=short`
   - `python3 -m pytest tests/execution/test_concatenate_flow.py tests/execution/test_mosaic_flow.py tests/execution/test_predict_flow.py tests/execution/test_reference_fixtures.py -q --tb=short`
   - `python3 -m pytest tests/execution/test_image_flow.py tests/execution/test_calibrate_flow.py -q --tb=short`
-  - `python3 -c "import rapthor.execution as execution; import rapthor.execution.flows as flows; import rapthor.execution.image.commands as image_commands; import rapthor.execution.image.payloads as image_payloads; import rapthor.execution.image.sector as image_sector; import rapthor.execution.flows.image as image_flow; assert image_commands.build_wsclean_no_dde_command; assert image_payloads.image_payload_from_inputs; assert image_flow.validate_image_payload is image_payloads.validate_image_payload; assert image_sector.run_image_sector; assert not hasattr(execution, 'run_image_sector'); assert not hasattr(flows, 'run_image_sector'); assert not hasattr(execution, 'image_payload_from_inputs'); assert not hasattr(flows, 'build_wsclean_no_dde_command')"`
+  - `python3 -c "import rapthor.execution as execution; import rapthor.execution.image.commands as image_commands; import rapthor.execution.image.payloads as image_payloads; import rapthor.execution.image.sector as image_sector; import rapthor.execution.image.flow as image_flow; assert image_commands.build_wsclean_no_dde_command; assert image_payloads.image_payload_from_inputs; assert image_flow.validate_image_payload is image_payloads.validate_image_payload; assert image_sector.run_image_sector; assert not hasattr(execution, 'run_image_sector'); assert not hasattr(execution, 'image_payload_from_inputs')"`
   - `python3 -c "from rapthor.execution.image.payloads import ImagePayload, ImageSectorPayload, image_payload_from_inputs; import rapthor.execution.payloads as shared_payloads; assert ImagePayload; assert ImageSectorPayload; assert image_payload_from_inputs; assert not hasattr(shared_payloads, 'ImagePayload'); assert not hasattr(shared_payloads, 'ImageSectorPayload')"`
-  - `python3 -c "import rapthor.execution as execution; import rapthor.execution.flows as flows; import rapthor.execution.calibrate.commands as commands; assert commands.build_ddecal_solve_command; assert not hasattr(execution, 'build_ddecal_solve_command'); assert not hasattr(flows, 'build_ddecal_solve_command')"`
-  - `python3 -c "from rapthor.execution.calibrate.payloads import CalibratePayload, calibrate_payload_from_inputs, validate_calibrate_payload; import rapthor.execution as execution; import rapthor.execution.flows as flows; import rapthor.execution.payloads as shared_payloads; assert CalibratePayload; assert calibrate_payload_from_inputs; assert validate_calibrate_payload; assert not hasattr(shared_payloads, 'CalibratePayload'); assert not hasattr(execution, 'calibrate_payload_from_inputs'); assert not hasattr(flows, 'calibrate_payload_from_inputs')"`
-  - `python3 -c "import rapthor.execution as execution; import rapthor.execution.flows as flows; import rapthor.execution.calibrate.runner as runner; import rapthor.execution.flows.calibrate as flow; assert runner.run_calibrate_chunk; assert runner.collect_plot_and_combine; assert flow.calibrate_chunk_task; assert not hasattr(execution, 'run_calibrate_chunk'); assert not hasattr(flows, 'run_calibrate_chunk')"`
+  - `python3 -c "import rapthor.execution as execution; import rapthor.execution.calibrate.commands as commands; assert commands.build_ddecal_solve_command; assert not hasattr(execution, 'build_ddecal_solve_command')"`
+  - `python3 -c "from rapthor.execution.calibrate.payloads import CalibratePayload, calibrate_payload_from_inputs, validate_calibrate_payload; import rapthor.execution as execution; import rapthor.execution.payloads as shared_payloads; assert CalibratePayload; assert calibrate_payload_from_inputs; assert validate_calibrate_payload; assert not hasattr(shared_payloads, 'CalibratePayload'); assert not hasattr(execution, 'calibrate_payload_from_inputs')"`
+  - `python3 -c "import rapthor.execution as execution; import rapthor.execution.calibrate.runner as runner; import rapthor.execution.calibrate.flow as flow; assert runner.run_calibrate_chunk; assert runner.collect_plot_and_combine; assert flow.calibrate_chunk_task; assert not hasattr(execution, 'run_calibrate_chunk')"`
   - `python3 -c "from rapthor.operations.calibrate_plan import build_calibration_solve_plan, requested_calibration_solves; solves, defaulted = requested_calibration_solves('dd', None, True); plan = build_calibration_solve_plan('dd', solves, defaulted_strategy=defaulted); assert [solve.step for solve in plan] == ['solve1', 'solve2', 'solve3', 'solve4']; assert plan[-1].output_prefix == 'medium2_phase'"`
   - `python3 -c "from rapthor.operations.calibrate_plan import build_calibration_dp3_steps; assert build_calibration_dp3_steps(0, 0, all_channels_regular=True, use_image_based_predict=True, do_slowgain_solve=False, solve_steps=['solve1'], preapply_solutions=True) == ['predict', 'applybeam', 'applycal', 'solve1']"`
   - `python3 -c "from rapthor.operations.calibrate_plan import build_calibration_preapply_steps; assert build_calibration_preapply_steps('dd', has_di_h5parm=True, has_fulljones_h5parm=True, apply_amplitudes=True, apply_normalizations=True) == ['fastphase', 'slowgain', 'fulljones', 'normalization']"`
@@ -340,12 +364,12 @@ Completed:
   - `python3 -c "from rapthor.operations.image_plan import build_image_screen_interval; assert build_image_screen_interval(slow_timestep_sec=10.0, timepersample=2.0, numsamples=20) == [0, 15]"`
   - `python3 -c "from rapthor.operations.image_plan import build_image_mpi_resource_controls; assert build_image_mpi_resource_controls(nsectors=2, max_nodes=8, cpus_per_task=12, batch_system='slurm') == {'mpi_nnodes': [3, 3], 'mpi_cpus_per_task': [12, 12]}"`
   - `python3 -c "from rapthor.operations.calibrate_plan import build_calibration_core_baseline_selection; assert build_calibration_core_baseline_selection('HBA', ['CS003HBA0', 'RS106HBA0', 'DE601HBA']) == '[CR]*&&;!DE601HBA'"`
-  - `python3 -c "from rapthor.execution.process_plan import build_process_step_plan; assert [item['operation'] for item in build_process_step_plan([{'do_calibrate': False, 'do_predict': False, 'do_image': True, 'do_check': True}])] == ['image', 'mosaic', 'check_selfcal']"`
-  - `python3 -c "from rapthor.execution.process_lifecycle import do_final_pass, chunk_observations, make_report; assert do_final_pass and chunk_observations and make_report"`
+  - `python3 -c "from rapthor.execution.pipeline.plan import build_pipeline_step_plan; assert [item['operation'] for item in build_pipeline_step_plan([{'do_calibrate': False, 'do_predict': False, 'do_image': True, 'do_check': True}])] == ['image', 'mosaic', 'check_selfcal']"`
+  - `python3 -c "from rapthor.execution.pipeline.lifecycle import do_final_pass, chunk_observations, make_report; assert do_final_pass and chunk_observations and make_report"`
   - `python3 -m py_compile bin/rapthor`
   - `python3 -c "import importlib.util; assert importlib.util.find_spec('rapthor.process') is None"`
   - `python3 -c "import importlib.util; assert importlib.util.find_spec('rapthor.execution.outputs') is None"`
-  - `python3 -c "import rapthor.execution as execution; import rapthor.execution.flows as flows; assert not hasattr(execution, 'run_process'); assert not hasattr(execution, 'build_task_runner'); assert not hasattr(flows, 'run_process'); from rapthor.execution import prefect_logging; assert prefect_logging.publish_python_logs_to_prefect"`
+  - `python3 -c "import rapthor.execution as execution; assert not hasattr(execution, 'run_pipeline'); assert not hasattr(execution, 'build_task_runner'); from rapthor.execution import prefect_logging; assert prefect_logging.publish_python_logs_to_prefect"`
   - `python3 -c "from rapthor.lib.operation import Operation; assert not hasattr(Operation, 'run_prefect_flow'); import rapthor.operations.flow_execution as flow_execution; assert flow_execution.run_prefect_flow"`
   - targeted Ruff format, lint, and import-sort checks for the new architecture
     tests, touched execution facade modules, output record helpers, and touched
@@ -468,7 +492,7 @@ Use these layers as the architectural guide:
 - Domain: field, observation, sector, cluster, strategy, parset-derived scientific
   state, and finalizer-visible operation state.
 - Application/use cases: operation planning, parset-to-payload mapping,
-  restart/reuse decisions, process feature detection, and workflow decisions
+  restart/reuse decisions, pipeline feature detection, and workflow decisions
   that are independent of a specific scheduler.
 - Interface adapters: command builders, output-record conversion, script
   wrappers, filesystem record handling, and adapters between domain/use-case
@@ -512,8 +536,11 @@ operation-owned package shaped around clear responsibilities:
 - `rapthor.execution.<operation>.<unit>` for scheduler-independent task bodies,
   named after the work unit scientists recognise, such as `sector`, `chunk`,
   `epoch`, `model`, or `image_type`.
-- `rapthor.execution.flows.<operation>` as the thin Prefect adapter responsible
+- `rapthor.execution.<operation>.flow` as the thin Prefect adapter responsible
   for task wiring, scheduling, runtime integration, and result aggregation.
+- `rapthor.execution.pipeline.flow`, `plan`, and `lifecycle` for top-level
+  pipeline orchestration, dry-run planning, feature detection, and lifecycle
+  collaborators.
 
 Use the full package shape for complex flows such as image and calibration. For
 smaller flows such as concatenate, mosaic, and predict, adopt the same ownership
@@ -523,8 +550,8 @@ owns real behaviour, reduces duplication, or gives tests a clearer target.
 Tests should mirror the package boundaries: command tests for command builders,
 payload tests for contracts and validation, output tests for file discovery,
 runner tests with shell execution mocked, and flow tests for Prefect wiring.
-Prune broad `rapthor.execution` and `rapthor.execution.flows` facade exports as
-soon as internal imports point at the owning operation package.
+Prune broad `rapthor.execution` facade exports and any migration-era flow
+facades as soon as internal imports point at the owning operation package.
 
 Add architecture fitness tests as the boundaries settle. These can start as
 simple import-boundary tests using `ast` or `modulefinder` before introducing
@@ -547,14 +574,16 @@ responsibilities are:
   scheduler-independent operation planning, typed payload contracts, parset/
   field-to-payload mapping, restart decisions, and workflow decisions that should
   not depend on Prefect/Dask.
-- `rapthor.execution.payloads`: a transitional or adapter-level home for typed
-  payload contracts and serialization validation until the use-case layer is
-  established.
+- `rapthor.execution.payloads`: the shared serialization guard for worker-safe
+  payload values. Operation-specific payload contracts should live in the owning
+  operation package.
 - `rapthor.execution.commands`: shared command token utilities plus small
   operation-specific command modules where useful.
-- `rapthor.execution.flows`: Prefect orchestration only: task boundaries,
-  scheduling, retries/failure handling, artifact publication, and task-runner
-  integration.
+- `rapthor.execution.<operation>.flow`: operation-specific Prefect
+  orchestration only: task boundaries, scheduling, retries/failure handling,
+  artifact publication, and task-runner integration.
+- `rapthor.execution.pipeline`: top-level pipeline orchestration, lifecycle
+  hooks, feature detection, dry-run planning, and preflight integration.
 - `rapthor.execution.runtime`, `task_runner`, `resources`, `slurm`, `workdirs`,
   `artifacts`, and `shell`: reusable runtime infrastructure.
 - `rapthor.scripts`: standalone helper scripts used by external command
@@ -587,7 +616,7 @@ python3 -m pytest tests/execution/test_payloads.py tests/operations -q --tb=shor
 Outcome: the codebase has a small number of documented internal contracts instead
 of accidental imports from large implementation modules.
 
-- Audit `rapthor.execution.__init__` and `rapthor.execution.flows.__init__`.
+- Audit `rapthor.execution.__init__` and operation package initializers.
 - Decide which imports are stable internal API and which are test convenience
   exports.
 - Move tests toward direct imports from the module that owns the behaviour.
@@ -683,7 +712,7 @@ Recommended extraction order:
 2. Concatenate, mosaic, and predict payloads as smaller proving grounds.
 3. Image sector payloads and image flow payloads.
 4. Calibrate solver/chunk/screen/collection payloads.
-5. Process-flow lifecycle payloads if they become more complex.
+5. Pipeline-flow lifecycle payloads if they become more complex.
 
 Completion criteria:
 
@@ -727,7 +756,7 @@ Completion criteria:
 
 ### 5. Split The Image Flow By Responsibility
 
-Outcome: `rapthor.execution.flows.image` becomes a readable orchestration layer
+Outcome: `rapthor.execution.image.flow` becomes a readable orchestration layer
 instead of one large module containing command construction, payload mapping,
 sector execution, output discovery, and artifact logic.
 
@@ -762,7 +791,7 @@ Completion criteria:
 
 ### 6. Split The Calibrate Flow By Responsibility
 
-Outcome: `rapthor.execution.flows.calibrate` becomes a readable orchestration
+Outcome: `rapthor.execution.calibrate.flow` becomes a readable orchestration
 layer with solver, screen, collection, plotting, and combine logic separated.
 
 - Extract calibration command builders.
@@ -814,23 +843,23 @@ Completion criteria:
   runtime environment.
 - Operation adapters are smaller and follow the same shape across operations.
 
-### 8. Clarify Process Orchestration
+### 8. Clarify Pipeline Orchestration
 
 Outcome: top-level orchestration remains easy to reason about as more runtimes,
 feature flags, and scientific modes are added.
 
 - Keep `rapthor input.parset` as the user-facing entry point.
-- Keep `rapthor.execution.flows.process` responsible for Prefect/Dask process
+- Keep `rapthor.execution.pipeline.flow` responsible for Prefect/Dask pipeline
   scheduling.
 - Continue using injectable lifecycle hooks and operation factories for tests.
 - Move feature detection helpers into a small, documented module if they grow.
 - Keep preflight validation close to runtime capability checks.
-- Document how process features map to strategy steps and parset options.
+- Document how pipeline features map to strategy steps and parset options.
 - Add tests for new feature flags before wiring them into execution.
 
 Completion criteria:
 
-- Process tests can cover operation ordering, skip conditions, error propagation,
+- Pipeline tests can cover operation ordering, skip conditions, error propagation,
   restart/reset behaviour, and compatibility helpers without real commands.
 - Runtime preflight failures produce actionable messages.
 
@@ -854,7 +883,7 @@ Use these test layers deliberately:
   covered without real radio astronomy tools.
 - Operation adapter tests: lifecycle setup, restart/reuse, finalizer side
   effects, copy/clean behaviour, and field hand-off to later operations.
-- Process tests: operation ordering, skip conditions, strategy feature
+- Pipeline tests: operation ordering, skip conditions, strategy feature
   detection, preflight failures, reset/restart behaviour, and public helper
   compatibility.
 - Dask scheduling tests: sync/local-Dask/external-Dask configuration,
@@ -914,7 +943,7 @@ High-value coverage areas:
 - payload-size and large-object serialization safeguards
 - subprocess-vs-in-process script parity
 - dry-run/preflight output for common user mistakes
-- CLI restart/reset and process-flow compatibility helpers
+- CLI restart/reset and pipeline-flow compatibility helpers
 - `Field` regrouping, target selection, normalization scaling, and empty model
   branches
 - pure script helpers such as `subtract_sector_models.py`,
@@ -1200,10 +1229,10 @@ Parallel non-Prefect lane:
 python3 -m pytest -m "not integration and not prefect" -n auto -k "not test_field.py" tests -q --tb=short
 ```
 
-Focused process-flow checks:
+Focused pipeline-flow checks:
 
 ```bash
-python3 -m pytest tests/execution/test_process_flow.py tests/lib/test_observation.py -q --tb=short
+python3 -m pytest tests/execution/test_pipeline_flow.py tests/lib/test_observation.py -q --tb=short
 ```
 
 Focused output/payload/command checks:

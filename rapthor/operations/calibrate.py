@@ -10,8 +10,8 @@ import shutil
 import lsmtool
 import numpy as np
 
+from rapthor.execution.calibrate.flow import calibrate_flow
 from rapthor.execution.calibrate.payloads import calibrate_payload_from_inputs
-from rapthor.execution.flows.calibrate import calibrate_flow
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.operation import Operation
 from rapthor.lib.records import DirectoryRecord, FileRecord

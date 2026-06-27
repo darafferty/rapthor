@@ -8,7 +8,8 @@ import re
 
 from losoto.h5parm import h5parm
 
-from rapthor.execution.flows.predict import predict_flow, predict_payload_from_inputs
+from rapthor.execution.predict.flow import predict_flow
+from rapthor.execution.predict.payloads import predict_payload_from_inputs
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.operation import Operation
 from rapthor.lib.records import DirectoryRecord, FileRecord

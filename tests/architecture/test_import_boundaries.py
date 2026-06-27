@@ -21,22 +21,38 @@ PURE_EXECUTION_MODULES = (
     RAPTHOR_ROOT / "execution" / "calibrate" / "commands.py",
     RAPTHOR_ROOT / "execution" / "calibrate" / "payloads.py",
     RAPTHOR_ROOT / "execution" / "calibrate" / "runner.py",
+    RAPTHOR_ROOT / "execution" / "concatenate" / "commands.py",
+    RAPTHOR_ROOT / "execution" / "concatenate" / "payloads.py",
     RAPTHOR_ROOT / "execution" / "image" / "commands.py",
     RAPTHOR_ROOT / "execution" / "image" / "outputs.py",
     RAPTHOR_ROOT / "execution" / "image" / "payloads.py",
+    RAPTHOR_ROOT / "execution" / "mosaic" / "commands.py",
+    RAPTHOR_ROOT / "execution" / "mosaic" / "payloads.py",
     RAPTHOR_ROOT / "execution" / "payloads.py",
-    RAPTHOR_ROOT / "execution" / "process_lifecycle.py",
-    RAPTHOR_ROOT / "execution" / "process_plan.py",
+    RAPTHOR_ROOT / "execution" / "pipeline" / "lifecycle.py",
+    RAPTHOR_ROOT / "execution" / "pipeline" / "plan.py",
+    RAPTHOR_ROOT / "execution" / "predict" / "commands.py",
+    RAPTHOR_ROOT / "execution" / "predict" / "payloads.py",
 )
 
 PURE_EXECUTION_FORBIDDEN_PREFIXES = FRAMEWORK_PREFIXES + (
-    "rapthor.execution.flows",
+    "rapthor.execution.calibrate.flow",
+    "rapthor.execution.concatenate.flow",
+    "rapthor.execution.image.flow",
+    "rapthor.execution.mosaic.flow",
+    "rapthor.execution.pipeline.flow",
+    "rapthor.execution.predict.flow",
     "rapthor.operations",
 )
 
 LIGHTWEIGHT_PACKAGE_INITIALIZERS = (
     RAPTHOR_ROOT / "execution" / "__init__.py",
-    RAPTHOR_ROOT / "execution" / "flows" / "__init__.py",
+    RAPTHOR_ROOT / "execution" / "calibrate" / "__init__.py",
+    RAPTHOR_ROOT / "execution" / "concatenate" / "__init__.py",
+    RAPTHOR_ROOT / "execution" / "image" / "__init__.py",
+    RAPTHOR_ROOT / "execution" / "mosaic" / "__init__.py",
+    RAPTHOR_ROOT / "execution" / "pipeline" / "__init__.py",
+    RAPTHOR_ROOT / "execution" / "predict" / "__init__.py",
 )
 
 

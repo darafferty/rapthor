@@ -9,11 +9,6 @@ from prefect.testing.utilities import prefect_test_harness
 import rapthor.execution.image.sector as image_sector_module
 from rapthor.execution.commands import normalize_command
 from rapthor.execution.config import ExecutionConfig
-from rapthor.execution.flows.image import (
-    image_flow,
-    image_sector_task,
-    run_image_flow,
-)
 from rapthor.execution.image.commands import (
     ATERM_CONFIG_FILENAME,
     build_aterm_config_content,
@@ -36,6 +31,11 @@ from rapthor.execution.image.commands import (
     build_wsclean_no_dde_command,
     build_wsclean_restore_command,
     build_wsclean_screens_command,
+)
+from rapthor.execution.image.flow import (
+    image_flow,
+    image_sector_task,
+    run_image_flow,
 )
 from rapthor.execution.image.payloads import image_payload_from_inputs
 from rapthor.lib.records import directory_record, file_record, validate_output_record

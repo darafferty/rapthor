@@ -1,7 +1,7 @@
 import pytest
 
 from rapthor.execution.config import DASK_SCHEDULER_ENV, ExecutionConfig
-from rapthor.execution.flows.runtime import run_flow_with_task_runner
+from rapthor.execution.runtime import run_flow_with_task_runner
 from rapthor.execution.task_runner import (
     DaskSchedulerConnectionError,
     MissingPrefectDaskError,
@@ -139,7 +139,7 @@ def test_run_flow_with_task_runner_applies_configured_runner(monkeypatch):
     flow = FakeFlow()
 
     monkeypatch.setattr(
-        "rapthor.execution.flows.runtime.build_task_runner",
+        "rapthor.execution.runtime.build_task_runner",
         lambda execution_config: runner,
     )
 

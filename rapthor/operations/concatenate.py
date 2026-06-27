@@ -4,7 +4,8 @@ Module that holds the Concatenate class
 
 import os
 
-from rapthor.execution.flows.concatenate import concatenate_flow, concatenate_payload_from_inputs
+from rapthor.execution.concatenate.flow import concatenate_flow
+from rapthor.execution.concatenate.payloads import concatenate_payload_from_inputs
 from rapthor.lib.operation import Operation
 from rapthor.lib.records import DirectoryRecord
 from rapthor.operations.flow_execution import run_prefect_flow
