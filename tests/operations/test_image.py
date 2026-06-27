@@ -16,7 +16,10 @@ from rapthor.operations.image import (
     ImageNormalize,
     report_sector_diagnostics,
 )
-from rapthor.operations.image_plan import build_image_applycal_steps
+from rapthor.operations.image_plan import (
+    build_image_applycal_steps,
+    build_image_prepare_data_steps,
+)
 
 
 def _mock_image_flow(monkeypatch, expected_outputs):
@@ -718,6 +721,28 @@ class TestImage:
 
         assert steps == ["fastphase", "slowgain"]
         assert selected_h5parm == "dd-solutions.h5"
+
+    @pytest.mark.parametrize(
+        "preapply, average, bda_timebase, regular, screens, expected_steps",
+        [
+            (False, True, 10.0, True, False, ["applybeam", "shift", "avg", "bdaavg"]),
+            (True, True, 10.0, True, True, ["applybeam", "shift", "applycal", "avg"]),
+            (True, False, 10.0, False, False, ["applybeam", "shift", "applycal"]),
+        ],
+    )
+    def test_build_image_prepare_data_steps(
+        self, preapply, average, bda_timebase, regular, screens, expected_steps
+    ):
+        assert (
+            build_image_prepare_data_steps(
+                preapply_solutions=preapply,
+                average_visibilities=average,
+                image_bda_timebase=bda_timebase,
+                all_channels_regular=regular,
+                apply_screens=screens,
+            )
+            == expected_steps
+        )
 
     def test_build_applycal_steps_uses_dd_h5parm_for_facets_without_preapply(
         self, field, h5parm_file

@@ -15,7 +15,7 @@ from rapthor.execution.image.payloads import image_payload_from_inputs
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.operation import Operation
 from rapthor.lib.records import DirectoryRecord, FileRecord
-from rapthor.operations.image_plan import build_image_applycal_steps
+from rapthor.operations.image_plan import build_image_applycal_steps, build_image_prepare_data_steps
 
 log = logging.getLogger("rapthor:image")
 
@@ -358,19 +358,14 @@ class Image(Operation):
         prepare_data_applycal_steps, fulljones_h5parm, input_normalize_h5parm = (
             self._build_applycal_steps()
         )
-        if prepare_data_applycal_steps is None:
-            # No solutions need to be preapplied, so omit the applycal step
-            prepare_data_steps = ["applybeam", "shift"]
-        else:
-            prepare_data_steps = ["applybeam", "shift", "applycal"]
         all_regular = all(obs.channels_are_regular for obs in self.field.observations)
-        # Default is to average visibilities for imaging up to the smearing limit
-        if self.field.average_visibilities:
-            # Average visibilities
-            prepare_data_steps.append("avg")
-        if self.field.image_bda_timebase > 0 and all_regular and not self.apply_screens:
-            # Currently, BDA cannot be used with irregular data or screens (IDG)
-            prepare_data_steps.append("bdaavg")
+        prepare_data_steps = build_image_prepare_data_steps(
+            preapply_solutions=prepare_data_applycal_steps is not None,
+            average_visibilities=self.field.average_visibilities,
+            image_bda_timebase=self.field.image_bda_timebase,
+            all_channels_regular=all_regular,
+            apply_screens=self.apply_screens,
+        )
         prepare_data_steps = f"[{','.join(prepare_data_steps)}]"
 
         # Set the h5parm to use to apply the DDE solutions as needed.

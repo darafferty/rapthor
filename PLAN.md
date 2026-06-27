@@ -185,6 +185,13 @@ Completed:
     conversion, and operation input mutation
   - added direct helper coverage for DD scalar preference and facet h5parm
     selection without pre-application
+- Image prepare-data step helper extraction:
+  - moved prepare-data DP3 step ordering for applycal, averaging, BDA, and
+    screen compatibility into `rapthor.operations.image_plan`
+  - kept `Image` responsible for deciding whether applycal steps exist,
+    checking channel regularity, and formatting the final payload string
+  - added direct helper coverage for averaging+BDA, pre-application, irregular
+    channels, and screen mode
 - Verified in the dev container:
   - `python3 -m pytest tests/architecture -q --tb=short`
   - `python3 -m pytest tests/execution/test_outputs.py tests/execution/test_payloads.py tests/execution/test_commands.py -q --tb=short`
@@ -221,6 +228,7 @@ Completed:
   - `python3 -c "from rapthor.operations.calibrate_plan import build_calibration_preapply_steps; assert build_calibration_preapply_steps('dd', has_di_h5parm=True, has_fulljones_h5parm=True, apply_amplitudes=True, apply_normalizations=True) == ['fastphase', 'slowgain', 'fulljones', 'normalization']"`
   - `python3 -c "from rapthor.operations.calibrate_plan import build_calibration_solve_slot_inputs; assert build_calibration_solve_slot_inputs(1, 'slow', ntimechunks=2, datause='dual', solutions_per_direction=[[1], [1]], smoothness_dd_factors=[[3.0], [4.0]], smoothnessconstraint=12.0, include_smoothnessreffrequency=True)['solve1_smoothnessconstraint'] == 4.0"`
   - `python3 -c "from rapthor.operations.image_plan import build_image_applycal_steps; steps, selected = build_image_applycal_steps({'di': ['fast_phase'], 'dd': ['fast_phase', 'slow_gains']}, dd_h5parm='dd.h5', di_h5parm='di.h5', has_fulljones_h5parm=False, use_facets=False, apply_amplitudes=True, apply_normalizations=False, apply_none=False); assert steps == ['fastphase', 'slowgain']; assert selected == 'dd.h5'"`
+  - `python3 -c "from rapthor.operations.image_plan import build_image_prepare_data_steps; assert build_image_prepare_data_steps(preapply_solutions=True, average_visibilities=True, image_bda_timebase=10.0, all_channels_regular=True, apply_screens=True) == ['applybeam', 'shift', 'applycal', 'avg']"`
   - targeted Ruff format, lint, and import-sort checks for the new architecture
     tests, touched execution facade modules, output record helpers, and touched
     flow modules
@@ -258,6 +266,8 @@ Completed:
     solve-slot input helper extraction
   - targeted Ruff format, lint, and import-sort checks for the Image applycal
     planning helper extraction
+  - targeted Ruff format, lint, and import-sort checks for the Image
+    prepare-data step helper extraction
 
 Known follow-up from the completed slice:
 

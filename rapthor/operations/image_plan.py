@@ -11,6 +11,31 @@ SOLVE_TYPE_TO_APPLYCAL_STEP = {
 }
 
 
+def build_image_prepare_data_steps(
+    *,
+    preapply_solutions: bool,
+    average_visibilities: bool,
+    image_bda_timebase: float,
+    all_channels_regular: bool,
+    apply_screens: bool,
+) -> list[str]:
+    """
+    Build the ordered DP3 steps for preparing imaging visibilities.
+
+    The Image adapter determines whether pre-application has any concrete
+    applycal steps and whether observations have regular channels. This helper
+    only owns the step-order rules.
+    """
+    steps = ["applybeam", "shift"]
+    if preapply_solutions:
+        steps.append("applycal")
+    if average_visibilities:
+        steps.append("avg")
+    if image_bda_timebase > 0 and all_channels_regular and not apply_screens:
+        steps.append("bdaavg")
+    return steps
+
+
 def build_image_applycal_steps(
     calibration_strategy: Optional[Mapping[str, list[str]]],
     *,
