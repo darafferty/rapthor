@@ -542,7 +542,61 @@ Completion criteria:
 - Logs, artifacts, and work directories make failed runs inspectable and
   restartable.
 
-### 12. Dask Scalability And Script-To-Module Migration
+### 12. Manage Code Quantity And Complexity
+
+Outcome: the refactor reduces cognitive load rather than creating more files,
+facades, and boilerplate than the pipeline needs.
+
+- Treat code volume as a maintainability signal, not a target by itself. A split
+  is successful when responsibilities are easier to find, tests are faster to
+  write, and old duplication disappears.
+- Prefer deleting migration-era compatibility code, duplicated helpers, dead
+  branches, unused exports, stale fixtures, and unused parset plumbing before
+  adding new abstractions.
+- Track a lightweight before/after snapshot for large refactor slices:
+  - largest modules by line count
+  - broadest public export lists
+  - duplicated helper functions
+  - slowest focused tests
+  - most commonly patched files
+- Use soft complexity budgets to trigger review, not mechanical rewrites:
+  - files approaching 700-900 lines should have a split plan
+  - functions that need long comments, many flags, or deeply nested branches
+    should be candidates for extraction
+  - modules with many unrelated tests should be split by responsibility
+  - public facade exports should stay intentionally small
+- Avoid abstraction for its own sake. Add a protocol, class, or new package only
+  when it removes real duplication, protects a clean boundary, enables testing,
+  or makes runtime substitution clearer.
+- Keep data structures boring and explicit. Prefer `TypedDict`, small
+  dataclasses, or plain functions over deep inheritance unless the existing
+  operation lifecycle needs inheritance.
+- Keep debug paths close to the code they explain:
+  - each operation should have predictable input, output, log, and artifact
+    locations
+  - each task group should have clear labels for sector, chunk, mode, and solver
+  - each failure should include enough context to reproduce the command or
+    Python function call
+  - each run should leave a concise manifest of parset, strategy, runtime,
+    feature flags, task runner, and output records
+- Add small debug helpers rather than ad hoc print/log blocks. For example,
+  prefer reusable command summaries, payload summaries, and output-record
+  summaries that tests can assert.
+- Review total code after each major phase. If the refactor has mostly moved
+  code around without reducing duplication, public surface area, or debugging
+  friction, pause and simplify before continuing.
+
+Completion criteria:
+
+- Large files shrink into modules with clear single responsibilities, and the
+  new module count does not create a maze of pass-through wrappers.
+- Net new code is justified by deleted duplication, clearer tests, cleaner
+  dependency direction, or better runtime/debug behaviour.
+- Contributors can locate the owner of a behaviour without searching across
+  many similarly named helper modules.
+- Debug output is structured and reusable enough that tests can protect it.
+
+### 13. Dask Scalability And Script-To-Module Migration
 
 Outcome: Rapthor is prepared for multi-node Dask execution and future in-process
 Python tasks without mixing architectural cleanup with a broad script rewrite.
@@ -601,7 +655,7 @@ Completion criteria:
 - Multi-node Dask runs avoid avoidable large-object serialization and keep task
   inputs small enough to schedule reliably.
 
-### 13. Runtime And Scalability Validation
+### 14. Runtime And Scalability Validation
 
 Outcome: the cleaner architecture still supports local development, external
 Dask, Slurm, and future SKA-Low scaling work.
@@ -623,7 +677,7 @@ Completion criteria:
   into operation adapters or command builders.
 - Profiling artifacts remain useful for DP3/WSClean bottleneck analysis.
 
-### 14. Final Polish And Maintenance
+### 15. Final Polish And Maintenance
 
 Outcome: the refactor lands as a sequence of small, reviewable improvements.
 
@@ -650,11 +704,12 @@ Outcome: the refactor lands as a sequence of small, reviewable improvements.
 10. Split tests to match the new modules.
 11. Add dry-run/preflight and developer-experience improvements where they
     support the refactor.
-12. Add script-to-module wrappers for touched scripts without broad conversion.
-13. Add contributor documentation for common change paths.
-14. Profile Dask task granularity and data movement before converting heavy
+12. Remove duplicated/dead code and check complexity before adding new layers.
+13. Add script-to-module wrappers for touched scripts without broad conversion.
+14. Add contributor documentation for common change paths.
+15. Profile Dask task granularity and data movement before converting heavy
     scripts to in-process tasks.
-15. Validate broader non-integration tests, then representative integration/demo
+16. Validate broader non-integration tests, then representative integration/demo
     runs.
 
 ## Useful Commands
@@ -701,6 +756,12 @@ Script/module parity checks, as scripts are converted:
 python3 -m pytest tests/scripts -q --tb=short
 ```
 
+Code-size and large-module snapshot:
+
+```bash
+rg --files rapthor tests | xargs wc -l | sort -n
+```
+
 Non-integration coverage check:
 
 ```bash
@@ -730,9 +791,13 @@ scripts/dev/run-rapthor-prefect-demo.py \
   target-environment, performance, or docs/example smoke.
 - Architecture fitness checks pass for any slice that moves modules or changes
   imports.
+- Refactor slices explain code-volume impact: what was deleted, what was added,
+  whether public surface area grew, and why any extra abstraction is worth it.
 - Script conversions include CLI compatibility tests and Python function tests.
 - Dask-facing changes include payload serialization checks, resource/scheduling
   checks, and a decision about subprocess versus in-process execution.
+- Debuggability changes include reusable summaries, structured log context, or
+  run-manifest/output-record coverage where appropriate.
 - User-facing changes include preflight/error-message coverage and docs/example
   updates.
 - Prefect-specific tests are isolated from high xdist fan-out.
