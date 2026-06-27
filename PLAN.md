@@ -18,6 +18,8 @@ questions quickly:
 - Where are operation outputs recorded and finalized?
 - Which tests prove that a change preserved command lines, output records, and
   restart behaviour?
+- How do I dry-run, debug, profile, and scale a run without reading every flow
+  implementation first?
 
 ## Refactor Principles
 
@@ -31,6 +33,11 @@ questions quickly:
 - Keep external-tool command builders deterministic and independently testable.
 - Keep Prefect flows thin: orchestration, task wiring, artifacts, and runtime
   concerns belong there; domain extraction and command construction should not.
+- Optimize for fast contributor feedback: most behaviour should be testable
+  without Prefect, Dask, Slurm, internet access, or external radio astronomy
+  tools.
+- Prefer observable and debuggable interfaces: dry-run output, clear preflight
+  errors, stable logs, reproducible work directories, and actionable artifacts.
 - Move broad code only after tests pin the current behaviour.
 - Update documentation and examples whenever the contribution path changes.
 
@@ -74,6 +81,12 @@ execution, artifact publication, runtime scheduling, and lifecycle hooks so
 tests can exercise the use case without starting Prefect, Dask, Slurm, or real
 external tools.
 
+Add architecture fitness tests as the boundaries settle. These can start as
+simple import-boundary tests using `ast` or `modulefinder` before introducing
+another dependency. The checks should fail if domain modules import execution
+frameworks, if pure payload/command modules import Prefect, or if tests begin to
+depend on broad facade exports that hide ownership.
+
 ## Target Module Shape
 
 The exact package names can evolve while implementing the plan, but the intended
@@ -85,8 +98,13 @@ responsibilities are:
 - `rapthor.operations`: operation adapters that connect domain objects to flow
   payload builders, run the selected flow, update field state, and handle
   operation finalization.
-- `rapthor.execution.payloads`: typed payload contracts and serialization
-  validation shared by operation adapters and Prefect tasks.
+- `rapthor.application` or `rapthor.use_cases`: a possible new home for
+  scheduler-independent operation planning, typed payload contracts, parset/
+  field-to-payload mapping, restart decisions, and workflow decisions that should
+  not depend on Prefect/Dask.
+- `rapthor.execution.payloads`: a transitional or adapter-level home for typed
+  payload contracts and serialization validation until the use-case layer is
+  established.
 - `rapthor.execution.commands`: shared command token utilities plus small
   operation-specific command modules where useful.
 - `rapthor.execution.outputs`: a single compatibility layer, or a deprecated
@@ -132,6 +150,10 @@ of accidental imports from large implementation modules.
 - Move tests toward direct imports from the module that owns the behaviour.
 - Keep temporary compatibility exports only where existing users are likely to
   rely on them.
+- Add architecture fitness checks for forbidden imports and intended dependency
+  direction.
+- Add a small ownership map that links package areas to their test directories
+  and common change workflows.
 - Add a short `docs/source/development/architecture.rst` page describing the
   domain, operation, payload, command, flow, and runtime layers.
 - Add an import-boundary note for new contributors: operation adapters build
@@ -144,6 +166,8 @@ Completion criteria:
   flow, and finalizer changes.
 - `__init__` exports are either intentionally documented or scheduled for
   deprecation.
+- CI has at least a lightweight import-boundary check so clean architecture does
+  not rely on review memory alone.
 
 ### 2. Consolidate Output Record Handling
 
@@ -179,7 +203,9 @@ untyped dictionaries whose shape is hard to discover.
 
 - Start with the highest-risk flows: image and calibrate.
 - Add small `TypedDict` or dataclass contracts in `rapthor.execution.payloads`
-  or operation-specific payload modules.
+  or operation-specific payload modules; move them toward a scheduler-independent
+  application/use-case package if the dependency boundary becomes clearer that
+  way.
 - Keep payload values plain and serializable: strings, numbers, booleans, lists,
   dictionaries, and `None`.
 - Provide explicit conversion helpers such as `from_operation_inputs(...)`,
@@ -347,19 +373,73 @@ Completion criteria:
 
 ### 9. Improve Test Structure And Coverage
 
-Outcome: tests teach the architecture rather than only guarding historical
-behaviour.
+Outcome: tests form a clear confidence ladder that makes the pipeline safe and
+pleasant to improve.
 
-- Keep the default non-integration suite free of external-tool requirements.
-- Keep integration tests representative and environment-aware.
+Use these test layers deliberately:
+
+- Domain unit tests: pure `rapthor.lib` behaviour, parset/strategy rules, field
+  state transitions, sector/observation logic, and finalizer-visible state.
+- Contract tests: typed payloads, output records, path extraction, serialization
+  safety, resource requests, work-directory layout, and preflight validation.
+- Command-builder golden tests: deterministic token lists for DP3, WSClean,
+  EveryBeam, IDG, helper scripts, MPI launchers, and wrapper commands.
+- Script-module tests: importable Python function behaviour plus CLI wrapper
+  compatibility for each converted script.
+- Flow orchestration tests: Prefect entry points with shell/external tools mocked
+  so task wiring, retries, artifacts, output validation, and failure handling are
+  covered without real radio astronomy tools.
+- Operation adapter tests: lifecycle setup, restart/reuse, finalizer side
+  effects, copy/clean behaviour, and field hand-off to later operations.
+- Process tests: operation ordering, skip conditions, strategy feature
+  detection, preflight failures, reset/restart behaviour, and public helper
+  compatibility.
+- Dask scheduling tests: sync/local-Dask/external-Dask configuration,
+  serializable payloads, task submission shape, resource hints, task-runner
+  fallback behaviour, and safeguards against large object transfer.
+- Integration smoke tests: representative external-tool scenarios for DP3,
+  WSClean, EveryBeam, PyBDSF, diagnostics, mosaic hand-off, CLI execution, and
+  restart.
+- Target-environment tests: Slurm, external Dask, MPI WSClean, shared filesystem
+  assumptions, and container/runtime deployment checks.
+- Performance and observability checks: command timing, worker memory, Dask
+  performance reports, artifact quality, log completeness, and regression
+  signals for task granularity.
+- Documentation and example smoke tests: example parsets, strategies, and common
+  commands remain runnable or at least parseable.
+
+Keep the default non-integration suite free of external-tool, internet, Slurm,
+and multi-node requirements. Mark tests explicitly so contributors understand
+which lane they are running: unit/contract tests should be fast, Prefect tests
+should remain serial, integration tests should be environment-aware, and
+target-environment/performance tests should be opt-in.
+
+Test data and fixtures:
+
 - Split oversized tests along the same boundaries as the code.
-- Add fixtures that make common payloads, records, sectors, fields, and shell
-  command results easy to construct.
+- Add builders for common payloads, records, sectors, fields, parsets, shell
+  results, resource requests, and Dask task-runner configurations.
 - Prefer small FITS, H5Parm, sky-model, region, and Measurement Set fixtures
   already in `tests/resources/`.
+- Keep large Measurement Sets and downloaded archives out of version control.
+- Maintain command and output reference fixtures as reviewed golden contracts.
+- Add a documented fixture-update workflow so intentional command/output changes
+  are easy to review and accidental churn is obvious.
+
+Quality gates:
+
 - Target the next practical milestone at 85% non-integration coverage.
 - Do not add a hard coverage gate until CI is stable above the chosen threshold
   for several runs.
+- Use coverage to expose hard-to-test areas, then extract pure helpers instead
+  of testing through full flows only.
+- Add branch-focused tests for decision-heavy code even when line coverage looks
+  acceptable.
+- Add architecture fitness tests for dependency direction and forbidden imports.
+- Add CLI-vs-function parity tests as scripts become modules.
+- Add Dask payload-size and serialization checks for new in-process tasks.
+- Keep `pytest-socket` style network restrictions for unit tests; mark and
+  isolate anything that needs internet access.
 
 High-value coverage areas:
 
@@ -367,6 +447,10 @@ High-value coverage areas:
 - `perf` success, failure, and no-sample paths
 - FITS preview edge cases
 - Dask/task-runner fallback behaviour
+- worker-resource validation and multi-node scheduling assumptions
+- payload-size and large-object serialization safeguards
+- subprocess-vs-in-process script parity
+- dry-run/preflight output for common user mistakes
 - `rapthor.process` restart/reset and compatibility helpers
 - `Field` regrouping, target selection, normalization scaling, and empty model
   branches
@@ -377,9 +461,12 @@ High-value coverage areas:
 Completion criteria:
 
 - The most important branches in payload mapping, command construction, output
-  validation, orchestration, and finalization are covered by focused tests.
+  validation, orchestration, finalization, and Dask scheduling are covered by
+  focused tests.
 - Integration tests remain smoke/regression coverage for real external tools
   rather than the only way to validate business logic.
+- Contributors can choose a fast, documented test lane for the layer they
+  changed and know when broader validation is required.
 
 ### 10. Improve Contribution Documentation
 
@@ -414,7 +501,48 @@ Completion criteria:
 - A new contributor can make a small operation or parset change by following the
   guide without reverse-engineering image or calibration internals first.
 
-### 11. Dask Scalability And Script-To-Module Migration
+### 11. Improve User And Developer Experience
+
+Outcome: Rapthor is not only clean internally, but also pleasant to run, debug,
+profile, and extend.
+
+- Add or improve a dry-run/plan view that shows selected strategy steps,
+  operation order, expected task groups, key command lines, resource hints,
+  output locations, and unsupported feature warnings without running external
+  tools.
+- Make preflight failures actionable: include the parset key, strategy feature,
+  missing executable, missing Python package, runtime setting, or filesystem
+  assumption that caused the failure.
+- Keep logs structured enough for humans and CI artifacts: operation name,
+  sector/chunk identifiers, command labels, timing, retries, worker/resource
+  hints, and output paths should be easy to find.
+- Keep work directories predictable and documented so failed runs can be
+  inspected and restarted without guessing where state lives.
+- Provide small example parsets and strategies for common workflows: DI-only,
+  DD-only, DI-then-DD, imaging-only, normalization, local Dask, external Dask,
+  and Slurm/external-Dask when validated.
+- Keep command-line entry points stable and avoid requiring contributors to know
+  Prefect internals for normal development.
+- Add contributor templates or checklists for common changes:
+  - new parset option
+  - new operation
+  - new external command
+  - script-to-module conversion
+  - new integration scenario
+- Keep error messages and docs scientist-friendly: explain what changed, why it
+  matters scientifically or operationally, and what to try next.
+
+Completion criteria:
+
+- A new developer can make a small tested change using documented commands and
+  fixtures within one focused workflow.
+- A scientist can run a dry-run/preflight, understand what Rapthor will do, and
+  diagnose common configuration or environment issues without reading source
+  code.
+- Logs, artifacts, and work directories make failed runs inspectable and
+  restartable.
+
+### 12. Dask Scalability And Script-To-Module Migration
 
 Outcome: Rapthor is prepared for multi-node Dask execution and future in-process
 Python tasks without mixing architectural cleanup with a broad script rewrite.
@@ -473,7 +601,7 @@ Completion criteria:
 - Multi-node Dask runs avoid avoidable large-object serialization and keep task
   inputs small enough to schedule reliably.
 
-### 12. Runtime And Scalability Validation
+### 13. Runtime And Scalability Validation
 
 Outcome: the cleaner architecture still supports local development, external
 Dask, Slurm, and future SKA-Low scaling work.
@@ -495,7 +623,7 @@ Completion criteria:
   into operation adapters or command builders.
 - Profiling artifacts remain useful for DP3/WSClean bottleneck analysis.
 
-### 13. Final Polish And Maintenance
+### 14. Final Polish And Maintenance
 
 Outcome: the refactor lands as a sequence of small, reviewable improvements.
 
@@ -520,11 +648,13 @@ Outcome: the refactor lands as a sequence of small, reviewable improvements.
 8. Move calibration chunk/screen/collect/combine helpers into focused modules.
 9. Thin `Image` and `Calibrate` operation adapters.
 10. Split tests to match the new modules.
-11. Add script-to-module wrappers for touched scripts without broad conversion.
-12. Add contributor documentation for common change paths.
-13. Profile Dask task granularity and data movement before converting heavy
+11. Add dry-run/preflight and developer-experience improvements where they
+    support the refactor.
+12. Add script-to-module wrappers for touched scripts without broad conversion.
+13. Add contributor documentation for common change paths.
+14. Profile Dask task granularity and data movement before converting heavy
     scripts to in-process tasks.
-14. Validate broader non-integration tests, then representative integration/demo
+15. Validate broader non-integration tests, then representative integration/demo
     runs.
 
 ## Useful Commands
@@ -559,6 +689,18 @@ Focused operation adapter checks:
 python3 -m pytest tests/operations -q --tb=short
 ```
 
+Architecture fitness checks, once added:
+
+```bash
+python3 -m pytest tests/architecture -q --tb=short
+```
+
+Script/module parity checks, as scripts are converted:
+
+```bash
+python3 -m pytest tests/scripts -q --tb=short
+```
+
 Non-integration coverage check:
 
 ```bash
@@ -583,6 +725,16 @@ scripts/dev/run-rapthor-prefect-demo.py \
 - Command token fixtures and output reference fixtures remain stable or are
   updated with a clear reason.
 - New modules have focused tests at the same abstraction level.
+- The chosen test lane is named in the merge notes: domain, contract, command,
+  script/module, flow, operation, process, Dask scheduling, integration,
+  target-environment, performance, or docs/example smoke.
+- Architecture fitness checks pass for any slice that moves modules or changes
+  imports.
+- Script conversions include CLI compatibility tests and Python function tests.
+- Dask-facing changes include payload serialization checks, resource/scheduling
+  checks, and a decision about subprocess versus in-process execution.
+- User-facing changes include preflight/error-message coverage and docs/example
+  updates.
 - Prefect-specific tests are isolated from high xdist fan-out.
 - Non-integration tests pass for the touched area, plus the relevant broader
   lane before merge.
