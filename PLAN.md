@@ -206,10 +206,18 @@ untyped dictionaries whose shape is hard to discover.
   or operation-specific payload modules; move them toward a scheduler-independent
   application/use-case package if the dependency boundary becomes clearer that
   way.
+- Keep a future Pydantic adoption path open for boundary validation. Do not adopt
+  it as part of this plan yet, but keep payload/config/output contracts easy to
+  express as Pydantic models later by using explicit fields, simple types, and
+  clear conversion points.
 - Keep payload values plain and serializable: strings, numbers, booleans, lists,
   dictionaries, and `None`.
 - Provide explicit conversion helpers such as `from_operation_inputs(...)`,
   `to_payload()`, or `validate_payload(...)`.
+- If Pydantic is evaluated later, start with a narrow spike such as runtime
+  config, output records, or one small payload; require better error messages,
+  plain-dict export before Dask submission, and no dependency-direction leaks
+  before broader adoption.
 - Keep the existing `assert_serializable_payload()` check at task boundaries.
 - Add tests that exercise the payload builders without starting Prefect.
 - Keep payload keys stable until downstream code has migrated.
@@ -571,6 +579,9 @@ facades, and boilerplate than the pipeline needs.
 - Keep data structures boring and explicit. Prefer `TypedDict`, small
   dataclasses, or plain functions over deep inheritance unless the existing
   operation lifecycle needs inheritance.
+- Keep future validation libraries such as Pydantic at the boundaries, if they
+  are adopted later. They should improve config/payload/output error messages,
+  not become a deep dependency of domain objects or hot Dask task loops.
 - Keep debug paths close to the code they explain:
   - each operation should have predictable input, output, log, and artifact
     locations
