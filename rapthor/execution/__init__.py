@@ -77,13 +77,6 @@ from rapthor.execution.flows.process import (
     run_process_preflight,
     run_process_steps,
 )
-from rapthor.execution.outputs import (
-    OutputRecordError,
-    directory_record,
-    file_record,
-    is_output_record,
-    validate_output_record,
-)
 from rapthor.execution.payloads import PayloadSerializationError, assert_serializable_payload
 from rapthor.execution.resources import (
     ResourceRequest,
@@ -115,7 +108,6 @@ __all__ = [
     "ExecutionConfig",
     "MissingPrefectDaskError",
     "MissingPrefectShellError",
-    "OutputRecordError",
     "PayloadSerializationError",
     "PreflightError",
     "PreflightIssue",
@@ -158,11 +150,8 @@ __all__ = [
     "default_process_lifecycle_hooks",
     "default_process_operation_factories",
     "dask_scheduler_from_environment",
-    "directory_record",
-    "file_record",
     "image_flow",
     "image_sector_task",
-    "is_output_record",
     "mosaic_flow",
     "mosaic_image_type_task",
     "mosaic_payload_from_inputs",
@@ -195,6 +184,5 @@ __all__ = [
     "run_process_steps",
     "run_shell_command",
     "slurm_cluster_spec",
-    "validate_output_record",
     "validate_resource_request",
 ]

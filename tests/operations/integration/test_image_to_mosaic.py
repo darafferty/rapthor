@@ -2,9 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from rapthor.execution.outputs import file_record
+from rapthor.lib.records import file_record
 from rapthor.lib.strategy import set_selfcal_strategy
-
 from rapthor.operations.image import Image
 from rapthor.operations.mosaic import Mosaic
 

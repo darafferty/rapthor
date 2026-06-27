@@ -9,7 +9,6 @@ from rapthor.execution.artifacts import publish_fits_image_artifacts
 from rapthor.execution.commands import bool_token, comma_join, normalize_command
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.runtime import run_flow_with_task_runner
-from rapthor.execution.outputs import file_record, file_record_path, validate_output_record
 from rapthor.execution.payloads import (
     MosaicImageTypePayload,
     MosaicPayload,
@@ -17,6 +16,7 @@ from rapthor.execution.payloads import (
 )
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
 from rapthor.execution.shell import ShellCommand, run_shell_command
+from rapthor.lib.records import file_record, file_record_path, validate_output_record
 
 
 def _validate_basename(filename: object, name: str) -> str:

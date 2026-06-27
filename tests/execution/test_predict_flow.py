@@ -18,7 +18,7 @@ from rapthor.execution.flows.predict import (
     predict_payload_from_inputs,
     run_predict_flow,
 )
-from rapthor.execution.outputs import directory_record, file_record, validate_output_record
+from rapthor.lib.records import directory_record, file_record, validate_output_record
 from rapthor.operations.predict import Predict
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"

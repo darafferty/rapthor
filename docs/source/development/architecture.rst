@@ -33,7 +33,8 @@ Layer Ownership
      - Primary tests
    * - ``rapthor.lib``
      - Field, observation, sector, cluster, strategy, parset interpretation,
-       operation lifecycle primitives, and finalizer-visible domain state.
+       operation lifecycle primitives, finalizer-compatible output records, and
+       finalizer-visible domain state.
      - ``tests/lib``
    * - ``rapthor.application`` or ``rapthor.use_cases``
      - Future home for scheduler-independent operation planning, typed payload
@@ -70,10 +71,6 @@ Layer Ownership
      - Scheduler-independent task bodies that run shell commands, discover
        outputs, publish task-local artifacts, and return serializable records.
      - Operation flow tests with shell execution mocked.
-   * - ``rapthor.execution.outputs``
-     - Transitional or adapter-level output-record helpers until record handling
-       is consolidated with the finalizer/domain record API.
-     - ``tests/execution/test_outputs.py``
    * - ``rapthor.execution.flows``
      - Prefect orchestration: task boundaries, scheduling, retries, artifacts,
        flow-level validation, and runtime integration.
@@ -103,6 +100,8 @@ New code should import from the module that owns the behaviour, for example:
 * payload helpers from the payload/use-case module that owns the contract, such
   as ``rapthor.execution.image.payloads`` or
   ``rapthor.execution.calibrate.payloads`` for operation payload mapping
+* finalizer-compatible file/directory record helpers from
+  ``rapthor.lib.records``
 * output discovery helpers from operation-specific modules such as
   ``rapthor.execution.image.outputs``
 * task bodies from operation runner modules such as
@@ -129,12 +128,7 @@ When a refactor stage finishes, do a shim cleanup pass before adding more
 abstractions. Remove shims, deprecated exports, and architecture-test allowlist
 entries that no longer protect a real supported contract.
 
-Current temporary shims:
-
-* ``rapthor.execution.outputs`` re-exports finalizer-compatible output-record
-  helpers from ``rapthor.lib.records``. New code should import from
-  ``rapthor.lib.records``. Remove the shim after supported imports have migrated,
-  unless the execution facade is intentionally documented as stable API.
+There are no standalone compatibility shims documented here at the moment.
 
 Current Boundary Exceptions
 ---------------------------

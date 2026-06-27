@@ -37,7 +37,7 @@ from rapthor.execution.flows.calibrate import (
     calibrate_flow,
     run_calibrate_flow,
 )
-from rapthor.execution.outputs import directory_record, file_record, validate_output_record
+from rapthor.lib.records import directory_record, file_record, validate_output_record
 from rapthor.operations.calibrate import Calibrate
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"

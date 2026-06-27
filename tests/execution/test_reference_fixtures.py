@@ -3,7 +3,7 @@ from pathlib import Path
 
 from rapthor.execution.commands import command_matches_fixture
 from rapthor.execution.flows.concatenate import normalized_concatenate_command
-from rapthor.execution.outputs import validate_output_record
+from rapthor.lib.records import validate_output_record
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
 

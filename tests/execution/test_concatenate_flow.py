@@ -14,7 +14,7 @@ from rapthor.execution.flows.concatenate import (
     normalized_concatenate_command,
     run_concatenate_flow,
 )
-from rapthor.execution.outputs import directory_record, validate_output_record
+from rapthor.lib.records import directory_record, validate_output_record
 from rapthor.operations.concatenate import Concatenate
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"

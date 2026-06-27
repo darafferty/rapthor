@@ -8,11 +8,6 @@ from prefect import flow, task
 from rapthor.execution.commands import normalize_command
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.runtime import run_flow_with_task_runner
-from rapthor.execution.outputs import (
-    directory_record,
-    directory_record_path,
-    validate_output_record,
-)
 from rapthor.execution.payloads import (
     ConcatenateEpochPayload,
     ConcatenatePayload,
@@ -20,6 +15,7 @@ from rapthor.execution.payloads import (
 )
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
 from rapthor.execution.shell import ShellCommand, run_shell_command
+from rapthor.lib.records import directory_record, directory_record_path, validate_output_record
 
 
 def _validate_output_filename(output_filename: object, index: int) -> str:

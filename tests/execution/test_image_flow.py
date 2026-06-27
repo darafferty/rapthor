@@ -44,7 +44,7 @@ from rapthor.execution.image.commands import (
     normalized_wsclean_screens_command,
 )
 from rapthor.execution.image.payloads import image_payload_from_inputs
-from rapthor.execution.outputs import directory_record, file_record, validate_output_record
+from rapthor.lib.records import directory_record, file_record, validate_output_record
 from rapthor.operations.image import Image, ImageInitial, ImageNormalize
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"

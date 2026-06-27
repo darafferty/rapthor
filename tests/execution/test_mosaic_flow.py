@@ -19,7 +19,7 @@ from rapthor.execution.flows.mosaic import (
     normalized_regrid_image_command,
     run_mosaic_flow,
 )
-from rapthor.execution.outputs import file_record, validate_output_record
+from rapthor.lib.records import file_record, validate_output_record
 from rapthor.operations.mosaic import Mosaic
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"

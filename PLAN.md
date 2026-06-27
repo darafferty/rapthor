@@ -37,7 +37,10 @@ Completed:
 - Output record consolidation:
   - moved finalizer-compatible record creation, validation, and path extraction
     into `rapthor.lib.records`
-  - kept `rapthor.execution.outputs` as a compatibility shim
+  - migrated internal imports away from `rapthor.execution.outputs` and removed
+    that compatibility shim
+  - moved output-record contract tests to `tests/lib/test_records.py`
+  - pruned `rapthor.execution` facade exports for output-record helpers
   - replaced duplicated flow-local file/directory record path helpers in
     concatenate, mosaic, predict, image, and calibration flows
   - added focused tests for required and optional record path extraction
@@ -261,7 +264,7 @@ Completed:
     `rapthor.execution.flows.process`
 - Verified in the dev container:
   - `python3 -m pytest tests/architecture -q --tb=short`
-  - `python3 -m pytest tests/execution/test_outputs.py tests/execution/test_payloads.py tests/execution/test_commands.py -q --tb=short`
+  - `python3 -m pytest tests/lib/test_records.py tests/execution/test_payloads.py tests/execution/test_commands.py -q --tb=short`
   - `python3 -m pytest tests/execution/test_concatenate_flow.py tests/execution/test_mosaic_flow.py tests/execution/test_predict_flow.py -q --tb=short`
   - `python3 -m pytest tests/execution/test_image_flow.py tests/execution/test_calibrate_flow.py -q --tb=short`
   - `python3 -m pytest tests/execution/test_reference_fixtures.py tests/lib/test_operation.py -q --tb=short`
@@ -289,6 +292,10 @@ Completed:
   - `python3 -m pytest tests/execution/test_process_flow.py -q --tb=short`
   - `python3 -m pytest tests/lib/test_observation.py -q --tb=short`
   - `python3 -m pytest tests/integration/test_cli.py -q --tb=short`
+  - `python3 -m pytest tests/lib/test_records.py tests/architecture tests/execution/test_reference_fixtures.py -q --tb=short`
+  - `python3 -m pytest tests/execution/test_concatenate_flow.py tests/execution/test_mosaic_flow.py tests/execution/test_predict_flow.py -q --tb=short`
+  - `python3 -m pytest tests/execution/test_image_flow.py tests/execution/test_calibrate_flow.py -q --tb=short`
+  - `python3 -m pytest tests/operations/test_image.py tests/operations/integration/test_image_to_mosaic.py -q --tb=short`
   - `python3 -c "import rapthor.execution as execution; import rapthor.execution.flows as flows; import rapthor.execution.image.commands as image_commands; import rapthor.execution.image.payloads as image_payloads; import rapthor.execution.image.sector as image_sector; import rapthor.execution.flows.image as image_flow; assert image_commands.normalized_wsclean_no_dde_command; assert image_payloads.image_payload_from_inputs; assert image_flow.validate_image_payload is image_payloads.validate_image_payload; assert image_sector.run_image_sector; assert not hasattr(execution, 'run_image_sector'); assert not hasattr(flows, 'run_image_sector'); assert not hasattr(execution, 'image_payload_from_inputs'); assert not hasattr(flows, 'build_wsclean_no_dde_command')"`
   - `python3 -c "from rapthor.execution.image.payloads import ImagePayload, ImageSectorPayload, image_payload_from_inputs; import rapthor.execution.payloads as shared_payloads; assert ImagePayload; assert ImageSectorPayload; assert image_payload_from_inputs; assert not hasattr(shared_payloads, 'ImagePayload'); assert not hasattr(shared_payloads, 'ImageSectorPayload')"`
   - `python3 -c "import rapthor.execution as execution; import rapthor.execution.flows as flows; import rapthor.execution.calibrate.commands as commands; assert commands.normalized_ddecal_solve_command; assert not hasattr(execution, 'build_ddecal_solve_command'); assert not hasattr(flows, 'build_ddecal_solve_command')"`
@@ -309,6 +316,7 @@ Completed:
   - `python3 -c "from rapthor.execution.process_lifecycle import do_final_pass, chunk_observations, make_report; assert do_final_pass and chunk_observations and make_report"`
   - `python3 -m py_compile bin/rapthor`
   - `python3 -c "import importlib.util; assert importlib.util.find_spec('rapthor.process') is None"`
+  - `python3 -c "import importlib.util; assert importlib.util.find_spec('rapthor.execution.outputs') is None"`
   - targeted Ruff format, lint, and import-sort checks for the new architecture
     tests, touched execution facade modules, output record helpers, and touched
     flow modules
@@ -362,6 +370,8 @@ Completed:
     plan foundation
   - targeted Ruff format, lint, and import-sort checks for the process facade
     cleanup
+  - targeted Ruff format, lint, import-sort, records, architecture, and
+    affected-flow checks for output-shim removal
 
 Known follow-up from the completed slice:
 
@@ -372,8 +382,6 @@ Known follow-up from the completed slice:
 - Shrink the broad `rapthor.execution` and `rapthor.execution.flows` facades as
   owner modules stabilize; this branch is unreleased, so new internal APIs do
   not need migration shims unless the CLI or docs rely on them.
-- Migrate imports away from `rapthor.execution.outputs`, then remove that
-  compatibility shim once no internal or supported downstream imports remain.
 - Avoid running multiple pytest processes in parallel locally without setting
   separate `RAPTHOR_TEST_RUN_ROOT` values; concurrent test startup can race while
   cleaning `.pytest_cache/rapthor-runs`.
@@ -513,10 +521,6 @@ responsibilities are:
   established.
 - `rapthor.execution.commands`: shared command token utilities plus small
   operation-specific command modules where useful.
-- `rapthor.execution.outputs`: temporary compatibility shim for
-  finalizer-compatible output records; remove after imports migrate to
-  `rapthor.lib.records` unless it is explicitly documented as a stable execution
-  API.
 - `rapthor.execution.flows`: Prefect orchestration only: task boundaries,
   scheduling, retries/failure handling, artifact publication, and task-runner
   integration.
@@ -543,7 +547,7 @@ is pinned before code moves.
 Suggested first checks:
 
 ```bash
-python3 -m pytest tests/execution/test_commands.py tests/execution/test_outputs.py -q --tb=short
+python3 -m pytest tests/execution/test_commands.py tests/lib/test_records.py -q --tb=short
 python3 -m pytest tests/execution/test_payloads.py tests/operations -q --tb=short
 ```
 
@@ -588,7 +592,7 @@ Outcome: Rapthor has one finalizer-compatible record API for files,
 directories, optional values, nested lists, path extraction, validation, copying,
 and cleanup.
 
-- Compare `rapthor.execution.outputs` with `rapthor.lib.records`.
+- Compare any execution-side output-record helpers with `rapthor.lib.records`.
 - Pick the long-term home for record creation and validation. Prefer the domain
   layer if finalizers and operations both need the API.
 - Move shared helpers into that home:
@@ -597,9 +601,8 @@ and cleanup.
   - basename validation where command builders depend on it
   - nested record validation for lists and optional records
   - copy, move, and cleanup helpers used by finalizers
-- Leave `rapthor.execution.outputs` as a small compatibility shim only while
-  imports are being migrated; remove it once flows/tests/downstream-supported
-  imports use the final record API.
+- Remove compatibility shims once flows/tests/downstream-supported imports use
+  the final record API.
 - Replace local `_file_record_path`, `_directory_record_path`, and
   `_optional_file_record_path` helpers in flow modules with the shared API.
 - Add or update import-boundary/search tests so new code does not start using a
@@ -612,8 +615,8 @@ Completion criteria:
 - Flow modules no longer contain duplicated record path extraction helpers.
 - Operation finalizers and Prefect flows validate the same record contract.
 - Existing output reference tests still pass.
-- `rapthor.execution.outputs` either has no internal imports and can be removed,
-  or remains documented as a temporary shim with an explicit removal trigger.
+- The old execution-side output-record shim has been removed, or any replacement
+  shim remains documented with an explicit removal trigger.
 
 ### 3. Introduce Typed Payload Contracts
 
@@ -1175,7 +1178,7 @@ python3 -m pytest tests/execution/test_process_flow.py tests/lib/test_observatio
 Focused output/payload/command checks:
 
 ```bash
-python3 -m pytest tests/execution/test_outputs.py tests/execution/test_payloads.py tests/execution/test_commands.py -q --tb=short
+python3 -m pytest tests/lib/test_records.py tests/execution/test_payloads.py tests/execution/test_commands.py -q --tb=short
 ```
 
 Focused operation adapter checks:

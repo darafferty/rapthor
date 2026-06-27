@@ -1,6 +1,6 @@
 import pytest
 
-from rapthor.execution.outputs import (
+from rapthor.lib.records import (
     OutputRecordError,
     directory_record,
     directory_record_path,
