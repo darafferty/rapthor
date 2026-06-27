@@ -1,4 +1,8 @@
-"""Execution-layer helpers for Rapthor's Prefect/Dask runtime."""
+"""Execution-layer helpers for Rapthor's Prefect/Dask runtime.
+
+This broad package facade is kept for migration-era compatibility. New code
+should prefer imports from the module that owns the behaviour.
+"""
 
 from rapthor.execution.capabilities import (
     PreflightError,

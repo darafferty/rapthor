@@ -21,6 +21,57 @@ questions quickly:
 - How do I dry-run, debug, profile, and scale a run without reading every flow
   implementation first?
 
+## Progress Tracker
+
+Last updated: 2026-06-27.
+
+Completed:
+
+- Initial architecture guardrails:
+  - added `docs/source/development/architecture.rst`
+  - linked the development architecture page from `docs/source/index.rst`
+  - added `tests/architecture/test_import_boundaries.py`
+  - documented `rapthor.execution` and `rapthor.execution.flows` as broad
+    migration-era compatibility facades
+  - added `tests/architecture` to the explicit Ruff format/check target lists
+- Verified in the dev container:
+  - `python3 -m pytest tests/architecture -q --tb=short`
+  - `python3 -m pytest tests/execution/test_outputs.py tests/execution/test_payloads.py tests/execution/test_commands.py -q --tb=short`
+  - targeted Ruff format, lint, and import-sort checks for the new architecture
+    tests and touched execution facade modules
+
+Known follow-up from the completed slice:
+
+- Run a Sphinx docs build once the docs environment has `sphinx` installed.
+- Remove the architecture-test allowlist for
+  `rapthor.lib.operation.Operation.run_prefect_flow` when operation lifecycle
+  and flow execution are split more cleanly.
+- Decide whether the broad `rapthor.execution` and `rapthor.execution.flows`
+  facades should become documented stable APIs or shrink to compatibility
+  shims.
+
+Next slice:
+
+- Consolidate output record handling across `rapthor.execution.outputs`,
+  `rapthor.lib.records`, and duplicated flow-local record/path helpers.
+
+Remaining major stages:
+
+- Consolidate output records and path extraction.
+- Introduce typed payload contracts, starting with smaller flows before image and
+  calibration.
+- Extract shared command-builder utilities.
+- Split image flow responsibilities.
+- Split calibration flow responsibilities.
+- Thin operation adapters.
+- Improve process orchestration, dry-run/preflight, and debugging surfaces.
+- Manage code quantity and remove duplicated/dead compatibility code as slices
+  land.
+- Convert scripts to importable modules only when touched, while preserving CLI
+  compatibility.
+- Validate Dask scalability, external-Dask/Slurm, MPI WSClean, and
+  target-environment assumptions.
+
 ## Refactor Principles
 
 - Keep every refactor slice behaviour-preserving unless it is explicitly scoped

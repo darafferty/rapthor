@@ -1,4 +1,8 @@
-"""Operation-level Prefect flows."""
+"""Operation-level Prefect flows.
+
+This broad flow facade is kept for migration-era compatibility. New code should
+prefer imports from the concrete flow module that owns the behaviour.
+"""
 
 from rapthor.execution.flows.calibrate import (
     build_adjust_h5parm_sources_command,
