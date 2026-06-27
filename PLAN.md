@@ -180,9 +180,10 @@ Known follow-up from the completed slice:
 
 Next slice:
 
-- Start splitting calibration flow responsibilities using the same package
-  shape proved by image, while opportunistically shrinking broad facade exports
-  that are no longer needed internally.
+- Start splitting calibration flow responsibilities using the
+  `rapthor.execution.<operation>` package pattern proved by image, while
+  opportunistically shrinking broad facade exports that are no longer needed
+  internally.
 
 Remaining major stages:
 
@@ -208,6 +209,9 @@ Remaining major stages:
 - Keep external-tool command builders deterministic and independently testable.
 - Keep Prefect flows thin: orchestration, task wiring, artifacts, and runtime
   concerns belong there; domain extraction and command construction should not.
+- Use `rapthor.execution.image` as the reference package shape for other
+  operation flows, scaling the number of modules to the complexity of the
+  operation.
 - Optimize for fast contributor feedback: most behaviour should be testable
   without Prefect, Dask, Slurm, internet access, or external radio astronomy
   tools.
@@ -255,6 +259,35 @@ interface first. For example, use injectable collaborators for command
 execution, artifact publication, runtime scheduling, and lifecycle hooks so
 tests can exercise the use case without starting Prefect, Dask, Slurm, or real
 external tools.
+
+## Operation Package Pattern
+
+The `rapthor.execution.image` package is the reference architecture for
+remaining operation refactors. For each non-trivial operation, prefer an
+operation-owned package shaped around clear responsibilities:
+
+- `rapthor.execution.<operation>.commands` for deterministic command token
+  builders and normalized command fixtures.
+- `rapthor.execution.<operation>.payloads` for operation-specific typed payload
+  contracts, payload construction, and payload validation.
+- `rapthor.execution.<operation>.outputs` for operation-specific output
+  discovery and finalizer-compatible records.
+- `rapthor.execution.<operation>.<unit>` for scheduler-independent task bodies,
+  named after the work unit scientists recognise, such as `sector`, `chunk`,
+  `epoch`, `model`, or `image_type`.
+- `rapthor.execution.flows.<operation>` as the thin Prefect adapter responsible
+  for task wiring, scheduling, runtime integration, and result aggregation.
+
+Use the full package shape for complex flows such as image and calibration. For
+smaller flows such as concatenate, mosaic, and predict, adopt the same ownership
+rules without creating empty pass-through modules; add a module only when it
+owns real behaviour, reduces duplication, or gives tests a clearer target.
+
+Tests should mirror the package boundaries: command tests for command builders,
+payload tests for contracts and validation, output tests for file discovery,
+runner tests with shell execution mocked, and flow tests for Prefect wiring.
+Prune broad `rapthor.execution` and `rapthor.execution.flows` facade exports as
+soon as internal imports point at the owning operation package.
 
 Add architecture fitness tests as the boundaries settle. These can start as
 simple import-boundary tests using `ast` or `modulefinder` before introducing
