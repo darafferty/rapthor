@@ -7,7 +7,6 @@ prefer imports from the concrete flow module that owns the behaviour.
 from rapthor.execution.flows.calibrate import (
     calibrate_chunk_task,
     calibrate_flow,
-    calibrate_payload_from_inputs,
     run_calibrate_chunk,
     run_calibrate_flow,
 )
@@ -79,7 +78,6 @@ __all__ = [
     "build_subtract_sector_models_command",
     "calibrate_chunk_task",
     "calibrate_flow",
-    "calibrate_payload_from_inputs",
     "concatenate_epoch_task",
     "concatenate_flow",
     "concatenate_payload_from_inputs",

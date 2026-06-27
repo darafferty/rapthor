@@ -29,11 +29,11 @@ from rapthor.execution.calibrate.commands import (
     normalized_plot_solutions_command,
     normalized_process_gains_command,
 )
+from rapthor.execution.calibrate.payloads import calibrate_payload_from_inputs
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.calibrate import (
     calibrate_chunk_task,
     calibrate_flow,
-    calibrate_payload_from_inputs,
     run_calibrate_flow,
 )
 from rapthor.execution.outputs import directory_record, file_record, validate_output_record

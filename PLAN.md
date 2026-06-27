@@ -123,6 +123,18 @@ Completed:
     `rapthor.execution.calibrate.commands`
   - pruned broad facade re-exports for calibration command helpers; internal
     code imports command builders from the owner module
+- Calibration payload mapping extraction:
+  - added `rapthor.execution.calibrate.payloads` for calibration payload
+    contracts, construction, and incoming payload validation
+  - moved calibration-specific `TypedDict` payload contracts out of the shared
+    `rapthor.execution.payloads` module and into
+    `rapthor.execution.calibrate.payloads`
+  - moved `calibrate_payload_from_inputs` and calibration payload validators out
+    of `rapthor.execution.flows.calibrate`
+  - updated the Calibrate operation adapter and focused tests to import the
+    payload builder directly from the calibration package
+  - pruned broad facade re-exports for `calibrate_payload_from_inputs` now that
+    this branch has no released public API to preserve
 - Verified in the dev container:
   - `python3 -m pytest tests/architecture -q --tb=short`
   - `python3 -m pytest tests/execution/test_outputs.py tests/execution/test_payloads.py tests/execution/test_commands.py -q --tb=short`
@@ -151,7 +163,8 @@ Completed:
   - `python3 -m pytest tests/architecture -q --tb=short`
   - `python3 -c "import rapthor.execution as execution; import rapthor.execution.flows as flows; import rapthor.execution.image.commands as image_commands; import rapthor.execution.image.payloads as image_payloads; import rapthor.execution.image.sector as image_sector; import rapthor.execution.flows.image as image_flow; assert image_commands.normalized_wsclean_no_dde_command; assert image_payloads.image_payload_from_inputs; assert image_flow.validate_image_payload is image_payloads.validate_image_payload; assert image_sector.run_image_sector; assert not hasattr(execution, 'run_image_sector'); assert not hasattr(flows, 'run_image_sector'); assert not hasattr(execution, 'image_payload_from_inputs'); assert not hasattr(flows, 'build_wsclean_no_dde_command')"`
   - `python3 -c "from rapthor.execution.image.payloads import ImagePayload, ImageSectorPayload, image_payload_from_inputs; import rapthor.execution.payloads as shared_payloads; assert ImagePayload; assert ImageSectorPayload; assert image_payload_from_inputs; assert not hasattr(shared_payloads, 'ImagePayload'); assert not hasattr(shared_payloads, 'ImageSectorPayload')"`
-  - `python3 -c "import rapthor.execution as execution; import rapthor.execution.flows as flows; import rapthor.execution.calibrate.commands as commands; import rapthor.execution.flows.calibrate as flow; assert commands.normalized_ddecal_solve_command; assert flow._parse_steps is commands.parse_steps; assert not hasattr(execution, 'build_ddecal_solve_command'); assert not hasattr(flows, 'build_ddecal_solve_command')"`
+  - `python3 -c "import rapthor.execution as execution; import rapthor.execution.flows as flows; import rapthor.execution.calibrate.commands as commands; assert commands.normalized_ddecal_solve_command; assert not hasattr(execution, 'build_ddecal_solve_command'); assert not hasattr(flows, 'build_ddecal_solve_command')"`
+  - `python3 -c "from rapthor.execution.calibrate.payloads import CalibratePayload, calibrate_payload_from_inputs, validate_calibrate_payload; import rapthor.execution as execution; import rapthor.execution.flows as flows; import rapthor.execution.payloads as shared_payloads; assert CalibratePayload; assert calibrate_payload_from_inputs; assert validate_calibrate_payload; assert not hasattr(shared_payloads, 'CalibratePayload'); assert not hasattr(execution, 'calibrate_payload_from_inputs'); assert not hasattr(flows, 'calibrate_payload_from_inputs')"`
   - targeted Ruff format, lint, and import-sort checks for the new architecture
     tests, touched execution facade modules, output record helpers, and touched
     flow modules
@@ -175,6 +188,8 @@ Completed:
     contracts into `rapthor.execution.image.payloads`
   - targeted Ruff format, lint, and import-sort checks for the calibration
     command extraction slice
+  - targeted Ruff format, lint, and import-sort checks for the calibration
+    payload extraction slice
 
 Known follow-up from the completed slice:
 
@@ -198,8 +213,9 @@ Next slice:
 
 - Continue splitting calibration flow responsibilities using the
   `rapthor.execution.<operation>` package pattern proved by image. The next
-  calibration slice should move payload contracts/builders/validators into
-  `rapthor.execution.calibrate.payloads`.
+  calibration slice should move chunk execution, screen execution, and output
+  collection helpers out of `rapthor.execution.flows.calibrate` into focused
+  calibration runner/output modules.
 
 Remaining major stages:
 
@@ -956,8 +972,7 @@ Outcome: the refactor lands as a sequence of small, reviewable improvements.
 4. Completed shared command utilities for image/calibration option handling.
 5. Completed image payload mapping extraction.
 6. Move image sector execution and output discovery into focused helpers.
-7. Move calibration command builders and payload mapping out of the calibration
-   flow.
+7. Completed calibration command builders and payload mapping extraction.
 8. Move calibration chunk/screen/collect/combine helpers into focused modules.
 9. Thin `Image` and `Calibrate` operation adapters.
 10. Split tests to match the new modules.
