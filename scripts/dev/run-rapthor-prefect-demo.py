@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run Rapthor through the Prefect process flow with a visible dashboard."""
+"""Run Rapthor through the Prefect pipeline flow with a visible dashboard."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ from urllib.error import URLError
 from urllib.request import urlopen
 
 from rapthor.execution.config import TASK_RUNNERS, ExecutionConfig
-from rapthor.execution.flows.process import process_flow
+from rapthor.execution.pipeline.flow import pipeline_flow
 from rapthor.execution.task_runner import local_cluster_kwargs
 from rapthor.lib.parset import parset_read
 
@@ -388,7 +388,7 @@ def _parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
             "Start or attach to a Prefect server and run Rapthor through "
-            "rapthor.execution.flows.process.process_flow()."
+            "rapthor.execution.pipeline.flow.pipeline_flow()."
         )
     )
     parser.add_argument("parset", type=Path, help="Rapthor parset file to run.")
@@ -507,7 +507,7 @@ def _parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     parser.add_argument(
         "--logging-level",
         default=os.environ.get("RAPTHOR_LOGGING_LEVEL", "info"),
-        help="Rapthor logging level passed to process_flow().",
+        help="Rapthor logging level passed to pipeline_flow().",
     )
     parser.add_argument(
         "--keep-server-on-failure",
@@ -639,7 +639,7 @@ def main() -> int:
             execution_config,
             dask_client=None if dask_cluster is None else dask_cluster.client,
         ):
-            process_flow(
+            pipeline_flow(
                 run_parset_file,
                 logging_level=args.logging_level,
                 execution_config=execution_config,

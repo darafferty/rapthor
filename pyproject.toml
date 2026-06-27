@@ -102,7 +102,12 @@ include-package-data = false
 packages = [
     "rapthor",
     "rapthor.execution",
-    "rapthor.execution.flows",
+    "rapthor.execution.calibrate",
+    "rapthor.execution.concatenate",
+    "rapthor.execution.image",
+    "rapthor.execution.mosaic",
+    "rapthor.execution.pipeline",
+    "rapthor.execution.predict",
     "rapthor.lib",
     "rapthor.operations",
 ]
