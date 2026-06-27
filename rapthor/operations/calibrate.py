@@ -17,6 +17,7 @@ from rapthor.lib.operation import Operation
 from rapthor.lib.records import DirectoryRecord, FileRecord
 from rapthor.operations.calibrate_plan import (
     build_calibration_dp3_steps,
+    build_calibration_preapply_steps,
     build_calibration_solve_plan,
     requested_calibration_solves,
 )
@@ -587,38 +588,27 @@ class Calibrate(Operation):
         prepare-data stage, where separate final calibration products may be
         applied to imaging visibilities.
         """
-        steps = []
-        applycal_h5parm = None
-        fulljones_h5parm = None
-
         di_h5parm = self._current_cycle_solution_path(
             getattr(field, "di_h5parm_filename", None),
             "di_h5parm_cycle_number",
             "DI scalar",
         )
         applycal_h5parm = self._to_file_record_if_exists(di_h5parm)
-        if self.mode == "dd" and applycal_h5parm is not None:
-            steps.append("fastphase")
-            di_strategy = (getattr(field, "calibration_strategy", None) or {}).get("di", [])
-            di_has_phase_solves = any(
-                solve in {"fast_phase", "medium_phase"} for solve in di_strategy
-            )
-            if field.apply_amplitudes and not di_has_phase_solves:
-                steps.append("slowgain")
-
-        fulljones_h5parm = self._to_file_record_if_exists(
-            self._current_cycle_solution_path(
-                field.fulljones_h5parm_filename,
-                "fulljones_h5parm_cycle_number",
-                "DI full-Jones",
-            )
+        fulljones_path = self._current_cycle_solution_path(
+            field.fulljones_h5parm_filename,
+            "fulljones_h5parm_cycle_number",
+            "DI full-Jones",
         )
-        if self.mode == "dd" and fulljones_h5parm is not None:
-            steps.append("fulljones")
+        fulljones_h5parm = self._to_file_record_if_exists(fulljones_path)
 
-        if field.apply_normalizations:
-            steps.append("normalization")
-
+        steps = build_calibration_preapply_steps(
+            self.mode,
+            has_di_h5parm=applycal_h5parm is not None,
+            has_fulljones_h5parm=fulljones_h5parm is not None,
+            apply_amplitudes=getattr(field, "apply_amplitudes", False),
+            apply_normalizations=getattr(field, "apply_normalizations", False),
+            calibration_strategy=getattr(field, "calibration_strategy", None),
+        )
         applycal_steps = f"[{','.join(steps)}]" if steps else None
         return {
             "normalize_h5parm": self._to_file_record_if_exists(field.normalize_h5parm),

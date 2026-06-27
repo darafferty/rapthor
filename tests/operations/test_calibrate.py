@@ -11,6 +11,7 @@ from rapthor.lib.operation import DIR as OPERATION_DIR
 from rapthor.operations.calibrate import Calibrate
 from rapthor.operations.calibrate_plan import (
     build_calibration_dp3_steps,
+    build_calibration_preapply_steps,
     build_calibration_solve_plan,
     requested_calibration_solves,
 )
@@ -863,6 +864,27 @@ class TestCalibrate:
                 do_slowgain_solve=False,
                 solve_steps=["solve1", "solve2"],
                 preapply_solutions=preapply_solutions,
+            )
+            == expected_steps
+        )
+
+    @pytest.mark.parametrize(
+        "strategy, apply_amplitudes, expected_steps",
+        [
+            (None, True, ["fastphase", "slowgain", "fulljones", "normalization"]),
+            ({"di": ["fast_phase"]}, True, ["fastphase", "fulljones", "normalization"]),
+            (None, False, ["fastphase", "fulljones", "normalization"]),
+        ],
+    )
+    def test_build_calibration_preapply_steps(self, strategy, apply_amplitudes, expected_steps):
+        assert (
+            build_calibration_preapply_steps(
+                "dd",
+                has_di_h5parm=True,
+                has_fulljones_h5parm=True,
+                apply_amplitudes=apply_amplitudes,
+                apply_normalizations=True,
+                calibration_strategy=strategy,
             )
             == expected_steps
         )

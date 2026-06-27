@@ -137,6 +137,39 @@ def build_calibration_dp3_steps(
     return common_steps
 
 
+def build_calibration_preapply_steps(
+    mode: str,
+    *,
+    has_di_h5parm: bool,
+    has_fulljones_h5parm: bool,
+    apply_amplitudes: bool,
+    apply_normalizations: bool,
+    calibration_strategy: Optional[Mapping[str, list[str]]] = None,
+) -> list[str]:
+    """
+    Build the ordered DP3 applycal step names used before calibration solves.
+
+    File existence checks and FileRecord conversion stay with the Calibrate
+    adapter; this helper only decides which steps are needed from resolved
+    inputs.
+    """
+    steps = []
+    if mode == "dd" and has_di_h5parm:
+        steps.append("fastphase")
+        di_strategy = (calibration_strategy or {}).get("di", [])
+        di_has_phase_solves = any(solve in {"fast_phase", "medium_phase"} for solve in di_strategy)
+        if apply_amplitudes and not di_has_phase_solves:
+            steps.append("slowgain")
+
+    if mode == "dd" and has_fulljones_h5parm:
+        steps.append("fulljones")
+
+    if apply_normalizations:
+        steps.append("normalization")
+
+    return steps
+
+
 def build_calibration_solve_slot(
     mode: str,
     solve_type: str,
