@@ -16,6 +16,7 @@ from rapthor.operations.image import (
     ImageNormalize,
     report_sector_diagnostics,
 )
+from rapthor.operations.image_plan import build_image_applycal_steps
 
 
 def _mock_image_flow(monkeypatch, expected_outputs):
@@ -703,6 +704,21 @@ class TestImage:
         assert steps == "[fastphase,slowgain]"
         assert image._selected_applycal_h5parm == str(h5parm_file)
 
+    def test_build_image_applycal_steps_prefers_dd_scalar_plan(self):
+        steps, selected_h5parm = build_image_applycal_steps(
+            {"di": ["fast_phase"], "dd": ["fast_phase", "slow_gains"]},
+            dd_h5parm="dd-solutions.h5",
+            di_h5parm="di-solutions.h5",
+            has_fulljones_h5parm=False,
+            use_facets=False,
+            apply_amplitudes=True,
+            apply_normalizations=False,
+            apply_none=False,
+        )
+
+        assert steps == ["fastphase", "slowgain"]
+        assert selected_h5parm == "dd-solutions.h5"
+
     def test_build_applycal_steps_uses_dd_h5parm_for_facets_without_preapply(
         self, field, h5parm_file
     ):
@@ -721,6 +737,21 @@ class TestImage:
 
         assert steps is None
         assert image._selected_applycal_h5parm == str(h5parm_file)
+
+    def test_build_image_applycal_steps_selects_facets_h5parm_without_preapply(self):
+        steps, selected_h5parm = build_image_applycal_steps(
+            {"dd": ["fast_phase", "medium_phase", "slow_gains"]},
+            dd_h5parm="dd-solutions.h5",
+            di_h5parm=None,
+            has_fulljones_h5parm=False,
+            use_facets=True,
+            apply_amplitudes=True,
+            apply_normalizations=False,
+            apply_none=False,
+        )
+
+        assert steps == []
+        assert selected_h5parm == "dd-solutions.h5"
 
     def test_build_applycal_steps_ignores_previous_cycle_dd_h5parm(self, field):
         _prepare_field_for_image(field)

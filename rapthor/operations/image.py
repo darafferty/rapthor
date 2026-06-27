@@ -15,6 +15,7 @@ from rapthor.execution.image.payloads import image_payload_from_inputs
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.operation import Operation
 from rapthor.lib.records import DirectoryRecord, FileRecord
+from rapthor.operations.image_plan import build_image_applycal_steps
 
 log = logging.getLogger("rapthor:image")
 
@@ -204,61 +205,21 @@ class Image(Operation):
 
         fulljones_h5parm = None
         input_normalize_h5parm = None
-        self._selected_applycal_h5parm = None
-
-        solve_type_to_step = {
-            "fast_phase": "fastphase",
-            "medium_phase": "mediumphase",
-            "slow_gains": "slowgain",
-            "full_jones": "fulljones",
-        }
-
-        strategy = getattr(self.field, "calibration_strategy", None) or {}
-        di_phase_solves = {
-            solve for solve in strategy.get("di", []) if solve in {"fast_phase", "medium_phase"}
-        }
         dd_h5parm, di_h5parm = self._resolve_scalar_applycal_h5parms()
-
-        prefer_dd_scalar = dd_h5parm is not None and any(
-            solve != "full_jones" for solve in strategy.get("dd", [])
+        steps, self._selected_applycal_h5parm = build_image_applycal_steps(
+            getattr(self.field, "calibration_strategy", None),
+            dd_h5parm=dd_h5parm,
+            di_h5parm=di_h5parm,
+            has_fulljones_h5parm=self.field.fulljones_h5parm_filename is not None,
+            use_facets=self.use_facets,
+            apply_amplitudes=self.apply_amplitudes,
+            apply_normalizations=self.apply_normalizations,
+            apply_none=self.apply_none,
         )
-
-        steps = []
-        for mode, solves in strategy.items():
-            for solve in solves:
-                if solve not in solve_type_to_step:
-                    continue
-                if solve == "full_jones":
-                    if self.field.fulljones_h5parm_filename is not None:
-                        steps.append(solve_type_to_step[solve])
-                    continue
-                scalar_h5parm = dd_h5parm if mode == "dd" else di_h5parm
-                if mode == "dd" and self.use_facets:
-                    if scalar_h5parm is not None and self._selected_applycal_h5parm is None:
-                        self._selected_applycal_h5parm = scalar_h5parm
-                    continue
-                if solve == "slow_gains" and not self.apply_amplitudes:
-                    continue
-                if mode == "di" and solve == "slow_gains" and di_phase_solves:
-                    continue
-
-                if prefer_dd_scalar and mode != "dd":
-                    continue
-                if scalar_h5parm is None:
-                    continue
-                if self._selected_applycal_h5parm is None:
-                    self._selected_applycal_h5parm = scalar_h5parm
-                if scalar_h5parm == self._selected_applycal_h5parm:
-                    step = solve_type_to_step[solve]
-                    if mode == "di" and solve in {"fast_phase", "medium_phase"}:
-                        step = "fastphase"
-                    if step not in steps:
-                        steps.append(step)
 
         if "fulljones" in steps:
             fulljones_h5parm = FileRecord(self.field.fulljones_h5parm_filename).to_json()
-        if self.apply_normalizations:
-            steps.append("normalization")
+        if "normalization" in steps:
             input_normalize_h5parm = FileRecord(self.field.normalize_h5parm).to_json()
         if len(steps) == 0:
             return None, None, None

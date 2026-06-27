@@ -176,6 +176,15 @@ Completed:
   - reused the same helper for default DD slot inputs and explicit strategy
     solve-slot remapping
   - added direct helper coverage for scalar phase and slow-gain slot inputs
+- Image applycal planning helper extraction:
+  - added `rapthor.operations.image_plan` for pure prepare-data applycal step
+    planning
+  - moved calibration-strategy-to-applycal-step selection and scalar h5parm
+    preference logic out of `Image._build_applycal_steps()`
+  - kept `Image` responsible for current-cycle h5parm resolution, FileRecord
+    conversion, and operation input mutation
+  - added direct helper coverage for DD scalar preference and facet h5parm
+    selection without pre-application
 - Verified in the dev container:
   - `python3 -m pytest tests/architecture -q --tb=short`
   - `python3 -m pytest tests/execution/test_outputs.py tests/execution/test_payloads.py tests/execution/test_commands.py -q --tb=short`
@@ -211,6 +220,7 @@ Completed:
   - `python3 -c "from rapthor.operations.calibrate_plan import build_calibration_dp3_steps; assert build_calibration_dp3_steps(0, 0, all_channels_regular=True, use_image_based_predict=True, do_slowgain_solve=False, solve_steps=['solve1'], preapply_solutions=True) == ['predict', 'applybeam', 'applycal', 'solve1']"`
   - `python3 -c "from rapthor.operations.calibrate_plan import build_calibration_preapply_steps; assert build_calibration_preapply_steps('dd', has_di_h5parm=True, has_fulljones_h5parm=True, apply_amplitudes=True, apply_normalizations=True) == ['fastphase', 'slowgain', 'fulljones', 'normalization']"`
   - `python3 -c "from rapthor.operations.calibrate_plan import build_calibration_solve_slot_inputs; assert build_calibration_solve_slot_inputs(1, 'slow', ntimechunks=2, datause='dual', solutions_per_direction=[[1], [1]], smoothness_dd_factors=[[3.0], [4.0]], smoothnessconstraint=12.0, include_smoothnessreffrequency=True)['solve1_smoothnessconstraint'] == 4.0"`
+  - `python3 -c "from rapthor.operations.image_plan import build_image_applycal_steps; steps, selected = build_image_applycal_steps({'di': ['fast_phase'], 'dd': ['fast_phase', 'slow_gains']}, dd_h5parm='dd.h5', di_h5parm='di.h5', has_fulljones_h5parm=False, use_facets=False, apply_amplitudes=True, apply_normalizations=False, apply_none=False); assert steps == ['fastphase', 'slowgain']; assert selected == 'dd.h5'"`
   - targeted Ruff format, lint, and import-sort checks for the new architecture
     tests, touched execution facade modules, output record helpers, and touched
     flow modules
@@ -246,6 +256,8 @@ Completed:
     pre-apply helper extraction
   - targeted Ruff format, lint, and import-sort checks for the Calibrate
     solve-slot input helper extraction
+  - targeted Ruff format, lint, and import-sort checks for the Image applycal
+    planning helper extraction
 
 Known follow-up from the completed slice:
 
