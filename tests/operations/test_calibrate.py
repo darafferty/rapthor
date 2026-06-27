@@ -9,6 +9,10 @@ import pytest
 import rapthor
 from rapthor.lib.operation import DIR as OPERATION_DIR
 from rapthor.operations.calibrate import Calibrate
+from rapthor.operations.calibrate_plan import (
+    build_calibration_solve_plan,
+    requested_calibration_solves,
+)
 
 CALIBRATE_COMMON_INPUT_KEYS = {
     "timechunk_filename",
@@ -912,6 +916,21 @@ class TestCalibrate:
 
         assert [
             (solve.solve_type, solve.step, solve.mode, solve.output_prefix) for solve in plan
+        ] == expected_plan
+
+        requested_solves, helper_defaulted = requested_calibration_solves(
+            mode,
+            strategy,
+            slowgain,
+            strategy_defaulted=defaulted,
+        )
+        helper_plan = build_calibration_solve_plan(
+            mode,
+            requested_solves,
+            defaulted_strategy=helper_defaulted,
+        )
+        assert [
+            (solve.solve_type, solve.step, solve.mode, solve.output_prefix) for solve in helper_plan
         ] == expected_plan
 
     def test_set_input_parameters_dd_uses_explicit_solve_strategy(self, calibrate_field):

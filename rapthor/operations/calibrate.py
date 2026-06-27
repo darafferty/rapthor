@@ -6,7 +6,6 @@ import glob
 import os
 import re
 import shutil
-from dataclasses import dataclass
 
 import lsmtool
 import numpy as np
@@ -16,48 +15,10 @@ from rapthor.execution.flows.calibrate import calibrate_flow
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.operation import Operation
 from rapthor.lib.records import DirectoryRecord, FileRecord
-
-FIELD_PREFIX_BY_SOLVE = {
-    "fast_phase": "fast",
-    "medium_phase": "medium",
-    "slow_gains": "slow",
-    "full_jones": "fulljones",
-}
-
-MODE_BY_SOLVE = {
-    "fast_phase": "scalarphase",
-    "medium_phase": "scalarphase",
-    "slow_gains": "diagonal",
-    "full_jones": "fulljones",
-}
-
-INTERVAL_KEYS_BY_SOLVE = {
-    "fast_phase": ("solint_fast_timestep", "solint_fast_freqstep"),
-    "medium_phase": ("solint_medium_timestep", "solint_medium_freqstep"),
-    "slow_gains": ("solint_slow_timestep", "solint_slow_freqstep"),
-    "full_jones": ("solint_fulljones_timestep", "solint_fulljones_freqstep"),
-}
-
-
-@dataclass(frozen=True)
-class CalibrationSolve:
-    """Resolved mapping from a strategy solve to a DP3 solve slot."""
-
-    solve_type: str
-    slot: int
-    mode: str
-    output_prefix: str
-    collected_h5parm: str
-    timestep_key: str
-    freqstep_key: str
-    field_prefix: str
-
-    @property
-    def step(self):
-        return f"solve{self.slot}"
-
-    def output_h5parms(self, ntimechunks):
-        return [f"{self.output_prefix}_{index}.h5parm" for index in range(ntimechunks)]
+from rapthor.operations.calibrate_plan import (
+    build_calibration_solve_plan,
+    requested_calibration_solves,
+)
 
 
 class Calibrate(Operation):
@@ -475,74 +436,20 @@ class Calibrate(Operation):
             #    "solve4_datause": field.medium_datause,
 
     def _requested_calibration_solves(self):
-        strategy = getattr(self.field, "calibration_strategy", None)
-        if strategy is not None and self.mode in strategy:
-            return list(strategy.get(self.mode) or []), getattr(
-                self.field, "_calibration_strategy_defaulted", False
-            )
-
-        if self.mode == "dd":
-            solves = ["fast_phase", "medium_phase"]
-            if self.field.do_slowgain_solve:
-                solves.append("slow_gains")
-            return solves, True
-
-        return ["full_jones"], True
+        return requested_calibration_solves(
+            self.mode,
+            getattr(self.field, "calibration_strategy", None),
+            self.field.do_slowgain_solve,
+            strategy_defaulted=getattr(self.field, "_calibration_strategy_defaulted", False),
+        )
 
     def _build_solve_plan(self):
         requested_solves, defaulted_strategy = self._requested_calibration_solves()
-        expanded_solves = list(requested_solves)
-
-        if (
-            self.mode == "dd"
-            and defaulted_strategy
-            and expanded_solves == ["fast_phase", "medium_phase", "slow_gains"]
-        ):
-            expanded_solves.append("medium_phase")
-
-        if len(expanded_solves) > 4:
-            raise ValueError("A calibration cycle can contain at most four solve slots")
-
-        medium_count = 0
-        solve_plan = []
-        for slot, solve_type in enumerate(expanded_solves, start=1):
-            if solve_type == "medium_phase":
-                medium_count += 1
-            solve_plan.append(self._build_solve_slot(solve_type, slot, medium_count))
-
-        return solve_plan
-
-    def _build_solve_slot(self, solve_type, slot, medium_count):
-        output_prefix, collected_h5parm = self._solve_output_names(solve_type, medium_count)
-        timestep_key, freqstep_key = INTERVAL_KEYS_BY_SOLVE[solve_type]
-
-        return CalibrationSolve(
-            solve_type=solve_type,
-            slot=slot,
-            mode=MODE_BY_SOLVE[solve_type],
-            output_prefix=output_prefix,
-            collected_h5parm=collected_h5parm,
-            timestep_key=timestep_key,
-            freqstep_key=freqstep_key,
-            field_prefix=FIELD_PREFIX_BY_SOLVE[solve_type],
+        return build_calibration_solve_plan(
+            self.mode,
+            requested_solves,
+            defaulted_strategy=defaulted_strategy,
         )
-
-    def _solve_output_names(self, solve_type, medium_count):
-        if solve_type == "fast_phase":
-            suffix = "_di" if self.mode == "di" else ""
-            return f"fast_phase{suffix}", f"fast_phases{suffix}.h5parm"
-        if solve_type == "medium_phase":
-            medium_name = "medium2" if medium_count > 1 else "medium1"
-            suffix = "_di" if self.mode == "di" else ""
-            return f"{medium_name}_phase{suffix}", f"{medium_name}_phases{suffix}.h5parm"
-        if solve_type == "slow_gains":
-            if self.mode == "di":
-                return "slow_gains_di", "slow_gains_di.h5parm"
-            return "slow_gain", "slow_gains.h5parm"
-        if solve_type == "full_jones":
-            return "fulljones_gain", "fulljones_solutions.h5"
-
-        raise ValueError(f"Unsupported solve type: {solve_type}")
 
     def _apply_solve_plan_inputs(self, solve_plan, dp3_steps=None):
         field = self.field

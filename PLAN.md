@@ -146,6 +146,14 @@ Completed:
   - updated focused calibration tests to exercise plotting and collection
     helpers through the runner owner module
   - pruned broad facade re-exports for `run_calibrate_chunk`
+- Calibrate solve-plan helper extraction:
+  - added `rapthor.operations.calibrate_plan` for pure strategy-to-solve-slot
+    planning
+  - moved `CalibrationSolve`, solve output naming, requested-solve defaults, and
+    solve-plan expansion out of `rapthor.operations.calibrate`
+  - kept thin `Calibrate` wrapper methods so finalizer and existing tests can
+    still ask the operation for its current solve plan
+  - extended operation tests to exercise the pure solve-plan helper directly
 - Verified in the dev container:
   - `python3 -m pytest tests/architecture -q --tb=short`
   - `python3 -m pytest tests/execution/test_outputs.py tests/execution/test_payloads.py tests/execution/test_commands.py -q --tb=short`
@@ -177,6 +185,7 @@ Completed:
   - `python3 -c "import rapthor.execution as execution; import rapthor.execution.flows as flows; import rapthor.execution.calibrate.commands as commands; assert commands.normalized_ddecal_solve_command; assert not hasattr(execution, 'build_ddecal_solve_command'); assert not hasattr(flows, 'build_ddecal_solve_command')"`
   - `python3 -c "from rapthor.execution.calibrate.payloads import CalibratePayload, calibrate_payload_from_inputs, validate_calibrate_payload; import rapthor.execution as execution; import rapthor.execution.flows as flows; import rapthor.execution.payloads as shared_payloads; assert CalibratePayload; assert calibrate_payload_from_inputs; assert validate_calibrate_payload; assert not hasattr(shared_payloads, 'CalibratePayload'); assert not hasattr(execution, 'calibrate_payload_from_inputs'); assert not hasattr(flows, 'calibrate_payload_from_inputs')"`
   - `python3 -c "import rapthor.execution as execution; import rapthor.execution.flows as flows; import rapthor.execution.calibrate.runner as runner; import rapthor.execution.flows.calibrate as flow; assert runner.run_calibrate_chunk; assert runner.collect_plot_and_combine; assert flow.calibrate_chunk_task; assert not hasattr(execution, 'run_calibrate_chunk'); assert not hasattr(flows, 'run_calibrate_chunk')"`
+  - `python3 -c "from rapthor.operations.calibrate_plan import build_calibration_solve_plan, requested_calibration_solves; solves, defaulted = requested_calibration_solves('dd', None, True); plan = build_calibration_solve_plan('dd', solves, defaulted_strategy=defaulted); assert [solve.step for solve in plan] == ['solve1', 'solve2', 'solve3', 'solve4']; assert plan[-1].output_prefix == 'medium2_phase'"`
   - targeted Ruff format, lint, and import-sort checks for the new architecture
     tests, touched execution facade modules, output record helpers, and touched
     flow modules
@@ -204,6 +213,8 @@ Completed:
     payload extraction slice
   - targeted Ruff format, lint, and import-sort checks for the calibration
     runner split
+  - targeted Ruff format, lint, and import-sort checks for the Calibrate
+    solve-plan helper extraction
 
 Known follow-up from the completed slice:
 
@@ -225,8 +236,8 @@ Known follow-up from the completed slice:
 
 Next slice:
 
-- Begin thinning the `Image` and `Calibrate` operation adapters by identifying
-  field/parset-to-payload mapping that can move into pure helper modules without
+- Continue thinning operation adapters by moving the next field/parset-to-input
+  mapping cluster out of `Calibrate` or `Image` into a pure helper without
   changing CLI behaviour.
 
 Remaining major stages:
