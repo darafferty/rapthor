@@ -80,6 +80,15 @@ Completed:
     flow-local option-appending helpers
   - added focused tests for the shared token and option helpers while
     preserving existing command-token behaviour
+- Image command-builder extraction:
+  - added `rapthor.execution.image_commands` as the first operation-specific
+    command module
+  - moved image DP3, WSClean, MPI WSClean, helper-script, a-term config, and
+    normalized fixture command builders out of `rapthor.execution.flows.image`
+  - kept broad compatibility facades importing image command helpers from the
+    new command module
+  - moved focused image command-builder tests to import directly from
+    `rapthor.execution.image_commands`
 - Verified in the dev container:
   - `python3 -m pytest tests/architecture -q --tb=short`
   - `python3 -m pytest tests/execution/test_outputs.py tests/execution/test_payloads.py tests/execution/test_commands.py -q --tb=short`
@@ -94,7 +103,9 @@ Completed:
   - `python3 -m pytest tests/execution/test_commands.py tests/execution/test_mosaic_flow.py tests/execution/test_predict_flow.py -q --tb=short`
   - `python3 -m pytest tests/execution/test_commands.py -q --tb=short`
   - `python3 -m pytest tests/execution/test_image_flow.py tests/execution/test_calibrate_flow.py -q --tb=short`
+  - `python3 -m pytest tests/execution/test_image_flow.py -q --tb=short`
   - `python3 -m pytest tests/architecture -q --tb=short`
+  - `python3 -c "import rapthor.execution as execution; import rapthor.execution.flows as flows; import rapthor.execution.image_commands as image_commands; assert execution.normalized_wsclean_no_dde_command is image_commands.normalized_wsclean_no_dde_command; assert flows.build_wsclean_no_dde_command is image_commands.build_wsclean_no_dde_command"`
   - targeted Ruff format, lint, and import-sort checks for the new architecture
     tests, touched execution facade modules, output record helpers, and touched
     flow modules
@@ -108,6 +119,8 @@ Completed:
     typed-payload slice
   - targeted Ruff format, lint, and import-sort checks for the shared command
     token and option helper slices
+  - targeted Ruff format, lint, and import-sort checks for the image command
+    extraction slice
 
 Known follow-up from the completed slice:
 
@@ -129,9 +142,8 @@ Known follow-up from the completed slice:
 
 Next slice:
 
-- Start extracting image command builders from `rapthor.execution.flows.image`
-  into an operation-specific command module, keeping compatibility imports and
-  command-token tests in place.
+- Extract image payload mapping from `rapthor.execution.flows.image` into a
+  pure payload module so the flow keeps moving toward orchestration-only code.
 
 Remaining major stages:
 
@@ -855,7 +867,7 @@ Outcome: the refactor lands as a sequence of small, reviewable improvements.
 2. Consolidate output records.
 3. Add typed payload contracts for concatenate, mosaic, and predict.
 4. Completed shared command utilities for image/calibration option handling.
-5. Move image command builders and payload mapping out of the image flow.
+5. Move image payload mapping out of the image flow.
 6. Move image sector execution and output discovery into focused helpers.
 7. Move calibration command builders and payload mapping out of the calibration
    flow.

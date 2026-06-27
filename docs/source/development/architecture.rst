@@ -44,9 +44,12 @@ Layer Ownership
      - Operation adapters that connect domain objects to payload builders, run
        flows, update field state, and handle finalizer side effects.
      - ``tests/operations``
-   * - ``rapthor.execution.commands``
-     - Deterministic external-command token construction and display helpers.
-     - ``tests/execution/test_commands.py`` and command reference fixtures.
+   * - ``rapthor.execution.commands`` and operation command modules such as
+       ``rapthor.execution.image_commands``
+     - Deterministic external-command token construction, display helpers, and
+       operation-specific command builders that do not import Prefect.
+     - ``tests/execution/test_commands.py``, operation flow tests, and command
+       reference fixtures.
    * - ``rapthor.execution.payloads``
      - Transitional home for payload serialization checks and typed payload
        contracts until scheduler-independent use-case modules own them.
@@ -78,8 +81,8 @@ these as transitional convenience surfaces.
 
 New code should import from the module that owns the behaviour, for example:
 
-* command helpers from ``rapthor.execution.commands`` or operation-specific
-  command modules once they exist
+* command helpers from ``rapthor.execution.commands`` and operation-specific
+  command modules such as ``rapthor.execution.image_commands``
 * payload helpers from the payload/use-case module that owns the contract
 * Prefect flows from the concrete ``rapthor.execution.flows.<operation>`` module
 * runtime helpers from their concrete runtime module

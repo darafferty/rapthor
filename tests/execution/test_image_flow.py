@@ -9,6 +9,12 @@ from prefect.testing.utilities import prefect_test_harness
 import rapthor.execution.flows.image as image_module
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.image import (
+    image_flow,
+    image_payload_from_inputs,
+    image_sector_task,
+    run_image_flow,
+)
+from rapthor.execution.image_commands import (
     ATERM_CONFIG_FILENAME,
     build_aterm_config_content,
     build_calculate_image_diagnostics_command,
@@ -21,9 +27,6 @@ from rapthor.execution.flows.image import (
     build_make_skymodel_image_command,
     build_normalize_flux_scale_command,
     build_wsclean_restore_command,
-    image_flow,
-    image_payload_from_inputs,
-    image_sector_task,
     normalized_blank_image_command,
     normalized_compress_sector_images_command,
     normalized_concat_time_command,
@@ -40,7 +43,6 @@ from rapthor.execution.flows.image import (
     normalized_wsclean_no_dde_command,
     normalized_wsclean_restore_command,
     normalized_wsclean_screens_command,
-    run_image_flow,
 )
 from rapthor.execution.outputs import directory_record, file_record, validate_output_record
 from rapthor.operations.image import Image, ImageInitial, ImageNormalize
