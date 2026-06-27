@@ -34,6 +34,46 @@ questions quickly:
 - Move broad code only after tests pin the current behaviour.
 - Update documentation and examples whenever the contribution path changes.
 
+## Clean Architecture Boundaries
+
+The refactor should follow the dependency rule: inner layers must not import
+outer layers. Scientific domain code should stay independent of Prefect, Dask,
+Slurm, shell execution, artifact publication, and external command runners.
+
+Use these layers as the architectural guide:
+
+- Domain: field, observation, sector, cluster, strategy, parset-derived scientific
+  state, and finalizer-visible operation state.
+- Application/use cases: operation planning, parset-to-payload mapping,
+  restart/reuse decisions, process feature detection, and workflow decisions
+  that are independent of a specific scheduler.
+- Interface adapters: command builders, output-record conversion, script
+  wrappers, filesystem record handling, and adapters between domain/use-case
+  concepts and serializable execution payloads.
+- Frameworks/drivers: Prefect flows and tasks, Dask task runners, Slurm
+  integration, shell execution, artifact publishing, dashboards, logging
+  integrations, and runtime resource checks.
+
+Dependency direction should be one-way:
+
+- `rapthor.lib` must not import `rapthor.execution`, Prefect, Dask, Slurm, or
+  shell-command infrastructure.
+- Application/use-case helpers may depend on domain objects and plain typed
+  payload contracts, but not on Prefect task objects or Dask runtime state.
+- Command builders should return deterministic token lists and should not run
+  commands, publish artifacts, or inspect Prefect context.
+- Prefect flows should depend inward on payload contracts, command builders, and
+  pure helpers; pure helpers should not depend outward on Prefect flows.
+- Runtime integrations should be replaceable adapters around stable ports such
+  as command execution, artifact publishing, work-directory layout, task
+  scheduling, and resource validation.
+
+When a dependency needs to cross outward, define a small protocol or adapter
+interface first. For example, use injectable collaborators for command
+execution, artifact publication, runtime scheduling, and lifecycle hooks so
+tests can exercise the use case without starting Prefect, Dask, Slurm, or real
+external tools.
+
 ## Target Module Shape
 
 The exact package names can evolve while implementing the plan, but the intended
