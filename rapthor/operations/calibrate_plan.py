@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 from typing import Mapping, Optional
 
+import numpy as np
+
 FIELD_PREFIX_BY_SOLVE = {
     "fast_phase": "fast",
     "medium_phase": "medium",
@@ -190,6 +192,51 @@ def build_calibration_solve_slot(
         freqstep_key=freqstep_key,
         field_prefix=FIELD_PREFIX_BY_SOLVE[solve_type],
     )
+
+
+def build_calibration_solve_slot_inputs(
+    slot: int,
+    field_prefix: str,
+    *,
+    ntimechunks: int,
+    datause: object,
+    solutions_per_direction: object,
+    smoothness_dd_factors: object,
+    smoothnessconstraint: float,
+    antenna_constraint: str = "[]",
+    include_smoothnessreffrequency: bool = False,
+    smoothnessreffrequency: Optional[object] = None,
+    include_smoothnessrefdistance: bool = False,
+    smoothnessrefdistance: Optional[object] = None,
+) -> dict[str, object]:
+    """
+    Build per-slot calibration inputs from resolved field/observation values.
+
+    The operation adapter still reads values from Field. This helper keeps the
+    slot naming, smoothness scaling, and optional fast/medium versus slow-gain
+    defaults in one testable place.
+    """
+    inputs = {
+        f"solve{slot}_datause": datause,
+        f"solve{slot}_solutions_per_direction": solutions_per_direction,
+        f"solve{slot}_smoothness_dd_factors": smoothness_dd_factors,
+        f"solve{slot}_smoothnessconstraint": smoothnessconstraint / np.min(smoothness_dd_factors),
+        f"solve{slot}_antennaconstraint": (
+            antenna_constraint if field_prefix in {"fast", "medium"} else "[]"
+        ),
+    }
+
+    if include_smoothnessreffrequency:
+        inputs[f"solve{slot}_smoothnessreffrequency"] = (
+            smoothnessreffrequency if field_prefix in {"fast", "medium"} else [0] * ntimechunks
+        )
+
+    if include_smoothnessrefdistance:
+        inputs[f"solve{slot}_smoothnessrefdistance"] = (
+            smoothnessrefdistance if field_prefix in {"fast", "medium"} else None
+        )
+
+    return inputs
 
 
 def solve_output_names(mode: str, solve_type: str, medium_count: int) -> tuple[str, str]:

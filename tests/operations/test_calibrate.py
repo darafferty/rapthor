@@ -13,6 +13,7 @@ from rapthor.operations.calibrate_plan import (
     build_calibration_dp3_steps,
     build_calibration_preapply_steps,
     build_calibration_solve_plan,
+    build_calibration_solve_slot_inputs,
     requested_calibration_solves,
 )
 
@@ -888,6 +889,52 @@ class TestCalibrate:
             )
             == expected_steps
         )
+
+    def test_build_calibration_solve_slot_inputs_for_scalar_phase_slot(self):
+        assert build_calibration_solve_slot_inputs(
+            2,
+            "medium",
+            ntimechunks=2,
+            datause="full",
+            solutions_per_direction=[[1, 2], [3, 4]],
+            smoothness_dd_factors=[[2.0, 4.0], [3.0, 5.0]],
+            smoothnessconstraint=12.0,
+            antenna_constraint="[[CS001HBA0,CS002HBA0]]",
+            include_smoothnessreffrequency=True,
+            smoothnessreffrequency=[150.0, 151.0],
+            include_smoothnessrefdistance=True,
+            smoothnessrefdistance=2500.0,
+        ) == {
+            "solve2_datause": "full",
+            "solve2_solutions_per_direction": [[1, 2], [3, 4]],
+            "solve2_smoothness_dd_factors": [[2.0, 4.0], [3.0, 5.0]],
+            "solve2_smoothnessconstraint": 6.0,
+            "solve2_antennaconstraint": "[[CS001HBA0,CS002HBA0]]",
+            "solve2_smoothnessreffrequency": [150.0, 151.0],
+            "solve2_smoothnessrefdistance": 2500.0,
+        }
+
+    def test_build_calibration_solve_slot_inputs_for_slow_gain_slot(self):
+        assert build_calibration_solve_slot_inputs(
+            1,
+            "slow",
+            ntimechunks=2,
+            datause="dual",
+            solutions_per_direction=[[1], [1]],
+            smoothness_dd_factors=[[3.0], [4.0]],
+            smoothnessconstraint=12.0,
+            antenna_constraint="[[CS001HBA0]]",
+            include_smoothnessreffrequency=True,
+            include_smoothnessrefdistance=True,
+        ) == {
+            "solve1_datause": "dual",
+            "solve1_solutions_per_direction": [[1], [1]],
+            "solve1_smoothness_dd_factors": [[3.0], [4.0]],
+            "solve1_smoothnessconstraint": 4.0,
+            "solve1_antennaconstraint": "[]",
+            "solve1_smoothnessreffrequency": [0, 0],
+            "solve1_smoothnessrefdistance": None,
+        }
 
     @pytest.mark.parametrize(
         "mode, strategy, defaulted, slowgain, expected_plan",

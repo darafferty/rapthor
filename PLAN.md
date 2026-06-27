@@ -167,6 +167,15 @@ Completed:
     resolution and FileRecord conversion
   - added direct helper coverage for scalar, slow-gain, full-Jones, and
     normalization pre-apply ordering
+- Calibrate solve-slot input helper extraction:
+  - moved per-slot data-use, solutions-per-direction, smoothness scaling,
+    antenna constraint, and optional reference-value mapping into
+    `rapthor.operations.calibrate_plan`
+  - kept `Calibrate` responsible for reading values from `Field`, resolving
+    core-station constraints, and mutating operation inputs
+  - reused the same helper for default DD slot inputs and explicit strategy
+    solve-slot remapping
+  - added direct helper coverage for scalar phase and slow-gain slot inputs
 - Verified in the dev container:
   - `python3 -m pytest tests/architecture -q --tb=short`
   - `python3 -m pytest tests/execution/test_outputs.py tests/execution/test_payloads.py tests/execution/test_commands.py -q --tb=short`
@@ -201,6 +210,7 @@ Completed:
   - `python3 -c "from rapthor.operations.calibrate_plan import build_calibration_solve_plan, requested_calibration_solves; solves, defaulted = requested_calibration_solves('dd', None, True); plan = build_calibration_solve_plan('dd', solves, defaulted_strategy=defaulted); assert [solve.step for solve in plan] == ['solve1', 'solve2', 'solve3', 'solve4']; assert plan[-1].output_prefix == 'medium2_phase'"`
   - `python3 -c "from rapthor.operations.calibrate_plan import build_calibration_dp3_steps; assert build_calibration_dp3_steps(0, 0, all_channels_regular=True, use_image_based_predict=True, do_slowgain_solve=False, solve_steps=['solve1'], preapply_solutions=True) == ['predict', 'applybeam', 'applycal', 'solve1']"`
   - `python3 -c "from rapthor.operations.calibrate_plan import build_calibration_preapply_steps; assert build_calibration_preapply_steps('dd', has_di_h5parm=True, has_fulljones_h5parm=True, apply_amplitudes=True, apply_normalizations=True) == ['fastphase', 'slowgain', 'fulljones', 'normalization']"`
+  - `python3 -c "from rapthor.operations.calibrate_plan import build_calibration_solve_slot_inputs; assert build_calibration_solve_slot_inputs(1, 'slow', ntimechunks=2, datause='dual', solutions_per_direction=[[1], [1]], smoothness_dd_factors=[[3.0], [4.0]], smoothnessconstraint=12.0, include_smoothnessreffrequency=True)['solve1_smoothnessconstraint'] == 4.0"`
   - targeted Ruff format, lint, and import-sort checks for the new architecture
     tests, touched execution facade modules, output record helpers, and touched
     flow modules
@@ -234,6 +244,8 @@ Completed:
     DP3-step helper extraction
   - targeted Ruff format, lint, and import-sort checks for the Calibrate
     pre-apply helper extraction
+  - targeted Ruff format, lint, and import-sort checks for the Calibrate
+    solve-slot input helper extraction
 
 Known follow-up from the completed slice:
 
