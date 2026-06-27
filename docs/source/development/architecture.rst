@@ -45,7 +45,8 @@ Layer Ownership
        flows, update field state, and handle finalizer side effects.
      - ``tests/operations``
    * - ``rapthor.execution.commands`` and operation command modules such as
-       ``rapthor.execution.image.commands``
+       ``rapthor.execution.image.commands`` and
+       ``rapthor.execution.calibrate.commands``
      - Deterministic external-command token construction, display helpers, and
        operation-specific command builders that do not import Prefect.
      - ``tests/execution/test_commands.py``, operation flow tests, and command
@@ -95,7 +96,8 @@ these as transitional convenience surfaces.
 New code should import from the module that owns the behaviour, for example:
 
 * command helpers from ``rapthor.execution.commands`` and operation-specific
-  command modules such as ``rapthor.execution.image.commands``
+  command modules such as ``rapthor.execution.image.commands`` or
+  ``rapthor.execution.calibrate.commands``
 * payload helpers from the payload/use-case module that owns the contract, such
   as ``rapthor.execution.image.payloads`` for image payload mapping
 * output discovery helpers from operation-specific modules such as

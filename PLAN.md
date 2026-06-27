@@ -113,6 +113,16 @@ Completed:
   - stopped re-exporting image command helpers, `image_payload_from_inputs`, and
     `run_image_sector` from the broad execution facades; internal code imports
     from owner modules
+- Calibration command-builder extraction:
+  - added `rapthor.execution.calibrate.commands` as the first calibration
+    package module
+  - moved DDECal, IDGCal, model drawing, region-file, h5parm collection,
+    h5parm combination, gain processing, source adjustment, plotting, and
+    normalized fixture command builders out of `rapthor.execution.flows.calibrate`
+  - updated focused calibration command-builder tests to import directly from
+    `rapthor.execution.calibrate.commands`
+  - pruned broad facade re-exports for calibration command helpers; internal
+    code imports command builders from the owner module
 - Verified in the dev container:
   - `python3 -m pytest tests/architecture -q --tb=short`
   - `python3 -m pytest tests/execution/test_outputs.py tests/execution/test_payloads.py tests/execution/test_commands.py -q --tb=short`
@@ -136,8 +146,12 @@ Completed:
   - `python3 -m pytest tests/execution/test_payloads.py -q --tb=short`
   - `python3 -m pytest tests/execution/test_image_flow.py -q --tb=short`
   - `python3 -m pytest tests/architecture -q --tb=short`
+  - `python3 -m pytest tests/execution/test_calibrate_flow.py -q --tb=short`
+  - `python3 -m pytest tests/operations/test_calibrate.py -q --tb=short`
+  - `python3 -m pytest tests/architecture -q --tb=short`
   - `python3 -c "import rapthor.execution as execution; import rapthor.execution.flows as flows; import rapthor.execution.image.commands as image_commands; import rapthor.execution.image.payloads as image_payloads; import rapthor.execution.image.sector as image_sector; import rapthor.execution.flows.image as image_flow; assert image_commands.normalized_wsclean_no_dde_command; assert image_payloads.image_payload_from_inputs; assert image_flow.validate_image_payload is image_payloads.validate_image_payload; assert image_sector.run_image_sector; assert not hasattr(execution, 'run_image_sector'); assert not hasattr(flows, 'run_image_sector'); assert not hasattr(execution, 'image_payload_from_inputs'); assert not hasattr(flows, 'build_wsclean_no_dde_command')"`
   - `python3 -c "from rapthor.execution.image.payloads import ImagePayload, ImageSectorPayload, image_payload_from_inputs; import rapthor.execution.payloads as shared_payloads; assert ImagePayload; assert ImageSectorPayload; assert image_payload_from_inputs; assert not hasattr(shared_payloads, 'ImagePayload'); assert not hasattr(shared_payloads, 'ImageSectorPayload')"`
+  - `python3 -c "import rapthor.execution as execution; import rapthor.execution.flows as flows; import rapthor.execution.calibrate.commands as commands; import rapthor.execution.flows.calibrate as flow; assert commands.normalized_ddecal_solve_command; assert flow._parse_steps is commands.parse_steps; assert not hasattr(execution, 'build_ddecal_solve_command'); assert not hasattr(flows, 'build_ddecal_solve_command')"`
   - targeted Ruff format, lint, and import-sort checks for the new architecture
     tests, touched execution facade modules, output record helpers, and touched
     flow modules
@@ -159,6 +173,8 @@ Completed:
     consolidation and sector/output split slice
   - targeted Ruff format, lint, and import-sort checks for moving image payload
     contracts into `rapthor.execution.image.payloads`
+  - targeted Ruff format, lint, and import-sort checks for the calibration
+    command extraction slice
 
 Known follow-up from the completed slice:
 
@@ -180,10 +196,10 @@ Known follow-up from the completed slice:
 
 Next slice:
 
-- Start splitting calibration flow responsibilities using the
-  `rapthor.execution.<operation>` package pattern proved by image, while
-  opportunistically shrinking broad facade exports that are no longer needed
-  internally.
+- Continue splitting calibration flow responsibilities using the
+  `rapthor.execution.<operation>` package pattern proved by image. The next
+  calibration slice should move payload contracts/builders/validators into
+  `rapthor.execution.calibrate.payloads`.
 
 Remaining major stages:
 
