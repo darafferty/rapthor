@@ -45,17 +45,28 @@ Layer Ownership
        flows, update field state, and handle finalizer side effects.
      - ``tests/operations``
    * - ``rapthor.execution.commands`` and operation command modules such as
-       ``rapthor.execution.image_commands``
+       ``rapthor.execution.image.commands``
      - Deterministic external-command token construction, display helpers, and
        operation-specific command builders that do not import Prefect.
      - ``tests/execution/test_commands.py``, operation flow tests, and command
        reference fixtures.
+   * - Operation output-discovery modules such as
+       ``rapthor.execution.image.outputs``
+     - File/directory discovery and finalizer-compatible output-record creation
+       for operation-specific products. These modules should stay free of
+       Prefect, Dask, shell execution, and operation objects.
+     - Focused output contract tests and operation flow tests.
    * - ``rapthor.execution.payloads`` and operation payload modules such as
-       ``rapthor.execution.image_payloads``
-     - Transitional home for payload serialization checks, typed payload
-       contracts, and operation-specific payload builders/validators until
-       scheduler-independent use-case modules own them.
+       ``rapthor.execution.image.payloads``
+     - Shared payload serialization checks plus operation-specific typed payload
+       contracts, builders, and validators. As operation packages are
+       introduced, move operation-specific contracts into the package that owns
+       them.
      - ``tests/execution/test_payloads.py`` and operation flow tests.
+   * - Operation runner modules such as ``rapthor.execution.image.sector``
+     - Scheduler-independent task bodies that run shell commands, discover
+       outputs, publish task-local artifacts, and return serializable records.
+     - Operation flow tests with shell execution mocked.
    * - ``rapthor.execution.outputs``
      - Transitional or adapter-level output-record helpers until record handling
        is consolidated with the finalizer/domain record API.
@@ -84,9 +95,13 @@ these as transitional convenience surfaces.
 New code should import from the module that owns the behaviour, for example:
 
 * command helpers from ``rapthor.execution.commands`` and operation-specific
-  command modules such as ``rapthor.execution.image_commands``
+  command modules such as ``rapthor.execution.image.commands``
 * payload helpers from the payload/use-case module that owns the contract, such
-  as ``rapthor.execution.image_payloads`` for image payload mapping
+  as ``rapthor.execution.image.payloads`` for image payload mapping
+* output discovery helpers from operation-specific modules such as
+  ``rapthor.execution.image.outputs``
+* task bodies from operation runner modules such as
+  ``rapthor.execution.image.sector``
 * Prefect flows from the concrete ``rapthor.execution.flows.<operation>`` module
 * runtime helpers from their concrete runtime module
 

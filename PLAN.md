@@ -81,29 +81,38 @@ Completed:
   - added focused tests for the shared token and option helpers while
     preserving existing command-token behaviour
 - Image command-builder extraction:
-  - added `rapthor.execution.image_commands` as the first operation-specific
+  - added `rapthor.execution.image.commands` as the first operation-specific
     command module
   - moved image DP3, WSClean, MPI WSClean, helper-script, a-term config, and
     normalized fixture command builders out of `rapthor.execution.flows.image`
-  - kept broad compatibility facades importing image command helpers from the
-    new command module
+  - pruned broad facade re-exports for image command helpers after package
+    consolidation
   - moved focused image command-builder tests to import directly from
-    `rapthor.execution.image_commands`
+    `rapthor.execution.image.commands`
 - Image payload mapping extraction:
-  - added `rapthor.execution.image_payloads` for image payload construction and
+  - added `rapthor.execution.image.payloads` for image payload construction and
     incoming payload validation
   - moved image payload mapping and validation out of
     `rapthor.execution.flows.image`
+  - moved image-specific `TypedDict` payload contracts out of the shared
+    `rapthor.execution.payloads` module and into
+    `rapthor.execution.image.payloads`
   - updated the image operation adapter and focused tests to import the payload
     builder from the new owner module
-  - kept broad compatibility facades re-exporting `image_payload_from_inputs`
-- Future image package consolidation:
-  - once image sector execution and output discovery are extracted, fold the
-    temporary flat modules into an image package such as
-    `rapthor.execution.image.commands`, `rapthor.execution.image.payloads`,
-    `rapthor.execution.image.sector`, and `rapthor.execution.image.outputs`
-  - keep compatibility imports until internal imports, docs, and downstream
-    users have migrated to the package structure
+  - pruned broad facade re-exports for `image_payload_from_inputs` after package
+    consolidation
+- Image sector/output split and package consolidation:
+  - added `rapthor.execution.image.outputs` for image-specific file and
+    directory discovery contracts
+  - moved non-Prefect image sector execution into
+    `rapthor.execution.image.sector`
+  - slimmed `rapthor.execution.flows.image` to Prefect task wiring, payload
+    validation, sync execution entry points, and final result aggregation
+  - consolidated image command, payload, output, and sector modules under the
+    `rapthor.execution.image` package instead of keeping temporary flat modules
+  - stopped re-exporting image command helpers, `image_payload_from_inputs`, and
+    `run_image_sector` from the broad execution facades; internal code imports
+    from owner modules
 - Verified in the dev container:
   - `python3 -m pytest tests/architecture -q --tb=short`
   - `python3 -m pytest tests/execution/test_outputs.py tests/execution/test_payloads.py tests/execution/test_commands.py -q --tb=short`
@@ -121,8 +130,14 @@ Completed:
   - `python3 -m pytest tests/execution/test_image_flow.py -q --tb=short`
   - `python3 -m pytest tests/operations/test_image.py -q --tb=short`
   - `python3 -m pytest tests/architecture -q --tb=short`
-  - `python3 -c "import rapthor.execution as execution; import rapthor.execution.flows as flows; import rapthor.execution.image_commands as image_commands; assert execution.normalized_wsclean_no_dde_command is image_commands.normalized_wsclean_no_dde_command; assert flows.build_wsclean_no_dde_command is image_commands.build_wsclean_no_dde_command"`
-  - `python3 -c "import rapthor.execution as execution; import rapthor.execution.flows as flows; import rapthor.execution.image_payloads as image_payloads; import rapthor.execution.flows.image as image_flow; assert execution.image_payload_from_inputs is image_payloads.image_payload_from_inputs; assert flows.image_payload_from_inputs is image_payloads.image_payload_from_inputs; assert image_flow.validate_image_payload is image_payloads.validate_image_payload"`
+  - `python3 -m pytest tests/execution/test_image_outputs.py tests/execution/test_image_flow.py -q --tb=short`
+  - `python3 -m pytest tests/operations/test_image.py -q --tb=short`
+  - `python3 -m pytest tests/architecture -q --tb=short`
+  - `python3 -m pytest tests/execution/test_payloads.py -q --tb=short`
+  - `python3 -m pytest tests/execution/test_image_flow.py -q --tb=short`
+  - `python3 -m pytest tests/architecture -q --tb=short`
+  - `python3 -c "import rapthor.execution as execution; import rapthor.execution.flows as flows; import rapthor.execution.image.commands as image_commands; import rapthor.execution.image.payloads as image_payloads; import rapthor.execution.image.sector as image_sector; import rapthor.execution.flows.image as image_flow; assert image_commands.normalized_wsclean_no_dde_command; assert image_payloads.image_payload_from_inputs; assert image_flow.validate_image_payload is image_payloads.validate_image_payload; assert image_sector.run_image_sector; assert not hasattr(execution, 'run_image_sector'); assert not hasattr(flows, 'run_image_sector'); assert not hasattr(execution, 'image_payload_from_inputs'); assert not hasattr(flows, 'build_wsclean_no_dde_command')"`
+  - `python3 -c "from rapthor.execution.image.payloads import ImagePayload, ImageSectorPayload, image_payload_from_inputs; import rapthor.execution.payloads as shared_payloads; assert ImagePayload; assert ImageSectorPayload; assert image_payload_from_inputs; assert not hasattr(shared_payloads, 'ImagePayload'); assert not hasattr(shared_payloads, 'ImageSectorPayload')"`
   - targeted Ruff format, lint, and import-sort checks for the new architecture
     tests, touched execution facade modules, output record helpers, and touched
     flow modules
@@ -140,6 +155,10 @@ Completed:
     extraction slice
   - targeted Ruff format, lint, and import-sort checks for the image payload
     extraction slice
+  - targeted Ruff format, lint, and import-sort checks for the image package
+    consolidation and sector/output split slice
+  - targeted Ruff format, lint, and import-sort checks for moving image payload
+    contracts into `rapthor.execution.image.payloads`
 
 Known follow-up from the completed slice:
 
@@ -147,9 +166,9 @@ Known follow-up from the completed slice:
 - Remove the architecture-test allowlist for
   `rapthor.lib.operation.Operation.run_prefect_flow` when operation lifecycle
   and flow execution are split more cleanly.
-- Decide whether the broad `rapthor.execution` and `rapthor.execution.flows`
-  facades should become documented stable APIs or shrink to compatibility
-  shims.
+- Shrink the broad `rapthor.execution` and `rapthor.execution.flows` facades as
+  owner modules stabilize; this branch is unreleased, so new internal APIs do
+  not need migration shims unless the CLI or docs rely on them.
 - Migrate imports away from `rapthor.execution.outputs`, then remove that
   compatibility shim once no internal or supported downstream imports remain.
 - Avoid running multiple pytest processes in parallel locally without setting
@@ -161,14 +180,12 @@ Known follow-up from the completed slice:
 
 Next slice:
 
-- Extract image sector execution and output-discovery helpers from
-  `rapthor.execution.flows.image` while keeping Prefect task boundaries in the
-  flow module; after that, consolidate the image-specific flat modules into a
-  `rapthor.execution.image` package.
+- Start splitting calibration flow responsibilities using the same package
+  shape proved by image, while opportunistically shrinking broad facade exports
+  that are no longer needed internally.
 
 Remaining major stages:
 
-- Split image flow responsibilities.
 - Split calibration flow responsibilities.
 - Thin operation adapters.
 - Improve process orchestration, dry-run/preflight, and debugging surfaces.

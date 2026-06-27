@@ -6,14 +6,14 @@ from pathlib import Path
 import pytest
 from prefect.testing.utilities import prefect_test_harness
 
-import rapthor.execution.flows.image as image_module
+import rapthor.execution.image.sector as image_sector_module
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.image import (
     image_flow,
     image_sector_task,
     run_image_flow,
 )
-from rapthor.execution.image_commands import (
+from rapthor.execution.image.commands import (
     ATERM_CONFIG_FILENAME,
     build_aterm_config_content,
     build_calculate_image_diagnostics_command,
@@ -43,7 +43,7 @@ from rapthor.execution.image_commands import (
     normalized_wsclean_restore_command,
     normalized_wsclean_screens_command,
 )
-from rapthor.execution.image_payloads import image_payload_from_inputs
+from rapthor.execution.image.payloads import image_payload_from_inputs
 from rapthor.execution.outputs import directory_record, file_record, validate_output_record
 from rapthor.operations.image import Image, ImageInitial, ImageNormalize
 
@@ -1593,12 +1593,12 @@ def test_run_image_flow_executes_no_dde_commands_and_returns_records(
         return []
 
     monkeypatch.setattr(
-        image_module,
+        image_sector_module,
         "publish_plot_file_records",
         fake_publish_plot_file_records,
     )
     monkeypatch.setattr(
-        image_module,
+        image_sector_module,
         "publish_fits_image_artifacts",
         fake_publish_fits_image_artifacts,
     )
