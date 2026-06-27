@@ -68,6 +68,13 @@ Completed:
     Prefect task execution
   - added a focused test for malformed calibration chunk payloads so invalid
     worker payloads fail before shell commands run
+- Shared command utility proving ground:
+  - added shared boolean, comma-join, and bracketed-list token helpers in
+    `rapthor.execution.commands`
+  - migrated mosaic and predict command builders away from duplicated
+    flow-local token helpers
+  - added focused tests for the shared token helpers while preserving existing
+    command-token behaviour
 - Verified in the dev container:
   - `python3 -m pytest tests/architecture -q --tb=short`
   - `python3 -m pytest tests/execution/test_outputs.py tests/execution/test_payloads.py tests/execution/test_commands.py -q --tb=short`
@@ -79,6 +86,8 @@ Completed:
   - `python3 -m pytest tests/execution/test_image_flow.py -q --tb=short`
   - `python3 -m pytest tests/execution/test_payloads.py tests/architecture -q --tb=short`
   - `python3 -m pytest tests/execution/test_calibrate_flow.py -q --tb=short`
+  - `python3 -m pytest tests/execution/test_commands.py tests/execution/test_mosaic_flow.py tests/execution/test_predict_flow.py -q --tb=short`
+  - `python3 -m pytest tests/architecture -q --tb=short`
   - targeted Ruff format, lint, and import-sort checks for the new architecture
     tests, touched execution facade modules, output record helpers, and touched
     flow modules
@@ -90,6 +99,8 @@ Completed:
     typed-payload slice
   - targeted Ruff format, lint, and import-sort checks for the calibration
     typed-payload slice
+  - targeted Ruff format, lint, and import-sort checks for the shared command
+    token helper slice
 
 Known follow-up from the completed slice:
 
@@ -111,7 +122,9 @@ Known follow-up from the completed slice:
 
 Next slice:
 
-- Extract shared command-builder utilities.
+- Finish shared command-builder utilities by aligning the image and calibration
+  option-appending helpers, then start extracting operation-specific command
+  builders where the split is obvious.
 
 Remaining major stages:
 
@@ -835,7 +848,7 @@ Outcome: the refactor lands as a sequence of small, reviewable improvements.
 1. Document internal boundaries and audit public exports.
 2. Consolidate output records.
 3. Add typed payload contracts for concatenate, mosaic, and predict.
-4. Extract shared command utilities.
+4. Finish shared command utilities for image/calibration option handling.
 5. Move image command builders and payload mapping out of the image flow.
 6. Move image sector execution and output discovery into focused helpers.
 7. Move calibration command builders and payload mapping out of the calibration

@@ -6,7 +6,7 @@ from typing import Mapping, Optional
 from prefect import flow, task
 
 from rapthor.execution.artifacts import publish_fits_image_artifacts
-from rapthor.execution.commands import normalize_command
+from rapthor.execution.commands import bool_token, comma_join, normalize_command
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.runtime import run_flow_with_task_runner
 from rapthor.execution.outputs import file_record, file_record_path, validate_output_record
@@ -17,10 +17,6 @@ from rapthor.execution.payloads import (
 )
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
 from rapthor.execution.shell import ShellCommand, run_shell_command
-
-
-def _bool_token(value: bool) -> str:
-    return "True" if value else "False"
 
 
 def _validate_basename(filename: object, name: str) -> str:
@@ -110,10 +106,6 @@ def _validate_unique_mosaic_paths(image_types: list[MosaicImageTypePayload]) -> 
         raise ValueError("mosaic paths must be unique")
 
 
-def _join_path_list(paths: list[str]) -> str:
-    return ",".join(paths)
-
-
 def build_make_mosaic_template_command(
     input_image_filenames: list[str],
     sector_vertices_filenames: list[str],
@@ -123,10 +115,10 @@ def build_make_mosaic_template_command(
     """Build the `make_mosaic_template.py` command for one image type."""
     return [
         "make_mosaic_template.py",
-        _join_path_list(input_image_filenames),
-        _join_path_list(sector_vertices_filenames),
+        comma_join(input_image_filenames),
+        comma_join(sector_vertices_filenames),
         template_image_filename,
-        f"--skip={_bool_token(skip_processing)}",
+        f"--skip={bool_token(skip_processing)}",
     ]
 
 
@@ -144,7 +136,7 @@ def build_regrid_image_command(
         template_image_filename,
         sector_vertices_filename,
         regridded_image_filename,
-        f"--skip={_bool_token(skip_processing)}",
+        f"--skip={bool_token(skip_processing)}",
     ]
 
 
@@ -157,10 +149,10 @@ def build_make_mosaic_command(
     """Build the `make_mosaic.py` command for one image type."""
     return [
         "make_mosaic.py",
-        _join_path_list(regridded_image_filenames),
+        comma_join(regridded_image_filenames),
         template_image_filename,
         mosaic_filename,
-        f"--skip={_bool_token(skip_processing)}",
+        f"--skip={bool_token(skip_processing)}",
     ]
 
 

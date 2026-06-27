@@ -1,9 +1,29 @@
 import json
 from pathlib import Path
 
-from rapthor.execution.commands import command_matches_fixture, command_to_string, normalize_command
+from rapthor.execution.commands import (
+    bool_token,
+    bracketed_list_token,
+    comma_join,
+    command_matches_fixture,
+    command_to_string,
+    normalize_command,
+)
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
+
+
+def test_bool_token_uses_external_tool_spelling():
+    assert bool_token(True) == "True"
+    assert bool_token(False) == "False"
+
+
+def test_comma_join_builds_one_command_token():
+    assert comma_join(["model_a.ms", "model_b.ms", 3]) == "model_a.ms,model_b.ms,3"
+
+
+def test_bracketed_list_token_builds_dp3_style_list():
+    assert bracketed_list_token(["Dir00", "Dir01"]) == "[Dir00,Dir01]"
 
 
 def test_normalize_command_splits_shell_string():

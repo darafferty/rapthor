@@ -6,7 +6,12 @@ from typing import Mapping, Optional
 
 from prefect import flow, task
 
-from rapthor.execution.commands import normalize_command
+from rapthor.execution.commands import (
+    bool_token,
+    bracketed_list_token,
+    comma_join,
+    normalize_command,
+)
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.runtime import run_flow_with_task_runner
 from rapthor.execution.outputs import (
@@ -24,10 +29,6 @@ from rapthor.execution.payloads import (
 )
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
 from rapthor.execution.shell import ShellCommand, run_shell_command
-
-
-def _bool_token(value: bool) -> str:
-    return "True" if value else "False"
 
 
 def _optional_str(value: object) -> Optional[str]:
@@ -58,14 +59,6 @@ def _predict_type(sagecalpredict: bool, h5parm: Optional[str]) -> str:
     if h5parm is None:
         return "predict"
     return "h5parmpredict"
-
-
-def _directions_token(directions: list[str]) -> str:
-    return f"[{','.join(directions)}]"
-
-
-def _join_path_list(paths: list[str]) -> str:
-    return ",".join(paths)
 
 
 def build_predict_model_data_command(
@@ -122,9 +115,9 @@ def build_predict_model_data_command(
         command.append(f"msin.ntimes={ntimes}")
     command.extend(
         [
-            f"predict.onebeamperpatch={_bool_token(onebeamperpatch)}",
-            f"predict.correctfreqsmearing={_bool_token(correctfreqsmearing)}",
-            f"predict.correcttimesmearing={_bool_token(correcttimesmearing)}",
+            f"predict.onebeamperpatch={bool_token(onebeamperpatch)}",
+            f"predict.correctfreqsmearing={bool_token(correctfreqsmearing)}",
+            f"predict.correcttimesmearing={bool_token(correcttimesmearing)}",
             f"predict.type={_predict_type(sagecalpredict, h5parm)}",
         ]
     )
@@ -137,7 +130,7 @@ def build_predict_model_data_command(
     command.extend(
         [
             f"predict.sourcedb={sourcedb}",
-            f"predict.directions={_directions_token(directions)}",
+            f"predict.directions={bracketed_list_token(directions)}",
             f"numthreads={numthreads}",
         ]
     )
@@ -155,7 +148,7 @@ def build_add_sector_models_command(
     return [
         "add_sector_models.py",
         msobs,
-        _join_path_list(msmods),
+        comma_join(msmods),
         f"--msin_column={data_colname}",
         f"--starttime={obs_starttime}",
         f"--infix={infix}",
@@ -184,7 +177,7 @@ def build_subtract_sector_models_command(
         "--weights_colname=WEIGHT_SPECTRUM",
         "--phaseonly=True",
         msobs,
-        _join_path_list(msmods),
+        comma_join(msmods),
         f"--msin_column={data_colname}",
         f"--starttime={obs_starttime}",
         f"--solint_sec={solint_sec}",
@@ -193,10 +186,10 @@ def build_subtract_sector_models_command(
         f"--uvcut_min={min_uv_lambda}",
         f"--uvcut_max={max_uv_lambda}",
         f"--nr_outliers={nr_outliers}",
-        f"--peel_outliers={_bool_token(peel_outliers)}",
+        f"--peel_outliers={bool_token(peel_outliers)}",
         f"--nr_bright={nr_bright}",
-        f"--peel_bright={_bool_token(peel_bright)}",
-        f"--reweight={_bool_token(reweight)}",
+        f"--peel_bright={bool_token(peel_bright)}",
+        f"--reweight={bool_token(reweight)}",
     ]
 
 
