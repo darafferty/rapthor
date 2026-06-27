@@ -7,7 +7,13 @@ from typing import Mapping, Optional
 from prefect import flow, task
 
 from rapthor.execution.artifacts import publish_plot_file_records
-from rapthor.execution.commands import normalize_command
+from rapthor.execution.commands import (
+    append_key_value,
+    bool_token,
+    bracketed_list_token,
+    comma_join,
+    normalize_command,
+)
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.runtime import run_flow_with_task_runner
 from rapthor.execution.outputs import (
@@ -138,14 +144,6 @@ SOLVE_SLOT_ARGUMENTS = [
 SUPPORTED_DD_PREAPPLY_STEPS = {"fastphase", "slowgain", "fulljones", "normalization"}
 
 
-def _bool_token(value: bool) -> str:
-    return "True" if value else "False"
-
-
-def _list_token(values: list[object]) -> str:
-    return f"[{','.join(str(value) for value in values)}]"
-
-
 def _optional_file_path(record: object, name: str) -> Optional[str]:
     if record is None:
         return None
@@ -203,18 +201,6 @@ def _optional_scatter_value(input_parms: Mapping[str, object], name: str, index:
     return _scatter_value(input_parms[name], index, name)
 
 
-def _append_option(command: list[str], prefix: str, value: object) -> None:
-    if value is None:
-        return
-    if isinstance(value, bool):
-        value = _bool_token(value)
-    elif isinstance(value, list):
-        if any(item is None for item in value):
-            return
-        value = _list_token(value)
-    command.append(f"{prefix}={value}")
-
-
 def build_ddecal_solve_command(
     msin: str,
     data_colname: str,
@@ -265,22 +251,20 @@ def build_ddecal_solve_command(
         ("predict.regions", predict_regions),
         (
             "predict.images",
-            None
-            if predict_images is None
-            else f"[{','.join(str(path) for path in predict_images)}]",
+            None if predict_images is None else bracketed_list_token(predict_images),
         ),
         ("solve1.sourcedb", sourcedb),
         ("solve1.directions", directions),
     ]
     for prefix, value in common_options:
-        _append_option(command, prefix, value)
+        append_key_value(command, prefix, value)
 
     for slot in solve_slots:
         slot_index = int(slot["slot"])
         for key, suffix in SOLVE_SLOT_ARGUMENTS:
-            _append_option(command, f"solve{slot_index}.{suffix}", slot.get(key))
+            append_key_value(command, f"solve{slot_index}.{suffix}", slot.get(key))
 
-    _append_option(command, "numthreads", numthreads)
+    append_key_value(command, "numthreads", numthreads)
     return command
 
 
@@ -334,7 +318,7 @@ def build_make_region_file_command(
         str(width_ra),
         str(width_dec),
         outfile,
-        f"--enclose_names={_bool_token(enclose_names)}",
+        f"--enclose_names={bool_token(enclose_names)}",
     ]
 
 
@@ -403,7 +387,7 @@ def build_collect_h5parms_command(inh5parms: list[str], outputh5parm: str) -> li
     return [
         "H5parm_collector.py",
         "-c",
-        ",".join(inh5parms),
+        comma_join(inh5parms),
         f"--outh5parm={outputh5parm}",
     ]
 
@@ -413,7 +397,7 @@ def build_collect_screen_h5parms_command(inh5parms: list[str], outputh5parm: str
     return [
         "collect_screen_h5parms.py",
         "-c",
-        ",".join(inh5parms),
+        comma_join(inh5parms),
         f"--outh5parm={outputh5parm}",
     ]
 
@@ -434,12 +418,12 @@ def build_combine_h5parms_command(
         inh5parm2,
         outh5parm,
         mode,
-        f"--reweight={_bool_token(reweight)}",
+        f"--reweight={bool_token(reweight)}",
     ]
     if calibrator_names is not None:
-        command.append(f"--cal_names={','.join(str(name) for name in calibrator_names)}")
+        command.append(f"--cal_names={comma_join(calibrator_names)}")
     if calibrator_fluxes is not None:
-        command.append(f"--cal_fluxes={','.join(str(flux) for flux in calibrator_fluxes)}")
+        command.append(f"--cal_fluxes={comma_join(calibrator_fluxes)}")
     return command
 
 
@@ -457,8 +441,8 @@ def build_process_gains_command(
         "process_gains.py",
         "--normalize=True",
         h5parm,
-        f"--smooth={_bool_token(smooth)}",
-        f"--flag={_bool_token(flag)}",
+        f"--smooth={bool_token(smooth)}",
+        f"--flag={bool_token(flag)}",
         f"--max_station_delta={max_station_delta}",
         f"--scale_delta_with_dist={scale_station_delta}",
         f"--phase_center_ra={phase_center_ra}",

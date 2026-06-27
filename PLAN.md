@@ -73,8 +73,13 @@ Completed:
     `rapthor.execution.commands`
   - migrated mosaic and predict command builders away from duplicated
     flow-local token helpers
-  - added focused tests for the shared token helpers while preserving existing
-    command-token behaviour
+  - added shared helpers for optional prefixed tokens, separate CLI
+    option/value tokens, boolean flags, expanded list-valued options, and DP3
+    `key=value` assignments
+  - migrated image and calibration command builders away from duplicated
+    flow-local option-appending helpers
+  - added focused tests for the shared token and option helpers while
+    preserving existing command-token behaviour
 - Verified in the dev container:
   - `python3 -m pytest tests/architecture -q --tb=short`
   - `python3 -m pytest tests/execution/test_outputs.py tests/execution/test_payloads.py tests/execution/test_commands.py -q --tb=short`
@@ -87,6 +92,8 @@ Completed:
   - `python3 -m pytest tests/execution/test_payloads.py tests/architecture -q --tb=short`
   - `python3 -m pytest tests/execution/test_calibrate_flow.py -q --tb=short`
   - `python3 -m pytest tests/execution/test_commands.py tests/execution/test_mosaic_flow.py tests/execution/test_predict_flow.py -q --tb=short`
+  - `python3 -m pytest tests/execution/test_commands.py -q --tb=short`
+  - `python3 -m pytest tests/execution/test_image_flow.py tests/execution/test_calibrate_flow.py -q --tb=short`
   - `python3 -m pytest tests/architecture -q --tb=short`
   - targeted Ruff format, lint, and import-sort checks for the new architecture
     tests, touched execution facade modules, output record helpers, and touched
@@ -100,7 +107,7 @@ Completed:
   - targeted Ruff format, lint, and import-sort checks for the calibration
     typed-payload slice
   - targeted Ruff format, lint, and import-sort checks for the shared command
-    token helper slice
+    token and option helper slices
 
 Known follow-up from the completed slice:
 
@@ -122,13 +129,12 @@ Known follow-up from the completed slice:
 
 Next slice:
 
-- Finish shared command-builder utilities by aligning the image and calibration
-  option-appending helpers, then start extracting operation-specific command
-  builders where the split is obvious.
+- Start extracting image command builders from `rapthor.execution.flows.image`
+  into an operation-specific command module, keeping compatibility imports and
+  command-token tests in place.
 
 Remaining major stages:
 
-- Extract shared command-builder utilities.
 - Split image flow responsibilities.
 - Split calibration flow responsibilities.
 - Thin operation adapters.
@@ -848,7 +854,7 @@ Outcome: the refactor lands as a sequence of small, reviewable improvements.
 1. Document internal boundaries and audit public exports.
 2. Consolidate output records.
 3. Add typed payload contracts for concatenate, mosaic, and predict.
-4. Finish shared command utilities for image/calibration option handling.
+4. Completed shared command utilities for image/calibration option handling.
 5. Move image command builders and payload mapping out of the image flow.
 6. Move image sector execution and output discovery into focused helpers.
 7. Move calibration command builders and payload mapping out of the calibration

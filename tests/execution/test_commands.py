@@ -2,6 +2,11 @@ import json
 from pathlib import Path
 
 from rapthor.execution.commands import (
+    append_flag,
+    append_key_value,
+    append_option_value,
+    append_option_values,
+    append_prefixed_value,
     bool_token,
     bracketed_list_token,
     comma_join,
@@ -24,6 +29,69 @@ def test_comma_join_builds_one_command_token():
 
 def test_bracketed_list_token_builds_dp3_style_list():
     assert bracketed_list_token(["Dir00", "Dir01"]) == "[Dir00,Dir01]"
+
+
+def test_append_prefixed_value_skips_missing_optional_values():
+    command = ["DP3"]
+
+    append_prefixed_value(command, "applycal.parmdb=", None)
+    append_prefixed_value(command, "applycal.steps=", "fastphase")
+
+    assert command == ["DP3", "applycal.steps=fastphase"]
+
+
+def test_append_option_value_adds_separate_tokens():
+    command = ["wsclean"]
+
+    append_option_value(command, "-name", "sector_0")
+
+    assert command == ["wsclean", "-name", "sector_0"]
+
+
+def test_append_flag_only_adds_enabled_flags():
+    command = ["wsclean"]
+
+    append_flag(command, "-multiscale", True)
+    append_flag(command, "-save-source-list", False)
+
+    assert command == ["wsclean", "-multiscale"]
+
+
+def test_append_option_values_expands_list_values():
+    command = ["wsclean"]
+
+    append_option_values(
+        command,
+        [
+            ("-name", "sector_0"),
+            ("-size", [1024, 2048]),
+            ("-parallel-gridding", None),
+        ],
+    )
+
+    assert command == ["wsclean", "-name", "sector_0", "-size", "1024", "2048"]
+
+
+def test_append_key_value_uses_dp3_bool_and_list_tokens():
+    command = ["DP3"]
+
+    append_key_value(command, "solve.onebeamperpatch", True)
+    append_key_value(command, "solve.directions", ["Dir00", "Dir01"])
+    append_key_value(command, "applycal.parmdb", None)
+
+    assert command == [
+        "DP3",
+        "solve.onebeamperpatch=True",
+        "solve.directions=[Dir00,Dir01]",
+    ]
+
+
+def test_append_key_value_skips_lists_containing_optional_values():
+    command = ["DP3"]
+
+    append_key_value(command, "solve.modeldatacolumns", ["MODEL_DATA", None])
+
+    assert command == ["DP3"]
 
 
 def test_normalize_command_splits_shell_string():

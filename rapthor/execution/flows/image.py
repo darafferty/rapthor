@@ -8,7 +8,15 @@ from typing import Mapping, Optional
 from prefect import flow, task
 
 from rapthor.execution.artifacts import publish_fits_image_artifacts, publish_plot_file_records
-from rapthor.execution.commands import normalize_command
+from rapthor.execution.commands import (
+    append_flag,
+    append_option_value,
+    append_option_values,
+    append_prefixed_value,
+    bool_token,
+    comma_join,
+    normalize_command,
+)
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.runtime import run_flow_with_task_runner
 from rapthor.execution.outputs import (
@@ -37,20 +45,12 @@ from rapthor.execution.shell import ShellCommand, run_shell_command
 ATERM_CONFIG_FILENAME = "aterm_plus_beam.cfg"
 
 
-def _bool_token(value: bool) -> str:
-    return "True" if value else "False"
-
-
 def _validate_basename(filename: object, name: str) -> str:
     if not isinstance(filename, str) or not filename:
         raise ValueError(f"{name} must be a non-empty string")
     if os.path.isabs(filename) or os.path.basename(filename) != filename:
         raise ValueError(f"{name} must be a basename")
     return filename
-
-
-def _join_comma(values: list[object]) -> str:
-    return ",".join(str(value) for value in values)
 
 
 def _pol_token(pol: object) -> str:
@@ -63,31 +63,6 @@ def _pol_token(pol: object) -> str:
 
 def _is_stokes_i(pol: str) -> bool:
     return pol.upper() == "I"
-
-
-def _append_optional_prefixed(command: list[str], prefix: str, value: Optional[object]) -> None:
-    if value is not None:
-        command.append(f"{prefix}{value}")
-
-
-def _append_option(command: list[str], option: str, value: object) -> None:
-    command.extend([option, str(value)])
-
-
-def _append_flag(command: list[str], option: str, enabled: bool) -> None:
-    if enabled:
-        command.append(option)
-
-
-def _append_options(command: list[str], options: list[tuple[str, object]]) -> None:
-    for option, value in options:
-        if value is None:
-            continue
-        if isinstance(value, list):
-            command.append(option)
-            command.extend(str(item) for item in value)
-        else:
-            _append_option(command, option, value)
 
 
 def _strip_wrapping_shell_quotes(value: str) -> str:
@@ -160,16 +135,16 @@ def build_prepare_imaging_data_command(
         f"avg.freqstep={freqstep}",
         f"avg.timestep={timestep}",
     ]
-    _append_optional_prefixed(command, "bdaavg.timebase=", timebase)
-    _append_optional_prefixed(command, "bdaavg.maxinterval=", maxinterval)
+    append_prefixed_value(command, "bdaavg.timebase=", timebase)
+    append_prefixed_value(command, "bdaavg.maxinterval=", maxinterval)
     command.append(f"applybeam.direction={_strip_wrapping_shell_quotes(beamdir)}")
-    _append_optional_prefixed(command, "applycal.parmdb=", h5parm)
-    _append_optional_prefixed(command, "applycal.fulljones.parmdb=", fulljones_h5parm)
-    _append_optional_prefixed(command, "applycal.normalization.parmdb=", normalize_h5parm)
+    append_prefixed_value(command, "applycal.parmdb=", h5parm)
+    append_prefixed_value(command, "applycal.fulljones.parmdb=", fulljones_h5parm)
+    append_prefixed_value(command, "applycal.normalization.parmdb=", normalize_h5parm)
     if central_patch_name is not None:
         command.append(f"applycal.direction=[{central_patch_name}]")
     command.extend([f"numthreads={numthreads}", f"steps={steps}"])
-    _append_optional_prefixed(command, "applycal.steps=", applycal_steps)
+    append_prefixed_value(command, "applycal.steps=", applycal_steps)
     return command
 
 
@@ -211,7 +186,7 @@ def build_blank_image_command(
             f"--cellsize_deg={cellsize_deg}",
         ]
     )
-    _append_optional_prefixed(command, "--region_file=", region_file)
+    append_prefixed_value(command, "--region_file=", region_file)
     return command
 
 
@@ -233,7 +208,7 @@ def build_make_region_file_command(
         str(width_ra),
         str(width_dec),
         outfile,
-        f"--enclose_names={_bool_token(enclose_names)}",
+        f"--enclose_names={bool_token(enclose_names)}",
     ]
 
 
@@ -271,7 +246,7 @@ def build_wsclean_restore_command(
 
 def build_make_image_cube_command(input_image_list: list[str], output_image: str) -> list[str]:
     """Build the `make_image_cube.py` command for one Stokes image cube."""
-    return ["make_image_cube.py", _join_comma(input_image_list), output_image]
+    return ["make_image_cube.py", comma_join(input_image_list), output_image]
 
 
 def build_make_catalog_from_image_cube_command(
@@ -390,14 +365,14 @@ def build_wsclean_no_dde_command(
         ("-deconvolution-threads", num_deconvolution_threads),
         ("-dd-psf-grid", dd_psf_grid),
     ]
-    _append_options(command, options)
-    _append_flag(command, "-multiscale", multiscale)
-    _append_flag(command, "-save-source-list", save_source_list)
+    append_option_values(command, options)
+    append_flag(command, "-multiscale", multiscale)
+    append_flag(command, "-save-source-list", save_source_list)
     if link_polarizations:
-        _append_option(command, "-link-polarizations", link_polarizations)
-    _append_flag(command, "-join-polarizations", join_polarizations)
-    _append_flag(command, "-skip-final-iteration", skip_final_iteration)
-    _append_flag(command, "-apply-time-frequency-smearing", apply_time_frequency_smearing)
+        append_option_value(command, "-link-polarizations", link_polarizations)
+    append_flag(command, "-join-polarizations", join_polarizations)
+    append_flag(command, "-skip-final-iteration", skip_final_iteration)
+    append_flag(command, "-apply-time-frequency-smearing", apply_time_frequency_smearing)
     command.append(msin)
     return command
 
@@ -504,18 +479,18 @@ def build_wsclean_facets_command(
         ("-parallel-gridding", num_gridding_threads),
         ("-facet-regions", region_file),
     ]
-    _append_options(command, options)
-    _append_flag(command, "-multiscale", multiscale)
-    _append_flag(command, "-scalar-visibilities", scalar_visibilities)
-    _append_flag(command, "-diagonal-visibilities", diagonal_visibilities)
-    _append_flag(command, "-save-source-list", save_source_list)
+    append_option_values(command, options)
+    append_flag(command, "-multiscale", multiscale)
+    append_flag(command, "-scalar-visibilities", scalar_visibilities)
+    append_flag(command, "-diagonal-visibilities", diagonal_visibilities)
+    append_flag(command, "-save-source-list", save_source_list)
     if link_polarizations:
-        _append_option(command, "-link-polarizations", link_polarizations)
-    _append_flag(command, "-join-polarizations", join_polarizations)
-    _append_flag(command, "-skip-final-iteration", skip_final_iteration)
-    _append_flag(command, "-apply-time-frequency-smearing", apply_time_frequency_smearing)
-    _append_flag(command, "-shared-facet-reads", shared_facet_reads)
-    _append_flag(command, "-shared-facet-writes", shared_facet_writes)
+        append_option_value(command, "-link-polarizations", link_polarizations)
+    append_flag(command, "-join-polarizations", join_polarizations)
+    append_flag(command, "-skip-final-iteration", skip_final_iteration)
+    append_flag(command, "-apply-time-frequency-smearing", apply_time_frequency_smearing)
+    append_flag(command, "-shared-facet-reads", shared_facet_reads)
+    append_flag(command, "-shared-facet-writes", shared_facet_writes)
     command.append(msin)
     return command
 
@@ -613,14 +588,14 @@ def build_wsclean_screens_command(
         ("-dd-psf-grid", dd_psf_grid),
         ("-interval", interval),
     ]
-    _append_options(command, options)
-    _append_flag(command, "-multiscale", multiscale)
-    _append_flag(command, "-save-source-list", save_source_list)
+    append_option_values(command, options)
+    append_flag(command, "-multiscale", multiscale)
+    append_flag(command, "-save-source-list", save_source_list)
     if link_polarizations:
-        _append_option(command, "-link-polarizations", link_polarizations)
-    _append_flag(command, "-join-polarizations", join_polarizations)
-    _append_flag(command, "-skip-final-iteration", skip_final_iteration)
-    _append_flag(command, "-apply-time-frequency-smearing", apply_time_frequency_smearing)
+        append_option_value(command, "-link-polarizations", link_polarizations)
+    append_flag(command, "-join-polarizations", join_polarizations)
+    append_flag(command, "-skip-final-iteration", skip_final_iteration)
+    append_flag(command, "-apply-time-frequency-smearing", apply_time_frequency_smearing)
     command.append(msin)
     return command
 
@@ -695,14 +670,14 @@ def build_filter_skymodel_command(
         apparent_sky_skymodel,
         output_root,
         vertices_file,
-        _join_comma(beam_ms),
+        comma_join(beam_ms),
     ]
-    _append_optional_prefixed(command, "--bright_true_sky_skymodel=", bright_true_sky_skymodel)
+    append_prefixed_value(command, "--bright_true_sky_skymodel=", bright_true_sky_skymodel)
     command.extend(
         [
             f"--threshisl={threshisl}",
             f"--threshpix={threshpix}",
-            f"--filter_by_mask={_bool_token(filter_by_mask)}",
+            f"--filter_by_mask={bool_token(filter_by_mask)}",
             f"--source_finder={source_finder}",
             f"--ncores={ncores}",
         ]
@@ -734,16 +709,16 @@ def build_calculate_image_diagnostics_command(
         true_sky_image,
         true_sky_rms_image,
         input_catalog,
-        _join_comma(obs_ms),
-        _join_comma(obs_starttime),
-        _join_comma(obs_ntimes),
+        comma_join(obs_ms),
+        comma_join(obs_starttime),
+        comma_join(obs_ntimes),
         diagnostics_file,
         output_root,
     ]
-    _append_optional_prefixed(command, "--facet_region_file=", facet_region_file or "none")
-    _append_optional_prefixed(command, "--photometry_comparison_skymodel=", photometry_skymodel)
-    _append_optional_prefixed(command, "--astrometry_comparison_skymodel=", astrometry_skymodel)
-    _append_flag(command, "--allow_internet_access", allow_internet_access)
+    append_prefixed_value(command, "--facet_region_file=", facet_region_file or "none")
+    append_prefixed_value(command, "--photometry_comparison_skymodel=", photometry_skymodel)
+    append_prefixed_value(command, "--astrometry_comparison_skymodel=", astrometry_skymodel)
+    append_flag(command, "--allow_internet_access", allow_internet_access)
     return command
 
 
