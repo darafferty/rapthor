@@ -414,7 +414,66 @@ Completion criteria:
 - A new contributor can make a small operation or parset change by following the
   guide without reverse-engineering image or calibration internals first.
 
-### 11. Runtime And Scalability Validation
+### 11. Dask Scalability And Script-To-Module Migration
+
+Outcome: Rapthor is prepared for multi-node Dask execution and future in-process
+Python tasks without mixing architectural cleanup with a broad script rewrite.
+
+- Do not convert all scripts to in-process Python tasks as the first refactor.
+  Prepare for that change now by defining stable Python APIs and keeping CLI
+  compatibility.
+- When touching a script, move the core behaviour into an importable function and
+  keep the script entry point as a thin argument-parsing wrapper.
+- Keep command builders as compatibility adapters until the corresponding Python
+  function has focused tests and has been validated inside the relevant Prefect
+  flow.
+- Prioritize conversion candidates where the data is small, the behaviour is
+  pure, subprocess overhead is noticeable, and Dask can schedule the work
+  cleanly.
+- Convert high-volume data paths only after profiling task granularity, memory
+  use, serialization cost, and network transfer between workers.
+- Treat in-memory data passing as an optimization, not a default. For large
+  Measurement Sets, FITS images, H5Parm files, sky models, image cubes, and
+  other heavy products, prefer passing compact metadata and keeping bulk data in
+  shared storage, object storage, memory-mapped formats, or chunked formats such
+  as Zarr/HDF5 where appropriate.
+- Design Dask tasks around data locality: avoid moving large arrays or tables
+  between workers when a worker can read the required chunk from shared storage.
+- Add lightweight task contracts for future in-process execution:
+  - serializable task inputs
+  - explicit output records
+  - no hidden global runtime state
+  - deterministic work-directory usage
+  - injectable filesystem, command-execution, and artifact collaborators where
+    useful
+- Keep external-tool calls such as DP3, WSClean, EveryBeam, IDG, and PyBDSF as
+  command-driven adapters unless there is a tested Python API that is stable,
+  performant, and deployable across worker nodes.
+- Use Dask dashboard, worker memory metrics, and performance reports to decide
+  whether a script should become an in-process task, remain a subprocess task, or
+  be split into smaller chunk-aware tasks.
+
+Recommended conversion order:
+
+1. Pure helpers that operate on small text or metadata files.
+2. FITS, region, sky-model, and H5Parm helpers with small fixture coverage.
+3. Helpers whose output feeds another Python step and can avoid unnecessary disk
+   round-trips.
+4. Chunk-aware image/catalog/cube helpers where Dask can distribute independent
+   work safely.
+5. Heavy external-tool replacements only after representative multi-node
+   profiling proves the benefit.
+
+Completion criteria:
+
+- Each converted script has an importable Python function, a thin CLI wrapper,
+  focused unit tests, and unchanged command-line behaviour.
+- Prefect flows can choose between subprocess execution and in-process Python
+  execution behind a stable adapter.
+- Multi-node Dask runs avoid avoidable large-object serialization and keep task
+  inputs small enough to schedule reliably.
+
+### 12. Runtime And Scalability Validation
 
 Outcome: the cleaner architecture still supports local development, external
 Dask, Slurm, and future SKA-Low scaling work.
@@ -436,7 +495,7 @@ Completion criteria:
   into operation adapters or command builders.
 - Profiling artifacts remain useful for DP3/WSClean bottleneck analysis.
 
-### 12. Final Polish And Maintenance
+### 13. Final Polish And Maintenance
 
 Outcome: the refactor lands as a sequence of small, reviewable improvements.
 
@@ -461,8 +520,11 @@ Outcome: the refactor lands as a sequence of small, reviewable improvements.
 8. Move calibration chunk/screen/collect/combine helpers into focused modules.
 9. Thin `Image` and `Calibrate` operation adapters.
 10. Split tests to match the new modules.
-11. Add contributor documentation for common change paths.
-12. Validate broader non-integration tests, then representative integration/demo
+11. Add script-to-module wrappers for touched scripts without broad conversion.
+12. Add contributor documentation for common change paths.
+13. Profile Dask task granularity and data movement before converting heavy
+    scripts to in-process tasks.
+14. Validate broader non-integration tests, then representative integration/demo
     runs.
 
 ## Useful Commands
