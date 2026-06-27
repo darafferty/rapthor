@@ -84,6 +84,31 @@ def build_image_screen_interval(
     return [0, max(1, numsamples - numsamples_to_remove)]
 
 
+def build_image_mpi_resource_controls(
+    *,
+    nsectors: int,
+    max_nodes: int,
+    cpus_per_task: int,
+    batch_system: str,
+) -> dict[str, list[int]]:
+    """
+    Build per-sector MPI resource controls for image subworkflows.
+
+    Static Slurm launches can assign all selected nodes to imaging. Other batch
+    modes reserve one node for the outer launcher before assigning nodes to each
+    MPI WSClean job.
+    """
+    nsubpipes = min(nsectors, max_nodes)
+    if batch_system == "slurm_static":
+        nnodes_per_subpipeline = max(1, int(max_nodes / nsubpipes))
+    else:
+        nnodes_per_subpipeline = max(1, int(max_nodes / nsubpipes) - 1)
+    return {
+        "mpi_nnodes": [nnodes_per_subpipeline] * nsectors,
+        "mpi_cpus_per_task": [cpus_per_task] * nsectors,
+    }
+
+
 def build_image_prepare_data_steps(
     *,
     preapply_solutions: bool,

@@ -19,6 +19,7 @@ from rapthor.operations.image import (
 from rapthor.operations.image_plan import (
     build_image_applycal_steps,
     build_image_facet_solution_controls,
+    build_image_mpi_resource_controls,
     build_image_prepare_data_steps,
     build_image_screen_interval,
     build_image_wsclean_control_inputs,
@@ -304,6 +305,15 @@ class TestImage:
             use_facets=use_facets,
         )
         assert image.input_parms["shared_facet_rw"] is (shared_facet_rw and use_facets)
+        if use_mpi:
+            expected_resources = build_image_mpi_resource_controls(
+                nsectors=len(field.imaging_sectors),
+                max_nodes=field.parset["cluster_specific"]["max_nodes"],
+                cpus_per_task=field.parset["cluster_specific"]["cpus_per_task"],
+                batch_system=image.batch_system,
+            )
+            assert image.input_parms["mpi_nnodes"] == expected_resources["mpi_nnodes"]
+            assert image.input_parms["mpi_cpus_per_task"] == expected_resources["mpi_cpus_per_task"]
 
     @pytest.mark.parametrize("solution_attr", ["di_h5parm_filename", "fulljones_h5parm_filename"])
     def test_set_parset_parameters_disables_facets_without_dd_scalar_h5parm(
@@ -850,6 +860,27 @@ class TestImage:
             )
             == expected
         )
+
+    @pytest.mark.parametrize(
+        "batch_system, max_nodes, nsectors, expected_nnodes",
+        [
+            ("slurm_static", 8, 2, [4, 4]),
+            ("slurm", 8, 2, [3, 3]),
+            ("slurm", 2, 4, [1, 1, 1, 1]),
+        ],
+    )
+    def test_build_image_mpi_resource_controls(
+        self, batch_system, max_nodes, nsectors, expected_nnodes
+    ):
+        assert build_image_mpi_resource_controls(
+            nsectors=nsectors,
+            max_nodes=max_nodes,
+            cpus_per_task=12,
+            batch_system=batch_system,
+        ) == {
+            "mpi_nnodes": expected_nnodes,
+            "mpi_cpus_per_task": [12] * nsectors,
+        }
 
     def test_build_applycal_steps_uses_dd_h5parm_for_facets_without_preapply(
         self, field, h5parm_file

@@ -215,6 +215,14 @@ Completed:
     computed interval to the flow payload
   - added direct helper coverage for exact, rounded-up, and minimum-one-sample
     interval cases, plus an adapter assertion that `Image` uses the helper rule
+- Image MPI resource-control helper extraction:
+  - moved per-sector MPI node and CPU payload selection into
+    `rapthor.operations.image_plan`
+  - kept `Image` responsible for reading sector count, batch system, and parset
+    resource values before adding MPI controls to the flow payload
+  - added direct helper coverage for static Slurm, launcher-reserved Slurm, and
+    minimum-one-node allocation cases, plus an adapter assertion for MPI payload
+    wiring
 - Verified in the dev container:
   - `python3 -m pytest tests/architecture -q --tb=short`
   - `python3 -m pytest tests/execution/test_outputs.py tests/execution/test_payloads.py tests/execution/test_commands.py -q --tb=short`
@@ -255,6 +263,7 @@ Completed:
   - `python3 -c "from rapthor.operations.image_plan import build_image_wsclean_control_inputs; assert build_image_wsclean_control_inputs('IQUV', 'link', [100, 200], disable_clean=False) == ('I', False, [100, 200])"`
   - `python3 -c "from rapthor.operations.image_plan import build_image_facet_solution_controls; assert build_image_facet_solution_controls('I', apply_amplitudes=True, apply_diagonal_solutions=True) == {'soltabs': 'amplitude000,phase000', 'diagonal_visibilities': True, 'scalar_visibilities': False}"`
   - `python3 -c "from rapthor.operations.image_plan import build_image_screen_interval; assert build_image_screen_interval(slow_timestep_sec=10.0, timepersample=2.0, numsamples=20) == [0, 15]"`
+  - `python3 -c "from rapthor.operations.image_plan import build_image_mpi_resource_controls; assert build_image_mpi_resource_controls(nsectors=2, max_nodes=8, cpus_per_task=12, batch_system='slurm') == {'mpi_nnodes': [3, 3], 'mpi_cpus_per_task': [12, 12]}"`
   - targeted Ruff format, lint, and import-sort checks for the new architecture
     tests, touched execution facade modules, output record helpers, and touched
     flow modules
@@ -300,6 +309,8 @@ Completed:
     solution-control helper extraction
   - targeted Ruff format, lint, and import-sort checks for the Image
     screen-interval helper extraction
+  - targeted Ruff format, lint, and import-sort checks for the Image MPI
+    resource-control helper extraction
 
 Known follow-up from the completed slice:
 

@@ -16,6 +16,7 @@ from rapthor.lib.records import DirectoryRecord, FileRecord
 from rapthor.operations.image_plan import (
     build_image_applycal_steps,
     build_image_facet_solution_controls,
+    build_image_mpi_resource_controls,
     build_image_prepare_data_steps,
     build_image_screen_interval,
     build_image_wsclean_control_inputs,
@@ -455,18 +456,13 @@ class Image(Operation):
                 {"bright_skymodel_pb": FileRecord(self.field.bright_source_skymodel_file).to_json()}
             )
         if self.field.use_mpi:
-            # Set number of nodes to allocate to each imaging subworkflow.
-            nnodes = self.parset["cluster_specific"]["max_nodes"]
-            nsubpipes = min(nsectors, nnodes)
-            if self.batch_system == "slurm_static":
-                nnodes_per_subpipeline = max(1, int(nnodes / nsubpipes))
-            else:
-                # Reserve one node for the outer batch launcher before assigning
-                # nodes to the MPI imaging job.
-                nnodes_per_subpipeline = max(1, int(nnodes / nsubpipes) - 1)
-            self.input_parms.update({"mpi_nnodes": [nnodes_per_subpipeline] * nsectors})
             self.input_parms.update(
-                {"mpi_cpus_per_task": [self.parset["cluster_specific"]["cpus_per_task"]] * nsectors}
+                build_image_mpi_resource_controls(
+                    nsectors=nsectors,
+                    max_nodes=self.parset["cluster_specific"]["max_nodes"],
+                    cpus_per_task=self.parset["cluster_specific"]["cpus_per_task"],
+                    batch_system=self.batch_system,
+                )
             )
         self.input_parms["shared_facet_rw"] = self._shared_facet_rw_enabled()
         if not self.apply_none and self.use_facets:
