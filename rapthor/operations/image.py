@@ -15,7 +15,12 @@ from rapthor.execution.image.payloads import image_payload_from_inputs
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.operation import Operation
 from rapthor.lib.records import DirectoryRecord, FileRecord
-from rapthor.operations.image_plan import build_image_applycal_steps, build_image_prepare_data_steps
+from rapthor.operations.image_plan import (
+    build_image_applycal_steps,
+    build_image_prepare_data_steps,
+    build_image_wsclean_control_inputs,
+    is_only_pol_I,
+)
 
 log = logging.getLogger("rapthor:image")
 
@@ -28,19 +33,6 @@ def merge_list_flatten(input_list: List[List]) -> List:
     for sublist in input_list:
         merged_list.extend(sublist)
     return merged_list
-
-
-def is_only_pol_I(image_pol: Union[List[str], str, None]) -> bool:
-    """
-    Check if only Stokes I polarization is being imaged
-    """
-    if image_pol is None:
-        return False
-    if isinstance(image_pol, str):
-        return image_pol.lower() == "i"
-    if isinstance(image_pol, list):
-        return len(image_pol) == 1 and image_pol[0].lower() == "i"
-    return False
 
 
 class Image(Operation):
@@ -338,19 +330,12 @@ class Image(Operation):
                 output_source_catalog.append(f"{sector.name}_source_catalog.fits")
                 normalize_h5parm.append(f"{sector.name}_normalize.h5parm")
 
-        # Handle the polarization-related options
-        link_polarizations = False
-        join_polarizations = False
-        wsclean_niter = [sector.wsclean_niter for sector in self.imaging_sectors]
-        if not is_only_pol_I(self.image_pol):
-            if self.pol_combine_method == "link":
-                # Note: link_polarizations can be a boolean or string
-                link_polarizations = "I"
-            else:
-                join_polarizations = True
-        if self.field.disable_clean:
-            # Set niter to 0 to disable clean
-            wsclean_niter = [0] * len(self.imaging_sectors)
+        link_polarizations, join_polarizations, wsclean_niter = build_image_wsclean_control_inputs(
+            self.image_pol,
+            self.pol_combine_method,
+            [sector.wsclean_niter for sector in self.imaging_sectors],
+            disable_clean=self.field.disable_clean,
+        )
 
         # Set the DP3 steps and applycal steps depending on whether solutions
         # should be preapplied before imaging and on whether baseline-dependent

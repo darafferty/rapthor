@@ -1,7 +1,7 @@
 """Pure planning helpers for the Image operation."""
 
 from collections.abc import Mapping
-from typing import Optional
+from typing import Optional, Union
 
 SOLVE_TYPE_TO_APPLYCAL_STEP = {
     "fast_phase": "fastphase",
@@ -9,6 +9,38 @@ SOLVE_TYPE_TO_APPLYCAL_STEP = {
     "slow_gains": "slowgain",
     "full_jones": "fulljones",
 }
+
+
+def is_only_pol_I(image_pol: Union[list[str], str, None]) -> bool:
+    """Return whether only Stokes I is being imaged."""
+    if image_pol is None:
+        return False
+    if isinstance(image_pol, str):
+        return image_pol.lower() == "i"
+    if isinstance(image_pol, list):
+        return len(image_pol) == 1 and image_pol[0].lower() == "i"
+    return False
+
+
+def build_image_wsclean_control_inputs(
+    image_pol: Union[list[str], str, None],
+    pol_combine_method: str,
+    sector_niters: list[int],
+    *,
+    disable_clean: bool,
+) -> tuple[object, bool, list[int]]:
+    """Build WSClean polarization and clean-iteration controls."""
+    link_polarizations = False
+    join_polarizations = False
+    if not is_only_pol_I(image_pol):
+        if pol_combine_method == "link":
+            # WSClean accepts a reference polarization string for linked cleaning.
+            link_polarizations = "I"
+        else:
+            join_polarizations = True
+
+    wsclean_niter = [0] * len(sector_niters) if disable_clean else list(sector_niters)
+    return link_polarizations, join_polarizations, wsclean_niter
 
 
 def build_image_prepare_data_steps(

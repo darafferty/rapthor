@@ -19,6 +19,7 @@ from rapthor.operations.image import (
 from rapthor.operations.image_plan import (
     build_image_applycal_steps,
     build_image_prepare_data_steps,
+    build_image_wsclean_control_inputs,
 )
 
 
@@ -742,6 +743,27 @@ class TestImage:
                 apply_screens=screens,
             )
             == expected_steps
+        )
+
+    @pytest.mark.parametrize(
+        "image_pol, combine_method, niters, disable_clean, expected",
+        [
+            ("I", "link", [100, 200], False, (False, False, [100, 200])),
+            ("IQUV", "link", [100, 200], False, ("I", False, [100, 200])),
+            (["I", "Q"], "join", [100, 200], True, (False, True, [0, 0])),
+        ],
+    )
+    def test_build_image_wsclean_control_inputs(
+        self, image_pol, combine_method, niters, disable_clean, expected
+    ):
+        assert (
+            build_image_wsclean_control_inputs(
+                image_pol,
+                combine_method,
+                niters,
+                disable_clean=disable_clean,
+            )
+            == expected
         )
 
     def test_build_applycal_steps_uses_dd_h5parm_for_facets_without_preapply(
