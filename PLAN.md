@@ -61,6 +61,13 @@ Completed:
     Prefect task execution
   - added a focused test for malformed image prepare-task payloads so invalid
     worker payloads fail before shell commands run
+- Calibration typed payload extension:
+  - added calibration, chunk, solve-slot, output, and image-predict payload
+    contracts in `rapthor.execution.payloads`
+  - validated calibration payload chunks and image-predict setup before sync or
+    Prefect task execution
+  - added a focused test for malformed calibration chunk payloads so invalid
+    worker payloads fail before shell commands run
 - Verified in the dev container:
   - `python3 -m pytest tests/architecture -q --tb=short`
   - `python3 -m pytest tests/execution/test_outputs.py tests/execution/test_payloads.py tests/execution/test_commands.py -q --tb=short`
@@ -71,6 +78,7 @@ Completed:
   - `python3 -m pytest tests/execution/test_mosaic_flow.py tests/execution/test_predict_flow.py tests/execution/test_payloads.py -q --tb=short`
   - `python3 -m pytest tests/execution/test_image_flow.py -q --tb=short`
   - `python3 -m pytest tests/execution/test_payloads.py tests/architecture -q --tb=short`
+  - `python3 -m pytest tests/execution/test_calibrate_flow.py -q --tb=short`
   - targeted Ruff format, lint, and import-sort checks for the new architecture
     tests, touched execution facade modules, output record helpers, and touched
     flow modules
@@ -79,6 +87,8 @@ Completed:
   - targeted Ruff format, lint, and import-sort checks for the mosaic/predict
     typed-payload slice
   - targeted Ruff format, lint, and import-sort checks for the image
+    typed-payload slice
+  - targeted Ruff format, lint, and import-sort checks for the calibration
     typed-payload slice
 
 Known follow-up from the completed slice:
@@ -101,11 +111,10 @@ Known follow-up from the completed slice:
 
 Next slice:
 
-- Extend typed payload contracts to calibration.
+- Extract shared command-builder utilities.
 
 Remaining major stages:
 
-- Extend typed payload contracts to calibration.
 - Extract shared command-builder utilities.
 - Split image flow responsibilities.
 - Split calibration flow responsibilities.

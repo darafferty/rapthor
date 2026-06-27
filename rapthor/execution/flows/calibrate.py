@@ -16,7 +16,13 @@ from rapthor.execution.outputs import (
     file_record_path,
     validate_output_record,
 )
-from rapthor.execution.payloads import assert_serializable_payload
+from rapthor.execution.payloads import (
+    CalibrateChunkPayload,
+    CalibrateImagePredictPayload,
+    CalibratePayload,
+    CalibrateSolveSlotPayload,
+    assert_serializable_payload,
+)
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
 from rapthor.execution.shell import ShellCommand, run_shell_command
 
@@ -738,7 +744,7 @@ def _solve_slot_from_inputs(
     keepmodel: Optional[str] = None,
     reusemodel: Optional[str] = None,
     modeldatacolumns: Optional[str] = None,
-) -> dict:
+) -> CalibrateSolveSlotPayload:
     h5parm = _validate_basename(
         _scatter_value(
             input_parms[f"output_solve{slot}_h5parm"], index, f"output_solve{slot}_h5parm"
@@ -797,7 +803,7 @@ def _solve_slot_from_inputs(
 def _image_predict_payload_from_inputs(
     input_parms: Mapping[str, object],
     pipeline_dir: str,
-) -> Optional[dict]:
+) -> Optional[CalibrateImagePredictPayload]:
     steps = _parse_steps(input_parms.get("dp3_steps"))
     if not input_parms.get("generate_screens") and not _uses_image_based_predict(steps):
         return None
@@ -851,7 +857,7 @@ def calibrate_payload_from_inputs(
     mode: str,
     input_parms: Mapping[str, object],
     pipeline_working_dir: object,
-) -> dict:
+) -> CalibratePayload:
     """Create a serializable Calibrate flow payload from operation inputs."""
     calibration_kind = _supported_calibration_kind(mode, input_parms)
     dp3_steps = _parse_steps(input_parms.get("dp3_steps"))
@@ -879,7 +885,7 @@ def calibrate_payload_from_inputs(
             raise ValueError("Screen-generation scatter inputs must have the same length")
 
         combined = _validate_basename(input_parms.get("combined_h5parms"), "combined_h5parms")
-        chunks = []
+        chunks: list[CalibrateChunkPayload] = []
         for index in range(chunk_count):
             h5parm = _validate_basename(
                 _scatter_value(output_h5parms, index, "output_idgcal_h5parm"),
@@ -899,24 +905,24 @@ def calibrate_payload_from_inputs(
                 )
             chunks.append(chunk)
 
-        return assert_serializable_payload(
-            {
-                "mode": mode,
-                "calibration_kind": calibration_kind,
-                "pipeline_working_dir": pipeline_dir,
-                "image_based_predict": True,
-                "image_predict": _image_predict_payload_from_inputs(input_parms, pipeline_dir),
-                "max_threads": int(input_parms["max_threads"]),
-                "solverlbfgs_iter": int(input_parms["solverlbfgs_iter"]),
-                "idgcal_antennaconstraint": str(input_parms["idgcal_antennaconstraint"]),
-                "do_slowgain_solve": do_slowgain_solve,
-                "combined_h5parm": {
-                    "filename": combined,
-                    "path": os.path.join(pipeline_dir, combined),
-                },
-                "chunks": chunks,
-            }
-        )
+        payload: CalibratePayload = {
+            "mode": mode,
+            "calibration_kind": calibration_kind,
+            "pipeline_working_dir": pipeline_dir,
+            "image_based_predict": True,
+            "image_predict": _image_predict_payload_from_inputs(input_parms, pipeline_dir),
+            "max_threads": int(input_parms["max_threads"]),
+            "solverlbfgs_iter": int(input_parms["solverlbfgs_iter"]),
+            "idgcal_antennaconstraint": str(input_parms["idgcal_antennaconstraint"]),
+            "do_slowgain_solve": do_slowgain_solve,
+            "combined_h5parm": {
+                "filename": combined,
+                "path": os.path.join(pipeline_dir, combined),
+            },
+            "chunks": chunks,
+        }
+        assert_serializable_payload(payload)
+        return payload
 
     solve_slots = _solve_slots_for_kind(calibration_kind, input_parms)
     output_solve1_h5parms = input_parms.get("output_solve1_h5parm", [])
@@ -983,10 +989,10 @@ def calibrate_payload_from_inputs(
     ):
         raise ValueError("modeldatacolumn must be a non-empty string or None")
 
-    chunks = []
+    chunks: list[CalibrateChunkPayload] = []
     uses_modeldatacolumn = modeldatacolumn is not None and not image_based_predict
     for index in range(chunk_count):
-        chunk_solve_slots = []
+        chunk_solve_slots: list[CalibrateSolveSlotPayload] = []
         for slot in solve_slots:
             keepmodel = None
             reusemodel = None
@@ -1040,7 +1046,7 @@ def calibrate_payload_from_inputs(
             )
         chunks.append(chunk)
 
-    payload = {
+    payload: CalibratePayload = {
         "mode": mode,
         "calibration_kind": calibration_kind,
         "pipeline_working_dir": pipeline_dir,
@@ -1096,12 +1102,13 @@ def calibrate_payload_from_inputs(
             "phase_center_dec": input_parms.get("phase_center_dec"),
         }
     )
-    return assert_serializable_payload(payload)
+    assert_serializable_payload(payload)
+    return payload
 
 
 def _di_fulljones_solve_slots(
-    payload: Mapping[str, object],
-    chunk: Mapping[str, object],
+    payload: CalibratePayload,
+    chunk: CalibrateChunkPayload,
 ) -> list[Mapping[str, object]]:
     return [
         {
@@ -1132,8 +1139,8 @@ def _di_fulljones_solve_slots(
 
 
 def _solve_slots_for_chunk(
-    payload: Mapping[str, object],
-    chunk: Mapping[str, object],
+    payload: CalibratePayload,
+    chunk: CalibrateChunkPayload,
 ) -> list[Mapping[str, object]]:
     if payload["calibration_kind"] == "di_fulljones":
         return _di_fulljones_solve_slots(payload, chunk)
@@ -1193,8 +1200,8 @@ def _run_shell(
 
 
 def _run_draw_model(
-    payload: Mapping[str, object],
-    image_predict: Mapping[str, object],
+    payload: CalibratePayload,
+    image_predict: CalibrateImagePredictPayload,
     execution_config: ExecutionConfig,
     shell_operation_cls=None,
 ) -> list[dict]:
@@ -1221,8 +1228,8 @@ def _run_draw_model(
 
 
 def _run_make_region_file(
-    image_predict: Mapping[str, object],
-    payload: Mapping[str, object],
+    image_predict: CalibrateImagePredictPayload,
+    payload: CalibratePayload,
     execution_config: ExecutionConfig,
     shell_operation_cls=None,
 ) -> dict:
@@ -1245,11 +1252,130 @@ def _run_make_region_file(
     return _require_file(str(image_predict["facet_region_path"]), "Calibration region file")
 
 
+def _validate_string_list(values: object, name: str) -> list[str]:
+    if not isinstance(values, list) or not all(
+        isinstance(value, str) and value for value in values
+    ):
+        raise ValueError(f"{name} must be a list of strings")
+    return values
+
+
+def _validate_int_list(values: object, name: str, length: Optional[int] = None) -> list[int]:
+    if not isinstance(values, list) or not all(isinstance(value, int) for value in values):
+        raise ValueError(f"{name} must be a list of integers")
+    if length is not None and len(values) != length:
+        raise ValueError(f"{name} must contain exactly {length} entries")
+    return values
+
+
+def _validate_calibrate_solve_slot(
+    solve_slot: Mapping[str, object],
+    chunk_index: int,
+    slot_index: int,
+) -> CalibrateSolveSlotPayload:
+    _ = int(solve_slot["slot"])
+    _validate_basename(
+        solve_slot["h5parm"],
+        f"chunks[{chunk_index}].solve_slots[{slot_index}].h5parm",
+    )
+    _ = str(solve_slot["h5parm_path"])
+    _ = int(solve_slot["solint"])
+    _ = str(solve_slot["mode"])
+    _ = int(solve_slot["nchan"])
+    for list_key in ("solutions_per_direction", "smoothness_dd_factors"):
+        value = solve_slot.get(list_key)
+        if value is not None and not isinstance(value, list):
+            raise ValueError(
+                f"chunks[{chunk_index}].solve_slots[{slot_index}].{list_key} must be a list"
+            )
+    return solve_slot
+
+
+def _validate_calibrate_chunk(
+    chunk: Mapping[str, object],
+    index: int,
+    *,
+    screen: bool,
+) -> CalibrateChunkPayload:
+    _ = str(chunk["msin"])
+    _ = str(chunk["starttime"])
+    _ = int(chunk["ntimes"])
+    _validate_basename(chunk["output_h5parm"], f"chunks[{index}].output_h5parm")
+    _ = str(chunk["output_h5parm_path"])
+    if screen:
+        _ = int(chunk["solint_fast"])
+        if "solint_slow" in chunk:
+            _ = int(chunk["solint_slow"])
+        return chunk
+
+    raw_solve_slots = chunk.get("solve_slots", [])
+    if not isinstance(raw_solve_slots, list) or not raw_solve_slots:
+        raise ValueError(f"chunks[{index}].solve_slots must be a non-empty list")
+    for slot_index, solve_slot in enumerate(raw_solve_slots):
+        if not isinstance(solve_slot, Mapping):
+            raise ValueError(f"chunks[{index}].solve_slots[{slot_index}] must be a mapping")
+        _validate_calibrate_solve_slot(solve_slot, index, slot_index)
+    return chunk
+
+
+def _validate_calibrate_image_predict(
+    image_predict: object,
+) -> Optional[CalibrateImagePredictPayload]:
+    if image_predict is None:
+        return None
+    if not isinstance(image_predict, Mapping):
+        raise ValueError("image_predict must be a mapping")
+    _ = _optional_file_path(image_predict.get("skymodel"), "image_predict.skymodel")
+    _validate_basename(image_predict["model_image_root"], "image_predict.model_image_root")
+    _validate_string_list(
+        image_predict.get("model_image_ra_dec"), "image_predict.model_image_ra_dec"
+    )
+    _validate_int_list(
+        image_predict.get("model_image_imsize"), "image_predict.model_image_imsize", length=2
+    )
+    _validate_string_list(image_predict.get("model_images"), "image_predict.model_images")
+    _validate_basename(image_predict["facet_region_file"], "image_predict.facet_region_file")
+    _ = str(image_predict["facet_region_path"])
+    return image_predict
+
+
+def _validate_calibrate_payload(payload: Mapping[str, object]) -> CalibratePayload:
+    mode = str(payload["mode"])
+    if mode not in {"di", "dd"}:
+        raise ValueError("mode must be 'di' or 'dd'")
+    calibration_kind = str(payload["calibration_kind"])
+    supported_kinds = {
+        "di_fast_phase",
+        "di_fulljones",
+        "di_phase_slow",
+        "di_scalar_phase",
+        "di_slow",
+        "dd_fast_phase",
+        "dd_phase",
+        "dd_phase_slow",
+        "dd_screen",
+        "dd_slow",
+    }
+    if calibration_kind not in supported_kinds:
+        raise ValueError("Unsupported calibration kind")
+    _ = str(payload["pipeline_working_dir"])
+    raw_chunks = payload.get("chunks", [])
+    if not isinstance(raw_chunks, list) or not raw_chunks:
+        raise ValueError("chunks must be a non-empty list")
+    for index, chunk in enumerate(raw_chunks):
+        if not isinstance(chunk, Mapping):
+            raise ValueError(f"chunks[{index}] must be a mapping")
+        _validate_calibrate_chunk(chunk, index, screen=calibration_kind == "dd_screen")
+    if payload.get("image_based_predict"):
+        _validate_calibrate_image_predict(payload.get("image_predict"))
+    return payload
+
+
 def _prepare_image_based_predict(
-    payload: Mapping[str, object],
+    payload: CalibratePayload,
     execution_config: ExecutionConfig,
     shell_operation_cls=None,
-) -> Mapping[str, object]:
+) -> CalibratePayload:
     if not payload.get("image_based_predict"):
         return payload
 
@@ -1286,8 +1412,8 @@ def _prepare_image_based_predict(
 
 
 def run_calibrate_chunk(
-    payload: Mapping[str, object],
-    chunk: Mapping[str, object],
+    payload: CalibratePayload,
+    chunk: CalibrateChunkPayload,
     execution_config: Optional[ExecutionConfig] = None,
     shell_operation_cls=None,
 ) -> dict:
@@ -1336,8 +1462,8 @@ def run_calibrate_chunk(
 
 
 def run_calibrate_screen_chunk(
-    payload: Mapping[str, object],
-    chunk: Mapping[str, object],
+    payload: CalibratePayload,
+    chunk: CalibrateChunkPayload,
     execution_config: Optional[ExecutionConfig] = None,
     shell_operation_cls=None,
 ) -> dict:
@@ -1376,8 +1502,8 @@ def run_calibrate_screen_chunk(
 
 @task(name="calibrate_chunk")
 def calibrate_chunk_task(
-    payload: Mapping[str, object],
-    chunk: Mapping[str, object],
+    payload: CalibratePayload,
+    chunk: CalibrateChunkPayload,
     execution_config: Optional[ExecutionConfig] = None,
     shell_operation_cls=None,
 ) -> dict:
@@ -1393,8 +1519,8 @@ def calibrate_chunk_task(
 
 @task(name="calibrate_screen_chunk")
 def calibrate_screen_chunk_task(
-    payload: Mapping[str, object],
-    chunk: Mapping[str, object],
+    payload: CalibratePayload,
+    chunk: CalibrateChunkPayload,
     execution_config: Optional[ExecutionConfig] = None,
     shell_operation_cls=None,
 ) -> dict:
@@ -2014,6 +2140,7 @@ def run_calibrate_flow(
     """Run calibration commands and return finalizer-compatible outputs."""
     assert_serializable_payload(payload)
     config = execution_config or ExecutionConfig(task_runner="sync")
+    payload = _validate_calibrate_payload(payload)
     payload = _prepare_image_based_predict(
         payload,
         config,
@@ -2060,6 +2187,7 @@ def _run_calibrate_prefect_tasks(
     execution_config: Optional[ExecutionConfig] = None,
 ) -> dict:
     config = execution_config or ExecutionConfig(task_runner="sync")
+    payload = _validate_calibrate_payload(payload)
     payload = _prepare_image_based_predict(payload, config)
     if payload["calibration_kind"] == "dd_screen":
         screen_records = [

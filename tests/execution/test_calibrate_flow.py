@@ -1906,6 +1906,22 @@ def test_run_calibrate_flow_supports_di_fulljones(tmp_path, fake_calibrate_shell
     )
 
 
+def test_run_calibrate_flow_rejects_invalid_chunk_payload(
+    tmp_path, fake_calibrate_shell_operation_cls
+):
+    payload = calibrate_payload_from_inputs("di", _di_fulljones_input_parms(), tmp_path)
+    payload["chunks"] = ["not-a-chunk"]
+
+    with pytest.raises(ValueError, match=r"chunks\[0\]"):
+        run_calibrate_flow(
+            payload,
+            execution_config=ExecutionConfig(task_runner="sync"),
+            shell_operation_cls=fake_calibrate_shell_operation_cls,
+        )
+
+    assert fake_calibrate_shell_operation_cls.instances == []
+
+
 def test_run_calibrate_flow_supports_di_scalar_phase(tmp_path, fake_calibrate_shell_operation_cls):
     payload = calibrate_payload_from_inputs("di", _di_scalar_phase_input_parms(), tmp_path)
 
