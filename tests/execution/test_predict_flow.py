@@ -550,6 +550,22 @@ def test_run_predict_flow_executes_di_commands_and_returns_nested_records(
     assert str(tmp_path / "obs_1.ms.sector_1_modeldata") in command_tokens[2][2]
 
 
+def test_run_predict_flow_rejects_invalid_prediction_directions(
+    tmp_path, fake_predict_shell_operation_cls
+):
+    payload = predict_payload_from_inputs("di", _single_observation_input_parms(), tmp_path)
+    payload["predict_tasks"][0]["directions"] = ["patch1", 7]
+
+    with pytest.raises(ValueError, match="directions"):
+        run_predict_flow(
+            payload,
+            execution_config=ExecutionConfig(task_runner="sync"),
+            shell_operation_cls=fake_predict_shell_operation_cls,
+        )
+
+    assert fake_predict_shell_operation_cls.instances == []
+
+
 def test_run_predict_flow_executes_dd_commands_and_returns_peeling_records(
     tmp_path, fake_predict_shell_operation_cls
 ):

@@ -309,6 +309,22 @@ def test_run_mosaic_flow_executes_commands_and_returns_records(
     ]
 
 
+def test_run_mosaic_flow_rejects_invalid_image_type_lists(
+    tmp_path, fake_mosaic_shell_operation_cls
+):
+    payload = _mosaic_payload(tmp_path)
+    payload["image_types"][0]["sector_image_filenames"] = ["sector_1-I-image.fits", 7]
+
+    with pytest.raises(ValueError, match="sector_image_filenames"):
+        run_mosaic_flow(
+            payload,
+            execution_config=ExecutionConfig(task_runner="sync"),
+            shell_operation_cls=fake_mosaic_shell_operation_cls,
+        )
+
+    assert fake_mosaic_shell_operation_cls.instances == []
+
+
 def test_run_mosaic_flow_returns_compressed_records(tmp_path, fake_mosaic_shell_operation_cls):
     outputs = run_mosaic_flow(
         _mosaic_payload(tmp_path, compress_images=True),

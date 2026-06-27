@@ -10,7 +10,11 @@ from rapthor.execution.commands import normalize_command
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.runtime import run_flow_with_task_runner
 from rapthor.execution.outputs import file_record, file_record_path, validate_output_record
-from rapthor.execution.payloads import assert_serializable_payload
+from rapthor.execution.payloads import (
+    MosaicImageTypePayload,
+    MosaicPayload,
+    assert_serializable_payload,
+)
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
 from rapthor.execution.shell import ShellCommand, run_shell_command
 
@@ -27,13 +31,23 @@ def _validate_basename(filename: object, name: str) -> str:
     return filename
 
 
-def _validate_image_type_payloads(payload: Mapping[str, object]) -> tuple[str, bool, list[Mapping]]:
+def _validate_string_list(values: object, name: str) -> list[str]:
+    if not isinstance(values, list) or not all(
+        isinstance(value, str) and value for value in values
+    ):
+        raise ValueError(f"{name} must be a list of strings")
+    return list(values)
+
+
+def _validate_mosaic_payload(payload: Mapping[str, object]) -> MosaicPayload:
     pipeline_working_dir = str(payload["pipeline_working_dir"])
     compress_images = bool(payload.get("compress_images", False))
-    image_types = payload.get("image_types", [])
-    if not isinstance(image_types, list):
+    skip_processing = bool(payload.get("skip_processing", False))
+    raw_image_types = payload.get("image_types", [])
+    if not isinstance(raw_image_types, list):
         raise ValueError("image_types must be a list")
-    for index, image_type in enumerate(image_types):
+    image_types: list[MosaicImageTypePayload] = []
+    for index, image_type in enumerate(raw_image_types):
         if not isinstance(image_type, Mapping):
             raise ValueError(f"image_types[{index}] must be a mapping")
         template_filename = _validate_basename(
@@ -48,34 +62,52 @@ def _validate_image_type_payloads(payload: Mapping[str, object]) -> tuple[str, b
             )
         if str(image_type.get("mosaic_path")) != expected_mosaic_path:
             raise ValueError(f"image_types[{index}].mosaic_path must be {expected_mosaic_path}")
-        sector_images = image_type.get("sector_image_filenames")
-        sector_vertices = image_type.get("sector_vertices_filenames")
-        regridded_images = image_type.get("regridded_image_filenames")
-        if not isinstance(sector_images, list):
-            raise ValueError(f"image_types[{index}].sector_image_filenames must be a list")
-        if not isinstance(sector_vertices, list):
-            raise ValueError(f"image_types[{index}].sector_vertices_filenames must be a list")
-        if not isinstance(regridded_images, list):
-            raise ValueError(f"image_types[{index}].regridded_image_filenames must be a list")
+        sector_images = _validate_string_list(
+            image_type.get("sector_image_filenames"),
+            f"image_types[{index}].sector_image_filenames",
+        )
+        sector_vertices = _validate_string_list(
+            image_type.get("sector_vertices_filenames"),
+            f"image_types[{index}].sector_vertices_filenames",
+        )
+        regridded_images = _validate_string_list(
+            image_type.get("regridded_image_filenames"),
+            f"image_types[{index}].regridded_image_filenames",
+        )
         if len(sector_images) != len(sector_vertices) or len(sector_images) != len(
             regridded_images
         ):
             raise ValueError(f"image_types[{index}] input and regridded lists must match")
-        for regridded_index, regridded_image in enumerate(regridded_images):
-            _validate_basename(
-                regridded_image,
-                f"image_types[{index}].regridded_image_filenames[{regridded_index}]",
-            )
-    return pipeline_working_dir, compress_images, image_types
+        image_types.append(
+            {
+                "sector_image_filenames": sector_images,
+                "sector_vertices_filenames": sector_vertices,
+                "template_image_filename": template_filename,
+                "template_image_path": expected_template_path,
+                "regridded_image_filenames": [
+                    _validate_basename(
+                        regridded_image,
+                        f"image_types[{index}].regridded_image_filenames[{regridded_index}]",
+                    )
+                    for regridded_index, regridded_image in enumerate(regridded_images)
+                ],
+                "mosaic_filename": mosaic_filename,
+                "mosaic_path": expected_mosaic_path,
+            }
+        )
+    _validate_unique_mosaic_paths(image_types)
+    return {
+        "pipeline_working_dir": pipeline_working_dir,
+        "compress_images": compress_images,
+        "skip_processing": skip_processing,
+        "image_types": image_types,
+    }
 
 
-def _validate_unique_mosaic_paths(image_types: list[Mapping]) -> None:
-    seen_mosaic_paths = set()
-    for index, image_type in enumerate(image_types):
-        mosaic_path = str(image_type["mosaic_path"])
-        if mosaic_path in seen_mosaic_paths:
-            raise ValueError(f"image_types[{index}].mosaic_path must be unique")
-        seen_mosaic_paths.add(mosaic_path)
+def _validate_unique_mosaic_paths(image_types: list[MosaicImageTypePayload]) -> None:
+    mosaic_paths = [image_type["mosaic_path"] for image_type in image_types]
+    if len(mosaic_paths) != len(set(mosaic_paths)):
+        raise ValueError("mosaic paths must be unique")
 
 
 def _join_path_list(paths: list[str]) -> str:
@@ -141,19 +173,19 @@ def mosaic_payload_from_inputs(
     input_parms: Mapping[str, object],
     pipeline_working_dir: object,
     compress_images: bool = False,
-) -> dict:
+) -> MosaicPayload:
     """Create a serializable Mosaic flow payload from operation inputs."""
     pipeline_dir = str(pipeline_working_dir)
     skip_processing = bool(input_parms.get("skip_processing", False))
     if skip_processing:
-        return assert_serializable_payload(
-            {
-                "pipeline_working_dir": pipeline_dir,
-                "compress_images": bool(compress_images),
-                "skip_processing": True,
-                "image_types": [],
-            }
-        )
+        payload: MosaicPayload = {
+            "pipeline_working_dir": pipeline_dir,
+            "compress_images": bool(compress_images),
+            "skip_processing": True,
+            "image_types": [],
+        }
+        assert_serializable_payload(payload)
+        return payload
 
     sector_image_filenames = input_parms.get("sector_image_filename", [])
     sector_vertices_filenames = input_parms.get("sector_vertices_filename", [])
@@ -173,7 +205,7 @@ def mosaic_payload_from_inputs(
     if any(len(value) != image_type_count for value in image_type_inputs):
         raise ValueError("Mosaic input lists must have the same length")
 
-    image_types = []
+    image_types: list[MosaicImageTypePayload] = []
     for index in range(image_type_count):
         sector_images = sector_image_filenames[index]
         sector_vertices = sector_vertices_filenames[index]
@@ -210,14 +242,15 @@ def mosaic_payload_from_inputs(
             }
         )
 
-    payload = {
+    payload: MosaicPayload = {
         "pipeline_working_dir": pipeline_dir,
         "compress_images": bool(compress_images),
         "skip_processing": False,
         "image_types": image_types,
     }
     _validate_unique_mosaic_paths(image_types)
-    return assert_serializable_payload(payload)
+    assert_serializable_payload(payload)
+    return payload
 
 
 def _run_shell_and_validate(
@@ -237,7 +270,7 @@ def _run_shell_and_validate(
 
 
 def run_mosaic_image_type(
-    image_type: Mapping[str, object],
+    image_type: MosaicImageTypePayload,
     compress_images: bool,
     pipeline_working_dir: str,
     execution_config: Optional[ExecutionConfig] = None,
@@ -245,13 +278,13 @@ def run_mosaic_image_type(
 ) -> dict:
     """Run mosaicking for one image type and return a file output record."""
     config = execution_config or ExecutionConfig(task_runner="sync")
-    sector_images = list(image_type["sector_image_filenames"])
-    sector_vertices = list(image_type["sector_vertices_filenames"])
-    regridded_images = list(image_type["regridded_image_filenames"])
-    template_filename = str(image_type["template_image_filename"])
-    template_path = str(image_type["template_image_path"])
-    mosaic_filename = str(image_type["mosaic_filename"])
-    mosaic_path = str(image_type["mosaic_path"])
+    sector_images = image_type["sector_image_filenames"]
+    sector_vertices = image_type["sector_vertices_filenames"]
+    regridded_images = image_type["regridded_image_filenames"]
+    template_filename = image_type["template_image_filename"]
+    template_path = image_type["template_image_path"]
+    mosaic_filename = image_type["mosaic_filename"]
+    mosaic_path = image_type["mosaic_path"]
 
     _run_shell_and_validate(
         build_make_mosaic_template_command(sector_images, sector_vertices, template_filename),
@@ -301,7 +334,7 @@ def run_mosaic_image_type(
 
 @task(name="mosaic_image_type")
 def mosaic_image_type_task(
-    image_type: Mapping[str, object],
+    image_type: MosaicImageTypePayload,
     compress_images: bool,
     pipeline_working_dir: str,
     execution_config: Optional[ExecutionConfig] = None,
@@ -329,21 +362,20 @@ def run_mosaic_flow(
 ) -> dict:
     """Run mosaic commands and return finalizer-compatible outputs."""
     assert_serializable_payload(payload)
-    if payload.get("skip_processing", False):
+    payload = _validate_mosaic_payload(payload)
+    if payload["skip_processing"]:
         return {}
 
     config = execution_config or ExecutionConfig(task_runner="sync")
-    pipeline_working_dir, compress_images, image_types = _validate_image_type_payloads(payload)
-    _validate_unique_mosaic_paths(image_types)
     outputs = [
         run_mosaic_image_type(
             image_type,
-            compress_images,
-            pipeline_working_dir,
+            payload["compress_images"],
+            payload["pipeline_working_dir"],
             execution_config=config,
             shell_operation_cls=shell_operation_cls,
         )
-        for image_type in image_types
+        for image_type in payload["image_types"]
     ]
     return _result_from_mosaic_records(outputs)
 
@@ -352,20 +384,19 @@ def _run_mosaic_prefect_tasks(
     payload: Mapping[str, object],
     execution_config: Optional[ExecutionConfig] = None,
 ) -> dict:
-    if payload.get("skip_processing", False):
+    payload = _validate_mosaic_payload(payload)
+    if payload["skip_processing"]:
         return {}
 
     config = execution_config or ExecutionConfig(task_runner="sync")
-    pipeline_working_dir, compress_images, image_types = _validate_image_type_payloads(payload)
-    _validate_unique_mosaic_paths(image_types)
     outputs = [
         mosaic_image_type_task.submit(
             image_type,
-            compress_images,
-            pipeline_working_dir,
+            payload["compress_images"],
+            payload["pipeline_working_dir"],
             execution_config=config,
         )
-        for image_type in image_types
+        for image_type in payload["image_types"]
     ]
     outputs = [output.result() for output in outputs]
     return _result_from_mosaic_records(outputs)

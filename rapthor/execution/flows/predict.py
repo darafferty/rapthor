@@ -16,7 +16,12 @@ from rapthor.execution.outputs import (
     optional_file_record_path,
     validate_output_record,
 )
-from rapthor.execution.payloads import assert_serializable_payload
+from rapthor.execution.payloads import (
+    PredictModelTaskPayload,
+    PredictPayload,
+    PredictPostprocessPayload,
+    assert_serializable_payload,
+)
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
 from rapthor.execution.shell import ShellCommand, run_shell_command
 
@@ -37,6 +42,14 @@ def _validate_basename(filename: object, name: str) -> str:
     if os.path.isabs(filename) or os.path.basename(filename) != filename:
         raise ValueError(f"{name} must be a basename")
     return filename
+
+
+def _validate_string_list(values: object, name: str) -> list[str]:
+    if not isinstance(values, list) or not all(
+        isinstance(value, str) and value for value in values
+    ):
+        raise ValueError(f"{name} must be a list of strings")
+    return list(values)
 
 
 def _predict_type(sagecalpredict: bool, h5parm: Optional[str]) -> str:
@@ -191,7 +204,7 @@ def predict_payload_from_inputs(
     mode: str,
     input_parms: Mapping[str, object],
     pipeline_working_dir: object,
-) -> dict:
+) -> PredictPayload:
     """Create a serializable Predict flow payload from operation inputs."""
     if mode not in {"di", "dd"}:
         raise ValueError("mode must be 'di' or 'dd'")
@@ -221,7 +234,7 @@ def predict_payload_from_inputs(
     h5parm = optional_file_record_path(input_parms.get("h5parm"))
     normalize_h5parm = optional_file_record_path(input_parms.get("normalize_h5parm"))
     dp3_applycal_steps = _optional_str(input_parms.get("dp3_applycal_steps"))
-    predict_tasks = []
+    predict_tasks: list[PredictModelTaskPayload] = []
     for index in range(predict_count):
         msout = _validate_basename(sector_model_filenames[index], f"sector_model_filename[{index}]")
         if not isinstance(sector_patches[index], list):
@@ -261,53 +274,120 @@ def predict_payload_from_inputs(
     if any(len(value) != obs_count for value in obs_inputs):
         raise ValueError("Predict observation inputs must have the same length")
 
-    postprocess_tasks = []
+    postprocess_tasks: list[PredictPostprocessPayload] = []
     for index in range(obs_count):
-        task = {
+        task: PredictPostprocessPayload = {
             "msobs": directory_record_path(obs_filenames[index]),
             "data_colname": data_colname,
             "obs_starttime": str(obs_starttimes[index]),
             "infix": str(obs_infixes[index]),
         }
         if mode == "dd":
-            task.update(
-                {
-                    "solint_sec": float(input_parms["obs_solint_sec"][index]),
-                    "solint_hz": float(input_parms["obs_solint_hz"][index]),
-                    "min_uv_lambda": float(input_parms["min_uv_lambda"]),
-                    "max_uv_lambda": float(input_parms["max_uv_lambda"]),
-                    "nr_outliers": int(input_parms["nr_outliers"]),
-                    "peel_outliers": bool(input_parms["peel_outliers"]),
-                    "nr_bright": int(input_parms["nr_bright"]),
-                    "peel_bright": bool(input_parms["peel_bright"]),
-                    "reweight": bool(input_parms["reweight"]),
-                }
-            )
+            task = {
+                **task,
+                "solint_sec": float(input_parms["obs_solint_sec"][index]),
+                "solint_hz": float(input_parms["obs_solint_hz"][index]),
+                "min_uv_lambda": float(input_parms["min_uv_lambda"]),
+                "max_uv_lambda": float(input_parms["max_uv_lambda"]),
+                "nr_outliers": int(input_parms["nr_outliers"]),
+                "peel_outliers": bool(input_parms["peel_outliers"]),
+                "nr_bright": int(input_parms["nr_bright"]),
+                "peel_bright": bool(input_parms["peel_bright"]),
+                "reweight": bool(input_parms["reweight"]),
+            }
         postprocess_tasks.append(task)
 
-    payload = {
+    payload: PredictPayload = {
         "mode": mode,
         "pipeline_working_dir": pipeline_dir,
         "predict_tasks": predict_tasks,
         "postprocess_tasks": postprocess_tasks,
     }
-    return assert_serializable_payload(payload)
+    assert_serializable_payload(payload)
+    return payload
 
 
-def _validate_predict_payload(
-    payload: Mapping[str, object],
-) -> tuple[str, str, list[Mapping], list[Mapping]]:
+def _validate_predict_model_task(
+    predict_task: Mapping[str, object],
+    index: int,
+) -> PredictModelTaskPayload:
+    return {
+        "msin": str(predict_task["msin"]),
+        "data_colname": str(predict_task["data_colname"]),
+        "msout": _validate_basename(predict_task["msout"], f"predict_tasks[{index}].msout"),
+        "msout_path": str(predict_task["msout_path"]),
+        "starttime": str(predict_task["starttime"]),
+        "ntimes": int(predict_task["ntimes"]),
+        "onebeamperpatch": bool(predict_task["onebeamperpatch"]),
+        "correctfreqsmearing": bool(predict_task["correctfreqsmearing"]),
+        "correcttimesmearing": bool(predict_task["correcttimesmearing"]),
+        "sagecalpredict": bool(predict_task["sagecalpredict"]),
+        "sourcedb": str(predict_task["sourcedb"]),
+        "directions": _validate_string_list(
+            predict_task.get("directions"),
+            f"predict_tasks[{index}].directions",
+        ),
+        "numthreads": int(predict_task["numthreads"]),
+        "h5parm": _optional_str(predict_task.get("h5parm")),
+        "applycal_steps": _optional_str(predict_task.get("applycal_steps")),
+        "normalize_h5parm": _optional_str(predict_task.get("normalize_h5parm")),
+    }
+
+
+def _validate_predict_postprocess_task(
+    mode: str,
+    postprocess_task: Mapping[str, object],
+    index: int,
+) -> PredictPostprocessPayload:
+    task: PredictPostprocessPayload = {
+        "msobs": str(postprocess_task["msobs"]),
+        "data_colname": str(postprocess_task["data_colname"]),
+        "obs_starttime": str(postprocess_task["obs_starttime"]),
+        "infix": str(postprocess_task["infix"]),
+    }
+    if mode == "dd":
+        task = {
+            **task,
+            "solint_sec": float(postprocess_task["solint_sec"]),
+            "solint_hz": float(postprocess_task["solint_hz"]),
+            "min_uv_lambda": float(postprocess_task["min_uv_lambda"]),
+            "max_uv_lambda": float(postprocess_task["max_uv_lambda"]),
+            "nr_outliers": int(postprocess_task["nr_outliers"]),
+            "peel_outliers": bool(postprocess_task["peel_outliers"]),
+            "nr_bright": int(postprocess_task["nr_bright"]),
+            "peel_bright": bool(postprocess_task["peel_bright"]),
+            "reweight": bool(postprocess_task["reweight"]),
+        }
+    return task
+
+
+def _validate_predict_payload(payload: Mapping[str, object]) -> PredictPayload:
     mode = str(payload["mode"])
     if mode not in {"di", "dd"}:
         raise ValueError("mode must be 'di' or 'dd'")
     pipeline_working_dir = str(payload["pipeline_working_dir"])
-    predict_tasks = payload.get("predict_tasks", [])
-    postprocess_tasks = payload.get("postprocess_tasks", [])
-    if not isinstance(predict_tasks, list):
+    raw_predict_tasks = payload.get("predict_tasks", [])
+    raw_postprocess_tasks = payload.get("postprocess_tasks", [])
+    if not isinstance(raw_predict_tasks, list):
         raise ValueError("predict_tasks must be a list")
-    if not isinstance(postprocess_tasks, list):
+    if not isinstance(raw_postprocess_tasks, list):
         raise ValueError("postprocess_tasks must be a list")
-    return mode, pipeline_working_dir, predict_tasks, postprocess_tasks
+    predict_tasks = []
+    for index, predict_task in enumerate(raw_predict_tasks):
+        if not isinstance(predict_task, Mapping):
+            raise ValueError(f"predict_tasks[{index}] must be a mapping")
+        predict_tasks.append(_validate_predict_model_task(predict_task, index))
+    postprocess_tasks = []
+    for index, postprocess_task in enumerate(raw_postprocess_tasks):
+        if not isinstance(postprocess_task, Mapping):
+            raise ValueError(f"postprocess_tasks[{index}] must be a mapping")
+        postprocess_tasks.append(_validate_predict_postprocess_task(mode, postprocess_task, index))
+    return {
+        "mode": mode,
+        "pipeline_working_dir": pipeline_working_dir,
+        "predict_tasks": predict_tasks,
+        "postprocess_tasks": postprocess_tasks,
+    }
 
 
 def _run_shell_and_validate_directory(
@@ -345,7 +425,7 @@ def _glob_directory_records(
 
 
 def run_predict_model_data(
-    predict_task: Mapping[str, object],
+    predict_task: PredictModelTaskPayload,
     pipeline_working_dir: str,
     execution_config: Optional[ExecutionConfig] = None,
     shell_operation_cls=None,
@@ -353,25 +433,25 @@ def run_predict_model_data(
     """Run one DP3 prediction task and return a directory record."""
     config = execution_config or ExecutionConfig(task_runner="sync")
     command = build_predict_model_data_command(
-        str(predict_task["msin"]),
-        str(predict_task["data_colname"]),
-        str(predict_task["msout"]),
-        str(predict_task["starttime"]),
-        int(predict_task["ntimes"]),
-        bool(predict_task["onebeamperpatch"]),
-        bool(predict_task["correctfreqsmearing"]),
-        bool(predict_task["correcttimesmearing"]),
-        bool(predict_task["sagecalpredict"]),
-        str(predict_task["sourcedb"]),
-        list(predict_task["directions"]),
-        int(predict_task["numthreads"]),
-        h5parm=_optional_str(predict_task.get("h5parm")),
-        applycal_steps=_optional_str(predict_task.get("applycal_steps")),
-        normalize_h5parm=_optional_str(predict_task.get("normalize_h5parm")),
+        predict_task["msin"],
+        predict_task["data_colname"],
+        predict_task["msout"],
+        predict_task["starttime"],
+        predict_task["ntimes"],
+        predict_task["onebeamperpatch"],
+        predict_task["correctfreqsmearing"],
+        predict_task["correcttimesmearing"],
+        predict_task["sagecalpredict"],
+        predict_task["sourcedb"],
+        predict_task["directions"],
+        predict_task["numthreads"],
+        h5parm=predict_task["h5parm"],
+        applycal_steps=predict_task["applycal_steps"],
+        normalize_h5parm=predict_task["normalize_h5parm"],
     )
     return _run_shell_and_validate_directory(
         command,
-        str(predict_task["msout_path"]),
+        predict_task["msout_path"],
         pipeline_working_dir,
         config,
         shell_operation_cls=shell_operation_cls,
@@ -380,7 +460,7 @@ def run_predict_model_data(
 
 def run_predict_postprocess(
     mode: str,
-    postprocess_task: Mapping[str, object],
+    postprocess_task: PredictPostprocessPayload,
     model_outputs: list[dict],
     pipeline_working_dir: str,
     execution_config: Optional[ExecutionConfig] = None,
@@ -391,36 +471,37 @@ def run_predict_postprocess(
     model_paths = [str(record["path"]) for record in model_outputs]
     if mode == "di":
         command = build_add_sector_models_command(
-            str(postprocess_task["msobs"]),
+            postprocess_task["msobs"],
             model_paths,
-            str(postprocess_task["data_colname"]),
-            str(postprocess_task["obs_starttime"]),
-            str(postprocess_task["infix"]),
+            postprocess_task["data_colname"],
+            postprocess_task["obs_starttime"],
+            postprocess_task["infix"],
         )
         output_patterns = [
             os.path.join(
                 pipeline_working_dir,
-                f"{os.path.basename(str(postprocess_task['msobs']))}*_di.ms",
+                f"{os.path.basename(postprocess_task['msobs'])}*_di.ms",
             )
         ]
     elif mode == "dd":
+        dd_task = postprocess_task
         command = build_subtract_sector_models_command(
-            str(postprocess_task["msobs"]),
+            dd_task["msobs"],
             model_paths,
-            str(postprocess_task["data_colname"]),
-            str(postprocess_task["obs_starttime"]),
-            float(postprocess_task["solint_sec"]),
-            float(postprocess_task["solint_hz"]),
-            str(postprocess_task["infix"]),
-            float(postprocess_task["min_uv_lambda"]),
-            float(postprocess_task["max_uv_lambda"]),
-            int(postprocess_task["nr_outliers"]),
-            bool(postprocess_task["peel_outliers"]),
-            int(postprocess_task["nr_bright"]),
-            bool(postprocess_task["peel_bright"]),
-            bool(postprocess_task["reweight"]),
+            dd_task["data_colname"],
+            dd_task["obs_starttime"],
+            dd_task["solint_sec"],
+            dd_task["solint_hz"],
+            dd_task["infix"],
+            dd_task["min_uv_lambda"],
+            dd_task["max_uv_lambda"],
+            dd_task["nr_outliers"],
+            dd_task["peel_outliers"],
+            dd_task["nr_bright"],
+            dd_task["peel_bright"],
+            dd_task["reweight"],
         )
-        obs_basename = os.path.basename(str(postprocess_task["msobs"]))
+        obs_basename = os.path.basename(dd_task["msobs"])
         output_patterns = [
             os.path.join(pipeline_working_dir, f"{obs_basename}*_field"),
             os.path.join(pipeline_working_dir, f"{obs_basename}*.sector_*"),
@@ -439,7 +520,7 @@ def run_predict_postprocess(
 
 @task(name="predict_model_data")
 def predict_model_data_task(
-    predict_task: Mapping[str, object],
+    predict_task: PredictModelTaskPayload,
     pipeline_working_dir: str,
     execution_config: Optional[ExecutionConfig] = None,
     shell_operation_cls=None,
@@ -457,7 +538,7 @@ def predict_model_data_task(
 @task(name="predict_postprocess")
 def predict_postprocess_task(
     mode: str,
-    postprocess_task: Mapping[str, object],
+    postprocess_task: PredictPostprocessPayload,
     model_outputs: list[dict],
     pipeline_working_dir: str,
     execution_config: Optional[ExecutionConfig] = None,
@@ -490,30 +571,28 @@ def run_predict_flow(
     """Run Predict commands and return finalizer-compatible outputs."""
     assert_serializable_payload(payload)
     config = execution_config or ExecutionConfig(task_runner="sync")
-    mode, pipeline_working_dir, predict_tasks, postprocess_tasks = _validate_predict_payload(
-        payload
-    )
+    payload = _validate_predict_payload(payload)
     model_outputs = [
         run_predict_model_data(
             predict_task,
-            pipeline_working_dir,
+            payload["pipeline_working_dir"],
             execution_config=config,
             shell_operation_cls=shell_operation_cls,
         )
-        for predict_task in predict_tasks
+        for predict_task in payload["predict_tasks"]
     ]
     postprocess_outputs = [
         run_predict_postprocess(
-            mode,
+            payload["mode"],
             postprocess_task,
             model_outputs,
-            pipeline_working_dir,
+            payload["pipeline_working_dir"],
             execution_config=config,
             shell_operation_cls=shell_operation_cls,
         )
-        for postprocess_task in postprocess_tasks
+        for postprocess_task in payload["postprocess_tasks"]
     ]
-    return _result_from_postprocess_records(mode, postprocess_outputs)
+    return _result_from_postprocess_records(payload["mode"], postprocess_outputs)
 
 
 def _run_predict_prefect_tasks(
@@ -521,30 +600,28 @@ def _run_predict_prefect_tasks(
     execution_config: Optional[ExecutionConfig] = None,
 ) -> dict:
     config = execution_config or ExecutionConfig(task_runner="sync")
-    mode, pipeline_working_dir, predict_tasks, postprocess_tasks = _validate_predict_payload(
-        payload
-    )
+    payload = _validate_predict_payload(payload)
     model_outputs = [
         predict_model_data_task.submit(
             predict_task,
-            pipeline_working_dir,
+            payload["pipeline_working_dir"],
             execution_config=config,
         )
-        for predict_task in predict_tasks
+        for predict_task in payload["predict_tasks"]
     ]
     model_outputs = [output.result() for output in model_outputs]
     postprocess_outputs = [
         predict_postprocess_task.submit(
-            mode,
+            payload["mode"],
             postprocess_task,
             model_outputs,
-            pipeline_working_dir,
+            payload["pipeline_working_dir"],
             execution_config=config,
         )
-        for postprocess_task in postprocess_tasks
+        for postprocess_task in payload["postprocess_tasks"]
     ]
     postprocess_outputs = [output.result() for output in postprocess_outputs]
-    return _result_from_postprocess_records(mode, postprocess_outputs)
+    return _result_from_postprocess_records(payload["mode"], postprocess_outputs)
 
 
 @flow(name="predict")
