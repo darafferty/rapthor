@@ -9,7 +9,13 @@ from prefect import flow, task
 from rapthor.execution.commands import normalize_command
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.runtime import run_flow_with_task_runner
-from rapthor.execution.outputs import directory_record, validate_output_record
+from rapthor.execution.outputs import (
+    directory_record,
+    directory_record_path,
+    file_record_path,
+    optional_file_record_path,
+    validate_output_record,
+)
 from rapthor.execution.payloads import assert_serializable_payload
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
 from rapthor.execution.shell import ShellCommand, run_shell_command
@@ -17,20 +23,6 @@ from rapthor.execution.shell import ShellCommand, run_shell_command
 
 def _bool_token(value: bool) -> str:
     return "True" if value else "False"
-
-
-def _path_record_path(record: object, path_class: str) -> str:
-    if isinstance(record, Mapping) and record.get("class") == path_class:
-        path = record.get("path")
-        if isinstance(path, str) and path:
-            return path
-    raise ValueError(f"Expected a {path_class} output record, got {record!r}")
-
-
-def _optional_file_record_path(record: object) -> Optional[str]:
-    if record is None:
-        return None
-    return _path_record_path(record, "File")
 
 
 def _optional_str(value: object) -> Optional[str]:
@@ -226,8 +218,8 @@ def predict_payload_from_inputs(
         raise ValueError("Predict scatter inputs must have the same length")
 
     data_colname = str(input_parms["data_colname"])
-    h5parm = _optional_file_record_path(input_parms.get("h5parm"))
-    normalize_h5parm = _optional_file_record_path(input_parms.get("normalize_h5parm"))
+    h5parm = optional_file_record_path(input_parms.get("h5parm"))
+    normalize_h5parm = optional_file_record_path(input_parms.get("normalize_h5parm"))
     dp3_applycal_steps = _optional_str(input_parms.get("dp3_applycal_steps"))
     predict_tasks = []
     for index in range(predict_count):
@@ -236,7 +228,7 @@ def predict_payload_from_inputs(
             raise ValueError(f"sector_patches[{index}] must be a list")
         predict_tasks.append(
             {
-                "msin": _path_record_path(sector_filenames[index], "Directory"),
+                "msin": directory_record_path(sector_filenames[index]),
                 "data_colname": data_colname,
                 "msout": msout,
                 "msout_path": os.path.join(pipeline_dir, msout),
@@ -246,7 +238,7 @@ def predict_payload_from_inputs(
                 "correctfreqsmearing": bool(input_parms["correctfreqsmearing"]),
                 "correcttimesmearing": bool(input_parms["correcttimesmearing"]),
                 "sagecalpredict": bool(input_parms["sagecalpredict"]),
-                "sourcedb": _path_record_path(sector_skymodels[index], "File"),
+                "sourcedb": file_record_path(sector_skymodels[index]),
                 "directions": [str(direction) for direction in sector_patches[index]],
                 "numthreads": int(input_parms["max_threads"]),
                 "h5parm": h5parm,
@@ -272,7 +264,7 @@ def predict_payload_from_inputs(
     postprocess_tasks = []
     for index in range(obs_count):
         task = {
-            "msobs": _path_record_path(obs_filenames[index], "Directory"),
+            "msobs": directory_record_path(obs_filenames[index]),
             "data_colname": data_colname,
             "obs_starttime": str(obs_starttimes[index]),
             "infix": str(obs_infixes[index]),

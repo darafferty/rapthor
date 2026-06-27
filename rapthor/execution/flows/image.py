@@ -11,7 +11,14 @@ from rapthor.execution.artifacts import publish_fits_image_artifacts, publish_pl
 from rapthor.execution.commands import normalize_command
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.runtime import run_flow_with_task_runner
-from rapthor.execution.outputs import directory_record, file_record, validate_output_record
+from rapthor.execution.outputs import (
+    directory_record,
+    directory_record_path,
+    file_record,
+    file_record_path,
+    optional_file_record_path,
+    validate_output_record,
+)
 from rapthor.execution.payloads import assert_serializable_payload
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
 from rapthor.execution.resources import (
@@ -26,32 +33,6 @@ ATERM_CONFIG_FILENAME = "aterm_plus_beam.cfg"
 
 def _bool_token(value: bool) -> str:
     return "True" if value else "False"
-
-
-def _path_record_path(record: object, path_class: str) -> str:
-    if isinstance(record, Mapping) and record.get("class") == path_class:
-        path = record.get("path")
-        if isinstance(path, str) and path:
-            return path
-    raise ValueError(f"Expected a {path_class} output record, got {record!r}")
-
-
-def _optional_path_record_path(record: object, path_class: str) -> Optional[str]:
-    if record is None:
-        return None
-    return _path_record_path(record, path_class)
-
-
-def _optional_file_record_path(record: object) -> Optional[str]:
-    return _optional_path_record_path(record, "File")
-
-
-def _directory_record_path(record: object) -> str:
-    return _path_record_path(record, "Directory")
-
-
-def _file_record_path(record: object) -> str:
-    return _path_record_path(record, "File")
 
 
 def _validate_basename(filename: object, name: str) -> str:
@@ -779,7 +760,7 @@ def image_payload_from_inputs(
 
     pol = _pol_token(input_parms["pol"])
     peel_bright_sources = bool(input_parms.get("peel_bright_sources", False))
-    bright_skymodel_pb = _optional_file_record_path(input_parms.get("bright_skymodel_pb"))
+    bright_skymodel_pb = optional_file_record_path(input_parms.get("bright_skymodel_pb"))
     if peel_bright_sources and bright_skymodel_pb is None:
         raise ValueError("bright_skymodel_pb must be a File record when peel_bright_sources=True")
 
@@ -853,7 +834,7 @@ def image_payload_from_inputs(
         if not isinstance(value, list) or len(value) != sector_count:
             raise ValueError(f"{key} must be a list with one value per sector")
 
-    h5parm = _optional_file_record_path(input_parms.get("h5parm"))
+    h5parm = optional_file_record_path(input_parms.get("h5parm"))
     if (apply_screens or use_facets) and h5parm is None:
         raise ValueError("h5parm must be a File record for screen or facet imaging")
     interval = None
@@ -868,7 +849,7 @@ def image_payload_from_inputs(
         interval = [int(value) for value in interval_value]
     facet_skymodel = None
     if use_facets:
-        facet_skymodel = _file_record_path(input_parms.get("skymodel"))
+        facet_skymodel = file_record_path(input_parms.get("skymodel"))
         for key in [
             "soltabs",
             "parallel_gridding_threads",
@@ -878,10 +859,10 @@ def image_payload_from_inputs(
         ]:
             if key not in input_parms:
                 raise ValueError(f"{key} is required when use_facets=True")
-    fulljones_h5parm = _optional_file_record_path(input_parms.get("fulljones_h5parm"))
-    input_normalize_h5parm = _optional_file_record_path(input_parms.get("input_normalize_h5parm"))
-    photometry_skymodel = _optional_file_record_path(input_parms.get("photometry_skymodel"))
-    astrometry_skymodel = _optional_file_record_path(input_parms.get("astrometry_skymodel"))
+    fulljones_h5parm = optional_file_record_path(input_parms.get("fulljones_h5parm"))
+    input_normalize_h5parm = optional_file_record_path(input_parms.get("input_normalize_h5parm"))
+    photometry_skymodel = optional_file_record_path(input_parms.get("photometry_skymodel"))
+    astrometry_skymodel = optional_file_record_path(input_parms.get("astrometry_skymodel"))
 
     sectors = []
     for sector_index in range(sector_count):
@@ -914,7 +895,7 @@ def image_payload_from_inputs(
             )
             prepare_tasks.append(
                 {
-                    "msin": _directory_record_path(obs_records[obs_index]),
+                    "msin": directory_record_path(obs_records[obs_index]),
                     "msout": msout,
                     "msout_path": os.path.join(pipeline_dir, msout),
                     "starttime": str(starttimes[obs_index]),
@@ -1003,7 +984,7 @@ def image_payload_from_inputs(
                 "prepare_tasks": prepare_tasks,
                 "concat_filename": concat_filename,
                 "concat_path": os.path.join(pipeline_dir, concat_filename),
-                "previous_mask_filename": _optional_file_record_path(
+                "previous_mask_filename": optional_file_record_path(
                     input_parms["previous_mask_filename"][sector_index]
                 ),
                 "mask_filename": mask_filename,
@@ -1028,8 +1009,8 @@ def image_payload_from_inputs(
                 "wsclean_imsize": [
                     int(value) for value in input_parms["wsclean_imsize"][sector_index]
                 ],
-                "vertices_file": _file_record_path(input_parms["vertices_file"][sector_index]),
-                "region_file": _optional_file_record_path(input_parms["region_file"][sector_index]),
+                "vertices_file": file_record_path(input_parms["vertices_file"][sector_index]),
+                "region_file": optional_file_record_path(input_parms["region_file"][sector_index]),
                 "facet_skymodel": facet_skymodel,
                 "facet_region_filename": facet_region_filename,
                 "facet_region_path": (
@@ -1127,7 +1108,7 @@ def image_payload_from_inputs(
                 "allow_internet_access": bool(input_parms["allow_internet_access"]),
                 "photometry_skymodel": photometry_skymodel,
                 "astrometry_skymodel": astrometry_skymodel,
-                "obs_original_paths": [_directory_record_path(record) for record in obs_records],
+                "obs_original_paths": [directory_record_path(record) for record in obs_records],
                 "obs_starttime": [str(value) for value in starttimes],
                 "obs_ntimes": [int(value) for value in ntimes],
             }

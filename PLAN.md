@@ -34,11 +34,22 @@ Completed:
   - documented `rapthor.execution` and `rapthor.execution.flows` as broad
     migration-era compatibility facades
   - added `tests/architecture` to the explicit Ruff format/check target lists
+- Output record consolidation:
+  - moved finalizer-compatible record creation, validation, and path extraction
+    into `rapthor.lib.records`
+  - kept `rapthor.execution.outputs` as a compatibility shim
+  - replaced duplicated flow-local file/directory record path helpers in
+    concatenate, mosaic, predict, image, and calibration flows
+  - added focused tests for required and optional record path extraction
 - Verified in the dev container:
   - `python3 -m pytest tests/architecture -q --tb=short`
   - `python3 -m pytest tests/execution/test_outputs.py tests/execution/test_payloads.py tests/execution/test_commands.py -q --tb=short`
+  - `python3 -m pytest tests/execution/test_concatenate_flow.py tests/execution/test_mosaic_flow.py tests/execution/test_predict_flow.py -q --tb=short`
+  - `python3 -m pytest tests/execution/test_image_flow.py tests/execution/test_calibrate_flow.py -q --tb=short`
+  - `python3 -m pytest tests/execution/test_reference_fixtures.py tests/lib/test_operation.py -q --tb=short`
   - targeted Ruff format, lint, and import-sort checks for the new architecture
-    tests and touched execution facade modules
+    tests, touched execution facade modules, output record helpers, and touched
+    flow modules
 
 Known follow-up from the completed slice:
 
@@ -49,15 +60,22 @@ Known follow-up from the completed slice:
 - Decide whether the broad `rapthor.execution` and `rapthor.execution.flows`
   facades should become documented stable APIs or shrink to compatibility
   shims.
+- Migrate imports away from `rapthor.execution.outputs`, then remove that
+  compatibility shim once no internal or supported downstream imports remain.
+- Avoid running multiple pytest processes in parallel locally without setting
+  separate `RAPTHOR_TEST_RUN_ROOT` values; concurrent test startup can race while
+  cleaning `.pytest_cache/rapthor-runs`.
+- The image/calibration flow tests passed, but Prefect emitted a late logging
+  shutdown warning after the passing summary. Track separately if it becomes
+  noisy in CI.
 
 Next slice:
 
-- Consolidate output record handling across `rapthor.execution.outputs`,
-  `rapthor.lib.records`, and duplicated flow-local record/path helpers.
+- Introduce typed payload contracts, starting with smaller flows before image and
+  calibration.
 
 Remaining major stages:
 
-- Consolidate output records and path extraction.
 - Introduce typed payload contracts, starting with smaller flows before image and
   calibration.
 - Extract shared command-builder utilities.
@@ -65,8 +83,8 @@ Remaining major stages:
 - Split calibration flow responsibilities.
 - Thin operation adapters.
 - Improve process orchestration, dry-run/preflight, and debugging surfaces.
-- Manage code quantity and remove duplicated/dead compatibility code as slices
-  land.
+- Manage code quantity and remove duplicated/dead compatibility code, including
+  temporary shims, as slices land.
 - Convert scripts to importable modules only when touched, while preserving CLI
   compatibility.
 - Validate Dask scalability, external-Dask/Slurm, MPI WSClean, and
@@ -158,8 +176,10 @@ responsibilities are:
   established.
 - `rapthor.execution.commands`: shared command token utilities plus small
   operation-specific command modules where useful.
-- `rapthor.execution.outputs`: a single compatibility layer, or a deprecated
-  shim, for finalizer-compatible output records.
+- `rapthor.execution.outputs`: temporary compatibility shim for
+  finalizer-compatible output records; remove after imports migrate to
+  `rapthor.lib.records` unless it is explicitly documented as a stable execution
+  API.
 - `rapthor.execution.flows`: Prefect orchestration only: task boundaries,
   scheduling, retries/failure handling, artifact publication, and task-runner
   integration.
@@ -201,6 +221,9 @@ of accidental imports from large implementation modules.
 - Move tests toward direct imports from the module that owns the behaviour.
 - Keep temporary compatibility exports only where existing users are likely to
   rely on them.
+- For every compatibility shim or facade, record the owner, reason, expected
+  removal condition, import migration path, and tests that prove it can be
+  removed.
 - Add architecture fitness checks for forbidden imports and intended dependency
   direction.
 - Add a small ownership map that links package areas to their test directories
@@ -217,6 +240,8 @@ Completion criteria:
   flow, and finalizer changes.
 - `__init__` exports are either intentionally documented or scheduled for
   deprecation.
+- Temporary compatibility shims have explicit removal criteria and are tracked
+  in this plan or the development architecture docs.
 - CI has at least a lightweight import-boundary check so clean architecture does
   not rely on review memory alone.
 
@@ -235,9 +260,13 @@ and cleanup.
   - basename validation where command builders depend on it
   - nested record validation for lists and optional records
   - copy, move, and cleanup helpers used by finalizers
-- Leave `rapthor.execution.outputs` as a small compatibility shim if needed.
+- Leave `rapthor.execution.outputs` as a small compatibility shim only while
+  imports are being migrated; remove it once flows/tests/downstream-supported
+  imports use the final record API.
 - Replace local `_file_record_path`, `_directory_record_path`, and
   `_optional_file_record_path` helpers in flow modules with the shared API.
+- Add or update import-boundary/search tests so new code does not start using a
+  shim that is scheduled for removal.
 - Add tests for malformed records, missing paths, optional records, nested lists,
   and path extraction error messages.
 
@@ -246,6 +275,8 @@ Completion criteria:
 - Flow modules no longer contain duplicated record path extraction helpers.
 - Operation finalizers and Prefect flows validate the same record contract.
 - Existing output reference tests still pass.
+- `rapthor.execution.outputs` either has no internal imports and can be removed,
+  or remains documented as a temporary shim with an explicit removal trigger.
 
 ### 3. Introduce Typed Payload Contracts
 
@@ -612,6 +643,9 @@ facades, and boilerplate than the pipeline needs.
 - Prefer deleting migration-era compatibility code, duplicated helpers, dead
   branches, unused exports, stale fixtures, and unused parset plumbing before
   adding new abstractions.
+- Treat compatibility shims as technical debt with expiry conditions. They should
+  be tiny, tested, documented, and removed in the next safe slice after imports
+  are migrated.
 - Track a lightweight before/after snapshot for large refactor slices:
   - largest modules by line count
   - broadest public export lists
@@ -647,6 +681,10 @@ facades, and boilerplate than the pipeline needs.
 - Review total code after each major phase. If the refactor has mostly moved
   code around without reducing duplication, public surface area, or debugging
   friction, pause and simplify before continuing.
+- Schedule a shim cleanup pass after each completed refactor stage. Search for
+  compatibility modules, broad facade exports, deprecated names, and transitional
+  allowlist entries, then remove any that no longer protect a real user-facing
+  contract.
 
 Completion criteria:
 
@@ -654,6 +692,8 @@ Completion criteria:
   new module count does not create a maze of pass-through wrappers.
 - Net new code is justified by deleted duplication, clearer tests, cleaner
   dependency direction, or better runtime/debug behaviour.
+- Temporary compatibility code has a named removal path, and completed stages
+  delete shims that are no longer needed.
 - Contributors can locate the owner of a behaviour without searching across
   many similarly named helper modules.
 - Debug output is structured and reusable enough that tests can protect it.

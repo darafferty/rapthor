@@ -8,18 +8,14 @@ from prefect import flow, task
 from rapthor.execution.commands import normalize_command
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.runtime import run_flow_with_task_runner
-from rapthor.execution.outputs import directory_record, validate_output_record
+from rapthor.execution.outputs import (
+    directory_record,
+    directory_record_path,
+    validate_output_record,
+)
 from rapthor.execution.payloads import assert_serializable_payload
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
 from rapthor.execution.shell import ShellCommand, run_shell_command
-
-
-def _record_path(record: object) -> str:
-    if isinstance(record, Mapping) and record.get("class") == "Directory":
-        path = record.get("path")
-        if isinstance(path, str) and path:
-            return path
-    raise ValueError(f"Expected a Directory output record, got {record!r}")
 
 
 def _validate_output_filename(output_filename: object, index: int) -> str:
@@ -98,7 +94,7 @@ def concatenate_payload_from_inputs(
         output_filename = _validate_output_filename(output_filename, index)
         epochs.append(
             {
-                "input_filenames": [_record_path(record) for record in epoch_inputs],
+                "input_filenames": [directory_record_path(record) for record in epoch_inputs],
                 "output_filename": output_filename,
                 "output_path": os.path.join(pipeline_dir, output_filename),
             }

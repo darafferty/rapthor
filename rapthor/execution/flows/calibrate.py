@@ -10,7 +10,12 @@ from rapthor.execution.artifacts import publish_plot_file_records
 from rapthor.execution.commands import normalize_command
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.runtime import run_flow_with_task_runner
-from rapthor.execution.outputs import file_record, validate_output_record
+from rapthor.execution.outputs import (
+    directory_record_path,
+    file_record,
+    file_record_path,
+    validate_output_record,
+)
 from rapthor.execution.payloads import assert_serializable_payload
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
 from rapthor.execution.shell import ShellCommand, run_shell_command
@@ -135,25 +140,13 @@ def _list_token(values: list[object]) -> str:
     return f"[{','.join(str(value) for value in values)}]"
 
 
-def _record_path(record: object, path_class: str) -> str:
-    if isinstance(record, Mapping) and record.get("class") == path_class:
-        path = record.get("path")
-        if isinstance(path, str) and path:
-            return path
-    raise ValueError(f"Expected a {path_class} output record, got {record!r}")
-
-
-def _path_record_path(record: object) -> str:
-    return _record_path(record, "Directory")
-
-
 def _optional_file_path(record: object, name: str) -> Optional[str]:
     if record is None:
         return None
     if isinstance(record, str):
         return record
     if isinstance(record, Mapping) and record.get("class") == "File":
-        return _record_path(record, "File")
+        return file_record_path(record)
     raise ValueError(f"{name} must be a File record, path string, or None")
 
 
@@ -893,7 +886,7 @@ def calibrate_payload_from_inputs(
                 f"output_idgcal_h5parm[{index}]",
             )
             chunk = {
-                "msin": _path_record_path(filenames[index]),
+                "msin": directory_record_path(filenames[index]),
                 "starttime": str(starttimes[index]),
                 "ntimes": int(ntimes[index]),
                 "output_h5parm": h5parm,
@@ -1028,7 +1021,7 @@ def calibrate_payload_from_inputs(
                 )
             )
         chunk = {
-            "msin": _path_record_path(filenames[index]),
+            "msin": directory_record_path(filenames[index]),
             "starttime": str(starttimes[index]),
             "ntimes": int(ntimes[index]),
             "output_h5parm": chunk_solve_slots[0]["h5parm"],

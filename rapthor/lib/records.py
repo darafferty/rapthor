@@ -5,10 +5,17 @@ import logging
 import os
 import shutil
 from pathlib import Path
+from typing import Any, Mapping, Optional
 
 import numpy as np
 
 logger = logging.getLogger("rapthor:records")
+
+OUTPUT_CLASSES = ("File", "Directory")
+
+
+class OutputRecordError(ValueError):
+    """Raised when an output record does not match the finalizer contract."""
 
 
 class PathRecord(object):
@@ -120,6 +127,86 @@ def is_file_or_directory_record(record):
     Check if the given object is a file or directory record.
     """
     return is_file_record(record) or is_directory_record(record)
+
+
+def _path_string(path: Any) -> str:
+    if isinstance(path, Path):
+        return path.as_posix()
+    return str(path)
+
+
+def file_record(path: Any) -> dict:
+    """Create a finalizer-compatible file output record."""
+    return {"class": "File", "path": _path_string(path)}
+
+
+def directory_record(path: Any) -> dict:
+    """Create a finalizer-compatible directory output record."""
+    return {"class": "Directory", "path": _path_string(path)}
+
+
+def is_output_record(value: Any) -> bool:
+    """Return True if *value* is a finalizer-compatible file/directory record."""
+    return (
+        isinstance(value, Mapping)
+        and value.get("class") in OUTPUT_CLASSES
+        and isinstance(value.get("path"), str)
+        and bool(value.get("path"))
+    )
+
+
+def validate_output_record(value: Any, allow_none: bool = False) -> Any:
+    """Validate nested finalizer-compatible output records.
+
+    Lists are walked recursively because several operation outputs are arrays or
+    nested arrays of files. The validated value is returned unchanged to make the
+    helper convenient in flow and finalizer code.
+    """
+    if value is None and allow_none:
+        return value
+    if isinstance(value, list):
+        for item in value:
+            validate_output_record(item, allow_none=allow_none)
+        return value
+    if is_output_record(value):
+        return value
+    raise OutputRecordError(f"Invalid output record: {value!r}")
+
+
+def output_record_path(record: Any, record_class: str) -> str:
+    """Return the path from a required finalizer-compatible output record."""
+    if isinstance(record, Mapping) and record.get("class") == record_class:
+        path = record.get("path")
+        if isinstance(path, str) and path:
+            return path
+    raise OutputRecordError(f"Expected a {record_class} output record, got {record!r}")
+
+
+def optional_output_record_path(record: Any, record_class: str) -> Optional[str]:
+    """Return the path from an optional output record, or ``None``."""
+    if record is None:
+        return None
+    return output_record_path(record, record_class)
+
+
+def file_record_path(record: Any) -> str:
+    """Return the path from a required file output record."""
+    return output_record_path(record, "File")
+
+
+def optional_file_record_path(record: Any) -> Optional[str]:
+    """Return the path from an optional file output record, or ``None``."""
+    return optional_output_record_path(record, "File")
+
+
+def directory_record_path(record: Any) -> str:
+    """Return the path from a required directory output record."""
+    return output_record_path(record, "Directory")
+
+
+def optional_directory_record_path(record: Any) -> Optional[str]:
+    """Return the path from an optional directory output record, or ``None``."""
+    return optional_output_record_path(record, "Directory")
 
 
 def copy_record_object(src_obj, dest_dir, move=False):

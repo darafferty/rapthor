@@ -86,6 +86,29 @@ New code should import from the module that owns the behaviour, for example:
 
 Do not add new facade exports unless there is a documented compatibility reason.
 
+Compatibility Shim Lifecycle
+----------------------------
+
+Compatibility shims and broad facades are temporary unless explicitly documented
+as stable public APIs. Each shim should have:
+
+* an owner and reason for existing
+* a target module that new code should import instead
+* an import migration plan
+* tests or search checks that prove the old import path is no longer used
+* a removal condition
+
+When a refactor stage finishes, do a shim cleanup pass before adding more
+abstractions. Remove shims, deprecated exports, and architecture-test allowlist
+entries that no longer protect a real supported contract.
+
+Current temporary shims:
+
+* ``rapthor.execution.outputs`` re-exports finalizer-compatible output-record
+  helpers from ``rapthor.lib.records``. New code should import from
+  ``rapthor.lib.records``. Remove the shim after supported imports have migrated,
+  unless the execution facade is intentionally documented as stable API.
+
 Current Boundary Exceptions
 ---------------------------
 

@@ -9,7 +9,7 @@ from rapthor.execution.artifacts import publish_fits_image_artifacts
 from rapthor.execution.commands import normalize_command
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.runtime import run_flow_with_task_runner
-from rapthor.execution.outputs import file_record, validate_output_record
+from rapthor.execution.outputs import file_record, file_record_path, validate_output_record
 from rapthor.execution.payloads import assert_serializable_payload
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
 from rapthor.execution.shell import ShellCommand, run_shell_command
@@ -17,14 +17,6 @@ from rapthor.execution.shell import ShellCommand, run_shell_command
 
 def _bool_token(value: bool) -> str:
     return "True" if value else "False"
-
-
-def _file_record_path(record: object) -> str:
-    if isinstance(record, Mapping) and record.get("class") == "File":
-        path = record.get("path")
-        if isinstance(path, str) and path:
-            return path
-    raise ValueError(f"Expected a File output record, got {record!r}")
 
 
 def _validate_basename(filename: object, name: str) -> str:
@@ -203,9 +195,9 @@ def mosaic_payload_from_inputs(
         mosaic_filename = _validate_basename(mosaic_filenames[index], f"mosaic_filename[{index}]")
         image_types.append(
             {
-                "sector_image_filenames": [_file_record_path(record) for record in sector_images],
+                "sector_image_filenames": [file_record_path(record) for record in sector_images],
                 "sector_vertices_filenames": [
-                    _file_record_path(record) for record in sector_vertices
+                    file_record_path(record) for record in sector_vertices
                 ],
                 "template_image_filename": template_filename,
                 "template_image_path": os.path.join(pipeline_dir, template_filename),
