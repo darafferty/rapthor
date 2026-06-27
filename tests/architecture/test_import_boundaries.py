@@ -42,6 +42,11 @@ PURE_EXECUTION_FORBIDDEN_PREFIXES = FRAMEWORK_PREFIXES + (
     "rapthor.operations",
 )
 
+LIGHTWEIGHT_PACKAGE_INITIALIZERS = (
+    RAPTHOR_ROOT / "execution" / "__init__.py",
+    RAPTHOR_ROOT / "execution" / "flows" / "__init__.py",
+)
+
 
 def _python_files(root: Path) -> list[Path]:
     return sorted(path for path in root.rglob("*.py") if path.is_file())
@@ -99,5 +104,18 @@ def test_pure_execution_helpers_do_not_import_frameworks_or_flows():
         list(PURE_EXECUTION_MODULES),
         PURE_EXECUTION_FORBIDDEN_PREFIXES,
     )
+
+    assert messages == []
+
+
+def test_execution_package_initializers_do_not_rebuild_broad_facades():
+    messages = []
+    for path in LIGHTWEIGHT_PACKAGE_INITIALIZERS:
+        imports = _imported_modules(path)
+        if imports:
+            relative_path = _relative_path(path)
+            messages.extend(
+                f"{relative_path}:{line_number} imports {module}" for module, line_number in imports
+            )
 
     assert messages == []

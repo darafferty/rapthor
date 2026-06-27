@@ -88,9 +88,9 @@ Layer Ownership
 Public Export Guidance
 ----------------------
 
-``rapthor.execution`` and ``rapthor.execution.flows`` currently expose broad
-facades for compatibility with the migration-era test and import surface. Treat
-these as transitional convenience surfaces.
+``rapthor.execution`` and ``rapthor.execution.flows`` are intentionally light
+package initializers. They should not re-export flow functions, command
+builders, payload builders, task bodies, or runtime helpers.
 
 New code should import from the module that owns the behaviour, for example:
 
@@ -110,7 +110,8 @@ New code should import from the module that owns the behaviour, for example:
 * Prefect flows from the concrete ``rapthor.execution.flows.<operation>`` module
 * runtime helpers from their concrete runtime module
 
-Do not add new facade exports unless there is a documented compatibility reason.
+Do not add new package-level facade exports unless there is a documented
+compatibility reason.
 
 Compatibility Shim Lifecycle
 ----------------------------
