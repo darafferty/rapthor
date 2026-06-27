@@ -13,6 +13,7 @@ from rapthor.execution.image.payloads import image_payload_from_inputs
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.operation import Operation
 from rapthor.lib.records import DirectoryRecord, FileRecord
+from rapthor.operations.flow_execution import run_prefect_flow
 from rapthor.operations.image_plan import (
     build_image_applycal_steps,
     build_image_facet_solution_controls,
@@ -530,7 +531,7 @@ class Image(Operation):
             normalize_flux_scale=self.normalize_flux_scale,
             use_mpi=self.field.use_mpi,
         )
-        outputs = self.run_prefect_flow(image_flow, payload)
+        outputs = run_prefect_flow(image_flow, payload, self.parset)
         return True, outputs
 
     def finalize(self):

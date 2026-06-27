@@ -114,19 +114,6 @@ def test_flow_parset_parameters_can_include_working_dir_and_extra_values(tmp_pat
     }
 
 
-def test_run_prefect_flow_passes_parset_execution_config(tmp_path):
-    parset = _operation_parset(tmp_path)
-    parset["cluster_specific"]["prefect_task_runner"] = "sync"
-    operation = Operation(FieldStub(parset), name="Base")
-    payload = {"input": "value"}
-
-    def fake_flow(payload_arg, *, execution_config):
-        assert payload_arg is payload
-        return {"task_runner": execution_config.task_runner}
-
-    assert operation.run_prefect_flow(fake_flow, payload) == {"task_runner": "sync"}
-
-
 def test_finalize_marks_operation_done(tmp_path):
     operation = _operation(tmp_path)
 

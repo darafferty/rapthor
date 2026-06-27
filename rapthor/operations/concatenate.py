@@ -7,6 +7,7 @@ import os
 from rapthor.execution.flows.concatenate import concatenate_flow, concatenate_payload_from_inputs
 from rapthor.lib.operation import Operation
 from rapthor.lib.records import DirectoryRecord
+from rapthor.operations.flow_execution import run_prefect_flow
 
 
 class Concatenate(Operation):
@@ -56,7 +57,7 @@ class Concatenate(Operation):
         Execute concatenation through the Prefect flow and return operation outputs.
         """
         payload = concatenate_payload_from_inputs(self.input_parms, self.pipeline_working_dir)
-        outputs = self.run_prefect_flow(concatenate_flow, payload)
+        outputs = run_prefect_flow(concatenate_flow, payload, self.parset)
         return True, outputs
 
     def finalize(self):

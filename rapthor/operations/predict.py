@@ -12,6 +12,7 @@ from rapthor.execution.flows.predict import predict_flow, predict_payload_from_i
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.operation import Operation
 from rapthor.lib.records import DirectoryRecord, FileRecord
+from rapthor.operations.flow_execution import run_prefect_flow
 
 log = logging.getLogger("rapthor:predict")
 
@@ -114,7 +115,7 @@ class Predict(Operation):
             self.input_parms,
             self.pipeline_working_dir,
         )
-        outputs = self.run_prefect_flow(predict_flow, payload)
+        outputs = run_prefect_flow(predict_flow, payload, self.parset)
         return True, outputs
 
     def _collect_sector_parameters(self, sectors):

@@ -43,7 +43,8 @@ Layer Ownership
      - Contract and operation tests as the layer is introduced.
    * - ``rapthor.operations``
      - Operation adapters that connect domain objects to payload builders, run
-       flows, update field state, and handle finalizer side effects.
+       flows through the operation flow-execution bridge, update field state,
+       and handle finalizer side effects.
      - ``tests/operations``
    * - ``rapthor.execution.commands`` and operation command modules such as
        ``rapthor.execution.image.commands`` and
@@ -134,16 +135,9 @@ There are no standalone compatibility shims documented here at the moment.
 Current Boundary Exceptions
 ---------------------------
 
-The first architecture fitness tests intentionally allow known migration-era
-exceptions so they can prevent new leaks without forcing a large first patch.
-
-Known exception:
-
-* ``rapthor.lib.operation.Operation.run_prefect_flow`` imports
-  ``rapthor.execution.config.ExecutionConfig``. This keeps current operation
-  adapters small, but it points from the domain/lifecycle layer into the
-  execution layer. Remove this exception when operation lifecycle and flow
-  execution are split more cleanly.
+There are no documented clean-architecture boundary exceptions at the moment.
+If a future exception becomes necessary, document the owner, reason, removal
+condition, and architecture-test allowlist entry in the same change.
 
 Change Workflow
 ---------------

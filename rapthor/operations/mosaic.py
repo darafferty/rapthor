@@ -8,6 +8,7 @@ import shutil
 from rapthor.execution.flows.mosaic import mosaic_flow, mosaic_payload_from_inputs
 from rapthor.lib.operation import Operation
 from rapthor.lib.records import FileRecord
+from rapthor.operations.flow_execution import run_prefect_flow
 
 
 class Mosaic(Operation):
@@ -108,7 +109,7 @@ class Mosaic(Operation):
             self.pipeline_working_dir,
             compress_images=self.field.compress_images,
         )
-        outputs = self.run_prefect_flow(mosaic_flow, payload)
+        outputs = run_prefect_flow(mosaic_flow, payload, self.parset)
         return True, outputs
 
     def finalize(self):

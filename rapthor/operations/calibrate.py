@@ -25,6 +25,7 @@ from rapthor.operations.calibrate_plan import (
     build_calibration_superterp_stations,
     requested_calibration_solves,
 )
+from rapthor.operations.flow_execution import run_prefect_flow
 
 
 class Calibrate(Operation):
@@ -768,7 +769,7 @@ class Calibrate(Operation):
             self.input_parms,
             self.pipeline_working_dir,
         )
-        outputs = self.run_prefect_flow(calibrate_flow, payload)
+        outputs = run_prefect_flow(calibrate_flow, payload, self.parset)
         return True, outputs
 
     def finalize(self):

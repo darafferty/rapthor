@@ -270,6 +270,13 @@ Completed:
     helper
   - added architecture coverage to prevent the broad facades from being rebuilt
     accidentally
+- Operation flow-execution bridge cleanup:
+  - moved the Prefect-flow execution helper out of `rapthor.lib.Operation` and
+    into `rapthor.operations.flow_execution`
+  - updated operation adapters to call the execution bridge directly with their
+    parset-derived runtime settings
+  - removed the last documented domain-to-execution architecture exception and
+    simplified the import-boundary test so `rapthor.lib` has no allowlist
 - Verified in the dev container:
   - `python3 -m pytest tests/architecture -q --tb=short`
   - `python3 -m pytest tests/lib/test_records.py tests/execution/test_payloads.py tests/execution/test_commands.py -q --tb=short`
@@ -305,6 +312,9 @@ Completed:
   - `python3 -m pytest tests/execution/test_image_flow.py tests/execution/test_calibrate_flow.py -q --tb=short`
   - `python3 -m pytest tests/operations/test_image.py tests/operations/integration/test_image_to_mosaic.py -q --tb=short`
   - `python3 -m pytest tests/architecture tests/execution/test_prefect_logging.py -q --tb=short`
+  - `python3 -m pytest tests/architecture tests/lib/test_operation.py tests/operations/test_flow_execution.py -q --tb=short`
+  - `python3 -m pytest tests/operations/test_concatenate.py tests/operations/test_mosaic.py tests/operations/test_predict.py -q --tb=short`
+  - `python3 -m pytest tests/operations/test_image.py tests/operations/test_calibrate.py -q --tb=short`
   - `python3 -c "import rapthor.execution as execution; import rapthor.execution.flows as flows; import rapthor.execution.image.commands as image_commands; import rapthor.execution.image.payloads as image_payloads; import rapthor.execution.image.sector as image_sector; import rapthor.execution.flows.image as image_flow; assert image_commands.normalized_wsclean_no_dde_command; assert image_payloads.image_payload_from_inputs; assert image_flow.validate_image_payload is image_payloads.validate_image_payload; assert image_sector.run_image_sector; assert not hasattr(execution, 'run_image_sector'); assert not hasattr(flows, 'run_image_sector'); assert not hasattr(execution, 'image_payload_from_inputs'); assert not hasattr(flows, 'build_wsclean_no_dde_command')"`
   - `python3 -c "from rapthor.execution.image.payloads import ImagePayload, ImageSectorPayload, image_payload_from_inputs; import rapthor.execution.payloads as shared_payloads; assert ImagePayload; assert ImageSectorPayload; assert image_payload_from_inputs; assert not hasattr(shared_payloads, 'ImagePayload'); assert not hasattr(shared_payloads, 'ImageSectorPayload')"`
   - `python3 -c "import rapthor.execution as execution; import rapthor.execution.flows as flows; import rapthor.execution.calibrate.commands as commands; assert commands.normalized_ddecal_solve_command; assert not hasattr(execution, 'build_ddecal_solve_command'); assert not hasattr(flows, 'build_ddecal_solve_command')"`
@@ -327,6 +337,7 @@ Completed:
   - `python3 -c "import importlib.util; assert importlib.util.find_spec('rapthor.process') is None"`
   - `python3 -c "import importlib.util; assert importlib.util.find_spec('rapthor.execution.outputs') is None"`
   - `python3 -c "import rapthor.execution as execution; import rapthor.execution.flows as flows; assert not hasattr(execution, 'run_process'); assert not hasattr(execution, 'build_task_runner'); assert not hasattr(flows, 'run_process'); from rapthor.execution import prefect_logging; assert prefect_logging.publish_python_logs_to_prefect"`
+  - `python3 -c "from rapthor.lib.operation import Operation; assert not hasattr(Operation, 'run_prefect_flow'); import rapthor.operations.flow_execution as flow_execution; assert flow_execution.run_prefect_flow"`
   - targeted Ruff format, lint, and import-sort checks for the new architecture
     tests, touched execution facade modules, output record helpers, and touched
     flow modules
@@ -384,13 +395,12 @@ Completed:
     affected-flow checks for output-shim removal
   - targeted Ruff format, lint, import-sort, architecture, and import smoke
     checks for execution package facade cleanup
+  - targeted Ruff format, lint, import-sort, architecture, operation lifecycle,
+    and import smoke checks for operation flow-execution bridge cleanup
 
 Known follow-up from the completed slice:
 
 - Run a Sphinx docs build once the docs environment has `sphinx` installed.
-- Remove the architecture-test allowlist for
-  `rapthor.lib.operation.Operation.run_prefect_flow` when operation lifecycle
-  and flow execution are split more cleanly.
 - Avoid running multiple pytest processes in parallel locally without setting
   separate `RAPTHOR_TEST_RUN_ROOT` values; concurrent test startup can race while
   cleaning `.pytest_cache/rapthor-runs`.

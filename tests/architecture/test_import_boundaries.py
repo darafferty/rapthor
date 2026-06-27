@@ -2,7 +2,6 @@
 
 import ast
 from pathlib import Path
-from typing import Optional
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 RAPTHOR_ROOT = REPO_ROOT / "rapthor"
@@ -16,13 +15,6 @@ FRAMEWORK_PREFIXES = (
 )
 
 DOMAIN_FORBIDDEN_PREFIXES = FRAMEWORK_PREFIXES + ("rapthor.execution",)
-
-DOMAIN_IMPORT_ALLOWLIST = {
-    (
-        "rapthor/lib/operation.py",
-        "rapthor.execution.config",
-    ): "Transitional Operation.run_prefect_flow helper; remove with operation lifecycle split.",
-}
 
 PURE_EXECUTION_MODULES = (
     RAPTHOR_ROOT / "execution" / "commands.py",
@@ -74,16 +66,12 @@ def _matches_prefix(module: str, prefix: str) -> bool:
 def _forbidden_import_messages(
     paths: list[Path],
     forbidden_prefixes: tuple[str, ...],
-    allowlist: Optional[dict[tuple[str, str], str]] = None,
 ) -> list[str]:
-    allowlist = allowlist or {}
     messages = []
     for path in paths:
         relative_path = _relative_path(path)
         for module, line_number in _imported_modules(path):
             if not any(_matches_prefix(module, prefix) for prefix in forbidden_prefixes):
-                continue
-            if (relative_path, module) in allowlist:
                 continue
             messages.append(f"{relative_path}:{line_number} imports {module}")
     return messages
@@ -93,7 +81,6 @@ def test_domain_layer_does_not_gain_new_execution_or_framework_imports():
     messages = _forbidden_import_messages(
         _python_files(RAPTHOR_ROOT / "lib"),
         DOMAIN_FORBIDDEN_PREFIXES,
-        allowlist=DOMAIN_IMPORT_ALLOWLIST,
     )
 
     assert messages == []
