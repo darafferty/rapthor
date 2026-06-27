@@ -81,7 +81,7 @@ class Image(Operation):
         """
         # Set parameters as needed
         if self.apply_screens is None:
-            self.apply_screens = self.field.apply_screens  # set by process.run_steps()
+            self.apply_screens = self.field.apply_screens  # set by process-step orchestration
         if self.dde_method is None:
             self.dde_method = self.field.dde_method
         if self.use_facets is None:
@@ -91,7 +91,7 @@ class Image(Operation):
                 and self._has_dd_scalar_h5parm()
             )
         if self.image_pol is None:
-            self.image_pol = self.field.image_pol  # set by process.run_steps()
+            self.image_pol = self.field.image_pol  # set by process-step orchestration
         if self.save_source_list is None:
             self.save_source_list = is_only_pol_I(self.image_pol)
         if self.preapply_dde_solutions is None:

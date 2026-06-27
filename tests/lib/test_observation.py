@@ -2,12 +2,13 @@
 Test cases for the `rapthor.lib.observation` module.
 """
 
-import pytest
 from logging import Logger
-import numpy as np
 from unittest import mock
 
-from rapthor.process import chunk_observations
+import numpy as np
+import pytest
+
+from rapthor.execution.process_lifecycle import chunk_observations
 
 
 @pytest.fixture

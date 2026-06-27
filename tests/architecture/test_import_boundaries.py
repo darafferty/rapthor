@@ -34,6 +34,7 @@ PURE_EXECUTION_MODULES = (
     RAPTHOR_ROOT / "execution" / "image" / "payloads.py",
     RAPTHOR_ROOT / "execution" / "outputs.py",
     RAPTHOR_ROOT / "execution" / "payloads.py",
+    RAPTHOR_ROOT / "execution" / "process_lifecycle.py",
     RAPTHOR_ROOT / "execution" / "process_plan.py",
 )
 

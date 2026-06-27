@@ -14,18 +14,18 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-from rapthor._version import __version__ as version
-from rapthor import process, modifystate
 import logging
 import optparse
 import sys
 
+from rapthor import modifystate
+from rapthor._version import __version__ as version
 
-if __name__ == '__main__':
-    parser = optparse.OptionParser(usage='%prog <parset>', version='%%prog v%s' % (version))
-    parser.add_option('-q', help='enable quiet mode', action='store_true', default=False)
-    parser.add_option('-v', help='enable verbose mode', action='store_true', default=False)
-    parser.add_option('-r', help='reset one or more operations', action='store_true', default=False)
+if __name__ == "__main__":
+    parser = optparse.OptionParser(usage="%prog <parset>", version="%%prog v%s" % (version))
+    parser.add_option("-q", help="enable quiet mode", action="store_true", default=False)
+    parser.add_option("-v", help="enable verbose mode", action="store_true", default=False)
+    parser.add_option("-r", help="reset one or more operations", action="store_true", default=False)
     (options, args) = parser.parse_args()
 
     if len(args) != 1:
@@ -36,11 +36,11 @@ if __name__ == '__main__':
 
     # Prepare logger
     if options.q:
-        logging_level = 'warning'
+        logging_level = "warning"
     elif options.v:
-        logging_level = 'debug'
+        logging_level = "debug"
     else:
-        logging_level = 'info'
+        logging_level = "info"
 
     if options.r:
         # Run state modification tool
@@ -48,8 +48,10 @@ if __name__ == '__main__':
     else:
         try:
             # Run the processing
-            process.run(parset_file, logging_level=logging_level)
+            from rapthor.execution.flows.process import process_flow
+
+            process_flow(parset_file, logging_level=logging_level)
         except Exception as e:
-            log = logging.getLogger('rapthor')
+            log = logging.getLogger("rapthor")
             log.exception(e)
             sys.exit(1)

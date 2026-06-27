@@ -74,10 +74,10 @@ def default_process_operation_factories() -> ProcessOperationFactories:
 def default_process_lifecycle_hooks() -> ProcessLifecycleHooks:
     """Return the production process collaborators."""
     from rapthor import _logging
+    from rapthor.execution.process_lifecycle import chunk_observations, do_final_pass, make_report
     from rapthor.lib.field import Field
     from rapthor.lib.parset import parset_read
     from rapthor.lib.strategy import set_strategy, validate_strategy
-    from rapthor.process import chunk_observations, do_final_pass, make_report
 
     return ProcessLifecycleHooks(
         read_parset=parset_read,
@@ -134,7 +134,7 @@ def run_process(
 ) -> Optional[object]:
     """Run the top-level Rapthor process lifecycle with injectable hooks.
 
-    This implements the public ``rapthor.process.run`` lifecycle while keeping
+    This implements the CLI process lifecycle while keeping
     collaborators injectable for process-flow tests.
     """
     factories = operation_factories or default_process_operation_factories()
@@ -264,8 +264,7 @@ def run_process_steps(
 ) -> object:
     """Run one group of process steps using injectable operation factories.
 
-    This preserves the public ``rapthor.process.run_steps`` operation ordering
-    for process-flow and compatibility tests.
+    This preserves process-step operation ordering for process-flow tests.
     """
     factories = operation_factories or default_process_operation_factories()
     selfcal_state = None

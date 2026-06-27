@@ -248,6 +248,17 @@ Completed:
     without mutating a `Field` or starting Prefect/Dask work
   - added architecture coverage so the process-plan helper stays free of
     Prefect, Dask, flow, and operation imports
+- Process facade cleanup:
+  - removed `rapthor.process` as an internal/public Python compatibility facade;
+    the user-facing CLI remains `rapthor input.parset`
+  - changed `bin/rapthor` to call `rapthor.execution.flows.process.process_flow`
+    directly
+  - moved scheduler-independent lifecycle helpers for final-pass decisions,
+    observation chunking, and diagnostics report writing into
+    `rapthor.execution.process_lifecycle`
+  - removed legacy process-facade tests that patched operation globals on
+    `rapthor.process`; process-step orchestration is now tested through
+    `rapthor.execution.flows.process`
 - Verified in the dev container:
   - `python3 -m pytest tests/architecture -q --tb=short`
   - `python3 -m pytest tests/execution/test_outputs.py tests/execution/test_payloads.py tests/execution/test_commands.py -q --tb=short`
@@ -276,6 +287,8 @@ Completed:
   - `python3 -m pytest tests/architecture -q --tb=short`
   - `python3 -m pytest tests/operations/test_concatenate.py tests/operations/test_mosaic.py tests/operations/test_predict.py -q --tb=short`
   - `python3 -m pytest tests/execution/test_process_flow.py -q --tb=short`
+  - `python3 -m pytest tests/lib/test_observation.py -q --tb=short`
+  - `python3 -m pytest tests/integration/test_cli.py -q --tb=short`
   - `python3 -c "import rapthor.execution as execution; import rapthor.execution.flows as flows; import rapthor.execution.image.commands as image_commands; import rapthor.execution.image.payloads as image_payloads; import rapthor.execution.image.sector as image_sector; import rapthor.execution.flows.image as image_flow; assert image_commands.normalized_wsclean_no_dde_command; assert image_payloads.image_payload_from_inputs; assert image_flow.validate_image_payload is image_payloads.validate_image_payload; assert image_sector.run_image_sector; assert not hasattr(execution, 'run_image_sector'); assert not hasattr(flows, 'run_image_sector'); assert not hasattr(execution, 'image_payload_from_inputs'); assert not hasattr(flows, 'build_wsclean_no_dde_command')"`
   - `python3 -c "from rapthor.execution.image.payloads import ImagePayload, ImageSectorPayload, image_payload_from_inputs; import rapthor.execution.payloads as shared_payloads; assert ImagePayload; assert ImageSectorPayload; assert image_payload_from_inputs; assert not hasattr(shared_payloads, 'ImagePayload'); assert not hasattr(shared_payloads, 'ImageSectorPayload')"`
   - `python3 -c "import rapthor.execution as execution; import rapthor.execution.flows as flows; import rapthor.execution.calibrate.commands as commands; assert commands.normalized_ddecal_solve_command; assert not hasattr(execution, 'build_ddecal_solve_command'); assert not hasattr(flows, 'build_ddecal_solve_command')"`
@@ -293,6 +306,9 @@ Completed:
   - `python3 -c "from rapthor.operations.image_plan import build_image_mpi_resource_controls; assert build_image_mpi_resource_controls(nsectors=2, max_nodes=8, cpus_per_task=12, batch_system='slurm') == {'mpi_nnodes': [3, 3], 'mpi_cpus_per_task': [12, 12]}"`
   - `python3 -c "from rapthor.operations.calibrate_plan import build_calibration_core_baseline_selection; assert build_calibration_core_baseline_selection('HBA', ['CS003HBA0', 'RS106HBA0', 'DE601HBA']) == '[CR]*&&;!DE601HBA'"`
   - `python3 -c "from rapthor.execution.process_plan import build_process_step_plan; assert [item['operation'] for item in build_process_step_plan([{'do_calibrate': False, 'do_predict': False, 'do_image': True, 'do_check': True}])] == ['image', 'mosaic', 'check_selfcal']"`
+  - `python3 -c "from rapthor.execution.process_lifecycle import do_final_pass, chunk_observations, make_report; assert do_final_pass and chunk_observations and make_report"`
+  - `python3 -m py_compile bin/rapthor`
+  - `python3 -c "import importlib.util; assert importlib.util.find_spec('rapthor.process') is None"`
   - targeted Ruff format, lint, and import-sort checks for the new architecture
     tests, touched execution facade modules, output record helpers, and touched
     flow modules
@@ -344,6 +360,8 @@ Completed:
     station-selection helper extraction
   - targeted Ruff format, lint, and import-sort checks for the process dry-run
     plan foundation
+  - targeted Ruff format, lint, and import-sort checks for the process facade
+    cleanup
 
 Known follow-up from the completed slice:
 
@@ -767,7 +785,7 @@ Completion criteria:
 Outcome: top-level orchestration remains easy to reason about as more runtimes,
 feature flags, and scientific modes are added.
 
-- Keep `rapthor.process.run()` as the user-facing entry point.
+- Keep `rapthor input.parset` as the user-facing entry point.
 - Keep `rapthor.execution.flows.process` responsible for Prefect/Dask process
   scheduling.
 - Continue using injectable lifecycle hooks and operation factories for tests.
@@ -862,7 +880,7 @@ High-value coverage areas:
 - payload-size and large-object serialization safeguards
 - subprocess-vs-in-process script parity
 - dry-run/preflight output for common user mistakes
-- `rapthor.process` restart/reset and compatibility helpers
+- CLI restart/reset and process-flow compatibility helpers
 - `Field` regrouping, target selection, normalization scaling, and empty model
   branches
 - pure script helpers such as `subtract_sector_models.py`,
@@ -1151,7 +1169,7 @@ python3 -m pytest -m "not integration and not prefect" -n auto -k "not test_fiel
 Focused process-flow checks:
 
 ```bash
-python3 -m pytest tests/execution/test_process_flow.py tests/test_process.py -q --tb=short
+python3 -m pytest tests/execution/test_process_flow.py tests/lib/test_observation.py -q --tb=short
 ```
 
 Focused output/payload/command checks:
