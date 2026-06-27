@@ -89,6 +89,21 @@ Completed:
     new command module
   - moved focused image command-builder tests to import directly from
     `rapthor.execution.image_commands`
+- Image payload mapping extraction:
+  - added `rapthor.execution.image_payloads` for image payload construction and
+    incoming payload validation
+  - moved image payload mapping and validation out of
+    `rapthor.execution.flows.image`
+  - updated the image operation adapter and focused tests to import the payload
+    builder from the new owner module
+  - kept broad compatibility facades re-exporting `image_payload_from_inputs`
+- Future image package consolidation:
+  - once image sector execution and output discovery are extracted, fold the
+    temporary flat modules into an image package such as
+    `rapthor.execution.image.commands`, `rapthor.execution.image.payloads`,
+    `rapthor.execution.image.sector`, and `rapthor.execution.image.outputs`
+  - keep compatibility imports until internal imports, docs, and downstream
+    users have migrated to the package structure
 - Verified in the dev container:
   - `python3 -m pytest tests/architecture -q --tb=short`
   - `python3 -m pytest tests/execution/test_outputs.py tests/execution/test_payloads.py tests/execution/test_commands.py -q --tb=short`
@@ -104,8 +119,10 @@ Completed:
   - `python3 -m pytest tests/execution/test_commands.py -q --tb=short`
   - `python3 -m pytest tests/execution/test_image_flow.py tests/execution/test_calibrate_flow.py -q --tb=short`
   - `python3 -m pytest tests/execution/test_image_flow.py -q --tb=short`
+  - `python3 -m pytest tests/operations/test_image.py -q --tb=short`
   - `python3 -m pytest tests/architecture -q --tb=short`
   - `python3 -c "import rapthor.execution as execution; import rapthor.execution.flows as flows; import rapthor.execution.image_commands as image_commands; assert execution.normalized_wsclean_no_dde_command is image_commands.normalized_wsclean_no_dde_command; assert flows.build_wsclean_no_dde_command is image_commands.build_wsclean_no_dde_command"`
+  - `python3 -c "import rapthor.execution as execution; import rapthor.execution.flows as flows; import rapthor.execution.image_payloads as image_payloads; import rapthor.execution.flows.image as image_flow; assert execution.image_payload_from_inputs is image_payloads.image_payload_from_inputs; assert flows.image_payload_from_inputs is image_payloads.image_payload_from_inputs; assert image_flow.validate_image_payload is image_payloads.validate_image_payload"`
   - targeted Ruff format, lint, and import-sort checks for the new architecture
     tests, touched execution facade modules, output record helpers, and touched
     flow modules
@@ -120,6 +137,8 @@ Completed:
   - targeted Ruff format, lint, and import-sort checks for the shared command
     token and option helper slices
   - targeted Ruff format, lint, and import-sort checks for the image command
+    extraction slice
+  - targeted Ruff format, lint, and import-sort checks for the image payload
     extraction slice
 
 Known follow-up from the completed slice:
@@ -142,8 +161,10 @@ Known follow-up from the completed slice:
 
 Next slice:
 
-- Extract image payload mapping from `rapthor.execution.flows.image` into a
-  pure payload module so the flow keeps moving toward orchestration-only code.
+- Extract image sector execution and output-discovery helpers from
+  `rapthor.execution.flows.image` while keeping Prefect task boundaries in the
+  flow module; after that, consolidate the image-specific flat modules into a
+  `rapthor.execution.image` package.
 
 Remaining major stages:
 
@@ -867,7 +888,7 @@ Outcome: the refactor lands as a sequence of small, reviewable improvements.
 2. Consolidate output records.
 3. Add typed payload contracts for concatenate, mosaic, and predict.
 4. Completed shared command utilities for image/calibration option handling.
-5. Move image payload mapping out of the image flow.
+5. Completed image payload mapping extraction.
 6. Move image sector execution and output discovery into focused helpers.
 7. Move calibration command builders and payload mapping out of the calibration
    flow.

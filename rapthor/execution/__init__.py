@@ -46,7 +46,6 @@ from rapthor.execution.flows.concatenate import (
 )
 from rapthor.execution.flows.image import (
     image_flow,
-    image_payload_from_inputs,
     image_sector_task,
     run_image_flow,
     run_image_sector,
@@ -132,6 +131,7 @@ from rapthor.execution.image_commands import (
     normalized_wsclean_restore_command,
     normalized_wsclean_screens_command,
 )
+from rapthor.execution.image_payloads import image_payload_from_inputs
 from rapthor.execution.outputs import (
     OutputRecordError,
     directory_record,

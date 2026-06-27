@@ -50,10 +50,12 @@ Layer Ownership
        operation-specific command builders that do not import Prefect.
      - ``tests/execution/test_commands.py``, operation flow tests, and command
        reference fixtures.
-   * - ``rapthor.execution.payloads``
-     - Transitional home for payload serialization checks and typed payload
-       contracts until scheduler-independent use-case modules own them.
-     - ``tests/execution/test_payloads.py``
+   * - ``rapthor.execution.payloads`` and operation payload modules such as
+       ``rapthor.execution.image_payloads``
+     - Transitional home for payload serialization checks, typed payload
+       contracts, and operation-specific payload builders/validators until
+       scheduler-independent use-case modules own them.
+     - ``tests/execution/test_payloads.py`` and operation flow tests.
    * - ``rapthor.execution.outputs``
      - Transitional or adapter-level output-record helpers until record handling
        is consolidated with the finalizer/domain record API.
@@ -83,7 +85,8 @@ New code should import from the module that owns the behaviour, for example:
 
 * command helpers from ``rapthor.execution.commands`` and operation-specific
   command modules such as ``rapthor.execution.image_commands``
-* payload helpers from the payload/use-case module that owns the contract
+* payload helpers from the payload/use-case module that owns the contract, such
+  as ``rapthor.execution.image_payloads`` for image payload mapping
 * Prefect flows from the concrete ``rapthor.execution.flows.<operation>`` module
 * runtime helpers from their concrete runtime module
 
