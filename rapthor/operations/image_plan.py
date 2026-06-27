@@ -43,6 +43,28 @@ def build_image_wsclean_control_inputs(
     return link_polarizations, join_polarizations, wsclean_niter
 
 
+def build_image_facet_solution_controls(
+    image_pol: Union[list[str], str, None],
+    *,
+    apply_amplitudes: bool,
+    apply_diagonal_solutions: bool,
+) -> dict[str, object]:
+    """Build WSClean facet solution controls for scalar or diagonal visibilities."""
+    controls = {
+        "soltabs": "amplitude000,phase000" if apply_amplitudes else "phase000",
+        "diagonal_visibilities": False,
+        "scalar_visibilities": False,
+    }
+    if not is_only_pol_I(image_pol):
+        return controls
+
+    if apply_amplitudes and apply_diagonal_solutions:
+        controls["diagonal_visibilities"] = True
+    else:
+        controls["scalar_visibilities"] = True
+    return controls
+
+
 def build_image_prepare_data_steps(
     *,
     preapply_solutions: bool,

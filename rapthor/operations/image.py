@@ -17,6 +17,7 @@ from rapthor.lib.operation import Operation
 from rapthor.lib.records import DirectoryRecord, FileRecord
 from rapthor.operations.image_plan import (
     build_image_applycal_steps,
+    build_image_facet_solution_controls,
     build_image_prepare_data_steps,
     build_image_wsclean_control_inputs,
     is_only_pol_I,
@@ -501,10 +502,6 @@ class Image(Operation):
             self.input_parms.update({"width_ra": width_ra})
             self.input_parms.update({"width_dec": width_dec})
             self.input_parms.update({"facet_region_file": facet_region_file})
-            if self.apply_amplitudes:
-                self.input_parms.update({"soltabs": "amplitude000,phase000"})
-            else:
-                self.input_parms.update({"soltabs": "phase000"})
             self.input_parms.update(
                 {
                     "parallel_gridding_threads": self.field.parset["cluster_specific"][
@@ -512,31 +509,13 @@ class Image(Operation):
                     ]
                 }
             )
-            if is_only_pol_I(self.image_pol):
-                # For Stokes-I-only imaging, we can take advantage of the scalar or
-                # diagonal visibilities options in WSClean (saving I/O)
-                if self.apply_amplitudes:
-                    # Diagonal solutions generated during calibration
-                    if self.field.apply_diagonal_solutions:
-                        # Diagonal solutions should be used during imaging
-                        self.input_parms.update({"diagonal_visibilities": True})
-                        self.input_parms.update({"scalar_visibilities": False})
-                    else:
-                        # Diagonal solutions should not be used during imaging (they
-                        # were in fact converted to scalar solutions at the end of
-                        # calibration)
-                        self.input_parms.update({"diagonal_visibilities": False})
-                        self.input_parms.update({"scalar_visibilities": True})
-                else:
-                    # Diagonal solutions not generated; only scalar solutions are
-                    # available
-                    self.input_parms.update({"diagonal_visibilities": False})
-                    self.input_parms.update({"scalar_visibilities": True})
-            else:
-                # This case is of full-Stokes (IQUV) imaging, so do not use diagonal
-                # or scalar visibilities (we need all four)
-                self.input_parms.update({"diagonal_visibilities": False})
-                self.input_parms.update({"scalar_visibilities": False})
+            self.input_parms.update(
+                build_image_facet_solution_controls(
+                    self.image_pol,
+                    apply_amplitudes=self.apply_amplitudes,
+                    apply_diagonal_solutions=self.field.apply_diagonal_solutions,
+                )
+            )
         elif self.preapply_dde_solutions:
             self.input_parms.update({"central_patch_name": central_patch_name})
         if self.make_image_cube:

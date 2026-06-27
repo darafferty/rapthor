@@ -18,6 +18,7 @@ from rapthor.operations.image import (
 )
 from rapthor.operations.image_plan import (
     build_image_applycal_steps,
+    build_image_facet_solution_controls,
     build_image_prepare_data_steps,
     build_image_wsclean_control_inputs,
 )
@@ -762,6 +763,63 @@ class TestImage:
                 combine_method,
                 niters,
                 disable_clean=disable_clean,
+            )
+            == expected
+        )
+
+    @pytest.mark.parametrize(
+        "image_pol, apply_amplitudes, apply_diagonal, expected",
+        [
+            (
+                "I",
+                False,
+                False,
+                {
+                    "soltabs": "phase000",
+                    "diagonal_visibilities": False,
+                    "scalar_visibilities": True,
+                },
+            ),
+            (
+                "I",
+                True,
+                True,
+                {
+                    "soltabs": "amplitude000,phase000",
+                    "diagonal_visibilities": True,
+                    "scalar_visibilities": False,
+                },
+            ),
+            (
+                "I",
+                True,
+                False,
+                {
+                    "soltabs": "amplitude000,phase000",
+                    "diagonal_visibilities": False,
+                    "scalar_visibilities": True,
+                },
+            ),
+            (
+                "IQUV",
+                True,
+                True,
+                {
+                    "soltabs": "amplitude000,phase000",
+                    "diagonal_visibilities": False,
+                    "scalar_visibilities": False,
+                },
+            ),
+        ],
+    )
+    def test_build_image_facet_solution_controls(
+        self, image_pol, apply_amplitudes, apply_diagonal, expected
+    ):
+        assert (
+            build_image_facet_solution_controls(
+                image_pol,
+                apply_amplitudes=apply_amplitudes,
+                apply_diagonal_solutions=apply_diagonal,
             )
             == expected
         )
