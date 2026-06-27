@@ -6,7 +6,7 @@ from typing import Mapping, Optional
 from prefect import flow, task
 
 from rapthor.execution.artifacts import publish_fits_image_artifacts
-from rapthor.execution.commands import bool_token, comma_join, normalize_command
+from rapthor.execution.commands import bool_token, comma_join
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.runtime import run_flow_with_task_runner
 from rapthor.execution.payloads import (
@@ -413,57 +413,4 @@ def mosaic_flow(
         _mosaic_flow,
         payload,
         execution_config=execution_config,
-    )
-
-
-def normalized_make_mosaic_template_command(
-    input_image_filenames: list[str],
-    sector_vertices_filenames: list[str],
-    template_image_filename: str,
-    skip_processing: bool = False,
-) -> list[str]:
-    """Return normalized template command tokens for fixture comparisons."""
-    return normalize_command(
-        build_make_mosaic_template_command(
-            input_image_filenames,
-            sector_vertices_filenames,
-            template_image_filename,
-            skip_processing=skip_processing,
-        )
-    )
-
-
-def normalized_regrid_image_command(
-    input_image_filename: str,
-    template_image_filename: str,
-    sector_vertices_filename: str,
-    regridded_image_filename: str,
-    skip_processing: bool = False,
-) -> list[str]:
-    """Return normalized regrid command tokens for fixture comparisons."""
-    return normalize_command(
-        build_regrid_image_command(
-            input_image_filename,
-            template_image_filename,
-            sector_vertices_filename,
-            regridded_image_filename,
-            skip_processing=skip_processing,
-        )
-    )
-
-
-def normalized_make_mosaic_command(
-    regridded_image_filenames: list[str],
-    template_image_filename: str,
-    mosaic_filename: str,
-    skip_processing: bool = False,
-) -> list[str]:
-    """Return normalized mosaic command tokens for fixture comparisons."""
-    return normalize_command(
-        build_make_mosaic_command(
-            regridded_image_filenames,
-            template_image_filename,
-            mosaic_filename,
-            skip_processing=skip_processing,
-        )
     )

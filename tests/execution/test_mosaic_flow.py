@@ -6,6 +6,7 @@ import pytest
 from prefect.testing.utilities import prefect_test_harness
 
 import rapthor.execution.flows.mosaic as mosaic_module
+from rapthor.execution.commands import normalize_command
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.mosaic import (
     build_compress_mosaic_command,
@@ -14,9 +15,6 @@ from rapthor.execution.flows.mosaic import (
     build_regrid_image_command,
     mosaic_flow,
     mosaic_payload_from_inputs,
-    normalized_make_mosaic_command,
-    normalized_make_mosaic_template_command,
-    normalized_regrid_image_command,
     run_mosaic_flow,
 )
 from rapthor.lib.records import file_record, validate_output_record
@@ -138,27 +136,33 @@ def test_mosaic_command_builders_match_reference_fixtures():
     commands = json.loads((FIXTURE_DIR / "command_reference.json").read_text())
 
     assert (
-        normalized_make_mosaic_template_command(
-            ["sector_1-I-image.fits", "sector_2-I-image.fits"],
-            ["sector_1.vertices", "sector_2.vertices"],
-            "mosaic_1_template.fits",
+        normalize_command(
+            build_make_mosaic_template_command(
+                ["sector_1-I-image.fits", "sector_2-I-image.fits"],
+                ["sector_1.vertices", "sector_2.vertices"],
+                "mosaic_1_template.fits",
+            )
         )
         == commands["mosaic"]["make_mosaic_template"]
     )
     assert (
-        normalized_regrid_image_command(
-            "sector_1-I-image.fits",
-            "mosaic_1_template.fits",
-            "sector_1.vertices",
-            "sector_1-I-image.fits.regridded",
+        normalize_command(
+            build_regrid_image_command(
+                "sector_1-I-image.fits",
+                "mosaic_1_template.fits",
+                "sector_1.vertices",
+                "sector_1-I-image.fits.regridded",
+            )
         )
         == commands["mosaic"]["regrid_image"]
     )
     assert (
-        normalized_make_mosaic_command(
-            ["sector_1-I-image.fits.regridded", "sector_2-I-image.fits.regridded"],
-            "mosaic_1_template.fits",
-            "mosaic_1-I-image.fits",
+        normalize_command(
+            build_make_mosaic_command(
+                ["sector_1-I-image.fits.regridded", "sector_2-I-image.fits.regridded"],
+                "mosaic_1_template.fits",
+                "mosaic_1-I-image.fits",
+            )
         )
         == commands["mosaic"]["make_mosaic"]
     )

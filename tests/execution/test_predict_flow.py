@@ -5,14 +5,12 @@ from pathlib import Path
 import pytest
 from prefect.testing.utilities import prefect_test_harness
 
+from rapthor.execution.commands import normalize_command
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.predict import (
     build_add_sector_models_command,
     build_predict_model_data_command,
     build_subtract_sector_models_command,
-    normalized_add_sector_models_command,
-    normalized_predict_model_data_command,
-    normalized_subtract_sector_models_command,
     predict_flow,
     predict_model_data_task,
     predict_payload_from_inputs,
@@ -280,48 +278,54 @@ def test_predict_command_builders_match_reference_fixtures():
     commands = json.loads((FIXTURE_DIR / "command_reference.json").read_text())
 
     assert (
-        normalized_predict_model_data_command(
-            msin="obs_0.ms",
-            data_colname="DATA",
-            msout="obs_0.ms.sector_1_modeldata",
-            starttime="50000.0",
-            ntimes=10,
-            onebeamperpatch=True,
-            correctfreqsmearing=False,
-            correcttimesmearing=False,
-            sagecalpredict=False,
-            sourcedb="sector_1.skymodel",
-            directions=["patch1", "patch2"],
-            numthreads=4,
+        normalize_command(
+            build_predict_model_data_command(
+                msin="obs_0.ms",
+                data_colname="DATA",
+                msout="obs_0.ms.sector_1_modeldata",
+                starttime="50000.0",
+                ntimes=10,
+                onebeamperpatch=True,
+                correctfreqsmearing=False,
+                correcttimesmearing=False,
+                sagecalpredict=False,
+                sourcedb="sector_1.skymodel",
+                directions=["patch1", "patch2"],
+                numthreads=4,
+            )
         )
         == commands["predict"]["predict_model_data"]
     )
     assert (
-        normalized_add_sector_models_command(
-            msobs="obs_0.ms",
-            msmods=["obs_0.ms.sector_1_modeldata", "obs_0.ms.sector_2_modeldata"],
-            data_colname="DATA",
-            obs_starttime="50000.0",
-            infix=".selfcal",
+        normalize_command(
+            build_add_sector_models_command(
+                msobs="obs_0.ms",
+                msmods=["obs_0.ms.sector_1_modeldata", "obs_0.ms.sector_2_modeldata"],
+                data_colname="DATA",
+                obs_starttime="50000.0",
+                infix=".selfcal",
+            )
         )
         == commands["predict"]["add_sector_models"]
     )
     assert (
-        normalized_subtract_sector_models_command(
-            msobs="obs_0.ms",
-            msmods=["obs_0.ms.sector_1_modeldata", "obs_0.ms.sector_2_modeldata"],
-            data_colname="DATA",
-            obs_starttime="50000.0",
-            solint_sec=20.0,
-            solint_hz=1000.0,
-            infix=".selfcal",
-            min_uv_lambda=80.0,
-            max_uv_lambda=1000000.0,
-            nr_outliers=1,
-            peel_outliers=True,
-            nr_bright=0,
-            peel_bright=False,
-            reweight=True,
+        normalize_command(
+            build_subtract_sector_models_command(
+                msobs="obs_0.ms",
+                msmods=["obs_0.ms.sector_1_modeldata", "obs_0.ms.sector_2_modeldata"],
+                data_colname="DATA",
+                obs_starttime="50000.0",
+                solint_sec=20.0,
+                solint_hz=1000.0,
+                infix=".selfcal",
+                min_uv_lambda=80.0,
+                max_uv_lambda=1000000.0,
+                nr_outliers=1,
+                peel_outliers=True,
+                nr_bright=0,
+                peel_bright=False,
+                reweight=True,
+            )
         )
         == commands["predict"]["subtract_sector_models"]
     )

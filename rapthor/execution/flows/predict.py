@@ -10,7 +10,6 @@ from rapthor.execution.commands import (
     bool_token,
     bracketed_list_token,
     comma_join,
-    normalize_command,
 )
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.runtime import run_flow_with_task_runner
@@ -637,18 +636,3 @@ def predict_flow(
         payload,
         execution_config=execution_config,
     )
-
-
-def normalized_predict_model_data_command(**kwargs) -> list[str]:
-    """Return normalized DP3 predict command tokens for fixture comparisons."""
-    return normalize_command(build_predict_model_data_command(**kwargs))
-
-
-def normalized_add_sector_models_command(**kwargs) -> list[str]:
-    """Return normalized add-sector command tokens for fixture comparisons."""
-    return normalize_command(build_add_sector_models_command(**kwargs))
-
-
-def normalized_subtract_sector_models_command(**kwargs) -> list[str]:
-    """Return normalized subtract-sector command tokens for fixture comparisons."""
-    return normalize_command(build_subtract_sector_models_command(**kwargs))

@@ -9,7 +9,6 @@ from rapthor.execution.commands import (
     append_prefixed_value,
     bool_token,
     comma_join,
-    normalize_command,
 )
 
 ATERM_CONFIG_FILENAME = "aterm_plus_beam.cfg"
@@ -670,83 +669,3 @@ def build_calculate_image_diagnostics_command(
     append_prefixed_value(command, "--astrometry_comparison_skymodel=", astrometry_skymodel)
     append_flag(command, "--allow_internet_access", allow_internet_access)
     return command
-
-
-def normalized_prepare_imaging_data_command(**kwargs) -> list[str]:
-    """Return normalized DP3 prepare-imaging command tokens for fixture comparisons."""
-    return normalize_command(build_prepare_imaging_data_command(**kwargs))
-
-
-def normalized_concat_time_command(**kwargs) -> list[str]:
-    """Return normalized concat-time command tokens for fixture comparisons."""
-    return normalize_command(build_concat_time_command(**kwargs))
-
-
-def normalized_blank_image_command(**kwargs) -> list[str]:
-    """Return normalized blank-image command tokens for fixture comparisons."""
-    return normalize_command(build_blank_image_command(**kwargs))
-
-
-def normalized_compress_sector_images_command(**kwargs) -> list[str]:
-    """Return normalized sector-image compression command tokens for fixture comparisons."""
-    return normalize_command(build_compress_sector_images_command(**kwargs))
-
-
-def normalized_make_skymodel_image_command(**kwargs) -> list[str]:
-    """Return normalized make-skymodel-image command tokens for fixture comparisons."""
-    return normalize_command(build_make_skymodel_image_command(**kwargs))
-
-
-def normalized_wsclean_restore_command(**kwargs) -> list[str]:
-    """Return normalized WSClean restore command tokens for fixture comparisons."""
-    return normalize_command(build_wsclean_restore_command(**kwargs))
-
-
-def normalized_make_image_cube_command(**kwargs) -> list[str]:
-    """Return normalized make-image-cube command tokens for fixture comparisons."""
-    return normalize_command(build_make_image_cube_command(**kwargs))
-
-
-def normalized_make_catalog_from_image_cube_command(**kwargs) -> list[str]:
-    """Return normalized image-cube catalog command tokens for fixture comparisons."""
-    return normalize_command(build_make_catalog_from_image_cube_command(**kwargs))
-
-
-def normalized_normalize_flux_scale_command(**kwargs) -> list[str]:
-    """Return normalized flux-scale normalization command tokens for fixture comparisons."""
-    return normalize_command(build_normalize_flux_scale_command(**kwargs))
-
-
-def normalized_make_region_file_command(**kwargs) -> list[str]:
-    """Return normalized make-region-file command tokens for fixture comparisons."""
-    return normalize_command(build_make_region_file_command(**kwargs))
-
-
-def normalized_wsclean_no_dde_command(**kwargs) -> list[str]:
-    """Return normalized no-DDE WSClean command tokens for fixture comparisons."""
-    return normalize_command(build_wsclean_no_dde_command(**kwargs))
-
-
-def normalized_wsclean_mpi_no_dde_command(**kwargs) -> list[str]:
-    """Return normalized MPI no-DDE WSClean command tokens for fixture comparisons."""
-    return normalize_command(build_wsclean_mpi_no_dde_command(**kwargs))
-
-
-def normalized_wsclean_facets_command(**kwargs) -> list[str]:
-    """Return normalized facet WSClean command tokens for fixture comparisons."""
-    return normalize_command(build_wsclean_facets_command(**kwargs))
-
-
-def normalized_wsclean_mpi_facets_command(**kwargs) -> list[str]:
-    """Return normalized MPI facet WSClean command tokens for fixture comparisons."""
-    return normalize_command(build_wsclean_mpi_facets_command(**kwargs))
-
-
-def normalized_wsclean_screens_command(**kwargs) -> list[str]:
-    """Return normalized screen WSClean command tokens for fixture comparisons."""
-    return normalize_command(build_wsclean_screens_command(**kwargs))
-
-
-def normalized_wsclean_mpi_screens_command(**kwargs) -> list[str]:
-    """Return normalized MPI screen WSClean command tokens for fixture comparisons."""
-    return normalize_command(build_wsclean_mpi_screens_command(**kwargs))

@@ -5,7 +5,6 @@ from typing import Mapping, Optional
 
 from prefect import flow, task
 
-from rapthor.execution.commands import normalize_command
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.runtime import run_flow_with_task_runner
 from rapthor.execution.payloads import (
@@ -249,15 +248,4 @@ def concatenate_flow(
         _concatenate_flow,
         payload,
         execution_config=execution_config,
-    )
-
-
-def normalized_concatenate_command(
-    input_filenames: list[str],
-    output_filename: str,
-    data_colname: str,
-) -> list[str]:
-    """Return normalized command tokens for fixture comparisons."""
-    return normalize_command(
-        build_concatenate_command(input_filenames, output_filename, data_colname)
     )

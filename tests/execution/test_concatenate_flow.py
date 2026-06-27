@@ -5,13 +5,13 @@ from pathlib import Path
 import pytest
 from prefect.testing.utilities import prefect_test_harness
 
+from rapthor.execution.commands import normalize_command
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.concatenate import (
     build_concatenate_command,
     concatenate_epoch_task,
     concatenate_flow,
     concatenate_payload_from_inputs,
-    normalized_concatenate_command,
     run_concatenate_flow,
 )
 from rapthor.lib.records import directory_record, validate_output_record
@@ -101,10 +101,12 @@ def test_build_concatenate_command_matches_reference_fixture():
     commands = json.loads((FIXTURE_DIR / "command_reference.json").read_text())
 
     assert (
-        normalized_concatenate_command(
-            ["epoch_0_input_0.ms", "epoch_0_input_1.ms"],
-            "epoch_0_concatenated.ms",
-            "DATA",
+        normalize_command(
+            build_concatenate_command(
+                ["epoch_0_input_0.ms", "epoch_0_input_1.ms"],
+                "epoch_0_concatenated.ms",
+                "DATA",
+            )
         )
         == commands["concatenate"]["concat_ms_files"]
     )

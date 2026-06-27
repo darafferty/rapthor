@@ -277,6 +277,13 @@ Completed:
     parset-derived runtime settings
   - removed the last documented domain-to-execution architecture exception and
     simplified the import-boundary test so `rapthor.lib` has no allowlist
+- Normalized command wrapper cleanup:
+  - removed production `normalized_*_command` wrappers that only delegated to
+    `normalize_command(build_*_command(...))`
+  - kept command normalization as a test concern by calling `normalize_command`
+    directly in golden-fixture tests
+  - reduced command modules and flow modules to the command builders used by
+    execution code
 - Verified in the dev container:
   - `python3 -m pytest tests/architecture -q --tb=short`
   - `python3 -m pytest tests/lib/test_records.py tests/execution/test_payloads.py tests/execution/test_commands.py -q --tb=short`
@@ -315,9 +322,11 @@ Completed:
   - `python3 -m pytest tests/architecture tests/lib/test_operation.py tests/operations/test_flow_execution.py -q --tb=short`
   - `python3 -m pytest tests/operations/test_concatenate.py tests/operations/test_mosaic.py tests/operations/test_predict.py -q --tb=short`
   - `python3 -m pytest tests/operations/test_image.py tests/operations/test_calibrate.py -q --tb=short`
-  - `python3 -c "import rapthor.execution as execution; import rapthor.execution.flows as flows; import rapthor.execution.image.commands as image_commands; import rapthor.execution.image.payloads as image_payloads; import rapthor.execution.image.sector as image_sector; import rapthor.execution.flows.image as image_flow; assert image_commands.normalized_wsclean_no_dde_command; assert image_payloads.image_payload_from_inputs; assert image_flow.validate_image_payload is image_payloads.validate_image_payload; assert image_sector.run_image_sector; assert not hasattr(execution, 'run_image_sector'); assert not hasattr(flows, 'run_image_sector'); assert not hasattr(execution, 'image_payload_from_inputs'); assert not hasattr(flows, 'build_wsclean_no_dde_command')"`
+  - `python3 -m pytest tests/execution/test_concatenate_flow.py tests/execution/test_mosaic_flow.py tests/execution/test_predict_flow.py tests/execution/test_reference_fixtures.py -q --tb=short`
+  - `python3 -m pytest tests/execution/test_image_flow.py tests/execution/test_calibrate_flow.py -q --tb=short`
+  - `python3 -c "import rapthor.execution as execution; import rapthor.execution.flows as flows; import rapthor.execution.image.commands as image_commands; import rapthor.execution.image.payloads as image_payloads; import rapthor.execution.image.sector as image_sector; import rapthor.execution.flows.image as image_flow; assert image_commands.build_wsclean_no_dde_command; assert image_payloads.image_payload_from_inputs; assert image_flow.validate_image_payload is image_payloads.validate_image_payload; assert image_sector.run_image_sector; assert not hasattr(execution, 'run_image_sector'); assert not hasattr(flows, 'run_image_sector'); assert not hasattr(execution, 'image_payload_from_inputs'); assert not hasattr(flows, 'build_wsclean_no_dde_command')"`
   - `python3 -c "from rapthor.execution.image.payloads import ImagePayload, ImageSectorPayload, image_payload_from_inputs; import rapthor.execution.payloads as shared_payloads; assert ImagePayload; assert ImageSectorPayload; assert image_payload_from_inputs; assert not hasattr(shared_payloads, 'ImagePayload'); assert not hasattr(shared_payloads, 'ImageSectorPayload')"`
-  - `python3 -c "import rapthor.execution as execution; import rapthor.execution.flows as flows; import rapthor.execution.calibrate.commands as commands; assert commands.normalized_ddecal_solve_command; assert not hasattr(execution, 'build_ddecal_solve_command'); assert not hasattr(flows, 'build_ddecal_solve_command')"`
+  - `python3 -c "import rapthor.execution as execution; import rapthor.execution.flows as flows; import rapthor.execution.calibrate.commands as commands; assert commands.build_ddecal_solve_command; assert not hasattr(execution, 'build_ddecal_solve_command'); assert not hasattr(flows, 'build_ddecal_solve_command')"`
   - `python3 -c "from rapthor.execution.calibrate.payloads import CalibratePayload, calibrate_payload_from_inputs, validate_calibrate_payload; import rapthor.execution as execution; import rapthor.execution.flows as flows; import rapthor.execution.payloads as shared_payloads; assert CalibratePayload; assert calibrate_payload_from_inputs; assert validate_calibrate_payload; assert not hasattr(shared_payloads, 'CalibratePayload'); assert not hasattr(execution, 'calibrate_payload_from_inputs'); assert not hasattr(flows, 'calibrate_payload_from_inputs')"`
   - `python3 -c "import rapthor.execution as execution; import rapthor.execution.flows as flows; import rapthor.execution.calibrate.runner as runner; import rapthor.execution.flows.calibrate as flow; assert runner.run_calibrate_chunk; assert runner.collect_plot_and_combine; assert flow.calibrate_chunk_task; assert not hasattr(execution, 'run_calibrate_chunk'); assert not hasattr(flows, 'run_calibrate_chunk')"`
   - `python3 -c "from rapthor.operations.calibrate_plan import build_calibration_solve_plan, requested_calibration_solves; solves, defaulted = requested_calibration_solves('dd', None, True); plan = build_calibration_solve_plan('dd', solves, defaulted_strategy=defaulted); assert [solve.step for solve in plan] == ['solve1', 'solve2', 'solve3', 'solve4']; assert plan[-1].output_prefix == 'medium2_phase'"`
@@ -397,6 +406,8 @@ Completed:
     checks for execution package facade cleanup
   - targeted Ruff format, lint, import-sort, architecture, operation lifecycle,
     and import smoke checks for operation flow-execution bridge cleanup
+  - targeted Ruff format, lint, import-sort, and focused command/flow fixture
+    checks for normalized command wrapper cleanup
 
 Known follow-up from the completed slice:
 

@@ -7,6 +7,7 @@ import pytest
 from prefect.testing.utilities import prefect_test_harness
 
 import rapthor.execution.image.sector as image_sector_module
+from rapthor.execution.commands import normalize_command
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.image import (
     image_flow,
@@ -16,32 +17,25 @@ from rapthor.execution.flows.image import (
 from rapthor.execution.image.commands import (
     ATERM_CONFIG_FILENAME,
     build_aterm_config_content,
+    build_blank_image_command,
     build_calculate_image_diagnostics_command,
     build_check_image_beam_command,
     build_compress_sector_images_command,
+    build_concat_time_command,
     build_filter_skymodel_command,
     build_make_catalog_from_image_cube_command,
     build_make_image_cube_command,
     build_make_region_file_command,
     build_make_skymodel_image_command,
     build_normalize_flux_scale_command,
+    build_prepare_imaging_data_command,
+    build_wsclean_facets_command,
+    build_wsclean_mpi_facets_command,
+    build_wsclean_mpi_no_dde_command,
+    build_wsclean_mpi_screens_command,
+    build_wsclean_no_dde_command,
     build_wsclean_restore_command,
-    normalized_blank_image_command,
-    normalized_compress_sector_images_command,
-    normalized_concat_time_command,
-    normalized_make_catalog_from_image_cube_command,
-    normalized_make_image_cube_command,
-    normalized_make_region_file_command,
-    normalized_make_skymodel_image_command,
-    normalized_normalize_flux_scale_command,
-    normalized_prepare_imaging_data_command,
-    normalized_wsclean_facets_command,
-    normalized_wsclean_mpi_facets_command,
-    normalized_wsclean_mpi_no_dde_command,
-    normalized_wsclean_mpi_screens_command,
-    normalized_wsclean_no_dde_command,
-    normalized_wsclean_restore_command,
-    normalized_wsclean_screens_command,
+    build_wsclean_screens_command,
 )
 from rapthor.execution.image.payloads import image_payload_from_inputs
 from rapthor.lib.records import directory_record, file_record, validate_output_record
@@ -761,7 +755,266 @@ def test_image_command_builders_match_reference_fixtures():
     commands = json.loads((FIXTURE_DIR / "command_reference.json").read_text())
 
     assert (
-        normalized_prepare_imaging_data_command(
+        normalize_command(
+            build_prepare_imaging_data_command(
+                msin="obs_0.ms",
+                data_colname="DATA",
+                msout="sector_1_obs_0_prep.ms",
+                starttime="50000.0",
+                ntimes=10,
+                phasecenter="'[123.0deg, 45.0deg]'",
+                freqstep=4,
+                timestep=2,
+                beamdir="'[123.0deg, 45.0deg]'",
+                numthreads=4,
+                steps="[applybeam,shift,avg,bdaavg]",
+                maxinterval=8,
+                timebase=10.0,
+            )
+        )
+        == commands["image"]["prepare_imaging_data"]
+    )
+    assert (
+        normalize_command(
+            build_concat_time_command(
+                input_filenames=["sector_1_obs_0_prep.ms", "sector_1_obs_1_prep.ms"],
+                output_filename="sector_1_concat.ms",
+                data_colname="DATA",
+            )
+        )
+        == commands["image"]["concat_time"]
+    )
+    assert (
+        normalize_command(
+            build_blank_image_command(
+                mask_filename="sector_1_mask.fits",
+                wsclean_imsize=[1024, 1024],
+                vertices_file="sector_1.vertices",
+                ra=123.0,
+                dec=45.0,
+                cellsize_deg=0.001,
+            )
+        )
+        == commands["image"]["blank_image"]
+    )
+    assert (
+        normalize_command(
+            build_compress_sector_images_command(
+                images=[
+                    "sector_1-MFS-I-image.fits",
+                    "sector_1-MFS-I-image-pb.fits",
+                    "sector_1-MFS-I-residual.fits",
+                    "sector_1-MFS-I-model-pb.fits",
+                    "sector_1-MFS-I-dirty.fits",
+                ]
+            )
+        )
+        == commands["image"]["compress_sector_images"]
+    )
+    assert (
+        normalize_command(
+            build_make_skymodel_image_command(
+                source_catalog="sector_1.apparent_sky.txt",
+                reference_image="sector_1-MFS-I-image-pb.fits",
+                output_image_name="sector_1-MFS-filtered-model.fits.fz",
+            )
+        )
+        == commands["image"]["make_skymodel_image"]
+    )
+    assert (
+        normalize_command(
+            build_wsclean_restore_command(
+                residual_image="sector_1-MFS-I-image-pb.fits",
+                source_list="bright_sources_pb.txt",
+                output_image="sector_1-MFS-I-image-pb.fits",
+                numthreads=4,
+            )
+        )
+        == commands["image"]["wsclean_restore"]
+    )
+    assert (
+        normalize_command(
+            build_make_image_cube_command(
+                input_image_list=[
+                    "sector_1-0000-I-image-pb.fits",
+                    "sector_1-0001-I-image-pb.fits",
+                ],
+                output_image="sector_1_I_freq_cube.fits",
+            )
+        )
+        == commands["image"]["make_image_cube"]
+    )
+    assert (
+        normalize_command(
+            build_make_catalog_from_image_cube_command(
+                cube="sector_1_I_freq_cube.fits",
+                cube_beams="sector_1_I_freq_cube.fits_beams.txt",
+                cube_frequencies="sector_1_I_freq_cube.fits_frequencies.txt",
+                output_catalog="sector_1_source_catalog.fits",
+                threshisl=4.0,
+                threshpix=5.0,
+                ncores=4,
+            )
+        )
+        == commands["image"]["make_catalog_from_image_cube"]
+    )
+    assert (
+        normalize_command(
+            build_normalize_flux_scale_command(
+                source_catalog="sector_1_source_catalog.fits",
+                ms_file="sector_1_concat.ms",
+                normalize_h5parm="sector_1_normalize.h5parm",
+            )
+        )
+        == commands["image"]["normalize_flux_scale"]
+    )
+    assert (
+        normalize_command(
+            build_wsclean_no_dde_command(
+                msin="sector_1_concat.ms",
+                name="sector_1",
+                mask="sector_1_mask.fits",
+                wsclean_imsize=[1024, 1024],
+                wsclean_niter=1000,
+                wsclean_nmiter=5,
+                robust=-0.5,
+                min_uv_lambda=80.0,
+                max_uv_lambda=1000000.0,
+                mgain=0.85,
+                multiscale=True,
+                save_source_list=True,
+                pol="I",
+                link_polarizations=False,
+                join_polarizations=False,
+                skip_final_iteration=True,
+                cellsize_deg=0.001,
+                channels_out=4,
+                deconvolution_channels=2,
+                fit_spectral_pol=2,
+                taper_arcsec=0.0,
+                local_rms_strength=0.0,
+                local_rms_window=25.0,
+                local_rms_method="rms-with-min",
+                wsclean_mem=8.0,
+                auto_mask=5.0,
+                auto_mask_nmiter=1,
+                idg_mode="cpu",
+                num_threads=4,
+                num_deconvolution_threads=2,
+                dd_psf_grid=[1, 1],
+                apply_time_frequency_smearing=False,
+                temp_dir="sector_1_wsclean_tmp",
+            )
+        )
+        == commands["image"]["wsclean_no_dde"]
+    )
+    assert (
+        normalize_command(
+            build_make_region_file_command(
+                skymodel="calibration.skymodel",
+                ra_mid=123.0,
+                dec_mid=45.0,
+                width_ra=2.0,
+                width_dec=2.5,
+                outfile="sector_1_facets_ds9.reg",
+            )
+        )
+        == commands["image"]["make_region_file"]
+    )
+    assert (
+        normalize_command(
+            build_wsclean_facets_command(
+                msin="sector_1_concat.ms",
+                name="sector_1",
+                mask="sector_1_mask.fits",
+                wsclean_imsize=[1024, 1024],
+                wsclean_niter=1000,
+                wsclean_nmiter=5,
+                robust=-0.5,
+                min_uv_lambda=80.0,
+                max_uv_lambda=1000000.0,
+                mgain=0.85,
+                multiscale=True,
+                scalar_visibilities=True,
+                diagonal_visibilities=False,
+                save_source_list=True,
+                pol="I",
+                link_polarizations=False,
+                join_polarizations=False,
+                skip_final_iteration=True,
+                cellsize_deg=0.001,
+                channels_out=4,
+                deconvolution_channels=2,
+                fit_spectral_pol=2,
+                taper_arcsec=0.0,
+                local_rms_strength=0.0,
+                local_rms_window=25.0,
+                local_rms_method="rms-with-min",
+                wsclean_mem=8.0,
+                auto_mask=5.0,
+                auto_mask_nmiter=1,
+                idg_mode="cpu",
+                num_threads=4,
+                num_deconvolution_threads=2,
+                dd_psf_grid=[1, 1],
+                h5parm="facet-solutions.h5",
+                soltabs="phase000",
+                region_file="sector_1_facets_ds9.reg",
+                num_gridding_threads=3,
+                apply_time_frequency_smearing=False,
+                shared_facet_reads=True,
+                shared_facet_writes=True,
+                temp_dir="sector_1_wsclean_tmp",
+            )
+        )
+        == commands["image"]["wsclean_facets"]
+    )
+    assert (
+        normalize_command(
+            build_wsclean_screens_command(
+                msin="sector_1_concat.ms",
+                name="sector_1",
+                mask="sector_1_mask.fits",
+                wsclean_imsize=[1024, 1024],
+                wsclean_niter=1000,
+                wsclean_nmiter=5,
+                robust=-0.5,
+                min_uv_lambda=80.0,
+                max_uv_lambda=1000000.0,
+                mgain=0.85,
+                multiscale=True,
+                save_source_list=True,
+                pol="I",
+                link_polarizations=False,
+                join_polarizations=False,
+                skip_final_iteration=True,
+                cellsize_deg=0.001,
+                channels_out=4,
+                deconvolution_channels=2,
+                fit_spectral_pol=2,
+                taper_arcsec=0.0,
+                local_rms_strength=0.0,
+                local_rms_window=25.0,
+                local_rms_method="rms-with-min",
+                wsclean_mem=8.0,
+                auto_mask=5.0,
+                auto_mask_nmiter=1,
+                idg_mode="cpu",
+                num_threads=4,
+                num_deconvolution_threads=2,
+                dd_psf_grid=[1, 1],
+                interval=[0, 9],
+                apply_time_frequency_smearing=False,
+                temp_dir="sector_1_wsclean_tmp",
+            )
+        )
+        == commands["image"]["wsclean_screens"]
+    )
+
+
+def test_prepare_imaging_data_command_strips_wrapping_shell_quotes_from_directions():
+    command = normalize_command(
+        build_prepare_imaging_data_command(
             msin="obs_0.ms",
             data_colname="DATA",
             msout="sector_1_obs_0_prep.ms",
@@ -770,241 +1023,10 @@ def test_image_command_builders_match_reference_fixtures():
             phasecenter="'[123.0deg, 45.0deg]'",
             freqstep=4,
             timestep=2,
-            beamdir="'[123.0deg, 45.0deg]'",
+            beamdir='"[123.0deg, 45.0deg]"',
             numthreads=4,
             steps="[applybeam,shift,avg,bdaavg]",
-            maxinterval=8,
-            timebase=10.0,
         )
-        == commands["image"]["prepare_imaging_data"]
-    )
-    assert (
-        normalized_concat_time_command(
-            input_filenames=["sector_1_obs_0_prep.ms", "sector_1_obs_1_prep.ms"],
-            output_filename="sector_1_concat.ms",
-            data_colname="DATA",
-        )
-        == commands["image"]["concat_time"]
-    )
-    assert (
-        normalized_blank_image_command(
-            mask_filename="sector_1_mask.fits",
-            wsclean_imsize=[1024, 1024],
-            vertices_file="sector_1.vertices",
-            ra=123.0,
-            dec=45.0,
-            cellsize_deg=0.001,
-        )
-        == commands["image"]["blank_image"]
-    )
-    assert (
-        normalized_compress_sector_images_command(
-            images=[
-                "sector_1-MFS-I-image.fits",
-                "sector_1-MFS-I-image-pb.fits",
-                "sector_1-MFS-I-residual.fits",
-                "sector_1-MFS-I-model-pb.fits",
-                "sector_1-MFS-I-dirty.fits",
-            ]
-        )
-        == commands["image"]["compress_sector_images"]
-    )
-    assert (
-        normalized_make_skymodel_image_command(
-            source_catalog="sector_1.apparent_sky.txt",
-            reference_image="sector_1-MFS-I-image-pb.fits",
-            output_image_name="sector_1-MFS-filtered-model.fits.fz",
-        )
-        == commands["image"]["make_skymodel_image"]
-    )
-    assert (
-        normalized_wsclean_restore_command(
-            residual_image="sector_1-MFS-I-image-pb.fits",
-            source_list="bright_sources_pb.txt",
-            output_image="sector_1-MFS-I-image-pb.fits",
-            numthreads=4,
-        )
-        == commands["image"]["wsclean_restore"]
-    )
-    assert (
-        normalized_make_image_cube_command(
-            input_image_list=[
-                "sector_1-0000-I-image-pb.fits",
-                "sector_1-0001-I-image-pb.fits",
-            ],
-            output_image="sector_1_I_freq_cube.fits",
-        )
-        == commands["image"]["make_image_cube"]
-    )
-    assert (
-        normalized_make_catalog_from_image_cube_command(
-            cube="sector_1_I_freq_cube.fits",
-            cube_beams="sector_1_I_freq_cube.fits_beams.txt",
-            cube_frequencies="sector_1_I_freq_cube.fits_frequencies.txt",
-            output_catalog="sector_1_source_catalog.fits",
-            threshisl=4.0,
-            threshpix=5.0,
-            ncores=4,
-        )
-        == commands["image"]["make_catalog_from_image_cube"]
-    )
-    assert (
-        normalized_normalize_flux_scale_command(
-            source_catalog="sector_1_source_catalog.fits",
-            ms_file="sector_1_concat.ms",
-            normalize_h5parm="sector_1_normalize.h5parm",
-        )
-        == commands["image"]["normalize_flux_scale"]
-    )
-    assert (
-        normalized_wsclean_no_dde_command(
-            msin="sector_1_concat.ms",
-            name="sector_1",
-            mask="sector_1_mask.fits",
-            wsclean_imsize=[1024, 1024],
-            wsclean_niter=1000,
-            wsclean_nmiter=5,
-            robust=-0.5,
-            min_uv_lambda=80.0,
-            max_uv_lambda=1000000.0,
-            mgain=0.85,
-            multiscale=True,
-            save_source_list=True,
-            pol="I",
-            link_polarizations=False,
-            join_polarizations=False,
-            skip_final_iteration=True,
-            cellsize_deg=0.001,
-            channels_out=4,
-            deconvolution_channels=2,
-            fit_spectral_pol=2,
-            taper_arcsec=0.0,
-            local_rms_strength=0.0,
-            local_rms_window=25.0,
-            local_rms_method="rms-with-min",
-            wsclean_mem=8.0,
-            auto_mask=5.0,
-            auto_mask_nmiter=1,
-            idg_mode="cpu",
-            num_threads=4,
-            num_deconvolution_threads=2,
-            dd_psf_grid=[1, 1],
-            apply_time_frequency_smearing=False,
-            temp_dir="sector_1_wsclean_tmp",
-        )
-        == commands["image"]["wsclean_no_dde"]
-    )
-    assert (
-        normalized_make_region_file_command(
-            skymodel="calibration.skymodel",
-            ra_mid=123.0,
-            dec_mid=45.0,
-            width_ra=2.0,
-            width_dec=2.5,
-            outfile="sector_1_facets_ds9.reg",
-        )
-        == commands["image"]["make_region_file"]
-    )
-    assert (
-        normalized_wsclean_facets_command(
-            msin="sector_1_concat.ms",
-            name="sector_1",
-            mask="sector_1_mask.fits",
-            wsclean_imsize=[1024, 1024],
-            wsclean_niter=1000,
-            wsclean_nmiter=5,
-            robust=-0.5,
-            min_uv_lambda=80.0,
-            max_uv_lambda=1000000.0,
-            mgain=0.85,
-            multiscale=True,
-            scalar_visibilities=True,
-            diagonal_visibilities=False,
-            save_source_list=True,
-            pol="I",
-            link_polarizations=False,
-            join_polarizations=False,
-            skip_final_iteration=True,
-            cellsize_deg=0.001,
-            channels_out=4,
-            deconvolution_channels=2,
-            fit_spectral_pol=2,
-            taper_arcsec=0.0,
-            local_rms_strength=0.0,
-            local_rms_window=25.0,
-            local_rms_method="rms-with-min",
-            wsclean_mem=8.0,
-            auto_mask=5.0,
-            auto_mask_nmiter=1,
-            idg_mode="cpu",
-            num_threads=4,
-            num_deconvolution_threads=2,
-            dd_psf_grid=[1, 1],
-            h5parm="facet-solutions.h5",
-            soltabs="phase000",
-            region_file="sector_1_facets_ds9.reg",
-            num_gridding_threads=3,
-            apply_time_frequency_smearing=False,
-            shared_facet_reads=True,
-            shared_facet_writes=True,
-            temp_dir="sector_1_wsclean_tmp",
-        )
-        == commands["image"]["wsclean_facets"]
-    )
-    assert (
-        normalized_wsclean_screens_command(
-            msin="sector_1_concat.ms",
-            name="sector_1",
-            mask="sector_1_mask.fits",
-            wsclean_imsize=[1024, 1024],
-            wsclean_niter=1000,
-            wsclean_nmiter=5,
-            robust=-0.5,
-            min_uv_lambda=80.0,
-            max_uv_lambda=1000000.0,
-            mgain=0.85,
-            multiscale=True,
-            save_source_list=True,
-            pol="I",
-            link_polarizations=False,
-            join_polarizations=False,
-            skip_final_iteration=True,
-            cellsize_deg=0.001,
-            channels_out=4,
-            deconvolution_channels=2,
-            fit_spectral_pol=2,
-            taper_arcsec=0.0,
-            local_rms_strength=0.0,
-            local_rms_window=25.0,
-            local_rms_method="rms-with-min",
-            wsclean_mem=8.0,
-            auto_mask=5.0,
-            auto_mask_nmiter=1,
-            idg_mode="cpu",
-            num_threads=4,
-            num_deconvolution_threads=2,
-            dd_psf_grid=[1, 1],
-            interval=[0, 9],
-            apply_time_frequency_smearing=False,
-            temp_dir="sector_1_wsclean_tmp",
-        )
-        == commands["image"]["wsclean_screens"]
-    )
-
-
-def test_prepare_imaging_data_command_strips_wrapping_shell_quotes_from_directions():
-    command = normalized_prepare_imaging_data_command(
-        msin="obs_0.ms",
-        data_colname="DATA",
-        msout="sector_1_obs_0_prep.ms",
-        starttime="50000.0",
-        ntimes=10,
-        phasecenter="'[123.0deg, 45.0deg]'",
-        freqstep=4,
-        timestep=2,
-        beamdir='"[123.0deg, 45.0deg]"',
-        numthreads=4,
-        steps="[applybeam,shift,avg,bdaavg]",
     )
 
     assert "shift.phasecenter=[123.0deg, 45.0deg]" in command
@@ -1012,40 +1034,42 @@ def test_prepare_imaging_data_command_strips_wrapping_shell_quotes_from_directio
 
 
 def test_wsclean_command_builders_preserve_full_stokes_options():
-    command = normalized_wsclean_no_dde_command(
-        msin="sector_1_concat.ms",
-        name="sector_1",
-        mask="sector_1_mask.fits",
-        wsclean_imsize=[1024, 1024],
-        wsclean_niter=1000,
-        wsclean_nmiter=5,
-        robust=-0.5,
-        min_uv_lambda=80.0,
-        max_uv_lambda=1000000.0,
-        mgain=0.85,
-        multiscale=True,
-        save_source_list=False,
-        pol="IQUV",
-        link_polarizations=False,
-        join_polarizations=True,
-        skip_final_iteration=True,
-        cellsize_deg=0.001,
-        channels_out=4,
-        deconvolution_channels=2,
-        fit_spectral_pol=2,
-        taper_arcsec=0.0,
-        local_rms_strength=0.0,
-        local_rms_window=25.0,
-        local_rms_method="rms-with-min",
-        wsclean_mem=8.0,
-        auto_mask=5.0,
-        auto_mask_nmiter=1,
-        idg_mode="cpu",
-        num_threads=4,
-        num_deconvolution_threads=2,
-        dd_psf_grid=[1, 1],
-        apply_time_frequency_smearing=False,
-        temp_dir="sector_1_wsclean_tmp",
+    command = normalize_command(
+        build_wsclean_no_dde_command(
+            msin="sector_1_concat.ms",
+            name="sector_1",
+            mask="sector_1_mask.fits",
+            wsclean_imsize=[1024, 1024],
+            wsclean_niter=1000,
+            wsclean_nmiter=5,
+            robust=-0.5,
+            min_uv_lambda=80.0,
+            max_uv_lambda=1000000.0,
+            mgain=0.85,
+            multiscale=True,
+            save_source_list=False,
+            pol="IQUV",
+            link_polarizations=False,
+            join_polarizations=True,
+            skip_final_iteration=True,
+            cellsize_deg=0.001,
+            channels_out=4,
+            deconvolution_channels=2,
+            fit_spectral_pol=2,
+            taper_arcsec=0.0,
+            local_rms_strength=0.0,
+            local_rms_window=25.0,
+            local_rms_method="rms-with-min",
+            wsclean_mem=8.0,
+            auto_mask=5.0,
+            auto_mask_nmiter=1,
+            idg_mode="cpu",
+            num_threads=4,
+            num_deconvolution_threads=2,
+            dd_psf_grid=[1, 1],
+            apply_time_frequency_smearing=False,
+            temp_dir="sector_1_wsclean_tmp",
+        )
     )
 
     assert command[command.index("-pol") + 1] == "IQUV"
@@ -1053,40 +1077,42 @@ def test_wsclean_command_builders_preserve_full_stokes_options():
     assert "-link-polarizations" not in command
     assert "-save-source-list" not in command
 
-    linked_command = normalized_wsclean_no_dde_command(
-        msin="sector_1_concat.ms",
-        name="sector_1",
-        mask="sector_1_mask.fits",
-        wsclean_imsize=[1024, 1024],
-        wsclean_niter=1000,
-        wsclean_nmiter=5,
-        robust=-0.5,
-        min_uv_lambda=80.0,
-        max_uv_lambda=1000000.0,
-        mgain=0.85,
-        multiscale=True,
-        save_source_list=False,
-        pol="IQUV",
-        link_polarizations="I",
-        join_polarizations=False,
-        skip_final_iteration=True,
-        cellsize_deg=0.001,
-        channels_out=4,
-        deconvolution_channels=2,
-        fit_spectral_pol=2,
-        taper_arcsec=0.0,
-        local_rms_strength=0.0,
-        local_rms_window=25.0,
-        local_rms_method="rms-with-min",
-        wsclean_mem=8.0,
-        auto_mask=5.0,
-        auto_mask_nmiter=1,
-        idg_mode="cpu",
-        num_threads=4,
-        num_deconvolution_threads=2,
-        dd_psf_grid=[1, 1],
-        apply_time_frequency_smearing=False,
-        temp_dir="sector_1_wsclean_tmp",
+    linked_command = normalize_command(
+        build_wsclean_no_dde_command(
+            msin="sector_1_concat.ms",
+            name="sector_1",
+            mask="sector_1_mask.fits",
+            wsclean_imsize=[1024, 1024],
+            wsclean_niter=1000,
+            wsclean_nmiter=5,
+            robust=-0.5,
+            min_uv_lambda=80.0,
+            max_uv_lambda=1000000.0,
+            mgain=0.85,
+            multiscale=True,
+            save_source_list=False,
+            pol="IQUV",
+            link_polarizations="I",
+            join_polarizations=False,
+            skip_final_iteration=True,
+            cellsize_deg=0.001,
+            channels_out=4,
+            deconvolution_channels=2,
+            fit_spectral_pol=2,
+            taper_arcsec=0.0,
+            local_rms_strength=0.0,
+            local_rms_window=25.0,
+            local_rms_method="rms-with-min",
+            wsclean_mem=8.0,
+            auto_mask=5.0,
+            auto_mask_nmiter=1,
+            idg_mode="cpu",
+            num_threads=4,
+            num_deconvolution_threads=2,
+            dd_psf_grid=[1, 1],
+            apply_time_frequency_smearing=False,
+            temp_dir="sector_1_wsclean_tmp",
+        )
     )
 
     assert linked_command[linked_command.index("-link-polarizations") + 1] == "I"
@@ -1130,7 +1156,7 @@ def test_wsclean_mpi_command_builders_use_mpirun_launcher():
         "temp_dir": "sector_1_wsclean_tmp",
     }
 
-    command = normalized_wsclean_mpi_no_dde_command(mpi_nnodes=2, **common_kwargs)
+    command = normalize_command(build_wsclean_mpi_no_dde_command(mpi_nnodes=2, **common_kwargs))
     assert command[:10] == [
         "mpirun",
         "--bind-to",
@@ -1146,19 +1172,21 @@ def test_wsclean_mpi_command_builders_use_mpirun_launcher():
     assert command[command.index("-j") + 1] == "3"
     assert "-apply-primary-beam" in command
 
-    facet_command = normalized_wsclean_mpi_facets_command(
-        mpi_nnodes=2,
-        **{
-            **common_kwargs,
-            "scalar_visibilities": True,
-            "diagonal_visibilities": False,
-            "h5parm": "facet-solutions.h5",
-            "soltabs": "phase000",
-            "region_file": "sector_1_facets_ds9.reg",
-            "num_gridding_threads": 7,
-            "shared_facet_reads": True,
-            "shared_facet_writes": True,
-        },
+    facet_command = normalize_command(
+        build_wsclean_mpi_facets_command(
+            mpi_nnodes=2,
+            **{
+                **common_kwargs,
+                "scalar_visibilities": True,
+                "diagonal_visibilities": False,
+                "h5parm": "facet-solutions.h5",
+                "soltabs": "phase000",
+                "region_file": "sector_1_facets_ds9.reg",
+                "num_gridding_threads": 7,
+                "shared_facet_reads": True,
+                "shared_facet_writes": True,
+            },
+        )
     )
     assert facet_command[:10] == command[:10]
     assert "-apply-facet-solutions" in facet_command
@@ -1167,12 +1195,14 @@ def test_wsclean_mpi_command_builders_use_mpirun_launcher():
     assert "-shared-facet-reads" in facet_command
     assert "-shared-facet-writes" in facet_command
 
-    screen_command = normalized_wsclean_mpi_screens_command(
-        mpi_nnodes=2,
-        **{
-            **common_kwargs,
-            "interval": [0, 9],
-        },
+    screen_command = normalize_command(
+        build_wsclean_mpi_screens_command(
+            mpi_nnodes=2,
+            **{
+                **common_kwargs,
+                "interval": [0, 9],
+            },
+        )
     )
     assert screen_command[:10] == command[:10]
     assert screen_command[screen_command.index("-gridder") + 1] == "idg"

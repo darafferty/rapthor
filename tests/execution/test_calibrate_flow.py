@@ -14,23 +14,15 @@ from rapthor.execution.calibrate.commands import (
     build_collect_screen_h5parms_command,
     build_combine_h5parms_command,
     build_ddecal_solve_command,
+    build_draw_model_command,
     build_idgcal_solve_phase_and_gain_command,
     build_idgcal_solve_phase_command,
+    build_make_region_file_command,
     build_plot_solutions_command,
     build_process_gains_command,
-    normalized_adjust_h5parm_sources_command,
-    normalized_collect_h5parms_command,
-    normalized_collect_screen_h5parms_command,
-    normalized_combine_h5parms_command,
-    normalized_ddecal_solve_command,
-    normalized_draw_model_command,
-    normalized_idgcal_solve_phase_and_gain_command,
-    normalized_idgcal_solve_phase_command,
-    normalized_make_region_file_command,
-    normalized_plot_solutions_command,
-    normalized_process_gains_command,
 )
 from rapthor.execution.calibrate.payloads import calibrate_payload_from_inputs
+from rapthor.execution.commands import normalize_command
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.flows.calibrate import (
     calibrate_chunk_task,
@@ -889,112 +881,150 @@ def test_calibrate_command_builders_match_reference_fixtures():
     commands = json.loads((FIXTURE_DIR / "command_reference.json").read_text())
 
     assert (
-        normalized_ddecal_solve_command(
-            msin="obs_0.ms",
-            data_colname="DATA",
-            starttime="50000.0",
-            ntimes=10,
-            steps="[solve1]",
-            solve_slots=_di_fulljones_solve_slots(),
-            numthreads=4,
-            modeldatacolumn="[MODEL_DATA]",
+        normalize_command(
+            build_ddecal_solve_command(
+                msin="obs_0.ms",
+                data_colname="DATA",
+                starttime="50000.0",
+                ntimes=10,
+                steps="[solve1]",
+                solve_slots=_di_fulljones_solve_slots(),
+                numthreads=4,
+                modeldatacolumn="[MODEL_DATA]",
+            )
         )
         == commands["calibrate"]["ddecal_di_fulljones"]
     )
     assert (
-        normalized_collect_h5parms_command(
-            ["fulljones_gain_0.h5parm", "fulljones_gain_1.h5parm"],
-            "fulljones_solutions.h5",
+        normalize_command(
+            build_collect_h5parms_command(
+                ["fulljones_gain_0.h5parm", "fulljones_gain_1.h5parm"],
+                "fulljones_solutions.h5",
+            )
         )
         == commands["calibrate"]["collect_fulljones"]
     )
     assert (
-        normalized_plot_solutions_command("fulljones_solutions.h5", "phase")
+        normalize_command(build_plot_solutions_command("fulljones_solutions.h5", "phase"))
         == commands["calibrate"]["plot_fulljones_phase"]
     )
     assert (
-        normalized_ddecal_solve_command(
-            msin="obs_0.ms",
-            data_colname="DATA",
-            starttime="50000.0",
-            ntimes=10,
-            steps="[solve1,solve2]",
-            solve_slots=_di_scalar_phase_solve_slots(),
-            numthreads=4,
-            modeldatacolumn="[MODEL_DATA]",
+        normalize_command(
+            build_ddecal_solve_command(
+                msin="obs_0.ms",
+                data_colname="DATA",
+                starttime="50000.0",
+                ntimes=10,
+                steps="[solve1,solve2]",
+                solve_slots=_di_scalar_phase_solve_slots(),
+                numthreads=4,
+                modeldatacolumn="[MODEL_DATA]",
+            )
         )
         == commands["calibrate"]["ddecal_di_scalar_phase"]
     )
     assert (
-        normalized_combine_h5parms_command(
-            "fast_phases_di.h5parm",
-            "medium1_phases_di.h5parm",
-            "combined_solve1_solve2_di.h5parm",
-            "p1p2_scalar",
-            reweight=False,
-            calibrator_names=[],
-            calibrator_fluxes=[],
+        normalize_command(
+            build_combine_h5parms_command(
+                "fast_phases_di.h5parm",
+                "medium1_phases_di.h5parm",
+                "combined_solve1_solve2_di.h5parm",
+                "p1p2_scalar",
+                reweight=False,
+                calibrator_names=[],
+                calibrator_fluxes=[],
+            )
         )
         == commands["calibrate"]["combine_fast_medium_di"]
     )
     assert (
-        normalized_draw_model_command(
-            skymodel="calibration.skymodel",
-            numterms=2,
-            name="calibration_model",
-            ra_dec=["12:00:00.0", "+45.00.00.0"],
-            frequency_bandwidth=[150000000.0, 1000000.0],
-            cellsize_deg=0.001,
-            imsize=[1024, 1024],
-            numthreads=4,
+        normalize_command(
+            build_draw_model_command(
+                skymodel="calibration.skymodel",
+                numterms=2,
+                name="calibration_model",
+                ra_dec=["12:00:00.0", "+45.00.00.0"],
+                frequency_bandwidth=[150000000.0, 1000000.0],
+                cellsize_deg=0.001,
+                imsize=[1024, 1024],
+                numthreads=4,
+            )
         )
         == commands["calibrate"]["draw_model"]
     )
     assert (
-        normalized_make_region_file_command(
-            skymodel="calibration.skymodel",
-            ra_mid=123.0,
-            dec_mid=45.0,
-            width_ra=2.0,
-            width_dec=2.5,
-            outfile="field_facets_ds9.reg",
-            enclose_names=False,
+        normalize_command(
+            build_make_region_file_command(
+                skymodel="calibration.skymodel",
+                ra_mid=123.0,
+                dec_mid=45.0,
+                width_ra=2.0,
+                width_dec=2.5,
+                outfile="field_facets_ds9.reg",
+                enclose_names=False,
+            )
         )
         == commands["calibrate"]["make_field_region_file"]
     )
     assert (
-        normalized_ddecal_solve_command(
-            msin="dd_obs_0.ms",
-            data_colname="DATA",
-            starttime="50000.0",
-            ntimes=10,
-            steps="[solve1]",
-            solve_slots=_dd_fast_phase_solve_slots(),
-            numthreads=4,
-            timebase=0.0,
-            maxinterval=8.0,
-            frequencybase=0.0,
-            minchannels=1,
-            onebeamperpatch=True,
-            parallelbaselines=False,
-            sagecalpredict=False,
-            sourcedb="calibration.skymodel",
-            directions=["patch1", "patch2"],
+        normalize_command(
+            build_ddecal_solve_command(
+                msin="dd_obs_0.ms",
+                data_colname="DATA",
+                starttime="50000.0",
+                ntimes=10,
+                steps="[solve1]",
+                solve_slots=_dd_fast_phase_solve_slots(),
+                numthreads=4,
+                timebase=0.0,
+                maxinterval=8.0,
+                frequencybase=0.0,
+                minchannels=1,
+                onebeamperpatch=True,
+                parallelbaselines=False,
+                sagecalpredict=False,
+                sourcedb="calibration.skymodel",
+                directions=["patch1", "patch2"],
+            )
         )
         == commands["calibrate"]["ddecal_dd_fast_phase"]
     )
     assert (
-        normalized_ddecal_solve_command(
+        normalize_command(
+            build_ddecal_solve_command(
+                msin="dd_obs_0.ms",
+                data_colname="DATA",
+                starttime="50000.0",
+                ntimes=10,
+                steps="[solve1,solve2]",
+                solve_slots=_dd_fast_medium_solve_slots(),
+                numthreads=4,
+                timebase=0.0,
+                maxinterval=8.0,
+                frequencybase=0.0,
+                minchannels=1,
+                onebeamperpatch=True,
+                parallelbaselines=False,
+                sagecalpredict=False,
+                sourcedb="calibration.skymodel",
+                directions=["patch1", "patch2"],
+            )
+        )
+        == commands["calibrate"]["ddecal_dd_fast_medium"]
+    )
+
+    bda_command = normalize_command(
+        build_ddecal_solve_command(
             msin="dd_obs_0.ms",
             data_colname="DATA",
             starttime="50000.0",
             ntimes=10,
-            steps="[solve1,solve2]",
+            steps="[avg,solve1,solve2,null]",
             solve_slots=_dd_fast_medium_solve_slots(),
             numthreads=4,
-            timebase=0.0,
+            timebase=20000.0,
             maxinterval=8.0,
-            frequencybase=0.0,
+            frequencybase=20000.0,
             minchannels=1,
             onebeamperpatch=True,
             parallelbaselines=False,
@@ -1002,164 +1032,160 @@ def test_calibrate_command_builders_match_reference_fixtures():
             sourcedb="calibration.skymodel",
             directions=["patch1", "patch2"],
         )
-        == commands["calibrate"]["ddecal_dd_fast_medium"]
-    )
-
-    bda_command = normalized_ddecal_solve_command(
-        msin="dd_obs_0.ms",
-        data_colname="DATA",
-        starttime="50000.0",
-        ntimes=10,
-        steps="[avg,solve1,solve2,null]",
-        solve_slots=_dd_fast_medium_solve_slots(),
-        numthreads=4,
-        timebase=20000.0,
-        maxinterval=8.0,
-        frequencybase=20000.0,
-        minchannels=1,
-        onebeamperpatch=True,
-        parallelbaselines=False,
-        sagecalpredict=False,
-        sourcedb="calibration.skymodel",
-        directions=["patch1", "patch2"],
     )
     assert "steps=[avg,solve1,solve2,null]" in bda_command
     assert "null.type=null" in bda_command
 
     assert (
-        normalized_ddecal_solve_command(
-            msin="dd_obs_0.ms",
-            data_colname="DATA",
-            starttime="50000.0",
-            ntimes=10,
-            steps="[applycal,solve1,solve2]",
-            solve_slots=_dd_fast_medium_solve_slots(),
-            numthreads=4,
-            applycal_steps="[fastphase,slowgain,fulljones,normalization]",
-            applycal_h5parm="di_solutions.h5",
-            fulljones_h5parm="fulljones_solutions.h5",
-            normalize_h5parm="normalize_solutions.h5",
-            timebase=0.0,
-            maxinterval=8.0,
-            frequencybase=0.0,
-            minchannels=1,
-            onebeamperpatch=True,
-            parallelbaselines=False,
-            sagecalpredict=False,
-            sourcedb="calibration.skymodel",
-            directions=["patch1", "patch2"],
+        normalize_command(
+            build_ddecal_solve_command(
+                msin="dd_obs_0.ms",
+                data_colname="DATA",
+                starttime="50000.0",
+                ntimes=10,
+                steps="[applycal,solve1,solve2]",
+                solve_slots=_dd_fast_medium_solve_slots(),
+                numthreads=4,
+                applycal_steps="[fastphase,slowgain,fulljones,normalization]",
+                applycal_h5parm="di_solutions.h5",
+                fulljones_h5parm="fulljones_solutions.h5",
+                normalize_h5parm="normalize_solutions.h5",
+                timebase=0.0,
+                maxinterval=8.0,
+                frequencybase=0.0,
+                minchannels=1,
+                onebeamperpatch=True,
+                parallelbaselines=False,
+                sagecalpredict=False,
+                sourcedb="calibration.skymodel",
+                directions=["patch1", "patch2"],
+            )
         )
         == commands["calibrate"]["ddecal_dd_fast_medium_preapply"]
     )
     assert (
-        normalized_ddecal_solve_command(
-            msin="dd_obs_0.ms",
-            data_colname="DATA",
-            starttime="50000.0",
-            ntimes=10,
-            steps="[predict,applybeam,solve1,solve2]",
-            solve_slots=_dd_fast_medium_image_predict_solve_slots(),
-            numthreads=4,
-            timebase=0.0,
-            maxinterval=8.0,
-            frequencybase=0.0,
-            minchannels=1,
-            onebeamperpatch=True,
-            parallelbaselines=False,
-            sagecalpredict=False,
-            predict_regions="field_facets_ds9.reg",
-            predict_images=[
-                "calibration_model-term-0.fits",
-                "calibration_model-term-1.fits",
-            ],
+        normalize_command(
+            build_ddecal_solve_command(
+                msin="dd_obs_0.ms",
+                data_colname="DATA",
+                starttime="50000.0",
+                ntimes=10,
+                steps="[predict,applybeam,solve1,solve2]",
+                solve_slots=_dd_fast_medium_image_predict_solve_slots(),
+                numthreads=4,
+                timebase=0.0,
+                maxinterval=8.0,
+                frequencybase=0.0,
+                minchannels=1,
+                onebeamperpatch=True,
+                parallelbaselines=False,
+                sagecalpredict=False,
+                predict_regions="field_facets_ds9.reg",
+                predict_images=[
+                    "calibration_model-term-0.fits",
+                    "calibration_model-term-1.fits",
+                ],
+            )
         )
         == commands["calibrate"]["ddecal_dd_fast_medium_image_predict"]
     )
     assert (
-        normalized_ddecal_solve_command(
-            msin="dd_obs_0.ms",
-            data_colname="DATA",
-            starttime="50000.0",
-            ntimes=10,
-            steps="[predict,applybeam,applycal,solve1,solve2]",
-            solve_slots=_dd_fast_medium_image_predict_solve_slots(),
-            numthreads=4,
-            applycal_steps="[fastphase,normalization]",
-            applycal_h5parm="di_solutions.h5",
-            normalize_h5parm="normalize_solutions.h5",
-            timebase=0.0,
-            maxinterval=8.0,
-            frequencybase=0.0,
-            minchannels=1,
-            onebeamperpatch=True,
-            parallelbaselines=False,
-            sagecalpredict=False,
-            predict_regions="field_facets_ds9.reg",
-            predict_images=[
-                "calibration_model-term-0.fits",
-                "calibration_model-term-1.fits",
-            ],
+        normalize_command(
+            build_ddecal_solve_command(
+                msin="dd_obs_0.ms",
+                data_colname="DATA",
+                starttime="50000.0",
+                ntimes=10,
+                steps="[predict,applybeam,applycal,solve1,solve2]",
+                solve_slots=_dd_fast_medium_image_predict_solve_slots(),
+                numthreads=4,
+                applycal_steps="[fastphase,normalization]",
+                applycal_h5parm="di_solutions.h5",
+                normalize_h5parm="normalize_solutions.h5",
+                timebase=0.0,
+                maxinterval=8.0,
+                frequencybase=0.0,
+                minchannels=1,
+                onebeamperpatch=True,
+                parallelbaselines=False,
+                sagecalpredict=False,
+                predict_regions="field_facets_ds9.reg",
+                predict_images=[
+                    "calibration_model-term-0.fits",
+                    "calibration_model-term-1.fits",
+                ],
+            )
         )
         == commands["calibrate"]["ddecal_dd_fast_medium_image_predict_preapply"]
     )
     assert (
-        normalized_process_gains_command(
-            "slow_gains.h5parm",
-            flag=True,
-            smooth=True,
-            max_station_delta=0.25,
-            scale_station_delta="False",
-            phase_center_ra=123.0,
-            phase_center_dec=45.0,
+        normalize_command(
+            build_process_gains_command(
+                "slow_gains.h5parm",
+                flag=True,
+                smooth=True,
+                max_station_delta=0.25,
+                scale_station_delta="False",
+                phase_center_ra=123.0,
+                phase_center_dec=45.0,
+            )
         )
         == commands["calibrate"]["process_slow_gains"]
     )
     assert (
-        normalized_adjust_h5parm_sources_command(
-            "calibration.skymodel",
-            "combined_solutions.h5",
+        normalize_command(
+            build_adjust_h5parm_sources_command(
+                "calibration.skymodel",
+                "combined_solutions.h5",
+            )
         )
         == commands["calibrate"]["adjust_h5parm_sources"]
     )
     assert (
-        normalized_idgcal_solve_phase_command(
-            msin="dd_obs_0.ms",
-            starttime="50000.0",
-            ntimes=10,
-            h5parm="idgcal_0",
-            solint=3,
-            model_images=[
-                "calibration_model-term-0.fits",
-                "calibration_model-term-1.fits",
-            ],
-            maxiter=4,
-            antennaconstraint="[]",
-            numthreads=4,
+        normalize_command(
+            build_idgcal_solve_phase_command(
+                msin="dd_obs_0.ms",
+                starttime="50000.0",
+                ntimes=10,
+                h5parm="idgcal_0",
+                solint=3,
+                model_images=[
+                    "calibration_model-term-0.fits",
+                    "calibration_model-term-1.fits",
+                ],
+                maxiter=4,
+                antennaconstraint="[]",
+                numthreads=4,
+            )
         )
         == commands["calibrate"]["idgcal_solve_phase"]
     )
     assert (
-        normalized_idgcal_solve_phase_and_gain_command(
-            msin="dd_obs_0.ms",
-            starttime="50000.0",
-            ntimes=10,
-            h5parm="idgcal_0",
-            solint_fast=3,
-            solint_slow=11,
-            model_images=[
-                "calibration_model-term-0.fits",
-                "calibration_model-term-1.fits",
-            ],
-            maxiter=4,
-            antennaconstraint="[]",
-            numthreads=4,
+        normalize_command(
+            build_idgcal_solve_phase_and_gain_command(
+                msin="dd_obs_0.ms",
+                starttime="50000.0",
+                ntimes=10,
+                h5parm="idgcal_0",
+                solint_fast=3,
+                solint_slow=11,
+                model_images=[
+                    "calibration_model-term-0.fits",
+                    "calibration_model-term-1.fits",
+                ],
+                maxiter=4,
+                antennaconstraint="[]",
+                numthreads=4,
+            )
         )
         == commands["calibrate"]["idgcal_solve_phase_and_gain"]
     )
     assert (
-        normalized_collect_screen_h5parms_command(
-            ["idgcal_0", "idgcal_1"],
-            "combined_solutions.h5",
+        normalize_command(
+            build_collect_screen_h5parms_command(
+                ["idgcal_0", "idgcal_1"],
+                "combined_solutions.h5",
+            )
         )
         == commands["calibrate"]["collect_screen_h5parms"]
     )
