@@ -8,8 +8,6 @@ import os
 import re
 from typing import List, Union
 
-import numpy as np
-
 from rapthor.execution.flows.image import image_flow
 from rapthor.execution.image.payloads import image_payload_from_inputs
 from rapthor.lib import miscellaneous as misc
@@ -19,6 +17,7 @@ from rapthor.operations.image_plan import (
     build_image_applycal_steps,
     build_image_facet_solution_controls,
     build_image_prepare_data_steps,
+    build_image_screen_interval,
     build_image_wsclean_control_inputs,
     is_only_pol_I,
 )
@@ -360,18 +359,12 @@ class Image(Operation):
             if getattr(self, "_selected_applycal_h5parm", None) is not None
             else None
         )
-        # Set the data interval to use when screens are applied so that final solution
-        # interval is removed
-        #
-        # TODO: This interval is needed due to a bug in IDGCal that results in partial
-        # solution intervals being ignored during calibration (and hence unavailable
-        # during imaging). Once the bug is fixed, the interval can be removed
-        max_solint = self.field.slow_timestep_sec
-        numsamples_to_remove = int(np.ceil(max_solint / self.field.observations[0].timepersample))
-        interval = [
-            0,
-            max(1, self.field.observations[0].numsamples - numsamples_to_remove),
-        ]
+        first_observation = self.field.observations[0]
+        interval = build_image_screen_interval(
+            slow_timestep_sec=self.field.slow_timestep_sec,
+            timepersample=first_observation.timepersample,
+            numsamples=first_observation.numsamples,
+        )
         # Set the parameters common to all modes
         self.input_parms = {
             "obs_filename": [DirectoryRecord(name).to_json() for name in obs_filename],

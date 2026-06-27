@@ -208,6 +208,13 @@ Completed:
     settings, and field solution flags before adding values to the payload
   - added direct helper coverage for phase-only scalar, diagonal amplitudes,
     scalarized amplitudes, and full-Stokes facet imaging
+- Image screen-interval helper extraction:
+  - moved the screen-mode imaging interval calculation into
+    `rapthor.operations.image_plan`
+  - kept `Image` responsible for reading the first observation and adding the
+    computed interval to the flow payload
+  - added direct helper coverage for exact, rounded-up, and minimum-one-sample
+    interval cases, plus an adapter assertion that `Image` uses the helper rule
 - Verified in the dev container:
   - `python3 -m pytest tests/architecture -q --tb=short`
   - `python3 -m pytest tests/execution/test_outputs.py tests/execution/test_payloads.py tests/execution/test_commands.py -q --tb=short`
@@ -247,6 +254,7 @@ Completed:
   - `python3 -c "from rapthor.operations.image_plan import build_image_prepare_data_steps; assert build_image_prepare_data_steps(preapply_solutions=True, average_visibilities=True, image_bda_timebase=10.0, all_channels_regular=True, apply_screens=True) == ['applybeam', 'shift', 'applycal', 'avg']"`
   - `python3 -c "from rapthor.operations.image_plan import build_image_wsclean_control_inputs; assert build_image_wsclean_control_inputs('IQUV', 'link', [100, 200], disable_clean=False) == ('I', False, [100, 200])"`
   - `python3 -c "from rapthor.operations.image_plan import build_image_facet_solution_controls; assert build_image_facet_solution_controls('I', apply_amplitudes=True, apply_diagonal_solutions=True) == {'soltabs': 'amplitude000,phase000', 'diagonal_visibilities': True, 'scalar_visibilities': False}"`
+  - `python3 -c "from rapthor.operations.image_plan import build_image_screen_interval; assert build_image_screen_interval(slow_timestep_sec=10.0, timepersample=2.0, numsamples=20) == [0, 15]"`
   - targeted Ruff format, lint, and import-sort checks for the new architecture
     tests, touched execution facade modules, output record helpers, and touched
     flow modules
@@ -290,6 +298,8 @@ Completed:
     control helper extraction
   - targeted Ruff format, lint, and import-sort checks for the Image facet
     solution-control helper extraction
+  - targeted Ruff format, lint, and import-sort checks for the Image
+    screen-interval helper extraction
 
 Known follow-up from the completed slice:
 

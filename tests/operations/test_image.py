@@ -20,6 +20,7 @@ from rapthor.operations.image_plan import (
     build_image_applycal_steps,
     build_image_facet_solution_controls,
     build_image_prepare_data_steps,
+    build_image_screen_interval,
     build_image_wsclean_control_inputs,
 )
 
@@ -225,6 +226,12 @@ class TestImage:
         image.set_input_parameters()
         assert image.input_parms["obs_filename"] is not None
         assert image.input_parms["image_name"] is not None
+        first_observation = field.observations[0]
+        assert image.input_parms["interval"] == build_image_screen_interval(
+            slow_timestep_sec=field.slow_timestep_sec,
+            timepersample=first_observation.timepersample,
+            numsamples=first_observation.numsamples,
+        )
 
     def test_finalize(self, image):
         image.run()
@@ -820,6 +827,26 @@ class TestImage:
                 image_pol,
                 apply_amplitudes=apply_amplitudes,
                 apply_diagonal_solutions=apply_diagonal,
+            )
+            == expected
+        )
+
+    @pytest.mark.parametrize(
+        "slow_timestep_sec, timepersample, numsamples, expected",
+        [
+            (10.0, 2.0, 20, [0, 15]),
+            (11.0, 2.0, 20, [0, 14]),
+            (10.0, 2.0, 3, [0, 1]),
+        ],
+    )
+    def test_build_image_screen_interval(
+        self, slow_timestep_sec, timepersample, numsamples, expected
+    ):
+        assert (
+            build_image_screen_interval(
+                slow_timestep_sec=slow_timestep_sec,
+                timepersample=timepersample,
+                numsamples=numsamples,
             )
             == expected
         )

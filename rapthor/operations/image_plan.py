@@ -1,6 +1,7 @@
 """Pure planning helpers for the Image operation."""
 
 from collections.abc import Mapping
+from math import ceil
 from typing import Optional, Union
 
 SOLVE_TYPE_TO_APPLYCAL_STEP = {
@@ -63,6 +64,24 @@ def build_image_facet_solution_controls(
     else:
         controls["scalar_visibilities"] = True
     return controls
+
+
+def build_image_screen_interval(
+    *,
+    slow_timestep_sec: float,
+    timepersample: float,
+    numsamples: int,
+) -> list[int]:
+    """
+    Build the data interval to image when screen solutions are applied.
+
+    IDGCal currently ignores partial final solution intervals during
+    calibration, which means those solutions are unavailable during imaging.
+    The final partial interval is therefore excluded while keeping at least one
+    sample available for the imaging step.
+    """
+    numsamples_to_remove = ceil(slow_timestep_sec / timepersample)
+    return [0, max(1, numsamples - numsamples_to_remove)]
 
 
 def build_image_prepare_data_steps(
