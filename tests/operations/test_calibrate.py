@@ -10,6 +10,7 @@ import rapthor
 from rapthor.lib.operation import DIR as OPERATION_DIR
 from rapthor.operations.calibrate import Calibrate
 from rapthor.operations.calibrate_plan import (
+    build_calibration_dp3_steps,
     build_calibration_solve_plan,
     requested_calibration_solves,
 )
@@ -832,6 +833,39 @@ class TestCalibrate:
         dp3_steps = parse_dp3(calibrate_dd.input_parms["dp3_steps"])
 
         assert dp3_steps == expected_dp3_steps
+        assert (
+            build_calibration_dp3_steps(
+                bda_time,
+                bda_freq,
+                all_channels_regular=True,
+                use_image_based_predict=False,
+                do_slowgain_solve=slowgain,
+            )
+            == expected_dp3_steps
+        )
+
+    @pytest.mark.parametrize(
+        "preapply_solutions, expected_steps",
+        [
+            (False, ["predict", "applybeam", "solve1", "solve2"]),
+            (True, ["predict", "applybeam", "applycal", "solve1", "solve2"]),
+        ],
+    )
+    def test_build_calibration_dp3_steps_image_based_predict(
+        self, preapply_solutions, expected_steps
+    ):
+        assert (
+            build_calibration_dp3_steps(
+                0,
+                0,
+                all_channels_regular=True,
+                use_image_based_predict=True,
+                do_slowgain_solve=False,
+                solve_steps=["solve1", "solve2"],
+                preapply_solutions=preapply_solutions,
+            )
+            == expected_steps
+        )
 
     @pytest.mark.parametrize(
         "mode, strategy, defaulted, slowgain, expected_plan",

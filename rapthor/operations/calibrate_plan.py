@@ -99,6 +99,44 @@ def build_calibration_solve_plan(
     return solve_plan
 
 
+def build_calibration_dp3_steps(
+    bda_timebase: float,
+    bda_frequencybase: float,
+    *,
+    all_channels_regular: bool,
+    use_image_based_predict: bool,
+    do_slowgain_solve: bool,
+    solve_steps: Optional[list[str]] = None,
+    preapply_solutions: bool = False,
+) -> list[str]:
+    """Build the DP3 step chain for calibration solves."""
+    if solve_steps is None:
+        if do_slowgain_solve:
+            common_steps = ["solve1", "solve2", "solve3", "solve4"]
+        else:
+            common_steps = ["solve1", "solve2"]
+    else:
+        common_steps = list(solve_steps)
+
+    if (
+        (bda_timebase > 0 or bda_frequencybase > 0)
+        and all_channels_regular
+        and not use_image_based_predict
+    ):
+        common_steps = ["avg", *common_steps, "null"]
+
+    if preapply_solutions and not use_image_based_predict:
+        common_steps = ["applycal", *common_steps]
+
+    if use_image_based_predict:
+        preprocessing_steps = (
+            ["predict", "applybeam", "applycal"] if preapply_solutions else ["predict", "applybeam"]
+        )
+        return preprocessing_steps + common_steps
+
+    return common_steps
+
+
 def build_calibration_solve_slot(
     mode: str,
     solve_type: str,

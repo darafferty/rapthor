@@ -16,6 +16,7 @@ from rapthor.lib import miscellaneous as misc
 from rapthor.lib.operation import Operation
 from rapthor.lib.records import DirectoryRecord, FileRecord
 from rapthor.operations.calibrate_plan import (
+    build_calibration_dp3_steps,
     build_calibration_solve_plan,
     requested_calibration_solves,
 )
@@ -563,41 +564,16 @@ class Calibrate(Operation):
         the restriction on this mode should be removed
         """
 
-        # Check whether all observations have regular channelization
-        all_regular = all([obs.channels_are_regular for obs in self.field.observations])
-
-        # Base solve chain depending on BDA + solver configuration
-        if solve_steps is None:
-            if self.field.do_slowgain_solve:
-                common_steps = ["solve1", "solve2", "solve3", "solve4"]
-            else:
-                common_steps = ["solve1", "solve2"]
-        else:
-            common_steps = list(solve_steps)
-
-        if (
-            (bda_timebase > 0 or bda_frequencybase > 0)
-            and all_regular
-            and not self.field.use_image_based_predict
-        ):
-            common_steps = ["avg", *common_steps, "null"]
-
-        if preapply_solutions and not self.field.use_image_based_predict:
-            common_steps = ["applycal", *common_steps]
-
-        # Optional image-based predict prefix
-        if self.field.use_image_based_predict:
-            # Add a predict, applybeam, and applycal steps to the beginning
-            preprocessing_steps = (
-                ["predict", "applybeam", "applycal"]
-                if preapply_solutions
-                else ["predict", "applybeam"]
-            )
-            dp3_steps = preprocessing_steps + common_steps
-        else:
-            dp3_steps = common_steps
-
-        return dp3_steps
+        all_regular = all(obs.channels_are_regular for obs in self.field.observations)
+        return build_calibration_dp3_steps(
+            bda_timebase,
+            bda_frequencybase,
+            all_channels_regular=all_regular,
+            use_image_based_predict=self.field.use_image_based_predict,
+            do_slowgain_solve=self.field.do_slowgain_solve,
+            solve_steps=solve_steps,
+            preapply_solutions=preapply_solutions,
+        )
 
     def _build_applycal(self, field):
         """
