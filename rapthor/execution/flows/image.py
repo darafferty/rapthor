@@ -19,7 +19,13 @@ from rapthor.execution.outputs import (
     optional_file_record_path,
     validate_output_record,
 )
-from rapthor.execution.payloads import assert_serializable_payload
+from rapthor.execution.payloads import (
+    ImageCubeSpecPayload,
+    ImagePayload,
+    ImagePrepareTaskPayload,
+    ImageSectorPayload,
+    assert_serializable_payload,
+)
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
 from rapthor.execution.resources import (
     ResourceRequest,
@@ -751,7 +757,7 @@ def image_payload_from_inputs(
     make_image_cube: bool = False,
     normalize_flux_scale: bool = False,
     use_mpi: bool = False,
-) -> dict:
+) -> ImagePayload:
     """Create a serializable Image flow payload."""
     if apply_screens and use_facets:
         raise ValueError("apply_screens and use_facets cannot both be enabled")
@@ -864,7 +870,7 @@ def image_payload_from_inputs(
     photometry_skymodel = optional_file_record_path(input_parms.get("photometry_skymodel"))
     astrometry_skymodel = optional_file_record_path(input_parms.get("astrometry_skymodel"))
 
-    sectors = []
+    sectors: list[ImageSectorPayload] = []
     for sector_index in range(sector_count):
         obs_records = input_parms["obs_filename"][sector_index]
         prepare_filenames = input_parms["prepare_filename"][sector_index]
@@ -888,7 +894,7 @@ def image_payload_from_inputs(
         if any(len(value) != obs_count for value in obs_inputs):
             raise ValueError(f"sector {sector_index} observation inputs must have the same length")
 
-        prepare_tasks = []
+        prepare_tasks: list[ImagePrepareTaskPayload] = []
         for obs_index in range(obs_count):
             msout = _validate_basename(
                 prepare_filenames[obs_index], f"prepare_filename[{sector_index}][{obs_index}]"
@@ -928,7 +934,7 @@ def image_payload_from_inputs(
                 f"filtered_model_image_name[{sector_index}]",
             )
         image_i_cube_filename = None
-        image_cube_specs = []
+        image_cube_specs: list[ImageCubeSpecPayload] = []
         if make_image_cube:
             image_i_cube_filename = _validate_basename(
                 input_parms["image_I_cube_name"][sector_index],
@@ -1122,13 +1128,14 @@ def image_payload_from_inputs(
     else:
         mode = f"no_dde_{stokes_mode}"
 
-    payload = {
+    payload: ImagePayload = {
         "mode": mode,
         "use_mpi": bool(use_mpi),
         "pipeline_working_dir": pipeline_dir,
         "sectors": sectors,
     }
-    return assert_serializable_payload(payload)
+    assert_serializable_payload(payload)
+    return payload
 
 
 def _require_file(path: str, description: str) -> dict:
@@ -1225,7 +1232,7 @@ def _channel_image_patterns(image_name: str, stokes: str, pipeline_working_dir: 
 
 def _make_image_cube_records(
     image_name: str,
-    image_cube_specs: list[Mapping[str, object]],
+    image_cube_specs: list[ImageCubeSpecPayload],
     pipeline_working_dir: str,
     execution_config: ExecutionConfig,
     shell_operation_cls=None,
@@ -1265,7 +1272,7 @@ def _make_normalization_records(
     image_cube_beams: dict,
     image_cube_frequencies: dict,
     concat_record: dict,
-    sector: Mapping[str, object],
+    sector: ImageSectorPayload,
     pipeline_working_dir: str,
     execution_config: ExecutionConfig,
     shell_operation_cls=None,
@@ -1369,14 +1376,14 @@ def _mpi_environment(
     return thread_environment(resource_request)
 
 
-def _wsclean_threads_for_sector(sector: Mapping[str, object]) -> int:
+def _wsclean_threads_for_sector(sector: ImageSectorPayload) -> int:
     if sector["use_mpi"]:
         return int(sector["mpi_cpus_per_task"])
     return int(sector["max_threads"])
 
 
 def _wsclean_environment_for_sector(
-    sector: Mapping[str, object],
+    sector: ImageSectorPayload,
     execution_config: ExecutionConfig,
 ) -> Optional[Mapping[str, str]]:
     if not sector["use_mpi"]:
@@ -1389,7 +1396,7 @@ def _wsclean_environment_for_sector(
 
 
 def _build_wsclean_command_for_sector(
-    sector: Mapping[str, object],
+    sector: ImageSectorPayload,
     concat_record: Mapping[str, str],
     mask_record: Mapping[str, str],
     region_record: Optional[Mapping[str, str]],
@@ -1465,7 +1472,7 @@ def _build_wsclean_command_for_sector(
 
 
 def run_image_sector(
-    sector: Mapping[str, object],
+    sector: ImageSectorPayload,
     pipeline_working_dir: str,
     execution_config: Optional[ExecutionConfig] = None,
     shell_operation_cls=None,
@@ -1809,7 +1816,7 @@ def run_image_sector(
 
 @task(name="image_sector")
 def image_sector_task(
-    sector: Mapping[str, object],
+    sector: ImageSectorPayload,
     pipeline_working_dir: str,
     execution_config: Optional[ExecutionConfig] = None,
     shell_operation_cls=None,
@@ -1873,7 +1880,102 @@ def _result_from_sector_records(sector_outputs: list[dict]) -> dict:
     return result
 
 
-def _validate_image_payload(payload: Mapping[str, object]) -> tuple[str, list[Mapping]]:
+def _validate_int_list(values: object, name: str) -> list[int]:
+    if not isinstance(values, list) or not all(isinstance(value, int) for value in values):
+        raise ValueError(f"{name} must be a list of integers")
+    return list(values)
+
+
+def _validate_str_list(values: object, name: str) -> list[str]:
+    if not isinstance(values, list) or not all(
+        isinstance(value, str) and value for value in values
+    ):
+        raise ValueError(f"{name} must be a list of strings")
+    return list(values)
+
+
+def _validate_prepare_task(
+    prepare_task: Mapping[str, object],
+    sector_index: int,
+    task_index: int,
+) -> ImagePrepareTaskPayload:
+    maxinterval = prepare_task.get("maxinterval")
+    return {
+        "msin": str(prepare_task["msin"]),
+        "msout": _validate_basename(
+            prepare_task["msout"],
+            f"sectors[{sector_index}].prepare_tasks[{task_index}].msout",
+        ),
+        "msout_path": str(prepare_task["msout_path"]),
+        "starttime": str(prepare_task["starttime"]),
+        "ntimes": int(prepare_task["ntimes"]),
+        "freqstep": int(prepare_task["freqstep"]),
+        "timestep": int(prepare_task["timestep"]),
+        "maxinterval": None if maxinterval is None else int(maxinterval),
+    }
+
+
+def _validate_image_cube_spec(
+    spec: Mapping[str, object],
+    sector_index: int,
+    spec_index: int,
+) -> ImageCubeSpecPayload:
+    return {
+        "pol": str(spec["pol"]),
+        "filename": _validate_basename(
+            spec["filename"],
+            f"sectors[{sector_index}].image_cube_specs[{spec_index}].filename",
+        ),
+        "path": str(spec["path"]),
+    }
+
+
+def _validate_image_sector(sector: Mapping[str, object], index: int) -> ImageSectorPayload:
+    raw_prepare_tasks = sector.get("prepare_tasks", [])
+    if not isinstance(raw_prepare_tasks, list):
+        raise ValueError(f"sectors[{index}].prepare_tasks must be a list")
+    prepare_tasks = []
+    for task_index, prepare_task in enumerate(raw_prepare_tasks):
+        if not isinstance(prepare_task, Mapping):
+            raise ValueError(f"sectors[{index}].prepare_tasks[{task_index}] must be a mapping")
+        prepare_tasks.append(_validate_prepare_task(prepare_task, index, task_index))
+
+    raw_image_cube_specs = sector.get("image_cube_specs", [])
+    if not isinstance(raw_image_cube_specs, list):
+        raise ValueError(f"sectors[{index}].image_cube_specs must be a list")
+    image_cube_specs = []
+    for spec_index, spec in enumerate(raw_image_cube_specs):
+        if not isinstance(spec, Mapping):
+            raise ValueError(f"sectors[{index}].image_cube_specs[{spec_index}] must be a mapping")
+        image_cube_specs.append(_validate_image_cube_spec(spec, index, spec_index))
+
+    validated_sector = dict(sector)
+    validated_sector["prepare_tasks"] = prepare_tasks
+    validated_sector["image_cube_specs"] = image_cube_specs
+    validated_sector["wsclean_imsize"] = _validate_int_list(
+        sector.get("wsclean_imsize"),
+        f"sectors[{index}].wsclean_imsize",
+    )
+    validated_sector["dd_psf_grid"] = _validate_int_list(
+        sector.get("dd_psf_grid"),
+        f"sectors[{index}].dd_psf_grid",
+    )
+    validated_sector["obs_original_paths"] = _validate_str_list(
+        sector.get("obs_original_paths"),
+        f"sectors[{index}].obs_original_paths",
+    )
+    validated_sector["obs_starttime"] = _validate_str_list(
+        sector.get("obs_starttime"),
+        f"sectors[{index}].obs_starttime",
+    )
+    validated_sector["obs_ntimes"] = _validate_int_list(
+        sector.get("obs_ntimes"),
+        f"sectors[{index}].obs_ntimes",
+    )
+    return validated_sector
+
+
+def _validate_image_payload(payload: Mapping[str, object]) -> ImagePayload:
     supported_modes = {
         "facet_full_stokes",
         "facet_stokes_i",
@@ -1882,13 +1984,24 @@ def _validate_image_payload(payload: Mapping[str, object]) -> tuple[str, list[Ma
         "screens_full_stokes",
         "screens_stokes_i",
     }
-    if payload.get("mode") not in supported_modes:
+    mode = str(payload["mode"])
+    if mode not in supported_modes:
         raise ValueError("Only no-DDE, facet, and screen image payloads are supported")
     pipeline_working_dir = str(payload["pipeline_working_dir"])
-    sectors = payload.get("sectors", [])
-    if not isinstance(sectors, list):
+    raw_sectors = payload.get("sectors", [])
+    if not isinstance(raw_sectors, list):
         raise ValueError("sectors must be a list")
-    return pipeline_working_dir, sectors
+    sectors = []
+    for index, sector in enumerate(raw_sectors):
+        if not isinstance(sector, Mapping):
+            raise ValueError(f"sectors[{index}] must be a mapping")
+        sectors.append(_validate_image_sector(sector, index))
+    return {
+        "mode": mode,
+        "use_mpi": bool(payload.get("use_mpi", False)),
+        "pipeline_working_dir": pipeline_working_dir,
+        "sectors": sectors,
+    }
 
 
 def run_image_flow(
@@ -1899,15 +2012,15 @@ def run_image_flow(
     """Run imaging commands and return finalizer-compatible outputs."""
     assert_serializable_payload(payload)
     config = execution_config or ExecutionConfig(task_runner="sync")
-    pipeline_working_dir, sectors = _validate_image_payload(payload)
+    payload = _validate_image_payload(payload)
     sector_outputs = [
         run_image_sector(
             sector,
-            pipeline_working_dir,
+            payload["pipeline_working_dir"],
             execution_config=config,
             shell_operation_cls=shell_operation_cls,
         )
-        for sector in sectors
+        for sector in payload["sectors"]
     ]
     return _result_from_sector_records(sector_outputs)
 
@@ -1917,14 +2030,14 @@ def _run_image_prefect_tasks(
     execution_config: Optional[ExecutionConfig] = None,
 ) -> dict:
     config = execution_config or ExecutionConfig(task_runner="sync")
-    pipeline_working_dir, sectors = _validate_image_payload(payload)
+    payload = _validate_image_payload(payload)
     sector_outputs = [
         image_sector_task.submit(
             sector,
-            pipeline_working_dir,
+            payload["pipeline_working_dir"],
             execution_config=config,
         )
-        for sector in sectors
+        for sector in payload["sectors"]
     ]
     sector_outputs = [output.result() for output in sector_outputs]
     return _result_from_sector_records(sector_outputs)

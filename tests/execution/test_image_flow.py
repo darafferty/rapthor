@@ -1658,6 +1658,22 @@ def test_run_image_flow_executes_no_dde_commands_and_returns_records(
     ]
 
 
+def test_run_image_flow_rejects_invalid_prepare_task_payload(
+    tmp_path, fake_image_shell_operation_cls
+):
+    payload = image_payload_from_inputs(_image_input_parms(), tmp_path)
+    payload["sectors"][0]["prepare_tasks"] = ["not-a-task"]
+
+    with pytest.raises(ValueError, match="prepare_tasks"):
+        run_image_flow(
+            payload,
+            execution_config=ExecutionConfig(task_runner="sync"),
+            shell_operation_cls=fake_image_shell_operation_cls,
+        )
+
+    assert fake_image_shell_operation_cls.instances == []
+
+
 def test_run_image_flow_allows_missing_source_filtering_mask(
     tmp_path, fake_image_shell_operation_cls
 ):

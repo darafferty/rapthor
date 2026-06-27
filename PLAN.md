@@ -54,6 +54,13 @@ Completed:
     payloads before command execution or Prefect task submission
   - added focused tests for malformed mosaic image lists and predict directions
     so invalid worker payloads fail before shell commands run
+- Image typed payload extension:
+  - added image, image-sector, prepare-task, and image-cube payload contracts in
+    `rapthor.execution.payloads`
+  - validated image payloads into typed sector/task shapes before sync or
+    Prefect task execution
+  - added a focused test for malformed image prepare-task payloads so invalid
+    worker payloads fail before shell commands run
 - Verified in the dev container:
   - `python3 -m pytest tests/architecture -q --tb=short`
   - `python3 -m pytest tests/execution/test_outputs.py tests/execution/test_payloads.py tests/execution/test_commands.py -q --tb=short`
@@ -62,12 +69,16 @@ Completed:
   - `python3 -m pytest tests/execution/test_reference_fixtures.py tests/lib/test_operation.py -q --tb=short`
   - `python3 -m pytest tests/execution/test_concatenate_flow.py tests/execution/test_payloads.py -q --tb=short`
   - `python3 -m pytest tests/execution/test_mosaic_flow.py tests/execution/test_predict_flow.py tests/execution/test_payloads.py -q --tb=short`
+  - `python3 -m pytest tests/execution/test_image_flow.py -q --tb=short`
+  - `python3 -m pytest tests/execution/test_payloads.py tests/architecture -q --tb=short`
   - targeted Ruff format, lint, and import-sort checks for the new architecture
     tests, touched execution facade modules, output record helpers, and touched
     flow modules
   - targeted Ruff format, lint, and import-sort checks for the concatenate
     typed-payload slice
   - targeted Ruff format, lint, and import-sort checks for the mosaic/predict
+    typed-payload slice
+  - targeted Ruff format, lint, and import-sort checks for the image
     typed-payload slice
 
 Known follow-up from the completed slice:
@@ -90,12 +101,11 @@ Known follow-up from the completed slice:
 
 Next slice:
 
-- Extend typed payload contracts to image sector/image-flow payloads before
-  calibration.
+- Extend typed payload contracts to calibration.
 
 Remaining major stages:
 
-- Extend typed payload contracts to image and calibration.
+- Extend typed payload contracts to calibration.
 - Extract shared command-builder utilities.
 - Split image flow responsibilities.
 - Split calibration flow responsibilities.
