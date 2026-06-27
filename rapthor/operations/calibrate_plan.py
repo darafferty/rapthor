@@ -26,6 +26,132 @@ INTERVAL_KEYS_BY_SOLVE = {
     "full_jones": ("solint_fulljones_timestep", "solint_fulljones_freqstep"),
 }
 
+SUPERTERP_STATIONS_BY_ANTENNA = {
+    "HBA": (
+        "CS002HBA0",
+        "CS003HBA0",
+        "CS004HBA0",
+        "CS005HBA0",
+        "CS006HBA0",
+        "CS007HBA0",
+        "CS002HBA1",
+        "CS003HBA1",
+        "CS004HBA1",
+        "CS005HBA1",
+        "CS006HBA1",
+        "CS007HBA1",
+    ),
+    "LBA": (
+        "CS002LBA",
+        "CS003LBA",
+        "CS004LBA",
+        "CS005LBA",
+        "CS006LBA",
+        "CS007LBA",
+    ),
+}
+
+CORE_STATIONS_BY_ANTENNA = {
+    "HBA": (
+        "CS001HBA0",
+        "CS002HBA0",
+        "CS003HBA0",
+        "CS004HBA0",
+        "CS005HBA0",
+        "CS006HBA0",
+        "CS007HBA0",
+        "CS011HBA0",
+        "CS013HBA0",
+        "CS017HBA0",
+        "CS021HBA0",
+        "CS024HBA0",
+        "CS026HBA0",
+        "CS028HBA0",
+        "CS030HBA0",
+        "CS031HBA0",
+        "CS032HBA0",
+        "CS101HBA0",
+        "CS103HBA0",
+        "CS201HBA0",
+        "CS301HBA0",
+        "CS302HBA0",
+        "CS401HBA0",
+        "CS501HBA0",
+        "CS001HBA1",
+        "CS002HBA1",
+        "CS003HBA1",
+        "CS004HBA1",
+        "CS005HBA1",
+        "CS006HBA1",
+        "CS007HBA1",
+        "CS011HBA1",
+        "CS013HBA1",
+        "CS017HBA1",
+        "CS021HBA1",
+        "CS024HBA1",
+        "CS026HBA1",
+        "CS028HBA1",
+        "CS030HBA1",
+        "CS031HBA1",
+        "CS032HBA1",
+        "CS101HBA1",
+        "CS103HBA1",
+        "CS201HBA1",
+        "CS301HBA1",
+        "CS302HBA1",
+        "CS401HBA1",
+        "CS501HBA1",
+    ),
+    "LBA": (
+        "CS001LBA",
+        "CS002LBA",
+        "CS003LBA",
+        "CS004LBA",
+        "CS005LBA",
+        "CS006LBA",
+        "CS007LBA",
+        "CS011LBA",
+        "CS013LBA",
+        "CS017LBA",
+        "CS021LBA",
+        "CS024LBA",
+        "CS026LBA",
+        "CS028LBA",
+        "CS030LBA",
+        "CS031LBA",
+        "CS032LBA",
+        "CS101LBA",
+        "CS103LBA",
+        "CS201LBA",
+        "CS301LBA",
+        "CS302LBA",
+        "CS401LBA",
+        "CS501LBA",
+    ),
+}
+
+NEAREST_REMOTE_STATIONS_BY_ANTENNA = {
+    "HBA": (
+        "RS106HBA0",
+        "RS205HBA0",
+        "RS305HBA0",
+        "RS306HBA0",
+        "RS503HBA0",
+        "RS106HBA1",
+        "RS205HBA1",
+        "RS305HBA1",
+        "RS306HBA1",
+        "RS503HBA1",
+    ),
+    "LBA": (
+        "RS106LBA",
+        "RS205LBA",
+        "RS305LBA",
+        "RS306LBA",
+        "RS503LBA",
+    ),
+}
+
 
 @dataclass(frozen=True)
 class CalibrationSolve:
@@ -237,6 +363,32 @@ def build_calibration_solve_slot_inputs(
         )
 
     return inputs
+
+
+def build_calibration_superterp_stations(antenna: str, stations: list[str]) -> list[str]:
+    """Return superterp station names present in the observation station list."""
+    superterp_stations = SUPERTERP_STATIONS_BY_ANTENNA.get(antenna, ())
+    return [station for station in superterp_stations if station in stations]
+
+
+def build_calibration_core_stations(
+    antenna: str,
+    stations: list[str],
+    *,
+    include_nearest_remote: bool = True,
+) -> list[str]:
+    """Return core calibration stations present in the observation station list."""
+    core_stations = list(CORE_STATIONS_BY_ANTENNA.get(antenna, ()))
+    if include_nearest_remote:
+        core_stations.extend(NEAREST_REMOTE_STATIONS_BY_ANTENNA.get(antenna, ()))
+    return [station for station in core_stations if station in stations]
+
+
+def build_calibration_core_baseline_selection(antenna: str, stations: list[str]) -> str:
+    """Return the DP3 baseline-selection string for core-station calibration."""
+    core_stations = build_calibration_core_stations(antenna, stations)
+    non_core_stations = [station for station in stations if station not in core_stations]
+    return f"[CR]*&&;!{';!'.join(non_core_stations)}"
 
 
 def solve_output_names(mode: str, solve_type: str, medium_count: int) -> tuple[str, str]:

@@ -223,6 +223,21 @@ Completed:
   - added direct helper coverage for static Slurm, launcher-reserved Slurm, and
     minimum-one-node allocation cases, plus an adapter assertion for MPI payload
     wiring
+- Calibrate station-selection helper extraction:
+  - moved core-station, superterp-station, and DP3 core-baseline selection rules
+    into `rapthor.operations.calibrate_plan`
+  - kept `Calibrate` wrapper methods as thin adapters over the pure helpers so
+    existing operation tests and callers still exercise the same behaviour
+  - added direct helper coverage beside the operation-wrapper assertions
+- Operation adapter thinning checkpoint:
+  - moved the decision-heavy Image and Calibrate planning clusters into
+    `rapthor.operations.image_plan` and `rapthor.operations.calibrate_plan`
+  - left operation classes responsible for lifecycle setup, reading live `Field`
+    state, converting file records, invoking Prefect flows, and finalizer side
+    effects
+  - treated predict, mosaic, and concatenate as already thin enough for this
+    stage; extract more only when a future change reveals duplication or a
+    specific testability problem
 - Verified in the dev container:
   - `python3 -m pytest tests/architecture -q --tb=short`
   - `python3 -m pytest tests/execution/test_outputs.py tests/execution/test_payloads.py tests/execution/test_commands.py -q --tb=short`
@@ -249,6 +264,7 @@ Completed:
   - `python3 -m pytest tests/execution/test_calibrate_flow.py -q --tb=short`
   - `python3 -m pytest tests/operations/test_calibrate.py -q --tb=short`
   - `python3 -m pytest tests/architecture -q --tb=short`
+  - `python3 -m pytest tests/operations/test_concatenate.py tests/operations/test_mosaic.py tests/operations/test_predict.py -q --tb=short`
   - `python3 -c "import rapthor.execution as execution; import rapthor.execution.flows as flows; import rapthor.execution.image.commands as image_commands; import rapthor.execution.image.payloads as image_payloads; import rapthor.execution.image.sector as image_sector; import rapthor.execution.flows.image as image_flow; assert image_commands.normalized_wsclean_no_dde_command; assert image_payloads.image_payload_from_inputs; assert image_flow.validate_image_payload is image_payloads.validate_image_payload; assert image_sector.run_image_sector; assert not hasattr(execution, 'run_image_sector'); assert not hasattr(flows, 'run_image_sector'); assert not hasattr(execution, 'image_payload_from_inputs'); assert not hasattr(flows, 'build_wsclean_no_dde_command')"`
   - `python3 -c "from rapthor.execution.image.payloads import ImagePayload, ImageSectorPayload, image_payload_from_inputs; import rapthor.execution.payloads as shared_payloads; assert ImagePayload; assert ImageSectorPayload; assert image_payload_from_inputs; assert not hasattr(shared_payloads, 'ImagePayload'); assert not hasattr(shared_payloads, 'ImageSectorPayload')"`
   - `python3 -c "import rapthor.execution as execution; import rapthor.execution.flows as flows; import rapthor.execution.calibrate.commands as commands; assert commands.normalized_ddecal_solve_command; assert not hasattr(execution, 'build_ddecal_solve_command'); assert not hasattr(flows, 'build_ddecal_solve_command')"`
@@ -264,6 +280,7 @@ Completed:
   - `python3 -c "from rapthor.operations.image_plan import build_image_facet_solution_controls; assert build_image_facet_solution_controls('I', apply_amplitudes=True, apply_diagonal_solutions=True) == {'soltabs': 'amplitude000,phase000', 'diagonal_visibilities': True, 'scalar_visibilities': False}"`
   - `python3 -c "from rapthor.operations.image_plan import build_image_screen_interval; assert build_image_screen_interval(slow_timestep_sec=10.0, timepersample=2.0, numsamples=20) == [0, 15]"`
   - `python3 -c "from rapthor.operations.image_plan import build_image_mpi_resource_controls; assert build_image_mpi_resource_controls(nsectors=2, max_nodes=8, cpus_per_task=12, batch_system='slurm') == {'mpi_nnodes': [3, 3], 'mpi_cpus_per_task': [12, 12]}"`
+  - `python3 -c "from rapthor.operations.calibrate_plan import build_calibration_core_baseline_selection; assert build_calibration_core_baseline_selection('HBA', ['CS003HBA0', 'RS106HBA0', 'DE601HBA']) == '[CR]*&&;!DE601HBA'"`
   - targeted Ruff format, lint, and import-sort checks for the new architecture
     tests, touched execution facade modules, output record helpers, and touched
     flow modules
@@ -311,6 +328,8 @@ Completed:
     screen-interval helper extraction
   - targeted Ruff format, lint, and import-sort checks for the Image MPI
     resource-control helper extraction
+  - targeted Ruff format, lint, and import-sort checks for the Calibrate
+    station-selection helper extraction
 
 Known follow-up from the completed slice:
 
@@ -332,13 +351,11 @@ Known follow-up from the completed slice:
 
 Next slice:
 
-- Continue thinning operation adapters by moving the next field/parset-to-input
-  mapping cluster out of `Calibrate` or `Image` into a pure helper without
-  changing CLI behaviour.
+- Improve process orchestration, dry-run/preflight, and debugging surfaces now
+  that the main operation planning rules have clearer owners and focused tests.
 
 Remaining major stages:
 
-- Thin operation adapters.
 - Improve process orchestration, dry-run/preflight, and debugging surfaces.
 - Manage code quantity and remove duplicated/dead compatibility code, including
   temporary shims, as slices land.

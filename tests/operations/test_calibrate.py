@@ -10,10 +10,13 @@ import rapthor
 from rapthor.lib.operation import DIR as OPERATION_DIR
 from rapthor.operations.calibrate import Calibrate
 from rapthor.operations.calibrate_plan import (
+    build_calibration_core_baseline_selection,
+    build_calibration_core_stations,
     build_calibration_dp3_steps,
     build_calibration_preapply_steps,
     build_calibration_solve_plan,
     build_calibration_solve_slot_inputs,
+    build_calibration_superterp_stations,
     requested_calibration_solves,
 )
 
@@ -336,6 +339,7 @@ class TestCalibrate:
         calibrate = Calibrate("dd", field=calibrate_field, index=1)
         baselines = calibrate._get_baselines_core()
         assert baselines == expected
+        assert build_calibration_core_baseline_selection(antenna, stations) == expected
 
     @pytest.mark.parametrize(
         "antenna,stations,expected",
@@ -362,6 +366,7 @@ class TestCalibrate:
         calibrate_field.stations = stations
         calibrate_dd = Calibrate("dd", field=calibrate_field, index=1)
         assert calibrate_dd._get_superterp_stations() == expected
+        assert build_calibration_superterp_stations(antenna, stations) == expected
 
     @pytest.mark.parametrize(
         "antenna,include_remote,stations,expected",
@@ -404,6 +409,14 @@ class TestCalibrate:
         calibrate_dd = Calibrate("dd", field=calibrate_field, index=1)
         result = calibrate_dd._get_core_stations(include_nearest_remote=include_remote)
         assert result == expected
+        assert (
+            build_calibration_core_stations(
+                antenna,
+                stations,
+                include_nearest_remote=include_remote,
+            )
+            == expected
+        )
 
     @pytest.mark.parametrize("cycle,have_full_field_sector", [(1, False), (1, True), (2, False)])
     def test_get_model_image_parameters(
