@@ -1,6 +1,6 @@
 # Rapthor Architecture Refactor Plan
 
-Status snapshot: 2026-06-27.
+Status snapshot: 2026-06-28.
 
 ## Goal
 
@@ -23,7 +23,7 @@ questions quickly:
 
 ## Progress Tracker
 
-Last updated: 2026-06-27.
+Last updated: 2026-06-28.
 
 Completed:
 
@@ -448,6 +448,99 @@ Next slice:
 - Begin Dask scalability and script-to-module migration preparation by auditing
   script helpers and choosing one small, low-risk script to expose as an
   importable function while keeping its CLI wrapper stable.
+
+Immediate next tasks from the 2026-06-28 plan/code review:
+
+Execution and operation cleanup queue, in recommended order:
+
+1. Remove confirmed dead code.
+   - Delete `merge_list_flatten()` from `rapthor.operations.image`; no
+     production, test, or documentation references remain.
+2. Consolidate low-risk exact duplicates.
+   - Move the duplicate Prefect run-context check used by artifacts and Prefect
+     logging into one small helper.
+   - Move duplicated payload validators such as basename, string-list, and
+     integer-list validation into a shared payload-validation helper module or
+     `rapthor.execution.payloads`, keeping error messages stable.
+   - Move repeated operation solution-cycle parsing into a small operation
+     helper so Image, Predict, and Calibrate do not drift.
+3. Resolve the unused runtime abstraction.
+   - `rapthor.execution.runtime.RuntimeSpec`, `build_command_environment()`, and
+     `build_runtime_spec()` are currently tested but not used by production
+     execution code.
+   - Either wire `build_runtime_spec()` into shell-command construction where it
+     actually simplifies resource/environment handling, or delete the abstraction
+     and keep direct `ResourceRequest` validation until a real production caller
+     appears.
+4. Consolidate repeated shell/output checks only where it removes drift.
+   - Compare `calibrate.runner._require_file`, image output discovery helpers,
+     mosaic shell-and-file validation, and predict shell-and-directory
+     validation.
+   - Add a small shared helper only if it keeps descriptions and failure
+     messages explicit; avoid a generic wrapper that hides operation context.
+5. Simplify repeated WSClean command construction.
+   - Extract common WSClean base options shared by no-DDE, facet, and screen
+     command builders while preserving the existing golden command fixtures.
+   - Keep mode-specific options visible so scientists can still review the
+     command differences.
+6. Split large payload and runner functions by real work unit.
+   - Candidate functions are `image_payload_from_inputs()`,
+     `calibrate_payload_from_inputs()`, `run_image_sector()`, and
+     `_collect_plot_and_combine_dd_phase()`.
+   - Split along units scientists recognise, such as prepare task, image cube,
+     normalization, screen solve, scalar solve collection, and DD phase
+     collection.
+7. Revisit large operation adapters after the low-risk cleanup.
+   - `Image.set_input_parameters()`, `Image.finalize()`, and
+     `Calibrate.set_input_parameters()` remain the largest operation-side
+     methods.
+   - Extract only decision-heavy or duplicated pieces; keep finalizer side
+     effects easy to audit.
+
+Broader follow-on tasks after the cleanup queue:
+
+1. Script-to-module audit and first conversion candidate.
+   - Inventory each `rapthor/scripts/*.py` helper by command owner, input/output
+     size, existing tests, external dependency risk, and whether it can sensibly
+     run in-process on a Dask worker.
+   - Start with a small, already tested helper such as `make_region_file.py`,
+     `check_image_beam.py`, `blank_image.py`, or one mosaic helper rather than
+     `normalize_flux_scale.py`, `calculate_image_diagnostics.py`,
+     `subtract_sector_models.py`, or `process_gains.py`.
+   - Extract one importable function, keep the command-line wrapper stable, and
+     add CLI-vs-function parity tests.
+2. Dask scalability contract checks.
+   - Add focused tests that prove each flow submits the intended task units
+     without passing domain objects or large nested state to workers.
+   - Add payload-size/serialization guard tests for image sectors, calibration
+     chunks, predict model tasks, mosaic image types, and concatenate epochs.
+   - Extend resource-request coverage beyond image-sector WSClean paths so
+     calibration, predict, mosaic, and concatenate command tasks have explicit
+     thread/resource expectations where appropriate.
+3. Runtime preflight and dry-run improvements.
+   - Expand the dry-run/plan view so it reports task groups, resource hints,
+     expected outputs, command/script adapters, and unsupported multi-node
+     features before external tools run.
+   - Improve preflight messages for missing tools, unsupported container mode,
+     Slurm/external-Dask mismatch, missing Dask scheduler, and MPI WSClean
+     assumptions.
+4. Large runner/module simplification pass.
+   - Review `rapthor.execution.calibrate.runner`, `rapthor.execution.image.sector`,
+     `rapthor.execution.shell`, `rapthor.operations.calibrate`, and
+     `rapthor.operations.image` before adding more abstractions.
+   - Split only where there is a clearer scientific work unit, repeated command
+     execution pattern, or testability/debugging benefit.
+5. Contributor documentation slice.
+   - Add short docs/checklists for adding a parset option, modifying an
+     operation, adding an external command helper, and converting a script to an
+     importable module.
+   - Include the fast test lane for each change type and the expected owner
+     module for payload, command, output, flow, operation, and pipeline changes.
+6. Target-environment validation plan.
+   - Define opt-in validation runs for external Dask, Slurm-launched Dask,
+     MPI WSClean, and `prefect_command_profile = perf`.
+   - Keep these separate from the default non-integration suite and document the
+     required environment assumptions.
 
 Remaining major stages:
 
