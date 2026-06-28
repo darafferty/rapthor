@@ -103,6 +103,10 @@ Progress:
   `rapthor.execution.regions.make_ds9_region_from_skymodel`, kept the script as
   the CLI wrapper, and replaced the placeholder script test with direct function
   plus CLI parity coverage.
+- Continued with the mosaic helper group: extracted template creation,
+  regridding, and mosaic averaging to `rapthor.execution.mosaic.images`, kept
+  the three scripts as CLI wrappers, and added direct function plus CLI parity
+  coverage for each script.
 
 Script audit and migration order:
 
@@ -114,10 +118,9 @@ Script audit and migration order:
 - Done: `make_region_file.py` -> image and calibration prediction preparation;
   sky model plus facet bounds to DS9 region; small payload; `lsmtool`; direct
   and CLI parity tests now exist.
-- Good next low-risk mosaic group: `make_mosaic_template.py`, `regrid_image.py`,
-  and `make_mosaic.py` -> mosaic execution; FITS images plus vertices to
-  template/regridded/mosaic FITS products; medium file payloads; current tests
-  cover core behavior.
+- Done: `make_mosaic_template.py`, `regrid_image.py`, and `make_mosaic.py` ->
+  mosaic execution; FITS images plus vertices to template/regridded/mosaic FITS
+  products; medium file payloads; direct and CLI parity tests now exist.
 - Good next image-normalization group: `make_image_cube.py` and
   `make_catalog_from_image_cube.py` -> image normalization; channel FITS files
   and cube metadata to cube/catalog products; medium file payloads; current

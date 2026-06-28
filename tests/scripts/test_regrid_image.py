@@ -2,11 +2,14 @@
 Tests for the regrid_image script.
 """
 
+import subprocess
+import sys
+
 from astropy.io import fits
 from astropy.wcs import WCS
 import numpy as np
 
-from rapthor.scripts.regrid_image import main
+from rapthor.execution.mosaic.images import regrid_image
 
 
 def _header(shape=(4, 4)):
@@ -52,7 +55,7 @@ def test_main_reprojects_image_to_template(tmp_path):
     _write_image(template_image, np.zeros((4, 4), dtype=np.float32), header)
     _write_vertices(vertices_file, header)
 
-    main(str(input_image), str(template_image), str(vertices_file), str(output_image), skip=False)
+    regrid_image(str(input_image), str(template_image), str(vertices_file), str(output_image))
 
     with fits.open(output_image) as hdul:
         assert hdul[0].data.shape == (4, 4)
@@ -71,7 +74,42 @@ def test_main_skip_copies_input_image(tmp_path):
     _write_image(template_image, np.zeros((3, 3), dtype=np.float32), _header(data.shape))
     _write_vertices(vertices_file, _header(data.shape))
 
-    main(str(input_image), str(template_image), str(vertices_file), str(output_image), skip=True)
+    regrid_image(
+        str(input_image), str(template_image), str(vertices_file), str(output_image), skip=True
+    )
 
     with fits.open(output_image) as hdul:
         assert np.allclose(hdul[0].data, 5.0)
+
+
+def test_regrid_image_cli_matches_function(tmp_path):
+    input_image = tmp_path / "input.fits"
+    template_image = tmp_path / "template.fits"
+    vertices_file = tmp_path / "vertices.npy"
+    function_output = tmp_path / "function_regridded.fits"
+    cli_output = tmp_path / "cli_regridded.fits"
+    header = _header()
+    data = np.arange(16, dtype=np.float32).reshape(4, 4) + 1.0
+    _write_image(input_image, data, header)
+    _write_image(template_image, np.zeros((4, 4), dtype=np.float32), header)
+    _write_vertices(vertices_file, header)
+
+    regrid_image(str(input_image), str(template_image), str(vertices_file), str(function_output))
+    subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "rapthor.scripts.regrid_image",
+            str(input_image),
+            str(template_image),
+            str(vertices_file),
+            str(cli_output),
+            "--skip=False",
+        ],
+        check=True,
+    )
+
+    with fits.open(function_output) as function_hdul, fits.open(cli_output) as cli_hdul:
+        assert np.allclose(cli_hdul[0].data, function_hdul[0].data, equal_nan=True)
+        assert cli_hdul[0].header["CRVAL1"] == function_hdul[0].header["CRVAL1"]
+        assert cli_hdul[0].header["CRVAL2"] == function_hdul[0].header["CRVAL2"]
