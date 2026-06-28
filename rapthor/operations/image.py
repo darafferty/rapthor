@@ -510,6 +510,31 @@ class Image(Operation):
         outputs = run_prefect_flow(image_flow, payload, self.parset)
         return True, outputs
 
+    def _record_sector_image_outputs(self, index, sector, leave_in_place):
+        """Record image product paths on a sector and preserve files needed downstream."""
+        file_list = [
+            record["path"]
+            for record in self.outputs["sector_I_images"][index]
+            + self.outputs["sector_extra_images"][index]
+        ]
+        leave_in_place.update({"sector_I_images", "sector_extra_images"})
+        if self.field.save_supplementary_images:
+            file_list.append(self.outputs["source_filtering_mask"][index]["path"])
+            leave_in_place.update({"source_filtering_mask"})
+        if self.field.parset["imaging_specific"]["save_filtered_model_image"]:
+            file_list.append(self.outputs["sector_skymodel_image_fits"][index]["path"])
+            leave_in_place.update({"sector_skymodel_image_fits"})
+
+        type_path_map = Image.find_in_file_list(file_list)
+        for output_type, paths in type_path_map.items():
+            if output_type not in ["filtering_mask_file", "filtered_model_file_apparent_sky"]:
+                for path in paths:
+                    pol = Image.derive_pol_from_filename(path)
+                    setattr(sector, f"{pol}_{output_type}", path)
+            else:
+                for path in paths:
+                    setattr(sector, output_type, path)
+
     def finalize(self):
         """
         Finalize this operation
@@ -524,31 +549,7 @@ class Image(Operation):
 
         leave_in_place = set()
         for index, sector in enumerate(self.field.imaging_sectors):
-            # Get the list of images for this sector and save their filenames
-            # for use in the mosaic operation. These files are left in place
-            # at their original locations for processing by the mosaic
-            # operation
-            file_list = [
-                x["path"]
-                for x in self.outputs["sector_I_images"][index]
-                + self.outputs["sector_extra_images"][index]
-            ]
-            leave_in_place.update({"sector_I_images", "sector_extra_images"})
-            if self.field.save_supplementary_images:
-                file_list.append(self.outputs["source_filtering_mask"][index]["path"])
-                leave_in_place.update({"source_filtering_mask"})
-            if self.field.parset["imaging_specific"]["save_filtered_model_image"]:
-                file_list.append(self.outputs["sector_skymodel_image_fits"][index]["path"])
-                leave_in_place.update({"sector_skymodel_image_fits"})
-            type_path_map = Image.find_in_file_list(file_list)
-            for output_type, paths in type_path_map.items():
-                if output_type not in ["filtering_mask_file", "filtered_model_file_apparent_sky"]:
-                    for path in paths:
-                        pol = Image.derive_pol_from_filename(path)
-                        setattr(sector, f"{pol}_{output_type}", path)
-                else:
-                    for path in paths:
-                        setattr(sector, output_type, path)
+            self._record_sector_image_outputs(index, sector, leave_in_place)
 
             if self.field.parset["imaging_specific"]["use_clean_mask"]:
                 # Copy the sector mask to save it for use in a subsequent imaging operation. Note

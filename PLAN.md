@@ -684,6 +684,9 @@ Execution and operation cleanup queue, in recommended order:
      from `Image.set_input_parameters()` into a named helper, keeping the sector
      imaging-parameter side effect explicit and leaving the payload assembly
      easier to scan.
+   - Completed 2026-06-28: extracted sector image-output registration from
+     `Image.finalize()` into a named helper, keeping downstream mosaic
+     preservation and sector attribute mutation explicit.
 
 Broader follow-on tasks after the cleanup queue:
 
