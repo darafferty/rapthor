@@ -9,6 +9,7 @@ from prefect.testing.utilities import prefect_test_harness
 import rapthor.execution.calibrate.collection as calibrate_collection
 import rapthor.execution.calibrate.flow as calibrate_module
 from rapthor.execution.calibrate.commands import (
+    DdecalSolveOptions,
     build_adjust_h5parm_sources_command,
     build_collect_h5parms_command,
     build_collect_screen_h5parms_command,
@@ -939,21 +940,45 @@ def _dd_fast_medium_image_predict_solve_slots():
     return slots
 
 
+def _ddecal_solve_options(**overrides) -> DdecalSolveOptions:
+    values = {
+        "msin": "obs_0.ms",
+        "data_colname": "DATA",
+        "starttime": "50000.0",
+        "ntimes": 10,
+        "steps": "[solve1]",
+        "solve_slots": _di_fulljones_solve_slots(),
+        "num_threads": 4,
+    }
+    values.update(overrides)
+    return DdecalSolveOptions(**values)
+
+
+def _dd_ddecal_solve_options(**overrides) -> DdecalSolveOptions:
+    values = {
+        "msin": "dd_obs_0.ms",
+        "steps": "[solve1]",
+        "solve_slots": _dd_fast_phase_solve_slots(),
+        "timebase": 0.0,
+        "maxinterval": 8.0,
+        "frequencybase": 0.0,
+        "minchannels": 1,
+        "onebeamperpatch": True,
+        "parallelbaselines": False,
+        "sagecalpredict": False,
+        "sourcedb": "calibration.skymodel",
+        "directions": ["patch1", "patch2"],
+    }
+    values.update(overrides)
+    return _ddecal_solve_options(**values)
+
+
 def test_calibrate_command_builders_match_reference_fixtures():
     commands = json.loads((FIXTURE_DIR / "command_reference.json").read_text())
 
     assert (
         normalize_command(
-            build_ddecal_solve_command(
-                msin="obs_0.ms",
-                data_colname="DATA",
-                starttime="50000.0",
-                ntimes=10,
-                steps="[solve1]",
-                solve_slots=_di_fulljones_solve_slots(),
-                numthreads=4,
-                modeldatacolumn="[MODEL_DATA]",
-            )
+            build_ddecal_solve_command(_ddecal_solve_options(modeldatacolumn="[MODEL_DATA]"))
         )
         == commands["calibrate"]["ddecal_di_fulljones"]
     )
@@ -973,14 +998,11 @@ def test_calibrate_command_builders_match_reference_fixtures():
     assert (
         normalize_command(
             build_ddecal_solve_command(
-                msin="obs_0.ms",
-                data_colname="DATA",
-                starttime="50000.0",
-                ntimes=10,
-                steps="[solve1,solve2]",
-                solve_slots=_di_scalar_phase_solve_slots(),
-                numthreads=4,
-                modeldatacolumn="[MODEL_DATA]",
+                _ddecal_solve_options(
+                    steps="[solve1,solve2]",
+                    solve_slots=_di_scalar_phase_solve_slots(),
+                    modeldatacolumn="[MODEL_DATA]",
+                )
             )
         )
         == commands["calibrate"]["ddecal_di_scalar_phase"]
@@ -1029,47 +1051,16 @@ def test_calibrate_command_builders_match_reference_fixtures():
         == commands["calibrate"]["make_field_region_file"]
     )
     assert (
-        normalize_command(
-            build_ddecal_solve_command(
-                msin="dd_obs_0.ms",
-                data_colname="DATA",
-                starttime="50000.0",
-                ntimes=10,
-                steps="[solve1]",
-                solve_slots=_dd_fast_phase_solve_slots(),
-                numthreads=4,
-                timebase=0.0,
-                maxinterval=8.0,
-                frequencybase=0.0,
-                minchannels=1,
-                onebeamperpatch=True,
-                parallelbaselines=False,
-                sagecalpredict=False,
-                sourcedb="calibration.skymodel",
-                directions=["patch1", "patch2"],
-            )
-        )
+        normalize_command(build_ddecal_solve_command(_dd_ddecal_solve_options()))
         == commands["calibrate"]["ddecal_dd_fast_phase"]
     )
     assert (
         normalize_command(
             build_ddecal_solve_command(
-                msin="dd_obs_0.ms",
-                data_colname="DATA",
-                starttime="50000.0",
-                ntimes=10,
-                steps="[solve1,solve2]",
-                solve_slots=_dd_fast_medium_solve_slots(),
-                numthreads=4,
-                timebase=0.0,
-                maxinterval=8.0,
-                frequencybase=0.0,
-                minchannels=1,
-                onebeamperpatch=True,
-                parallelbaselines=False,
-                sagecalpredict=False,
-                sourcedb="calibration.skymodel",
-                directions=["patch1", "patch2"],
+                _dd_ddecal_solve_options(
+                    steps="[solve1,solve2]",
+                    solve_slots=_dd_fast_medium_solve_slots(),
+                )
             )
         )
         == commands["calibrate"]["ddecal_dd_fast_medium"]
@@ -1077,22 +1068,12 @@ def test_calibrate_command_builders_match_reference_fixtures():
 
     bda_command = normalize_command(
         build_ddecal_solve_command(
-            msin="dd_obs_0.ms",
-            data_colname="DATA",
-            starttime="50000.0",
-            ntimes=10,
-            steps="[avg,solve1,solve2,null]",
-            solve_slots=_dd_fast_medium_solve_slots(),
-            numthreads=4,
-            timebase=20000.0,
-            maxinterval=8.0,
-            frequencybase=20000.0,
-            minchannels=1,
-            onebeamperpatch=True,
-            parallelbaselines=False,
-            sagecalpredict=False,
-            sourcedb="calibration.skymodel",
-            directions=["patch1", "patch2"],
+            _dd_ddecal_solve_options(
+                steps="[avg,solve1,solve2,null]",
+                solve_slots=_dd_fast_medium_solve_slots(),
+                timebase=20000.0,
+                frequencybase=20000.0,
+            )
         )
     )
     assert "steps=[avg,solve1,solve2,null]" in bda_command
@@ -1101,26 +1082,14 @@ def test_calibrate_command_builders_match_reference_fixtures():
     assert (
         normalize_command(
             build_ddecal_solve_command(
-                msin="dd_obs_0.ms",
-                data_colname="DATA",
-                starttime="50000.0",
-                ntimes=10,
-                steps="[applycal,solve1,solve2]",
-                solve_slots=_dd_fast_medium_solve_slots(),
-                numthreads=4,
-                applycal_steps="[fastphase,slowgain,fulljones,normalization]",
-                applycal_h5parm="di_solutions.h5",
-                fulljones_h5parm="fulljones_solutions.h5",
-                normalize_h5parm="normalize_solutions.h5",
-                timebase=0.0,
-                maxinterval=8.0,
-                frequencybase=0.0,
-                minchannels=1,
-                onebeamperpatch=True,
-                parallelbaselines=False,
-                sagecalpredict=False,
-                sourcedb="calibration.skymodel",
-                directions=["patch1", "patch2"],
+                _dd_ddecal_solve_options(
+                    steps="[applycal,solve1,solve2]",
+                    solve_slots=_dd_fast_medium_solve_slots(),
+                    applycal_steps="[fastphase,slowgain,fulljones,normalization]",
+                    applycal_h5parm="di_solutions.h5",
+                    fulljones_h5parm="fulljones_solutions.h5",
+                    normalize_h5parm="normalize_solutions.h5",
+                )
             )
         )
         == commands["calibrate"]["ddecal_dd_fast_medium_preapply"]
@@ -1128,25 +1097,17 @@ def test_calibrate_command_builders_match_reference_fixtures():
     assert (
         normalize_command(
             build_ddecal_solve_command(
-                msin="dd_obs_0.ms",
-                data_colname="DATA",
-                starttime="50000.0",
-                ntimes=10,
-                steps="[predict,applybeam,solve1,solve2]",
-                solve_slots=_dd_fast_medium_image_predict_solve_slots(),
-                numthreads=4,
-                timebase=0.0,
-                maxinterval=8.0,
-                frequencybase=0.0,
-                minchannels=1,
-                onebeamperpatch=True,
-                parallelbaselines=False,
-                sagecalpredict=False,
-                predict_regions="field_facets_ds9.reg",
-                predict_images=[
-                    "calibration_model-term-0.fits",
-                    "calibration_model-term-1.fits",
-                ],
+                _dd_ddecal_solve_options(
+                    steps="[predict,applybeam,solve1,solve2]",
+                    solve_slots=_dd_fast_medium_image_predict_solve_slots(),
+                    sourcedb=None,
+                    directions=None,
+                    predict_regions="field_facets_ds9.reg",
+                    predict_images=[
+                        "calibration_model-term-0.fits",
+                        "calibration_model-term-1.fits",
+                    ],
+                )
             )
         )
         == commands["calibrate"]["ddecal_dd_fast_medium_image_predict"]
@@ -1154,28 +1115,20 @@ def test_calibrate_command_builders_match_reference_fixtures():
     assert (
         normalize_command(
             build_ddecal_solve_command(
-                msin="dd_obs_0.ms",
-                data_colname="DATA",
-                starttime="50000.0",
-                ntimes=10,
-                steps="[predict,applybeam,applycal,solve1,solve2]",
-                solve_slots=_dd_fast_medium_image_predict_solve_slots(),
-                numthreads=4,
-                applycal_steps="[fastphase,normalization]",
-                applycal_h5parm="di_solutions.h5",
-                normalize_h5parm="normalize_solutions.h5",
-                timebase=0.0,
-                maxinterval=8.0,
-                frequencybase=0.0,
-                minchannels=1,
-                onebeamperpatch=True,
-                parallelbaselines=False,
-                sagecalpredict=False,
-                predict_regions="field_facets_ds9.reg",
-                predict_images=[
-                    "calibration_model-term-0.fits",
-                    "calibration_model-term-1.fits",
-                ],
+                _dd_ddecal_solve_options(
+                    steps="[predict,applybeam,applycal,solve1,solve2]",
+                    solve_slots=_dd_fast_medium_image_predict_solve_slots(),
+                    applycal_steps="[fastphase,normalization]",
+                    applycal_h5parm="di_solutions.h5",
+                    normalize_h5parm="normalize_solutions.h5",
+                    sourcedb=None,
+                    directions=None,
+                    predict_regions="field_facets_ds9.reg",
+                    predict_images=[
+                        "calibration_model-term-0.fits",
+                        "calibration_model-term-1.fits",
+                    ],
+                )
             )
         )
         == commands["calibrate"]["ddecal_dd_fast_medium_image_predict_preapply"]
@@ -1362,16 +1315,7 @@ def test_calibrate_command_builders_create_reference_tokens():
         "--outh5parm=combined_solutions.h5",
     ]
     assert (
-        build_ddecal_solve_command(
-            msin="obs_0.ms",
-            data_colname="DATA",
-            starttime="50000.0",
-            ntimes=10,
-            steps="[solve1]",
-            solve_slots=_di_fulljones_solve_slots(),
-            numthreads=4,
-            modeldatacolumn="[MODEL_DATA]",
-        )[0]
+        build_ddecal_solve_command(_ddecal_solve_options(modeldatacolumn="[MODEL_DATA]"))[0]
         == "DP3"
     )
 

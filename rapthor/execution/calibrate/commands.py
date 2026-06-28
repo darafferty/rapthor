@@ -1,5 +1,6 @@
 """Command builders for calibration execution."""
 
+from dataclasses import dataclass
 from typing import Mapping, Optional
 
 from rapthor.execution.commands import (
@@ -116,75 +117,82 @@ SOLVE_SLOT_ARGUMENTS = [
 ]
 
 
+@dataclass(frozen=True)
+class DdecalSolveOptions:
+    """DP3 DDECal options for one calibration chunk."""
+
+    msin: str
+    data_colname: str
+    starttime: str
+    ntimes: int
+    steps: str
+    solve_slots: list[Mapping[str, object]]
+    num_threads: int
+    modeldatacolumn: Optional[str] = None
+    applycal_steps: Optional[str] = None
+    applycal_h5parm: Optional[str] = None
+    fulljones_h5parm: Optional[str] = None
+    normalize_h5parm: Optional[str] = None
+    timebase: Optional[object] = None
+    maxinterval: Optional[object] = None
+    frequencybase: Optional[object] = None
+    minchannels: Optional[object] = None
+    onebeamperpatch: Optional[bool] = None
+    parallelbaselines: Optional[bool] = None
+    sagecalpredict: Optional[bool] = None
+    sourcedb: Optional[str] = None
+    directions: Optional[list[str]] = None
+    predict_regions: Optional[str] = None
+    predict_images: Optional[list[str]] = None
+
+
 def parse_steps(steps: object) -> list[str]:
     """Parse a DP3 steps token into individual step names."""
     return [step.strip() for step in str(steps).strip("[]").split(",") if step.strip()]
 
 
-def build_ddecal_solve_command(
-    msin: str,
-    data_colname: str,
-    starttime: str,
-    ntimes: int,
-    steps: str,
-    solve_slots: list[Mapping[str, object]],
-    numthreads: int,
-    modeldatacolumn: Optional[str] = None,
-    applycal_steps: Optional[str] = None,
-    applycal_h5parm: Optional[str] = None,
-    fulljones_h5parm: Optional[str] = None,
-    normalize_h5parm: Optional[str] = None,
-    timebase: Optional[object] = None,
-    maxinterval: Optional[object] = None,
-    frequencybase: Optional[object] = None,
-    minchannels: Optional[object] = None,
-    onebeamperpatch: Optional[bool] = None,
-    parallelbaselines: Optional[bool] = None,
-    sagecalpredict: Optional[bool] = None,
-    sourcedb: Optional[str] = None,
-    directions: Optional[list[str]] = None,
-    predict_regions: Optional[str] = None,
-    predict_images: Optional[list[str]] = None,
-) -> list[str]:
+def build_ddecal_solve_command(options: DdecalSolveOptions) -> list[str]:
     """Build the DP3 DDECal solve command for one calibration chunk."""
     command = ["DP3", *DDECAL_SOLVE_ARGUMENTS]
-    if "null" in parse_steps(steps):
+    if "null" in parse_steps(options.steps):
         command.append("null.type=null")
     common_options = [
-        ("msin", msin),
-        ("msin.datacolumn", data_colname),
-        ("msin.starttime", starttime),
-        ("msin.ntimes", ntimes),
-        ("steps", steps),
-        ("applycal.steps", applycal_steps),
-        ("applycal.parmdb", applycal_h5parm),
-        ("applycal.fulljones.parmdb", fulljones_h5parm),
-        ("applycal.normalization.parmdb", normalize_h5parm),
-        ("avg.timebase", timebase),
-        ("avg.maxinterval", maxinterval),
-        ("avg.frequencybase", frequencybase),
-        ("avg.minchannels", minchannels),
-        ("solve1.modeldatacolumns", modeldatacolumn),
-        ("solve1.onebeamperpatch", onebeamperpatch),
-        ("solve1.parallelbaselines", parallelbaselines),
-        ("solve1.sagecalpredict", sagecalpredict),
-        ("predict.regions", predict_regions),
+        ("msin", options.msin),
+        ("msin.datacolumn", options.data_colname),
+        ("msin.starttime", options.starttime),
+        ("msin.ntimes", options.ntimes),
+        ("steps", options.steps),
+        ("applycal.steps", options.applycal_steps),
+        ("applycal.parmdb", options.applycal_h5parm),
+        ("applycal.fulljones.parmdb", options.fulljones_h5parm),
+        ("applycal.normalization.parmdb", options.normalize_h5parm),
+        ("avg.timebase", options.timebase),
+        ("avg.maxinterval", options.maxinterval),
+        ("avg.frequencybase", options.frequencybase),
+        ("avg.minchannels", options.minchannels),
+        ("solve1.modeldatacolumns", options.modeldatacolumn),
+        ("solve1.onebeamperpatch", options.onebeamperpatch),
+        ("solve1.parallelbaselines", options.parallelbaselines),
+        ("solve1.sagecalpredict", options.sagecalpredict),
+        ("predict.regions", options.predict_regions),
         (
             "predict.images",
-            None if predict_images is None else bracketed_list_token(predict_images),
+            None
+            if options.predict_images is None
+            else bracketed_list_token(options.predict_images),
         ),
-        ("solve1.sourcedb", sourcedb),
-        ("solve1.directions", directions),
+        ("solve1.sourcedb", options.sourcedb),
+        ("solve1.directions", options.directions),
     ]
     for prefix, value in common_options:
         append_key_value(command, prefix, value)
 
-    for slot in solve_slots:
+    for slot in options.solve_slots:
         slot_index = int(slot["slot"])
         for key, suffix in SOLVE_SLOT_ARGUMENTS:
             append_key_value(command, f"solve{slot_index}.{suffix}", slot.get(key))
 
-    append_key_value(command, "numthreads", numthreads)
+    append_key_value(command, "numthreads", options.num_threads)
     return command
 
 

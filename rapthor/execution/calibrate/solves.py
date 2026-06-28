@@ -3,6 +3,7 @@
 from typing import Mapping, Optional
 
 from rapthor.execution.calibrate.commands import (
+    DdecalSolveOptions,
     build_ddecal_solve_command,
     build_idgcal_solve_phase_and_gain_command,
     build_idgcal_solve_phase_command,
@@ -85,23 +86,18 @@ def _solve_slots_for_chunk(
     return solve_slots
 
 
-def run_calibrate_chunk(
+def _ddecal_options_for_chunk(
     payload: CalibratePayload,
     chunk: CalibrateChunkPayload,
-    execution_config: Optional[ExecutionConfig] = None,
-    shell_operation_cls=None,
-) -> dict:
-    """Run one DDECal calibration chunk."""
-    config = execution_config or ExecutionConfig(task_runner="sync")
-    pipeline_working_dir = str(payload["pipeline_working_dir"])
-    command = build_ddecal_solve_command(
+) -> DdecalSolveOptions:
+    return DdecalSolveOptions(
         msin=str(chunk["msin"]),
         data_colname=str(payload["data_colname"]),
         starttime=str(chunk["starttime"]),
         ntimes=int(chunk["ntimes"]),
         steps=str(payload["dp3_steps"]),
         solve_slots=_solve_slots_for_chunk(payload, chunk),
-        numthreads=int(payload["max_threads"]),
+        num_threads=int(payload["max_threads"]),
         modeldatacolumn=None
         if payload.get("modeldatacolumn") is None
         else str(payload["modeldatacolumn"]),
@@ -121,6 +117,18 @@ def run_calibrate_chunk(
         predict_regions=payload.get("predict_regions"),
         predict_images=payload.get("predict_images"),
     )
+
+
+def run_calibrate_chunk(
+    payload: CalibratePayload,
+    chunk: CalibrateChunkPayload,
+    execution_config: Optional[ExecutionConfig] = None,
+    shell_operation_cls=None,
+) -> dict:
+    """Run one DDECal calibration chunk."""
+    config = execution_config or ExecutionConfig(task_runner="sync")
+    pipeline_working_dir = str(payload["pipeline_working_dir"])
+    command = build_ddecal_solve_command(_ddecal_options_for_chunk(payload, chunk))
     run_external_command(
         command,
         pipeline_working_dir,

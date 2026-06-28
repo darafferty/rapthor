@@ -663,9 +663,13 @@ Execution and operation cleanup queue, in recommended order:
      `PrepareImagingDataOptions` dataclass for the DP3 imaging preparation
      command and migrated the production preparation path plus command tests to
      use it.
-   - Remaining: apply the same pattern selectively to calibration command
-     builders where it reduces argument noise without hiding the scientific
-     command differences.
+   - Completed 2026-06-28: introduced a frozen `DdecalSolveOptions` dataclass
+     for the DP3 DDECal chunk command, migrated `run_calibrate_chunk()` to build
+     those options at the payload boundary, and kept the golden command tests
+     focused on DI/DD strategy differences.
+   - Remaining: apply the same pattern selectively to smaller calibration
+     builders such as IDGCal and draw-model only where it reduces argument noise
+     without hiding the scientific command differences.
 11. Revisit large operation adapters after the low-risk cleanup.
    - `Image.set_input_parameters()`, `Image.finalize()`, and
      `Calibrate.set_input_parameters()` remain the largest operation-side
