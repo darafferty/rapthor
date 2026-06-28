@@ -635,7 +635,7 @@ Execution and operation cleanup queue, in recommended order:
      `rapthor.execution.calibrate.prediction`.
    - Moved DDECal and IDGCal chunk execution into
      `rapthor.execution.calibrate.solves`.
-  - Moved h5parm collection, plotting, slow-gain processing, source adjustment,
+   - Moved h5parm collection, plotting, slow-gain processing, source adjustment,
      and final combination into `rapthor.execution.calibrate.collection`.
    - Kept `rapthor.execution.calibrate.flow` as the thin Prefect adapter for
      task wiring and result aggregation.
@@ -656,6 +656,12 @@ Execution and operation cleanup queue, in recommended order:
      because those splits will reveal the stable data groups. Do it before the
      script-to-module migration so new Python module APIs do not inherit the
      current long-argument style.
+   - Completed 2026-06-28: introduced frozen stdlib dataclasses for common,
+     facet, and screen WSClean options, then migrated the image WSClean
+     execution path and command tests away from very long builder signatures.
+   - Remaining: apply the same pattern selectively to prepare-data and
+     calibration command builders where it reduces argument noise without hiding
+     the scientific command differences.
 11. Revisit large operation adapters after the low-risk cleanup.
    - `Image.set_input_parameters()`, `Image.finalize()`, and
      `Calibrate.set_input_parameters()` remain the largest operation-side

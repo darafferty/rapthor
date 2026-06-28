@@ -1,5 +1,6 @@
 """Command builders for the Image execution flow."""
 
+from dataclasses import dataclass, replace
 from typing import Optional
 
 from rapthor.execution.commands import (
@@ -12,6 +13,69 @@ from rapthor.execution.commands import (
 )
 
 ATERM_CONFIG_FILENAME = "aterm_plus_beam.cfg"
+
+
+@dataclass(frozen=True)
+class WscleanOptions:
+    """Common WSClean options shared by image modes."""
+
+    msin: str
+    name: str
+    mask: str
+    imsize: list[int]
+    niter: int
+    nmiter: int
+    robust: float
+    min_uv_lambda: float
+    max_uv_lambda: float
+    mgain: float
+    multiscale: bool
+    save_source_list: bool
+    pol: str
+    link_polarizations: Optional[str]
+    join_polarizations: bool
+    skip_final_iteration: bool
+    cellsize_deg: float
+    channels_out: int
+    deconvolution_channels: int
+    fit_spectral_pol: int
+    taper_arcsec: float
+    local_rms_strength: float
+    local_rms_window: float
+    local_rms_method: str
+    memory_gb: float
+    auto_mask: float
+    auto_mask_nmiter: int
+    idg_mode: str
+    num_threads: int
+    num_deconvolution_threads: int
+    dd_psf_grid: list[int]
+    apply_time_frequency_smearing: bool
+    temp_dir: str
+
+
+@dataclass(frozen=True)
+class WscleanFacetOptions:
+    """Facet-specific WSClean options."""
+
+    common: WscleanOptions
+    scalar_visibilities: bool
+    diagonal_visibilities: bool
+    h5parm: str
+    soltabs: str
+    region_file: str
+    num_gridding_threads: Optional[int]
+    shared_facet_reads: bool
+    shared_facet_writes: bool
+
+
+@dataclass(frozen=True)
+class WscleanScreenOptions:
+    """Screen-specific WSClean options."""
+
+    common: WscleanOptions
+    interval: list[int]
+    aterm_config: str = ATERM_CONFIG_FILENAME
 
 
 def _strip_wrapping_shell_quotes(value: str) -> str:
@@ -233,95 +297,36 @@ def _wsclean_command_base() -> list[str]:
     return ["wsclean", "-no-update-model-required", "-local-rms", "-join-channels"]
 
 
-def _wsclean_common_options(
-    name: str,
-    mask: str,
-    wsclean_imsize: list[int],
-    wsclean_niter: int,
-    wsclean_nmiter: int,
-    min_uv_lambda: float,
-    max_uv_lambda: float,
-    mgain: float,
-    pol: str,
-    cellsize_deg: float,
-    channels_out: int,
-    deconvolution_channels: int,
-    fit_spectral_pol: int,
-    taper_arcsec: float,
-    local_rms_strength: float,
-    local_rms_window: float,
-    local_rms_method: str,
-    wsclean_mem: float,
-    auto_mask: float,
-    auto_mask_nmiter: int,
-    idg_mode: str,
-    num_threads: int,
-    num_deconvolution_threads: int,
-    dd_psf_grid: list[int],
-) -> list[tuple[str, object]]:
+def _wsclean_common_options(options: WscleanOptions) -> list[tuple[str, object]]:
     return [
-        ("-name", name),
-        ("-fits-mask", mask),
-        ("-size", wsclean_imsize),
-        ("-niter", wsclean_niter),
-        ("-nmiter", wsclean_nmiter),
-        ("-minuv-l", min_uv_lambda),
-        ("-maxuv-l", max_uv_lambda),
-        ("-mgain", mgain),
-        ("-pol", pol),
-        ("-scale", cellsize_deg),
-        ("-channels-out", channels_out),
-        ("-deconvolution-channels", deconvolution_channels),
-        ("-fit-spectral-pol", fit_spectral_pol),
-        ("-taper-gaussian", taper_arcsec),
-        ("-local-rms-strength", local_rms_strength),
-        ("-local-rms-window", local_rms_window),
-        ("-local-rms-method", local_rms_method),
-        ("-abs-mem", wsclean_mem),
-        ("-auto-mask", auto_mask),
-        ("-auto-mask-nmiter", auto_mask_nmiter),
-        ("-idg-mode", idg_mode),
-        ("-j", num_threads),
-        ("-deconvolution-threads", num_deconvolution_threads),
-        ("-dd-psf-grid", dd_psf_grid),
+        ("-name", options.name),
+        ("-fits-mask", options.mask),
+        ("-size", options.imsize),
+        ("-niter", options.niter),
+        ("-nmiter", options.nmiter),
+        ("-minuv-l", options.min_uv_lambda),
+        ("-maxuv-l", options.max_uv_lambda),
+        ("-mgain", options.mgain),
+        ("-pol", options.pol),
+        ("-scale", options.cellsize_deg),
+        ("-channels-out", options.channels_out),
+        ("-deconvolution-channels", options.deconvolution_channels),
+        ("-fit-spectral-pol", options.fit_spectral_pol),
+        ("-taper-gaussian", options.taper_arcsec),
+        ("-local-rms-strength", options.local_rms_strength),
+        ("-local-rms-window", options.local_rms_window),
+        ("-local-rms-method", options.local_rms_method),
+        ("-abs-mem", options.memory_gb),
+        ("-auto-mask", options.auto_mask),
+        ("-auto-mask-nmiter", options.auto_mask_nmiter),
+        ("-idg-mode", options.idg_mode),
+        ("-j", options.num_threads),
+        ("-deconvolution-threads", options.num_deconvolution_threads),
+        ("-dd-psf-grid", options.dd_psf_grid),
     ]
 
 
-def build_wsclean_no_dde_command(
-    msin: str,
-    name: str,
-    mask: str,
-    wsclean_imsize: list[int],
-    wsclean_niter: int,
-    wsclean_nmiter: int,
-    robust: float,
-    min_uv_lambda: float,
-    max_uv_lambda: float,
-    mgain: float,
-    multiscale: bool,
-    save_source_list: bool,
-    pol: str,
-    link_polarizations: object,
-    join_polarizations: bool,
-    skip_final_iteration: bool,
-    cellsize_deg: float,
-    channels_out: int,
-    deconvolution_channels: int,
-    fit_spectral_pol: int,
-    taper_arcsec: float,
-    local_rms_strength: float,
-    local_rms_window: float,
-    local_rms_method: str,
-    wsclean_mem: float,
-    auto_mask: float,
-    auto_mask_nmiter: int,
-    idg_mode: str,
-    num_threads: int,
-    num_deconvolution_threads: int,
-    dd_psf_grid: list[int],
-    apply_time_frequency_smearing: bool,
-    temp_dir: str,
-) -> list[str]:
+def build_wsclean_no_dde_command(options: WscleanOptions) -> list[str]:
     """Build the serial no-DDE WSClean command for one imaging sector."""
     command = _wsclean_command_base() + [
         "-apply-primary-beam",
@@ -329,7 +334,7 @@ def build_wsclean_no_dde_command(
         "-gridder",
         "wgridder",
         "-temp-dir",
-        temp_dir,
+        options.temp_dir,
         "-parallel-deconvolution",
         "2048",
         "-multiscale-scale-bias",
@@ -340,90 +345,23 @@ def build_wsclean_no_dde_command(
         "1.3",
         "-weight",
         "briggs",
-        str(robust),
+        str(options.robust),
     ]
-    options = _wsclean_common_options(
-        name,
-        mask,
-        wsclean_imsize,
-        wsclean_niter,
-        wsclean_nmiter,
-        min_uv_lambda,
-        max_uv_lambda,
-        mgain,
-        pol,
-        cellsize_deg,
-        channels_out,
-        deconvolution_channels,
-        fit_spectral_pol,
-        taper_arcsec,
-        local_rms_strength,
-        local_rms_window,
-        local_rms_method,
-        wsclean_mem,
-        auto_mask,
-        auto_mask_nmiter,
-        idg_mode,
-        num_threads,
-        num_deconvolution_threads,
-        dd_psf_grid,
-    )
-    append_option_values(command, options)
-    append_flag(command, "-multiscale", multiscale)
-    append_flag(command, "-save-source-list", save_source_list)
-    if link_polarizations:
-        append_option_value(command, "-link-polarizations", link_polarizations)
-    append_flag(command, "-join-polarizations", join_polarizations)
-    append_flag(command, "-skip-final-iteration", skip_final_iteration)
-    append_flag(command, "-apply-time-frequency-smearing", apply_time_frequency_smearing)
-    command.append(msin)
+    append_option_values(command, _wsclean_common_options(options))
+    append_flag(command, "-multiscale", options.multiscale)
+    append_flag(command, "-save-source-list", options.save_source_list)
+    if options.link_polarizations:
+        append_option_value(command, "-link-polarizations", options.link_polarizations)
+    append_flag(command, "-join-polarizations", options.join_polarizations)
+    append_flag(command, "-skip-final-iteration", options.skip_final_iteration)
+    append_flag(command, "-apply-time-frequency-smearing", options.apply_time_frequency_smearing)
+    command.append(options.msin)
     return command
 
 
-def build_wsclean_facets_command(
-    msin: str,
-    name: str,
-    mask: str,
-    wsclean_imsize: list[int],
-    wsclean_niter: int,
-    wsclean_nmiter: int,
-    robust: float,
-    min_uv_lambda: float,
-    max_uv_lambda: float,
-    mgain: float,
-    multiscale: bool,
-    scalar_visibilities: bool,
-    diagonal_visibilities: bool,
-    save_source_list: bool,
-    pol: str,
-    link_polarizations: object,
-    join_polarizations: bool,
-    skip_final_iteration: bool,
-    cellsize_deg: float,
-    channels_out: int,
-    deconvolution_channels: int,
-    fit_spectral_pol: int,
-    taper_arcsec: float,
-    local_rms_strength: float,
-    local_rms_window: float,
-    local_rms_method: str,
-    wsclean_mem: float,
-    auto_mask: float,
-    auto_mask_nmiter: int,
-    idg_mode: str,
-    num_threads: int,
-    num_deconvolution_threads: int,
-    dd_psf_grid: list[int],
-    h5parm: str,
-    soltabs: str,
-    region_file: str,
-    num_gridding_threads: int,
-    apply_time_frequency_smearing: bool,
-    shared_facet_reads: bool,
-    shared_facet_writes: bool,
-    temp_dir: str,
-) -> list[str]:
+def build_wsclean_facets_command(options: WscleanFacetOptions) -> list[str]:
     """Build the serial facet-corrected WSClean command for one imaging sector."""
+    common = options.common
     command = _wsclean_command_base() + [
         "-apply-facet-beam",
         "-log-time",
@@ -432,7 +370,7 @@ def build_wsclean_facets_command(
         "-major-iteration-mode",
         "single",
         "-temp-dir",
-        temp_dir,
+        common.temp_dir,
         "-parallel-deconvolution",
         "2048",
         "-multiscale-scale-bias",
@@ -445,95 +383,35 @@ def build_wsclean_facets_command(
         "120",
         "-weight",
         "briggs",
-        str(robust),
+        str(common.robust),
         "-apply-facet-solutions",
-        h5parm,
-        soltabs,
+        options.h5parm,
+        options.soltabs,
     ]
-    options = [
-        *_wsclean_common_options(
-            name,
-            mask,
-            wsclean_imsize,
-            wsclean_niter,
-            wsclean_nmiter,
-            min_uv_lambda,
-            max_uv_lambda,
-            mgain,
-            pol,
-            cellsize_deg,
-            channels_out,
-            deconvolution_channels,
-            fit_spectral_pol,
-            taper_arcsec,
-            local_rms_strength,
-            local_rms_window,
-            local_rms_method,
-            wsclean_mem,
-            auto_mask,
-            auto_mask_nmiter,
-            idg_mode,
-            num_threads,
-            num_deconvolution_threads,
-            dd_psf_grid,
-        ),
-        ("-parallel-gridding", num_gridding_threads),
-        ("-facet-regions", region_file),
+    option_values = [
+        *_wsclean_common_options(common),
+        ("-parallel-gridding", options.num_gridding_threads),
+        ("-facet-regions", options.region_file),
     ]
-    append_option_values(command, options)
-    append_flag(command, "-multiscale", multiscale)
-    append_flag(command, "-scalar-visibilities", scalar_visibilities)
-    append_flag(command, "-diagonal-visibilities", diagonal_visibilities)
-    append_flag(command, "-save-source-list", save_source_list)
-    if link_polarizations:
-        append_option_value(command, "-link-polarizations", link_polarizations)
-    append_flag(command, "-join-polarizations", join_polarizations)
-    append_flag(command, "-skip-final-iteration", skip_final_iteration)
-    append_flag(command, "-apply-time-frequency-smearing", apply_time_frequency_smearing)
-    append_flag(command, "-shared-facet-reads", shared_facet_reads)
-    append_flag(command, "-shared-facet-writes", shared_facet_writes)
-    command.append(msin)
+    append_option_values(command, option_values)
+    append_flag(command, "-multiscale", common.multiscale)
+    append_flag(command, "-scalar-visibilities", options.scalar_visibilities)
+    append_flag(command, "-diagonal-visibilities", options.diagonal_visibilities)
+    append_flag(command, "-save-source-list", common.save_source_list)
+    if common.link_polarizations:
+        append_option_value(command, "-link-polarizations", common.link_polarizations)
+    append_flag(command, "-join-polarizations", common.join_polarizations)
+    append_flag(command, "-skip-final-iteration", common.skip_final_iteration)
+    append_flag(command, "-apply-time-frequency-smearing", common.apply_time_frequency_smearing)
+    append_flag(command, "-shared-facet-reads", options.shared_facet_reads)
+    append_flag(command, "-shared-facet-writes", options.shared_facet_writes)
+    command.append(common.msin)
     return command
 
 
-def build_wsclean_screens_command(
-    msin: str,
-    name: str,
-    mask: str,
-    wsclean_imsize: list[int],
-    wsclean_niter: int,
-    wsclean_nmiter: int,
-    robust: float,
-    min_uv_lambda: float,
-    max_uv_lambda: float,
-    mgain: float,
-    multiscale: bool,
-    save_source_list: bool,
-    pol: str,
-    link_polarizations: object,
-    join_polarizations: bool,
-    skip_final_iteration: bool,
-    cellsize_deg: float,
-    channels_out: int,
-    deconvolution_channels: int,
-    fit_spectral_pol: int,
-    taper_arcsec: float,
-    local_rms_strength: float,
-    local_rms_window: float,
-    local_rms_method: str,
-    wsclean_mem: float,
-    auto_mask: float,
-    auto_mask_nmiter: int,
-    idg_mode: str,
-    num_threads: int,
-    num_deconvolution_threads: int,
-    dd_psf_grid: list[int],
-    interval: list[int],
-    apply_time_frequency_smearing: bool,
-    temp_dir: str,
-    aterm_config: str = ATERM_CONFIG_FILENAME,
-) -> list[str]:
+def build_wsclean_screens_command(options: WscleanScreenOptions) -> list[str]:
     """Build the serial screen-corrected WSClean command for one imaging sector."""
+    common = options.common
     command = _wsclean_command_base() + [
         "-gridder",
         "idg",
@@ -541,7 +419,7 @@ def build_wsclean_screens_command(
         "single",
         "-log-time",
         "-temp-dir",
-        temp_dir,
+        common.temp_dir,
         "-multiscale-scale-bias",
         "0.8",
         "-parallel-deconvolution",
@@ -553,49 +431,24 @@ def build_wsclean_screens_command(
         "-aterm-kernel-size",
         "32",
         "-aterm-config",
-        aterm_config,
+        options.aterm_config,
         "-weight",
         "briggs",
-        str(robust),
+        str(common.robust),
     ]
-    options = [
-        *_wsclean_common_options(
-            name,
-            mask,
-            wsclean_imsize,
-            wsclean_niter,
-            wsclean_nmiter,
-            min_uv_lambda,
-            max_uv_lambda,
-            mgain,
-            pol,
-            cellsize_deg,
-            channels_out,
-            deconvolution_channels,
-            fit_spectral_pol,
-            taper_arcsec,
-            local_rms_strength,
-            local_rms_window,
-            local_rms_method,
-            wsclean_mem,
-            auto_mask,
-            auto_mask_nmiter,
-            idg_mode,
-            num_threads,
-            num_deconvolution_threads,
-            dd_psf_grid,
-        ),
-        ("-interval", interval),
+    option_values = [
+        *_wsclean_common_options(common),
+        ("-interval", options.interval),
     ]
-    append_option_values(command, options)
-    append_flag(command, "-multiscale", multiscale)
-    append_flag(command, "-save-source-list", save_source_list)
-    if link_polarizations:
-        append_option_value(command, "-link-polarizations", link_polarizations)
-    append_flag(command, "-join-polarizations", join_polarizations)
-    append_flag(command, "-skip-final-iteration", skip_final_iteration)
-    append_flag(command, "-apply-time-frequency-smearing", apply_time_frequency_smearing)
-    command.append(msin)
+    append_option_values(command, option_values)
+    append_flag(command, "-multiscale", common.multiscale)
+    append_flag(command, "-save-source-list", common.save_source_list)
+    if common.link_polarizations:
+        append_option_value(command, "-link-polarizations", common.link_polarizations)
+    append_flag(command, "-join-polarizations", common.join_polarizations)
+    append_flag(command, "-skip-final-iteration", common.skip_final_iteration)
+    append_flag(command, "-apply-time-frequency-smearing", common.apply_time_frequency_smearing)
+    command.append(common.msin)
     return command
 
 
@@ -623,21 +476,28 @@ def _mpi_wsclean_command(wsclean_command: list[str], mpi_nnodes: int) -> list[st
     return build_mpi_wsclean_launch_command(mpi_nnodes) + wsclean_command[1:]
 
 
-def build_wsclean_mpi_no_dde_command(mpi_nnodes: int, **kwargs) -> list[str]:
+def build_wsclean_mpi_no_dde_command(mpi_nnodes: int, options: WscleanOptions) -> list[str]:
     """Build the MPI no-DDE WSClean command for one imaging sector."""
-    return _mpi_wsclean_command(build_wsclean_no_dde_command(**kwargs), mpi_nnodes)
+    return _mpi_wsclean_command(build_wsclean_no_dde_command(options), mpi_nnodes)
 
 
-def build_wsclean_mpi_facets_command(mpi_nnodes: int, **kwargs) -> list[str]:
+def build_wsclean_mpi_facets_command(
+    mpi_nnodes: int,
+    options: WscleanFacetOptions,
+) -> list[str]:
     """Build the MPI facet-corrected WSClean command for one imaging sector."""
-    kwargs = dict(kwargs)
-    kwargs["num_gridding_threads"] = None
-    return _mpi_wsclean_command(build_wsclean_facets_command(**kwargs), mpi_nnodes)
+    return _mpi_wsclean_command(
+        build_wsclean_facets_command(replace(options, num_gridding_threads=None)),
+        mpi_nnodes,
+    )
 
 
-def build_wsclean_mpi_screens_command(mpi_nnodes: int, **kwargs) -> list[str]:
+def build_wsclean_mpi_screens_command(
+    mpi_nnodes: int,
+    options: WscleanScreenOptions,
+) -> list[str]:
     """Build the MPI screen-corrected WSClean command for one imaging sector."""
-    return _mpi_wsclean_command(build_wsclean_screens_command(**kwargs), mpi_nnodes)
+    return _mpi_wsclean_command(build_wsclean_screens_command(options), mpi_nnodes)
 
 
 def build_check_image_beam_command(input_image: str, beam_size_arcsec: float) -> list[str]:
