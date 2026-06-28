@@ -4,7 +4,7 @@ import pytest
 
 from rapthor.lib.records import file_record
 from rapthor.lib.strategy import set_selfcal_strategy
-from rapthor.operations.image import Image
+from rapthor.operations.image.base import Image
 from rapthor.operations.mosaic import Mosaic
 
 """
@@ -72,7 +72,7 @@ def test_image_I_to_mosaic(field_I_no_predict, expected_image_output, monkeypatc
         Path(image.pipeline_working_dir), expected_image_output
     )
     monkeypatch.setattr(
-        "rapthor.operations.image.image_flow", lambda *args, **kwargs: image_outputs
+        "rapthor.operations.image.base.image_flow", lambda *args, **kwargs: image_outputs
     )
     image.run()
     # Now create and run the Mosaic operation (after sector image attributes are set)

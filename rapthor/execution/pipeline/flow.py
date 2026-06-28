@@ -56,7 +56,9 @@ def default_pipeline_operation_factories() -> PipelineOperationFactories:
     """Return the production operation constructors."""
     from rapthor.operations.calibrate import Calibrate
     from rapthor.operations.concatenate import Concatenate
-    from rapthor.operations.image import Image, ImageInitial, ImageNormalize
+    from rapthor.operations.image.base import Image
+    from rapthor.operations.image.initial import ImageInitial
+    from rapthor.operations.image.normalize import ImageNormalize
     from rapthor.operations.mosaic import Mosaic
     from rapthor.operations.predict import Predict
 

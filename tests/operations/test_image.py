@@ -1,5 +1,5 @@
 """
-Test cases for the `rapthor.operations.image` module.
+Test cases for the image operation modules.
 """
 
 import json
@@ -10,13 +10,11 @@ import pytest
 
 from rapthor.lib.records import file_record
 from rapthor.lib.strategy import set_selfcal_strategy
-from rapthor.operations.image import (
-    Image,
-    ImageInitial,
-    ImageNormalize,
-    report_sector_diagnostics,
-)
-from rapthor.operations.image_plan import (
+from rapthor.operations.image.base import Image
+from rapthor.operations.image.diagnostics import report_sector_diagnostics
+from rapthor.operations.image.initial import ImageInitial
+from rapthor.operations.image.normalize import ImageNormalize
+from rapthor.operations.image.plan import (
     build_image_applycal_steps,
     build_image_facet_solution_controls,
     build_image_mpi_resource_controls,
@@ -100,7 +98,7 @@ def _mock_image_flow(monkeypatch, expected_outputs):
             ]
         return outputs
 
-    monkeypatch.setattr("rapthor.operations.image.image_flow", fake_image_flow)
+    monkeypatch.setattr("rapthor.operations.image.base.image_flow", fake_image_flow)
 
 
 def _prepare_field_for_image(field, h5parm_filename="nonexisting_h5parm_file.h5"):

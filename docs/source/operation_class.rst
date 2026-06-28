@@ -40,12 +40,12 @@ The PredictDI class
 
 The Image class
 ^^^^^^^^^^^^^^^
-.. autoclass:: rapthor.operations.image.Image
+.. autoclass:: rapthor.operations.image.base.Image
    :members:
 
 The ImageInitial class
 ^^^^^^^^^^^^^^^^^^^^^^
-.. autoclass:: rapthor.operations.image.ImageInitial
+.. autoclass:: rapthor.operations.image.initial.ImageInitial
    :members:
 
 The Mosaic class

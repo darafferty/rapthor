@@ -198,7 +198,7 @@ Completed:
     solve-slot remapping
   - added direct helper coverage for scalar phase and slow-gain slot inputs
 - Image applycal planning helper extraction:
-  - added `rapthor.operations.image_plan` for pure prepare-data applycal step
+  - added `rapthor.operations.image.plan` for pure prepare-data applycal step
     planning
   - moved calibration-strategy-to-applycal-step selection and scalar h5parm
     preference logic out of `Image._build_applycal_steps()`
@@ -208,14 +208,14 @@ Completed:
     selection without pre-application
 - Image prepare-data step helper extraction:
   - moved prepare-data DP3 step ordering for applycal, averaging, BDA, and
-    screen compatibility into `rapthor.operations.image_plan`
+    screen compatibility into `rapthor.operations.image.plan`
   - kept `Image` responsible for deciding whether applycal steps exist,
     checking channel regularity, and formatting the final payload string
   - added direct helper coverage for averaging+BDA, pre-application, irregular
     channels, and screen mode
 - Image WSClean control helper extraction:
   - moved polarization-link/join selection and clean-iteration disabling into
-    `rapthor.operations.image_plan`
+    `rapthor.operations.image.plan`
   - kept `Image` responsible for reading sector iteration counts and field
     flags before adding values to the payload
   - moved `is_only_pol_I` into the Image planning helper module so Stokes-I
@@ -224,21 +224,21 @@ Completed:
     polarization, and disabled cleaning
 - Image facet solution-control helper extraction:
   - moved facet `soltabs`, scalar-visibility, and diagonal-visibility selection
-    into `rapthor.operations.image_plan`
+    into `rapthor.operations.image.plan`
   - kept `Image` responsible for gathering facet geometry, parallel gridding
     settings, and field solution flags before adding values to the payload
   - added direct helper coverage for phase-only scalar, diagonal amplitudes,
     scalarized amplitudes, and full-Stokes facet imaging
 - Image screen-interval helper extraction:
   - moved the screen-mode imaging interval calculation into
-    `rapthor.operations.image_plan`
+    `rapthor.operations.image.plan`
   - kept `Image` responsible for reading the first observation and adding the
     computed interval to the flow payload
   - added direct helper coverage for exact, rounded-up, and minimum-one-sample
     interval cases, plus an adapter assertion that `Image` uses the helper rule
 - Image MPI resource-control helper extraction:
   - moved per-sector MPI node and CPU payload selection into
-    `rapthor.operations.image_plan`
+    `rapthor.operations.image.plan`
   - kept `Image` responsible for reading sector count, batch system, and parset
     resource values before adding MPI controls to the flow payload
   - added direct helper coverage for static Slurm, launcher-reserved Slurm, and
@@ -252,7 +252,7 @@ Completed:
   - added direct helper coverage beside the operation-wrapper assertions
 - Operation adapter thinning checkpoint:
   - moved the decision-heavy Image and Calibrate planning clusters into
-    `rapthor.operations.image_plan` and `rapthor.operations.calibrate_plan`
+    `rapthor.operations.image.plan` and `rapthor.operations.calibrate_plan`
   - left operation classes responsible for lifecycle setup, reading live `Field`
     state, converting file records, invoking Prefect flows, and finalizer side
     effects
@@ -436,12 +436,12 @@ Completed:
   - `python3 -c "from rapthor.operations.calibrate_plan import build_calibration_dp3_steps; assert build_calibration_dp3_steps(0, 0, all_channels_regular=True, use_image_based_predict=True, do_slowgain_solve=False, solve_steps=['solve1'], preapply_solutions=True) == ['predict', 'applybeam', 'applycal', 'solve1']"`
   - `python3 -c "from rapthor.operations.calibrate_plan import build_calibration_preapply_steps; assert build_calibration_preapply_steps('dd', has_di_h5parm=True, has_fulljones_h5parm=True, apply_amplitudes=True, apply_normalizations=True) == ['fastphase', 'slowgain', 'fulljones', 'normalization']"`
   - `python3 -c "from rapthor.operations.calibrate_plan import build_calibration_solve_slot_inputs; assert build_calibration_solve_slot_inputs(1, 'slow', ntimechunks=2, datause='dual', solutions_per_direction=[[1], [1]], smoothness_dd_factors=[[3.0], [4.0]], smoothnessconstraint=12.0, include_smoothnessreffrequency=True)['solve1_smoothnessconstraint'] == 4.0"`
-  - `python3 -c "from rapthor.operations.image_plan import build_image_applycal_steps; steps, selected = build_image_applycal_steps({'di': ['fast_phase'], 'dd': ['fast_phase', 'slow_gains']}, dd_h5parm='dd.h5', di_h5parm='di.h5', has_fulljones_h5parm=False, use_facets=False, apply_amplitudes=True, apply_normalizations=False, apply_none=False); assert steps == ['fastphase', 'slowgain']; assert selected == 'dd.h5'"`
-  - `python3 -c "from rapthor.operations.image_plan import build_image_prepare_data_steps; assert build_image_prepare_data_steps(preapply_solutions=True, average_visibilities=True, image_bda_timebase=10.0, all_channels_regular=True, apply_screens=True) == ['applybeam', 'shift', 'applycal', 'avg']"`
-  - `python3 -c "from rapthor.operations.image_plan import build_image_wsclean_control_inputs; assert build_image_wsclean_control_inputs('IQUV', 'link', [100, 200], disable_clean=False) == ('I', False, [100, 200])"`
-  - `python3 -c "from rapthor.operations.image_plan import build_image_facet_solution_controls; assert build_image_facet_solution_controls('I', apply_amplitudes=True, apply_diagonal_solutions=True) == {'soltabs': 'amplitude000,phase000', 'diagonal_visibilities': True, 'scalar_visibilities': False}"`
-  - `python3 -c "from rapthor.operations.image_plan import build_image_screen_interval; assert build_image_screen_interval(slow_timestep_sec=10.0, timepersample=2.0, numsamples=20) == [0, 15]"`
-  - `python3 -c "from rapthor.operations.image_plan import build_image_mpi_resource_controls; assert build_image_mpi_resource_controls(nsectors=2, max_nodes=8, cpus_per_task=12, batch_system='slurm') == {'mpi_nnodes': [3, 3], 'mpi_cpus_per_task': [12, 12]}"`
+  - `python3 -c "from rapthor.operations.image.plan import build_image_applycal_steps; steps, selected = build_image_applycal_steps({'di': ['fast_phase'], 'dd': ['fast_phase', 'slow_gains']}, dd_h5parm='dd.h5', di_h5parm='di.h5', has_fulljones_h5parm=False, use_facets=False, apply_amplitudes=True, apply_normalizations=False, apply_none=False); assert steps == ['fastphase', 'slowgain']; assert selected == 'dd.h5'"`
+  - `python3 -c "from rapthor.operations.image.plan import build_image_prepare_data_steps; assert build_image_prepare_data_steps(preapply_solutions=True, average_visibilities=True, image_bda_timebase=10.0, all_channels_regular=True, apply_screens=True) == ['applybeam', 'shift', 'applycal', 'avg']"`
+  - `python3 -c "from rapthor.operations.image.plan import build_image_wsclean_control_inputs; assert build_image_wsclean_control_inputs('IQUV', 'link', [100, 200], disable_clean=False) == ('I', False, [100, 200])"`
+  - `python3 -c "from rapthor.operations.image.plan import build_image_facet_solution_controls; assert build_image_facet_solution_controls('I', apply_amplitudes=True, apply_diagonal_solutions=True) == {'soltabs': 'amplitude000,phase000', 'diagonal_visibilities': True, 'scalar_visibilities': False}"`
+  - `python3 -c "from rapthor.operations.image.plan import build_image_screen_interval; assert build_image_screen_interval(slow_timestep_sec=10.0, timepersample=2.0, numsamples=20) == [0, 15]"`
+  - `python3 -c "from rapthor.operations.image.plan import build_image_mpi_resource_controls; assert build_image_mpi_resource_controls(nsectors=2, max_nodes=8, cpus_per_task=12, batch_system='slurm') == {'mpi_nnodes': [3, 3], 'mpi_cpus_per_task': [12, 12]}"`
   - `python3 -c "from rapthor.operations.calibrate_plan import build_calibration_core_baseline_selection; assert build_calibration_core_baseline_selection('HBA', ['CS003HBA0', 'RS106HBA0', 'DE601HBA']) == '[CR]*&&;!DE601HBA'"`
   - `python3 -c "from rapthor.execution.pipeline.lifecycle import do_final_pass, chunk_observations, make_report; assert do_final_pass and chunk_observations and make_report"`
   - `python3 -m py_compile bin/rapthor`
@@ -687,6 +687,9 @@ Execution and operation cleanup queue, in recommended order:
    - Completed 2026-06-28: extracted sector image-output registration from
      `Image.finalize()` into a named helper, keeping downstream mosaic
      preservation and sector attribute mutation explicit.
+   - Completed 2026-06-28: consolidated image operation code under the
+     `rapthor.operations.image` package, with `base`, `initial`, `normalize`,
+     `diagnostics`, and `plan` modules.
 
 Broader follow-on tasks after the cleanup queue:
 
@@ -718,8 +721,8 @@ Broader follow-on tasks after the cleanup queue:
 4. Large runner/module simplification pass.
    - Review the calibration work-unit modules,
      `rapthor.execution.image.sector`, `rapthor.execution.shell`,
-     `rapthor.operations.calibrate`, and `rapthor.operations.image` before
-     adding more abstractions.
+     `rapthor.operations.calibrate`, and the `rapthor.operations.image` package
+     before adding more abstractions.
    - Split only where there is a clearer scientific work unit, repeated command
      execution pattern, or testability/debugging benefit.
 5. Contributor documentation slice.

@@ -44,7 +44,9 @@ from rapthor.execution.image.flow import (
 from rapthor.execution.image.payloads import image_payload_from_inputs
 from rapthor.lib.field import Field as RapthorField
 from rapthor.lib.records import directory_record, file_record, validate_output_record
-from rapthor.operations.image import Image, ImageInitial, ImageNormalize
+from rapthor.operations.image.base import Image
+from rapthor.operations.image.initial import ImageInitial
+from rapthor.operations.image.normalize import ImageNormalize
 from tests.execution.conftest import run_flow_for_test
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"

@@ -110,6 +110,7 @@ packages = [
     "rapthor.execution.predict",
     "rapthor.lib",
     "rapthor.operations",
+    "rapthor.operations.image",
 ]
 script-files = [
     "bin/concat_linc_files",
