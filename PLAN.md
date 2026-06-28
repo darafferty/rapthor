@@ -168,7 +168,7 @@ Completed:
   - moved plotting tests to the collection owner module and kept flow tests for
     task submission/result aggregation
 - Calibrate solve-plan helper extraction:
-  - added `rapthor.operations.calibrate_plan` for pure strategy-to-solve-slot
+  - added `rapthor.operations.calibrate.plan` for pure strategy-to-solve-slot
     planning
   - moved `CalibrationSolve`, solve output naming, requested-solve defaults, and
     solve-plan expansion out of `rapthor.operations.calibrate`
@@ -177,13 +177,13 @@ Completed:
   - extended operation tests to exercise the pure solve-plan helper directly
 - Calibrate DP3-step helper extraction:
   - moved calibration DP3 step-chain decisions for BDA, pre-application, and
-    image-based predict into `rapthor.operations.calibrate_plan`
+    image-based predict into `rapthor.operations.calibrate.plan`
   - kept `Calibrate._build_dp3_steps()` as a thin wrapper over the pure helper
   - added direct helper coverage for BDA/slow-gain and image-based-predict step
     ordering
 - Calibrate pre-apply helper extraction:
   - moved DD calibration pre-apply step selection into
-    `rapthor.operations.calibrate_plan`
+    `rapthor.operations.calibrate.plan`
   - kept `Calibrate._build_applycal()` responsible for current-cycle file
     resolution and FileRecord conversion
   - added direct helper coverage for scalar, slow-gain, full-Jones, and
@@ -191,7 +191,7 @@ Completed:
 - Calibrate solve-slot input helper extraction:
   - moved per-slot data-use, solutions-per-direction, smoothness scaling,
     antenna constraint, and optional reference-value mapping into
-    `rapthor.operations.calibrate_plan`
+    `rapthor.operations.calibrate.plan`
   - kept `Calibrate` responsible for reading values from `Field`, resolving
     core-station constraints, and mutating operation inputs
   - reused the same helper for default DD slot inputs and explicit strategy
@@ -246,13 +246,13 @@ Completed:
     wiring
 - Calibrate station-selection helper extraction:
   - moved core-station, superterp-station, and DP3 core-baseline selection rules
-    into `rapthor.operations.calibrate_plan`
+    into `rapthor.operations.calibrate.plan`
   - kept `Calibrate` wrapper methods as thin adapters over the pure helpers so
     existing operation tests and callers still exercise the same behaviour
   - added direct helper coverage beside the operation-wrapper assertions
 - Operation adapter thinning checkpoint:
   - moved the decision-heavy Image and Calibrate planning clusters into
-    `rapthor.operations.image.plan` and `rapthor.operations.calibrate_plan`
+    `rapthor.operations.image.plan` and `rapthor.operations.calibrate.plan`
   - left operation classes responsible for lifecycle setup, reading live `Field`
     state, converting file records, invoking Prefect flows, and finalizer side
     effects
@@ -363,7 +363,7 @@ Completed:
   - deleted the unused `rapthor.execution.workdirs` module and its tests because
     no production code adopted it
   - moved command fixture tests to compare through `normalize_command()` directly
-    and moved calibration station tests to pure `calibrate_plan` helpers
+    and moved calibration station tests to pure calibration plan helpers
   - wired `check_dask_scheduler()` into external-Dask task-runner construction
     so the scheduler check is production validation rather than test-only code
 - Calibration solve-type runner cleanup:
@@ -432,17 +432,17 @@ Completed:
   - `python3 -c "import rapthor.execution as execution; import rapthor.execution.calibrate.commands as commands; assert commands.build_ddecal_solve_command; assert not hasattr(execution, 'build_ddecal_solve_command')"`
   - `python3 -c "from rapthor.execution.calibrate.payloads import CalibratePayload, calibrate_payload_from_inputs, validate_calibrate_payload; import rapthor.execution as execution; import rapthor.execution.payloads as shared_payloads; assert CalibratePayload; assert calibrate_payload_from_inputs; assert validate_calibrate_payload; assert not hasattr(shared_payloads, 'CalibratePayload'); assert not hasattr(execution, 'calibrate_payload_from_inputs')"`
   - `python3 -c "import rapthor.execution as execution; import rapthor.execution.calibrate.collection as collection; import rapthor.execution.calibrate.solves as solves; import rapthor.execution.calibrate.flow as flow; assert solves.run_calibrate_chunk; assert collection.collect_plot_and_combine; assert flow.calibrate_chunk_task; assert not hasattr(execution, 'run_calibrate_chunk')"`
-  - `python3 -c "from rapthor.operations.calibrate_plan import build_calibration_solve_plan, requested_calibration_solves; solves, defaulted = requested_calibration_solves('dd', None, True); plan = build_calibration_solve_plan('dd', solves, defaulted_strategy=defaulted); assert [solve.step for solve in plan] == ['solve1', 'solve2', 'solve3', 'solve4']; assert plan[-1].output_prefix == 'medium2_phase'"`
-  - `python3 -c "from rapthor.operations.calibrate_plan import build_calibration_dp3_steps; assert build_calibration_dp3_steps(0, 0, all_channels_regular=True, use_image_based_predict=True, do_slowgain_solve=False, solve_steps=['solve1'], preapply_solutions=True) == ['predict', 'applybeam', 'applycal', 'solve1']"`
-  - `python3 -c "from rapthor.operations.calibrate_plan import build_calibration_preapply_steps; assert build_calibration_preapply_steps('dd', has_di_h5parm=True, has_fulljones_h5parm=True, apply_amplitudes=True, apply_normalizations=True) == ['fastphase', 'slowgain', 'fulljones', 'normalization']"`
-  - `python3 -c "from rapthor.operations.calibrate_plan import build_calibration_solve_slot_inputs; assert build_calibration_solve_slot_inputs(1, 'slow', ntimechunks=2, datause='dual', solutions_per_direction=[[1], [1]], smoothness_dd_factors=[[3.0], [4.0]], smoothnessconstraint=12.0, include_smoothnessreffrequency=True)['solve1_smoothnessconstraint'] == 4.0"`
+  - `python3 -c "from rapthor.operations.calibrate.plan import build_calibration_solve_plan, requested_calibration_solves; solves, defaulted = requested_calibration_solves('dd', None, True); plan = build_calibration_solve_plan('dd', solves, defaulted_strategy=defaulted); assert [solve.step for solve in plan] == ['solve1', 'solve2', 'solve3', 'solve4']; assert plan[-1].output_prefix == 'medium2_phase'"`
+  - `python3 -c "from rapthor.operations.calibrate.plan import build_calibration_dp3_steps; assert build_calibration_dp3_steps(0, 0, all_channels_regular=True, use_image_based_predict=True, do_slowgain_solve=False, solve_steps=['solve1'], preapply_solutions=True) == ['predict', 'applybeam', 'applycal', 'solve1']"`
+  - `python3 -c "from rapthor.operations.calibrate.plan import build_calibration_preapply_steps; assert build_calibration_preapply_steps('dd', has_di_h5parm=True, has_fulljones_h5parm=True, apply_amplitudes=True, apply_normalizations=True) == ['fastphase', 'slowgain', 'fulljones', 'normalization']"`
+  - `python3 -c "from rapthor.operations.calibrate.plan import build_calibration_solve_slot_inputs; assert build_calibration_solve_slot_inputs(1, 'slow', ntimechunks=2, datause='dual', solutions_per_direction=[[1], [1]], smoothness_dd_factors=[[3.0], [4.0]], smoothnessconstraint=12.0, include_smoothnessreffrequency=True)['solve1_smoothnessconstraint'] == 4.0"`
   - `python3 -c "from rapthor.operations.image.plan import build_image_applycal_steps; steps, selected = build_image_applycal_steps({'di': ['fast_phase'], 'dd': ['fast_phase', 'slow_gains']}, dd_h5parm='dd.h5', di_h5parm='di.h5', has_fulljones_h5parm=False, use_facets=False, apply_amplitudes=True, apply_normalizations=False, apply_none=False); assert steps == ['fastphase', 'slowgain']; assert selected == 'dd.h5'"`
   - `python3 -c "from rapthor.operations.image.plan import build_image_prepare_data_steps; assert build_image_prepare_data_steps(preapply_solutions=True, average_visibilities=True, image_bda_timebase=10.0, all_channels_regular=True, apply_screens=True) == ['applybeam', 'shift', 'applycal', 'avg']"`
   - `python3 -c "from rapthor.operations.image.plan import build_image_wsclean_control_inputs; assert build_image_wsclean_control_inputs('IQUV', 'link', [100, 200], disable_clean=False) == ('I', False, [100, 200])"`
   - `python3 -c "from rapthor.operations.image.plan import build_image_facet_solution_controls; assert build_image_facet_solution_controls('I', apply_amplitudes=True, apply_diagonal_solutions=True) == {'soltabs': 'amplitude000,phase000', 'diagonal_visibilities': True, 'scalar_visibilities': False}"`
   - `python3 -c "from rapthor.operations.image.plan import build_image_screen_interval; assert build_image_screen_interval(slow_timestep_sec=10.0, timepersample=2.0, numsamples=20) == [0, 15]"`
   - `python3 -c "from rapthor.operations.image.plan import build_image_mpi_resource_controls; assert build_image_mpi_resource_controls(nsectors=2, max_nodes=8, cpus_per_task=12, batch_system='slurm') == {'mpi_nnodes': [3, 3], 'mpi_cpus_per_task': [12, 12]}"`
-  - `python3 -c "from rapthor.operations.calibrate_plan import build_calibration_core_baseline_selection; assert build_calibration_core_baseline_selection('HBA', ['CS003HBA0', 'RS106HBA0', 'DE601HBA']) == '[CR]*&&;!DE601HBA'"`
+  - `python3 -c "from rapthor.operations.calibrate.plan import build_calibration_core_baseline_selection; assert build_calibration_core_baseline_selection('HBA', ['CS003HBA0', 'RS106HBA0', 'DE601HBA']) == '[CR]*&&;!DE601HBA'"`
   - `python3 -c "from rapthor.execution.pipeline.lifecycle import do_final_pass, chunk_observations, make_report; assert do_final_pass and chunk_observations and make_report"`
   - `python3 -m py_compile bin/rapthor`
   - `python3 -c "import importlib.util; assert importlib.util.find_spec('rapthor.process') is None"`
@@ -690,6 +690,8 @@ Execution and operation cleanup queue, in recommended order:
    - Completed 2026-06-28: consolidated image operation code under the
      `rapthor.operations.image` package, with `base`, `initial`, `normalize`,
      `diagnostics`, and `plan` modules.
+   - Completed 2026-06-28: consolidated calibration operation code under the
+     `rapthor.operations.calibrate` package, with `base` and `plan` modules.
 
 Broader follow-on tasks after the cleanup queue:
 

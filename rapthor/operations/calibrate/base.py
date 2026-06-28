@@ -1,5 +1,5 @@
 """
-Module that holds the Calibrate classes
+Calibration operation adapter.
 """
 
 import glob
@@ -14,7 +14,7 @@ from rapthor.execution.calibrate.payloads import calibrate_payload_from_inputs
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.operation import Operation
 from rapthor.lib.records import DirectoryRecord, FileRecord
-from rapthor.operations.calibrate_plan import (
+from rapthor.operations.calibrate.plan import (
     build_calibration_core_stations,
     build_calibration_dp3_steps,
     build_calibration_preapply_steps,

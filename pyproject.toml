@@ -110,6 +110,7 @@ packages = [
     "rapthor.execution.predict",
     "rapthor.lib",
     "rapthor.operations",
+    "rapthor.operations.calibrate",
     "rapthor.operations.image",
 ]
 script-files = [

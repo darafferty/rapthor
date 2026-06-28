@@ -1,5 +1,5 @@
 """
-Test cases for the `rapthor.operations.calibrate` module.
+Test cases for the calibration operation modules.
 """
 
 from pathlib import Path
@@ -9,8 +9,8 @@ import pytest
 import rapthor
 from rapthor.lib.field import Field as RapthorField
 from rapthor.lib.operation import DIR as OPERATION_DIR
-from rapthor.operations.calibrate import Calibrate
-from rapthor.operations.calibrate_plan import (
+from rapthor.operations.calibrate.base import Calibrate
+from rapthor.operations.calibrate.plan import (
     build_calibration_core_baseline_selection,
     build_calibration_core_stations,
     build_calibration_dp3_steps,

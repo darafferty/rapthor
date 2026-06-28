@@ -33,7 +33,7 @@ from rapthor.execution.commands import normalize_command
 from rapthor.execution.config import ExecutionConfig
 from rapthor.lib.field import Field as RapthorField
 from rapthor.lib.records import directory_record, file_record, validate_output_record
-from rapthor.operations.calibrate import Calibrate
+from rapthor.operations.calibrate.base import Calibrate
 from tests.execution.conftest import run_flow_for_test
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
@@ -303,7 +303,7 @@ def _expected_dd_screen_operation_outputs(operation):
 
 def _patch_dd_model_metadata(monkeypatch):
     monkeypatch.setattr(
-        "rapthor.operations.calibrate.misc.get_max_spectral_terms",
+        "rapthor.operations.calibrate.base.misc.get_max_spectral_terms",
         lambda *args, **kwargs: 1,
     )
     monkeypatch.setattr(
