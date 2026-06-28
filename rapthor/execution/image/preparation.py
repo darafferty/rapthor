@@ -89,7 +89,6 @@ def ensure_imaging_mask(
             float(sector["dec"]),
             float(sector["cellsize_deg"]),
             image_filename=sector.get("previous_mask_filename"),
-            region_file=sector.get("region_file"),
         )
         run_external_command(
             mask_command,

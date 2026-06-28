@@ -189,7 +189,6 @@ def build_blank_image_command(
     dec: float,
     cellsize_deg: float,
     image_filename: Optional[str] = None,
-    region_file: Optional[str] = None,
 ) -> list[str]:
     """Build the `blank_image.py` command for one imaging sector."""
     command = ["blank_image.py", mask_filename]
@@ -204,7 +203,6 @@ def build_blank_image_command(
             f"--cellsize_deg={cellsize_deg}",
         ]
     )
-    append_prefixed_value(command, "--region_file=", region_file)
     return command
 
 

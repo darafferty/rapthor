@@ -92,6 +92,39 @@ Progress:
 - Started with `check_image_beam.py`: extracted the FITS header update logic to
   `rapthor.execution.image.beam.ensure_image_beam`, kept the script as the CLI
   wrapper, and added direct function plus CLI parity tests.
+- Continued with `blank_image.py`: extracted template-mask creation to
+  `rapthor.execution.image.masking.blank_image`, kept the script as the CLI
+  wrapper, added direct function plus CLI parity tests, and removed the unused
+  `region_file` option from the blank-mask command path.
+
+Script audit and migration order:
+
+- Done: `check_image_beam.py` -> image WSClean output; FITS header in-place;
+  small payload; `astropy`; direct and CLI parity tests now exist.
+- Done: `blank_image.py` -> image preparation; FITS template/input plus sector
+  vertices to mask FITS; small-to-medium file payload; `lsmtool` and `astropy`;
+  direct and CLI parity tests now exist.
+- Do next after adding a real script test: `make_region_file.py` -> image and
+  calibration prediction preparation; sky model plus facet bounds to DS9
+  region; small payload; `lsmtool`; current test is only a placeholder.
+- Good next low-risk mosaic group: `make_mosaic_template.py`, `regrid_image.py`,
+  and `make_mosaic.py` -> mosaic execution; FITS images plus vertices to
+  template/regridded/mosaic FITS products; medium file payloads; current tests
+  cover core behavior.
+- Good next image-normalization group: `make_image_cube.py` and
+  `make_catalog_from_image_cube.py` -> image normalization; channel FITS files
+  and cube metadata to cube/catalog products; medium file payloads; current
+  tests cover core behavior.
+- Medium risk, keep script wrappers until behavior is better isolated:
+  `concat_ms.py`, `filter_skymodel.py`, `restore_skymodel.py`,
+  `adjust_h5parm_sources.py`, `collect_screen_h5parms.py`, and
+  `combine_h5parms.py`. These touch Measurement Sets, h5parm files,
+  skymodels, subprocesses, or multi-step scientific transformations.
+- Defer until after the smaller helpers establish the pattern:
+  `calculate_image_diagnostics.py`, `normalize_flux_scale.py`,
+  `process_gains.py`, `add_sector_models.py`, and
+  `subtract_sector_models.py`. These contain larger scientific workflows,
+  heavier external dependencies, or large Measurement Set payloads.
 
 Done when:
 
