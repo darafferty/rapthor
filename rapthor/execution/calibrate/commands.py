@@ -146,6 +146,22 @@ class DdecalSolveOptions:
     predict_images: Optional[list[str]] = None
 
 
+@dataclass(frozen=True)
+class IdgcalScreenSolveOptions:
+    """DP3/IDGCal options for one screen-generation chunk."""
+
+    msin: str
+    starttime: str
+    ntimes: int
+    h5parm: str
+    solint_phase: int
+    model_images: list[str]
+    maxiter: int
+    antennaconstraint: str
+    num_threads: int
+    solint_amplitude: Optional[int] = None
+
+
 def parse_steps(steps: object) -> list[str]:
     """Parse a DP3 steps token into individual step names."""
     return [step.strip() for step in str(steps).strip("[]").split(",") if step.strip()]
@@ -256,60 +272,48 @@ def _first_model_image(model_images: list[str]) -> str:
     return str(model_images[0])
 
 
-def build_idgcal_solve_phase_command(
-    msin: str,
-    starttime: str,
-    ntimes: int,
-    h5parm: str,
-    solint: int,
-    model_images: list[str],
-    maxiter: int,
-    antennaconstraint: str,
-    numthreads: int,
+def _idgcal_solve_command(
+    dp3_arguments: list[str],
+    options: IdgcalScreenSolveOptions,
+    *,
+    include_amplitude: bool,
 ) -> list[str]:
+    if include_amplitude and options.solint_amplitude is None:
+        raise ValueError("solint_amplitude is required for phase-and-gain IDGCal solves")
+    command = [
+        "DP3",
+        *dp3_arguments,
+        f"msin={options.msin}",
+        f"msin.starttime={options.starttime}",
+        f"msin.ntimes={options.ntimes}",
+        f"solve.h5parm={options.h5parm}",
+        f"solve.solintphase={options.solint_phase}",
+    ]
+    if include_amplitude:
+        command.append(f"solve.solintamplitude={options.solint_amplitude}")
+    command.extend(
+        [
+            f"solve.modelimage={_first_model_image(options.model_images)}",
+            f"solve.maxiter={options.maxiter}",
+            f"solve.antennaconstraint={options.antennaconstraint}",
+            f"numthreads={options.num_threads}",
+        ]
+    )
+    return command
+
+
+def build_idgcal_solve_phase_command(options: IdgcalScreenSolveOptions) -> list[str]:
     """Build the DP3/IDGCal phase-screen solve command for one chunk."""
-    return [
-        "DP3",
-        *IDGCAL_PHASE_ARGUMENTS,
-        f"msin={msin}",
-        f"msin.starttime={starttime}",
-        f"msin.ntimes={ntimes}",
-        f"solve.h5parm={h5parm}",
-        f"solve.solintphase={solint}",
-        f"solve.modelimage={_first_model_image(model_images)}",
-        f"solve.maxiter={maxiter}",
-        f"solve.antennaconstraint={antennaconstraint}",
-        f"numthreads={numthreads}",
-    ]
+    return _idgcal_solve_command(IDGCAL_PHASE_ARGUMENTS, options, include_amplitude=False)
 
 
-def build_idgcal_solve_phase_and_gain_command(
-    msin: str,
-    starttime: str,
-    ntimes: int,
-    h5parm: str,
-    solint_fast: int,
-    solint_slow: int,
-    model_images: list[str],
-    maxiter: int,
-    antennaconstraint: str,
-    numthreads: int,
-) -> list[str]:
+def build_idgcal_solve_phase_and_gain_command(options: IdgcalScreenSolveOptions) -> list[str]:
     """Build the DP3/IDGCal phase-and-gain screen solve command for one chunk."""
-    return [
-        "DP3",
-        *IDGCAL_PHASE_AND_GAIN_ARGUMENTS,
-        f"msin={msin}",
-        f"msin.starttime={starttime}",
-        f"msin.ntimes={ntimes}",
-        f"solve.h5parm={h5parm}",
-        f"solve.solintphase={solint_fast}",
-        f"solve.solintamplitude={solint_slow}",
-        f"solve.modelimage={_first_model_image(model_images)}",
-        f"solve.maxiter={maxiter}",
-        f"solve.antennaconstraint={antennaconstraint}",
-        f"numthreads={numthreads}",
-    ]
+    return _idgcal_solve_command(
+        IDGCAL_PHASE_AND_GAIN_ARGUMENTS,
+        options,
+        include_amplitude=True,
+    )
 
 
 def build_collect_h5parms_command(inh5parms: list[str], outputh5parm: str) -> list[str]:

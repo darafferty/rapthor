@@ -667,9 +667,11 @@ Execution and operation cleanup queue, in recommended order:
      for the DP3 DDECal chunk command, migrated `run_calibrate_chunk()` to build
      those options at the payload boundary, and kept the golden command tests
      focused on DI/DD strategy differences.
-   - Remaining: apply the same pattern selectively to smaller calibration
-     builders such as IDGCal and draw-model only where it reduces argument noise
-     without hiding the scientific command differences.
+   - Completed 2026-06-28: introduced a frozen `IdgcalScreenSolveOptions`
+     dataclass for IDGCal screen-generation commands and migrated the
+     production screen chunk runner plus command tests to use it.
+   - Remaining: apply the same pattern to draw-model only if it reduces argument
+     noise without hiding the scientific command differences.
 11. Revisit large operation adapters after the low-risk cleanup.
    - `Image.set_input_parameters()`, `Image.finalize()`, and
      `Calibrate.set_input_parameters()` remain the largest operation-side

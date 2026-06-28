@@ -4,6 +4,7 @@ from typing import Mapping, Optional
 
 from rapthor.execution.calibrate.commands import (
     DdecalSolveOptions,
+    IdgcalScreenSolveOptions,
     build_ddecal_solve_command,
     build_idgcal_solve_phase_and_gain_command,
     build_idgcal_solve_phase_command,
@@ -119,6 +120,25 @@ def _ddecal_options_for_chunk(
     )
 
 
+def _idgcal_screen_options_for_chunk(
+    payload: CalibratePayload,
+    chunk: CalibrateChunkPayload,
+) -> IdgcalScreenSolveOptions:
+    model_images = list(_require_sequence(payload.get("predict_images"), "predict_images"))
+    return IdgcalScreenSolveOptions(
+        msin=str(chunk["msin"]),
+        starttime=str(chunk["starttime"]),
+        ntimes=int(chunk["ntimes"]),
+        h5parm=str(chunk["output_h5parm"]),
+        solint_phase=int(chunk["solint_fast"]),
+        solint_amplitude=(int(chunk["solint_slow"]) if payload.get("do_slowgain_solve") else None),
+        model_images=[str(path) for path in model_images],
+        maxiter=int(payload["solverlbfgs_iter"]),
+        antennaconstraint=str(payload["idgcal_antennaconstraint"]),
+        num_threads=int(payload["max_threads"]),
+    )
+
+
 def run_calibrate_chunk(
     payload: CalibratePayload,
     chunk: CalibrateChunkPayload,
@@ -154,32 +174,11 @@ def run_calibrate_screen_chunk(
     """Run one IDGCal screen-generation chunk."""
     config = execution_config or ExecutionConfig(task_runner="sync")
     pipeline_working_dir = str(payload["pipeline_working_dir"])
-    model_images = list(_require_sequence(payload.get("predict_images"), "predict_images"))
+    options = _idgcal_screen_options_for_chunk(payload, chunk)
     if payload.get("do_slowgain_solve"):
-        command = build_idgcal_solve_phase_and_gain_command(
-            msin=str(chunk["msin"]),
-            starttime=str(chunk["starttime"]),
-            ntimes=int(chunk["ntimes"]),
-            h5parm=str(chunk["output_h5parm"]),
-            solint_fast=int(chunk["solint_fast"]),
-            solint_slow=int(chunk["solint_slow"]),
-            model_images=[str(path) for path in model_images],
-            maxiter=int(payload["solverlbfgs_iter"]),
-            antennaconstraint=str(payload["idgcal_antennaconstraint"]),
-            numthreads=int(payload["max_threads"]),
-        )
+        command = build_idgcal_solve_phase_and_gain_command(options)
     else:
-        command = build_idgcal_solve_phase_command(
-            msin=str(chunk["msin"]),
-            starttime=str(chunk["starttime"]),
-            ntimes=int(chunk["ntimes"]),
-            h5parm=str(chunk["output_h5parm"]),
-            solint=int(chunk["solint_fast"]),
-            model_images=[str(path) for path in model_images],
-            maxiter=int(payload["solverlbfgs_iter"]),
-            antennaconstraint=str(payload["idgcal_antennaconstraint"]),
-            numthreads=int(payload["max_threads"]),
-        )
+        command = build_idgcal_solve_phase_command(options)
     run_external_command(
         command,
         pipeline_working_dir,

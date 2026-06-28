@@ -10,6 +10,7 @@ import rapthor.execution.calibrate.collection as calibrate_collection
 import rapthor.execution.calibrate.flow as calibrate_module
 from rapthor.execution.calibrate.commands import (
     DdecalSolveOptions,
+    IdgcalScreenSolveOptions,
     build_adjust_h5parm_sources_command,
     build_collect_h5parms_command,
     build_collect_screen_h5parms_command,
@@ -973,6 +974,25 @@ def _dd_ddecal_solve_options(**overrides) -> DdecalSolveOptions:
     return _ddecal_solve_options(**values)
 
 
+def _idgcal_screen_solve_options(**overrides) -> IdgcalScreenSolveOptions:
+    values = {
+        "msin": "dd_obs_0.ms",
+        "starttime": "50000.0",
+        "ntimes": 10,
+        "h5parm": "idgcal_0",
+        "solint_phase": 3,
+        "model_images": [
+            "calibration_model-term-0.fits",
+            "calibration_model-term-1.fits",
+        ],
+        "maxiter": 4,
+        "antennaconstraint": "[]",
+        "num_threads": 4,
+    }
+    values.update(overrides)
+    return IdgcalScreenSolveOptions(**values)
+
+
 def test_calibrate_command_builders_match_reference_fixtures():
     commands = json.loads((FIXTURE_DIR / "command_reference.json").read_text())
 
@@ -1157,40 +1177,13 @@ def test_calibrate_command_builders_match_reference_fixtures():
         == commands["calibrate"]["adjust_h5parm_sources"]
     )
     assert (
-        normalize_command(
-            build_idgcal_solve_phase_command(
-                msin="dd_obs_0.ms",
-                starttime="50000.0",
-                ntimes=10,
-                h5parm="idgcal_0",
-                solint=3,
-                model_images=[
-                    "calibration_model-term-0.fits",
-                    "calibration_model-term-1.fits",
-                ],
-                maxiter=4,
-                antennaconstraint="[]",
-                numthreads=4,
-            )
-        )
+        normalize_command(build_idgcal_solve_phase_command(_idgcal_screen_solve_options()))
         == commands["calibrate"]["idgcal_solve_phase"]
     )
     assert (
         normalize_command(
             build_idgcal_solve_phase_and_gain_command(
-                msin="dd_obs_0.ms",
-                starttime="50000.0",
-                ntimes=10,
-                h5parm="idgcal_0",
-                solint_fast=3,
-                solint_slow=11,
-                model_images=[
-                    "calibration_model-term-0.fits",
-                    "calibration_model-term-1.fits",
-                ],
-                maxiter=4,
-                antennaconstraint="[]",
-                numthreads=4,
+                _idgcal_screen_solve_options(solint_amplitude=11)
             )
         )
         == commands["calibrate"]["idgcal_solve_phase_and_gain"]
@@ -1273,15 +1266,7 @@ def test_calibrate_command_builders_create_reference_tokens():
         "combined_solutions.h5",
     ]
     assert build_idgcal_solve_phase_command(
-        msin="dd_obs_0.ms",
-        starttime="50000.0",
-        ntimes=10,
-        h5parm="idgcal_0",
-        solint=3,
-        model_images=["calibration_model-term-0.fits"],
-        maxiter=4,
-        antennaconstraint="[]",
-        numthreads=4,
+        _idgcal_screen_solve_options(model_images=["calibration_model-term-0.fits"])
     )[:6] == [
         "DP3",
         "msin.datacolumn=DATA",
@@ -1291,16 +1276,10 @@ def test_calibrate_command_builders_create_reference_tokens():
         "solve.python.module=idg.idgcaldpstep_phase_only_dirac",
     ]
     assert build_idgcal_solve_phase_and_gain_command(
-        msin="dd_obs_0.ms",
-        starttime="50000.0",
-        ntimes=10,
-        h5parm="idgcal_0",
-        solint_fast=3,
-        solint_slow=11,
-        model_images=["calibration_model-term-0.fits"],
-        maxiter=4,
-        antennaconstraint="[]",
-        numthreads=4,
+        _idgcal_screen_solve_options(
+            model_images=["calibration_model-term-0.fits"],
+            solint_amplitude=11,
+        )
     )[5:7] == [
         "solve.python.module=idg.idgcaldpstep_rapthor_dirac",
         "solve.python.class=IDGCalDPStepRapthorDirac",
