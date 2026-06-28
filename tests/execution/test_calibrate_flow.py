@@ -350,6 +350,12 @@ def _command_tokens(shell_operation_cls):
     ]
 
 
+def _command_arguments(tokens):
+    return {
+        key: value for key, _, value in (token.partition("=") for token in tokens if "=" in token)
+    }
+
+
 def _materialize_calibrate_operation_outputs(value):
     if isinstance(value, dict) and "class" not in value:
         for item in value.values():
@@ -3095,6 +3101,57 @@ def test_calibrate_dd_fast_medium_operation_run_uses_prefect_flow(
     assert field.calibration_diagnostics == [{"cycle_number": 1, "solution_flagged_fraction": 0.0}]
     assert field.scan_h5parms_calls == 1
     assert len(fake_calibrate_shell_operation_cls.instances) == 7
+
+
+def test_calibrate_dd_operation_run_passes_only_current_cycle_initial_solutions_to_dp3(
+    tmp_path, monkeypatch, fake_calibrate_shell_operation_cls
+):
+    monkeypatch.setattr(
+        "rapthor.execution.shell._load_shell_operation_cls",
+        lambda: fake_calibrate_shell_operation_cls,
+    )
+    monkeypatch.setattr(
+        "rapthor.lib.miscellaneous.get_flagged_solution_fraction",
+        lambda *args, **kwargs: 0.0,
+    )
+    _patch_dd_model_metadata(monkeypatch)
+
+    field = CalibrateFieldStub(tmp_path)
+    field.calibration_strategy = {"dd": ["fast_phase", "medium_phase", "slow_gains"]}
+    field._calibration_strategy_defaulted = False
+
+    current_solution_dir = Path(field.parset["dir_working"]) / "solutions" / "calibrate_1"
+    future_solution_dir = Path(field.parset["dir_working"]) / "solutions" / "calibrate_2"
+    current_solution_dir.mkdir(parents=True)
+    future_solution_dir.mkdir(parents=True)
+
+    current_fast = current_solution_dir / "field-solutions-fast-phase.h5"
+    future_medium = future_solution_dir / "field-solutions-medium1-phase.h5"
+    future_slow = future_solution_dir / "field-solutions-slow-gain.h5"
+    for path in (current_fast, future_medium, future_slow):
+        path.write_text("h5parm")
+
+    field.fast_phases_h5parm_filename = str(current_fast)
+    field.medium1_phases_h5parm_filename = str(future_medium)
+    field.slow_gains_h5parm_filename = str(future_slow)
+
+    operation = Calibrate("dd", field, index=1)
+
+    with prefect_test_harness(server_startup_timeout=None):
+        operation.run()
+
+    dp3_command = next(
+        command
+        for command in _command_tokens(fake_calibrate_shell_operation_cls)
+        if command[0] == "DP3"
+    )
+    dp3_arguments = _command_arguments(dp3_command)
+
+    assert dp3_arguments["solve1.initialsolutions.h5parm"] == str(current_fast)
+    assert "solve2.initialsolutions.h5parm" not in dp3_arguments
+    assert "solve3.initialsolutions.h5parm" not in dp3_arguments
+    assert all(str(future_medium) not in token for token in dp3_command)
+    assert all(str(future_slow) not in token for token in dp3_command)
 
 
 def test_calibrate_dd_fast_medium_operation_run_reuses_prefect_outputs_when_done(

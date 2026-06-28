@@ -523,8 +523,8 @@ Known follow-up from the completed slice:
 
 Next slice:
 
-- Introduce command argument objects for the long image/calibration command
-  builders now that execution work-unit ownership is clearer.
+- Start the script-to-module audit and convert the first small helper, choosing
+  one with narrow inputs, existing tests, and low external dependency risk.
 
 Immediate next tasks from the 2026-06-28 plan/code review:
 
@@ -587,7 +587,7 @@ Execution and operation cleanup queue, in recommended order:
      and Image output filename helpers.
    - Kept `check_dask_scheduler()` by wiring it into external-Dask task-runner
      construction so scheduler reachability is validated by production code.
-8. In progress: split large payload and runner functions by real work unit.
+8. Completed 2026-06-28: split large payload and runner functions by real work unit.
    - Candidate functions are `image_payload_from_inputs()`,
      `calibrate_payload_from_inputs()`, `run_image_sector()`, and
      the calibration phase-combine runner path.
@@ -618,9 +618,10 @@ Execution and operation cleanup queue, in recommended order:
    - Completed 2026-06-28: moved those image-sector work units into focused
      owner modules (`preparation`, `wsclean`, `outputs`, and `diagnostics`),
      leaving `sector.py` as orchestration-only code.
-   - Remaining: add an integration regression for the same current-cycle
-     solution rule using a real H5Parm/restart setup, so command logs prove
-     stale future-cycle solutions are not passed as DP3 initial solutions.
+   - Completed 2026-06-28: added a command-level regression at the calibration
+     execution seam proving that current-cycle initial solutions are passed to
+     DP3 and stale future-cycle initial solutions are omitted from DP3 command
+     arguments.
    - Keep helper names slot-neutral when they operate on arbitrary solve slots;
      only use scientific names such as slow gains when the helper is explicitly
      tied to that solve type.
