@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 
+from rapthor.execution.image.outputs import mfs_extra_image_patterns
 from rapthor.execution.outputs import (
     file_records_for_required_patterns,
     first_existing_file,
@@ -9,7 +10,6 @@ from rapthor.execution.outputs import (
     require_directory,
     require_file,
 )
-from rapthor.execution.image.outputs import mfs_extra_image_patterns
 from rapthor.lib.records import directory_record, file_record
 
 

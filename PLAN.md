@@ -305,6 +305,11 @@ Completed:
     glob-to-record helpers
   - kept operation-specific shell wrappers where they preserve explicit
     `Concatenate`, `Predict`, `Mosaic`, `Calibration`, and image output messages
+- Image WSClean command construction cleanup:
+  - extracted the shared WSClean command prefix and common option list used by
+    no-DDE, facet, and screen command builders
+  - kept mode-specific WSClean tokens and flags in the mode-specific builders so
+    command differences remain easy to review
 - Operation package and pipeline module consolidation:
   - moved operation Prefect adapters into operation-owned `flow.py` modules:
     `rapthor.execution.image.flow`, `rapthor.execution.calibrate.flow`,
@@ -499,19 +504,52 @@ Execution and operation cleanup queue, in recommended order:
    - Updated concatenate, predict, and mosaic shell wrappers to use shared
      required-output helpers while keeping operation-specific failure messages
      visible at the call sites.
-5. Simplify repeated WSClean command construction.
-   - Extract common WSClean base options shared by no-DDE, facet, and screen
-     command builders while preserving the existing golden command fixtures.
-   - Keep mode-specific options visible so scientists can still review the
-     command differences.
-6. Split large payload and runner functions by real work unit.
+5. Completed 2026-06-28: simplify repeated WSClean command construction.
+   - Extracted the shared WSClean command prefix and common option list used by
+     no-DDE, facet, and screen command builders.
+   - Preserved the existing golden command fixtures and kept mode-specific
+     options visible in each builder so scientists can still review the command
+     differences.
+6. Remove test-only direct flow runners and test the production flow seams.
+   - Remove `run_image_flow()`, `run_calibrate_flow()`, `run_mosaic_flow()`,
+     `run_predict_flow()`, and `run_concatenate_flow()` from production modules
+     once their tests are moved to production-used entry points or lower-level
+     production runners.
+   - Refactor the production Prefect entry points so they are easy to test
+     without keeping parallel synchronous flow implementations. Prefer small
+     production-owned orchestration helpers, injectable shell/runtime
+     collaborators, and focused runner tests over exported functions whose only
+     caller is the test suite.
+   - Keep fast tests by asserting command and output behaviour at the smallest
+     production-used seam: command builders, payload builders, operation runners
+     such as `run_image_sector()`, calibration runner functions, and the actual
+     `*_flow()` Prefect entry points with mocked shell loading where needed.
+   - Do this next, before splitting large runner/payload functions or introducing
+     command argument objects, so later cleanup does not preserve or expand the
+     test-only API surface.
+7. Split large payload and runner functions by real work unit.
    - Candidate functions are `image_payload_from_inputs()`,
      `calibrate_payload_from_inputs()`, `run_image_sector()`, and
      `_collect_plot_and_combine_dd_phase()`.
    - Split along units scientists recognise, such as prepare task, image cube,
      normalization, screen solve, scalar solve collection, and DD phase
      collection.
-7. Revisit large operation adapters after the low-risk cleanup.
+8. Introduce command argument objects for long command builders.
+   - Replace very long command-builder signatures, such as the WSClean builders,
+     with small frozen dataclasses grouped by real concepts: common WSClean
+     options, no-DDE options, facet options, screen options, MPI launch options,
+     and prepare-data options.
+   - Keep command builders deterministic and side-effect free: argument objects
+     should only describe the command, while builders should still return plain
+     command tokens that golden fixture tests can compare.
+   - Prefer stdlib dataclasses for this internal execution layer first. Evaluate
+     Pydantic later for parset, payload, and script-module boundary validation,
+     not as a dependency inside hot command-construction paths.
+   - Do this after splitting `run_image_sector()` and related payload builders,
+     because those splits will reveal the stable data groups. Do it before the
+     script-to-module migration so new Python module APIs do not inherit the
+     current long-argument style.
+9. Revisit large operation adapters after the low-risk cleanup.
    - `Image.set_input_parameters()`, `Image.finalize()`, and
      `Calibrate.set_input_parameters()` remain the largest operation-side
      methods.
@@ -1177,6 +1215,10 @@ facades, and boilerplate than the pipeline needs.
 - Avoid abstraction for its own sake. Add a protocol, class, or new package only
   when it removes real duplication, protects a clean boundary, enables testing,
   or makes runtime substitution clearer.
+- Do not keep production-module functions solely for tests. If a helper is useful
+  only because tests need a seam, either test through a production-used boundary
+  or refactor the production code to expose the smaller real work unit that the
+  pipeline itself uses.
 - Keep data structures boring and explicit. Prefer `TypedDict`, small
   dataclasses, or plain functions over deep inheritance unless the existing
   operation lifecycle needs inheritance.
