@@ -310,6 +310,13 @@ Completed:
     no-DDE, facet, and screen command builders
   - kept mode-specific WSClean tokens and flags in the mode-specific builders so
     command differences remain easy to review
+- Production flow seam cleanup:
+  - removed test-only direct `run_*_flow()` runners from production execution
+    modules
+  - moved payload serializability assertions into the production Prefect task
+    paths
+  - updated execution tests to call production `*_flow()` entry points through a
+    test-only helper that supplies the sync task runner and mocked shell loading
 - Operation package and pipeline module consolidation:
   - moved operation Prefect adapters into operation-owned `flow.py` modules:
     `rapthor.execution.image.flow`, `rapthor.execution.calibrate.flow`,
@@ -374,6 +381,7 @@ Completed:
   - `python3 -m pytest tests/operations/test_image.py tests/operations/test_calibrate.py -q --tb=short`
   - `python3 -m pytest tests/execution/test_concatenate_flow.py tests/execution/test_mosaic_flow.py tests/execution/test_predict_flow.py tests/execution/test_reference_fixtures.py -q --tb=short`
   - `python3 -m pytest tests/execution/test_image_flow.py tests/execution/test_calibrate_flow.py -q --tb=short`
+  - `python3 -m pytest tests/execution/test_concatenate_flow.py tests/execution/test_mosaic_flow.py tests/execution/test_predict_flow.py tests/execution/test_image_flow.py tests/execution/test_calibrate_flow.py -q --tb=short`
   - `python3 -c "import rapthor.execution as execution; import rapthor.execution.image.commands as image_commands; import rapthor.execution.image.payloads as image_payloads; import rapthor.execution.image.sector as image_sector; import rapthor.execution.image.flow as image_flow; assert image_commands.build_wsclean_no_dde_command; assert image_payloads.image_payload_from_inputs; assert image_flow.validate_image_payload is image_payloads.validate_image_payload; assert image_sector.run_image_sector; assert not hasattr(execution, 'run_image_sector'); assert not hasattr(execution, 'image_payload_from_inputs')"`
   - `python3 -c "from rapthor.execution.image.payloads import ImagePayload, ImageSectorPayload, image_payload_from_inputs; import rapthor.execution.payloads as shared_payloads; assert ImagePayload; assert ImageSectorPayload; assert image_payload_from_inputs; assert not hasattr(shared_payloads, 'ImagePayload'); assert not hasattr(shared_payloads, 'ImageSectorPayload')"`
   - `python3 -c "import rapthor.execution as execution; import rapthor.execution.calibrate.commands as commands; assert commands.build_ddecal_solve_command; assert not hasattr(execution, 'build_ddecal_solve_command')"`
@@ -465,9 +473,9 @@ Known follow-up from the completed slice:
 - Avoid running multiple pytest processes in parallel locally without setting
   separate `RAPTHOR_TEST_RUN_ROOT` values; concurrent test startup can race while
   cleaning `.pytest_cache/rapthor-runs`.
-- The image/calibration flow tests passed, but Prefect emitted a late logging
-  shutdown warning after the passing summary. Track separately if it becomes
-  noisy in CI.
+- The execution flow tests passed, but Prefect emitted late logging shutdown
+  warnings after the passing summary. Track separately if it becomes noisy in
+  CI.
 
 Next slice:
 
@@ -510,23 +518,16 @@ Execution and operation cleanup queue, in recommended order:
    - Preserved the existing golden command fixtures and kept mode-specific
      options visible in each builder so scientists can still review the command
      differences.
-6. Remove test-only direct flow runners and test the production flow seams.
-   - Remove `run_image_flow()`, `run_calibrate_flow()`, `run_mosaic_flow()`,
-     `run_predict_flow()`, and `run_concatenate_flow()` from production modules
-     once their tests are moved to production-used entry points or lower-level
-     production runners.
-   - Refactor the production Prefect entry points so they are easy to test
-     without keeping parallel synchronous flow implementations. Prefer small
-     production-owned orchestration helpers, injectable shell/runtime
-     collaborators, and focused runner tests over exported functions whose only
-     caller is the test suite.
-   - Keep fast tests by asserting command and output behaviour at the smallest
-     production-used seam: command builders, payload builders, operation runners
-     such as `run_image_sector()`, calibration runner functions, and the actual
-     `*_flow()` Prefect entry points with mocked shell loading where needed.
-   - Do this next, before splitting large runner/payload functions or introducing
-     command argument objects, so later cleanup does not preserve or expand the
-     test-only API surface.
+6. Completed 2026-06-28: remove test-only direct flow runners and test the
+   production flow seams.
+   - Removed `run_image_flow()`, `run_calibrate_flow()`, `run_mosaic_flow()`,
+     `run_predict_flow()`, and `run_concatenate_flow()` from production modules.
+   - Moved tests to production-used `*_flow()` Prefect entry points with a
+     test-only helper for sync task-runner configuration and mocked shell
+     loading.
+   - Moved payload serializability assertions into the production Prefect task
+     paths so invalid worker payloads are still rejected without keeping
+     parallel synchronous flow APIs.
 7. Split large payload and runner functions by real work unit.
    - Candidate functions are `image_payload_from_inputs()`,
      `calibrate_payload_from_inputs()`, `run_image_sector()`, and

@@ -50,60 +50,11 @@ def calibrate_screen_chunk_task(
         )
 
 
-def run_calibrate_flow(
-    payload: Mapping[str, object],
-    execution_config: Optional[ExecutionConfig] = None,
-    shell_operation_cls=None,
-) -> dict:
-    """Run calibration commands and return finalizer-compatible outputs."""
-    assert_serializable_payload(payload)
-    config = execution_config or ExecutionConfig(task_runner="sync")
-    payload = validate_calibrate_payload(payload)
-    payload = calibrate_runner.prepare_image_based_predict(
-        payload,
-        config,
-        shell_operation_cls=shell_operation_cls,
-    )
-    if payload["calibration_kind"] == "dd_screen":
-        screen_records = []
-        for chunk in payload["chunks"]:
-            screen_records.append(
-                calibrate_runner.run_calibrate_screen_chunk(
-                    payload,
-                    chunk,
-                    execution_config=config,
-                    shell_operation_cls=shell_operation_cls,
-                )
-            )
-        return calibrate_runner.collect_screen_solutions(
-            payload,
-            screen_records,
-            config,
-            shell_operation_cls=shell_operation_cls,
-        )
-
-    solve_records = []
-    for chunk in payload["chunks"]:
-        solve_records.append(
-            calibrate_runner.run_calibrate_chunk(
-                payload,
-                chunk,
-                execution_config=config,
-                shell_operation_cls=shell_operation_cls,
-            )
-        )
-    return calibrate_runner.collect_plot_and_combine(
-        payload,
-        solve_records,
-        config,
-        shell_operation_cls=shell_operation_cls,
-    )
-
-
 def _run_calibrate_prefect_tasks(
     payload: Mapping[str, object],
     execution_config: Optional[ExecutionConfig] = None,
 ) -> dict:
+    assert_serializable_payload(payload)
     config = execution_config or ExecutionConfig(task_runner="sync")
     payload = validate_calibrate_payload(payload)
     payload = calibrate_runner.prepare_image_based_predict(payload, config)

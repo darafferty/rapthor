@@ -35,12 +35,12 @@ from rapthor.execution.image.commands import (
 from rapthor.execution.image.flow import (
     image_flow,
     image_sector_task,
-    run_image_flow,
 )
 from rapthor.execution.image.payloads import image_payload_from_inputs
 from rapthor.lib.field import Field as RapthorField
 from rapthor.lib.records import directory_record, file_record, validate_output_record
 from rapthor.operations.image import Image, ImageInitial, ImageNormalize
+from tests.execution.conftest import run_flow_for_test
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
 
@@ -1636,7 +1636,8 @@ def test_run_image_flow_executes_no_dde_commands_and_returns_records(
         fake_publish_fits_image_artifacts,
     )
 
-    outputs = run_image_flow(
+    outputs = run_flow_for_test(
+        image_flow,
         image_payload_from_inputs(_image_input_parms(), tmp_path),
         execution_config=ExecutionConfig(task_runner="sync"),
         shell_operation_cls=fake_image_shell_operation_cls,
@@ -1700,7 +1701,8 @@ def test_run_image_flow_rejects_invalid_prepare_task_payload(
     payload["sectors"][0]["prepare_tasks"] = ["not-a-task"]
 
     with pytest.raises(ValueError, match="prepare_tasks"):
-        run_image_flow(
+        run_flow_for_test(
+            image_flow,
             payload,
             execution_config=ExecutionConfig(task_runner="sync"),
             shell_operation_cls=fake_image_shell_operation_cls,
@@ -1732,7 +1734,8 @@ def test_run_image_flow_allows_missing_source_filtering_mask(
                 return "OK"
             return super().run()
 
-    outputs = run_image_flow(
+    outputs = run_flow_for_test(
+        image_flow,
         image_payload_from_inputs(_image_input_parms(), tmp_path),
         execution_config=ExecutionConfig(task_runner="sync"),
         shell_operation_cls=NoFilterMaskShellOperation,
@@ -1756,7 +1759,8 @@ def test_run_image_flow_reuses_existing_wsclean_products_on_restart(
     ]:
         (tmp_path / filename).write_text("existing")
 
-    outputs = run_image_flow(
+    outputs = run_flow_for_test(
+        image_flow,
         image_payload_from_inputs(_image_input_parms(), tmp_path),
         execution_config=ExecutionConfig(task_runner="sync"),
         shell_operation_cls=fake_image_shell_operation_cls,
@@ -1781,7 +1785,8 @@ def test_run_image_flow_reuses_existing_wsclean_products_on_restart(
 def test_run_image_flow_restores_bright_sources_before_filtering(
     tmp_path, fake_image_shell_operation_cls
 ):
-    outputs = run_image_flow(
+    outputs = run_flow_for_test(
+        image_flow,
         image_payload_from_inputs(_bright_peeling_image_input_parms(), tmp_path),
         execution_config=ExecutionConfig(task_runner="sync"),
         shell_operation_cls=fake_image_shell_operation_cls,
@@ -1841,7 +1846,8 @@ def test_run_image_flow_restores_bright_sources_before_filtering(
 def test_run_image_flow_executes_facet_commands_and_returns_region_file(
     tmp_path, fake_image_shell_operation_cls
 ):
-    outputs = run_image_flow(
+    outputs = run_flow_for_test(
+        image_flow,
         image_payload_from_inputs(_facet_image_input_parms(), tmp_path, use_facets=True),
         execution_config=ExecutionConfig(task_runner="sync"),
         shell_operation_cls=fake_image_shell_operation_cls,
@@ -1886,7 +1892,8 @@ def test_run_image_flow_executes_facet_commands_and_returns_region_file(
 def test_run_image_flow_executes_screen_commands_and_writes_aterm_config(
     tmp_path, fake_image_shell_operation_cls
 ):
-    outputs = run_image_flow(
+    outputs = run_flow_for_test(
+        image_flow,
         image_payload_from_inputs(_screens_image_input_parms(), tmp_path, apply_screens=True),
         execution_config=ExecutionConfig(task_runner="sync"),
         shell_operation_cls=fake_image_shell_operation_cls,
@@ -1928,7 +1935,8 @@ def test_run_image_flow_executes_screen_commands_and_writes_aterm_config(
 
 
 def test_run_image_flow_supports_full_stokes_no_dde(tmp_path, fake_image_shell_operation_cls):
-    outputs = run_image_flow(
+    outputs = run_flow_for_test(
+        image_flow,
         image_payload_from_inputs(_full_stokes_image_input_parms(), tmp_path),
         execution_config=ExecutionConfig(task_runner="sync"),
         shell_operation_cls=fake_image_shell_operation_cls,
@@ -1959,7 +1967,8 @@ def test_run_image_flow_supports_full_stokes_no_dde(tmp_path, fake_image_shell_o
 
 
 def test_run_image_flow_supports_linked_full_stokes(tmp_path, fake_image_shell_operation_cls):
-    run_image_flow(
+    run_flow_for_test(
+        image_flow,
         image_payload_from_inputs(_linked_full_stokes_image_input_parms(), tmp_path),
         execution_config=ExecutionConfig(task_runner="sync"),
         shell_operation_cls=fake_image_shell_operation_cls,
@@ -1975,7 +1984,8 @@ def test_run_image_flow_supports_linked_full_stokes(tmp_path, fake_image_shell_o
 
 
 def test_run_image_flow_supports_mpi_no_dde(tmp_path, fake_image_shell_operation_cls):
-    outputs = run_image_flow(
+    outputs = run_flow_for_test(
+        image_flow,
         image_payload_from_inputs(_mpi_image_input_parms(), tmp_path, use_mpi=True),
         execution_config=ExecutionConfig(task_runner="sync", max_nodes=2, cpus_per_task=3),
         shell_operation_cls=fake_image_shell_operation_cls,
@@ -2016,7 +2026,8 @@ def test_run_image_flow_rejects_oversubscribed_mpi_wsclean(
     tmp_path, fake_image_shell_operation_cls
 ):
     with pytest.raises(ValueError, match="requests 2 MPI processes"):
-        run_image_flow(
+        run_flow_for_test(
+            image_flow,
             image_payload_from_inputs(_mpi_image_input_parms(), tmp_path, use_mpi=True),
             execution_config=ExecutionConfig(task_runner="sync", max_nodes=1, cpus_per_task=3),
             shell_operation_cls=fake_image_shell_operation_cls,
@@ -2030,7 +2041,8 @@ def test_run_image_flow_rejects_oversubscribed_mpi_wsclean(
 
 
 def test_run_image_flow_supports_mpi_facets(tmp_path, fake_image_shell_operation_cls):
-    outputs = run_image_flow(
+    outputs = run_flow_for_test(
+        image_flow,
         image_payload_from_inputs(
             _mpi_facet_image_input_parms(), tmp_path, use_facets=True, use_mpi=True
         ),
@@ -2053,7 +2065,8 @@ def test_run_image_flow_supports_mpi_facets(tmp_path, fake_image_shell_operation
 
 
 def test_run_image_flow_supports_mpi_screens(tmp_path, fake_image_shell_operation_cls):
-    outputs = run_image_flow(
+    outputs = run_flow_for_test(
+        image_flow,
         image_payload_from_inputs(
             _mpi_screens_image_input_parms(), tmp_path, apply_screens=True, use_mpi=True
         ),
@@ -2078,7 +2091,8 @@ def test_run_image_flow_supports_mpi_screens(tmp_path, fake_image_shell_operatio
 
 
 def test_run_image_flow_returns_compressed_image_outputs(tmp_path, fake_image_shell_operation_cls):
-    outputs = run_image_flow(
+    outputs = run_flow_for_test(
+        image_flow,
         image_payload_from_inputs(_image_input_parms(), tmp_path, compress_images=True),
         execution_config=ExecutionConfig(task_runner="sync"),
         shell_operation_cls=fake_image_shell_operation_cls,
@@ -2116,7 +2130,8 @@ def test_run_image_flow_returns_compressed_image_outputs(tmp_path, fake_image_sh
 
 
 def test_run_image_flow_returns_filtered_model_image(tmp_path, fake_image_shell_operation_cls):
-    outputs = run_image_flow(
+    outputs = run_flow_for_test(
+        image_flow,
         image_payload_from_inputs(_filtered_model_image_input_parms(), tmp_path),
         execution_config=ExecutionConfig(task_runner="sync"),
         shell_operation_cls=fake_image_shell_operation_cls,
@@ -2144,7 +2159,8 @@ def test_run_image_flow_returns_filtered_model_image(tmp_path, fake_image_shell_
 
 
 def test_run_image_flow_supports_clean_disabled_stokes_i(tmp_path, fake_image_shell_operation_cls):
-    outputs = run_image_flow(
+    outputs = run_flow_for_test(
+        image_flow,
         image_payload_from_inputs(_clean_disabled_image_input_parms(), tmp_path),
         execution_config=ExecutionConfig(task_runner="sync"),
         shell_operation_cls=fake_image_shell_operation_cls,
@@ -2165,7 +2181,8 @@ def test_run_image_flow_supports_clean_disabled_stokes_i(tmp_path, fake_image_sh
 
 
 def test_run_image_flow_cleans_isolated_wsclean_temp_dirs(tmp_path, fake_image_shell_operation_cls):
-    outputs = run_image_flow(
+    outputs = run_flow_for_test(
+        image_flow,
         image_payload_from_inputs(_two_sector_image_input_parms(), tmp_path),
         execution_config=ExecutionConfig(task_runner="sync"),
         shell_operation_cls=fake_image_shell_operation_cls,
@@ -2204,7 +2221,8 @@ def test_run_image_flow_cleans_wsclean_temp_dir_on_failure(
             return super().run()
 
     with pytest.raises(RuntimeError, match="wsclean failed"):
-        run_image_flow(
+        run_flow_for_test(
+            image_flow,
             image_payload_from_inputs(_image_input_parms(), tmp_path),
             execution_config=ExecutionConfig(task_runner="sync"),
             shell_operation_cls=FailingWscleanShellOperation,
@@ -2214,7 +2232,8 @@ def test_run_image_flow_cleans_wsclean_temp_dir_on_failure(
 
 
 def test_run_image_flow_returns_image_cube_outputs(tmp_path, fake_image_shell_operation_cls):
-    outputs = run_image_flow(
+    outputs = run_flow_for_test(
+        image_flow,
         image_payload_from_inputs(_image_cube_input_parms(), tmp_path, make_image_cube=True),
         execution_config=ExecutionConfig(task_runner="sync"),
         shell_operation_cls=fake_image_shell_operation_cls,
@@ -2248,7 +2267,8 @@ def test_run_image_flow_returns_image_cube_outputs(tmp_path, fake_image_shell_op
 def test_run_image_flow_returns_full_stokes_image_cube_outputs(
     tmp_path, fake_image_shell_operation_cls
 ):
-    outputs = run_image_flow(
+    outputs = run_flow_for_test(
+        image_flow,
         image_payload_from_inputs(
             _full_stokes_image_cube_input_parms(), tmp_path, make_image_cube=True
         ),
@@ -2290,7 +2310,8 @@ def test_run_image_flow_returns_full_stokes_image_cube_outputs(
 
 
 def test_run_image_flow_returns_normalization_outputs(tmp_path, fake_image_shell_operation_cls):
-    outputs = run_image_flow(
+    outputs = run_flow_for_test(
+        image_flow,
         image_payload_from_inputs(
             _normalize_image_input_parms(),
             tmp_path,
@@ -2365,7 +2386,8 @@ def test_image_prefect_flow_entrypoint_runs_with_mocked_shell(
 
 def test_run_image_flow_fails_when_expected_output_is_missing(tmp_path):
     with pytest.raises(FileNotFoundError, match="Prepared imaging MS"):
-        run_image_flow(
+        run_flow_for_test(
+            image_flow,
             image_payload_from_inputs(_image_input_parms(), tmp_path),
             execution_config=ExecutionConfig(task_runner="sync"),
             shell_operation_cls=NoOutputShellOperation,
@@ -2396,7 +2418,8 @@ def test_image_reference_output_fixture_matches_output_contract():
 def test_image_initial_finalizer_accepts_prefect_outputs(tmp_path, fake_image_shell_operation_cls):
     field = FieldStub(tmp_path)
     operation = ImageInitial(field)
-    outputs = run_image_flow(
+    outputs = run_flow_for_test(
+        image_flow,
         image_payload_from_inputs(_image_input_parms(), operation.pipeline_working_dir),
         execution_config=ExecutionConfig(task_runner="sync"),
         shell_operation_cls=fake_image_shell_operation_cls,
@@ -2426,7 +2449,8 @@ def test_image_finalizer_accepts_prefect_outputs_for_selfcal(
     field.save_supplementary_images = True
     field.save_visibilities = True
     operation = Image(field, index=1)
-    outputs = run_image_flow(
+    outputs = run_flow_for_test(
+        image_flow,
         image_payload_from_inputs(
             _filtered_model_image_input_parms(),
             operation.pipeline_working_dir,
@@ -2964,7 +2988,8 @@ def test_image_finalizer_accepts_prefect_outputs_for_full_stokes(
     field = FieldStub(tmp_path)
     field.image_pol = "IQUV"
     operation = Image(field, index=1)
-    outputs = run_image_flow(
+    outputs = run_flow_for_test(
+        image_flow,
         image_payload_from_inputs(
             _full_stokes_image_input_parms(),
             operation.pipeline_working_dir,
@@ -2996,7 +3021,8 @@ def test_image_normalize_finalizer_accepts_prefect_outputs(
 ):
     field = FieldStub(tmp_path)
     operation = ImageNormalize(field, index=1)
-    operation.outputs = run_image_flow(
+    operation.outputs = run_flow_for_test(
+        image_flow,
         image_payload_from_inputs(
             _normalize_image_input_parms(),
             operation.pipeline_working_dir,

@@ -196,42 +196,11 @@ def _result_from_postprocess_records(mode: str, outputs: list[list[dict]]) -> di
     return result
 
 
-def run_predict_flow(
-    payload: Mapping[str, object],
-    execution_config: Optional[ExecutionConfig] = None,
-    shell_operation_cls=None,
-) -> dict:
-    """Run Predict commands and return finalizer-compatible outputs."""
-    assert_serializable_payload(payload)
-    config = execution_config or ExecutionConfig(task_runner="sync")
-    payload = validate_predict_payload(payload)
-    model_outputs = [
-        run_predict_model_data(
-            predict_task,
-            payload["pipeline_working_dir"],
-            execution_config=config,
-            shell_operation_cls=shell_operation_cls,
-        )
-        for predict_task in payload["predict_tasks"]
-    ]
-    postprocess_outputs = [
-        run_predict_postprocess(
-            payload["mode"],
-            postprocess_task,
-            model_outputs,
-            payload["pipeline_working_dir"],
-            execution_config=config,
-            shell_operation_cls=shell_operation_cls,
-        )
-        for postprocess_task in payload["postprocess_tasks"]
-    ]
-    return _result_from_postprocess_records(payload["mode"], postprocess_outputs)
-
-
 def _run_predict_prefect_tasks(
     payload: Mapping[str, object],
     execution_config: Optional[ExecutionConfig] = None,
 ) -> dict:
+    assert_serializable_payload(payload)
     config = execution_config or ExecutionConfig(task_runner="sync")
     payload = validate_predict_payload(payload)
     model_outputs = [

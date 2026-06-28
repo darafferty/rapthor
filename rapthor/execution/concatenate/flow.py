@@ -68,35 +68,11 @@ def _result_from_epoch_records(outputs: list[dict]) -> dict:
     return result
 
 
-def run_concatenate_flow(
-    payload: Mapping[str, object],
-    execution_config: Optional[ExecutionConfig] = None,
-    shell_operation_cls=None,
-) -> dict:
-    """Run concatenation commands and return finalizer-compatible outputs."""
-    assert_serializable_payload(payload)
-    config = execution_config or ExecutionConfig(task_runner="sync")
-    payload = validate_concatenate_payload(payload)
-    outputs = []
-
-    for epoch in payload["epochs"]:
-        outputs.append(
-            run_concatenate_epoch(
-                epoch,
-                payload["data_colname"],
-                payload["pipeline_working_dir"],
-                execution_config=config,
-                shell_operation_cls=shell_operation_cls,
-            )
-        )
-
-    return _result_from_epoch_records(outputs)
-
-
 def _run_concatenate_prefect_tasks(
     payload: Mapping[str, object],
     execution_config: Optional[ExecutionConfig] = None,
 ) -> dict:
+    assert_serializable_payload(payload)
     config = execution_config or ExecutionConfig(task_runner="sync")
     payload = validate_concatenate_payload(payload)
     outputs = [

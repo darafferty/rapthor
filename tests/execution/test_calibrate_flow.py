@@ -24,7 +24,6 @@ from rapthor.execution.calibrate.commands import (
 from rapthor.execution.calibrate.flow import (
     calibrate_chunk_task,
     calibrate_flow,
-    run_calibrate_flow,
 )
 from rapthor.execution.calibrate.payloads import calibrate_payload_from_inputs
 from rapthor.execution.commands import normalize_command
@@ -32,6 +31,7 @@ from rapthor.execution.config import ExecutionConfig
 from rapthor.lib.field import Field as RapthorField
 from rapthor.lib.records import directory_record, file_record, validate_output_record
 from rapthor.operations.calibrate import Calibrate
+from tests.execution.conftest import run_flow_for_test
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
 
@@ -1903,7 +1903,8 @@ def test_run_plot_solutions_publishes_new_plot_artifacts(
 def test_run_calibrate_flow_supports_di_fulljones(tmp_path, fake_calibrate_shell_operation_cls):
     payload = calibrate_payload_from_inputs("di", _di_fulljones_input_parms(), tmp_path)
 
-    outputs = run_calibrate_flow(
+    outputs = run_flow_for_test(
+        calibrate_flow,
         payload,
         execution_config=ExecutionConfig(task_runner="sync"),
         shell_operation_cls=fake_calibrate_shell_operation_cls,
@@ -1945,7 +1946,8 @@ def test_run_calibrate_flow_rejects_invalid_chunk_payload(
     payload["chunks"] = ["not-a-chunk"]
 
     with pytest.raises(ValueError, match=r"chunks\[0\]"):
-        run_calibrate_flow(
+        run_flow_for_test(
+            calibrate_flow,
             payload,
             execution_config=ExecutionConfig(task_runner="sync"),
             shell_operation_cls=fake_calibrate_shell_operation_cls,
@@ -1957,7 +1959,8 @@ def test_run_calibrate_flow_rejects_invalid_chunk_payload(
 def test_run_calibrate_flow_supports_di_scalar_phase(tmp_path, fake_calibrate_shell_operation_cls):
     payload = calibrate_payload_from_inputs("di", _di_scalar_phase_input_parms(), tmp_path)
 
-    outputs = run_calibrate_flow(
+    outputs = run_flow_for_test(
+        calibrate_flow,
         payload,
         execution_config=ExecutionConfig(task_runner="sync"),
         shell_operation_cls=fake_calibrate_shell_operation_cls,
@@ -2004,7 +2007,8 @@ def test_run_calibrate_flow_supports_di_scalar_phase(tmp_path, fake_calibrate_sh
 def test_run_calibrate_flow_supports_di_fast_phase(tmp_path, fake_calibrate_shell_operation_cls):
     payload = calibrate_payload_from_inputs("di", _di_fast_phase_input_parms(), tmp_path)
 
-    outputs = run_calibrate_flow(
+    outputs = run_flow_for_test(
+        calibrate_flow,
         payload,
         execution_config=ExecutionConfig(task_runner="sync"),
         shell_operation_cls=fake_calibrate_shell_operation_cls,
@@ -2031,7 +2035,8 @@ def test_run_calibrate_flow_supports_di_fast_phase(tmp_path, fake_calibrate_shel
 def test_run_calibrate_flow_supports_di_slow(tmp_path, fake_calibrate_shell_operation_cls):
     payload = calibrate_payload_from_inputs("di", _di_slow_input_parms(), tmp_path)
 
-    outputs = run_calibrate_flow(
+    outputs = run_flow_for_test(
+        calibrate_flow,
         payload,
         execution_config=ExecutionConfig(task_runner="sync"),
         shell_operation_cls=fake_calibrate_shell_operation_cls,
@@ -2064,7 +2069,8 @@ def test_run_calibrate_flow_supports_di_slow(tmp_path, fake_calibrate_shell_oper
 def test_run_calibrate_flow_supports_di_phase_slow(tmp_path, fake_calibrate_shell_operation_cls):
     payload = calibrate_payload_from_inputs("di", _di_phase_slow_input_parms(), tmp_path)
 
-    outputs = run_calibrate_flow(
+    outputs = run_flow_for_test(
+        calibrate_flow,
         payload,
         execution_config=ExecutionConfig(task_runner="sync"),
         shell_operation_cls=fake_calibrate_shell_operation_cls,
@@ -2112,7 +2118,8 @@ def test_run_calibrate_flow_supports_di_phase_slow(tmp_path, fake_calibrate_shel
 def test_run_calibrate_flow_supports_dd_fast_phase(tmp_path, fake_calibrate_shell_operation_cls):
     payload = calibrate_payload_from_inputs("dd", _dd_fast_phase_input_parms(), tmp_path)
 
-    outputs = run_calibrate_flow(
+    outputs = run_flow_for_test(
+        calibrate_flow,
         payload,
         execution_config=ExecutionConfig(task_runner="sync"),
         shell_operation_cls=fake_calibrate_shell_operation_cls,
@@ -2152,7 +2159,8 @@ def test_run_calibrate_flow_supports_dd_fast_phase(tmp_path, fake_calibrate_shel
 def test_run_calibrate_flow_supports_dd_slow(tmp_path, fake_calibrate_shell_operation_cls):
     payload = calibrate_payload_from_inputs("dd", _dd_slow_input_parms(), tmp_path)
 
-    outputs = run_calibrate_flow(
+    outputs = run_flow_for_test(
+        calibrate_flow,
         payload,
         execution_config=ExecutionConfig(task_runner="sync"),
         shell_operation_cls=fake_calibrate_shell_operation_cls,
@@ -2191,7 +2199,8 @@ def test_run_calibrate_flow_supports_dd_slow(tmp_path, fake_calibrate_shell_oper
 def test_run_calibrate_flow_supports_dd_fast_medium(tmp_path, fake_calibrate_shell_operation_cls):
     payload = calibrate_payload_from_inputs("dd", _dd_fast_medium_input_parms(), tmp_path)
 
-    outputs = run_calibrate_flow(
+    outputs = run_flow_for_test(
+        calibrate_flow,
         payload,
         execution_config=ExecutionConfig(task_runner="sync"),
         shell_operation_cls=fake_calibrate_shell_operation_cls,
@@ -2240,7 +2249,8 @@ def test_run_calibrate_flow_supports_dd_fast_medium(tmp_path, fake_calibrate_she
 def test_run_calibrate_flow_supports_dd_preapply(tmp_path, fake_calibrate_shell_operation_cls):
     payload = calibrate_payload_from_inputs("dd", _dd_preapply_input_parms(), tmp_path)
 
-    outputs = run_calibrate_flow(
+    outputs = run_flow_for_test(
+        calibrate_flow,
         payload,
         execution_config=ExecutionConfig(task_runner="sync"),
         shell_operation_cls=fake_calibrate_shell_operation_cls,
@@ -2275,7 +2285,8 @@ def test_run_calibrate_flow_supports_dd_preapply(tmp_path, fake_calibrate_shell_
 def test_run_calibrate_flow_supports_dd_image_predict(tmp_path, fake_calibrate_shell_operation_cls):
     payload = calibrate_payload_from_inputs("dd", _dd_image_predict_input_parms(), tmp_path)
 
-    outputs = run_calibrate_flow(
+    outputs = run_flow_for_test(
+        calibrate_flow,
         payload,
         execution_config=ExecutionConfig(task_runner="sync"),
         shell_operation_cls=fake_calibrate_shell_operation_cls,
@@ -2352,7 +2363,8 @@ def test_run_calibrate_flow_supports_dd_screen_generation(
 ):
     payload = calibrate_payload_from_inputs("dd", _dd_screen_input_parms(), tmp_path)
 
-    outputs = run_calibrate_flow(
+    outputs = run_flow_for_test(
+        calibrate_flow,
         payload,
         execution_config=ExecutionConfig(task_runner="sync"),
         shell_operation_cls=fake_calibrate_shell_operation_cls,
@@ -2396,7 +2408,8 @@ def test_run_calibrate_flow_supports_dd_screen_generation_with_slow_gain(
         tmp_path,
     )
 
-    outputs = run_calibrate_flow(
+    outputs = run_flow_for_test(
+        calibrate_flow,
         payload,
         execution_config=ExecutionConfig(task_runner="sync"),
         shell_operation_cls=fake_calibrate_shell_operation_cls,
@@ -2433,7 +2446,8 @@ def test_run_calibrate_flow_fails_when_image_predict_model_is_missing(
     payload = calibrate_payload_from_inputs("dd", _dd_image_predict_input_parms(), tmp_path)
 
     with pytest.raises(FileNotFoundError, match="Calibration model image was not created"):
-        run_calibrate_flow(
+        run_flow_for_test(
+            calibrate_flow,
             payload,
             execution_config=ExecutionConfig(task_runner="sync"),
             shell_operation_cls=MissingModelShellOperation,
@@ -2455,7 +2469,8 @@ def test_run_calibrate_flow_fails_when_image_predict_region_is_missing(
     payload = calibrate_payload_from_inputs("dd", _dd_image_predict_input_parms(), tmp_path)
 
     with pytest.raises(FileNotFoundError, match="Calibration region file was not created"):
-        run_calibrate_flow(
+        run_flow_for_test(
+            calibrate_flow,
             payload,
             execution_config=ExecutionConfig(task_runner="sync"),
             shell_operation_cls=MissingRegionShellOperation,
@@ -2471,7 +2486,8 @@ def test_run_calibrate_flow_supports_dd_image_predict_preapply(
         tmp_path,
     )
 
-    outputs = run_calibrate_flow(
+    outputs = run_flow_for_test(
+        calibrate_flow,
         payload,
         execution_config=ExecutionConfig(task_runner="sync"),
         shell_operation_cls=fake_calibrate_shell_operation_cls,
@@ -2512,7 +2528,8 @@ def test_run_calibrate_flow_skips_dd_source_adjustment_for_single_direction(
     input_parms["solve_directions"] = ["patch1"]
     payload = calibrate_payload_from_inputs("dd", input_parms, tmp_path)
 
-    outputs = run_calibrate_flow(
+    outputs = run_flow_for_test(
+        calibrate_flow,
         payload,
         execution_config=ExecutionConfig(task_runner="sync"),
         shell_operation_cls=fake_calibrate_shell_operation_cls,
@@ -2531,7 +2548,8 @@ def test_run_calibrate_flow_skips_dd_source_adjustment_for_single_direction(
 def test_run_calibrate_flow_supports_dd_with_slow(tmp_path, fake_calibrate_shell_operation_cls):
     payload = calibrate_payload_from_inputs("dd", _dd_with_slow_input_parms(), tmp_path)
 
-    outputs = run_calibrate_flow(
+    outputs = run_flow_for_test(
+        calibrate_flow,
         payload,
         execution_config=ExecutionConfig(task_runner="sync"),
         shell_operation_cls=fake_calibrate_shell_operation_cls,
@@ -2600,7 +2618,8 @@ def test_run_calibrate_flow_supports_dd_with_slow_without_medium2(
     input_parms["solution_combine_mode"] = solution_combine_mode
     payload = calibrate_payload_from_inputs("dd", input_parms, tmp_path)
 
-    outputs = run_calibrate_flow(
+    outputs = run_flow_for_test(
+        calibrate_flow,
         payload,
         execution_config=ExecutionConfig(task_runner="sync"),
         shell_operation_cls=fake_calibrate_shell_operation_cls,
@@ -3267,7 +3286,8 @@ def test_calibrate_prefect_tasks_submit_all_chunks_before_collect(monkeypatch, t
 
 def test_run_calibrate_flow_fails_when_expected_output_is_missing(tmp_path):
     with pytest.raises(FileNotFoundError, match="DI full-Jones h5parm"):
-        run_calibrate_flow(
+        run_flow_for_test(
+            calibrate_flow,
             calibrate_payload_from_inputs("di", _di_fulljones_input_parms(), tmp_path),
             execution_config=ExecutionConfig(task_runner="sync"),
             shell_operation_cls=NoOutputShellOperation,

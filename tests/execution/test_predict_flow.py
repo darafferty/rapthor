@@ -15,11 +15,11 @@ from rapthor.execution.predict.commands import (
 from rapthor.execution.predict.flow import (
     predict_flow,
     predict_model_data_task,
-    run_predict_flow,
 )
 from rapthor.execution.predict.payloads import predict_payload_from_inputs
 from rapthor.lib.records import directory_record, file_record, validate_output_record
 from rapthor.operations.predict import Predict
+from tests.execution.conftest import run_flow_for_test
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
 
@@ -529,7 +529,8 @@ def test_run_predict_flow_executes_di_commands_and_returns_nested_records(
 ):
     payload = predict_payload_from_inputs("di", _predict_input_parms(), tmp_path)
 
-    outputs = run_predict_flow(
+    outputs = run_flow_for_test(
+        predict_flow,
         payload,
         execution_config=ExecutionConfig(task_runner="sync"),
         shell_operation_cls=fake_predict_shell_operation_cls,
@@ -563,7 +564,8 @@ def test_run_predict_flow_rejects_invalid_prediction_directions(
     payload["predict_tasks"][0]["directions"] = ["patch1", 7]
 
     with pytest.raises(ValueError, match="directions"):
-        run_predict_flow(
+        run_flow_for_test(
+            predict_flow,
             payload,
             execution_config=ExecutionConfig(task_runner="sync"),
             shell_operation_cls=fake_predict_shell_operation_cls,
@@ -577,7 +579,8 @@ def test_run_predict_flow_executes_dd_commands_and_returns_peeling_records(
 ):
     payload = predict_payload_from_inputs("dd", _dd_predict_input_parms(), tmp_path)
 
-    outputs = run_predict_flow(
+    outputs = run_flow_for_test(
+        predict_flow,
         payload,
         execution_config=ExecutionConfig(task_runner="sync"),
         shell_operation_cls=fake_predict_shell_operation_cls,
@@ -643,7 +646,8 @@ def test_run_predict_flow_propagates_shell_failures(tmp_path):
     payload = predict_payload_from_inputs("di", _single_observation_input_parms(), tmp_path)
 
     with pytest.raises(RuntimeError, match="predict failed"):
-        run_predict_flow(
+        run_flow_for_test(
+            predict_flow,
             payload,
             execution_config=ExecutionConfig(task_runner="sync"),
             shell_operation_cls=FailingShellOperation,
@@ -654,7 +658,8 @@ def test_run_predict_flow_fails_when_predicted_model_is_missing(tmp_path):
     payload = predict_payload_from_inputs("di", _single_observation_input_parms(), tmp_path)
 
     with pytest.raises(FileNotFoundError, match="Predict output was not created"):
-        run_predict_flow(
+        run_flow_for_test(
+            predict_flow,
             payload,
             execution_config=ExecutionConfig(task_runner="sync"),
             shell_operation_cls=NoOutputShellOperation,
@@ -665,7 +670,8 @@ def test_run_predict_flow_fails_when_postprocess_output_is_missing(tmp_path):
     payload = predict_payload_from_inputs("di", _single_observation_input_parms(), tmp_path)
 
     with pytest.raises(FileNotFoundError, match="post-processing outputs"):
-        run_predict_flow(
+        run_flow_for_test(
+            predict_flow,
             payload,
             execution_config=ExecutionConfig(task_runner="sync"),
             shell_operation_cls=PostprocessNoOutputShellOperation,
@@ -689,7 +695,8 @@ def test_predict_finalizer_accepts_prefect_outputs(tmp_path, fake_predict_shell_
         _single_observation_input_parms(),
         operation.pipeline_working_dir,
     )
-    outputs = run_predict_flow(
+    outputs = run_flow_for_test(
+        predict_flow,
         payload,
         execution_config=ExecutionConfig(task_runner="sync"),
         shell_operation_cls=fake_predict_shell_operation_cls,

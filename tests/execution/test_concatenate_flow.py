@@ -10,12 +10,12 @@ from rapthor.execution.concatenate.commands import build_concatenate_command
 from rapthor.execution.concatenate.flow import (
     concatenate_epoch_task,
     concatenate_flow,
-    run_concatenate_flow,
 )
 from rapthor.execution.concatenate.payloads import concatenate_payload_from_inputs
 from rapthor.execution.config import ExecutionConfig
 from rapthor.lib.records import directory_record, validate_output_record
 from rapthor.operations.concatenate import Concatenate
+from tests.execution.conftest import run_flow_for_test
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
 
@@ -220,7 +220,8 @@ def test_run_concatenate_flow_executes_commands_and_returns_records(
         ],
     }
 
-    outputs = run_concatenate_flow(
+    outputs = run_flow_for_test(
+        concatenate_flow,
         payload,
         execution_config=ExecutionConfig(task_runner="sync"),
         shell_operation_cls=fake_shell_operation_cls,
@@ -261,7 +262,8 @@ def test_run_concatenate_flow_rejects_invalid_epoch_input_filenames(
     }
 
     with pytest.raises(ValueError, match=expected_message):
-        run_concatenate_flow(
+        run_flow_for_test(
+            concatenate_flow,
             payload,
             execution_config=ExecutionConfig(task_runner="sync"),
             shell_operation_cls=fake_shell_operation_cls,
@@ -331,7 +333,8 @@ def test_concatenate_prefect_flow_entrypoint_runs_with_mocked_shell(
 
 
 def test_run_concatenate_flow_handles_no_concatenation_needed(tmp_path, fake_shell_operation_cls):
-    outputs = run_concatenate_flow(
+    outputs = run_flow_for_test(
+        concatenate_flow,
         {"pipeline_working_dir": str(tmp_path), "data_colname": "DATA", "epochs": []},
         execution_config=ExecutionConfig(task_runner="sync"),
         shell_operation_cls=fake_shell_operation_cls,
@@ -355,7 +358,8 @@ def test_run_concatenate_flow_propagates_shell_failures(tmp_path):
     }
 
     with pytest.raises(RuntimeError, match="concat failed"):
-        run_concatenate_flow(
+        run_flow_for_test(
+            concatenate_flow,
             payload,
             execution_config=ExecutionConfig(task_runner="sync"),
             shell_operation_cls=FailingShellOperation,
@@ -378,7 +382,8 @@ def test_run_concatenate_flow_fails_when_expected_output_is_missing(tmp_path):
     }
 
     with pytest.raises(FileNotFoundError, match="Concatenate output was not created"):
-        run_concatenate_flow(
+        run_flow_for_test(
+            concatenate_flow,
             payload,
             execution_config=ExecutionConfig(task_runner="sync"),
             shell_operation_cls=NoOutputShellOperation,
@@ -396,7 +401,8 @@ def test_concatenate_finalizer_accepts_prefect_outputs(tmp_path, fake_shell_oper
     operation = Concatenate(field, index=0)
     operation.set_input_parameters()
     payload = concatenate_payload_from_inputs(operation.input_parms, operation.pipeline_working_dir)
-    outputs = run_concatenate_flow(
+    outputs = run_flow_for_test(
+        concatenate_flow,
         payload,
         execution_config=ExecutionConfig(task_runner="sync"),
         shell_operation_cls=fake_shell_operation_cls,

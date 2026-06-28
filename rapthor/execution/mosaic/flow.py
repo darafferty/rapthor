@@ -121,35 +121,11 @@ def _result_from_mosaic_records(outputs: list[dict]) -> dict:
     return result
 
 
-def run_mosaic_flow(
-    payload: Mapping[str, object],
-    execution_config: Optional[ExecutionConfig] = None,
-    shell_operation_cls=None,
-) -> dict:
-    """Run mosaic commands and return finalizer-compatible outputs."""
-    assert_serializable_payload(payload)
-    payload = validate_mosaic_payload(payload)
-    if payload["skip_processing"]:
-        return {}
-
-    config = execution_config or ExecutionConfig(task_runner="sync")
-    outputs = [
-        run_mosaic_image_type(
-            image_type,
-            payload["compress_images"],
-            payload["pipeline_working_dir"],
-            execution_config=config,
-            shell_operation_cls=shell_operation_cls,
-        )
-        for image_type in payload["image_types"]
-    ]
-    return _result_from_mosaic_records(outputs)
-
-
 def _run_mosaic_prefect_tasks(
     payload: Mapping[str, object],
     execution_config: Optional[ExecutionConfig] = None,
 ) -> dict:
+    assert_serializable_payload(payload)
     payload = validate_mosaic_payload(payload)
     if payload["skip_processing"]:
         return {}

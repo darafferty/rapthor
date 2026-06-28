@@ -79,31 +79,11 @@ def _result_from_sector_records(sector_outputs: list[dict]) -> dict:
     return result
 
 
-def run_image_flow(
-    payload: Mapping[str, object],
-    execution_config: Optional[ExecutionConfig] = None,
-    shell_operation_cls=None,
-) -> dict:
-    """Run imaging commands and return finalizer-compatible outputs."""
-    assert_serializable_payload(payload)
-    config = execution_config or ExecutionConfig(task_runner="sync")
-    payload = validate_image_payload(payload)
-    sector_outputs = [
-        _run_image_sector(
-            sector,
-            payload["pipeline_working_dir"],
-            execution_config=config,
-            shell_operation_cls=shell_operation_cls,
-        )
-        for sector in payload["sectors"]
-    ]
-    return _result_from_sector_records(sector_outputs)
-
-
 def _run_image_prefect_tasks(
     payload: Mapping[str, object],
     execution_config: Optional[ExecutionConfig] = None,
 ) -> dict:
+    assert_serializable_payload(payload)
     config = execution_config or ExecutionConfig(task_runner="sync")
     payload = validate_image_payload(payload)
     sector_outputs = [

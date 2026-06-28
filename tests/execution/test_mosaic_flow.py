@@ -16,11 +16,11 @@ from rapthor.execution.mosaic.commands import (
 )
 from rapthor.execution.mosaic.flow import (
     mosaic_flow,
-    run_mosaic_flow,
 )
 from rapthor.execution.mosaic.payloads import mosaic_payload_from_inputs
 from rapthor.lib.records import file_record, validate_output_record
 from rapthor.operations.mosaic import Mosaic
+from tests.execution.conftest import run_flow_for_test
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
 
@@ -292,7 +292,8 @@ def test_run_mosaic_flow_executes_commands_and_returns_records(
         fake_publish_fits_image_artifacts,
     )
 
-    outputs = run_mosaic_flow(
+    outputs = run_flow_for_test(
+        mosaic_flow,
         _mosaic_payload(tmp_path),
         execution_config=ExecutionConfig(task_runner="sync"),
         shell_operation_cls=fake_mosaic_shell_operation_cls,
@@ -322,7 +323,8 @@ def test_run_mosaic_flow_rejects_invalid_image_type_lists(
     payload["image_types"][0]["sector_image_filenames"] = ["sector_1-I-image.fits", 7]
 
     with pytest.raises(ValueError, match="sector_image_filenames"):
-        run_mosaic_flow(
+        run_flow_for_test(
+            mosaic_flow,
             payload,
             execution_config=ExecutionConfig(task_runner="sync"),
             shell_operation_cls=fake_mosaic_shell_operation_cls,
@@ -332,7 +334,8 @@ def test_run_mosaic_flow_rejects_invalid_image_type_lists(
 
 
 def test_run_mosaic_flow_returns_compressed_records(tmp_path, fake_mosaic_shell_operation_cls):
-    outputs = run_mosaic_flow(
+    outputs = run_flow_for_test(
+        mosaic_flow,
         _mosaic_payload(tmp_path, compress_images=True),
         execution_config=ExecutionConfig(task_runner="sync"),
         shell_operation_cls=fake_mosaic_shell_operation_cls,
@@ -347,7 +350,8 @@ def test_run_mosaic_flow_returns_compressed_records(tmp_path, fake_mosaic_shell_
 def test_run_mosaic_flow_handles_skip_processing_without_commands(
     tmp_path, fake_mosaic_shell_operation_cls
 ):
-    outputs = run_mosaic_flow(
+    outputs = run_flow_for_test(
+        mosaic_flow,
         {
             "pipeline_working_dir": str(tmp_path),
             "compress_images": False,
@@ -382,7 +386,8 @@ def test_mosaic_prefect_flow_entrypoint_runs_with_mocked_shell(
 
 def test_run_mosaic_flow_fails_when_expected_output_is_missing(tmp_path):
     with pytest.raises(FileNotFoundError, match="Mosaic output was not created"):
-        run_mosaic_flow(
+        run_flow_for_test(
+            mosaic_flow,
             _mosaic_payload(tmp_path),
             execution_config=ExecutionConfig(task_runner="sync"),
             shell_operation_cls=NoOutputShellOperation,
@@ -401,7 +406,8 @@ def test_mosaic_finalizer_accepts_prefect_outputs(tmp_path, fake_mosaic_shell_op
         operation.pipeline_working_dir,
         compress_images=field.compress_images,
     )
-    outputs = run_mosaic_flow(
+    outputs = run_flow_for_test(
+        mosaic_flow,
         payload,
         execution_config=ExecutionConfig(task_runner="sync"),
         shell_operation_cls=fake_mosaic_shell_operation_cls,
