@@ -87,10 +87,17 @@ Tasks:
 - Only switch production execution from shell/script to direct function calls
   when the payload is small, serializable, and safe for Dask workers.
 
+Progress:
+
+- Started with `check_image_beam.py`: extracted the FITS header update logic to
+  `rapthor.execution.image.beam.ensure_image_beam`, kept the script as the CLI
+  wrapper, and added direct function plus CLI parity tests.
+
 Done when:
 
-- At least one helper has an importable function, stable CLI wrapper, parity
-  tests, and clear owner-module documentation.
+- The script audit is complete and at least one helper has an importable
+  function, stable CLI wrapper, parity tests, and clear owner-module
+  documentation.
 
 ### 2. Dask Scalability Contracts
 
