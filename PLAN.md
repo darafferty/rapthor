@@ -152,16 +152,21 @@ Completed:
   - pruned broad facade re-exports for `calibrate_payload_from_inputs` now that
     this branch has no released public API to preserve
 - Calibration runner split:
-  - added `rapthor.execution.calibrate.runner` for scheduler-independent
-    calibration task bodies, image-predict preparation, plotting, collection,
-    combination, source adjustment, and gain processing
-  - kept simple required-file checks private to the runner until calibration has
-    output-discovery contracts large enough to justify a dedicated module
+  - added `rapthor.execution.calibrate.runner` as the first
+    scheduler-independent calibration execution owner
   - slimmed `rapthor.execution.calibrate.flow` to Prefect task wrappers,
     payload validation, sync execution entry points, and orchestration
   - updated focused calibration tests to exercise plotting and collection
-    helpers through the runner owner module
+    helpers through the scheduler-independent execution owner
   - pruned broad facade re-exports for `run_calibrate_chunk`
+- Calibration work-unit module split:
+  - replaced the broad `rapthor.execution.calibrate.runner` module with focused
+    `prediction`, `solves`, and `collection` owner modules
+  - kept `rapthor.execution.calibrate.flow` as the thin Prefect adapter that
+    wires prediction setup, DDECal/IDGCal chunk tasks, and collection/final
+    combination
+  - moved plotting tests to the collection owner module and kept flow tests for
+    task submission/result aggregation
 - Calibrate solve-plan helper extraction:
   - added `rapthor.operations.calibrate_plan` for pure strategy-to-solve-slot
     planning
@@ -426,7 +431,7 @@ Completed:
   - `python3 -c "from rapthor.execution.image.payloads import ImagePayload, ImageSectorPayload, image_payload_from_inputs; import rapthor.execution.payloads as shared_payloads; assert ImagePayload; assert ImageSectorPayload; assert image_payload_from_inputs; assert not hasattr(shared_payloads, 'ImagePayload'); assert not hasattr(shared_payloads, 'ImageSectorPayload')"`
   - `python3 -c "import rapthor.execution as execution; import rapthor.execution.calibrate.commands as commands; assert commands.build_ddecal_solve_command; assert not hasattr(execution, 'build_ddecal_solve_command')"`
   - `python3 -c "from rapthor.execution.calibrate.payloads import CalibratePayload, calibrate_payload_from_inputs, validate_calibrate_payload; import rapthor.execution as execution; import rapthor.execution.payloads as shared_payloads; assert CalibratePayload; assert calibrate_payload_from_inputs; assert validate_calibrate_payload; assert not hasattr(shared_payloads, 'CalibratePayload'); assert not hasattr(execution, 'calibrate_payload_from_inputs')"`
-  - `python3 -c "import rapthor.execution as execution; import rapthor.execution.calibrate.runner as runner; import rapthor.execution.calibrate.flow as flow; assert runner.run_calibrate_chunk; assert runner.collect_plot_and_combine; assert flow.calibrate_chunk_task; assert not hasattr(execution, 'run_calibrate_chunk')"`
+  - `python3 -c "import rapthor.execution as execution; import rapthor.execution.calibrate.collection as collection; import rapthor.execution.calibrate.solves as solves; import rapthor.execution.calibrate.flow as flow; assert solves.run_calibrate_chunk; assert collection.collect_plot_and_combine; assert flow.calibrate_chunk_task; assert not hasattr(execution, 'run_calibrate_chunk')"`
   - `python3 -c "from rapthor.operations.calibrate_plan import build_calibration_solve_plan, requested_calibration_solves; solves, defaulted = requested_calibration_solves('dd', None, True); plan = build_calibration_solve_plan('dd', solves, defaulted_strategy=defaulted); assert [solve.step for solve in plan] == ['solve1', 'solve2', 'solve3', 'solve4']; assert plan[-1].output_prefix == 'medium2_phase'"`
   - `python3 -c "from rapthor.operations.calibrate_plan import build_calibration_dp3_steps; assert build_calibration_dp3_steps(0, 0, all_channels_regular=True, use_image_based_predict=True, do_slowgain_solve=False, solve_steps=['solve1'], preapply_solutions=True) == ['predict', 'applybeam', 'applycal', 'solve1']"`
   - `python3 -c "from rapthor.operations.calibrate_plan import build_calibration_preapply_steps; assert build_calibration_preapply_steps('dd', has_di_h5parm=True, has_fulljones_h5parm=True, apply_amplitudes=True, apply_normalizations=True) == ['fastphase', 'slowgain', 'fulljones', 'normalization']"`
@@ -518,9 +523,8 @@ Known follow-up from the completed slice:
 
 Next slice:
 
-- Begin Dask scalability and script-to-module migration preparation by auditing
-  script helpers and choosing one small, low-risk script to expose as an
-  importable function while keeping its CLI wrapper stable.
+- Introduce command argument objects for the long image/calibration command
+  builders now that execution work-unit ownership is clearer.
 
 Immediate next tasks from the 2026-06-28 plan/code review:
 
@@ -623,7 +627,21 @@ Execution and operation cleanup queue, in recommended order:
    - Split along units scientists recognise, such as prepare task, image cube,
      normalization, screen solve, scalar solve collection, and DD phase
      collection.
-9. Introduce command argument objects for long command builders.
+9. Completed 2026-06-28: split the calibration runner into focused execution
+   modules.
+   - Removed `rapthor.execution.calibrate.runner` instead of keeping it as an
+     unreleased compatibility shim.
+   - Moved image-based model drawing and region preparation into
+     `rapthor.execution.calibrate.prediction`.
+   - Moved DDECal and IDGCal chunk execution into
+     `rapthor.execution.calibrate.solves`.
+  - Moved h5parm collection, plotting, slow-gain processing, source adjustment,
+     and final combination into `rapthor.execution.calibrate.collection`.
+   - Kept `rapthor.execution.calibrate.flow` as the thin Prefect adapter for
+     task wiring and result aggregation.
+   - Verified the split with focused architecture/calibration flow tests and the
+     DD/DI calibration integration files.
+10. Introduce command argument objects for long command builders.
    - Replace very long command-builder signatures, such as the WSClean builders,
      with small frozen dataclasses grouped by real concepts: common WSClean
      options, no-DDE options, facet options, screen options, MPI launch options,
@@ -638,7 +656,7 @@ Execution and operation cleanup queue, in recommended order:
      because those splits will reveal the stable data groups. Do it before the
      script-to-module migration so new Python module APIs do not inherit the
      current long-argument style.
-10. Revisit large operation adapters after the low-risk cleanup.
+11. Revisit large operation adapters after the low-risk cleanup.
    - `Image.set_input_parameters()`, `Image.finalize()`, and
      `Calibrate.set_input_parameters()` remain the largest operation-side
      methods.
@@ -673,9 +691,10 @@ Broader follow-on tasks after the cleanup queue:
      Slurm/external-Dask mismatch, missing Dask scheduler, and MPI WSClean
      assumptions.
 4. Large runner/module simplification pass.
-   - Review `rapthor.execution.calibrate.runner`, `rapthor.execution.image.sector`,
-     `rapthor.execution.shell`, `rapthor.operations.calibrate`, and
-     `rapthor.operations.image` before adding more abstractions.
+   - Review the calibration work-unit modules,
+     `rapthor.execution.image.sector`, `rapthor.execution.shell`,
+     `rapthor.operations.calibrate`, and `rapthor.operations.image` before
+     adding more abstractions.
    - Split only where there is a clearer scientific work unit, repeated command
      execution pattern, or testability/debugging benefit.
 5. Contributor documentation slice.

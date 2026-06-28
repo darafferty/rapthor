@@ -6,8 +6,8 @@ import numpy as np
 import pytest
 from prefect.testing.utilities import prefect_test_harness
 
+import rapthor.execution.calibrate.collection as calibrate_collection
 import rapthor.execution.calibrate.flow as calibrate_module
-import rapthor.execution.calibrate.runner as calibrate_runner
 from rapthor.execution.calibrate.commands import (
     build_adjust_h5parm_sources_command,
     build_collect_h5parms_command,
@@ -1982,7 +1982,7 @@ def test_run_plot_solutions_returns_only_new_plots(tmp_path, fake_calibrate_shel
     h5parm.write_text("h5parm")
     (tmp_path / "phase_solutions.png").write_text("existing")
 
-    plots = calibrate_runner.run_plot_solutions(
+    plots = calibrate_collection.run_plot_solutions(
         file_record(h5parm),
         "phase",
         str(tmp_path),
@@ -2004,9 +2004,9 @@ def test_run_plot_solutions_publishes_new_plot_artifacts(
         published.append((records, root_dir))
         return []
 
-    monkeypatch.setattr(calibrate_runner, "publish_plot_file_records", fake_publish)
+    monkeypatch.setattr(calibrate_collection, "publish_plot_file_records", fake_publish)
 
-    plots = calibrate_runner.run_plot_solutions(
+    plots = calibrate_collection.run_plot_solutions(
         file_record(h5parm),
         "phase",
         str(tmp_path),
@@ -3492,7 +3492,7 @@ def test_calibrate_prefect_tasks_submit_all_chunks_before_collect(monkeypatch, t
         return {"combined_solutions": file_record(tmp_path / "fulljones_solutions.h5")}
 
     monkeypatch.setattr(calibrate_module.calibrate_chunk_task, "submit", fake_submit)
-    monkeypatch.setattr(calibrate_runner, "collect_plot_and_combine", fake_collect)
+    monkeypatch.setattr(calibrate_module, "collect_plot_and_combine", fake_collect)
 
     outputs = calibrate_module._run_calibrate_prefect_tasks(
         payload,

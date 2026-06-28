@@ -18,9 +18,11 @@ DOMAIN_FORBIDDEN_PREFIXES = FRAMEWORK_PREFIXES + ("rapthor.execution",)
 
 PURE_EXECUTION_MODULES = (
     RAPTHOR_ROOT / "execution" / "commands.py",
+    RAPTHOR_ROOT / "execution" / "calibrate" / "collection.py",
     RAPTHOR_ROOT / "execution" / "calibrate" / "commands.py",
     RAPTHOR_ROOT / "execution" / "calibrate" / "payloads.py",
-    RAPTHOR_ROOT / "execution" / "calibrate" / "runner.py",
+    RAPTHOR_ROOT / "execution" / "calibrate" / "prediction.py",
+    RAPTHOR_ROOT / "execution" / "calibrate" / "solves.py",
     RAPTHOR_ROOT / "execution" / "concatenate" / "commands.py",
     RAPTHOR_ROOT / "execution" / "concatenate" / "payloads.py",
     RAPTHOR_ROOT / "execution" / "image" / "commands.py",
