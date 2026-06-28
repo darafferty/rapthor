@@ -4,7 +4,6 @@ Module that holds the Predict classes
 
 import logging
 import os
-import re
 
 from losoto.h5parm import h5parm
 
@@ -228,7 +227,7 @@ class Predict(Operation):
         return h5parm_filename
 
     def _is_current_cycle_solution(self, h5parm_filename, cycle_attr):
-        cycle_number = self._solution_cycle_number(h5parm_filename, cycle_attr)
+        cycle_number = self.field.solution_cycle_number(h5parm_filename, cycle_attr)
         if cycle_number is None or cycle_number == self.index:
             return True
 
@@ -239,16 +238,6 @@ class Predict(Operation):
             cycle_number,
         )
         return False
-
-    def _solution_cycle_number(self, h5parm_filename, cycle_attr):
-        cycle_number = getattr(self.field, cycle_attr, None)
-        if cycle_number is not None:
-            return int(cycle_number)
-
-        match = re.search(r"(?:^|[/\\])calibrate_(\d+)(?:[/\\]|$)", h5parm_filename)
-        if match:
-            return int(match.group(1))
-        return None
 
     def _dd_h5parm_matches_sector_patches(self, dd_h5parm, sector_patches):
         requested_directions = self._requested_directions(sector_patches)

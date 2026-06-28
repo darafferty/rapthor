@@ -5,7 +5,6 @@ Module that holds the Image classes
 import json
 import logging
 import os
-import re
 from typing import List, Union
 
 from rapthor.execution.image.flow import image_flow
@@ -149,7 +148,7 @@ class Image(Operation):
         if h5parm_filename is None:
             return False
 
-        cycle_number = self._solution_cycle_number(h5parm_filename, cycle_attr)
+        cycle_number = self.field.solution_cycle_number(h5parm_filename, cycle_attr)
         if cycle_number is None or cycle_number == self.index:
             return True
 
@@ -160,16 +159,6 @@ class Image(Operation):
             cycle_number,
         )
         return False
-
-    def _solution_cycle_number(self, h5parm_filename, cycle_attr):
-        cycle_number = getattr(self.field, cycle_attr, None)
-        if cycle_number is not None:
-            return int(cycle_number)
-
-        match = re.search(r"(?:^|[/\\])calibrate_(\d+)(?:[/\\]|$)", h5parm_filename)
-        if match:
-            return int(match.group(1))
-        return None
 
     def _shared_facet_rw_enabled(self):
         return bool(self.use_facets and self.parset["imaging_specific"]["shared_facet_rw"])

@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 import rapthor
+from rapthor.lib.field import Field as RapthorField
 from rapthor.lib.operation import DIR as OPERATION_DIR
 from rapthor.operations.calibrate import Calibrate
 from rapthor.operations.calibrate_plan import (
@@ -148,6 +149,8 @@ def calibrate_field(operation_parset, mocker, single_source_sky_model):
     """Create a mock field object for testing a Calibrate operation."""
 
     class Field:
+        solution_cycle_number = RapthorField.solution_cycle_number
+
         def __init__(self, parset):
             self.parset = parset
             self.calibration_diagnostics = []

@@ -4,7 +4,6 @@ Module that holds the Calibrate classes
 
 import glob
 import os
-import re
 import shutil
 
 import lsmtool
@@ -617,7 +616,11 @@ class Calibrate(Operation):
         if filepath is None:
             return None
 
-        cycle_number = self._solution_cycle_number(filepath, cycle_attr)
+        cycle_number = self.field.solution_cycle_number(
+            filepath,
+            cycle_attr,
+            include_di_calibration=True,
+        )
         if cycle_number is None or cycle_number == self.index:
             return filepath
 
@@ -628,16 +631,6 @@ class Calibrate(Operation):
             self.index,
             cycle_number,
         )
-        return None
-
-    def _solution_cycle_number(self, filepath, cycle_attr):
-        cycle_number = getattr(self.field, cycle_attr, None)
-        if cycle_number is not None:
-            return int(cycle_number)
-
-        match = re.search(r"(?:^|[/\\])calibrate(?:_di)?_(\d+)(?:[/\\]|$)", filepath)
-        if match:
-            return int(match.group(1))
         return None
 
     def _get_baselines_core(self):

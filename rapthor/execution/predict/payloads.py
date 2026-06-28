@@ -3,7 +3,15 @@
 import os
 from typing import Mapping, Optional, TypedDict, Union
 
-from rapthor.execution.payloads import assert_serializable_payload
+from rapthor.execution.payloads import (
+    assert_serializable_payload,
+)
+from rapthor.execution.payloads import (
+    validate_basename as _validate_basename,
+)
+from rapthor.execution.payloads import (
+    validate_string_list as _validate_string_list,
+)
 from rapthor.lib.records import (
     directory_record_path,
     file_record_path,
@@ -74,22 +82,6 @@ def _optional_str(value: object) -> Optional[str]:
     if value in (None, "", "None"):
         return None
     return str(value)
-
-
-def _validate_basename(filename: object, name: str) -> str:
-    if not isinstance(filename, str) or not filename:
-        raise ValueError(f"{name} must be a non-empty string")
-    if os.path.isabs(filename) or os.path.basename(filename) != filename:
-        raise ValueError(f"{name} must be a basename")
-    return filename
-
-
-def _validate_string_list(values: object, name: str) -> list[str]:
-    if not isinstance(values, list) or not all(
-        isinstance(value, str) and value for value in values
-    ):
-        raise ValueError(f"{name} must be a list of strings")
-    return list(values)
 
 
 def predict_payload_from_inputs(

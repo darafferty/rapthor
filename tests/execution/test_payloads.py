@@ -2,7 +2,13 @@ from pathlib import Path
 
 import pytest
 
-from rapthor.execution.payloads import PayloadSerializationError, assert_serializable_payload
+from rapthor.execution.payloads import (
+    PayloadSerializationError,
+    assert_serializable_payload,
+    validate_basename,
+    validate_int_list,
+    validate_string_list,
+)
 
 
 def test_assert_serializable_payload_accepts_plain_values():
@@ -32,3 +38,33 @@ def test_assert_serializable_payload_rejects_domain_like_objects():
 
     with pytest.raises(PayloadSerializationError, match="FieldLike"):
         assert_serializable_payload({"field": FieldLike()})
+
+
+def test_validate_basename_accepts_plain_filename():
+    assert validate_basename("output.ms", "output_filename") == "output.ms"
+
+
+@pytest.mark.parametrize("filename", ["", "/tmp/output.ms", "nested/output.ms"])
+def test_validate_basename_rejects_empty_or_non_basename(filename):
+    with pytest.raises(ValueError, match="output_filename must be"):
+        validate_basename(filename, "output_filename")
+
+
+def test_validate_string_list_accepts_non_empty_strings():
+    values = ["sector_1.ms", "sector_2.ms"]
+
+    assert validate_string_list(values, "sector_filenames") == values
+
+
+def test_validate_string_list_rejects_non_string_or_empty_values():
+    with pytest.raises(ValueError, match="sector_filenames must be a list of strings"):
+        validate_string_list(["sector_1.ms", ""], "sector_filenames")
+
+
+def test_validate_int_list_accepts_exact_length():
+    assert validate_int_list([1, 2], "wsclean_imsize", length=2) == [1, 2]
+
+
+def test_validate_int_list_rejects_wrong_length():
+    with pytest.raises(ValueError, match="wsclean_imsize must contain exactly 2 entries"):
+        validate_int_list([1], "wsclean_imsize", length=2)

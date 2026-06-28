@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 import rapthor
+from rapthor.lib.field import Field as RapthorField
 from rapthor.operations.predict import Predict
 
 PREDICT_COMMON_INPUT_KEYS = {
@@ -46,6 +47,8 @@ PREDICT_DD_INPUT_KEYS = {
 @pytest.fixture
 def predict_field(operation_parset):
     class Field:
+        solution_cycle_number = RapthorField.solution_cycle_number
+
         def __init__(self, parset):
             self.parset = parset
             self.sectors = []

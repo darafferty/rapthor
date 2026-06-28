@@ -287,6 +287,12 @@ Completed:
 - Dead-code cleanup:
   - removed unused `merge_list_flatten()` from `rapthor.operations.image`
   - verified that no production, test, or documentation references remained
+- Low-risk duplicate consolidation:
+  - moved Prefect run-context detection into `rapthor.execution.prefect_context`
+  - moved shared payload basename, string-list, and integer-list validators into
+    `rapthor.execution.payloads`
+  - moved shared solution-cycle parsing onto the `Field` model
+  - added focused tests for payload validation and solution-cycle parsing
 - Operation package and pipeline module consolidation:
   - moved operation Prefect adapters into operation-owned `flow.py` modules:
     `rapthor.execution.image.flow`, `rapthor.execution.calibrate.flow`,
@@ -459,14 +465,14 @@ Execution and operation cleanup queue, in recommended order:
 1. Completed 2026-06-28: remove confirmed dead code.
    - Deleted `merge_list_flatten()` from `rapthor.operations.image`; no
      production, test, or documentation references remained.
-2. Consolidate low-risk exact duplicates.
-   - Move the duplicate Prefect run-context check used by artifacts and Prefect
-     logging into one small helper.
-   - Move duplicated payload validators such as basename, string-list, and
-     integer-list validation into a shared payload-validation helper module or
-     `rapthor.execution.payloads`, keeping error messages stable.
-   - Move repeated operation solution-cycle parsing into a small operation
-     helper so Image, Predict, and Calibrate do not drift.
+2. Completed 2026-06-28: consolidate low-risk exact duplicates.
+   - Moved the duplicate Prefect run-context check used by artifacts and Prefect
+     logging into `rapthor.execution.prefect_context`.
+   - Moved duplicated payload validators such as basename, string-list, and
+     integer-list validation into `rapthor.execution.payloads`, keeping error
+     messages stable.
+   - Moved repeated solution-cycle parsing onto the `Field` model so Image,
+     Predict, and Calibrate do not drift.
 3. Resolve the unused runtime abstraction.
    - `rapthor.execution.runtime.RuntimeSpec`, `build_command_environment()`, and
      `build_runtime_spec()` are currently tested but not used by production

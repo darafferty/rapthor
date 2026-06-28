@@ -7,6 +7,8 @@ import threading
 from contextlib import contextmanager
 from typing import Iterator, Optional
 
+from rapthor.execution.prefect_context import in_prefect_run_context
+
 PREFECT_API_LOG_HANDLER_NAME = "rapthor-prefect-api"
 
 _handler_lock = threading.RLock()
@@ -29,16 +31,6 @@ def _load_api_log_handler():
     from prefect.logging.handlers import APILogHandler
 
     return APILogHandler
-
-
-def _in_prefect_run_context() -> bool:
-    try:
-        from prefect.context import get_run_context
-
-        get_run_context()
-    except Exception:
-        return False
-    return True
 
 
 def _logging_level(level: object = None) -> int:
@@ -92,7 +84,7 @@ def publish_python_logs_to_prefect(level: object = None) -> Iterator[None]:
     """
     global _active_contexts, _api_handler
 
-    if not _in_prefect_run_context():
+    if not in_prefect_run_context():
         yield
         return
 

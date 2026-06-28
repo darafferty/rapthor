@@ -6,6 +6,7 @@ import copy
 import glob
 import logging
 import os
+import re
 from collections import namedtuple
 from typing import Dict, List
 
@@ -1702,6 +1703,28 @@ class Field(object):
         """
         self.wcs_pixel_scale = misc.WCS_PIXEL_SCALE
         self.wcs = make_wcs(self.ra, self.dec, self.wcs_pixel_scale)
+
+    def solution_cycle_number(self, filepath, cycle_attr, *, include_di_calibration=False):
+        """
+        Return the calibration cycle recorded on the field or encoded in a solution path.
+
+        The cycle attributes are set when Rapthor creates solution files during a
+        run. Paths are parsed as a fallback for existing solution records that
+        predate the explicit cycle attributes.
+        """
+        cycle_number = getattr(self, cycle_attr, None)
+        if cycle_number is not None:
+            return int(cycle_number)
+
+        pattern = (
+            r"(?:^|[/\\])calibrate(?:_di)?_(\d+)(?:[/\\]|$)"
+            if include_di_calibration
+            else r"(?:^|[/\\])calibrate_(\d+)(?:[/\\]|$)"
+        )
+        match = re.search(pattern, str(filepath))
+        if match:
+            return int(match.group(1))
+        return None
 
     def scan_h5parms(self):
         """

@@ -12,6 +12,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Mapping, Optional
 
+from rapthor.execution.prefect_context import in_prefect_run_context
+
 log = logging.getLogger("rapthor")
 
 IMAGE_ARTIFACT_SUFFIXES = {".gif", ".jpeg", ".jpg", ".png", ".svg", ".webp"}
@@ -46,16 +48,6 @@ def _prefect_artifact_writers() -> ArtifactWriters:
         link=create_link_artifact,
         markdown=create_markdown_artifact,
     )
-
-
-def _in_prefect_run_context() -> bool:
-    try:
-        from prefect.context import get_run_context
-
-        get_run_context()
-    except Exception:
-        return False
-    return True
 
 
 def _plot_files(plots_dir: Path) -> list[Path]:
@@ -590,7 +582,7 @@ def publish_file_artifacts(
     *,
     include_root_name: bool = False,
     artifact_writers: Optional[ArtifactWriters] = None,
-    in_run_context: Callable[[], bool] = _in_prefect_run_context,
+    in_run_context: Callable[[], bool] = in_prefect_run_context,
     publish_index: bool = False,
 ) -> list[dict]:
     """Publish plot files as Prefect artifacts."""
@@ -667,7 +659,7 @@ def publish_fits_image_artifacts(
     root_dir: Path,
     *,
     artifact_writers: Optional[ArtifactWriters] = None,
-    in_run_context: Callable[[], bool] = _in_prefect_run_context,
+    in_run_context: Callable[[], bool] = in_prefect_run_context,
     preview_dir: Optional[Path] = None,
 ) -> list[dict]:
     """Render FITS image records to PNG previews and publish them as image artifacts."""
@@ -714,7 +706,7 @@ def publish_fits_image_artifacts(
 def publish_plot_artifacts(
     plots_dir: Path,
     artifact_writers: Optional[ArtifactWriters] = None,
-    in_run_context: Callable[[], bool] = _in_prefect_run_context,
+    in_run_context: Callable[[], bool] = in_prefect_run_context,
     publish_index: bool = True,
 ) -> list[dict]:
     """Publish every file below a Rapthor ``plots`` directory as a Prefect artifact."""
@@ -732,7 +724,7 @@ def publish_plot_file_records(
     file_records: list[Mapping[str, object]],
     root_dir: Path,
     artifact_writers: Optional[ArtifactWriters] = None,
-    in_run_context: Callable[[], bool] = _in_prefect_run_context,
+    in_run_context: Callable[[], bool] = in_prefect_run_context,
 ) -> list[dict]:
     """Publish newly produced plot file records immediately."""
     paths = _file_record_paths(file_records)
@@ -784,7 +776,7 @@ def publish_command_metrics_artifact(
     working_dir: Path,
     *,
     artifact_writers: Optional[ArtifactWriters] = None,
-    in_run_context: Callable[[], bool] = _in_prefect_run_context,
+    in_run_context: Callable[[], bool] = in_prefect_run_context,
 ) -> Optional[object]:
     """Publish a Markdown summary of external-command timings, if available."""
     working_dir = Path(working_dir)
