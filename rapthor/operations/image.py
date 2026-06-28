@@ -27,16 +27,6 @@ from rapthor.operations.image_plan import (
 log = logging.getLogger("rapthor:image")
 
 
-def merge_list_flatten(input_list: List[List]) -> List:
-    """
-    Merge a list of lists into a single flattened list
-    """
-    merged_list = []
-    for sublist in input_list:
-        merged_list.extend(sublist)
-    return merged_list
-
-
 class Image(Operation):
     """
     Operation to image a field sector

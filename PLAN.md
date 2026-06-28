@@ -284,6 +284,9 @@ Completed:
     directly in golden-fixture tests
   - reduced command modules and flow modules to the command builders used by
     execution code
+- Dead-code cleanup:
+  - removed unused `merge_list_flatten()` from `rapthor.operations.image`
+  - verified that no production, test, or documentation references remained
 - Operation package and pipeline module consolidation:
   - moved operation Prefect adapters into operation-owned `flow.py` modules:
     `rapthor.execution.image.flow`, `rapthor.execution.calibrate.flow`,
@@ -453,9 +456,9 @@ Immediate next tasks from the 2026-06-28 plan/code review:
 
 Execution and operation cleanup queue, in recommended order:
 
-1. Remove confirmed dead code.
-   - Delete `merge_list_flatten()` from `rapthor.operations.image`; no
-     production, test, or documentation references remain.
+1. Completed 2026-06-28: remove confirmed dead code.
+   - Deleted `merge_list_flatten()` from `rapthor.operations.image`; no
+     production, test, or documentation references remained.
 2. Consolidate low-risk exact duplicates.
    - Move the duplicate Prefect run-context check used by artifacts and Prefect
      logging into one small helper.
