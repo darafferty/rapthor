@@ -16,6 +16,30 @@ ATERM_CONFIG_FILENAME = "aterm_plus_beam.cfg"
 
 
 @dataclass(frozen=True)
+class PrepareImagingDataOptions:
+    """DP3 options used to prepare one observation for imaging."""
+
+    msin: str
+    data_colname: str
+    msout: str
+    starttime: str
+    ntimes: int
+    phasecenter: str
+    freqstep: int
+    timestep: int
+    beamdir: str
+    num_threads: int
+    steps: str
+    maxinterval: Optional[int] = None
+    timebase: Optional[float] = None
+    h5parm: Optional[str] = None
+    fulljones_h5parm: Optional[str] = None
+    normalize_h5parm: Optional[str] = None
+    central_patch_name: Optional[str] = None
+    applycal_steps: Optional[str] = None
+
+
+@dataclass(frozen=True)
 class WscleanOptions:
     """Common WSClean options shared by image modes."""
 
@@ -98,26 +122,7 @@ def build_aterm_config_content(h5parm: str) -> str:
     )
 
 
-def build_prepare_imaging_data_command(
-    msin: str,
-    data_colname: str,
-    msout: str,
-    starttime: str,
-    ntimes: int,
-    phasecenter: str,
-    freqstep: int,
-    timestep: int,
-    beamdir: str,
-    numthreads: int,
-    steps: str,
-    maxinterval: Optional[int] = None,
-    timebase: Optional[float] = None,
-    h5parm: Optional[str] = None,
-    fulljones_h5parm: Optional[str] = None,
-    normalize_h5parm: Optional[str] = None,
-    central_patch_name: Optional[str] = None,
-    applycal_steps: Optional[str] = None,
-) -> list[str]:
+def build_prepare_imaging_data_command(options: PrepareImagingDataOptions) -> list[str]:
     """Build the DP3 command that prepares one observation for imaging."""
     command = [
         "DP3",
@@ -139,25 +144,25 @@ def build_prepare_imaging_data_command(
         "applycal.normalization.correction=amplitude000",
         "applycal.normalization.solset=sol000",
         "msout.storagemanager=Dysco",
-        f"msin={msin}",
-        f"msin.datacolumn={data_colname}",
-        f"msout={msout}",
-        f"msin.starttime={starttime}",
-        f"msin.ntimes={ntimes}",
-        f"shift.phasecenter={_strip_wrapping_shell_quotes(phasecenter)}",
-        f"avg.freqstep={freqstep}",
-        f"avg.timestep={timestep}",
+        f"msin={options.msin}",
+        f"msin.datacolumn={options.data_colname}",
+        f"msout={options.msout}",
+        f"msin.starttime={options.starttime}",
+        f"msin.ntimes={options.ntimes}",
+        f"shift.phasecenter={_strip_wrapping_shell_quotes(options.phasecenter)}",
+        f"avg.freqstep={options.freqstep}",
+        f"avg.timestep={options.timestep}",
     ]
-    append_prefixed_value(command, "bdaavg.timebase=", timebase)
-    append_prefixed_value(command, "bdaavg.maxinterval=", maxinterval)
-    command.append(f"applybeam.direction={_strip_wrapping_shell_quotes(beamdir)}")
-    append_prefixed_value(command, "applycal.parmdb=", h5parm)
-    append_prefixed_value(command, "applycal.fulljones.parmdb=", fulljones_h5parm)
-    append_prefixed_value(command, "applycal.normalization.parmdb=", normalize_h5parm)
-    if central_patch_name is not None:
-        command.append(f"applycal.direction=[{central_patch_name}]")
-    command.extend([f"numthreads={numthreads}", f"steps={steps}"])
-    append_prefixed_value(command, "applycal.steps=", applycal_steps)
+    append_prefixed_value(command, "bdaavg.timebase=", options.timebase)
+    append_prefixed_value(command, "bdaavg.maxinterval=", options.maxinterval)
+    command.append(f"applybeam.direction={_strip_wrapping_shell_quotes(options.beamdir)}")
+    append_prefixed_value(command, "applycal.parmdb=", options.h5parm)
+    append_prefixed_value(command, "applycal.fulljones.parmdb=", options.fulljones_h5parm)
+    append_prefixed_value(command, "applycal.normalization.parmdb=", options.normalize_h5parm)
+    if options.central_patch_name is not None:
+        command.append(f"applycal.direction=[{options.central_patch_name}]")
+    command.extend([f"numthreads={options.num_threads}", f"steps={options.steps}"])
+    append_prefixed_value(command, "applycal.steps=", options.applycal_steps)
     return command
 
 

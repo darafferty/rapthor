@@ -12,6 +12,7 @@ from rapthor.execution.commands import normalize_command
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.image.commands import (
     ATERM_CONFIG_FILENAME,
+    PrepareImagingDataOptions,
     WscleanFacetOptions,
     WscleanOptions,
     WscleanScreenOptions,
@@ -798,25 +799,31 @@ def _wsclean_options(**overrides) -> WscleanOptions:
     return WscleanOptions(**values)
 
 
+def _prepare_imaging_data_options(**overrides) -> PrepareImagingDataOptions:
+    values = {
+        "msin": "obs_0.ms",
+        "data_colname": "DATA",
+        "msout": "sector_1_obs_0_prep.ms",
+        "starttime": "50000.0",
+        "ntimes": 10,
+        "phasecenter": "'[123.0deg, 45.0deg]'",
+        "freqstep": 4,
+        "timestep": 2,
+        "beamdir": "'[123.0deg, 45.0deg]'",
+        "num_threads": 4,
+        "steps": "[applybeam,shift,avg,bdaavg]",
+    }
+    values.update(overrides)
+    return PrepareImagingDataOptions(**values)
+
+
 def test_image_command_builders_match_reference_fixtures():
     commands = json.loads((FIXTURE_DIR / "command_reference.json").read_text())
 
     assert (
         normalize_command(
             build_prepare_imaging_data_command(
-                msin="obs_0.ms",
-                data_colname="DATA",
-                msout="sector_1_obs_0_prep.ms",
-                starttime="50000.0",
-                ntimes=10,
-                phasecenter="'[123.0deg, 45.0deg]'",
-                freqstep=4,
-                timestep=2,
-                beamdir="'[123.0deg, 45.0deg]'",
-                numthreads=4,
-                steps="[applybeam,shift,avg,bdaavg]",
-                maxinterval=8,
-                timebase=10.0,
+                _prepare_imaging_data_options(maxinterval=8, timebase=10.0)
             )
         )
         == commands["image"]["prepare_imaging_data"]
@@ -966,17 +973,7 @@ def test_image_command_builders_match_reference_fixtures():
 def test_prepare_imaging_data_command_strips_wrapping_shell_quotes_from_directions():
     command = normalize_command(
         build_prepare_imaging_data_command(
-            msin="obs_0.ms",
-            data_colname="DATA",
-            msout="sector_1_obs_0_prep.ms",
-            starttime="50000.0",
-            ntimes=10,
-            phasecenter="'[123.0deg, 45.0deg]'",
-            freqstep=4,
-            timestep=2,
-            beamdir='"[123.0deg, 45.0deg]"',
-            numthreads=4,
-            steps="[applybeam,shift,avg,bdaavg]",
+            _prepare_imaging_data_options(beamdir='"[123.0deg, 45.0deg]"')
         )
     )
 

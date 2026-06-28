@@ -5,6 +5,7 @@ from typing import Optional
 
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.image.commands import (
+    PrepareImagingDataOptions,
     build_blank_image_command,
     build_concat_time_command,
     build_make_region_file_command,
@@ -26,24 +27,26 @@ def prepare_and_concatenate_visibilities(
     for prepare_task in sector["prepare_tasks"]:
         if not os.path.isdir(str(prepare_task["msout_path"])):
             command = build_prepare_imaging_data_command(
-                str(prepare_task["msin"]),
-                str(sector["data_colname"]),
-                str(prepare_task["msout"]),
-                str(prepare_task["starttime"]),
-                int(prepare_task["ntimes"]),
-                str(sector["phasecenter"]),
-                int(prepare_task["freqstep"]),
-                int(prepare_task["timestep"]),
-                str(sector["phasecenter"]),
-                int(sector["max_threads"]),
-                str(sector["prepare_data_steps"]),
-                maxinterval=prepare_task.get("maxinterval"),
-                timebase=sector.get("timebase"),
-                h5parm=sector.get("h5parm"),
-                fulljones_h5parm=sector.get("fulljones_h5parm"),
-                normalize_h5parm=sector.get("input_normalize_h5parm"),
-                central_patch_name=sector.get("central_patch_name"),
-                applycal_steps=sector.get("prepare_data_applycal_steps"),
+                PrepareImagingDataOptions(
+                    msin=str(prepare_task["msin"]),
+                    data_colname=str(sector["data_colname"]),
+                    msout=str(prepare_task["msout"]),
+                    starttime=str(prepare_task["starttime"]),
+                    ntimes=int(prepare_task["ntimes"]),
+                    phasecenter=str(sector["phasecenter"]),
+                    freqstep=int(prepare_task["freqstep"]),
+                    timestep=int(prepare_task["timestep"]),
+                    beamdir=str(sector["phasecenter"]),
+                    num_threads=int(sector["max_threads"]),
+                    steps=str(sector["prepare_data_steps"]),
+                    maxinterval=prepare_task.get("maxinterval"),
+                    timebase=sector.get("timebase"),
+                    h5parm=sector.get("h5parm"),
+                    fulljones_h5parm=sector.get("fulljones_h5parm"),
+                    normalize_h5parm=sector.get("input_normalize_h5parm"),
+                    central_patch_name=sector.get("central_patch_name"),
+                    applycal_steps=sector.get("prepare_data_applycal_steps"),
+                )
             )
             run_external_command(
                 command,

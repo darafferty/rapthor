@@ -659,9 +659,13 @@ Execution and operation cleanup queue, in recommended order:
    - Completed 2026-06-28: introduced frozen stdlib dataclasses for common,
      facet, and screen WSClean options, then migrated the image WSClean
      execution path and command tests away from very long builder signatures.
-   - Remaining: apply the same pattern selectively to prepare-data and
-     calibration command builders where it reduces argument noise without hiding
-     the scientific command differences.
+   - Completed 2026-06-28: introduced a frozen
+     `PrepareImagingDataOptions` dataclass for the DP3 imaging preparation
+     command and migrated the production preparation path plus command tests to
+     use it.
+   - Remaining: apply the same pattern selectively to calibration command
+     builders where it reduces argument noise without hiding the scientific
+     command differences.
 11. Revisit large operation adapters after the low-risk cleanup.
    - `Image.set_input_parameters()`, `Image.finalize()`, and
      `Calibrate.set_input_parameters()` remain the largest operation-side
