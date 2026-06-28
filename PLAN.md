@@ -680,6 +680,10 @@ Execution and operation cleanup queue, in recommended order:
      methods.
    - Extract only decision-heavy or duplicated pieces; keep finalizer side
      effects easy to audit.
+   - Completed 2026-06-28: extracted image per-sector flow-input collection
+     from `Image.set_input_parameters()` into a named helper, keeping the sector
+     imaging-parameter side effect explicit and leaving the payload assembly
+     easier to scan.
 
 Broader follow-on tasks after the cleanup queue:
 

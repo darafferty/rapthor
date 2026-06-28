@@ -200,6 +200,77 @@ class Image(Operation):
         formatted = f"[{','.join(steps)}]" if steps else None
         return formatted, fulljones_h5parm, input_normalize_h5parm
 
+    def _sector_observation_filenames(self, sector):
+        if self.do_predict:
+            return [obs.ms_imaging_filename for obs in sector.observations]
+        return sector.get_obs_parameters("ms_filename")
+
+    def _collect_sector_input_values(self):
+        """Set per-sector imaging parameters and collect flow input lists."""
+        values = {
+            "obs_filename": [],
+            "prepare_filename": [],
+            "concat_filename": [],
+            "previous_mask_filename": [],
+            "mask_filename": [],
+            "filtered_model_image_name": [],
+            "starttime": [],
+            "ntimes": [],
+            "image_freqstep": [],
+            "image_timestep": [],
+            "image_maxinterval": [],
+            "image_timebase": [],
+            "phasecenter": [],
+            "image_name": [],
+            "central_patch_name": [],
+            "image_I_cube_name": [],
+            "image_Q_cube_name": [],
+            "image_U_cube_name": [],
+            "image_V_cube_name": [],
+            "output_source_catalog": [],
+            "output_normalize_h5parm": [],
+        }
+        for sector in self.imaging_sectors:
+            # IDG screen imaging requires square images; other modes keep the
+            # existing size stable so cycles are easier to compare.
+            sector.set_imaging_parameters(
+                self.do_multiscale_clean,
+                recalculate_imsize=self.apply_screens,
+                imaging_parameters=self.imaging_parameters,
+                preapply_dde_solutions=self.preapply_dde_solutions,
+            )
+
+            values["image_name"].append(sector.name)
+            values["obs_filename"].append(self._sector_observation_filenames(sector))
+            values["prepare_filename"].append(sector.get_obs_parameters("ms_prep_filename"))
+            values["concat_filename"].append(f"{sector.name}_concat.ms")
+            if self.field.parset["imaging_specific"]["use_clean_mask"] and sector.I_mask_file:
+                values["previous_mask_filename"].append(sector.I_mask_file)
+            else:
+                values["previous_mask_filename"].append(None)
+            values["mask_filename"].append(f"{sector.name}_mask.fits")
+            values["filtered_model_image_name"].append(f"{sector.name}-MFS-filtered-model.fits.fz")
+            values["image_freqstep"].append(sector.get_obs_parameters("image_freqstep"))
+            values["image_timestep"].append(sector.get_obs_parameters("image_timestep"))
+            values["image_maxinterval"].append(sector.get_obs_parameters("image_bda_maxinterval"))
+            values["image_timebase"].append(self.field.image_bda_timebase)
+            values["starttime"].append(
+                [misc.convert_mjd2mvt(obs.starttime) for obs in self.field.observations]
+            )
+            values["ntimes"].append([obs.numsamples for obs in self.field.observations])
+            values["phasecenter"].append(f"'[{sector.ra}deg, {sector.dec}deg]'")
+            if self.preapply_dde_solutions:
+                values["central_patch_name"].append(sector.central_patch)
+            if self.make_image_cube:
+                values["image_I_cube_name"].append(f"{sector.name}_I_freq_cube.fits")
+                values["image_Q_cube_name"].append(f"{sector.name}_Q_freq_cube.fits")
+                values["image_U_cube_name"].append(f"{sector.name}_U_freq_cube.fits")
+                values["image_V_cube_name"].append(f"{sector.name}_V_freq_cube.fits")
+            if self.normalize_flux_scale:
+                values["output_source_catalog"].append(f"{sector.name}_source_catalog.fits")
+                values["output_normalize_h5parm"].append(f"{sector.name}_normalize.h5parm")
+        return values
+
     def set_input_parameters(self):
         """
         Define inputs passed to the image flow.
@@ -229,87 +300,7 @@ class Image(Operation):
         if self.peel_bright_sources is None:
             self.peel_bright_sources = self.field.peel_bright_sources
         nsectors = len(self.imaging_sectors)
-        obs_filename = []
-        prepare_filename = []
-        concat_filename = []
-        previous_mask_filename = []
-        mask_filename = []
-        filtered_model_image_name = []
-        starttime = []
-        ntimes = []
-        image_freqstep = []
-        image_timestep = []
-        image_bda_maxinterval = []
-        image_bda_timebase = []
-        phasecenter = []
-        image_root = []
-        central_patch_name = []
-        image_I_cube_name = []
-        image_Q_cube_name = []
-        image_U_cube_name = []
-        image_V_cube_name = []
-        normalize_h5parm = []
-        output_source_catalog = []
-        for sector in self.imaging_sectors:
-            image_root.append(sector.name)
-
-            # Set the imaging parameters for each imaging sector.
-            #
-            # Note: IDG (used by WSClean to apply the screens) does not yet
-            # support rectangular images. Therefore, when screens need to be
-            # applied, we recalculate the image size to allow the image to be
-            # adjusted if needed (from rectangular to square). If screens are
-            # not used, we keep the image size fixed to make comparisons
-            # between cycles easier
-            sector.set_imaging_parameters(
-                self.do_multiscale_clean,
-                recalculate_imsize=self.apply_screens,
-                imaging_parameters=self.imaging_parameters,
-                preapply_dde_solutions=self.preapply_dde_solutions,
-            )
-
-            # Set input MS filenames
-            if self.do_predict:
-                sector_obs_filename = [obs.ms_imaging_filename for obs in sector.observations]
-            else:
-                sector_obs_filename = sector.get_obs_parameters("ms_filename")
-            obs_filename.append(sector_obs_filename)
-
-            # Set output MS filenames for step that prepares the data for WSClean
-            prepare_filename.append(sector.get_obs_parameters("ms_prep_filename"))
-            concat_filename.append(image_root[-1] + "_concat.ms")
-
-            # Set other parameters
-            if self.field.parset["imaging_specific"]["use_clean_mask"] and sector.I_mask_file:
-                # Use the existing mask
-                previous_mask_filename.append(sector.I_mask_file)
-            else:
-                # Use a dummy mask
-                previous_mask_filename.append(None)
-            mask_filename.append(image_root[-1] + "_mask.fits")
-            filtered_model_image_name.append(image_root[-1] + "-MFS-filtered-model.fits.fz")
-            image_freqstep.append(sector.get_obs_parameters("image_freqstep"))
-            image_timestep.append(sector.get_obs_parameters("image_timestep"))
-            image_bda_maxinterval.append(sector.get_obs_parameters("image_bda_maxinterval"))
-            image_bda_timebase.append(self.field.image_bda_timebase)
-            sector_starttime = []
-            sector_ntimes = []
-            for obs in self.field.observations:
-                sector_starttime.append(misc.convert_mjd2mvt(obs.starttime))
-                sector_ntimes.append(obs.numsamples)
-            starttime.append(sector_starttime)
-            ntimes.append(sector_ntimes)
-            phasecenter.append(f"'[{sector.ra}deg, {sector.dec}deg]'")
-            if self.preapply_dde_solutions:
-                central_patch_name.append(sector.central_patch)
-            if self.make_image_cube:
-                image_I_cube_name.append(f"{sector.name}_I_freq_cube.fits")
-                image_Q_cube_name.append(f"{sector.name}_Q_freq_cube.fits")
-                image_U_cube_name.append(f"{sector.name}_U_freq_cube.fits")
-                image_V_cube_name.append(f"{sector.name}_V_freq_cube.fits")
-            if self.normalize_flux_scale:
-                output_source_catalog.append(f"{sector.name}_source_catalog.fits")
-                normalize_h5parm.append(f"{sector.name}_normalize.h5parm")
+        sector_inputs = self._collect_sector_input_values()
 
         link_polarizations, join_polarizations, wsclean_niter = build_image_wsclean_control_inputs(
             self.image_pol,
@@ -348,23 +339,25 @@ class Image(Operation):
         )
         # Set the parameters common to all modes
         self.input_parms = {
-            "obs_filename": [DirectoryRecord(name).to_json() for name in obs_filename],
+            "obs_filename": [
+                DirectoryRecord(name).to_json() for name in sector_inputs["obs_filename"]
+            ],
             "data_colname": self.field.data_colname,
-            "prepare_filename": prepare_filename,
-            "concat_filename": concat_filename,
+            "prepare_filename": sector_inputs["prepare_filename"],
+            "concat_filename": sector_inputs["concat_filename"],
             "previous_mask_filename": [
                 None if name is None else FileRecord(name).to_json()
-                for name in previous_mask_filename
+                for name in sector_inputs["previous_mask_filename"]
             ],
-            "mask_filename": mask_filename,
-            "starttime": starttime,
-            "ntimes": ntimes,
-            "image_freqstep": image_freqstep,
-            "image_timestep": image_timestep,
-            "image_maxinterval": image_bda_maxinterval,
-            "image_timebase": image_bda_timebase,
-            "phasecenter": phasecenter,
-            "image_name": image_root,
+            "mask_filename": sector_inputs["mask_filename"],
+            "starttime": sector_inputs["starttime"],
+            "ntimes": sector_inputs["ntimes"],
+            "image_freqstep": sector_inputs["image_freqstep"],
+            "image_timestep": sector_inputs["image_timestep"],
+            "image_maxinterval": sector_inputs["image_maxinterval"],
+            "image_timebase": sector_inputs["image_timebase"],
+            "phasecenter": sector_inputs["phasecenter"],
+            "image_name": sector_inputs["image_name"],
             "pol": self.image_pol,
             "save_source_list": self.save_source_list,
             "link_polarizations": link_polarizations,
@@ -420,7 +413,7 @@ class Image(Operation):
             "save_filtered_model_image": self.field.parset["imaging_specific"][
                 "save_filtered_model_image"
             ],
-            "filtered_model_image_name": filtered_model_image_name,
+            "filtered_model_image_name": sector_inputs["filtered_model_image_name"],
             "allow_internet_access": self.allow_internet_access,
             "photometry_skymodel": (
                 FileRecord(self.photometry_skymodel).to_json() if self.photometry_skymodel else None
@@ -486,15 +479,19 @@ class Image(Operation):
                 )
             )
         elif self.preapply_dde_solutions:
-            self.input_parms.update({"central_patch_name": central_patch_name})
+            self.input_parms.update({"central_patch_name": sector_inputs["central_patch_name"]})
         if self.make_image_cube:
-            self.input_parms.update({"image_I_cube_name": image_I_cube_name})
-            self.input_parms.update({"image_Q_cube_name": image_Q_cube_name})
-            self.input_parms.update({"image_U_cube_name": image_U_cube_name})
-            self.input_parms.update({"image_V_cube_name": image_V_cube_name})
+            self.input_parms.update({"image_I_cube_name": sector_inputs["image_I_cube_name"]})
+            self.input_parms.update({"image_Q_cube_name": sector_inputs["image_Q_cube_name"]})
+            self.input_parms.update({"image_U_cube_name": sector_inputs["image_U_cube_name"]})
+            self.input_parms.update({"image_V_cube_name": sector_inputs["image_V_cube_name"]})
         if self.normalize_flux_scale:
-            self.input_parms.update({"output_source_catalog": output_source_catalog})
-            self.input_parms.update({"output_normalize_h5parm": normalize_h5parm})
+            self.input_parms.update(
+                {"output_source_catalog": sector_inputs["output_source_catalog"]}
+            )
+            self.input_parms.update(
+                {"output_normalize_h5parm": sector_inputs["output_normalize_h5parm"]}
+            )
 
     def execute_workflow(self):
         """
