@@ -162,6 +162,20 @@ class IdgcalScreenSolveOptions:
     solint_amplitude: Optional[int] = None
 
 
+@dataclass(frozen=True)
+class DrawModelOptions:
+    """WSClean options used to draw calibration model images."""
+
+    skymodel: str
+    num_terms: int
+    name: str
+    ra_dec: list[str]
+    frequency_bandwidth: list[object]
+    cellsize_deg: object
+    imsize: list[int]
+    num_threads: int
+
+
 def parse_steps(steps: object) -> list[str]:
     """Parse a DP3 steps token into individual step names."""
     return [step.strip() for step in str(steps).strip("[]").split(",") if step.strip()]
@@ -212,35 +226,26 @@ def build_ddecal_solve_command(options: DdecalSolveOptions) -> list[str]:
     return command
 
 
-def build_draw_model_command(
-    skymodel: str,
-    numterms: int,
-    name: str,
-    ra_dec: list[str],
-    frequency_bandwidth: list[object],
-    cellsize_deg: object,
-    imsize: list[int],
-    numthreads: int,
-) -> list[str]:
+def build_draw_model_command(options: DrawModelOptions) -> list[str]:
     """Build the WSClean command that draws calibration model images."""
     return [
         "wsclean",
         "-j",
-        str(numthreads),
+        str(options.num_threads),
         "-draw-model",
-        skymodel,
+        options.skymodel,
         "-draw-spectral-terms",
-        str(numterms),
+        str(options.num_terms),
         "-name",
-        name,
+        options.name,
         "-draw-centre",
-        *[str(value) for value in ra_dec],
+        *[str(value) for value in options.ra_dec],
         "-draw-frequencies",
-        *[str(value) for value in frequency_bandwidth],
+        *[str(value) for value in options.frequency_bandwidth],
         "-size",
-        *[str(value) for value in imsize],
+        *[str(value) for value in options.imsize],
         "-scale",
-        str(cellsize_deg),
+        str(options.cellsize_deg),
     ]
 
 

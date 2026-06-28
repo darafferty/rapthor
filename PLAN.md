@@ -641,7 +641,8 @@ Execution and operation cleanup queue, in recommended order:
      task wiring and result aggregation.
    - Verified the split with focused architecture/calibration flow tests and the
      DD/DI calibration integration files.
-10. Introduce command argument objects for long command builders.
+10. Completed 2026-06-28: introduce command argument objects for long command
+   builders.
    - Replace very long command-builder signatures, such as the WSClean builders,
      with small frozen dataclasses grouped by real concepts: common WSClean
      options, no-DDE options, facet options, screen options, MPI launch options,
@@ -670,8 +671,9 @@ Execution and operation cleanup queue, in recommended order:
    - Completed 2026-06-28: introduced a frozen `IdgcalScreenSolveOptions`
      dataclass for IDGCal screen-generation commands and migrated the
      production screen chunk runner plus command tests to use it.
-   - Remaining: apply the same pattern to draw-model only if it reduces argument
-     noise without hiding the scientific command differences.
+   - Completed 2026-06-28: introduced a frozen `DrawModelOptions` dataclass for
+     calibration model-image drawing and migrated the production image-predict
+     preparation path plus command tests to use it.
 11. Revisit large operation adapters after the low-risk cleanup.
    - `Image.set_input_parameters()`, `Image.finalize()`, and
      `Calibrate.set_input_parameters()` remain the largest operation-side

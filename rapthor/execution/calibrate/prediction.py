@@ -4,6 +4,7 @@ from typing import Mapping
 
 from rapthor.execution.calibrate.collection import adjust_h5parm_sources
 from rapthor.execution.calibrate.commands import (
+    DrawModelOptions,
     build_draw_model_command,
     build_make_region_file_command,
 )
@@ -14,6 +15,22 @@ from rapthor.execution.shell import run_external_command
 from rapthor.lib.records import file_record
 
 
+def _draw_model_options(
+    payload: CalibratePayload,
+    image_predict: CalibrateImagePredictPayload,
+) -> DrawModelOptions:
+    return DrawModelOptions(
+        skymodel=str(image_predict["skymodel"]),
+        num_terms=int(image_predict["num_spectral_terms"]),
+        name=str(image_predict["model_image_root"]),
+        ra_dec=list(image_predict["model_image_ra_dec"]),
+        frequency_bandwidth=list(image_predict["model_image_frequency_bandwidth"]),
+        cellsize_deg=image_predict["model_image_cellsize"],
+        imsize=list(image_predict["model_image_imsize"]),
+        num_threads=int(payload["max_threads"]),
+    )
+
+
 def _run_draw_model(
     payload: CalibratePayload,
     image_predict: CalibrateImagePredictPayload,
@@ -21,16 +38,7 @@ def _run_draw_model(
     shell_operation_cls=None,
 ) -> list[dict]:
     pipeline_working_dir = str(payload["pipeline_working_dir"])
-    command = build_draw_model_command(
-        skymodel=str(image_predict["skymodel"]),
-        numterms=int(image_predict["num_spectral_terms"]),
-        name=str(image_predict["model_image_root"]),
-        ra_dec=list(image_predict["model_image_ra_dec"]),
-        frequency_bandwidth=list(image_predict["model_image_frequency_bandwidth"]),
-        cellsize_deg=image_predict["model_image_cellsize"],
-        imsize=list(image_predict["model_image_imsize"]),
-        numthreads=int(payload["max_threads"]),
-    )
+    command = build_draw_model_command(_draw_model_options(payload, image_predict))
     run_external_command(
         command,
         pipeline_working_dir,

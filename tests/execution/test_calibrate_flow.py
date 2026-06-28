@@ -10,6 +10,7 @@ import rapthor.execution.calibrate.collection as calibrate_collection
 import rapthor.execution.calibrate.flow as calibrate_module
 from rapthor.execution.calibrate.commands import (
     DdecalSolveOptions,
+    DrawModelOptions,
     IdgcalScreenSolveOptions,
     build_adjust_h5parm_sources_command,
     build_collect_h5parms_command,
@@ -993,6 +994,21 @@ def _idgcal_screen_solve_options(**overrides) -> IdgcalScreenSolveOptions:
     return IdgcalScreenSolveOptions(**values)
 
 
+def _draw_model_options(**overrides) -> DrawModelOptions:
+    values = {
+        "skymodel": "calibration.skymodel",
+        "num_terms": 2,
+        "name": "calibration_model",
+        "ra_dec": ["12:00:00.0", "+45.00.00.0"],
+        "frequency_bandwidth": [150000000.0, 1000000.0],
+        "cellsize_deg": 0.001,
+        "imsize": [1024, 1024],
+        "num_threads": 4,
+    }
+    values.update(overrides)
+    return DrawModelOptions(**values)
+
+
 def test_calibrate_command_builders_match_reference_fixtures():
     commands = json.loads((FIXTURE_DIR / "command_reference.json").read_text())
 
@@ -1042,18 +1058,7 @@ def test_calibrate_command_builders_match_reference_fixtures():
         == commands["calibrate"]["combine_fast_medium_di"]
     )
     assert (
-        normalize_command(
-            build_draw_model_command(
-                skymodel="calibration.skymodel",
-                numterms=2,
-                name="calibration_model",
-                ra_dec=["12:00:00.0", "+45.00.00.0"],
-                frequency_bandwidth=[150000000.0, 1000000.0],
-                cellsize_deg=0.001,
-                imsize=[1024, 1024],
-                numthreads=4,
-            )
-        )
+        normalize_command(build_draw_model_command(_draw_model_options()))
         == commands["calibrate"]["draw_model"]
     )
     assert (
