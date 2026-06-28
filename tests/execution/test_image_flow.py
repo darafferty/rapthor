@@ -38,6 +38,7 @@ from rapthor.execution.image.flow import (
     run_image_flow,
 )
 from rapthor.execution.image.payloads import image_payload_from_inputs
+from rapthor.lib.field import Field as RapthorField
 from rapthor.lib.records import directory_record, file_record, validate_output_record
 from rapthor.operations.image import Image, ImageInitial, ImageNormalize
 
@@ -238,6 +239,8 @@ class SectorStub:
 
 
 class FieldStub:
+    solution_cycle_number = RapthorField.solution_cycle_number
+
     def __init__(self, tmp_path):
         self.parset = _operation_parset(tmp_path)
         self.observations = [

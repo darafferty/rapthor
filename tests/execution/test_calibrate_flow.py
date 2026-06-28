@@ -29,6 +29,7 @@ from rapthor.execution.calibrate.flow import (
 from rapthor.execution.calibrate.payloads import calibrate_payload_from_inputs
 from rapthor.execution.commands import normalize_command
 from rapthor.execution.config import ExecutionConfig
+from rapthor.lib.field import Field as RapthorField
 from rapthor.lib.records import directory_record, file_record, validate_output_record
 from rapthor.operations.calibrate import Calibrate
 
@@ -124,6 +125,8 @@ class CalibrateObservationStub:
 
 
 class CalibrateFieldStub:
+    solution_cycle_number = RapthorField.solution_cycle_number
+
     def __init__(self, tmp_path):
         self.parset = {
             "dir_working": str(tmp_path / "working"),

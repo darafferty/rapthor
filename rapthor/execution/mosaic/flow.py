@@ -16,8 +16,8 @@ from rapthor.execution.mosaic.commands import (
 from rapthor.execution.mosaic.payloads import MosaicImageTypePayload, validate_mosaic_payload
 from rapthor.execution.payloads import assert_serializable_payload
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
-from rapthor.execution.runtime import run_flow_with_task_runner
 from rapthor.execution.shell import ShellCommand, run_shell_command
+from rapthor.execution.task_runner import run_flow_with_task_runner
 from rapthor.lib.records import file_record, validate_output_record
 
 

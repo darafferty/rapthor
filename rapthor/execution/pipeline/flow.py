@@ -19,7 +19,7 @@ from rapthor.execution.pipeline.plan import (
     collect_pipeline_features,
 )
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
-from rapthor.execution.runtime import run_flow_with_task_runner
+from rapthor.execution.task_runner import run_flow_with_task_runner
 
 log = logging.getLogger("rapthor")
 

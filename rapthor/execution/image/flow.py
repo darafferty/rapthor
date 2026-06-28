@@ -9,7 +9,7 @@ from rapthor.execution.image.payloads import ImageSectorPayload, validate_image_
 from rapthor.execution.image.sector import run_image_sector as _run_image_sector
 from rapthor.execution.payloads import assert_serializable_payload
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
-from rapthor.execution.runtime import run_flow_with_task_runner
+from rapthor.execution.task_runner import run_flow_with_task_runner
 from rapthor.lib.records import validate_output_record
 
 

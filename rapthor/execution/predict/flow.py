@@ -19,8 +19,8 @@ from rapthor.execution.predict.payloads import (
     validate_predict_payload,
 )
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
-from rapthor.execution.runtime import run_flow_with_task_runner
 from rapthor.execution.shell import ShellCommand, run_shell_command
+from rapthor.execution.task_runner import run_flow_with_task_runner
 from rapthor.lib.records import directory_record, validate_output_record
 
 

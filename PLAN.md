@@ -293,6 +293,13 @@ Completed:
     `rapthor.execution.payloads`
   - moved shared solution-cycle parsing onto the `Field` model
   - added focused tests for payload validation and solution-cycle parsing
+- Runtime abstraction cleanup:
+  - removed the unused `RuntimeSpec`, `build_runtime_spec()`, and
+    `build_command_environment()` layer and deleted `rapthor.execution.runtime`
+  - kept direct `ResourceRequest` validation where production shell execution
+    currently needs it
+  - merged `run_flow_with_task_runner` into `rapthor.execution.task_runner` so
+    Prefect task-runner construction and flow application have one owner
 - Operation package and pipeline module consolidation:
   - moved operation Prefect adapters into operation-owned `flow.py` modules:
     `rapthor.execution.image.flow`, `rapthor.execution.calibrate.flow`,
@@ -308,8 +315,8 @@ Completed:
     `collect_pipeline_features`, and `build_pipeline_step_plan`
   - removed the previous flow package from active imports because
     this unreleased branch does not need compatibility shims
-  - moved `run_flow_with_task_runner` into `rapthor.execution.runtime` so
-    runtime/task-runner selection has one owner
+  - moved `run_flow_with_task_runner` into `rapthor.execution.task_runner` so
+    Prefect task-runner selection and flow application have one owner
 - Verified in the dev container:
   - `python3 -m pytest tests/architecture tests/execution/test_task_runner.py tests/execution/test_payloads.py -q --tb=short`
   - `python3 -m pytest tests/execution/test_concatenate_flow.py tests/execution/test_mosaic_flow.py tests/execution/test_predict_flow.py tests/execution/test_reference_fixtures.py -q --tb=short`
@@ -317,7 +324,7 @@ Completed:
   - `python3 -m pytest tests/execution/test_pipeline_flow.py tests/lib/test_observation.py -q --tb=short`
   - `python3 -m pytest tests/operations/test_concatenate.py tests/operations/test_mosaic.py tests/operations/test_predict.py tests/operations/test_image.py tests/operations/test_calibrate.py -q --tb=short`
   - `python3 -m py_compile bin/rapthor`
-  - import smoke checks for operation package owners, `rapthor.execution.runtime.run_flow_with_task_runner`, and removed old `rapthor.execution.flows`/`flow_runtime` paths
+  - import smoke checks for operation package owners, `rapthor.execution.task_runner.run_flow_with_task_runner`, and removed old `rapthor.execution.flows`/`flow_runtime` paths
   - `python3 -m pytest tests/architecture -q --tb=short`
   - `python3 -m pytest tests/lib/test_records.py tests/execution/test_payloads.py tests/execution/test_commands.py -q --tb=short`
   - `python3 -m pytest tests/execution/test_concatenate_flow.py tests/execution/test_mosaic_flow.py tests/execution/test_predict_flow.py -q --tb=short`
@@ -473,14 +480,12 @@ Execution and operation cleanup queue, in recommended order:
      messages stable.
    - Moved repeated solution-cycle parsing onto the `Field` model so Image,
      Predict, and Calibrate do not drift.
-3. Resolve the unused runtime abstraction.
-   - `rapthor.execution.runtime.RuntimeSpec`, `build_command_environment()`, and
-     `build_runtime_spec()` are currently tested but not used by production
-     execution code.
-   - Either wire `build_runtime_spec()` into shell-command construction where it
-     actually simplifies resource/environment handling, or delete the abstraction
-     and keep direct `ResourceRequest` validation until a real production caller
-     appears.
+3. Completed 2026-06-28: resolve the unused runtime abstraction.
+   - Removed `rapthor.execution.runtime.RuntimeSpec`, `build_command_environment()`,
+     and `build_runtime_spec()` because they were tested but not used by production
+     execution code, then deleted the empty `rapthor.execution.runtime` module.
+   - Kept direct `ResourceRequest` validation and `thread_environment()` usage in
+     the image-sector WSClean MPI path, where the production need is explicit.
 4. Consolidate repeated shell/output checks only where it removes drift.
    - Compare `calibrate.runner._require_file`, image output discovery helpers,
      mosaic shell-and-file validation, and predict shell-and-directory
@@ -686,8 +691,8 @@ responsibilities are:
   artifact publication, and task-runner integration.
 - `rapthor.execution.pipeline`: top-level pipeline orchestration, lifecycle
   hooks, feature detection, dry-run planning, and preflight integration.
-- `rapthor.execution.runtime`, `task_runner`, `resources`, `slurm`, `workdirs`,
-  `artifacts`, and `shell`: reusable runtime infrastructure.
+- `rapthor.execution.task_runner`, `resources`, `slurm`, `workdirs`, `artifacts`,
+  and `shell`: reusable runtime infrastructure.
 - `rapthor.scripts`: standalone helper scripts used by external command
   builders, kept testable with small fixtures.
 
