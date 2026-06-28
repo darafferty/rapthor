@@ -30,19 +30,21 @@ from rapthor.execution.image.commands import (
 )
 from rapthor.execution.image.outputs import (
     channel_image_patterns,
+    mfs_extra_image_patterns,
+    mfs_non_pb_image_patterns,
+    mfs_pb_image_patterns,
+)
+from rapthor.execution.image.payloads import ImageCubeSpecPayload, ImageSectorPayload
+from rapthor.execution.outputs import (
     cleanup_directory,
     compressed_file_record,
     file_records_for_patterns,
     file_records_for_required_patterns,
     first_existing_file,
-    mfs_extra_image_patterns,
-    mfs_non_pb_image_patterns,
-    mfs_pb_image_patterns,
     optional_first_existing_file,
     require_directory,
     require_file,
 )
-from rapthor.execution.image.payloads import ImageCubeSpecPayload, ImageSectorPayload
 from rapthor.execution.resources import (
     ResourceRequest,
     thread_environment,

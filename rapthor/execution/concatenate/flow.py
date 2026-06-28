@@ -1,6 +1,5 @@
 """Prefect flow for the Concatenate operation."""
 
-import os
 from typing import Mapping, Optional
 
 from prefect import flow, task
@@ -11,11 +10,12 @@ from rapthor.execution.concatenate.payloads import (
     validate_concatenate_payload,
 )
 from rapthor.execution.config import ExecutionConfig
+from rapthor.execution.outputs import require_directory
 from rapthor.execution.payloads import assert_serializable_payload
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
 from rapthor.execution.shell import ShellCommand, run_shell_command
 from rapthor.execution.task_runner import run_flow_with_task_runner
-from rapthor.lib.records import directory_record, validate_output_record
+from rapthor.lib.records import validate_output_record
 
 
 def run_concatenate_epoch(
@@ -40,9 +40,7 @@ def run_concatenate_epoch(
         config,
         shell_operation_cls=shell_operation_cls,
     )
-    if not os.path.isdir(output_path):
-        raise FileNotFoundError(f"Concatenate output was not created: {output_path}")
-    return directory_record(output_path)
+    return require_directory(output_path, "Concatenate output")
 
 
 @task(name="concatenate_epoch")

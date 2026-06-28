@@ -2,18 +2,18 @@ from pathlib import Path
 
 import pytest
 
-from rapthor.execution.image.outputs import (
+from rapthor.execution.outputs import (
     file_records_for_required_patterns,
     first_existing_file,
-    mfs_extra_image_patterns,
     optional_first_existing_file,
     require_directory,
     require_file,
 )
+from rapthor.execution.image.outputs import mfs_extra_image_patterns
 from rapthor.lib.records import directory_record, file_record
 
 
-def test_image_output_helpers_require_expected_paths(tmp_path):
+def test_output_helpers_require_expected_paths(tmp_path):
     image = tmp_path / "sector_1-MFS-I-image.fits"
     image.write_text("image")
     ms = tmp_path / "sector_1_concat.ms"
@@ -28,7 +28,7 @@ def test_image_output_helpers_require_expected_paths(tmp_path):
         require_directory(str(tmp_path / "missing.ms"), "missing directory")
 
 
-def test_image_output_helpers_find_matching_files_in_sorted_order(tmp_path):
+def test_output_helpers_find_matching_files_in_sorted_order(tmp_path):
     second = tmp_path / "sector_1-MFS-U-image.fits"
     first = tmp_path / "sector_1-MFS-Q-image.fits"
     second.write_text("image")

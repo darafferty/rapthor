@@ -81,8 +81,8 @@ Layer Ownership
      - Top-level pipeline orchestration, lifecycle hooks, preflight feature
        detection, and dry-run/debug planning.
      - ``tests/execution/test_pipeline_flow.py``
-   * - ``rapthor.execution.task_runner``, ``resources``, ``slurm``,
-       ``workdirs``, ``artifacts``, and ``shell``
+   * - ``rapthor.execution.task_runner``, ``outputs``, ``resources``,
+       ``slurm``, ``workdirs``, ``artifacts``, and ``shell``
      - Runtime infrastructure and adapters for local, Dask, Slurm, shell, and
        artifact behaviour.
      - Focused tests under ``tests/execution``

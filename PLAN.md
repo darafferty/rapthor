@@ -300,6 +300,11 @@ Completed:
     currently needs it
   - merged `run_flow_with_task_runner` into `rapthor.execution.task_runner` so
     Prefect task-runner construction and flow application have one owner
+- Shell/output validation cleanup:
+  - added `rapthor.execution.outputs` for shared required file/directory and
+    glob-to-record helpers
+  - kept operation-specific shell wrappers where they preserve explicit
+    `Concatenate`, `Predict`, `Mosaic`, `Calibration`, and image output messages
 - Operation package and pipeline module consolidation:
   - moved operation Prefect adapters into operation-owned `flow.py` modules:
     `rapthor.execution.image.flow`, `rapthor.execution.calibrate.flow`,
@@ -486,12 +491,14 @@ Execution and operation cleanup queue, in recommended order:
      execution code, then deleted the empty `rapthor.execution.runtime` module.
    - Kept direct `ResourceRequest` validation and `thread_environment()` usage in
      the image-sector WSClean MPI path, where the production need is explicit.
-4. Consolidate repeated shell/output checks only where it removes drift.
-   - Compare `calibrate.runner._require_file`, image output discovery helpers,
-     mosaic shell-and-file validation, and predict shell-and-directory
-     validation.
-   - Add a small shared helper only if it keeps descriptions and failure
-     messages explicit; avoid a generic wrapper that hides operation context.
+4. Completed 2026-06-28: consolidate repeated shell/output checks only where it
+   removes drift.
+   - Added `rapthor.execution.outputs` for shared required file/directory checks,
+     glob discovery, compressed-file records, and temporary-directory cleanup.
+   - Moved calibration and image sector output checks to the shared helpers.
+   - Updated concatenate, predict, and mosaic shell wrappers to use shared
+     required-output helpers while keeping operation-specific failure messages
+     visible at the call sites.
 5. Simplify repeated WSClean command construction.
    - Extract common WSClean base options shared by no-DDE, facet, and screen
      command builders while preserving the existing golden command fixtures.
@@ -691,8 +698,8 @@ responsibilities are:
   artifact publication, and task-runner integration.
 - `rapthor.execution.pipeline`: top-level pipeline orchestration, lifecycle
   hooks, feature detection, dry-run planning, and preflight integration.
-- `rapthor.execution.task_runner`, `resources`, `slurm`, `workdirs`, `artifacts`,
-  and `shell`: reusable runtime infrastructure.
+- `rapthor.execution.task_runner`, `outputs`, `resources`, `slurm`, `workdirs`,
+  `artifacts`, and `shell`: reusable runtime infrastructure.
 - `rapthor.scripts`: standalone helper scripts used by external command
   builders, kept testable with small fixtures.
 

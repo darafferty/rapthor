@@ -7,6 +7,7 @@ from typing import Mapping, Optional
 from prefect import flow, task
 
 from rapthor.execution.config import ExecutionConfig
+from rapthor.execution.outputs import require_directory
 from rapthor.execution.payloads import assert_serializable_payload
 from rapthor.execution.predict.commands import (
     build_add_sector_models_command,
@@ -36,9 +37,7 @@ def _run_shell_and_validate_directory(
         execution_config,
         shell_operation_cls=shell_operation_cls,
     )
-    if not os.path.isdir(output_path):
-        raise FileNotFoundError(f"Predict output was not created: {output_path}")
-    return directory_record(output_path)
+    return require_directory(output_path, "Predict output")
 
 
 def _glob_directory_records(

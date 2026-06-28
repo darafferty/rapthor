@@ -24,14 +24,9 @@ from rapthor.execution.calibrate.payloads import (
     CalibratePayload,
 )
 from rapthor.execution.config import ExecutionConfig
+from rapthor.execution.outputs import require_file
 from rapthor.execution.shell import ShellCommand, run_shell_command
 from rapthor.lib.records import file_record, validate_output_record
-
-
-def _require_file(path: str, description: str) -> dict:
-    if not os.path.isfile(path):
-        raise FileNotFoundError(f"{description} was not created: {path}")
-    return file_record(path)
 
 
 def _require_sequence(value: object, name: str) -> list[object]:
@@ -156,9 +151,7 @@ def _run_draw_model(
         execution_config,
         shell_operation_cls=shell_operation_cls,
     )
-    return [
-        _require_file(path, "Calibration model image") for path in image_predict["model_images"]
-    ]
+    return [require_file(path, "Calibration model image") for path in image_predict["model_images"]]
 
 
 def _run_make_region_file(
@@ -183,7 +176,7 @@ def _run_make_region_file(
         execution_config,
         shell_operation_cls=shell_operation_cls,
     )
-    return _require_file(str(image_predict["facet_region_path"]), "Calibration region file")
+    return require_file(str(image_predict["facet_region_path"]), "Calibration region file")
 
 
 def prepare_image_based_predict(
@@ -271,7 +264,7 @@ def run_calibrate_chunk(
             if payload["calibration_kind"] == "di_fulljones"
             else f"{str(payload['mode']).upper()} solve{slot['slot']} h5parm"
         )
-        output_records[f"solve{slot['slot']}"] = _require_file(str(slot["h5parm_path"]), label)
+        output_records[f"solve{slot['slot']}"] = require_file(str(slot["h5parm_path"]), label)
     if payload["calibration_kind"] == "di_fulljones":
         return output_records["solve1"]
     return output_records
@@ -313,7 +306,7 @@ def run_calibrate_screen_chunk(
             numthreads=int(payload["max_threads"]),
         )
     _run_shell(command, pipeline_working_dir, config, shell_operation_cls=shell_operation_cls)
-    return _require_file(str(chunk["output_h5parm_path"]), "IDGCal screen h5parm")
+    return require_file(str(chunk["output_h5parm_path"]), "IDGCal screen h5parm")
 
 
 def _collect_and_plot_fulljones(
@@ -334,7 +327,7 @@ def _collect_and_plot_fulljones(
         execution_config,
         shell_operation_cls=shell_operation_cls,
     )
-    collected_record = _require_file(
+    collected_record = require_file(
         str(payload["collected_h5parm_path"]), "Collected DI full-Jones h5parm"
     )
 
@@ -461,7 +454,7 @@ def _run_collect_h5parm(
         execution_config,
         shell_operation_cls=shell_operation_cls,
     )
-    return _require_file(str(output["path"]), label)
+    return require_file(str(output["path"]), label)
 
 
 def _run_collect_screen_h5parms(
@@ -481,7 +474,7 @@ def _run_collect_screen_h5parms(
         execution_config,
         shell_operation_cls=shell_operation_cls,
     )
-    return _require_file(str(output["path"]), "Combined screen h5parm")
+    return require_file(str(output["path"]), "Combined screen h5parm")
 
 
 def collect_screen_solutions(
@@ -560,7 +553,7 @@ def _run_combine_h5parms(
         execution_config,
         shell_operation_cls=shell_operation_cls,
     )
-    return _require_file(str(output["path"]), label)
+    return require_file(str(output["path"]), label)
 
 
 def _run_process_gains(
@@ -585,7 +578,7 @@ def _run_process_gains(
         execution_config,
         shell_operation_cls=shell_operation_cls,
     )
-    return _require_file(h5parm_record["path"], "Processed DD slow gains h5parm")
+    return require_file(h5parm_record["path"], "Processed DD slow gains h5parm")
 
 
 def _should_adjust_dd_sources(payload: Mapping[str, object]) -> bool:
@@ -610,7 +603,7 @@ def _run_adjust_h5parm_sources(
         execution_config,
         shell_operation_cls=shell_operation_cls,
     )
-    return _require_file(h5parm_record["path"], label)
+    return require_file(h5parm_record["path"], label)
 
 
 def _collect_plot_and_combine_scalar_phase(

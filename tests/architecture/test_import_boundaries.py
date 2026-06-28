@@ -28,6 +28,7 @@ PURE_EXECUTION_MODULES = (
     RAPTHOR_ROOT / "execution" / "image" / "payloads.py",
     RAPTHOR_ROOT / "execution" / "mosaic" / "commands.py",
     RAPTHOR_ROOT / "execution" / "mosaic" / "payloads.py",
+    RAPTHOR_ROOT / "execution" / "outputs.py",
     RAPTHOR_ROOT / "execution" / "payloads.py",
     RAPTHOR_ROOT / "execution" / "pipeline" / "lifecycle.py",
     RAPTHOR_ROOT / "execution" / "pipeline" / "plan.py",
