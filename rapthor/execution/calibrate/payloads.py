@@ -35,6 +35,7 @@ class CalibrateSolveSlotPayload(TypedDict, total=False):
     """Serializable payload for one DP3 solve slot inside a calibration chunk."""
 
     slot: int
+    solve_type: str
     h5parm: str
     h5parm_path: str
     solint: int
@@ -114,8 +115,6 @@ class CalibratePayload(TypedDict, total=False):
     uvlambdamin: float
     correctfreqsmearing: bool
     correcttimesmearing: bool
-    collected_h5parm: str
-    collected_h5parm_path: str
     collected_h5parms: dict[str, CalibrateOutputPayload]
     combined_h5parm: Optional[CalibrateOutputPayload]
     combined_h5parms: dict[str, CalibrateOutputPayload]
@@ -176,20 +175,53 @@ def _first_solve_output(input_parms: Mapping[str, object], slot: int) -> str:
     return str(outputs[0]) if isinstance(outputs, list) and outputs else ""
 
 
-def _di_solve_type(input_parms: Mapping[str, object], slot: int) -> str:
+def _solve_type_from_slot(input_parms: Mapping[str, object], slot: int, mode: str) -> str:
+    explicit_type = input_parms.get(f"solve{slot}_type")
+    if explicit_type is not None:
+        return str(explicit_type)
+
     output_name = _first_solve_output(input_parms, slot)
     solve_mode = str(input_parms.get(f"solve{slot}_mode"))
     if output_name.startswith("fulljones_gain_") and solve_mode == "fulljones":
         return "full_jones"
-    if output_name.startswith("fast_phase_di_") and solve_mode == "scalarphase":
+    phase_suffix = "_di_" if mode == "di" else "_"
+    if output_name.startswith(f"fast_phase{phase_suffix}") and solve_mode == "scalarphase":
         return "fast_phase"
     if (
-        output_name.startswith("medium1_phase_di_") or output_name.startswith("medium2_phase_di_")
+        output_name.startswith(f"medium1_phase{phase_suffix}")
+        or output_name.startswith(f"medium2_phase{phase_suffix}")
     ) and solve_mode == "scalarphase":
         return "medium_phase"
-    if output_name.startswith("slow_gains_di_") and solve_mode == "diagonal":
+    slow_prefix = "slow_gains_di_" if mode == "di" else "slow_gain_"
+    if output_name.startswith(slow_prefix) and solve_mode == "diagonal":
         return "slow_gains"
     return "unsupported"
+
+
+def _active_solve_types(mode: str, input_parms: Mapping[str, object]) -> list[str]:
+    return [
+        _solve_type_from_slot(input_parms, int(step.removeprefix("solve")), mode)
+        for step in _active_solve_steps(input_parms)
+    ]
+
+
+def _unsupported_solve_slot_message(
+    mode: str,
+    active_solves: list[str],
+    solve_types: list[str],
+    input_parms: Mapping[str, object],
+) -> str:
+    unsupported_slots = []
+    for step, solve_type in zip(active_solves, solve_types):
+        if solve_type != "unsupported":
+            continue
+        slot = int(step.removeprefix("solve"))
+        unsupported_slots.append(
+            f"{step} mode={input_parms.get(f'solve{slot}_mode')!r} "
+            f"output={_first_solve_output(input_parms, slot)!r}"
+        )
+
+    return f"Unsupported {mode.upper()} calibration solve slot(s): " + "; ".join(unsupported_slots)
 
 
 def _uses_image_based_predict(steps: list[str]) -> bool:
@@ -316,66 +348,45 @@ def _supported_calibration_kind(mode: str, input_parms: Mapping[str, object]) ->
     _validate_image_predict_inputs(mode, steps, input_parms)
 
     active_solves = [step for step in steps if step.startswith("solve")]
-    solve1_mode = str(input_parms.get("solve1_mode"))
-    solve2_mode = str(input_parms.get("solve2_mode"))
-    solve3_mode = str(input_parms.get("solve3_mode"))
-    solve4_mode = str(input_parms.get("solve4_mode"))
+    if not active_solves:
+        raise ValueError("Calibration requires at least one solve step")
+
+    solve_types = _active_solve_types(mode, input_parms)
+    if "unsupported" in solve_types:
+        raise ValueError(
+            _unsupported_solve_slot_message(mode, active_solves, solve_types, input_parms)
+        )
+    if solve_types.count("slow_gains") > 1:
+        raise ValueError("A calibration cycle can contain at most one slow_gains solve")
+    if "slow_gains" in solve_types:
+        _validate_slow_gain_processing_inputs(input_parms)
+
     if mode == "di":
-        solve_types = [
-            _di_solve_type(input_parms, int(step.removeprefix("solve"))) for step in active_solves
-        ]
         if solve_types == ["full_jones"]:
             return "di_fulljones"
         if solve_types == ["fast_phase"]:
             return "di_fast_phase"
         if solve_types == ["slow_gains"]:
-            _validate_slow_gain_processing_inputs(input_parms)
             return "di_slow"
         if solve_types == ["fast_phase", "medium_phase"]:
             return "di_scalar_phase"
         if solve_types == ["fast_phase", "medium_phase", "slow_gains"]:
-            _validate_slow_gain_processing_inputs(input_parms)
             return "di_phase_slow"
-        raise ValueError(
-            "Only DI full-Jones, fast phase, slow gain, fast/medium phase, "
-            "and fast/medium/slow calibration are supported"
-        )
+        return "di_ddecal"
 
     if mode == "dd":
-        output_solve1 = input_parms.get("output_solve1_h5parm", [])
-        first_solve1_output = output_solve1[0] if isinstance(output_solve1, list) else ""
-        if (
-            active_solves == ["solve1"]
-            and solve1_mode == "scalarphase"
-            and str(first_solve1_output).startswith("fast_phase_")
-        ):
+        if solve_types == ["fast_phase"]:
             return "dd_fast_phase"
-        if (
-            active_solves == ["solve1"]
-            and solve1_mode == "diagonal"
-            and str(first_solve1_output).startswith("slow_gain_")
-        ):
-            _validate_slow_gain_processing_inputs(input_parms)
+        if solve_types == ["slow_gains"]:
             return "dd_slow"
-        if (
-            active_solves == ["solve1", "solve2"]
-            and solve1_mode == solve2_mode == "scalarphase"
-            and str(first_solve1_output).startswith("fast_phase_")
-        ):
+        if solve_types == ["fast_phase", "medium_phase"]:
             return "dd_phase"
-        if (
-            active_solves
-            in (["solve1", "solve2", "solve3"], ["solve1", "solve2", "solve3", "solve4"])
-            and solve1_mode == solve2_mode == "scalarphase"
-            and solve3_mode == "diagonal"
-            and ("solve4" not in active_solves or solve4_mode == "scalarphase")
-            and str(first_solve1_output).startswith("fast_phase_")
+        if solve_types in (
+            ["fast_phase", "medium_phase", "slow_gains"],
+            ["fast_phase", "medium_phase", "slow_gains", "medium_phase"],
         ):
-            _validate_slow_gain_processing_inputs(input_parms)
             return "dd_phase_slow"
-        raise ValueError(
-            "Only DD fast/medium phase and slow-gain calibration is supported in this slice"
-        )
+        return "dd_ddecal"
 
     raise ValueError("Only DI and DD calibration payloads are supported")
 
@@ -383,15 +394,7 @@ def _supported_calibration_kind(mode: str, input_parms: Mapping[str, object]) ->
 def _solve_slots_for_kind(calibration_kind: str, input_parms: Mapping[str, object]) -> list[int]:
     if calibration_kind == "dd_screen":
         return []
-    if calibration_kind in {"di_fulljones", "di_fast_phase", "di_slow", "dd_fast_phase", "dd_slow"}:
-        return [1]
-    if calibration_kind == "di_scalar_phase":
-        return [1, 2]
-    if calibration_kind == "di_phase_slow":
-        return [1, 2, 3]
-    if calibration_kind in {"dd_phase", "dd_phase_slow"}:
-        return [int(step.removeprefix("solve")) for step in _active_solve_steps(input_parms)]
-    raise ValueError(f"Unsupported calibration kind: {calibration_kind}")
+    return [int(step.removeprefix("solve")) for step in _active_solve_steps(input_parms)]
 
 
 def _solver_payload_from_inputs(input_parms: Mapping[str, object]) -> dict:
@@ -416,6 +419,7 @@ def _solver_payload_from_inputs(input_parms: Mapping[str, object]) -> dict:
 def _solve_slot_from_inputs(
     input_parms: Mapping[str, object],
     pipeline_dir: str,
+    mode: str,
     slot: int,
     index: int,
     keepmodel: Optional[str] = None,
@@ -436,6 +440,7 @@ def _solve_slot_from_inputs(
     }
     slot_record = {
         "slot": slot,
+        "solve_type": _solve_type_from_slot(input_parms, slot, mode),
         "h5parm": h5parm,
         "h5parm_path": os.path.join(pipeline_dir, h5parm),
         "solint": int(
@@ -469,7 +474,9 @@ def _solve_slot_from_inputs(
     datause_key = f"solve{slot}_datause"
     if datause_key in input_parms:
         slot_record["datause"] = input_parms.get(datause_key)
-    initial_h5parm_key = initial_h5parm_keys[slot]
+    initial_h5parm_key = f"solve{slot}_initialsolutions_h5parm"
+    if initial_h5parm_key not in input_parms:
+        initial_h5parm_key = initial_h5parm_keys[slot]
     if initial_h5parm_key in input_parms:
         slot_record["initialsolutions_h5parm"] = _optional_file_path(
             input_parms.get(initial_h5parm_key), initial_h5parm_key
@@ -602,6 +609,11 @@ def calibrate_payload_from_inputs(
         return payload
 
     solve_slots = _solve_slots_for_kind(calibration_kind, input_parms)
+    solve_types = {slot: _solve_type_from_slot(input_parms, slot, mode) for slot in solve_slots}
+    phase_solve_count = sum(
+        solve_type in {"fast_phase", "medium_phase"} for solve_type in solve_types.values()
+    )
+    slow_solve_count = sum(solve_type == "slow_gains" for solve_type in solve_types.values())
     output_solve1_h5parms = input_parms.get("output_solve1_h5parm", [])
     scatter_inputs = [filenames, starttimes, ntimes, output_solve1_h5parms]
     for slot in solve_slots:
@@ -632,7 +644,7 @@ def calibrate_payload_from_inputs(
         combined_h5parm = {"filename": combined, "path": os.path.join(pipeline_dir, combined)}
 
     combined_h5parms = {}
-    if calibration_kind in {"dd_phase", "dd_phase_slow", "di_phase_slow"}:
+    if phase_solve_count >= 2 or calibration_kind in {"dd_phase", "dd_phase_slow", "di_phase_slow"}:
         combined = _validate_basename(
             input_parms.get("combined_solve1_solve2_h5parm"),
             "combined_solve1_solve2_h5parm",
@@ -641,7 +653,7 @@ def calibrate_payload_from_inputs(
             "filename": combined,
             "path": os.path.join(pipeline_dir, combined),
         }
-    if calibration_kind == "dd_phase_slow" and 4 in solve_slots:
+    if phase_solve_count >= 3 or (calibration_kind == "dd_phase_slow" and 4 in solve_slots):
         combined = _validate_basename(
             input_parms.get("combined_solve1_solve2_solve4_h5parm"),
             "combined_solve1_solve2_solve4_h5parm",
@@ -650,7 +662,11 @@ def calibrate_payload_from_inputs(
             "filename": combined,
             "path": os.path.join(pipeline_dir, combined),
         }
-    if calibration_kind in {"dd_phase_slow", "di_phase_slow"}:
+    if (
+        (phase_solve_count >= 1 and slow_solve_count > 0)
+        or phase_solve_count >= 4
+        or calibration_kind in {"dd_phase_slow", "di_phase_slow"}
+    ):
         combined = _validate_basename(
             input_parms.get("combined_h5parms"),
             "combined_h5parms",
@@ -668,34 +684,31 @@ def calibrate_payload_from_inputs(
 
     chunks: list[CalibrateChunkPayload] = []
     uses_modeldatacolumn = modeldatacolumn is not None and not image_based_predict
+    first_solve_slot = solve_slots[0]
     for index in range(chunk_count):
         chunk_solve_slots: list[CalibrateSolveSlotPayload] = []
         for slot in solve_slots:
             keepmodel = None
             reusemodel = None
             slot_modeldatacolumns = None
-            if slot == 1:
+            if slot == first_solve_slot:
                 keepmodel = "True"
                 if image_based_predict:
                     reusemodel = "[predict.*]"
-            elif calibration_kind in {
-                "di_scalar_phase",
-                "di_phase_slow",
-                "dd_phase",
-                "dd_phase_slow",
-            }:
+            else:
                 if image_based_predict:
                     reusemodel = "[predict.*]"
-                elif uses_modeldatacolumn and calibration_kind not in {"di_scalar_phase"}:
+                elif uses_modeldatacolumn and not (mode == "di" and slow_solve_count == 0):
                     slot_modeldatacolumns = modeldatacolumn
                 else:
-                    reusemodel = "[solve1.*]"
+                    reusemodel = f"[solve{first_solve_slot}.*]"
             if calibration_kind == "dd_phase_slow" and slot in {2, 3}:
                 keepmodel = "true"
             chunk_solve_slots.append(
                 _solve_slot_from_inputs(
                     input_parms,
                     pipeline_dir,
+                    mode,
                     slot=slot,
                     index=index,
                     keepmodel=keepmodel,
@@ -733,8 +746,6 @@ def calibrate_payload_from_inputs(
         "image_based_predict": image_based_predict,
         "image_predict": _image_predict_payload_from_inputs(input_parms, pipeline_dir),
         **_solver_payload_from_inputs(input_parms),
-        "collected_h5parm": collected_h5parms["solve1"]["filename"],
-        "collected_h5parm_path": collected_h5parms["solve1"]["path"],
         "collected_h5parms": collected_h5parms,
         "combined_h5parm": combined_h5parm,
         "combined_h5parms": combined_h5parms,
@@ -789,6 +800,7 @@ def _validate_calibrate_solve_slot(
     slot_index: int,
 ) -> CalibrateSolveSlotPayload:
     _ = int(solve_slot["slot"])
+    _ = str(solve_slot["solve_type"])
     _validate_basename(
         solve_slot["h5parm"],
         f"chunks[{chunk_index}].solve_slots[{slot_index}].h5parm",
@@ -862,11 +874,13 @@ def validate_calibrate_payload(payload: Mapping[str, object]) -> CalibratePayloa
     calibration_kind = str(payload["calibration_kind"])
     supported_kinds = {
         "di_fast_phase",
+        "di_ddecal",
         "di_fulljones",
         "di_phase_slow",
         "di_scalar_phase",
         "di_slow",
         "dd_fast_phase",
+        "dd_ddecal",
         "dd_phase",
         "dd_phase_slow",
         "dd_screen",

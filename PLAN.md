@@ -5,8 +5,15 @@ Status snapshot: 2026-06-28.
 ## Goal
 
 Make the post-migration Python/Prefect/Dask codebase easier to understand,
-extend, test, and operate without changing Rapthor's scientific behaviour or
-public parset/strategy contract.
+extend, test, and operate while preserving Rapthor's intended scientific
+behaviour and user-facing `rapthor input.parset` CLI workflow.
+
+This Prefect/Dask implementation has not been released, and most users only
+enter through the CLI. Treat the refactor as a chance to design the clean
+production architecture now: delete unreleased Python APIs, migration-era
+aliases, compatibility shims, and legacy option paths when they make the code
+harder to read or extend. Keep only compatibility that protects the current
+CLI/parset experience or an explicitly documented scientific contract.
 
 The target architecture should let a developer or scientist answer these
 questions quickly:
@@ -348,6 +355,16 @@ Completed:
     and moved calibration station tests to pure `calibrate_plan` helpers
   - wired `check_dask_scheduler()` into external-Dask task-runner construction
     so the scheduler check is production validation rather than test-only code
+- Calibration solve-type runner cleanup:
+  - collapsed the old calibration-kind-specific DDECal collectors into one
+    solve-type-driven collection, plotting, gain-processing, and combination
+    path
+  - made full-Jones use the same per-slot chunk record shape as all other solve
+    types
+  - removed the unreleased single-output `collected_h5parm` payload aliases in
+    favour of the slot-indexed `collected_h5parms` contract
+  - renamed full-Jones output records to `fulljones_solutions` and
+    `fulljones_phase_plots` so output names describe the scientific product
 - Verified in the dev container:
   - `python3 -m pytest tests/architecture tests/execution/test_task_runner.py tests/execution/test_payloads.py -q --tb=short`
   - `python3 -m pytest tests/execution/test_concatenate_flow.py tests/execution/test_mosaic_flow.py tests/execution/test_predict_flow.py tests/execution/test_reference_fixtures.py -q --tb=short`
@@ -397,6 +414,7 @@ Completed:
   - `python3 -m pytest tests/execution/test_image_flow.py tests/execution/test_calibrate_flow.py -q --tb=short`
   - `python3 -m pytest tests/execution/test_concatenate_flow.py tests/execution/test_mosaic_flow.py tests/execution/test_predict_flow.py tests/execution/test_image_flow.py tests/execution/test_calibrate_flow.py -q --tb=short`
   - `python3 -m pytest tests/execution/test_commands.py tests/execution/test_reference_fixtures.py tests/execution/test_pipeline_flow.py tests/execution/test_resources.py tests/execution/test_shell.py tests/execution/test_task_runner.py tests/execution/test_config.py tests/lib/test_records.py tests/lib/test_miscellaneous.py tests/operations/test_calibrate.py tests/scripts/test_process_gains.py tests/architecture/test_import_boundaries.py -q --tb=short`
+  - `python3 -m pytest tests/execution/test_calibrate_flow.py -q --tb=short`
   - `python3 -m ruff check rapthor tests`
   - `python3 -c "import rapthor.execution as execution; import rapthor.execution.image.commands as image_commands; import rapthor.execution.image.payloads as image_payloads; import rapthor.execution.image.sector as image_sector; import rapthor.execution.image.flow as image_flow; assert image_commands.build_wsclean_no_dde_command; assert image_payloads.image_payload_from_inputs; assert image_flow.validate_image_payload is image_payloads.validate_image_payload; assert image_sector.run_image_sector; assert not hasattr(execution, 'run_image_sector'); assert not hasattr(execution, 'image_payload_from_inputs')"`
   - `python3 -c "from rapthor.execution.image.payloads import ImagePayload, ImageSectorPayload, image_payload_from_inputs; import rapthor.execution.payloads as shared_payloads; assert ImagePayload; assert ImageSectorPayload; assert image_payload_from_inputs; assert not hasattr(shared_payloads, 'ImagePayload'); assert not hasattr(shared_payloads, 'ImageSectorPayload')"`
@@ -559,10 +577,36 @@ Execution and operation cleanup queue, in recommended order:
      and Image output filename helpers.
    - Kept `check_dask_scheduler()` by wiring it into external-Dask task-runner
      construction so scheduler reachability is validated by production code.
-8. Split large payload and runner functions by real work unit.
+8. In progress: split large payload and runner functions by real work unit.
    - Candidate functions are `image_payload_from_inputs()`,
      `calibrate_payload_from_inputs()`, `run_image_sector()`, and
-     `_collect_plot_and_combine_dd_phase()`.
+     the calibration phase-combine runner path.
+   - Completed 2026-06-28: split the phase-combine runner path into base phase
+     collection, slow-gain collection/processing, optional medium2 phase
+     handling, and final combination helpers.
+   - Completed 2026-06-28: made calibration solve slots describe their
+     scientific solve type explicitly (`fast_phase`, `medium_phase`,
+     `slow_gains`, or `full_jones`) instead of assuming a fixed meaning for
+     `solve1`/`solve2`/`solve3`.
+   - Completed 2026-06-28: added generic calibration payload and collection
+     support for explicit strategy ordering, including custom DD order such as
+     medium then fast, mixed DI scalar/slow/full-Jones strategies, slow gains in
+     non-default slots, and the current rule that slow gains are diagonal.
+   - Completed 2026-06-28: removed the old calibration-kind-specific DDECal
+     collection branches and routed all DDECal solve products through the
+     generic solve-type collector, including full-Jones.
+   - Completed 2026-06-28: removed unreleased calibration payload/output aliases
+     that made full-Jones look like fast phase; full-Jones now uses
+     `fulljones_solutions` and `fulljones_phase_plots`.
+   - Completed 2026-06-28: added operation-level regression coverage that
+     solve-slot initial solutions are accepted only for the current calibration
+     cycle and ignored if the path belongs to a later cycle.
+   - Remaining: add an integration regression for the same current-cycle
+     solution rule using a real H5Parm/restart setup, so command logs prove
+     stale future-cycle solutions are not passed as DP3 initial solutions.
+   - Keep helper names slot-neutral when they operate on arbitrary solve slots;
+     only use scientific names such as slow gains when the helper is explicitly
+     tied to that solve type.
    - Split along units scientists recognise, such as prepare task, image cube,
      normalization, screen solve, scalar solve collection, and DD phase
      collection.
@@ -644,10 +688,12 @@ Remaining major stages:
 
 ## Refactor Principles
 
-- Keep every refactor slice behaviour-preserving unless it is explicitly scoped
-  as a feature change.
-- Preserve the existing public parset, strategy, CLI, output file, restart, and
-  finalizer contracts.
+- Keep every refactor slice behaviour-preserving for intended scientific
+  behaviour unless it is explicitly scoped as a feature change.
+- Preserve the user-facing CLI/parset workflow, restart behaviour, finalizer
+  semantics, and documented scientific outputs. Do not preserve unreleased
+  Python APIs, legacy aliases, or migration compatibility shims merely because
+  tests currently call them.
 - Prefer pure functions and typed data contracts at module boundaries.
 - Keep Rapthor domain objects out of Dask worker payloads; pass plain,
   serializable values only.

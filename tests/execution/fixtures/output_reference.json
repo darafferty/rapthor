@@ -17,12 +17,12 @@
             "class": "File",
             "path": "${PIPELINE_WORKING_DIR}/fulljones_solutions.h5"
         },
-        "fast_phase_solutions": {
+        "fulljones_solutions": {
             "class": "File",
             "path": "${PIPELINE_WORKING_DIR}/fulljones_solutions.h5"
         },
-        "fast_phase_plots": [
-            {"class": "File", "path": "${PIPELINE_WORKING_DIR}/phase_solutions.png"}
+        "fulljones_phase_plots": [
+            {"class": "File", "path": "${PIPELINE_WORKING_DIR}/fulljones_phase_solutions.png"}
         ]
     },
     "calibrate_di_scalar_phase": {
@@ -299,13 +299,22 @@
         "sector_I_images": [
             [
                 {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-image.fits.fz"},
-                {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-image-pb.fits.fz"}
+                {
+                    "class": "File",
+                    "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-image-pb.fits.fz"
+                }
             ]
         ],
         "sector_extra_images": [
             [
-                {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-residual.fits.fz"},
-                {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-model-pb.fits.fz"},
+                {
+                    "class": "File",
+                    "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-residual.fits.fz"
+                },
+                {
+                    "class": "File",
+                    "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-model-pb.fits.fz"
+                },
                 {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-dirty.fits.fz"}
             ]
         ],
@@ -490,7 +499,12 @@
             [{"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1_I_freq_cube.fits"}]
         ],
         "sector_image_cube_beams": [
-            [{"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1_I_freq_cube.fits_beams.txt"}]
+            [
+                {
+                    "class": "File",
+                    "path": "${PIPELINE_WORKING_DIR}/sector_1_I_freq_cube.fits_beams.txt"
+                }
+            ]
         ],
         "sector_image_cube_frequencies": [
             [
@@ -549,7 +563,12 @@
             [{"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1_I_freq_cube.fits"}]
         ],
         "sector_image_cube_beams": [
-            [{"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1_I_freq_cube.fits_beams.txt"}]
+            [
+                {
+                    "class": "File",
+                    "path": "${PIPELINE_WORKING_DIR}/sector_1_I_freq_cube.fits_beams.txt"
+                }
+            ]
         ],
         "sector_image_cube_frequencies": [
             [
@@ -568,25 +587,14 @@
     },
     "predict_di": {
         "msfiles_di_cal": [
-            [
-                {
-                    "class": "Directory",
-                    "path": "${PIPELINE_WORKING_DIR}/obs_0.ms.sector_1_di.ms"
-                }
-            ]
+            [{"class": "Directory", "path": "${PIPELINE_WORKING_DIR}/obs_0.ms.sector_1_di.ms"}]
         ]
     },
     "predict": {
         "subtract_models": [
             [
-                {
-                    "class": "Directory",
-                    "path": "${PIPELINE_WORKING_DIR}/obs_0.ms.selfcal_field"
-                },
-                {
-                    "class": "Directory",
-                    "path": "${PIPELINE_WORKING_DIR}/obs_0.ms.sector_1"
-                }
+                {"class": "Directory", "path": "${PIPELINE_WORKING_DIR}/obs_0.ms.selfcal_field"},
+                {"class": "Directory", "path": "${PIPELINE_WORKING_DIR}/obs_0.ms.sector_1"}
             ]
         ]
     }

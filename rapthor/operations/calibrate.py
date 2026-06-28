@@ -252,7 +252,7 @@ class Calibrate(Operation):
 
             # Define various output filenames for the solution tables. We save some
             # as attributes since they are needed in finalize()
-            self.collected_h5parm_fulljones = "fulljones_solutions.h5"
+            self.fulljones_solutions_h5parm = "fulljones_solutions.h5"
 
             # Set the constraints used in the calibrations
             self.input_parms = {
@@ -344,7 +344,7 @@ class Calibrate(Operation):
                 "output_solve1_h5parm": [
                     f"fulljones_gain_{i}.h5parm" for i in range(field.ntimechunks)
                 ],
-                "collected_solve1_h5parm": self.collected_h5parm_fulljones,
+                "collected_solve1_h5parm": self.fulljones_solutions_h5parm,
                 "smoothnessconstraint_fulljones": field.smoothnessconstraint_fulljones,
                 "max_normalization_delta": field.max_normalization_delta,
                 "scale_normalization_delta": str(field.scale_normalization_delta),
@@ -474,6 +474,8 @@ class Calibrate(Operation):
             output_key = f"output_solve{slot}_h5parm"
             collected_key = f"collected_solve{slot}_h5parm"
             mode_key = f"solve{slot}_mode"
+            type_key = f"solve{slot}_type"
+            initial_key = f"solve{slot}_initialsolutions_h5parm"
             timestep_key = f"solint_solve{slot}_timestep"
             freqstep_key = f"solint_solve{slot}_freqstep"
 
@@ -483,12 +485,16 @@ class Calibrate(Operation):
                 ]
                 self.input_parms[collected_key] = "unused"
                 self.input_parms[mode_key] = "null"
+                self.input_parms[type_key] = "unused"
+                self.input_parms[initial_key] = None
                 self._clear_solve_slot_inputs(slot)
                 continue
 
             self.input_parms[output_key] = solve.output_h5parms(field.ntimechunks)
             self.input_parms[collected_key] = solve.collected_h5parm
             self.input_parms[mode_key] = solve.mode
+            self.input_parms[type_key] = solve.solve_type
+            self.input_parms[initial_key] = self._solve_initial_solution_record(solve)
             self.input_parms[timestep_key] = field.get_obs_parameters(solve.timestep_key)
             self.input_parms[freqstep_key] = field.get_obs_parameters(solve.freqstep_key)
             self._apply_solve_slot_inputs(solve)
@@ -514,6 +520,52 @@ class Calibrate(Operation):
         for key, value in default_values.items():
             if key in self.input_parms:
                 self.input_parms[key] = value
+
+    def _solve_initial_solution_record(self, solve):
+        field = self.field
+        if solve.solve_type == "fast_phase":
+            attr_name = (
+                "di_fast_phases_h5parm_filename"
+                if self.mode == "di"
+                else "fast_phases_h5parm_filename"
+            )
+            cycle_attr = "di_h5parm_cycle_number" if self.mode == "di" else "dd_h5parm_cycle_number"
+            label = f"{self.mode.upper()} fast-phase"
+        elif solve.solve_type == "medium_phase":
+            medium2 = solve.output_prefix.startswith("medium2")
+            attr_name = (
+                (
+                    "di_medium2_phases_h5parm_filename"
+                    if medium2
+                    else "di_medium1_phases_h5parm_filename"
+                )
+                if self.mode == "di"
+                else (
+                    "medium2_phases_h5parm_filename"
+                    if medium2
+                    else "medium1_phases_h5parm_filename"
+                )
+            )
+            cycle_attr = "di_h5parm_cycle_number" if self.mode == "di" else "dd_h5parm_cycle_number"
+            label = f"{self.mode.upper()} medium-phase"
+        elif solve.solve_type == "slow_gains":
+            attr_name = (
+                "di_slow_gains_h5parm_filename"
+                if self.mode == "di"
+                else "slow_gains_h5parm_filename"
+            )
+            cycle_attr = "di_h5parm_cycle_number" if self.mode == "di" else "dd_h5parm_cycle_number"
+            label = f"{self.mode.upper()} slow-gain"
+        elif solve.solve_type == "full_jones":
+            attr_name = "fulljones_h5parm_filename"
+            cycle_attr = "fulljones_h5parm_cycle_number"
+            label = f"{self.mode.upper()} full-Jones"
+        else:
+            return None
+
+        filepath = getattr(field, attr_name, None)
+        current_path = self._current_cycle_solution_path(filepath, cycle_attr, label)
+        return self._to_file_record_if_exists(current_path)
 
     def _apply_solve_slot_inputs(self, solve):
         slot = solve.slot
@@ -614,10 +666,19 @@ class Calibrate(Operation):
         if filepath is None:
             return None
 
-        cycle_number = self.field.solution_cycle_number(
+        path_cycle_number = self.field.solution_cycle_number(
             filepath,
-            cycle_attr,
+            "_missing_solution_cycle_number",
             include_di_calibration=True,
+        )
+        cycle_number = (
+            path_cycle_number
+            if path_cycle_number is not None
+            else self.field.solution_cycle_number(
+                filepath,
+                cycle_attr,
+                include_di_calibration=True,
+            )
         )
         if cycle_number is None or cycle_number == self.index:
             return filepath
@@ -807,7 +868,7 @@ class Calibrate(Operation):
                 if os.path.exists(field.fulljones_h5parm_filename):
                     os.remove(field.fulljones_h5parm_filename)
                 collected_fulljones = getattr(
-                    self, "collected_h5parm_fulljones", fulljones_solve.collected_h5parm
+                    self, "fulljones_solutions_h5parm", fulljones_solve.collected_h5parm
                 )
                 shutil.copy(
                     os.path.join(self.pipeline_working_dir, collected_fulljones),
@@ -887,7 +948,9 @@ class Calibrate(Operation):
     def _dd_active_solution(self, solve_plan):
         if self.field.generate_screens:
             return self.combined_h5parms
-        if any(solve.solve_type == "slow_gains" and solve.slot == 3 for solve in solve_plan):
+        has_phase = any(solve.solve_type in {"fast_phase", "medium_phase"} for solve in solve_plan)
+        has_slow_gain = any(solve.solve_type == "slow_gains" for solve in solve_plan)
+        if has_phase and has_slow_gain:
             return self.combined_h5parms
         return self._dd_collected_h5parm(solve_plan[0])
 
@@ -901,7 +964,7 @@ class Calibrate(Operation):
         if solve.solve_type == "slow_gains":
             return getattr(self, "slow_h5parm", solve.collected_h5parm)
         if solve.solve_type == "full_jones":
-            return getattr(self, "collected_h5parm_fulljones", solve.collected_h5parm)
+            return getattr(self, "fulljones_solutions_h5parm", solve.collected_h5parm)
         raise ValueError(f"Unsupported DD solve type: {solve.solve_type}")
 
     @staticmethod
@@ -919,7 +982,11 @@ class Calibrate(Operation):
         raise ValueError(f"Unsupported DD solve type: {solve.solve_type}")
 
     def _di_combined_solution(self, scalar_solves):
-        if any(solve.solve_type == "slow_gains" and solve.slot == 3 for solve in scalar_solves):
+        has_phase = any(
+            solve.solve_type in {"fast_phase", "medium_phase"} for solve in scalar_solves
+        )
+        has_slow_gain = any(solve.solve_type == "slow_gains" for solve in scalar_solves)
+        if has_phase and has_slow_gain:
             return "combined_di_solutions.h5parm"
         if len(scalar_solves) > 1:
             return "combined_solve1_solve2_di.h5parm"

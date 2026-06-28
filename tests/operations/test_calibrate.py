@@ -501,7 +501,7 @@ class TestCalibrate:
                 calibrate.medium1_h5parm = "medium1.test.h5"
                 calibrate.medium2_h5parm = "medium2.test.h5"
         else:
-            calibrate.collected_h5parm_fulljones = "collected_fulljones.h5"
+            calibrate.fulljones_solutions_h5parm = "collected_fulljones.h5"
 
         # Ignore os.makedirs calls from the base Operation class constructor.
         mock_makedirs.reset_mock()
@@ -1077,6 +1077,34 @@ class TestCalibrate:
             "medium1_phase_di_0.h5parm",
             "medium1_phase_di_1.h5parm",
         ]
+
+    def test_set_input_parameters_dd_uses_current_cycle_solve_initial_solutions_only(
+        self, calibrate_field, tmp_path
+    ):
+        calibrate_field.calibration_strategy = {"dd": ["fast_phase", "medium_phase", "slow_gains"]}
+        calibrate_field._calibration_strategy_defaulted = False
+
+        current_solution_dir = tmp_path / "solutions" / "calibrate_1"
+        future_solution_dir = tmp_path / "solutions" / "calibrate_2"
+        current_solution_dir.mkdir(parents=True)
+        future_solution_dir.mkdir(parents=True)
+
+        current_fast = current_solution_dir / "field-solutions-fast-phase.h5"
+        future_medium = future_solution_dir / "field-solutions-medium1-phase.h5"
+        future_slow = future_solution_dir / "field-solutions-slow-gain.h5"
+        for path in (current_fast, future_medium, future_slow):
+            path.write_text("h5parm")
+
+        calibrate_field.fast_phases_h5parm_filename = str(current_fast)
+        calibrate_field.medium1_phases_h5parm_filename = str(future_medium)
+        calibrate_field.slow_gains_h5parm_filename = str(future_slow)
+
+        calibrate = Calibrate("dd", field=calibrate_field, index=1)
+        calibrate.set_input_parameters()
+
+        assert calibrate.input_parms["solve1_initialsolutions_h5parm"]["path"] == str(current_fast)
+        assert calibrate.input_parms["solve2_initialsolutions_h5parm"] is None
+        assert calibrate.input_parms["solve3_initialsolutions_h5parm"] is None
 
     def test_set_input_parameters_dd_preapplies_di_solutions(self, calibrate_field, tmp_path):
         di_h5parm = tmp_path / "di-solutions.h5"
