@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 from prefect.testing.utilities import prefect_test_harness
 
+import rapthor.execution.image.diagnostics as image_diagnostics_module
 import rapthor.execution.image.sector as image_sector_module
 from rapthor.execution.commands import normalize_command
 from rapthor.execution.config import ExecutionConfig
@@ -1626,7 +1627,7 @@ def test_run_image_flow_executes_no_dde_commands_and_returns_records(
         return []
 
     monkeypatch.setattr(
-        image_sector_module,
+        image_diagnostics_module,
         "publish_plot_file_records",
         fake_publish_plot_file_records,
     )

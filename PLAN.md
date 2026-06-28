@@ -123,6 +123,12 @@ Completed:
   - stopped re-exporting image command helpers, `image_payload_from_inputs`, and
     `run_image_sector` from the broad execution facades; internal code imports
     from owner modules
+- Image sector work-unit module split:
+  - split sector preparation, WSClean execution/reuse, image product creation,
+    and diagnostics publication into `rapthor.execution.image.preparation`,
+    `wsclean`, `outputs`, and `diagnostics`
+  - kept `rapthor.execution.image.sector.run_image_sector()` as the readable
+    scheduler-independent sector orchestration entry point
 - Calibration command-builder extraction:
   - added `rapthor.execution.calibrate.commands` as the first calibration
     package module
@@ -601,6 +607,13 @@ Execution and operation cleanup queue, in recommended order:
    - Completed 2026-06-28: added operation-level regression coverage that
      solve-slot initial solutions are accepted only for the current calibration
      cycle and ignored if the path belongs to a later cycle.
+   - Completed 2026-06-28: split `run_image_sector()` into named imaging work
+     units for prepare/concat, mask and facet-region creation, WSClean
+     execution/reuse, source-list handling, skymodel filtering, filtered-model
+     image creation, and diagnostics.
+   - Completed 2026-06-28: moved those image-sector work units into focused
+     owner modules (`preparation`, `wsclean`, `outputs`, and `diagnostics`),
+     leaving `sector.py` as orchestration-only code.
    - Remaining: add an integration regression for the same current-cycle
      solution rule using a real H5Parm/restart setup, so command logs prove
      stale future-cycle solutions are not passed as DP3 initial solutions.
