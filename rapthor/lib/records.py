@@ -204,11 +204,6 @@ def directory_record_path(record: Any) -> str:
     return output_record_path(record, "Directory")
 
 
-def optional_directory_record_path(record: Any) -> Optional[str]:
-    """Return the path from an optional directory output record, or ``None``."""
-    return optional_output_record_path(record, "Directory")
-
-
 def copy_record_object(src_obj, dest_dir, move=False):
     """
     Copy a file or directory record to the specified destination directory.

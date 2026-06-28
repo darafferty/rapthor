@@ -1,7 +1,5 @@
 """Pure pipeline-planning helpers for top-level Rapthor orchestration."""
 
-from typing import Optional
-
 SUPPORTED_PIPELINE_FEATURES = frozenset(
     {
         "calibration",
@@ -128,63 +126,3 @@ def collect_pipeline_features(field: object, strategy_steps: list[dict], parset:
         features.add("final_cycle")
 
     return features
-
-
-def build_pipeline_step_plan(
-    strategy_steps: list[dict],
-    *,
-    final: bool = False,
-    start_cycle: int = 1,
-    dde_mode: str = "single",
-) -> list[dict[str, object]]:
-    """
-    Build a serializable operation plan for one pipeline-step group.
-
-    The result is intended for dry-run/debug output and tests. It mirrors the
-    operation order used by ``run_pipeline_steps`` but does not mutate a Field,
-    instantiate operations, or start Prefect/Dask work.
-    """
-    plan = []
-    for step_index, step in enumerate(strategy_steps):
-        cycle = start_cycle + step_index
-        generate_screens = bool(step.get("do_calibrate") and dde_mode == "hybrid" and final)
-
-        if step.get("do_calibrate"):
-            for mode, enabled in calibration_mode_flags(
-                step.get("calibration_strategy", {})
-            ).items():
-                if not enabled:
-                    continue
-                if mode == "di":
-                    plan.append(_pipeline_plan_item(cycle, step_index, "predict", "di", final))
-                plan.append(_pipeline_plan_item(cycle, step_index, "calibrate", mode, final))
-
-        if step.get("do_predict") and not generate_screens:
-            plan.append(_pipeline_plan_item(cycle, step_index, "predict", "dd", final))
-
-        if step.get("do_image"):
-            if step.get("do_normalize"):
-                plan.append(_pipeline_plan_item(cycle, step_index, "image_normalize", None, final))
-            plan.append(_pipeline_plan_item(cycle, step_index, "image", None, final))
-            plan.append(_pipeline_plan_item(cycle, step_index, "mosaic", None, final))
-
-        if step.get("do_check") and not final:
-            plan.append(_pipeline_plan_item(cycle, step_index, "check_selfcal", None, final))
-
-    return plan
-
-
-def _pipeline_plan_item(
-    cycle: int,
-    step_index: int,
-    operation: str,
-    mode: Optional[str],
-    final: bool,
-) -> dict[str, object]:
-    return {
-        "cycle": cycle,
-        "step_index": step_index,
-        "operation": operation,
-        "mode": mode,
-        "final": final,
-    }

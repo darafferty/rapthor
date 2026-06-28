@@ -9,7 +9,6 @@ import rapthor.scripts.process_gains as process_gains
 from rapthor.scripts.process_gains import (
     flag_amps,
     get_angular_distance,
-    get_ant_dist,
     get_median_amp,
     get_smooth_box_size,
     normalize_direction,
@@ -61,13 +60,6 @@ class FakeSoltab:
             self.weight = np.array(values, dtype=float)
         else:
             self.val = np.array(values, dtype=float)
-
-
-def test_get_ant_dist():
-    ant_xyz = np.array([1, 2, 3])
-    ref_xyz = np.array([4, 5, 6])
-    dist = get_ant_dist(ant_xyz, ref_xyz)
-    assert np.isclose(dist, 3 * np.sqrt(3)), f"Expected distance 3*sqrt(3), got {dist}"
 
 
 def test_get_angular_distance():

@@ -2,6 +2,7 @@
 """
 Script to process gain solutions
 """
+
 from argparse import ArgumentParser, RawTextHelpFormatter
 from losoto.h5parm import h5parm
 import numpy as np
@@ -11,28 +12,6 @@ from astropy.coordinates import SkyCoord
 import astropy.units as u
 from scipy.ndimage import generic_filter
 import sys
-
-
-def get_ant_dist(ant_xyz, ref_xyz):
-    """
-    Returns distance between ant and ref in m
-
-     Parameters
-    ----------
-    ant_xyz : array
-        Array of station position
-    ref_xyz : array
-        Array of reference position
-
-    Returns
-    -------
-    dist : float
-        Distance between station and reference positions
-
-    """
-    import numpy as np
-
-    return np.sqrt((ref_xyz[0] - ant_xyz[0])**2 + (ref_xyz[1] - ant_xyz[1])**2 + (ref_xyz[2] - ant_xyz[2])**2)
 
 
 def get_angular_distance(ra_dec1, ra_dec2):
@@ -51,14 +30,15 @@ def get_angular_distance(ra_dec1, ra_dec2):
     dist : float
         Distance in degrees
     """
-    coord1 = SkyCoord(ra_dec1[0], ra_dec1[1], unit=(u.degree, u.degree), frame='fk5')
-    coord2 = SkyCoord(ra_dec2[0], ra_dec2[1], unit=(u.degree, u.degree), frame='fk5')
+    coord1 = SkyCoord(ra_dec1[0], ra_dec1[1], unit=(u.degree, u.degree), frame="fk5")
+    coord2 = SkyCoord(ra_dec2[0], ra_dec2[1], unit=(u.degree, u.degree), frame="fk5")
 
     return coord1.separation(coord2).value
 
 
-def normalize_direction(soltab, max_station_delta=0.0, scale_delta_with_dist=False,
-                        phase_center=None):
+def normalize_direction(
+    soltab, max_station_delta=0.0, scale_delta_with_dist=False, phase_center=None
+):
     """
     Normalize amplitudes so that the mean of the XX and YY median amplitudes
     for each station is equal to unity, per direction
@@ -98,7 +78,10 @@ def normalize_direction(soltab, max_station_delta=0.0, scale_delta_with_dist=Fal
         source_dict = soltab.getSolset().getSou()
         dist = []
         for dir in soltab.dir[:]:
-            ra_dec = (source_dict[dir][0]*180/np.pi, source_dict[dir][1]*180/np.pi)  # degrees
+            ra_dec = (
+                source_dict[dir][0] * 180 / np.pi,
+                source_dict[dir][1] * 180 / np.pi,
+            )  # degrees
             dist.append(get_angular_distance(ra_dec, phase_center))
         max_dist = max(dist)
         if max_dist == 0:
@@ -119,10 +102,11 @@ def normalize_direction(soltab, max_station_delta=0.0, scale_delta_with_dist=Fal
 
         # First, renormalize the direction so that core stations have a median
         # amplitude of unity
-        if any(core_stations := ['CS' in stat for stat in soltab.ant[:]]):
+        if any(core_stations := ["CS" in stat for stat in soltab.ant[:]]):
             # no stations are marked with 'CS' => skip
-            median_dir = get_median_amp(parms[:, :, core_stations, dir, :],
-                                        weights[:, :, core_stations, dir, :])
+            median_dir = get_median_amp(
+                parms[:, :, core_stations, dir, :], weights[:, :, core_stations, dir, :]
+            )
             parms[:, :, :, dir, :] /= median_dir
 
         # Now renormalize station-by-station, allowing some delta from unity
@@ -182,7 +166,9 @@ def smooth_solutions(ampsoltab, phasesoltab=None, ref_id=0):
         # where testing has shown that smoothing the non-core stations with the
         # same box size results in worse artifacts)
         core_stations = [ant for ant in ampsoltab.ant if ant.startswith("CS")]
-        size_core = get_smooth_box_size(ampsoltab, direction, ant_list=core_stations, min_box_size=3)
+        size_core = get_smooth_box_size(
+            ampsoltab, direction, ant_list=core_stations, min_box_size=3
+        )
         noncore_stations = [ant for ant in ampsoltab.ant if ant not in core_stations]
         size_noncore = get_smooth_box_size(ampsoltab, direction, ant_list=noncore_stations) - 2
 
@@ -196,7 +182,9 @@ def smooth_solutions(ampsoltab, phasesoltab=None, ref_id=0):
                     weights = ampsoltab.weight[:, :, stat, direction, pol]
                     vals_bkp = vals[weights == 0]
                     np.putmask(vals, weights == 0, np.nan)
-                    valsnew = generic_filter(vals, np.nanmedian, size=size, mode='constant', cval=np.nan)
+                    valsnew = generic_filter(
+                        vals, np.nanmedian, size=size, mode="constant", cval=np.nan
+                    )
                     valsnew[weights == 0] = vals_bkp
                     valsnew = 10**valsnew
                     amps[:, :, stat, direction, pol] = valsnew
@@ -206,14 +194,18 @@ def smooth_solutions(ampsoltab, phasesoltab=None, ref_id=0):
                         vals = phases[:, :, stat, direction, pol]
                         weights = phasesoltab.weight[:, :, stat, direction, pol]
                         vals_bkp = vals[weights == 0]
-                        vals = np.exp(1j*vals)
+                        vals = np.exp(1j * vals)
                         valsreal = np.real(vals)
                         valsimag = np.imag(vals)
                         np.putmask(valsreal, weights == 0, np.nan)
                         np.putmask(valsimag, weights == 0, np.nan)
-                        valsrealnew = generic_filter(valsreal, np.nanmedian, size=size, mode='constant', cval=np.nan)
-                        valsimagnew = generic_filter(valsimag, np.nanmedian, size=size, mode='constant', cval=np.nan)
-                        valsnew = valsrealnew + 1j*valsimagnew
+                        valsrealnew = generic_filter(
+                            valsreal, np.nanmedian, size=size, mode="constant", cval=np.nan
+                        )
+                        valsimagnew = generic_filter(
+                            valsimag, np.nanmedian, size=size, mode="constant", cval=np.nan
+                        )
+                        valsnew = valsrealnew + 1j * valsimagnew
                         valsnew = np.angle(valsnew)
                         valsnew[weights == 0] = vals_bkp
                         phases[:, :, stat, direction, pol] = valsnew
@@ -257,9 +249,13 @@ def get_smooth_box_size(ampsoltab, direction, ant_list=None, min_box_size=1):
         return None
 
     # Calculate noise of unflagged solutions
-    unflagged_indx = np.logical_and(np.isfinite(ampsoltab.val[:, :, ant_selection, direction, :]),
-                                    ampsoltab.weight[:, :, ant_selection, direction, :] != 0.0)
-    noise = sigma_clipped_stats(np.log10(ampsoltab.val[:, :, ant_selection, direction, :][unflagged_indx]))[2]
+    unflagged_indx = np.logical_and(
+        np.isfinite(ampsoltab.val[:, :, ant_selection, direction, :]),
+        ampsoltab.weight[:, :, ant_selection, direction, :] != 0.0,
+    )
+    noise = sigma_clipped_stats(
+        np.log10(ampsoltab.val[:, :, ant_selection, direction, :][unflagged_indx])
+    )[2]
 
     # Set box size, with larger sizes for higher noise values
     if noise >= 0.1:
@@ -299,8 +295,10 @@ def get_median_amp(amps, weights):
 
     idx_xx = np.logical_and(np.isfinite(amps_xx), weights_xx != 0.0)
     idx_yy = np.logical_and(np.isfinite(amps_yy), weights_yy != 0.0)
-    medamp = 0.5 * (10**(sigma_clipped_stats(np.log10(amps_xx[idx_xx]))[1]) +
-                    10**(sigma_clipped_stats(np.log10(amps_yy[idx_yy]))[1]))
+    medamp = 0.5 * (
+        10 ** (sigma_clipped_stats(np.log10(amps_xx[idx_xx]))[1])
+        + 10 ** (sigma_clipped_stats(np.log10(amps_yy[idx_yy]))[1])
+    )
 
     return medamp
 
@@ -327,7 +325,7 @@ def flag_amps(soltab, lowampval=None, highampval=None, threshold_factor=0.2):
         determine their values. It must lie in the range (0, 1)
     """
     if threshold_factor <= 0.0 or threshold_factor >= 1.0:
-        sys.exit('ERROR: threshold_factor must be in the range (0, 1)')
+        sys.exit("ERROR: threshold_factor must be in the range (0, 1)")
 
     # Get the current flags
     amps = soltab.val[:]
@@ -394,10 +392,21 @@ def transfer_flags(soltab1, soltab2):
     soltab2.setValues(weights2, weight=True)
 
 
-def main(h5parmfile, solsetname='sol000', ampsoltabname='amplitude000',
-         phasesoltabname='phase000', ref_id=None, smooth=False, normalize=False,
-         flag=False, lowampval=None, highampval=None, max_station_delta=0.0,
-         scale_delta_with_dist=False, phase_center=None):
+def main(
+    h5parmfile,
+    solsetname="sol000",
+    ampsoltabname="amplitude000",
+    phasesoltabname="phase000",
+    ref_id=None,
+    smooth=False,
+    normalize=False,
+    flag=False,
+    lowampval=None,
+    highampval=None,
+    max_station_delta=0.0,
+    scale_delta_with_dist=False,
+    phase_center=None,
+):
     """
     Process gain solutions
 
@@ -457,35 +466,69 @@ def main(h5parmfile, solsetname='sol000', ampsoltabname='amplitude000',
     if smooth:
         smooth_solutions(ampsoltab, phasesoltab=phasesoltab, ref_id=ref_id)
     if normalize:
-        normalize_direction(ampsoltab, max_station_delta=max_station_delta,
-                            scale_delta_with_dist=scale_delta_with_dist,
-                            phase_center=phase_center)
+        normalize_direction(
+            ampsoltab,
+            max_station_delta=max_station_delta,
+            scale_delta_with_dist=scale_delta_with_dist,
+            phase_center=phase_center,
+        )
     H.close()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     descriptiontext = "Process gain solutions.\n"
 
     parser = ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
-    parser.add_argument('h5parmfile', help='Filename of input h5parm')
-    parser.add_argument('--solsetname', help='Solset name', type=str, default='sol000')
-    parser.add_argument('--ampsoltabname', help='Amplitude soltab name', type=str, default='amplitude000')
-    parser.add_argument('--phasesoltabname', help='Phase soltab name', type=str, default='phase000')
-    parser.add_argument('--ref_id', help='Reference station', type=int, default=0)
-    parser.add_argument('--normalize', help='Normalize amplitude solutions', type=str, default='False')
-    parser.add_argument('--smooth', help='Smooth amplitude solutions', type=str, default='False')
-    parser.add_argument('--flag', help='Flag amplitude solutions', type=str, default='False')
-    parser.add_argument('--lowampval', help='Low threshold for amplitude flagging', type=float, default=None)
-    parser.add_argument('--highampval', help='High threshold for amplitude flagging', type=float, default=None)
-    parser.add_argument('--max_station_delta', help='Max difference of median from unity allowed '
-                        'for station normalizations', type=float, default=0.0)
-    parser.add_argument('--scale_delta_with_dist', help='Scale max difference with distance', type=str, default='False')
-    parser.add_argument('--phase_center_ra', help='RA of phase center in degrees', type=float, default=0.0)
-    parser.add_argument('--phase_center_dec', help='Dec of phase center in degrees', type=float, default=0.0)
+    parser.add_argument("h5parmfile", help="Filename of input h5parm")
+    parser.add_argument("--solsetname", help="Solset name", type=str, default="sol000")
+    parser.add_argument(
+        "--ampsoltabname", help="Amplitude soltab name", type=str, default="amplitude000"
+    )
+    parser.add_argument("--phasesoltabname", help="Phase soltab name", type=str, default="phase000")
+    parser.add_argument("--ref_id", help="Reference station", type=int, default=0)
+    parser.add_argument(
+        "--normalize", help="Normalize amplitude solutions", type=str, default="False"
+    )
+    parser.add_argument("--smooth", help="Smooth amplitude solutions", type=str, default="False")
+    parser.add_argument("--flag", help="Flag amplitude solutions", type=str, default="False")
+    parser.add_argument(
+        "--lowampval", help="Low threshold for amplitude flagging", type=float, default=None
+    )
+    parser.add_argument(
+        "--highampval", help="High threshold for amplitude flagging", type=float, default=None
+    )
+    parser.add_argument(
+        "--max_station_delta",
+        help="Max difference of median from unity allowed for station normalizations",
+        type=float,
+        default=0.0,
+    )
+    parser.add_argument(
+        "--scale_delta_with_dist",
+        help="Scale max difference with distance",
+        type=str,
+        default="False",
+    )
+    parser.add_argument(
+        "--phase_center_ra", help="RA of phase center in degrees", type=float, default=0.0
+    )
+    parser.add_argument(
+        "--phase_center_dec", help="Dec of phase center in degrees", type=float, default=0.0
+    )
     args = parser.parse_args()
     phase_center = (args.phase_center_ra, args.phase_center_dec)
-    main(args.h5parmfile, solsetname=args.solsetname, ampsoltabname=args.ampsoltabname,
-         phasesoltabname=args.phasesoltabname, ref_id=args.ref_id, smooth=args.smooth,
-         normalize=args.normalize, flag=args.flag, lowampval=args.lowampval,
-         highampval=args.highampval, max_station_delta=args.max_station_delta,
-         scale_delta_with_dist=args.scale_delta_with_dist, phase_center=phase_center)
+    main(
+        args.h5parmfile,
+        solsetname=args.solsetname,
+        ampsoltabname=args.ampsoltabname,
+        phasesoltabname=args.phasesoltabname,
+        ref_id=args.ref_id,
+        smooth=args.smooth,
+        normalize=args.normalize,
+        flag=args.flag,
+        lowampval=args.lowampval,
+        highampval=args.highampval,
+        max_station_delta=args.max_station_delta,
+        scale_delta_with_dist=args.scale_delta_with_dist,
+        phase_center=phase_center,
+    )

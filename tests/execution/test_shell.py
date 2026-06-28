@@ -16,7 +16,6 @@ from rapthor.execution.shell import (
     parse_gnu_time_metrics,
     render_perf_flamegraph_svg,
     run_shell_command,
-    run_shell_commands,
     shell_operation_kwargs,
     write_command_log_record,
     write_perf_flamegraph_files,
@@ -358,22 +357,6 @@ def test_write_command_log_record_honors_log_commands_false(tmp_path):
 
 def test_command_log_path_ignores_non_operation_workdir(tmp_path):
     assert command_log_path(str(tmp_path / "not-an-operation")) is None
-
-
-def test_run_shell_commands_runs_sequentially():
-    FakeShellOperation.instances = []
-
-    result = run_shell_commands(
-        [ShellCommand(["echo", "one"]), ShellCommand(["echo", "two"])],
-        ExecutionConfig(),
-        shell_operation_cls=FakeShellOperation,
-    )
-
-    assert result == ["OK", "OK"]
-    assert [item.kwargs["commands"][0] for item in FakeShellOperation.instances] == [
-        "echo one",
-        "echo two",
-    ]
 
 
 def test_run_shell_command_requires_prefect_shell_without_injection(monkeypatch):

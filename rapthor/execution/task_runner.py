@@ -81,6 +81,7 @@ def build_task_runner(
     execution_config: ExecutionConfig,
     dask_task_runner_cls=None,
     thread_pool_task_runner_cls=None,
+    dask_client_cls=None,
 ):
     """Build the configured Prefect task runner.
 
@@ -96,6 +97,7 @@ def build_task_runner(
         scheduler = execution_config.resolved_dask_scheduler()
         if not scheduler:
             raise ValueError("external_dask requires a dask_scheduler value")
+        check_dask_scheduler(scheduler, client_cls=dask_client_cls)
         return runner_cls(address=scheduler)
     return runner_cls(
         cluster_class="dask.distributed.LocalCluster",

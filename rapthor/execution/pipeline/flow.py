@@ -346,42 +346,6 @@ def run_pipeline_steps(
     return field
 
 
-@flow(name="pipeline_steps")
-def _pipeline_steps_flow(
-    field: object,
-    steps: list[dict],
-    final: bool = False,
-    operation_factories: Optional[PipelineOperationFactories] = None,
-    execution_config: Optional[ExecutionConfig] = None,
-):
-    """Prefect implementation for top-level pipeline-step orchestration."""
-    with publish_python_logs_to_prefect():
-        return run_pipeline_steps(
-            field,
-            steps,
-            final=final,
-            operation_factories=operation_factories,
-        )
-
-
-def pipeline_steps_flow(
-    field: object,
-    steps: list[dict],
-    final: bool = False,
-    operation_factories: Optional[PipelineOperationFactories] = None,
-    execution_config: Optional[ExecutionConfig] = None,
-):
-    """Prefect entry point for top-level pipeline-step orchestration."""
-    return run_flow_with_task_runner(
-        _pipeline_steps_flow,
-        field,
-        steps,
-        final=final,
-        operation_factories=operation_factories,
-        execution_config=execution_config,
-    )
-
-
 @flow(name="pipeline")
 def _pipeline_flow(
     parset_file: object,

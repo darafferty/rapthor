@@ -10,7 +10,6 @@ from rapthor.execution.commands import (
     bool_token,
     bracketed_list_token,
     comma_join,
-    command_matches_fixture,
     command_to_string,
     normalize_command,
 )
@@ -110,7 +109,7 @@ def test_concatenate_command_matches_initial_reference_fixture():
     commands = json.loads((FIXTURE_DIR / "command_reference.json").read_text())
     expected = commands["concatenate"]["concat_ms_files"]
 
-    assert command_matches_fixture(
+    assert normalize_command(
         [
             "concat_ms.py",
             "epoch_0_input_0.ms",
@@ -118,6 +117,5 @@ def test_concatenate_command_matches_initial_reference_fixture():
             "--msout=epoch_0_concatenated.ms",
             "--concat_property=frequency",
             "--data_colname=DATA",
-        ],
-        expected,
-    )
+        ]
+    ) == normalize_command(expected)

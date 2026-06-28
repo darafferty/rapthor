@@ -128,11 +128,6 @@ class ExecutionConfig:
             deprecated_dir_local=_optional_str(cluster.get("dir_local")),
         )
 
-    @property
-    def effective_local_scratch_dir(self) -> Optional[str]:
-        """Return the preferred local scratch directory, including deprecated fallback."""
-        return self.local_scratch_dir or self.deprecated_dir_local
-
     def resolved_dask_scheduler(self, environ: Optional[Mapping[str, str]] = None) -> Optional[str]:
         """Return the configured Dask scheduler, including environment fallback."""
         return self.dask_scheduler or dask_scheduler_from_environment(environ)

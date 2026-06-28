@@ -21,6 +21,19 @@ class FakeThreadPoolTaskRunner:
         self.kwargs = kwargs
 
 
+class FakeDaskClient:
+    calls = []
+
+    def __init__(self, address, timeout):
+        self.calls.append((address, timeout))
+
+    def scheduler_info(self):
+        return {"workers": {"worker-1": {}}}
+
+    def close(self):
+        self.closed = True
+
+
 class FakeConfiguredFlow:
     def __init__(self, parent):
         self.parent = parent
@@ -91,23 +104,30 @@ def test_build_local_dask_task_runner_with_injected_class():
 
 
 def test_build_external_dask_task_runner_with_injected_class():
+    FakeDaskClient.calls = []
+
     runner = build_task_runner(
         ExecutionConfig(task_runner="external_dask", dask_scheduler="tcp://scheduler:8786"),
         dask_task_runner_cls=FakeDaskTaskRunner,
+        dask_client_cls=FakeDaskClient,
     )
 
     assert runner.kwargs == {"address": "tcp://scheduler:8786"}
+    assert FakeDaskClient.calls == [("tcp://scheduler:8786", "5s")]
 
 
 def test_build_external_dask_task_runner_uses_environment_scheduler(monkeypatch):
     monkeypatch.setenv(DASK_SCHEDULER_ENV, "tcp://env-scheduler:8786")
+    FakeDaskClient.calls = []
 
     runner = build_task_runner(
         ExecutionConfig(task_runner="external_dask"),
         dask_task_runner_cls=FakeDaskTaskRunner,
+        dask_client_cls=FakeDaskClient,
     )
 
     assert runner.kwargs == {"address": "tcp://env-scheduler:8786"}
+    assert FakeDaskClient.calls == [("tcp://env-scheduler:8786", "5s")]
 
 
 def test_build_external_dask_task_runner_requires_scheduler(monkeypatch):

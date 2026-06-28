@@ -12,13 +12,11 @@ from rapthor.execution.pipeline.flow import (
     PipelineLifecycleHooks,
     PipelineOperationFactories,
     pipeline_flow,
-    pipeline_steps_flow,
     run_pipeline,
     run_pipeline_steps,
 )
 from rapthor.execution.pipeline.plan import (
     SUPPORTED_PIPELINE_FEATURES,
-    build_pipeline_step_plan,
     collect_pipeline_features,
 )
 
@@ -445,23 +443,6 @@ def test_run_pipeline_steps_calibration_strategy_handoffs(
     _assert_strategy_handoffs(field, expected_order, expected_handoffs)
 
 
-@pytest.mark.parametrize("calibration_strategy, expected_order, expected_handoffs", STRATEGY_CASES)
-def test_pipeline_steps_flow_calibration_strategy_handoffs(
-    calibration_strategy, expected_order, expected_handoffs
-):
-    field = RecordingField()
-
-    with prefect_test_harness():
-        pipeline_steps_flow(
-            field,
-            [_single_step(calibration_strategy)],
-            operation_factories=RECORDING_FACTORIES,
-            execution_config=ExecutionConfig(task_runner="sync"),
-        )
-
-    _assert_strategy_handoffs(field, expected_order, expected_handoffs)
-
-
 def test_run_pipeline_steps_stops_after_selfcal_converges():
     field = RecordingField(selfcal_result=SelfcalState(converged=True))
     steps = [
@@ -563,82 +544,6 @@ def test_collect_pipeline_features_describes_strategy_and_runtime_options():
         "solve_dd_fast_phase",
         "solve_di_full_jones",
     } <= features
-
-
-def test_build_pipeline_step_plan_describes_operation_order_for_debug_output():
-    steps = [
-        _single_step(
-            {"dd": ["fast_phase"], "di": ["full_jones"]},
-            do_predict=True,
-            do_normalize=True,
-        )
-    ]
-
-    plan = build_pipeline_step_plan(steps, start_cycle=3)
-
-    assert [
-        (item["operation"], item["mode"], item["cycle"], item["step_index"], item["final"])
-        for item in plan
-    ] == [
-        ("calibrate", "dd", 3, 0, False),
-        ("predict", "di", 3, 0, False),
-        ("calibrate", "di", 3, 0, False),
-        ("predict", "dd", 3, 0, False),
-        ("image_normalize", None, 3, 0, False),
-        ("image", None, 3, 0, False),
-        ("mosaic", None, 3, 0, False),
-    ]
-
-
-def test_pipeline_step_plan_matches_recorded_operation_order():
-    steps = [
-        _single_step(
-            {"dd": ["fast_phase"], "di": ["full_jones"]},
-            do_predict=True,
-            do_normalize=True,
-        )
-    ]
-    field = RecordingField()
-
-    run_pipeline_steps(field, copy.deepcopy(steps), operation_factories=RECORDING_FACTORIES)
-
-    actual = [
-        (event["operation"], event["mode"], event["index"])
-        for event in field.events
-        if event["operation"] in {"predict", "calibrate", "image_normalize", "image", "mosaic"}
-    ]
-    expected = [
-        (item["operation"], item["mode"], item["cycle"]) for item in build_pipeline_step_plan(steps)
-    ]
-    assert actual == expected
-
-
-def test_build_pipeline_step_plan_skips_dd_predict_for_final_hybrid_screens():
-    plan = build_pipeline_step_plan(
-        [_single_step({"dd": ["fast_phase"]}, do_predict=True)],
-        final=True,
-        dde_mode="hybrid",
-    )
-
-    assert [(item["operation"], item["mode"], item["final"]) for item in plan] == [
-        ("calibrate", "dd", True),
-        ("image", None, True),
-        ("mosaic", None, True),
-    ]
-
-
-def test_build_pipeline_step_plan_marks_nonfinal_selfcal_checks():
-    assert build_pipeline_step_plan([_image_step(do_check=True)])[-1] == {
-        "cycle": 1,
-        "step_index": 0,
-        "operation": "check_selfcal",
-        "mode": None,
-        "final": False,
-    }
-    assert all(
-        item["operation"] != "check_selfcal"
-        for item in build_pipeline_step_plan([_image_step(do_check=True)], final=True)
-    )
 
 
 def test_supported_merge_feature_matrix_entries_pass_process_preflight():

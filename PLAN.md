@@ -329,11 +329,25 @@ Completed:
   - moved the top-level orchestration modules under
     `rapthor.execution.pipeline` and renamed the internal API to
     `pipeline_flow`, `run_pipeline`, `run_pipeline_steps`,
-    `collect_pipeline_features`, and `build_pipeline_step_plan`
+    and `collect_pipeline_features`
   - removed the previous flow package from active imports because
     this unreleased branch does not need compatibility shims
   - moved `run_flow_with_task_runner` into `rapthor.execution.task_runner` so
     Prefect task-runner selection and flow application have one owner
+- Test-only production surface cleanup:
+  - removed production helpers that were only called by tests:
+    `command_matches_fixture`, `pipeline_steps_flow`, `build_pipeline_step_plan`,
+    `ResourceRequest.from_execution_config`, `run_shell_commands`,
+    `ExecutionConfig.effective_local_scratch_dir`,
+    `optional_directory_record_path`, `ra2hhmmss`, `dec2ddmmss`,
+    `Calibrate._get_baselines_core`, `Calibrate._get_superterp_stations`, and
+    `process_gains.get_ant_dist`
+  - deleted the unused `rapthor.execution.workdirs` module and its tests because
+    no production code adopted it
+  - moved command fixture tests to compare through `normalize_command()` directly
+    and moved calibration station tests to pure `calibrate_plan` helpers
+  - wired `check_dask_scheduler()` into external-Dask task-runner construction
+    so the scheduler check is production validation rather than test-only code
 - Verified in the dev container:
   - `python3 -m pytest tests/architecture tests/execution/test_task_runner.py tests/execution/test_payloads.py -q --tb=short`
   - `python3 -m pytest tests/execution/test_concatenate_flow.py tests/execution/test_mosaic_flow.py tests/execution/test_predict_flow.py tests/execution/test_reference_fixtures.py -q --tb=short`
@@ -382,6 +396,8 @@ Completed:
   - `python3 -m pytest tests/execution/test_concatenate_flow.py tests/execution/test_mosaic_flow.py tests/execution/test_predict_flow.py tests/execution/test_reference_fixtures.py -q --tb=short`
   - `python3 -m pytest tests/execution/test_image_flow.py tests/execution/test_calibrate_flow.py -q --tb=short`
   - `python3 -m pytest tests/execution/test_concatenate_flow.py tests/execution/test_mosaic_flow.py tests/execution/test_predict_flow.py tests/execution/test_image_flow.py tests/execution/test_calibrate_flow.py -q --tb=short`
+  - `python3 -m pytest tests/execution/test_commands.py tests/execution/test_reference_fixtures.py tests/execution/test_pipeline_flow.py tests/execution/test_resources.py tests/execution/test_shell.py tests/execution/test_task_runner.py tests/execution/test_config.py tests/lib/test_records.py tests/lib/test_miscellaneous.py tests/operations/test_calibrate.py tests/scripts/test_process_gains.py tests/architecture/test_import_boundaries.py -q --tb=short`
+  - `python3 -m ruff check rapthor tests`
   - `python3 -c "import rapthor.execution as execution; import rapthor.execution.image.commands as image_commands; import rapthor.execution.image.payloads as image_payloads; import rapthor.execution.image.sector as image_sector; import rapthor.execution.image.flow as image_flow; assert image_commands.build_wsclean_no_dde_command; assert image_payloads.image_payload_from_inputs; assert image_flow.validate_image_payload is image_payloads.validate_image_payload; assert image_sector.run_image_sector; assert not hasattr(execution, 'run_image_sector'); assert not hasattr(execution, 'image_payload_from_inputs')"`
   - `python3 -c "from rapthor.execution.image.payloads import ImagePayload, ImageSectorPayload, image_payload_from_inputs; import rapthor.execution.payloads as shared_payloads; assert ImagePayload; assert ImageSectorPayload; assert image_payload_from_inputs; assert not hasattr(shared_payloads, 'ImagePayload'); assert not hasattr(shared_payloads, 'ImageSectorPayload')"`
   - `python3 -c "import rapthor.execution as execution; import rapthor.execution.calibrate.commands as commands; assert commands.build_ddecal_solve_command; assert not hasattr(execution, 'build_ddecal_solve_command')"`
@@ -398,7 +414,6 @@ Completed:
   - `python3 -c "from rapthor.operations.image_plan import build_image_screen_interval; assert build_image_screen_interval(slow_timestep_sec=10.0, timepersample=2.0, numsamples=20) == [0, 15]"`
   - `python3 -c "from rapthor.operations.image_plan import build_image_mpi_resource_controls; assert build_image_mpi_resource_controls(nsectors=2, max_nodes=8, cpus_per_task=12, batch_system='slurm') == {'mpi_nnodes': [3, 3], 'mpi_cpus_per_task': [12, 12]}"`
   - `python3 -c "from rapthor.operations.calibrate_plan import build_calibration_core_baseline_selection; assert build_calibration_core_baseline_selection('HBA', ['CS003HBA0', 'RS106HBA0', 'DE601HBA']) == '[CR]*&&;!DE601HBA'"`
-  - `python3 -c "from rapthor.execution.pipeline.plan import build_pipeline_step_plan; assert [item['operation'] for item in build_pipeline_step_plan([{'do_calibrate': False, 'do_predict': False, 'do_image': True, 'do_check': True}])] == ['image', 'mosaic', 'check_selfcal']"`
   - `python3 -c "from rapthor.execution.pipeline.lifecycle import do_final_pass, chunk_observations, make_report; assert do_final_pass and chunk_observations and make_report"`
   - `python3 -m py_compile bin/rapthor`
   - `python3 -c "import importlib.util; assert importlib.util.find_spec('rapthor.process') is None"`
@@ -528,14 +543,30 @@ Execution and operation cleanup queue, in recommended order:
    - Moved payload serializability assertions into the production Prefect task
      paths so invalid worker payloads are still rejected without keeping
      parallel synchronous flow APIs.
-7. Split large payload and runner functions by real work unit.
+7. Completed 2026-06-28: remove or production-wire functions that were only
+   called by tests.
+   - Removed test-only production helpers:
+     `command_matches_fixture`, `pipeline_steps_flow`, `build_pipeline_step_plan`,
+     `ResourceRequest.from_execution_config`, `run_shell_commands`,
+     `ExecutionConfig.effective_local_scratch_dir`,
+     `optional_directory_record_path`, `ra2hhmmss`, `dec2ddmmss`,
+     `Calibrate._get_baselines_core`, `Calibrate._get_superterp_stations`, and
+     `process_gains.get_ant_dist`.
+   - Deleted the unused `rapthor.execution.workdirs` module and its isolated
+     test file because no production path used it.
+   - Kept scanner false positives that are production-used through aliases or
+     methods, including shared payload validators, `Field.solution_cycle_number`,
+     and Image output filename helpers.
+   - Kept `check_dask_scheduler()` by wiring it into external-Dask task-runner
+     construction so scheduler reachability is validated by production code.
+8. Split large payload and runner functions by real work unit.
    - Candidate functions are `image_payload_from_inputs()`,
      `calibrate_payload_from_inputs()`, `run_image_sector()`, and
      `_collect_plot_and_combine_dd_phase()`.
    - Split along units scientists recognise, such as prepare task, image cube,
      normalization, screen solve, scalar solve collection, and DD phase
      collection.
-8. Introduce command argument objects for long command builders.
+9. Introduce command argument objects for long command builders.
    - Replace very long command-builder signatures, such as the WSClean builders,
      with small frozen dataclasses grouped by real concepts: common WSClean
      options, no-DDE options, facet options, screen options, MPI launch options,
@@ -550,7 +581,7 @@ Execution and operation cleanup queue, in recommended order:
      because those splits will reveal the stable data groups. Do it before the
      script-to-module migration so new Python module APIs do not inherit the
      current long-argument style.
-9. Revisit large operation adapters after the low-risk cleanup.
+10. Revisit large operation adapters after the low-risk cleanup.
    - `Image.set_input_parameters()`, `Image.finalize()`, and
      `Calibrate.set_input_parameters()` remain the largest operation-side
      methods.
@@ -736,8 +767,8 @@ responsibilities are:
   orchestration only: task boundaries, scheduling, retries/failure handling,
   artifact publication, and task-runner integration.
 - `rapthor.execution.pipeline`: top-level pipeline orchestration, lifecycle
-  hooks, feature detection, dry-run planning, and preflight integration.
-- `rapthor.execution.task_runner`, `outputs`, `resources`, `slurm`, `workdirs`,
+  hooks, feature detection, and preflight integration.
+- `rapthor.execution.task_runner`, `outputs`, `resources`, `slurm`,
   `artifacts`, and `shell`: reusable runtime infrastructure.
 - `rapthor.scripts`: standalone helper scripts used by external command
   builders, kept testable with small fixtures.
@@ -1321,8 +1352,8 @@ Completion criteria:
 Outcome: the cleaner architecture still supports local development, external
 Dask, Slurm, and future SKA-Low scaling work.
 
-- Keep runtime concerns isolated in `execution.config`, `runtime`,
-  `task_runner`, `resources`, `slurm`, and `workdirs`.
+- Keep runtime concerns isolated in `execution.config`, `task_runner`,
+  `resources`, and `slurm`.
 - Use Dask dashboard and performance reports to review task granularity after
   code boundaries are clearer.
 - Validate external-Dask and Slurm in representative allocations.

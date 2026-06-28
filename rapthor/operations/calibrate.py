@@ -15,13 +15,11 @@ from rapthor.lib import miscellaneous as misc
 from rapthor.lib.operation import Operation
 from rapthor.lib.records import DirectoryRecord, FileRecord
 from rapthor.operations.calibrate_plan import (
-    build_calibration_core_baseline_selection,
     build_calibration_core_stations,
     build_calibration_dp3_steps,
     build_calibration_preapply_steps,
     build_calibration_solve_plan,
     build_calibration_solve_slot_inputs,
-    build_calibration_superterp_stations,
     requested_calibration_solves,
 )
 from rapthor.operations.flow_execution import run_prefect_flow
@@ -632,28 +630,6 @@ class Calibrate(Operation):
             cycle_number,
         )
         return None
-
-    def _get_baselines_core(self):
-        """
-        Returns DPPP string of baseline selection for core calibration
-
-        Returns
-        -------
-        baselines : str
-            Baseline selection string
-        """
-        return build_calibration_core_baseline_selection(self.field.antenna, self.field.stations)
-
-    def _get_superterp_stations(self):
-        """
-        Returns list of superterp station names
-
-        Returns
-        -------
-        stations : list
-            Station names
-        """
-        return build_calibration_superterp_stations(self.field.antenna, self.field.stations)
 
     def _get_core_stations(self, include_nearest_remote=True):
         """

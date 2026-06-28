@@ -20,7 +20,7 @@ def test_execution_config_defaults_from_empty_parset(monkeypatch):
     assert config.log_commands is True
     assert config.command_profile == "auto"
     assert config.batch_system == "single_machine"
-    assert config.effective_local_scratch_dir is None
+    assert config.local_scratch_dir is None
 
 
 def test_execution_config_reads_cluster_specific_values():
@@ -60,8 +60,9 @@ def test_execution_config_reads_cluster_specific_values():
     assert config.mem_per_node_gb == 256
     assert config.use_container is True
     assert config.container_type == "singularity"
-    assert config.effective_local_scratch_dir == "/local"
+    assert config.local_scratch_dir == "/local"
     assert config.global_scratch_dir == "/shared"
+    assert config.deprecated_dir_local == "/deprecated"
 
 
 def test_execution_config_infers_external_dask_from_scheduler():
@@ -100,7 +101,7 @@ def test_execution_config_prefers_parset_scheduler_over_environment(monkeypatch)
 def test_execution_config_uses_deprecated_dir_local_as_scratch_fallback():
     config = ExecutionConfig.from_parset({"cluster_specific": {"dir_local": "/tmp/rapthor"}})
 
-    assert config.effective_local_scratch_dir == "/tmp/rapthor"
+    assert config.deprecated_dir_local == "/tmp/rapthor"
 
 
 def test_execution_config_exposes_effective_local_dask_capacity():

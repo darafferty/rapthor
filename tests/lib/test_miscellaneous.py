@@ -64,18 +64,6 @@ def test_approx_equal(x, y, args, kwargs):
     assert approx_equal(x, y, *args, **kwargs)
 
 
-@pytest.mark.parametrize("deg", (34.56,))
-@pytest.mark.parametrize("as_string", (False,))
-def test_ra2hhmmss(deg, as_string):
-    ra2hhmmss(deg, as_string)
-
-
-@pytest.mark.parametrize("deg", (34.56,))
-@pytest.mark.parametrize("as_string", (False,))
-def test_dec2ddmmss(deg, as_string):
-    dec2ddmmss(deg, as_string)
-
-
 # Normal conversions shouldn't raise any warnings.
 @pytest.mark.filterwarnings("error")
 @pytest.mark.parametrize("mjd_sec, mvt_str", [(4567890123.125, "18Aug2003/02:22:03.125")])

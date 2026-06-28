@@ -336,12 +336,7 @@ class TestCalibrate:
             ),
         ],
     )
-    def test_get_baselines_core(self, calibrate_field, antenna, stations, expected):
-        calibrate_field.antenna = antenna
-        calibrate_field.stations = stations
-        calibrate = Calibrate("dd", field=calibrate_field, index=1)
-        baselines = calibrate._get_baselines_core()
-        assert baselines == expected
+    def test_build_calibration_core_baseline_selection(self, antenna, stations, expected):
         assert build_calibration_core_baseline_selection(antenna, stations) == expected
 
     @pytest.mark.parametrize(
@@ -364,11 +359,7 @@ class TestCalibrate:
             ),
         ],
     )
-    def test_get_superterp_stations(self, calibrate_field, antenna, stations, expected):
-        calibrate_field.antenna = antenna
-        calibrate_field.stations = stations
-        calibrate_dd = Calibrate("dd", field=calibrate_field, index=1)
-        assert calibrate_dd._get_superterp_stations() == expected
+    def test_build_calibration_superterp_stations(self, antenna, stations, expected):
         assert build_calibration_superterp_stations(antenna, stations) == expected
 
     @pytest.mark.parametrize(

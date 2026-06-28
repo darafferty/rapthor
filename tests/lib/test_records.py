@@ -7,7 +7,6 @@ from rapthor.lib.records import (
     file_record,
     file_record_path,
     is_output_record,
-    optional_directory_record_path,
     optional_file_record_path,
     output_record_path,
     validate_output_record,
@@ -51,12 +50,9 @@ def test_required_record_path_helpers_extract_paths(tmp_path):
 
 def test_optional_record_path_helpers_accept_none(tmp_path):
     file_path = tmp_path / "image.fits"
-    dir_path = tmp_path / "measurement.ms"
 
     assert optional_file_record_path(None) is None
-    assert optional_directory_record_path(None) is None
     assert optional_file_record_path(file_record(file_path)) == file_path.as_posix()
-    assert optional_directory_record_path(directory_record(dir_path)) == dir_path.as_posix()
 
 
 def test_record_path_helpers_reject_wrong_or_malformed_records(tmp_path):
