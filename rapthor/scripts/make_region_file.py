@@ -2,10 +2,11 @@
 """
 Script to make a ds9 region file for use with WSClean and faceting
 """
-from argparse import ArgumentParser, RawTextHelpFormatter
+
 import ast
-from lsmtool.facet import make_ds9_region_file, read_skymodel
-from rapthor.lib import miscellaneous as misc
+from argparse import ArgumentParser, RawTextHelpFormatter
+
+from rapthor.execution.regions import make_ds9_region_from_skymodel
 
 
 def main(skymodel, ra_mid, dec_mid, width_ra, width_dec, region_file, enclose_names=True):
@@ -27,25 +28,42 @@ def main(skymodel, ra_mid, dec_mid, width_ra, width_dec, region_file, enclose_na
     region_file : str
         Filename of output ds9 region file
     """
-    # Read the facets from the input sky model
-    facets = read_skymodel(skymodel, ra_mid, dec_mid, width_ra, width_dec,
-                           wcs_pixel_scale=misc.WCS_PIXEL_SCALE)
+    make_ds9_region_from_skymodel(
+        skymodel,
+        ra_mid,
+        dec_mid,
+        width_ra,
+        width_dec,
+        region_file,
+        enclose_names=enclose_names,
+    )
 
-    # Make the ds9 region file
-    make_ds9_region_file(facets, region_file, enclose_names=enclose_names)
 
-
-if __name__ == '__main__':
-    descriptiontext = "Blank regions of an image.\n"
+if __name__ == "__main__":
+    descriptiontext = "Make a DS9 region file for WSClean faceting.\n"
 
     parser = ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
-    parser.add_argument('skymodel', help='Filename of input sky model')
-    parser.add_argument('ra_mid', help='RA of midpoint in degrees', type=float, default=None)
-    parser.add_argument('dec_mid', help='Dec of midpoint in degrees', type=float, default=None)
-    parser.add_argument('width_ra', help='Width in RA in degrees', type=float, default=None)
-    parser.add_argument('width_dec', help='Width in Dec in degrees', type=float, default=None)
-    parser.add_argument('region_file', help='Filename of output ds9 region file', type=str, default=None)
-    parser.add_argument('--enclose_names', help='Enclose names in curly braces', type=ast.literal_eval, default=True)
+    parser.add_argument("skymodel", help="Filename of input sky model")
+    parser.add_argument("ra_mid", help="RA of midpoint in degrees", type=float, default=None)
+    parser.add_argument("dec_mid", help="Dec of midpoint in degrees", type=float, default=None)
+    parser.add_argument("width_ra", help="Width in RA in degrees", type=float, default=None)
+    parser.add_argument("width_dec", help="Width in Dec in degrees", type=float, default=None)
+    parser.add_argument(
+        "region_file", help="Filename of output ds9 region file", type=str, default=None
+    )
+    parser.add_argument(
+        "--enclose_names",
+        help="Enclose names in curly braces",
+        type=ast.literal_eval,
+        default=True,
+    )
     args = parser.parse_args()
-    main(args.skymodel, args.ra_mid, args.dec_mid, args.width_ra, args.width_dec,
-         args.region_file, enclose_names=args.enclose_names)
+    main(
+        args.skymodel,
+        args.ra_mid,
+        args.dec_mid,
+        args.width_ra,
+        args.width_dec,
+        args.region_file,
+        enclose_names=args.enclose_names,
+    )

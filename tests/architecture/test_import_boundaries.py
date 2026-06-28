@@ -36,6 +36,7 @@ PURE_EXECUTION_MODULES = (
     RAPTHOR_ROOT / "execution" / "pipeline" / "plan.py",
     RAPTHOR_ROOT / "execution" / "predict" / "commands.py",
     RAPTHOR_ROOT / "execution" / "predict" / "payloads.py",
+    RAPTHOR_ROOT / "execution" / "regions.py",
 )
 
 PURE_EXECUTION_FORBIDDEN_PREFIXES = FRAMEWORK_PREFIXES + (

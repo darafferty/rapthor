@@ -86,6 +86,9 @@ Tasks:
 - Add function-vs-CLI parity tests.
 - Only switch production execution from shell/script to direct function calls
   when the payload is small, serializable, and safe for Dask workers.
+- Once production execution uses the importable module path and parity is
+  proven by tests, remove the original script wrapper instead of keeping an
+  unused legacy entry point.
 
 Progress:
 
@@ -96,6 +99,10 @@ Progress:
   `rapthor.execution.image.masking.blank_image`, kept the script as the CLI
   wrapper, added direct function plus CLI parity tests, and removed the unused
   `region_file` option from the blank-mask command path.
+- Continued with `make_region_file.py`: extracted DS9 facet-region creation to
+  `rapthor.execution.regions.make_ds9_region_from_skymodel`, kept the script as
+  the CLI wrapper, and replaced the placeholder script test with direct function
+  plus CLI parity coverage.
 
 Script audit and migration order:
 
@@ -104,9 +111,9 @@ Script audit and migration order:
 - Done: `blank_image.py` -> image preparation; FITS template/input plus sector
   vertices to mask FITS; small-to-medium file payload; `lsmtool` and `astropy`;
   direct and CLI parity tests now exist.
-- Do next after adding a real script test: `make_region_file.py` -> image and
-  calibration prediction preparation; sky model plus facet bounds to DS9
-  region; small payload; `lsmtool`; current test is only a placeholder.
+- Done: `make_region_file.py` -> image and calibration prediction preparation;
+  sky model plus facet bounds to DS9 region; small payload; `lsmtool`; direct
+  and CLI parity tests now exist.
 - Good next low-risk mosaic group: `make_mosaic_template.py`, `regrid_image.py`,
   and `make_mosaic.py` -> mosaic execution; FITS images plus vertices to
   template/regridded/mosaic FITS products; medium file payloads; current tests
@@ -129,8 +136,9 @@ Script audit and migration order:
 Done when:
 
 - The script audit is complete and at least one helper has an importable
-  function, stable CLI wrapper, parity tests, and clear owner-module
-  documentation.
+  function, stable CLI wrapper where still needed, parity tests, clear
+  owner-module documentation, and a documented path to delete the original
+  script once it is no longer part of production execution.
 
 ### 2. Dask Scalability Contracts
 
