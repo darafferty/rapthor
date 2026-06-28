@@ -13,7 +13,7 @@ from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.outputs import require_directory
 from rapthor.execution.payloads import assert_serializable_payload
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
-from rapthor.execution.shell import ShellCommand, run_shell_command
+from rapthor.execution.shell import run_external_command
 from rapthor.execution.task_runner import run_flow_with_task_runner
 from rapthor.lib.records import validate_output_record
 
@@ -31,13 +31,11 @@ def run_concatenate_epoch(
     output_filename = epoch["output_filename"]
     output_path = epoch["output_path"]
     command = build_concatenate_command(input_filenames, output_filename, data_colname)
-    run_shell_command(
-        ShellCommand(
-            command=command,
-            working_directory=pipeline_working_dir,
-            name="concatenate_epoch",
-        ),
+    run_external_command(
+        command,
+        pipeline_working_dir,
         config,
+        name="concatenate_epoch",
         shell_operation_cls=shell_operation_cls,
     )
     return require_directory(output_path, "Concatenate output")

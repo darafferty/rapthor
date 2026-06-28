@@ -15,6 +15,7 @@ from rapthor.execution.shell import (
     command_log_path,
     parse_gnu_time_metrics,
     render_perf_flamegraph_svg,
+    run_external_command,
     run_shell_command,
     shell_operation_kwargs,
     write_command_log_record,
@@ -68,6 +69,24 @@ def test_run_shell_command_uses_injected_operation_class():
 
     assert result == "OK"
     assert FakeShellOperation.instances[0].kwargs["commands"] == ["echo hello"]
+
+
+def test_run_external_command_builds_shell_command_metadata():
+    FakeShellOperation.instances = []
+
+    result = run_external_command(
+        ["echo", "hello"],
+        "/tmp/task",
+        ExecutionConfig(),
+        environment={"OMP_NUM_THREADS": "4"},
+        name="metadata",
+        shell_operation_cls=FakeShellOperation,
+    )
+
+    assert result == "OK"
+    assert FakeShellOperation.instances[0].kwargs["commands"] == ["echo hello"]
+    assert FakeShellOperation.instances[0].kwargs["working_dir"] == "/tmp/task"
+    assert FakeShellOperation.instances[0].kwargs["env"] == {"OMP_NUM_THREADS": "4"}
 
 
 def test_run_shell_command_records_duration_metadata(tmp_path):

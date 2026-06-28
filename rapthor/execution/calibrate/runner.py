@@ -25,7 +25,7 @@ from rapthor.execution.calibrate.payloads import (
 )
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.outputs import require_file
-from rapthor.execution.shell import ShellCommand, run_shell_command
+from rapthor.execution.shell import run_external_command
 from rapthor.lib.records import file_record, validate_output_record
 
 PHASE_SOLVE_TYPES = {"fast_phase", "medium_phase"}
@@ -102,19 +102,6 @@ def _solve_slots_for_chunk(
     return solve_slots
 
 
-def _run_shell(
-    command: list[str],
-    pipeline_working_dir: str,
-    execution_config: ExecutionConfig,
-    shell_operation_cls=None,
-) -> None:
-    run_shell_command(
-        ShellCommand(command=command, working_directory=pipeline_working_dir),
-        execution_config,
-        shell_operation_cls=shell_operation_cls,
-    )
-
-
 def _run_draw_model(
     payload: CalibratePayload,
     image_predict: CalibrateImagePredictPayload,
@@ -132,7 +119,7 @@ def _run_draw_model(
         imsize=list(image_predict["model_image_imsize"]),
         numthreads=int(payload["max_threads"]),
     )
-    _run_shell(
+    run_external_command(
         command,
         pipeline_working_dir,
         execution_config,
@@ -157,7 +144,7 @@ def _run_make_region_file(
         outfile=str(image_predict["facet_region_file"]),
         enclose_names=False,
     )
-    _run_shell(
+    run_external_command(
         command,
         pipeline_working_dir,
         execution_config,
@@ -243,7 +230,12 @@ def run_calibrate_chunk(
         predict_regions=payload.get("predict_regions"),
         predict_images=payload.get("predict_images"),
     )
-    _run_shell(command, pipeline_working_dir, config, shell_operation_cls=shell_operation_cls)
+    run_external_command(
+        command,
+        pipeline_working_dir,
+        config,
+        shell_operation_cls=shell_operation_cls,
+    )
     output_records = {}
     for slot in chunk["solve_slots"]:
         label = (
@@ -289,7 +281,12 @@ def run_calibrate_screen_chunk(
             antennaconstraint=str(payload["idgcal_antennaconstraint"]),
             numthreads=int(payload["max_threads"]),
         )
-    _run_shell(command, pipeline_working_dir, config, shell_operation_cls=shell_operation_cls)
+    run_external_command(
+        command,
+        pipeline_working_dir,
+        config,
+        shell_operation_cls=shell_operation_cls,
+    )
     return require_file(str(chunk["output_h5parm_path"]), "IDGCal screen h5parm")
 
 
@@ -305,7 +302,7 @@ def _run_collect_h5parm(
         [record["path"] for record in input_records],
         str(output["filename"]),
     )
-    _run_shell(
+    run_external_command(
         collect_command,
         pipeline_working_dir,
         execution_config,
@@ -325,7 +322,7 @@ def _run_collect_screen_h5parms(
         [record["path"] for record in input_records],
         str(output["filename"]),
     )
-    _run_shell(
+    run_external_command(
         collect_command,
         pipeline_working_dir,
         execution_config,
@@ -368,7 +365,7 @@ def run_plot_solutions(
     plot_command = build_plot_solutions_command(
         h5parm_record["path"], soltype, root=root, first_dir=first_dir
     )
-    _run_shell(
+    run_external_command(
         plot_command,
         pipeline_working_dir,
         execution_config,
@@ -408,7 +405,7 @@ def _run_combine_h5parms(
         calibrator_names=list(payload["calibrator_patch_names"]),
         calibrator_fluxes=list(payload["calibrator_fluxes"]),
     )
-    _run_shell(
+    run_external_command(
         combine_command,
         pipeline_working_dir,
         execution_config,
@@ -433,7 +430,7 @@ def _run_process_gains(
         phase_center_ra=payload["phase_center_ra"],
         phase_center_dec=payload["phase_center_dec"],
     )
-    _run_shell(
+    run_external_command(
         process_command,
         pipeline_working_dir,
         execution_config,
@@ -458,7 +455,7 @@ def _run_adjust_h5parm_sources(
     if not skymodel:
         raise ValueError("DD source adjustment requires calibration_skymodel_file")
     adjust_command = build_adjust_h5parm_sources_command(str(skymodel), h5parm_record["path"])
-    _run_shell(
+    run_external_command(
         adjust_command,
         pipeline_working_dir,
         execution_config,

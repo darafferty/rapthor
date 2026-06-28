@@ -824,3 +824,25 @@ def run_shell_command(
             error=error,
             profile=profile,
         )
+
+
+def run_external_command(
+    command: CommandInput,
+    working_directory: Optional[str],
+    execution_config: ExecutionConfig,
+    *,
+    environment: Optional[Mapping[str, str]] = None,
+    name: Optional[str] = None,
+    shell_operation_cls=None,
+):
+    """Execute a command list with the configured shell runner."""
+    return run_shell_command(
+        ShellCommand(
+            command=command,
+            environment={} if environment is None else dict(environment),
+            working_directory=working_directory,
+            name=name,
+        ),
+        execution_config,
+        shell_operation_cls=shell_operation_cls,
+    )

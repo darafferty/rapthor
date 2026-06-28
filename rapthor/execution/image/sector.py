@@ -50,26 +50,8 @@ from rapthor.execution.resources import (
     thread_environment,
     validate_resource_request,
 )
-from rapthor.execution.shell import ShellCommand, run_shell_command
+from rapthor.execution.shell import run_external_command
 from rapthor.lib.records import file_record
-
-
-def _run_shell(
-    command: list[str],
-    pipeline_working_dir: str,
-    execution_config: ExecutionConfig,
-    shell_operation_cls=None,
-    environment: Optional[Mapping[str, str]] = None,
-) -> None:
-    run_shell_command(
-        ShellCommand(
-            command=command,
-            environment={} if environment is None else dict(environment),
-            working_directory=pipeline_working_dir,
-        ),
-        execution_config,
-        shell_operation_cls=shell_operation_cls,
-    )
 
 
 def _compress_image_records(
@@ -83,7 +65,7 @@ def _compress_image_records(
     command = build_compress_sector_images_command(
         [record["path"] for record in sector_images + extra_images]
     )
-    _run_shell(
+    run_external_command(
         command, pipeline_working_dir, execution_config, shell_operation_cls=shell_operation_cls
     )
     compressed_sector_images = [
@@ -116,7 +98,7 @@ def _make_image_cube_records(
         command = build_make_image_cube_command(
             [record["path"] for record in channel_images], image_cube_filename
         )
-        _run_shell(
+        run_external_command(
             command, pipeline_working_dir, execution_config, shell_operation_cls=shell_operation_cls
         )
         image_cube_path = os.path.join(pipeline_working_dir, image_cube_filename)
@@ -152,7 +134,7 @@ def _make_normalization_records(
         float(sector["threshpix"]),
         int(sector["max_threads"]),
     )
-    _run_shell(
+    run_external_command(
         catalog_command,
         pipeline_working_dir,
         execution_config,
@@ -167,7 +149,7 @@ def _make_normalization_records(
         concat_record["path"],
         str(sector["output_normalize_h5parm_filename"]),
     )
-    _run_shell(
+    run_external_command(
         normalize_command,
         pipeline_working_dir,
         execution_config,
@@ -192,7 +174,7 @@ def _restore_bright_source_image(
     command = build_wsclean_restore_command(
         image_record["path"], bright_skymodel_pb, output_image, numthreads
     )
-    _run_shell(
+    run_external_command(
         command, pipeline_working_dir, execution_config, shell_operation_cls=shell_operation_cls
     )
     return require_file(os.path.join(pipeline_working_dir, output_image), description)
@@ -350,7 +332,7 @@ def run_image_sector(
                 central_patch_name=sector.get("central_patch_name"),
                 applycal_steps=sector.get("prepare_data_applycal_steps"),
             )
-            _run_shell(
+            run_external_command(
                 command, pipeline_working_dir, config, shell_operation_cls=shell_operation_cls
             )
         prepared_records.append(
@@ -362,7 +344,7 @@ def run_image_sector(
         concat_command = build_concat_time_command(
             prepared_paths, str(sector["concat_filename"]), str(sector["data_colname"])
         )
-        _run_shell(
+        run_external_command(
             concat_command, pipeline_working_dir, config, shell_operation_cls=shell_operation_cls
         )
     concat_record = require_directory(str(sector["concat_path"]), "Concatenated imaging MS")
@@ -378,7 +360,7 @@ def run_image_sector(
             image_filename=sector.get("previous_mask_filename"),
             region_file=sector.get("region_file"),
         )
-        _run_shell(
+        run_external_command(
             mask_command, pipeline_working_dir, config, shell_operation_cls=shell_operation_cls
         )
     mask_record = require_file(str(sector["mask_path"]), "Imaging mask")
@@ -394,7 +376,7 @@ def run_image_sector(
                 float(sector["width_dec"]),
                 str(sector["facet_region_filename"]),
             )
-            _run_shell(
+            run_external_command(
                 region_command,
                 pipeline_working_dir,
                 config,
@@ -418,7 +400,7 @@ def run_image_sector(
         wsclean_environment = _wsclean_environment_for_sector(sector, config)
         try:
             os.makedirs(temp_dir, exist_ok=True)
-            _run_shell(
+            run_external_command(
                 wsclean_command,
                 pipeline_working_dir,
                 config,
@@ -483,7 +465,7 @@ def run_image_sector(
             command = build_check_image_beam_command(
                 image_record["path"], float(sector["taper_arcsec"])
             )
-            _run_shell(
+            run_external_command(
                 command, pipeline_working_dir, config, shell_operation_cls=shell_operation_cls
             )
             require_file(image_record["path"], "Beam-checked image")
@@ -503,7 +485,7 @@ def run_image_sector(
         int(sector["max_threads"]),
         bright_true_sky_skymodel=sector.get("bright_skymodel_pb"),
     )
-    _run_shell(
+    run_external_command(
         filter_command, pipeline_working_dir, config, shell_operation_cls=shell_operation_cls
     )
 
@@ -547,7 +529,7 @@ def run_image_sector(
             pb_image["path"],
             str(sector["filtered_model_image_filename"]),
         )
-        _run_shell(
+        run_external_command(
             skymodel_image_command,
             pipeline_working_dir,
             config,
@@ -573,7 +555,7 @@ def run_image_sector(
         photometry_skymodel=sector.get("photometry_skymodel"),
         astrometry_skymodel=sector.get("astrometry_skymodel"),
     )
-    _run_shell(
+    run_external_command(
         diagnostics_command, pipeline_working_dir, config, shell_operation_cls=shell_operation_cls
     )
     diagnostics = require_file(

@@ -20,20 +20,21 @@ from rapthor.execution.predict.payloads import (
     validate_predict_payload,
 )
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
-from rapthor.execution.shell import ShellCommand, run_shell_command
+from rapthor.execution.shell import run_external_command
 from rapthor.execution.task_runner import run_flow_with_task_runner
 from rapthor.lib.records import directory_record, validate_output_record
 
 
-def _run_shell_and_validate_directory(
+def _run_command_and_validate_directory(
     command: list[str],
     output_path: str,
     pipeline_working_dir: str,
     execution_config: ExecutionConfig,
     shell_operation_cls=None,
 ) -> dict:
-    run_shell_command(
-        ShellCommand(command=command, working_directory=pipeline_working_dir),
+    run_external_command(
+        command,
+        pipeline_working_dir,
         execution_config,
         shell_operation_cls=shell_operation_cls,
     )
@@ -82,7 +83,7 @@ def run_predict_model_data(
         applycal_steps=predict_task["applycal_steps"],
         normalize_h5parm=predict_task["normalize_h5parm"],
     )
-    return _run_shell_and_validate_directory(
+    return _run_command_and_validate_directory(
         command,
         predict_task["msout_path"],
         pipeline_working_dir,
@@ -142,8 +143,9 @@ def run_predict_postprocess(
     else:
         raise ValueError("mode must be 'di' or 'dd'")
 
-    run_shell_command(
-        ShellCommand(command=command, working_directory=pipeline_working_dir),
+    run_external_command(
+        command,
+        pipeline_working_dir,
         config,
         shell_operation_cls=shell_operation_cls,
     )
