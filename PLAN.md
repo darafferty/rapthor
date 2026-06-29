@@ -93,7 +93,24 @@ starting new scalability work.
      coverage
    - update command reference fixtures and remove `bin/plotrapthor` from
      package metadata
-4. Update `docs/source/development/architecture.rst` so it reflects the current
+4. Run a script-migration polish pass:
+   - remove `rapthor/scripts/__init__.py` and the `scripts/*` package-data
+     entry if `rapthor/scripts` becomes empty
+   - move or remove the remaining `tests/scripts` files once filter-skymodel
+     and plot-solution coverage lives under `tests/execution`
+   - add a shared helper for execution-owned module adapter commands so
+     `python -m rapthor.execution...` invocations are built consistently
+   - tighten architecture tests so production code, package metadata, and
+     command fixtures cannot reintroduce retired helper scripts or
+     `plotrapthor`
+   - replace script-era `print()` calls in execution helpers with logging,
+     starting with predict sector model helpers and calibration h5parm-source
+     helpers
+   - make adapter CLI defaults delegate to execution helper defaults where
+     possible, so CLI parsing does not drift from the importable API
+   - decide whether `bin/concat_linc_files` is a supported utility or should
+     move to the same module-adapter pattern
+5. Update `docs/source/development/architecture.rst` so it reflects the current
    architecture:
    - `rapthor.scripts` is no longer a production pipeline layer
    - migrated helper logic lives under `rapthor.execution.<owner>`
@@ -101,7 +118,7 @@ starting new scalability work.
      execution-owned adapter rather than a legacy script wrapper
    - calibration solution plotting is owned by `rapthor.execution.calibrate`
      and may still run through shell execution via a module adapter
-5. Run the focused checks:
+6. Run the focused checks:
    - `tests/architecture/test_import_boundaries.py`
    - `tests/execution/test_image_flow.py`
    - `tests/execution/test_calibrate_flow.py`
@@ -110,7 +127,7 @@ starting new scalability work.
    - `tests/integration/test_rapthor_restart.py` when the integration
      environment is available
    - a Sphinx build once the docs environment has `sphinx`
-6. Then begin the Dask scalability-contract slice in section 4.
+7. Then begin the Dask scalability-contract slice in section 4.
 
 ## Remaining Roadmap
 
@@ -522,6 +539,19 @@ Tasks:
 - Move `bin/plotrapthor` to execution-owned calibration plotting modules so
   calibration can keep shell execution without depending on a legacy bin
   executable.
+- Run a final script-migration polish pass:
+  - remove the empty `rapthor/scripts` package and package-data glob if no
+    runtime assets remain there
+  - move or remove the remaining `tests/scripts` coverage after the live
+    adapters move under `tests/execution`
+  - add a shared command helper for `python -m rapthor.execution...` module
+    adapters
+  - tighten architecture tests for package metadata, command fixtures, and
+    retired wrapper names
+  - replace script-era `print()` calls in execution helpers with logging
+  - normalize module-adapter CLI defaults with the execution helper signatures
+  - decide whether `bin/concat_linc_files` is a supported utility or should be
+    migrated to the same module-adapter pattern
 
 Recommended order:
 
@@ -533,7 +563,8 @@ Recommended order:
 5. Remove `mpi_runner.sh` from packaging and the repository.
 6. Replace `bin/plotrapthor` with an execution-owned calibration plotting
    adapter.
-7. Update the development architecture docs, then move to Dask scalability
+7. Run the final script-migration polish pass.
+8. Update the development architecture docs, then move to Dask scalability
    contracts.
 
 Progress:
