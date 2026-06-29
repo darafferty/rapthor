@@ -4,11 +4,9 @@ import os
 from typing import Mapping, Optional
 
 from rapthor.execution.artifacts import publish_plot_file_records
-from rapthor.execution.config import ExecutionConfig
-from rapthor.execution.image.commands import build_calculate_image_diagnostics_command
+from rapthor.execution.image.diagnostic_calculation import calculate_image_diagnostics
 from rapthor.execution.image.payloads import ImageSectorPayload
 from rapthor.execution.outputs import file_records_for_patterns, require_file
-from rapthor.execution.shell import run_external_command
 from rapthor.lib.records import file_record
 
 
@@ -23,11 +21,9 @@ def run_image_diagnostics(
     diagnostics: Mapping[str, str],
     region_record: Optional[Mapping[str, str]],
     pipeline_working_dir: str,
-    execution_config: ExecutionConfig,
-    shell_operation_cls=None,
 ) -> tuple[dict, Optional[dict], list[dict]]:
     """Calculate and publish image diagnostics for a sector."""
-    diagnostics_command = build_calculate_image_diagnostics_command(
+    calculate_image_diagnostics(
         nonpb_image["path"],
         flat_noise_rms["path"],
         pb_image["path"],
@@ -37,17 +33,11 @@ def run_image_diagnostics(
         list(sector["obs_starttime"]),
         list(sector["obs_ntimes"]),
         diagnostics["path"],
-        image_name,
-        bool(sector["allow_internet_access"]),
+        os.path.join(pipeline_working_dir, image_name),
+        allow_internet_access=bool(sector["allow_internet_access"]),
         facet_region_file=None if region_record is None else region_record["path"],
-        photometry_skymodel=sector.get("photometry_skymodel"),
-        astrometry_skymodel=sector.get("astrometry_skymodel"),
-    )
-    run_external_command(
-        diagnostics_command,
-        pipeline_working_dir,
-        execution_config,
-        shell_operation_cls=shell_operation_cls,
+        photometry_comparison_skymodel=sector.get("photometry_skymodel"),
+        astrometry_comparison_skymodel=sector.get("astrometry_skymodel"),
     )
     diagnostics = require_file(
         os.path.join(pipeline_working_dir, f"{image_name}.image_diagnostics.json"),

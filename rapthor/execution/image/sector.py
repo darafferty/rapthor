@@ -78,8 +78,6 @@ def run_image_sector(
             image_name,
             list(sector["image_cube_specs"]),
             pipeline_working_dir,
-            config,
-            shell_operation_cls=shell_operation_cls,
         )
 
     skymodel_nonpb, skymodel_pb = source_list_records(
@@ -109,17 +107,12 @@ def run_image_sector(
         skymodel_nonpb,
         skymodel_pb,
         pipeline_working_dir,
-        config,
-        shell_operation_cls=shell_operation_cls,
     )
 
     skymodel_image = make_filtered_model_image(
         sector,
         filtered_apparent_sky,
         pb_image,
-        pipeline_working_dir,
-        config,
-        shell_operation_cls=shell_operation_cls,
     )
 
     diagnostics, offsets, diagnostic_plots = run_image_diagnostics(
@@ -133,8 +126,6 @@ def run_image_sector(
         diagnostics,
         region_record,
         pipeline_working_dir,
-        config,
-        shell_operation_cls=shell_operation_cls,
     )
 
     output_sector_images = sector_images
@@ -158,9 +149,6 @@ def run_image_sector(
             image_cube_frequencies[0],
             concat_record,
             sector,
-            pipeline_working_dir,
-            config,
-            shell_operation_cls=shell_operation_cls,
         )
 
     result = {

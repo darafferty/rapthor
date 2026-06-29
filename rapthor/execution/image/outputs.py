@@ -1,18 +1,18 @@
 """Image-sector output filename patterns, discovery, and product helpers."""
 
 import os
+from pathlib import Path
 from typing import Mapping, Optional
 
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.image.commands import (
     build_compress_sector_images_command,
-    build_filter_skymodel_command,
-    build_make_catalog_from_image_cube_command,
-    build_make_image_cube_command,
-    build_make_skymodel_image_command,
-    build_normalize_flux_scale_command,
 )
+from rapthor.execution.image.cubes import make_catalog_from_image_cube, make_image_cube
+from rapthor.execution.image.flux_normalization import normalize_flux_scale
 from rapthor.execution.image.payloads import ImageCubeSpecPayload, ImageSectorPayload
+from rapthor.execution.image.restoration import restore_skymodel
+from rapthor.execution.image.skymodel_filter import filter_image_skymodel
 from rapthor.execution.outputs import (
     compressed_file_record,
     file_records_for_patterns,
@@ -95,8 +95,6 @@ def make_image_cube_records(
     image_name: str,
     image_cube_specs: list[ImageCubeSpecPayload],
     pipeline_working_dir: str,
-    execution_config: ExecutionConfig,
-    shell_operation_cls=None,
 ) -> tuple[list[dict], list[dict], list[dict]]:
     """Build requested image cubes and return image, beam, and frequency records."""
     image_cubes = []
@@ -109,13 +107,8 @@ def make_image_cube_records(
             channel_image_patterns(image_name, stokes, pipeline_working_dir),
             f"WSClean Stokes-{stokes} channel images",
         )
-        command = build_make_image_cube_command(
-            [record["path"] for record in channel_images], image_cube_filename
-        )
-        run_external_command(
-            command, pipeline_working_dir, execution_config, shell_operation_cls=shell_operation_cls
-        )
         image_cube_path = os.path.join(pipeline_working_dir, image_cube_filename)
+        make_image_cube([record["path"] for record in channel_images], image_cube_path)
         image_cubes.append(require_file(image_cube_path, f"Stokes-{stokes} image cube"))
         image_cube_beams.append(
             require_file(f"{image_cube_path}_beams.txt", f"Stokes-{stokes} image cube beams")
@@ -135,40 +128,25 @@ def make_normalization_records(
     image_cube_frequencies: dict,
     concat_record: dict,
     sector: ImageSectorPayload,
-    pipeline_working_dir: str,
-    execution_config: ExecutionConfig,
-    shell_operation_cls=None,
 ) -> tuple[dict, dict]:
     """Build the normalization source catalog and flux-scale h5parm."""
-    catalog_command = build_make_catalog_from_image_cube_command(
+    make_catalog_from_image_cube(
         image_cube["path"],
         image_cube_beams["path"],
         image_cube_frequencies["path"],
-        str(sector["output_source_catalog_filename"]),
+        str(sector["output_source_catalog_path"]),
         float(sector["threshisl"]),
         float(sector["threshpix"]),
-        int(sector["max_threads"]),
-    )
-    run_external_command(
-        catalog_command,
-        pipeline_working_dir,
-        execution_config,
-        shell_operation_cls=shell_operation_cls,
+        ncores=int(sector["max_threads"]),
     )
     source_catalog = require_file(
         str(sector["output_source_catalog_path"]), "Normalization source catalog"
     )
 
-    normalize_command = build_normalize_flux_scale_command(
+    normalize_flux_scale(
         source_catalog["path"],
         concat_record["path"],
-        str(sector["output_normalize_h5parm_filename"]),
-    )
-    run_external_command(
-        normalize_command,
-        pipeline_working_dir,
-        execution_config,
-        shell_operation_cls=shell_operation_cls,
+        str(sector["output_normalize_h5parm_path"]),
     )
     normalize_h5parm = require_file(
         str(sector["output_normalize_h5parm_path"]), "Flux-scale normalization h5parm"
@@ -203,30 +181,22 @@ def filter_skymodel_products(
     skymodel_nonpb: Optional[Mapping[str, str]],
     skymodel_pb: Optional[Mapping[str, str]],
     pipeline_working_dir: str,
-    execution_config: ExecutionConfig,
-    shell_operation_cls=None,
 ) -> tuple[dict, dict, dict, dict, dict, dict, Optional[dict]]:
     """Filter skymodel products and return image diagnostics inputs."""
-    filter_command = build_filter_skymodel_command(
+    filter_image_skymodel(
         nonpb_image["path"],
         pb_image["path"],
         skymodel_pb["path"] if sector["save_source_list"] else "none",
         skymodel_nonpb["path"] if sector["save_source_list"] else "none",
-        image_name,
+        os.path.join(pipeline_working_dir, image_name),
         str(sector["vertices_file"]),
         list(sector["obs_original_paths"]),
-        float(sector["threshisl"]),
-        float(sector["threshpix"]),
-        bool(sector["filter_by_mask"]),
-        str(sector["source_finder"]),
-        int(sector["max_threads"]),
         bright_true_sky_skymodel=sector.get("bright_skymodel_pb"),
-    )
-    run_external_command(
-        filter_command,
-        pipeline_working_dir,
-        execution_config,
-        shell_operation_cls=shell_operation_cls,
+        threshisl=float(sector["threshisl"]),
+        threshpix=float(sector["threshpix"]),
+        filter_by_mask=bool(sector["filter_by_mask"]),
+        source_finder=str(sector["source_finder"]),
+        ncores=int(sector["max_threads"]),
     )
 
     filtered_true_sky = require_file(
@@ -276,22 +246,13 @@ def make_filtered_model_image(
     sector: ImageSectorPayload,
     filtered_apparent_sky: Mapping[str, str],
     pb_image: Mapping[str, str],
-    pipeline_working_dir: str,
-    execution_config: ExecutionConfig,
-    shell_operation_cls=None,
 ) -> Optional[dict]:
     """Build a FITS model image from the filtered apparent skymodel when requested."""
     if not sector["save_filtered_model_image"]:
         return None
-    skymodel_image_command = build_make_skymodel_image_command(
-        filtered_apparent_sky["path"],
-        pb_image["path"],
-        str(sector["filtered_model_image_filename"]),
-    )
-    run_external_command(
-        skymodel_image_command,
-        pipeline_working_dir,
-        execution_config,
-        shell_operation_cls=shell_operation_cls,
+    restore_skymodel(
+        Path(filtered_apparent_sky["path"]),
+        Path(pb_image["path"]),
+        Path(str(sector["filtered_model_image_path"])),
     )
     return require_file(str(sector["filtered_model_image_path"]), "Filtered skymodel image")

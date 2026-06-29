@@ -309,7 +309,21 @@ Progress:
   - `make_mosaic.py` -> `rapthor.execution.mosaic.images.make_mosaic`
 - Mosaic flow tests now spy on direct helper calls, and the mosaic shell fake
   only accepts `fpack`.
-- Next: convert the image product helpers to direct Python calls.
+- Done: image product helpers now run as direct Python work units from the
+  image flow:
+  - `make_image_cube.py` -> `rapthor.execution.image.cubes.make_image_cube`
+  - `make_catalog_from_image_cube.py` ->
+    `rapthor.execution.image.cubes.make_catalog_from_image_cube`
+  - `filter_skymodel.py` -> `rapthor.execution.image.skymodel_filter.filter_image_skymodel`
+  - `restore_skymodel.py` -> `rapthor.execution.image.restoration.restore_skymodel`
+  - `normalize_flux_scale.py` ->
+    `rapthor.execution.image.flux_normalization.normalize_flux_scale`
+  - `calculate_image_diagnostics.py` ->
+    `rapthor.execution.image.diagnostic_calculation.calculate_image_diagnostics`
+- Image flow tests now spy on those direct helper calls, and the image shell
+  fake only models DP3, `concat_ms.py`, WSClean/WSClean-MP, bright-source
+  WSClean restore, and `fpack`.
+- Next: convert calibration helper scripts in collection and prediction.
 
 Testing tasks:
 

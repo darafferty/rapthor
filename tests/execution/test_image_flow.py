@@ -7,6 +7,7 @@ import pytest
 from prefect.testing.utilities import prefect_test_harness
 
 import rapthor.execution.image.diagnostics as image_diagnostics_module
+import rapthor.execution.image.outputs as image_outputs_module
 import rapthor.execution.image.preparation as image_preparation_module
 import rapthor.execution.image.sector as image_sector_module
 import rapthor.execution.image.wsclean as image_wsclean_module
@@ -58,7 +59,13 @@ FIXTURE_DIR = Path(__file__).parent / "fixtures"
 def fake_direct_image_helpers(monkeypatch):
     calls = {
         "blank_image": [],
+        "calculate_image_diagnostics": [],
+        "filter_image_skymodel": [],
+        "make_catalog_from_image_cube": [],
+        "make_image_cube": [],
         "make_region_file": [],
+        "normalize_flux_scale": [],
+        "restore_skymodel": [],
         "ensure_image_beam": [],
     }
 
@@ -120,6 +127,139 @@ def fake_direct_image_helpers(monkeypatch):
         )
         Path(fits_image_filename).touch(exist_ok=True)
 
+    def fake_make_image_cube(input_image_filenames, output_image_filename):
+        calls["make_image_cube"].append(
+            {
+                "input_image_filenames": list(input_image_filenames),
+                "output_image_filename": output_image_filename,
+            }
+        )
+        output_path = Path(output_image_filename)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text("cube")
+        Path(f"{output_image_filename}_beams.txt").write_text("beams")
+        Path(f"{output_image_filename}_frequencies.txt").write_text("frequencies")
+
+    def fake_make_catalog_from_image_cube(
+        cube_image,
+        cube_beams,
+        cube_frequencies,
+        output_catalog,
+        threshisl=3.0,
+        threshpix=5.0,
+        rmsbox=(150, 50),
+        rmsbox_bright=(35, 7),
+        adaptive_thresh=75.0,
+        ncores=8,
+    ):
+        calls["make_catalog_from_image_cube"].append(
+            {
+                "cube_image": cube_image,
+                "cube_beams": cube_beams,
+                "cube_frequencies": cube_frequencies,
+                "output_catalog": output_catalog,
+                "threshisl": threshisl,
+                "threshpix": threshpix,
+                "rmsbox": rmsbox,
+                "rmsbox_bright": rmsbox_bright,
+                "adaptive_thresh": adaptive_thresh,
+                "ncores": ncores,
+            }
+        )
+        output_path = Path(output_catalog)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text("catalog")
+
+    def fake_normalize_flux_scale(source_catalog, ms_file, output_h5parm, **kwargs):
+        calls["normalize_flux_scale"].append(
+            {
+                "source_catalog": source_catalog,
+                "ms_file": ms_file,
+                "output_h5parm": output_h5parm,
+                "kwargs": kwargs,
+            }
+        )
+        output_path = Path(output_h5parm)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text("h5parm")
+
+    def fake_filter_image_skymodel(
+        flat_noise_image,
+        true_sky_image,
+        true_sky_skymodel,
+        apparent_sky_skymodel,
+        output_root,
+        vertices_file,
+        beam_ms,
+        **kwargs,
+    ):
+        calls["filter_image_skymodel"].append(
+            {
+                "flat_noise_image": flat_noise_image,
+                "true_sky_image": true_sky_image,
+                "true_sky_skymodel": true_sky_skymodel,
+                "apparent_sky_skymodel": apparent_sky_skymodel,
+                "output_root": output_root,
+                "vertices_file": vertices_file,
+                "beam_ms": list(beam_ms),
+                "kwargs": kwargs,
+            }
+        )
+        for suffix in [
+            ".true_sky.txt",
+            ".apparent_sky.txt",
+            ".flat_noise_rms.fits",
+            ".true_sky_rms.fits",
+            ".source_catalog.fits",
+        ]:
+            Path(f"{output_root}{suffix}").write_text("filter")
+        (Path(output_root).parent / f"{Path(true_sky_image).name}.mask.fits").write_text("mask")
+        Path(f"{output_root}.image_diagnostics.json").write_text("{}")
+
+    def fake_restore_skymodel(source_catalog, reference_image, output_image):
+        calls["restore_skymodel"].append(
+            {
+                "source_catalog": str(source_catalog),
+                "reference_image": str(reference_image),
+                "output_image": str(output_image),
+            }
+        )
+        output_path = Path(output_image)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text("model image")
+
+    def fake_calculate_image_diagnostics(
+        flat_noise_image,
+        flat_noise_rms_image,
+        true_sky_image,
+        true_sky_rms_image,
+        input_catalog,
+        obs_ms,
+        obs_starttime,
+        obs_ntimes,
+        diagnostics_file,
+        output_root,
+        **kwargs,
+    ):
+        calls["calculate_image_diagnostics"].append(
+            {
+                "flat_noise_image": flat_noise_image,
+                "flat_noise_rms_image": flat_noise_rms_image,
+                "true_sky_image": true_sky_image,
+                "true_sky_rms_image": true_sky_rms_image,
+                "input_catalog": input_catalog,
+                "obs_ms": list(obs_ms),
+                "obs_starttime": list(obs_starttime),
+                "obs_ntimes": list(obs_ntimes),
+                "diagnostics_file": diagnostics_file,
+                "output_root": output_root,
+                "kwargs": kwargs,
+            }
+        )
+        Path(f"{output_root}.image_diagnostics.json").write_text("{}")
+        Path(f"{output_root}.astrometry_offsets.json").write_text("{}")
+        Path(f"{output_root}.photometry.pdf").write_text("plot")
+
     monkeypatch.setattr(image_preparation_module, "blank_image", fake_blank_image)
     monkeypatch.setattr(
         image_preparation_module,
@@ -127,6 +267,20 @@ def fake_direct_image_helpers(monkeypatch):
         fake_make_region_file,
     )
     monkeypatch.setattr(image_wsclean_module, "ensure_image_beam", fake_ensure_image_beam)
+    monkeypatch.setattr(image_outputs_module, "make_image_cube", fake_make_image_cube)
+    monkeypatch.setattr(
+        image_outputs_module,
+        "make_catalog_from_image_cube",
+        fake_make_catalog_from_image_cube,
+    )
+    monkeypatch.setattr(image_outputs_module, "normalize_flux_scale", fake_normalize_flux_scale)
+    monkeypatch.setattr(image_outputs_module, "filter_image_skymodel", fake_filter_image_skymodel)
+    monkeypatch.setattr(image_outputs_module, "restore_skymodel", fake_restore_skymodel)
+    monkeypatch.setattr(
+        image_diagnostics_module,
+        "calculate_image_diagnostics",
+        fake_calculate_image_diagnostics,
+    )
     return calls
 
 
@@ -195,38 +349,9 @@ def fake_image_shell_operation_cls():
                 if "-save-source-list" in tokens:
                     for suffix in ["-sources.txt", "-sources-pb.txt"]:
                         (cwd / f"{image_name}{suffix}").write_text("skymodel")
-            elif tokens[0] == "make_image_cube.py":
-                output_image = tokens[2]
-                (cwd / output_image).write_text("cube")
-                (cwd / f"{output_image}_beams.txt").write_text("beams")
-                (cwd / f"{output_image}_frequencies.txt").write_text("frequencies")
-            elif tokens[0] == "make_catalog_from_image_cube.py":
-                (cwd / tokens[4]).write_text("catalog")
-            elif tokens[0] == "normalize_flux_scale.py":
-                (cwd / tokens[3]).write_text("h5parm")
             elif tokens[0] == "fpack":
                 for image in tokens[1:]:
                     Path(f"{image}.fz").write_text("compressed")
-            elif tokens[0] == "filter_skymodel.py":
-                output_root = tokens[5]
-                true_sky_image = Path(tokens[2]).name
-                for suffix in [
-                    ".true_sky.txt",
-                    ".apparent_sky.txt",
-                    ".flat_noise_rms.fits",
-                    ".true_sky_rms.fits",
-                    ".source_catalog.fits",
-                ]:
-                    (cwd / f"{output_root}{suffix}").write_text("filter")
-                (cwd / f"{true_sky_image}.mask.fits").write_text("mask")
-                (cwd / f"{output_root}.image_diagnostics.json").write_text("{}")
-            elif tokens[0] == "restore_skymodel.py":
-                (cwd / tokens[3]).write_text("model image")
-            elif tokens[0] == "calculate_image_diagnostics.py":
-                output_root = tokens[10]
-                (cwd / f"{output_root}.image_diagnostics.json").write_text("{}")
-                (cwd / f"{output_root}.astrometry_offsets.json").write_text("{}")
-                (cwd / f"{output_root}.photometry.pdf").write_text("plot")
             else:
                 raise AssertionError(f"Unexpected command: {tokens[0]}")
             return "OK"
@@ -1606,8 +1731,6 @@ def test_run_image_flow_executes_no_dde_commands_and_returns_records(
         "DP3",
         "concat_ms.py",
         "wsclean",
-        "filter_skymodel.py",
-        "calculate_image_diagnostics.py",
     ]
     assert fake_direct_image_helpers["blank_image"] == [
         {
@@ -1627,6 +1750,12 @@ def test_run_image_flow_executes_no_dde_commands_and_returns_records(
         (str(tmp_path / "sector_1-MFS-I-image.fits"), 0.0),
         (str(tmp_path / "sector_1-MFS-I-image-pb.fits"), 0.0),
     }
+    assert fake_direct_image_helpers["filter_image_skymodel"][0]["output_root"] == str(
+        tmp_path / "sector_1"
+    )
+    assert fake_direct_image_helpers["calculate_image_diagnostics"][0]["output_root"] == str(
+        tmp_path / "sector_1"
+    )
 
 
 def test_run_image_flow_rejects_invalid_prepare_task_payload(
@@ -1647,33 +1776,35 @@ def test_run_image_flow_rejects_invalid_prepare_task_payload(
 
 
 def test_run_image_flow_allows_missing_source_filtering_mask(
-    tmp_path, fake_image_shell_operation_cls
+    tmp_path, monkeypatch, fake_image_shell_operation_cls
 ):
-    class NoFilterMaskShellOperation(fake_image_shell_operation_cls):
-        instances = []
+    def fake_filter_without_mask(
+        flat_noise_image,
+        true_sky_image,
+        true_sky_skymodel,
+        apparent_sky_skymodel,
+        output_root,
+        vertices_file,
+        beam_ms,
+        **kwargs,
+    ):
+        for suffix in [
+            ".true_sky.txt",
+            ".apparent_sky.txt",
+            ".flat_noise_rms.fits",
+            ".true_sky_rms.fits",
+            ".source_catalog.fits",
+            ".image_diagnostics.json",
+        ]:
+            Path(f"{output_root}{suffix}").write_text("filter")
 
-        def run(self):
-            tokens = shlex.split(self.kwargs["commands"][0])
-            cwd = Path(self.kwargs["working_dir"])
-            if tokens[0] == "filter_skymodel.py":
-                output_root = tokens[5]
-                for suffix in [
-                    ".true_sky.txt",
-                    ".apparent_sky.txt",
-                    ".flat_noise_rms.fits",
-                    ".true_sky_rms.fits",
-                    ".source_catalog.fits",
-                ]:
-                    (cwd / f"{output_root}{suffix}").write_text("filter")
-                (cwd / f"{output_root}.image_diagnostics.json").write_text("{}")
-                return "OK"
-            return super().run()
+    monkeypatch.setattr(image_outputs_module, "filter_image_skymodel", fake_filter_without_mask)
 
     outputs = run_flow_for_test(
         image_flow,
         image_payload_from_inputs(_image_input_parms(), tmp_path),
         execution_config=ExecutionConfig(task_runner="sync"),
-        shell_operation_cls=NoFilterMaskShellOperation,
+        shell_operation_cls=fake_image_shell_operation_cls,
     )
 
     assert outputs["source_filtering_mask"] == [None]
@@ -1711,14 +1842,11 @@ def test_run_image_flow_reuses_existing_wsclean_products_on_restart(
         shlex.split(instance.kwargs["commands"][0])[0]
         for instance in fake_image_shell_operation_cls.instances
     ]
-    assert command_names == [
-        "filter_skymodel.py",
-        "calculate_image_diagnostics.py",
-    ]
+    assert command_names == []
 
 
 def test_run_image_flow_restores_bright_sources_before_filtering(
-    tmp_path, fake_image_shell_operation_cls
+    tmp_path, fake_image_shell_operation_cls, fake_direct_image_helpers
 ):
     outputs = run_flow_for_test(
         image_flow,
@@ -1745,8 +1873,6 @@ def test_run_image_flow_restores_bright_sources_before_filtering(
         "wsclean",
         "wsclean",
         "wsclean",
-        "filter_skymodel.py",
-        "calculate_image_diagnostics.py",
     ]
     restore_commands = [
         command for command in commands if command[0] == "wsclean" and "-restore-list" in command
@@ -1771,8 +1897,10 @@ def test_run_image_flow_restores_bright_sources_before_filtering(
             "sector_1-MFS-I-image.fits",
         ],
     ]
-    filter_command = next(command for command in commands if command[0] == "filter_skymodel.py")
-    assert "--bright_true_sky_skymodel=/data/bright_sources_pb.txt" in filter_command
+    assert (
+        fake_direct_image_helpers["filter_image_skymodel"][0]["kwargs"]["bright_true_sky_skymodel"]
+        == "/data/bright_sources_pb.txt"
+    )
 
 
 def test_run_image_flow_executes_facet_commands_and_returns_region_file(
@@ -1801,8 +1929,6 @@ def test_run_image_flow_executes_facet_commands_and_returns_region_file(
         "DP3",
         "concat_ms.py",
         "wsclean",
-        "filter_skymodel.py",
-        "calculate_image_diagnostics.py",
     ]
     assert fake_direct_image_helpers["make_region_file"] == [
         {
@@ -1855,8 +1981,6 @@ def test_run_image_flow_executes_screen_commands_and_writes_aterm_config(
         "DP3",
         "concat_ms.py",
         "wsclean",
-        "filter_skymodel.py",
-        "calculate_image_diagnostics.py",
     ]
     screen_command = next(
         shlex.split(instance.kwargs["commands"][0])
@@ -2056,8 +2180,6 @@ def test_run_image_flow_returns_compressed_image_outputs(tmp_path, fake_image_sh
         "DP3",
         "concat_ms.py",
         "wsclean",
-        "filter_skymodel.py",
-        "calculate_image_diagnostics.py",
         "fpack",
     ]
 
@@ -2082,9 +2204,6 @@ def test_run_image_flow_returns_filtered_model_image(tmp_path, fake_image_shell_
         "DP3",
         "concat_ms.py",
         "wsclean",
-        "filter_skymodel.py",
-        "restore_skymodel.py",
-        "calculate_image_diagnostics.py",
     ]
 
 
@@ -2185,14 +2304,11 @@ def test_run_image_flow_returns_image_cube_outputs(tmp_path, fake_image_shell_op
         "DP3",
         "concat_ms.py",
         "wsclean",
-        "make_image_cube.py",
-        "filter_skymodel.py",
-        "calculate_image_diagnostics.py",
     ]
 
 
 def test_run_image_flow_returns_full_stokes_image_cube_outputs(
-    tmp_path, fake_image_shell_operation_cls
+    tmp_path, fake_image_shell_operation_cls, fake_direct_image_helpers
 ):
     outputs = run_flow_for_test(
         image_flow,
@@ -2211,24 +2327,20 @@ def test_run_image_flow_returns_full_stokes_image_cube_outputs(
             file_record(tmp_path / "sector_1_V_freq_cube.fits"),
         ]
     ]
-    make_cube_commands = [
-        shlex.split(instance.kwargs["commands"][0])
-        for instance in fake_image_shell_operation_cls.instances
-        if shlex.split(instance.kwargs["commands"][0])[0] == "make_image_cube.py"
-    ]
-    assert [command[2] for command in make_cube_commands] == [
+    make_cube_calls = fake_direct_image_helpers["make_image_cube"]
+    assert [Path(call["output_image_filename"]).name for call in make_cube_calls] == [
         "sector_1_I_freq_cube.fits",
         "sector_1_Q_freq_cube.fits",
         "sector_1_U_freq_cube.fits",
         "sector_1_V_freq_cube.fits",
     ]
-    assert make_cube_commands[0][1].split(",") == [
+    assert make_cube_calls[0]["input_image_filenames"] == [
         str(tmp_path / "sector_1-0000-image-pb.fits"),
         str(tmp_path / "sector_1-0001-image-pb.fits"),
         str(tmp_path / "sector_1-0002-image-pb.fits"),
         str(tmp_path / "sector_1-0003-image-pb.fits"),
     ]
-    assert make_cube_commands[1][1].split(",") == [
+    assert make_cube_calls[1]["input_image_filenames"] == [
         str(tmp_path / "sector_1-0000-Q-image-pb.fits"),
         str(tmp_path / "sector_1-0001-Q-image-pb.fits"),
         str(tmp_path / "sector_1-0002-Q-image-pb.fits"),
@@ -2265,11 +2377,6 @@ def test_run_image_flow_returns_normalization_outputs(tmp_path, fake_image_shell
         "DP3",
         "concat_ms.py",
         "wsclean",
-        "make_image_cube.py",
-        "filter_skymodel.py",
-        "calculate_image_diagnostics.py",
-        "make_catalog_from_image_cube.py",
-        "normalize_flux_scale.py",
     ]
 
 
@@ -2305,7 +2412,7 @@ def test_image_prefect_flow_entrypoint_runs_with_mocked_shell(
         )
 
     assert outputs["sector_I_images"][0][0] == file_record(tmp_path / "sector_1-MFS-I-image.fits")
-    assert len(fake_image_shell_operation_cls.instances) == 6
+    assert len(fake_image_shell_operation_cls.instances) == 4
 
 
 def test_run_image_flow_fails_when_expected_output_is_missing(tmp_path):
@@ -2456,11 +2563,11 @@ def test_image_operation_run_uses_prefect_flow(
     assert sector.diagnostics == [{"cycle_number": 1}]
     assert field.lofar_to_true_flux_ratio == 1.0
     assert field.lofar_to_true_flux_std == 0.0
-    assert len(fake_image_shell_operation_cls.instances) == 6
+    assert len(fake_image_shell_operation_cls.instances) == 4
 
 
 def test_bright_peeling_image_operation_run_uses_prefect_flow(
-    tmp_path, monkeypatch, fake_image_shell_operation_cls
+    tmp_path, monkeypatch, fake_image_shell_operation_cls, fake_direct_image_helpers
 ):
     monkeypatch.setattr(
         "rapthor.execution.shell._load_shell_operation_cls",
@@ -2481,13 +2588,15 @@ def test_bright_peeling_image_operation_run_uses_prefect_flow(
     restore_commands = [
         command for command in commands if command[0] == "wsclean" and "-restore-list" in command
     ]
-    filter_command = next(command for command in commands if command[0] == "filter_skymodel.py")
 
     assert operation.outputs == expected_outputs
     assert Path(operation.done_file).is_file()
     assert len(restore_commands) == 2
     assert all("/data/bright_sources_pb.txt" in command for command in restore_commands)
-    assert "--bright_true_sky_skymodel=/data/bright_sources_pb.txt" in filter_command
+    assert (
+        fake_direct_image_helpers["filter_image_skymodel"][0]["kwargs"]["bright_true_sky_skymodel"]
+        == "/data/bright_sources_pb.txt"
+    )
 
 
 def test_image_operation_run_reuses_prefect_outputs_when_done(
@@ -2599,7 +2708,7 @@ def test_full_stokes_image_operation_run_uses_prefect_flow(
     assert sector.diagnostics == [{"cycle_number": 1}]
     assert field.lofar_to_true_flux_ratio == 1.0
     assert field.lofar_to_true_flux_std == 0.0
-    assert len(fake_image_shell_operation_cls.instances) == 6
+    assert len(fake_image_shell_operation_cls.instances) == 4
 
 
 def test_compressed_image_operation_run_uses_prefect_flow(
@@ -2660,7 +2769,7 @@ def test_compressed_image_operation_run_uses_prefect_flow(
     assert sector.diagnostics == [{"cycle_number": 1}]
     assert field.lofar_to_true_flux_ratio == 1.0
     assert field.lofar_to_true_flux_std == 0.0
-    assert "restore_skymodel.py" in command_names
+    assert "restore_skymodel.py" not in command_names
     assert "fpack" in command_names
 
 
@@ -2781,7 +2890,7 @@ def test_screen_image_operation_run_uses_prefect_flow(
 
 
 def test_image_cube_operation_run_uses_prefect_flow(
-    tmp_path, monkeypatch, fake_image_shell_operation_cls
+    tmp_path, monkeypatch, fake_image_shell_operation_cls, fake_direct_image_helpers
 ):
     monkeypatch.setattr(
         "rapthor.execution.shell._load_shell_operation_cls",
@@ -2796,22 +2905,19 @@ def test_image_cube_operation_run_uses_prefect_flow(
 
     expected_outputs = _expected_image_cube_operation_outputs(operation)
     image_dir = Path(field.parset["dir_working"]) / "images" / "image_1"
-    make_cube_command = next(
-        shlex.split(instance.kwargs["commands"][0])
-        for instance in fake_image_shell_operation_cls.instances
-        if shlex.split(instance.kwargs["commands"][0])[0] == "make_image_cube.py"
-    )
 
     assert operation.outputs == expected_outputs
     assert Path(operation.done_file).is_file()
-    assert make_cube_command[2] == "sector_1_I_freq_cube.fits"
+    assert Path(fake_direct_image_helpers["make_image_cube"][0]["output_image_filename"]).name == (
+        "sector_1_I_freq_cube.fits"
+    )
     assert (image_dir / "sector_1_I_freq_cube.fits").is_file()
     assert (image_dir / "sector_1_I_freq_cube.fits_beams.txt").is_file()
     assert (image_dir / "sector_1_I_freq_cube.fits_frequencies.txt").is_file()
 
 
 def test_normalize_image_operation_run_uses_prefect_flow(
-    tmp_path, monkeypatch, fake_image_shell_operation_cls
+    tmp_path, monkeypatch, fake_image_shell_operation_cls, fake_direct_image_helpers
 ):
     monkeypatch.setattr(
         "rapthor.execution.shell._load_shell_operation_cls",
@@ -2826,17 +2932,12 @@ def test_normalize_image_operation_run_uses_prefect_flow(
     expected_outputs = _expected_normalize_image_operation_outputs(operation)
     solutions_dir = Path(field.parset["dir_working"]) / "solutions" / "normalize_1"
     image_dir = Path(field.parset["dir_working"]) / "images" / "normalize_1"
-    command_names = [
-        shlex.split(instance.kwargs["commands"][0])[0]
-        for instance in fake_image_shell_operation_cls.instances
-    ]
-
     assert operation.outputs == expected_outputs
     assert json.loads(Path(operation.outputs_file).read_text()) == expected_outputs
     assert Path(operation.done_file).is_file()
-    assert "make_image_cube.py" in command_names
-    assert "make_catalog_from_image_cube.py" in command_names
-    assert "normalize_flux_scale.py" in command_names
+    assert fake_direct_image_helpers["make_image_cube"]
+    assert fake_direct_image_helpers["make_catalog_from_image_cube"]
+    assert fake_direct_image_helpers["normalize_flux_scale"]
     assert field.normalize_h5parm == str(solutions_dir / "sector_1_normalize.h5parm")
     assert (solutions_dir / "sector_1_normalize.h5parm").is_file()
     assert (image_dir / "sector_1_I_freq_cube.fits").is_file()
