@@ -22,17 +22,67 @@ inputs:
     label: Input MS directory name
     doc: |
       The name of the input MS directory.
-    type: Directory[]
+    type: Directory
     inputBinding:
       prefix: --msin
 
-  - id: model
-    label: Filename of model FITS image
+  - id: skymodel
+    label: Filename of input sky model
     doc: |
-      The filename of the input model FITS image.
-    type: File[]
+      The filename of the input sky model in makesourcedb format used to
+      generate the output model images.
+    type: File
     inputBinding:
-      prefix: --model
+      prefix: --skymodel
+
+  - id: ra_dec
+    label: RA and Dec of center
+    doc: |
+      The RA and Dec in hmsdms of the center of the output images.
+    type: string[]
+    inputBinding:
+      prefix: --ra_dec
+
+  - id: frequency_bandwidth
+    label: Frequency and bandwidth of image
+    doc: |
+      The central frequency and bandwidth in Hz of the output images.
+    type: float[]
+    inputBinding:
+      prefix: --frequency_bandwidth
+
+  - id: cellsize_deg
+    label: Pixel size
+    doc: |
+      The size of one pixel of the image in deg.
+    type: float
+    inputBinding:
+      prefix: --cellsize
+
+  - id: imsize
+    label: Image size
+    doc: |
+      The size of the image in pixels.
+    type: int[]
+    inputBinding:
+      prefix: --imsize
+
+  - id: numthreads
+    label: Number of threads
+    doc: |
+      The number of threads to use.
+    type: int
+    inputBinding:
+      prefix: --threads
+      valueFrom: $(runtime.cores)
+
+  - id: time_freq_smearing
+    label: Enable time frequency smearing
+    doc: |
+      If true, enable time frequency smearing in prediction.
+    type: boolean
+    inputBinding:
+      prefix: --time_freq_smearing
 
 outputs:
   - id: msout
@@ -40,36 +90,18 @@ outputs:
     doc: |
       The directory list of the output MS. The input msin list is returned if it
       is writable, otherwise a copy with temp name is made.
-    type: Directory[]
+    type: Directory
     outputBinding:
       loadContents: true
       glob: "msout_names.json"
       outputEval: |
         ${ 
-           var name_list=JSON.parse(self[0].contents).msout;
-           var dir_list = name_list.map(function(dir_path) {
-             return {
+           var msname=JSON.parse(self[0].contents).msout;
+
+           return {
                "class": "Directory",
-               "location" : dir_path
-               };
-               });
-
-           return dir_list;
-        }
-
-  - id: patches
-    label: Model data patch names
-    doc: |
-      The list of patch names for a model data column is created.
-    type: string
-    outputBinding:
-      loadContents: true
-      glob: "msout_names.json"
-      outputEval: |
-        ${ 
-           var patch_list=JSON.parse(self[0].contents).patches;
-
-           return patch_list;
+               "location" : msname,
+           };
         }
 
 hints:

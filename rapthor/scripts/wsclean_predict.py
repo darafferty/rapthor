@@ -13,6 +13,7 @@ import json
 import subprocess
 import sys
 import logging
+import numpy as np
 import casacore.tables as ct
 from lsmtool.facet import read_ds9_region_file
 
@@ -22,12 +23,10 @@ logger = logging.getLogger(__name__)
 
 def make_writable(msfile):
     """
-    Check if msfile is writable, if not, create a writable copy
+    Always create a writable copy
     and return it as output
     """
 
-    if os.access(msfile, os.W_OK):
-        return msfile
     # get base dir to create files
     tmpdir = "$(runtime.tmpdir)"
     newms = os.path.join(tmpdir, os.path.basename(msfile) + "_" + str(uuid.uuid4()))
@@ -78,27 +77,53 @@ def remove_columns_from_ms(msfile, ds9_region_file):
     tt.close()
 
 
-def predict(msfiles, ds9_region_file, model_images, storage_manager):
+def predict(
+    msfile,
+    ds9_region_file,
+    sky_model,
+    ra_dec,
+    frequency_bandwidth,
+    imsize,
+    cellsize_deg,
+    time_freq_smearing,
+    storage_manager,
+    predict_bandwidth=2.0e6,
+):
     """
     Predict model image to msfile
 
     Parameters
     ----------
-    msfiles : List: MS names, output will be written to separate columns
+    msfile : MS name, output will be written to separate columns of this MS
     ds9_region_file: DS9 region file, specifying facet regions and names
     Note: names in region file should be with {}, like {Patch_1}, After
     parsing the {} will be dropped
-    model_images: List: FITS images to use as model
+    sky_model: input sky model
+
+    ra_dec, frequency_bandwidth, imsize, cellsize_deg:
+    parameters used for drawing the model image
+
+    time_freq_smearing: if true, enable smearing in predict
+    storage_manager: storage manager to use 'default'
+    predict_bandwidth: bandwidth of prediction, channels will be split into groups
+
     """
-    # work with only first model image (for now)
-    # model images can have arbitrary names,
-    # make a symlink in same dir with workable name
-    model_image = model_images[0]
-    tmpdir = os.path.dirname(model_image)
-    model_image = tmpdir + "/predict-model.fits"
-    os.symlink(model_images[0], model_image)
-    # remove '-model.fits' from image name
-    model = model_image.replace("-model.fits", "")
+    # get channel frequencies
+    freq_list = ct.table(msfile + "::SPECTRAL_WINDOW").getcol("CHAN_FREQ")
+    freq_list = freq_list[0]
+    n_chan = freq_list.size
+    if n_chan > 1:
+        bandwidth = freq_list[-1] - freq_list[0] + (freq_list[1] - freq_list[0])
+    else:
+        bandwidth = frequency_bandwidth[1]
+    # split channels into chunks of predict_bandwidth
+    if bandwidth > predict_bandwidth:
+        n_chunks = int(bandwidth / predict_bandwidth)
+    else:
+        n_chunks = 1
+    chan_list = np.arange(n_chan)
+    freq_chunks = np.array_split(freq_list, n_chunks)
+    chan_chunks = np.array_split(chan_list, n_chunks)
 
     # extract region names
     facets = read_ds9_region_file(ds9_region_file)
@@ -106,30 +131,76 @@ def predict(msfiles, ds9_region_file, model_images, storage_manager):
     for facet in facets:
         facet_names.append(facet.name)
 
-    err_code = 0
-    # Run the command
-    for facet in facet_names:
+    # model images can have arbitrary names,
+    tmpdir = os.path.dirname(sky_model)
+    model_name = os.path.join(tmpdir, "predict")
+    model = model_name + "-model.fits"
+    # make a symlink in same dir with workable name
+    os.symlink(model_name + "-term-0.fits", model)
+
+    for freqs, chans in zip(freq_chunks, chan_chunks):
+        if len(freqs) > 1:
+            chunk_bandwidth = freqs[-1] - freqs[0] + (freq_list[1] - freq_list[0])
+        else:
+            chunk_bandwidth = bandwidth
+        chunk_freq = np.mean(freqs)
+        err_code = 0
+        # only one spectral term is created
+        # output will be $(model_name)-term-0.fits
         cmd = [
             "wsclean",
-            "-predict",
-            "-facet-regions",
-            str(ds9_region_file),
-            "-model-column",
-            str(facet),
-            "-select-facets",
-            str(facet),
+            "-draw-model",
+            str(sky_model),
+            "-draw-spectral-terms",
+            str(1),
             "-name",
-            str(model),
-            "-model-storage-manager",
-            str(storage_manager),
-            *[str(msfilename) for msfilename in msfiles],
+            str(model_name),
+            "-draw-centre",
+            str(ra_dec[0]),
+            str(ra_dec[1]),
+            "-draw-frequencies",
+            str(chunk_freq),
+            str(chunk_bandwidth),
+            "-size",
+            str(imsize[0]),
+            str(imsize[1]),
+            "-scale",
+            str(cellsize_deg),
         ]
         try:
             subprocess.run(cmd, check=True).returncode
         except subprocess.CalledProcessError as err:
             print(err, file=sys.stderr)
             err_code = err.returncode
-            break
+
+        err_code = 0
+        for facet in facet_names:
+            cmd = [
+                "wsclean",
+                "-predict",
+                "-facet-regions",
+                str(ds9_region_file),
+                "-model-column",
+                str(facet),
+                "-select-facets",
+                str(facet),
+                "-name",
+                str(model_name),
+                "-channel-range",
+                str(chans[0]),
+                str(chans[-1]),
+                "-model-storage-manager",
+                str(storage_manager),
+            ]
+            if time_freq_smearing is not None:
+                cmd.append("-apply-time-frequency-smearing")
+            cmd.append(msfile)
+            try:
+                subprocess.run(cmd, check=True).returncode
+            except subprocess.CalledProcessError as err:
+                print(err, file=sys.stderr)
+                err_code = err.returncode
+                break
 
     return err_code
 
@@ -138,9 +209,11 @@ def main():
     """
     Script can be used in two ways:
     1) To add columns and predict model
-      wsclean_predict.py --region sector_1_facets_ds9.reg --msin small.ms --model images/field-MFS-model.fits
-    2) To remove extra columns created from step 1
-      wsclean_predict.py --region sector_1_facets_ds9.reg --msin small.ms --cleanup
+      wsclean_predict.py --region sector_1_facets_ds9.reg --msin small.ms
+      only one MS will be processed (as this is run in scatter mode).
+      The new MS name will be written to 'output_info' JSON file
+    2) To get column names as one string
+      wsclean_predict.py --region sector_1_facets_ds9.reg
 
     Returns
     -------
@@ -149,8 +222,7 @@ def main():
     Raises
     ------
     ValueError
-        If no valid Measurement Set, DS9 region file or model
-        image exists
+        If no valid Measurement Set or DS9 region file are given
     """
     descriptiontext = "Predict model data using WSClean.\n"
     parser = ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
@@ -158,28 +230,38 @@ def main():
         "--msin", help="Input/Output measurement set", nargs="+", type=str, default=[]
     )
     parser.add_argument("--region", help="DS9 region file", type=str, default="")
-    parser.add_argument("--model", help="Model FITS image", nargs="+", type=str, default=[])
-    parser.add_argument("--storage_manager", help="Storage manager", type=str, default="default")
+    parser.add_argument("--skymodel", help="Sky model", type=str, default="")
     parser.add_argument(
-        "--cleanup", action=argparse.BooleanOptionalAction, help="Remove exra columns"
+        "--ra_dec",
+        help="RA and Dec coordinates of model image center",
+        type=str,
+        nargs=2,
+        default=[],
     )
+    parser.add_argument(
+        "--frequency_bandwidth",
+        help="Center frequency and full bandwdith",
+        type=str,
+        nargs=2,
+        default=[],
+    )
+    parser.add_argument("--cellsize", help="Model image cell size (deg)", type=float, default=1)
+    parser.add_argument(
+        "--imsize", help="Model image size n_x x n_y (pixels)", type=int, nargs=2, default=[]
+    )
+    parser.add_argument("--threads", help="Max threads to use", type=int, default=1)
+    parser.add_argument(
+        "--time_freq_smearing",
+        help="Enable time frequency smearing",
+        action=argparse.BooleanOptionalAction,
+    )
+    parser.add_argument("--storage_manager", help="Storage manager", type=str, default="default")
     args = parser.parse_args()
     # Note: the output file name should match file read in CWL step
     output_info = "msout_names.json"
-    # Check pre-conditions
-    if not (len(args.msin) > 0 and os.path.exists(args.msin[0])):
-        raise ValueError(f"Input measurement set {args.msin!r} does not exist")
+
     if not os.path.exists(args.region):
         raise ValueError(f"DS9 region file {args.region!r} does not exist")
-    if not args.cleanup:
-        if not (len(args.model) > 0 and os.path.exists(args.model[0])):
-            raise ValueError(f"Model image {args.model!r} does not exist")
-
-    # if msin is read only, create a copy of msin to work with,
-    # return this as output
-    msnames = list()
-    for msname in args.msin:
-        msnames.append(make_writable(msname))
 
     facets = read_ds9_region_file(args.region)
     facet_names = "["
@@ -192,15 +274,46 @@ def main():
             facet_names += "," + facet.name
     facet_names += "]"
 
-    out_dict = {"msout": msnames, "patches": facet_names}
+    if len(args.msin) == 0:
+        # No MS names given, only output the facet names
+        out_dict = {"patches": facet_names}
+        with open(output_info, "w") as f:
+            json.dump(out_dict, f)
 
+        return 0
+    else:
+        if len(args.msin) > 1:
+            raise ValueError(f"Multiple {args.msin!r}, can work with only one")
+        if not os.path.exists(args.msin[0]):
+            raise ValueError(f"Input measurement set {args.msin!r} does not exist")
+        if not os.path.exists(args.skymodel):
+            raise ValueError(f"Sky model file {args.skymodel!r} does not exist")
+        if len(args.ra_dec) != 2:
+            raise ValueError(f"Invalid RA Dec {args.ra_dec!r}")
+        if len(args.frequency_bandwidth) != 2:
+            raise ValueError(f"Invalid frequency and bandwidth {args.frequency_bandwidth!r}")
+        if len(args.imsize) != 2:
+            raise ValueError(f"Invalid image size {args.imsize!r}")
+
+    # Always create a copy of msin to work with,
+    # return this as output
+    msname = make_writable(args.msin[0])
+    out_dict = {"msout": msname, "patches": facet_names}
     with open(output_info, "w") as f:
         json.dump(out_dict, f)
 
-    if args.cleanup:
-        return remove_columns_from_ms(msnames, args.region)
-    else:
-        return predict(msnames, args.region, args.model, args.storage_manager)
+    # draw model and predict
+    return predict(
+        msname,
+        args.region,
+        args.skymodel,
+        args.ra_dec,
+        args.frequency_bandwidth,
+        args.imsize,
+        args.cellsize,
+        args.time_freq_smearing,
+        args.storage_manager,
+    )
 
 
 if __name__ == "__main__":
