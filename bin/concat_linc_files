@@ -2,11 +2,13 @@
 """
 Script to concatenate the MS files from Linc for input to Rapthor
 """
+
 import argparse
 import glob
 import os
 import sys
-from rapthor.scripts.concat_ms import concat_ms
+
+from rapthor.execution.concatenate.measurement_sets import concat_ms
 
 
 def main(input_path, output_file, overwrite=False):
@@ -34,15 +36,14 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description=descriptiontext, formatter_class=argparse.RawTextHelpFormatter
     )
-    parser.add_argument(
-        "input_path", help="Full path to the directory with the Linc MS files"
-    )
+    parser.add_argument("input_path", help="Full path to the directory with the Linc MS files")
     parser.add_argument("output_file", help="Output filename")
-    parser.add_argument('--overwrite', help='Overwrite existing output file', type=bool,
-                        default=False)
+    parser.add_argument(
+        "--overwrite", help="Overwrite existing output file", type=bool, default=False
+    )
 
     args = parser.parse_args()
     try:
         sys.exit(main(args.input_path, args.output_file, overwrite=args.overwrite))
     except Exception as e:
-        print('Error: {}'.format(e))
+        print("Error: {}".format(e))

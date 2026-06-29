@@ -464,6 +464,14 @@ Recommended order:
 4. Leave `filter_skymodel.py` until the PyBDSF/lsmtool multiprocessing issue is
    isolated or the Dask worker strategy changes.
 
+Progress:
+
+- Done: added a production-code architecture guard that rejects imports of
+  `rapthor.scripts` and references to retired helper script executable names.
+- Done: updated `bin/concat_linc_files` to import
+  `rapthor.execution.concatenate.measurement_sets.concat_ms` directly, so
+  `concat_ms.py` can be retired with the other wrappers.
+
 Done when:
 
 - `rapthor/scripts/` contains only documented live entry points.

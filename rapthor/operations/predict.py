@@ -41,7 +41,7 @@ class Predict(Operation):
         """
         # Make list of sectors for which prediction needs to be done. Any imaging
         # sectors should come first, followed by bright-source, then outlier sectors
-        # (as required by the rapthor/scripts/subtract_sector_models.py script)
+        # (as required by the sector model subtraction helper)
         field = self.field
         sectors = []
         if self.mode == "dd":

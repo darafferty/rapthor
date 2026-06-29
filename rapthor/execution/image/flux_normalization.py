@@ -538,8 +538,8 @@ def create_normalization_h5parm(
             weights=weights,
         )
 
-        # Add a CREATE entry to the solution table history
-        soltab.addHistory("CREATE (by normalize_flux_scale.py)")
+        # Add a CREATE entry to the solution table history.
+        soltab.addHistory("CREATE (by rapthor flux normalization)")
 
 
 def _get_source_data(source_catalog_data, n_chan, i):

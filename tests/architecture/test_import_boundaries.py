@@ -71,6 +71,27 @@ LIGHTWEIGHT_PACKAGE_INITIALIZERS = (
     RAPTHOR_ROOT / "execution" / "predict" / "__init__.py",
 )
 
+RETIRED_HELPER_SCRIPT_NAMES = (
+    "add_sector_models.py",
+    "adjust_h5parm_sources.py",
+    "blank_image.py",
+    "calculate_image_diagnostics.py",
+    "check_image_beam.py",
+    "collect_screen_h5parms.py",
+    "combine_h5parms.py",
+    "concat_ms.py",
+    "make_catalog_from_image_cube.py",
+    "make_image_cube.py",
+    "make_mosaic.py",
+    "make_mosaic_template.py",
+    "make_region_file.py",
+    "normalize_flux_scale.py",
+    "process_gains.py",
+    "regrid_image.py",
+    "restore_skymodel.py",
+    "subtract_sector_models.py",
+)
+
 
 def _python_files(root: Path) -> list[Path]:
     return sorted(path for path in root.rglob("*.py") if path.is_file())
@@ -91,6 +112,15 @@ def _imported_modules(path: Path) -> list[tuple[str, int]]:
     return modules
 
 
+def _string_constants(path: Path) -> list[tuple[str, int]]:
+    tree = ast.parse(path.read_text(), filename=str(path))
+    constants = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            constants.append((node.value, node.lineno))
+    return constants
+
+
 def _matches_prefix(module: str, prefix: str) -> bool:
     return module == prefix or module.startswith(f"{prefix}.")
 
@@ -109,6 +139,14 @@ def _forbidden_import_messages(
     return messages
 
 
+def _script_retirement_scan_files() -> list[Path]:
+    files = [
+        path for path in _python_files(RAPTHOR_ROOT) if RAPTHOR_ROOT / "scripts" not in path.parents
+    ]
+    files.extend(path for path in (REPO_ROOT / "bin").iterdir() if path.is_file())
+    return sorted(files)
+
+
 def test_domain_layer_does_not_gain_new_execution_or_framework_imports():
     messages = _forbidden_import_messages(
         _python_files(RAPTHOR_ROOT / "lib"),
@@ -123,6 +161,20 @@ def test_pure_execution_helpers_do_not_import_frameworks_or_flows():
         list(PURE_EXECUTION_MODULES),
         PURE_EXECUTION_FORBIDDEN_PREFIXES,
     )
+
+    assert messages == []
+
+
+def test_production_code_does_not_use_retired_helper_script_wrappers():
+    files = _script_retirement_scan_files()
+    messages = _forbidden_import_messages(files, ("rapthor.scripts",))
+
+    for path in files:
+        relative_path = _relative_path(path)
+        for value, line_number in _string_constants(path):
+            for script_name in RETIRED_HELPER_SCRIPT_NAMES:
+                if script_name in value:
+                    messages.append(f"{relative_path}:{line_number} references {script_name}")
 
     assert messages == []
 
