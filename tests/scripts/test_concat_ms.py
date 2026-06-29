@@ -1,9 +1,11 @@
 import pytest
 
 from rapthor.execution.concatenate.measurement_sets import (
+    copy_measurement_set_command,
     concat_freq_command,
     concat_ms,
     concat_time_command,
+    select_concatenation_command,
 )
 from rapthor.scripts.concat_ms import main
 
@@ -40,6 +42,26 @@ def test_concat_freq_command_uses_real_measurement_set_metadata(test_ms):
         "msout.writefullresflag=False",
         "msout.storagemanager=Dysco",
     ]
+
+
+def test_select_concatenation_command_copies_single_measurement_set(test_ms, tmp_path):
+    output_file = tmp_path / "copied.ms"
+
+    command = select_concatenation_command([test_ms], output_file.as_posix())
+
+    assert command == copy_measurement_set_command(test_ms, output_file.as_posix())
+
+
+def test_select_concatenation_command_can_choose_time_concatenation_without_metadata(tmp_path):
+    output_file = tmp_path / "time.ms"
+
+    command = select_concatenation_command(
+        ["first.ms", "second.ms"],
+        output_file.as_posix(),
+        concat_property="time",
+    )
+
+    assert command == concat_time_command(["first.ms", "second.ms"], output_file.as_posix())
 
 
 def test_concat_time_command_builds_taql_command():

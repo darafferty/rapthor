@@ -111,11 +111,14 @@ def test_concatenate_command_matches_initial_reference_fixture():
 
     assert normalize_command(
         [
-            "concat_ms.py",
-            "epoch_0_input_0.ms",
-            "epoch_0_input_1.ms",
-            "--msout=epoch_0_concatenated.ms",
-            "--concat_property=frequency",
-            "--data_colname=DATA",
+            "DP3",
+            "msin=[epoch_0_input_0.ms,epoch_0_input_1.ms]",
+            "msin.datacolumn=DATA",
+            "msout=epoch_0_concatenated.ms",
+            "steps=[]",
+            "msin.orderms=False",
+            "msin.missingdata=True",
+            "msout.writefullresflag=False",
+            "msout.storagemanager=Dysco",
         ]
     ) == normalize_command(expected)

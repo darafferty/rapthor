@@ -352,9 +352,17 @@ Progress:
   production code instead of leaving test-only compatibility surfaces.
 - Predict flow tests now patch those direct helper calls, and the predict shell
   fake only models DP3.
-- Next: convert concatenate validation/command selection, while keeping
-  DP3/TAQL/copy as external shell commands unless a Measurement Set operation
-  is explicitly pure Python and safe for Dask workers.
+- Done: concatenate validation and command selection now use the migrated
+  Measurement Set helper directly:
+  - production flow no longer shells out to `concat_ms.py`
+  - frequency concatenation still runs DP3 as an external command
+  - time concatenation still runs TAQL as an external command
+  - single-input epochs still run copy as an external command
+  - the unused concatenate wrapper-command module was removed
+- Next: remove remaining migrated Rapthor script command builders from
+  production command modules where the owning flow has already switched to
+  direct Python helpers, then tackle any remaining script wrapper calls in the
+  image flow separately.
 
 Testing tasks:
 

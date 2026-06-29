@@ -5,8 +5,7 @@ from pathlib import Path
 import pytest
 from prefect.testing.utilities import prefect_test_harness
 
-from rapthor.execution.commands import normalize_command
-from rapthor.execution.concatenate.commands import build_concatenate_command
+import rapthor.execution.concatenate.flow as concatenate_module
 from rapthor.execution.concatenate.flow import (
     concatenate_epoch_task,
     concatenate_flow,
@@ -16,8 +15,6 @@ from rapthor.execution.config import ExecutionConfig
 from rapthor.lib.records import directory_record, validate_output_record
 from rapthor.operations.concatenate import Concatenate
 from tests.execution.conftest import run_flow_for_test
-
-FIXTURE_DIR = Path(__file__).parent / "fixtures"
 
 
 @pytest.fixture
@@ -32,14 +29,56 @@ def fake_shell_operation_cls():
         def run(self):
             command = self.kwargs["commands"][0]
             tokens = shlex.split(command)
-            output_name = next(
-                token.split("=", 1)[1] for token in tokens if token.startswith("--msout=")
-            )
+            if tokens[0] == "DP3":
+                output_name = next(
+                    token.split("=", 1)[1] for token in tokens if token.startswith("msout=")
+                )
+            elif tokens[0] == "cp":
+                output_name = tokens[-1]
+            elif tokens[0] == "taql":
+                output_name = tokens[tokens.index("giving") + 1]
+            else:
+                raise AssertionError(f"Unexpected concatenate command: {tokens[0]}")
             cwd = Path(self.kwargs["working_dir"])
-            (cwd / output_name).mkdir(parents=True, exist_ok=True)
+            output_path = Path(output_name)
+            if not output_path.is_absolute():
+                output_path = cwd / output_path
+            output_path.mkdir(parents=True, exist_ok=True)
             return "OK"
 
     return FakeShellOperation
+
+
+@pytest.fixture(autouse=True)
+def fake_select_concatenation_command(monkeypatch):
+    calls = []
+
+    def fake_command(
+        msfiles,
+        output_file,
+        data_colname="DATA",
+        concat_property="frequency",
+        overwrite=False,
+    ):
+        calls.append(
+            {
+                "msfiles": list(msfiles),
+                "output_file": output_file,
+                "data_colname": data_colname,
+                "concat_property": concat_property,
+                "overwrite": overwrite,
+            }
+        )
+        return [
+            "DP3",
+            f"msin=[{','.join(msfiles)}]",
+            f"msin.datacolumn={data_colname}",
+            f"msout={output_file}",
+            "steps=[]",
+        ]
+
+    monkeypatch.setattr(concatenate_module, "select_concatenation_command", fake_command)
+    return calls
 
 
 class FailingShellOperation:
@@ -95,21 +134,6 @@ def _operation_parset(tmp_path):
             "prefect_task_runner": "sync",
         },
     }
-
-
-def test_build_concatenate_command_matches_reference_fixture():
-    commands = json.loads((FIXTURE_DIR / "command_reference.json").read_text())
-
-    assert (
-        normalize_command(
-            build_concatenate_command(
-                ["epoch_0_input_0.ms", "epoch_0_input_1.ms"],
-                "epoch_0_concatenated.ms",
-                "DATA",
-            )
-        )
-        == commands["concatenate"]["concat_ms_files"]
-    )
 
 
 def test_concatenate_payload_from_inputs_is_serializable(tmp_path):
@@ -179,34 +203,8 @@ def test_concatenate_payload_rejects_duplicate_outputs(tmp_path):
         )
 
 
-def test_build_concatenate_command_builds_concat_ms_tokens():
-    assert build_concatenate_command(
-        ["epoch_0_input_0.ms", "epoch_0_input_1.ms"],
-        "epoch_0_concatenated.ms",
-        "DATA",
-    ) == [
-        "concat_ms.py",
-        "epoch_0_input_0.ms",
-        "epoch_0_input_1.ms",
-        "--msout=epoch_0_concatenated.ms",
-        "--concat_property=frequency",
-        "--data_colname=DATA",
-    ]
-
-
-def test_build_concatenate_command_preserves_input_order_and_data_column():
-    command = build_concatenate_command(
-        ["input_b.ms", "input_a.ms", "input_c.ms"],
-        "ordered.ms",
-        "CORRECTED_DATA",
-    )
-
-    assert command[1:4] == ["input_b.ms", "input_a.ms", "input_c.ms"]
-    assert command[-1] == "--data_colname=CORRECTED_DATA"
-
-
 def test_run_concatenate_flow_executes_commands_and_returns_records(
-    tmp_path, fake_shell_operation_cls
+    tmp_path, fake_shell_operation_cls, fake_select_concatenation_command
 ):
     payload = {
         "pipeline_working_dir": str(tmp_path),
@@ -233,6 +231,15 @@ def test_run_concatenate_flow_executes_commands_and_returns_records(
     validate_output_record(outputs["concatenated_filenames"])
     assert (tmp_path / "epoch_0_concatenated.ms").is_dir()
     assert fake_shell_operation_cls.instances[0].kwargs["working_dir"] == str(tmp_path)
+    assert fake_select_concatenation_command == [
+        {
+            "msfiles": ["epoch_0_input_0.ms", "epoch_0_input_1.ms"],
+            "output_file": str(tmp_path / "epoch_0_concatenated.ms"),
+            "data_colname": "DATA",
+            "concat_property": "frequency",
+            "overwrite": False,
+        }
+    ]
 
 
 @pytest.mark.parametrize(
@@ -321,15 +328,15 @@ def test_concatenate_prefect_flow_entrypoint_runs_with_mocked_shell(
         "concatenated_filenames": [directory_record(tmp_path / "epoch_0_concatenated.ms")]
     }
     assert len(fake_shell_operation_cls.instances) == 1
-    assert fake_shell_operation_cls.instances[0].kwargs == {
-        "commands": [
-            "concat_ms.py epoch_0_input_0.ms epoch_0_input_1.ms "
-            "--msout=epoch_0_concatenated.ms --concat_property=frequency "
-            "--data_colname=DATA"
-        ],
-        "working_dir": str(tmp_path),
-        "stream_output": True,
-    }
+    command_tokens = shlex.split(fake_shell_operation_cls.instances[0].kwargs["commands"][0])
+    assert command_tokens == [
+        "DP3",
+        "msin=[epoch_0_input_0.ms,epoch_0_input_1.ms]",
+        "msin.datacolumn=DATA",
+        f"msout={tmp_path / 'epoch_0_concatenated.ms'}",
+        "steps=[]",
+    ]
+    assert fake_shell_operation_cls.instances[0].kwargs["working_dir"] == str(tmp_path)
 
 
 def test_run_concatenate_flow_handles_no_concatenation_needed(tmp_path, fake_shell_operation_cls):

@@ -4,7 +4,7 @@ from typing import Mapping, Optional
 
 from prefect import flow, task
 
-from rapthor.execution.concatenate.commands import build_concatenate_command
+from rapthor.execution.concatenate.measurement_sets import select_concatenation_command
 from rapthor.execution.concatenate.payloads import (
     ConcatenateEpochPayload,
     validate_concatenate_payload,
@@ -28,9 +28,8 @@ def run_concatenate_epoch(
     """Run concatenation for one epoch and return a directory output record."""
     config = execution_config or ExecutionConfig(task_runner="sync")
     input_filenames = epoch["input_filenames"]
-    output_filename = epoch["output_filename"]
     output_path = epoch["output_path"]
-    command = build_concatenate_command(input_filenames, output_filename, data_colname)
+    command = select_concatenation_command(input_filenames, output_path, data_colname)
     run_external_command(
         command,
         pipeline_working_dir,

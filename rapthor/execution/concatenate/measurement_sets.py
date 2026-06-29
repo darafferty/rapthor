@@ -22,21 +22,41 @@ def concat_ms(
     Frequency concatenation is delegated to DP3. Time concatenation is delegated
     to TAQL. A single input Measurement Set is copied to the output path.
     """
-    _validate_concat_inputs(msfiles, output_file, concat_property, overwrite)
-
-    if len(msfiles) > 1:
-        if concat_property.lower() == "frequency":
-            command = concat_freq_command(msfiles, data_colname, output_file)
-        else:
-            command = concat_time_command(msfiles, output_file)
-    else:
-        command = _copy_measurement_set_command(msfiles[0], output_file)
+    command = select_concatenation_command(
+        msfiles,
+        output_file,
+        data_colname=data_colname,
+        concat_property=concat_property,
+        overwrite=overwrite,
+    )
 
     try:
         return subprocess.run(command, check=True).returncode
     except subprocess.CalledProcessError as err:
         print(err, file=sys.stderr)
         return err.returncode
+
+
+def select_concatenation_command(
+    msfiles: list[str],
+    output_file: str,
+    data_colname: str = "DATA",
+    concat_property: str = "frequency",
+    overwrite: bool = False,
+) -> list[str]:
+    """
+    Validate inputs and choose the external command for Measurement Set concatenation.
+
+    Frequency concatenation uses DP3, time concatenation uses TAQL, and a single
+    input Measurement Set is copied to the output path.
+    """
+    _validate_concat_inputs(msfiles, output_file, concat_property, overwrite)
+
+    if len(msfiles) == 1:
+        return copy_measurement_set_command(msfiles[0], output_file)
+    if concat_property.lower() == "frequency":
+        return concat_freq_command(msfiles, data_colname, output_file)
+    return concat_time_command(msfiles, output_file)
 
 
 def concat_freq_command(
@@ -110,7 +130,7 @@ def _validate_concat_inputs(
     raise FileExistsError("The output Measurement Set exists and overwrite=False")
 
 
-def _copy_measurement_set_command(input_file: str, output_file: str) -> list[str]:
+def copy_measurement_set_command(input_file: str, output_file: str) -> list[str]:
     """Build the copy command used for a single Measurement Set input."""
     return ["cp", "-r", "-L", "--no-preserve=mode", input_file, output_file]
 

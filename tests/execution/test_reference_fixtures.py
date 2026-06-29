@@ -1,8 +1,6 @@
 import json
 from pathlib import Path
 
-from rapthor.execution.commands import normalize_command
-from rapthor.execution.concatenate.commands import build_concatenate_command
 from rapthor.lib.records import validate_output_record
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
@@ -13,16 +11,17 @@ def test_command_reference_fixture_is_tokenized():
 
     command = commands["concatenate"]["concat_ms_files"]
 
-    assert command[0] == "concat_ms.py"
-    assert "--concat_property=frequency" in command
-    assert "--data_colname=DATA" in command
-    assert normalize_command(
-        build_concatenate_command(
-            ["epoch_0_input_0.ms", "epoch_0_input_1.ms"],
-            "epoch_0_concatenated.ms",
-            "DATA",
-        )
-    ) == normalize_command(command)
+    assert command == [
+        "DP3",
+        "msin=[epoch_0_input_0.ms,epoch_0_input_1.ms]",
+        "msin.datacolumn=DATA",
+        "msout=epoch_0_concatenated.ms",
+        "steps=[]",
+        "msin.orderms=False",
+        "msin.missingdata=True",
+        "msout.writefullresflag=False",
+        "msout.storagemanager=Dysco",
+    ]
 
 
 def test_output_reference_fixture_matches_output_contract():
