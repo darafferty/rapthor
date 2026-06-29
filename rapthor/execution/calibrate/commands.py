@@ -5,7 +5,6 @@ from typing import Mapping, Optional
 
 from rapthor.execution.commands import (
     append_key_value,
-    bool_token,
     bracketed_list_token,
     comma_join,
 )
@@ -249,28 +248,6 @@ def build_draw_model_command(options: DrawModelOptions) -> list[str]:
     ]
 
 
-def build_make_region_file_command(
-    skymodel: str,
-    ra_mid: object,
-    dec_mid: object,
-    width_ra: object,
-    width_dec: object,
-    outfile: str,
-    enclose_names: bool = False,
-) -> list[str]:
-    """Build the field-level region-file command for calibration image predict."""
-    return [
-        "make_region_file.py",
-        skymodel,
-        str(ra_mid),
-        str(dec_mid),
-        str(width_ra),
-        str(width_dec),
-        outfile,
-        f"--enclose_names={bool_token(enclose_names)}",
-    ]
-
-
 def _first_model_image(model_images: list[str]) -> str:
     if not isinstance(model_images, list) or not model_images:
         raise ValueError("model_images must be a non-empty list")
@@ -329,69 +306,6 @@ def build_collect_h5parms_command(inh5parms: list[str], outputh5parm: str) -> li
         comma_join(inh5parms),
         f"--outh5parm={outputh5parm}",
     ]
-
-
-def build_collect_screen_h5parms_command(inh5parms: list[str], outputh5parm: str) -> list[str]:
-    """Build the screen h5parm collection command."""
-    return [
-        "collect_screen_h5parms.py",
-        "-c",
-        comma_join(inh5parms),
-        f"--outh5parm={outputh5parm}",
-    ]
-
-
-def build_combine_h5parms_command(
-    inh5parm1: str,
-    inh5parm2: str,
-    outh5parm: str,
-    mode: str,
-    reweight: bool,
-    calibrator_names: Optional[list[str]] = None,
-    calibrator_fluxes: Optional[list[float]] = None,
-) -> list[str]:
-    """Build the h5parm combination command."""
-    command = [
-        "combine_h5parms.py",
-        inh5parm1,
-        inh5parm2,
-        outh5parm,
-        mode,
-        f"--reweight={bool_token(reweight)}",
-    ]
-    if calibrator_names is not None:
-        command.append(f"--cal_names={comma_join(calibrator_names)}")
-    if calibrator_fluxes is not None:
-        command.append(f"--cal_fluxes={comma_join(calibrator_fluxes)}")
-    return command
-
-
-def build_process_gains_command(
-    h5parm: str,
-    flag: bool,
-    smooth: bool,
-    max_station_delta: float,
-    scale_station_delta: str,
-    phase_center_ra: object,
-    phase_center_dec: object,
-) -> list[str]:
-    """Build the gain processing command."""
-    return [
-        "process_gains.py",
-        "--normalize=True",
-        h5parm,
-        f"--smooth={bool_token(smooth)}",
-        f"--flag={bool_token(flag)}",
-        f"--max_station_delta={max_station_delta}",
-        f"--scale_delta_with_dist={scale_station_delta}",
-        f"--phase_center_ra={phase_center_ra}",
-        f"--phase_center_dec={phase_center_dec}",
-    ]
-
-
-def build_adjust_h5parm_sources_command(skymodel: str, h5parm: str) -> list[str]:
-    """Build the h5parm source-adjustment command."""
-    return ["adjust_h5parm_sources.py", skymodel, h5parm]
 
 
 def build_plot_solutions_command(

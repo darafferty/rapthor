@@ -13,17 +13,12 @@ from rapthor.execution.calibrate.commands import (
     DdecalSolveOptions,
     DrawModelOptions,
     IdgcalScreenSolveOptions,
-    build_adjust_h5parm_sources_command,
     build_collect_h5parms_command,
-    build_collect_screen_h5parms_command,
-    build_combine_h5parms_command,
     build_ddecal_solve_command,
     build_draw_model_command,
     build_idgcal_solve_phase_and_gain_command,
     build_idgcal_solve_phase_command,
-    build_make_region_file_command,
     build_plot_solutions_command,
-    build_process_gains_command,
 )
 from rapthor.execution.calibrate.flow import (
     calibrate_chunk_task,
@@ -1134,36 +1129,8 @@ def test_calibrate_command_builders_match_reference_fixtures():
         == commands["calibrate"]["ddecal_di_scalar_phase"]
     )
     assert (
-        normalize_command(
-            build_combine_h5parms_command(
-                "fast_phases_di.h5parm",
-                "medium1_phases_di.h5parm",
-                "combined_solve1_solve2_di.h5parm",
-                "p1p2_scalar",
-                reweight=False,
-                calibrator_names=[],
-                calibrator_fluxes=[],
-            )
-        )
-        == commands["calibrate"]["combine_fast_medium_di"]
-    )
-    assert (
         normalize_command(build_draw_model_command(_draw_model_options()))
         == commands["calibrate"]["draw_model"]
-    )
-    assert (
-        normalize_command(
-            build_make_region_file_command(
-                skymodel="calibration.skymodel",
-                ra_mid=123.0,
-                dec_mid=45.0,
-                width_ra=2.0,
-                width_dec=2.5,
-                outfile="field_facets_ds9.reg",
-                enclose_names=False,
-            )
-        )
-        == commands["calibrate"]["make_field_region_file"]
     )
     assert (
         normalize_command(build_ddecal_solve_command(_dd_ddecal_solve_options()))
@@ -1249,29 +1216,6 @@ def test_calibrate_command_builders_match_reference_fixtures():
         == commands["calibrate"]["ddecal_dd_fast_medium_image_predict_preapply"]
     )
     assert (
-        normalize_command(
-            build_process_gains_command(
-                "slow_gains.h5parm",
-                flag=True,
-                smooth=True,
-                max_station_delta=0.25,
-                scale_station_delta="False",
-                phase_center_ra=123.0,
-                phase_center_dec=45.0,
-            )
-        )
-        == commands["calibrate"]["process_slow_gains"]
-    )
-    assert (
-        normalize_command(
-            build_adjust_h5parm_sources_command(
-                "calibration.skymodel",
-                "combined_solutions.h5",
-            )
-        )
-        == commands["calibrate"]["adjust_h5parm_sources"]
-    )
-    assert (
         normalize_command(build_idgcal_solve_phase_command(_idgcal_screen_solve_options()))
         == commands["calibrate"]["idgcal_solve_phase"]
     )
@@ -1282,15 +1226,6 @@ def test_calibrate_command_builders_match_reference_fixtures():
             )
         )
         == commands["calibrate"]["idgcal_solve_phase_and_gain"]
-    )
-    assert (
-        normalize_command(
-            build_collect_screen_h5parms_command(
-                ["idgcal_0", "idgcal_1"],
-                "combined_solutions.h5",
-            )
-        )
-        == commands["calibrate"]["collect_screen_h5parms"]
     )
 
 
@@ -1315,51 +1250,6 @@ def test_calibrate_command_builders_create_reference_tokens():
         "phase",
         "--first-dir",
     ]
-    assert build_combine_h5parms_command(
-        "fast_phases_di.h5parm",
-        "medium1_phases_di.h5parm",
-        "combined_solve1_solve2_di.h5parm",
-        "p1p2_scalar",
-        reweight=False,
-        calibrator_names=[],
-        calibrator_fluxes=[],
-    ) == [
-        "combine_h5parms.py",
-        "fast_phases_di.h5parm",
-        "medium1_phases_di.h5parm",
-        "combined_solve1_solve2_di.h5parm",
-        "p1p2_scalar",
-        "--reweight=False",
-        "--cal_names=",
-        "--cal_fluxes=",
-    ]
-    assert build_process_gains_command(
-        "slow_gains.h5parm",
-        flag=True,
-        smooth=True,
-        max_station_delta=0.25,
-        scale_station_delta="False",
-        phase_center_ra=123.0,
-        phase_center_dec=45.0,
-    ) == [
-        "process_gains.py",
-        "--normalize=True",
-        "slow_gains.h5parm",
-        "--smooth=True",
-        "--flag=True",
-        "--max_station_delta=0.25",
-        "--scale_delta_with_dist=False",
-        "--phase_center_ra=123.0",
-        "--phase_center_dec=45.0",
-    ]
-    assert build_adjust_h5parm_sources_command(
-        "calibration.skymodel",
-        "combined_solutions.h5",
-    ) == [
-        "adjust_h5parm_sources.py",
-        "calibration.skymodel",
-        "combined_solutions.h5",
-    ]
     assert build_idgcal_solve_phase_command(
         _idgcal_screen_solve_options(model_images=["calibration_model-term-0.fits"])
     )[:6] == [
@@ -1378,15 +1268,6 @@ def test_calibrate_command_builders_create_reference_tokens():
     )[5:7] == [
         "solve.python.module=idg.idgcaldpstep_rapthor_dirac",
         "solve.python.class=IDGCalDPStepRapthorDirac",
-    ]
-    assert build_collect_screen_h5parms_command(
-        ["idgcal_0", "idgcal_1"],
-        "combined_solutions.h5",
-    ) == [
-        "collect_screen_h5parms.py",
-        "-c",
-        "idgcal_0,idgcal_1",
-        "--outh5parm=combined_solutions.h5",
     ]
     assert (
         build_ddecal_solve_command(_ddecal_solve_options(modeldatacolumn="[MODEL_DATA]"))[0]

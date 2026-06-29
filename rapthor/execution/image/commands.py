@@ -181,65 +181,9 @@ def build_concat_time_command(
     ]
 
 
-def build_blank_image_command(
-    mask_filename: str,
-    wsclean_imsize: list[int],
-    vertices_file: str,
-    ra: float,
-    dec: float,
-    cellsize_deg: float,
-    image_filename: Optional[str] = None,
-) -> list[str]:
-    """Build the `blank_image.py` command for one imaging sector."""
-    command = ["blank_image.py", mask_filename]
-    if image_filename is not None:
-        command.append(image_filename)
-    command.extend(
-        [
-            f"--imsize={wsclean_imsize[0]},{wsclean_imsize[1]}",
-            f"--vertices_file={vertices_file}",
-            f"--reference_ra_deg={ra}",
-            f"--reference_dec_deg={dec}",
-            f"--cellsize_deg={cellsize_deg}",
-        ]
-    )
-    return command
-
-
-def build_make_region_file_command(
-    skymodel: str,
-    ra_mid: float,
-    dec_mid: float,
-    width_ra: float,
-    width_dec: float,
-    outfile: str,
-    enclose_names: bool = True,
-) -> list[str]:
-    """Build the `make_region_file.py` command for facet imaging."""
-    return [
-        "make_region_file.py",
-        skymodel,
-        str(ra_mid),
-        str(dec_mid),
-        str(width_ra),
-        str(width_dec),
-        outfile,
-        f"--enclose_names={bool_token(enclose_names)}",
-    ]
-
-
 def build_compress_sector_images_command(images: list[str]) -> list[str]:
     """Build the `fpack` command for sector image compression."""
     return ["fpack", *images]
-
-
-def build_make_skymodel_image_command(
-    source_catalog: str,
-    reference_image: str,
-    output_image_name: str,
-) -> list[str]:
-    """Build the `restore_skymodel.py` command for filtered-model images."""
-    return ["restore_skymodel.py", source_catalog, reference_image, output_image_name]
 
 
 def build_wsclean_restore_command(
@@ -258,42 +202,6 @@ def build_wsclean_restore_command(
         source_list,
         output_image,
     ]
-
-
-def build_make_image_cube_command(input_image_list: list[str], output_image: str) -> list[str]:
-    """Build the `make_image_cube.py` command for one Stokes image cube."""
-    return ["make_image_cube.py", comma_join(input_image_list), output_image]
-
-
-def build_make_catalog_from_image_cube_command(
-    cube: str,
-    cube_beams: str,
-    cube_frequencies: str,
-    output_catalog: str,
-    threshisl: float,
-    threshpix: float,
-    ncores: int,
-) -> list[str]:
-    """Build the source-catalog command for a Stokes-I image cube."""
-    return [
-        "make_catalog_from_image_cube.py",
-        cube,
-        cube_beams,
-        cube_frequencies,
-        output_catalog,
-        f"--threshisl={threshisl}",
-        f"--threshpix={threshpix}",
-        f"--ncores={ncores}",
-    ]
-
-
-def build_normalize_flux_scale_command(
-    source_catalog: str,
-    ms_file: str,
-    normalize_h5parm: str,
-) -> list[str]:
-    """Build the flux-scale normalization command."""
-    return ["normalize_flux_scale.py", source_catalog, ms_file, normalize_h5parm]
 
 
 def _wsclean_command_base() -> list[str]:
@@ -503,11 +411,6 @@ def build_wsclean_mpi_screens_command(
     return _mpi_wsclean_command(build_wsclean_screens_command(options), mpi_nnodes)
 
 
-def build_check_image_beam_command(input_image: str, beam_size_arcsec: float) -> list[str]:
-    """Build the `check_image_beam.py` command for one image."""
-    return ["check_image_beam.py", input_image, str(beam_size_arcsec)]
-
-
 def build_filter_skymodel_command(
     flat_noise_image: str,
     true_sky_image: str,
@@ -544,41 +447,4 @@ def build_filter_skymodel_command(
             f"--ncores={ncores}",
         ]
     )
-    return command
-
-
-def build_calculate_image_diagnostics_command(
-    flat_noise_image: str,
-    flat_noise_rms_image: str,
-    true_sky_image: str,
-    true_sky_rms_image: str,
-    input_catalog: str,
-    obs_ms: list[str],
-    obs_starttime: list[str],
-    obs_ntimes: list[int],
-    diagnostics_file: str,
-    output_root: str,
-    allow_internet_access: bool,
-    facet_region_file: Optional[str] = None,
-    photometry_skymodel: Optional[str] = None,
-    astrometry_skymodel: Optional[str] = None,
-) -> list[str]:
-    """Build the `calculate_image_diagnostics.py` command for one sector."""
-    command = [
-        "calculate_image_diagnostics.py",
-        flat_noise_image,
-        flat_noise_rms_image,
-        true_sky_image,
-        true_sky_rms_image,
-        input_catalog,
-        comma_join(obs_ms),
-        comma_join(obs_starttime),
-        comma_join(obs_ntimes),
-        diagnostics_file,
-        output_root,
-    ]
-    append_prefixed_value(command, "--facet_region_file=", facet_region_file or "none")
-    append_prefixed_value(command, "--photometry_comparison_skymodel=", photometry_skymodel)
-    append_prefixed_value(command, "--astrometry_comparison_skymodel=", astrometry_skymodel)
-    append_flag(command, "--allow_internet_access", allow_internet_access)
     return command

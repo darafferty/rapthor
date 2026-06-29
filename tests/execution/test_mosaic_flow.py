@@ -6,14 +6,8 @@ import pytest
 from prefect.testing.utilities import prefect_test_harness
 
 import rapthor.execution.mosaic.flow as mosaic_module
-from rapthor.execution.commands import normalize_command
 from rapthor.execution.config import ExecutionConfig
-from rapthor.execution.mosaic.commands import (
-    build_compress_mosaic_command,
-    build_make_mosaic_command,
-    build_make_mosaic_template_command,
-    build_regrid_image_command,
-)
+from rapthor.execution.mosaic.commands import build_compress_mosaic_command
 from rapthor.execution.mosaic.flow import (
     mosaic_flow,
 )
@@ -167,78 +161,9 @@ def test_mosaic_command_builders_match_reference_fixtures():
     commands = json.loads((FIXTURE_DIR / "command_reference.json").read_text())
 
     assert (
-        normalize_command(
-            build_make_mosaic_template_command(
-                ["sector_1-I-image.fits", "sector_2-I-image.fits"],
-                ["sector_1.vertices", "sector_2.vertices"],
-                "mosaic_1_template.fits",
-            )
-        )
-        == commands["mosaic"]["make_mosaic_template"]
-    )
-    assert (
-        normalize_command(
-            build_regrid_image_command(
-                "sector_1-I-image.fits",
-                "mosaic_1_template.fits",
-                "sector_1.vertices",
-                "sector_1-I-image.fits.regridded",
-            )
-        )
-        == commands["mosaic"]["regrid_image"]
-    )
-    assert (
-        normalize_command(
-            build_make_mosaic_command(
-                ["sector_1-I-image.fits.regridded", "sector_2-I-image.fits.regridded"],
-                "mosaic_1_template.fits",
-                "mosaic_1-I-image.fits",
-            )
-        )
-        == commands["mosaic"]["make_mosaic"]
-    )
-    assert (
         build_compress_mosaic_command("mosaic_1-I-image.fits")
         == commands["mosaic"]["compress_mosaic_image"]
     )
-
-
-def test_mosaic_command_builders_create_reference_tokens():
-    assert build_make_mosaic_template_command(
-        ["sector_1-I-image.fits", "sector_2-I-image.fits"],
-        ["sector_1.vertices", "sector_2.vertices"],
-        "mosaic_1_template.fits",
-    ) == [
-        "make_mosaic_template.py",
-        "sector_1-I-image.fits,sector_2-I-image.fits",
-        "sector_1.vertices,sector_2.vertices",
-        "mosaic_1_template.fits",
-        "--skip=False",
-    ]
-    assert build_regrid_image_command(
-        "sector_1-I-image.fits",
-        "mosaic_1_template.fits",
-        "sector_1.vertices",
-        "sector_1-I-image.fits.regridded",
-    ) == [
-        "regrid_image.py",
-        "sector_1-I-image.fits",
-        "mosaic_1_template.fits",
-        "sector_1.vertices",
-        "sector_1-I-image.fits.regridded",
-        "--skip=False",
-    ]
-    assert build_make_mosaic_command(
-        ["sector_1-I-image.fits.regridded", "sector_2-I-image.fits.regridded"],
-        "mosaic_1_template.fits",
-        "mosaic_1-I-image.fits",
-    ) == [
-        "make_mosaic.py",
-        "sector_1-I-image.fits.regridded,sector_2-I-image.fits.regridded",
-        "mosaic_1_template.fits",
-        "mosaic_1-I-image.fits",
-        "--skip=False",
-    ]
 
 
 def test_mosaic_payload_from_inputs_is_serializable(tmp_path):

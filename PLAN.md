@@ -363,10 +363,16 @@ Progress:
   is importable and still runs directly in normal Python processes, but
   daemonic Dask worker processes run `filter_skymodel.py` as a subprocess
   because lsmtool/PyBDSF creates Python multiprocessing children internally.
-- Next: remove remaining migrated Rapthor script command builders from
-  production command modules where the owning flow has already switched to
-  direct Python helpers, then tackle any remaining script wrapper calls in the
-  image flow separately.
+- Done: removed migrated Rapthor script command builders from production command
+  modules where the owning flow has already switched to direct Python helpers:
+  - mosaic keeps only the `fpack` compression command builder
+  - calibration keeps only DP3, WSClean draw-model, `H5parm_collector.py`, and
+    `plotrapthor` command builders
+  - image keeps DP3, WSClean/WSClean-MP, `fpack`, `concat_ms.py`, and the
+    daemonic-worker `filter_skymodel.py` fallback command builders
+- Next: tackle the remaining image `concat_ms.py` wrapper call separately, and
+  keep the `filter_skymodel.py` fallback until PyBDSF/lsmtool multiprocessing
+  can be isolated without breaking Dask worker execution.
 
 Testing tasks:
 

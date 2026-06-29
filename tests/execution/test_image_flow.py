@@ -20,17 +20,9 @@ from rapthor.execution.image.commands import (
     WscleanOptions,
     WscleanScreenOptions,
     build_aterm_config_content,
-    build_blank_image_command,
-    build_calculate_image_diagnostics_command,
-    build_check_image_beam_command,
     build_compress_sector_images_command,
     build_concat_time_command,
     build_filter_skymodel_command,
-    build_make_catalog_from_image_cube_command,
-    build_make_image_cube_command,
-    build_make_region_file_command,
-    build_make_skymodel_image_command,
-    build_normalize_flux_scale_command,
     build_prepare_imaging_data_command,
     build_wsclean_facets_command,
     build_wsclean_mpi_facets_command,
@@ -1052,19 +1044,6 @@ def test_image_command_builders_match_reference_fixtures():
     )
     assert (
         normalize_command(
-            build_blank_image_command(
-                mask_filename="sector_1_mask.fits",
-                wsclean_imsize=[1024, 1024],
-                vertices_file="sector_1.vertices",
-                ra=123.0,
-                dec=45.0,
-                cellsize_deg=0.001,
-            )
-        )
-        == commands["image"]["blank_image"]
-    )
-    assert (
-        normalize_command(
             build_compress_sector_images_command(
                 images=[
                     "sector_1-MFS-I-image.fits",
@@ -1079,16 +1058,6 @@ def test_image_command_builders_match_reference_fixtures():
     )
     assert (
         normalize_command(
-            build_make_skymodel_image_command(
-                source_catalog="sector_1.apparent_sky.txt",
-                reference_image="sector_1-MFS-I-image-pb.fits",
-                output_image_name="sector_1-MFS-filtered-model.fits.fz",
-            )
-        )
-        == commands["image"]["make_skymodel_image"]
-    )
-    assert (
-        normalize_command(
             build_wsclean_restore_command(
                 residual_image="sector_1-MFS-I-image-pb.fits",
                 source_list="bright_sources_pb.txt",
@@ -1099,57 +1068,8 @@ def test_image_command_builders_match_reference_fixtures():
         == commands["image"]["wsclean_restore"]
     )
     assert (
-        normalize_command(
-            build_make_image_cube_command(
-                input_image_list=[
-                    "sector_1-0000-I-image-pb.fits",
-                    "sector_1-0001-I-image-pb.fits",
-                ],
-                output_image="sector_1_I_freq_cube.fits",
-            )
-        )
-        == commands["image"]["make_image_cube"]
-    )
-    assert (
-        normalize_command(
-            build_make_catalog_from_image_cube_command(
-                cube="sector_1_I_freq_cube.fits",
-                cube_beams="sector_1_I_freq_cube.fits_beams.txt",
-                cube_frequencies="sector_1_I_freq_cube.fits_frequencies.txt",
-                output_catalog="sector_1_source_catalog.fits",
-                threshisl=4.0,
-                threshpix=5.0,
-                ncores=4,
-            )
-        )
-        == commands["image"]["make_catalog_from_image_cube"]
-    )
-    assert (
-        normalize_command(
-            build_normalize_flux_scale_command(
-                source_catalog="sector_1_source_catalog.fits",
-                ms_file="sector_1_concat.ms",
-                normalize_h5parm="sector_1_normalize.h5parm",
-            )
-        )
-        == commands["image"]["normalize_flux_scale"]
-    )
-    assert (
         normalize_command(build_wsclean_no_dde_command(_wsclean_options()))
         == commands["image"]["wsclean_no_dde"]
-    )
-    assert (
-        normalize_command(
-            build_make_region_file_command(
-                skymodel="calibration.skymodel",
-                ra_mid=123.0,
-                dec_mid=45.0,
-                width_ra=2.0,
-                width_dec=2.5,
-                outfile="sector_1_facets_ds9.reg",
-            )
-        )
-        == commands["image"]["make_region_file"]
     )
     assert (
         normalize_command(
@@ -1282,39 +1202,12 @@ def test_image_support_command_builders_create_expected_tokens():
         "beam.update_interval = 120\n"
         "beam.usechannelfreq = true\n"
     )
-    assert build_make_region_file_command(
-        "calibration.skymodel",
-        123.0,
-        45.0,
-        2.0,
-        2.5,
-        "sector_1_facets_ds9.reg",
-    ) == [
-        "make_region_file.py",
-        "calibration.skymodel",
-        "123.0",
-        "45.0",
-        "2.0",
-        "2.5",
-        "sector_1_facets_ds9.reg",
-        "--enclose_names=True",
-    ]
     assert build_compress_sector_images_command(
         ["sector_1-MFS-I-image.fits", "sector_1-MFS-I-image-pb.fits"]
     ) == [
         "fpack",
         "sector_1-MFS-I-image.fits",
         "sector_1-MFS-I-image-pb.fits",
-    ]
-    assert build_make_skymodel_image_command(
-        "sector_1.apparent_sky.txt",
-        "sector_1-MFS-I-image-pb.fits",
-        "sector_1-MFS-filtered-model.fits.fz",
-    ) == [
-        "restore_skymodel.py",
-        "sector_1.apparent_sky.txt",
-        "sector_1-MFS-I-image-pb.fits",
-        "sector_1-MFS-filtered-model.fits.fz",
     ]
     assert build_wsclean_restore_command(
         "sector_1-MFS-I-image-pb.fits",
@@ -1329,47 +1222,6 @@ def test_image_support_command_builders_create_expected_tokens():
         "sector_1-MFS-I-image-pb.fits",
         "bright_sources_pb.txt",
         "sector_1-MFS-I-image-pb.fits",
-    ]
-    assert build_make_image_cube_command(
-        ["sector_1-0000-I-image-pb.fits", "sector_1-0001-I-image-pb.fits"],
-        "sector_1_I_freq_cube.fits",
-    ) == [
-        "make_image_cube.py",
-        "sector_1-0000-I-image-pb.fits,sector_1-0001-I-image-pb.fits",
-        "sector_1_I_freq_cube.fits",
-    ]
-    assert build_make_catalog_from_image_cube_command(
-        "sector_1_I_freq_cube.fits",
-        "sector_1_I_freq_cube.fits_beams.txt",
-        "sector_1_I_freq_cube.fits_frequencies.txt",
-        "sector_1_source_catalog.fits",
-        4.0,
-        5.0,
-        4,
-    ) == [
-        "make_catalog_from_image_cube.py",
-        "sector_1_I_freq_cube.fits",
-        "sector_1_I_freq_cube.fits_beams.txt",
-        "sector_1_I_freq_cube.fits_frequencies.txt",
-        "sector_1_source_catalog.fits",
-        "--threshisl=4.0",
-        "--threshpix=5.0",
-        "--ncores=4",
-    ]
-    assert build_normalize_flux_scale_command(
-        "sector_1_source_catalog.fits",
-        "sector_1_concat.ms",
-        "sector_1_normalize.h5parm",
-    ) == [
-        "normalize_flux_scale.py",
-        "sector_1_source_catalog.fits",
-        "sector_1_concat.ms",
-        "sector_1_normalize.h5parm",
-    ]
-    assert build_check_image_beam_command("sector_1-MFS-I-image.fits", 0.0) == [
-        "check_image_beam.py",
-        "sector_1-MFS-I-image.fits",
-        "0.0",
     ]
     assert build_filter_skymodel_command(
         "sector_1-MFS-I-image.fits",
@@ -1414,32 +1266,6 @@ def test_image_support_command_builders_create_expected_tokens():
         4,
         bright_true_sky_skymodel="bright_sources_pb.txt",
     )
-    assert build_calculate_image_diagnostics_command(
-        "sector_1-MFS-I-image.fits",
-        "sector_1.flat_noise_rms.fits",
-        "sector_1-MFS-I-image-pb.fits",
-        "sector_1.true_sky_rms.fits",
-        "sector_1.source_catalog.fits",
-        ["obs_0.ms", "obs_1.ms"],
-        ["50000.0", "50010.0"],
-        [10, 12],
-        "sector_1.image_diagnostics.json",
-        "sector_1",
-        False,
-    ) == [
-        "calculate_image_diagnostics.py",
-        "sector_1-MFS-I-image.fits",
-        "sector_1.flat_noise_rms.fits",
-        "sector_1-MFS-I-image-pb.fits",
-        "sector_1.true_sky_rms.fits",
-        "sector_1.source_catalog.fits",
-        "obs_0.ms,obs_1.ms",
-        "50000.0,50010.0",
-        "10,12",
-        "sector_1.image_diagnostics.json",
-        "sector_1",
-        "--facet_region_file=none",
-    ]
 
 
 def test_image_payload_from_inputs_builds_serializable_no_dde_payload(tmp_path):
