@@ -90,16 +90,22 @@ def concat_freq_command(
 
 def concat_time_command(msfiles: list[str], output_file: str) -> list[str]:
     """Build the TAQL command used to concatenate Measurement Sets in time."""
+    ms_list = ",".join(_taql_string(msfile) for msfile in msfiles)
     return [
         "taql",
         "select",
         "from",
-        f"[{','.join(msfiles)}]",
+        f"[{ms_list}]",
         "giving",
-        str(output_file),
+        _taql_string(output_file),
         "AS",
         "PLAIN",
     ]
+
+
+def _taql_string(value: object) -> str:
+    """Return a quoted TaQL string literal for table and output paths."""
+    return '"' + str(value).replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
 def _validate_concat_inputs(

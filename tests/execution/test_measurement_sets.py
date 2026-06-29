@@ -64,13 +64,13 @@ def test_select_concatenation_command_can_choose_time_concatenation_without_meta
 
 
 def test_concat_time_command_builds_taql_command():
-    assert concat_time_command(["first.ms", "second.ms"], "output.ms") == [
+    assert concat_time_command(["/data/first.ms", "/data/second.ms"], "/work/output.ms") == [
         "taql",
         "select",
         "from",
-        "[first.ms,second.ms]",
+        '["/data/first.ms","/data/second.ms"]',
         "giving",
-        "output.ms",
+        '"/work/output.ms"',
         "AS",
         "PLAIN",
     ]

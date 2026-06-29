@@ -272,9 +272,9 @@ def fake_direct_image_helpers(monkeypatch):
             "taql",
             "select",
             "from",
-            f"[{','.join(msfiles)}]",
+            "[" + ",".join(f'"{msfile}"' for msfile in msfiles) + "]",
             "giving",
-            output_file,
+            f'"{output_file}"',
             "AS",
             "PLAIN",
         ]
@@ -326,7 +326,7 @@ def fake_image_shell_operation_cls():
                 )
                 (cwd / output_name).mkdir(parents=True, exist_ok=True)
             elif tokens[0] == "taql":
-                output_path = Path(tokens[tokens.index("giving") + 1])
+                output_path = Path(tokens[tokens.index("giving") + 1].strip("\"'"))
                 if not output_path.is_absolute():
                     output_path = cwd / output_path
                 output_path.mkdir(parents=True, exist_ok=True)

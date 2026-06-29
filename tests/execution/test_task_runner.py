@@ -113,7 +113,7 @@ def test_build_external_dask_task_runner_with_injected_class():
     )
 
     assert runner.kwargs == {"address": "tcp://scheduler:8786"}
-    assert FakeDaskClient.calls == [("tcp://scheduler:8786", "5s")]
+    assert FakeDaskClient.calls == [("tcp://scheduler:8786", "30s")]
 
 
 def test_build_external_dask_task_runner_uses_environment_scheduler(monkeypatch):
@@ -127,7 +127,7 @@ def test_build_external_dask_task_runner_uses_environment_scheduler(monkeypatch)
     )
 
     assert runner.kwargs == {"address": "tcp://env-scheduler:8786"}
-    assert FakeDaskClient.calls == [("tcp://env-scheduler:8786", "5s")]
+    assert FakeDaskClient.calls == [("tcp://env-scheduler:8786", "30s")]
 
 
 def test_build_external_dask_task_runner_requires_scheduler(monkeypatch):

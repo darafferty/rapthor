@@ -36,7 +36,7 @@ def fake_shell_operation_cls():
             elif tokens[0] == "cp":
                 output_name = tokens[-1]
             elif tokens[0] == "taql":
-                output_name = tokens[tokens.index("giving") + 1]
+                output_name = tokens[tokens.index("giving") + 1].strip("\"'")
             else:
                 raise AssertionError(f"Unexpected concatenate command: {tokens[0]}")
             cwd = Path(self.kwargs["working_dir"])

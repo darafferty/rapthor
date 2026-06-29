@@ -13,6 +13,9 @@ class DaskSchedulerConnectionError(RuntimeError):
     """Raised when an external Dask scheduler cannot be used."""
 
 
+DASK_SCHEDULER_CHECK_TIMEOUT = "30s"
+
+
 def _load_dask_task_runner_cls():
     try:
         from prefect_dask import DaskTaskRunner
@@ -52,7 +55,11 @@ def local_cluster_kwargs(execution_config: ExecutionConfig) -> dict:
     return kwargs
 
 
-def check_dask_scheduler(address: str, client_cls=None, timeout: str = "5s") -> int:
+def check_dask_scheduler(
+    address: str,
+    client_cls=None,
+    timeout: str = DASK_SCHEDULER_CHECK_TIMEOUT,
+) -> int:
     """Check that an external Dask scheduler is reachable and has workers."""
     runner_client_cls = client_cls or _load_dask_client_cls()
     client = None
