@@ -138,6 +138,14 @@ Progress:
   subtraction and covariance-weight helpers to
   `rapthor.execution.predict.sector_model_subtraction`, kept the script as the
   CLI wrapper, and added direct function plus CLI argument parity coverage.
+- Continued with `normalize_flux_scale.py`: extracted flux-scale normalization
+  helpers to `rapthor.execution.image.flux_normalization`, kept the script as
+  the CLI wrapper, and moved unit coverage to the execution helper with CLI
+  parity coverage.
+- Continued with `calculate_image_diagnostics.py`: extracted image diagnostic
+  calculation helpers to `rapthor.execution.image.diagnostic_calculation`, kept
+  the script as the CLI wrapper, left argument parsing in the wrapper, and moved
+  unit coverage to the execution helper with CLI argument parity coverage.
 
 Script audit and migration order:
 
@@ -182,10 +190,19 @@ Script audit and migration order:
   Measurement Set plus sector model Measurement Sets to per-sector residual
   outputs and optional calibration weights; large file payloads; direct
   function and CLI argument parity coverage now exist.
-- Remaining larger helpers, migrate with extra scientific parity checks:
-  `calculate_image_diagnostics.py` and `normalize_flux_scale.py`. These contain
-  larger scientific workflows, heavier external dependencies, or large FITS and
-  catalog payloads.
+- Done: `normalize_flux_scale.py` -> image flux-scale normalization; PyBDSF
+  source catalog, Measurement Set metadata, reference catalogs/skymodels, and
+  output normalization h5parm; medium FITS/catalog payloads; helper tests now
+  import the execution module and CLI parity coverage exists.
+- Done: `calculate_image_diagnostics.py` -> image diagnostics; FITS image/RMS
+  products, PyBDSF source catalog, representative Measurement Set metadata,
+  optional comparison skymodels/surveys, JSON diagnostics, and plot products;
+  helper tests now import the execution module and CLI argument parity coverage
+  exists.
+- Script helper logic has been migrated to importable modules. Keep the thin
+  script wrappers until production execution has switched to direct module calls
+  where the payloads are safe for Dask workers, then remove wrappers with parity
+  coverage in place.
 
 Done when:
 

@@ -3,6 +3,8 @@ Test suite for rapthor.scripts.calculate_image_diagnostics.
 """
 
 import logging
+import runpy
+import sys
 from zipfile import Path
 
 import astropy.units as u
@@ -13,14 +15,18 @@ import pytest
 from astropy.coordinates import SkyCoord
 from astropy.table import Table
 
-from rapthor.lib import fitsimage
-from rapthor.scripts.calculate_image_diagnostics import (
+import rapthor.execution.image.diagnostic_calculation as diagnostic_calculation
+import rapthor.scripts.calculate_image_diagnostics
+from rapthor.execution.image.diagnostic_calculation import (
     _rename_plots,
     check_astrometry,
     check_photometry,
     compare_photometry_survey,
     filter_skymodel_for_photometry,
     fits_to_makesourcedb,
+)
+from rapthor.lib import fitsimage
+from rapthor.scripts.calculate_image_diagnostics import (
     parse_args,
 )
 
@@ -289,7 +295,7 @@ def test_check_photometry_with_comparison_skymodel_does_not_access_internet(
     )
 
     mocker.patch(
-        "rapthor.scripts.calculate_image_diagnostics.compare_photometry_survey",
+        "rapthor.execution.image.diagnostic_calculation.compare_photometry_survey",
         return_value={
             "meanRatio": 1,
             "stdRatio": 1,
@@ -306,7 +312,7 @@ def test_check_photometry_with_comparison_skymodel_does_not_access_internet(
         },
     )
     mocker.patch(
-        "rapthor.scripts.calculate_image_diagnostics._rename_plots",
+        "rapthor.execution.image.diagnostic_calculation._rename_plots",
         autospec=True,
     )
 
@@ -554,6 +560,70 @@ def test_calculate_image_diagnostics_parse_args(monkeypatch, allow_internet_acce
     assert args.allow_internet_access is allow_internet_access
 
 
+def test_calculate_image_diagnostics_cli_forwards_arguments(monkeypatch):
+    calls = []
+
+    def fake_calculate_image_diagnostics(*args, **kwargs):
+        calls.append((args, kwargs))
+
+    monkeypatch.setattr(
+        diagnostic_calculation,
+        "calculate_image_diagnostics",
+        fake_calculate_image_diagnostics,
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "calculate_image_diagnostics.py",
+            "flat_noise_image",
+            "flat_noise_rms_image",
+            "true_sky_image",
+            "true_sky_rms_image",
+            "input_catalog",
+            "obs_ms",
+            "obs_starttime",
+            "42",
+            "diagnostics_file",
+            "output_root",
+            "--facet_region_file=facets.reg",
+            "--allow_internet_access",
+            "--photometry_comparison_skymodel=photometry.txt",
+            "--photometry_backup_survey=VLSSr",
+            "--astrometry_comparison_skymodel=astrometry.txt",
+            "--min_number=7",
+        ],
+    )
+
+    runpy.run_path(rapthor.scripts.calculate_image_diagnostics.__file__, run_name="__main__")
+
+    assert calls == [
+        (
+            (
+                "flat_noise_image",
+                "flat_noise_rms_image",
+                "true_sky_image",
+                "true_sky_rms_image",
+                "input_catalog",
+                "obs_ms",
+                "obs_starttime",
+                "42",
+                "diagnostics_file",
+                "output_root",
+            ),
+            {
+                "facet_region_file": "facets.reg",
+                "allow_internet_access": True,
+                "photometry_comparison_skymodel": "photometry.txt",
+                "photometry_comparison_surveys": ["TGSS", "LOTSS"],
+                "photometry_backup_survey": "VLSSr",
+                "astrometry_comparison_skymodel": "astrometry.txt",
+                "min_number": 7,
+            },
+        )
+    ]
+
+
 # ---------------------------------------------------------------------------- #
 # Test: fits_to_makesourcedb
 
@@ -754,7 +824,7 @@ def test_check_photometry_expected_plots(
         return original_table_read(*args, **kwargs)
 
     monkeypatch.setattr(
-        "rapthor.scripts.calculate_image_diagnostics.Table.read",
+        "rapthor.execution.image.diagnostic_calculation.Table.read",
         patched_table_read,
     )
     comparison_skymodel = fits_to_makesourcedb(
@@ -763,7 +833,7 @@ def test_check_photometry_expected_plots(
         flux_colname="Total_flux",
     )
     monkeypatch.setattr(
-        "rapthor.scripts.calculate_image_diagnostics.load_photometry_surveys",
+        "rapthor.execution.image.diagnostic_calculation.load_photometry_surveys",
         lambda *args, **kwargs: {"USER_SUPPLIED": comparison_skymodel},
     )
     monkeypatch.chdir(tmp_path)

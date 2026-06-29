@@ -12,8 +12,9 @@ import pytest
 from astropy.coordinates import SkyCoord
 from astropy.io import fits
 
+import rapthor.execution.image.flux_normalization as flux_normalization
 import rapthor.scripts.normalize_flux_scale
-from rapthor.scripts.normalize_flux_scale import (
+from rapthor.execution.image.flux_normalization import (
     _cross_match_sources,
     _download_survey_data,
     _get_data_from_skymodel,
@@ -28,7 +29,7 @@ from rapthor.scripts.normalize_flux_scale import (
     fit_sed,
     get_field_phase_center,
     get_output_frequencies,
-    main,
+    normalize_flux_scale,
     read_source_catalog,
 )
 
@@ -37,7 +38,7 @@ from rapthor.scripts.normalize_flux_scale import (
 def mock_survey_catalog(mocker, true_sky_model):
     """Mock lsmtool.load to return a valid non-empty survey sky model."""
     return mocker.patch(
-        "rapthor.scripts.normalize_flux_scale.lsmtool.load",
+        "rapthor.execution.image.flux_normalization.lsmtool.load",
         return_value=true_sky_model,
     )
 
@@ -46,7 +47,7 @@ def mock_survey_catalog(mocker, true_sky_model):
 def mock_survey_catalog_with_no_sources(mocker):
     """Mock lsmtool.load to return an empty survey sky model."""
     return mocker.patch(
-        "rapthor.scripts.normalize_flux_scale.lsmtool.load",
+        "rapthor.execution.image.flux_normalization.lsmtool.load",
         return_value=[],
     )
 
@@ -315,16 +316,14 @@ def test_main(
     Test the main function of the normalize_flux_scale script.
     """
     # Spy on match_coordinates_sky to ensure it is called
-    match_coordinates_sky_spy = mocker.spy(
-        rapthor.scripts.normalize_flux_scale, "match_coordinates_sky"
-    )
-    normalize_ra_dec_spy = mocker.spy(rapthor.scripts.normalize_flux_scale, "normalize_ra_dec")
+    match_coordinates_sky_spy = mocker.spy(flux_normalization, "match_coordinates_sky")
+    normalize_ra_dec_spy = mocker.spy(flux_normalization, "normalize_ra_dec")
     # Mock the fit_sed function to return a function that always returns 1.0
-    mocker.patch("rapthor.scripts.normalize_flux_scale.fit_sed", return_value=lambda x: 1.0)
+    mocker.patch("rapthor.execution.image.flux_normalization.fit_sed", return_value=lambda x: 1.0)
 
     output_h5parm = str(tmp_path / "test_output.h5parm")
     with caplog.at_level("INFO"):
-        main(
+        normalize_flux_scale(
             source_catalog_fits,
             test_ms,
             output_h5parm,
@@ -374,7 +373,7 @@ def test_main_raises_error_if_zero_channels_in_source_catalog(
     with pytest.raises(
         ValueError, match="No channel frequency columns were found in the input source catalog."
     ):
-        main(
+        normalize_flux_scale(
             source_catalog_zero_channels_fits,
             test_ms,
             str(tmp_path / "test_output.h5parm"),
@@ -395,7 +394,7 @@ def test_main_skips_normalization_if_too_few_sources_before_cuts(
     Test that the main function skips normalization if there are too few sources.
     """
     with caplog.at_level("INFO"):
-        main(
+        normalize_flux_scale(
             source_catalog_fits,
             test_ms,
             str(tmp_path / "test_output.h5parm"),
@@ -419,7 +418,7 @@ def test_main_skips_normalization_if_too_few_sources_after_cuts(
     Test that the main function skips normalization if there are too few sources after applying cuts.
     """
     with caplog.at_level("INFO"):
-        main(
+        normalize_flux_scale(
             source_catalog_fits,
             test_ms,
             str(tmp_path / "test_output.h5parm"),
@@ -444,12 +443,12 @@ def test_main_raises_error_if_download_fails(
     """
     # Mock the lsmtool.load function to raise a ConnectionError
     mocker.patch(
-        "rapthor.scripts.normalize_flux_scale.lsmtool.load",
+        "rapthor.execution.image.flux_normalization.lsmtool.load",
         side_effect=ConnectionError("Mocked connection error"),
     )
 
     with caplog.at_level("ERROR"):
-        main(
+        normalize_flux_scale(
             source_catalog_fits,
             test_ms,
             str(tmp_path / "test_output.h5parm"),
@@ -473,10 +472,10 @@ def test_main_skips_normalization_if_no_sources_in_survey_catalog(
     Test that the main function skips normalization if no sources are found in the survey catalog.
     """
     # Mock the lsmtool.load function to return an empty skymodel
-    mocker.patch("rapthor.scripts.normalize_flux_scale.lsmtool.load", return_value=[])
+    mocker.patch("rapthor.execution.image.flux_normalization.lsmtool.load", return_value=[])
 
     with caplog.at_level("WARNING"):
-        main(
+        normalize_flux_scale(
             source_catalog_fits,
             test_ms,
             str(tmp_path / "test_output.h5parm"),
@@ -505,10 +504,12 @@ def test_main_logs_warning_when_too_few_sources_with_valid_fits(
     Test that the main function logs a warning when too few sources have valid SED fits.
     """
     # Mock the fit_sed function to return a function that always returns NaN
-    mocker.patch("rapthor.scripts.normalize_flux_scale.fit_sed", return_value=lambda x: np.nan)
+    mocker.patch(
+        "rapthor.execution.image.flux_normalization.fit_sed", return_value=lambda x: np.nan
+    )
 
     with caplog.at_level("WARNING"):
-        main(
+        normalize_flux_scale(
             source_catalog_fits,
             test_ms,
             str(tmp_path / "test_output.h5parm"),
@@ -540,10 +541,10 @@ def test_main_weights_by_flux_error(
     Test that the main function correctly applies weighting by flux error when the flag is set.
     """
     # Mock the normalization calculations to ensure there are valid fits for the test
-    mocker.patch("rapthor.scripts.normalize_flux_scale.find_normalizations", return_value=1.0)
+    mocker.patch("rapthor.execution.image.flux_normalization.find_normalizations", return_value=1.0)
 
     with caplog.at_level("INFO"):
-        main(
+        normalize_flux_scale(
             source_catalog_fits,
             test_ms,
             str(tmp_path / "test_output.h5parm"),
@@ -580,10 +581,10 @@ def test_main_ignores_frequency_dependence(
     Test that the main function ignores frequency dependence when the flag is set.
     """
     # Mock the normalization calculations to ensure there are valid fits for the test
-    mocker.patch("rapthor.scripts.normalize_flux_scale.find_normalizations", return_value=1.0)
+    mocker.patch("rapthor.execution.image.flux_normalization.find_normalizations", return_value=1.0)
 
     with caplog.at_level("INFO"):
-        main(
+        normalize_flux_scale(
             source_catalog_fits,
             test_ms,
             str(tmp_path / "test_output.h5parm"),
@@ -734,7 +735,7 @@ def test_download_get_survey_data_download_fails(survey, mocker):
     """
     # Mock the lsmtool.load function to raise a ConnectionError
     mocker.patch(
-        "rapthor.scripts.normalize_flux_scale.lsmtool.load",
+        "rapthor.execution.image.flux_normalization.lsmtool.load",
         side_effect=ConnectionError("Mocked connection error"),
     )
     survey_data = _download_survey_data(

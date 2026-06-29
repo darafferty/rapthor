@@ -32,6 +32,8 @@ PURE_EXECUTION_MODULES = (
     RAPTHOR_ROOT / "execution" / "concatenate" / "payloads.py",
     RAPTHOR_ROOT / "execution" / "image" / "commands.py",
     RAPTHOR_ROOT / "execution" / "image" / "cubes.py",
+    RAPTHOR_ROOT / "execution" / "image" / "diagnostic_calculation.py",
+    RAPTHOR_ROOT / "execution" / "image" / "flux_normalization.py",
     RAPTHOR_ROOT / "execution" / "image" / "outputs.py",
     RAPTHOR_ROOT / "execution" / "image" / "payloads.py",
     RAPTHOR_ROOT / "execution" / "image" / "restoration.py",
