@@ -59,9 +59,10 @@ execution-owned module adapters.
 - Done: `filter_skymodel.py` now runs through
   `python -m rapthor.execution.image.skymodel_filter_cli`, with the production
   logic still in `rapthor.execution.image.skymodel_filter.filter_image_skymodel`.
-- Remove `rapthor/scripts/mpi_runner.sh`:
-  - confirm there are no runtime references beyond packaging metadata
-  - delete the script and remove it from `pyproject.toml`
+- Done: removed `rapthor/scripts/mpi_runner.sh`; there were no runtime
+  references beyond packaging metadata.
+- Done: removed the now-empty `rapthor/scripts` package marker and stale
+  `scripts/*` package-data entry.
 - Move `bin/plotrapthor` to execution-owned calibration plotting modules:
   - move plotting logic to `rapthor.execution.calibrate.plotting.plot_solutions`
   - add a small CLI adapter such as `rapthor.execution.calibrate.plotting_cli`
@@ -73,10 +74,8 @@ execution-owned module adapters.
 
 ### 2. Final Script-Migration Polish
 
-After the entry points move:
+After the remaining entry point moves:
 
-- Remove `rapthor/scripts/__init__.py` and the `scripts/*` package-data entry if
-  `rapthor/scripts` is empty.
 - Move or remove remaining `tests/scripts` files once their coverage lives under
   `tests/execution`.
 - Add a shared command helper for `python -m rapthor.execution...` module
