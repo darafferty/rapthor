@@ -1583,15 +1583,17 @@ def test_run_image_flow_executes_no_dde_commands_and_returns_records(
     assert "sector_1.flat_noise_rms.fits" in fits_published[0][0]
     assert "sector_1.true_sky_rms.fits" in fits_published[0][0]
     validate_output_record(outputs["sector_I_images"])
-    command_names = [
-        shlex.split(instance.kwargs["commands"][0])[0]
+    commands = [
+        shlex.split(instance.kwargs["commands"][0])
         for instance in fake_image_shell_operation_cls.instances
     ]
+    command_names = [command[0] for command in commands]
     assert command_names == [
         "DP3",
         "DP3",
         "taql",
         "wsclean",
+        "filter_skymodel.py",
     ]
     assert fake_direct_image_helpers["select_concatenation_command"] == [
         {
@@ -1623,9 +1625,10 @@ def test_run_image_flow_executes_no_dde_commands_and_returns_records(
         (str(tmp_path / "sector_1-MFS-I-image.fits"), 0.0),
         (str(tmp_path / "sector_1-MFS-I-image-pb.fits"), 0.0),
     }
-    assert fake_direct_image_helpers["filter_image_skymodel"][0]["output_root"] == str(
-        tmp_path / "sector_1"
-    )
+    filter_command = commands[-1]
+    assert filter_command[5] == str(tmp_path / "sector_1")
+    assert "--ncores=4" in filter_command
+    assert fake_direct_image_helpers["filter_image_skymodel"] == []
     assert fake_direct_image_helpers["calculate_image_diagnostics"][0]["output_root"] == str(
         tmp_path / "sector_1"
     )
@@ -1712,9 +1715,12 @@ def test_run_image_flow_allows_missing_source_filtering_mask(
 
     monkeypatch.setattr(image_outputs_module, "filter_image_skymodel", fake_filter_without_mask)
 
+    payload = image_payload_from_inputs(_image_input_parms(), tmp_path)
+    payload["sectors"][0]["max_threads"] = 1
+
     outputs = run_flow_for_test(
         image_flow,
-        image_payload_from_inputs(_image_input_parms(), tmp_path),
+        payload,
         execution_config=ExecutionConfig(task_runner="sync"),
         shell_operation_cls=fake_image_shell_operation_cls,
     )
@@ -1754,7 +1760,7 @@ def test_run_image_flow_reuses_existing_wsclean_products_on_restart(
         shlex.split(instance.kwargs["commands"][0])[0]
         for instance in fake_image_shell_operation_cls.instances
     ]
-    assert command_names == []
+    assert command_names == ["filter_skymodel.py"]
 
 
 def test_run_image_flow_restores_bright_sources_before_filtering(
@@ -1785,6 +1791,7 @@ def test_run_image_flow_restores_bright_sources_before_filtering(
         "wsclean",
         "wsclean",
         "wsclean",
+        "filter_skymodel.py",
     ]
     restore_commands = [
         command for command in commands if command[0] == "wsclean" and "-restore-list" in command
@@ -1809,10 +1816,9 @@ def test_run_image_flow_restores_bright_sources_before_filtering(
             "sector_1-MFS-I-image.fits",
         ],
     ]
-    assert (
-        fake_direct_image_helpers["filter_image_skymodel"][0]["kwargs"]["bright_true_sky_skymodel"]
-        == "/data/bright_sources_pb.txt"
-    )
+    filter_command = [command for command in commands if command[0] == "filter_skymodel.py"][0]
+    assert "--bright_true_sky_skymodel=/data/bright_sources_pb.txt" in filter_command
+    assert fake_direct_image_helpers["filter_image_skymodel"] == []
 
 
 def test_run_image_flow_executes_facet_commands_and_returns_region_file(
@@ -1841,6 +1847,7 @@ def test_run_image_flow_executes_facet_commands_and_returns_region_file(
         "DP3",
         "taql",
         "wsclean",
+        "filter_skymodel.py",
     ]
     assert fake_direct_image_helpers["make_region_file"] == [
         {
@@ -1893,6 +1900,7 @@ def test_run_image_flow_executes_screen_commands_and_writes_aterm_config(
         "DP3",
         "taql",
         "wsclean",
+        "filter_skymodel.py",
     ]
     screen_command = next(
         shlex.split(instance.kwargs["commands"][0])
@@ -2092,6 +2100,7 @@ def test_run_image_flow_returns_compressed_image_outputs(tmp_path, fake_image_sh
         "DP3",
         "taql",
         "wsclean",
+        "filter_skymodel.py",
         "fpack",
     ]
 
@@ -2116,6 +2125,7 @@ def test_run_image_flow_returns_filtered_model_image(tmp_path, fake_image_shell_
         "DP3",
         "taql",
         "wsclean",
+        "filter_skymodel.py",
     ]
 
 
@@ -2216,6 +2226,7 @@ def test_run_image_flow_returns_image_cube_outputs(tmp_path, fake_image_shell_op
         "DP3",
         "taql",
         "wsclean",
+        "filter_skymodel.py",
     ]
 
 
@@ -2289,6 +2300,7 @@ def test_run_image_flow_returns_normalization_outputs(tmp_path, fake_image_shell
         "DP3",
         "taql",
         "wsclean",
+        "filter_skymodel.py",
     ]
 
 
@@ -2324,7 +2336,7 @@ def test_image_prefect_flow_entrypoint_runs_with_mocked_shell(
         )
 
     assert outputs["sector_I_images"][0][0] == file_record(tmp_path / "sector_1-MFS-I-image.fits")
-    assert len(fake_image_shell_operation_cls.instances) == 4
+    assert len(fake_image_shell_operation_cls.instances) == 5
 
 
 def test_run_image_flow_fails_when_expected_output_is_missing(tmp_path):
@@ -2475,7 +2487,7 @@ def test_image_operation_run_uses_prefect_flow(
     assert sector.diagnostics == [{"cycle_number": 1}]
     assert field.lofar_to_true_flux_ratio == 1.0
     assert field.lofar_to_true_flux_std == 0.0
-    assert len(fake_image_shell_operation_cls.instances) == 4
+    assert len(fake_image_shell_operation_cls.instances) == 5
 
 
 def test_bright_peeling_image_operation_run_uses_prefect_flow(
@@ -2505,10 +2517,9 @@ def test_bright_peeling_image_operation_run_uses_prefect_flow(
     assert Path(operation.done_file).is_file()
     assert len(restore_commands) == 2
     assert all("/data/bright_sources_pb.txt" in command for command in restore_commands)
-    assert (
-        fake_direct_image_helpers["filter_image_skymodel"][0]["kwargs"]["bright_true_sky_skymodel"]
-        == "/data/bright_sources_pb.txt"
-    )
+    filter_command = [command for command in commands if command[0] == "filter_skymodel.py"][0]
+    assert "--bright_true_sky_skymodel=/data/bright_sources_pb.txt" in filter_command
+    assert fake_direct_image_helpers["filter_image_skymodel"] == []
 
 
 def test_image_operation_run_reuses_prefect_outputs_when_done(
@@ -2620,7 +2631,7 @@ def test_full_stokes_image_operation_run_uses_prefect_flow(
     assert sector.diagnostics == [{"cycle_number": 1}]
     assert field.lofar_to_true_flux_ratio == 1.0
     assert field.lofar_to_true_flux_std == 0.0
-    assert len(fake_image_shell_operation_cls.instances) == 4
+    assert len(fake_image_shell_operation_cls.instances) == 5
 
 
 def test_compressed_image_operation_run_uses_prefect_flow(

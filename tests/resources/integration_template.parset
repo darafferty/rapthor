@@ -59,12 +59,12 @@ normalization_reference_frequencies =
 [cluster]
 batch_system = single_machine
 max_nodes = 1
-cpus_per_task = 0
+cpus_per_task = 4
 mem_per_node_gb = 0
-max_cores = 0
-max_threads = 0
-deconvolution_threads = 0
-parallel_gridding_threads = 0
+max_cores = 4
+max_threads = 4
+deconvolution_threads = 2
+parallel_gridding_threads = 2
 local_scratch_dir = 
 global_scratch_dir = 
 use_container = False

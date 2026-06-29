@@ -240,7 +240,8 @@ commands = [
         "--durations=0",
         "--splits", "{env:CI_NODE_TOTAL:1}",
         "--group", "{env:CI_NODE_INDEX:1}",
-        "tests",
+        "tests/integration",
+        "tests/operations/integration",
     ]
 ]
 

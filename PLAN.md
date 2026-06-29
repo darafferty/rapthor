@@ -363,10 +363,15 @@ Progress:
   - time concatenation still runs TAQL as an external command
   - single-input epochs still run copy as an external command
   - the unused concatenate wrapper-command module was removed
-- Note: image source filtering remains a special Dask-worker case. The helper
-  is importable and still runs directly in normal Python processes, but
-  daemonic Dask worker processes run `filter_skymodel.py` as a subprocess
-  because lsmtool/PyBDSF creates Python multiprocessing children internally.
+- Note: image source filtering remains a special PyBDSF isolation case. The
+  helper is importable and directly tested, but execution flows run
+  multi-core `bdsf` filtering through the retained `filter_skymodel.py`
+  subprocess adapter because lsmtool/PyBDSF creates Python multiprocessing
+  children internally and does not behave reliably inside Prefect task
+  processes.
+- Done: integration CI sharding now collects only integration test directories,
+  uses per-shard Prefect/run directories, and caps the integration fixture to
+  four threads per shard to avoid oversubscribing shared CI runners.
 - Done: removed migrated Rapthor script command builders from production command
   modules where the owning flow has already switched to direct Python helpers:
   - mosaic keeps only the `fpack` compression command builder

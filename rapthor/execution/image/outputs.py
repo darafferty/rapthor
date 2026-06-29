@@ -180,6 +180,13 @@ def _current_process_is_daemon() -> bool:
     return bool(multiprocessing.current_process().daemon)
 
 
+def _filter_skymodel_needs_subprocess(source_finder: str, ncores: int) -> bool:
+    """Return whether source filtering should be isolated from the task process."""
+    if _current_process_is_daemon():
+        return True
+    return source_finder.lower() == "bdsf" and ncores != 1
+
+
 def filter_skymodel_products(
     sector: ImageSectorPayload,
     image_name: str,
@@ -203,7 +210,7 @@ def filter_skymodel_products(
     source_finder = str(sector["source_finder"])
     ncores = int(sector["max_threads"])
 
-    if _current_process_is_daemon():
+    if _filter_skymodel_needs_subprocess(source_finder, ncores):
         config = execution_config or ExecutionConfig(task_runner="sync")
         run_external_command(
             build_filter_skymodel_command(
