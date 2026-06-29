@@ -34,7 +34,7 @@ from rapthor.operations.calibrate.base import Calibrate
 from tests.execution.conftest import run_flow_for_test
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
-PLOT_SOLUTIONS_COMMAND_PREFIX = ["python", "-m", PLOT_SOLUTIONS_MODULE]
+PLOT_SOLUTIONS_COMMAND_PREFIX = ["python3", "-m", PLOT_SOLUTIONS_MODULE]
 PLOT_SOLUTIONS_COMMAND_NAME = " ".join(PLOT_SOLUTIONS_COMMAND_PREFIX)
 
 

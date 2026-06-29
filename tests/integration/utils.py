@@ -188,7 +188,7 @@ def get_wsclean_output_mtimes(image_pipeline_dir):
 
 def make_failing_filter_skymodel(fake_bin_dir):
     """Create a PATH-injected Python shim that fails the skymodel filter adapter."""
-    fake_script = fake_bin_dir / "python"
+    fake_script = fake_bin_dir / "python3"
     fake_script.write_text(
         "#!/usr/bin/env python3\n"
         "import os\n"

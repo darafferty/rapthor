@@ -3,8 +3,9 @@ Tests for the `rapthor.lib.miscellaneous` module.
 """
 
 import pytest
-from rapthor.lib.miscellaneous import *
 from astropy.wcs import WCS
+
+from rapthor.lib.miscellaneous import *
 
 
 @pytest.mark.parametrize("image_name", (None,))

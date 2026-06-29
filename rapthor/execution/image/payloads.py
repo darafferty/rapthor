@@ -283,10 +283,14 @@ def image_payload_from_inputs(
     input_normalize_h5parm = optional_file_record_path(input_parms.get("input_normalize_h5parm"))
     photometry_skymodel = optional_file_record_path(input_parms.get("photometry_skymodel"))
     astrometry_skymodel = optional_file_record_path(input_parms.get("astrometry_skymodel"))
+    obs_original_filename = input_parms.get("obs_original_filename", input_parms["obs_filename"])
+    if not isinstance(obs_original_filename, list) or len(obs_original_filename) != sector_count:
+        raise ValueError("obs_original_filename must be a list with one value per sector")
 
     sectors: list[ImageSectorPayload] = []
     for sector_index in range(sector_count):
         obs_records = input_parms["obs_filename"][sector_index]
+        obs_original_records = obs_original_filename[sector_index]
         prepare_filenames = input_parms["prepare_filename"][sector_index]
         starttimes = input_parms["starttime"][sector_index]
         ntimes = input_parms["ntimes"][sector_index]
@@ -302,11 +306,15 @@ def image_payload_from_inputs(
             timesteps,
             maxintervals,
         ]
-        if not all(isinstance(value, list) for value in obs_inputs):
+        if not all(isinstance(value, list) for value in [obs_original_records, *obs_inputs]):
             raise ValueError(f"sector {sector_index} observation inputs must be lists")
         obs_count = len(obs_records)
         if any(len(value) != obs_count for value in obs_inputs):
             raise ValueError(f"sector {sector_index} observation inputs must have the same length")
+        if len(obs_original_records) != obs_count:
+            raise ValueError(
+                f"sector {sector_index} original observation inputs must match obs_filename"
+            )
 
         prepare_tasks: list[ImagePrepareTaskPayload] = []
         for obs_index in range(obs_count):
@@ -528,7 +536,9 @@ def image_payload_from_inputs(
                 "allow_internet_access": bool(input_parms["allow_internet_access"]),
                 "photometry_skymodel": photometry_skymodel,
                 "astrometry_skymodel": astrometry_skymodel,
-                "obs_original_paths": [directory_record_path(record) for record in obs_records],
+                "obs_original_paths": [
+                    directory_record_path(record) for record in obs_original_records
+                ],
                 "obs_starttime": [str(value) for value in starttimes],
                 "obs_ntimes": [int(value) for value in ntimes],
             }

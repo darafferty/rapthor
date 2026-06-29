@@ -57,7 +57,7 @@ Replace the remaining legacy executable/script entry points with
 execution-owned module adapters.
 
 - Done: `filter_skymodel.py` now runs through
-  `python -m rapthor.execution.image.skymodel_filter_cli`, with the production
+  `python3 -m rapthor.execution.image.skymodel_filter_cli`, with the production
   logic still in `rapthor.execution.image.skymodel_filter.filter_image_skymodel`.
 - Done: removed `rapthor/scripts/mpi_runner.sh`; there were no runtime
   references beyond packaging metadata.
@@ -67,7 +67,7 @@ execution-owned module adapters.
   - move plotting logic to `rapthor.execution.calibrate.plotting.plot_solutions`
   - add a small CLI adapter such as `rapthor.execution.calibrate.plotting_cli`
   - update `build_plot_solutions_command` to call the adapter with
-    `python -m rapthor.execution.calibrate.plotting_cli ...`
+    `python3 -m rapthor.execution.calibrate.plotting_cli ...`
   - move `tests/scripts/test_plotrapthor.py` into execution/calibration coverage
   - update command reference fixtures and remove `bin/plotrapthor` from package
     metadata
@@ -78,7 +78,7 @@ After the remaining entry point moves:
 
 - Move or remove remaining `tests/scripts` files once their coverage lives under
   `tests/execution`.
-- Add a shared command helper for `python -m rapthor.execution...` module
+- Add a shared command helper for `python3 -m rapthor.execution...` module
   adapters so filter and plotting commands are built consistently.
 - Tighten architecture tests so production code, package metadata, and command
   fixtures cannot reintroduce retired helper scripts or `plotrapthor`.

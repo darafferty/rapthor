@@ -15,6 +15,7 @@ from rapthor.execution.commands import normalize_command
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.image.commands import (
     ATERM_CONFIG_FILENAME,
+    CUBE_CATALOG_MODULE,
     FILTER_SKYMODEL_MODULE,
     PrepareImagingDataOptions,
     WscleanFacetOptions,
@@ -23,6 +24,7 @@ from rapthor.execution.image.commands import (
     build_aterm_config_content,
     build_compress_sector_images_command,
     build_filter_skymodel_command,
+    build_make_catalog_from_image_cube_command,
     build_prepare_imaging_data_command,
     build_wsclean_facets_command,
     build_wsclean_mpi_facets_command,
@@ -45,8 +47,21 @@ from rapthor.operations.image.normalize import ImageNormalize
 from tests.execution.conftest import run_flow_for_test
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
-FILTER_SKYMODEL_COMMAND_PREFIX = ["python", "-m", FILTER_SKYMODEL_MODULE]
+CUBE_CATALOG_COMMAND_PREFIX = ["python3", "-m", CUBE_CATALOG_MODULE]
+CUBE_CATALOG_COMMAND_NAME = " ".join(CUBE_CATALOG_COMMAND_PREFIX)
+FILTER_SKYMODEL_COMMAND_PREFIX = ["python3", "-m", FILTER_SKYMODEL_MODULE]
 FILTER_SKYMODEL_COMMAND_NAME = " ".join(FILTER_SKYMODEL_COMMAND_PREFIX)
+
+
+def _is_cube_catalog_command(command: list[str]) -> bool:
+    """Return whether command tokens invoke the image-cube catalog adapter."""
+    return command[: len(CUBE_CATALOG_COMMAND_PREFIX)] == CUBE_CATALOG_COMMAND_PREFIX
+
+
+def _cube_catalog_args(command: list[str]) -> list[str]:
+    """Return image-cube catalog adapter arguments without the Python module prefix."""
+    assert _is_cube_catalog_command(command)
+    return command[len(CUBE_CATALOG_COMMAND_PREFIX) :]
 
 
 def _is_filter_skymodel_command(command: list[str]) -> bool:
@@ -62,6 +77,8 @@ def _filter_skymodel_args(command: list[str]) -> list[str]:
 
 def _command_name(command: list[str]) -> str:
     """Return a readable command name for assertions."""
+    if _is_cube_catalog_command(command):
+        return CUBE_CATALOG_COMMAND_NAME
     if _is_filter_skymodel_command(command):
         return FILTER_SKYMODEL_COMMAND_NAME
     return command[0]
@@ -73,7 +90,6 @@ def fake_direct_image_helpers(monkeypatch):
         "blank_image": [],
         "calculate_image_diagnostics": [],
         "filter_image_skymodel": [],
-        "make_catalog_from_image_cube": [],
         "make_image_cube": [],
         "make_region_file": [],
         "normalize_flux_scale": [],
@@ -152,36 +168,6 @@ def fake_direct_image_helpers(monkeypatch):
         output_path.write_text("cube")
         Path(f"{output_image_filename}_beams.txt").write_text("beams")
         Path(f"{output_image_filename}_frequencies.txt").write_text("frequencies")
-
-    def fake_make_catalog_from_image_cube(
-        cube_image,
-        cube_beams,
-        cube_frequencies,
-        output_catalog,
-        threshisl=3.0,
-        threshpix=5.0,
-        rmsbox=(150, 50),
-        rmsbox_bright=(35, 7),
-        adaptive_thresh=75.0,
-        ncores=8,
-    ):
-        calls["make_catalog_from_image_cube"].append(
-            {
-                "cube_image": cube_image,
-                "cube_beams": cube_beams,
-                "cube_frequencies": cube_frequencies,
-                "output_catalog": output_catalog,
-                "threshisl": threshisl,
-                "threshpix": threshpix,
-                "rmsbox": rmsbox,
-                "rmsbox_bright": rmsbox_bright,
-                "adaptive_thresh": adaptive_thresh,
-                "ncores": ncores,
-            }
-        )
-        output_path = Path(output_catalog)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text("catalog")
 
     def fake_normalize_flux_scale(source_catalog, ms_file, output_h5parm, **kwargs):
         calls["normalize_flux_scale"].append(
@@ -313,11 +299,6 @@ def fake_direct_image_helpers(monkeypatch):
     )
     monkeypatch.setattr(image_wsclean_module, "ensure_image_beam", fake_ensure_image_beam)
     monkeypatch.setattr(image_outputs_module, "make_image_cube", fake_make_image_cube)
-    monkeypatch.setattr(
-        image_outputs_module,
-        "make_catalog_from_image_cube",
-        fake_make_catalog_from_image_cube,
-    )
     monkeypatch.setattr(image_outputs_module, "normalize_flux_scale", fake_normalize_flux_scale)
     monkeypatch.setattr(image_outputs_module, "filter_image_skymodel", fake_filter_image_skymodel)
     monkeypatch.setattr(image_outputs_module, "restore_skymodel", fake_restore_skymodel)
@@ -411,6 +392,11 @@ def fake_image_shell_operation_cls():
                 Path(f"{output_root}.image_diagnostics.json").write_text("{}")
                 true_sky_image = Path(filter_args[1])
                 (output_root.parent / f"{true_sky_image.name}.mask.fits").write_text("mask")
+            elif _is_cube_catalog_command(tokens):
+                catalog_args = _cube_catalog_args(tokens)
+                output_catalog = Path(catalog_args[3])
+                output_catalog.parent.mkdir(parents=True, exist_ok=True)
+                output_catalog.write_text("catalog")
             else:
                 raise AssertionError(f"Unexpected command: {tokens[0]}")
             return "OK"
@@ -600,6 +586,12 @@ def _image_input_parms():
                 directory_record("/data/obs_1.ms"),
             ]
         ],
+        "obs_original_filename": [
+            [
+                directory_record("/data/obs_0.ms"),
+                directory_record("/data/obs_1.ms"),
+            ]
+        ],
         "data_colname": "DATA",
         "prepare_filename": [["sector_1_obs_0_prep.ms", "sector_1_obs_1_prep.ms"]],
         "concat_filename": ["sector_1_concat.ms"],
@@ -782,6 +774,7 @@ def _two_sector_image_input_parms():
     input_parms = deepcopy(_image_input_parms())
     per_sector_keys = [
         "obs_filename",
+        "obs_original_filename",
         "prepare_filename",
         "concat_filename",
         "previous_mask_filename",
@@ -1310,6 +1303,24 @@ def test_image_support_command_builders_create_expected_tokens():
         4,
         bright_true_sky_skymodel="bright_sources_pb.txt",
     )
+    assert build_make_catalog_from_image_cube_command(
+        "sector_1_I_freq_cube.fits",
+        "sector_1_I_freq_cube.fits_beams.txt",
+        "sector_1_I_freq_cube.fits_frequencies.txt",
+        "sector_1_source_catalog.fits",
+        4.0,
+        5.0,
+        4,
+    ) == [
+        *CUBE_CATALOG_COMMAND_PREFIX,
+        "sector_1_I_freq_cube.fits",
+        "sector_1_I_freq_cube.fits_beams.txt",
+        "sector_1_I_freq_cube.fits_frequencies.txt",
+        "sector_1_source_catalog.fits",
+        "--threshisl=4.0",
+        "--threshpix=5.0",
+        "--ncores=4",
+    ]
 
 
 def test_image_payload_from_inputs_builds_serializable_no_dde_payload(tmp_path):
@@ -1332,6 +1343,32 @@ def test_image_payload_from_inputs_builds_serializable_no_dde_payload(tmp_path):
         "timestep": 2,
         "maxinterval": 8,
     }
+    assert sector["obs_original_paths"] == ["/data/obs_0.ms", "/data/obs_1.ms"]
+
+
+def test_image_payload_from_inputs_keeps_original_observations_for_diagnostics(tmp_path):
+    input_parms = _image_input_parms()
+    input_parms["obs_filename"] = [
+        [
+            directory_record("/data/predict_1/obs_0.sector_1.ms"),
+            directory_record("/data/predict_1/obs_1.sector_1.ms"),
+        ]
+    ]
+    input_parms["obs_original_filename"] = [
+        [
+            directory_record("/data/obs_0.ms"),
+            directory_record("/data/obs_1.ms"),
+        ]
+    ]
+
+    payload = image_payload_from_inputs(input_parms, tmp_path)
+
+    sector = payload["sectors"][0]
+    assert [task["msin"] for task in sector["prepare_tasks"]] == [
+        "/data/predict_1/obs_0.sector_1.ms",
+        "/data/predict_1/obs_1.sector_1.ms",
+    ]
+    assert sector["obs_original_paths"] == ["/data/obs_0.ms", "/data/obs_1.ms"]
 
 
 def test_image_payload_from_inputs_builds_serializable_facet_payload(tmp_path):
@@ -2882,7 +2919,12 @@ def test_normalize_image_operation_run_uses_prefect_flow(
     assert json.loads(Path(operation.outputs_file).read_text()) == expected_outputs
     assert Path(operation.done_file).is_file()
     assert fake_direct_image_helpers["make_image_cube"]
-    assert fake_direct_image_helpers["make_catalog_from_image_cube"]
+    catalog_command = next(
+        shlex.split(instance.kwargs["commands"][0])
+        for instance in fake_image_shell_operation_cls.instances
+        if _is_cube_catalog_command(shlex.split(instance.kwargs["commands"][0]))
+    )
+    assert "--ncores=4" in catalog_command
     assert fake_direct_image_helpers["normalize_flux_scale"]
     assert field.normalize_h5parm == str(solutions_dir / "sector_1_normalize.h5parm")
     assert (solutions_dir / "sector_1_normalize.h5parm").is_file()

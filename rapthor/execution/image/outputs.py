@@ -9,8 +9,9 @@ from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.image.commands import (
     build_compress_sector_images_command,
     build_filter_skymodel_command,
+    build_make_catalog_from_image_cube_command,
 )
-from rapthor.execution.image.cubes import make_catalog_from_image_cube, make_image_cube
+from rapthor.execution.image.cubes import make_image_cube
 from rapthor.execution.image.flux_normalization import normalize_flux_scale
 from rapthor.execution.image.payloads import ImageCubeSpecPayload, ImageSectorPayload
 from rapthor.execution.image.restoration import restore_skymodel
@@ -130,16 +131,24 @@ def make_normalization_records(
     image_cube_frequencies: dict,
     concat_record: dict,
     sector: ImageSectorPayload,
+    config: ExecutionConfig,
+    shell_operation_cls=None,
 ) -> tuple[dict, dict]:
     """Build the normalization source catalog and flux-scale h5parm."""
-    make_catalog_from_image_cube(
-        image_cube["path"],
-        image_cube_beams["path"],
-        image_cube_frequencies["path"],
-        str(sector["output_source_catalog_path"]),
-        float(sector["threshisl"]),
-        float(sector["threshpix"]),
-        ncores=int(sector["max_threads"]),
+    run_external_command(
+        build_make_catalog_from_image_cube_command(
+            image_cube["path"],
+            image_cube_beams["path"],
+            image_cube_frequencies["path"],
+            str(sector["output_source_catalog_path"]),
+            float(sector["threshisl"]),
+            float(sector["threshpix"]),
+            int(sector["max_threads"]),
+        ),
+        str(Path(image_cube["path"]).parent),
+        config,
+        name="make_catalog_from_image_cube",
+        shell_operation_cls=shell_operation_cls,
     )
     source_catalog = require_file(
         str(sector["output_source_catalog_path"]), "Normalization source catalog"

@@ -151,6 +151,8 @@ def run_image_sector(
             image_cube_frequencies[0],
             concat_record,
             sector,
+            config,
+            shell_operation_cls=shell_operation_cls,
         )
 
     result = {

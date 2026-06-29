@@ -15,7 +15,6 @@ from astropy.time import Time
 from losoto.h5parm import h5parm
 from scipy.interpolate import interp1d
 
-
 # Always use a 0-based origin in wcs_pix2world and wcs_world2pix calls.
 WCS_ORIGIN = 0
 # Default WCS pixel scale within Rapthor

@@ -93,7 +93,7 @@
             "--outh5parm=fulljones_solutions.h5"
         ],
         "plot_fulljones_phase": [
-            "python",
+            "python3",
             "-m",
             "rapthor.execution.calibrate.plotting_cli",
             "fulljones_solutions.h5",

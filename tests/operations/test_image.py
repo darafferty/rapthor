@@ -232,6 +232,23 @@ class TestImage:
             numsamples=first_observation.numsamples,
         )
 
+    def test_set_input_parameters_keeps_original_observations_for_diagnostics(self, field):
+        _prepare_field_for_image(field)
+        field.do_predict = True
+        for sector in field.imaging_sectors:
+            for obs in sector.observations:
+                obs.ms_imaging_filename = f"{obs.ms_filename}.predicted"
+
+        image = Image(field=field, index=1)
+        image.set_parset_parameters()
+        image.set_input_parameters()
+
+        assert image.input_parms["obs_filename"][0][0]["path"].endswith(".predicted")
+        assert (
+            image.input_parms["obs_original_filename"][0][0]["path"]
+            == field.imaging_sectors[0].observations[0].ms_filename
+        )
+
     def test_finalize(self, image):
         image.run()
         image.finalize()

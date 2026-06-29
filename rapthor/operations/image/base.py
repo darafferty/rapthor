@@ -210,6 +210,7 @@ class Image(Operation):
         """Set per-sector imaging parameters and collect flow input lists."""
         values = {
             "obs_filename": [],
+            "obs_original_filename": [],
             "prepare_filename": [],
             "concat_filename": [],
             "previous_mask_filename": [],
@@ -243,6 +244,7 @@ class Image(Operation):
 
             values["image_name"].append(sector.name)
             values["obs_filename"].append(self._sector_observation_filenames(sector))
+            values["obs_original_filename"].append(sector.get_obs_parameters("ms_filename"))
             values["prepare_filename"].append(sector.get_obs_parameters("ms_prep_filename"))
             values["concat_filename"].append(f"{sector.name}_concat.ms")
             if self.field.parset["imaging_specific"]["use_clean_mask"] and sector.I_mask_file:
@@ -342,6 +344,9 @@ class Image(Operation):
         self.input_parms = {
             "obs_filename": [
                 DirectoryRecord(name).to_json() for name in sector_inputs["obs_filename"]
+            ],
+            "obs_original_filename": [
+                DirectoryRecord(name).to_json() for name in sector_inputs["obs_original_filename"]
             ],
             "data_colname": self.field.data_colname,
             "prepare_filename": sector_inputs["prepare_filename"],
