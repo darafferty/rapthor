@@ -1,11 +1,6 @@
-"""
-Test suite for rapthor.scripts.calculate_image_diagnostics.
-"""
+"""Tests for image diagnostic calculation helpers."""
 
 import logging
-import runpy
-import sys
-from zipfile import Path
 
 import astropy.units as u
 import lsmtool
@@ -15,8 +10,6 @@ import pytest
 from astropy.coordinates import SkyCoord
 from astropy.table import Table
 
-import rapthor.execution.image.diagnostic_calculation as diagnostic_calculation
-import rapthor.scripts.calculate_image_diagnostics
 from rapthor.execution.image.diagnostic_calculation import (
     _rename_plots,
     check_astrometry,
@@ -26,9 +19,6 @@ from rapthor.execution.image.diagnostic_calculation import (
     fits_to_makesourcedb,
 )
 from rapthor.lib import fitsimage
-from rapthor.scripts.calculate_image_diagnostics import (
-    parse_args,
-)
 
 # ---------------------------------------------------------------------------- #
 
@@ -511,117 +501,6 @@ def test_check_astrometry_with_no_internet_access_does_not_access_internet(
         assert "internet access is not permitted" in caplog.text
 
     assert diagnostics_dict == {}
-
-
-# ---------------------------------------------------------------------------- #
-# Test: parse_args
-
-
-@pytest.mark.parametrize("allow_internet_access", [True, False])
-def test_calculate_image_diagnostics_parse_args(monkeypatch, allow_internet_access):
-    """
-    Test that parse_args() is called with the correct default arguments when the CLI is invoked without the --allow_internet_access flag.
-    """
-    monkeypatch.setattr(
-        "sys.argv",
-        [
-            "calculate_image_diagnostics",
-            "flat_noise_image",
-            "flat_noise_rms_image",
-            "true_sky_image",
-            "true_sky_rms_image",
-            "input_catalog",
-            "obs_ms",
-            "obs_starttime",
-            "obs_ntimes",
-            "diagnostics_file",
-            "output_root",
-        ]
-        + (["--allow_internet_access"] if allow_internet_access else []),
-    )
-    args = parse_args()
-    assert args.flat_noise_image == "flat_noise_image"
-    assert args.flat_noise_rms_image == "flat_noise_rms_image"
-    assert args.true_sky_image == "true_sky_image"
-    assert args.true_sky_rms_image == "true_sky_rms_image"
-    assert args.input_catalog == "input_catalog"
-    assert args.obs_ms == "obs_ms"
-    assert args.obs_starttime == "obs_starttime"
-    assert args.obs_ntimes == "obs_ntimes"
-    assert args.diagnostics_file == "diagnostics_file"
-    assert args.output_root == "output_root"
-
-    assert args.photometry_comparison_skymodel is None
-    assert args.photometry_comparison_surveys == ["TGSS", "LOTSS"]
-    assert args.photometry_backup_survey == "NVSS"
-    assert args.astrometry_comparison_skymodel is None
-    assert args.min_number == 5
-
-    assert args.allow_internet_access is allow_internet_access
-
-
-def test_calculate_image_diagnostics_cli_forwards_arguments(monkeypatch):
-    calls = []
-
-    def fake_calculate_image_diagnostics(*args, **kwargs):
-        calls.append((args, kwargs))
-
-    monkeypatch.setattr(
-        diagnostic_calculation,
-        "calculate_image_diagnostics",
-        fake_calculate_image_diagnostics,
-    )
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        [
-            "calculate_image_diagnostics.py",
-            "flat_noise_image",
-            "flat_noise_rms_image",
-            "true_sky_image",
-            "true_sky_rms_image",
-            "input_catalog",
-            "obs_ms",
-            "obs_starttime",
-            "42",
-            "diagnostics_file",
-            "output_root",
-            "--facet_region_file=facets.reg",
-            "--allow_internet_access",
-            "--photometry_comparison_skymodel=photometry.txt",
-            "--photometry_backup_survey=VLSSr",
-            "--astrometry_comparison_skymodel=astrometry.txt",
-            "--min_number=7",
-        ],
-    )
-
-    runpy.run_path(rapthor.scripts.calculate_image_diagnostics.__file__, run_name="__main__")
-
-    assert calls == [
-        (
-            (
-                "flat_noise_image",
-                "flat_noise_rms_image",
-                "true_sky_image",
-                "true_sky_rms_image",
-                "input_catalog",
-                "obs_ms",
-                "obs_starttime",
-                "42",
-                "diagnostics_file",
-                "output_root",
-            ),
-            {
-                "facet_region_file": "facets.reg",
-                "allow_internet_access": True,
-                "photometry_comparison_skymodel": "photometry.txt",
-                "photometry_comparison_surveys": ["TGSS", "LOTSS"],
-                "photometry_backup_survey": "VLSSr",
-                "astrometry_comparison_skymodel": "astrometry.txt",
-                "min_number": 7,
-            },
-        )
-    ]
 
 
 # ---------------------------------------------------------------------------- #

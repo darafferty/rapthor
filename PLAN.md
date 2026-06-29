@@ -496,6 +496,10 @@ Progress:
   `make_catalog_from_image_cube.py`, and `restore_skymodel.py`). Their direct
   helper coverage now lives under `tests/execution`, and the wrapper paths have
   been removed from package metadata.
+- Done: retired the remaining image-product wrappers
+  (`normalize_flux_scale.py` and `calculate_image_diagnostics.py`). Their
+  direct helper coverage now lives under `tests/execution`, and the wrapper
+  paths have been removed from package metadata.
 
 Done when:
 

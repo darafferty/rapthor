@@ -119,10 +119,8 @@ script-files = [
     "bin/rapthor",
     "scripts/dev/run-rapthor-slurm-dev.sbatch",
     "scripts/prod/run-rapthor-slurm.sbatch",
-    "rapthor/scripts/calculate_image_diagnostics.py",
     "rapthor/scripts/filter_skymodel.py",
     "rapthor/scripts/mpi_runner.sh",
-    "rapthor/scripts/normalize_flux_scale.py",
 ]
 
 [tool.setuptools.package-data]
@@ -266,8 +264,6 @@ commands = [
         "rapthor/lib/strategy.py",
         "rapthor/operations/calibrate",
         "rapthor/operations/image",
-        "rapthor/scripts/calculate_image_diagnostics.py",
-        "rapthor/scripts/normalize_flux_scale.py",
         "tests/__init__.py",
         "tests/architecture",
         "tests/conftest.py",
@@ -277,8 +273,6 @@ commands = [
         "tests/lib/test_parset.py",
         "tests/lib/test_strategy.py",
         "tests/operations/test_calibrate.py",
-        "tests/scripts/test_calculate_image_diagnostics.py",
-        "tests/scripts/test_normalize_flux_scale.py",
     ],
     [
         # Check general formatting
@@ -289,8 +283,6 @@ commands = [
         "rapthor/lib/strategy.py",
         "rapthor/operations/calibrate",
         "rapthor/operations/image",
-        "rapthor/scripts/calculate_image_diagnostics.py",
-        "rapthor/scripts/normalize_flux_scale.py",
         "tests/__init__.py",
         "tests/architecture",
         "tests/conftest.py",
@@ -300,8 +292,6 @@ commands = [
         "tests/lib/test_parset.py",
         "tests/lib/test_strategy.py",
         "tests/operations/test_calibrate.py",
-        "tests/scripts/test_calculate_image_diagnostics.py",
-        "tests/scripts/test_normalize_flux_scale.py",
     ]
 ]
 
@@ -315,8 +305,6 @@ format_targets = [
     "rapthor/lib/strategy.py",
     "rapthor/operations/calibrate",
     "rapthor/operations/image",
-    "rapthor/scripts/calculate_image_diagnostics.py",
-    "rapthor/scripts/normalize_flux_scale.py",
     "tests/__init__.py",
     "tests/architecture",
     "tests/conftest.py",
@@ -326,8 +314,6 @@ format_targets = [
     "tests/lib/test_parset.py",
     "tests/lib/test_strategy.py",
     "tests/operations/test_calibrate.py",
-    "tests/scripts/test_calculate_image_diagnostics.py",
-    "tests/scripts/test_normalize_flux_scale.py"
 ]
 commands = [
     [
@@ -339,8 +325,6 @@ commands = [
         "rapthor/lib/strategy.py",
         "rapthor/operations/calibrate",
         "rapthor/operations/image",
-        "rapthor/scripts/calculate_image_diagnostics.py",
-        "rapthor/scripts/normalize_flux_scale.py",
         "tests/__init__.py",
         "tests/architecture",
         "tests/conftest.py",
@@ -350,8 +334,6 @@ commands = [
         "tests/lib/test_parset.py",
         "tests/lib/test_strategy.py",
         "tests/operations/test_calibrate.py",
-        "tests/scripts/test_calculate_image_diagnostics.py",
-        "tests/scripts/test_normalize_flux_scale.py",
     ],
     [
         # format code
@@ -362,8 +344,6 @@ commands = [
         "rapthor/lib/strategy.py",
         "rapthor/operations/calibrate",
         "rapthor/operations/image",
-        "rapthor/scripts/calculate_image_diagnostics.py",
-        "rapthor/scripts/normalize_flux_scale.py",
         "tests/__init__.py",
         "tests/architecture",
         "tests/conftest.py",
@@ -373,8 +353,6 @@ commands = [
         "tests/lib/test_parset.py",
         "tests/lib/test_strategy.py",
         "tests/operations/test_calibrate.py",
-        "tests/scripts/test_calculate_image_diagnostics.py",
-        "tests/scripts/test_normalize_flux_scale.py",
     ],
 
 ]

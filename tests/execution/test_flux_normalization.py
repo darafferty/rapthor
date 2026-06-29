@@ -1,9 +1,6 @@
-"""
-Test cases for the normalize_flux_scale script in the rapthor package.
-"""
+"""Tests for image flux-scale normalization helpers."""
 
 import os
-import runpy
 from pathlib import Path
 
 import astropy.units as u
@@ -13,7 +10,6 @@ from astropy.coordinates import SkyCoord
 from astropy.io import fits
 
 import rapthor.execution.image.flux_normalization as flux_normalization
-import rapthor.scripts.normalize_flux_scale
 from rapthor.execution.image.flux_normalization import (
     _cross_match_sources,
     _download_survey_data,
@@ -313,7 +309,7 @@ def test_main(
     mock_survey_catalog,
 ):
     """
-    Test the main function of the normalize_flux_scale script.
+    Test the flux-scale normalization helper.
     """
     # Spy on match_coordinates_sky to ensure it is called
     match_coordinates_sky_spy = mocker.spy(flux_normalization, "match_coordinates_sky")
@@ -912,34 +908,3 @@ def test_get_source_data(source_catalog):
     assert rapthor_fluxes.shape[0] == n_chan
     assert rapthor_errors.shape[0] == n_chan
     assert rapthor_frequencies.shape[0] == n_chan
-
-
-def test_normalize_flux_scale_cli_entrypoint(
-    monkeypatch,
-    source_catalog_fits,
-    test_ms,
-    tmp_path,
-    true_sky_path,
-    apparent_sky_path,
-):
-    """Test that the module CLI entrypoint parses arguments and runs successfully."""
-    output_h5parm = tmp_path / "cli_output.h5"
-    monkeypatch.setattr(
-        "sys.argv",
-        [
-            "normalize_flux_scale.py",
-            source_catalog_fits,
-            test_ms,
-            str(output_h5parm),
-            "--reference_skymodels",
-            str(true_sky_path),
-            str(apparent_sky_path),
-            "--reference_skymodels_frequencies",
-            "142000000.0",
-            "142100000.0",
-        ],
-    )
-
-    runpy.run_path(rapthor.scripts.normalize_flux_scale.__file__, run_name="__main__")
-
-    assert output_h5parm.exists(), f"Expected {output_h5parm} to be created."

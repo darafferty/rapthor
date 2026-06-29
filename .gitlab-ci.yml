@@ -258,7 +258,7 @@ run_tests:
 
 run_integration_tests:
   extends: .run_integration_tests
-  parallel: 8
+  parallel: 4
   script:
     - export RAPTHOR_TEST_RUN_ROOT="$CI_PROJECT_DIR/ci/i/node-$CI_NODE_INDEX"
     - export PREFECT_HOME="$CI_PROJECT_DIR/ci/prefect-home/node-$CI_NODE_INDEX"
