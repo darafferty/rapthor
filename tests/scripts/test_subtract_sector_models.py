@@ -2,14 +2,21 @@
 Tests for the subtract_sector_models script.
 """
 
+import runpy
 import shutil
+import sys
 from unittest.mock import patch
 
 import casacore.tables as pt
 import numpy as np
 
-from rapthor.scripts import subtract_sector_models
-from rapthor.scripts.subtract_sector_models import CovWeights, get_nchunks, main, readGainFile
+import rapthor.execution.predict.sector_model_subtraction as sector_model_subtraction
+from rapthor.execution.predict.sector_model_subtraction import (
+    CovWeights,
+    get_nchunks,
+    readGainFile,
+    subtract_sector_models,
+)
 
 
 def _copy_ms(source, destination):
@@ -54,9 +61,9 @@ def test_main_subtracts_other_sector_models(test_ms, tmp_path, monkeypatch):
     _write_data_column(model_a, 2.0 + 0.0j)
     _write_data_column(model_b, 3.0 + 0.0j)
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(subtract_sector_models, "get_nchunks", lambda *args, **kwargs: 1)
+    monkeypatch.setattr(sector_model_subtraction, "get_nchunks", lambda *args, **kwargs: 1)
 
-    main(
+    subtract_sector_models(
         str(msin),
         [str(model_a), str(model_b)],
         msin_column="DATA",
@@ -122,3 +129,75 @@ def test_read_gain_file_returns_unity_gains_for_phaseonly():
     assert np.all(ant2gainarray == 1.0)
     assert ant1gainarray.shape == (nt * nbl, nchan)
     assert ant2gainarray.shape == (nt * nbl, nchan)
+
+
+def test_subtract_sector_models_cli_forwards_arguments(monkeypatch):
+    calls = []
+
+    def fake_subtract_sector_models(*args, **kwargs):
+        calls.append((args, kwargs))
+
+    monkeypatch.setattr(
+        sector_model_subtraction,
+        "subtract_sector_models",
+        fake_subtract_sector_models,
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "subtract_sector_models.py",
+            "input.ms",
+            "[model_a.ms,model_b.ms]",
+            "--msin_column=CORRECTED_DATA",
+            "--model_column=MODEL",
+            "--out_column=SUBTRACTED",
+            "--nr_outliers=1",
+            "--nr_bright=2",
+            "--use_compression=True",
+            "--peel_outliers=True",
+            "--peel_bright=True",
+            "--reweight=False",
+            "--starttime=123.0",
+            "--solint_sec=60.0",
+            "--solint_hz=1000.0",
+            "--weights_colname=WEIGHT_SPECTRUM",
+            "--gainfile=gains.h5",
+            "--uvcut_min=100.0",
+            "--uvcut_max=10000.0",
+            "--phaseonly=False",
+            "--dirname=Patch_0",
+            "--quiet=False",
+            "--infix=.selfcal",
+        ],
+    )
+
+    runpy.run_module("rapthor.scripts.subtract_sector_models", run_name="__main__")
+
+    assert calls == [
+        (
+            ("input.ms", ["model_a.ms", "model_b.ms"]),
+            {
+                "msin_column": "CORRECTED_DATA",
+                "model_column": "MODEL",
+                "out_column": "SUBTRACTED",
+                "nr_outliers": 1,
+                "nr_bright": 2,
+                "use_compression": "True",
+                "peel_outliers": "True",
+                "peel_bright": "True",
+                "reweight": "False",
+                "starttime": "123.0",
+                "solint_sec": 60.0,
+                "solint_hz": 1000.0,
+                "weights_colname": "WEIGHT_SPECTRUM",
+                "gainfile": "gains.h5",
+                "uvcut_min": 100.0,
+                "uvcut_max": 10000.0,
+                "phaseonly": "False",
+                "dirname": "Patch_0",
+                "quiet": "False",
+                "infix": ".selfcal",
+            },
+        )
+    ]

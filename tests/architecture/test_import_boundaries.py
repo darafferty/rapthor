@@ -46,6 +46,7 @@ PURE_EXECUTION_MODULES = (
     RAPTHOR_ROOT / "execution" / "predict" / "commands.py",
     RAPTHOR_ROOT / "execution" / "predict" / "payloads.py",
     RAPTHOR_ROOT / "execution" / "predict" / "sector_model_addition.py",
+    RAPTHOR_ROOT / "execution" / "predict" / "sector_model_subtraction.py",
     RAPTHOR_ROOT / "execution" / "regions.py",
 )
 

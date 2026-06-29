@@ -134,6 +134,10 @@ Progress:
 - Continued with `add_sector_models.py`: extracted sector model summing to
   `rapthor.execution.predict.sector_model_addition`, kept the script as the CLI
   wrapper, and added direct function plus CLI argument parity coverage.
+- Continued with `subtract_sector_models.py`: extracted sector model
+  subtraction and covariance-weight helpers to
+  `rapthor.execution.predict.sector_model_subtraction`, kept the script as the
+  CLI wrapper, and added direct function plus CLI argument parity coverage.
 
 Script audit and migration order:
 
@@ -174,10 +178,14 @@ Script audit and migration order:
   Measurement Set plus sector model Measurement Sets to summed model-data
   output; large file payloads; direct function and CLI argument parity coverage
   now exist.
+- Done: `subtract_sector_models.py` -> predict model-data subtraction; input
+  Measurement Set plus sector model Measurement Sets to per-sector residual
+  outputs and optional calibration weights; large file payloads; direct
+  function and CLI argument parity coverage now exist.
 - Remaining larger helpers, migrate with extra scientific parity checks:
-  `calculate_image_diagnostics.py`, `normalize_flux_scale.py`, and
-  `subtract_sector_models.py`. These contain larger scientific workflows,
-  heavier external dependencies, or large Measurement Set payloads.
+  `calculate_image_diagnostics.py` and `normalize_flux_scale.py`. These contain
+  larger scientific workflows, heavier external dependencies, or large FITS and
+  catalog payloads.
 
 Done when:
 
