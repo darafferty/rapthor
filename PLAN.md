@@ -100,16 +100,26 @@ starting new scalability work.
      and plot-solution coverage lives under `tests/execution`
    - add a shared helper for execution-owned module adapter commands so
      `python -m rapthor.execution...` invocations are built consistently
+   - split the largest payload modules into clearer contracts, builders, and
+     validation modules before adding more Dask scalability assertions:
+     `rapthor.execution.image.payloads` and
+     `rapthor.execution.calibrate.payloads`
    - tighten architecture tests so production code, package metadata, and
      command fixtures cannot reintroduce retired helper scripts or
      `plotrapthor`
    - replace script-era `print()` calls in execution helpers with logging,
      starting with predict sector model helpers and calibration h5parm-source
      helpers
+   - extract common predict Measurement Set helpers for chunk sizing, output
+     naming, and table handling shared by sector-model addition/subtraction
    - make adapter CLI defaults delegate to execution helper defaults where
      possible, so CLI parsing does not drift from the importable API
    - decide whether `bin/concat_linc_files` is a supported utility or should
      move to the same module-adapter pattern
+   - defer larger scientific-module splits until those areas are touched for
+     behavior changes:
+     `image.diagnostic_calculation`, `image.flux_normalization`, and
+     `calibrate.h5parm_combination`
 5. Update `docs/source/development/architecture.rst` so it reflects the current
    architecture:
    - `rapthor.scripts` is no longer a production pipeline layer
@@ -546,12 +556,18 @@ Tasks:
     adapters move under `tests/execution`
   - add a shared command helper for `python -m rapthor.execution...` module
     adapters
+  - split `image.payloads` and `calibrate.payloads` into contracts, builders,
+    and validation modules before adding new Dask scalability tests
   - tighten architecture tests for package metadata, command fixtures, and
     retired wrapper names
   - replace script-era `print()` calls in execution helpers with logging
+  - extract shared predict Measurement Set helpers for chunk sizing, output
+    naming, and table handling
   - normalize module-adapter CLI defaults with the execution helper signatures
   - decide whether `bin/concat_linc_files` is a supported utility or should be
     migrated to the same module-adapter pattern
+  - defer large scientific-module splits until those modules are touched for
+    behavior changes
 
 Recommended order:
 
@@ -677,15 +693,36 @@ Tasks:
   - `rapthor.execution.image.sector`
   - `rapthor.execution.calibrate.collection`
   - `rapthor.execution.shell`
+- Run a focused post-migration execution-module cleanup:
+  - split `rapthor.execution.image.payloads` into operation contracts,
+    parset/field-to-payload builders, and validation helpers
+  - split `rapthor.execution.calibrate.payloads` along the same contract,
+    builder, and validation boundary
+  - add a shared module-adapter command helper for execution-owned
+    `python -m ...` shell adapters
+  - replace script-era `print()` output in execution helpers with module
+    loggers so Prefect captures structured messages consistently
+  - extract shared predict Measurement Set helpers from
+    `sector_model_addition.py` and `sector_model_subtraction.py`
 - Extract only when the new helper has a clear scientific/workflow name or
   removes meaningful duplication.
 - Do not create empty pass-through modules.
 - Keep finalizer side effects easy to audit.
+- Defer major scientific-module splits until they are already being modified:
+  - `rapthor.execution.image.diagnostic_calculation` can later split into
+    photometry, astrometry, plotting, and orchestration helpers
+  - `rapthor.execution.image.flux_normalization` can later split into catalog
+    loading, source matching, SED fitting, and h5parm writing helpers
+  - `rapthor.execution.calibrate.h5parm_combination` can later move toward
+    named combination strategies instead of one large procedural module
 
 Done when:
 
 - The remaining large methods are either split into named work units or kept
   intentionally with a clear reason.
+- Payload and adapter boundaries are clear enough that the Dask scalability
+  tests can assert task payload shape without reading long mixed-purpose
+  modules.
 
 ### 7. Contributor Documentation
 
