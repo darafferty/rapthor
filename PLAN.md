@@ -359,6 +359,10 @@ Progress:
   - time concatenation still runs TAQL as an external command
   - single-input epochs still run copy as an external command
   - the unused concatenate wrapper-command module was removed
+- Note: image source filtering remains a special Dask-worker case. The helper
+  is importable and still runs directly in normal Python processes, but
+  daemonic Dask worker processes run `filter_skymodel.py` as a subprocess
+  because lsmtool/PyBDSF creates Python multiprocessing children internally.
 - Next: remove remaining migrated Rapthor script command builders from
   production command modules where the owning flow has already switched to
   direct Python helpers, then tackle any remaining script wrapper calls in the

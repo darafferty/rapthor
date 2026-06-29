@@ -1,5 +1,6 @@
 """Image-sector output filename patterns, discovery, and product helpers."""
 
+import multiprocessing
 import os
 from pathlib import Path
 from typing import Mapping, Optional
@@ -7,6 +8,7 @@ from typing import Mapping, Optional
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.image.commands import (
     build_compress_sector_images_command,
+    build_filter_skymodel_command,
 )
 from rapthor.execution.image.cubes import make_catalog_from_image_cube, make_image_cube
 from rapthor.execution.image.flux_normalization import normalize_flux_scale
@@ -173,6 +175,11 @@ def source_list_records(
     return skymodel_nonpb, skymodel_pb
 
 
+def _current_process_is_daemon() -> bool:
+    """Return whether the current process is a daemonic worker."""
+    return bool(multiprocessing.current_process().daemon)
+
+
 def filter_skymodel_products(
     sector: ImageSectorPayload,
     image_name: str,
@@ -181,23 +188,60 @@ def filter_skymodel_products(
     skymodel_nonpb: Optional[Mapping[str, str]],
     skymodel_pb: Optional[Mapping[str, str]],
     pipeline_working_dir: str,
+    execution_config: Optional[ExecutionConfig] = None,
+    shell_operation_cls=None,
 ) -> tuple[dict, dict, dict, dict, dict, dict, Optional[dict]]:
     """Filter skymodel products and return image diagnostics inputs."""
-    filter_image_skymodel(
-        nonpb_image["path"],
-        pb_image["path"],
-        skymodel_pb["path"] if sector["save_source_list"] else "none",
-        skymodel_nonpb["path"] if sector["save_source_list"] else "none",
-        os.path.join(pipeline_working_dir, image_name),
-        str(sector["vertices_file"]),
-        list(sector["obs_original_paths"]),
-        bright_true_sky_skymodel=sector.get("bright_skymodel_pb"),
-        threshisl=float(sector["threshisl"]),
-        threshpix=float(sector["threshpix"]),
-        filter_by_mask=bool(sector["filter_by_mask"]),
-        source_finder=str(sector["source_finder"]),
-        ncores=int(sector["max_threads"]),
-    )
+    true_sky_skymodel = skymodel_pb["path"] if sector["save_source_list"] else "none"
+    apparent_sky_skymodel = skymodel_nonpb["path"] if sector["save_source_list"] else "none"
+    output_root = os.path.join(pipeline_working_dir, image_name)
+    beam_ms = list(sector["obs_original_paths"])
+    bright_true_sky_skymodel = sector.get("bright_skymodel_pb")
+    threshisl = float(sector["threshisl"])
+    threshpix = float(sector["threshpix"])
+    filter_by_mask = bool(sector["filter_by_mask"])
+    source_finder = str(sector["source_finder"])
+    ncores = int(sector["max_threads"])
+
+    if _current_process_is_daemon():
+        config = execution_config or ExecutionConfig(task_runner="sync")
+        run_external_command(
+            build_filter_skymodel_command(
+                nonpb_image["path"],
+                pb_image["path"],
+                true_sky_skymodel,
+                apparent_sky_skymodel,
+                output_root,
+                str(sector["vertices_file"]),
+                beam_ms,
+                threshisl,
+                threshpix,
+                filter_by_mask,
+                source_finder,
+                ncores,
+                bright_true_sky_skymodel=bright_true_sky_skymodel,
+            ),
+            pipeline_working_dir,
+            config,
+            name="filter_skymodel",
+            shell_operation_cls=shell_operation_cls,
+        )
+    else:
+        filter_image_skymodel(
+            nonpb_image["path"],
+            pb_image["path"],
+            true_sky_skymodel,
+            apparent_sky_skymodel,
+            output_root,
+            str(sector["vertices_file"]),
+            beam_ms,
+            bright_true_sky_skymodel=bright_true_sky_skymodel,
+            threshisl=threshisl,
+            threshpix=threshpix,
+            filter_by_mask=filter_by_mask,
+            source_finder=source_finder,
+            ncores=ncores,
+        )
 
     filtered_true_sky = require_file(
         os.path.join(pipeline_working_dir, f"{image_name}.true_sky.txt"),

@@ -352,6 +352,19 @@ def fake_image_shell_operation_cls():
             elif tokens[0] == "fpack":
                 for image in tokens[1:]:
                     Path(f"{image}.fz").write_text("compressed")
+            elif tokens[0] == "filter_skymodel.py":
+                output_root = Path(tokens[5])
+                for suffix in [
+                    ".true_sky.txt",
+                    ".apparent_sky.txt",
+                    ".flat_noise_rms.fits",
+                    ".true_sky_rms.fits",
+                    ".source_catalog.fits",
+                ]:
+                    Path(f"{output_root}{suffix}").write_text("filter")
+                Path(f"{output_root}.image_diagnostics.json").write_text("{}")
+                true_sky_image = Path(tokens[2])
+                (output_root.parent / f"{true_sky_image.name}.mask.fits").write_text("mask")
             else:
                 raise AssertionError(f"Unexpected command: {tokens[0]}")
             return "OK"
@@ -1756,6 +1769,45 @@ def test_run_image_flow_executes_no_dde_commands_and_returns_records(
     assert fake_direct_image_helpers["calculate_image_diagnostics"][0]["output_root"] == str(
         tmp_path / "sector_1"
     )
+
+
+def test_run_image_flow_uses_filter_skymodel_subprocess_in_daemon_worker(
+    tmp_path, monkeypatch, fake_image_shell_operation_cls, fake_direct_image_helpers
+):
+    monkeypatch.setattr(image_outputs_module, "_current_process_is_daemon", lambda: True)
+
+    outputs = run_flow_for_test(
+        image_flow,
+        image_payload_from_inputs(_image_input_parms(), tmp_path),
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_image_shell_operation_cls,
+    )
+
+    assert outputs["filtered_skymodel_true_sky"] == [
+        file_record(tmp_path / "sector_1.true_sky.txt")
+    ]
+    command_tokens = [
+        shlex.split(instance.kwargs["commands"][0])
+        for instance in fake_image_shell_operation_cls.instances
+    ]
+    assert [tokens[0] for tokens in command_tokens] == [
+        "DP3",
+        "DP3",
+        "concat_ms.py",
+        "wsclean",
+        "filter_skymodel.py",
+    ]
+    filter_command = command_tokens[-1]
+    assert filter_command[1:7] == [
+        str(tmp_path / "sector_1-MFS-I-image.fits"),
+        str(tmp_path / "sector_1-MFS-I-image-pb.fits"),
+        str(tmp_path / "sector_1-sources-pb.txt"),
+        str(tmp_path / "sector_1-sources.txt"),
+        str(tmp_path / "sector_1"),
+        "/data/sector_1.vertices",
+    ]
+    assert "--ncores=4" in filter_command
+    assert fake_direct_image_helpers["filter_image_skymodel"] == []
 
 
 def test_run_image_flow_rejects_invalid_prepare_task_payload(

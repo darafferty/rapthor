@@ -107,6 +107,8 @@ def run_image_sector(
         skymodel_nonpb,
         skymodel_pb,
         pipeline_working_dir,
+        execution_config=config,
+        shell_operation_cls=shell_operation_cls,
     )
 
     skymodel_image = make_filtered_model_image(
