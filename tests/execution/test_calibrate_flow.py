@@ -2558,7 +2558,7 @@ def test_run_calibrate_flow_supports_dd_image_predict_preapply(
 
 
 def test_run_calibrate_flow_skips_dd_source_adjustment_for_single_direction(
-    tmp_path, fake_calibrate_shell_operation_cls
+    tmp_path, fake_calibrate_shell_operation_cls, fake_direct_calibrate_helpers
 ):
     input_parms = _dd_fast_medium_input_parms()
     input_parms["calibrator_patch_names"] = ["patch1"]
@@ -2576,11 +2576,7 @@ def test_run_calibrate_flow_skips_dd_source_adjustment_for_single_direction(
     assert outputs["combined_solutions"] == file_record(
         tmp_path / "combined_fast_medium1_phases.h5parm"
     )
-    commands = [
-        shlex.split(instance.kwargs["commands"][0])
-        for instance in fake_calibrate_shell_operation_cls.instances
-    ]
-    assert "adjust_h5parm_sources.py" not in [command[0] for command in commands]
+    assert fake_direct_calibrate_helpers["adjust_h5parm_sources"] == []
 
 
 def test_run_calibrate_flow_supports_dd_with_slow(tmp_path, fake_calibrate_shell_operation_cls):

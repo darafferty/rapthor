@@ -483,6 +483,10 @@ Progress:
   `subtract_sector_models.py`). Their direct Measurement Set helper coverage
   now lives under `tests/execution/test_predict_sector_models.py`, and the
   wrapper paths have been removed from package metadata.
+- Done: retired the calibration helper wrappers (`adjust_h5parm_sources.py`,
+  `collect_screen_h5parms.py`, `combine_h5parms.py`, and `process_gains.py`).
+  Their direct helper coverage now lives under `tests/execution`, and the
+  wrapper paths have been removed from package metadata.
 
 Done when:
 

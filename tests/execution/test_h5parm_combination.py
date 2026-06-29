@@ -1,13 +1,8 @@
-"""
-Test cases for the combine_h5parms script in the rapthor package.
-"""
+"""Tests for h5parm combination execution helpers."""
 
 import numpy as np
 import pytest
-import runpy
-import sys
 
-import rapthor.execution.calibrate.h5parm_combination as h5parm_combination_module
 from rapthor.execution.calibrate.h5parm_combination import (
     average_polarizations,
     combine_h5parms,
@@ -447,43 +442,3 @@ def test_copy_solset_copies_all_soltabs():
 def test_main_rejects_unknown_mode_before_opening_files():
     with pytest.raises(ValueError, match="Mode unknown"):
         combine_h5parms("one.h5", "two.h5", "out.h5", "unknown")
-
-
-def test_combine_h5parms_cli_forwards_arguments(monkeypatch):
-    calls = []
-
-    def fake_combine_h5parms(*args, **kwargs):
-        calls.append((args, kwargs))
-
-    monkeypatch.setattr(
-        h5parm_combination_module,
-        "combine_h5parms",
-        fake_combine_h5parms,
-    )
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        [
-            "combine_h5parms.py",
-            "one.h5",
-            "two.h5",
-            "out.h5",
-            "p1a2",
-            "--reweight=True",
-            "--cal_names=[a,b]",
-            "--cal_fluxes=[1,2]",
-        ],
-    )
-
-    runpy.run_module("rapthor.scripts.combine_h5parms", run_name="__main__")
-
-    assert calls == [
-        (
-            ("one.h5", "two.h5", "out.h5", "p1a2"),
-            {
-                "reweight": "True",
-                "cal_names": "[a,b]",
-                "cal_fluxes": "[1,2]",
-            },
-        )
-    ]

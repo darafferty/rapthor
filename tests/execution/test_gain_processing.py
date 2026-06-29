@@ -1,11 +1,7 @@
-"""
-Tests for the process_gains.py script.
-"""
+"""Tests for gain-processing execution helpers."""
 
 import numpy as np
 import pytest
-import runpy
-import sys
 
 import rapthor.execution.calibrate.gain_processing as gain_processing
 from rapthor.execution.calibrate.gain_processing import (
@@ -240,60 +236,4 @@ def test_process_gain_solutions_dispatches_requested_processing_steps(monkeypatc
             },
         ),
         ("close",),
-    ]
-
-
-def test_process_gains_cli_forwards_arguments(monkeypatch):
-    calls = []
-
-    def fake_process_gain_solutions(*args, **kwargs):
-        calls.append((args, kwargs))
-
-    monkeypatch.setattr(
-        gain_processing,
-        "process_gain_solutions",
-        fake_process_gain_solutions,
-    )
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        [
-            "process_gains.py",
-            "solutions.h5",
-            "--solsetname=sol001",
-            "--ampsoltabname=amp",
-            "--phasesoltabname=phase",
-            "--ref_id=3",
-            "--smooth=True",
-            "--normalize=True",
-            "--flag=True",
-            "--lowampval=0.5",
-            "--highampval=2.0",
-            "--max_station_delta=0.25",
-            "--scale_delta_with_dist=True",
-            "--phase_center_ra=12.0",
-            "--phase_center_dec=-30.0",
-        ],
-    )
-
-    runpy.run_module("rapthor.scripts.process_gains", run_name="__main__")
-
-    assert calls == [
-        (
-            ("solutions.h5",),
-            {
-                "solsetname": "sol001",
-                "ampsoltabname": "amp",
-                "phasesoltabname": "phase",
-                "ref_id": 3,
-                "smooth": "True",
-                "normalize": "True",
-                "flag": "True",
-                "lowampval": 0.5,
-                "highampval": 2.0,
-                "max_station_delta": 0.25,
-                "scale_delta_with_dist": "True",
-                "phase_center": (12.0, -30.0),
-            },
-        )
     ]

@@ -1,7 +1,4 @@
-"""Tests for the collect_screen_h5parms script and helper."""
-
-import subprocess
-import sys
+"""Tests for screen h5parm collection helpers."""
 
 import h5py
 import numpy as np
@@ -63,31 +60,3 @@ def test_collect_screen_h5parms_rejects_existing_output_without_overwrite(tmp_pa
 
     with pytest.raises(FileExistsError, match="overwrite=False"):
         collect_screen_h5parms([str(first)], str(output), overwrite=False)
-
-
-def test_collect_screen_h5parms_cli_matches_function(tmp_path):
-    first = tmp_path / "first.h5"
-    second = tmp_path / "second.h5"
-    function_output = tmp_path / "function_combined.h5"
-    cli_output = tmp_path / "cli_combined.h5"
-    _write_screen_h5parm(first, [0.0, 10.0], 1.0)
-    _write_screen_h5parm(second, [20.0], 5.0)
-
-    collect_screen_h5parms([str(first), str(second)], str(function_output))
-    subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "rapthor.scripts.collect_screen_h5parms",
-            "-c",
-            f"{first},{second}",
-            f"--outh5parm={cli_output}",
-        ],
-        check=True,
-    )
-
-    function_data = _read_collected(function_output)
-    cli_data = _read_collected(cli_output)
-    assert np.array_equal(cli_data["time"], function_data["time"])
-    assert np.array_equal(cli_data["val"], function_data["val"])
-    assert np.array_equal(cli_data["weight"], function_data["weight"])
