@@ -22,7 +22,7 @@ inputs:
     label: Input MS directory name
     doc: |
       The name of the input MS directory.
-    type: Directory[]
+    type: Directory
     inputBinding:
       prefix: --msin
 
@@ -90,36 +90,18 @@ outputs:
     doc: |
       The directory list of the output MS. The input msin list is returned if it
       is writable, otherwise a copy with temp name is made.
-    type: Directory[]
+    type: Directory
     outputBinding:
       loadContents: true
       glob: "msout_names.json"
       outputEval: |
         ${ 
-           var name_list=JSON.parse(self[0].contents).msout;
-           var dir_list = name_list.map(function(dir_path) {
-             return {
+           var msname=JSON.parse(self[0].contents).msout;
+
+           return {
                "class": "Directory",
-               "location" : dir_path
-               };
-               });
-
-           return dir_list;
-        }
-
-  - id: patches
-    label: Model data patch names
-    doc: |
-      The list of patch names for a model data column is created.
-    type: string
-    outputBinding:
-      loadContents: true
-      glob: "msout_names.json"
-      outputEval: |
-        ${ 
-           var patch_list=JSON.parse(self[0].contents).patches;
-
-           return patch_list;
+               "location" : msname,
+           };
         }
 
 hints:

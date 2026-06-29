@@ -855,9 +855,22 @@ steps:
       - id: time_freq_smearing
         source: [correctfreqsmearing, correcttimesmearing]
         valueFrom: $(self[0] || self[1])
+    scatter: [msin]
+    scatterMethod: dotproduct
     out:
       - id: msout
+
+  - id: wsclean_predict_readpatches
+    label: Provide patch names when predicting using WSClean
+    doc: |
+      This step provides a list of patch names being predicted by WSClean
+    run: {{ rapthor_pipeline_dir }}/steps/wsclean_predict_readpatches.cwl
+    in:
+      - id: region_file
+        source: make_predict_region_file/region_file
+    out:
       - id: patches
+
 {% endif %}
 # end use_wsclean_predict 
 
@@ -1021,7 +1034,7 @@ steps:
         source: sagecalpredict
 {% if use_wsclean_predict %}
       - id: modeldatacolumn
-        source: wsclean_predict/patches
+        source: wsclean_predict_readpatches/patches
 {% endif %}
 {% if use_image_based_predict or use_wsclean_predict %}
       - id: predict_regions
