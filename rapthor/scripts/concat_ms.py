@@ -2,17 +2,20 @@
 """
 Script to concatenate MS files
 """
-from argparse import ArgumentParser, RawTextHelpFormatter
+
 import os
 import shutil
 import subprocess
 import sys
+from argparse import ArgumentParser, RawTextHelpFormatter
 
 import casacore.tables as pt
 import numpy as np
 
 
-def concat_ms(msfiles, output_file, data_colname='DATA', concat_property="frequency", overwrite=False):
+def concat_ms(
+    msfiles, output_file, data_colname="DATA", concat_property="frequency", overwrite=False
+):
     """
     Concatenate a number of Measurement Set files into one
 
@@ -46,9 +49,7 @@ def concat_ms(msfiles, output_file, data_colname='DATA', concat_property="freque
         or if DP3 encounters an error while concatenating.
     """
     # Check pre-conditions
-    if not isinstance(msfiles, list) or not all(
-        isinstance(item, str) for item in msfiles
-    ):
+    if not isinstance(msfiles, list) or not all(isinstance(item, str) for item in msfiles):
         raise TypeError("Input Measurement Sets must provided as a list of strings")
     if len(msfiles) == 0:
         raise ValueError("At least one input Measurement Set must be provided")
@@ -75,14 +76,7 @@ def concat_ms(msfiles, output_file, data_colname='DATA', concat_property="freque
             cmd = concat_time_command(msfiles, output_file)
     else:
         # Single input file -- just copy to output
-        cmd = [
-            "cp",
-            "-r",
-            "-L",
-            "--no-preserve=mode",
-            msfiles[0],
-            output_file
-        ]
+        cmd = ["cp", "-r", "-L", "--no-preserve=mode", msfiles[0], output_file]
 
     # Run the command
     try:
@@ -146,7 +140,11 @@ def concat_freq_command(msfiles, data_colname, output_file, make_dummies=True):
     if np.sum(chan_diff) != 0:
         # Here we obtain the indices at which dummies should be inserted.
         # The division maps this back from individual channels to MSes.
-        dummy_idx = (np.ndarray.flatten(np.argwhere(chan_diff > 0))/len(chan_diff)*len(mslist)).round(0).astype(int)
+        dummy_idx = (
+            (np.ndarray.flatten(np.argwhere(chan_diff > 0)) / len(chan_diff) * len(mslist))
+            .round(0)
+            .astype(int)
+        )
         # Obtain a unique list of indices and the indices of their first occurence in the above original array.
         dummy_idx_u, idx_idx_u = np.unique(dummy_idx, return_index=True)
         # Express channel difference in data chunks (e.g. 2 MHz if from LINC).
@@ -162,7 +160,7 @@ def concat_freq_command(msfiles, data_colname, output_file, make_dummies=True):
             dummy_multiplier = dummy_multiplier[idx_idx_u]
             # dummy_multiplier now contains the number of dummies that need to be inserted.
             # This list needs to be flat for NumPy's insert later on.
-            dummies = [['dummy.ms'] * x for x in dummy_multiplier]
+            dummies = [["dummy.ms"] * x for x in dummy_multiplier]
             dummies_flat = [i for d in dummies for i in d]
             # Generate the indices at which each dummy needs to be inserted.
             final_idx = [[dummy_idx_u[i]] * len(dummies[i]) for i in range(len(dummies))]
@@ -205,7 +203,7 @@ def concat_time_command(msfiles, output_file):
     for ms in msfiles:
         # Get the start time of each file (MJD time in seconds)
         with pt.table(ms, ack=False) as tab:
-            starttimes.append(np.min(tab.getcol('TIME')))
+            starttimes.append(np.min(tab.getcol("TIME")))
     ind = np.argsort(starttimes)
 
     cmd = [
@@ -216,7 +214,7 @@ def concat_time_command(msfiles, output_file):
         "giving",
         str(output_file),
         "AS",
-        "PLAIN"
+        "PLAIN",
     ]
     return cmd
 
@@ -230,18 +228,30 @@ def main():
     int : 0 if successfull; non-zero otherwise.
     """
     descriptiontext = "Concatenate Measurement Sets.\n"
-    parser = ArgumentParser(
-        description=descriptiontext, formatter_class=RawTextHelpFormatter
-    )
+    parser = ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
     parser.add_argument("msin", nargs="+", help="List of input Measurement Sets")
-    parser.add_argument("--data_colname", help="Data column to be concatenated", type=str, default='DATA')
-    parser.add_argument("--msout", help="Output Measurement Set", type=str, default='concat.ms')
-    parser.add_argument('--concat_property', help='Property over which to concatenate: time or frequency',
-                        type=str, default='frequency')
-    parser.add_argument('--overwrite', help='Overwrite existing output file', type=bool, default=False)
+    parser.add_argument(
+        "--data_colname", help="Data column to be concatenated", type=str, default="DATA"
+    )
+    parser.add_argument("--msout", help="Output Measurement Set", type=str, default="concat.ms")
+    parser.add_argument(
+        "--concat_property",
+        help="Property over which to concatenate: time or frequency",
+        type=str,
+        default="frequency",
+    )
+    parser.add_argument(
+        "--overwrite", help="Overwrite existing output file", type=bool, default=False
+    )
 
     args = parser.parse_args()
-    return concat_ms(args.msin, args.msout, args.data_colname, concat_property=args.concat_property, overwrite=args.overwrite)
+    return concat_ms(
+        args.msin,
+        args.msout,
+        args.data_colname,
+        concat_property=args.concat_property,
+        overwrite=args.overwrite,
+    )
 
 
 if __name__ == "__main__":

@@ -2,12 +2,15 @@
 """
 Script to make a mosiac from FITS images
 """
-from argparse import ArgumentParser, RawTextHelpFormatter
-from rapthor.lib import miscellaneous as misc
-from astropy.io import fits as pyfits
-import numpy as np
-import shutil
+
 import os
+import shutil
+from argparse import ArgumentParser, RawTextHelpFormatter
+
+import numpy as np
+from astropy.io import fits as pyfits
+
+from rapthor.lib import miscellaneous as misc
 
 
 def main(input_image_list, template_image, output_image, skip=False):
@@ -36,10 +39,8 @@ def main(input_image_list, template_image, output_image, skip=False):
     # Load template and sector images and add them to mosaic
     regrid_hdr = pyfits.open(template_image)[0].header
     isum = pyfits.open(template_image)[0].data
-    xslices = [slice(0, int(isum.shape[0] / 2.0)),
-               slice(int(isum.shape[0] / 2.0), isum.shape[0])]
-    yslices = [slice(0, int(isum.shape[1] / 2.0)),
-               slice(int(isum.shape[1] / 2.0), isum.shape[1])]
+    xslices = [slice(0, int(isum.shape[0] / 2.0)), slice(int(isum.shape[0] / 2.0), isum.shape[0])]
+    yslices = [slice(0, int(isum.shape[1] / 2.0)), slice(int(isum.shape[1] / 2.0), isum.shape[1])]
     for xs in xslices:
         for ys in yslices:
             wsum = np.zeros_like(isum[xs, ys])
@@ -57,14 +58,13 @@ def main(input_image_list, template_image, output_image, skip=False):
     hdu.writeto(output_image, overwrite=True)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     descriptiontext = "Make a mosaic image.\n"
 
     parser = ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
-    parser.add_argument('input_image_list', help='Filenames of input image')
-    parser.add_argument('template_image', help='Filename of input template image')
-    parser.add_argument('output_image', help='Filename of output template image')
-    parser.add_argument('--skip', help='Skip processing', type=str, default='False')
+    parser.add_argument("input_image_list", help="Filenames of input image")
+    parser.add_argument("template_image", help="Filename of input template image")
+    parser.add_argument("output_image", help="Filename of output template image")
+    parser.add_argument("--skip", help="Skip processing", type=str, default="False")
     args = parser.parse_args()
-    main(args.input_image_list, args.template_image, args.output_image,
-         skip=args.skip)
+    main(args.input_image_list, args.template_image, args.output_image, skip=args.skip)

@@ -3,8 +3,9 @@
 Script to make a ds9 region file for use with WSClean and faceting
 """
 
-from argparse import ArgumentParser, RawTextHelpFormatter
 import ast
+from argparse import ArgumentParser, RawTextHelpFormatter
+
 from lsmtool.facet import make_ds9_region_file, read_skymodel
 
 

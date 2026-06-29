@@ -2,12 +2,15 @@
 """
 Script to make a template image for mosaicking
 """
+
 from argparse import ArgumentParser, RawTextHelpFormatter
-from rapthor.lib.fitsimage import FITSImage
-from rapthor.lib import miscellaneous as misc
+
+import numpy as np
 from astropy.io import fits as pyfits
 from astropy.wcs import WCS as pywcs
-import numpy as np
+
+from rapthor.lib import miscellaneous as misc
+from rapthor.lib.fitsimage import FITSImage
 
 
 def main(input_image_list, vertices_file_list, output_image, skip=False, padding=1.1):
@@ -70,34 +73,39 @@ def main(input_image_list, vertices_file_list, output_image, skip=False, padding
     ymin -= int(ysize * (padding - 1.0) / 2.0)
     xsize = int(xmax - xmin)
     ysize = int(ymax - ymin)
-    rwcs.wcs.crpix = [-int(xmin)+1, -int(ymin)+1]
+    rwcs.wcs.crpix = [-int(xmin) + 1, -int(ymin) + 1]
     regrid_hdr = rwcs.to_header()
-    regrid_hdr['NAXIS'] = 2
-    regrid_hdr['NAXIS1'] = xsize
-    regrid_hdr['NAXIS2'] = ysize
-    for ch in ('BMAJ', 'BMIN', 'BPA', 'FREQ', 'RESTFREQ', 'EQUINOX'):
+    regrid_hdr["NAXIS"] = 2
+    regrid_hdr["NAXIS1"] = xsize
+    regrid_hdr["NAXIS2"] = ysize
+    for ch in ("BMAJ", "BMIN", "BPA", "FREQ", "RESTFREQ", "EQUINOX"):
         try:
             regrid_hdr[ch] = directions[0].img_hdr[ch]
         except KeyError:
             continue
-    regrid_hdr['ORIGIN'] = 'Raptor'
-    regrid_hdr['UNITS'] = 'Jy/beam'
-    regrid_hdr['TELESCOP'] = 'LOFAR'
+    regrid_hdr["ORIGIN"] = "Raptor"
+    regrid_hdr["UNITS"] = "Jy/beam"
+    regrid_hdr["TELESCOP"] = "LOFAR"
 
     isum = np.zeros([ysize, xsize])
     hdu = pyfits.PrimaryHDU(header=regrid_hdr, data=isum)
     hdu.writeto(output_image, overwrite=True)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     descriptiontext = "Make a template image for mosaicking.\n"
 
     parser = ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
-    parser.add_argument('input_image_list', help='Filenames of input image')
-    parser.add_argument('vertices_file_list', help='Filenames of input vertices files')
-    parser.add_argument('output_image', help='Filename of output template image')
-    parser.add_argument('--skip', help='Skip processing', type=str, default='False')
-    parser.add_argument('--padding', help='Padding rapthor', type=float, default=1.2)
+    parser.add_argument("input_image_list", help="Filenames of input image")
+    parser.add_argument("vertices_file_list", help="Filenames of input vertices files")
+    parser.add_argument("output_image", help="Filename of output template image")
+    parser.add_argument("--skip", help="Skip processing", type=str, default="False")
+    parser.add_argument("--padding", help="Padding rapthor", type=float, default=1.2)
     args = parser.parse_args()
-    main(args.input_image_list, args.vertices_file_list, args.output_image,
-         skip=args.skip, padding=args.padding)
+    main(
+        args.input_image_list,
+        args.vertices_file_list,
+        args.output_image,
+        skip=args.skip,
+        padding=args.padding,
+    )
