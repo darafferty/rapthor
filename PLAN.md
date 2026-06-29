@@ -60,28 +60,57 @@ Known follow-ups from completed work:
 
 ## Immediate Next Work
 
-The next step is to finish the wrapper-retirement documentation pass before
+The next step is to finish the remaining script-entrypoint cleanup before
 starting new scalability work.
 
-1. Update `docs/source/development/architecture.rst` so it reflects the current
+1. Replace the legacy `rapthor/scripts/filter_skymodel.py` wrapper with an
+   execution-owned shell adapter:
+   - keep the real work in
+     `rapthor.execution.image.skymodel_filter.filter_image_skymodel`
+   - add a small CLI adapter under `rapthor.execution.image`, for example
+     `rapthor.execution.image.skymodel_filter_cli`
+   - update `build_filter_skymodel_command` to run the adapter as a module
+     through the shell operation, for example
+     `python -m rapthor.execution.image.skymodel_filter_cli ...`
+   - update flow, command, and restart/failure tests so they no longer depend
+     on a PATH-injected `filter_skymodel.py`
+   - delete `rapthor/scripts/filter_skymodel.py` and remove it from package
+     metadata
+2. Remove `rapthor/scripts/mpi_runner.sh`:
+   - confirm there are no runtime references beyond packaging metadata
+   - delete the script and remove it from `pyproject.toml`
+   - remove the remaining `rapthor/scripts/*` package-data entry if the package
+     no longer contains runtime script assets
+3. Replace `bin/plotrapthor` with an execution-owned calibration plotting
+   adapter:
+   - move the plotting logic to a module such as
+     `rapthor.execution.calibrate.plotting.plot_solutions`
+   - add a small CLI adapter such as
+     `rapthor.execution.calibrate.plotting_cli`
+   - update `build_plot_solutions_command` to run the adapter as a module,
+     for example `python -m rapthor.execution.calibrate.plotting_cli ...`
+   - move `tests/scripts/test_plotrapthor.py` into execution/calibration
+     coverage
+   - update command reference fixtures and remove `bin/plotrapthor` from
+     package metadata
+4. Update `docs/source/development/architecture.rst` so it reflects the current
    architecture:
-   - `rapthor.scripts` is no longer a production pipeline layer.
-   - Migrated helper logic lives under `rapthor.execution.<owner>`.
-   - `filter_skymodel.py` is the only retained helper-script fallback because
-     PyBDSF/lsmtool multiprocessing still needs subprocess isolation inside
-     daemonic Dask workers.
-   - `bin/plotrapthor` remains an external plotting executable used by
-     calibration.
-   - `mpi_runner.sh` remains until a targeted runtime/package audit proves it
-     is unused.
-2. Confirm restart/failure integration tests are still intentionally tied only
-   to the retained `filter_skymodel.py` fallback, not to deleted wrappers.
-3. Run the focused architecture/docs-adjacent checks:
+   - `rapthor.scripts` is no longer a production pipeline layer
+   - migrated helper logic lives under `rapthor.execution.<owner>`
+   - PyBDSF/lsmtool filtering is still isolated in a subprocess, but via an
+     execution-owned adapter rather than a legacy script wrapper
+   - calibration solution plotting is owned by `rapthor.execution.calibrate`
+     and may still run through shell execution via a module adapter
+5. Run the focused checks:
    - `tests/architecture/test_import_boundaries.py`
+   - `tests/execution/test_image_flow.py`
+   - `tests/execution/test_calibrate_flow.py`
+   - `tests/scripts/test_filter_skymodel.py` after moving/rewriting it
+   - moved plot-solution execution tests
    - `tests/integration/test_rapthor_restart.py` when the integration
      environment is available
    - a Sphinx build once the docs environment has `sphinx`
-4. Then begin the Dask scalability-contract slice in section 4.
+6. Then begin the Dask scalability-contract slice in section 4.
 
 ## Remaining Roadmap
 
@@ -228,7 +257,8 @@ Script audit and migration order:
   helper tests now import the execution module and CLI argument parity coverage
   exists.
 - Script helper logic has been migrated to importable modules. Retired wrappers
-  have been removed, except for the documented `filter_skymodel.py` fallback.
+  have been removed except for `filter_skymodel.py`, which should move next to
+  an execution-owned shell adapter.
 
 Done when:
 
@@ -240,8 +270,10 @@ Done when:
 Goal: use the migrated helper modules directly from production Prefect tasks
 instead of invoking Rapthor script wrappers as shell commands.
 
-Status: complete for migrated helpers, except the intentionally retained
-`filter_skymodel.py` subprocess fallback for daemonic Dask workers.
+Status: complete for migrated helpers. The remaining cleanup is to move the
+`filter_skymodel.py` subprocess adapter from `rapthor.scripts` into
+`rapthor.execution.image`, while still running it through shell execution when
+PyBDSF/lsmtool needs process isolation.
 
 Keep shell execution for true external tools:
 
@@ -249,7 +281,6 @@ Keep shell execution for true external tools:
 - WSClean and WSClean-MP
 - IDGCal Python DP3 steps
 - `fpack`
-- `plotrapthor`
 - external h5parm collectors or other third-party executables not yet migrated
 
 Use direct Python calls for migrated Rapthor helpers:
@@ -305,8 +336,9 @@ Recommended order:
    skymodel filtering, filtered-model restoration, diagnostics, and flux
    normalization.
 5. Convert calibration helper scripts in collection/prediction while keeping
-   DP3, WSClean draw-model, `plotrapthor`, and any external h5parm collector as
-   shell commands.
+   DP3, WSClean draw-model, and any external h5parm collector as shell
+   commands. Move solution plotting to an execution-owned module adapter if it
+   still needs shell execution.
 6. Convert predict add/subtract post-processing after the image/calibration
    pattern is stable, because these helpers touch large Measurement Sets and
    need careful Dask-worker filesystem assumptions.
@@ -352,7 +384,7 @@ Progress:
   restore, and `fpack`.
 - Done: calibration collection and prediction helpers now run as direct Python
   work units while DP3, WSClean draw-model, `H5parm_collector.py`, and
-  `plotrapthor` remain shell-based:
+  solution plotting remain shell-based:
   - `collect_screen_h5parms.py` ->
     `rapthor.execution.calibrate.screen_h5parms.collect_screen_h5parms`
   - `combine_h5parms.py` ->
@@ -399,7 +431,7 @@ Progress:
   modules where the owning flow has already switched to direct Python helpers:
   - mosaic keeps only the `fpack` compression command builder
   - calibration keeps only DP3, WSClean draw-model, `H5parm_collector.py`, and
-    `plotrapthor` command builders
+    solution-plotting command builders
   - image keeps DP3, WSClean/WSClean-MP, `fpack`, and the daemonic-worker
     `filter_skymodel.py` fallback command builders
 - Done: image preparation now uses the shared Measurement Set concatenation
@@ -407,8 +439,9 @@ Progress:
   command instead of shelling out through `concat_ms.py`.
 - Done: command reference fixtures were pruned so they no longer contain stale
   entries for migrated Rapthor script wrapper builders.
-- Next: keep the `filter_skymodel.py` fallback until PyBDSF/lsmtool
-  multiprocessing can be isolated without breaking Dask worker execution.
+- Next: replace the `filter_skymodel.py` fallback command with an
+  execution-owned module adapter that still runs in a subprocess, then delete
+  the legacy script wrapper.
 
 Testing tasks:
 
@@ -419,9 +452,9 @@ Testing tasks:
   production shell-command list.
 - Keep direct helper tests under `tests/execution`. Keep CLI parity coverage
   only for intentionally retained live entry points.
-- Keep restart/failure integration tests tied to the retained
-  `filter_skymodel.py` fallback; deleted wrapper failures should be tested by
-  patching the imported helper path instead.
+- Update restart/failure integration tests so source-filter failures exercise
+  the execution-owned subprocess adapter instead of a PATH-injected legacy
+  script wrapper.
 - Run focused execution tests after each owner package:
   - `tests/execution/test_image_flow.py`
   - `tests/execution/test_mosaic_flow.py`
@@ -431,9 +464,11 @@ Testing tasks:
 
 Done when:
 
-- Production Prefect flows no longer invoke migrated Rapthor helper scripts as
-  shell commands, except documented compatibility fallbacks.
-- Shell command logs contain only real external tools.
+- Production Prefect flows no longer invoke `rapthor/scripts` helper wrappers
+  as shell commands. Shell isolation remains allowed for execution-owned
+  adapters that protect Dask workers from third-party multiprocessing behavior.
+- Shell command logs contain only real external tools and documented
+  execution-owned module adapters used for process isolation.
 - Direct helper calls preserve existing output records, skip/restart behavior,
   and artifact publication.
 - Dask worker payloads remain plain serializable file/path metadata rather than
@@ -444,22 +479,16 @@ Done when:
 Goal: remove unused CLI wrapper files and test-only compatibility surfaces now
 that production execution uses importable modules.
 
-Status: code cleanup is complete for retired wrappers. The remaining task is to
-bring the developer architecture docs in line with the current code.
-
-Keep for now:
-
-- `filter_skymodel.py`, because image execution still uses it as a subprocess
-  fallback inside daemonic Dask workers.
-- `bin/plotrapthor`, because calibration still treats `plotrapthor` as an
-  external plotting executable.
-- `mpi_runner.sh` until a targeted packaging/runtime audit proves it is unused.
+Status: almost complete. The remaining code cleanup is to move the
+`filter_skymodel.py` subprocess adapter under `rapthor.execution.image` and
+remove the unused `mpi_runner.sh` script and the `bin/plotrapthor` executable.
 
 Tasks:
 
 - Add a deletion-readiness architecture test that fails when production code
   imports `rapthor.scripts` or invokes migrated Rapthor helper script names.
-  Allow only documented exceptions such as `filter_skymodel.py`.
+  Remove the `filter_skymodel.py` exception once it moves to the execution-owned
+  shell adapter.
 - Update `bin/concat_linc_files` to import
   `rapthor.execution.concatenate.measurement_sets.concat_ms` directly, then
   `concat_ms.py` can be retired with the other wrappers.
@@ -480,11 +509,19 @@ Tasks:
   wrappers. Keep direct helper tests under `tests/execution` or move any
   missing direct-helper assertions there before deleting wrapper parity tests.
 - Update `docs/source/development/architecture.rst` so `rapthor.scripts` is no
-  longer described as a production pipeline layer. Document the remaining
-  `filter_skymodel.py` Dask-worker exception.
+  longer described as a production pipeline layer. Document the source-filter
+  subprocess isolation as an execution-owned adapter.
 - Revisit restart/failure integration tests that use PATH-injected wrapper
-  scripts. Convert those failures to patch the importable helper path or keep
-  them explicitly tied to the remaining `filter_skymodel.py` fallback.
+  scripts. Convert those failures to exercise the execution-owned subprocess
+  adapter or the imported helper path.
+- Move the `filter_skymodel.py` subprocess adapter to an execution-owned module
+  command so image execution can keep shell isolation without depending on
+  `rapthor.scripts`.
+- Remove `mpi_runner.sh` once the reference audit confirms it is not used by
+  runtime code.
+- Move `bin/plotrapthor` to execution-owned calibration plotting modules so
+  calibration can keep shell execution without depending on a legacy bin
+  executable.
 
 Recommended order:
 
@@ -492,8 +529,12 @@ Recommended order:
 2. Remove low-risk wrappers first: image preparation and mosaic wrappers.
 3. Remove concatenate, calibration, predict, and image-product wrappers once
    their direct-helper tests are confirmed to cover the same behaviour.
-4. Leave `filter_skymodel.py` until the PyBDSF/lsmtool multiprocessing issue is
-   isolated or the Dask worker strategy changes.
+4. Replace `filter_skymodel.py` with an execution-owned shell adapter.
+5. Remove `mpi_runner.sh` from packaging and the repository.
+6. Replace `bin/plotrapthor` with an execution-owned calibration plotting
+   adapter.
+7. Update the development architecture docs, then move to Dask scalability
+   contracts.
 
 Progress:
 
@@ -526,15 +567,19 @@ Progress:
   (`normalize_flux_scale.py` and `calculate_image_diagnostics.py`). Their
   direct helper coverage now lives under `tests/execution`, and the wrapper
   paths have been removed from package metadata.
-- Next: update the development architecture docs so they no longer describe
-  `rapthor.scripts` as a production layer, then move to Dask scalability
-  contracts.
+- Next: move the `filter_skymodel.py` subprocess adapter into
+  `rapthor.execution.image`, remove `mpi_runner.sh`, migrate `bin/plotrapthor`
+  into `rapthor.execution.calibrate`, and then update the development
+  architecture docs.
 
 Done when:
 
-- `rapthor/scripts/` contains only documented live entry points.
+- `rapthor/scripts/` has no production runtime entry points left, or the package
+  has been removed if it is empty.
 - Package metadata no longer installs retired wrappers.
 - Production code and command fixtures contain no retired script names.
+- Production command fixtures no longer reference `plotrapthor`; they reference
+  the execution-owned module adapter instead.
 - Tests exercise importable helper modules rather than deleted CLI wrappers.
 
 ### 4. Dask Scalability Contracts
