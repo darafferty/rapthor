@@ -67,6 +67,9 @@ Work through the remaining tasks in this order.
 Goal: make script logic importable and testable so future Dask workers can pass
 small data objects in memory where that is sensible.
 
+Status: complete for the current `rapthor/scripts/*.py` helper set. The
+remaining work is wrapper retirement, not more script migration.
+
 Tasks:
 
 - Audit `rapthor/scripts/*.py` and record each helper's owner, inputs, outputs,
@@ -206,15 +209,16 @@ Script audit and migration order:
 
 Done when:
 
-- The script audit is complete and at least one helper has an importable
-  function, stable CLI wrapper where still needed, parity tests, clear
-  owner-module documentation, and a documented path to delete the original
-  script once it is no longer part of production execution.
+- The script audit is complete, each helper has an importable function, tests
+  cover the importable module path, and wrapper deletion is tracked separately.
 
 ### 2. Switch Prefect Flows From Script Commands To Python Work Units
 
 Goal: use the migrated helper modules directly from production Prefect tasks
 instead of invoking Rapthor script wrappers as shell commands.
+
+Status: complete for migrated helpers, except the intentionally retained
+`filter_skymodel.py` subprocess fallback for daemonic Dask workers.
 
 Keep shell execution for true external tools:
 
@@ -321,8 +325,8 @@ Progress:
   - `calculate_image_diagnostics.py` ->
     `rapthor.execution.image.diagnostic_calculation.calculate_image_diagnostics`
 - Image flow tests now spy on those direct helper calls, and the image shell
-  fake only models DP3, `concat_ms.py`, WSClean/WSClean-MP, bright-source
-  WSClean restore, and `fpack`.
+  fake only models DP3, TAQL, WSClean/WSClean-MP, bright-source WSClean
+  restore, and `fpack`.
 - Done: calibration collection and prediction helpers now run as direct Python
   work units while DP3, WSClean draw-model, `H5parm_collector.py`, and
   `plotrapthor` remain shell-based:
@@ -400,14 +404,74 @@ Testing tasks:
 Done when:
 
 - Production Prefect flows no longer invoke migrated Rapthor helper scripts as
-  shell commands.
+  shell commands, except documented compatibility fallbacks.
 - Shell command logs contain only real external tools.
 - Direct helper calls preserve existing output records, skip/restart behavior,
   and artifact publication.
 - Dask worker payloads remain plain serializable file/path metadata rather than
   in-memory FITS tables, Measurement Sets, h5parm handles, or domain objects.
 
-### 3. Dask Scalability Contracts
+### 3. Retire Legacy Script Wrappers
+
+Goal: remove unused CLI wrapper files and test-only compatibility surfaces now
+that production execution uses importable modules.
+
+Keep for now:
+
+- `filter_skymodel.py`, because image execution still uses it as a subprocess
+  fallback inside daemonic Dask workers.
+- `bin/plotrapthor`, because calibration still treats `plotrapthor` as an
+  external plotting executable.
+- `mpi_runner.sh` until a targeted packaging/runtime audit proves it is unused.
+
+Tasks:
+
+- Add a deletion-readiness architecture test that fails when production code
+  imports `rapthor.scripts` or invokes migrated Rapthor helper script names.
+  Allow only documented exceptions such as `filter_skymodel.py`.
+- Update `bin/concat_linc_files` to import
+  `rapthor.execution.concatenate.measurement_sets.concat_ms` directly, then
+  `concat_ms.py` can be retired with the other wrappers.
+- Remove retired wrapper paths from `pyproject.toml` `script-files` and from
+  `rapthor` package data.
+- Remove wrapper files from `rapthor/scripts/` in small batches by owner:
+  - concatenate: `concat_ms.py`
+  - image preparation: `blank_image.py`, `check_image_beam.py`,
+    `make_region_file.py`
+  - mosaic: `make_mosaic_template.py`, `regrid_image.py`, `make_mosaic.py`
+  - image products: `make_image_cube.py`, `make_catalog_from_image_cube.py`,
+    `restore_skymodel.py`, `normalize_flux_scale.py`,
+    `calculate_image_diagnostics.py`
+  - calibration: `adjust_h5parm_sources.py`, `collect_screen_h5parms.py`,
+    `combine_h5parms.py`, `process_gains.py`
+  - predict: `add_sector_models.py`, `subtract_sector_models.py`
+- Remove or rewrite `tests/scripts/test_*` files that only exercise deleted
+  wrappers. Keep direct helper tests under `tests/execution` or move any
+  missing direct-helper assertions there before deleting wrapper parity tests.
+- Update `docs/source/development/architecture.rst` so `rapthor.scripts` is no
+  longer described as a production pipeline layer. Document the remaining
+  `filter_skymodel.py` Dask-worker exception.
+- Revisit restart/failure integration tests that use PATH-injected wrapper
+  scripts. Convert those failures to patch the importable helper path or keep
+  them explicitly tied to the remaining `filter_skymodel.py` fallback.
+
+Recommended order:
+
+1. Add the deletion-readiness architecture test and fix `bin/concat_linc_files`.
+2. Remove low-risk wrappers first: image preparation and mosaic wrappers.
+3. Remove concatenate, calibration, predict, and image-product wrappers once
+   their direct-helper tests are confirmed to cover the same behaviour.
+4. Leave `filter_skymodel.py` until the PyBDSF/lsmtool multiprocessing issue is
+   isolated or the Dask worker strategy changes.
+
+Done when:
+
+- `rapthor/scripts/` contains only documented live entry points.
+- Package metadata no longer installs retired wrappers.
+- Production code and command fixtures contain no retired script names.
+- Tests exercise importable helper modules rather than deleted CLI wrappers.
+
+### 4. Dask Scalability Contracts
 
 Goal: prove the pipeline can scale across multiple workers/nodes without
 passing domain objects, huge nested state, or local-only paths by accident.
@@ -432,7 +496,7 @@ Done when:
 - A developer can see, from tests and docs, what the Dask task boundaries are
   and what data each boundary receives.
 
-### 4. Runtime Preflight And Dry-Run
+### 5. Runtime Preflight And Dry-Run
 
 Goal: make failures obvious before expensive external tools start.
 
@@ -459,7 +523,7 @@ Done when:
 - A user can run a preflight/dry-run path and understand likely runtime failures
   without reading flow code.
 
-### 5. Operation And Runner Simplification
+### 6. Operation And Runner Simplification
 
 Goal: keep code quantity controlled as new module boundaries settle.
 
@@ -481,7 +545,7 @@ Done when:
 - The remaining large methods are either split into named work units or kept
   intentionally with a clear reason.
 
-### 6. Contributor Documentation
+### 7. Contributor Documentation
 
 Goal: make the pipeline pleasant for developers and scientists to improve.
 
@@ -502,7 +566,7 @@ Done when:
 - A new contributor can identify the right module and test file for a typical
   change without reading the whole pipeline.
 
-### 7. Target Environment Validation
+### 8. Target Environment Validation
 
 Goal: validate the architecture in the environments it is meant to run in.
 
