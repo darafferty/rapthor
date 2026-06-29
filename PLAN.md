@@ -471,6 +471,11 @@ Progress:
 - Done: updated `bin/concat_linc_files` to import
   `rapthor.execution.concatenate.measurement_sets.concat_ms` directly, so
   `concat_ms.py` can be retired with the other wrappers.
+- Done: retired the low-risk image preparation wrappers (`blank_image.py`,
+  `check_image_beam.py`, `make_region_file.py`) and mosaic wrappers
+  (`make_mosaic_template.py`, `regrid_image.py`, `make_mosaic.py`). Their
+  direct helper coverage now lives under `tests/execution`, and the deleted
+  wrappers have been removed from package metadata.
 
 Done when:
 
