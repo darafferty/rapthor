@@ -226,38 +226,31 @@ commands = [
 [tool.tox.env.test_integration]
 description = "Run integration tests"
 deps = [
-    "tox",
-    "mock",
-    "pytest",
-    "pytest-cov",
-    "pytest-xdist",
-    "pytest-mock",
-    "pytest-socket",
+    { replace = "ref", of = ["dependency-groups", "test"], extend = true },
+    "pytest-split<0.11",
 ]
 pass_env = [
     "CI_PROJECT_DIR",
+    "CI_NODE_INDEX",
+    "CI_NODE_TOTAL",
+    "BLIS_NUM_THREADS",
+    "MKL_NUM_THREADS",
     "NUMEXPR_MAX_THREADS",
+    "OMP_NUM_THREADS",
+    "OPENBLAS_NUM_THREADS",
+    "VECLIB_MAXIMUM_THREADS",
     "PREFECT_HOME",
     "RAPTHOR_TEST_RUN_ROOT",
 ]
 commands = [
     [
         "python", "-m", "pytest",
-        "-m", "integration and not internet",
-        "-n", "auto",
-        # Integration tests start Rapthor subprocesses, which each bring up a
-        # temporary Prefect API server. Very high fan-out can starve those
-        # servers before they pass their health checks on large CI runners.
-        "--maxprocesses", "8",
-        "--dist", "worksteal",
+        "-m", "integration",
         "-vv", "-ra",
-        "tests/{posargs}",
-    ],
-    [
-        "python", "-m", "pytest",
-        "-m", "integration and internet",
-        "-vv", "-ra",
-        "tests/{posargs}",
+        "--durations=0",
+        "--splits", "{env:CI_NODE_TOTAL:1}",
+        "--group", "{env:CI_NODE_INDEX:1}",
+        "tests",
     ]
 ]
 

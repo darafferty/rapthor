@@ -240,15 +240,27 @@ run_tests:
 
 ### Stage: run_integration_tests
 
-run_integration_tests:
+.run_integration_tests:
   extends: .run_tests
-  script:
-    - tox -e test_integration
+  stage: run_integration_tests
+  variables:
+    BLIS_NUM_THREADS: "1"
+    MKL_NUM_THREADS: "1"
+    NUMEXPR_MAX_THREADS: "1"
+    OMP_NUM_THREADS: "1"
+    OPENBLAS_NUM_THREADS: "1"
+    VECLIB_MAXIMUM_THREADS: "1"
   coverage: '/TOTAL.*\s+(\d+%)$/'
   artifacts:
     when: always
     paths:
       - ci/i/**/work/logs/**/*
+
+run_integration_tests:
+  extends: .run_integration_tests
+  parallel: 8
+  script:
+    - tox -e test_integration
 
 
 ### Stage: docs
