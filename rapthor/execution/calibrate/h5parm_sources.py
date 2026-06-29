@@ -1,7 +1,7 @@
 """Helpers for aligning h5parm source tables with sky-model patches."""
 
-import numpy as np
 import lsmtool
+import numpy as np
 from losoto.h5parm import h5parm
 from lsmtool.operations_lib import normalize_ra_dec
 

@@ -1,12 +1,15 @@
 import pytest
 
+import runpy
+import sys
 
 import astropy.coordinates as coords
 from astropy.io.fits import CompImageHDU, PrimaryHDU
 import astropy.io.fits as fits
 import numpy as np
-from rapthor.scripts.restore_skymodel import (
-    main as restore_main,
+import rapthor.execution.image.restoration as restoration_module
+from rapthor.execution.image.restoration import (
+    restore_skymodel,
     log_fits_info,
     get_primary_hdu_or_compressed,
     make_zero_image,
@@ -86,7 +89,7 @@ def test_integration_restore_skymodel(reference_image, sky_model_path, tmp_path)
     output_image = tmp_path / "restored_image.fits"
 
     # Run the restore_skymodel script
-    restore_main(
+    restore_skymodel(
         source_catalog=sky_model_path, reference_image=reference_image, output_image=output_image
     )
 
@@ -104,7 +107,7 @@ def test_integration_restore_skymodel_compressed(
     output_image = tmp_path / "restored_image_compressed.fits.fz"
 
     # Run the restore_skymodel script
-    restore_main(
+    restore_skymodel(
         source_catalog=sky_model_path,
         reference_image=reference_image_compressed,
         output_image=output_image,
@@ -247,3 +250,37 @@ def test_compress_image_if_needed_with_compression(tmp_path):
 
     assert result == output_image, "Should return output path"
     assert output_image.exists(), "Compressed output file should exist"
+
+
+def test_restore_skymodel_cli_matches_function(tmp_path, monkeypatch):
+    source_catalog = tmp_path / "sources.txt"
+    reference_image = tmp_path / "reference.fits"
+    function_output = tmp_path / "function.fits"
+    cli_output = tmp_path / "cli.fits"
+    source_catalog.write_text("FORMAT = Name, Type, Ra, Dec, I\n")
+    fits.writeto(reference_image, np.ones((2, 2)), overwrite=True)
+    calls = []
+
+    def fake_restore(source_catalog, reference_image, output_image):
+        calls.append((source_catalog, reference_image, output_image))
+        fits.writeto(output_image, np.zeros((2, 2)), overwrite=True)
+
+    monkeypatch.setattr(restoration_module, "restore_skymodel", fake_restore)
+
+    restoration_module.restore_skymodel(source_catalog, reference_image, function_output)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "restore_skymodel.py",
+            str(source_catalog),
+            str(reference_image),
+            str(cli_output),
+        ],
+    )
+
+    runpy.run_module("rapthor.scripts.restore_skymodel", run_name="__main__")
+
+    assert len(calls) == 2
+    assert calls[1] == (source_catalog, reference_image, cli_output)
+    assert np.array_equal(fits.getdata(cli_output), fits.getdata(function_output))

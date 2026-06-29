@@ -119,6 +119,14 @@ Progress:
 - Continued with `collect_screen_h5parms.py`: extracted screen-solution h5parm
   collection to `rapthor.execution.calibrate.screen_h5parms`, kept the script
   as the CLI wrapper, and added real h5py-backed direct plus CLI parity tests.
+- Continued with `filter_skymodel.py` and `restore_skymodel.py`: extracted
+  image skymodel filtering to `rapthor.execution.image.skymodel_filter` and
+  skymodel restoration to `rapthor.execution.image.restoration`, kept both
+  scripts as CLI wrappers, and added direct function plus CLI parity coverage.
+- Continued with `combine_h5parms.py`: extracted h5parm combination helpers to
+  `rapthor.execution.calibrate.h5parm_combination`, kept the script as the CLI
+  wrapper, and moved unit coverage to the execution helper with CLI argument
+  parity coverage.
 
 Script audit and migration order:
 
@@ -145,11 +153,14 @@ Script audit and migration order:
 - Done: `collect_screen_h5parms.py` -> calibration screen collection; screen
   h5parm files concatenated over time; medium file payloads; direct and CLI
   parity tests now exist.
-- Medium risk, keep script wrappers until behavior is better isolated:
-  `filter_skymodel.py`, `restore_skymodel.py`, and `combine_h5parms.py`. These
-  touch h5parm files, skymodels, subprocesses, or multi-step scientific
-  transformations.
-- Defer until after the smaller helpers establish the pattern:
+- Done: `filter_skymodel.py` and `restore_skymodel.py` -> image filtered-model
+  products and restored skymodel FITS products; skymodels, FITS files, and
+  WSClean restore path; medium file payloads; direct and CLI parity tests now
+  exist.
+- Done: `combine_h5parms.py` -> calibration h5parm combination; solution
+  h5parm files to merged h5parm products; medium file payloads; helper tests
+  now import the execution module and CLI argument parity coverage exists.
+- Remaining larger helpers, migrate with extra scientific parity checks:
   `calculate_image_diagnostics.py`, `normalize_flux_scale.py`,
   `process_gains.py`, `add_sector_models.py`, and
   `subtract_sector_models.py`. These contain larger scientific workflows,
