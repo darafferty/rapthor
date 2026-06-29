@@ -25,6 +25,57 @@ from tests.execution.conftest import run_flow_for_test
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
 
 
+@pytest.fixture(autouse=True)
+def fake_direct_mosaic_helpers(monkeypatch):
+    calls = {
+        "make_mosaic_template": [],
+        "regrid_image": [],
+        "make_mosaic": [],
+    }
+
+    def fake_make_mosaic_template(input_image_filenames, vertices_filenames, output_image):
+        calls["make_mosaic_template"].append(
+            {
+                "input_image_filenames": list(input_image_filenames),
+                "vertices_filenames": list(vertices_filenames),
+                "output_image": output_image,
+            }
+        )
+        output_path = Path(output_image)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text("template")
+
+    def fake_regrid_image(input_image, template_image, vertices_file, output_image):
+        calls["regrid_image"].append(
+            {
+                "input_image": input_image,
+                "template_image": template_image,
+                "vertices_file": vertices_file,
+                "output_image": output_image,
+            }
+        )
+        output_path = Path(output_image)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text("regridded")
+
+    def fake_make_mosaic(input_image_filenames, template_image, output_image):
+        calls["make_mosaic"].append(
+            {
+                "input_image_filenames": list(input_image_filenames),
+                "template_image": template_image,
+                "output_image": output_image,
+            }
+        )
+        output_path = Path(output_image)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text("mosaic")
+
+    monkeypatch.setattr(mosaic_module, "make_mosaic_template", fake_make_mosaic_template)
+    monkeypatch.setattr(mosaic_module, "regrid_image", fake_regrid_image)
+    monkeypatch.setattr(mosaic_module, "make_mosaic", fake_make_mosaic)
+    return calls
+
+
 @pytest.fixture
 def fake_mosaic_shell_operation_cls():
     class FakeMosaicShellOperation:
@@ -37,13 +88,7 @@ def fake_mosaic_shell_operation_cls():
         def run(self):
             tokens = shlex.split(self.kwargs["commands"][0])
             cwd = Path(self.kwargs["working_dir"])
-            if tokens[0] == "make_mosaic_template.py":
-                output_path = cwd / tokens[3]
-            elif tokens[0] == "regrid_image.py":
-                output_path = cwd / tokens[4]
-            elif tokens[0] == "make_mosaic.py":
-                output_path = cwd / tokens[3]
-            elif tokens[0] == "fpack":
+            if tokens[0] == "fpack":
                 output_path = cwd / f"{tokens[1]}.fz"
             else:
                 raise AssertionError(f"Unexpected command: {tokens[0]}")
@@ -52,22 +97,6 @@ def fake_mosaic_shell_operation_cls():
             return "OK"
 
     return FakeMosaicShellOperation
-
-
-class NoOutputShellOperation:
-    def __init__(self, **kwargs):
-        self.kwargs = kwargs
-
-    def run(self):
-        return "OK"
-
-
-class FailingShellOperation:
-    def __init__(self, **kwargs):
-        self.kwargs = kwargs
-
-    def run(self):
-        raise RuntimeError("mosaic failed")
 
 
 class SectorStub:
@@ -277,8 +306,8 @@ def test_mosaic_payload_handles_skip_processing(tmp_path):
     }
 
 
-def test_run_mosaic_flow_executes_commands_and_returns_records(
-    tmp_path, monkeypatch, fake_mosaic_shell_operation_cls
+def test_run_mosaic_flow_executes_python_helpers_and_returns_records(
+    tmp_path, monkeypatch, fake_mosaic_shell_operation_cls, fake_direct_mosaic_helpers
 ):
     published = []
 
@@ -302,17 +331,43 @@ def test_run_mosaic_flow_executes_commands_and_returns_records(
     assert outputs == {"mosaic_image": [file_record(tmp_path / "mosaic_1-I-image.fits")]}
     assert published == [(["mosaic_1-I-image.fits"], str(tmp_path))]
     validate_output_record(outputs["mosaic_image"])
-    assert [
-        instance.kwargs["commands"][0] for instance in fake_mosaic_shell_operation_cls.instances
-    ] == [
-        "make_mosaic_template.py sector_1-I-image.fits,sector_2-I-image.fits "
-        "sector_1.vertices,sector_2.vertices mosaic_1_template.fits --skip=False",
-        "regrid_image.py sector_1-I-image.fits mosaic_1_template.fits sector_1.vertices "
-        "sector_1-I-image.fits.regridded --skip=False",
-        "regrid_image.py sector_2-I-image.fits mosaic_1_template.fits sector_2.vertices "
-        "sector_2-I-image.fits.regridded --skip=False",
-        "make_mosaic.py sector_1-I-image.fits.regridded,sector_2-I-image.fits.regridded "
-        "mosaic_1_template.fits mosaic_1-I-image.fits --skip=False",
+    assert fake_mosaic_shell_operation_cls.instances == []
+    assert fake_direct_mosaic_helpers["make_mosaic_template"] == [
+        {
+            "input_image_filenames": [
+                str(tmp_path / "sector_1-I-image.fits"),
+                str(tmp_path / "sector_2-I-image.fits"),
+            ],
+            "vertices_filenames": [
+                str(tmp_path / "sector_1.vertices"),
+                str(tmp_path / "sector_2.vertices"),
+            ],
+            "output_image": str(tmp_path / "mosaic_1_template.fits"),
+        }
+    ]
+    assert fake_direct_mosaic_helpers["regrid_image"] == [
+        {
+            "input_image": str(tmp_path / "sector_1-I-image.fits"),
+            "template_image": str(tmp_path / "mosaic_1_template.fits"),
+            "vertices_file": str(tmp_path / "sector_1.vertices"),
+            "output_image": str(tmp_path / "sector_1-I-image.fits.regridded"),
+        },
+        {
+            "input_image": str(tmp_path / "sector_2-I-image.fits"),
+            "template_image": str(tmp_path / "mosaic_1_template.fits"),
+            "vertices_file": str(tmp_path / "sector_2.vertices"),
+            "output_image": str(tmp_path / "sector_2-I-image.fits.regridded"),
+        },
+    ]
+    assert fake_direct_mosaic_helpers["make_mosaic"] == [
+        {
+            "input_image_filenames": [
+                str(tmp_path / "sector_1-I-image.fits.regridded"),
+                str(tmp_path / "sector_2-I-image.fits.regridded"),
+            ],
+            "template_image": str(tmp_path / "mosaic_1_template.fits"),
+            "output_image": str(tmp_path / "mosaic_1-I-image.fits"),
+        }
     ]
 
 
@@ -342,13 +397,15 @@ def test_run_mosaic_flow_returns_compressed_records(tmp_path, fake_mosaic_shell_
     )
 
     assert outputs == {"mosaic_image": [file_record(tmp_path / "mosaic_1-I-image.fits.fz")]}
-    assert fake_mosaic_shell_operation_cls.instances[-1].kwargs["commands"] == [
-        "fpack mosaic_1-I-image.fits"
+    assert [
+        instance.kwargs["commands"][0] for instance in fake_mosaic_shell_operation_cls.instances
+    ] == [
+        "fpack mosaic_1-I-image.fits",
     ]
 
 
 def test_run_mosaic_flow_handles_skip_processing_without_commands(
-    tmp_path, fake_mosaic_shell_operation_cls
+    tmp_path, fake_mosaic_shell_operation_cls, fake_direct_mosaic_helpers
 ):
     outputs = run_flow_for_test(
         mosaic_flow,
@@ -364,6 +421,11 @@ def test_run_mosaic_flow_handles_skip_processing_without_commands(
 
     assert outputs == {}
     assert fake_mosaic_shell_operation_cls.instances == []
+    assert fake_direct_mosaic_helpers == {
+        "make_mosaic_template": [],
+        "regrid_image": [],
+        "make_mosaic": [],
+    }
 
 
 def test_mosaic_prefect_flow_entrypoint_runs_with_mocked_shell(
@@ -381,16 +443,20 @@ def test_mosaic_prefect_flow_entrypoint_runs_with_mocked_shell(
         )
 
     assert outputs == {"mosaic_image": [file_record(tmp_path / "mosaic_1-I-image.fits")]}
-    assert len(fake_mosaic_shell_operation_cls.instances) == 4
+    assert fake_mosaic_shell_operation_cls.instances == []
 
 
-def test_run_mosaic_flow_fails_when_expected_output_is_missing(tmp_path):
+def test_run_mosaic_flow_fails_when_expected_output_is_missing(tmp_path, monkeypatch):
+    def fake_missing_mosaic(*args, **kwargs):
+        return None
+
+    monkeypatch.setattr(mosaic_module, "make_mosaic", fake_missing_mosaic)
+
     with pytest.raises(FileNotFoundError, match="Mosaic output was not created"):
         run_flow_for_test(
             mosaic_flow,
             _mosaic_payload(tmp_path),
             execution_config=ExecutionConfig(task_runner="sync"),
-            shell_operation_cls=NoOutputShellOperation,
         )
 
 
@@ -426,7 +492,7 @@ def test_mosaic_finalizer_accepts_prefect_outputs(tmp_path, fake_mosaic_shell_op
 
 
 def test_mosaic_operation_run_uses_prefect_flow(
-    tmp_path, monkeypatch, fake_mosaic_shell_operation_cls
+    tmp_path, monkeypatch, fake_mosaic_shell_operation_cls, fake_direct_mosaic_helpers
 ):
     monkeypatch.setattr(
         "rapthor.execution.shell._load_shell_operation_cls",
@@ -457,7 +523,10 @@ def test_mosaic_operation_run_uses_prefect_flow(
     assert field.field_image_filename == str(expected_field_image)
     assert field.field_image_filename_prev is None
     assert expected_field_image.is_file()
-    assert len(fake_mosaic_shell_operation_cls.instances) == 8
+    assert fake_mosaic_shell_operation_cls.instances == []
+    assert len(fake_direct_mosaic_helpers["make_mosaic_template"]) == 2
+    assert len(fake_direct_mosaic_helpers["regrid_image"]) == 4
+    assert len(fake_direct_mosaic_helpers["make_mosaic"]) == 2
 
 
 def test_mosaic_operation_run_reuses_prefect_outputs_when_done(
@@ -496,23 +565,25 @@ def test_mosaic_operation_run_reuses_prefect_outputs_when_done(
 
 
 @pytest.mark.parametrize(
-    "shell_operation_cls, expected_message",
+    "failure_mode, expected_message",
     [
-        pytest.param(FailingShellOperation, "mosaic failed", id="shell-failure"),
-        pytest.param(
-            NoOutputShellOperation,
-            "Mosaic output was not created",
-            id="missing-mosaic-output",
-        ),
+        pytest.param("raise", "mosaic failed", id="helper-failure"),
+        pytest.param("missing-output", "Mosaic output was not created", id="missing-output"),
     ],
 )
 def test_mosaic_operation_run_failure_does_not_mark_done(
-    tmp_path, monkeypatch, shell_operation_cls, expected_message
+    tmp_path, monkeypatch, failure_mode, expected_message
 ):
-    monkeypatch.setattr(
-        "rapthor.execution.shell._load_shell_operation_cls",
-        lambda: shell_operation_cls,
-    )
+    def fail_mosaic(*args, **kwargs):
+        raise RuntimeError("mosaic failed")
+
+    def missing_mosaic(*args, **kwargs):
+        return None
+
+    if failure_mode == "raise":
+        monkeypatch.setattr(mosaic_module, "make_mosaic", fail_mosaic)
+    else:
+        monkeypatch.setattr(mosaic_module, "make_mosaic", missing_mosaic)
     field = FieldStub(
         tmp_path,
         [SectorStub(tmp_path / "inputs", 1), SectorStub(tmp_path / "inputs", 2)],

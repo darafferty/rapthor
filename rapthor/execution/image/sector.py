@@ -44,18 +44,8 @@ def run_image_sector(
         config,
         shell_operation_cls=shell_operation_cls,
     )
-    mask_record = ensure_imaging_mask(
-        sector,
-        pipeline_working_dir,
-        config,
-        shell_operation_cls=shell_operation_cls,
-    )
-    region_record = ensure_facet_region(
-        sector,
-        pipeline_working_dir,
-        config,
-        shell_operation_cls=shell_operation_cls,
-    )
+    mask_record = ensure_imaging_mask(sector)
+    region_record = ensure_facet_region(sector)
 
     nonpb_image, pb_image, wsclean_ran = run_or_reuse_wsclean_images(
         sector,
@@ -101,9 +91,6 @@ def run_image_sector(
         check_wsclean_beams(
             (pb_image, nonpb_image),
             sector,
-            pipeline_working_dir,
-            config,
-            shell_operation_cls=shell_operation_cls,
         )
 
     (

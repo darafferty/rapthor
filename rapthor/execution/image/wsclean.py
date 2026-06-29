@@ -4,13 +4,13 @@ import os
 from typing import Mapping, Optional
 
 from rapthor.execution.config import ExecutionConfig
+from rapthor.execution.image.beam import ensure_image_beam
 from rapthor.execution.image.commands import (
     ATERM_CONFIG_FILENAME,
     WscleanFacetOptions,
     WscleanOptions,
     WscleanScreenOptions,
     build_aterm_config_content,
-    build_check_image_beam_command,
     build_wsclean_facets_command,
     build_wsclean_mpi_facets_command,
     build_wsclean_mpi_no_dde_command,
@@ -259,19 +259,8 @@ def restore_bright_source_images(
 def check_wsclean_beams(
     image_records: tuple[dict, dict],
     sector: ImageSectorPayload,
-    pipeline_working_dir: str,
-    execution_config: ExecutionConfig,
-    shell_operation_cls=None,
 ) -> None:
     """Run beam checks for newly created WSClean images."""
     for image_record in image_records:
-        command = build_check_image_beam_command(
-            image_record["path"], float(sector["taper_arcsec"])
-        )
-        run_external_command(
-            command,
-            pipeline_working_dir,
-            execution_config,
-            shell_operation_cls=shell_operation_cls,
-        )
+        ensure_image_beam(image_record["path"], float(sector["taper_arcsec"]))
         require_file(image_record["path"], "Beam-checked image")

@@ -7,12 +7,8 @@ from prefect import flow, task
 
 from rapthor.execution.artifacts import publish_fits_image_artifacts
 from rapthor.execution.config import ExecutionConfig
-from rapthor.execution.mosaic.commands import (
-    build_compress_mosaic_command,
-    build_make_mosaic_command,
-    build_make_mosaic_template_command,
-    build_regrid_image_command,
-)
+from rapthor.execution.mosaic.commands import build_compress_mosaic_command
+from rapthor.execution.mosaic.images import make_mosaic, make_mosaic_template, regrid_image
 from rapthor.execution.mosaic.payloads import MosaicImageTypePayload, validate_mosaic_payload
 from rapthor.execution.outputs import require_file
 from rapthor.execution.payloads import assert_serializable_payload
@@ -38,6 +34,13 @@ def _run_command_and_require_file(
     return require_file(output_path, "Mosaic output")
 
 
+def _work_path(pipeline_working_dir: str, filename: str) -> str:
+    """Resolve relative mosaic filenames as the old script working directory did."""
+    if os.path.isabs(filename):
+        return filename
+    return os.path.join(pipeline_working_dir, filename)
+
+
 def run_mosaic_image_type(
     image_type: MosaicImageTypePayload,
     compress_images: bool,
@@ -50,40 +53,36 @@ def run_mosaic_image_type(
     sector_images = image_type["sector_image_filenames"]
     sector_vertices = image_type["sector_vertices_filenames"]
     regridded_images = image_type["regridded_image_filenames"]
-    template_filename = image_type["template_image_filename"]
     template_path = image_type["template_image_path"]
     mosaic_filename = image_type["mosaic_filename"]
     mosaic_path = image_type["mosaic_path"]
 
-    _run_command_and_require_file(
-        build_make_mosaic_template_command(sector_images, sector_vertices, template_filename),
+    resolved_sector_images = [_work_path(pipeline_working_dir, image) for image in sector_images]
+    resolved_sector_vertices = [
+        _work_path(pipeline_working_dir, vertices) for vertices in sector_vertices
+    ]
+    resolved_regridded_images = [
+        _work_path(pipeline_working_dir, image) for image in regridded_images
+    ]
+
+    make_mosaic_template(
+        resolved_sector_images,
+        resolved_sector_vertices,
         template_path,
-        pipeline_working_dir,
-        config,
-        shell_operation_cls=shell_operation_cls,
     )
+    require_file(template_path, "Mosaic output")
     for sector_image, vertices_file, regridded_image in zip(
-        sector_images, sector_vertices, regridded_images
+        resolved_sector_images, resolved_sector_vertices, resolved_regridded_images
     ):
-        _run_command_and_require_file(
-            build_regrid_image_command(
-                sector_image,
-                template_filename,
-                vertices_file,
-                regridded_image,
-            ),
-            os.path.join(pipeline_working_dir, regridded_image),
-            pipeline_working_dir,
-            config,
-            shell_operation_cls=shell_operation_cls,
+        regrid_image(
+            sector_image,
+            template_path,
+            vertices_file,
+            regridded_image,
         )
-    output_record = _run_command_and_require_file(
-        build_make_mosaic_command(regridded_images, template_filename, mosaic_filename),
-        mosaic_path,
-        pipeline_working_dir,
-        config,
-        shell_operation_cls=shell_operation_cls,
-    )
+        require_file(regridded_image, "Mosaic output")
+    make_mosaic(resolved_regridded_images, template_path, mosaic_path)
+    output_record = require_file(mosaic_path, "Mosaic output")
     if compress_images:
         compressed_path = f"{mosaic_path}.fz"
         output_record = _run_command_and_require_file(

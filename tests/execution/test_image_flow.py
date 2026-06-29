@@ -7,7 +7,9 @@ import pytest
 from prefect.testing.utilities import prefect_test_harness
 
 import rapthor.execution.image.diagnostics as image_diagnostics_module
+import rapthor.execution.image.preparation as image_preparation_module
 import rapthor.execution.image.sector as image_sector_module
+import rapthor.execution.image.wsclean as image_wsclean_module
 from rapthor.execution.commands import normalize_command
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.image.commands import (
@@ -52,6 +54,82 @@ from tests.execution.conftest import run_flow_for_test
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
 
 
+@pytest.fixture(autouse=True)
+def fake_direct_image_helpers(monkeypatch):
+    calls = {
+        "blank_image": [],
+        "make_region_file": [],
+        "ensure_image_beam": [],
+    }
+
+    def fake_blank_image(
+        output_image,
+        input_image=None,
+        vertices_file=None,
+        reference_ra_deg=None,
+        reference_dec_deg=None,
+        cellsize_deg=None,
+        imsize=None,
+    ):
+        calls["blank_image"].append(
+            {
+                "output_image": output_image,
+                "input_image": input_image,
+                "vertices_file": vertices_file,
+                "reference_ra_deg": reference_ra_deg,
+                "reference_dec_deg": reference_dec_deg,
+                "cellsize_deg": cellsize_deg,
+                "imsize": imsize,
+            }
+        )
+        output_path = Path(output_image)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text("mask")
+
+    def fake_make_region_file(
+        skymodel,
+        ra_mid,
+        dec_mid,
+        width_ra,
+        width_dec,
+        region_file,
+        *,
+        enclose_names=True,
+    ):
+        calls["make_region_file"].append(
+            {
+                "skymodel": skymodel,
+                "ra_mid": ra_mid,
+                "dec_mid": dec_mid,
+                "width_ra": width_ra,
+                "width_dec": width_dec,
+                "region_file": region_file,
+                "enclose_names": enclose_names,
+            }
+        )
+        region_path = Path(region_file)
+        region_path.parent.mkdir(parents=True, exist_ok=True)
+        region_path.write_text("region")
+
+    def fake_ensure_image_beam(fits_image_filename, beam_size_arcsec):
+        calls["ensure_image_beam"].append(
+            {
+                "fits_image_filename": fits_image_filename,
+                "beam_size_arcsec": beam_size_arcsec,
+            }
+        )
+        Path(fits_image_filename).touch(exist_ok=True)
+
+    monkeypatch.setattr(image_preparation_module, "blank_image", fake_blank_image)
+    monkeypatch.setattr(
+        image_preparation_module,
+        "make_ds9_region_from_skymodel",
+        fake_make_region_file,
+    )
+    monkeypatch.setattr(image_wsclean_module, "ensure_image_beam", fake_ensure_image_beam)
+    return calls
+
+
 @pytest.fixture
 def fake_image_shell_operation_cls():
     class FakeImageShellOperation:
@@ -74,10 +152,6 @@ def fake_image_shell_operation_cls():
                     token.split("=", 1)[1] for token in tokens if token.startswith("--msout=")
                 )
                 (cwd / output_name).mkdir(parents=True, exist_ok=True)
-            elif tokens[0] == "blank_image.py":
-                (cwd / tokens[1]).write_text("mask")
-            elif tokens[0] == "make_region_file.py":
-                (cwd / tokens[6]).write_text("region")
             elif tokens[0] in {"wsclean", "mpirun"}:
                 if tokens[0] == "wsclean" and "-restore-list" in tokens:
                     (cwd / tokens[-1]).write_text("restored image")
@@ -133,8 +207,6 @@ def fake_image_shell_operation_cls():
             elif tokens[0] == "fpack":
                 for image in tokens[1:]:
                     Path(f"{image}.fz").write_text("compressed")
-            elif tokens[0] == "check_image_beam.py":
-                Path(tokens[1]).touch(exist_ok=True)
             elif tokens[0] == "filter_skymodel.py":
                 output_root = tokens[5]
                 true_sky_image = Path(tokens[2]).name
@@ -1460,7 +1532,7 @@ def test_image_payload_from_inputs_requires_filtered_model_filename(tmp_path):
 
 
 def test_run_image_flow_executes_no_dde_commands_and_returns_records(
-    tmp_path, monkeypatch, fake_image_shell_operation_cls
+    tmp_path, monkeypatch, fake_image_shell_operation_cls, fake_direct_image_helpers
 ):
     published = []
     fits_published = []
@@ -1533,13 +1605,28 @@ def test_run_image_flow_executes_no_dde_commands_and_returns_records(
         "DP3",
         "DP3",
         "concat_ms.py",
-        "blank_image.py",
         "wsclean",
-        "check_image_beam.py",
-        "check_image_beam.py",
         "filter_skymodel.py",
         "calculate_image_diagnostics.py",
     ]
+    assert fake_direct_image_helpers["blank_image"] == [
+        {
+            "output_image": str(tmp_path / "sector_1_mask.fits"),
+            "input_image": None,
+            "vertices_file": "/data/sector_1.vertices",
+            "reference_ra_deg": 123.0,
+            "reference_dec_deg": 45.0,
+            "cellsize_deg": 0.001,
+            "imsize": [1024, 1024],
+        }
+    ]
+    assert {
+        (call["fits_image_filename"], call["beam_size_arcsec"])
+        for call in fake_direct_image_helpers["ensure_image_beam"]
+    } == {
+        (str(tmp_path / "sector_1-MFS-I-image.fits"), 0.0),
+        (str(tmp_path / "sector_1-MFS-I-image-pb.fits"), 0.0),
+    }
 
 
 def test_run_image_flow_rejects_invalid_prepare_task_payload(
@@ -1655,12 +1742,9 @@ def test_run_image_flow_restores_bright_sources_before_filtering(
         "DP3",
         "DP3",
         "concat_ms.py",
-        "blank_image.py",
         "wsclean",
         "wsclean",
         "wsclean",
-        "check_image_beam.py",
-        "check_image_beam.py",
         "filter_skymodel.py",
         "calculate_image_diagnostics.py",
     ]
@@ -1692,7 +1776,7 @@ def test_run_image_flow_restores_bright_sources_before_filtering(
 
 
 def test_run_image_flow_executes_facet_commands_and_returns_region_file(
-    tmp_path, fake_image_shell_operation_cls
+    tmp_path, fake_image_shell_operation_cls, fake_direct_image_helpers
 ):
     outputs = run_flow_for_test(
         image_flow,
@@ -1716,13 +1800,20 @@ def test_run_image_flow_executes_facet_commands_and_returns_region_file(
         "DP3",
         "DP3",
         "concat_ms.py",
-        "blank_image.py",
-        "make_region_file.py",
         "wsclean",
-        "check_image_beam.py",
-        "check_image_beam.py",
         "filter_skymodel.py",
         "calculate_image_diagnostics.py",
+    ]
+    assert fake_direct_image_helpers["make_region_file"] == [
+        {
+            "skymodel": "/data/calibration.skymodel",
+            "ra_mid": 123.0,
+            "dec_mid": 45.0,
+            "width_ra": 2.0,
+            "width_dec": 2.5,
+            "region_file": str(tmp_path / "sector_1_facets_ds9.reg"),
+            "enclose_names": True,
+        }
     ]
     facet_command = next(
         shlex.split(instance.kwargs["commands"][0])
@@ -1763,10 +1854,7 @@ def test_run_image_flow_executes_screen_commands_and_writes_aterm_config(
         "DP3",
         "DP3",
         "concat_ms.py",
-        "blank_image.py",
         "wsclean",
-        "check_image_beam.py",
-        "check_image_beam.py",
         "filter_skymodel.py",
         "calculate_image_diagnostics.py",
     ]
@@ -1967,10 +2055,7 @@ def test_run_image_flow_returns_compressed_image_outputs(tmp_path, fake_image_sh
         "DP3",
         "DP3",
         "concat_ms.py",
-        "blank_image.py",
         "wsclean",
-        "check_image_beam.py",
-        "check_image_beam.py",
         "filter_skymodel.py",
         "calculate_image_diagnostics.py",
         "fpack",
@@ -1996,10 +2081,7 @@ def test_run_image_flow_returns_filtered_model_image(tmp_path, fake_image_shell_
         "DP3",
         "DP3",
         "concat_ms.py",
-        "blank_image.py",
         "wsclean",
-        "check_image_beam.py",
-        "check_image_beam.py",
         "filter_skymodel.py",
         "restore_skymodel.py",
         "calculate_image_diagnostics.py",
@@ -2102,11 +2184,8 @@ def test_run_image_flow_returns_image_cube_outputs(tmp_path, fake_image_shell_op
         "DP3",
         "DP3",
         "concat_ms.py",
-        "blank_image.py",
         "wsclean",
         "make_image_cube.py",
-        "check_image_beam.py",
-        "check_image_beam.py",
         "filter_skymodel.py",
         "calculate_image_diagnostics.py",
     ]
@@ -2185,11 +2264,8 @@ def test_run_image_flow_returns_normalization_outputs(tmp_path, fake_image_shell
         "DP3",
         "DP3",
         "concat_ms.py",
-        "blank_image.py",
         "wsclean",
         "make_image_cube.py",
-        "check_image_beam.py",
-        "check_image_beam.py",
         "filter_skymodel.py",
         "calculate_image_diagnostics.py",
         "make_catalog_from_image_cube.py",
@@ -2229,7 +2305,7 @@ def test_image_prefect_flow_entrypoint_runs_with_mocked_shell(
         )
 
     assert outputs["sector_I_images"][0][0] == file_record(tmp_path / "sector_1-MFS-I-image.fits")
-    assert len(fake_image_shell_operation_cls.instances) == 9
+    assert len(fake_image_shell_operation_cls.instances) == 6
 
 
 def test_run_image_flow_fails_when_expected_output_is_missing(tmp_path):
@@ -2380,7 +2456,7 @@ def test_image_operation_run_uses_prefect_flow(
     assert sector.diagnostics == [{"cycle_number": 1}]
     assert field.lofar_to_true_flux_ratio == 1.0
     assert field.lofar_to_true_flux_std == 0.0
-    assert len(fake_image_shell_operation_cls.instances) == 9
+    assert len(fake_image_shell_operation_cls.instances) == 6
 
 
 def test_bright_peeling_image_operation_run_uses_prefect_flow(
@@ -2523,7 +2599,7 @@ def test_full_stokes_image_operation_run_uses_prefect_flow(
     assert sector.diagnostics == [{"cycle_number": 1}]
     assert field.lofar_to_true_flux_ratio == 1.0
     assert field.lofar_to_true_flux_std == 0.0
-    assert len(fake_image_shell_operation_cls.instances) == 9
+    assert len(fake_image_shell_operation_cls.instances) == 6
 
 
 def test_compressed_image_operation_run_uses_prefect_flow(
@@ -2627,7 +2703,7 @@ def test_clean_disabled_image_operation_run_uses_prefect_flow(
 
 
 def test_facet_image_operation_run_uses_prefect_flow(
-    tmp_path, monkeypatch, fake_image_shell_operation_cls
+    tmp_path, monkeypatch, fake_image_shell_operation_cls, fake_direct_image_helpers
 ):
     monkeypatch.setattr(
         "rapthor.execution.shell._load_shell_operation_cls",
@@ -2645,11 +2721,6 @@ def test_facet_image_operation_run_uses_prefect_flow(
 
     expected_outputs = _expected_facet_image_operation_outputs(operation)
     region_dir = Path(field.parset["dir_working"]) / "regions" / "image_1"
-    make_region_command = next(
-        shlex.split(instance.kwargs["commands"][0])
-        for instance in fake_image_shell_operation_cls.instances
-        if shlex.split(instance.kwargs["commands"][0])[0] == "make_region_file.py"
-    )
     wsclean_command = next(
         shlex.split(instance.kwargs["commands"][0])
         for instance in fake_image_shell_operation_cls.instances
@@ -2658,7 +2729,12 @@ def test_facet_image_operation_run_uses_prefect_flow(
 
     assert operation.outputs == expected_outputs
     assert Path(operation.done_file).is_file()
-    assert make_region_command[1] == "/data/calibration.skymodel"
+    assert fake_direct_image_helpers["make_region_file"][0]["skymodel"] == (
+        "/data/calibration.skymodel"
+    )
+    assert fake_direct_image_helpers["make_region_file"][0]["region_file"] == str(
+        Path(operation.pipeline_working_dir) / "sector_1_facets_ds9.reg"
+    )
     assert "-apply-facet-beam" in wsclean_command
     assert "-apply-facet-solutions" in wsclean_command
     assert "/data/facet-solutions.h5" in wsclean_command
@@ -2798,7 +2874,7 @@ def test_mpi_image_operation_run_uses_prefect_flow(
 
 
 def test_previous_mask_image_operation_run_uses_prefect_flow(
-    tmp_path, monkeypatch, fake_image_shell_operation_cls
+    tmp_path, monkeypatch, fake_image_shell_operation_cls, fake_direct_image_helpers
 ):
     monkeypatch.setattr(
         "rapthor.execution.shell._load_shell_operation_cls",
@@ -2816,16 +2892,11 @@ def test_previous_mask_image_operation_run_uses_prefect_flow(
 
     expected_outputs = _expected_image_operation_outputs(operation)
     sector = field.imaging_sectors[0]
-    blank_command = next(
-        shlex.split(instance.kwargs["commands"][0])
-        for instance in fake_image_shell_operation_cls.instances
-        if shlex.split(instance.kwargs["commands"][0])[0] == "blank_image.py"
-    )
     mask_dir = Path(field.parset["dir_working"]) / "images" / "image_1" / "sector_1"
 
     assert operation.outputs == expected_outputs
     assert Path(operation.done_file).is_file()
-    assert blank_command[2] == str(previous_mask)
+    assert fake_direct_image_helpers["blank_image"][0]["input_image"] == str(previous_mask)
     assert sector.I_mask_file == str(mask_dir / "sector_1-MFS-I-image-pb.fits.mask.fits")
     assert (mask_dir / "sector_1-MFS-I-image-pb.fits.mask.fits").is_file()
 

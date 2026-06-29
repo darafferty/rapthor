@@ -6,13 +6,13 @@ from typing import Optional
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.image.commands import (
     PrepareImagingDataOptions,
-    build_blank_image_command,
     build_concat_time_command,
-    build_make_region_file_command,
     build_prepare_imaging_data_command,
 )
+from rapthor.execution.image.masking import blank_image
 from rapthor.execution.image.payloads import ImageSectorPayload
 from rapthor.execution.outputs import require_directory, require_file
+from rapthor.execution.regions import make_ds9_region_from_skymodel
 from rapthor.execution.shell import run_external_command
 
 
@@ -75,52 +75,34 @@ def prepare_and_concatenate_visibilities(
 
 def ensure_imaging_mask(
     sector: ImageSectorPayload,
-    pipeline_working_dir: str,
-    execution_config: ExecutionConfig,
-    shell_operation_cls=None,
 ) -> dict:
     """Create the clean mask if needed and return its output record."""
     if not os.path.isfile(str(sector["mask_path"])):
-        mask_command = build_blank_image_command(
-            str(sector["mask_filename"]),
-            list(sector["wsclean_imsize"]),
-            str(sector["vertices_file"]),
-            float(sector["ra"]),
-            float(sector["dec"]),
-            float(sector["cellsize_deg"]),
-            image_filename=sector.get("previous_mask_filename"),
-        )
-        run_external_command(
-            mask_command,
-            pipeline_working_dir,
-            execution_config,
-            shell_operation_cls=shell_operation_cls,
+        blank_image(
+            str(sector["mask_path"]),
+            input_image=sector.get("previous_mask_filename"),
+            vertices_file=str(sector["vertices_file"]),
+            reference_ra_deg=float(sector["ra"]),
+            reference_dec_deg=float(sector["dec"]),
+            cellsize_deg=float(sector["cellsize_deg"]),
+            imsize=list(sector["wsclean_imsize"]),
         )
     return require_file(str(sector["mask_path"]), "Imaging mask")
 
 
 def ensure_facet_region(
     sector: ImageSectorPayload,
-    pipeline_working_dir: str,
-    execution_config: ExecutionConfig,
-    shell_operation_cls=None,
 ) -> Optional[dict]:
     """Create the facet region file when facet imaging is enabled."""
     if not sector["use_facets"]:
         return None
     if not os.path.isfile(str(sector["facet_region_path"])):
-        region_command = build_make_region_file_command(
+        make_ds9_region_from_skymodel(
             str(sector["facet_skymodel"]),
             float(sector["ra_mid"]),
             float(sector["dec_mid"]),
             float(sector["width_ra"]),
             float(sector["width_dec"]),
-            str(sector["facet_region_filename"]),
-        )
-        run_external_command(
-            region_command,
-            pipeline_working_dir,
-            execution_config,
-            shell_operation_cls=shell_operation_cls,
+            str(sector["facet_region_path"]),
         )
     return require_file(str(sector["facet_region_path"]), "Facet region file")

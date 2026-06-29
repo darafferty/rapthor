@@ -291,6 +291,26 @@ Recommended order:
    Keep thin CLI wrappers until a later cleanup pass proves they are unused
    outside tests and production execution.
 
+Progress:
+
+- Done: low-risk image helpers now run as direct Python work units instead of
+  shelling out to Rapthor script wrappers:
+  - `blank_image.py` -> `rapthor.execution.image.masking.blank_image`
+  - image `make_region_file.py` ->
+    `rapthor.execution.regions.make_ds9_region_from_skymodel`
+  - `check_image_beam.py` -> `rapthor.execution.image.beam.ensure_image_beam`
+- Flow tests now spy on those direct helper calls, and the image shell fake only
+  needs to model true external commands plus script wrappers that have not yet
+  been converted.
+- Done: mosaic helpers now run as direct Python work units while `fpack` remains
+  shell-based:
+  - `make_mosaic_template.py` -> `rapthor.execution.mosaic.images.make_mosaic_template`
+  - `regrid_image.py` -> `rapthor.execution.mosaic.images.regrid_image`
+  - `make_mosaic.py` -> `rapthor.execution.mosaic.images.make_mosaic`
+- Mosaic flow tests now spy on direct helper calls, and the mosaic shell fake
+  only accepts `fpack`.
+- Next: convert the image product helpers to direct Python calls.
+
 Testing tasks:
 
 - Update flow tests so fake shell operations only see true external commands.
