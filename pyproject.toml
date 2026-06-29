@@ -204,12 +204,19 @@ pass_env = [
     "OPENBLAS_NUM_THREADS",
     "VECLIB_MAXIMUM_THREADS",
 ]
+allowlist_externals = [
+    "echo",
+]
 commands = [
+    [
+        "echo", "{env:CI_PROJECT_DIR:}"
+    ],
     [
         "python", "-m", "pytest",
         "-m", "integration",
         "-vv", "-ra",
-        "--durations=0",
+        "--store-durations",
+        "--durations-path", "ci/i/.test_durations",
         "--splits", "{env:CI_NODE_TOTAL:1}",
         "--group", "{env:CI_NODE_INDEX:1}",
         "tests",
