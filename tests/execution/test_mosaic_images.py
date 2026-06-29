@@ -1,6 +1,6 @@
+import numpy as np
 from astropy.io import fits
 from astropy.wcs import WCS
-import numpy as np
 
 from rapthor.execution.mosaic.images import make_mosaic, make_mosaic_template, regrid_image
 
