@@ -1,13 +1,12 @@
 import pytest
 
 from rapthor.execution.concatenate.measurement_sets import (
-    copy_measurement_set_command,
     concat_freq_command,
     concat_ms,
     concat_time_command,
+    copy_measurement_set_command,
     select_concatenation_command,
 )
-from rapthor.scripts.concat_ms import main
 
 
 def test_concat_ms_copies_single_measurement_set(test_ms, tmp_path):
@@ -75,15 +74,3 @@ def test_concat_time_command_builds_taql_command():
         "AS",
         "PLAIN",
     ]
-
-
-def test_main_copies_single_measurement_set(test_ms, tmp_path, monkeypatch):
-    direct_output = tmp_path / "direct.ms"
-    output_file = tmp_path / "cli.ms"
-
-    assert concat_ms([test_ms], direct_output.as_posix(), data_colname="DATA") == 0
-    monkeypatch.setattr("sys.argv", ["concat_ms.py", test_ms, "--msout", output_file.as_posix()])
-
-    assert main() == 0
-    assert output_file.is_dir()
-    assert (output_file / "table.info").read_text() == (direct_output / "table.info").read_text()

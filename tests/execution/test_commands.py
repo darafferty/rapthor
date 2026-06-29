@@ -94,10 +94,10 @@ def test_append_key_value_skips_lists_containing_optional_values():
 
 
 def test_normalize_command_splits_shell_string():
-    assert normalize_command("concat_ms.py input.ms --data_colname=DATA") == [
-        "concat_ms.py",
-        "input.ms",
-        "--data_colname=DATA",
+    assert normalize_command("DP3 msin=[input.ms] msout=output.ms") == [
+        "DP3",
+        "msin=[input.ms]",
+        "msout=output.ms",
     ]
 
 

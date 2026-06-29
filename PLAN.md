@@ -476,6 +476,9 @@ Progress:
   (`make_mosaic_template.py`, `regrid_image.py`, `make_mosaic.py`). Their
   direct helper coverage now lives under `tests/execution`, and the deleted
   wrappers have been removed from package metadata.
+- Done: retired the `concat_ms.py` wrapper. The direct Measurement Set helper
+  coverage now lives under `tests/execution/test_measurement_sets.py`, and the
+  wrapper path has been removed from package metadata.
 
 Done when:
 
