@@ -2,7 +2,9 @@
 """
 Script to ensure that valid beam information is present in the image header
 """
+
 from argparse import ArgumentParser, RawTextHelpFormatter
+
 from astropy.io import fits
 
 
@@ -35,21 +37,15 @@ def main(fits_image_filename, beam_size_arcsec):
             header["BMAJ"] = beam_size_arcsec / 3600
         if "BMIN" not in header or header["BMIN"] <= 0.0:
             header["BMIN"] = beam_size_arcsec / 3600
-        if 'BPA' not in header:
-            header['BPA'] = 0.0
+        if "BPA" not in header:
+            header["BPA"] = 0.0
 
 
-if __name__ == '__main__':
-    descriptiontext = (
-        "Ensure that valid beam information is present in the image header.\n"
-    )
+if __name__ == "__main__":
+    descriptiontext = "Ensure that valid beam information is present in the image header.\n"
 
-    parser = ArgumentParser(
-        description=descriptiontext, formatter_class=RawTextHelpFormatter
-    )
-    parser.add_argument(
-        "fits_image_filename", type=str, help="Filename of input FITS image"
-    )
+    parser = ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
+    parser.add_argument("fits_image_filename", type=str, help="Filename of input FITS image")
     parser.add_argument(
         "beam_size_arcsec",
         type=float,

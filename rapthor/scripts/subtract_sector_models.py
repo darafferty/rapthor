@@ -2,6 +2,7 @@
 """
 Script to subtract sector model data
 """
+
 import os
 import shutil
 import subprocess
@@ -9,6 +10,7 @@ from argparse import ArgumentParser, RawTextHelpFormatter
 
 import casacore.tables as pt
 import numpy as np
+
 from rapthor.lib import miscellaneous as misc
 
 
@@ -40,19 +42,37 @@ def get_nchunks(msin, nsectors, fraction=1.0, reweight=False, compressed=False):
         scale_factor = 4.0
     if compressed:
         scale_factor *= 5.0
-    tot_m, used_m, free_m = list(map(int, os.popen('free -tm').readlines()[-1].split()[1:]))
-    msin_m = float(subprocess.check_output(['du', '-smL', msin]).split()[0]) * fraction
+    tot_m, used_m, free_m = list(map(int, os.popen("free -tm").readlines()[-1].split()[1:]))
+    msin_m = float(subprocess.check_output(["du", "-smL", msin]).split()[0]) * fraction
     tot_required_m = msin_m * nsectors * scale_factor * 2.0
     nchunks = max(1, int(np.ceil(tot_required_m / tot_m)))
     return nchunks
 
 
-def main(msin, model_list, msin_column='DATA', model_column='DATA',
-         out_column='DATA', nr_outliers=0, nr_bright=0, use_compression=False,
-         peel_outliers=False, peel_bright=False, reweight=True, starttime=None,
-         solint_sec=None, solint_hz=None, weights_colname="CAL_WEIGHT",
-         gainfile="", uvcut_min=80.0, uvcut_max=1e6, phaseonly=True,
-         dirname=None, quiet=True, infix=''):
+def main(
+    msin,
+    model_list,
+    msin_column="DATA",
+    model_column="DATA",
+    out_column="DATA",
+    nr_outliers=0,
+    nr_bright=0,
+    use_compression=False,
+    peel_outliers=False,
+    peel_bright=False,
+    reweight=True,
+    starttime=None,
+    solint_sec=None,
+    solint_hz=None,
+    weights_colname="CAL_WEIGHT",
+    gainfile="",
+    uvcut_min=80.0,
+    uvcut_max=1e6,
+    phaseonly=True,
+    dirname=None,
+    quiet=True,
+    infix="",
+):
     """
     Subtract sector model data
 
@@ -124,7 +144,7 @@ def main(msin, model_list, msin_column='DATA', model_column='DATA',
         nrows_list = []
         for msmod in model_list[:]:
             tin = pt.table(msmod, readonly=True, ack=False)
-            starttime_chunk = np.min(tin.getcol('TIME'))
+            starttime_chunk = np.min(tin.getcol("TIME"))
             if not misc.approx_equal(starttime_chunk, misc.convert_mvt2mjd(starttime), tol=1.0):
                 # Remove files with start times that are not within 1 sec of the
                 # specified starttime
@@ -132,21 +152,23 @@ def main(msin, model_list, msin_column='DATA', model_column='DATA',
                 model_list.pop(i)
             else:
                 nrows_list.append(tin.nrows())
-                starttime_exact = misc.convert_mjd2mvt(starttime_chunk)  # store exact value for use later
+                starttime_exact = misc.convert_mjd2mvt(
+                    starttime_chunk
+                )  # store exact value for use later
             tin.close()
         if len(set(nrows_list)) > 1:
-            raise RuntimeError('Model data files have differing number of rows...')
+            raise RuntimeError("Model data files have differing number of rows...")
     # In case the user did not concatenate LINC output and fed multiple frequency bands, find the correct frequency band.
-    chan_freqs = pt.table(msin+"/SPECTRAL_WINDOW").getcol("CHAN_FREQ")
+    chan_freqs = pt.table(msin + "/SPECTRAL_WINDOW").getcol("CHAN_FREQ")
     for model_ms in model_list[:]:
-        chan_freqs_model = pt.table(model_ms+"/SPECTRAL_WINDOW").getcol("CHAN_FREQ")
+        chan_freqs_model = pt.table(model_ms + "/SPECTRAL_WINDOW").getcol("CHAN_FREQ")
         if not np.allclose(chan_freqs_model, chan_freqs):
             i = model_list.index(model_ms)
             model_list.pop(i)
     nsectors = len(model_list)
     if nsectors == 0:
-        raise ValueError('No model data found.')
-    print(f'subtract_sector_models: Found {nsectors} model data files')
+        raise ValueError("No model data found.")
+    print(f"subtract_sector_models: Found {nsectors} model data files")
 
     # Define the template MS file. This file is copied to one or more files
     # to be filled with new data
@@ -159,8 +181,8 @@ def main(msin, model_list, msin_column='DATA', model_column='DATA',
     tarray = None
     if starttime is not None:
         tapprox = misc.convert_mvt2mjd(starttime_exact) - 100.0
-        approx_indx = np.where(tin.getcol('TIME') > tapprox)[0][0]
-        for tind, t in enumerate(tin.getcol('TIME')[approx_indx:]):
+        approx_indx = np.where(tin.getcol("TIME") > tapprox)[0][0]
+        for tind, t in enumerate(tin.getcol("TIME")[approx_indx:]):
             if misc.convert_mjd2mvt(t) == starttime_exact:
                 startrow_in = tind + approx_indx
                 break
@@ -175,7 +197,7 @@ def main(msin, model_list, msin_column='DATA', model_column='DATA',
         # Open input and output table
         tin = pt.table(msin, readonly=True, ack=False)
         root_filename = os.path.basename(msin)
-        msout = f'{root_filename}{infix}_field'
+        msout = f"{root_filename}{infix}_field"
 
         # Use subprocess to call 'cp' to ensure that the copied version has the
         # default permissions (e.g., so it's not read only)
@@ -185,7 +207,7 @@ def main(msin, model_list, msin_column='DATA', model_column='DATA',
         if os.path.exists(msout):
             # File may exist from a previous processing cycle; delete it if so
             shutil.rmtree(msout, ignore_errors=True)
-        subprocess.check_call(['cp', '-r', '-L', '--no-preserve=mode', ms_template, msout])
+        subprocess.check_call(["cp", "-r", "-L", "--no-preserve=mode", ms_template, msout])
         tout = pt.table(msout, readonly=False, ack=False)
 
         # Define chunks based on available memory
@@ -196,25 +218,27 @@ def main(msin, model_list, msin_column='DATA', model_column='DATA',
         startrows_tmod = [0]
         nrows = [nrows_per_chunk]
         for i in range(1, nchunks):
-            if i == nchunks-1:
+            if i == nchunks - 1:
                 nrow = nrows_in - (nchunks - 1) * nrows_per_chunk
             else:
                 nrow = nrows_per_chunk
             nrows.append(nrow)
-            startrows_tin.append(startrows_tin[i-1] + nrows[i-1])
-            startrows_tmod.append(startrows_tmod[i-1] + nrows[i-1])
-        print(f'subtract_sector_models: Using {nchunks} chunk(s) for peeling of outliers')
+            startrows_tin.append(startrows_tin[i - 1] + nrows[i - 1])
+            startrows_tmod.append(startrows_tmod[i - 1] + nrows[i - 1])
+        print(f"subtract_sector_models: Using {nchunks} chunk(s) for peeling of outliers")
 
-        for c, (startrow_tin, startrow_tmod, nrow) in enumerate(zip(startrows_tin, startrows_tmod, nrows)):
+        for c, (startrow_tin, startrow_tmod, nrow) in enumerate(
+            zip(startrows_tin, startrows_tmod, nrows)
+        ):
             # For each chunk, load data
             datain = tin.getcol(msin_column, startrow=startrow_tin, nrow=nrow)
             if use_compression:
                 # Replace flagged values with NaNs before compression
-                flags = tin.getcol('FLAG', startrow=startrow_tin, nrow=nrow)
+                flags = tin.getcol("FLAG", startrow=startrow_tin, nrow=nrow)
                 flagged = np.where(flags)
                 datain[flagged] = np.NaN
             datamod_list = []
-            for i, msmodel in enumerate(model_list[nsectors-nr_outliers:]):
+            for i, msmodel in enumerate(model_list[nsectors - nr_outliers :]):
                 tmod = pt.table(msmodel, readonly=True, ack=False)
                 datamod_list.append(tmod.getcol(model_column, startrow=startrow_tmod, nrow=nrow))
                 tmod.close()
@@ -227,7 +251,7 @@ def main(msin, model_list, msin_column='DATA', model_column='DATA',
                     datamod_all = datamod_list[sector_ind].copy()
                 else:
                     datamod_all += datamod_list[sector_ind]
-            tout.putcol(out_column, datain-datamod_all, startrow=startrow_tmod, nrow=nrow)
+            tout.putcol(out_column, datain - datamod_all, startrow=startrow_tmod, nrow=nrow)
             tout.flush()
         tout.close()
         tin.close()
@@ -247,7 +271,7 @@ def main(msin, model_list, msin_column='DATA', model_column='DATA',
         # Open input and output table
         tin = pt.table(msin, readonly=True, ack=False)
         root_filename = os.path.basename(msin)
-        msout = f'{root_filename}{infix}_field_no_bright'
+        msout = f"{root_filename}{infix}_field_no_bright"
 
         # Use subprocess to call 'cp' to ensure that the copied version has the
         # default permissions (e.g., so it's not read only)
@@ -257,7 +281,7 @@ def main(msin, model_list, msin_column='DATA', model_column='DATA',
         if os.path.exists(msout):
             # File may exist from a previous processing cycle; delete it if so
             shutil.rmtree(msout, ignore_errors=True)
-        subprocess.check_call(['cp', '-r', '-L', '--no-preserve=mode', ms_template, msout])
+        subprocess.check_call(["cp", "-r", "-L", "--no-preserve=mode", ms_template, msout])
         tout = pt.table(msout, readonly=False, ack=False)
 
         # Define chunks based on available memory
@@ -268,25 +292,27 @@ def main(msin, model_list, msin_column='DATA', model_column='DATA',
         startrows_tmod = [0]
         nrows = [nrows_per_chunk]
         for i in range(1, nchunks):
-            if i == nchunks-1:
+            if i == nchunks - 1:
                 nrow = nrows_in - (nchunks - 1) * nrows_per_chunk
             else:
                 nrow = nrows_per_chunk
             nrows.append(nrow)
-            startrows_tin.append(startrows_tin[i-1] + nrows[i-1])
-            startrows_tmod.append(startrows_tmod[i-1] + nrows[i-1])
-        print(f'subtract_sector_models: Using {nchunks} chunk(s) for peeling of bright sources')
+            startrows_tin.append(startrows_tin[i - 1] + nrows[i - 1])
+            startrows_tmod.append(startrows_tmod[i - 1] + nrows[i - 1])
+        print(f"subtract_sector_models: Using {nchunks} chunk(s) for peeling of bright sources")
 
-        for c, (startrow_tin, startrow_tmod, nrow) in enumerate(zip(startrows_tin, startrows_tmod, nrows)):
+        for c, (startrow_tin, startrow_tmod, nrow) in enumerate(
+            zip(startrows_tin, startrows_tmod, nrows)
+        ):
             # For each chunk, load data
             datain = tin.getcol(msin_column, startrow=startrow_tin, nrow=nrow)
             if use_compression:
                 # Replace flagged values with NaNs before compression
-                flags = tin.getcol('FLAG', startrow=startrow_tin, nrow=nrow)
+                flags = tin.getcol("FLAG", startrow=startrow_tin, nrow=nrow)
                 flagged = np.where(flags)
                 datain[flagged] = np.NaN
             datamod_list = []
-            for i, msmodel in enumerate(model_list[nsectors-nr_bright:]):
+            for i, msmodel in enumerate(model_list[nsectors - nr_bright :]):
                 tmod = pt.table(msmodel, readonly=True, ack=False)
                 datamod_list.append(tmod.getcol(model_column, startrow=startrow_tmod, nrow=nrow))
                 tmod.close()
@@ -299,7 +325,7 @@ def main(msin, model_list, msin_column='DATA', model_column='DATA',
                     datamod_all = datamod_list[sector_ind].copy()
                 else:
                     datamod_all += datamod_list[sector_ind]
-            tout.putcol(out_column, datain-datamod_all, startrow=startrow_tmod, nrow=nrow)
+            tout.putcol(out_column, datain - datamod_all, startrow=startrow_tmod, nrow=nrow)
             tout.flush()
         tout.close()
         tin.close()
@@ -317,11 +343,11 @@ def main(msin, model_list, msin_column='DATA', model_column='DATA',
     if len(model_list) == 0:
         # This means there is just a single sector and no reweighting is to be done,
         # so use the template MS filename as a basis for the output MS filename
-        msout = os.path.splitext(os.path.basename(ms_template))[0] + '.sector_1'
+        msout = os.path.splitext(os.path.basename(ms_template))[0] + ".sector_1"
         if os.path.exists(msout):
             # File may exist from a previous processing cycle; delete it if so
             shutil.rmtree(msout, ignore_errors=True)
-        subprocess.check_call(['cp', '-r', '-L', '--no-preserve=mode', msin, msout])
+        subprocess.check_call(["cp", "-r", "-L", "--no-preserve=mode", msin, msout])
         return
 
     # Open input table and define chunks based on available memory, making sure each
@@ -340,28 +366,28 @@ def main(msin, model_list, msin_column='DATA', model_column='DATA',
     startrows_tmod = [0]
     nrows = [nrows_per_chunk]
     for i in range(1, nchunks):
-        if i == nchunks-1:
+        if i == nchunks - 1:
             nrow = nrows_in - (nchunks - 1) * nrows_per_chunk
         else:
             nrow = nrows_per_chunk
         nrows.append(nrow)
-        startrows_tin.append(startrows_tin[i-1] + nrows[i-1])
-        startrows_tmod.append(startrows_tmod[i-1] + nrows[i-1])
-    print(f'subtract_sector_models: Using {nchunks} chunk(s) for peeling of sector sources')
+        startrows_tin.append(startrows_tin[i - 1] + nrows[i - 1])
+        startrows_tmod.append(startrows_tmod[i - 1] + nrows[i - 1])
+    print(f"subtract_sector_models: Using {nchunks} chunk(s) for peeling of sector sources")
 
     # Open output tables
     tout_list = []
     for i, msmod in enumerate(model_list):
-        if nr_bright > 0 and nr_outliers > 0 and i == len(model_list)-nr_outliers-nr_bright:
+        if nr_bright > 0 and nr_outliers > 0 and i == len(model_list) - nr_outliers - nr_bright:
             # Break so we don't open output tables for the outliers or bright sources
             break
-        elif nr_outliers > 0 and i == len(model_list)-nr_outliers:
+        elif nr_outliers > 0 and i == len(model_list) - nr_outliers:
             # Break so we don't open output tables for the outliers
             break
-        elif nr_bright > 0 and i == len(model_list)-nr_bright:
+        elif nr_bright > 0 and i == len(model_list) - nr_bright:
             # Break so we don't open output tables for the bright sources
             break
-        msout = os.path.basename(msmod).removesuffix('_modeldata')
+        msout = os.path.basename(msmod).removesuffix("_modeldata")
 
         # Use subprocess to call 'cp' to ensure that the copied version has the
         # default permissions (e.g., so it's not read only)
@@ -371,14 +397,16 @@ def main(msin, model_list, msin_column='DATA', model_column='DATA',
         if os.path.exists(msout):
             # File may exist from a previous processing cycle; delete it if so
             shutil.rmtree(msout, ignore_errors=True)
-        subprocess.check_call(['cp', '-r', '-L', '--no-preserve=mode', ms_template, msout])
+        subprocess.check_call(["cp", "-r", "-L", "--no-preserve=mode", ms_template, msout])
         tout_list.append(pt.table(msout, readonly=False, ack=False))
 
     # Process the data chunk by chunk
-    for c, (startrow_tin, startrow_tmod, nrow) in enumerate(zip(startrows_tin, startrows_tmod, nrows)):
+    for c, (startrow_tin, startrow_tmod, nrow) in enumerate(
+        zip(startrows_tin, startrows_tmod, nrows)
+    ):
         # For each chunk, load data
         datain = tin.getcol(msin_column, startrow=startrow_tin, nrow=nrow)
-        flags = tin.getcol('FLAG', startrow=startrow_tin, nrow=nrow)
+        flags = tin.getcol("FLAG", startrow=startrow_tin, nrow=nrow)
         datamod_list = []
         for i, msmodel in enumerate(model_list):
             tmod = pt.table(msmodel, readonly=True, ack=False)
@@ -397,7 +425,7 @@ def main(msin, model_list, msin_column='DATA', model_column='DATA',
                 else:
                     datamod_all += datamod_list[sector_ind]
             if datamod_all is not None:
-                tout.putcol(out_column, datain-datamod_all, startrow=startrow_tmod, nrow=nrow)
+                tout.putcol(out_column, datain - datamod_all, startrow=startrow_tmod, nrow=nrow)
             else:
                 tout.putcol(out_column, datain, startrow=startrow_tmod, nrow=nrow)
             if reweight:
@@ -407,10 +435,19 @@ def main(msin, model_list, msin_column='DATA', model_column='DATA',
                         datamod_all = datamod_list[i]
                     else:
                         datamod_all += datamod_list[i]
-                    covweights = CovWeights(model_list[0], solint_sec, solint_hz, startrow_tmod, nrow,
-                                            gainfile=gainfile, uvcut=uvcut, phaseonly=phaseonly,
-                                            dirname=dirname, quiet=quiet)
-                    coefficients = covweights.FindWeights(datain-datamod_all, flags)
+                    covweights = CovWeights(
+                        model_list[0],
+                        solint_sec,
+                        solint_hz,
+                        startrow_tmod,
+                        nrow,
+                        gainfile=gainfile,
+                        uvcut=uvcut,
+                        phaseonly=phaseonly,
+                        dirname=dirname,
+                        quiet=quiet,
+                    )
+                    coefficients = covweights.FindWeights(datain - datamod_all, flags)
                     weights = covweights.calcWeights(coefficients)
                     covweights = None
                 tout.putcol(weights_colname, weights, startrow=startrow_tmod, nrow=nrow)
@@ -427,20 +464,31 @@ https://github.com/ebonnassieux/Scripts/blob/master/QualityWeightsLOFAR.py
 
 
 class CovWeights:
-    def __init__(self, MSName, solint_sec, solint_hz, startrow, nrow, uvcut=[0, 2000],
-                 gainfile=None, phaseonly=False, dirname=None, quiet=True):
+    def __init__(
+        self,
+        MSName,
+        solint_sec,
+        solint_hz,
+        startrow,
+        nrow,
+        uvcut=[0, 2000],
+        gainfile=None,
+        phaseonly=False,
+        dirname=None,
+        quiet=True,
+    ):
         if MSName[-1] == "/":
             self.MSName = MSName[0:-1]
         else:
             self.MSName = MSName
         tab = pt.table(self.MSName, ack=False)
-        self.timepersample = tab.getcell('EXPOSURE', 0)
+        self.timepersample = tab.getcell("EXPOSURE", 0)
         self.ntSol = max(1, int(round(solint_sec / self.timepersample)))
         tab.close()
-        sw = pt.table(self.MSName+'::SPECTRAL_WINDOW', ack=False)
-        self.referencefreq = sw.col('REF_FREQUENCY')[0]
-        self.channelwidth = sw.col('CHAN_WIDTH')[0][0]
-        self.numchannels = sw.col('NUM_CHAN')[0]
+        sw = pt.table(self.MSName + "::SPECTRAL_WINDOW", ack=False)
+        self.referencefreq = sw.col("REF_FREQUENCY")[0]
+        self.channelwidth = sw.col("CHAN_WIDTH")[0][0]
+        self.numchannels = sw.col("NUM_CHAN")[0]
         sw.close()
         self.nchanSol = max(1, self.get_nearest_frequstep(solint_hz / self.channelwidth))
         self.uvcut = uvcut
@@ -511,16 +559,22 @@ class CovWeights:
                     set2 = np.where(A1 == ant)[0]
                     CoeffArray[t_i:t_e, f_i:f_e, ant] = np.sqrt(
                         np.nanmean(
-                            np.append(residuals[t_i:t_e, set1, f_i:f_e, :],
-                                      residuals[t_i:t_e, set2, f_i:f_e, :]) *
-                            np.append(residuals[t_i:t_e, set1, f_i:f_e, :],
-                                      residuals[t_i:t_e, set2, f_i:f_e, :]).conj()
-                            ) -
-                        np.nanstd(
-                            np.append(rmsarray[t_i:t_e, set1, f_i:f_e, :],
-                                      rmsarray[t_i:t_e, set2, f_i:f_e, :])
+                            np.append(
+                                residuals[t_i:t_e, set1, f_i:f_e, :],
+                                residuals[t_i:t_e, set2, f_i:f_e, :],
+                            )
+                            * np.append(
+                                residuals[t_i:t_e, set1, f_i:f_e, :],
+                                residuals[t_i:t_e, set2, f_i:f_e, :],
+                            ).conj()
+                        )
+                        - np.nanstd(
+                            np.append(
+                                rmsarray[t_i:t_e, set1, f_i:f_e, :],
+                                rmsarray[t_i:t_e, set2, f_i:f_e, :],
                             )
                         )
+                    )
 
         # get rid of NaNs and low values
         CoeffArray[~np.isfinite(CoeffArray)] = np.inf
@@ -539,11 +593,15 @@ class CovWeights:
         darray = ms.getcol("DATA", startrow=self.startrow, nrow=self.nrow)
         tvalues = np.array(sorted(list(set(tarray))))
         nt = tvalues.shape[0]
-        nbl = int(tarray.shape[0]/nt)
+        nbl = int(tarray.shape[0] / nt)
         nchan = darray.shape[1]
         npol = darray.shape[2]
-        A0 = np.array(ms.getcol("ANTENNA1", startrow=self.startrow, nrow=self.nrow).reshape((nt, nbl)))
-        A1 = np.array(ms.getcol("ANTENNA2", startrow=self.startrow, nrow=self.nrow).reshape((nt, nbl)))
+        A0 = np.array(
+            ms.getcol("ANTENNA1", startrow=self.startrow, nrow=self.nrow).reshape((nt, nbl))
+        )
+        A1 = np.array(
+            ms.getcol("ANTENNA2", startrow=self.startrow, nrow=self.nrow).reshape((nt, nbl))
+        )
 
         # initialize weight array
         w = np.zeros((nt, nbl, nchan, npol))
@@ -551,18 +609,31 @@ class CovWeights:
         A1ind = A1[0, :]
 
         # do gains stuff
-        ant1gainarray, ant2gainarray = readGainFile(self.gainfile, ms, nt, nchan, nbl,
-                                                    tarray, nAnt, self.MSName, self.phaseonly,
-                                                    self.dirname, self.startrow, self.nrow)
+        ant1gainarray, ant2gainarray = readGainFile(
+            self.gainfile,
+            ms,
+            nt,
+            nchan,
+            nbl,
+            tarray,
+            nAnt,
+            self.MSName,
+            self.phaseonly,
+            self.dirname,
+            self.startrow,
+            self.nrow,
+        )
         ant1gainarray = ant1gainarray.reshape((nt, nbl, nchan))
         ant2gainarray = ant2gainarray.reshape((nt, nbl, nchan))
         for t in range(nt):
             for i in range(nbl):
                 for j in range(nchan):
-                    w[t, i, j, :] = 1.0 / (CoeffArray[t, j, A0ind[i]] * ant1gainarray[t, i, j] +
-                                           CoeffArray[t, j, A1ind[i]] * ant2gainarray[t, i, j] +
-                                           CoeffArray[t, j, A0ind[i]] * CoeffArray[t, j, A1ind[i]] +
-                                           0.1)
+                    w[t, i, j, :] = 1.0 / (
+                        CoeffArray[t, j, A0ind[i]] * ant1gainarray[t, i, j]
+                        + CoeffArray[t, j, A1ind[i]] * ant2gainarray[t, i, j]
+                        + CoeffArray[t, j, A0ind[i]] * CoeffArray[t, j, A1ind[i]]
+                        + 0.1
+                    )
 
         # If desired, force the weights to be equal for the short baselines (this ensures
         # that shorter baselines are not downweighted due to, e.g., residual flux from poor
@@ -580,7 +651,7 @@ class CovWeights:
                         w[t, core_bl_ind, j, p] = w_core
 
         # normalize
-        w = w.reshape(nt*nbl, nchan, npol)
+        w = w.reshape(nt * nbl, nchan, npol)
         w[np.isinf(w)] = np.nan
         w = w / np.nanmean(w)
         w[~np.isfinite(w)] = 0
@@ -602,7 +673,7 @@ class CovWeights:
             Optimum frequency step nearest to target step
         """
         # Generate a list of possible values for freqstep
-        if not hasattr(self, 'freq_divisors'):
+        if not hasattr(self, "freq_divisors"):
             tmp_divisors = []
             for step in range(self.numchannels, 0, -1):
                 if (self.numchannels % step) == 0:
@@ -615,38 +686,40 @@ class CovWeights:
         return self.freq_divisors[idx]
 
 
-def readGainFile(gainfile, ms, nt, nchan, nbl, tarray, nAnt, msname, phaseonly, dirname,
-                 startrow, nrow):
+def readGainFile(
+    gainfile, ms, nt, nchan, nbl, tarray, nAnt, msname, phaseonly, dirname, startrow, nrow
+):
     if phaseonly:
-        ant1gainarray1 = np.ones((nt*nbl, nchan))
-        ant2gainarray1 = np.ones((nt*nbl, nchan))
+        ant1gainarray1 = np.ones((nt * nbl, nchan))
+        ant2gainarray1 = np.ones((nt * nbl, nchan))
     else:
         import losoto.h5parm
+
         solsetName = "sol000"
         soltabName = "screenamplitude000"
         try:
             gfile = losoto.h5parm.openSoltab(gainfile, solsetName=solsetName, soltabName=soltabName)
         except Exception:
             print("Could not find amplitude gains in h5parm. Assuming gains of 1 everywhere.")
-            ant1gainarray1 = np.ones((nt*nbl, nchan))
-            ant2gainarray1 = np.ones((nt*nbl, nchan))
+            ant1gainarray1 = np.ones((nt * nbl, nchan))
+            ant2gainarray1 = np.ones((nt * nbl, nchan))
             return ant1gainarray1, ant2gainarray1
 
-        freqs = pt.table(msname+"/SPECTRAL_WINDOW").getcol("CHAN_FREQ")
+        freqs = pt.table(msname + "/SPECTRAL_WINDOW").getcol("CHAN_FREQ")
         gains = gfile.val  # axes: times, freqs, ants, dirs, pols
         flagged = np.where(gains == 0.0)
         gains[flagged] = np.nan
         gfreqs = gfile.freq
         times = gfile.time
         dindx = gfile.dir.tolist().index(dirname)
-        ant1gainarray = np.zeros((nt*nbl, nchan))
-        ant2gainarray = np.zeros((nt*nbl, nchan))
+        ant1gainarray = np.zeros((nt * nbl, nchan))
+        ant2gainarray = np.zeros((nt * nbl, nchan))
         A0arr = ms.getcol("ANTENNA1", startrow=startrow, nrow=nrow)
         A1arr = ms.getcol("ANTENNA2", startrow=startrow, nrow=nrow)
         deltime = (times[1] - times[0]) / 2.0
         delfreq = (gfreqs[1] - gfreqs[0]) / 2.0
         for i in range(len(times)):
-            timemask = (tarray >= times[i]-deltime) * (tarray < times[i]+deltime)
+            timemask = (tarray >= times[i] - deltime) * (tarray < times[i] + deltime)
             if np.all(~timemask):
                 continue
             for j in range(nAnt):
@@ -654,55 +727,76 @@ def readGainFile(gainfile, ms, nt, nchan, nbl, tarray, nAnt, msname, phaseonly, 
                 mask2 = timemask * (A1arr == j)
                 for k in range(nchan):
                     chan_freq = freqs[0, k]
-                    freqmask = np.logical_and(gfreqs >= chan_freq-delfreq,
-                                              gfreqs < chan_freq+delfreq)
+                    freqmask = np.logical_and(
+                        gfreqs >= chan_freq - delfreq, gfreqs < chan_freq + delfreq
+                    )
                     if chan_freq < gfreqs[0]:
                         freqmask[0] = True
                     if chan_freq > gfreqs[-1]:
                         freqmask[-1] = True
-                    ant1gainarray[mask1, k] = np.nanmean(gains[i, freqmask, j, dindx, :], axis=(0, 1))
-                    ant2gainarray[mask2, k] = np.nanmean(gains[i, freqmask, j, dindx, :], axis=(0, 1))
+                    ant1gainarray[mask1, k] = np.nanmean(
+                        gains[i, freqmask, j, dindx, :], axis=(0, 1)
+                    )
+                    ant2gainarray[mask2, k] = np.nanmean(
+                        gains[i, freqmask, j, dindx, :], axis=(0, 1)
+                    )
         ant1gainarray1 = ant1gainarray**2
         ant2gainarray1 = ant2gainarray**2
 
     return ant1gainarray1, ant2gainarray1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     descriptiontext = "Subtract sector model data.\n"
 
     parser = ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
-    parser.add_argument('msin', help='Filename of input MS data file')
-    parser.add_argument('msmod', help='Filename of input MS model data file')
-    parser.add_argument('--msin_column', help='Name of msin column', type=str, default='DATA')
-    parser.add_argument('--model_column', help='Name of msmod column', type=str, default='DATA')
-    parser.add_argument('--out_column', help='Name of output column', type=str, default='DATA')
-    parser.add_argument('--nr_outliers', help='Number of outlier sectors', type=int, default=0)
-    parser.add_argument('--nr_bright', help='Number of bright-source sectors', type=int, default=0)
-    parser.add_argument('--use_compression', help='Use compression', type=str, default='False')
-    parser.add_argument('--peel_outliers', help='Peel outliers', type=str, default='False')
-    parser.add_argument('--peel_bright', help='Peel bright sources', type=str, default='False')
-    parser.add_argument('--reweight', help='Reweight', type=str, default='True')
-    parser.add_argument('--starttime', help='Start time in MVT', type=str, default=None)
-    parser.add_argument('--solint_sec', help='Solution interval in s', type=float, default=None)
-    parser.add_argument('--solint_hz', help='Solution interval in Hz', type=float, default=None)
-    parser.add_argument('--weights_colname', help='Name of weight column', type=str, default='CAL_WEIGHT')
-    parser.add_argument('--gainfile', help='Filename of gain file', type=str, default='')
-    parser.add_argument('--uvcut_min', help='Min uv cut in lambda', type=float, default=80.0)
-    parser.add_argument('--uvcut_max', help='Max uv cut in lambda', type=float, default=1e6)
-    parser.add_argument('--phaseonly', help='Reweight with phases only', type=str, default='True')
-    parser.add_argument('--dirname', help='Name of gain file directory', type=str, default=None)
-    parser.add_argument('--quiet', help='Quiet', type=str, default='True')
-    parser.add_argument('--infix', help='Infix for output files', type=str, default='')
+    parser.add_argument("msin", help="Filename of input MS data file")
+    parser.add_argument("msmod", help="Filename of input MS model data file")
+    parser.add_argument("--msin_column", help="Name of msin column", type=str, default="DATA")
+    parser.add_argument("--model_column", help="Name of msmod column", type=str, default="DATA")
+    parser.add_argument("--out_column", help="Name of output column", type=str, default="DATA")
+    parser.add_argument("--nr_outliers", help="Number of outlier sectors", type=int, default=0)
+    parser.add_argument("--nr_bright", help="Number of bright-source sectors", type=int, default=0)
+    parser.add_argument("--use_compression", help="Use compression", type=str, default="False")
+    parser.add_argument("--peel_outliers", help="Peel outliers", type=str, default="False")
+    parser.add_argument("--peel_bright", help="Peel bright sources", type=str, default="False")
+    parser.add_argument("--reweight", help="Reweight", type=str, default="True")
+    parser.add_argument("--starttime", help="Start time in MVT", type=str, default=None)
+    parser.add_argument("--solint_sec", help="Solution interval in s", type=float, default=None)
+    parser.add_argument("--solint_hz", help="Solution interval in Hz", type=float, default=None)
+    parser.add_argument(
+        "--weights_colname", help="Name of weight column", type=str, default="CAL_WEIGHT"
+    )
+    parser.add_argument("--gainfile", help="Filename of gain file", type=str, default="")
+    parser.add_argument("--uvcut_min", help="Min uv cut in lambda", type=float, default=80.0)
+    parser.add_argument("--uvcut_max", help="Max uv cut in lambda", type=float, default=1e6)
+    parser.add_argument("--phaseonly", help="Reweight with phases only", type=str, default="True")
+    parser.add_argument("--dirname", help="Name of gain file directory", type=str, default=None)
+    parser.add_argument("--quiet", help="Quiet", type=str, default="True")
+    parser.add_argument("--infix", help="Infix for output files", type=str, default="")
     args = parser.parse_args()
 
-    main(args.msin, misc.string2list(args.msmod), msin_column=args.msin_column,
-         model_column=args.model_column, out_column=args.out_column,
-         nr_outliers=args.nr_outliers, nr_bright=args.nr_bright,
-         use_compression=args.use_compression, peel_outliers=args.peel_outliers,
-         peel_bright=args.peel_bright, reweight=args.reweight,
-         starttime=args.starttime, solint_sec=args.solint_sec,
-         solint_hz=args.solint_hz, weights_colname=args.weights_colname,
-         gainfile=args.gainfile, uvcut_min=args.uvcut_min,
-         uvcut_max=args.uvcut_max, phaseonly=args.phaseonly,
-         dirname=args.dirname, quiet=args.quiet, infix=args.infix)
+    main(
+        args.msin,
+        misc.string2list(args.msmod),
+        msin_column=args.msin_column,
+        model_column=args.model_column,
+        out_column=args.out_column,
+        nr_outliers=args.nr_outliers,
+        nr_bright=args.nr_bright,
+        use_compression=args.use_compression,
+        peel_outliers=args.peel_outliers,
+        peel_bright=args.peel_bright,
+        reweight=args.reweight,
+        starttime=args.starttime,
+        solint_sec=args.solint_sec,
+        solint_hz=args.solint_hz,
+        weights_colname=args.weights_colname,
+        gainfile=args.gainfile,
+        uvcut_min=args.uvcut_min,
+        uvcut_max=args.uvcut_max,
+        phaseonly=args.phaseonly,
+        dirname=args.dirname,
+        quiet=args.quiet,
+        infix=args.infix,
+    )
