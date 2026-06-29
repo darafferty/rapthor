@@ -1,8 +1,8 @@
 import astropy.coordinates as coords
-from astropy.io.fits import CompImageHDU, PrimaryHDU
 import astropy.io.fits as fits
 import numpy as np
 import pytest
+from astropy.io.fits import CompImageHDU, PrimaryHDU
 
 from rapthor.execution.image.restoration import (
     compress_image_if_needed,

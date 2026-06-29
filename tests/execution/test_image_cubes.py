@@ -1,7 +1,7 @@
 """Tests for image cube helpers."""
 
-from astropy.io import fits
 import numpy as np
+from astropy.io import fits
 
 from rapthor.execution.image.cubes import make_image_cube
 
