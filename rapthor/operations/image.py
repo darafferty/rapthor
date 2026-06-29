@@ -447,8 +447,7 @@ class Image(Operation):
 
         self.input_parms["shared_facet_rw"] = False
 
-        facets = self.field.read_facets() if self.use_facets else None
-        n_facets = len(facets) if facets else 0
+        num_facets = getattr(self.field, "num_patches", 0) if self.use_facets else 1
 
         for sector_id, (parallel_gridding_tasks, channels_out_per_node) in enumerate(
             zip(self.input_parms["parallel_gridding_tasks"], self.input_parms["channels_out"])
@@ -459,7 +458,7 @@ class Image(Operation):
             # Case 1: Facets are available.
             # Distribute over channels_out, parallelise over facets.
             # Match parallel tasks to n_facets so available threads aren't left
-            if n_facets > 1:
+            if num_facets > 1:
                 self.input_parms["shared_facet_rw"] = self.parset["imaging_specific"][
                     "shared_facet_rw"
                 ]
@@ -468,7 +467,7 @@ class Image(Operation):
                     adjust_parallel_gridding_tasks(
                         self.field.parset["cluster_specific"]["max_cores"],
                         parallel_gridding_tasks,
-                        n_facets,
+                        num_facets,
                     )
                 )
             # Case 2: Only one facet or none is available.
