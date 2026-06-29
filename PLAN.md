@@ -107,6 +107,18 @@ Progress:
   regridding, and mosaic averaging to `rapthor.execution.mosaic.images`, kept
   the three scripts as CLI wrappers, and added direct function plus CLI parity
   coverage for each script.
+- Continued with the image-cube helper group: extracted FITS cube creation and
+  PyBDSF catalog creation to `rapthor.execution.image.cubes`, kept both scripts
+  as CLI wrappers, and added direct function plus CLI parity coverage.
+- Continued with `concat_ms.py`: extracted Measurement Set concatenation and
+  command construction to `rapthor.execution.concatenate.measurement_sets`,
+  kept the script as the CLI wrapper, and kept direct plus CLI parity coverage.
+- Continued with `adjust_h5parm_sources.py`: extracted h5parm source-table
+  alignment to `rapthor.execution.calibrate.h5parm_sources`, kept the script as
+  the CLI wrapper, and added direct function plus CLI parity coverage.
+- Continued with `collect_screen_h5parms.py`: extracted screen-solution h5parm
+  collection to `rapthor.execution.calibrate.screen_h5parms`, kept the script
+  as the CLI wrapper, and added real h5py-backed direct plus CLI parity tests.
 
 Script audit and migration order:
 
@@ -121,15 +133,22 @@ Script audit and migration order:
 - Done: `make_mosaic_template.py`, `regrid_image.py`, and `make_mosaic.py` ->
   mosaic execution; FITS images plus vertices to template/regridded/mosaic FITS
   products; medium file payloads; direct and CLI parity tests now exist.
-- Good next image-normalization group: `make_image_cube.py` and
-  `make_catalog_from_image_cube.py` -> image normalization; channel FITS files
-  and cube metadata to cube/catalog products; medium file payloads; current
-  tests cover core behavior.
+- Done: `make_image_cube.py` and `make_catalog_from_image_cube.py` -> image
+  normalization; channel FITS files and cube metadata to cube/catalog products;
+  medium file payloads; direct and CLI parity tests now exist.
+- Done: `concat_ms.py` -> concatenate and image preparation; Measurement Set
+  paths to copied or concatenated Measurement Set output; medium-to-large file
+  payloads; direct and CLI parity tests now exist.
+- Done: `adjust_h5parm_sources.py` -> calibration collection/prediction;
+  skymodel patch positions plus h5parm source tables; medium file payloads;
+  direct and CLI parity tests now exist.
+- Done: `collect_screen_h5parms.py` -> calibration screen collection; screen
+  h5parm files concatenated over time; medium file payloads; direct and CLI
+  parity tests now exist.
 - Medium risk, keep script wrappers until behavior is better isolated:
-  `concat_ms.py`, `filter_skymodel.py`, `restore_skymodel.py`,
-  `adjust_h5parm_sources.py`, `collect_screen_h5parms.py`, and
-  `combine_h5parms.py`. These touch Measurement Sets, h5parm files,
-  skymodels, subprocesses, or multi-step scientific transformations.
+  `filter_skymodel.py`, `restore_skymodel.py`, and `combine_h5parms.py`. These
+  touch h5parm files, skymodels, subprocesses, or multi-step scientific
+  transformations.
 - Defer until after the smaller helpers establish the pattern:
   `calculate_image_diagnostics.py`, `normalize_flux_scale.py`,
   `process_gains.py`, `add_sector_models.py`, and

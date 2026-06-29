@@ -3,11 +3,13 @@ Tests for the make_catalog_from_image_cube script.
 """
 
 import os
+import runpy
+import sys
 
 import pytest
 
-import rapthor.scripts.make_catalog_from_image_cube as catalog_module
-from rapthor.scripts.make_catalog_from_image_cube import main
+import rapthor.execution.image.cubes as cube_module
+from rapthor.execution.image.cubes import make_catalog_from_image_cube
 
 
 class FakeBdsfImage:
@@ -35,9 +37,9 @@ def test_main_parses_cube_metadata_and_writes_catalog(tmp_path, monkeypatch):
         process_calls.append((args, kwargs))
         return fake_image
 
-    monkeypatch.setattr(catalog_module.bdsf, "process_image", fake_process_image)
+    monkeypatch.setattr(cube_module.bdsf, "process_image", fake_process_image)
 
-    main(
+    make_catalog_from_image_cube(
         str(cube_image),
         str(cube_beams),
         str(cube_frequencies),
@@ -96,7 +98,9 @@ def test_main_rejects_empty_beam_file(tmp_path):
     cube_frequencies.write_text("140000000.0")
 
     with pytest.raises(RuntimeError, match="No beam parameters found"):
-        main(str(cube_image), str(cube_beams), str(cube_frequencies), str(output_catalog))
+        make_catalog_from_image_cube(
+            str(cube_image), str(cube_beams), str(cube_frequencies), str(output_catalog)
+        )
 
 
 def test_main_rejects_empty_frequency_file(tmp_path):
@@ -109,4 +113,60 @@ def test_main_rejects_empty_frequency_file(tmp_path):
     cube_frequencies.write_text("")
 
     with pytest.raises(RuntimeError, match="No frequencies found"):
-        main(str(cube_image), str(cube_beams), str(cube_frequencies), str(output_catalog))
+        make_catalog_from_image_cube(
+            str(cube_image), str(cube_beams), str(cube_frequencies), str(output_catalog)
+        )
+
+
+def test_make_catalog_from_image_cube_cli_matches_function(tmp_path, monkeypatch):
+    cube_image = tmp_path / "cube.fits"
+    cube_beams = tmp_path / "cube_beams.txt"
+    cube_frequencies = tmp_path / "cube_frequencies.txt"
+    function_catalog = tmp_path / "function_catalog.fits"
+    cli_catalog = tmp_path / "cli_catalog.fits"
+    cube_image.write_text("cube")
+    cube_beams.write_text("(0.03, 0.015, 35.0), (0.02, 0.01, 45.0)")
+    cube_frequencies.write_text("140000000.0, 150000000.0")
+    process_calls = []
+
+    def fake_process_image(*args, **kwargs):
+        process_calls.append((args, kwargs))
+        return FakeBdsfImage()
+
+    monkeypatch.setattr(cube_module.bdsf, "process_image", fake_process_image)
+
+    make_catalog_from_image_cube(
+        str(cube_image),
+        str(cube_beams),
+        str(cube_frequencies),
+        str(function_catalog),
+        threshisl=4.0,
+        threshpix=6.0,
+        rmsbox=(60, 20),
+        rmsbox_bright=(30, 10),
+        adaptive_thresh=50.0,
+        ncores=3,
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "make_catalog_from_image_cube.py",
+            str(cube_image),
+            str(cube_beams),
+            str(cube_frequencies),
+            str(cli_catalog),
+            "--threshisl=4.0",
+            "--threshpix=6.0",
+            "--rmsbox=(60, 20)",
+            "--rmsbox_bright=(30, 10)",
+            "--adaptive_thresh=50.0",
+            "--ncores=3",
+        ],
+    )
+
+    runpy.run_module("rapthor.scripts.make_catalog_from_image_cube", run_name="__main__")
+
+    assert cli_catalog.read_text() == function_catalog.read_text() == "catalog"
+    assert len(process_calls) == 2
+    assert process_calls[1][1] == process_calls[0][1]

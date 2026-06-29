@@ -2,10 +2,14 @@
 Tests for the adjust_h5parm_sources script.
 """
 
+import runpy
+import sys
+
 import numpy as np
 import pytest
 
-import rapthor.scripts.adjust_h5parm_sources as adjust_h5parm_sources
+import rapthor.execution.calibrate.h5parm_sources as h5parm_sources
+from rapthor.execution.calibrate.h5parm_sources import adjust_h5parm_source_coordinates
 
 
 class FakeAngle:
@@ -158,13 +162,13 @@ class FakeH5Parm:
 def patch_script(monkeypatch, source_positions, solset):
     fake_h5parm = FakeH5Parm(solset)
     monkeypatch.setattr(
-        adjust_h5parm_sources.lsmtool,
+        h5parm_sources.lsmtool,
         "load",
         lambda skymodel: FakeSkyModel(source_positions),
     )
-    monkeypatch.setattr(adjust_h5parm_sources, "h5parm", fake_h5parm)
+    monkeypatch.setattr(h5parm_sources, "h5parm", fake_h5parm)
     monkeypatch.setattr(
-        adjust_h5parm_sources,
+        h5parm_sources,
         "normalize_ra_dec",
         lambda ra, dec: (ra, dec),
     )
@@ -194,7 +198,7 @@ def test_main_rewrites_source_table_for_matching_directions(monkeypatch):
     }
     fake_h5parm = patch_script(monkeypatch, source_positions, solset)
 
-    adjust_h5parm_sources.main("calibrators.sky", "solutions.h5", solset_name="sol001")
+    adjust_h5parm_source_coordinates("calibrators.sky", "solutions.h5", solset_name="sol001")
 
     assert fake_h5parm.open_calls == [("solutions.h5", False)]
     assert fake_h5parm.requested_solset_name == "sol001"
@@ -224,8 +228,8 @@ def test_main_rejects_direction_count_mismatch(monkeypatch):
     }
     patch_script(monkeypatch, source_positions, solset)
 
-    with pytest.raises(SystemExit, match="must have the same length"):
-        adjust_h5parm_sources.main("calibrators.sky", "solutions.h5")
+    with pytest.raises(ValueError, match="must have the same length"):
+        adjust_h5parm_source_coordinates("calibrators.sky", "solutions.h5")
 
 
 def test_main_rejects_unknown_h5parm_direction(monkeypatch):
@@ -236,8 +240,8 @@ def test_main_rejects_unknown_h5parm_direction(monkeypatch):
     }
     patch_script(monkeypatch, source_positions, solset)
 
-    with pytest.raises(SystemExit, match="not in the sky model"):
-        adjust_h5parm_sources.main("calibrators.sky", "solutions.h5")
+    with pytest.raises(ValueError, match="not in the sky model"):
+        adjust_h5parm_source_coordinates("calibrators.sky", "solutions.h5")
 
 
 def test_main_duplicates_direction_independent_solutions(monkeypatch, capsys):
@@ -255,7 +259,7 @@ def test_main_duplicates_direction_independent_solutions(monkeypatch, capsys):
     }
     patch_script(monkeypatch, source_positions, solset)
 
-    adjust_h5parm_sources.main("calibrators.sky", "solutions.h5")
+    adjust_h5parm_source_coordinates("calibrators.sky", "solutions.h5")
 
     captured = capsys.readouterr()
     assert "duplicated for all directions" in captured.out
@@ -268,3 +272,58 @@ def test_main_duplicates_direction_independent_solutions(monkeypatch, capsys):
     assert created["axesVals"][1] == ["[Patch_A]", "[Patch_B]"]
     assert np.allclose(created["vals"], [[1.0, 1.0], [2.0, 2.0]])
     assert np.allclose(created["weights"], [[0.5, 0.5], [0.75, 0.75]])
+
+
+def test_adjust_h5parm_sources_cli_matches_function(monkeypatch):
+    source_positions = {
+        "Patch_A": patch_position(10.0, -20.0),
+        "Patch_B": patch_position(30.0, 40.0),
+    }
+    function_table = FakeSourceTable()
+    function_solset = _matching_direction_solset(function_table)
+    patch_script(monkeypatch, source_positions, function_solset)
+
+    adjust_h5parm_source_coordinates("calibrators.sky", "solutions.h5", solset_name="sol001")
+
+    cli_table = FakeSourceTable()
+    cli_solset = _matching_direction_solset(cli_table)
+    patch_script(monkeypatch, source_positions, cli_solset)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "adjust_h5parm_sources.py",
+            "calibrators.sky",
+            "solutions.h5",
+            "--solset_name=sol001",
+        ],
+    )
+
+    runpy.run_module("rapthor.scripts.adjust_h5parm_sources", run_name="__main__")
+
+    assert _source_table_names(function_table) == _source_table_names(cli_table)
+    assert np.allclose(_source_table_coords(function_table), _source_table_coords(cli_table))
+
+
+def _matching_direction_solset(source_table):
+    return FakeSolset(
+        [
+            FakeSoltab(
+                dirs=["[Patch_A]", "[Patch_B]"],
+                axes_names=["time", "dir"],
+                axes_vals=[[0.0], ["[Patch_A]", "[Patch_B]"]],
+                vals=[[1.0, 2.0]],
+            )
+        ],
+        source_table=source_table,
+    )
+
+
+def _source_table_names(source_table):
+    names, _ = zip(*source_table.rows)
+    return names
+
+
+def _source_table_coords(source_table):
+    _, coords = zip(*source_table.rows)
+    return coords
