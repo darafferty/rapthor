@@ -91,7 +91,8 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         libboost-program-options-dev \
         libboost-python-dev \
         libcfitsio-dev \
-        libdeflate-dev \        libfftw3-dev \
+        libdeflate-dev \
+        libfftw3-dev \
         libgsl-dev \
         libhdf5-dev \
         liblapack-dev \
