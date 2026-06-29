@@ -191,8 +191,10 @@ def predict(
                 str(chans[-1]),
                 "-model-storage-manager",
                 str(storage_manager),
-                msfile,
             ]
+            if time_freq_smearing is not None:
+                cmd.append("-apply-time-frequency-smearing")
+            cmd.append(msfile)
             try:
                 subprocess.run(cmd, check=True).returncode
             except subprocess.CalledProcessError as err:
