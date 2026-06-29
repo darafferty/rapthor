@@ -18,7 +18,8 @@ RUN apt-get update && \
 		libboost-program-options1.74.0 \
 		libboost-python-dev \
 		libboost-python1.74.0 \
-		libcfitsio-bin \
+        libcfitsio-bin \
+        libdeflate0 \
 		libfftw3-double3 \
 		libfftw3-single3 \
 		libgfortran5 \
@@ -90,7 +91,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         libboost-program-options-dev \
         libboost-python-dev \
         libcfitsio-dev \
-        libfftw3-dev \
+        libdeflate-dev \        libfftw3-dev \
         libgsl-dev \
         libhdf5-dev \
         liblapack-dev \

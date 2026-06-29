@@ -28,7 +28,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         libboost-system-dev \
         libboost-test-dev \
         libcfitsio-dev \
-        libfftw3-dev \
+        libdeflate-dev \        libfftw3-dev \
         libgsl-dev \
         libgtkmm-3.0-dev \
         libhdf5-serial-dev \
