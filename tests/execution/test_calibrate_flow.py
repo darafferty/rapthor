@@ -10,6 +10,7 @@ import rapthor.execution.calibrate.collection as calibrate_collection
 import rapthor.execution.calibrate.flow as calibrate_module
 import rapthor.execution.calibrate.prediction as calibrate_prediction
 from rapthor.execution.calibrate.commands import (
+    PLOT_SOLUTIONS_MODULE,
     DdecalSolveOptions,
     DrawModelOptions,
     IdgcalScreenSolveOptions,
@@ -33,6 +34,31 @@ from rapthor.operations.calibrate.base import Calibrate
 from tests.execution.conftest import run_flow_for_test
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
+PLOT_SOLUTIONS_COMMAND_PREFIX = ["python", "-m", PLOT_SOLUTIONS_MODULE]
+PLOT_SOLUTIONS_COMMAND_NAME = " ".join(PLOT_SOLUTIONS_COMMAND_PREFIX)
+
+
+def _is_plot_solutions_command(command: list[str]) -> bool:
+    """Return whether command tokens invoke the plotting adapter."""
+    return command[: len(PLOT_SOLUTIONS_COMMAND_PREFIX)] == PLOT_SOLUTIONS_COMMAND_PREFIX
+
+
+def _plot_solutions_args(command: list[str]) -> list[str]:
+    """Return plotting adapter arguments without the Python module prefix."""
+    assert _is_plot_solutions_command(command)
+    return command[len(PLOT_SOLUTIONS_COMMAND_PREFIX) :]
+
+
+def _command_name(command: list[str]) -> str:
+    """Return a readable command name for assertions."""
+    if _is_plot_solutions_command(command):
+        return PLOT_SOLUTIONS_COMMAND_NAME
+    return command[0]
+
+
+def _command_names(commands: list[list[str]]) -> list[str]:
+    """Return readable command names for assertion lists."""
+    return [_command_name(command) for command in commands]
 
 
 @pytest.fixture
@@ -66,10 +92,11 @@ def fake_calibrate_shell_operation_cls():
                 output_path = cwd / output_name
                 output_path.write_text("collected")
                 return "OK"
-            if tokens[0] == "plotrapthor":
+            if _is_plot_solutions_command(tokens):
+                plot_args = _plot_solutions_args(tokens)
                 root = next(
-                    (token.split("=", 1)[1] for token in tokens if token.startswith("--root=")),
-                    f"{tokens[2]}_",
+                    (token.split("=", 1)[1] for token in plot_args if token.startswith("--root=")),
+                    f"{plot_args[1]}_",
                 )
                 output_path = cwd / f"{root}solutions.png"
                 output_path.write_text("plot")
@@ -1240,12 +1267,12 @@ def test_calibrate_command_builders_create_reference_tokens():
         "--outh5parm=fulljones_solutions.h5",
     ]
     assert build_plot_solutions_command("fulljones_solutions.h5", "phase") == [
-        "plotrapthor",
+        *PLOT_SOLUTIONS_COMMAND_PREFIX,
         "fulljones_solutions.h5",
         "phase",
     ]
     assert build_plot_solutions_command("fulljones_solutions.h5", "phase", first_dir=True) == [
-        "plotrapthor",
+        *PLOT_SOLUTIONS_COMMAND_PREFIX,
         "fulljones_solutions.h5",
         "phase",
         "--first-dir",
@@ -1943,11 +1970,11 @@ def test_run_calibrate_flow_supports_di_fulljones(tmp_path, fake_calibrate_shell
         shlex.split(instance.kwargs["commands"][0])
         for instance in fake_calibrate_shell_operation_cls.instances
     ]
-    assert [command[0] for command in commands] == [
+    assert _command_names(commands) == [
         "DP3",
         "DP3",
         "H5parm_collector.py",
-        "plotrapthor",
+        PLOT_SOLUTIONS_COMMAND_NAME,
     ]
     assert "solve1.mode=fulljones" in commands[0]
     assert "solve1.h5parm=fulljones_gain_0.h5parm" in commands[0]
@@ -2000,13 +2027,13 @@ def test_run_calibrate_flow_supports_di_scalar_phase(tmp_path, fake_calibrate_sh
         shlex.split(instance.kwargs["commands"][0])
         for instance in fake_calibrate_shell_operation_cls.instances
     ]
-    assert [command[0] for command in commands] == [
+    assert _command_names(commands) == [
         "DP3",
         "DP3",
         "H5parm_collector.py",
-        "plotrapthor",
+        PLOT_SOLUTIONS_COMMAND_NAME,
         "H5parm_collector.py",
-        "plotrapthor",
+        PLOT_SOLUTIONS_COMMAND_NAME,
     ]
     assert "steps=[solve1,solve2]" in commands[0]
     assert "solve1.mode=scalarphase" in commands[0]
@@ -2034,11 +2061,11 @@ def test_run_calibrate_flow_supports_di_fast_phase(tmp_path, fake_calibrate_shel
         "fast_phase_plots": [file_record(tmp_path / "phase_solutions.png")],
     }
     commands = _command_tokens(fake_calibrate_shell_operation_cls)
-    assert [command[0] for command in commands] == [
+    assert _command_names(commands) == [
         "DP3",
         "DP3",
         "H5parm_collector.py",
-        "plotrapthor",
+        PLOT_SOLUTIONS_COMMAND_NAME,
     ]
     assert "steps=[solve1]" in commands[0]
     assert "solve1.h5parm=fast_phase_di_0.h5parm" in commands[0]
@@ -2063,12 +2090,12 @@ def test_run_calibrate_flow_supports_di_slow(tmp_path, fake_calibrate_shell_oper
         "slow_amp_plots": [file_record(tmp_path / "slow_amplitude_solutions.png")],
     }
     commands = _command_tokens(fake_calibrate_shell_operation_cls)
-    assert [command[0] for command in commands] == [
+    assert _command_names(commands) == [
         "DP3",
         "DP3",
         "H5parm_collector.py",
-        "plotrapthor",
-        "plotrapthor",
+        PLOT_SOLUTIONS_COMMAND_NAME,
+        PLOT_SOLUTIONS_COMMAND_NAME,
     ]
     assert "steps=[solve1]" in commands[0]
     assert "solve1.h5parm=slow_gains_di_0.h5parm" in commands[0]
@@ -2095,16 +2122,16 @@ def test_run_calibrate_flow_supports_di_phase_slow(tmp_path, fake_calibrate_shel
     assert outputs["slow_amp_plots"] == [file_record(tmp_path / "slow_amplitude_solutions.png")]
 
     commands = _command_tokens(fake_calibrate_shell_operation_cls)
-    assert [command[0] for command in commands] == [
+    assert _command_names(commands) == [
         "DP3",
         "DP3",
         "H5parm_collector.py",
-        "plotrapthor",
+        PLOT_SOLUTIONS_COMMAND_NAME,
         "H5parm_collector.py",
-        "plotrapthor",
+        PLOT_SOLUTIONS_COMMAND_NAME,
         "H5parm_collector.py",
-        "plotrapthor",
-        "plotrapthor",
+        PLOT_SOLUTIONS_COMMAND_NAME,
+        PLOT_SOLUTIONS_COMMAND_NAME,
     ]
     assert "steps=[solve1,solve2,solve3]" in commands[0]
     assert "solve3.h5parm=slow_gains_di_0.h5parm" in commands[0]
@@ -2144,18 +2171,18 @@ def test_run_calibrate_flow_supports_mixed_di_strategy(
     }
 
     commands = _command_tokens(fake_calibrate_shell_operation_cls)
-    assert [command[0] for command in commands] == [
+    assert _command_names(commands) == [
         "DP3",
         "DP3",
         "H5parm_collector.py",
-        "plotrapthor",
+        PLOT_SOLUTIONS_COMMAND_NAME,
         "H5parm_collector.py",
-        "plotrapthor",
+        PLOT_SOLUTIONS_COMMAND_NAME,
         "H5parm_collector.py",
-        "plotrapthor",
-        "plotrapthor",
+        PLOT_SOLUTIONS_COMMAND_NAME,
+        PLOT_SOLUTIONS_COMMAND_NAME,
         "H5parm_collector.py",
-        "plotrapthor",
+        PLOT_SOLUTIONS_COMMAND_NAME,
     ]
     assert "steps=[solve1,solve2,solve3,solve4]" in commands[0]
     assert "solve3.initialsolutions.soltab=[phase000,amplitude000]" in commands[0]
@@ -2186,11 +2213,11 @@ def test_run_calibrate_flow_supports_dd_fast_phase(tmp_path, fake_calibrate_shel
         shlex.split(instance.kwargs["commands"][0])
         for instance in fake_calibrate_shell_operation_cls.instances
     ]
-    assert [command[0] for command in commands] == [
+    assert _command_names(commands) == [
         "DP3",
         "DP3",
         "H5parm_collector.py",
-        "plotrapthor",
+        PLOT_SOLUTIONS_COMMAND_NAME,
     ]
     assert "solve1.mode=scalarphase" in commands[0]
     assert "solve1.h5parm=fast_phase_0.h5parm" in commands[0]
@@ -2228,12 +2255,12 @@ def test_run_calibrate_flow_supports_dd_slow(tmp_path, fake_calibrate_shell_oper
         shlex.split(instance.kwargs["commands"][0])
         for instance in fake_calibrate_shell_operation_cls.instances
     ]
-    assert [command[0] for command in commands] == [
+    assert _command_names(commands) == [
         "DP3",
         "DP3",
         "H5parm_collector.py",
-        "plotrapthor",
-        "plotrapthor",
+        PLOT_SOLUTIONS_COMMAND_NAME,
+        PLOT_SOLUTIONS_COMMAND_NAME,
     ]
     assert "solve1.mode=diagonal" in commands[0]
     assert "solve1.h5parm=slow_gain_0.h5parm" in commands[0]
@@ -2267,13 +2294,13 @@ def test_run_calibrate_flow_supports_dd_fast_medium(tmp_path, fake_calibrate_she
         shlex.split(instance.kwargs["commands"][0])
         for instance in fake_calibrate_shell_operation_cls.instances
     ]
-    assert [command[0] for command in commands] == [
+    assert _command_names(commands) == [
         "DP3",
         "DP3",
         "H5parm_collector.py",
-        "plotrapthor",
+        PLOT_SOLUTIONS_COMMAND_NAME,
         "H5parm_collector.py",
-        "plotrapthor",
+        PLOT_SOLUTIONS_COMMAND_NAME,
     ]
     assert "steps=[solve1,solve2]" in commands[0]
     assert "solve2.h5parm=medium1_phase_0.h5parm" in commands[0]
@@ -2300,13 +2327,13 @@ def test_run_calibrate_flow_supports_custom_dd_solve_order(
         "fast_phase_plots": [file_record(tmp_path / "phase_solutions.png")],
     }
     commands = _command_tokens(fake_calibrate_shell_operation_cls)
-    assert [command[0] for command in commands] == [
+    assert _command_names(commands) == [
         "DP3",
         "DP3",
         "H5parm_collector.py",
-        "plotrapthor",
+        PLOT_SOLUTIONS_COMMAND_NAME,
         "H5parm_collector.py",
-        "plotrapthor",
+        PLOT_SOLUTIONS_COMMAND_NAME,
     ]
     assert "steps=[solve1,solve2]" in commands[0]
     assert "solve1.h5parm=medium1_phase_0.h5parm" in commands[0]
@@ -2334,13 +2361,13 @@ def test_run_calibrate_flow_supports_dd_preapply(tmp_path, fake_calibrate_shell_
         shlex.split(instance.kwargs["commands"][0])
         for instance in fake_calibrate_shell_operation_cls.instances
     ]
-    assert [command[0] for command in commands] == [
+    assert _command_names(commands) == [
         "DP3",
         "DP3",
         "H5parm_collector.py",
-        "plotrapthor",
+        PLOT_SOLUTIONS_COMMAND_NAME,
         "H5parm_collector.py",
-        "plotrapthor",
+        PLOT_SOLUTIONS_COMMAND_NAME,
     ]
     assert "steps=[applycal,solve1,solve2]" in commands[0]
     assert "applycal.steps=[fastphase,slowgain,fulljones,normalization]" in commands[0]
@@ -2371,14 +2398,14 @@ def test_run_calibrate_flow_supports_dd_image_predict(tmp_path, fake_calibrate_s
         shlex.split(instance.kwargs["commands"][0])
         for instance in fake_calibrate_shell_operation_cls.instances
     ]
-    assert [command[0] for command in commands] == [
+    assert _command_names(commands) == [
         "wsclean",
         "DP3",
         "DP3",
         "H5parm_collector.py",
-        "plotrapthor",
+        PLOT_SOLUTIONS_COMMAND_NAME,
         "H5parm_collector.py",
-        "plotrapthor",
+        PLOT_SOLUTIONS_COMMAND_NAME,
     ]
     assert commands[0][1:] == [
         "-j",
@@ -2432,7 +2459,7 @@ def test_run_calibrate_flow_supports_dd_screen_generation(
     assert (tmp_path / "field_facets_ds9.reg").is_file()
 
     commands = _command_tokens(fake_calibrate_shell_operation_cls)
-    assert [command[0] for command in commands] == [
+    assert _command_names(commands) == [
         "wsclean",
         "DP3",
         "DP3",
@@ -2464,7 +2491,7 @@ def test_run_calibrate_flow_supports_dd_screen_generation_with_slow_gain(
 
     assert outputs == {"combined_solutions": file_record(tmp_path / "combined_solutions.h5")}
     commands = _command_tokens(fake_calibrate_shell_operation_cls)
-    assert [command[0] for command in commands] == [
+    assert _command_names(commands) == [
         "wsclean",
         "DP3",
         "DP3",
@@ -2608,18 +2635,18 @@ def test_run_calibrate_flow_supports_dd_with_slow(tmp_path, fake_calibrate_shell
         shlex.split(instance.kwargs["commands"][0])
         for instance in fake_calibrate_shell_operation_cls.instances
     ]
-    assert [command[0] for command in commands] == [
+    assert _command_names(commands) == [
         "DP3",
         "DP3",
         "H5parm_collector.py",
-        "plotrapthor",
+        PLOT_SOLUTIONS_COMMAND_NAME,
         "H5parm_collector.py",
-        "plotrapthor",
+        PLOT_SOLUTIONS_COMMAND_NAME,
         "H5parm_collector.py",
-        "plotrapthor",
-        "plotrapthor",
+        PLOT_SOLUTIONS_COMMAND_NAME,
+        PLOT_SOLUTIONS_COMMAND_NAME,
         "H5parm_collector.py",
-        "plotrapthor",
+        PLOT_SOLUTIONS_COMMAND_NAME,
     ]
     assert "steps=[solve1,solve2,solve3,solve4]" in commands[0]
     assert "solve3.initialsolutions.soltab=[phase000,amplitude000]" in commands[0]
@@ -2657,16 +2684,16 @@ def test_run_calibrate_flow_supports_dd_with_slow_without_medium2(
         shlex.split(instance.kwargs["commands"][0])
         for instance in fake_calibrate_shell_operation_cls.instances
     ]
-    assert [command[0] for command in commands] == [
+    assert _command_names(commands) == [
         "DP3",
         "DP3",
         "H5parm_collector.py",
-        "plotrapthor",
+        PLOT_SOLUTIONS_COMMAND_NAME,
         "H5parm_collector.py",
-        "plotrapthor",
+        PLOT_SOLUTIONS_COMMAND_NAME,
         "H5parm_collector.py",
-        "plotrapthor",
-        "plotrapthor",
+        PLOT_SOLUTIONS_COMMAND_NAME,
+        PLOT_SOLUTIONS_COMMAND_NAME,
     ]
     assert "steps=[solve1,solve2,solve3]" in commands[0]
     assert all("solve4.h5parm" not in token for token in commands[0])
@@ -2705,7 +2732,7 @@ def test_calibrate_prefect_flow_entrypoint_runs_screen_generation(
         )
 
     assert outputs["combined_solutions"] == file_record(tmp_path / "combined_solutions.h5")
-    assert [command[0] for command in _command_tokens(fake_calibrate_shell_operation_cls)] == [
+    assert _command_names(_command_tokens(fake_calibrate_shell_operation_cls)) == [
         "wsclean",
         "DP3",
         "DP3",
@@ -3063,13 +3090,13 @@ def test_calibrate_dd_preapply_operation_run_uses_prefect_flow(
     assert field.h5parm_filename == str(solutions_dir / "field-solutions.h5")
     assert field.fast_phases_h5parm_filename == str(solutions_dir / "field-solutions-fast-phase.h5")
     commands = _command_tokens(fake_calibrate_shell_operation_cls)
-    assert [command[0] for command in commands] == [
+    assert _command_names(commands) == [
         "DP3",
         "DP3",
         "H5parm_collector.py",
-        "plotrapthor",
+        PLOT_SOLUTIONS_COMMAND_NAME,
         "H5parm_collector.py",
-        "plotrapthor",
+        PLOT_SOLUTIONS_COMMAND_NAME,
     ]
     assert "steps=[applycal,solve1,solve2]" in commands[0]
     assert "applycal.steps=[fastphase,slowgain,fulljones,normalization]" in commands[0]
@@ -3181,7 +3208,7 @@ def test_calibrate_dd_screen_operation_run_uses_prefect_flow(
     assert field.scan_h5parms_calls == 1
 
     commands = _command_tokens(fake_calibrate_shell_operation_cls)
-    assert [command[0] for command in commands] == [
+    assert _command_names(commands) == [
         "wsclean",
         "DP3",
         "DP3",
@@ -3241,18 +3268,18 @@ def test_calibrate_dd_slow_source_adjusted_operation_run_uses_prefect_flow(
     assert (plots_dir / "slow_amplitude_solutions.png").is_file()
     assert field.calibration_diagnostics == [{"cycle_number": 1, "solution_flagged_fraction": 0.0}]
     commands = _command_tokens(fake_calibrate_shell_operation_cls)
-    assert [command[0] for command in commands] == [
+    assert _command_names(commands) == [
         "DP3",
         "DP3",
         "H5parm_collector.py",
-        "plotrapthor",
+        PLOT_SOLUTIONS_COMMAND_NAME,
         "H5parm_collector.py",
-        "plotrapthor",
+        PLOT_SOLUTIONS_COMMAND_NAME,
         "H5parm_collector.py",
-        "plotrapthor",
-        "plotrapthor",
+        PLOT_SOLUTIONS_COMMAND_NAME,
+        PLOT_SOLUTIONS_COMMAND_NAME,
         "H5parm_collector.py",
-        "plotrapthor",
+        PLOT_SOLUTIONS_COMMAND_NAME,
     ]
     assert "steps=[solve1,solve2,solve3,solve4]" in commands[0]
     assert "solve3.h5parm=slow_gain_0.h5parm" in commands[0]

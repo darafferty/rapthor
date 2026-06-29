@@ -9,6 +9,8 @@ from rapthor.execution.commands import (
     comma_join,
 )
 
+PLOT_SOLUTIONS_MODULE = "rapthor.execution.calibrate.plotting_cli"
+
 DDECAL_SOLVE_ARGUMENTS = [
     "msout=",
     "applybeam.type=applybeam",
@@ -315,7 +317,7 @@ def build_plot_solutions_command(
     first_dir: bool = False,
 ) -> list[str]:
     """Build the solution plotting command."""
-    command = ["plotrapthor", h5parm, soltype]
+    command = ["python", "-m", PLOT_SOLUTIONS_MODULE, h5parm, soltype]
     if root is not None:
         command.append(f"--root={root}")
     if first_dir:

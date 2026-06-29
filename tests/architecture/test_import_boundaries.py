@@ -23,6 +23,8 @@ PURE_EXECUTION_MODULES = (
     RAPTHOR_ROOT / "execution" / "calibrate" / "h5parm_sources.py",
     RAPTHOR_ROOT / "execution" / "calibrate" / "h5parm_combination.py",
     RAPTHOR_ROOT / "execution" / "calibrate" / "payloads.py",
+    RAPTHOR_ROOT / "execution" / "calibrate" / "plotting.py",
+    RAPTHOR_ROOT / "execution" / "calibrate" / "plotting_cli.py",
     RAPTHOR_ROOT / "execution" / "calibrate" / "prediction.py",
     RAPTHOR_ROOT / "execution" / "calibrate" / "gain_processing.py",
     RAPTHOR_ROOT / "execution" / "calibrate" / "screen_h5parms.py",
@@ -92,6 +94,8 @@ RETIRED_HELPER_SCRIPT_NAMES = (
     "restore_skymodel.py",
     "subtract_sector_models.py",
 )
+
+RETIRED_EXECUTABLE_NAMES = ("plotrapthor",)
 
 
 def _python_files(root: Path) -> list[Path]:
@@ -173,7 +177,7 @@ def test_production_code_does_not_use_retired_helper_script_wrappers():
     for path in files:
         relative_path = _relative_path(path)
         for value, line_number in _string_constants(path):
-            for script_name in RETIRED_HELPER_SCRIPT_NAMES:
+            for script_name in RETIRED_HELPER_SCRIPT_NAMES + RETIRED_EXECUTABLE_NAMES:
                 if script_name in value:
                     messages.append(f"{relative_path}:{line_number} references {script_name}")
 
