@@ -166,21 +166,6 @@ def build_prepare_imaging_data_command(options: PrepareImagingDataOptions) -> li
     return command
 
 
-def build_concat_time_command(
-    input_filenames: list[str],
-    output_filename: str,
-    data_colname: str,
-) -> list[str]:
-    """Build the `concat_ms.py` command for one imaging sector."""
-    return [
-        "concat_ms.py",
-        *input_filenames,
-        f"--msout={output_filename}",
-        "--concat_property=time",
-        f"--data_colname={data_colname}",
-    ]
-
-
 def build_compress_sector_images_command(images: list[str]) -> list[str]:
     """Build the `fpack` command for sector image compression."""
     return ["fpack", *images]

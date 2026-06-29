@@ -3,10 +3,10 @@
 import os
 from typing import Optional
 
+from rapthor.execution.concatenate.measurement_sets import select_concatenation_command
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.image.commands import (
     PrepareImagingDataOptions,
-    build_concat_time_command,
     build_prepare_imaging_data_command,
 )
 from rapthor.execution.image.masking import blank_image
@@ -60,8 +60,11 @@ def prepare_and_concatenate_visibilities(
 
     prepared_paths = [record["path"] for record in prepared_records]
     if not os.path.isdir(str(sector["concat_path"])):
-        concat_command = build_concat_time_command(
-            prepared_paths, str(sector["concat_filename"]), str(sector["data_colname"])
+        concat_command = select_concatenation_command(
+            prepared_paths,
+            str(sector["concat_path"]),
+            data_colname=str(sector["data_colname"]),
+            concat_property="time",
         )
         run_external_command(
             concat_command,

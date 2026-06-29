@@ -368,11 +368,15 @@ Progress:
   - mosaic keeps only the `fpack` compression command builder
   - calibration keeps only DP3, WSClean draw-model, `H5parm_collector.py`, and
     `plotrapthor` command builders
-  - image keeps DP3, WSClean/WSClean-MP, `fpack`, `concat_ms.py`, and the
-    daemonic-worker `filter_skymodel.py` fallback command builders
-- Next: tackle the remaining image `concat_ms.py` wrapper call separately, and
-  keep the `filter_skymodel.py` fallback until PyBDSF/lsmtool multiprocessing
-  can be isolated without breaking Dask worker execution.
+  - image keeps DP3, WSClean/WSClean-MP, `fpack`, and the daemonic-worker
+    `filter_skymodel.py` fallback command builders
+- Done: image preparation now uses the shared Measurement Set concatenation
+  helper directly. Imaging time-concatenation runs the selected external `taql`
+  command instead of shelling out through `concat_ms.py`.
+- Done: command reference fixtures were pruned so they no longer contain stale
+  entries for migrated Rapthor script wrapper builders.
+- Next: keep the `filter_skymodel.py` fallback until PyBDSF/lsmtool
+  multiprocessing can be isolated without breaking Dask worker execution.
 
 Testing tasks:
 

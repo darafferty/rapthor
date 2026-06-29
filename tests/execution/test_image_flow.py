@@ -21,7 +21,6 @@ from rapthor.execution.image.commands import (
     WscleanScreenOptions,
     build_aterm_config_content,
     build_compress_sector_images_command,
-    build_concat_time_command,
     build_filter_skymodel_command,
     build_prepare_imaging_data_command,
     build_wsclean_facets_command,
@@ -59,6 +58,7 @@ def fake_direct_image_helpers(monkeypatch):
         "normalize_flux_scale": [],
         "restore_skymodel": [],
         "ensure_image_beam": [],
+        "select_concatenation_command": [],
     }
 
     def fake_blank_image(
@@ -252,7 +252,39 @@ def fake_direct_image_helpers(monkeypatch):
         Path(f"{output_root}.astrometry_offsets.json").write_text("{}")
         Path(f"{output_root}.photometry.pdf").write_text("plot")
 
+    def fake_select_concatenation_command(
+        msfiles,
+        output_file,
+        data_colname="DATA",
+        concat_property="frequency",
+        overwrite=False,
+    ):
+        calls["select_concatenation_command"].append(
+            {
+                "msfiles": list(msfiles),
+                "output_file": output_file,
+                "data_colname": data_colname,
+                "concat_property": concat_property,
+                "overwrite": overwrite,
+            }
+        )
+        return [
+            "taql",
+            "select",
+            "from",
+            f"[{','.join(msfiles)}]",
+            "giving",
+            output_file,
+            "AS",
+            "PLAIN",
+        ]
+
     monkeypatch.setattr(image_preparation_module, "blank_image", fake_blank_image)
+    monkeypatch.setattr(
+        image_preparation_module,
+        "select_concatenation_command",
+        fake_select_concatenation_command,
+    )
     monkeypatch.setattr(
         image_preparation_module,
         "make_ds9_region_from_skymodel",
@@ -293,11 +325,11 @@ def fake_image_shell_operation_cls():
                     token.split("=", 1)[1] for token in tokens if token.startswith("msout=")
                 )
                 (cwd / output_name).mkdir(parents=True, exist_ok=True)
-            elif tokens[0] == "concat_ms.py":
-                output_name = next(
-                    token.split("=", 1)[1] for token in tokens if token.startswith("--msout=")
-                )
-                (cwd / output_name).mkdir(parents=True, exist_ok=True)
+            elif tokens[0] == "taql":
+                output_path = Path(tokens[tokens.index("giving") + 1])
+                if not output_path.is_absolute():
+                    output_path = cwd / output_path
+                output_path.mkdir(parents=True, exist_ok=True)
             elif tokens[0] in {"wsclean", "mpirun"}:
                 if tokens[0] == "wsclean" and "-restore-list" in tokens:
                     (cwd / tokens[-1]).write_text("restored image")
@@ -1034,16 +1066,6 @@ def test_image_command_builders_match_reference_fixtures():
     )
     assert (
         normalize_command(
-            build_concat_time_command(
-                input_filenames=["sector_1_obs_0_prep.ms", "sector_1_obs_1_prep.ms"],
-                output_filename="sector_1_concat.ms",
-                data_colname="DATA",
-            )
-        )
-        == commands["image"]["concat_time"]
-    )
-    assert (
-        normalize_command(
             build_compress_sector_images_command(
                 images=[
                     "sector_1-MFS-I-image.fits",
@@ -1568,8 +1590,20 @@ def test_run_image_flow_executes_no_dde_commands_and_returns_records(
     assert command_names == [
         "DP3",
         "DP3",
-        "concat_ms.py",
+        "taql",
         "wsclean",
+    ]
+    assert fake_direct_image_helpers["select_concatenation_command"] == [
+        {
+            "msfiles": [
+                str(tmp_path / "sector_1_obs_0_prep.ms"),
+                str(tmp_path / "sector_1_obs_1_prep.ms"),
+            ],
+            "output_file": str(tmp_path / "sector_1_concat.ms"),
+            "data_colname": "DATA",
+            "concat_property": "time",
+            "overwrite": False,
+        }
     ]
     assert fake_direct_image_helpers["blank_image"] == [
         {
@@ -1619,7 +1653,7 @@ def test_run_image_flow_uses_filter_skymodel_subprocess_in_daemon_worker(
     assert [tokens[0] for tokens in command_tokens] == [
         "DP3",
         "DP3",
-        "concat_ms.py",
+        "taql",
         "wsclean",
         "filter_skymodel.py",
     ]
@@ -1747,7 +1781,7 @@ def test_run_image_flow_restores_bright_sources_before_filtering(
     assert command_names == [
         "DP3",
         "DP3",
-        "concat_ms.py",
+        "taql",
         "wsclean",
         "wsclean",
         "wsclean",
@@ -1805,7 +1839,7 @@ def test_run_image_flow_executes_facet_commands_and_returns_region_file(
     assert command_names == [
         "DP3",
         "DP3",
-        "concat_ms.py",
+        "taql",
         "wsclean",
     ]
     assert fake_direct_image_helpers["make_region_file"] == [
@@ -1857,7 +1891,7 @@ def test_run_image_flow_executes_screen_commands_and_writes_aterm_config(
     assert command_names == [
         "DP3",
         "DP3",
-        "concat_ms.py",
+        "taql",
         "wsclean",
     ]
     screen_command = next(
@@ -2056,7 +2090,7 @@ def test_run_image_flow_returns_compressed_image_outputs(tmp_path, fake_image_sh
     assert command_names == [
         "DP3",
         "DP3",
-        "concat_ms.py",
+        "taql",
         "wsclean",
         "fpack",
     ]
@@ -2080,7 +2114,7 @@ def test_run_image_flow_returns_filtered_model_image(tmp_path, fake_image_shell_
     assert command_names == [
         "DP3",
         "DP3",
-        "concat_ms.py",
+        "taql",
         "wsclean",
     ]
 
@@ -2180,7 +2214,7 @@ def test_run_image_flow_returns_image_cube_outputs(tmp_path, fake_image_shell_op
     assert command_names == [
         "DP3",
         "DP3",
-        "concat_ms.py",
+        "taql",
         "wsclean",
     ]
 
@@ -2253,7 +2287,7 @@ def test_run_image_flow_returns_normalization_outputs(tmp_path, fake_image_shell
     assert command_names == [
         "DP3",
         "DP3",
-        "concat_ms.py",
+        "taql",
         "wsclean",
     ]
 

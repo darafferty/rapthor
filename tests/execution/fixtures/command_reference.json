@@ -13,28 +13,6 @@
         ]
     },
     "mosaic": {
-        "make_mosaic_template": [
-            "make_mosaic_template.py",
-            "sector_1-I-image.fits,sector_2-I-image.fits",
-            "sector_1.vertices,sector_2.vertices",
-            "mosaic_1_template.fits",
-            "--skip=False"
-        ],
-        "regrid_image": [
-            "regrid_image.py",
-            "sector_1-I-image.fits",
-            "mosaic_1_template.fits",
-            "sector_1.vertices",
-            "sector_1-I-image.fits.regridded",
-            "--skip=False"
-        ],
-        "make_mosaic": [
-            "make_mosaic.py",
-            "sector_1-I-image.fits.regridded,sector_2-I-image.fits.regridded",
-            "mosaic_1_template.fits",
-            "mosaic_1-I-image.fits",
-            "--skip=False"
-        ],
         "compress_mosaic_image": ["fpack", "mosaic_1-I-image.fits"]
     },
     "calibrate": {
@@ -210,16 +188,6 @@
             "solve2.modeldatacolumns=[MODEL_DATA]",
             "numthreads=4"
         ],
-        "combine_fast_medium_di": [
-            "combine_h5parms.py",
-            "fast_phases_di.h5parm",
-            "medium1_phases_di.h5parm",
-            "combined_solve1_solve2_di.h5parm",
-            "p1p2_scalar",
-            "--reweight=False",
-            "--cal_names=",
-            "--cal_fluxes="
-        ],
         "draw_model": [
             "wsclean",
             "-j",
@@ -241,16 +209,6 @@
             "1024",
             "-scale",
             "0.001"
-        ],
-        "make_field_region_file": [
-            "make_region_file.py",
-            "calibration.skymodel",
-            "123.0",
-            "45.0",
-            "2.0",
-            "2.5",
-            "field_facets_ds9.reg",
-            "--enclose_names=False"
         ],
         "ddecal_dd_fast_phase": [
             "DP3",
@@ -772,22 +730,6 @@
             "solve2.reusemodel=[predict.*]",
             "numthreads=4"
         ],
-        "process_slow_gains": [
-            "process_gains.py",
-            "--normalize=True",
-            "slow_gains.h5parm",
-            "--smooth=True",
-            "--flag=True",
-            "--max_station_delta=0.25",
-            "--scale_delta_with_dist=False",
-            "--phase_center_ra=123.0",
-            "--phase_center_dec=45.0"
-        ],
-        "adjust_h5parm_sources": [
-            "adjust_h5parm_sources.py",
-            "calibration.skymodel",
-            "combined_solutions.h5"
-        ],
         "idgcal_solve_phase": [
             "DP3",
             "msin.datacolumn=DATA",
@@ -849,12 +791,6 @@
             "solve.maxiter=4",
             "solve.antennaconstraint=[]",
             "numthreads=4"
-        ],
-        "collect_screen_h5parms": [
-            "collect_screen_h5parms.py",
-            "-c",
-            "idgcal_0,idgcal_1",
-            "--outh5parm=combined_solutions.h5"
         ]
     },
     "image": {
@@ -892,23 +828,6 @@
             "numthreads=4",
             "steps=[applybeam,shift,avg,bdaavg]"
         ],
-        "concat_time": [
-            "concat_ms.py",
-            "sector_1_obs_0_prep.ms",
-            "sector_1_obs_1_prep.ms",
-            "--msout=sector_1_concat.ms",
-            "--concat_property=time",
-            "--data_colname=DATA"
-        ],
-        "blank_image": [
-            "blank_image.py",
-            "sector_1_mask.fits",
-            "--imsize=1024,1024",
-            "--vertices_file=sector_1.vertices",
-            "--reference_ra_deg=123.0",
-            "--reference_dec_deg=45.0",
-            "--cellsize_deg=0.001"
-        ],
         "compress_sector_images": [
             "fpack",
             "sector_1-MFS-I-image.fits",
@@ -916,12 +835,6 @@
             "sector_1-MFS-I-residual.fits",
             "sector_1-MFS-I-model-pb.fits",
             "sector_1-MFS-I-dirty.fits"
-        ],
-        "make_skymodel_image": [
-            "restore_skymodel.py",
-            "sector_1.apparent_sky.txt",
-            "sector_1-MFS-I-image-pb.fits",
-            "sector_1-MFS-filtered-model.fits.fz"
         ],
         "wsclean_restore": [
             "wsclean",
@@ -931,27 +844,6 @@
             "sector_1-MFS-I-image-pb.fits",
             "bright_sources_pb.txt",
             "sector_1-MFS-I-image-pb.fits"
-        ],
-        "make_image_cube": [
-            "make_image_cube.py",
-            "sector_1-0000-I-image-pb.fits,sector_1-0001-I-image-pb.fits",
-            "sector_1_I_freq_cube.fits"
-        ],
-        "make_catalog_from_image_cube": [
-            "make_catalog_from_image_cube.py",
-            "sector_1_I_freq_cube.fits",
-            "sector_1_I_freq_cube.fits_beams.txt",
-            "sector_1_I_freq_cube.fits_frequencies.txt",
-            "sector_1_source_catalog.fits",
-            "--threshisl=4.0",
-            "--threshpix=5.0",
-            "--ncores=4"
-        ],
-        "normalize_flux_scale": [
-            "normalize_flux_scale.py",
-            "sector_1_source_catalog.fits",
-            "sector_1_concat.ms",
-            "sector_1_normalize.h5parm"
         ],
         "wsclean_no_dde": [
             "wsclean",
@@ -1029,16 +921,6 @@
             "-save-source-list",
             "-skip-final-iteration",
             "sector_1_concat.ms"
-        ],
-        "make_region_file": [
-            "make_region_file.py",
-            "calibration.skymodel",
-            "123.0",
-            "45.0",
-            "2.0",
-            "2.5",
-            "sector_1_facets_ds9.reg",
-            "--enclose_names=True"
         ],
         "wsclean_facets": [
             "wsclean",
@@ -1241,33 +1123,6 @@
             "predict.sourcedb=sector_1.skymodel",
             "predict.directions=[patch1,patch2]",
             "numthreads=4"
-        ],
-        "add_sector_models": [
-            "add_sector_models.py",
-            "obs_0.ms",
-            "obs_0.ms.sector_1_modeldata,obs_0.ms.sector_2_modeldata",
-            "--msin_column=DATA",
-            "--starttime=50000.0",
-            "--infix=.selfcal"
-        ],
-        "subtract_sector_models": [
-            "subtract_sector_models.py",
-            "--weights_colname=WEIGHT_SPECTRUM",
-            "--phaseonly=True",
-            "obs_0.ms",
-            "obs_0.ms.sector_1_modeldata,obs_0.ms.sector_2_modeldata",
-            "--msin_column=DATA",
-            "--starttime=50000.0",
-            "--solint_sec=20.0",
-            "--solint_hz=1000.0",
-            "--infix=.selfcal",
-            "--uvcut_min=80.0",
-            "--uvcut_max=1000000.0",
-            "--nr_outliers=1",
-            "--peel_outliers=True",
-            "--nr_bright=0",
-            "--peel_bright=False",
-            "--reweight=True"
         ]
     }
 }

@@ -81,7 +81,7 @@ def test_rapthor_run_concatenates_multiple_measurement_sets(
     concat_commands = find_command_records(
         working_dir,
         operation="concatenate_1",
-        executable="concat_ms.py",
+        executable="DP3",
     )
     assert concat_commands
 
