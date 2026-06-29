@@ -487,6 +487,10 @@ Progress:
   `collect_screen_h5parms.py`, `combine_h5parms.py`, and `process_gains.py`).
   Their direct helper coverage now lives under `tests/execution`, and the
   wrapper paths have been removed from package metadata.
+- Done: retired the smaller image-product wrappers (`make_image_cube.py`,
+  `make_catalog_from_image_cube.py`, and `restore_skymodel.py`). Their direct
+  helper coverage now lives under `tests/execution`, and the wrapper paths have
+  been removed from package metadata.
 
 Done when:
 

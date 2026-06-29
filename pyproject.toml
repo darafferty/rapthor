@@ -121,11 +121,8 @@ script-files = [
     "scripts/prod/run-rapthor-slurm.sbatch",
     "rapthor/scripts/calculate_image_diagnostics.py",
     "rapthor/scripts/filter_skymodel.py",
-    "rapthor/scripts/make_catalog_from_image_cube.py",
-    "rapthor/scripts/make_image_cube.py",
     "rapthor/scripts/mpi_runner.sh",
     "rapthor/scripts/normalize_flux_scale.py",
-    "rapthor/scripts/restore_skymodel.py",
 ]
 
 [tool.setuptools.package-data]

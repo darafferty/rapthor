@@ -2624,7 +2624,7 @@ def test_full_stokes_image_operation_run_uses_prefect_flow(
 
 
 def test_compressed_image_operation_run_uses_prefect_flow(
-    tmp_path, monkeypatch, fake_image_shell_operation_cls
+    tmp_path, monkeypatch, fake_image_shell_operation_cls, fake_direct_image_helpers
 ):
     monkeypatch.setattr(
         "rapthor.execution.shell._load_shell_operation_cls",
@@ -2681,7 +2681,7 @@ def test_compressed_image_operation_run_uses_prefect_flow(
     assert sector.diagnostics == [{"cycle_number": 1}]
     assert field.lofar_to_true_flux_ratio == 1.0
     assert field.lofar_to_true_flux_std == 0.0
-    assert "restore_skymodel.py" not in command_names
+    assert fake_direct_image_helpers["restore_skymodel"]
     assert "fpack" in command_names
 
 
