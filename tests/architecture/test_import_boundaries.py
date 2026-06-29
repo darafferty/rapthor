@@ -24,6 +24,7 @@ PURE_EXECUTION_MODULES = (
     RAPTHOR_ROOT / "execution" / "calibrate" / "h5parm_combination.py",
     RAPTHOR_ROOT / "execution" / "calibrate" / "payloads.py",
     RAPTHOR_ROOT / "execution" / "calibrate" / "prediction.py",
+    RAPTHOR_ROOT / "execution" / "calibrate" / "gain_processing.py",
     RAPTHOR_ROOT / "execution" / "calibrate" / "screen_h5parms.py",
     RAPTHOR_ROOT / "execution" / "calibrate" / "solves.py",
     RAPTHOR_ROOT / "execution" / "concatenate" / "commands.py",
@@ -44,6 +45,7 @@ PURE_EXECUTION_MODULES = (
     RAPTHOR_ROOT / "execution" / "pipeline" / "plan.py",
     RAPTHOR_ROOT / "execution" / "predict" / "commands.py",
     RAPTHOR_ROOT / "execution" / "predict" / "payloads.py",
+    RAPTHOR_ROOT / "execution" / "predict" / "sector_model_addition.py",
     RAPTHOR_ROOT / "execution" / "regions.py",
 )
 

@@ -3,12 +3,14 @@ Tests for the add_sector_models script.
 """
 
 import shutil
+import runpy
+import sys
 
 import casacore.tables as pt
 import numpy as np
 
-from rapthor.scripts import add_sector_models
-from rapthor.scripts.add_sector_models import get_nchunks, main
+import rapthor.execution.predict.sector_model_addition as sector_model_addition
+from rapthor.execution.predict.sector_model_addition import add_sector_models, get_nchunks
 
 
 def _copy_ms(source, destination):
@@ -63,9 +65,9 @@ def test_main_sums_sector_model_data_into_model_column(test_ms, tmp_path, monkey
     _write_data_column(model_a, 2.0 + 0.0j)
     _write_data_column(model_b, 3.0 + 0.0j)
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(add_sector_models, "get_nchunks", lambda *args, **kwargs: 1)
+    monkeypatch.setattr(sector_model_addition, "get_nchunks", lambda *args, **kwargs: 1)
 
-    main(
+    add_sector_models(
         str(msin),
         [str(model_a), str(model_b)],
         msin_column="DATA",
@@ -81,3 +83,49 @@ def test_main_sums_sector_model_data_into_model_column(test_ms, tmp_path, monkey
     assert output_ms.is_dir()
     assert np.allclose(_read_column(output_ms, "DATA"), 10.0 + 0.0j)
     assert np.allclose(_read_column(output_ms, "MODEL_DATA"), 5.0 + 0.0j)
+
+
+def test_add_sector_models_cli_forwards_arguments(monkeypatch):
+    calls = []
+
+    def fake_add_sector_models(*args, **kwargs):
+        calls.append((args, kwargs))
+
+    monkeypatch.setattr(
+        sector_model_addition,
+        "add_sector_models",
+        fake_add_sector_models,
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "add_sector_models.py",
+            "input.ms",
+            "[model_a.ms,model_b.ms]",
+            "--msin_column=CORRECTED_DATA",
+            "--model_column=MODEL",
+            "--out_column=SUMMED_MODEL",
+            "--use_compression=True",
+            "--starttime=123.0",
+            "--quiet=False",
+            "--infix=.selfcal",
+        ],
+    )
+
+    runpy.run_module("rapthor.scripts.add_sector_models", run_name="__main__")
+
+    assert calls == [
+        (
+            ("input.ms", ["model_a.ms", "model_b.ms"]),
+            {
+                "msin_column": "CORRECTED_DATA",
+                "model_column": "MODEL",
+                "out_column": "SUMMED_MODEL",
+                "use_compression": "True",
+                "starttime": "123.0",
+                "quiet": "False",
+                "infix": ".selfcal",
+            },
+        )
+    ]

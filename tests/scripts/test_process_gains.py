@@ -4,14 +4,17 @@ Tests for the process_gains.py script.
 
 import numpy as np
 import pytest
+import runpy
+import sys
 
-import rapthor.scripts.process_gains as process_gains
-from rapthor.scripts.process_gains import (
+import rapthor.execution.calibrate.gain_processing as gain_processing
+from rapthor.execution.calibrate.gain_processing import (
     flag_amps,
     get_angular_distance,
     get_median_amp,
     get_smooth_box_size,
     normalize_direction,
+    process_gain_solutions,
     smooth_solutions,
     transfer_flags,
 )
@@ -94,7 +97,7 @@ def test_smooth_solutions_smooths_core_station_only(monkeypatch):
     vals[1, 1, 1, 0, 0] = 10.0
     soltab = FakeSoltab(vals, ants=["CS001", "RS001"])
 
-    monkeypatch.setattr(process_gains, "get_smooth_box_size", lambda *args, **kwargs: 3)
+    monkeypatch.setattr(gain_processing, "get_smooth_box_size", lambda *args, **kwargs: 3)
 
     smooth_solutions(soltab)
 
@@ -159,7 +162,7 @@ def test_transfer_flags_copies_nan_and_zero_weight_flags():
     assert target.weight[0, 0, 0, 0, 1] == 1.0
 
 
-def test_main_dispatches_requested_processing_steps(monkeypatch):
+def test_process_gain_solutions_dispatches_requested_processing_steps(monkeypatch):
     ampsoltab = FakeSoltab(np.ones((1, 1, 1, 1, 2), dtype=float))
     phasesoltab = FakeSoltab(np.ones((1, 1, 1, 1, 2), dtype=float))
     solset = FakeSolset({"amplitude000": ampsoltab, "phase000": phasesoltab})
@@ -176,38 +179,38 @@ def test_main_dispatches_requested_processing_steps(monkeypatch):
         def close(self):
             calls.append(("close",))
 
-    monkeypatch.setattr(process_gains, "h5parm", FakeH5parm)
+    monkeypatch.setattr(gain_processing, "h5parm", FakeH5parm)
     monkeypatch.setattr(
-        process_gains.misc,
+        gain_processing.misc,
         "get_reference_station",
         lambda soltab, max_ind: calls.append(("reference", soltab, max_ind)) or 1,
     )
     monkeypatch.setattr(
-        process_gains,
+        gain_processing,
         "flag_amps",
         lambda soltab, lowampval=None, highampval=None: calls.append(
             ("flag", soltab, lowampval, highampval)
         ),
     )
     monkeypatch.setattr(
-        process_gains,
+        gain_processing,
         "transfer_flags",
         lambda soltab1, soltab2: calls.append(("transfer", soltab1, soltab2)),
     )
     monkeypatch.setattr(
-        process_gains,
+        gain_processing,
         "smooth_solutions",
         lambda amps, phasesoltab=None, ref_id=0: calls.append(
             ("smooth", amps, phasesoltab, ref_id)
         ),
     )
     monkeypatch.setattr(
-        process_gains,
+        gain_processing,
         "normalize_direction",
         lambda soltab, **kwargs: calls.append(("normalize", soltab, kwargs)),
     )
 
-    process_gains.main(
+    process_gain_solutions(
         "solutions.h5",
         ref_id=None,
         smooth="True",
@@ -237,4 +240,60 @@ def test_main_dispatches_requested_processing_steps(monkeypatch):
             },
         ),
         ("close",),
+    ]
+
+
+def test_process_gains_cli_forwards_arguments(monkeypatch):
+    calls = []
+
+    def fake_process_gain_solutions(*args, **kwargs):
+        calls.append((args, kwargs))
+
+    monkeypatch.setattr(
+        gain_processing,
+        "process_gain_solutions",
+        fake_process_gain_solutions,
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "process_gains.py",
+            "solutions.h5",
+            "--solsetname=sol001",
+            "--ampsoltabname=amp",
+            "--phasesoltabname=phase",
+            "--ref_id=3",
+            "--smooth=True",
+            "--normalize=True",
+            "--flag=True",
+            "--lowampval=0.5",
+            "--highampval=2.0",
+            "--max_station_delta=0.25",
+            "--scale_delta_with_dist=True",
+            "--phase_center_ra=12.0",
+            "--phase_center_dec=-30.0",
+        ],
+    )
+
+    runpy.run_module("rapthor.scripts.process_gains", run_name="__main__")
+
+    assert calls == [
+        (
+            ("solutions.h5",),
+            {
+                "solsetname": "sol001",
+                "ampsoltabname": "amp",
+                "phasesoltabname": "phase",
+                "ref_id": 3,
+                "smooth": "True",
+                "normalize": "True",
+                "flag": "True",
+                "lowampval": 0.5,
+                "highampval": 2.0,
+                "max_station_delta": 0.25,
+                "scale_delta_with_dist": "True",
+                "phase_center": (12.0, -30.0),
+            },
+        )
     ]

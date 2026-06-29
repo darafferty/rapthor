@@ -127,6 +127,13 @@ Progress:
   `rapthor.execution.calibrate.h5parm_combination`, kept the script as the CLI
   wrapper, and moved unit coverage to the execution helper with CLI argument
   parity coverage.
+- Continued with `process_gains.py`: extracted gain flagging, smoothing, and
+  normalization to `rapthor.execution.calibrate.gain_processing`, kept the
+  script as the CLI wrapper, and moved unit coverage to the execution helper
+  with CLI argument parity coverage.
+- Continued with `add_sector_models.py`: extracted sector model summing to
+  `rapthor.execution.predict.sector_model_addition`, kept the script as the CLI
+  wrapper, and added direct function plus CLI argument parity coverage.
 
 Script audit and migration order:
 
@@ -160,9 +167,15 @@ Script audit and migration order:
 - Done: `combine_h5parms.py` -> calibration h5parm combination; solution
   h5parm files to merged h5parm products; medium file payloads; helper tests
   now import the execution module and CLI argument parity coverage exists.
+- Done: `process_gains.py` -> calibration gain processing; h5parm amplitude
+  and phase solution tables; medium file payloads; helper tests now import the
+  execution module and CLI argument parity coverage exists.
+- Done: `add_sector_models.py` -> predict model-data preparation; input
+  Measurement Set plus sector model Measurement Sets to summed model-data
+  output; large file payloads; direct function and CLI argument parity coverage
+  now exist.
 - Remaining larger helpers, migrate with extra scientific parity checks:
-  `calculate_image_diagnostics.py`, `normalize_flux_scale.py`,
-  `process_gains.py`, `add_sector_models.py`, and
+  `calculate_image_diagnostics.py`, `normalize_flux_scale.py`, and
   `subtract_sector_models.py`. These contain larger scientific workflows,
   heavier external dependencies, or large Measurement Set payloads.
 
