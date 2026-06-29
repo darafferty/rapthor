@@ -10,15 +10,15 @@ from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.outputs import require_directory
 from rapthor.execution.payloads import assert_serializable_payload
 from rapthor.execution.predict.commands import (
-    build_add_sector_models_command,
     build_predict_model_data_command,
-    build_subtract_sector_models_command,
 )
 from rapthor.execution.predict.payloads import (
     PredictModelTaskPayload,
     PredictPostprocessPayload,
     validate_predict_payload,
 )
+from rapthor.execution.predict.sector_model_addition import add_sector_models
+from rapthor.execution.predict.sector_model_subtraction import subtract_sector_models
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
 from rapthor.execution.shell import run_external_command
 from rapthor.execution.task_runner import run_flow_with_task_runner
@@ -97,19 +97,17 @@ def run_predict_postprocess(
     postprocess_task: PredictPostprocessPayload,
     model_outputs: list[dict],
     pipeline_working_dir: str,
-    execution_config: Optional[ExecutionConfig] = None,
-    shell_operation_cls=None,
 ) -> list[dict]:
     """Run DI add or DD subtract post-processing for one observation."""
-    config = execution_config or ExecutionConfig(task_runner="sync")
     model_paths = [str(record["path"]) for record in model_outputs]
     if mode == "di":
-        command = build_add_sector_models_command(
+        add_sector_models(
             postprocess_task["msobs"],
             model_paths,
-            postprocess_task["data_colname"],
-            postprocess_task["obs_starttime"],
-            postprocess_task["infix"],
+            msin_column=postprocess_task["data_colname"],
+            starttime=postprocess_task["obs_starttime"],
+            infix=postprocess_task["infix"],
+            output_dir=pipeline_working_dir,
         )
         output_patterns = [
             os.path.join(
@@ -119,21 +117,24 @@ def run_predict_postprocess(
         ]
     elif mode == "dd":
         dd_task = postprocess_task
-        command = build_subtract_sector_models_command(
+        subtract_sector_models(
             dd_task["msobs"],
             model_paths,
-            dd_task["data_colname"],
-            dd_task["obs_starttime"],
-            dd_task["solint_sec"],
-            dd_task["solint_hz"],
-            dd_task["infix"],
-            dd_task["min_uv_lambda"],
-            dd_task["max_uv_lambda"],
-            dd_task["nr_outliers"],
-            dd_task["peel_outliers"],
-            dd_task["nr_bright"],
-            dd_task["peel_bright"],
-            dd_task["reweight"],
+            msin_column=dd_task["data_colname"],
+            starttime=dd_task["obs_starttime"],
+            solint_sec=dd_task["solint_sec"],
+            solint_hz=dd_task["solint_hz"],
+            weights_colname="WEIGHT_SPECTRUM",
+            uvcut_min=dd_task["min_uv_lambda"],
+            uvcut_max=dd_task["max_uv_lambda"],
+            phaseonly=True,
+            nr_outliers=dd_task["nr_outliers"],
+            peel_outliers=dd_task["peel_outliers"],
+            nr_bright=dd_task["nr_bright"],
+            peel_bright=dd_task["peel_bright"],
+            reweight=dd_task["reweight"],
+            infix=dd_task["infix"],
+            output_dir=pipeline_working_dir,
         )
         obs_basename = os.path.basename(dd_task["msobs"])
         output_patterns = [
@@ -143,12 +144,6 @@ def run_predict_postprocess(
     else:
         raise ValueError("mode must be 'di' or 'dd'")
 
-    run_external_command(
-        command,
-        pipeline_working_dir,
-        config,
-        shell_operation_cls=shell_operation_cls,
-    )
     exclude_suffixes = ("_modeldata",) if mode == "dd" else ()
     return _glob_directory_records(output_patterns, exclude_suffixes=exclude_suffixes)
 
@@ -176,8 +171,6 @@ def predict_postprocess_task(
     postprocess_task: PredictPostprocessPayload,
     model_outputs: list[dict],
     pipeline_working_dir: str,
-    execution_config: Optional[ExecutionConfig] = None,
-    shell_operation_cls=None,
 ) -> list[dict]:
     """Prefect task wrapper for DI add or DD subtract post-processing."""
     with publish_python_logs_to_prefect():
@@ -186,8 +179,6 @@ def predict_postprocess_task(
             postprocess_task,
             model_outputs,
             pipeline_working_dir,
-            execution_config=execution_config,
-            shell_operation_cls=shell_operation_cls,
         )
 
 
@@ -220,7 +211,6 @@ def _run_predict_prefect_tasks(
             postprocess_task,
             model_outputs,
             payload["pipeline_working_dir"],
-            execution_config=config,
         )
         for postprocess_task in payload["postprocess_tasks"]
     ]

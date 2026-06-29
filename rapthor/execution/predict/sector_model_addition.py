@@ -3,10 +3,12 @@
 import os
 import shutil
 import subprocess
+from typing import Optional
 
 import casacore.tables as pt
 import numpy as np
 
+from rapthor.execution.outputs import output_path
 from rapthor.lib import miscellaneous as misc
 
 
@@ -50,6 +52,7 @@ def add_sector_models(
     starttime=None,
     quiet=True,
     infix="",
+    output_dir: Optional[str] = None,
 ):
     """
     Add sector model data.
@@ -74,6 +77,9 @@ def add_sector_models(
         If True, suppress (most) output
     infix : str, optional
         Infix string used in filenames
+    output_dir : str, optional
+        Directory for generated Measurement Set outputs. If omitted, outputs
+        are written relative to the current working directory for CLI parity.
     """
     use_compression = misc.string2bool(use_compression)
     model_list = misc.string2list(msmod_list)
@@ -154,7 +160,10 @@ def add_sector_models(
     print(f"add_sector_models: Using {nchunks} chunk(s)")
 
     # Open output table and add output column if needed
-    msout = os.path.basename(model_list[0]).removesuffix("_modeldata") + "_di.ms"
+    msout = output_path(
+        output_dir,
+        os.path.basename(model_list[0]).removesuffix("_modeldata") + "_di.ms",
+    )
     if os.path.exists(msout):
         # File may exist from a previous processing cycle; delete it if so
         shutil.rmtree(msout, ignore_errors=True)

@@ -5,12 +5,11 @@ from pathlib import Path
 import pytest
 from prefect.testing.utilities import prefect_test_harness
 
+import rapthor.execution.predict.flow as predict_module
 from rapthor.execution.commands import normalize_command
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.predict.commands import (
-    build_add_sector_models_command,
     build_predict_model_data_command,
-    build_subtract_sector_models_command,
 )
 from rapthor.execution.predict.flow import (
     predict_flow,
@@ -42,37 +41,127 @@ def fake_predict_shell_operation_cls():
             return "OK"
 
         @staticmethod
-        def _matching_model(msobs, msmods):
-            msobs_basename = Path(msobs).name
-            for model in msmods:
-                if Path(model).name.startswith(msobs_basename):
-                    return model
-            return msmods[0]
-
-        @classmethod
-        def _output_paths(cls, tokens, cwd):
+        def _output_paths(tokens, cwd):
             if tokens[0] == "DP3":
                 output_name = next(
                     token.split("=", 1)[1] for token in tokens if token.startswith("msout=")
                 )
                 return [cwd / output_name]
-            if tokens[0] == "add_sector_models.py":
-                model = cls._matching_model(tokens[1], tokens[2].split(","))
-                output_name = Path(model).name.removesuffix("_modeldata") + "_di.ms"
-                return [cwd / output_name]
-            if tokens[0] == "subtract_sector_models.py":
-                msobs = tokens[3]
-                model = cls._matching_model(msobs, tokens[4].split(","))
-                output_paths = [cwd / Path(model).name.removesuffix("_modeldata")]
-                if "--peel_outliers=True" in tokens or "--peel_bright=True" in tokens:
-                    infix = next(
-                        token.split("=", 1)[1] for token in tokens if token.startswith("--infix=")
-                    )
-                    output_paths.insert(0, cwd / f"{Path(msobs).name}{infix}_field")
-                return output_paths
             raise AssertionError(f"Unexpected command: {tokens[0]}")
 
     return FakePredictShellOperation
+
+
+def _matching_models(msobs, msmods):
+    msobs_basename = Path(msobs).name
+    matches = [model for model in msmods if Path(model).name.startswith(msobs_basename)]
+    return matches or msmods[:1]
+
+
+@pytest.fixture(autouse=True)
+def fake_direct_predict_helpers(monkeypatch):
+    calls = {"add_sector_models": [], "subtract_sector_models": []}
+
+    def fake_add_sector_models(
+        msin,
+        msmod_list,
+        msin_column="DATA",
+        model_column="DATA",
+        out_column="MODEL_DATA",
+        use_compression=False,
+        starttime=None,
+        quiet=True,
+        infix="",
+        output_dir=None,
+    ):
+        calls["add_sector_models"].append(
+            {
+                "msin": msin,
+                "msmod_list": list(msmod_list),
+                "msin_column": msin_column,
+                "model_column": model_column,
+                "out_column": out_column,
+                "use_compression": use_compression,
+                "starttime": starttime,
+                "quiet": quiet,
+                "infix": infix,
+                "output_dir": output_dir,
+            }
+        )
+        output_root = Path(output_dir or ".")
+        for model in _matching_models(msin, list(msmod_list)):
+            output = output_root / f"{Path(model).name.removesuffix('_modeldata')}_di.ms"
+            output.mkdir(parents=True, exist_ok=True)
+
+    def fake_subtract_sector_models(
+        msin,
+        model_list,
+        msin_column="DATA",
+        model_column="DATA",
+        out_column="DATA",
+        nr_outliers=0,
+        nr_bright=0,
+        use_compression=False,
+        peel_outliers=False,
+        peel_bright=False,
+        reweight=True,
+        starttime=None,
+        solint_sec=None,
+        solint_hz=None,
+        weights_colname="CAL_WEIGHT",
+        gainfile="",
+        uvcut_min=80.0,
+        uvcut_max=1e6,
+        phaseonly=True,
+        dirname=None,
+        quiet=True,
+        infix="",
+        output_dir=None,
+    ):
+        calls["subtract_sector_models"].append(
+            {
+                "msin": msin,
+                "model_list": list(model_list),
+                "msin_column": msin_column,
+                "model_column": model_column,
+                "out_column": out_column,
+                "nr_outliers": nr_outliers,
+                "nr_bright": nr_bright,
+                "use_compression": use_compression,
+                "peel_outliers": peel_outliers,
+                "peel_bright": peel_bright,
+                "reweight": reweight,
+                "starttime": starttime,
+                "solint_sec": solint_sec,
+                "solint_hz": solint_hz,
+                "weights_colname": weights_colname,
+                "gainfile": gainfile,
+                "uvcut_min": uvcut_min,
+                "uvcut_max": uvcut_max,
+                "phaseonly": phaseonly,
+                "dirname": dirname,
+                "quiet": quiet,
+                "infix": infix,
+                "output_dir": output_dir,
+            }
+        )
+        output_root = Path(output_dir or ".")
+        if (peel_outliers and nr_outliers > 0) or (peel_bright and nr_bright > 0):
+            (output_root / f"{Path(msin).name}{infix}_field").mkdir(
+                parents=True,
+                exist_ok=True,
+            )
+        for model in _matching_models(msin, list(model_list)):
+            output = output_root / Path(model).name.removesuffix("_modeldata")
+            output.mkdir(parents=True, exist_ok=True)
+
+    monkeypatch.setattr(predict_module, "add_sector_models", fake_add_sector_models)
+    monkeypatch.setattr(
+        predict_module,
+        "subtract_sector_models",
+        fake_subtract_sector_models,
+    )
+    return calls
 
 
 class FailingShellOperation:
@@ -88,20 +177,6 @@ class NoOutputShellOperation:
         self.kwargs = kwargs
 
     def run(self):
-        return "OK"
-
-
-class PostprocessNoOutputShellOperation:
-    def __init__(self, **kwargs):
-        self.kwargs = kwargs
-
-    def run(self):
-        tokens = shlex.split(self.kwargs["commands"][0])
-        if tokens[0] == "DP3":
-            output_name = next(
-                token.split("=", 1)[1] for token in tokens if token.startswith("msout=")
-            )
-            (Path(self.kwargs["working_dir"]) / output_name).mkdir(parents=True, exist_ok=True)
         return "OK"
 
 
@@ -298,39 +373,6 @@ def test_predict_command_builders_match_reference_fixtures():
         )
         == commands["predict"]["predict_model_data"]
     )
-    assert (
-        normalize_command(
-            build_add_sector_models_command(
-                msobs="obs_0.ms",
-                msmods=["obs_0.ms.sector_1_modeldata", "obs_0.ms.sector_2_modeldata"],
-                data_colname="DATA",
-                obs_starttime="50000.0",
-                infix=".selfcal",
-            )
-        )
-        == commands["predict"]["add_sector_models"]
-    )
-    assert (
-        normalize_command(
-            build_subtract_sector_models_command(
-                msobs="obs_0.ms",
-                msmods=["obs_0.ms.sector_1_modeldata", "obs_0.ms.sector_2_modeldata"],
-                data_colname="DATA",
-                obs_starttime="50000.0",
-                solint_sec=20.0,
-                solint_hz=1000.0,
-                infix=".selfcal",
-                min_uv_lambda=80.0,
-                max_uv_lambda=1000000.0,
-                nr_outliers=1,
-                peel_outliers=True,
-                nr_bright=0,
-                peel_bright=False,
-                reweight=True,
-            )
-        )
-        == commands["predict"]["subtract_sector_models"]
-    )
 
 
 def test_build_predict_model_data_command_adds_h5parm_applycal_options():
@@ -401,57 +443,6 @@ def test_build_predict_model_data_command_uses_sagecalpredict_when_requested():
 
     assert "predict.type=sagecalpredict" in command
     assert "predict.applycal.parmdb=solutions.h5" in command
-
-
-def test_add_and_subtract_command_builders_create_reference_tokens():
-    assert build_add_sector_models_command(
-        "obs_0.ms",
-        ["obs_0.ms.sector_1_modeldata", "obs_0.ms.sector_2_modeldata"],
-        "DATA",
-        "50000.0",
-        ".selfcal",
-    ) == [
-        "add_sector_models.py",
-        "obs_0.ms",
-        "obs_0.ms.sector_1_modeldata,obs_0.ms.sector_2_modeldata",
-        "--msin_column=DATA",
-        "--starttime=50000.0",
-        "--infix=.selfcal",
-    ]
-    assert build_subtract_sector_models_command(
-        "obs_0.ms",
-        ["obs_0.ms.sector_1_modeldata", "obs_0.ms.sector_2_modeldata"],
-        "DATA",
-        "50000.0",
-        20.0,
-        1000.0,
-        ".selfcal",
-        80.0,
-        1000000.0,
-        1,
-        True,
-        0,
-        False,
-        True,
-    ) == [
-        "subtract_sector_models.py",
-        "--weights_colname=WEIGHT_SPECTRUM",
-        "--phaseonly=True",
-        "obs_0.ms",
-        "obs_0.ms.sector_1_modeldata,obs_0.ms.sector_2_modeldata",
-        "--msin_column=DATA",
-        "--starttime=50000.0",
-        "--solint_sec=20.0",
-        "--solint_hz=1000.0",
-        "--infix=.selfcal",
-        "--uvcut_min=80.0",
-        "--uvcut_max=1000000.0",
-        "--nr_outliers=1",
-        "--peel_outliers=True",
-        "--nr_bright=0",
-        "--peel_bright=False",
-        "--reweight=True",
-    ]
 
 
 def test_predict_payload_from_inputs_builds_di_scatter_payload(tmp_path):
@@ -525,7 +516,7 @@ def test_predict_payload_from_inputs_rejects_non_basename_model_outputs(tmp_path
 
 
 def test_run_predict_flow_executes_di_commands_and_returns_nested_records(
-    tmp_path, fake_predict_shell_operation_cls
+    tmp_path, fake_predict_shell_operation_cls, fake_direct_predict_helpers
 ):
     payload = predict_payload_from_inputs("di", _predict_input_parms(), tmp_path)
 
@@ -550,11 +541,39 @@ def test_run_predict_flow_executes_di_commands_and_returns_nested_records(
     assert [tokens[0] for tokens in command_tokens] == [
         "DP3",
         "DP3",
-        "add_sector_models.py",
-        "add_sector_models.py",
     ]
-    assert str(tmp_path / "obs_0.ms.sector_1_modeldata") in command_tokens[2][2]
-    assert str(tmp_path / "obs_1.ms.sector_1_modeldata") in command_tokens[2][2]
+    assert fake_direct_predict_helpers["add_sector_models"] == [
+        {
+            "msin": "/data/obs_0.ms",
+            "msmod_list": [
+                str(tmp_path / "obs_0.ms.sector_1_modeldata"),
+                str(tmp_path / "obs_1.ms.sector_1_modeldata"),
+            ],
+            "msin_column": "DATA",
+            "model_column": "DATA",
+            "out_column": "MODEL_DATA",
+            "use_compression": False,
+            "starttime": "50000.0",
+            "quiet": True,
+            "infix": ".selfcal",
+            "output_dir": str(tmp_path),
+        },
+        {
+            "msin": "/data/obs_1.ms",
+            "msmod_list": [
+                str(tmp_path / "obs_0.ms.sector_1_modeldata"),
+                str(tmp_path / "obs_1.ms.sector_1_modeldata"),
+            ],
+            "msin_column": "DATA",
+            "model_column": "DATA",
+            "out_column": "MODEL_DATA",
+            "use_compression": False,
+            "starttime": "50010.0",
+            "quiet": True,
+            "infix": ".selfcal",
+            "output_dir": str(tmp_path),
+        },
+    ]
 
 
 def test_run_predict_flow_rejects_invalid_prediction_directions(
@@ -575,7 +594,7 @@ def test_run_predict_flow_rejects_invalid_prediction_directions(
 
 
 def test_run_predict_flow_executes_dd_commands_and_returns_peeling_records(
-    tmp_path, fake_predict_shell_operation_cls
+    tmp_path, fake_predict_shell_operation_cls, fake_direct_predict_helpers
 ):
     payload = predict_payload_from_inputs("dd", _dd_predict_input_parms(), tmp_path)
 
@@ -603,9 +622,13 @@ def test_run_predict_flow_executes_dd_commands_and_returns_peeling_records(
         shlex.split(instance.kwargs["commands"][0])
         for instance in fake_predict_shell_operation_cls.instances
     ]
-    assert command_tokens[-1][0] == "subtract_sector_models.py"
-    assert "--peel_outliers=True" in command_tokens[-1]
-    assert "--reweight=True" in command_tokens[-1]
+    assert [tokens[0] for tokens in command_tokens] == ["DP3", "DP3"]
+    assert fake_direct_predict_helpers["subtract_sector_models"][-1]["peel_outliers"] is True
+    assert fake_direct_predict_helpers["subtract_sector_models"][-1]["reweight"] is True
+    assert (
+        fake_direct_predict_helpers["subtract_sector_models"][-1]["weights_colname"]
+        == "WEIGHT_SPECTRUM"
+    )
 
 
 def test_predict_model_data_task_wraps_runner(tmp_path, fake_predict_shell_operation_cls):
@@ -639,7 +662,7 @@ def test_predict_prefect_flow_entrypoint_runs_with_mocked_shell(
         )
 
     assert outputs == {"msfiles_di_cal": [[directory_record(tmp_path / "obs_0.ms.sector_1_di.ms")]]}
-    assert len(fake_predict_shell_operation_cls.instances) == 2
+    assert len(fake_predict_shell_operation_cls.instances) == 1
 
 
 def test_run_predict_flow_propagates_shell_failures(tmp_path):
@@ -666,7 +689,13 @@ def test_run_predict_flow_fails_when_predicted_model_is_missing(tmp_path):
         )
 
 
-def test_run_predict_flow_fails_when_postprocess_output_is_missing(tmp_path):
+def test_run_predict_flow_fails_when_postprocess_output_is_missing(
+    tmp_path, monkeypatch, fake_predict_shell_operation_cls
+):
+    def skip_add_sector_models(*args, **kwargs):
+        return None
+
+    monkeypatch.setattr(predict_module, "add_sector_models", skip_add_sector_models)
     payload = predict_payload_from_inputs("di", _single_observation_input_parms(), tmp_path)
 
     with pytest.raises(FileNotFoundError, match="post-processing outputs"):
@@ -674,7 +703,7 @@ def test_run_predict_flow_fails_when_postprocess_output_is_missing(tmp_path):
             predict_flow,
             payload,
             execution_config=ExecutionConfig(task_runner="sync"),
-            shell_operation_cls=PostprocessNoOutputShellOperation,
+            shell_operation_cls=fake_predict_shell_operation_cls,
         )
 
 
@@ -778,7 +807,7 @@ def test_predict_di_operation_run_uses_prefect_flow(
         Path(operation.pipeline_working_dir) / "obs_0.ms.selfcal.sector_1_di.ms"
     )
     assert field_observation.infix == ".selfcal"
-    assert len(fake_predict_shell_operation_cls.instances) == 2
+    assert len(fake_predict_shell_operation_cls.instances) == 1
 
 
 def test_predict_di_operation_run_reuses_prefect_outputs_when_done(
@@ -886,7 +915,14 @@ def test_predict_dd_operation_run_uses_prefect_flow(
 
     expected_outputs = {
         "subtract_models": [
-            [directory_record(Path(operation.pipeline_working_dir) / "obs_0.ms.selfcal.sector_1")]
+            [
+                directory_record(
+                    Path(operation.pipeline_working_dir) / "obs_0.ms.selfcal.sector_1"
+                ),
+                directory_record(
+                    Path(operation.pipeline_working_dir) / "obs_0.ms.selfcal.sector_2"
+                ),
+            ]
         ]
     }
     assert operation.outputs == expected_outputs
@@ -900,4 +936,4 @@ def test_predict_dd_operation_run_uses_prefect_flow(
     assert sector_2_observation.ms_imaging_filename == str(
         Path(operation.pipeline_working_dir) / "obs_0.ms.selfcal.sector_2"
     )
-    assert len(fake_predict_shell_operation_cls.instances) == 3
+    assert len(fake_predict_shell_operation_cls.instances) == 2

@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from rapthor.execution.commands import bool_token, bracketed_list_token, comma_join
+from rapthor.execution.commands import bool_token, bracketed_list_token
 
 
 def _predict_type(sagecalpredict: bool, h5parm: Optional[str]) -> str:
@@ -87,59 +87,3 @@ def build_predict_model_data_command(
         ]
     )
     return command
-
-
-def build_add_sector_models_command(
-    msobs: str,
-    msmods: list[str],
-    data_colname: str,
-    obs_starttime: str,
-    infix: str,
-) -> list[str]:
-    """Build the `add_sector_models.py` command for one observation."""
-    return [
-        "add_sector_models.py",
-        msobs,
-        comma_join(msmods),
-        f"--msin_column={data_colname}",
-        f"--starttime={obs_starttime}",
-        f"--infix={infix}",
-    ]
-
-
-def build_subtract_sector_models_command(
-    msobs: str,
-    msmods: list[str],
-    data_colname: str,
-    obs_starttime: str,
-    solint_sec: float,
-    solint_hz: float,
-    infix: str,
-    min_uv_lambda: float,
-    max_uv_lambda: float,
-    nr_outliers: int,
-    peel_outliers: bool,
-    nr_bright: int,
-    peel_bright: bool,
-    reweight: bool,
-) -> list[str]:
-    """Build the `subtract_sector_models.py` command for one observation."""
-    return [
-        "subtract_sector_models.py",
-        "--weights_colname=WEIGHT_SPECTRUM",
-        "--phaseonly=True",
-        msobs,
-        comma_join(msmods),
-        f"--msin_column={data_colname}",
-        f"--starttime={obs_starttime}",
-        f"--solint_sec={solint_sec}",
-        f"--solint_hz={solint_hz}",
-        f"--infix={infix}",
-        f"--uvcut_min={min_uv_lambda}",
-        f"--uvcut_max={max_uv_lambda}",
-        f"--nr_outliers={nr_outliers}",
-        f"--peel_outliers={bool_token(peel_outliers)}",
-        f"--nr_bright={nr_bright}",
-        f"--peel_bright={bool_token(peel_bright)}",
-        f"--reweight={bool_token(reweight)}",
-    ]

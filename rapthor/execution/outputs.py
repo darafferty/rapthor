@@ -22,6 +22,14 @@ def require_directory(path: str, description: str) -> dict:
     return directory_record(path)
 
 
+def output_path(output_dir: Optional[str], filename: str) -> str:
+    """Return an output path, keeping cwd-relative script behavior when no directory is supplied."""
+    if output_dir is None:
+        return filename
+    os.makedirs(output_dir, exist_ok=True)
+    return os.path.join(output_dir, filename)
+
+
 def first_existing_file(patterns: list[str], description: str) -> dict:
     """Return the first existing file record matching one of the patterns."""
     for pattern in patterns:

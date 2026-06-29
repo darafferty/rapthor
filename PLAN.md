@@ -339,8 +339,22 @@ Progress:
 - Calibration flow tests now patch those direct helper calls, and the
   calibration shell fake only models true external commands plus the external
   h5parm collector and plotting executable.
-- Next: convert predict add/subtract post-processing, with extra care around
-  Measurement Set size and Dask-worker filesystem assumptions.
+- Done: predict add/subtract post-processing now runs as direct Python work
+  units while DP3 prediction remains shell-based:
+  - `add_sector_models.py` ->
+    `rapthor.execution.predict.sector_model_addition.add_sector_models`
+  - `subtract_sector_models.py` ->
+    `rapthor.execution.predict.sector_model_subtraction.subtract_sector_models`
+- Predict post-processing helpers now accept an explicit output directory so
+  Prefect/Dask tasks do not need to change the process working directory.
+- The now-unused predict `build_add_sector_models_command` and
+  `build_subtract_sector_models_command` wrapper builders were removed from
+  production code instead of leaving test-only compatibility surfaces.
+- Predict flow tests now patch those direct helper calls, and the predict shell
+  fake only models DP3.
+- Next: convert concatenate validation/command selection, while keeping
+  DP3/TAQL/copy as external shell commands unless a Measurement Set operation
+  is explicitly pure Python and safe for Dask workers.
 
 Testing tasks:
 

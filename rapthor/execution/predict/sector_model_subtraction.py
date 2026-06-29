@@ -3,10 +3,12 @@
 import os
 import shutil
 import subprocess
+from typing import Optional
 
 import casacore.tables as pt
 import numpy as np
 
+from rapthor.execution.outputs import output_path
 from rapthor.lib import miscellaneous as misc
 
 
@@ -68,6 +70,7 @@ def subtract_sector_models(
     dirname=None,
     quiet=True,
     infix="",
+    output_dir: Optional[str] = None,
 ):
     """
     Subtract sector model data.
@@ -120,6 +123,9 @@ def subtract_sector_models(
         If True, suppress (most) output
     infix : str, optional
         Infix string used in filenames
+    output_dir : str, optional
+        Directory for generated Measurement Set outputs. If omitted, outputs
+        are written relative to the current working directory for CLI parity.
     """
     use_compression = misc.string2bool(use_compression)
     peel_outliers = misc.string2bool(peel_outliers)
@@ -193,7 +199,7 @@ def subtract_sector_models(
         # Open input and output table
         tin = pt.table(msin, readonly=True, ack=False)
         root_filename = os.path.basename(msin)
-        msout = f"{root_filename}{infix}_field"
+        msout = output_path(output_dir, f"{root_filename}{infix}_field")
 
         # Use subprocess to call 'cp' to ensure that the copied version has the
         # default permissions (e.g., so it's not read only)
@@ -264,7 +270,7 @@ def subtract_sector_models(
         # Open input and output table
         tin = pt.table(msin, readonly=True, ack=False)
         root_filename = os.path.basename(msin)
-        msout = f"{root_filename}{infix}_field_no_bright"
+        msout = output_path(output_dir, f"{root_filename}{infix}_field_no_bright")
 
         # Use subprocess to call 'cp' to ensure that the copied version has the
         # default permissions (e.g., so it's not read only)
@@ -333,7 +339,10 @@ def subtract_sector_models(
     if len(model_list) == 0:
         # This means there is just a single sector and no reweighting is to be done,
         # so use the template MS filename as a basis for the output MS filename
-        msout = os.path.splitext(os.path.basename(ms_template))[0] + ".sector_1"
+        msout = output_path(
+            output_dir,
+            os.path.splitext(os.path.basename(ms_template))[0] + ".sector_1",
+        )
         if os.path.exists(msout):
             # File may exist from a previous processing cycle; delete it if so
             shutil.rmtree(msout, ignore_errors=True)
@@ -377,7 +386,7 @@ def subtract_sector_models(
         elif nr_bright > 0 and i == len(model_list) - nr_bright:
             # Break so we don't open output tables for the bright sources
             break
-        msout = os.path.basename(msmod).removesuffix("_modeldata")
+        msout = output_path(output_dir, os.path.basename(msmod).removesuffix("_modeldata"))
 
         # Use subprocess to call 'cp' to ensure that the copied version has the
         # default permissions (e.g., so it's not read only)
