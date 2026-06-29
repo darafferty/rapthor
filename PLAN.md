@@ -58,6 +58,31 @@ Known follow-ups from completed work:
 - Prefect can emit late logging shutdown warnings after passing flow tests.
   Track separately if this becomes noisy in CI.
 
+## Immediate Next Work
+
+The next step is to finish the wrapper-retirement documentation pass before
+starting new scalability work.
+
+1. Update `docs/source/development/architecture.rst` so it reflects the current
+   architecture:
+   - `rapthor.scripts` is no longer a production pipeline layer.
+   - Migrated helper logic lives under `rapthor.execution.<owner>`.
+   - `filter_skymodel.py` is the only retained helper-script fallback because
+     PyBDSF/lsmtool multiprocessing still needs subprocess isolation inside
+     daemonic Dask workers.
+   - `bin/plotrapthor` remains an external plotting executable used by
+     calibration.
+   - `mpi_runner.sh` remains until a targeted runtime/package audit proves it
+     is unused.
+2. Confirm restart/failure integration tests are still intentionally tied only
+   to the retained `filter_skymodel.py` fallback, not to deleted wrappers.
+3. Run the focused architecture/docs-adjacent checks:
+   - `tests/architecture/test_import_boundaries.py`
+   - `tests/integration/test_rapthor_restart.py` when the integration
+     environment is available
+   - a Sphinx build once the docs environment has `sphinx`
+4. Then begin the Dask scalability-contract slice in section 4.
+
 ## Remaining Roadmap
 
 Work through the remaining tasks in this order.
@@ -67,10 +92,10 @@ Work through the remaining tasks in this order.
 Goal: make script logic importable and testable so future Dask workers can pass
 small data objects in memory where that is sensible.
 
-Status: complete for the current `rapthor/scripts/*.py` helper set. The
-remaining work is wrapper retirement, not more script migration.
+Status: complete for the migrated helper set. The notes below are retained as
+historical context for how each wrapper was migrated and tested.
 
-Tasks:
+Completed migration pattern:
 
 - Audit `rapthor/scripts/*.py` and record each helper's owner, inputs, outputs,
   external dependencies, data size, and current tests.
@@ -85,8 +110,8 @@ Tasks:
   - `subtract_sector_models.py`
   - `process_gains.py`
 - Extract an importable function with a narrow typed signature.
-- Keep the CLI wrapper stable.
-- Add function-vs-CLI parity tests.
+- Keep the CLI wrapper stable while proving importable helper parity.
+- Add function-vs-CLI parity tests before removing any wrapper.
 - Only switch production execution from shell/script to direct function calls
   when the payload is small, serializable, and safe for Dask workers.
 - Once production execution uses the importable module path and parity is
@@ -202,15 +227,13 @@ Script audit and migration order:
   optional comparison skymodels/surveys, JSON diagnostics, and plot products;
   helper tests now import the execution module and CLI argument parity coverage
   exists.
-- Script helper logic has been migrated to importable modules. Keep the thin
-  script wrappers until production execution has switched to direct module calls
-  where the payloads are safe for Dask workers, then remove wrappers with parity
-  coverage in place.
+- Script helper logic has been migrated to importable modules. Retired wrappers
+  have been removed, except for the documented `filter_skymodel.py` fallback.
 
 Done when:
 
 - The script audit is complete, each helper has an importable function, tests
-  cover the importable module path, and wrapper deletion is tracked separately.
+  cover the importable module path, and wrapper deletion is tracked in section 3.
 
 ### 2. Switch Prefect Flows From Script Commands To Python Work Units
 
@@ -292,8 +315,8 @@ Recommended order:
    and command selection.
 8. Remove now-unused `build_*_command` functions for migrated Rapthor scripts
    from production command modules once their flow tests no longer need them.
-   Keep thin CLI wrappers until a later cleanup pass proves they are unused
-   outside tests and production execution.
+   Retire unused wrappers once production execution and helper tests no longer
+   need them; keep only documented live exceptions.
 
 Progress:
 
@@ -394,11 +417,11 @@ Testing tasks:
   tasks call Python helpers with the expected arguments.
 - Add assertions that migrated Rapthor script names no longer appear in the
   production shell-command list.
-- Keep script-level direct-function and CLI parity tests until the wrapper
-  scripts are intentionally removed.
-- Update restart/failure integration tests that currently inject failing wrapper
-  scripts on `PATH`; direct function calls need failure fixtures that exercise
-  the imported helper path instead.
+- Keep direct helper tests under `tests/execution`. Keep CLI parity coverage
+  only for intentionally retained live entry points.
+- Keep restart/failure integration tests tied to the retained
+  `filter_skymodel.py` fallback; deleted wrapper failures should be tested by
+  patching the imported helper path instead.
 - Run focused execution tests after each owner package:
   - `tests/execution/test_image_flow.py`
   - `tests/execution/test_mosaic_flow.py`
@@ -420,6 +443,9 @@ Done when:
 
 Goal: remove unused CLI wrapper files and test-only compatibility surfaces now
 that production execution uses importable modules.
+
+Status: code cleanup is complete for retired wrappers. The remaining task is to
+bring the developer architecture docs in line with the current code.
 
 Keep for now:
 
@@ -500,6 +526,9 @@ Progress:
   (`normalize_flux_scale.py` and `calculate_image_diagnostics.py`). Their
   direct helper coverage now lives under `tests/execution`, and the wrapper
   paths have been removed from package metadata.
+- Next: update the development architecture docs so they no longer describe
+  `rapthor.scripts` as a production layer, then move to Dask scalability
+  contracts.
 
 Done when:
 
