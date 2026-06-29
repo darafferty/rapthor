@@ -18,8 +18,8 @@ import logging
 import optparse
 import sys
 
-from rapthor import modifystate
 from rapthor._version import __version__ as version
+from rapthor.modifystate import run as run_modifystate
 
 if __name__ == "__main__":
     parser = optparse.OptionParser(usage="%prog <parset>", version="%%prog v%s" % (version))
@@ -44,7 +44,7 @@ if __name__ == "__main__":
 
     if options.r:
         # Run state modification tool
-        modifystate.run(parset_file)
+        run_modifystate(parset_file)
     else:
         try:
             # Run the processing
