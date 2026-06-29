@@ -479,6 +479,10 @@ Progress:
 - Done: retired the `concat_ms.py` wrapper. The direct Measurement Set helper
   coverage now lives under `tests/execution/test_measurement_sets.py`, and the
   wrapper path has been removed from package metadata.
+- Done: retired the predict wrapper scripts (`add_sector_models.py` and
+  `subtract_sector_models.py`). Their direct Measurement Set helper coverage
+  now lives under `tests/execution/test_predict_sector_models.py`, and the
+  wrapper paths have been removed from package metadata.
 
 Done when:
 
