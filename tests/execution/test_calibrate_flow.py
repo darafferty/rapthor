@@ -8,6 +8,7 @@ from prefect.testing.utilities import prefect_test_harness
 
 import rapthor.execution.calibrate.collection as calibrate_collection
 import rapthor.execution.calibrate.flow as calibrate_module
+import rapthor.execution.calibrate.prediction as calibrate_prediction
 from rapthor.execution.calibrate.commands import (
     DdecalSolveOptions,
     DrawModelOptions,
@@ -57,9 +58,6 @@ def fake_calibrate_shell_operation_cls():
                 for index in range(numterms):
                     (cwd / f"{root}-term-{index}.fits").write_text("model")
                 return "OK"
-            if tokens[0] == "make_region_file.py":
-                (cwd / tokens[6]).write_text("region")
-                return "OK"
             if tokens[0] == "DP3":
                 for token in tokens:
                     if token.startswith("solve") and ".h5parm=" in token:
@@ -73,27 +71,6 @@ def fake_calibrate_shell_operation_cls():
                 output_path = cwd / output_name
                 output_path.write_text("collected")
                 return "OK"
-            if tokens[:2] == ["collect_screen_h5parms.py", "-c"]:
-                output_name = next(
-                    token.split("=", 1)[1] for token in tokens if token.startswith("--outh5parm=")
-                )
-                output_path = cwd / output_name
-                output_path.write_text("screens")
-                return "OK"
-            if tokens[0] == "combine_h5parms.py":
-                output_path = cwd / tokens[3]
-                output_path.write_text("combined")
-                return "OK"
-            if tokens[0] == "process_gains.py":
-                h5parm = Path(tokens[2])
-                output_path = h5parm if h5parm.is_absolute() else cwd / h5parm
-                output_path.write_text("processed")
-                return "OK"
-            if tokens[0] == "adjust_h5parm_sources.py":
-                h5parm = Path(tokens[2])
-                output_path = h5parm if h5parm.is_absolute() else cwd / h5parm
-                output_path.write_text("adjusted")
-                return "OK"
             if tokens[0] == "plotrapthor":
                 root = next(
                     (token.split("=", 1)[1] for token in tokens if token.startswith("--root=")),
@@ -105,6 +82,113 @@ def fake_calibrate_shell_operation_cls():
             raise AssertionError(f"Unexpected command: {tokens[0]}")
 
     return FakeCalibrateShellOperation
+
+
+@pytest.fixture(autouse=True)
+def fake_direct_calibrate_helpers(monkeypatch):
+    calls = {
+        "adjust_h5parm_sources": [],
+        "collect_screen_h5parms": [],
+        "combine_h5parms": [],
+        "make_region_file": [],
+        "process_gains": [],
+    }
+
+    def fake_adjust_h5parm_source_coordinates(skymodel, h5parm_file, solset_name="sol000"):
+        calls["adjust_h5parm_sources"].append(
+            {
+                "skymodel": skymodel,
+                "h5parm_file": h5parm_file,
+                "solset_name": solset_name,
+            }
+        )
+        Path(h5parm_file).write_text("adjusted")
+
+    def fake_collect_screen_h5parms(h5parm_files, output_h5parm, overwrite=False):
+        calls["collect_screen_h5parms"].append(
+            {
+                "h5parm_files": list(h5parm_files),
+                "output_h5parm": output_h5parm,
+                "overwrite": overwrite,
+            }
+        )
+        Path(output_h5parm).write_text("screens")
+
+    def fake_combine_h5parms(
+        h5parm1,
+        h5parm2,
+        outh5parm,
+        mode,
+        solset1="sol000",
+        solset2="sol000",
+        reweight=False,
+        cal_names=None,
+        cal_fluxes=None,
+    ):
+        calls["combine_h5parms"].append(
+            {
+                "h5parm1": h5parm1,
+                "h5parm2": h5parm2,
+                "outh5parm": outh5parm,
+                "mode": mode,
+                "solset1": solset1,
+                "solset2": solset2,
+                "reweight": reweight,
+                "cal_names": cal_names,
+                "cal_fluxes": cal_fluxes,
+            }
+        )
+        Path(outh5parm).write_text("combined")
+
+    def fake_make_ds9_region_from_skymodel(
+        skymodel,
+        ra_mid,
+        dec_mid,
+        width_ra,
+        width_dec,
+        region_file,
+        *,
+        enclose_names=True,
+    ):
+        calls["make_region_file"].append(
+            {
+                "skymodel": skymodel,
+                "ra_mid": ra_mid,
+                "dec_mid": dec_mid,
+                "width_ra": width_ra,
+                "width_dec": width_dec,
+                "region_file": region_file,
+                "enclose_names": enclose_names,
+            }
+        )
+        Path(region_file).write_text("region")
+
+    def fake_process_gain_solutions(h5parmfile, **kwargs):
+        calls["process_gains"].append({"h5parmfile": h5parmfile, **kwargs})
+        Path(h5parmfile).write_text("processed")
+
+    monkeypatch.setattr(
+        calibrate_collection,
+        "adjust_h5parm_source_coordinates",
+        fake_adjust_h5parm_source_coordinates,
+    )
+    monkeypatch.setattr(
+        calibrate_collection,
+        "collect_screen_h5parms",
+        fake_collect_screen_h5parms,
+    )
+    monkeypatch.setattr(calibrate_collection, "combine_h5parms", fake_combine_h5parms)
+    monkeypatch.setattr(
+        calibrate_prediction,
+        "make_ds9_region_from_skymodel",
+        fake_make_ds9_region_from_skymodel,
+    )
+    monkeypatch.setattr(
+        calibrate_collection,
+        "process_gain_solutions",
+        fake_process_gain_solutions,
+    )
+    return calls
 
 
 class NoOutputShellOperation:
@@ -2042,7 +2126,6 @@ def test_run_calibrate_flow_supports_di_scalar_phase(tmp_path, fake_calibrate_sh
         "plotrapthor",
         "H5parm_collector.py",
         "plotrapthor",
-        "combine_h5parms.py",
     ]
     assert "steps=[solve1,solve2]" in commands[0]
     assert "solve1.mode=scalarphase" in commands[0]
@@ -2051,12 +2134,6 @@ def test_run_calibrate_flow_supports_di_scalar_phase(tmp_path, fake_calibrate_sh
     assert "solve2.reusemodel=[solve1.*]" in commands[0]
     assert "--first-dir" in commands[3]
     assert "--first-dir" in commands[5]
-    assert commands[-1][1:5] == [
-        str(tmp_path / "fast_phases_di.h5parm"),
-        str(tmp_path / "medium1_phases_di.h5parm"),
-        "combined_solve1_solve2_di.h5parm",
-        "p1p2_scalar",
-    ]
 
 
 def test_run_calibrate_flow_supports_di_fast_phase(tmp_path, fake_calibrate_shell_operation_cls):
@@ -2109,7 +2186,6 @@ def test_run_calibrate_flow_supports_di_slow(tmp_path, fake_calibrate_shell_oper
         "DP3",
         "DP3",
         "H5parm_collector.py",
-        "process_gains.py",
         "plotrapthor",
         "plotrapthor",
     ]
@@ -2117,8 +2193,8 @@ def test_run_calibrate_flow_supports_di_slow(tmp_path, fake_calibrate_shell_oper
     assert "solve1.h5parm=slow_gains_di_0.h5parm" in commands[0]
     assert "solve1.mode=diagonal" in commands[0]
     assert "solve1.solint=11" in commands[0]
+    assert "--first-dir" in commands[3]
     assert "--first-dir" in commands[4]
-    assert "--first-dir" in commands[5]
 
 
 def test_run_calibrate_flow_supports_di_phase_slow(tmp_path, fake_calibrate_shell_operation_cls):
@@ -2146,11 +2222,8 @@ def test_run_calibrate_flow_supports_di_phase_slow(tmp_path, fake_calibrate_shel
         "H5parm_collector.py",
         "plotrapthor",
         "H5parm_collector.py",
-        "process_gains.py",
         "plotrapthor",
         "plotrapthor",
-        "combine_h5parms.py",
-        "combine_h5parms.py",
     ]
     assert "steps=[solve1,solve2,solve3]" in commands[0]
     assert "solve3.h5parm=slow_gains_di_0.h5parm" in commands[0]
@@ -2160,14 +2233,8 @@ def test_run_calibrate_flow_supports_di_phase_slow(tmp_path, fake_calibrate_shel
     assert "solve3.reusemodel=[solve1.*]" not in commands[0]
     assert "--first-dir" in commands[3]
     assert "--first-dir" in commands[5]
+    assert "--first-dir" in commands[7]
     assert "--first-dir" in commands[8]
-    assert "--first-dir" in commands[9]
-    assert commands[-1][1:5] == [
-        str(tmp_path / "combined_solve1_solve2_di.h5parm"),
-        str(tmp_path / "slow_gains_di.h5parm"),
-        "combined_di_solutions.h5parm",
-        "p1a2",
-    ]
 
 
 def test_run_calibrate_flow_supports_mixed_di_strategy(
@@ -2204,30 +2271,15 @@ def test_run_calibrate_flow_supports_mixed_di_strategy(
         "H5parm_collector.py",
         "plotrapthor",
         "H5parm_collector.py",
-        "process_gains.py",
         "plotrapthor",
         "plotrapthor",
         "H5parm_collector.py",
         "plotrapthor",
-        "combine_h5parms.py",
-        "combine_h5parms.py",
     ]
     assert "steps=[solve1,solve2,solve3,solve4]" in commands[0]
     assert "solve3.initialsolutions.soltab=[phase000,amplitude000]" in commands[0]
     assert "solve4.h5parm=fulljones_gain_0.h5parm" in commands[0]
     assert "solve4.mode=fulljones" in commands[0]
-    assert commands[-2][1:5] == [
-        str(tmp_path / "fast_phases_di.h5parm"),
-        str(tmp_path / "medium1_phases_di.h5parm"),
-        "combined_solve1_solve2_di.h5parm",
-        "p1p2_scalar",
-    ]
-    assert commands[-1][1:5] == [
-        str(tmp_path / "combined_solve1_solve2_di.h5parm"),
-        str(tmp_path / "slow_gains_di.h5parm"),
-        "combined_di_solutions.h5parm",
-        "p1a2",
-    ]
 
 
 def test_run_calibrate_flow_supports_dd_fast_phase(tmp_path, fake_calibrate_shell_operation_cls):
@@ -2299,15 +2351,14 @@ def test_run_calibrate_flow_supports_dd_slow(tmp_path, fake_calibrate_shell_oper
         "DP3",
         "DP3",
         "H5parm_collector.py",
-        "process_gains.py",
         "plotrapthor",
         "plotrapthor",
     ]
     assert "solve1.mode=diagonal" in commands[0]
     assert "solve1.h5parm=slow_gain_0.h5parm" in commands[0]
     assert "solve1.solint=11" in commands[0]
+    assert "--first-dir" not in commands[3]
     assert "--first-dir" not in commands[4]
-    assert "--first-dir" not in commands[5]
     assert commands[2][2] == f"{tmp_path / 'slow_gain_0.h5parm'},{tmp_path / 'slow_gain_1.h5parm'}"
 
 
@@ -2342,23 +2393,10 @@ def test_run_calibrate_flow_supports_dd_fast_medium(tmp_path, fake_calibrate_she
         "plotrapthor",
         "H5parm_collector.py",
         "plotrapthor",
-        "combine_h5parms.py",
-        "adjust_h5parm_sources.py",
     ]
     assert "steps=[solve1,solve2]" in commands[0]
     assert "solve2.h5parm=medium1_phase_0.h5parm" in commands[0]
     assert "solve2.reusemodel=[solve1.*]" in commands[0]
-    assert commands[-2][1:5] == [
-        str(tmp_path / "fast_phases.h5parm"),
-        str(tmp_path / "medium1_phases.h5parm"),
-        "combined_fast_medium1_phases.h5parm",
-        "p1p2_scalar",
-    ]
-    assert commands[-1] == [
-        "adjust_h5parm_sources.py",
-        "/data/calibration.skymodel",
-        str(tmp_path / "combined_fast_medium1_phases.h5parm"),
-    ]
 
 
 def test_run_calibrate_flow_supports_custom_dd_solve_order(
@@ -2388,8 +2426,6 @@ def test_run_calibrate_flow_supports_custom_dd_solve_order(
         "plotrapthor",
         "H5parm_collector.py",
         "plotrapthor",
-        "combine_h5parms.py",
-        "adjust_h5parm_sources.py",
     ]
     assert "steps=[solve1,solve2]" in commands[0]
     assert "solve1.h5parm=medium1_phase_0.h5parm" in commands[0]
@@ -2397,12 +2433,6 @@ def test_run_calibrate_flow_supports_custom_dd_solve_order(
     assert "solve2.h5parm=fast_phase_0.h5parm" in commands[0]
     assert "solve2.mode=scalarphase" in commands[0]
     assert "solve2.reusemodel=[solve1.*]" in commands[0]
-    assert commands[-2][1:5] == [
-        str(tmp_path / "medium1_phases.h5parm"),
-        str(tmp_path / "fast_phases.h5parm"),
-        "combined_fast_medium1_phases.h5parm",
-        "p1p2_scalar",
-    ]
 
 
 def test_run_calibrate_flow_supports_dd_preapply(tmp_path, fake_calibrate_shell_operation_cls):
@@ -2430,8 +2460,6 @@ def test_run_calibrate_flow_supports_dd_preapply(tmp_path, fake_calibrate_shell_
         "plotrapthor",
         "H5parm_collector.py",
         "plotrapthor",
-        "combine_h5parms.py",
-        "adjust_h5parm_sources.py",
     ]
     assert "steps=[applycal,solve1,solve2]" in commands[0]
     assert "applycal.steps=[fastphase,slowgain,fulljones,normalization]" in commands[0]
@@ -2464,15 +2492,12 @@ def test_run_calibrate_flow_supports_dd_image_predict(tmp_path, fake_calibrate_s
     ]
     assert [command[0] for command in commands] == [
         "wsclean",
-        "make_region_file.py",
         "DP3",
         "DP3",
         "H5parm_collector.py",
         "plotrapthor",
         "H5parm_collector.py",
         "plotrapthor",
-        "combine_h5parms.py",
-        "adjust_h5parm_sources.py",
     ]
     assert commands[0][1:] == [
         "-j",
@@ -2495,26 +2520,16 @@ def test_run_calibrate_flow_supports_dd_image_predict(tmp_path, fake_calibrate_s
         "-scale",
         "0.001",
     ]
-    assert commands[1] == [
-        "make_region_file.py",
-        "/data/calibration.skymodel",
-        "123.0",
-        "45.0",
-        "2.0",
-        "2.5",
-        "field_facets_ds9.reg",
-        "--enclose_names=False",
-    ]
-    assert "steps=[predict,applybeam,solve1,solve2]" in commands[2]
-    assert f"predict.regions={tmp_path / 'field_facets_ds9.reg'}" in commands[2]
+    assert "steps=[predict,applybeam,solve1,solve2]" in commands[1]
+    assert f"predict.regions={tmp_path / 'field_facets_ds9.reg'}" in commands[1]
     assert (
         f"predict.images=[{tmp_path / 'calibration_model-term-0.fits'},"
-        f"{tmp_path / 'calibration_model-term-1.fits'}]" in commands[2]
+        f"{tmp_path / 'calibration_model-term-1.fits'}]" in commands[1]
     )
-    assert "solve1.reusemodel=[predict.*]" in commands[2]
-    assert "solve2.reusemodel=[predict.*]" in commands[2]
-    assert not any(token.startswith("solve1.sourcedb=") for token in commands[2])
-    assert not any(token.startswith("solve1.directions=") for token in commands[2])
+    assert "solve1.reusemodel=[predict.*]" in commands[1]
+    assert "solve2.reusemodel=[predict.*]" in commands[1]
+    assert not any(token.startswith("solve1.sourcedb=") for token in commands[1])
+    assert not any(token.startswith("solve1.directions=") for token in commands[1])
 
 
 def test_run_calibrate_flow_supports_dd_screen_generation(
@@ -2538,24 +2553,16 @@ def test_run_calibrate_flow_supports_dd_screen_generation(
     commands = _command_tokens(fake_calibrate_shell_operation_cls)
     assert [command[0] for command in commands] == [
         "wsclean",
-        "make_region_file.py",
         "DP3",
         "DP3",
-        "collect_screen_h5parms.py",
     ]
-    assert "solve.python.module=idg.idgcaldpstep_phase_only_dirac" in commands[2]
-    assert "solve.python.class=IDGCalDPStepPhaseOnlyDirac" in commands[2]
-    assert "solve.h5parm=idgcal_0" in commands[2]
-    assert "solve.solintphase=3" in commands[2]
-    assert f"solve.modelimage={tmp_path / 'calibration_model-term-0.fits'}" in commands[2]
-    assert "solve.maxiter=4" in commands[2]
-    assert "solve.antennaconstraint=[]" in commands[2]
-    assert commands[-1] == [
-        "collect_screen_h5parms.py",
-        "-c",
-        f"{tmp_path / 'idgcal_0'},{tmp_path / 'idgcal_1'}",
-        "--outh5parm=combined_solutions.h5",
-    ]
+    assert "solve.python.module=idg.idgcaldpstep_phase_only_dirac" in commands[1]
+    assert "solve.python.class=IDGCalDPStepPhaseOnlyDirac" in commands[1]
+    assert "solve.h5parm=idgcal_0" in commands[1]
+    assert "solve.solintphase=3" in commands[1]
+    assert f"solve.modelimage={tmp_path / 'calibration_model-term-0.fits'}" in commands[1]
+    assert "solve.maxiter=4" in commands[1]
+    assert "solve.antennaconstraint=[]" in commands[1]
 
 
 def test_run_calibrate_flow_supports_dd_screen_generation_with_slow_gain(
@@ -2578,16 +2585,14 @@ def test_run_calibrate_flow_supports_dd_screen_generation_with_slow_gain(
     commands = _command_tokens(fake_calibrate_shell_operation_cls)
     assert [command[0] for command in commands] == [
         "wsclean",
-        "make_region_file.py",
         "DP3",
         "DP3",
-        "collect_screen_h5parms.py",
     ]
-    assert "solve.python.module=idg.idgcaldpstep_rapthor_dirac" in commands[2]
-    assert "solve.python.class=IDGCalDPStepRapthorDirac" in commands[2]
-    assert "solve.polynomialdegamplitude=2" in commands[2]
-    assert "solve.solintphase=3" in commands[2]
-    assert "solve.solintamplitude=11" in commands[2]
+    assert "solve.python.module=idg.idgcaldpstep_rapthor_dirac" in commands[1]
+    assert "solve.python.class=IDGCalDPStepRapthorDirac" in commands[1]
+    assert "solve.polynomialdegamplitude=2" in commands[1]
+    assert "solve.solintphase=3" in commands[1]
+    assert "solve.solintamplitude=11" in commands[1]
 
 
 def test_run_calibrate_flow_fails_when_image_predict_model_is_missing(
@@ -2614,16 +2619,16 @@ def test_run_calibrate_flow_fails_when_image_predict_model_is_missing(
 
 
 def test_run_calibrate_flow_fails_when_image_predict_region_is_missing(
-    tmp_path, fake_calibrate_shell_operation_cls
+    tmp_path, monkeypatch, fake_calibrate_shell_operation_cls
 ):
-    class MissingRegionShellOperation(fake_calibrate_shell_operation_cls):
-        instances = []
+    def skip_region_file(*args, **kwargs):
+        return None
 
-        def run(self):
-            tokens = shlex.split(self.kwargs["commands"][0])
-            if tokens[0] == "make_region_file.py":
-                return "OK"
-            return super().run()
+    monkeypatch.setattr(
+        calibrate_prediction,
+        "make_ds9_region_from_skymodel",
+        skip_region_file,
+    )
 
     payload = calibrate_payload_from_inputs("dd", _dd_image_predict_input_parms(), tmp_path)
 
@@ -2632,7 +2637,7 @@ def test_run_calibrate_flow_fails_when_image_predict_region_is_missing(
             calibrate_flow,
             payload,
             execution_config=ExecutionConfig(task_runner="sync"),
-            shell_operation_cls=MissingRegionShellOperation,
+            shell_operation_cls=fake_calibrate_shell_operation_cls,
         )
 
 
@@ -2659,23 +2664,16 @@ def test_run_calibrate_flow_supports_dd_image_predict_preapply(
         shlex.split(instance.kwargs["commands"][0])
         for instance in fake_calibrate_shell_operation_cls.instances
     ]
-    assert [command[0] for command in commands][:4] == [
+    assert [command[0] for command in commands][:2] == [
         "wsclean",
-        "make_region_file.py",
-        "adjust_h5parm_sources.py",
         "DP3",
     ]
-    assert commands[2] == [
-        "adjust_h5parm_sources.py",
-        "/data/calibration.skymodel",
-        str(tmp_path / "normalize_solutions.h5"),
-    ]
-    assert "steps=[predict,applybeam,applycal,solve1,solve2]" in commands[3]
-    assert "applycal.steps=[fastphase,normalization]" in commands[3]
-    assert "applycal.parmdb=/solutions/di_solutions.h5" in commands[3]
-    assert f"applycal.normalization.parmdb={tmp_path / 'normalize_solutions.h5'}" in commands[3]
-    assert "solve1.reusemodel=[predict.*]" in commands[3]
-    assert "solve2.reusemodel=[predict.*]" in commands[3]
+    assert "steps=[predict,applybeam,applycal,solve1,solve2]" in commands[1]
+    assert "applycal.steps=[fastphase,normalization]" in commands[1]
+    assert "applycal.parmdb=/solutions/di_solutions.h5" in commands[1]
+    assert f"applycal.normalization.parmdb={tmp_path / 'normalize_solutions.h5'}" in commands[1]
+    assert "solve1.reusemodel=[predict.*]" in commands[1]
+    assert "solve2.reusemodel=[predict.*]" in commands[1]
 
 
 def test_run_calibrate_flow_skips_dd_source_adjustment_for_single_direction(
@@ -2741,31 +2739,14 @@ def test_run_calibrate_flow_supports_dd_with_slow(tmp_path, fake_calibrate_shell
         "H5parm_collector.py",
         "plotrapthor",
         "H5parm_collector.py",
-        "process_gains.py",
         "plotrapthor",
         "plotrapthor",
         "H5parm_collector.py",
         "plotrapthor",
-        "combine_h5parms.py",
-        "combine_h5parms.py",
-        "combine_h5parms.py",
-        "adjust_h5parm_sources.py",
     ]
     assert "steps=[solve1,solve2,solve3,solve4]" in commands[0]
     assert "solve3.initialsolutions.soltab=[phase000,amplitude000]" in commands[0]
     assert "solve3.keepmodel=true" in commands[0]
-    assert commands[7][1:3] == ["--normalize=True", str(tmp_path / "slow_gains.h5parm")]
-    assert commands[-2][1:5] == [
-        str(tmp_path / "combined_fast_medium1_medium2_phases.h5parm"),
-        str(tmp_path / "slow_gains.h5parm"),
-        "combined_solutions.h5",
-        "p1p2a2_scalar",
-    ]
-    assert commands[-1] == [
-        "adjust_h5parm_sources.py",
-        "/data/calibration.skymodel",
-        str(tmp_path / "combined_solutions.h5"),
-    ]
 
 
 @pytest.mark.parametrize("solution_combine_mode", ["p1p2a2_scalar", "p1p2a2_diagonal"])
@@ -2807,26 +2788,11 @@ def test_run_calibrate_flow_supports_dd_with_slow_without_medium2(
         "H5parm_collector.py",
         "plotrapthor",
         "H5parm_collector.py",
-        "process_gains.py",
         "plotrapthor",
         "plotrapthor",
-        "combine_h5parms.py",
-        "combine_h5parms.py",
-        "adjust_h5parm_sources.py",
     ]
     assert "steps=[solve1,solve2,solve3]" in commands[0]
     assert all("solve4.h5parm" not in token for token in commands[0])
-    assert commands[-2][1:5] == [
-        str(tmp_path / "combined_fast_medium1_phases.h5parm"),
-        str(tmp_path / "slow_gains.h5parm"),
-        "combined_solutions.h5",
-        solution_combine_mode,
-    ]
-    assert commands[-1] == [
-        "adjust_h5parm_sources.py",
-        "/data/calibration.skymodel",
-        str(tmp_path / "combined_solutions.h5"),
-    ]
 
 
 def test_calibrate_prefect_flow_entrypoint_runs_with_mocked_shell(
@@ -2864,10 +2830,8 @@ def test_calibrate_prefect_flow_entrypoint_runs_screen_generation(
     assert outputs["combined_solutions"] == file_record(tmp_path / "combined_solutions.h5")
     assert [command[0] for command in _command_tokens(fake_calibrate_shell_operation_cls)] == [
         "wsclean",
-        "make_region_file.py",
         "DP3",
         "DP3",
-        "collect_screen_h5parms.py",
     ]
 
 
@@ -2944,7 +2908,7 @@ def test_calibrate_di_scalar_operation_run_uses_prefect_flow(
     assert (plots_dir / "phase_solutions.png").is_file()
     assert (plots_dir / "medium1_phase_solutions.png").is_file()
     assert field.scan_h5parms_calls == 1
-    assert len(fake_calibrate_shell_operation_cls.instances) == 7
+    assert len(fake_calibrate_shell_operation_cls.instances) == 6
 
 
 def test_calibrate_di_operation_run_reuses_prefect_outputs_when_done(
@@ -3100,7 +3064,7 @@ def test_calibrate_dd_fast_medium_operation_run_uses_prefect_flow(
     assert (plots_dir / "medium1_phase_solutions.png").is_file()
     assert field.calibration_diagnostics == [{"cycle_number": 1, "solution_flagged_fraction": 0.0}]
     assert field.scan_h5parms_calls == 1
-    assert len(fake_calibrate_shell_operation_cls.instances) == 7
+    assert len(fake_calibrate_shell_operation_cls.instances) == 6
 
 
 def test_calibrate_dd_operation_run_passes_only_current_cycle_initial_solutions_to_dp3(
@@ -3229,7 +3193,6 @@ def test_calibrate_dd_preapply_operation_run_uses_prefect_flow(
         "plotrapthor",
         "H5parm_collector.py",
         "plotrapthor",
-        "combine_h5parms.py",
     ]
     assert "steps=[applycal,solve1,solve2]" in commands[0]
     assert "applycal.steps=[fastphase,slowgain,fulljones,normalization]" in commands[0]
@@ -3266,7 +3229,7 @@ def test_calibrate_dd_image_predict_operation_run_uses_prefect_flow(
     assert (pipeline_dir / "calibration_model-term-0.fits").is_file()
     assert (pipeline_dir / "field_facets_ds9.reg").is_file()
     commands = _command_tokens(fake_calibrate_shell_operation_cls)
-    assert [command[0] for command in commands][:3] == ["wsclean", "make_region_file.py", "DP3"]
+    assert [command[0] for command in commands][:2] == ["wsclean", "DP3"]
     assert commands[0][1:] == [
         "-j",
         "4",
@@ -3288,22 +3251,12 @@ def test_calibrate_dd_image_predict_operation_run_uses_prefect_flow(
         "-scale",
         "0.001",
     ]
-    assert commands[1] == [
-        "make_region_file.py",
-        field.calibration_skymodel_file,
-        "123.0",
-        "45.0",
-        "1.2288",
-        "1.2288",
-        "field_facets_ds9.reg",
-        "--enclose_names=False",
-    ]
-    assert "steps=[predict,applybeam,solve1,solve2]" in commands[2]
-    assert f"predict.regions={pipeline_dir / 'field_facets_ds9.reg'}" in commands[2]
-    assert f"predict.images=[{pipeline_dir / 'calibration_model-term-0.fits'}]" in commands[2]
-    assert "solve1.reusemodel=[predict.*]" in commands[2]
-    assert "solve2.reusemodel=[predict.*]" in commands[2]
-    assert not any(token.startswith("solve1.sourcedb=") for token in commands[2])
+    assert "steps=[predict,applybeam,solve1,solve2]" in commands[1]
+    assert f"predict.regions={pipeline_dir / 'field_facets_ds9.reg'}" in commands[1]
+    assert f"predict.images=[{pipeline_dir / 'calibration_model-term-0.fits'}]" in commands[1]
+    assert "solve1.reusemodel=[predict.*]" in commands[1]
+    assert "solve2.reusemodel=[predict.*]" in commands[1]
+    assert not any(token.startswith("solve1.sourcedb=") for token in commands[1])
 
 
 def test_calibrate_dd_screen_operation_run_uses_prefect_flow(
@@ -3353,21 +3306,13 @@ def test_calibrate_dd_screen_operation_run_uses_prefect_flow(
     commands = _command_tokens(fake_calibrate_shell_operation_cls)
     assert [command[0] for command in commands] == [
         "wsclean",
-        "make_region_file.py",
         "DP3",
         "DP3",
-        "collect_screen_h5parms.py",
     ]
-    assert "solve.python.module=idg.idgcaldpstep_phase_only_dirac" in commands[2]
-    assert "solve.h5parm=idgcal_0" in commands[2]
-    assert "solve.solintphase=5" in commands[2]
-    assert f"solve.modelimage={pipeline_dir / 'calibration_model-term-0.fits'}" in commands[2]
-    assert commands[-1] == [
-        "collect_screen_h5parms.py",
-        "-c",
-        f"{pipeline_dir / 'idgcal_0'},{pipeline_dir / 'idgcal_1'}",
-        "--outh5parm=combined_solutions.h5",
-    ]
+    assert "solve.python.module=idg.idgcaldpstep_phase_only_dirac" in commands[1]
+    assert "solve.h5parm=idgcal_0" in commands[1]
+    assert "solve.solintphase=5" in commands[1]
+    assert f"solve.modelimage={pipeline_dir / 'calibration_model-term-0.fits'}" in commands[1]
 
 
 def test_calibrate_dd_slow_source_adjusted_operation_run_uses_prefect_flow(
@@ -3427,23 +3372,13 @@ def test_calibrate_dd_slow_source_adjusted_operation_run_uses_prefect_flow(
         "H5parm_collector.py",
         "plotrapthor",
         "H5parm_collector.py",
-        "process_gains.py",
         "plotrapthor",
         "plotrapthor",
         "H5parm_collector.py",
         "plotrapthor",
-        "combine_h5parms.py",
-        "combine_h5parms.py",
-        "combine_h5parms.py",
-        "adjust_h5parm_sources.py",
     ]
     assert "steps=[solve1,solve2,solve3,solve4]" in commands[0]
     assert "solve3.h5parm=slow_gain_0.h5parm" in commands[0]
-    assert commands[-1] == [
-        "adjust_h5parm_sources.py",
-        field.calibration_skymodel_file,
-        str(Path(operation.pipeline_working_dir) / "combined_solutions.h5"),
-    ]
     assert field.scan_h5parms_calls == 1
 
 

@@ -6,11 +6,11 @@ from rapthor.execution.calibrate.collection import adjust_h5parm_sources
 from rapthor.execution.calibrate.commands import (
     DrawModelOptions,
     build_draw_model_command,
-    build_make_region_file_command,
 )
 from rapthor.execution.calibrate.payloads import CalibrateImagePredictPayload, CalibratePayload
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.outputs import require_file
+from rapthor.execution.regions import make_ds9_region_from_skymodel
 from rapthor.execution.shell import run_external_command
 from rapthor.lib.records import file_record
 
@@ -50,25 +50,15 @@ def _run_draw_model(
 
 def _run_make_region_file(
     image_predict: CalibrateImagePredictPayload,
-    payload: CalibratePayload,
-    execution_config: ExecutionConfig,
-    shell_operation_cls=None,
 ) -> dict:
-    pipeline_working_dir = str(payload["pipeline_working_dir"])
-    command = build_make_region_file_command(
-        skymodel=str(image_predict["skymodel"]),
-        ra_mid=image_predict["ra_mid"],
-        dec_mid=image_predict["dec_mid"],
-        width_ra=image_predict["facet_region_width_ra"],
-        width_dec=image_predict["facet_region_width_dec"],
-        outfile=str(image_predict["facet_region_file"]),
+    make_ds9_region_from_skymodel(
+        str(image_predict["skymodel"]),
+        float(image_predict["ra_mid"]),
+        float(image_predict["dec_mid"]),
+        float(image_predict["facet_region_width_ra"]),
+        float(image_predict["facet_region_width_dec"]),
+        str(image_predict["facet_region_path"]),
         enclose_names=False,
-    )
-    run_external_command(
-        command,
-        pipeline_working_dir,
-        execution_config,
-        shell_operation_cls=shell_operation_cls,
     )
     return require_file(str(image_predict["facet_region_path"]), "Calibration region file")
 
@@ -94,9 +84,6 @@ def prepare_image_based_predict(
     )
     region_file = _run_make_region_file(
         image_predict,
-        payload,
-        execution_config,
-        shell_operation_cls=shell_operation_cls,
     )
     prepared_payload = dict(payload)
     prepared_payload["predict_images"] = [record["path"] for record in model_images]
@@ -105,10 +92,7 @@ def prepare_image_based_predict(
         normalize_record = adjust_h5parm_sources(
             file_record(str(payload["normalize_h5parm"])),
             payload,
-            str(payload["pipeline_working_dir"]),
-            execution_config,
             "Adjusted normalization h5parm",
-            shell_operation_cls=shell_operation_cls,
         )
         prepared_payload["normalize_h5parm"] = normalize_record["path"]
     return prepared_payload

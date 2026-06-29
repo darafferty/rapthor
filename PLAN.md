@@ -323,7 +323,24 @@ Progress:
 - Image flow tests now spy on those direct helper calls, and the image shell
   fake only models DP3, `concat_ms.py`, WSClean/WSClean-MP, bright-source
   WSClean restore, and `fpack`.
-- Next: convert calibration helper scripts in collection and prediction.
+- Done: calibration collection and prediction helpers now run as direct Python
+  work units while DP3, WSClean draw-model, `H5parm_collector.py`, and
+  `plotrapthor` remain shell-based:
+  - `collect_screen_h5parms.py` ->
+    `rapthor.execution.calibrate.screen_h5parms.collect_screen_h5parms`
+  - `combine_h5parms.py` ->
+    `rapthor.execution.calibrate.h5parm_combination.combine_h5parms`
+  - `process_gains.py` ->
+    `rapthor.execution.calibrate.gain_processing.process_gain_solutions`
+  - `adjust_h5parm_sources.py` ->
+    `rapthor.execution.calibrate.h5parm_sources.adjust_h5parm_source_coordinates`
+  - calibration `make_region_file.py` ->
+    `rapthor.execution.regions.make_ds9_region_from_skymodel`
+- Calibration flow tests now patch those direct helper calls, and the
+  calibration shell fake only models true external commands plus the external
+  h5parm collector and plotting executable.
+- Next: convert predict add/subtract post-processing, with extra care around
+  Measurement Set size and Dask-worker filesystem assumptions.
 
 Testing tasks:
 

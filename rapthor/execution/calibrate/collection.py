@@ -6,13 +6,13 @@ from typing import Mapping, Optional
 
 from rapthor.execution.artifacts import publish_plot_file_records
 from rapthor.execution.calibrate.commands import (
-    build_adjust_h5parm_sources_command,
     build_collect_h5parms_command,
-    build_collect_screen_h5parms_command,
-    build_combine_h5parms_command,
     build_plot_solutions_command,
-    build_process_gains_command,
 )
+from rapthor.execution.calibrate.gain_processing import process_gain_solutions
+from rapthor.execution.calibrate.h5parm_combination import combine_h5parms
+from rapthor.execution.calibrate.h5parm_sources import adjust_h5parm_source_coordinates
+from rapthor.execution.calibrate.screen_h5parms import collect_screen_h5parms
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.outputs import require_file
 from rapthor.execution.shell import run_external_command
@@ -45,19 +45,11 @@ def _run_collect_h5parm(
 def _run_collect_screen_h5parms(
     input_records: list[dict],
     output: Mapping[str, object],
-    pipeline_working_dir: str,
-    execution_config: ExecutionConfig,
-    shell_operation_cls=None,
 ) -> dict:
-    collect_command = build_collect_screen_h5parms_command(
+    collect_screen_h5parms(
         [record["path"] for record in input_records],
-        str(output["filename"]),
-    )
-    run_external_command(
-        collect_command,
-        pipeline_working_dir,
-        execution_config,
-        shell_operation_cls=shell_operation_cls,
+        str(output["path"]),
+        overwrite=True,
     )
     return require_file(str(output["path"]), "Combined screen h5parm")
 
@@ -65,17 +57,11 @@ def _run_collect_screen_h5parms(
 def collect_screen_solutions(
     payload: Mapping[str, object],
     screen_records: list[dict],
-    execution_config: ExecutionConfig,
-    shell_operation_cls=None,
 ) -> dict:
     """Collect screen-generation h5parm outputs into the final solution file."""
-    pipeline_working_dir = str(payload["pipeline_working_dir"])
     combined_record = _run_collect_screen_h5parms(
         screen_records,
         payload["combined_h5parm"],
-        pipeline_working_dir,
-        execution_config,
-        shell_operation_cls=shell_operation_cls,
     )
     result = {"combined_solutions": combined_record}
     validate_output_record(result["combined_solutions"])
@@ -122,25 +108,16 @@ def _run_combine_h5parms(
     output: Mapping[str, object],
     mode: str,
     payload: Mapping[str, object],
-    pipeline_working_dir: str,
-    execution_config: ExecutionConfig,
     label: str,
-    shell_operation_cls=None,
 ) -> dict:
-    combine_command = build_combine_h5parms_command(
+    combine_h5parms(
         input_record1["path"],
         input_record2["path"],
-        str(output["filename"]),
+        str(output["path"]),
         mode,
         reweight=False,
-        calibrator_names=list(payload["calibrator_patch_names"]),
-        calibrator_fluxes=list(payload["calibrator_fluxes"]),
-    )
-    run_external_command(
-        combine_command,
-        pipeline_working_dir,
-        execution_config,
-        shell_operation_cls=shell_operation_cls,
+        cal_names=list(payload["calibrator_patch_names"]),
+        cal_fluxes=list(payload["calibrator_fluxes"]),
     )
     return require_file(str(output["path"]), label)
 
@@ -148,24 +125,15 @@ def _run_combine_h5parms(
 def _run_process_gains(
     h5parm_record: Mapping[str, str],
     payload: Mapping[str, object],
-    pipeline_working_dir: str,
-    execution_config: ExecutionConfig,
-    shell_operation_cls=None,
 ) -> dict:
-    process_command = build_process_gains_command(
+    process_gain_solutions(
         h5parm_record["path"],
+        normalize=True,
         flag=True,
         smooth=True,
         max_station_delta=float(payload["max_normalization_delta"]),
-        scale_station_delta=str(payload["scale_normalization_delta"]),
-        phase_center_ra=payload["phase_center_ra"],
-        phase_center_dec=payload["phase_center_dec"],
-    )
-    run_external_command(
-        process_command,
-        pipeline_working_dir,
-        execution_config,
-        shell_operation_cls=shell_operation_cls,
+        scale_delta_with_dist=payload["scale_normalization_delta"],
+        phase_center=(payload["phase_center_ra"], payload["phase_center_dec"]),
     )
     return require_file(h5parm_record["path"], "Processed slow-gain h5parm")
 
@@ -177,22 +145,13 @@ def _should_adjust_dd_sources(payload: Mapping[str, object]) -> bool:
 def adjust_h5parm_sources(
     h5parm_record: Mapping[str, str],
     payload: Mapping[str, object],
-    pipeline_working_dir: str,
-    execution_config: ExecutionConfig,
     label: str,
-    shell_operation_cls=None,
 ) -> dict:
     """Adjust DD h5parm source names to match the calibration skymodel."""
     skymodel = payload.get("sourcedb")
     if not skymodel:
         raise ValueError("DD source adjustment requires calibration_skymodel_file")
-    adjust_command = build_adjust_h5parm_sources_command(str(skymodel), h5parm_record["path"])
-    run_external_command(
-        adjust_command,
-        pipeline_working_dir,
-        execution_config,
-        shell_operation_cls=shell_operation_cls,
-    )
+    adjust_h5parm_source_coordinates(str(skymodel), h5parm_record["path"])
     return require_file(h5parm_record["path"], label)
 
 
@@ -305,9 +264,6 @@ def _collect_strategy_solve_products(
             combine_record = _run_process_gains(
                 collected_record,
                 payload,
-                pipeline_working_dir,
-                execution_config,
-                shell_operation_cls=shell_operation_cls,
             )
             for soltype in ("phase", "amplitude"):
                 root = "slow_amplitude_" if soltype == "amplitude" else "slow_phase_"
@@ -354,10 +310,7 @@ def _collect_strategy_solve_products(
                 output_record,
                 "p1p2_scalar",
                 payload,
-                pipeline_working_dir,
-                execution_config,
                 f"Combined {_mode_label(payload)} phase h5parm",
-                shell_operation_cls=shell_operation_cls,
             )
 
     if slow_slots:
@@ -376,10 +329,7 @@ def _collect_strategy_solve_products(
                 final_output,
                 _final_phase_plus_slow_gain_combine_mode(payload),
                 payload,
-                pipeline_working_dir,
-                execution_config,
                 f"Combined {_mode_label(payload)} phase and slow-gain h5parm",
-                shell_operation_cls=shell_operation_cls,
             )
     elif phase_record is not None:
         active_record = phase_record
@@ -392,10 +342,7 @@ def _collect_strategy_solve_products(
         active_record = adjust_h5parm_sources(
             active_record,
             payload,
-            pipeline_working_dir,
-            execution_config,
             f"Adjusted {_mode_label(payload)} combined h5parm",
-            shell_operation_cls=shell_operation_cls,
         )
     result["combined_solutions"] = active_record
 

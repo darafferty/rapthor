@@ -69,7 +69,7 @@ def _run_calibrate_prefect_tasks(
             for chunk in payload["chunks"]
         ]
         screen_records = [record.result() for record in screen_records]
-        return collect_screen_solutions(payload, screen_records, config)
+        return collect_screen_solutions(payload, screen_records)
 
     solve_records = [
         calibrate_chunk_task.submit(payload, chunk, execution_config=config)
