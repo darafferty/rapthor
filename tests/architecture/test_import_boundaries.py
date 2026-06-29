@@ -80,6 +80,7 @@ RETIRED_HELPER_SCRIPT_NAMES = (
     "collect_screen_h5parms.py",
     "combine_h5parms.py",
     "concat_ms.py",
+    "filter_skymodel.py",
     "make_catalog_from_image_cube.py",
     "make_image_cube.py",
     "make_mosaic.py",

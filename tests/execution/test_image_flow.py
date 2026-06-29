@@ -15,6 +15,7 @@ from rapthor.execution.commands import normalize_command
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.image.commands import (
     ATERM_CONFIG_FILENAME,
+    FILTER_SKYMODEL_MODULE,
     PrepareImagingDataOptions,
     WscleanFacetOptions,
     WscleanOptions,
@@ -44,6 +45,26 @@ from rapthor.operations.image.normalize import ImageNormalize
 from tests.execution.conftest import run_flow_for_test
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
+FILTER_SKYMODEL_COMMAND_PREFIX = ["python", "-m", FILTER_SKYMODEL_MODULE]
+FILTER_SKYMODEL_COMMAND_NAME = " ".join(FILTER_SKYMODEL_COMMAND_PREFIX)
+
+
+def _is_filter_skymodel_command(command: list[str]) -> bool:
+    """Return whether command tokens invoke the skymodel filter adapter."""
+    return command[: len(FILTER_SKYMODEL_COMMAND_PREFIX)] == FILTER_SKYMODEL_COMMAND_PREFIX
+
+
+def _filter_skymodel_args(command: list[str]) -> list[str]:
+    """Return skymodel filter adapter arguments without the Python module prefix."""
+    assert _is_filter_skymodel_command(command)
+    return command[len(FILTER_SKYMODEL_COMMAND_PREFIX) :]
+
+
+def _command_name(command: list[str]) -> str:
+    """Return a readable command name for assertions."""
+    if _is_filter_skymodel_command(command):
+        return FILTER_SKYMODEL_COMMAND_NAME
+    return command[0]
 
 
 @pytest.fixture(autouse=True)
@@ -376,8 +397,9 @@ def fake_image_shell_operation_cls():
             elif tokens[0] == "fpack":
                 for image in tokens[1:]:
                     Path(f"{image}.fz").write_text("compressed")
-            elif tokens[0] == "filter_skymodel.py":
-                output_root = Path(tokens[5])
+            elif _is_filter_skymodel_command(tokens):
+                filter_args = _filter_skymodel_args(tokens)
+                output_root = Path(filter_args[4])
                 for suffix in [
                     ".true_sky.txt",
                     ".apparent_sky.txt",
@@ -387,7 +409,7 @@ def fake_image_shell_operation_cls():
                 ]:
                     Path(f"{output_root}{suffix}").write_text("filter")
                 Path(f"{output_root}.image_diagnostics.json").write_text("{}")
-                true_sky_image = Path(tokens[2])
+                true_sky_image = Path(filter_args[1])
                 (output_root.parent / f"{true_sky_image.name}.mask.fits").write_text("mask")
             else:
                 raise AssertionError(f"Unexpected command: {tokens[0]}")
@@ -1259,7 +1281,7 @@ def test_image_support_command_builders_create_expected_tokens():
         "bdsf",
         4,
     ) == [
-        "filter_skymodel.py",
+        *FILTER_SKYMODEL_COMMAND_PREFIX,
         "sector_1-MFS-I-image.fits",
         "sector_1-MFS-I-image-pb.fits",
         "sector_1-sources-pb.txt",
@@ -1587,13 +1609,13 @@ def test_run_image_flow_executes_no_dde_commands_and_returns_records(
         shlex.split(instance.kwargs["commands"][0])
         for instance in fake_image_shell_operation_cls.instances
     ]
-    command_names = [command[0] for command in commands]
+    command_names = [_command_name(command) for command in commands]
     assert command_names == [
         "DP3",
         "DP3",
         "taql",
         "wsclean",
-        "filter_skymodel.py",
+        FILTER_SKYMODEL_COMMAND_NAME,
     ]
     assert fake_direct_image_helpers["select_concatenation_command"] == [
         {
@@ -1626,7 +1648,8 @@ def test_run_image_flow_executes_no_dde_commands_and_returns_records(
         (str(tmp_path / "sector_1-MFS-I-image-pb.fits"), 0.0),
     }
     filter_command = commands[-1]
-    assert filter_command[5] == str(tmp_path / "sector_1")
+    filter_args = _filter_skymodel_args(filter_command)
+    assert filter_args[4] == str(tmp_path / "sector_1")
     assert "--ncores=4" in filter_command
     assert fake_direct_image_helpers["filter_image_skymodel"] == []
     assert fake_direct_image_helpers["calculate_image_diagnostics"][0]["output_root"] == str(
@@ -1653,15 +1676,15 @@ def test_run_image_flow_uses_filter_skymodel_subprocess_in_daemon_worker(
         shlex.split(instance.kwargs["commands"][0])
         for instance in fake_image_shell_operation_cls.instances
     ]
-    assert [tokens[0] for tokens in command_tokens] == [
+    assert [_command_name(tokens) for tokens in command_tokens] == [
         "DP3",
         "DP3",
         "taql",
         "wsclean",
-        "filter_skymodel.py",
+        FILTER_SKYMODEL_COMMAND_NAME,
     ]
     filter_command = command_tokens[-1]
-    assert filter_command[1:7] == [
+    assert _filter_skymodel_args(filter_command)[:6] == [
         str(tmp_path / "sector_1-MFS-I-image.fits"),
         str(tmp_path / "sector_1-MFS-I-image-pb.fits"),
         str(tmp_path / "sector_1-sources-pb.txt"),
@@ -1757,10 +1780,10 @@ def test_run_image_flow_reuses_existing_wsclean_products_on_restart(
         ]
     ]
     command_names = [
-        shlex.split(instance.kwargs["commands"][0])[0]
+        _command_name(shlex.split(instance.kwargs["commands"][0]))
         for instance in fake_image_shell_operation_cls.instances
     ]
-    assert command_names == ["filter_skymodel.py"]
+    assert command_names == [FILTER_SKYMODEL_COMMAND_NAME]
 
 
 def test_run_image_flow_restores_bright_sources_before_filtering(
@@ -1783,7 +1806,7 @@ def test_run_image_flow_restores_bright_sources_before_filtering(
         shlex.split(instance.kwargs["commands"][0])
         for instance in fake_image_shell_operation_cls.instances
     ]
-    command_names = [command[0] for command in commands]
+    command_names = [_command_name(command) for command in commands]
     assert command_names == [
         "DP3",
         "DP3",
@@ -1791,7 +1814,7 @@ def test_run_image_flow_restores_bright_sources_before_filtering(
         "wsclean",
         "wsclean",
         "wsclean",
-        "filter_skymodel.py",
+        FILTER_SKYMODEL_COMMAND_NAME,
     ]
     restore_commands = [
         command for command in commands if command[0] == "wsclean" and "-restore-list" in command
@@ -1816,7 +1839,7 @@ def test_run_image_flow_restores_bright_sources_before_filtering(
             "sector_1-MFS-I-image.fits",
         ],
     ]
-    filter_command = [command for command in commands if command[0] == "filter_skymodel.py"][0]
+    filter_command = next(command for command in commands if _is_filter_skymodel_command(command))
     assert "--bright_true_sky_skymodel=/data/bright_sources_pb.txt" in filter_command
     assert fake_direct_image_helpers["filter_image_skymodel"] == []
 
@@ -1839,7 +1862,7 @@ def test_run_image_flow_executes_facet_commands_and_returns_region_file(
         ]
     ]
     command_names = [
-        shlex.split(instance.kwargs["commands"][0])[0]
+        _command_name(shlex.split(instance.kwargs["commands"][0]))
         for instance in fake_image_shell_operation_cls.instances
     ]
     assert command_names == [
@@ -1847,7 +1870,7 @@ def test_run_image_flow_executes_facet_commands_and_returns_region_file(
         "DP3",
         "taql",
         "wsclean",
-        "filter_skymodel.py",
+        FILTER_SKYMODEL_COMMAND_NAME,
     ]
     assert fake_direct_image_helpers["make_region_file"] == [
         {
@@ -1892,7 +1915,7 @@ def test_run_image_flow_executes_screen_commands_and_writes_aterm_config(
     aterm_config = tmp_path / ATERM_CONFIG_FILENAME
     assert aterm_config.read_text() == build_aterm_config_content("/data/screen-solutions.h5")
     command_names = [
-        shlex.split(instance.kwargs["commands"][0])[0]
+        _command_name(shlex.split(instance.kwargs["commands"][0]))
         for instance in fake_image_shell_operation_cls.instances
     ]
     assert command_names == [
@@ -1900,7 +1923,7 @@ def test_run_image_flow_executes_screen_commands_and_writes_aterm_config(
         "DP3",
         "taql",
         "wsclean",
-        "filter_skymodel.py",
+        FILTER_SKYMODEL_COMMAND_NAME,
     ]
     screen_command = next(
         shlex.split(instance.kwargs["commands"][0])
@@ -2014,7 +2037,7 @@ def test_run_image_flow_rejects_oversubscribed_mpi_wsclean(
         )
 
     command_names = [
-        shlex.split(instance.kwargs["commands"][0])[0]
+        _command_name(shlex.split(instance.kwargs["commands"][0]))
         for instance in fake_image_shell_operation_cls.instances
     ]
     assert "mpirun" not in command_names
@@ -2092,7 +2115,7 @@ def test_run_image_flow_returns_compressed_image_outputs(tmp_path, fake_image_sh
         ]
     ]
     command_names = [
-        shlex.split(instance.kwargs["commands"][0])[0]
+        _command_name(shlex.split(instance.kwargs["commands"][0]))
         for instance in fake_image_shell_operation_cls.instances
     ]
     assert command_names == [
@@ -2100,7 +2123,7 @@ def test_run_image_flow_returns_compressed_image_outputs(tmp_path, fake_image_sh
         "DP3",
         "taql",
         "wsclean",
-        "filter_skymodel.py",
+        FILTER_SKYMODEL_COMMAND_NAME,
         "fpack",
     ]
 
@@ -2117,7 +2140,7 @@ def test_run_image_flow_returns_filtered_model_image(tmp_path, fake_image_shell_
         file_record(tmp_path / "sector_1-MFS-filtered-model.fits.fz")
     ]
     command_names = [
-        shlex.split(instance.kwargs["commands"][0])[0]
+        _command_name(shlex.split(instance.kwargs["commands"][0]))
         for instance in fake_image_shell_operation_cls.instances
     ]
     assert command_names == [
@@ -2125,7 +2148,7 @@ def test_run_image_flow_returns_filtered_model_image(tmp_path, fake_image_shell_
         "DP3",
         "taql",
         "wsclean",
-        "filter_skymodel.py",
+        FILTER_SKYMODEL_COMMAND_NAME,
     ]
 
 
@@ -2218,7 +2241,7 @@ def test_run_image_flow_returns_image_cube_outputs(tmp_path, fake_image_shell_op
         [file_record(tmp_path / "sector_1_I_freq_cube.fits_frequencies.txt")]
     ]
     command_names = [
-        shlex.split(instance.kwargs["commands"][0])[0]
+        _command_name(shlex.split(instance.kwargs["commands"][0]))
         for instance in fake_image_shell_operation_cls.instances
     ]
     assert command_names == [
@@ -2226,7 +2249,7 @@ def test_run_image_flow_returns_image_cube_outputs(tmp_path, fake_image_shell_op
         "DP3",
         "taql",
         "wsclean",
-        "filter_skymodel.py",
+        FILTER_SKYMODEL_COMMAND_NAME,
     ]
 
 
@@ -2292,7 +2315,7 @@ def test_run_image_flow_returns_normalization_outputs(tmp_path, fake_image_shell
     ]
     assert "sector_skymodels" not in outputs
     command_names = [
-        shlex.split(instance.kwargs["commands"][0])[0]
+        _command_name(shlex.split(instance.kwargs["commands"][0]))
         for instance in fake_image_shell_operation_cls.instances
     ]
     assert command_names == [
@@ -2300,7 +2323,7 @@ def test_run_image_flow_returns_normalization_outputs(tmp_path, fake_image_shell
         "DP3",
         "taql",
         "wsclean",
-        "filter_skymodel.py",
+        FILTER_SKYMODEL_COMMAND_NAME,
     ]
 
 
@@ -2517,7 +2540,7 @@ def test_bright_peeling_image_operation_run_uses_prefect_flow(
     assert Path(operation.done_file).is_file()
     assert len(restore_commands) == 2
     assert all("/data/bright_sources_pb.txt" in command for command in restore_commands)
-    filter_command = [command for command in commands if command[0] == "filter_skymodel.py"][0]
+    filter_command = next(command for command in commands if _is_filter_skymodel_command(command))
     assert "--bright_true_sky_skymodel=/data/bright_sources_pb.txt" in filter_command
     assert fake_direct_image_helpers["filter_image_skymodel"] == []
 

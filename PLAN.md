@@ -56,14 +56,9 @@ work.
 Replace the remaining legacy executable/script entry points with
 execution-owned module adapters.
 
-- Move `rapthor/scripts/filter_skymodel.py` to an execution-owned image adapter:
-  - keep the work in `rapthor.execution.image.skymodel_filter.filter_image_skymodel`
-  - add a small CLI adapter such as `rapthor.execution.image.skymodel_filter_cli`
-  - update `build_filter_skymodel_command` to call the adapter with
-    `python -m rapthor.execution.image.skymodel_filter_cli ...`
-  - update flow, command, and restart/failure tests so they no longer depend on
-    a PATH-injected `filter_skymodel.py`
-  - delete `rapthor/scripts/filter_skymodel.py`
+- Done: `filter_skymodel.py` now runs through
+  `python -m rapthor.execution.image.skymodel_filter_cli`, with the production
+  logic still in `rapthor.execution.image.skymodel_filter.filter_image_skymodel`.
 - Remove `rapthor/scripts/mpi_runner.sh`:
   - confirm there are no runtime references beyond packaging metadata
   - delete the script and remove it from `pyproject.toml`

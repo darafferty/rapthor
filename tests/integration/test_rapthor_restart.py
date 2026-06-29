@@ -61,7 +61,7 @@ def test_rapthor_restart_after_filter_failure_skips_wsclean(
     )
     first_output = f"{first_result.stdout}\n{first_result.stderr}"
     assert first_result.returncode != 0, (
-        "First run should fail in filter_skymodel via injected wrapper script"
+        "First run should fail in filter_skymodel via the injected Python shim"
     )
 
     working_dir = get_working_dir_from_parset(failing_parset_path)
@@ -72,7 +72,7 @@ def test_rapthor_restart_after_filter_failure_skips_wsclean(
         f"First run output was:\n{first_output}"
     )
 
-    # Use now the default environment which as the working filter_skymodel
+    # Use the default environment, which has the working skymodel filter adapter.
     second_result = subprocess.run(
         ["rapthor", str(failing_parset_path)],
         capture_output=True,

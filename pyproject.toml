@@ -119,7 +119,6 @@ script-files = [
     "bin/rapthor",
     "scripts/dev/run-rapthor-slurm-dev.sbatch",
     "scripts/prod/run-rapthor-slurm.sbatch",
-    "rapthor/scripts/filter_skymodel.py",
     "rapthor/scripts/mpi_runner.sh",
 ]
 

@@ -2,6 +2,7 @@ import configparser
 import json
 import re
 import shlex
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -186,9 +187,16 @@ def get_wsclean_output_mtimes(image_pipeline_dir):
 
 
 def make_failing_filter_skymodel(fake_bin_dir):
-    """Create a PATH-injected wrapper for filter_skymodel.py."""
-    fake_script = fake_bin_dir / "filter_skymodel.py"
-    fake_script.write_text("#!/usr/bin/env python3\nraise SystemExit(1)")
+    """Create a PATH-injected Python shim that fails the skymodel filter adapter."""
+    fake_script = fake_bin_dir / "python"
+    fake_script.write_text(
+        "#!/usr/bin/env python3\n"
+        "import os\n"
+        "import sys\n\n"
+        "if sys.argv[1:3] == ['-m', 'rapthor.execution.image.skymodel_filter_cli']:\n"
+        "    raise SystemExit(1)\n"
+        f"os.execv({sys.executable!r}, [{sys.executable!r}] + sys.argv[1:])\n"
+    )
     fake_script.chmod(0o755)
     return fake_script
 

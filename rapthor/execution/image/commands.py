@@ -13,6 +13,7 @@ from rapthor.execution.commands import (
 )
 
 ATERM_CONFIG_FILENAME = "aterm_plus_beam.cfg"
+FILTER_SKYMODEL_MODULE = "rapthor.execution.image.skymodel_filter_cli"
 
 
 @dataclass(frozen=True)
@@ -411,9 +412,11 @@ def build_filter_skymodel_command(
     ncores: int,
     bright_true_sky_skymodel: Optional[str] = None,
 ) -> list[str]:
-    """Build the `filter_skymodel.py` command for one imaging sector."""
+    """Build the skymodel-filtering module command for one imaging sector."""
     command = [
-        "filter_skymodel.py",
+        "python",
+        "-m",
+        FILTER_SKYMODEL_MODULE,
         flat_noise_image,
         true_sky_image,
         true_sky_skymodel,

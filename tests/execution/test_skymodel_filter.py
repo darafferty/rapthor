@@ -1,10 +1,6 @@
-"""
-Test script for filter_skymodel.py
-"""
+"""Tests for image skymodel filtering helpers and CLI adapter."""
 
 import json
-import runpy
-import sys
 
 import numpy as np
 from astropy.io import fits
@@ -12,6 +8,7 @@ from astropy.table import Table
 
 import rapthor.execution.image.skymodel_filter as skymodel_filter_module
 from rapthor.execution.image.skymodel_filter import filter_image_skymodel
+from rapthor.execution.image.skymodel_filter_cli import run as run_filter_skymodel_cli
 
 
 def test_filter_skymodel_writes_empty_outputs_for_all_blank_image(tmp_path, monkeypatch):
@@ -54,7 +51,7 @@ def test_filter_skymodel_writes_empty_outputs_for_all_blank_image(tmp_path, monk
 
 
 def test_filter_skymodel_cli_matches_function_for_all_blank_image(tmp_path, monkeypatch):
-    """The CLI wrapper and helper produce the same empty outputs for blank images."""
+    """The module adapter and helper produce the same empty outputs for blank images."""
 
     def raise_all_blank(*args, **kwargs):
         raise RuntimeError("All pixels in the image are blanked.")
@@ -82,11 +79,9 @@ def test_filter_skymodel_cli_matches_function_for_all_blank_image(tmp_path, monk
         str(tmp_path / "vertices.npy"),
         [],
     )
-    monkeypatch.setattr(
-        sys,
-        "argv",
+
+    run_filter_skymodel_cli(
         [
-            "filter_skymodel.py",
             str(flat_noise_image),
             str(true_sky_image),
             str(true_sky_skymodel),
@@ -94,10 +89,8 @@ def test_filter_skymodel_cli_matches_function_for_all_blank_image(tmp_path, monk
             str(cli_output_root),
             str(tmp_path / "vertices.npy"),
             "[]",
-        ],
+        ]
     )
-
-    runpy.run_module("rapthor.scripts.filter_skymodel", run_name="__main__")
 
     for suffix in [
         ".true_sky.txt",
