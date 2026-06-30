@@ -92,7 +92,7 @@ def _get_test_run_root():
     return Path("/tmp")
 
 
-def generate_parset(
+def generate_parset_from_template(
     template_parset_path,
     input_ms,
     output_path=None,
@@ -187,10 +187,10 @@ def generate_parset(
     else:
         config["imaging"]["normalization_reference_frequencies"] = "None"
 
-    return _generate_parset(parset_path, config, output_path)
+    return generate_parset(parset_path, config, output_path)
 
 
-def _generate_parset(template_parset=None, config=None, output_path=None, **kws):
+def generate_parset(template_parset=None, config=None, output_path=None, **kws):
     """
     Base function to generate a parset from a template and a config dictionary,
     optionally writing the result to an output path.

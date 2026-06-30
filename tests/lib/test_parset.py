@@ -11,7 +11,7 @@ import re
 import pytest
 
 from rapthor.lib.parset import check_and_adjust_skymodel_settings, parset_read
-from rapthor.testing import _generate_parset, assert_logged
+from rapthor.testing import generate_parset, assert_logged
 
 
 def assert_warning_logged(caplog, *expected_messages):
@@ -46,7 +46,7 @@ class TestParset:
         mock_input_ms = tmp_path / "test.ms"
         mock_input_ms.touch()
 
-        return _generate_parset(
+        return generate_parset(
             config={
                 "global": {
                     "input_ms": mock_input_ms,
@@ -65,7 +65,7 @@ class TestParset:
             config = {section: {option: value}}
 
         parset_path = tmp_path / "test.parset"
-        _generate_parset(minimal_parset, config, parset_path)
+        generate_parset(minimal_parset, config, parset_path)
         return parset_path
 
     # ------------------------------------------------------------------------ #
@@ -180,7 +180,7 @@ class TestParset:
         template_parset.read(template_path)
 
         parset_path = tmp_path / "test.parset"
-        _generate_parset(template_parset, minimal_parset, parset_path)
+        generate_parset(template_parset, minimal_parset, parset_path)
 
         parset = parset_read(parset_path)
 

@@ -19,7 +19,7 @@ from rapthor.lib.field import Field
 from rapthor.lib.observation import Observation
 from rapthor.lib.parset import parset_read
 from rapthor.lib.sector import Sector
-from rapthor.testing import _generate_parset, generate_parset, make_source_catalog
+from rapthor.testing import generate_parset, generate_parset_from_template, make_source_catalog
 
 TEST_ROOT_DIR = Path(__file__).parent
 REPO_ROOT_DIR = TEST_ROOT_DIR.parent
@@ -162,7 +162,7 @@ def parset(pytestconfig, tmp_path, test_ms):
     Fixture to create a parset dictionary for testing.
     """
     output_path = tmp_path / "test.parset"
-    _generate_parset(
+    generate_parset(
         pytestconfig.resource_dir / "test.parset",
         output_path=output_path,
         dir_working=tmp_path.as_posix(),
@@ -374,13 +374,13 @@ def generated_parset_path(request, tmp_path, test_ms):
 
     This fixture can be used to test rapthor runs end to end on a small input
     measurement set with different strategies and sky models.
-    For further details see `generate_parset` function.
+    For further details see `generate_parset_from_template` function.
     """
     parset_path, input_skymodel_path, apparent_skymodel_path = request.param
     parset_path = request.config.repo_root_dir / parset_path
     output_parset_path = tmp_path / "generated.parset"
 
-    generate_parset(
+    generate_parset_from_template(
         parset_path,
         test_ms,
         output_parset_path,
@@ -395,7 +395,7 @@ def generated_parset_path(request, tmp_path, test_ms):
 @pytest.fixture
 def parset_for_field_test(pytestconfig, tmp_path_factory, test_ms):
     target = tmp_path_factory.mktemp("test_field") / "generated.parset"
-    generate_parset(
+    generate_parset_from_template(
         pytestconfig.resource_dir / "test.parset",
         test_ms,
         target,
