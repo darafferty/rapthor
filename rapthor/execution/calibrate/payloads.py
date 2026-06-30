@@ -22,6 +22,18 @@ from rapthor.lib.records import directory_record_path, file_record_path
 # before DD solves. `fastphase` applies the phase000 soltab from the selected
 # scalar h5parm; for DI fast+medium this is already the combined scalar product.
 SUPPORTED_DD_PREAPPLY_STEPS = {"fastphase", "slowgain", "fulljones", "normalization"}
+MODE_BY_SOLVE_TYPE = {
+    "fast_phase": "scalarphase",
+    "medium_phase": "scalarphase",
+    "slow_gains": "diagonal",
+    "full_jones": "fulljones",
+}
+SOLUTION_LABELS_BY_SOLVE_TYPE = {
+    "fast_phase": {"fast"},
+    "medium_phase": {"medium1", "medium2"},
+    "slow_gains": {"slow"},
+    "full_jones": {"fulljones"},
+}
 
 
 class CalibrateOutputPayload(TypedDict):
@@ -36,6 +48,8 @@ class CalibrateSolveSlotPayload(TypedDict, total=False):
 
     slot: int
     solve_type: str
+    solution_label: str
+    medium_index: Optional[int]
     h5parm: str
     h5parm_path: str
     solint: int
@@ -175,32 +189,60 @@ def _first_solve_output(input_parms: Mapping[str, object], slot: int) -> str:
     return str(outputs[0]) if isinstance(outputs, list) and outputs else ""
 
 
-def _solve_type_from_slot(input_parms: Mapping[str, object], slot: int, mode: str) -> str:
+def _solve_type_from_slot(input_parms: Mapping[str, object], slot: int) -> str:
     explicit_type = input_parms.get(f"solve{slot}_type")
-    if explicit_type is not None:
-        return str(explicit_type)
+    if explicit_type is None:
+        return "unsupported"
 
-    output_name = _first_solve_output(input_parms, slot)
-    solve_mode = str(input_parms.get(f"solve{slot}_mode"))
-    if output_name.startswith("fulljones_gain_") and solve_mode == "fulljones":
-        return "full_jones"
-    phase_suffix = "_di_" if mode == "di" else "_"
-    if output_name.startswith(f"fast_phase{phase_suffix}") and solve_mode == "scalarphase":
-        return "fast_phase"
-    if (
-        output_name.startswith(f"medium1_phase{phase_suffix}")
-        or output_name.startswith(f"medium2_phase{phase_suffix}")
-    ) and solve_mode == "scalarphase":
-        return "medium_phase"
-    slow_prefix = "slow_gains_di_" if mode == "di" else "slow_gain_"
-    if output_name.startswith(slow_prefix) and solve_mode == "diagonal":
-        return "slow_gains"
-    return "unsupported"
+    solve_type = str(explicit_type)
+    if solve_type not in MODE_BY_SOLVE_TYPE:
+        return "unsupported"
+    if str(input_parms.get(f"solve{slot}_mode")) != MODE_BY_SOLVE_TYPE[solve_type]:
+        return "unsupported"
+
+    solution_label = input_parms.get(f"solve{slot}_solution_label")
+    if solution_label is None or str(solution_label) not in SOLUTION_LABELS_BY_SOLVE_TYPE[solve_type]:
+        return "unsupported"
+    return solve_type
 
 
-def _active_solve_types(mode: str, input_parms: Mapping[str, object]) -> list[str]:
+def _solve_label_from_slot(input_parms: Mapping[str, object], slot: int) -> str:
+    label = input_parms.get(f"solve{slot}_solution_label")
+    if label is None:
+        raise ValueError(f"solve{slot}_solution_label is required")
+    return str(label)
+
+
+def _medium_index_from_slot(input_parms: Mapping[str, object], slot: int) -> Optional[int]:
+    medium_index = input_parms.get(f"solve{slot}_medium_index")
+    if medium_index is None:
+        return None
+    return int(medium_index)
+
+
+def _phase_combination_key(phase_index: int) -> str:
+    """Return the payload key for combining phase solves up to this 1-based index."""
+    return "phase_" + "_".join(str(index) for index in range(1, phase_index + 1))
+
+
+def _phase_combination_input_key(phase_index: int) -> str:
+    if phase_index == 2:
+        return "combined_phase_1_2_h5parm"
+    if phase_index == 3:
+        return "combined_phase_1_2_3_h5parm"
+    raise ValueError(f"Unsupported phase-combination index: {phase_index}")
+
+
+def _keeps_model_for_phase_slow(slot: int, first_solve_slot: int, solve_type: str) -> bool:
+    """Return whether this solve should retain the predicted model for later solves."""
+    if slot == first_solve_slot:
+        return False
+    return solve_type in {"medium_phase", "slow_gains"}
+
+
+def _active_solve_types(input_parms: Mapping[str, object]) -> list[str]:
     return [
-        _solve_type_from_slot(input_parms, int(step.removeprefix("solve")), mode)
+        _solve_type_from_slot(input_parms, int(step.removeprefix("solve")))
         for step in _active_solve_steps(input_parms)
     ]
 
@@ -217,7 +259,8 @@ def _unsupported_solve_slot_message(
             continue
         slot = int(step.removeprefix("solve"))
         unsupported_slots.append(
-            f"{step} mode={input_parms.get(f'solve{slot}_mode')!r} "
+            f"{step} type={input_parms.get(f'solve{slot}_type')!r} "
+            f"mode={input_parms.get(f'solve{slot}_mode')!r} "
             f"output={_first_solve_output(input_parms, slot)!r}"
         )
 
@@ -351,7 +394,7 @@ def _supported_calibration_kind(mode: str, input_parms: Mapping[str, object]) ->
     if not active_solves:
         raise ValueError("Calibration requires at least one solve step")
 
-    solve_types = _active_solve_types(mode, input_parms)
+    solve_types = _active_solve_types(input_parms)
     if "unsupported" in solve_types:
         raise ValueError(
             _unsupported_solve_slot_message(mode, active_solves, solve_types, input_parms)
@@ -419,7 +462,6 @@ def _solver_payload_from_inputs(input_parms: Mapping[str, object]) -> dict:
 def _solve_slot_from_inputs(
     input_parms: Mapping[str, object],
     pipeline_dir: str,
-    mode: str,
     slot: int,
     index: int,
     keepmodel: Optional[str] = None,
@@ -432,15 +474,10 @@ def _solve_slot_from_inputs(
         ),
         f"output_solve{slot}_h5parm[{index}]",
     )
-    initial_h5parm_keys = {
-        1: "fast_initialsolutions_h5parm",
-        2: "medium1_initialsolutions_h5parm",
-        3: "solve3_initialsolutions_h5parm",
-        4: "solve4_initialsolutions_h5parm",
-    }
     slot_record = {
         "slot": slot,
-        "solve_type": _solve_type_from_slot(input_parms, slot, mode),
+        "solve_type": _solve_type_from_slot(input_parms, slot),
+        "solution_label": _solve_label_from_slot(input_parms, slot),
         "h5parm": h5parm,
         "h5parm_path": os.path.join(pipeline_dir, h5parm),
         "solint": int(
@@ -469,14 +506,15 @@ def _solve_slot_from_inputs(
         "keepmodel": keepmodel,
         "reusemodel": reusemodel,
     }
+    medium_index = _medium_index_from_slot(input_parms, slot)
+    if medium_index is not None:
+        slot_record["medium_index"] = medium_index
     if modeldatacolumns is not None:
         slot_record["modeldatacolumns"] = modeldatacolumns
     datause_key = f"solve{slot}_datause"
     if datause_key in input_parms:
         slot_record["datause"] = input_parms.get(datause_key)
     initial_h5parm_key = f"solve{slot}_initialsolutions_h5parm"
-    if initial_h5parm_key not in input_parms:
-        initial_h5parm_key = initial_h5parm_keys[slot]
     if initial_h5parm_key in input_parms:
         slot_record["initialsolutions_h5parm"] = _optional_file_path(
             input_parms.get(initial_h5parm_key), initial_h5parm_key
@@ -609,19 +647,21 @@ def calibrate_payload_from_inputs(
         return payload
 
     solve_slots = _solve_slots_for_kind(calibration_kind, input_parms)
-    solve_types = {slot: _solve_type_from_slot(input_parms, slot, mode) for slot in solve_slots}
+    solve_types = {slot: _solve_type_from_slot(input_parms, slot) for slot in solve_slots}
     phase_solve_count = sum(
         solve_type in {"fast_phase", "medium_phase"} for solve_type in solve_types.values()
     )
     slow_solve_count = sum(solve_type == "slow_gains" for solve_type in solve_types.values())
-    output_solve1_h5parms = input_parms.get("output_solve1_h5parm", [])
-    scatter_inputs = [filenames, starttimes, ntimes, output_solve1_h5parms]
+    first_solve_slot = solve_slots[0]
+    first_output_key = f"output_solve{first_solve_slot}_h5parm"
+    first_output_h5parms = input_parms.get(first_output_key, [])
+    scatter_inputs = [filenames, starttimes, ntimes, first_output_h5parms]
     for slot in solve_slots:
-        if slot != 1:
+        if slot != first_solve_slot:
             scatter_inputs.append(input_parms.get(f"output_solve{slot}_h5parm", []))
     if not all(isinstance(value, list) for value in scatter_inputs):
         raise ValueError("Calibration scatter inputs must be lists")
-    chunk_count = len(output_solve1_h5parms)
+    chunk_count = len(first_output_h5parms)
     if any(len(value) != chunk_count for value in scatter_inputs):
         raise ValueError("Calibration scatter inputs must have the same length")
 
@@ -638,27 +678,19 @@ def calibrate_payload_from_inputs(
     combined_h5parm = None
     if calibration_kind == "di_scalar_phase":
         combined = _validate_basename(
-            input_parms.get("combined_solve1_solve2_h5parm"),
-            "combined_solve1_solve2_h5parm",
+            input_parms.get(_phase_combination_input_key(2)),
+            _phase_combination_input_key(2),
         )
         combined_h5parm = {"filename": combined, "path": os.path.join(pipeline_dir, combined)}
 
     combined_h5parms = {}
-    if phase_solve_count >= 2 or calibration_kind in {"dd_phase", "dd_phase_slow", "di_phase_slow"}:
+    for phase_index in range(2, phase_solve_count + 1):
+        input_key = _phase_combination_input_key(phase_index)
         combined = _validate_basename(
-            input_parms.get("combined_solve1_solve2_h5parm"),
-            "combined_solve1_solve2_h5parm",
+            input_parms.get(input_key),
+            input_key,
         )
-        combined_h5parms["solve1_solve2"] = {
-            "filename": combined,
-            "path": os.path.join(pipeline_dir, combined),
-        }
-    if phase_solve_count >= 3 or (calibration_kind == "dd_phase_slow" and 4 in solve_slots):
-        combined = _validate_basename(
-            input_parms.get("combined_solve1_solve2_solve4_h5parm"),
-            "combined_solve1_solve2_solve4_h5parm",
-        )
-        combined_h5parms["solve1_solve2_solve4"] = {
+        combined_h5parms[_phase_combination_key(phase_index)] = {
             "filename": combined,
             "path": os.path.join(pipeline_dir, combined),
         }
@@ -684,10 +716,10 @@ def calibrate_payload_from_inputs(
 
     chunks: list[CalibrateChunkPayload] = []
     uses_modeldatacolumn = modeldatacolumn is not None and not image_based_predict
-    first_solve_slot = solve_slots[0]
     for index in range(chunk_count):
         chunk_solve_slots: list[CalibrateSolveSlotPayload] = []
         for slot in solve_slots:
+            solve_type = solve_types[slot]
             keepmodel = None
             reusemodel = None
             slot_modeldatacolumns = None
@@ -702,13 +734,16 @@ def calibrate_payload_from_inputs(
                     slot_modeldatacolumns = modeldatacolumn
                 else:
                     reusemodel = f"[solve{first_solve_slot}.*]"
-            if calibration_kind == "dd_phase_slow" and slot in {2, 3}:
+            if calibration_kind == "dd_phase_slow" and _keeps_model_for_phase_slow(
+                slot,
+                first_solve_slot,
+                solve_type,
+            ):
                 keepmodel = "true"
             chunk_solve_slots.append(
                 _solve_slot_from_inputs(
                     input_parms,
                     pipeline_dir,
-                    mode,
                     slot=slot,
                     index=index,
                     keepmodel=keepmodel,
@@ -801,6 +836,9 @@ def _validate_calibrate_solve_slot(
 ) -> CalibrateSolveSlotPayload:
     _ = int(solve_slot["slot"])
     _ = str(solve_slot["solve_type"])
+    _ = str(solve_slot["solution_label"])
+    if solve_slot.get("medium_index") is not None:
+        _ = int(solve_slot["medium_index"])
     _validate_basename(
         solve_slot["h5parm"],
         f"chunks[{chunk_index}].solve_slots[{slot_index}].h5parm",

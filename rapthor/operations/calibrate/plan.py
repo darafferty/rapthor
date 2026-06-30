@@ -163,12 +163,14 @@ class CalibrationSolve:
     """Resolved mapping from a strategy solve to a DP3 solve slot."""
 
     solve_type: str
+    solution_label: str
     slot: int
     mode: str
     output_prefix: str
     collected_h5parm: str
     timestep_key: str
     freqstep_key: str
+    medium_index: Optional[int] = None
 
     @property
     def step(self):
@@ -309,17 +311,20 @@ def build_calibration_solve_slot(
     medium_count: int,
 ) -> CalibrationSolve:
     """Build one resolved solve-slot entry."""
-    output_prefix, collected_h5parm = solve_output_names(mode, solve_type, medium_count)
+    solution_label = solve_solution_label(solve_type, medium_count)
+    output_prefix, collected_h5parm = solve_output_names(mode, solve_type, solution_label)
     timestep_key, freqstep_key = INTERVAL_KEYS_BY_SOLVE[solve_type]
 
     return CalibrationSolve(
         solve_type=solve_type,
+        solution_label=solution_label,
         slot=slot,
         mode=MODE_BY_SOLVE[solve_type],
         output_prefix=output_prefix,
         collected_h5parm=collected_h5parm,
         timestep_key=timestep_key,
         freqstep_key=freqstep_key,
+        medium_index=medium_count if solve_type == "medium_phase" else None,
     )
 
 
@@ -397,15 +402,29 @@ def build_calibration_core_baseline_selection(antenna: str, stations: list[str])
     return f"[CR]*&&;!{';!'.join(non_core_stations)}"
 
 
-def solve_output_names(mode: str, solve_type: str, medium_count: int) -> tuple[str, str]:
+def solve_solution_label(solve_type: str, medium_count: int = 0) -> str:
+    """Return the named solution product represented by a solve."""
+    if solve_type == "fast_phase":
+        return "fast"
+    if solve_type == "medium_phase":
+        if medium_count < 1:
+            raise ValueError("medium_phase solves require a positive medium_count")
+        return f"medium{medium_count}"
+    if solve_type == "slow_gains":
+        return "slow"
+    if solve_type == "full_jones":
+        return "fulljones"
+    raise ValueError(f"Unsupported solve type: {solve_type}")
+
+
+def solve_output_names(mode: str, solve_type: str, solution_label: str) -> tuple[str, str]:
     """Return per-chunk output prefix and collected h5parm filename."""
     if solve_type == "fast_phase":
         suffix = "_di" if mode == "di" else ""
         return f"fast_phase{suffix}", f"fast_phases{suffix}.h5parm"
     if solve_type == "medium_phase":
-        medium_name = "medium2" if medium_count > 1 else "medium1"
         suffix = "_di" if mode == "di" else ""
-        return f"{medium_name}_phase{suffix}", f"{medium_name}_phases{suffix}.h5parm"
+        return f"{solution_label}_phase{suffix}", f"{solution_label}_phases{suffix}.h5parm"
     if solve_type == "slow_gains":
         if mode == "di":
             return "slow_gains_di", "slow_gains_di.h5parm"

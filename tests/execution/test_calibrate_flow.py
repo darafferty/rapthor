@@ -61,6 +61,44 @@ def _command_names(commands: list[list[str]]) -> list[str]:
     return [_command_name(command) for command in commands]
 
 
+def _add_explicit_solve_metadata(input_parms):
+    """Add operation-style solve metadata to hand-built payload fixtures."""
+    medium_count = 0
+    for step in input_parms["dp3_steps"].strip("[]").split(","):
+        step = step.strip()
+        if not step.startswith("solve"):
+            continue
+
+        slot = int(step.removeprefix("solve"))
+        output_name = input_parms[f"output_solve{slot}_h5parm"][0]
+        solve_mode = input_parms[f"solve{slot}_mode"]
+        if output_name.startswith("fulljones_gain_") and solve_mode == "fulljones":
+            solve_type = "full_jones"
+            solution_label = "fulljones"
+            medium_index = None
+        elif output_name.startswith("fast_phase_") and solve_mode == "scalarphase":
+            solve_type = "fast_phase"
+            solution_label = "fast"
+            medium_index = None
+        elif output_name.startswith(("medium1_phase_", "medium2_phase_")) and solve_mode == "scalarphase":
+            solve_type = "medium_phase"
+            medium_count += 1
+            medium_index = medium_count
+            solution_label = f"medium{medium_count}"
+        elif output_name.startswith(("slow_gain_", "slow_gains_di_")) and solve_mode == "diagonal":
+            solve_type = "slow_gains"
+            solution_label = "slow"
+            medium_index = None
+        else:
+            raise AssertionError(f"Unhandled solve fixture: {step} {output_name} {solve_mode}")
+
+        input_parms[f"solve{slot}_type"] = solve_type
+        input_parms[f"solve{slot}_solution_label"] = solution_label
+        input_parms[f"solve{slot}_medium_index"] = medium_index
+        input_parms.setdefault(f"solve{slot}_initialsolutions_h5parm", None)
+    return input_parms
+
+
 @pytest.fixture
 def fake_calibrate_shell_operation_cls():
     class FakeCalibrateShellOperation:
@@ -477,7 +515,8 @@ def _materialize_calibrate_operation_outputs(value):
 
 
 def _di_fulljones_input_parms():
-    return {
+    return _add_explicit_solve_metadata(
+        {
         "timechunk_filename": [
             directory_record("/data/obs_0.ms"),
             directory_record("/data/obs_1.ms"),
@@ -510,7 +549,8 @@ def _di_fulljones_input_parms():
         "correctfreqsmearing": False,
         "correcttimesmearing": True,
         "max_threads": 4,
-    }
+        }
+    )
 
 
 def _di_scalar_phase_input_parms():
@@ -528,7 +568,7 @@ def _di_scalar_phase_input_parms():
             ],
             "collected_solve1_h5parm": "fast_phases_di.h5parm",
             "collected_solve2_h5parm": "medium1_phases_di.h5parm",
-            "combined_solve1_solve2_h5parm": "combined_solve1_solve2_di.h5parm",
+            "combined_phase_1_2_h5parm": "combined_solve1_solve2_di.h5parm",
             "solint_solve1_timestep": [5, 6],
             "solint_solve2_timestep": [7, 8],
             "solint_solve1_freqstep": [2, 3],
@@ -551,7 +591,7 @@ def _di_scalar_phase_input_parms():
             "calibrator_fluxes": [],
         }
     )
-    return input_parms
+    return _add_explicit_solve_metadata(input_parms)
 
 
 def _di_fast_phase_input_parms():
@@ -566,7 +606,7 @@ def _di_fast_phase_input_parms():
             "collected_solve1_h5parm": "fast_phases_di.h5parm",
         }
     )
-    return input_parms
+    return _add_explicit_solve_metadata(input_parms)
 
 
 def _di_slow_input_parms():
@@ -588,7 +628,7 @@ def _di_slow_input_parms():
             "phase_center_dec": 45.0,
         }
     )
-    return input_parms
+    return _add_explicit_solve_metadata(input_parms)
 
 
 def _di_phase_slow_input_parms():
@@ -617,7 +657,7 @@ def _di_phase_slow_input_parms():
             "phase_center_dec": 45.0,
         }
     )
-    return input_parms
+    return _add_explicit_solve_metadata(input_parms)
 
 
 def _di_scalar_slow_fulljones_input_parms():
@@ -641,7 +681,7 @@ def _di_scalar_slow_fulljones_input_parms():
             "solve4_antennaconstraint": "[]",
         }
     )
-    return input_parms
+    return _add_explicit_solve_metadata(input_parms)
 
 
 def _dd_fast_phase_input_parms():
@@ -671,7 +711,7 @@ def _dd_fast_phase_input_parms():
             "solve1_smoothnessrefdistance": 2500.0,
             "solve1_antennaconstraint": "[[CS001HBA0,CS002HBA0]]",
             "solve1_datause": "full",
-            "fast_initialsolutions_h5parm": None,
+            "solve1_initialsolutions_h5parm": None,
             "applycal_steps": None,
             "applycal_h5parm": None,
             "fulljones_h5parm": None,
@@ -687,7 +727,7 @@ def _dd_fast_phase_input_parms():
             "calibrator_fluxes": [10.0, 5.0],
         }
     )
-    return input_parms
+    return _add_explicit_solve_metadata(input_parms)
 
 
 def _dd_slow_input_parms():
@@ -712,7 +752,7 @@ def _dd_slow_input_parms():
             "phase_center_dec": 45.0,
         }
     )
-    return input_parms
+    return _add_explicit_solve_metadata(input_parms)
 
 
 def _dd_slow_medium_input_parms():
@@ -742,7 +782,7 @@ def _dd_slow_medium_input_parms():
             "do_slowgain_solve": True,
         }
     )
-    return input_parms
+    return _add_explicit_solve_metadata(input_parms)
 
 
 def _dd_fast_medium_input_parms():
@@ -755,7 +795,7 @@ def _dd_fast_medium_input_parms():
                 "medium1_phase_1.h5parm",
             ],
             "collected_solve2_h5parm": "medium1_phases.h5parm",
-            "combined_solve1_solve2_h5parm": "combined_fast_medium1_phases.h5parm",
+            "combined_phase_1_2_h5parm": "combined_fast_medium1_phases.h5parm",
             "solint_solve2_timestep": [9, 10],
             "solint_solve2_freqstep": [5, 6],
             "solve2_mode": "scalarphase",
@@ -766,11 +806,11 @@ def _dd_fast_medium_input_parms():
             "solve2_smoothnessrefdistance": 3500.0,
             "solve2_antennaconstraint": "[]",
             "solve2_datause": "full",
-            "medium1_initialsolutions_h5parm": None,
+            "solve2_initialsolutions_h5parm": None,
             "do_slowgain_solve": False,
         }
     )
-    return input_parms
+    return _add_explicit_solve_metadata(input_parms)
 
 
 def _dd_medium_fast_input_parms():
@@ -805,7 +845,7 @@ def _dd_medium_fast_input_parms():
             "solve2_antennaconstraint": "[[CS001HBA0,CS002HBA0]]",
         }
     )
-    return input_parms
+    return _add_explicit_solve_metadata(input_parms)
 
 
 def _dd_preapply_input_parms():
@@ -819,7 +859,7 @@ def _dd_preapply_input_parms():
             "normalize_h5parm": file_record("/solutions/normalize_solutions.h5"),
         }
     )
-    return input_parms
+    return _add_explicit_solve_metadata(input_parms)
 
 
 def _dd_image_predict_input_parms():
@@ -840,7 +880,7 @@ def _dd_image_predict_input_parms():
             "facet_region_file": "field_facets_ds9.reg",
         }
     )
-    return input_parms
+    return _add_explicit_solve_metadata(input_parms)
 
 
 def _dd_image_predict_preapply_input_parms(normalize_h5parm="/solutions/normalize_solutions.h5"):
@@ -853,7 +893,7 @@ def _dd_image_predict_preapply_input_parms(normalize_h5parm="/solutions/normaliz
             "normalize_h5parm": file_record(normalize_h5parm),
         }
     )
-    return input_parms
+    return _add_explicit_solve_metadata(input_parms)
 
 
 def _dd_screen_input_parms(do_slowgain_solve=False):
@@ -869,7 +909,7 @@ def _dd_screen_input_parms(do_slowgain_solve=False):
     )
     if do_slowgain_solve:
         input_parms["solint_slow_timestep"] = [11, 12]
-    return input_parms
+    return _add_explicit_solve_metadata(input_parms)
 
 
 def _dd_with_slow_input_parms():
@@ -887,7 +927,7 @@ def _dd_with_slow_input_parms():
             ],
             "collected_solve3_h5parm": "slow_gains.h5parm",
             "collected_solve4_h5parm": "medium2_phases.h5parm",
-            "combined_solve1_solve2_solve4_h5parm": ("combined_fast_medium1_medium2_phases.h5parm"),
+            "combined_phase_1_2_3_h5parm": ("combined_fast_medium1_medium2_phases.h5parm"),
             "combined_h5parms": "combined_solutions.h5",
             "solution_combine_mode": "p1p2a2_scalar",
             "solint_solve3_timestep": [11, 12],
@@ -919,7 +959,7 @@ def _dd_with_slow_input_parms():
             "phase_center_dec": 45.0,
         }
     )
-    return input_parms
+    return _add_explicit_solve_metadata(input_parms)
 
 
 def _di_fulljones_solve_slots():
@@ -1355,6 +1395,7 @@ def test_calibrate_payload_from_inputs_builds_di_fulljones_payload(tmp_path):
                 {
                     "slot": 1,
                     "solve_type": "full_jones",
+                    "solution_label": "fulljones",
                     "h5parm": "fulljones_gain_0.h5parm",
                     "h5parm_path": str(tmp_path / "fulljones_gain_0.h5parm"),
                     "solint": 5,
@@ -1368,6 +1409,7 @@ def test_calibrate_payload_from_inputs_builds_di_fulljones_payload(tmp_path):
                     "antennaconstraint": None,
                     "keepmodel": "True",
                     "reusemodel": None,
+                    "initialsolutions_h5parm": None,
                 }
             ],
         },
@@ -1383,6 +1425,7 @@ def test_calibrate_payload_from_inputs_builds_di_fulljones_payload(tmp_path):
                 {
                     "slot": 1,
                     "solve_type": "full_jones",
+                    "solution_label": "fulljones",
                     "h5parm": "fulljones_gain_1.h5parm",
                     "h5parm_path": str(tmp_path / "fulljones_gain_1.h5parm"),
                     "solint": 6,
@@ -1396,6 +1439,7 @@ def test_calibrate_payload_from_inputs_builds_di_fulljones_payload(tmp_path):
                     "antennaconstraint": None,
                     "keepmodel": "True",
                     "reusemodel": None,
+                    "initialsolutions_h5parm": None,
                 }
             ],
         },
@@ -1424,6 +1468,7 @@ def test_calibrate_payload_from_inputs_builds_di_scalar_phase_payload(tmp_path):
         {
             "slot": 1,
             "solve_type": "fast_phase",
+            "solution_label": "fast",
             "h5parm": "fast_phase_di_0.h5parm",
             "h5parm_path": str(tmp_path / "fast_phase_di_0.h5parm"),
             "solint": 5,
@@ -1437,10 +1482,13 @@ def test_calibrate_payload_from_inputs_builds_di_scalar_phase_payload(tmp_path):
             "antennaconstraint": "[]",
             "keepmodel": "True",
             "reusemodel": None,
+            "initialsolutions_h5parm": None,
         },
         {
             "slot": 2,
             "solve_type": "medium_phase",
+            "solution_label": "medium1",
+            "medium_index": 1,
             "h5parm": "medium1_phase_di_0.h5parm",
             "h5parm_path": str(tmp_path / "medium1_phase_di_0.h5parm"),
             "solint": 7,
@@ -1454,6 +1502,7 @@ def test_calibrate_payload_from_inputs_builds_di_scalar_phase_payload(tmp_path):
             "antennaconstraint": "[]",
             "keepmodel": None,
             "reusemodel": "[solve1.*]",
+            "initialsolutions_h5parm": None,
         },
     ]
 
@@ -1485,6 +1534,7 @@ def test_calibrate_payload_from_inputs_builds_di_slow_payload(tmp_path):
     assert payload["chunks"][0]["solve_slots"][0] == {
         "slot": 1,
         "solve_type": "slow_gains",
+        "solution_label": "slow",
         "h5parm": "slow_gains_di_0.h5parm",
         "h5parm_path": str(tmp_path / "slow_gains_di_0.h5parm"),
         "solint": 11,
@@ -1498,6 +1548,7 @@ def test_calibrate_payload_from_inputs_builds_di_slow_payload(tmp_path):
         "antennaconstraint": "[]",
         "keepmodel": "True",
         "reusemodel": None,
+        "initialsolutions_h5parm": None,
     }
 
 
@@ -1506,7 +1557,7 @@ def test_calibrate_payload_from_inputs_builds_di_phase_slow_payload(tmp_path):
 
     assert payload["calibration_kind"] == "di_phase_slow"
     assert payload["combined_h5parms"] == {
-        "solve1_solve2": {
+        "phase_1_2": {
             "filename": "combined_solve1_solve2_di.h5parm",
             "path": str(tmp_path / "combined_solve1_solve2_di.h5parm"),
         },
@@ -1519,6 +1570,7 @@ def test_calibrate_payload_from_inputs_builds_di_phase_slow_payload(tmp_path):
     assert payload["chunks"][0]["solve_slots"][2] == {
         "slot": 3,
         "solve_type": "slow_gains",
+        "solution_label": "slow",
         "h5parm": "slow_gains_di_0.h5parm",
         "h5parm_path": str(tmp_path / "slow_gains_di_0.h5parm"),
         "solint": 11,
@@ -1533,6 +1585,7 @@ def test_calibrate_payload_from_inputs_builds_di_phase_slow_payload(tmp_path):
         "keepmodel": None,
         "reusemodel": None,
         "modeldatacolumns": "[MODEL_DATA]",
+        "initialsolutions_h5parm": None,
     }
 
 
@@ -1541,7 +1594,7 @@ def test_calibrate_payload_from_inputs_builds_mixed_di_strategy_payload(tmp_path
 
     assert payload["calibration_kind"] == "di_ddecal"
     assert payload["combined_h5parms"] == {
-        "solve1_solve2": {
+        "phase_1_2": {
             "filename": "combined_solve1_solve2_di.h5parm",
             "path": str(tmp_path / "combined_solve1_solve2_di.h5parm"),
         },
@@ -1592,6 +1645,7 @@ def test_calibrate_payload_from_inputs_builds_dd_fast_phase_payload(tmp_path):
             {
                 "slot": 1,
                 "solve_type": "fast_phase",
+                "solution_label": "fast",
                 "h5parm": "fast_phase_0.h5parm",
                 "h5parm_path": str(tmp_path / "fast_phase_0.h5parm"),
                 "solint": 3,
@@ -1627,6 +1681,7 @@ def test_calibrate_payload_from_inputs_builds_dd_slow_payload(tmp_path):
     assert payload["chunks"][0]["solve_slots"][0] == {
         "slot": 1,
         "solve_type": "slow_gains",
+        "solution_label": "slow",
         "h5parm": "slow_gain_0.h5parm",
         "h5parm_path": str(tmp_path / "slow_gain_0.h5parm"),
         "solint": 11,
@@ -1694,7 +1749,7 @@ def test_calibrate_payload_from_inputs_builds_dd_fast_medium_payload(tmp_path):
         "path": str(tmp_path / "medium1_phases.h5parm"),
     }
     assert payload["combined_h5parms"] == {
-        "solve1_solve2": {
+        "phase_1_2": {
             "filename": "combined_fast_medium1_phases.h5parm",
             "path": str(tmp_path / "combined_fast_medium1_phases.h5parm"),
         }
@@ -1702,6 +1757,8 @@ def test_calibrate_payload_from_inputs_builds_dd_fast_medium_payload(tmp_path):
     assert payload["chunks"][0]["solve_slots"][1] == {
         "slot": 2,
         "solve_type": "medium_phase",
+        "solution_label": "medium1",
+        "medium_index": 1,
         "h5parm": "medium1_phase_0.h5parm",
         "h5parm_path": str(tmp_path / "medium1_phase_0.h5parm"),
         "solint": 9,
@@ -1725,7 +1782,7 @@ def test_calibrate_payload_from_inputs_preserves_custom_dd_solve_order(tmp_path)
 
     assert payload["calibration_kind"] == "dd_ddecal"
     assert payload["combined_h5parms"] == {
-        "solve1_solve2": {
+        "phase_1_2": {
             "filename": "combined_fast_medium1_phases.h5parm",
             "path": str(tmp_path / "combined_fast_medium1_phases.h5parm"),
         }
@@ -1792,11 +1849,11 @@ def test_calibrate_payload_from_inputs_builds_dd_with_slow_payload(tmp_path):
     assert payload["calibration_kind"] == "dd_phase_slow"
     assert payload["do_slowgain_solve"] is True
     assert payload["combined_h5parms"] == {
-        "solve1_solve2": {
+        "phase_1_2": {
             "filename": "combined_fast_medium1_phases.h5parm",
             "path": str(tmp_path / "combined_fast_medium1_phases.h5parm"),
         },
-        "solve1_solve2_solve4": {
+        "phase_1_2_3": {
             "filename": "combined_fast_medium1_medium2_phases.h5parm",
             "path": str(tmp_path / "combined_fast_medium1_medium2_phases.h5parm"),
         },
@@ -1809,6 +1866,7 @@ def test_calibrate_payload_from_inputs_builds_dd_with_slow_payload(tmp_path):
     assert payload["chunks"][0]["solve_slots"][2] == {
         "slot": 3,
         "solve_type": "slow_gains",
+        "solution_label": "slow",
         "h5parm": "slow_gain_0.h5parm",
         "h5parm_path": str(tmp_path / "slow_gain_0.h5parm"),
         "solint": 11,
@@ -1895,7 +1953,7 @@ def test_calibrate_payload_from_inputs_builds_dd_screen_slow_payload(tmp_path):
         (
             "dd",
             _dd_fast_phase_input_parms,
-            {"output_solve1_h5parm": ["unknown_0.h5parm", "unknown_1.h5parm"]},
+            {"solve1_type": "unknown"},
             "Unsupported DD calibration solve slot",
         ),
         (

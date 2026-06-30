@@ -82,6 +82,31 @@ after slow gains, the strategy must request it directly as:
   - auxiliary solution products that are intentionally public
   - current-cycle-only solution handoff between calibration cycles
 
+### 0a. Remove Remaining Calibration Slot Semantics
+
+The solve plan should be driven by explicit solve metadata, not by assumptions
+that `solve1`, `solve2`, `solve3`, or `solve4` mean fast, medium, slow, or
+second-medium. DP3 step names may remain slot-based, but scientific behavior and
+output routing should use solve type/order metadata.
+
+Done:
+
+- `CalibrationSolve` carries explicit `solution_label` metadata and
+  `medium_index` for medium-phase solves.
+- Calibration finalization and collection use solve metadata instead of
+  filename-prefix checks such as `medium2_*`.
+- The `dd_phase_slow` keep-model rule is solve-type/order based rather than
+  `slot in {2, 3}` based.
+- Calibration payloads no longer map initial-solution inputs through historical
+  slot-number fallbacks.
+- Payload chunk counting uses the first active solve slot rather than assuming
+  `output_solve1_h5parm`.
+- Combined h5parm payload keys describe the phase-combination sequence
+  (`phase_1_2`, `phase_1_2_3`) instead of old `solve1_solve2` layouts.
+- Calibration payloads require explicit `solve{slot}_type` and
+  `solve{slot}_solution_label`; filename-based solve-type inference has been
+  removed.
+
 ### 1. Move Remaining Shell Adapters Into Execution
 
 Replace the remaining legacy executable/script entry points with

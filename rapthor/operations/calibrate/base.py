@@ -146,8 +146,8 @@ class Calibrate(Operation):
                 ],
                 "collected_solve2_h5parm": self.medium1_h5parm,
                 "collected_solve4_h5parm": self.medium2_h5parm,
-                "combined_solve1_solve2_h5parm": "combined_fast_medium1_phases.h5parm",
-                "combined_solve1_solve2_solve4_h5parm": "combined_fast_medium1_medium2_phases.h5parm",
+                "combined_phase_1_2_h5parm": "combined_fast_medium1_phases.h5parm",
+                "combined_phase_1_2_3_h5parm": "combined_fast_medium1_medium2_phases.h5parm",
                 "output_solve3_h5parm": [f"slow_gain_{i}.h5parm" for i in range(field.ntimechunks)],
                 "collected_solve3_h5parm": self.slow_h5parm,
                 # Sky model configuration
@@ -188,19 +188,6 @@ class Calibrate(Operation):
                 # Normalisation / scaling
                 "max_normalization_delta": field.max_normalization_delta,
                 "scale_normalization_delta": str(field.scale_normalization_delta),
-                # Initial solutions (H5parm inputs)
-                "fast_initialsolutions_h5parm": self._to_file_record_if_exists(
-                    field.fast_phases_h5parm_filename
-                ),
-                "medium1_initialsolutions_h5parm": self._to_file_record_if_exists(
-                    field.medium1_phases_h5parm_filename
-                ),
-                "solve4_initialsolutions_h5parm": self._to_file_record_if_exists(
-                    field.medium2_phases_h5parm_filename
-                ),
-                "solve3_initialsolutions_h5parm": self._to_file_record_if_exists(
-                    field.slow_gains_h5parm_filename
-                ),
                 # Get various DDECal solver parameters. Most of these are the same for both fast
                 # and slow solves
                 # ------------------------------------
@@ -291,10 +278,6 @@ class Calibrate(Operation):
                 "solint_slow_freqstep": field.get_obs_parameters("solint_slow_freqstep"),
                 "solint_solve1_timestep": field.get_obs_parameters("solint_fulljones_timestep"),
                 "solint_solve1_freqstep": field.get_obs_parameters("solint_fulljones_freqstep"),
-                "fast_initialsolutions_h5parm": None,
-                "medium1_initialsolutions_h5parm": None,
-                "solve3_initialsolutions_h5parm": None,
-                "solve4_initialsolutions_h5parm": None,
                 "solve1_solutions_per_direction": [None for _ in range(field.ntimechunks)],
                 "solve1_smoothness_dd_factors": [None for _ in range(field.ntimechunks)],
                 "solve1_smoothnessreffrequency": [0] * field.ntimechunks,
@@ -323,8 +306,8 @@ class Calibrate(Operation):
                 "collected_solve2_h5parm": "unused",
                 "collected_solve3_h5parm": "unused",
                 "collected_solve4_h5parm": "unused",
-                "combined_solve1_solve2_h5parm": "unused",
-                "combined_solve1_solve2_solve4_h5parm": "unused",
+                "combined_phase_1_2_h5parm": "unused",
+                "combined_phase_1_2_3_h5parm": "unused",
                 "combined_h5parms": "unused",
                 "solint_solve2_timestep": field.get_obs_parameters("solint_medium_timestep"),
                 "solint_solve3_timestep": field.get_obs_parameters("solint_slow_timestep"),
@@ -478,6 +461,8 @@ class Calibrate(Operation):
             collected_key = f"collected_solve{slot}_h5parm"
             mode_key = f"solve{slot}_mode"
             type_key = f"solve{slot}_type"
+            label_key = f"solve{slot}_solution_label"
+            medium_index_key = f"solve{slot}_medium_index"
             initial_key = f"solve{slot}_initialsolutions_h5parm"
             timestep_key = f"solint_solve{slot}_timestep"
             freqstep_key = f"solint_solve{slot}_freqstep"
@@ -489,6 +474,8 @@ class Calibrate(Operation):
                 self.input_parms[collected_key] = "unused"
                 self.input_parms[mode_key] = "null"
                 self.input_parms[type_key] = "unused"
+                self.input_parms[label_key] = "unused"
+                self.input_parms[medium_index_key] = None
                 self.input_parms[initial_key] = None
                 self._clear_solve_slot_inputs(slot)
                 continue
@@ -497,6 +484,8 @@ class Calibrate(Operation):
             self.input_parms[collected_key] = solve.collected_h5parm
             self.input_parms[mode_key] = solve.mode
             self.input_parms[type_key] = solve.solve_type
+            self.input_parms[label_key] = solve.solution_label
+            self.input_parms[medium_index_key] = solve.medium_index
             self.input_parms[initial_key] = self._solve_initial_solution_record(solve)
             self.input_parms[timestep_key] = field.get_obs_parameters(solve.timestep_key)
             self.input_parms[freqstep_key] = field.get_obs_parameters(solve.freqstep_key)
@@ -514,8 +503,8 @@ class Calibrate(Operation):
             seen_slow_gain = seen_slow_gain or solve.solve_type == "slow_gains"
 
         if self.mode == "di":
-            self.input_parms["combined_solve1_solve2_h5parm"] = "combined_solve1_solve2_di.h5parm"
-            self.input_parms["combined_solve1_solve2_solve4_h5parm"] = (
+            self.input_parms["combined_phase_1_2_h5parm"] = "combined_solve1_solve2_di.h5parm"
+            self.input_parms["combined_phase_1_2_3_h5parm"] = (
                 "combined_solve1_solve2_solve4_di.h5parm"
             )
             self.input_parms["combined_h5parms"] = "combined_di_solutions.h5parm"
@@ -550,19 +539,12 @@ class Calibrate(Operation):
             cycle_attr = "di_h5parm_cycle_number" if self.mode == "di" else "dd_h5parm_cycle_number"
             label = f"{self.mode.upper()} fast-phase"
         elif solve.solve_type == "medium_phase":
-            medium2 = solve.output_prefix.startswith("medium2")
             attr_name = (
                 (
-                    "di_medium2_phases_h5parm_filename"
-                    if medium2
-                    else "di_medium1_phases_h5parm_filename"
+                    f"di_{solve.solution_label}_phases_h5parm_filename"
                 )
                 if self.mode == "di"
-                else (
-                    "medium2_phases_h5parm_filename"
-                    if medium2
-                    else "medium1_phases_h5parm_filename"
-                )
+                else f"{solve.solution_label}_phases_h5parm_filename"
             )
             cycle_attr = "di_h5parm_cycle_number" if self.mode == "di" else "dd_h5parm_cycle_number"
             label = f"{self.mode.upper()} medium-phase"
@@ -987,7 +969,7 @@ class Calibrate(Operation):
         if solve.solve_type == "fast_phase":
             return getattr(self, "fast_h5parm", solve.collected_h5parm)
         if solve.solve_type == "medium_phase":
-            if solve.output_prefix.startswith("medium2"):
+            if solve.solution_label == "medium2":
                 return getattr(self, "medium2_h5parm", solve.collected_h5parm)
             return getattr(self, "medium1_h5parm", solve.collected_h5parm)
         if solve.solve_type == "slow_gains":
@@ -1001,7 +983,7 @@ class Calibrate(Operation):
         if solve.solve_type == "fast_phase":
             return field.fast_phases_h5parm_filename
         if solve.solve_type == "medium_phase":
-            if solve.output_prefix.startswith("medium2"):
+            if solve.solution_label == "medium2":
                 return field.medium2_phases_h5parm_filename
             return field.medium1_phases_h5parm_filename
         if solve.solve_type == "slow_gains":
@@ -1031,12 +1013,12 @@ class Calibrate(Operation):
         if solve.solve_type == "medium_phase":
             attr_name = (
                 "di_medium2_phases_h5parm_filename"
-                if solve.output_prefix.startswith("medium2")
+                if solve.solution_label == "medium2"
                 else "di_medium1_phases_h5parm_filename"
             )
             filename = (
                 "di-solutions-medium2-phase.h5"
-                if solve.output_prefix.startswith("medium2")
+                if solve.solution_label == "medium2"
                 else "di-solutions-medium1-phase.h5"
             )
             setattr(field, attr_name, os.path.join(dst_dir, filename))

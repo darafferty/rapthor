@@ -174,9 +174,8 @@ def _is_phase_solve(solve_slot: Mapping[str, object]) -> bool:
     return _solve_type(solve_slot) in PHASE_SOLVE_TYPES
 
 
-def _medium_phase_label(solve_slot: Mapping[str, object]) -> str:
-    h5parm = str(solve_slot["h5parm"])
-    return "medium2" if h5parm.startswith("medium2_") else "medium1"
+def _solution_label(solve_slot: Mapping[str, object]) -> str:
+    return str(solve_slot["solution_label"])
 
 
 def _solution_output_key(solve_slot: Mapping[str, object]) -> str:
@@ -184,7 +183,7 @@ def _solution_output_key(solve_slot: Mapping[str, object]) -> str:
     if solve_type == "fast_phase":
         return "fast_phase_solutions"
     if solve_type == "medium_phase":
-        return f"{_medium_phase_label(solve_slot)}_phase_solutions"
+        return f"{_solution_label(solve_slot)}_phase_solutions"
     if solve_type == "slow_gains":
         return "slow_gain_solutions"
     if solve_type == "full_jones":
@@ -194,7 +193,7 @@ def _solution_output_key(solve_slot: Mapping[str, object]) -> str:
 
 def _phase_plot_root(solve_slot: Mapping[str, object]) -> Optional[str]:
     if _solve_type(solve_slot) == "medium_phase":
-        return f"{_medium_phase_label(solve_slot)}_phase_"
+        return f"{_solution_label(solve_slot)}_phase_"
     if _solve_type(solve_slot) == "full_jones":
         return "fulljones_phase_"
     return None
@@ -205,7 +204,7 @@ def _plot_output_key(solve_slot: Mapping[str, object], soltype: str) -> str:
     if solve_type == "fast_phase":
         return "fast_phase_plots"
     if solve_type == "medium_phase":
-        return f"{_medium_phase_label(solve_slot)}_phase_plots"
+        return f"{_solution_label(solve_slot)}_phase_plots"
     if solve_type == "slow_gains":
         return "slow_amp_plots" if soltype == "amplitude" else "slow_phase_plots"
     if solve_type == "full_jones":
@@ -221,7 +220,7 @@ def _combine_phase_outputs(
 ) -> list[Mapping[str, object]]:
     combined_h5parms = payload["combined_h5parms"]
     outputs = []
-    for key in ("solve1_solve2", "solve1_solve2_solve4"):
+    for key in ("phase_1_2", "phase_1_2_3"):
         if key in combined_h5parms:
             outputs.append(combined_h5parms[key])
     if not has_slow_gain and "final" in combined_h5parms:
