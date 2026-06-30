@@ -22,7 +22,6 @@ for i in range(max_selfcal_loops):
     # station) is set to 0.3, to allow for small adjustments to the station
     # calibration (done in LINC).
     strategy_steps[i]['do_calibrate'] = True
-    strategy_steps[i]['do_slowgain_solve'] = True
     strategy_steps[i]['calibration_strategy'] = {
         'di': [],
         'dd': ['fast_phase', 'medium_phase', 'slow_gains', 'medium_phase'],
@@ -33,7 +32,6 @@ for i in range(max_selfcal_loops):
         strategy_steps[i]['peel_outliers'] = False
     strategy_steps[i]['solve_min_uv_lambda'] = 750
     strategy_steps[i]['peel_bright_sources'] = False
-    strategy_steps[i]['do_fulljones_solve'] = False
     strategy_steps[i]['max_normalization_delta'] = 0.3
     strategy_steps[i]['scale_normalization_delta'] = True
 

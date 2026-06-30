@@ -8,6 +8,24 @@ import runpy
 
 log = logging.getLogger("rapthor:strategy")
 
+DEFAULT_CALIBRATION_STRATEGY = {
+    "dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"],
+    "di": [],
+}
+
+
+def default_calibration_strategy():
+    """Return the default explicit calibration strategy for one cycle."""
+    return {mode: list(solves) for mode, solves in DEFAULT_CALIBRATION_STRATEGY.items()}
+
+
+def dd_calibration_strategy(*, include_slow_gains: bool) -> dict[str, list[str]]:
+    """Return the standard DD strategy for a self-calibration cycle."""
+    solves = ["fast_phase", "medium_phase"]
+    if include_slow_gains:
+        solves.extend(["slow_gains", "medium_phase"])
+    return {"dd": solves, "di": []}
+
 
 def set_strategy(field):
     """
@@ -104,19 +122,21 @@ def set_selfcal_strategy(field):
 
         strategy_steps[i]["do_calibrate"] = True
         if i == 0:
-            strategy_steps[i]["do_slowgain_solve"] = not do_phase_only_solves
+            include_slow_gains = not do_phase_only_solves
             strategy_steps[i]["peel_outliers"] = True
         elif i == 1:
-            strategy_steps[i]["do_slowgain_solve"] = not do_phase_only_solves
+            include_slow_gains = not do_phase_only_solves
             strategy_steps[i]["peel_outliers"] = False
         else:
-            strategy_steps[i]["do_slowgain_solve"] = True
+            include_slow_gains = True
             strategy_steps[i]["peel_outliers"] = False
+        strategy_steps[i]["calibration_strategy"] = dd_calibration_strategy(
+            include_slow_gains=include_slow_gains
+        )
         if i == 2 and field.antenna == "HBA" and do_phase_only_solves:
             strategy_steps[i]["solve_min_uv_lambda"] = 2000
         else:
             strategy_steps[i]["solve_min_uv_lambda"] = 750
-        strategy_steps[i]["do_fulljones_solve"] = False
         strategy_steps[i]["peel_bright_sources"] = False
         strategy_steps[i]["max_normalization_delta"] = 0.3
         strategy_steps[i]["scale_normalization_delta"] = True
@@ -295,6 +315,8 @@ def check_and_adjust_parameters(field, strategy_steps):
     """
     # Define the deprecated parameters and their replacements (if any)
     deprecated_parameters = {
+        "do_slowgain_solve": None,
+        "do_fulljones_solve": None,
         "slow_timestep_joint_sec": None,
         "slow_timestep_separate_sec": "slow_timestep_sec",
     }
@@ -302,8 +324,6 @@ def check_and_adjust_parameters(field, strategy_steps):
     # Define the required parameters for each of the main strategy parts
     required_parameters = {
         "do_calibrate": [
-            "do_slowgain_solve",
-            "do_fulljones_solve",
             "target_flux",
             "max_directions",
             "regroup_model",

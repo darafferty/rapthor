@@ -115,6 +115,7 @@ class CalibratePayload(TypedDict, total=False):
     dp3_steps: str
     image_based_predict: bool
     image_predict: Optional[CalibrateImagePredictPayload]
+    has_slow_gain_solve: bool
     max_threads: int
     maxiter: int
     llssolver: str
@@ -363,7 +364,7 @@ def _validate_screen_inputs(mode: str, input_parms: Mapping[str, object]) -> Non
         "idgcal_antennaconstraint",
         "combined_h5parms",
     ]
-    if input_parms.get("do_slowgain_solve"):
+    if input_parms.get("has_slow_gain_solve"):
         required.append("solint_slow_timestep")
     missing = [name for name in required if input_parms.get(name) is None]
     if missing:
@@ -596,9 +597,9 @@ def calibrate_payload_from_inputs(
         output_h5parms = input_parms.get("output_idgcal_h5parm", [])
         solint_fast = input_parms.get("solint_solve1_timestep", [])
         scatter_inputs = [filenames, starttimes, ntimes, output_h5parms, solint_fast]
-        do_slowgain_solve = bool(input_parms.get("do_slowgain_solve", False))
+        has_slow_gain_solve = bool(input_parms.get("has_slow_gain_solve", False))
         solint_slow = input_parms.get("solint_slow_timestep", [])
-        if do_slowgain_solve:
+        if has_slow_gain_solve:
             scatter_inputs.append(solint_slow)
         if not all(isinstance(value, list) for value in scatter_inputs):
             raise ValueError("Screen-generation scatter inputs must be lists")
@@ -621,7 +622,7 @@ def calibrate_payload_from_inputs(
                 "output_h5parm_path": os.path.join(pipeline_dir, h5parm),
                 "solint_fast": int(_scatter_value(solint_fast, index, "solint_solve1_timestep")),
             }
-            if do_slowgain_solve:
+            if has_slow_gain_solve:
                 chunk["solint_slow"] = int(
                     _scatter_value(solint_slow, index, "solint_slow_timestep")
                 )
@@ -636,7 +637,7 @@ def calibrate_payload_from_inputs(
             "max_threads": int(input_parms["max_threads"]),
             "solverlbfgs_iter": int(input_parms["solverlbfgs_iter"]),
             "idgcal_antennaconstraint": str(input_parms["idgcal_antennaconstraint"]),
-            "do_slowgain_solve": do_slowgain_solve,
+            "has_slow_gain_solve": has_slow_gain_solve,
             "combined_h5parm": {
                 "filename": combined,
                 "path": os.path.join(pipeline_dir, combined),
@@ -817,7 +818,9 @@ def calibrate_payload_from_inputs(
             "directions": None
             if input_parms.get("solve_directions") is None
             else [str(direction) for direction in input_parms["solve_directions"]],
-            "do_slowgain_solve": bool(input_parms.get("do_slowgain_solve", False)),
+            "has_slow_gain_solve": any(
+                solve_type == "slow_gains" for solve_type in solve_types.values()
+            ),
             "solution_combine_mode": input_parms.get("solution_combine_mode"),
             "max_normalization_delta": input_parms.get("max_normalization_delta"),
             "scale_normalization_delta": input_parms.get("scale_normalization_delta"),

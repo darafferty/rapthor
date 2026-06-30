@@ -46,8 +46,14 @@ def test_generated_rich_strategy_exercises_amplitude_solves_with_flux_threshold(
     sys.modules[spec.name] = strategy
     spec.loader.exec_module(strategy)
 
-    assert any(step["do_slowgain_solve"] for step in strategy.strategy_steps)
-    assert any(step["do_fulljones_solve"] for step in strategy.strategy_steps)
+    assert any(
+        "slow_gains" in step["calibration_strategy"].get("dd", [])
+        for step in strategy.strategy_steps
+    )
+    assert any(
+        "full_jones" in step["calibration_strategy"].get("di", [])
+        for step in strategy.strategy_steps
+    )
     assert all(step["target_flux"] is not None for step in strategy.strategy_steps)
     assert all(step["target_flux"] > 0.1 for step in strategy.strategy_steps)
 

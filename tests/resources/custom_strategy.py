@@ -12,8 +12,10 @@ for i in range(3):
 
     # Secondary parameters
     # Calibration parameters
-    strategy_steps[i]["do_slowgain_solve"] = True
-    strategy_steps[i]["do_fulljones_solve"] = False
+    strategy_steps[i]["calibration_strategy"] = {
+        "dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"],
+        "di": [],
+    }
     strategy_steps[i]["target_flux"] = 3.0
     strategy_steps[i]["max_directions"] = 3.0
     strategy_steps[i]["regroup_model"] = False

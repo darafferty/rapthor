@@ -13,9 +13,8 @@ strategy_steps = []
 max_selfcal_loops = 8
 
 # Set a default calibration strategy, which is overridden by the cycle-specific
-# strategies defined in the loop below.  When setting `calibration_strategy`
-# in the strategy file, the legacy parameters `do_fulljones_solve` and
-# `do_slowgain_solve` are ignored. The order of the solves specified is respected.
+# strategies defined in the loop below. The order of the solves specified in
+# `calibration_strategy` is respected.
 default_calibration_strategy = {
     "di": [],  # No direction-independent calibration by default
     # Slow-gain cycles explicitly include the follow-up medium phase solve.

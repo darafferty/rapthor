@@ -336,8 +336,8 @@ class CalibrateFieldStub:
         self.stations = []
         self.calibrate_bda_timebase = 0
         self.calibrate_bda_frequencybase = 0
-        self.do_slowgain_solve = False
-        self.calibration_strategy = {"di": ["full_jones"]}
+        self.calibration_strategy = {"dd": ["fast_phase", "medium_phase"], "di": ["full_jones"]}
+        self._calibration_strategy_defaulted = False
         self.apply_diagonal_solutions = False
         self.apply_amplitudes = False
         self.generate_screens = False
@@ -779,7 +779,7 @@ def _dd_slow_medium_input_parms():
             "solve2_antennaconstraint": "[[CS001HBA0,CS002HBA0]]",
             "solve2_datause": "full",
             "solve2_initialsolutions_h5parm": None,
-            "do_slowgain_solve": True,
+            "has_slow_gain_solve": True,
         }
     )
     return _add_explicit_solve_metadata(input_parms)
@@ -807,7 +807,7 @@ def _dd_fast_medium_input_parms():
             "solve2_antennaconstraint": "[]",
             "solve2_datause": "full",
             "solve2_initialsolutions_h5parm": None,
-            "do_slowgain_solve": False,
+            "has_slow_gain_solve": False,
         }
     )
     return _add_explicit_solve_metadata(input_parms)
@@ -896,7 +896,7 @@ def _dd_image_predict_preapply_input_parms(normalize_h5parm="/solutions/normaliz
     return _add_explicit_solve_metadata(input_parms)
 
 
-def _dd_screen_input_parms(do_slowgain_solve=False):
+def _dd_screen_input_parms(has_slow_gain_solve=False):
     input_parms = _dd_image_predict_input_parms()
     input_parms.update(
         {
@@ -904,10 +904,10 @@ def _dd_screen_input_parms(do_slowgain_solve=False):
             "output_idgcal_h5parm": ["idgcal_0", "idgcal_1"],
             "combined_h5parms": "combined_solutions.h5",
             "idgcal_antennaconstraint": "[]",
-            "do_slowgain_solve": do_slowgain_solve,
+            "has_slow_gain_solve": has_slow_gain_solve,
         }
     )
-    if do_slowgain_solve:
+    if has_slow_gain_solve:
         input_parms["solint_slow_timestep"] = [11, 12]
     return _add_explicit_solve_metadata(input_parms)
 
@@ -952,7 +952,7 @@ def _dd_with_slow_input_parms():
             "solve4_datause": "full",
             "solve3_initialsolutions_h5parm": None,
             "solve4_initialsolutions_h5parm": None,
-            "do_slowgain_solve": True,
+            "has_slow_gain_solve": True,
             "max_normalization_delta": 0.25,
             "scale_normalization_delta": "False",
             "phase_center_ra": 123.0,
@@ -1847,7 +1847,7 @@ def test_calibrate_payload_from_inputs_builds_dd_with_slow_payload(tmp_path):
     payload = calibrate_payload_from_inputs("dd", _dd_with_slow_input_parms(), tmp_path)
 
     assert payload["calibration_kind"] == "dd_phase_slow"
-    assert payload["do_slowgain_solve"] is True
+    assert payload["has_slow_gain_solve"] is True
     assert payload["combined_h5parms"] == {
         "phase_1_2": {
             "filename": "combined_fast_medium1_phases.h5parm",
@@ -1890,7 +1890,7 @@ def test_calibrate_payload_from_inputs_builds_dd_screen_payload(tmp_path):
 
     assert payload["calibration_kind"] == "dd_screen"
     assert payload["image_based_predict"] is True
-    assert payload["do_slowgain_solve"] is False
+    assert payload["has_slow_gain_solve"] is False
     assert payload["idgcal_antennaconstraint"] == "[]"
     assert payload["combined_h5parm"] == {
         "filename": "combined_solutions.h5",
@@ -1919,12 +1919,12 @@ def test_calibrate_payload_from_inputs_builds_dd_screen_payload(tmp_path):
 def test_calibrate_payload_from_inputs_builds_dd_screen_slow_payload(tmp_path):
     payload = calibrate_payload_from_inputs(
         "dd",
-        _dd_screen_input_parms(do_slowgain_solve=True),
+        _dd_screen_input_parms(has_slow_gain_solve=True),
         tmp_path,
     )
 
     assert payload["calibration_kind"] == "dd_screen"
-    assert payload["do_slowgain_solve"] is True
+    assert payload["has_slow_gain_solve"] is True
     assert payload["chunks"][0]["solint_fast"] == 3
     assert payload["chunks"][0]["solint_slow"] == 11
 
@@ -2638,7 +2638,7 @@ def test_run_calibrate_flow_supports_dd_screen_generation_with_slow_gain(
 ):
     payload = calibrate_payload_from_inputs(
         "dd",
-        _dd_screen_input_parms(do_slowgain_solve=True),
+        _dd_screen_input_parms(has_slow_gain_solve=True),
         tmp_path,
     )
 
@@ -3123,7 +3123,7 @@ def test_calibrate_dd_fast_medium_operation_run_uses_prefect_flow(
     assert field.fast_phases_h5parm_filename == str(solutions_dir / "field-solutions-fast-phase.h5")
     assert (solutions_dir / "field-solutions.h5").read_text() == "collected"
     assert (solutions_dir / "field-solutions-fast-phase.h5").read_text() == "collected"
-    assert not (solutions_dir / "field-solutions-medium1-phase.h5").exists()
+    assert (solutions_dir / "field-solutions-medium1-phase.h5").read_text() == "collected"
     assert (plots_dir / "phase_solutions.png").is_file()
     assert (plots_dir / "medium1_phase_solutions.png").is_file()
     assert field.calibration_diagnostics == [{"cycle_number": 1, "solution_flagged_fraction": 0.0}]
@@ -3214,7 +3214,7 @@ def test_calibrate_dd_fast_medium_operation_run_reuses_prefect_outputs_when_done
     assert field.fast_phases_h5parm_filename == str(solutions_dir / "field-solutions-fast-phase.h5")
     assert (solutions_dir / "field-solutions.h5").is_file()
     assert (solutions_dir / "field-solutions-fast-phase.h5").is_file()
-    assert not (solutions_dir / "field-solutions-medium1-phase.h5").exists()
+    assert (solutions_dir / "field-solutions-medium1-phase.h5").is_file()
     assert (plots_dir / "phase_solutions.png").is_file()
     assert (plots_dir / "medium1_phase_solutions.png").is_file()
     assert field.calibration_diagnostics == [{"cycle_number": 1, "solution_flagged_fraction": 0.0}]
@@ -3393,7 +3393,10 @@ def test_calibrate_dd_slow_source_adjusted_operation_run_uses_prefect_flow(
     _patch_dd_model_metadata(monkeypatch)
 
     field = CalibrateFieldStub(tmp_path)
-    field.do_slowgain_solve = True
+    field.calibration_strategy = {
+        "dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"]
+    }
+    field._calibration_strategy_defaulted = False
     _configure_dd_multidirection(field)
     operation = Calibrate("dd", field, index=1)
 

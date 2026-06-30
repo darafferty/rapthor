@@ -35,7 +35,6 @@ def test_quick_demo_strategy_avoids_slow_gain_on_fixture_data():
         "slow_gains" not in step["calibration_strategy"].get("dd", [])
         for step in strategy.strategy_steps
     )
-    assert all(not step["do_slowgain_solve"] for step in strategy.strategy_steps)
 
 
 def test_dask_performance_report_path_defaults_to_run_dir(tmp_path):

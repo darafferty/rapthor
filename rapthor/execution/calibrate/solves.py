@@ -131,7 +131,9 @@ def _idgcal_screen_options_for_chunk(
         ntimes=int(chunk["ntimes"]),
         h5parm=str(chunk["output_h5parm"]),
         solint_phase=int(chunk["solint_fast"]),
-        solint_amplitude=(int(chunk["solint_slow"]) if payload.get("do_slowgain_solve") else None),
+        solint_amplitude=(
+            int(chunk["solint_slow"]) if payload.get("has_slow_gain_solve") else None
+        ),
         model_images=[str(path) for path in model_images],
         maxiter=int(payload["solverlbfgs_iter"]),
         antennaconstraint=str(payload["idgcal_antennaconstraint"]),
@@ -175,7 +177,7 @@ def run_calibrate_screen_chunk(
     config = execution_config or ExecutionConfig(task_runner="sync")
     pipeline_working_dir = str(payload["pipeline_working_dir"])
     options = _idgcal_screen_options_for_chunk(payload, chunk)
-    if payload.get("do_slowgain_solve"):
+    if payload.get("has_slow_gain_solve"):
         command = build_idgcal_solve_phase_and_gain_command(options)
     else:
         command = build_idgcal_solve_phase_command(options)

@@ -100,12 +100,14 @@ class Calibrate(Operation):
 
             solve_plan = self._build_solve_plan()
             self.solve_plan = solve_plan
+            has_slow_gain_solve = self._solve_plan_has_slow_gain(solve_plan)
             applycal_inputs = self._build_applycal(field)
 
             # --- DP3 pipeline steps ---
             dp3_steps = self._build_dp3_steps(
                 field.calibrate_bda_timebase,
                 field.calibrate_bda_frequencybase,
+                has_slow_gain_solve=has_slow_gain_solve,
                 solve_steps=[solve.step for solve in solve_plan],
                 preapply_solutions=applycal_inputs["applycal_steps"] is not None,
             )
@@ -123,7 +125,7 @@ class Calibrate(Operation):
                 "ntimes": ntimes,
                 # Solution interval configuration (time + frequency)
                 # Get the solution intervals for the calibrations
-                "do_slowgain_solve": field.do_slowgain_solve,
+                "has_slow_gain_solve": has_slow_gain_solve,
                 "solint_fast_timestep": field.get_obs_parameters("solint_fast_timestep"),
                 "solint_medium_timestep": field.get_obs_parameters("solint_medium_timestep"),
                 "solint_slow_timestep": field.get_obs_parameters("solint_slow_timestep"),
@@ -241,6 +243,7 @@ class Calibrate(Operation):
         elif self.mode == "di":
             solve_plan = self._build_solve_plan()
             self.solve_plan = solve_plan
+            has_slow_gain_solve = self._solve_plan_has_slow_gain(solve_plan)
 
             # Define various output filenames for the solution tables. We save some
             # as attributes since they are needed in finalize()
@@ -265,7 +268,7 @@ class Calibrate(Operation):
                 "onebeamperpatch": field.onebeamperpatch,
                 "parallelbaselines": field.parallelbaselines,
                 "sagecalpredict": field.sagecalpredict,
-                "do_slowgain_solve": field.do_slowgain_solve,
+                "has_slow_gain_solve": has_slow_gain_solve,
                 "normalize_h5parm": None,
                 "ddecal_applycal_steps": None,
                 "applycal_steps": None,
@@ -378,7 +381,6 @@ class Calibrate(Operation):
         return requested_calibration_solves(
             self.mode,
             getattr(self.field, "calibration_strategy", None),
-            self.field.do_slowgain_solve,
             strategy_defaulted=getattr(self.field, "_calibration_strategy_defaulted", False),
         )
 
@@ -449,9 +451,7 @@ class Calibrate(Operation):
         if dp3_steps is None:
             dp3_steps = [solve.step for solve in solve_plan]
         self.input_parms["dp3_steps"] = f"[{','.join(dp3_steps)}]"
-        self.input_parms["do_slowgain_solve"] = any(
-            solve.solve_type == "slow_gains" for solve in solve_plan
-        )
+        self.input_parms["has_slow_gain_solve"] = self._solve_plan_has_slow_gain(solve_plan)
 
         seen_slow_gain = False
         slot_map = {solve.slot: solve for solve in solve_plan}
@@ -608,6 +608,7 @@ class Calibrate(Operation):
         self,
         bda_timebase,
         bda_frequencybase,
+        has_slow_gain_solve=False,
         solve_steps=None,
         preapply_solutions=False,
     ):
@@ -626,10 +627,14 @@ class Calibrate(Operation):
             bda_frequencybase,
             all_channels_regular=all_regular,
             use_image_based_predict=self.field.use_image_based_predict,
-            do_slowgain_solve=self.field.do_slowgain_solve,
+            has_slow_gain_solve=has_slow_gain_solve,
             solve_steps=solve_steps,
             preapply_solutions=preapply_solutions,
         )
+
+    @staticmethod
+    def _solve_plan_has_slow_gain(solve_plan):
+        return any(solve.solve_type == "slow_gains" for solve in solve_plan)
 
     def _build_applycal(self, field):
         """

@@ -76,9 +76,22 @@ def test_set_selfcal_strategy(field, generate_initial_skymodel):
     else:
         assert len(strategy_steps) == 8 + 1  # 8 selfcal steps + 1 final step
         # Phase-only solves for the first two cycles when no initial sky model is generated
-        assert not strategy_steps[0]["do_slowgain_solve"]
-        assert not strategy_steps[1]["do_slowgain_solve"]
-        assert all(step["do_slowgain_solve"] for step in strategy_steps[2:])
+        assert strategy_steps[0]["calibration_strategy"] == {
+            "dd": ["fast_phase", "medium_phase"],
+            "di": [],
+        }
+        assert strategy_steps[1]["calibration_strategy"] == {
+            "dd": ["fast_phase", "medium_phase"],
+            "di": [],
+        }
+        assert all(
+            step["calibration_strategy"]
+            == {
+                "dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"],
+                "di": [],
+            }
+            for step in strategy_steps[2:]
+        )
 
 
 def test_set_image_strategy(field):
@@ -101,7 +114,14 @@ def test_set_user_strategy(field, custom_strategy):
     assert all(isinstance(step, dict) for step in strategy_steps)
     assert len(strategy_steps) == 3
     assert all(step["do_calibrate"] for step in strategy_steps)
-    assert all(step["do_slowgain_solve"] for step in strategy_steps)
+    assert all(
+        step["calibration_strategy"]
+        == {
+            "dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"],
+            "di": [],
+        }
+        for step in strategy_steps
+    )
     assert all(step["fast_timestep_sec"] == 32.0 for step in strategy_steps)
     assert all(step["medium_timestep_sec"] == 120.0 for step in strategy_steps)
     assert all(step["slow_timestep_sec"] == 600.0 for step in strategy_steps)
@@ -159,7 +179,6 @@ def test_check_and_adjust_parameters_raises_error_for_missing_primary_parameters
 @pytest.mark.parametrize(
     ("primary_parameter", "missing_parameter"),
     [
-        ("do_calibrate", "do_slowgain_solve"),
         ("do_calibrate", "max_normalization_delta"),
         ("do_calibrate", "solve_min_uv_lambda"),
         ("do_calibrate", "fast_timestep_sec"),
@@ -197,7 +216,6 @@ def test_check_and_adjust_parameters_warns_for_missing_parameters_with_defaults(
 @pytest.mark.parametrize(
     ("primary_parameter", "missing_parameter"),
     [
-        ("do_calibrate", "do_fulljones_solve"),
         ("do_calibrate", "target_flux"),
         ("do_calibrate", "max_directions"),
         ("do_calibrate", "regroup_model"),

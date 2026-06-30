@@ -92,8 +92,6 @@ def test_update_allows_target_number_without_target_flux(field, monkeypatch):
     field.update(
         {
             "do_calibrate": True,
-            "do_slowgain_solve": False,
-            "do_fulljones_solve": False,
             "calibration_strategy": {"di": ["fast_phase"]},
             "regroup_model": True,
             "target_flux": None,
@@ -195,39 +193,23 @@ def test_plot_overview_initial_near_pole(field):
     assert plot_path.exists()
 
 
-@pytest.mark.parametrize(
-    "do_slowgain_solve, do_fulljones_solve",
-    [(True, True), (True, False), (False, True), (False, False)],
-)
-def test_set_calibration_strategy_legacy_default(field, do_slowgain_solve, do_fulljones_solve):
-    """Test that the default calibration strategy is set correctly.
-
-    This should capture the current behaviour of the pipeline using the
-    legacy settings 'do_fulljones_solve' and 'do_slowgain_solve'in the strategy file.
-    """
-    step_dict = {
-        "do_calibrate": True,
-        "do_slowgain_solve": do_slowgain_solve,
-        "do_fulljones_solve": do_fulljones_solve,
-    }
-    field.__dict__.update(step_dict)
+def test_set_calibration_strategy_default(field):
+    """The default calibration strategy is explicit and ignores legacy flags."""
+    field.__dict__.update(
+        {
+            "do_calibrate": True,
+            "do_slowgain_solve": False,
+            "do_fulljones_solve": True,
+        }
+    )
     field.set_calibration_strategy()
-    expected_strategy = {
-        "dd": [
-            "fast_phase",
-            "medium_phase",
-            *(["slow_gains"] if do_slowgain_solve else []),
-        ],
-        "di": [*(["full_jones"] if do_fulljones_solve else [])],
+    assert field.calibration_strategy == {
+        "dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"],
+        "di": [],
     }
-    assert field.calibration_strategy == expected_strategy
 
 
-@pytest.mark.parametrize(
-    "do_slowgain_solve, do_fulljones_solve",
-    [(True, True), (True, False), (False, True), (False, False)],
-)
-def test_set_calibration_strategy_user_provided(field, do_slowgain_solve, do_fulljones_solve):
+def test_set_calibration_strategy_user_provided(field):
     """Test that the calibration strategy is set correctly when provided.
 
     This captures the behaviour of the pipeline using the merged DD/DI classes.
@@ -239,9 +221,6 @@ def test_set_calibration_strategy_user_provided(field, do_slowgain_solve, do_ful
     step_dict = {
         "do_calibrate": True,
         "calibration_strategy": user_provided_strategy,
-        # The following legacy settings should be ignored when a user-provided strategy is given
-        "do_slowgain_solve": do_slowgain_solve,
-        "do_fulljones_solve": do_fulljones_solve,
     }
     field.__dict__.update(step_dict)
     field.set_calibration_strategy()

@@ -11,9 +11,6 @@ import pytest
 
 COMMON_STRATEGY_SETTINGS = {
     "channel_width_hz": 195312.5,
-    # Set slow-gain and fulljones solves to False except when required
-    "do_slowgain_solve": False,
-    "do_fulljones_solve": False,
     # Don't remove bright outliers or in-field sources -- image full field
     "peel_outliers": False,
     "peel_bright_sources": False,
@@ -158,8 +155,13 @@ def single_loop_strategy_path_peel_bright_sources(request, tmp_path):
 @pytest.fixture
 def single_loop_strategy_path_calibrate_di(tmp_path):
     """Fixture to generate a strategy file for a single self-calibration loop with DI calibration."""
-    strategy_steps = [make_strategy_step(do_calibrate=True, do_image=True, do_fulljones_solve=True)]
-    strategy_steps[0]["calibration_strategy"] = {"di": ["full_jones"]}
+    strategy_steps = [
+        make_strategy_step(
+            do_calibrate=True,
+            do_image=True,
+            calibration_strategy={"di": ["full_jones"]},
+        )
+    ]
 
     strategy_content = f"strategy_steps = {strategy_steps}"
     strategy_path = tmp_path / "single_loop_strategy_calibrate_di.py"
@@ -232,7 +234,6 @@ def single_loop_strategy_path_fast_medium_slow(tmp_path):
         make_strategy_step(
             do_calibrate=True,
             do_image=True,
-            do_slowgain_solve=True,
             calibration_strategy={
                 "dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"],
             },
@@ -246,7 +247,7 @@ def single_loop_strategy_path_fast_medium_slow(tmp_path):
 
 @pytest.fixture
 def single_loop_strategy_with_calibration_strategy(tmp_path, request):
-    strategy_steps = [make_strategy_step(do_calibrate=True, do_image=True, do_slowgain_solve=True)]
+    strategy_steps = [make_strategy_step(do_calibrate=True, do_image=True)]
     strategy_steps[0]["calibration_strategy"] = request.param
     strategy_content = f"strategy_steps = {strategy_steps}"
     strategy_path = tmp_path / "single_loop_strategy.py"

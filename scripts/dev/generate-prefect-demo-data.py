@@ -55,8 +55,6 @@ COMMON_SETTINGS = {
 def _step(calibration_strategy, **overrides):
     step = {
         **COMMON_SETTINGS,
-        "do_slowgain_solve": "slow_gains" in calibration_strategy.get("dd", []),
-        "do_fulljones_solve": "full_jones" in calibration_strategy.get("di", []),
         "calibration_strategy": calibration_strategy,
     }
     step.update(overrides)

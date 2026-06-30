@@ -5,6 +5,8 @@ from typing import Mapping, Optional
 
 import numpy as np
 
+from rapthor.lib.strategy import default_calibration_strategy
+
 SOLUTION_INTERVAL_BY_SOLVE_TYPE = {
     "fast_phase": "fast",
     "medium_phase": "medium",
@@ -183,22 +185,13 @@ class CalibrationSolve:
 def requested_calibration_solves(
     mode: str,
     calibration_strategy: Optional[Mapping[str, list[str]]],
-    do_slowgain_solve: bool,
     *,
     strategy_defaulted: bool = False,
 ) -> tuple[list[str], bool]:
     """Return requested solve types and whether they came from default strategy."""
-    if calibration_strategy is not None and mode in calibration_strategy:
-        return list(calibration_strategy.get(mode) or []), strategy_defaulted
-
-    if mode == "dd":
-        solves = ["fast_phase", "medium_phase"]
-        if do_slowgain_solve:
-            solves.append("slow_gains")
-        return solves, True
-
-    if mode == "di":
-        return ["full_jones"], True
+    strategy = calibration_strategy or default_calibration_strategy()
+    if mode in strategy:
+        return list(strategy.get(mode) or []), strategy_defaulted or calibration_strategy is None
 
     raise ValueError(f"Unsupported calibration mode: {mode}")
 
@@ -211,13 +204,6 @@ def build_calibration_solve_plan(
 ) -> list[CalibrationSolve]:
     """Build the ordered DP3 solve-slot plan for a calibration cycle."""
     expanded_solves = list(requested_solves)
-
-    if (
-        mode == "dd"
-        and defaulted_strategy
-        and expanded_solves == ["fast_phase", "medium_phase", "slow_gains"]
-    ):
-        expanded_solves.append("medium_phase")
 
     if len(expanded_solves) > 4:
         raise ValueError("A calibration cycle can contain at most four solve slots")
@@ -239,13 +225,13 @@ def build_calibration_dp3_steps(
     *,
     all_channels_regular: bool,
     use_image_based_predict: bool,
-    do_slowgain_solve: bool,
+    has_slow_gain_solve: bool = False,
     solve_steps: Optional[list[str]] = None,
     preapply_solutions: bool = False,
 ) -> list[str]:
     """Build the DP3 step chain for calibration solves."""
     if solve_steps is None:
-        if do_slowgain_solve:
+        if has_slow_gain_solve:
             common_steps = ["solve1", "solve2", "solve3", "solve4"]
         else:
             common_steps = ["solve1", "solve2"]

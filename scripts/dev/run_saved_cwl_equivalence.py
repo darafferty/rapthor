@@ -74,8 +74,6 @@ def _write_strategy(path: Path, **overrides: Any) -> None:
     """Write a single-step strategy matching the integration fixture defaults."""
     step = {
         "channel_width_hz": 195312.5,
-        "do_slowgain_solve": False,
-        "do_fulljones_solve": False,
         "peel_outliers": False,
         "peel_bright_sources": False,
         "fast_timestep_sec": 32.0,
@@ -203,7 +201,6 @@ def _strategy_path_for(saved_path: str, scenario: str, input_root: Path) -> Path
         path.parent.mkdir(parents=True, exist_ok=True)
         _write_strategy(
             path,
-            do_slowgain_solve=True,
             calibration_strategy={
                 "dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"]
             },

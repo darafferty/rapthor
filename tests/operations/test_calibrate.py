@@ -28,7 +28,7 @@ CALIBRATE_COMMON_INPUT_KEYS = {
     "calibration_skymodel_file",
     "starttime",
     "ntimes",
-    "do_slowgain_solve",
+    "has_slow_gain_solve",
     "bda_maxinterval",
     "bda_minchannels",
     "bda_timebase",
@@ -210,9 +210,10 @@ def calibrate_field(operation_parset, mocker, single_source_sky_model):
             # Feature flags (defaults off; individual tests override as needed)
             self.apply_diagonal_solutions = False
             self.use_image_based_predict = False
-            self.do_slowgain_solve = False
             self.apply_normalizations = False
             self.generate_screens = False
+            self.calibration_strategy = {"dd": ["fast_phase", "medium_phase"], "di": ["full_jones"]}
+            self._calibration_strategy_defaulted = False
             self.normalize_h5parm = None
             self.calibrate_bda_timebase = 0
             self.calibrate_bda_frequencybase = 0
@@ -489,7 +490,15 @@ class TestCalibrate:
         finalize_prepare_plots(pipelines_path, plots_path)
 
         # Setup the object itself
-        field.do_slowgain_solve = with_slow
+        if mode == "dd":
+            field.calibration_strategy = (
+                {"dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"], "di": []}
+                if with_slow
+                else {"dd": ["fast_phase"], "di": []}
+            )
+        else:
+            field.calibration_strategy = {"di": ["full_jones"]}
+        field._calibration_strategy_defaulted = False
 
         calibrate = Calibrate(mode=mode, field=field, index=index)
 
@@ -772,14 +781,26 @@ class TestCalibrate:
         assert (pipelines_path / ".done").exists()
 
     @pytest.mark.parametrize(
-        "mode, generate_screens, use_image_based_predict, do_slowgain_solve",
+        "mode, generate_screens, use_image_based_predict, calibration_strategy, has_slow_gain_solve",
         [
-            ("dd", False, False, False),
-            ("dd", True, False, False),
-            ("dd", False, True, False),
-            ("dd", False, False, True),
-            ("dd", True, False, True),
-            ("di", False, False, False),
+            ("dd", False, False, {"dd": ["fast_phase", "medium_phase"], "di": []}, False),
+            ("dd", True, False, {"dd": ["fast_phase", "medium_phase"], "di": []}, False),
+            ("dd", False, True, {"dd": ["fast_phase", "medium_phase"], "di": []}, False),
+            (
+                "dd",
+                False,
+                False,
+                {"dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"], "di": []},
+                True,
+            ),
+            (
+                "dd",
+                True,
+                False,
+                {"dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"], "di": []},
+                True,
+            ),
+            ("di", False, False, {"di": ["full_jones"]}, False),
         ],
     )
     def test_set_input_parameters(
@@ -788,7 +809,8 @@ class TestCalibrate:
         calibrate_field,
         generate_screens,
         use_image_based_predict,
-        do_slowgain_solve,
+        calibration_strategy,
+        has_slow_gain_solve,
     ):
         """
         Test that set_input_parameters() provides the inputs needed by the
@@ -797,7 +819,8 @@ class TestCalibrate:
         field = calibrate_field
         field.generate_screens = generate_screens
         field.use_image_based_predict = use_image_based_predict
-        field.do_slowgain_solve = do_slowgain_solve
+        field.calibration_strategy = calibration_strategy
+        field._calibration_strategy_defaulted = False
 
         calibrate = Calibrate(mode=mode, field=calibrate_field, index=1 if mode == "dd" else 2)
         calibrate.set_input_parameters()
@@ -812,7 +835,7 @@ class TestCalibrate:
         assert expected_input_keys.issubset(input_parms_keys), (
             f"input_parms is missing flow inputs: {expected_input_keys - input_parms_keys}"
         )
-        assert calibrate.input_parms["do_slowgain_solve"] is do_slowgain_solve
+        assert calibrate.input_parms["has_slow_gain_solve"] is has_slow_gain_solve
         if mode == "dd":
             assert calibrate.input_parms["generate_screens"] is generate_screens
         else:
@@ -820,22 +843,33 @@ class TestCalibrate:
 
     # special cases for dd
     @pytest.mark.parametrize(
-        "bda_time, bda_freq, slowgain, expected_dp3_steps",
+        "bda_time, bda_freq, calibration_strategy, expected_dp3_steps",
         [
-            (0, 0, False, ["solve1", "solve2"]),
-            (1, 1, False, ["avg", "solve1", "solve2", "null"]),
-            (1, 1, True, ["avg", "solve1", "solve2", "solve3", "solve4", "null"]),
+            (0, 0, {"dd": ["fast_phase", "medium_phase"], "di": []}, ["solve1", "solve2"]),
+            (
+                1,
+                1,
+                {"dd": ["fast_phase", "medium_phase"], "di": []},
+                ["avg", "solve1", "solve2", "null"],
+            ),
+            (
+                1,
+                1,
+                {"dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"], "di": []},
+                ["avg", "solve1", "solve2", "solve3", "solve4", "null"],
+            ),
         ],
     )
     def test_set_input_parameters_dd_bda_cases(
-        self, calibrate_field, bda_time, bda_freq, slowgain, expected_dp3_steps
+        self, calibrate_field, bda_time, bda_freq, calibration_strategy, expected_dp3_steps
     ):
         """
-        Test the effect of BDA and slowgain settings on the dp3 steps.
+        Test the effect of BDA and solve strategy on the DP3 steps.
         """
         calibrate_field.calibrate_bda_timebase = bda_time
         calibrate_field.calibrate_bda_frequencybase = bda_freq
-        calibrate_field.do_slowgain_solve = slowgain
+        calibrate_field.calibration_strategy = calibration_strategy
+        calibrate_field._calibration_strategy_defaulted = False
 
         calibrate_dd = Calibrate("dd", field=calibrate_field, index=1)
         calibrate_dd.set_input_parameters()
@@ -848,7 +882,7 @@ class TestCalibrate:
                 bda_freq,
                 all_channels_regular=True,
                 use_image_based_predict=False,
-                do_slowgain_solve=slowgain,
+                has_slow_gain_solve="slow_gains" in calibration_strategy["dd"],
             )
             == expected_dp3_steps
         )
@@ -869,7 +903,7 @@ class TestCalibrate:
                 0,
                 all_channels_regular=True,
                 use_image_based_predict=True,
-                do_slowgain_solve=False,
+                has_slow_gain_solve=False,
                 solve_steps=["solve1", "solve2"],
                 preapply_solutions=preapply_solutions,
             )
@@ -944,23 +978,12 @@ class TestCalibrate:
         }
 
     @pytest.mark.parametrize(
-        "mode, strategy, defaulted, slowgain, expected_plan",
+        "mode, strategy, defaulted, expected_plan",
         [
             (
                 "dd",
                 None,
                 False,
-                False,
-                [
-                    ("fast_phase", "solve1", "scalarphase", "fast_phase"),
-                    ("medium_phase", "solve2", "scalarphase", "medium1_phase"),
-                ],
-            ),
-            (
-                "dd",
-                None,
-                False,
-                True,
                 [
                     ("fast_phase", "solve1", "scalarphase", "fast_phase"),
                     ("medium_phase", "solve2", "scalarphase", "medium1_phase"),
@@ -972,13 +995,11 @@ class TestCalibrate:
                 "dd",
                 {"dd": ["slow_gains"]},
                 False,
-                False,
                 [("slow_gains", "solve1", "diagonal", "slow_gain")],
             ),
             (
                 "dd",
                 {"dd": ["medium_phase", "fast_phase"]},
-                False,
                 False,
                 [
                     ("medium_phase", "solve1", "scalarphase", "medium1_phase"),
@@ -988,7 +1009,6 @@ class TestCalibrate:
             (
                 "di",
                 {"di": ["fast_phase", "medium_phase", "slow_gains", "full_jones"]},
-                False,
                 False,
                 [
                     ("fast_phase", "solve1", "scalarphase", "fast_phase_di"),
@@ -1001,25 +1021,19 @@ class TestCalibrate:
                 "di",
                 {"di": ["slow_gains"]},
                 False,
-                False,
                 [("slow_gains", "solve1", "diagonal", "slow_gains_di")],
             ),
             (
                 "di",
                 None,
                 False,
-                False,
-                [("full_jones", "solve1", "fulljones", "fulljones_gain")],
+                [],
             ),
         ],
     )
-    def test_build_solve_plan(
-        self, calibrate_field, mode, strategy, defaulted, slowgain, expected_plan
-    ):
-        calibrate_field.do_slowgain_solve = slowgain
-        if strategy is not None:
-            calibrate_field.calibration_strategy = strategy
-            calibrate_field._calibration_strategy_defaulted = defaulted
+    def test_build_solve_plan(self, calibrate_field, mode, strategy, defaulted, expected_plan):
+        calibrate_field.calibration_strategy = strategy
+        calibrate_field._calibration_strategy_defaulted = defaulted
 
         calibrate = Calibrate(mode, field=calibrate_field, index=1)
         plan = calibrate._build_solve_plan()
@@ -1031,7 +1045,6 @@ class TestCalibrate:
         requested_solves, helper_defaulted = requested_calibration_solves(
             mode,
             strategy,
-            slowgain,
             strategy_defaulted=defaulted,
         )
         helper_plan = build_calibration_solve_plan(
@@ -1058,7 +1071,7 @@ class TestCalibrate:
         ]
         assert "solve1_smoothnessreffrequency" not in calibrate.input_parms
         assert "solve1_smoothnessrefdistance" not in calibrate.input_parms
-        assert calibrate.input_parms["do_slowgain_solve"] is True
+        assert calibrate.input_parms["has_slow_gain_solve"] is True
 
     def test_set_input_parameters_dd_applies_antenna_constraints_to_fast_and_medium2(
         self, calibrate_field

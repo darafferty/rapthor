@@ -18,8 +18,10 @@ for i in range(max_selfcal_loops):
     # all solves is set to 150 lambda. This approach could be useful if the
     # starting sky model is of high quality.
     strategy_steps[i]['do_calibrate'] = True
-    strategy_steps[i]['do_slowgain_solve'] = True
-    strategy_steps[i]['do_fulljones_solve'] = False
+    strategy_steps[i]['calibration_strategy'] = {
+        'dd': ['fast_phase', 'medium_phase', 'slow_gains', 'medium_phase'],
+        'di': [],
+    }
     if i == 0:
         strategy_steps[i]['peel_outliers'] = True
     else:

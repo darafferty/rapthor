@@ -26,6 +26,7 @@ from shapely.geometry import MultiPolygon, Point, Polygon
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.observation import Observation
 from rapthor.lib.sector import Sector
+from rapthor.lib.strategy import default_calibration_strategy
 
 matplotlib.use("Agg")
 import mocpy
@@ -177,7 +178,6 @@ class Field(object):
         self.peel_outliers = False
         self.imaged_sources_only = False
         self.peel_bright_sources = False
-        self.do_slowgain_solve = False
         self.do_normalize = False
         self.make_image_cube = False
         self.field_image_filename_prev = None
@@ -2074,26 +2074,12 @@ class Field(object):
         """
         Sets the calibration strategy for the current cycle.
 
-        If no calibration_strategy is specified in the strategy file (or if it is set to None) then
-        the default strategy is used as determined by the legacy parameters:
-           - `do_fulljones_solve` set to True triggers DI calibration after DD
-           - `do_slowgain_solve` set to True triggers a slow gain solve after the main solve
+        If no calibration_strategy is specified in the strategy file, Rapthor uses
+        the default explicit DD self-calibration strategy.
         """
         self._calibration_strategy_defaulted = not bool(self.calibration_strategy)
         if not self.calibration_strategy:
-            # Use legacy strategy based on the `do_fulljones_solve` and `do_slowgain_solve` parameters
-            self.calibration_strategy = {
-                # DD is always done first in the legacy strategy to support the use case that requires
-                # removing DD effects before doing a DI solve
-                "dd": [
-                    "fast_phase",  # Always do a fast DD solve
-                    "medium_phase",  # Always do a medium DD solve
-                    *(
-                        ["slow_gains"] if self.do_slowgain_solve else []
-                    ),  # Only do a slow DD solve if do_slowgain_solve is True in the strategy file
-                ],
-                "di": [*(["full_jones"] if self.do_fulljones_solve else [])],
-            }
+            self.calibration_strategy = default_calibration_strategy()
 
     def get_matplotlib_patch(self, wcs=None):
         """

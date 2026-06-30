@@ -111,19 +111,13 @@ The following processing parameters can be set for each cycle:
         Float that sets the solution interval in sec to use in the fast (scalarphase) solve. For this solve, all the core stations are constrained to have the same solutions.
 
     medium_timestep_sec
-        Float that sets the solution interval in sec to use in the medium-fast (scalarphase) solves. For the first medium-fast solve, each station is solved for independently. For the second medium-fast solve (done only when ``do_slowgain_solve`` is activated), the core stations are constrained to have the same solutions.
-
-    do_slowgain_solve
-        Boolean flag that determines whether the slow (diagonal) solve should be done for this cycle. If enabled, a slow solve is done, followed by a second medium-fast solve.
+        Float that sets the solution interval in sec to use in the medium-fast (scalarphase) solves. For the first medium-fast solve, each station is solved for independently. For a medium-fast solve requested after ``slow_gains`` in ``calibration_strategy``, the core stations are constrained to have the same solutions.
 
     slow_timestep_sec
         Float that sets the solution interval in sec to use in the slow-gain solve. For this solve, each station is solved for independently.
 
     fulljones_timestep_sec
         Float that sets the solution interval in sec to use in the full-Jones solve. For this solve, each station is solved for independently.
-
-    do_fulljones_solve
-        Boolean flag that determines whether the direction-independent full-Jones part of calibration should be done for this cycle.
 
     peel_outliers
         Boolean flag that determines whether the outlier sources (sources that lie outside of any imaging sector region) should be peeled for this cycle. Outliers can only be peeled once (unlike bright sources, see below), as they are not added back for subsequent selfcal cycles. Note that, because they are not imaged, outlier source models do not change during self calibration: however, the solutions they receive may change. To include one or more outlier sources in self calibration, a small imaging sector can be placed on each outlier of interest. The outliers will than be imaging and its model updated with the rest of the field.
