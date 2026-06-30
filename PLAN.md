@@ -1,6 +1,6 @@
 # Rapthor Architecture Refactor Plan
 
-Status snapshot: 2026-06-29.
+Status snapshot: 2026-06-30.
 
 ## Goal
 
@@ -35,6 +35,11 @@ Completed foundations:
 - Payload contracts and validation live with operation-specific execution code.
 - Scheduler-independent work units are separated from Prefect flow wiring for
   the complex image and calibration paths.
+- Focused calibration integration tests pass for DD, DI, mixed DI/DD ordering,
+  full-Jones, slow-gain, and calibration-option scenarios.
+- The saved CWL equivalence matrix passes against the current scientific
+  contract when run on a filesystem with enough space for WSClean FITS
+  products.
 - Architecture boundary tests exist and should be tightened as the final
   script-entrypoint cleanup lands.
 
@@ -48,10 +53,10 @@ Known follow-ups:
 
 ## Immediate Next Work
 
-Finish the calibration-equivalence check, then complete the remaining
-script-entrypoint cleanup before starting new scalability work.
+Retire the remaining legacy calibration-strategy options, then complete the
+remaining script-entrypoint cleanup before starting new scalability work.
 
-### 0. Calibration Strategy Equivalence
+### 0. Calibration Strategy Equivalence (Complete; Add Regression Guards)
 
 Keep the current contract explicit: if a cycle should run a medium phase solve
 after slow gains, the strategy must request it directly as:
@@ -75,6 +80,15 @@ after slow gains, the strategy must request it directly as:
   peeling equivalence now use explicit fast/medium calibration strategies.
 - Done: the default saved CWL equivalence matrix passes, excluding the stale
   phase-only `dd_slow_gain_calibration` reference.
+- Done: focused calibration integration tests passed in the dev container:
+  `tests/integration/test_dd_calibration.py`,
+  `tests/integration/test_di_calibration.py`, and
+  `tests/integration/test_calibration_options.py`.
+- Done: the saved CWL equivalence matrix passed under
+  `/app/runs/equivalence-20260630-1950-current`. Do not use the default `/tmp`
+  run root for this check on a nearly full container filesystem; WSClean writes
+  large intermediate FITS products and can fail with CFITSIO write errors before
+  scientific comparisons run.
 - Add integration regression checks for calibration solve products once the
   remaining calibration cleanup lands, so future refactors catch:
   - solve-slot order and h5parm filenames for explicit calibration strategies
@@ -82,7 +96,7 @@ after slow gains, the strategy must request it directly as:
   - auxiliary solution products that are intentionally public
   - current-cycle-only solution handoff between calibration cycles
 
-### 0a. Remove Remaining Calibration Slot Semantics
+### 0a. Remove Remaining Calibration Slot Semantics (Complete)
 
 The solve plan should be driven by explicit solve metadata, not by assumptions
 that `solve1`, `solve2`, `solve3`, or `solve4` mean fast, medium, slow, or
@@ -106,6 +120,46 @@ Done:
 - Calibration payloads require explicit `solve{slot}_type` and
   `solve{slot}_solution_label`; filename-based solve-type inference has been
   removed.
+
+### 0b. Retire Legacy Calibration Solve Flags
+
+Remove `do_fulljones_solve` and `do_slowgain_solve` as configuration inputs.
+Only `calibration_strategy` should determine which calibration solves run, what
+order they run in, and which solutions are handed to later operations.
+
+The new default must preserve the current user-facing default behaviour that
+was previously expressed through the legacy flags. Encode that default directly
+as an explicit `calibration_strategy`, then remove the fallback that derives
+strategy from legacy booleans.
+
+Recommended order:
+
+- Add regression tests that capture the current intended defaults before
+  removing the legacy path:
+  - default DD self-calibration runs `fast_phase`, `medium_phase`,
+    `slow_gains`, then the explicit post-slow `medium_phase`
+  - default DI full-Jones is absent unless explicitly requested in
+    `calibration_strategy`
+  - mixed DI/DD order follows the dictionary order supplied by
+    `calibration_strategy`
+- Update default and generated strategy files so they no longer set
+  `do_slowgain_solve` or `do_fulljones_solve`; they should set only
+  `calibration_strategy`.
+- Remove the legacy resolver in `Field.set_calibration_strategy()` and replace
+  it with one explicit default strategy used when `calibration_strategy` is not
+  supplied.
+- Remove or rename operation/payload fields named after the legacy flags. Where
+  downstream code still needs a yes/no answer, derive it from solve metadata
+  with helper names such as `has_slow_gain_solve` or `has_full_jones_solve`.
+- Update docs and examples so users learn one calibration interface:
+  `calibration_strategy = {"dd": [...], "di": [...]}`.
+- Run:
+  - `tests/lib/test_field.py`
+  - `tests/operations/test_calibrate.py`
+  - `tests/execution/test_calibrate_flow.py`
+  - focused calibration integration tests
+  - saved CWL equivalence check with `--run-root` on a filesystem with enough
+    free space
 
 ### 1. Move Remaining Shell Adapters Into Execution
 
