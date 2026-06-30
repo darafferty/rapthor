@@ -419,6 +419,7 @@ def _validate_calibrate_strategy(calibration_strategy):
         "dd": {
             ("fast_phase",),
             ("slow_gains",),
+            ("slow_gains", "medium_phase"),
             ("fast_phase", "medium_phase"),
             ("fast_phase", "medium_phase", "slow_gains"),
             ("fast_phase", "medium_phase", "slow_gains", "medium_phase"),

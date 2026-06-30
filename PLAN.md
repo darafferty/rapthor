@@ -68,11 +68,19 @@ after slow gains, the strategy must request it directly as:
 - Done: output-record shape changes are treated as metadata warnings in the
   saved CWL equivalence runner, and beam-table text products are compared
   numerically with tolerance.
-- Next: investigate the remaining `field-solutions-medium1-phase.h5`
-  differences. Current final FITS products and final combined h5parms compare,
-  but the auxiliary medium1 h5parm differs numerically in standard DD scenarios
-  and is no longer published under the old `work/solutions/...` filename in
-  normalization/peeling scenarios.
+- Done: resolved the `field-solutions-medium1-phase.h5` differences. The
+  migrated operation was applying the fast-phase antenna constraint to the
+  medium1 solve; medium1 is now unconstrained again, while fast phase and the
+  post-slow medium2 solve keep the station constraint. Normalization and
+  peeling equivalence now use explicit fast/medium calibration strategies.
+- Done: the default saved CWL equivalence matrix passes, excluding the stale
+  phase-only `dd_slow_gain_calibration` reference.
+- Add integration regression checks for calibration solve products once the
+  remaining calibration cleanup lands, so future refactors catch:
+  - solve-slot order and h5parm filenames for explicit calibration strategies
+  - final h5parm products used by later operations
+  - auxiliary solution products that are intentionally public
+  - current-cycle-only solution handoff between calibration cycles
 
 ### 1. Move Remaining Shell Adapters Into Execution
 

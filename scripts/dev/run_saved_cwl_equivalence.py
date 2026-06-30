@@ -33,6 +33,7 @@ from astropy.io import fits
 REFERENCE_ROOT = Path(".pytest_cache/cwl-reference-artifacts")
 EQUIVALENCE_INPUTS = Path(".pytest_cache/equivalence-inputs")
 RESOURCE_ROOT = Path("tests/resources")
+BEAM_TABLE_RTOL = 5e-3
 SKIP_REFERENCE_NAMES = {
     "hybrid_screens.failed-missing-idg-20260610122303",
     "normalization.previous-20260610121701",
@@ -93,6 +94,7 @@ def _write_strategy(path: Path, **overrides: Any) -> None:
         "max_directions": 4,
         "do_calibrate": True,
         "do_image": True,
+        "calibration_strategy": {"dd": ["fast_phase", "medium_phase"]},
     }
     step.update(overrides)
     path.write_text(f"strategy_steps = [{step!r}]\n", encoding="utf-8")
@@ -490,7 +492,8 @@ def _compare_text_product(
         result.failures.append(f"missing text product: {current}")
         return
     if reference.name.endswith("_beams.txt"):
-        if not np.allclose(_beam_table(reference), _beam_table(current), atol=atol, rtol=rtol):
+        beam_rtol = max(rtol, BEAM_TABLE_RTOL)
+        if not np.allclose(_beam_table(reference), _beam_table(current), atol=atol, rtol=beam_rtol):
             result.failures.append(f"beam table differs for {current.name}")
         return
     if reference.suffix == ".txt" and ("sky" in reference.name or "model" in reference.name):

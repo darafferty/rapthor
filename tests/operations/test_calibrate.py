@@ -900,7 +900,7 @@ class TestCalibrate:
     def test_build_calibration_solve_slot_inputs_for_scalar_phase_slot(self):
         assert build_calibration_solve_slot_inputs(
             2,
-            "medium",
+            "medium_phase",
             ntimechunks=2,
             datause="full",
             solutions_per_direction=[[1, 2], [3, 4]],
@@ -924,7 +924,7 @@ class TestCalibrate:
     def test_build_calibration_solve_slot_inputs_for_slow_gain_slot(self):
         assert build_calibration_solve_slot_inputs(
             1,
-            "slow",
+            "slow_gains",
             ntimechunks=2,
             datause="dual",
             solutions_per_direction=[[1], [1]],
@@ -1056,8 +1056,56 @@ class TestCalibrate:
             "slow_gain_0.h5parm",
             "slow_gain_1.h5parm",
         ]
-        assert calibrate.input_parms["solve1_smoothnessreffrequency"] == [0, 0]
+        assert "solve1_smoothnessreffrequency" not in calibrate.input_parms
+        assert "solve1_smoothnessrefdistance" not in calibrate.input_parms
         assert calibrate.input_parms["do_slowgain_solve"] is True
+
+    def test_set_input_parameters_dd_applies_antenna_constraints_to_fast_and_medium2(
+        self, calibrate_field
+    ):
+        calibrate_field.stations = ["CS001HBA0", "CS002HBA0", "RS106HBA0"]
+        calibrate_field.calibration_strategy = {
+            "dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"]
+        }
+        calibrate_field._calibration_strategy_defaulted = False
+
+        calibrate = Calibrate("dd", field=calibrate_field, index=1)
+        calibrate.set_input_parameters()
+
+        antenna_constraint = "[[CS001HBA0,CS002HBA0,RS106HBA0]]"
+        assert calibrate.input_parms["solve1_antennaconstraint"] == antenna_constraint
+        assert calibrate.input_parms["solve2_antennaconstraint"] == "[]"
+        assert calibrate.input_parms["solve3_antennaconstraint"] == "[]"
+        assert calibrate.input_parms["solve4_antennaconstraint"] == antenna_constraint
+        assert calibrate.input_parms["solve1_smoothnessreffrequency"] == [1]
+        assert calibrate.input_parms["solve2_smoothnessreffrequency"] == [1]
+        assert "solve3_smoothnessreffrequency" not in calibrate.input_parms
+        assert calibrate.input_parms["solve4_smoothnessreffrequency"] == [1]
+
+    def test_set_input_parameters_dd_constrains_medium_phase_after_slow_gains(
+        self, calibrate_field
+    ):
+        calibrate_field.stations = ["CS001HBA0", "CS002HBA0", "RS106HBA0"]
+        calibrate_field.calibration_strategy = {"dd": ["slow_gains", "medium_phase"]}
+        calibrate_field._calibration_strategy_defaulted = False
+
+        calibrate = Calibrate("dd", field=calibrate_field, index=1)
+        calibrate.set_input_parameters()
+
+        antenna_constraint = "[[CS001HBA0,CS002HBA0,RS106HBA0]]"
+        assert parse_dp3(calibrate.input_parms["dp3_steps"]) == ["solve1", "solve2"]
+        assert calibrate.input_parms["solve1_mode"] == "diagonal"
+        assert calibrate.input_parms["solve1_antennaconstraint"] == "[]"
+        assert calibrate.input_parms["output_solve2_h5parm"] == [
+            "medium1_phase_0.h5parm",
+            "medium1_phase_1.h5parm",
+        ]
+        assert calibrate.input_parms["solve2_mode"] == "scalarphase"
+        assert calibrate.input_parms["solve2_antennaconstraint"] == antenna_constraint
+        assert "solve1_smoothnessreffrequency" not in calibrate.input_parms
+        assert "solve1_smoothnessrefdistance" not in calibrate.input_parms
+        assert calibrate.input_parms["solve2_smoothnessreffrequency"] == [1]
+        assert calibrate.input_parms["solve2_smoothnessrefdistance"] == 0.0
 
     def test_set_input_parameters_di_uses_explicit_solve_strategy(self, calibrate_field):
         calibrate_field.calibration_strategy = {"di": ["fast_phase", "medium_phase"]}

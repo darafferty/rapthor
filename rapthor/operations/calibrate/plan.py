@@ -5,12 +5,17 @@ from typing import Mapping, Optional
 
 import numpy as np
 
-FIELD_PREFIX_BY_SOLVE = {
+SOLUTION_INTERVAL_BY_SOLVE_TYPE = {
     "fast_phase": "fast",
     "medium_phase": "medium",
     "slow_gains": "slow",
     "full_jones": "fulljones",
 }
+
+
+def solution_interval_for_solve_type(solve_type: str) -> str:
+    """Return the Field solution-interval family used by a solve type."""
+    return SOLUTION_INTERVAL_BY_SOLVE_TYPE[solve_type]
 
 MODE_BY_SOLVE = {
     "fast_phase": "scalarphase",
@@ -164,7 +169,6 @@ class CalibrationSolve:
     collected_h5parm: str
     timestep_key: str
     freqstep_key: str
-    field_prefix: str
 
     @property
     def step(self):
@@ -316,13 +320,12 @@ def build_calibration_solve_slot(
         collected_h5parm=collected_h5parm,
         timestep_key=timestep_key,
         freqstep_key=freqstep_key,
-        field_prefix=FIELD_PREFIX_BY_SOLVE[solve_type],
     )
 
 
 def build_calibration_solve_slot_inputs(
     slot: int,
-    field_prefix: str,
+    solve_type: str,
     *,
     ntimechunks: int,
     datause: object,
@@ -342,24 +345,27 @@ def build_calibration_solve_slot_inputs(
     slot naming, smoothness scaling, and optional fast/medium versus slow-gain
     defaults in one testable place.
     """
+    solution_interval = solution_interval_for_solve_type(solve_type)
     inputs = {
         f"solve{slot}_datause": datause,
         f"solve{slot}_solutions_per_direction": solutions_per_direction,
         f"solve{slot}_smoothness_dd_factors": smoothness_dd_factors,
         f"solve{slot}_smoothnessconstraint": smoothnessconstraint / np.min(smoothness_dd_factors),
         f"solve{slot}_antennaconstraint": (
-            antenna_constraint if field_prefix in {"fast", "medium"} else "[]"
+            antenna_constraint if solution_interval in {"fast", "medium"} else "[]"
         ),
     }
 
     if include_smoothnessreffrequency:
         inputs[f"solve{slot}_smoothnessreffrequency"] = (
-            smoothnessreffrequency if field_prefix in {"fast", "medium"} else [0] * ntimechunks
+            smoothnessreffrequency
+            if solution_interval in {"fast", "medium"}
+            else [0] * ntimechunks
         )
 
     if include_smoothnessrefdistance:
         inputs[f"solve{slot}_smoothnessrefdistance"] = (
-            smoothnessrefdistance if field_prefix in {"fast", "medium"} else None
+            smoothnessrefdistance if solution_interval in {"fast", "medium"} else None
         )
 
     return inputs

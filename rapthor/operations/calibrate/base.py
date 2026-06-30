@@ -21,6 +21,7 @@ from rapthor.operations.calibrate.plan import (
     build_calibration_solve_plan,
     build_calibration_solve_slot_inputs,
     requested_calibration_solves,
+    solution_interval_for_solve_type,
 )
 from rapthor.operations.flow_execution import run_prefect_flow
 
@@ -94,8 +95,8 @@ class Calibrate(Operation):
             ) = self._get_model_image_parameters()
 
             core_stations = self._get_core_stations()
-            fast_antennaconstraint = f"[[{','.join(core_stations)}]]" if core_stations else "[]"
-            dd_solve_slot_inputs = self._build_default_dd_solve_slot_inputs(fast_antennaconstraint)
+            core_antenna_constraint = f"[[{','.join(core_stations)}]]" if core_stations else "[]"
+            dd_solve_slot_inputs = self._build_default_dd_solve_slot_inputs()
 
             solve_plan = self._build_solve_plan()
             self.solve_plan = solve_plan
@@ -245,7 +246,11 @@ class Calibrate(Operation):
                 "correcttimesmearing": field.correct_smearing_in_calibration,
                 "max_threads": self.parset["cluster_specific"]["max_threads"],
             }
-            self._apply_solve_plan_inputs(solve_plan, dp3_steps=dp3_steps)
+            self._apply_solve_plan_inputs(
+                solve_plan,
+                dp3_steps=dp3_steps,
+                core_antenna_constraint=core_antenna_constraint,
+            )
         elif self.mode == "di":
             solve_plan = self._build_solve_plan()
             self.solve_plan = solve_plan
@@ -402,21 +407,18 @@ class Calibrate(Operation):
             defaulted_strategy=defaulted_strategy,
         )
 
-    def _build_default_dd_solve_slot_inputs(self, fast_medium_antennaconstraint):
+    def _build_default_dd_solve_slot_inputs(self):
         inputs = {}
-        for slot, field_prefix in (
-            (1, "fast"),
-            (2, "medium"),
-            (3, "slow"),
-            (4, "medium"),
+        for slot, solve_type in (
+            (1, "fast_phase"),
+            (2, "medium_phase"),
+            (3, "slow_gains"),
+            (4, "medium_phase"),
         ):
             inputs.update(
                 self._build_field_solve_slot_inputs(
                     slot,
-                    field_prefix,
-                    include_smoothnessreffrequency=slot in {1, 2, 4},
-                    include_smoothnessrefdistance=slot in {1, 2, 4},
-                    antenna_constraint=fast_medium_antennaconstraint,
+                    solve_type,
                 )
             )
         return inputs
@@ -424,42 +426,42 @@ class Calibrate(Operation):
     def _build_field_solve_slot_inputs(
         self,
         slot,
-        field_prefix,
+        solve_type,
         *,
-        include_smoothnessreffrequency,
-        include_smoothnessrefdistance,
         antenna_constraint="[]",
     ):
+        solution_interval = solution_interval_for_solve_type(solve_type)
+        include_smoothness_reference = self._solve_type_uses_smoothness_reference(solve_type)
         smoothnessreffrequency = None
-        if field_prefix in {"fast", "medium"} and include_smoothnessreffrequency:
+        if include_smoothness_reference:
             smoothnessreffrequency = self.field.get_obs_parameters(
-                f"{field_prefix}_smoothnessreffrequency"
+                f"{solution_interval}_smoothnessreffrequency"
             )
 
         return build_calibration_solve_slot_inputs(
             slot,
-            field_prefix,
+            solve_type,
             ntimechunks=self.field.ntimechunks,
-            datause=getattr(self.field, f"{field_prefix}_datause"),
+            datause=getattr(self.field, f"{solution_interval}_datause"),
             solutions_per_direction=self.field.get_obs_parameters(
-                f"{field_prefix}_solutions_per_direction"
+                f"{solution_interval}_solutions_per_direction"
             ),
             smoothness_dd_factors=self.field.get_obs_parameters(
-                f"{field_prefix}_smoothness_dd_factors"
+                f"{solution_interval}_smoothness_dd_factors"
             ),
-            smoothnessconstraint=getattr(self.field, f"{field_prefix}_smoothnessconstraint"),
+            smoothnessconstraint=getattr(self.field, f"{solution_interval}_smoothnessconstraint"),
             antenna_constraint=antenna_constraint,
-            include_smoothnessreffrequency=include_smoothnessreffrequency,
+            include_smoothnessreffrequency=include_smoothness_reference,
             smoothnessreffrequency=smoothnessreffrequency,
-            include_smoothnessrefdistance=include_smoothnessrefdistance,
+            include_smoothnessrefdistance=include_smoothness_reference,
             smoothnessrefdistance=getattr(
                 self.field,
-                f"{field_prefix}_smoothnessrefdistance",
+                f"{solution_interval}_smoothnessrefdistance",
                 None,
             ),
         )
 
-    def _apply_solve_plan_inputs(self, solve_plan, dp3_steps=None):
+    def _apply_solve_plan_inputs(self, solve_plan, dp3_steps=None, *, core_antenna_constraint="[]"):
         field = self.field
         if dp3_steps is None:
             dp3_steps = [solve.step for solve in solve_plan]
@@ -468,6 +470,7 @@ class Calibrate(Operation):
             solve.solve_type == "slow_gains" for solve in solve_plan
         )
 
+        seen_slow_gain = False
         slot_map = {solve.slot: solve for solve in solve_plan}
         for slot in range(1, 5):
             solve = slot_map.get(slot)
@@ -497,7 +500,18 @@ class Calibrate(Operation):
             self.input_parms[initial_key] = self._solve_initial_solution_record(solve)
             self.input_parms[timestep_key] = field.get_obs_parameters(solve.timestep_key)
             self.input_parms[freqstep_key] = field.get_obs_parameters(solve.freqstep_key)
-            self._apply_solve_slot_inputs(solve)
+            self._apply_solve_slot_inputs(
+                solve,
+                antenna_constraint=(
+                    core_antenna_constraint
+                    if self._solve_uses_antenna_constraint(
+                        solve,
+                        seen_slow_gain=seen_slow_gain,
+                    )
+                    else "[]"
+                ),
+            )
+            seen_slow_gain = seen_slow_gain or solve.solve_type == "slow_gains"
 
         if self.mode == "di":
             self.input_parms["combined_solve1_solve2_h5parm"] = "combined_solve1_solve2_di.h5parm"
@@ -520,6 +534,10 @@ class Calibrate(Operation):
         for key, value in default_values.items():
             if key in self.input_parms:
                 self.input_parms[key] = value
+
+    def _remove_solve_smoothness_reference_inputs(self, slot):
+        self.input_parms.pop(f"solve{slot}_smoothnessreffrequency", None)
+        self.input_parms.pop(f"solve{slot}_smoothnessrefdistance", None)
 
     def _solve_initial_solution_record(self, solve):
         field = self.field
@@ -567,7 +585,22 @@ class Calibrate(Operation):
         current_path = self._current_cycle_solution_path(filepath, cycle_attr, label)
         return self._to_file_record_if_exists(current_path)
 
-    def _apply_solve_slot_inputs(self, solve):
+    @staticmethod
+    def _solve_uses_antenna_constraint(solve, *, seen_slow_gain):
+        """Return whether this solve should use the core-station constraint."""
+        if solve.solve_type == "fast_phase":
+            return True
+        return solve.solve_type == "medium_phase" and seen_slow_gain
+
+    @staticmethod
+    def _solve_type_uses_smoothness_reference(solve_type):
+        return solve_type in {"fast_phase", "medium_phase"}
+
+    @classmethod
+    def _solve_uses_smoothness_reference(cls, solve):
+        return cls._solve_type_uses_smoothness_reference(solve.solve_type)
+
+    def _apply_solve_slot_inputs(self, solve, *, antenna_constraint="[]"):
         slot = solve.slot
         if self.mode == "di" or solve.solve_type == "full_jones":
             self._clear_solve_slot_inputs(slot)
@@ -578,18 +611,14 @@ class Calibrate(Operation):
                 )
             return
 
-        field_prefix = solve.field_prefix
+        self._clear_solve_slot_inputs(slot)
+        if not self._solve_uses_smoothness_reference(solve):
+            self._remove_solve_smoothness_reference_inputs(slot)
         self.input_parms.update(
             self._build_field_solve_slot_inputs(
                 slot,
-                field_prefix,
-                include_smoothnessreffrequency=(
-                    f"solve{slot}_smoothnessreffrequency" in self.input_parms
-                ),
-                include_smoothnessrefdistance=(
-                    f"solve{slot}_smoothnessrefdistance" in self.input_parms
-                ),
-                antenna_constraint=self.input_parms.get("solve1_antennaconstraint", "[]"),
+                solve.solve_type,
+                antenna_constraint=antenna_constraint,
             )
         )
 

@@ -38,12 +38,19 @@ COMMON_STRATEGY_SETTINGS = {
     "do_check": False,
     "target_flux": 0.3,
     "max_directions": 4,
+    "calibration_strategy": {"dd": ["fast_phase", "medium_phase"]},
 }
 
 
 def make_strategy_step(**overrides):
     """Helper to create a strategy step with settings and overrides."""
-    return {**COMMON_STRATEGY_SETTINGS, **overrides}
+    step = {**COMMON_STRATEGY_SETTINGS, **overrides}
+    if "calibration_strategy" not in overrides:
+        step["calibration_strategy"] = {
+            mode: list(solves)
+            for mode, solves in COMMON_STRATEGY_SETTINGS["calibration_strategy"].items()
+        }
+    return step
 
 
 def _write_normalization_skymodel(output_path):

@@ -715,6 +715,36 @@ def _dd_slow_input_parms():
     return input_parms
 
 
+def _dd_slow_medium_input_parms():
+    input_parms = _dd_slow_input_parms()
+    input_parms.update(
+        {
+            "dp3_steps": "[solve1,solve2]",
+            "output_solve2_h5parm": [
+                "medium1_phase_0.h5parm",
+                "medium1_phase_1.h5parm",
+            ],
+            "collected_solve2_h5parm": "medium1_phases.h5parm",
+            "combined_h5parms": "combined_solutions.h5",
+            "solution_combine_mode": "p1p2a2_scalar",
+            "solint_solve2_timestep": [9, 10],
+            "solint_solve2_freqstep": [5, 6],
+            "solve1_antennaconstraint": "[]",
+            "solve2_mode": "scalarphase",
+            "solve2_solutions_per_direction": [[1, 1], [1, 1]],
+            "solve2_smoothness_dd_factors": [[2.0, 3.0], [2.5, 3.5]],
+            "solve2_smoothnessconstraint": 2400000.0,
+            "solve2_smoothnessreffrequency": [152000000.0, 153000000.0],
+            "solve2_smoothnessrefdistance": 3500.0,
+            "solve2_antennaconstraint": "[[CS001HBA0,CS002HBA0]]",
+            "solve2_datause": "full",
+            "solve2_initialsolutions_h5parm": None,
+            "do_slowgain_solve": True,
+        }
+    )
+    return input_parms
+
+
 def _dd_fast_medium_input_parms():
     input_parms = _dd_fast_phase_input_parms()
     input_parms.update(
@@ -1615,6 +1645,37 @@ def test_calibrate_payload_from_inputs_builds_dd_slow_payload(tmp_path):
     }
 
 
+def test_calibrate_payload_from_inputs_builds_dd_slow_then_medium_payload(tmp_path):
+    payload = calibrate_payload_from_inputs("dd", _dd_slow_medium_input_parms(), tmp_path)
+
+    assert payload["calibration_kind"] == "dd_ddecal"
+    assert payload["combined_h5parms"] == {
+        "final": {
+            "filename": "combined_solutions.h5",
+            "path": str(tmp_path / "combined_solutions.h5"),
+        },
+    }
+    assert [
+        (
+            slot["slot"],
+            slot["solve_type"],
+            slot["h5parm"],
+            slot["antennaconstraint"],
+            slot["reusemodel"],
+        )
+        for slot in payload["chunks"][0]["solve_slots"]
+    ] == [
+        (1, "slow_gains", "slow_gain_0.h5parm", "[]", None),
+        (
+            2,
+            "medium_phase",
+            "medium1_phase_0.h5parm",
+            "[[CS001HBA0,CS002HBA0]]",
+            "[solve1.*]",
+        ),
+    ]
+
+
 def test_calibrate_payload_from_inputs_converts_array_like_scatter_values(tmp_path):
     input_parms = _dd_fast_medium_input_parms()
     input_parms["solve1_smoothness_dd_factors"] = [np.array([1.0]), np.array([1.5])]
@@ -2268,6 +2329,47 @@ def test_run_calibrate_flow_supports_dd_slow(tmp_path, fake_calibrate_shell_oper
     assert "--first-dir" not in commands[3]
     assert "--first-dir" not in commands[4]
     assert commands[2][2] == f"{tmp_path / 'slow_gain_0.h5parm'},{tmp_path / 'slow_gain_1.h5parm'}"
+
+
+def test_run_calibrate_flow_supports_dd_slow_then_medium(
+    tmp_path, fake_calibrate_shell_operation_cls
+):
+    payload = calibrate_payload_from_inputs("dd", _dd_slow_medium_input_parms(), tmp_path)
+
+    outputs = run_flow_for_test(
+        calibrate_flow,
+        payload,
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_calibrate_shell_operation_cls,
+    )
+
+    assert outputs == {
+        "combined_solutions": file_record(tmp_path / "combined_solutions.h5"),
+        "slow_gain_solutions": file_record(tmp_path / "slow_gains.h5parm"),
+        "medium1_phase_solutions": file_record(tmp_path / "medium1_phases.h5parm"),
+        "slow_phase_plots": [file_record(tmp_path / "slow_phase_solutions.png")],
+        "slow_amp_plots": [file_record(tmp_path / "slow_amplitude_solutions.png")],
+        "medium1_phase_plots": [file_record(tmp_path / "medium1_phase_solutions.png")],
+    }
+    for value in outputs.values():
+        validate_output_record(value)
+
+    commands = _command_tokens(fake_calibrate_shell_operation_cls)
+    assert _command_names(commands) == [
+        "DP3",
+        "DP3",
+        "H5parm_collector.py",
+        PLOT_SOLUTIONS_COMMAND_NAME,
+        PLOT_SOLUTIONS_COMMAND_NAME,
+        "H5parm_collector.py",
+        PLOT_SOLUTIONS_COMMAND_NAME,
+    ]
+    assert "steps=[solve1,solve2]" in commands[0]
+    assert "solve1.mode=diagonal" in commands[0]
+    assert "solve1.antennaconstraint=[]" in commands[0]
+    assert "solve2.mode=scalarphase" in commands[0]
+    assert "solve2.antennaconstraint=[[CS001HBA0,CS002HBA0]]" in commands[0]
+    assert "solve2.reusemodel=[solve1.*]" in commands[0]
 
 
 def test_run_calibrate_flow_supports_dd_fast_medium(tmp_path, fake_calibrate_shell_operation_cls):

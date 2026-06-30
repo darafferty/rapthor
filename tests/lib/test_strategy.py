@@ -289,6 +289,7 @@ def test_validate_strategy_raises_error_for_inconsistent_strategy_and_parset_set
         ({"di": ["fast_phase"]}, None),
         ({"dd": ["fast_phase"]}, None),
         ({"di": ["fast_phase", "medium_phase", "slow_gains"]}, None),
+        ({"dd": ["slow_gains", "medium_phase"]}, None),
         ({"dd": ["fast_phase", "medium_phase", "slow_gains"]}, None),
         (
             {"di": [], "dd": ["full_jones"]},
