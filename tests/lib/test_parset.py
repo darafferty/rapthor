@@ -11,7 +11,7 @@ import re
 import pytest
 
 from rapthor.lib.parset import check_and_adjust_skymodel_settings, parset_read
-from rapthor.testing import generate_parset, assert_logged
+from rapthor.testing import assert_logged, generate_parset
 
 
 def assert_warning_logged(caplog, *expected_messages):
