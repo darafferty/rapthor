@@ -221,7 +221,16 @@ def single_loop_do_normalize_strategy_path(tmp_path):
 @pytest.fixture
 def single_loop_strategy_path_fast_medium_slow(tmp_path):
     """Fixture to generate a strategy file for a single self-calibration loop with fast, medium, and slow gains."""
-    strategy_steps = [make_strategy_step(do_calibrate=True, do_image=True, do_slowgain_solve=True)]
+    strategy_steps = [
+        make_strategy_step(
+            do_calibrate=True,
+            do_image=True,
+            do_slowgain_solve=True,
+            calibration_strategy={
+                "dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"],
+            },
+        )
+    ]
     strategy_content = f"strategy_steps = {strategy_steps}"
     strategy_path = tmp_path / "single_loop_strategy_fast_medium_slow.py"
     strategy_path.write_text(strategy_content)

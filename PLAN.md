@@ -48,8 +48,31 @@ Known follow-ups:
 
 ## Immediate Next Work
 
-Finish the remaining script-entrypoint cleanup before starting new scalability
-work.
+Finish the calibration-equivalence check, then complete the remaining
+script-entrypoint cleanup before starting new scalability work.
+
+### 0. Calibration Strategy Equivalence
+
+Keep the current contract explicit: if a cycle should run a medium phase solve
+after slow gains, the strategy must request it directly as:
+
+```python
+{"dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"]}
+```
+
+- Done: current default/flexible/demo strategy examples use the explicit
+  post-slow medium solve.
+- Done: the saved CWL equivalence runner reconstructs the slow-gain strategy
+  explicitly and skips the stale phase-only `dd_slow_gain_calibration`
+  reference by default.
+- Done: output-record shape changes are treated as metadata warnings in the
+  saved CWL equivalence runner, and beam-table text products are compared
+  numerically with tolerance.
+- Next: investigate the remaining `field-solutions-medium1-phase.h5`
+  differences. Current final FITS products and final combined h5parms compare,
+  but the auxiliary medium1 h5parm differs numerically in standard DD scenarios
+  and is no longer published under the old `work/solutions/...` filename in
+  normalization/peeling scenarios.
 
 ### 1. Move Remaining Shell Adapters Into Execution
 
