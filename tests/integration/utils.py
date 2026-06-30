@@ -190,7 +190,7 @@ def make_failing_filter_skymodel(fake_bin_dir):
     """Create a PATH-injected Python shim that fails the skymodel filter adapter."""
     fake_script = fake_bin_dir / "python3"
     fake_script.write_text(
-        "#!/usr/bin/env python3\n"
+        f"#!{sys.executable}\n"
         "import os\n"
         "import sys\n\n"
         "if sys.argv[1:3] == ['-m', 'rapthor.execution.image.skymodel_filter_cli']:\n"

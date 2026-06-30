@@ -2361,6 +2361,7 @@ def test_run_image_flow_returns_normalization_outputs(tmp_path, fake_image_shell
         "taql",
         "wsclean",
         FILTER_SKYMODEL_COMMAND_NAME,
+        CUBE_CATALOG_COMMAND_NAME,
     ]
 
 
