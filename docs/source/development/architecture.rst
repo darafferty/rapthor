@@ -14,7 +14,8 @@ Rapthor should follow one-way dependencies:
 * Application/use-case code may depend on the domain and plain serializable
   contracts, but not on Prefect task objects or live Dask runtime state.
 * Interface adapters translate between use-case contracts and the outside world:
-  command lines, scripts, output records, filesystems, and shell execution.
+  command lines, execution-owned module adapters, output records, filesystems,
+  and shell execution.
 * Frameworks and drivers contain Prefect flows, Dask task runners, Slurm
   integration, artifacts, dashboards, and runtime resource checks.
 
@@ -79,6 +80,13 @@ Layer Ownership
      - Prefect orchestration for one operation: task boundaries, scheduling,
        retries, artifacts, flow-level validation, and runtime integration.
      - ``tests/execution/test_*_flow.py``
+   * - Execution-owned helper modules such as
+       ``rapthor.execution.image.skymodel_filter``,
+       ``rapthor.execution.image.cube_catalog_cli``, and
+       ``rapthor.execution.calibrate.plotting``
+     - Importable implementations for migrated helper utilities, plus thin
+       ``python -m`` adapters where shell isolation is still useful.
+     - Focused execution tests and command reference fixtures.
    * - ``rapthor.execution.pipeline``
      - Top-level pipeline orchestration, lifecycle hooks, preflight feature
        detection, and preflight integration.
@@ -88,10 +96,13 @@ Layer Ownership
      - Runtime infrastructure and adapters for local, Dask, Slurm, shell, and
        artifact behaviour.
      - Focused tests under ``tests/execution``
-   * - ``rapthor.scripts``
-     - Standalone helper scripts. As scripts are touched, move core behaviour
-       into importable functions and keep CLIs as thin wrappers.
-     - ``tests/scripts``
+
+``rapthor.scripts`` is no longer a production pipeline layer. New or migrated
+helper logic should live under the execution package that owns it, for example
+``rapthor.execution.image`` for imaging helpers or
+``rapthor.execution.calibrate`` for calibration helpers. ``bin/concat_linc_files``
+remains a supported standalone utility for now; do not use that as a pattern for
+new pipeline helpers.
 
 Public Export Guidance
 ----------------------
@@ -119,9 +130,37 @@ New code should import from the module that owns the behaviour, for example:
 * Prefect flows from the concrete ``rapthor.execution.<operation>.flow`` module
   or ``rapthor.execution.pipeline.flow`` for the top-level pipeline
 * runtime helpers from their concrete runtime module
+* module-adapter command construction from
+  ``rapthor.execution.commands.python_module_command``
 
 Do not add new package-level facade exports unless there is a documented
 compatibility reason.
+
+Execution-Owned Module Adapters
+-------------------------------
+
+Most migrated helper logic should be called directly as Python functions from
+the relevant flow or work-unit module. Use a ``python -m`` module adapter only
+when a helper benefits from a separate process boundary, for example because a
+third-party library manages global state, multiprocessing, or native resources.
+
+Current examples:
+
+* sky-model filtering lives in
+  ``rapthor.execution.image.skymodel_filter.filter_image_skymodel``. It may run
+  through ``rapthor.execution.image.skymodel_filter_cli`` when PyBDSF or
+  ``lsmtool`` isolation is useful.
+* image-cube catalog generation uses
+  ``rapthor.execution.image.cube_catalog_cli`` as the thin module adapter around
+  execution-owned image-cube helpers.
+* calibration solution plotting lives in
+  ``rapthor.execution.calibrate.plotting.plot_solutions``. Flow code may invoke
+  ``rapthor.execution.calibrate.plotting_cli`` through shell execution so plot
+  generation remains isolated from worker state.
+
+Build these commands with ``python_module_command`` rather than hand-written
+``python3 -m`` token lists. Keep adapters thin: parse CLI arguments, call the
+owned Python function, and return a process status.
 
 Compatibility Shim Lifecycle
 ----------------------------
@@ -173,9 +212,12 @@ When changing runtime behaviour:
 * use integration or target-environment tests only for behaviour that needs the
   deployment stack
 
-When converting a script to a module:
+When converting a legacy utility to an execution module:
 
 * extract an importable Python function first
-* keep the existing CLI as a compatibility wrapper
-* add Python function tests and CLI parity tests
+* place the function under the execution package that owns the work
+* add a ``python -m`` adapter only when subprocess isolation is still useful
+* add Python function tests and adapter tests when an adapter exists
+* update command fixtures and architecture tests so retired script paths cannot
+  reappear accidentally
 * keep large data movement explicit and Dask-friendly

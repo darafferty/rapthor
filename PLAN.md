@@ -195,30 +195,35 @@ After the remaining entry point moves:
   possible, so CLI parsing cannot drift from the importable API.
 - Done: `bin/concat_linc_files` remains a supported utility for now.
 
-### 3. Documentation Update
+### 3. Documentation Update (Complete)
 
 Update `docs/source/development/architecture.rst` so it reflects the current
 architecture:
 
-- `rapthor.scripts` is no longer a production pipeline layer.
-- Migrated helper logic lives under `rapthor.execution.<owner>`.
-- PyBDSF/lsmtool filtering may still run in a subprocess, but via an
+- Done: `rapthor.scripts` is no longer documented as a production pipeline
+  layer.
+- Done: migrated helper logic is documented under `rapthor.execution.<owner>`.
+- Done: PyBDSF/lsmtool filtering may still run in a subprocess, but via an
   execution-owned adapter rather than a legacy script wrapper.
-- Calibration solution plotting is owned by `rapthor.execution.calibrate` and
-  may still run through shell execution via a module adapter.
+- Done: calibration solution plotting is documented as owned by
+  `rapthor.execution.calibrate`, with optional shell execution through a module
+  adapter.
+- Done: `python_module_command` is documented as the standard way to build
+  execution-owned module adapter commands.
 
-### 4. Focused Verification
+### 4. Focused Verification (In Progress)
 
 Run these after the entrypoint cleanup:
 
-- `tests/architecture/test_import_boundaries.py`
-- `tests/execution/test_image_flow.py`
-- `tests/execution/test_calibrate_flow.py`
-- moved filter-skymodel execution tests
-- moved plot-solution execution tests
-- `tests/integration/test_rapthor_restart.py` when the integration environment
+- Done: `tests/architecture/test_import_boundaries.py`
+- Done: `tests/execution/test_image_flow.py`
+- Done: `tests/execution/test_calibrate_flow.py`
+- Done: moved filter-skymodel execution tests
+- Done: moved plot-solution execution tests
+- Run `tests/integration/test_rapthor_restart.py` when the integration environment
   is available
-- Sphinx build once the docs environment has `sphinx`
+- Run the Sphinx build once the docs environment has `sphinx`; the current dev
+  container does not have the package installed.
 
 ## Next Refactor Slice
 
