@@ -113,10 +113,75 @@ Done when:
 - Calibration strategy/output regressions fail in focused tests before they
   require a full manual equivalence investigation.
 
-### 2. Dask Scalability Contracts
+### 2. Runtime Bootstrap For Prefect And Dask
+
+Make `rapthor input.parset` succeed predictably whether or not the user has an
+existing Prefect server or Dask cluster.
+
+Tasks:
+
+- Add a small runtime bootstrap layer before `pipeline_flow` starts:
+  - use an existing Prefect API when `PREFECT_API_URL` or a parset value is set
+    and reachable
+  - otherwise allow Prefect to use its temporary local API/server
+  - expose an explicit mode such as `prefect_api_mode = auto|external|ephemeral`
+- Extend execution config and defaults for Prefect API selection without
+  breaking the existing `rapthor input.parset` CLI.
+- Preflight the runtime before launching long work:
+  - check external Prefect API health when configured
+  - check external Dask scheduler address and worker count
+  - report local Dask worker/thread settings when no external scheduler is used
+  - fail early with actionable messages for unreachable servers or schedulers
+- Keep Dask task-runner selection simple:
+  - `dask_scheduler` or `DASK_SCHEDULER` means `external_dask`
+  - no scheduler means `local_dask`
+  - explicit `prefect_task_runner` still overrides auto-selection
+- Prefer one visible Dask scheduler for the whole `rapthor input.parset` run
+  instead of short-lived per-operation local clusters, so the dashboard shows
+  the full task stream.
+- Add local worker sizing that is separate from node count, e.g.
+  `local_dask_workers`, so single-node runs can use several workers without
+  pretending those workers are separate nodes.
+- Add tests for the startup matrix:
+  - no Prefect server and no Dask cluster
+  - existing Prefect server and no Dask cluster
+  - no Prefect server and existing Dask cluster
+  - existing Prefect server and existing Dask cluster
+- Document the supported runtime modes and environment variables in the user
+  docs.
+- Add clear copy/paste quick-start docs with the lowest-friction commands for:
+  - running Rapthor with the built-in ephemeral Prefect API and local Dask
+  - starting a persistent local Prefect server and exporting `PREFECT_API_URL`
+  - starting a local Dask scheduler/workers and setting `dask_scheduler` or
+    `DASK_SCHEDULER`
+  - using an existing Prefect server and Dask cluster on shared infrastructure
+
+Done when:
+
+- `rapthor input.parset` has a clear, tested runtime contract for local runs,
+  external Prefect, local Dask, and external Dask.
+- Startup failures happen before expensive pipeline work and explain exactly
+  what the user should fix.
+- A new user can copy commands from the docs and run Rapthor locally with
+  minimal setup friction.
+
+### 3. Dask Scalability Contracts
 
 Prove that the pipeline can scale across multiple workers or nodes without
 accidentally passing domain objects, huge nested state, or local-only paths.
+
+Current findings:
+
+- The Dask dashboard can look quiet because the current flow tasks are coarse:
+  one imaging task per sector, one calibration task per time chunk, one mosaic
+  task per image type, one concatenate task per epoch, and one predict task per
+  model-data command or post-process group.
+- Top-level pipeline operation ordering is intentionally sequential because
+  later operations depend on field state and products from earlier operations.
+  Parallelism should therefore be improved inside operation flows first.
+- Long-running external tools such as DP3, WSClean, IDG, and PyBDSF should stay
+  coarse resource-managed tasks. Dask should orchestrate around them rather
+  than trying to split their internal work.
 
 Tasks:
 
@@ -130,6 +195,24 @@ Tasks:
 - Check that all worker payloads are plain serializable data, not `Field`,
   `Observation`, `Sector`, or operation instances.
 - Extend resource-request coverage beyond image WSClean MPI paths.
+- Split image-sector orchestration into clearer Dask task boundaries:
+  - prepare one imaging Measurement Set per observation
+  - concatenate prepared Measurement Sets
+  - run or reuse WSClean
+  - filter source/skymodel products
+  - run diagnostics
+  - build image cubes and normalization products
+  - compress final images when requested
+- Split mosaic orchestration into template, per-sector regrid, final mosaic,
+  and optional compression tasks.
+- Let predict post-processing for an observation start as soon as that
+  observation's model-data outputs are ready, instead of waiting for all model
+  outputs globally.
+- Add stable, descriptive Prefect task names that include sector, chunk,
+  observation, image type, or epoch identifiers so the Dask dashboard is useful
+  for debugging.
+- Keep task granularity practical: do not split DP3, WSClean, IDG, or PyBDSF
+  internals into Dask subtasks unless a proven library-level integration exists.
 - Document which steps are distributed by Dask and which still run as coarse
   external commands or execution-owned module adapters.
 
@@ -139,8 +222,10 @@ Done when:
 - A developer can see what data each boundary receives.
 - The tests fail if a future refactor starts sending rich domain objects or
   oversized payloads to workers.
+- A representative demo run shows meaningful task-stream activity in the Dask
+  dashboard without oversubscribing threaded or MPI external tools.
 
-### 3. Runtime UX: Dry Run And Preflight
+### 4. Runtime UX: Dry Run And Preflight
 
 Make it easier for users to understand likely runtime failures before launching
 a long pipeline run.
@@ -168,7 +253,7 @@ Done when:
 - A user can run a preflight/dry-run path and understand likely runtime failures
   without reading flow code.
 
-### 4. Contributor Documentation
+### 5. Contributor Documentation
 
 Add short docs/checklists for common changes:
 
@@ -183,7 +268,7 @@ Include fast test lanes for each change type and point contributors to the
 owner module for payloads, commands, outputs, operation adapters, and Prefect
 flow wiring.
 
-### 5. Deferred Targeted Refactors
+### 6. Deferred Targeted Refactors
 
 Do not split these modules just for tidiness. Split them when changing behavior
 or when a smaller extraction clearly reduces risk:
