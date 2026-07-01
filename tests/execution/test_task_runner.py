@@ -172,6 +172,26 @@ def test_run_flow_with_task_runner_applies_configured_runner(monkeypatch):
     }
 
 
+def test_run_flow_with_task_runner_applies_flow_run_name(monkeypatch):
+    runner = object()
+    config = ExecutionConfig(task_runner="sync")
+    flow = FakeFlow()
+
+    monkeypatch.setattr(
+        "rapthor.execution.task_runner.build_task_runner",
+        lambda execution_config: runner,
+    )
+
+    run_flow_with_task_runner(
+        flow,
+        "payload",
+        execution_config=config,
+        flow_run_name="calibrate_dd_2",
+    )
+
+    assert flow.options == {"task_runner": runner, "flow_run_name": "calibrate_dd_2"}
+
+
 def test_check_dask_scheduler_returns_worker_count():
     class FakeClient:
         calls = []

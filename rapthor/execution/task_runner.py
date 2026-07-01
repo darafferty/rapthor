@@ -116,10 +116,14 @@ def run_flow_with_task_runner(
     prefect_flow,
     *flow_args,
     execution_config: Optional[ExecutionConfig] = None,
+    flow_run_name: Optional[str] = None,
     **flow_kwargs,
 ):
     """Run a Prefect flow with the task runner requested by execution config."""
     config = execution_config or ExecutionConfig()
     task_runner = build_task_runner(config)
-    configured_flow = prefect_flow.with_options(task_runner=task_runner)
+    flow_options = {"task_runner": task_runner}
+    if flow_run_name is not None:
+        flow_options["flow_run_name"] = flow_run_name
+    configured_flow = prefect_flow.with_options(**flow_options)
     return configured_flow(*flow_args, execution_config=config, **flow_kwargs)

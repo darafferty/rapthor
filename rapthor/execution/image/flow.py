@@ -10,6 +10,7 @@ from rapthor.execution.image.sector import run_image_sector as _run_image_sector
 from rapthor.execution.image.validation import validate_image_payload
 from rapthor.execution.payloads import assert_serializable_payload
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
+from rapthor.execution.run_names import operation_run_name, task_run_name
 from rapthor.execution.task_runner import run_flow_with_task_runner
 from rapthor.lib.records import validate_output_record
 
@@ -87,13 +88,19 @@ def _run_image_prefect_tasks(
     assert_serializable_payload(payload)
     config = execution_config or ExecutionConfig(task_runner="sync")
     payload = validate_image_payload(payload)
+    operation_name = operation_run_name(payload, "image")
     sector_outputs = [
-        image_sector_task.submit(
+        image_sector_task.with_options(
+            task_run_name=task_run_name(
+                operation_name,
+                sector.get("image_name") or f"sector_{index + 1}",
+            )
+        ).submit(
             sector,
             payload["pipeline_working_dir"],
             execution_config=config,
         )
-        for sector in payload["sectors"]
+        for index, sector in enumerate(payload["sectors"])
     ]
     sector_outputs = [output.result() for output in sector_outputs]
     return _result_from_sector_records(sector_outputs)
@@ -117,5 +124,6 @@ def image_flow(
     return run_flow_with_task_runner(
         _image_flow,
         payload,
+        flow_run_name=operation_run_name(payload, "image"),
         execution_config=execution_config,
     )

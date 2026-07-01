@@ -13,6 +13,7 @@ from rapthor.execution.mosaic.payloads import MosaicImageTypePayload, validate_m
 from rapthor.execution.outputs import require_file
 from rapthor.execution.payloads import assert_serializable_payload
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
+from rapthor.execution.run_names import operation_run_name, task_run_name
 from rapthor.execution.shell import run_external_command
 from rapthor.execution.task_runner import run_flow_with_task_runner
 from rapthor.lib.records import validate_output_record
@@ -131,14 +132,17 @@ def _run_mosaic_prefect_tasks(
         return {}
 
     config = execution_config or ExecutionConfig(task_runner="sync")
+    operation_name = operation_run_name(payload, "mosaic")
     outputs = [
-        mosaic_image_type_task.submit(
+        mosaic_image_type_task.with_options(
+            task_run_name=task_run_name(operation_name, "image_type", index + 1)
+        ).submit(
             image_type,
             payload["compress_images"],
             payload["pipeline_working_dir"],
             execution_config=config,
         )
-        for image_type in payload["image_types"]
+        for index, image_type in enumerate(payload["image_types"])
     ]
     outputs = [output.result() for output in outputs]
     return _result_from_mosaic_records(outputs)
@@ -162,5 +166,6 @@ def mosaic_flow(
     return run_flow_with_task_runner(
         _mosaic_flow,
         payload,
+        flow_run_name=operation_run_name(payload, "mosaic"),
         execution_config=execution_config,
     )
