@@ -8,27 +8,40 @@ Prefect/Dask flows. The Rapthor code tree is organized as follows::
 
    rapthor-master
    ├── bin
-   │   └── rapthor
+   │   └── concat_linc_files
    ├── docs
    ├── examples
    ├── rapthor
+   │   ├── cli.py
    │   ├── lib
    │   ├── operations
-   │   ├── execution
-   │   └── scripts
-   └── test
+   │   └── execution
+   ├── scripts
+   │   ├── dev
+   │   └── prod
+   └── tests
 
 In the folder structure above:
 
-- ``rapthor-master/bin`` contains the ``rapthor`` executable used to run Rapthor (see :ref:`running`).
+- ``rapthor-master/bin`` contains supported standalone utilities. The main
+  ``rapthor`` command is installed from the package entry point
+  ``rapthor.cli:main``.
 - ``rapthor-master/docs`` contains this Sphinx documentation.
-- ``rapthor-master/examples`` contains an example parset and strategy file.
+- ``rapthor-master/examples`` contains example parsets and strategy files.
 - ``rapthor-master/rapthor`` contains the main Rapthor Python package.
-- ``rapthor-master/rapthor/lib`` contains the main Rapthor classes and modules (see :ref:`classes_modules`).
-- ``rapthor-master/rapthor/operations`` contains the operation subclasses (see :ref:`operation_subclasses`).
-- ``rapthor-master/rapthor/execution`` contains the Prefect/Dask execution flows and helpers.
-- ``rapthor-master/rapthor/scripts`` contains the processing scripts (see :ref:`scripts`).
-- ``rapthor-master/test`` contains files used for testing.
+- ``rapthor-master/rapthor/cli.py`` contains the command-line entry point used
+  by the installed ``rapthor`` command and by ``python -m rapthor.cli``.
+- ``rapthor-master/rapthor/lib`` contains the main Rapthor classes and modules
+  (see :ref:`classes_modules`).
+- ``rapthor-master/rapthor/operations`` contains operation adapters and
+  operation planning helpers (see :ref:`operation_subclasses`).
+- ``rapthor-master/rapthor/execution`` contains Prefect/Dask execution flows,
+  command builders, payload contracts, output discovery, and importable helper
+  modules.
+- ``rapthor-master/scripts`` contains development and deployment launch helpers.
+  These are not part of the production pipeline layer.
+- ``rapthor-master/tests`` contains unit, execution, operation, and integration
+  tests.
 
 
 .. _classes_modules:
@@ -51,9 +64,16 @@ The following Python classes and modules are the principal ones used in Rapthor.
    parset_module
 
 
-.. _scripts:
+Execution helpers and module adapters
+-------------------------------------
 
-Python processing scripts
--------------------------
+Production pipeline helpers should live under the execution package that owns
+the work. For example, image helper code belongs under
+``rapthor.execution.image`` and calibration helper code belongs under
+``rapthor.execution.calibrate``.
 
-The Rapthor operations call a number of Python scripts to process the solutions, images, etc. The scripts are located in the ``rapthor/scripts/`` directory of the code tree. For details of each script's function, see the inline documentation in the script's code. A description of the inputs can also be obtained by running the script with the ``-h`` flag.
+Most helpers are called directly as Python functions from Prefect/Dask task
+bodies. When a separate process remains useful for dependency isolation, the
+pipeline uses a thin ``python -m`` module adapter under ``rapthor.execution``
+rather than a legacy ``rapthor/scripts`` wrapper. The development architecture
+guide describes this pattern in more detail.

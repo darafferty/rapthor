@@ -237,9 +237,9 @@ next payload/scalability refactor slice.
 - Done: added Sphinx, numpydoc, and the Snowball stemmer constraint to the docs
   and dev dependency sets so rebuilt dev containers can build documentation by
   default.
-- Update stale structure docs, especially `docs/source/code.rst`, so they no
-  longer describe `bin/rapthor` or `rapthor/scripts` as active production
-  layout.
+- Done: updated stale structure docs, especially `docs/source/code.rst`, so
+  they no longer describe `bin/rapthor` or `rapthor/scripts` as active
+  production layout.
 - Convert `bin/concat_linc_files` to a package-owned CLI module and
   `[project.scripts]` entry point, or explicitly keep it as the one supported
   standalone legacy utility with clear docs and tests.

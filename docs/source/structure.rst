@@ -5,10 +5,11 @@ General structure
 
 Rapthor is organized around Python operation classes and Prefect/Dask execution
 flows. Each operation sets up the required inputs, runs the external radio
-astronomy tools or helper scripts, records restart state, and publishes the
-products needed by later operations. The overall structure of the processing as
-done by Rapthor is shown in the figure below. A full processing run is divided
-into a number of operations, each of which can be run (or not) as needed.
+astronomy tools or execution-owned helper modules, records restart state, and
+publishes the products needed by later operations. The overall structure of the
+processing as done by Rapthor is shown in the figure below. A full processing
+run is divided into a number of operations, each of which can be run (or not) as
+needed.
 
 .. _rapthor-flowchart:
 
