@@ -7,8 +7,8 @@ import logging
 import os
 from typing import List, Union
 
+from rapthor.execution.image.builders import image_payload_from_inputs
 from rapthor.execution.image.flow import image_flow
-from rapthor.execution.image.payloads import image_payload_from_inputs
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.operation import Operation
 from rapthor.lib.records import DirectoryRecord, FileRecord

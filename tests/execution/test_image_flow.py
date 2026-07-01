@@ -13,6 +13,7 @@ import rapthor.execution.image.sector as image_sector_module
 import rapthor.execution.image.wsclean as image_wsclean_module
 from rapthor.execution.commands import normalize_command
 from rapthor.execution.config import ExecutionConfig
+from rapthor.execution.image.builders import image_payload_from_inputs
 from rapthor.execution.image.commands import (
     ATERM_CONFIG_FILENAME,
     CUBE_CATALOG_MODULE,
@@ -38,7 +39,6 @@ from rapthor.execution.image.flow import (
     image_flow,
     image_sector_task,
 )
-from rapthor.execution.image.payloads import image_payload_from_inputs
 from rapthor.lib.field import Field as RapthorField
 from rapthor.lib.records import directory_record, file_record, validate_output_record
 from rapthor.operations.image.base import Image

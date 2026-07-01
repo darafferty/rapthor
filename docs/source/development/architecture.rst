@@ -61,7 +61,9 @@ Layer Ownership
        Prefect, Dask, shell execution, and operation objects.
      - Focused output contract tests and operation flow tests.
    * - ``rapthor.execution.payloads`` and operation payload modules such as
-       ``rapthor.execution.image.payloads`` and
+       ``rapthor.execution.image.contracts``,
+       ``rapthor.execution.image.builders``,
+       ``rapthor.execution.image.validation``, and
        ``rapthor.execution.calibrate.payloads``
      - Shared payload serialization checks plus operation-specific typed payload
        contracts, builders, and validators. As operation packages are
@@ -118,8 +120,9 @@ New code should import from the module that owns the behaviour, for example:
   command modules such as ``rapthor.execution.image.commands`` or
   ``rapthor.execution.calibrate.commands``
 * payload helpers from the payload/use-case module that owns the contract, such
-  as ``rapthor.execution.image.payloads`` or
-  ``rapthor.execution.calibrate.payloads`` for operation payload mapping
+  as ``rapthor.execution.image.contracts``,
+  ``rapthor.execution.image.builders``, ``rapthor.execution.image.validation``,
+  or ``rapthor.execution.calibrate.payloads`` for operation payload mapping
 * finalizer-compatible file/directory record helpers from
   ``rapthor.lib.records``
 * output discovery helpers from operation-specific modules such as

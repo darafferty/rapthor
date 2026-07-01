@@ -260,7 +260,9 @@ assertions.
 Split the largest payload modules into clearer contracts, builders, and
 validation modules:
 
-- `rapthor.execution.image.payloads`
+- Done: split `rapthor.execution.image.payloads` into direct owner modules:
+  `rapthor.execution.image.contracts`, `rapthor.execution.image.builders`, and
+  `rapthor.execution.image.validation`.
 - `rapthor.execution.calibrate.payloads`
 
 Target shape:

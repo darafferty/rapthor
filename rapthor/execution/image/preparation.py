@@ -9,8 +9,8 @@ from rapthor.execution.image.commands import (
     PrepareImagingDataOptions,
     build_prepare_imaging_data_command,
 )
+from rapthor.execution.image.contracts import ImageSectorPayload
 from rapthor.execution.image.masking import blank_image
-from rapthor.execution.image.payloads import ImageSectorPayload
 from rapthor.execution.outputs import require_directory, require_file
 from rapthor.execution.regions import make_ds9_region_from_skymodel
 from rapthor.execution.shell import run_external_command

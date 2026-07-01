@@ -4,6 +4,7 @@ from typing import Optional
 
 from rapthor.execution.artifacts import publish_fits_image_artifacts
 from rapthor.execution.config import ExecutionConfig
+from rapthor.execution.image.contracts import ImageSectorPayload
 from rapthor.execution.image.diagnostics import run_image_diagnostics
 from rapthor.execution.image.outputs import (
     compress_image_records,
@@ -14,7 +15,6 @@ from rapthor.execution.image.outputs import (
     mfs_extra_image_patterns,
     source_list_records,
 )
-from rapthor.execution.image.payloads import ImageSectorPayload
 from rapthor.execution.image.preparation import (
     ensure_facet_region,
     ensure_imaging_mask,
