@@ -4,7 +4,6 @@ import os
 import re
 from typing import Mapping, Optional
 
-
 _CYCLE_SUFFIX = re.compile(r"_(\d+)$")
 _RUN_NAME_SAFE_CHARACTERS = re.compile(r"[^A-Za-z0-9_.-]+")
 
