@@ -226,7 +226,7 @@ def _wsclean_common_options(options: WscleanOptions) -> list[tuple[str, object]]
 
 
 def build_wsclean_no_dde_command(options: WscleanOptions) -> list[str]:
-    """Build the serial no-DDE WSClean command for one imaging sector."""
+    """Build the serial no-DD WSClean command for one imaging sector."""
     command = _wsclean_command_base() + [
         "-apply-primary-beam",
         "-log-time",
@@ -376,7 +376,7 @@ def _mpi_wsclean_command(wsclean_command: list[str], mpi_nnodes: int) -> list[st
 
 
 def build_wsclean_mpi_no_dde_command(mpi_nnodes: int, options: WscleanOptions) -> list[str]:
-    """Build the MPI no-DDE WSClean command for one imaging sector."""
+    """Build the MPI no-DD WSClean command for one imaging sector."""
     return _mpi_wsclean_command(build_wsclean_no_dde_command(options), mpi_nnodes)
 
 

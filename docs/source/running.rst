@@ -36,7 +36,7 @@ number of options are available and are described below:
       -v                    enable verbose mode
 
 Rapthor begins a run by checking the input measurement sets. Next, Rapthor
-will determine the DDE calibrators from the input sky model and begin self
+will determine the DD calibrators from the input sky model and begin self
 calibration and imaging. Rapthor uses Prefect/Dask to handle operation
 execution, task orchestration, logging, artifacts, and restart state. Each
 Rapthor operation is done in a separate flow. See :ref:`structure` for an overview of the various

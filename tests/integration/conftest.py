@@ -29,7 +29,7 @@ COMMON_STRATEGY_SETTINGS = {
     "max_nmiter": 12,
     # Disable regrouping of sky model
     "regroup_model": True,
-    # Max distance allowed between selected DDE calibrators
+    # Max distance allowed between selected DD calibrators
     "max_distance": None,  # no distance constraint
     # Don't check for self-cal convergence
     "do_check": False,

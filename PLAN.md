@@ -114,11 +114,12 @@ Current coverage added:
   public solution products.
 - Existing integration tests cover representative DD, DI, mixed DI/DD,
   full-Jones, slow-gain, and calibration-option command contracts.
+- A focused command-contract test now builds DD execution payloads from
+  operation inputs and asserts that later-cycle DP3 commands do not preapply
+  previous-cycle DI h5parms.
 
 Tasks:
 
-- Add one focused integration assertion that a later cycle does not apply a
-  previous-cycle h5parm in the emitted DP3 commands.
 - Keep the saved CWL equivalence runner available as the heavier confidence
   check for larger scientific or script-migration changes.
 

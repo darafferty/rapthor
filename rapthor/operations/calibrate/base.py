@@ -178,8 +178,8 @@ class Calibrate(Operation):
                 # --- Applycal + H5parm inputs ---
                 # Set the DP3 applycal steps and input H5parm files depending on what
                 # solutions need to be applied. Note: applycal steps are needed for
-                # both the case in which applycal is part of the DDECal solve step and
-                # the case in which it is a separate step that preceeds the DDECal step.
+                # both the case in which applycal is part of the calibration solve step and
+                # the case in which it is a separate step that precedes the calibration step.
                 # The latter is used when image-based predict is done
                 **applycal_inputs,
                 # Get the BDA (baseline-dependent averaging) parameters
@@ -190,7 +190,7 @@ class Calibrate(Operation):
                 # Normalisation / scaling
                 "max_normalization_delta": field.max_normalization_delta,
                 "scale_normalization_delta": str(field.scale_normalization_delta),
-                # Get various DDECal solver parameters. Most of these are the same for both fast
+                # Get various calibration solver parameters. Most of these are the same for both fast
                 # and slow solves
                 # ------------------------------------
                 "llssolver": field.llssolver,
@@ -270,7 +270,7 @@ class Calibrate(Operation):
                 "sagecalpredict": field.sagecalpredict,
                 "has_slow_gain_solve": has_slow_gain_solve,
                 "normalize_h5parm": None,
-                "ddecal_applycal_steps": None,
+                "calibration_applycal_steps": None,
                 "applycal_steps": None,
                 "applycal_h5parm": None,
                 "fulljones_h5parm": None,
@@ -341,7 +341,7 @@ class Calibrate(Operation):
                 "scale_normalization_delta": str(field.scale_normalization_delta),
                 "phase_center_ra": field.ra,
                 "phase_center_dec": field.dec,
-                # Get various DDECal solver parameters. Most of these are the same for both fast
+                # Get various calibration solver parameters. Most of these are the same for both fast
                 # and slow solves
                 # ------------------------------------
                 "llssolver": field.llssolver,
@@ -611,7 +611,7 @@ class Calibrate(Operation):
         preapply_solutions=False,
     ):
         """
-        Set the DDECal steps depending on whether baseline-dependent averaging is
+        Set the calibration steps depending on whether baseline-dependent averaging is
         activated (and supported) or not. If BDA is used, a "null" step is also added to
         prevent the writing of the BDA data
 
@@ -670,7 +670,7 @@ class Calibrate(Operation):
         applycal_steps = f"[{','.join(steps)}]" if steps else None
         return {
             "normalize_h5parm": self._to_file_record_if_exists(field.normalize_h5parm),
-            "ddecal_applycal_steps": applycal_steps,
+            "calibration_applycal_steps": applycal_steps,
             "applycal_steps": applycal_steps,
             "applycal_h5parm": applycal_h5parm,
             "fulljones_h5parm": fulljones_h5parm,

@@ -1099,7 +1099,7 @@ class Field(object):
             if combine_current_and_intial or not self.imaged_sources_only:
                 # Load starting sky model and regroup to one patch per entry to ensure
                 # any existing patches are removed (otherwise they may propagate to
-                # the DDE direction determination, leading to unexpected results)
+                # the DD calibrator direction determination, leading to unexpected results)
                 skymodel_true_sky_start = lsmtool.load(self.parset["input_skymodel"])
                 skymodel_true_sky_start.group("every")
 

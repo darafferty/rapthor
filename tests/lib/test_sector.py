@@ -18,7 +18,7 @@ class TestSector:
         do_multiscale=False,
         recalculate_imsize=False,
         imaging_parameters=None,
-        preapply_dde_solutions=False,
+        preapply_dd_solutions=False,
     ):
         pass
 

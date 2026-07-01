@@ -1035,7 +1035,7 @@ class TestImageInitial:
         assert image_initial.parset_parms["apply_screens"] is False
         assert image_initial.parset_parms["use_facets"] is False
         assert image_initial.parset_parms["save_source_list"] is True
-        assert image_initial.parset_parms["preapply_dde_solutions"] is False
+        assert image_initial.parset_parms["preapply_dd_solutions"] is False
         assert image_initial.parset_parms["make_image_cube"] is False
         assert image_initial.parset_parms["compress_images"] is (
             image_initial.field.compress_selfcal_images
@@ -1071,11 +1071,11 @@ class TestImageInitial:
         image_initial = _initialize_operation(ImageInitial(field))
 
         # This should NOT raise AttributeError: 'Sector' object has no attribute 'central_patch'
-        # The bug causes this to fail because preapply_dde_solutions is incorrectly True
-        # Verify apply_none is True and preapply_dde_solutions is False
+        # The bug causes this to fail because preapply_dd_solutions is incorrectly True
+        # Verify apply_none is True and preapply_dd_solutions is False
         assert image_initial.apply_none is True, "apply_none should be True for ImageInitial"
-        assert image_initial.preapply_dde_solutions is False, (
-            "preapply_dde_solutions should be False for ImageInitial even with dde_method='single'"
+        assert image_initial.preapply_dd_solutions is False, (
+            "preapply_dd_solutions should be False for ImageInitial even with dde_method='single'"
         )
 
     def test_initial_image_save_model_image(self, field):

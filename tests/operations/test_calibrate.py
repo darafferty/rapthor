@@ -7,6 +7,8 @@ from pathlib import Path
 import pytest
 
 import rapthor
+from rapthor.execution.calibrate.builders import calibrate_payload_from_inputs
+from rapthor.execution.calibrate.solves import build_calibrate_chunk_command
 from rapthor.lib.field import Field as RapthorField
 from rapthor.lib.operation import DIR as OPERATION_DIR
 from rapthor.operations.calibrate.base import Calibrate
@@ -37,7 +39,7 @@ CALIBRATE_COMMON_INPUT_KEYS = {
     "parallelbaselines",
     "sagecalpredict",
     "normalize_h5parm",
-    "ddecal_applycal_steps",
+    "calibration_applycal_steps",
     "applycal_steps",
     "applycal_h5parm",
     "fulljones_h5parm",
@@ -1320,7 +1322,9 @@ class TestCalibrate:
 
         assert parse_dp3(calibrate.input_parms["dp3_steps"])[0] == "applycal"
         assert calibrate.input_parms["applycal_steps"] == "[fastphase,slowgain,fulljones]"
-        assert calibrate.input_parms["ddecal_applycal_steps"] == "[fastphase,slowgain,fulljones]"
+        assert (
+            calibrate.input_parms["calibration_applycal_steps"] == "[fastphase,slowgain,fulljones]"
+        )
         assert calibrate.input_parms["applycal_h5parm"]["path"] == str(di_h5parm)
         assert calibrate.input_parms["fulljones_h5parm"]["path"] == str(fulljones_h5parm)
 
@@ -1342,9 +1346,68 @@ class TestCalibrate:
 
         assert parse_dp3(calibrate.input_parms["dp3_steps"]) == ["solve1", "solve2"]
         assert calibrate.input_parms["applycal_steps"] is None
-        assert calibrate.input_parms["ddecal_applycal_steps"] is None
+        assert calibrate.input_parms["calibration_applycal_steps"] is None
         assert calibrate.input_parms["applycal_h5parm"] is None
         assert calibrate.input_parms["fulljones_h5parm"] is None
+
+    def test_dd_commands_do_not_preapply_previous_cycle_di_solutions(
+        self, calibrate_field, tmp_path
+    ):
+        di_h5parm = tmp_path / "solutions" / "calibrate_di_1" / "di-solutions.h5"
+        fulljones_h5parm = tmp_path / "solutions" / "calibrate_di_1" / "fulljones-solutions.h5"
+        di_h5parm.parent.mkdir(parents=True)
+        di_h5parm.touch()
+        fulljones_h5parm.touch()
+        calibrate_field.di_h5parm_filename = str(di_h5parm)
+        calibrate_field.di_h5parm_cycle_number = 1
+        calibrate_field.fulljones_h5parm_filename = str(fulljones_h5parm)
+        calibrate_field.fulljones_h5parm_cycle_number = 1
+        calibrate_field.apply_amplitudes = True
+
+        def get_obs_parameters(name):
+            values = {
+                "timechunk_filename": ["chunk_0.ms", "chunk_1.ms"],
+                "starttime": [0, 100],
+                "ntimes": [10, 10],
+                "solint_fast_timestep": [3, 4],
+                "solint_medium_timestep": [9, 10],
+                "solint_slow_timestep": [11, 12],
+                "solint_fast_freqstep": [1, 2],
+                "solint_medium_freqstep": [5, 6],
+                "solint_slow_freqstep": [7, 8],
+                "fast_solutions_per_direction": [[1], [1]],
+                "medium_solutions_per_direction": [[1], [1]],
+                "slow_solutions_per_direction": [None, None],
+                "fast_smoothness_dd_factors": [[1.0], [1.5]],
+                "medium_smoothness_dd_factors": [[2.0], [2.5]],
+                "slow_smoothness_dd_factors": [[1.0], [1.0]],
+                "fast_smoothnessreffrequency": [150000000.0, 151000000.0],
+                "medium_smoothnessreffrequency": [152000000.0, 153000000.0],
+                "bda_maxinterval": [8.0, 9.0],
+                "bda_minchannels": [1, 1],
+            }
+            return values[name]
+
+        calibrate_field.get_obs_parameters.side_effect = get_obs_parameters
+
+        calibrate = Calibrate("dd", field=calibrate_field, index=2)
+        calibrate.set_input_parameters()
+        payload = calibrate_payload_from_inputs(
+            "dd",
+            calibrate.input_parms,
+            tmp_path / "pipeline" / calibrate.name,
+        )
+
+        commands = [build_calibrate_chunk_command(payload, chunk) for chunk in payload["chunks"]]
+
+        for command in commands:
+            command_string = " ".join(command)
+            assert "steps=[solve1,solve2]" in command
+            assert not any(token.startswith("applycal.steps=") for token in command)
+            assert not any(token.startswith("applycal.parmdb=") for token in command)
+            assert not any(token.startswith("applycal.fulljones.parmdb=") for token in command)
+            assert str(di_h5parm) not in command_string
+            assert str(fulljones_h5parm) not in command_string
 
     def test_set_input_parameters_dd_preapply_skips_di_slowgain_with_phase_solves(
         self, calibrate_field, tmp_path
@@ -1362,7 +1425,7 @@ class TestCalibrate:
         calibrate.set_input_parameters()
 
         assert calibrate.input_parms["applycal_steps"] == "[fastphase]"
-        assert calibrate.input_parms["ddecal_applycal_steps"] == "[fastphase]"
+        assert calibrate.input_parms["calibration_applycal_steps"] == "[fastphase]"
         assert calibrate.input_parms["applycal_h5parm"]["path"] == str(di_h5parm)
         assert "mediumphase" not in parse_dp3(calibrate.input_parms["applycal_steps"])
 
@@ -1391,10 +1454,10 @@ class TestCalibrate:
 
         assert dp3[: len(expected_prefix)] == expected_prefix
         if expect_applycal:
-            assert params["ddecal_applycal_steps"] == "[normalization]"
+            assert params["calibration_applycal_steps"] == "[normalization]"
             assert params["applycal_steps"] == "[normalization]"
         else:
-            assert params["ddecal_applycal_steps"] is None
+            assert params["calibration_applycal_steps"] is None
 
     @pytest.mark.parametrize(
         "diagonal_flag, expected_mode",

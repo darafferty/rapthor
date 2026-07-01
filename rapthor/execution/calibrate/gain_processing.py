@@ -45,7 +45,7 @@ def normalize_direction(
     ----------
     soltab : solution table
         Input table with amplitude solutions. Solution axes are assumed to be in the
-        standard DDECal order of ['time', 'freq', 'ant', 'dir', 'pol']
+        standard calibration h5parm order of ['time', 'freq', 'ant', 'dir', 'pol']
     max_station_delta : float, optional
         The maximum allowed difference from unity of the median of the amplitudes, per
         station (must be >= 0)
@@ -137,10 +137,10 @@ def smooth_solutions(ampsoltab, phasesoltab=None, ref_id=0):
     ----------
     ampsoltab : solution table
         Input table with amplitude solutions. Solution axes are assumed to be in the
-        standard DDECal order of ['time', 'freq', 'ant', 'dir', 'pol']
+        standard calibration h5parm order of ['time', 'freq', 'ant', 'dir', 'pol']
     phasesoltab : solution table, optional
         Input table with phase solutions; if specified, the phase solutions will
-        also be smoothed. Solution axes are assumed to be in the standard DDECal
+        also be smoothed. Solution axes are assumed to be in the standard calibration h5parm
         order of ['time', 'freq', 'ant', 'dir', 'pol']
     ref_id : int, optional
         Index of reference station for phases
@@ -223,7 +223,7 @@ def get_smooth_box_size(ampsoltab, direction, ant_list=None, min_box_size=1):
     ----------
     ampsoltab : solution table
         Input table with amplitude solutions. Solution axes are assumed to be in the
-        standard DDECal order of ['time', 'freq', 'ant', 'dir', 'pol']
+        standard calibration h5parm order of ['time', 'freq', 'ant', 'dir', 'pol']
     direction : int
         Index of direction to consider
     ant_list : list of str, optional
@@ -309,7 +309,7 @@ def flag_amps(soltab, lowampval=None, highampval=None, threshold_factor=0.2):
     ----------
     soltab : solution table
         Input table with solutions. Solution axes are assumed to be in the
-        standard DDECal order of ['time', 'freq', 'ant', 'dir', 'pol']
+        standard calibration h5parm order of ['time', 'freq', 'ant', 'dir', 'pol']
     lowampval : float, optional
         The threshold value below which amplitudes are flagged (must be >= 0.1).
         If None, the threshold is calculated per direction as as

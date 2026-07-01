@@ -94,7 +94,7 @@ class Sector(object):
         do_multiscale=False,
         recalculate_imsize=False,
         imaging_parameters=None,
-        preapply_dde_solutions=False,
+        preapply_dd_solutions=False,
     ):
         """
         Sets the parameters needed for the imaging operation
@@ -122,8 +122,8 @@ class Sector(object):
                 'reweight': reweighting flag
                 'dd_psf_grid': DD PSF grid
                 'max_peak_smearing': maximum allowed peak smearing
-        preapply_dde_solutions : bool, optional
-            If True, use setup appropriate for case in which all DDE
+        preapply_dd_solutions : bool, optional
+            If True, use setup appropriate for case in which all DD
             solutions are preapplied before imaging is done
         """
         if imaging_parameters is None:
@@ -270,7 +270,7 @@ class Sector(object):
                 self.target_fast_timestep,
                 self.target_slow_timstep,
                 self.target_slow_freqstep,
-                preapply_dde_solutions,
+                preapply_dd_solutions,
             )
 
         # Set BL-dependent averaging parameters
@@ -375,7 +375,7 @@ class Sector(object):
                     f.writelines(dummylines)
                 skymodel = lsmtool.load(str(self.predict_skymodel_file))
 
-        # Save list of patches (directions) in the format written by DDECal in the h5parm
+        # Save list of patches (directions) in the format written by DD calibration h5parms.
         self.patches = [f"[{p}]" for p in skymodel.getPatchNames()]
 
         # Find nearest patch to flux-weighted center of the sector sky model

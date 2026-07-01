@@ -358,7 +358,7 @@ class TestObservation:
         solve_fast_timestep=None,
         solve_slow_timestep=None,
         solve_slow_freqstep=None,
-        preapply_dde_solutions=None,
+        preapply_dd_solutions=None,
     ):
         pass
 

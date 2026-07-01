@@ -313,7 +313,7 @@ def _supported_calibration_kind(mode: str, input_parms: Mapping[str, object]) ->
             return "di_scalar_phase"
         if solve_types == ["fast_phase", "medium_phase", "slow_gains"]:
             return "di_phase_slow"
-        return "di_ddecal"
+        return "di_calibration"
 
     if mode == "dd":
         if solve_types == ["fast_phase"]:
@@ -327,7 +327,7 @@ def _supported_calibration_kind(mode: str, input_parms: Mapping[str, object]) ->
             ["fast_phase", "medium_phase", "slow_gains", "medium_phase"],
         ):
             return "dd_phase_slow"
-        return "dd_ddecal"
+        return "dd_calibration"
 
     raise ValueError("Only DI and DD calibration payloads are supported")
 

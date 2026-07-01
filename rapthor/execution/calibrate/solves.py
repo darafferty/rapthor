@@ -3,9 +3,9 @@
 from typing import Mapping, Optional
 
 from rapthor.execution.calibrate.commands import (
-    DdecalSolveOptions,
+    CalibrationSolveOptions,
     IdgcalScreenSolveOptions,
-    build_ddecal_solve_command,
+    build_calibration_solve_command,
     build_idgcal_solve_phase_and_gain_command,
     build_idgcal_solve_phase_command,
 )
@@ -87,11 +87,11 @@ def _solve_slots_for_chunk(
     return solve_slots
 
 
-def _ddecal_options_for_chunk(
+def _calibration_options_for_chunk(
     payload: CalibratePayload,
     chunk: CalibrateChunkPayload,
-) -> DdecalSolveOptions:
-    return DdecalSolveOptions(
+) -> CalibrationSolveOptions:
+    return CalibrationSolveOptions(
         msin=str(chunk["msin"]),
         data_colname=str(payload["data_colname"]),
         starttime=str(chunk["starttime"]),
@@ -118,6 +118,14 @@ def _ddecal_options_for_chunk(
         predict_regions=payload.get("predict_regions"),
         predict_images=payload.get("predict_images"),
     )
+
+
+def build_calibrate_chunk_command(
+    payload: CalibratePayload,
+    chunk: CalibrateChunkPayload,
+) -> list[str]:
+    """Build the DP3 calibration command for one calibration chunk."""
+    return build_calibration_solve_command(_calibration_options_for_chunk(payload, chunk))
 
 
 def _idgcal_screen_options_for_chunk(
@@ -147,10 +155,10 @@ def run_calibrate_chunk(
     execution_config: Optional[ExecutionConfig] = None,
     shell_operation_cls=None,
 ) -> dict:
-    """Run one DDECal calibration chunk."""
+    """Run one calibration chunk."""
     config = execution_config or ExecutionConfig(task_runner="sync")
     pipeline_working_dir = str(payload["pipeline_working_dir"])
-    command = build_ddecal_solve_command(_ddecal_options_for_chunk(payload, chunk))
+    command = build_calibrate_chunk_command(payload, chunk)
     run_external_command(
         command,
         pipeline_working_dir,

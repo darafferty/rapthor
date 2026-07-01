@@ -112,7 +112,7 @@ def validate_image_payload(payload: Mapping[str, object]) -> ImagePayload:
     }
     mode = str(payload["mode"])
     if mode not in supported_modes:
-        raise ValueError("Only no-DDE, facet, and screen image payloads are supported")
+        raise ValueError("Only no-DD, facet, and screen image payloads are supported")
     pipeline_working_dir = str(payload["pipeline_working_dir"])
     raw_sectors = payload.get("sectors", [])
     if not isinstance(raw_sectors, list):

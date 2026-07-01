@@ -115,7 +115,7 @@ class Observation(object):
 
         # Check that the channels are evenly spaced, as the use of baseline-dependent
         # averaging (BDA) during calibration requires it. If the channels are not
-        # evenly spaced, BDA will not be used in DDECal steps even if activated in the
+        # evenly spaced, BDA will not be used in calibration steps even if activated in the
         # parset
         #
         # Note: the code is based on that used in DP3
@@ -341,7 +341,7 @@ class Observation(object):
         # Define the BDA (baseline-dependent averaging) max interval constraints. They
         # are set to the solution intervals *before* adjusting for the DD intervals
         # to ensure that they match the smallest interval used in the solves (since
-        # maxinterval cannot exceed solint in DDECal)
+        # maxinterval cannot exceed solint in DP3 calibration)
         min_timestep = min(
             self.parameters["solint_fast_timestep"][0],
             self.parameters["solint_slow_timestep"][0],
@@ -508,7 +508,7 @@ class Observation(object):
         solve_fast_timestep,
         solve_slow_timestep,
         solve_slow_freqstep,
-        preapply_dde_solutions,
+        preapply_dd_solutions,
     ):
         """
         Sets the imaging parameters
@@ -529,8 +529,8 @@ class Observation(object):
             Solution interval in sec for slow solve
         solve_slow_freqstep : float
             Solution interval in Hz for slow solve
-        preapply_dde_solutions : bool
-            If True, use setup appropriate for case in which all DDE
+        preapply_dd_solutions : bool
+            If True, use setup appropriate for case in which all DD
             solutions are preapplied before imaging is done
         """
         mean_freq_mhz = self.referencefreq / 1e6
@@ -567,7 +567,7 @@ class Observation(object):
             self.get_target_timewidth(delta_theta_deg, resolution_deg, peak_smearing_rapthor),
         )
 
-        if not preapply_dde_solutions:
+        if not preapply_dd_solutions:
             # Ensure we don't average more than the solve time step, as we want to
             # preserve the time resolution so that the soltuions can be applied
             # properly during imaging

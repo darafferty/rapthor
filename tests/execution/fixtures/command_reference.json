@@ -16,7 +16,7 @@
         "compress_mosaic_image": ["fpack", "mosaic_1-I-image.fits"]
     },
     "calibrate": {
-        "ddecal_di_fulljones": [
+        "calibration_di_fulljones": [
             "DP3",
             "msout=",
             "applybeam.type=applybeam",
@@ -99,7 +99,7 @@
             "fulljones_solutions.h5",
             "phase"
         ],
-        "ddecal_di_scalar_phase": [
+        "calibration_di_scalar_phase": [
             "DP3",
             "msout=",
             "applybeam.type=applybeam",
@@ -212,7 +212,7 @@
             "-scale",
             "0.001"
         ],
-        "ddecal_dd_fast_phase": [
+        "calibration_dd_fast_phase": [
             "DP3",
             "msout=",
             "applybeam.type=applybeam",
@@ -295,7 +295,7 @@
             "solve1.keepmodel=True",
             "numthreads=4"
         ],
-        "ddecal_dd_fast_medium": [
+        "calibration_dd_fast_medium": [
             "DP3",
             "msout=",
             "applybeam.type=applybeam",
@@ -402,7 +402,7 @@
             "solve2.reusemodel=[solve1.*]",
             "numthreads=4"
         ],
-        "ddecal_dd_fast_medium_preapply": [
+        "calibration_dd_fast_medium_preapply": [
             "DP3",
             "msout=",
             "applybeam.type=applybeam",
@@ -513,7 +513,7 @@
             "solve2.reusemodel=[solve1.*]",
             "numthreads=4"
         ],
-        "ddecal_dd_fast_medium_image_predict": [
+        "calibration_dd_fast_medium_image_predict": [
             "DP3",
             "msout=",
             "applybeam.type=applybeam",
@@ -621,7 +621,7 @@
             "solve2.reusemodel=[predict.*]",
             "numthreads=4"
         ],
-        "ddecal_dd_fast_medium_image_predict_preapply": [
+        "calibration_dd_fast_medium_image_predict_preapply": [
             "DP3",
             "msout=",
             "applybeam.type=applybeam",

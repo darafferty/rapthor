@@ -12,11 +12,11 @@ import rapthor.execution.calibrate.prediction as calibrate_prediction
 from rapthor.execution.calibrate.builders import calibrate_payload_from_inputs
 from rapthor.execution.calibrate.commands import (
     PLOT_SOLUTIONS_MODULE,
-    DdecalSolveOptions,
+    CalibrationSolveOptions,
     DrawModelOptions,
     IdgcalScreenSolveOptions,
     build_collect_h5parms_command,
-    build_ddecal_solve_command,
+    build_calibration_solve_command,
     build_draw_model_command,
     build_idgcal_solve_phase_and_gain_command,
     build_idgcal_solve_phase_command,
@@ -1127,7 +1127,7 @@ def _dd_fast_medium_image_predict_solve_slots():
     return slots
 
 
-def _ddecal_solve_options(**overrides) -> DdecalSolveOptions:
+def _calibration_solve_options(**overrides) -> CalibrationSolveOptions:
     values = {
         "msin": "obs_0.ms",
         "data_colname": "DATA",
@@ -1138,10 +1138,10 @@ def _ddecal_solve_options(**overrides) -> DdecalSolveOptions:
         "num_threads": 4,
     }
     values.update(overrides)
-    return DdecalSolveOptions(**values)
+    return CalibrationSolveOptions(**values)
 
 
-def _dd_ddecal_solve_options(**overrides) -> DdecalSolveOptions:
+def _dd_calibration_solve_options(**overrides) -> CalibrationSolveOptions:
     values = {
         "msin": "dd_obs_0.ms",
         "steps": "[solve1]",
@@ -1157,7 +1157,7 @@ def _dd_ddecal_solve_options(**overrides) -> DdecalSolveOptions:
         "directions": ["patch1", "patch2"],
     }
     values.update(overrides)
-    return _ddecal_solve_options(**values)
+    return _calibration_solve_options(**values)
 
 
 def _idgcal_screen_solve_options(**overrides) -> IdgcalScreenSolveOptions:
@@ -1199,9 +1199,11 @@ def test_calibrate_command_builders_match_reference_fixtures():
 
     assert (
         normalize_command(
-            build_ddecal_solve_command(_ddecal_solve_options(modeldatacolumn="[MODEL_DATA]"))
+            build_calibration_solve_command(
+                _calibration_solve_options(modeldatacolumn="[MODEL_DATA]")
+            )
         )
-        == commands["calibrate"]["ddecal_di_fulljones"]
+        == commands["calibrate"]["calibration_di_fulljones"]
     )
     assert (
         normalize_command(
@@ -1218,39 +1220,39 @@ def test_calibrate_command_builders_match_reference_fixtures():
     )
     assert (
         normalize_command(
-            build_ddecal_solve_command(
-                _ddecal_solve_options(
+            build_calibration_solve_command(
+                _calibration_solve_options(
                     steps="[solve1,solve2]",
                     solve_slots=_di_scalar_phase_solve_slots(),
                     modeldatacolumn="[MODEL_DATA]",
                 )
             )
         )
-        == commands["calibrate"]["ddecal_di_scalar_phase"]
+        == commands["calibrate"]["calibration_di_scalar_phase"]
     )
     assert (
         normalize_command(build_draw_model_command(_draw_model_options()))
         == commands["calibrate"]["draw_model"]
     )
     assert (
-        normalize_command(build_ddecal_solve_command(_dd_ddecal_solve_options()))
-        == commands["calibrate"]["ddecal_dd_fast_phase"]
+        normalize_command(build_calibration_solve_command(_dd_calibration_solve_options()))
+        == commands["calibrate"]["calibration_dd_fast_phase"]
     )
     assert (
         normalize_command(
-            build_ddecal_solve_command(
-                _dd_ddecal_solve_options(
+            build_calibration_solve_command(
+                _dd_calibration_solve_options(
                     steps="[solve1,solve2]",
                     solve_slots=_dd_fast_medium_solve_slots(),
                 )
             )
         )
-        == commands["calibrate"]["ddecal_dd_fast_medium"]
+        == commands["calibrate"]["calibration_dd_fast_medium"]
     )
 
     bda_command = normalize_command(
-        build_ddecal_solve_command(
-            _dd_ddecal_solve_options(
+        build_calibration_solve_command(
+            _dd_calibration_solve_options(
                 steps="[avg,solve1,solve2,null]",
                 solve_slots=_dd_fast_medium_solve_slots(),
                 timebase=20000.0,
@@ -1263,8 +1265,8 @@ def test_calibrate_command_builders_match_reference_fixtures():
 
     assert (
         normalize_command(
-            build_ddecal_solve_command(
-                _dd_ddecal_solve_options(
+            build_calibration_solve_command(
+                _dd_calibration_solve_options(
                     steps="[applycal,solve1,solve2]",
                     solve_slots=_dd_fast_medium_solve_slots(),
                     applycal_steps="[fastphase,slowgain,fulljones,normalization]",
@@ -1274,12 +1276,12 @@ def test_calibrate_command_builders_match_reference_fixtures():
                 )
             )
         )
-        == commands["calibrate"]["ddecal_dd_fast_medium_preapply"]
+        == commands["calibrate"]["calibration_dd_fast_medium_preapply"]
     )
     assert (
         normalize_command(
-            build_ddecal_solve_command(
-                _dd_ddecal_solve_options(
+            build_calibration_solve_command(
+                _dd_calibration_solve_options(
                     steps="[predict,applybeam,solve1,solve2]",
                     solve_slots=_dd_fast_medium_image_predict_solve_slots(),
                     sourcedb=None,
@@ -1292,12 +1294,12 @@ def test_calibrate_command_builders_match_reference_fixtures():
                 )
             )
         )
-        == commands["calibrate"]["ddecal_dd_fast_medium_image_predict"]
+        == commands["calibrate"]["calibration_dd_fast_medium_image_predict"]
     )
     assert (
         normalize_command(
-            build_ddecal_solve_command(
-                _dd_ddecal_solve_options(
+            build_calibration_solve_command(
+                _dd_calibration_solve_options(
                     steps="[predict,applybeam,applycal,solve1,solve2]",
                     solve_slots=_dd_fast_medium_image_predict_solve_slots(),
                     applycal_steps="[fastphase,normalization]",
@@ -1313,7 +1315,7 @@ def test_calibrate_command_builders_match_reference_fixtures():
                 )
             )
         )
-        == commands["calibrate"]["ddecal_dd_fast_medium_image_predict_preapply"]
+        == commands["calibrate"]["calibration_dd_fast_medium_image_predict_preapply"]
     )
     assert (
         normalize_command(build_idgcal_solve_phase_command(_idgcal_screen_solve_options()))
@@ -1370,7 +1372,9 @@ def test_calibrate_command_builders_create_reference_tokens():
         "solve.python.class=IDGCalDPStepRapthorDirac",
     ]
     assert (
-        build_ddecal_solve_command(_ddecal_solve_options(modeldatacolumn="[MODEL_DATA]"))[0]
+        build_calibration_solve_command(_calibration_solve_options(modeldatacolumn="[MODEL_DATA]"))[
+            0
+        ]
         == "DP3"
     )
 
@@ -1595,7 +1599,7 @@ def test_calibrate_payload_from_inputs_builds_di_phase_slow_payload(tmp_path):
 def test_calibrate_payload_from_inputs_builds_mixed_di_strategy_payload(tmp_path):
     payload = calibrate_payload_from_inputs("di", _di_scalar_slow_fulljones_input_parms(), tmp_path)
 
-    assert payload["calibration_kind"] == "di_ddecal"
+    assert payload["calibration_kind"] == "di_calibration"
     assert payload["combined_h5parms"] == {
         "phase_1_2": {
             "filename": "combined_solve1_solve2_di.h5parm",
@@ -1706,7 +1710,7 @@ def test_calibrate_payload_from_inputs_builds_dd_slow_payload(tmp_path):
 def test_calibrate_payload_from_inputs_builds_dd_slow_then_medium_payload(tmp_path):
     payload = calibrate_payload_from_inputs("dd", _dd_slow_medium_input_parms(), tmp_path)
 
-    assert payload["calibration_kind"] == "dd_ddecal"
+    assert payload["calibration_kind"] == "dd_calibration"
     assert payload["combined_h5parms"] == {
         "final": {
             "filename": "combined_solutions.h5",
@@ -1783,7 +1787,7 @@ def test_calibrate_payload_from_inputs_builds_dd_fast_medium_payload(tmp_path):
 def test_calibrate_payload_from_inputs_preserves_custom_dd_solve_order(tmp_path):
     payload = calibrate_payload_from_inputs("dd", _dd_medium_fast_input_parms(), tmp_path)
 
-    assert payload["calibration_kind"] == "dd_ddecal"
+    assert payload["calibration_kind"] == "dd_calibration"
     assert payload["combined_h5parms"] == {
         "phase_1_2": {
             "filename": "combined_fast_medium1_phases.h5parm",

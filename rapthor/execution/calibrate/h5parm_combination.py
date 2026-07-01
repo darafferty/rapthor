@@ -579,10 +579,10 @@ def combine_h5parms(
     ----------
     h5parm1 : str
         Filename of h5parm 1. Solution axes are assumed to be in the
-        standard DDECal order of ['time', 'freq', 'ant', 'dir']
+        standard calibration h5parm order of ['time', 'freq', 'ant', 'dir']
     h5parm2 : str
         Filename of h5parm 2. Solution axes are assumed to be in the
-        standard DDECal order of ['time', 'freq', 'ant', 'dir', 'pol']
+        standard calibration h5parm order of ['time', 'freq', 'ant', 'dir', 'pol']
     outh5parm : str
         Filename of the output h5parm
     mode : str

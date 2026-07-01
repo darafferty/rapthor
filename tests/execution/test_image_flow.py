@@ -471,7 +471,7 @@ class SectorStub:
         do_multiscale=False,
         recalculate_imsize=False,
         imaging_parameters=None,
-        preapply_dde_solutions=False,
+        preapply_dd_solutions=False,
     ):
         self.multiscale = bool(do_multiscale)
         for index, obs in enumerate(self.observations):

@@ -113,13 +113,13 @@ def validate_calibrate_payload(payload: Mapping[str, object]) -> CalibratePayloa
     calibration_kind = str(payload["calibration_kind"])
     supported_kinds = {
         "di_fast_phase",
-        "di_ddecal",
+        "di_calibration",
         "di_fulljones",
         "di_phase_slow",
         "di_scalar_phase",
         "di_slow",
         "dd_fast_phase",
-        "dd_ddecal",
+        "dd_calibration",
         "dd_phase",
         "dd_phase_slow",
         "dd_screen",

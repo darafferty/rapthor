@@ -12,7 +12,7 @@ from rapthor.execution.commands import (
 
 PLOT_SOLUTIONS_MODULE = "rapthor.execution.calibrate.plotting_cli"
 
-DDECAL_SOLVE_ARGUMENTS = [
+CALIBRATION_SOLVE_ARGUMENTS = [
     "msout=",
     "applybeam.type=applybeam",
     "applybeam.beammode=array_factor",
@@ -120,8 +120,8 @@ SOLVE_SLOT_ARGUMENTS = [
 
 
 @dataclass(frozen=True)
-class DdecalSolveOptions:
-    """DP3 DDECal options for one calibration chunk."""
+class CalibrationSolveOptions:
+    """DP3 calibration options for one calibration chunk."""
 
     msin: str
     data_colname: str
@@ -183,9 +183,9 @@ def parse_steps(steps: object) -> list[str]:
     return [step.strip() for step in str(steps).strip("[]").split(",") if step.strip()]
 
 
-def build_ddecal_solve_command(options: DdecalSolveOptions) -> list[str]:
-    """Build the DP3 DDECal solve command for one calibration chunk."""
-    command = ["DP3", *DDECAL_SOLVE_ARGUMENTS]
+def build_calibration_solve_command(options: CalibrationSolveOptions) -> list[str]:
+    """Build the DP3 calibration solve command for one calibration chunk."""
+    command = ["DP3", *CALIBRATION_SOLVE_ARGUMENTS]
     if "null" in parse_steps(options.steps):
         command.append("null.type=null")
     common_options = [

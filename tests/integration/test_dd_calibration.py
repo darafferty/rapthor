@@ -23,7 +23,7 @@ from .utils import (
 )
 def test_rapthor_run_dd_fast_phase_medium_phase(generated_parset_path, single_loop_strategy_path):
     """Test a single selfcal loop with DP3.
-    ddecal fast_gains and medium gains are performed
+    DD calibration fast gains and medium gains are performed
     """
 
     updated_parset_path = update_parset_path(
@@ -80,7 +80,7 @@ def test_rapthor_run_dd_fast_medium_slow_gains(
     generated_parset_path, single_loop_strategy_path_fast_medium_slow
 ):
     """Test a single selfcal loop with DP3.
-    ddecal fast_gains, medium gains, and slow gains are performed
+    DD calibration fast gains, medium gains, and slow gains are performed
     """
 
     updated_parset_path = update_parset_path(
@@ -143,7 +143,7 @@ def test_rapthor_run_dd_slow_gains(
     generated_parset_path, single_loop_strategy_path_calibrate_dd_slow
 ):
     """Test a single selfcal loop with DP3.
-    ddecal slow gains are performed
+    DD calibration slow gains are performed
     """
 
     updated_parset_path = update_parset_path(

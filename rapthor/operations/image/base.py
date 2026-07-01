@@ -43,7 +43,7 @@ class Image(Operation):
         self.apply_amplitudes = None
         self.apply_fulljones = None
         self.apply_normalizations = None
-        self.preapply_dde_solutions = None
+        self.preapply_dd_solutions = None
         self.apply_screens = None
         self.dde_method = None
         self.use_facets = None
@@ -85,8 +85,8 @@ class Image(Operation):
             self.image_pol = self.field.image_pol  # set by process-step orchestration
         if self.save_source_list is None:
             self.save_source_list = is_only_pol_I(self.image_pol)
-        if self.preapply_dde_solutions is None:
-            self.preapply_dde_solutions = self.dde_method == "single" and not self.apply_none
+        if self.preapply_dd_solutions is None:
+            self.preapply_dd_solutions = self.dde_method == "single" and not self.apply_none
         if self.compress_images is None:
             self.compress_images = self.field.compress_images
         if self.image_cube_stokes_list is None:
@@ -103,7 +103,7 @@ class Image(Operation):
             normalize_flux_scale=self.normalize_flux_scale,
             use_facets=self.use_facets,
             save_source_list=self.save_source_list,
-            preapply_dde_solutions=self.preapply_dde_solutions,
+            preapply_dd_solutions=self.preapply_dd_solutions,
             use_mpi=self.field.use_mpi,
             compress_images=self.compress_images,
             image_cube_stokes_list=self.image_cube_stokes_list,
@@ -239,7 +239,7 @@ class Image(Operation):
                 self.do_multiscale_clean,
                 recalculate_imsize=self.apply_screens,
                 imaging_parameters=self.imaging_parameters,
-                preapply_dde_solutions=self.preapply_dde_solutions,
+                preapply_dd_solutions=self.preapply_dd_solutions,
             )
 
             values["image_name"].append(sector.name)
@@ -262,7 +262,7 @@ class Image(Operation):
             )
             values["ntimes"].append([obs.numsamples for obs in self.field.observations])
             values["phasecenter"].append(f"'[{sector.ra}deg, {sector.dec}deg]'")
-            if self.preapply_dde_solutions:
+            if self.preapply_dd_solutions:
                 values["central_patch_name"].append(sector.central_patch)
             if self.make_image_cube:
                 values["image_I_cube_name"].append(f"{sector.name}_I_freq_cube.fits")
@@ -328,7 +328,7 @@ class Image(Operation):
         )
         prepare_data_steps = f"[{','.join(prepare_data_steps)}]"
 
-        # Set the h5parm to use to apply the DDE solutions as needed.
+        # Set the h5parm to use to apply the DD solutions as needed.
         h5parm = (
             FileRecord(self._selected_applycal_h5parm).to_json()
             if getattr(self, "_selected_applycal_h5parm", None) is not None
@@ -484,7 +484,7 @@ class Image(Operation):
                     apply_diagonal_solutions=self.field.apply_diagonal_solutions,
                 )
             )
-        elif self.preapply_dde_solutions:
+        elif self.preapply_dd_solutions:
             self.input_parms.update({"central_patch_name": sector_inputs["central_patch_name"]})
         if self.make_image_cube:
             self.input_parms.update({"image_I_cube_name": sector_inputs["image_I_cube_name"]})
