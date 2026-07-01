@@ -5,10 +5,12 @@ import pytest
 from rapthor.execution.payloads import (
     PayloadSerializationError,
     assert_serializable_payload,
+    optional_file_path,
     validate_basename,
     validate_int_list,
     validate_string_list,
 )
+from rapthor.lib.records import file_record
 
 
 def test_assert_serializable_payload_accepts_plain_values():
@@ -48,6 +50,19 @@ def test_validate_basename_accepts_plain_filename():
 def test_validate_basename_rejects_empty_or_non_basename(filename):
     with pytest.raises(ValueError, match="output_filename must be"):
         validate_basename(filename, "output_filename")
+
+
+def test_optional_file_path_accepts_file_record_path_string_or_none():
+    path = "/data/model.fits"
+
+    assert optional_file_path(file_record(path), "model") == path
+    assert optional_file_path(path, "model") == path
+    assert optional_file_path(None, "model") is None
+
+
+def test_optional_file_path_rejects_non_file_payload():
+    with pytest.raises(ValueError, match="model must be a File record, path string, or None"):
+        optional_file_path({"class": "Directory", "path": "/data"}, "model")
 
 
 def test_validate_string_list_accepts_non_empty_strings():

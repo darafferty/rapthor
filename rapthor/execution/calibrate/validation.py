@@ -9,25 +9,11 @@ from rapthor.execution.calibrate.contracts import (
     CalibrateSolveSlotPayload,
 )
 from rapthor.execution.payloads import (
+    optional_file_path as _optional_file_path,
     validate_basename as _validate_basename,
-)
-from rapthor.execution.payloads import (
     validate_int_list as _validate_int_list,
-)
-from rapthor.execution.payloads import (
     validate_string_list as _validate_string_list,
 )
-from rapthor.lib.records import file_record_path
-
-
-def _optional_file_path(record: object, name: str) -> Optional[str]:
-    if record is None:
-        return None
-    if isinstance(record, str):
-        return record
-    if isinstance(record, Mapping) and record.get("class") == "File":
-        return file_record_path(record)
-    raise ValueError(f"{name} must be a File record, path string, or None")
 
 
 def _validate_calibrate_solve_slot(

@@ -138,6 +138,10 @@ Current cleanup added:
 - Concatenate payload validation now uses the shared execution payload
   validators for basenames and required string lists, rather than hand-rolled
   local checks.
+- Image payload validation now reuses the shared execution string-list
+  validator instead of keeping a local duplicate.
+- Calibration payload builders and validators now share the same optional file
+  path helper for File records, path strings, and `None`.
 
 Tasks:
 

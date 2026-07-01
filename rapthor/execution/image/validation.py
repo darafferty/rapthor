@@ -8,16 +8,11 @@ from rapthor.execution.image.contracts import (
     ImagePrepareTaskPayload,
     ImageSectorPayload,
 )
-from rapthor.execution.payloads import validate_basename as _validate_basename
-from rapthor.execution.payloads import validate_int_list as _validate_int_list
-
-
-def _validate_str_list(values: object, name: str) -> list[str]:
-    if not isinstance(values, list) or not all(
-        isinstance(value, str) and value for value in values
-    ):
-        raise ValueError(f"{name} must be a list of strings")
-    return list(values)
+from rapthor.execution.payloads import (
+    validate_basename as _validate_basename,
+    validate_int_list as _validate_int_list,
+    validate_string_list as _validate_string_list,
+)
 
 
 def _validate_prepare_task(
@@ -86,11 +81,11 @@ def _validate_image_sector(sector: Mapping[str, object], index: int) -> ImageSec
         sector.get("dd_psf_grid"),
         f"sectors[{index}].dd_psf_grid",
     )
-    validated_sector["obs_original_paths"] = _validate_str_list(
+    validated_sector["obs_original_paths"] = _validate_string_list(
         sector.get("obs_original_paths"),
         f"sectors[{index}].obs_original_paths",
     )
-    validated_sector["obs_starttime"] = _validate_str_list(
+    validated_sector["obs_starttime"] = _validate_string_list(
         sector.get("obs_starttime"),
         f"sectors[{index}].obs_starttime",
     )

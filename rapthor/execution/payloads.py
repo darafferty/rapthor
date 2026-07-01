@@ -3,6 +3,8 @@
 import os
 from typing import Any, Mapping, Optional
 
+from rapthor.lib.records import file_record_path
+
 
 class PayloadSerializationError(TypeError):
     """Raised when a task payload is not safe to send to a Dask worker."""
@@ -42,6 +44,17 @@ def validate_basename(filename: object, name: str) -> str:
     if os.path.isabs(filename) or os.path.basename(filename) != filename:
         raise ValueError(f"{name} must be a basename")
     return filename
+
+
+def optional_file_path(record: object, name: str) -> Optional[str]:
+    """Return an optional file path from a File record, path string, or ``None``."""
+    if record is None:
+        return None
+    if isinstance(record, str):
+        return record
+    if isinstance(record, Mapping) and record.get("class") == "File":
+        return file_record_path(record)
+    raise ValueError(f"{name} must be a File record, path string, or None")
 
 
 def validate_string_list(

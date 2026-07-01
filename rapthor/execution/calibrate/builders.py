@@ -10,9 +10,12 @@ from rapthor.execution.calibrate.contracts import (
     CalibratePayload,
     CalibrateSolveSlotPayload,
 )
-from rapthor.execution.payloads import assert_serializable_payload
-from rapthor.execution.payloads import validate_basename as _validate_basename
-from rapthor.lib.records import directory_record_path, file_record_path
+from rapthor.execution.payloads import (
+    assert_serializable_payload,
+    optional_file_path as _optional_file_path,
+    validate_basename as _validate_basename,
+)
+from rapthor.lib.records import directory_record_path
 
 # These are the DP3 step names supported for the standalone applycal that runs
 # before DD solves. `fastphase` applies the phase000 soltab from the selected
@@ -30,16 +33,6 @@ SOLUTION_LABELS_BY_SOLVE_TYPE = {
     "slow_gains": {"slow"},
     "full_jones": {"fulljones"},
 }
-
-
-def _optional_file_path(record: object, name: str) -> Optional[str]:
-    if record is None:
-        return None
-    if isinstance(record, str):
-        return record
-    if isinstance(record, Mapping) and record.get("class") == "File":
-        return file_record_path(record)
-    raise ValueError(f"{name} must be a File record, path string, or None")
 
 
 def _require_sequence(value: object, name: str, length: Optional[int] = None) -> list[object]:
