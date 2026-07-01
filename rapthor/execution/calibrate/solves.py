@@ -12,6 +12,7 @@ from rapthor.execution.calibrate.commands import (
 from rapthor.execution.calibrate.contracts import CalibrateChunkPayload, CalibratePayload
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.outputs import require_file
+from rapthor.execution.payloads import validate_required_list
 from rapthor.execution.shell import run_external_command
 
 SOLVE_TYPE_LABELS = {
@@ -20,12 +21,6 @@ SOLVE_TYPE_LABELS = {
     "slow_gains": "slow gains",
     "full_jones": "full-Jones",
 }
-
-
-def _require_sequence(value: object, name: str) -> list[object]:
-    if not isinstance(value, list) or not value:
-        raise ValueError(f"{name} must be a non-empty list")
-    return value
 
 
 def _solve_type_label(solve_type: object) -> str:
@@ -132,7 +127,7 @@ def _idgcal_screen_options_for_chunk(
     payload: CalibratePayload,
     chunk: CalibrateChunkPayload,
 ) -> IdgcalScreenSolveOptions:
-    model_images = list(_require_sequence(payload.get("predict_images"), "predict_images"))
+    model_images = validate_required_list(payload.get("predict_images"), "predict_images")
     return IdgcalScreenSolveOptions(
         msin=str(chunk["msin"]),
         starttime=str(chunk["starttime"]),

@@ -12,8 +12,9 @@ from rapthor.execution.calibrate.contracts import (
 )
 from rapthor.execution.payloads import (
     assert_serializable_payload,
-    optional_file_path as _optional_file_path,
-    validate_basename as _validate_basename,
+    optional_file_path,
+    validate_basename,
+    validate_required_list,
 )
 from rapthor.lib.records import directory_record_path
 
@@ -33,14 +34,6 @@ SOLUTION_LABELS_BY_SOLVE_TYPE = {
     "slow_gains": {"slow"},
     "full_jones": {"fulljones"},
 }
-
-
-def _require_sequence(value: object, name: str, length: Optional[int] = None) -> list[object]:
-    if not isinstance(value, list) or not value:
-        raise ValueError(f"{name} must be a non-empty list")
-    if length is not None and len(value) != length:
-        raise ValueError(f"{name} must contain exactly {length} entries")
-    return value
 
 
 def _plain_payload_value(value: object) -> object:
@@ -359,7 +352,7 @@ def _solve_slot_from_inputs(
     reusemodel: Optional[str] = None,
     modeldatacolumns: Optional[str] = None,
 ) -> CalibrateSolveSlotPayload:
-    h5parm = _validate_basename(
+    h5parm = validate_basename(
         _scatter_value(
             input_parms[f"output_solve{slot}_h5parm"], index, f"output_solve{slot}_h5parm"
         ),
@@ -407,7 +400,7 @@ def _solve_slot_from_inputs(
         slot_record["datause"] = input_parms.get(datause_key)
     initial_h5parm_key = f"solve{slot}_initialsolutions_h5parm"
     if initial_h5parm_key in input_parms:
-        slot_record["initialsolutions_h5parm"] = _optional_file_path(
+        slot_record["initialsolutions_h5parm"] = optional_file_path(
             input_parms.get(initial_h5parm_key), initial_h5parm_key
         )
     return slot_record
@@ -421,32 +414,32 @@ def _image_predict_payload_from_inputs(
     if not input_parms.get("generate_screens") and not _uses_image_based_predict(steps):
         return None
 
-    model_root = _validate_basename(input_parms.get("model_image_root"), "model_image_root")
+    model_root = validate_basename(input_parms.get("model_image_root"), "model_image_root")
     numterms = int(input_parms["num_spectral_terms"])
     if numterms < 1:
         raise ValueError("num_spectral_terms must be at least 1")
 
-    region_filename = _validate_basename(input_parms.get("facet_region_file"), "facet_region_file")
+    region_filename = validate_basename(input_parms.get("facet_region_file"), "facet_region_file")
     return {
-        "skymodel": _optional_file_path(
+        "skymodel": optional_file_path(
             input_parms.get("calibration_skymodel_file"), "calibration_skymodel_file"
         ),
         "model_image_root": model_root,
         "model_image_ra_dec": [
             str(value)
-            for value in _require_sequence(
+            for value in validate_required_list(
                 input_parms.get("model_image_ra_dec"), "model_image_ra_dec", length=2
             )
         ],
         "model_image_imsize": [
             int(value)
-            for value in _require_sequence(
+            for value in validate_required_list(
                 input_parms.get("model_image_imsize"), "model_image_imsize", length=2
             )
         ],
         "model_image_cellsize": input_parms["model_image_cellsize"],
         "model_image_frequency_bandwidth": list(
-            _require_sequence(
+            validate_required_list(
                 input_parms.get("model_image_frequency_bandwidth"),
                 "model_image_frequency_bandwidth",
                 length=2,
@@ -497,10 +490,10 @@ def calibrate_payload_from_inputs(
         if any(len(value) != chunk_count for value in scatter_inputs):
             raise ValueError("Screen-generation scatter inputs must have the same length")
 
-        combined = _validate_basename(input_parms.get("combined_h5parms"), "combined_h5parms")
+        combined = validate_basename(input_parms.get("combined_h5parms"), "combined_h5parms")
         chunks: list[CalibrateChunkPayload] = []
         for index in range(chunk_count):
-            h5parm = _validate_basename(
+            h5parm = validate_basename(
                 _scatter_value(output_h5parms, index, "output_idgcal_h5parm"),
                 f"output_idgcal_h5parm[{index}]",
             )
@@ -558,7 +551,7 @@ def calibrate_payload_from_inputs(
 
     collected_h5parms = {}
     for slot in solve_slots:
-        collected = _validate_basename(
+        collected = validate_basename(
             input_parms.get(f"collected_solve{slot}_h5parm"),
             f"collected_solve{slot}_h5parm",
         )
@@ -568,7 +561,7 @@ def calibrate_payload_from_inputs(
         }
     combined_h5parm = None
     if calibration_kind == "di_scalar_phase":
-        combined = _validate_basename(
+        combined = validate_basename(
             input_parms.get(_phase_combination_input_key(2)),
             _phase_combination_input_key(2),
         )
@@ -577,7 +570,7 @@ def calibrate_payload_from_inputs(
     combined_h5parms = {}
     for phase_index in range(2, phase_solve_count + 1):
         input_key = _phase_combination_input_key(phase_index)
-        combined = _validate_basename(
+        combined = validate_basename(
             input_parms.get(input_key),
             input_key,
         )
@@ -590,7 +583,7 @@ def calibrate_payload_from_inputs(
         or phase_solve_count >= 4
         or calibration_kind in {"dd_phase_slow", "di_phase_slow"}
     ):
-        combined = _validate_basename(
+        combined = validate_basename(
             input_parms.get("combined_h5parms"),
             "combined_h5parms",
         )
@@ -688,13 +681,13 @@ def calibrate_payload_from_inputs(
     payload.update(
         {
             "applycal_steps": input_parms.get("applycal_steps"),
-            "applycal_h5parm": _optional_file_path(
+            "applycal_h5parm": optional_file_path(
                 input_parms.get("applycal_h5parm"), "applycal_h5parm"
             ),
-            "fulljones_h5parm": _optional_file_path(
+            "fulljones_h5parm": optional_file_path(
                 input_parms.get("fulljones_h5parm"), "fulljones_h5parm"
             ),
-            "normalize_h5parm": _optional_file_path(
+            "normalize_h5parm": optional_file_path(
                 input_parms.get("normalize_h5parm"), "normalize_h5parm"
             ),
             "bda_timebase": input_parms.get("bda_timebase"),
@@ -702,7 +695,7 @@ def calibrate_payload_from_inputs(
             "onebeamperpatch": input_parms.get("onebeamperpatch"),
             "parallelbaselines": input_parms.get("parallelbaselines"),
             "sagecalpredict": input_parms.get("sagecalpredict"),
-            "sourcedb": _optional_file_path(
+            "sourcedb": optional_file_path(
                 input_parms.get("calibration_skymodel_file"), "calibration_skymodel_file"
             ),
             "directions": None

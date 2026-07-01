@@ -9,6 +9,7 @@ from rapthor.execution.payloads import (
     optional_string,
     validate_basename,
     validate_int_list,
+    validate_required_list,
     validate_string_list,
 )
 from rapthor.lib.records import file_record
@@ -74,6 +75,23 @@ def test_optional_string_returns_none_for_unset_sentinels(value):
 def test_optional_string_returns_string_for_set_values():
     assert optional_string("applycal") == "applycal"
     assert optional_string(7) == "7"
+
+
+def test_validate_required_list_accepts_non_empty_list():
+    values = ["model-0.fits", "model-1.fits"]
+
+    assert validate_required_list(values, "model_images") == values
+
+
+def test_validate_required_list_can_require_exact_length():
+    with pytest.raises(ValueError, match="model_image_ra_dec must contain exactly 2 entries"):
+        validate_required_list(["12h00m00s"], "model_image_ra_dec", length=2)
+
+
+@pytest.mark.parametrize("value", [None, [], "not-a-list"])
+def test_validate_required_list_rejects_empty_or_non_list(value):
+    with pytest.raises(ValueError, match="model_images must be a non-empty list"):
+        validate_required_list(value, "model_images")
 
 
 def test_validate_string_list_accepts_non_empty_strings():

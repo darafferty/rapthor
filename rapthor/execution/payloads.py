@@ -64,6 +64,19 @@ def optional_string(value: object) -> Optional[str]:
     return str(value)
 
 
+def validate_required_list(
+    values: object,
+    name: str,
+    length: Optional[int] = None,
+) -> list[object]:
+    """Return a non-empty list, optionally requiring an exact length."""
+    if not isinstance(values, list) or not values:
+        raise ValueError(f"{name} must be a non-empty list")
+    if length is not None and len(values) != length:
+        raise ValueError(f"{name} must contain exactly {length} entries")
+    return list(values)
+
+
 def validate_string_list(
     values: object,
     name: str,

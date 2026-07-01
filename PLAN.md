@@ -144,6 +144,8 @@ Current cleanup added:
   path helper for File records, path strings, and `None`.
 - Predict payload validation now reuses a shared optional-string normalizer for
   unset values such as `None`, `""`, and `"None"`.
+- Calibration builders and solve execution now share the same required-list
+  validator for non-empty list inputs and exact-length list checks.
 
 Tasks:
 
@@ -158,6 +160,12 @@ Tasks:
 - Prefer small option dataclasses or local helper functions for stable argument
   groups; keep Pydantic as a future validation option rather than introducing it
   during this cleanup.
+- Review helper and builder function names for readability. Rename vague,
+  slot-specific, or implementation-leaky names when a domain-oriented name
+  makes the intent clearer.
+- Add concise docstrings to non-obvious helpers, especially where a function
+  encodes calibration/image semantics, payload contracts, file naming, or
+  compatibility with external tools.
 - Run a focused dead-code scan for private helpers in `rapthor.execution` and
   `rapthor.operations`, especially compatibility leftovers and helpers only
   referenced by tests.
@@ -170,6 +178,8 @@ Done when:
 
 - Repeated builder logic has either been removed or intentionally left in place
   with a clear readability reason.
+- Helper names describe the domain concept they implement, and non-obvious
+  helpers have short docstrings explaining why they exist.
 - No obvious unused private helpers remain in execution or operation modules.
 - Command and payload tests still describe the production contracts directly.
 
