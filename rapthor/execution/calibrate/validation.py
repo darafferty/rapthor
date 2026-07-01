@@ -9,16 +9,10 @@ from rapthor.execution.calibrate.contracts import (
     CalibrateSolveSlotPayload,
 )
 from rapthor.execution.payloads import (
-    optional_file_path as _optional_file_path,
-)
-from rapthor.execution.payloads import (
-    validate_basename as _validate_basename,
-)
-from rapthor.execution.payloads import (
-    validate_int_list as _validate_int_list,
-)
-from rapthor.execution.payloads import (
-    validate_string_list as _validate_string_list,
+    optional_file_path,
+    validate_basename,
+    validate_int_list,
+    validate_string_list,
 )
 
 
@@ -27,12 +21,13 @@ def _validate_calibrate_solve_slot(
     chunk_index: int,
     slot_index: int,
 ) -> CalibrateSolveSlotPayload:
+    """Validate one DP3 solve slot inside a calibration chunk payload."""
     _ = int(solve_slot["slot"])
     _ = str(solve_slot["solve_type"])
     _ = str(solve_slot["solution_label"])
     if solve_slot.get("medium_index") is not None:
         _ = int(solve_slot["medium_index"])
-    _validate_basename(
+    validate_basename(
         solve_slot["h5parm"],
         f"chunks[{chunk_index}].solve_slots[{slot_index}].h5parm",
     )
@@ -55,10 +50,11 @@ def _validate_calibrate_chunk(
     *,
     screen: bool,
 ) -> CalibrateChunkPayload:
+    """Validate one time-chunk payload for scalar or screen calibration."""
     _ = str(chunk["msin"])
     _ = str(chunk["starttime"])
     _ = int(chunk["ntimes"])
-    _validate_basename(chunk["output_h5parm"], f"chunks[{index}].output_h5parm")
+    validate_basename(chunk["output_h5parm"], f"chunks[{index}].output_h5parm")
     _ = str(chunk["output_h5parm_path"])
     if screen:
         _ = int(chunk["solint_fast"])
@@ -79,20 +75,21 @@ def _validate_calibrate_chunk(
 def _validate_calibrate_image_predict(
     image_predict: object,
 ) -> Optional[CalibrateImagePredictPayload]:
+    """Validate image-prediction inputs used by image-based calibration solves."""
     if image_predict is None:
         return None
     if not isinstance(image_predict, Mapping):
         raise ValueError("image_predict must be a mapping")
-    _ = _optional_file_path(image_predict.get("skymodel"), "image_predict.skymodel")
-    _validate_basename(image_predict["model_image_root"], "image_predict.model_image_root")
-    _validate_string_list(
+    _ = optional_file_path(image_predict.get("skymodel"), "image_predict.skymodel")
+    validate_basename(image_predict["model_image_root"], "image_predict.model_image_root")
+    validate_string_list(
         image_predict.get("model_image_ra_dec"), "image_predict.model_image_ra_dec"
     )
-    _validate_int_list(
+    validate_int_list(
         image_predict.get("model_image_imsize"), "image_predict.model_image_imsize", length=2
     )
-    _validate_string_list(image_predict.get("model_images"), "image_predict.model_images")
-    _validate_basename(image_predict["facet_region_file"], "image_predict.facet_region_file")
+    validate_string_list(image_predict.get("model_images"), "image_predict.model_images")
+    validate_basename(image_predict["facet_region_file"], "image_predict.facet_region_file")
     _ = str(image_predict["facet_region_path"])
     return image_predict
 

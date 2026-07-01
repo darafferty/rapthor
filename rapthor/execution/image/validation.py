@@ -9,13 +9,9 @@ from rapthor.execution.image.contracts import (
     ImageSectorPayload,
 )
 from rapthor.execution.payloads import (
-    validate_basename as _validate_basename,
-)
-from rapthor.execution.payloads import (
-    validate_int_list as _validate_int_list,
-)
-from rapthor.execution.payloads import (
-    validate_string_list as _validate_string_list,
+    validate_basename,
+    validate_int_list,
+    validate_string_list,
 )
 
 
@@ -24,10 +20,11 @@ def _validate_prepare_task(
     sector_index: int,
     task_index: int,
 ) -> ImagePrepareTaskPayload:
+    """Validate one Measurement Set preparation task inside an image sector."""
     maxinterval = prepare_task.get("maxinterval")
     return {
         "msin": str(prepare_task["msin"]),
-        "msout": _validate_basename(
+        "msout": validate_basename(
             prepare_task["msout"],
             f"sectors[{sector_index}].prepare_tasks[{task_index}].msout",
         ),
@@ -45,9 +42,10 @@ def _validate_image_cube_spec(
     sector_index: int,
     spec_index: int,
 ) -> ImageCubeSpecPayload:
+    """Validate the expected output contract for one image cube."""
     return {
         "pol": str(spec["pol"]),
-        "filename": _validate_basename(
+        "filename": validate_basename(
             spec["filename"],
             f"sectors[{sector_index}].image_cube_specs[{spec_index}].filename",
         ),
@@ -56,6 +54,7 @@ def _validate_image_cube_spec(
 
 
 def _validate_image_sector(sector: Mapping[str, object], index: int) -> ImageSectorPayload:
+    """Validate one image-sector payload without rebuilding the sector."""
     raw_prepare_tasks = sector.get("prepare_tasks", [])
     if not isinstance(raw_prepare_tasks, list):
         raise ValueError(f"sectors[{index}].prepare_tasks must be a list")
@@ -77,23 +76,23 @@ def _validate_image_sector(sector: Mapping[str, object], index: int) -> ImageSec
     validated_sector = dict(sector)
     validated_sector["prepare_tasks"] = prepare_tasks
     validated_sector["image_cube_specs"] = image_cube_specs
-    validated_sector["wsclean_imsize"] = _validate_int_list(
+    validated_sector["wsclean_imsize"] = validate_int_list(
         sector.get("wsclean_imsize"),
         f"sectors[{index}].wsclean_imsize",
     )
-    validated_sector["dd_psf_grid"] = _validate_int_list(
+    validated_sector["dd_psf_grid"] = validate_int_list(
         sector.get("dd_psf_grid"),
         f"sectors[{index}].dd_psf_grid",
     )
-    validated_sector["obs_original_paths"] = _validate_string_list(
+    validated_sector["obs_original_paths"] = validate_string_list(
         sector.get("obs_original_paths"),
         f"sectors[{index}].obs_original_paths",
     )
-    validated_sector["obs_starttime"] = _validate_string_list(
+    validated_sector["obs_starttime"] = validate_string_list(
         sector.get("obs_starttime"),
         f"sectors[{index}].obs_starttime",
     )
-    validated_sector["obs_ntimes"] = _validate_int_list(
+    validated_sector["obs_ntimes"] = validate_int_list(
         sector.get("obs_ntimes"),
         f"sectors[{index}].obs_ntimes",
     )

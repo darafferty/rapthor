@@ -146,6 +146,9 @@ Current cleanup added:
   unset values such as `None`, `""`, and `"None"`.
 - Calibration builders and solve execution now share the same required-list
   validator for non-empty list inputs and exact-length list checks.
+- Image and calibration payload validators now use direct shared-helper names,
+  have concise docstrings for nested contract checks, and have focused payload
+  validation coverage.
 
 Tasks:
 
