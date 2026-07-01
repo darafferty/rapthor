@@ -9,6 +9,7 @@ from prefect.testing.utilities import prefect_test_harness
 import rapthor.execution.calibrate.collection as calibrate_collection
 import rapthor.execution.calibrate.flow as calibrate_module
 import rapthor.execution.calibrate.prediction as calibrate_prediction
+from rapthor.execution.calibrate.builders import calibrate_payload_from_inputs
 from rapthor.execution.calibrate.commands import (
     PLOT_SOLUTIONS_MODULE,
     DdecalSolveOptions,
@@ -25,7 +26,6 @@ from rapthor.execution.calibrate.flow import (
     calibrate_chunk_task,
     calibrate_flow,
 )
-from rapthor.execution.calibrate.payloads import calibrate_payload_from_inputs
 from rapthor.execution.commands import normalize_command
 from rapthor.execution.config import ExecutionConfig
 from rapthor.lib.field import Field as RapthorField

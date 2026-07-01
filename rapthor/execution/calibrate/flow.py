@@ -8,13 +8,13 @@ from rapthor.execution.calibrate.collection import (
     collect_plot_and_combine,
     collect_screen_solutions,
 )
-from rapthor.execution.calibrate.payloads import (
+from rapthor.execution.calibrate.contracts import (
     CalibrateChunkPayload,
     CalibratePayload,
-    validate_calibrate_payload,
 )
 from rapthor.execution.calibrate.prediction import prepare_image_based_predict
 from rapthor.execution.calibrate.solves import run_calibrate_chunk, run_calibrate_screen_chunk
+from rapthor.execution.calibrate.validation import validate_calibrate_payload
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.payloads import assert_serializable_payload
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect

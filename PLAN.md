@@ -263,7 +263,10 @@ validation modules:
 - Done: split `rapthor.execution.image.payloads` into direct owner modules:
   `rapthor.execution.image.contracts`, `rapthor.execution.image.builders`, and
   `rapthor.execution.image.validation`.
-- `rapthor.execution.calibrate.payloads`
+- Done: split `rapthor.execution.calibrate.payloads` into direct owner modules:
+  `rapthor.execution.calibrate.contracts`,
+  `rapthor.execution.calibrate.builders`, and
+  `rapthor.execution.calibrate.validation`.
 
 Target shape:
 

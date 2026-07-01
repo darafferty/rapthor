@@ -7,7 +7,7 @@ from rapthor.execution.calibrate.commands import (
     DrawModelOptions,
     build_draw_model_command,
 )
-from rapthor.execution.calibrate.payloads import CalibrateImagePredictPayload, CalibratePayload
+from rapthor.execution.calibrate.contracts import CalibrateImagePredictPayload, CalibratePayload
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.outputs import require_file
 from rapthor.execution.regions import make_ds9_region_from_skymodel

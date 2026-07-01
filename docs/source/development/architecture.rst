@@ -64,7 +64,9 @@ Layer Ownership
        ``rapthor.execution.image.contracts``,
        ``rapthor.execution.image.builders``,
        ``rapthor.execution.image.validation``, and
-       ``rapthor.execution.calibrate.payloads``
+       ``rapthor.execution.calibrate.contracts``,
+       ``rapthor.execution.calibrate.builders``, and
+       ``rapthor.execution.calibrate.validation``
      - Shared payload serialization checks plus operation-specific typed payload
        contracts, builders, and validators. As operation packages are
        introduced, move operation-specific contracts into the package that owns
@@ -122,7 +124,9 @@ New code should import from the module that owns the behaviour, for example:
 * payload helpers from the payload/use-case module that owns the contract, such
   as ``rapthor.execution.image.contracts``,
   ``rapthor.execution.image.builders``, ``rapthor.execution.image.validation``,
-  or ``rapthor.execution.calibrate.payloads`` for operation payload mapping
+  ``rapthor.execution.calibrate.contracts``,
+  ``rapthor.execution.calibrate.builders``, or
+  ``rapthor.execution.calibrate.validation`` for operation payload mapping
 * finalizer-compatible file/directory record helpers from
   ``rapthor.lib.records``
 * output discovery helpers from operation-specific modules such as
