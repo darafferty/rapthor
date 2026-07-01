@@ -133,6 +133,12 @@ Done when:
 Reduce small pockets of repeated structure that remain after the script and
 flow migrations.
 
+Current cleanup added:
+
+- Concatenate payload validation now uses the shared execution payload
+  validators for basenames and required string lists, rather than hand-rolled
+  local checks.
+
 Tasks:
 
 - Review repeated payload-builder and command-builder patterns in:

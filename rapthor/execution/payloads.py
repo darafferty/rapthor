@@ -44,12 +44,21 @@ def validate_basename(filename: object, name: str) -> str:
     return filename
 
 
-def validate_string_list(values: object, name: str) -> list[str]:
+def validate_string_list(
+    values: object,
+    name: str,
+    *,
+    allow_empty: bool = True,
+) -> list[str]:
     """Return a list of non-empty strings or raise a stable validation error."""
     if not isinstance(values, list) or not all(
         isinstance(value, str) and value for value in values
     ):
+        if not allow_empty:
+            raise ValueError(f"{name} must be a non-empty list of strings")
         raise ValueError(f"{name} must be a list of strings")
+    if not allow_empty and not values:
+        raise ValueError(f"{name} must be a non-empty list of strings")
     return list(values)
 
 

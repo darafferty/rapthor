@@ -3,7 +3,11 @@
 import os
 from typing import Mapping, TypedDict
 
-from rapthor.execution.payloads import assert_serializable_payload
+from rapthor.execution.payloads import (
+    assert_serializable_payload,
+    validate_basename,
+    validate_string_list,
+)
 from rapthor.lib.records import directory_record_path
 
 
@@ -23,24 +27,12 @@ class ConcatenatePayload(TypedDict):
     epochs: list[ConcatenateEpochPayload]
 
 
-def _validate_output_filename(output_filename: object, index: int) -> str:
-    if not isinstance(output_filename, str) or not output_filename:
-        raise ValueError(f"output_filenames[{index}] must be a non-empty string")
-    if os.path.isabs(output_filename) or os.path.basename(output_filename) != output_filename:
-        raise ValueError(f"output_filenames[{index}] must be a basename")
-    return output_filename
-
-
 def _validate_input_filenames(input_filenames: object, index: int) -> list[str]:
-    if (
-        not isinstance(input_filenames, list)
-        or not input_filenames
-        or not all(
-            isinstance(input_filename, str) and input_filename for input_filename in input_filenames
-        )
-    ):
-        raise ValueError(f"epochs[{index}].input_filenames must be a non-empty list of strings")
-    return list(input_filenames)
+    return validate_string_list(
+        input_filenames,
+        f"epochs[{index}].input_filenames",
+        allow_empty=False,
+    )
 
 
 def _validate_unique_output_paths(epochs: list[ConcatenateEpochPayload]) -> None:
@@ -61,7 +53,9 @@ def validate_concatenate_payload(payload: Mapping[str, object]) -> ConcatenatePa
         if not isinstance(epoch, Mapping):
             raise ValueError(f"epochs[{index}] must be a mapping")
         input_filenames = _validate_input_filenames(epoch.get("input_filenames"), index)
-        output_filename = _validate_output_filename(epoch.get("output_filename"), index)
+        output_filename = validate_basename(
+            epoch.get("output_filename"), f"epochs[{index}].output_filename"
+        )
         expected_output_path = os.path.join(pipeline_working_dir, output_filename)
         if str(epoch.get("output_path")) != expected_output_path:
             raise ValueError(f"epochs[{index}].output_path must be {expected_output_path}")
@@ -103,7 +97,7 @@ def concatenate_payload_from_inputs(
     for index, (epoch_inputs, output_filename) in enumerate(zip(input_filenames, output_filenames)):
         if not isinstance(epoch_inputs, list):
             raise ValueError(f"input_filenames[{index}] must be a list")
-        output_filename = _validate_output_filename(output_filename, index)
+        output_filename = validate_basename(output_filename, f"output_filenames[{index}]")
         epochs.append(
             {
                 "input_filenames": [directory_record_path(record) for record in epoch_inputs],

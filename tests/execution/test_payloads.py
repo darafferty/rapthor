@@ -61,6 +61,16 @@ def test_validate_string_list_rejects_non_string_or_empty_values():
         validate_string_list(["sector_1.ms", ""], "sector_filenames")
 
 
+def test_validate_string_list_can_require_non_empty_list():
+    with pytest.raises(ValueError, match="sector_filenames must be a non-empty list of strings"):
+        validate_string_list([], "sector_filenames", allow_empty=False)
+
+
+def test_validate_string_list_uses_non_empty_message_for_malformed_required_list():
+    with pytest.raises(ValueError, match="sector_filenames must be a non-empty list of strings"):
+        validate_string_list(["sector_1.ms", 7], "sector_filenames", allow_empty=False)
+
+
 def test_validate_int_list_accepts_exact_length():
     assert validate_int_list([1, 2], "wsclean_imsize", length=2) == [1, 2]
 

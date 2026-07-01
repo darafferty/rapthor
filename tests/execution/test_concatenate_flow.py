@@ -246,6 +246,7 @@ def test_run_concatenate_flow_executes_commands_and_returns_records(
     "epoch_input, expected_message",
     [
         pytest.param({}, "input_filenames", id="missing-inputs"),
+        pytest.param({"input_filenames": []}, "non-empty list of strings", id="empty-inputs"),
         pytest.param(
             {"input_filenames": ["epoch_0_input_0.ms", 7]},
             "non-empty list of strings",
