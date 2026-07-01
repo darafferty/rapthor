@@ -5,12 +5,8 @@ from typing import Mapping, TypedDict
 
 from rapthor.execution.payloads import (
     assert_serializable_payload,
-)
-from rapthor.execution.payloads import (
-    validate_basename as _validate_basename,
-)
-from rapthor.execution.payloads import (
-    validate_string_list as _validate_string_list,
+    validate_basename,
+    validate_string_list,
 )
 from rapthor.lib.records import file_record_path
 
@@ -37,6 +33,7 @@ class MosaicPayload(TypedDict):
 
 
 def _validate_unique_mosaic_paths(image_types: list[MosaicImageTypePayload]) -> None:
+    """Reject payloads that would write two image types to the same mosaic."""
     mosaic_paths = [image_type["mosaic_path"] for image_type in image_types]
     if len(mosaic_paths) != len(set(mosaic_paths)):
         raise ValueError("mosaic paths must be unique")
@@ -54,10 +51,10 @@ def validate_mosaic_payload(payload: Mapping[str, object]) -> MosaicPayload:
     for index, image_type in enumerate(raw_image_types):
         if not isinstance(image_type, Mapping):
             raise ValueError(f"image_types[{index}] must be a mapping")
-        template_filename = _validate_basename(
+        template_filename = validate_basename(
             image_type.get("template_image_filename"), "template_image_filename"
         )
-        mosaic_filename = _validate_basename(image_type.get("mosaic_filename"), "mosaic_filename")
+        mosaic_filename = validate_basename(image_type.get("mosaic_filename"), "mosaic_filename")
         expected_template_path = os.path.join(pipeline_working_dir, template_filename)
         expected_mosaic_path = os.path.join(pipeline_working_dir, mosaic_filename)
         if str(image_type.get("template_image_path")) != expected_template_path:
@@ -66,15 +63,15 @@ def validate_mosaic_payload(payload: Mapping[str, object]) -> MosaicPayload:
             )
         if str(image_type.get("mosaic_path")) != expected_mosaic_path:
             raise ValueError(f"image_types[{index}].mosaic_path must be {expected_mosaic_path}")
-        sector_images = _validate_string_list(
+        sector_images = validate_string_list(
             image_type.get("sector_image_filenames"),
             f"image_types[{index}].sector_image_filenames",
         )
-        sector_vertices = _validate_string_list(
+        sector_vertices = validate_string_list(
             image_type.get("sector_vertices_filenames"),
             f"image_types[{index}].sector_vertices_filenames",
         )
-        regridded_images = _validate_string_list(
+        regridded_images = validate_string_list(
             image_type.get("regridded_image_filenames"),
             f"image_types[{index}].regridded_image_filenames",
         )
@@ -89,7 +86,7 @@ def validate_mosaic_payload(payload: Mapping[str, object]) -> MosaicPayload:
                 "template_image_filename": template_filename,
                 "template_image_path": expected_template_path,
                 "regridded_image_filenames": [
-                    _validate_basename(
+                    validate_basename(
                         regridded_image,
                         f"image_types[{index}].regridded_image_filenames[{regridded_index}]",
                     )
@@ -160,10 +157,10 @@ def mosaic_payload_from_inputs(
         ):
             raise ValueError(f"Mosaic scatter lists at index {index} must have the same length")
 
-        template_filename = _validate_basename(
+        template_filename = validate_basename(
             template_image_filenames[index], f"template_image_filename[{index}]"
         )
-        mosaic_filename = _validate_basename(mosaic_filenames[index], f"mosaic_filename[{index}]")
+        mosaic_filename = validate_basename(mosaic_filenames[index], f"mosaic_filename[{index}]")
         image_types.append(
             {
                 "sector_image_filenames": [file_record_path(record) for record in sector_images],
@@ -173,7 +170,7 @@ def mosaic_payload_from_inputs(
                 "template_image_filename": template_filename,
                 "template_image_path": os.path.join(pipeline_dir, template_filename),
                 "regridded_image_filenames": [
-                    _validate_basename(filename, f"regridded_image_filename[{index}]")
+                    validate_basename(filename, f"regridded_image_filename[{index}]")
                     for filename in regridded_images
                 ],
                 "mosaic_filename": mosaic_filename,

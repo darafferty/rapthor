@@ -11,7 +11,7 @@ from rapthor.execution.mosaic.commands import build_compress_mosaic_command
 from rapthor.execution.mosaic.flow import (
     mosaic_flow,
 )
-from rapthor.execution.mosaic.payloads import mosaic_payload_from_inputs
+from rapthor.execution.mosaic.payloads import mosaic_payload_from_inputs, validate_mosaic_payload
 from rapthor.lib.records import file_record, validate_output_record
 from rapthor.operations.mosaic import Mosaic
 from tests.execution.conftest import run_flow_for_test
@@ -229,6 +229,29 @@ def test_mosaic_payload_handles_skip_processing(tmp_path):
         "skip_processing": True,
         "image_types": [],
     }
+
+
+def test_validate_mosaic_payload_validates_image_type_contract(tmp_path):
+    payload = _mosaic_payload(tmp_path)
+
+    validated = validate_mosaic_payload(payload)
+
+    assert validated["image_types"][0]["mosaic_filename"] == "mosaic_1-I-image.fits"
+    assert validated["image_types"][0]["regridded_image_filenames"] == [
+        "sector_1-I-image.fits.regridded",
+        "sector_2-I-image.fits.regridded",
+    ]
+
+
+def test_validate_mosaic_payload_rejects_duplicate_outputs(tmp_path):
+    payload = _mosaic_payload(tmp_path)
+    duplicate = dict(payload["image_types"][0])
+    duplicate["template_image_filename"] = "mosaic_2_template.fits"
+    duplicate["template_image_path"] = str(tmp_path / "mosaic_2_template.fits")
+    payload["image_types"].append(duplicate)
+
+    with pytest.raises(ValueError, match="mosaic paths must be unique"):
+        validate_mosaic_payload(payload)
 
 
 def test_run_mosaic_flow_executes_python_helpers_and_returns_records(

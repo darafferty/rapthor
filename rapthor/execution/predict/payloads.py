@@ -5,15 +5,9 @@ from typing import Mapping, Optional, TypedDict, Union
 
 from rapthor.execution.payloads import (
     assert_serializable_payload,
-)
-from rapthor.execution.payloads import (
-    optional_string as _optional_string,
-)
-from rapthor.execution.payloads import (
-    validate_basename as _validate_basename,
-)
-from rapthor.execution.payloads import (
-    validate_string_list as _validate_string_list,
+    optional_string,
+    validate_basename,
+    validate_string_list,
 )
 from rapthor.lib.records import (
     directory_record_path,
@@ -114,10 +108,10 @@ def predict_payload_from_inputs(
     data_colname = str(input_parms["data_colname"])
     h5parm = optional_file_record_path(input_parms.get("h5parm"))
     normalize_h5parm = optional_file_record_path(input_parms.get("normalize_h5parm"))
-    dp3_applycal_steps = _optional_string(input_parms.get("dp3_applycal_steps"))
+    dp3_applycal_steps = optional_string(input_parms.get("dp3_applycal_steps"))
     predict_tasks: list[PredictModelTaskPayload] = []
     for index in range(predict_count):
-        msout = _validate_basename(sector_model_filenames[index], f"sector_model_filename[{index}]")
+        msout = validate_basename(sector_model_filenames[index], f"sector_model_filename[{index}]")
         if not isinstance(sector_patches[index], list):
             raise ValueError(f"sector_patches[{index}] must be a list")
         predict_tasks.append(
@@ -192,10 +186,11 @@ def _validate_predict_model_task(
     predict_task: Mapping[str, object],
     index: int,
 ) -> PredictModelTaskPayload:
+    """Validate one DP3 model-prediction task inside a predict payload."""
     return {
         "msin": str(predict_task["msin"]),
         "data_colname": str(predict_task["data_colname"]),
-        "msout": _validate_basename(predict_task["msout"], f"predict_tasks[{index}].msout"),
+        "msout": validate_basename(predict_task["msout"], f"predict_tasks[{index}].msout"),
         "msout_path": str(predict_task["msout_path"]),
         "starttime": str(predict_task["starttime"]),
         "ntimes": int(predict_task["ntimes"]),
@@ -204,14 +199,14 @@ def _validate_predict_model_task(
         "correcttimesmearing": bool(predict_task["correcttimesmearing"]),
         "sagecalpredict": bool(predict_task["sagecalpredict"]),
         "sourcedb": str(predict_task["sourcedb"]),
-        "directions": _validate_string_list(
+        "directions": validate_string_list(
             predict_task.get("directions"),
             f"predict_tasks[{index}].directions",
         ),
         "numthreads": int(predict_task["numthreads"]),
-        "h5parm": _optional_string(predict_task.get("h5parm")),
-        "applycal_steps": _optional_string(predict_task.get("applycal_steps")),
-        "normalize_h5parm": _optional_string(predict_task.get("normalize_h5parm")),
+        "h5parm": optional_string(predict_task.get("h5parm")),
+        "applycal_steps": optional_string(predict_task.get("applycal_steps")),
+        "normalize_h5parm": optional_string(predict_task.get("normalize_h5parm")),
     }
 
 
@@ -220,6 +215,7 @@ def _validate_predict_postprocess_task(
     postprocess_task: Mapping[str, object],
     index: int,
 ) -> PredictPostprocessPayload:
+    """Validate one observation post-processing task for DI or DD prediction."""
     task: PredictPostprocessPayload = {
         "msobs": str(postprocess_task["msobs"]),
         "data_colname": str(postprocess_task["data_colname"]),

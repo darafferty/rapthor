@@ -149,6 +149,8 @@ Current cleanup added:
 - Image and calibration payload validators now use direct shared-helper names,
   have concise docstrings for nested contract checks, and have focused payload
   validation coverage.
+- Predict, mosaic, and image payload builders now use direct shared-helper names,
+  and mosaic payload validation has focused contract tests.
 
 Tasks:
 

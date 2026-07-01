@@ -9,8 +9,7 @@ from rapthor.execution.image.contracts import (
     ImagePrepareTaskPayload,
     ImageSectorPayload,
 )
-from rapthor.execution.payloads import assert_serializable_payload
-from rapthor.execution.payloads import validate_basename as _validate_basename
+from rapthor.execution.payloads import assert_serializable_payload, validate_basename
 from rapthor.lib.records import (
     directory_record_path,
     file_record_path,
@@ -187,7 +186,7 @@ def image_payload_from_inputs(
 
         prepare_tasks: list[ImagePrepareTaskPayload] = []
         for obs_index in range(obs_count):
-            msout = _validate_basename(
+            msout = validate_basename(
                 prepare_filenames[obs_index], f"prepare_filename[{sector_index}][{obs_index}]"
             )
             prepare_tasks.append(
@@ -205,29 +204,29 @@ def image_payload_from_inputs(
                 }
             )
 
-        image_name = _validate_basename(image_names[sector_index], f"image_name[{sector_index}]")
-        concat_filename = _validate_basename(
+        image_name = validate_basename(image_names[sector_index], f"image_name[{sector_index}]")
+        concat_filename = validate_basename(
             input_parms["concat_filename"][sector_index], f"concat_filename[{sector_index}]"
         )
-        mask_filename = _validate_basename(
+        mask_filename = validate_basename(
             input_parms["mask_filename"][sector_index], f"mask_filename[{sector_index}]"
         )
         facet_region_filename = None
         if use_facets:
-            facet_region_filename = _validate_basename(
+            facet_region_filename = validate_basename(
                 input_parms["facet_region_file"][sector_index],
                 f"facet_region_file[{sector_index}]",
             )
         filtered_model_image_filename = None
         if save_filtered_model_image:
-            filtered_model_image_filename = _validate_basename(
+            filtered_model_image_filename = validate_basename(
                 input_parms["filtered_model_image_name"][sector_index],
                 f"filtered_model_image_name[{sector_index}]",
             )
         image_i_cube_filename = None
         image_cube_specs: list[ImageCubeSpecPayload] = []
         if make_image_cube:
-            image_i_cube_filename = _validate_basename(
+            image_i_cube_filename = validate_basename(
                 input_parms["image_I_cube_name"][sector_index],
                 f"image_I_cube_name[{sector_index}]",
             )
@@ -235,7 +234,7 @@ def image_payload_from_inputs(
                 key = f"image_{stokes}_cube_name"
                 if key not in input_parms:
                     continue
-                image_cube_filename = _validate_basename(
+                image_cube_filename = validate_basename(
                     input_parms[key][sector_index],
                     f"{key}[{sector_index}]",
                 )
@@ -257,11 +256,11 @@ def image_payload_from_inputs(
         output_source_catalog_filename = None
         output_normalize_h5parm_filename = None
         if normalize_flux_scale:
-            output_source_catalog_filename = _validate_basename(
+            output_source_catalog_filename = validate_basename(
                 input_parms["output_source_catalog"][sector_index],
                 f"output_source_catalog[{sector_index}]",
             )
-            output_normalize_h5parm_filename = _validate_basename(
+            output_normalize_h5parm_filename = validate_basename(
                 input_parms["output_normalize_h5parm"][sector_index],
                 f"output_normalize_h5parm[{sector_index}]",
             )
