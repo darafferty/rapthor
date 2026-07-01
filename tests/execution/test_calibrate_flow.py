@@ -3455,6 +3455,7 @@ def test_calibrate_dd_slow_source_adjusted_operation_run_uses_prefect_flow(
 def test_calibrate_prefect_tasks_submit_all_chunks_before_collect(monkeypatch, tmp_path):
     payload = calibrate_payload_from_inputs("di", _di_fulljones_input_parms(), tmp_path)
     events = []
+    submitted_indexes = []
 
     class FakeFuture:
         def __init__(self, index):
@@ -3467,8 +3468,10 @@ def test_calibrate_prefect_tasks_submit_all_chunks_before_collect(monkeypatch, t
     def fake_submit(payload_arg, chunk, execution_config=None):
         assert payload_arg is payload
         assert execution_config == ExecutionConfig(task_runner="sync")
+        future_index = len(submitted_indexes)
+        submitted_indexes.append(future_index)
         events.append(f"submit-{chunk['output_h5parm']}")
-        return FakeFuture(len(events) - 1)
+        return FakeFuture(future_index)
 
     def fake_collect(payload_arg, solve_records, execution_config, shell_operation_cls=None):
         _ = shell_operation_cls
@@ -3481,7 +3484,18 @@ def test_calibrate_prefect_tasks_submit_all_chunks_before_collect(monkeypatch, t
         ]
         return {"combined_solutions": file_record(tmp_path / "fulljones_solutions.h5")}
 
-    monkeypatch.setattr(calibrate_module.calibrate_chunk_task, "submit", fake_submit)
+    class FakeTask:
+        def __init__(self, task_run_name):
+            self.task_run_name = task_run_name
+
+        def submit(self, payload_arg, chunk, execution_config=None):
+            events.append(f"task-name-{self.task_run_name}")
+            return fake_submit(payload_arg, chunk, execution_config=execution_config)
+
+    def fake_with_options(task_run_name):
+        return FakeTask(task_run_name)
+
+    monkeypatch.setattr(calibrate_module.calibrate_chunk_task, "with_options", fake_with_options)
     monkeypatch.setattr(calibrate_module, "collect_plot_and_combine", fake_collect)
 
     outputs = calibrate_module._run_calibrate_prefect_tasks(
@@ -3491,7 +3505,9 @@ def test_calibrate_prefect_tasks_submit_all_chunks_before_collect(monkeypatch, t
 
     assert outputs == {"combined_solutions": file_record(tmp_path / "fulljones_solutions.h5")}
     assert events == [
+        "task-name-calibrate_di_chunk_1",
         "submit-fulljones_gain_0.h5parm",
+        "task-name-calibrate_di_chunk_2",
         "submit-fulljones_gain_1.h5parm",
         "result-0",
         "result-1",
