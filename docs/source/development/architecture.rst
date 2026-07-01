@@ -210,6 +210,10 @@ when operation ownership, flow boundaries, or task naming conventions change.
    Current Prefect/Dask orchestration and package ownership after the CWL
    migration.
 
+The standalone ``predict_flow`` handles DI/DD model-data prediction operations.
+Image-based prediction used during calibration is owned by ``calibrate_flow``
+and its calibration work-unit modules.
+
 Change Workflow
 ---------------
 

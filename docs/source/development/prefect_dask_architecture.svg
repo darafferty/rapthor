@@ -61,12 +61,12 @@
 <rect x="1650" y="236" width="190" height="52" rx="10" ry="10" fill="#fbfffd" stroke="#2f855a" stroke-width="1.2" />
 <text x="1664" y="258.0" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="400" fill="#1f2933" text-anchor="start">
 <tspan x="1664" dy="0">calibrate_flow</tspan>
-<tspan x="1664" dy="21">DI / DD modes</tspan>
+<tspan x="1664" dy="21">solves + image predict</tspan>
 </text>
 <rect x="1430" y="300" width="190" height="52" rx="10" ry="10" fill="#fbfffd" stroke="#2f855a" stroke-width="1.2" />
 <text x="1444" y="322.0" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="400" fill="#1f2933" text-anchor="start">
 <tspan x="1444" dy="0">predict_flow</tspan>
-<tspan x="1444" dy="21">DI / DD modes</tspan>
+<tspan x="1444" dy="21">model-data DI / DD</tspan>
 </text>
 <rect x="1650" y="300" width="190" height="52" rx="10" ry="10" fill="#fbfffd" stroke="#2f855a" stroke-width="1.2" />
 <text x="1664" y="333.0" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="400" fill="#1f2933" text-anchor="start">image_flow</text>

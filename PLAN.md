@@ -46,6 +46,11 @@ Completed:
   `rapthor.execution.predict.measurement_sets`, with direct unit coverage.
 - Scheduler-independent work units are separated from Prefect flow wiring for
   the complex image and calibration paths.
+- Prefect operation flow and task run names now include operation, calibration
+  mode where relevant, cycle, and coarse task identifiers so the dashboard is
+  easier to scan during rich demo and integration runs.
+- The development architecture docs include a current Prefect/Dask
+  orchestration diagram that matches the refactored owner-package layout.
 - `calibration_strategy` is the only production interface for solve type and
   solve order. Legacy `do_fulljones_solve` and `do_slowgain_solve` flags are
   retired from production configuration.
@@ -65,6 +70,7 @@ Recent verification:
 - `tests/execution/test_predict_measurement_sets.py`
 - `tests/execution/test_predict_sector_models.py`
 - `tests/execution/test_predict_flow.py`
+- `tests/execution/test_run_names.py`
 - `tests/architecture/test_import_boundaries.py`
 - `tox -e lint`
 - Sphinx HTML build in the dev container, with existing documentation warnings
@@ -238,9 +244,9 @@ Tasks:
 - Let predict post-processing for an observation start as soon as that
   observation's model-data outputs are ready, instead of waiting for all model
   outputs globally.
-- Add stable, descriptive Prefect task names that include sector, chunk,
-  observation, image type, or epoch identifiers so the Dask dashboard is useful
-  for debugging.
+- Refine the current Prefect task names as finer task boundaries land, replacing
+  generic indexes with stable sector, chunk, observation, image type, or epoch
+  identifiers where those identifiers are available in payloads.
 - Keep task granularity practical: do not split DP3, WSClean, IDG, or PyBDSF
   internals into Dask subtasks unless a proven library-level integration exists.
 - Document which steps are distributed by Dask and which still run as coarse
