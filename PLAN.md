@@ -90,15 +90,23 @@ Known caveats:
 Add focused integration/regression checks that protect the scientific behaviour
 we stabilized during the migration.
 
+Current coverage added:
+
+- Solve-slot order, solution labels, per-chunk h5parm prefixes, and collected
+  h5parm filenames are locked in focused operation tests.
+- DD and DI calibration initial-solution handoff now checks that only current
+  cycle h5parms are reused, including full-Jones DI solutions.
+- Existing finalize tests cover final DD/DI solution destinations and auxiliary
+  public solution products.
+- Existing integration tests cover representative DD, DI, mixed DI/DD,
+  full-Jones, slow-gain, and calibration-option command contracts.
+
 Tasks:
 
-- Check solve-slot order and h5parm filenames for explicit calibration
-  strategies.
-- Check final h5parm products used by later operations.
-- Check auxiliary solution products that are intentionally public.
-- Check current-cycle-only solution handoff between calibration cycles.
-- Keep the saved CWL equivalence runner available as a heavier confidence check
-  for larger scientific or script-migration changes.
+- Add one focused integration assertion that a later cycle does not apply a
+  previous-cycle h5parm in the emitted DP3 commands.
+- Keep the saved CWL equivalence runner available as the heavier confidence
+  check for larger scientific or script-migration changes.
 
 Done when:
 

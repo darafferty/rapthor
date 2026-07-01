@@ -985,25 +985,76 @@ class TestCalibrate:
                 None,
                 False,
                 [
-                    ("fast_phase", "solve1", "scalarphase", "fast_phase"),
-                    ("medium_phase", "solve2", "scalarphase", "medium1_phase"),
-                    ("slow_gains", "solve3", "diagonal", "slow_gain"),
-                    ("medium_phase", "solve4", "scalarphase", "medium2_phase"),
+                    (
+                        "fast_phase",
+                        "fast",
+                        "solve1",
+                        "scalarphase",
+                        "fast_phase",
+                        "fast_phases.h5parm",
+                    ),
+                    (
+                        "medium_phase",
+                        "medium1",
+                        "solve2",
+                        "scalarphase",
+                        "medium1_phase",
+                        "medium1_phases.h5parm",
+                    ),
+                    (
+                        "slow_gains",
+                        "slow",
+                        "solve3",
+                        "diagonal",
+                        "slow_gain",
+                        "slow_gains.h5parm",
+                    ),
+                    (
+                        "medium_phase",
+                        "medium2",
+                        "solve4",
+                        "scalarphase",
+                        "medium2_phase",
+                        "medium2_phases.h5parm",
+                    ),
                 ],
             ),
             (
                 "dd",
                 {"dd": ["slow_gains"]},
                 False,
-                [("slow_gains", "solve1", "diagonal", "slow_gain")],
+                [
+                    (
+                        "slow_gains",
+                        "slow",
+                        "solve1",
+                        "diagonal",
+                        "slow_gain",
+                        "slow_gains.h5parm",
+                    )
+                ],
             ),
             (
                 "dd",
                 {"dd": ["medium_phase", "fast_phase"]},
                 False,
                 [
-                    ("medium_phase", "solve1", "scalarphase", "medium1_phase"),
-                    ("fast_phase", "solve2", "scalarphase", "fast_phase"),
+                    (
+                        "medium_phase",
+                        "medium1",
+                        "solve1",
+                        "scalarphase",
+                        "medium1_phase",
+                        "medium1_phases.h5parm",
+                    ),
+                    (
+                        "fast_phase",
+                        "fast",
+                        "solve2",
+                        "scalarphase",
+                        "fast_phase",
+                        "fast_phases.h5parm",
+                    ),
                 ],
             ),
             (
@@ -1011,17 +1062,54 @@ class TestCalibrate:
                 {"di": ["fast_phase", "medium_phase", "slow_gains", "full_jones"]},
                 False,
                 [
-                    ("fast_phase", "solve1", "scalarphase", "fast_phase_di"),
-                    ("medium_phase", "solve2", "scalarphase", "medium1_phase_di"),
-                    ("slow_gains", "solve3", "diagonal", "slow_gains_di"),
-                    ("full_jones", "solve4", "fulljones", "fulljones_gain"),
+                    (
+                        "fast_phase",
+                        "fast",
+                        "solve1",
+                        "scalarphase",
+                        "fast_phase_di",
+                        "fast_phases_di.h5parm",
+                    ),
+                    (
+                        "medium_phase",
+                        "medium1",
+                        "solve2",
+                        "scalarphase",
+                        "medium1_phase_di",
+                        "medium1_phases_di.h5parm",
+                    ),
+                    (
+                        "slow_gains",
+                        "slow",
+                        "solve3",
+                        "diagonal",
+                        "slow_gains_di",
+                        "slow_gains_di.h5parm",
+                    ),
+                    (
+                        "full_jones",
+                        "fulljones",
+                        "solve4",
+                        "fulljones",
+                        "fulljones_gain",
+                        "fulljones_solutions.h5",
+                    ),
                 ],
             ),
             (
                 "di",
                 {"di": ["slow_gains"]},
                 False,
-                [("slow_gains", "solve1", "diagonal", "slow_gains_di")],
+                [
+                    (
+                        "slow_gains",
+                        "slow",
+                        "solve1",
+                        "diagonal",
+                        "slow_gains_di",
+                        "slow_gains_di.h5parm",
+                    )
+                ],
             ),
             (
                 "di",
@@ -1039,7 +1127,15 @@ class TestCalibrate:
         plan = calibrate._build_solve_plan()
 
         assert [
-            (solve.solve_type, solve.step, solve.mode, solve.output_prefix) for solve in plan
+            (
+                solve.solve_type,
+                solve.solution_label,
+                solve.step,
+                solve.mode,
+                solve.output_prefix,
+                solve.collected_h5parm,
+            )
+            for solve in plan
         ] == expected_plan
 
         requested_solves, helper_defaulted = requested_calibration_solves(
@@ -1053,7 +1149,15 @@ class TestCalibrate:
             defaulted_strategy=helper_defaulted,
         )
         assert [
-            (solve.solve_type, solve.step, solve.mode, solve.output_prefix) for solve in helper_plan
+            (
+                solve.solve_type,
+                solve.solution_label,
+                solve.step,
+                solve.mode,
+                solve.output_prefix,
+                solve.collected_h5parm,
+            )
+            for solve in helper_plan
         ] == expected_plan
 
     def test_set_input_parameters_dd_uses_explicit_solve_strategy(self, calibrate_field):
@@ -1166,6 +1270,41 @@ class TestCalibrate:
         assert calibrate.input_parms["solve1_initialsolutions_h5parm"]["path"] == str(current_fast)
         assert calibrate.input_parms["solve2_initialsolutions_h5parm"] is None
         assert calibrate.input_parms["solve3_initialsolutions_h5parm"] is None
+
+    def test_set_input_parameters_di_uses_current_cycle_solve_initial_solutions_only(
+        self, calibrate_field, tmp_path
+    ):
+        calibrate_field.calibration_strategy = {
+            "di": ["fast_phase", "medium_phase", "slow_gains", "full_jones"]
+        }
+        calibrate_field._calibration_strategy_defaulted = False
+
+        current_solution_dir = tmp_path / "solutions" / "calibrate_di_1"
+        future_solution_dir = tmp_path / "solutions" / "calibrate_di_2"
+        current_solution_dir.mkdir(parents=True)
+        future_solution_dir.mkdir(parents=True)
+
+        current_fast = current_solution_dir / "di-solutions-fast-phase.h5"
+        future_medium = future_solution_dir / "di-solutions-medium1-phase.h5"
+        future_slow = future_solution_dir / "di-solutions-slow-gain.h5"
+        current_fulljones = current_solution_dir / "fulljones-solutions.h5"
+        for path in (current_fast, future_medium, future_slow, current_fulljones):
+            path.write_text("h5parm")
+
+        calibrate_field.di_fast_phases_h5parm_filename = str(current_fast)
+        calibrate_field.di_medium1_phases_h5parm_filename = str(future_medium)
+        calibrate_field.di_slow_gains_h5parm_filename = str(future_slow)
+        calibrate_field.fulljones_h5parm_filename = str(current_fulljones)
+
+        calibrate = Calibrate("di", field=calibrate_field, index=1)
+        calibrate.set_input_parameters()
+
+        assert calibrate.input_parms["solve1_initialsolutions_h5parm"]["path"] == str(current_fast)
+        assert calibrate.input_parms["solve2_initialsolutions_h5parm"] is None
+        assert calibrate.input_parms["solve3_initialsolutions_h5parm"] is None
+        assert calibrate.input_parms["solve4_initialsolutions_h5parm"]["path"] == str(
+            current_fulljones
+        )
 
     def test_set_input_parameters_dd_preapplies_di_solutions(self, calibrate_field, tmp_path):
         di_h5parm = tmp_path / "di-solutions.h5"
