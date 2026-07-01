@@ -244,9 +244,8 @@ next payload/scalability refactor slice.
 - Done: converted `bin/concat_linc_files` to the package-owned
   `rapthor.execution.concatenate.linc_cli:main` entry point and removed the
   extensionless script from package metadata.
-- Replace the manual `[tool.setuptools].packages` list with setuptools package
-  discovery, such as `[tool.setuptools.packages.find] include = ["rapthor*"]`,
-  once the CLI/package changes are stable.
+- Done: replaced the manual `[tool.setuptools].packages` list with setuptools
+  package discovery for `rapthor*`.
 - Keep the generated local noise (`__pycache__`, `.tox`, `.ruff_cache`, `runs`,
   `htmlcov`, build outputs) out of repo decisions; clean locally when useful,
   but do not treat it as source structure.
