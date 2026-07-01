@@ -10,7 +10,11 @@ from rapthor.execution.image.contracts import (
 )
 from rapthor.execution.payloads import (
     validate_basename as _validate_basename,
+)
+from rapthor.execution.payloads import (
     validate_int_list as _validate_int_list,
+)
+from rapthor.execution.payloads import (
     validate_string_list as _validate_string_list,
 )
 
