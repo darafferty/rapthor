@@ -61,6 +61,13 @@ Completed:
 - The saved CWL equivalence matrix passes against the current scientific
   contract when run on a filesystem with enough space for WSClean FITS
   products.
+- A fresh saved CWL equivalence baseline was run on 2026-07-01 at
+  `/tmp/rapthor-equivalence-20260701-current` inside the dev container. All
+  current-contract scenarios passed product comparison. The only warning was an
+  expected non-scientific output-record summary difference for DI full-Jones:
+  the CWL reference stored the full-Jones solution under legacy
+  `fast_phase_solutions`, while the current cleaned contract records it as
+  `fulljones_solutions`.
 - Architecture docs and structure docs describe the current execution-owned
   module layout.
 - Dev containers install docs dependencies by default.
@@ -72,6 +79,7 @@ Recent verification:
 - `tests/execution/test_predict_flow.py`
 - `tests/execution/test_run_names.py`
 - `tests/architecture/test_import_boundaries.py`
+- `python3 scripts/dev/run_saved_cwl_equivalence.py --run-root /tmp/rapthor-equivalence-20260701-current --stop-on-failure`
 - `tox -e lint`
 - Sphinx HTML build in the dev container, with existing documentation warnings
   tracked as docs cleanup rather than a blocked build.
@@ -91,37 +99,7 @@ Known caveats:
 
 ## Next Work Queue
 
-### 1. Fresh Saved CWL Equivalence Baseline
-
-Run the saved CWL equivalence suite once more now that the migration and
-calibration cleanup have settled, before starting scalability-focused changes.
-
-Tasks:
-
-- Clear enough local/container disk space first; rich WSClean runs can generate
-  many large FITS products before comparisons start.
-- Run the saved CWL/current-pipeline equivalence suite into a new dated run
-  directory.
-- Compare the key scientific products:
-  - calibration h5parm solutions
-  - images and mosaics
-  - catalogues and diagnostic products where applicable
-  - emitted calibration/imaging command contracts
-- Keep the comparison report and any compact reference outputs that are useful
-  for future debugging.
-- Remove bulky intermediate `rapthor-work/pipelines/*` products once the result
-  has been reviewed and no longer needs interactive inspection.
-- Promote any fragile or failed equivalence checks into focused regression tests
-  before moving on.
-
-Done when:
-
-- The current pipeline has a fresh scientific baseline after the script and
-  calibration-strategy migration work.
-- Any remaining scientific differences are either fixed or documented with a
-  clear reason before scalability work starts.
-
-### 2. Regression Guards For Scientific Contracts
+### 1. Regression Guards For Scientific Contracts
 
 Add focused integration/regression checks that protect the scientific behaviour
 we stabilized during the migration.
@@ -149,7 +127,7 @@ Done when:
 - Calibration strategy/output regressions fail in focused tests before they
   require a full manual equivalence investigation.
 
-### 3. Runtime Bootstrap For Prefect And Dask
+### 2. Runtime Bootstrap For Prefect And Dask
 
 Make `rapthor input.parset` succeed predictably whether or not the user has an
 existing Prefect server or Dask cluster.
@@ -201,7 +179,7 @@ Done when:
 - A new user can copy commands from the docs and run Rapthor locally with
   minimal setup friction.
 
-### 4. Dask Scalability Contracts
+### 3. Dask Scalability Contracts
 
 Prove that the pipeline can scale across multiple workers or nodes without
 accidentally passing domain objects, huge nested state, or local-only paths.
@@ -261,7 +239,7 @@ Done when:
 - A representative demo run shows meaningful task-stream activity in the Dask
   dashboard without oversubscribing threaded or MPI external tools.
 
-### 5. Runtime UX: Dry Run And Preflight
+### 4. Runtime UX: Dry Run And Preflight
 
 Make it easier for users to understand likely runtime failures before launching
 a long pipeline run.
@@ -289,7 +267,7 @@ Done when:
 - A user can run a preflight/dry-run path and understand likely runtime failures
   without reading flow code.
 
-### 6. Contributor Documentation
+### 5. Contributor Documentation
 
 Add short docs/checklists for common changes:
 
@@ -304,7 +282,7 @@ Include fast test lanes for each change type and point contributors to the
 owner module for payloads, commands, outputs, operation adapters, and Prefect
 flow wiring.
 
-### 7. Deferred Targeted Refactors
+### 6. Deferred Targeted Refactors
 
 Do not split these modules just for tidiness. Split them when changing behavior
 or when a smaller extraction clearly reduces risk:
