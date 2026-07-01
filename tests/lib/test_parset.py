@@ -3,19 +3,15 @@ This module contains tests for the module `rapthor.lib.parset`
 """
 
 import ast
+import configparser
 import contextlib
 import logging
-import os
-import string
-import tempfile
-import textwrap
-import unittest
-from unittest import mock
+import re
 
 import pytest
 
 from rapthor.lib.parset import check_and_adjust_skymodel_settings, parset_read
-from rapthor.testing import assert_logged
+from rapthor.testing import assert_logged, generate_parset
 
 
 def assert_warning_logged(caplog, *expected_messages):
@@ -36,171 +32,164 @@ def assert_info_logged(caplog, *expected_messages):
     )
 
 
-class TestParset(unittest.TestCase):
+class TestParset:
     """
-    This class contains tests for the public function `parset_read` in the module
-    `rapthor.lib.parset`, which implicitly tests much of the `Parset` class in the same
-    module.
+    This class contains tests for the public function `parset_read` in the
+    module `rapthor.lib.parset`, which implicitly tests much of the `Parset`
+    class in the same module.
     """
 
-    @classmethod
-    def setUpClass(cls):
-        # Create dummy MS, an empty directory suffices
-        cls.input_ms = tempfile.TemporaryDirectory(suffix=".ms")
+    @pytest.fixture()
+    def minimal_parset(self, tmp_path):
 
-        # Create an empty working directory
-        cls.dir_working = tempfile.TemporaryDirectory()
+        # Create an empty file to represent the measurement set
+        mock_input_ms = tmp_path / "test.ms"
+        mock_input_ms.touch()
 
-        # Change directory to the tests directory (one level up from this file),
-        # because that's where these tests need to be run from.
-        os.chdir(os.path.join(os.path.dirname(__file__), ".."))
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.input_ms.cleanup()
-        cls.dir_working.cleanup()
-
-    def setUp(self):
-        self.parset = tempfile.NamedTemporaryFile(
-            suffix=".parset",
-            dir=self.dir_working.name,
-            delete=False,
+        return generate_parset(
+            config={
+                "global": {
+                    "input_ms": mock_input_ms,
+                    "dir_working": tmp_path,
+                }
+            }
         )
-        with open(self.parset.name, "w") as f:
-            f.write(
-                textwrap.dedent(
-                    f"""
-                    [global]
-                    input_ms = {self.input_ms.name}
-                    dir_working = {self.dir_working.name}
-                    """
-                )
-            )
+
+    @pytest.fixture()
+    def parset(self, tmp_path, minimal_parset, request):
+
+        # Create the parset
+        config = {}
+        if getattr(request, "param", None):
+            section, option, value = request.param
+            config = {section: {option: value}}
+
+        parset_path = tmp_path / "test.parset"
+        generate_parset(minimal_parset, config, parset_path)
+        return parset_path
+
+    # ------------------------------------------------------------------------ #
+    # Tests
 
     def test_missing_parset_file(self):
-        os.unlink(self.parset.name)
-        with self.assertRaises(FileNotFoundError):
-            parset_read(self.parset.name)
+        """
+        Test that reading a non-existent parset file raises FileNotFoundError.
+        """
+        with pytest.raises(FileNotFoundError):
+            parset_read("non-existent-file")
 
-    def test_empty_parset_file(self):
-        with open(self.parset.name, "w") as f:
-            pass
-        with self.assertRaisesRegex(
-            ValueError, r"Missing required option\(s\) in section \[global\]:"
+    def test_empty_parset_file(self, tmp_path):
+        """
+        Test that reading an empty parset file raises ValueError due to missing
+        required options.
+        """
+        parset = tmp_path / "empty.parset"
+        parset.touch()  # Create an empty file
+
+        with pytest.raises(
+            ValueError, match=re.escape("Missing required option(s) in section [global]:")
         ):
-            parset_read(self.parset.name)
+            parset_read(parset)
 
-    def test_minimal_parset(self):
-        parset_dict = parset_read(self.parset.name)
-        self.assertEqual(parset_dict["dir_working"], self.dir_working.name)
-        self.assertEqual(parset_dict["input_ms"], self.input_ms.name)
+    def test_minimal_parset(self, tmp_path, parset):
+        """
+        Test that a minimal valid parset is read correctly with expected
+        dir_working and input_ms values.
+        """
+        parset_dict = parset_read(parset)
+        assert parset_dict["dir_working"] == str(tmp_path)
+        assert parset_dict["input_ms"] == str(tmp_path / "test.ms")
 
-    def test_misspelled_section(self):
-        section = "misspelled_section"
-        with open(self.parset.name, "a") as f:
-            f.write(f"[{section}]")
-        with self.assertLogs(logger="rapthor:parset", level="WARN") as cm:
-            parset_read(self.parset.name)
-            self.assertEqual(
-                cm.output,
-                [f"WARNING:rapthor:parset:Section [{section}] is invalid"],
+    @pytest.mark.parametrize(
+        "parset, expected_message",
+        [
+            pytest.param(
+                ("misspelled_section", None, None),
+                "Section [misspelled_section] is invalid",
+                id="misspelled_section",
+            ),
+            pytest.param(
+                ("global", "misspelled_option", "some value"),
+                "Option 'misspelled_option' in section [global] is invalid",
+                id="misspelled_option",
+            ),
+            pytest.param(
+                ("cluster", "dir_local", "some value"),
+                "Option 'dir_local' in section [cluster] is deprecated",
+                id="deprecated_option",
+            ),
+        ],
+        indirect=["parset"],
+    )
+    def test_misconfigured(self, parset, caplog, expected_message):
+        """
+        Test that invalid sections or options in the parset produce appropriate
+        warning log messages.
+        """
+        with assert_warning_logged(caplog, expected_message):
+            parset_read(parset)
+
+    @pytest.mark.parametrize(
+        "parset, expected_message",
+        [
+            (
+                (section, option, value),
+                message.format(option=option, value=value),
             )
+            for (section, option, value), message in [
+                (
+                    ("global", "selfcal_data_fraction", 1.1),
+                    "The {option} parameter is {value}; it must be > 0 and <= 1",
+                ),
+                (
+                    ("imaging", "idg_mode", "invalid"),
+                    "The option '{option}' must be one of",
+                ),
+                (
+                    ("imaging", "sector_center_ra_list", "[1]"),
+                    "The options .* must all have the same number of entries",
+                ),
+            ]
+        ],
+        indirect=["parset"],
+    )
+    def test_validation(self, parset, expected_message):
+        """
+        Test that invalid parameter values (out-of-range, invalid enum,
+        mismatched list lengths) raise ValueError.
+        """
+        with pytest.raises(ValueError, match=expected_message):
+            parset_read(parset)
 
-    def test_misspelled_option(self):
-        option = "misspelled_option"
-        with open(self.parset.name, "a") as f:
-            f.write(f"{option} = some value")
-        with self.assertLogs(logger="rapthor:parset", level="WARN") as cm:
-            parset_read(self.parset.name)
-            self.assertEqual(
-                cm.output,
-                [f"WARNING:rapthor:parset:Option '{option}' in section [global] is invalid"],
-            )
+    @pytest.mark.parametrize("template_id", ["minimal", "complete"])
+    def test_default_parset_contents(self, tmp_path, mocker, request, minimal_parset, template_id):
+        """
+        Test that reading a template parset produces a dict matching the
+        expected reference output.
+        """
 
-    def test_deprecated_option(self):
-        section = "[cluster]"
-        option = "dir_local"
-        with open(self.parset.name, "a") as f:
-            f.write(f"{section}\n")
-            f.write(f"{option} = some value")
-        with self.assertLogs(logger="rapthor:parset", level="WARN") as cm:
-            parset_read(self.parset.name)
-            self.assertIn(
-                f"WARNING:rapthor:parset:Option '{option}' in section {section} is deprecated",
-                cm.output[0],
-            )
+        resources = request.config.resource_dir
+        template_path = resources / f"rapthor_{template_id}.parset.template"
+        reference_path = resources / f"rapthor_{template_id}.parset_dict.template"
 
-    def test_fraction_out_of_range(self):
-        option = "selfcal_data_fraction"
-        value = 1.1
-        with open(self.parset.name, "a") as f:
-            f.write(f"{option} = {value}")
-        with self.assertRaisesRegex(
-            ValueError,
-            f"The {option} parameter is {value}; it must be > 0 and <= 1",
-        ):
-            parset_read(self.parset.name)
+        # Fix value of `cpu_count`, because `parset_read` does some smart things with it.
+        mocker.patch("rapthor.lib.parset.misc.nproc", return_value=8)
 
-    def test_invalid_idg_mode(self):
-        option = "idg_mode"
-        value = "invalid"
-        with open(self.parset.name, "a") as f:
-            f.write("[imaging]\n")
-            f.write(f"{option} = {value}")
-        with self.assertRaisesRegex(ValueError, f"The option '{option}' must be one of"):
-            parset_read(self.parset.name)
+        # Read the template
+        template_parset = configparser.ConfigParser()
+        template_parset.read(template_path)
 
-    def test_unequal_sector_list_lengths(self):
-        with open(self.parset.name, "a") as f:
-            f.write("[imaging]\n")
-            f.write("sector_center_ra_list = [1]")
-        with self.assertRaisesRegex(
-            ValueError,
-            "The options .* must all have the same number of entries",
-        ):
-            parset_read(self.parset.name)
+        parset_path = tmp_path / "test.parset"
+        generate_parset(template_parset, minimal_parset, parset_path)
 
-    # Fix value of `cpu_count`, because `parset_read` does some smart things with it.
-    @mock.patch("rapthor.lib.parset.misc.nproc", return_value=8)
-    def test_default_parset_contents(self, cpu_count):
-        self.maxDiff = None
-        with open(self.parset.name, "w") as f:
-            f.write(
-                string.Template(
-                    open("resources/rapthor_minimal.parset.template").read()
-                ).substitute(
-                    dir_working=self.dir_working.name,
-                    input_ms=self.input_ms.name,
-                )
-            )
-        parset = parset_read(self.parset.name)
-        ref_parset = ast.literal_eval(
-            string.Template(
-                open("resources/rapthor_minimal.parset_dict.template").read()
-            ).substitute(dir_working=self.dir_working.name, input_ms=self.input_ms.name)
+        parset = parset_read(parset_path)
+
+        mock_input_ms = str(tmp_path / "test.ms")
+        reference_dict = ast.literal_eval(reference_path.read_text())
+        reference_dict.update(
+            dir_working=str(tmp_path), input_ms=mock_input_ms, mss=[mock_input_ms]
         )
-        self.assertEqual(parset, ref_parset)
-
-    # Fix value of `cpu_count`, because `parset_read` does some smart things with it.
-    @mock.patch("rapthor.lib.parset.misc.nproc", return_value=8)
-    def test_complete_parset_contents(self, cpu_count):
-        self.maxDiff = None
-        with open(self.parset.name, "w") as f:
-            f.write(
-                string.Template(
-                    open("resources/rapthor_complete.parset.template").read()
-                ).substitute(
-                    dir_working=self.dir_working.name,
-                    input_ms=self.input_ms.name,
-                )
-            )
-        parset = parset_read(self.parset.name)
-        ref_parset = ast.literal_eval(
-            string.Template(
-                open("resources/rapthor_complete.parset_dict.template").read()
-            ).substitute(dir_working=self.dir_working.name, input_ms=self.input_ms.name)
-        )
-        self.assertEqual(parset, ref_parset)
+        assert parset == reference_dict
 
 
 class TestCheckSkymodelSettings:
