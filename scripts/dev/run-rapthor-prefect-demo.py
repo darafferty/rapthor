@@ -67,21 +67,9 @@ def _default_run_dir() -> Path:
 def _repo_root() -> Path:
     candidates = [Path(__file__).resolve().parents[2], Path.cwd()]
     for candidate in candidates:
-        if (candidate / "pyproject.toml").is_file() and (candidate / "bin").is_dir():
+        if (candidate / "pyproject.toml").is_file():
             return candidate
     return Path(__file__).resolve().parents[2]
-
-
-def _prepend_repo_bin_to_path(repo_root: Path) -> Optional[Path]:
-    bin_dir = repo_root / "bin"
-    if not bin_dir.is_dir():
-        return None
-
-    bin_entry = str(bin_dir)
-    existing_path = os.environ.get("PATH", "")
-    entries = [entry for entry in existing_path.split(os.pathsep) if entry and entry != bin_entry]
-    os.environ["PATH"] = os.pathsep.join([bin_entry, *entries])
-    return bin_dir
 
 
 def _resolve_demo_path(path: Path) -> Path:
@@ -532,7 +520,6 @@ def _parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
 
 def main() -> int:
     args = _parse_args()
-    repo_bin = _prepend_repo_bin_to_path(_repo_root())
     parset_file = args.parset.resolve()
     if not parset_file.exists():
         sys.stderr.write(f"Parset does not exist: {parset_file}\n")
@@ -575,8 +562,6 @@ def main() -> int:
         if run_parset_file != parset_file:
             print(f"Materialized parset: {run_parset_file}")
         print(f"Demo run directory: {run_dir}")
-        if repo_bin is not None:
-            print(f"Rapthor helper scripts: {repo_bin}")
         if working_dir_override is not None:
             print(f"Rapthor working directory: {working_dir_override}")
 

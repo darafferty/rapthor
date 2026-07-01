@@ -14,7 +14,7 @@ Most changes affect one or more of these layers:
 - Python domain model and orchestration code under `rapthor/lib/`
 - Prefect/Dask execution code under `rapthor/execution/`
 - Pipeline operations under `rapthor/operations/`
-- Script entry points under `rapthor/scripts/` and `bin/`
+- Script entry points under `rapthor/scripts/` and package console scripts
 - Parset defaults under `rapthor/settings/`
 - Unit, script, operation, execution, and integration tests under `tests/`
 

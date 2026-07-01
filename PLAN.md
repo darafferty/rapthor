@@ -28,10 +28,10 @@ Completed:
 - Migrated helper-script logic lives in importable execution modules.
 - Production flows call migrated Python helpers directly, except where shell
   isolation is still useful for external tools or third-party multiprocessing.
-- Retired helper scripts and `bin/plotrapthor` are guarded by architecture
+- Retired helper scripts and the old `plotrapthor` executable are guarded by architecture
   tests so production code and command fixtures do not reintroduce them.
 - The installed `rapthor` command is exposed through `rapthor.cli:main`.
-- `bin/concat_linc_files` remains a supported utility through the package-owned
+- `concat_linc_files` remains a supported installed utility through the package-owned
   `rapthor.execution.concatenate.linc_cli:main` entry point.
 - Broad execution facades, normalized command wrappers, migration shims, and
   unused runtime abstractions have been removed.
@@ -85,7 +85,37 @@ Known caveats:
 
 ## Next Work Queue
 
-### 1. Regression Guards For Scientific Contracts
+### 1. Fresh Saved CWL Equivalence Baseline
+
+Run the saved CWL equivalence suite once more now that the migration and
+calibration cleanup have settled, before starting scalability-focused changes.
+
+Tasks:
+
+- Clear enough local/container disk space first; rich WSClean runs can generate
+  many large FITS products before comparisons start.
+- Run the saved CWL/current-pipeline equivalence suite into a new dated run
+  directory.
+- Compare the key scientific products:
+  - calibration h5parm solutions
+  - images and mosaics
+  - catalogues and diagnostic products where applicable
+  - emitted calibration/imaging command contracts
+- Keep the comparison report and any compact reference outputs that are useful
+  for future debugging.
+- Remove bulky intermediate `rapthor-work/pipelines/*` products once the result
+  has been reviewed and no longer needs interactive inspection.
+- Promote any fragile or failed equivalence checks into focused regression tests
+  before moving on.
+
+Done when:
+
+- The current pipeline has a fresh scientific baseline after the script and
+  calibration-strategy migration work.
+- Any remaining scientific differences are either fixed or documented with a
+  clear reason before scalability work starts.
+
+### 2. Regression Guards For Scientific Contracts
 
 Add focused integration/regression checks that protect the scientific behaviour
 we stabilized during the migration.
@@ -113,7 +143,7 @@ Done when:
 - Calibration strategy/output regressions fail in focused tests before they
   require a full manual equivalence investigation.
 
-### 2. Runtime Bootstrap For Prefect And Dask
+### 3. Runtime Bootstrap For Prefect And Dask
 
 Make `rapthor input.parset` succeed predictably whether or not the user has an
 existing Prefect server or Dask cluster.
@@ -165,7 +195,7 @@ Done when:
 - A new user can copy commands from the docs and run Rapthor locally with
   minimal setup friction.
 
-### 3. Dask Scalability Contracts
+### 4. Dask Scalability Contracts
 
 Prove that the pipeline can scale across multiple workers or nodes without
 accidentally passing domain objects, huge nested state, or local-only paths.
@@ -225,7 +255,7 @@ Done when:
 - A representative demo run shows meaningful task-stream activity in the Dask
   dashboard without oversubscribing threaded or MPI external tools.
 
-### 4. Runtime UX: Dry Run And Preflight
+### 5. Runtime UX: Dry Run And Preflight
 
 Make it easier for users to understand likely runtime failures before launching
 a long pipeline run.
@@ -253,7 +283,7 @@ Done when:
 - A user can run a preflight/dry-run path and understand likely runtime failures
   without reading flow code.
 
-### 5. Contributor Documentation
+### 6. Contributor Documentation
 
 Add short docs/checklists for common changes:
 
@@ -268,7 +298,7 @@ Include fast test lanes for each change type and point contributors to the
 owner module for payloads, commands, outputs, operation adapters, and Prefect
 flow wiring.
 
-### 6. Deferred Targeted Refactors
+### 7. Deferred Targeted Refactors
 
 Do not split these modules just for tidiness. Split them when changing behavior
 or when a smaller extraction clearly reduces risk:

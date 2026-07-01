@@ -166,7 +166,6 @@ def _script_retirement_scan_files() -> list[Path]:
     files = [
         path for path in _python_files(RAPTHOR_ROOT) if RAPTHOR_ROOT / "scripts" not in path.parents
     ]
-    files.extend(path for path in (REPO_ROOT / "bin").iterdir() if path.is_file())
     return sorted(files)
 
 
