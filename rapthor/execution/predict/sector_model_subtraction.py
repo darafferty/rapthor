@@ -1,5 +1,6 @@
 """Measurement Set helpers for subtracting sector model data."""
 
+import logging
 import os
 import shutil
 import subprocess
@@ -10,6 +11,8 @@ import numpy as np
 
 from rapthor.execution.outputs import output_path
 from rapthor.lib import miscellaneous as misc
+
+log = logging.getLogger("rapthor:predict:sector_model_subtraction")
 
 
 def get_nchunks(msin, nsectors, fraction=1.0, reweight=False, compressed=False):
@@ -170,7 +173,7 @@ def subtract_sector_models(
     nsectors = len(model_list)
     if nsectors == 0:
         raise ValueError("No model data found.")
-    print(f"subtract_sector_models: Found {nsectors} model data files")
+    log.info("Found %s model data files", nsectors)
 
     # Define the template MS file. This file is copied to one or more files
     # to be filled with new data
@@ -224,7 +227,7 @@ def subtract_sector_models(
             nrows.append(nrow)
             startrows_tin.append(startrows_tin[i - 1] + nrows[i - 1])
             startrows_tmod.append(startrows_tmod[i - 1] + nrows[i - 1])
-        print(f"subtract_sector_models: Using {nchunks} chunk(s) for peeling of outliers")
+        log.info("Using %s chunk(s) for peeling of outliers", nchunks)
 
         for c, (startrow_tin, startrow_tmod, nrow) in enumerate(
             zip(startrows_tin, startrows_tmod, nrows)
@@ -295,7 +298,7 @@ def subtract_sector_models(
             nrows.append(nrow)
             startrows_tin.append(startrows_tin[i - 1] + nrows[i - 1])
             startrows_tmod.append(startrows_tmod[i - 1] + nrows[i - 1])
-        print(f"subtract_sector_models: Using {nchunks} chunk(s) for peeling of bright sources")
+        log.info("Using %s chunk(s) for peeling of bright sources", nchunks)
 
         for c, (startrow_tin, startrow_tmod, nrow) in enumerate(
             zip(startrows_tin, startrows_tmod, nrows)
@@ -372,7 +375,7 @@ def subtract_sector_models(
         nrows.append(nrow)
         startrows_tin.append(startrows_tin[i - 1] + nrows[i - 1])
         startrows_tmod.append(startrows_tmod[i - 1] + nrows[i - 1])
-    print(f"subtract_sector_models: Using {nchunks} chunk(s) for peeling of sector sources")
+    log.info("Using %s chunk(s) for peeling of sector sources", nchunks)
 
     # Open output tables
     tout_list = []
@@ -707,7 +710,7 @@ def readGainFile(
         try:
             gfile = losoto.h5parm.openSoltab(gainfile, solsetName=solsetName, soltabName=soltabName)
         except Exception:
-            print("Could not find amplitude gains in h5parm. Assuming gains of 1 everywhere.")
+            log.warning("Could not find amplitude gains in h5parm. Assuming gains of 1 everywhere.")
             ant1gainarray1 = np.ones((nt * nbl, nchan))
             ant2gainarray1 = np.ones((nt * nbl, nchan))
             return ant1gainarray1, ant2gainarray1

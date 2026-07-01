@@ -1,5 +1,6 @@
 """Measurement Set helpers for adding sector model data."""
 
+import logging
 import os
 import shutil
 import subprocess
@@ -10,6 +11,8 @@ import numpy as np
 
 from rapthor.execution.outputs import output_path
 from rapthor.lib import miscellaneous as misc
+
+log = logging.getLogger("rapthor:predict:sector_model_addition")
 
 
 def get_nchunks(msin, nsectors, fraction=1.0, compressed=False):
@@ -114,7 +117,7 @@ def add_sector_models(
     nsectors = len(model_list)
     if nsectors == 0:
         raise ValueError("No model data found.")
-    print(f"add_sector_models: Found {nsectors} model data files")
+    log.info("Found %s model data files", nsectors)
 
     # Define the template MS file. This file is copied to one or more files
     # to be filled with new data
@@ -157,7 +160,7 @@ def add_sector_models(
             nrow = nrows_per_chunk
         nrows.append(nrow)
         startrows_tmod.append(startrows_tmod[i - 1] + nrows[i - 1])
-    print(f"add_sector_models: Using {nchunks} chunk(s)")
+    log.info("Using %s chunk(s)", nchunks)
 
     # Open output table and add output column if needed
     msout = output_path(

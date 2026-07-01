@@ -183,17 +183,17 @@ After the remaining entry point moves:
 - Done: added `rapthor.execution.commands.python_module_command` so filter,
   image-cube catalog, and plotting commands build `python3 -m ...` module
   adapters consistently.
-- Tighten architecture tests so production code, package metadata, and command
-  fixtures cannot reintroduce retired helper scripts or `plotrapthor`.
-- Replace script-era `print()` calls in execution helpers with logging,
-  starting with:
+- Done: tightened architecture tests so production code, package metadata, and
+  command fixtures cannot reintroduce retired helper scripts or `plotrapthor`.
+- Done: replaced script-era `print()` calls in production execution helpers
+  with logging in:
   - `rapthor.execution.predict.sector_model_addition`
   - `rapthor.execution.predict.sector_model_subtraction`
   - `rapthor.execution.calibrate.h5parm_sources`
-- Make adapter CLI defaults delegate to execution helper defaults where
-  possible, so CLI parsing does not drift from the importable API.
-- Decide whether `bin/concat_linc_files` is a supported utility or should move
-  to the same module-adapter pattern.
+  - `rapthor.execution.concatenate.measurement_sets`
+- Done: adapter CLI defaults delegate to execution helper defaults where
+  possible, so CLI parsing cannot drift from the importable API.
+- Done: `bin/concat_linc_files` remains a supported utility for now.
 
 ### 3. Documentation Update
 

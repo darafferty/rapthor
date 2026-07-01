@@ -11,6 +11,13 @@ from rapthor.lib.fitsimage import FITSCube
 
 RmsBox = Union[str, Tuple[float, float], Tuple[int, int]]
 
+DEFAULT_CUBE_CATALOG_THRESHISL = 3.0
+DEFAULT_CUBE_CATALOG_THRESHPIX = 5.0
+DEFAULT_CUBE_CATALOG_RMSBOX: RmsBox = (150, 50)
+DEFAULT_CUBE_CATALOG_RMSBOX_BRIGHT: RmsBox = (35, 7)
+DEFAULT_CUBE_CATALOG_ADAPTIVE_THRESH = 75.0
+DEFAULT_CUBE_CATALOG_NCORES = 8
+
 
 def make_image_cube(
     input_image_filenames: Sequence[str],
@@ -42,12 +49,12 @@ def make_catalog_from_image_cube(
     cube_beams: str,
     cube_frequencies: str,
     output_catalog: str,
-    threshisl: float = 3.0,
-    threshpix: float = 5.0,
-    rmsbox: Optional[RmsBox] = (150, 50),
-    rmsbox_bright: RmsBox = (35, 7),
-    adaptive_thresh: float = 75.0,
-    ncores: int = 8,
+    threshisl: float = DEFAULT_CUBE_CATALOG_THRESHISL,
+    threshpix: float = DEFAULT_CUBE_CATALOG_THRESHPIX,
+    rmsbox: Optional[RmsBox] = DEFAULT_CUBE_CATALOG_RMSBOX,
+    rmsbox_bright: RmsBox = DEFAULT_CUBE_CATALOG_RMSBOX_BRIGHT,
+    adaptive_thresh: float = DEFAULT_CUBE_CATALOG_ADAPTIVE_THRESH,
+    ncores: int = DEFAULT_CUBE_CATALOG_NCORES,
 ) -> None:
     """
     Detect sources in an image cube and write a FITS source catalog.

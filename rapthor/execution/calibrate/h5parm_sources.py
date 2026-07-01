@@ -1,9 +1,13 @@
 """Helpers for aligning h5parm source tables with sky-model patches."""
 
+import logging
+
 import lsmtool
 import numpy as np
 from losoto.h5parm import h5parm
 from lsmtool.operations_lib import normalize_ra_dec
+
+log = logging.getLogger("rapthor:calibrate:h5parm_sources")
 
 
 def adjust_h5parm_source_coordinates(
@@ -19,9 +23,10 @@ def adjust_h5parm_source_coordinates(
         direction_independent = not hasattr(soltab, "dir")
 
         if direction_independent:
-            print(
-                f"The solutions in solution set {solset_name} of the input h5parm file are "
-                "direction-independent. The solutions will be duplicated for all directions "
+            log.info(
+                "The solutions in solution set %s of the input h5parm file are "
+                "direction-independent. The solutions will be duplicated for all directions.",
+                solset_name,
             )
         elif len(source_positions) != len(soltab.dir):
             raise ValueError(

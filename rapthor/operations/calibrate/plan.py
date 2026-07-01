@@ -19,6 +19,7 @@ def solution_interval_for_solve_type(solve_type: str) -> str:
     """Return the Field solution-interval family used by a solve type."""
     return SOLUTION_INTERVAL_BY_SOLVE_TYPE[solve_type]
 
+
 MODE_BY_SOLVE = {
     "fast_phase": "scalarphase",
     "medium_phase": "scalarphase",
@@ -349,9 +350,7 @@ def build_calibration_solve_slot_inputs(
 
     if include_smoothnessreffrequency:
         inputs[f"solve{slot}_smoothnessreffrequency"] = (
-            smoothnessreffrequency
-            if solution_interval in {"fast", "medium"}
-            else [0] * ntimechunks
+            smoothnessreffrequency if solution_interval in {"fast", "medium"} else [0] * ntimechunks
         )
 
     if include_smoothnessrefdistance:

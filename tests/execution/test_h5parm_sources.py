@@ -1,5 +1,7 @@
 """Tests for h5parm source-coordinate execution helpers."""
 
+import logging
+
 import numpy as np
 import pytest
 
@@ -239,7 +241,7 @@ def test_main_rejects_unknown_h5parm_direction(monkeypatch):
         adjust_h5parm_source_coordinates("calibrators.sky", "solutions.h5")
 
 
-def test_main_duplicates_direction_independent_solutions(monkeypatch, capsys):
+def test_main_duplicates_direction_independent_solutions(monkeypatch, caplog):
     soltab = FakeSoltab(
         axes_names=["time"],
         axes_vals=[[0.0, 10.0]],
@@ -254,10 +256,10 @@ def test_main_duplicates_direction_independent_solutions(monkeypatch, capsys):
     }
     patch_script(monkeypatch, source_positions, solset)
 
+    caplog.set_level(logging.INFO, logger="rapthor:calibrate:h5parm_sources")
     adjust_h5parm_source_coordinates("calibrators.sky", "solutions.h5")
 
-    captured = capsys.readouterr()
-    assert "duplicated for all directions" in captured.out
+    assert "duplicated for all directions" in caplog.text
     assert soltab.deleted is True
     assert len(solset.created_soltabs) == 1
     created = solset.created_soltabs[0]

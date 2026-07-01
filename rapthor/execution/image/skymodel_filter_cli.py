@@ -4,7 +4,17 @@ import ast
 from argparse import ArgumentParser, Namespace, RawTextHelpFormatter
 from typing import Optional, Sequence, Union
 
-from rapthor.execution.image.skymodel_filter import filter_image_skymodel
+from rapthor.execution.image.skymodel_filter import (
+    DEFAULT_ADAPTIVE_THRESH,
+    DEFAULT_FILTER_BY_MASK,
+    DEFAULT_NCORES,
+    DEFAULT_RMSBOX,
+    DEFAULT_RMSBOX_BRIGHT,
+    DEFAULT_SOURCE_FINDER,
+    DEFAULT_THRESHISL,
+    DEFAULT_THRESHPIX,
+    filter_image_skymodel,
+)
 from rapthor.lib.miscellaneous import string2list
 
 RmsBox = Union[str, tuple[float, float], tuple[int, int]]
@@ -20,14 +30,14 @@ def main(
     beam_ms: Sequence[str],
     *,
     bright_true_sky_skymodel: Optional[str] = None,
-    threshisl: float = 5.0,
-    threshpix: float = 7.5,
-    rmsbox: RmsBox = (150, 50),
-    rmsbox_bright: RmsBox = (35, 7),
-    adaptive_thresh: float = 75.0,
-    filter_by_mask: bool = True,
-    ncores: int = 8,
-    source_finder: str = "bdsf",
+    threshisl: float = DEFAULT_THRESHISL,
+    threshpix: float = DEFAULT_THRESHPIX,
+    rmsbox: RmsBox = DEFAULT_RMSBOX,
+    rmsbox_bright: RmsBox = DEFAULT_RMSBOX_BRIGHT,
+    adaptive_thresh: float = DEFAULT_ADAPTIVE_THRESH,
+    filter_by_mask: bool = DEFAULT_FILTER_BY_MASK,
+    ncores: int = DEFAULT_NCORES,
+    source_finder: str = DEFAULT_SOURCE_FINDER,
 ) -> None:
     """Filter an image skymodel using the execution helper."""
     filter_image_skymodel(
@@ -72,25 +82,50 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> Namespace:
         help="Filename of input bright-source true-sky sky model",
         default=None,
     )
-    parser.add_argument("--threshisl", help="Island threshold", type=float, default=3.0)
-    parser.add_argument("--threshpix", help="Peak pixel threshold", type=float, default=5.0)
     parser.add_argument(
-        "--rmsbox", help='Rms box width and step (e.g., "(60, 20)")', default="(150, 50)"
+        "--threshisl",
+        help="Island threshold",
+        type=float,
+        default=DEFAULT_THRESHISL,
+    )
+    parser.add_argument(
+        "--threshpix",
+        help="Peak pixel threshold",
+        type=float,
+        default=DEFAULT_THRESHPIX,
+    )
+    parser.add_argument(
+        "--rmsbox",
+        help='Rms box width and step (e.g., "(60, 20)")',
+        default=str(DEFAULT_RMSBOX),
     )
     parser.add_argument(
         "--rmsbox_bright",
         help='Rms box for bright sources, width and step (e.g., "(60, 20)")',
-        default="(35, 7)",
+        default=str(DEFAULT_RMSBOX_BRIGHT),
     )
-    parser.add_argument("--adaptive_thresh", help="Adaptive threshold", type=float, default=75.0)
     parser.add_argument(
-        "--filter_by_mask", help="Filter sources by mask", type=ast.literal_eval, default=True
+        "--adaptive_thresh",
+        help="Adaptive threshold",
+        type=float,
+        default=DEFAULT_ADAPTIVE_THRESH,
     )
-    parser.add_argument("--ncores", help="Max number of cores to use", type=int, default=8)
+    parser.add_argument(
+        "--filter_by_mask",
+        help="Filter sources by mask",
+        type=ast.literal_eval,
+        default=DEFAULT_FILTER_BY_MASK,
+    )
+    parser.add_argument(
+        "--ncores",
+        help="Max number of cores to use",
+        type=int,
+        default=DEFAULT_NCORES,
+    )
     parser.add_argument(
         "--source_finder",
         help='Source finder to use, either "sofia" or "bdsf"',
-        default="bdsf",
+        default=DEFAULT_SOURCE_FINDER,
     )
     return parser.parse_args(argv)
 

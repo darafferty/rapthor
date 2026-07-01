@@ -202,7 +202,10 @@ def _solve_type_from_slot(input_parms: Mapping[str, object], slot: int) -> str:
         return "unsupported"
 
     solution_label = input_parms.get(f"solve{slot}_solution_label")
-    if solution_label is None or str(solution_label) not in SOLUTION_LABELS_BY_SOLVE_TYPE[solve_type]:
+    if (
+        solution_label is None
+        or str(solution_label) not in SOLUTION_LABELS_BY_SOLVE_TYPE[solve_type]
+    ):
         return "unsupported"
     return solve_type
 

@@ -540,9 +540,7 @@ class Calibrate(Operation):
             label = f"{self.mode.upper()} fast-phase"
         elif solve.solve_type == "medium_phase":
             attr_name = (
-                (
-                    f"di_{solve.solution_label}_phases_h5parm_filename"
-                )
+                (f"di_{solve.solution_label}_phases_h5parm_filename")
                 if self.mode == "di"
                 else f"{solve.solution_label}_phases_h5parm_filename"
             )

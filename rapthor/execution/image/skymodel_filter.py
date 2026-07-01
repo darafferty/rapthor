@@ -15,6 +15,15 @@ iers.conf.auto_download = False
 
 RmsBox = Union[str, tuple[float, float], tuple[int, int]]
 
+DEFAULT_THRESHISL = 5.0
+DEFAULT_THRESHPIX = 7.5
+DEFAULT_RMSBOX: RmsBox = (150, 50)
+DEFAULT_RMSBOX_BRIGHT: RmsBox = (35, 7)
+DEFAULT_ADAPTIVE_THRESH = 75.0
+DEFAULT_FILTER_BY_MASK = True
+DEFAULT_NCORES = 8
+DEFAULT_SOURCE_FINDER = "bdsf"
+
 
 def filter_image_skymodel(
     flat_noise_image: str,
@@ -25,14 +34,14 @@ def filter_image_skymodel(
     vertices_file: str,
     beam_ms: Sequence[str],
     bright_true_sky_skymodel: Optional[str] = None,
-    threshisl: float = 5.0,
-    threshpix: float = 7.5,
-    rmsbox: RmsBox = (150, 50),
-    rmsbox_bright: RmsBox = (35, 7),
-    adaptive_thresh: float = 75.0,
-    filter_by_mask: bool = True,
-    ncores: int = 8,
-    source_finder: str = "bdsf",
+    threshisl: float = DEFAULT_THRESHISL,
+    threshpix: float = DEFAULT_THRESHPIX,
+    rmsbox: RmsBox = DEFAULT_RMSBOX,
+    rmsbox_bright: RmsBox = DEFAULT_RMSBOX_BRIGHT,
+    adaptive_thresh: float = DEFAULT_ADAPTIVE_THRESH,
+    filter_by_mask: bool = DEFAULT_FILTER_BY_MASK,
+    ncores: int = DEFAULT_NCORES,
+    source_finder: str = DEFAULT_SOURCE_FINDER,
 ) -> None:
     """
     Filter apparent and true sky models using image-source detection products.

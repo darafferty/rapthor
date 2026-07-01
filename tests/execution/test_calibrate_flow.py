@@ -80,7 +80,10 @@ def _add_explicit_solve_metadata(input_parms):
             solve_type = "fast_phase"
             solution_label = "fast"
             medium_index = None
-        elif output_name.startswith(("medium1_phase_", "medium2_phase_")) and solve_mode == "scalarphase":
+        elif (
+            output_name.startswith(("medium1_phase_", "medium2_phase_"))
+            and solve_mode == "scalarphase"
+        ):
             solve_type = "medium_phase"
             medium_count += 1
             medium_index = medium_count
@@ -517,38 +520,38 @@ def _materialize_calibrate_operation_outputs(value):
 def _di_fulljones_input_parms():
     return _add_explicit_solve_metadata(
         {
-        "timechunk_filename": [
-            directory_record("/data/obs_0.ms"),
-            directory_record("/data/obs_1.ms"),
-        ],
-        "data_colname": "DATA",
-        "modeldatacolumn": "[MODEL_DATA]",
-        "starttime": ["50000.0", "50010.0"],
-        "ntimes": [10, 12],
-        "dp3_steps": "[solve1]",
-        "output_solve1_h5parm": [
-            "fulljones_gain_0.h5parm",
-            "fulljones_gain_1.h5parm",
-        ],
-        "collected_solve1_h5parm": "fulljones_solutions.h5",
-        "solint_solve1_timestep": [5, 6],
-        "solint_solve1_freqstep": [2, 3],
-        "solve1_mode": "fulljones",
-        "smoothnessconstraint_fulljones": 1.5,
-        "llssolver": "qr",
-        "maxiter": 50,
-        "propagatesolutions": True,
-        "solveralgorithm": "directionsolve",
-        "solverlbfgs_dof": 200.0,
-        "solverlbfgs_iter": 4,
-        "solverlbfgs_minibatches": 1,
-        "stepsize": 0.2,
-        "stepsigma": 0.0,
-        "tolerance": 0.0001,
-        "uvlambdamin": 80.0,
-        "correctfreqsmearing": False,
-        "correcttimesmearing": True,
-        "max_threads": 4,
+            "timechunk_filename": [
+                directory_record("/data/obs_0.ms"),
+                directory_record("/data/obs_1.ms"),
+            ],
+            "data_colname": "DATA",
+            "modeldatacolumn": "[MODEL_DATA]",
+            "starttime": ["50000.0", "50010.0"],
+            "ntimes": [10, 12],
+            "dp3_steps": "[solve1]",
+            "output_solve1_h5parm": [
+                "fulljones_gain_0.h5parm",
+                "fulljones_gain_1.h5parm",
+            ],
+            "collected_solve1_h5parm": "fulljones_solutions.h5",
+            "solint_solve1_timestep": [5, 6],
+            "solint_solve1_freqstep": [2, 3],
+            "solve1_mode": "fulljones",
+            "smoothnessconstraint_fulljones": 1.5,
+            "llssolver": "qr",
+            "maxiter": 50,
+            "propagatesolutions": True,
+            "solveralgorithm": "directionsolve",
+            "solverlbfgs_dof": 200.0,
+            "solverlbfgs_iter": 4,
+            "solverlbfgs_minibatches": 1,
+            "stepsize": 0.2,
+            "stepsigma": 0.0,
+            "tolerance": 0.0001,
+            "uvlambdamin": 80.0,
+            "correctfreqsmearing": False,
+            "correcttimesmearing": True,
+            "max_threads": 4,
         }
     )
 

@@ -99,6 +99,11 @@ RETIRED_HELPER_SCRIPT_NAMES = (
 
 RETIRED_EXECUTABLE_NAMES = ("plotrapthor",)
 
+RETIREMENT_TEXT_SCAN_FILES = (
+    REPO_ROOT / "pyproject.toml",
+    REPO_ROOT / "tests" / "execution" / "fixtures" / "command_reference.json",
+)
+
 
 def _python_files(root: Path) -> list[Path]:
     return sorted(path for path in root.rglob("*.py") if path.is_file())
@@ -126,6 +131,12 @@ def _string_constants(path: Path) -> list[tuple[str, int]]:
         if isinstance(node, ast.Constant) and isinstance(node.value, str):
             constants.append((node.value, node.lineno))
     return constants
+
+
+def _text_lines(path: Path) -> list[tuple[str, int]]:
+    return [
+        (line, line_number) for line_number, line in enumerate(path.read_text().splitlines(), 1)
+    ]
 
 
 def _matches_prefix(module: str, prefix: str) -> bool:
@@ -175,11 +186,19 @@ def test_pure_execution_helpers_do_not_import_frameworks_or_flows():
 def test_production_code_does_not_use_retired_helper_script_wrappers():
     files = _script_retirement_scan_files()
     messages = _forbidden_import_messages(files, ("rapthor.scripts",))
+    retired_names = RETIRED_HELPER_SCRIPT_NAMES + RETIRED_EXECUTABLE_NAMES
 
     for path in files:
         relative_path = _relative_path(path)
         for value, line_number in _string_constants(path):
-            for script_name in RETIRED_HELPER_SCRIPT_NAMES + RETIRED_EXECUTABLE_NAMES:
+            for script_name in retired_names:
+                if script_name in value:
+                    messages.append(f"{relative_path}:{line_number} references {script_name}")
+
+    for path in RETIREMENT_TEXT_SCAN_FILES:
+        relative_path = _relative_path(path)
+        for value, line_number in _text_lines(path):
+            for script_name in retired_names:
                 if script_name in value:
                     messages.append(f"{relative_path}:{line_number} references {script_name}")
 

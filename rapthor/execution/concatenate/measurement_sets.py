@@ -1,12 +1,14 @@
 """Measurement Set concatenation helpers."""
 
+import logging
 import os
 import shutil
 import subprocess
-import sys
 
 import casacore.tables as pt
 import numpy as np
+
+log = logging.getLogger("rapthor:concatenate:measurement_sets")
 
 
 def concat_ms(
@@ -33,7 +35,7 @@ def concat_ms(
     try:
         return subprocess.run(command, check=True).returncode
     except subprocess.CalledProcessError as err:
-        print(err, file=sys.stderr)
+        log.error("Measurement Set concatenation command failed: %s", err)
         return err.returncode
 
 

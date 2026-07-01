@@ -7,8 +7,36 @@ from astropy.io import fits
 from astropy.table import Table
 
 import rapthor.execution.image.skymodel_filter as skymodel_filter_module
-from rapthor.execution.image.skymodel_filter import filter_image_skymodel
-from rapthor.execution.image.skymodel_filter_cli import run as run_filter_skymodel_cli
+from rapthor.execution.image.skymodel_filter import (
+    DEFAULT_ADAPTIVE_THRESH,
+    DEFAULT_FILTER_BY_MASK,
+    DEFAULT_NCORES,
+    DEFAULT_RMSBOX,
+    DEFAULT_RMSBOX_BRIGHT,
+    DEFAULT_SOURCE_FINDER,
+    DEFAULT_THRESHISL,
+    DEFAULT_THRESHPIX,
+    filter_image_skymodel,
+)
+from rapthor.execution.image.skymodel_filter_cli import (
+    parse_args,
+    run as run_filter_skymodel_cli,
+)
+
+
+def test_filter_skymodel_cli_defaults_match_helper_defaults():
+    args = parse_args(
+        ["flat.fits", "true.fits", "true.txt", "apparent.txt", "sector", "v.npy", "[]"]
+    )
+
+    assert args.threshisl == DEFAULT_THRESHISL
+    assert args.threshpix == DEFAULT_THRESHPIX
+    assert args.rmsbox == str(DEFAULT_RMSBOX)
+    assert args.rmsbox_bright == str(DEFAULT_RMSBOX_BRIGHT)
+    assert args.adaptive_thresh == DEFAULT_ADAPTIVE_THRESH
+    assert args.filter_by_mask == DEFAULT_FILTER_BY_MASK
+    assert args.ncores == DEFAULT_NCORES
+    assert args.source_finder == DEFAULT_SOURCE_FINDER
 
 
 def test_filter_skymodel_writes_empty_outputs_for_all_blank_image(tmp_path, monkeypatch):

@@ -5,7 +5,16 @@ import os
 import pytest
 
 import rapthor.execution.image.cubes as cube_module
-from rapthor.execution.image.cubes import make_catalog_from_image_cube
+from rapthor.execution.image.cube_catalog_cli import parse_args
+from rapthor.execution.image.cubes import (
+    DEFAULT_CUBE_CATALOG_ADAPTIVE_THRESH,
+    DEFAULT_CUBE_CATALOG_NCORES,
+    DEFAULT_CUBE_CATALOG_RMSBOX,
+    DEFAULT_CUBE_CATALOG_RMSBOX_BRIGHT,
+    DEFAULT_CUBE_CATALOG_THRESHISL,
+    DEFAULT_CUBE_CATALOG_THRESHPIX,
+    make_catalog_from_image_cube,
+)
 
 
 class FakeBdsfImage:
@@ -16,6 +25,17 @@ class FakeBdsfImage:
         self.catalog_calls.append(kwargs)
         with open(kwargs["outfile"], "w") as catalog_file:
             catalog_file.write("catalog")
+
+
+def test_cube_catalog_cli_defaults_match_helper_defaults():
+    args = parse_args(["cube.fits", "beams.txt", "frequencies.txt", "catalog.fits"])
+
+    assert args.threshisl == DEFAULT_CUBE_CATALOG_THRESHISL
+    assert args.threshpix == DEFAULT_CUBE_CATALOG_THRESHPIX
+    assert args.rmsbox == str(DEFAULT_CUBE_CATALOG_RMSBOX)
+    assert args.rmsbox_bright == str(DEFAULT_CUBE_CATALOG_RMSBOX_BRIGHT)
+    assert args.adaptive_thresh == DEFAULT_CUBE_CATALOG_ADAPTIVE_THRESH
+    assert args.ncores == DEFAULT_CUBE_CATALOG_NCORES
 
 
 def test_main_parses_cube_metadata_and_writes_catalog(tmp_path, monkeypatch):
