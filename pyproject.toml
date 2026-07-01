@@ -65,7 +65,12 @@ rapthor = "rapthor.cli:main"
 test = [
     "tox",
 ]
-dev =  ["ruff", "rapthor[test]" ]
+docs = [
+    "numpydoc",
+    "snowballstemmer!=3.0.0",
+    "sphinx",
+]
+dev =  ["ruff", "rapthor[test]", "rapthor[docs]" ]
 
 [dependency-groups]
 test =  [
@@ -77,9 +82,17 @@ test =  [
     "pytest-mock",
     "pytest-socket",
 ]
+docs = [
+    "numpydoc",
+    "snowballstemmer!=3.0.0",
+    "sphinx",
+]
 dev =  [
     "coloredlogs",
+    "numpydoc",
     "ruff",
+    "snowballstemmer!=3.0.0",
+    "sphinx",
     "tox",
     "mock",
     "pytest",

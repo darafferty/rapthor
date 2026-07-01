@@ -1,2 +1,4 @@
 numpydoc
+snowballstemmer!=3.0.0
+sphinx
 extension_helpers

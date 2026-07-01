@@ -45,7 +45,6 @@ Completed foundations:
 
 Known follow-ups:
 
-- Run a Sphinx docs build once the docs environment has `sphinx` installed.
 - Avoid running multiple pytest processes in parallel unless each run has a
   separate `RAPTHOR_TEST_RUN_ROOT`.
 - Prefect can emit late logging shutdown warnings after passing flow tests;
@@ -211,7 +210,7 @@ architecture:
 - Done: `python_module_command` is documented as the standard way to build
   execution-owned module adapter commands.
 
-### 4. Focused Verification (In Progress)
+### 4. Focused Verification (Complete)
 
 Run these after the entrypoint cleanup:
 
@@ -222,8 +221,9 @@ Run these after the entrypoint cleanup:
 - Done: moved plot-solution execution tests
 - Run `tests/integration/test_rapthor_restart.py` when the integration environment
   is available
-- Run the Sphinx build once the docs environment has `sphinx`; the current dev
-  container does not have the package installed.
+- Done: Sphinx HTML build passes in the dev container. The build currently
+  emits existing documentation warnings; track those as docs cleanup rather
+  than as a blocked build.
 
 ### 5. Repository Structure Modernization
 
@@ -234,6 +234,9 @@ next payload/scalability refactor slice.
   with `[project.scripts]` so the installed user command remains `rapthor`.
 - Done: removed `bin/rapthor`; `python -m rapthor.cli` is the source-tree
   fallback and shows the same `Usage: rapthor <parset>` help text.
+- Done: added Sphinx, numpydoc, and the Snowball stemmer constraint to the docs
+  and dev dependency sets so rebuilt dev containers can build documentation by
+  default.
 - Update stale structure docs, especially `docs/source/code.rst`, so they no
   longer describe `bin/rapthor` or `rapthor/scripts` as active production
   layout.
