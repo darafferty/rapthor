@@ -121,45 +121,37 @@ Done:
   `solve{slot}_solution_label`; filename-based solve-type inference has been
   removed.
 
-### 0b. Retire Legacy Calibration Solve Flags
+### 0b. Retire Legacy Calibration Solve Flags (Complete)
 
-Remove `do_fulljones_solve` and `do_slowgain_solve` as configuration inputs.
-Only `calibration_strategy` should determine which calibration solves run, what
-order they run in, and which solutions are handed to later operations.
+`calibration_strategy` is now the only calibration interface for solve type and
+order. The legacy `do_fulljones_solve` and `do_slowgain_solve` inputs are
+retired from production configuration and stripped as deprecated parameters if
+they are still present in old strategy files.
 
-The new default must preserve the current user-facing default behaviour that
-was previously expressed through the legacy flags. Encode that default directly
-as an explicit `calibration_strategy`, then remove the fallback that derives
-strategy from legacy booleans.
+Done:
 
-Recommended order:
-
-- Add regression tests that capture the current intended defaults before
-  removing the legacy path:
-  - default DD self-calibration runs `fast_phase`, `medium_phase`,
-    `slow_gains`, then the explicit post-slow `medium_phase`
-  - default DI full-Jones is absent unless explicitly requested in
-    `calibration_strategy`
-  - mixed DI/DD order follows the dictionary order supplied by
-    `calibration_strategy`
-- Update default and generated strategy files so they no longer set
-  `do_slowgain_solve` or `do_fulljones_solve`; they should set only
-  `calibration_strategy`.
-- Remove the legacy resolver in `Field.set_calibration_strategy()` and replace
-  it with one explicit default strategy used when `calibration_strategy` is not
-  supplied.
-- Remove or rename operation/payload fields named after the legacy flags. Where
-  downstream code still needs a yes/no answer, derive it from solve metadata
-  with helper names such as `has_slow_gain_solve` or `has_full_jones_solve`.
-- Update docs and examples so users learn one calibration interface:
-  `calibration_strategy = {"dd": [...], "di": [...]}`.
-- Run:
+- Added an explicit default calibration strategy:
+  `{"dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"], "di": []}`.
+- Removed legacy boolean strategy resolution from `Field.set_calibration_strategy()`.
+- Updated self-calibration, generated demo strategies, examples, test
+  strategies, and docs to set `calibration_strategy` directly.
+- Replaced operation/payload fields named after legacy flags with derived solve
+  metadata such as `has_slow_gain_solve`.
+- Added/updated regression coverage for:
+  - default DD solve order, including the explicit post-slow medium solve
+  - default DI having no full-Jones solve unless requested explicitly
+  - mixed DI/DD strategy ordering
+  - ignored legacy boolean attributes on field stubs
+- Verified in the dev container:
   - `tests/lib/test_field.py`
+  - `tests/lib/test_strategy.py`
   - `tests/operations/test_calibrate.py`
   - `tests/execution/test_calibrate_flow.py`
-  - focused calibration integration tests
-  - saved CWL equivalence check with `--run-root` on a filesystem with enough
-    free space
+  - `tests/execution/test_prefect_demo_script.py`
+  - `tests/execution/test_prefect_demo_data_generator.py`
+  - `tests/integration/test_dd_calibration.py`
+  - `tests/integration/test_di_calibration.py`
+  - `tests/integration/test_calibration_options.py`
 
 ### 1. Move Remaining Shell Adapters Into Execution
 
@@ -173,23 +165,24 @@ execution-owned module adapters.
   references beyond packaging metadata.
 - Done: removed the now-empty `rapthor/scripts` package marker and stale
   `scripts/*` package-data entry.
-- Move `bin/plotrapthor` to execution-owned calibration plotting modules:
-  - move plotting logic to `rapthor.execution.calibrate.plotting.plot_solutions`
-  - add a small CLI adapter such as `rapthor.execution.calibrate.plotting_cli`
-  - update `build_plot_solutions_command` to call the adapter with
-    `python3 -m rapthor.execution.calibrate.plotting_cli ...`
-  - move `tests/scripts/test_plotrapthor.py` into execution/calibration coverage
-  - update command reference fixtures and remove `bin/plotrapthor` from package
-    metadata
+- Done: moved `bin/plotrapthor` to execution-owned calibration plotting:
+  `rapthor.execution.calibrate.plotting.plot_solutions` plus the
+  `rapthor.execution.calibrate.plotting_cli` module adapter.
+- Done: `build_plot_solutions_command` now calls the plotting adapter with
+  `python3 -m rapthor.execution.calibrate.plotting_cli ...`.
+- Done: plot-solution coverage now lives under `tests/execution`, command
+  reference fixtures use the module adapter, and architecture tests reject
+  retired `plotrapthor` references.
 
 ### 2. Final Script-Migration Polish
 
 After the remaining entry point moves:
 
-- Move or remove remaining `tests/scripts` files once their coverage lives under
-  `tests/execution`.
-- Add a shared command helper for `python3 -m rapthor.execution...` module
-  adapters so filter and plotting commands are built consistently.
+- Done: moved or removed remaining `tests/scripts` coverage once equivalent
+  coverage lived under `tests/execution`.
+- Done: added `rapthor.execution.commands.python_module_command` so filter,
+  image-cube catalog, and plotting commands build `python3 -m ...` module
+  adapters consistently.
 - Tighten architecture tests so production code, package metadata, and command
   fixtures cannot reintroduce retired helper scripts or `plotrapthor`.
 - Replace script-era `print()` calls in execution helpers with logging,

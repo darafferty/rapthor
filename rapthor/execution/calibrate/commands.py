@@ -7,6 +7,7 @@ from rapthor.execution.commands import (
     append_key_value,
     bracketed_list_token,
     comma_join,
+    python_module_command,
 )
 
 PLOT_SOLUTIONS_MODULE = "rapthor.execution.calibrate.plotting_cli"
@@ -317,7 +318,7 @@ def build_plot_solutions_command(
     first_dir: bool = False,
 ) -> list[str]:
     """Build the solution plotting command."""
-    command = ["python3", "-m", PLOT_SOLUTIONS_MODULE, h5parm, soltype]
+    command = python_module_command(PLOT_SOLUTIONS_MODULE, h5parm, soltype)
     if root is not None:
         command.append(f"--root={root}")
     if first_dir:

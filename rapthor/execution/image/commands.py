@@ -10,6 +10,7 @@ from rapthor.execution.commands import (
     append_prefixed_value,
     bool_token,
     comma_join,
+    python_module_command,
 )
 
 ATERM_CONFIG_FILENAME = "aterm_plus_beam.cfg"
@@ -414,9 +415,7 @@ def build_filter_skymodel_command(
     bright_true_sky_skymodel: Optional[str] = None,
 ) -> list[str]:
     """Build the skymodel-filtering module command for one imaging sector."""
-    command = [
-        "python3",
-        "-m",
+    command = python_module_command(
         FILTER_SKYMODEL_MODULE,
         flat_noise_image,
         true_sky_image,
@@ -425,7 +424,7 @@ def build_filter_skymodel_command(
         output_root,
         vertices_file,
         comma_join(beam_ms),
-    ]
+    )
     append_prefixed_value(command, "--bright_true_sky_skymodel=", bright_true_sky_skymodel)
     command.extend(
         [
@@ -449,9 +448,7 @@ def build_make_catalog_from_image_cube_command(
     ncores: int,
 ) -> list[str]:
     """Build the image-cube catalog generation module command."""
-    return [
-        "python3",
-        "-m",
+    return python_module_command(
         CUBE_CATALOG_MODULE,
         cube_image,
         cube_beams,
@@ -460,4 +457,4 @@ def build_make_catalog_from_image_cube_command(
         f"--threshisl={threshisl}",
         f"--threshpix={threshpix}",
         f"--ncores={ncores}",
-    ]
+    )

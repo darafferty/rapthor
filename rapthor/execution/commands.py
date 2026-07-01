@@ -63,6 +63,11 @@ def append_key_value(command: list[str], key: str, value: object) -> None:
     command.append(f"{key}={value}")
 
 
+def python_module_command(module: str, *args: object) -> list[str]:
+    """Build a command that runs an importable Python module."""
+    return ["python3", "-m", module, *(str(arg) for arg in args)]
+
+
 def normalize_command(command: CommandInput) -> list[str]:
     """Return command tokens suitable for golden parity comparisons."""
     if isinstance(command, str):

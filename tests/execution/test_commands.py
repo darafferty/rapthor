@@ -12,6 +12,7 @@ from rapthor.execution.commands import (
     comma_join,
     command_to_string,
     normalize_command,
+    python_module_command,
 )
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
@@ -91,6 +92,16 @@ def test_append_key_value_skips_lists_containing_optional_values():
     append_key_value(command, "solve.modeldatacolumns", ["MODEL_DATA", None])
 
     assert command == ["DP3"]
+
+
+def test_python_module_command_builds_module_adapter_command():
+    assert python_module_command("rapthor.execution.image.helper_cli", "input.ms", 4) == [
+        "python3",
+        "-m",
+        "rapthor.execution.image.helper_cli",
+        "input.ms",
+        "4",
+    ]
 
 
 def test_normalize_command_splits_shell_string():
