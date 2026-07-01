@@ -2,14 +2,23 @@
 
 import logging
 import os
-import shutil
-import subprocess
 from typing import Optional
 
 import casacore.tables as pt
 import numpy as np
 
 from rapthor.execution.outputs import output_path
+from rapthor.execution.predict.measurement_sets import (
+    copy_measurement_set,
+    input_rows_for_models,
+    modeldata_output_stem,
+    plan_row_chunks,
+    predict_chunk_count,
+    read_model_data,
+    select_models_for_frequency,
+    select_models_for_starttime,
+    sum_model_data,
+)
 from rapthor.lib import miscellaneous as misc
 
 log = logging.getLogger("rapthor:predict:sector_model_subtraction")
@@ -37,17 +46,14 @@ def get_nchunks(msin, nsectors, fraction=1.0, reweight=False, compressed=False):
     nchunks : int
         Number of chunks
     """
-    if reweight:
-        scale_factor = 10.0
-    else:
-        scale_factor = 4.0
-    if compressed:
-        scale_factor *= 5.0
-    tot_m, used_m, free_m = list(map(int, os.popen("free -tm").readlines()[-1].split()[1:]))
-    msin_m = float(subprocess.check_output(["du", "-smL", msin]).split()[0]) * fraction
-    tot_required_m = msin_m * nsectors * scale_factor * 2.0
-    nchunks = max(1, int(np.ceil(tot_required_m / tot_m)))
-    return nchunks
+    scale_factor = 10.0 if reweight else 4.0
+    return predict_chunk_count(
+        msin,
+        nsectors,
+        fraction=fraction,
+        scale_factor=scale_factor,
+        compressed=compressed,
+    )
 
 
 def subtract_sector_models(
@@ -143,33 +149,13 @@ def subtract_sector_models(
     phaseonly = misc.string2bool(phaseonly)
     reweight = misc.string2bool(reweight)
 
-    # Get the model data filenames, filtering any that do not have the right start time
-    if starttime is not None:
-        # Filter the list of models to include only ones for the given times
-        nrows_list = []
-        for msmod in model_list[:]:
-            tin = pt.table(msmod, readonly=True, ack=False)
-            starttime_chunk = np.min(tin.getcol("TIME"))
-            if not misc.approx_equal(starttime_chunk, misc.convert_mvt2mjd(starttime), tol=1.0):
-                # Remove files with start times that are not within 1 sec of the
-                # specified starttime
-                i = model_list.index(msmod)
-                model_list.pop(i)
-            else:
-                nrows_list.append(tin.nrows())
-                starttime_exact = misc.convert_mjd2mvt(
-                    starttime_chunk
-                )  # store exact value for use later
-            tin.close()
-        if len(set(nrows_list)) > 1:
-            raise RuntimeError("Model data files have differing number of rows...")
-    # In case the user did not concatenate LINC output and fed multiple frequency bands, find the correct frequency band.
-    chan_freqs = pt.table(msin + "/SPECTRAL_WINDOW").getcol("CHAN_FREQ")
-    for model_ms in model_list[:]:
-        chan_freqs_model = pt.table(model_ms + "/SPECTRAL_WINDOW").getcol("CHAN_FREQ")
-        if not np.allclose(chan_freqs_model, chan_freqs):
-            i = model_list.index(model_ms)
-            model_list.pop(i)
+    # Get the model data filenames, filtering any that do not have the right start time.
+    model_selection = select_models_for_starttime(model_list, starttime)
+    model_list = select_models_for_frequency(
+        msin,
+        model_selection.paths,
+        spectral_window_separator="/",
+    )
     nsectors = len(model_list)
     if nsectors == 0:
         raise ValueError("No model data found.")
@@ -181,20 +167,15 @@ def subtract_sector_models(
 
     # If starttime is given, figure out startrow and nrows for input MS file
     tin = pt.table(msin, readonly=True, ack=False)
-    tarray = tin.getcol("TIME")
-    nbl = np.where(tarray == tarray[0])[0].size
-    tarray = None
-    if starttime is not None:
-        tapprox = misc.convert_mvt2mjd(starttime_exact) - 100.0
-        approx_indx = np.where(tin.getcol("TIME") > tapprox)[0][0]
-        for tind, t in enumerate(tin.getcol("TIME")[approx_indx:]):
-            if misc.convert_mjd2mvt(t) == starttime_exact:
-                startrow_in = tind + approx_indx
-                break
-        nrows_in = nrows_list[0]
-    else:
-        startrow_in = 0
-        nrows_in = tin.nrows()
+    input_rows = input_rows_for_models(
+        tin,
+        starttime=starttime,
+        starttime_exact=model_selection.starttime_exact,
+        model_nrows=model_selection.nrows,
+    )
+    startrow_in = input_rows.startrow
+    nrows_in = input_rows.nrows
+    nbl = input_rows.baseline_rows
     tin.close()
 
     # If outliers are to be peeled, do that first
@@ -204,56 +185,42 @@ def subtract_sector_models(
         root_filename = os.path.basename(msin)
         msout = output_path(output_dir, f"{root_filename}{infix}_field")
 
-        # Use subprocess to call 'cp' to ensure that the copied version has the
-        # default permissions (e.g., so it's not read only)
-        if os.path.exists(msout):
-            # File may exist from a previous processing cycle; delete it if so
-            shutil.rmtree(msout, ignore_errors=True)
-        subprocess.check_call(["cp", "-r", "-L", "--no-preserve=mode", ms_template, msout])
+        copy_measurement_set(ms_template, msout)
         tout = pt.table(msout, readonly=False, ack=False)
 
         # Define chunks based on available memory
         fraction = float(nrows_in) / float(tin.nrows())
         nchunks = get_nchunks(msin, nr_outliers, fraction, compressed=True)
-        nrows_per_chunk = int(nrows_in / nchunks)
-        startrows_tin = [startrow_in]
-        startrows_tmod = [0]
-        nrows = [nrows_per_chunk]
-        for i in range(1, nchunks):
-            if i == nchunks - 1:
-                nrow = nrows_in - (nchunks - 1) * nrows_per_chunk
-            else:
-                nrow = nrows_per_chunk
-            nrows.append(nrow)
-            startrows_tin.append(startrows_tin[i - 1] + nrows[i - 1])
-            startrows_tmod.append(startrows_tmod[i - 1] + nrows[i - 1])
-        log.info("Using %s chunk(s) for peeling of outliers", nchunks)
+        chunks = plan_row_chunks(
+            nrows=nrows_in,
+            nchunks=nchunks,
+            input_startrow=startrow_in,
+        )
+        log.info("Using %s chunk(s) for peeling of outliers", len(chunks))
 
-        for c, (startrow_tin, startrow_tmod, nrow) in enumerate(
-            zip(startrows_tin, startrows_tmod, nrows)
-        ):
+        for chunk in chunks:
             # For each chunk, load data
-            datain = tin.getcol(msin_column, startrow=startrow_tin, nrow=nrow)
+            datain = tin.getcol(msin_column, startrow=chunk.input_startrow, nrow=chunk.nrows)
             if use_compression:
                 # Replace flagged values with NaNs before compression
-                flags = tin.getcol("FLAG", startrow=startrow_tin, nrow=nrow)
+                flags = tin.getcol("FLAG", startrow=chunk.input_startrow, nrow=chunk.nrows)
                 flagged = np.where(flags)
                 datain[flagged] = np.NaN
-            datamod_list = []
-            for i, msmodel in enumerate(model_list[nsectors - nr_outliers :]):
-                tmod = pt.table(msmodel, readonly=True, ack=False)
-                datamod_list.append(tmod.getcol(model_column, startrow=startrow_tmod, nrow=nrow))
-                tmod.close()
+            datamod_list = read_model_data(
+                model_list[nsectors - nr_outliers :],
+                model_column,
+                startrow=chunk.model_startrow,
+                nrows=chunk.nrows,
+            )
 
             # Subtract sum of model data for this chunk
-            other_sectors_ind = list(range(nr_outliers))
-            datamod_all = None
-            for sector_ind in other_sectors_ind:
-                if datamod_all is None:
-                    datamod_all = datamod_list[sector_ind].copy()
-                else:
-                    datamod_all += datamod_list[sector_ind]
-            tout.putcol(out_column, datain - datamod_all, startrow=startrow_tmod, nrow=nrow)
+            datamod_all = sum_model_data(datamod_list)
+            tout.putcol(
+                out_column,
+                datain - datamod_all,
+                startrow=chunk.model_startrow,
+                nrow=chunk.nrows,
+            )
             tout.flush()
         tout.close()
         tin.close()
@@ -275,56 +242,42 @@ def subtract_sector_models(
         root_filename = os.path.basename(msin)
         msout = output_path(output_dir, f"{root_filename}{infix}_field_no_bright")
 
-        # Use subprocess to call 'cp' to ensure that the copied version has the
-        # default permissions (e.g., so it's not read only)
-        if os.path.exists(msout):
-            # File may exist from a previous processing cycle; delete it if so
-            shutil.rmtree(msout, ignore_errors=True)
-        subprocess.check_call(["cp", "-r", "-L", "--no-preserve=mode", ms_template, msout])
+        copy_measurement_set(ms_template, msout)
         tout = pt.table(msout, readonly=False, ack=False)
 
         # Define chunks based on available memory
         fraction = float(nrows_in) / float(tin.nrows())
         nchunks = get_nchunks(msin, nr_bright, fraction, compressed=True)
-        nrows_per_chunk = int(nrows_in / nchunks)
-        startrows_tin = [startrow_in]
-        startrows_tmod = [0]
-        nrows = [nrows_per_chunk]
-        for i in range(1, nchunks):
-            if i == nchunks - 1:
-                nrow = nrows_in - (nchunks - 1) * nrows_per_chunk
-            else:
-                nrow = nrows_per_chunk
-            nrows.append(nrow)
-            startrows_tin.append(startrows_tin[i - 1] + nrows[i - 1])
-            startrows_tmod.append(startrows_tmod[i - 1] + nrows[i - 1])
-        log.info("Using %s chunk(s) for peeling of bright sources", nchunks)
+        chunks = plan_row_chunks(
+            nrows=nrows_in,
+            nchunks=nchunks,
+            input_startrow=startrow_in,
+        )
+        log.info("Using %s chunk(s) for peeling of bright sources", len(chunks))
 
-        for c, (startrow_tin, startrow_tmod, nrow) in enumerate(
-            zip(startrows_tin, startrows_tmod, nrows)
-        ):
+        for chunk in chunks:
             # For each chunk, load data
-            datain = tin.getcol(msin_column, startrow=startrow_tin, nrow=nrow)
+            datain = tin.getcol(msin_column, startrow=chunk.input_startrow, nrow=chunk.nrows)
             if use_compression:
                 # Replace flagged values with NaNs before compression
-                flags = tin.getcol("FLAG", startrow=startrow_tin, nrow=nrow)
+                flags = tin.getcol("FLAG", startrow=chunk.input_startrow, nrow=chunk.nrows)
                 flagged = np.where(flags)
                 datain[flagged] = np.NaN
-            datamod_list = []
-            for i, msmodel in enumerate(model_list[nsectors - nr_bright :]):
-                tmod = pt.table(msmodel, readonly=True, ack=False)
-                datamod_list.append(tmod.getcol(model_column, startrow=startrow_tmod, nrow=nrow))
-                tmod.close()
+            datamod_list = read_model_data(
+                model_list[nsectors - nr_bright :],
+                model_column,
+                startrow=chunk.model_startrow,
+                nrows=chunk.nrows,
+            )
 
             # Subtract sum of model data for this chunk
-            other_sectors_ind = list(range(nr_bright))
-            datamod_all = None
-            for sector_ind in other_sectors_ind:
-                if datamod_all is None:
-                    datamod_all = datamod_list[sector_ind].copy()
-                else:
-                    datamod_all += datamod_list[sector_ind]
-            tout.putcol(out_column, datain - datamod_all, startrow=startrow_tmod, nrow=nrow)
+            datamod_all = sum_model_data(datamod_list)
+            tout.putcol(
+                out_column,
+                datain - datamod_all,
+                startrow=chunk.model_startrow,
+                nrow=chunk.nrows,
+            )
             tout.flush()
         tout.close()
         tin.close()
@@ -346,10 +299,7 @@ def subtract_sector_models(
             output_dir,
             os.path.splitext(os.path.basename(ms_template))[0] + ".sector_1",
         )
-        if os.path.exists(msout):
-            # File may exist from a previous processing cycle; delete it if so
-            shutil.rmtree(msout, ignore_errors=True)
-        subprocess.check_call(["cp", "-r", "-L", "--no-preserve=mode", msin, msout])
+        copy_measurement_set(msin, msout)
         return
 
     # Open input table and define chunks based on available memory, making sure each
@@ -357,25 +307,13 @@ def subtract_sector_models(
     tin = pt.table(msin, readonly=True, ack=False)
     fraction = float(nrows_in) / float(tin.nrows())
     nchunks = get_nchunks(msin, nsectors, fraction, reweight=reweight)
-    nrows_per_chunk = int(nrows_in / nchunks)
-    while nrows_per_chunk % nbl > 0.0:
-        nrows_per_chunk -= 1
-        if nrows_per_chunk < nbl:
-            nrows_per_chunk = nbl
-            break
-    nchunks = int(np.ceil(nrows_in / nrows_per_chunk))
-    startrows_tin = [startrow_in]
-    startrows_tmod = [0]
-    nrows = [nrows_per_chunk]
-    for i in range(1, nchunks):
-        if i == nchunks - 1:
-            nrow = nrows_in - (nchunks - 1) * nrows_per_chunk
-        else:
-            nrow = nrows_per_chunk
-        nrows.append(nrow)
-        startrows_tin.append(startrows_tin[i - 1] + nrows[i - 1])
-        startrows_tmod.append(startrows_tmod[i - 1] + nrows[i - 1])
-    log.info("Using %s chunk(s) for peeling of sector sources", nchunks)
+    chunks = plan_row_chunks(
+        nrows=nrows_in,
+        nchunks=nchunks,
+        input_startrow=startrow_in,
+        baseline_rows=nbl,
+    )
+    log.info("Using %s chunk(s) for peeling of sector sources", len(chunks))
 
     # Open output tables
     tout_list = []
@@ -389,28 +327,22 @@ def subtract_sector_models(
         elif nr_bright > 0 and i == len(model_list) - nr_bright:
             # Break so we don't open output tables for the bright sources
             break
-        msout = output_path(output_dir, os.path.basename(msmod).removesuffix("_modeldata"))
+        msout = output_path(output_dir, modeldata_output_stem(msmod))
 
-        # Use subprocess to call 'cp' to ensure that the copied version has the
-        # default permissions (e.g., so it's not read only)
-        if os.path.exists(msout):
-            # File may exist from a previous processing cycle; delete it if so
-            shutil.rmtree(msout, ignore_errors=True)
-        subprocess.check_call(["cp", "-r", "-L", "--no-preserve=mode", ms_template, msout])
+        copy_measurement_set(ms_template, msout)
         tout_list.append(pt.table(msout, readonly=False, ack=False))
 
     # Process the data chunk by chunk
-    for c, (startrow_tin, startrow_tmod, nrow) in enumerate(
-        zip(startrows_tin, startrows_tmod, nrows)
-    ):
+    for chunk in chunks:
         # For each chunk, load data
-        datain = tin.getcol(msin_column, startrow=startrow_tin, nrow=nrow)
-        flags = tin.getcol("FLAG", startrow=startrow_tin, nrow=nrow)
-        datamod_list = []
-        for i, msmodel in enumerate(model_list):
-            tmod = pt.table(msmodel, readonly=True, ack=False)
-            datamod_list.append(tmod.getcol(model_column, startrow=startrow_tmod, nrow=nrow))
-            tmod.close()
+        datain = tin.getcol(msin_column, startrow=chunk.input_startrow, nrow=chunk.nrows)
+        flags = tin.getcol("FLAG", startrow=chunk.input_startrow, nrow=chunk.nrows)
+        datamod_list = read_model_data(
+            model_list,
+            model_column,
+            startrow=chunk.model_startrow,
+            nrows=chunk.nrows,
+        )
 
         # For each sector, subtract sum of model data of all other sectors
         weights = None
@@ -424,9 +356,19 @@ def subtract_sector_models(
                 else:
                     datamod_all += datamod_list[sector_ind]
             if datamod_all is not None:
-                tout.putcol(out_column, datain - datamod_all, startrow=startrow_tmod, nrow=nrow)
+                tout.putcol(
+                    out_column,
+                    datain - datamod_all,
+                    startrow=chunk.model_startrow,
+                    nrow=chunk.nrows,
+                )
             else:
-                tout.putcol(out_column, datain, startrow=startrow_tmod, nrow=nrow)
+                tout.putcol(
+                    out_column,
+                    datain,
+                    startrow=chunk.model_startrow,
+                    nrow=chunk.nrows,
+                )
             if reweight:
                 # Also subtract sector's own model to make residual data for reweighting
                 if weights is None:
@@ -438,8 +380,8 @@ def subtract_sector_models(
                         model_list[0],
                         solint_sec,
                         solint_hz,
-                        startrow_tmod,
-                        nrow,
+                        chunk.model_startrow,
+                        chunk.nrows,
                         gainfile=gainfile,
                         uvcut=uvcut,
                         phaseonly=phaseonly,
@@ -449,7 +391,12 @@ def subtract_sector_models(
                     coefficients = covweights.FindWeights(datain - datamod_all, flags)
                     weights = covweights.calcWeights(coefficients)
                     covweights = None
-                tout.putcol(weights_colname, weights, startrow=startrow_tmod, nrow=nrow)
+                tout.putcol(
+                    weights_colname,
+                    weights,
+                    startrow=chunk.model_startrow,
+                    nrow=chunk.nrows,
+                )
             tout.flush()
     for tout in tout_list:
         tout.close()

@@ -1,15 +1,22 @@
 """Measurement Set helpers for adding sector model data."""
 
 import logging
-import os
-import shutil
-import subprocess
 from typing import Optional
 
 import casacore.tables as pt
-import numpy as np
 
 from rapthor.execution.outputs import output_path
+from rapthor.execution.predict.measurement_sets import (
+    copy_measurement_set,
+    input_rows_for_models,
+    modeldata_output_stem,
+    plan_row_chunks,
+    predict_chunk_count,
+    read_model_data,
+    select_models_for_frequency,
+    select_models_for_starttime,
+    sum_model_data,
+)
 from rapthor.lib import miscellaneous as misc
 
 log = logging.getLogger("rapthor:predict:sector_model_addition")
@@ -35,14 +42,12 @@ def get_nchunks(msin, nsectors, fraction=1.0, compressed=False):
     nchunks : int
         Number of chunks
     """
-    scale_factor = 4.0
-    if compressed:
-        scale_factor *= 5.0
-    tot_m, used_m, free_m = list(map(int, os.popen("free -tm").readlines()[-1].split()[1:]))
-    msin_m = float(subprocess.check_output(["du", "-smL", msin]).split()[0]) * fraction
-    tot_required_m = msin_m * nsectors * scale_factor * 2.0
-    nchunks = max(1, int(np.ceil(tot_required_m / tot_m)))
-    return nchunks
+    return predict_chunk_count(
+        msin,
+        nsectors,
+        fraction=fraction,
+        compressed=compressed,
+    )
 
 
 def add_sector_models(
@@ -87,33 +92,13 @@ def add_sector_models(
     use_compression = misc.string2bool(use_compression)
     model_list = misc.string2list(msmod_list)
 
-    # Get the model data filenames, filtering any that do not have the right start time
-    if starttime is not None:
-        # Filter the list of models to include only ones for the given times
-        nrows_list = []
-        for msmod in model_list[:]:
-            tin = pt.table(msmod, readonly=True, ack=False)
-            starttime_chunk = np.min(tin.getcol("TIME"))
-            if not misc.approx_equal(starttime_chunk, misc.convert_mvt2mjd(starttime), tol=1.0):
-                # Remove files with start times that are not within 1 sec of the
-                # specified starttime
-                i = model_list.index(msmod)
-                model_list.pop(i)
-            else:
-                nrows_list.append(tin.nrows())
-                starttime_exact = misc.convert_mjd2mvt(
-                    starttime_chunk
-                )  # store exact value for use later
-            tin.close()
-        if len(set(nrows_list)) > 1:
-            raise RuntimeError("Model data files have differing number of rows...")
-    # In case the user did not concatenate LINC output and fed multiple frequency bands, find the correct frequency band.
-    chan_freqs = pt.table(msin + "::SPECTRAL_WINDOW").getcol("CHAN_FREQ")
-    for model_ms in model_list[:]:
-        chan_freqs_model = pt.table(model_ms + "::SPECTRAL_WINDOW").getcol("CHAN_FREQ")
-        if not np.allclose(chan_freqs_model, chan_freqs):
-            i = model_list.index(model_ms)
-            model_list.pop(i)
+    # Get the model data filenames, filtering any that do not have the right start time.
+    model_selection = select_models_for_starttime(model_list, starttime)
+    model_list = select_models_for_frequency(
+        msin,
+        model_selection.paths,
+        spectral_window_separator="::",
+    )
     nsectors = len(model_list)
     if nsectors == 0:
         raise ValueError("No model data found.")
@@ -125,52 +110,30 @@ def add_sector_models(
 
     # If starttime is given, figure out startrow and nrows for input MS file
     tin = pt.table(msin, readonly=True, ack=False)
-    tarray = tin.getcol("TIME")
-    nbl = np.where(tarray == tarray[0])[0].size
-    tarray = None
-    if starttime is not None:
-        tapprox = misc.convert_mvt2mjd(starttime_exact) - 100.0
-        approx_indx = np.where(tin.getcol("TIME") > tapprox)[0][0]
-        for tind, t in enumerate(tin.getcol("TIME")[approx_indx:]):
-            if misc.convert_mjd2mvt(t) == starttime_exact:
-                startrow_in = tind + approx_indx
-                break
-        nrows_in = nrows_list[0]
-    else:
-        startrow_in = 0
-        nrows_in = tin.nrows()
+    input_rows = input_rows_for_models(
+        tin,
+        starttime=starttime,
+        starttime_exact=model_selection.starttime_exact,
+        model_nrows=model_selection.nrows,
+    )
 
     # Define chunks based on available memory, making sure each
     # chunk gives a full timeslot (needed for reweighting)
-    fraction = float(nrows_in) / float(tin.nrows())
+    fraction = float(input_rows.nrows) / float(tin.nrows())
     nchunks = get_nchunks(msin, nsectors, fraction)
-    nrows_per_chunk = int(nrows_in / nchunks)
-    while nrows_per_chunk % nbl > 0.0:
-        nrows_per_chunk -= 1
-        if nrows_per_chunk < nbl:
-            nrows_per_chunk = nbl
-            break
-    nchunks = int(np.ceil(nrows_in / nrows_per_chunk))
-    startrows_tmod = [0]
-    nrows = [nrows_per_chunk]
-    for i in range(1, nchunks):
-        if i == nchunks - 1:
-            nrow = nrows_in - (nchunks - 1) * nrows_per_chunk
-        else:
-            nrow = nrows_per_chunk
-        nrows.append(nrow)
-        startrows_tmod.append(startrows_tmod[i - 1] + nrows[i - 1])
-    log.info("Using %s chunk(s)", nchunks)
+    chunks = plan_row_chunks(
+        nrows=input_rows.nrows,
+        nchunks=nchunks,
+        baseline_rows=input_rows.baseline_rows,
+    )
+    log.info("Using %s chunk(s)", len(chunks))
 
     # Open output table and add output column if needed
     msout = output_path(
         output_dir,
-        os.path.basename(model_list[0]).removesuffix("_modeldata") + "_di.ms",
+        modeldata_output_stem(model_list[0]) + "_di.ms",
     )
-    if os.path.exists(msout):
-        # File may exist from a previous processing cycle; delete it if so
-        shutil.rmtree(msout, ignore_errors=True)
-    subprocess.check_call(["cp", "-r", "-L", "--no-preserve=mode", ms_template, msout])
+    copy_measurement_set(ms_template, msout)
     tout = pt.table(msout, readonly=False, ack=False)
     if out_column not in tout.colnames():
         desc = tout.getcoldesc("DATA")
@@ -178,27 +141,23 @@ def add_sector_models(
         tout.addcols(desc)
 
     # Copy the DATA column from the input MS file to the output one
-    data = tin.getcol("DATA", startrow=startrow_in, nrow=nrows_in)
-    tout.putcol("DATA", data, startrow=0, nrow=nrows_in)
+    data = tin.getcol("DATA", startrow=input_rows.startrow, nrow=input_rows.nrows)
+    tout.putcol("DATA", data, startrow=0, nrow=input_rows.nrows)
     tout.flush()
 
     # Process the data chunk by chunk
-    for c, (startrow_tmod, nrow) in enumerate(zip(startrows_tmod, nrows)):
+    for chunk in chunks:
         # For each chunk, load data
-        datamod_list = []
-        for i, msmodel in enumerate(model_list):
-            tmod = pt.table(msmodel, readonly=True, ack=False)
-            datamod_list.append(tmod.getcol(model_column, startrow=startrow_tmod, nrow=nrow))
-            tmod.close()
+        datamod_list = read_model_data(
+            model_list,
+            model_column,
+            startrow=chunk.model_startrow,
+            nrows=chunk.nrows,
+        )
 
         # Sum model data for this chunk over all sectors
-        datamod_all = None
-        for i in range(nsectors):
-            if datamod_all is None:
-                datamod_all = datamod_list[i].copy()
-            else:
-                datamod_all += datamod_list[i]
-        tout.putcol(out_column, datamod_all, startrow=startrow_tmod, nrow=nrow)
+        datamod_all = sum_model_data(datamod_list)
+        tout.putcol(out_column, datamod_all, startrow=chunk.model_startrow, nrow=chunk.nrows)
         tout.flush()
     tout.close()
     tin.close()

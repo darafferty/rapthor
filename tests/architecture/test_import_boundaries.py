@@ -53,6 +53,7 @@ PURE_EXECUTION_MODULES = (
     RAPTHOR_ROOT / "execution" / "pipeline" / "lifecycle.py",
     RAPTHOR_ROOT / "execution" / "pipeline" / "plan.py",
     RAPTHOR_ROOT / "execution" / "predict" / "commands.py",
+    RAPTHOR_ROOT / "execution" / "predict" / "measurement_sets.py",
     RAPTHOR_ROOT / "execution" / "predict" / "payloads.py",
     RAPTHOR_ROOT / "execution" / "predict" / "sector_model_addition.py",
     RAPTHOR_ROOT / "execution" / "predict" / "sector_model_subtraction.py",

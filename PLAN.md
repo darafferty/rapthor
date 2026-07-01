@@ -283,6 +283,14 @@ Extract common Measurement Set helper code shared by:
 - `rapthor.execution.predict.sector_model_addition`
 - `rapthor.execution.predict.sector_model_subtraction`
 
+Done:
+
+- Extracted shared predict Measurement Set mechanics into
+  `rapthor.execution.predict.measurement_sets`.
+- Kept the production add/subtract entry points focused on their scientific
+  workflows while sharing model selection, chunk sizing, row planning, output
+  copying/naming, model-data reads, and model-data summing.
+
 Focus only on real duplication:
 
 - chunk sizing and memory assumptions
