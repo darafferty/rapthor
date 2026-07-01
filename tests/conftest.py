@@ -5,6 +5,7 @@ for this directory.
 
 import configparser
 import inspect
+import logging
 import os
 import shutil
 import tarfile
@@ -37,8 +38,26 @@ TEST_INTEGRATION_APPARENT_SKYMODEL = (RESOURCE_DIR / "integration_apparent_sky.t
 TEST_RUN_ROOT_ENV = "RAPTHOR_TEST_RUN_ROOT"
 PREFECT_HOME_ENV = "PREFECT_HOME"
 PREFECT_EPHEMERAL_STARTUP_TIMEOUT_ENV = "PREFECT_SERVER_EPHEMERAL_STARTUP_TIMEOUT_SECONDS"
+PREFECT_LOGGING_TO_API_ENABLED_ENV = "PREFECT_LOGGING_TO_API_ENABLED"
 
 os.environ.setdefault(PREFECT_EPHEMERAL_STARTUP_TIMEOUT_ENV, "180")
+os.environ.setdefault(PREFECT_LOGGING_TO_API_ENABLED_ENV, "false")
+
+NOISY_ASYNC_LOGGERS = (
+    "prefect",
+    "prefect.events",
+    "prefect.server",
+    "prefect._internal",
+    "httpcore",
+    "httpx",
+    "websockets",
+)
+
+
+def _quiet_async_runtime_loggers():
+    """Keep async runtime shutdown logs from obscuring pytest failures."""
+    for logger_name in NOISY_ASYNC_LOGGERS:
+        logging.getLogger(logger_name).setLevel(logging.WARNING)
 
 
 def _local_test_run_root():
@@ -127,8 +146,16 @@ def _prepare_prefect_home(config):
 
 def pytest_configure(config):
     config.resource_dir = RESOURCE_DIR
+    _quiet_async_runtime_loggers()
     _prepare_local_test_run_root(config)
     _prepare_prefect_home(config)
+
+
+@pytest.fixture(autouse=True)
+def quiet_async_runtime_loggers():
+    _quiet_async_runtime_loggers()
+    yield
+    _quiet_async_runtime_loggers()
 
 
 @pytest.hookimpl(tryfirst=True)
