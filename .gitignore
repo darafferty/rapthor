@@ -5,6 +5,8 @@ rapthor/_version.py
 test/resources/
 tests/resources/test.ms
 tests/test.ms_di.ms
+runs/
+examples/generated/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

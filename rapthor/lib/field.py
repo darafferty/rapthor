@@ -429,7 +429,7 @@ class Field(object):
         """
         return sum([obs.parameters[parameter] for obs in self.observations], [])
     
-    def read_facets(self):
+    def read_facet_layout_from_file(self):
         """Read facets from file"""
         if self.parset['facet_layout'] is not None:
             return read_ds9_region_file(self.parset['facet_layout'])
@@ -591,7 +591,7 @@ class Field(object):
 
         # Regroup the true-sky model into calibration patches
         if regroup:
-            if (facets:=self.read_facets()) is not None:
+            if (facets:=self.read_facet_layout_from_file()) is not None:
                 # Regroup using the supplied ds9 region file of the facets
                 self.log.info(
                     'Read %i patch%s from supplied facet layout file',

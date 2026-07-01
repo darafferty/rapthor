@@ -3,7 +3,6 @@ This files contains the configuration for pytest, including fixtures and hooks
 for this directory.
 """
 
-import configparser
 import shutil
 import tarfile
 import tempfile
@@ -20,7 +19,7 @@ from rapthor.lib.field import Field
 from rapthor.lib.observation import Observation
 from rapthor.lib.parset import parset_read
 from rapthor.lib.sector import Sector
-from rapthor.testing import generate_parset_path, make_source_catalog
+from rapthor.testing import generate_parset, generate_parset_from_template, make_source_catalog
 
 TEST_ROOT_DIR = Path(__file__).parent
 REPO_ROOT_DIR = TEST_ROOT_DIR.parent
@@ -29,8 +28,6 @@ RESOURCE_DIR = TEST_ROOT_DIR / "resources"
 TEST_MS_ARCHIVE_URL = "https://support.astron.nl/software/ci_data/rapthor/tDDECal.in_MS.tgz"
 TEST_MS_ARCHIVE_DIRNAME = "tDDECal.MS"
 TEST_MS_DIRNAME = "test.ms"
-TEST_TRUE_SKYMODEL = (RESOURCE_DIR / "test_true_sky.txt").as_posix()
-TEST_APPARENT_SKYMODEL = (RESOURCE_DIR / "test_apparent_sky.txt").as_posix()
 
 
 def pytest_configure(config):
@@ -160,23 +157,20 @@ def test_ms(pytestconfig, tmp_path_factory):
 
 
 @pytest.fixture
-def parset(pytestconfig, test_ms, tmp_path):
+def parset(pytestconfig, tmp_path, test_ms):
     """
     Fixture to create a parset dictionary for testing.
     """
-    resource_dir = pytestconfig.resource_dir
-    cfg = configparser.ConfigParser(interpolation=None)
-    cfg.read(resource_dir / "test.parset")
-    cfg.set("global", "dir_working", tmp_path.as_posix())
-    cfg.set("global", "input_ms", test_ms)
-    cfg.set("global", "input_skymodel", (resource_dir / "test_true_sky.txt").as_posix())
-    cfg.set("global", "apparent_skymodel", (resource_dir / "test_apparent_sky.txt").as_posix())
-
-    parset_file = tmp_path / "test.parset"
-    with parset_file.open("w") as fh:
-        cfg.write(fh)
-
-    yield parset_read(parset_file, use_log_file=False)
+    output_path = tmp_path / "test.parset"
+    generate_parset(
+        pytestconfig.resource_dir / "test.parset",
+        output_path=output_path,
+        dir_working=tmp_path.as_posix(),
+        input_ms=test_ms,
+        input_skymodel=(pytestconfig.resource_dir / "test_true_sky.txt").as_posix(),
+        apparent_skymodel=(pytestconfig.resource_dir / "test_apparent_sky.txt").as_posix(),
+    )
+    return parset_read(output_path, use_log_file=False)
 
 
 @pytest.fixture
@@ -380,16 +374,16 @@ def generated_parset_path(request, tmp_path, test_ms):
 
     This fixture can be used to test rapthor runs end to end on a small input
     measurement set with different strategies and sky models.
-    For further details see `generate_parset` function.
+    For further details see `generate_parset_from_template` function.
     """
     parset_path, input_skymodel_path, apparent_skymodel_path = request.param
     parset_path = request.config.repo_root_dir / parset_path
     output_parset_path = tmp_path / "generated.parset"
 
-    generate_parset_path(
+    generate_parset_from_template(
         parset_path,
-        output_parset_path,
         test_ms,
+        output_parset_path,
         input_skymodel_path,
         apparent_skymodel_path,
         normalization_skymodel_paths=None,
@@ -401,10 +395,10 @@ def generated_parset_path(request, tmp_path, test_ms):
 @pytest.fixture
 def parset_for_field_test(pytestconfig, tmp_path_factory, test_ms):
     target = tmp_path_factory.mktemp("test_field") / "generated.parset"
-    generate_parset_path(
+    generate_parset_from_template(
         pytestconfig.resource_dir / "test.parset",
-        target,
         test_ms,
+        target,
         pytestconfig.resource_dir / "test_true_sky.txt",
         pytestconfig.resource_dir / "test_apparent_sky.txt",
     )

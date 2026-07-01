@@ -9,7 +9,7 @@ import casacore.tables as pt
 import numpy as np
 import pytest
 
-from rapthor.testing import generate_parset_path
+from rapthor.testing import generate_parset_from_template
 
 COMMON_STRATEGY_SETTINGS = {
     "channel_width_hz": 195312.5,
@@ -123,19 +123,19 @@ def generated_parset_path_normalisation(
 
     This fixture can be used to test rapthor runs end to end on a small input
     measurement set with different strategies and sky models.
-    For further details see `generate_parset` function.
+    For further details see `generate_parset_from_template` function.
     """
     parset_path, input_skymodel_path, apparent_skymodel_path = request.param
     parset_path = request.config.repo_root_dir / parset_path
     output_parset_path = tmp_path / "generated.parset"
 
-    generate_parset_path(
+    generate_parset_from_template(
         parset_path,
-        output_parset_path,
         ms_for_normalisation,
+        output_parset_path,
         input_skymodel_path,
         apparent_skymodel_path,
-        normalization_skymodel_paths=normalization_skymodel_paths,
+        normalization_skymodel_paths,
     )
     return output_parset_path
 

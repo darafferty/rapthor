@@ -32,6 +32,7 @@ slow_freqstep_hz = 1e6
 fast_smoothnessconstraint = 6.0e6
 slow_smoothnessconstraint = 4.0e6
 propagatesolutions = True
+use_wsclean_predict = False
 maxiter = 50
 stepsize = 0.2
 tolerance = 0.001
