@@ -6,6 +6,7 @@ from rapthor.execution.payloads import (
     PayloadSerializationError,
     assert_serializable_payload,
     optional_file_path,
+    optional_string,
     validate_basename,
     validate_int_list,
     validate_string_list,
@@ -63,6 +64,16 @@ def test_optional_file_path_accepts_file_record_path_string_or_none():
 def test_optional_file_path_rejects_non_file_payload():
     with pytest.raises(ValueError, match="model must be a File record, path string, or None"):
         optional_file_path({"class": "Directory", "path": "/data"}, "model")
+
+
+@pytest.mark.parametrize("value", [None, "", "None"])
+def test_optional_string_returns_none_for_unset_sentinels(value):
+    assert optional_string(value) is None
+
+
+def test_optional_string_returns_string_for_set_values():
+    assert optional_string("applycal") == "applycal"
+    assert optional_string(7) == "7"
 
 
 def test_validate_string_list_accepts_non_empty_strings():

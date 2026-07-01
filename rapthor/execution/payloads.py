@@ -57,6 +57,13 @@ def optional_file_path(record: object, name: str) -> Optional[str]:
     raise ValueError(f"{name} must be a File record, path string, or None")
 
 
+def optional_string(value: object) -> Optional[str]:
+    """Return ``None`` for unset sentinel values, otherwise return a string."""
+    if value in (None, "", "None"):
+        return None
+    return str(value)
+
+
 def validate_string_list(
     values: object,
     name: str,

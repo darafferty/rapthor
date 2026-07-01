@@ -142,6 +142,8 @@ Current cleanup added:
   validator instead of keeping a local duplicate.
 - Calibration payload builders and validators now share the same optional file
   path helper for File records, path strings, and `None`.
+- Predict payload validation now reuses a shared optional-string normalizer for
+  unset values such as `None`, `""`, and `"None"`.
 
 Tasks:
 

@@ -15,7 +15,7 @@ from rapthor.execution.predict.flow import (
     predict_flow,
     predict_model_data_task,
 )
-from rapthor.execution.predict.payloads import predict_payload_from_inputs
+from rapthor.execution.predict.payloads import predict_payload_from_inputs, validate_predict_payload
 from rapthor.lib.records import directory_record, file_record, validate_output_record
 from rapthor.operations.predict import Predict
 from tests.execution.conftest import run_flow_for_test
@@ -497,6 +497,19 @@ def test_predict_payload_from_inputs_builds_dd_specific_postprocess_payload(tmp_
         "peel_bright": False,
         "reweight": True,
     }
+
+
+def test_validate_predict_payload_normalizes_unset_optional_strings(tmp_path):
+    payload = predict_payload_from_inputs("di", _single_observation_input_parms(), tmp_path)
+    payload["predict_tasks"][0]["h5parm"] = "None"
+    payload["predict_tasks"][0]["applycal_steps"] = ""
+    payload["predict_tasks"][0]["normalize_h5parm"] = None
+
+    validated = validate_predict_payload(payload)
+
+    assert validated["predict_tasks"][0]["h5parm"] is None
+    assert validated["predict_tasks"][0]["applycal_steps"] is None
+    assert validated["predict_tasks"][0]["normalize_h5parm"] is None
 
 
 def test_predict_payload_from_inputs_rejects_mismatched_scatter_inputs(tmp_path):

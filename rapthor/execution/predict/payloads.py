@@ -5,11 +5,8 @@ from typing import Mapping, Optional, TypedDict, Union
 
 from rapthor.execution.payloads import (
     assert_serializable_payload,
-)
-from rapthor.execution.payloads import (
+    optional_string as _optional_string,
     validate_basename as _validate_basename,
-)
-from rapthor.execution.payloads import (
     validate_string_list as _validate_string_list,
 )
 from rapthor.lib.records import (
@@ -78,12 +75,6 @@ class PredictPayload(TypedDict):
     postprocess_tasks: list[PredictPostprocessPayload]
 
 
-def _optional_str(value: object) -> Optional[str]:
-    if value in (None, "", "None"):
-        return None
-    return str(value)
-
-
 def predict_payload_from_inputs(
     mode: str,
     input_parms: Mapping[str, object],
@@ -117,7 +108,7 @@ def predict_payload_from_inputs(
     data_colname = str(input_parms["data_colname"])
     h5parm = optional_file_record_path(input_parms.get("h5parm"))
     normalize_h5parm = optional_file_record_path(input_parms.get("normalize_h5parm"))
-    dp3_applycal_steps = _optional_str(input_parms.get("dp3_applycal_steps"))
+    dp3_applycal_steps = _optional_string(input_parms.get("dp3_applycal_steps"))
     predict_tasks: list[PredictModelTaskPayload] = []
     for index in range(predict_count):
         msout = _validate_basename(sector_model_filenames[index], f"sector_model_filename[{index}]")
@@ -212,9 +203,9 @@ def _validate_predict_model_task(
             f"predict_tasks[{index}].directions",
         ),
         "numthreads": int(predict_task["numthreads"]),
-        "h5parm": _optional_str(predict_task.get("h5parm")),
-        "applycal_steps": _optional_str(predict_task.get("applycal_steps")),
-        "normalize_h5parm": _optional_str(predict_task.get("normalize_h5parm")),
+        "h5parm": _optional_string(predict_task.get("h5parm")),
+        "applycal_steps": _optional_string(predict_task.get("applycal_steps")),
+        "normalize_h5parm": _optional_string(predict_task.get("normalize_h5parm")),
     }
 
 
