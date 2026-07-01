@@ -133,6 +133,10 @@ write_to = "rapthor/_version.py"
 
 [tool.ruff]
 line-length = 100
+extend-include = [
+    "bin/concat_linc_files",
+    "bin/rapthor",
+]
 
 [tool.ruff.lint]
 # Expand basic rules with name and style checks roughly equivalent to flake8 + black + pylint
@@ -142,7 +146,6 @@ line-length = 100
 # and so on. The `select` below is from our ASTRON Python project template.
 # select = ["N", "A", "E", "F", "B", "W", "Q", "PL", "ASYNC", "S", "G", "RET", "ARG", "I"]
 # The default behavior of ruff is to use "E" and "F", omitting stylistic rules.
-exclude = ["debug/**"]
 select = ["E", "F"]  # pycodestyle and pyflakes
 ignore = ["E501"]  # line-too-long
 
@@ -250,105 +253,27 @@ commands = [
         # check all files for selected rules (configured in [tool.ruff.lint])
         "python", "-m", "ruff", "check",
     ],
-    # check formatting on specific files: format_targets in [tool.tox.env.format]
     [
-        # Check imports sorted
-        "python", "-m", "ruff", "check", "--select", "I",
-        "rapthor/execution",
-        "rapthor/lib/records.py",
-        "rapthor/lib/parset.py",
-        "rapthor/lib/strategy.py",
-        "rapthor/operations/calibrate",
-        "rapthor/operations/image",
-        "tests/__init__.py",
-        "tests/architecture",
-        "tests/conftest.py",
-        "tests/execution",
-        "tests/integration",
-        "tests/lib/test_field.py",
-        "tests/lib/test_parset.py",
-        "tests/lib/test_strategy.py",
-        "tests/operations/test_calibrate.py",
+        # Check imports are sorted in all discovered Python files.
+        "python", "-m", "ruff", "check", "--select", "I"
     ],
     [
-        # Check general formatting
-        "python", "-m", "ruff", "format", "--check", "-v",
-        "rapthor/execution",
-        "rapthor/lib/records.py",
-        "rapthor/lib/parset.py",
-        "rapthor/lib/strategy.py",
-        "rapthor/operations/calibrate",
-        "rapthor/operations/image",
-        "tests/__init__.py",
-        "tests/architecture",
-        "tests/conftest.py",
-        "tests/execution",
-        "tests/integration",
-        "tests/lib/test_field.py",
-        "tests/lib/test_parset.py",
-        "tests/lib/test_strategy.py",
-        "tests/operations/test_calibrate.py",
+        # Check formatting in all discovered Python files.
+        "python", "-m", "ruff", "format", "--check", "-v"
     ]
 ]
 
 [tool.tox.env.format]
 skip_install = true
 deps = "ruff==0.15.20"
-format_targets = [
-    "rapthor/execution",
-    "rapthor/lib/records.py",
-    "rapthor/lib/parset.py",
-    "rapthor/lib/strategy.py",
-    "rapthor/operations/calibrate",
-    "rapthor/operations/image",
-    "tests/__init__.py",
-    "tests/architecture",
-    "tests/conftest.py",
-    "tests/execution",
-    "tests/integration",
-    "tests/lib/test_field.py",
-    "tests/lib/test_parset.py",
-    "tests/lib/test_strategy.py",
-    "tests/operations/test_calibrate.py",
-]
 commands = [
     [
-        # sort imports
-        "python", "-m", "ruff", "check", "--select", "I", "--fix",
-        "rapthor/execution",
-        "rapthor/lib/records.py",
-        "rapthor/lib/parset.py",
-        "rapthor/lib/strategy.py",
-        "rapthor/operations/calibrate",
-        "rapthor/operations/image",
-        "tests/__init__.py",
-        "tests/architecture",
-        "tests/conftest.py",
-        "tests/execution",
-        "tests/integration",
-        "tests/lib/test_field.py",
-        "tests/lib/test_parset.py",
-        "tests/lib/test_strategy.py",
-        "tests/operations/test_calibrate.py",
+        # sort imports in all discovered Python files
+        "python", "-m", "ruff", "check", "--select", "I", "--fix"
     ],
     [
-        # format code
-        "python", "-m", "ruff", "format",
-        "rapthor/execution",
-        "rapthor/lib/records.py",
-        "rapthor/lib/parset.py",
-        "rapthor/lib/strategy.py",
-        "rapthor/operations/calibrate",
-        "rapthor/operations/image",
-        "tests/__init__.py",
-        "tests/architecture",
-        "tests/conftest.py",
-        "tests/execution",
-        "tests/integration",
-        "tests/lib/test_field.py",
-        "tests/lib/test_parset.py",
-        "tests/lib/test_strategy.py",
-        "tests/operations/test_calibrate.py",
+        # format all discovered Python files
+        "python", "-m", "ruff", "format"
     ],
 
 ]

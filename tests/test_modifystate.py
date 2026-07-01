@@ -9,7 +9,6 @@ import pytest
 
 import rapthor.modifystate as modifystate
 
-
 OUTPUT_DIRS = (
     "skymodels",
     "solutions",

@@ -20,6 +20,8 @@ from rapthor.execution.image.skymodel_filter import (
 )
 from rapthor.execution.image.skymodel_filter_cli import (
     parse_args,
+)
+from rapthor.execution.image.skymodel_filter_cli import (
     run as run_filter_skymodel_cli,
 )
 

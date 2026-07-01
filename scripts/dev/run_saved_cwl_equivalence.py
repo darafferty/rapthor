@@ -29,7 +29,6 @@ import h5py
 import numpy as np
 from astropy.io import fits
 
-
 REFERENCE_ROOT = Path(".pytest_cache/cwl-reference-artifacts")
 EQUIVALENCE_INPUTS = Path(".pytest_cache/equivalence-inputs")
 RESOURCE_ROOT = Path("tests/resources")
@@ -48,12 +47,10 @@ STALE_REFERENCE_NAMES = {
 STRATEGY_BY_BASENAME = {
     "dd_fast_medium_strategy.py": EQUIVALENCE_INPUTS / "dd_fast_medium_strategy.py",
     "dd_slow_gains_strategy.py": EQUIVALENCE_INPUTS / "dd_slow_gains_strategy.py",
-    "dd_then_di_fast_medium_strategy.py": EQUIVALENCE_INPUTS
-    / "dd_then_di_fast_medium_strategy.py",
+    "dd_then_di_fast_medium_strategy.py": EQUIVALENCE_INPUTS / "dd_then_di_fast_medium_strategy.py",
     "di_fast_phase_strategy.py": EQUIVALENCE_INPUTS / "di_fast_phase_strategy.py",
     "di_full_jones_strategy.py": EQUIVALENCE_INPUTS / "di_full_jones_strategy.py",
-    "di_then_dd_fast_medium_strategy.py": EQUIVALENCE_INPUTS
-    / "di_then_dd_fast_medium_strategy.py",
+    "di_then_dd_fast_medium_strategy.py": EQUIVALENCE_INPUTS / "di_then_dd_fast_medium_strategy.py",
 }
 
 
@@ -185,8 +182,7 @@ def _prepare_normalization_ms(output_root: Path) -> Path:
     with pt.table(str(predicted_ms), readonly=False, ack=False) as table:
         data = table.getcol("DATA")
         noise = (
-            rng.normal(scale=0.05, size=data.shape)
-            + 1j * rng.normal(scale=0.05, size=data.shape)
+            rng.normal(scale=0.05, size=data.shape) + 1j * rng.normal(scale=0.05, size=data.shape)
         ).astype(data.dtype)
         table.putcol("DATA", data + noise)
     shutil.rmtree(ms_path)
@@ -302,13 +298,12 @@ def _record_basename_summary(value: Any) -> Any:
         if set(value) >= {"basename", "class"}:
             return {"basename": value.get("basename"), "class": value.get("class")}
         if "path" in value and len(value) <= 3:
-            return {**{k: v for k, v in value.items() if k != "path"}, "basename": Path(value["path"]).name}
+            return {
+                **{k: v for k, v in value.items() if k != "path"},
+                "basename": Path(value["path"]).name,
+            }
         summary = {key: _record_basename_summary(val) for key, val in sorted(value.items())}
-        return {
-            key: val
-            for key, val in summary.items()
-            if val not in (None, [], {})
-        }
+        return {key: val for key, val in summary.items() if val not in (None, [], {})}
     if isinstance(value, list):
         summary = [_record_basename_summary(item) for item in value]
         return [item for item in summary if item not in (None, [], {})]
@@ -324,7 +319,9 @@ def _compare_output_records(reference_dir: Path, work_dir: Path, result: Compari
             result.failures.append(f"missing output record for {operation}")
             continue
         ref_data = _record_basename_summary(json.loads(ref_outputs.read_text(encoding="utf-8")))
-        current_data = _record_basename_summary(json.loads(current_outputs.read_text(encoding="utf-8")))
+        current_data = _record_basename_summary(
+            json.loads(current_outputs.read_text(encoding="utf-8"))
+        )
         if ref_data != current_data:
             result.warnings.append(f"output-record summary differs for {operation}")
         compared += 1
@@ -358,11 +355,16 @@ def _close(left: float, right: float, *, atol: float, rtol: float) -> bool:
     return bool(np.isclose(left, right, atol=atol, rtol=rtol))
 
 
-def _compare_fits(reference: Path, current: Path, result: ComparisonResult, atol: float, rtol: float) -> None:
+def _compare_fits(
+    reference: Path, current: Path, result: ComparisonResult, atol: float, rtol: float
+) -> None:
     if not current.is_file():
         result.failures.append(f"missing FITS product: {current}")
         return
-    with fits.open(reference, memmap=False) as ref_hdul, fits.open(current, memmap=False) as cur_hdul:
+    with (
+        fits.open(reference, memmap=False) as ref_hdul,
+        fits.open(current, memmap=False) as cur_hdul,
+    ):
         ref_hdu = next((hdu for hdu in ref_hdul if hdu.data is not None), None)
         cur_hdu = next((hdu for hdu in cur_hdul if hdu.data is not None), None)
         if ref_hdu is None or cur_hdu is None:
@@ -372,7 +374,9 @@ def _compare_fits(reference: Path, current: Path, result: ComparisonResult, atol
         ref_data = ref_hdu.data
         cur_data = cur_hdu.data
         if ref_data.shape != cur_data.shape:
-            result.failures.append(f"FITS shape differs for {current.name}: {ref_data.shape} != {cur_data.shape}")
+            result.failures.append(
+                f"FITS shape differs for {current.name}: {ref_data.shape} != {cur_data.shape}"
+            )
             return
         if ref_data.dtype.names:
             if ref_data.dtype.names != cur_data.dtype.names:
@@ -382,8 +386,12 @@ def _compare_fits(reference: Path, current: Path, result: ComparisonResult, atol
                 ref_column = np.asarray(ref_data[column])
                 cur_column = np.asarray(cur_data[column])
                 if np.issubdtype(ref_column.dtype, np.number):
-                    if not np.allclose(ref_column, cur_column, atol=atol, rtol=rtol, equal_nan=True):
-                        result.failures.append(f"FITS table column differs for {current.name}:{column}")
+                    if not np.allclose(
+                        ref_column, cur_column, atol=atol, rtol=rtol, equal_nan=True
+                    ):
+                        result.failures.append(
+                            f"FITS table column differs for {current.name}:{column}"
+                        )
                 elif not np.array_equal(ref_column, cur_column):
                     result.failures.append(f"FITS table column differs for {current.name}:{column}")
             return
@@ -437,7 +445,9 @@ def _h5_datasets(handle: h5py.File) -> dict[str, h5py.Dataset]:
     return datasets
 
 
-def _compare_h5(reference: Path, current: Path, result: ComparisonResult, atol: float, rtol: float) -> None:
+def _compare_h5(
+    reference: Path, current: Path, result: ComparisonResult, atol: float, rtol: float
+) -> None:
     if not current.is_file():
         result.failures.append(f"missing HDF5 product: {current}")
         return

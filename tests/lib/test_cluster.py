@@ -4,6 +4,7 @@ Test cases for the cluster module in `rapthor/lib`.
 
 import numpy
 import pytest
+
 from rapthor.lib.cluster import get_available_memory, get_chunk_size
 
 

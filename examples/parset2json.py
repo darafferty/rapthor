@@ -15,6 +15,7 @@ import configparser
 import json
 import os
 import sys
+
 from rapthor.lib.parset import Parset
 
 
@@ -40,8 +41,6 @@ def main(src, dest):
 if __name__ == "__main__":
     src = sys.argv[1] if len(sys.argv) > 1 else Parset.DEFAULT_PARSET
     dest = (
-        sys.argv[2]
-        if len(sys.argv) > 2
-        else os.path.splitext(os.path.basename(src))[0] + ".json"
+        sys.argv[2] if len(sys.argv) > 2 else os.path.splitext(os.path.basename(src))[0] + ".json"
     )
     main(src, dest)

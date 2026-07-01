@@ -1,16 +1,18 @@
 """
 Module that modifies the state of the pipeline
 """
-from rapthor.lib.parset import parset_read
-from rapthor.lib.strategy import set_strategy
-from rapthor.lib.field import Field
+
 import filecmp
 import logging
 import os
 import shutil
 import sys
 
-log = logging.getLogger('rapthor:state')
+from rapthor.lib.field import Field
+from rapthor.lib.parset import parset_read
+from rapthor.lib.strategy import set_strategy
+
+log = logging.getLogger("rapthor:state")
 
 
 def run(parset_file):
@@ -23,11 +25,11 @@ def run(parset_file):
         Filename of parset containing processing parameters
     """
     # Set logging level to suppress unnecessary messages
-    logging.getLogger('rapthor:parset').setLevel(logging.ERROR)
-    logging.getLogger('rapthor:strategy').setLevel(logging.ERROR)
+    logging.getLogger("rapthor:parset").setLevel(logging.ERROR)
+    logging.getLogger("rapthor:strategy").setLevel(logging.ERROR)
 
     # Read parset
-    log.info('Reading parset and checking state...')
+    log.info("Reading parset and checking state...")
     parset = parset_read(parset_file, use_log_file=False)
 
     # Initialize minimal field object
@@ -56,27 +58,29 @@ def run(parset_file):
         pipelines = []
         for index, step in enumerate(strategy_steps):
             for opname in operation_list:
-                if index == 0 and opname == 'initial_image':
+                if index == 0 and opname == "initial_image":
                     # Handle the initial sky model image operation separately, as it only
                     # occurs in the first cycle and does not include an index in its paths
-                    operation = os.path.join(parset['dir_working'], 'pipelines', f'{opname}')
+                    operation = os.path.join(parset["dir_working"], "pipelines", f"{opname}")
                 else:
-                    operation = os.path.join(parset['dir_working'], 'pipelines', f'{opname}_{index+1}')
+                    operation = os.path.join(
+                        parset["dir_working"], "pipelines", f"{opname}_{index + 1}"
+                    )
                 if os.path.exists(operation):
                     pipelines.append(os.path.basename(operation))
 
         # List operations and query user
         print(f"\nCurrent strategy: {field.parset['strategy']}")
-        print('\nOperations:')
+        print("\nOperations:")
         i = 0
         if len(pipelines) == 0:
-            print('    None')
-            print('No reset can be done.')
+            print("    None")
+            print("No reset can be done.")
             sys.exit(0)
         else:
             for p in pipelines:
                 i += 1
-                print(f'    {i}) {p}')
+                print(f"    {i}) {p}")
         try:
             while True:
                 p_number_raw = input('Enter number of operation to reset or "q" to quit: ')
@@ -91,14 +95,18 @@ def run(parset_file):
                     pass
         except KeyboardInterrupt:
             sys.exit(0)
-        pipeline = pipelines[int(p_number_raw)-1]
+        pipeline = pipelines[int(p_number_raw) - 1]
 
         # Ask for confirmation
         try:
             while True:
-                answer = input(f'Reset all operations from {pipeline} onwards (y/n)? ')
-                if (answer.lower() == "n" or answer.lower() == "no" or
-                    answer.lower() == "y" or answer.lower() == "yes"):
+                answer = input(f"Reset all operations from {pipeline} onwards (y/n)? ")
+                if (
+                    answer.lower() == "n"
+                    or answer.lower() == "no"
+                    or answer.lower() == "y"
+                    or answer.lower() == "yes"
+                ):
                     break
                 else:
                     print('Please enter "y" or "n"')
@@ -107,12 +115,12 @@ def run(parset_file):
 
         # Reset operation states as requested
         if answer.lower() == "y" or answer.lower() == "yes":
-            print('Reseting state...')
-            for pipeline in pipelines[int(p_number_raw)-1:]:
+            print("Reseting state...")
+            for pipeline in pipelines[int(p_number_raw) - 1 :]:
                 # Remove the operation working directory to ensure files from previous
                 # runs are not kept and used in subsequent ones. Other associated
                 # files are removed as well.
-                path = os.path.join(parset['dir_working'], 'pipelines', pipeline)
+                path = os.path.join(parset["dir_working"], "pipelines", pipeline)
                 shutil.rmtree(path, ignore_errors=True)
 
             # Now remove any sub-directories in the other output directories, that
@@ -127,10 +135,10 @@ def run(parset_file):
                 "visibilities",
             ):
                 dcmp = filecmp.dircmp(
-                    os.path.join(parset['dir_working'], 'pipelines'),
-                    os.path.join(parset['dir_working'], dirname)
+                    os.path.join(parset["dir_working"], "pipelines"),
+                    os.path.join(parset["dir_working"], dirname),
                 )
                 for path in (os.path.join(dcmp.right, item) for item in dcmp.right_only):
                     shutil.rmtree(path, ignore_errors=True)
 
-            print('Reset complete.')
+            print("Reset complete.")

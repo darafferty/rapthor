@@ -12,15 +12,14 @@ from typing import Dict, List
 
 import astropy.units as u
 import lsmtool
-from lsmtool.download_skymodel import download_skymodel
 import lsmtool.skymodel
-from lsmtool.operations_lib import make_wcs
-
 import matplotlib
 import numpy as np
 import rtree.index
 from astropy.coordinates import Angle, SkyCoord
 from astropy.table import vstack
+from lsmtool.download_skymodel import download_skymodel
+from lsmtool.operations_lib import make_wcs
 from shapely.geometry import MultiPolygon, Point, Polygon
 
 from rapthor.lib import miscellaneous as misc
@@ -31,8 +30,8 @@ from rapthor.lib.strategy import default_calibration_strategy
 matplotlib.use("Agg")
 import mocpy
 from astropy.visualization.wcsaxes import SphericalCircle
-from lsmtool.facet import read_ds9_region_file, read_skymodel
 from losoto.h5parm import h5parm
+from lsmtool.facet import read_ds9_region_file, read_skymodel
 from matplotlib.patches import Ellipse
 from matplotlib.pyplot import figure
 
@@ -52,8 +51,8 @@ class Field(object):
     def __init__(self, parset, minimal=False):
         # Initialize basic attributes. These can be overridden later by the strategy
         # values and/or the operations
-        self.name = 'field'
-        self.log = logging.getLogger(f'rapthor:{self.name}')
+        self.name = "field"
+        self.log = logging.getLogger(f"rapthor:{self.name}")
         self.parset = parset.copy()
         self.working_dir = self.parset["dir_working"]
         self.ms_filenames = self.parset["mss"]
@@ -215,8 +214,8 @@ class Field(object):
         for obs in self.full_observations:
             if self.antenna != obs.antenna:
                 raise ValueError(
-                    f'Antenna type for MS {obs.ms_filename} differs from the one for MS '
-                    f'{obs0.ms_filename}'
+                    f"Antenna type for MS {obs.ms_filename} differs from the one for MS "
+                    f"{obs0.ms_filename}"
                 )
 
         # Check for multiple epochs
@@ -274,8 +273,8 @@ class Field(object):
         for obs in self.full_observations:
             if self.diam != obs.diam:
                 raise ValueError(
-                    f'Station diameter for MS {obs.ms_filename} differs from the one for MS '
-                    f'{obs0.ms_filename}'
+                    f"Station diameter for MS {obs.ms_filename} differs from the one for MS "
+                    f"{obs0.ms_filename}"
                 )
 
         # Check that all observations have the same stations
@@ -283,8 +282,8 @@ class Field(object):
         for obs in self.full_observations:
             if self.stations != obs.stations:
                 raise ValueError(
-                    f'Stations in MS {obs.ms_filename} differ from those in MS {obs0.ms_filename}'
-                )   
+                    f"Stations in MS {obs.ms_filename} differ from those in MS {obs0.ms_filename}"
+                )
 
         # Find mean elevation and FOV over all observations
         el_rad_list = []
@@ -528,19 +527,22 @@ class Field(object):
         # Save the filename of the calibrator-only sky model from the previous cycle (needed
         # for some operations), if available
         if index > 1:
-            dst_dir_prev_cycle = os.path.join(self.working_dir, 'skymodels', f'calibrate_{index-1}')
-            self.calibrators_only_skymodel_file_prev_cycle = os.path.join(dst_dir_prev_cycle,
-                                                                          'calibrators_only_skymodel.txt')
+            dst_dir_prev_cycle = os.path.join(
+                self.working_dir, "skymodels", f"calibrate_{index - 1}"
+            )
+            self.calibrators_only_skymodel_file_prev_cycle = os.path.join(
+                dst_dir_prev_cycle, "calibrators_only_skymodel.txt"
+            )
         else:
             self.calibrators_only_skymodel_file_prev_cycle = None
 
         # Make output directories for new sky models and define filenames
-        dst_dir = os.path.join(self.working_dir, 'skymodels', f'calibrate_{index}')
+        dst_dir = os.path.join(self.working_dir, "skymodels", f"calibrate_{index}")
         os.makedirs(dst_dir, exist_ok=True)
-        self.calibration_skymodel_file = os.path.join(dst_dir, 'calibration_skymodel.txt')
-        self.calibrators_only_skymodel_file = os.path.join(dst_dir, 'calibrators_only_skymodel.txt')
-        self.source_skymodel_file = os.path.join(dst_dir, 'source_skymodel.txt')
-        dst_dir = os.path.join(self.working_dir, 'skymodels', f'image_{index}')
+        self.calibration_skymodel_file = os.path.join(dst_dir, "calibration_skymodel.txt")
+        self.calibrators_only_skymodel_file = os.path.join(dst_dir, "calibrators_only_skymodel.txt")
+        self.source_skymodel_file = os.path.join(dst_dir, "source_skymodel.txt")
+        dst_dir = os.path.join(self.working_dir, "skymodels", f"image_{index}")
         os.makedirs(dst_dir, exist_ok=True)
         self.bright_source_skymodel_file = os.path.join(dst_dir, "bright_source_skymodel.txt")
 
@@ -681,9 +683,9 @@ class Field(object):
 
                 if len(facet_names) > len(skymodel_true_sky):
                     raise ValueError(
-                        f'The sky model has {len(skymodel_true_sky)} sources but the input facet '
-                        f'layout file has {len(facet_names)} facets. There must be at least '
-                        'as many sources in the sky model as facets in the facet layout file.'
+                        f"The sky model has {len(skymodel_true_sky)} sources but the input facet "
+                        f"layout file has {len(facet_names)} facets. There must be at least "
+                        "as many sources in the sky model as facets in the facet layout file."
                     )
 
                 # Update the sky models with the new patches and group using the
@@ -762,11 +764,11 @@ class Field(object):
                 total_flux = np.sum(fluxes)
                 if target_flux is not None and total_flux < target_flux:
                     raise RuntimeError(
-                        'There is insufficient flux density in the model to meet '
-                        'the target flux density. Please check the sky model '
-                        f'(in dir_working/skymodels/calibrate_{index}/) for problems, '
-                        'or lower the target flux density and/or increase the '
-                        'maximum calibrator distance.'
+                        "There is insufficient flux density in the model to meet "
+                        "the target flux density. Please check the sky model "
+                        f"(in dir_working/skymodels/calibrate_{index}/) for problems, "
+                        "or lower the target flux density and/or increase the "
+                        "maximum calibrator distance."
                     )
 
                 # Weight the fluxes by source size (larger sources are down weighted)
@@ -828,11 +830,11 @@ class Field(object):
                 # Note: the weighted fluxes are used here (with larger sources down-weighted)
                 if np.max(fluxes) < target_flux:
                     raise RuntimeError(
-                        'No sources found that meet the target flux density (after '
-                        'down-weighting larger sources by up to a factor of two). Please '
-                        f'check the sky model (in dir_working/skymodels/calibrate_{index}/) '
-                        'for problems, or lower the target flux density and/or increase '
-                        'the maximum calibrator distance.'
+                        "No sources found that meet the target flux density (after "
+                        "down-weighting larger sources by up to a factor of two). Please "
+                        f"check the sky model (in dir_working/skymodels/calibrate_{index}/) "
+                        "for problems, or lower the target flux density and/or increase "
+                        "the maximum calibrator distance."
                     )
 
                 # Tessellate the model
@@ -1031,21 +1033,21 @@ class Field(object):
                 if i == 0:
                     skymodel_true_sky = lsmtool.load(str(sm), beamMS=self.beam_ms_filename)
                     if skymodel_true_sky.hasPatches:
-                        patchNames = skymodel_true_sky.getColValues('Patch')
-                        new_patchNames = np.array([f'{p}_{sn}' for p in patchNames], dtype='U100')
-                        skymodel_true_sky.setColValues('Patch', new_patchNames)
-                    sourceNames = skymodel_true_sky.getColValues('Name')
-                    new_sourceNames = np.array([f'{s}_{sn}' for s in sourceNames], dtype='U100')
-                    skymodel_true_sky.setColValues('Name', new_sourceNames)
+                        patchNames = skymodel_true_sky.getColValues("Patch")
+                        new_patchNames = np.array([f"{p}_{sn}" for p in patchNames], dtype="U100")
+                        skymodel_true_sky.setColValues("Patch", new_patchNames)
+                    sourceNames = skymodel_true_sky.getColValues("Name")
+                    new_sourceNames = np.array([f"{s}_{sn}" for s in sourceNames], dtype="U100")
+                    skymodel_true_sky.setColValues("Name", new_sourceNames)
                 else:
                     skymodel2 = lsmtool.load(str(sm))
                     if skymodel2.hasPatches:
-                        patchNames = skymodel2.getColValues('Patch')
-                        new_patchNames = np.array([f'{p}_{sn}' for p in patchNames], dtype='U100')
-                        skymodel2.setColValues('Patch', new_patchNames)
-                    sourceNames = skymodel2.getColValues('Name')
-                    new_sourceNames = np.array([f'{s}_{sn}' for s in sourceNames], dtype='U100')
-                    skymodel2.setColValues('Name', new_sourceNames)
+                        patchNames = skymodel2.getColValues("Patch")
+                        new_patchNames = np.array([f"{p}_{sn}" for p in patchNames], dtype="U100")
+                        skymodel2.setColValues("Patch", new_patchNames)
+                    sourceNames = skymodel2.getColValues("Name")
+                    new_sourceNames = np.array([f"{s}_{sn}" for s in sourceNames], dtype="U100")
+                    skymodel2.setColValues("Name", new_sourceNames)
                     table1 = skymodel_true_sky.table.filled()
                     table2 = skymodel2.table.filled()
                     skymodel_true_sky.table = vstack([table1, table2], metadata_conflicts="silent")
@@ -1062,12 +1064,12 @@ class Field(object):
                     if len(skymodel2) == 0:
                         continue
                     if skymodel2.hasPatches:
-                        patchNames = skymodel2.getColValues('Patch')
-                        new_patchNames = np.array([f'{p}_{sn}' for p in patchNames], dtype='U100')
-                        skymodel2.setColValues('Patch', new_patchNames)
-                    sourceNames = skymodel2.getColValues('Name')
-                    new_sourceNames = np.array([f'{s}_{sn}' for s in sourceNames], dtype='U100')
-                    skymodel2.setColValues('Name', new_sourceNames)
+                        patchNames = skymodel2.getColValues("Patch")
+                        new_patchNames = np.array([f"{p}_{sn}" for p in patchNames], dtype="U100")
+                        skymodel2.setColValues("Patch", new_patchNames)
+                    sourceNames = skymodel2.getColValues("Name")
+                    new_sourceNames = np.array([f"{s}_{sn}" for s in sourceNames], dtype="U100")
+                    skymodel2.setColValues("Name", new_sourceNames)
 
                     if skymodel_apparent_sky is None:
                         skymodel_apparent_sky = skymodel2
@@ -1198,8 +1200,9 @@ class Field(object):
         # Make imaging sector region and vertices files
         for sector in self.imaging_sectors:
             sector.make_vertices_file()
-            sector.make_region_file(os.path.join(self.working_dir, 'regions',
-                                                 f'{sector.name}_region_ds9.reg'))
+            sector.make_region_file(
+                os.path.join(self.working_dir, "regions", f"{sector.name}_region_ds9.reg")
+            )
 
         # Finally, make a list containing all sectors
         self.sectors = (
@@ -1273,9 +1276,13 @@ class Field(object):
             sector_width_ra_deg_list = self.parset["imaging_specific"]["sector_width_ra_deg_list"]
             sector_width_dec_deg_list = self.parset["imaging_specific"]["sector_width_dec_deg_list"]
             n = 1
-            for ra, dec, width_ra, width_dec in zip(sector_center_ra_list, sector_center_dec_list,
-                                                    sector_width_ra_deg_list, sector_width_dec_deg_list):
-                name = f'sector_{n}'
+            for ra, dec, width_ra, width_dec in zip(
+                sector_center_ra_list,
+                sector_center_dec_list,
+                sector_width_ra_deg_list,
+                sector_width_dec_deg_list,
+            ):
+                name = f"sector_{n}"
                 self.imaging_sectors.append(Sector(name, ra, dec, width_ra, width_dec, self))
                 n += 1
             self.log.info(
@@ -1350,7 +1357,7 @@ class Field(object):
                         and nsectors_dec > 2
                     ):
                         continue
-                    name = f'sector_{n}'
+                    name = f"sector_{n}"
                     ra, dec = self.wcs.wcs_pix2world(x[j, i], y[j, i], misc.WCS_ORIGIN)
                     self.imaging_sectors.append(
                         Sector(name, ra.item(), dec.item(), width_ra, width_dec, self)
@@ -1430,7 +1437,7 @@ class Field(object):
                     1,
                 )
                 for i in range(nsectors):
-                    outlier_sector = Sector(f'outlier_{i+1}', self.ra, self.dec, 1.0, 1.0, self)
+                    outlier_sector = Sector(f"outlier_{i + 1}", self.ra, self.dec, 1.0, 1.0, self)
                     outlier_sector.is_outlier = True
                     outlier_sector.predict_skymodel = outlier_skymodel.copy()
                     startind = i * int(nsources / nsectors)
@@ -1468,7 +1475,9 @@ class Field(object):
                     1,
                 )
                 for i in range(nsectors):
-                    bright_source_sector = Sector(f'bright_source_{i+1}', self.ra, self.dec, 1.0, 1.0, self)
+                    bright_source_sector = Sector(
+                        f"bright_source_{i + 1}", self.ra, self.dec, 1.0, 1.0, self
+                    )
                     bright_source_sector.is_bright_source = True
                     bright_source_sector.predict_skymodel = self.bright_source_skymodel.copy()
                     startind = i * int(nsources / nsectors)
@@ -1509,7 +1518,7 @@ class Field(object):
                 1,
             )
             for i in range(nnodes):
-                predict_sector = Sector(f'predict_{i+1}', self.ra, self.dec, 1.0, 1.0, self)
+                predict_sector = Sector(f"predict_{i + 1}", self.ra, self.dec, 1.0, 1.0, self)
                 predict_sector.is_predict = True
                 predict_sector.predict_skymodel = predict_skymodel.copy()
                 startind = i * int(nsources / nnodes)
@@ -1562,7 +1571,7 @@ class Field(object):
             sector.log, sector_log = None, sector.log  # deepcopy cannot copy the log object
             normalize_sector = copy.deepcopy(sector)
             sector.log = sector_log
-            normalize_sector.log = logging.getLogger(f'rapthor:{sector.name}')
+            normalize_sector.log = logging.getLogger(f"rapthor:{sector.name}")
 
         self.normalize_sector = normalize_sector
 
@@ -1735,32 +1744,32 @@ class Field(object):
         """
         if self.h5parm_filename is not None:
             with h5parm(self.h5parm_filename) as solutions:
-                if 'coefficients000' in solutions.getSolsetNames():
-                    solset = solutions.getSolset('coefficients000')
-                    if 'phase_coefficients' not in solset.getSoltabNames():
+                if "coefficients000" in solutions.getSolsetNames():
+                    solset = solutions.getSolset("coefficients000")
+                    if "phase_coefficients" not in solset.getSoltabNames():
                         raise ValueError(
-                            f'The screen solutions file {self.h5parm_filename!r} must '
-                            'have a phase_coefficients soltab.'
+                            f"The screen solutions file {self.h5parm_filename!r} must "
+                            "have a phase_coefficients soltab."
                         )
-                    if 'amplitude1_coefficients' in solset.getSoltabNames():
+                    if "amplitude1_coefficients" in solset.getSoltabNames():
                         self.apply_amplitudes = True
                     else:
                         self.apply_amplitudes = False
-                elif 'sol000' in solutions.getSolsetNames():
-                    solset = solutions.getSolset('sol000')
-                    if 'phase000' not in solset.getSoltabNames():
+                elif "sol000" in solutions.getSolsetNames():
+                    solset = solutions.getSolset("sol000")
+                    if "phase000" not in solset.getSoltabNames():
                         raise ValueError(
-                            f'The direction-dependent solutions file {self.h5parm_filename!r} must '
-                            'have a phase000 soltab.'
+                            f"The direction-dependent solutions file {self.h5parm_filename!r} must "
+                            "have a phase000 soltab."
                         )
-                    if 'amplitude000' in solset.getSoltabNames():
+                    if "amplitude000" in solset.getSoltabNames():
                         self.apply_amplitudes = True
                     else:
                         self.apply_amplitudes = False
                 else:
                     raise ValueError(
-                        f'The direction-dependent solutions file {self.h5parm_filename!r} must '
-                        'have the solutions stored in the sol000 or coefficients000 solset.'
+                        f"The direction-dependent solutions file {self.h5parm_filename!r} must "
+                        "have the solutions stored in the sol000 or coefficients000 solset."
                     )
         else:
             self.apply_amplitudes = False
@@ -1768,17 +1777,19 @@ class Field(object):
         if self.fulljones_h5parm_filename is not None:
             self.apply_fulljones = True
             with h5parm(self.fulljones_h5parm_filename) as solutions:
-                if 'sol000' not in solutions.getSolsetNames():
+                if "sol000" not in solutions.getSolsetNames():
                     raise ValueError(
-                        f'The full-Jones solution file {self.fulljones_h5parm_filename!r} must have'
-                        ' the solutions stored in the sol000 solset.'
+                        f"The full-Jones solution file {self.fulljones_h5parm_filename!r} must have"
+                        " the solutions stored in the sol000 solset."
                     )
-                solset = solutions.getSolset('sol000')
-                if ('phase000' not in solset.getSoltabNames() or
-                        'amplitude000' not in solset.getSoltabNames()):
+                solset = solutions.getSolset("sol000")
+                if (
+                    "phase000" not in solset.getSoltabNames()
+                    or "amplitude000" not in solset.getSoltabNames()
+                ):
                     raise ValueError(
-                        f'The full-Jones solution file {self.fulljones_h5parm_filename!r} must have'
-                        'both a phase000 soltab and a amplitude000 soltab.'
+                        f"The full-Jones solution file {self.fulljones_h5parm_filename!r} must have"
+                        "both a phase000 soltab and a amplitude000 soltab."
                     )
         else:
             self.apply_fulljones = False
