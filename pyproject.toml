@@ -58,6 +58,9 @@ dependencies = [
 ]
 dynamic = ["version"]
 
+[project.scripts]
+rapthor = "rapthor.cli:main"
+
 [project.optional-dependencies]
 test = [
     "tox",
@@ -115,7 +118,6 @@ packages = [
 ]
 script-files = [
     "bin/concat_linc_files",
-    "bin/rapthor",
     "scripts/dev/run-rapthor-slurm-dev.sbatch",
     "scripts/prod/run-rapthor-slurm.sbatch",
 ]
@@ -135,7 +137,6 @@ write_to = "rapthor/_version.py"
 line-length = 100
 extend-include = [
     "bin/concat_linc_files",
-    "bin/rapthor",
 ]
 
 [tool.ruff.lint]

@@ -1,18 +1,16 @@
 """Tests for rapthor CLI."""
 
 import subprocess
-from pathlib import Path
+import sys
 
 import pytest
-
-REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 @pytest.mark.parametrize("help_option", ["--help", "-h", ""])
 @pytest.mark.integration
 def test_rapthor_help(help_option):
     """Test the Rapthor pipeline CLI options."""
-    command = [str(REPO_ROOT / "bin" / "rapthor")]
+    command = [sys.executable, "-m", "rapthor.cli"]
     if help_option:
         command.append(help_option)
     result = subprocess.run(
