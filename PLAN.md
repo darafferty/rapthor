@@ -173,6 +173,11 @@ Tasks:
   move test-only setup into tests rather than keeping it in production modules.
 - Add or update focused unit tests for any extracted builder/helper behavior so
   command strings, payload contracts, and scientific defaults stay locked.
+- Improve focused test coverage for execution and operation modules:
+  - identify low-coverage modules that encode scientific behavior, payload
+    contracts, command construction, output discovery, or failure handling
+  - add tests around edge cases and error paths before refactoring those areas
+  - prefer meaningful contract/regression tests over broad coverage-only tests
 
 Done when:
 
@@ -180,6 +185,8 @@ Done when:
   with a clear readability reason.
 - Helper names describe the domain concept they implement, and non-obvious
   helpers have short docstrings explaining why they exist.
+- Coverage gaps in high-risk execution and operation code are either closed by
+  focused tests or recorded with a clear reason to defer.
 - No obvious unused private helpers remain in execution or operation modules.
 - Command and payload tests still describe the production contracts directly.
 
