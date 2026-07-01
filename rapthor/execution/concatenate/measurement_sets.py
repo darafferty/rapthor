@@ -4,11 +4,39 @@ import logging
 import os
 import shutil
 import subprocess
+from pathlib import Path
+from typing import Union
 
 import casacore.tables as pt
 import numpy as np
 
 log = logging.getLogger("rapthor:concatenate:measurement_sets")
+
+_PathInput = Union[str, os.PathLike]
+
+
+def linc_measurement_sets(input_path: _PathInput) -> list[str]:
+    """Return LINC Measurement Sets in ``input_path`` in a deterministic order."""
+    input_dir = Path(input_path)
+    return sorted(str(path) for pattern in ("*.ms", "*.MS") for path in input_dir.glob(pattern))
+
+
+def concat_linc_measurement_sets(
+    input_path: _PathInput,
+    output_file: _PathInput,
+    overwrite: bool = False,
+) -> int:
+    """
+    Concatenate LINC Measurement Sets from a directory for input to Rapthor.
+
+    Both lower-case ``*.ms`` and upper-case ``*.MS`` directory names are
+    accepted to match historical LINC output naming.
+    """
+    return concat_ms(
+        linc_measurement_sets(input_path),
+        str(output_file),
+        overwrite=overwrite,
+    )
 
 
 def concat_ms(

@@ -7,8 +7,6 @@ Rapthor is mainly written in Python. The production execution path uses
 Prefect/Dask flows. The Rapthor code tree is organized as follows::
 
    rapthor-master
-   ├── bin
-   │   └── concat_linc_files
    ├── docs
    ├── examples
    ├── rapthor
@@ -23,9 +21,6 @@ Prefect/Dask flows. The Rapthor code tree is organized as follows::
 
 In the folder structure above:
 
-- ``rapthor-master/bin`` contains supported standalone utilities. The main
-  ``rapthor`` command is installed from the package entry point
-  ``rapthor.cli:main``.
 - ``rapthor-master/docs`` contains this Sphinx documentation.
 - ``rapthor-master/examples`` contains example parsets and strategy files.
 - ``rapthor-master/rapthor`` contains the main Rapthor Python package.
@@ -42,6 +37,11 @@ In the folder structure above:
   These are not part of the production pipeline layer.
 - ``rapthor-master/tests`` contains unit, execution, operation, and integration
   tests.
+
+Installed Python commands are declared in ``pyproject.toml`` as package entry
+points. The main ``rapthor`` command uses ``rapthor.cli:main`` and the
+``concat_linc_files`` utility uses
+``rapthor.execution.concatenate.linc_cli:main``.
 
 
 .. _classes_modules:

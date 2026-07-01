@@ -100,9 +100,10 @@ Layer Ownership
 ``rapthor.scripts`` is no longer a production pipeline layer. New or migrated
 helper logic should live under the execution package that owns it, for example
 ``rapthor.execution.image`` for imaging helpers or
-``rapthor.execution.calibrate`` for calibration helpers. ``bin/concat_linc_files``
-remains a supported standalone utility for now; do not use that as a pattern for
-new pipeline helpers.
+``rapthor.execution.calibrate`` for calibration helpers. The
+``concat_linc_files`` utility remains a supported installed command, but its
+implementation is owned by ``rapthor.execution.concatenate`` and exposed through
+the package entry point ``rapthor.execution.concatenate.linc_cli:main``.
 
 Public Export Guidance
 ----------------------

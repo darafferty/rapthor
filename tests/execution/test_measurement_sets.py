@@ -1,10 +1,13 @@
 import pytest
 
+from rapthor.execution.concatenate import linc_cli, measurement_sets
 from rapthor.execution.concatenate.measurement_sets import (
     concat_freq_command,
+    concat_linc_measurement_sets,
     concat_ms,
     concat_time_command,
     copy_measurement_set_command,
+    linc_measurement_sets,
     select_concatenation_command,
 )
 
@@ -74,3 +77,58 @@ def test_concat_time_command_builds_taql_command():
         "AS",
         "PLAIN",
     ]
+
+
+def test_linc_measurement_sets_finds_lower_and_upper_case_ms_dirs(tmp_path):
+    lower = tmp_path / "lower.ms"
+    upper = tmp_path / "upper.MS"
+    ignored = tmp_path / "not-a-measurement-set.txt"
+    lower.mkdir()
+    upper.mkdir()
+    ignored.write_text("ignore me")
+
+    assert linc_measurement_sets(tmp_path) == sorted([lower.as_posix(), upper.as_posix()])
+
+
+def test_concat_linc_measurement_sets_delegates_to_concat_ms(monkeypatch, tmp_path):
+    lower = tmp_path / "lower.ms"
+    upper = tmp_path / "upper.MS"
+    lower.mkdir()
+    upper.mkdir()
+    calls = []
+
+    def fake_concat_ms(msfiles, output_file, overwrite=False):
+        calls.append((msfiles, output_file, overwrite))
+        return 3
+
+    monkeypatch.setattr(measurement_sets, "concat_ms", fake_concat_ms)
+
+    exit_code = concat_linc_measurement_sets(tmp_path, tmp_path / "output.ms", overwrite=True)
+
+    assert exit_code == 3
+    assert calls == [
+        (
+            sorted([lower.as_posix(), upper.as_posix()]),
+            (tmp_path / "output.ms").as_posix(),
+            True,
+        )
+    ]
+
+
+def test_concat_linc_cli_passes_arguments_to_execution_helper(monkeypatch):
+    calls = []
+
+    def fake_concat_linc_measurement_sets(input_path, output_file, overwrite=False):
+        calls.append((input_path, output_file, overwrite))
+        return 4
+
+    monkeypatch.setattr(
+        linc_cli,
+        "concat_linc_measurement_sets",
+        fake_concat_linc_measurement_sets,
+    )
+
+    exit_code = linc_cli.main(["/input", "/output.ms", "--overwrite"])
+
+    assert exit_code == 4
+    assert calls == [("/input", "/output.ms", True)]

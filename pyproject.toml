@@ -60,6 +60,7 @@ dynamic = ["version"]
 
 [project.scripts]
 rapthor = "rapthor.cli:main"
+concat_linc_files = "rapthor.execution.concatenate.linc_cli:main"
 
 [project.optional-dependencies]
 test = [
@@ -130,7 +131,6 @@ packages = [
     "rapthor.operations.image",
 ]
 script-files = [
-    "bin/concat_linc_files",
     "scripts/dev/run-rapthor-slurm-dev.sbatch",
     "scripts/prod/run-rapthor-slurm.sbatch",
 ]
@@ -148,9 +148,6 @@ write_to = "rapthor/_version.py"
 
 [tool.ruff]
 line-length = 100
-extend-include = [
-    "bin/concat_linc_files",
-]
 
 [tool.ruff.lint]
 # Expand basic rules with name and style checks roughly equivalent to flake8 + black + pylint
