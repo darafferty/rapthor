@@ -127,7 +127,40 @@ Done when:
 - Calibration strategy/output regressions fail in focused tests before they
   require a full manual equivalence investigation.
 
-### 2. Runtime Bootstrap For Prefect And Dask
+### 2. Builder And Helper Cleanup
+
+Reduce small pockets of repeated structure that remain after the script and
+flow migrations.
+
+Tasks:
+
+- Review repeated payload-builder and command-builder patterns in:
+  - `rapthor.execution.image.builders`
+  - `rapthor.execution.image.commands`
+  - `rapthor.execution.calibrate.builders`
+  - `rapthor.execution.calibrate.commands`
+  - the smaller predict, mosaic, and concatenate command modules
+- Extract only the shared pieces that remove real duplication without hiding
+  scientific intent or making command construction harder to read.
+- Prefer small option dataclasses or local helper functions for stable argument
+  groups; keep Pydantic as a future validation option rather than introducing it
+  during this cleanup.
+- Run a focused dead-code scan for private helpers in `rapthor.execution` and
+  `rapthor.operations`, especially compatibility leftovers and helpers only
+  referenced by tests.
+- Remove unused private helpers when production code no longer calls them, and
+  move test-only setup into tests rather than keeping it in production modules.
+- Add or update focused unit tests for any extracted builder/helper behavior so
+  command strings, payload contracts, and scientific defaults stay locked.
+
+Done when:
+
+- Repeated builder logic has either been removed or intentionally left in place
+  with a clear readability reason.
+- No obvious unused private helpers remain in execution or operation modules.
+- Command and payload tests still describe the production contracts directly.
+
+### 3. Runtime Bootstrap For Prefect And Dask
 
 Make `rapthor input.parset` succeed predictably whether or not the user has an
 existing Prefect server or Dask cluster.
@@ -179,7 +212,7 @@ Done when:
 - A new user can copy commands from the docs and run Rapthor locally with
   minimal setup friction.
 
-### 3. Dask Scalability Contracts
+### 4. Dask Scalability Contracts
 
 Prove that the pipeline can scale across multiple workers or nodes without
 accidentally passing domain objects, huge nested state, or local-only paths.
@@ -239,7 +272,7 @@ Done when:
 - A representative demo run shows meaningful task-stream activity in the Dask
   dashboard without oversubscribing threaded or MPI external tools.
 
-### 4. Runtime UX: Dry Run And Preflight
+### 5. Runtime UX: Dry Run And Preflight
 
 Make it easier for users to understand likely runtime failures before launching
 a long pipeline run.
@@ -267,7 +300,7 @@ Done when:
 - A user can run a preflight/dry-run path and understand likely runtime failures
   without reading flow code.
 
-### 5. Contributor Documentation
+### 6. Contributor Documentation
 
 Add short docs/checklists for common changes:
 
@@ -282,7 +315,7 @@ Include fast test lanes for each change type and point contributors to the
 owner module for payloads, commands, outputs, operation adapters, and Prefect
 flow wiring.
 
-### 6. Deferred Targeted Refactors
+### 7. Deferred Targeted Refactors
 
 Do not split these modules just for tidiness. Split them when changing behavior
 or when a smaller extraction clearly reduces risk:
