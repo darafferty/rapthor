@@ -7,7 +7,10 @@ doc: |
   wsclean_image_screens.cwl for a detailed description of the inputs and outputs.
 
 requirements:
-  InlineJavascriptRequirement: {}
+  - class: InlineJavascriptRequirement
+  - class: InitialWorkDirRequirement
+    listing:
+      - $(inputs.msin)
 
 arguments:
   - -local-rms

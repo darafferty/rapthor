@@ -508,6 +508,13 @@ The available options are described below under their respective sections.
         the data (direction-dependent effects are not, but they are used to corrupt the model
         data).
 
+        .. note::
+
+            The use of this option is not recommended when multiple nights of observations are
+            processed, as the residual dataset is concatenated in time over all observations, with
+            the periods between observations filled with dummy data. This behavior can result in
+            very large residual datasets.
+
     save_image_cube
         Save frequency cube(s) for the given Stokes parameters (default = ``False``).
         If ``True``, a cube is constructed from the channel images made during the

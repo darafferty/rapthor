@@ -228,7 +228,7 @@ def run_steps(field, steps, final=False):
             field.apply_screens = (field.dde_mode == "hybrid") and final
 
             # Set whether residual visibilites should be made
-            field.make_residual_visibilites = field.save_residual_visibilities and final
+            field.make_residual_visibilities = field.save_residual_visibilities and final
 
             # Set whether the final major iteration is skipped (note: it is
             # never skipped for the final iteration)

@@ -47,6 +47,13 @@ inputs:
       files and used for imaging (length = 1).
     type: string
 
+  - id: residual_filename
+    label: Filename of residual MS
+    doc: |
+      The filename of the MS file resulting from making the residual visibilities
+      (length = 1).
+    type: string
+
   - id: starttime
     label: Start times of each obs
     doc: |
@@ -616,6 +623,12 @@ outputs:
     outputSource:
       - prepare_imaging_data/msimg
     type: Directory[]
+  - id: residual_visibilities
+    outputSource:
+      - make_residual_data/msresid
+    type:
+      - "null"
+      - Directory
   - id: source_filtering_mask
     outputSource:
       - filter/source_filtering_mask
@@ -982,6 +995,25 @@ steps:
 {% endif %}
 # end compress_images
 
+  - id: make_residual_data
+    label: Make residual visibility data
+    doc: |
+      This step uses DP3 to generate the residual visibility data by
+      subtracting the MODEL_DATA column, made by WSClean in the imaging step
+      above, from the DATA column.
+    run: {{ rapthor_pipeline_dir }}/steps/make_residual_data.cwl
+    in:
+      - id: msin
+        source: concat_in_time/msconcat
+      - id: msout
+        source: residual_filename
+      - id: numthreads
+        source: max_threads
+      - id: update_model_required
+        source: update_model_required
+    out:
+      - id: msresid
+    when: $(inputs.update_model_required)
 
 # start peel_bright_sources
   - id: restore_pb
@@ -1005,6 +1037,7 @@ steps:
     out:
       - id: restored_image
     when: $(inputs.peel_bright_sources)
+
   - id: restore_nonpb
     label: Restore sources to non-PB image
     doc: |

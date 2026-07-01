@@ -186,6 +186,7 @@ class Image(Operation):
         obs_filename = []
         prepare_filename = []
         concat_filename = []
+        residual_filename = []
         previous_mask_filename = []
         mask_filename = []
         filtered_model_image_name = []
@@ -232,6 +233,7 @@ class Image(Operation):
             # Set output MS filenames for step that prepares the data for WSClean
             prepare_filename.append(sector.get_obs_parameters("ms_prep_filename"))
             concat_filename.append(image_root[-1] + "_concat.ms")
+            residual_filename.append(image_root[-1] + "_resid.ms")
 
             # Set other parameters
             if self.field.parset["imaging_specific"]["use_clean_mask"] and sector.I_mask_file:
@@ -342,6 +344,7 @@ class Image(Operation):
             "data_colname": self.field.data_colname,
             "prepare_filename": prepare_filename,
             "concat_filename": concat_filename,
+            "residual_filename": residual_filename,
             "previous_mask_filename": [
                 None if name is None else CWLFile(name).to_json() for name in previous_mask_filename
             ],
@@ -671,7 +674,7 @@ class Image(Operation):
                     move=True,
                 )
 
-            # The imaging visibilities
+            # The imaging and residual visibilities
             if self.field.save_visibilities:
                 self.copy_outputs_to(
                     os.path.join(
@@ -682,6 +685,18 @@ class Image(Operation):
                     ),
                     index=index,
                     include={"visibilities"},
+                    move=True,
+                )
+            if self.field.make_residual_visibilities:
+                self.copy_outputs_to(
+                    os.path.join(
+                        self.parset["dir_working"],
+                        "visibilities",
+                        f"image_{self.index}",
+                        sector.name,
+                    ),
+                    index=index,
+                    include={"residual_visibilities"},
                     move=True,
                 )
 
@@ -808,6 +823,7 @@ class ImageInitial(Image):
         self.do_multiscale_clean = True
         self.field.disable_clean = False
         self.field.skip_final_major_iteration = True
+        self.field.make_residual_visibilities = False
         super().set_input_parameters()
 
     def finalize(self):
@@ -937,6 +953,7 @@ class ImageNormalize(Image):
         self.do_multiscale_clean = False
         self.field.disable_clean = False
         self.field.skip_final_major_iteration = False
+        self.field.make_residual_visibilities = False
         super().set_input_parameters()
         self.input_parms.update(
             {
