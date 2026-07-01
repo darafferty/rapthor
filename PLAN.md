@@ -225,6 +225,28 @@ Run these after the entrypoint cleanup:
 - Run the Sphinx build once the docs environment has `sphinx`; the current dev
   container does not have the package installed.
 
+### 5. Repository Structure Modernization
+
+Clean the remaining packaging, docs, and legacy utility surfaces before the
+next payload/scalability refactor slice.
+
+- Done: moved the main CLI implementation to `rapthor.cli:main` and exposed it
+  with `[project.scripts]` so the installed user command remains `rapthor`.
+- Done: removed `bin/rapthor`; `python -m rapthor.cli` is the source-tree
+  fallback and shows the same `Usage: rapthor <parset>` help text.
+- Update stale structure docs, especially `docs/source/code.rst`, so they no
+  longer describe `bin/rapthor` or `rapthor/scripts` as active production
+  layout.
+- Convert `bin/concat_linc_files` to a package-owned CLI module and
+  `[project.scripts]` entry point, or explicitly keep it as the one supported
+  standalone legacy utility with clear docs and tests.
+- Replace the manual `[tool.setuptools].packages` list with setuptools package
+  discovery, such as `[tool.setuptools.packages.find] include = ["rapthor*"]`,
+  once the CLI/package changes are stable.
+- Keep the generated local noise (`__pycache__`, `.tox`, `.ruff_cache`, `runs`,
+  `htmlcov`, build outputs) out of repo decisions; clean locally when useful,
+  but do not treat it as source structure.
+
 ## Next Refactor Slice
 
 Run this bounded maintainability pass before adding new Dask scalability
