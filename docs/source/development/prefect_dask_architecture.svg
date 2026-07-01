@@ -1,0 +1,168 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1960" height="1080" viewBox="0 0 1960 1080">
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#697077"/></marker></defs>
+<rect x="0" y="0" width="1960" height="1080" rx="0" ry="0" fill="#ffffff" stroke="none" stroke-width="0" />
+<text x="66" y="70" font-family="Inter, Arial, sans-serif" font-size="40" font-weight="750" fill="#1f2933" text-anchor="start">Prefect version: orchestration expressed as typed Python flows</text>
+<text x="66" y="104" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="400" fill="#52606d" text-anchor="start">The refactor keeps Rapthor state and operation ordering in Python, while Prefect/Dask schedules named flows, tasks, and leaf commands.</text>
+<rect x="48" y="126" width="620" height="755" rx="18" ry="18" fill="#fffdf0" stroke="#ecd36b" stroke-width="1.5" />
+<text x="70" y="154" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="400" fill="#92710a" text-anchor="start">Python control plane</text>
+<rect x="675" y="126" width="1235" height="755" rx="18" ry="18" fill="#f1fbf5" stroke="#84d6a5" stroke-width="1.5" />
+<text x="697" y="154" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="400" fill="#2f855a" text-anchor="start">Prefect / Dask execution plane</text>
+<rect x="78" y="194" width="220" height="145" rx="18" ry="18" fill="#e8f3ff" stroke="#2b6cb0" stroke-width="3" />
+<text x="100" y="232" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="700" fill="#1f2933" text-anchor="start">Parset</text>
+<rect x="100" y="256" width="172" height="42" rx="10" ry="10" fill="#f8fbff" stroke="#2b6cb0" stroke-width="1.2" />
+<text x="114" y="284.0" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="400" fill="#1f2933" text-anchor="start">strategy and cycles</text>
+<rect x="100" y="305" width="172" height="42" rx="10" ry="10" fill="#f8fbff" stroke="#2b6cb0" stroke-width="1.2" />
+<text x="114" y="333.0" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="400" fill="#1f2933" text-anchor="start">data paths</text>
+<rect x="100" y="354" width="172" height="52" rx="10" ry="10" fill="#f8fbff" stroke="#2b6cb0" stroke-width="1.2" />
+<text x="114" y="376.0" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="400" fill="#1f2933" text-anchor="start">
+<tspan x="114" dy="0">Prefect/Dask</tspan>
+<tspan x="114" dy="21">config</tspan>
+</text>
+<rect x="308" y="174" width="345" height="330" rx="18" ry="18" fill="#fff9c4" stroke="#92710a" stroke-width="3" />
+<text x="330" y="212" font-family="Inter, Arial, sans-serif" font-size="27" font-weight="700" fill="#1f2933" text-anchor="start">Rapthor Python</text>
+<rect x="332" y="235" width="290" height="42" rx="10" ry="10" fill="#fffdf0" stroke="#92710a" stroke-width="1.2" />
+<text x="346" y="263.0" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="400" fill="#1f2933" text-anchor="start">Read parset</text>
+<rect x="332" y="290" width="290" height="42" rx="10" ry="10" fill="#fffdf0" stroke="#92710a" stroke-width="1.2" />
+<text x="346" y="318.0" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="400" fill="#1f2933" text-anchor="start">Build Field state</text>
+<rect x="332" y="345" width="290" height="42" rx="10" ry="10" fill="#fffdf0" stroke="#92710a" stroke-width="1.2" />
+<text x="346" y="373.0" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="400" fill="#1f2933" text-anchor="start">Strategy loop + Field.update</text>
+<rect x="332" y="400" width="290" height="42" rx="10" ry="10" fill="#fffdf0" stroke="#92710a" stroke-width="1.2" />
+<text x="346" y="428.0" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="400" fill="#1f2933" text-anchor="start">Choose Operation objects</text>
+<rect x="332" y="455" width="290" height="42" rx="10" ry="10" fill="#fffdf0" stroke="#92710a" stroke-width="1.2" />
+<text x="346" y="483.0" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="400" fill="#1f2933" text-anchor="start">Finalize outputs for next cycle</text>
+<rect x="725" y="174" width="300" height="330" rx="18" ry="18" fill="#e7f7ed" stroke="#2f855a" stroke-width="3" />
+<text x="747" y="212" font-family="Inter, Arial, sans-serif" font-size="27" font-weight="700" fill="#1f2933" text-anchor="start">Pipeline flow</text>
+<rect x="748" y="236" width="250" height="42" rx="10" ry="10" fill="#fbfffd" stroke="#2f855a" stroke-width="1.2" />
+<text x="762" y="264.0" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="400" fill="#1f2933" text-anchor="start">pipeline_flow</text>
+<rect x="748" y="291" width="250" height="42" rx="10" ry="10" fill="#fbfffd" stroke="#2f855a" stroke-width="1.2" />
+<text x="762" y="319.0" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="400" fill="#1f2933" text-anchor="start">run_pipeline</text>
+<rect x="748" y="346" width="250" height="42" rx="10" ry="10" fill="#fbfffd" stroke="#2f855a" stroke-width="1.2" />
+<text x="762" y="374.0" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="400" fill="#1f2933" text-anchor="start">preflight_execution</text>
+<rect x="748" y="401" width="250" height="42" rx="10" ry="10" fill="#fbfffd" stroke="#2f855a" stroke-width="1.2" />
+<text x="762" y="429.0" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="400" fill="#1f2933" text-anchor="start">run_pipeline_steps</text>
+<rect x="748" y="456" width="250" height="42" rx="10" ry="10" fill="#fbfffd" stroke="#2f855a" stroke-width="1.2" />
+<text x="762" y="484.0" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="400" fill="#1f2933" text-anchor="start">publish artifacts + report</text>
+<rect x="1070" y="174" width="300" height="330" rx="18" ry="18" fill="#fff4df" stroke="#c46b14" stroke-width="3" />
+<text x="1092" y="212" font-family="Inter, Arial, sans-serif" font-size="27" font-weight="700" fill="#1f2933" text-anchor="start">Operation adapter</text>
+<rect x="1092" y="236" width="250" height="42" rx="10" ry="10" fill="#fffdf9" stroke="#c46b14" stroke-width="1.2" />
+<text x="1106" y="264.0" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="400" fill="#1f2933" text-anchor="start">build serializable payload</text>
+<rect x="1092" y="291" width="250" height="42" rx="10" ry="10" fill="#fffdf9" stroke="#c46b14" stroke-width="1.2" />
+<text x="1106" y="319.0" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="400" fill="#1f2933" text-anchor="start">run_prefect_flow</text>
+<rect x="1092" y="346" width="250" height="42" rx="10" ry="10" fill="#fffdf9" stroke="#c46b14" stroke-width="1.2" />
+<text x="1106" y="374.0" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="400" fill="#1f2933" text-anchor="start">flow_run_name</text>
+<rect x="1092" y="401" width="250" height="42" rx="10" ry="10" fill="#fffdf9" stroke="#c46b14" stroke-width="1.2" />
+<text x="1106" y="429.0" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="400" fill="#1f2933" text-anchor="start">.done + .outputs.json</text>
+<rect x="1092" y="456" width="250" height="42" rx="10" ry="10" fill="#fffdf9" stroke="#c46b14" stroke-width="1.2" />
+<text x="1106" y="484.0" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="400" fill="#1f2933" text-anchor="start">finalizer updates Field</text>
+<rect x="1408" y="174" width="450" height="330" rx="18" ry="18" fill="#e7f7ed" stroke="#2f855a" stroke-width="3" />
+<text x="1430" y="212" font-family="Inter, Arial, sans-serif" font-size="27" font-weight="700" fill="#1f2933" text-anchor="start">Operation-level flows</text>
+<rect x="1430" y="236" width="190" height="52" rx="10" ry="10" fill="#fbfffd" stroke="#2f855a" stroke-width="1.2" />
+<text x="1444" y="269.0" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="400" fill="#1f2933" text-anchor="start">concatenate_flow</text>
+<rect x="1650" y="236" width="190" height="52" rx="10" ry="10" fill="#fbfffd" stroke="#2f855a" stroke-width="1.2" />
+<text x="1664" y="258.0" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="400" fill="#1f2933" text-anchor="start">
+<tspan x="1664" dy="0">calibrate_flow</tspan>
+<tspan x="1664" dy="21">DI / DD modes</tspan>
+</text>
+<rect x="1430" y="300" width="190" height="52" rx="10" ry="10" fill="#fbfffd" stroke="#2f855a" stroke-width="1.2" />
+<text x="1444" y="322.0" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="400" fill="#1f2933" text-anchor="start">
+<tspan x="1444" dy="0">predict_flow</tspan>
+<tspan x="1444" dy="21">DI / DD modes</tspan>
+</text>
+<rect x="1650" y="300" width="190" height="52" rx="10" ry="10" fill="#fbfffd" stroke="#2f855a" stroke-width="1.2" />
+<text x="1664" y="333.0" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="400" fill="#1f2933" text-anchor="start">image_flow</text>
+<rect x="1430" y="374" width="190" height="52" rx="10" ry="10" fill="#fbfffd" stroke="#2f855a" stroke-width="1.2" />
+<text x="1444" y="407.0" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="400" fill="#1f2933" text-anchor="start">mosaic_flow</text>
+<rect x="308" y="565" width="640" height="325" rx="18" ry="18" fill="#e7f7ed" stroke="#2f855a" stroke-width="3" />
+<text x="330" y="603" font-family="Inter, Arial, sans-serif" font-size="27" font-weight="700" fill="#1f2933" text-anchor="start">Prefect/Dask tasks</text>
+<rect x="332" y="626" width="285" height="38" rx="10" ry="10" fill="#fbfffd" stroke="#2f855a" stroke-width="1.2" />
+<text x="346" y="652.0" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="400" fill="#1f2933" text-anchor="start">concatenate_epoch</text>
+<rect x="332" y="673" width="285" height="38" rx="10" ry="10" fill="#fbfffd" stroke="#2f855a" stroke-width="1.2" />
+<text x="346" y="699.0" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="400" fill="#1f2933" text-anchor="start">calibrate_chunk</text>
+<rect x="332" y="720" width="285" height="38" rx="10" ry="10" fill="#fbfffd" stroke="#2f855a" stroke-width="1.2" />
+<text x="346" y="746.0" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="400" fill="#1f2933" text-anchor="start">calibrate_screen_chunk</text>
+<rect x="332" y="767" width="285" height="38" rx="10" ry="10" fill="#fbfffd" stroke="#2f855a" stroke-width="1.2" />
+<text x="346" y="793.0" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="400" fill="#1f2933" text-anchor="start">predict_model_data</text>
+<rect x="332" y="814" width="285" height="38" rx="10" ry="10" fill="#fbfffd" stroke="#2f855a" stroke-width="1.2" />
+<text x="346" y="840.0" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="400" fill="#1f2933" text-anchor="start">predict_postprocess</text>
+<rect x="632" y="626" width="285" height="38" rx="10" ry="10" fill="#fbfffd" stroke="#2f855a" stroke-width="1.2" />
+<text x="646" y="652.0" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="400" fill="#1f2933" text-anchor="start">image_sector</text>
+<rect x="632" y="673" width="285" height="38" rx="10" ry="10" fill="#fbfffd" stroke="#2f855a" stroke-width="1.2" />
+<text x="646" y="699.0" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="400" fill="#1f2933" text-anchor="start">mosaic_image_type</text>
+<rect x="632" y="720" width="285" height="38" rx="10" ry="10" fill="#fbfffd" stroke="#2f855a" stroke-width="1.2" />
+<text x="646" y="746.0" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="400" fill="#1f2933" text-anchor="start">collect / combine</text>
+<rect x="632" y="767" width="285" height="38" rx="10" ry="10" fill="#fbfffd" stroke="#2f855a" stroke-width="1.2" />
+<text x="646" y="793.0" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="400" fill="#1f2933" text-anchor="start">diagnostics</text>
+<rect x="632" y="814" width="285" height="38" rx="10" ry="10" fill="#fbfffd" stroke="#2f855a" stroke-width="1.2" />
+<text x="646" y="840.0" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="400" fill="#1f2933" text-anchor="start">compress / regrid</text>
+<rect x="980" y="565" width="320" height="325" rx="18" ry="18" fill="#f3edff" stroke="#6b46c1" stroke-width="3" />
+<text x="1002" y="603" font-family="Inter, Arial, sans-serif" font-size="27" font-weight="700" fill="#1f2933" text-anchor="start">Shared runtime</text>
+<rect x="1002" y="626" width="270" height="42" rx="10" ry="10" fill="#fbf9ff" stroke="#6b46c1" stroke-width="1.2" />
+<text x="1016" y="654.0" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="400" fill="#1f2933" text-anchor="start">build_task_runner</text>
+<rect x="1002" y="681" width="270" height="58" rx="10" ry="10" fill="#fbf9ff" stroke="#6b46c1" stroke-width="1.2" />
+<text x="1016" y="706.0" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="400" fill="#1f2933" text-anchor="start">
+<tspan x="1016" dy="0">sync / local_dask /</tspan>
+<tspan x="1016" dy="21">external_dask</tspan>
+</text>
+<rect x="1002" y="736" width="270" height="42" rx="10" ry="10" fill="#fbf9ff" stroke="#6b46c1" stroke-width="1.2" />
+<text x="1016" y="764.0" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="400" fill="#1f2933" text-anchor="start">run_external_command</text>
+<rect x="1002" y="791" width="270" height="42" rx="10" ry="10" fill="#fbf9ff" stroke="#6b46c1" stroke-width="1.2" />
+<text x="1016" y="819.0" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="400" fill="#1f2933" text-anchor="start">artifacts + command logs</text>
+<rect x="1002" y="846" width="270" height="42" rx="10" ry="10" fill="#fbf9ff" stroke="#6b46c1" stroke-width="1.2" />
+<text x="1016" y="874.0" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="400" fill="#1f2933" text-anchor="start">output records + run_names</text>
+<rect x="1330" y="565" width="260" height="325" rx="18" ry="18" fill="#ffe8e8" stroke="#c53030" stroke-width="3" />
+<text x="1352" y="603" font-family="Inter, Arial, sans-serif" font-size="27" font-weight="700" fill="#1f2933" text-anchor="start">Leaf commands</text>
+<rect x="1352" y="626" width="216" height="42" rx="10" ry="10" fill="#fff8f8" stroke="#c53030" stroke-width="1.2" />
+<text x="1366" y="654.0" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="400" fill="#1f2933" text-anchor="start">DP3</text>
+<rect x="1352" y="681" width="216" height="42" rx="10" ry="10" fill="#fff8f8" stroke="#c53030" stroke-width="1.2" />
+<text x="1366" y="709.0" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="400" fill="#1f2933" text-anchor="start">WSClean</text>
+<rect x="1352" y="736" width="216" height="42" rx="10" ry="10" fill="#fff8f8" stroke="#c53030" stroke-width="1.2" />
+<text x="1366" y="764.0" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="400" fill="#1f2933" text-anchor="start">PyBDSF</text>
+<rect x="1352" y="791" width="216" height="42" rx="10" ry="10" fill="#fff8f8" stroke="#c53030" stroke-width="1.2" />
+<text x="1366" y="819.0" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="400" fill="#1f2933" text-anchor="start">Casacore / TaQL</text>
+<rect x="1352" y="846" width="216" height="42" rx="10" ry="10" fill="#fff8f8" stroke="#c53030" stroke-width="1.2" />
+<text x="1366" y="874.0" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="400" fill="#1f2933" text-anchor="start">python -m adapters</text>
+<rect x="1622" y="565" width="270" height="325" rx="18" ry="18" fill="#e6f4ea" stroke="#2f855a" stroke-width="3" />
+<text x="1644" y="603" font-family="Inter, Arial, sans-serif" font-size="27" font-weight="700" fill="#1f2933" text-anchor="start">Products</text>
+<rect x="1644" y="626" width="226" height="42" rx="10" ry="10" fill="#f9fffb" stroke="#2f855a" stroke-width="1.2" />
+<text x="1658" y="654.0" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="400" fill="#1f2933" text-anchor="start">images + mosaics</text>
+<rect x="1644" y="681" width="226" height="42" rx="10" ry="10" fill="#f9fffb" stroke="#2f855a" stroke-width="1.2" />
+<text x="1658" y="709.0" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="400" fill="#1f2933" text-anchor="start">h5parm solutions</text>
+<rect x="1644" y="736" width="226" height="42" rx="10" ry="10" fill="#f9fffb" stroke="#2f855a" stroke-width="1.2" />
+<text x="1658" y="764.0" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="400" fill="#1f2933" text-anchor="start">sky models + catalogs</text>
+<rect x="1644" y="791" width="226" height="42" rx="10" ry="10" fill="#f9fffb" stroke="#2f855a" stroke-width="1.2" />
+<text x="1658" y="819.0" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="400" fill="#1f2933" text-anchor="start">diagnostics + logs</text>
+<rect x="1644" y="846" width="226" height="42" rx="10" ry="10" fill="#f9fffb" stroke="#2f855a" stroke-width="1.2" />
+<text x="1658" y="874.0" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="400" fill="#1f2933" text-anchor="start">Field updated</text>
+<line x1="272" y1="266" x2="308" y2="266" stroke="#697077" stroke-width="3" marker-end="url(#arrow)"/>
+<rect x="267.5" y="246.0" width="45" height="24" rx="7" ry="7" fill="#ffffff" stroke="#c8d0d9" stroke-width="1" />
+<text x="290.0" y="263.0" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="400" fill="#52606d" text-anchor="middle">read</text>
+<line x1="653" y1="312" x2="725" y2="312" stroke="#697077" stroke-width="3" marker-end="url(#arrow)"/>
+<rect x="649.0" y="292.0" width="80" height="24" rx="7" ry="7" fill="#ffffff" stroke="#c8d0d9" stroke-width="1" />
+<text x="689.0" y="309.0" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="400" fill="#52606d" text-anchor="middle">enter flow</text>
+<line x1="1025" y1="312" x2="1070" y2="312" stroke="#697077" stroke-width="3" marker-end="url(#arrow)"/>
+<rect x="995.5" y="292.0" width="104" height="24" rx="7" ry="7" fill="#ffffff" stroke="#c8d0d9" stroke-width="1" />
+<text x="1047.5" y="309.0" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="400" fill="#52606d" text-anchor="middle">operation.run</text>
+<line x1="1370" y1="312" x2="1408" y2="312" stroke="#697077" stroke-width="3" marker-end="url(#arrow)"/>
+<rect x="1353.0" y="292.0" width="72" height="24" rx="7" ry="7" fill="#ffffff" stroke="#c8d0d9" stroke-width="1" />
+<text x="1389.0" y="309.0" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="400" fill="#52606d" text-anchor="middle">call flow</text>
+<path d="M1630,504 L1630,535 L625,535 L625,565 L1630,540" fill="none" stroke="#697077" stroke-width="3" marker-end="url(#arrow)"/>
+<line x1="948" y1="728" x2="980" y2="728" stroke="#697077" stroke-width="3" marker-end="url(#arrow)"/>
+<line x1="1300" y1="728" x2="1330" y2="728" stroke="#697077" stroke-width="3" marker-end="url(#arrow)"/>
+<line x1="1590" y1="728" x2="1622" y2="728" stroke="#697077" stroke-width="3" marker-end="url(#arrow)"/>
+<rect x="66" y="930" width="30" height="20" rx="4" ry="4" fill="#e8f3ff" stroke="#2b6cb0" stroke-width="1" />
+<text x="108" y="946" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="400" fill="#6b7280" text-anchor="start">Input</text>
+<rect x="66" y="960" width="30" height="20" rx="4" ry="4" fill="#fff7d6" stroke="#92710a" stroke-width="1" />
+<text x="108" y="976" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="400" fill="#6b7280" text-anchor="start">Python</text>
+<rect x="66" y="990" width="30" height="20" rx="4" ry="4" fill="#e7f7ed" stroke="#2f855a" stroke-width="1" />
+<text x="108" y="1006" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="400" fill="#6b7280" text-anchor="start">Prefect flow/task</text>
+<rect x="66" y="1020" width="30" height="20" rx="4" ry="4" fill="#f3edff" stroke="#6b46c1" stroke-width="1" />
+<text x="108" y="1036" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="400" fill="#6b7280" text-anchor="start">Runtime helper</text>
+<rect x="66" y="1050" width="30" height="20" rx="4" ry="4" fill="#ffe8e8" stroke="#c53030" stroke-width="1" />
+<text x="108" y="1066" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="400" fill="#6b7280" text-anchor="start">External tool</text>
+<rect x="308" y="918" width="1550" height="105" rx="18" ry="18" fill="#f1f3f5" stroke="#7b8794" stroke-width="2" />
+<text x="338" y="955" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700" fill="#1f2933" text-anchor="start">What the refactor cleans up</text>
+<text x="338" y="986" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="400" fill="#52606d" text-anchor="start">
+<tspan x="338" dy="0">CWL and Jinja are no longer the orchestration language. The runtime graph is visible in Python flow functions,</tspan>
+<tspan x="338" dy="24">operation inputs become serializable payloads, task-runner choice is explicit, and external tools remain isolated leaf commands.</tspan>
+</text>
+</svg>

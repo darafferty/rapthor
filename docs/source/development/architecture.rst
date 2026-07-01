@@ -195,6 +195,21 @@ There are no documented clean-architecture boundary exceptions at the moment.
 If a future exception becomes necessary, document the owner, reason, removal
 condition, and architecture-test allowlist entry in the same change.
 
+Prefect/Dask Orchestration Diagram
+----------------------------------
+
+The editable SVG source for the current Prefect/Dask orchestration and
+refactored package ownership is kept in
+``docs/source/development/prefect_dask_architecture.svg``. It is intended as the
+post-CWL counterpart to the historical workflow diagram and should be updated
+when operation ownership, flow boundaries, or task naming conventions change.
+
+.. figure:: prefect_dask_architecture.png
+   :alt: Prefect and Dask orchestration architecture for Rapthor
+
+   Current Prefect/Dask orchestration and package ownership after the CWL
+   migration.
+
 Change Workflow
 ---------------
 
