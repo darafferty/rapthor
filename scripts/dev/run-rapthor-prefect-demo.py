@@ -11,7 +11,7 @@ import sys
 import time
 import uuid
 from contextlib import contextmanager
-from dataclasses import dataclass, replace
+from dataclasses import replace
 from pathlib import Path
 from typing import Optional
 from urllib.error import URLError
@@ -20,26 +20,9 @@ from urllib.request import urlopen
 from rapthor.execution.config import TASK_RUNNERS, ExecutionConfig
 from rapthor.execution.pipeline.flow import pipeline_flow
 from rapthor.execution.runtime_bootstrap import PREFECT_SERVER_ANALYTICS_ENABLED_ENV
-from rapthor.execution.task_runner import local_cluster_kwargs
+from rapthor.execution.task_runner import start_local_dask_cluster
 from rapthor.lib.parset import parset_read
 from rapthor.lib.parset_paths import materialize_parset_paths
-
-
-@dataclass
-class LocalDaskDemoCluster:
-    cluster: object
-    client: object
-    scheduler_address: str
-    dashboard_url: Optional[str]
-    worker_count: int
-
-    def close(self) -> None:
-        close_client = getattr(self.client, "close", None)
-        if close_client is not None:
-            close_client()
-        close_cluster = getattr(self.cluster, "close", None)
-        if close_cluster is not None:
-            close_cluster()
 
 
 def _default_run_dir() -> Path:
@@ -285,33 +268,8 @@ def _execution_config_from_args(parset_file: Path, args: argparse.Namespace) -> 
     return replace(config, **overrides) if overrides else config
 
 
-def _start_local_dask_cluster(execution_config: ExecutionConfig) -> LocalDaskDemoCluster:
-    try:
-        from dask.distributed import Client, LocalCluster
-    except ImportError as err:
-        raise RuntimeError(
-            "Starting the local Dask dashboard requires dask.distributed. "
-            "Install the Prefect/Dask runtime dependencies first."
-        ) from err
-
-    cluster_kwargs = local_cluster_kwargs(execution_config)
-    cluster_kwargs.setdefault("dashboard_address", ":8787")
-    cluster = LocalCluster(**cluster_kwargs)
-    try:
-        client = Client(cluster)
-        worker_count = execution_config.local_dask_worker_count
-        client.wait_for_workers(worker_count, timeout="60s")
-    except Exception:
-        cluster.close()
-        raise
-
-    return LocalDaskDemoCluster(
-        cluster=cluster,
-        client=client,
-        scheduler_address=cluster.scheduler_address,
-        dashboard_url=cluster.dashboard_link,
-        worker_count=worker_count,
-    )
+def _start_local_dask_cluster(execution_config: ExecutionConfig):
+    return start_local_dask_cluster(execution_config)
 
 
 def _parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:

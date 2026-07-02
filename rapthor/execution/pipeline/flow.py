@@ -127,6 +127,33 @@ def _run_required_operation(factory: Optional[Callable], name: str, *args) -> ob
     return _run_operation(factory, *args)
 
 
+def _sync_execution_config_to_parset(parset: dict, execution_config: ExecutionConfig) -> None:
+    """Write effective runtime settings back into the operation parset."""
+    cluster = parset.setdefault("cluster_specific", {})
+    cluster.update(
+        {
+            "prefect_task_runner": execution_config.task_runner,
+            "prefect_api_mode": execution_config.prefect_api_mode,
+            "prefect_api_url": execution_config.prefect_api_url,
+            "dask_scheduler": execution_config.dask_scheduler,
+            "dask_dashboard_address": execution_config.dask_dashboard_address,
+            "prefect_stream_output": execution_config.stream_output,
+            "prefect_retries": execution_config.retries,
+            "prefect_log_commands": execution_config.log_commands,
+            "prefect_command_profile": execution_config.command_profile,
+            "batch_system": execution_config.batch_system,
+            "max_nodes": execution_config.max_nodes,
+            "local_dask_workers": execution_config.local_dask_workers,
+            "cpus_per_task": execution_config.cpus_per_task,
+            "mem_per_node_gb": execution_config.mem_per_node_gb,
+            "use_container": execution_config.use_container,
+            "container_type": execution_config.container_type,
+            "local_scratch_dir": execution_config.local_scratch_dir,
+            "global_scratch_dir": execution_config.global_scratch_dir,
+        }
+    )
+
+
 def run_pipeline(
     parset_file: object,
     logging_level: str = "info",
@@ -144,6 +171,7 @@ def run_pipeline(
 
     parset = hooks.read_parset(parset_file)
     config = execution_config or ExecutionConfig.from_parset(parset)
+    _sync_execution_config_to_parset(parset, config)
 
     log.info("Setting log level to %s", logging_level.upper())
     hooks.set_logging_level(logging_level)

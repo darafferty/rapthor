@@ -16,6 +16,22 @@ from rapthor.execution.runtime_bootstrap import (
 )
 
 
+class FakeLocalDaskCluster:
+    def __init__(
+        self,
+        scheduler_address="tcp://127.0.0.1:8786",
+        dashboard_url="http://127.0.0.1:8787/status",
+        worker_count=2,
+    ):
+        self.scheduler_address = scheduler_address
+        self.dashboard_url = dashboard_url
+        self.worker_count = worker_count
+        self.closed = False
+
+    def close(self):
+        self.closed = True
+
+
 def test_prefect_api_health_url():
     assert (
         prefect_api_health_url("http://127.0.0.1:4200/api/") == "http://127.0.0.1:4200/api/health"
@@ -129,6 +145,7 @@ def test_preflight_local_dask_reports_local_settings_without_scheduler_check(cap
 def test_bootstrapped_runtime_sets_and_restores_external_prefect_api():
     environ = {PREFECT_API_URL_ENV: "http://original:4200/api"}
     config = ExecutionConfig(
+        task_runner="sync",
         prefect_api_mode="external",
         prefect_api_url="http://configured:4200/api",
     )
@@ -152,7 +169,7 @@ def test_bootstrapped_runtime_uses_prefect_ephemeral_server_when_no_api_is_confi
     environ = {}
 
     with bootstrapped_runtime(
-        ExecutionConfig(prefect_api_mode="auto"),
+        ExecutionConfig(prefect_api_mode="auto", task_runner="sync"),
         environ=environ,
         prefect_api_checker=lambda api_url: None,
     ) as plan:
@@ -179,7 +196,7 @@ def test_bootstrapped_runtime_ignores_external_prefect_api_for_ephemeral_mode(ca
     }
 
     with bootstrapped_runtime(
-        ExecutionConfig(prefect_api_mode="ephemeral"),
+        ExecutionConfig(prefect_api_mode="ephemeral", task_runner="sync"),
         environ=environ,
     ) as plan:
         assert plan.prefect_api_url is None
@@ -195,3 +212,35 @@ def test_bootstrapped_runtime_ignores_external_prefect_api_for_ephemeral_mode(ca
     assert not temporary_prefect_home.exists()
     assert "Ignoring any Prefect profile API URL for this run." in caplog.text
     assert "Using isolated temporary Prefect home for this run." in caplog.text
+
+
+def test_bootstrapped_runtime_reuses_one_local_dask_scheduler_for_run(caplog):
+    caplog.set_level(logging.INFO, logger="rapthor:runtime")
+    environ = {}
+    clusters = []
+
+    def start_cluster(execution_config):
+        clusters.append(FakeLocalDaskCluster(worker_count=execution_config.local_dask_worker_count))
+        return clusters[-1]
+
+    with bootstrapped_runtime(
+        ExecutionConfig(
+            prefect_api_mode="auto",
+            task_runner="local_dask",
+            local_dask_workers=2,
+            cpus_per_task=4,
+        ),
+        environ=environ,
+        prefect_api_checker=lambda api_url: None,
+        local_dask_cluster_starter=start_cluster,
+    ) as plan:
+        assert plan.dask_scheduler == "tcp://127.0.0.1:8786"
+        assert plan.dask_worker_count == 2
+        assert plan.dask_dashboard_url == "http://127.0.0.1:8787/status"
+        assert plan.execution_config.task_runner == "external_dask"
+        assert plan.execution_config.dask_scheduler == "tcp://127.0.0.1:8786"
+        assert clusters[0].closed is False
+
+    assert clusters[0].closed is True
+    assert "Started local Dask scheduler tcp://127.0.0.1:8786 with 2 worker(s)." in caplog.text
+    assert "Dask dashboard: http://127.0.0.1:8787/status" in caplog.text

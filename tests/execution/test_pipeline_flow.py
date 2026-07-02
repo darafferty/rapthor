@@ -660,6 +660,40 @@ def test_run_pipeline_preflight_supports_shared_facet_rw():
     ] == ["image", "mosaic"]
 
 
+def test_run_pipeline_syncs_effective_execution_config_to_operation_parset():
+    parset = _pipeline_parset(
+        cluster_specific={
+            "prefect_task_runner": "local_dask",
+            "dask_scheduler": None,
+            "dask_dashboard_address": None,
+        }
+    )
+    lifecycle = RecordingPipelineLifecycle(
+        parset=parset,
+        strategy_steps=[_image_step()],
+    )
+    execution_config = ExecutionConfig(
+        task_runner="external_dask",
+        dask_scheduler="tcp://127.0.0.1:8786",
+        dask_dashboard_address=":8787",
+        local_dask_workers=2,
+        cpus_per_task=4,
+    )
+
+    field = run_pipeline(
+        "input.parset",
+        operation_factories=RECORDING_FACTORIES,
+        lifecycle_hooks=lifecycle.hooks(),
+        execution_config=execution_config,
+    )
+
+    assert field.parset["cluster_specific"]["prefect_task_runner"] == "external_dask"
+    assert field.parset["cluster_specific"]["dask_scheduler"] == "tcp://127.0.0.1:8786"
+    assert field.parset["cluster_specific"]["dask_dashboard_address"] == ":8787"
+    assert field.parset["cluster_specific"]["local_dask_workers"] == 2
+    assert field.parset["cluster_specific"]["cpus_per_task"] == 4
+
+
 def test_run_pipeline_lifecycle_runs_initial_selfcal_and_repeated_final_cycles():
     parset = _pipeline_parset(
         generate_initial_skymodel=True,

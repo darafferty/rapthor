@@ -6,7 +6,7 @@ import logging
 import os
 from collections.abc import MutableMapping
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from tempfile import TemporaryDirectory
 from typing import Callable, Iterator, Optional
 from urllib.error import HTTPError, URLError
@@ -14,7 +14,7 @@ from urllib.parse import urlsplit, urlunsplit
 from urllib.request import urlopen
 
 from rapthor.execution.config import PREFECT_API_URL_ENV, ExecutionConfig
-from rapthor.execution.task_runner import check_dask_scheduler
+from rapthor.execution.task_runner import check_dask_scheduler, start_local_dask_cluster
 
 log = logging.getLogger("rapthor:runtime")
 
@@ -29,6 +29,7 @@ class RuntimeBootstrapError(RuntimeError):
 
 PrefectApiChecker = Callable[[str], None]
 DaskSchedulerChecker = Callable[[str], object]
+LocalDaskClusterStarter = Callable[[ExecutionConfig], object]
 
 
 @dataclass(frozen=True)
@@ -38,7 +39,9 @@ class RuntimeBootstrapPlan:
     prefect_api_url: Optional[str]
     prefect_dashboard_url: Optional[str]
     dask_scheduler: Optional[str]
+    execution_config: ExecutionConfig
     dask_worker_count: Optional[int] = None
+    dask_dashboard_url: Optional[str] = None
 
 
 def prefect_api_health_url(api_url: str) -> str:
@@ -140,6 +143,7 @@ def preflight_runtime(
         prefect_api_url=prefect_api_url,
         prefect_dashboard_url=dashboard_url,
         dask_scheduler=scheduler,
+        execution_config=execution_config,
         dask_worker_count=worker_count,
     )
 
@@ -151,6 +155,7 @@ def bootstrapped_runtime(
     environ: MutableMapping[str, str] = os.environ,
     prefect_api_checker: PrefectApiChecker = check_prefect_api,
     dask_scheduler_checker: DaskSchedulerChecker = check_dask_scheduler,
+    local_dask_cluster_starter: LocalDaskClusterStarter = start_local_dask_cluster,
 ) -> Iterator[RuntimeBootstrapPlan]:
     """Preflight the runtime and expose the resolved Prefect API URL for the run."""
     plan = preflight_runtime(
@@ -162,6 +167,7 @@ def bootstrapped_runtime(
     original_prefect_home = environ.get(PREFECT_HOME_ENV)
     original_prefect_server_analytics_enabled = environ.get(PREFECT_SERVER_ANALYTICS_ENABLED_ENV)
     temporary_prefect_home = None
+    local_dask_cluster = None
     try:
         environ[PREFECT_SERVER_ANALYTICS_ENABLED_ENV] = "false"
         if plan.prefect_api_url is None:
@@ -174,8 +180,35 @@ def bootstrapped_runtime(
             log.info("Using isolated temporary Prefect home for this run.")
         else:
             environ[PREFECT_API_URL_ENV] = plan.prefect_api_url
+
+        if execution_config.task_runner == "local_dask":
+            local_dask_cluster = local_dask_cluster_starter(execution_config)
+            local_scheduler = local_dask_cluster.scheduler_address
+            local_dashboard_url = getattr(local_dask_cluster, "dashboard_url", None)
+            effective_config = replace(
+                execution_config,
+                task_runner="external_dask",
+                dask_scheduler=local_scheduler,
+            )
+            plan = replace(
+                plan,
+                dask_scheduler=local_scheduler,
+                dask_worker_count=local_dask_cluster.worker_count,
+                dask_dashboard_url=local_dashboard_url,
+                execution_config=effective_config,
+            )
+            log.info(
+                "Started local Dask scheduler %s with %s worker(s).",
+                local_scheduler,
+                local_dask_cluster.worker_count,
+            )
+            if local_dashboard_url:
+                log.info("Dask dashboard: %s", local_dashboard_url)
+
         yield plan
     finally:
+        if local_dask_cluster is not None:
+            local_dask_cluster.close()
         if original_prefect_home is None:
             environ.pop(PREFECT_HOME_ENV, None)
         else:

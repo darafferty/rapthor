@@ -45,13 +45,13 @@ def _run_pipeline(parset_file: str, *, logging_level: str) -> None:
             Path(temp_dir) / f"{source_parset.stem}.materialized.parset",
         )
         execution_config = ExecutionConfig.from_parset(Parset(runtime_parset).as_parset_dict())
-        with bootstrapped_runtime(execution_config):
+        with bootstrapped_runtime(execution_config) as runtime:
             from rapthor.execution.pipeline.flow import pipeline_flow
 
             pipeline_flow(
                 str(runtime_parset),
                 logging_level=logging_level,
-                execution_config=execution_config,
+                execution_config=runtime.execution_config,
             )
 
 

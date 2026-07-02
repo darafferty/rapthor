@@ -8,6 +8,7 @@ from rapthor.execution.task_runner import (
     check_dask_scheduler,
     local_cluster_kwargs,
     run_flow_with_task_runner,
+    start_local_dask_cluster,
 )
 
 
@@ -29,6 +30,36 @@ class FakeDaskClient:
 
     def scheduler_info(self):
         return {"workers": {"worker-1": {}}}
+
+    def close(self):
+        self.closed = True
+
+
+class FakeLocalCluster:
+    instances = []
+
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+        self.scheduler_address = "tcp://127.0.0.1:8786"
+        self.dashboard_link = "http://127.0.0.1:8787/status"
+        self.closed = False
+        self.instances.append(self)
+
+    def close(self):
+        self.closed = True
+
+
+class FakeLocalClient:
+    instances = []
+
+    def __init__(self, cluster):
+        self.cluster = cluster
+        self.waits = []
+        self.closed = False
+        self.instances.append(self)
+
+    def wait_for_workers(self, worker_count, timeout):
+        self.waits.append((worker_count, timeout))
 
     def close(self):
         self.closed = True
@@ -89,6 +120,50 @@ def test_local_cluster_kwargs_include_dashboard_address():
     )
 
     assert kwargs == {"n_workers": 2, "threads_per_worker": 4, "dashboard_address": ":8787"}
+
+
+def test_start_local_dask_cluster_returns_managed_handle():
+    FakeLocalCluster.instances = []
+    FakeLocalClient.instances = []
+
+    handle = start_local_dask_cluster(
+        ExecutionConfig(local_dask_workers=2, cpus_per_task=4, dask_dashboard_address=":8787"),
+        cluster_cls=FakeLocalCluster,
+        client_cls=FakeLocalClient,
+        wait_timeout="5s",
+    )
+
+    assert handle.scheduler_address == "tcp://127.0.0.1:8786"
+    assert handle.dashboard_url == "http://127.0.0.1:8787/status"
+    assert handle.worker_count == 2
+    assert FakeLocalCluster.instances[0].kwargs == {
+        "n_workers": 2,
+        "threads_per_worker": 4,
+        "dashboard_address": ":8787",
+    }
+    assert FakeLocalClient.instances[0].waits == [(2, "5s")]
+
+    handle.close()
+
+    assert FakeLocalClient.instances[0].closed is True
+    assert FakeLocalCluster.instances[0].closed is True
+
+
+def test_start_local_dask_cluster_cleans_up_when_workers_do_not_start():
+    FakeLocalCluster.instances = []
+
+    class FailingLocalClient(FakeLocalClient):
+        def wait_for_workers(self, worker_count, timeout):
+            raise TimeoutError("no workers")
+
+    with pytest.raises(TimeoutError, match="no workers"):
+        start_local_dask_cluster(
+            ExecutionConfig(local_dask_workers=2),
+            cluster_cls=FakeLocalCluster,
+            client_cls=FailingLocalClient,
+        )
+
+    assert FakeLocalCluster.instances[0].closed is True
 
 
 def test_build_local_dask_task_runner_with_injected_class():

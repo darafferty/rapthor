@@ -1,11 +1,17 @@
 """Tests for the Rapthor command-line entry point."""
 
 from contextlib import contextmanager
+from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
 
 from rapthor import cli
+
+
+@dataclass
+class FakeRuntimePlan:
+    execution_config: object
 
 
 def test_main_runs_pipeline_with_default_logging(monkeypatch):
@@ -61,7 +67,7 @@ def test_run_pipeline_bootstraps_runtime(monkeypatch):
     @contextmanager
     def fake_bootstrapped_runtime(execution_config):
         calls.append(("bootstrap", execution_config))
-        yield
+        yield FakeRuntimePlan(execution_config)
 
     def fake_pipeline_flow(parset_file, *, logging_level, execution_config):
         calls.append(("pipeline", parset_file, logging_level, execution_config))

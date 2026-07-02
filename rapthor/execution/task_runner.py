@@ -1,5 +1,6 @@
 """Prefect task-runner construction helpers."""
 
+from dataclasses import dataclass
 from typing import Optional
 
 from rapthor.execution.config import ExecutionConfig
@@ -14,6 +15,26 @@ class DaskSchedulerConnectionError(RuntimeError):
 
 
 DASK_SCHEDULER_CHECK_TIMEOUT = "30s"
+LOCAL_DASK_WAIT_TIMEOUT = "60s"
+
+
+@dataclass
+class LocalDaskClusterHandle:
+    """A local Dask scheduler/client pair managed for one Rapthor run."""
+
+    cluster: object
+    client: object
+    scheduler_address: str
+    dashboard_url: Optional[str]
+    worker_count: int
+
+    def close(self) -> None:
+        close_client = getattr(self.client, "close", None)
+        if close_client is not None:
+            close_client()
+        close_cluster = getattr(self.cluster, "close", None)
+        if close_cluster is not None:
+            close_cluster()
 
 
 def _load_dask_task_runner_cls():
@@ -36,6 +57,16 @@ def _load_dask_client_cls():
     return Client
 
 
+def _load_local_dask_cluster_classes():
+    try:
+        from dask.distributed import Client, LocalCluster
+    except ImportError as err:
+        raise MissingPrefectDaskError(
+            "dask.distributed is required to start a local Dask scheduler"
+        ) from err
+    return LocalCluster, Client
+
+
 def _load_thread_pool_task_runner_cls():
     from prefect.task_runners import ThreadPoolTaskRunner
 
@@ -53,6 +84,46 @@ def local_cluster_kwargs(execution_config: ExecutionConfig) -> dict:
     if execution_config.dask_dashboard_address:
         kwargs["dashboard_address"] = execution_config.dask_dashboard_address
     return kwargs
+
+
+def start_local_dask_cluster(
+    execution_config: ExecutionConfig,
+    *,
+    cluster_cls=None,
+    client_cls=None,
+    wait_timeout: str = LOCAL_DASK_WAIT_TIMEOUT,
+) -> LocalDaskClusterHandle:
+    """Start one local Dask scheduler for a Rapthor run."""
+    if cluster_cls is None or client_cls is None:
+        loaded_cluster_cls, loaded_client_cls = _load_local_dask_cluster_classes()
+        cluster_cls = cluster_cls or loaded_cluster_cls
+        client_cls = client_cls or loaded_client_cls
+
+    worker_count = execution_config.local_dask_worker_count
+    cluster = cluster_cls(**local_cluster_kwargs(execution_config))
+    client = None
+    try:
+        client = client_cls(cluster)
+        wait_for_workers = getattr(client, "wait_for_workers", None)
+        if wait_for_workers is not None:
+            wait_for_workers(worker_count, timeout=wait_timeout)
+    except Exception:
+        if client is not None:
+            close_client = getattr(client, "close", None)
+            if close_client is not None:
+                close_client()
+        close_cluster = getattr(cluster, "close", None)
+        if close_cluster is not None:
+            close_cluster()
+        raise
+
+    return LocalDaskClusterHandle(
+        cluster=cluster,
+        client=client,
+        scheduler_address=cluster.scheduler_address,
+        dashboard_url=getattr(cluster, "dashboard_link", None),
+        worker_count=worker_count,
+    )
 
 
 def check_dask_scheduler(

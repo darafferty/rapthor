@@ -55,12 +55,15 @@ For the simplest local run, use the installed command directly:
 
 With the default runtime settings, Rapthor lets Prefect use its temporary local
 API/server when no ``PREFECT_API_URL`` or ``prefect_api_url`` is configured and
-starts local Dask task runners for operation flows. This is the lowest-friction
-mode, but the temporary Prefect server stops when Rapthor exits. Rapthor uses an
-isolated temporary Prefect home in this mode so runs are not written into a
-persistent local Prefect dashboard by accident. Export ``PREFECT_API_URL`` or
-set ``prefect_api_url`` in the parset when you want a persistent dashboard.
-Rapthor also sets ``PREFECT_SERVER_ANALYTICS_ENABLED=false`` for the run.
+starts one local Dask scheduler for the run. The top-level pipeline and
+operation flows attach to that scheduler, so the Dask dashboard can show one
+continuous task stream rather than several short-lived local clusters. This is
+the lowest-friction mode, but the temporary Prefect server and local Dask
+scheduler stop when Rapthor exits. Rapthor uses an isolated temporary Prefect
+home in this mode so runs are not written into a persistent local Prefect
+dashboard by accident. Export ``PREFECT_API_URL`` or set ``prefect_api_url`` in
+the parset when you want a persistent dashboard. Rapthor also sets
+``PREFECT_SERVER_ANALYTICS_ENABLED=false`` for the run.
 
 To keep a persistent Prefect dashboard, start a server in one terminal and
 explicitly export its API URL before running Rapthor:

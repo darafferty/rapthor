@@ -82,6 +82,9 @@ Completed:
   - `local_dask_workers` separates local Dask worker count from Slurm/node
     sizing, so single-machine runs no longer need to pretend that local workers
     are separate nodes
+  - direct `rapthor input.parset` local-Dask runs start one managed local Dask
+    scheduler and pass its scheduler address to the top-level pipeline and
+    operation flows, giving the dashboard one continuous task stream
   - `prefect_api_mode = auto|external|ephemeral` and `prefect_api_url` are in
     defaults, config parsing, docs, and focused tests
 
@@ -121,6 +124,16 @@ Recent runs in the dev container:
     `tests/execution/test_prefect_demo_data_generator.py`,
     `tests/execution/test_resources.py`, and
     `tests/execution/test_capabilities.py`: 84 passed
+- Shared local-Dask scheduler slice on 2026-07-02:
+  - `python3 -m ruff check` and `python3 -m ruff check --select I` on changed
+    runtime/pipeline/CLI/test files passed
+  - `tests/execution/test_config.py`, `tests/execution/test_task_runner.py`,
+    `tests/execution/test_runtime_bootstrap.py`,
+    `tests/execution/test_prefect_demo_script.py`,
+    `tests/execution/test_prefect_demo_data_generator.py`,
+    `tests/execution/test_resources.py`, `tests/execution/test_capabilities.py`,
+    `tests/execution/test_pipeline_flow.py`, `tests/test_cli.py`, and
+    `tests/operations/test_flow_execution.py`: 119 passed
 - Direct rich demo CLI verification on 2026-07-02:
   - `rapthor examples/generated/prefect_demo_rich/prefect_demo_rich.parset`
     completed successfully in the dev container
@@ -177,6 +190,14 @@ Done in the first bootstrap slice:
     for now
   - wired through defaults, docs, demo parsets, the rich demo generator, demo
     helper CLI, resource validation, and focused tests
+- Added one managed local Dask scheduler for direct CLI local-Dask runs:
+  - `bootstrapped_runtime` starts and closes the local scheduler
+  - the effective runtime config is converted to `external_dask` with the local
+    scheduler address
+  - the top-level pipeline syncs that effective config into `field.parset`, so
+    operation adapters attach to the same scheduler instead of creating
+    short-lived clusters
+  - the demo helper now reuses the same local-Dask cluster lifecycle helper
 
 Remaining tasks:
 
@@ -184,9 +205,6 @@ Remaining tasks:
   - `dask_scheduler` or `DASK_SCHEDULER` means `external_dask`
   - no scheduler means `local_dask`
   - explicit `prefect_task_runner` still overrides auto-selection
-- Prefer one visible Dask scheduler for the whole `rapthor input.parset` run
-  instead of short-lived per-operation local clusters, so the dashboard shows
-  the full task stream.
 - Extend runtime tests toward real-process startup coverage for the matrix:
   - no Prefect server and no Dask cluster
   - existing Prefect server and no Dask cluster
