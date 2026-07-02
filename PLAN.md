@@ -86,8 +86,8 @@ Tasks:
   `rapthor input.parset` and uses mocked or skipped external tools. This should
   cover CLI startup, parset materialization, path handling, and runtime
   bootstrap.
-- Link the scientific glossary into the development docs once it is ready, and
-  use it as the naming reference for future refactors.
+- Keep `.agents/scientific_glossary.md` linked from `AGENTS.md` and the
+  development docs, and use it as the naming reference for future refactors.
 - Re-run the fast branch-health lane before scalability changes:
   - `tests/lib/test_parset.py`
   - `tests/execution/test_config.py`

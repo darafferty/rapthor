@@ -3,13 +3,13 @@
 Setting the processing strategy
 ===============================
 
-The steps used during a Rapthor run are defined though the choice of a processing
+The steps used during a Rapthor run are defined through the choice of a processing
 strategy. The processing strategy is set with the :term:`strategy` parameter of the
 Rapthor parset. The options for this parameter are described below:
 
 ``strategy = selfcal`` (the default)
     This strategy performs self calibration of the field in which the sky model is
-    iteratively improved though calibration and imaging. The processing generally involves
+    iteratively improved through calibration and imaging. The processing generally involves
     up to two cycles of phase-only calibration followed by up to 6 cycles of phase and
     amplitude calibration until convergence is obtained.
 
@@ -120,7 +120,7 @@ The following processing parameters can be set for each cycle:
         Float that sets the solution interval in sec to use in the full-Jones solve. For this solve, each station is solved for independently.
 
     peel_outliers
-        Boolean flag that determines whether the outlier sources (sources that lie outside of any imaging sector region) should be peeled for this cycle. Outliers can only be peeled once (unlike bright sources, see below), as they are not added back for subsequent selfcal cycles. Note that, because they are not imaged, outlier source models do not change during self calibration: however, the solutions they receive may change. To include one or more outlier sources in self calibration, a small imaging sector can be placed on each outlier of interest. The outliers will than be imaging and its model updated with the rest of the field.
+        Boolean flag that determines whether the outlier sources (sources that lie outside of any imaging sector region) should be peeled for this cycle. Outliers can only be peeled once (unlike bright sources, see below), as they are not added back for subsequent selfcal cycles. Note that, because they are not imaged, outlier source models do not change during self calibration: however, the solutions they receive may change. To include one or more outlier sources in self calibration, a small imaging sector can be placed on each outlier of interest. The outliers will then be imaged and their models updated with the rest of the field.
 
     peel_bright_sources
         Boolean flag that determines whether the bright sources should be peeled for this cycle (for imaging only). The peeled bright sources are added back before subsequent selfcal cycles are performed (so they are included in the calibration, etc.). Currently, peeling is not supported when screens are used.
@@ -186,7 +186,7 @@ The following processing parameters can be set for each cycle:
 
         - "fast_phase": run the fast (scalarphase) solve.
         - "medium_phase": run the medium-fast (scalarphase) solve.
-        - "slow_gain": run the slow (diagonal) solve.
+        - "slow_gains": run the slow (diagonal) solve.
         - "full_jones": run the full-Jones solve.
 
         The order of the top-level keys (DI and DD) and the order of solve names within each list determine the order requested by the user. An empty list means that calibration mode is skipped, allowing DI-only or DD-only cycles.
