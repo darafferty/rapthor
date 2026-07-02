@@ -804,6 +804,22 @@ The available options are described below under their respective sections.
         The type of container to use when :term:`use_container` = ``True``. The supported
         types are: ``docker`` (the default), ``udocker``, or ``singularity``.
 
+    prefect_api_mode
+        Prefect API selection mode for the production Python execution path.
+        Supported values are ``auto``, ``external``, and ``ephemeral``.
+        ``auto`` uses ``prefect_api_url`` or ``PREFECT_API_URL`` when one is
+        configured and healthy, otherwise Prefect may use its temporary local
+        API/server with an isolated temporary Prefect home. Prefect profile API
+        settings are not used implicitly. ``external`` requires a reachable API
+        URL. ``ephemeral`` ignores ``PREFECT_API_URL`` for the run and lets
+        Prefect use its temporary local API/server with an isolated temporary
+        Prefect home.
+
+    prefect_api_url
+        URL of an existing Prefect API, for example
+        ``http://127.0.0.1:4200/api``. If unset, ``PREFECT_API_URL`` is used
+        when present.
+
     prefect_task_runner
         Prefect task runner to use for the production Python execution path.
         Supported values are ``local_dask``, ``external_dask``, and ``sync``.

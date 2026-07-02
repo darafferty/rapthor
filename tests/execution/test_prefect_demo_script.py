@@ -198,3 +198,40 @@ def test_dask_performance_report_requires_scheduler(tmp_path):
         assert "requires a persistent local or external Dask scheduler" in str(err)
     else:
         raise AssertionError("Expected RuntimeError")
+
+
+def test_started_prefect_server_disables_server_analytics(monkeypatch, tmp_path):
+    module = load_demo_script()
+    popen_calls = []
+
+    class FakeServer:
+        def terminate(self):
+            raise AssertionError("server should not be terminated")
+
+    def fake_popen(command, **kwargs):
+        popen_calls.append((command, kwargs))
+        return FakeServer()
+
+    monkeypatch.setattr(module, "_is_prefect_healthy", lambda api_url: False)
+    monkeypatch.setattr(module, "_wait_for_prefect", lambda api_url, timeout_seconds: None)
+    monkeypatch.setattr(module.subprocess, "Popen", fake_popen)
+
+    server = module._start_prefect_server(
+        "0.0.0.0",
+        4200,
+        tmp_path,
+        "http://127.0.0.1:4200/api",
+        timeout_seconds=5,
+    )
+
+    assert isinstance(server, FakeServer)
+    assert popen_calls[0][0] == [
+        "prefect",
+        "server",
+        "start",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "4200",
+    ]
+    assert popen_calls[0][1]["env"][module.PREFECT_SERVER_ANALYTICS_ENABLED_ENV] == "false"

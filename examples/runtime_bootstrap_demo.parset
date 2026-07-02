@@ -1,0 +1,119 @@
+# Runtime bootstrap demo parset for manually testing `rapthor input.parset`.
+#
+# Run from the repository root:
+#
+#   rapthor examples/runtime_bootstrap_demo.parset
+#
+# Useful manual checks:
+#
+#   # Default: no external Prefect API and no external Dask scheduler.
+#   unset PREFECT_API_URL DASK_SCHEDULER
+#   rapthor examples/runtime_bootstrap_demo.parset
+#
+#   # Use a persistent Prefect dashboard.
+#   PREFECT_SERVER_ANALYTICS_ENABLED=false prefect server start --host 0.0.0.0 --port 4200
+#   export PREFECT_API_URL=http://127.0.0.1:4200/api
+#   rapthor examples/runtime_bootstrap_demo.parset
+#
+#   # Force ephemeral Prefect even when PREFECT_API_URL is set.
+#   # Change prefect_api_mode below from auto to ephemeral.
+#
+#   # Use an existing Dask scheduler.
+#   dask scheduler
+#   dask worker tcp://127.0.0.1:8786
+#   export DASK_SCHEDULER=tcp://127.0.0.1:8786
+#   rapthor examples/runtime_bootstrap_demo.parset
+#
+# The tiny Measurement Set under tests/resources is part of the development
+# fixture bundle. Replace input_ms and sky-model paths for a real science run.
+
+[global]
+dir_working = runtime-bootstrap-demo-work
+input_ms = tests/resources/test.ms
+data_colname = DATA
+generate_initial_skymodel = False
+download_initial_skymodel = False
+download_overwrite_skymodel = True
+input_skymodel = tests/resources/integration_true_sky.txt
+apparent_skymodel = tests/resources/integration_apparent_sky.txt
+regroup_input_skymodel = False
+strategy = examples/prefect_demo_strategy.py
+selfcal_data_fraction = 1.0
+final_data_fraction = 1.0
+input_h5parm = None
+input_fulljones_h5parm = None
+facet_layout = None
+dde_mode = faceting
+
+[calibration]
+fast_freqstep_hz = 1e6
+slow_freqstep_hz = 1e6
+fast_smoothnessconstraint = 6.0e6
+slow_smoothnessconstraint = 4.0e6
+propagatesolutions = True
+maxiter = 50
+stepsize = 0.2
+tolerance = 0.001
+
+[imaging]
+grid_width_ra_deg = 1.0
+grid_width_dec_deg = 1.0
+grid_center_ra = 1h37m41.299s
+grid_center_dec = +33d09m35.132s
+grid_nsectors_ra = 1
+idg_mode = cpu
+reweight = False
+average_visibilities = False
+save_image_cube = False
+image_cube_stokes_list = [I]
+make_quv_images = False
+disable_iquv_clean = False
+photometry_skymodel =
+astrometry_skymodel =
+shared_facet_rw = False
+normalization_skymodels =
+normalization_reference_frequencies =
+
+[cluster]
+batch_system = single_machine
+max_nodes = 1
+cpus_per_task = 4
+mem_per_node_gb = 0
+max_cores = 4
+max_threads = 4
+deconvolution_threads = 2
+parallel_gridding_threads = 1
+local_scratch_dir =
+global_scratch_dir =
+use_container = False
+container_type = docker
+
+# Runtime bootstrap settings.
+#
+# auto:
+#   Use PREFECT_API_URL or prefect_api_url when configured and healthy;
+#   otherwise let Prefect use its temporary local API/server. Prefect profile
+#   API settings are ignored unless you export PREFECT_API_URL or set
+#   prefect_api_url below, and the temporary run uses an isolated Prefect home.
+#   Rapthor sets PREFECT_SERVER_ANALYTICS_ENABLED=false for the run.
+# external:
+#   Require a reachable Prefect API from prefect_api_url or PREFECT_API_URL.
+# ephemeral:
+#   Ignore PREFECT_API_URL and use Prefect's temporary local API/server with an
+#   isolated Prefect home.
+prefect_api_mode = auto
+prefect_api_url = None
+
+# Leave this unset to test automatic Dask selection:
+#   - no dask_scheduler and no DASK_SCHEDULER => local_dask
+#   - dask_scheduler or DASK_SCHEDULER set => external_dask
+prefect_task_runner = None
+dask_scheduler = None
+dask_dashboard_address = :8787
+prefect_stream_output = True
+prefect_retries = 0
+prefect_log_commands = True
+prefect_command_profile = time
+debug_workflow = False
+keep_temporary_files = False
+allow_internet_access = False

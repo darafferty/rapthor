@@ -32,7 +32,11 @@ class ShellCommandError(RuntimeError):
 
     def __init__(self, message: str, returncode: int):
         super().__init__(message)
+        self.message = message
         self.returncode = returncode
+
+    def __reduce__(self):
+        return (type(self), (self.message, self.returncode))
 
 
 log = logging.getLogger("rapthor:shell")

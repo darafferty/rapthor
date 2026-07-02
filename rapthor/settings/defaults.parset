@@ -419,6 +419,8 @@ container_type = docker
 # Prefect task runner to use for the Python execution path. Supported values
 # are local_dask, external_dask, and sync. If unset, Rapthor uses external_dask
 # when a Dask scheduler is configured and local_dask otherwise.
+prefect_api_mode = auto
+prefect_api_url = None
 prefect_task_runner = None
 dask_scheduler = None
 dask_dashboard_address = None

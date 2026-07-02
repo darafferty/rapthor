@@ -131,6 +131,8 @@
         "global_scratch_dir": null,
         "use_container": false,
         "container_type": "docker",
+        "prefect_api_mode": "auto",
+        "prefect_api_url": null,
         "prefect_task_runner": null,
         "dask_scheduler": null,
         "dask_dashboard_address": null,

@@ -44,6 +44,59 @@ operations that Rapthor performs and their relation to one another, and see
 :ref:`operations` for details of each operation and their primary data products.
 
 
+Low-friction local runtime
+--------------------------
+
+For the simplest local run, use the installed command directly:
+
+.. code-block:: console
+
+    $ rapthor input.parset
+
+With the default runtime settings, Rapthor lets Prefect use its temporary local
+API/server when no ``PREFECT_API_URL`` or ``prefect_api_url`` is configured and
+starts local Dask task runners for operation flows. This is the lowest-friction
+mode, but the temporary Prefect server stops when Rapthor exits. Rapthor uses an
+isolated temporary Prefect home in this mode so runs are not written into a
+persistent local Prefect dashboard by accident. Export ``PREFECT_API_URL`` or
+set ``prefect_api_url`` in the parset when you want a persistent dashboard.
+Rapthor also sets ``PREFECT_SERVER_ANALYTICS_ENABLED=false`` for the run.
+
+To keep a persistent Prefect dashboard, start a server in one terminal and
+explicitly export its API URL before running Rapthor:
+
+.. code-block:: console
+
+    $ PREFECT_SERVER_ANALYTICS_ENABLED=false \
+      prefect server start --host 0.0.0.0 --port 4200
+
+.. code-block:: console
+
+    $ export PREFECT_API_URL=http://127.0.0.1:4200/api
+    $ rapthor input.parset
+
+When a Prefect API URL is configured, Rapthor checks it before launch and logs
+the matching dashboard URL.
+
+To use an existing Dask cluster, either set ``dask_scheduler`` in the parset or
+export ``DASK_SCHEDULER``:
+
+.. code-block:: console
+
+    $ dask scheduler
+    $ dask worker tcp://127.0.0.1:8786
+
+.. code-block:: console
+
+    $ export DASK_SCHEDULER=tcp://127.0.0.1:8786
+    $ rapthor input.parset
+
+If ``PREFECT_API_URL`` is set but you want Prefect's one-off local API/server
+for this run, set ``prefect_api_mode = ephemeral`` in the ``[cluster]`` section
+of the parset. Use ``prefect_api_mode = external`` when a run must fail unless
+the configured Prefect API is reachable.
+
+
 Prefect dashboard demo
 ----------------------
 
@@ -80,7 +133,8 @@ one bound to all interfaces:
 .. code-block:: console
 
     $ pkill -f "prefect.server" || true
-    $ prefect server start --host 0.0.0.0 --port 4200
+    $ PREFECT_SERVER_ANALYTICS_ENABLED=false \
+      prefect server start --host 0.0.0.0 --port 4200
 
 This keeps the server in the foreground so its logs remain visible. The
 dashboard is then available from the host at ``http://localhost:4200`` when the

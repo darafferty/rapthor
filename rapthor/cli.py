@@ -5,6 +5,8 @@ from __future__ import annotations
 import logging
 import optparse
 from collections.abc import Sequence
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from rapthor import modifystate
 from rapthor._version import __version__ as version
@@ -31,9 +33,26 @@ def _logging_level(options: optparse.Values) -> str:
 
 
 def _run_pipeline(parset_file: str, *, logging_level: str) -> None:
-    from rapthor.execution.pipeline.flow import pipeline_flow
+    from rapthor.execution.config import ExecutionConfig
+    from rapthor.execution.runtime_bootstrap import bootstrapped_runtime
+    from rapthor.lib.parset import Parset
+    from rapthor.lib.parset_paths import materialize_parset_paths
 
-    pipeline_flow(parset_file, logging_level=logging_level)
+    source_parset = Path(parset_file)
+    with TemporaryDirectory(prefix="rapthor-parset-") as temp_dir:
+        runtime_parset = materialize_parset_paths(
+            source_parset,
+            Path(temp_dir) / f"{source_parset.stem}.materialized.parset",
+        )
+        execution_config = ExecutionConfig.from_parset(Parset(runtime_parset).as_parset_dict())
+        with bootstrapped_runtime(execution_config):
+            from rapthor.execution.pipeline.flow import pipeline_flow
+
+            pipeline_flow(
+                str(runtime_parset),
+                logging_level=logging_level,
+                execution_config=execution_config,
+            )
 
 
 def main(argv: Sequence[str] | None = None) -> int:

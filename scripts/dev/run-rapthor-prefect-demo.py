@@ -19,27 +19,10 @@ from urllib.request import urlopen
 
 from rapthor.execution.config import TASK_RUNNERS, ExecutionConfig
 from rapthor.execution.pipeline.flow import pipeline_flow
+from rapthor.execution.runtime_bootstrap import PREFECT_SERVER_ANALYTICS_ENABLED_ENV
 from rapthor.execution.task_runner import local_cluster_kwargs
 from rapthor.lib.parset import parset_read
-
-PATH_OPTIONS = {
-    "global": {
-        "dir_working",
-        "input_ms",
-        "input_skymodel",
-        "apparent_skymodel",
-        "strategy",
-        "input_h5parm",
-        "input_fulljones_h5parm",
-        "input_normalization_h5parm",
-        "facet_layout",
-    },
-    "imaging": {
-        "photometry_skymodel",
-        "astrometry_skymodel",
-        "normalization_skymodels",
-    },
-}
+from rapthor.lib.parset_paths import materialize_parset_paths
 
 
 @dataclass
@@ -221,8 +204,11 @@ def _start_prefect_server(
 
     log_handle = log_file.open("w")
     try:
+        server_env = os.environ.copy()
+        server_env[PREFECT_SERVER_ANALYTICS_ENABLED_ENV] = "false"
         server = subprocess.Popen(
             ["prefect", "server", "start", "--host", host, "--port", str(port)],
+            env=server_env,
             stdout=log_handle,
             stderr=subprocess.STDOUT,
             text=True,
@@ -241,64 +227,18 @@ def _start_prefect_server(
     return server
 
 
-def _is_empty_path_value(value: str) -> bool:
-    return value.strip() in {"", "None", "none", "null", "Null"}
-
-
-def _resolve_path_token(value: str, base_dir: Path) -> str:
-    token = value.strip()
-    if _is_empty_path_value(token):
-        return value
-    if "://" in token:
-        return token
-    path = Path(token).expanduser()
-    if path.is_absolute():
-        return str(path)
-    return str((base_dir / path).resolve(strict=False))
-
-
-def _resolve_path_value(value: str, base_dir: Path) -> str:
-    stripped = value.strip()
-    if _is_empty_path_value(stripped):
-        return value
-    if stripped.startswith("[") and stripped.endswith("]"):
-        resolved = [
-            _resolve_path_token(token, base_dir)
-            for token in stripped.strip("[]").split(",")
-            if token.strip()
-        ]
-        return f"[{', '.join(resolved)}]"
-    return _resolve_path_token(value, base_dir)
-
-
 def _materialize_parset_paths(
     parset_file: Path,
     run_dir: Path,
     working_dir_override: Optional[Path] = None,
 ) -> Path:
-    parser = configparser.ConfigParser(interpolation=None)
-    with parset_file.open() as handle:
-        parser.read_file(handle)
-
-    base_dir = Path.cwd()
-    for section, options in PATH_OPTIONS.items():
-        if not parser.has_section(section):
-            continue
-        for option in options:
-            if parser.has_option(section, option):
-                parser.set(
-                    section, option, _resolve_path_value(parser.get(section, option), base_dir)
-                )
-
-    if working_dir_override is not None:
-        if not parser.has_section("global"):
-            parser.add_section("global")
-        parser.set("global", "dir_working", str(working_dir_override))
-
     materialized = run_dir / f"{parset_file.stem}.materialized.parset"
-    with materialized.open("w") as handle:
-        parser.write(handle)
-    return materialized
+    return materialize_parset_paths(
+        parset_file,
+        materialized,
+        working_dir_override=working_dir_override,
+        base_dir=Path.cwd(),
+    )
 
 
 def _write_runtime_cluster_overrides(
@@ -540,6 +480,7 @@ def main() -> int:
 
     api_url = args.api_url or _api_url_for_local_server(args.port)
     os.environ["PREFECT_API_URL"] = api_url
+    os.environ[PREFECT_SERVER_ANALYTICS_ENABLED_ENV] = "false"
 
     server = None
     dask_cluster = None

@@ -1,6 +1,6 @@
 # Rapthor Architecture Refactor Plan
 
-Status snapshot: 2026-07-01.
+Status snapshot: 2026-07-02.
 
 ## Goal
 
@@ -71,10 +71,20 @@ Completed:
 - Architecture docs and structure docs describe the current execution-owned
   module layout.
 - Dev containers install docs dependencies by default.
+- Initial CLI runtime bootstrap is in place:
+  - `rapthor input.parset` resolves `prefect_api_mode` and `prefect_api_url`
+    before launching the pipeline flow
+  - external Prefect APIs are health-checked early when configured
+  - when a Prefect API URL is configured, Rapthor logs the matching dashboard
+    URL before launch; otherwise Prefect owns any temporary local API/server
+  - external Dask schedulers are checked early when selected
+  - local Dask settings are reported before the flow starts
+  - `prefect_api_mode = auto|external|ephemeral` and `prefect_api_url` are in
+    defaults, config parsing, docs, and focused tests
 
 ## Recent Verification
 
-Run in the dev container on 2026-07-01:
+Recent runs in the dev container:
 
 - `tox -e lint`
 - Non-integration tests using the tox split against the prepared dev-container
@@ -92,6 +102,21 @@ Run in the dev container on 2026-07-01:
   - run directory: `/tmp/rapthor-prefect-demo-20260701-builder-cleanup`
   - local Dask cluster started with 2 workers, Rapthor finished, and the helper
     shut down Dask and Prefect cleanly
+- Runtime bootstrap slice on 2026-07-02:
+  - `python3 -m ruff check` on changed runtime/config/CLI/test files passed
+  - `tests/execution/test_config.py`, `tests/execution/test_runtime_bootstrap.py`,
+    and `tests/test_cli.py`: 33 passed
+  - `tests/execution/test_task_runner.py` and
+    `tests/execution/test_capabilities.py`: 27 passed
+  - `tests/execution/test_pipeline_flow.py`: 23 passed
+- Direct rich demo CLI verification on 2026-07-02:
+  - `rapthor examples/generated/prefect_demo_rich/prefect_demo_rich.parset`
+    completed successfully in the dev container
+  - the CLI now materializes known parset path options before launching the
+    flow, so external commands receive absolute paths even when their task
+    working directory differs from the shell's current directory
+  - `ShellCommandError` round-trips through Dask serialization so future
+    external-command failures report the real command error
 
 Notes:
 
@@ -121,21 +146,22 @@ Notes:
 Make `rapthor input.parset` succeed predictably whether or not the user has an
 existing Prefect server or Dask cluster.
 
-Tasks:
+Done in the first bootstrap slice:
 
-- Add a small runtime bootstrap layer before `pipeline_flow` starts:
-  - use an existing Prefect API when `PREFECT_API_URL` or a parset value is set
-    and reachable
-  - otherwise allow Prefect to use its temporary local API/server
-  - expose an explicit mode such as `prefect_api_mode = auto|external|ephemeral`
-- Extend execution config and defaults for Prefect API selection without
-  breaking the existing `rapthor input.parset` CLI.
-- Preflight the runtime before launching long work:
-  - check external Prefect API health when configured
-  - check external Dask scheduler address and worker count
-  - report local Dask worker/thread settings when no external scheduler is used
-  - fail early with actionable messages for unreachable servers or schedulers
-- Keep Dask task-runner selection simple:
+- Added `rapthor.execution.runtime_bootstrap` and wired the installed
+  `rapthor` CLI through it.
+- Added `prefect_api_mode = auto|external|ephemeral` and `prefect_api_url` to
+  execution config, defaults, parset docs, and startup tests.
+- Added early health checks for configured external Prefect APIs and external
+  Dask schedulers.
+- Preserved the existing low-friction default: no configured Prefect API means
+  Prefect may use its temporary local API/server.
+- Added quick-start docs for ephemeral Prefect, persistent Prefect, and
+  external Dask.
+
+Remaining tasks:
+
+- Keep Dask task-runner selection simple as further runtime options land:
   - `dask_scheduler` or `DASK_SCHEDULER` means `external_dask`
   - no scheduler means `local_dask`
   - explicit `prefect_task_runner` still overrides auto-selection
@@ -145,19 +171,12 @@ Tasks:
 - Add local worker sizing that is separate from node count, e.g.
   `local_dask_workers`, so single-node runs can use several workers without
   pretending those workers are separate nodes.
-- Add tests for the startup matrix:
+- Extend runtime tests toward real-process startup coverage for the matrix:
   - no Prefect server and no Dask cluster
   - existing Prefect server and no Dask cluster
   - no Prefect server and existing Dask cluster
   - existing Prefect server and existing Dask cluster
-- Document the supported runtime modes and environment variables in the user
-  docs.
-- Add clear copy/paste quick-start docs with the lowest-friction commands for:
-  - running Rapthor with the built-in ephemeral Prefect API and local Dask
-  - starting a persistent local Prefect server and exporting `PREFECT_API_URL`
-  - starting a local Dask scheduler/workers and setting `dask_scheduler` or
-    `DASK_SCHEDULER`
-  - using an existing Prefect server and Dask cluster on shared infrastructure
+- Keep user docs current as persistent local-Dask bootstrap behavior changes.
 
 Done when:
 

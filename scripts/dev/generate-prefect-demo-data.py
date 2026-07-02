@@ -428,6 +428,10 @@ def write_parset(output_dir: Path, path: Path, repo_root: Path, strategy_path: P
             #
             # Run from the repository root:
             #
+            #   rapthor {path_for_parset(path, repo_root)}
+            #
+            # Or use the helper when you want a persistent Prefect/Dask dashboard:
+            #
             #   scripts/dev/run-rapthor-prefect-demo.py {path_for_parset(path, repo_root)}
 
             [global]

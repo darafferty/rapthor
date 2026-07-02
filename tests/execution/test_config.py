@@ -3,16 +3,21 @@ import pytest
 from rapthor.execution.config import (
     DASK_SCHEDULER_ENV,
     ExecutionConfig,
+    PREFECT_API_URL_ENV,
     dask_scheduler_from_environment,
+    prefect_api_url_from_environment,
 )
 
 
 def test_execution_config_defaults_from_empty_parset(monkeypatch):
     monkeypatch.delenv(DASK_SCHEDULER_ENV, raising=False)
+    monkeypatch.delenv(PREFECT_API_URL_ENV, raising=False)
 
     config = ExecutionConfig.from_parset({})
 
     assert config.task_runner == "local_dask"
+    assert config.prefect_api_mode == "auto"
+    assert config.prefect_api_url is None
     assert config.dask_scheduler is None
     assert config.dask_dashboard_address is None
     assert config.stream_output is True
@@ -28,6 +33,8 @@ def test_execution_config_reads_cluster_specific_values():
         {
             "cluster_specific": {
                 "prefect_task_runner": "sync",
+                "prefect_api_mode": "external",
+                "prefect_api_url": "http://prefect:4200/api",
                 "dask_scheduler": "tcp://scheduler:8786",
                 "dask_dashboard_address": ":8787",
                 "prefect_stream_output": False,
@@ -48,6 +55,8 @@ def test_execution_config_reads_cluster_specific_values():
     )
 
     assert config.task_runner == "sync"
+    assert config.prefect_api_mode == "external"
+    assert config.prefect_api_url == "http://prefect:4200/api"
     assert config.dask_scheduler == "tcp://scheduler:8786"
     assert config.dask_dashboard_address == ":8787"
     assert config.stream_output is False
@@ -79,6 +88,14 @@ def test_dask_scheduler_from_environment():
     assert scheduler == "tcp://env:8786"
 
 
+def test_prefect_api_url_from_environment():
+    api_url = prefect_api_url_from_environment(
+        {PREFECT_API_URL_ENV: "http://prefect.example:4200/api"}
+    )
+
+    assert api_url == "http://prefect.example:4200/api"
+
+
 def test_execution_config_infers_external_dask_from_environment(monkeypatch):
     monkeypatch.setenv(DASK_SCHEDULER_ENV, "tcp://env:8786")
 
@@ -96,6 +113,24 @@ def test_execution_config_prefers_parset_scheduler_over_environment(monkeypatch)
     )
 
     assert config.dask_scheduler == "tcp://parset:8786"
+
+
+def test_execution_config_reads_prefect_api_url_from_environment(monkeypatch):
+    monkeypatch.setenv(PREFECT_API_URL_ENV, "http://prefect-env:4200/api")
+
+    config = ExecutionConfig.from_parset({})
+
+    assert config.prefect_api_url == "http://prefect-env:4200/api"
+
+
+def test_execution_config_prefers_parset_prefect_api_url_over_environment(monkeypatch):
+    monkeypatch.setenv(PREFECT_API_URL_ENV, "http://prefect-env:4200/api")
+
+    config = ExecutionConfig.from_parset(
+        {"cluster_specific": {"prefect_api_url": "http://prefect-parset:4200/api"}}
+    )
+
+    assert config.prefect_api_url == "http://prefect-parset:4200/api"
 
 
 def test_execution_config_uses_deprecated_dir_local_as_scratch_fallback():
@@ -119,6 +154,11 @@ def test_execution_config_exposes_effective_local_dask_capacity():
 def test_execution_config_rejects_invalid_task_runner():
     with pytest.raises(ValueError, match="prefect_task_runner"):
         ExecutionConfig.from_parset({"cluster_specific": {"prefect_task_runner": "toil"}})
+
+
+def test_execution_config_rejects_invalid_prefect_api_mode():
+    with pytest.raises(ValueError, match="prefect_api_mode"):
+        ExecutionConfig.from_parset({"cluster_specific": {"prefect_api_mode": "always"}})
 
 
 def test_execution_config_rejects_invalid_command_profile():

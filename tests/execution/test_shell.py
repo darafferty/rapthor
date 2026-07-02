@@ -1,5 +1,6 @@
 import json
 import logging
+import pickle
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -10,6 +11,7 @@ from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.shell import (
     MissingPrefectShellError,
     ShellCommand,
+    ShellCommandError,
     _profiled_process_args,
     collapse_perf_script,
     command_log_path,
@@ -38,6 +40,15 @@ def test_shell_command_formats_tokens():
     command = ShellCommand(["echo", "hello world"])
 
     assert command.command_string == "echo 'hello world'"
+
+
+def test_shell_command_error_round_trips_through_pickle():
+    error = ShellCommandError("Command failed", 125)
+
+    restored = pickle.loads(pickle.dumps(error))
+
+    assert str(restored) == "Command failed"
+    assert restored.returncode == 125
 
 
 def test_shell_operation_kwargs_include_env_and_working_dir():

@@ -6,7 +6,9 @@ from typing import Any, Mapping, Optional
 
 TASK_RUNNERS = ("local_dask", "external_dask", "sync")
 COMMAND_PROFILE_MODES = ("auto", "time", "perf", "off")
+PREFECT_API_MODES = ("auto", "external", "ephemeral")
 DASK_SCHEDULER_ENV = "DASK_SCHEDULER"
+PREFECT_API_URL_ENV = "PREFECT_API_URL"
 
 
 def _optional_str(value: Any) -> Optional[str]:
@@ -59,11 +61,21 @@ def dask_scheduler_from_environment(
     return _optional_str(environment.get(DASK_SCHEDULER_ENV))
 
 
+def prefect_api_url_from_environment(
+    environ: Optional[Mapping[str, str]] = None,
+) -> Optional[str]:
+    """Return the Prefect API URL exported for this process, if any."""
+    environment = os.environ if environ is None else environ
+    return _optional_str(environment.get(PREFECT_API_URL_ENV))
+
+
 @dataclass(frozen=True)
 class ExecutionConfig:
     """Runtime settings for the Prefect/Dask execution path."""
 
     task_runner: str = "local_dask"
+    prefect_api_mode: str = "auto"
+    prefect_api_url: Optional[str] = None
     dask_scheduler: Optional[str] = None
     dask_dashboard_address: Optional[str] = None
     stream_output: bool = True
@@ -91,6 +103,14 @@ class ExecutionConfig:
         scheduler = (
             _optional_str(cluster.get("dask_scheduler")) or dask_scheduler_from_environment()
         )
+        prefect_api_mode = _as_choice(
+            cluster.get("prefect_api_mode", "auto"),
+            "prefect_api_mode",
+            PREFECT_API_MODES,
+        )
+        prefect_api_url = (
+            _optional_str(cluster.get("prefect_api_url")) or prefect_api_url_from_environment()
+        )
         task_runner = cluster.get("prefect_task_runner")
         if task_runner is None:
             task_runner = "external_dask" if scheduler else "local_dask"
@@ -101,6 +121,8 @@ class ExecutionConfig:
 
         return cls(
             task_runner=task_runner,
+            prefect_api_mode=prefect_api_mode,
+            prefect_api_url=prefect_api_url,
             dask_scheduler=scheduler,
             dask_dashboard_address=_optional_str(cluster.get("dask_dashboard_address")),
             stream_output=_as_bool(
