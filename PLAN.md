@@ -48,9 +48,14 @@ Dask scalability work.
 - Initial CLI runtime bootstrap is in place for Prefect API mode, external
   Prefect health checks, external Dask scheduler checks, local Dask setup, local
   Dask worker sizing, and startup logging.
-- A lightweight CLI smoke test now starts from `rapthor input.parset` and covers
+- A lightweight CLI smoke test starts from `rapthor input.parset` and covers
   parset path materialization, execution-config extraction, runtime bootstrap
   handoff, and top-level flow invocation without external astronomy tools.
+- Test isolation closes temporary Rapthor run-log file handlers between tests,
+  so parset reads that install `rapthor.log` handlers do not leak into later
+  tests after temporary working directories are removed.
+- Agent-facing repository guides live under `.agents/`, with `AGENTS.md`
+  serving as the top-level routing and guardrail document.
 - Dev containers install docs dependencies by default.
 
 Recent verification has covered linting, non-integration tests, integration
@@ -73,7 +78,8 @@ Known caveats:
 
 ### 1. Stabilization Gate
 
-Before changing task granularity or performance-sensitive code, protect the
+Status: complete enough to maintain while moving into benchmarking. Before
+changing task granularity or performance-sensitive code, keep protecting the
 current user-facing behavior.
 
 Tasks:
@@ -89,7 +95,10 @@ Tasks:
   `rapthor input.parset` and uses mocked external tools aligned with CLI
   startup, parset materialization, path handling, and runtime bootstrap.
 - Keep `.agents/scientific_glossary.md` linked from `AGENTS.md` and the
-  development docs, and use it as the naming reference for future refactors.
+  development docs, and use it as the naming reference for future refactors,
+  especially for strategy tokens such as `slow_gains`.
+- Keep test isolation for Rapthor run-log handlers intact when changing parset
+  setup, working-directory handling, or logging.
 - Re-run the fast branch-health lane before scalability changes:
   - `tests/lib/test_parset.py`
   - `tests/execution/test_config.py`
@@ -104,6 +113,7 @@ Done when:
   with it.
 - One lightweight test continues to start from `rapthor input.parset`, not only
   from internal bootstrap helpers.
+- The fast branch-health lane passes in the prepared dev-container environment.
 
 ### 2. Benchmark Baseline
 
