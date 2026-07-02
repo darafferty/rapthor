@@ -17,8 +17,8 @@ aliases, compatibility shims, or test-only production surfaces.
 
 ## Current Status
 
-The main architecture cleanup and script-to-module migration are complete enough
-to move into runtime bootstrap and scalability work.
+The main architecture cleanup, script-to-module migration, and initial runtime
+bootstrap work are complete enough to move into Dask scalability work.
 
 Completed:
 
@@ -87,6 +87,8 @@ Completed:
     operation flows, giving the dashboard one continuous task stream
   - `prefect_api_mode = auto|external|ephemeral` and `prefect_api_url` are in
     defaults, config parsing, docs, and focused tests
+  - process-level smoke tests cover no/existing Prefect API crossed with
+    no/existing Dask scheduler using a tiny real Prefect flow
 
 ## Recent Verification
 
@@ -147,6 +149,19 @@ Recent runs in the dev container:
     `tests/execution/test_resources.py`, `tests/execution/test_capabilities.py`,
     `tests/execution/test_pipeline_flow.py`, `tests/test_cli.py`, and
     `tests/operations/test_flow_execution.py`): 126 passed
+- Runtime process smoke lane on 2026-07-02:
+  - `python3 -m ruff check` and `python3 -m ruff check --select I` on
+    `tests/execution/test_runtime_bootstrap_process.py` passed
+  - `tests/execution/test_runtime_bootstrap_process.py`: 4 passed
+  - broader runtime slice including the process smoke lane
+    (`tests/execution/test_config.py`, `tests/execution/test_task_runner.py`,
+    `tests/execution/test_runtime_bootstrap.py`,
+    `tests/execution/test_runtime_bootstrap_process.py`,
+    `tests/execution/test_prefect_demo_script.py`,
+    `tests/execution/test_prefect_demo_data_generator.py`,
+    `tests/execution/test_resources.py`, `tests/execution/test_capabilities.py`,
+    `tests/execution/test_pipeline_flow.py`, `tests/test_cli.py`, and
+    `tests/operations/test_flow_execution.py`): 130 passed
 - Direct rich demo CLI verification on 2026-07-02:
   - `rapthor examples/generated/prefect_demo_rich/prefect_demo_rich.parset`
     completed successfully in the dev container
@@ -219,16 +234,17 @@ Done in the first bootstrap slice:
   - bootstrap unit coverage now spans no/existing Prefect API crossed with
     no/existing Dask scheduler, including environment setup, health-check
     calls, local scheduler startup, and cleanup
-
-Remaining tasks:
-
-- Add a small process-level smoke lane for the runtime matrix when the local
+- Added a small process-level smoke lane for the runtime matrix when the local
   environment has Prefect/Dask installed:
   - no Prefect server and no Dask cluster
   - existing Prefect server and no Dask cluster
   - no Prefect server and existing Dask cluster
   - existing Prefect server and existing Dask cluster
-- Keep user docs current as persistent local-Dask bootstrap behavior changes.
+
+Remaining tasks:
+
+- No runtime-bootstrap tasks remain for this pass. Keep user docs current if
+  runtime behavior changes during scalability work.
 
 Done when:
 
