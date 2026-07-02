@@ -265,7 +265,6 @@ run_tests:
     when: always
     paths:
       - ci/i/**/work/logs/**/*
-      - ci/i/.test_durations
 
 run_integration_tests:
   extends: .run_integration_tests

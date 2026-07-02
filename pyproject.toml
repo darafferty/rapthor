@@ -204,9 +204,6 @@ pass_env = [
     "OPENBLAS_NUM_THREADS",
     "VECLIB_MAXIMUM_THREADS",
 ]
-allowlist_externals = [
-    "echo",
-]
 commands = [
     [
         "python", "-m", "pytest",
