@@ -48,6 +48,9 @@ Dask scalability work.
 - Initial CLI runtime bootstrap is in place for Prefect API mode, external
   Prefect health checks, external Dask scheduler checks, local Dask setup, local
   Dask worker sizing, and startup logging.
+- A lightweight CLI smoke test now starts from `rapthor input.parset` and covers
+  parset path materialization, execution-config extraction, runtime bootstrap
+  handoff, and top-level flow invocation without external astronomy tools.
 - Dev containers install docs dependencies by default.
 
 Recent verification has covered linting, non-integration tests, integration
@@ -82,10 +85,9 @@ Tasks:
   - `tests/resources/*parset_dict.template`
   - `docs/source/parset.rst`
   - `docs/source/running.rst`
-- Add a tiny user-facing parset smoke lane that starts from
-  `rapthor input.parset` and uses mocked or skipped external tools. This should
-  cover CLI startup, parset materialization, path handling, and runtime
-  bootstrap.
+- Keep the tiny user-facing parset smoke lane that starts from
+  `rapthor input.parset` and uses mocked external tools aligned with CLI
+  startup, parset materialization, path handling, and runtime bootstrap.
 - Keep `.agents/scientific_glossary.md` linked from `AGENTS.md` and the
   development docs, and use it as the naming reference for future refactors.
 - Re-run the fast branch-health lane before scalability changes:
@@ -100,8 +102,8 @@ Done when:
 - CI and local dev runs agree on parset/default snapshots.
 - A developer can change a parset option and know which tests and docs must move
   with it.
-- One lightweight test starts from `rapthor input.parset`, not only from
-  internal bootstrap helpers.
+- One lightweight test continues to start from `rapthor input.parset`, not only
+  from internal bootstrap helpers.
 
 ### 2. Benchmark Baseline
 
