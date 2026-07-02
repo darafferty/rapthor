@@ -17,7 +17,7 @@ from typing import Optional
 from urllib.error import URLError
 from urllib.request import urlopen
 
-from rapthor.execution.config import TASK_RUNNERS, ExecutionConfig
+from rapthor.execution.config import COMMAND_PROFILE_MODES, TASK_RUNNERS, ExecutionConfig
 from rapthor.execution.pipeline.flow import pipeline_flow
 from rapthor.execution.runtime_bootstrap import PREFECT_SERVER_ANALYTICS_ENABLED_ENV
 from rapthor.execution.task_runner import start_local_dask_cluster
@@ -264,6 +264,8 @@ def _execution_config_from_args(parset_file: Path, args: argparse.Namespace) -> 
         overrides["local_dask_workers"] = args.local_dask_workers
     if args.cpus_per_task is not None:
         overrides["cpus_per_task"] = args.cpus_per_task
+    if args.command_profile is not None:
+        overrides["command_profile"] = args.command_profile
 
     return replace(config, **overrides) if overrides else config
 
@@ -398,6 +400,11 @@ def _parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     )
     parser.add_argument("--cpus-per-task", type=int, help="Override cluster.cpus_per_task.")
     parser.add_argument(
+        "--command-profile",
+        choices=COMMAND_PROFILE_MODES,
+        help="Override cluster.prefect_command_profile for external command profiling.",
+    )
+    parser.add_argument(
         "--logging-level",
         default=os.environ.get("RAPTHOR_LOGGING_LEVEL", "info"),
         help="Rapthor logging level passed to pipeline_flow().",
@@ -490,6 +497,7 @@ def main() -> int:
                     "prefect_task_runner": execution_config.task_runner,
                     "dask_scheduler": execution_config.dask_scheduler,
                     "dask_dashboard_address": execution_config.dask_dashboard_address,
+                    "prefect_command_profile": execution_config.command_profile,
                 },
             )
             print(f"Runtime parset: {run_parset_file}")
@@ -501,7 +509,8 @@ def main() -> int:
             f"dask_dashboard_address={execution_config.dask_dashboard_address}, "
             f"max_nodes={execution_config.max_nodes}, "
             f"local_dask_workers={execution_config.local_dask_worker_count}, "
-            f"cpus_per_task={execution_config.cpus_per_task}"
+            f"cpus_per_task={execution_config.cpus_per_task}, "
+            f"command_profile={execution_config.command_profile}"
         )
         dask_dashboard_url = (
             dask_cluster.dashboard_url

@@ -23,6 +23,7 @@ def test_default_benchmark_scenarios_build_demo_commands():
     assert quick_command[1] == "/repo/scripts/dev/run-rapthor-prefect-demo.py"
     assert "/repo/examples/prefect_demo.parset" in quick_command
     assert "--dask-performance-report" in quick_command
+    assert quick_command[quick_command.index("--command-profile") + 1] == "time"
     assert "--no-keep-server" in quick_command
     assert "/repo/examples/generated/prefect_demo_rich/prefect_demo_rich.parset" in rich_command
     assert "2" == rich_command[rich_command.index("--local-dask-workers") + 1]

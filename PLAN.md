@@ -120,9 +120,10 @@ Done when:
 
 ### 2. Benchmark Baseline
 
-Status: started. The first committed slice defines benchmark scenarios and
-report-generation code; the remaining work is to run repeated baselines and wire
-the reports into CI artifacts.
+Status: CI wiring in place. Benchmark scenarios, report-generation code, focused
+tests, and a manual/scheduled GitLab artifact job are available; the remaining
+work is to run repeated baselines and interpret the rich-demo report before
+changing Dask task boundaries.
 
 Benchmark before changing Dask task boundaries, scheduler behavior, or
 performance-sensitive execution code. The benchmark should identify what to
@@ -150,7 +151,8 @@ Tasks:
   - task count, task concurrency, worker idle time, and scheduler gaps
   - peak memory and disk footprint
   - output equivalence or checksum status for scientific products
-- Add a CI benchmark job that can run manually or on schedule and publishes:
+- Maintain the CI benchmark job so it can run manually or on schedule and
+  publish:
   - a Markdown benchmark report artifact
   - a JSON summary artifact
   - optionally Dask performance HTML, command logs, and selected run logs

@@ -38,6 +38,8 @@ class BenchmarkScenario:
             str(self.local_dask_workers),
             "--cpus-per-task",
             str(self.cpus_per_task),
+            "--command-profile",
+            self.command_profile,
             "--dask-performance-report",
             "--dask-performance-report-path",
             str(run_dir / "dask-performance-report.html"),

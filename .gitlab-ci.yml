@@ -20,6 +20,7 @@ stages:
   - install
   - run_tests
   - run_integration_tests
+  - benchmark
   - docs
   - deploy
   - finalize
@@ -264,6 +265,49 @@ run_integration_tests:
     - export PREFECT_HOME="$CI_PROJECT_DIR/ci/prefect-home/node-$CI_NODE_INDEX"
     - mkdir -p "$RAPTHOR_TEST_RUN_ROOT" "$PREFECT_HOME"
     - tox -e test_integration
+
+
+### Stage: benchmark
+
+run_benchmark_baseline:
+  stage: benchmark
+  image: $FULL_IMAGE
+  variables:
+    BLIS_NUM_THREADS: "1"
+    MKL_NUM_THREADS: "1"
+    NUMEXPR_MAX_THREADS: "1"
+    OMP_NUM_THREADS: "1"
+    OPENBLAS_NUM_THREADS: "1"
+    VECLIB_MAXIMUM_THREADS: "1"
+  script:
+    - export RAPTHOR_BENCHMARK_RUN_ROOT="$CI_PROJECT_DIR/ci/benchmark"
+    - export PREFECT_HOME="$CI_PROJECT_DIR/ci/prefect-home/benchmark"
+    - mkdir -p "$RAPTHOR_BENCHMARK_RUN_ROOT" "$PREFECT_HOME"
+    - >-
+      python3 scripts/dev/run_benchmark_baseline.py
+      --scenario quick-demo
+      --scenario rich-demo
+      --repetitions 3
+      --run-root "$RAPTHOR_BENCHMARK_RUN_ROOT"
+      --output-json "$RAPTHOR_BENCHMARK_RUN_ROOT/benchmark-summary.json"
+      --output-markdown "$RAPTHOR_BENCHMARK_RUN_ROOT/benchmark-report.md"
+  artifacts:
+    when: always
+    expire_in: 14 days
+    paths:
+      - ci/benchmark/benchmark-summary.json
+      - ci/benchmark/benchmark-report.md
+      - ci/benchmark/benchmark-results.json
+      - ci/benchmark/**/benchmark-command.json
+      - ci/benchmark/**/benchmark-result.json
+      - ci/benchmark/**/dask-performance-report.html
+      - ci/benchmark/**/rapthor-work/logs/commands.jsonl
+      - ci/benchmark/**/rapthor-work/logs/rapthor.log
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      when: on_success
+    - when: manual
+      allow_failure: true
 
 
 ### Stage: docs
