@@ -60,6 +60,17 @@ def _quiet_async_runtime_loggers():
         logging.getLogger(logger_name).setLevel(logging.WARNING)
 
 
+def _close_rapthor_file_handlers():
+    """Remove Rapthor run log handlers left by parset reads in temporary dirs."""
+    for handler in list(logging.root.handlers):
+        if not isinstance(handler, logging.FileHandler):
+            continue
+        if not str(getattr(handler, "baseFilename", "")).endswith("rapthor.log"):
+            continue
+        logging.root.removeHandler(handler)
+        handler.close()
+
+
 def _local_test_run_root():
     return REPO_ROOT_DIR / ".pytest_cache" / "rapthor-runs"
 
@@ -156,6 +167,13 @@ def quiet_async_runtime_loggers():
     _quiet_async_runtime_loggers()
     yield
     _quiet_async_runtime_loggers()
+
+
+@pytest.fixture(autouse=True)
+def close_rapthor_file_handlers():
+    _close_rapthor_file_handlers()
+    yield
+    _close_rapthor_file_handlers()
 
 
 @pytest.hookimpl(tryfirst=True)
