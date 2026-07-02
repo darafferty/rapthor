@@ -244,3 +244,126 @@ def test_bootstrapped_runtime_reuses_one_local_dask_scheduler_for_run(caplog):
     assert clusters[0].closed is True
     assert "Started local Dask scheduler tcp://127.0.0.1:8786 with 2 worker(s)." in caplog.text
     assert "Dask dashboard: http://127.0.0.1:8787/status" in caplog.text
+
+
+@pytest.mark.parametrize(
+    (
+        "prefect_api_url",
+        "task_runner",
+        "dask_scheduler",
+        "expected_prefect_api",
+        "expected_dask_scheduler",
+        "expected_effective_task_runner",
+        "expected_local_cluster_count",
+        "expected_dask_checks",
+    ),
+    [
+        pytest.param(
+            None,
+            "local_dask",
+            None,
+            None,
+            "tcp://local-dask:8786",
+            "external_dask",
+            1,
+            [],
+            id="no-prefect-no-dask",
+        ),
+        pytest.param(
+            "http://prefect.example:4200/api",
+            "local_dask",
+            None,
+            "http://prefect.example:4200/api",
+            "tcp://local-dask:8786",
+            "external_dask",
+            1,
+            [],
+            id="existing-prefect-no-dask",
+        ),
+        pytest.param(
+            None,
+            "external_dask",
+            "tcp://external-dask:8786",
+            None,
+            "tcp://external-dask:8786",
+            "external_dask",
+            0,
+            ["tcp://external-dask:8786"],
+            id="no-prefect-existing-dask",
+        ),
+        pytest.param(
+            "http://prefect.example:4200/api",
+            "external_dask",
+            "tcp://external-dask:8786",
+            "http://prefect.example:4200/api",
+            "tcp://external-dask:8786",
+            "external_dask",
+            0,
+            ["tcp://external-dask:8786"],
+            id="existing-prefect-existing-dask",
+        ),
+    ],
+)
+def test_bootstrapped_runtime_launch_matrix(
+    prefect_api_url,
+    task_runner,
+    dask_scheduler,
+    expected_prefect_api,
+    expected_dask_scheduler,
+    expected_effective_task_runner,
+    expected_local_cluster_count,
+    expected_dask_checks,
+):
+    environ = {}
+    prefect_checks = []
+    dask_checks = []
+    clusters = []
+
+    def check_prefect(api_url):
+        prefect_checks.append(api_url)
+
+    def check_dask(scheduler):
+        dask_checks.append(scheduler)
+        return 4
+
+    def start_cluster(execution_config):
+        cluster = FakeLocalDaskCluster(
+            scheduler_address="tcp://local-dask:8786",
+            worker_count=execution_config.local_dask_worker_count,
+        )
+        clusters.append(cluster)
+        return cluster
+
+    with bootstrapped_runtime(
+        ExecutionConfig(
+            prefect_api_mode="auto",
+            prefect_api_url=prefect_api_url,
+            task_runner=task_runner,
+            dask_scheduler=dask_scheduler,
+            local_dask_workers=2,
+            cpus_per_task=4,
+        ),
+        environ=environ,
+        prefect_api_checker=check_prefect,
+        dask_scheduler_checker=check_dask,
+        local_dask_cluster_starter=start_cluster,
+    ) as plan:
+        assert plan.prefect_api_url == expected_prefect_api
+        assert plan.dask_scheduler == expected_dask_scheduler
+        assert plan.execution_config.task_runner == expected_effective_task_runner
+        assert plan.execution_config.dask_scheduler == expected_dask_scheduler
+        assert environ[PREFECT_SERVER_ANALYTICS_ENABLED_ENV] == "false"
+        if expected_prefect_api is None:
+            assert environ[PREFECT_API_URL_ENV] == ""
+            assert Path(environ[PREFECT_HOME_ENV]).exists()
+        else:
+            assert environ[PREFECT_API_URL_ENV] == expected_prefect_api
+            assert PREFECT_HOME_ENV not in environ
+
+    assert prefect_checks == ([expected_prefect_api] if expected_prefect_api else [])
+    assert dask_checks == expected_dask_checks
+    assert len(clusters) == expected_local_cluster_count
+    assert all(cluster.closed for cluster in clusters)
+    assert PREFECT_API_URL_ENV not in environ
+    assert PREFECT_HOME_ENV not in environ
+    assert PREFECT_SERVER_ANALYTICS_ENABLED_ENV not in environ

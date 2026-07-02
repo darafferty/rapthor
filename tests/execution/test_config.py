@@ -107,6 +107,16 @@ def test_execution_config_infers_external_dask_from_environment(monkeypatch):
     assert config.dask_scheduler == "tcp://env:8786"
 
 
+@pytest.mark.parametrize("task_runner", ["sync", "local_dask", "external_dask"])
+def test_execution_config_explicit_task_runner_overrides_auto_selection(monkeypatch, task_runner):
+    monkeypatch.setenv(DASK_SCHEDULER_ENV, "tcp://env:8786")
+
+    config = ExecutionConfig.from_parset({"cluster_specific": {"prefect_task_runner": task_runner}})
+
+    assert config.task_runner == task_runner
+    assert config.dask_scheduler == "tcp://env:8786"
+
+
 def test_execution_config_prefers_parset_scheduler_over_environment(monkeypatch):
     monkeypatch.setenv(DASK_SCHEDULER_ENV, "tcp://env:8786")
 

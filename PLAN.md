@@ -134,6 +134,19 @@ Recent runs in the dev container:
     `tests/execution/test_resources.py`, `tests/execution/test_capabilities.py`,
     `tests/execution/test_pipeline_flow.py`, `tests/test_cli.py`, and
     `tests/operations/test_flow_execution.py`: 119 passed
+- Runtime launch matrix slice on 2026-07-02:
+  - `python3 -m ruff check` and `python3 -m ruff check --select I` on updated
+    runtime config/bootstrap tests passed
+  - `tests/execution/test_config.py` and
+    `tests/execution/test_runtime_bootstrap.py`: 38 passed
+  - broader runtime slice
+    (`tests/execution/test_config.py`, `tests/execution/test_task_runner.py`,
+    `tests/execution/test_runtime_bootstrap.py`,
+    `tests/execution/test_prefect_demo_script.py`,
+    `tests/execution/test_prefect_demo_data_generator.py`,
+    `tests/execution/test_resources.py`, `tests/execution/test_capabilities.py`,
+    `tests/execution/test_pipeline_flow.py`, `tests/test_cli.py`, and
+    `tests/operations/test_flow_execution.py`): 126 passed
 - Direct rich demo CLI verification on 2026-07-02:
   - `rapthor examples/generated/prefect_demo_rich/prefect_demo_rich.parset`
     completed successfully in the dev container
@@ -198,14 +211,19 @@ Done in the first bootstrap slice:
     operation adapters attach to the same scheduler instead of creating
     short-lived clusters
   - the demo helper now reuses the same local-Dask cluster lifecycle helper
+- Added runtime launch contract tests:
+  - explicit `prefect_task_runner` values override Dask auto-selection
+  - no scheduler still means local Dask
+  - `dask_scheduler` or `DASK_SCHEDULER` still means external Dask when the
+    task runner is unset
+  - bootstrap unit coverage now spans no/existing Prefect API crossed with
+    no/existing Dask scheduler, including environment setup, health-check
+    calls, local scheduler startup, and cleanup
 
 Remaining tasks:
 
-- Keep Dask task-runner selection simple as further runtime options land:
-  - `dask_scheduler` or `DASK_SCHEDULER` means `external_dask`
-  - no scheduler means `local_dask`
-  - explicit `prefect_task_runner` still overrides auto-selection
-- Extend runtime tests toward real-process startup coverage for the matrix:
+- Add a small process-level smoke lane for the runtime matrix when the local
+  environment has Prefect/Dask installed:
   - no Prefect server and no Dask cluster
   - existing Prefect server and no Dask cluster
   - no Prefect server and existing Dask cluster
