@@ -487,7 +487,8 @@ def write_parset(output_dir: Path, path: Path, repo_root: Path, strategy_path: P
 
             [cluster]
             batch_system = single_machine
-            max_nodes = 2
+            max_nodes = 1
+            local_dask_workers = 2
             cpus_per_task = 4
             mem_per_node_gb = 0
             max_cores = 4

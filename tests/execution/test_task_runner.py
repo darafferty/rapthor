@@ -64,7 +64,7 @@ def test_sync_task_runner_uses_single_worker_thread_pool():
 
 
 def test_local_cluster_kwargs_are_conservative():
-    kwargs = local_cluster_kwargs(ExecutionConfig(max_nodes=2, cpus_per_task=4))
+    kwargs = local_cluster_kwargs(ExecutionConfig(local_dask_workers=2, cpus_per_task=4))
 
     assert kwargs == {"n_workers": 2, "threads_per_worker": 4}
 
@@ -77,7 +77,7 @@ def test_local_cluster_kwargs_default_to_single_worker_capacity():
 
 def test_local_cluster_kwargs_include_memory_limit():
     kwargs = local_cluster_kwargs(
-        ExecutionConfig(max_nodes=2, cpus_per_task=4, mem_per_node_gb=128)
+        ExecutionConfig(local_dask_workers=2, cpus_per_task=4, mem_per_node_gb=128)
     )
 
     assert kwargs == {"n_workers": 2, "threads_per_worker": 4, "memory_limit": "128GB"}
@@ -85,7 +85,7 @@ def test_local_cluster_kwargs_include_memory_limit():
 
 def test_local_cluster_kwargs_include_dashboard_address():
     kwargs = local_cluster_kwargs(
-        ExecutionConfig(max_nodes=2, cpus_per_task=4, dask_dashboard_address=":8787")
+        ExecutionConfig(local_dask_workers=2, cpus_per_task=4, dask_dashboard_address=":8787")
     )
 
     assert kwargs == {"n_workers": 2, "threads_per_worker": 4, "dashboard_address": ":8787"}
@@ -93,7 +93,7 @@ def test_local_cluster_kwargs_include_dashboard_address():
 
 def test_build_local_dask_task_runner_with_injected_class():
     runner = build_task_runner(
-        ExecutionConfig(task_runner="local_dask", max_nodes=2, cpus_per_task=4),
+        ExecutionConfig(task_runner="local_dask", local_dask_workers=2, cpus_per_task=4),
         dask_task_runner_cls=FakeDaskTaskRunner,
     )
 

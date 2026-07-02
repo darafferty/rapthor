@@ -368,6 +368,7 @@ batch_system = single_machine
 # value to the number of processors per node, one can ensure that each task gets
 # the entire node to itself, which is the recommended way of running Rapthor
 max_nodes = 0
+local_dask_workers = 0
 cpus_per_task = 0
 mem_per_node_gb = 0
 
@@ -418,7 +419,9 @@ container_type = docker
 
 # Prefect task runner to use for the Python execution path. Supported values
 # are local_dask, external_dask, and sync. If unset, Rapthor uses external_dask
-# when a Dask scheduler is configured and local_dask otherwise.
+# when a Dask scheduler is configured and local_dask otherwise. For local_dask,
+# local_dask_workers sets the number of local Dask workers. If left at 0, Rapthor
+# falls back to max_nodes for compatibility, with at least one worker.
 prefect_api_mode = auto
 prefect_api_url = None
 prefect_task_runner = None

@@ -84,6 +84,7 @@ class ExecutionConfig:
     command_profile: str = "auto"
     batch_system: str = "single_machine"
     max_nodes: int = 1
+    local_dask_workers: int = 0
     cpus_per_task: int = 0
     mem_per_node_gb: int = 0
     use_container: bool = False
@@ -139,6 +140,9 @@ class ExecutionConfig:
             ),
             batch_system=str(cluster.get("batch_system", "single_machine")),
             max_nodes=_as_non_negative_int(cluster.get("max_nodes", 1), "max_nodes"),
+            local_dask_workers=_as_non_negative_int(
+                cluster.get("local_dask_workers", 0), "local_dask_workers"
+            ),
             cpus_per_task=_as_non_negative_int(cluster.get("cpus_per_task", 0), "cpus_per_task"),
             mem_per_node_gb=_as_non_negative_int(
                 cluster.get("mem_per_node_gb", 0), "mem_per_node_gb"
@@ -157,6 +161,8 @@ class ExecutionConfig:
     @property
     def local_dask_worker_count(self) -> int:
         """Return the worker count used for a local Dask cluster."""
+        if self.local_dask_workers:
+            return self.local_dask_workers
         return max(1, self.max_nodes)
 
     @property

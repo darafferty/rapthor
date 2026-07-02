@@ -277,6 +277,8 @@ def _execution_config_from_args(parset_file: Path, args: argparse.Namespace) -> 
         overrides["stream_output"] = args.stream_output
     if args.max_nodes is not None:
         overrides["max_nodes"] = args.max_nodes
+    if args.local_dask_workers is not None:
+        overrides["local_dask_workers"] = args.local_dask_workers
     if args.cpus_per_task is not None:
         overrides["cpus_per_task"] = args.cpus_per_task
 
@@ -431,6 +433,11 @@ def _parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument("--max-nodes", type=int, help="Override cluster.max_nodes.")
+    parser.add_argument(
+        "--local-dask-workers",
+        type=int,
+        help="Override cluster.local_dask_workers for local Dask runs.",
+    )
     parser.add_argument("--cpus-per-task", type=int, help="Override cluster.cpus_per_task.")
     parser.add_argument(
         "--logging-level",
@@ -535,6 +542,7 @@ def main() -> int:
             f"dask_scheduler={execution_config.resolved_dask_scheduler()}, "
             f"dask_dashboard_address={execution_config.dask_dashboard_address}, "
             f"max_nodes={execution_config.max_nodes}, "
+            f"local_dask_workers={execution_config.local_dask_worker_count}, "
             f"cpus_per_task={execution_config.cpus_per_task}"
         )
         dask_dashboard_url = (

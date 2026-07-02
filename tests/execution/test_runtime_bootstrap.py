@@ -115,7 +115,9 @@ def test_preflight_local_dask_reports_local_settings_without_scheduler_check(cap
         raise AssertionError(f"unexpected Dask scheduler check for {scheduler}")
 
     plan = preflight_runtime(
-        ExecutionConfig(task_runner="local_dask", max_nodes=2, cpus_per_task=4),
+        ExecutionConfig(
+            task_runner="local_dask", max_nodes=1, local_dask_workers=2, cpus_per_task=4
+        ),
         dask_scheduler_checker=fail_if_checked,
     )
 

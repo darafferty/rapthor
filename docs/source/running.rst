@@ -150,6 +150,7 @@ and serves the Dask dashboard on port ``8787``:
 
     $ scripts/dev/run-rapthor-prefect-demo.py \
       --task-runner local_dask \
+      --local-dask-workers 2 \
       --dask-dashboard-address :8787 \
       examples/prefect_demo.parset
 
@@ -157,9 +158,12 @@ The helper prints the Dask dashboard URL, usually
 ``http://127.0.0.1:8787/status``. The Dask dashboard is available only while the
 local Dask cluster is running, so keep it open during the Rapthor run. The
 Workers tab should show the configured local workers, and Task Stream should
-show operation-level Prefect tasks as they are submitted. If the demo runs
-inside a dev container, forward port ``8787`` from the container to the host
-before opening the URL in your browser. Pass ``--no-start-dask`` to use
+show operation-level Prefect tasks as they are submitted. Use
+``local_dask_workers`` in the parset, or ``--local-dask-workers`` with the demo
+helper, to change the number of local Dask workers without changing
+``max_nodes``. If the demo runs inside a dev container, forward port ``8787``
+from the container to the host before opening the URL in your browser. Pass
+``--no-start-dask`` to use
 Prefect's temporary ``local_dask`` clusters directly; those can be harder to
 monitor because they are created lazily by each flow. With
 ``--task-runner external_dask``, use the dashboard for the external scheduler.

@@ -142,6 +142,34 @@ def test_parse_args_accepts_explicit_dask_performance_report_path(monkeypatch):
     assert args.parset == Path("examples/prefect_demo.parset")
 
 
+def test_execution_config_from_args_overrides_local_dask_workers(tmp_path):
+    module = load_demo_script()
+    parset_path = tmp_path / "demo.parset"
+    parset_path.write_text(
+        "\n".join(
+            [
+                "[global]",
+                "dir_working = work",
+                "input_ms = tests/resources/test.ms",
+                "",
+                "[cluster]",
+                "prefect_task_runner = local_dask",
+                "max_nodes = 1",
+                "local_dask_workers = 1",
+                "cpus_per_task = 2",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    args = module._parse_args(["--local-dask-workers", "3", str(parset_path)])
+
+    config = module._execution_config_from_args(parset_path, args)
+
+    assert config.max_nodes == 1
+    assert config.local_dask_workers == 3
+    assert config.local_dask_worker_count == 3
+
+
 def test_dask_performance_report_opens_external_client(tmp_path):
     module = load_demo_script()
     events = []

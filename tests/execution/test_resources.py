@@ -34,7 +34,7 @@ def test_validate_resource_request_rejects_local_dask_process_oversubscription()
     with pytest.raises(ValueError, match="requests 3 concurrent processes"):
         validate_resource_request(
             request,
-            ExecutionConfig(task_runner="local_dask", max_nodes=2),
+            ExecutionConfig(task_runner="local_dask", max_nodes=1, local_dask_workers=2),
         )
 
 

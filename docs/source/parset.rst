@@ -719,6 +719,14 @@ The available options are described below under their respective sections.
         When :term:`batch_system` = ``slurm``, the maximum number of nodes of the cluster
         to use at once (default = 12).
 
+    local_dask_workers
+        Number of workers for a local Dask cluster when
+        ``prefect_task_runner = local_dask`` (default = 0). When left at 0,
+        Rapthor falls back to :term:`max_nodes` for compatibility, with at
+        least one worker. Set this explicitly for single-machine runs that
+        should use several local Dask workers without treating them as separate
+        cluster nodes.
+
     cpus_per_task
         When :term:`batch_system` = ``slurm``, the number of processors per task to
         request (default = 0 = all). By setting this value to the number of processors per

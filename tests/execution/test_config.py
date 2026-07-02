@@ -2,8 +2,8 @@ import pytest
 
 from rapthor.execution.config import (
     DASK_SCHEDULER_ENV,
-    ExecutionConfig,
     PREFECT_API_URL_ENV,
+    ExecutionConfig,
     dask_scheduler_from_environment,
     prefect_api_url_from_environment,
 )
@@ -43,6 +43,7 @@ def test_execution_config_reads_cluster_specific_values():
                 "prefect_command_profile": "time",
                 "batch_system": "slurm",
                 "max_nodes": 4,
+                "local_dask_workers": 3,
                 "cpus_per_task": 32,
                 "mem_per_node_gb": 256,
                 "use_container": True,
@@ -65,6 +66,7 @@ def test_execution_config_reads_cluster_specific_values():
     assert config.command_profile == "time"
     assert config.batch_system == "slurm"
     assert config.max_nodes == 4
+    assert config.local_dask_workers == 3
     assert config.cpus_per_task == 32
     assert config.mem_per_node_gb == 256
     assert config.use_container is True
@@ -145,7 +147,12 @@ def test_execution_config_exposes_effective_local_dask_capacity():
     assert config.local_dask_worker_count == 1
     assert config.local_dask_threads_per_worker == 1
 
-    config = ExecutionConfig(max_nodes=4, cpus_per_task=8)
+    config = ExecutionConfig(max_nodes=4, local_dask_workers=0, cpus_per_task=8)
+
+    assert config.local_dask_worker_count == 4
+    assert config.local_dask_threads_per_worker == 8
+
+    config = ExecutionConfig(max_nodes=1, local_dask_workers=4, cpus_per_task=8)
 
     assert config.local_dask_worker_count == 4
     assert config.local_dask_threads_per_worker == 8
@@ -175,3 +182,8 @@ def test_execution_config_treats_none_command_profile_as_auto():
 def test_execution_config_rejects_negative_retries():
     with pytest.raises(ValueError, match="prefect_retries"):
         ExecutionConfig.from_parset({"cluster_specific": {"prefect_retries": -1}})
+
+
+def test_execution_config_rejects_negative_local_dask_workers():
+    with pytest.raises(ValueError, match="local_dask_workers"):
+        ExecutionConfig.from_parset({"cluster_specific": {"local_dask_workers": -1}})

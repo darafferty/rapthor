@@ -127,7 +127,7 @@ def test_preflight_reports_invalid_resource_requests():
 
 
 def test_preflight_reports_local_dask_process_oversubscription():
-    config = ExecutionConfig(task_runner="local_dask", max_nodes=1)
+    config = ExecutionConfig(task_runner="local_dask", max_nodes=1, local_dask_workers=1)
 
     with pytest.raises(PreflightError) as exc:
         preflight_execution(
