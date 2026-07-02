@@ -56,6 +56,9 @@ Dask scalability work.
   tests after temporary working directories are removed.
 - Agent-facing repository guides live under `.agents/`, with `AGENTS.md`
   serving as the top-level routing and guardrail document.
+- Benchmark baseline scaffolding is in place: committed quick-demo/rich-demo
+  scenario definitions, a developer runner, command-log parsing, JSON/Markdown
+  report generation, and focused report tests.
 - Dev containers install docs dependencies by default.
 
 Recent verification has covered linting, non-integration tests, integration
@@ -117,14 +120,18 @@ Done when:
 
 ### 2. Benchmark Baseline
 
+Status: started. The first committed slice defines benchmark scenarios and
+report-generation code; the remaining work is to run repeated baselines and wire
+the reports into CI artifacts.
+
 Benchmark before changing Dask task boundaries, scheduler behavior, or
 performance-sensitive execution code. The benchmark should identify what to
 optimise next, not just produce one wall-clock number.
 
 Tasks:
 
-- Commit benchmark scenario definitions, runner code, report parsing, and
-  summarization tests to the repository.
+- Maintain committed benchmark scenario definitions, runner code, report
+  parsing, and summarization tests.
 - Use the quick demo for startup overhead, the generated rich demo for the
   representative Prefect/Dask graph, and later an optional larger science
   fixture outside the repo for realistic external-tool scaling.
