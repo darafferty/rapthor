@@ -215,8 +215,8 @@ def test_set_calibration_strategy_user_provided(field):
     This captures the behaviour of the pipeline using the merged DD/DI classes.
     """
     user_provided_strategy = {
-        "di": ["fast_phase", "medium_phase", "slow_gain", "full_jones"],
-        "dd": ["fast_phase", "medium_phase", "slow_gain", "full_jones"],
+        "di": ["fast_phase", "medium_phase", "slow_gains", "full_jones"],
+        "dd": ["fast_phase", "medium_phase", "slow_gains", "full_jones"],
     }
     step_dict = {
         "do_calibrate": True,
@@ -258,8 +258,8 @@ def test_strategy_preserves_top_level_order(field, strategy_items):
 def test_set_calibration_strategy_preserves_order_of_di_vs_dd(field, didd_order):
     """Test that the calibration strategy preserves the order of DI vs DD keys."""
     user_provided_strategy = {
-        didd_order[0]: ["fast_phase", "medium_phase", "slow_gain", "full_jones"],
-        didd_order[1]: ["fast_phase", "medium_phase", "slow_gain", "full_jones"],
+        didd_order[0]: ["fast_phase", "medium_phase", "slow_gains", "full_jones"],
+        didd_order[1]: ["fast_phase", "medium_phase", "slow_gains", "full_jones"],
     }
     step_dict = {"do_calibrate": True, "calibration_strategy": user_provided_strategy}
     field.__dict__.update(step_dict)
@@ -271,8 +271,8 @@ def test_set_calibration_strategy_preserves_order_of_di_vs_dd(field, didd_order)
 @pytest.mark.parametrize(
     "solve_order",
     [
-        ("fast_phase", "medium_phase", "slow_gain", "full_jones"),
-        ("full_jones", "slow_gain", "medium_phase", "fast_phase"),
+        ("fast_phase", "medium_phase", "slow_gains", "full_jones"),
+        ("full_jones", "slow_gains", "medium_phase", "fast_phase"),
     ],
 )
 def test_set_calibration_strategy_preserves_order_of_solves(field, solve_order):
