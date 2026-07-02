@@ -4,8 +4,8 @@ Status snapshot: 2026-07-02.
 
 ## Goal
 
-Make the Prefect/Dask Rapthor pipeline easy to understand, extend, test, debug,
-and scale while preserving the user-facing CLI workflow:
+Make the Prefect/Dask Rapthor pipeline easy to run, understand, test, debug,
+benchmark, and scale while preserving the user-facing CLI workflow:
 
 ```bash
 rapthor input.parset
@@ -15,325 +15,227 @@ This Prefect/Dask implementation has not been released, so prefer clean
 production architecture over unreleased Python API compatibility, migration
 aliases, compatibility shims, or test-only production surfaces.
 
-## Current Status
+## Current State
 
-The main architecture cleanup, script-to-module migration, and initial runtime
-bootstrap work are complete enough to move into Dask scalability work.
+The main architecture cleanup is complete enough to move into benchmarking and
+Dask scalability work.
 
-Completed:
-
-- Execution code is organized by owner package:
-  `image`, `calibrate`, `concatenate`, `predict`, `mosaic`, and `pipeline`.
-- Image and calibration operations are package-based adapters.
-- Migrated helper-script logic lives in importable execution modules, and
-  production flows call those modules directly except where shell isolation is
-  still useful for external tools or third-party multiprocessing.
-- Retired helper scripts and the old `plotrapthor` executable are guarded by
-  architecture tests so production code and command fixtures do not reintroduce
-  them.
+- Execution code is organized by owner package: `image`, `calibrate`,
+  `concatenate`, `predict`, `mosaic`, and `pipeline`.
+- Image and calibration operations are package-based adapters, with payloads,
+  builders, validation, commands, outputs, and flow wiring living near the
+  operation-specific execution code.
+- Migrated helper-script logic lives in importable execution modules. Production
+  flows call these modules directly except where shell isolation is still useful
+  for external tools or third-party multiprocessing.
 - The installed `rapthor` command is exposed through `rapthor.cli:main`.
 - `concat_linc_files` remains a supported installed utility through
   `rapthor.execution.concatenate.linc_cli:main`.
-- Broad execution facades, normalized command wrappers, migration shims, and
-  unused runtime abstractions have been removed.
-- Payload contracts, builders, validation, commands, outputs, and flow wiring
-  live with the operation-specific execution code.
-- Command builders are deterministic and tested.
-- Image and calibration command builders use option dataclasses where argument
-  groups are stable.
-- Predict sector-model add/subtract share Measurement Set mechanics through
-  `rapthor.execution.predict.measurement_sets`, with direct unit coverage.
+- Broad execution facades, normalized command wrappers, migration shims, unused
+  runtime abstractions, and retired helper-script entry points have been removed
+  or guarded by architecture tests.
+- Command builders are deterministic and tested. Stable argument groups use
+  option dataclasses where that improves readability.
 - Scheduler-independent work units are separated from Prefect flow wiring for
-  the complex image and calibration paths.
+  complex image and calibration paths.
 - Prefect flow and task run names include operation, calibration mode where
-  relevant, cycle, and coarse task identifiers so the dashboard is easier to
-  scan during rich demo and integration runs.
-- The development architecture docs include a current Prefect/Dask
-  orchestration diagram matching the refactored owner-package layout.
-- `calibration_strategy` is the only production interface for solve type and
-  solve order. Legacy `do_fulljones_solve` and `do_slowgain_solve` flags are
-  retired from production configuration.
-- The default DD strategy is explicit:
-  `{"dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"], "di": []}`.
-- Builder and helper cleanup is complete for the current pass:
-  - shared payload validators are reused directly instead of being aliased as
-    private local helpers
-  - repeated payload validation for optional strings, basenames, string lists,
-    optional file records, and required lists is centralized
-  - non-obvious nested payload checks have concise docstrings
-  - focused payload/contract tests cover the extracted behavior
-  - no obvious compatibility-only private helpers remain in execution or
-    operation modules from this cleanup pass
-- The saved CWL equivalence helper now tolerates the observed sub-percent
-  WSClean beam-fit jitter in image-cube beam sidecars while still comparing
-  image data, h5parm solutions, sky models, operation markers, and output
-  record shapes.
-- Architecture docs and structure docs describe the current execution-owned
-  module layout.
+  relevant, cycle, and coarse task identifiers.
+- The development architecture docs include the current Prefect/Dask
+  orchestration diagram.
+- `calibration_strategy` is the production interface for solve type and solve
+  order. Legacy `do_fulljones_solve` and `do_slowgain_solve` flags are retired
+  from production configuration.
+- Initial CLI runtime bootstrap is in place for Prefect API mode, external
+  Prefect health checks, external Dask scheduler checks, local Dask setup, local
+  Dask worker sizing, and startup logging.
 - Dev containers install docs dependencies by default.
-- Initial CLI runtime bootstrap is in place:
-  - `rapthor input.parset` resolves `prefect_api_mode` and `prefect_api_url`
-    before launching the pipeline flow
-  - external Prefect APIs are health-checked early when configured
-  - when a Prefect API URL is configured, Rapthor logs the matching dashboard
-    URL before launch; otherwise Prefect owns any temporary local API/server
-  - external Dask schedulers are checked early when selected
-  - local Dask settings are reported before the flow starts
-  - `local_dask_workers` separates local Dask worker count from Slurm/node
-    sizing, so single-machine runs no longer need to pretend that local workers
-    are separate nodes
-  - direct `rapthor input.parset` local-Dask runs start one managed local Dask
-    scheduler and pass its scheduler address to the top-level pipeline and
-    operation flows, giving the dashboard one continuous task stream
-  - `prefect_api_mode = auto|external|ephemeral` and `prefect_api_url` are in
-    defaults, config parsing, docs, and focused tests
-  - process-level smoke tests cover no/existing Prefect API crossed with
-    no/existing Dask scheduler using a tiny real Prefect flow
 
-## Recent Verification
+Recent verification has covered linting, non-integration tests, integration
+tests, saved CWL equivalence, runtime bootstrap slices, and the rich
+Prefect/Dask demo. Keep future verification notes in commit messages, CI
+artifacts, or reports rather than growing this plan.
 
-Recent runs in the dev container:
+Known caveats:
 
-- `tox -e lint`
-- Non-integration tests using the tox split against the prepared dev-container
-  Python environment:
-  - `tests/lib/test_field.py`: 26 passed
-  - Prefect-marked non-integration tests: 42 passed
-  - Remaining non-integration tests with xdist: 928 passed, 2 xfailed
-- Full integration suite with generated runs on `/tmp`:
-  - 25 passed, 1 skipped Slurm-only check, 1 expected xfail
-- Saved CWL equivalence matrix:
-  - all current-contract scenarios passed
-  - report: `/tmp/rapthor-equivalence-20260701-builder-cleanup-final/equivalence-report.json`
-- Rich Prefect/Dask demo:
-  - command completed successfully with `examples/generated/prefect_demo_rich/prefect_demo_rich.parset`
-  - run directory: `/tmp/rapthor-prefect-demo-20260701-builder-cleanup`
-  - local Dask cluster started with 2 workers, Rapthor finished, and the helper
-    shut down Dask and Prefect cleanly
-- Runtime bootstrap slice on 2026-07-02:
-  - `python3 -m ruff check` on changed runtime/config/CLI/test files passed
-  - `tests/execution/test_config.py`, `tests/execution/test_runtime_bootstrap.py`,
-    and `tests/test_cli.py`: 33 passed
-  - `tests/execution/test_task_runner.py` and
-    `tests/execution/test_capabilities.py`: 27 passed
-  - `tests/execution/test_pipeline_flow.py`: 23 passed
-- Local Dask sizing slice on 2026-07-02:
-  - `python3 -m ruff check` and `python3 -m ruff check --select I` on changed
-    runtime/demo/test files passed
-  - `tests/execution/test_config.py`, `tests/execution/test_task_runner.py`,
-    `tests/execution/test_runtime_bootstrap.py`,
-    `tests/execution/test_prefect_demo_script.py`,
-    `tests/execution/test_prefect_demo_data_generator.py`,
-    `tests/execution/test_resources.py`, and
-    `tests/execution/test_capabilities.py`: 84 passed
-- Shared local-Dask scheduler slice on 2026-07-02:
-  - `python3 -m ruff check` and `python3 -m ruff check --select I` on changed
-    runtime/pipeline/CLI/test files passed
-  - `tests/execution/test_config.py`, `tests/execution/test_task_runner.py`,
-    `tests/execution/test_runtime_bootstrap.py`,
-    `tests/execution/test_prefect_demo_script.py`,
-    `tests/execution/test_prefect_demo_data_generator.py`,
-    `tests/execution/test_resources.py`, `tests/execution/test_capabilities.py`,
-    `tests/execution/test_pipeline_flow.py`, `tests/test_cli.py`, and
-    `tests/operations/test_flow_execution.py`: 119 passed
-- Runtime launch matrix slice on 2026-07-02:
-  - `python3 -m ruff check` and `python3 -m ruff check --select I` on updated
-    runtime config/bootstrap tests passed
-  - `tests/execution/test_config.py` and
-    `tests/execution/test_runtime_bootstrap.py`: 38 passed
-  - broader runtime slice
-    (`tests/execution/test_config.py`, `tests/execution/test_task_runner.py`,
-    `tests/execution/test_runtime_bootstrap.py`,
-    `tests/execution/test_prefect_demo_script.py`,
-    `tests/execution/test_prefect_demo_data_generator.py`,
-    `tests/execution/test_resources.py`, `tests/execution/test_capabilities.py`,
-    `tests/execution/test_pipeline_flow.py`, `tests/test_cli.py`, and
-    `tests/operations/test_flow_execution.py`): 126 passed
-- Runtime process smoke lane on 2026-07-02:
-  - `python3 -m ruff check` and `python3 -m ruff check --select I` on
-    `tests/execution/test_runtime_bootstrap_process.py` passed
-  - `tests/execution/test_runtime_bootstrap_process.py`: 4 passed
-  - broader runtime slice including the process smoke lane
-    (`tests/execution/test_config.py`, `tests/execution/test_task_runner.py`,
-    `tests/execution/test_runtime_bootstrap.py`,
-    `tests/execution/test_runtime_bootstrap_process.py`,
-    `tests/execution/test_prefect_demo_script.py`,
-    `tests/execution/test_prefect_demo_data_generator.py`,
-    `tests/execution/test_resources.py`, `tests/execution/test_capabilities.py`,
-    `tests/execution/test_pipeline_flow.py`, `tests/test_cli.py`, and
-    `tests/operations/test_flow_execution.py`): 130 passed
-- Direct rich demo CLI verification on 2026-07-02:
-  - `rapthor examples/generated/prefect_demo_rich/prefect_demo_rich.parset`
-    completed successfully in the dev container
-  - the CLI now materializes known parset path options before launching the
-    flow, so external commands receive absolute paths even when their task
-    working directory differs from the shell's current directory
-  - `ShellCommandError` round-trips through Dask serialization so future
-    external-command failures report the real command error
-
-Notes:
-
-- `tox -e py310` is not currently a useful local verification path in this dev
-  container because tox creates an isolated environment and tries to build
-  `python-casacore` and `everybeam` without Casacore headers. Use the prepared
-  dev-container Python environment for full local verification unless the tox
-  environment is taught to use the container's system dependencies.
+- Use the prepared dev-container Python environment for local full-suite runs.
+  Local tox-created environments may fail to build radio astronomy dependencies
+  without system headers.
 - Keep large integration, equivalence, and demo run roots on `/tmp` or another
-  spacious filesystem. The workspace mount can fill quickly with WSClean FITS
-  products.
-
-## Known Caveats
-
-- Avoid running multiple pytest processes in parallel unless each run has a
-  separate `RAPTHOR_TEST_RUN_ROOT`.
-- Prefect can emit late logging shutdown warnings after passing flow tests.
-  Track separately only if it becomes noisy in CI.
-- Pydantic remains a future option for configuration/payload validation. Keep
-  contracts and builders clean enough that adopting it later would be
+  spacious filesystem.
+- Pydantic remains a future option for configuration and payload validation.
+  Keep contracts and builders clean enough that adopting it later would be
   incremental rather than a rewrite.
 
-## Next Work Queue
+## Work Queue
 
-### 1. Runtime Bootstrap For Prefect And Dask
+### 1. Stabilization Gate
 
-Make `rapthor input.parset` succeed predictably whether or not the user has an
-existing Prefect server or Dask cluster.
+Before changing task granularity or performance-sensitive code, protect the
+current user-facing behavior.
 
-Done in the first bootstrap slice:
+Tasks:
 
-- Added `rapthor.execution.runtime_bootstrap` and wired the installed
-  `rapthor` CLI through it.
-- Added `prefect_api_mode = auto|external|ephemeral` and `prefect_api_url` to
-  execution config, defaults, parset docs, and startup tests.
-- Added early health checks for configured external Prefect APIs and external
-  Dask schedulers.
-- Preserved the existing low-friction default: no configured Prefect API means
-  Prefect may use its temporary local API/server.
-- Added quick-start docs for ephemeral Prefect, persistent Prefect, and
-  external Dask.
-- Added `local_dask_workers` so local Dask worker count is separate from
-  Slurm/node sizing:
-  - parsed from parsets and defaults to 0
-  - used for local Dask when set, with the old `max_nodes` fallback retained
-    for now
-  - wired through defaults, docs, demo parsets, the rich demo generator, demo
-    helper CLI, resource validation, and focused tests
-- Added one managed local Dask scheduler for direct CLI local-Dask runs:
-  - `bootstrapped_runtime` starts and closes the local scheduler
-  - the effective runtime config is converted to `external_dask` with the local
-    scheduler address
-  - the top-level pipeline syncs that effective config into `field.parset`, so
-    operation adapters attach to the same scheduler instead of creating
-    short-lived clusters
-  - the demo helper now reuses the same local-Dask cluster lifecycle helper
-- Added runtime launch contract tests:
-  - explicit `prefect_task_runner` values override Dask auto-selection
-  - no scheduler still means local Dask
-  - `dask_scheduler` or `DASK_SCHEDULER` still means external Dask when the
-    task runner is unset
-  - bootstrap unit coverage now spans no/existing Prefect API crossed with
-    no/existing Dask scheduler, including environment setup, health-check
-    calls, local scheduler startup, and cleanup
-- Added a small process-level smoke lane for the runtime matrix when the local
-  environment has Prefect/Dask installed:
-  - no Prefect server and no Dask cluster
-  - existing Prefect server and no Dask cluster
-  - no Prefect server and existing Dask cluster
-  - existing Prefect server and existing Dask cluster
-
-Remaining tasks:
-
-- No runtime-bootstrap tasks remain for this pass. Keep user docs current if
-  runtime behavior changes during scalability work.
+- Keep parset/default contracts synchronized whenever runtime, cluster, or
+  strategy options change:
+  - `rapthor/settings/defaults.parset`
+  - `rapthor/settings/defaults.json`
+  - `tests/resources/*parset_dict.template`
+  - `docs/source/parset.rst`
+  - `docs/source/running.rst`
+- Add a tiny user-facing parset smoke lane that starts from
+  `rapthor input.parset` and uses mocked or skipped external tools. This should
+  cover CLI startup, parset materialization, path handling, and runtime
+  bootstrap.
+- Link the scientific glossary into the development docs once it is ready, and
+  use it as the naming reference for future refactors.
+- Re-run the fast branch-health lane before scalability changes:
+  - `tests/lib/test_parset.py`
+  - `tests/execution/test_config.py`
+  - runtime bootstrap tests
+  - CLI tests
+  - lint/import checks for touched files
 
 Done when:
 
-- `rapthor input.parset` has a clear, tested runtime contract for local runs,
-  external Prefect, local Dask, and external Dask.
-- Startup failures happen before expensive pipeline work and explain exactly
-  what the user should fix.
-- A new user can copy commands from the docs and run Rapthor locally with
-  minimal setup friction.
+- CI and local dev runs agree on parset/default snapshots.
+- A developer can change a parset option and know which tests and docs must move
+  with it.
+- One lightweight test starts from `rapthor input.parset`, not only from
+  internal bootstrap helpers.
 
-### 2. Dask Scalability Contracts
+### 2. Benchmark Baseline
 
-Prove that the pipeline can scale across multiple workers or nodes without
-accidentally passing domain objects, huge nested state, or local-only paths.
+Benchmark before changing Dask task boundaries, scheduler behavior, or
+performance-sensitive execution code. The benchmark should identify what to
+optimise next, not just produce one wall-clock number.
+
+Tasks:
+
+- Commit benchmark scenario definitions, runner code, report parsing, and
+  summarization tests to the repository.
+- Use the quick demo for startup overhead, the generated rich demo for the
+  representative Prefect/Dask graph, and later an optional larger science
+  fixture outside the repo for realistic external-tool scaling.
+- Run each scenario from a clean working directory with fixed runtime settings,
+  including local Dask workers, command profiling, dashboard/report options, and
+  external scheduler settings.
+- Repeat each benchmark at least three times on the same machine/container
+  image and report median plus min/max. Treat first-run cache effects
+  separately.
+- Capture:
+  - total wall-clock time
+  - operation and Prefect task durations
+  - `logs/commands.jsonl` command timings
+  - command resource profiles from `prefect_command_profile = time`
+  - Dask performance report HTML
+  - task count, task concurrency, worker idle time, and scheduler gaps
+  - peak memory and disk footprint
+  - output equivalence or checksum status for scientific products
+- Add a CI benchmark job that can run manually or on schedule and publishes:
+  - a Markdown benchmark report artifact
+  - a JSON summary artifact
+  - optionally Dask performance HTML, command logs, and selected run logs
+- Keep bulky generated products and run directories out of git.
+
+Done when:
+
+- The benchmark harness and report-generation tests are committed.
+- CI can produce a Markdown benchmark report artifact.
+- A reproducible rich-demo baseline exists before Dask scalability changes.
+- The report identifies the top wall-clock contributors and the biggest Dask
+  idle or scheduler gaps.
+
+### 3. Dask Scalability Guardrails
+
+Make distributed boundaries explicit before making them finer grained.
 
 Tasks:
 
 - Add payload-size and serialization guard tests for image, calibration,
   predict, mosaic, and concatenate task payloads.
-- Add tests that assert each flow submits the intended task units.
-- Check that all worker payloads are plain serializable data, not `Field`,
+- Assert that worker payloads are plain serializable data, not `Field`,
   `Observation`, `Sector`, or operation instances.
+- Add tests that assert each flow submits the intended task units.
 - Extend resource-request coverage beyond image WSClean MPI paths.
-- Split image-sector orchestration into clearer Dask task boundaries:
+- Add small representative fixture payloads for each operation.
+- Make task-boundary tests assert stable task names where names carry useful
+  domain identifiers such as mode, sector, chunk, observation, image type, or
+  epoch.
+
+Done when:
+
+- Tests and docs make the current Dask task boundaries visible.
+- A developer can see what data each boundary receives.
+- Tests fail if a future refactor sends rich domain objects or oversized
+  payloads to workers.
+
+### 4. First Scalability Slices
+
+Only split work where it improves dashboard clarity, scheduling, or restart
+behavior without fighting external tools.
+
+Tasks:
+
+- Let predict post-processing for an observation start as soon as that
+  observation's model-data outputs are ready.
+- Split image-sector orchestration into clearer task boundaries:
   - prepare one imaging Measurement Set per observation
   - concatenate prepared Measurement Sets
   - run or reuse WSClean
-  - filter source/skymodel products
+  - filter source and skymodel products
   - run diagnostics
   - build image cubes and normalization products
   - compress final images when requested
 - Split mosaic orchestration into template, per-sector regrid, final mosaic,
   and optional compression tasks.
-- Let predict post-processing for an observation start as soon as that
-  observation's model-data outputs are ready.
-- Refine Prefect task names as finer task boundaries land, replacing generic
-  indexes with stable sector, chunk, observation, image type, or epoch
-  identifiers where available.
-- Keep task granularity practical: do not split DP3, WSClean, IDG, or PyBDSF
-  internals into Dask subtasks unless a proven library-level integration exists.
+- Keep calibration solve chunks as the primary calibration parallelism for now.
+  Split collect, plot, and combine only if benchmarks show a bottleneck or a
+  restart benefit.
+- Keep DP3, WSClean, IDG, and PyBDSF as coarse external commands unless a proven
+  library-level integration exists.
 - Document which steps are distributed by Dask and which still run as coarse
   external commands or execution-owned module adapters.
 
 Done when:
 
-- Tests and docs make the Dask task boundaries visible.
-- A developer can see what data each boundary receives.
-- Tests fail if a future refactor sends rich domain objects or oversized
-  payloads to workers.
-- A representative demo run shows meaningful task-stream activity in the Dask
+- A representative demo run shows useful task-stream activity in the Dask
   dashboard without oversubscribing threaded or MPI external tools.
+- Restart and output-record behavior remains unchanged.
+- Scientific equivalence checks still pass.
 
-### 3. Runtime UX: Dry Run And Preflight
+### 5. Runtime UX And Contributor Docs
 
-Make it easier for users to understand likely runtime failures before launching
-a long pipeline run.
+Make Rapthor easier to run and easier to improve.
 
 Tasks:
 
-- Expand dry-run output to show planned operation order, task groups, resource
-  hints, expected outputs, external tools, execution-owned module adapters, and
-  unsupported multi-node features.
-- Improve preflight messages for missing external tools, unsupported container
+- Expand dry-run or preflight output to show planned operation order, task
+  groups, resource hints, expected outputs, external tools, execution-owned
+  module adapters, and unsupported multi-node features.
+- Improve preflight messages for missing tools, unsupported container
   configuration, Slurm/external-Dask mismatch, missing Dask scheduler, and MPI
   WSClean assumptions.
-- Keep dry-run and preflight code independent of Prefect task objects where
-  possible.
+- Show resolved Prefect API mode, Dask scheduler mode, local worker count, and
+  dashboard URLs where known.
+- Add short contributor docs/checklists for:
+  - adding a parset option
+  - modifying an operation
+  - adding an external command helper
+  - adding an execution-owned module adapter
+  - adding a new flow task boundary
+  - converting a legacy utility to an importable module
+- Add a short "how to debug a failed flow" page covering logs, `.done` markers,
+  `.outputs.json`, command records, Prefect run names, Dask dashboard views, and
+  external-command stderr.
 
 Done when:
 
-- A user can run a preflight/dry-run path and understand likely runtime failures
-  without reading flow code.
+- A user can preflight a run and understand likely failures without reading flow
+  code.
+- A contributor can find the owner module, expected tests, and docs updates for
+  common changes.
 
-### 4. Contributor Documentation
-
-Add short docs/checklists for common changes:
-
-- adding a parset option
-- modifying an operation
-- adding an external command helper
-- adding an execution-owned module adapter
-- adding a new flow task boundary
-- converting a legacy utility to an importable module
-
-Include fast test lanes for each change type and point contributors to the
-owner module for payloads, commands, outputs, operation adapters, and Prefect
-flow wiring.
-
-### 5. Deferred Targeted Refactors
+### 6. Deferred Targeted Refactors
 
 Do not split these modules just for tidiness. Split them when changing behavior
 or when a smaller extraction clearly reduces risk:
@@ -345,8 +247,10 @@ or when a smaller extraction clearly reduces risk:
     writing helpers
 - `rapthor.execution.calibrate.h5parm_combination`
   - later move toward named combination strategies
+- `rapthor.operations.calibrate.base` and `rapthor.operations.image.base`
+  - keep adapter size under review, but split only with behavior changes or
+    testable extractions
 
 Keep generated local noise (`__pycache__`, `.tox`, `.ruff_cache`, `runs`,
 `htmlcov`, build outputs, temporary integration/equivalence/demo roots) out of
-repo decisions; clean locally when useful, but do not treat it as source
-structure.
+repo decisions.
