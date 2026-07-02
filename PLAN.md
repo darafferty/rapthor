@@ -17,185 +17,106 @@ aliases, compatibility shims, or test-only production surfaces.
 
 ## Current Status
 
-The main architecture cleanup is complete enough to move from structural
-refactoring into scalability and usability work.
+The main architecture cleanup and script-to-module migration are complete enough
+to move into runtime bootstrap and scalability work.
 
 Completed:
 
 - Execution code is organized by owner package:
   `image`, `calibrate`, `concatenate`, `predict`, `mosaic`, and `pipeline`.
 - Image and calibration operations are package-based adapters.
-- Migrated helper-script logic lives in importable execution modules.
-- Production flows call migrated Python helpers directly, except where shell
-  isolation is still useful for external tools or third-party multiprocessing.
-- Retired helper scripts and the old `plotrapthor` executable are guarded by architecture
-  tests so production code and command fixtures do not reintroduce them.
+- Migrated helper-script logic lives in importable execution modules, and
+  production flows call those modules directly except where shell isolation is
+  still useful for external tools or third-party multiprocessing.
+- Retired helper scripts and the old `plotrapthor` executable are guarded by
+  architecture tests so production code and command fixtures do not reintroduce
+  them.
 - The installed `rapthor` command is exposed through `rapthor.cli:main`.
-- `concat_linc_files` remains a supported installed utility through the package-owned
-  `rapthor.execution.concatenate.linc_cli:main` entry point.
+- `concat_linc_files` remains a supported installed utility through
+  `rapthor.execution.concatenate.linc_cli:main`.
 - Broad execution facades, normalized command wrappers, migration shims, and
   unused runtime abstractions have been removed.
+- Payload contracts, builders, validation, commands, outputs, and flow wiring
+  live with the operation-specific execution code.
 - Command builders are deterministic and tested.
 - Image and calibration command builders use option dataclasses where argument
   groups are stable.
-- Payload contracts, builders, and validation live with operation-specific
-  execution code:
-  - `rapthor.execution.image.contracts/builders/validation.py`
-  - `rapthor.execution.calibrate.contracts/builders/validation.py`
-- Predict sector-model add/subtract now share Measurement Set mechanics through
+- Predict sector-model add/subtract share Measurement Set mechanics through
   `rapthor.execution.predict.measurement_sets`, with direct unit coverage.
 - Scheduler-independent work units are separated from Prefect flow wiring for
   the complex image and calibration paths.
-- Prefect operation flow and task run names now include operation, calibration
-  mode where relevant, cycle, and coarse task identifiers so the dashboard is
-  easier to scan during rich demo and integration runs.
+- Prefect flow and task run names include operation, calibration mode where
+  relevant, cycle, and coarse task identifiers so the dashboard is easier to
+  scan during rich demo and integration runs.
 - The development architecture docs include a current Prefect/Dask
-  orchestration diagram that matches the refactored owner-package layout.
+  orchestration diagram matching the refactored owner-package layout.
 - `calibration_strategy` is the only production interface for solve type and
   solve order. Legacy `do_fulljones_solve` and `do_slowgain_solve` flags are
   retired from production configuration.
 - The default DD strategy is explicit:
   `{"dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"], "di": []}`.
-- Focused calibration integration tests pass for DD, DI, mixed DI/DD ordering,
-  full-Jones, slow-gain, and calibration-option scenarios.
-- The saved CWL equivalence matrix passes against the current scientific
-  contract when run on a filesystem with enough space for WSClean FITS
-  products.
-- A fresh saved CWL equivalence baseline was run on 2026-07-01 at
-  `/tmp/rapthor-equivalence-20260701-current` inside the dev container. All
-  current-contract scenarios passed product comparison. The only warning was an
-  expected non-scientific output-record summary difference for DI full-Jones:
-  the CWL reference stored the full-Jones solution under legacy
-  `fast_phase_solutions`, while the current cleaned contract records it as
-  `fulljones_solutions`.
+- Builder and helper cleanup is complete for the current pass:
+  - shared payload validators are reused directly instead of being aliased as
+    private local helpers
+  - repeated payload validation for optional strings, basenames, string lists,
+    optional file records, and required lists is centralized
+  - non-obvious nested payload checks have concise docstrings
+  - focused payload/contract tests cover the extracted behavior
+  - no obvious compatibility-only private helpers remain in execution or
+    operation modules from this cleanup pass
+- The saved CWL equivalence helper now tolerates the observed sub-percent
+  WSClean beam-fit jitter in image-cube beam sidecars while still comparing
+  image data, h5parm solutions, sky models, operation markers, and output
+  record shapes.
 - Architecture docs and structure docs describe the current execution-owned
   module layout.
 - Dev containers install docs dependencies by default.
 
-Recent verification:
+## Recent Verification
 
-- `tests/execution/test_predict_measurement_sets.py`
-- `tests/execution/test_predict_sector_models.py`
-- `tests/execution/test_predict_flow.py`
-- `tests/execution/test_run_names.py`
-- `tests/architecture/test_import_boundaries.py`
-- `python3 scripts/dev/run_saved_cwl_equivalence.py --run-root /tmp/rapthor-equivalence-20260701-current --stop-on-failure`
+Run in the dev container on 2026-07-01:
+
 - `tox -e lint`
-- Sphinx HTML build in the dev container, with existing documentation warnings
-  tracked as docs cleanup rather than a blocked build.
+- Non-integration tests using the tox split against the prepared dev-container
+  Python environment:
+  - `tests/lib/test_field.py`: 26 passed
+  - Prefect-marked non-integration tests: 42 passed
+  - Remaining non-integration tests with xdist: 928 passed, 2 xfailed
+- Full integration suite with generated runs on `/tmp`:
+  - 25 passed, 1 skipped Slurm-only check, 1 expected xfail
+- Saved CWL equivalence matrix:
+  - all current-contract scenarios passed
+  - report: `/tmp/rapthor-equivalence-20260701-builder-cleanup-final/equivalence-report.json`
+- Rich Prefect/Dask demo:
+  - command completed successfully with `examples/generated/prefect_demo_rich/prefect_demo_rich.parset`
+  - run directory: `/tmp/rapthor-prefect-demo-20260701-builder-cleanup`
+  - local Dask cluster started with 2 workers, Rapthor finished, and the helper
+    shut down Dask and Prefect cleanly
 
-Known caveats:
+Notes:
+
+- `tox -e py310` is not currently a useful local verification path in this dev
+  container because tox creates an isolated environment and tries to build
+  `python-casacore` and `everybeam` without Casacore headers. Use the prepared
+  dev-container Python environment for full local verification unless the tox
+  environment is taught to use the container's system dependencies.
+- Keep large integration, equivalence, and demo run roots on `/tmp` or another
+  spacious filesystem. The workspace mount can fill quickly with WSClean FITS
+  products.
+
+## Known Caveats
 
 - Avoid running multiple pytest processes in parallel unless each run has a
   separate `RAPTHOR_TEST_RUN_ROOT`.
 - Prefect can emit late logging shutdown warnings after passing flow tests.
   Track separately only if it becomes noisy in CI.
-- Do not use the default `/tmp` run root for saved CWL equivalence on a nearly
-  full container filesystem. WSClean writes large intermediate FITS products and
-  can fail with CFITSIO write errors before scientific comparisons run.
 - Pydantic remains a future option for configuration/payload validation. Keep
   contracts and builders clean enough that adopting it later would be
   incremental rather than a rewrite.
 
 ## Next Work Queue
 
-### 1. Regression Guards For Scientific Contracts
-
-Add focused integration/regression checks that protect the scientific behaviour
-we stabilized during the migration.
-
-Current coverage added:
-
-- Solve-slot order, solution labels, per-chunk h5parm prefixes, and collected
-  h5parm filenames are locked in focused operation tests.
-- DD and DI calibration initial-solution handoff now checks that only current
-  cycle h5parms are reused, including full-Jones DI solutions.
-- Existing finalize tests cover final DD/DI solution destinations and auxiliary
-  public solution products.
-- Existing integration tests cover representative DD, DI, mixed DI/DD,
-  full-Jones, slow-gain, and calibration-option command contracts.
-- A focused command-contract test now builds DD execution payloads from
-  operation inputs and asserts that later-cycle DP3 commands do not preapply
-  previous-cycle DI h5parms.
-
-Tasks:
-
-- Keep the saved CWL equivalence runner available as the heavier confidence
-  check for larger scientific or script-migration changes.
-
-Done when:
-
-- Calibration strategy/output regressions fail in focused tests before they
-  require a full manual equivalence investigation.
-
-### 2. Builder And Helper Cleanup
-
-Reduce small pockets of repeated structure that remain after the script and
-flow migrations.
-
-Current cleanup added:
-
-- Concatenate payload validation now uses the shared execution payload
-  validators for basenames and required string lists, rather than hand-rolled
-  local checks.
-- Image payload validation now reuses the shared execution string-list
-  validator instead of keeping a local duplicate.
-- Calibration payload builders and validators now share the same optional file
-  path helper for File records, path strings, and `None`.
-- Predict payload validation now reuses a shared optional-string normalizer for
-  unset values such as `None`, `""`, and `"None"`.
-- Calibration builders and solve execution now share the same required-list
-  validator for non-empty list inputs and exact-length list checks.
-- Image and calibration payload validators now use direct shared-helper names,
-  have concise docstrings for nested contract checks, and have focused payload
-  validation coverage.
-- Predict, mosaic, and image payload builders now use direct shared-helper names,
-  and mosaic payload validation has focused contract tests.
-
-Tasks:
-
-- Review repeated payload-builder and command-builder patterns in:
-  - `rapthor.execution.image.builders`
-  - `rapthor.execution.image.commands`
-  - `rapthor.execution.calibrate.builders`
-  - `rapthor.execution.calibrate.commands`
-  - the smaller predict, mosaic, and concatenate command modules
-- Extract only the shared pieces that remove real duplication without hiding
-  scientific intent or making command construction harder to read.
-- Prefer small option dataclasses or local helper functions for stable argument
-  groups; keep Pydantic as a future validation option rather than introducing it
-  during this cleanup.
-- Review helper and builder function names for readability. Rename vague,
-  slot-specific, or implementation-leaky names when a domain-oriented name
-  makes the intent clearer.
-- Add concise docstrings to non-obvious helpers, especially where a function
-  encodes calibration/image semantics, payload contracts, file naming, or
-  compatibility with external tools.
-- Run a focused dead-code scan for private helpers in `rapthor.execution` and
-  `rapthor.operations`, especially compatibility leftovers and helpers only
-  referenced by tests.
-- Remove unused private helpers when production code no longer calls them, and
-  move test-only setup into tests rather than keeping it in production modules.
-- Add or update focused unit tests for any extracted builder/helper behavior so
-  command strings, payload contracts, and scientific defaults stay locked.
-- Improve focused test coverage for execution and operation modules:
-  - identify low-coverage modules that encode scientific behavior, payload
-    contracts, command construction, output discovery, or failure handling
-  - add tests around edge cases and error paths before refactoring those areas
-  - prefer meaningful contract/regression tests over broad coverage-only tests
-
-Done when:
-
-- Repeated builder logic has either been removed or intentionally left in place
-  with a clear readability reason.
-- Helper names describe the domain concept they implement, and non-obvious
-  helpers have short docstrings explaining why they exist.
-- Coverage gaps in high-risk execution and operation code are either closed by
-  focused tests or recorded with a clear reason to defer.
-- No obvious unused private helpers remain in execution or operation modules.
-- Command and payload tests still describe the production contracts directly.
-
-### 3. Runtime Bootstrap For Prefect And Dask
+### 1. Runtime Bootstrap For Prefect And Dask
 
 Make `rapthor input.parset` succeed predictably whether or not the user has an
 existing Prefect server or Dask cluster.
@@ -247,32 +168,15 @@ Done when:
 - A new user can copy commands from the docs and run Rapthor locally with
   minimal setup friction.
 
-### 4. Dask Scalability Contracts
+### 2. Dask Scalability Contracts
 
 Prove that the pipeline can scale across multiple workers or nodes without
 accidentally passing domain objects, huge nested state, or local-only paths.
 
-Current findings:
-
-- The Dask dashboard can look quiet because the current flow tasks are coarse:
-  one imaging task per sector, one calibration task per time chunk, one mosaic
-  task per image type, one concatenate task per epoch, and one predict task per
-  model-data command or post-process group.
-- Top-level pipeline operation ordering is intentionally sequential because
-  later operations depend on field state and products from earlier operations.
-  Parallelism should therefore be improved inside operation flows first.
-- Long-running external tools such as DP3, WSClean, IDG, and PyBDSF should stay
-  coarse resource-managed tasks. Dask should orchestrate around them rather
-  than trying to split their internal work.
-
 Tasks:
 
-- Add payload-size and serialization guard tests for:
-  - image sector tasks
-  - calibration chunk tasks
-  - predict model/post-process tasks
-  - mosaic image tasks
-  - concatenate epoch tasks
+- Add payload-size and serialization guard tests for image, calibration,
+  predict, mosaic, and concatenate task payloads.
 - Add tests that assert each flow submits the intended task units.
 - Check that all worker payloads are plain serializable data, not `Field`,
   `Observation`, `Sector`, or operation instances.
@@ -288,11 +192,10 @@ Tasks:
 - Split mosaic orchestration into template, per-sector regrid, final mosaic,
   and optional compression tasks.
 - Let predict post-processing for an observation start as soon as that
-  observation's model-data outputs are ready, instead of waiting for all model
-  outputs globally.
-- Refine the current Prefect task names as finer task boundaries land, replacing
-  generic indexes with stable sector, chunk, observation, image type, or epoch
-  identifiers where those identifiers are available in payloads.
+  observation's model-data outputs are ready.
+- Refine Prefect task names as finer task boundaries land, replacing generic
+  indexes with stable sector, chunk, observation, image type, or epoch
+  identifiers where available.
 - Keep task granularity practical: do not split DP3, WSClean, IDG, or PyBDSF
   internals into Dask subtasks unless a proven library-level integration exists.
 - Document which steps are distributed by Dask and which still run as coarse
@@ -302,31 +205,24 @@ Done when:
 
 - Tests and docs make the Dask task boundaries visible.
 - A developer can see what data each boundary receives.
-- The tests fail if a future refactor starts sending rich domain objects or
-  oversized payloads to workers.
+- Tests fail if a future refactor sends rich domain objects or oversized
+  payloads to workers.
 - A representative demo run shows meaningful task-stream activity in the Dask
   dashboard without oversubscribing threaded or MPI external tools.
 
-### 5. Runtime UX: Dry Run And Preflight
+### 3. Runtime UX: Dry Run And Preflight
 
 Make it easier for users to understand likely runtime failures before launching
 a long pipeline run.
 
 Tasks:
 
-- Expand dry-run output to show:
-  - planned operation order
-  - task groups
-  - resource hints
-  - expected outputs
-  - external tools and execution-owned module adapters
-  - unsupported multi-node features
-- Improve preflight messages for:
-  - missing external tools
-  - unsupported container configuration
-  - Slurm/external-Dask mismatch
-  - missing Dask scheduler
-  - MPI WSClean assumptions
+- Expand dry-run output to show planned operation order, task groups, resource
+  hints, expected outputs, external tools, execution-owned module adapters, and
+  unsupported multi-node features.
+- Improve preflight messages for missing external tools, unsupported container
+  configuration, Slurm/external-Dask mismatch, missing Dask scheduler, and MPI
+  WSClean assumptions.
 - Keep dry-run and preflight code independent of Prefect task objects where
   possible.
 
@@ -335,7 +231,7 @@ Done when:
 - A user can run a preflight/dry-run path and understand likely runtime failures
   without reading flow code.
 
-### 6. Contributor Documentation
+### 4. Contributor Documentation
 
 Add short docs/checklists for common changes:
 
@@ -350,7 +246,7 @@ Include fast test lanes for each change type and point contributors to the
 owner module for payloads, commands, outputs, operation adapters, and Prefect
 flow wiring.
 
-### 7. Deferred Targeted Refactors
+### 5. Deferred Targeted Refactors
 
 Do not split these modules just for tidiness. Split them when changing behavior
 or when a smaller extraction clearly reduces risk:
@@ -364,5 +260,6 @@ or when a smaller extraction clearly reduces risk:
   - later move toward named combination strategies
 
 Keep generated local noise (`__pycache__`, `.tox`, `.ruff_cache`, `runs`,
-`htmlcov`, build outputs) out of repo decisions; clean locally when useful, but
-do not treat it as source structure.
+`htmlcov`, build outputs, temporary integration/equivalence/demo roots) out of
+repo decisions; clean locally when useful, but do not treat it as source
+structure.
