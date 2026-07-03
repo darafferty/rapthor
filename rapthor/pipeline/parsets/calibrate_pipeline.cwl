@@ -1197,8 +1197,10 @@ steps:
 {% endif %}
       - id: numthreads
         source: max_threads
+{% if not use_wsclean_predict %}
       - id: modeldatacolumn
         source: modeldatacolumn
+{% endif %}
       - id: solve1_h5parm
         source: output_solve1_h5parm
       - id: solve1_solint

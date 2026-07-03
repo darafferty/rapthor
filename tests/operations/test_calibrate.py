@@ -952,3 +952,27 @@ class TestCalibrate:
             "collect_fast_phases/outh5parm",
         ]
         assert h5parm_input["pickValue"] == "first_non_null"
+
+    def test_wsclean_predict_model_columns_are_not_overwritten(self):
+        template = env_parset.get_template("calibrate_pipeline.cwl")
+        workflow = yaml.safe_load(
+            template.render(
+                {
+                    "use_image_based_predict": False,
+                    "use_wsclean_predict": True,
+                    "generate_screens": False,
+                    "do_slowgain_solve": False,
+                    "max_cores": None,
+                    "rapthor_pipeline_dir": str(Path(rapthor.__file__).parent / "pipeline"),
+                }
+            )
+        )
+
+        solve_step = workflow_step(workflow, "solve")
+        modeldatacolumn_inputs = [
+            entry for entry in solve_step["in"] if entry["id"] == "modeldatacolumn"
+        ]
+
+        assert modeldatacolumn_inputs == [
+            {"id": "modeldatacolumn", "source": "wsclean_predict_readpatches/patches"}
+        ]
