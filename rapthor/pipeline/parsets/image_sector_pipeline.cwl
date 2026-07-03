@@ -197,6 +197,13 @@ inputs:
       solutions (length = 1).
     type: File?
 
+  - id: prepare_data_h5parm
+    label: Filename of pre-apply h5parm
+    doc: |
+      The filename of the h5parm file with the calibration solutions to pre-apply
+      before imaging (length = 1).
+    type: File?
+
   - id: fulljones_h5parm
     label: Filename of h5parm
     doc: |
@@ -747,7 +754,7 @@ steps:
         source: central_patch_name
 {% endif %}
       - id: h5parm
-        source: h5parm
+        source: prepare_data_h5parm
       - id: fulljones_h5parm
         source: fulljones_h5parm
       - id: normalize_h5parm

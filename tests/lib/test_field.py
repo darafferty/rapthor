@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest
 
 from rapthor.lib.field import Field
+from rapthor.lib.strategy import set_image_strategy
 
 
 @pytest.fixture
@@ -146,6 +147,46 @@ def test_set_calibration_strategy_legacy_default(field, do_slowgain_solve, do_fu
         "di": [*(["full_jones"] if do_fulljones_solve else [])],
     }
     assert field.calibration_strategy == expected_strategy
+
+
+def test_update_image_strategy_without_calibration(field, monkeypatch):
+    """Image-only strategy steps should update without calibration-only parameters."""
+    monkeypatch.setattr(field, "update_skymodels", lambda *args, **kwargs: None)
+    monkeypatch.setattr(field, "remove_skymodels", lambda: None)
+    field.parset["regroup_input_skymodel"] = False
+    field.outlier_sectors = []
+    field.bright_source_sectors = []
+
+    step_dict = set_image_strategy(field)[0]
+    field.update(step_dict, index=1, final=True)
+
+    assert field.do_calibrate is False
+    assert field.do_image is True
+    assert field.do_fulljones_solve is False
+
+
+def test_update_later_image_only_cycle_reuses_previous_solution_layout(field, monkeypatch):
+    """Later image-only cycles must keep the layout used by previous scalar solutions."""
+
+    def fail_update_skymodels(*args, **kwargs):
+        raise AssertionError("update_skymodels should not be called")
+
+    def fail_remove_skymodels():
+        raise AssertionError("remove_skymodels should not be called")
+
+    monkeypatch.setattr(field, "update_skymodels", fail_update_skymodels)
+    monkeypatch.setattr(field, "remove_skymodels", fail_remove_skymodels)
+    field.h5parm_filename = "previous-solutions.h5"
+    field.dd_h5parm_filename = "previous-solutions.h5"
+    field.outlier_sectors = []
+    field.bright_source_sectors = []
+
+    step_dict = set_image_strategy(field)[0]
+    step_dict["regroup_model"] = False
+    field.update(step_dict, index=2, final=True)
+
+    assert field.do_calibrate is False
+    assert field.do_image is True
 
 
 @pytest.mark.parametrize(
