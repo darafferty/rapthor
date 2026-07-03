@@ -35,7 +35,6 @@ from lsmtool.facet import read_ds9_region_file, read_skymodel
 from matplotlib.patches import Ellipse
 from matplotlib.pyplot import figure
 
-
 _SKYMODEL_WRITE_UNITS = {
     "Ra": u.deg,
     "Dec": u.deg,
