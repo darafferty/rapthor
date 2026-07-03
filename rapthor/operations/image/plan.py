@@ -144,6 +144,8 @@ def build_image_applycal_steps(
     apply_amplitudes: bool,
     apply_normalizations: bool,
     apply_none: bool,
+    di_apply_amplitudes: Optional[bool] = None,
+    dd_apply_amplitudes: Optional[bool] = None,
 ) -> tuple[list[str], Optional[str]]:
     """
     Build prepare-imaging applycal steps and select the scalar h5parm to apply.
@@ -154,6 +156,11 @@ def build_image_applycal_steps(
     """
     if apply_none:
         return [], None
+
+    if di_apply_amplitudes is None:
+        di_apply_amplitudes = apply_amplitudes
+    if dd_apply_amplitudes is None:
+        dd_apply_amplitudes = apply_amplitudes
 
     strategy = calibration_strategy or {}
     di_phase_solves = {
@@ -179,7 +186,8 @@ def build_image_applycal_steps(
                 if scalar_h5parm is not None and selected_scalar_h5parm is None:
                     selected_scalar_h5parm = scalar_h5parm
                 continue
-            if solve == "slow_gains" and not apply_amplitudes:
+            mode_apply_amplitudes = dd_apply_amplitudes if mode == "dd" else di_apply_amplitudes
+            if solve == "slow_gains" and not mode_apply_amplitudes:
                 continue
             if mode == "di" and solve == "slow_gains" and di_phase_solves:
                 continue

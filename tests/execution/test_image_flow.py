@@ -611,6 +611,7 @@ def _image_input_parms():
         "join_polarizations": False,
         "prepare_data_steps": "[applybeam,shift,avg,bdaavg]",
         "prepare_data_applycal_steps": None,
+        "prepare_data_h5parm": None,
         "h5parm": None,
         "fulljones_h5parm": None,
         "input_normalize_h5parm": None,
@@ -1378,6 +1379,7 @@ def test_image_payload_from_inputs_builds_serializable_facet_payload(tmp_path):
     sector = payload["sectors"][0]
     assert sector["use_facets"] is True
     assert sector["h5parm"] == "/data/facet-solutions.h5"
+    assert sector["prepare_data_h5parm"] is None
     assert sector["facet_skymodel"] == "/data/calibration.skymodel"
     assert sector["facet_region_filename"] == "sector_1_facets_ds9.reg"
     assert sector["facet_region_path"] == str(tmp_path / "sector_1_facets_ds9.reg")
@@ -1391,6 +1393,19 @@ def test_image_payload_from_inputs_builds_serializable_facet_payload(tmp_path):
     assert sector["diagonal_visibilities"] is False
     assert sector["shared_facet_reads"] is True
     assert sector["shared_facet_writes"] is True
+
+
+def test_image_payload_from_inputs_keeps_prepare_and_facet_h5parms_separate(tmp_path):
+    input_parms = _facet_image_input_parms()
+    input_parms["prepare_data_steps"] = "[applybeam,shift,applycal]"
+    input_parms["prepare_data_applycal_steps"] = "[slowgain]"
+    input_parms["prepare_data_h5parm"] = file_record("/data/di-solutions.h5")
+
+    payload = image_payload_from_inputs(input_parms, tmp_path, use_facets=True)
+
+    sector = payload["sectors"][0]
+    assert sector["prepare_data_h5parm"] == "/data/di-solutions.h5"
+    assert sector["h5parm"] == "/data/facet-solutions.h5"
 
 
 def test_image_payload_from_inputs_builds_serializable_screen_payload(tmp_path):

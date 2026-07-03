@@ -49,6 +49,7 @@ class ImageSectorPayload(TypedDict):
     timebase: Optional[float]
     phasecenter: str
     h5parm: Optional[str]
+    prepare_data_h5parm: Optional[str]
     fulljones_h5parm: Optional[str]
     input_normalize_h5parm: Optional[str]
     prepare_data_steps: str

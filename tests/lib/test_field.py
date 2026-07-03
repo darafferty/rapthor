@@ -1,8 +1,9 @@
 from pathlib import Path
 
+import lsmtool
 import pytest
 
-from rapthor.lib.field import Field
+from rapthor.lib.field import Field, _ensure_skymodel_write_units
 
 
 @pytest.fixture
@@ -148,6 +149,53 @@ def test_update_skymodels_ignores_empty_apparent_sky_without_patches(field, tmp_
         field.update_skymodels(6, False)
 
     assert captured["skymodel_apparent_sky"] is None
+
+
+def test_update_skymodels_handles_empty_previous_cycle_sky_model(field, tmp_path, monkeypatch):
+    empty_skymodel = "FORMAT = Name, Type, Ra, Dec, I\n"
+    true_sky = tmp_path / "sector_1.true_sky.txt"
+    apparent_sky = tmp_path / "sector_1.apparent_sky.txt"
+    true_sky.write_text(empty_skymodel, encoding="utf-8")
+    apparent_sky.write_text(empty_skymodel, encoding="utf-8")
+
+    class Sector:
+        name = "sector_1"
+        image_skymodel_file_true_sky = true_sky
+        image_skymodel_file_apparent_sky = apparent_sky
+
+        def make_vertices_file(self):
+            pass
+
+        def make_region_file(self, _region_file):
+            pass
+
+    field.imaging_sectors = [Sector()]
+    field.imaged_sources_only = True
+    monkeypatch.setattr(field, "plot_overview", lambda *args, **kwargs: None)
+
+    field.update_skymodels(6, False)
+
+    assert field.calibrator_patch_names == []
+    assert field.calibrator_fluxes == []
+    assert field.calibrator_positions == {}
+    assert field.num_patches == 0
+    assert field.get_calibration_radius() == 0.0
+    assert field.outlier_sectors == []
+    assert field.bright_source_sectors == []
+    assert field.predict_sectors == []
+
+
+def test_empty_skymodel_write_units_are_restored(tmp_path):
+    empty_skymodel = tmp_path / "empty_skymodel.txt"
+    empty_skymodel.write_text("FORMAT = Name, Type, Ra, Dec, I\n", encoding="utf-8")
+
+    skymodel = lsmtool.load(str(empty_skymodel))
+    _ensure_skymodel_write_units(skymodel)
+
+    output_skymodel = tmp_path / "output_skymodel.txt"
+    skymodel.write(str(output_skymodel), clobber=True)
+
+    assert output_skymodel.read_text(encoding="utf-8").startswith("FORMAT = Name, Type, Ra, Dec, I")
 
 
 def test_find_intersecting_sources(field):

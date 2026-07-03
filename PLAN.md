@@ -1,6 +1,6 @@
 # Rapthor Architecture Refactor Plan
 
-Status snapshot: 2026-07-02.
+Status snapshot: 2026-07-03.
 
 ## Goal
 
@@ -45,6 +45,10 @@ Dask scalability work.
 - `calibration_strategy` is the production interface for solve type and solve
   order. Legacy `do_fulljones_solve` and `do_slowgain_solve` flags are retired
   from production configuration.
+- Image-only cycles can carry forward prior calibration products when
+  `do_image = True` and `do_calibrate = False`. DI calibration products are
+  pre-applied during imaging preparation, while DD calibration products are
+  passed to imaging for on-the-fly application.
 - Initial CLI runtime bootstrap is in place for Prefect API mode, external
   Prefect health checks, external Dask scheduler checks, local Dask setup, local
   Dask worker sizing, and startup logging.
@@ -102,6 +106,18 @@ Tasks:
   especially for strategy tokens such as `slow_gains`.
 - Keep test isolation for Rapthor run-log handlers intact when changing parset
   setup, working-directory handling, or logging.
+- Keep image-only calibration-application coverage explicit:
+  - supplied DD h5parm plus supplied sky model images on the fly
+  - previous-cycle DI full-Jones pre-apply plus DD facet application
+  - previous-cycle DD slow diagonal gains applied on the fly
+  - previous-cycle DI slow gains pre-applied while DD phase solutions remain
+    on the fly
+  - carried-forward DD h5parms use the calibration skymodel/facet directions
+    from the cycle that produced the h5parm
+  - image-only cycles with no detected sources keep empty sky models writable
+    and continue with zero calibration patches rather than inventing directions
+- Preserve the payload distinction between `prepare_data_h5parm` for DP3
+  pre-apply and `h5parm` for imaging-time facet/DD application.
 - Re-run the fast branch-health lane before scalability changes:
   - `tests/lib/test_parset.py`
   - `tests/execution/test_config.py`

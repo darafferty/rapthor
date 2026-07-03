@@ -130,6 +130,75 @@ def image_only_strategy_path(tmp_path):
     return strategy_path
 
 
+@pytest.fixture
+def calibrate_then_image_only_strategy_path(tmp_path):
+    """Strategy file that self-calibrates once, then runs a final image-only pass."""
+    calibration_strategy = {"di": ["full_jones"], "dd": ["fast_phase"]}
+    strategy_steps = [
+        make_strategy_step(
+            do_calibrate=True,
+            do_image=True,
+            calibration_strategy=calibration_strategy,
+        ),
+        make_strategy_step(
+            do_calibrate=False,
+            do_image=True,
+            regroup_model=False,
+            calibration_strategy=calibration_strategy,
+        ),
+    ]
+    strategy_content = f"strategy_steps = {strategy_steps}"
+    strategy_path = tmp_path / "calibrate_then_image_only_strategy.py"
+    strategy_path.write_text(strategy_content)
+    return strategy_path
+
+
+@pytest.fixture
+def dd_slow_then_image_only_strategy_path(tmp_path):
+    """Strategy file that applies DD slow gains on the fly during image-only imaging."""
+    calibration_strategy = {"dd": ["slow_gains"], "di": []}
+    strategy_steps = [
+        make_strategy_step(
+            do_calibrate=True,
+            do_image=True,
+            calibration_strategy=calibration_strategy,
+        ),
+        make_strategy_step(
+            do_calibrate=False,
+            do_image=True,
+            regroup_model=False,
+            calibration_strategy=calibration_strategy,
+        ),
+    ]
+    strategy_content = f"strategy_steps = {strategy_steps}"
+    strategy_path = tmp_path / "dd_slow_then_image_only_strategy.py"
+    strategy_path.write_text(strategy_content)
+    return strategy_path
+
+
+@pytest.fixture
+def di_slow_dd_fast_then_image_only_strategy_path(tmp_path):
+    """Strategy file that pre-applies DI slow gains and applies DD gains on the fly."""
+    calibration_strategy = {"di": ["slow_gains"], "dd": ["fast_phase"]}
+    strategy_steps = [
+        make_strategy_step(
+            do_calibrate=True,
+            do_image=True,
+            calibration_strategy=calibration_strategy,
+        ),
+        make_strategy_step(
+            do_calibrate=False,
+            do_image=True,
+            regroup_model=False,
+            calibration_strategy=calibration_strategy,
+        ),
+    ]
+    strategy_content = f"strategy_steps = {strategy_steps}"
+    strategy_path = tmp_path / "di_slow_dd_fast_then_image_only_strategy.py"
+    strategy_path.write_text(strategy_content)
+    return strategy_path
+
+
 @pytest.fixture(
     params=[True, False],
     ids=["peel_bright_sources_enabled", "peel_bright_sources_disabled"],

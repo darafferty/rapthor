@@ -41,7 +41,7 @@ def prepare_and_concatenate_visibilities(
                     steps=str(sector["prepare_data_steps"]),
                     maxinterval=prepare_task.get("maxinterval"),
                     timebase=sector.get("timebase"),
-                    h5parm=sector.get("h5parm"),
+                    h5parm=sector.get("prepare_data_h5parm"),
                     fulljones_h5parm=sector.get("fulljones_h5parm"),
                     normalize_h5parm=sector.get("input_normalize_h5parm"),
                     central_patch_name=sector.get("central_patch_name"),

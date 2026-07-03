@@ -690,6 +690,7 @@ class TestImage:
         field.calibration_strategy = calibration_strategy
 
         image.apply_amplitudes = apply_amplitudes
+        field.di_apply_amplitudes = apply_amplitudes
 
         # Create a temporary fake normalize/fulljones h5parm so FileRecord can resolve it,
         # but only when the respective calibration was actually performed.
@@ -698,7 +699,7 @@ class TestImage:
         if "full_jones" in calibration_strategy.get("di", []):
             field.fulljones_h5parm_filename = str(h5parm_file)
 
-        steps, _, _ = image._build_applycal_steps()
+        steps, _, _, _ = image._build_applycal_steps()
         assert steps == expected_steps
 
     def test_build_applycal_steps_keeps_mediumphase_for_imaging_prepare_data(
@@ -713,7 +714,7 @@ class TestImage:
         image.use_facets = False
         image.set_parset_parameters()
 
-        steps, _, _ = image._build_applycal_steps()
+        steps, _, _, _ = image._build_applycal_steps()
 
         assert steps == "[fastphase,mediumphase]"
 
@@ -736,7 +737,7 @@ class TestImage:
         image.set_parset_parameters()
         image.apply_amplitudes = True
 
-        steps, _, _ = image._build_applycal_steps()
+        steps, _, _, _ = image._build_applycal_steps()
 
         assert steps == "[fastphase,slowgain]"
         assert image._selected_applycal_h5parm == str(h5parm_file)
@@ -911,10 +912,11 @@ class TestImage:
         image.apply_amplitudes = True
         image.apply_normalizations = False
 
-        steps, _, _ = image._build_applycal_steps()
+        steps, _, _, _ = image._build_applycal_steps()
 
         assert steps is None
-        assert image._selected_applycal_h5parm == str(h5parm_file)
+        assert image._selected_applycal_h5parm is None
+        assert image._selected_imaging_h5parm == str(h5parm_file)
 
     def test_build_image_applycal_steps_selects_facets_h5parm_without_preapply(self):
         steps, selected_h5parm = build_image_applycal_steps(
@@ -944,17 +946,19 @@ class TestImage:
         image.apply_amplitudes = True
         image.apply_normalizations = False
 
-        steps, _, _ = image._build_applycal_steps()
+        steps, _, _, _ = image._build_applycal_steps()
 
         assert steps is None
         assert image._selected_applycal_h5parm is None
+        assert image._selected_imaging_h5parm is None
 
     def test_set_input_parameters_dd_slow_only_facets_get_h5parm(self, field, h5parm_file):
         """Single DD slow-gain phase solves still provide an h5parm to WSClean facets."""
         _prepare_field_for_image(field, h5parm_filename=h5parm_file)
         field.dd_h5parm_filename = str(h5parm_file)
         field.calibration_strategy = {"dd": ["slow_gains"]}
-        field.apply_amplitudes = False
+        field.apply_amplitudes = True
+        field.apply_diagonal_solutions = True
 
         image = Image(field=field, index=1)
         image.use_facets = True
@@ -963,7 +967,63 @@ class TestImage:
         image.set_input_parameters()
 
         assert image.input_parms["prepare_data_applycal_steps"] is None
+        assert image.input_parms["prepare_data_h5parm"] is None
         assert image.input_parms["h5parm"]["path"] == str(h5parm_file)
+        assert image.input_parms["soltabs"] == "amplitude000,phase000"
+        assert image.input_parms["diagonal_visibilities"] is True
+        assert image.input_parms["scalar_visibilities"] is False
+
+    def test_set_input_parameters_preapplies_di_slow_and_images_with_dd_facets(
+        self, field, h5parm_file, tmp_path
+    ):
+        """DI slow gains are pre-applied while DD gains remain WSClean facet inputs."""
+        di_h5parm = tmp_path / "di-solutions.h5"
+        di_h5parm.touch()
+        _prepare_field_for_image(field, h5parm_filename=h5parm_file)
+        field.di_h5parm_filename = str(di_h5parm)
+        field.di_h5parm_cycle_number = 1
+        field.di_apply_amplitudes = True
+        field.dd_h5parm_filename = str(h5parm_file)
+        field.dd_h5parm_cycle_number = 1
+        field.calibration_strategy = {"di": ["slow_gains"], "dd": ["fast_phase"]}
+        field.apply_amplitudes = False
+
+        image = Image(field=field, index=1)
+        image.use_facets = True
+        image.apply_normalizations = False
+        image.set_parset_parameters()
+        image.set_input_parameters()
+
+        assert image.input_parms["prepare_data_applycal_steps"] == "[slowgain]"
+        assert image.input_parms["prepare_data_h5parm"]["path"] == str(di_h5parm)
+        assert image.input_parms["h5parm"]["path"] == str(h5parm_file)
+        assert image._selected_applycal_h5parm == str(di_h5parm)
+        assert image._selected_imaging_h5parm == str(h5parm_file)
+
+    def test_image_only_cycle_can_reuse_previous_cycle_solutions(self, field, h5parm_file, tmp_path):
+        """Explicit image-only cycles carry forward prior calibration products."""
+        _prepare_field_for_image(field, h5parm_filename=h5parm_file)
+        previous_calibration_skymodel = field.calibration_skymodel_file
+        current_calibration_skymodel = tmp_path / "calibrate_2" / "calibration_skymodel.txt"
+        current_calibration_skymodel.parent.mkdir()
+        current_calibration_skymodel.write_text("FORMAT = Name, Type, Ra, Dec, I\n")
+        field.calibration_skymodel_file = str(current_calibration_skymodel)
+        field.calibration_skymodel_file_prev_cycle = previous_calibration_skymodel
+        field.dd_h5parm_filename = str(h5parm_file)
+        field.dd_h5parm_cycle_number = 1
+        field.calibration_strategy = {"dd": ["fast_phase"]}
+        field.do_image = True
+        field.do_calibrate = False
+
+        image = Image(field=field, index=2)
+        image.use_facets = True
+        image.apply_normalizations = False
+        image.set_parset_parameters()
+        image.set_input_parameters()
+
+        assert image.input_parms["prepare_data_applycal_steps"] is None
+        assert image.input_parms["h5parm"]["path"] == str(h5parm_file)
+        assert image.input_parms["skymodel"]["path"] == previous_calibration_skymodel
 
     def test_image_operation_sets_mask_file(
         self, field, h5parm_file, monkeypatch, expected_image_output

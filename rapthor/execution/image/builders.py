@@ -125,6 +125,7 @@ def image_payload_from_inputs(
     h5parm = optional_file_record_path(input_parms.get("h5parm"))
     if (apply_screens or use_facets) and h5parm is None:
         raise ValueError("h5parm must be a File record for screen or facet imaging")
+    prepare_data_h5parm = optional_file_record_path(input_parms.get("prepare_data_h5parm"))
     interval = None
     if apply_screens:
         interval_value = input_parms.get("interval")
@@ -288,6 +289,7 @@ def image_payload_from_inputs(
                 "timebase": input_parms["image_timebase"][sector_index],
                 "phasecenter": str(input_parms["phasecenter"][sector_index]),
                 "h5parm": h5parm,
+                "prepare_data_h5parm": prepare_data_h5parm,
                 "fulljones_h5parm": fulljones_h5parm,
                 "input_normalize_h5parm": input_normalize_h5parm,
                 "prepare_data_steps": str(input_parms["prepare_data_steps"]),

@@ -125,6 +125,30 @@ class Image(Operation):
             cycle_attr="h5parm_cycle_number",
         )
 
+    def _can_use_carried_forward_solution(self, cycle_number):
+        return (
+            bool(getattr(self.field, "do_image", False))
+            and not bool(getattr(self.field, "do_calibrate", True))
+            and cycle_number < self.index
+        )
+
+    def _facet_skymodel_file(self):
+        imaging_h5parm = getattr(self, "_selected_imaging_h5parm", None)
+        if imaging_h5parm is None:
+            return self.field.calibration_skymodel_file
+
+        cycle_number = self.field.solution_cycle_number(
+            imaging_h5parm,
+            "dd_h5parm_cycle_number",
+        )
+        if not self._can_use_carried_forward_solution(cycle_number):
+            return self.field.calibration_skymodel_file
+
+        previous_skymodel = getattr(self.field, "calibration_skymodel_file_prev_cycle", None)
+        if previous_skymodel is not None and os.path.exists(previous_skymodel):
+            return previous_skymodel
+        return self.field.calibration_skymodel_file
+
     def _resolve_scalar_applycal_h5parms(self):
         dd_h5parm = getattr(self.field, "dd_h5parm_filename", None)
         di_h5parm = getattr(self.field, "di_h5parm_filename", None)
@@ -150,7 +174,11 @@ class Image(Operation):
             return False
 
         cycle_number = self.field.solution_cycle_number(h5parm_filename, cycle_attr)
-        if cycle_number is None or cycle_number == self.index:
+        if (
+            cycle_number is None
+            or cycle_number == self.index
+            or self._can_use_carried_forward_solution(cycle_number)
+        ):
             return True
 
         log.warning(
@@ -175,20 +203,26 @@ class Image(Operation):
         solution is selected.
         """
         if self.apply_none:
-            return None, None, None
+            self._selected_applycal_h5parm = None
+            self._selected_imaging_h5parm = None
+            return None, None, None, None
 
         fulljones_h5parm = None
         input_normalize_h5parm = None
         dd_h5parm, di_h5parm = self._resolve_scalar_applycal_h5parms()
+        self._selected_imaging_h5parm = dd_h5parm if self.use_facets else None
+        prepare_dd_h5parm = None if self.use_facets else dd_h5parm
         steps, self._selected_applycal_h5parm = build_image_applycal_steps(
             getattr(self.field, "calibration_strategy", None),
-            dd_h5parm=dd_h5parm,
+            dd_h5parm=prepare_dd_h5parm,
             di_h5parm=di_h5parm,
             has_fulljones_h5parm=self.field.fulljones_h5parm_filename is not None,
             use_facets=self.use_facets,
             apply_amplitudes=self.apply_amplitudes,
             apply_normalizations=self.apply_normalizations,
             apply_none=self.apply_none,
+            di_apply_amplitudes=getattr(self.field, "di_apply_amplitudes", self.apply_amplitudes),
+            dd_apply_amplitudes=self.apply_amplitudes,
         )
 
         if "fulljones" in steps:
@@ -196,10 +230,15 @@ class Image(Operation):
         if "normalization" in steps:
             input_normalize_h5parm = FileRecord(self.field.normalize_h5parm).to_json()
         if len(steps) == 0:
-            return None, None, None
+            return None, None, fulljones_h5parm, input_normalize_h5parm
 
         formatted = f"[{','.join(steps)}]" if steps else None
-        return formatted, fulljones_h5parm, input_normalize_h5parm
+        applycal_h5parm = (
+            FileRecord(self._selected_applycal_h5parm).to_json()
+            if self._selected_applycal_h5parm is not None
+            else None
+        )
+        return formatted, applycal_h5parm, fulljones_h5parm, input_normalize_h5parm
 
     def _sector_observation_filenames(self, sector):
         if self.do_predict:
@@ -315,7 +354,12 @@ class Image(Operation):
         # Set the DP3 steps and applycal steps depending on whether solutions
         # should be preapplied before imaging and on whether baseline-dependent
         # averaging is activated (and supported) or not
-        prepare_data_applycal_steps, fulljones_h5parm, input_normalize_h5parm = (
+        (
+            prepare_data_applycal_steps,
+            prepare_data_h5parm,
+            fulljones_h5parm,
+            input_normalize_h5parm,
+        ) = (
             self._build_applycal_steps()
         )
         all_regular = all(obs.channels_are_regular for obs in self.field.observations)
@@ -329,9 +373,14 @@ class Image(Operation):
         prepare_data_steps = f"[{','.join(prepare_data_steps)}]"
 
         # Set the h5parm to use to apply the DD solutions as needed.
+        imaging_h5parm = (
+            self._selected_imaging_h5parm
+            if getattr(self, "_selected_imaging_h5parm", None) is not None
+            else self._selected_applycal_h5parm
+        )
         h5parm = (
-            FileRecord(self._selected_applycal_h5parm).to_json()
-            if getattr(self, "_selected_applycal_h5parm", None) is not None
+            FileRecord(imaging_h5parm).to_json()
+            if imaging_h5parm is not None
             else None
         )
         first_observation = self.field.observations[0]
@@ -370,6 +419,7 @@ class Image(Operation):
             "join_polarizations": join_polarizations,
             "prepare_data_steps": prepare_data_steps,
             "prepare_data_applycal_steps": prepare_data_applycal_steps,
+            "prepare_data_h5parm": prepare_data_h5parm,
             "h5parm": h5parm,
             "fulljones_h5parm": fulljones_h5parm,
             "input_normalize_h5parm": input_normalize_h5parm,
@@ -446,9 +496,7 @@ class Image(Operation):
         self.input_parms["shared_facet_rw"] = self._shared_facet_rw_enabled()
         if not self.apply_none and self.use_facets:
             # For faceting, we need inputs for making the ds9 facet region files
-            self.input_parms.update(
-                {"skymodel": FileRecord(self.field.calibration_skymodel_file).to_json()}
-            )
+            self.input_parms.update({"skymodel": FileRecord(self._facet_skymodel_file()).to_json()})
             ra_mid = []
             dec_mid = []
             width_ra = []

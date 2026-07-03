@@ -36,6 +36,28 @@ from matplotlib.patches import Ellipse
 from matplotlib.pyplot import figure
 
 
+_SKYMODEL_WRITE_UNITS = {
+    "Ra": u.deg,
+    "Dec": u.deg,
+    "I": u.Jy,
+    "I-Apparent": u.Jy,
+    "Q": u.Jy,
+    "U": u.Jy,
+    "V": u.Jy,
+    "MajorAxis": u.arcsec,
+    "MinorAxis": u.arcsec,
+    "Orientation": u.deg,
+    "ReferenceFrequency": u.Hz,
+}
+
+
+def _ensure_skymodel_write_units(skymodel):
+    """Restore unit metadata required when LSMTool writes empty sky models."""
+    for column_name, unit in _SKYMODEL_WRITE_UNITS.items():
+        if column_name in skymodel.table.colnames and skymodel.table[column_name].unit is None:
+            skymodel.table[column_name].unit = unit
+
+
 class Field(object):
     """
     The Field object stores parameters needed for processing of the field
@@ -142,6 +164,7 @@ class Field(object):
         ]
         self.cycle_number = 1
         self.apply_amplitudes = False
+        self.di_apply_amplitudes = False
         self.generate_screens = False
         self.apply_screens = False
         self.generate_screens = False
@@ -530,10 +553,14 @@ class Field(object):
             dst_dir_prev_cycle = os.path.join(
                 self.working_dir, "skymodels", f"calibrate_{index - 1}"
             )
+            self.calibration_skymodel_file_prev_cycle = os.path.join(
+                dst_dir_prev_cycle, "calibration_skymodel.txt"
+            )
             self.calibrators_only_skymodel_file_prev_cycle = os.path.join(
                 dst_dir_prev_cycle, "calibrators_only_skymodel.txt"
             )
         else:
+            self.calibration_skymodel_file_prev_cycle = None
             self.calibrators_only_skymodel_file_prev_cycle = None
 
         # Make output directories for new sky models and define filenames
@@ -624,6 +651,7 @@ class Field(object):
         # manipulation
         if self.generate_screens:
             calibration_skymodel = skymodel_true_sky
+            _ensure_skymodel_write_units(calibration_skymodel)
             calibration_skymodel.write(self.calibration_skymodel_file, clobber=True)
             self.calibration_skymodel = calibration_skymodel
             self.calibrators_only_skymodel = calibration_skymodel
@@ -642,8 +670,21 @@ class Field(object):
         if find_sources:
             self.log.info("Identifying sources...")
             source_skymodel.group("threshold", FWHM="40.0 arcsec", threshold=0.05)
+        _ensure_skymodel_write_units(source_skymodel)
         source_skymodel.write(self.source_skymodel_file, clobber=True)
         self.source_skymodel = source_skymodel.copy()  # save and make copy before grouping
+        if len(source_skymodel) == 0:
+            self.log.warning("Sky model contains no sources; continuing without calibration patches.")
+            calibration_skymodel = skymodel_true_sky.copy()
+            _ensure_skymodel_write_units(calibration_skymodel)
+            calibration_skymodel.write(self.calibration_skymodel_file, clobber=True)
+            calibration_skymodel.write(self.calibrators_only_skymodel_file, clobber=True)
+            calibration_skymodel.write(self.bright_source_skymodel_file, clobber=True)
+            self.calibration_skymodel = calibration_skymodel.copy()
+            self.calibrators_only_skymodel = calibration_skymodel.copy()
+            self.bright_source_skymodel = calibration_skymodel.copy()
+            self.target_flux = target_flux
+            return
 
         # Find groups of bright sources to use as basis for calibrator patches
         # and for subtraction if desired. The patch positions are set to the
@@ -894,6 +935,7 @@ class Field(object):
             lsmtool.utils.transfer_patches(
                 skymodel_true_sky, bright_source_skymodel, patch_dict=patch_dict
             )
+        _ensure_skymodel_write_units(bright_source_skymodel)
         bright_source_skymodel.write(self.calibrators_only_skymodel_file, clobber=True)
         self.calibrators_only_skymodel = bright_source_skymodel.copy()
 
@@ -916,9 +958,11 @@ class Field(object):
 
         # Write sky models to disk for use in calibration, etc.
         calibration_skymodel = skymodel_true_sky
+        _ensure_skymodel_write_units(calibration_skymodel)
         calibration_skymodel.write(self.calibration_skymodel_file, clobber=True)
         self.calibration_skymodel = calibration_skymodel
         if len(bright_source_skymodel) > 0:
+            _ensure_skymodel_write_units(bright_source_skymodel)
             bright_source_skymodel.write(self.bright_source_skymodel_file, clobber=True)
         self.bright_source_skymodel = bright_source_skymodel
 
@@ -1147,13 +1191,14 @@ class Field(object):
 
         # Save the number of calibrators and their names, positions, and flux
         # densities (in Jy) for use in the calibration and imaging operations
-        self.calibrator_patch_names = self.calibrators_only_skymodel.getPatchNames().tolist()
+        patch_names = self.calibrators_only_skymodel.getPatchNames()
+        self.calibrator_patch_names = patch_names.tolist() if patch_names is not None else []
         self.calibrator_fluxes = self.calibrators_only_skymodel.getColValues(
             "I", aggregate="sum"
         ).tolist()
-        self.calibrator_positions = self.calibrators_only_skymodel.getPatchPositions()
+        self.calibrator_positions = self.calibrators_only_skymodel.getPatchPositions() or {}
         self.num_patches = len(self.calibrator_patch_names)
-        if not self.generate_screens:
+        if not self.generate_screens and self.num_patches > 0:
             suffix = "es" if self.num_patches > 1 else ""
             self.log.info("Using %s calibration patch%s", self.num_patches, suffix)
 
@@ -1193,6 +1238,8 @@ class Field(object):
             # not imaged; they are only used in prediction for direction-independent solves
             self.define_predict_sectors(index)
         else:
+            if not self.generate_screens:
+                self.log.info("Using 0 calibration patches")
             self.outlier_sectors = []
             self.bright_source_sectors = []
             self.predict_sectors = []
@@ -1259,6 +1306,8 @@ class Field(object):
         """
         Returns the radius in degrees that encloses all calibrators
         """
+        if not self.calibrator_positions:
+            return 0.0
         _, separation = self.get_source_distances(self.calibrator_positions)
         return np.max(separation)
 

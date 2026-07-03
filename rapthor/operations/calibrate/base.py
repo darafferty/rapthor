@@ -875,6 +875,9 @@ class Calibrate(Operation):
                 (solve for solve in solve_plan if solve.solve_type == "full_jones"), None
             )
             scalar_solves = [solve for solve in solve_plan if solve.solve_type != "full_jones"]
+            field.di_apply_amplitudes = any(
+                solve.solve_type == "slow_gains" for solve in scalar_solves
+            )
 
             if fulljones_solve is not None:
                 field.fulljones_h5parm_filename = os.path.join(dst_dir, "fulljones-solutions.h5")
