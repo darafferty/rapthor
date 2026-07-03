@@ -1,5 +1,7 @@
+import importlib.util
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 from rapthor.execution.benchmarking import (
@@ -13,6 +15,16 @@ from rapthor.execution.benchmarking import (
     write_summary_artifacts,
 )
 
+BENCHMARK_SCRIPT_PATH = Path(__file__).parents[2] / "scripts" / "dev" / "run_benchmark_baseline.py"
+
+
+def load_benchmark_script():
+    spec = importlib.util.spec_from_file_location("run_benchmark_baseline", BENCHMARK_SCRIPT_PATH)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
 
 def test_default_benchmark_scenarios_build_demo_commands():
     scenarios = benchmark_scenarios_by_id()
@@ -24,9 +36,35 @@ def test_default_benchmark_scenarios_build_demo_commands():
     assert "/repo/examples/prefect_demo.parset" in quick_command
     assert "--dask-performance-report" in quick_command
     assert quick_command[quick_command.index("--command-profile") + 1] == "time"
+    assert quick_command[quick_command.index("--max-threads") + 1] == "4"
     assert "--no-keep-server" in quick_command
     assert "/repo/examples/generated/prefect_demo_rich/prefect_demo_rich.parset" in rich_command
     assert "2" == rich_command[rich_command.index("--local-dask-workers") + 1]
+
+
+def test_benchmark_runner_applies_runtime_overrides():
+    module = load_benchmark_script()
+    args = module._parse_args(
+        [
+            "--scenario",
+            "rich-demo",
+            "--local-dask-workers",
+            "2",
+            "--cpus-per-task",
+            "30",
+            "--max-threads",
+            "30",
+        ]
+    )
+    scenario = module._scenario_with_runtime_overrides(
+        benchmark_scenarios_by_id()["rich-demo"],
+        args,
+    )
+    command = scenario.command(Path("/repo"), Path("/runs/rich"))
+
+    assert command[command.index("--local-dask-workers") + 1] == "2"
+    assert command[command.index("--cpus-per-task") + 1] == "30"
+    assert command[command.index("--max-threads") + 1] == "30"
 
 
 def test_parse_command_log_extracts_timing_records(tmp_path):

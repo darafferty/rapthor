@@ -157,13 +157,22 @@ def test_execution_config_from_args_overrides_local_dask_workers(tmp_path):
                 "max_nodes = 1",
                 "local_dask_workers = 1",
                 "cpus_per_task = 2",
+                "max_threads = 2",
                 "prefect_command_profile = auto",
             ]
         ),
         encoding="utf-8",
     )
     args = module._parse_args(
-        ["--local-dask-workers", "3", "--command-profile", "time", str(parset_path)]
+        [
+            "--local-dask-workers",
+            "3",
+            "--max-threads",
+            "30",
+            "--command-profile",
+            "time",
+            str(parset_path),
+        ]
     )
 
     config = module._execution_config_from_args(parset_path, args)
@@ -172,6 +181,7 @@ def test_execution_config_from_args_overrides_local_dask_workers(tmp_path):
     assert config.local_dask_workers == 3
     assert config.local_dask_worker_count == 3
     assert config.command_profile == "time"
+    assert module._cluster_parset_overrides_from_args(args) == {"max_threads": 30}
 
 
 def test_dask_performance_report_opens_external_client(tmp_path):

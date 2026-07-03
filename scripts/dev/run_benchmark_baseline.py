@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from pathlib import Path
 from typing import Sequence
 
@@ -46,6 +46,21 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="Number of clean repetitions per scenario. Defaults to 3.",
     )
     parser.add_argument(
+        "--local-dask-workers",
+        type=int,
+        help="Override the local Dask worker count for every selected scenario.",
+    )
+    parser.add_argument(
+        "--cpus-per-task",
+        type=int,
+        help="Override the thread/core count passed to every selected scenario.",
+    )
+    parser.add_argument(
+        "--max-threads",
+        type=int,
+        help="Override cluster.max_threads for external tools in every selected scenario.",
+    )
+    parser.add_argument(
         "--run-root",
         type=Path,
         default=Path("/tmp/rapthor-benchmark-baseline"),
@@ -69,6 +84,17 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+def _scenario_with_runtime_overrides(scenario, args: argparse.Namespace):
+    overrides = {}
+    if args.local_dask_workers is not None:
+        overrides["local_dask_workers"] = args.local_dask_workers
+    if args.cpus_per_task is not None:
+        overrides["cpus_per_task"] = args.cpus_per_task
+    if args.max_threads is not None:
+        overrides["max_threads"] = args.max_threads
+    return replace(scenario, **overrides) if overrides else scenario
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parse_args(argv)
     scenarios_by_id = benchmark_scenarios_by_id()
@@ -85,7 +111,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     output_json = args.output_json or run_root / "benchmark-summary.json"
     output_markdown = args.output_markdown or run_root / "benchmark-report.md"
     selected_ids = args.scenario or sorted(scenarios_by_id)
-    selected_scenarios = [scenarios_by_id[scenario_id] for scenario_id in selected_ids]
+    selected_scenarios = [
+        _scenario_with_runtime_overrides(scenarios_by_id[scenario_id], args)
+        for scenario_id in selected_ids
+    ]
 
     results = []
     for scenario in selected_scenarios:

@@ -270,6 +270,13 @@ def _execution_config_from_args(parset_file: Path, args: argparse.Namespace) -> 
     return replace(config, **overrides) if overrides else config
 
 
+def _cluster_parset_overrides_from_args(args: argparse.Namespace) -> dict[str, object]:
+    overrides = {}
+    if args.max_threads is not None:
+        overrides["max_threads"] = args.max_threads
+    return overrides
+
+
 def _start_local_dask_cluster(execution_config: ExecutionConfig):
     return start_local_dask_cluster(execution_config)
 
@@ -400,6 +407,11 @@ def _parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     )
     parser.add_argument("--cpus-per-task", type=int, help="Override cluster.cpus_per_task.")
     parser.add_argument(
+        "--max-threads",
+        type=int,
+        help="Override cluster.max_threads for external tool thread counts.",
+    )
+    parser.add_argument(
         "--command-profile",
         choices=COMMAND_PROFILE_MODES,
         help="Override cluster.prefect_command_profile for external command profiling.",
@@ -479,6 +491,7 @@ def main() -> int:
             print(f"Rapthor working directory: {working_dir_override}")
 
         execution_config = _execution_config_from_args(run_parset_file, args)
+        runtime_cluster_overrides = _cluster_parset_overrides_from_args(args)
         if args.start_dask and execution_config.task_runner == "local_dask":
             print("Starting local Dask cluster for dashboard monitoring.")
             cluster_config = execution_config
@@ -490,15 +503,22 @@ def main() -> int:
                 task_runner="external_dask",
                 dask_scheduler=dask_cluster.scheduler_address,
             )
-            run_parset_file = _write_runtime_cluster_overrides(
-                run_parset_file,
-                run_dir,
+            runtime_cluster_overrides.update(
                 {
                     "prefect_task_runner": execution_config.task_runner,
                     "dask_scheduler": execution_config.dask_scheduler,
                     "dask_dashboard_address": execution_config.dask_dashboard_address,
+                    "local_dask_workers": cluster_config.local_dask_workers,
+                    "cpus_per_task": cluster_config.cpus_per_task,
                     "prefect_command_profile": execution_config.command_profile,
-                },
+                }
+            )
+
+        if runtime_cluster_overrides:
+            run_parset_file = _write_runtime_cluster_overrides(
+                run_parset_file,
+                run_dir,
+                runtime_cluster_overrides,
             )
             print(f"Runtime parset: {run_parset_file}")
 

@@ -120,10 +120,12 @@ Done when:
 
 ### 2. Benchmark Baseline
 
-Status: CI wiring in place. Benchmark scenarios, report-generation code, focused
-tests, and a manual/scheduled GitLab artifact job are available; the remaining
-work is to run repeated baselines and interpret the rich-demo report before
-changing Dask task boundaries.
+Status: CI baseline wiring in place. Benchmark scenarios, report-generation code,
+focused tests, and a manual/scheduled GitLab artifact job are available. The CI
+job defaults to the repeated quick/rich baseline on the larger GitLab runner,
+using two local Dask workers with a 30-thread `cpus_per_task`/`max_threads`
+budget per worker. This uses the 60-core runner while still exposing calibration
+and prediction chunk parallelism.
 
 Benchmark before changing Dask task boundaries, scheduler behavior, or
 performance-sensitive execution code. The benchmark should identify what to
@@ -156,6 +158,8 @@ Tasks:
   - a Markdown benchmark report artifact
   - a JSON summary artifact
   - optionally Dask performance HTML, command logs, and selected run logs
+- For a local smoke baseline on a smaller workstation, override with
+  `--scenario quick-demo --repetitions 1 --local-dask-workers 1 --cpus-per-task 4 --max-threads 4`.
 - Keep bulky generated products and run directories out of git.
 
 Done when:

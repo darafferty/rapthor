@@ -278,16 +278,25 @@ run_benchmark_baseline:
     NUMEXPR_MAX_THREADS: "1"
     OMP_NUM_THREADS: "1"
     OPENBLAS_NUM_THREADS: "1"
+    RAPTHOR_BENCHMARK_CPUS_PER_TASK: "30"
+    RAPTHOR_BENCHMARK_LOCAL_DASK_WORKERS: "2"
+    RAPTHOR_BENCHMARK_MAX_THREADS: "30"
+    RAPTHOR_BENCHMARK_REPETITIONS: "3"
+    RAPTHOR_BENCHMARK_SCENARIO_ARGS: "--scenario quick-demo --scenario rich-demo"
     VECLIB_MAXIMUM_THREADS: "1"
   script:
     - export RAPTHOR_BENCHMARK_RUN_ROOT="$CI_PROJECT_DIR/ci/benchmark"
     - export PREFECT_HOME="$CI_PROJECT_DIR/ci/prefect-home/benchmark"
     - mkdir -p "$RAPTHOR_BENCHMARK_RUN_ROOT" "$PREFECT_HOME"
+    # Use 2 workers x 30 threads to expose predict/calibration chunk parallelism
+    # without oversubscribing the 60-core GitLab runner.
     - >-
       python3 scripts/dev/run_benchmark_baseline.py
-      --scenario quick-demo
-      --scenario rich-demo
-      --repetitions 3
+      $RAPTHOR_BENCHMARK_SCENARIO_ARGS
+      --local-dask-workers "$RAPTHOR_BENCHMARK_LOCAL_DASK_WORKERS"
+      --cpus-per-task "$RAPTHOR_BENCHMARK_CPUS_PER_TASK"
+      --max-threads "$RAPTHOR_BENCHMARK_MAX_THREADS"
+      --repetitions "$RAPTHOR_BENCHMARK_REPETITIONS"
       --run-root "$RAPTHOR_BENCHMARK_RUN_ROOT"
       --output-json "$RAPTHOR_BENCHMARK_RUN_ROOT/benchmark-summary.json"
       --output-markdown "$RAPTHOR_BENCHMARK_RUN_ROOT/benchmark-report.md"

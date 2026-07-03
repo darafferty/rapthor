@@ -22,6 +22,7 @@ class BenchmarkScenario:
     parset: str
     local_dask_workers: int
     cpus_per_task: int
+    max_threads: int
     command_profile: str = "time"
 
     def command(self, repo_root: Path, run_dir: Path) -> list[str]:
@@ -38,6 +39,8 @@ class BenchmarkScenario:
             str(self.local_dask_workers),
             "--cpus-per-task",
             str(self.cpus_per_task),
+            "--max-threads",
+            str(self.max_threads),
             "--command-profile",
             self.command_profile,
             "--dask-performance-report",
@@ -81,6 +84,7 @@ def default_benchmark_scenarios() -> tuple[BenchmarkScenario, ...]:
             parset="examples/prefect_demo.parset",
             local_dask_workers=1,
             cpus_per_task=4,
+            max_threads=4,
         ),
         BenchmarkScenario(
             scenario_id="rich-demo",
@@ -88,6 +92,7 @@ def default_benchmark_scenarios() -> tuple[BenchmarkScenario, ...]:
             parset="examples/generated/prefect_demo_rich/prefect_demo_rich.parset",
             local_dask_workers=2,
             cpus_per_task=4,
+            max_threads=4,
         ),
     )
 
