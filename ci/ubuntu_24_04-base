@@ -37,6 +37,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get update && \
     apt-get install -y \
         bison \
+        bzip2 \
         flex \
         g++ \
         gfortran \
@@ -69,10 +70,35 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
 RUN wget -q https://bootstrap.pypa.io/get-pip.py && \
     python3 get-pip.py
 
-# Install required python packages
+# Install required Python build packages. Build Python extensions against NumPy
+# 2 from the start so the copied runtime image does not mix NumPy 1.x extension
+# modules with a NumPy 2 runtime.
 RUN python3 -m pip install \
     'cmake<4' \
-    'numpy<2'
+    'numpy>=2,<3'
+
+# Build Boost.NumPy from source against pip NumPy 2. Distro Boost.NumPy
+# libraries may be compiled against NumPy 1.x, which breaks packages such as
+# PyBDSF when the runtime uses NumPy 2.
+ARG BOOST_VERSION=1.88.0
+ARG BOOST_VERSION_UNDERSCORED=1_88_0
+RUN wget -q https://archives.boost.io/release/${BOOST_VERSION}/source/boost_${BOOST_VERSION_UNDERSCORED}.tar.bz2 && \
+    tar -xjf boost_${BOOST_VERSION_UNDERSCORED}.tar.bz2 && \
+    cd boost_${BOOST_VERSION_UNDERSCORED} && \
+    NUMPY_INC=$(python3 -c "import numpy; print(numpy.get_include())") && \
+    ./bootstrap.sh --with-libraries=python --with-python=/usr/bin/python3 && \
+    ./b2 --with-python \
+        python=3.12 \
+        cxxflags="-I${NUMPY_INC}" \
+        include="/usr/include/python3.12:${NUMPY_INC}" \
+        variant=release \
+        threading=multi \
+        link=shared \
+        --layout=system \
+        --prefix=/opt/boost-numpy \
+        --libdir=/opt/boost-numpy/lib \
+        install && \
+    cd .. && rm -rf boost_${BOOST_VERSION_UNDERSCORED}*
 
 # Install the casacore measures data. We purposely do not install these from
 # the Ubuntu repository, but download the latest version from the ASTRON site.
@@ -186,6 +212,16 @@ RUN CASACORE_DATA=/usr/local/share/casacore/data \
 # build does not produce a proper Python package.
 RUN pip install -v /src/EveryBeam
 
+# Use the NumPy-2-built Boost.NumPy when building Python packages that need
+# Boost.Python/NumPy, while the CMake-built astronomy tools above keep using the
+# distro Boost stack.
+ENV BOOST_ROOT=/opt/boost-numpy
+ENV BOOST_INCLUDEDIR=/opt/boost-numpy/include
+ENV BOOST_LIBRARYDIR=/opt/boost-numpy/lib
+ENV CMAKE_ARGS="-DBoost_NO_BOOST_CMAKE=ON -DBOOST_ROOT=/opt/boost-numpy -DBOOST_INCLUDEDIR=/opt/boost-numpy/include -DBOOST_LIBRARYDIR=/opt/boost-numpy/lib -DBoost_PYTHON_LIBRARY=/opt/boost-numpy/lib/libboost_python312.so -DBoost_PYTHON_LIBRARY_RELEASE=/opt/boost-numpy/lib/libboost_python312.so -DBoost_NUMPY_LIBRARY=/opt/boost-numpy/lib/libboost_numpy312.so -DBoost_NUMPY_LIBRARY_RELEASE=/opt/boost-numpy/lib/libboost_numpy312.so"
+ENV CPLUS_INCLUDE_PATH=/opt/boost-numpy/include
+ENV LD_LIBRARY_PATH=/opt/boost-numpy/lib:/usr/local/lib
+
 # Generate file with one-liner package version descriptions
 RUN mkdir -p /usr/local/share/rapthor; \
 for p in $(find /src -type d -name .git | sort); \
@@ -195,9 +231,11 @@ do \
 done \
 > /usr/local/share/rapthor/sw-versions.txt
 
-# Install all python packages that Rapthor depends on
+# Install all Python packages that Rapthor depends on. Build PyBDSF locally so
+# it links against the NumPy-2-compatible Boost.NumPy above.
 COPY requirements.txt .
-RUN pip install -r requirements.txt
+RUN pip install --no-binary=bdsf -r requirements.txt
+RUN python3 -c "import bdsf, casacore.tables, numpy; print(f'NumPy {numpy.__version__} import check passed')"
 
 
 #---------------------------------------------------------------------------
@@ -207,6 +245,7 @@ RUN pip install -r requirements.txt
 FROM ubuntu:24.04 AS runner
 
 COPY --from=builder /usr/local /usr/local
+COPY --from=builder /opt/boost-numpy /opt/boost-numpy
 
 # Set default versions. Can be overridden from the command-line
 ARG AOFLAGGER_COMMIT=master
@@ -228,6 +267,13 @@ LABEL \
     nl.astron.rapthor.python-casacore.version=${PYTHONCASACORE_COMMIT} \
     nl.astron.rapthor.sagecal.version=${SAGECAL_COMMIT} \
     nl.astron.rapthor.wsclean.version=${WSCLEAN_COMMIT}
+
+ENV BOOST_ROOT=/opt/boost-numpy
+ENV BOOST_INCLUDEDIR=/opt/boost-numpy/include
+ENV BOOST_LIBRARYDIR=/opt/boost-numpy/lib
+ENV CMAKE_ARGS="-DBoost_NO_BOOST_CMAKE=ON -DBOOST_ROOT=/opt/boost-numpy -DBOOST_INCLUDEDIR=/opt/boost-numpy/include -DBOOST_LIBRARYDIR=/opt/boost-numpy/lib -DBoost_PYTHON_LIBRARY=/opt/boost-numpy/lib/libboost_python312.so -DBoost_PYTHON_LIBRARY_RELEASE=/opt/boost-numpy/lib/libboost_python312.so -DBoost_NUMPY_LIBRARY=/opt/boost-numpy/lib/libboost_numpy312.so -DBoost_NUMPY_LIBRARY_RELEASE=/opt/boost-numpy/lib/libboost_numpy312.so"
+ENV CPLUS_INCLUDE_PATH=/opt/boost-numpy/include
+ENV LD_LIBRARY_PATH=/opt/boost-numpy/lib:/usr/local/lib
 
 # Only install run-time required packages
 RUN export DEBIAN_FRONTEND=noninteractive && \
@@ -268,4 +314,5 @@ RUN rm -rf /var/lib/apt/lists/*
 RUN aoflagger --version && \
     DP3 --version && \
     wsclean --version && \
-    fpack -H
+    fpack -H && \
+    python3 -c "import bdsf, casacore.tables, numpy; print(f'NumPy {numpy.__version__} runtime import check passed')"

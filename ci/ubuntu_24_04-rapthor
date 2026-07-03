@@ -13,5 +13,6 @@ COPY . /tmp/rapthor
 # Note: RAPTHOR_VERSION should be provided as build argument
 ARG RAPTHOR_VERSION=0.0.0
 RUN SETUPTOOLS_SCM_PRETEND_VERSION_FOR_RAPTHOR=${RAPTHOR_VERSION} \
-    python3 -m pip install --no-cache-dir --upgrade /tmp/rapthor && \
+    python3 -m pip install --no-cache-dir --upgrade "numpy>=2,<3" /tmp/rapthor && \
+    python3 -c "import bdsf, casacore.tables, numpy; print(f'NumPy {numpy.__version__} final image import check passed')" && \
     rm -rf /tmp/rapthor
