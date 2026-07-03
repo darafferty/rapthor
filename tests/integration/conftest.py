@@ -108,7 +108,7 @@ def _make_predicted_test_ms(tmp_path, test_ms, output_name):
         table.putcol("DATA", data)
 
     skymodel_path = tmp_path / f"{output_name}_apparent_sky.txt"
-    _write_normalization_skymodel(skymodel_path)
+    _write_normalization_skymodel(Path(__file__).parents[1] / "resources", skymodel_path)
 
     predicted_ms = tmp_path / f"{output_name}_predicted.ms"
     dp3_command = (
@@ -373,73 +373,8 @@ def generated_parset_path_with_predicted_sources(request, tmp_path, ms_with_pred
 
     generate_parset_from_template(
         parset_path,
-        output_parset_path,
         ms_with_predicted_sources,
-        input_skymodel_path,
-        apparent_skymodel_path,
-    )
-    return output_parset_path
-
-
-@pytest.fixture
-def two_loop_strategy_with_calibration_strategy(tmp_path):
-    """Strategy file for two self-calibration loops: DI in cycle 1, DD in cycle 2.
-
-    Cycle 2 builds its calibrator model from cycle-1 imaging output. On the small
-    integration dataset there is little flux left in the model after the first
-    cycle, so (scoped to this fixture only) we lower the imaging thresholds to
-    keep more flux in the clean model and drop ``target_flux`` well below the
-    default so the cycle-2 calibrator-flux check is met; otherwise cycle 2 has no
-    calibrators and fails.
-
-
-    We do cap the WSClean channel count for this test data. The integration MS
-    is tiny, and fitting a high-order spectral polynomial across four channels
-    makes the image-derived sky model sensitive to CI noise differences.
-    """
-    multi_cycle_overrides = {
-        "auto_mask": 3.0,
-        "threshisl": 2.0,
-        "threshpix": 3.0,
-        "max_wsclean_nchannels": 2,
-        "target_flux": 0.1,
-    }
-    strategy_steps = [
-        make_strategy_step(
-            do_calibrate=True,
-            do_image=True,
-            calibration_strategy={"di": ["full_jones"], "dd": []},
-            **multi_cycle_overrides,
-        ),
-        make_strategy_step(
-            do_calibrate=True,
-            do_image=True,
-            calibration_strategy={"di": [], "dd": ["fast_phase"]},
-            **multi_cycle_overrides,
-        ),
-    ]
-    strategy_content = f"strategy_steps = {strategy_steps}"
-    strategy_path = tmp_path / "two_loop_strategy.py"
-    strategy_path.write_text(strategy_content)
-    return strategy_path
-
-
-@pytest.fixture
-def ms_with_predicted_sources(tmp_path, test_ms):
-    """Provide a synthetic MS with enough source signal for image-based model updates."""
-    return _make_predicted_test_ms(tmp_path, test_ms, "test_ms_with_predicted_sources")
-
-
-@pytest.fixture
-def generated_parset_path_with_predicted_sources(request, tmp_path, ms_with_predicted_sources):
-    """Generate an integration parset using an MS with detectable predicted sources."""
-    parset_path, input_skymodel_path, apparent_skymodel_path = request.param
-    output_parset_path = tmp_path / "generated.parset"
-
-    generate_parset_path(
-        parset_path,
         output_parset_path,
-        ms_with_predicted_sources,
         input_skymodel_path,
         apparent_skymodel_path,
     )

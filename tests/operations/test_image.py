@@ -225,7 +225,7 @@ class TestImage:
         field.parset["imaging_specific"]["use_mpi"] = use_mpi
         field.use_mpi = use_mpi
         field.parset["imaging_specific"]["shared_facet_rw"] = shared_facet_rw
-        _prepare_field_for_image(field, h5parm_filename=h5parm_file)
+        _prepare_field_for_image(field, h5parm_filename=h5parm_file, num_patches=50)
         image = _initialize_operation(Image(field, index=1), do_predict=False, use_facets=True)
         image.setup()  # renders subpipeline_parset.cwl
 
