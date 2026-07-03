@@ -31,7 +31,7 @@ from astropy.visualization.wcsaxes import SphericalCircle
 from losoto.h5parm import h5parm
 from lsmtool.facet import read_ds9_region_file, read_from_skymodel
 from matplotlib.patches import Ellipse
-from matplotlib.pyplot import figure
+from matplotlib.pyplot import close, figure
 
 
 class Field(object):
@@ -2317,3 +2317,4 @@ class Field(object):
         ax.legend(loc="upper left")
         ax.grid()
         fig.savefig(os.path.join(self.working_dir, "plots", output_filename))
+        close(fig)
