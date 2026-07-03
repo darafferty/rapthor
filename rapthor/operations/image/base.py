@@ -399,9 +399,7 @@ class Image(Operation):
             prepare_data_h5parm,
             fulljones_h5parm,
             input_normalize_h5parm,
-        ) = (
-            self._build_applycal_steps()
-        )
+        ) = self._build_applycal_steps()
         all_regular = all(obs.channels_are_regular for obs in self.field.observations)
         prepare_data_steps = build_image_prepare_data_steps(
             preapply_solutions=prepare_data_applycal_steps is not None,
@@ -418,11 +416,7 @@ class Image(Operation):
             if getattr(self, "_selected_imaging_h5parm", None) is not None
             else self._selected_applycal_h5parm
         )
-        h5parm = (
-            FileRecord(imaging_h5parm).to_json()
-            if imaging_h5parm is not None
-            else None
-        )
+        h5parm = FileRecord(imaging_h5parm).to_json() if imaging_h5parm is not None else None
         first_observation = self.field.observations[0]
         interval = build_image_screen_interval(
             slow_timestep_sec=self.field.slow_timestep_sec,

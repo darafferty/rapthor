@@ -8,6 +8,16 @@ formatting, linting, and tests inside it so compiled astronomy dependencies and
 external tools match the project environment. Use the same commands below via
 `podman exec -w /app <container> ...`.
 
+After any code change, always run:
+
+```bash
+ruff check --fix --select I
+ruff format
+```
+
+If these cannot be run, say so and name the remaining formatting/import-order
+risk.
+
 ## Quick Commands
 
 ```bash

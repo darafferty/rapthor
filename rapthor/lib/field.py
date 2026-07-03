@@ -673,7 +673,9 @@ class Field(object):
         source_skymodel.write(self.source_skymodel_file, clobber=True)
         self.source_skymodel = source_skymodel.copy()  # save and make copy before grouping
         if len(source_skymodel) == 0:
-            self.log.warning("Sky model contains no sources; continuing without calibration patches.")
+            self.log.warning(
+                "Sky model contains no sources; continuing without calibration patches."
+            )
             calibration_skymodel = skymodel_true_sky.copy()
             _ensure_skymodel_write_units(calibration_skymodel)
             calibration_skymodel.write(self.calibration_skymodel_file, clobber=True)

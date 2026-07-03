@@ -764,9 +764,7 @@ class TestImage:
 
         assert steps == "[fastphase,mediumphase]"
 
-    def test_build_applycal_steps_prefers_dd_h5parm_when_mixed(
-        self, field, h5parm_file, tmp_path
-    ):
+    def test_build_applycal_steps_prefers_dd_h5parm_when_mixed(self, field, h5parm_file, tmp_path):
         """DD products are selected over DI products when both exist."""
         di_h5parm = tmp_path / "di-solutions.h5"
         di_h5parm.touch()
@@ -1046,7 +1044,9 @@ class TestImage:
         assert image._selected_applycal_h5parm == str(di_h5parm)
         assert image._selected_imaging_h5parm == str(h5parm_file)
 
-    def test_image_only_cycle_can_reuse_previous_cycle_solutions(self, field, h5parm_file, tmp_path):
+    def test_image_only_cycle_can_reuse_previous_cycle_solutions(
+        self, field, h5parm_file, tmp_path
+    ):
         """Explicit image-only cycles carry forward prior calibration products."""
         _prepare_field_for_image(field, h5parm_filename=h5parm_file)
         previous_calibration_skymodel = field.calibration_skymodel_file

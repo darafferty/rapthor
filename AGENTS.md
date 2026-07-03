@@ -81,6 +81,9 @@ Use the focused guides instead of growing this file with duplicated detail:
   archives, integration/equivalence/demo run products, `.tox`, `.ruff_cache`,
   `htmlcov`, and `__pycache__` out of source decisions.
 - Prefer existing small fixtures in `tests/resources/` over adding large files.
+- After any code change, run `ruff check --fix --select I` and `ruff format`
+  before final verification. If the commands cannot be run, report that and
+  name the remaining formatting/import-order risk.
 
 ## Scientific And Strategy Guardrails
 
