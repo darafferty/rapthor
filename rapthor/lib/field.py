@@ -192,6 +192,7 @@ class Field(object):
         self.field_image_filename = None
         self.disable_clean = False
         self.calibration_strategy = None
+        self._calibration_strategy_defaulted = False
 
         # Scan MS files to get observation info
         self.scan_observations()
@@ -1969,6 +1970,8 @@ class Field(object):
 
         # Update field and sector dicts with the parameters for this cycle
         self.__dict__.update(step_dict)
+        if "calibration_strategy" not in step_dict:
+            self.calibration_strategy = None
         for sector in self.imaging_sectors:
             sector.__dict__.update(step_dict)
 
