@@ -270,6 +270,26 @@ def write_summary_artifacts(
     return summary
 
 
+def failed_benchmark_runs(results: Iterable[BenchmarkRunResult]) -> list[BenchmarkRunResult]:
+    """Return benchmark repetitions whose command exited unsuccessfully."""
+    return [result for result in results if result.returncode != 0]
+
+
+def format_failed_benchmark_runs(results: Iterable[BenchmarkRunResult]) -> str:
+    """Format failed benchmark repetitions for CI and terminal output."""
+    failed = failed_benchmark_runs(results)
+    if not failed:
+        return ""
+
+    lines = ["Benchmark repetitions failed:"]
+    for result in failed:
+        lines.append(
+            f"- {result.scenario_id} repetition {result.repetition}: "
+            f"return code {result.returncode}, run directory {result.run_dir}"
+        )
+    return "\n".join(lines)
+
+
 def _stats(values: Sequence[float]) -> dict[str, float]:
     if not values:
         return {"min": 0.0, "median": 0.0, "max": 0.0}

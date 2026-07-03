@@ -293,6 +293,7 @@ run_benchmark_baseline:
     - >-
       python3 scripts/dev/run_benchmark_baseline.py
       $RAPTHOR_BENCHMARK_SCENARIO_ARGS
+      --prepare-inputs
       --local-dask-workers "$RAPTHOR_BENCHMARK_LOCAL_DASK_WORKERS"
       --cpus-per-task "$RAPTHOR_BENCHMARK_CPUS_PER_TASK"
       --max-threads "$RAPTHOR_BENCHMARK_MAX_THREADS"

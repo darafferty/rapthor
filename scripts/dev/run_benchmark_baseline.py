@@ -4,16 +4,33 @@
 from __future__ import annotations
 
 import argparse
+import configparser
 import json
+import subprocess
+import sys
 from dataclasses import asdict, replace
 from pathlib import Path
 from typing import Sequence
 
+from rapthor.execution.benchmark_inputs import ensure_test_ms
 from rapthor.execution.benchmarking import (
     benchmark_scenarios_by_id,
     default_benchmark_scenarios,
+    format_failed_benchmark_runs,
     run_scenario_once,
     write_summary_artifacts,
+)
+
+RICH_DEMO_SCENARIO_ID = "rich-demo"
+TEST_RESOURCE_DIR = Path("tests/resources")
+BENCHMARK_PARSET_PATH_OPTIONS = (
+    "input_ms",
+    "input_skymodel",
+    "apparent_skymodel",
+    "strategy",
+    "input_h5parm",
+    "input_fulljones_h5parm",
+    "facet_layout",
 )
 
 
@@ -81,6 +98,19 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="List committed benchmark scenarios and exit.",
     )
+    parser.add_argument(
+        "--prepare-inputs",
+        action="store_true",
+        help=(
+            "Download the shared test Measurement Set when needed and generate "
+            "ignored rich demo inputs before validating scenarios."
+        ),
+    )
+    parser.add_argument(
+        "--allow-failures",
+        action="store_true",
+        help="Write reports but exit successfully even if benchmark repetitions fail.",
+    )
     return parser.parse_args(argv)
 
 
@@ -93,6 +123,94 @@ def _scenario_with_runtime_overrides(scenario, args: argparse.Namespace):
     if args.max_threads is not None:
         overrides["max_threads"] = args.max_threads
     return replace(scenario, **overrides) if overrides else scenario
+
+
+def _prepare_benchmark_inputs(repo_root: Path, selected_scenarios) -> None:
+    """Create ignored benchmark inputs that are not present in a fresh checkout."""
+    test_ms = _ensure_test_ms(repo_root)
+    rich_scenarios = [
+        scenario for scenario in selected_scenarios if scenario.scenario_id == RICH_DEMO_SCENARIO_ID
+    ]
+    if rich_scenarios and _missing_scenario_inputs(repo_root, rich_scenarios):
+        subprocess.run(
+            [
+                sys.executable,
+                str(repo_root / "scripts" / "dev" / "generate-prefect-demo-data.py"),
+                "--template-ms",
+                str(test_ms),
+                "--force",
+            ],
+            cwd=repo_root,
+            check=True,
+        )
+
+
+def _ensure_test_ms(repo_root: Path) -> Path:
+    """Download the shared test Measurement Set when a checkout does not have it."""
+    return ensure_test_ms(repo_root / TEST_RESOURCE_DIR)
+
+
+def _validate_scenario_inputs(repo_root: Path, selected_scenarios) -> None:
+    missing = _missing_scenario_inputs(repo_root, selected_scenarios)
+    if missing:
+        message = "\n".join(["Benchmark inputs are missing:", *[f"- {item}" for item in missing]])
+        message += "\nRun again with --prepare-inputs to create ignored benchmark inputs."
+        raise SystemExit(message)
+
+
+def _missing_scenario_inputs(repo_root: Path, selected_scenarios) -> list[str]:
+    missing = []
+    for scenario in selected_scenarios:
+        parset_path = repo_root / scenario.parset
+        if not parset_path.exists():
+            missing.append(f"{scenario.scenario_id}: parset does not exist: {parset_path}")
+            continue
+
+        for option, path_value in _parset_path_values(parset_path):
+            if not _path_value_exists(repo_root, path_value):
+                missing.append(
+                    f"{scenario.scenario_id}: [{parset_path.relative_to(repo_root)}] "
+                    f"{option} does not exist: {path_value}"
+                )
+
+    return missing
+
+
+def _parset_path_values(parset_path: Path) -> list[tuple[str, str]]:
+    parser = configparser.ConfigParser(interpolation=None)
+    parser.read(parset_path)
+    if not parser.has_section("global"):
+        return []
+
+    values = []
+    for option in BENCHMARK_PARSET_PATH_OPTIONS:
+        if not parser.has_option("global", option):
+            continue
+        for path_value in _split_parset_path_value(parser.get("global", option)):
+            values.append((option, path_value))
+    return values
+
+
+def _split_parset_path_value(value: str) -> list[str]:
+    value = value.strip()
+    if not value or value.lower() == "none":
+        return []
+    if value.startswith("[") and value.endswith("]"):
+        return [
+            item.strip()
+            for item in value[1:-1].split(",")
+            if item.strip() and item.strip().lower() != "none"
+        ]
+    return [value]
+
+
+def _path_value_exists(repo_root: Path, path_value: str) -> bool:
+    path = Path(path_value)
+    if not path.is_absolute():
+        path = repo_root / path
+    if any(marker in path.as_posix() for marker in ("*", "?")):
+        return bool(list(path.parent.glob(path.name)))
+    return path.exists()
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -115,6 +233,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         _scenario_with_runtime_overrides(scenarios_by_id[scenario_id], args)
         for scenario_id in selected_ids
     ]
+
+    if args.prepare_inputs:
+        _prepare_benchmark_inputs(repo_root, selected_scenarios)
+    _validate_scenario_inputs(repo_root, selected_scenarios)
 
     results = []
     for scenario in selected_scenarios:
@@ -144,6 +266,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     print(f"Wrote JSON summary: {output_json}")
     print(f"Wrote Markdown report: {output_markdown}")
     print(f"Scenarios summarized: {', '.join(sorted(summary['scenarios']))}")
+    failures = format_failed_benchmark_runs(results)
+    if failures and not args.allow_failures:
+        print(failures, file=sys.stderr)
+        return 1
     return 0
 
 

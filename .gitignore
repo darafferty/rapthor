@@ -9,6 +9,7 @@ runtime-bootstrap*/
 test/resources/
 tests/resources/test.ms
 tests/test.ms_di.ms
+test.ms_di.ms/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

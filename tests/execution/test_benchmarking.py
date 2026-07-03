@@ -8,6 +8,8 @@ from rapthor.execution.benchmarking import (
     BenchmarkRunResult,
     benchmark_run_result,
     benchmark_scenarios_by_id,
+    failed_benchmark_runs,
+    format_failed_benchmark_runs,
     parse_command_log,
     render_markdown_report,
     run_scenario_once,
@@ -161,6 +163,16 @@ def test_write_summary_artifacts(tmp_path):
     assert output_markdown.read_text().startswith("# Rapthor Benchmark Baseline")
 
 
+def test_failed_benchmark_runs_are_reported():
+    results = [
+        BenchmarkRunResult("quick-demo", 1, "/runs/1", 0, 4.0, 2, 3.0),
+        BenchmarkRunResult("rich-demo", 2, "/runs/2", 2, 1.0, 0, 0.0),
+    ]
+
+    assert failed_benchmark_runs(results) == [results[1]]
+    assert "rich-demo repetition 2" in format_failed_benchmark_runs(results)
+
+
 def test_run_scenario_once_writes_command_and_result_artifacts(tmp_path):
     scenario = benchmark_scenarios_by_id()["quick-demo"]
     times = iter([10.0, 14.5])
@@ -191,3 +203,90 @@ def test_run_scenario_once_writes_command_and_result_artifacts(tmp_path):
     assert result.command_seconds == 2.0
     assert (run_dir / "benchmark-command.json").is_file()
     assert json.loads((run_dir / "benchmark-result.json").read_text())["returncode"] == 0
+
+
+def test_benchmark_runner_validates_missing_inputs(tmp_path):
+    module = load_benchmark_script()
+    repo_root = tmp_path
+    parset = repo_root / "examples" / "prefect_demo.parset"
+    parset.parent.mkdir(parents=True)
+    parset.write_text(
+        """
+        [global]
+        input_ms = tests/resources/test.ms
+        input_skymodel = tests/resources/test_true_sky.txt
+        apparent_skymodel = None
+        strategy = examples/prefect_demo_strategy.py
+        """,
+        encoding="utf-8",
+    )
+    scenario = benchmark_scenarios_by_id()["quick-demo"]
+
+    try:
+        module._validate_scenario_inputs(repo_root, [scenario])
+    except SystemExit as err:
+        message = str(err)
+    else:
+        raise AssertionError("missing benchmark inputs should stop validation")
+
+    assert "tests/resources/test.ms" in message
+    assert "--prepare-inputs" in message
+
+
+def test_benchmark_runner_returns_failure_for_failed_repetition(monkeypatch, tmp_path):
+    module = load_benchmark_script()
+    scenario = benchmark_scenarios_by_id()["quick-demo"]
+
+    monkeypatch.setattr(module, "benchmark_scenarios_by_id", lambda: {"quick-demo": scenario})
+    monkeypatch.setattr(module, "_validate_scenario_inputs", lambda repo_root, scenarios: None)
+    monkeypatch.setattr(module, "_repo_root", lambda: tmp_path)
+    monkeypatch.setattr(
+        module,
+        "run_scenario_once",
+        lambda *args, **kwargs: BenchmarkRunResult(
+            "quick-demo", 1, str(tmp_path / "run"), 1, 0.5, 0, 0.0
+        ),
+    )
+
+    exit_code = module.main(
+        [
+            "--scenario",
+            "quick-demo",
+            "--repetitions",
+            "1",
+            "--run-root",
+            str(tmp_path / "bench"),
+        ]
+    )
+
+    assert exit_code == 1
+
+
+def test_benchmark_runner_can_allow_failed_repetitions(monkeypatch, tmp_path):
+    module = load_benchmark_script()
+    scenario = benchmark_scenarios_by_id()["quick-demo"]
+
+    monkeypatch.setattr(module, "benchmark_scenarios_by_id", lambda: {"quick-demo": scenario})
+    monkeypatch.setattr(module, "_validate_scenario_inputs", lambda repo_root, scenarios: None)
+    monkeypatch.setattr(module, "_repo_root", lambda: tmp_path)
+    monkeypatch.setattr(
+        module,
+        "run_scenario_once",
+        lambda *args, **kwargs: BenchmarkRunResult(
+            "quick-demo", 1, str(tmp_path / "run"), 1, 0.5, 0, 0.0
+        ),
+    )
+
+    exit_code = module.main(
+        [
+            "--scenario",
+            "quick-demo",
+            "--repetitions",
+            "1",
+            "--run-root",
+            str(tmp_path / "bench"),
+            "--allow-failures",
+        ]
+    )
+
+    assert exit_code == 0
