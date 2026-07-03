@@ -160,15 +160,34 @@ Tasks:
   - optionally Dask performance HTML, command logs, and selected run logs
 - For a local smoke baseline on a smaller workstation, override with
   `--scenario quick-demo --repetitions 1 --local-dask-workers 1 --cpus-per-task 4 --max-threads 4`.
+- When the GitLab benchmark job completes, save and triage the results as
+  follows:
+  - Keep the full artifact bundle attached to the GitLab job. This is the right
+    home for bulky Dask HTML reports, command logs, run logs, and generated run
+    directories.
+  - For local analysis, download the artifact bundle outside the repository,
+    for example under `/tmp/rapthor-benchmark-artifacts/<pipeline-id>/`.
+  - If the run is a valid baseline, commit only a compact curated report under
+    `docs/source/development/benchmark_baselines/<YYYY-MM-DD>-gitlab-60core.md`.
+    Include the commit SHA, CI pipeline/job URL, container image tag, runner
+    CPU/memory description, benchmark command, worker/thread profile, summary
+    table, top wall-clock contributors, Dask idle/scheduler observations, and
+    any caveats such as first-run cache effects.
+  - Commit a small machine-readable companion only if it is useful for future
+    comparisons, for example
+    `docs/source/development/benchmark_baselines/<YYYY-MM-DD>-gitlab-60core.summary.json`.
+    Do not commit raw run directories, FITS/MS products, full Dask HTML reports,
+    command logs, or Prefect/Rapthor logs.
 - Keep bulky generated products and run directories out of git.
 
 Done when:
 
 - The benchmark harness and report-generation tests are committed.
 - CI can produce a Markdown benchmark report artifact.
-- A reproducible rich-demo baseline exists before Dask scalability changes.
-- The report identifies the top wall-clock contributors and the biggest Dask
-  idle or scheduler gaps.
+- A reproducible rich-demo baseline has been captured in GitLab artifacts and
+  summarized in a compact curated report before Dask scalability changes.
+- The committed report identifies the top wall-clock contributors and the
+  biggest Dask idle or scheduler gaps.
 
 ### 3. Dask Scalability Guardrails
 
