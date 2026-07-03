@@ -19,8 +19,8 @@ from rapthor.execution.payloads import (
 from rapthor.lib.records import directory_record_path
 
 # These are the DP3 step names supported for the standalone applycal that runs
-# before DD solves. `fastphase` applies the phase000 soltab from the selected
-# scalar h5parm; for DI fast+medium this is already the combined scalar product.
+# before DD solves. `fastphase` applies phase000, `slowgain` applies
+# amplitude000, and DI fast+medium already points at the combined phase product.
 SUPPORTED_DD_PREAPPLY_STEPS = {"fastphase", "slowgain", "fulljones", "normalization"}
 MODE_BY_SOLVE_TYPE = {
     "fast_phase": "scalarphase",

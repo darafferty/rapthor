@@ -26,6 +26,8 @@ from rapthor.operations.image.plan import (
 
 log = logging.getLogger("rapthor:image")
 
+NON_FULLJONES_SOLVES = {"fast_phase", "medium_phase", "slow_gains"}
+
 
 class Image(Operation):
     """
@@ -79,7 +81,7 @@ class Image(Operation):
             self.use_facets = (
                 self.dde_method == "full"
                 and not self.apply_screens
-                and self._has_dd_scalar_h5parm()
+                and self._has_dd_h5parm_for_facet_application()
             )
         if self.image_pol is None:
             self.image_pol = self.field.image_pol  # set by process-step orchestration
@@ -112,7 +114,7 @@ class Image(Operation):
             allow_internet_access=self.allow_internet_access,
         )
 
-    def _has_dd_scalar_h5parm(self):
+    def _has_dd_h5parm_for_facet_application(self):
         if self._is_current_cycle_solution(
             getattr(self.field, "dd_h5parm_filename", None),
             cycle_attr="dd_h5parm_cycle_number",
@@ -120,10 +122,38 @@ class Image(Operation):
             return True
         if getattr(self.field, "di_h5parm_filename", None) is not None:
             return False
+        if self._fallback_h5parm_role() != "dd":
+            return False
         return self._is_current_cycle_solution(
             self.field.h5parm_filename,
             cycle_attr="h5parm_cycle_number",
         )
+
+    def _fallback_h5parm_role(self):
+        """
+        Return how to treat ``input_h5parm`` when it has no explicit DI/DD owner.
+
+        A supplied non-full-Jones h5parm can only be applied as DD during
+        imaging when a matching sky model or facet layout provides solution
+        directions. If the current strategy asks for DI application and there
+        is no DD direction model to pair with the h5parm, use DP3 pre-apply
+        instead.
+        """
+        if self.field.h5parm_filename is None:
+            return None
+        strategy = getattr(self.field, "calibration_strategy", None) or {}
+        has_di_non_fulljones = any(
+            solve in NON_FULLJONES_SOLVES for solve in strategy.get("di", [])
+        )
+        has_dd_non_fulljones = any(
+            solve in NON_FULLJONES_SOLVES for solve in strategy.get("dd", [])
+        )
+        has_dd_directions = bool(
+            self.field.parset.get("input_skymodel") or self.field.parset.get("facet_layout")
+        )
+        if has_di_non_fulljones and (not has_dd_non_fulljones or not has_dd_directions):
+            return "di"
+        return "dd"
 
     def _can_use_carried_forward_solution(self, cycle_number):
         return (
@@ -149,7 +179,7 @@ class Image(Operation):
             return previous_skymodel
         return self.field.calibration_skymodel_file
 
-    def _resolve_scalar_applycal_h5parms(self):
+    def _resolve_non_fulljones_h5parms(self):
         dd_h5parm = getattr(self.field, "dd_h5parm_filename", None)
         di_h5parm = getattr(self.field, "di_h5parm_filename", None)
         fallback_h5parm = self.field.h5parm_filename
@@ -163,10 +193,15 @@ class Image(Operation):
         ):
             fallback_h5parm = None
 
-        if dd_h5parm is None and di_h5parm is None:
-            return fallback_h5parm, fallback_h5parm
-        if di_h5parm is None and fallback_h5parm != dd_h5parm:
-            di_h5parm = fallback_h5parm
+        if fallback_h5parm is not None:
+            fallback_role = self._fallback_h5parm_role()
+            if fallback_role == "di" and di_h5parm is None:
+                di_h5parm = fallback_h5parm
+            elif fallback_role == "dd":
+                if dd_h5parm is None:
+                    dd_h5parm = fallback_h5parm
+                if di_h5parm is None and fallback_h5parm != dd_h5parm:
+                    di_h5parm = fallback_h5parm
         return dd_h5parm, di_h5parm
 
     def _is_current_cycle_solution(self, h5parm_filename, cycle_attr):
@@ -198,9 +233,9 @@ class Image(Operation):
 
         The steps are determined from the solve-type flags set on the
         field by the calibration strategy. Unlike DD calibration pre-apply,
-        imaging preparation may apply separate final scalar products, so an
-        explicit ``mediumphase`` step is valid here when a DD medium-phase
-        solution is selected.
+        imaging preparation may apply separate final non-full-Jones products,
+        so an explicit ``mediumphase`` step is valid here when a DD
+        medium-phase solution is selected.
         """
         if self.apply_none:
             self._selected_applycal_h5parm = None
@@ -209,7 +244,7 @@ class Image(Operation):
 
         fulljones_h5parm = None
         input_normalize_h5parm = None
-        dd_h5parm, di_h5parm = self._resolve_scalar_applycal_h5parms()
+        dd_h5parm, di_h5parm = self._resolve_non_fulljones_h5parms()
         self._selected_imaging_h5parm = dd_h5parm if self.use_facets else None
         prepare_dd_h5parm = None if self.use_facets else dd_h5parm
         steps, self._selected_applycal_h5parm = build_image_applycal_steps(
@@ -221,7 +256,12 @@ class Image(Operation):
             apply_amplitudes=self.apply_amplitudes,
             apply_normalizations=self.apply_normalizations,
             apply_none=self.apply_none,
-            di_apply_amplitudes=getattr(self.field, "di_apply_amplitudes", self.apply_amplitudes),
+            di_apply_amplitudes=(
+                self.field.apply_amplitudes
+                if di_h5parm == self.field.h5parm_filename
+                and getattr(self.field, "di_h5parm_filename", None) is None
+                else getattr(self.field, "di_apply_amplitudes", self.apply_amplitudes)
+            ),
             dd_apply_amplitudes=self.apply_amplitudes,
         )
 

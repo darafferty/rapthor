@@ -638,18 +638,18 @@ class Calibrate(Operation):
         """
         Prepare DP3 pre-apply steps used before DD calibration solves.
 
-        The scalar DI h5parm is applied as DP3's ``fastphase`` step because it
-        contains a single ``phase000`` soltab. When DI fast and medium phase
-        solves were both run, ``di_h5parm_filename`` points at their combined
-        scalar product, so there is no separate ``mediumphase`` pre-apply step
-        here. Explicit ``mediumphase`` application belongs to the imaging
-        prepare-data stage, where separate final calibration products may be
-        applied to imaging visibilities.
+        The DI h5parm may contain scalar phase solves and/or diagonal slow-gain
+        solves. DI phase solutions are applied through DP3's ``fastphase`` step
+        because their combined product contains a single ``phase000`` soltab,
+        so there is no separate ``mediumphase`` pre-apply step here. Explicit
+        ``mediumphase`` application belongs to the imaging prepare-data stage,
+        where separate final calibration products may be applied to imaging
+        visibilities.
         """
         di_h5parm = self._current_cycle_solution_path(
             getattr(field, "di_h5parm_filename", None),
             "di_h5parm_cycle_number",
-            "DI scalar",
+            "DI non-full-Jones",
         )
         applycal_h5parm = self._to_file_record_if_exists(di_h5parm)
         fulljones_path = self._current_cycle_solution_path(
@@ -874,9 +874,11 @@ class Calibrate(Operation):
             fulljones_solve = next(
                 (solve for solve in solve_plan if solve.solve_type == "full_jones"), None
             )
-            scalar_solves = [solve for solve in solve_plan if solve.solve_type != "full_jones"]
+            non_fulljones_solves = [
+                solve for solve in solve_plan if solve.solve_type != "full_jones"
+            ]
             field.di_apply_amplitudes = any(
-                solve.solve_type == "slow_gains" for solve in scalar_solves
+                solve.solve_type == "slow_gains" for solve in non_fulljones_solves
             )
 
             if fulljones_solve is not None:
@@ -892,7 +894,7 @@ class Calibrate(Operation):
                     field.fulljones_h5parm_filename,
                 )
 
-            if scalar_solves:
+            if non_fulljones_solves:
                 field.di_h5parm_filename = os.path.join(dst_dir, "di-solutions.h5")
                 field.h5parm_filename = field.di_h5parm_filename
                 field.di_h5parm_cycle_number = self.index
@@ -902,12 +904,12 @@ class Calibrate(Operation):
                 shutil.copy(
                     os.path.join(
                         self.pipeline_working_dir,
-                        self._di_combined_solution(scalar_solves),
+                        self._di_combined_solution(non_fulljones_solves),
                     ),
                     field.di_h5parm_filename,
                 )
 
-                for solve in scalar_solves:
+                for solve in non_fulljones_solves:
                     dst_filename = self._di_solution_destination(field, dst_dir, solve)
                     if os.path.exists(dst_filename):
                         os.remove(dst_filename)
@@ -998,16 +1000,16 @@ class Calibrate(Operation):
             return None
         raise ValueError(f"Unsupported DD solve type: {solve.solve_type}")
 
-    def _di_combined_solution(self, scalar_solves):
+    def _di_combined_solution(self, non_fulljones_solves):
         has_phase = any(
-            solve.solve_type in {"fast_phase", "medium_phase"} for solve in scalar_solves
+            solve.solve_type in {"fast_phase", "medium_phase"} for solve in non_fulljones_solves
         )
-        has_slow_gain = any(solve.solve_type == "slow_gains" for solve in scalar_solves)
+        has_slow_gain = any(solve.solve_type == "slow_gains" for solve in non_fulljones_solves)
         if has_phase and has_slow_gain:
             return "combined_di_solutions.h5parm"
-        if len(scalar_solves) > 1:
+        if len(non_fulljones_solves) > 1:
             return "combined_solve1_solve2_di.h5parm"
-        return scalar_solves[0].collected_h5parm
+        return non_fulljones_solves[0].collected_h5parm
 
     @staticmethod
     def _di_solution_destination(field, dst_dir, solve):
@@ -1033,7 +1035,7 @@ class Calibrate(Operation):
             field.di_slow_gains_h5parm_filename = os.path.join(dst_dir, "di-solutions-slow-gain.h5")
             return field.di_slow_gains_h5parm_filename
 
-        raise ValueError(f"Unsupported DI scalar solve type: {solve.solve_type}")
+        raise ValueError(f"Unsupported DI non-full-Jones solve type: {solve.solve_type}")
 
     @staticmethod
     def _copy_plots(plot_filenames, dst_dir):

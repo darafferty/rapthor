@@ -67,12 +67,14 @@ final_data_fraction = 1.0
 # the processing time
 ntimes_to_repeat_final_cycle = 0
 
-# Full path to an H5parm file with direction-dependent solutions (default = None). This
-# file is required if no calibration is to be done. Full-Jones and flux- scale
-# normalization solutions can also be supplied. Note: the directions in the H5parm file
-# must match the patches in the input sky model (or facet layout file, if supplied),
-# and the time and frequency coverage of the solutions must be sufficient to cover the
-# duration and bandwidth of the input dataset
+# Full path to an H5parm file with scalar phase or diagonal slow-gain calibration
+# solutions (default = None). This file is used if no calibration is to be done.
+# With an image-only DI strategy, it is pre-applied during imaging preparation and
+# no sky model is required. With an image-only DD strategy, matching sky-model
+# patches or a facet layout are required for imaging-time application. Full-Jones
+# and flux-scale normalization solutions can also be supplied.
+# The time and frequency coverage of the solutions must be sufficient to cover the
+# duration and bandwidth of the input dataset.
 input_h5parm = None
 input_fulljones_h5parm = None
 input_normalization_h5parm = None

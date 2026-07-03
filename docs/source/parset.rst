@@ -131,8 +131,12 @@ The available options are described below under their respective sections.
         the processing time
 
     input_h5parm
-        Full path to an H5parm file with direction-dependent solutions (default = None).
-        This file is used if no calibration is to be done.
+        Full path to an H5parm file with scalar phase or diagonal slow-gain
+        calibration solutions (default = None). This file is used if no
+        calibration is to be done. With an image-only DI strategy, Rapthor
+        pre-applies this file during imaging preparation. With an image-only DD
+        strategy, Rapthor applies this file during imaging and therefore needs
+        matching sky-model patches or a facet layout.
 
         .. note::
 
@@ -141,20 +145,22 @@ The available options are described below under their respective sections.
 
         .. note::
 
-            If an imput sky model is also supplied, the directions in the H5parm file
-            must match the patches in the input sky model, or, if not, a facet layout
-            file with matching directions must be supplied and
-            :term:`regroup_input_skymodel` activated.
+            For DD use, the directions in the H5parm file must match the
+            patches in the input sky model, or, if not, a facet layout file with
+            matching directions must be supplied and
+            :term:`regroup_input_skymodel` activated. DI use does not require
+            an input sky model.
 
     input_fulljones_h5parm
-        Full path to an H5parm file with full-Jones solutions (default = None). This
-        file is used if no calibration is to be done. The notes given for
-        :term:`input_h5parm` also apply to this file.
+        Full path to an H5parm file with DI full-Jones solutions (default =
+        None). This file is used if no calibration is to be done. Rapthor
+        pre-applies full-Jones solutions during imaging preparation, separately
+        from the scalar phase or diagonal slow-gain products supplied through
+        :term:`input_h5parm`.
 
     input_normalization_h5parm
         Full path to an H5parm file with flux-scale normalization solutions (default =
-        None). This file is used if no calibration is to be done. The notes given for
-        :term:`input_h5parm` also apply to this file.
+        None). This file is used if no calibration is to be done.
 
     facet_layout
         Full path to a text file that defines the facet layout (default = None). This file

@@ -331,7 +331,7 @@ class TestImage:
             assert image.input_parms["mpi_cpus_per_task"] == expected_resources["mpi_cpus_per_task"]
 
     @pytest.mark.parametrize("solution_attr", ["di_h5parm_filename", "fulljones_h5parm_filename"])
-    def test_set_parset_parameters_disables_facets_without_dd_scalar_h5parm(
+    def test_set_parset_parameters_disables_facets_without_dd_facet_h5parm(
         self, field, h5parm_file, solution_attr
     ):
         _prepare_field_for_image(field, h5parm_filename=h5parm_file)
@@ -356,6 +356,51 @@ class TestImage:
         image.set_parset_parameters()
 
         assert image.use_facets is False
+
+    def test_input_h5parm_without_sky_model_is_preapplied_as_di(self, field, h5parm_file):
+        """A user-supplied DI h5parm can be pre-applied without facet directions."""
+        _prepare_field_for_image(field, h5parm_filename=h5parm_file)
+        field.parset["input_skymodel"] = None
+        field.parset["facet_layout"] = None
+        field.h5parm_filename = str(h5parm_file)
+        field.dd_h5parm_filename = None
+        field.di_h5parm_filename = None
+        field.calibration_strategy = {"di": ["fast_phase"]}
+        field.do_image = True
+        field.do_calibrate = False
+
+        image = Image(field, index=1)
+        image.set_parset_parameters()
+        image.set_input_parameters()
+
+        assert image.use_facets is False
+        assert image.input_parms["prepare_data_applycal_steps"] == "[fastphase]"
+        assert "applycal" in image.input_parms["prepare_data_steps"]
+        assert image.input_parms["prepare_data_h5parm"]["path"] == str(h5parm_file)
+        assert "skymodel" not in image.input_parms
+
+    def test_input_di_slow_h5parm_without_sky_model_uses_di_amplitude_flag(
+        self, field, h5parm_file
+    ):
+        """DI slow-gain pre-apply follows the supplied h5parm amplitude content."""
+        _prepare_field_for_image(field, h5parm_filename=h5parm_file)
+        field.parset["input_skymodel"] = None
+        field.parset["facet_layout"] = None
+        field.h5parm_filename = str(h5parm_file)
+        field.dd_h5parm_filename = None
+        field.di_h5parm_filename = None
+        field.calibration_strategy = {"di": ["slow_gains"]}
+        field.apply_amplitudes = True
+        field.do_image = True
+        field.do_calibrate = False
+
+        image = Image(field, index=1)
+        image.set_parset_parameters()
+        image.set_input_parameters()
+
+        assert image.use_facets is False
+        assert image.input_parms["prepare_data_applycal_steps"] == "[slowgain]"
+        assert image.input_parms["prepare_data_h5parm"]["path"] == str(h5parm_file)
 
     def test_save_model_image(self, field):
         # This is the required setup to configure an Image operation
@@ -690,6 +735,7 @@ class TestImage:
         field.calibration_strategy = calibration_strategy
 
         image.apply_amplitudes = apply_amplitudes
+        field.apply_amplitudes = apply_amplitudes
         field.di_apply_amplitudes = apply_amplitudes
 
         # Create a temporary fake normalize/fulljones h5parm so FileRecord can resolve it,
@@ -718,10 +764,10 @@ class TestImage:
 
         assert steps == "[fastphase,mediumphase]"
 
-    def test_build_applycal_steps_prefers_dd_scalar_h5parm_when_mixed(
+    def test_build_applycal_steps_prefers_dd_h5parm_when_mixed(
         self, field, h5parm_file, tmp_path
     ):
-        """DD scalar products are selected over DI scalar products when both exist."""
+        """DD products are selected over DI products when both exist."""
         di_h5parm = tmp_path / "di-solutions.h5"
         di_h5parm.touch()
         _prepare_field_for_image(field, h5parm_filename=h5parm_file)
@@ -742,7 +788,7 @@ class TestImage:
         assert steps == "[fastphase,slowgain]"
         assert image._selected_applycal_h5parm == str(h5parm_file)
 
-    def test_build_image_applycal_steps_prefers_dd_scalar_plan(self):
+    def test_build_image_applycal_steps_prefers_dd_h5parm_plan(self):
         steps, selected_h5parm = build_image_applycal_steps(
             {"di": ["fast_phase"], "dd": ["fast_phase", "slow_gains"]},
             dd_h5parm="dd-solutions.h5",

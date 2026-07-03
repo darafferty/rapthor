@@ -148,11 +148,12 @@ def build_image_applycal_steps(
     dd_apply_amplitudes: Optional[bool] = None,
 ) -> tuple[list[str], Optional[str]]:
     """
-    Build prepare-imaging applycal steps and select the scalar h5parm to apply.
+    Build prepare-imaging applycal steps and select the h5parm to apply.
 
     The Image adapter resolves current-cycle h5parm filenames and converts
     selected files to FileRecord payload values. This helper only decides the
-    ordered DP3 step names and which scalar h5parm the selected steps share.
+    ordered DP3 step names and which non-full-Jones h5parm the selected steps
+    share.
     """
     if apply_none:
         return [], None
@@ -166,12 +167,12 @@ def build_image_applycal_steps(
     di_phase_solves = {
         solve for solve in strategy.get("di", []) if solve in {"fast_phase", "medium_phase"}
     }
-    prefer_dd_scalar = dd_h5parm is not None and any(
+    prefer_dd_h5parm = dd_h5parm is not None and any(
         solve != "full_jones" for solve in strategy.get("dd", [])
     )
 
     steps = []
-    selected_scalar_h5parm = None
+    selected_applycal_h5parm = None
     for mode, solves in strategy.items():
         for solve in solves:
             if solve not in SOLVE_TYPE_TO_APPLYCAL_STEP:
@@ -181,24 +182,24 @@ def build_image_applycal_steps(
                     steps.append(SOLVE_TYPE_TO_APPLYCAL_STEP[solve])
                 continue
 
-            scalar_h5parm = dd_h5parm if mode == "dd" else di_h5parm
+            candidate_h5parm = dd_h5parm if mode == "dd" else di_h5parm
             if mode == "dd" and use_facets:
-                if scalar_h5parm is not None and selected_scalar_h5parm is None:
-                    selected_scalar_h5parm = scalar_h5parm
+                if candidate_h5parm is not None and selected_applycal_h5parm is None:
+                    selected_applycal_h5parm = candidate_h5parm
                 continue
             mode_apply_amplitudes = dd_apply_amplitudes if mode == "dd" else di_apply_amplitudes
             if solve == "slow_gains" and not mode_apply_amplitudes:
                 continue
             if mode == "di" and solve == "slow_gains" and di_phase_solves:
                 continue
-            if prefer_dd_scalar and mode != "dd":
+            if prefer_dd_h5parm and mode != "dd":
                 continue
-            if scalar_h5parm is None:
+            if candidate_h5parm is None:
                 continue
 
-            if selected_scalar_h5parm is None:
-                selected_scalar_h5parm = scalar_h5parm
-            if scalar_h5parm == selected_scalar_h5parm:
+            if selected_applycal_h5parm is None:
+                selected_applycal_h5parm = candidate_h5parm
+            if candidate_h5parm == selected_applycal_h5parm:
                 step = SOLVE_TYPE_TO_APPLYCAL_STEP[solve]
                 if mode == "di" and solve in {"fast_phase", "medium_phase"}:
                     step = "fastphase"
@@ -208,4 +209,4 @@ def build_image_applycal_steps(
     if apply_normalizations:
         steps.append("normalization")
 
-    return steps, selected_scalar_h5parm
+    return steps, selected_applycal_h5parm

@@ -112,6 +112,8 @@ Tasks:
   - previous-cycle DD slow diagonal gains applied on the fly
   - previous-cycle DI slow gains pre-applied while DD phase solutions remain
     on the fly
+  - user-supplied DI scalar phase or diagonal slow-gain h5parm pre-applied in
+    image-only runs without requiring an input sky model
   - carried-forward DD h5parms use the calibration skymodel/facet directions
     from the cycle that produced the h5parm
   - image-only cycles with no detected sources keep empty sky models writable
