@@ -376,6 +376,15 @@ Tasks:
     `obj`, `mock1`, or numbered case names
   - make failure messages name the option, strategy, product, command, or
     scenario that failed
+  - add test docstrings where the test name is not enough to explain the
+    expected behaviour, scientific/runtime reasoning, migration context, or why
+    the case protects an important regression
+- Replace test bodies that only contain `pass` with real behavioral assertions,
+  or delete them if they are redundant. Keep `pass` only for deliberate no-op
+  fake methods, and add a short comment when that intent is not obvious. Start
+  the audit with older placeholder-heavy files such as `tests/lib/test_sector.py`,
+  `tests/lib/test_fitsimage.py`, `tests/lib/test_context.py`, and related
+  `tests/lib/` fixtures.
 - Deduplicate repeated setup and helper functions without hiding the scenario
   under test:
   - consolidate repeated fake shell operation classes and direct-helper patches
@@ -400,9 +409,10 @@ Tasks:
   `pytest.raises`, and `caplog`.
 - Replace one-value parametrizations and copy-pasted fixture setup with named
   fixtures or direct tests. Keep parametrized tests only where the table carries
-  real behavioral contrast, and give each row a readable id. Start with
-  `tests/lib/test_miscellaneous.py`, which has multiple one-row
-  parametrizations.
+  real behavioral contrast, and give each row a readable id. The first cleanup
+  pass removed the one-row parametrizations and placeholder `pass` tests in
+  `tests/lib/test_miscellaneous.py`; keep applying the same standard as nearby
+  tests are touched.
 - Add a lightweight suite-speed review habit:
   - use `python -m pytest -m "not integration" tests --collect-only -q` to
     track collection cost after test-layout or fixture changes

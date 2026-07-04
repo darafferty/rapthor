@@ -1,143 +1,228 @@
-"""
-Tests for the `rapthor.lib.miscellaneous` module.
-"""
+"""Tests for the `rapthor.lib.miscellaneous` module."""
 
+import multiprocessing
+import os
+
+import numpy as np
 import pytest
-from astropy.wcs import WCS
 
-from rapthor.lib.miscellaneous import *
+import rapthor.lib.miscellaneous as miscellaneous
+from rapthor.lib.miscellaneous import (
+    angular_separation,
+    approx_equal,
+    calc_theoretical_noise,
+    convert_mjd2mvt,
+    convert_mvt2mjd,
+    find_unflagged_fraction,
+    get_flagged_solution_fraction,
+    get_max_spectral_terms,
+    get_reference_station,
+    make_template_image,
+    nproc,
+    remove_soltabs,
+    rename_skymodel_patches,
+    string2bool,
+    string2list,
+)
 
 
-@pytest.mark.parametrize("image_name", (None,))
-@pytest.mark.parametrize("reference_ra_deg", (None,))
-@pytest.mark.parametrize("reference_dec_deg", (None,))
-@pytest.mark.parametrize("ximsize", (512,))
-@pytest.mark.parametrize("yimsize", (512,))
-@pytest.mark.parametrize("cellsize_deg", (0.000417,))
-@pytest.mark.parametrize("freqs", (None,))
-@pytest.mark.parametrize("times", (None,))
-@pytest.mark.parametrize("antennas", (None,))
-@pytest.mark.parametrize("aterm_type", ("tec",))
-@pytest.mark.parametrize("fill_val", (0,))
-def test_make_template_image(
-    image_name,
-    reference_ra_deg,
-    reference_dec_deg,
-    ximsize,
-    yimsize,
-    cellsize_deg,
-    freqs,
-    times,
-    antennas,
-    aterm_type,
-    fill_val,
-):
+def test_make_template_image_accepts_empty_output_name():
     make_template_image(
-        image_name,
-        reference_ra_deg,
-        reference_dec_deg,
-        ximsize,
-        yimsize,
-        cellsize_deg,
-        freqs,
-        times,
-        antennas,
-        aterm_type,
-        fill_val,
+        image_name=None,
+        reference_ra_deg=None,
+        reference_dec_deg=None,
+        ximsize=512,
+        yimsize=512,
+        cellsize_deg=0.000417,
+        freqs=None,
+        times=None,
+        antennas=None,
+        aterm_type="tec",
+        fill_val=0,
     )
 
 
-@pytest.mark.parametrize("invar", (None,))
-def test_string2bool(invar):
-    string2bool(invar)
+def test_string2bool_preserves_none():
+    assert string2bool(None) is None
 
 
-@pytest.mark.parametrize("invar", (None,))
-def test_string2list(invar):
-    string2list(invar)
+def test_string2list_preserves_none():
+    assert string2list(None) is None
 
 
-@pytest.mark.parametrize("x", (1.23456789,))
-@pytest.mark.parametrize("y", (1.23457890,))
-@pytest.mark.parametrize("args", ([1e-5],))
-@pytest.mark.parametrize("kwargs", ({"rel": 1e-5},))
-def test_approx_equal(x, y, args, kwargs):
-    assert approx_equal(x, y, *args, **kwargs)
+def test_approx_equal_accepts_relative_tolerance():
+    assert approx_equal(1.23456789, 1.23457890, 1e-5, rel=1e-5)
 
 
-# Normal conversions shouldn't raise any warnings.
 @pytest.mark.filterwarnings("error")
-@pytest.mark.parametrize("mjd_sec, mvt_str", [(4567890123.125, "18Aug2003/02:22:03.125")])
-def test_convert_mjd_mvt(mjd_sec, mvt_str):
+def test_convert_mjd_mvt_round_trips_without_warning_for_modern_date():
+    mjd_sec = 4567890123.125
+    mvt_str = "18Aug2003/02:22:03.125"
+
     assert convert_mjd2mvt(mjd_sec) == mvt_str
     assert convert_mvt2mjd(mvt_str) == mjd_sec
 
 
-# Test the corner case of using MJD 0. It triggers an ERFA warning.
 @pytest.mark.filterwarnings("ignore:ERFA.*dubious year")
-@pytest.mark.parametrize("mjd_sec, mvt_str", [(0, "17Nov1858/00:00:00.000")])
-def test_convert_mjd_mvt_zero(mjd_sec, mvt_str):
+def test_convert_mjd_mvt_round_trips_mjd_zero():
+    mjd_sec = 0
+    mvt_str = "17Nov1858/00:00:00.000"
+
     assert convert_mjd2mvt(mjd_sec) == mvt_str
     assert convert_mvt2mjd(mvt_str) == mjd_sec
 
 
-@pytest.mark.parametrize(
-    "position1, position2, separation",
-    [((0.0, 0.0), (45.0, 45.0), 60.0)],
-)
-def test_angular_separation(position1, position2, separation):
-    assert angular_separation(position1, position2).value == pytest.approx(separation)
+def test_angular_separation_returns_expected_quantity():
+    assert angular_separation((0.0, 0.0), (45.0, 45.0)).value == pytest.approx(60.0)
 
 
-@pytest.mark.parametrize("soltab", (None,))  # we may want to use a fixture here
-@pytest.mark.parametrize("max_ind", (None,))
-def test_get_reference_station(soltab, max_ind):
-    # get_reference_station(soltab, max_ind)
-    pass
+def test_calc_theoretical_noise_returns_zero_for_empty_observation_list():
+    assert calc_theoretical_noise([], w_factor=1.5) == (0.0, 0.0)
 
 
-@pytest.mark.parametrize("solset", (None,))  # we may want to use a fixture here
-@pytest.mark.parametrize("soltabnames", (None,))
-def test_remove_soltabs(solset, soltabnames):
-    # remove_soltabs(solset, soltabnames)
-    pass
+def test_get_reference_station_selects_least_flagged_antenna():
+    class Soltab:
+        ant = ["CS001", "CS002", "CS003"]
+
+        def getValues(self, retAxesVals=False, weight=True):
+            assert retAxesVals is False
+            assert weight is True
+            return np.array(
+                [
+                    [0.0, 1.0],
+                    [1.0, 1.0],
+                    [1.0, 0.0],
+                ]
+            )
+
+        def getAxesNames(self):
+            return ["ant", "time"]
+
+    assert get_reference_station(Soltab(), max_ind=2) == 1
 
 
-@pytest.mark.parametrize("obs_list", ([],))
-@pytest.mark.parametrize("w_factor", (1.5,))
-def test_calc_theoretical_noise(obs_list, w_factor):
-    calc_theoretical_noise(obs_list, w_factor)
+def test_remove_soltabs_deletes_named_solution_tables():
+    class Soltab:
+        def __init__(self):
+            self.deleted = False
+
+        def delete(self):
+            self.deleted = True
+
+    class Solset:
+        def __init__(self):
+            self.soltabs = {"phase": Soltab(), "amplitude": Soltab()}
+
+        def getSoltab(self, name):
+            return self.soltabs[name]
+
+    solset = Solset()
+
+    remove_soltabs(solset, "phase, amplitude")
+
+    assert solset.soltabs["phase"].deleted is True
+    assert solset.soltabs["amplitude"].deleted is True
 
 
-@pytest.mark.parametrize("ms_file", ("ms_file",))  # we may want to use a fixture here
-@pytest.mark.parametrize("start_time", (4567890123,))
-@pytest.mark.parametrize("end_time", (4567890134,))
-def test_find_unflagged_fraction(ms_file, start_time, end_time):
-    # find_unflagged_fraction(ms_file, start_time, end_time)
-    pass
+def test_find_unflagged_fraction_runs_taql_for_time_range(monkeypatch):
+    calls = []
+
+    def fake_run(command, *, shell, capture_output, check):
+        calls.append(command)
+        assert shell is True
+        assert capture_output is True
+        assert check is True
+        return miscellaneous.subprocess.CompletedProcess(command, 0, stdout=b"0.75")
+
+    monkeypatch.setattr(miscellaneous.subprocess, "run", fake_run)
+
+    assert find_unflagged_fraction("input.ms", 4567890123, 4567890134) == 0.75
+    assert "input.ms" in calls[0]
+    assert "TIME in [4567890123 =:= 4567890134]" in calls[0]
 
 
-@pytest.mark.parametrize("h5file", ("h5file",))  # we may want to use a fixture here
-@pytest.mark.parametrize("solsetname", ("sol000",))
-def test_get_flagged_solution_fraction(h5file, solsetname):
-    # get_flagged_solution_fraction(h5file, solsetname)
-    pass
+def test_get_flagged_solution_fraction_counts_nonfinite_and_zero_weight(monkeypatch):
+    class Soltab:
+        val = np.array([[1.0, np.nan], [3.0, 4.0]])
+        weight = np.array([[1.0, 1.0], [0.0, 1.0]])
+
+    class Solset:
+        def getSoltabs(self):
+            return [Soltab()]
+
+    class H5Parm:
+        def __init__(self, filename):
+            self.filename = filename
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, traceback):
+            return False
+
+        def getSolset(self, name):
+            assert name == "sol000"
+            return Solset()
+
+    monkeypatch.setattr(miscellaneous, "h5parm", H5Parm)
+
+    assert get_flagged_solution_fraction("solutions.h5") == 0.5
 
 
-@pytest.mark.parametrize("skymodel", (None,))  # we may want to use a fixture here
-@pytest.mark.parametrize("order_dec", (None,))
-@pytest.mark.parametrize("order_ra", (None,))
-@pytest.mark.parametrize("dec_bin_width", (2.0,))
-def test_rename_skymodel_patches(skymodel, order_dec, order_ra, dec_bin_width):
-    # rename_skymodel_patches(skymodel, order_dec, order_ra, dec_bin_width)
-    pass
+def test_rename_skymodel_patches_orders_sources_by_ra_within_dec_bin():
+    class Coordinate:
+        def __init__(self, value):
+            self.value = value
+
+    class SkyModel:
+        hasPatches = True
+
+        def __init__(self):
+            self.patch_positions = {
+                "old_low_ra": (Coordinate(10.0), Coordinate(1.0)),
+                "old_high_ra": (Coordinate(20.0), Coordinate(2.0)),
+            }
+            self.patch_col = np.array(["old_low_ra", "old_high_ra"], dtype=object)
+            self.updated_patch_positions = None
+
+        def getPatchPositions(self):
+            return self.patch_positions
+
+        def getColValues(self, name):
+            assert name == "Patch"
+            return self.patch_col.copy()
+
+        def getRowIndex(self, name):
+            return {"old_low_ra": 0, "old_high_ra": 1}[name]
+
+        def setColValues(self, name, values):
+            assert name == "Patch"
+            self.patch_col = values
+
+        def setPatchPositions(self, patch_positions):
+            self.updated_patch_positions = patch_positions
+
+    skymodel = SkyModel()
+
+    rename_skymodel_patches(skymodel, order_dec="low_to_high", order_ra="high_to_low")
+
+    assert skymodel.patch_col.tolist() == ["Patch_2", "Patch_1"]
+    assert set(skymodel.updated_patch_positions) == {"Patch_1", "Patch_2"}
 
 
-@pytest.mark.parametrize("skymodel_file", ("skymodel_file",))
-def test_get_max_spectral_terms(skymodel_file):
+def test_get_max_spectral_terms_raises_for_missing_skymodel_file():
     with pytest.raises(FileNotFoundError):
-        get_max_spectral_terms(skymodel_file)
+        get_max_spectral_terms("skymodel_file")
 
 
-def test_nproc():
-    assert nproc() == int(subprocess.run(["nproc"], capture_output=True).stdout)
+def test_nproc_uses_process_cpu_affinity(monkeypatch):
+    monkeypatch.setattr(os, "sched_getaffinity", lambda pid: {0, 1, 2})
+
+    assert nproc() == 3
+
+
+def test_nproc_falls_back_to_multiprocessing_cpu_count(monkeypatch):
+    monkeypatch.delattr(os, "sched_getaffinity", raising=False)
+    monkeypatch.setattr(multiprocessing, "cpu_count", lambda: 4)
+
+    assert nproc() == 4

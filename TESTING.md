@@ -34,6 +34,9 @@ designed for the next person who needs to understand Rapthor's behaviour.
   small functions, simple control flow, and no incidental cleverness.
 - Let the test structure mirror the contract being protected. A reader should
   see setup, action, and expected outcome without untangling unrelated details.
+- Prefer a descriptive test name. Add a docstring when the name alone cannot
+  explain the behavior, when scientific or runtime reasoning matters, or when a
+  future developer needs context for why the case exists.
 - Prefer domain language over generic test language: use names like
   `dd_slow_gain_strategy`, `facet_layout`, `prepared_ms`, and
   `normalization_h5parm`.
@@ -355,6 +358,9 @@ Write tests for future readers:
   builders.
 - Use comments sparingly to explain why a scenario matters scientifically or
   operationally. Do not narrate code that is already clear.
+- Use test docstrings for non-obvious reasoning that belongs with the scenario:
+  scientific intent, migration history, external-tool constraints, restart
+  semantics, or why a regression would be harmful.
 - Prefer exact expected structures for small payloads and records. For large
   outputs, assert a named subset that captures the behaviour being protected.
 - Make failure messages useful. If a comparison is nontrivial, include the
