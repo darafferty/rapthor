@@ -103,10 +103,14 @@ Do these in order:
    `docs/source/development/benchmark_baselines/`. If it fails or times out,
    adjust the benchmark inputs or CI resource policy before starting Dask
    scalability work.
-4. Tighten equivalence comparison next: improve FITS/image metrics, expose
+4. While benchmark results are pending, start the test-suite improvement track:
+   add an option-coverage audit and refactor the largest flow/operation tests
+   as they are touched.
+5. Tighten equivalence comparison next: improve FITS/image metrics, expose
    product statistics in reports, and add the branch-vs-master runner.
-5. Only after a benchmark baseline and stronger equivalence signal are in
-   place, start the Dask scalability guardrails and first task-boundary slices.
+6. Only after a benchmark baseline, stronger equivalence signal, and test-suite
+   guardrails are in place, start the Dask scalability guardrails and first
+   task-boundary slices.
 
 ## Work Queue
 
@@ -317,7 +321,99 @@ Done when:
 - The default saved-reference matrix remains robust to expected external-tool
   floating-point jitter.
 
-### 4. Dask Scalability Guardrails
+### 4. Test Suite Maintainability And Coverage
+
+Status: broad coverage exists, but the suite is starting to concentrate too
+many contracts in very large files, and user-facing options are not yet audited
+systematically.
+
+Goals:
+
+- Keep tests readable enough that failures explain the behavior, not just the
+  implementation detail that changed.
+- Use pytest features directly: fixtures, fixture factories, `tmp_path`,
+  `monkeypatch`, `caplog`, `pytest.raises`, `pytest.mark.parametrize`,
+  `pytest.param(..., id=...)`, and targeted marks.
+- Make parset, strategy, runtime, and product-option coverage explicit before
+  increasing Dask task granularity.
+- Prefer focused table-driven branch tests over copying long setup blocks.
+
+Tasks:
+
+- Add a defaults/options coverage audit that parses
+  `rapthor/settings/defaults.parset` and records, for each user-facing option,
+  whether it has focused parser/default coverage, operation or execution
+  coverage, integration/equivalence coverage, or an intentional allow-list
+  entry.
+- Use that audit to add focused tests for currently weak option families. A
+  first-pass text audit found no direct test mention for:
+  - global sky-model/product inputs such as
+    `separation_tolerance_arcsec`, `download_initial_skymodel_radius`,
+    `download_initial_skymodel_server`, `download_overwrite_skymodel`,
+    `input_fulljones_h5parm`, and `input_normalization_h5parm`
+  - calibration branches such as `use_included_skymodels`,
+    `fulljones_smoothnessconstraint`, and
+    `correct_time_frequency_smearing`
+  - imaging grid/sector and smearing branches such as `mem_gb`,
+    `grid_center_ra`, `grid_center_dec`, `grid_nsectors_ra`,
+    `sector_center_dec_list`, `sector_width_ra_deg_list`,
+    `sector_width_dec_deg_list`, `correct_time_frequency_smearing`, and
+    `skip_corner_sectors`
+- Split or reorganize the largest flow and operation test modules when touching
+  them:
+  - `tests/execution/test_calibrate_flow.py`
+  - `tests/execution/test_image_flow.py`
+  - `tests/operations/test_calibrate.py`
+  - `tests/operations/test_image.py`
+  - `tests/execution/test_pipeline_flow.py`
+  Separate payload builders, command construction, output discovery,
+  restart/idempotency behavior, Prefect flow wiring, and branch-scenario
+  matrices where that reduces setup noise.
+- Convert legacy `unittest.TestCase`-style tests, especially
+  `tests/lib/test_parset.py`, to pytest-style assertions, fixtures,
+  `pytest.raises`, and `caplog`.
+- Replace one-value parametrizations and copy-pasted fixture setup with named
+  fixtures or direct tests. Keep parametrized tests only where the table carries
+  real behavioral contrast, and give each row a readable id.
+- Add focused branch tests for generated demo/benchmark inputs:
+  - local demo and CI benchmark parsets point at the intended shared strategy
+  - local and CI resource defaults differ only where intended
+  - custom strategy/template paths, `--prepare-inputs`, `--skip-predict`,
+    existing-output handling, and missing generated inputs fail clearly
+  - benchmark repetitions, scenario selection, result collation, and failed-run
+    artifact handling remain stable
+- Add focused runtime-resource tests for Prefect and Dask options:
+  - local versus external Dask scheduler behavior
+  - `cpus_per_task`, `max_threads`, `max_cores`, `local_dask_workers`, and
+    `mem_per_node_gb` propagation
+  - zero/default thread settings for WSClean, DP3, and Python orchestration
+  - CI benchmark resource overrides versus local demo defaults
+- Add branch tests around image/calibration product handoff that are small and
+  table-driven:
+  - `prepare_data_h5parm` versus imaging-time `h5parm`
+  - DI phase, DI slow gains, DI full-Jones, DD phase, DD slow gains, and
+    full-Jones combinations
+  - supplied input h5parms versus previous-cycle products
+  - empty-source image-only cycles and skipped calibration/imaging steps
+- Add a lightweight branch-coverage report target for focused modules, using
+  the existing `pytest-cov` setup, so reviewers can see untested branches
+  without requiring the full integration suite.
+- Keep slow, external-tool, internet/data-download, Prefect-server, and
+  integration behavior behind clear pytest marks and fixtures so the default
+  non-integration lane remains stable and fast.
+
+Done when:
+
+- A reviewed option-coverage audit exists and either covers or explicitly
+  allow-lists every user-facing parset option.
+- New tests no longer add unrelated scenarios to monolithic flow/operation test
+  files.
+- The demo/benchmark, runtime-resource, and product-handoff branches above have
+  focused tests with readable pytest ids.
+- The fast non-integration suite remains maintainable in the prepared
+  dev-container environment.
+
+### 5. Dask Scalability Guardrails
 
 Make distributed boundaries explicit before making them finer grained.
 
@@ -341,7 +437,7 @@ Done when:
 - Tests fail if a future refactor sends rich domain objects or oversized
   payloads to workers.
 
-### 5. First Scalability Slices
+### 6. First Scalability Slices
 
 Only split work where it improves dashboard clarity, scheduling, or restart
 behavior without fighting external tools.
@@ -375,7 +471,7 @@ Done when:
 - Restart and output-record behavior remains unchanged.
 - Scientific equivalence checks still pass.
 
-### 6. Runtime UX And Contributor Docs
+### 7. Runtime UX And Contributor Docs
 
 Make Rapthor easier to run and easier to improve.
 
@@ -407,7 +503,7 @@ Done when:
 - A contributor can find the owner module, expected tests, and docs updates for
   common changes.
 
-### 7. Deferred Targeted Refactors
+### 8. Deferred Targeted Refactors
 
 Do not split these modules just for tidiness. Split them when changing behavior
 or when a smaller extraction clearly reduces risk:
