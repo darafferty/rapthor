@@ -44,10 +44,10 @@ Done:
 - The strengthened saved-reference matrix passed on 2026-07-04, with the
   current report recorded in `EQUIVALENCE_REPORT.md`.
 - Branch-vs-master equivalence runner scaffolding is in place at
-  `scripts/dev/run_branch_equivalence.py`: it accepts user parsets/strategies,
-  writes branch-specific adapted inputs and manifests, supports manual
-  base/current strategy overrides, runs each branch in isolated directories,
-  and reuses the strengthened product comparison checks.
+  `scripts/dev/run_branch_equivalence.py`: it accepts explicitly prepared
+  base/current parsets, can create a base-ref worktree plus virtual environment
+  for `master` or a chosen commit, runs each branch, records command logs and
+  manifests, and reuses the strengthened product comparison checks.
 
 Known caveats:
 
@@ -63,13 +63,12 @@ Known caveats:
 ## Next Work, In Order
 
 1. **Run the multi-cycle branch-vs-master equivalence scenario.**
-   Use `scripts/dev/run_branch_equivalence.py` on the generated
-   benchmark/default-like parset and strategy. Confirm that the base `master`
-   run and current branch run complete, inspect any compatibility adaptations,
-   compare outputs with the strengthened product checks, and record a compact
-   summary in `EQUIVALENCE_REPORT.md`. If master cannot run the generated
-   parset directly, add the smallest explicit adapter or base/current strategy
-   override needed to preserve the scientific scenario.
+   Prepare one explicit master-compatible parset/strategy pair and one explicit
+   current-branch parset/strategy pair for the benchmark/default-like data.
+   Run them with `scripts/dev/run_branch_equivalence.py`, compare outputs with
+   the strengthened product checks, and record a compact summary in
+   `EQUIVALENCE_REPORT.md`. Keep broader DI-only strategy coverage in the
+   benchmark lane unless a separate master-compatible base strategy is provided.
 
 2. **Take one low-risk image-cycle scalability slice.**
    Start with one natural boundary inside image-sector execution, such as
@@ -137,10 +136,15 @@ Current status:
 - The saved-reference matrix passed with strengthened FITS checks on
   2026-07-04. The current report path and residual summary are recorded in
   `EQUIVALENCE_REPORT.md`.
-- `scripts/dev/run_branch_equivalence.py` now prepares and compares arbitrary
-  user-supplied parsets/strategies across `master` and the current branch. It
-  can be used in prepare-only mode to inspect adapted branch inputs before
-  launching expensive runs.
+- `scripts/dev/run_branch_equivalence.py` now compares arbitrary explicitly
+  prepared base/current parsets across `master` and the current branch. It does
+  not translate parsets or strategies; the input files are the scientific
+  contract. Use `--prepare-only` to validate/report the chosen files before
+  launching expensive runs. Prefer absolute paths inside these parsets for
+  shared data and strategy files, because each side is run from its own branch
+  checkout. Use `--setup-base-env` to create or reuse a virtualenv for the base
+  ref so `master` or a chosen commit runs with its own Python dependencies
+  while the current branch runs normally.
 
 Immediate task:
 
@@ -148,15 +152,24 @@ Immediate task:
 
   ```bash
   scripts/dev/run_branch_equivalence.py \
-    examples/generated/prefect_demo_rich/prefect_demo_benchmark.parset \
+    --base-parset path/to/master-compatible.parset \
+    --current-parset path/to/current-branch.parset \
     --scenario-id benchmark-default-like \
-    --task-runner sync \
-    --command-profile auto
+    --setup-base-env
   ```
 
   For a workstation smoke check or user-supplied data, use `--prepare-only`
-  first to inspect the generated base/current parsets, strategies, and
-  adaptation manifest.
+  first to confirm the exact base/current parsets and work directories that
+  will be reported. The current benchmark strategy intentionally exercises
+  DI-only phase and full-Jones cycles that `master` cannot represent exactly;
+  use explicit DD-only/default-like branch-equivalence strategies for the first
+  scientific branch-vs-master gate.
+
+For a specific base commit, pass `--base-ref <commit-ish>`. By default the base
+checkout is placed under the run root at `checkouts/base` and the venv is
+created at `checkouts/base/.venv`. Use `--base-venv` to reuse a different
+environment, `--base-install-spec '.[dev]'` if development extras are needed,
+and `--reinstall-base-env` when dependencies should be refreshed.
 
 Keep:
 

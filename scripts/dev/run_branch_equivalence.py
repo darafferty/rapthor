@@ -1,37 +1,29 @@
 #!/usr/bin/env python3
-"""Run Rapthor from two branches and compare generated scientific products."""
+"""Run Rapthor from two prepared branch inputs and compare generated products.
+
+This runner intentionally does not translate parsets or strategies. Prepare one
+parset/strategy pair for the base ref and one for the current branch, then pass
+the parsets with ``--base-parset`` and ``--current-parset``. The script handles
+checkout/bootstrap, execution, reporting, and product comparison only.
+
+Because Rapthor is run from each branch checkout, relative paths inside the
+parsets are interpreted by that branch's normal runtime. Prefer absolute paths
+for shared data and strategy files when comparing across separate checkouts.
+"""
 
 from __future__ import annotations
 
 import argparse
 import configparser
-import copy
 import importlib.util
 import json
 import os
-import runpy
-import shutil
 import subprocess
 import sys
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Sequence
-
-from rapthor.lib.parset_paths import PARSET_PATH_OPTIONS, resolve_path_value
-
-DEFAULT_PARSET = Path("examples/generated/prefect_demo_rich/prefect_demo_benchmark.parset")
-DEFAULT_CURRENT_CALIBRATION_STRATEGY = {
-    "dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"],
-    "di": [],
-}
-BUILTIN_STRATEGIES = {"selfcal", "image"}
-LEGACY_STRATEGY_KEYS = {
-    "do_fulljones_solve",
-    "do_slowgain_solve",
-    "slow_timestep_joint_sec",
-    "slow_timestep_separate_sec",
-}
 
 
 def _load_saved_equivalence_module():
@@ -47,18 +39,6 @@ def _load_saved_equivalence_module():
 
 
 saved_equivalence = _load_saved_equivalence_module()
-
-
-@dataclass
-class AdaptationChange:
-    """A single automatic or manual-override adaptation applied before a run."""
-
-    side: str
-    target: str
-    key: str
-    old: Any
-    new: Any
-    reason: str
 
 
 @dataclass
@@ -94,6 +74,13 @@ def _resolve_existing_path(path: Path, *, base_dir: Path, description: str) -> P
     return resolved
 
 
+def _resolve_path(path: Path, *, base_dir: Path) -> Path:
+    resolved = path.expanduser()
+    if not resolved.is_absolute():
+        resolved = base_dir / resolved
+    return resolved.resolve(strict=False)
+
+
 def _read_parset(path: Path) -> configparser.ConfigParser:
     parser = configparser.ConfigParser(interpolation=None)
     with path.open(encoding="utf-8") as handle:
@@ -101,405 +88,77 @@ def _read_parset(path: Path) -> configparser.ConfigParser:
     return parser
 
 
-def _ensure_section(parser: configparser.ConfigParser, section: str) -> None:
-    if not parser.has_section(section):
-        parser.add_section(section)
-
-
-def _set_option(
-    parser: configparser.ConfigParser,
-    *,
-    side: str,
-    target: str,
-    section: str,
-    option: str,
-    value: str,
-    reason: str,
-    changes: list[AdaptationChange],
-) -> None:
-    _ensure_section(parser, section)
-    old = parser.get(section, option, fallback=None)
-    parser.set(section, option, value)
-    if old != value:
-        changes.append(
-            AdaptationChange(
-                side=side,
-                target=target,
-                key=f"{section}.{option}",
-                old=old,
-                new=value,
-                reason=reason,
-            )
-        )
-
-
-def _materialize_path_options(
-    parser: configparser.ConfigParser,
-    *,
-    side: str,
-    base_dir: Path,
-    changes: list[AdaptationChange],
-) -> None:
-    for section, options in PARSET_PATH_OPTIONS.items():
-        if not parser.has_section(section):
-            continue
-        for option in sorted(options):
-            if not parser.has_option(section, option):
-                continue
-            old = parser.get(section, option)
-            new = resolve_path_value(old, base_dir)
-            if old != new:
-                parser.set(section, option, new)
-                changes.append(
-                    AdaptationChange(
-                        side=side,
-                        target="parset",
-                        key=f"{section}.{option}",
-                        old=old,
-                        new=new,
-                        reason="resolved path relative to the input parset",
-                    )
-                )
-
-
-def _strategy_value_is_path(value: str) -> bool:
-    stripped = value.strip()
-    if not stripped or stripped in BUILTIN_STRATEGIES:
-        return False
-    return True
-
-
-def _resolve_strategy_source(
-    parser: configparser.ConfigParser,
-    *,
+def _work_dir_from_parset(
     parset_path: Path,
-    cli_strategy: Path | None,
-    cli_base_dir: Path,
-) -> tuple[Path | None, str | None]:
-    if cli_strategy is not None:
-        return (
-            _resolve_existing_path(cli_strategy, base_dir=cli_base_dir, description="Strategy"),
-            None,
-        )
-
-    value = parser.get("global", "strategy", fallback="").strip()
-    if not _strategy_value_is_path(value):
-        return None, value or None
-
-    return (
-        _resolve_existing_path(Path(value), base_dir=parset_path.parent, description="Strategy"),
-        None,
-    )
-
-
-def _load_strategy_steps(path: Path) -> list[dict[str, Any]] | None:
-    try:
-        namespace = runpy.run_path(str(path), init_globals={"field": None})
-    except Exception:
-        return None
-    steps = namespace.get("strategy_steps")
-    if not isinstance(steps, list) or not all(isinstance(step, dict) for step in steps):
-        return None
-    return steps
-
-
-def _strategy_needs_current_adaptation(steps: list[dict[str, Any]]) -> bool:
-    for step in steps:
-        if LEGACY_STRATEGY_KEYS & set(step):
-            return True
-        if step.get("do_calibrate") and "calibration_strategy" not in step:
-            return True
-    return False
-
-
-def _calibration_strategy_from_legacy_step(step: dict[str, Any]) -> dict[str, list[str]]:
-    if step.get("do_fulljones_solve"):
-        return {"di": ["full_jones"], "dd": []}
-    if step.get("do_slowgain_solve", True):
-        return copy.deepcopy(DEFAULT_CURRENT_CALIBRATION_STRATEGY)
-    return {"di": [], "dd": ["fast_phase", "medium_phase"]}
-
-
-def _adapt_legacy_strategy_for_current(
-    steps: list[dict[str, Any]],
     *,
-    changes: list[AdaptationChange],
-    strategy_target: str,
-) -> list[dict[str, Any]]:
-    adapted = copy.deepcopy(steps)
-    for index, step in enumerate(adapted):
-        target = f"{strategy_target}:strategy_steps[{index}]"
-        if "slow_timestep_separate_sec" in step and "slow_timestep_sec" not in step:
-            step["slow_timestep_sec"] = step["slow_timestep_separate_sec"]
-            changes.append(
-                AdaptationChange(
-                    side="current",
-                    target=target,
-                    key="slow_timestep_sec",
-                    old=None,
-                    new=step["slow_timestep_sec"],
-                    reason="renamed legacy slow_timestep_separate_sec",
-                )
-            )
-        for key in sorted(LEGACY_STRATEGY_KEYS):
-            if key in step:
-                changes.append(
-                    AdaptationChange(
-                        side="current",
-                        target=target,
-                        key=key,
-                        old=step[key],
-                        new=None,
-                        reason="removed legacy strategy option for current branch",
-                    )
-                )
-                step.pop(key)
-        if step.get("do_calibrate") and "calibration_strategy" not in step:
-            new_strategy = _calibration_strategy_from_legacy_step(steps[index])
-            step["calibration_strategy"] = new_strategy
-            changes.append(
-                AdaptationChange(
-                    side="current",
-                    target=target,
-                    key="calibration_strategy",
-                    old=None,
-                    new=new_strategy,
-                    reason="translated legacy solve toggles to current calibration_strategy",
-                )
-            )
-    return adapted
+    repo_root: Path,
+    override: Path | None = None,
+) -> Path:
+    if override is not None:
+        return _resolve_path(override, base_dir=repo_root)
+
+    parser = _read_parset(parset_path)
+    work_dir = parser.get("global", "dir_working", fallback="").strip()
+    if not work_dir:
+        raise ValueError(f"{parset_path} is missing required global.dir_working")
+    return _resolve_path(Path(work_dir), base_dir=repo_root)
 
 
-def _write_static_strategy(path: Path, steps: list[dict[str, Any]]) -> None:
-    path.write_text(f"strategy_steps = {steps!r}\n", encoding="utf-8")
-
-
-def _prepare_strategy_copy(
-    *,
-    side: str,
-    source: Path | None,
-    builtin_value: str | None,
-    explicit_override: bool,
-    output_dir: Path,
-    changes: list[AdaptationChange],
-) -> str | None:
-    if source is None:
-        return builtin_value
-
-    output_dir.mkdir(parents=True, exist_ok=True)
-    destination = output_dir / source.name
-    if side == "current" and not explicit_override:
-        steps = _load_strategy_steps(source)
-        if steps is None:
-            shutil.copy2(source, destination)
-            changes.append(
-                AdaptationChange(
-                    side=side,
-                    target="strategy",
-                    key="manual_review",
-                    old=str(source),
-                    new=str(destination),
-                    reason=(
-                        "strategy could not be inspected automatically; copied unchanged, "
-                        "use --current-strategy if current-branch compatibility is needed"
-                    ),
-                )
-            )
-            return str(destination)
-        if _strategy_needs_current_adaptation(steps):
-            adapted = _adapt_legacy_strategy_for_current(
-                steps,
-                changes=changes,
-                strategy_target=source.name,
-            )
-            _write_static_strategy(destination, adapted)
-            changes.append(
-                AdaptationChange(
-                    side=side,
-                    target="strategy",
-                    key="strategy",
-                    old=str(source),
-                    new=str(destination),
-                    reason="wrote static current-branch strategy from legacy strategy_steps",
-                )
-            )
-            return str(destination)
-
-    shutil.copy2(source, destination)
-    changes.append(
-        AdaptationChange(
-            side=side,
-            target="strategy",
-            key="strategy",
-            old=str(source),
-            new=str(destination),
-            reason="copied strategy into isolated branch input directory",
-        )
-    )
-    return str(destination)
-
-
-def prepare_branch_inputs(
+def prepare_branch_input(
     *,
     side: str,
     ref: str,
     repo_root: Path,
-    source_parset: Path,
+    parset_path: Path,
     run_dir: Path,
-    cli_strategy: Path | None = None,
-    explicit_strategy_override: bool = False,
-    cli_base_dir: Path | None = None,
-    task_runner: str = "sync",
-    command_profile: str = "auto",
-    local_dask_workers: int | None = None,
-    cpus_per_task: int | None = None,
-    max_threads: int | None = None,
-) -> tuple[PreparedRun, list[AdaptationChange]]:
-    """Write branch-specific parset and strategy inputs for one run side."""
-    cli_base = Path.cwd() if cli_base_dir is None else cli_base_dir
-    changes: list[AdaptationChange] = []
-    parser = _read_parset(source_parset)
-    strategy_source, builtin_strategy = _resolve_strategy_source(
-        parser,
-        parset_path=source_parset,
-        cli_strategy=cli_strategy,
-        cli_base_dir=cli_base,
+    work_dir_override: Path | None = None,
+) -> PreparedRun:
+    """Validate one prepared parset and derive the work directory to compare."""
+    parset_path = _resolve_existing_path(
+        parset_path,
+        base_dir=_repo_root(),
+        description=f"{side} parset",
     )
-
-    _materialize_path_options(
-        parser,
+    run_dir.mkdir(parents=True, exist_ok=True)
+    return PreparedRun(
         side=side,
-        base_dir=source_parset.parent,
-        changes=changes,
-    )
-
-    strategy_value = _prepare_strategy_copy(
-        side=side,
-        source=strategy_source,
-        builtin_value=builtin_strategy,
-        explicit_override=explicit_strategy_override,
-        output_dir=run_dir / "inputs",
-        changes=changes,
-    )
-    if strategy_value is not None:
-        _set_option(
-            parser,
-            side=side,
-            target="parset",
-            section="global",
-            option="strategy",
-            value=str(strategy_value),
-            reason="selected branch-specific strategy input",
-            changes=changes,
-        )
-
-    work_dir = run_dir / "rapthor-work"
-    scratch_dir = run_dir / "scratch"
-    _set_option(
-        parser,
-        side=side,
-        target="parset",
-        section="global",
-        option="dir_working",
-        value=str(work_dir),
-        reason="isolate branch run products",
-        changes=changes,
-    )
-    _set_option(
-        parser,
-        side=side,
-        target="parset",
-        section="cluster",
-        option="local_scratch_dir",
-        value=str(scratch_dir),
-        reason="isolate branch scratch products",
-        changes=changes,
-    )
-    _set_option(
-        parser,
-        side=side,
-        target="parset",
-        section="cluster",
-        option="global_scratch_dir",
-        value=str(scratch_dir),
-        reason="isolate branch scratch products",
-        changes=changes,
-    )
-    if task_runner != "keep":
-        _set_option(
-            parser,
-            side=side,
-            target="parset",
-            section="cluster",
-            option="prefect_task_runner",
-            value=task_runner,
-            reason="normalize equivalence runtime",
-            changes=changes,
-        )
-    _set_option(
-        parser,
-        side=side,
-        target="parset",
-        section="cluster",
-        option="prefect_command_profile",
-        value=command_profile,
-        reason="capture comparable command timing",
-        changes=changes,
-    )
-    _set_option(
-        parser,
-        side=side,
-        target="parset",
-        section="cluster",
-        option="allow_internet_access",
-        value="False",
-        reason="keep branch equivalence runs offline/reproducible",
-        changes=changes,
-    )
-    for option, value in (
-        ("local_dask_workers", local_dask_workers),
-        ("cpus_per_task", cpus_per_task),
-        ("max_threads", max_threads),
-    ):
-        if value is not None:
-            _set_option(
-                parser,
-                side=side,
-                target="parset",
-                section="cluster",
-                option=option,
-                value=str(value),
-                reason="normalize requested runtime resources",
-                changes=changes,
-            )
-
-    parset_path = run_dir / "inputs" / f"{source_parset.stem}.{side}.parset"
-    parset_path.parent.mkdir(parents=True, exist_ok=True)
-    with parset_path.open("w", encoding="utf-8") as handle:
-        parser.write(handle)
-
-    return (
-        PreparedRun(
-            side=side,
-            ref=ref,
+        ref=ref,
+        repo_root=repo_root,
+        run_dir=run_dir,
+        parset_path=parset_path,
+        work_dir=_work_dir_from_parset(
+            parset_path,
             repo_root=repo_root,
-            run_dir=run_dir,
-            parset_path=parset_path,
-            work_dir=work_dir,
+            override=work_dir_override,
         ),
-        changes,
     )
 
 
-def _run_rapthor_from_repo(prepared: PreparedRun) -> PreparedRun:
+def _run_rapthor_from_repo(
+    prepared: PreparedRun,
+    *,
+    runner_command: Sequence[str] | None = None,
+) -> PreparedRun:
     env = os.environ.copy()
     env.setdefault("PREFECT_SERVER_EPHEMERAL_STARTUP_TIMEOUT_SECONDS", "180")
     env["PREFECT_HOME"] = str(prepared.run_dir / "prefect-home")
     env["SETUPTOOLS_SCM_PRETEND_VERSION_FOR_RAPTHOR"] = "0.0.0"
-    env["PYTHONPATH"] = os.pathsep.join(
-        [str(prepared.repo_root), *(item for item in [env.get("PYTHONPATH")] if item)]
+    if runner_command is None:
+        env["PYTHONPATH"] = os.pathsep.join(
+            [str(prepared.repo_root), *(item for item in [env.get("PYTHONPATH")] if item)]
+        )
+        path_prefixes = _rapthor_path_prefixes(prepared.repo_root)
+        command = _rapthor_command_for_repo(prepared.repo_root, prepared.parset_path)
+    else:
+        env.pop("PYTHONPATH", None)
+        path_prefixes = _command_path_prefixes(runner_command)
+        command = [*runner_command, str(prepared.parset_path)]
+    env["PATH"] = os.pathsep.join(
+        [
+            *(str(path) for path in path_prefixes if path.is_dir()),
+            env.get("PATH", ""),
+        ]
     )
-    command = [sys.executable, "-m", "rapthor.cli", str(prepared.parset_path)]
     completed = subprocess.run(
         command,
         cwd=prepared.repo_root,
@@ -510,11 +169,103 @@ def _run_rapthor_from_repo(prepared: PreparedRun) -> PreparedRun:
         env=env,
     )
     log_path = prepared.run_dir / "rapthor-command.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
     log_path.write_text(completed.stdout, encoding="utf-8")
     prepared.command = command
     prepared.returncode = completed.returncode
     prepared.log_path = log_path
     return prepared
+
+
+def _rapthor_path_prefixes(repo_root: Path) -> tuple[Path, Path]:
+    return repo_root / "bin", repo_root / "rapthor" / "scripts"
+
+
+def _command_path_prefixes(command: Sequence[str]) -> tuple[Path, ...]:
+    if not command:
+        return ()
+    executable = Path(command[0]).expanduser()
+    if executable.parent == Path("."):
+        return ()
+    return (executable.parent.resolve(strict=False),)
+
+
+def _rapthor_command_for_repo(repo_root: Path, parset_path: Path) -> list[str]:
+    if (repo_root / "rapthor" / "cli.py").is_file():
+        return [sys.executable, "-m", "rapthor.cli", str(parset_path)]
+    legacy_script = repo_root / "bin" / "rapthor"
+    if legacy_script.is_file():
+        return [sys.executable, str(legacy_script), str(parset_path)]
+    return [sys.executable, "-m", "rapthor.cli", str(parset_path)]
+
+
+def _venv_bin_dir(venv_dir: Path) -> Path:
+    return venv_dir / ("Scripts" if os.name == "nt" else "bin")
+
+
+def _venv_python(venv_dir: Path) -> Path:
+    return _venv_bin_dir(venv_dir) / ("python.exe" if os.name == "nt" else "python")
+
+
+def _venv_rapthor(venv_dir: Path) -> Path:
+    suffix = ".exe" if os.name == "nt" else ""
+    return _venv_bin_dir(venv_dir) / f"rapthor{suffix}"
+
+
+def _git_revision(repo_root: Path) -> str:
+    completed = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=repo_root,
+        check=True,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    return completed.stdout.strip()
+
+
+def _base_env_marker_payload(repo_root: Path, install_spec: str) -> dict[str, str]:
+    return {
+        "checkout": str(repo_root.resolve()),
+        "revision": _git_revision(repo_root),
+        "install_spec": install_spec,
+    }
+
+
+def _setup_base_python_environment(
+    *,
+    repo_root: Path,
+    venv_dir: Path,
+    install_spec: str,
+    reinstall: bool = False,
+) -> Path:
+    """Create or refresh a base-branch venv and return its Rapthor executable."""
+    venv_dir = venv_dir.resolve()
+    python = _venv_python(venv_dir)
+    if not python.is_file():
+        subprocess.run([sys.executable, "-m", "venv", str(venv_dir)], check=True)
+
+    marker_path = venv_dir / ".rapthor-branch-equivalence.json"
+    desired_marker = _base_env_marker_payload(repo_root, install_spec)
+    installed_marker = None
+    if marker_path.is_file():
+        try:
+            installed_marker = json.loads(marker_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            installed_marker = None
+
+    if reinstall or installed_marker != desired_marker:
+        subprocess.run(
+            [str(python), "-m", "pip", "install", "-e", install_spec],
+            cwd=repo_root,
+            check=True,
+        )
+        marker_path.write_text(json.dumps(desired_marker, indent=2), encoding="utf-8")
+
+    rapthor = _venv_rapthor(venv_dir)
+    if not rapthor.is_file():
+        raise FileNotFoundError(f"Installed Rapthor executable not found: {rapthor}")
+    return rapthor
 
 
 def _git_worktree_checkout(repo_root: Path, *, ref: str, checkout_dir: Path) -> Path:
@@ -618,15 +369,16 @@ def _render_markdown_report(report: dict[str, Any]) -> str:
         "",
         "## Branch Runs",
         "",
-        "| Side | Ref | Return Code | Parset | Work Dir |",
-        "| --- | --- | ---: | --- | --- |",
+        "| Side | Ref | Return Code | Parset | Work Dir | Log |",
+        "| --- | --- | ---: | --- | --- | --- |",
     ]
     for side in ("base", "current"):
         run = report[side]
         lines.append(
             "| "
             f"{side} | `{run['ref']}` | {run.get('returncode')} | "
-            f"`{run['parset_path']}` | `{run['work_dir']}` |"
+            f"`{run['parset_path']}` | `{run['work_dir']}` | "
+            f"`{run.get('log_path')}` |"
         )
 
     lines.extend(
@@ -669,14 +421,12 @@ def _render_markdown_report(report: dict[str, Any]) -> str:
             f"{saved_equivalence._format_metric(metric.get('residual_rms_over_reference_mad_std'))} |"
         )
 
-    if report["adaptations"]:
-        lines.extend(["", "## Adaptations", ""])
-        for change in report["adaptations"][:50]:
-            lines.append(
-                f"- `{change['side']}` `{change['target']}` `{change['key']}`: {change['reason']}"
-            )
-        if len(report["adaptations"]) > 50:
-            lines.append(f"- ... {len(report['adaptations']) - 50} more adaptation(s)")
+    if comparison["warnings"]:
+        lines.extend(["", "## Warnings", ""])
+        for warning in comparison["warnings"][:50]:
+            lines.append(f"- {warning}")
+        if len(comparison["warnings"]) > 50:
+            lines.append(f"- ... {len(comparison['warnings']) - 50} more warning(s)")
 
     if comparison["failures"]:
         lines.extend(["", "## Failures", ""])
@@ -693,7 +443,6 @@ def _write_reports(
     scenario_id: str,
     base: PreparedRun,
     current: PreparedRun,
-    adaptations: list[AdaptationChange],
     comparison: saved_equivalence.ComparisonResult,
 ) -> None:
     report = {
@@ -701,7 +450,6 @@ def _write_reports(
         "run_root": str(run_root),
         "base": _run_as_dict(base),
         "current": _run_as_dict(current),
-        "adaptations": [asdict(change) for change in adaptations],
         "comparison": {
             "passed": comparison.passed,
             "metrics": comparison.metrics,
@@ -724,14 +472,11 @@ def _write_reports(
         "current_ref": current.ref,
         "base_parset": str(base.parset_path),
         "current_parset": str(current.parset_path),
-        "adaptation_manifest": str(run_root / "adaptation-manifest.json"),
+        "base_work_dir": str(base.work_dir),
+        "current_work_dir": str(current.work_dir),
     }
     (run_root / "scenario-manifest.json").write_text(
         json.dumps(scenario_manifest, indent=2),
-        encoding="utf-8",
-    )
-    (run_root / "adaptation-manifest.json").write_text(
-        json.dumps([asdict(change) for change in adaptations], indent=2),
         encoding="utf-8",
     )
 
@@ -754,16 +499,24 @@ def _prepare_comparison_result(
 def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "parset",
-        nargs="?",
+        "--base-parset",
         type=Path,
-        default=DEFAULT_PARSET,
+        required=True,
         help=(
-            "Parset to run through both branches. Defaults to the generated "
-            "benchmark/default-like parset."
+            "Prepared parset for the base ref. It is run as supplied and must "
+            "point at the base-compatible strategy and input data."
         ),
     )
-    parser.add_argument("--scenario-id", help="Label for reports. Defaults to the parset stem.")
+    parser.add_argument(
+        "--current-parset",
+        type=Path,
+        required=True,
+        help=(
+            "Prepared parset for the current branch. It is run as supplied and "
+            "must point at the current-branch strategy and input data."
+        ),
+    )
+    parser.add_argument("--scenario-id", help="Label for reports. Defaults to the parset stems.")
     parser.add_argument("--base-ref", default="master", help="Base git ref to compare against.")
     parser.add_argument(
         "--base-checkout",
@@ -771,37 +524,63 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
         help="Existing checkout for the base ref. Skips git worktree creation.",
     )
     parser.add_argument(
+        "--setup-base-env",
+        action="store_true",
+        help=(
+            "Create or reuse a virtualenv for the base checkout and run the base "
+            "side with that environment's installed rapthor executable."
+        ),
+    )
+    parser.add_argument(
+        "--base-venv",
+        type=Path,
+        help="Base virtualenv directory. Defaults to .venv inside the base checkout.",
+    )
+    parser.add_argument(
+        "--base-install-spec",
+        default=".",
+        help=(
+            "Editable pip install target for the base checkout; use '.[dev]' if "
+            "the base environment needs development extras."
+        ),
+    )
+    parser.add_argument(
+        "--reinstall-base-env",
+        action="store_true",
+        help="Force reinstalling the base checkout into its virtualenv.",
+    )
+    parser.add_argument(
         "--current-checkout",
         type=Path,
         help="Existing checkout for the current branch. Defaults to this repository.",
     )
-    parser.add_argument("--strategy", type=Path, help="Strategy override used for both branches.")
-    parser.add_argument("--base-strategy", type=Path, help="Strategy override for the base run.")
     parser.add_argument(
-        "--current-strategy",
+        "--base-work-dir",
         type=Path,
-        help="Strategy override for the current-branch run.",
+        help=(
+            "Work directory to compare for the base run. Defaults to "
+            "global.dir_working from --base-parset, resolved from the base checkout."
+        ),
+    )
+    parser.add_argument(
+        "--current-work-dir",
+        type=Path,
+        help=(
+            "Work directory to compare for the current run. Defaults to "
+            "global.dir_working from --current-parset, resolved from the current checkout."
+        ),
     )
     parser.add_argument(
         "--run-root",
         type=Path,
-        help="Directory for branch run products and reports.",
+        help="Directory for command logs, manifests, and comparison reports.",
     )
-    parser.add_argument(
-        "--task-runner",
-        default="sync",
-        help="Override cluster.prefect_task_runner for both runs; use 'keep' to preserve parset.",
-    )
-    parser.add_argument("--command-profile", default="auto")
-    parser.add_argument("--local-dask-workers", type=int)
-    parser.add_argument("--cpus-per-task", type=int)
-    parser.add_argument("--max-threads", type=int)
     parser.add_argument("--atol", type=float, default=1e-6)
     parser.add_argument("--rtol", type=float, default=1e-3)
     parser.add_argument(
         "--prepare-only",
         action="store_true",
-        help="Write adapted parsets/strategies and manifests without running Rapthor.",
+        help="Validate inputs and write manifests/reports without running Rapthor.",
     )
     parser.add_argument(
         "--allow-failures",
@@ -811,25 +590,60 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+def _default_scenario_id(base_parset: Path, current_parset: Path) -> str:
+    if base_parset.stem == current_parset.stem:
+        return base_parset.stem
+    return f"{base_parset.stem}-vs-{current_parset.stem}"
+
+
 def run(args: argparse.Namespace) -> int:
     repo_root = _repo_root()
-    source_parset = _resolve_existing_path(args.parset, base_dir=repo_root, description="Parset")
-    scenario_id = args.scenario_id or source_parset.stem
+    base_parset = _resolve_existing_path(
+        args.base_parset,
+        base_dir=repo_root,
+        description="Base parset",
+    )
+    current_parset = _resolve_existing_path(
+        args.current_parset,
+        base_dir=repo_root,
+        description="Current parset",
+    )
+    scenario_id = args.scenario_id or _default_scenario_id(base_parset, current_parset)
     stamp = time.strftime("%Y%m%d-%H%M%S")
     run_root = (args.run_root or Path("runs") / f"branch-equivalence-{stamp}").resolve()
     run_root.mkdir(parents=True, exist_ok=True)
 
-    base_repo = (
-        _resolve_existing_path(args.base_checkout, base_dir=repo_root, description="Base checkout")
-        if args.base_checkout
-        else repo_root
-        if args.prepare_only
-        else _git_worktree_checkout(
+    needs_base_checkout = bool(args.setup_base_env) or not args.prepare_only
+    if args.base_checkout:
+        base_repo = _resolve_existing_path(
+            args.base_checkout,
+            base_dir=repo_root,
+            description="Base checkout",
+        )
+    elif needs_base_checkout:
+        base_repo = _git_worktree_checkout(
             repo_root,
             ref=args.base_ref,
             checkout_dir=run_root / "checkouts" / "base",
         )
-    )
+    else:
+        base_repo = repo_root
+
+    base_runner_command = None
+    if args.setup_base_env:
+        base_venv = (
+            (args.base_venv if args.base_venv.is_absolute() else repo_root / args.base_venv)
+            if args.base_venv
+            else base_repo / ".venv"
+        )
+        base_rapthor = _setup_base_python_environment(
+            repo_root=base_repo,
+            venv_dir=base_venv,
+            install_spec=args.base_install_spec,
+            reinstall=args.reinstall_base_env,
+        )
+        base_runner_command = [str(base_rapthor)]
+
     current_repo = (
         _resolve_existing_path(
             args.current_checkout,
@@ -840,39 +654,25 @@ def run(args: argparse.Namespace) -> int:
         else repo_root
     )
 
-    base_strategy = args.base_strategy or args.strategy
-    current_strategy = args.current_strategy or args.strategy
-    base, base_changes = prepare_branch_inputs(
+    base = prepare_branch_input(
         side="base",
         ref=args.base_ref,
         repo_root=base_repo,
-        source_parset=source_parset,
+        parset_path=base_parset,
         run_dir=run_root / "base",
-        cli_strategy=base_strategy,
-        explicit_strategy_override=base_strategy is not None,
-        cli_base_dir=repo_root,
-        task_runner=args.task_runner,
-        command_profile=args.command_profile,
-        local_dask_workers=args.local_dask_workers,
-        cpus_per_task=args.cpus_per_task,
-        max_threads=args.max_threads,
+        work_dir_override=args.base_work_dir,
     )
-    current, current_changes = prepare_branch_inputs(
+    if base_runner_command is not None:
+        base.command = [*base_runner_command, str(base.parset_path)]
+
+    current = prepare_branch_input(
         side="current",
         ref="current",
         repo_root=current_repo,
-        source_parset=source_parset,
+        parset_path=current_parset,
         run_dir=run_root / "current",
-        cli_strategy=current_strategy,
-        explicit_strategy_override=current_strategy is not None,
-        cli_base_dir=repo_root,
-        task_runner=args.task_runner,
-        command_profile=args.command_profile,
-        local_dask_workers=args.local_dask_workers,
-        cpus_per_task=args.cpus_per_task,
-        max_threads=args.max_threads,
+        work_dir_override=args.current_work_dir,
     )
-    adaptations = [*base_changes, *current_changes]
 
     if args.prepare_only:
         comparison = saved_equivalence.ComparisonResult(scenario_id, run_root)
@@ -881,14 +681,13 @@ def run(args: argparse.Namespace) -> int:
             scenario_id=scenario_id,
             base=base,
             current=current,
-            adaptations=adaptations,
             comparison=comparison,
         )
-        print(f"Prepared branch equivalence inputs under {run_root}", flush=True)
+        print(f"Prepared branch equivalence run metadata under {run_root}", flush=True)
         return 0
 
     print(f"=== base: {args.base_ref} ===", flush=True)
-    base = _run_rapthor_from_repo(base)
+    base = _run_rapthor_from_repo(base, runner_command=base_runner_command)
     print(f"base return code: {base.returncode}", flush=True)
     print("=== current ===", flush=True)
     current = _run_rapthor_from_repo(current)
@@ -909,7 +708,6 @@ def run(args: argparse.Namespace) -> int:
         scenario_id=scenario_id,
         base=base,
         current=current,
-        adaptations=adaptations,
         comparison=comparison,
     )
     print(f"Report: {run_root / 'branch-equivalence-report.json'}", flush=True)

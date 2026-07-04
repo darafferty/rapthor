@@ -1,10 +1,11 @@
 import importlib.util
 import json
-import runpy
+import os
 import sys
 from pathlib import Path
 
 import numpy as np
+import pytest
 from astropy.io import fits
 
 SCRIPT_PATH = Path(__file__).parents[2] / "scripts" / "dev" / "run_branch_equivalence.py"
@@ -18,85 +19,172 @@ def load_branch_equivalence_script():
     return module
 
 
-def _write_parset(path, strategy_name="strategy.py"):
+def _write_parset(path, work_dir):
     path.write_text(
         f"""
 [global]
-dir_working = old-work
+dir_working = {work_dir}
 input_ms = data/input.ms
-strategy = {strategy_name}
-
-[cluster]
-prefect_task_runner = local_dask
-local_scratch_dir = old-scratch
-global_scratch_dir = old-scratch
+strategy = strategy.py
 """.strip(),
         encoding="utf-8",
     )
 
 
-def _write_current_strategy(path):
-    path.write_text(
-        "strategy_steps = [{'do_calibrate': True, 'calibration_strategy': {'di': [], 'dd': ['fast_phase']}}]\n",
-        encoding="utf-8",
-    )
-
-
-def test_prepare_branch_inputs_materializes_paths_and_runtime_overrides(tmp_path):
+def test_prepare_branch_input_reads_work_dir_from_prepared_parset(tmp_path):
     module = load_branch_equivalence_script()
-    parset = tmp_path / "input.parset"
-    strategy = tmp_path / "strategy.py"
-    _write_parset(parset)
-    _write_current_strategy(strategy)
+    repo_root = tmp_path / "checkout"
+    repo_root.mkdir()
+    parset = tmp_path / "inputs" / "base.parset"
+    parset.parent.mkdir()
+    _write_parset(parset, "relative-work")
 
-    prepared, changes = module.prepare_branch_inputs(
+    prepared = module.prepare_branch_input(
         side="base",
         ref="master",
-        repo_root=tmp_path,
-        source_parset=parset,
+        repo_root=repo_root,
+        parset_path=parset,
         run_dir=tmp_path / "run" / "base",
-        local_dask_workers=2,
-        cpus_per_task=4,
-        max_threads=4,
     )
 
-    parser = module._read_parset(prepared.parset_path)
-    assert parser.get("global", "input_ms") == str(tmp_path / "data" / "input.ms")
-    assert parser.get("global", "dir_working") == str(prepared.work_dir)
-    assert parser.get("cluster", "prefect_task_runner") == "sync"
-    assert parser.get("cluster", "local_dask_workers") == "2"
-    assert Path(parser.get("global", "strategy")).is_file()
-    assert any(change.key == "global.input_ms" for change in changes)
-    assert any(change.key == "cluster.max_threads" for change in changes)
+    assert prepared.parset_path == parset
+    assert prepared.work_dir == repo_root / "relative-work"
+    assert prepared.run_dir.is_dir()
 
 
-def test_prepare_branch_inputs_adapts_legacy_strategy_for_current_branch(tmp_path):
+def test_prepare_branch_input_accepts_explicit_work_dir_override(tmp_path):
     module = load_branch_equivalence_script()
-    parset = tmp_path / "input.parset"
-    strategy = tmp_path / "strategy.py"
-    _write_parset(parset)
-    strategy.write_text(
-        "strategy_steps = [{'do_calibrate': True, 'do_slowgain_solve': False, 'do_image': False}]\n",
-        encoding="utf-8",
-    )
+    repo_root = tmp_path / "checkout"
+    repo_root.mkdir()
+    parset = tmp_path / "current.parset"
+    _write_parset(parset, "parset-work")
 
-    prepared, changes = module.prepare_branch_inputs(
+    prepared = module.prepare_branch_input(
         side="current",
         ref="current",
-        repo_root=tmp_path,
-        source_parset=parset,
+        repo_root=repo_root,
+        parset_path=parset,
         run_dir=tmp_path / "run" / "current",
+        work_dir_override=tmp_path / "actual-work",
     )
 
-    parser = module._read_parset(prepared.parset_path)
-    adapted_strategy = Path(parser.get("global", "strategy"))
-    steps = runpy.run_path(str(adapted_strategy))["strategy_steps"]
-    assert steps[0]["calibration_strategy"] == {
-        "di": [],
-        "dd": ["fast_phase", "medium_phase"],
+    assert prepared.work_dir == tmp_path / "actual-work"
+
+
+def test_prepare_branch_input_requires_dir_working(tmp_path):
+    module = load_branch_equivalence_script()
+    parset = tmp_path / "input.parset"
+    parset.write_text("[global]\ninput_ms = data/input.ms\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="global.dir_working"):
+        module.prepare_branch_input(
+            side="base",
+            ref="master",
+            repo_root=tmp_path,
+            parset_path=parset,
+            run_dir=tmp_path / "run" / "base",
+        )
+
+
+def test_rapthor_command_for_repo_uses_legacy_script_when_cli_module_is_absent(tmp_path):
+    module = load_branch_equivalence_script()
+    legacy_script = tmp_path / "bin" / "rapthor"
+    legacy_script.parent.mkdir()
+    legacy_script.write_text("#!/usr/bin/env python3\n", encoding="utf-8")
+
+    command = module._rapthor_command_for_repo(tmp_path, tmp_path / "input.parset")
+
+    assert command == [sys.executable, str(legacy_script), str(tmp_path / "input.parset")]
+
+
+def test_rapthor_path_prefixes_include_legacy_script_locations(tmp_path):
+    module = load_branch_equivalence_script()
+
+    assert module._rapthor_path_prefixes(tmp_path) == (
+        tmp_path / "bin",
+        tmp_path / "rapthor" / "scripts",
+    )
+
+
+def test_setup_base_python_environment_creates_venv_and_installs_checkout(tmp_path, monkeypatch):
+    module = load_branch_equivalence_script()
+    checkout = tmp_path / "checkout"
+    checkout.mkdir()
+    venv = checkout / ".venv"
+    calls = []
+
+    class Completed:
+        stdout = ""
+
+    def fake_run(command, **kwargs):
+        calls.append((command, kwargs))
+        if command[:3] == ["git", "rev-parse", "HEAD"]:
+            completed = Completed()
+            completed.stdout = "abc123\n"
+            return completed
+        if command[:3] == [sys.executable, "-m", "venv"]:
+            bindir = module._venv_bin_dir(venv)
+            bindir.mkdir(parents=True)
+            module._venv_python(venv).write_text("", encoding="utf-8")
+            return Completed()
+        if command[1:5] == ["-m", "pip", "install", "-e"]:
+            module._venv_rapthor(venv).write_text("", encoding="utf-8")
+            return Completed()
+        return Completed()
+
+    monkeypatch.setattr(module.subprocess, "run", fake_run)
+
+    rapthor = module._setup_base_python_environment(
+        repo_root=checkout,
+        venv_dir=venv,
+        install_spec=".",
+    )
+
+    assert rapthor == module._venv_rapthor(venv)
+    assert json.loads((venv / ".rapthor-branch-equivalence.json").read_text()) == {
+        "checkout": str(checkout.resolve()),
+        "revision": "abc123",
+        "install_spec": ".",
     }
-    assert "do_slowgain_solve" not in steps[0]
-    assert any(change.key == "calibration_strategy" for change in changes)
+    assert any(call[0][:3] == [sys.executable, "-m", "venv"] for call in calls)
+    assert any(call[0][1:5] == ["-m", "pip", "install", "-e"] for call in calls)
+
+
+def test_run_rapthor_with_base_runner_command_uses_isolated_pythonpath(tmp_path, monkeypatch):
+    module = load_branch_equivalence_script()
+    command_dir = tmp_path / "base" / ".venv" / "bin"
+    command_dir.mkdir(parents=True)
+    command = command_dir / "rapthor"
+    command.write_text("", encoding="utf-8")
+    captured = {}
+
+    class Completed:
+        returncode = 0
+        stdout = "ok\n"
+
+    def fake_run(command_args, **kwargs):
+        captured["command"] = command_args
+        captured["env"] = kwargs["env"]
+        return Completed()
+
+    monkeypatch.setenv("PYTHONPATH", "/current/branch")
+    monkeypatch.setattr(module.subprocess, "run", fake_run)
+    prepared = module.PreparedRun(
+        side="base",
+        ref="master",
+        repo_root=tmp_path / "base",
+        run_dir=tmp_path / "run",
+        parset_path=tmp_path / "input.parset",
+        work_dir=tmp_path / "work",
+    )
+
+    result = module._run_rapthor_from_repo(prepared, runner_command=[str(command)])
+
+    assert result.returncode == 0
+    assert captured["command"] == [str(command), str(tmp_path / "input.parset")]
+    assert "PYTHONPATH" not in captured["env"]
+    assert captured["env"]["PATH"].split(os.pathsep)[0] == str(command_dir)
+    assert (tmp_path / "run" / "rapthor-command.log").read_text(encoding="utf-8") == "ok\n"
 
 
 def _write_fits(path, data):
@@ -137,7 +225,7 @@ def test_compare_branch_outputs_uses_strengthened_product_checks(tmp_path):
     assert result.metrics["fits_image_hdus"] == 1
 
 
-def test_branch_markdown_report_includes_adaptation_summary(tmp_path):
+def test_branch_markdown_report_lists_prepared_inputs(tmp_path):
     module = load_branch_equivalence_script()
     report = {
         "scenario_id": "synthetic",
@@ -147,21 +235,15 @@ def test_branch_markdown_report_includes_adaptation_summary(tmp_path):
             "returncode": 0,
             "parset_path": "base.parset",
             "work_dir": "base-work",
+            "log_path": "base.log",
         },
         "current": {
             "ref": "current",
             "returncode": 0,
             "parset_path": "current.parset",
             "work_dir": "current-work",
+            "log_path": "current.log",
         },
-        "adaptations": [
-            {
-                "side": "current",
-                "target": "strategy",
-                "key": "calibration_strategy",
-                "reason": "translated legacy solve toggles",
-            }
-        ],
         "comparison": {
             "passed": True,
             "metrics": {"operations": 1},
@@ -174,20 +256,25 @@ def test_branch_markdown_report_includes_adaptation_summary(tmp_path):
     markdown = module._render_markdown_report(report)
 
     assert "# Rapthor Branch Equivalence" in markdown
-    assert "translated legacy solve toggles" in markdown
+    assert "`base.parset`" in markdown
+    assert "`current.parset`" in markdown
+    assert "## Adaptations" not in markdown
 
 
 def test_prepare_only_writes_reports_without_running_branches(tmp_path):
     module = load_branch_equivalence_script()
-    parset = tmp_path / "input.parset"
-    strategy = tmp_path / "strategy.py"
-    _write_parset(parset)
-    _write_current_strategy(strategy)
+    base_parset = tmp_path / "base.parset"
+    current_parset = tmp_path / "current.parset"
+    _write_parset(base_parset, tmp_path / "base-work")
+    _write_parset(current_parset, tmp_path / "current-work")
     run_root = tmp_path / "branch-run"
 
     args = module.parse_args(
         [
-            str(parset),
+            "--base-parset",
+            str(base_parset),
+            "--current-parset",
+            str(current_parset),
             "--run-root",
             str(run_root),
             "--prepare-only",
@@ -198,4 +285,8 @@ def test_prepare_only_writes_reports_without_running_branches(tmp_path):
     assert (run_root / "branch-equivalence-report.json").is_file()
     assert (run_root / "branch-equivalence-report.md").is_file()
     assert (run_root / "scenario-manifest.json").is_file()
-    assert (run_root / "adaptation-manifest.json").is_file()
+    assert not (run_root / "adaptation-manifest.json").exists()
+    report = json.loads((run_root / "branch-equivalence-report.json").read_text())
+    assert "adaptations" not in report
+    assert report["base"]["parset_path"] == str(base_parset)
+    assert report["current"]["parset_path"] == str(current_parset)
