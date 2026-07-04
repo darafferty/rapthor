@@ -90,32 +90,34 @@ Known caveats:
 
 ## Immediate Next Steps
 
-Do these in order:
+Do these in order. Treat the first item as external CI confirmation; if no
+fresh CI artifact is available yet, continue locally with items 2-4.
 
-1. Finish and validate benchmark provenance plumbing:
-   - CI writes benchmark products under `ci/benchmark-<UTC timestamp>`
-   - benchmark JSON/Markdown reports include GitLab job, pipeline, commit, and
-     image metadata
-   - one CI benchmark run confirms the downloaded artifact contains the
-     timestamped directory and `gitlab_job_url`
+1. Confirm benchmark provenance in the next CI artifact:
+   - downloaded archive contains `ci/benchmark-<UTC timestamp>`
+   - generated `benchmark-summary.json` and `benchmark-report.md` include
+     `gitlab_job_url`, pipeline metadata, commit SHA, and image metadata
+   - generated reports include the Dask performance table
 2. Use the captured CI benchmark baseline at
    `docs/source/development/benchmark_baselines/2026-07-04-gitlab-60core.md`
-   as the current performance reference.
-3. Explain the benchmark's task-shape signal before changing behavior:
-   only 12 Dask tasks are emitted, four image-sector tasks dominate compute, and
-   about 221 seconds per repetition sit between Dask report duration and task
-   compute time. Add lightweight benchmark/Dask gap instrumentation or report
-   parsing to separate task compute, command time, scheduler idle time,
-   startup/shutdown, and orchestration overhead.
+   and the regenerated local artifact report under
+   `runs/benchmark-20260704-122100/benchmark-report.md` as the current
+   performance reference.
+3. Explain the 221 second Dask gap before changing task boundaries. Add
+   behavior-preserving operation-boundary timing so the next report can split
+   the gap between:
+   - pipeline and Prefect orchestration outside worker tasks
+   - time waiting between task submissions or dependencies
+   - Python orchestration inside `image_sector_task`
+   - external command time already captured in `commands.jsonl`
+   - Dask/Python startup, shutdown, and performance-report overhead
 4. Add Dask scalability guardrails before splitting tasks:
    payload serialization checks, task-boundary/task-name assertions,
    resource-propagation tests, and representative operation payload fixtures.
-5. Take one low-risk image-cycle scalability slice:
-   instrument or split image-sector orchestration along natural product
-   boundaries, such as imaging-MS preparation, concatenation, WSClean,
-   source/skymodel filtering, diagnostics, cube/normalization products, and
-   compression. Preserve output records, restart behavior, and scientific
-   products.
+5. Take one low-risk image-cycle scalability slice only after items 3 and 4 are
+   in place. Start with one natural boundary, such as image-sector source/model
+   filtering or diagnostics after WSClean, and preserve output records, restart
+   behavior, and scientific products.
 6. Re-run `ci-benchmark` for three repetitions after each task-boundary or
    performance-sensitive change and compare against the 2026-07-04 baseline.
 7. Tighten saved-equivalence image checks before larger scientific or
@@ -212,6 +214,11 @@ Current contract:
 - Benchmark summary/report artifacts parse Dask performance reports when present
   and expose report duration, task compute time, duration-minus-compute gap,
   scheduler worker/thread shape, and per-task-name timing groups.
+- The regenerated 2026-07-04 artifact report shows a median wall time of
+  482.894 s, Dask report duration of 469.550 s, Dask task compute time of
+  247.350 s, and a duration-minus-compute gap of 220.940 s across 12 Dask
+  tasks. `image_sector_task` dominates task compute at about 239 s total median
+  per run, while command profiling accounts for about 231 s median.
 
 Benchmark before changing Dask task boundaries, scheduler behavior, or
 performance-sensitive execution code. The benchmark should identify what to
@@ -221,6 +228,10 @@ Tasks:
 
 - Maintain the benchmark scenario definition, generated demo data, benchmark
   runner, report parsing, summarization tests, and CI artifact list together.
+- Next local implementation: add operation-boundary timing to benchmark
+  artifacts without changing pipeline behavior. The timing should make it clear
+  how much of the Dask duration-minus-compute gap is orchestration outside Dask
+  tasks versus Python work inside coarse tasks.
 - Use
   `docs/source/development/benchmark_baselines/2026-07-04-gitlab-60core.md`
   and its companion summary JSON as the current compact baseline.
