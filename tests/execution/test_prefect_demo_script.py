@@ -1,6 +1,7 @@
 import configparser
 import importlib.util
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
@@ -144,7 +145,7 @@ def test_parse_args_accepts_explicit_dask_performance_report_path(monkeypatch):
     assert args.parset == Path("examples/prefect_demo.parset")
 
 
-def test_execution_config_from_args_overrides_local_dask_workers(tmp_path):
+def test_execution_config_from_args_overrides_local_dask_resources(tmp_path):
     module = load_demo_script()
     parset_path = tmp_path / "demo.parset"
     parset_path.write_text(
@@ -169,6 +170,8 @@ def test_execution_config_from_args_overrides_local_dask_workers(tmp_path):
         [
             "--local-dask-workers",
             "3",
+            "--cpus-per-task",
+            "30",
             "--max-threads",
             "30",
             "--command-profile",
@@ -182,8 +185,108 @@ def test_execution_config_from_args_overrides_local_dask_workers(tmp_path):
     assert config.max_nodes == 1
     assert config.local_dask_workers == 3
     assert config.local_dask_worker_count == 3
+    assert config.cpus_per_task == 30
     assert config.command_profile == "time"
     assert module._cluster_parset_overrides_from_args(args) == {"max_threads": 30}
+
+
+def test_demo_main_passes_benchmark_resources_to_dask_and_runtime_parset(monkeypatch, tmp_path):
+    module = load_demo_script()
+    run_dir = tmp_path / "run"
+    parset_path = tmp_path / "benchmark.parset"
+    parset_path.write_text(
+        "\n".join(
+            [
+                "[global]",
+                "dir_working = work",
+                "input_ms = tests/resources/test.ms",
+                "",
+                "[cluster]",
+                "prefect_task_runner = local_dask",
+                "max_nodes = 1",
+                "local_dask_workers = 0",
+                "cpus_per_task = 0",
+                "max_threads = 0",
+                "prefect_command_profile = auto",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    calls = {"closed": False}
+
+    @dataclass
+    class FakeDaskCluster:
+        scheduler_address: str = "tcp://127.0.0.1:8786"
+        dashboard_url: str = "http://127.0.0.1:8787/status"
+        worker_count: int = 2
+        client: object = object()
+
+        def close(self):
+            calls["closed"] = True
+
+    def fake_start_local_dask_cluster(execution_config):
+        calls["cluster_config"] = execution_config
+        return FakeDaskCluster()
+
+    def fake_pipeline_flow(parset_file, logging_level, execution_config):
+        calls["pipeline_parset"] = parset_file
+        calls["logging_level"] = logging_level
+        calls["pipeline_config"] = execution_config
+
+    monkeypatch.setattr(module, "_wait_for_prefect", lambda api_url, timeout_seconds: None)
+    monkeypatch.setattr(module, "_start_local_dask_cluster", fake_start_local_dask_cluster)
+    monkeypatch.setattr(module, "pipeline_flow", fake_pipeline_flow)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "run-rapthor-prefect-demo.py",
+            "--no-start-server",
+            "--no-unique-working-dir",
+            "--no-materialize-paths",
+            "--run-dir",
+            str(run_dir),
+            "--local-dask-workers",
+            "2",
+            "--cpus-per-task",
+            "30",
+            "--max-threads",
+            "30",
+            "--command-profile",
+            "time",
+            "--no-keep-server",
+            "--no-keep-server-on-failure",
+            str(parset_path),
+        ],
+    )
+
+    assert module.main() == 0
+
+    cluster_config = calls["cluster_config"]
+    assert cluster_config.task_runner == "local_dask"
+    assert cluster_config.local_dask_workers == 2
+    assert cluster_config.local_dask_worker_count == 2
+    assert cluster_config.cpus_per_task == 30
+    assert cluster_config.local_dask_threads_per_worker == 30
+    assert cluster_config.command_profile == "time"
+
+    pipeline_config = calls["pipeline_config"]
+    assert pipeline_config.task_runner == "external_dask"
+    assert pipeline_config.dask_scheduler == "tcp://127.0.0.1:8786"
+    assert pipeline_config.local_dask_workers == 2
+    assert pipeline_config.cpus_per_task == 30
+    assert pipeline_config.command_profile == "time"
+    assert calls["closed"] is True
+
+    runtime_parser = configparser.ConfigParser(interpolation=None)
+    runtime_parser.read(calls["pipeline_parset"])
+    runtime_cluster = runtime_parser["cluster"]
+    assert runtime_cluster["prefect_task_runner"] == "external_dask"
+    assert runtime_cluster["dask_scheduler"] == "tcp://127.0.0.1:8786"
+    assert runtime_cluster["local_dask_workers"] == "2"
+    assert runtime_cluster["cpus_per_task"] == "30"
+    assert runtime_cluster["max_threads"] == "30"
+    assert runtime_cluster["prefect_command_profile"] == "time"
 
 
 def test_dask_performance_report_opens_external_client(tmp_path):

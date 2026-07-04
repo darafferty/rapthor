@@ -1334,6 +1334,8 @@ def test_image_payload_from_inputs_builds_serializable_no_dde_payload(tmp_path):
     assert sector["image_name"] == "sector_1"
     assert sector["concat_path"] == str(tmp_path / "sector_1_concat.ms")
     assert sector["mask_path"] == str(tmp_path / "sector_1_mask.fits")
+    assert sector["max_threads"] == 4
+    assert sector["deconvolution_threads"] == 2
     assert sector["prepare_tasks"][0] == {
         "msin": "/data/obs_0.ms",
         "msout": "sector_1_obs_0_prep.ms",

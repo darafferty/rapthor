@@ -1385,6 +1385,7 @@ def test_calibrate_payload_from_inputs_builds_di_fulljones_payload(tmp_path):
     assert payload["mode"] == "di"
     assert payload["calibration_kind"] == "di_fulljones"
     assert payload["pipeline_working_dir"] == str(tmp_path)
+    assert payload["max_threads"] == 4
     assert payload["collected_h5parms"]["solve1"] == {
         "filename": "fulljones_solutions.h5",
         "path": str(tmp_path / "fulljones_solutions.h5"),

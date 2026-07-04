@@ -112,14 +112,17 @@ fresh CI artifact is available yet, continue locally with items 2-4.
 4. First Dask task-boundary guardrails are in place: representative execution
    payload factories cover the owner flows, and focused tests assert worker
    submissions stay plain-serializable with readable task names.
-5. Next local implementation: add focused resource-propagation guardrails before
-   splitting tasks, especially `cpus_per_task`, `max_threads`, `max_cores`,
-   `local_dask_workers`, and CI benchmark overrides as they reach WSClean, DP3,
-   Python orchestration, and local/external Dask setup.
-6. Take one low-risk image-cycle scalability slice only after item 5 is in
-   place. Start with one natural boundary, such as image-sector source/model
-   filtering or diagnostics after WSClean, and preserve output records, restart
-   behavior, and scientific products.
+5. Focused resource-propagation guardrails are in place for the benchmark/demo
+   runtime path: CI-style `local_dask_workers`, `cpus_per_task`,
+   `max_threads`, and `prefect_command_profile` overrides reach local Dask
+   startup, the effective pipeline `ExecutionConfig`, and the runtime parset
+   that operation payload builders read. Existing focused tests also pin
+   `ExecutionConfig`, local Dask cluster kwargs, benchmark commands, and
+   image/calibrate/predict payload thread fields.
+6. Next local implementation: take one low-risk image-cycle scalability slice.
+   Start with one natural boundary, such as image-sector source/model filtering
+   or diagnostics after WSClean, and preserve output records, restart behavior,
+   and scientific products.
 7. Re-run `ci-benchmark` for three repetitions after each task-boundary or
    performance-sensitive change and compare against the 2026-07-04 baseline.
 8. Tighten saved-equivalence image checks before larger scientific or
@@ -223,6 +226,9 @@ Current contract:
   for image, calibrate, predict, mosaic, and concatenate. It asserts submitted
   worker payloads remain plain-serializable and that task run names stay
   readable before increasing Dask task granularity.
+- Runtime resource guardrails cover the CI benchmark/demo path from command-line
+  overrides into local Dask startup, effective pipeline `ExecutionConfig`, the
+  runtime parset, and representative operation payload thread fields.
 - The regenerated 2026-07-04 artifact report shows a median wall time of
   482.894 s, Dask report duration of 469.550 s, Dask task compute time of
   247.350 s, and a duration-minus-compute gap of 220.940 s across 12 Dask
@@ -241,9 +247,9 @@ Tasks:
 
 - Maintain the benchmark scenario definition, generated demo data, benchmark
   runner, report parsing, summarization tests, and CI artifact list together.
-- Next local implementation: add resource-propagation guardrails before
-  changing task granularity, using the existing task-boundary tests as the
-  pattern for focused, fast checks.
+- Next local implementation: split one low-risk image-sector boundary and use
+  the task-boundary/resource guardrails plus benchmark reports to verify the
+  change.
 - Use
   `docs/source/development/benchmark_baselines/2026-07-04-gitlab-60core.md`
   and its companion summary JSON as the current compact baseline.
