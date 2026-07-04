@@ -145,9 +145,142 @@ def test_setup_base_python_environment_creates_venv_and_installs_checkout(tmp_pa
         "checkout": str(checkout.resolve()),
         "revision": "abc123",
         "install_spec": ".",
+        "system_site_packages": False,
     }
     assert any(call[0][:3] == [sys.executable, "-m", "venv"] for call in calls)
     assert any(call[0][1:5] == ["-m", "pip", "install", "-e"] for call in calls)
+
+
+def test_setup_base_python_environment_can_use_system_site_packages(tmp_path, monkeypatch):
+    module = load_branch_equivalence_script()
+    checkout = tmp_path / "checkout"
+    checkout.mkdir()
+    venv = checkout / ".venv"
+    calls = []
+
+    class Completed:
+        stdout = ""
+
+    def fake_run(command, **kwargs):
+        calls.append((command, kwargs))
+        if command[:3] == ["git", "rev-parse", "HEAD"]:
+            completed = Completed()
+            completed.stdout = "abc123\n"
+            return completed
+        if command[:3] == [sys.executable, "-m", "venv"]:
+            bindir = module._venv_bin_dir(venv)
+            bindir.mkdir(parents=True)
+            module._venv_python(venv).write_text("", encoding="utf-8")
+            return Completed()
+        if command[1:5] == ["-m", "pip", "install", "-e"]:
+            module._venv_rapthor(venv).write_text("", encoding="utf-8")
+            return Completed()
+        return Completed()
+
+    monkeypatch.setattr(module.subprocess, "run", fake_run)
+
+    module._setup_base_python_environment(
+        repo_root=checkout,
+        venv_dir=venv,
+        install_spec=".",
+        system_site_packages=True,
+    )
+
+    assert any(
+        call[0][:3] == [sys.executable, "-m", "venv"] and "--system-site-packages" in call[0]
+        for call in calls
+    )
+    assert json.loads((venv / ".rapthor-branch-equivalence.json").read_text())[
+        "system_site_packages"
+    ]
+
+
+def test_setup_base_python_environment_falls_back_to_virtualenv(tmp_path, monkeypatch):
+    module = load_branch_equivalence_script()
+    checkout = tmp_path / "checkout"
+    checkout.mkdir()
+    venv = checkout / ".venv"
+    calls = []
+
+    class Completed:
+        stdout = ""
+
+    def fake_run(command, **kwargs):
+        calls.append((command, kwargs))
+        if command[:3] == ["git", "rev-parse", "HEAD"]:
+            completed = Completed()
+            completed.stdout = "abc123\n"
+            return completed
+        if command[:3] == [sys.executable, "-m", "venv"]:
+            raise module.subprocess.CalledProcessError(returncode=1, cmd=command)
+        if command[:3] == [sys.executable, "-m", "virtualenv"]:
+            bindir = module._venv_bin_dir(venv)
+            bindir.mkdir(parents=True)
+            module._venv_python(venv).write_text("", encoding="utf-8")
+            return Completed()
+        if command[1:5] == ["-m", "pip", "install", "-e"]:
+            module._venv_rapthor(venv).write_text("", encoding="utf-8")
+            return Completed()
+        return Completed()
+
+    monkeypatch.setattr(module.subprocess, "run", fake_run)
+
+    rapthor = module._setup_base_python_environment(
+        repo_root=checkout,
+        venv_dir=venv,
+        install_spec=".",
+    )
+
+    assert rapthor == module._venv_rapthor(venv)
+    assert any(call[0][:3] == [sys.executable, "-m", "venv"] for call in calls)
+    assert any(call[0][:3] == [sys.executable, "-m", "virtualenv"] for call in calls)
+
+
+def test_setup_base_python_environment_repairs_venv_without_pip(tmp_path, monkeypatch):
+    module = load_branch_equivalence_script()
+    checkout = tmp_path / "checkout"
+    checkout.mkdir()
+    venv = checkout / ".venv"
+    module._venv_python(venv).parent.mkdir(parents=True)
+    module._venv_python(venv).write_text("", encoding="utf-8")
+    calls = []
+
+    class Completed:
+        stdout = ""
+        returncode = 0
+
+    class Failed:
+        stdout = ""
+        stderr = ""
+        returncode = 1
+
+    def fake_run(command, **kwargs):
+        calls.append((command, kwargs))
+        if command[:3] == ["git", "rev-parse", "HEAD"]:
+            completed = Completed()
+            completed.stdout = "abc123\n"
+            return completed
+        if command == [str(module._venv_python(venv)), "-m", "pip", "--version"]:
+            return Failed()
+        if command[:3] == [sys.executable, "-m", "venv"]:
+            raise module.subprocess.CalledProcessError(returncode=1, cmd=command)
+        if command[:3] == [sys.executable, "-m", "virtualenv"]:
+            return Completed()
+        if command[1:5] == ["-m", "pip", "install", "-e"]:
+            module._venv_rapthor(venv).write_text("", encoding="utf-8")
+            return Completed()
+        return Completed()
+
+    monkeypatch.setattr(module.subprocess, "run", fake_run)
+
+    rapthor = module._setup_base_python_environment(
+        repo_root=checkout,
+        venv_dir=venv,
+        install_spec=".",
+    )
+
+    assert rapthor == module._venv_rapthor(venv)
+    assert any(call[0][:3] == [sys.executable, "-m", "virtualenv"] for call in calls)
 
 
 def test_run_rapthor_with_base_runner_command_uses_isolated_pythonpath(tmp_path, monkeypatch):

@@ -116,6 +116,47 @@ Text-like products compare sky-model `lines` and `patches`, beam tables with
 `atol = 1e-6` and `rtol = 1e-2`, and all other text and region files exactly.
 All text-like product checks passed in the current run.
 
+## Branch-Vs-Master Default-Like Run
+
+A multi-cycle default-like branch comparison was run on 2026-07-04 with
+`master` as the reference. The base checkout resolved to:
+
+```text
+17448437b78583f1eaf38112a524b2dbe5f34bb8
+```
+
+The report paths are:
+
+```text
+runs/rbe-default-like-master-ref-codex/branch-equivalence-report.json
+runs/rbe-default-like-master-ref-codex/branch-equivalence-report.md
+```
+
+Both branch executions completed successfully, but the product comparison
+failed.
+
+| Scenario | Base ref | Base RC | Current RC | Result | Ops | Records | FITS | Image HDUs | Table HDUs | H5 | Text | Warnings | Failures |
+| --- | --- | ---: | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `benchmark-default-like` | `master` | 0 | 0 | fail | 12 | 12 | 28 | 20 | 3 | 14 | 37 | 8 | 142 |
+
+Key findings:
+
+- operation counts matched, so both branches ran the same broad four-cycle
+  calibrate/image/mosaic shape
+- all calibrate and image output-record summaries differed and need inspection
+- current-branch outputs are missing the `field-MFS-image-pb-ast` products that
+  `master` generated
+- early image-cycle residuals are close but above the strengthened tolerance
+  (`max_abs_delta` around `1.5e-05`, residual RMS around `4.2e-06`)
+- later image cycles diverge materially, with worst image residuals reaching
+  `max_abs_delta = 6.671e-01` and residual RMS up to `4.203e-02`
+
+Treat this as a failed scientific equivalence gate. The next investigation
+should determine whether the manual master/current parsets are still
+scientifically equivalent, especially around legacy cross-cycle solution reuse
+and intentionally changed astrometry-product behavior, before any scalability
+changes are made.
+
 ## Historical Passing Scenarios
 
 The required local saved-reference gate passed for:

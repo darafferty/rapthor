@@ -62,13 +62,14 @@ Known caveats:
 
 ## Next Work, In Order
 
-1. **Run the multi-cycle branch-vs-master equivalence scenario.**
-   Prepare one explicit master-compatible parset/strategy pair and one explicit
-   current-branch parset/strategy pair for the benchmark/default-like data.
-   Run them with `scripts/dev/run_branch_equivalence.py`, compare outputs with
-   the strengthened product checks, and record a compact summary in
-   `EQUIVALENCE_REPORT.md`. Keep broader DI-only strategy coverage in the
-   benchmark lane unless a separate master-compatible base strategy is provided.
+1. **Resolve the multi-cycle branch-vs-master equivalence findings.**
+   The first `benchmark-default-like` run with `master` as the reference
+   completed both branches but failed product comparison. Inspect the
+   output-record differences, the missing `field-MFS-image-pb-ast` products,
+   and the later-cycle FITS residuals before changing performance-sensitive
+   execution code. Decide whether the manual master/current parsets need
+   further alignment around legacy cross-cycle solution reuse or whether the
+   comparison should explicitly document intentional product-contract changes.
 
 2. **Take one low-risk image-cycle scalability slice.**
    Start with one natural boundary inside image-sector execution, such as
@@ -145,31 +146,40 @@ Current status:
   checkout. Use `--setup-base-env` to create or reuse a virtualenv for the base
   ref so `master` or a chosen commit runs with its own Python dependencies
   while the current branch runs normally.
+- The first manual `benchmark-default-like` branch-vs-master run used
+  `master` commit `17448437b78583f1eaf38112a524b2dbe5f34bb8` as the reference.
+  Both branches returned `0`, but the strengthened product comparison failed.
+  The report is recorded in `EQUIVALENCE_REPORT.md`, with run artifacts under
+  `runs/rbe-default-like-master-ref-codex/`.
 
 Immediate task:
 
-- Run the first required multi-cycle branch-vs-master equivalence case:
+- Investigate the failed `benchmark-default-like` branch-vs-master gate:
 
-  ```bash
-  scripts/dev/run_branch_equivalence.py \
-    --base-parset path/to/master-compatible.parset \
-    --current-parset path/to/current-branch.parset \
-    --scenario-id benchmark-default-like \
-    --setup-base-env
-  ```
+  - compare calibrate/image output records to identify whether differences are
+    path-only, product-presence, or semantic
+  - decide whether missing `field-MFS-image-pb-ast` products are an intentional
+    current-branch contract change or should be restored/configured
+  - inspect later-cycle h5parm and image-product handoff semantics, especially
+    whether the manual current strategy/parset should emulate legacy
+    cross-cycle solution reuse for this reference comparison
+  - rerun the branch-equivalence gate after the scenario contract is made
+    explicit
 
-  For a workstation smoke check or user-supplied data, use `--prepare-only`
-  first to confirm the exact base/current parsets and work directories that
-  will be reported. The current benchmark strategy intentionally exercises
-  DI-only phase and full-Jones cycles that `master` cannot represent exactly;
-  use explicit DD-only/default-like branch-equivalence strategies for the first
-  scientific branch-vs-master gate.
+For a workstation smoke check or user-supplied data, use `--prepare-only` first
+to confirm the exact base/current parsets and work directories that will be
+reported. The current benchmark strategy intentionally exercises DI-only phase
+and full-Jones cycles that `master` cannot represent exactly; use explicit
+DD-only/default-like branch-equivalence strategies for scientific
+branch-vs-master gates.
 
 For a specific base commit, pass `--base-ref <commit-ish>`. By default the base
 checkout is placed under the run root at `checkouts/base` and the venv is
 created at `checkouts/base/.venv`. Use `--base-venv` to reuse a different
 environment, `--base-install-spec '.[dev]'` if development extras are needed,
-and `--reinstall-base-env` when dependencies should be refreshed.
+`--base-system-site-packages` in prepared containers that provide compiled
+astronomy packages globally, and `--reinstall-base-env` when dependencies should
+be refreshed.
 
 Keep:
 

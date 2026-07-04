@@ -224,12 +224,57 @@ def _git_revision(repo_root: Path) -> str:
     return completed.stdout.strip()
 
 
-def _base_env_marker_payload(repo_root: Path, install_spec: str) -> dict[str, str]:
+def _base_env_marker_payload(
+    repo_root: Path,
+    install_spec: str,
+    *,
+    system_site_packages: bool,
+) -> dict[str, str | bool]:
     return {
         "checkout": str(repo_root.resolve()),
         "revision": _git_revision(repo_root),
         "install_spec": install_spec,
+        "system_site_packages": system_site_packages,
     }
+
+
+def _create_virtual_environment(venv_dir: Path, *, system_site_packages: bool) -> None:
+    venv_command = [sys.executable, "-m", "venv"]
+    virtualenv_command = [sys.executable, "-m", "virtualenv"]
+    if system_site_packages:
+        venv_command.append("--system-site-packages")
+        virtualenv_command.append("--system-site-packages")
+    venv_command.append(str(venv_dir))
+    virtualenv_command.append(str(venv_dir))
+    try:
+        subprocess.run(venv_command, check=True)
+    except subprocess.CalledProcessError:
+        subprocess.run(virtualenv_command, check=True)
+
+
+def _virtual_environment_uses_system_site_packages(venv_dir: Path) -> bool:
+    config_path = venv_dir / "pyvenv.cfg"
+    if not config_path.is_file():
+        return False
+    for line in config_path.read_text(encoding="utf-8").splitlines():
+        key, _, value = line.partition("=")
+        if key.strip() == "include-system-site-packages":
+            return value.strip().lower() == "true"
+    return False
+
+
+def _virtual_environment_has_pip(venv_dir: Path) -> bool:
+    python = _venv_python(venv_dir)
+    if not python.is_file():
+        return False
+    completed = subprocess.run(
+        [str(python), "-m", "pip", "--version"],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    return completed.returncode == 0
 
 
 def _setup_base_python_environment(
@@ -237,16 +282,26 @@ def _setup_base_python_environment(
     repo_root: Path,
     venv_dir: Path,
     install_spec: str,
+    system_site_packages: bool = False,
     reinstall: bool = False,
 ) -> Path:
     """Create or refresh a base-branch venv and return its Rapthor executable."""
     venv_dir = venv_dir.resolve()
+    needs_create = not _virtual_environment_has_pip(venv_dir)
+    needs_create = needs_create or (
+        _venv_python(venv_dir).is_file()
+        and _virtual_environment_uses_system_site_packages(venv_dir) != system_site_packages
+    )
+    if needs_create:
+        _create_virtual_environment(venv_dir, system_site_packages=system_site_packages)
     python = _venv_python(venv_dir)
-    if not python.is_file():
-        subprocess.run([sys.executable, "-m", "venv", str(venv_dir)], check=True)
 
     marker_path = venv_dir / ".rapthor-branch-equivalence.json"
-    desired_marker = _base_env_marker_payload(repo_root, install_spec)
+    desired_marker = _base_env_marker_payload(
+        repo_root,
+        install_spec,
+        system_site_packages=system_site_packages,
+    )
     installed_marker = None
     if marker_path.is_file():
         try:
@@ -545,6 +600,15 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--base-system-site-packages",
+        action="store_true",
+        help=(
+            "Create the base virtualenv with access to system site packages. "
+            "Useful in prepared containers where compiled astronomy packages "
+            "such as python-casacore and everybeam are installed globally."
+        ),
+    )
+    parser.add_argument(
         "--reinstall-base-env",
         action="store_true",
         help="Force reinstalling the base checkout into its virtualenv.",
@@ -640,6 +704,7 @@ def run(args: argparse.Namespace) -> int:
             repo_root=base_repo,
             venv_dir=base_venv,
             install_spec=args.base_install_spec,
+            system_site_packages=args.base_system_site_packages,
             reinstall=args.reinstall_base_env,
         )
         base_runner_command = [str(base_rapthor)]
