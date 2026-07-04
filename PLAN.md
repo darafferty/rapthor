@@ -1,6 +1,6 @@
 # Rapthor Architecture Refactor Plan
 
-Status snapshot: 2026-07-03.
+Status snapshot: 2026-07-04.
 
 ## Goal
 
@@ -64,11 +64,17 @@ Dask scalability work.
   scenario definition, generated benchmark parset/strategy inputs, a developer
   runner, command-log parsing, JSON/Markdown report generation, and focused
   report tests.
+- The generated local demo parset and CI benchmark parset now share the same
+  benchmark strategy, including the legacy DD default solve order, while using
+  different resource defaults for local and CI runs.
+- The CI base image installs runtime Python dependencies from `pyproject.toml`,
+  and `pyproject.toml` participates in the base-image hash so dependency
+  changes rebuild the image.
 - Dev containers install docs dependencies by default.
 
 Recent verification has covered linting, non-integration tests, integration
-tests, saved CWL equivalence, runtime bootstrap slices, and the rich
-Prefect/Dask demo. Keep future verification notes in commit messages, CI
+tests, saved CWL equivalence, runtime bootstrap slices, and generated
+Prefect/Dask demo runs. Keep future verification notes in commit messages, CI
 artifacts, or reports rather than growing this plan.
 
 Known caveats:
@@ -81,6 +87,26 @@ Known caveats:
 - Pydantic remains a future option for configuration and payload validation.
   Keep contracts and builders clean enough that adopting it later would be
   incremental rather than a rewrite.
+
+## Immediate Next Steps
+
+Do these in order:
+
+1. Rebuild or refresh the CI base/full images and run the manual or scheduled
+   `run_benchmark_baseline` job.
+2. Triage the three-repetition `ci-benchmark` artifact bundle:
+   - confirm all repetitions finish under the two-hour CI limit
+   - confirm the runtime parsets use the intended worker/thread settings
+   - identify top wall-clock contributors from `commands.jsonl`, Dask HTML, and
+     command resource profiles
+3. If the benchmark is valid, commit a compact curated baseline report under
+   `docs/source/development/benchmark_baselines/`. If it fails or times out,
+   adjust the benchmark inputs or CI resource policy before starting Dask
+   scalability work.
+4. Tighten equivalence comparison next: improve FITS/image metrics, expose
+   product statistics in reports, and add the branch-vs-master runner.
+5. Only after a benchmark baseline and stronger equivalence signal are in
+   place, start the Dask scalability guardrails and first task-boundary slices.
 
 ## Work Queue
 
@@ -139,15 +165,21 @@ Done when:
 
 ### 2. Benchmark Baseline
 
-Status: CI baseline wiring in place. A single generated benchmark scenario,
-report-generation code, focused tests, and a manual/scheduled GitLab artifact
-job are available. The CI job runs the generated `ci-benchmark` scenario on the
-larger GitLab runner, using two local Dask workers with a 30-thread
-`cpus_per_task`/`max_threads` budget per worker. The scenario is sized to finish
-three repetitions inside the two-hour CI limit while still exercising DI phase
-calibration, DD phase/faceting, the legacy DD default solve order, full-Jones
-calibration, imaging, mosaicking, source filtering, and Dask/Python
-orchestration overhead.
+Status: ready for a new CI benchmark run.
+
+Current contract:
+
+- CI runs one generated scenario, `ci-benchmark`, for three repetitions.
+- The scenario uses two local Dask workers and a 30-thread
+  `cpus_per_task`/`max_threads` budget per worker on the larger GitLab runner.
+- The generated local demo parset and CI benchmark parset share the same
+  strategy so behavior is comparable; only resource sizing differs.
+- The strategy exercises DI phase calibration, DD phase/faceting, the legacy DD
+  default solve order, full-Jones calibration, imaging, mosaicking, source
+  filtering, and Dask/Python orchestration overhead.
+- The CI artifact bundle includes summary/report JSON and Markdown, raw
+  repetition results, command logs, Rapthor logs, generated parsets, Prefect
+  server logs, and Dask performance reports.
 
 Benchmark before changing Dask task boundaries, scheduler behavior, or
 performance-sensitive execution code. The benchmark should identify what to
@@ -155,62 +187,36 @@ optimise next, not just produce one wall-clock number.
 
 Tasks:
 
-- Maintain the committed benchmark scenario definition, runner code, report
-  parsing, and summarization tests.
-- Use the generated benchmark demo for the representative Prefect/Dask graph,
-  and later an optional larger science fixture outside the repo for realistic
-  external-tool scaling.
-- Keep the generated local demo parset and CI benchmark parset on the same
-  strategy so behavior can be compared while only resource sizing differs.
-- Run the scenario from a clean working directory with fixed runtime settings,
-  including local Dask workers, command profiling, dashboard/report options, and
-  external scheduler settings.
-- Run three repetitions in the CI job by default and report median plus
-  min/max. Treat first-run cache effects separately when interpreting the
-  summary.
-- Capture:
-  - total wall-clock time
-  - operation and Prefect task durations
-  - `logs/commands.jsonl` command timings
-  - command resource profiles from `prefect_command_profile = time`
-  - Dask performance report HTML
-  - task count, task concurrency, worker idle time, and scheduler gaps
-  - peak memory and disk footprint
-  - output equivalence or checksum status for scientific products
-- Maintain the CI benchmark job so it can run manually or on schedule and
-  publish:
-  - a Markdown benchmark report artifact
-  - a JSON summary artifact
-  - optionally Dask performance HTML, command logs, and selected run logs
-- For a local smoke baseline on a smaller workstation, override with
+- Maintain the benchmark scenario definition, generated demo data, benchmark
+  runner, report parsing, summarization tests, and CI artifact list together.
+- Trigger the CI job after changes to dependencies, generated benchmark inputs,
+  execution resources, task boundaries, or external command behavior.
+- For a local smoke benchmark on a smaller workstation, override with
   `--scenario ci-benchmark --repetitions 1 --local-dask-workers 1 --cpus-per-task 4 --max-threads 4`.
-- When the GitLab benchmark job completes, save and triage the results as
-  follows:
-  - Keep the full artifact bundle attached to the GitLab job. This is the right
-    home for bulky Dask HTML reports, command logs, run logs, and generated run
-    directories.
-  - For local analysis, download the artifact bundle outside the repository,
-    for example under `/tmp/rapthor-benchmark-artifacts/<pipeline-id>/`.
-  - If the run is a valid baseline, commit only a compact curated report under
-    `docs/source/development/benchmark_baselines/<YYYY-MM-DD>-gitlab-60core.md`.
-    Include the commit SHA, CI pipeline/job URL, container image tag, runner
-    CPU/memory description, benchmark command, worker/thread profile, summary
-    table, top wall-clock contributors, Dask idle/scheduler observations, and
-    any caveats such as first-run cache effects.
-  - Commit a small machine-readable companion only if it is useful for future
-    comparisons, for example
-    `docs/source/development/benchmark_baselines/<YYYY-MM-DD>-gitlab-60core.summary.json`.
-    Do not commit raw run directories, FITS/MS products, full Dask HTML reports,
-    command logs, or Prefect/Rapthor logs.
-- Keep bulky generated products and run directories out of git.
+- Treat first-run cache effects separately when interpreting the three
+  repetitions.
+- Keep bulky generated products and full run directories in CI artifacts or a
+  local path outside the repository, for example
+  `/tmp/rapthor-benchmark-artifacts/<pipeline-id>/`.
+- If the run is a valid baseline, commit only a compact curated report under
+  `docs/source/development/benchmark_baselines/<YYYY-MM-DD>-gitlab-60core.md`.
+  Include the commit SHA, CI pipeline/job URL, container image tag, runner
+  CPU/memory description, benchmark command, worker/thread profile, summary
+  table, top wall-clock contributors, Dask idle/scheduler observations, and any
+  caveats such as first-run cache effects.
+- Commit a small machine-readable companion only if it is useful for future
+  comparisons, for example
+  `docs/source/development/benchmark_baselines/<YYYY-MM-DD>-gitlab-60core.summary.json`.
+- Do not commit raw run directories, FITS/MS products, full Dask HTML reports,
+  command logs, Prefect/Rapthor logs, or other bulky generated products.
 
 Done when:
 
 - The benchmark harness and report-generation tests are committed.
-- CI can produce a Markdown benchmark report artifact.
+- CI produces a successful three-repetition Markdown/JSON benchmark report
+  artifact for `ci-benchmark`.
 - A reproducible generated benchmark baseline has been captured in GitLab
-  artifacts and summarized in a compact curated report before Dask scalability
-  changes.
+  artifacts and summarized in a compact curated report.
 - The committed report identifies the top wall-clock contributors and the
   biggest Dask idle or scheduler gaps.
 

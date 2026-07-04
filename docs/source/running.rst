@@ -206,10 +206,11 @@ as a portable fallback. The command log and Prefect artifact then include CPU
 percentage, user/system time, peak resident memory, filesystem input/output
 counts, page faults, and context switches for tools such as DP3 and WSClean.
 Rapthor also publishes a compact PNG summary chart showing the slowest commands
-and their CPU, memory, and I/O profile. The quick and rich demo parsets set
-``prefect_command_profile = time`` because it works in the standard rootless
-development container and avoids requiring elevated profiling permissions. Set
-``prefect_command_profile = off`` to disable resource profiling.
+and their CPU, memory, and I/O profile. The checked-in demo parset and generated
+demo/benchmark parsets set ``prefect_command_profile = time`` because it works
+in the standard rootless development container and avoids requiring elevated
+profiling permissions. Set ``prefect_command_profile = off`` to disable
+resource profiling.
 
 For deeper native CPU profiling, ``prefect_command_profile = perf`` attempts to
 run Linux ``perf record``. Treat this as an advanced, opt-in mode for a
@@ -222,32 +223,72 @@ flamegraph SVGs are also published as Prefect image artifacts and linked from
 the command timing Markdown artifact. If ``perf`` is blocked, Rapthor falls back
 to lower-level resource metrics.
 
-The checked-in demo parset uses a very small test Measurement Set so it starts
-quickly. To generate a richer local demo with five bright point-source groups,
-48 time slots, multiple frequency bins, and two calibration chunks, run:
+The checked-in ``examples/prefect_demo.parset`` uses a very small test
+Measurement Set so it starts quickly. For a more representative local demo with
+five bright point-source groups, 48 time slots, multiple frequency bins, and two
+calibration chunks, generate the ignored demo inputs first:
 
 .. code-block:: console
 
     $ scripts/dev/generate-prefect-demo-data.py --force
-    $ scripts/dev/run-rapthor-prefect-demo.py \
-      examples/generated/prefect_demo_rich/prefect_demo_rich.parset
 
-The generated files are written under ``examples/generated/`` and are ignored by
-git. The generator uses DP3 prediction to populate the visibilities, then adds
+This writes the following files under
+``examples/generated/prefect_demo_rich/``:
+
+- ``prefect_demo_rich.ms`` and matching apparent/true sky models
+- ``prefect_demo_benchmark_strategy.py``
+- ``prefect_demo_rich.parset`` for local dashboard demos
+- ``prefect_demo_benchmark.parset`` for the benchmark harness and CI
+
+The generator uses DP3 prediction to populate the visibilities, then adds
 synthetic time/frequency antenna phases and thermal noise so calibration
-solution plots have visible structure. By default the generated demo parset uses
-``prefect_demo_benchmark_strategy.py`` with local-machine resource settings.
-Pass ``--strategy /path/to/strategy.py`` to reference a different strategy from
-the demo parset.
+solution plots have visible structure.
 
-The generator also writes ``prefect_demo_benchmark.parset`` for
-``scripts/dev/run_benchmark_baseline.py`` and the ``ci-benchmark`` scenario.
 Both generated parsets use the same benchmark strategy: DI phase, DD
 phase/faceting, the legacy DD default solve order
 ``["fast_phase", "medium_phase", "slow_gains", "medium_phase"]``, full-Jones
-calibration, imaging, mosaicking, and source filtering. The demo parset keeps
-small local thread/core defaults, while the benchmark parset derives
-external-tool thread counts from benchmark runtime overrides.
+calibration, imaging, mosaicking, and source filtering. The local demo parset
+keeps workstation-friendly resource defaults, while the benchmark parset leaves
+thread counts to be derived from benchmark runtime overrides.
+
+To run the generated local demo in the Prefect and Dask dashboards, use the
+local demo parset:
+
+.. code-block:: console
+
+    $ scripts/dev/run-rapthor-prefect-demo.py \
+      examples/generated/prefect_demo_rich/prefect_demo_rich.parset
+
+On a smaller workstation, keep the same generated data and strategy but override
+the runtime resources:
+
+.. code-block:: console
+
+    $ scripts/dev/run-rapthor-prefect-demo.py \
+      --task-runner local_dask \
+      --local-dask-workers 1 \
+      --cpus-per-task 4 \
+      --max-threads 4 \
+      examples/generated/prefect_demo_rich/prefect_demo_rich.parset
+
+Pass ``--strategy /path/to/strategy.py`` to
+``generate-prefect-demo-data.py`` when the local demo parset should reference a
+different strategy. The benchmark parset always references the generated
+benchmark strategy so CI and benchmark runs stay comparable.
+
+To run the same scenario through the benchmark harness instead of the dashboard
+helper, use ``ci-benchmark``. This command keeps the run small enough for a
+local smoke check:
+
+.. code-block:: console
+
+    $ scripts/dev/run_benchmark_baseline.py \
+      --scenario ci-benchmark \
+      --prepare-inputs \
+      --repetitions 1 \
+      --local-dask-workers 1 \
+      --cpus-per-task 4 \
+      --max-threads 4
 
 
 Running with Slurm and external Dask
