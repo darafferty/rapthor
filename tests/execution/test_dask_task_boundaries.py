@@ -73,7 +73,11 @@ def _image_sector_result(index: int) -> dict:
         "sector_offsets": file_record(f"{root}.astrometry_offsets.json"),
         "sector_diagnostic_plots": [file_record(f"{root}.photometry.pdf")],
         "visibilities": [directory_record(f"{root}.prep.ms")],
-        "sector_I_images": [file_record(f"{root}-I-image.fits")],
+        "sector_I_images": [
+            file_record(f"{root}-I-image.fits"),
+            file_record(f"{root}-I-image-pb.fits"),
+            file_record(f"{root}-I-image-pb-ast.fits"),
+        ],
         "sector_extra_images": [],
         "source_filtering_mask": file_record(f"{root}.mask.fits"),
         "sector_skymodels": None,

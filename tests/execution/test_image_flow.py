@@ -84,6 +84,16 @@ def _command_name(command: list[str]) -> str:
     return command[0]
 
 
+def _sector_i_image_records(root: Path, stem: str = "sector_1-MFS-I", compressed: bool = False):
+    """Return non-PB, PB, and astrometry-corrected PB image records for Stokes I."""
+    suffix = ".fits.fz" if compressed else ".fits"
+    return [
+        file_record(root / f"{stem}-image{suffix}"),
+        file_record(root / f"{stem}-image-pb{suffix}"),
+        file_record(root / f"{stem}-image-pb-ast{suffix}"),
+    ]
+
+
 @pytest.fixture(autouse=True)
 def fake_direct_image_helpers(monkeypatch):
     calls = {
@@ -843,12 +853,7 @@ def _expected_image_operation_outputs(operation):
                 directory_record(pipeline_dir / "sector_1_obs_1_prep.ms"),
             ]
         ],
-        "sector_I_images": [
-            [
-                file_record(pipeline_dir / "sector_1-MFS-I-image.fits"),
-                file_record(pipeline_dir / "sector_1-MFS-I-image-pb.fits"),
-            ]
-        ],
+        "sector_I_images": [_sector_i_image_records(pipeline_dir)],
         "sector_extra_images": [
             [
                 file_record(pipeline_dir / "sector_1-MFS-I-residual.fits"),
@@ -906,12 +911,7 @@ def _expected_full_stokes_image_operation_outputs(operation):
                 directory_record(pipeline_dir / "sector_1_obs_1_prep.ms"),
             ]
         ],
-        "sector_I_images": [
-            [
-                file_record(pipeline_dir / "sector_1-MFS-image.fits"),
-                file_record(pipeline_dir / "sector_1-MFS-image-pb.fits"),
-            ]
-        ],
+        "sector_I_images": [_sector_i_image_records(pipeline_dir, stem="sector_1-MFS")],
         "sector_extra_images": [extra_images],
         "source_filtering_mask": [
             file_record(pipeline_dir / "sector_1-MFS-image-pb.fits.mask.fits")
@@ -934,12 +934,7 @@ def _expected_compressed_image_operation_outputs(operation):
                 directory_record(pipeline_dir / "sector_1_obs_1_prep.ms"),
             ]
         ],
-        "sector_I_images": [
-            [
-                file_record(pipeline_dir / "sector_1-MFS-I-image.fits.fz"),
-                file_record(pipeline_dir / "sector_1-MFS-I-image-pb.fits.fz"),
-            ]
-        ],
+        "sector_I_images": [_sector_i_image_records(pipeline_dir, compressed=True)],
         "sector_extra_images": [
             [
                 file_record(pipeline_dir / "sector_1-MFS-I-residual.fits.fz"),
@@ -1625,12 +1620,7 @@ def test_run_image_flow_executes_no_dde_commands_and_returns_records(
         shell_operation_cls=fake_image_shell_operation_cls,
     )
 
-    assert outputs["sector_I_images"] == [
-        [
-            file_record(tmp_path / "sector_1-MFS-I-image.fits"),
-            file_record(tmp_path / "sector_1-MFS-I-image-pb.fits"),
-        ]
-    ]
+    assert outputs["sector_I_images"] == [_sector_i_image_records(tmp_path)]
     assert outputs["visibilities"] == [
         [
             directory_record(tmp_path / "sector_1_obs_0_prep.ms"),
@@ -1656,6 +1646,7 @@ def test_run_image_flow_executes_no_dde_commands_and_returns_records(
     assert fits_published[0][1] == str(tmp_path)
     assert "sector_1-MFS-I-image.fits" in fits_published[0][0]
     assert "sector_1-MFS-I-image-pb.fits" in fits_published[0][0]
+    assert "sector_1-MFS-I-image-pb-ast.fits" in fits_published[0][0]
     assert "sector_1.flat_noise_rms.fits" in fits_published[0][0]
     assert "sector_1.true_sky_rms.fits" in fits_published[0][0]
     validate_output_record(outputs["sector_I_images"])
@@ -1827,12 +1818,7 @@ def test_run_image_flow_reuses_existing_wsclean_products_on_restart(
         shell_operation_cls=fake_image_shell_operation_cls,
     )
 
-    assert outputs["sector_I_images"] == [
-        [
-            file_record(tmp_path / "sector_1-MFS-I-image.fits"),
-            file_record(tmp_path / "sector_1-MFS-I-image-pb.fits"),
-        ]
-    ]
+    assert outputs["sector_I_images"] == [_sector_i_image_records(tmp_path)]
     command_names = [
         _command_name(shlex.split(instance.kwargs["commands"][0]))
         for instance in fake_image_shell_operation_cls.instances
@@ -1850,12 +1836,7 @@ def test_run_image_flow_restores_bright_sources_before_filtering(
         shell_operation_cls=fake_image_shell_operation_cls,
     )
 
-    assert outputs["sector_I_images"] == [
-        [
-            file_record(tmp_path / "sector_1-MFS-I-image.fits"),
-            file_record(tmp_path / "sector_1-MFS-I-image-pb.fits"),
-        ]
-    ]
+    assert outputs["sector_I_images"] == [_sector_i_image_records(tmp_path)]
     commands = [
         shlex.split(instance.kwargs["commands"][0])
         for instance in fake_image_shell_operation_cls.instances
@@ -1909,12 +1890,7 @@ def test_run_image_flow_executes_facet_commands_and_returns_region_file(
     )
 
     assert outputs["sector_region_file"] == [file_record(tmp_path / "sector_1_facets_ds9.reg")]
-    assert outputs["sector_I_images"] == [
-        [
-            file_record(tmp_path / "sector_1-MFS-I-image.fits"),
-            file_record(tmp_path / "sector_1-MFS-I-image-pb.fits"),
-        ]
-    ]
+    assert outputs["sector_I_images"] == [_sector_i_image_records(tmp_path)]
     command_names = [
         _command_name(shlex.split(instance.kwargs["commands"][0]))
         for instance in fake_image_shell_operation_cls.instances
@@ -1960,12 +1936,7 @@ def test_run_image_flow_executes_screen_commands_and_writes_aterm_config(
         shell_operation_cls=fake_image_shell_operation_cls,
     )
 
-    assert outputs["sector_I_images"] == [
-        [
-            file_record(tmp_path / "sector_1-MFS-I-image.fits"),
-            file_record(tmp_path / "sector_1-MFS-I-image-pb.fits"),
-        ]
-    ]
+    assert outputs["sector_I_images"] == [_sector_i_image_records(tmp_path)]
     aterm_config = tmp_path / ATERM_CONFIG_FILENAME
     assert aterm_config.read_text() == build_aterm_config_content("/data/screen-solutions.h5")
     command_names = [
@@ -1999,12 +1970,7 @@ def test_run_image_flow_supports_full_stokes_no_dde(tmp_path, fake_image_shell_o
         shell_operation_cls=fake_image_shell_operation_cls,
     )
 
-    assert outputs["sector_I_images"] == [
-        [
-            file_record(tmp_path / "sector_1-MFS-image.fits"),
-            file_record(tmp_path / "sector_1-MFS-image-pb.fits"),
-        ]
-    ]
+    assert outputs["sector_I_images"] == [_sector_i_image_records(tmp_path, stem="sector_1-MFS")]
     extra_images = outputs["sector_extra_images"][0]
     assert file_record(tmp_path / "sector_1-MFS-Q-image.fits") in extra_images
     assert file_record(tmp_path / "sector_1-MFS-U-image-pb.fits") in extra_images
@@ -2048,12 +2014,7 @@ def test_run_image_flow_supports_mpi_no_dde(tmp_path, fake_image_shell_operation
         shell_operation_cls=fake_image_shell_operation_cls,
     )
 
-    assert outputs["sector_I_images"] == [
-        [
-            file_record(tmp_path / "sector_1-MFS-I-image.fits"),
-            file_record(tmp_path / "sector_1-MFS-I-image-pb.fits"),
-        ]
-    ]
+    assert outputs["sector_I_images"] == [_sector_i_image_records(tmp_path)]
     mpi_instance = next(
         instance
         for instance in fake_image_shell_operation_cls.instances
@@ -2131,12 +2092,7 @@ def test_run_image_flow_supports_mpi_screens(tmp_path, fake_image_shell_operatio
         shell_operation_cls=fake_image_shell_operation_cls,
     )
 
-    assert outputs["sector_I_images"] == [
-        [
-            file_record(tmp_path / "sector_1-MFS-I-image.fits"),
-            file_record(tmp_path / "sector_1-MFS-I-image-pb.fits"),
-        ]
-    ]
+    assert outputs["sector_I_images"] == [_sector_i_image_records(tmp_path)]
     mpi_command = next(
         shlex.split(instance.kwargs["commands"][0])
         for instance in fake_image_shell_operation_cls.instances
@@ -2155,12 +2111,7 @@ def test_run_image_flow_returns_compressed_image_outputs(tmp_path, fake_image_sh
         shell_operation_cls=fake_image_shell_operation_cls,
     )
 
-    assert outputs["sector_I_images"] == [
-        [
-            file_record(tmp_path / "sector_1-MFS-I-image.fits.fz"),
-            file_record(tmp_path / "sector_1-MFS-I-image-pb.fits.fz"),
-        ]
-    ]
+    assert outputs["sector_I_images"] == [_sector_i_image_records(tmp_path, compressed=True)]
     assert outputs["sector_extra_images"] == [
         [
             file_record(tmp_path / "sector_1-MFS-I-residual.fits.fz"),
@@ -2214,12 +2165,7 @@ def test_run_image_flow_supports_clean_disabled_stokes_i(tmp_path, fake_image_sh
         shell_operation_cls=fake_image_shell_operation_cls,
     )
 
-    assert outputs["sector_I_images"] == [
-        [
-            file_record(tmp_path / "sector_1-MFS-I-image.fits"),
-            file_record(tmp_path / "sector_1-MFS-I-image-pb.fits"),
-        ]
-    ]
+    assert outputs["sector_I_images"] == [_sector_i_image_records(tmp_path)]
     wsclean_command = next(
         shlex.split(instance.kwargs["commands"][0])
         for instance in fake_image_shell_operation_cls.instances
@@ -2393,10 +2339,7 @@ def test_image_sector_task_wraps_runner(tmp_path, fake_image_shell_operation_cls
         shell_operation_cls=fake_image_shell_operation_cls,
     )
 
-    assert output["sector_I_images"] == [
-        file_record(tmp_path / "sector_1-MFS-I-image.fits"),
-        file_record(tmp_path / "sector_1-MFS-I-image-pb.fits"),
-    ]
+    assert output["sector_I_images"] == _sector_i_image_records(tmp_path)
 
 
 def test_image_prefect_flow_entrypoint_runs_with_mocked_shell(
@@ -2413,7 +2356,7 @@ def test_image_prefect_flow_entrypoint_runs_with_mocked_shell(
             execution_config=ExecutionConfig(task_runner="sync"),
         )
 
-    assert outputs["sector_I_images"][0][0] == file_record(tmp_path / "sector_1-MFS-I-image.fits")
+    assert outputs["sector_I_images"][0] == _sector_i_image_records(tmp_path)
     assert len(fake_image_shell_operation_cls.instances) == 5
 
 
@@ -2504,6 +2447,9 @@ def test_image_finalizer_accepts_prefect_outputs_for_selfcal(
 
     assert sector.I_image_file_apparent_sky == str(pipeline_dir / "sector_1-MFS-I-image.fits.fz")
     assert sector.I_image_file_true_sky == str(pipeline_dir / "sector_1-MFS-I-image-pb.fits.fz")
+    assert sector.I_image_file_true_sky_astcorr == str(
+        pipeline_dir / "sector_1-MFS-I-image-pb-ast.fits.fz"
+    )
     assert sector.I_model_file_true_sky == str(pipeline_dir / "sector_1-MFS-I-model-pb.fits.fz")
     assert sector.I_residual_file_apparent_sky == str(
         pipeline_dir / "sector_1-MFS-I-residual.fits.fz"
@@ -2558,6 +2504,9 @@ def test_image_operation_run_uses_prefect_flow(
     )
     assert sector.I_image_file_true_sky == str(
         Path(operation.pipeline_working_dir) / "sector_1-MFS-I-image-pb.fits"
+    )
+    assert sector.I_image_file_true_sky_astcorr == str(
+        Path(operation.pipeline_working_dir) / "sector_1-MFS-I-image-pb-ast.fits"
     )
     assert sector.image_skymodel_file_true_sky == str(skymodel_dir / "sector_1.true_sky.txt")
     assert (skymodel_dir / "sector_1.true_sky.txt").is_file()
@@ -2695,6 +2644,9 @@ def test_full_stokes_image_operation_run_uses_prefect_flow(
     assert sector.I_image_file_true_sky == str(
         Path(operation.pipeline_working_dir) / "sector_1-MFS-image-pb.fits"
     )
+    assert sector.I_image_file_true_sky_astcorr == str(
+        Path(operation.pipeline_working_dir) / "sector_1-MFS-image-pb-ast.fits"
+    )
     assert sector.Q_image_file_apparent_sky == str(
         Path(operation.pipeline_working_dir) / "sector_1-MFS-Q-image.fits"
     )
@@ -2746,6 +2698,9 @@ def test_compressed_image_operation_run_uses_prefect_flow(
     assert Path(operation.pipeline_inputs_file).is_file()
     assert sector.I_image_file_apparent_sky == str(pipeline_dir / "sector_1-MFS-I-image.fits.fz")
     assert sector.I_image_file_true_sky == str(pipeline_dir / "sector_1-MFS-I-image-pb.fits.fz")
+    assert sector.I_image_file_true_sky_astcorr == str(
+        pipeline_dir / "sector_1-MFS-I-image-pb-ast.fits.fz"
+    )
     assert sector.I_model_file_true_sky == str(pipeline_dir / "sector_1-MFS-I-model-pb.fits.fz")
     assert sector.I_residual_file_apparent_sky == str(
         pipeline_dir / "sector_1-MFS-I-residual.fits.fz"
@@ -2806,6 +2761,9 @@ def test_clean_disabled_image_operation_run_uses_prefect_flow(
     )
     assert sector.I_image_file_true_sky == str(
         Path(operation.pipeline_working_dir) / "sector_1-MFS-I-image-pb.fits"
+    )
+    assert sector.I_image_file_true_sky_astcorr == str(
+        Path(operation.pipeline_working_dir) / "sector_1-MFS-I-image-pb-ast.fits"
     )
     assert sector.diagnostics == [{"cycle_number": 1}]
     assert field.lofar_to_true_flux_ratio == 1.0
@@ -3032,6 +2990,9 @@ def test_image_finalizer_accepts_prefect_outputs_for_full_stokes(
     skymodel_dir = Path(field.parset["dir_working"]) / "skymodels" / "image_1"
     assert sector.I_image_file_apparent_sky == str(pipeline_dir / "sector_1-MFS-image.fits")
     assert sector.I_image_file_true_sky == str(pipeline_dir / "sector_1-MFS-image-pb.fits")
+    assert sector.I_image_file_true_sky_astcorr == str(
+        pipeline_dir / "sector_1-MFS-image-pb-ast.fits"
+    )
     assert sector.Q_image_file_apparent_sky == str(pipeline_dir / "sector_1-MFS-Q-image.fits")
     assert sector.Q_image_file_true_sky == str(pipeline_dir / "sector_1-MFS-Q-image-pb.fits")
     assert sector.U_model_file_true_sky == str(pipeline_dir / "sector_1-MFS-U-model-pb.fits")

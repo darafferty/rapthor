@@ -24,6 +24,12 @@ class SectorStub:
                 root / f"sector_{index}-{polup}-image.fits",
                 "true sky",
             )
+            if polup == "I":
+                self._write_attr(
+                    f"{polup}_image_file_true_sky_astcorr",
+                    root / f"sector_{index}-{polup}-image-ast.fits",
+                    "astrometry-corrected true sky",
+                )
             self._write_attr(
                 f"{polup}_image_file_apparent_sky",
                 root / f"sector_{index}-{polup}-apparent.fits",
@@ -137,6 +143,10 @@ def test_set_input_parameters_builds_two_sector_mosaic_inputs(tmp_path):
         field.imaging_sectors[0].I_image_file_apparent_sky,
         field.imaging_sectors[1].I_image_file_apparent_sky,
     ]
+    astcorr_sky_files = [
+        field.imaging_sectors[0].I_image_file_true_sky_astcorr,
+        field.imaging_sectors[1].I_image_file_true_sky_astcorr,
+    ]
     vertices_files = [
         field.imaging_sectors[0].vertices_file,
         field.imaging_sectors[1].vertices_file,
@@ -144,24 +154,36 @@ def test_set_input_parameters_builds_two_sector_mosaic_inputs(tmp_path):
 
     assert operation.image_names == [
         "I_image_file_true_sky",
+        "I_image_file_true_sky_astcorr",
         "I_image_file_apparent_sky",
     ]
     assert operation.input_parms == {
         "skip_processing": False,
         "sector_image_filename": [
             FileRecord(true_sky_files).to_json(),
+            FileRecord(astcorr_sky_files).to_json(),
             FileRecord(apparent_sky_files).to_json(),
         ],
         "sector_vertices_filename": [
             FileRecord(vertices_files).to_json(),
             FileRecord(vertices_files).to_json(),
+            FileRecord(vertices_files).to_json(),
         ],
-        "template_image_filename": ["mosaic_1_template.fits", "mosaic_1_template.fits"],
+        "template_image_filename": [
+            "mosaic_1_template.fits",
+            "mosaic_1_template.fits",
+            "mosaic_1_template.fits",
+        ],
         "regridded_image_filename": [
             ["sector_1-I-image.fits.regridded", "sector_2-I-image.fits.regridded"],
+            ["sector_1-I-image-ast.fits.regridded", "sector_2-I-image-ast.fits.regridded"],
             ["sector_1-I-apparent.fits.regridded", "sector_2-I-apparent.fits.regridded"],
         ],
-        "mosaic_filename": ["mosaic_1-I-image.fits", "mosaic_1-I-apparent.fits"],
+        "mosaic_filename": [
+            "mosaic_1-I-image.fits",
+            "mosaic_1-I-image-ast.fits",
+            "mosaic_1-I-apparent.fits",
+        ],
     }
 
 
@@ -180,6 +202,7 @@ def test_set_input_parameters_includes_clean_and_supplementary_products(tmp_path
 
     assert operation.image_names == [
         "I_image_file_true_sky",
+        "I_image_file_true_sky_astcorr",
         "I_image_file_apparent_sky",
         "I_model_file_true_sky",
         "I_residual_file_apparent_sky",
@@ -194,6 +217,7 @@ def test_set_input_parameters_includes_clean_and_supplementary_products(tmp_path
     ]
     assert operation.input_parms["mosaic_filename"] == [
         "mosaic_1-I-image.fits",
+        "mosaic_1-I-image-ast.fits",
         "mosaic_1-I-apparent.fits",
         "mosaic_1-I-model.fits",
         "mosaic_1-I-residual.fits",
@@ -218,6 +242,7 @@ def test_set_input_parameters_reuses_single_sector_products_when_processing_is_s
     assert operation.input_parms["skip_processing"] is True
     assert operation.input_parms["mosaic_filename"] == [
         field.imaging_sectors[0].I_image_file_true_sky,
+        field.imaging_sectors[0].I_image_file_true_sky_astcorr,
         field.imaging_sectors[0].I_image_file_apparent_sky,
     ]
 
@@ -236,9 +261,13 @@ def test_finalize_copies_single_sector_products_and_updates_field_state(tmp_path
     expected_apparent_image = (
         Path(field.parset["dir_working"]) / "images" / "image_1" / "field-I-apparent.fits"
     )
+    expected_astcorr_image = (
+        Path(field.parset["dir_working"]) / "images" / "image_1" / "field-I-image-ast.fits"
+    )
     assert field.field_image_filename_prev == "previous-field-image.fits"
     assert field.field_image_filename == str(expected_field_image)
     assert expected_field_image.read_text() == "true sky"
+    assert expected_astcorr_image.read_text() == "astrometry-corrected true sky"
     assert expected_apparent_image.read_text() == "apparent sky"
     assert Path(operation.done_file).is_file()
 
@@ -264,6 +293,10 @@ def test_finalize_copies_compressed_processed_mosaic_products(tmp_path):
     expected_apparent_image = (
         Path(field.parset["dir_working"]) / "images" / "image_1" / "field-I-apparent.fits.fz"
     )
+    expected_astcorr_image = (
+        Path(field.parset["dir_working"]) / "images" / "image_1" / "field-I-image-ast.fits.fz"
+    )
     assert field.field_image_filename == str(expected_field_image)
     assert expected_field_image.read_text() == "compressed"
+    assert expected_astcorr_image.read_text() == "compressed"
     assert expected_apparent_image.read_text() == "compressed"

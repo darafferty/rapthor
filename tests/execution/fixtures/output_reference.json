@@ -143,7 +143,8 @@
         "sector_I_images": [
             [
                 {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-image.fits"},
-                {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-image-pb.fits"}
+                {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-image-pb.fits"},
+                {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-image-pb-ast.fits"}
             ]
         ],
         "sector_extra_images": [
@@ -194,7 +195,8 @@
         "sector_I_images": [
             [
                 {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-image.fits"},
-                {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-image-pb.fits"}
+                {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-image-pb.fits"},
+                {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-image-pb-ast.fits"}
             ]
         ],
         "sector_extra_images": [
@@ -248,7 +250,8 @@
         "sector_I_images": [
             [
                 {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-image.fits"},
-                {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-image-pb.fits"}
+                {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-image-pb.fits"},
+                {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-image-pb-ast.fits"}
             ]
         ],
         "sector_extra_images": [
@@ -302,6 +305,10 @@
                 {
                     "class": "File",
                     "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-image-pb.fits.fz"
+                },
+                {
+                    "class": "File",
+                    "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-image-pb-ast.fits.fz"
                 }
             ]
         ],
@@ -359,7 +366,8 @@
         "sector_I_images": [
             [
                 {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-image.fits"},
-                {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-image-pb.fits"}
+                {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-image-pb.fits"},
+                {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-image-pb-ast.fits"}
             ]
         ],
         "sector_extra_images": [
@@ -413,7 +421,8 @@
         "sector_I_images": [
             [
                 {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-image.fits"},
-                {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-image-pb.fits"}
+                {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-image-pb.fits"},
+                {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-image-pb-ast.fits"}
             ]
         ],
         "sector_extra_images": [
@@ -473,7 +482,8 @@
         "sector_I_images": [
             [
                 {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-image.fits"},
-                {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-image-pb.fits"}
+                {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-image-pb.fits"},
+                {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-image-pb-ast.fits"}
             ]
         ],
         "sector_extra_images": [
@@ -543,7 +553,8 @@
         "sector_I_images": [
             [
                 {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-image.fits"},
-                {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-image-pb.fits"}
+                {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-image-pb.fits"},
+                {"class": "File", "path": "${PIPELINE_WORKING_DIR}/sector_1-MFS-I-image-pb-ast.fits"}
             ]
         ],
         "sector_extra_images": [

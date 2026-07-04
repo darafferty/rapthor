@@ -262,8 +262,16 @@ class TestImage:
         field.imaging_sectors = [first_sector, second_sector]
         expected_outputs = {
             "sector_I_images": [
-                ["sector_1-MFS-I-image-pb.fits", "sector_1-MFS-I-image.fits"],
-                ["sector_2-MFS-I-image-pb.fits", "sector_2-MFS-I-image.fits"],
+                [
+                    "sector_1-MFS-I-image-pb.fits",
+                    "sector_1-MFS-I-image-pb-ast.fits",
+                    "sector_1-MFS-I-image.fits",
+                ],
+                [
+                    "sector_2-MFS-I-image-pb.fits",
+                    "sector_2-MFS-I-image-pb-ast.fits",
+                    "sector_2-MFS-I-image.fits",
+                ],
             ],
             "sector_extra_images": [
                 [
@@ -509,6 +517,7 @@ class TestImage:
         # Test the find_in_file_list method with a sample file list
         file_list = [
             "sector_1-MFS-I-image-pb.fits",
+            "sector_1-MFS-I-image-pb-ast.fits",
             "sector_1-MFS-I-image.fits",
             "sector_1-MFS-Q-image-pb.fits",
             "sector_1-MFS-Q-image.fits",
@@ -524,6 +533,9 @@ class TestImage:
                 "sector_1-MFS-Q-image-pb.fits",
                 "sector_1-MFS-U-image-pb.fits",
                 "sector_1-MFS-V-image-pb.fits",
+            ],
+            "image_file_true_sky_astcorr": [
+                "sector_1-MFS-I-image-pb-ast.fits",
             ],
             "image_file_apparent_sky": [
                 "sector_1-MFS-I-image.fits",

@@ -4,6 +4,7 @@ from typing import Optional
 
 from rapthor.execution.artifacts import publish_fits_image_artifacts
 from rapthor.execution.config import ExecutionConfig
+from rapthor.execution.image.astrometry import make_astrometry_corrected_image_record
 from rapthor.execution.image.contracts import ImageSectorPayload
 from rapthor.execution.image.diagnostics import run_image_diagnostics
 from rapthor.execution.image.outputs import (
@@ -129,6 +130,10 @@ def run_image_sector(
         region_record,
         pipeline_working_dir,
     )
+    if "I" in str(sector["pol"]).upper():
+        sector_images.append(
+            make_astrometry_corrected_image_record(pb_image, region_record, offsets)
+        )
 
     output_sector_images = sector_images
     output_extra_images = extra_images

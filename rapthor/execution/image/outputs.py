@@ -84,9 +84,17 @@ def compress_image_records(
     run_external_command(
         command, pipeline_working_dir, execution_config, shell_operation_cls=shell_operation_cls
     )
+    descriptions = [
+        "Compressed WSClean non-PB image",
+        "Compressed WSClean PB image",
+        "Compressed WSClean astrometry-corrected PB image",
+    ]
     compressed_sector_images = [
-        compressed_file_record(sector_images[0], "Compressed WSClean non-PB image"),
-        compressed_file_record(sector_images[1], "Compressed WSClean PB image"),
+        compressed_file_record(
+            record,
+            descriptions[index] if index < len(descriptions) else "Compressed WSClean sector image",
+        )
+        for index, record in enumerate(sector_images)
     ]
     compressed_extra_images = file_records_for_patterns(
         mfs_extra_image_patterns(image_name, pipeline_working_dir, compressed=True)

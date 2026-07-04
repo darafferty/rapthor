@@ -256,16 +256,17 @@ Port these in order:
    is also ported so reset does not fail when optional output directories such
    as `visibilities/` do not exist. Focused pytest coverage exists for both.
 
-2. **Restore astrometry-corrected image products.** Next.
-   Port the `ebe35408` astrometry-correction behavior into
-   `rapthor/execution/image/` and the image/mosaic output contracts. The current
-   branch emits astrometry-offset diagnostics but does not create or publish the
-   Stokes-I `field-MFS-image-pb-ast.fits(.fz)` products that master creates.
-   Implement the correction helper as an execution module, wire it after image
-   diagnostics where offsets are available, include it in output records and
-   mosaics, and add unit/flow tests plus branch-equivalence product checks.
+2. **Restore astrometry-corrected image products.** Implemented on 2026-07-04.
+   The `ebe35408` astrometry-correction behavior is now represented under
+   `rapthor/execution/image/`: image-sector execution creates the Stokes-I
+   `image-pb-ast.fits(.fz)` product after diagnostics, compression preserves it,
+   image finalization records `I_image_file_true_sky_astcorr`, and mosaic inputs
+   include the product when all sectors provide it. Focused unit, flow,
+   finalizer, mosaic, Dask-boundary, and reference-fixture tests pass. Re-run the
+   branch-vs-master equivalence scenario to confirm the previously missing
+   `field-MFS-image-pb-ast` products are now present in full pipeline outputs.
 
-3. **Add per-facet RMS diagnostics.**
+3. **Add per-facet RMS diagnostics.** Next.
    Port the facet RMS statistics from `eb1b6f2f` and the invalid-region guard
    from `908f83c9` into `rapthor/lib/fitsimage.py` and
    `rapthor/execution/image/diagnostic_calculation.py`. Preserve the existing
