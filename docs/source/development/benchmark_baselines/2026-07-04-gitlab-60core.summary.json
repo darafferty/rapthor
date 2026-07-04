@@ -1,0 +1,87 @@
+{
+  "benchmark_id": "2026-07-04-gitlab-60core",
+  "source_artifact": "runs/benchmark-20260704-122100",
+  "scenario": "ci-benchmark",
+  "commit": "b8ed119eee99c0b91d1ef13064d4014b45368575",
+  "container_image": "$CI_REGISTRY_IMAGE/full:b8ed119eee99c0b91d1ef13064d4014b45368575",
+  "ci_pipeline_job_url": null,
+  "repetitions": 3,
+  "returncodes": [
+    0,
+    0,
+    0
+  ],
+  "runtime_resources": {
+    "local_dask_workers": 2,
+    "cpus_per_task": 30,
+    "max_threads": 30,
+    "observed_dask_threads": 60,
+    "observed_dask_memory_gib": 125.4
+  },
+  "wall_seconds": {
+    "min": 481.53382883407176,
+    "median": 482.89421356562525,
+    "max": 488.17799317650497
+  },
+  "command_seconds": {
+    "min": 230.394975,
+    "median": 230.55131,
+    "max": 232.94433
+  },
+  "command_count": {
+    "min": 44,
+    "median": 44,
+    "max": 44
+  },
+  "dask_report": {
+    "task_count": 12,
+    "duration_seconds": {
+      "min": 468.29,
+      "median": 469.55,
+      "max": 470.37
+    },
+    "compute_seconds": {
+      "min": 246.9,
+      "median": 247.35,
+      "max": 249.63
+    },
+    "duration_minus_compute_seconds": {
+      "min": 220.74,
+      "median": 220.94,
+      "max": 222.65
+    }
+  },
+  "top_command_kinds": [
+    {
+      "kind": "python -m rapthor.execution.image.skymodel_filter_cli",
+      "count": 12,
+      "total_seconds": 330.886,
+      "median_seconds": 34.508
+    },
+    {
+      "kind": "wsclean",
+      "count": 12,
+      "total_seconds": 268.791,
+      "median_seconds": 22.105
+    },
+    {
+      "kind": "python -m rapthor.execution.calibrate.plotting_cli",
+      "count": 30,
+      "total_seconds": 54.279,
+      "median_seconds": 1.838
+    },
+    {
+      "kind": "DP3",
+      "count": 30,
+      "total_seconds": 24.593,
+      "median_seconds": 0.313
+    },
+    {
+      "kind": "fpack",
+      "count": 9,
+      "total_seconds": 10.311,
+      "median_seconds": 1.142
+    }
+  ],
+  "interpretation": "Valid first CI baseline. The key bottleneck signal is task shape and image-cycle cost: 12 Dask tasks, four long image_sector_task instances, and about 221 seconds per repetition between Dask report duration and task compute."
+}

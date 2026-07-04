@@ -12,6 +12,19 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Optional
 
+METADATA_LABELS = {
+    "container_image": "Container image",
+    "gitlab_commit_sha": "GitLab commit SHA",
+    "gitlab_job_id": "GitLab job ID",
+    "gitlab_job_url": "GitLab job URL",
+    "gitlab_pipeline_id": "GitLab pipeline ID",
+    "gitlab_pipeline_url": "GitLab pipeline URL",
+    "gitlab_project_url": "GitLab project URL",
+    "gitlab_ref_name": "GitLab ref",
+    "runner_description": "GitLab runner",
+    "runner_id": "GitLab runner ID",
+}
+
 
 @dataclass(frozen=True)
 class BenchmarkScenario:
@@ -178,10 +191,18 @@ def render_markdown_report(summary: Mapping[str, object]) -> str:
     lines = [
         "# Rapthor Benchmark Baseline",
         "",
-        "| Scenario | Runs | Return Codes | Wall Median (s) | Wall Min-Max (s) | "
-        "Command Median (s) |",
-        "| --- | ---: | --- | ---: | --- | ---: |",
     ]
+    metadata = summary.get("metadata")
+    if isinstance(metadata, Mapping) and metadata:
+        lines.extend(_render_metadata_table(metadata))
+
+    lines.extend(
+        [
+            "| Scenario | Runs | Return Codes | Wall Median (s) | Wall Min-Max (s) | "
+            "Command Median (s) |",
+            "| --- | ---: | --- | ---: | --- | ---: |",
+        ]
+    )
     scenarios = summary.get("scenarios", {})
     if not isinstance(scenarios, Mapping):
         raise TypeError("summary['scenarios'] must be a mapping")
@@ -256,9 +277,16 @@ def write_summary_artifacts(
     *,
     output_json: Path,
     output_markdown: Path,
+    metadata: Mapping[str, object] | None = None,
 ) -> dict[str, object]:
     """Write JSON and Markdown benchmark summary artifacts."""
     summary = summarize_benchmark_runs(results)
+    if metadata:
+        summary["metadata"] = {
+            str(key): str(value)
+            for key, value in sorted(metadata.items())
+            if value is not None and str(value)
+        }
     output_json.parent.mkdir(parents=True, exist_ok=True)
     output_markdown.parent.mkdir(parents=True, exist_ok=True)
     output_json.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -294,6 +322,26 @@ def _stats(values: Sequence[float]) -> dict[str, float]:
         "median": statistics.median(values),
         "max": max(values),
     }
+
+
+def _render_metadata_table(metadata: Mapping[str, object]) -> list[str]:
+    lines = [
+        "| Field | Value |",
+        "| --- | --- |",
+    ]
+    for key, value in sorted(metadata.items()):
+        lines.append(
+            "| {label} | {value} |".format(
+                label=_markdown_cell(METADATA_LABELS.get(str(key), str(key).replace("_", " "))),
+                value=_markdown_cell(str(value)),
+            )
+        )
+    lines.append("")
+    return lines
+
+
+def _markdown_cell(value: str) -> str:
+    return value.replace("|", r"\|").replace("\n", " ")
 
 
 def _optional_str(value: object) -> Optional[str]:

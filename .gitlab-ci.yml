@@ -285,8 +285,9 @@ run_benchmark_baseline:
     RAPTHOR_BENCHMARK_SCENARIO_ARGS: "--scenario ci-benchmark"
     VECLIB_MAXIMUM_THREADS: "1"
   script:
-    - export RAPTHOR_BENCHMARK_RUN_ROOT="$CI_PROJECT_DIR/ci/benchmark"
-    - export PREFECT_HOME="$CI_PROJECT_DIR/ci/prefect-home/benchmark"
+    - export RAPTHOR_BENCHMARK_RUN_STAMP="$(date -u +%Y%m%d-%H%M%S)"
+    - export RAPTHOR_BENCHMARK_RUN_ROOT="$CI_PROJECT_DIR/ci/benchmark-$RAPTHOR_BENCHMARK_RUN_STAMP"
+    - export PREFECT_HOME="$CI_PROJECT_DIR/ci/prefect-home/benchmark-$RAPTHOR_BENCHMARK_RUN_STAMP"
     - mkdir -p "$RAPTHOR_BENCHMARK_RUN_ROOT" "$PREFECT_HOME"
     # Use 2 workers x 30 threads to expose predict/calibration chunk parallelism
     # without oversubscribing the 60-core GitLab runner. The single benchmark
@@ -306,16 +307,16 @@ run_benchmark_baseline:
     when: always
     expire_in: 14 days
     paths:
-      - ci/benchmark/benchmark-summary.json
-      - ci/benchmark/benchmark-report.md
-      - ci/benchmark/benchmark-results.json
-      - ci/benchmark/**/benchmark-command.json
-      - ci/benchmark/**/benchmark-result.json
-      - ci/benchmark/**/dask-performance-report.html
-      - ci/benchmark/**/*.parset
-      - ci/benchmark/**/prefect-server.log
-      - ci/benchmark/**/rapthor-work/logs/commands.jsonl
-      - ci/benchmark/**/rapthor-work/logs/rapthor.log
+      - ci/benchmark-*/benchmark-summary.json
+      - ci/benchmark-*/benchmark-report.md
+      - ci/benchmark-*/benchmark-results.json
+      - ci/benchmark-*/**/benchmark-command.json
+      - ci/benchmark-*/**/benchmark-result.json
+      - ci/benchmark-*/**/dask-performance-report.html
+      - ci/benchmark-*/**/*.parset
+      - ci/benchmark-*/**/prefect-server.log
+      - ci/benchmark-*/**/rapthor-work/logs/commands.jsonl
+      - ci/benchmark-*/**/rapthor-work/logs/rapthor.log
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
       when: on_success

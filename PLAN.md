@@ -92,25 +92,23 @@ Known caveats:
 
 Do these in order:
 
-1. Rebuild or refresh the CI base/full images and run the manual or scheduled
-   `run_benchmark_baseline` job.
-2. Triage the three-repetition `ci-benchmark` artifact bundle:
-   - confirm all repetitions finish under the two-hour CI limit
-   - confirm the runtime parsets use the intended worker/thread settings
-   - identify top wall-clock contributors from `commands.jsonl`, Dask HTML, and
-     command resource profiles
-3. If the benchmark is valid, commit a compact curated baseline report under
-   `docs/source/development/benchmark_baselines/`. If it fails or times out,
-   adjust the benchmark inputs or CI resource policy before starting Dask
-   scalability work.
-4. While benchmark results are pending, start the test-suite improvement track:
-   add an option-coverage audit and refactor the largest flow/operation tests
-   as they are touched.
+1. Use the captured CI benchmark baseline at
+   `docs/source/development/benchmark_baselines/2026-07-04-gitlab-60core.md`
+   as the current performance reference.
+2. Start Dask scalability work by explaining the benchmark's task-shape signal:
+   only 12 Dask tasks are emitted, four image-sector tasks dominate compute, and
+   about 221 seconds per repetition sit between Dask report duration and task
+   compute time.
+3. Pick the first low-risk scalability slice from the image-cycle path:
+   instrument the idle/orchestration gap, then split or parallelize image-cycle
+   work only where product dependencies and restart contracts allow it.
+4. Re-run `ci-benchmark` for three repetitions after each task-boundary or
+   performance-sensitive change and compare against the 2026-07-04 baseline.
 5. Tighten equivalence comparison next: improve FITS/image metrics, expose
    product statistics in reports, and add the branch-vs-master runner.
-6. Only after a benchmark baseline, stronger equivalence signal, and test-suite
-   guardrails are in place, start the Dask scalability guardrails and first
-   task-boundary slices.
+6. Resume the paused test-suite maintainability track after the benchmark-led
+   scalability plan is underway; keep `TESTING.md` and this plan updated as
+   tests are cleaned up.
 
 ## Work Queue
 
@@ -169,7 +167,9 @@ Done when:
 
 ### 2. Benchmark Baseline
 
-Status: ready for a new CI benchmark run.
+Status: first valid CI benchmark baseline captured on 2026-07-04. Use it to
+guide Dask scalability work before changing task boundaries, scheduler
+behavior, or performance-sensitive execution code.
 
 Current contract:
 
@@ -184,6 +184,11 @@ Current contract:
 - The CI artifact bundle includes summary/report JSON and Markdown, raw
   repetition results, command logs, Rapthor logs, generated parsets, Prefect
   server logs, and Dask performance reports.
+- CI stores benchmark products under `ci/benchmark-<UTC timestamp>` so
+  downloaded artifact archives preserve the run identity without manual
+  renaming.
+- Benchmark summary/report artifacts include GitLab job, pipeline, commit, and
+  image metadata when the CI environment provides it.
 
 Benchmark before changing Dask task boundaries, scheduler behavior, or
 performance-sensitive execution code. The benchmark should identify what to
@@ -193,6 +198,9 @@ Tasks:
 
 - Maintain the benchmark scenario definition, generated demo data, benchmark
   runner, report parsing, summarization tests, and CI artifact list together.
+- Use
+  `docs/source/development/benchmark_baselines/2026-07-04-gitlab-60core.md`
+  and its companion summary JSON as the current compact baseline.
 - Trigger the CI job after changes to dependencies, generated benchmark inputs,
   execution resources, task boundaries, or external command behavior.
 - For a local smoke benchmark on a smaller workstation, override with
@@ -213,6 +221,10 @@ Tasks:
   `docs/source/development/benchmark_baselines/<YYYY-MM-DD>-gitlab-60core.summary.json`.
 - Do not commit raw run directories, FITS/MS products, full Dask HTML reports,
   command logs, Prefect/Rapthor logs, or other bulky generated products.
+- For the next optimization pass, focus on the gap between Dask report duration
+  and task compute time before increasing CPU or thread budgets. The first
+  baseline shows the configured 2 worker / 60 thread shape is reaching Dask,
+  but only 12 task-level units are available.
 
 Done when:
 

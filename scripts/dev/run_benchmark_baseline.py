@@ -6,8 +6,10 @@ from __future__ import annotations
 import argparse
 import configparser
 import json
+import os
 import subprocess
 import sys
+from collections.abc import Mapping
 from dataclasses import asdict, replace
 from pathlib import Path
 from typing import Sequence
@@ -32,6 +34,18 @@ BENCHMARK_PARSET_PATH_OPTIONS = (
     "input_fulljones_h5parm",
     "facet_layout",
 )
+CI_METADATA_ENV_VARS = {
+    "container_image": "FULL_IMAGE",
+    "gitlab_commit_sha": "CI_COMMIT_SHA",
+    "gitlab_job_id": "CI_JOB_ID",
+    "gitlab_job_url": "CI_JOB_URL",
+    "gitlab_pipeline_id": "CI_PIPELINE_ID",
+    "gitlab_pipeline_url": "CI_PIPELINE_URL",
+    "gitlab_project_url": "CI_PROJECT_URL",
+    "gitlab_ref_name": "CI_COMMIT_REF_NAME",
+    "runner_description": "CI_RUNNER_DESCRIPTION",
+    "runner_id": "CI_RUNNER_ID",
+}
 
 
 def _repo_root() -> Path:
@@ -215,6 +229,15 @@ def _path_value_exists(repo_root: Path, path_value: str) -> bool:
     return path.exists()
 
 
+def _benchmark_metadata_from_env(env: Mapping[str, str] = os.environ) -> dict[str, str]:
+    """Return GitLab benchmark metadata when the runner environment provides it."""
+    return {
+        key: value
+        for key, env_name in CI_METADATA_ENV_VARS.items()
+        if (value := env.get(env_name))
+    }
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parse_args(argv)
     scenarios_by_id = benchmark_scenarios_by_id()
@@ -253,10 +276,15 @@ def main(argv: Sequence[str] | None = None) -> int:
                 )
             )
 
+    metadata = _benchmark_metadata_from_env()
+    if gitlab_job_url := metadata.get("gitlab_job_url"):
+        print(f"GitLab job URL: {gitlab_job_url}")
+
     summary = write_summary_artifacts(
         results,
         output_json=output_json,
         output_markdown=output_markdown,
+        metadata=metadata,
     )
     result_path = run_root / "benchmark-results.json"
     result_path.parent.mkdir(parents=True, exist_ok=True)

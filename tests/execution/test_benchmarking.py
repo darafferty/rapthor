@@ -150,6 +150,21 @@ def test_summarize_benchmark_runs_and_render_markdown():
     assert "| comparison-demo | 1 | 1 | 8.000 | 8.000-8.000 | 6.000 |" in report
 
 
+def test_benchmark_report_includes_metadata():
+    summary = summarize_benchmark_runs(
+        [BenchmarkRunResult("ci-benchmark", 1, "/runs/1", 0, 4.0, 2, 3.0)]
+    )
+    summary["metadata"] = {
+        "container_image": "registry.example/rapthor/full:abc123",
+        "gitlab_job_url": "https://gitlab.example/jobs/123",
+    }
+
+    report = render_markdown_report(summary)
+
+    assert "| Container image | registry.example/rapthor/full:abc123 |" in report
+    assert "| GitLab job URL | https://gitlab.example/jobs/123 |" in report
+
+
 def test_write_summary_artifacts(tmp_path):
     output_json = tmp_path / "summary.json"
     output_markdown = tmp_path / "report.md"
@@ -162,6 +177,40 @@ def test_write_summary_artifacts(tmp_path):
 
     assert json.loads(output_json.read_text()) == summary
     assert output_markdown.read_text().startswith("# Rapthor Benchmark Baseline")
+
+
+def test_write_summary_artifacts_can_include_metadata(tmp_path):
+    output_json = tmp_path / "summary.json"
+    output_markdown = tmp_path / "report.md"
+
+    summary = write_summary_artifacts(
+        [BenchmarkRunResult("ci-benchmark", 1, "/runs/1", 0, 4.0, 2, 3.0)],
+        output_json=output_json,
+        output_markdown=output_markdown,
+        metadata={"gitlab_job_url": "https://gitlab.example/jobs/123"},
+    )
+
+    assert summary["metadata"]["gitlab_job_url"] == "https://gitlab.example/jobs/123"
+    assert json.loads(output_json.read_text())["metadata"] == summary["metadata"]
+    assert "https://gitlab.example/jobs/123" in output_markdown.read_text()
+
+
+def test_benchmark_runner_reads_gitlab_metadata():
+    module = load_benchmark_script()
+
+    metadata = module._benchmark_metadata_from_env(
+        {
+            "CI_JOB_URL": "https://gitlab.example/jobs/123",
+            "CI_PIPELINE_URL": "https://gitlab.example/pipelines/456",
+            "FULL_IMAGE": "registry.example/rapthor/full:abc123",
+        }
+    )
+
+    assert metadata == {
+        "container_image": "registry.example/rapthor/full:abc123",
+        "gitlab_job_url": "https://gitlab.example/jobs/123",
+        "gitlab_pipeline_url": "https://gitlab.example/pipelines/456",
+    }
 
 
 def test_failed_benchmark_runs_are_reported():
