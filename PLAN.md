@@ -67,9 +67,12 @@ Known caveats:
    completed both branches but failed product comparison. Inspect the
    output-record differences, the missing `field-MFS-image-pb-ast` products,
    and the later-cycle FITS residuals before changing performance-sensitive
-   execution code. Decide whether the manual master/current parsets need
-   further alignment around legacy cross-cycle solution reuse or whether the
-   comparison should explicitly document intentional product-contract changes.
+   execution code. The main cause found so far is a master slow-gain amplitude
+   combination failure: master logs a `combine_h5parms.py ... p1p2a2_diagonal`
+   broadcasting error but still completes, leaving the active facet h5parm
+   phase-only. Decide whether to patch the master reference checkout to test
+   intended slow-gain amplitude behavior, or to keep a deliberately phase-only
+   current scenario for strict legacy parity.
 
 2. **Take one low-risk image-cycle scalability slice.**
    Start with one natural boundary inside image-sector execution, such as
@@ -160,9 +163,12 @@ Immediate task:
     path-only, product-presence, or semantic
   - decide whether missing `field-MFS-image-pb-ast` products are an intentional
     current-branch contract change or should be restored/configured
-  - inspect later-cycle h5parm and image-product handoff semantics, especially
-    whether the manual current strategy/parset should emulate legacy
-    cross-cycle solution reuse for this reference comparison
+  - decide whether the reference comparison should patch master so
+    `p1p2a2_diagonal` slow-gain amplitudes combine cleanly, or adapt the
+    current scenario to compare against master's phase-only legacy behavior
+  - align manual scenario resource/runtime knobs such as WSClean
+    `parallel_gridding_threads` and memory so small early-cycle residuals are
+    not dominated by command-shape differences
   - rerun the branch-equivalence gate after the scenario contract is made
     explicit
 

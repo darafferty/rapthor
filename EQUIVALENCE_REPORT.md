@@ -150,12 +150,24 @@ Key findings:
   (`max_abs_delta` around `1.5e-05`, residual RMS around `4.2e-06`)
 - later image cycles diverge materially, with worst image residuals reaching
   `max_abs_delta = 6.671e-01` and residual RMS up to `4.203e-02`
+- the large cycle 3/4 divergence is explained by a legacy master slow-gain
+  combination failure: master runs `combine_h5parms.py ... p1p2a2_diagonal`,
+  logs `ValueError: could not broadcast input array from shape ...`, but the CWL
+  step still completes successfully and leaves the active `field-solutions.h5`
+  phase-only
+- the current branch produces active cycle 3/4 `field-solutions.h5` products
+  with both `phase000` and `amplitude000`, then WSClean applies
+  `amplitude000,phase000`; master applies only `phase000`
+- smaller early-cycle residuals are probably also affected by runtime-shape
+  differences in the manual scenario, including WSClean `-parallel-gridding`
+  and `-abs-mem` values
 
 Treat this as a failed scientific equivalence gate. The next investigation
-should determine whether the manual master/current parsets are still
-scientifically equivalent, especially around legacy cross-cycle solution reuse
-and intentionally changed astrometry-product behavior, before any scalability
-changes are made.
+should decide the intended reference contract for slow-gain amplitudes before
+any scalability changes are made. Either patch the master reference checkout so
+slow-gain amplitudes are combined/applied as intended, or mark the master
+behavior as a legacy bug and use an adapted phase-only current scenario when
+strict branch-vs-master parity is required.
 
 ## Historical Passing Scenarios
 
