@@ -92,23 +92,43 @@ Known caveats:
 
 Do these in order:
 
-1. Use the captured CI benchmark baseline at
+1. Finish and validate benchmark provenance plumbing:
+   - CI writes benchmark products under `ci/benchmark-<UTC timestamp>`
+   - benchmark JSON/Markdown reports include GitLab job, pipeline, commit, and
+     image metadata
+   - one CI benchmark run confirms the downloaded artifact contains the
+     timestamped directory and `gitlab_job_url`
+2. Use the captured CI benchmark baseline at
    `docs/source/development/benchmark_baselines/2026-07-04-gitlab-60core.md`
    as the current performance reference.
-2. Start Dask scalability work by explaining the benchmark's task-shape signal:
+3. Explain the benchmark's task-shape signal before changing behavior:
    only 12 Dask tasks are emitted, four image-sector tasks dominate compute, and
    about 221 seconds per repetition sit between Dask report duration and task
-   compute time.
-3. Pick the first low-risk scalability slice from the image-cycle path:
-   instrument the idle/orchestration gap, then split or parallelize image-cycle
-   work only where product dependencies and restart contracts allow it.
-4. Re-run `ci-benchmark` for three repetitions after each task-boundary or
+   compute time. Add lightweight benchmark/Dask gap instrumentation or report
+   parsing to separate task compute, command time, scheduler idle time,
+   startup/shutdown, and orchestration overhead.
+4. Add Dask scalability guardrails before splitting tasks:
+   payload serialization checks, task-boundary/task-name assertions,
+   resource-propagation tests, and representative operation payload fixtures.
+5. Take one low-risk image-cycle scalability slice:
+   instrument or split image-sector orchestration along natural product
+   boundaries, such as imaging-MS preparation, concatenation, WSClean,
+   source/skymodel filtering, diagnostics, cube/normalization products, and
+   compression. Preserve output records, restart behavior, and scientific
+   products.
+6. Re-run `ci-benchmark` for three repetitions after each task-boundary or
    performance-sensitive change and compare against the 2026-07-04 baseline.
-5. Tighten equivalence comparison next: improve FITS/image metrics, expose
-   product statistics in reports, and add the branch-vs-master runner.
-6. Resume the paused test-suite maintainability track after the benchmark-led
-   scalability plan is underway; keep `TESTING.md` and this plan updated as
-   tests are cleaned up.
+7. Tighten saved-equivalence image checks before larger scientific or
+   scheduling changes: improve FITS/image metrics and expose product statistics
+   directly in JSON/Markdown reports.
+8. Add the branch-vs-master equivalence runner after the image metrics are
+   stronger, so arbitrary parsets and named scenarios can compare `master` and
+   the current branch with shared provenance.
+9. Resume the paused test-suite maintainability track after the first
+   benchmark-led scalability slice is guarded and measured; keep `TESTING.md`
+   and this plan updated as tests are cleaned up.
+10. Improve runtime UX and contributor docs after task-boundary behavior has
+   settled enough for preflight/debugging guidance to be accurate.
 
 ## Work Queue
 
@@ -499,6 +519,8 @@ Done when:
 ### 5. Dask Scalability Guardrails
 
 Make distributed boundaries explicit before making them finer grained.
+Implement these guardrails before the first behavior-changing Dask task split,
+and keep them updated as task boundaries move.
 
 Tasks:
 
@@ -524,6 +546,8 @@ Done when:
 
 Only split work where it improves dashboard clarity, scheduling, or restart
 behavior without fighting external tools.
+Start with one image-cycle slice, then re-run the three-repetition CI benchmark
+before taking a second slice.
 
 Tasks:
 
