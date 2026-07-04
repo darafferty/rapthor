@@ -26,10 +26,12 @@ class FakeField:
         self.minimal = minimal
 
 
-def _prepare_working_dir(tmp_path):
+def _prepare_working_dir(tmp_path, omitted_output_dirs=()):
     working_dir = tmp_path / "working"
     (working_dir / "pipelines").mkdir(parents=True)
     for dirname in OUTPUT_DIRS:
+        if dirname in omitted_output_dirs:
+            continue
         (working_dir / dirname).mkdir()
     return working_dir
 
@@ -110,6 +112,27 @@ def test_run_resets_from_selected_operation_and_preserves_upstream_prefect_state
     assert not downstream_mosaic.exists()
     assert not downstream_images.exists()
     assert not downstream_logs.exists()
+
+
+def test_run_reset_ignores_missing_optional_output_directories(tmp_path, monkeypatch, capsys):
+    working_dir = _prepare_working_dir(tmp_path, omitted_output_dirs={"plots", "visibilities"})
+    _patch_modifystate_lifecycle(monkeypatch, working_dir)
+
+    image_state = _write_prefect_operation_state(working_dir, "image_1")
+    image_output = _write_output_subdir(working_dir, "images", "image_1")
+
+    answers = iter(["1", "y", "q"])
+    monkeypatch.setattr("builtins.input", lambda prompt: next(answers))
+
+    with pytest.raises(SystemExit) as exc:
+        modifystate.run("input.parset")
+
+    assert exc.value.code == 0
+    assert "Reset complete." in capsys.readouterr().out
+    assert not image_state.exists()
+    assert not image_output.exists()
+    assert not (working_dir / "plots").exists()
+    assert not (working_dir / "visibilities").exists()
 
 
 def test_run_exits_without_reset_when_no_pipeline_state_exists(tmp_path, monkeypatch, capsys):

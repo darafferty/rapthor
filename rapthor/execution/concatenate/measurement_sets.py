@@ -120,7 +120,8 @@ def concat_freq_command(
 
 def concat_time_command(msfiles: list[str], output_file: str) -> list[str]:
     """Build the TAQL command used to concatenate Measurement Sets in time."""
-    ms_list = ",".join(_taql_string(msfile) for msfile in msfiles)
+    ordered_msfiles = _time_ordered_ms_list(msfiles)
+    ms_list = ",".join(_taql_string(msfile) for msfile in ordered_msfiles)
     return [
         "taql",
         "select",
@@ -180,6 +181,15 @@ def _frequency_ordered_ms_list(msfiles: list[str]) -> np.ndarray:
 
     mslist = np.array(msfiles)
     return mslist[np.argsort(np.array(frequencies))]
+
+
+def _time_ordered_ms_list(msfiles: list[str]) -> list[str]:
+    """Return Measurement Sets ordered by their first TIME value."""
+    start_times = []
+    for msfile in msfiles:
+        with pt.table(msfile, ack=False) as table:
+            start_times.append(float(np.min(table.getcol("TIME"))))
+    return [msfile for _, _, msfile in sorted(zip(start_times, range(len(msfiles)), msfiles))]
 
 
 def _insert_dummy_ms_for_frequency_gaps(msfiles: list[str], mslist: np.ndarray) -> np.ndarray:

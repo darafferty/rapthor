@@ -12,6 +12,29 @@ from rapthor.execution.concatenate.measurement_sets import (
 )
 
 
+class FakeTable:
+    def __init__(self, times):
+        self.times = times
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, traceback):
+        return False
+
+    def getcol(self, column):
+        assert column == "TIME"
+        return self.times
+
+
+def _patch_ms_times(monkeypatch, start_times):
+    def fake_table(path, ack=False):
+        assert ack is False
+        return FakeTable([start_times[path]])
+
+    monkeypatch.setattr(measurement_sets.pt, "table", fake_table)
+
+
 def test_concat_ms_copies_single_measurement_set(test_ms, tmp_path):
     output_file = tmp_path / "copied.ms"
 
@@ -54,8 +77,10 @@ def test_select_concatenation_command_copies_single_measurement_set(test_ms, tmp
     assert command == copy_measurement_set_command(test_ms, output_file.as_posix())
 
 
-def test_select_concatenation_command_can_choose_time_concatenation_without_metadata(tmp_path):
+def test_select_concatenation_command_can_choose_time_concatenation(monkeypatch, tmp_path):
     output_file = tmp_path / "time.ms"
+    start_times = {"first.ms": 2.0, "second.ms": 1.0}
+    _patch_ms_times(monkeypatch, start_times)
 
     command = select_concatenation_command(
         ["first.ms", "second.ms"],
@@ -66,12 +91,15 @@ def test_select_concatenation_command_can_choose_time_concatenation_without_meta
     assert command == concat_time_command(["first.ms", "second.ms"], output_file.as_posix())
 
 
-def test_concat_time_command_builds_taql_command():
-    assert concat_time_command(["/data/first.ms", "/data/second.ms"], "/work/output.ms") == [
+def test_concat_time_command_orders_measurement_sets_by_start_time(monkeypatch):
+    start_times = {"/data/late.ms": 20.0, "/data/early.ms": 10.0}
+    _patch_ms_times(monkeypatch, start_times)
+
+    assert concat_time_command(["/data/late.ms", "/data/early.ms"], "/work/output.ms") == [
         "taql",
         "select",
         "from",
-        '["/data/first.ms","/data/second.ms"]',
+        '["/data/early.ms","/data/late.ms"]',
         "giving",
         '"/work/output.ms"',
         "AS",

@@ -248,15 +248,15 @@ are missing or only partially represented in the current Prefect/Dask branch.
 
 Port these in order:
 
-1. **Apply small low-risk master fixes first.**
-   Port the Measurement Set time-concatenation ordering fix from `bf4608ef` into
-   `rapthor/execution/concatenate/measurement_sets.py`, using Measurement Set
-   `TIME` values rather than caller order for TAQL concatenation. Also port the
-   `modifystate.py` missing-directory guard from `e25b4a6a` so reset does not
-   fail when optional output directories such as `visibilities/` do not exist.
-   Add focused pytest coverage for both.
+1. **Apply small low-risk master fixes first.** Done on 2026-07-04.
+   The Measurement Set time-concatenation ordering fix from `bf4608ef` is
+   ported into `rapthor/execution/concatenate/measurement_sets.py`, using
+   Measurement Set `TIME` values rather than caller order for TAQL
+   concatenation. The `modifystate.py` missing-directory guard from `e25b4a6a`
+   is also ported so reset does not fail when optional output directories such
+   as `visibilities/` do not exist. Focused pytest coverage exists for both.
 
-2. **Restore astrometry-corrected image products.**
+2. **Restore astrometry-corrected image products.** Next.
    Port the `ebe35408` astrometry-correction behavior into
    `rapthor/execution/image/` and the image/mosaic output contracts. The current
    branch emits astrometry-offset diagnostics but does not create or publish the
