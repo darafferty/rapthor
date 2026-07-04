@@ -11,6 +11,7 @@ from rapthor.execution.benchmarking import (
     failed_benchmark_runs,
     format_failed_benchmark_runs,
     parse_command_log,
+    parse_dask_performance_report,
     render_markdown_report,
     run_scenario_once,
     summarize_benchmark_runs,
@@ -18,6 +19,19 @@ from rapthor.execution.benchmarking import (
 )
 
 BENCHMARK_SCRIPT_PATH = Path(__file__).parents[2] / "scripts" / "dev" / "run_benchmark_baseline.py"
+DASK_REPORT_HTML = """
+<html>
+  &lt;h2&gt; Duration: 12.50 s &lt;/h2&gt;
+  &lt;li&gt; number of tasks: 3 &lt;/li&gt;
+  &lt;li&gt; compute time: 7.25 s &lt;/li&gt;
+  &lt;li&gt; Workers: 2 &lt;/li&gt;
+  &lt;li&gt; Threads: 8 &lt;/li&gt;
+  &lt;li&gt; Memory: 12.00 GiB &lt;/li&gt;
+  "name":"task_stream",
+  ["duration",[1000.0,2500.0,3750.0]],
+  ["name",["image_sector_task","calibrate_chunk_task","image_sector_task"]]
+</html>
+"""
 
 
 def load_benchmark_script():
@@ -112,7 +126,7 @@ def test_benchmark_run_result_reads_commands_and_dask_report(tmp_path):
         json.dumps({"command": ["DP3"], "duration_seconds": 1.5}) + "\n",
         encoding="utf-8",
     )
-    (run_dir / "dask-performance-report.html").write_text("<html></html>", encoding="utf-8")
+    (run_dir / "dask-performance-report.html").write_text(DASK_REPORT_HTML, encoding="utf-8")
 
     result = benchmark_run_result(
         scenario_id="ci-benchmark",
@@ -125,13 +139,72 @@ def test_benchmark_run_result_reads_commands_and_dask_report(tmp_path):
     assert result.command_count == 1
     assert result.command_seconds == 1.5
     assert result.dask_performance_report == str(run_dir / "dask-performance-report.html")
+    assert result.dask_duration_seconds == 12.5
+    assert result.dask_compute_seconds == 7.25
+    assert result.dask_duration_minus_compute_seconds == 5.25
+    assert result.dask_task_count == 3
+    assert result.dask_workers == 2
+    assert result.dask_threads == 8
+    assert result.dask_memory == "12.00 GiB"
+    assert [group.name for group in result.dask_task_groups] == [
+        "calibrate_chunk_task",
+        "image_sector_task",
+    ]
+    assert result.dask_task_groups[1].total_seconds == 4.75
+
+
+def test_parse_dask_performance_report_extracts_gap_and_task_groups(tmp_path):
+    report_path = tmp_path / "dask-performance-report.html"
+    report_path.write_text(DASK_REPORT_HTML, encoding="utf-8")
+
+    metrics = parse_dask_performance_report(report_path)
+
+    assert metrics.duration_seconds == 12.5
+    assert metrics.compute_seconds == 7.25
+    assert metrics.duration_minus_compute_seconds == 5.25
+    assert metrics.task_count == 3
+    assert metrics.workers == 2
+    assert metrics.threads == 8
+    assert metrics.memory == "12.00 GiB"
+    assert [(group.name, group.count) for group in metrics.task_groups] == [
+        ("calibrate_chunk_task", 1),
+        ("image_sector_task", 2),
+    ]
 
 
 def test_summarize_benchmark_runs_and_render_markdown():
     summary = summarize_benchmark_runs(
         [
-            BenchmarkRunResult("ci-benchmark", 1, "/runs/1", 0, 4.0, 2, 3.0),
-            BenchmarkRunResult("ci-benchmark", 2, "/runs/2", 0, 2.0, 4, 1.0),
+            BenchmarkRunResult(
+                "ci-benchmark",
+                1,
+                "/runs/1",
+                0,
+                4.0,
+                2,
+                3.0,
+                dask_duration_seconds=12.0,
+                dask_compute_seconds=8.0,
+                dask_duration_minus_compute_seconds=4.0,
+                dask_task_count=5,
+                dask_workers=2,
+                dask_threads=8,
+            ),
+            BenchmarkRunResult(
+                "ci-benchmark",
+                2,
+                "/runs/2",
+                0,
+                2.0,
+                4,
+                1.0,
+                dask_duration_seconds=10.0,
+                dask_compute_seconds=6.0,
+                dask_duration_minus_compute_seconds=4.0,
+                dask_task_count=3,
+                dask_workers=2,
+                dask_threads=8,
+            ),
             BenchmarkRunResult("comparison-demo", 1, "/runs/3", 1, 8.0, 5, 6.0),
         ]
     )
@@ -142,12 +215,24 @@ def test_summarize_benchmark_runs_and_render_markdown():
         "max": 4.0,
     }
     assert summary["scenarios"]["ci-benchmark"]["command_count"]["median"] == 3.0
+    assert summary["scenarios"]["ci-benchmark"]["dask"]["duration_seconds"] == {
+        "min": 10.0,
+        "median": 11.0,
+        "max": 12.0,
+    }
+    assert summary["scenarios"]["ci-benchmark"]["dask"]["duration_minus_compute_seconds"] == {
+        "min": 4.0,
+        "median": 4.0,
+        "max": 4.0,
+    }
 
     report = render_markdown_report(summary)
 
     assert "# Rapthor Benchmark Baseline" in report
     assert "| ci-benchmark | 2 | 0, 0 | 3.000 | 2.000-4.000 | 2.000 |" in report
     assert "| comparison-demo | 1 | 1 | 8.000 | 8.000-8.000 | 6.000 |" in report
+    assert "## Dask Performance" in report
+    assert "| ci-benchmark | 11.000 | 7.000 | 4.000 | 4.000 | 2 | 8 |" in report
 
 
 def test_benchmark_report_includes_metadata():

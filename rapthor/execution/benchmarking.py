@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import json
+import re
 import statistics
 import subprocess
 import sys
 import time
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import asdict, dataclass
+from html import unescape
 from pathlib import Path
 from typing import Optional
 
@@ -75,6 +77,36 @@ class CommandMetric:
 
 
 @dataclass(frozen=True)
+class DaskTaskGroupMetric:
+    """Aggregated task-stream timing for one Dask task name."""
+
+    name: str
+    count: int
+    total_seconds: float
+    median_seconds: float
+    max_seconds: float
+
+
+@dataclass(frozen=True)
+class DaskPerformanceMetric:
+    """Summary values parsed from a Dask performance report."""
+
+    duration_seconds: Optional[float] = None
+    compute_seconds: Optional[float] = None
+    task_count: Optional[int] = None
+    workers: Optional[int] = None
+    threads: Optional[int] = None
+    memory: Optional[str] = None
+    task_groups: tuple[DaskTaskGroupMetric, ...] = ()
+
+    @property
+    def duration_minus_compute_seconds(self) -> Optional[float]:
+        if self.duration_seconds is None or self.compute_seconds is None:
+            return None
+        return self.duration_seconds - self.compute_seconds
+
+
+@dataclass(frozen=True)
 class BenchmarkRunResult:
     """Recorded outcome for one benchmark repetition."""
 
@@ -86,6 +118,14 @@ class BenchmarkRunResult:
     command_count: int
     command_seconds: float
     dask_performance_report: Optional[str] = None
+    dask_duration_seconds: Optional[float] = None
+    dask_compute_seconds: Optional[float] = None
+    dask_duration_minus_compute_seconds: Optional[float] = None
+    dask_task_count: Optional[int] = None
+    dask_workers: Optional[int] = None
+    dask_threads: Optional[int] = None
+    dask_memory: Optional[str] = None
+    dask_task_groups: tuple[DaskTaskGroupMetric, ...] = ()
 
 
 def default_benchmark_scenarios() -> tuple[BenchmarkScenario, ...]:
@@ -136,6 +176,23 @@ def parse_command_log(command_log: Path) -> list[CommandMetric]:
     return metrics
 
 
+def parse_dask_performance_report(report_path: Path) -> Optional[DaskPerformanceMetric]:
+    """Parse summary and task-stream timing from a Dask performance report."""
+    if not report_path.exists():
+        return None
+
+    text = unescape(report_path.read_text(encoding="utf-8", errors="replace"))
+    return DaskPerformanceMetric(
+        duration_seconds=_optional_float_match(r"Duration:\s*([0-9.]+)\s*s", text),
+        compute_seconds=_optional_float_match(r"compute time:\s*([0-9.]+)\s*s", text),
+        task_count=_optional_int_match(r"number of tasks:\s*([0-9]+)", text),
+        workers=_optional_int_match(r"Workers:\s*([0-9]+)", text),
+        threads=_optional_int_match(r"Threads:\s*([0-9]+)", text),
+        memory=_optional_text_match(r"Memory:\s*([^<\n]+)", text),
+        task_groups=_parse_dask_task_groups(text),
+    )
+
+
 def benchmark_run_result(
     *,
     scenario_id: str,
@@ -147,6 +204,7 @@ def benchmark_run_result(
     """Build a run result from a completed run directory."""
     command_metrics = parse_command_log(run_dir / "rapthor-work" / "logs" / "commands.jsonl")
     dask_report = run_dir / "dask-performance-report.html"
+    dask_metrics = parse_dask_performance_report(dask_report)
     return BenchmarkRunResult(
         scenario_id=scenario_id,
         repetition=repetition,
@@ -156,6 +214,16 @@ def benchmark_run_result(
         command_count=len(command_metrics),
         command_seconds=sum(metric.duration_seconds for metric in command_metrics),
         dask_performance_report=str(dask_report) if dask_report.exists() else None,
+        dask_duration_seconds=dask_metrics.duration_seconds if dask_metrics else None,
+        dask_compute_seconds=dask_metrics.compute_seconds if dask_metrics else None,
+        dask_duration_minus_compute_seconds=(
+            dask_metrics.duration_minus_compute_seconds if dask_metrics else None
+        ),
+        dask_task_count=dask_metrics.task_count if dask_metrics else None,
+        dask_workers=dask_metrics.workers if dask_metrics else None,
+        dask_threads=dask_metrics.threads if dask_metrics else None,
+        dask_memory=dask_metrics.memory if dask_metrics else None,
+        dask_task_groups=dask_metrics.task_groups if dask_metrics else (),
     )
 
 
@@ -182,6 +250,9 @@ def summarize_benchmark_runs(results: Iterable[BenchmarkRunResult]) -> dict[str,
                 if result.dask_performance_report
             ],
         }
+        dask_summary = _summarize_dask_metrics(scenario_results)
+        if dask_summary:
+            scenarios[scenario_id]["dask"] = dask_summary
 
     return {"scenarios": scenarios}
 
@@ -225,6 +296,9 @@ def render_markdown_report(summary: Mapping[str, object]) -> str:
             )
         )
     lines.append("")
+    dask_lines = _render_dask_summary_table(scenarios)
+    if dask_lines:
+        lines.extend(dask_lines)
     return "\n".join(lines)
 
 
@@ -314,6 +388,141 @@ def format_failed_benchmark_runs(results: Iterable[BenchmarkRunResult]) -> str:
     return "\n".join(lines)
 
 
+def _parse_dask_task_groups(text: str) -> tuple[DaskTaskGroupMetric, ...]:
+    task_stream_start = text.find('"name":"task_stream"')
+    task_stream_text = text[task_stream_start:] if task_stream_start >= 0 else text
+    duration_match = re.search(r'\["duration",\[(.*?)\]\]', task_stream_text)
+    name_match = re.search(r'\["name",\[(.*?)\]\]', task_stream_text)
+    if not duration_match or not name_match:
+        return ()
+
+    try:
+        durations_ms = json.loads(f"[{duration_match.group(1)}]")
+        names = json.loads(f"[{name_match.group(1)}]")
+    except json.JSONDecodeError:
+        return ()
+    if len(durations_ms) != len(names):
+        return ()
+
+    grouped: dict[str, list[float]] = {}
+    for name, duration_ms in zip(names, durations_ms):
+        grouped.setdefault(str(name), []).append(float(duration_ms) / 1000.0)
+
+    metrics = []
+    for name, durations in sorted(grouped.items()):
+        metrics.append(
+            DaskTaskGroupMetric(
+                name=name,
+                count=len(durations),
+                total_seconds=sum(durations),
+                median_seconds=statistics.median(durations),
+                max_seconds=max(durations),
+            )
+        )
+    return tuple(metrics)
+
+
+def _summarize_dask_metrics(results: Sequence[BenchmarkRunResult]) -> dict[str, object]:
+    summary: dict[str, object] = {}
+    if duration_seconds := _present_values(result.dask_duration_seconds for result in results):
+        summary["duration_seconds"] = _stats(duration_seconds)
+    if compute_seconds := _present_values(result.dask_compute_seconds for result in results):
+        summary["compute_seconds"] = _stats(compute_seconds)
+    if gaps := _present_values(result.dask_duration_minus_compute_seconds for result in results):
+        summary["duration_minus_compute_seconds"] = _stats(gaps)
+    if task_counts := _present_values(result.dask_task_count for result in results):
+        summary["task_count"] = _stats(task_counts)
+
+    workers = sorted(set(_present_values(result.dask_workers for result in results)))
+    if workers:
+        summary["workers"] = workers
+    threads = sorted(set(_present_values(result.dask_threads for result in results)))
+    if threads:
+        summary["threads"] = threads
+    memory = sorted(
+        {
+            result.dask_memory
+            for result in results
+            if result.dask_memory is not None and result.dask_memory
+        }
+    )
+    if memory:
+        summary["memory"] = memory
+
+    task_group_summary = _summarize_dask_task_groups(results)
+    if task_group_summary:
+        summary["task_groups"] = task_group_summary
+    return summary
+
+
+def _summarize_dask_task_groups(results: Sequence[BenchmarkRunResult]) -> dict[str, object]:
+    grouped: dict[str, dict[str, list[float]]] = {}
+    for result in results:
+        for group in result.dask_task_groups:
+            values = grouped.setdefault(
+                group.name,
+                {
+                    "count": [],
+                    "total_seconds": [],
+                    "median_seconds": [],
+                    "max_seconds": [],
+                },
+            )
+            values["count"].append(group.count)
+            values["total_seconds"].append(group.total_seconds)
+            values["median_seconds"].append(group.median_seconds)
+            values["max_seconds"].append(group.max_seconds)
+
+    return {
+        name: {metric: _stats(values) for metric, values in metrics.items()}
+        for name, metrics in sorted(grouped.items())
+    }
+
+
+def _render_dask_summary_table(scenarios: Mapping[str, object]) -> list[str]:
+    rows = []
+    for scenario_id, data in sorted(scenarios.items()):
+        if not isinstance(data, Mapping):
+            continue
+        dask = data.get("dask")
+        if not isinstance(dask, Mapping):
+            continue
+        duration = dask.get("duration_seconds")
+        compute = dask.get("compute_seconds")
+        gap = dask.get("duration_minus_compute_seconds")
+        task_count = dask.get("task_count")
+        if not all(isinstance(item, Mapping) for item in (duration, compute, gap, task_count)):
+            continue
+        rows.append(
+            "| {scenario} | {duration:.3f} | {compute:.3f} | {gap:.3f} | "
+            "{tasks:.3f} | {workers} | {threads} |".format(
+                scenario=scenario_id,
+                duration=duration["median"],
+                compute=compute["median"],
+                gap=gap["median"],
+                tasks=task_count["median"],
+                workers=", ".join(map(str, dask.get("workers", []))) or "-",
+                threads=", ".join(map(str, dask.get("threads", []))) or "-",
+            )
+        )
+    if not rows:
+        return []
+
+    return [
+        "## Dask Performance",
+        "",
+        "| Scenario | Report Median (s) | Compute Median (s) | Gap Median (s) | "
+        "Task Count Median | Workers | Threads |",
+        "| --- | ---: | ---: | ---: | ---: | --- | --- |",
+        *rows,
+        "",
+    ]
+
+
+def _present_values(values: Iterable[object]) -> list:
+    return [value for value in values if value is not None]
+
+
 def _stats(values: Sequence[float]) -> dict[str, float]:
     if not values:
         return {"min": 0.0, "median": 0.0, "max": 0.0}
@@ -322,6 +531,21 @@ def _stats(values: Sequence[float]) -> dict[str, float]:
         "median": statistics.median(values),
         "max": max(values),
     }
+
+
+def _optional_float_match(pattern: str, text: str) -> Optional[float]:
+    match = re.search(pattern, text, flags=re.IGNORECASE)
+    return float(match.group(1)) if match else None
+
+
+def _optional_int_match(pattern: str, text: str) -> Optional[int]:
+    match = re.search(pattern, text, flags=re.IGNORECASE)
+    return int(match.group(1)) if match else None
+
+
+def _optional_text_match(pattern: str, text: str) -> Optional[str]:
+    match = re.search(pattern, text, flags=re.IGNORECASE)
+    return match.group(1).strip() if match else None
 
 
 def _render_metadata_table(metadata: Mapping[str, object]) -> list[str]:

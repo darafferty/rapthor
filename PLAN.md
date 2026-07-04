@@ -209,6 +209,9 @@ Current contract:
   renaming.
 - Benchmark summary/report artifacts include GitLab job, pipeline, commit, and
   image metadata when the CI environment provides it.
+- Benchmark summary/report artifacts parse Dask performance reports when present
+  and expose report duration, task compute time, duration-minus-compute gap,
+  scheduler worker/thread shape, and per-task-name timing groups.
 
 Benchmark before changing Dask task boundaries, scheduler behavior, or
 performance-sensitive execution code. The benchmark should identify what to
