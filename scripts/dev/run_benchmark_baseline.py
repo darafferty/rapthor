@@ -232,9 +232,7 @@ def _path_value_exists(repo_root: Path, path_value: str) -> bool:
 def _benchmark_metadata_from_env(env: Mapping[str, str] = os.environ) -> dict[str, str]:
     """Return GitLab benchmark metadata when the runner environment provides it."""
     return {
-        key: value
-        for key, env_name in CI_METADATA_ENV_VARS.items()
-        if (value := env.get(env_name))
+        key: value for key, env_name in CI_METADATA_ENV_VARS.items() if (value := env.get(env_name))
     }
 
 
