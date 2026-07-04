@@ -429,7 +429,10 @@ Tasks:
     lane
   - first cleanup pass closed `Field.plot_overview` figures after saving and
     added `tests/lib/test_field.py` assertions that overview plotting leaves no
-    matplotlib figures open
+    matplotlib figures open; the next pass moved calibration-strategy tests in
+    `tests/lib/test_field.py` from the expensive full `Field` fixture to a
+    lightweight method-only fixture, reducing that file from roughly 63 s to
+    roughly 46 s in the prepared dev container
 - Reduce Prefect-harness overhead where possible. Keep one flow-level smoke
   test for each important orchestration path, but move builder, validator,
   finalizer, and branch-matrix checks to plain unit tests.

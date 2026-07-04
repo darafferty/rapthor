@@ -19,6 +19,13 @@ def field(parset_for_field_test):
     yield field
 
 
+@pytest.fixture
+def calibration_strategy_field():
+    field = Field.__new__(Field)
+    field.calibration_strategy = None
+    return field
+
+
 def test_scan_observations(field):
     assert field.fwhm_ra_deg == 4.500843683229519
 
@@ -256,23 +263,24 @@ def test_plot_overview_initial_near_pole(field):
     assert plt.get_fignums() == []
 
 
-def test_set_calibration_strategy_default(field):
+def test_set_calibration_strategy_default(calibration_strategy_field):
     """The default calibration strategy is explicit and ignores legacy flags."""
-    field.__dict__.update(
+    calibration_strategy_field.__dict__.update(
         {
             "do_calibrate": True,
             "do_slowgain_solve": False,
             "do_fulljones_solve": True,
         }
     )
-    field.set_calibration_strategy()
-    assert field.calibration_strategy == {
+    calibration_strategy_field.set_calibration_strategy()
+    assert calibration_strategy_field.calibration_strategy == {
         "dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"],
         "di": [],
     }
+    assert calibration_strategy_field._calibration_strategy_defaulted is True
 
 
-def test_set_calibration_strategy_user_provided(field):
+def test_set_calibration_strategy_user_provided(calibration_strategy_field):
     """Test that the calibration strategy is set correctly when provided.
 
     This captures the behaviour of the pipeline using the merged DD/DI classes.
@@ -285,9 +293,10 @@ def test_set_calibration_strategy_user_provided(field):
         "do_calibrate": True,
         "calibration_strategy": user_provided_strategy,
     }
-    field.__dict__.update(step_dict)
-    field.set_calibration_strategy()
-    assert field.calibration_strategy == user_provided_strategy
+    calibration_strategy_field.__dict__.update(step_dict)
+    calibration_strategy_field.set_calibration_strategy()
+    assert calibration_strategy_field.calibration_strategy == user_provided_strategy
+    assert calibration_strategy_field._calibration_strategy_defaulted is False
 
 
 @pytest.mark.parametrize(
@@ -303,32 +312,36 @@ def test_set_calibration_strategy_user_provided(field):
         ],
     ],
 )
-def test_strategy_preserves_top_level_order(field, strategy_items):
+def test_strategy_preserves_top_level_order(calibration_strategy_field, strategy_items):
     """Test that the order of the top-level keys in the calibration strategy is preserved when set."""
     user_provided_strategy = dict(strategy_items)
-    field.__dict__.update(
+    calibration_strategy_field.__dict__.update(
         {
             "do_calibrate": True,
             "calibration_strategy": user_provided_strategy,
         }
     )
-    field.set_calibration_strategy()
+    calibration_strategy_field.set_calibration_strategy()
 
-    assert list(field.calibration_strategy.items()) == strategy_items
+    assert list(calibration_strategy_field.calibration_strategy.items()) == strategy_items
 
 
 @pytest.mark.parametrize("didd_order", [("di", "dd"), ("dd", "di")])
-def test_set_calibration_strategy_preserves_order_of_di_vs_dd(field, didd_order):
+def test_set_calibration_strategy_preserves_order_of_di_vs_dd(
+    calibration_strategy_field, didd_order
+):
     """Test that the calibration strategy preserves the order of DI vs DD keys."""
     user_provided_strategy = {
         didd_order[0]: ["fast_phase", "medium_phase", "slow_gains", "full_jones"],
         didd_order[1]: ["fast_phase", "medium_phase", "slow_gains", "full_jones"],
     }
     step_dict = {"do_calibrate": True, "calibration_strategy": user_provided_strategy}
-    field.__dict__.update(step_dict)
-    field.set_calibration_strategy()
-    assert list(field.calibration_strategy.keys()) == list(user_provided_strategy.keys())
-    assert field.calibration_strategy == user_provided_strategy
+    calibration_strategy_field.__dict__.update(step_dict)
+    calibration_strategy_field.set_calibration_strategy()
+    assert list(calibration_strategy_field.calibration_strategy.keys()) == list(
+        user_provided_strategy.keys()
+    )
+    assert calibration_strategy_field.calibration_strategy == user_provided_strategy
 
 
 @pytest.mark.parametrize(
@@ -338,16 +351,22 @@ def test_set_calibration_strategy_preserves_order_of_di_vs_dd(field, didd_order)
         ("full_jones", "slow_gains", "medium_phase", "fast_phase"),
     ],
 )
-def test_set_calibration_strategy_preserves_order_of_solves(field, solve_order):
+def test_set_calibration_strategy_preserves_order_of_solves(
+    calibration_strategy_field, solve_order
+):
     """Test that the calibration strategy preserves the order of DI vs DD keys."""
     user_provided_strategy = {
         "di": list(solve_order),
         "dd": list(solve_order),
     }
     step_dict = {"do_calibrate": True, "calibration_strategy": user_provided_strategy}
-    field.__dict__.update(step_dict)
-    field.set_calibration_strategy()
-    assert list(field.calibration_strategy.keys()) == list(user_provided_strategy.keys())
+    calibration_strategy_field.__dict__.update(step_dict)
+    calibration_strategy_field.set_calibration_strategy()
+    assert list(calibration_strategy_field.calibration_strategy.keys()) == list(
+        user_provided_strategy.keys()
+    )
     for key in user_provided_strategy.keys():
-        assert list(field.calibration_strategy[key]) == list(user_provided_strategy[key])
-    assert field.calibration_strategy == user_provided_strategy
+        assert list(calibration_strategy_field.calibration_strategy[key]) == list(
+            user_provided_strategy[key]
+        )
+    assert calibration_strategy_field.calibration_strategy == user_provided_strategy
