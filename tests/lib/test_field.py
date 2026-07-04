@@ -2,6 +2,7 @@ from pathlib import Path
 
 import lsmtool
 import pytest
+from matplotlib import pyplot as plt
 
 from rapthor.lib.field import Field, _ensure_skymodel_write_units
 
@@ -222,8 +223,10 @@ def test_plot_overview_patches(field):
     assert plot_path.exists()
 
     plot_path.unlink()  # Remove existing plot to test creation
+    plt.close("all")
     field.plot_overview(plot_filename, show_calibration_patches=True)
     assert plot_path.exists()
+    assert plt.get_fignums() == []
 
 
 def test_plot_overview_initial(field):
@@ -233,8 +236,10 @@ def test_plot_overview_initial(field):
     assert plot_path.exists()
     plot_path.unlink()  # Remove existing plot to test creation
 
+    plt.close("all")
     field.plot_overview(plot_filename, show_initial_coverage=True)
     assert plot_path.exists()
+    assert plt.get_fignums() == []
 
 
 def test_plot_overview_initial_near_pole(field):
@@ -245,8 +250,10 @@ def test_plot_overview_initial_near_pole(field):
     plot_path.unlink()  # Remove existing plot to test creation
 
     field.dec = 89.5
+    plt.close("all")
     field.plot_overview(plot_filename, show_initial_coverage=True)
     assert plot_path.exists()
+    assert plt.get_fignums() == []
 
 
 def test_set_calibration_strategy_default(field):

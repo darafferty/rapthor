@@ -427,6 +427,9 @@ Tasks:
   - mark genuinely slow tests with `slow` or move them behind integration,
     equivalence, or benchmark checks when they do not need to block the fast
     lane
+  - first cleanup pass closed `Field.plot_overview` figures after saving and
+    added `tests/lib/test_field.py` assertions that overview plotting leaves no
+    matplotlib figures open
 - Reduce Prefect-harness overhead where possible. Keep one flow-level smoke
   test for each important orchestration path, but move builder, validator,
   finalizer, and branch-matrix checks to plain unit tests.

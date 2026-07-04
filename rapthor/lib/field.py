@@ -33,7 +33,7 @@ from astropy.visualization.wcsaxes import SphericalCircle
 from losoto.h5parm import h5parm
 from lsmtool.facet import read_ds9_region_file, read_skymodel
 from matplotlib.patches import Ellipse
-from matplotlib.pyplot import figure
+from matplotlib.pyplot import close, figure
 
 _SKYMODEL_WRITE_UNITS = {
     "Ra": u.deg,
@@ -2379,4 +2379,7 @@ class Field(object):
         ax.set(xlabel="Right Ascension [J2000]", ylabel="Declination [J2000]")
         ax.legend(loc="upper left")
         ax.grid()
-        fig.savefig(os.path.join(self.working_dir, "plots", output_filename))
+        try:
+            fig.savefig(os.path.join(self.working_dir, "plots", output_filename))
+        finally:
+            close(fig)
