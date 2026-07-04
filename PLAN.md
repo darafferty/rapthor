@@ -57,11 +57,17 @@ Known caveats:
 
 ## Next Work, In Order
 
-1. **Decide whether branch-vs-master equivalence is needed before scalability.**
-   If the saved-reference run is green and the references still represent the
-   scenarios we care about, proceed to the first scalability slice. If the
-   references are stale, ambiguous, or fail for reasons that need a fresher
-   baseline, build the branch-vs-master runner first.
+1. **Build branch-vs-master equivalence for arbitrary parsets.**
+   Add a script that can take any parset and optional strategy override, run
+   Rapthor from `master` and from the current branch, normalize branch-specific
+   paths/settings where needed, and compare the generated products with the
+   strengthened equivalence checks. The primary user workflow should be
+   "bring your own dataset/parset/strategy", assuming those inputs may have
+   been authored for `master`; the runner should materialize adapted current-
+   branch copies while preserving the scientific intent. Seed the first
+   multi-cycle scenario from the benchmark/default-like parset and strategy so
+   it covers DI phase, DD phase/faceting, the legacy DD default solve order,
+   full-Jones, imaging, mosaicking, and source filtering.
 
 2. **Take one low-risk image-cycle scalability slice.**
    Start with one natural boundary inside image-sector execution, such as
@@ -130,6 +136,29 @@ Current status:
   2026-07-04. The current report path and residual summary are recorded in
   `EQUIVALENCE_REPORT.md`.
 
+Immediate task:
+
+- Implement `scripts/dev/run_branch_equivalence.py` for branch-vs-branch
+  product comparison. It should:
+  - accept any user-supplied parset path and optional strategy override, with
+    paths resolved relative to the user's checkout;
+  - assume inputs may be authored for the base ref, initially `master`, and
+    create branch-specific parset/strategy copies for the base and current
+    runs;
+  - run the base ref, initially `master`, and the current branch in isolated
+    working directories;
+  - support compatibility adapters for parset options, strategy shape, resource
+    settings, generated working directories, and path rewrites when either
+    branch needs small adjustments to run the same scientific scenario;
+  - write an adaptation manifest that records every automatic parset/strategy
+    change and makes unsupported or ambiguous migrations explicit;
+  - compare outputs using the strengthened FITS/HDF5/text/product checks;
+  - write compact JSON and Markdown reports, plus a scenario manifest that can
+    be committed separately from bulky run artifacts.
+- Use the generated benchmark/default-like scenario as the first required
+  multi-cycle equivalence case:
+  `examples/generated/prefect_demo_rich/prefect_demo_benchmark.parset`.
+
 Keep:
 
 - Product presence checks
@@ -147,15 +176,13 @@ Later:
 - Add product-class-specific tolerances for dirty images, restored images,
   cubes, beam tables, and mosaics where needed.
 - Add optional peak/source-aware checks for final science images.
-- Add branch-vs-master equivalence runner if saved references are stale or
-  insufficient:
-  `scripts/dev/run_branch_equivalence.py --parset path/to/input.parset`.
 - Keep bulky reference/current artifacts outside git; commit only compact
   curated reports and scenario manifests.
 
 ## First Scalability Slice
 
-Start only after the strengthened saved-reference equivalence run is understood.
+Start only after the branch-vs-master multi-cycle equivalence runner exists and
+the benchmark/default-like scenario is understood.
 
 Preferred first slice:
 
