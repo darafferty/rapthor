@@ -325,18 +325,24 @@ Done when:
 
 Status: broad coverage exists, and a lightweight default-option audit now
 guards new untracked parset options. The suite is still starting to concentrate
-too many contracts in very large files.
+too many contracts in very large files. A recent collection-only review in the
+dev container selected 1074 non-integration tests out of 1104 total in about
+7.7 seconds, so collection and default-lane speed should be treated as part of
+test-suite quality.
 
 Goals:
 
 - Keep tests readable enough that failures explain the behavior, not just the
   implementation detail that changed.
+- Treat tests as clean code and living documentation for Rapthor's expected
+  behaviour.
 - Use pytest features directly: fixtures, fixture factories, `tmp_path`,
   `monkeypatch`, `caplog`, `pytest.raises`, `pytest.mark.parametrize`,
   `pytest.param(..., id=...)`, and targeted marks.
 - Make parset, strategy, runtime, and product-option coverage explicit before
   increasing Dask task granularity.
 - Prefer focused table-driven branch tests over copying long setup blocks.
+- Keep the default non-integration lane fast enough to run routinely.
 
 Tasks:
 
@@ -363,6 +369,22 @@ Tasks:
   layout, marks, required commands, Prefect harness usage, integration-test
   requirements, or test-improvement practices change. Treat tests as living
   documentation that should be human readable, maintainable, and easy to extend.
+- Apply clean-code cleanup to tests as they are touched:
+  - remove dead setup, unclear helper names, stale comments, and broad helper
+    functions that hide the behaviour under test
+  - prefer domain-specific fixture and scenario names over generic `data`,
+    `obj`, `mock1`, or numbered case names
+  - make failure messages name the option, strategy, product, command, or
+    scenario that failed
+- Deduplicate repeated setup and helper functions without hiding the scenario
+  under test:
+  - consolidate repeated fake shell operation classes and direct-helper patches
+    across flow tests where a shared fixture would keep behaviour clearer
+  - consolidate repeated `_operation_parset`, field, strategy, and payload
+    builders in operation/execution tests into local or package fixtures with
+    keyword overrides
+  - keep shared helpers at the narrowest useful scope, and avoid top-level
+    fixtures unless most of the suite needs them
 - Split or reorganize the largest flow and operation test modules when touching
   them:
   - `tests/execution/test_calibrate_flow.py`
@@ -378,7 +400,30 @@ Tasks:
   `pytest.raises`, and `caplog`.
 - Replace one-value parametrizations and copy-pasted fixture setup with named
   fixtures or direct tests. Keep parametrized tests only where the table carries
-  real behavioral contrast, and give each row a readable id.
+  real behavioral contrast, and give each row a readable id. Start with
+  `tests/lib/test_miscellaneous.py`, which has multiple one-row
+  parametrizations.
+- Add a lightweight suite-speed review habit:
+  - use `python -m pytest -m "not integration" tests --collect-only -q` to
+    track collection cost after test-layout or fixture changes
+  - use `python -m pytest -m "not integration" tests --durations=30 --durations-min=0.25`
+    during cleanup to find slow default-lane tests
+  - mark genuinely slow tests with `slow` or move them behind integration,
+    equivalence, or benchmark checks when they do not need to block the fast
+    lane
+- Reduce Prefect-harness overhead where possible. Keep one flow-level smoke
+  test for each important orchestration path, but move builder, validator,
+  finalizer, and branch-matrix checks to plain unit tests.
+- Review broad test imports and fixtures for collection cost. Avoid importing
+  heavy astronomy libraries in broad conftest files unless most tests need them
+  during collection.
+- Avoid subprocess and filesystem-heavy setup in unit tests unless that boundary
+  is the contract under test. Patch shell runners, use fake shell operations,
+  and reuse session fixtures for read-only Measurement Sets and small data
+  products.
+- Review integration scenarios for duplicated expensive Rapthor runs. Prefer
+  asserting several related product contracts from one run, and cover smaller
+  branch differences with operation or execution tests.
 - Add focused branch tests for generated demo/benchmark inputs:
   - local demo and CI benchmark parsets point at the intended shared strategy
   - local and CI resource defaults differ only where intended

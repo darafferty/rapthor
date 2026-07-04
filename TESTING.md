@@ -25,6 +25,43 @@ Keep it aligned with `.agents/testing_playbook.md`, `pyproject.toml`, and
 - Prefer small fixtures from `tests/resources/` over adding new large data
   files.
 
+## Clean Test Code
+
+Test code is production code for confidence. Keep it clean, reviewed, and
+designed for the next person who needs to understand Rapthor's behaviour.
+
+- Apply the same care to tests that you apply to production code: clear names,
+  small functions, simple control flow, and no incidental cleverness.
+- Let the test structure mirror the contract being protected. A reader should
+  see setup, action, and expected outcome without untangling unrelated details.
+- Prefer domain language over generic test language: use names like
+  `dd_slow_gain_strategy`, `facet_layout`, `prepared_ms`, and
+  `normalization_h5parm`.
+- Keep helpers narrow and honest. A helper named `make_image_payload` should
+  build an image payload, not also patch global state, create files, and assert
+  side effects.
+- Avoid giant assertions that make failures opaque. Compare small named pieces
+  or use helper assertions that report the scenario, option, product, or command
+  that failed.
+- Keep fixtures composable but shallow. If understanding a test requires
+  following a long fixture chain, the setup is probably too hidden.
+- Delete dead setup and stale comments when behaviour moves. Tests should not
+  preserve historical scaffolding just because it once helped.
+- Refactor tests opportunistically when changing adjacent behaviour. Do not add
+  the next case to a monolithic file if a small scenario table or helper module
+  would make future changes clearer.
+- Do not duplicate setup or helper functions unnecessarily. If two tests build
+  the same field, parset, payload, strategy, fake shell operation, or external
+  command response, extract a shared fixture or helper with a domain-specific
+  name.
+- Share setup at the right level: local helper for one file, `conftest.py`
+  fixture for a package, and only top-level `tests/conftest.py` when most of
+  the suite benefits. Avoid making every helper global by default.
+- Keep shared helpers extensible through small keyword overrides instead of
+  long positional argument lists or hidden mutations.
+- Do not deduplicate at the cost of readability. Repeated one-line setup can be
+  clearer than a generic helper that hides the scenario.
+
 ## Environment
 
 The prepared dev container is the preferred environment for formatting, linting,
@@ -102,6 +139,17 @@ The split matters:
 - Tests using Prefect's test harness start a local Prefect test server and must
   run serially.
 - The remaining non-integration tests can use xdist.
+
+When reviewing suite speed, start with collection and duration signals:
+
+```bash
+python -m pytest -m "not integration" tests --collect-only -q
+python -m pytest -m "not integration" tests --durations=30 --durations-min=0.25
+```
+
+Use duration output to decide whether a slow test belongs in the default lane,
+needs a smaller fixture, should be marked `slow`, or should move to integration
+or equivalence coverage.
 
 ## Test Layout
 
@@ -322,11 +370,60 @@ Tests should also be easy to extend:
   setup path without following a long chain across files.
 - Prefer fixture factories for domain objects that need small per-test
   variations.
+- Consolidate repeated fakes and setup builders when they represent the same
+  concept, for example fake shell operations, operation parsets, image/calibrate
+  payload factories, and integration strategy writers.
 - Keep tests deterministic by controlling paths, environment variables, random
   seeds, and time-sensitive values.
 - Keep external state at the edge. Unit tests should fake shell operations,
   survey downloads, scheduler startup, and file discovery unless the test is
   explicitly an integration or runtime test.
+
+## Keeping Tests Fast
+
+Fast tests get run more often, so speed is part of correctness. Keep the
+default non-integration lane quick enough that developers are willing to run it
+before changing architecture or scientific contracts.
+
+- Prefer pure unit tests for parsing, payload construction, command builders,
+  resource calculations, and finalizer decisions.
+- Use Prefect's test harness only when testing actual flow behaviour. Builder,
+  validator, and finalizer tests should usually call plain Python helpers.
+- Keep Prefect-harness tests serial and focused. If several tests start a
+  Prefect test server just to reach the same helper logic, pull that logic into
+  a direct unit test and leave one flow-level smoke test.
+- Avoid subprocess calls in unit tests unless the subprocess boundary is the
+  behaviour being tested. Patch shell runners or use fake shell operation
+  classes for command orchestration.
+- Copy or mutate Measurement Sets only in tests that truly need a writable MS.
+  Reuse session fixtures, tiny synthetic files, or metadata-only payloads for
+  command and flow wiring tests.
+- Keep FITS, h5parm, and sky-model fixtures as small as the assertion allows.
+  Cache expensive synthetic products in fixtures when they are read-only.
+- Do not import heavy astronomy libraries in broad conftest files unless most
+  tests need them during collection. Prefer local imports inside fixtures or
+  tests for optional-heavy paths.
+- Consolidate integration assertions around each expensive Rapthor run. If a
+  single external-tool run can prove several product contracts, assert them
+  together instead of launching another end-to-end scenario.
+- Mark genuinely slow tests with `slow` and keep them out of the fast lane
+  unless they protect a critical default contract.
+- Track collection time as well as execution time. Slow collection usually
+  means heavy imports, broad fixtures, or too much work at module import time.
+
+Speed cleanup targets to keep under review:
+
+- Large flow modules with many Prefect-harness tests, especially
+  `tests/execution/test_calibrate_flow.py` and
+  `tests/execution/test_image_flow.py`.
+- Large operation modules whose scenario matrices can be split into smaller
+  behaviour-focused files, especially `tests/operations/test_calibrate.py` and
+  `tests/operations/test_image.py`.
+- One-row parametrizations in `tests/lib/test_miscellaneous.py`; convert them
+  to direct tests or fixtures unless they are being prepared for real scenario
+  matrices.
+- Repeated integration tests that launch Rapthor only to check behaviour that
+  can be covered by a focused operation, execution, or command-builder test.
 
 ## Writing Maintainable Tests
 
