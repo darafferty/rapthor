@@ -109,26 +109,29 @@ fresh CI artifact is available yet, continue locally with items 2-4.
    command time of 230.551 s, so about 51 s sits inside operation boundaries
    but outside profiled external commands. The remaining gap still needs
    task-boundary guardrails and later orchestration analysis.
-4. Next local implementation: add Dask scalability guardrails before splitting
-   tasks:
-   payload serialization checks, task-boundary/task-name assertions,
-   resource-propagation tests, and representative operation payload fixtures.
-5. Take one low-risk image-cycle scalability slice only after items 3 and 4 are
-   in place. Start with one natural boundary, such as image-sector source/model
+4. First Dask task-boundary guardrails are in place: representative execution
+   payload factories cover the owner flows, and focused tests assert worker
+   submissions stay plain-serializable with readable task names.
+5. Next local implementation: add focused resource-propagation guardrails before
+   splitting tasks, especially `cpus_per_task`, `max_threads`, `max_cores`,
+   `local_dask_workers`, and CI benchmark overrides as they reach WSClean, DP3,
+   Python orchestration, and local/external Dask setup.
+6. Take one low-risk image-cycle scalability slice only after item 5 is in
+   place. Start with one natural boundary, such as image-sector source/model
    filtering or diagnostics after WSClean, and preserve output records, restart
    behavior, and scientific products.
-6. Re-run `ci-benchmark` for three repetitions after each task-boundary or
+7. Re-run `ci-benchmark` for three repetitions after each task-boundary or
    performance-sensitive change and compare against the 2026-07-04 baseline.
-7. Tighten saved-equivalence image checks before larger scientific or
+8. Tighten saved-equivalence image checks before larger scientific or
    scheduling changes: improve FITS/image metrics and expose product statistics
    directly in JSON/Markdown reports.
-8. Add the branch-vs-master equivalence runner after the image metrics are
+9. Add the branch-vs-master equivalence runner after the image metrics are
    stronger, so arbitrary parsets and named scenarios can compare `master` and
    the current branch with shared provenance.
-9. Resume the paused test-suite maintainability track after the first
+10. Resume the paused test-suite maintainability track after the first
    benchmark-led scalability slice is guarded and measured; keep `TESTING.md`
    and this plan updated as tests are cleaned up.
-10. Improve runtime UX and contributor docs after task-boundary behavior has
+11. Improve runtime UX and contributor docs after task-boundary behavior has
    settled enough for preflight/debugging guidance to be accurate.
 
 ## Work Queue
@@ -216,6 +219,10 @@ Current contract:
 - Benchmark summary/report artifacts parse Rapthor operation-boundary timing
   from `rapthor.log` and compare it with per-operation command timing from
   `commands.jsonl`.
+- A lightweight execution test guardrail captures owner-flow task submissions
+  for image, calibrate, predict, mosaic, and concatenate. It asserts submitted
+  worker payloads remain plain-serializable and that task run names stay
+  readable before increasing Dask task granularity.
 - The regenerated 2026-07-04 artifact report shows a median wall time of
   482.894 s, Dask report duration of 469.550 s, Dask task compute time of
   247.350 s, and a duration-minus-compute gap of 220.940 s across 12 Dask
@@ -234,8 +241,9 @@ Tasks:
 
 - Maintain the benchmark scenario definition, generated demo data, benchmark
   runner, report parsing, summarization tests, and CI artifact list together.
-- Next local implementation: add Dask task-boundary and payload guardrails
-  before changing task granularity.
+- Next local implementation: add resource-propagation guardrails before
+  changing task granularity, using the existing task-boundary tests as the
+  pattern for focused, fast checks.
 - Use
   `docs/source/development/benchmark_baselines/2026-07-04-gitlab-60core.md`
   and its companion summary JSON as the current compact baseline.

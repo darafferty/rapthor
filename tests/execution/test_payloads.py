@@ -15,74 +15,10 @@ from rapthor.execution.payloads import (
     validate_string_list,
 )
 from rapthor.lib.records import file_record
-
-
-def _image_payload():
-    return {
-        "mode": "no_dde_stokes_i",
-        "use_mpi": False,
-        "pipeline_working_dir": "/work/image_1",
-        "sectors": [
-            {
-                "prepare_tasks": [
-                    {
-                        "msin": "/data/obs.ms",
-                        "msout": "obs.prep.ms",
-                        "msout_path": "/work/image_1/obs.prep.ms",
-                        "starttime": "59000.0",
-                        "ntimes": 10,
-                        "freqstep": 2,
-                        "timestep": 3,
-                        "maxinterval": None,
-                    }
-                ],
-                "image_cube_specs": [
-                    {
-                        "pol": "I",
-                        "filename": "sector_1_I_freq_cube.fits",
-                        "path": "/work/image_1/sector_1_I_freq_cube.fits",
-                    }
-                ],
-                "wsclean_imsize": [1024, 1024],
-                "dd_psf_grid": [4, 4],
-                "obs_original_paths": ["/data/obs.ms"],
-                "obs_starttime": ["59000.0"],
-                "obs_ntimes": [10],
-            }
-        ],
-    }
-
-
-def _calibrate_payload():
-    return {
-        "mode": "dd",
-        "calibration_kind": "dd_calibration",
-        "pipeline_working_dir": "/work/calibrate_1",
-        "image_based_predict": False,
-        "chunks": [
-            {
-                "msin": "/data/obs.ms",
-                "starttime": "59000.0",
-                "ntimes": 10,
-                "output_h5parm": "solve1.h5",
-                "output_h5parm_path": "/work/calibrate_1/solve1.h5",
-                "solve_slots": [
-                    {
-                        "slot": 1,
-                        "solve_type": "fast_phase",
-                        "solution_label": "fast",
-                        "h5parm": "solve1.h5",
-                        "h5parm_path": "/work/calibrate_1/solve1.h5",
-                        "solint": 1,
-                        "mode": "scalarphase",
-                        "nchan": 2,
-                        "solutions_per_direction": [1],
-                        "smoothness_dd_factors": [1.0],
-                    }
-                ],
-            }
-        ],
-    }
+from tests.execution.payload_factories import (
+    representative_calibrate_payload,
+    representative_image_payload,
+)
 
 
 def test_assert_serializable_payload_accepts_plain_values():
@@ -195,7 +131,7 @@ def test_validate_int_list_rejects_wrong_length():
 
 
 def test_validate_image_payload_validates_nested_sector_contract():
-    payload = _image_payload()
+    payload = representative_image_payload()
 
     validated = validate_image_payload(payload)
 
@@ -206,7 +142,7 @@ def test_validate_image_payload_validates_nested_sector_contract():
 
 
 def test_validate_image_payload_rejects_non_mapping_prepare_task():
-    payload = _image_payload()
+    payload = representative_image_payload()
     payload["sectors"][0]["prepare_tasks"] = ["obs.prep.ms"]
 
     with pytest.raises(ValueError, match=r"sectors\[0\].prepare_tasks\[0\] must be a mapping"):
@@ -214,7 +150,7 @@ def test_validate_image_payload_rejects_non_mapping_prepare_task():
 
 
 def test_validate_calibrate_payload_validates_solve_slot_contract():
-    payload = _calibrate_payload()
+    payload = representative_calibrate_payload()
 
     validated = validate_calibrate_payload(payload)
 
@@ -222,7 +158,7 @@ def test_validate_calibrate_payload_validates_solve_slot_contract():
 
 
 def test_validate_calibrate_payload_rejects_non_list_solve_slot_values():
-    payload = _calibrate_payload()
+    payload = representative_calibrate_payload()
     payload["chunks"][0]["solve_slots"][0]["solutions_per_direction"] = "1"
 
     with pytest.raises(ValueError, match="solutions_per_direction must be a list"):
@@ -230,7 +166,7 @@ def test_validate_calibrate_payload_rejects_non_list_solve_slot_values():
 
 
 def test_validate_calibrate_payload_validates_image_predict_contract():
-    payload = _calibrate_payload()
+    payload = representative_calibrate_payload()
     payload["image_based_predict"] = True
     payload["image_predict"] = {
         "skymodel": None,
