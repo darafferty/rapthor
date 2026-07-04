@@ -6,12 +6,14 @@ from pathlib import Path
 
 from rapthor.execution.benchmarking import (
     BenchmarkRunResult,
+    OperationTimingMetric,
     benchmark_run_result,
     benchmark_scenarios_by_id,
     failed_benchmark_runs,
     format_failed_benchmark_runs,
     parse_command_log,
     parse_dask_performance_report,
+    parse_operation_log,
     render_markdown_report,
     run_scenario_once,
     summarize_benchmark_runs,
@@ -31,6 +33,11 @@ DASK_REPORT_HTML = """
   ["duration",[1000.0,2500.0,3750.0]],
   ["name",["image_sector_task","calibrate_chunk_task","image_sector_task"]]
 </html>
+"""
+RAPTHOR_LOG = """
+2026-07-04 09:47:29,801 - DEBUG - rapthor:predict_di_1 - \x1b[35mTime for operation: 0:00:01.250000\x1b[0m
+2026-07-04 09:47:29,801 - DEBUG - rapthor:predict_di_1 - \x1b[35m\x1b[35mTime for operation: 0:00:01.250000\x1b[0m\x1b[0m
+2026-07-04 09:48:48,220 - DEBUG - rapthor:image_1 - \x1b[35mTime for operation: 0:01:12.500000\x1b[0m
 """
 
 
@@ -123,9 +130,28 @@ def test_benchmark_run_result_reads_commands_and_dask_report(tmp_path):
     logs_dir = run_dir / "rapthor-work" / "logs"
     logs_dir.mkdir(parents=True)
     (logs_dir / "commands.jsonl").write_text(
-        json.dumps({"command": ["DP3"], "duration_seconds": 1.5}) + "\n",
+        "\n".join(
+            [
+                json.dumps(
+                    {
+                        "command": ["DP3"],
+                        "duration_seconds": 1.5,
+                        "operation": "predict_di_1",
+                    }
+                ),
+                json.dumps(
+                    {
+                        "command": ["wsclean"],
+                        "duration_seconds": 10.0,
+                        "operation": "image_1",
+                    }
+                ),
+            ]
+        )
+        + "\n",
         encoding="utf-8",
     )
+    (logs_dir / "rapthor.log").write_text(RAPTHOR_LOG, encoding="utf-8")
     (run_dir / "dask-performance-report.html").write_text(DASK_REPORT_HTML, encoding="utf-8")
 
     result = benchmark_run_result(
@@ -136,8 +162,8 @@ def test_benchmark_run_result_reads_commands_and_dask_report(tmp_path):
         wall_seconds=3.0,
     )
 
-    assert result.command_count == 1
-    assert result.command_seconds == 1.5
+    assert result.command_count == 2
+    assert result.command_seconds == 11.5
     assert result.dask_performance_report == str(run_dir / "dask-performance-report.html")
     assert result.dask_duration_seconds == 12.5
     assert result.dask_compute_seconds == 7.25
@@ -151,6 +177,24 @@ def test_benchmark_run_result_reads_commands_and_dask_report(tmp_path):
         "image_sector_task",
     ]
     assert result.dask_task_groups[1].total_seconds == 4.75
+    assert [(timing.operation, timing.command_count) for timing in result.operation_timings] == [
+        ("predict_di_1", 1),
+        ("image_1", 1),
+    ]
+    assert result.operation_timings[0].operation_minus_command_seconds == -0.25
+    assert result.operation_timings[1].operation_minus_command_seconds == 62.5
+
+
+def test_parse_operation_log_deduplicates_colored_operation_timings(tmp_path):
+    log_path = tmp_path / "rapthor.log"
+    log_path.write_text(RAPTHOR_LOG, encoding="utf-8")
+
+    timings = parse_operation_log(log_path)
+
+    assert [(timing.operation, timing.elapsed_seconds) for timing in timings] == [
+        ("predict_di_1", 1.25),
+        ("image_1", 72.5),
+    ]
 
 
 def test_parse_dask_performance_report_extracts_gap_and_task_groups(tmp_path):
@@ -189,6 +233,15 @@ def test_summarize_benchmark_runs_and_render_markdown():
                 dask_task_count=5,
                 dask_workers=2,
                 dask_threads=8,
+                operation_timings=(
+                    OperationTimingMetric(
+                        "image_1",
+                        elapsed_seconds=72.0,
+                        command_count=4,
+                        command_seconds=60.0,
+                        operation_minus_command_seconds=12.0,
+                    ),
+                ),
             ),
             BenchmarkRunResult(
                 "ci-benchmark",
@@ -204,6 +257,15 @@ def test_summarize_benchmark_runs_and_render_markdown():
                 dask_task_count=3,
                 dask_workers=2,
                 dask_threads=8,
+                operation_timings=(
+                    OperationTimingMetric(
+                        "image_1",
+                        elapsed_seconds=70.0,
+                        command_count=4,
+                        command_seconds=58.0,
+                        operation_minus_command_seconds=12.0,
+                    ),
+                ),
             ),
             BenchmarkRunResult("comparison-demo", 1, "/runs/3", 1, 8.0, 5, 6.0),
         ]
@@ -225,6 +287,13 @@ def test_summarize_benchmark_runs_and_render_markdown():
         "median": 4.0,
         "max": 4.0,
     }
+    assert summary["scenarios"]["ci-benchmark"]["operations"]["by_operation"]["image_1"][
+        "elapsed_seconds"
+    ] == {
+        "min": 70.0,
+        "median": 71.0,
+        "max": 72.0,
+    }
 
     report = render_markdown_report(summary)
 
@@ -233,6 +302,8 @@ def test_summarize_benchmark_runs_and_render_markdown():
     assert "| comparison-demo | 1 | 1 | 8.000 | 8.000-8.000 | 6.000 |" in report
     assert "## Dask Performance" in report
     assert "| ci-benchmark | 11.000 | 7.000 | 4.000 | 4.000 | 2 | 8 |" in report
+    assert "## Operation Timing" in report
+    assert "| ci-benchmark | image_1 | 71.000 | 59.000 | 12.000 | 4.000 |" in report
 
 
 def test_benchmark_report_includes_metadata():

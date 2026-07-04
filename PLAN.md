@@ -103,15 +103,14 @@ fresh CI artifact is available yet, continue locally with items 2-4.
    and the regenerated local artifact report under
    `runs/benchmark-20260704-122100/benchmark-report.md` as the current
    performance reference.
-3. Explain the 221 second Dask gap before changing task boundaries. Add
-   behavior-preserving operation-boundary timing so the next report can split
-   the gap between:
-   - pipeline and Prefect orchestration outside worker tasks
-   - time waiting between task submissions or dependencies
-   - Python orchestration inside `image_sector_task`
-   - external command time already captured in `commands.jsonl`
-   - Dask/Python startup, shutdown, and performance-report overhead
-4. Add Dask scalability guardrails before splitting tasks:
+3. Use the new operation-boundary timing in benchmark reports to interpret the
+   221 second Dask gap before changing task boundaries. The regenerated
+   2026-07-04 report shows median operation elapsed time of 281.881 s and
+   command time of 230.551 s, so about 51 s sits inside operation boundaries
+   but outside profiled external commands. The remaining gap still needs
+   task-boundary guardrails and later orchestration analysis.
+4. Next local implementation: add Dask scalability guardrails before splitting
+   tasks:
    payload serialization checks, task-boundary/task-name assertions,
    resource-propagation tests, and representative operation payload fixtures.
 5. Take one low-risk image-cycle scalability slice only after items 3 and 4 are
@@ -214,11 +213,18 @@ Current contract:
 - Benchmark summary/report artifacts parse Dask performance reports when present
   and expose report duration, task compute time, duration-minus-compute gap,
   scheduler worker/thread shape, and per-task-name timing groups.
+- Benchmark summary/report artifacts parse Rapthor operation-boundary timing
+  from `rapthor.log` and compare it with per-operation command timing from
+  `commands.jsonl`.
 - The regenerated 2026-07-04 artifact report shows a median wall time of
   482.894 s, Dask report duration of 469.550 s, Dask task compute time of
   247.350 s, and a duration-minus-compute gap of 220.940 s across 12 Dask
   tasks. `image_sector_task` dominates task compute at about 239 s total median
   per run, while command profiling accounts for about 231 s median.
+- The same regenerated report shows median operation elapsed time of 281.881 s.
+  The operation-minus-command gap is concentrated in image operations: about
+  11 s for `image_1`, 9-10 s for `image_2` and `image_3`, and 8.6 s for
+  `image_4`.
 
 Benchmark before changing Dask task boundaries, scheduler behavior, or
 performance-sensitive execution code. The benchmark should identify what to
@@ -228,10 +234,8 @@ Tasks:
 
 - Maintain the benchmark scenario definition, generated demo data, benchmark
   runner, report parsing, summarization tests, and CI artifact list together.
-- Next local implementation: add operation-boundary timing to benchmark
-  artifacts without changing pipeline behavior. The timing should make it clear
-  how much of the Dask duration-minus-compute gap is orchestration outside Dask
-  tasks versus Python work inside coarse tasks.
+- Next local implementation: add Dask task-boundary and payload guardrails
+  before changing task granularity.
 - Use
   `docs/source/development/benchmark_baselines/2026-07-04-gitlab-60core.md`
   and its companion summary JSON as the current compact baseline.

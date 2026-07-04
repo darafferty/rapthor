@@ -77,6 +77,17 @@ class CommandMetric:
 
 
 @dataclass(frozen=True)
+class OperationTimingMetric:
+    """Operation elapsed timing compared with profiled external commands."""
+
+    operation: str
+    elapsed_seconds: float
+    command_count: int = 0
+    command_seconds: float = 0.0
+    operation_minus_command_seconds: Optional[float] = None
+
+
+@dataclass(frozen=True)
 class DaskTaskGroupMetric:
     """Aggregated task-stream timing for one Dask task name."""
 
@@ -126,6 +137,7 @@ class BenchmarkRunResult:
     dask_threads: Optional[int] = None
     dask_memory: Optional[str] = None
     dask_task_groups: tuple[DaskTaskGroupMetric, ...] = ()
+    operation_timings: tuple[OperationTimingMetric, ...] = ()
 
 
 def default_benchmark_scenarios() -> tuple[BenchmarkScenario, ...]:
@@ -176,6 +188,35 @@ def parse_command_log(command_log: Path) -> list[CommandMetric]:
     return metrics
 
 
+def parse_operation_log(operation_log: Path) -> list[OperationTimingMetric]:
+    """Parse Rapthor operation boundary timings from ``rapthor.log``."""
+    if not operation_log.exists():
+        return []
+
+    timings = []
+    seen = set()
+    for line in operation_log.read_text(encoding="utf-8", errors="replace").splitlines():
+        clean_line = _strip_ansi(line)
+        match = re.search(
+            r"rapthor:(?P<operation>[\w_]+).*Time for operation:\s*"
+            r"(?P<duration>(?:\d+\s+days?,\s+)?\d+:\d{2}:\d{2}(?:\.\d+)?)",
+            clean_line,
+        )
+        if not match:
+            continue
+        key = (match.group("operation"), match.group("duration"))
+        if key in seen:
+            continue
+        seen.add(key)
+        timings.append(
+            OperationTimingMetric(
+                operation=match.group("operation"),
+                elapsed_seconds=_duration_text_to_seconds(match.group("duration")),
+            )
+        )
+    return timings
+
+
 def parse_dask_performance_report(report_path: Path) -> Optional[DaskPerformanceMetric]:
     """Parse summary and task-stream timing from a Dask performance report."""
     if not report_path.exists():
@@ -203,6 +244,10 @@ def benchmark_run_result(
 ) -> BenchmarkRunResult:
     """Build a run result from a completed run directory."""
     command_metrics = parse_command_log(run_dir / "rapthor-work" / "logs" / "commands.jsonl")
+    operation_timings = _combine_operation_timings(
+        parse_operation_log(run_dir / "rapthor-work" / "logs" / "rapthor.log"),
+        command_metrics,
+    )
     dask_report = run_dir / "dask-performance-report.html"
     dask_metrics = parse_dask_performance_report(dask_report)
     return BenchmarkRunResult(
@@ -224,6 +269,7 @@ def benchmark_run_result(
         dask_threads=dask_metrics.threads if dask_metrics else None,
         dask_memory=dask_metrics.memory if dask_metrics else None,
         dask_task_groups=dask_metrics.task_groups if dask_metrics else (),
+        operation_timings=operation_timings,
     )
 
 
@@ -253,6 +299,9 @@ def summarize_benchmark_runs(results: Iterable[BenchmarkRunResult]) -> dict[str,
         dask_summary = _summarize_dask_metrics(scenario_results)
         if dask_summary:
             scenarios[scenario_id]["dask"] = dask_summary
+        operation_summary = _summarize_operation_timings(scenario_results)
+        if operation_summary:
+            scenarios[scenario_id]["operations"] = operation_summary
 
     return {"scenarios": scenarios}
 
@@ -299,6 +348,9 @@ def render_markdown_report(summary: Mapping[str, object]) -> str:
     dask_lines = _render_dask_summary_table(scenarios)
     if dask_lines:
         lines.extend(dask_lines)
+    operation_lines = _render_operation_summary_table(scenarios)
+    if operation_lines:
+        lines.extend(operation_lines)
     return "\n".join(lines)
 
 
@@ -388,6 +440,31 @@ def format_failed_benchmark_runs(results: Iterable[BenchmarkRunResult]) -> str:
     return "\n".join(lines)
 
 
+def _combine_operation_timings(
+    operation_timings: Sequence[OperationTimingMetric],
+    command_metrics: Sequence[CommandMetric],
+) -> tuple[OperationTimingMetric, ...]:
+    commands_by_operation: dict[str, list[CommandMetric]] = {}
+    for metric in command_metrics:
+        if metric.operation is not None:
+            commands_by_operation.setdefault(metric.operation, []).append(metric)
+
+    combined = []
+    for timing in operation_timings:
+        commands = commands_by_operation.get(timing.operation, [])
+        command_seconds = sum(metric.duration_seconds for metric in commands)
+        combined.append(
+            OperationTimingMetric(
+                operation=timing.operation,
+                elapsed_seconds=timing.elapsed_seconds,
+                command_count=len(commands),
+                command_seconds=command_seconds,
+                operation_minus_command_seconds=timing.elapsed_seconds - command_seconds,
+            )
+        )
+    return tuple(combined)
+
+
 def _parse_dask_task_groups(text: str) -> tuple[DaskTaskGroupMetric, ...]:
     task_stream_start = text.find('"name":"task_stream"')
     task_stream_text = text[task_stream_start:] if task_stream_start >= 0 else text
@@ -455,6 +532,51 @@ def _summarize_dask_metrics(results: Sequence[BenchmarkRunResult]) -> dict[str, 
     return summary
 
 
+def _summarize_operation_timings(results: Sequence[BenchmarkRunResult]) -> dict[str, object]:
+    total_elapsed = [
+        sum(timing.elapsed_seconds for timing in result.operation_timings)
+        for result in results
+        if result.operation_timings
+    ]
+    total_command = [
+        sum(timing.command_seconds for timing in result.operation_timings)
+        for result in results
+        if result.operation_timings
+    ]
+    summary: dict[str, object] = {}
+    if total_elapsed:
+        summary["total_elapsed_seconds"] = _stats(total_elapsed)
+    if total_command:
+        summary["total_command_seconds"] = _stats(total_command)
+
+    grouped: dict[str, dict[str, list[float]]] = {}
+    for result in results:
+        for timing in result.operation_timings:
+            values = grouped.setdefault(
+                timing.operation,
+                {
+                    "elapsed_seconds": [],
+                    "command_seconds": [],
+                    "command_count": [],
+                    "operation_minus_command_seconds": [],
+                },
+            )
+            values["elapsed_seconds"].append(timing.elapsed_seconds)
+            values["command_seconds"].append(timing.command_seconds)
+            values["command_count"].append(timing.command_count)
+            if timing.operation_minus_command_seconds is not None:
+                values["operation_minus_command_seconds"].append(
+                    timing.operation_minus_command_seconds
+                )
+
+    if grouped:
+        summary["by_operation"] = {
+            operation: {metric: _stats(values) for metric, values in metrics.items()}
+            for operation, metrics in sorted(grouped.items())
+        }
+    return summary
+
+
 def _summarize_dask_task_groups(results: Sequence[BenchmarkRunResult]) -> dict[str, object]:
     grouped: dict[str, dict[str, list[float]]] = {}
     for result in results:
@@ -519,6 +641,56 @@ def _render_dask_summary_table(scenarios: Mapping[str, object]) -> list[str]:
     ]
 
 
+def _render_operation_summary_table(scenarios: Mapping[str, object]) -> list[str]:
+    rows = []
+    for scenario_id, data in sorted(scenarios.items()):
+        if not isinstance(data, Mapping):
+            continue
+        operations = data.get("operations")
+        if not isinstance(operations, Mapping):
+            continue
+        by_operation = operations.get("by_operation")
+        if not isinstance(by_operation, Mapping):
+            continue
+        operation_rows = []
+        for operation, metrics in sorted(by_operation.items()):
+            if not isinstance(metrics, Mapping):
+                continue
+            elapsed = metrics.get("elapsed_seconds")
+            command = metrics.get("command_seconds")
+            gap = metrics.get("operation_minus_command_seconds")
+            command_count = metrics.get("command_count")
+            if not all(isinstance(item, Mapping) for item in (elapsed, command, gap)):
+                continue
+            operation_rows.append(
+                (
+                    float(elapsed["median"]),
+                    "| {scenario} | {operation} | {elapsed:.3f} | {command:.3f} | "
+                    "{gap:.3f} | {count:.3f} |".format(
+                        scenario=scenario_id,
+                        operation=operation,
+                        elapsed=elapsed["median"],
+                        command=command["median"],
+                        gap=gap["median"],
+                        count=command_count["median"] if isinstance(command_count, Mapping) else 0,
+                    ),
+                )
+            )
+        rows.extend(row for _elapsed, row in sorted(operation_rows, reverse=True)[:10])
+    if not rows:
+        return []
+
+    return [
+        "## Operation Timing",
+        "",
+        "| Scenario | Operation | Elapsed Median (s) | Command Median (s) | "
+        "Operation-Command Median (s) | Command Count Median |",
+        "| --- | --- | ---: | ---: | ---: | ---: |",
+        *rows,
+        "",
+    ]
+
+
 def _present_values(values: Iterable[object]) -> list:
     return [value for value in values if value is not None]
 
@@ -546,6 +718,22 @@ def _optional_int_match(pattern: str, text: str) -> Optional[int]:
 def _optional_text_match(pattern: str, text: str) -> Optional[str]:
     match = re.search(pattern, text, flags=re.IGNORECASE)
     return match.group(1).strip() if match else None
+
+
+def _duration_text_to_seconds(value: str) -> float:
+    days = 0
+    time_text = value.strip()
+    day_match = re.match(r"(?P<days>\d+)\s+days?,\s+(?P<time>.*)", time_text)
+    if day_match:
+        days = int(day_match.group("days"))
+        time_text = day_match.group("time")
+
+    hours_text, minutes_text, seconds_text = time_text.split(":")
+    return days * 86400 + int(hours_text) * 3600 + int(minutes_text) * 60 + float(seconds_text)
+
+
+def _strip_ansi(value: str) -> str:
+    return re.sub(r"\x1b\[[0-9;]*m", "", value)
 
 
 def _render_metadata_table(metadata: Mapping[str, object]) -> list[str]:
