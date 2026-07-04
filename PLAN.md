@@ -323,9 +323,9 @@ Done when:
 
 ### 4. Test Suite Maintainability And Coverage
 
-Status: broad coverage exists, but the suite is starting to concentrate too
-many contracts in very large files, and user-facing options are not yet audited
-systematically.
+Status: broad coverage exists, and a lightweight default-option audit now
+guards new untracked parset options. The suite is still starting to concentrate
+too many contracts in very large files.
 
 Goals:
 
@@ -340,13 +340,13 @@ Goals:
 
 Tasks:
 
-- Add a defaults/options coverage audit that parses
-  `rapthor/settings/defaults.parset` and records, for each user-facing option,
-  whether it has focused parser/default coverage, operation or execution
-  coverage, integration/equivalence coverage, or an intentional allow-list
-  entry.
-- Use that audit to add focused tests for currently weak option families. A
-  first-pass text audit found no direct test mention for:
+- Maintain the defaults/options coverage audit in
+  `tests/lib/test_parset_option_coverage.py`. It parses
+  `rapthor/settings/defaults.parset` and requires each user-facing option to
+  have direct test attention or an intentional allow-list entry.
+- Keep extending the focused weak-option tests in
+  `tests/lib/test_parset_option_behavior.py`. The first pass added direct
+  parser or adjustment coverage for:
   - global sky-model/product inputs such as
     `separation_tolerance_arcsec`, `download_initial_skymodel_radius`,
     `download_initial_skymodel_server`, `download_overwrite_skymodel`,
@@ -359,6 +359,10 @@ Tasks:
     `sector_center_dec_list`, `sector_width_ra_deg_list`,
     `sector_width_dec_deg_list`, `correct_time_frequency_smearing`, and
     `skip_corner_sectors`
+- Keep `TESTING.md` and `.agents/testing_playbook.md` current whenever test
+  layout, marks, required commands, Prefect harness usage, integration-test
+  requirements, or test-improvement practices change. Treat tests as living
+  documentation that should be human readable, maintainable, and easy to extend.
 - Split or reorganize the largest flow and operation test modules when touching
   them:
   - `tests/execution/test_calibrate_flow.py`
