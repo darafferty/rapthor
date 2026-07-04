@@ -43,6 +43,11 @@ Done:
   output.
 - The strengthened saved-reference matrix passed on 2026-07-04, with the
   current report recorded in `EQUIVALENCE_REPORT.md`.
+- Branch-vs-master equivalence runner scaffolding is in place at
+  `scripts/dev/run_branch_equivalence.py`: it accepts user parsets/strategies,
+  writes branch-specific adapted inputs and manifests, supports manual
+  base/current strategy overrides, runs each branch in isolated directories,
+  and reuses the strengthened product comparison checks.
 
 Known caveats:
 
@@ -57,17 +62,14 @@ Known caveats:
 
 ## Next Work, In Order
 
-1. **Build branch-vs-master equivalence for arbitrary parsets.**
-   Add a script that can take any parset and optional strategy override, run
-   Rapthor from `master` and from the current branch, normalize branch-specific
-   paths/settings where needed, and compare the generated products with the
-   strengthened equivalence checks. The primary user workflow should be
-   "bring your own dataset/parset/strategy", assuming those inputs may have
-   been authored for `master`; the runner should materialize adapted current-
-   branch copies while preserving the scientific intent. Seed the first
-   multi-cycle scenario from the benchmark/default-like parset and strategy so
-   it covers DI phase, DD phase/faceting, the legacy DD default solve order,
-   full-Jones, imaging, mosaicking, and source filtering.
+1. **Run the multi-cycle branch-vs-master equivalence scenario.**
+   Use `scripts/dev/run_branch_equivalence.py` on the generated
+   benchmark/default-like parset and strategy. Confirm that the base `master`
+   run and current branch run complete, inspect any compatibility adaptations,
+   compare outputs with the strengthened product checks, and record a compact
+   summary in `EQUIVALENCE_REPORT.md`. If master cannot run the generated
+   parset directly, add the smallest explicit adapter or base/current strategy
+   override needed to preserve the scientific scenario.
 
 2. **Take one low-risk image-cycle scalability slice.**
    Start with one natural boundary inside image-sector execution, such as
@@ -135,29 +137,26 @@ Current status:
 - The saved-reference matrix passed with strengthened FITS checks on
   2026-07-04. The current report path and residual summary are recorded in
   `EQUIVALENCE_REPORT.md`.
+- `scripts/dev/run_branch_equivalence.py` now prepares and compares arbitrary
+  user-supplied parsets/strategies across `master` and the current branch. It
+  can be used in prepare-only mode to inspect adapted branch inputs before
+  launching expensive runs.
 
 Immediate task:
 
-- Implement `scripts/dev/run_branch_equivalence.py` for branch-vs-branch
-  product comparison. It should:
-  - accept any user-supplied parset path and optional strategy override, with
-    paths resolved relative to the user's checkout;
-  - assume inputs may be authored for the base ref, initially `master`, and
-    create branch-specific parset/strategy copies for the base and current
-    runs;
-  - run the base ref, initially `master`, and the current branch in isolated
-    working directories;
-  - support compatibility adapters for parset options, strategy shape, resource
-    settings, generated working directories, and path rewrites when either
-    branch needs small adjustments to run the same scientific scenario;
-  - write an adaptation manifest that records every automatic parset/strategy
-    change and makes unsupported or ambiguous migrations explicit;
-  - compare outputs using the strengthened FITS/HDF5/text/product checks;
-  - write compact JSON and Markdown reports, plus a scenario manifest that can
-    be committed separately from bulky run artifacts.
-- Use the generated benchmark/default-like scenario as the first required
-  multi-cycle equivalence case:
-  `examples/generated/prefect_demo_rich/prefect_demo_benchmark.parset`.
+- Run the first required multi-cycle branch-vs-master equivalence case:
+
+  ```bash
+  scripts/dev/run_branch_equivalence.py \
+    examples/generated/prefect_demo_rich/prefect_demo_benchmark.parset \
+    --scenario-id benchmark-default-like \
+    --task-runner sync \
+    --command-profile auto
+  ```
+
+  For a workstation smoke check or user-supplied data, use `--prepare-only`
+  first to inspect the generated base/current parsets, strategies, and
+  adaptation manifest.
 
 Keep:
 
