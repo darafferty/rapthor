@@ -384,9 +384,10 @@ Tasks:
   fake methods, and add a short comment when that intent is not obvious. The
   first cleanup passes replaced placeholders in
   `tests/lib/test_miscellaneous.py`, `tests/lib/test_context.py`,
-  `tests/lib/test_fitsimage.py`, and `tests/lib/test_sector.py`; continue with
-  remaining `tests/lib/` placeholders such as `tests/lib/test_observation.py`
-  and any no-op fakes that need clearer comments.
+  `tests/lib/test_fitsimage.py`, `tests/lib/test_sector.py`, and
+  `tests/lib/test_observation.py`, then removed the remaining literal `pass`
+  bodies from the test tree by replacing them with assertions, explicit empty
+  file setup, pytest context-manager checks, or documented stub classes.
 - Deduplicate repeated setup and helper functions without hiding the scenario
   under test:
   - consolidate repeated fake shell operation classes and direct-helper patches

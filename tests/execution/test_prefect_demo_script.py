@@ -3,6 +3,8 @@ import importlib.util
 import sys
 from pathlib import Path
 
+import pytest
+
 from rapthor.execution.config import ExecutionConfig
 
 SCRIPT_PATH = Path(__file__).parents[2] / "scripts" / "dev" / "run-rapthor-prefect-demo.py"
@@ -228,18 +230,17 @@ def test_dask_performance_report_requires_scheduler(tmp_path):
     module = load_demo_script()
     config = ExecutionConfig(task_runner="local_dask")
 
-    try:
+    with pytest.raises(
+        RuntimeError,
+        match="requires a persistent local or external Dask scheduler",
+    ):
         with module._dask_performance_report(
             tmp_path / "report.html",
             config,
             performance_report_factory=object,
             client_cls=object,
         ):
-            pass
-    except RuntimeError as err:
-        assert "requires a persistent local or external Dask scheduler" in str(err)
-    else:
-        raise AssertionError("Expected RuntimeError")
+            raise AssertionError("Expected _dask_performance_report to fail before yielding")
 
 
 def test_started_prefect_server_disables_server_analytics(monkeypatch, tmp_path):

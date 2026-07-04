@@ -2,6 +2,7 @@
 Test cases for the `rapthor.lib.observation` module.
 """
 
+import math
 from logging import Logger
 from unittest import mock
 
@@ -50,11 +51,45 @@ class TestObservation:
         assert np.isclose(observation.channelwidth, 24414.0625)
         assert observation.numchannels == 8
 
-    def test_copy(self):
-        pass
+    def test_copy_returns_independent_observation_with_logger(self, observation):
+        copied = observation.copy()
 
-    def test_scan_ms(self):
-        pass
+        assert copied is not observation
+        assert copied.ms_filename == observation.ms_filename
+        assert copied.parameters == observation.parameters
+        assert isinstance(copied.log, Logger)
+        assert copied.log.name == observation.log.name
+
+        copied.parameters["new_parameter"] = "copy only"
+
+        assert "new_parameter" not in observation.parameters
+
+    def test_scan_ms_populates_measurement_set_metadata(self, observation):
+        """scan_ms records the MS time, frequency, pointing, and station metadata."""
+        assert bool(observation.startsat_startofms) is True
+        assert bool(observation.goesto_endofms) is True
+        assert observation.infix == ""
+        assert np.isclose(observation.timepersample, 10.0139008)
+        assert np.isclose(observation.referencefreq, 134375000.0)
+        assert np.isclose(observation.startfreq, 134288024.90234375)
+        assert np.isclose(observation.endfreq, 134458923.33984375)
+        assert observation.channels_are_regular is True
+        assert np.isclose(observation.ra, 24.422081000000002)
+        assert np.isclose(observation.dec, 33.15975900000001)
+        assert list(observation.stations) == [
+            "CS001HBA0",
+            "CS002HBA0",
+            "CS002HBA1",
+            "CS004HBA1",
+            "RS106HBA",
+            "RS208HBA",
+            "RS305HBA",
+            "RS307HBA",
+        ]
+        assert np.isclose(observation.diam, 31.262533139844095)
+        assert np.isclose(observation.mean_el_rad, 1.1529779067059374)
+        assert np.isclose(observation.high_el_starttime, observation.starttime)
+        assert np.isclose(observation.high_el_endtime, observation.endtime)
 
     def check_single_timechunk(self, observation, test_ms):
         """Check if the observation has a single time chunk."""
@@ -345,38 +380,108 @@ class TestObservation:
         assert params["fast_smoothnessreffrequency"] == [fast_reference_frequency]
         assert params["medium_smoothnessreffrequency"] == [medium_reference_frequency]
 
-    def test_set_prediction_parameters(self, sector_name=None, patch_names=None):
-        pass
+    def test_set_prediction_parameters(self, observation, test_ms):
+        observation.set_prediction_parameters("sector_1", ["patch_a", "patch_b"])
 
+        assert observation.parameters["ms_filename"] == test_ms
+        assert observation.parameters["ms_model_filename"] == "test.ms.sector_1_modeldata"
+        assert observation.parameters["ms_subtracted_filename"] == "test.ms.sector_1"
+        assert observation.ms_subtracted_filename == "test.ms.sector_1"
+        assert observation.ms_field == "test.ms_field"
+        assert observation.ms_predict_di == "test.ms.sector_1_di.ms"
+        assert observation.parameters["patch_names"] == ["patch_a", "patch_b"]
+        assert observation.parameters["predict_starttime"] == "29Mar2013/13:59:52.907"
+        assert observation.parameters["predict_ntimes"] == 0
+
+    @pytest.mark.parametrize(
+        "preapply_dd_solutions, expected_image_timestep",
+        [(False, 2), (True, 3)],
+    )
     def test_set_imaging_parameters(
-        self,
-        sector_name=None,
-        cellsize_arcsec=None,
-        max_peak_smearing=None,
-        width_ra=None,
-        width_dec=None,
-        solve_fast_timestep=None,
-        solve_slow_timestep=None,
-        solve_slow_freqstep=None,
-        preapply_dd_solutions=None,
+        self, observation, test_ms, preapply_dd_solutions, expected_image_timestep
     ):
-        pass
+        """Preapplied DD solutions allow more time averaging during imaging."""
+        observation.set_imaging_parameters(
+            sector_name="sector_1",
+            cellsize_arcsec=3.0,
+            max_peak_smearing=0.1,
+            width_ra=1.2,
+            width_dec=0.8,
+            # Without preapplied DD solutions, imaging must preserve the fast-solve
+            # cadence so solutions can still be applied accurately. That caps the
+            # image timestep at 20 s / 10.0139008 s ~= 2 slots. With preapplied DD
+            # solutions, the smearing limit is the active constraint, giving 3 slots.
+            solve_fast_timestep=20.0,
+            solve_slow_timestep=60.0,
+            solve_slow_freqstep=observation.channelwidth * 4,
+            preapply_dd_solutions=preapply_dd_solutions,
+        )
 
-    def test_get_nearest_freqstep(self, freqstep=None):
-        pass
+        assert observation.parameters["ms_filename"] == test_ms
+        assert observation.parameters["ms_prep_filename"] == "test.ms.sector_1.prep"
+        assert observation.parameters["image_freqstep"] == 4
+        assert observation.parameters["image_timestep"] == expected_image_timestep
+        assert observation.parameters["image_bda_maxinterval"] == 6
 
-    def test_get_target_timewidth(self, delta_theta=None, resolution=None, reduction_factor=None):
-        pass
+    @pytest.mark.parametrize(
+        "freqstep, expected",
+        [(1, 1), (2, 2), (3, 4), (5, 4), (6, 8), (7, 8), (8, 8), (9, 8)],
+    )
+    def test_get_nearest_freqstep(self, observation, freqstep, expected):
+        assert observation.get_nearest_freqstep(freqstep) == expected
 
-    def test_get_bandwidth_smearing_factor(
-        self, freq=None, delta_freq=None, delta_theta=None, resolution=None
-    ):
-        pass
+    def test_get_target_timewidth(self, observation):
+        """The time smearing helper should match the analytic Rapthor formula."""
+        delta_theta = 1.0
+        resolution = 0.01
+        reduction_factor = 0.9
 
-    def test_get_target_bandwidth(
-        self, freq=None, delta_theta=None, resolution=None, reduction_factor=None
-    ):
-        pass
+        expected_delta_time = np.sqrt(
+            (1.0 - reduction_factor) / (1.22e-9 * (delta_theta / resolution) ** 2.0)
+        )
+
+        assert np.isclose(
+            observation.get_target_timewidth(delta_theta, resolution, reduction_factor),
+            expected_delta_time,
+        )
+
+    def test_get_bandwidth_smearing_factor(self, observation):
+        """The bandwidth smearing helper should match the analytic Rapthor formula."""
+        freq = 150.0
+        delta_freq = 1.0
+        delta_theta = 1.0
+        resolution = 0.01
+        beta = (delta_freq / freq) * (delta_theta / resolution)
+        gamma = 2 * (np.log(2) ** 0.5)
+        expected_reduction_factor = ((np.pi**0.5) / (gamma * beta)) * (math.erf(beta * gamma / 2.0))
+
+        assert np.isclose(
+            observation.get_bandwidth_smearing_factor(freq, delta_freq, delta_theta, resolution),
+            expected_reduction_factor,
+        )
+
+    def test_get_target_bandwidth(self, observation):
+        """The target bandwidth is the first 10% step below the requested reduction."""
+        freq = 150.0
+        delta_theta = 1.0
+        resolution = 0.01
+        reduction_factor = 0.9
+
+        target_bandwidth = observation.get_target_bandwidth(
+            freq, delta_theta, resolution, reduction_factor
+        )
+        previous_step = target_bandwidth / 1.1
+
+        assert (
+            observation.get_bandwidth_smearing_factor(
+                freq, target_bandwidth, delta_theta, resolution
+            )
+            <= reduction_factor
+        )
+        assert (
+            observation.get_bandwidth_smearing_factor(freq, previous_step, delta_theta, resolution)
+            > reduction_factor
+        )
 
     @pytest.mark.parametrize(
         "solints_seconds, solve_max_factor, expected_max",

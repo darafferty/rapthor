@@ -108,7 +108,7 @@ def test_assert_serializable_payload_rejects_non_string_mapping_keys():
 
 def test_assert_serializable_payload_rejects_domain_like_objects():
     class FieldLike:
-        pass
+        """Domain-like object that must not be accepted in worker payloads."""
 
     with pytest.raises(PayloadSerializationError, match="FieldLike"):
         assert_serializable_payload({"field": FieldLike()})

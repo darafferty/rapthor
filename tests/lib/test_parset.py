@@ -8,6 +8,7 @@ import string
 import tempfile
 import textwrap
 import unittest
+from pathlib import Path
 
 try:
     import mock
@@ -66,8 +67,7 @@ class TestParset(unittest.TestCase):
             parset_read(self.parset.name)
 
     def test_empty_parset_file(self):
-        with open(self.parset.name, "w") as f:
-            pass
+        Path(self.parset.name).write_text("", encoding="utf-8")
         with self.assertRaisesRegex(
             ValueError, r"Missing required option\(s\) in section \[global\]:"
         ):

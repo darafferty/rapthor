@@ -133,7 +133,7 @@ def test_update_skymodels_ignores_empty_apparent_sky_without_patches(field, tmp_
         image_skymodel_file_apparent_sky = apparent_sky
 
     class StopAfterSkyModelUpdate(Exception):
-        pass
+        """Stop after make_skymodels captures the apparent-sky argument."""
 
     captured = {}
 
@@ -163,13 +163,17 @@ def test_update_skymodels_handles_empty_previous_cycle_sky_model(field, tmp_path
         image_skymodel_file_true_sky = true_sky
         image_skymodel_file_apparent_sky = apparent_sky
 
+        def __init__(self):
+            self.region_calls = []
+
         def make_vertices_file(self):
-            pass
+            self.region_calls.append(("vertices", None))
 
-        def make_region_file(self, _region_file):
-            pass
+        def make_region_file(self, region_file):
+            self.region_calls.append(("region", region_file))
 
-    field.imaging_sectors = [Sector()]
+    sector = Sector()
+    field.imaging_sectors = [sector]
     field.imaged_sources_only = True
     monkeypatch.setattr(field, "plot_overview", lambda *args, **kwargs: None)
 
@@ -180,6 +184,10 @@ def test_update_skymodels_handles_empty_previous_cycle_sky_model(field, tmp_path
     assert field.calibrator_positions == {}
     assert field.num_patches == 0
     assert field.get_calibration_radius() == 0.0
+    assert sector.region_calls == [
+        ("vertices", None),
+        ("region", str(Path(field.working_dir) / "regions" / "sector_1_region_ds9.reg")),
+    ]
     assert field.outlier_sectors == []
     assert field.bright_source_sectors == []
     assert field.predict_sectors == []

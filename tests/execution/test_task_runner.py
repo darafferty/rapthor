@@ -292,6 +292,8 @@ def test_check_dask_scheduler_returns_worker_count():
 
 def test_check_dask_scheduler_rejects_scheduler_without_workers():
     class FakeClient:
+        closed = False
+
         def __init__(self, address, timeout):
             self.address = address
 
@@ -299,10 +301,12 @@ def test_check_dask_scheduler_rejects_scheduler_without_workers():
             return {"workers": {}}
 
         def close(self):
-            pass
+            FakeClient.closed = True
 
     with pytest.raises(DaskSchedulerConnectionError, match="no connected workers"):
         check_dask_scheduler("tcp://scheduler:8786", client_cls=FakeClient)
+
+    assert FakeClient.closed is True
 
 
 def test_check_dask_scheduler_wraps_connection_errors():
