@@ -409,7 +409,10 @@ Tasks:
   matrices where that reduces setup noise.
 - Convert legacy `unittest.TestCase`-style tests, especially
   `tests/lib/test_parset.py`, to pytest-style assertions, fixtures,
-  `pytest.raises`, and `caplog`.
+  `pytest.raises`, and `caplog`. The first conversion pass moved
+  `tests/lib/test_parset.py` to pytest fixtures, `tmp_path`, direct
+  assertions, `pytest.raises`, and `caplog`, while keeping the existing
+  parset-template comparison coverage.
 - Replace one-value parametrizations and copy-pasted fixture setup with named
   fixtures or direct tests. Keep parametrized tests only where the table carries
   real behavioral contrast, and give each row a readable id. The first cleanup
