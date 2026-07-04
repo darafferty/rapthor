@@ -1,0 +1,9 @@
+{
+  "scenario_id": "benchmark-default-like",
+  "base_ref": "master",
+  "current_ref": "current",
+  "base_parset": "/app/runs/master-benchmark-default-like-manual/inputs/master_benchmark_default_like.parset",
+  "current_parset": "/app/runs/current-benchmark-default-like-manual/inputs/current_benchmark_default_like.parset",
+  "base_work_dir": "/tmp/rbe-master-work",
+  "current_work_dir": "/tmp/rbe-current-work"
+}

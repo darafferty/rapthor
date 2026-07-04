@@ -56,41 +56,47 @@ Known caveats:
   environments may fail to build astronomy dependencies.
 - Keep large integration, equivalence, benchmark, and demo run roots outside
   git, preferably under `/tmp` or CI artifacts.
-- Do not commit raw run directories, FITS/MS products, command logs, full Dask
-  HTML reports, Prefect logs, `.tox`, `.ruff_cache`, `htmlcov`, or build
-  products.
+- Do not commit raw run directories, FITS/MS products, full Dask HTML reports,
+  Prefect logs, `.tox`, `.ruff_cache`, `htmlcov`, or build products. Compact
+  curated reports, manifests, and short command logs may be tracked under
+  `docs/source/development/` when they explain an important result.
 
 ## Next Work, In Order
 
 1. **Resolve the multi-cycle branch-vs-master equivalence findings.**
-   The first `benchmark-default-like` run with `master` as the reference
-   completed both branches but failed product comparison. Inspect the
-   output-record differences, the missing `field-MFS-image-pb-ast` products,
-   and the later-cycle FITS residuals before changing performance-sensitive
-   execution code. The main cause found so far is a master slow-gain amplitude
-   combination failure: master logs a `combine_h5parms.py ... p1p2a2_diagonal`
-   broadcasting error but still completes, leaving the active facet h5parm
-   phase-only. Decide whether to patch the master reference checkout to test
-   intended slow-gain amplitude behavior, or to keep a deliberately phase-only
-   current scenario for strict legacy parity.
+   Treat this as the next gate before performance-sensitive execution work.
+   Two compact report bundles are now tracked under
+   `docs/source/development/equivalence_runs/`: the default-like run that
+   exposes the master slow-gain/amplitude issue, and the phase-only run that
+   completes both branches with small restored-image residuals. Use these
+   reports to decide the intended product contract for missing
+   `field-MFS-image-pb-ast` products, output-record differences, sparse model
+   image differences, and phase h5parm tolerances.
 
-2. **Take one low-risk image-cycle scalability slice.**
+2. **Lock down the branch-equivalence comparison contract.**
+   Update the branch-equivalence runner/tests so expected legacy-vs-current
+   differences are explicit. Product-presence changes should be either restored
+   or documented as intentional; tolerances should distinguish restored image
+   residuals, sparse model-image outliers, h5parm numeric drift, text/region
+   ordering, and output-record path-only differences.
+
+3. **Take one low-risk image-cycle scalability slice.**
    Start with one natural boundary inside image-sector execution, such as
    source/model filtering or diagnostics after WSClean. Preserve output records,
    restart behavior, run names, worker payload serializability, and scientific
    products.
 
-3. **Re-run scientific and performance gates after the slice.**
+4. **Re-run scientific and performance gates after the slice.**
    Run focused tests, saved-reference equivalence, then the three-repetition
    `ci-benchmark` job. Compare against the 2026-07-04 baseline before taking a
    second slice.
 
-4. **Refresh benchmark baseline documentation if the CI run is valid.**
+5. **Refresh benchmark baseline documentation if the CI run is valid.**
    Commit only compact curated reports under
    `docs/source/development/benchmark_baselines/`. Keep bulky artifacts in CI
    artifacts or external storage.
 
-5. **Resume test-suite maintainability cleanup.**
+6. **Resume test-suite maintainability cleanup.**
    Continue after the first benchmark-led scalability slice is guarded and
    measured. Keep `TESTING.md`, `.agents/testing_playbook.md`, and this plan in
    sync.
@@ -152,25 +158,42 @@ Current status:
 - The first manual `benchmark-default-like` branch-vs-master run used
   `master` commit `17448437b78583f1eaf38112a524b2dbe5f34bb8` as the reference.
   Both branches returned `0`, but the strengthened product comparison failed.
-  The report is recorded in `EQUIVALENCE_REPORT.md`, with run artifacts under
-  `runs/rbe-default-like-master-ref-codex/`.
+  The compact report, manifest, and command logs are tracked under
+  `docs/source/development/equivalence_runs/2026-07-04-default-like-master-ref/`.
+  The key finding is that master logs a `combine_h5parms.py ...
+  p1p2a2_diagonal` broadcasting error during the slow-gain path but still
+  completes, leaving the active facet h5parm phase-only.
+- The manual `benchmark-phase-only` branch-vs-master run also used `master` as
+  the reference. Both branches returned `0`; strict comparison failed, but the
+  restored dirty/image/residual FITS deltas are small, the h5parm phase delta is
+  about `1.54e-05`, and the remaining failures are mostly missing
+  `field-MFS-image-pb-ast` products, sparse model-image differences,
+  source-catalog/facet-region text differences, and output-record summaries.
+  The compact report, manifest, and command logs are tracked under
+  `docs/source/development/equivalence_runs/2026-07-04-phase-only-master-ref/`.
 
 Immediate task:
 
-- Investigate the failed `benchmark-default-like` branch-vs-master gate:
+- Turn the two 2026-07-04 branch-equivalence reports into actionable contract
+  decisions:
 
-  - compare calibrate/image output records to identify whether differences are
+  - compare calibrate/image output records and classify differences as
     path-only, product-presence, or semantic
-  - decide whether missing `field-MFS-image-pb-ast` products are an intentional
-    current-branch contract change or should be restored/configured
-  - decide whether the reference comparison should patch master so
-    `p1p2a2_diagonal` slow-gain amplitudes combine cleanly, or adapt the
-    current scenario to compare against master's phase-only legacy behavior
-  - align manual scenario resource/runtime knobs such as WSClean
-    `parallel_gridding_threads` and memory so small early-cycle residuals are
-    not dominated by command-shape differences
-  - rerun the branch-equivalence gate after the scenario contract is made
-    explicit
+  - decide whether missing `field-MFS-image-pb-ast` products are intentional in
+    the current branch or should be restored/configured
+  - decide whether sparse `field-MFS-model-pb` differences should be compared
+    with model-specific sparse-outlier tolerances or investigated as a real
+    deconvolution/model-selection change
+  - add h5parm phase tolerances appropriate for the observed phase-only delta,
+    while keeping shape, axes, soltab names, and finite values strict
+  - handle source-catalog/facet-region text differences with deterministic
+    ordering or semantic comparison where possible
+  - decide whether the slow-gain default-like reference should remain a
+    documented master bug/legacy limitation, or whether the master checkout
+    should be patched only for an intended-amplitude reference run
+  - update `scripts/dev/run_branch_equivalence.py`,
+    `tests/execution/test_branch_equivalence.py`, `EQUIVALENCE_REPORT.md`, and
+    the tracked report README with the agreed comparison contract
 
 For a workstation smoke check or user-supplied data, use `--prepare-only` first
 to confirm the exact base/current parsets and work directories that will be

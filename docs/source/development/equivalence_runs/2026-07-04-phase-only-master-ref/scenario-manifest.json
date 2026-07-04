@@ -1,0 +1,9 @@
+{
+  "scenario_id": "benchmark-phase-only",
+  "base_ref": "master",
+  "current_ref": "current",
+  "base_parset": "/app/runs/master-benchmark-phase-only-manual/inputs/master_benchmark_phase_only.parset",
+  "current_parset": "/app/runs/current-benchmark-phase-only-manual/inputs/current_benchmark_phase_only.parset",
+  "base_work_dir": "/tmp/rbe-master-phase-only-work",
+  "current_work_dir": "/tmp/rbe-current-phase-only-work"
+}
