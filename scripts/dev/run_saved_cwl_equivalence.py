@@ -44,6 +44,12 @@ STALE_REFERENCE_NAMES = {
     # post-slow medium-phase strategy. Keep runnable by name, but skip in the
     # default equivalence matrix.
     "dd_slow_gain_calibration",
+    # Captured before imaging preparation pre-applied DI solutions while DD
+    # solutions remained imaging-time facet corrections. Current operation and
+    # h5parm contracts are covered by integration tests, but FITS products are
+    # intentionally different from this CWL reference.
+    "dd_then_di_calibration",
+    "di_then_dd_calibration",
 }
 
 STRATEGY_BY_BASENAME = {

@@ -207,7 +207,104 @@ Done when:
 - The committed report identifies the top wall-clock contributors and the
   biggest Dask idle or scheduler gaps.
 
-### 3. Dask Scalability Guardrails
+### 3. Saved Equivalence Renewal And Image Robustness
+
+Status: saved-reference comparison is useful as a migration regression check,
+but image evaluation should become stronger before relying on it as a long-term
+scientific confidence gate.
+
+The current saved CWL comparison checks product presence, operation state,
+output-record shapes, h5parm dataset structure and values, sky-model summaries,
+beam tables, exact text/region products, and FITS image aggregate statistics.
+That is enough to catch many regressions, but aggregate FITS statistics alone
+cannot prove that image structure is unchanged.
+
+Tasks:
+
+- Extend saved-reference comparison reporting so it emits the product-statistic
+  tables directly to JSON and Markdown instead of requiring one-off analysis of
+  products on disk.
+- Keep the existing FITS finite-count, `mean`, `std`, `rms`, `min`, and `max`
+  checks, but add image-difference metrics that are robust to tiny
+  external-tool numerical drift:
+  - same shape, finite mask, and selected science-relevant FITS header/WCS keys
+  - residual `mean`, `std`, `rms`, `min`, `max`, and robust MAD-based noise
+  - max absolute delta and max relative delta, with safeguards around zero
+  - percentile residuals such as p50, p95, p99, and p99.9
+  - residual RMS normalized by reference image RMS and robust noise
+  - per-plane metrics for cubes and Stokes products rather than only whole-file
+    summaries
+- Add optional source- or peak-aware checks for final science images where that
+  gives better confidence than pixel statistics alone:
+  - brightest-pixel location and value within tolerance
+  - compact source catalog summaries when PyBDSF or an existing catalog product
+    is available
+  - flux-scale checks for normalization scenarios
+- Use product-class-specific tolerances where needed, for example dirty images,
+  restored images, cubes, beam tables, and final mosaics, while keeping strict
+  defaults for products expected to be deterministic.
+- Ensure failed comparisons print enough context to decide whether the change is
+  likely numerical jitter, a WCS/header change, a spatial image change, or a
+  contract change.
+- Keep intentionally changed scenarios explicit. Stale references should remain
+  runnable by name or with `--include-stale-references`, and the replacement
+  integration coverage for the new contract must be named in the report or
+  script output.
+- Add a reference-refresh path that can generate newer artifacts from the
+  repository's `master` branch:
+  - run `rapthor` from a clean `master` checkout or installed wheel inside the
+    prepared dev container or CI image, not from the current feature branch
+  - use frozen equivalence inputs, parsets, strategies, random seeds where
+    applicable, and fixed runtime settings
+  - record the `master` commit SHA, container image digest or tag, Python and
+    external-tool versions, command line, parset, strategy files, and run root
+  - store bulky reference artifacts outside the source tree or as CI artifacts,
+    with only compact curated reports committed when useful
+  - compare the current branch against those refreshed `master` artifacts with
+    the same saved-reference harness
+- Add an ad hoc branch-equivalence runner, for example
+  `scripts/dev/run_branch_equivalence.py`, that accepts a parset or named
+  scenario and runs the same input through `rapthor` from `master` and from the
+  current branch:
+  - create isolated `master` and current-branch run roots under a caller-provided
+    output directory, defaulting to `/tmp`
+  - support a single `--parset path/to/input.parset` for exploratory checks
+    against arbitrary local datasets
+  - support committed scenario manifests for repeatable checks, with parsets,
+    strategies, expected data paths or data-preparation notes, tolerances, and
+    scenario metadata kept under an organized tree such as
+    `tests/equivalence/scenarios/<name>/`
+  - keep Measurement Sets, FITS products, h5parms, logs, and bulky run products
+    outside git; scenario manifests may point to external data locations, CI
+    artifacts, or developer-supplied paths
+  - run both branches with the same container image, runtime settings,
+    environment overrides, parset materialization rules, and external-tool
+    versions where practical
+  - emit the same JSON and Markdown comparison reports as the saved-reference
+    runner, including provenance for both branches and the exact command lines
+  - allow developers to promote useful exploratory parsets into named scenarios
+    once they are stable and documented
+- Add focused tests for the image-comparison helper functions using synthetic
+  FITS files that cover exact matches, small floating drift, localized spatial
+  changes, cube-plane changes, WCS/header changes, NaN-mask changes, and true
+  failures.
+
+Done when:
+
+- The saved-reference runner can regenerate reference artifacts from `master`
+  and compare the current branch against them without manual checkout surgery.
+- A developer can run one command with a parset or named scenario to compare
+  `master` and the current branch on a chosen dataset.
+- Repeatable equivalence parsets and scenario manifests are organized in the
+  repository while large input and output data remain external.
+- The equivalence report includes reproducible provenance for the reference
+  artifacts and product-level image statistics.
+- FITS comparisons would fail for meaningful spatial image differences even
+  when global aggregate statistics are similar.
+- The default saved-reference matrix remains robust to expected external-tool
+  floating-point jitter.
+
+### 4. Dask Scalability Guardrails
 
 Make distributed boundaries explicit before making them finer grained.
 
@@ -231,7 +328,7 @@ Done when:
 - Tests fail if a future refactor sends rich domain objects or oversized
   payloads to workers.
 
-### 4. First Scalability Slices
+### 5. First Scalability Slices
 
 Only split work where it improves dashboard clarity, scheduling, or restart
 behavior without fighting external tools.
@@ -265,7 +362,7 @@ Done when:
 - Restart and output-record behavior remains unchanged.
 - Scientific equivalence checks still pass.
 
-### 5. Runtime UX And Contributor Docs
+### 6. Runtime UX And Contributor Docs
 
 Make Rapthor easier to run and easier to improve.
 
@@ -297,7 +394,7 @@ Done when:
 - A contributor can find the owner module, expected tests, and docs updates for
   common changes.
 
-### 6. Deferred Targeted Refactors
+### 7. Deferred Targeted Refactors
 
 Do not split these modules just for tidiness. Split them when changing behavior
 or when a smaller extraction clearly reduces risk:

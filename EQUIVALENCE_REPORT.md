@@ -4,6 +4,8 @@ Generated: 2026-06-11
 
 Archived for post-cutover cleanup: 2026-06-12
 
+Latest on-disk report scan: 2026-07-04
+
 ## Summary
 
 Rapthor's Prefect/Dask execution path was validated against the legacy CWL path
@@ -46,7 +48,80 @@ Product summaries included FITS shape/dtype/statistics, h5parm
 solset/soltab/dataset/axis structure, sky-model source and patch counts,
 region-file content, and generic product basenames.
 
-## Passing Scenarios
+## Current On-Disk Saved-Reference Run
+
+The current on-disk default saved-reference run is:
+
+```text
+/tmp/rapthor-equivalence-codex-3/equivalence-report.json
+```
+
+It was generated in the development container on 2026-07-04 06:32:31 and
+passed. References that encode older scientific contracts are skipped by
+default, but can still be run explicitly with `--include-stale-references`.
+
+| Scenario | Result | Ops | Records | FITS | H5 | Text |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| `dd_only_calibration` | pass | 4 | 4 | 6 | 3 | 10 |
+| `di_full_jones_calibration` | pass | 5 | 5 | 6 | 1 | 9 |
+| `di_only_calibration` | pass | 5 | 5 | 6 | 2 | 9 |
+| `full_stokes_clean_disabled` | pass | 4 | 4 | 9 | 3 | 8 |
+| `image_cube` | pass | 4 | 4 | 7 | 3 | 12 |
+| `normalization` | pass | 5 | 5 | 7 | 4 | 12 |
+| `peeling` | pass | 4 | 4 | 6 | 3 | 11 |
+| `restart` | pass | 4 | 4 | 6 | 3 | 10 |
+
+## Product Statistic Checks
+
+The JSON report stores pass/fail results and product counts. The tables below
+were derived from the same saved reference artifacts and current run products
+on disk to show the data-product statistics used by the checks.
+
+FITS image products compare finite pixel count plus `mean`, `std`, `rms`,
+`min`, and `max`, using `atol = 1e-6` and `rtol = 1e-3`. A max tolerance ratio
+below 1.0 means the worst observed statistic was inside tolerance.
+
+| Scenario | FITS products | Image HDUs | Table HDUs | Worst product | Worst stat | Max abs delta | Max tolerance ratio |
+| --- | ---: | ---: | ---: | --- | --- | ---: | ---: |
+| `dd_only_calibration` | 6 | 5 | 1 | `field-MFS-image.fits` | `max` | 2.910e-11 | 2.432e-05 |
+| `di_full_jones_calibration` | 6 | 5 | 1 | `field-MFS-image.fits` | `min` | 2.384e-07 | 2.510e-04 |
+| `di_only_calibration` | 6 | 5 | 1 | `field-MFS-image.fits` | `max` | 2.910e-11 | 2.414e-05 |
+| `full_stokes_clean_disabled` | 9 | 8 | 1 | `field-MFS-I-image.fits` | `max` | 1.455e-11 | 1.216e-05 |
+| `image_cube` | 7 | 6 | 1 | `sector_1_I_freq_cube.fits` | `max` | 8.731e-11 | 7.276e-05 |
+| `normalization` | 7 | 6 | 1 | `field-MFS-dirty.fits` | `mean` | 1.318e-09 | 7.208e-04 |
+| `peeling` | 6 | 5 | 1 | `field-MFS-dirty.fits` | `max` | 1.788e-07 | 1.797e-04 |
+| `restart` | 6 | 5 | 1 | `field-MFS-dirty.fits` | `min` | 1.455e-11 | 1.335e-05 |
+
+HDF5 products compare dataset names and shapes. Numeric datasets use
+`np.allclose(..., atol=1e-6, rtol=1e-3, equal_nan=True)`, while non-numeric
+datasets use exact array equality.
+
+| Scenario | H5 files | Numeric datasets | Non-numeric datasets | Worst file | Worst dataset | Max abs delta | Max tolerance ratio |
+| --- | ---: | ---: | ---: | --- | --- | ---: | ---: |
+| `dd_only_calibration` | 3 | 0 | 3 | n/a | n/a | 0.000e+00 | 0.000e+00 |
+| `di_full_jones_calibration` | 1 | 0 | 1 | n/a | n/a | 0.000e+00 | 0.000e+00 |
+| `di_only_calibration` | 2 | 0 | 2 | n/a | n/a | 0.000e+00 | 0.000e+00 |
+| `full_stokes_clean_disabled` | 3 | 0 | 3 | n/a | n/a | 0.000e+00 | 0.000e+00 |
+| `image_cube` | 3 | 0 | 3 | n/a | n/a | 0.000e+00 | 0.000e+00 |
+| `normalization` | 4 | 1 | 3 | n/a | n/a | 0.000e+00 | 0.000e+00 |
+| `peeling` | 3 | 0 | 3 | n/a | n/a | 0.000e+00 | 0.000e+00 |
+| `restart` | 3 | 0 | 3 | n/a | n/a | 0.000e+00 | 0.000e+00 |
+
+Text-like products compare sky-model `lines` and `patches`, beam tables with
+`atol = 1e-6` and `rtol = 1e-2`, and all other text and region files exactly.
+
+| Scenario | Sky-model summaries | Beam tables | Exact text files | Region files |
+| --- | ---: | ---: | ---: | ---: |
+| `dd_only_calibration` | 8 | 0 | 0 | 2 |
+| `di_full_jones_calibration` | 8 | 0 | 0 | 1 |
+| `di_only_calibration` | 8 | 0 | 0 | 1 |
+| `full_stokes_clean_disabled` | 6 | 0 | 0 | 2 |
+| `image_cube` | 8 | 1 | 1 | 2 |
+| `normalization` | 8 | 1 | 1 | 2 |
+| `peeling` | 9 | 0 | 0 | 2 |
+| `restart` | 8 | 0 | 0 | 2 |
+
+## Historical Passing Scenarios
 
 The required local saved-reference gate passed for:
 

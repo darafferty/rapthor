@@ -26,6 +26,7 @@ class TestParset(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        cls.cwd = os.getcwd()
         # Create dummy MS, an empty directory suffices
         cls.input_ms = tempfile.TemporaryDirectory(suffix=".ms")
 
@@ -38,6 +39,7 @@ class TestParset(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
+        os.chdir(cls.cwd)
         cls.input_ms.cleanup()
         cls.dir_working.cleanup()
 
