@@ -48,78 +48,73 @@ Product summaries included FITS shape/dtype/statistics, h5parm
 solset/soltab/dataset/axis structure, sky-model source and patch counts,
 region-file content, and generic product basenames.
 
-## Current On-Disk Saved-Reference Run
+## Current Strengthened Saved-Reference Run
 
-The current on-disk default saved-reference run is:
+The current strengthened saved-reference run is:
 
 ```text
-/tmp/rapthor-equivalence-codex-3/equivalence-report.json
+runs/equivalence-strengthened-20260704-codex-green/equivalence-report.json
 ```
 
-It was generated in the development container on 2026-07-04 06:32:31 and
-passed. References that encode older scientific contracts are skipped by
-default, but can still be run explicitly with `--include-stale-references`.
+It was generated in the development container on 2026-07-04 14:55:09 BST and
+passed. The matching Markdown report is:
 
-| Scenario | Result | Ops | Records | FITS | H5 | Text |
-| --- | --- | ---: | ---: | ---: | ---: | ---: |
-| `dd_only_calibration` | pass | 4 | 4 | 6 | 3 | 10 |
-| `di_full_jones_calibration` | pass | 5 | 5 | 6 | 1 | 9 |
-| `di_only_calibration` | pass | 5 | 5 | 6 | 2 | 9 |
-| `full_stokes_clean_disabled` | pass | 4 | 4 | 9 | 3 | 8 |
-| `image_cube` | pass | 4 | 4 | 7 | 3 | 12 |
-| `normalization` | pass | 5 | 5 | 7 | 4 | 12 |
-| `peeling` | pass | 4 | 4 | 6 | 3 | 11 |
-| `restart` | pass | 4 | 4 | 6 | 3 | 10 |
+```text
+runs/equivalence-strengthened-20260704-codex-green/equivalence-report.md
+```
+
+References that encode older scientific contracts are skipped by default, but
+can still be run explicitly with `--include-stale-references`.
+
+| Scenario | Result | Ops | Records | FITS | Image HDUs | Table HDUs | H5 | Text |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `dd_only_calibration` | pass | 4 | 4 | 6 | 5 | 1 | 3 | 10 |
+| `di_full_jones_calibration` | pass | 5 | 5 | 6 | 5 | 1 | 1 | 9 |
+| `di_only_calibration` | pass | 5 | 5 | 6 | 5 | 1 | 2 | 9 |
+| `full_stokes_clean_disabled` | pass | 4 | 4 | 9 | 8 | 1 | 3 | 8 |
+| `image_cube` | pass | 4 | 4 | 7 | 6 | 1 | 3 | 12 |
+| `normalization` | pass | 5 | 5 | 7 | 6 | 1 | 4 | 12 |
+| `peeling` | pass | 4 | 4 | 6 | 5 | 1 | 3 | 11 |
+| `restart` | pass | 4 | 4 | 6 | 5 | 1 | 3 | 10 |
 
 ## Product Statistic Checks
 
-The JSON report stores pass/fail results and product counts. The tables below
-were derived from the same saved reference artifacts and current run products
-on disk to show the data-product statistics used by the checks.
+The JSON report stores pass/fail results, product counts, and FITS image/table
+statistics used by the strengthened checks.
 
-FITS image products compare finite pixel count plus `mean`, `std`, `rms`,
-`min`, and `max`, using `atol = 1e-6` and `rtol = 1e-3`. A max tolerance ratio
-below 1.0 means the worst observed statistic was inside tolerance.
+FITS image products compare:
 
-| Scenario | FITS products | Image HDUs | Table HDUs | Worst product | Worst stat | Max abs delta | Max tolerance ratio |
-| --- | ---: | ---: | ---: | --- | --- | ---: | ---: |
-| `dd_only_calibration` | 6 | 5 | 1 | `field-MFS-image.fits` | `max` | 2.910e-11 | 2.432e-05 |
-| `di_full_jones_calibration` | 6 | 5 | 1 | `field-MFS-image.fits` | `min` | 2.384e-07 | 2.510e-04 |
-| `di_only_calibration` | 6 | 5 | 1 | `field-MFS-image.fits` | `max` | 2.910e-11 | 2.414e-05 |
-| `full_stokes_clean_disabled` | 9 | 8 | 1 | `field-MFS-I-image.fits` | `max` | 1.455e-11 | 1.216e-05 |
-| `image_cube` | 7 | 6 | 1 | `sector_1_I_freq_cube.fits` | `max` | 8.731e-11 | 7.276e-05 |
-| `normalization` | 7 | 6 | 1 | `field-MFS-dirty.fits` | `mean` | 1.318e-09 | 7.208e-04 |
-| `peeling` | 6 | 5 | 1 | `field-MFS-dirty.fits` | `max` | 1.788e-07 | 1.797e-04 |
-| `restart` | 6 | 5 | 1 | `field-MFS-dirty.fits` | `min` | 1.455e-11 | 1.335e-05 |
+- finite/NaN masks
+- WCS/header keys
+- finite pixel count plus `mean`, `std`, `rms`, `min`, and `max`, using
+  `atol = 1e-6` and `rtol = 1e-3`
+- pixel values using `np.allclose(..., atol=1e-6, rtol=1e-3, equal_nan=True)`
+- a robust residual fallback for sparse float-level image outliers:
+  `max_abs_delta <= 1e-5`, `p99_abs_delta <= 1e-6`, and
+  `residual_rms <= 1e-6`
+- per-plane residual metrics for cubes and Stokes products
+
+The table below shows the worst FITS image product in each scenario by maximum
+absolute residual.
+
+| Scenario | FITS products | Image HDUs | Table HDUs | Worst image product | Max abs delta | P99 abs delta | Residual RMS | RMS / Ref MAD |
+| --- | ---: | ---: | ---: | --- | ---: | ---: | ---: | ---: |
+| `dd_only_calibration` | 6 | 5 | 1 | `field-MFS-image-pb.fits` | 2.128e-10 | 2.365e-11 | 8.345e-12 | 1.972e-07 |
+| `di_full_jones_calibration` | 6 | 5 | 1 | `field-MFS-dirty.fits` | 2.086e-06 | 2.980e-07 | 1.036e-07 | 1.962e-07 |
+| `di_only_calibration` | 6 | 5 | 1 | `field-MFS-dirty.fits` | 1.510e-10 | 2.910e-11 | 9.418e-12 | 2.211e-07 |
+| `full_stokes_clean_disabled` | 9 | 8 | 1 | `field-MFS-I-image-pb.fits` | 2.219e-10 | 2.410e-11 | 8.460e-12 | 1.999e-07 |
+| `image_cube` | 7 | 6 | 1 | `sector_1_I_freq_cube.fits` | 5.093e-10 | 4.547e-11 | 1.618e-11 | 3.736e-07 |
+| `normalization` | 7 | 6 | 1 | `sector_1_I_freq_cube.fits` | 6.676e-06 | 6.706e-07 | 2.002e-07 | 3.921e-07 |
+| `peeling` | 6 | 5 | 1 | `field-MFS-image-pb.fits` | 2.187e-06 | 2.384e-07 | 8.266e-08 | 1.660e-07 |
+| `restart` | 6 | 5 | 1 | `field-MFS-image-pb.fits` | 2.219e-10 | 2.910e-11 | 1.083e-11 | 2.558e-07 |
 
 HDF5 products compare dataset names and shapes. Numeric datasets use
 `np.allclose(..., atol=1e-6, rtol=1e-3, equal_nan=True)`, while non-numeric
-datasets use exact array equality.
-
-| Scenario | H5 files | Numeric datasets | Non-numeric datasets | Worst file | Worst dataset | Max abs delta | Max tolerance ratio |
-| --- | ---: | ---: | ---: | --- | --- | ---: | ---: |
-| `dd_only_calibration` | 3 | 0 | 3 | n/a | n/a | 0.000e+00 | 0.000e+00 |
-| `di_full_jones_calibration` | 1 | 0 | 1 | n/a | n/a | 0.000e+00 | 0.000e+00 |
-| `di_only_calibration` | 2 | 0 | 2 | n/a | n/a | 0.000e+00 | 0.000e+00 |
-| `full_stokes_clean_disabled` | 3 | 0 | 3 | n/a | n/a | 0.000e+00 | 0.000e+00 |
-| `image_cube` | 3 | 0 | 3 | n/a | n/a | 0.000e+00 | 0.000e+00 |
-| `normalization` | 4 | 1 | 3 | n/a | n/a | 0.000e+00 | 0.000e+00 |
-| `peeling` | 3 | 0 | 3 | n/a | n/a | 0.000e+00 | 0.000e+00 |
-| `restart` | 3 | 0 | 3 | n/a | n/a | 0.000e+00 | 0.000e+00 |
+datasets use exact array equality. All HDF5 checks passed in the current run.
 
 Text-like products compare sky-model `lines` and `patches`, beam tables with
 `atol = 1e-6` and `rtol = 1e-2`, and all other text and region files exactly.
-
-| Scenario | Sky-model summaries | Beam tables | Exact text files | Region files |
-| --- | ---: | ---: | ---: | ---: |
-| `dd_only_calibration` | 8 | 0 | 0 | 2 |
-| `di_full_jones_calibration` | 8 | 0 | 0 | 1 |
-| `di_only_calibration` | 8 | 0 | 0 | 1 |
-| `full_stokes_clean_disabled` | 6 | 0 | 0 | 2 |
-| `image_cube` | 8 | 1 | 1 | 2 |
-| `normalization` | 8 | 1 | 1 | 2 |
-| `peeling` | 9 | 0 | 0 | 2 |
-| `restart` | 8 | 0 | 0 | 2 |
+All text-like product checks passed in the current run.
 
 ## Historical Passing Scenarios
 

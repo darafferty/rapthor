@@ -79,6 +79,31 @@ def test_fits_equivalence_catches_spatial_change_with_matching_aggregate_stats(t
     assert result.product_statistics["fits"][0]["max_abs_delta"] == pytest.approx(3.0)
 
 
+def test_fits_equivalence_allows_sparse_near_zero_pixel_outliers(tmp_path):
+    module = load_equivalence_script()
+    reference = np.zeros((100, 100), dtype=float)
+    reference[0, 0] = 1.0
+    current = reference.copy()
+    current[37, 42] = 5e-6
+
+    result = _compare_fits(module, tmp_path, reference, current)
+
+    assert result.failures == []
+    metric = result.product_statistics["fits"][0]
+    assert metric["max_abs_delta"] == pytest.approx(5e-6)
+    assert metric["p99_abs_delta"] == pytest.approx(0.0)
+
+
+def test_fits_equivalence_catches_systematic_near_zero_pixel_drift(tmp_path):
+    module = load_equivalence_script()
+    reference = np.zeros((100, 100), dtype=float)
+    current = np.full((100, 100), 2e-6, dtype=float)
+
+    result = _compare_fits(module, tmp_path, reference, current)
+
+    assert any("FITS image pixels differ" in failure for failure in result.failures)
+
+
 def test_fits_equivalence_catches_wcs_header_changes(tmp_path):
     module = load_equivalence_script()
     data = np.ones((2, 2), dtype=float)

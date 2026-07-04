@@ -39,7 +39,10 @@ Done:
 - The first FITS image-equivalence robustness pass is implemented in
   `scripts/dev/run_saved_cwl_equivalence.py`: residual metrics, finite-mask
   checks, WCS/header checks, pixel comparison, per-plane cube/Stokes metrics,
-  JSON product statistics, and Markdown report output.
+  sparse-outlier residual gating, JSON product statistics, and Markdown report
+  output.
+- The strengthened saved-reference matrix passed on 2026-07-04, with the
+  current report recorded in `EQUIVALENCE_REPORT.md`.
 
 Known caveats:
 
@@ -54,35 +57,29 @@ Known caveats:
 
 ## Next Work, In Order
 
-1. **Run strengthened saved-reference equivalence.**
-   Run `scripts/dev/run_saved_cwl_equivalence.py` in the prepared dev container
-   with the new FITS residual checks. Save the generated JSON and Markdown
-   reports outside git, then update `EQUIVALENCE_REPORT.md` with the new report
-   path and FITS residual summary.
-
-2. **Decide whether branch-vs-master equivalence is needed before scalability.**
+1. **Decide whether branch-vs-master equivalence is needed before scalability.**
    If the saved-reference run is green and the references still represent the
    scenarios we care about, proceed to the first scalability slice. If the
    references are stale, ambiguous, or fail for reasons that need a fresher
    baseline, build the branch-vs-master runner first.
 
-3. **Take one low-risk image-cycle scalability slice.**
+2. **Take one low-risk image-cycle scalability slice.**
    Start with one natural boundary inside image-sector execution, such as
    source/model filtering or diagnostics after WSClean. Preserve output records,
    restart behavior, run names, worker payload serializability, and scientific
    products.
 
-4. **Re-run scientific and performance gates after the slice.**
+3. **Re-run scientific and performance gates after the slice.**
    Run focused tests, saved-reference equivalence, then the three-repetition
    `ci-benchmark` job. Compare against the 2026-07-04 baseline before taking a
    second slice.
 
-5. **Refresh benchmark baseline documentation if the CI run is valid.**
+4. **Refresh benchmark baseline documentation if the CI run is valid.**
    Commit only compact curated reports under
    `docs/source/development/benchmark_baselines/`. Keep bulky artifacts in CI
    artifacts or external storage.
 
-6. **Resume test-suite maintainability cleanup.**
+5. **Resume test-suite maintainability cleanup.**
    Continue after the first benchmark-led scalability slice is guarded and
    measured. Keep `TESTING.md`, `.agents/testing_playbook.md`, and this plan in
    sync.
@@ -127,9 +124,10 @@ scripts/dev/run_benchmark_baseline.py \
 
 ## Scientific Equivalence Track
 
-Immediate task:
+Current status:
 
-- Run the saved-reference matrix with strengthened FITS checks and update
+- The saved-reference matrix passed with strengthened FITS checks on
+  2026-07-04. The current report path and residual summary are recorded in
   `EQUIVALENCE_REPORT.md`.
 
 Keep:

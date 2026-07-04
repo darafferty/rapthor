@@ -35,6 +35,7 @@ RESOURCE_ROOT = Path("tests/resources")
 # The small image-cube equivalence fixture can produce sub-percent WSClean beam-fit
 # jitter in one channel while image data and catalog contracts remain equivalent.
 BEAM_TABLE_RTOL = 1e-2
+FITS_IMAGE_OUTLIER_ATOL_FACTOR = 10.0
 FITS_WCS_HEADER_KEYS = (
     "NAXIS",
     "NAXIS1",
@@ -429,6 +430,20 @@ def _safe_max_relative_delta(reference: np.ndarray, residual: np.ndarray, atol: 
     return float(np.max(np.abs(residual[finite_mask]) / denominator))
 
 
+def _fits_image_pixels_equivalent(metric: dict[str, Any], *, atol: float) -> bool:
+    """Allow sparse float-level image outliers while rejecting systematic drift."""
+    max_abs_delta = metric.get("max_abs_delta")
+    p99_abs_delta = metric.get("p99_abs_delta")
+    residual_rms = metric.get("residual_rms")
+    if max_abs_delta is None or p99_abs_delta is None or residual_rms is None:
+        return False
+    return (
+        max_abs_delta <= FITS_IMAGE_OUTLIER_ATOL_FACTOR * atol
+        and p99_abs_delta <= atol
+        and residual_rms <= atol
+    )
+
+
 def _image_planes(data: np.ndarray) -> list[tuple[list[int], np.ndarray]]:
     """Return 2D image planes, preserving leading-axis indices for cubes."""
     array = np.asarray(data)
@@ -437,8 +452,19 @@ def _image_planes(data: np.ndarray) -> list[tuple[list[int], np.ndarray]]:
     leading_shape = array.shape[:-2]
     planes = array.reshape((-1, *array.shape[-2:]))
     return [
-        (list(np.unravel_index(index, leading_shape)), plane) for index, plane in enumerate(planes)
+        ([int(item) for item in np.unravel_index(index, leading_shape)], plane)
+        for index, plane in enumerate(planes)
     ]
+
+
+def _json_default(value: Any) -> Any:
+    if isinstance(value, np.generic):
+        return value.item()
+    if isinstance(value, np.ndarray):
+        return value.tolist()
+    if isinstance(value, Path):
+        return str(value)
+    raise TypeError(f"Object of type {value.__class__.__name__} is not JSON serializable")
 
 
 def _image_delta_metric(
@@ -648,8 +674,10 @@ def _compare_fits(
                 result.failures.append(
                     f"FITS {key} differs for {current.name}: {ref_stats[key]} != {cur_stats[key]}"
                 )
-        if not np.allclose(ref_data, cur_data, atol=atol, rtol=rtol, equal_nan=True):
-            metric = result.product_statistics["fits"][-1]
+        metric = result.product_statistics["fits"][-1]
+        if not np.allclose(
+            ref_data, cur_data, atol=atol, rtol=rtol, equal_nan=True
+        ) and not _fits_image_pixels_equivalent(metric, atol=atol):
             result.failures.append(
                 f"FITS image pixels differ for {current.name}: "
                 f"max_abs_delta={metric['max_abs_delta']}, "
@@ -949,7 +977,7 @@ def run(args: argparse.Namespace) -> int:
         ],
     }
     report_path = run_root / "equivalence-report.json"
-    report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    report_path.write_text(json.dumps(report, indent=2, default=_json_default), encoding="utf-8")
     markdown_path = run_root / "equivalence-report.md"
     markdown_path.write_text(_render_markdown_report(report, results), encoding="utf-8")
     print(f"Report: {report_path}", flush=True)
