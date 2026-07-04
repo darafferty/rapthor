@@ -381,10 +381,12 @@ Tasks:
     the case protects an important regression
 - Replace test bodies that only contain `pass` with real behavioral assertions,
   or delete them if they are redundant. Keep `pass` only for deliberate no-op
-  fake methods, and add a short comment when that intent is not obvious. Start
-  the audit with older placeholder-heavy files such as `tests/lib/test_sector.py`,
-  `tests/lib/test_fitsimage.py`, `tests/lib/test_context.py`, and related
-  `tests/lib/` fixtures.
+  fake methods, and add a short comment when that intent is not obvious. The
+  first cleanup passes replaced placeholders in
+  `tests/lib/test_miscellaneous.py`, `tests/lib/test_context.py`,
+  `tests/lib/test_fitsimage.py`, and `tests/lib/test_sector.py`; continue with
+  remaining `tests/lib/` placeholders such as `tests/lib/test_observation.py`
+  and any no-op fakes that need clearer comments.
 - Deduplicate repeated setup and helper functions without hiding the scenario
   under test:
   - consolidate repeated fake shell operation classes and direct-helper patches
