@@ -1,6 +1,8 @@
 """Tests for image diagnostic calculation helpers."""
 
+import json
 import logging
+from types import SimpleNamespace
 
 import astropy.units as u
 import lsmtool
@@ -12,9 +14,11 @@ from astropy.table import Table
 
 from rapthor.execution.image.diagnostic_calculation import (
     _rename_plots,
+    calculate_image_diagnostics,
     check_astrometry,
     check_photometry,
     compare_photometry_survey,
+    compute_facet_rms_noise,
     filter_skymodel_for_photometry,
     fits_to_makesourcedb,
 )
@@ -769,3 +773,144 @@ def test_filter_skymodel_for_photometry_filters_out_sources_major_axis(
     assert len(filtered_catalog) == 0, (
         "Expected all sources to be filtered out since they do not meet the specified criteria"
     )
+
+
+def test_compute_facet_rms_noise_summarizes_each_facet(monkeypatch, tmp_path):
+    region_file = tmp_path / "facets.reg"
+    region_file.write_text("region")
+    facets = [SimpleNamespace(name="facet_0"), SimpleNamespace(name="facet_1")]
+
+    class FakeRmsImage:
+        def __init__(self, arrays):
+            self.arrays = arrays
+
+        def select_facet(self, facet):
+            return np.array(self.arrays[facet.name], dtype=float)
+
+    monkeypatch.setattr(
+        "rapthor.execution.image.diagnostic_calculation.read_ds9_region_file",
+        lambda path: facets,
+    )
+
+    facets_rms = compute_facet_rms_noise(
+        region_file,
+        FakeRmsImage({"facet_0": [[1.0, 2.0]], "facet_1": [[3.0, np.nan]]}),
+        FakeRmsImage({"facet_0": [[2.0, 4.0]], "facet_1": [[6.0, np.nan]]}),
+    )
+
+    assert facets_rms["facet_0"]["flat_noise"] == {
+        "mean": 1.5,
+        "median": 1.5,
+        "std": 0.5,
+        "min": 1.0,
+        "max": 2.0,
+    }
+    assert facets_rms["facet_0"]["beam_corrected"]["mean"] == 3.0
+    assert facets_rms["facet_1"]["flat_noise"]["mean"] == 3.0
+    assert facets_rms["facet_1"]["beam_corrected"]["max"] == 6.0
+
+
+def test_compute_facet_rms_noise_returns_empty_for_missing_region(tmp_path):
+    assert compute_facet_rms_noise(tmp_path / "missing.reg", object(), object()) == {}
+    assert compute_facet_rms_noise(None, object(), object()) == {}
+    assert compute_facet_rms_noise("none", object(), object()) == {}
+
+
+def test_compute_facet_rms_noise_returns_empty_for_invalid_region(monkeypatch, tmp_path, caplog):
+    region_file = tmp_path / "invalid.reg"
+    region_file.write_text("not a valid region file")
+    monkeypatch.setattr(
+        "rapthor.execution.image.diagnostic_calculation.read_ds9_region_file",
+        lambda path: (_ for _ in ()).throw(ValueError("invalid region")),
+    )
+
+    with caplog.at_level(logging.WARNING):
+        facets_rms = compute_facet_rms_noise(region_file, object(), object())
+
+    assert facets_rms == {}
+    assert "Could not determine per-facet RMS diagnostics" in caplog.text
+
+
+def test_calculate_image_diagnostics_writes_facets_rms_when_region_is_valid(
+    monkeypatch, mocker, tmp_path
+):
+    """The full diagnostics JSON gains facets_rms only when facet stats are available."""
+
+    class FakeObservation:
+        timepersample = 2.0
+
+        def __init__(self, ms, starttime_mjd=None, endtime_mjd=None):
+            self.ms = ms
+            self.starttime_mjd = starttime_mjd
+            self.endtime_mjd = endtime_mjd
+
+    class FakeFITSImage:
+        def __init__(self, filename):
+            self.filename = filename
+            is_true_sky = "true_sky" in str(filename)
+            is_rms = "rms" in str(filename)
+            self.max_value = 20.0 if is_true_sky else 10.0
+            self.min_value = 4.0 if is_true_sky else 2.0
+            self.mean_value = 6.0 if is_true_sky else 3.0
+            self.median_value = 5.5 if is_true_sky else 2.5
+            self.freq = 150e6
+            self.beam = [0.1, 0.1, 0.0]
+            value = 2.0 if is_rms else 8.0
+            self.img_data = np.full((2, 2), value)
+
+    diagnostics_file = tmp_path / "input.image_diagnostics.json"
+    diagnostics_file.write_text(json.dumps({"existing": 1}))
+    region_file = tmp_path / "facets.reg"
+    region_file.write_text("region")
+
+    monkeypatch.setattr(
+        "rapthor.execution.image.diagnostic_calculation.FITSImage",
+        FakeFITSImage,
+    )
+    monkeypatch.setattr(
+        "rapthor.execution.image.diagnostic_calculation.Observation",
+        FakeObservation,
+    )
+    monkeypatch.setattr(
+        "rapthor.execution.image.diagnostic_calculation.misc.convert_mvt2mjd",
+        lambda value: 100.0,
+    )
+    monkeypatch.setattr(
+        "rapthor.execution.image.diagnostic_calculation.misc.calc_theoretical_noise",
+        lambda obs_list, use_lotss_estimate=True: (0.123, 0.456),
+    )
+    mocker.patch(
+        "rapthor.execution.image.diagnostic_calculation.check_photometry",
+        return_value={"photometry_metric": 1.0},
+    )
+    mocker.patch(
+        "rapthor.execution.image.diagnostic_calculation.check_astrometry",
+        return_value={"astrometry_metric": 2.0},
+    )
+    mocker.patch(
+        "rapthor.execution.image.diagnostic_calculation.compute_facet_rms_noise",
+        return_value={"facet_0": {"flat_noise": {"mean": 2.0}}},
+    )
+
+    calculate_image_diagnostics(
+        flat_noise_image="flat_noise_image.fits",
+        flat_noise_rms_image="flat_noise_rms_image.fits",
+        true_sky_image="true_sky_image.fits",
+        true_sky_rms_image="true_sky_rms_image.fits",
+        input_catalog="input_catalog.fits",
+        obs_ms=["obs.ms"],
+        obs_starttime=["2024-01-01T00:00:00"],
+        obs_ntimes=[1],
+        diagnostics_file=str(diagnostics_file),
+        output_root=str(tmp_path / "output"),
+        facet_region_file=str(region_file),
+        allow_internet_access=False,
+    )
+
+    diagnostics = json.loads((tmp_path / "output.image_diagnostics.json").read_text())
+    assert diagnostics["existing"] == 1
+    assert diagnostics["photometry_metric"] == 1.0
+    assert diagnostics["astrometry_metric"] == 2.0
+    assert diagnostics["theoretical_rms"] == 0.123
+    assert diagnostics["unflagged_data_fraction"] == 0.456
+    assert diagnostics["facets_rms"] == {"facet_0": {"flat_noise": {"mean": 2.0}}}

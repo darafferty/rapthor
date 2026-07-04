@@ -11,6 +11,7 @@ from astropy.io import fits as pyfits
 from astropy.wcs import WCS
 from lsmtool.io import read_vertices_x_y
 from lsmtool.utils import rasterize
+from shapely import contains_xy as polygon_contains_xy
 from shapely.geometry import Polygon
 
 
@@ -260,6 +261,40 @@ class FITSImage(object):
         self.weight_data[self.img_data == 0] = 0
         self.weight_data /= self.noise * self.scale
         self.weight_data = self.weight_data**2.0
+
+    def _get_bounding_box_from_polygon(self, polygon):
+        image_max_y, image_max_x = self.img_data.shape[-2:]
+        min_x, min_y, max_x, max_y = polygon.bounds
+        x_0 = max(0, int(np.floor(min_x)))
+        y_0 = max(0, int(np.floor(min_y)))
+        x_1 = min(image_max_x, int(np.ceil(max_x)) + 1)
+        y_1 = min(image_max_y, int(np.ceil(max_y)) + 1)
+        if x_1 <= x_0 or y_1 <= y_0:
+            return np.s_[0:0, 0:0], [np.empty((0, 0)), np.empty((0, 0))]
+        yy, xx = np.indices((y_1 - y_0, x_1 - x_0))
+        yy += y_0
+        xx += x_0
+        return np.s_[y_0:y_1, x_0:x_1], [yy, xx]
+
+    def select_facet(self, facet):
+        """
+        Return image pixels inside a facet polygon, with other pixels set to NaN.
+        """
+        ra_dec_vertices = np.asarray(facet.vertices)
+        x_vertices, y_vertices = self.get_wcs().world_to_pixel_values(
+            ra_dec_vertices[:, 0],
+            ra_dec_vertices[:, 1],
+        )
+        pixel_polygon = Polygon(zip(x_vertices, y_vertices))
+        image_footprint, (yy, xx) = self._get_bounding_box_from_polygon(pixel_polygon)
+        selected_image_region = np.array(self.img_data[image_footprint])
+        if selected_image_region.size == 0:
+            return selected_image_region
+        inside = polygon_contains_xy(pixel_polygon, xx.ravel(), yy.ravel()).reshape(
+            selected_image_region.shape
+        )
+        selected_image_region[~inside] = np.nan
+        return selected_image_region
 
 
 class FITSCube(object):

@@ -246,6 +246,14 @@ Comparison basis: `git fetch origin master` on 2026-07-04 confirmed
 branch diverged. The items below are the master runtime/product features that
 are missing or only partially represented in the current Prefect/Dask branch.
 
+Porting standard: preserve the intended behavior from master, but adapt each
+feature to this branch's current ownership boundaries and Prefect/Dask execution
+contracts. Do not copy legacy script or CWL-era structure when a cleaner
+execution-module implementation is available. While porting, clean up local
+code paths when that reduces complexity without changing behavior, and improve
+tests so they are maintainable, human-readable, and cover the branch-specific
+contracts as well as the master behavior being restored.
+
 Port these in order:
 
 1. **Apply small low-risk master fixes first.** Done on 2026-07-04.
@@ -266,15 +274,15 @@ Port these in order:
    branch-vs-master equivalence scenario to confirm the previously missing
    `field-MFS-image-pb-ast` products are now present in full pipeline outputs.
 
-3. **Add per-facet RMS diagnostics.** Next.
-   Port the facet RMS statistics from `eb1b6f2f` and the invalid-region guard
-   from `908f83c9` into `rapthor/lib/fitsimage.py` and
-   `rapthor/execution/image/diagnostic_calculation.py`. Preserve the existing
-   global diagnostics while adding `facets_rms` only when a valid facet-region
-   file exists. Cover the helper, the no-region/invalid-region path, and the
-   image diagnostics JSON contract.
+3. **Add per-facet RMS diagnostics.** Implemented on 2026-07-04.
+   The facet-selection helper from `eb1b6f2f` is ported into
+   `rapthor/lib/fitsimage.py`, and `calculate_image_diagnostics` now adds
+   `facets_rms` for valid facet-region files while omitting it for missing,
+   `none`, or unreadable region inputs. Focused coverage exists for FITS facet
+   selection, facet RMS statistics, missing/invalid region handling, and the
+   diagnostics JSON contract.
 
-4. **Port imaging model-data and residual-visibility products.**
+4. **Port imaging model-data and residual-visibility products.** Next.
    Port the `971a2b25` and `17448437` behavior as a single product feature:
    add the `save_residual_visibilities` parset/default/docs path, allow WSClean
    to update model data when residual visibilities are requested instead of

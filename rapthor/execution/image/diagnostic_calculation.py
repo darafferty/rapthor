@@ -653,6 +653,44 @@ def filter_skymodel_for_photometry(catalog, obs, freq, max_major_axis=10 / 3600)
     return catalog[major_axis < max_major_axis]
 
 
+def _compute_image_stats(image: np.ndarray) -> dict:
+    return {
+        "mean": float(np.nanmean(image)),
+        "median": float(np.nanmedian(image)),
+        "std": float(np.nanstd(image)),
+        "min": float(np.nanmin(image)),
+        "max": float(np.nanmax(image)),
+    }
+
+
+def compute_facet_rms_noise(facet_region_file, rms_img_flat_noise, rms_img_true_sky) -> dict:
+    """Compute facet-level RMS statistics from flat-noise and true-sky RMS maps."""
+    if not facet_region_file or str(facet_region_file).lower() == "none":
+        return {}
+    if not Path(facet_region_file).is_file():
+        return {}
+
+    try:
+        facets = read_ds9_region_file(facet_region_file)
+    except Exception:
+        logger.warning(
+            "Could not determine per-facet RMS diagnostics from %s",
+            facet_region_file,
+            exc_info=True,
+        )
+        return {}
+
+    facets_summary = {}
+    for facet in facets:
+        selected_flat_noise = rms_img_flat_noise.select_facet(facet)
+        selected_true_sky = rms_img_true_sky.select_facet(facet)
+        facets_summary[facet.name] = {
+            "flat_noise": _compute_image_stats(selected_flat_noise),
+            "beam_corrected": _compute_image_stats(selected_true_sky),
+        }
+    return facets_summary
+
+
 def calculate_image_diagnostics(
     flat_noise_image,
     flat_noise_rms_image,
@@ -826,6 +864,14 @@ def calculate_image_diagnostics(
         allow_internet_access=allow_internet_access,
     )
     diagnostics_output.update(result)
+
+    facets_rms = compute_facet_rms_noise(
+        facet_region_file,
+        rms_img_flat_noise,
+        rms_img_true_sky,
+    )
+    if facets_rms:
+        diagnostics_output["facets_rms"] = facets_rms
 
     # Write out the full diagnostics
     with open(output_root + ".image_diagnostics.json", "w") as fp:

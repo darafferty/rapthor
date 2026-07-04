@@ -2,6 +2,8 @@
 Tests for the `rapthor.lib.fitsimage` module.
 """
 
+from types import SimpleNamespace
+
 import numpy as np
 import pytest
 from astropy.io import fits as pyfits
@@ -93,6 +95,26 @@ def test_fits_image_blank_uses_region_vertices(monkeypatch, tmp_path):
     assert calls["vertices_file"] == vertices_file
     assert calls["blank_value"] is np.nan
     assert np.isnan(image.img_data).all()
+
+
+def test_fits_image_select_facet_returns_pixels_inside_polygon(tmp_path):
+    data = np.arange(25, dtype=float).reshape(5, 5)
+    image = FITSImage(_write_fits_image(tmp_path / "image.fits", data=data))
+    pixel_vertices = np.array(
+        [
+            [1.0, 1.0],
+            [3.0, 1.0],
+            [3.0, 3.0],
+            [1.0, 3.0],
+        ]
+    )
+    image.get_wcs = lambda: SimpleNamespace(world_to_pixel_values=lambda ra, dec: (ra, dec))
+    facet = SimpleNamespace(vertices=pixel_vertices)
+
+    selected = image.select_facet(facet)
+
+    assert selected.shape == (3, 3)
+    assert selected[np.isfinite(selected)].tolist() == [12.0]
 
 
 def test_fits_image_calc_noise_shift_and_weight(tmp_path):
