@@ -35,6 +35,35 @@ RESOURCE_ROOT = Path("tests/resources")
 # The small image-cube equivalence fixture can produce sub-percent WSClean beam-fit
 # jitter in one channel while image data and catalog contracts remain equivalent.
 BEAM_TABLE_RTOL = 1e-2
+FITS_WCS_HEADER_KEYS = (
+    "NAXIS",
+    "NAXIS1",
+    "NAXIS2",
+    "NAXIS3",
+    "NAXIS4",
+    "CTYPE1",
+    "CTYPE2",
+    "CTYPE3",
+    "CTYPE4",
+    "CUNIT1",
+    "CUNIT2",
+    "CUNIT3",
+    "CUNIT4",
+    "CRVAL1",
+    "CRVAL2",
+    "CRVAL3",
+    "CRVAL4",
+    "CRPIX1",
+    "CRPIX2",
+    "CRPIX3",
+    "CRPIX4",
+    "CDELT1",
+    "CDELT2",
+    "CDELT3",
+    "CDELT4",
+    "RADESYS",
+    "EQUINOX",
+)
 SKIP_REFERENCE_NAMES = {
     "hybrid_screens.failed-missing-idg-20260610122303",
     "normalization.previous-20260610121701",
@@ -69,6 +98,9 @@ class ComparisonResult:
     failures: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     metrics: dict[str, int] = field(default_factory=dict)
+    product_statistics: dict[str, list[dict[str, Any]]] = field(
+        default_factory=lambda: {"fits": []}
+    )
 
     @property
     def passed(self) -> bool:
@@ -357,10 +389,168 @@ def _finite_stats(data: np.ndarray) -> dict[str, float]:
     }
 
 
+def _finite_values(data: np.ndarray) -> np.ndarray:
+    return np.asarray(data[np.isfinite(data)], dtype=float)
+
+
+def _metric_float(value: float) -> float | None:
+    return float(value) if math.isfinite(float(value)) else None
+
+
+def _metric_stats(prefix: str, data: np.ndarray) -> dict[str, float | int | None]:
+    stats = _finite_stats(data)
+    return {
+        f"{prefix}_{key}": (stats[key] if key == "count" else _metric_float(stats[key]))
+        for key in ("count", "mean", "std", "rms", "min", "max")
+    }
+
+
+def _robust_mad_std(data: np.ndarray) -> float:
+    finite = _finite_values(data)
+    if finite.size == 0:
+        return math.nan
+    median = np.median(finite)
+    return float(1.4826 * np.median(np.abs(finite - median)))
+
+
+def _percentile_abs(data: np.ndarray, percentile: float) -> float:
+    finite = np.abs(_finite_values(data))
+    if finite.size == 0:
+        return math.nan
+    return float(np.percentile(finite, percentile))
+
+
+def _safe_max_relative_delta(reference: np.ndarray, residual: np.ndarray, atol: float) -> float:
+    finite_mask = np.isfinite(reference) & np.isfinite(residual)
+    if not np.any(finite_mask):
+        return math.nan
+    denominator_floor = max(atol, 1e-12)
+    denominator = np.maximum(np.abs(reference[finite_mask]), denominator_floor)
+    return float(np.max(np.abs(residual[finite_mask]) / denominator))
+
+
+def _image_planes(data: np.ndarray) -> list[tuple[list[int], np.ndarray]]:
+    """Return 2D image planes, preserving leading-axis indices for cubes."""
+    array = np.asarray(data)
+    if array.ndim <= 2:
+        return [([], array)]
+    leading_shape = array.shape[:-2]
+    planes = array.reshape((-1, *array.shape[-2:]))
+    return [
+        (list(np.unravel_index(index, leading_shape)), plane) for index, plane in enumerate(planes)
+    ]
+
+
+def _image_delta_metric(
+    product: str,
+    reference: np.ndarray,
+    current: np.ndarray,
+    *,
+    hdu_index: int,
+    hdu_name: str,
+    atol: float,
+) -> dict[str, Any]:
+    ref_data = np.asarray(reference, dtype=float)
+    cur_data = np.asarray(current, dtype=float)
+    residual = cur_data - ref_data
+    residual_stats = _metric_stats("residual", residual)
+    reference_rms = _finite_stats(ref_data)["rms"]
+    reference_noise = _robust_mad_std(ref_data)
+    residual_rms = _finite_stats(residual)["rms"]
+    plane_metrics = []
+    for plane_index, (ref_plane, cur_plane) in enumerate(
+        zip(_image_planes(ref_data), _image_planes(cur_data))
+    ):
+        leading_index, ref_values = ref_plane
+        _, cur_values = cur_plane
+        plane_residual = cur_values - ref_values
+        plane_metrics.append(
+            {
+                "plane": plane_index,
+                "leading_index": leading_index,
+                "max_abs_delta": _metric_float(_percentile_abs(plane_residual, 100.0)),
+                "p99_abs_delta": _metric_float(_percentile_abs(plane_residual, 99.0)),
+                "residual_rms": _metric_float(_finite_stats(plane_residual)["rms"]),
+            }
+        )
+
+    return {
+        "product": product,
+        "kind": "image",
+        "hdu_index": hdu_index,
+        "hdu_name": hdu_name,
+        "shape": list(ref_data.shape),
+        **_metric_stats("reference", ref_data),
+        **_metric_stats("current", cur_data),
+        **residual_stats,
+        "reference_mad_std": _metric_float(reference_noise),
+        "residual_mad_std": _metric_float(_robust_mad_std(residual)),
+        "max_abs_delta": _metric_float(_percentile_abs(residual, 100.0)),
+        "max_relative_delta": _metric_float(_safe_max_relative_delta(ref_data, residual, atol)),
+        "p50_abs_delta": _metric_float(_percentile_abs(residual, 50.0)),
+        "p95_abs_delta": _metric_float(_percentile_abs(residual, 95.0)),
+        "p99_abs_delta": _metric_float(_percentile_abs(residual, 99.0)),
+        "p999_abs_delta": _metric_float(_percentile_abs(residual, 99.9)),
+        "residual_rms_over_reference_rms": _metric_float(
+            residual_rms / reference_rms if reference_rms else math.nan
+        ),
+        "residual_rms_over_reference_mad_std": _metric_float(
+            residual_rms / reference_noise if reference_noise else math.nan
+        ),
+        "planes": plane_metrics,
+    }
+
+
 def _close(left: float, right: float, *, atol: float, rtol: float) -> bool:
     if math.isnan(left) and math.isnan(right):
         return True
     return bool(np.isclose(left, right, atol=atol, rtol=rtol))
+
+
+def _header_values_differ(left: Any, right: Any, *, atol: float, rtol: float) -> bool:
+    if left is None or right is None:
+        return left != right
+    if isinstance(left, (int, float)) and isinstance(right, (int, float)):
+        return not _close(float(left), float(right), atol=atol, rtol=rtol)
+    return str(left).strip() != str(right).strip()
+
+
+def _compare_fits_image_header(
+    product: str,
+    reference_header: fits.Header,
+    current_header: fits.Header,
+    result: ComparisonResult,
+    *,
+    atol: float,
+    rtol: float,
+) -> None:
+    for key in FITS_WCS_HEADER_KEYS:
+        ref_value = reference_header.get(key)
+        cur_value = current_header.get(key)
+        if _header_values_differ(ref_value, cur_value, atol=atol, rtol=rtol):
+            result.failures.append(
+                f"FITS WCS/header key {key} differs for {product}: {ref_value!r} != {cur_value!r}"
+            )
+
+
+def _record_fits_table_metric(
+    result: ComparisonResult,
+    product: str,
+    data: np.ndarray,
+    *,
+    hdu_index: int,
+    hdu_name: str,
+) -> None:
+    result.product_statistics["fits"].append(
+        {
+            "product": product,
+            "kind": "table",
+            "hdu_index": hdu_index,
+            "hdu_name": hdu_name,
+            "rows": int(len(data)),
+            "columns": list(data.dtype.names or ()),
+        }
+    )
 
 
 def _compare_fits(
@@ -373,12 +563,27 @@ def _compare_fits(
         fits.open(reference, memmap=False) as ref_hdul,
         fits.open(current, memmap=False) as cur_hdul,
     ):
-        ref_hdu = next((hdu for hdu in ref_hdul if hdu.data is not None), None)
-        cur_hdu = next((hdu for hdu in cur_hdul if hdu.data is not None), None)
+        ref_hdu_info = next(
+            ((index, hdu) for index, hdu in enumerate(ref_hdul) if hdu.data is not None),
+            None,
+        )
+        cur_hdu_info = next(
+            ((index, hdu) for index, hdu in enumerate(cur_hdul) if hdu.data is not None),
+            None,
+        )
+        ref_hdu = None if ref_hdu_info is None else ref_hdu_info[1]
+        cur_hdu = None if cur_hdu_info is None else cur_hdu_info[1]
         if ref_hdu is None or cur_hdu is None:
             if ref_hdu is not cur_hdu:
                 result.failures.append(f"FITS data presence differs for {current.name}")
             return
+        ref_hdu_index = ref_hdu_info[0]
+        cur_hdu_index = cur_hdu_info[0]
+        if ref_hdu_index != cur_hdu_index:
+            result.failures.append(
+                f"FITS data HDU index differs for {current.name}: "
+                f"{ref_hdu_index} != {cur_hdu_index}"
+            )
         ref_data = ref_hdu.data
         cur_data = cur_hdu.data
         if ref_data.shape != cur_data.shape:
@@ -387,6 +592,13 @@ def _compare_fits(
             )
             return
         if ref_data.dtype.names:
+            _record_fits_table_metric(
+                result,
+                current.name,
+                ref_data,
+                hdu_index=ref_hdu_index,
+                hdu_name=ref_hdu.name,
+            )
             if ref_data.dtype.names != cur_data.dtype.names:
                 result.failures.append(f"FITS table columns differ for {current.name}")
                 return
@@ -403,8 +615,30 @@ def _compare_fits(
                 elif not np.array_equal(ref_column, cur_column):
                     result.failures.append(f"FITS table column differs for {current.name}:{column}")
             return
+        _compare_fits_image_header(
+            current.name,
+            ref_hdu.header,
+            cur_hdu.header,
+            result,
+            atol=atol,
+            rtol=rtol,
+        )
+        finite_mask_ref = np.isfinite(ref_data)
+        finite_mask_cur = np.isfinite(cur_data)
+        if not np.array_equal(finite_mask_ref, finite_mask_cur):
+            result.failures.append(f"FITS finite/NaN mask differs for {current.name}")
         ref_stats = _finite_stats(ref_data)
         cur_stats = _finite_stats(cur_data)
+        result.product_statistics["fits"].append(
+            _image_delta_metric(
+                current.name,
+                ref_data,
+                cur_data,
+                hdu_index=ref_hdu_index,
+                hdu_name=ref_hdu.name,
+                atol=atol,
+            )
+        )
         for key in ("count", "mean", "std", "rms", "min", "max"):
             if key == "count":
                 if ref_stats[key] != cur_stats[key]:
@@ -414,6 +648,14 @@ def _compare_fits(
                 result.failures.append(
                     f"FITS {key} differs for {current.name}: {ref_stats[key]} != {cur_stats[key]}"
                 )
+        if not np.allclose(ref_data, cur_data, atol=atol, rtol=rtol, equal_nan=True):
+            metric = result.product_statistics["fits"][-1]
+            result.failures.append(
+                f"FITS image pixels differ for {current.name}: "
+                f"max_abs_delta={metric['max_abs_delta']}, "
+                f"p99_abs_delta={metric['p99_abs_delta']}, "
+                f"residual_rms={metric['residual_rms']}"
+            )
 
 
 def _compare_h5_dataset(
@@ -548,6 +790,93 @@ def _compare_saved_products(
                 _compare_text_product(reference, current, result, atol=atol, rtol=rtol)
                 counts["text"] += 1
     result.metrics.update(counts)
+    result.metrics["fits_image_hdus"] = sum(
+        1 for item in result.product_statistics["fits"] if item.get("kind") == "image"
+    )
+    result.metrics["fits_table_hdus"] = sum(
+        1 for item in result.product_statistics["fits"] if item.get("kind") == "table"
+    )
+
+
+def _format_metric(value: Any) -> str:
+    if value is None:
+        return "n/a"
+    if isinstance(value, float):
+        return f"{value:.3e}"
+    return str(value)
+
+
+def _worst_fits_metrics(results: list[ComparisonResult]) -> list[tuple[str, dict[str, Any]]]:
+    rows = []
+    for result in results:
+        for metric in result.product_statistics.get("fits", []):
+            if metric.get("kind") == "image":
+                rows.append((result.scenario, metric))
+    return sorted(
+        rows,
+        key=lambda item: item[1].get("max_abs_delta") or 0.0,
+        reverse=True,
+    )
+
+
+def _render_markdown_report(report: dict[str, Any], results: list[ComparisonResult]) -> str:
+    lines = [
+        "# Rapthor Saved-Reference Equivalence",
+        "",
+        f"Run root: `{report['run_root']}`",
+        "",
+        "## Scenario Summary",
+        "",
+        "| Scenario | Result | Ops | Records | FITS | Image HDUs | Table HDUs | H5 | Text |",
+        "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+    ]
+    for result in results:
+        metrics = result.metrics
+        status = "pass" if result.passed else "fail"
+        lines.append(
+            "| "
+            f"`{result.scenario}` | {status} | "
+            f"{metrics.get('operations', 0)} | "
+            f"{metrics.get('output_records', 0)} | "
+            f"{metrics.get('fits', 0)} | "
+            f"{metrics.get('fits_image_hdus', 0)} | "
+            f"{metrics.get('fits_table_hdus', 0)} | "
+            f"{metrics.get('h5', 0)} | "
+            f"{metrics.get('text', 0)} |"
+        )
+
+    lines.extend(
+        [
+            "",
+            "## FITS Residual Metrics",
+            "",
+            "| Scenario | Product | Max Abs Delta | P99 Abs Delta | Residual RMS | "
+            "RMS / Ref RMS | RMS / Ref MAD |",
+            "| --- | --- | ---: | ---: | ---: | ---: | ---: |",
+        ]
+    )
+    worst_metrics = _worst_fits_metrics(results)
+    if not worst_metrics:
+        lines.append("| n/a | n/a | n/a | n/a | n/a | n/a | n/a |")
+    for scenario, metric in worst_metrics[:25]:
+        lines.append(
+            "| "
+            f"`{scenario}` | `{metric['product']}` | "
+            f"{_format_metric(metric.get('max_abs_delta'))} | "
+            f"{_format_metric(metric.get('p99_abs_delta'))} | "
+            f"{_format_metric(metric.get('residual_rms'))} | "
+            f"{_format_metric(metric.get('residual_rms_over_reference_rms'))} | "
+            f"{_format_metric(metric.get('residual_rms_over_reference_mad_std'))} |"
+        )
+
+    failures = [(result.scenario, failure) for result in results for failure in result.failures]
+    if failures:
+        lines.extend(["", "## Failures", ""])
+        for scenario, failure in failures[:50]:
+            lines.append(f"- `{scenario}`: {failure}")
+        if len(failures) > 50:
+            lines.append(f"- ... {len(failures) - 50} more failure(s)")
+    return "\n".join(lines) + "\n"
 
 
 def _reference_scenarios(names: list[str], *, include_stale: bool) -> list[Path]:
@@ -612,6 +941,7 @@ def run(args: argparse.Namespace) -> int:
                 "passed": result.passed,
                 "run_dir": str(result.run_dir),
                 "metrics": result.metrics,
+                "product_statistics": result.product_statistics,
                 "failures": result.failures,
                 "warnings": result.warnings,
             }
@@ -620,7 +950,10 @@ def run(args: argparse.Namespace) -> int:
     }
     report_path = run_root / "equivalence-report.json"
     report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    markdown_path = run_root / "equivalence-report.md"
+    markdown_path.write_text(_render_markdown_report(report, results), encoding="utf-8")
     print(f"Report: {report_path}", flush=True)
+    print(f"Markdown report: {markdown_path}", flush=True)
     return 0 if all(result.passed for result in results) else 1
 
 

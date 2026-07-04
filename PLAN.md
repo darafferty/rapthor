@@ -119,22 +119,26 @@ fresh CI artifact is available yet, continue locally with items 2-4.
    that operation payload builders read. Existing focused tests also pin
    `ExecutionConfig`, local Dask cluster kwargs, benchmark commands, and
    image/calibrate/predict payload thread fields.
-6. Next local implementation: take one low-risk image-cycle scalability slice.
-   Start with one natural boundary, such as image-sector source/model filtering
-   or diagnostics after WSClean, and preserve output records, restart behavior,
-   and scientific products.
-7. Re-run `ci-benchmark` for three repetitions after each task-boundary or
+6. First saved-equivalence image robustness pass is in place: FITS comparisons
+   now record product-level residual metrics in JSON/Markdown, check finite
+   masks and selected WCS/header keys, compare pixels within tolerance, and
+   expose per-plane metrics for cubes and Stokes products.
+7. Next local implementation: run the saved-reference equivalence gate with the
+   stronger image checks and treat the resulting report as the pre-scalability
+   scientific baseline.
+8. Then take one low-risk image-cycle scalability slice. Start with one natural
+   boundary, such as image-sector source/model filtering or diagnostics after
+   WSClean, and preserve output records, restart behavior, and scientific
+   products.
+9. Re-run `ci-benchmark` for three repetitions after each task-boundary or
    performance-sensitive change and compare against the 2026-07-04 baseline.
-8. Tighten saved-equivalence image checks before larger scientific or
-   scheduling changes: improve FITS/image metrics and expose product statistics
-   directly in JSON/Markdown reports.
-9. Add the branch-vs-master equivalence runner after the image metrics are
+10. Add the branch-vs-master equivalence runner after the image metrics are
    stronger, so arbitrary parsets and named scenarios can compare `master` and
    the current branch with shared provenance.
-10. Resume the paused test-suite maintainability track after the first
+11. Resume the paused test-suite maintainability track after the first
    benchmark-led scalability slice is guarded and measured; keep `TESTING.md`
    and this plan updated as tests are cleaned up.
-11. Improve runtime UX and contributor docs after task-boundary behavior has
+12. Improve runtime UX and contributor docs after task-boundary behavior has
    settled enough for preflight/debugging guidance to be accurate.
 
 ## Work Queue
@@ -290,24 +294,30 @@ Done when:
 
 ### 3. Saved Equivalence Renewal And Image Robustness
 
-Status: saved-reference comparison is useful as a migration regression check,
-but image evaluation should become stronger before relying on it as a long-term
-scientific confidence gate.
+Status: first FITS-image robustness pass is in place. Saved-reference
+comparison is useful as a migration regression check, and now catches localized
+image changes that aggregate statistics alone could miss. It still needs a
+fresh saved-reference run and later branch-vs-master refresh tooling before it
+can be treated as a long-term scientific confidence gate.
 
 The current saved CWL comparison checks product presence, operation state,
 output-record shapes, h5parm dataset structure and values, sky-model summaries,
-beam tables, exact text/region products, and FITS image aggregate statistics.
-That is enough to catch many regressions, but aggregate FITS statistics alone
-cannot prove that image structure is unchanged.
+beam tables, exact text/region products, and strengthened FITS image metrics.
+The original aggregate-only FITS checks were enough to catch many regressions,
+but could not prove that image structure was unchanged; the first robustness
+pass now adds residual and per-plane checks to cover that gap.
 
 Tasks:
 
-- Extend saved-reference comparison reporting so it emits the product-statistic
-  tables directly to JSON and Markdown instead of requiring one-off analysis of
+- Run `scripts/dev/run_saved_cwl_equivalence.py` in the prepared dev container
+  with the stronger image checks, archive the generated JSON/Markdown report,
+  and update `EQUIVALENCE_REPORT.md` with the new on-disk report path and FITS
+  residual summary.
+- Keep the saved-reference comparison reporting that emits product statistics
+  directly to JSON and Markdown instead of requiring one-off analysis of
   products on disk.
-- Keep the existing FITS finite-count, `mean`, `std`, `rms`, `min`, and `max`
-  checks, but add image-difference metrics that are robust to tiny
-  external-tool numerical drift:
+- Keep the strengthened FITS checks:
+  - existing finite-count, `mean`, `std`, `rms`, `min`, and `max`
   - same shape, finite mask, and selected science-relevant FITS header/WCS keys
   - residual `mean`, `std`, `rms`, `min`, `max`, and robust MAD-based noise
   - max absolute delta and max relative delta, with safeguards around zero
@@ -365,10 +375,10 @@ Tasks:
     runner, including provenance for both branches and the exact command lines
   - allow developers to promote useful exploratory parsets into named scenarios
     once they are stable and documented
-- Add focused tests for the image-comparison helper functions using synthetic
-  FITS files that cover exact matches, small floating drift, localized spatial
-  changes, cube-plane changes, WCS/header changes, NaN-mask changes, and true
-  failures.
+- Keep the focused synthetic-FITS tests for image-comparison helper functions
+  covering small floating drift, localized spatial changes with matching
+  aggregate statistics, cube-plane metrics, WCS/header changes, NaN-mask
+  changes, and Markdown report rendering.
 
 Done when:
 
