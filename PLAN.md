@@ -282,17 +282,16 @@ Port these in order:
    selection, facet RMS statistics, missing/invalid region handling, and the
    diagnostics JSON contract.
 
-4. **Port imaging model-data and residual-visibility products.** Next.
-   Port the `971a2b25` and `17448437` behavior as a single product feature:
-   add the `save_residual_visibilities` parset/default/docs path, allow WSClean
-   to update model data when residual visibilities are requested instead of
-   always using `-no-update-model-required`, save the model data needed for the
-   final image, generate residual Measurement Sets as data minus corrupted
-   model, and publish them under the expected `visibilities/image_X/sector_Y`
-   structure. Add command-builder, payload, operation-finalize, and integration
-   coverage.
+4. **Port imaging model-data and residual-visibility products.** Implemented on 2026-07-04.
+   The `save_residual_visibilities` parset/default/docs path is ported. Final
+   image cycles now ask WSClean to retain/update `MODEL_DATA` when residual
+   visibilities are requested, DP3 writes `*_resid.ms` as DATA minus
+   MODEL_DATA, residual products are returned by the image flow, and image
+   finalization publishes them under `visibilities/image_X/sector_Y`. Focused
+   command-builder, payload, flow, finalizer, pipeline-flag, parset, and
+   observation tests pass.
 
-5. **Port WSClean-based prediction.**
+5. **Port WSClean-based prediction.** Next.
    Port `d90786e8` and `e8867abd`: add `use_wsclean_predict`, WSClean predict
    command construction, generated region/readpatches support, narrow-band
    model drawing for prediction, payload validation, docs/defaults/examples,

@@ -27,6 +27,7 @@ class ImageNormalize(Image):
         self.save_source_list = False
         self.peel_bright_sources = False
         self.make_image_cube = True
+        self.make_residual_visibilities = False
         self.normalize_flux_scale = True
         self.compress_images = self.field.compress_selfcal_images
         self.image_cube_stokes_list = ["I"]

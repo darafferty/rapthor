@@ -214,6 +214,10 @@ save_filtered_model_image = False
 # closest to the image centers are used.
 save_visibilities = False
 
+# Save residual visibilities from the final image, computed as DATA minus the
+# WSClean MODEL_DATA column (default = False)
+save_residual_visibilities = False
+
 # Perform averaging of visibilities for imaging, up to that allowed by smearing
 # constraints (default = True).
 average_visibilities = True

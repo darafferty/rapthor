@@ -99,6 +99,7 @@
                       'robust': -0.65,
                       'save_filtered_model_image': False,
                       'save_visibilities': False,
+                      'save_residual_visibilities': False,
                       'average_visibilities': True,
                       'save_image_cube': False,
                       'save_supplementary_images': False,

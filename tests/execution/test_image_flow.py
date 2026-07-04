@@ -26,6 +26,7 @@ from rapthor.execution.image.commands import (
     build_compress_sector_images_command,
     build_filter_skymodel_command,
     build_make_catalog_from_image_cube_command,
+    build_make_residual_visibilities_command,
     build_prepare_imaging_data_command,
     build_wsclean_facets_command,
     build_wsclean_mpi_facets_command,
@@ -507,11 +508,13 @@ class FieldStub:
             ObservationStub("obs_1.ms", 59001.0, 12),
         ]
         self.make_image_cube = False
+        self.make_residual_visibilities = False
         self.full_field_sector = SectorStub(self.observations)
         self.imaging_sectors = [SectorStub(self.observations)]
         self.normalize_sector = SectorStub(self.observations)
         self.save_supplementary_images = False
         self.save_visibilities = False
+        self.save_residual_visibilities = False
         self.image_pol = "I"
         self.lofar_to_true_flux_ratio = None
         self.lofar_to_true_flux_std = None
@@ -873,6 +876,13 @@ def _expected_image_operation_outputs(operation):
     }
 
 
+def _with_residual_visibility_output(outputs, operation):
+    pipeline_dir = Path(operation.pipeline_working_dir)
+    outputs = deepcopy(outputs)
+    outputs["residual_visibilities"] = [directory_record(pipeline_dir / "sector_1_resid.ms")]
+    return outputs
+
+
 def _expected_full_stokes_image_operation_outputs(operation):
     pipeline_dir = Path(operation.pipeline_working_dir)
     extra_images = []
@@ -1106,6 +1116,16 @@ def test_image_command_builders_match_reference_fixtures():
     )
     assert (
         normalize_command(
+            build_make_residual_visibilities_command(
+                msin="sector_1_concat.ms",
+                msout="sector_1_resid.ms",
+                numthreads=4,
+            )
+        )
+        == commands["image"]["make_residual_visibilities"]
+    )
+    assert (
+        normalize_command(
             build_wsclean_facets_command(
                 WscleanFacetOptions(
                     common=_wsclean_options(),
@@ -1166,6 +1186,14 @@ def test_wsclean_command_builders_preserve_full_stokes_options():
 
     assert linked_command[linked_command.index("-link-polarizations") + 1] == "I"
     assert "-join-polarizations" not in linked_command
+
+
+def test_wsclean_command_keeps_model_data_when_residual_visibilities_are_requested():
+    command = normalize_command(
+        build_wsclean_no_dde_command(_wsclean_options(update_model_required=True))
+    )
+
+    assert "-no-update-model-required" not in command
 
 
 def test_wsclean_mpi_command_builders_use_mpirun_launcher():
@@ -1328,6 +1356,9 @@ def test_image_payload_from_inputs_builds_serializable_no_dde_payload(tmp_path):
     sector = payload["sectors"][0]
     assert sector["image_name"] == "sector_1"
     assert sector["concat_path"] == str(tmp_path / "sector_1_concat.ms")
+    assert sector["make_residual_visibilities"] is False
+    assert sector["residual_filename"] is None
+    assert sector["residual_path"] is None
     assert sector["mask_path"] == str(tmp_path / "sector_1_mask.fits")
     assert sector["max_threads"] == 4
     assert sector["deconvolution_threads"] == 2
@@ -1342,6 +1373,22 @@ def test_image_payload_from_inputs_builds_serializable_no_dde_payload(tmp_path):
         "maxinterval": 8,
     }
     assert sector["obs_original_paths"] == ["/data/obs_0.ms", "/data/obs_1.ms"]
+
+
+def test_image_payload_from_inputs_adds_residual_visibility_output(tmp_path):
+    input_parms = _image_input_parms()
+    input_parms["residual_filename"] = ["sector_1_resid.ms"]
+
+    payload = image_payload_from_inputs(
+        input_parms,
+        tmp_path,
+        make_residual_visibilities=True,
+    )
+
+    sector = payload["sectors"][0]
+    assert sector["make_residual_visibilities"] is True
+    assert sector["residual_filename"] == "sector_1_resid.ms"
+    assert sector["residual_path"] == str(tmp_path / "sector_1_resid.ms")
 
 
 def test_image_payload_from_inputs_keeps_original_observations_for_diagnostics(tmp_path):
@@ -2360,6 +2407,36 @@ def test_image_prefect_flow_entrypoint_runs_with_mocked_shell(
     assert len(fake_image_shell_operation_cls.instances) == 5
 
 
+def test_image_flow_creates_residual_visibilities(tmp_path, fake_image_shell_operation_cls):
+    input_parms = _image_input_parms()
+    input_parms["residual_filename"] = ["sector_1_resid.ms"]
+
+    outputs = run_flow_for_test(
+        image_flow,
+        image_payload_from_inputs(
+            input_parms,
+            tmp_path,
+            make_residual_visibilities=True,
+        ),
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_image_shell_operation_cls,
+    )
+
+    commands = [
+        shlex.split(instance.kwargs["commands"][0])
+        for instance in fake_image_shell_operation_cls.instances
+    ]
+    wsclean_command = next(command for command in commands if command[0] == "wsclean")
+    residual_command = next(
+        command for command in commands if "msin.extradatacolumns=[MODEL_DATA]" in command
+    )
+
+    assert "-no-update-model-required" not in wsclean_command
+    assert "msout=sector_1_resid.ms" in residual_command
+    assert outputs["residual_visibilities"] == [directory_record(tmp_path / "sector_1_resid.ms")]
+    assert len(fake_image_shell_operation_cls.instances) == 6
+
+
 def test_run_image_flow_fails_when_expected_output_is_missing(tmp_path):
     with pytest.raises(FileNotFoundError, match="Prepared imaging MS"):
         run_flow_for_test(
@@ -2515,6 +2592,37 @@ def test_image_operation_run_uses_prefect_flow(
     assert field.lofar_to_true_flux_ratio == 1.0
     assert field.lofar_to_true_flux_std == 0.0
     assert len(fake_image_shell_operation_cls.instances) == 5
+
+
+def test_image_operation_run_saves_residual_visibilities(
+    tmp_path, monkeypatch, fake_image_shell_operation_cls
+):
+    monkeypatch.setattr(
+        "rapthor.execution.shell._load_shell_operation_cls",
+        lambda: fake_image_shell_operation_cls,
+    )
+    field = FieldStub(tmp_path)
+    field.save_residual_visibilities = True
+    field.make_residual_visibilities = True
+    operation = Image(field, index=1)
+
+    with prefect_test_harness(server_startup_timeout=None):
+        operation.run()
+
+    expected_outputs = _with_residual_visibility_output(
+        _expected_image_operation_outputs(operation),
+        operation,
+    )
+    residual_dir = (
+        Path(field.parset["dir_working"])
+        / "visibilities"
+        / "image_1"
+        / field.imaging_sectors[0].name
+    )
+
+    assert operation.outputs == expected_outputs
+    assert (residual_dir / "sector_1_resid.ms").is_dir()
+    assert len(fake_image_shell_operation_cls.instances) == 6
 
 
 def test_bright_peeling_image_operation_run_uses_prefect_flow(

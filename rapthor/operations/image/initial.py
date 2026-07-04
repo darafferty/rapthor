@@ -29,6 +29,7 @@ class ImageInitial(Image):
         self.save_source_list = True
         self.peel_bright_sources = False
         self.make_image_cube = False
+        self.make_residual_visibilities = False
         self.image_pol = "I"
         self.compress_images = self.field.compress_selfcal_images
         super().set_parset_parameters()

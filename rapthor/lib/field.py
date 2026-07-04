@@ -123,6 +123,9 @@ class Field(object):
         self.tolerance = self.parset["calibration_specific"]["tolerance"]
         self.dde_method = self.parset["imaging_specific"]["dde_method"]
         self.save_visibilities = self.parset["imaging_specific"]["save_visibilities"]
+        self.save_residual_visibilities = self.parset["imaging_specific"][
+            "save_residual_visibilities"
+        ]
         self.average_visibilities = self.parset["imaging_specific"]["average_visibilities"]
         self.save_image_cube = self.parset["imaging_specific"]["save_image_cube"]
         self.save_supplementary_images = self.parset["imaging_specific"][
@@ -201,6 +204,7 @@ class Field(object):
         self.peel_bright_sources = False
         self.do_normalize = False
         self.make_image_cube = False
+        self.make_residual_visibilities = False
         self.field_image_filename_prev = None
         self.field_image_filename = None
         self.disable_clean = False

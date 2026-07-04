@@ -504,6 +504,12 @@ The available options are described below under their respective sections.
         not be applied unless :term:`dde_method` = ``single``, in which case the solutions
         closest to the image centers are used.
 
+    save_residual_visibilities
+        Save residual visibilities for the final image (default = ``False``).
+        If ``True``, WSClean keeps the model data required for the final image, and Rapthor
+        writes residual Measurement Sets as DATA minus MODEL_DATA in
+        ``visibilities/image_X/sector_Y``.
+
     save_image_cube
         Save frequency cube(s) for the given Stokes parameters (default = ``False``).
         If ``True``, a cube is constructed from the channel images made during the

@@ -78,6 +78,7 @@
         "source_finder": "bdsf",
         "save_filtered_model_image": false,
         "save_visibilities": false,
+        "save_residual_visibilities": false,
         "average_visibilities": true,
         "save_image_cube": false,
         "image_cube_stokes_list": [

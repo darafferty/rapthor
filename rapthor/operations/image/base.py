@@ -61,6 +61,7 @@ class Image(Operation):
         # no solutions applied before or during imaging (ImageInitial only)
         self.apply_none = False
         self.make_image_cube = self.field.make_image_cube  # make an image cube
+        self.make_residual_visibilities = getattr(self.field, "make_residual_visibilities", False)
         self.normalize_flux_scale = False  # derive flux scale normalizations (ImageNormalize only)
         self.compress_images = None
         self.image_cube_stokes_list = None
@@ -102,6 +103,7 @@ class Image(Operation):
             include_pipeline_working_dir=True,
             apply_screens=self.apply_screens,
             make_image_cube=self.make_image_cube,
+            make_residual_visibilities=self.make_residual_visibilities,
             normalize_flux_scale=self.normalize_flux_scale,
             use_facets=self.use_facets,
             save_source_list=self.save_source_list,
@@ -292,6 +294,7 @@ class Image(Operation):
             "obs_original_filename": [],
             "prepare_filename": [],
             "concat_filename": [],
+            "residual_filename": [],
             "previous_mask_filename": [],
             "mask_filename": [],
             "filtered_model_image_name": [],
@@ -326,6 +329,7 @@ class Image(Operation):
             values["obs_original_filename"].append(sector.get_obs_parameters("ms_filename"))
             values["prepare_filename"].append(sector.get_obs_parameters("ms_prep_filename"))
             values["concat_filename"].append(f"{sector.name}_concat.ms")
+            values["residual_filename"].append(f"{sector.name}_resid.ms")
             if self.field.parset["imaging_specific"]["use_clean_mask"] and sector.I_mask_file:
                 values["previous_mask_filename"].append(sector.I_mask_file)
             else:
@@ -434,6 +438,7 @@ class Image(Operation):
             "data_colname": self.field.data_colname,
             "prepare_filename": sector_inputs["prepare_filename"],
             "concat_filename": sector_inputs["concat_filename"],
+            "residual_filename": sector_inputs["residual_filename"],
             "previous_mask_filename": [
                 None if name is None else FileRecord(name).to_json()
                 for name in sector_inputs["previous_mask_filename"]
@@ -503,6 +508,7 @@ class Image(Operation):
             "save_filtered_model_image": self.field.parset["imaging_specific"][
                 "save_filtered_model_image"
             ],
+            "make_residual_visibilities": self.make_residual_visibilities,
             "filtered_model_image_name": sector_inputs["filtered_model_image_name"],
             "allow_internet_access": self.allow_internet_access,
             "photometry_skymodel": (
@@ -592,6 +598,7 @@ class Image(Operation):
             use_facets=self.use_facets,
             compress_images=self.compress_images,
             make_image_cube=self.make_image_cube,
+            make_residual_visibilities=self.make_residual_visibilities,
             normalize_flux_scale=self.normalize_flux_scale,
             use_mpi=self.field.use_mpi,
         )
@@ -731,6 +738,18 @@ class Image(Operation):
                     ),
                     index=index,
                     include={"visibilities"},
+                    move=True,
+                )
+            if self.make_residual_visibilities:
+                self.copy_outputs_to(
+                    os.path.join(
+                        self.parset["dir_working"],
+                        "visibilities",
+                        f"image_{self.index}",
+                        sector.name,
+                    ),
+                    index=index,
+                    include={"residual_visibilities"},
                     move=True,
                 )
 

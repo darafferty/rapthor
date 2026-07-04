@@ -44,6 +44,7 @@ class RecordingField:
     make_quv_images: bool = False
     disable_iquv_clean: bool = False
     save_image_cube: bool = False
+    save_residual_visibilities: bool = False
     use_mpi: bool = False
     generate_screens: bool = False
     apply_screens: bool = False
@@ -85,6 +86,7 @@ def _record(field, operation, mode, index):
         "image_pol": getattr(field, "image_pol", None),
         "disable_clean": getattr(field, "disable_clean", None),
         "make_image_cube": getattr(field, "make_image_cube", None),
+        "make_residual_visibilities": getattr(field, "make_residual_visibilities", None),
         "image_cube_stokes_list": list(getattr(field, "image_cube_stokes_list", [])),
         "generate_screens": getattr(field, "generate_screens", None),
         "apply_screens": getattr(field, "apply_screens", None),
@@ -944,6 +946,7 @@ def test_run_pipeline_final_hybrid_screens_skip_dd_predict_and_set_image_flags()
             "make_quv_images": True,
             "disable_iquv_clean": True,
             "save_image_cube": True,
+            "save_residual_visibilities": True,
             "image_cube_stokes_list": ["I", "Q", "U", "V", "XX"],
         },
     )
@@ -968,6 +971,7 @@ def test_run_pipeline_final_hybrid_screens_skip_dd_predict_and_set_image_flags()
     assert image_event["image_pol"] == "IQUV"
     assert image_event["disable_clean"] is True
     assert image_event["make_image_cube"] is True
+    assert image_event["make_residual_visibilities"] is True
     assert image_event["image_cube_stokes_list"] == ["I", "Q", "U", "V"]
     assert image_event["generate_screens"] is True
     assert image_event["apply_screens"] is True

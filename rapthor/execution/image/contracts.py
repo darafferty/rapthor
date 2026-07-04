@@ -35,6 +35,7 @@ class ImageSectorPayload(TypedDict):
     use_mpi: bool
     compress_images: bool
     make_image_cube: bool
+    make_residual_visibilities: bool
     normalize_flux_scale: bool
     peel_bright_sources: bool
     save_filtered_model_image: bool
@@ -43,6 +44,8 @@ class ImageSectorPayload(TypedDict):
     prepare_tasks: list[ImagePrepareTaskPayload]
     concat_filename: str
     concat_path: str
+    residual_filename: Optional[str]
+    residual_path: Optional[str]
     previous_mask_filename: Optional[str]
     mask_filename: str
     mask_path: str

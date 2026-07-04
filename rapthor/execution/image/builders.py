@@ -37,6 +37,7 @@ def image_payload_from_inputs(
     use_facets: bool = False,
     compress_images: bool = False,
     make_image_cube: bool = False,
+    make_residual_visibilities: bool = False,
     normalize_flux_scale: bool = False,
     use_mpi: bool = False,
 ) -> ImagePayload:
@@ -58,6 +59,9 @@ def image_payload_from_inputs(
         raise ValueError("image_name must be a list")
     sector_count = len(image_names)
     save_filtered_model_image = bool(input_parms.get("save_filtered_model_image"))
+    make_residual_visibilities = bool(
+        make_residual_visibilities or input_parms.get("make_residual_visibilities", False)
+    )
     per_sector_keys = [
         "obs_filename",
         "prepare_filename",
@@ -99,6 +103,8 @@ def image_payload_from_inputs(
         "do_multiscale",
         "dd_psf_grid",
     ]
+    if make_residual_visibilities:
+        per_sector_keys.append("residual_filename")
     if use_facets:
         per_sector_keys.extend(
             [
@@ -209,6 +215,12 @@ def image_payload_from_inputs(
         concat_filename = validate_basename(
             input_parms["concat_filename"][sector_index], f"concat_filename[{sector_index}]"
         )
+        residual_filename = None
+        if make_residual_visibilities:
+            residual_filename = validate_basename(
+                input_parms["residual_filename"][sector_index],
+                f"residual_filename[{sector_index}]",
+            )
         mask_filename = validate_basename(
             input_parms["mask_filename"][sector_index], f"mask_filename[{sector_index}]"
         )
@@ -273,6 +285,7 @@ def image_payload_from_inputs(
                 "use_mpi": bool(use_mpi),
                 "compress_images": bool(compress_images),
                 "make_image_cube": bool(make_image_cube),
+                "make_residual_visibilities": make_residual_visibilities,
                 "normalize_flux_scale": bool(normalize_flux_scale),
                 "peel_bright_sources": peel_bright_sources,
                 "save_filtered_model_image": save_filtered_model_image,
@@ -281,6 +294,12 @@ def image_payload_from_inputs(
                 "prepare_tasks": prepare_tasks,
                 "concat_filename": concat_filename,
                 "concat_path": os.path.join(pipeline_dir, concat_filename),
+                "residual_filename": residual_filename,
+                "residual_path": (
+                    None
+                    if residual_filename is None
+                    else os.path.join(pipeline_dir, residual_filename)
+                ),
                 "previous_mask_filename": optional_file_record_path(
                     input_parms["previous_mask_filename"][sector_index]
                 ),

@@ -21,6 +21,7 @@ from rapthor.execution.image.preparation import (
     ensure_imaging_mask,
     prepare_and_concatenate_visibilities,
 )
+from rapthor.execution.image.residual_visibilities import make_residual_visibility_record
 from rapthor.execution.image.wsclean import (
     check_wsclean_beams,
     restore_bright_source_images,
@@ -67,6 +68,14 @@ def run_image_sector(
         pb_image,
         pipeline_working_dir,
         config,
+        shell_operation_cls=shell_operation_cls,
+    )
+    residual_visibilities = make_residual_visibility_record(
+        sector,
+        concat_record,
+        pipeline_working_dir,
+        config,
+        force=wsclean_ran,
         shell_operation_cls=shell_operation_cls,
     )
     sector_images = [nonpb_image, pb_image]
@@ -184,6 +193,8 @@ def run_image_sector(
     if normalize_h5parm is not None:
         result["sector_source_catalog"] = normalization_source_catalog
         result["sector_normalize_h5parm"] = normalize_h5parm
+    if residual_visibilities is not None:
+        result["residual_visibilities"] = residual_visibilities
     fits_records = (
         output_sector_images
         + output_extra_images

@@ -418,7 +418,7 @@ class TestObservation:
         )
 
         assert observation.parameters["ms_filename"] == test_ms
-        assert observation.parameters["ms_prep_filename"] == "test.ms.sector_1.prep"
+        assert observation.parameters["ms_prep_filename"] == "test.sector_1_prep.ms"
         assert observation.parameters["image_freqstep"] == 4
         assert observation.parameters["image_timestep"] == expected_image_timestep
         assert observation.parameters["image_bda_maxinterval"] == 6

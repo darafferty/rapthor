@@ -76,6 +76,10 @@ def _result_from_sector_records(sector_outputs: list[dict]) -> dict:
         result["sector_normalize_h5parm"] = [
             sector.get("sector_normalize_h5parm") for sector in sector_outputs
         ]
+    if any("residual_visibilities" in sector for sector in sector_outputs):
+        result["residual_visibilities"] = [
+            sector.get("residual_visibilities") for sector in sector_outputs
+        ]
     for value in result.values():
         validate_output_record(value, allow_none=True)
     return result

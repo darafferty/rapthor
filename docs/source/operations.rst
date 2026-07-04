@@ -151,7 +151,9 @@ Primary products:
 
             If an initial sky model was generated from the input data (see :term:`generate_initial_skymodel`), then there will be two sky model files in ``skymodels/initial_image`` (an apparent-sky model and a true-sky model). These models are used as input for the first cycle of calibration.
 
-    * In ``visibilities/image_X/sector_Y``, where ``X`` is the cycle number and ``Y`` is the image sector number (only if the :term:`save_visibilities` parameter is set to ``True``):
+    * In ``visibilities/image_X/sector_Y``, where ``X`` is the cycle number and ``Y`` is the
+      image sector number (only if the :term:`save_visibilities` or
+      :term:`save_residual_visibilities` parameter is set to ``True``):
         * ``*.ms`` - measurement sets used as input to WSClean for imaging. Depending on
           the value of :term:`dde_method`, some or all of the calibration solutions may be
           preapplied: a value of "single" will preapply all solutions, whereas a value of
@@ -159,6 +161,9 @@ Primary products:
           available), since the direction-dependent solutions in those cases are applied
           by WSClean itself. These MS files can be useful for further imaging or self
           calibration outside of Rapthor.
+        * ``*_resid.ms`` - residual Measurement Sets from the final image, generated as
+          DATA minus the WSClean MODEL_DATA column. These are saved only when
+          :term:`save_residual_visibilities` is ``True``.
 
 .. rubric:: Footnotes
 

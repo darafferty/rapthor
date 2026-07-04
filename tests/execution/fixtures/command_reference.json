@@ -924,6 +924,19 @@
             "-skip-final-iteration",
             "sector_1_concat.ms"
         ],
+        "make_residual_visibilities": [
+            "DP3",
+            "msin=sector_1_concat.ms",
+            "msin.extradatacolumns=[MODEL_DATA]",
+            "msout=sector_1_resid.ms",
+            "msout.overwrite=True",
+            "msout.storagemanager=Dysco",
+            "steps=[combine]",
+            "combine.type=combine",
+            "combine.buffername=MODEL_DATA",
+            "combine.operation=subtract",
+            "numthreads=4"
+        ],
         "wsclean_facets": [
             "wsclean",
             "-no-update-model-required",

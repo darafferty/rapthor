@@ -325,6 +325,7 @@ def run_pipeline_steps(
             field.image_pol = "IQUV" if (field.make_quv_images and final) else "I"
             field.disable_clean = field.image_pol == "IQUV" and field.disable_iquv_clean
             field.make_image_cube = field.save_image_cube and final
+            field.make_residual_visibilities = field.save_residual_visibilities and final
             field.image_cube_stokes_list = [
                 pol for pol in field.image_cube_stokes_list if pol.upper() in field.image_pol
             ]

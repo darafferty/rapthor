@@ -142,6 +142,7 @@ def _select_wsclean_command_for_sector(
         dd_psf_grid=list(sector["dd_psf_grid"]),
         apply_time_frequency_smearing=bool(sector["apply_time_frequency_smearing"]),
         temp_dir=temp_dir,
+        update_model_required=bool(sector["make_residual_visibilities"]),
     )
     if sector["use_facets"]:
         if region_record is None:
@@ -194,7 +195,12 @@ def run_or_reuse_wsclean_images(
     pb_image_patterns = mfs_pb_image_patterns(image_name, pipeline_working_dir)
     nonpb_image = optional_first_existing_file(nonpb_image_patterns)
     pb_image = optional_first_existing_file(pb_image_patterns)
-    if nonpb_image is not None and pb_image is not None:
+    residual_missing = False
+    if sector["make_residual_visibilities"]:
+        if sector["residual_path"] is None:
+            raise ValueError("Residual visibility path is required when residuals are requested")
+        residual_missing = not os.path.isdir(str(sector["residual_path"]))
+    if nonpb_image is not None and pb_image is not None and not residual_missing:
         return nonpb_image, pb_image, False
 
     if sector["apply_screens"]:

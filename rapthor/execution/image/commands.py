@@ -79,6 +79,7 @@ class WscleanOptions:
     dd_psf_grid: list[int]
     apply_time_frequency_smearing: bool
     temp_dir: str
+    update_model_required: bool = False
 
 
 @dataclass(frozen=True)
@@ -192,8 +193,33 @@ def build_wsclean_restore_command(
     ]
 
 
-def _wsclean_command_base() -> list[str]:
-    return ["wsclean", "-no-update-model-required", "-local-rms", "-join-channels"]
+def build_make_residual_visibilities_command(
+    msin: str,
+    msout: str,
+    numthreads: int,
+) -> list[str]:
+    """Build the DP3 command that writes residual visibilities into a new MS."""
+    return [
+        "DP3",
+        f"msin={msin}",
+        "msin.extradatacolumns=[MODEL_DATA]",
+        f"msout={msout}",
+        "msout.overwrite=True",
+        "msout.storagemanager=Dysco",
+        "steps=[combine]",
+        "combine.type=combine",
+        "combine.buffername=MODEL_DATA",
+        "combine.operation=subtract",
+        f"numthreads={numthreads}",
+    ]
+
+
+def _wsclean_command_base(update_model_required: bool = False) -> list[str]:
+    command = ["wsclean"]
+    if not update_model_required:
+        command.append("-no-update-model-required")
+    command.extend(["-local-rms", "-join-channels"])
+    return command
 
 
 def _wsclean_common_options(options: WscleanOptions) -> list[tuple[str, object]]:
@@ -227,7 +253,7 @@ def _wsclean_common_options(options: WscleanOptions) -> list[tuple[str, object]]
 
 def build_wsclean_no_dde_command(options: WscleanOptions) -> list[str]:
     """Build the serial no-DD WSClean command for one imaging sector."""
-    command = _wsclean_command_base() + [
+    command = _wsclean_command_base(options.update_model_required) + [
         "-apply-primary-beam",
         "-log-time",
         "-gridder",
@@ -261,7 +287,7 @@ def build_wsclean_no_dde_command(options: WscleanOptions) -> list[str]:
 def build_wsclean_facets_command(options: WscleanFacetOptions) -> list[str]:
     """Build the serial facet-corrected WSClean command for one imaging sector."""
     common = options.common
-    command = _wsclean_command_base() + [
+    command = _wsclean_command_base(common.update_model_required) + [
         "-apply-facet-beam",
         "-log-time",
         "-gridder",
@@ -311,7 +337,7 @@ def build_wsclean_facets_command(options: WscleanFacetOptions) -> list[str]:
 def build_wsclean_screens_command(options: WscleanScreenOptions) -> list[str]:
     """Build the serial screen-corrected WSClean command for one imaging sector."""
     common = options.common
-    command = _wsclean_command_base() + [
+    command = _wsclean_command_base(common.update_model_required) + [
         "-gridder",
         "idg",
         "-major-iteration-mode",
