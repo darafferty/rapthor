@@ -235,10 +235,19 @@ quickly. To generate a richer local demo with five bright point-source groups,
 The generated files are written under ``examples/generated/`` and are ignored by
 git. The generator uses DP3 prediction to populate the visibilities, then adds
 synthetic time/frequency antenna phases and thermal noise so calibration
-solution plots have visible structure. By default the generated parset uses a
-generated rich strategy next to the parset; that strategy includes DD
-slow-gain calibration with a positive target flux threshold. Pass
-``--strategy /path/to/strategy.py`` to reference a different strategy.
+solution plots have visible structure. By default the generated demo parset uses
+``prefect_demo_benchmark_strategy.py`` with local-machine resource settings.
+Pass ``--strategy /path/to/strategy.py`` to reference a different strategy from
+the demo parset.
+
+The generator also writes ``prefect_demo_benchmark.parset`` for
+``scripts/dev/run_benchmark_baseline.py`` and the ``ci-benchmark`` scenario.
+Both generated parsets use the same benchmark strategy: DI phase, DD
+phase/faceting, the legacy DD default solve order
+``["fast_phase", "medium_phase", "slow_gains", "medium_phase"]``, full-Jones
+calibration, imaging, mosaicking, and source filtering. The demo parset keeps
+small local thread/core defaults, while the benchmark parset derives
+external-tool thread counts from benchmark runtime overrides.
 
 
 Running with Slurm and external Dask

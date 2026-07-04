@@ -231,10 +231,12 @@ do \
 done \
 > /usr/local/share/rapthor/sw-versions.txt
 
-# Install all Python packages that Rapthor depends on. Build PyBDSF locally so
-# it links against the NumPy-2-compatible Boost.NumPy above.
-COPY requirements.txt .
-RUN pip install --no-binary=bdsf -r requirements.txt
+# Install all Python packages that Rapthor depends on from the project metadata.
+# Build PyBDSF locally so it links against the NumPy-2-compatible Boost.NumPy
+# above, and avoid maintaining a second dependency list next to pyproject.toml.
+COPY pyproject.toml .
+RUN python3 -c "import pathlib, tomllib; deps = tomllib.load(open('pyproject.toml', 'rb'))['project']['dependencies']; pathlib.Path('/tmp/rapthor-runtime-requirements.txt').write_text('\n'.join(deps) + '\n')" && \
+    pip install --no-binary=bdsf -r /tmp/rapthor-runtime-requirements.txt
 RUN python3 -c "import bdsf, casacore.tables, numpy; print(f'NumPy {numpy.__version__} import check passed')"
 
 

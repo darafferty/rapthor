@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the Rapthor benchmark baseline scenarios and write report artifacts."""
+"""Run the Rapthor benchmark baseline scenario and write report artifacts."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ from rapthor.execution.benchmarking import (
     write_summary_artifacts,
 )
 
-RICH_DEMO_SCENARIO_ID = "rich-demo"
+GENERATED_DEMO_SCENARIO_IDS = frozenset({"ci-benchmark"})
 TEST_RESOURCE_DIR = Path("tests/resources")
 BENCHMARK_PARSET_PATH_OPTIONS = (
     "input_ms",
@@ -46,7 +46,7 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     scenario_ids = sorted(benchmark_scenarios_by_id())
     parser = argparse.ArgumentParser(
         description=(
-            "Run committed Rapthor benchmark scenarios. Run from the prepared dev "
+            "Run the Rapthor benchmark scenario. Run from the prepared dev "
             "container when possible so external astronomy tools match CI."
         )
     )
@@ -59,8 +59,8 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--repetitions",
         type=int,
-        default=3,
-        help="Number of clean repetitions per scenario. Defaults to 3.",
+        default=1,
+        help="Number of clean repetitions per scenario. Defaults to 1.",
     )
     parser.add_argument(
         "--local-dask-workers",
@@ -103,7 +103,7 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help=(
             "Download the shared test Measurement Set when needed and generate "
-            "ignored rich demo inputs before validating scenarios."
+            "ignored benchmark demo inputs before validating scenarios."
         ),
     )
     parser.add_argument(
@@ -128,10 +128,12 @@ def _scenario_with_runtime_overrides(scenario, args: argparse.Namespace):
 def _prepare_benchmark_inputs(repo_root: Path, selected_scenarios) -> None:
     """Create ignored benchmark inputs that are not present in a fresh checkout."""
     test_ms = _ensure_test_ms(repo_root)
-    rich_scenarios = [
-        scenario for scenario in selected_scenarios if scenario.scenario_id == RICH_DEMO_SCENARIO_ID
+    generated_scenarios = [
+        scenario
+        for scenario in selected_scenarios
+        if scenario.scenario_id in GENERATED_DEMO_SCENARIO_IDS
     ]
-    if rich_scenarios and _missing_scenario_inputs(repo_root, rich_scenarios):
+    if generated_scenarios and _missing_scenario_inputs(repo_root, generated_scenarios):
         subprocess.run(
             [
                 sys.executable,

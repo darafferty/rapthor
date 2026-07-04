@@ -21,9 +21,10 @@ DEFAULT_TEMPLATE_MS = Path("tests/resources/test.ms")
 PHASE_CENTRE = SkyCoord("1h37m41.299s", "+33d09m35.132s", frame="icrs")
 REFERENCE_FREQUENCY_HZ = 134375000.0
 CHANNEL_WIDTH_HZ = 24414.0625
-RICH_STRATEGY_FILENAME = "prefect_demo_rich_strategy.py"
-RICH_STRATEGY_TEXT = """\
-\"\"\"Richer multi-cycle strategy for the local Prefect demo dataset.\"\"\"
+BENCHMARK_PARSET_FILENAME = "prefect_demo_benchmark.parset"
+BENCHMARK_STRATEGY_FILENAME = "prefect_demo_benchmark_strategy.py"
+BENCHMARK_STRATEGY_TEXT = """\
+\"\"\"Shared demo and CI benchmark strategy for the generated dataset.\"\"\"
 
 COMMON_SETTINGS = {
     "do_calibrate": True,
@@ -39,16 +40,16 @@ COMMON_SETTINGS = {
     "max_normalization_delta": 0.3,
     "scale_normalization_delta": True,
     "solve_min_uv_lambda": 80,
-    "target_flux": 0.9,
+    "target_flux": 0.6,
     "max_directions": 5,
     "max_distance": None,
     "regroup_model": False,
     "auto_mask": 5.0,
-    "auto_mask_nmiter": 2,
+    "auto_mask_nmiter": 1,
     "channel_width_hz": 48828.125,
     "threshisl": 3.0,
     "threshpix": 5.0,
-    "max_nmiter": 12,
+    "max_nmiter": 6,
 }
 
 
@@ -63,38 +64,25 @@ def _step(calibration_strategy, **overrides):
 
 strategy_steps = [
     _step(
-        {"di": ["fast_phase"]},
-        max_nmiter=8,
-    ),
-    _step(
         {"di": ["fast_phase", "medium_phase"]},
-        max_nmiter=8,
-    ),
-    _step(
-        {"di": ["full_jones"], "dd": []},
-        max_nmiter=12,
+        max_nmiter=6,
     ),
     _step(
         {"di": [], "dd": ["fast_phase", "medium_phase"]},
-        max_nmiter=10,
+        max_nmiter=6,
         regroup_model=True,
     ),
-
     _step(
-        {"di": [], "dd": ["slow_gains"]},
-        max_nmiter=12,
+        {"di": [], "dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"]},
+        max_nmiter=6,
         regroup_model=True,
-    )
-]
-
-strategy_steps.append(
+    ),
     _step(
         {"di": ["full_jones"], "dd": []},
-        target_flux=0.9,
-        max_nmiter=12,
+        max_nmiter=6,
         regroup_model=False,
-    )
-)
+    ),
+]
 """
 
 
@@ -162,8 +150,8 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=None,
         help=(
-            "Strategy file to reference from the generated parset. Defaults to a "
-            "generated rich strategy next to the parset."
+            "Strategy file to reference from the generated demo parset. Defaults "
+            "to the generated benchmark strategy next to the parset."
         ),
     )
     parser.add_argument(
@@ -242,8 +230,8 @@ def write_sky_model(path: Path, apparent: bool) -> None:
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def write_rich_strategy(path: Path) -> None:
-    path.write_text(RICH_STRATEGY_TEXT, encoding="utf-8")
+def write_benchmark_strategy(path: Path) -> None:
+    path.write_text(BENCHMARK_STRATEGY_TEXT, encoding="utf-8")
 
 
 def extend_ms_times(ms_path: Path, n_time_slots: int) -> int:
@@ -411,16 +399,31 @@ def corrupt_data(ms_path: Path, seed: int, noise_jy: float) -> None:
         table.putcol("DATA", data + noise)
 
 
-def write_parset(output_dir: Path, path: Path, repo_root: Path, strategy_path: Path) -> None:
+def write_parset(
+    output_dir: Path,
+    path: Path,
+    repo_root: Path,
+    strategy_path: Path,
+    *,
+    title: str = "rich demo",
+    work_dir_name: str = "work",
+    grid_width_deg: float = 1.25,
+    local_dask_workers: int = 2,
+    cpus_per_task: int = 4,
+    max_cores: int = 4,
+    max_threads: int = 4,
+    deconvolution_threads: int = 2,
+    parallel_gridding_threads: int = 1,
+) -> None:
     ms_path = output_dir / "prefect_demo_rich.ms"
     true_sky_path = output_dir / "prefect_demo_rich_true_sky.txt"
     apparent_sky_path = output_dir / "prefect_demo_rich_apparent_sky.txt"
-    work_dir = output_dir / "work"
+    work_dir = output_dir / work_dir_name
 
     path.write_text(
         textwrap.dedent(
             f"""\
-            # Generated rich demo parset for manually running the Prefect process flow.
+            # Generated {title} parset for manually running the Prefect process flow.
             #
             # Regenerate with:
             #
@@ -467,8 +470,8 @@ def write_parset(output_dir: Path, path: Path, repo_root: Path, strategy_path: P
             tolerance = 0.001
 
             [imaging]
-            grid_width_ra_deg = 1.25
-            grid_width_dec_deg = 1.25
+            grid_width_ra_deg = {grid_width_deg}
+            grid_width_dec_deg = {grid_width_deg}
             grid_center_ra = 1h37m41.299s
             grid_center_dec = +33d09m35.132s
             grid_nsectors_ra = 1
@@ -488,13 +491,13 @@ def write_parset(output_dir: Path, path: Path, repo_root: Path, strategy_path: P
             [cluster]
             batch_system = single_machine
             max_nodes = 1
-            local_dask_workers = 2
-            cpus_per_task = 4
+            local_dask_workers = {local_dask_workers}
+            cpus_per_task = {cpus_per_task}
             mem_per_node_gb = 0
-            max_cores = 4
-            max_threads = 4
-            deconvolution_threads = 2
-            parallel_gridding_threads = 1
+            max_cores = {max_cores}
+            max_threads = {max_threads}
+            deconvolution_threads = {deconvolution_threads}
+            parallel_gridding_threads = {parallel_gridding_threads}
             local_scratch_dir =
             global_scratch_dir =
             use_container = False
@@ -514,6 +517,26 @@ def write_parset(output_dir: Path, path: Path, repo_root: Path, strategy_path: P
     )
 
 
+def write_benchmark_parset(
+    output_dir: Path, path: Path, repo_root: Path, strategy_path: Path
+) -> None:
+    write_parset(
+        output_dir,
+        path,
+        repo_root,
+        strategy_path,
+        title="CI benchmark",
+        work_dir_name="benchmark-work",
+        grid_width_deg=1.0,
+        local_dask_workers=2,
+        cpus_per_task=0,
+        max_cores=0,
+        max_threads=0,
+        deconvolution_threads=0,
+        parallel_gridding_threads=0,
+    )
+
+
 def main() -> None:
     args = parse_args()
     repo_root = Path.cwd()
@@ -530,11 +553,11 @@ def main() -> None:
     true_sky_path = output_dir / "prefect_demo_rich_true_sky.txt"
     apparent_sky_path = output_dir / "prefect_demo_rich_apparent_sky.txt"
     parset_path = output_dir / "prefect_demo_rich.parset"
-    strategy_path = args.strategy
-    if strategy_path is None:
-        strategy_path = output_dir / RICH_STRATEGY_FILENAME
-    elif not strategy_path.exists():
-        raise SystemExit(f"Strategy file does not exist: {strategy_path}")
+    benchmark_parset_path = output_dir / BENCHMARK_PARSET_FILENAME
+    benchmark_strategy_path = output_dir / BENCHMARK_STRATEGY_FILENAME
+    demo_strategy_path = args.strategy or benchmark_strategy_path
+    if args.strategy is not None and not args.strategy.exists():
+        raise SystemExit(f"Strategy file does not exist: {args.strategy}")
 
     print(f"Copying template MS to {ms_path}")
     shutil.copytree(args.template_ms, ms_path)
@@ -544,9 +567,8 @@ def main() -> None:
     print(f"Writing sky models with {len(PATCHES)} bright patches")
     write_sky_model(true_sky_path, apparent=False)
     write_sky_model(apparent_sky_path, apparent=True)
-    if args.strategy is None:
-        print(f"Writing rich demo strategy to {strategy_path}")
-        write_rich_strategy(strategy_path)
+    print(f"Writing demo/benchmark strategy to {benchmark_strategy_path}")
+    write_benchmark_strategy(benchmark_strategy_path)
 
     if args.skip_predict:
         print("Skipping DP3 prediction; generated MS will contain synthetic noise only")
@@ -556,14 +578,20 @@ def main() -> None:
 
     print("Adding synthetic time/frequency antenna phases and thermal noise")
     corrupt_data(ms_path, seed=args.seed, noise_jy=args.noise_jy)
-    write_parset(output_dir, parset_path, repo_root, strategy_path)
+    write_parset(output_dir, parset_path, repo_root, demo_strategy_path)
+    write_benchmark_parset(output_dir, benchmark_parset_path, repo_root, benchmark_strategy_path)
 
     print()
     print(f"Generated {n_time_slots} time slots in {ms_path}")
     print(f"Demo parset: {parset_path}")
-    print(f"Demo strategy: {strategy_path}")
+    print(f"Demo strategy: {demo_strategy_path}")
+    print(f"Benchmark parset: {benchmark_parset_path}")
+    print(f"Benchmark strategy: {benchmark_strategy_path}")
     print("Run with:")
     print(f"  scripts/dev/run-rapthor-prefect-demo.py {path_for_parset(parset_path, repo_root)}")
+    print(
+        f"  scripts/dev/run-rapthor-prefect-demo.py {path_for_parset(benchmark_parset_path, repo_root)}"
+    )
 
 
 if __name__ == "__main__":

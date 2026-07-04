@@ -76,23 +76,19 @@ class BenchmarkRunResult:
 
 
 def default_benchmark_scenarios() -> tuple[BenchmarkScenario, ...]:
-    """Return the committed baseline scenarios from ``PLAN.md``."""
+    """Return the default baseline scenario from ``PLAN.md``."""
     return (
         BenchmarkScenario(
-            scenario_id="quick-demo",
-            description="Tiny fixture for startup overhead and CLI/runtime cost.",
-            parset="examples/prefect_demo.parset",
-            local_dask_workers=1,
-            cpus_per_task=4,
-            max_threads=4,
-        ),
-        BenchmarkScenario(
-            scenario_id="rich-demo",
-            description="Generated rich demo for representative Prefect/Dask graph shape.",
-            parset="examples/generated/prefect_demo_rich/prefect_demo_rich.parset",
+            scenario_id="ci-benchmark",
+            description=(
+                "Generated CI benchmark exercising DI phase, DD phase/faceting, "
+                "legacy DD default solves, full-Jones, imaging, mosaicking, "
+                "and source filtering."
+            ),
+            parset="examples/generated/prefect_demo_rich/prefect_demo_benchmark.parset",
             local_dask_workers=2,
-            cpus_per_task=4,
-            max_threads=4,
+            cpus_per_task=30,
+            max_threads=30,
         ),
     )
 

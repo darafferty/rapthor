@@ -60,9 +60,10 @@ Dask scalability work.
   tests after temporary working directories are removed.
 - Agent-facing repository guides live under `.agents/`, with `AGENTS.md`
   serving as the top-level routing and guardrail document.
-- Benchmark baseline scaffolding is in place: committed quick-demo/rich-demo
-  scenario definitions, a developer runner, command-log parsing, JSON/Markdown
-  report generation, and focused report tests.
+- Benchmark baseline scaffolding is in place: a committed single CI benchmark
+  scenario definition, generated benchmark parset/strategy inputs, a developer
+  runner, command-log parsing, JSON/Markdown report generation, and focused
+  report tests.
 - Dev containers install docs dependencies by default.
 
 Recent verification has covered linting, non-integration tests, integration
@@ -138,12 +139,15 @@ Done when:
 
 ### 2. Benchmark Baseline
 
-Status: CI baseline wiring in place. Benchmark scenarios, report-generation code,
-focused tests, and a manual/scheduled GitLab artifact job are available. The CI
-job defaults to the repeated quick/rich baseline on the larger GitLab runner,
-using two local Dask workers with a 30-thread `cpus_per_task`/`max_threads`
-budget per worker. This uses the 60-core runner while still exposing calibration
-and prediction chunk parallelism.
+Status: CI baseline wiring in place. A single generated benchmark scenario,
+report-generation code, focused tests, and a manual/scheduled GitLab artifact
+job are available. The CI job runs the generated `ci-benchmark` scenario on the
+larger GitLab runner, using two local Dask workers with a 30-thread
+`cpus_per_task`/`max_threads` budget per worker. The scenario is sized to finish
+three repetitions inside the two-hour CI limit while still exercising DI phase
+calibration, DD phase/faceting, the legacy DD default solve order, full-Jones
+calibration, imaging, mosaicking, source filtering, and Dask/Python
+orchestration overhead.
 
 Benchmark before changing Dask task boundaries, scheduler behavior, or
 performance-sensitive execution code. The benchmark should identify what to
@@ -151,17 +155,19 @@ optimise next, not just produce one wall-clock number.
 
 Tasks:
 
-- Maintain committed benchmark scenario definitions, runner code, report
+- Maintain the committed benchmark scenario definition, runner code, report
   parsing, and summarization tests.
-- Use the quick demo for startup overhead, the generated rich demo for the
-  representative Prefect/Dask graph, and later an optional larger science
-  fixture outside the repo for realistic external-tool scaling.
-- Run each scenario from a clean working directory with fixed runtime settings,
+- Use the generated benchmark demo for the representative Prefect/Dask graph,
+  and later an optional larger science fixture outside the repo for realistic
+  external-tool scaling.
+- Keep the generated local demo parset and CI benchmark parset on the same
+  strategy so behavior can be compared while only resource sizing differs.
+- Run the scenario from a clean working directory with fixed runtime settings,
   including local Dask workers, command profiling, dashboard/report options, and
   external scheduler settings.
-- Repeat each benchmark at least three times on the same machine/container
-  image and report median plus min/max. Treat first-run cache effects
-  separately.
+- Run three repetitions in the CI job by default and report median plus
+  min/max. Treat first-run cache effects separately when interpreting the
+  summary.
 - Capture:
   - total wall-clock time
   - operation and Prefect task durations
@@ -177,7 +183,7 @@ Tasks:
   - a JSON summary artifact
   - optionally Dask performance HTML, command logs, and selected run logs
 - For a local smoke baseline on a smaller workstation, override with
-  `--scenario quick-demo --repetitions 1 --local-dask-workers 1 --cpus-per-task 4 --max-threads 4`.
+  `--scenario ci-benchmark --repetitions 1 --local-dask-workers 1 --cpus-per-task 4 --max-threads 4`.
 - When the GitLab benchmark job completes, save and triage the results as
   follows:
   - Keep the full artifact bundle attached to the GitLab job. This is the right
@@ -202,8 +208,9 @@ Done when:
 
 - The benchmark harness and report-generation tests are committed.
 - CI can produce a Markdown benchmark report artifact.
-- A reproducible rich-demo baseline has been captured in GitLab artifacts and
-  summarized in a compact curated report before Dask scalability changes.
+- A reproducible generated benchmark baseline has been captured in GitLab
+  artifacts and summarized in a compact curated report before Dask scalability
+  changes.
 - The committed report identifies the top wall-clock contributors and the
   biggest Dask idle or scheduler gaps.
 

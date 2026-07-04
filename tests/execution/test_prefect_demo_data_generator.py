@@ -37,27 +37,79 @@ def test_generated_demo_parset_uses_prefect_settings_only(tmp_path):
     assert "cwl_runner" not in parser["cluster"]
 
 
-def test_generated_rich_strategy_exercises_amplitude_solves_with_flux_threshold(tmp_path):
+def test_generated_demo_parset_can_use_benchmark_strategy(tmp_path):
     module = load_generator_script()
-    strategy_path = tmp_path / "prefect_demo_rich_strategy.py"
+    output_dir = tmp_path / "generated" / "prefect_demo_rich"
+    output_dir.mkdir(parents=True)
+    parset_path = output_dir / "prefect_demo_rich.parset"
+    strategy_path = output_dir / "prefect_demo_benchmark_strategy.py"
 
-    module.write_rich_strategy(strategy_path)
+    module.write_benchmark_strategy(strategy_path)
+    module.write_parset(output_dir, parset_path, REPO_ROOT, strategy_path)
 
-    spec = importlib.util.spec_from_file_location("prefect_demo_rich_strategy", strategy_path)
+    parser = configparser.ConfigParser(interpolation=None)
+    parser.read(parset_path)
+    assert parser["global"]["strategy"] == str(strategy_path)
+    assert parser["global"]["dir_working"].endswith("work")
+    assert parser["cluster"]["cpus_per_task"] == "4"
+    assert parser["cluster"]["max_threads"] == "4"
+
+
+def test_generated_benchmark_parset_uses_runtime_sized_thread_defaults(tmp_path):
+    module = load_generator_script()
+    output_dir = tmp_path / "generated" / "prefect_demo_rich"
+    output_dir.mkdir(parents=True)
+    parset_path = output_dir / "prefect_demo_benchmark.parset"
+    strategy_path = output_dir / "prefect_demo_benchmark_strategy.py"
+
+    module.write_benchmark_parset(output_dir, parset_path, REPO_ROOT, strategy_path)
+
+    parser = configparser.ConfigParser(interpolation=None)
+    parser.read(parset_path)
+    assert parser["global"]["strategy"] == str(strategy_path)
+    assert parser["global"]["dir_working"].endswith("benchmark-work")
+    assert parser["imaging"]["grid_width_ra_deg"] == "1.0"
+    assert parser["imaging"]["grid_width_dec_deg"] == "1.0"
+    assert parser["cluster"]["prefect_task_runner"] == "local_dask"
+    assert parser["cluster"]["local_dask_workers"] == "2"
+    assert parser["cluster"]["cpus_per_task"] == "0"
+    assert parser["cluster"]["max_cores"] == "0"
+    assert parser["cluster"]["max_threads"] == "0"
+    assert parser["cluster"]["deconvolution_threads"] == "0"
+    assert parser["cluster"]["parallel_gridding_threads"] == "0"
+
+
+def test_generated_benchmark_strategy_exercises_legacy_default_and_fulljones(tmp_path):
+    module = load_generator_script()
+    strategy_path = tmp_path / "prefect_demo_benchmark_strategy.py"
+
+    module.write_benchmark_strategy(strategy_path)
+
+    spec = importlib.util.spec_from_file_location("prefect_demo_benchmark_strategy", strategy_path)
     strategy = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = strategy
     spec.loader.exec_module(strategy)
 
-    assert any(
-        "slow_gains" in step["calibration_strategy"].get("dd", [])
-        for step in strategy.strategy_steps
-    )
-    assert any(
-        "full_jones" in step["calibration_strategy"].get("di", [])
-        for step in strategy.strategy_steps
-    )
-    assert all(step["target_flux"] is not None for step in strategy.strategy_steps)
-    assert all(step["target_flux"] > 0.1 for step in strategy.strategy_steps)
+    assert len(strategy.strategy_steps) == 4
+    assert strategy.strategy_steps[0]["calibration_strategy"] == {
+        "di": ["fast_phase", "medium_phase"]
+    }
+    assert strategy.strategy_steps[1]["calibration_strategy"] == {
+        "di": [],
+        "dd": ["fast_phase", "medium_phase"],
+    }
+    assert strategy.strategy_steps[1]["regroup_model"] is True
+    assert strategy.strategy_steps[2]["calibration_strategy"] == {
+        "di": [],
+        "dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"],
+    }
+    assert strategy.strategy_steps[2]["regroup_model"] is True
+    assert strategy.strategy_steps[3]["calibration_strategy"] == {
+        "di": ["full_jones"],
+        "dd": [],
+    }
+    assert strategy.strategy_steps[3]["regroup_model"] is False
+    assert all(step["target_flux"] >= 0.6 for step in strategy.strategy_steps)
 
 
 def test_checked_in_demo_parset_uses_prefect_settings_only():

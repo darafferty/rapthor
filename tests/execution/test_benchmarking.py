@@ -30,18 +30,19 @@ def load_benchmark_script():
 
 def test_default_benchmark_scenarios_build_demo_commands():
     scenarios = benchmark_scenarios_by_id()
+    scenario = scenarios["ci-benchmark"]
 
-    quick_command = scenarios["quick-demo"].command(Path("/repo"), Path("/runs/quick"))
-    rich_command = scenarios["rich-demo"].command(Path("/repo"), Path("/runs/rich"))
+    command = scenario.command(Path("/repo"), Path("/runs/benchmark"))
 
-    assert quick_command[1] == "/repo/scripts/dev/run-rapthor-prefect-demo.py"
-    assert "/repo/examples/prefect_demo.parset" in quick_command
-    assert "--dask-performance-report" in quick_command
-    assert quick_command[quick_command.index("--command-profile") + 1] == "time"
-    assert quick_command[quick_command.index("--max-threads") + 1] == "4"
-    assert "--no-keep-server" in quick_command
-    assert "/repo/examples/generated/prefect_demo_rich/prefect_demo_rich.parset" in rich_command
-    assert "2" == rich_command[rich_command.index("--local-dask-workers") + 1]
+    assert set(scenarios) == {"ci-benchmark"}
+    assert command[1] == "/repo/scripts/dev/run-rapthor-prefect-demo.py"
+    assert "/repo/examples/generated/prefect_demo_rich/prefect_demo_benchmark.parset" in command
+    assert "--dask-performance-report" in command
+    assert command[command.index("--command-profile") + 1] == "time"
+    assert command[command.index("--local-dask-workers") + 1] == "2"
+    assert command[command.index("--cpus-per-task") + 1] == "30"
+    assert command[command.index("--max-threads") + 1] == "30"
+    assert "--no-keep-server" in command
 
 
 def test_benchmark_runner_applies_runtime_overrides():
@@ -49,24 +50,24 @@ def test_benchmark_runner_applies_runtime_overrides():
     args = module._parse_args(
         [
             "--scenario",
-            "rich-demo",
+            "ci-benchmark",
             "--local-dask-workers",
-            "2",
+            "1",
             "--cpus-per-task",
-            "30",
+            "4",
             "--max-threads",
-            "30",
+            "4",
         ]
     )
     scenario = module._scenario_with_runtime_overrides(
-        benchmark_scenarios_by_id()["rich-demo"],
+        benchmark_scenarios_by_id()["ci-benchmark"],
         args,
     )
-    command = scenario.command(Path("/repo"), Path("/runs/rich"))
+    command = scenario.command(Path("/repo"), Path("/runs/benchmark"))
 
-    assert command[command.index("--local-dask-workers") + 1] == "2"
-    assert command[command.index("--cpus-per-task") + 1] == "30"
-    assert command[command.index("--max-threads") + 1] == "30"
+    assert command[command.index("--local-dask-workers") + 1] == "1"
+    assert command[command.index("--cpus-per-task") + 1] == "4"
+    assert command[command.index("--max-threads") + 1] == "4"
 
 
 def test_parse_command_log_extracts_timing_records(tmp_path):
@@ -114,7 +115,7 @@ def test_benchmark_run_result_reads_commands_and_dask_report(tmp_path):
     (run_dir / "dask-performance-report.html").write_text("<html></html>", encoding="utf-8")
 
     result = benchmark_run_result(
-        scenario_id="quick-demo",
+        scenario_id="ci-benchmark",
         repetition=1,
         run_dir=run_dir,
         returncode=0,
@@ -129,24 +130,24 @@ def test_benchmark_run_result_reads_commands_and_dask_report(tmp_path):
 def test_summarize_benchmark_runs_and_render_markdown():
     summary = summarize_benchmark_runs(
         [
-            BenchmarkRunResult("quick-demo", 1, "/runs/1", 0, 4.0, 2, 3.0),
-            BenchmarkRunResult("quick-demo", 2, "/runs/2", 0, 2.0, 4, 1.0),
-            BenchmarkRunResult("rich-demo", 1, "/runs/3", 1, 8.0, 5, 6.0),
+            BenchmarkRunResult("ci-benchmark", 1, "/runs/1", 0, 4.0, 2, 3.0),
+            BenchmarkRunResult("ci-benchmark", 2, "/runs/2", 0, 2.0, 4, 1.0),
+            BenchmarkRunResult("comparison-demo", 1, "/runs/3", 1, 8.0, 5, 6.0),
         ]
     )
 
-    assert summary["scenarios"]["quick-demo"]["wall_seconds"] == {
+    assert summary["scenarios"]["ci-benchmark"]["wall_seconds"] == {
         "min": 2.0,
         "median": 3.0,
         "max": 4.0,
     }
-    assert summary["scenarios"]["quick-demo"]["command_count"]["median"] == 3.0
+    assert summary["scenarios"]["ci-benchmark"]["command_count"]["median"] == 3.0
 
     report = render_markdown_report(summary)
 
     assert "# Rapthor Benchmark Baseline" in report
-    assert "| quick-demo | 2 | 0, 0 | 3.000 | 2.000-4.000 | 2.000 |" in report
-    assert "| rich-demo | 1 | 1 | 8.000 | 8.000-8.000 | 6.000 |" in report
+    assert "| ci-benchmark | 2 | 0, 0 | 3.000 | 2.000-4.000 | 2.000 |" in report
+    assert "| comparison-demo | 1 | 1 | 8.000 | 8.000-8.000 | 6.000 |" in report
 
 
 def test_write_summary_artifacts(tmp_path):
@@ -154,7 +155,7 @@ def test_write_summary_artifacts(tmp_path):
     output_markdown = tmp_path / "report.md"
 
     summary = write_summary_artifacts(
-        [BenchmarkRunResult("quick-demo", 1, "/runs/1", 0, 4.0, 2, 3.0)],
+        [BenchmarkRunResult("ci-benchmark", 1, "/runs/1", 0, 4.0, 2, 3.0)],
         output_json=output_json,
         output_markdown=output_markdown,
     )
@@ -165,16 +166,16 @@ def test_write_summary_artifacts(tmp_path):
 
 def test_failed_benchmark_runs_are_reported():
     results = [
-        BenchmarkRunResult("quick-demo", 1, "/runs/1", 0, 4.0, 2, 3.0),
-        BenchmarkRunResult("rich-demo", 2, "/runs/2", 2, 1.0, 0, 0.0),
+        BenchmarkRunResult("ci-benchmark", 1, "/runs/1", 0, 4.0, 2, 3.0),
+        BenchmarkRunResult("comparison-demo", 2, "/runs/2", 2, 1.0, 0, 0.0),
     ]
 
     assert failed_benchmark_runs(results) == [results[1]]
-    assert "rich-demo repetition 2" in format_failed_benchmark_runs(results)
+    assert "comparison-demo repetition 2" in format_failed_benchmark_runs(results)
 
 
 def test_run_scenario_once_writes_command_and_result_artifacts(tmp_path):
-    scenario = benchmark_scenarios_by_id()["quick-demo"]
+    scenario = benchmark_scenarios_by_id()["ci-benchmark"]
     times = iter([10.0, 14.5])
 
     def fake_runner(command, cwd, check):
@@ -198,7 +199,7 @@ def test_run_scenario_once_writes_command_and_result_artifacts(tmp_path):
         monotonic=lambda: next(times),
     )
 
-    run_dir = tmp_path / "runs" / "quick-demo" / "rep-01"
+    run_dir = tmp_path / "runs" / "ci-benchmark" / "rep-01"
     assert result.wall_seconds == 4.5
     assert result.command_seconds == 2.0
     assert (run_dir / "benchmark-command.json").is_file()
@@ -208,7 +209,8 @@ def test_run_scenario_once_writes_command_and_result_artifacts(tmp_path):
 def test_benchmark_runner_validates_missing_inputs(tmp_path):
     module = load_benchmark_script()
     repo_root = tmp_path
-    parset = repo_root / "examples" / "prefect_demo.parset"
+    scenario = benchmark_scenarios_by_id()["ci-benchmark"]
+    parset = repo_root / scenario.parset
     parset.parent.mkdir(parents=True)
     parset.write_text(
         """
@@ -220,8 +222,6 @@ def test_benchmark_runner_validates_missing_inputs(tmp_path):
         """,
         encoding="utf-8",
     )
-    scenario = benchmark_scenarios_by_id()["quick-demo"]
-
     try:
         module._validate_scenario_inputs(repo_root, [scenario])
     except SystemExit as err:
@@ -235,23 +235,23 @@ def test_benchmark_runner_validates_missing_inputs(tmp_path):
 
 def test_benchmark_runner_returns_failure_for_failed_repetition(monkeypatch, tmp_path):
     module = load_benchmark_script()
-    scenario = benchmark_scenarios_by_id()["quick-demo"]
+    scenario = benchmark_scenarios_by_id()["ci-benchmark"]
 
-    monkeypatch.setattr(module, "benchmark_scenarios_by_id", lambda: {"quick-demo": scenario})
+    monkeypatch.setattr(module, "benchmark_scenarios_by_id", lambda: {"ci-benchmark": scenario})
     monkeypatch.setattr(module, "_validate_scenario_inputs", lambda repo_root, scenarios: None)
     monkeypatch.setattr(module, "_repo_root", lambda: tmp_path)
     monkeypatch.setattr(
         module,
         "run_scenario_once",
         lambda *args, **kwargs: BenchmarkRunResult(
-            "quick-demo", 1, str(tmp_path / "run"), 1, 0.5, 0, 0.0
+            "ci-benchmark", 1, str(tmp_path / "run"), 1, 0.5, 0, 0.0
         ),
     )
 
     exit_code = module.main(
         [
             "--scenario",
-            "quick-demo",
+            "ci-benchmark",
             "--repetitions",
             "1",
             "--run-root",
@@ -264,23 +264,23 @@ def test_benchmark_runner_returns_failure_for_failed_repetition(monkeypatch, tmp
 
 def test_benchmark_runner_can_allow_failed_repetitions(monkeypatch, tmp_path):
     module = load_benchmark_script()
-    scenario = benchmark_scenarios_by_id()["quick-demo"]
+    scenario = benchmark_scenarios_by_id()["ci-benchmark"]
 
-    monkeypatch.setattr(module, "benchmark_scenarios_by_id", lambda: {"quick-demo": scenario})
+    monkeypatch.setattr(module, "benchmark_scenarios_by_id", lambda: {"ci-benchmark": scenario})
     monkeypatch.setattr(module, "_validate_scenario_inputs", lambda repo_root, scenarios: None)
     monkeypatch.setattr(module, "_repo_root", lambda: tmp_path)
     monkeypatch.setattr(
         module,
         "run_scenario_once",
         lambda *args, **kwargs: BenchmarkRunResult(
-            "quick-demo", 1, str(tmp_path / "run"), 1, 0.5, 0, 0.0
+            "ci-benchmark", 1, str(tmp_path / "run"), 1, 0.5, 0, 0.0
         ),
     )
 
     exit_code = module.main(
         [
             "--scenario",
-            "quick-demo",
+            "ci-benchmark",
             "--repetitions",
             "1",
             "--run-root",

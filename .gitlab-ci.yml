@@ -170,7 +170,7 @@ versioning:
     - !reference [.versioning, script]
     - ./Docker/fetch_commit_hashes.sh | tee commits.txt >> versions.env
     # Use hash of commits and CI/CD build files to determine tag of base image
-    - SHA_FILES=".gitlab-ci.yml ci/ubuntu_24_04-* commits.txt"
+    - SHA_FILES=".gitlab-ci.yml ci/ubuntu_24_04-* pyproject.toml commits.txt"
     - BASE_NAME=$CI_REGISTRY_IMAGE/base
     - BASE_TAG=$(shasum ${SHA_FILES} | shasum | cut -d" " -f1)
     - FULL_NAME=$CI_REGISTRY_IMAGE/full
@@ -282,14 +282,15 @@ run_benchmark_baseline:
     RAPTHOR_BENCHMARK_LOCAL_DASK_WORKERS: "2"
     RAPTHOR_BENCHMARK_MAX_THREADS: "30"
     RAPTHOR_BENCHMARK_REPETITIONS: "3"
-    RAPTHOR_BENCHMARK_SCENARIO_ARGS: "--scenario quick-demo --scenario rich-demo"
+    RAPTHOR_BENCHMARK_SCENARIO_ARGS: "--scenario ci-benchmark"
     VECLIB_MAXIMUM_THREADS: "1"
   script:
     - export RAPTHOR_BENCHMARK_RUN_ROOT="$CI_PROJECT_DIR/ci/benchmark"
     - export PREFECT_HOME="$CI_PROJECT_DIR/ci/prefect-home/benchmark"
     - mkdir -p "$RAPTHOR_BENCHMARK_RUN_ROOT" "$PREFECT_HOME"
     # Use 2 workers x 30 threads to expose predict/calibration chunk parallelism
-    # without oversubscribing the 60-core GitLab runner.
+    # without oversubscribing the 60-core GitLab runner. The single benchmark
+    # scenario is sized so three repetitions should fit inside the CI job limit.
     - >-
       python3 scripts/dev/run_benchmark_baseline.py
       $RAPTHOR_BENCHMARK_SCENARIO_ARGS
@@ -311,6 +312,8 @@ run_benchmark_baseline:
       - ci/benchmark/**/benchmark-command.json
       - ci/benchmark/**/benchmark-result.json
       - ci/benchmark/**/dask-performance-report.html
+      - ci/benchmark/**/*.parset
+      - ci/benchmark/**/prefect-server.log
       - ci/benchmark/**/rapthor-work/logs/commands.jsonl
       - ci/benchmark/**/rapthor-work/logs/rapthor.log
   rules:
