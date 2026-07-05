@@ -1,0 +1,24 @@
+INFO - rapthor:parset - [32mReading parset file: /app/docs/source/development/equivalence_runs/2026-07-05-slow-gain-default-like-master-ref/inputs/base/master_slow_gain_default_like.parset[0m
+INFO - rapthor:parset - [32m=========================================================[0m
+INFO - rapthor:parset - [32mRapthor version 2.2.dev119+g17448437b[0m
+INFO - rapthor:parset - [32mCWLRunner is toil[0m
+INFO - rapthor:parset - [32mWorking directory is /tmp/rbe-m-sg-v1-w[0m
+INFO - rapthor:parset - [32mWorking on 1 input MS file[0m
+WARNING - rapthor:parset - [33mComparison sky model for astrometry check not provided while `allow_internet_access` is False. The astrometry check will be skipped. If you want to run the astrometry check, please provide a path to the comparison sky model or allow internet access.[0m
+WARNING - rapthor:parset - [33mComparison sky model for photometry check not provided while `allow_internet_access` is False. The photometry check will be skipped. If you want to run the photometry check, please provide a path to the comparison sky model or allow internet access.[0m
+INFO - rapthor:parset - [32m=========================================================[0m
+INFO - rapthor - [32mSetting log level to INFO[0m
+INFO - rapthor:field - [32mUsing 1 imaging sector[0m
+INFO - rapthor:strategy - [32mUsing '/app/docs/source/development/equivalence_runs/2026-07-05-slow-gain-default-like-master-ref/inputs/base/master_slow_gain_default_like_strategy.py' processing strategy[0m
+INFO - rapthor - [32mUsing a data fraction of 1.00[0m
+INFO - rapthor:field - [32mPlotting field overview with initial sky-model coverage...[0m
+INFO - rapthor:field - [32mAnalyzing sky model...[0m
+INFO - rapthor:field - [32mIdentifying sources...[0m
+INFO - rapthor:field - [32mUsing a target flux density of 0.60 Jy for grouping[0m
+INFO - rapthor:field - [32mUsing 5 calibration patches[0m
+INFO - rapthor:field - [32mPlotting field overview with calibration patches...[0m
+INFO - rapthor:field - [32mMaking sector sky models (for predicting)...[0m
+INFO - rapthor:calibrate_1 - [32m<-- Operation calibrate_1 started[0m
+INFO - rapthor:calibrate_1 - [32m--> Operation calibrate_1 completed[0m
+INFO - rapthor:calibrate_1 - [32mFraction of solutions that are flagged = 0.00[0m
+INFO - rapthor - [32mRapthor has finished :)[0m

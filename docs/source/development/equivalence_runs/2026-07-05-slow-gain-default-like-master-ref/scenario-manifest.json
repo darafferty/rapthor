@@ -1,0 +1,19 @@
+{
+  "scenario_id": "slow-gain-default-like",
+  "base_ref": "master",
+  "current_ref": "current",
+  "base_parset": "/app/docs/source/development/equivalence_runs/2026-07-05-slow-gain-default-like-master-ref/inputs/base/master_slow_gain_default_like.parset",
+  "current_parset": "/app/docs/source/development/equivalence_runs/2026-07-05-slow-gain-default-like-master-ref/inputs/current/current_slow_gain_default_like.parset",
+  "base_work_dir": "/tmp/rbe-m-sg-v1-w",
+  "current_work_dir": "/tmp/rbe-c-sg-v1-w",
+  "input_snapshots": {
+    "base": {
+      "parset": "inputs/base/master_slow_gain_default_like.parset",
+      "strategy": "inputs/base/master_slow_gain_default_like_strategy.py"
+    },
+    "current": {
+      "parset": "inputs/current/current_slow_gain_default_like.parset",
+      "strategy": "inputs/current/current_slow_gain_default_like_strategy.py"
+    }
+  }
+}

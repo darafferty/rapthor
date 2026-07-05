@@ -269,6 +269,14 @@ Initial-solution alignment status:
   h5parms and logs the direction mismatch. Strict comparison still fails, but
   the safety behavior is the intended current-branch flexible-strategy
   contract.
+- The slow-gain/default-like scenario is tracked under
+  `docs/source/development/equivalence_runs/2026-07-05-slow-gain-default-like-master-ref/`.
+  Both branches return `0` for a one-cycle calibration-only DD solve order
+  equivalent to fast phase, medium phase, slow gains, and post-slow medium
+  phase. Both produce standalone slow-gain and medium2 h5parms. Master still
+  logs the `combine_h5parms` broadcast error and its final `field-solutions.h5`
+  lacks `sol000/amplitude000`, while the current branch preserves the slow-gain
+  amplitude soltab in the final combined h5parm.
 
 Possible bugs on the master branch to investigate:
 
@@ -276,9 +284,13 @@ Possible bugs on the master branch to investigate:
   success. In the 2026-07-04 default-like branch-vs-master reference run,
   master logged a `combine_h5parms.py ... p1p2a2_diagonal` broadcasting error
   during the slow-gain path, but the CWL step/run completed and the active
-  facet h5parm remained phase-only. Verify whether master should fail loudly,
-  whether `p1p2a2_diagonal` should handle the product shapes, or whether the
-  scenario needs an adapted reference contract.
+  facet h5parm remained phase-only. The 2026-07-05 one-cycle slow-gain
+  default-like run reproduced the issue in a tighter calibration-only case:
+  master produced standalone slow-gain products but its final
+  `field-solutions.h5` lacked `sol000/amplitude000`, while the current branch
+  preserved it. Verify whether master should fail loudly, whether
+  `p1p2a2_diagonal` should handle the product shapes, or whether this should
+  remain a documented master reference limitation.
 - Previous-cycle DD initial-solution h5parms are carried across calibration
   patch/facet changes without direction compatibility checks. In the 2026-07-05
   phase-only master reference run, cycle 1 used `[Patch_rich_*]`, cycle 2 used
@@ -295,8 +307,8 @@ Remaining equivalence tasks, in order:
 
 1. **Continue the essential branch-vs-master scenario matrix.**
    Completed: phase-only DD followed by DI full-Jones, and fixed-`facet_layout`
-   DD carry-over, and regrouped/changing-facets DD carry-over. Next, run the
-   intended slow-gain/default-like reference, DI multi-cycle carry-over, and
+   DD carry-over, regrouped/changing-facets DD carry-over, and the intended
+   slow-gain/default-like reference. Next, run DI multi-cycle carry-over and
    DI-then-DD/DD-then-DI mode-boundary flows. For each scenario, save compact
    reports, inputs, manifests, logs, diagnostics, and visual comparisons under
    `docs/source/development/equivalence_runs/`.

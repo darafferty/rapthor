@@ -404,6 +404,53 @@ directions correctly block previous-cycle DD seeds. Master-compatible
 equivalence reports should label this as an intentional current-branch safety
 improvement rather than a product regression.
 
+## Branch-Vs-Master Slow-Gain Default-Like Run
+
+A one-cycle calibration-only DD slow-gain/default-like branch comparison was
+run on 2026-07-05. The master input uses the legacy
+`do_slowgain_solve = True` flag, while the current-branch input uses the
+explicit flexible strategy:
+
+```python
+{"dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"], "di": []}
+```
+
+The tracked compact report bundle is:
+
+```text
+docs/source/development/equivalence_runs/2026-07-05-slow-gain-default-like-master-ref/
+```
+
+Both branch executions completed successfully. Strict comparison failed because
+the final combined h5parm differs.
+
+| Scenario | Base ref | Base RC | Current RC | Result | Ops | Records | FITS | Image HDUs | Table HDUs | H5 | Text | Diagnostics | Visuals | Warnings | Failures |
+| --- | --- | ---: | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `slow-gain-default-like` | `master` | 0 | 0 | fail | 1 | 1 | 0 | 0 | 0 | 5 | 7 | 0 | 2 | 1 | 1 |
+
+Key findings:
+
+- Both branches execute a DD solve order equivalent to fast phase, medium
+  phase, slow diagonal gains, and post-slow medium phase.
+- Both branches produce standalone `slow_gains.h5parm` and
+  `medium2_phases.h5parm` products.
+- Master logs `CRITICAL - rapthor:combine_h5parms - ValueError: could not
+  broadcast input array from shape (24,1,8,5,2) into shape (24,8,5,2)` during
+  the `combine_fast_and_full_slow_h5parms` step, but the overall run still
+  returns `0`.
+- Master final `field-solutions.h5` contains only `sol000/phase000`, with no
+  `sol000/amplitude000` soltab. The current branch final `field-solutions.h5`
+  contains both `phase000` and `amplitude000`, preserving the active slow-gain
+  amplitude product.
+
+Interpretation:
+
+This should be treated as a documented master bug or legacy limitation, not a
+current-branch regression. The current branch appears to preserve the intended
+slow-gain/default-like active solution state. Future master-reference reporting
+should either label this difference explicitly or compare against a patched
+reference if a true intended-amplitude master run is required.
+
 ## Historical Passing Scenarios
 
 The required local saved-reference gate passed for:

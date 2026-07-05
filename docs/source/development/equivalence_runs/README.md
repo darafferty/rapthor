@@ -32,3 +32,8 @@ are tracked here.
   change in cycle 2. Master carries the previous fast-phase seed despite the
   changed directions, while the current branch skips previous DD seeds and logs
   the direction mismatch.
+- `2026-07-05-slow-gain-default-like-master-ref/`: one-cycle calibration-only
+  DD default-like slow-gain scenario. Both branches produce standalone
+  slow-gain and post-slow medium-phase products, but master logs the known
+  h5parm-combination broadcast error and its final `field-solutions.h5` lacks
+  the amplitude soltab that the current branch preserves.
